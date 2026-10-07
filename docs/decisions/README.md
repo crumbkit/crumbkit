@@ -16,3 +16,4 @@ These records describe crumbkit as it is now, not how it got there. When a decis
 - 0012 [Supply chain and releases](0012-supply-chain-and-releases.md)
 - 0013 [Documentation](0013-documentation.md)
 - 0014 [Repository layout](0014-repository-layout.md)
+- 0015 [Lightweight adoption](0015-lightweight-adoption.md)
