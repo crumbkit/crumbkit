@@ -17,3 +17,4 @@ These records describe crumbkit as it is now, not how it got there. When a decis
 - 0013 [Documentation](0013-documentation.md)
 - 0014 [Repository layout](0014-repository-layout.md)
 - 0015 [Lightweight adoption](0015-lightweight-adoption.md)
+- 0016 [Result formats](0016-result-formats.md)
