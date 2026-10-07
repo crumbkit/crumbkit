@@ -4,6 +4,7 @@
 - Each part follows an existing convention: `Failure` extends `std::error::Error`, `Output` is added with clap's `#[command(flatten)]`, results derive `Serialize` and `JsonSchema`, and `crumbkit_test::check(Cli::command())` has the shape of clap's `debug_assert` test.
 - The optional `crumbkit::run` one-liner is a thin layer over the public parts. It adds no concept, does nothing a hand-wired `main` cannot, and no part requires it.
 - Help pages, the `Call`s in `Next:` lines and recoveries, and MCP tool lists are rendered from the `clap::Command` a tool builds at runtime, which may hide or remove commands. A `Call` that does not resolve in that `Command` is left out.
+- A command sets its own output defaults on its arguments type. An optional table passed to `crumbkit::parse` sets defaults for a branch by command path, and the nearest entry wins, written into each flag's default before parsing.
 - A command that refuses the caller returns an ordinary `Failure`. crumbkit-test and the golden files check the full tree.
 
 Considered: an `App` runner that owns dispatch, a required derive macro, rendering from the compile-time tree.
