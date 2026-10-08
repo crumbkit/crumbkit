@@ -15,16 +15,11 @@ license = "MIT OR Apache-2.0"
 repository = "https://github.com/crumbkit/crumbkit"
 
 [workspace.dependencies]
-# clap parses the command line of every tool crumbkit serves. The features keep
-# clap's normal help pages and error messages and leave out terminal colour.
-clap = { version = "4.6.7", default-features = false, features = [
-    "std",
-    "derive",
-    "help",
-    "usage",
-    "error-context",
-    "suggestions",
-] }
+# clap parses the command line of every tool crumbkit serves. The workspace
+# entry enables only `std`. Cargo turns on a feature for every crate in a build
+# when any one crate asks for it, so a library enables only the features its own
+# code needs, and each binary chooses the rest, such as colour.
+clap = { version = "4.6.7", default-features = false, features = ["std"] }
 
 # Every lint warns except unsafe_code, and a build with
 # CARGO_BUILD_WARNINGS=deny fails on any warning. docs/standards/README.md

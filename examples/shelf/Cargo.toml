@@ -9,7 +9,17 @@ repository.workspace = true
 publish = false
 
 [dependencies]
-clap.workspace = true
+# shelf is a binary, so it chooses clap's user-facing features: help, usage
+# lines, error context, suggestions for mistyped commands, and colour when the
+# output goes to a terminal. These are clap's default features.
+clap = { workspace = true, features = [
+    "derive",
+    "help",
+    "usage",
+    "error-context",
+    "suggestions",
+    "color",
+] }
 
 [lints]
 workspace = true
