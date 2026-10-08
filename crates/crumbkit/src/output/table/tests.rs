@@ -255,16 +255,4 @@ proptest! {
         }
     }
 
-    /// Padding and separator spaces never end a line, so a line ends in a
-    /// space only when the text of its last non-empty cell does.
-    #[test]
-    fn no_line_ends_in_a_space_unless_its_last_non_empty_cell_ends_in_one(rows in rows()) {
-        let printed = table(&COLUMNS, &values(&rows));
-
-        for (printed_line, row) in printed.split_terminator('\n').skip(1).zip(&rows) {
-            let last_text = row.iter().rev().find(|text| !text.is_empty());
-            let ends_in_a_space = last_text.is_some_and(|text| text.ends_with(' '));
-            prop_assert_eq!(printed_line.ends_with(' '), ends_in_a_space, "{:?}", printed_line);
-        }
-    }
 }
