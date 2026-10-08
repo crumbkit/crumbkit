@@ -254,5 +254,4 @@ proptest! {
             prop_assert_eq!(*printed_line, expected);
         }
     }
-
 }
