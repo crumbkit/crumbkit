@@ -4,3 +4,4 @@ ID  TITLE                AUTHOR           YEAR
 3   Moby-Dick            Herman Melville  1851
 4   Great Expectations   Charles Dickens  1861
 Showing 4 of 6 books. --all shows every one.
+Next: shelf books show <ID>... takes up to 100 ids in one call.

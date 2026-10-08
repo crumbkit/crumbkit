@@ -1,4 +1,4 @@
-//! End-to-end tests of `shelf books list`. Each test runs the built binary and
+//! End-to-end tests of `shelf books list` and `shelf books show`. Each test runs the built binary and
 //! compares its standard output and standard error with golden files under
 //! `tests/golden/` (ADR-0004, ADR-0005). `SNAPSHOTS=overwrite cargo test`
 //! rewrites the golden files.
@@ -31,7 +31,7 @@ fn shelf(test: &str, args: &[&str]) -> OutputAssert {
 }
 
 #[test]
-fn books_list_prints_the_first_4_books_as_a_table_and_a_footer_naming_the_rest() {
+fn books_list_prints_the_first_4_books_a_footer_naming_the_rest_and_the_next_line() {
     shelf("books-list", &["books", "list"])
         .success()
         .stdout_eq(file!["golden/books-list.txt"].raw())
@@ -99,7 +99,7 @@ fn books_list_with_an_unknown_field_exits_with_code_2_and_lists_the_valid_fields
 }
 
 #[test]
-fn books_list_all_prints_every_book_without_a_footer() {
+fn books_list_all_prints_every_book_and_the_next_line_without_a_footer() {
     shelf("books-list-all", &["books", "list", "--all"])
         .success()
         .stdout_eq(file!["golden/books-list-all.txt"].raw())
@@ -146,5 +146,64 @@ fn books_list_help_shows_the_paging_flags_with_the_default_of_4() {
     shelf("books-list-help", &["books", "list", "--help"])
         .success()
         .stdout_eq(file!["golden/books-list-help.txt"].raw())
+        .stderr_eq("");
+}
+
+#[test]
+fn books_show_with_comma_separated_ids_is_refused_with_code_2() {
+    shelf("books-show-2-comma-5", &["books", "show", "2,5"])
+        .code(2)
+        .stdout_eq("")
+        .stderr_eq(file!["golden/books-show-2-comma-5.stderr"].raw());
+}
+
+#[test]
+fn books_show_prints_the_books_in_the_order_given() {
+    shelf("books-show-5-2", &["books", "show", "5", "2"])
+        .success()
+        .stdout_eq(file!["golden/books-show-5-2.txt"].raw())
+        .stderr_eq("");
+}
+
+#[test]
+fn books_show_with_an_id_outside_the_catalogue_is_refused_with_code_2() {
+    shelf("books-show-7", &["books", "show", "7"])
+        .code(2)
+        .stdout_eq("")
+        .stderr_eq(file!["golden/books-show-7.stderr"].raw());
+}
+
+#[test]
+fn books_show_with_101_ids_is_refused_with_code_2() {
+    let mut args = vec!["books", "show"];
+    args.extend(["1"; 101]);
+
+    shelf("books-show-101-ids", &args)
+        .code(2)
+        .stdout_eq("")
+        .stderr_eq(file!["golden/books-show-101-ids.stderr"].raw());
+}
+
+#[test]
+fn books_show_without_ids_is_refused_with_code_2() {
+    shelf("books-show-no-ids", &["books", "show"])
+        .code(2)
+        .stdout_eq("")
+        .stderr_eq(file!["golden/books-show-no-ids.stderr"].raw());
+}
+
+#[test]
+fn books_show_json_prints_the_books_as_an_array_without_a_total() {
+    shelf("books-show-json", &["books", "show", "5", "2", "--json"])
+        .success()
+        .stdout_eq(file!["golden/books-show-json.json"].raw())
+        .stderr_eq("");
+}
+
+#[test]
+fn books_show_help_shows_that_ids_take_many_values() {
+    shelf("books-show-help", &["books", "show", "--help"])
+        .success()
+        .stdout_eq(file!["golden/books-show-help.txt"].raw())
         .stderr_eq("");
 }

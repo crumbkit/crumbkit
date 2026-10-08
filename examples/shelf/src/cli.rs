@@ -37,6 +37,8 @@ pub(crate) enum Resource {
 pub(crate) enum BooksCommand {
     /// List the books in the catalogue, in id order.
     List(BooksList),
+    /// Show the books with the given ids, in the order given.
+    Show(BooksShow),
 }
 
 /// The arguments of `shelf books list`.
@@ -49,4 +51,27 @@ pub(crate) struct BooksList {
     #[command(flatten)]
     #[serde(flatten)]
     pub(crate) page: Page<4>,
+}
+
+/// The arguments of `shelf books show`.
+#[derive(Debug, Args, Serialize, JsonSchema)]
+pub(crate) struct BooksShow {
+    /// The ids of the books to show, separated by spaces
+    // RUST-10: the value parser accepts only the ids 1 to 6, so clap refuses
+    // an id outside the catalogue with exit code 2. This works because the
+    // catalogue is a fixed constant. A tool with real data cannot know its ids
+    // when it parses, and reports a missing id as a failure, which crumbkit's
+    // Failures pull request adds.
+    //
+    // The ids have no `value_delimiter = ','`. clap's `num_args` counts the
+    // values on the command line before it splits them at a delimiter, so
+    // `2,5` would count as one value and a comma-separated list could pass
+    // more than 100 ids.
+    #[arg(
+        required = true,
+        value_name = "ID",
+        num_args = 1..=100,
+        value_parser = clap::value_parser!(u32).range(1..=6)
+    )]
+    pub(crate) ids: Vec<u32>,
 }

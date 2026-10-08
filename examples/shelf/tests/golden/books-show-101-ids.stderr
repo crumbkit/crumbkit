@@ -1,0 +1,5 @@
+error: unexpected value '1' for '<ID>...' found; no more were expected
+
+Usage: shelf books show [OPTIONS] <ID>...
+
+For more information, try '--help'.
