@@ -2,3 +2,4 @@ ID  TITLE                AUTHOR        YEAR
 1   Pride and Prejudice  Jane Austen   1813
 2   Frankenstein         Mary Shelley  1818
 Showing 2 of 6 books. --all shows every one.
+Next: shelf books show <ID>... takes up to 100 ids in one call.
