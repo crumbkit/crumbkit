@@ -1,0 +1,7 @@
+TITLE                              YEAR
+Pride and Prejudice                1813
+Frankenstein                       1818
+Moby-Dick                          1851
+Great Expectations                 1861
+Middlemarch                        1871
+The Adventures of Sherlock Holmes  1892

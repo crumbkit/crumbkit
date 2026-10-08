@@ -1,6 +1,7 @@
 //! shelf's command-line grammar.
 
 use clap::{Parser, Subcommand};
+use crumbkit::Output;
 
 #[cfg(test)]
 mod tests;
@@ -12,6 +13,10 @@ pub(crate) struct Cli {
     /// The resource the command acts on.
     #[command(subcommand)]
     pub(crate) resource: Resource,
+
+    /// The flags that choose how the result prints.
+    #[command(flatten)]
+    pub(crate) output: Output,
 }
 
 /// The resources that shelf serves.

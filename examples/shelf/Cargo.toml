@@ -20,6 +20,14 @@ clap = { workspace = true, features = [
     "suggestions",
     "color",
 ] }
+crumbkit = { workspace = true }
+# shelf derives `Serialize` and `JsonSchema` for its results.
+serde = { workspace = true, features = ["derive"] }
+schemars = { workspace = true, features = ["derive"] }
+
+[dev-dependencies]
+# `cmd` runs the built shelf binary in the end-to-end tests.
+snapbox = { workspace = true, features = ["cmd"] }
 
 [lints]
 workspace = true
