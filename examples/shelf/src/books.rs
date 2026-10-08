@@ -1,11 +1,14 @@
 //! The built-in book catalogue.
 
-use crumbkit::{Document, Row};
+use crumbkit::{Document, Listing, Row};
 use schemars::JsonSchema;
 use serde::Serialize;
 
-/// The document that `shelf books list` prints: every book in the catalogue.
-pub(crate) const BOOKS_LIST: Document<Vec<Book>> = Document::new("shelf", "books-list", 1);
+use crate::cli::BooksList;
+
+/// The document that `shelf books list` prints: one page of the catalogue and
+/// the number of books in it.
+pub(crate) const BOOKS_LIST: Document<Listing<Book>> = Document::new("shelf", "books-list", 1);
 
 /// One book in the catalogue.
 #[derive(Serialize, JsonSchema)]
@@ -84,7 +87,11 @@ const CATALOGUE: [Book; 6] = [
     },
 ];
 
-/// Returns every book in the catalogue, in id order.
-pub(crate) fn list() -> Vec<Book> {
-    Vec::from(CATALOGUE)
+/// Returns the books that `args` asks for, in id order, with the number of
+/// books in the catalogue as the total.
+///
+/// The catalogue is a constant in memory, so this builds every book and
+/// keeps the first page with `Listing::from_all`.
+pub(crate) fn list(args: &BooksList) -> Listing<Book> {
+    Listing::from_all(Vec::from(CATALOGUE), args.page.limit()).described("books")
 }
