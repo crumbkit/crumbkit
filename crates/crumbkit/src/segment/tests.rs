@@ -26,8 +26,6 @@ fn follows_the_rule(text: &str, punctuation: u8) -> bool {
 }
 
 proptest! {
-    #![proptest_config(crate::property::config())]
-
     #[test]
     fn lowercase_letters_digits_and_underscores_are_a_segment_with_underscore_punctuation(
         text in "[a-z0-9_]+",

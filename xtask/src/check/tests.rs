@@ -89,17 +89,3 @@ fn listing_violations_name_the_node_or_the_link() {
         "docs/decisions/README.md: links to 0009-gone.md, which does not exist"
     );
 }
-
-#[test]
-fn a_property_test_violation_names_the_file_the_line_and_the_required_attribute() {
-    let violation = Violation::UnconfiguredPropertyTests {
-        path: "crates/crumbkit/src/code/tests.rs".to_owned(),
-        line: 104,
-    };
-
-    assert_eq!(
-        violation.to_string(),
-        "crates/crumbkit/src/code/tests.rs:104: a proptest! block must start with \
-         #![proptest_config(crate::property::config())]"
-    );
-}

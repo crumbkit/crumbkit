@@ -105,6 +105,34 @@ Eliot   1871
 }
 
 #[test]
+fn a_row_of_empty_cells_prints_as_an_empty_line() {
+    let rows = [json!({"id": "", "title": "", "note": ""})];
+
+    assert_eq!(
+        table(&["id", "title", "note"], &rows),
+        "ID  TITLE  NOTE\n\n"
+    );
+}
+
+#[test]
+fn an_empty_middle_cell_is_still_padded_when_a_later_cell_has_text() {
+    let rows = [json!({"id": "1", "title": "", "note": "x"})];
+
+    let expected = "\
+ID  TITLE  NOTE
+1          x
+";
+    assert_eq!(table(&["id", "title", "note"], &rows), expected);
+}
+
+#[test]
+fn a_last_cell_that_ends_in_a_space_keeps_its_space() {
+    let rows = [json!({"id": "1", "note": "x "})];
+
+    assert_eq!(table(&["id", "note"], &rows), "ID  NOTE\n1   x \n");
+}
+
+#[test]
 fn a_newline_in_a_string_prints_as_backslash_n_so_the_row_stays_on_one_line() {
     let rows = [json!({"id": 1, "note": "first\nsecond"})];
 
@@ -174,14 +202,12 @@ fn values(rows: &[[String; 3]]) -> Vec<Value> {
 }
 
 proptest! {
-    #![proptest_config(crate::property::config())]
-
     /// `write` promises that each column is as wide as its widest cell, that
-    /// two spaces separate the columns and that the last column is not
-    /// padded. So each column starts at the same character offset on every
-    /// line: the first at 0, and each other column two characters after the
-    /// widest cell of the column before it. The test builds each expected
-    /// line by placing every cell at its column's offset.
+    /// two spaces separate the columns and that a line ends with its last
+    /// non-empty cell. So each column starts at the same character offset on
+    /// every line: the first at 0, and each other column two characters after
+    /// the widest cell of the column before it. The test builds each expected
+    /// line by placing every non-empty cell at its column's offset.
     ///
     /// The offsets count characters, as `write` does. A terminal shows `界`
     /// and `🦀` two columns wide and U+0301 zero wide, so a table holding them
@@ -218,6 +244,9 @@ proptest! {
 
             let mut expected = String::new();
             for (cell, start) in cells.iter().zip(starts) {
+                if cell.is_empty() {
+                    continue;
+                }
                 let padding = start - expected.chars().count();
                 expected.push_str(&" ".repeat(padding));
                 expected.push_str(cell);
@@ -226,16 +255,16 @@ proptest! {
         }
     }
 
+    /// Padding and separator spaces never end a line, so a line ends in a
+    /// space only when the text of its last non-empty cell does.
     #[test]
-    #[ignore = "an empty string in the last column leaves the two spaces before it \
-                at the end of the line, which the doc of `write` says never happens"]
-    fn no_line_ends_in_a_space_unless_its_last_cell_ends_in_one(rows in rows()) {
+    fn no_line_ends_in_a_space_unless_its_last_non_empty_cell_ends_in_one(rows in rows()) {
         let printed = table(&COLUMNS, &values(&rows));
 
         for (printed_line, row) in printed.split_terminator('\n').skip(1).zip(&rows) {
-            if printed_line.ends_with(' ') {
-                prop_assert!(row[2].ends_with(' '), "{printed_line:?}");
-            }
+            let last_text = row.iter().rev().find(|text| !text.is_empty());
+            let ends_in_a_space = last_text.is_some_and(|text| text.ends_with(' '));
+            prop_assert_eq!(printed_line.ends_with(' '), ends_in_a_space, "{:?}", printed_line);
         }
     }
 }

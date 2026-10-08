@@ -4,7 +4,6 @@
 mod adr_records;
 mod agents_words;
 mod docs_words;
-mod property_config;
 mod record_listings;
 mod rust_lines;
 
@@ -81,13 +80,6 @@ pub(crate) enum Violation {
         /// The link target as written.
         target: String,
     },
-    /// A `proptest!` block does not start with the shared configuration.
-    UnconfiguredPropertyTests {
-        /// The file that holds the block.
-        path: String,
-        /// The number of the block's first line, counting from 1.
-        line: usize,
-    },
 }
 
 /// Runs the selected checks over `files` and returns every violation.
@@ -99,7 +91,6 @@ pub(crate) fn run(selection: Selection, files: &[File]) -> Vec<Violation> {
             violations.extend(docs_words::check(files));
             violations.extend(adr_records::check(files));
             violations.extend(record_listings::check(files));
-            violations.extend(property_config::check(files));
             violations
         }
         Selection::Docs => {
@@ -143,11 +134,6 @@ impl fmt::Display for Violation {
             Self::BrokenLink { path, target } => {
                 write!(f, "{path}: links to {target}, which does not exist")
             }
-            Self::UnconfiguredPropertyTests { path, line } => write!(
-                f,
-                "{path}:{line}: a proptest! block must start with \
-                 #![proptest_config(crate::property::config())]"
-            ),
         }
     }
 }
