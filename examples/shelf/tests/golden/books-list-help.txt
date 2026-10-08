@@ -1,0 +1,12 @@
+List the books in the catalogue, in id order
+
+Usage: shelf books list [OPTIONS]
+
+Options:
+      --limit <N>       Print at most this many rows [default: 4]
+      --all             Print every row
+      --json            Print the result as a JSON document on one line
+      --fields <FIELD>  Print only these comma-separated fields, in this order
+      --long            Add the long columns after the compact ones
+      --full            With --json, print every field of every row
+  -h, --help            Print help

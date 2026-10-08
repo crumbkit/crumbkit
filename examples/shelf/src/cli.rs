@@ -1,7 +1,9 @@
 //! shelf's command-line grammar.
 
-use clap::{Parser, Subcommand};
-use crumbkit::Output;
+use clap::{Args, Parser, Subcommand};
+use crumbkit::{Output, Page};
+use schemars::JsonSchema;
+use serde::Serialize;
 
 #[cfg(test)]
 mod tests;
@@ -33,6 +35,18 @@ pub(crate) enum Resource {
 /// The commands for books.
 #[derive(Debug, Subcommand)]
 pub(crate) enum BooksCommand {
-    /// List every book in the catalogue.
-    List,
+    /// List the books in the catalogue, in id order.
+    List(BooksList),
+}
+
+/// The arguments of `shelf books list`.
+///
+/// A page holds 4 books, fewer than the catalogue's 6, so the default output
+/// ends with crumbkit's footer and `--all` has books to add.
+#[derive(Debug, Args, Serialize, JsonSchema)]
+pub(crate) struct BooksList {
+    /// How many books to print.
+    #[command(flatten)]
+    #[serde(flatten)]
+    pub(crate) page: Page<4>,
 }
