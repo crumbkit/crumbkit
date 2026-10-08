@@ -1,0 +1,25 @@
+# Dependabot proposes dependency updates (ADR-0012). Each ecosystem checks
+# once a week and puts all its version updates in one pull request, so each
+# week costs at most one CI run per ecosystem. The 7-day cooldown proposes a
+# release only once it is 7 days old, which gives the ecosystem time to find
+# and yank a compromised release before it reaches crumbkit.
+version: 2
+updates:
+  - package-ecosystem: cargo
+    directory: /
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7
+    groups:
+      cargo:
+        patterns: ["*"]
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7
+    groups:
+      github-actions:
+        patterns: ["*"]

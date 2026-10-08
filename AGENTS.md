@@ -11,6 +11,8 @@ CARGO_BUILD_WARNINGS=deny cargo clippy --workspace --all-targets
 cargo fmt --check
 cargo xtask check
 cargo +1.89.0 check --workspace --all-targets
+cargo deny check bans licenses sources
+cargo shear
 ```
 
 - Follow `docs/standards/`. Before changing a choice that `docs/decisions/`

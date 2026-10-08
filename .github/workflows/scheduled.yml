@@ -1,0 +1,100 @@
+# The scheduled lane of ADR-0011. The nightly job checks for new advisories and
+# measures the pull-request lane, the weekly job runs the tests on macOS, and
+# the report job keeps every failure on one issue. A manual run runs every job.
+name: Scheduled
+
+on:
+  schedule:
+    # Each cron string appears again in the `if` of the job it starts.
+    - cron: "23 3 * * *" # Nightly at 03:23 UTC.
+    - cron: "23 4 * * 1" # Weekly on Monday at 04:23 UTC.
+  workflow_dispatch:
+
+# Each job grants only the permissions it needs.
+permissions: {}
+
+env:
+  # Any compiler or clippy warning fails the build (ADR-0009).
+  CARGO_BUILD_WARNINGS: deny
+  CARGO_TERM_COLOR: always
+
+jobs:
+  # This job has no rust-cache, because little in it compiles, and rust-cache
+  # keys include the job ID, so its cache would not help the pull-request jobs.
+  nightly:
+    if: github.event_name == 'workflow_dispatch' || github.event.schedule == '23 3 * * *'
+    runs-on: ubuntu-slim
+    timeout-minutes: 10
+    permissions:
+      actions: read # cargo xtask ci-time reads the runs of ci.yml.
+      contents: read # actions/checkout reads the private repository.
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      # The ubuntu-slim image has no rustup, so this installs it with the
+      # official installer and no toolchain.
+      - run: |
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal --default-toolchain none
+          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+      # rustup installs the toolchain that rust-toolchain.toml pins.
+      - run: rustup toolchain install
+      - uses: taiki-e/install-action@f7e5d7c961414b23f5b25b2da9294395d08513ad # v2.87.26
+        with:
+          tool: cargo-deny
+          fallback: none
+      - run: cargo deny check advisories
+      # The CI time check runs even when the advisories check fails, so one
+      # failure does not hide the other.
+      - if: ${{ !cancelled() }}
+        run: cargo xtask ci-time
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+  # This job has no rust-cache, because GitHub evicts a cache that nothing
+  # reads for 7 days, so a weekly job would never find its cache.
+  macos:
+    if: github.event_name == 'workflow_dispatch' || github.event.schedule == '23 4 * * 1'
+    runs-on: macos-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read # actions/checkout reads the private repository.
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      # The macOS image includes rustup, which installs the toolchain that
+      # rust-toolchain.toml pins.
+      - run: rustup toolchain install
+      - uses: taiki-e/install-action@f7e5d7c961414b23f5b25b2da9294395d08513ad # v2.87.26
+        with:
+          tool: cargo-nextest
+          fallback: none
+      - run: cargo nextest run --workspace --profile ci
+      # nextest does not run doctests, so cargo test runs them.
+      - run: cargo test --workspace --doc
+
+  # When a job fails, this job comments on the open issue titled "Scheduled CI
+  # failed", or opens that issue when none is open, so failures collect in one
+  # place. It uses the gh CLI that the ubuntu-slim image includes.
+  report:
+    needs: [nightly, macos]
+    if: failure()
+    runs-on: ubuntu-slim
+    timeout-minutes: 10
+    permissions:
+      issues: write # gh comments on the issue or opens it.
+    steps:
+      - env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          TITLE: Scheduled CI failed
+        run: |
+          number=$(gh issue list --state open --search "in:title $TITLE" --json number,title \
+            --jq 'map(select(.title == env.TITLE)) | .[0].number // empty')
+          if [ -n "$number" ]; then
+            gh issue comment "$number" --body "This scheduled run failed: $RUN_URL"
+          else
+            gh issue create --title "$TITLE" --body "This scheduled run failed: $RUN_URL"
+          fi

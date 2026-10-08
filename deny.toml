@@ -1,0 +1,77 @@
+# cargo-deny checks the dependency graph (ADR-0012, CI-2). The pull-request
+# lint job runs the bans, licenses and sources checks, and the nightly job in
+# scheduled.yml runs the advisories check. A setting that is cargo-deny's
+# default is left out.
+
+[graph]
+# The checks also cover dependencies behind optional cargo features, such as
+# the usage-log feature of ADR-0003, which a default build would leave out.
+all-features = true
+
+[advisories]
+# A yanked version fails the check, because its author withdrew it, usually
+# for a bug, and Dependabot proposes the replacement.
+yanked = "deny"
+# An unsound advisory fails the check for every crate in the graph, because
+# unsound code in a transitive dependency still runs in an adopter's build.
+unsound = "all"
+
+[licenses]
+# These are the licences the dependency graph uses. crumbkit itself is
+# MIT OR Apache-2.0.
+allow = [
+    "Apache-2.0",
+    "MIT",
+    # unicode-ident includes Unicode's character data, which is under the
+    # Unicode-3.0 licence.
+    "Unicode-3.0",
+]
+# A licence that no dependency uses any more fails the check, so the allow
+# list stays exactly the licences in use.
+unused-allowed-license = "deny"
+
+[bans]
+# Two versions of one crate fail the check, because each copy adds compile
+# time and weight (ADR-0003). A duplicate that cannot be removed yet goes in
+# `skip` with a reason.
+multiple-versions = "deny"
+# Duplicates among dev-dependencies fail the check too, because CI compiles
+# them on every run.
+multiple-versions-include-dev = true
+# A `*` version requirement fails the check, because cargo may resolve it to
+# any version, and crates.io refuses to publish a crate that has one.
+wildcards = "deny"
+# ADR-0003 rules out an async runtime and a C build.
+deny = [
+    { crate = "tokio", reason = "ADR-0003 rules out an async runtime" },
+    { crate = "async-std", reason = "ADR-0003 rules out an async runtime" },
+    { crate = "smol", reason = "ADR-0003 rules out an async runtime" },
+    { crate = "cc", reason = "ADR-0003 rules out a C build" },
+    { crate = "cmake", reason = "ADR-0003 rules out a C build" },
+]
+
+# A direct dependency on a crate whose function the standard library provides
+# at the workspace rust-version fails the check. The empty table enables the
+# check with its defaults, which cover only the crates that workspace members
+# depend on directly, because crumbkit cannot change its dependencies' choices.
+[bans.std-replacements]
+
+# The build check scans every crate that runs at compile time, which means
+# build scripts and procedural macros such as clap_derive. A native executable
+# in such a crate fails the check by default.
+[bans.build]
+# A script with a shebang line fails the check, because a build script could
+# run it.
+interpreted = "deny"
+# Files with the extensions of common script languages, such as Python, fail
+# the check even without a shebang line.
+enable-builtin-globs = true
+# The scan also covers the dependencies of compile-time crates, such as syn,
+# because they run inside the compiler too.
+include-dependencies = true
+
+[sources]
+# Every crate comes from crates.io, which is the default allowed registry. A
+# crate from any other registry or from a git repository fails the check.
+unknown-registry = "deny"
+unknown-git = "deny"
