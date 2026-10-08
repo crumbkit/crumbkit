@@ -1,0 +1,3 @@
+ID  TITLE         AUTHOR        YEAR
+5   Middlemarch   George Eliot  1871
+2   Frankenstein  Mary Shelley  1818

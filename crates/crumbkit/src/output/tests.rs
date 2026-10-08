@@ -4,13 +4,13 @@ use std::io::{self, Write};
 use std::process::ExitCode;
 
 use clap::error::ErrorKind;
-use clap::{Parser, Subcommand};
+use clap::{CommandFactory as _, Parser, Subcommand};
 use schemars::JsonSchema;
 use serde::ser::Error as _;
 use serde::{Serialize, Serializer};
 
 use super::{Output, finish_to};
-use crate::{Document, Listing, Row, Rows, Sink};
+use crate::{Call, Document, Listing, Row, Rows, Sink};
 
 /// A row with two compact columns, one long column and one field that only
 /// `--full` shows. The last field is renamed, so its column name is `au`.
@@ -50,8 +50,10 @@ fn saturn() -> Planet {
     }
 }
 
-/// A tool with one subcommand, so the tests can put the flags after it.
+/// A tool with two subcommands, so the tests can put the flags after one and
+/// a listing can name the other as its next step.
 #[derive(Parser)]
+#[command(name = "tool")]
 struct Tool {
     #[command(subcommand)]
     command: Command,
@@ -62,6 +64,10 @@ struct Tool {
 #[derive(Subcommand)]
 enum Command {
     List,
+    Show {
+        #[arg(required = true, value_name = "NAME")]
+        names: Vec<String>,
+    },
 }
 
 /// Parses `tool list` followed by `flags`.
@@ -77,12 +83,19 @@ struct Finished {
     err: String,
 }
 
-/// Parses `flags` and finishes `value` into memory.
+/// Parses `flags`, sets the tool's command as its `main` would, and finishes
+/// `value` into memory.
 fn finish_with<T: Rows>(flags: &[&str], document: Document<T>, value: T) -> Finished {
-    let output = parse(flags).unwrap();
+    let mut output = parse(flags).unwrap();
+    output.set_command(Tool::command());
+    finish_output(&output, document, value)
+}
+
+/// Finishes `value` into memory with the flags and command in `output`.
+fn finish_output<T: Rows>(output: &Output, document: Document<T>, value: T) -> Finished {
     let mut out = Vec::new();
     let mut err = Vec::new();
-    let code = finish_to(&mut Sink::new(&mut out, &mut err), &output, document, value);
+    let code = finish_to(&mut Sink::new(&mut out, &mut err), output, document, value);
     Finished {
         code,
         out: String::from_utf8(out).unwrap(),
@@ -93,6 +106,12 @@ fn finish_with<T: Rows>(flags: &[&str], document: Document<T>, value: T) -> Fini
 /// Returns a listing of Mercury and Saturn out of `total` planets.
 fn two_of(total: usize) -> Listing<Planet> {
     Listing::new(vec![mercury(), saturn()], total)
+}
+
+/// Returns a listing of Mercury and Saturn out of `total` planets whose next
+/// step is `tool show <NAME>...`.
+fn two_of_with_next(total: usize) -> Listing<Planet> {
+    two_of(total).next(Call::new(&["show"]).arg("names"), "shows planets by name.")
 }
 
 #[test]
@@ -457,4 +476,103 @@ fn a_listings_json_has_the_total_with_fields() {
             "\n"
         )
     );
+}
+
+#[test]
+fn a_listing_with_a_next_step_ends_with_the_next_line_after_the_footer() {
+    let finished = finish_with(&[], PLANET_LISTING, two_of_with_next(8));
+
+    let expected = "\
+NAME     MOONS
+Mercury  0
+Saturn   274
+Showing 2 of 8. --all shows every one.
+Next: tool show <NAME>... shows planets by name.
+";
+    assert_eq!(finished.code, ExitCode::SUCCESS);
+    assert_eq!(finished.out, expected);
+    assert_eq!(finished.err, "");
+}
+
+#[test]
+fn the_next_line_follows_the_table_when_there_is_no_footer() {
+    let finished = finish_with(&[], PLANET_LISTING, two_of_with_next(2));
+
+    let expected = "\
+NAME     MOONS
+Mercury  0
+Saturn   274
+Next: tool show <NAME>... shows planets by name.
+";
+    assert_eq!(finished.out, expected);
+}
+
+#[test]
+fn the_next_line_follows_the_footer_with_long() {
+    let finished = finish_with(&["--long"], PLANET_LISTING, two_of_with_next(8));
+
+    assert!(
+        finished.out.ends_with(
+            "Saturn   274    true\nShowing 2 of 8. --all shows every one.\nNext: tool show <NAME>... shows planets by name.\n"
+        ),
+        "{}",
+        finished.out
+    );
+}
+
+#[test]
+fn the_next_line_follows_the_footer_with_fields() {
+    let finished = finish_with(&["--fields", "au"], PLANET_LISTING, two_of_with_next(8));
+
+    assert_eq!(
+        finished.out,
+        "AU\n0.39\n9.54\nShowing 2 of 8. --all shows every one.\nNext: tool show <NAME>... shows planets by name.\n"
+    );
+}
+
+#[test]
+fn json_output_has_no_next_line_and_no_next_field() {
+    let finished = finish_with(&["--json"], PLANET_LISTING, two_of_with_next(8));
+
+    assert_eq!(
+        finished.out,
+        concat!(
+            r#"{"schema":"solar/planet-listing/v1","data":[{"name":"Mercury","moons":0},{"name":"Saturn","moons":274}],"total":8}"#,
+            "\n"
+        )
+    );
+}
+
+#[test]
+fn a_listing_prints_no_next_line_when_no_command_is_set() {
+    let output = parse(&[]).unwrap();
+
+    let finished = finish_output(&output, PLANET_LISTING, two_of_with_next(8));
+
+    assert_eq!(finished.code, ExitCode::SUCCESS);
+    assert!(
+        finished
+            .out
+            .ends_with("Showing 2 of 8. --all shows every one.\n"),
+        "{}",
+        finished.out
+    );
+    assert_eq!(finished.err, "");
+}
+
+#[test]
+fn a_next_step_whose_call_does_not_resolve_is_left_out_and_the_exit_code_is_0() {
+    let listing = two_of(8).next(Call::new(&["remove"]), "removes a planet.");
+
+    let finished = finish_with(&[], PLANET_LISTING, listing);
+
+    assert_eq!(finished.code, ExitCode::SUCCESS);
+    assert!(
+        finished
+            .out
+            .ends_with("Showing 2 of 8. --all shows every one.\n"),
+        "{}",
+        finished.out
+    );
+    assert_eq!(finished.err, "");
 }

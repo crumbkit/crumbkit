@@ -8,4 +8,4 @@
 - A `Recovery` is tagged by `kind`: `run` with `call`, `retry`, `hint` with `text`, or `none` with `reason`.
 - The failure document `crumbkit/failure/v1` has `schema`, `code`, `message`, `cause`, `recovery`, and `url` when present. With the `miette` feature, it also has an optional `labels` array, where each label gives the source name, line, column, length and text. The schema allows any non-empty ASCII `code` without whitespace, because each tool chooses its own spelling.
 
-Considered: hand-written schemas, boon, an untyped string id, a `total` only when rows were left out.
+Considered: hand-written schemas, boon, an untyped string id, a `total` only when rows were left out, a `next` field holding the same command with `--all`.
