@@ -1,4 +1,13 @@
-//! crumbkit will provide conventions for command-line tools built on clap.
-//! A tool keeps its own clap types and its own `main`, and adopts only the
-//! parts it wants: compact output, a help tree that reveals one level at a
-//! time, and failures with stable codes and a next step.
+// The crate docs are the README, so its example runs as a doctest.
+#![doc = include_str!("../README.md")]
+
+mod document;
+mod output;
+mod row;
+mod segment;
+mod sink;
+
+pub use crate::document::Document;
+pub use crate::output::{Output, finish, finish_to};
+pub use crate::row::{Row, Rows};
+pub use crate::sink::Sink;
