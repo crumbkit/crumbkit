@@ -71,8 +71,8 @@ next step in the same two formats.
   It prints a `Batch`'s rows as a table on standard output and then each
   failure on standard error, or with `--json` one document with the rows
   under `data` and the failures under `failures`, and exits with code 1
-  when the batch holds a failure. `finish_to` does the same into a `Sink` over any two writers, so a test
-  reads the output from memory.
+  when the batch holds a failure. `finish_to` does the same into a `Sink`
+  over any two writers, so a test reads the output from memory.
 
 A tool wires these parts into its own `main`:
 
