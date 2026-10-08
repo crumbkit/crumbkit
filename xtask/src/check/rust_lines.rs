@@ -16,12 +16,14 @@ pub(super) fn check(files: &[File]) -> Vec<Violation> {
     files
         .iter()
         .filter(|file| Path::new(&file.path).extension() == Some(OsStr::new("rs")))
-        .map(|file| Violation {
-            path: file.path.clone(),
-            measured: file.contents.lines().count(),
-            unit: "lines",
-            limit: LIMIT,
+        .filter_map(|file| {
+            let measured = file.contents.lines().count();
+            (measured > LIMIT).then(|| Violation::OverLimit {
+                path: file.path.clone(),
+                measured,
+                unit: "lines",
+                limit: LIMIT,
+            })
         })
-        .filter(|violation| violation.measured > LIMIT)
         .collect()
 }
