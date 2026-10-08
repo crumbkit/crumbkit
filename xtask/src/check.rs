@@ -141,7 +141,7 @@ impl fmt::Display for Violation {
 /// Returns `number` in decimal with a comma between each group of three
 /// digits, such as `5,312`.
 ///
-/// This groups digits by hand because xtask has no dependencies and prints
+/// This groups digits by hand because xtask depends only on clap and prints
 /// only unsigned counts in English. Code that needs signed or locale-aware
 /// numbers should use a formatting crate such as num-format.
 fn with_separators(number: usize) -> String {
