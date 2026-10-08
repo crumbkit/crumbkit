@@ -18,5 +18,5 @@ it: a lint, an xtask check, or review where no tool reaches. The records in
 
 ## Documentation
 
-- **DOCS-1.** An `AGENTS.md` has at most 400 words, because an agent reads it at the start of every session. Gate: `cargo xtask check` counts whitespace-separated words and fails, naming every file over 400.
+- **DOCS-1.** An `AGENTS.md` has at most 200 words, because an agent reads it at the start of every session, and it holds only what no tool or other document tells the agent. Gate: `cargo xtask check` counts whitespace-separated words and fails, naming every file over 200.
 - **DOCS-2.** The Markdown files directly inside one directory of the `docs/` tree total at most 5,000 words, counting code blocks and tables, so each directory can be read in one sitting. Gate: `cargo xtask check docs` counts each directory on its own and fails, naming every directory over 5,000.

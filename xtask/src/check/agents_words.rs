@@ -1,4 +1,4 @@
-//! The AGENTS.md word check: an `AGENTS.md` file may have at most 400 words.
+//! The AGENTS.md word check: an `AGENTS.md` file may have at most 200 words.
 
 use std::ffi::OsStr;
 use std::path::Path;
@@ -9,10 +9,10 @@ use super::{File, Violation};
 mod tests;
 
 /// The largest number of whitespace-separated words an `AGENTS.md` may have.
-const LIMIT: usize = 400;
+const LIMIT: usize = 200;
 
 /// Reports each `AGENTS.md` file in `files`, in any directory, that has more
-/// than 400 words.
+/// than 200 words.
 pub(super) fn check(files: &[File]) -> Vec<Violation> {
     files
         .iter()
