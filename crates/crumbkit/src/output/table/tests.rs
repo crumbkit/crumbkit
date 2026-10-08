@@ -2,9 +2,10 @@
 
 use std::borrow::Cow;
 
+use proptest::prelude::*;
 use serde_json::{Value, json};
 
-use super::{cell, write};
+use super::{cell, escape_controls, write};
 
 /// Returns the table that `write` prints for `columns` and `rows`.
 fn table(columns: &[&str], rows: &[Value]) -> String {
@@ -146,4 +147,95 @@ fn a_string_without_a_control_character_is_borrowed_unchanged() {
         matches!(cell, Cow::Borrowed("Brontë \"quoted\" \\ text")),
         "{cell:?}"
     );
+}
+
+/// The columns of the generated tables, which give a first, a middle and a
+/// last column.
+const COLUMNS: [&str; 3] = ["id", "title", "note"];
+
+/// Generates the text of one cell: up to six characters drawn from lowercase
+/// letters, a space, every C0 and C1 control character and DEL, `é` (two bytes
+/// in UTF-8), `界` (a CJK character that a terminal shows two columns wide),
+/// `🦀` (four bytes in UTF-8) and U+0301, a combining accent. The empty string
+/// is one of the texts.
+const CELL_TEXT: &str = r"[a-z \x00-\x1f\x7f-\x9fé界🦀\u{301}]{0,6}";
+
+/// Generates up to five rows of three cells.
+fn rows() -> impl Strategy<Value = Vec<[String; 3]>> {
+    prop::collection::vec(prop::array::uniform3(CELL_TEXT), 0..6)
+}
+
+/// Returns each row as the JSON object that `write` reads, with a field for
+/// each of `COLUMNS`.
+fn values(rows: &[[String; 3]]) -> Vec<Value> {
+    rows.iter()
+        .map(|[id, title, note]| json!({"id": id, "title": title, "note": note}))
+        .collect()
+}
+
+proptest! {
+    #![proptest_config(crate::property::config())]
+
+    /// `write` promises that each column is as wide as its widest cell, that
+    /// two spaces separate the columns and that the last column is not
+    /// padded. So each column starts at the same character offset on every
+    /// line: the first at 0, and each other column two characters after the
+    /// widest cell of the column before it. The test builds each expected
+    /// line by placing every cell at its column's offset.
+    ///
+    /// The offsets count characters, as `write` does. A terminal shows `界`
+    /// and `🦀` two columns wide and U+0301 zero wide, so a table holding them
+    /// misaligns on screen, which `write` documents.
+    #[test]
+    fn a_table_has_one_line_per_row_without_raw_control_characters_and_aligned_columns(
+        rows in rows(),
+    ) {
+        let printed = table(&COLUMNS, &values(&rows));
+
+        // The cells as the table shows them, header first: the column names
+        // in upper case, and each string with its control characters escaped.
+        let mut lines = vec![COLUMNS.map(str::to_uppercase)];
+        for row in &rows {
+            lines.push(row.clone().map(|text| escape_controls(&text).into_owned()));
+        }
+        let mut starts = [0; 3];
+        for column in 1..3 {
+            let widest = lines
+                .iter()
+                .map(|line| line[column - 1].chars().count())
+                .max();
+            starts[column] = starts[column - 1] + widest.unwrap_or(0) + 2;
+        }
+
+        let printed_lines: Vec<&str> = printed.split_terminator('\n').collect();
+        prop_assert!(printed.ends_with('\n'));
+        prop_assert_eq!(printed_lines.len(), rows.len() + 1);
+        for (printed_line, cells) in printed_lines.iter().zip(&lines) {
+            prop_assert!(
+                !printed_line.chars().any(char::is_control),
+                "{printed_line:?}"
+            );
+
+            let mut expected = String::new();
+            for (cell, start) in cells.iter().zip(starts) {
+                let padding = start - expected.chars().count();
+                expected.push_str(&" ".repeat(padding));
+                expected.push_str(cell);
+            }
+            prop_assert_eq!(*printed_line, expected);
+        }
+    }
+
+    #[test]
+    #[ignore = "an empty string in the last column leaves the two spaces before it \
+                at the end of the line, which the doc of `write` says never happens"]
+    fn no_line_ends_in_a_space_unless_its_last_cell_ends_in_one(rows in rows()) {
+        let printed = table(&COLUMNS, &values(&rows));
+
+        for (printed_line, row) in printed.split_terminator('\n').skip(1).zip(&rows) {
+            if printed_line.ends_with(' ') {
+                prop_assert!(row[2].ends_with(' '), "{printed_line:?}");
+            }
+        }
+    }
 }

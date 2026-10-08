@@ -8,6 +8,8 @@ mod failure;
 mod listing;
 mod output;
 mod page;
+#[cfg(test)]
+mod property;
 mod row;
 mod segment;
 mod sink;

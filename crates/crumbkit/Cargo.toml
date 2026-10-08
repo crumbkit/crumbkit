@@ -30,6 +30,10 @@ schemars = { workspace = true }
 # their rows.
 serde = { workspace = true, features = ["derive"] }
 schemars = { workspace = true, features = ["derive"] }
+# `std` builds proptest on the standard library and gives the strategies that
+# generate strings from a regular expression. The default features add
+# forking, timeouts and bit-set strategies, which the tests do not use.
+proptest = { workspace = true, features = ["std"] }
 
 [lints]
 workspace = true
