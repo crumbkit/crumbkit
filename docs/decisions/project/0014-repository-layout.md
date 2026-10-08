@@ -1,4 +1,4 @@
-# 0014. Repository layout
+# ADR-0014. Repository layout
 
 - crumbkit is a virtual workspace with published crates under `crates/`, an unpublished `examples/shelf/` package with a `shelf` binary, and `xtask/`.
 - `Cargo.lock` is committed, and published crates list their files in `include`.
