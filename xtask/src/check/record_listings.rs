@@ -71,6 +71,12 @@ fn listing(path: &str) -> (String, String) {
 
 /// Returns the file part of every Markdown link target in `contents`,
 /// leaving out web links and links within the page.
+///
+/// This finds links by splitting on `](`, which is enough for node records
+/// because they list their children in one fixed format. It misses
+/// reference-style links and counts links inside code blocks. When this
+/// function needs to handle more of Markdown than that, replace it with
+/// pulldown-cmark.
 fn links(contents: &str) -> impl Iterator<Item = &str> {
     contents
         .split("](")
