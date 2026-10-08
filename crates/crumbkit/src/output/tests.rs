@@ -10,7 +10,7 @@ use serde::ser::Error as _;
 use serde::{Serialize, Serializer};
 
 use super::{Output, finish_to};
-use crate::{Document, Row, Rows, Sink};
+use crate::{Document, Listing, Row, Rows, Sink};
 
 /// A row with two compact columns, one long column and one field that only
 /// `--full` shows. The last field is renamed, so its column name is `au`.
@@ -30,6 +30,7 @@ impl Row for Planet {
 
 const PLANETS: Document<Vec<Planet>> = Document::new("solar", "planets", 1);
 const PLANET: Document<Planet> = Document::new("solar", "planet", 1);
+const PLANET_LISTING: Document<Listing<Planet>> = Document::new("solar", "planet-listing", 1);
 
 fn mercury() -> Planet {
     Planet {
@@ -87,6 +88,11 @@ fn finish_with<T: Rows>(flags: &[&str], document: Document<T>, value: T) -> Fini
         out: String::from_utf8(out).unwrap(),
         err: String::from_utf8(err).unwrap(),
     }
+}
+
+/// Returns a listing of Mercury and Saturn out of `total` planets.
+fn two_of(total: usize) -> Listing<Planet> {
+    Listing::new(vec![mercury(), saturn()], total)
 }
 
 #[test]
@@ -339,5 +345,116 @@ fn a_result_that_cannot_be_serialized_exits_with_code_1_and_reports_the_cause() 
     assert_eq!(
         finished.err,
         "error: cannot write to standard output: row 7 cannot be serialized\n"
+    );
+}
+
+#[test]
+fn a_listing_that_shows_fewer_rows_than_the_total_ends_with_a_footer() {
+    let finished = finish_with(&[], PLANET_LISTING, two_of(8));
+
+    let expected = "\
+NAME     MOONS
+Mercury  0
+Saturn   274
+Showing 2 of 8. --all shows every one.
+";
+    assert_eq!(finished.out, expected);
+    assert_eq!(finished.err, "");
+}
+
+#[test]
+fn the_footer_names_the_rows_with_the_listings_description() {
+    let finished = finish_with(&[], PLANET_LISTING, two_of(8).described("planets"));
+
+    assert!(
+        finished
+            .out
+            .ends_with("Saturn   274\nShowing 2 of 8 planets. --all shows every one.\n"),
+        "{}",
+        finished.out
+    );
+}
+
+#[test]
+fn a_listing_that_shows_every_row_has_no_footer() {
+    let finished = finish_with(&[], PLANET_LISTING, two_of(2).described("planets"));
+
+    assert_eq!(finished.out, "NAME     MOONS\nMercury  0\nSaturn   274\n");
+}
+
+#[test]
+fn the_footer_follows_the_table_with_long() {
+    let finished = finish_with(&["--long"], PLANET_LISTING, two_of(8));
+
+    let expected = "\
+NAME     MOONS  RINGED
+Mercury  0      false
+Saturn   274    true
+Showing 2 of 8. --all shows every one.
+";
+    assert_eq!(finished.out, expected);
+}
+
+#[test]
+fn the_footer_follows_the_table_with_fields() {
+    let finished = finish_with(&["--fields", "au"], PLANET_LISTING, two_of(8));
+
+    assert_eq!(
+        finished.out,
+        "AU\n0.39\n9.54\nShowing 2 of 8. --all shows every one.\n"
+    );
+}
+
+#[test]
+fn a_listings_json_has_the_total_beside_the_data_and_no_description() {
+    let finished = finish_with(&["--json"], PLANET_LISTING, two_of(8).described("planets"));
+
+    assert_eq!(
+        finished.out,
+        concat!(
+            r#"{"schema":"solar/planet-listing/v1","data":[{"name":"Mercury","moons":0},{"name":"Saturn","moons":274}],"total":8}"#,
+            "\n"
+        )
+    );
+}
+
+#[test]
+fn a_listings_json_has_the_total_when_every_row_is_shown() {
+    let finished = finish_with(&["--json"], PLANET_LISTING, Listing::new(Vec::new(), 0));
+
+    assert_eq!(
+        finished.out,
+        concat!(
+            r#"{"schema":"solar/planet-listing/v1","data":[],"total":0}"#,
+            "\n"
+        )
+    );
+}
+
+#[test]
+fn a_listings_json_has_the_total_with_full() {
+    let listing = Listing::new(vec![saturn()], 8);
+    let finished = finish_with(&["--json", "--full"], PLANET_LISTING, listing);
+
+    assert_eq!(
+        finished.out,
+        concat!(
+            r#"{"schema":"solar/planet-listing/v1","data":[{"name":"Saturn","moons":274,"ringed":true,"au":9.54}],"total":8}"#,
+            "\n"
+        )
+    );
+}
+
+#[test]
+fn a_listings_json_has_the_total_with_fields() {
+    let listing = Listing::new(vec![saturn()], 8);
+    let finished = finish_with(&["--json", "--fields", "au"], PLANET_LISTING, listing);
+
+    assert_eq!(
+        finished.out,
+        concat!(
+            r#"{"schema":"solar/planet-listing/v1","data":[{"au":9.54}],"total":8}"#,
+            "\n"
+        )
     );
 }

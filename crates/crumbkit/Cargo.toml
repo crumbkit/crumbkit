@@ -12,14 +12,17 @@ categories = ["command-line-interface"]
 include = ["src/**/*.rs", "README.md", "LICENSE-APACHE", "LICENSE-MIT"]
 
 [dependencies]
-# `Output` derives `clap::Args`.
-clap = { workspace = true, features = ["derive"] }
+# `Output` and `Page` derive `clap::Args`. `Page` gives `--limit` a default
+# that it formats at runtime from its const parameter, and clap accepts a
+# default held in an owned `String` only with its `string` feature.
+clap = { workspace = true, features = ["derive", "string"] }
 # crumbkit implements `Serialize` by hand, so it needs no serde feature.
 serde = { workspace = true }
 # `std` gives `to_writer` over an `io::Write`, and serde_json needs `std` or
 # `alloc` to build at all.
 serde_json = { workspace = true, features = ["std"] }
-# `schema_for!` and the `JsonSchema` trait need no schemars feature.
+# `schema_for!`, `json_schema!` and the `JsonSchema` trait need no schemars
+# feature.
 schemars = { workspace = true }
 
 [dev-dependencies]
