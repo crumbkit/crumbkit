@@ -1,0 +1,4 @@
+# The ci profile runs every test after a failure, so one CI run reports every
+# failing test.
+[profile.ci]
+fail-fast = false
