@@ -23,7 +23,7 @@ fn a_docs_directory_of_5001_words_is_reported_with_its_total_and_the_limit() {
 
     assert_eq!(
         check(&files),
-        [Violation {
+        [Violation::OverLimit {
             path: "docs".to_owned(),
             measured: 5001,
             unit: "words in this directory's Markdown",
@@ -47,7 +47,10 @@ fn each_directory_in_the_docs_tree_is_counted_on_its_own() {
 fn a_subdirectory_over_the_limit_is_reported_by_its_path() {
     let files = [file("docs/standards/a.md", 5001)];
 
-    assert_eq!(check(&files)[0].path, "docs/standards");
+    assert!(matches!(
+        &check(&files)[..],
+        [Violation::OverLimit { path, .. }] if path == "docs/standards"
+    ));
 }
 
 #[test]

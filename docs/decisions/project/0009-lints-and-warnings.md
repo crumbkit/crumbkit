@@ -1,4 +1,4 @@
-# 0009. Lints
+# ADR-0009. Lints
 
 - `[workspace.lints]` sets every lint to warn except `unsafe_code`, which is forbidden. CI fails on any warning through `CARGO_BUILD_WARNINGS=deny`.
 - Code suppresses a lint with `#[expect]` and a reason, never `#[allow]`. Clippy's `allow_attributes` and `allow_attributes_without_reason` lints enforce this.

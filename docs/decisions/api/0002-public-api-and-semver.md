@@ -1,4 +1,4 @@
-# 0002. Public API and semver
+# ADR-0002. Public API and semver
 
 - Each release pull request reviews the Rust API Guidelines checklist and runs cargo-semver-checks.
 - Configuration types have private fields and `const fn` builders. Enums that may grow are `#[non_exhaustive]`, and adopter-implemented traits gain only methods with defaults.

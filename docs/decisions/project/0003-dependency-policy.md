@@ -1,4 +1,4 @@
-# 0003. Dependencies and MSRV
+# ADR-0003. Dependencies and MSRV
 
 - A dependency needs active maintainers, judged case by case, a compatible `rust-version` and licence, a measured weight, and no async runtime or C build. `Cargo.toml` states its reason and sets `default-features = false`, and a published crate enables only the features its own code uses, so that binaries choose features such as clap's colour.
 - The default build depends only on clap, serde, serde_json and schemars. The usage log and its dependencies (hmac, sha2, getrandom, etcetera, humantime and signal-hook) sit behind the `usage-log` cargo feature, and miette sits behind the `miette` feature.
