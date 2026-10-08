@@ -7,7 +7,7 @@ mod tests;
 
 /// Browse a small catalogue of public-domain books.
 #[derive(Debug, Parser)]
-#[command(name = "shelf")]
+#[command(name = "shelf", version = env!("SHELF_VERSION"))]
 pub(crate) struct Cli {
     /// The resource the command acts on.
     #[command(subcommand)]

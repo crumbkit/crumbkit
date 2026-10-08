@@ -51,6 +51,9 @@ fn main() -> ExitCode {
 
 /// Returns the checks that `args` select, or `None` when `args`, which exclude
 /// the program name, are not `check` or `check docs`.
+///
+/// This matches the two forms by hand only because there are two. When xtask
+/// needs a third form, a flag or a value, replace this function with clap.
 fn parse_args(args: &[String]) -> Option<Selection> {
     match args {
         [command] if command == "check" => Some(Selection::All),
