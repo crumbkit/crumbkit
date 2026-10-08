@@ -1,0 +1,15 @@
+[package]
+name = "crumbkit-test"
+description = "Tests that check a clap command tree against the crumbkit conventions"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+readme = "README.md"
+keywords = ["cli", "clap", "agents", "testing"]
+categories = ["command-line-interface", "development-tools::testing"]
+include = ["src/**/*.rs", "README.md", "LICENSE-APACHE", "LICENSE-MIT"]
+
+[lints]
+workspace = true
