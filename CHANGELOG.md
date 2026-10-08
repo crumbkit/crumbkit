@@ -62,5 +62,20 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit-test's `check_codes` fails a test, naming every problem, when two
   of a tool's codes spell the same, or when a spelled code is empty or holds
   a character other than printable ASCII, `!` to `~`.
+- `Batch` holds the rows for the ids that worked and the failures for the
+  ids that did not, and `finish` takes it as a result. In text, the rows
+  print as a table on standard output and each failure prints on standard
+  error in the form a failed command prints, and a batch with no rows
+  prints nothing on standard output. With `--json`, one document holds the
+  rows under `data` and the failures under `failures`, which is present
+  even when empty, and each entry has the fields of the
+  `crumbkit/failure/v1` document without `schema`. A batch with at least
+  one failure exits with code 1, also when the reader closed the pipe
+  early.
+- `Rows::failures` returns a batch's failures as `&dyn Failure`, and `None`
+  for every other result.
+- `fetch_each` runs a per-id lookup on at most a given number of scoped
+  threads and returns one result per id in the order of the ids. With one
+  worker, one id or none, it runs every lookup in the calling thread.
 - `crates/crumbkit/schemas/failure-v1.json` holds the JSON Schema of the
   `crumbkit/failure/v1` document.

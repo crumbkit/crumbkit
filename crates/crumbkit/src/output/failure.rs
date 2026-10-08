@@ -56,7 +56,8 @@ pub(super) fn finish<O: Write, W: Write>(
 
 /// A failure as `finish` prints it. It holds the fields of the
 /// `crumbkit/failure/v1` document, and the text form prints the same fields.
-struct FailureDocument {
+/// A batch prints each of its failures from one of these as well.
+pub(super) struct FailureDocument {
     /// The failure's code in the tool's spelling.
     code: String,
     /// The failure's `Display`.
@@ -87,7 +88,11 @@ impl FailureDocument {
     /// Reads `failure` into the fields that `finish` prints. It spells the
     /// code with `spelling` and renders a `Recovery::Run` call against
     /// `command`.
-    fn new(failure: &dyn Failure, spelling: Spelling, command: Option<&Command>) -> Self {
+    pub(super) fn new(
+        failure: &dyn Failure,
+        spelling: Spelling,
+        command: Option<&Command>,
+    ) -> Self {
         let causes = std::iter::successors(failure.source(), |error| error.source())
             .map(ToString::to_string)
             .collect();
@@ -130,7 +135,7 @@ impl FailureDocument {
 /// A `cause:` line for each cause follows the `error:` line, and a `url:`
 /// line follows the `code:` line when the failure has a url. Each control
 /// character in a value prints as its escape, so each line stays one line.
-fn write_text(err: &mut impl Write, document: &FailureDocument) -> io::Result<()> {
+pub(super) fn write_text(err: &mut impl Write, document: &FailureDocument) -> io::Result<()> {
     writeln!(err, "error: {}", escape_controls(&document.message))?;
     for cause in &document.causes {
         write_labelled(err, "cause:", cause)?;
@@ -156,15 +161,16 @@ fn write_json(out: &mut impl Write, document: &FailureDocument) -> io::Result<()
     out.flush()
 }
 
-/// Serializes the document as `schema`, `code`, `message`, `cause` when the
-/// failure has a source, `recovery`, and `url` when the failure has one.
-///
-/// `cause` is one string, the causes joined with `: `, as a log line shows a
-/// chain of errors.
-impl Serialize for FailureDocument {
-    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        let mut map = serializer.serialize_map(None)?;
-        map.serialize_entry("schema", &format_args!("{FAILURE}"))?;
+impl FailureDocument {
+    /// Writes every field of the document after `schema` into `map`: `code`,
+    /// `message`, `cause` when the failure has a source, `recovery`, and
+    /// `url` when the failure has one. The failure document and an entry of
+    /// a batch's `failures` both write their fields here, so the two differ
+    /// only in `schema`.
+    ///
+    /// `cause` is one string, the causes joined with `: `, as a log line
+    /// shows a chain of errors.
+    fn serialize_fields<M: SerializeMap>(&self, map: &mut M) -> Result<(), M::Error> {
         map.serialize_entry("code", &self.code)?;
         map.serialize_entry("message", &self.message)?;
         if !self.causes.is_empty() {
@@ -174,6 +180,29 @@ impl Serialize for FailureDocument {
         if let Some(url) = &self.url {
             map.serialize_entry("url", url)?;
         }
+        Ok(())
+    }
+}
+
+/// Serializes the `crumbkit/failure/v1` document: `schema`, then the fields
+/// that [`FailureDocument::serialize_fields`] writes.
+impl Serialize for FailureDocument {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        let mut map = serializer.serialize_map(None)?;
+        map.serialize_entry("schema", &format_args!("{FAILURE}"))?;
+        self.serialize_fields(&mut map)?;
+        map.end()
+    }
+}
+
+/// One entry of a batch's `failures` array: the fields of the
+/// `crumbkit/failure/v1` document without `schema`.
+pub(super) struct Entry<'a>(pub(super) &'a FailureDocument);
+
+impl Serialize for Entry<'_> {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        let mut map = serializer.serialize_map(None)?;
+        self.0.serialize_fields(&mut map)?;
         map.end()
     }
 }
