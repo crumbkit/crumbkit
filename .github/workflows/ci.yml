@@ -1,0 +1,71 @@
+# The pull-request lane of ADR-0011. The lint and test jobs run in parallel
+# and report on their own.
+name: CI
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+# Each job grants only the permissions it needs.
+permissions: {}
+
+# A new push to a pull request cancels the run for the previous push.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  # Any compiler or clippy warning fails the build (ADR-0009).
+  CARGO_BUILD_WARNINGS: deny
+  CARGO_TERM_COLOR: always
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read # actions/checkout reads the private repository.
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      # rustup installs the toolchain that rust-toolchain.toml pins. It runs
+      # before rust-cache, which reads the rustc version for its cache key.
+      - run: rustup toolchain install
+      # install-action runs before rust-cache, so the cache leaves out the
+      # tool binaries that install-action downloads on every run.
+      - uses: taiki-e/install-action@f7e5d7c961414b23f5b25b2da9294395d08513ad # v2.87.26
+        with:
+          tool: zizmor
+          fallback: none
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+      - run: cargo fmt --check
+      - run: cargo clippy --workspace --all-targets
+      - run: cargo xtask check
+      - run: zizmor .github/workflows
+
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read # actions/checkout reads the private repository.
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      # rustup installs the toolchain that rust-toolchain.toml pins. It runs
+      # before rust-cache, which reads the rustc version for its cache key.
+      - run: rustup toolchain install
+      # install-action runs before rust-cache, so the cache leaves out the
+      # tool binaries that install-action downloads on every run.
+      - uses: taiki-e/install-action@f7e5d7c961414b23f5b25b2da9294395d08513ad # v2.87.26
+        with:
+          tool: cargo-nextest
+          fallback: none
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+      - run: cargo nextest run --workspace --profile ci
+      # nextest does not run doctests, so cargo test runs them.
+      - run: cargo test --workspace --doc
+      # The MSRV check builds with the oldest supported toolchain (RUST-9).
+      - run: rustup toolchain install 1.89.0 --profile minimal
+      - run: cargo +1.89.0 check --workspace --all-targets
