@@ -111,6 +111,9 @@ dependencies = [
 [[package]]
 name = "crumbkit-test"
 version = "0.0.0"
+dependencies = [
+ "crumbkit",
+]
 
 [[package]]
 name = "dyn-clone"
@@ -293,6 +296,7 @@ version = "0.0.0"
 dependencies = [
  "clap",
  "crumbkit",
+ "crumbkit-test",
  "schemars",
  "serde",
  "snapbox",

@@ -77,7 +77,7 @@ fn cell(value: Option<&Value>) -> Cow<'_, str> {
 /// `char::escape_default` form, such as `\n`, `\t` or `\u{1b}`. A string
 /// without a control character is borrowed unchanged, so it costs no
 /// allocation.
-fn escape_controls(text: &str) -> Cow<'_, str> {
+pub(super) fn escape_controls(text: &str) -> Cow<'_, str> {
     if !text.chars().any(char::is_control) {
         return Cow::Borrowed(text);
     }
