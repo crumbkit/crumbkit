@@ -3,6 +3,8 @@
 use schemars::JsonSchema;
 use serde::Serialize;
 
+use crate::Call;
+
 /// A type that prints as one table row.
 ///
 /// The names in `COLUMNS` and `LONG_COLUMNS` are the field names as the type
@@ -64,6 +66,12 @@ pub trait Rows: Serialize + sealed::Sealed {
     /// Returns the phrase that names the rows in the text footer, such as
     /// `books`. Only a `Listing` returns one.
     fn description(&self) -> Option<&str> {
+        None
+    }
+
+    /// Returns the command that the text output names as the next step, and
+    /// the phrase that follows it. Only a `Listing` returns one.
+    fn next_step(&self) -> Option<(&Call, &str)> {
         None
     }
 }

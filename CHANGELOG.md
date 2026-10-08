@@ -29,3 +29,15 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - A listing's JSON document holds the total under `total`, beside `data`.
   When a listing shows fewer rows than its total, the text table ends with a
   footer such as `Showing 4 of 6 books. --all shows every one.`
+- `Call` names a command by its path from the root and the clap ids of the
+  arguments to show, and `Call::render` turns it into text, such as
+  `shelf books show <ID>...`, against the `clap::Command` the tool built at
+  runtime. `CallError` names the path segment or argument that is missing or
+  hidden.
+- `Output::set_command` keeps the command tree that the tool parsed against,
+  so `finish` can render calls.
+- `Listing::next` gives a listing a next step. Its text output ends with a
+  `Next:` line after the table and any footer, such as `Next: shelf books
+  show <ID>... takes up to 100 ids in one call.` The line is left out when no
+  command is set or the call does not resolve, and the JSON document is
+  unchanged.

@@ -6,7 +6,7 @@ mod table;
 use std::io::{self, Write};
 use std::process::ExitCode;
 
-use clap::Args;
+use clap::{Args, Command};
 use serde::Serialize;
 use serde::ser::{SerializeMap, Serializer};
 use serde_json::Value;
@@ -27,7 +27,14 @@ mod tests;
 /// - `--full` prints every field of every row, and requires `--json`.
 /// - `--fields a,b` prints exactly the named fields in that order, and
 ///   conflicts with `--long` and `--full`.
-#[derive(Args, Clone, Debug, Default, PartialEq, Eq)]
+///
+/// It also holds the command tree that the tool parsed against, which
+/// [`Output::set_command`] sets, so `finish` can render a listing's next step.
+///
+/// `Output` derives `Clone`, `Debug` and `Default`. It does not derive
+/// `PartialEq` or `Eq`, because `clap::Command` implements neither and nothing
+/// compares two `Output` values.
+#[derive(Args, Clone, Debug, Default)]
 pub struct Output {
     /// Print the result as a JSON document on one line
     #[arg(long, global = true)]
@@ -50,6 +57,74 @@ pub struct Output {
     /// With --json, print every field of every row
     #[arg(long, global = true, requires = "json")]
     full: bool,
+
+    /// The command tree that the tool parsed against, built, or `None` until
+    /// the tool calls `set_command`. clap skips the field when it parses.
+    #[arg(skip)]
+    command: Option<Command>,
+}
+
+impl Output {
+    /// Keeps `command` so that [`finish`] can render a listing's next step
+    /// against it. A tool's `main` calls it once after parsing, with the same
+    /// command tree it parsed against.
+    ///
+    /// It calls `Command::build`, which clap requires before a command's
+    /// arguments are read, and which does nothing to a command that parsing
+    /// already built. Without a command, `finish` leaves out the `Next:`
+    /// line.
+    ///
+    /// A tool that does not change its tree passes `Cli::command()`:
+    ///
+    /// ```
+    /// use clap::{CommandFactory, Parser};
+    /// use crumbkit::Output;
+    ///
+    /// /// List the books in a small catalogue.
+    /// #[derive(Parser)]
+    /// struct Cli {
+    ///     #[command(flatten)]
+    ///     output: Output,
+    /// }
+    ///
+    /// let mut cli = Cli::parse_from(["shelf"]);
+    /// cli.output.set_command(Cli::command());
+    /// ```
+    ///
+    /// A tool that hides commands at runtime parses against its changed
+    /// command and passes that same command:
+    ///
+    /// ```
+    /// use clap::{CommandFactory, FromArgMatches, Parser, Subcommand};
+    /// use crumbkit::Output;
+    ///
+    /// /// Browse a small catalogue.
+    /// #[derive(Parser)]
+    /// struct Cli {
+    ///     #[command(subcommand)]
+    ///     command: Commands,
+    ///     #[command(flatten)]
+    ///     output: Output,
+    /// }
+    ///
+    /// #[derive(Subcommand)]
+    /// enum Commands {
+    ///     /// List the books.
+    ///     List,
+    ///     /// Remove a book.
+    ///     Remove,
+    /// }
+    ///
+    /// let mut command =
+    ///     Cli::command().mut_subcommand("remove", |remove| remove.hide(true));
+    /// let matches = command.try_get_matches_from_mut(["shelf", "list"]).unwrap();
+    /// let mut cli = Cli::from_arg_matches(&matches).unwrap();
+    /// cli.output.set_command(command);
+    /// ```
+    pub fn set_command(&mut self, mut command: Command) {
+        command.build();
+        self.command = Some(command);
+    }
 }
 
 /// Prints `value` to standard output in the format that `output` chooses,
@@ -75,7 +150,12 @@ pub fn finish<T: Rows>(output: &Output, document: Document<T>, value: T) -> Exit
 /// A [`Listing`](crate::Listing)'s `data` is an array, and its JSON document
 /// also holds the number of matching rows under `total`. When a listing
 /// shows fewer rows than its total, the table ends with a footer line, such
-/// as `Showing 4 of 6 books. --all shows every one.`
+/// as `Showing 4 of 6 books. --all shows every one.` When a listing has a
+/// next step, a `Next:` line follows the table and any footer, such as
+/// `Next: shelf books show <ID>... takes up to 100 ids in one call.` The line
+/// is left out when [`Output::set_command`] was not called or the step's
+/// [`Call`](crate::Call) does not resolve in that command, and the exit code
+/// stays 0.
 ///
 /// The exit code is 0 when the result is written, and also when the reader
 /// closed the pipe early. It is 1 when a write fails for any other reason, or
@@ -193,6 +273,7 @@ fn write_result<T: Rows>(
     } else {
         table::write(out, &columns, &rows)?;
         write_footer(out, value)?;
+        write_next(out, output.command.as_ref(), value)?;
     }
     out.flush()
 }
@@ -214,6 +295,25 @@ fn write_footer<T: Rows>(out: &mut impl Write, value: &T) -> io::Result<()> {
             "Showing {shown} of {total} {description}. --all shows every one."
         ),
         None => writeln!(out, "Showing {shown} of {total}. --all shows every one."),
+    }
+}
+
+/// Writes the line `Next: {call} {phrase}` when `value` is a listing with a
+/// next step whose call resolves in `command`. Otherwise it writes nothing:
+/// without a command, or when the call names a missing or hidden command or
+/// argument, the tool still prints its result and crumbkit advertises
+/// nothing the tool hid.
+fn write_next<T: Rows>(
+    out: &mut impl Write,
+    command: Option<&Command>,
+    value: &T,
+) -> io::Result<()> {
+    let (Some(command), Some((call, phrase))) = (command, value.next_step()) else {
+        return Ok(());
+    };
+    match call.render_built(command) {
+        Ok(rendered) => writeln!(out, "Next: {rendered} {phrase}"),
+        Err(_) => Ok(()),
     }
 }
 
