@@ -31,7 +31,7 @@ fn shelf(test: &str, args: &[&str]) -> OutputAssert {
 }
 
 #[test]
-fn books_list_prints_the_compact_columns_as_a_table() {
+fn books_list_prints_the_first_4_books_as_a_table_and_a_footer_naming_the_rest() {
     shelf("books-list", &["books", "list"])
         .success()
         .stdout_eq(file!["golden/books-list.txt"].raw())
@@ -39,7 +39,7 @@ fn books_list_prints_the_compact_columns_as_a_table() {
 }
 
 #[test]
-fn books_list_long_adds_the_form_column() {
+fn books_list_long_adds_the_form_column_and_keeps_the_footer() {
     shelf("books-list-long", &["books", "list", "--long"])
         .success()
         .stdout_eq(file!["golden/books-list-long.txt"].raw())
@@ -47,7 +47,7 @@ fn books_list_long_adds_the_form_column() {
 }
 
 #[test]
-fn books_list_json_prints_the_compact_columns_as_one_json_line() {
+fn books_list_json_prints_the_compact_columns_and_the_total_as_one_json_line() {
     shelf("books-list-json", &["books", "list", "--json"])
         .success()
         .stdout_eq(file!["golden/books-list-json.json"].raw())
@@ -55,7 +55,7 @@ fn books_list_json_prints_the_compact_columns_as_one_json_line() {
 }
 
 #[test]
-fn books_list_json_full_prints_every_field_of_every_book() {
+fn books_list_json_full_prints_every_field_of_the_first_4_books_and_the_total() {
     shelf(
         "books-list-json-full",
         &["books", "list", "--json", "--full"],
@@ -66,7 +66,7 @@ fn books_list_json_full_prints_every_field_of_every_book() {
 }
 
 #[test]
-fn books_list_fields_prints_only_the_named_fields_in_order() {
+fn books_list_fields_prints_only_the_named_fields_in_order_and_the_footer() {
     shelf(
         "books-list-fields",
         &["books", "list", "--fields", "title,year"],
@@ -77,7 +77,7 @@ fn books_list_fields_prints_only_the_named_fields_in_order() {
 }
 
 #[test]
-fn books_list_json_fields_prints_only_the_named_fields_in_order() {
+fn books_list_json_fields_prints_only_the_named_fields_in_order_and_the_total() {
     shelf(
         "books-list-json-fields",
         &["books", "list", "--json", "--fields", "title,year"],
@@ -96,4 +96,55 @@ fn books_list_with_an_unknown_field_exits_with_code_2_and_lists_the_valid_fields
     .code(2)
     .stdout_eq("")
     .stderr_eq(file!["golden/books-list-unknown-field.stderr"].raw());
+}
+
+#[test]
+fn books_list_all_prints_every_book_without_a_footer() {
+    shelf("books-list-all", &["books", "list", "--all"])
+        .success()
+        .stdout_eq(file!["golden/books-list-all.txt"].raw())
+        .stderr_eq("");
+}
+
+#[test]
+fn books_list_limit_2_prints_the_first_2_books_and_the_footer() {
+    shelf("books-list-limit-2", &["books", "list", "--limit", "2"])
+        .success()
+        .stdout_eq(file!["golden/books-list-limit-2.txt"].raw())
+        .stderr_eq("");
+}
+
+#[test]
+fn books_list_limit_0_is_refused_with_code_2() {
+    shelf("books-list-limit-0", &["books", "list", "--limit", "0"])
+        .code(2)
+        .stdout_eq("")
+        .stderr_eq(file!["golden/books-list-limit-0.stderr"].raw());
+}
+
+#[test]
+fn books_list_all_with_limit_is_refused_with_code_2() {
+    shelf(
+        "books-list-all-limit-2",
+        &["books", "list", "--all", "--limit", "2"],
+    )
+    .code(2)
+    .stdout_eq("")
+    .stderr_eq(file!["golden/books-list-all-limit-2.stderr"].raw());
+}
+
+#[test]
+fn books_list_json_all_prints_every_book_and_the_total() {
+    shelf("books-list-json-all", &["books", "list", "--json", "--all"])
+        .success()
+        .stdout_eq(file!["golden/books-list-json-all.json"].raw())
+        .stderr_eq("");
+}
+
+#[test]
+fn books_list_help_shows_the_paging_flags_with_the_default_of_4() {
+    shelf("books-list-help", &["books", "list", "--help"])
+        .success()
+        .stdout_eq(file!["golden/books-list-help.txt"].raw())
+        .stderr_eq("");
 }
