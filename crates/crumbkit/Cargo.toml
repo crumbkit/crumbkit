@@ -9,7 +9,7 @@ repository.workspace = true
 readme = "README.md"
 keywords = ["cli", "clap", "agents", "help", "errors"]
 categories = ["command-line-interface"]
-include = ["src/**/*.rs", "README.md", "LICENSE-APACHE", "LICENSE-MIT"]
+include = ["src/**/*.rs", "schemas/*.json", "README.md", "LICENSE-APACHE", "LICENSE-MIT"]
 
 [dependencies]
 # `Output` and `Page` derive `clap::Args`. `Page` gives `--limit` a default

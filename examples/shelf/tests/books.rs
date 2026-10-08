@@ -1,7 +1,7 @@
-//! End-to-end tests of `shelf books list` and `shelf books show`. Each test runs the built binary and
-//! compares its standard output and standard error with golden files under
-//! `tests/golden/` (ADR-0004, ADR-0005). `SNAPSHOTS=overwrite cargo test`
-//! rewrites the golden files.
+//! End-to-end tests of `shelf books list` and `shelf books show`. Each test
+//! runs the built binary and compares its standard output and standard error
+//! with golden files under `tests/golden/` (ADR-0004, ADR-0005).
+//! `SNAPSHOTS=overwrite cargo test` rewrites the golden files.
 
 use std::path::Path;
 
@@ -166,11 +166,27 @@ fn books_show_prints_the_books_in_the_order_given() {
 }
 
 #[test]
-fn books_show_with_an_id_outside_the_catalogue_is_refused_with_code_2() {
+fn books_show_with_an_id_outside_the_catalogue_fails_with_code_1_and_names_books_list() {
     shelf("books-show-7", &["books", "show", "7"])
-        .code(2)
+        .code(1)
         .stdout_eq("")
         .stderr_eq(file!["golden/books-show-7.stderr"].raw());
+}
+
+#[test]
+fn books_show_with_some_ids_outside_the_catalogue_fails_as_a_whole_naming_each_one() {
+    shelf("books-show-2-7-9", &["books", "show", "2", "7", "9"])
+        .code(1)
+        .stdout_eq("")
+        .stderr_eq(file!["golden/books-show-2-7-9.stderr"].raw());
+}
+
+#[test]
+fn books_show_json_with_an_id_outside_the_catalogue_prints_the_failure_document() {
+    shelf("books-show-7-json", &["books", "show", "7", "--json"])
+        .code(1)
+        .stdout_eq(file!["golden/books-show-7-json.json"].raw())
+        .stderr_eq("");
 }
 
 #[test]

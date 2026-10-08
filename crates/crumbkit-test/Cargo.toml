@@ -1,6 +1,6 @@
 [package]
 name = "crumbkit-test"
-description = "Tests that check a clap command tree against the crumbkit conventions"
+description = "Tests that check a crumbkit tool's failure codes and command tree against the crumbkit conventions"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -10,6 +10,11 @@ readme = "README.md"
 keywords = ["cli", "clap", "agents", "testing"]
 categories = ["command-line-interface", "development-tools::testing"]
 include = ["src/**/*.rs", "README.md", "LICENSE-APACHE", "LICENSE-MIT"]
+
+[dependencies]
+# The codes check takes crumbkit's `Code` and `Spelling`, and spells each code
+# as the tool's `finish` prints it.
+crumbkit = { workspace = true }
 
 [lints]
 workspace = true
