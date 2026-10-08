@@ -166,7 +166,7 @@ fn books_show_prints_the_books_in_the_order_given() {
 }
 
 #[test]
-fn books_show_with_an_id_outside_the_catalogue_fails_with_code_1_and_names_books_list() {
+fn books_show_with_only_an_id_outside_the_catalogue_prints_only_the_failure_with_code_1() {
     shelf("books-show-7", &["books", "show", "7"])
         .code(1)
         .stdout_eq("")
@@ -174,19 +174,30 @@ fn books_show_with_an_id_outside_the_catalogue_fails_with_code_1_and_names_books
 }
 
 #[test]
-fn books_show_with_some_ids_outside_the_catalogue_fails_as_a_whole_naming_each_one() {
+fn books_show_prints_the_books_found_and_one_failure_naming_the_missing_ids_with_code_1() {
     shelf("books-show-2-7-9", &["books", "show", "2", "7", "9"])
         .code(1)
-        .stdout_eq("")
+        .stdout_eq(file!["golden/books-show-2-7-9.txt"].raw())
         .stderr_eq(file!["golden/books-show-2-7-9.stderr"].raw());
 }
 
 #[test]
-fn books_show_json_with_an_id_outside_the_catalogue_prints_the_failure_document() {
+fn books_show_json_with_only_an_id_outside_the_catalogue_prints_empty_data_and_the_failure() {
     shelf("books-show-7-json", &["books", "show", "7", "--json"])
         .code(1)
         .stdout_eq(file!["golden/books-show-7-json.json"].raw())
         .stderr_eq("");
+}
+
+#[test]
+fn books_show_json_prints_one_document_with_the_books_found_and_the_failure_with_code_1() {
+    shelf(
+        "books-show-2-7-9-json",
+        &["books", "show", "2", "7", "9", "--json"],
+    )
+    .code(1)
+    .stdout_eq(file!["golden/books-show-2-7-9-json.json"].raw())
+    .stderr_eq("");
 }
 
 #[test]
@@ -209,7 +220,7 @@ fn books_show_without_ids_is_refused_with_code_2() {
 }
 
 #[test]
-fn books_show_json_prints_the_books_as_an_array_without_a_total() {
+fn books_show_json_prints_the_books_as_an_array_and_an_empty_failures_array_without_a_total() {
     shelf("books-show-json", &["books", "show", "5", "2", "--json"])
         .success()
         .stdout_eq(file!["golden/books-show-json.json"].raw())

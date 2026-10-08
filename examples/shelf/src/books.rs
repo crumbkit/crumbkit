@@ -1,8 +1,9 @@
 //! The built-in book catalogue.
 
 use std::fmt;
+use std::num::NonZeroUsize;
 
-use crumbkit::{Call, Code, Document, Failure, Listing, Recovery, Row};
+use crumbkit::{Batch, Call, Code, Document, Failure, Listing, Recovery, Row};
 use schemars::JsonSchema;
 use serde::Serialize;
 
@@ -15,8 +16,15 @@ mod tests;
 /// the number of books in it.
 pub(crate) const BOOKS_LIST: Document<Listing<Book>> = Document::new("shelf", "books-list", 1);
 
-/// The document that `shelf books show` prints: the books for the given ids.
-pub(crate) const BOOKS_SHOW: Document<Vec<Book>> = Document::new("shelf", "books-show", 1);
+/// The document that `shelf books show` prints: the books for the given ids
+/// that the catalogue holds, and a failure naming the ids it lacks.
+pub(crate) const BOOKS_SHOW: Document<Batch<Book, BooksError>> =
+    Document::new("shelf", "books-show", 1);
+
+/// The number of threads that `show` looks up books on. The catalogue
+/// lookups are in memory, so one worker runs them in the calling thread; a
+/// tool that calls a network API raises it.
+const WORKERS: NonZeroUsize = NonZeroUsize::MIN;
 
 /// One book in the catalogue. `show` clones a book for each id it is given.
 #[derive(Clone, Serialize, JsonSchema)]
@@ -116,28 +124,42 @@ pub(crate) fn show_call() -> Call {
     Call::new(&["books", "show"]).arg("ids")
 }
 
-/// Returns the books that `args` names, in the order given, so a repeated id
-/// returns its book again.
+/// Returns a batch of the books that `args` names, in the order given, so a
+/// repeated id returns its book again.
 ///
-/// # Errors
-///
-/// Returns `BooksError::NotFound` naming every id that the catalogue lacks,
-/// and no books, when any id is missing.
-pub(crate) fn show(args: &BooksShow) -> Result<Vec<Book>, BooksError> {
+/// The batch holds one `BooksError::NotFound` naming every id that the
+/// catalogue lacks, each once and in the order given, and no failure when
+/// every id names a book.
+#[expect(
+    clippy::unnecessary_wraps,
+    reason = "every shelf handler returns Result<_, BooksError>, so main passes each result to finish in the same way"
+)]
+pub(crate) fn show(args: &BooksShow) -> Result<Batch<Book, BooksError>, BooksError> {
     let mut books = Vec::with_capacity(args.ids.len());
     let mut missing = Vec::new();
-    for &id in &args.ids {
-        match CATALOGUE.iter().find(|book| book.id == id) {
-            Some(book) => books.push(book.clone()),
-            None if !missing.contains(&id) => missing.push(id),
-            None => {}
+    for result in crumbkit::fetch_each(&args.ids, WORKERS, |&id| find(id)) {
+        match result {
+            Ok(book) => books.push(book),
+            Err(id) if !missing.contains(&id) => missing.push(id),
+            Err(_) => {}
         }
     }
-    if missing.is_empty() {
-        Ok(books)
+    let failures = if missing.is_empty() {
+        Vec::new()
     } else {
-        Err(BooksError::NotFound { ids: missing })
-    }
+        vec![BooksError::NotFound { ids: missing }]
+    };
+    Ok(Batch::new(books, failures))
+}
+
+/// Returns the book with `id`, or `id` itself as the error when the
+/// catalogue has no such book.
+fn find(id: u32) -> Result<Book, u32> {
+    CATALOGUE
+        .iter()
+        .find(|book| book.id == id)
+        .cloned()
+        .ok_or(id)
 }
 
 /// The code of a failure that names a book the catalogue lacks.
