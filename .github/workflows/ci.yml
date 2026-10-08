@@ -29,6 +29,11 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+      # The ubuntu-slim image has no rustup, so this installs it with the
+      # official installer and no toolchain.
+      - run: |
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal --default-toolchain none
+          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
       # rustup installs the toolchain that rust-toolchain.toml pins. It runs
       # before rust-cache, which reads the rustc version for its cache key.
       - run: rustup toolchain install
@@ -53,6 +58,11 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+      # The ubuntu-slim image has no rustup, so this installs it with the
+      # official installer and no toolchain.
+      - run: |
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal --default-toolchain none
+          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
       # rustup installs the toolchain that rust-toolchain.toml pins. It runs
       # before rust-cache, which reads the rustc version for its cache key.
       - run: rustup toolchain install
