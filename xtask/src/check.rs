@@ -4,6 +4,7 @@
 mod adr_records;
 mod agents_words;
 mod docs_words;
+mod record_listings;
 mod rust_lines;
 
 use std::fmt;
@@ -17,7 +18,7 @@ pub(crate) enum Selection {
     /// Every check.
     All,
     /// Only the checks on `docs/`: the directory word check and the
-    /// decision record check.
+    /// decision record checks.
     Docs,
 }
 
@@ -65,6 +66,20 @@ pub(crate) enum Violation {
         /// The cited number.
         number: u16,
     },
+    /// A record is missing from the `README.md` of the node above it.
+    UnlistedRecord {
+        /// The record.
+        path: String,
+        /// The node record that should list it.
+        node: String,
+    },
+    /// A node record links to a file that does not exist.
+    BrokenLink {
+        /// The node record.
+        path: String,
+        /// The link target as written.
+        target: String,
+    },
 }
 
 /// Runs the selected checks over `files` and returns every violation.
@@ -75,11 +90,13 @@ pub(crate) fn run(selection: Selection, files: &[File]) -> Vec<Violation> {
             violations.extend(agents_words::check(files));
             violations.extend(docs_words::check(files));
             violations.extend(adr_records::check(files));
+            violations.extend(record_listings::check(files));
             violations
         }
         Selection::Docs => {
             let mut violations = docs_words::check(files);
             violations.extend(adr_records::check(files));
+            violations.extend(record_listings::check(files));
             violations
         }
     }
@@ -112,6 +129,10 @@ impl fmt::Display for Violation {
             } => write!(f, "{path}: ADR-{number:04} is already used by {first}"),
             Self::UnknownRecord { path, number } => {
                 write!(f, "{path}: cites ADR-{number:04}, which no record uses")
+            }
+            Self::UnlistedRecord { path, node } => write!(f, "{path}: not listed in {node}"),
+            Self::BrokenLink { path, target } => {
+                write!(f, "{path}: links to {target}, which does not exist")
             }
         }
     }

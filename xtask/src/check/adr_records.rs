@@ -53,7 +53,7 @@ pub(super) fn check(files: &[File]) -> Vec<Violation> {
 }
 
 /// Returns whether `path` is a Markdown file anywhere under `docs/decisions/`.
-fn is_record(path: &str) -> bool {
+pub(super) fn is_record(path: &str) -> bool {
     let path = Path::new(path);
     path.starts_with("docs/decisions") && path.extension() == Some(OsStr::new("md"))
 }

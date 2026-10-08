@@ -68,3 +68,24 @@ fn record_violations_name_the_file_and_the_number() {
         format!("AGENTS.md: cites ADR-{:04}, which no record uses", 99)
     );
 }
+
+#[test]
+fn listing_violations_name_the_node_or_the_link() {
+    let unlisted = Violation::UnlistedRecord {
+        path: "docs/decisions/api/0001-errors.md".to_owned(),
+        node: "docs/decisions/api/README.md".to_owned(),
+    };
+    let broken = Violation::BrokenLink {
+        path: "docs/decisions/README.md".to_owned(),
+        target: "0009-gone.md".to_owned(),
+    };
+
+    assert_eq!(
+        unlisted.to_string(),
+        "docs/decisions/api/0001-errors.md: not listed in docs/decisions/api/README.md"
+    );
+    assert_eq!(
+        broken.to_string(),
+        "docs/decisions/README.md: links to 0009-gone.md, which does not exist"
+    );
+}
