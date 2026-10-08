@@ -1,0 +1,5 @@
+error: the argument '--all' cannot be used with '--limit <N>'
+
+Usage: shelf books list --all
+
+For more information, try '--help'.

@@ -17,7 +17,7 @@ fn main() -> ExitCode {
     let cli = Cli::parse();
     match cli.resource {
         Resource::Books {
-            command: BooksCommand::List,
-        } => crumbkit::finish(&cli.output, books::BOOKS_LIST, books::list()),
+            command: BooksCommand::List(args),
+        } => crumbkit::finish(&cli.output, books::BOOKS_LIST, books::list(&args)),
     }
 }
