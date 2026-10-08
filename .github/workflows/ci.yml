@@ -21,7 +21,7 @@ env:
 
 jobs:
   lint:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-slim
     timeout-minutes: 10
     permissions:
       contents: read # actions/checkout reads the private repository.
@@ -45,7 +45,7 @@ jobs:
       - run: zizmor .github/workflows
 
   test:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-slim
     timeout-minutes: 10
     permissions:
       contents: read # actions/checkout reads the private repository.
