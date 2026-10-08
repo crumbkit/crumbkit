@@ -1,0 +1,30 @@
+# Tests may unwrap, panic and print, because a failing test should stop and
+# show what went wrong.
+allow-unwrap-in-tests = true
+allow-expect-in-tests = true
+allow-panic-in-tests = true
+allow-print-in-tests = true
+allow-dbg-in-tests = true
+
+# Each effect belongs to one module. That module suppresses this lint with
+# #[expect] and a reason, and the rest of the code stays free of the effect.
+disallowed-methods = [
+    { path = "std::env::var", reason = "environment reads belong to the module that owns them; it suppresses this with #[expect] and a reason" },
+    { path = "std::env::var_os", reason = "environment reads belong to the module that owns them; it suppresses this with #[expect] and a reason" },
+    { path = "std::env::vars", reason = "environment reads belong to the module that owns them; it suppresses this with #[expect] and a reason" },
+    { path = "std::env::vars_os", reason = "environment reads belong to the module that owns them; it suppresses this with #[expect] and a reason" },
+    { path = "std::env::set_var", reason = "environment changes belong to the module that owns them; it suppresses this with #[expect] and a reason" },
+    { path = "std::env::remove_var", reason = "environment changes belong to the module that owns them; it suppresses this with #[expect] and a reason" },
+    { path = "std::env::current_dir", reason = "environment reads belong to the module that owns them; it suppresses this with #[expect] and a reason" },
+    { path = "std::process::exit", reason = "process effects belong to the module that owns them; it suppresses this with #[expect] and a reason" },
+    { path = "std::process::Command::new", reason = "process effects belong to the module that owns them; it suppresses this with #[expect] and a reason" },
+    { path = "std::io::stdout", reason = "standard output belongs to the module that owns it; it suppresses this with #[expect] and a reason" },
+    { path = "std::io::stderr", reason = "standard error belongs to the module that owns it; it suppresses this with #[expect] and a reason" },
+    { path = "std::fs::write", reason = "file writes belong to the module that owns them; it suppresses this with #[expect] and a reason" },
+    { path = "std::fs::File::create", reason = "file writes belong to the module that owns them; it suppresses this with #[expect] and a reason" },
+    { path = "std::fs::OpenOptions::open", reason = "file writes belong to the module that owns them; it suppresses this with #[expect] and a reason" },
+    { path = "std::fs::create_dir_all", reason = "file writes belong to the module that owns them; it suppresses this with #[expect] and a reason" },
+    { path = "std::fs::remove_file", reason = "file writes belong to the module that owns them; it suppresses this with #[expect] and a reason" },
+    { path = "std::fs::remove_dir_all", reason = "file writes belong to the module that owns them; it suppresses this with #[expect] and a reason" },
+    { path = "std::fs::rename", reason = "file writes belong to the module that owns them; it suppresses this with #[expect] and a reason" },
+]

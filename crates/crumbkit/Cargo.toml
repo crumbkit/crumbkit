@@ -1,0 +1,15 @@
+[package]
+name = "crumbkit"
+description = "Conventions for clap command-line tools that people and agents can drill into"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+readme = "README.md"
+keywords = ["cli", "clap", "agents", "help", "errors"]
+categories = ["command-line-interface"]
+include = ["src/**/*.rs", "README.md", "LICENSE-APACHE", "LICENSE-MIT"]
+
+[lints]
+workspace = true
