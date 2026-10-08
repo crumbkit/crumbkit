@@ -21,6 +21,19 @@ repository = "https://github.com/crumbkit/crumbkit"
 # code needs, and each binary chooses the rest, such as colour.
 clap = { version = "4.6.7", default-features = false, features = ["std"] }
 
+# serde gives a result type its `Serialize` impl, which crumbkit reads to print
+# the result as a table or as JSON. A crate enables `derive` only when its own
+# code derives `Serialize`.
+serde = { version = "1.0.229", default-features = false }
+
+# serde_json writes the JSON document, and its `Value` lets the table look up a
+# row's fields by their serialized names.
+serde_json = { version = "1.0.151", default-features = false }
+
+# schemars describes a result type as a JSON Schema, and the schema's
+# properties are the field names that `--fields` accepts.
+schemars = { version = "1.2.2", default-features = false }
+
 # Every lint warns except unsafe_code, and a build with
 # CARGO_BUILD_WARNINGS=deny fails on any warning. docs/standards/README.md
 # gives the reason for each rule.
