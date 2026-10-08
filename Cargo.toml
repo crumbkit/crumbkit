@@ -1,0 +1,52 @@
+[workspace]
+resolver = "3"
+members = [
+    "crates/crumbkit",
+    "crates/crumbkit-test",
+    "examples/shelf",
+    "xtask",
+]
+
+[workspace.package]
+version = "0.0.0"
+edition = "2024"
+rust-version = "1.89"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/crumbkit/crumbkit"
+
+[workspace.dependencies]
+# clap parses the command line of every tool crumbkit serves. The workspace
+# entry enables only `std`. Cargo turns on a feature for every crate in a build
+# when any one crate asks for it, so a library enables only the features its own
+# code needs, and each binary chooses the rest, such as colour.
+clap = { version = "4.6.7", default-features = false, features = ["std"] }
+
+# Every lint warns except unsafe_code, and a build with
+# CARGO_BUILD_WARNINGS=deny fails on any warning. docs/standards/README.md
+# gives the reason for each rule.
+[workspace.lints.rust]
+unsafe_code = "forbid"
+missing_docs = "warn"
+unreachable_pub = "warn"
+unused_qualifications = "warn"
+rust_2018_idioms = { level = "warn", priority = -1 }
+
+[workspace.lints.clippy]
+all = { level = "warn", priority = -1 }
+pedantic = { level = "warn", priority = -1 }
+cargo = { level = "warn", priority = -1 }
+# A suppression uses #[expect] with a reason.
+allow_attributes = "warn"
+allow_attributes_without_reason = "warn"
+# Code outside tests returns errors instead of panicking.
+unwrap_used = "warn"
+expect_used = "warn"
+panic = "warn"
+todo = "warn"
+unimplemented = "warn"
+# Output goes through a writer that the owning module passes in.
+dbg_macro = "warn"
+print_stdout = "warn"
+print_stderr = "warn"
+# A module with children is foo.rs beside foo/, never foo/mod.rs.
+mod_module_files = "warn"
