@@ -1,10 +1,11 @@
-//! The character rule for the segments of document ids.
+//! The character rule for the segments of document ids and failure codes.
 
 /// Returns whether `text` is a non-empty run of lowercase ASCII letters, ASCII
 /// digits and the byte `punctuation`.
 ///
-/// A document id's component allows underscores and its name allows dashes, so
-/// each caller passes the one punctuation byte its segment allows.
+/// A document id's component and every segment of a failure code allow
+/// underscores, and a document id's name allows dashes, so each caller passes
+/// the one punctuation byte its segment allows.
 pub(crate) const fn is_segment(text: &str, punctuation: u8) -> bool {
     let bytes = text.as_bytes();
     if bytes.is_empty() {

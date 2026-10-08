@@ -19,6 +19,9 @@ repository = "https://github.com/crumbkit/crumbkit"
 # version beside the path, because cargo-deny treats a path dependency without
 # a version as a wildcard (ADR-0012).
 crumbkit = { version = "0.0.0", path = "crates/crumbkit" }
+# shelf's tests check its failure codes with crumbkit-test, which takes a
+# version beside the path for the same reason.
+crumbkit-test = { version = "0.0.0", path = "crates/crumbkit-test" }
 
 # clap parses the command line of every tool crumbkit serves. The workspace
 # entry enables only `std`. Cargo turns on a feature for every crate in a build

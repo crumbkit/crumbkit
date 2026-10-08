@@ -1,4 +1,4 @@
-//! The writers that a tool's result and its error lines go to.
+//! The writers that a tool's result, its failure and its error lines go to.
 
 use std::io::{self, Stderr, StdoutLock, Write};
 
@@ -17,9 +17,9 @@ use std::io::{self, Stderr, StdoutLock, Write};
 /// ```
 #[derive(Debug)]
 pub struct Sink<O, E> {
-    /// Receives the result.
+    /// Receives the result, and the failure document with `--json`.
     pub(crate) out: O,
-    /// Receives error lines.
+    /// Receives the text form of a failure and other error lines.
     pub(crate) err: E,
 }
 
@@ -44,7 +44,7 @@ impl Sink<StdoutLock<'static>, Stderr> {
         let out = io::stdout().lock();
         #[expect(
             clippy::disallowed_methods,
-            reason = "the sink owns standard error, where crumbkit reports a failed write or a bad flag"
+            reason = "the sink owns standard error, where crumbkit prints a failure and reports a failed write or a bad flag"
         )]
         let err = io::stderr();
         Self { out, err }

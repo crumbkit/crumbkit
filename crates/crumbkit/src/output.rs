@@ -1,6 +1,7 @@
-//! The output flags, and `finish`, which prints a result in the format they
-//! choose.
+//! The output flags, and `finish`, which prints a result or a failure in the
+//! format they choose.
 
+mod failure;
 mod table;
 
 use std::io::{self, Write};
@@ -11,7 +12,7 @@ use serde::Serialize;
 use serde::ser::{SerializeMap, Serializer};
 use serde_json::Value;
 
-use crate::{Document, Row, Rows, Sink};
+use crate::{AsFailure, Document, Row, Rows, Sink, Spelling};
 
 #[cfg(test)]
 mod tests;
@@ -29,7 +30,8 @@ mod tests;
 ///   conflicts with `--long` and `--full`.
 ///
 /// It also holds the command tree that the tool parsed against, which
-/// [`Output::set_command`] sets, so `finish` can render a listing's next step.
+/// [`Output::set_command`] sets, so `finish` can render a listing's next step
+/// and a failure's recovery.
 ///
 /// `Output` derives `Clone`, `Debug` and `Default`. It does not derive
 /// `PartialEq` or `Eq`, because `clap::Command` implements neither and nothing
@@ -66,13 +68,14 @@ pub struct Output {
 
 impl Output {
     /// Keeps `command` so that [`finish`] can render a listing's next step
-    /// against it. A tool's `main` calls it once after parsing, with the same
+    /// and a failure's [`Recovery::Run`](crate::Recovery::Run) call against
+    /// it. A tool's `main` calls it once after parsing, with the same
     /// command tree it parsed against.
     ///
     /// It calls `Command::build`, which clap requires before a command's
     /// arguments are read, and which does nothing to a command that parsing
     /// already built. Without a command, `finish` leaves out the `Next:`
-    /// line.
+    /// line and prints a failure's `Run` recovery as having no next step.
     ///
     /// A tool that does not change its tree passes `Cli::command()`:
     ///
@@ -127,25 +130,31 @@ impl Output {
     }
 }
 
-/// Prints `value` to standard output in the format that `output` chooses,
-/// and returns the process's exit code.
+/// Prints a command's result in the format that `output` chooses, and
+/// returns the process's exit code.
 ///
-/// A tool's `main` calls it last and returns its exit code. It behaves as
-/// [`finish_to`] does with a sink over the process's standard output and
-/// standard error.
-pub fn finish<T: Rows>(output: &Output, document: Document<T>, value: T) -> ExitCode {
-    finish_to(&mut Sink::standard(), output, document, value)
+/// A tool's `main` calls it last with the handler's `result` and returns its
+/// exit code. It behaves as [`finish_to`] does with a sink over the process's
+/// standard output and standard error.
+pub fn finish<T: Rows, E: AsFailure>(
+    output: &Output,
+    spelling: Spelling,
+    document: Document<T>,
+    result: Result<T, E>,
+) -> ExitCode {
+    finish_to(&mut Sink::standard(), output, spelling, document, result)
 }
 
-/// Prints `value` to `sink` in the format that `output` chooses, and returns
-/// the exit code that [`finish`] would return.
+/// Prints a command's result to `sink` in the format that `output` chooses,
+/// and returns the exit code that [`finish`] would return.
 ///
 /// Tests and golden files call it with a sink over in-memory writers, so they
 /// check a command's exact output and exit code without starting a process.
 ///
-/// The text format is a table with a header row. The JSON format is one line
-/// holding an object with the `schema` id of `document` and the result under
-/// `data`; a single row's `data` is an object, and a `Vec`'s is an array.
+/// An `Ok` value prints to the sink's output writer. The text format is a
+/// table with a header row. The JSON format is one line holding an object
+/// with the `schema` id of `document` and the result under `data`; a single
+/// row's `data` is an object, and a `Vec`'s is an array.
 ///
 /// A [`Listing`](crate::Listing)'s `data` is an array, and its JSON document
 /// also holds the number of matching rows under `total`. When a listing
@@ -157,20 +166,41 @@ pub fn finish<T: Rows>(output: &Output, document: Document<T>, value: T) -> Exit
 /// [`Call`](crate::Call) does not resolve in that command, and the exit code
 /// stays 0.
 ///
+/// An `Err` prints the failure. The text form goes to the sink's error
+/// writer, and nothing goes to the output writer:
+///
+/// ```text
+/// error: the catalogue has no book 7
+///   help:  run `shelf books list`
+///   code:  shelf::books::not_found
+/// ```
+///
+/// The `error:` line is the failure's `Display`. A `cause:` line follows it
+/// for each error in the failure's `source()` chain, and a `url:` line
+/// follows the `code:` line when the failure has a url. The code prints in
+/// `spelling`. A [`Recovery::Run`](crate::Recovery::Run) call is rendered
+/// against the command that [`Output::set_command`] received, and prints as
+/// `no next step: the suggested command is not available` when no command is
+/// set or the call does not resolve. With `--json`, the failure prints to the
+/// output writer as one `crumbkit/failure/v1` document on one line, which
+/// `--full` and `--fields` do not change.
+///
 /// The exit code is 0 when the result is written, and also when the reader
-/// closed the pipe early. It is 1 when a write fails for any other reason, or
-/// when the result cannot be serialized, and the cause goes to the sink's
-/// error writer. It is 2 when `--fields` names a field that the row type does
-/// not have.
+/// closed the pipe early. It is 1 when the result is a failure, when a write
+/// fails for any other reason, or when the result cannot be serialized, and
+/// the cause of a failed write goes to the sink's error writer. It is 2 when
+/// `--fields` names a field that the row type does not have, which is checked
+/// before the result prints.
 #[expect(
     clippy::needless_pass_by_value,
     reason = "finish_to takes the result by value, as finish does, so a tool passes the result it built in the same way to either"
 )]
-pub fn finish_to<T: Rows, O: Write, E: Write>(
-    sink: &mut Sink<O, E>,
+pub fn finish_to<T: Rows, E: AsFailure, O: Write, W: Write>(
+    sink: &mut Sink<O, W>,
     output: &Output,
+    spelling: Spelling,
     document: Document<T>,
-    value: T,
+    result: Result<T, E>,
 ) -> ExitCode {
     if let Some(message) = unknown_field::<T::Row>(&output.fields) {
         // The process is already failing, and a failed report has nowhere
@@ -178,7 +208,11 @@ pub fn finish_to<T: Rows, O: Write, E: Write>(
         let _ = writeln!(sink.err, "error: {message}");
         return ExitCode::from(2);
     }
-    match write_result(&mut sink.out, output, document, &value) {
+    let value = match &result {
+        Ok(value) => value,
+        Err(error) => return failure::finish(sink, output, spelling, error.as_failure()),
+    };
+    match write_result(&mut sink.out, output, document, value) {
         Ok(()) => ExitCode::SUCCESS,
         // A reader that stops early, as `shelf books list | head -1` does,
         // closes the pipe after it has read every line it wanted, so the
