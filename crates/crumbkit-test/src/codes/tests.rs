@@ -40,6 +40,17 @@ fn spaced(code: &Code, f: &mut fmt::Formatter<'_>) -> fmt::Result {
     write!(f, "{} {} {}", code.component(), code.area(), code.reason())
 }
 
+/// Spells a code with the delete control character between its segments.
+fn with_delete(code: &Code, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    write!(
+        f,
+        "{}\u{7f}{}\u{7f}{}",
+        code.component(),
+        code.area(),
+        code.reason()
+    )
+}
+
 /// Spells a code with arrows between its segments.
 fn arrows(code: &Code, f: &mut fmt::Formatter<'_>) -> fmt::Result {
     write!(f, "{}→{}→{}", code.component(), code.area(), code.reason())
@@ -85,24 +96,36 @@ fn a_code_that_spells_as_an_empty_string_fails() {
 }
 
 #[test]
-fn a_code_that_spells_with_whitespace_fails() {
+fn a_code_that_spells_with_a_space_fails() {
     let message = problems(Spelling::custom(spaced), &[&[&NOT_FOUND]]).unwrap();
 
     assert!(
         message.contains(
-            r#"Code::new("shelf", "books", "not_found") spells as "shelf books not_found", which holds whitespace"#
+            r#"Code::new("shelf", "books", "not_found") spells as "shelf books not_found", which holds a character other than printable ASCII"#
         ),
         "{message}"
     );
 }
 
 #[test]
-fn a_code_that_spells_with_characters_outside_ascii_fails() {
+fn a_code_that_spells_with_a_control_character_fails() {
+    let message = problems(Spelling::custom(with_delete), &[&[&NOT_FOUND]]).unwrap();
+
+    assert!(
+        message.contains(
+            r#"Code::new("shelf", "books", "not_found") spells as "shelf\u{7f}books\u{7f}not_found", which holds a character other than printable ASCII"#
+        ),
+        "{message}"
+    );
+}
+
+#[test]
+fn a_code_that_spells_with_a_character_outside_ascii_fails() {
     let message = problems(Spelling::custom(arrows), &[&[&NOT_FOUND]]).unwrap();
 
     assert!(
         message.contains(
-            r#"Code::new("shelf", "books", "not_found") spells as "shelf→books→not_found", which holds characters outside ASCII"#
+            r#"Code::new("shelf", "books", "not_found") spells as "shelf→books→not_found", which holds a character other than printable ASCII"#
         ),
         "{message}"
     );

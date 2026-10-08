@@ -50,7 +50,8 @@ next step in the same two formats.
 - `Recovery` is the caller's next step: `Run` a `Call`, `Retry` later, follow
   a `Hint`, or `None` with a reason.
 - `Error` holds any `Failure`, and every `Failure` converts into it, so `?`
-  works across a tool's error types.
+  works across a tool's error types. `Error` implements `std::error::Error`,
+  so a tool's `main` can pass it on to `Box<dyn std::error::Error>`.
 - `finish` takes the handler's `Result` and returns the exit code. It prints
   an `Ok` result in the format that the flags choose and exits with code 0.
   It prints an `Err` as a failure on standard error, or with `--json` as one

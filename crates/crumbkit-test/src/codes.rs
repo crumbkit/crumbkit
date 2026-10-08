@@ -15,11 +15,13 @@ mod tests;
 /// - two different codes that spell the same text, so a caller could not
 ///   tell them apart;
 /// - a code that spells as an empty string;
-/// - a code whose text holds whitespace, so it would not read as one word;
-/// - a code whose text holds characters outside ASCII.
+/// - a code whose text holds a character other than printable ASCII, `!` to
+///   `~`. A code is an identifier that callers match exactly, and a space, a
+///   control character or a character outside ASCII lets two codes look the
+///   same while they differ.
 ///
 /// The failure document's JSON Schema accepts exactly the codes that pass:
-/// non-empty ASCII text without whitespace.
+/// one or more printable ASCII characters without spaces.
 ///
 /// ```
 /// use crumbkit::{Code, Spelling};
@@ -52,15 +54,9 @@ pub fn check_codes(spelling: Spelling, codes: &[&[&Code]]) {
         if text.is_empty() {
             problems.push(format!("{} spells as an empty string", source(code)));
         }
-        if text.contains(char::is_whitespace) {
+        if !text.chars().all(|c| c.is_ascii_graphic()) {
             problems.push(format!(
-                "{} spells as {text:?}, which holds whitespace",
-                source(code)
-            ));
-        }
-        if !text.is_ascii() {
-            problems.push(format!(
-                "{} spells as {text:?}, which holds characters outside ASCII",
+                "{} spells as {text:?}, which holds a character other than printable ASCII",
                 source(code)
             ));
         }

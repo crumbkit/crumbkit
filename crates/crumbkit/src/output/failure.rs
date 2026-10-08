@@ -221,9 +221,9 @@ impl JsonSchema for FailureDocument {
                     "const": "crumbkit/failure/v1",
                 },
                 "code": {
-                    "description": "The failure's stable code in the tool's spelling, such as shelf::books::not_found. It is one or more ASCII characters, none of them whitespace.",
+                    "description": "The failure's stable code in the tool's spelling, such as shelf::books::not_found. It is one or more printable ASCII characters without spaces, from ! to ~.",
                     "type": "string",
-                    "pattern": "^[\\u0000-\\u0008\\u000e-\\u001f\\u0021-\\u007f]+$",
+                    "pattern": "^[!-~]+$",
                 },
                 "message": {
                     "description": "What went wrong.",
