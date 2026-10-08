@@ -123,8 +123,6 @@ fn leak(text: String) -> &'static str {
 }
 
 proptest! {
-    #![proptest_config(crate::property::config())]
-
     #[test]
     fn new_panics_on_a_segment_that_breaks_the_rule_and_names_that_segment(
         mut segments in prop::array::uniform3(SEGMENT),
