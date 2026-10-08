@@ -96,9 +96,12 @@ pub enum Recovery {
 /// `Error` does not implement `Failure`. If it did, the blanket `From` impl
 /// would also cover `From<Error> for Error`, which the standard library
 /// already provides for every type, and the compiler rejects the overlap.
-/// anyhow's `Error` has the same restriction. `finish` accepts an `Error`
-/// through [`AsFailure`] instead, and [`Error::failure`] gives read access to
-/// the failure inside.
+/// `finish` accepts an `Error` through [`AsFailure`] instead, and
+/// [`Error::failure`] gives read access to the failure inside.
+///
+/// `Error` implements `std::error::Error`, with the `Display` and `source()`
+/// of the failure inside, so a tool's `main` can pass it on to
+/// `Box<dyn std::error::Error>` or another error library.
 ///
 /// ```
 /// # use std::fmt;
@@ -155,6 +158,13 @@ impl fmt::Debug for Error {
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Display::fmt(&self.0, f)
+    }
+}
+
+/// Returns the `source()` of the failure inside.
+impl std::error::Error for Error {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        self.0.source()
     }
 }
 

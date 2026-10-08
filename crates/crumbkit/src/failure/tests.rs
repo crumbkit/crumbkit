@@ -1,5 +1,6 @@
 //! Tests for `Error` and its conversions.
 
+use std::error::Error as _;
 use std::fmt;
 
 use super::{AsFailure as _, Error, Failure, Recovery};
@@ -49,6 +50,32 @@ impl Failure for Timeout {
 
     fn recovery(&self) -> Recovery {
         Recovery::Retry
+    }
+}
+
+/// A failure whose source is the missing book.
+#[derive(Debug)]
+struct CannotLend(NoSuchBook);
+
+impl fmt::Display for CannotLend {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str("the book cannot be lent")
+    }
+}
+
+impl std::error::Error for CannotLend {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        Some(&self.0)
+    }
+}
+
+impl Failure for CannotLend {
+    fn code(&self) -> &'static Code {
+        &NOT_FOUND
+    }
+
+    fn recovery(&self) -> Recovery {
+        Recovery::Hint("lend another book".to_owned())
     }
 }
 
@@ -105,4 +132,21 @@ fn a_failure_and_an_error_both_read_as_the_same_failure() {
         failure.as_failure().to_string(),
         error.as_failure().to_string()
     );
+}
+
+#[test]
+fn an_error_converts_into_a_boxed_standard_error_and_keeps_its_message() {
+    let boxed: Box<dyn std::error::Error + Send + Sync> = Error::from(NoSuchBook(7)).into();
+
+    assert_eq!(boxed.to_string(), "the catalogue has no book 7");
+}
+
+#[test]
+fn the_source_of_an_error_is_the_source_of_the_failure_inside() {
+    let error = Error::from(CannotLend(NoSuchBook(7)));
+
+    let source = error.source().unwrap();
+
+    assert_eq!(source.downcast_ref::<NoSuchBook>().unwrap().0, 7);
+    assert!(Error::from(NoSuchBook(7)).source().is_none());
 }

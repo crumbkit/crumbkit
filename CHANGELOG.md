@@ -56,10 +56,11 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   code into text, with `Spelling::COLONS`, `DOTS`, `SLASHES` and
   `Spelling::custom`.
 - `Error` holds any `Failure`, so `?` converts each of a tool's error types
-  into one type. `AsFailure` is the sealed bound through which `finish`
-  accepts a `Failure` or an `Error`.
+  into one type. `Error` implements `std::error::Error`, so a tool's `main`
+  can pass it on to `Box<dyn std::error::Error>`. `AsFailure` is the sealed
+  bound through which `finish` accepts a `Failure` or an `Error`.
 - crumbkit-test's `check_codes` fails a test, naming every problem, when two
   of a tool's codes spell the same, or when a spelled code is empty or holds
-  whitespace or characters outside ASCII.
+  a character other than printable ASCII, `!` to `~`.
 - `crates/crumbkit/schemas/failure-v1.json` holds the JSON Schema of the
   `crumbkit/failure/v1` document.

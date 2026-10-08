@@ -7,8 +7,8 @@ crumbkit is in design and is not published yet. This crate has one check.
 - `check_codes` takes the tool's `Spelling` and the `CODES` list of each of
   its error types, and spells every code as `finish` prints it. The test
   fails, naming every problem, when two different codes spell the same, or
-  when a spelled code is empty or holds whitespace or characters outside
-  ASCII. A code that two lists share counts once.
+  when a spelled code is empty or holds a character other than printable
+  ASCII, `!` to `~`. A code that two lists share counts once.
 
 ```rust
 use crumbkit::{Code, Spelling};

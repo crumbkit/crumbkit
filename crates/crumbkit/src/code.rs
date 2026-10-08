@@ -117,8 +117,8 @@ impl Spelling {
     /// [`Code::reason`].
     ///
     /// crumbkit-test's codes check fails when two of a tool's codes spell the
-    /// same, or when a spelled code is empty or holds whitespace or
-    /// characters outside ASCII.
+    /// same, or when a spelled code is empty or holds a character other than
+    /// printable ASCII, `!` to `~`.
     ///
     /// ```
     /// use std::fmt;
