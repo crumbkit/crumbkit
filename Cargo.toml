@@ -4,6 +4,7 @@ members = [
     "crates/crumbkit",
     "crates/crumbkit-test",
     "examples/shelf",
+    "xtask",
 ]
 
 [workspace.package]
