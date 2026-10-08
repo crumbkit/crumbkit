@@ -4,6 +4,10 @@
 //! such as `0.0.0+git-951022a3a14a`, and adds `.dirty` when tracked files have
 //! uncommitted changes. A build without git, or outside a checkout, prints the
 //! plain package version.
+//!
+//! This script runs git itself because it needs only three git commands. When
+//! it needs more of git's metadata, such as tags or commit dates, replace it
+//! with vergen-gitcl.
 
 use std::process::Command;
 
