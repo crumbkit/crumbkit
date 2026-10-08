@@ -46,10 +46,34 @@ mod tests;
 /// #     fn code(&self) -> &'static Code { &NOT_FOUND }
 /// #     fn recovery(&self) -> Recovery { Recovery::Run(Call::new(&["books", "list"])) }
 /// # }
+/// # fn find(id: u32) -> Result<Book, u32> {
+/// #     if id == 2 { Ok(Book { id }) } else { Err(id) }
+/// # }
+/// use std::num::NonZeroUsize;
+///
 /// use crumbkit::Batch;
 ///
-/// let found = vec![Book { id: 2 }];
-/// let batch = Batch::new(found, vec![NoSuchBooks(vec![7, 9])]);
+/// const WORKERS: NonZeroUsize = NonZeroUsize::new(4).unwrap();
+///
+/// // `find` looks up one book and returns the id itself when it is missing.
+/// fn show(ids: &[u32]) -> Batch<Book, NoSuchBooks> {
+///     let mut found = Vec::new();
+///     let mut missing = Vec::new();
+///     for result in crumbkit::fetch_each(ids, WORKERS, |&id| find(id)) {
+///         match result {
+///             Ok(book) => found.push(book),
+///             Err(id) => missing.push(id),
+///         }
+///     }
+///     // One failure names every missing id.
+///     let failures = if missing.is_empty() {
+///         Vec::new()
+///     } else {
+///         vec![NoSuchBooks(missing)]
+///     };
+///     Batch::new(found, failures)
+/// }
+/// # let _ = show(&[2, 7, 9]);
 /// ```
 #[derive(Debug)]
 pub struct Batch<R: Row, E: AsFailure> {
