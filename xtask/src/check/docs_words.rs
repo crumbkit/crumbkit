@@ -34,7 +34,7 @@ pub(super) fn check(files: &[File]) -> Vec<Violation> {
     words_by_directory
         .into_iter()
         .filter(|&(_, words)| words > LIMIT)
-        .map(|(directory, words)| Violation {
+        .map(|(directory, words)| Violation::OverLimit {
             path: directory.to_owned(),
             measured: words,
             unit: "words in this directory's Markdown",

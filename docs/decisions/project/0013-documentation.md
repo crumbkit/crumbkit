@@ -1,4 +1,4 @@
-# 0013. Documentation
+# ADR-0013. Documentation
 
 - rustdoc holds the API reference, tutorial and cookbook. An mdBook site in `docs/` holds the standards and these records.
 - Every terminal sample is an included golden file.

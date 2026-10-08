@@ -1,4 +1,4 @@
-# 0001. Errors
+# ADR-0001. Errors
 
 - `Failure: std::error::Error` has `code() -> &'static Code` and `recovery() -> Recovery`, plus a provided `url()` that returns `None` by default. The cause line is the error's `Display`.
 - `Recovery` has the variants `Run(Call)`, `Retry`, `Hint(text)` and `None { reason }`. Text output labels the hint line `help:`.

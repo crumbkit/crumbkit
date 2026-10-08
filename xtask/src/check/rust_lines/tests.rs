@@ -19,7 +19,7 @@ fn a_rust_file_of_exactly_600_lines_passes() {
 fn a_rust_file_of_601_lines_is_reported_with_its_count_and_the_limit() {
     assert_eq!(
         check(&[file("src/lib.rs", 601)]),
-        [Violation {
+        [Violation::OverLimit {
             path: "src/lib.rs".to_owned(),
             measured: 601,
             unit: "lines",
