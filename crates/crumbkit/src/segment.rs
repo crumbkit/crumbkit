@@ -1,5 +1,8 @@
 //! The character rule for the segments of document ids and failure codes.
 
+#[cfg(test)]
+mod tests;
+
 /// Returns whether `text` is a non-empty run of lowercase ASCII letters, ASCII
 /// digits and the byte `punctuation`.
 ///

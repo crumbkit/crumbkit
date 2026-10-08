@@ -16,6 +16,7 @@ records in `docs/decisions/` explain the choices behind the rules.
 - **RUST-8.** A `.rs` file has at most 600 lines, so a person or an agent can read it whole. Gate: `cargo xtask check` counts each file's lines and fails, naming every file over 600; split such a file into modules.
 - **RUST-9.** `rust-toolchain.toml` pins the stable toolchain and only a pull request of its own moves it, so a new clippy release never fails an unrelated change. The MSRV is the workspace `rust-version`, 1.89. Gate: review, and `cargo +1.89.0 check --workspace --all-targets` for the MSRV.
 - **RUST-10.** Code that deliberately does less than a maintained crate or a fuller design would says so in a comment at that spot: what it handles, what it misses, and what replaces it once it needs more, so a reader does not copy the shortcut as a convention. The comment is required where copying the shortcut would be costly, such as a hand-written argument or Markdown parser where a crate is the norm, and is unnecessary for a local choice, such as an `if` chain that could be a `match`. Gate: review.
+- **RUST-11.** Every property test runs with one fixed seed and without proptest's regression files, so a CI run generates the same cases on every machine and a fix adds a unit test that holds the failing input (ADR-0006). The `[env]` table in `.cargo/config.toml` sets `PROPTEST_RNG_SEED` and `PROPTEST_DISABLE_FAILURE_PERSISTENCE`, and `cargo test` and `cargo nextest` pass both to every test. Gate: `.cargo/config.toml`, which review guards.
 
 ## Documentation
 

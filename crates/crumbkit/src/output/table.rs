@@ -12,9 +12,10 @@ mod tests;
 ///
 /// The first line is the header, which shows each column name in upper case,
 /// and each row follows on its own line. Each column is as wide as its widest
-/// cell, two spaces separate the columns, and the last column is not padded,
-/// so no line ends in spaces. Each row is a serialized row, and a cell is the
-/// row's field with the column's name.
+/// cell, and two spaces separate the columns. A line ends with the text of its
+/// last non-empty cell, so no line ends in padding or separator spaces. A
+/// cell's own text prints unchanged, including any spaces at its end. Each row
+/// is a serialized row, and a cell is the row's field with the column's name.
 pub(super) fn write(out: &mut impl Write, columns: &[&str], rows: &[Value]) -> io::Result<()> {
     let mut lines: Vec<Vec<Cow<'_, str>>> = Vec::with_capacity(rows.len() + 1);
     lines.push(
@@ -46,16 +47,20 @@ pub(super) fn write(out: &mut impl Write, columns: &[&str], rows: &[Value]) -> i
     Ok(())
 }
 
-/// Writes one line of the table: each cell padded to its column's width and
-/// followed by two spaces, except the last cell, which is written as it is.
+/// Writes one line of the table. Each cell starts at its column's offset,
+/// which is the end of the cell before it plus that cell's padding to its
+/// column's width plus two separator spaces. Those spaces are held back and
+/// written only before a non-empty cell, so a line never ends in them.
 fn write_line(out: &mut impl Write, cells: &[Cow<'_, str>], widths: &[usize]) -> io::Result<()> {
-    let last = cells.len().saturating_sub(1);
-    for (index, (cell, &width)) in cells.iter().zip(widths).enumerate() {
-        if index == last {
-            write!(out, "{cell}")?;
-        } else {
-            write!(out, "{cell:<width$}  ")?;
+    let mut spaces = 0;
+    for (cell, &width) in cells.iter().zip(widths) {
+        if !cell.is_empty() {
+            // An empty string padded to `spaces` characters writes that many
+            // spaces.
+            write!(out, "{:spaces$}{cell}", "")?;
+            spaces = 0;
         }
+        spaces += width - cell.chars().count() + 2;
     }
     writeln!(out)
 }
