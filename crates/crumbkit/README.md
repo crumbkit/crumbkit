@@ -6,7 +6,8 @@ its own clap types and its own `main`, and adopts only the parts it wants.
 
 crumbkit is in design and is not published yet. This crate prints a command's
 result in one of two formats: a compact text table for people and agents, and
-a JSON document for programs.
+a JSON document for programs. It prints a failure with a stable code and a
+next step in the same two formats.
 
 - `Row` marks a type that prints as one table row. It names the compact
   columns and the columns that `--long` adds.
@@ -36,17 +37,35 @@ a JSON document for programs.
   `Next: shelf books show <ID>... takes up to 100 ids in one call.` The line
   is left out when no command is set or the call does not resolve, and the
   JSON document never holds it.
-- `finish` prints a result in the format that the flags choose and returns the
-  exit code. `finish_to` does the same into a `Sink` over any two writers, so
-  a test reads the output from memory.
+- `Failure` extends `std::error::Error` with a stable `Code`, a `Recovery`
+  and an optional url. A tool implements it for each of its error types.
+- `Code` has three segments: the owning component, the area and the reason,
+  such as `shelf`, `books` and `not_found`. `Code::new` is a `const fn`, so a
+  malformed code fails to compile. `Code` has no `Display`.
+- `Spelling` turns a `Code` into text. `Spelling::COLONS` prints
+  `shelf::books::not_found`, `DOTS` prints `shelf.books.not_found`, `SLASHES`
+  prints `shelf/books/not_found`, and `Spelling::custom` takes a tool's own
+  function. A tool passes one spelling to `finish` and the same one to
+  crumbkit-test's `check_codes`.
+- `Recovery` is the caller's next step: `Run` a `Call`, `Retry` later, follow
+  a `Hint`, or `None` with a reason.
+- `Error` holds any `Failure`, and every `Failure` converts into it, so `?`
+  works across a tool's error types.
+- `finish` takes the handler's `Result` and returns the exit code. It prints
+  an `Ok` result in the format that the flags choose and exits with code 0.
+  It prints an `Err` as a failure on standard error, or with `--json` as one
+  `crumbkit/failure/v1` document on standard output, and exits with code 1.
+  `finish_to` does the same into a `Sink` over any two writers, so a test
+  reads the output from memory.
 
 A tool wires these parts into its own `main`:
 
 ```rust
+use std::fmt;
 use std::process::ExitCode;
 
 use clap::{CommandFactory, Parser};
-use crumbkit::{Call, Document, Listing, Output, Page, Row};
+use crumbkit::{Call, Code, Document, Failure, Listing, Output, Page, Recovery, Row, Spelling};
 use schemars::JsonSchema;
 use serde::Serialize;
 
@@ -64,6 +83,30 @@ impl Row for Book {
 }
 
 const BOOKS_LIST: Document<Listing<Book>> = Document::new("shelf", "books-list", 1);
+const SPELLING: Spelling = Spelling::COLONS;
+const UNKNOWN_AUTHOR: Code = Code::new("shelf", "books", "unknown_author");
+
+/// The catalogue has no book by the author the caller named.
+#[derive(Debug)]
+struct UnknownAuthor(String);
+
+impl fmt::Display for UnknownAuthor {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "the catalogue has no books by {}", self.0)
+    }
+}
+
+impl std::error::Error for UnknownAuthor {}
+
+impl Failure for UnknownAuthor {
+    fn code(&self) -> &'static Code {
+        &UNKNOWN_AUTHOR
+    }
+
+    fn recovery(&self) -> Recovery {
+        Recovery::Run(Call::new(&[]))
+    }
+}
 
 /// List the books in a small catalogue.
 #[derive(Parser)]
@@ -78,22 +121,29 @@ struct Cli {
     page: Page<2>,
 }
 
-fn main() -> ExitCode {
-    let mut cli = Cli::parse();
-    cli.output.set_command(Cli::command());
+fn list(cli: &Cli) -> Result<Listing<Book>, UnknownAuthor> {
     let books: Vec<Book> = vec![
         Book { id: 1, title: "Pride and Prejudice", author: "Jane Austen", year: 1813 },
         Book { id: 2, title: "Frankenstein", author: "Mary Shelley", year: 1818 },
         Book { id: 3, title: "Moby-Dick", author: "Herman Melville", year: 1851 },
     ];
-    let books = books
+    let books: Vec<Book> = books
         .into_iter()
         .filter(|book| cli.author.as_deref().is_none_or(|author| book.author == author))
         .collect();
-    let listing = Listing::from_all(books, cli.page.limit())
+    if let (Some(author), true) = (&cli.author, books.is_empty()) {
+        return Err(UnknownAuthor(author.clone()));
+    }
+    Ok(Listing::from_all(books, cli.page.limit())
         .described("books")
-        .next(Call::new(&[]).arg("author"), "lists one author's books.");
-    crumbkit::finish(&cli.output, BOOKS_LIST, listing)
+        .next(Call::new(&[]).arg("author"), "lists one author's books."))
+}
+
+fn main() -> ExitCode {
+    let mut cli = Cli::parse();
+    cli.output.set_command(Cli::command());
+    let result = list(&cli);
+    crumbkit::finish(&cli.output, SPELLING, BOOKS_LIST, result)
 }
 ```
 
@@ -104,6 +154,15 @@ books.` `--long` adds `YEAR`, and `--all` prints all three books and the
 `Next:` line without the footer. With `--json`, it prints one line holding a
 JSON object whose `schema` is `shelf/books-list/v1`, whose `data` is the
 array of books, and whose `total` is 3.
+
+With `--author 'Charles Dickens'`, it prints nothing on standard output and
+exits with code 1. Standard error holds three lines: `error: the catalogue
+has no books by Charles Dickens`, then `` help:  run `books` `` and
+`code:  shelf::books::unknown_author`, each indented by two spaces. With
+`--json` as well, standard output holds one line with a JSON object whose
+`schema` is `crumbkit/failure/v1`, whose `code` is
+`shelf::books::unknown_author`, and whose `recovery` is
+`{"kind":"run","call":"books"}`.
 
 Licensed under either of Apache License, Version 2.0 or MIT license at your
 option.

@@ -1,6 +1,8 @@
 //! The built-in book catalogue.
 
-use crumbkit::{Call, Document, Listing, Row};
+use std::fmt;
+
+use crumbkit::{Call, Code, Document, Failure, Listing, Recovery, Row};
 use schemars::JsonSchema;
 use serde::Serialize;
 
@@ -98,10 +100,14 @@ const CATALOGUE: [Book; 6] = [
 ///
 /// The catalogue is a constant in memory, so this builds every book and
 /// keeps the first page with `Listing::from_all`.
-pub(crate) fn list(args: &BooksList) -> Listing<Book> {
-    Listing::from_all(Vec::from(CATALOGUE), args.page.limit())
+#[expect(
+    clippy::unnecessary_wraps,
+    reason = "every shelf handler returns Result<_, BooksError>, so main passes each result to finish in the same way"
+)]
+pub(crate) fn list(args: &BooksList) -> Result<Listing<Book>, BooksError> {
+    Ok(Listing::from_all(Vec::from(CATALOGUE), args.page.limit())
         .described("books")
-        .next(show_call(), "takes up to 100 ids in one call.")
+        .next(show_call(), "takes up to 100 ids in one call."))
 }
 
 /// Returns the call that the output of `shelf books list` names as its next
@@ -113,11 +119,82 @@ pub(crate) fn show_call() -> Call {
 /// Returns the books that `args` names, in the order given, so a repeated id
 /// returns its book again.
 ///
-/// clap accepts only the ids in the catalogue (see `BooksShow`), so every id
-/// finds its book and `filter_map` skips none.
-pub(crate) fn show(args: &BooksShow) -> Vec<Book> {
-    args.ids
-        .iter()
-        .filter_map(|&id| CATALOGUE.iter().find(|book| book.id == id).cloned())
-        .collect()
+/// # Errors
+///
+/// Returns `BooksError::NotFound` naming every id that the catalogue lacks,
+/// and no books, when any id is missing.
+pub(crate) fn show(args: &BooksShow) -> Result<Vec<Book>, BooksError> {
+    let mut books = Vec::with_capacity(args.ids.len());
+    let mut missing = Vec::new();
+    for &id in &args.ids {
+        match CATALOGUE.iter().find(|book| book.id == id) {
+            Some(book) => books.push(book.clone()),
+            None if !missing.contains(&id) => missing.push(id),
+            None => {}
+        }
+    }
+    if missing.is_empty() {
+        Ok(books)
+    } else {
+        Err(BooksError::NotFound { ids: missing })
+    }
+}
+
+/// The code of a failure that names a book the catalogue lacks.
+const NOT_FOUND: Code = Code::new("shelf", "books", "not_found");
+
+/// A failure of a books command.
+#[derive(Debug)]
+pub(crate) enum BooksError {
+    /// The catalogue has no book with these ids. Each id appears once, in
+    /// the order the caller gave it.
+    NotFound {
+        /// The ids that name no book.
+        ids: Vec<u32>,
+    },
+}
+
+impl BooksError {
+    /// Every code that a `BooksError` returns. Only shelf's test reads the
+    /// list, which it passes to crumbkit-test's codes check.
+    #[cfg(test)]
+    pub(crate) const CODES: &'static [&'static Code] = &[&NOT_FOUND];
+}
+
+/// Prints `the catalogue has no book 7` for one id, and `the catalogue has no
+/// books 7, 9` for more.
+impl fmt::Display for BooksError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::NotFound { ids } => {
+                let noun = if ids.len() == 1 { "book" } else { "books" };
+                write!(f, "the catalogue has no {noun} ")?;
+                for (index, id) in ids.iter().enumerate() {
+                    if index > 0 {
+                        f.write_str(", ")?;
+                    }
+                    write!(f, "{id}")?;
+                }
+                Ok(())
+            }
+        }
+    }
+}
+
+impl std::error::Error for BooksError {}
+
+/// A missing book's next step is `shelf books list`, which prints the ids
+/// that exist.
+impl Failure for BooksError {
+    fn code(&self) -> &'static Code {
+        match self {
+            Self::NotFound { .. } => &NOT_FOUND,
+        }
+    }
+
+    fn recovery(&self) -> Recovery {
+        match self {
+            Self::NotFound { .. } => Recovery::Run(Call::new(&["books", "list"])),
+        }
+    }
 }

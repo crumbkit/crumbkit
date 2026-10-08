@@ -1,3 +1,3 @@
-error: invalid value '7' for '<ID>...': 7 is not in 1..=6
-
-For more information, try '--help'.
+error: the catalogue has no book 7
+  help:  run `shelf books list`
+  code:  shelf::books::not_found

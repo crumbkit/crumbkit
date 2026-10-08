@@ -10,7 +10,7 @@ use serde::ser::Error as _;
 use serde::{Serialize, Serializer};
 
 use super::{Output, finish_to};
-use crate::{Call, Document, Listing, Row, Rows, Sink};
+use crate::{Call, Document, Error, Listing, Row, Rows, Sink, Spelling};
 
 /// A row with two compact columns, one long column and one field that only
 /// `--full` shows. The last field is renamed, so its column name is `au`.
@@ -91,11 +91,14 @@ fn finish_with<T: Rows>(flags: &[&str], document: Document<T>, value: T) -> Fini
     finish_output(&output, document, value)
 }
 
-/// Finishes `value` into memory with the flags and command in `output`.
+/// Finishes `value` into memory as an `Ok` result with the flags and command
+/// in `output`.
 fn finish_output<T: Rows>(output: &Output, document: Document<T>, value: T) -> Finished {
     let mut out = Vec::new();
     let mut err = Vec::new();
-    let code = finish_to(&mut Sink::new(&mut out, &mut err), output, document, value);
+    let mut sink = Sink::new(&mut out, &mut err);
+    let result: Result<T, Error> = Ok(value);
+    let code = finish_to(&mut sink, output, Spelling::COLONS, document, result);
     Finished {
         code,
         out: String::from_utf8(out).unwrap(),
@@ -313,8 +316,15 @@ impl Write for Failing {
 fn a_failed_write_exits_with_code_1_and_reports_the_cause() {
     let mut err = Vec::new();
     let mut sink = Sink::new(Failing(io::ErrorKind::Other), &mut err);
+    let result: Result<_, Error> = Ok(vec![saturn()]);
 
-    let code = finish_to(&mut sink, &Output::default(), PLANETS, vec![saturn()]);
+    let code = finish_to(
+        &mut sink,
+        &Output::default(),
+        Spelling::COLONS,
+        PLANETS,
+        result,
+    );
 
     assert_eq!(code, ExitCode::FAILURE);
     assert_eq!(
@@ -327,8 +337,15 @@ fn a_failed_write_exits_with_code_1_and_reports_the_cause() {
 fn a_reader_that_closes_the_pipe_early_still_exits_with_code_0_and_no_error() {
     let mut err = Vec::new();
     let mut sink = Sink::new(Failing(io::ErrorKind::BrokenPipe), &mut err);
+    let result: Result<_, Error> = Ok(vec![saturn()]);
 
-    let code = finish_to(&mut sink, &Output::default(), PLANETS, vec![saturn()]);
+    let code = finish_to(
+        &mut sink,
+        &Output::default(),
+        Spelling::COLONS,
+        PLANETS,
+        result,
+    );
 
     assert_eq!(code, ExitCode::SUCCESS);
     assert_eq!(String::from_utf8(err).unwrap(), "");
