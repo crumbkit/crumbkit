@@ -75,3 +75,18 @@ include-dependencies = true
 # crate from any other registry or from a git repository fails the check.
 unknown-registry = "deny"
 unknown-git = "deny"
+
+# proptest, which only crumbkit's tests use, brings two crates whose published
+# sources hold scripts that the build check rejects: proptest itself, and
+# zerocopy, which proptest reaches through rand_chacha and ppv-lite86. The
+# scripts are their authors' test, CI and release helpers, and no build runs
+# them: proptest has no build script, and zerocopy's build script is Rust that
+# asks rustc for its version. Each entry allows only the paths of those
+# scripts, so a script elsewhere in either crate still fails the check.
+[[bans.build.bypass]]
+crate = "proptest"
+allow-globs = ["test-persistence-location/run-tests.*"]
+
+[[bans.build.bypass]]
+crate = "zerocopy"
+allow-globs = ["cargo.sh", "win-cargo.bat", "ci/*.sh"]
