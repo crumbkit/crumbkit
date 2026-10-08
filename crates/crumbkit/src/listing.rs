@@ -2,29 +2,32 @@
 
 use serde::{Serialize, Serializer};
 
-use crate::{Row, Rows};
+use crate::{Call, Row, Rows};
 
 #[cfg(test)]
 mod tests;
 
-/// One page of rows, the total number of rows that matched, and an optional
-/// phrase that names them.
+/// One page of rows, the total number of rows that matched, an optional
+/// phrase that names them, and an optional next step.
 ///
 /// A command returns a listing when it may show fewer rows than matched,
 /// and flattens [`Page`](crate::Page) into its arguments so the caller can
 /// choose how many. [`finish`](crate::finish) prints the total under `total`
 /// in JSON. In text it prints a footer after the table when fewer rows are
 /// shown than the total, such as `Showing 4 of 6 books. --all shows every
-/// one.`
+/// one.`, and then the next step, such as `Next: shelf books show <ID>...
+/// takes up to 100 ids in one call.`
 ///
 /// ```
 /// # #[derive(serde::Serialize, schemars::JsonSchema)]
 /// # struct Book { id: u32 }
 /// # impl crumbkit::Row for Book { const COLUMNS: &'static [&'static str] = &["id"]; }
-/// use crumbkit::Listing;
+/// use crumbkit::{Call, Listing};
 ///
 /// let books: Vec<Book> = (1..=6).map(|id| Book { id }).collect();
-/// let listing = Listing::from_all(books, Some(4)).described("books");
+/// let listing = Listing::from_all(books, Some(4))
+///     .described("books")
+///     .next(Call::new(&["books", "show"]).arg("ids"), "takes up to 100 ids in one call.");
 /// ```
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Listing<R: Row> {
@@ -35,6 +38,9 @@ pub struct Listing<R: Row> {
     total: usize,
     /// The phrase that names the rows in the footer, such as `books`.
     description: Option<String>,
+    /// The command that the text output names as the next step, and the
+    /// phrase that follows it on the `Next:` line.
+    next: Option<(Call, String)>,
 }
 
 impl<R: Row> Listing<R> {
@@ -59,6 +65,7 @@ impl<R: Row> Listing<R> {
             rows,
             total,
             description: None,
+            next: None,
         }
     }
 
@@ -88,6 +95,21 @@ impl<R: Row> Listing<R> {
         self.description = Some(description.into());
         self
     }
+
+    /// Sets the next step that the text output names after the table and the
+    /// footer: the line `Next: {call} {phrase}`, such as `Next: shelf books
+    /// show <ID>... takes up to 100 ids in one call.` The JSON document
+    /// leaves it out.
+    ///
+    /// [`finish`](crate::finish) renders `call` against the command that
+    /// [`Output::set_command`](crate::Output::set_command) received, and
+    /// leaves the line out when no command is set or `call` does not
+    /// resolve. The phrase prints unchanged, so it carries its own full stop.
+    #[must_use]
+    pub fn next(mut self, call: Call, phrase: impl Into<String>) -> Self {
+        self.next = Some((call, phrase.into()));
+        self
+    }
 }
 
 /// Serializes the listing as the array of its rows. [`finish`](crate::finish)
@@ -112,5 +134,11 @@ impl<R: Row> Rows for Listing<R> {
 
     fn description(&self) -> Option<&str> {
         self.description.as_deref()
+    }
+
+    fn next_step(&self) -> Option<(&Call, &str)> {
+        self.next
+            .as_ref()
+            .map(|(call, phrase)| (call, phrase.as_str()))
     }
 }
