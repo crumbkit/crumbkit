@@ -19,7 +19,7 @@ fn an_agents_file_of_exactly_200_words_passes() {
 fn an_agents_file_of_201_words_is_reported_with_its_count_and_the_limit() {
     assert_eq!(
         check(&[file("AGENTS.md", 201)]),
-        [Violation {
+        [Violation::OverLimit {
             path: "AGENTS.md".to_owned(),
             measured: 201,
             unit: "words",
@@ -40,7 +40,10 @@ fn words_are_separated_by_any_whitespace() {
         contents: "one\ttwo\n\nthree   four\n".repeat(101),
     };
 
-    assert_eq!(check(&[agents])[0].measured, 404);
+    assert!(matches!(
+        check(&[agents])[..],
+        [Violation::OverLimit { measured: 404, .. }]
+    ));
 }
 
 #[test]

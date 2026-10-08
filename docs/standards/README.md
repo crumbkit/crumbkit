@@ -1,8 +1,8 @@
 # Standards
 
 Each rule states what crumbkit's own code does, why, and the gate that enforces
-it: a lint, an xtask check, or review where no tool reaches. The records in
-`docs/decisions/` explain the choices behind the rules.
+it: a lint, an xtask check, or review where no tool reaches. The decision
+records in `docs/decisions/` explain the choices behind the rules.
 
 ## Rust
 
@@ -20,3 +20,4 @@ it: a lint, an xtask check, or review where no tool reaches. The records in
 
 - **DOCS-1.** An `AGENTS.md` has at most 200 words, because an agent reads it at the start of every session, and it holds only what no tool or other document tells the agent. Gate: `cargo xtask check` counts whitespace-separated words and fails, naming every file over 200.
 - **DOCS-2.** The Markdown files directly inside one directory of the `docs/` tree total at most 5,000 words, counting code blocks and tables, so each directory can be read in one sitting. Gate: `cargo xtask check docs` counts each directory on its own and fails, naming every directory over 5,000.
+- **DOCS-3.** Every Markdown file under `docs/decisions/` is a decision record whose first line is `# ADR-NNNN. Title`, numbers are unique across the whole tree, and code and docs cite a record as `ADR-NNNN`, so one search finds every reference to a decision and a citation cannot outlive its record. Gate: `cargo xtask check docs` fails on a missing title, a reused number, or a citation of a number that no record uses.
