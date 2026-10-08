@@ -1,17 +1,22 @@
 //! `cargo xtask` runs crumbkit's repository checks.
 //!
-//! `cargo xtask check` runs every check, and `cargo xtask check docs` runs only
-//! the docs word check. This module holds every effect: it reads the command
-//! line, lists and reads the repository's files, prints violations and sets the
-//! exit code. The checks themselves are pure functions in [`check`].
+//! `cargo xtask check` runs every check, `cargo xtask check docs` runs only the
+//! checks on `docs/`, and `cargo xtask ci-time` checks the median wall time of
+//! recent pull-request CI runs. This module holds every effect: it reads the
+//! command line, lists and reads the repository's files, runs `gh`, prints the
+//! results and sets the exit code. The checks themselves are pure functions in
+//! [`check`] and [`ci_time`].
 
 mod check;
+mod ci_time;
 
 use std::ffi::OsStr;
+use std::fs;
 use std::io::{self, Write};
 use std::path::Path;
 use std::process::{Command, ExitCode};
-use std::{env, fs};
+
+use clap::{Parser, Subcommand};
 
 use crate::check::{File, Selection};
 
@@ -21,44 +26,57 @@ mod tests;
 /// The repository root, which is the parent of this package's directory.
 const ROOT: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/..");
 
-/// Runs the checks that the command line selects. The exit code is 0 when the
-/// repository passes, 1 when it has a violation or cannot be read, and 2 when
-/// the command line is not one of the two accepted forms.
+/// Runs crumbkit's repository checks.
+#[derive(Debug, PartialEq, Eq, Parser)]
+#[command(bin_name = "cargo xtask")]
+enum Cli {
+    /// Runs every repository check, or only the checks on docs/.
+    Check {
+        #[command(subcommand)]
+        scope: Option<Scope>,
+    },
+    /// Fails when the median wall time of the last 20 successful pull-request
+    /// CI runs is over 300 seconds.
+    CiTime,
+}
+
+/// A part of the repository checks that `check` can run on its own.
+#[derive(Debug, PartialEq, Eq, Subcommand)]
+enum Scope {
+    /// Runs only the checks on docs/: the directory word check and the
+    /// decision record checks.
+    Docs,
+}
+
+/// Runs the check that the command line selects. The exit code is 0 when the
+/// check passes, 1 when it fails or cannot run, and 2 when clap refuses the
+/// command line.
 fn main() -> ExitCode {
-    let args: Vec<String> = env::args().skip(1).collect();
+    let cli = Cli::parse();
 
     #[expect(
         clippy::disallowed_methods,
-        reason = "main owns standard error, where xtask prints usage, violations and failures"
+        reason = "main owns standard error, where xtask prints results and failures"
     )]
     let mut stderr = io::stderr().lock();
 
-    // A failed write to standard error has nowhere else to be reported, so
-    // main ignores it and the exit code still gives the outcome.
-    let Some(selection) = parse_args(&args) else {
-        let _ = writeln!(stderr, "usage: cargo xtask check [docs]");
-        return ExitCode::from(2);
+    let outcome = match cli {
+        Cli::Check { scope: None } => check_repository(Selection::All, &mut stderr),
+        Cli::Check {
+            scope: Some(Scope::Docs),
+        } => check_repository(Selection::Docs, &mut stderr),
+        Cli::CiTime => check_ci_time(&mut stderr),
     };
-    match check_repository(selection, &mut stderr) {
+    match outcome {
         Ok(true) => ExitCode::SUCCESS,
         Ok(false) => ExitCode::FAILURE,
         Err(error) => {
+            // A failed write to standard error has nowhere else to be
+            // reported, so main ignores it and the exit code still gives the
+            // outcome.
             let _ = writeln!(stderr, "error: {error}");
             ExitCode::FAILURE
         }
-    }
-}
-
-/// Returns the checks that `args` select, or `None` when `args`, which exclude
-/// the program name, are not `check` or `check docs`.
-///
-/// This matches the two forms by hand only because there are two. When xtask
-/// needs a third form, a flag or a value, replace this function with clap.
-fn parse_args(args: &[String]) -> Option<Selection> {
-    match args {
-        [command] if command == "check" => Some(Selection::All),
-        [command, check] if command == "check" && check == "docs" => Some(Selection::Docs),
-        _ => None,
     }
 }
 
@@ -71,6 +89,62 @@ fn check_repository(selection: Selection, out: &mut impl Write) -> io::Result<bo
         writeln!(out, "{violation}")?;
     }
     Ok(violations.is_empty())
+}
+
+/// Measures the recent pull-request runs of the CI workflow and writes the
+/// report to `out` as one line. Returns whether the median passes.
+fn check_ci_time(out: &mut impl Write) -> io::Result<bool> {
+    let report = ci_time::measure(&run_seconds()?);
+    writeln!(out, "{report}")?;
+    Ok(report.passes())
+}
+
+/// Returns the wall time in seconds of each of the last 20 successful runs of
+/// the CI workflow that GitHub started for `pull_request` events.
+///
+/// `gh api` fetches the runs of the repository in the current directory, and
+/// its built-in jq filter prints one number of seconds per run, so xtask
+/// parses no JSON or dates. A run object has no completion time, so the filter
+/// uses `updated_at`, which for a completed run is the time it finished.
+fn run_seconds() -> io::Result<Vec<u64>> {
+    let endpoint = format!(
+        "repos/{{owner}}/{{repo}}/actions/workflows/{}/runs?event=pull_request&status=success&per_page={}",
+        ci_time::WORKFLOW_FILE,
+        ci_time::RUNS
+    );
+    #[expect(
+        clippy::disallowed_methods,
+        reason = "this module owns xtask's process effects and runs gh to read the CI runs"
+    )]
+    let mut gh = Command::new("gh");
+    let output = gh
+        .args([
+            "api",
+            &endpoint,
+            "--jq",
+            ".workflow_runs[] | (.updated_at | fromdate) - (.run_started_at | fromdate)",
+        ])
+        .current_dir(ROOT)
+        .output()
+        .map_err(|error| io::Error::other(format!("cannot run gh: {error}")))?;
+    if !output.status.success() {
+        let message = String::from_utf8_lossy(&output.stderr);
+        return Err(io::Error::other(format!(
+            "gh api failed: {}",
+            message.trim()
+        )));
+    }
+    let listing = String::from_utf8(output.stdout).map_err(io::Error::other)?;
+    listing
+        .lines()
+        .map(|line| {
+            line.parse().map_err(|_| {
+                io::Error::other(format!(
+                    "gh printed {line:?}, which is not a whole number of seconds"
+                ))
+            })
+        })
+        .collect()
 }
 
 /// Lists the repository's files with `git ls-files`, including untracked files
