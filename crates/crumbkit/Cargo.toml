@@ -11,5 +11,22 @@ keywords = ["cli", "clap", "agents", "help", "errors"]
 categories = ["command-line-interface"]
 include = ["src/**/*.rs", "README.md", "LICENSE-APACHE", "LICENSE-MIT"]
 
+[dependencies]
+# `Output` derives `clap::Args`.
+clap = { workspace = true, features = ["derive"] }
+# crumbkit implements `Serialize` by hand, so it needs no serde feature.
+serde = { workspace = true }
+# `std` gives `to_writer` over an `io::Write`, and serde_json needs `std` or
+# `alloc` to build at all.
+serde_json = { workspace = true, features = ["std"] }
+# `schema_for!` and the `JsonSchema` trait need no schemars feature.
+schemars = { workspace = true }
+
+[dev-dependencies]
+# The tests and the README example derive `Serialize` and `JsonSchema` for
+# their rows.
+serde = { workspace = true, features = ["derive"] }
+schemars = { workspace = true, features = ["derive"] }
+
 [lints]
 workspace = true
