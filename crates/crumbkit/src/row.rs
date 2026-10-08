@@ -39,7 +39,8 @@ pub trait Row: Serialize + JsonSchema {
     const LONG_COLUMNS: &'static [&'static str] = &[];
 }
 
-/// A result that prints as a table: one [`Row`], or a `Vec` of rows.
+/// A result that prints as a table: one [`Row`], a `Vec` of rows, or a
+/// [`Listing`](crate::Listing).
 ///
 /// crumbkit implements this trait, and a tool cannot implement it, so crumbkit
 /// can add result shapes later without breaking a tool.
@@ -53,6 +54,18 @@ pub trait Rows: Serialize + sealed::Sealed {
 
     /// Returns the rows in order. A single row is a slice of one.
     fn rows(&self) -> &[Self::Row];
+
+    /// Returns the number of rows that matched when the result is one page
+    /// of them, and `None` otherwise. Only a `Listing` returns a total.
+    fn total(&self) -> Option<usize> {
+        None
+    }
+
+    /// Returns the phrase that names the rows in the text footer, such as
+    /// `books`. Only a `Listing` returns one.
+    fn description(&self) -> Option<&str> {
+        None
+    }
 }
 
 impl<R: Row> Rows for R {
@@ -83,4 +96,6 @@ mod sealed {
     impl<R: super::Row> Sealed for R {}
 
     impl<R: super::Row> Sealed for Vec<R> {}
+
+    impl<R: super::Row> Sealed for crate::Listing<R> {}
 }

@@ -72,6 +72,11 @@ pub fn finish<T: Rows>(output: &Output, document: Document<T>, value: T) -> Exit
 /// holding an object with the `schema` id of `document` and the result under
 /// `data`; a single row's `data` is an object, and a `Vec`'s is an array.
 ///
+/// A [`Listing`](crate::Listing)'s `data` is an array, and its JSON document
+/// also holds the number of matching rows under `total`. When a listing
+/// shows fewer rows than its total, the table ends with a footer line, such
+/// as `Showing 4 of 6 books. --all shows every one.`
+///
 /// The exit code is 0 when the result is written, and also when the reader
 /// closed the pipe early. It is 1 when a write fails for any other reason, or
 /// when the result cannot be serialized, and the cause goes to the sink's
@@ -149,7 +154,7 @@ fn write_result<T: Rows>(
     if output.full {
         // Serializing the rows directly keeps every field in its declaration
         // order.
-        write_document(out, document, value)?;
+        write_document(out, document, value, value.total())?;
         return out.flush();
     }
 
@@ -182,38 +187,71 @@ fn write_result<T: Rows>(
         // A single row's `data` is an object, and a list's is an array even
         // when it holds one row.
         match selected.as_slice() {
-            [single] if T::SINGLE => write_document(out, document, single)?,
-            list => write_document(out, document, &list)?,
+            [single] if T::SINGLE => write_document(out, document, single, value.total())?,
+            list => write_document(out, document, &list, value.total())?,
         }
     } else {
         table::write(out, &columns, &rows)?;
+        write_footer(out, value)?;
     }
     out.flush()
 }
 
+/// Writes the footer line that follows the table when `value` is a listing
+/// that shows fewer rows than its total, such as `Showing 4 of 6 books. --all
+/// shows every one.` Otherwise it writes nothing.
+fn write_footer<T: Rows>(out: &mut impl Write, value: &T) -> io::Result<()> {
+    let shown = value.rows().len();
+    let Some(total) = value.total() else {
+        return Ok(());
+    };
+    if shown >= total {
+        return Ok(());
+    }
+    match value.description() {
+        Some(description) => writeln!(
+            out,
+            "Showing {shown} of {total} {description}. --all shows every one."
+        ),
+        None => writeln!(out, "Showing {shown} of {total}. --all shows every one."),
+    }
+}
+
 /// Writes the JSON document `{"schema": <id>, "data": <data>}` to `out` on
-/// one line.
+/// one line, with `"total": <total>` after `data` when `total` is `Some`.
 fn write_document<T, D: Serialize>(
     out: &mut impl Write,
     document: Document<T>,
     data: &D,
+    total: Option<usize>,
 ) -> io::Result<()> {
-    serde_json::to_writer(&mut *out, &Envelope { document, data })?;
+    let envelope = Envelope {
+        document,
+        data,
+        total,
+    };
+    serde_json::to_writer(&mut *out, &envelope)?;
     out.write_all(b"\n")
 }
 
-/// A JSON document: the `schema` id followed by the result under `data`.
+/// A JSON document: the `schema` id, the result under `data`, and a
+/// listing's number of matching rows under `total`.
 struct Envelope<'a, T, D> {
     document: Document<T>,
     data: &'a D,
+    total: Option<usize>,
 }
 
 impl<T, D: Serialize> Serialize for Envelope<'_, T, D> {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        let mut map = serializer.serialize_map(Some(2))?;
+        let len = if self.total.is_some() { 3 } else { 2 };
+        let mut map = serializer.serialize_map(Some(len))?;
         // `format_args!` serializes as a string without building one.
         map.serialize_entry("schema", &format_args!("{}", self.document))?;
         map.serialize_entry("data", self.data)?;
+        if let Some(total) = self.total {
+            map.serialize_entry("total", &total)?;
+        }
         map.end()
     }
 }
