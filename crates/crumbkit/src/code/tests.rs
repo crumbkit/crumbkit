@@ -1,8 +1,12 @@
 //! Tests for failure codes and their spellings.
 
 use std::fmt;
+use std::panic;
+
+use proptest::prelude::*;
 
 use super::{Code, Spelling};
+use crate::segment::is_segment;
 
 const NOT_FOUND: Code = Code::new("shelf", "books", "not_found");
 
@@ -98,4 +102,77 @@ fn a_custom_spelling_spells_a_code_with_the_function_it_was_given() {
     const UPPER: Spelling = Spelling::custom(upper_area_and_reason);
 
     assert_eq!(UPPER.spell(&NOT_FOUND), "BOOKS-NOT_FOUND");
+}
+
+/// Generates a segment that `Code::new` accepts.
+const SEGMENT: &str = "[a-z0-9_]+";
+
+/// Generates strings of up to six characters drawn from the characters that a
+/// code segment allows and characters that it does not: an upper-case letter,
+/// a dash, a slash, a dot, a colon, a space and `é`. The test keeps only the
+/// strings that are not segments.
+const NEAR_SEGMENTS: &str = r"[a-z0-9_A\-/.: é]{0,6}";
+
+/// The name of each segment of a code, in the order `Code::new` takes them.
+const SEGMENT_NAMES: [&str; 3] = ["component", "area", "reason"];
+
+/// Returns `text` as a `&'static str`, which `Code::new` requires. Each case
+/// leaks a few short strings, which the test process frees when it exits.
+fn leak(text: String) -> &'static str {
+    text.leak()
+}
+
+proptest! {
+    #![proptest_config(crate::property::config())]
+
+    #[test]
+    fn new_panics_on_a_segment_that_breaks_the_rule_and_names_that_segment(
+        mut segments in prop::array::uniform3(SEGMENT),
+        position in 0..3_usize,
+        invalid in NEAR_SEGMENTS.prop_filter("the string is a segment", |text| {
+            !is_segment(text, b'_')
+        }),
+    ) {
+        segments[position] = invalid;
+        let [component, area, reason] = segments.map(leak);
+
+        let outcome = panic::catch_unwind(|| Code::new(component, area, reason));
+
+        let payload =
+            outcome.expect_err("Code::new accepted a segment that breaks the rule");
+        // `assert!` with a literal message panics with a `&str`.
+        let message = payload.downcast_ref::<&str>().copied().unwrap_or_default();
+        let expected = format!("a code {} is ", SEGMENT_NAMES[position]);
+        prop_assert!(message.starts_with(&expected), "{message}");
+    }
+
+    /// Splitting the text at the separator gives the segments back, so the
+    /// text is the segments joined by the separator, and two different codes
+    /// never spell the same: equal texts split into equal segments. The test
+    /// builds every code from three generated segments, so it also shows that
+    /// `Code::new` accepts any three segments that follow the rule.
+    #[test]
+    fn each_predefined_spelling_is_printable_ascii_that_splits_back_into_the_segments(
+        segments in prop::array::uniform3(SEGMENT),
+    ) {
+        let [component, area, reason] = segments.map(leak);
+        let code = Code::new(component, area, reason);
+
+        for (spelling, separator) in [
+            (Spelling::COLONS, "::"),
+            (Spelling::DOTS, "."),
+            (Spelling::SLASHES, "/"),
+        ] {
+            let text = spelling.spell(&code);
+
+            prop_assert!(
+                text.chars().all(|character| matches!(character, '!'..='~')),
+                "{text}"
+            );
+            prop_assert_eq!(
+                text.split(separator).collect::<Vec<_>>(),
+                [component, area, reason]
+            );
+        }
+    }
 }
