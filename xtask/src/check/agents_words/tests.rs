@@ -11,19 +11,19 @@ fn file(path: &str, words: usize) -> File {
 }
 
 #[test]
-fn an_agents_file_of_exactly_400_words_passes() {
-    assert_eq!(check(&[file("AGENTS.md", 400)]), []);
+fn an_agents_file_of_exactly_200_words_passes() {
+    assert_eq!(check(&[file("AGENTS.md", 200)]), []);
 }
 
 #[test]
-fn an_agents_file_of_401_words_is_reported_with_its_count_and_the_limit() {
+fn an_agents_file_of_201_words_is_reported_with_its_count_and_the_limit() {
     assert_eq!(
-        check(&[file("AGENTS.md", 401)]),
+        check(&[file("AGENTS.md", 201)]),
         [Violation {
             path: "AGENTS.md".to_owned(),
-            measured: 401,
+            measured: 201,
             unit: "words",
-            limit: 400,
+            limit: 200,
         }]
     );
 }

@@ -21,12 +21,12 @@ fn a_violation_prints_its_path_its_measure_and_the_limit_with_thousands_separato
 fn numbers_below_1000_print_without_a_separator() {
     let violation = Violation {
         path: "AGENTS.md".to_owned(),
-        measured: 401,
+        measured: 201,
         unit: "words",
-        limit: 400,
+        limit: 200,
     };
 
-    assert_eq!(violation.to_string(), "AGENTS.md: 401 words, limit 400");
+    assert_eq!(violation.to_string(), "AGENTS.md: 201 words, limit 200");
 }
 
 #[test]
