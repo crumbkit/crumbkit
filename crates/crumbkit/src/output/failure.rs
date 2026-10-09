@@ -14,6 +14,8 @@ use super::Output;
 use super::table::escape_controls;
 use crate::{Document, Failure, Recovery, Sink, Spelling};
 
+#[cfg(feature = "miette")]
+mod label;
 #[cfg(test)]
 mod tests;
 
@@ -65,6 +67,10 @@ pub(super) struct FailureDocument {
     /// The `Display` of each error in the failure's `source()` chain, in
     /// order.
     causes: Vec<String>,
+    /// The labels of the failure's miette diagnostic, in the order it gives
+    /// them. It is empty when the failure has no diagnostic.
+    #[cfg(feature = "miette")]
+    labels: Vec<label::Label>,
     /// The failure's recovery, with a `Run` call rendered as text.
     step: Step,
     /// The page that explains the failure, when there is one.
@@ -108,6 +114,10 @@ impl FailureDocument {
             code: spelling.spell(failure.code()),
             message: failure.to_string(),
             causes,
+            // A failure without a diagnostic costs one `None` check, and an
+            // empty `Vec` does not allocate.
+            #[cfg(feature = "miette")]
+            labels: failure.diagnostic().map_or_else(Vec::new, label::read),
             step,
             url: failure.url().map(str::to_owned),
         }
@@ -133,12 +143,19 @@ impl FailureDocument {
 /// ```
 ///
 /// A `cause:` line for each cause follows the `error:` line, and a `url:`
-/// line follows the `code:` line when the failure has a url. Each control
-/// character in a value prints as its escape, so each line stays one line.
+/// line follows the `code:` line when the failure has a url. With the
+/// `miette` feature, an `at:` line for each label of the failure's
+/// diagnostic follows the causes, each with its source line and an
+/// underline when the span could be read. Each control character in a value
+/// prints as its escape, so each line stays one line.
 pub(super) fn write_text(err: &mut impl Write, document: &FailureDocument) -> io::Result<()> {
     writeln!(err, "error: {}", escape_controls(&document.message))?;
     for cause in &document.causes {
         write_labelled(err, "cause:", cause)?;
+    }
+    #[cfg(feature = "miette")]
+    for label in &document.labels {
+        label.write_text(err)?;
     }
     write_labelled(err, "help:", &document.help())?;
     write_labelled(err, "code:", &document.code)?;
@@ -163,7 +180,8 @@ fn write_json(out: &mut impl Write, document: &FailureDocument) -> io::Result<()
 
 impl FailureDocument {
     /// Writes every field of the document after `schema` into `map`: `code`,
-    /// `message`, `cause` when the failure has a source, `recovery`, and
+    /// `message`, `cause` when the failure has a source, `labels` when the
+    /// failure has a diagnostic with at least one label, `recovery`, and
     /// `url` when the failure has one. The failure document and an entry of
     /// a batch's `failures` both write their fields here, so the two differ
     /// only in `schema`.
@@ -175,6 +193,10 @@ impl FailureDocument {
         map.serialize_entry("message", &self.message)?;
         if !self.causes.is_empty() {
             map.serialize_entry("cause", &self.causes.join(": "))?;
+        }
+        #[cfg(feature = "miette")]
+        if !self.labels.is_empty() {
+            map.serialize_entry("labels", &self.labels)?;
         }
         map.serialize_entry("recovery", &self.step)?;
         if let Some(url) = &self.url {
@@ -262,6 +284,7 @@ impl JsonSchema for FailureDocument {
                     "description": "The errors that led to the failure, joined with \": \". It is present only when the failure has a cause.",
                     "type": "string",
                 },
+                "labels": labels_schema(),
                 "recovery": {
                     "description": "What the caller can do next, tagged by kind.",
                     "oneOf": [
@@ -310,4 +333,49 @@ impl JsonSchema for FailureDocument {
             "required": ["schema", "code", "message", "recovery"],
         })
     }
+}
+
+/// Describes the `labels` array of the `crumbkit/failure/v1` document. The
+/// schema lists it whether or not the `miette` feature is on, so there is
+/// one checked-in schema file, and readers ignore a field they do not know
+/// (ADR-0007).
+fn labels_schema() -> Schema {
+    json_schema!({
+        "description": "The places in a source, such as a file, that the failure points at, in the order the failure gives them. It is present only when the failure has at least one label.",
+        "type": "array",
+        "items": {
+            "type": "object",
+            "properties": {
+                "offset": {
+                    "description": "The byte offset of the start of the span from the start of the source.",
+                    "type": "integer",
+                    "minimum": 0,
+                },
+                "length": {
+                    "description": "The length of the span in bytes.",
+                    "type": "integer",
+                    "minimum": 0,
+                },
+                "name": {
+                    "description": "The name of the source, such as a file name. It is present only when the span could be read and the source has a name.",
+                    "type": "string",
+                },
+                "line": {
+                    "description": "The 1-based line that holds the start of the span. It is present only when the span could be read.",
+                    "type": "integer",
+                    "minimum": 1,
+                },
+                "column": {
+                    "description": "The 1-based column of the start of the span, counted in characters of its line. It is present only when the span could be read.",
+                    "type": "integer",
+                    "minimum": 1,
+                },
+                "text": {
+                    "description": "What the label says about the span. It is present only when the label has text.",
+                    "type": "string",
+                },
+            },
+            "required": ["offset", "length"],
+        },
+    })
 }
