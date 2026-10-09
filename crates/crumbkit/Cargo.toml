@@ -15,7 +15,10 @@ include = ["src/**/*.rs", "schemas/*.json", "README.md", "LICENSE-APACHE", "LICE
 # `Output` and `Page` derive `clap::Args`. `Page` gives `--limit` a default
 # that it formats at runtime from its const parameter, and clap accepts a
 # default held in an owned `String` only with its `string` feature.
-clap = { workspace = true, features = ["derive", "string"] }
+# `help::extend` sets a help template, which clap offers only with its `help`
+# feature. Without `help`, clap also leaves out `-h` and `--help`, which
+# crumbkit's refusals tell the caller to run (ADR-0003).
+clap = { workspace = true, features = ["derive", "string", "help"] }
 # crumbkit implements `Serialize` by hand, so it needs no serde feature.
 serde = { workspace = true }
 # `std` gives `to_writer` over an `io::Write`, and serde_json needs `std` or
@@ -36,9 +39,11 @@ miette = ["dep:miette"]
 
 [dev-dependencies]
 # The tests compare the exact help pages and refusal messages that a tool
-# built with clap's default features prints. These features change only the
-# test build, so a tool still chooses its own clap features.
-clap = { workspace = true, features = ["help", "usage", "error-context", "suggestions"] }
+# built with clap's default features prints. The normal dependency already
+# enables `help`, and these add the other default features that change help
+# pages and refusals. They change only the test build, so a tool still
+# chooses its own clap features.
+clap = { workspace = true, features = ["usage", "error-context", "suggestions"] }
 # The tests and the README example derive `Serialize` and `JsonSchema` for
 # their rows.
 serde = { workspace = true, features = ["derive"] }
