@@ -62,6 +62,22 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit-test's `check_codes` fails a test, naming every problem, when two
   of a tool's codes spell the same, or when a spelled code is empty or holds
   a character other than printable ASCII, `!` to `~`.
+- crumbkit-test's `check_names`, `check_grammar`, `check_listings` and
+  `check_filters` take a tool's `clap::Command`, or any subcommand of it,
+  and fail a test, naming every problem, with one line for each problem
+  that names the command by its path. `check_names` fails on any alias of a
+  command or an argument. `check_grammar` fails unless every command is a
+  resource followed by `list`, `show` or a verb the tool passes, a resource
+  is named in lowercase words joined by single dashes, and no argument is
+  named `--dry-run`. `check_listings` fails on a `list` command without
+  `Page`'s `--limit` and `--all`, and on a `show` command without a required
+  positional argument that takes 1 to 100 values. `check_filters` fails on
+  an option that accepts many values unless it accepts both repeats and
+  commas, and leaves to review the rule that an option that takes one value
+  refuses a second, because clap has no documented getter for the settings
+  that turn that refusal off. `check_names` also fails on a command's short
+  or long flag name. Each check takes a list of exempt command paths, such as
+  `"books list"`, and fails on an exemption that names no command.
 - `Batch` holds the rows for the ids that worked and the failures for the
   ids that did not, and `finish` takes it as a result. In text, the rows
   print as a table on standard output and each failure prints on standard

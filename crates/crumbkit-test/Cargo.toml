@@ -15,6 +15,9 @@ include = ["src/**/*.rs", "README.md", "LICENSE-APACHE", "LICENSE-MIT"]
 # The codes check takes crumbkit's `Code` and `Spelling`, and spells each code
 # as the tool's `finish` prints it.
 crumbkit = { workspace = true }
+# The command tree checks read a tool's `clap::Command` through clap's public
+# getters, which need no clap feature beyond the workspace's `std`.
+clap = { workspace = true }
 
 [lints]
 workspace = true

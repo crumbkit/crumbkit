@@ -26,7 +26,8 @@ serde = { workspace = true, features = ["derive"] }
 schemars = { workspace = true, features = ["derive"] }
 
 [dev-dependencies]
-# shelf's test checks its failure codes with crumbkit-test's codes check.
+# shelf's tests check its failure codes and its command tree with
+# crumbkit-test.
 crumbkit-test = { workspace = true }
 # `cmd` runs the built shelf binary in the end-to-end tests.
 snapbox = { workspace = true, features = ["cmd"] }
