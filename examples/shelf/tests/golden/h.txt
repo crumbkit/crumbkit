@@ -1,0 +1,13 @@
+Browse a small catalogue of public-domain books
+
+Usage: shelf [OPTIONS] <COMMAND>
+
+Browse the catalogue
+  books  Work with the books in the catalogue
+
+Options:
+  -h, --help     Print help (see more with '--help')
+  -V, --version  Print version
+
+Global flags: --json, --fields <FIELD>, --long, --full. `shelf --help` describes them.
+Next: shelf <COMMAND> -h

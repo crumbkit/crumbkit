@@ -7,6 +7,7 @@ mod code;
 mod document;
 mod failure;
 mod fetch;
+pub mod help;
 mod listing;
 mod output;
 mod page;

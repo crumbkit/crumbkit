@@ -1,6 +1,7 @@
 //! shelf's command-line grammar.
 
 use clap::{Args, Parser, Subcommand};
+use crumbkit::help::{Goal, Group, Guide};
 use crumbkit::{Output, Page};
 use schemars::JsonSchema;
 use serde::Serialize;
@@ -20,6 +21,14 @@ pub(crate) struct Cli {
     #[command(flatten)]
     pub(crate) output: Output,
 }
+
+/// shelf's goal headings. shelf guides only its root, so `shelf -h` lists
+/// `books` under `Browse the catalogue`, and `shelf books -h` keeps clap's
+/// `Commands:` list.
+pub(crate) const GUIDE: Guide = Guide::new().groups(&[Group::new(
+    &[],
+    &[Goal::new("Browse the catalogue", &["books"])],
+)]);
 
 /// The resources that shelf serves.
 #[derive(Debug, Subcommand)]
