@@ -20,7 +20,9 @@ next step in the same two formats.
   `Output::set_command`.
 - `parse` parses the command line in place of clap's `Cli::parse`, and
   returns the tool's parsed type and the command tree it parsed against, or
-  the exit code for `main` to return. It adds lines to clap's help pages:
+  the exit code for `main` to return. It takes the tool's `help::Guide`,
+  and a tool without one passes `&Guide::new()`. It adds lines to clap's
+  help pages:
   `-h` names the global flags on one line, which `--help` lists in full, and
   the help of a command with a visible subcommand ends with a `Next:` line
   such as `Next: shelf books <COMMAND> -h`. It answers `help` in place of
@@ -31,18 +33,20 @@ next step in the same two formats.
   `-h` of the command the caller reached, and exit code 2. `parse_from`
   takes the arguments, and `parse_to` also takes a `Sink`, so a test reads
   the output from memory.
-- `help::extend` applies a `help::Guide` to the command tree before
-  `parse`, so a group's help lists its subcommands under goal headings that
-  the tool declares, such as `Read` and `Change`, in place of clap's single
+- A `help::Guide` gives a group's help goal headings that the tool
+  declares, such as `Read` and `Change`, in place of clap's single
   `Commands:` list. A tool declares the guide once as a `const` of `Group`s,
   each a command path from the root with its `Goal`s, and each goal is a
   heading and the real names of its subcommands. A visible subcommand that
   no goal names is listed under a final `Commands` heading, and a command
-  that the guide does not name keeps clap's list. A guide also holds the
-  tool's help topics, each a `help::Topic` with a name, a one-line summary
-  and plain text: `shelf help` lists them, `shelf help catalogue` prints
-  one, and the root's help names them. crumbkit enables clap's `help`
-  feature, which help templates need.
+  that the guide does not name keeps clap's list. `parse` applies the goal
+  headings to the commands that the typed words pass through, and
+  `help::extend` applies them to the whole tree for a tool that parses with
+  plain clap. A guide also holds the tool's help topics, each a
+  `help::Topic` with a name, a one-line summary and plain text, which
+  `parse` reads: `shelf help` lists them, `shelf help catalogue` prints one,
+  and the root's help names them. crumbkit enables clap's `help` feature,
+  which help templates need.
 - `Page` holds the flags `--limit <N>` and `--all`, which choose how many rows
   a listing prints. A command adds them to its own arguments with
   `#[command(flatten)]`, and its const parameter sets the default limit, which
@@ -106,6 +110,7 @@ use std::fmt;
 use std::process::ExitCode;
 
 use clap::{CommandFactory, Parser};
+use crumbkit::help::Guide;
 use crumbkit::{Call, Code, Document, Failure, Listing, Output, Page, Recovery, Row, Spelling};
 use schemars::JsonSchema;
 use serde::Serialize;
@@ -181,7 +186,8 @@ fn list(cli: &Cli) -> Result<Listing<Book>, UnknownAuthor> {
 }
 
 fn main() -> ExitCode {
-    let (mut cli, command) = match crumbkit::parse::<Cli>(Cli::command(), SPELLING) {
+    let parsed = crumbkit::parse::<Cli>(Cli::command(), &Guide::new(), SPELLING);
+    let (mut cli, command) = match parsed {
         Ok(parsed) => parsed,
         Err(code) => return code,
     };

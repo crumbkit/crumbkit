@@ -19,8 +19,9 @@ mod tests;
 /// The guide to a tool's help pages: one [`Group`] for each command whose
 /// help lists its subcommands under goals, and the tool's [`Topic`]s.
 ///
-/// A tool declares its guide once as a `const` and applies it with
-/// [`extend`] before it parses:
+/// A tool declares its guide once as a `const` and passes it to
+/// [`parse`](crate::parse), which applies its goal headings to the help of
+/// the commands on the typed path and prints its topics:
 ///
 /// ```
 /// use clap::{CommandFactory, Parser, Subcommand};
@@ -52,8 +53,8 @@ mod tests;
 ///         "The catalogue is built into the binary.\n",
 ///     )]);
 ///
-/// let command = crumbkit::help::extend(Cli::command(), &GUIDE);
-/// let parsed = crumbkit::parse_from::<Cli, _, _>(command, Spelling::COLONS, ["shelf", "books"]);
+/// let args = ["shelf", "books"];
+/// let parsed = crumbkit::parse_from::<Cli, _, _>(Cli::command(), &GUIDE, Spelling::COLONS, args);
 /// assert!(parsed.is_ok());
 /// ```
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -169,12 +170,14 @@ impl Goal {
     }
 }
 
-/// Applies `guide` to `command`, the root of the tool's unbuilt tree, and
-/// returns the tree.
+/// Applies the goal headings of `guide` to every group in the tree of
+/// `command`, the root of the tool's unbuilt tree, and returns the tree.
 ///
-/// A tool's `main` calls it once before [`parse`](crate::parse), because
-/// parsing builds the tree. `parse` answers `help` itself and turns off
-/// clap's generated `help` subcommand, so the lists never show it.
+/// [`parse`](crate::parse) takes the guide and applies its goal headings to
+/// the groups that the typed words pass through, so a tool that parses with
+/// crumbkit does not call `extend`. A tool that parses with plain clap calls
+/// it once before parsing, and a test calls it to check the whole guided
+/// tree, such as with clap's `Command::debug_assert`.
 ///
 /// Each group's help page lists its visible subcommands under its goals'
 /// headings, in the guide's order, and then the visible subcommands that no
@@ -202,18 +205,10 @@ impl Goal {
 /// visible subcommands, and leaves every command that the guide does not
 /// name with clap's own `Commands:` list. crumbkit-test's `check_guide`
 /// fails on a guide that names a missing command or misses a visible one.
+/// `extend` reads no topics, because `parse` reads them from the guide.
 ///
-/// When the guide has topics, `extend` adds a hidden root command named
-/// `help` that holds them, and turns off clap's generated `help` subcommand
-/// so the tree never has two. `parse` reads the topics from that command:
-/// `<tool> help` lists them, `<tool> help <TOPIC>` prints one, and the
-/// root's help names them. `extend` keeps the first of two topics with one
-/// name, and adds no topics when the root already has a subcommand named or
-/// aliased `help`.
-///
-/// Its work is one formatted line for each subcommand of each group, and
-/// one command for each topic, which holds the topic's text. It never
-/// clones the tree.
+/// Its work is one formatted line for each subcommand of each group. It
+/// never clones the tree.
 #[must_use]
 pub fn extend(mut command: Command, guide: &Guide) -> Command {
     // clap copies the root's styles to every subcommand when it builds the
@@ -221,29 +216,36 @@ pub fn extend(mut command: Command, guide: &Guide) -> Command {
     let styles = command.get_styles();
     let header = *styles.get_header();
     let literal = *styles.get_literal();
-    let template = template(header);
     for group in guide.groups {
-        let Some(node) = find_mut(&mut command, group.path) else {
-            continue;
-        };
-        let Some(list) = list(node, group.goals, header, literal) else {
-            continue;
-        };
-        // `--help` falls back to `before_help` when `before_long_help` is
-        // unset, so the list shows in both. A set `before_long_help` would
-        // make clap's `-h` line say `(see more with '--help')` on a page
-        // whose `--help` shows nothing more.
-        //
-        // RUST-10: the list replaces a tool's own `before_help` and
-        // `before_long_help` on a guided command. A tool that needs its own
-        // text there keeps that command out of the guide, until a template
-        // tag of crumbkit's own replaces `before_help` as the list's place.
-        *node = std::mem::take(node)
-            .help_template(template.clone())
-            .before_help(list)
-            .before_long_help(None::<&str>);
+        if let Some(node) = find_mut(&mut command, group.path) {
+            apply(node, group, header, literal);
+        }
     }
-    topic::add(command, guide.topics)
+    command
+}
+
+/// Gives `node`, the command at the path of `group`, the help template and
+/// the headed list of `group`'s goals, with `header` as the style of each
+/// heading and `literal` as the style of each name. It leaves `node`
+/// unchanged when the list would be empty. [`extend`] and
+/// [`parse`](crate::parse) both apply a group through it.
+pub(crate) fn apply(node: &mut Command, group: &Group, header: Style, literal: Style) {
+    let Some(list) = list(node, group.goals, header, literal) else {
+        return;
+    };
+    // `--help` falls back to `before_help` when `before_long_help` is
+    // unset, so the list shows in both. A set `before_long_help` would make
+    // clap's `-h` line say `(see more with '--help')` on a page whose
+    // `--help` shows nothing more.
+    //
+    // RUST-10: the list replaces a tool's own `before_help` and
+    // `before_long_help` on a guided command. A tool that needs its own text
+    // there keeps that command out of the guide, until a template tag of
+    // crumbkit's own replaces `before_help` as the list's place.
+    *node = std::mem::take(node)
+        .help_template(template(header))
+        .before_help(list)
+        .before_long_help(None::<&str>);
 }
 
 /// Returns the help template of a guided command, with `header` as the style

@@ -6,26 +6,30 @@ use std::fmt::Display;
 use std::io::{self, IsTerminal as _, Write};
 use std::process::ExitCode;
 
+use clap::builder::styling::Style;
 use clap::error::ErrorKind;
 use clap::{Command, FromArgMatches};
 
-use crate::help::topic;
+use crate::help::{self, Guide, Topic, topic};
 use crate::refusal::Refusal;
 use crate::{Sink, Spelling};
 
 #[cfg(test)]
 mod tests;
 
-/// Parses the process's command line against `command`, and returns the
-/// tool's parsed type and the command that it parsed against.
+/// Parses the process's command line against `command` with the tool's
+/// `guide`, and returns the tool's parsed type and the command that it
+/// parsed against.
 ///
 /// A tool's `main` calls it in place of clap's `Cli::parse`, and passes the
-/// returned command to [`Output::set_command`](crate::Output::set_command):
+/// returned command to [`Output::set_command`](crate::Output::set_command).
+/// A tool without goal headings or topics passes `&Guide::new()`:
 ///
 /// ```no_run
 /// use std::process::ExitCode;
 ///
 /// use clap::{CommandFactory, Parser};
+/// use crumbkit::help::Guide;
 /// use crumbkit::{Output, Spelling};
 ///
 /// /// List the books in a small catalogue.
@@ -37,7 +41,8 @@ mod tests;
 /// }
 ///
 /// fn main() -> ExitCode {
-///     let (mut cli, command) = match crumbkit::parse::<Cli>(Cli::command(), Spelling::COLONS) {
+///     let parsed = crumbkit::parse::<Cli>(Cli::command(), &Guide::new(), Spelling::COLONS);
+///     let (mut cli, command) = match parsed {
 ///         Ok(parsed) => parsed,
 ///         Err(code) => return code,
 ///     };
@@ -58,9 +63,10 @@ mod tests;
 /// help, the version or a refusal.
 pub fn parse<C: FromArgMatches>(
     command: Command,
+    guide: &Guide,
     spelling: Spelling,
 ) -> Result<(C, Command), ExitCode> {
-    parse_from(command, spelling, std::env::args_os())
+    parse_from(command, guide, spelling, std::env::args_os())
 }
 
 /// Parses `args` against `command` as [`parse`] parses the process's command
@@ -72,6 +78,7 @@ pub fn parse<C: FromArgMatches>(
 /// help, the version or a refusal.
 pub fn parse_from<C, I, T>(
     command: Command,
+    guide: &Guide,
     spelling: Spelling,
     args: I,
 ) -> Result<(C, Command), ExitCode>
@@ -82,7 +89,7 @@ where
 {
     let mut sink = Sink::standard();
     let colour = sink.out.is_terminal();
-    run(&mut sink, command, spelling, args, colour)
+    run(&mut sink, command, guide, spelling, args, colour)
 }
 
 /// Parses `args` against `command` and prints help, the version or a
@@ -93,31 +100,34 @@ where
 /// plain text.
 ///
 /// Before parsing, crumbkit walks the typed words down the tree to the
-/// deepest command they name, and adds its lines to the help of each command
-/// on the way, the root included:
+/// deepest command they name, and changes the help of each command on the
+/// way, the root included. A command that `guide` gives goals lists its
+/// subcommands under their headings, as [`help::extend`] describes, and
+/// crumbkit adds its lines:
 ///
 /// - `-h` ends with a line that names the root's visible global flags, such
 ///   as ``Global flags: --json, --fields <FIELD>, --long, --full. `shelf
 ///   books list --help` describes them.`` crumbkit hides those flags from
 ///   `-h`, so `-h` stays short and `--help` lists them in full.
-/// - The root's help names the tool's help topics on one line, such as
+/// - The root's help names the guide's topics on one line, such as
 ///   ``Topics: catalogue. `shelf help <TOPIC>` prints one.``, in `-h` and in
-///   `--help`, when [`help::extend`](crate::help::extend) gave the tree
-///   topics.
+///   `--help`.
 /// - The help of a command with a visible subcommand ends with a line that
 ///   opens one of them, such as `Next: shelf books <COMMAND> -h`, in `-h`
 ///   and in `--help`.
 ///
 /// crumbkit answers the word `help` in place of clap, whose generated
 /// `help` subcommand it turns off. It answers `help` as the next word below
-/// any command with subcommands:
+/// any command with subcommands, and directly after the program name when
+/// the guide has topics:
 ///
 /// - `shelf help` lists the tool's topics under the heading `Topics` and
 ///   ends with `Next: shelf help <TOPIC>`. A tool without topics prints the
 ///   root's `--help`.
 /// - `shelf help catalogue` prints the text of the topic `catalogue`. A root
 ///   command or alias with that name wins over the topic. Topics belong to
-///   the root, so `shelf books help catalogue` names no command.
+///   the root, so `shelf books help catalogue` names no command. A root with
+///   its own command named or aliased `help` has no topics.
 /// - Any other `help` command line drops the word `help` and asks for
 ///   `--help`. `shelf help books show` and `shelf books help show` print
 ///   what `shelf books show --help` prints, `shelf books help` prints what
@@ -156,6 +166,7 @@ where
 pub fn parse_to<C, I, T, O, E>(
     sink: &mut Sink<O, E>,
     command: Command,
+    guide: &Guide,
     spelling: Spelling,
     args: I,
 ) -> Result<(C, Command), ExitCode>
@@ -166,7 +177,7 @@ where
     O: Write,
     E: Write,
 {
-    run(sink, command, spelling, args, false)
+    run(sink, command, guide, spelling, args, false)
 }
 
 /// Parses `args` against `command` as [`parse_to`] describes. With `colour`,
@@ -175,6 +186,7 @@ where
 fn run<C, I, T, O, E>(
     sink: &mut Sink<O, E>,
     mut command: Command,
+    guide: &Guide,
     spelling: Spelling,
     args: I,
     colour: bool,
@@ -191,6 +203,13 @@ where
     // subcommand, so no `Commands:` list shows clap's `help` line, and
     // `Command::build` copies no subtree into a generated help tree.
     command = command.disable_help_subcommand(true);
+    // A root command named or aliased `help` takes the word, so no topic
+    // can print.
+    let topics = if command.find_subcommand("help").is_some() {
+        &[]
+    } else {
+        guide.get_topics()
+    };
     // No `Output` exists before parsing, so crumbkit looks for `--json` in
     // the words before any `--`.
     let json = args
@@ -198,9 +217,9 @@ where
         .skip(1)
         .take_while(|word| *word != "--")
         .any(|word| word == "--json");
-    if let Some(help) = help_word(&command, &args) {
+    if let Some(help) = help_word(&command, !topics.is_empty(), &args) {
         if help.at_root
-            && let Some(page) = help_page(&command, &args[help.position + 1..])
+            && let Some(page) = help_page(&command, topics, &args[help.position + 1..])
         {
             // RUST-10: a topic and the topic list print as plain text, also
             // on a terminal, because `StyledStr`'s `Display` drops styles. A
@@ -211,7 +230,7 @@ where
         ask_for_help(&mut args, help.position);
     }
     let path = walk(&command, &args);
-    add_help_lines(&mut command, &path);
+    add_help_lines(&mut command, guide, topics, &path);
 
     let error = match command.try_get_matches_from_mut(args) {
         Ok(mut matches) => match C::from_arg_matches_mut(&mut matches) {
@@ -246,22 +265,20 @@ struct HelpWord {
 /// `--`, skips each word that starts with `-`, and descends into each word
 /// that names a subcommand of the current command, resolving aliases. It
 /// answers `help` when that word comes next below a command with
-/// subcommands, and it stops at the first word that names no subcommand,
+/// subcommands, or directly after the program name when the tool
+/// `has_topics`, and it stops at the first word that names no subcommand,
 /// such as the value of a positional argument.
 ///
-/// A command without subcommands reads `help` as an ordinary word, and a
-/// command with its own subcommand named or aliased `help` lets clap parse
-/// that subcommand. crumbkit's hidden `help` command, which holds the
-/// tool's topics, counts as a subcommand of the root but never as a
-/// command of the tool's own, so a tool with one command and topics still
-/// answers `help`.
+/// A command without subcommands reads `help` as an ordinary word, unless it
+/// is the root of a tool with topics, and a command with its own subcommand
+/// named or aliased `help` lets clap parse that subcommand.
 //
 // RUST-10: the search reads words as the walk does, so it misreads an
 // option's value in its own word, as in `shelf --fields id help`, and stops
 // there. crumbkit then leaves the command line to clap, which refuses it as
 // an ordinary usage refusal. A walk that reads how many values each option
 // takes replaces both.
-fn help_word(command: &Command, args: &[OsString]) -> Option<HelpWord> {
+fn help_word(command: &Command, has_topics: bool, args: &[OsString]) -> Option<HelpWord> {
     let mut current = command;
     let mut at_root = true;
     for (position, word) in args.iter().enumerate().skip(1) {
@@ -272,39 +289,39 @@ fn help_word(command: &Command, args: &[OsString]) -> Option<HelpWord> {
             continue;
         }
         match current.find_subcommand(word) {
-            Some(subcommand) if !topic::holds_topics(subcommand) => {
+            Some(subcommand) => {
                 current = subcommand;
                 at_root = false;
             }
-            _ if word == "help" && current.has_subcommands() => {
+            None if word == "help" && (current.has_subcommands() || at_root && has_topics) => {
                 return Some(HelpWord { position, at_root });
             }
-            _ => return None,
+            None => return None,
         }
     }
     None
 }
 
 /// Returns the page that `help` at the root prints without clap, for
-/// `rest`, the words after `help`: the list of the tool's topics when
-/// `rest` holds no word that names something, and a topic's text when its
-/// one such word names a topic and no root command or alias has that name. It returns `None`
-/// otherwise, and the caller asks clap for help instead.
+/// `rest`, the words after `help`: the list of `topics` when `rest` holds no
+/// word that names something, and a topic's text when its one such word
+/// names a topic and no root command or alias has that name. It returns
+/// `None` otherwise, and the caller asks clap for help instead.
 ///
 /// The words that name something are the words before any `--` that do not
 /// start with `-`.
 //
 // RUST-10: the page ignores flags, so `shelf help catalogue --json` prints
 // the topic as text. A topic in JSON replaces this when a caller needs it.
-fn help_page(command: &Command, rest: &[OsString]) -> Option<String> {
+fn help_page(command: &Command, topics: &[Topic], rest: &[OsString]) -> Option<String> {
     let mut words = rest
         .iter()
         .take_while(|word| *word != "--")
         .filter(|word| !word.as_encoded_bytes().starts_with(b"-"));
     match (words.next(), words.next()) {
-        (None, _) => topic::list(command),
+        (None, _) => topic::list(command.get_name(), topics),
         (Some(word), None) if command.find_subcommand(word).is_none() => {
-            topic::text(command, word.to_str()?)
+            topic::text(topics, word.to_str()?)
         }
         _ => None,
     }
@@ -360,7 +377,10 @@ fn walk(command: &Command, args: &[OsString]) -> Vec<String> {
     path
 }
 
-/// Adds crumbkit's help lines to the root and to each command on `path`.
+/// Adds crumbkit's help lines to the root and to each command on `path`, and
+/// applies to each of those commands the groups of `guide` that name it. A
+/// guided group off `path` keeps clap's help, so the work grows with the
+/// typed depth. The root's lines name `topics`.
 ///
 /// It hides the root's visible global flags from `-h` first, so the copies
 /// that clap gives each subcommand are hidden too. It then builds the root
@@ -368,7 +388,7 @@ fn walk(command: &Command, args: &[OsString]) -> Vec<String> {
 /// option's number of values, which clap sets in the build. The parse that
 /// follows builds only the commands it reaches, and `Command::build` would
 /// build the whole tree.
-fn add_help_lines(command: &mut Command, path: &[String]) {
+fn add_help_lines(command: &mut Command, guide: &Guide, topics: &[Topic], path: &[String]) {
     *command = std::mem::take(command).mut_args(|arg| {
         if arg.is_global_set() && !arg.is_hide_set() {
             arg.hide_short_help(true)
@@ -383,19 +403,35 @@ fn add_help_lines(command: &mut Command, path: &[String]) {
         .map(ToString::to_string)
         .collect();
     let flags = flags.join(", ");
-    let topics = topic::names(command).join(", ");
+    let topics = topic::names(topics).join(", ");
+    // Every guided page prints with the root's styles, as in `help::extend`.
+    let styles = command.get_styles();
+    let header = *styles.get_header();
+    let literal = *styles.get_literal();
 
     let mut text = command.get_name().to_owned();
     let mut node = command;
+    apply_groups(node, guide, &[], header, literal);
     set_help_lines(node, &text, &flags, &topics);
-    for name in path {
+    for (depth, name) in path.iter().enumerate() {
         let Some(subcommand) = node.find_subcommand_mut(name) else {
             break;
         };
         text.push(' ');
         text.push_str(name);
         node = subcommand;
+        apply_groups(node, guide, &path[..=depth], header, literal);
         set_help_lines(node, &text, &flags, "");
+    }
+}
+
+/// Applies to `node`, the command at `path`, each group of `guide` whose
+/// path is `path`, in guide order, as [`help::extend`] applies them.
+fn apply_groups(node: &mut Command, guide: &Guide, path: &[String], header: Style, literal: Style) {
+    for group in guide.get_groups() {
+        if group.path() == path {
+            help::apply(node, group, header, literal);
+        }
     }
 }
 
@@ -435,8 +471,8 @@ fn set_help_lines(node: &mut Command, text: &str, flags: &str, topics: &str) {
 }
 
 /// Reports whether `node` has a subcommand that its help lists. A hidden
-/// subcommand, such as the `help` command that holds a tool's topics, does
-/// not count. clap's own `has_visible_subcommands` is private to clap.
+/// subcommand does not count. clap's own `has_visible_subcommands` is
+/// private to clap.
 fn has_visible_subcommands(node: &Command) -> bool {
     node.get_subcommands()
         .any(|subcommand| !subcommand.is_hide_set())
