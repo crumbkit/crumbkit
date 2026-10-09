@@ -18,6 +18,17 @@ crumbkit = { workspace = true }
 # The command tree checks read a tool's `clap::Command` through clap's public
 # getters, which need no clap feature beyond the workspace's `std`.
 clap = { workspace = true }
+# The help golden check compares each help page with its golden file and
+# rewrites the file with `SNAPSHOTS=overwrite`, as shelf's other golden files
+# do (ADR-0004). The check needs no snapbox feature: without `diff`, a
+# mismatch shows the expected and the actual page in full.
+snapbox = { workspace = true }
+
+[dev-dependencies]
+# The guide check's tests give leaves row types, which derive `Serialize` and
+# `JsonSchema`.
+serde = { workspace = true, features = ["derive"] }
+schemars = { workspace = true, features = ["derive"] }
 
 [lints]
 workspace = true

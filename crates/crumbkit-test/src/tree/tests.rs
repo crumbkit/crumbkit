@@ -2,7 +2,7 @@
 
 use clap::{Arg, ArgAction, Command};
 
-use super::walk;
+use super::{walk, walk_visible};
 
 /// A tool with one resource that has a visible and a hidden verb.
 fn shelf() -> Command {
@@ -113,4 +113,34 @@ fn a_walk_from_a_subcommand_names_each_path_from_that_subcommand() {
 
     assert_eq!(paths, ["books", "books list"]);
     assert!(problems.is_empty(), "{problems:?}");
+}
+
+#[test]
+fn the_visible_walk_leaves_out_each_hidden_command_and_everything_below_it() {
+    let shelf = Command::new("shelf")
+        .subcommand(
+            Command::new("books")
+                .subcommand(Command::new("list"))
+                .subcommand(Command::new("purge").hide(true)),
+        )
+        .subcommand(
+            Command::new("archive")
+                .hide(true)
+                .subcommand(Command::new("list")),
+        );
+
+    let visits = walk_visible(&shelf);
+
+    let paths: Vec<(&str, &str)> = visits
+        .iter()
+        .map(|visit| (visit.path(), visit.below()))
+        .collect();
+    assert_eq!(
+        paths,
+        [
+            ("shelf", ""),
+            ("shelf books", "books"),
+            ("shelf books list", "books list")
+        ]
+    );
 }
