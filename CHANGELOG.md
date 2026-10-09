@@ -109,11 +109,12 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   `crumbkit::Error` with the code `crumbkit::report::unchecked`. The report's
   own code follows the message in parentheses, the report's help becomes a
   `Recovery::Hint`, and a report without help has a `Recovery::None`.
-- `parse` parses the process's command line against a tool's `Command` and
-  returns the tool's parsed type and that command, which `main` passes to
-  `Output::set_command`, or the exit code after it printed help, the version
-  or a refusal. `parse_from` takes the arguments, and `parse_to` also takes a
-  `Sink`. `parse` never calls `process::exit`.
+- `parse` parses the process's command line against a tool's `Command`
+  with the tool's `help::Guide`, which is `&Guide::new()` for a tool without
+  one, and returns the tool's parsed type and that command, which `main`
+  passes to `Output::set_command`, or the exit code after it printed help,
+  the version or a refusal. `parse_from` takes the arguments, and
+  `parse_to` also takes a `Sink`. `parse` never calls `process::exit`.
 - A command line that clap refuses prints as a failure with the code
   `crumbkit::cli::usage`, clap's message on one line, and a recovery that
   runs the `-h` of the deepest command the caller typed, such as
@@ -132,13 +133,14 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   of a command with a visible subcommand ends with a line such as
   `Next: shelf books <COMMAND> -h`. Help and the version keep clap's colours
   only when standard output is a terminal.
-- `crumbkit::help::extend` applies a `Guide` to a tool's command tree before
-  `parse`, so a group's help lists its subcommands under goal headings that
-  the tool declares, such as `Read` and `Change`, in place of clap's
-  `Commands:` list, in `-h` and `--help`. `Guide`, `Group` and `Goal` are
-  built with `const fn`s. A visible subcommand that no goal names is listed
-  under a final `Commands` heading, and a command that the guide does not
-  name keeps clap's list.
+- A `Guide` gives a group's help goal headings that the tool declares,
+  such as `Read` and `Change`, in place of clap's `Commands:` list, in `-h`
+  and `--help`. `Guide`, `Group` and `Goal` are built with `const fn`s. A
+  visible subcommand that no goal names is listed under a final `Commands`
+  heading, and a command that the guide does not name keeps clap's list.
+  `parse` applies the goal headings to the groups that the typed words pass
+  through, and `crumbkit::help::extend` applies them to a tool's whole
+  command tree, for a tool that parses with plain clap and for tests.
 - crumbkit enables clap's `help` feature, so a tool built with crumbkit
   always has `-h` and `--help`.
 - `parse` answers `help` in place of clap's generated `help` subcommand,
@@ -148,16 +150,16 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   word such as `shelf books help shwo` is refused with clap's message and
   the recovery `shelf books -h`.
 - `Guide::topics` gives a tool help topics, each a `Topic` with a name, a
-  one-line summary and plain text. `shelf help` lists the topics and
-  `shelf help catalogue` prints one, and the root's `-h` and `--help` gain a
-  line such as ``Topics: catalogue. `shelf help <TOPIC>` prints one.``
+  one-line summary and plain text, which `parse` reads from the guide.
+  `shelf help` lists the topics and `shelf help catalogue` prints one, and
+  the root's `-h` and `--help` gain a line such as
+  ``Topics: catalogue. `shelf help <TOPIC>` prints one.``
 - crumbkit-test's `check_guide` fails a test, naming every problem, on a
   guide group whose path names no command or a command without
   subcommands, on a goal that names a command its group lacks, on a visible
   subcommand that no goal names, and on a subcommand that two goals name.
   It also fails on a topic name that is not lowercase words joined by
   dashes, on a topic name that a root command's name or alias hides, on a
-  topic named `help`, on a topic without text, and on two topics with one
-  name.
+  topic without text, and on two topics with one name.
 - crumbkit-test's `check_grammar` fails on a command named or aliased `help`
   at any level, because crumbkit reserves that word for asking for help.
