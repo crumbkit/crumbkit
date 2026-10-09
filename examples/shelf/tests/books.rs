@@ -2,6 +2,11 @@
 //! its standard output and standard error with golden files under
 //! `tests/golden/` (ADR-0004, ADR-0005). `SNAPSHOTS=overwrite cargo test`
 //! rewrites the golden files.
+//!
+//! The `-h` and `--help` page of each command has its golden file in
+//! `tests/golden/help/`, which crumbkit-test's `check_help_goldens` checks
+//! from a unit test. These tests read two of those files, to prove that the
+//! built binary prints the same pages.
 
 use std::path::Path;
 
@@ -142,30 +147,6 @@ fn books_list_json_all_prints_every_book_and_the_total() {
 }
 
 #[test]
-fn books_list_short_help_shows_the_paging_flags_and_names_the_output_flags_on_one_line() {
-    shelf("books-list-h", &["books", "list", "-h"])
-        .success()
-        .stdout_eq(file!["golden/books-list-h.txt"].raw())
-        .stderr_eq("");
-}
-
-#[test]
-fn books_list_long_help_lists_each_example_with_its_description_and_describes_each_column() {
-    shelf("books-list-help", &["books", "list", "--help"])
-        .success()
-        .stdout_eq(file!["golden/books-list-help.txt"].raw())
-        .stderr_eq("");
-}
-
-#[test]
-fn books_show_short_help_lists_its_example_and_points_at_the_columns() {
-    shelf("books-show-h", &["books", "show", "-h"])
-        .success()
-        .stdout_eq(file!["golden/books-show-h.txt"].raw())
-        .stderr_eq("");
-}
-
-#[test]
 fn books_show_with_comma_separated_ids_is_refused_with_code_2() {
     shelf("books-show-2-comma-5", &["books", "show", "2,5"])
         .code(2)
@@ -243,27 +224,13 @@ fn books_show_json_prints_the_books_as_an_array_and_an_empty_failures_array_with
         .stderr_eq("");
 }
 
+/// crumbkit-test's `check_help_goldens` pins every help page from a unit
+/// test, and this test proves that shelf's `main` prints the same root page.
 #[test]
-fn books_show_long_help_shows_that_ids_take_many_values_and_lists_the_output_flags() {
-    shelf("books-show-help", &["books", "show", "--help"])
-        .success()
-        .stdout_eq(file!["golden/books-show-help.txt"].raw())
-        .stderr_eq("");
-}
-
-#[test]
-fn short_help_lists_books_under_the_browse_the_catalogue_heading() {
+fn short_help_prints_the_root_page_that_the_help_golden_check_pins() {
     shelf("h", &["-h"])
         .success()
-        .stdout_eq(file!["golden/h.txt"].raw())
-        .stderr_eq("");
-}
-
-#[test]
-fn books_short_help_ends_with_the_next_line_that_opens_a_books_command() {
-    shelf("books-h", &["books", "-h"])
-        .success()
-        .stdout_eq(file!["golden/books-h.txt"].raw())
+        .stdout_eq(file!["golden/help/shelf-h.txt"].raw())
         .stderr_eq("");
 }
 
@@ -303,7 +270,7 @@ fn help_catalogue_prints_the_catalogue_topic() {
 fn help_books_show_prints_the_same_page_as_books_show_long_help() {
     shelf("help-books-show", &["help", "books", "show"])
         .success()
-        .stdout_eq(file!["golden/books-show-help.txt"].raw())
+        .stdout_eq(file!["golden/help/shelf-books-show-help.txt"].raw())
         .stderr_eq("");
 }
 

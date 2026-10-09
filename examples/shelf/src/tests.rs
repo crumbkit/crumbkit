@@ -1,6 +1,7 @@
 //! Tests for shelf as a whole.
 
 use clap::CommandFactory as _;
+use crumbkit_test::Budgets;
 
 use crate::SPELLING;
 use crate::books::BooksError;
@@ -32,6 +33,16 @@ fn every_option_with_many_values_accepts_repeats_and_commas() {
 }
 
 #[test]
-fn every_visible_command_is_under_a_goal_heading_and_every_topic_is_well_formed() {
+fn every_command_leaf_and_topic_meets_the_guide_rules() {
     crumbkit_test::check_guide(&Cli::command(), &GUIDE);
+}
+
+#[test]
+fn every_help_page_fits_its_size_budget() {
+    crumbkit_test::check_help_sizes(&Cli::command(), &GUIDE, &Budgets::new());
+}
+
+#[test]
+fn every_help_page_matches_its_golden_file() {
+    crumbkit_test::check_help_goldens(&Cli::command(), &GUIDE, "tests/golden/help");
 }

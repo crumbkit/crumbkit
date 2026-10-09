@@ -1,0 +1,25 @@
+Work with the books in the catalogue
+
+Usage: shelf books [OPTIONS] <COMMAND>
+
+Commands:
+  list  List the books in the catalogue, in id order
+  show  Show the books with the given ids, in the order given
+
+Options:
+      --json
+          Print the result as a JSON document on one line
+
+      --fields <FIELD>
+          Print only these comma-separated fields, in this order
+
+      --long
+          Add the long columns after the compact ones
+
+      --full
+          With --json, print every field of every row
+
+  -h, --help
+          Print help (see a summary with '-h')
+
+Next: shelf books <COMMAND> -h
