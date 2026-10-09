@@ -24,6 +24,15 @@ serde_json = { workspace = true, features = ["std"] }
 # `schema_for!`, `json_schema!` and the `JsonSchema` trait need no schemars
 # feature.
 schemars = { workspace = true }
+# The `miette` feature reads a failure's labels through `miette::Diagnostic`
+# and converts a `miette::Report` into `Error` (ADR-0001). crumbkit needs no
+# miette feature.
+miette = { workspace = true, optional = true }
+
+[features]
+# `miette` is off by default, so the default build has no miette code and no
+# miette dependency (ADR-0003).
+miette = ["dep:miette"]
 
 [dev-dependencies]
 # The tests and the README example derive `Serialize` and `JsonSchema` for

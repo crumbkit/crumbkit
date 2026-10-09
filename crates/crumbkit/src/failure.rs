@@ -59,6 +59,59 @@ pub trait Failure: std::error::Error {
     fn url(&self) -> Option<&str> {
         None
     }
+
+    /// Returns the failure as a `miette::Diagnostic` whose labels point into
+    /// a source, such as a settings file, or `None`, the default. The method
+    /// exists only with crumbkit's `miette` feature.
+    ///
+    /// A failure type that also implements `miette::Diagnostic` returns
+    /// `Some(self)`. [`finish`](crate::finish) then reads the diagnostic's
+    /// `labels()` against its `source_code()`, and prints each label as an
+    /// `at:` line with the source line and an underline in text, and under
+    /// `labels` in JSON. crumbkit reads nothing else from the diagnostic, so
+    /// the code, the recovery and the url still come from this trait.
+    ///
+    /// ```
+    /// # use std::fmt;
+    /// # use crumbkit::{Code, Failure, Recovery};
+    /// # const UNKNOWN_KEY: Code = Code::new("shelf", "config", "unknown_key");
+    /// # #[derive(Debug)]
+    /// # struct UnknownKey { source: String, at: usize }
+    /// # impl fmt::Display for UnknownKey {
+    /// #     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result { f.write_str("unknown key") }
+    /// # }
+    /// # impl std::error::Error for UnknownKey {}
+    /// use miette::{Diagnostic, LabeledSpan, SourceCode};
+    ///
+    /// impl Diagnostic for UnknownKey {
+    ///     fn source_code(&self) -> Option<&dyn SourceCode> {
+    ///         Some(&self.source)
+    ///     }
+    ///
+    ///     fn labels(&self) -> Option<Box<dyn Iterator<Item = LabeledSpan> + '_>> {
+    ///         let label = LabeledSpan::new(Some("this key is not known".to_owned()), self.at, 6);
+    ///         Some(Box::new(std::iter::once(label)))
+    ///     }
+    /// }
+    ///
+    /// impl Failure for UnknownKey {
+    ///     fn code(&self) -> &'static Code {
+    ///         &UNKNOWN_KEY
+    ///     }
+    ///
+    ///     fn recovery(&self) -> Recovery {
+    ///         Recovery::Hint("use `color`".to_owned())
+    ///     }
+    ///
+    ///     fn diagnostic(&self) -> Option<&dyn Diagnostic> {
+    ///         Some(self)
+    ///     }
+    /// }
+    /// ```
+    #[cfg(feature = "miette")]
+    fn diagnostic(&self) -> Option<&dyn miette::Diagnostic> {
+        None
+    }
 }
 
 /// What the caller of a failed command can do next. Every failure states

@@ -13,6 +13,47 @@
       "type": "string",
       "pattern": "^[!-~]+$"
     },
+    "labels": {
+      "description": "The places in a source, such as a file, that the failure points at, in the order the failure gives them. It is present only when the failure has at least one label.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "column": {
+            "description": "The 1-based column of the start of the span, counted in characters of its line. It is present only when the span could be read.",
+            "type": "integer",
+            "minimum": 1
+          },
+          "length": {
+            "description": "The length of the span in bytes.",
+            "type": "integer",
+            "minimum": 0
+          },
+          "line": {
+            "description": "The 1-based line that holds the start of the span. It is present only when the span could be read.",
+            "type": "integer",
+            "minimum": 1
+          },
+          "name": {
+            "description": "The name of the source, such as a file name. It is present only when the span could be read and the source has a name.",
+            "type": "string"
+          },
+          "offset": {
+            "description": "The byte offset of the start of the span from the start of the source.",
+            "type": "integer",
+            "minimum": 0
+          },
+          "text": {
+            "description": "What the label says about the span. It is present only when the label has text.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "offset",
+          "length"
+        ]
+      }
+    },
     "message": {
       "description": "What went wrong.",
       "type": "string"
