@@ -74,11 +74,12 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   `Page`'s `--limit` and `--all`, and on a `show` command without a required
   positional argument that takes 1 to 100 values. `check_filters` fails on
   an option that accepts many values unless it accepts both repeats and
-  commas, and leaves to review the rule that an option that takes one value
-  refuses a second, because clap has no documented getter for the settings
-  that turn that refusal off. Each check takes a list of exempt command
-  paths, such as `"books list"`, and fails on an exemption that names no
-  command.
+  commas, fails on such an option whose `num_args` has a maximum above 1,
+  because one use of it takes several values, and leaves to review the rule
+  that an option that takes one value refuses a second, because clap has no
+  documented getter for the settings that turn that refusal off. Each check
+  takes a list of exempt command paths, such as `"books list"`, and fails on
+  an exemption that names no command.
 - `Batch` holds the rows for the ids that worked and the failures for the
   ids that did not, and `finish` takes it as a result. In text, the rows
   print as a table on standard output and each failure prints on standard

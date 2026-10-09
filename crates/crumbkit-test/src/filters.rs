@@ -1,5 +1,5 @@
 //! The filters check, which makes every option that accepts many values
-//! accept them both repeated and separated by commas.
+//! accept them both repeated and separated by commas, with one value per use.
 
 use clap::{Arg, ArgAction, Command};
 
@@ -21,9 +21,20 @@ mod tests;
 /// `ArgAction::Append` or its `num_args` accepts more than one value, unless
 /// its action is `ArgAction::Append` and its value delimiter is `,`. Such an
 /// option accepts both `--author a --author b` and `--author a,b`, as
-/// crumbkit's `--fields` does. Review checks that an option that takes one
-/// value refuses a second, because clap has no documented getter for the
-/// settings that let a repeated option override itself.
+/// crumbkit's `--fields` does.
+///
+/// The check also finds an option with `ArgAction::Append` and the value
+/// delimiter `,` when the tool set its `num_args` to a maximum above 1, such
+/// as `num_args(1..=3)` or `num_args(2)`. One use of such an option takes
+/// several values, and a filter takes one value per use. clap reads the
+/// words after the option as more values, so `list --author tolkien dragons`
+/// takes the positional argument `dragons` as a second author. The check
+/// reads the unbuilt tree, so an option whose `num_args` the tool left unset,
+/// such as a derived `Vec<T>`, passes.
+///
+/// Review checks that an option that takes one value refuses a second,
+/// because clap has no documented getter for the settings that let a
+/// repeated option override itself.
 ///
 /// ```
 /// use clap::{Arg, ArgAction, Command};
@@ -61,6 +72,13 @@ pub fn check_filters(command: &Command, exempt: &[&str]) {
             let appends = matches!(arg.get_action(), ArgAction::Append);
             let splits_at_commas = arg.get_value_delimiter() == Some(',');
             let lacks = match (appends, splits_at_commas) {
+                (true, true) if takes_many_in_one_use(arg) => {
+                    problems.push(format!(
+                        "{path}: the argument `{}` takes several values in one use through its `num_args`, and a filter takes one value per use",
+                        argument_name(arg)
+                    ));
+                    continue;
+                }
                 (true, true) => continue,
                 (true, false) => "it has no value delimiter `,`",
                 (false, true) => "its action is not `ArgAction::Append`",
@@ -80,8 +98,14 @@ pub fn check_filters(command: &Command, exempt: &[&str]) {
 /// Reports whether `arg` accepts more than one value, either because its
 /// action appends a value on each use or because one use takes several.
 fn accepts_many(arg: &Arg) -> bool {
-    matches!(arg.get_action(), ArgAction::Append)
-        || arg
-            .get_num_args()
-            .is_some_and(|range| range.max_values() > 1)
+    matches!(arg.get_action(), ArgAction::Append) || takes_many_in_one_use(arg)
+}
+
+/// Reports whether one use of `arg` takes more than one value, because the
+/// tool set its `num_args` to a maximum above 1. The tree is unbuilt, so
+/// `Arg::get_num_args` returns `None` for an argument whose `num_args` the
+/// tool did not set, such as a derived `Vec<T>`.
+fn takes_many_in_one_use(arg: &Arg) -> bool {
+    arg.get_num_args()
+        .is_some_and(|range| range.max_values() > 1)
 }

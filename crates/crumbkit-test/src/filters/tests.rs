@@ -68,3 +68,29 @@ fn an_argument_that_takes_several_values_in_one_use_without_repeats_fails() {
          list: the argument `--year` accepts many values but does not accept both repeats and commas, because its action is not `ArgAction::Append` and it has no value delimiter `,`; such an argument uses `ArgAction::Append` and the value delimiter `,`"
     );
 }
+
+#[test]
+fn a_filter_that_takes_repeats_and_commas_and_several_values_in_one_use_fails() {
+    let list = Command::new("list")
+        .arg(
+            Arg::new("author")
+                .long("author")
+                .num_args(1..=3)
+                .value_delimiter(',')
+                .action(ArgAction::Append),
+        )
+        .arg(
+            Arg::new("year")
+                .long("year")
+                .num_args(1..)
+                .value_delimiter(',')
+                .action(ArgAction::Append),
+        );
+
+    assert_eq!(
+        panic_message(|| check_filters(&list, &[])).unwrap(),
+        "the command tree breaks crumbkit's filter rules:\n\
+         list: the argument `--author` takes several values in one use through its `num_args`, and a filter takes one value per use\n\
+         list: the argument `--year` takes several values in one use through its `num_args`, and a filter takes one value per use"
+    );
+}

@@ -50,7 +50,11 @@ command fails the test.
   command without a required positional argument that takes 1 to 100 values.
 - `check_filters` fails on an option that accepts many values unless it
   accepts both repeats and commas, as `--author a --author b` and
-  `--author a,b`. Review checks that an option that takes one value refuses
+  `--author a,b`, with one value per use. It fails on such an option when
+  the tool set its `num_args` to a maximum above 1, such as
+  `num_args(1..=3)`, because clap then reads the words after the option as
+  more values, so `list --author tolkien dragons` takes `dragons` as a
+  second author. Review checks that an option that takes one value refuses
   a second, because clap has no documented getter for the settings that
   turn that refusal off.
 
