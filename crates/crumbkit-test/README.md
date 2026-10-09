@@ -43,7 +43,8 @@ command fails the test.
   without subcommands is one of the verbs, and a command with subcommands is
   a resource named in lowercase words joined by dashes, such as
   `reading-lists`. It also fails on a `--dry-run` argument, a name that
-  crumbkit reserves for its write verbs.
+  crumbkit reserves for its write verbs, and on a command named or aliased
+  `help` at any level, a word that crumbkit reserves for asking for help.
 - `check_listings` fails on a `list` command without the `--limit` and
   `--all` flags that flattening crumbkit's `Page` gives it, and on a `show`
   command without a required positional argument that takes 1 to 100 values.
@@ -85,16 +86,29 @@ A tool that derives its parser passes `&Cli::command()` in the same way.
   path names no command or a command without subcommands, on a goal that
   names a command its group lacks, on a visible subcommand of a group that
   no goal names, and on a subcommand that two goals name. A hidden
-  subcommand passes whether or not a goal names it.
+  subcommand passes whether or not a goal names it. It also fails on a
+  topic name that is not lowercase words joined by dashes, on a topic name
+  that a root command's name or alias hides, on a topic named `help`, on a
+  topic without text, and on two topics with one name. A topic with an
+  empty summary passes.
+
+Every check takes the tree that the tool builds, before
+`crumbkit::help::extend` adds its hidden `help` command.
 
 ```rust
 use clap::Command;
-use crumbkit::help::{Goal, Group, Guide};
+use crumbkit::help::{Goal, Group, Guide, Topic};
 
-const GUIDE: Guide = Guide::new().groups(&[Group::new(
-    &[],
-    &[Goal::new("Browse the catalogue", &["books"])],
-)]);
+const GUIDE: Guide = Guide::new()
+    .groups(&[Group::new(
+        &[],
+        &[Goal::new("Browse the catalogue", &["books"])],
+    )])
+    .topics(&[Topic::new(
+        "catalogue",
+        "Where the books come from",
+        "The catalogue holds six books, built into the binary.\n",
+    )]);
 
 let shelf = Command::new("shelf")
     .subcommand(Command::new("books").subcommand(Command::new("list")));
