@@ -1,6 +1,3 @@
-error: the following required arguments were not provided:
-  <ID>...
-
-Usage: shelf books show <ID>...
-
-For more information, try '--help'.
+error: the following required arguments were not provided: <ID>...
+  help:  run `shelf books show -h`
+  code:  crumbkit::cli::usage

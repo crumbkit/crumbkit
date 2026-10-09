@@ -1,0 +1,14 @@
+Work with the books in the catalogue
+
+Usage: shelf books [OPTIONS] <COMMAND>
+
+Commands:
+  list  List the books in the catalogue, in id order
+  show  Show the books with the given ids, in the order given
+  help  Print this message or the help of the given subcommand(s)
+
+Options:
+  -h, --help  Print help (see more with '--help')
+
+Global flags: --json, --fields <FIELD>, --long, --full. `shelf books --help` describes them.
+Next: shelf books <COMMAND> -h

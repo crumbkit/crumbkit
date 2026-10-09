@@ -1,7 +1,7 @@
 //! The output flags, and `finish`, which prints a result or a failure in the
 //! format they choose.
 
-mod failure;
+pub(crate) mod failure;
 mod table;
 
 use std::io::{self, Write};
@@ -13,6 +13,7 @@ use serde::ser::{SerializeMap, Serializer};
 use serde_json::Value;
 
 use self::failure::{Entry, FailureDocument};
+use crate::refusal::Refusal;
 use crate::{AsFailure, Document, Row, Rows, Sink, Spelling};
 
 #[cfg(test)]
@@ -196,14 +197,18 @@ pub fn finish<T: Rows, E: AsFailure>(
 /// output writer as one `crumbkit/failure/v1` document on one line, which
 /// `--full` and `--fields` do not change.
 ///
+/// When `--fields` names a field that the row type does not have, nothing of
+/// the result prints. The refusal prints as a failure does, with the message
+/// `--fields names an unknown field 'radius'`, the code `crumbkit::cli::usage`
+/// in `spelling`, and the hint `use the valid fields: a, b`.
+///
 /// The exit code is 0 when the result is written, and also when the reader
 /// closed the pipe early. It is 1 when the result is a failure or a batch
 /// with at least one failure, also after the reader closed the pipe early.
 /// It is 1 as well when a write fails for any other reason, or when the
 /// result cannot be serialized, and the cause of a failed write goes to the
-/// sink's error writer before a batch's failures. It is 2 when
-/// `--fields` names a field that the row type does not have, which is checked
-/// before the result prints.
+/// sink's error writer before a batch's failures. It is 2 when `--fields`
+/// names an unknown field, which is checked before the result prints.
 #[expect(
     clippy::needless_pass_by_value,
     reason = "finish_to takes the result by value, as finish does, so a tool passes the result it built in the same way to either"
@@ -215,15 +220,16 @@ pub fn finish_to<T: Rows, E: AsFailure, O: Write, W: Write>(
     document: Document<T>,
     result: Result<T, E>,
 ) -> ExitCode {
-    if let Some(message) = unknown_field::<T::Row>(&output.fields) {
-        // The process is already failing, and a failed report has nowhere
-        // else to go.
-        let _ = writeln!(sink.err, "error: {message}");
-        return ExitCode::from(2);
+    if let Some(refusal) = unknown_field::<T::Row>(&output.fields) {
+        return refusal.print(sink, output.json, spelling, output.command.as_ref());
     }
     let value = match &result {
         Ok(value) => value,
-        Err(error) => return failure::finish(sink, output, spelling, error.as_failure()),
+        Err(error) => {
+            let command = output.command.as_ref();
+            failure::print(sink, output.json, spelling, error.as_failure(), command);
+            return ExitCode::FAILURE;
+        }
     };
     // A batch's failures are read once, so its JSON document and its text
     // form print the same fields. Every other result has `None` here.
@@ -263,12 +269,13 @@ pub fn finish_to<T: Rows, E: AsFailure, O: Write, W: Write>(
     }
 }
 
-/// Returns the error message for the first name in `fields` that is not a
-/// field of `R`, or `None` when every name is a field.
+/// Returns the refusal of the first name in `fields` that is not a field of
+/// `R`, with a hint that lists the fields of `R`, or `None` when every name
+/// is a field.
 ///
 /// The fields of `R` are the properties of its JSON Schema, so a mistyped
 /// name fails even when the result has no rows.
-fn unknown_field<R: Row>(fields: &[String]) -> Option<String> {
+fn unknown_field<R: Row>(fields: &[String]) -> Option<Refusal> {
     if fields.is_empty() {
         return None;
     }
@@ -284,9 +291,9 @@ fn unknown_field<R: Row>(fields: &[String]) -> Option<String> {
         .flat_map(|properties| properties.keys())
         .map(String::as_str)
         .collect();
-    Some(format!(
-        "--fields names an unknown field '{unknown}'; the valid fields are {}",
-        valid.join(", ")
+    Some(Refusal::flag_value(
+        format!("--fields names an unknown field '{unknown}'"),
+        format!("use the valid fields: {}", valid.join(", ")),
     ))
 }
 

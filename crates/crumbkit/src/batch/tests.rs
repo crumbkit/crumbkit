@@ -406,10 +406,12 @@ fn an_unknown_field_exits_with_code_2_before_anything_of_the_batch_prints() {
 
     assert_eq!(finished.code, ExitCode::from(2));
     assert_eq!(finished.out, "");
-    assert_eq!(
-        finished.err,
-        "error: --fields names an unknown field 'radius'; the valid fields are au, moons, name, ringed\n"
+    assert!(
+        finished
+            .err
+            .starts_with("error: --fields names an unknown field 'radius'")
     );
+    assert!(!finished.err.contains("Vulcan"));
 }
 
 /// A writer whose every write fails with an error of `kind`.

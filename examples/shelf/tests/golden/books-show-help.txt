@@ -3,11 +3,21 @@ Show the books with the given ids, in the order given
 Usage: shelf books show [OPTIONS] <ID>...
 
 Arguments:
-  <ID>...  The ids of the books to show, separated by spaces
+  <ID>...
+          The ids of the books to show, separated by spaces
 
 Options:
-      --json            Print the result as a JSON document on one line
-      --fields <FIELD>  Print only these comma-separated fields, in this order
-      --long            Add the long columns after the compact ones
-      --full            With --json, print every field of every row
-  -h, --help            Print help
+      --json
+          Print the result as a JSON document on one line
+
+      --fields <FIELD>
+          Print only these comma-separated fields, in this order
+
+      --long
+          Add the long columns after the compact ones
+
+      --full
+          With --json, print every field of every row
+
+  -h, --help
+          Print help (see a summary with '-h')

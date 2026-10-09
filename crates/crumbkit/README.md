@@ -18,6 +18,16 @@ next step in the same two formats.
   adds them to its own clap parser with `#[command(flatten)]`, and after
   parsing passes the command tree it parsed against to
   `Output::set_command`.
+- `parse` parses the command line in place of clap's `Cli::parse`, and
+  returns the tool's parsed type and the command tree it parsed against, or
+  the exit code for `main` to return. It adds lines to clap's help pages:
+  `-h` names the global flags on one line, which `--help` lists in full, and
+  the help of a command with subcommands ends with a `Next:` line such as
+  `Next: shelf books <COMMAND> -h`. It prints a refused command line as a
+  failure with the code `crumbkit::cli::usage`, a recovery that runs the
+  `-h` of the command the caller reached, and exit code 2. `parse_from`
+  takes the arguments, and `parse_to` also takes a `Sink`, so a test reads
+  the output from memory.
 - `Page` holds the flags `--limit <N>` and `--all`, which choose how many rows
   a listing prints. A command adds them to its own arguments with
   `#[command(flatten)]`, and its const parameter sets the default limit, which
@@ -156,8 +166,11 @@ fn list(cli: &Cli) -> Result<Listing<Book>, UnknownAuthor> {
 }
 
 fn main() -> ExitCode {
-    let mut cli = Cli::parse();
-    cli.output.set_command(Cli::command());
+    let (mut cli, command) = match crumbkit::parse::<Cli>(Cli::command(), SPELLING) {
+        Ok(parsed) => parsed,
+        Err(code) => return code,
+    };
+    cli.output.set_command(command);
     let result = list(&cli);
     crumbkit::finish(&cli.output, SPELLING, BOOKS_LIST, result)
 }
@@ -170,6 +183,12 @@ books.` `--long` adds `YEAR`, and `--all` prints all three books and the
 `Next:` line without the footer. With `--json`, it prints one line holding a
 JSON object whose `schema` is `shelf/books-list/v1`, whose `data` is the
 array of books, and whose `total` is 3.
+
+With `--limt 1`, it prints nothing on standard output and exits with code
+2. Standard error holds `error: unexpected argument '--limt' found; a
+similar argument exists: '--limit'`, then `` help:  run `books -h` `` and
+`code:  crumbkit::cli::usage`, when the tool enables clap's default
+features.
 
 With `--author 'Charles Dickens'`, it prints nothing on standard output and
 exits with code 1. Standard error holds three lines: `error: the catalogue

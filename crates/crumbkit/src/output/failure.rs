@@ -1,16 +1,14 @@
-//! How `finish` prints a failure: as text on standard error, or as the
-//! `crumbkit/failure/v1` JSON document on standard output.
+//! How `finish` and a refusal print a failure: as text on standard error, or
+//! as the `crumbkit/failure/v1` JSON document on standard output.
 
 use std::borrow::Cow;
 use std::io::{self, Write};
-use std::process::ExitCode;
 
 use clap::Command;
 use schemars::{JsonSchema, Schema, SchemaGenerator, json_schema};
 use serde::Serialize;
 use serde::ser::{SerializeMap, Serializer};
 
-use super::Output;
 use super::table::escape_controls;
 use crate::{Document, Failure, Recovery, Sink, Spelling};
 
@@ -26,20 +24,22 @@ const FAILURE: Document<FailureDocument> = Document::new("crumbkit", "failure", 
 /// rendered, because no command is set or the call does not resolve.
 const UNAVAILABLE: &str = "the suggested command is not available";
 
-/// Prints `failure` to `sink` in the format that `output` chooses, and
-/// returns exit code 1.
+/// Prints `failure` to `sink`: as text on the error writer, or with `json`
+/// as one `crumbkit/failure/v1` document on the output writer. A
+/// `Recovery::Run` call renders against `command`.
 ///
-/// Text goes to the error writer, and with `--json` the document goes to the
-/// output writer. The flags `--long`, `--full` and `--fields` do not change
-/// a failure. The exit code is 1 even when the failure cannot be written.
-pub(super) fn finish<O: Write, W: Write>(
+/// The caller returns the exit code: 1 from `finish` for a command that
+/// failed, and 2 for a refusal (ADR-0002). The flags `--long`, `--full` and
+/// `--fields` do not change a failure.
+pub(crate) fn print<O: Write, W: Write>(
     sink: &mut Sink<O, W>,
-    output: &Output,
+    json: bool,
     spelling: Spelling,
     failure: &dyn Failure,
-) -> ExitCode {
-    let document = FailureDocument::new(failure, spelling, output.command.as_ref());
-    if output.json {
+    command: Option<&Command>,
+) {
+    let document = FailureDocument::new(failure, spelling, command);
+    if json {
         if let Err(error) = write_json(&mut sink.out, &document) {
             // A reader that closed the pipe early has stopped reading, so
             // only another write error is reported. The process is already
@@ -53,7 +53,6 @@ pub(super) fn finish<O: Write, W: Write>(
         // to write there goes unreported.
         let _ = write_text(&mut sink.err, &document);
     }
-    ExitCode::FAILURE
 }
 
 /// A failure as `finish` prints it. It holds the fields of the

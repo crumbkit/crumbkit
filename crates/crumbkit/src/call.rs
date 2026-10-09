@@ -42,10 +42,27 @@ mod tests;
 /// ```
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Call {
-    /// The names of the subcommands from the root to the command, in order.
-    path: &'static [&'static str],
-    /// The clap ids of the arguments to show, in order.
-    args: Vec<&'static str>,
+    /// The command line the call names.
+    target: Target,
+}
+
+/// The two forms of a [`Call`]: a command with arguments that a tool names
+/// at compile time, and the `-h` of a command that the caller typed.
+#[derive(Clone, Debug, PartialEq, Eq)]
+enum Target {
+    /// A command that [`Call::new`] and [`Call::arg`] name.
+    Command {
+        /// The names of the subcommands from the root to the command, in
+        /// order.
+        path: &'static [&'static str],
+        /// The clap ids of the arguments to show, in order.
+        args: Vec<&'static str>,
+    },
+    /// The `-h` of a command, which [`Call::help`] names for the recovery of
+    /// a refused command line. It holds the names of the subcommands from
+    /// the root to the command, as the caller typed them and the tree
+    /// resolved them.
+    Help(Vec<String>),
 }
 
 impl Call {
@@ -54,8 +71,20 @@ impl Call {
     #[must_use]
     pub const fn new(path: &'static [&'static str]) -> Self {
         Self {
-            path,
-            args: Vec::new(),
+            target: Target::Command {
+                path,
+                args: Vec::new(),
+            },
+        }
+    }
+
+    /// Returns a call that runs `-h` on the command at `path`, such as
+    /// `shelf books show -h`. A refusal's recovery uses it, because the path
+    /// comes from the words the caller typed at runtime, and a `Call` built
+    /// with [`Call::new`] holds only a `&'static` path.
+    pub(crate) const fn help(path: Vec<String>) -> Self {
+        Self {
+            target: Target::Help(path),
         }
     }
 
@@ -63,7 +92,11 @@ impl Call {
     /// named `ids`, after the arguments already added.
     #[must_use]
     pub fn arg(mut self, id: &'static str) -> Self {
-        self.args.push(id);
+        // A call from `Call::help` takes no arguments, and only crumbkit
+        // builds one, so it keeps none.
+        if let Target::Command { args, .. } = &mut self.target {
+            args.push(id);
+        }
         self
     }
 
@@ -97,10 +130,26 @@ impl Call {
     /// through a shared reference. `Arg`'s `Display` panics on an option of a
     /// command that was never built, because clap sets an option's number of
     /// values during the build.
+    ///
+    /// A call from [`Call::help`] renders its path without looking it up,
+    /// because the path holds the real names of commands that the caller
+    /// typed, and crumbkit points the caller back at a hidden command that
+    /// the caller named.
     pub(crate) fn render_built(&self, command: &Command) -> Result<String, CallError> {
         let mut text = command.get_name().to_owned();
+        let (path, args) = match &self.target {
+            Target::Help(path) => {
+                for name in path {
+                    text.push(' ');
+                    text.push_str(name);
+                }
+                text.push_str(" -h");
+                return Ok(text);
+            }
+            Target::Command { path, args } => (*path, args),
+        };
         let mut current = command;
-        for &name in self.path {
+        for &name in path {
             let Some(subcommand) = current.find_subcommand(name) else {
                 return Err(CallError::MissingCommand {
                     command: text,
@@ -118,7 +167,7 @@ impl Call {
             current = subcommand;
         }
 
-        for &id in &self.args {
+        for &id in args {
             let Some(arg) = current.get_arguments().find(|arg| arg.get_id() == id) else {
                 return Err(CallError::MissingArgument {
                     command: text,
