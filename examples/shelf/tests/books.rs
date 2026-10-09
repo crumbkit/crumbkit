@@ -150,6 +150,22 @@ fn books_list_short_help_shows_the_paging_flags_and_names_the_output_flags_on_on
 }
 
 #[test]
+fn books_list_long_help_lists_each_example_with_its_description_and_describes_each_column() {
+    shelf("books-list-help", &["books", "list", "--help"])
+        .success()
+        .stdout_eq(file!["golden/books-list-help.txt"].raw())
+        .stderr_eq("");
+}
+
+#[test]
+fn books_show_short_help_lists_its_example_and_points_at_the_columns() {
+    shelf("books-show-h", &["books", "show", "-h"])
+        .success()
+        .stdout_eq(file!["golden/books-show-h.txt"].raw())
+        .stderr_eq("");
+}
+
+#[test]
 fn books_show_with_comma_separated_ids_is_refused_with_code_2() {
     shelf("books-show-2-comma-5", &["books", "show", "2,5"])
         .code(2)

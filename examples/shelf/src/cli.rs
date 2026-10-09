@@ -1,10 +1,12 @@
 //! shelf's command-line grammar.
 
 use clap::{Args, Parser, Subcommand};
-use crumbkit::help::{Goal, Group, Guide, Topic};
+use crumbkit::help::{Example, Goal, Group, Guide, Leaf, Topic};
 use crumbkit::{Output, Page};
 use schemars::JsonSchema;
 use serde::Serialize;
+
+use crate::books::{BOOKS_LIST, BOOKS_SHOW};
 
 #[cfg(test)]
 mod tests;
@@ -22,15 +24,28 @@ pub(crate) struct Cli {
     pub(crate) output: Output,
 }
 
-/// shelf's goal headings and help topics. shelf guides only its root, so
-/// `shelf -h` lists `books` under `Browse the catalogue`, and
-/// `shelf books -h` keeps clap's `Commands:` list. `shelf help catalogue`
-/// prints `cli/catalogue.txt`.
+/// shelf's goal headings, leaves and help topics. shelf guides only its
+/// root, so `shelf -h` lists `books` under `Browse the catalogue`, and
+/// `shelf books -h` keeps clap's `Commands:` list. The help of
+/// `shelf books list` and `shelf books show` lists their examples, and
+/// their `--help` describes the columns of the books they print.
+/// `shelf help catalogue` prints `cli/catalogue.txt`.
 pub(crate) const GUIDE: Guide = Guide::new()
     .groups(&[Group::new(
         &[],
         &[Goal::new("Browse the catalogue", &["books"])],
     )])
+    .leaves(&[
+        Leaf::new(&["books", "list"])
+            .examples(&[
+                Example::new(&[], "Print the first page of books"),
+                Example::new(&["--all"], "Print every book"),
+            ])
+            .document(BOOKS_LIST),
+        Leaf::new(&["books", "show"])
+            .examples(&[Example::new(&["2", "5"], "Show books 2 and 5")])
+            .document(BOOKS_SHOW),
+    ])
     .topics(&[Topic::new(
         "catalogue",
         "Where shelf's books come from and how their ids work",

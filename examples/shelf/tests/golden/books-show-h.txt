@@ -1,0 +1,15 @@
+Show the books with the given ids, in the order given
+
+Usage: shelf books show [OPTIONS] <ID>...
+
+Arguments:
+  <ID>...  The ids of the books to show, separated by spaces
+
+Options:
+  -h, --help  Print help (see more with '--help')
+
+Examples:
+  shelf books show 2 5
+
+Global flags: --json, --fields <FIELD>, --long, --full. `shelf books show --help` describes them.
+Next: shelf books show --help explains each column.

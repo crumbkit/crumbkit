@@ -1,0 +1,276 @@
+//! Leaves, which give a command without subcommands examples in its help
+//! and let its `--help` describe each output column.
+
+use std::fmt::Write as _;
+
+use clap::builder::StyledStr;
+use clap::builder::styling::Style;
+use schemars::{JsonSchema, Schema};
+use serde_json::Value;
+
+use super::write_line;
+use crate::{Document, Row, Rows};
+
+#[cfg(test)]
+mod tests;
+
+/// A command without subcommands whose help shows examples, and whose
+/// `--help` describes the columns of the result it prints.
+///
+/// A tool lists its leaves in its [`Guide`](super::Guide):
+///
+/// ```
+/// # #[derive(serde::Serialize, schemars::JsonSchema)]
+/// # struct Book { id: u32 }
+/// # impl crumbkit::Row for Book { const COLUMNS: &'static [&'static str] = &["id"]; }
+/// use crumbkit::Document;
+/// use crumbkit::help::{Example, Guide, Leaf};
+///
+/// const BOOKS_LIST: Document<Vec<Book>> = Document::new("shelf", "books-list", 1);
+///
+/// const GUIDE: Guide = Guide::new().leaves(&[Leaf::new(&["books", "list"])
+///     .examples(&[
+///         Example::new(&[], "Print the first page of books"),
+///         Example::new(&["--all"], "Print every book"),
+///     ])
+///     .document(BOOKS_LIST)]);
+///
+/// assert_eq!(GUIDE.get_leaves()[0].path(), ["books", "list"]);
+/// ```
+#[derive(Clone, Copy, Debug)]
+pub struct Leaf {
+    /// The names of the subcommands from the root to the command.
+    path: &'static [&'static str],
+    /// The examples, in the order the help page lists them.
+    examples: &'static [Example],
+    /// The columns of the result that the command prints, or `None` when
+    /// the leaf has no document.
+    columns: Option<Columns>,
+}
+
+impl Leaf {
+    /// Returns the leaf of the command at `path`, the real names of its
+    /// subcommands from the root, as [`Group::new`](super::Group::new) names
+    /// a command. The leaf has no examples and no document.
+    #[must_use]
+    pub const fn new(path: &'static [&'static str]) -> Self {
+        Self {
+            path,
+            examples: &[],
+            columns: None,
+        }
+    }
+
+    /// Returns the names of the subcommands from the root to the command.
+    #[must_use]
+    pub const fn path(&self) -> &'static [&'static str] {
+        self.path
+    }
+
+    /// Sets the examples that the command's help lists, in order.
+    #[must_use]
+    pub const fn examples(mut self, examples: &'static [Example]) -> Self {
+        self.examples = examples;
+        self
+    }
+
+    /// Returns the examples that [`Leaf::examples`] set. The name has clap's
+    /// `get_` prefix, because `examples` is the builder method.
+    #[must_use]
+    pub const fn get_examples(&self) -> &'static [Example] {
+        self.examples
+    }
+
+    /// Sets the document that the command prints, the same constant that
+    /// the tool passes to [`finish`](crate::finish). The command's `--help`
+    /// then lists the columns of the document's row type, each with the doc
+    /// comment of its field, and its `-h` points at them.
+    ///
+    /// The leaf keeps the row type's column lists and a function that
+    /// builds its JSON Schema, so one guide holds leaves whose rows have
+    /// different types.
+    #[must_use]
+    pub const fn document<T: Rows>(mut self, document: Document<T>) -> Self {
+        // The document's id is not needed; its type names the row type.
+        let _ = document;
+        self.columns = Some(Columns {
+            compact: <T::Row as Row>::COLUMNS,
+            long: <T::Row as Row>::LONG_COLUMNS,
+            schema: schema::<T::Row>,
+        });
+        self
+    }
+
+    /// Reports whether the leaf has a document, whose columns its `--help`
+    /// lists.
+    pub(crate) const fn has_document(&self) -> bool {
+        self.columns.is_some()
+    }
+}
+
+/// One example of a leaf: the words after the leaf's path and a one-line
+/// description, such as `--all` and `Print every book`.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Example {
+    /// The words after the leaf's path, one argument each.
+    words: &'static [&'static str],
+    /// The one-line description that `--help` prints below the command line.
+    about: &'static str,
+}
+
+impl Example {
+    /// Returns the example that runs the leaf with `words`, the arguments
+    /// after its path, described by `about`. An empty `words` runs the leaf
+    /// without arguments, and an empty `about` prints the command line
+    /// alone.
+    #[must_use]
+    pub const fn new(words: &'static [&'static str], about: &'static str) -> Self {
+        Self { words, about }
+    }
+
+    /// Returns the words after the leaf's path.
+    #[must_use]
+    pub const fn words(&self) -> &'static [&'static str] {
+        self.words
+    }
+
+    /// Returns the one-line description.
+    #[must_use]
+    pub const fn about(&self) -> &'static str {
+        self.about
+    }
+}
+
+/// The columns of a leaf's row type, as [`Leaf::document`] records them.
+#[derive(Clone, Copy, Debug)]
+struct Columns {
+    /// The row type's [`Row::COLUMNS`].
+    compact: &'static [&'static str],
+    /// The row type's [`Row::LONG_COLUMNS`].
+    long: &'static [&'static str],
+    /// Builds the row type's JSON Schema, whose properties hold the
+    /// columns' descriptions.
+    schema: fn() -> Schema,
+}
+
+/// Returns the JSON Schema of `R`.
+fn schema<R: JsonSchema>() -> Schema {
+    schemars::schema_for!(R)
+}
+
+/// Returns the `Examples:` section of the help of `leaf`, whose command
+/// line starts with `text`, the tool's name and the leaf's path, or `None`
+/// when the leaf has no examples. `header` styles the heading and `literal`
+/// each command line.
+///
+/// `-h` lists one command line on each line. `--help`, when `long` is set,
+/// follows clap's layout of long options: each command line, its
+/// description on the next line at clap's indent of 10 spaces, and a blank
+/// line between examples.
+pub(crate) fn examples(
+    leaf: &Leaf,
+    text: &str,
+    long: bool,
+    header: Style,
+    literal: Style,
+) -> Option<String> {
+    if leaf.examples.is_empty() {
+        return None;
+    }
+    let mut section = format!("{header}Examples:{header:#}");
+    for (index, example) in leaf.examples.iter().enumerate() {
+        if long && index > 0 {
+            section.push('\n');
+        }
+        // Writing to a `String` cannot fail.
+        let _ = write!(section, "\n  {literal}{text}");
+        for word in example.words {
+            section.push(' ');
+            section.push_str(&quote(word));
+        }
+        let _ = write!(section, "{literal:#}");
+        if long && !example.about.is_empty() {
+            let _ = write!(section, "\n          {}", example.about);
+        }
+    }
+    Some(section)
+}
+
+/// Returns `word` as a POSIX shell reads it back as one argument: as it is
+/// when it holds only ASCII letters, digits and `-_./:,=+@%`, and otherwise
+/// between single quotes, with each `'` in it written as `'\''`. An empty
+/// word prints as `''`.
+//
+// RUST-10: the quoting suits POSIX shells, which crumbkit's supported
+// platforms use. It misses other shells, such as PowerShell or cmd.exe,
+// which read single quotes and backslashes differently. A rendering for
+// each shell replaces it if crumbkit supports Windows.
+fn quote(word: &str) -> String {
+    let plain = !word.is_empty()
+        && word
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || "-_./:,=+@%".contains(c));
+    if plain {
+        word.to_owned()
+    } else {
+        format!("'{}'", word.replace('\'', r"'\''"))
+    }
+}
+
+/// Returns the sections of the `--help` of `leaf` that describe its
+/// columns: `Columns:` with the row type's [`Row::COLUMNS`] and
+/// `Columns that --long adds:` with its [`Row::LONG_COLUMNS`], each in
+/// declared order, leaving out a section with no names. It returns no
+/// section when the leaf has no document. `header` styles each heading and
+/// `literal` each name.
+///
+/// Each line has the layout of the goal list. A column's description is
+/// the `description` of its property in the row type's JSON Schema, which
+/// schemars takes from the field's doc comment, and only its first
+/// paragraph prints. A column without a description prints its name alone.
+/// This builds the schema, so `parse` calls it only for `--help`.
+//
+// RUST-10: the description comes only from the property itself. A column
+// whose name is not a property, which prints `-` in the table, and a field
+// without a doc comment, whose type's doc comment schemars keeps under
+// `$defs`, print their names alone, and a row type whose schema has no
+// properties prints every name alone. A reader that follows `$ref` into
+// `$defs` replaces this when a tool needs those descriptions.
+pub(crate) fn columns(leaf: &Leaf, header: Style, literal: Style) -> Vec<String> {
+    let Some(columns) = leaf.columns else {
+        return Vec::new();
+    };
+    let schema = (columns.schema)();
+    let properties = schema.get("properties").and_then(Value::as_object);
+    let mut sections = Vec::new();
+    for (heading, names) in [
+        ("Columns:", columns.compact),
+        ("Columns that --long adds:", columns.long),
+    ] {
+        let Some(width) = names.iter().map(|name| name.chars().count()).max() else {
+            continue;
+        };
+        let mut section = format!("{header}{heading}{header:#}");
+        for name in names {
+            let about = properties
+                .and_then(|properties| properties.get(*name))
+                .and_then(|property| property.get("description"))
+                .and_then(Value::as_str)
+                .map(|description| StyledStr::from(first_paragraph(description)));
+            write_line(&mut section, name, about.as_ref(), width, literal);
+        }
+        sections.push(section);
+    }
+    sections
+}
+
+/// Returns the first paragraph of `description`, the text before its first
+/// blank line, with its lines joined by spaces.
+fn first_paragraph(description: &str) -> String {
+    description
+        .lines()
+        .map(str::trim)
+        .take_while(|line| !line.is_empty())
+        .collect::<Vec<_>>()
+        .join(" ")
+}

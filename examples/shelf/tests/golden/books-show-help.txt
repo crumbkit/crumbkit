@@ -21,3 +21,16 @@ Options:
 
   -h, --help
           Print help (see a summary with '-h')
+
+Examples:
+  shelf books show 2 5
+          Show books 2 and 5
+
+Columns:
+  id      The book's id, unique within the catalogue.
+  title   The book's title.
+  author  The book's author.
+  year    The year the book was first published.
+
+Columns that --long adds:
+  form  The book's literary form.

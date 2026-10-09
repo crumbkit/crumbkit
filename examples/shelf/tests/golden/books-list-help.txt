@@ -1,0 +1,43 @@
+List the books in the catalogue, in id order
+
+Usage: shelf books list [OPTIONS]
+
+Options:
+      --limit <N>
+          Print at most this many rows
+          
+          [default: 4]
+
+      --all
+          Print every row
+
+      --json
+          Print the result as a JSON document on one line
+
+      --fields <FIELD>
+          Print only these comma-separated fields, in this order
+
+      --long
+          Add the long columns after the compact ones
+
+      --full
+          With --json, print every field of every row
+
+  -h, --help
+          Print help (see a summary with '-h')
+
+Examples:
+  shelf books list
+          Print the first page of books
+
+  shelf books list --all
+          Print every book
+
+Columns:
+  id      The book's id, unique within the catalogue.
+  title   The book's title.
+  author  The book's author.
+  year    The year the book was first published.
+
+Columns that --long adds:
+  form  The book's literary form.
