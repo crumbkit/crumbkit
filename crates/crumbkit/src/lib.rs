@@ -10,6 +10,7 @@ mod fetch;
 mod listing;
 mod output;
 mod page;
+mod parse;
 mod refusal;
 #[cfg(feature = "miette")]
 mod report;
@@ -26,5 +27,6 @@ pub use crate::fetch::fetch_each;
 pub use crate::listing::Listing;
 pub use crate::output::{Output, finish, finish_to};
 pub use crate::page::Page;
+pub use crate::parse::{parse, parse_from, parse_to};
 pub use crate::row::{Row, Rows};
 pub use crate::sink::Sink;

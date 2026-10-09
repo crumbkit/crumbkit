@@ -6,7 +6,7 @@ mod cli;
 
 use std::process::ExitCode;
 
-use clap::{CommandFactory as _, Parser as _};
+use clap::CommandFactory as _;
 use crumbkit::Spelling;
 
 use crate::cli::{BooksCommand, Cli, Resource};
@@ -18,16 +18,20 @@ mod tests;
 /// shelf's test passes the same spelling to crumbkit-test's codes check.
 const SPELLING: Spelling = Spelling::COLONS;
 
-/// Parses the command line and runs the command. `crumbkit::finish` prints
-/// the result or the failure in the format that the output flags choose and
-/// returns the process's exit code.
+/// Parses the command line and runs the command. `crumbkit::parse` prints
+/// help, the version or a refused command line and returns the exit code.
+/// `crumbkit::finish` prints the result or the failure in the format that the
+/// output flags choose and returns the process's exit code.
 ///
-/// shelf does not change its command tree at runtime, so it gives
-/// `set_command` the same `Cli::command()` that `Cli::parse` parsed against,
-/// and `finish` renders the `Next:` line and a failure's recovery against it.
+/// shelf passes `set_command` the command that `crumbkit::parse` returns,
+/// which holds crumbkit's help lines, and `finish` renders the `Next:` line
+/// and a failure's recovery against it.
 fn main() -> ExitCode {
-    let mut cli = Cli::parse();
-    cli.output.set_command(Cli::command());
+    let (mut cli, command) = match crumbkit::parse::<Cli>(Cli::command(), SPELLING) {
+        Ok(parsed) => parsed,
+        Err(code) => return code,
+    };
+    cli.output.set_command(command);
     match cli.resource {
         Resource::Books { command } => match command {
             BooksCommand::List(args) => {

@@ -142,10 +142,10 @@ fn books_list_json_all_prints_every_book_and_the_total() {
 }
 
 #[test]
-fn books_list_help_shows_the_paging_flags_with_the_default_of_4() {
-    shelf("books-list-help", &["books", "list", "--help"])
+fn books_list_short_help_shows_the_paging_flags_and_names_the_output_flags_on_one_line() {
+    shelf("books-list-h", &["books", "list", "-h"])
         .success()
-        .stdout_eq(file!["golden/books-list-help.txt"].raw())
+        .stdout_eq(file!["golden/books-list-h.txt"].raw())
         .stderr_eq("");
 }
 
@@ -228,9 +228,43 @@ fn books_show_json_prints_the_books_as_an_array_and_an_empty_failures_array_with
 }
 
 #[test]
-fn books_show_help_shows_that_ids_take_many_values() {
+fn books_show_long_help_shows_that_ids_take_many_values_and_lists_the_output_flags() {
     shelf("books-show-help", &["books", "show", "--help"])
         .success()
         .stdout_eq(file!["golden/books-show-help.txt"].raw())
+        .stderr_eq("");
+}
+
+#[test]
+fn books_short_help_ends_with_the_next_line_that_opens_a_books_command() {
+    shelf("books-h", &["books", "-h"])
+        .success()
+        .stdout_eq(file!["golden/books-h.txt"].raw())
+        .stderr_eq("");
+}
+
+#[test]
+fn books_without_a_command_is_refused_with_code_2() {
+    shelf("books", &["books"])
+        .code(2)
+        .stdout_eq("")
+        .stderr_eq(file!["golden/books.stderr"].raw());
+}
+
+#[test]
+fn books_show_json_without_ids_prints_the_refusal_as_a_failure_document_with_code_2() {
+    shelf("books-show-json-no-ids", &["books", "show", "--json"])
+        .code(2)
+        .stdout_eq(file!["golden/books-show-json-no-ids.json"].raw())
+        .stderr_eq("");
+}
+
+#[test]
+fn version_prints_shelf_and_its_version() {
+    // The version holds the commit that shelf was built from, so the golden
+    // file matches any text after the name.
+    shelf("version", &["--version"])
+        .success()
+        .stdout_eq(file!["golden/version.txt"])
         .stderr_eq("");
 }
