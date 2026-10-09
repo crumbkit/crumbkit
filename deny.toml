@@ -90,3 +90,12 @@ allow-globs = ["test-persistence-location/run-tests.*"]
 [[bans.build.bypass]]
 crate = "zerocopy"
 allow-globs = ["cargo.sh", "win-cargo.bat", "ci/*.sh"]
+
+# miette, which crumbkit's optional `miette` feature brings, depends on
+# unicode-width, whose published sources hold `scripts/unicode.py`. The script
+# regenerates unicode-width's Unicode tables from Unicode's data files, and no
+# build runs it: unicode-width sets `build = false`. The entry allows only that
+# path, so a script elsewhere in the crate still fails the check.
+[[bans.build.bypass]]
+crate = "unicode-width"
+allow-globs = ["scripts/unicode.py"]
