@@ -79,3 +79,16 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   worker, one id or none, it runs every lookup in the calling thread.
 - `crates/crumbkit/schemas/failure-v1.json` holds the JSON Schema of the
   `crumbkit/failure/v1` document.
+- The `miette` feature, off by default, adds an optional dependency on
+  miette 7.6.0 with no miette features enabled.
+- With the `miette` feature, `Failure::diagnostic` returns the failure as a
+  `miette::Diagnostic`, and `None` by default. `finish` prints each label of
+  that diagnostic as an `at:` line after the causes, followed by the source
+  line and a caret underline, or by nothing when the span cannot be read.
+  With `--json`, the failure document and each batch failure hold the labels
+  under `labels`, which is left out when there are none.
+- The `crumbkit/failure/v1` schema lists the optional `labels` property.
+- With the `miette` feature, a `miette::Report` converts into
+  `crumbkit::Error` with the code `crumbkit::report::unchecked`. The report's
+  own code follows the message in parentheses, the report's help becomes a
+  `Recovery::Hint`, and a report without help has a `Recovery::None`.

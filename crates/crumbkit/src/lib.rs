@@ -10,6 +10,8 @@ mod fetch;
 mod listing;
 mod output;
 mod page;
+#[cfg(feature = "miette")]
+mod report;
 mod row;
 mod segment;
 mod sink;

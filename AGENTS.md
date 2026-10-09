@@ -7,10 +7,12 @@ A change is ready when these pass:
 
 ```sh
 cargo test --workspace
+cargo test -p crumbkit --features miette
 CARGO_BUILD_WARNINGS=deny cargo clippy --workspace --all-targets
+CARGO_BUILD_WARNINGS=deny cargo clippy -p crumbkit --all-targets --features miette
 cargo fmt --check
 cargo xtask check
-cargo +1.89.0 check --workspace --all-targets
+cargo +1.89.0 check --workspace --all-targets --all-features
 cargo deny check bans licenses sources
 cargo shear
 ```
