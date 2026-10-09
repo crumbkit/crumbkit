@@ -104,20 +104,25 @@ fn visit<'a>(
 }
 
 /// Reports whether `exemption`, a path of names separated by single spaces,
-/// leads from `root` to a command. Each name matches a command's name and
-/// never its aliases.
+/// leads from `root` to a command.
 fn names_command(root: &Command, exemption: &str) -> bool {
+    find(root, exemption.split(' ')).is_some()
+}
+
+/// Returns the command that `path`, a sequence of names, leads to from
+/// `root`, or `None` when a name matches no subcommand. An empty path leads
+/// to `root`. Each name matches a command's name and never its aliases.
+pub(crate) fn find<'a, 'n>(
+    root: &'a Command,
+    path: impl IntoIterator<Item = &'n str>,
+) -> Option<&'a Command> {
     let mut command = root;
-    for name in exemption.split(' ') {
-        match command
+    for name in path {
+        command = command
             .get_subcommands()
-            .find(|subcommand| subcommand.get_name() == name)
-        {
-            Some(subcommand) => command = subcommand,
-            None => return false,
-        }
+            .find(|subcommand| subcommand.get_name() == name)?;
     }
-    true
+    Some(command)
 }
 
 /// Returns the name a caller types for `arg`: `--limit` for an argument with

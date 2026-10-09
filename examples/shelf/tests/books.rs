@@ -236,6 +236,14 @@ fn books_show_long_help_shows_that_ids_take_many_values_and_lists_the_output_fla
 }
 
 #[test]
+fn short_help_lists_books_under_the_browse_the_catalogue_heading() {
+    shelf("h", &["-h"])
+        .success()
+        .stdout_eq(file!["golden/h.txt"].raw())
+        .stderr_eq("");
+}
+
+#[test]
 fn books_short_help_ends_with_the_next_line_that_opens_a_books_command() {
     shelf("books-h", &["books", "-h"])
         .success()

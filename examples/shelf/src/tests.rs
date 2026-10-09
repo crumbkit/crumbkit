@@ -4,7 +4,7 @@ use clap::CommandFactory as _;
 
 use crate::SPELLING;
 use crate::books::BooksError;
-use crate::cli::Cli;
+use crate::cli::{Cli, GUIDE};
 
 #[test]
 fn every_failure_code_spells_uniquely_as_printable_ascii() {
@@ -29,4 +29,9 @@ fn every_list_command_pages_and_every_show_command_takes_up_to_100_ids() {
 #[test]
 fn every_option_with_many_values_accepts_repeats_and_commas() {
     crumbkit_test::check_filters(&Cli::command(), &[]);
+}
+
+#[test]
+fn every_visible_command_is_under_a_goal_heading() {
+    crumbkit_test::check_guide(&Cli::command(), &GUIDE);
 }
