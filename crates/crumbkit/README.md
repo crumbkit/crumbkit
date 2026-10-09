@@ -27,6 +27,18 @@ next step in the same two formats.
   that the tool counted itself, so a tool with a database never loads a row it
   will not print. `Listing::from_all` keeps the first page of rows that the
   tool already holds in memory.
+- `Batch` holds the result of a command that takes many ids: the rows for
+  the ids that worked, in the order given, and the failures for the ids
+  that did not. A tool whose backend has a batch lookup, such as an SQL `IN`
+  query, builds it with `Batch::new` from that one call. A handler returns
+  `Result<Batch<R, E>, E2>`, where the outer `Err` is a failure of the whole
+  command.
+- `fetch_each` calls a per-id lookup for each id on at most a given number
+  of threads, and returns one result per id in the order of the ids. A
+  synchronous tool whose backend looks up one id per call uses it. An async
+  tool uses its own bounded stream, and a tool that needs rate limits or
+  retries writes its own loop. With one worker, one id or none, it runs
+  every lookup in the calling thread and starts no thread.
 - `Call` names a command by its path from the root and the clap ids of the
   arguments to show. `Call::render` turns it into text, such as
   `shelf books show <ID>...`, against the `clap::Command` the tool built at
@@ -56,8 +68,11 @@ next step in the same two formats.
   an `Ok` result in the format that the flags choose and exits with code 0.
   It prints an `Err` as a failure on standard error, or with `--json` as one
   `crumbkit/failure/v1` document on standard output, and exits with code 1.
-  `finish_to` does the same into a `Sink` over any two writers, so a test
-  reads the output from memory.
+  It prints a `Batch`'s rows as a table on standard output and then each
+  failure on standard error, or with `--json` one document with the rows
+  under `data` and the failures under `failures`, and exits with code 1
+  when the batch holds a failure. `finish_to` does the same into a `Sink`
+  over any two writers, so a test reads the output from memory.
 
 A tool wires these parts into its own `main`:
 

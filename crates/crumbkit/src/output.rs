@@ -12,6 +12,7 @@ use serde::Serialize;
 use serde::ser::{SerializeMap, Serializer};
 use serde_json::Value;
 
+use self::failure::{Entry, FailureDocument};
 use crate::{AsFailure, Document, Row, Rows, Sink, Spelling};
 
 #[cfg(test)]
@@ -166,6 +167,16 @@ pub fn finish<T: Rows, E: AsFailure>(
 /// [`Call`](crate::Call) does not resolve in that command, and the exit code
 /// stays 0.
 ///
+/// A [`Batch`](crate::Batch)'s rows print as a `Vec`'s do, and its JSON
+/// document also holds its failures under `failures`, which is present even
+/// when the list is empty. Each entry of `failures` has the fields of the
+/// `crumbkit/failure/v1` document described below, without `schema`. In
+/// text, the rows go to the output writer, which is flushed, and then each
+/// failure goes to the error writer in the form a failed command prints, in
+/// order. A batch with no rows writes nothing to the output writer in text,
+/// so the caller sees only the failures. `--long`, `--full` and `--fields`
+/// shape the rows and leave the failures unchanged.
+///
 /// An `Err` prints the failure. The text form goes to the sink's error
 /// writer, and nothing goes to the output writer:
 ///
@@ -186,9 +197,11 @@ pub fn finish<T: Rows, E: AsFailure>(
 /// `--full` and `--fields` do not change.
 ///
 /// The exit code is 0 when the result is written, and also when the reader
-/// closed the pipe early. It is 1 when the result is a failure, when a write
-/// fails for any other reason, or when the result cannot be serialized, and
-/// the cause of a failed write goes to the sink's error writer. It is 2 when
+/// closed the pipe early. It is 1 when the result is a failure or a batch
+/// with at least one failure, also after the reader closed the pipe early.
+/// It is 1 as well when a write fails for any other reason, or when the
+/// result cannot be serialized, and the cause of a failed write goes to the
+/// sink's error writer before a batch's failures. It is 2 when
 /// `--fields` names a field that the row type does not have, which is checked
 /// before the result prints.
 #[expect(
@@ -212,7 +225,15 @@ pub fn finish_to<T: Rows, E: AsFailure, O: Write, W: Write>(
         Ok(value) => value,
         Err(error) => return failure::finish(sink, output, spelling, error.as_failure()),
     };
-    match write_result(&mut sink.out, output, document, value) {
+    // A batch's failures are read once, so its JSON document and its text
+    // form print the same fields. Every other result has `None` here.
+    let failures: Option<Vec<FailureDocument>> = value.failures().map(|failures| {
+        failures
+            .into_iter()
+            .map(|failure| FailureDocument::new(failure, spelling, output.command.as_ref()))
+            .collect()
+    });
+    let code = match write_result(&mut sink.out, output, document, value, failures.as_deref()) {
         Ok(()) => ExitCode::SUCCESS,
         // A reader that stops early, as `shelf books list | head -1` does,
         // closes the pipe after it has read every line it wanted, so the
@@ -224,6 +245,21 @@ pub fn finish_to<T: Rows, E: AsFailure, O: Write, W: Write>(
             let _ = writeln!(sink.err, "error: cannot write to standard output: {error}");
             ExitCode::FAILURE
         }
+    };
+    let Some(failures) = failures else {
+        return code;
+    };
+    if !output.json {
+        for failure in &failures {
+            // Standard error is the last place to report anything, so a
+            // failure to write there goes unreported.
+            let _ = failure::write_text(&mut sink.err, failure);
+        }
+    }
+    if failures.is_empty() {
+        code
+    } else {
+        ExitCode::FAILURE
     }
 }
 
@@ -255,7 +291,8 @@ fn unknown_field<R: Row>(fields: &[String]) -> Option<String> {
 }
 
 /// Writes `value` to `out` in the format that `output` chooses, then flushes
-/// `out`.
+/// `out`. `failures` holds a batch's failures, which the JSON document holds
+/// under `failures`, and is `None` for every other result.
 ///
 /// A serialization error becomes an `io::Error` of kind `InvalidData`, so it
 /// is reported as a failed write.
@@ -264,11 +301,13 @@ fn write_result<T: Rows>(
     output: &Output,
     document: Document<T>,
     value: &T,
+    failures: Option<&[FailureDocument]>,
 ) -> io::Result<()> {
+    let total = value.total();
     if output.full {
         // Serializing the rows directly keeps every field in its declaration
         // order.
-        write_document(out, document, value, value.total())?;
+        write_document(out, document, value, total, failures)?;
         return out.flush();
     }
 
@@ -301,9 +340,12 @@ fn write_result<T: Rows>(
         // A single row's `data` is an object, and a list's is an array even
         // when it holds one row.
         match selected.as_slice() {
-            [single] if T::SINGLE => write_document(out, document, single, value.total())?,
-            list => write_document(out, document, &list, value.total())?,
+            [single] if T::SINGLE => write_document(out, document, single, total, failures)?,
+            list => write_document(out, document, &list, total, failures)?,
         }
+    } else if failures.is_some() && rows.is_empty() {
+        // A batch in which no id worked prints no table, so the caller sees
+        // only its failures on standard error.
     } else {
         table::write(out, &columns, &rows)?;
         write_footer(out, value)?;
@@ -352,39 +394,49 @@ fn write_next<T: Rows>(
 }
 
 /// Writes the JSON document `{"schema": <id>, "data": <data>}` to `out` on
-/// one line, with `"total": <total>` after `data` when `total` is `Some`.
+/// one line, with `"total": <total>` after `data` when `total` is `Some`,
+/// and then `"failures": [...]` when `failures` is `Some`.
 fn write_document<T, D: Serialize>(
     out: &mut impl Write,
     document: Document<T>,
     data: &D,
     total: Option<usize>,
+    failures: Option<&[FailureDocument]>,
 ) -> io::Result<()> {
     let envelope = Envelope {
         document,
         data,
         total,
+        failures,
     };
     serde_json::to_writer(&mut *out, &envelope)?;
     out.write_all(b"\n")
 }
 
-/// A JSON document: the `schema` id, the result under `data`, and a
-/// listing's number of matching rows under `total`.
+/// A JSON document: the `schema` id, the result under `data`, a listing's
+/// number of matching rows under `total`, and a batch's failures under
+/// `failures`.
 struct Envelope<'a, T, D> {
     document: Document<T>,
     data: &'a D,
     total: Option<usize>,
+    failures: Option<&'a [FailureDocument]>,
 }
 
 impl<T, D: Serialize> Serialize for Envelope<'_, T, D> {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        let len = if self.total.is_some() { 3 } else { 2 };
+        let len = 2 + usize::from(self.total.is_some()) + usize::from(self.failures.is_some());
         let mut map = serializer.serialize_map(Some(len))?;
         // `format_args!` serializes as a string without building one.
         map.serialize_entry("schema", &format_args!("{}", self.document))?;
         map.serialize_entry("data", self.data)?;
         if let Some(total) = self.total {
             map.serialize_entry("total", &total)?;
+        }
+        if let Some(failures) = self.failures {
+            // Each entry is a failure document without `schema`.
+            let entries: Vec<Entry<'_>> = failures.iter().map(Entry).collect();
+            map.serialize_entry("failures", &entries)?;
         }
         map.end()
     }
