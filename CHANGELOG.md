@@ -163,3 +163,16 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   topic without text, and on two topics with one name.
 - crumbkit-test's `check_grammar` fails on a command named or aliased `help`
   at any level, because crumbkit reserves that word for asking for help.
+- `Guide::leaves` gives a command without subcommands examples and column
+  descriptions, each `Leaf` with its path, its `Example`s and the
+  `Document` it prints. The leaf's `-h` lists the examples as full command
+  lines under `Examples:` and ends with a line such as
+  `Next: shelf books list --help explains each column.` Its `--help` lists
+  each example with its description, and lists the columns under
+  `Columns:` and `Columns that --long adds:` with the first paragraph of
+  each field's doc comment. `parse` builds the row type's JSON Schema only
+  for `--help`, and `help::extend` adds the examples and no columns.
+- crumbkit-test's `check_guide` fails on a leaf whose path names no command
+  or a command with subcommands, on two leaves with one path, and on an
+  example that clap refuses, including one that asks for `--help` or
+  `--version`.

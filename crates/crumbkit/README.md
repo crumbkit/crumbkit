@@ -45,8 +45,13 @@ next step in the same two formats.
   plain clap. A guide also holds the tool's help topics, each a
   `help::Topic` with a name, a one-line summary and plain text, which
   `parse` reads: `shelf help` lists them, `shelf help catalogue` prints one,
-  and the root's help names them. crumbkit enables clap's `help` feature,
-  which help templates need.
+  and the root's help names them. A guide also holds the tool's leaves,
+  each a `help::Leaf` with the path of a command without subcommands, its
+  `help::Example`s and the `Document` it prints. The leaf's `-h` and
+  `--help` list the examples as full command lines such as
+  `shelf books list --all`, and its `--help` describes each column of the
+  document's rows with the first paragraph of the field's doc comment.
+  crumbkit enables clap's `help` feature, which help templates need.
 - `Page` holds the flags `--limit <N>` and `--all`, which choose how many rows
   a listing prints. A command adds them to its own arguments with
   `#[command(flatten)]`, and its const parameter sets the default limit, which

@@ -89,17 +89,23 @@ A tool that derives its parser passes `&Cli::command()` in the same way.
   subcommand passes whether or not a goal names it. It also fails on a
   topic name that is not lowercase words joined by dashes, on a topic name
   that a root command's name or alias hides, on a topic without text, and
-  on two topics with one name. A topic with an empty summary passes.
+  on two topics with one name. A topic with an empty summary passes. It
+  fails on a leaf whose path names no command or a command with
+  subcommands, on two leaves with one path, and on an example that clap
+  refuses, with clap's error kind and the example's command line. An
+  example that asks for `--help` or `--version` counts as refused.
 
 ```rust
 use clap::Command;
-use crumbkit::help::{Goal, Group, Guide, Topic};
+use crumbkit::help::{Example, Goal, Group, Guide, Leaf, Topic};
 
 const GUIDE: Guide = Guide::new()
     .groups(&[Group::new(
         &[],
         &[Goal::new("Browse the catalogue", &["books"])],
     )])
+    .leaves(&[Leaf::new(&["books", "list"])
+        .examples(&[Example::new(&[], "Print the books")])])
     .topics(&[Topic::new(
         "catalogue",
         "Where the books come from",
