@@ -2,12 +2,14 @@
 //! and prints help, the version or a refusal in crumbkit's formats.
 
 use std::ffi::OsString;
+use std::fmt::Display;
 use std::io::{self, IsTerminal as _, Write};
 use std::process::ExitCode;
 
 use clap::error::ErrorKind;
 use clap::{Command, FromArgMatches};
 
+use crate::help::topic;
 use crate::refusal::Refusal;
 use crate::{Sink, Spelling};
 
@@ -98,12 +100,37 @@ where
 ///   as ``Global flags: --json, --fields <FIELD>, --long, --full. `shelf
 ///   books list --help` describes them.`` crumbkit hides those flags from
 ///   `-h`, so `-h` stays short and `--help` lists them in full.
-/// - The help of a command with subcommands ends with a line that opens one
-///   of them, such as `Next: shelf books <COMMAND> -h`, in `-h` and in
-///   `--help`.
+/// - The root's help names the tool's help topics on one line, such as
+///   ``Topics: catalogue. `shelf help <TOPIC>` prints one.``, in `-h` and in
+///   `--help`, when [`help::extend`](crate::help::extend) gave the tree
+///   topics.
+/// - The help of a command with a visible subcommand ends with a line that
+///   opens one of them, such as `Next: shelf books <COMMAND> -h`, in `-h`
+///   and in `--help`.
 ///
-/// Help and the version print to the sink's output writer, and the exit code
-/// is 0, also when the reader closed the pipe early.
+/// crumbkit answers the word `help` in place of clap, whose generated
+/// `help` subcommand it turns off. It answers `help` as the next word below
+/// any command with subcommands:
+///
+/// - `shelf help` lists the tool's topics under the heading `Topics` and
+///   ends with `Next: shelf help <TOPIC>`. A tool without topics prints the
+///   root's `--help`.
+/// - `shelf help catalogue` prints the text of the topic `catalogue`. A root
+///   command or alias with that name wins over the topic. Topics belong to
+///   the root, so `shelf books help catalogue` names no command.
+/// - Any other `help` command line drops the word `help` and asks for
+///   `--help`. `shelf help books show` and `shelf books help show` print
+///   what `shelf books show --help` prints, `shelf books help` prints what
+///   `shelf books --help` prints, and clap refuses a word that names no
+///   command, as in `shelf help comets` or `shelf books help shwo`.
+///
+/// A command without subcommands reads `help` as an ordinary word, such as
+/// the value of a positional argument. A command with its own subcommand
+/// named or aliased `help` lets clap parse that subcommand.
+///
+/// Help, the version, a topic and the topic list print to the sink's output
+/// writer, and the exit code is 0, also when the reader closed the pipe
+/// early.
 ///
 /// A command line that clap refuses prints as a failure with the code
 /// `crumbkit::cli::usage` in `spelling`, and the exit code is 2. The message
@@ -159,7 +186,11 @@ where
     O: Write,
     E: Write,
 {
-    let args: Vec<OsString> = args.into_iter().map(Into::into).collect();
+    let mut args: Vec<OsString> = args.into_iter().map(Into::into).collect();
+    // crumbkit answers `help` itself. clap propagates the setting to every
+    // subcommand, so no `Commands:` list shows clap's `help` line, and
+    // `Command::build` copies no subtree into a generated help tree.
+    command = command.disable_help_subcommand(true);
     // No `Output` exists before parsing, so crumbkit looks for `--json` in
     // the words before any `--`.
     let json = args
@@ -167,6 +198,18 @@ where
         .skip(1)
         .take_while(|word| *word != "--")
         .any(|word| word == "--json");
+    if let Some(help) = help_word(&command, &args) {
+        if help.at_root
+            && let Some(page) = help_page(&command, &args[help.position + 1..])
+        {
+            // RUST-10: a topic and the topic list print as plain text, also
+            // on a terminal, because `StyledStr`'s `Display` drops styles. A
+            // page that keeps the styles, written as clap's `Error::print`
+            // writes help, replaces this when a tool needs colour there.
+            return Err(print_text(sink, &page));
+        }
+        ask_for_help(&mut args, help.position);
+    }
     let path = walk(&command, &args);
     add_help_lines(&mut command, &path);
 
@@ -185,6 +228,104 @@ where
     }
     let refusal = Refusal::command_line(refusal_message(&command, &path, &error), path);
     Err(refusal.print(sink, json, spelling, Some(&command)))
+}
+
+/// The word `help` that crumbkit answers in place of clap.
+struct HelpWord {
+    /// The position of the word in the arguments.
+    position: usize,
+    /// Whether the word comes directly after the program name, where it
+    /// can also print the tool's topics.
+    at_root: bool,
+}
+
+/// Returns the word `help` that crumbkit answers in `args`, or `None` when
+/// clap reads every word.
+///
+/// It reads the words as [`walk`] does: it skips the program name, stops at
+/// `--`, skips each word that starts with `-`, and descends into each word
+/// that names a subcommand of the current command, resolving aliases. It
+/// answers `help` when that word comes next below a command with
+/// subcommands, and it stops at the first word that names no subcommand,
+/// such as the value of a positional argument.
+///
+/// A command without subcommands reads `help` as an ordinary word, and a
+/// command with its own subcommand named or aliased `help` lets clap parse
+/// that subcommand. crumbkit's hidden `help` command, which holds the
+/// tool's topics, counts as a subcommand of the root but never as a
+/// command of the tool's own, so a tool with one command and topics still
+/// answers `help`.
+//
+// RUST-10: the search reads words as the walk does, so it misreads an
+// option's value in its own word, as in `shelf --fields id help`, and stops
+// there. crumbkit then leaves the command line to clap, which refuses it as
+// an ordinary usage refusal. A walk that reads how many values each option
+// takes replaces both.
+fn help_word(command: &Command, args: &[OsString]) -> Option<HelpWord> {
+    let mut current = command;
+    let mut at_root = true;
+    for (position, word) in args.iter().enumerate().skip(1) {
+        if word == "--" {
+            return None;
+        }
+        if word.as_encoded_bytes().starts_with(b"-") {
+            continue;
+        }
+        match current.find_subcommand(word) {
+            Some(subcommand) if !topic::holds_topics(subcommand) => {
+                current = subcommand;
+                at_root = false;
+            }
+            _ if word == "help" && current.has_subcommands() => {
+                return Some(HelpWord { position, at_root });
+            }
+            _ => return None,
+        }
+    }
+    None
+}
+
+/// Returns the page that `help` at the root prints without clap, for
+/// `rest`, the words after `help`: the list of the tool's topics when
+/// `rest` holds no word that names something, and a topic's text when its
+/// one such word names a topic and no root command or alias has that name. It returns `None`
+/// otherwise, and the caller asks clap for help instead.
+///
+/// The words that name something are the words before any `--` that do not
+/// start with `-`.
+//
+// RUST-10: the page ignores flags, so `shelf help catalogue --json` prints
+// the topic as text. A topic in JSON replaces this when a caller needs it.
+fn help_page(command: &Command, rest: &[OsString]) -> Option<String> {
+    let mut words = rest
+        .iter()
+        .take_while(|word| *word != "--")
+        .filter(|word| !word.as_encoded_bytes().starts_with(b"-"));
+    match (words.next(), words.next()) {
+        (None, _) => topic::list(command),
+        (Some(word), None) if command.find_subcommand(word).is_none() => {
+            topic::text(command, word.to_str()?)
+        }
+        _ => None,
+    }
+}
+
+/// Turns `help` at `position` into a request for clap's long help: it
+/// removes the word and adds `--help` before the first `--`, or at the end
+/// when there is none. `shelf help books show` and `shelf books help show`
+/// then print what `shelf books show --help` prints, and clap refuses a
+/// word that names no command, as in `shelf help comets`.
+//
+// RUST-10: the request needs the tool's `--help` flag. A tool that disables
+// it gets clap's refusal of `--help`. crumbkit's own help flag replaces the
+// request if a tool needs that.
+fn ask_for_help(args: &mut Vec<OsString>, position: usize) {
+    args.remove(position);
+    let end = args
+        .iter()
+        .position(|word| word == "--")
+        .unwrap_or(args.len());
+    args.insert(end, OsString::from("--help"));
 }
 
 /// Returns the real names of the subcommands from the root to the deepest
@@ -242,28 +383,28 @@ fn add_help_lines(command: &mut Command, path: &[String]) {
         .map(ToString::to_string)
         .collect();
     let flags = flags.join(", ");
+    let topics = topic::names(command).join(", ");
 
     let mut text = command.get_name().to_owned();
     let mut node = command;
-    let mut names = path.iter();
-    loop {
-        set_help_lines(node, &text, &flags);
-        let Some(name) = names.next() else {
-            break;
-        };
+    set_help_lines(node, &text, &flags, &topics);
+    for name in path {
         let Some(subcommand) = node.find_subcommand_mut(name) else {
             break;
         };
         text.push(' ');
         text.push_str(name);
         node = subcommand;
+        set_help_lines(node, &text, &flags, "");
     }
 }
 
 /// Sets the lines that end the help of `node`, whose path is `text`: the
-/// global flags line in `-h` when `flags` is not empty, and the `Next:` line
-/// in `-h` and `--help` when `node` has subcommands.
-fn set_help_lines(node: &mut Command, text: &str, flags: &str) {
+/// global flags line in `-h` when `flags` is not empty, the topics line in
+/// `-h` and `--help` when `topics` is not empty, and the `Next:` line in
+/// `-h` and `--help` when `node` has a visible subcommand. Only the root
+/// gets `topics`.
+fn set_help_lines(node: &mut Command, text: &str, flags: &str, topics: &str) {
     let mut short = Vec::new();
     let mut long = Vec::new();
     if !flags.is_empty() {
@@ -271,7 +412,12 @@ fn set_help_lines(node: &mut Command, text: &str, flags: &str) {
             "Global flags: {flags}. `{text} --help` describes them."
         ));
     }
-    if node.has_subcommands() {
+    if !topics.is_empty() {
+        let line = format!("Topics: {topics}. `{text} help <TOPIC>` prints one.");
+        short.push(line.clone());
+        long.push(line);
+    }
+    if has_visible_subcommands(node) {
         let value_name = node.get_subcommand_value_name().unwrap_or("COMMAND");
         let next = format!("Next: {text} <{value_name}> -h");
         short.push(next.clone());
@@ -288,6 +434,14 @@ fn set_help_lines(node: &mut Command, text: &str, flags: &str) {
         .after_long_help(long.join("\n"));
 }
 
+/// Reports whether `node` has a subcommand that its help lists. A hidden
+/// subcommand, such as the `help` command that holds a tool's topics, does
+/// not count. clap's own `has_visible_subcommands` is private to clap.
+fn has_visible_subcommands(node: &Command) -> bool {
+    node.get_subcommands()
+        .any(|subcommand| !subcommand.is_hide_set())
+}
+
 /// Prints the help page or the version in `error` and returns the exit code:
 /// 0 when it is written or the reader closed the pipe early, and 1 when the
 /// write fails for another reason. With `colour`, clap's `Error::print`
@@ -298,11 +452,24 @@ fn print_page<O: Write, E: Write>(
     error: &clap::Error,
     colour: bool,
 ) -> ExitCode {
-    let written = if colour {
-        error.print()
+    if colour {
+        let written = error.print();
+        exit_code(sink, written)
     } else {
-        write!(sink.out, "{}", error.render()).and_then(|()| sink.out.flush())
-    };
+        print_text(sink, &error.render())
+    }
+}
+
+/// Prints `text` to the sink's output writer as plain text and returns the
+/// exit code, as [`print_page`] does.
+fn print_text<O: Write, E: Write>(sink: &mut Sink<O, E>, text: &dyn Display) -> ExitCode {
+    let written = write!(sink.out, "{text}").and_then(|()| sink.out.flush());
+    exit_code(sink, written)
+}
+
+/// Returns the exit code after a page was `written`, and reports a failed
+/// write on the sink's error writer.
+fn exit_code<O: Write, E: Write>(sink: &mut Sink<O, E>, written: io::Result<()>) -> ExitCode {
     match written {
         Ok(()) => ExitCode::SUCCESS,
         // A reader that stops early, as `shelf -h | head -1` does, closes the
@@ -340,7 +507,7 @@ fn refusal_message(command: &Command, path: &[String], error: &clap::Error) -> S
             node = subcommand;
         }
     }
-    if node.has_subcommands() {
+    if has_visible_subcommands(node) {
         format!("the command `{text}` needs a subcommand")
     } else {
         format!("the command `{text}` needs arguments")

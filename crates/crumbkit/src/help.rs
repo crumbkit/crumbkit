@@ -1,17 +1,23 @@
-//! Goal headings, which list a group's subcommands under headings that the
-//! tool declares, such as `Read` and `Change`, in place of clap's single
-//! `Commands:` list.
+//! The guide to a tool's help: goal headings, which list a group's
+//! subcommands under headings that the tool declares, such as `Read` and
+//! `Change`, in place of clap's single `Commands:` list, and help topics,
+//! which `<tool> help <TOPIC>` prints.
+
+pub(crate) mod topic;
 
 use std::fmt::Write as _;
 
 use clap::Command;
+use clap::builder::StyledStr;
 use clap::builder::styling::Style;
+
+pub use self::topic::Topic;
 
 #[cfg(test)]
 mod tests;
 
-/// The goal headings of a tool's help pages: one [`Group`] for each command
-/// whose help lists its subcommands under goals.
+/// The guide to a tool's help pages: one [`Group`] for each command whose
+/// help lists its subcommands under goals, and the tool's [`Topic`]s.
 ///
 /// A tool declares its guide once as a `const` and applies it with
 /// [`extend`] before it parses:
@@ -19,7 +25,7 @@ mod tests;
 /// ```
 /// use clap::{CommandFactory, Parser, Subcommand};
 /// use crumbkit::Spelling;
-/// use crumbkit::help::{Goal, Group, Guide};
+/// use crumbkit::help::{Goal, Group, Guide, Topic};
 ///
 /// /// Browse a small catalogue.
 /// #[derive(Parser)]
@@ -35,10 +41,16 @@ mod tests;
 ///     Books,
 /// }
 ///
-/// const GUIDE: Guide = Guide::new().groups(&[Group::new(
-///     &[],
-///     &[Goal::new("Browse the catalogue", &["books"])],
-/// )]);
+/// const GUIDE: Guide = Guide::new()
+///     .groups(&[Group::new(
+///         &[],
+///         &[Goal::new("Browse the catalogue", &["books"])],
+///     )])
+///     .topics(&[Topic::new(
+///         "catalogue",
+///         "Where the books come from",
+///         "The catalogue is built into the binary.\n",
+///     )]);
 ///
 /// let command = crumbkit::help::extend(Cli::command(), &GUIDE);
 /// let parsed = crumbkit::parse_from::<Cli, _, _>(command, Spelling::COLONS, ["shelf", "books"]);
@@ -48,13 +60,19 @@ mod tests;
 pub struct Guide {
     /// The commands whose help lists their subcommands under goals.
     groups: &'static [Group],
+    /// The topics that `<tool> help` lists, in order.
+    topics: &'static [Topic],
 }
 
 impl Guide {
-    /// Returns a guide with no groups, which changes no help page.
+    /// Returns a guide with no groups and no topics, which changes no help
+    /// page.
     #[must_use]
     pub const fn new() -> Self {
-        Self { groups: &[] }
+        Self {
+            groups: &[],
+            topics: &[],
+        }
     }
 
     /// Sets the commands whose help lists their subcommands under goals.
@@ -69,6 +87,20 @@ impl Guide {
     #[must_use]
     pub const fn get_groups(&self) -> &'static [Group] {
         self.groups
+    }
+
+    /// Sets the topics that `<tool> help` lists, in the order it lists them.
+    #[must_use]
+    pub const fn topics(mut self, topics: &'static [Topic]) -> Self {
+        self.topics = topics;
+        self
+    }
+
+    /// Returns the topics that [`Guide::topics`] set. The name has clap's
+    /// `get_` prefix, because `topics` is the builder method.
+    #[must_use]
+    pub const fn get_topics(&self) -> &'static [Topic] {
+        self.topics
     }
 }
 
@@ -141,8 +173,8 @@ impl Goal {
 /// returns the tree.
 ///
 /// A tool's `main` calls it once before [`parse`](crate::parse), because
-/// parsing builds the tree. The unbuilt tree lacks clap's generated `help`
-/// subcommand, so the lists leave it out, and typing `help` still works.
+/// parsing builds the tree. `parse` answers `help` itself and turns off
+/// clap's generated `help` subcommand, so the lists never show it.
 ///
 /// Each group's help page lists its visible subcommands under its goals'
 /// headings, in the guide's order, and then the visible subcommands that no
@@ -171,8 +203,17 @@ impl Goal {
 /// name with clap's own `Commands:` list. crumbkit-test's `check_guide`
 /// fails on a guide that names a missing command or misses a visible one.
 ///
-/// Its work is one formatted line for each subcommand of each group, and it
-/// never clones the tree.
+/// When the guide has topics, `extend` adds a hidden root command named
+/// `help` that holds them, and turns off clap's generated `help` subcommand
+/// so the tree never has two. `parse` reads the topics from that command:
+/// `<tool> help` lists them, `<tool> help <TOPIC>` prints one, and the
+/// root's help names them. `extend` keeps the first of two topics with one
+/// name, and adds no topics when the root already has a subcommand named or
+/// aliased `help`.
+///
+/// Its work is one formatted line for each subcommand of each group, and
+/// one command for each topic, which holds the topic's text. It never
+/// clones the tree.
 #[must_use]
 pub fn extend(mut command: Command, guide: &Guide) -> Command {
     // clap copies the root's styles to every subcommand when it builds the
@@ -202,7 +243,7 @@ pub fn extend(mut command: Command, guide: &Guide) -> Command {
             .before_help(list)
             .before_long_help(None::<&str>);
     }
-    command
+    topic::add(command, guide.topics)
 }
 
 /// Returns the help template of a guided command, with `header` as the style
@@ -292,13 +333,28 @@ fn list(node: &Command, goals: &[Goal], header: Style, literal: Style) -> Option
         // Writing to a `String` cannot fail.
         let _ = write!(text, "{header}{heading}{header:#}");
         for command in commands {
-            let name = command.get_name();
-            let _ = write!(text, "\n  {literal}{name}{literal:#}");
-            if let Some(about) = command.get_about().or_else(|| command.get_long_about()) {
-                let padding = width - name.chars().count() + 2;
-                let _ = write!(text, "{:padding$}{about}", "");
-            }
+            let about = command.get_about().or_else(|| command.get_long_about());
+            write_line(&mut text, command.get_name(), about, width, literal);
         }
     }
     Some(text)
+}
+
+/// Writes one line of a list to `text`, which the goal list and the topic
+/// list share: a line break, two spaces and `name` in the `literal` style,
+/// then, when there is an `about`, padding to `width`, the length of the
+/// longest name in the list, plus two spaces, and the `about`.
+fn write_line(
+    text: &mut String,
+    name: &str,
+    about: Option<&StyledStr>,
+    width: usize,
+    literal: Style,
+) {
+    // Writing to a `String` cannot fail.
+    let _ = write!(text, "\n  {literal}{name}{literal:#}");
+    if let Some(about) = about {
+        let padding = width - name.chars().count() + 2;
+        let _ = write!(text, "{:padding$}{about}", "");
+    }
 }

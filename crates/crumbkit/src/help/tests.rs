@@ -284,7 +284,6 @@ Commands:
   list    List the planets
   show    Show planets by name
   rename  Rename a planet
-  help    Print this message or the help of the given subcommand(s)
 
 Options:
 ";

@@ -244,7 +244,6 @@ Usage: tool planets [OPTIONS] <COMMAND>
 
 Commands:
   show  Show planets by name
-  help  Print this message or the help of the given subcommand(s)
 
 Options:
   -h, --help  Print help (see more with '--help')
@@ -253,6 +252,86 @@ Global flags: --json, --fields <FIELD>. `tool planets --help` describes them.
 Next: tool planets <COMMAND> -h
 ";
     assert_eq!(parsed.out, expected);
+}
+
+#[test]
+fn help_with_a_command_path_prints_that_command_s_long_help() {
+    let parsed = parse(&["tool", "help", "planets", "show"]);
+
+    assert_eq!(parsed.code, Some(ExitCode::SUCCESS));
+    assert_eq!(
+        parsed.out,
+        parse(&["tool", "planets", "show", "--help"]).out
+    );
+    assert_eq!(parsed.err, "");
+}
+
+#[test]
+fn help_without_words_prints_the_root_s_long_help_when_there_are_no_topics() {
+    let parsed = parse(&["tool", "help"]);
+
+    assert_eq!(parsed.code, Some(ExitCode::SUCCESS));
+    assert_eq!(parsed.out, parse(&["tool", "--help"]).out);
+    assert_eq!(parsed.err, "");
+}
+
+#[test]
+fn help_inside_a_group_prints_the_long_help_of_the_command_after_it() {
+    let parsed = parse(&["tool", "planets", "help", "show"]);
+
+    assert_eq!(parsed.code, Some(ExitCode::SUCCESS));
+    assert_eq!(
+        parsed.out,
+        parse(&["tool", "planets", "show", "--help"]).out
+    );
+    assert_eq!(parsed.err, "");
+}
+
+#[test]
+fn help_as_the_last_word_after_a_group_prints_that_group_s_long_help() {
+    let parsed = parse(&["tool", "planets", "help"]);
+
+    assert_eq!(parsed.code, Some(ExitCode::SUCCESS));
+    assert_eq!(parsed.out, parse(&["tool", "planets", "--help"]).out);
+    assert_eq!(parsed.err, "");
+}
+
+#[test]
+fn help_with_an_unknown_word_is_refused_with_the_root_s_short_help_as_the_recovery() {
+    let parsed = parse(&["tool", "help", "plants"]);
+
+    assert_eq!(parsed.code, Some(ExitCode::from(2)));
+    assert_eq!(parsed.out, "");
+    let expected = "\
+error: unrecognized subcommand 'plants'; a similar subcommand exists: 'planets'
+  help:  run `tool -h`
+  code:  crumbkit::cli::usage
+";
+    assert_eq!(parsed.err, expected);
+}
+
+/// A word as a parsed type, for a tool whose root takes one positional
+/// argument.
+#[derive(clap::Args)]
+struct Word {
+    word: String,
+}
+
+#[test]
+fn a_root_without_subcommands_reads_help_as_an_ordinary_word() {
+    let mut out = Vec::new();
+    let mut err = Vec::new();
+    let result = parse_to::<Word, _, _, _, _>(
+        &mut Sink::new(&mut out, &mut err),
+        Command::new("tool").arg(Arg::new("word").required(true)),
+        Spelling::COLONS,
+        ["tool", "help"],
+    );
+
+    let Ok((parsed, _)) = result else {
+        panic!("the command line did not parse");
+    };
+    assert_eq!(parsed.word, "help");
 }
 
 #[test]
