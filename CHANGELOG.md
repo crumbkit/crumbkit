@@ -109,3 +109,23 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   `crumbkit::Error` with the code `crumbkit::report::unchecked`. The report's
   own code follows the message in parentheses, the report's help becomes a
   `Recovery::Hint`, and a report without help has a `Recovery::None`.
+- `parse` parses the process's command line against a tool's `Command` and
+  returns the tool's parsed type and that command, which `main` passes to
+  `Output::set_command`, or the exit code after it printed help, the version
+  or a refusal. `parse_from` takes the arguments, and `parse_to` also takes a
+  `Sink`. `parse` never calls `process::exit`.
+- A command line that clap refuses prints as a failure with the code
+  `crumbkit::cli::usage`, clap's message on one line, and a recovery that
+  runs the `-h` of the deepest command the caller typed, such as
+  `shelf books show -h`, and exits with code 2. A command line that stops at
+  a command with subcommands prints ``the command `shelf books` needs a
+  subcommand``. With `--json` before any `--`, the refusal prints as one
+  `crumbkit/failure/v1` document on standard output.
+- A `--fields` name that the row type lacks prints as the same refusal, with
+  a recovery that runs the root's `-h`, and exits with code 2.
+- Through `parse`, `-h` names the root's global flags on one line, such as
+  ``Global flags: --json, --fields <FIELD>, --long, --full. `shelf books
+  list --help` describes them.``, and `--help` lists them in full. The help
+  of a command with subcommands ends with a line such as
+  `Next: shelf books <COMMAND> -h`. Help and the version keep clap's colours
+  only when standard output is a terminal.
