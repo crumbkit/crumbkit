@@ -1,5 +1,5 @@
-//! The guide check, which keeps a tool's goal headings and help topics in
-//! step with its command tree.
+//! The guide check, which keeps a tool's goal headings, leaves and help
+//! topics in step with its command tree.
 
 use clap::Command;
 use crumbkit::help::Guide;
@@ -10,13 +10,14 @@ use crate::tree::{self, DASHED_NAME};
 mod tests;
 
 /// Checks that `guide` names the commands of the tree of `command` as
-/// crumbkit's goal headings list them, and panics, as a failed test
-/// assertion does, naming every problem it finds.
+/// crumbkit's goal headings list them and as its leaves describe them, and
+/// panics, as a failed test assertion does, naming every problem it finds.
 ///
 /// `crumbkit::parse` and `crumbkit::help::extend` never fail on a guide at
-/// runtime: they skip a group or a name that matches no command, and list a
-/// visible subcommand that no goal names under a final `Commands` heading.
-/// This check catches each of those cases in a test instead. A group's path
+/// runtime: they skip a group, a leaf or a name that matches no command,
+/// and list a visible subcommand that no goal names under a final
+/// `Commands` heading. This check catches each of those cases in a test
+/// instead. A group's path
 /// runs from `command`, and the check reads the tree as the tool built it,
 /// so clap's generated `help` subcommand is never a child. It finds:
 ///
@@ -27,6 +28,13 @@ mod tests;
 /// - a visible subcommand of a group that no goal names;
 /// - a subcommand that two goals of its group name, or that one goal names
 ///   twice;
+/// - a leaf whose path names no command, matching real names only;
+/// - a leaf whose path names a command with subcommands;
+/// - two leaves with one path, because `parse` applies only the first;
+/// - an example that clap refuses when it parses the tool's name, the
+///   leaf's path and the example's words, naming clap's error kind. An
+///   example with `--help` or `--version` counts as refused, because an
+///   example shows a real run;
 /// - a topic whose name is the name or an alias of a command directly under
 ///   `command`, because `<tool> help <name>` prints that command's help;
 /// - a topic whose text is empty or only whitespace;
@@ -43,13 +51,15 @@ mod tests;
 ///
 /// ```
 /// use clap::Command;
-/// use crumbkit::help::{Goal, Group, Guide, Topic};
+/// use crumbkit::help::{Example, Goal, Group, Guide, Leaf, Topic};
 ///
 /// const GUIDE: Guide = Guide::new()
 ///     .groups(&[Group::new(
 ///         &["books"],
 ///         &[Goal::new("Read", &["list", "show"])],
 ///     )])
+///     .leaves(&[Leaf::new(&["books", "list"])
+///         .examples(&[Example::new(&[], "Print the books")])])
 ///     .topics(&[Topic::new(
 ///         "catalogue",
 ///         "Where the books come from",
@@ -122,8 +132,62 @@ pub fn check_guide(command: &Command, guide: &Guide) {
             }
         }
     }
+    check_leaves(command, guide, &mut problems);
     check_topics(command, guide, &mut problems);
     tree::report("guide rules", &problems);
+}
+
+/// Adds a problem to `problems` for each leaf of `guide` that breaks a leaf
+/// rule of [`check_guide`].
+fn check_leaves(command: &Command, guide: &Guide, problems: &mut Vec<String>) {
+    let tool = command.get_name();
+    let leaves = guide.get_leaves();
+    // clap builds the tree that it parses, so the examples parse against a
+    // copy, and `command` stays as the tool built it for the other rules.
+    let mut parser = command.clone();
+    for (index, leaf) in leaves.iter().enumerate() {
+        let path = leaf.path();
+        let Some(node) = tree::find(command, path.iter().copied()) else {
+            problems.push(format!("the leaf `{}` names no command", path.join(" ")));
+            continue;
+        };
+        let text = std::iter::once(tool)
+            .chain(path.iter().copied())
+            .collect::<Vec<_>>()
+            .join(" ");
+        if node.has_subcommands() {
+            problems.push(format!(
+                "{text}: the guide declares the command a leaf, and it has subcommands"
+            ));
+            continue;
+        }
+        // Only the second leaf with a path reports it, so a path that three
+        // leaves share is one problem.
+        let earlier = leaves[..index]
+            .iter()
+            .filter(|earlier| earlier.path() == path)
+            .count();
+        if earlier == 1 {
+            problems.push(format!(
+                "{text}: two leaves name the command, and help shows only the first"
+            ));
+        }
+        for example in leaf.get_examples() {
+            let args = std::iter::once(tool)
+                .chain(path.iter().copied())
+                .chain(example.words().iter().copied());
+            if let Err(error) = parser.try_get_matches_from_mut(args) {
+                let line = std::iter::once(text.as_str())
+                    .chain(example.words().iter().copied())
+                    .collect::<Vec<_>>()
+                    .join(" ");
+                problems.push(format!(
+                    "{text}: clap refuses the example `{line}` with the error kind {:?}",
+                    error.kind()
+                ));
+            }
+        }
+    }
 }
 
 /// Adds a problem to `problems` for each topic of `guide` that breaks a
