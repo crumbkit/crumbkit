@@ -13,7 +13,7 @@ use clap::Command;
 use clap::builder::StyledStr;
 use clap::builder::styling::Style;
 
-pub use self::leaf::{Example, Leaf};
+pub use self::leaf::{Column, Example, Leaf};
 pub use self::topic::Topic;
 
 #[cfg(test)]

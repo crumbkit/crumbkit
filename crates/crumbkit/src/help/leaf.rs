@@ -106,6 +106,100 @@ impl Leaf {
     pub(crate) const fn has_document(&self) -> bool {
         self.columns.is_some()
     }
+
+    /// Returns the columns of the leaf's row type as its `--help` describes
+    /// them: each name of [`Row::COLUMNS`] and then each name of
+    /// [`Row::LONG_COLUMNS`], in declared order, or no column when the leaf
+    /// has no document.
+    ///
+    /// It builds the row type's JSON Schema, so it costs a schema build on
+    /// each call. A column's description is the first paragraph of the
+    /// `description` of its property in the schema, which schemars takes
+    /// from the field's doc comment. crumbkit's `--help` and crumbkit-test's
+    /// `check_guide` both read the columns through this method.
+    //
+    // RUST-10: the description comes only from the property itself. A
+    // column whose name is not a property, and a field without a doc
+    // comment, whose type's doc comment schemars keeps under `$defs`, have
+    // no description, and a row type whose schema has no properties has no
+    // description for any column. crumbkit-test's `check_guide` fails on
+    // each such column, so a tool finds them in a test. A reader that
+    // follows `$ref` into `$defs` replaces this when a tool needs those
+    // descriptions.
+    #[must_use]
+    pub fn column_descriptions(&self) -> Vec<Column> {
+        let Some(columns) = self.columns else {
+            return Vec::new();
+        };
+        let schema = (columns.schema)();
+        let properties = schema.get("properties").and_then(Value::as_object);
+        let compact = columns.compact.iter().map(|name| (name, false));
+        let long = columns.long.iter().map(|name| (name, true));
+        compact
+            .chain(long)
+            .map(|(&name, long)| {
+                let property = properties.and_then(|properties| properties.get(name));
+                let description = property
+                    .and_then(|property| property.get("description"))
+                    .and_then(Value::as_str)
+                    .map(first_paragraph);
+                Column {
+                    name,
+                    long,
+                    property: property.is_some(),
+                    description,
+                }
+            })
+            .collect()
+    }
+}
+
+/// One column of a leaf's row type, as [`Leaf::column_descriptions`] reads
+/// it from the row type's JSON Schema.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Column {
+    /// The column's name, as [`Row::COLUMNS`] or [`Row::LONG_COLUMNS`]
+    /// spells it.
+    name: &'static str,
+    /// Whether the name comes from [`Row::LONG_COLUMNS`], so `--long` adds
+    /// the column.
+    long: bool,
+    /// Whether the name is a property of the row type's JSON Schema, which
+    /// holds one property for each field as the type serializes it.
+    property: bool,
+    /// The first paragraph of the property's description, or `None` when
+    /// the property has no description or the name is not a property.
+    description: Option<String>,
+}
+
+impl Column {
+    /// Returns the column's name.
+    #[must_use]
+    pub const fn name(&self) -> &'static str {
+        self.name
+    }
+
+    /// Reports whether `--long` adds the column, because its name comes
+    /// from [`Row::LONG_COLUMNS`].
+    #[must_use]
+    pub const fn is_long(&self) -> bool {
+        self.long
+    }
+
+    /// Reports whether the name is a property of the row type's JSON
+    /// Schema. A name that is not a property prints `-` in every row of the
+    /// table.
+    #[must_use]
+    pub const fn is_property(&self) -> bool {
+        self.property
+    }
+
+    /// Returns the first paragraph of the column's description, with its
+    /// lines joined by spaces, or `None` when the column has none.
+    #[must_use]
+    pub fn description(&self) -> Option<&str> {
+        self.description.as_deref()
+    }
 }
 
 /// One example of a leaf: the words after the leaf's path and a one-line
@@ -224,40 +318,29 @@ fn quote(word: &str) -> String {
 /// section when the leaf has no document. `header` styles each heading and
 /// `literal` each name.
 ///
-/// Each line has the layout of the goal list. A column's description is
-/// the `description` of its property in the row type's JSON Schema, which
-/// schemars takes from the field's doc comment, and only its first
-/// paragraph prints. A column without a description prints its name alone.
-/// This builds the schema, so `parse` calls it only for `--help`.
-//
-// RUST-10: the description comes only from the property itself. A column
-// whose name is not a property, which prints `-` in the table, and a field
-// without a doc comment, whose type's doc comment schemars keeps under
-// `$defs`, print their names alone, and a row type whose schema has no
-// properties prints every name alone. A reader that follows `$ref` into
-// `$defs` replaces this when a tool needs those descriptions.
+/// Each line has the layout of the goal list, and holds the column's name
+/// and the description that [`Leaf::column_descriptions`] reads. A column
+/// without a description prints its name alone. This builds the schema, so
+/// `parse` calls it only for `--help`.
 pub(crate) fn columns(leaf: &Leaf, header: Style, literal: Style) -> Vec<String> {
-    let Some(columns) = leaf.columns else {
-        return Vec::new();
-    };
-    let schema = (columns.schema)();
-    let properties = schema.get("properties").and_then(Value::as_object);
+    let columns = leaf.column_descriptions();
     let mut sections = Vec::new();
-    for (heading, names) in [
-        ("Columns:", columns.compact),
-        ("Columns that --long adds:", columns.long),
-    ] {
-        let Some(width) = names.iter().map(|name| name.chars().count()).max() else {
+    for (heading, long) in [("Columns:", false), ("Columns that --long adds:", true)] {
+        let section_columns: Vec<&Column> = columns
+            .iter()
+            .filter(|column| column.long == long)
+            .collect();
+        let Some(width) = section_columns
+            .iter()
+            .map(|column| column.name.chars().count())
+            .max()
+        else {
             continue;
         };
         let mut section = format!("{header}{heading}{header:#}");
-        for name in names {
-            let about = properties
-                .and_then(|properties| properties.get(*name))
-                .and_then(|property| property.get("description"))
-                .and_then(Value::as_str)
-                .map(|description| StyledStr::from(first_paragraph(description)));
-            write_line(&mut section, name, about.as_ref(), width, literal);
+        for column in section_columns {
+            let about = column.description.clone().map(StyledStr::from);
+            write_line(&mut section, column.name, about.as_ref(), width, literal);
         }
         sections.push(section);
     }
