@@ -1,12 +1,12 @@
 //! Tests for help topics: what `parse_to` prints for `help` and for help
-//! pages in a tree that `extend` has given topics.
+//! pages with a guide that has topics.
 
 use std::process::ExitCode;
 
 use clap::{Arg, ArgAction, Command};
 
 use super::Topic;
-use crate::help::{Guide, extend};
+use crate::help::Guide;
 use crate::{Sink, Spelling, parse_to};
 
 /// A tool with a global flag and one group.
@@ -49,14 +49,15 @@ struct Printed {
     err: String,
 }
 
-/// Runs `parse_to` over `command` with `guide` applied, for `args` that do
-/// not parse, and returns what it printed.
+/// Runs `parse_to` over `command` with `guide`, for `args` that do not
+/// parse, and returns what it printed.
 fn run(command: Command, guide: &Guide, args: &[&str]) -> Printed {
     let mut out = Vec::new();
     let mut err = Vec::new();
     let result = parse_to::<(), _, _, _, _>(
         &mut Sink::new(&mut out, &mut err),
-        extend(command, guide),
+        command,
+        guide,
         Spelling::COLONS,
         args,
     );
@@ -67,8 +68,8 @@ fn run(command: Command, guide: &Guide, args: &[&str]) -> Printed {
     }
 }
 
-/// Runs `parse_to` over `tool()` with `guide` applied, for `args` that print
-/// a page, and returns the page.
+/// Runs `parse_to` over `tool()` with `guide`, for `args` that print a page,
+/// and returns the page.
 fn page(guide: &Guide, args: &[&str]) -> String {
     let printed = run(tool(), guide, args);
     assert_eq!(printed.code, Some(ExitCode::SUCCESS));
@@ -155,11 +156,6 @@ fn help_ignores_flags_after_a_topic_s_name() {
 }
 
 #[test]
-fn a_tree_with_topics_passes_clap_s_debug_assertions() {
-    extend(tool(), &GUIDE).debug_assert();
-}
-
-#[test]
 fn a_repeated_topic_name_is_left_out_and_the_first_topic_prints() {
     const GUIDE: Guide = Guide::new().topics(&[
         ORBITS,
@@ -187,6 +183,15 @@ fn a_root_with_its_own_help_command_gets_no_topics_and_clap_parses_that_command(
         printed.err,
         "error: unexpected argument 'orbits' found\n  help:  run `tool assist -h`\n  code:  crumbkit::cli::usage\n"
     );
+}
+
+#[test]
+fn a_root_with_its_own_help_command_names_no_topics_in_its_help() {
+    let tool = tool().subcommand(Command::new("assist").alias("help"));
+
+    let short = run(tool, &GUIDE, &["tool", "-h"]).out;
+
+    assert!(!short.contains("Topics:"), "{short}");
 }
 
 #[test]

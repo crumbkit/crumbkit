@@ -153,17 +153,6 @@ fn a_topic_named_like_a_root_command_or_one_of_its_aliases_fails_the_check() {
 }
 
 #[test]
-fn a_topic_named_help_fails_the_check() {
-    const GUIDE: Guide = Guide::new().topics(&[Topic::new("help", "", "Help.\n")]);
-
-    assert_eq!(
-        panic_message(|| check_guide(&shelf(), &GUIDE)).unwrap(),
-        "the command tree breaks crumbkit's guide rules:\n\
-         the topic `help` has the name of crumbkit's hidden `help` command, so `shelf help help` prints that command's help"
-    );
-}
-
-#[test]
 fn a_topic_whose_text_is_empty_fails_the_check() {
     const GUIDE: Guide = Guide::new().topics(&[
         Topic::new("catalogue", "", ""),

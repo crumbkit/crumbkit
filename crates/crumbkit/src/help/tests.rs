@@ -1,5 +1,5 @@
-//! Tests for goal headings: the help pages that `parse_to` prints for a tree
-//! that `extend` has given a guide.
+//! Tests for goal headings: the help pages that `parse_to` prints with a
+//! guide, and the tree that `extend` returns.
 
 use std::process::ExitCode;
 
@@ -46,14 +46,15 @@ fn tool() -> Command {
         )
 }
 
-/// Runs `parse_to` over `tool()` with `guide` applied, for `args` that ask
-/// for help, and returns the help page it printed.
+/// Runs `parse_to` over `tool()` with `guide`, for `args` that ask for help,
+/// and returns the help page it printed.
 fn help(guide: &Guide, args: &[&str]) -> String {
     let mut out = Vec::new();
     let mut err = Vec::new();
     let result = parse_to::<(), _, _, _, _>(
         &mut Sink::new(&mut out, &mut err),
-        extend(tool(), guide),
+        tool(),
+        guide,
         Spelling::COLONS,
         args,
     );
@@ -157,6 +158,28 @@ Options:
 Next: tool planets <COMMAND> -h
 ";
     assert_eq!(help(&GUIDE, &["tool", "planets", "--help"]), expected);
+}
+
+#[test]
+fn a_guided_group_off_the_typed_path_keeps_its_default_help() {
+    const GUIDE: Guide = Guide::new().groups(&[Group::new(
+        &["planets"],
+        &[Goal::new("Read", &["list", "show", "rename"])],
+    )]);
+
+    let result = parse_to::<(), _, _, _, _>(
+        &mut Sink::new(Vec::new(), Vec::new()),
+        tool(),
+        &GUIDE,
+        Spelling::COLONS,
+        ["tool", "moons", "list"],
+    );
+
+    let Ok(((), command)) = result else {
+        panic!("the command line did not parse");
+    };
+    let planets = command.find_subcommand("planets").unwrap();
+    assert_eq!(planets.get_before_help(), None);
 }
 
 #[test]

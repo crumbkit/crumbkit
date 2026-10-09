@@ -10,15 +10,15 @@ use crate::tree::{self, DASHED_NAME};
 mod tests;
 
 /// Checks that `guide` names the commands of the tree of `command` as
-/// `crumbkit::help::extend` lists them, and panics, as a failed test
+/// crumbkit's goal headings list them, and panics, as a failed test
 /// assertion does, naming every problem it finds.
 ///
-/// `extend` never fails at runtime: it skips a group or a name that matches
-/// no command, and lists a visible subcommand that no goal names under a
-/// final `Commands` heading. This check catches each of those cases in a
-/// test instead. A group's path runs from `command`, and the check reads
-/// the tree as the tool built it, so clap's generated `help` subcommand is
-/// never a child. It finds:
+/// `crumbkit::parse` and `crumbkit::help::extend` never fail on a guide at
+/// runtime: they skip a group or a name that matches no command, and list a
+/// visible subcommand that no goal names under a final `Commands` heading.
+/// This check catches each of those cases in a test instead. A group's path
+/// runs from `command`, and the check reads the tree as the tool built it,
+/// so clap's generated `help` subcommand is never a child. It finds:
 ///
 /// - a group whose path names no command, matching real names only;
 /// - a group whose path names a command without subcommands;
@@ -29,11 +29,9 @@ mod tests;
 ///   twice;
 /// - a topic whose name is the name or an alias of a command directly under
 ///   `command`, because `<tool> help <name>` prints that command's help;
-/// - a topic named `help`, because `<tool> help help` prints the help of
-///   the hidden `help` command that holds the topics;
 /// - a topic whose text is empty or only whitespace;
-/// - a topic whose name an earlier topic already has, because `extend`
-///   keeps only the first;
+/// - a topic whose name an earlier topic already has, because `parse`
+///   prints only the first;
 /// - a topic name that is not lowercase ASCII letters and digits in words
 ///   joined by single dashes, starting with a letter, such as `catalogue`.
 ///
@@ -41,8 +39,7 @@ mod tests;
 /// that no group names keeps clap's list and is not checked. A topic with
 /// an empty summary passes. The check takes no exemptions, because a tool
 /// that wants clap's list for a command leaves that command out of the
-/// guide. It reads the tree before `extend`, so it never sees the hidden
-/// `help` command that holds the topics.
+/// guide.
 ///
 /// ```
 /// use clap::Command;
@@ -144,13 +141,6 @@ fn check_topics(command: &Command, guide: &Guide, problems: &mut Vec<String>) {
             problems.push(format!(
                 "the topic `{name}` is a name of the command `{tool} {}`, so `{tool} help {name}` prints that command's help",
                 subcommand.get_name()
-            ));
-        }
-        // `extend` names its hidden command `help`, and `parse` finds that
-        // command before it looks for a topic.
-        if name == "help" {
-            problems.push(format!(
-                "the topic `help` has the name of crumbkit's hidden `help` command, so `{tool} help help` prints that command's help"
             ));
         }
         if topic.text().trim().is_empty() {

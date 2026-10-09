@@ -1,15 +1,7 @@
-//! Help topics, and the hidden `help` command that carries them from
-//! [`extend`](super::extend) to [`parse`](crate::parse).
-//!
-//! `parse` takes the command tree and no guide, so `extend` keeps the
-//! guide's topics in the tree: a hidden root command named `help`, whose
-//! subcommand value name is `TOPIC`, with one subcommand for each topic. A
-//! topic's subcommand holds the topic's name as its name, the topic's
-//! `about` as its `about` and the topic's text as its `long_about`. `parse`
-//! reads them back through [`text`], [`list`] and [`names`]. This module is
-//! the only code that writes or reads that layout.
+//! Help topics, which [`parse`](crate::parse) reads from the guide it takes
+//! through [`text`], [`list`] and [`names`].
 
-use clap::Command;
+use clap::builder::StyledStr;
 use clap::builder::styling::Style;
 
 use super::write_line;
@@ -73,105 +65,50 @@ impl Topic {
     }
 }
 
-/// The name of the hidden command, which is the word that `parse` answers.
-const HELP: &str = "help";
-
-/// The subcommand value name of the hidden command, which tells it apart
-/// from a tool's own hidden command named `help`.
-const TOPIC: &str = "TOPIC";
-
-/// Returns `root` with a hidden `help` command that holds `topics`, and with
-/// clap's generated `help` subcommand turned off, so `Command::build` and
-/// `Command::debug_assert` never meet two commands named `help`.
-///
-/// It returns `root` unchanged when `topics` is empty, or when `root`
-/// already has a subcommand named or aliased `help`, which crumbkit-test's
-/// `check_grammar` refuses. It keeps the first of two topics with one name.
-//
-// RUST-10: clap has no stable way to attach a tool's own data to a
-// `Command`. `Command::add` and `Command::get` need clap's `unstable-ext`
-// feature, so the topics travel as a hidden command. A stable extension
-// slot in clap, or a `parse` that takes the guide, replaces the hidden
-// command.
-pub(super) fn add(root: Command, topics: &[Topic]) -> Command {
-    if topics.is_empty() || root.find_subcommand(HELP).is_some() {
-        return root;
-    }
-    let mut help = Command::new(HELP).hide(true).subcommand_value_name(TOPIC);
-    for (index, topic) in topics.iter().enumerate() {
-        if topics[..index]
+/// Returns the topics in guide order, leaving out each topic whose name an
+/// earlier topic already has, so the first of two topics with one name is
+/// the one that prints.
+fn distinct(topics: &[Topic]) -> impl Iterator<Item = &Topic> {
+    topics.iter().enumerate().filter_map(|(index, topic)| {
+        let repeated = topics[..index]
             .iter()
-            .any(|earlier| earlier.name == topic.name)
-        {
-            continue;
-        }
-        let mut page = Command::new(topic.name).long_about(topic.text);
-        if !topic.about.is_empty() {
-            page = page.about(topic.about);
-        }
-        help = help.subcommand(page);
-    }
-    root.disable_help_subcommand(true).subcommand(help)
-}
-
-/// Returns the hidden command that holds the topics of `root`, or `None`
-/// when the tool has no topics.
-fn find(root: &Command) -> Option<&Command> {
-    root.get_subcommands().find(|command| holds_topics(command))
-}
-
-/// Returns whether `command` is the hidden `help` command that [`add`]
-/// gives the root to hold the topics, which `parse` answers in place of
-/// clap.
-pub(crate) fn holds_topics(command: &Command) -> bool {
-    command.get_name() == HELP
-        && command.is_hide_set()
-        && command.get_subcommand_value_name() == Some(TOPIC)
+            .any(|earlier| earlier.name == topic.name);
+        (!repeated).then_some(topic)
+    })
 }
 
 /// Returns the text of the topic called `name`, ending with a line break,
-/// or `None` when `root` has no such topic.
-pub(crate) fn text(root: &Command, name: &str) -> Option<String> {
-    let page = find(root)?
-        .get_subcommands()
-        .find(|page| page.get_name() == name)?;
-    let mut text = page.get_long_about()?.to_string();
+/// or `None` when `topics` has no such topic.
+pub(crate) fn text(topics: &[Topic], name: &str) -> Option<String> {
+    let topic = topics.iter().find(|topic| topic.name == name)?;
+    let mut text = topic.text.to_owned();
     if !text.ends_with('\n') {
         text.push('\n');
     }
     Some(text)
 }
 
-/// Returns the page that `<tool> help` prints for `root`: its topics in
-/// guide order under the heading `Topics`, in the layout of the goal list,
-/// and a `Next:` line that prints one. It returns `None` when the tool has
-/// no topics.
-pub(crate) fn list(root: &Command) -> Option<String> {
-    let help = find(root)?;
-    let width = help
-        .get_subcommands()
-        .map(|page| page.get_name().chars().count())
+/// Returns the page that `<tool> help` prints, where `tool` is the tool's
+/// name: the topics in guide order under the heading `Topics`, in the
+/// layout of the goal list, and a `Next:` line that prints one. It returns
+/// `None` when `topics` is empty.
+pub(crate) fn list(tool: &str, topics: &[Topic]) -> Option<String> {
+    let width = topics
+        .iter()
+        .map(|topic| topic.name.chars().count())
         .max()?;
     let mut text = String::from("Topics");
-    for page in help.get_subcommands() {
-        write_line(
-            &mut text,
-            page.get_name(),
-            page.get_about(),
-            width,
-            Style::new(),
-        );
+    for topic in distinct(topics) {
+        let about = (!topic.about.is_empty()).then(|| StyledStr::from(topic.about));
+        write_line(&mut text, topic.name, about.as_ref(), width, Style::new());
     }
     text.push_str("\n\nNext: ");
-    text.push_str(root.get_name());
+    text.push_str(tool);
     text.push_str(" help <TOPIC>\n");
     Some(text)
 }
 
-/// Returns the names of the topics of `root`, in guide order, which is
-/// empty when the tool has none.
-pub(crate) fn names(root: &Command) -> Vec<&str> {
-    find(root)
-        .map(|help| help.get_subcommands().map(Command::get_name).collect())
-        .unwrap_or_default()
+/// Returns the names of `topics` in guide order, each once.
+pub(crate) fn names(topics: &[Topic]) -> Vec<&str> {
+    distinct(topics).map(|topic| topic.name).collect()
 }

@@ -7,6 +7,7 @@ use std::process::ExitCode;
 use clap::{Arg, ArgAction, Command};
 
 use super::{message, parse_to};
+use crate::help::Guide;
 use crate::{Sink, Spelling};
 
 /// A tool with two global flags, a version, and a group that holds a visible
@@ -80,6 +81,7 @@ fn parse(args: &[&str]) -> Parsed {
     let result = parse_to::<(), _, _, _, _>(
         &mut Sink::new(&mut out, &mut err),
         tool(),
+        &Guide::new(),
         Spelling::COLONS,
         args,
     );
@@ -97,6 +99,7 @@ fn a_command_line_that_parses_returns_the_parsed_type_and_the_command() {
     let result = parse_to::<Flags, _, _, _, _>(
         &mut Sink::new(&mut out, &mut err),
         tool(),
+        &Guide::new(),
         Spelling::COLONS,
         ["tool", "--json", "planets", "show", "Mars"],
     );
@@ -324,6 +327,7 @@ fn a_root_without_subcommands_reads_help_as_an_ordinary_word() {
     let result = parse_to::<Word, _, _, _, _>(
         &mut Sink::new(&mut out, &mut err),
         Command::new("tool").arg(Arg::new("word").required(true)),
+        &Guide::new(),
         Spelling::COLONS,
         ["tool", "help"],
     );
@@ -362,6 +366,7 @@ fn help_exits_with_code_0_when_the_reader_closed_the_pipe() {
     let result = parse_to::<(), _, _, _, _>(
         &mut Sink::new(Failing(io::ErrorKind::BrokenPipe), &mut err),
         tool(),
+        &Guide::new(),
         Spelling::COLONS,
         ["tool", "-h"],
     );
