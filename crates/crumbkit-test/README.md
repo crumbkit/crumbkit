@@ -82,18 +82,14 @@ crumbkit_test::check_filters(&shelf, &[]);
 A tool that derives its parser passes `&Cli::command()` in the same way.
 
 - `check_guide` takes the tool's clap command and the `Guide` it passes to
-  `crumbkit::help::extend`, and no exemptions. It fails on a group whose
+  `crumbkit::parse`, and no exemptions. It fails on a group whose
   path names no command or a command without subcommands, on a goal that
   names a command its group lacks, on a visible subcommand of a group that
   no goal names, and on a subcommand that two goals name. A hidden
   subcommand passes whether or not a goal names it. It also fails on a
   topic name that is not lowercase words joined by dashes, on a topic name
-  that a root command's name or alias hides, on a topic named `help`, on a
-  topic without text, and on two topics with one name. A topic with an
-  empty summary passes.
-
-Every check takes the tree that the tool builds, before
-`crumbkit::help::extend` adds its hidden `help` command.
+  that a root command's name or alias hides, on a topic without text, and
+  on two topics with one name. A topic with an empty summary passes.
 
 ```rust
 use clap::Command;
