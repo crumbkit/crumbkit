@@ -19,6 +19,9 @@ mod tests;
 ///
 /// - a command with an alias, visible or hidden, or with a short-flag or
 ///   long-flag alias;
+/// - a command with a short or a long flag name, such as `-B` from
+///   `Command::short_flag`, because a flag name gives the command a second
+///   name;
 /// - an argument with a long alias or a short alias, visible or hidden.
 ///
 /// An argument may have one short form beside its long name, such as `-l`
@@ -49,6 +52,16 @@ pub fn check_names(command: &Command, exempt: &[&str]) {
         for alias in command.get_all_aliases() {
             problems.push(format!(
                 "{path}: the command has the alias `{alias}`, and a command has no aliases"
+            ));
+        }
+        if let Some(flag) = command.get_short_flag() {
+            problems.push(format!(
+                "{path}: the command has the short flag name `-{flag}`, and a command has one name"
+            ));
+        }
+        if let Some(flag) = command.get_long_flag() {
+            problems.push(format!(
+                "{path}: the command has the long flag name `--{flag}`, and a command has one name"
             ));
         }
         for alias in command.get_all_short_flag_aliases() {

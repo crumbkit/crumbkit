@@ -39,12 +39,27 @@ fn a_command_with_a_visible_or_a_hidden_alias_fails() {
 }
 
 #[test]
+fn a_command_with_a_short_or_a_long_flag_name_fails() {
+    let shelf = Command::new("shelf").subcommand(
+        Command::new("books")
+            .short_flag('B')
+            .long_flag("books")
+            .subcommand(Command::new("list")),
+    );
+
+    assert_eq!(
+        panic_message(|| check_names(&shelf, &[])).unwrap(),
+        "the command tree breaks crumbkit's naming rules:\n\
+         shelf books: the command has the short flag name `-B`, and a command has one name\n\
+         shelf books: the command has the long flag name `--books`, and a command has one name"
+    );
+}
+
+#[test]
 fn a_command_with_a_short_or_a_long_flag_alias_fails() {
     let shelf = Command::new("shelf").subcommand(
         Command::new("books")
-            .short_flag('b')
             .short_flag_alias('k')
-            .long_flag("books")
             .long_flag_alias("book"),
     );
 

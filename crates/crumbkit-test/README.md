@@ -32,7 +32,9 @@ below the command passed in, such as `"books list"`, and skips that command
 and everything below it for that check only. An exemption that names no
 command fails the test.
 
-- `check_names` fails on a command or an argument with an alias of any kind.
+- `check_names` fails on a command or an argument with an alias of any kind,
+  and on a command with a short or long flag name, such as `-B` from
+  `Command::short_flag`, because a flag name gives the command a second name.
   An argument may have one short form beside its long name, such as `-l`
   with `--limit`.
 - `check_grammar` takes the tool's verbs beside `list` and `show`, and fails
@@ -46,7 +48,9 @@ command fails the test.
   command without a required positional argument that takes 1 to 100 values.
 - `check_filters` fails on an option that accepts many values unless it
   accepts both repeats and commas, as `--author a --author b` and
-  `--author a,b`.
+  `--author a,b`. Review checks that an option that takes one value refuses
+  a second, because clap has no documented getter for the settings that
+  turn that refusal off.
 
 ```rust
 use clap::{Arg, ArgAction, Args, Command};

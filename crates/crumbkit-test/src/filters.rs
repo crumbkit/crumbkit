@@ -21,7 +21,9 @@ mod tests;
 /// `ArgAction::Append` or its `num_args` accepts more than one value, unless
 /// its action is `ArgAction::Append` and its value delimiter is `,`. Such an
 /// option accepts both `--author a --author b` and `--author a,b`, as
-/// crumbkit's `--fields` does.
+/// crumbkit's `--fields` does. Review checks that an option that takes one
+/// value refuses a second, because clap has no documented getter for the
+/// settings that let a repeated option override itself.
 ///
 /// ```
 /// use clap::{Arg, ArgAction, Command};
@@ -42,6 +44,13 @@ mod tests;
 /// problem on its own line and names each command by its path from
 /// `command`, such as `shelf books list`.
 pub fn check_filters(command: &Command, exempt: &[&str]) {
+    // RUST-10: an option that takes one value must refuse a second one, and
+    // this check leaves that rule to review. clap 4 refuses a repeated
+    // `ArgAction::Set` argument by default, and a tool turns that off only
+    // with `Command::args_override_self` or with `Arg::overrides_with` naming
+    // the argument itself. clap has no documented getter for either setting,
+    // so the check cannot see them. A getter in a later clap release would
+    // let this check cover the rule.
     let mut problems = Vec::new();
     for visit in tree::walk(command, exempt, &mut problems) {
         let path = visit.path();
