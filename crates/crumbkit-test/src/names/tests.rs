@@ -22,19 +22,39 @@ fn commands_and_arguments_with_one_name_and_one_short_form_pass() {
 }
 
 #[test]
-fn a_command_with_a_visible_or_a_hidden_alias_fails() {
+fn hidden_aliases_of_a_command_and_of_an_argument_pass() {
     let shelf = Command::new("shelf").subcommand(
         Command::new("books")
-            .visible_alias("book")
-            .alias("b")
+            .alias("book")
+            .short_flag_alias('k')
+            .long_flag_alias("volumes")
+            .subcommand(
+                Command::new("list").arg(
+                    Arg::new("limit")
+                        .long("limit")
+                        .alias("max")
+                        .short_alias('n')
+                        .action(ArgAction::Set),
+                ),
+            ),
+    );
+
+    check_names(&shelf, &[]);
+}
+
+#[test]
+fn a_command_with_a_visible_alias_fails() {
+    let shelf = Command::new("shelf").subcommand(
+        Command::new("books")
+            .visible_aliases(["book", "b"])
             .subcommand(Command::new("list")),
     );
 
     assert_eq!(
         panic_message(|| check_names(&shelf, &[])).unwrap(),
         "the command tree breaks crumbkit's naming rules:\n\
-         shelf books: the command has the alias `book`, and a command has no aliases\n\
-         shelf books: the command has the alias `b`, and a command has no aliases"
+         shelf books: the command has the visible alias `book`, and help shows one name for each command\n\
+         shelf books: the command has the visible alias `b`, and help shows one name for each command"
     );
 }
 
@@ -50,53 +70,53 @@ fn a_command_with_a_short_or_a_long_flag_name_fails() {
     assert_eq!(
         panic_message(|| check_names(&shelf, &[])).unwrap(),
         "the command tree breaks crumbkit's naming rules:\n\
-         shelf books: the command has the short flag name `-B`, and a command has one name\n\
-         shelf books: the command has the long flag name `--books`, and a command has one name"
+         shelf books: the command has the short flag name `-B`, and help shows one name for each command\n\
+         shelf books: the command has the long flag name `--books`, and help shows one name for each command"
     );
 }
 
 #[test]
-fn a_command_with_a_short_or_a_long_flag_alias_fails() {
+fn a_command_with_a_visible_short_or_long_flag_alias_fails() {
     let shelf = Command::new("shelf").subcommand(
         Command::new("books")
-            .short_flag_alias('k')
-            .long_flag_alias("book"),
+            .visible_short_flag_alias('k')
+            .visible_long_flag_alias("book"),
     );
 
     assert_eq!(
         panic_message(|| check_names(&shelf, &[])).unwrap(),
         "the command tree breaks crumbkit's naming rules:\n\
-         shelf books: the command has the short flag alias `-k`, and a command has no aliases\n\
-         shelf books: the command has the long flag alias `--book`, and a command has no aliases"
+         shelf books: the command has the visible short flag alias `-k`, and help shows one name for each command\n\
+         shelf books: the command has the visible long flag alias `--book`, and help shows one name for each command"
     );
 }
 
 #[test]
-fn an_argument_with_a_long_or_a_short_alias_visible_or_hidden_fails() {
+fn an_argument_with_a_visible_long_or_short_alias_fails() {
     let list = Command::new("list").arg(
         Arg::new("limit")
             .long("limit")
             .short('l')
             .visible_alias("max")
-            .short_alias('n')
+            .visible_short_alias('n')
             .action(ArgAction::Set),
     );
 
     assert_eq!(
         panic_message(|| check_names(&list, &[])).unwrap(),
         "the command tree breaks crumbkit's naming rules:\n\
-         list: the argument `--limit` has the alias `--max`, and an argument has no aliases\n\
-         list: the argument `--limit` has the short alias `-n`, and an argument has no aliases"
+         list: the argument `--limit` has the visible alias `--max`, and help shows one name for each argument\n\
+         list: the argument `--limit` has the visible short alias `-n`, and help shows one name for each argument"
     );
 }
 
 #[test]
-fn a_global_argument_with_an_alias_fails_once_on_the_command_that_defines_it() {
+fn a_global_argument_with_a_visible_alias_fails_once_on_the_command_that_defines_it() {
     let shelf = Command::new("shelf")
         .arg(
             Arg::new("json")
                 .long("json")
-                .alias("as-json")
+                .visible_alias("as-json")
                 .global(true)
                 .action(ArgAction::SetTrue),
         )
@@ -105,6 +125,6 @@ fn a_global_argument_with_an_alias_fails_once_on_the_command_that_defines_it() {
     assert_eq!(
         panic_message(|| check_names(&shelf, &[])).unwrap(),
         "the command tree breaks crumbkit's naming rules:\n\
-         shelf: the argument `--json` has the alias `--as-json`, and an argument has no aliases"
+         shelf: the argument `--json` has the visible alias `--as-json`, and help shows one name for each argument"
     );
 }

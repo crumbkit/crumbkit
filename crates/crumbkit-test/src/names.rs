@@ -1,5 +1,5 @@
-//! The names check, which gives every command and argument one name, so a
-//! caller and an agent learn one spelling and a retired name fails to parse.
+//! The names check, which gives every command and argument one name in help,
+//! so a caller and an agent learn one spelling.
 
 use clap::Command;
 
@@ -8,24 +8,36 @@ use crate::tree::{self, argument_name};
 #[cfg(test)]
 mod tests;
 
-/// Checks that every command and argument in the tree of `command` has one
-/// name, and panics, as a failed test assertion does, naming every problem it
-/// finds.
+/// The rule a command breaks when help shows a second name for it.
+const COMMAND_RULE: &str = "and help shows one name for each command";
+
+/// The rule an argument breaks when help shows a second name for it.
+const ARGUMENT_RULE: &str = "and help shows one name for each argument";
+
+/// Checks that help shows one name for every command and argument in the
+/// tree of `command`, and panics, as a failed test assertion does, naming
+/// every problem it finds.
+///
+/// Help is what agents read and copy. A visible alias costs help tokens on
+/// every read and teaches a second spelling. A hidden alias costs neither,
+/// and lets a renamed command or flag keep its old name for a while, or
+/// accept a common wrong guess. crumbkit's `Next:` lines and recoveries print
+/// the real name, so a caller who uses a hidden alias still sees the real one.
 ///
 /// The check walks `command` and every subcommand below it, including hidden
 /// ones, and skips each command that `exempt` names and everything below it.
 /// An exemption is a command's path below `command`, such as `"books list"`,
 /// and an exemption that names no command is a problem. The check finds:
 ///
-/// - a command with an alias, visible or hidden, or with a short-flag or
+/// - a command with a visible alias, a visible short-flag alias or a visible
 ///   long-flag alias;
 /// - a command with a short or a long flag name, such as `-B` from
-///   `Command::short_flag`, because a flag name gives the command a second
-///   name;
-/// - an argument with a long alias or a short alias, visible or hidden.
+///   `Command::short_flag`, because help lists a flag name beside the
+///   command's name;
+/// - an argument with a visible long alias or a visible short alias.
 ///
-/// An argument may have one short form beside its long name, such as `-l`
-/// with `--limit`, and clap allows at most one.
+/// Hidden aliases pass. An argument may have one short form beside its long
+/// name, such as `-l` with `--limit`, and clap allows at most one.
 ///
 /// ```
 /// use clap::{Arg, ArgAction, Command};
@@ -49,41 +61,41 @@ pub fn check_names(command: &Command, exempt: &[&str]) {
     for visit in tree::walk(command, exempt, &mut problems) {
         let path = visit.path();
         let command = visit.command();
-        for alias in command.get_all_aliases() {
+        for alias in command.get_visible_aliases() {
             problems.push(format!(
-                "{path}: the command has the alias `{alias}`, and a command has no aliases"
+                "{path}: the command has the visible alias `{alias}`, {COMMAND_RULE}"
             ));
         }
         if let Some(flag) = command.get_short_flag() {
             problems.push(format!(
-                "{path}: the command has the short flag name `-{flag}`, and a command has one name"
+                "{path}: the command has the short flag name `-{flag}`, {COMMAND_RULE}"
             ));
         }
         if let Some(flag) = command.get_long_flag() {
             problems.push(format!(
-                "{path}: the command has the long flag name `--{flag}`, and a command has one name"
+                "{path}: the command has the long flag name `--{flag}`, {COMMAND_RULE}"
             ));
         }
-        for alias in command.get_all_short_flag_aliases() {
+        for alias in command.get_visible_short_flag_aliases() {
             problems.push(format!(
-                "{path}: the command has the short flag alias `-{alias}`, and a command has no aliases"
+                "{path}: the command has the visible short flag alias `-{alias}`, {COMMAND_RULE}"
             ));
         }
-        for alias in command.get_all_long_flag_aliases() {
+        for alias in command.get_visible_long_flag_aliases() {
             problems.push(format!(
-                "{path}: the command has the long flag alias `--{alias}`, and a command has no aliases"
+                "{path}: the command has the visible long flag alias `--{alias}`, {COMMAND_RULE}"
             ));
         }
         for arg in command.get_arguments() {
             let name = argument_name(arg);
-            for alias in arg.get_all_aliases().unwrap_or_default() {
+            for alias in arg.get_visible_aliases().unwrap_or_default() {
                 problems.push(format!(
-                    "{path}: the argument `{name}` has the alias `--{alias}`, and an argument has no aliases"
+                    "{path}: the argument `{name}` has the visible alias `--{alias}`, {ARGUMENT_RULE}"
                 ));
             }
-            for alias in arg.get_all_short_aliases().unwrap_or_default() {
+            for alias in arg.get_visible_short_aliases().unwrap_or_default() {
                 problems.push(format!(
-                    "{path}: the argument `{name}` has the short alias `-{alias}`, and an argument has no aliases"
+                    "{path}: the argument `{name}` has the visible short alias `-{alias}`, {ARGUMENT_RULE}"
                 ));
             }
         }
