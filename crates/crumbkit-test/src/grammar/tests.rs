@@ -107,3 +107,22 @@ fn an_argument_named_dry_run_fails_anywhere_in_the_tree() {
          shelf books list: the command has the argument `--dry-run`, and crumbkit reserves that name for its write verbs"
     );
 }
+
+#[test]
+fn a_command_named_or_aliased_help_at_any_level_fails_the_check() {
+    let list = || Command::new("list");
+    let shelf = Command::new("shelf")
+        .subcommand(Command::new("help").subcommand(list()))
+        .subcommand(
+            Command::new("books")
+                .subcommand(list())
+                .subcommand(Command::new("guides").alias("help").subcommand(list())),
+        );
+
+    assert_eq!(
+        panic_message(|| check_grammar(&shelf, &[], &[])).unwrap(),
+        "the command tree breaks crumbkit's grammar:\n\
+         shelf help: the command answers to `help`, and crumbkit reserves that word for asking for help\n\
+         shelf books guides: the command answers to `help`, and crumbkit reserves that word for asking for help"
+    );
+}

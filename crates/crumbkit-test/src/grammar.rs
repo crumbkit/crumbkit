@@ -3,7 +3,7 @@
 
 use clap::Command;
 
-use crate::tree;
+use crate::tree::{self, DASHED_NAME};
 
 #[cfg(test)]
 mod tests;
@@ -35,7 +35,11 @@ const BUILT_IN_VERBS: [&str; 2] = ["list", "show"];
 /// - an entry of `verbs` that is `list` or `show`, or whose name breaks the
 ///   same rule as a resource's;
 /// - an argument anywhere in the walked tree with the long name `--dry-run`,
-///   which crumbkit reserves for its write verbs.
+///   which crumbkit reserves for its write verbs;
+/// - a command below `command` named `help` or with the alias `help`,
+///   because crumbkit reserves that word for asking for help. crumbkit's
+///   `parse` answers it below every command with subcommands, unless such a
+///   command takes it.
 ///
 /// ```
 /// use clap::Command;
@@ -63,7 +67,7 @@ pub fn check_grammar(command: &Command, verbs: &[&str], exempt: &[&str]) {
             problems.push(format!(
                 "the tool passes the verb `{verb}`, which is built in, and a tool passes only its other verbs"
             ));
-        } else if !is_dashed_name(verb) {
+        } else if !tree::is_dashed_name(verb) {
             problems.push(format!("the verb `{verb}` is not {DASHED_NAME}"));
         }
     }
@@ -77,7 +81,7 @@ pub fn check_grammar(command: &Command, verbs: &[&str], exempt: &[&str]) {
             // is neither a resource nor a verb.
             (0, _) => {}
             (_, true) => {
-                if !is_dashed_name(name) {
+                if !tree::is_dashed_name(name) {
                     problems.push(format!(
                         "{path}: the resource name `{name}` is not {DASHED_NAME}"
                     ));
@@ -94,6 +98,11 @@ pub fn check_grammar(command: &Command, verbs: &[&str], exempt: &[&str]) {
                 }
             }
         }
+        if visit.depth() > 0 && (name == "help" || command.get_all_aliases().any(|a| a == "help")) {
+            problems.push(format!(
+                "{path}: the command answers to `help`, and crumbkit reserves that word for asking for help"
+            ));
+        }
         for arg in command.get_arguments() {
             if arg.get_long() == Some("dry-run") {
                 problems.push(format!(
@@ -103,25 +112,4 @@ pub fn check_grammar(command: &Command, verbs: &[&str], exempt: &[&str]) {
         }
     }
     tree::report("grammar", &problems);
-}
-
-/// The rule that [`is_dashed_name`] checks, as a problem states it.
-const DASHED_NAME: &str =
-    "lowercase letters and digits in words joined by single dashes, starting with a letter";
-
-/// Reports whether `name` is lowercase ASCII letters and digits in words
-/// joined by single dashes, starting with a letter, such as `reading-lists`.
-///
-/// The check reads only the name's form. It cannot tell a plural noun from a
-/// singular one, so it accepts a resource named `book` as readily as `books`,
-/// and review checks that each resource is plural. A check for plurals would
-/// need an English word list and still miss irregular nouns.
-fn is_dashed_name(name: &str) -> bool {
-    name.starts_with(|c: char| c.is_ascii_lowercase())
-        && name.split('-').all(|word| {
-            !word.is_empty()
-                && word
-                    .chars()
-                    .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit())
-        })
 }
