@@ -405,10 +405,12 @@ fn an_unknown_field_exits_with_code_2_before_the_failure_prints() {
     let finished = fail_with(&["--fields", "radius"], missing(run_list()));
 
     assert_eq!(finished.code, ExitCode::from(2));
-    assert_eq!(
-        finished.err,
-        "error: --fields names an unknown field 'radius'; the valid fields are name\n"
+    assert!(
+        finished
+            .err
+            .starts_with("error: --fields names an unknown field 'radius'")
     );
+    assert!(!finished.err.contains("Vulcan"));
 }
 
 #[test]

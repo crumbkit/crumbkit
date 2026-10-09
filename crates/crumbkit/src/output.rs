@@ -1,7 +1,7 @@
 //! The output flags, and `finish`, which prints a result or a failure in the
 //! format they choose.
 
-mod failure;
+pub(crate) mod failure;
 mod table;
 
 use std::io::{self, Write};
@@ -13,6 +13,7 @@ use serde::ser::{SerializeMap, Serializer};
 use serde_json::Value;
 
 use self::failure::{Entry, FailureDocument};
+use crate::refusal::Refusal;
 use crate::{AsFailure, Document, Row, Rows, Sink, Spelling};
 
 #[cfg(test)]
@@ -196,14 +197,19 @@ pub fn finish<T: Rows, E: AsFailure>(
 /// output writer as one `crumbkit/failure/v1` document on one line, which
 /// `--full` and `--fields` do not change.
 ///
+/// When `--fields` names a field that the row type does not have, nothing of
+/// the result prints. The refusal prints as a failure does, with the message
+/// `--fields names an unknown field 'radius'; the valid fields are a, b`, the
+/// code `crumbkit::cli::usage` in `spelling`, and a recovery that runs the
+/// root command's `-h`.
+///
 /// The exit code is 0 when the result is written, and also when the reader
 /// closed the pipe early. It is 1 when the result is a failure or a batch
 /// with at least one failure, also after the reader closed the pipe early.
 /// It is 1 as well when a write fails for any other reason, or when the
 /// result cannot be serialized, and the cause of a failed write goes to the
-/// sink's error writer before a batch's failures. It is 2 when
-/// `--fields` names a field that the row type does not have, which is checked
-/// before the result prints.
+/// sink's error writer before a batch's failures. It is 2 when `--fields`
+/// names an unknown field, which is checked before the result prints.
 #[expect(
     clippy::needless_pass_by_value,
     reason = "finish_to takes the result by value, as finish does, so a tool passes the result it built in the same way to either"
@@ -216,14 +222,20 @@ pub fn finish_to<T: Rows, E: AsFailure, O: Write, W: Write>(
     result: Result<T, E>,
 ) -> ExitCode {
     if let Some(message) = unknown_field::<T::Row>(&output.fields) {
-        // The process is already failing, and a failed report has nowhere
-        // else to go.
-        let _ = writeln!(sink.err, "error: {message}");
-        return ExitCode::from(2);
+        // RUST-10: the recovery runs the root's `-h`, because `Output` holds
+        // the root of the tree and not the command that ran. It misses the
+        // `-h` of that command. `Output` keeping the path of the command
+        // that parsing matched replaces it.
+        let refusal = Refusal::new(message, Vec::new());
+        return refusal.print(sink, output.json, spelling, output.command.as_ref());
     }
     let value = match &result {
         Ok(value) => value,
-        Err(error) => return failure::finish(sink, output, spelling, error.as_failure()),
+        Err(error) => {
+            let command = output.command.as_ref();
+            failure::print(sink, output.json, spelling, error.as_failure(), command);
+            return ExitCode::FAILURE;
+        }
     };
     // A batch's failures are read once, so its JSON document and its text
     // form print the same fields. Every other result has `None` here.

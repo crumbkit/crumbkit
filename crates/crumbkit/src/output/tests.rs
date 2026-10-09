@@ -256,23 +256,26 @@ fn fields_accepts_a_repeated_flag_as_well_as_commas() {
 }
 
 #[test]
-fn an_unknown_field_exits_with_code_2_and_names_the_valid_fields() {
+fn an_unknown_field_is_a_refusal_that_names_the_valid_fields_and_exits_with_code_2() {
     let finished = finish_with(&["--fields", "name,radius"], PLANETS, vec![saturn()]);
 
     assert_eq!(finished.code, ExitCode::from(2));
     assert_eq!(finished.out, "");
-    assert_eq!(
-        finished.err,
-        "error: --fields names an unknown field 'radius'; the valid fields are au, moons, name, ringed\n"
-    );
+    let expected = "\
+error: --fields names an unknown field 'radius'; the valid fields are au, moons, name, ringed
+  help:  run `tool -h`
+  code:  crumbkit::cli::usage
+";
+    assert_eq!(finished.err, expected);
 }
 
 #[test]
-fn an_unknown_field_fails_even_when_the_result_has_no_rows() {
+fn an_unknown_field_is_refused_in_json_even_when_the_result_has_no_rows() {
     let finished = finish_with(&["--json", "--fields", "radius"], PLANETS, Vec::new());
 
     assert_eq!(finished.code, ExitCode::from(2));
-    assert_eq!(finished.out, "");
+    let failure = r#"{"schema":"crumbkit/failure/v1""#;
+    assert!(finished.out.starts_with(failure));
 }
 
 #[test]

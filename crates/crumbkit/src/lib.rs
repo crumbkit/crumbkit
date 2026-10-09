@@ -10,6 +10,7 @@ mod fetch;
 mod listing;
 mod output;
 mod page;
+mod refusal;
 #[cfg(feature = "miette")]
 mod report;
 mod row;
