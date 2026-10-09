@@ -121,8 +121,11 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   a command with subcommands prints ``the command `shelf books` needs a
   subcommand``. With `--json` before any `--`, the refusal prints as one
   `crumbkit/failure/v1` document on standard output.
-- A `--fields` name that the row type lacks prints as the same refusal, with
-  a recovery that runs the root's `-h`, and exits with code 2.
+- A `--fields` name that the row type lacks prints as a refusal with the
+  code `crumbkit::cli::usage`, the message
+  `--fields names an unknown field 'pages'`, and the hint
+  `use the valid fields: author, form, id, title, year`, and exits with
+  code 2.
 - Through `parse`, `-h` names the root's global flags on one line, such as
   ``Global flags: --json, --fields <FIELD>, --long, --full. `shelf books
   list --help` describes them.``, and `--help` lists them in full. The help

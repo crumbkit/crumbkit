@@ -14,22 +14,34 @@ use crate::{Call, Code, Failure, Recovery, Sink, Spelling};
 /// `crumbkit::cli::usage` (ADR-0001).
 const USAGE: Code = Code::new("crumbkit", "cli", "usage");
 
-/// A refused command line or flag value, as a [`Failure`] whose recovery runs
-/// the `-h` of the command at `path`.
+/// A refused command line or flag value, as a [`Failure`] with the code
+/// `crumbkit::cli::usage`.
 #[derive(Debug)]
 pub(crate) struct Refusal {
     /// What the caller got wrong, on one line.
     message: String,
-    /// The names of the subcommands from the root to the command whose `-h`
-    /// the caller runs next.
-    path: Vec<String>,
+    /// What the caller does next.
+    recovery: Recovery,
 }
 
 impl Refusal {
-    /// Returns a refusal that says `message` and points the caller at the
-    /// `-h` of the command at `path`.
-    pub(crate) const fn new(message: String, path: Vec<String>) -> Self {
-        Self { message, path }
+    /// Returns the refusal of a command line that says `message` and whose
+    /// recovery runs the `-h` of the command at `path`, the names of the
+    /// subcommands from the root.
+    pub(crate) fn command_line(message: String, path: Vec<String>) -> Self {
+        Self {
+            message,
+            recovery: Recovery::Run(Call::help(path)),
+        }
+    }
+
+    /// Returns the refusal of a flag value that says `message` and whose
+    /// recovery is the hint `hint`, such as `use the valid fields: a, b`.
+    pub(crate) const fn flag_value(message: String, hint: String) -> Self {
+        Self {
+            message,
+            recovery: Recovery::Hint(hint),
+        }
     }
 
     /// Prints the refusal to `sink` as `finish` prints a failure, as text or
@@ -63,6 +75,6 @@ impl Failure for Refusal {
     }
 
     fn recovery(&self) -> Recovery {
-        Recovery::Run(Call::help(self.path.clone()))
+        self.recovery.clone()
     }
 }

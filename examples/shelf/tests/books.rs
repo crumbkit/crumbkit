@@ -88,7 +88,7 @@ fn books_list_json_fields_prints_only_the_named_fields_in_order_and_the_total() 
 }
 
 #[test]
-fn books_list_with_an_unknown_field_exits_with_code_2_and_lists_the_valid_fields() {
+fn books_list_with_an_unknown_field_exits_with_code_2_and_hints_at_the_valid_fields() {
     shelf(
         "books-list-unknown-field",
         &["books", "list", "--fields", "title,pages"],

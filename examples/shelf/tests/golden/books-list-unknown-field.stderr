@@ -1,3 +1,3 @@
-error: --fields names an unknown field 'pages'; the valid fields are author, form, id, title, year
-  help:  run `shelf -h`
+error: --fields names an unknown field 'pages'
+  help:  use the valid fields: author, form, id, title, year
   code:  crumbkit::cli::usage

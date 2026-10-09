@@ -199,9 +199,8 @@ pub fn finish<T: Rows, E: AsFailure>(
 ///
 /// When `--fields` names a field that the row type does not have, nothing of
 /// the result prints. The refusal prints as a failure does, with the message
-/// `--fields names an unknown field 'radius'; the valid fields are a, b`, the
-/// code `crumbkit::cli::usage` in `spelling`, and a recovery that runs the
-/// root command's `-h`.
+/// `--fields names an unknown field 'radius'`, the code `crumbkit::cli::usage`
+/// in `spelling`, and the hint `use the valid fields: a, b`.
 ///
 /// The exit code is 0 when the result is written, and also when the reader
 /// closed the pipe early. It is 1 when the result is a failure or a batch
@@ -221,12 +220,7 @@ pub fn finish_to<T: Rows, E: AsFailure, O: Write, W: Write>(
     document: Document<T>,
     result: Result<T, E>,
 ) -> ExitCode {
-    if let Some(message) = unknown_field::<T::Row>(&output.fields) {
-        // RUST-10: the recovery runs the root's `-h`, because `Output` holds
-        // the root of the tree and not the command that ran. It misses the
-        // `-h` of that command. `Output` keeping the path of the command
-        // that parsing matched replaces it.
-        let refusal = Refusal::new(message, Vec::new());
+    if let Some(refusal) = unknown_field::<T::Row>(&output.fields) {
         return refusal.print(sink, output.json, spelling, output.command.as_ref());
     }
     let value = match &result {
@@ -275,12 +269,13 @@ pub fn finish_to<T: Rows, E: AsFailure, O: Write, W: Write>(
     }
 }
 
-/// Returns the error message for the first name in `fields` that is not a
-/// field of `R`, or `None` when every name is a field.
+/// Returns the refusal of the first name in `fields` that is not a field of
+/// `R`, with a hint that lists the fields of `R`, or `None` when every name
+/// is a field.
 ///
 /// The fields of `R` are the properties of its JSON Schema, so a mistyped
 /// name fails even when the result has no rows.
-fn unknown_field<R: Row>(fields: &[String]) -> Option<String> {
+fn unknown_field<R: Row>(fields: &[String]) -> Option<Refusal> {
     if fields.is_empty() {
         return None;
     }
@@ -296,9 +291,9 @@ fn unknown_field<R: Row>(fields: &[String]) -> Option<String> {
         .flat_map(|properties| properties.keys())
         .map(String::as_str)
         .collect();
-    Some(format!(
-        "--fields names an unknown field '{unknown}'; the valid fields are {}",
-        valid.join(", ")
+    Some(Refusal::flag_value(
+        format!("--fields names an unknown field '{unknown}'"),
+        format!("use the valid fields: {}", valid.join(", ")),
     ))
 }
 

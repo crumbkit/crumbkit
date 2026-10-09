@@ -183,7 +183,7 @@ where
     ) {
         return Err(print_page(sink, &error, colour));
     }
-    let refusal = Refusal::new(refusal_message(&command, &path, &error), path);
+    let refusal = Refusal::command_line(refusal_message(&command, &path, &error), path);
     Err(refusal.print(sink, json, spelling, Some(&command)))
 }
 
