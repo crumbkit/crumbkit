@@ -35,7 +35,7 @@ fn a_command_without_subcommands_that_is_not_list_show_or_a_passed_verb_fails() 
     assert_eq!(
         panic_message(|| check_grammar(&shelf, &["export"], &[])).unwrap(),
         "the command tree breaks crumbkit's grammar:\n\
-         shelf books remove: the command has no subcommands, so it is a verb, and a verb is `list`, `show` or one the tool passes"
+         shelf books remove: the command has no subcommands, so it is a verb, but `remove` is not `list`, `show` or a verb the tool passes"
     );
 }
 
@@ -83,7 +83,7 @@ fn a_passed_verb_that_is_built_in_or_badly_formed_fails() {
     assert_eq!(
         panic_message(|| check_grammar(&shelf, &["show", "Export", ""], &[])).unwrap(),
         "the command tree breaks crumbkit's grammar:\n\
-         the verb `show` is built in, so the tool does not pass it\n\
+         the tool passes the verb `show`, which is built in, and a tool passes only its other verbs\n\
          the verb `Export` is not lowercase letters and digits in words joined by single dashes, starting with a letter\n\
          the verb `` is not lowercase letters and digits in words joined by single dashes, starting with a letter"
     );
@@ -103,7 +103,7 @@ fn an_argument_named_dry_run_fails_anywhere_in_the_tree() {
     assert_eq!(
         panic_message(|| check_grammar(&shelf, &[], &[])).unwrap(),
         "the command tree breaks crumbkit's grammar:\n\
-         shelf: the argument `--dry-run` uses a name that crumbkit reserves for its write verbs\n\
-         shelf books list: the argument `--dry-run` uses a name that crumbkit reserves for its write verbs"
+         shelf: the command has the argument `--dry-run`, and crumbkit reserves that name for its write verbs\n\
+         shelf books list: the command has the argument `--dry-run`, and crumbkit reserves that name for its write verbs"
     );
 }
