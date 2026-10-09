@@ -1,0 +1,5 @@
+shelf's catalogue holds six public-domain books. They are built into the
+binary, so shelf needs no network or credentials.
+Each book has an id from 1 to 6. An id never changes and is never reused.
+`shelf books list` prints the ids, and `shelf books list --all` prints all six.
+`shelf books show <ID>...` takes up to 100 ids in one call.

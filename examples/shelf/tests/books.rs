@@ -1,7 +1,7 @@
-//! End-to-end tests of `shelf books list` and `shelf books show`. Each test
-//! runs the built binary and compares its standard output and standard error
-//! with golden files under `tests/golden/` (ADR-0004, ADR-0005).
-//! `SNAPSHOTS=overwrite cargo test` rewrites the golden files.
+//! End-to-end tests of shelf. Each test runs the built binary and compares
+//! its standard output and standard error with golden files under
+//! `tests/golden/` (ADR-0004, ADR-0005). `SNAPSHOTS=overwrite cargo test`
+//! rewrites the golden files.
 
 use std::path::Path;
 
@@ -264,6 +264,30 @@ fn books_show_json_without_ids_prints_the_refusal_as_a_failure_document_with_cod
     shelf("books-show-json-no-ids", &["books", "show", "--json"])
         .code(2)
         .stdout_eq(file!["golden/books-show-json-no-ids.json"].raw())
+        .stderr_eq("");
+}
+
+#[test]
+fn help_lists_the_catalogue_topic_and_the_next_line() {
+    shelf("help", &["help"])
+        .success()
+        .stdout_eq(file!["golden/help.txt"].raw())
+        .stderr_eq("");
+}
+
+#[test]
+fn help_catalogue_prints_the_catalogue_topic() {
+    shelf("help-catalogue", &["help", "catalogue"])
+        .success()
+        .stdout_eq(file!["golden/help-catalogue.txt"].raw())
+        .stderr_eq("");
+}
+
+#[test]
+fn help_books_show_prints_the_same_page_as_books_show_long_help() {
+    shelf("help-books-show", &["help", "books", "show"])
+        .success()
+        .stdout_eq(file!["golden/books-show-help.txt"].raw())
         .stderr_eq("");
 }
 
