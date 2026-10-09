@@ -8,6 +8,7 @@
 - A command that refuses the caller returns an ordinary `Failure`. crumbkit-test and the golden files check the full tree.
 - Every function that takes a `clap::Command` works on any node of the tree, so a crate or a team can apply crumbkit and crumbkit-test to its own subtree. The `schema` and `self usage` commands and the usage log stay at the root.
 - The first segment of a code names the component that owns the code, so a crate keeps its codes in whatever binary includes it. In a tool built from one crate, the component and the tool have the same name.
-- `show` accepts many ids. `crumbkit::fetch_each(ids, workers, lookup)` runs a per-id lookup on a bounded number of scoped threads and returns one result per id, in the order given. A tool whose backend has a batch lookup calls that lookup directly instead.
+- `show` accepts many ids and returns a `Batch` (ADR-0016). `crumbkit::fetch_each(ids, workers, lookup)` runs a per-id lookup on a bounded number of scoped threads and returns one result per id, in the order given. A tool whose backend has a batch lookup calls that lookup directly instead.
+- With one worker, one id or none, `fetch_each` runs every lookup in the calling thread and starts no thread, and crumbkit has no default worker count, so each tool chooses one. An async tool uses its own bounded stream, because `fetch_each` blocks the calling thread, and a tool that needs rate limits or retries writes its own loop.
 
-Considered: an `App` runner that owns dispatch, a required derive macro, rendering from the compile-time tree, a trait with a provided `show_many`, an async runtime for concurrent lookups.
+Considered: an `App` runner that owns dispatch, a required derive macro, rendering from the compile-time tree, a trait with a provided `show_many`, an async runtime for concurrent lookups, a default worker count for `fetch_each`.

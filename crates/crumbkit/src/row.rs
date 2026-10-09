@@ -3,7 +3,7 @@
 use schemars::JsonSchema;
 use serde::Serialize;
 
-use crate::Call;
+use crate::{Call, Failure};
 
 /// A type that prints as one table row.
 ///
@@ -41,8 +41,8 @@ pub trait Row: Serialize + JsonSchema {
     const LONG_COLUMNS: &'static [&'static str] = &[];
 }
 
-/// A result that prints as a table: one [`Row`], a `Vec` of rows, or a
-/// [`Listing`](crate::Listing).
+/// A result that prints as a table: one [`Row`], a `Vec` of rows, a
+/// [`Listing`](crate::Listing) or a [`Batch`](crate::Batch).
 ///
 /// crumbkit implements this trait, and a tool cannot implement it, so crumbkit
 /// can add result shapes later without breaking a tool.
@@ -72,6 +72,16 @@ pub trait Rows: Serialize + sealed::Sealed {
     /// Returns the command that the text output names as the next step, and
     /// the phrase that follows it. Only a `Listing` returns one.
     fn next_step(&self) -> Option<(&Call, &str)> {
+        None
+    }
+
+    /// Returns the failures of the ids that did not work when the result is
+    /// a batch, and `None` otherwise. Only a `Batch` returns them, and its
+    /// list is empty when every id worked.
+    ///
+    /// A `Batch` builds the list on each call, because the trait cannot name
+    /// the batch's failure type. `finish` calls it once.
+    fn failures(&self) -> Option<Vec<&dyn Failure>> {
         None
     }
 }
@@ -106,4 +116,6 @@ mod sealed {
     impl<R: super::Row> Sealed for Vec<R> {}
 
     impl<R: super::Row> Sealed for crate::Listing<R> {}
+
+    impl<R: super::Row, E: crate::AsFailure> Sealed for crate::Batch<R, E> {}
 }
