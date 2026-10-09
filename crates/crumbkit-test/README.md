@@ -32,11 +32,12 @@ below the command passed in, such as `"books list"`, and skips that command
 and everything below it for that check only. An exemption that names no
 command fails the test.
 
-- `check_names` fails on a command or an argument with an alias of any kind,
-  and on a command with a short or long flag name, such as `-B` from
-  `Command::short_flag`, because a flag name gives the command a second name.
-  An argument may have one short form beside its long name, such as `-l`
-  with `--limit`.
+- `check_names` fails on every second name that help shows: a visible alias
+  of a command or an argument, a visible short-flag or long-flag alias, and
+  a command's short or long flag name, such as `-B` from
+  `Command::short_flag`. Hidden aliases pass, so a renamed command or flag
+  can keep its old name for a while. An argument may have one short form
+  beside its long name, such as `-l` with `--limit`.
 - `check_grammar` takes the tool's verbs beside `list` and `show`, and fails
   unless every command has the form `<tool> <resource> <verb>`: a command
   without subcommands is one of the verbs, and a command with subcommands is
