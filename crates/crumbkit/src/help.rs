@@ -64,7 +64,7 @@ mod tests;
 /// let parsed = crumbkit::parse_from::<Cli, _, _>(Cli::command(), &GUIDE, Spelling::COLONS, args);
 /// assert!(parsed.is_ok());
 /// ```
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Default)]
 pub struct Guide {
     /// The commands whose help lists their subcommands under goals.
     groups: &'static [Group],

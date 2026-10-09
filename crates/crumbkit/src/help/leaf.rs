@@ -37,7 +37,7 @@ mod tests;
 ///
 /// assert_eq!(GUIDE.get_leaves()[0].path(), ["books", "list"]);
 /// ```
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug)]
 pub struct Leaf {
     /// The names of the subcommands from the root to the command.
     path: &'static [&'static str],
@@ -152,21 +152,6 @@ struct Columns {
     /// columns' descriptions.
     schema: fn() -> Schema,
 }
-
-/// Two `Columns` are equal when their lists are equal and their schema
-/// functions have one address. The compiler may give one function two
-/// addresses, such as one in each codegen unit, so two leaves of one row
-/// type can compare unequal. `PartialEq` exists so that `Guide`, `Leaf` and
-/// the other guide types can derive it.
-impl PartialEq for Columns {
-    fn eq(&self, other: &Self) -> bool {
-        self.compact == other.compact
-            && self.long == other.long
-            && std::ptr::fn_addr_eq(self.schema, other.schema)
-    }
-}
-
-impl Eq for Columns {}
 
 /// Returns the JSON Schema of `R`.
 fn schema<R: JsonSchema>() -> Schema {
