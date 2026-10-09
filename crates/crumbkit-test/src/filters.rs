@@ -46,15 +46,23 @@ pub fn check_filters(command: &Command, exempt: &[&str]) {
     for visit in tree::walk(command, exempt, &mut problems) {
         let path = visit.path();
         for arg in visit.command().get_arguments() {
-            if arg.is_positional() || !takes_values(arg) {
+            if arg.is_positional() || !takes_values(arg) || !accepts_many(arg) {
                 continue;
             }
-            if accepts_many(arg) && !accepts_repeats_and_commas(arg) {
-                problems.push(format!(
-                    "{path}: the argument `{}` accepts many values, so it accepts both repeats and commas, with `ArgAction::Append` and the value delimiter `,`",
-                    argument_name(arg)
-                ));
-            }
+            let appends = matches!(arg.get_action(), ArgAction::Append);
+            let splits_at_commas = arg.get_value_delimiter() == Some(',');
+            let lacks = match (appends, splits_at_commas) {
+                (true, true) => continue,
+                (true, false) => "it has no value delimiter `,`",
+                (false, true) => "its action is not `ArgAction::Append`",
+                (false, false) => {
+                    "its action is not `ArgAction::Append` and it has no value delimiter `,`"
+                }
+            };
+            problems.push(format!(
+                "{path}: the argument `{}` accepts many values but does not accept both repeats and commas, because {lacks}; such an argument uses `ArgAction::Append` and the value delimiter `,`",
+                argument_name(arg)
+            ));
         }
     }
     tree::report("filter rules", &problems);
@@ -67,10 +75,4 @@ fn accepts_many(arg: &Arg) -> bool {
         || arg
             .get_num_args()
             .is_some_and(|range| range.max_values() > 1)
-}
-
-/// Reports whether `arg` appends a value on each use and splits each value
-/// at commas.
-fn accepts_repeats_and_commas(arg: &Arg) -> bool {
-    matches!(arg.get_action(), ArgAction::Append) && arg.get_value_delimiter() == Some(',')
 }

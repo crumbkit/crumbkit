@@ -39,24 +39,32 @@ fn a_repeatable_argument_without_a_comma_delimiter_fails() {
     assert_eq!(
         panic_message(|| check_filters(&list, &[])).unwrap(),
         "the command tree breaks crumbkit's filter rules:\n\
-         list: the argument `--author` accepts many values, so it accepts both repeats and commas, with `ArgAction::Append` and the value delimiter `,`\n\
-         list: the argument `--year` accepts many values, so it accepts both repeats and commas, with `ArgAction::Append` and the value delimiter `,`"
+         list: the argument `--author` accepts many values but does not accept both repeats and commas, because it has no value delimiter `,`; such an argument uses `ArgAction::Append` and the value delimiter `,`\n\
+         list: the argument `--year` accepts many values but does not accept both repeats and commas, because it has no value delimiter `,`; such an argument uses `ArgAction::Append` and the value delimiter `,`"
     );
 }
 
 #[test]
 fn an_argument_that_takes_several_values_in_one_use_without_repeats_fails() {
-    let list = Command::new("list").arg(
-        Arg::new("author")
-            .long("author")
-            .num_args(1..=3)
-            .value_delimiter(',')
-            .action(ArgAction::Set),
-    );
+    let list = Command::new("list")
+        .arg(
+            Arg::new("author")
+                .long("author")
+                .num_args(1..=3)
+                .value_delimiter(',')
+                .action(ArgAction::Set),
+        )
+        .arg(
+            Arg::new("year")
+                .long("year")
+                .num_args(1..=3)
+                .action(ArgAction::Set),
+        );
 
     assert_eq!(
         panic_message(|| check_filters(&list, &[])).unwrap(),
         "the command tree breaks crumbkit's filter rules:\n\
-         list: the argument `--author` accepts many values, so it accepts both repeats and commas, with `ArgAction::Append` and the value delimiter `,`"
+         list: the argument `--author` accepts many values but does not accept both repeats and commas, because its action is not `ArgAction::Append`; such an argument uses `ArgAction::Append` and the value delimiter `,`\n\
+         list: the argument `--year` accepts many values but does not accept both repeats and commas, because its action is not `ArgAction::Append` and it has no value delimiter `,`; such an argument uses `ArgAction::Append` and the value delimiter `,`"
     );
 }

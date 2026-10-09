@@ -61,7 +61,7 @@ pub fn check_grammar(command: &Command, verbs: &[&str], exempt: &[&str]) {
     for &verb in verbs {
         if BUILT_IN_VERBS.contains(&verb) {
             problems.push(format!(
-                "the verb `{verb}` is built in, so the tool does not pass it"
+                "the tool passes the verb `{verb}`, which is built in, and a tool passes only its other verbs"
             ));
         } else if !is_dashed_name(verb) {
             problems.push(format!("the verb `{verb}` is not {DASHED_NAME}"));
@@ -89,7 +89,7 @@ pub fn check_grammar(command: &Command, verbs: &[&str], exempt: &[&str]) {
             (_, false) => {
                 if !BUILT_IN_VERBS.contains(&name) && !verbs.contains(&name) {
                     problems.push(format!(
-                        "{path}: the command has no subcommands, so it is a verb, and a verb is `list`, `show` or one the tool passes"
+                        "{path}: the command has no subcommands, so it is a verb, but `{name}` is not `list`, `show` or a verb the tool passes"
                     ));
                 }
             }
@@ -97,7 +97,7 @@ pub fn check_grammar(command: &Command, verbs: &[&str], exempt: &[&str]) {
         for arg in command.get_arguments() {
             if arg.get_long() == Some("dry-run") {
                 problems.push(format!(
-                    "{path}: the argument `--dry-run` uses a name that crumbkit reserves for its write verbs"
+                    "{path}: the command has the argument `--dry-run`, and crumbkit reserves that name for its write verbs"
                 ));
             }
         }

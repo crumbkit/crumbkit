@@ -62,17 +62,17 @@ pub fn check_listings(command: &Command, exempt: &[&str]) {
             "list" => {
                 if !command.get_arguments().any(is_limit) {
                     problems.push(format!(
-                        "{path}: a `list` command has a `--limit` argument that takes a value, as flattening crumbkit's `Page` gives it"
+                        "{path}: the command has no `--limit` argument that takes a value, and a `list` command has one, as flattening crumbkit's `Page` gives it"
                     ));
                 }
                 if !command.get_arguments().any(is_all) {
                     problems.push(format!(
-                        "{path}: a `list` command has an `--all` flag, as flattening crumbkit's `Page` gives it"
+                        "{path}: the command has no `--all` flag, and a `list` command has one, as flattening crumbkit's `Page` gives it"
                     ));
                 }
             }
             "show" if !command.get_arguments().any(is_ids) => problems.push(format!(
-                "{path}: a `show` command has a required positional argument that takes at least 1 and at most {MOST_IDS} values and accepts more than 1"
+                "{path}: the command has no required positional argument that takes from 1 to {MOST_IDS} values and accepts more than 1, and a `show` command has one"
             )),
             _ => {}
         }

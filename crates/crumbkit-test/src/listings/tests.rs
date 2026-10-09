@@ -36,8 +36,8 @@ fn a_list_command_without_limit_and_all_fails() {
     assert_eq!(
         panic_message(|| check_listings(&list, &[])).unwrap(),
         "the command tree breaks crumbkit's listing rules:\n\
-         list: a `list` command has a `--limit` argument that takes a value, as flattening crumbkit's `Page` gives it\n\
-         list: a `list` command has an `--all` flag, as flattening crumbkit's `Page` gives it"
+         list: the command has no `--limit` argument that takes a value, and a `list` command has one, as flattening crumbkit's `Page` gives it\n\
+         list: the command has no `--all` flag, and a `list` command has one, as flattening crumbkit's `Page` gives it"
     );
 }
 
@@ -50,14 +50,14 @@ fn a_list_command_whose_limit_takes_no_value_and_whose_all_takes_one_fails() {
     assert_eq!(
         panic_message(|| check_listings(&list, &[])).unwrap(),
         "the command tree breaks crumbkit's listing rules:\n\
-         list: a `list` command has a `--limit` argument that takes a value, as flattening crumbkit's `Page` gives it\n\
-         list: a `list` command has an `--all` flag, as flattening crumbkit's `Page` gives it"
+         list: the command has no `--limit` argument that takes a value, and a `list` command has one, as flattening crumbkit's `Page` gives it\n\
+         list: the command has no `--all` flag, and a `list` command has one, as flattening crumbkit's `Page` gives it"
     );
 }
 
 #[test]
 fn a_show_command_without_a_required_positional_argument_for_1_to_100_values_fails() {
-    let rule = "a `show` command has a required positional argument that takes at least 1 and at most 100 values and accepts more than 1";
+    let rule = "the command has no required positional argument that takes from 1 to 100 values and accepts more than 1, and a `show` command has one";
     let shelf = Command::new("shelf")
         .subcommand(Command::new("none").subcommand(Command::new("show")))
         .subcommand(Command::new("optional").subcommand(show(false, 1..=100)))
