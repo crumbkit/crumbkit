@@ -46,6 +46,11 @@ jobs:
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
       - run: cargo fmt --check
       - run: cargo clippy --workspace --all-targets
+      # The default build leaves out the code behind crumbkit's `miette`
+      # feature, so clippy checks crumbkit again with the feature. A single
+      # `--all-features` run would miss a warning that only the default build
+      # shows, such as an import that only the feature uses.
+      - run: cargo clippy -p crumbkit --all-targets --features miette
       - run: cargo xtask check
       # The advisories check runs nightly in scheduled.yml, because a new
       # advisory can appear when no code has changed (ADR-0012).
@@ -81,6 +86,12 @@ jobs:
       - run: cargo nextest run --workspace --profile ci
       # nextest does not run doctests, so cargo test runs them.
       - run: cargo test --workspace --doc
+      # The default build leaves out the code behind crumbkit's `miette`
+      # feature, so crumbkit's tests and doctests run again with it.
+      - run: cargo nextest run -p crumbkit --features miette --profile ci
+      - run: cargo test -p crumbkit --features miette --doc
       # The MSRV check builds with the oldest supported toolchain (RUST-9).
+      # It builds with every feature, which compiles every line of code once,
+      # because no code is left out when a feature is on.
       - run: rustup toolchain install 1.89.0 --profile minimal
-      - run: cargo +1.89.0 check --workspace --all-targets
+      - run: cargo +1.89.0 check --workspace --all-targets --all-features

@@ -180,5 +180,43 @@ has no books by Charles Dickens`, then `` help:  run `books` `` and
 `shelf::books::unknown_author`, and whose `recovery` is
 `{"kind":"run","call":"books"}`.
 
+## The miette feature
+
+The `miette` feature, off by default, connects crumbkit to the miette error
+library. A tool turns it on with `features = ["miette"]` on its crumbkit
+dependency. The feature enables no miette features, so it adds no renderer
+and no derive macro.
+
+With the feature on, `Failure` gains the method `diagnostic`, which returns
+`None` by default. A failure type that also implements `miette::Diagnostic`
+returns `Some(self)`, and `finish` then prints each label of the diagnostic
+as an `at:` line after the causes, with the source line that holds the
+label's start and a caret underline:
+
+```text
+error: unknown key `colour`
+  at:    shelf.toml:3:1: this key is not known
+     3 | colour = "red"
+       | ^^^^^^
+  help:  use `color`
+  code:  shelf::config::unknown_key
+```
+
+The line and column are 1-based, and the column counts characters. A label
+whose span the source cannot read prints its byte offset, such as
+`at:    byte 400`, and no source line. With `--json`, the failure document
+and each batch failure hold the labels under `labels`, with `offset` and
+`length` in bytes, and `name`, `line`, `column` and `text` when they are
+known. crumbkit reads only the diagnostic's labels and source code, so the
+code, the recovery and the url still come from `Failure`.
+
+The feature also converts a `miette::Report` into `crumbkit::Error`, so `?`
+works on a `miette::Result` in a handler that returns `crumbkit::Error`. The
+converted failure's code is `crumbkit::report::unchecked` for every report,
+the report's own code follows its message in parentheses, and the report's
+help becomes a `Recovery::Hint`. A tool whose own failure type travels inside
+a report calls `downcast` on the report before converting it, so the caller
+sees the tool's own code.
+
 Licensed under either of Apache License, Version 2.0 or MIT license at your
 option.
