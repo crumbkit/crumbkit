@@ -132,3 +132,16 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   of a command with subcommands ends with a line such as
   `Next: shelf books <COMMAND> -h`. Help and the version keep clap's colours
   only when standard output is a terminal.
+- `crumbkit::help::extend` applies a `Guide` to a tool's command tree before
+  `parse`, so a group's help lists its subcommands under goal headings that
+  the tool declares, such as `Read` and `Change`, in place of clap's
+  `Commands:` list, in `-h` and `--help`. `Guide`, `Group` and `Goal` are
+  built with `const fn`s. A visible subcommand that no goal names is listed
+  under a final `Commands` heading, and a command that the guide does not
+  name keeps clap's list.
+- crumbkit enables clap's `help` feature, so a tool built with crumbkit
+  always has `-h` and `--help`.
+- crumbkit-test's `check_guide` fails a test, naming every problem, on a
+  guide group whose path names no command or a command without
+  subcommands, on a goal that names a command its group lacks, on a visible
+  subcommand that no goal names, and on a subcommand that two goals name.

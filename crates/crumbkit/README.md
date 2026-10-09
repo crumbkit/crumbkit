@@ -28,6 +28,15 @@ next step in the same two formats.
   `-h` of the command the caller reached, and exit code 2. `parse_from`
   takes the arguments, and `parse_to` also takes a `Sink`, so a test reads
   the output from memory.
+- `help::extend` applies a `help::Guide` to the command tree before
+  `parse`, so a group's help lists its subcommands under goal headings that
+  the tool declares, such as `Read` and `Change`, in place of clap's single
+  `Commands:` list. A tool declares the guide once as a `const` of `Group`s,
+  each a command path from the root with its `Goal`s, and each goal is a
+  heading and the real names of its subcommands. A visible subcommand that
+  no goal names is listed under a final `Commands` heading, and a command
+  that the guide does not name keeps clap's list. crumbkit enables clap's
+  `help` feature, which help templates need.
 - `Page` holds the flags `--limit <N>` and `--all`, which choose how many rows
   a listing prints. A command adds them to its own arguments with
   `#[command(flatten)]`, and its const parameter sets the default limit, which

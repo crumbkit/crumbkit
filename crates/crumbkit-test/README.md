@@ -2,7 +2,7 @@
 
 crumbkit-test checks a tool built with crumbkit from an ordinary `#[test]`.
 
-crumbkit is in design and is not published yet. This crate has five checks.
+crumbkit is in design and is not published yet. This crate has six checks.
 Each check collects every problem it finds and fails the test with one
 problem on each line.
 
@@ -24,10 +24,10 @@ const NETWORK_CODES: &[&Code] = &[&TIMED_OUT];
 crumbkit_test::check_codes(Spelling::COLONS, &[BOOK_CODES, NETWORK_CODES]);
 ```
 
-The other four checks take the tool's clap command, as `Cli::command()`
-returns it, and a list of exemptions. Each one walks the command and every
-subcommand below it, including hidden ones, and works on any node, so a
-crate can check its own subtree. An exemption names a command by its path
+Four checks take the tool's clap command, as `Cli::command()` returns it,
+and a list of exemptions. Each one walks the command and every subcommand
+below it, including hidden ones, and works on any node, so a crate can
+check its own subtree. An exemption names a command by its path
 below the command passed in, such as `"books list"`, and skips that command
 and everything below it for that check only. An exemption that names no
 command fails the test.
@@ -79,6 +79,28 @@ crumbkit_test::check_filters(&shelf, &[]);
 ```
 
 A tool that derives its parser passes `&Cli::command()` in the same way.
+
+- `check_guide` takes the tool's clap command and the `Guide` it passes to
+  `crumbkit::help::extend`, and no exemptions. It fails on a group whose
+  path names no command or a command without subcommands, on a goal that
+  names a command its group lacks, on a visible subcommand of a group that
+  no goal names, and on a subcommand that two goals name. A hidden
+  subcommand passes whether or not a goal names it.
+
+```rust
+use clap::Command;
+use crumbkit::help::{Goal, Group, Guide};
+
+const GUIDE: Guide = Guide::new().groups(&[Group::new(
+    &[],
+    &[Goal::new("Browse the catalogue", &["books"])],
+)]);
+
+let shelf = Command::new("shelf")
+    .subcommand(Command::new("books").subcommand(Command::new("list")));
+
+crumbkit_test::check_guide(&shelf, &GUIDE);
+```
 
 Licensed under either of Apache License, Version 2.0 or MIT license at your
 option.
