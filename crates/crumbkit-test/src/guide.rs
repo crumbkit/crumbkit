@@ -1,10 +1,10 @@
-//! The guide check, which keeps a tool's goal headings in step with its
-//! command tree.
+//! The guide check, which keeps a tool's goal headings and help topics in
+//! step with its command tree.
 
 use clap::Command;
 use crumbkit::help::Guide;
 
-use crate::tree;
+use crate::tree::{self, DASHED_NAME};
 
 #[cfg(test)]
 mod tests;
@@ -26,21 +26,38 @@ mod tests;
 ///   such as an alias or a misspelt name;
 /// - a visible subcommand of a group that no goal names;
 /// - a subcommand that two goals of its group name, or that one goal names
-///   twice.
+///   twice;
+/// - a topic whose name is the name or an alias of a command directly under
+///   `command`, because `<tool> help <name>` prints that command's help;
+/// - a topic named `help`, because `<tool> help help` prints the help of
+///   the hidden `help` command that holds the topics;
+/// - a topic whose text is empty or only whitespace;
+/// - a topic whose name an earlier topic already has, because `extend`
+///   keeps only the first;
+/// - a topic name that is not lowercase ASCII letters and digits in words
+///   joined by single dashes, starting with a letter, such as `catalogue`.
 ///
 /// A hidden subcommand passes whether or not a goal names it, and a command
-/// that no group names keeps clap's list and is not checked. The check
-/// takes no exemptions, because a tool that wants clap's list for a command
-/// leaves that command out of the guide.
+/// that no group names keeps clap's list and is not checked. A topic with
+/// an empty summary passes. The check takes no exemptions, because a tool
+/// that wants clap's list for a command leaves that command out of the
+/// guide. It reads the tree before `extend`, so it never sees the hidden
+/// `help` command that holds the topics.
 ///
 /// ```
 /// use clap::Command;
-/// use crumbkit::help::{Goal, Group, Guide};
+/// use crumbkit::help::{Goal, Group, Guide, Topic};
 ///
-/// const GUIDE: Guide = Guide::new().groups(&[Group::new(
-///     &["books"],
-///     &[Goal::new("Read", &["list", "show"])],
-/// )]);
+/// const GUIDE: Guide = Guide::new()
+///     .groups(&[Group::new(
+///         &["books"],
+///         &[Goal::new("Read", &["list", "show"])],
+///     )])
+///     .topics(&[Topic::new(
+///         "catalogue",
+///         "Where the books come from",
+///         "The catalogue is built into the binary.\n",
+///     )]);
 ///
 /// let shelf = Command::new("shelf").subcommand(
 ///     Command::new("books")
@@ -108,5 +125,47 @@ pub fn check_guide(command: &Command, guide: &Guide) {
             }
         }
     }
-    tree::report("goal heading rules", &problems);
+    check_topics(command, guide, &mut problems);
+    tree::report("guide rules", &problems);
+}
+
+/// Adds a problem to `problems` for each topic of `guide` that breaks a
+/// topic rule of [`check_guide`].
+fn check_topics(command: &Command, guide: &Guide, problems: &mut Vec<String>) {
+    let tool = command.get_name();
+    let topics = guide.get_topics();
+    for (index, topic) in topics.iter().enumerate() {
+        let name = topic.name();
+        if !tree::is_dashed_name(name) {
+            problems.push(format!("the topic name `{name}` is not {DASHED_NAME}"));
+        }
+        // `find_subcommand` resolves aliases, as `parse` does.
+        if let Some(subcommand) = command.find_subcommand(name) {
+            problems.push(format!(
+                "the topic `{name}` is a name of the command `{tool} {}`, so `{tool} help {name}` prints that command's help",
+                subcommand.get_name()
+            ));
+        }
+        // `extend` names its hidden command `help`, and `parse` finds that
+        // command before it looks for a topic.
+        if name == "help" {
+            problems.push(format!(
+                "the topic `help` has the name of crumbkit's hidden `help` command, so `{tool} help help` prints that command's help"
+            ));
+        }
+        if topic.text().trim().is_empty() {
+            problems.push(format!("the topic `{name}` has no text"));
+        }
+        // Only the second topic with a name reports it, so a name that
+        // three topics share is one problem.
+        let earlier = topics[..index]
+            .iter()
+            .filter(|earlier| earlier.name() == name)
+            .count();
+        if earlier == 1 {
+            problems.push(format!(
+                "two topics are named `{name}`, and `{tool} help {name}` prints only the first"
+            ));
+        }
+    }
 }

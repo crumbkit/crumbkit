@@ -22,8 +22,11 @@ next step in the same two formats.
   returns the tool's parsed type and the command tree it parsed against, or
   the exit code for `main` to return. It adds lines to clap's help pages:
   `-h` names the global flags on one line, which `--help` lists in full, and
-  the help of a command with subcommands ends with a `Next:` line such as
-  `Next: shelf books <COMMAND> -h`. It prints a refused command line as a
+  the help of a command with a visible subcommand ends with a `Next:` line
+  such as `Next: shelf books <COMMAND> -h`. It answers `help` in place of
+  clap's `help` subcommand: `shelf help books show` and
+  `shelf books help show` print what `shelf books show --help` prints. It
+  prints a refused command line as a
   failure with the code `crumbkit::cli::usage`, a recovery that runs the
   `-h` of the command the caller reached, and exit code 2. `parse_from`
   takes the arguments, and `parse_to` also takes a `Sink`, so a test reads
@@ -35,8 +38,11 @@ next step in the same two formats.
   each a command path from the root with its `Goal`s, and each goal is a
   heading and the real names of its subcommands. A visible subcommand that
   no goal names is listed under a final `Commands` heading, and a command
-  that the guide does not name keeps clap's list. crumbkit enables clap's
-  `help` feature, which help templates need.
+  that the guide does not name keeps clap's list. A guide also holds the
+  tool's help topics, each a `help::Topic` with a name, a one-line summary
+  and plain text: `shelf help` lists them, `shelf help catalogue` prints
+  one, and the root's help names them. crumbkit enables clap's `help`
+  feature, which help templates need.
 - `Page` holds the flags `--limit <N>` and `--all`, which choose how many rows
   a listing prints. A command adds them to its own arguments with
   `#[command(flatten)]`, and its const parameter sets the default limit, which

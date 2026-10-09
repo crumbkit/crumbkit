@@ -19,7 +19,8 @@ mod tests;
 const SPELLING: Spelling = Spelling::COLONS;
 
 /// Parses the command line and runs the command. `crumbkit::help::extend`
-/// gives the command tree shelf's goal headings before parsing.
+/// gives the command tree shelf's goal headings and help topics before
+/// parsing.
 /// `crumbkit::parse` prints help, the version or a refused command line and
 /// returns the exit code. `crumbkit::finish` prints the result or the failure
 /// in the format that the output flags choose and returns the process's exit

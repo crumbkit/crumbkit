@@ -129,7 +129,7 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Through `parse`, `-h` names the root's global flags on one line, such as
   ``Global flags: --json, --fields <FIELD>, --long, --full. `shelf books
   list --help` describes them.``, and `--help` lists them in full. The help
-  of a command with subcommands ends with a line such as
+  of a command with a visible subcommand ends with a line such as
   `Next: shelf books <COMMAND> -h`. Help and the version keep clap's colours
   only when standard output is a terminal.
 - `crumbkit::help::extend` applies a `Guide` to a tool's command tree before
@@ -141,7 +141,23 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   name keeps clap's list.
 - crumbkit enables clap's `help` feature, so a tool built with crumbkit
   always has `-h` and `--help`.
+- `parse` answers `help` in place of clap's generated `help` subcommand,
+  which no longer appears in any `Commands:` list. `shelf help books show`
+  and `shelf books help show` print what `shelf books show --help` prints,
+  and `shelf books help` prints what `shelf books --help` prints. An unknown
+  word such as `shelf books help shwo` is refused with clap's message and
+  the recovery `shelf books -h`.
+- `Guide::topics` gives a tool help topics, each a `Topic` with a name, a
+  one-line summary and plain text. `shelf help` lists the topics and
+  `shelf help catalogue` prints one, and the root's `-h` and `--help` gain a
+  line such as ``Topics: catalogue. `shelf help <TOPIC>` prints one.``
 - crumbkit-test's `check_guide` fails a test, naming every problem, on a
   guide group whose path names no command or a command without
   subcommands, on a goal that names a command its group lacks, on a visible
   subcommand that no goal names, and on a subcommand that two goals name.
+  It also fails on a topic name that is not lowercase words joined by
+  dashes, on a topic name that a root command's name or alias hides, on a
+  topic named `help`, on a topic without text, and on two topics with one
+  name.
+- crumbkit-test's `check_grammar` fails on a command named or aliased `help`
+  at any level, because crumbkit reserves that word for asking for help.

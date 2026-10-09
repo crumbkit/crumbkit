@@ -32,6 +32,6 @@ fn every_option_with_many_values_accepts_repeats_and_commas() {
 }
 
 #[test]
-fn every_visible_command_is_under_a_goal_heading() {
+fn every_visible_command_is_under_a_goal_heading_and_every_topic_is_well_formed() {
     crumbkit_test::check_guide(&Cli::command(), &GUIDE);
 }

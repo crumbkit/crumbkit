@@ -1,0 +1,4 @@
+Topics
+  catalogue  Where shelf's books come from and how their ids work
+
+Next: shelf help <TOPIC>
