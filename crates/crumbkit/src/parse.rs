@@ -118,6 +118,27 @@ where
 ///   opens one of them, such as `Next: shelf books <COMMAND> -h`, in `-h`
 ///   and in `--help`.
 ///
+/// When the deepest command typed has a [`Leaf`](crate::help::Leaf) in
+/// `guide`, its help gains the leaf's sections after the options and before
+/// crumbkit's lines:
+///
+/// - `-h` and `--help` list the leaf's examples under `Examples:`, each as
+///   the full command line, such as `shelf books list --all`. A word that a
+///   POSIX shell would split or expand prints in single quotes. `--help`
+///   prints each example's description on the next line, in the layout of
+///   clap's long options.
+/// - `--help` lists the row type's columns under `Columns:` and the columns
+///   that `--long` adds under `Columns that --long adds:`, each with the
+///   first paragraph of its field's doc comment, which crumbkit reads from
+///   the row type's JSON Schema. crumbkit builds the schema only when the
+///   words before any `--` hold `--help`, so a run that prints no long help
+///   never builds it.
+/// - `-h` of a leaf with a document ends with a line such as
+///   `Next: shelf books list --help explains each column.`
+///
+/// A leaf off the typed path, and a leaf whose path names no command, leave
+/// every help page unchanged.
+///
 /// crumbkit answers the word `help` in place of clap, whose generated
 /// `help` subcommand it turns off. It answers `help` as the next word below
 /// any command with subcommands, and directly after the program name when
@@ -231,8 +252,22 @@ where
         }
         ask_for_help(&mut args, help.position);
     }
+    // A leaf's `--help` describes its columns from the row type's JSON
+    // Schema, so crumbkit builds the schema only when the words before any
+    // `--` hold `--help`, also after the `help` rewrite above.
+    //
+    // RUST-10: crumbkit reads each word on its own, so it also takes an
+    // option's value spelled `--help` as a request for help, and then builds
+    // the schema for a run that prints no help. Help prints the same either
+    // way. The walk that reads how many values each option takes replaces
+    // this, as it replaces `walk`.
+    let long_help = args
+        .iter()
+        .skip(1)
+        .take_while(|word| *word != "--")
+        .any(|word| word == "--help");
     let path = walk(&command, &args);
-    add_help_lines(&mut command, guide, topics, &path);
+    add_help_lines(&mut command, guide, topics, &path, long_help);
 
     let error = match command.try_get_matches_from_mut(args) {
         Ok(mut matches) => match C::from_arg_matches_mut(&mut matches) {

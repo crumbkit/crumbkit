@@ -1,8 +1,10 @@
 //! The guide to a tool's help: goal headings, which list a group's
 //! subcommands under headings that the tool declares, such as `Read` and
-//! `Change`, in place of clap's single `Commands:` list, and help topics,
+//! `Change`, in place of clap's single `Commands:` list, leaves, which give
+//! a command examples and describe its output columns, and help topics,
 //! which `<tool> help <TOPIC>` prints.
 
+pub(crate) mod leaf;
 pub(crate) mod topic;
 
 use std::fmt::Write as _;
@@ -11,22 +13,26 @@ use clap::Command;
 use clap::builder::StyledStr;
 use clap::builder::styling::Style;
 
+pub use self::leaf::{Example, Leaf};
 pub use self::topic::Topic;
 
 #[cfg(test)]
 mod tests;
 
 /// The guide to a tool's help pages: one [`Group`] for each command whose
-/// help lists its subcommands under goals, and the tool's [`Topic`]s.
+/// help lists its subcommands under goals, one [`Leaf`] for each command
+/// whose help shows examples and describes its columns, and the tool's
+/// [`Topic`]s.
 ///
 /// A tool declares its guide once as a `const` and passes it to
 /// [`parse`](crate::parse), which applies its goal headings to the help of
-/// the commands on the typed path and prints its topics:
+/// the commands on the typed path, applies the leaf of the deepest command
+/// typed, and prints its topics:
 ///
 /// ```
 /// use clap::{CommandFactory, Parser, Subcommand};
 /// use crumbkit::Spelling;
-/// use crumbkit::help::{Goal, Group, Guide, Topic};
+/// use crumbkit::help::{Example, Goal, Group, Guide, Leaf, Topic};
 ///
 /// /// Browse a small catalogue.
 /// #[derive(Parser)]
@@ -47,6 +53,7 @@ mod tests;
 ///         &[],
 ///         &[Goal::new("Browse the catalogue", &["books"])],
 ///     )])
+///     .leaves(&[Leaf::new(&["books"]).examples(&[Example::new(&[], "List the books")])])
 ///     .topics(&[Topic::new(
 ///         "catalogue",
 ///         "Where the books come from",
@@ -61,17 +68,20 @@ mod tests;
 pub struct Guide {
     /// The commands whose help lists their subcommands under goals.
     groups: &'static [Group],
+    /// The commands whose help shows examples and describes their columns.
+    leaves: &'static [Leaf],
     /// The topics that `<tool> help` lists, in order.
     topics: &'static [Topic],
 }
 
 impl Guide {
-    /// Returns a guide with no groups and no topics, which changes no help
-    /// page.
+    /// Returns a guide with no groups, no leaves and no topics, which
+    /// changes no help page.
     #[must_use]
     pub const fn new() -> Self {
         Self {
             groups: &[],
+            leaves: &[],
             topics: &[],
         }
     }
@@ -88,6 +98,21 @@ impl Guide {
     #[must_use]
     pub const fn get_groups(&self) -> &'static [Group] {
         self.groups
+    }
+
+    /// Sets the commands whose help shows examples and describes their
+    /// columns.
+    #[must_use]
+    pub const fn leaves(mut self, leaves: &'static [Leaf]) -> Self {
+        self.leaves = leaves;
+        self
+    }
+
+    /// Returns the leaves that [`Guide::leaves`] set. The name has clap's
+    /// `get_` prefix, because `leaves` is the builder method.
+    #[must_use]
+    pub const fn get_leaves(&self) -> &'static [Leaf] {
+        self.leaves
     }
 
     /// Sets the topics that `<tool> help` lists, in the order it lists them.
@@ -170,14 +195,16 @@ impl Goal {
     }
 }
 
-/// Applies the goal headings of `guide` to every group in the tree of
-/// `command`, the root of the tool's unbuilt tree, and returns the tree.
+/// Applies the goal headings and the leaves' examples of `guide` to the
+/// whole tree of `command`, the root of the tool's unbuilt tree, and
+/// returns the tree.
 ///
 /// [`parse`](crate::parse) takes the guide and applies its goal headings to
-/// the groups that the typed words pass through, so a tool that parses with
-/// crumbkit does not call `extend`. A tool that parses with plain clap calls
-/// it once before parsing, and a test calls it to check the whole guided
-/// tree, such as with clap's `Command::debug_assert`.
+/// the groups that the typed words pass through, and the leaf of the
+/// deepest command typed, so a tool that parses with crumbkit does not call
+/// `extend`. A tool that parses with plain clap calls it once before
+/// parsing, and a test calls it to check the whole guided tree, such as
+/// with clap's `Command::debug_assert`.
 ///
 /// Each group's help page lists its visible subcommands under its goals'
 /// headings, in the guide's order, and then the visible subcommands that no
@@ -201,14 +228,24 @@ impl Goal {
 /// is listed under both. The `Options:` section and crumbkit's lines from
 /// [`parse`](crate::parse) follow the list in `-h` and `--help`.
 ///
-/// `extend` skips a group whose path names no command or a command without
-/// visible subcommands, and leaves every command that the guide does not
-/// name with clap's own `Commands:` list. crumbkit-test's `check_guide`
-/// fails on a guide that names a missing command or misses a visible one.
-/// `extend` reads no topics, because `parse` reads them from the guide.
+/// Each leaf's help ends with its `Examples:` section after the options, in
+/// `-h` and in `--help`, as `parse` prints it, and the section replaces the
+/// command's own `after_help` and `after_long_help`. `extend` adds no
+/// `Columns:` sections and no `Next:` line, because describing the columns
+/// builds the row type's JSON Schema, and `extend` runs before parsing and
+/// cannot know whether help will print. A leaf without examples leaves its
+/// command unchanged, and of two leaves with one path only the first
+/// applies, as in `parse`.
 ///
-/// Its work is one formatted line for each subcommand of each group. It
-/// never clones the tree.
+/// `extend` skips a group whose path names no command or a command without
+/// visible subcommands, a leaf whose path names no command, and leaves every
+/// command that the guide does not name with clap's own help.
+/// crumbkit-test's `check_guide` fails on a guide that names a missing
+/// command or misses a visible one. `extend` reads no topics, because
+/// `parse` reads them from the guide.
+///
+/// Its work is one formatted line for each subcommand of each group and for
+/// each example of each leaf. It never clones the tree.
 #[must_use]
 pub fn extend(mut command: Command, guide: &Guide) -> Command {
     // clap copies the root's styles to every subcommand when it builds the
@@ -219,6 +256,27 @@ pub fn extend(mut command: Command, guide: &Guide) -> Command {
     for group in guide.groups {
         if let Some(node) = find_mut(&mut command, group.path) {
             apply(node, group, header, literal);
+        }
+    }
+    let tool = command.get_name().to_owned();
+    for (index, leaf) in guide.leaves.iter().enumerate() {
+        // `parse` finds the first leaf with a path, so `extend` skips the
+        // later ones.
+        let earlier = &guide.leaves[..index];
+        if earlier.iter().any(|other| other.path() == leaf.path()) {
+            continue;
+        }
+        let Some(node) = find_mut(&mut command, leaf.path()) else {
+            continue;
+        };
+        let text = std::iter::once(tool.as_str())
+            .chain(leaf.path().iter().copied())
+            .collect::<Vec<_>>()
+            .join(" ");
+        let short = leaf::examples(leaf, &text, false, header, literal);
+        let long = leaf::examples(leaf, &text, true, header, literal);
+        if let (Some(short), Some(long)) = (short, long) {
+            *node = std::mem::take(node).after_help(short).after_long_help(long);
         }
     }
     command
