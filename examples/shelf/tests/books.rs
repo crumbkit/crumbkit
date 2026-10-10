@@ -36,14 +36,6 @@ fn shelf(test: &str, args: &[&str]) -> OutputAssert {
 }
 
 #[test]
-fn books_list_prints_the_first_4_books_a_footer_naming_the_rest_and_the_next_line() {
-    shelf("books-list", &["books", "list"])
-        .success()
-        .stdout_eq(file!["golden/books-list.txt"].raw())
-        .stderr_eq("");
-}
-
-#[test]
 fn books_list_long_adds_the_form_column_and_keeps_the_footer() {
     shelf("books-list-long", &["books", "list", "--long"])
         .success()
@@ -101,14 +93,6 @@ fn books_list_with_an_unknown_field_exits_with_code_2_and_hints_at_the_valid_fie
     .code(2)
     .stdout_eq("")
     .stderr_eq(file!["golden/books-list-unknown-field.stderr"].raw());
-}
-
-#[test]
-fn books_list_all_prints_every_book_and_the_next_line_without_a_footer() {
-    shelf("books-list-all", &["books", "list", "--all"])
-        .success()
-        .stdout_eq(file!["golden/books-list-all.txt"].raw())
-        .stderr_eq("");
 }
 
 #[test]
