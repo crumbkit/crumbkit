@@ -208,3 +208,22 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   succeed and deletes the stale ones. `Examples` is a `const fn` builder
   that takes the binary's path and the directory, and `Examples::exempt`
   skips the examples of named commands.
+- `crumbkit::commands` gives a tool the command
+  `<tool> commands list [PATH]...`, which the tool wires into its own clap
+  types with `CommandsList` as the arguments. `commands::list` returns one
+  page of `CommandRow`s for the branch that `PATH` names, from the tree
+  passed to `Output::set_command`, and the tool prints them with the
+  document `commands::COMMANDS`, whose id is `crumbkit/commands/v1`. A row
+  holds the command's path, about texts, arguments, examples and columns;
+  the table shows the path and about text, and `--json --full` shows the
+  rest. A hidden command and its subtree, hidden arguments, and the help
+  and version flags are left out, and a global argument is listed once, on
+  the command that defines it.
+- A `PATH` that names no visible command, or names a hidden one, fails
+  with the code `crumbkit::commands::not_found` and a recovery that runs
+  `commands list` with the longest start of `PATH` that names visible
+  commands. `commands list` in a tool that never called
+  `Output::set_command` fails with the code
+  `crumbkit::commands::unavailable`.
+- `crates/crumbkit/schemas/commands-v1.json` holds the JSON Schema of the
+  `crumbkit/commands/v1` document.
