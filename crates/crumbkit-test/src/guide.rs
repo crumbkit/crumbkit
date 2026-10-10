@@ -35,6 +35,14 @@ mod tests;
 ///   leaf's path and the example's words, naming clap's error kind. An
 ///   example with `--help` or `--version` counts as refused, because an
 ///   example shows a real run;
+/// - a visible command without subcommands, the root included when it has
+///   none, that no leaf with at least one example names, because its help
+///   then shows no example;
+/// - a leaf column whose name is not a field of the leaf's row type, such
+///   as a misspelt name in `Row::COLUMNS` or `Row::LONG_COLUMNS`, because
+///   the table prints `-` in every row of it;
+/// - a leaf column without a description, naming the field whose doc
+///   comment is missing, because `--help` lists the column without one;
 /// - a topic whose name is the name or an alias of a command directly under
 ///   `command`, because `<tool> help <name>` prints that command's help;
 /// - a topic whose text is empty or only whitespace;
@@ -43,8 +51,11 @@ mod tests;
 /// - a topic name that is not lowercase ASCII letters and digits in words
 ///   joined by single dashes, starting with a letter, such as `catalogue`.
 ///
-/// A hidden subcommand passes whether or not a goal names it, and a command
-/// that no group names keeps clap's list and is not checked. A topic with
+/// A hidden subcommand passes whether or not a goal names it, and a hidden
+/// command needs no leaf. A command that no group names keeps clap's list
+/// and is not checked. The column rules read
+/// [`Leaf::column_descriptions`](crumbkit::help::Leaf::column_descriptions),
+/// the data that the leaf's `--help` lists. A topic with
 /// an empty summary passes. The check takes no exemptions, because a tool
 /// that wants clap's list for a command leaves that command out of the
 /// guide.
@@ -58,8 +69,10 @@ mod tests;
 ///         &["books"],
 ///         &[Goal::new("Read", &["list", "show"])],
 ///     )])
-///     .leaves(&[Leaf::new(&["books", "list"])
-///         .examples(&[Example::new(&[], "Print the books")])])
+///     .leaves(&[
+///         Leaf::new(&["books", "list"]).examples(&[Example::new(&[], "Print the books")]),
+///         Leaf::new(&["books", "show"]).examples(&[Example::new(&[], "Show the first book")]),
+///     ])
 ///     .topics(&[Topic::new(
 ///         "catalogue",
 ///         "Where the books come from",
@@ -138,7 +151,8 @@ pub fn check_guide(command: &Command, guide: &Guide) {
 }
 
 /// Adds a problem to `problems` for each leaf of `guide` that breaks a leaf
-/// rule of [`check_guide`].
+/// rule of [`check_guide`], and for each visible command without
+/// subcommands that no leaf with an example names.
 fn check_leaves(command: &Command, guide: &Guide, problems: &mut Vec<String>) {
     let tool = command.get_name();
     let leaves = guide.get_leaves();
@@ -186,6 +200,29 @@ fn check_leaves(command: &Command, guide: &Guide, problems: &mut Vec<String>) {
                     error.kind()
                 ));
             }
+        }
+        for column in leaf.column_descriptions() {
+            let name = column.name();
+            if !column.is_property() {
+                problems.push(format!(
+                    "{text}: the column `{name}` is not a field of the row type, so the table prints `-` in every row of it"
+                ));
+            } else if column.description().is_none() {
+                problems.push(format!(
+                    "{text}: the column `{name}` has no description, because the field `{name}` of the row type has no doc comment"
+                ));
+            }
+        }
+    }
+    for visit in tree::walk_visible(command) {
+        let named = leaves
+            .iter()
+            .any(|leaf| !leaf.get_examples().is_empty() && leaf.path().join(" ") == visit.below());
+        if !visit.command().has_subcommands() && !named {
+            problems.push(format!(
+                "{}: no leaf with an example names the command, so its help shows no example",
+                visit.path()
+            ));
         }
     }
 }

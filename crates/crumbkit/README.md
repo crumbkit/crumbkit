@@ -51,6 +51,10 @@ next step in the same two formats.
   `--help` list the examples as full command lines such as
   `shelf books list --all`, and its `--help` describes each column of the
   document's rows with the first paragraph of the field's doc comment.
+  `Leaf::column_descriptions` returns those columns as `help::Column`s,
+  each with its name, whether `--long` adds it, whether it is a field of
+  the row type, and its description. It builds the row type's JSON Schema
+  on each call, and crumbkit-test's `check_guide` reads it.
   crumbkit enables clap's `help` feature, which help templates need.
 - `Page` holds the flags `--limit <N>` and `--all`, which choose how many rows
   a listing prints. A command adds them to its own arguments with

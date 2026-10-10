@@ -2,7 +2,7 @@
 
 crumbkit-test checks a tool built with crumbkit from an ordinary `#[test]`.
 
-crumbkit is in design and is not published yet. This crate has six checks.
+crumbkit is in design and is not published yet. This crate has eight checks.
 Each check collects every problem it finds and fails the test with one
 problem on each line.
 
@@ -97,7 +97,11 @@ A tool that derives its parser passes `&Cli::command()` in the same way.
   fails on a leaf whose path names no command or a command with
   subcommands, on two leaves with one path, and on an example that clap
   refuses, with clap's error kind and the example's command line. An
-  example that asks for `--help` or `--version` counts as refused.
+  example that asks for `--help` or `--version` counts as refused. It fails
+  on a visible command without subcommands, the root included when it has
+  none, that no leaf with at least one example names. It fails on a leaf
+  column whose name is not a field of the row type, and on a leaf column
+  without a description, naming the field whose doc comment is missing.
 
 ```rust
 use clap::Command;
@@ -120,6 +124,64 @@ let shelf = Command::new("shelf")
     .subcommand(Command::new("books").subcommand(Command::new("list")));
 
 crumbkit_test::check_guide(&shelf, &GUIDE);
+```
+
+Two checks read the help pages that crumbkit prints. Each takes the tool's
+clap command and its `Guide`, renders the pages with `crumbkit::parse_to`
+on a copy of the tree, and visits the root and every visible command below
+it. A hidden command and everything below it are skipped, because help
+never shows them.
+
+- `check_help_sizes` takes a `Budgets` and fails on a `-h` page whose
+  plain text has more bytes than its budget. The default budgets are 1,500
+  bytes for the root, 800 for a group, which is a command below the root
+  with subcommands, and 1,200 for a leaf, which is a command below the root
+  without subcommands. `Budgets::new()` holds the defaults, `.root`,
+  `.group` and `.leaf` lower a whole class, and `.nodes` lowers single
+  commands, named by their path below the root, such as `"books list"`. A
+  command's own budget wins over its class budget. The check fails on a
+  budget above the default, because a tool can lower a budget and cannot
+  raise one, and on a command budget whose path names no command or a
+  hidden one. `--help` has no budget.
+- `check_help_goldens` takes a directory and compares the `-h` and `--help`
+  page of each visited command with a golden file there, named after the
+  command's path and the flag: `shelf-h.txt` and `shelf-help.txt` for the
+  root, and `shelf-books-list-h.txt` and `shelf-books-list-help.txt` for
+  `shelf books list`. It fails on a missing file, a file whose content
+  differs, and a stale file, which is a `.txt` file that no page produces,
+  so the directory holds only help golden files. With
+  `SNAPSHOTS=overwrite`, the check writes and rewrites the files and
+  deletes each stale one. A relative directory names a directory in the
+  package that runs the test, because cargo runs tests from the package's
+  manifest directory.
+
+```rust
+use clap::Command;
+use crumbkit::help::{Example, Guide, Leaf};
+use crumbkit_test::Budgets;
+
+const GUIDE: Guide = Guide::new().leaves(&[Leaf::new(&["books", "list"])
+    .examples(&[Example::new(&[], "Print the books")])]);
+
+let shelf = Command::new("shelf")
+    .about("Browse a small catalogue")
+    .subcommand(Command::new("books").subcommand(Command::new("list")));
+
+crumbkit_test::check_help_sizes(&shelf, &GUIDE, &Budgets::new());
+crumbkit_test::check_help_sizes(
+    &shelf,
+    &GUIDE,
+    &Budgets::new().leaf(1_000).nodes(&[("books list", 600)]),
+);
+```
+
+```rust,no_run
+use clap::Command;
+use crumbkit::help::Guide;
+
+let shelf = Command::new("shelf").subcommand(Command::new("books"));
+
+crumbkit_test::check_help_goldens(&shelf, &Guide::new(), "tests/golden/help");
 ```
 
 Licensed under either of Apache License, Version 2.0 or MIT license at your

@@ -134,6 +134,9 @@ version = "0.0.0"
 dependencies = [
  "clap",
  "crumbkit",
+ "schemars",
+ "serde",
+ "snapbox",
 ]
 
 [[package]]

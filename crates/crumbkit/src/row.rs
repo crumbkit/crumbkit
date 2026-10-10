@@ -9,8 +9,10 @@ use crate::{Call, Failure};
 ///
 /// The names in `COLUMNS` and `LONG_COLUMNS` are the field names as the type
 /// serializes them, after any `#[serde(rename)]`. A name that is not a field
-/// prints `-` in every row of its column, and `null` in JSON, so check each
-/// name against the type's fields.
+/// prints `-` in every row of its column, and `null` in JSON. crumbkit-test's
+/// `check_guide` fails on such a name in the row type of each leaf that the
+/// tool's guide gives a document, and on a column whose field has no doc
+/// comment, because a leaf's `--help` describes each column with it.
 ///
 /// ```
 /// use crumbkit::Row;

@@ -50,7 +50,8 @@ schemars = { version = "1.2.2", default-features = false }
 miette = { version = "7.6.0", default-features = false }
 
 # snapbox runs a built binary and compares its output with golden files
-# (ADR-0004, ADR-0005). Only tests use it.
+# (ADR-0004, ADR-0005), and crumbkit-test's help golden check compares help
+# pages with golden files through it. Only tests use it.
 snapbox = { version = "1.2.2", default-features = false }
 
 # proptest checks the code segment rule, the predefined spellings and table

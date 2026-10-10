@@ -177,3 +177,22 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   or a command with subcommands, on two leaves with one path, and on an
   example that clap refuses, including one that asks for `--help` or
   `--version`.
+- `Leaf::column_descriptions` returns each column of a leaf's row type as a
+  `help::Column` with its name, whether `--long` adds it, whether it is a
+  field of the row type, and the first paragraph of its description. It
+  builds the row type's JSON Schema, and a leaf's `--help` reads its
+  columns through it.
+- crumbkit-test's `check_guide` fails on a visible command without
+  subcommands that no leaf with an example names, on a leaf column that is
+  not a field of the row type, and on a leaf column without a description,
+  naming the field whose doc comment is missing.
+- crumbkit-test's `check_help_sizes` fails a test on a `-h` page whose
+  plain text has more bytes than its budget. The default budgets are 1,500
+  bytes for the root, 800 for a group and 1,200 for a leaf, and `Budgets`
+  lowers them for a class of commands or for single commands. A budget
+  above the default fails the check.
+- crumbkit-test's `check_help_goldens` compares the `-h` and `--help` page
+  of every visible command with a golden file in a directory, such as
+  `shelf-books-list-help.txt`, and fails on a missing file, a file whose
+  content differs and a stale file. `SNAPSHOTS=overwrite` writes the files
+  and deletes the stale ones.

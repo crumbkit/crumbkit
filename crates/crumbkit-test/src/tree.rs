@@ -31,6 +31,14 @@ impl<'a> Visit<'a> {
     pub(crate) fn depth(&self) -> usize {
         self.depth
     }
+
+    /// Returns the command's names below the command passed to the walk,
+    /// separated by single spaces, such as `books list`, as an exemption or
+    /// a node budget names the command. It is empty for the command passed
+    /// to the walk.
+    pub(crate) fn below(&self) -> &str {
+        self.path.split_once(' ').map_or("", |(_, below)| below)
+    }
 }
 
 /// Returns `root` and every command below it, in depth-first order, leaving
@@ -101,6 +109,32 @@ fn visit<'a>(
             exempt,
             visits,
         );
+    }
+}
+
+/// Returns `root` and every visible command below it, in depth-first order,
+/// leaving out each hidden command and everything below it, as help shows
+/// the tree. A command that a tool hides is absent from every help page,
+/// and so is every command below it, because no page lists it.
+pub(crate) fn walk_visible(root: &Command) -> Vec<Visit<'_>> {
+    let mut visits = Vec::new();
+    visit_visible(root, root.get_name(), 0, &mut visits);
+    visits
+}
+
+/// Adds `command`, whose path from the root of the walk is `path`, and every
+/// visible command below it to `visits`.
+fn visit_visible<'a>(command: &'a Command, path: &str, depth: usize, visits: &mut Vec<Visit<'a>>) {
+    visits.push(Visit {
+        command,
+        path: path.to_owned(),
+        depth,
+    });
+    for subcommand in command.get_subcommands() {
+        if !subcommand.is_hide_set() {
+            let path = format!("{path} {}", subcommand.get_name());
+            visit_visible(subcommand, &path, depth + 1, visits);
+        }
     }
 }
 

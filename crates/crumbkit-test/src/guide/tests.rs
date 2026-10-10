@@ -2,6 +2,9 @@
 
 use clap::{Arg, ArgAction, Command};
 use crumbkit::help::{Example, Goal, Group, Guide, Leaf, Topic};
+use crumbkit::{Document, Row};
+use schemars::JsonSchema;
+use serde::Serialize;
 
 use super::check_guide;
 use crate::testing::panic_message;
@@ -23,36 +26,59 @@ fn shelf() -> Command {
 /// The root's goals, which name both resources.
 const ROOT: Group = Group::new(&[], &[Goal::new("Browse", &["books", "authors"])]);
 
+/// One example that runs a command without arguments.
+const RUN: &[Example] = &[Example::new(&[], "Run the command")];
+
+/// Returns the leaf of the command at `path` with one example that runs it
+/// without arguments.
+const fn leaf(path: &'static [&'static str]) -> Leaf {
+    Leaf::new(path).examples(RUN)
+}
+
+/// A leaf with an example for each visible command without subcommands of
+/// `shelf()`, so a test whose guide holds them reports only its own
+/// problem.
+const LEAVES: &[Leaf] = &[
+    leaf(&["books", "list"]),
+    leaf(&["books", "show"]),
+    leaf(&["authors", "list"]),
+];
+
 #[test]
 fn a_guide_that_names_every_visible_child_of_each_group_passes() {
-    const GUIDE: Guide = Guide::new().groups(&[
-        ROOT,
-        Group::new(
-            &["books"],
-            &[
-                Goal::new("Read", &["list", "show"]),
-                Goal::new("Change", &["purge"]),
-            ],
-        ),
-    ]);
+    const GUIDE: Guide = Guide::new()
+        .groups(&[
+            ROOT,
+            Group::new(
+                &["books"],
+                &[
+                    Goal::new("Read", &["list", "show"]),
+                    Goal::new("Change", &["purge"]),
+                ],
+            ),
+        ])
+        .leaves(LEAVES);
 
     check_guide(&shelf(), &GUIDE);
 }
 
 #[test]
 fn a_hidden_child_that_no_goal_names_passes() {
-    const GUIDE: Guide = Guide::new().groups(&[Group::new(
-        &["books"],
-        &[Goal::new("Read", &["list", "show"])],
-    )]);
+    const GUIDE: Guide = Guide::new()
+        .groups(&[Group::new(
+            &["books"],
+            &[Goal::new("Read", &["list", "show"])],
+        )])
+        .leaves(LEAVES);
 
     check_guide(&shelf(), &GUIDE);
 }
 
 #[test]
 fn a_visible_child_that_no_goal_names_fails_the_check() {
-    const GUIDE: Guide =
-        Guide::new().groups(&[Group::new(&["books"], &[Goal::new("Read", &["list"])])]);
+    const GUIDE: Guide = Guide::new()
+        .groups(&[Group::new(&["books"], &[Goal::new("Read", &["list"])])])
+        .leaves(LEAVES);
 
     assert_eq!(
         panic_message(|| check_guide(&shelf(), &GUIDE)).unwrap(),
@@ -63,10 +89,12 @@ fn a_visible_child_that_no_goal_names_fails_the_check() {
 
 #[test]
 fn a_goal_name_that_its_group_lacks_fails_the_check() {
-    const GUIDE: Guide = Guide::new().groups(&[Group::new(
-        &["books"],
-        &[Goal::new("Read", &["list", "show", "lst"])],
-    )]);
+    const GUIDE: Guide = Guide::new()
+        .groups(&[Group::new(
+            &["books"],
+            &[Goal::new("Read", &["list", "show", "lst"])],
+        )])
+        .leaves(LEAVES);
 
     assert_eq!(
         panic_message(|| check_guide(&shelf(), &GUIDE)).unwrap(),
@@ -77,10 +105,12 @@ fn a_goal_name_that_its_group_lacks_fails_the_check() {
 
 #[test]
 fn a_group_path_that_names_no_command_fails_the_check() {
-    const GUIDE: Guide = Guide::new().groups(&[
-        ROOT,
-        Group::new(&["shelves"], &[Goal::new("Read", &["list"])]),
-    ]);
+    const GUIDE: Guide = Guide::new()
+        .groups(&[
+            ROOT,
+            Group::new(&["shelves"], &[Goal::new("Read", &["list"])]),
+        ])
+        .leaves(LEAVES);
 
     assert_eq!(
         panic_message(|| check_guide(&shelf(), &GUIDE)).unwrap(),
@@ -91,10 +121,12 @@ fn a_group_path_that_names_no_command_fails_the_check() {
 
 #[test]
 fn a_group_path_that_names_a_command_without_subcommands_fails_the_check() {
-    const GUIDE: Guide = Guide::new().groups(&[Group::new(
-        &["books", "list"],
-        &[Goal::new("Read", &["list"])],
-    )]);
+    const GUIDE: Guide = Guide::new()
+        .groups(&[Group::new(
+            &["books", "list"],
+            &[Goal::new("Read", &["list"])],
+        )])
+        .leaves(LEAVES);
 
     assert_eq!(
         panic_message(|| check_guide(&shelf(), &GUIDE)).unwrap(),
@@ -105,13 +137,15 @@ fn a_group_path_that_names_a_command_without_subcommands_fails_the_check() {
 
 #[test]
 fn a_command_that_two_goals_name_fails_the_check() {
-    const GUIDE: Guide = Guide::new().groups(&[Group::new(
-        &["books"],
-        &[
-            Goal::new("Read", &["list", "show"]),
-            Goal::new("Check", &["show"]),
-        ],
-    )]);
+    const GUIDE: Guide = Guide::new()
+        .groups(&[Group::new(
+            &["books"],
+            &[
+                Goal::new("Read", &["list", "show"]),
+                Goal::new("Check", &["show"]),
+            ],
+        )])
+        .leaves(LEAVES);
 
     assert_eq!(
         panic_message(|| check_guide(&shelf(), &GUIDE)).unwrap(),
@@ -129,7 +163,7 @@ const CATALOGUE: Topic = Topic::new(
 
 #[test]
 fn a_guide_with_well_formed_topics_passes() {
-    const GUIDE: Guide = Guide::new().topics(&[
+    const GUIDE: Guide = Guide::new().leaves(LEAVES).topics(&[
         CATALOGUE,
         Topic::new("book-ids2", "", "Ids run from 1 to 6."),
     ]);
@@ -139,7 +173,7 @@ fn a_guide_with_well_formed_topics_passes() {
 
 #[test]
 fn a_topic_named_like_a_root_command_or_one_of_its_aliases_fails_the_check() {
-    const GUIDE: Guide = Guide::new().topics(&[
+    const GUIDE: Guide = Guide::new().leaves(LEAVES).topics(&[
         Topic::new("books", "", "Books.\n"),
         Topic::new("titles", "", "Titles.\n"),
     ]);
@@ -154,7 +188,7 @@ fn a_topic_named_like_a_root_command_or_one_of_its_aliases_fails_the_check() {
 
 #[test]
 fn a_topic_whose_text_is_empty_fails_the_check() {
-    const GUIDE: Guide = Guide::new().topics(&[
+    const GUIDE: Guide = Guide::new().leaves(LEAVES).topics(&[
         Topic::new("catalogue", "", ""),
         Topic::new("ids", "", " \n\t"),
     ]);
@@ -169,7 +203,7 @@ fn a_topic_whose_text_is_empty_fails_the_check() {
 
 #[test]
 fn two_topics_with_one_name_fail_the_check() {
-    const GUIDE: Guide = Guide::new().topics(&[CATALOGUE, CATALOGUE]);
+    const GUIDE: Guide = Guide::new().leaves(LEAVES).topics(&[CATALOGUE, CATALOGUE]);
 
     assert_eq!(
         panic_message(|| check_guide(&shelf(), &GUIDE)).unwrap(),
@@ -180,7 +214,7 @@ fn two_topics_with_one_name_fail_the_check() {
 
 #[test]
 fn a_topic_name_that_is_not_lowercase_words_joined_by_dashes_fails_the_check() {
-    const GUIDE: Guide = Guide::new().topics(&[
+    const GUIDE: Guide = Guide::new().leaves(LEAVES).topics(&[
         Topic::new("Catalogue", "", "The catalogue.\n"),
         Topic::new("book_ids", "", "The ids.\n"),
     ]);
@@ -224,7 +258,12 @@ fn a_guide_whose_leaves_name_commands_without_subcommands_and_examples_that_pars
 
 #[test]
 fn a_leaf_path_that_names_no_command_fails_the_check() {
-    const GUIDE: Guide = Guide::new().leaves(&[Leaf::new(&["books", "lst"])]);
+    const GUIDE: Guide = Guide::new().leaves(&[
+        leaf(&["books", "list"]),
+        leaf(&["books", "show"]),
+        leaf(&["authors", "list"]),
+        Leaf::new(&["books", "lst"]),
+    ]);
 
     assert_eq!(
         panic_message(|| check_guide(&shelf(), &GUIDE)).unwrap(),
@@ -235,7 +274,12 @@ fn a_leaf_path_that_names_no_command_fails_the_check() {
 
 #[test]
 fn a_leaf_path_that_names_a_command_with_subcommands_fails_the_check() {
-    const GUIDE: Guide = Guide::new().leaves(&[Leaf::new(&["books"])]);
+    const GUIDE: Guide = Guide::new().leaves(&[
+        leaf(&["books", "list"]),
+        leaf(&["books", "show"]),
+        leaf(&["authors", "list"]),
+        Leaf::new(&["books"]),
+    ]);
 
     assert_eq!(
         panic_message(|| check_guide(&shelf(), &GUIDE)).unwrap(),
@@ -246,8 +290,12 @@ fn a_leaf_path_that_names_a_command_with_subcommands_fails_the_check() {
 
 #[test]
 fn two_leaves_with_one_path_fail_the_check() {
-    const GUIDE: Guide =
-        Guide::new().leaves(&[Leaf::new(&["books", "list"]), Leaf::new(&["books", "list"])]);
+    const GUIDE: Guide = Guide::new().leaves(&[
+        leaf(&["books", "list"]),
+        leaf(&["books", "list"]),
+        leaf(&["books", "show"]),
+        leaf(&["authors", "list"]),
+    ]);
 
     assert_eq!(
         panic_message(|| check_guide(&shelf(), &GUIDE)).unwrap(),
@@ -273,15 +321,142 @@ fn an_example_that_clap_refuses_fails_the_check() {
 
 #[test]
 fn an_example_that_asks_for_help_or_the_version_fails_the_check() {
-    const GUIDE: Guide = Guide::new().leaves(&[Leaf::new(&["books", "list"]).examples(&[
-        Example::new(&["--help"], "Print help"),
-        Example::new(&["--version"], "Print the version"),
-    ])]);
+    const GUIDE: Guide = Guide::new().leaves(&[
+        Leaf::new(&["books", "list"]).examples(&[
+            Example::new(&["--help"], "Print help"),
+            Example::new(&["--version"], "Print the version"),
+        ]),
+        Leaf::new(&["books", "show"]).examples(&[Example::new(&["2"], "Show one book")]),
+    ]);
 
     assert_eq!(
         panic_message(|| check_guide(&shelf_with_arguments(), &GUIDE)).unwrap(),
         "the command tree breaks crumbkit's guide rules:\n\
          shelf books list: clap refuses the example `shelf books list --help` with the error kind DisplayHelp\n\
          shelf books list: clap refuses the example `shelf books list --version` with the error kind DisplayVersion"
+    );
+}
+
+#[test]
+fn a_visible_command_without_subcommands_that_no_leaf_with_an_example_names_fails_the_check() {
+    const GUIDE: Guide =
+        Guide::new().leaves(&[leaf(&["books", "list"]), Leaf::new(&["books", "show"])]);
+
+    assert_eq!(
+        panic_message(|| check_guide(&shelf(), &GUIDE)).unwrap(),
+        "the command tree breaks crumbkit's guide rules:\n\
+         shelf books show: no leaf with an example names the command, so its help shows no example\n\
+         shelf authors list: no leaf with an example names the command, so its help shows no example"
+    );
+}
+
+#[test]
+fn a_root_without_subcommands_needs_a_leaf_with_an_example() {
+    const GUIDE: Guide = Guide::new();
+    const ROOT_LEAF: Guide = Guide::new().leaves(&[leaf(&[])]);
+    let tool = Command::new("stamp");
+
+    assert_eq!(
+        panic_message(|| check_guide(&tool, &GUIDE)).unwrap(),
+        "the command tree breaks crumbkit's guide rules:\n\
+         stamp: no leaf with an example names the command, so its help shows no example"
+    );
+    check_guide(&tool, &ROOT_LEAF);
+}
+
+/// A book whose every column is a documented field.
+#[derive(Serialize, JsonSchema)]
+struct Book {
+    /// The book's id.
+    id: u32,
+    /// The book's title.
+    title: String,
+    /// The number of pages.
+    pages: u32,
+}
+
+impl Row for Book {
+    const COLUMNS: &'static [&'static str] = &["id", "title"];
+    const LONG_COLUMNS: &'static [&'static str] = &["pages"];
+}
+
+/// A book whose columns misspell `title` and `pages`.
+#[derive(Serialize, JsonSchema)]
+struct MisspeltBook {
+    /// The book's id.
+    id: u32,
+    /// The book's title.
+    title: String,
+    /// The number of pages.
+    pages: u32,
+}
+
+impl Row for MisspeltBook {
+    const COLUMNS: &'static [&'static str] = &["id", "titel"];
+    const LONG_COLUMNS: &'static [&'static str] = &["page"];
+}
+
+/// A book whose `title` and `pages` fields have no doc comment.
+#[derive(Serialize, JsonSchema)]
+struct UndocumentedBook {
+    /// The book's id.
+    id: u32,
+    title: String,
+    pages: u32,
+}
+
+impl Row for UndocumentedBook {
+    const COLUMNS: &'static [&'static str] = &["id", "title"];
+    const LONG_COLUMNS: &'static [&'static str] = &["pages"];
+}
+
+#[test]
+fn a_leaf_whose_columns_are_documented_fields_of_its_row_type_passes() {
+    const GUIDE: Guide = Guide::new().leaves(&[
+        leaf(&["books", "list"]).document(Document::<Vec<Book>>::new("shelf", "books-list", 1)),
+        leaf(&["books", "show"]),
+        leaf(&["authors", "list"]),
+    ]);
+
+    check_guide(&shelf(), &GUIDE);
+}
+
+#[test]
+fn a_leaf_column_that_is_not_a_field_of_the_row_type_fails_the_check() {
+    const GUIDE: Guide = Guide::new().leaves(&[
+        leaf(&["books", "list"]).document(Document::<Vec<MisspeltBook>>::new(
+            "shelf",
+            "books-list",
+            1,
+        )),
+        leaf(&["books", "show"]),
+        leaf(&["authors", "list"]),
+    ]);
+
+    assert_eq!(
+        panic_message(|| check_guide(&shelf(), &GUIDE)).unwrap(),
+        "the command tree breaks crumbkit's guide rules:\n\
+         shelf books list: the column `titel` is not a field of the row type, so the table prints `-` in every row of it\n\
+         shelf books list: the column `page` is not a field of the row type, so the table prints `-` in every row of it"
+    );
+}
+
+#[test]
+fn a_leaf_column_without_a_description_fails_the_check_naming_the_field() {
+    const GUIDE: Guide = Guide::new().leaves(&[
+        leaf(&["books", "list"]).document(Document::<Vec<UndocumentedBook>>::new(
+            "shelf",
+            "books-list",
+            1,
+        )),
+        leaf(&["books", "show"]),
+        leaf(&["authors", "list"]),
+    ]);
+
+    assert_eq!(
+        panic_message(|| check_guide(&shelf(), &GUIDE)).unwrap(),
+        "the command tree breaks crumbkit's guide rules:\n\
+         shelf books list: the column `title` has no description, because the field `title` of the row type has no doc comment\n\
+         shelf books list: the column `pages` has no description, because the field `pages` of the row type has no doc comment"
     );
 }

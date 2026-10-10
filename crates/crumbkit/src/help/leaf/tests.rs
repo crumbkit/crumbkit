@@ -9,7 +9,7 @@ use clap::{Arg, ArgAction, Command};
 use schemars::{JsonSchema, Schema, SchemaGenerator, json_schema};
 use serde::Serialize;
 
-use super::{Example, Leaf, quote};
+use super::{Column, Example, Leaf, quote};
 use crate::help::{Guide, extend};
 use crate::{Document, Row, Sink, Spelling, parse_to};
 
@@ -376,4 +376,76 @@ fn extend_applies_only_the_first_of_two_leaves_with_one_path() {
 
     let short = show.render_help().to_string();
     assert!(short.ends_with("\n  tool planets show Mars\n"), "{short}");
+}
+
+#[test]
+fn column_descriptions_lists_the_columns_and_then_the_long_columns_in_declared_order() {
+    let columns = Leaf::new(&["planets", "list"])
+        .document(PLANETS)
+        .column_descriptions();
+
+    let read: Vec<(&str, bool, bool, Option<&str>)> = columns
+        .iter()
+        .map(|column| {
+            (
+                column.name(),
+                column.is_long(),
+                column.is_property(),
+                column.description(),
+            )
+        })
+        .collect();
+    assert_eq!(
+        read,
+        [
+            ("name", false, true, Some("The planet's name.")),
+            (
+                "mass",
+                false,
+                true,
+                Some("The planet's mass in Earth masses.")
+            ),
+            (
+                "moons",
+                true,
+                true,
+                Some("The number of the planet's known moons.")
+            ),
+        ]
+    );
+}
+
+/// A row with a column whose name is not a field.
+#[derive(Serialize, JsonSchema)]
+struct Comet {
+    /// The comet's name.
+    name: String,
+}
+
+impl Row for Comet {
+    const COLUMNS: &'static [&'static str] = &["name", "period"];
+}
+
+#[test]
+fn column_descriptions_reports_a_column_that_is_not_a_property_and_one_without_a_description() {
+    let comets = Leaf::new(&["planets", "show"])
+        .document(Document::<Vec<Comet>>::new("tool", "comets", 1))
+        .column_descriptions();
+    let moons = Leaf::new(&["planets", "show"])
+        .document(Document::<Vec<Moon>>::new("tool", "moons", 1))
+        .column_descriptions();
+
+    assert_eq!(comets[1].name(), "period");
+    assert!(!comets[1].is_property());
+    assert_eq!(comets[1].description(), None);
+    assert_eq!(moons[1].name(), "planet");
+    assert!(moons[1].is_property());
+    assert_eq!(moons[1].description(), None);
+}
+
+#[test]
+fn column_descriptions_of_a_leaf_without_a_document_is_empty() {
+    let leaf = Leaf::new(&["planets", "list"]).examples(EXAMPLES);
+
+    assert_eq!(leaf.column_descriptions(), Vec::<Column>::new());
 }
