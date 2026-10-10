@@ -232,8 +232,8 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   `crumbkit/commands/v1` document.
 - The new crate crumbkit-aliases lets a person define aliases for a tool's
   commands in `$XDG_CONFIG_HOME/<tool>/aliases.toml`, or
-  `$HOME/.config/<tool>/aliases.toml`. `crumbkit_aliases::file` returns the
-  path, and `crumbkit_aliases::expand` replaces an alias in the first word
+  `~/.config/<tool>/aliases.toml`, as the etcetera crate finds the config
+  directory. `crumbkit_aliases::file` returns the path, and `crumbkit_aliases::expand` replaces an alias in the first word
   with its words before `parse_from`, so help and every output print only
   real commands. A real command always wins, and `expand` never prints or
   fails. `crumbkit_aliases::list` gives a tool the hidden command
@@ -245,3 +245,21 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - `crumbkit::help::quote` quotes one word for a POSIX shell, as crumbkit
   quotes the words of every command line it prints, and
   `Output::command` returns the command that `Output::set_command` kept.
+- The `usage-log` feature, off by default, appends one JSON line per run of
+  a tool to `usage.jsonl` in the tool's XDG state directory. A tool calls
+  `crumbkit::usage::start()` first in `main` and keeps the guard it
+  returns, which writes the line when `main` returns, or when the run ends
+  on SIGINT or SIGTERM. `parse` gives the line the tool's name and version,
+  so a run that ends before `parse` writes no line. `parse`, `finish` and
+  `crumbkit_aliases::expand` report the command path, the flags typed, help
+  requests, refused flags, the exit code, the failure code, the bytes
+  written and whether a listing was cut short. The line holds no value that
+  the caller typed, and the command line and the session appear only as
+  keyed SipHash-2-4 hashes. `crumbkit::usage::section` adds the tool's own
+  fields. Recording never changes the tool's output or exit code. The
+  feature adds the dependencies siphasher, etcetera, is-ai-agent, humantime
+  and signal-hook, and builds only on Unix.
+- `crumbkit::usage::aliased` records that an alias expanded, and does
+  nothing without the `usage-log` feature or a started log.
+- `crates/crumbkit/schemas/usage-v1.json` holds the JSON Schema of the
+  `crumbkit/usage/v1` record.

@@ -202,9 +202,9 @@ fn a_note_says_why_a_tool_without_a_config_directory_has_no_aliases_file() {
     let finished = finish(&output(), listing.map_err(Error::from));
 
     assert!(
-        finished.out.ends_with(
-            "shelf has no aliases file, because neither XDG_CONFIG_HOME nor HOME is an absolute path.\n"
-        ),
+        finished
+            .out
+            .ends_with("shelf has no aliases file, because the home directory cannot be found.\n"),
         "{}",
         finished.out
     );

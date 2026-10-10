@@ -222,6 +222,8 @@ where
     E: Write,
 {
     let mut args: Vec<OsString> = args.into_iter().map(Into::into).collect();
+    #[cfg(feature = "usage-log")]
+    crate::usage::typed(&command, &args);
     // crumbkit answers `help` itself. clap propagates the setting to every
     // subcommand, so no `Commands:` list shows clap's `help` line, and
     // `Command::build` copies no subtree into a generated help tree.
@@ -248,7 +250,10 @@ where
             // on a terminal, because `StyledStr`'s `Display` drops styles. A
             // page that keeps the styles, written as clap's `Error::print`
             // writes help, replaces this when a tool needs colour there.
-            return Err(print_text(sink, &page));
+            let code = print_text(sink, &page);
+            #[cfg(feature = "usage-log")]
+            crate::usage::helped(&[], true, code);
+            return Err(code);
         }
         ask_for_help(&mut args, help.position);
     }
@@ -270,18 +275,31 @@ where
     add_help_lines(&mut command, guide, topics, &path, long_help);
 
     let error = match command.try_get_matches_from_mut(args) {
-        Ok(mut matches) => match C::from_arg_matches_mut(&mut matches) {
-            Ok(parsed) => return Ok((parsed, command)),
-            Err(error) => error,
-        },
+        Ok(mut matches) => {
+            #[cfg(feature = "usage-log")]
+            crate::usage::parsed(&command, &matches);
+            match C::from_arg_matches_mut(&mut matches) {
+                Ok(parsed) => return Ok((parsed, command)),
+                Err(error) => error,
+            }
+        }
         Err(error) => error,
     };
     if matches!(
         error.kind(),
         ErrorKind::DisplayHelp | ErrorKind::DisplayVersion
     ) {
-        return Err(print_page(sink, &error, colour));
+        let code = print_page(sink, &error, colour);
+        #[cfg(feature = "usage-log")]
+        if error.kind() == ErrorKind::DisplayHelp {
+            crate::usage::helped(&path, long_help, code);
+        } else {
+            crate::usage::exited(code);
+        }
+        return Err(code);
     }
+    #[cfg(feature = "usage-log")]
+    crate::usage::refused(&command, &path, &error);
     let refusal = Refusal::command_line(refusal_message(&command, &path, &error), path);
     Err(refusal.print(sink, json, spelling, Some(&command)))
 }

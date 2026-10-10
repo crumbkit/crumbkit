@@ -19,6 +19,7 @@ mod report;
 mod row;
 mod segment;
 mod sink;
+pub mod usage;
 
 pub use crate::batch::Batch;
 pub use crate::call::{Call, CallError};

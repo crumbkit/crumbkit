@@ -31,11 +31,30 @@ schemars = { workspace = true }
 # and converts a `miette::Report` into `Error` (ADR-0001). crumbkit needs no
 # miette feature.
 miette = { workspace = true, optional = true }
+# The `usage-log` feature needs these five crates (ADR-0029).
+siphasher = { workspace = true, optional = true }
+etcetera = { workspace = true, optional = true }
+is-ai-agent = { workspace = true, optional = true }
+humantime = { workspace = true, optional = true }
+signal-hook = { workspace = true, optional = true, features = ["iterator"] }
 
 [features]
 # `miette` is off by default, so the default build has no miette code and no
 # miette dependency (ADR-0003).
 miette = ["dep:miette"]
+# `usage-log` is off by default, so the default build has no usage log code
+# and none of its dependencies (ADR-0003, ADR-0029). It enables serde's and
+# schemars' `derive`, because the usage record derives `Serialize` and
+# `JsonSchema`.
+usage-log = [
+    "dep:siphasher",
+    "dep:etcetera",
+    "dep:is-ai-agent",
+    "dep:humantime",
+    "dep:signal-hook",
+    "serde/derive",
+    "schemars/derive",
+]
 
 [dev-dependencies]
 # The tests compare the exact help pages and refusal messages that a tool

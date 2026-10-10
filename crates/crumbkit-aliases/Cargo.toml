@@ -29,6 +29,9 @@ schemars = { workspace = true, features = ["derive"] }
 # `parse` gives `toml::de::DeTable`, which the aliases file parses into. The
 # crate reads the parsed values directly and needs no other toml feature.
 toml = { workspace = true, features = ["parse"] }
+# `file` finds the config directory with etcetera's base strategy, as the
+# usage log finds its state directory (ADR-0027).
+etcetera = { workspace = true }
 
 [dev-dependencies]
 # The tests read a listing as JSON, as `finish` writes it.

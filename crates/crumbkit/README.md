@@ -286,5 +286,45 @@ help becomes a `Recovery::Hint`. A tool whose own failure type travels inside
 a report calls `downcast` on the report before converting it, so the caller
 sees the tool's own code.
 
+## The usage-log feature
+
+The `usage-log` feature, off by default, keeps a usage log: one JSON line per
+run of the tool, appended to `usage.jsonl` in the tool's directory under the
+XDG state directory, such as `~/.local/state/shelf/usage.jsonl`. A tool turns
+it on with `features = ["usage-log"]` and adds one line to `main`:
+
+```rust,ignore
+fn main() -> ExitCode {
+    let _log = crumbkit::usage::start();
+    run()
+}
+```
+
+`parse` then gives the line the tool's name and version. `parse`, `finish`
+and crumbkit-aliases' `expand` report what the run did, and the guard writes
+the line when `main` returns. A run that ends before it reaches `parse`
+writes no line. A line looks like this:
+
+```json
+{"schema":"crumbkit/usage/v1","tool":"shelf","version":"0.1.0","at":"2026-10-07T12:01:07.120Z","ms":3,"caller":"claude-code","session":"9c1e0f5ab2d47e18","args":"0b6a2e7f41c9d350","command":"books list","flags":["--json","--limit"],"exit":0,"out_bytes":194,"truncated":true}
+```
+
+The line records the shape of the run and never a value that the caller
+typed. The command path and the flags come from the tool's command tree, the
+counts are numbers, and the command line and the session appear only as
+keyed hashes whose key stays in `usage.key` beside the log. The directory
+has mode 0700, and both files have mode 0600. `caller` names the coding
+agent that ran the tool, or is `person` or `unknown`. A run waits at most
+100 ms for the file's lock, a line over 1 KiB is dropped, and past 10 MB the
+file keeps its newest 10,000 lines. The schema of the record is
+`schemas/usage-v1.json`.
+
+`crumbkit::usage::section(document, &value)` adds the tool's own fields to
+the line under `ext`. The tool keeps values out of them, because crumbkit
+cannot check them.
+
+Recording never changes the tool's output or exit code, and every failure to
+write the line is silent. The feature builds only on Unix.
+
 Licensed under either of Apache License, Version 2.0 or MIT license at your
 option.

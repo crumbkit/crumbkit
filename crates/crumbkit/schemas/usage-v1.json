@@ -1,0 +1,159 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "UsageRecord",
+  "description": "One line of a tool's usage log, which records the shape of one run and never the values of its arguments.",
+  "type": "object",
+  "properties": {
+    "alias": {
+      "description": "Whether a personal alias expanded. It is present only when one did.",
+      "type": "boolean"
+    },
+    "args": {
+      "description": "The keyed hash of the words after the tool's name, so identical\ncommand lines share a hash.",
+      "$ref": "#/$defs/Hash"
+    },
+    "at": {
+      "description": "When the run ended, in RFC 3339 with milliseconds, such as\n2026-10-07T12:01:07.120Z.",
+      "type": "string"
+    },
+    "caller": {
+      "description": "The id of the coding agent that ran the tool, such as claude-code;\nperson when no agent is detected and standard input is a terminal;\nand unknown otherwise.",
+      "type": "string"
+    },
+    "code": {
+      "description": "The code of the run's failure or refusal in the tool's spelling, such\nas `shelf::books::not_found`. A batch gives the code of its first\nfailure.",
+      "$ref": "#/$defs/Name"
+    },
+    "command": {
+      "description": "The command path below the tool's name, such as books show.",
+      "$ref": "#/$defs/Name"
+    },
+    "exit": {
+      "description": "The exit code that `parse` or `finish` returned.",
+      "type": "integer",
+      "format": "uint8",
+      "maximum": 255,
+      "minimum": 0
+    },
+    "ext": {
+      "description": "The tool's own section, when the tool sets one.",
+      "$ref": "#/$defs/Section"
+    },
+    "flags": {
+      "description": "The flags typed on the command line, each by its long name, or by its\nshort name when it has no long one, sorted.",
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/Name"
+      }
+    },
+    "help": {
+      "description": "short for -h, and long for --help or the help command.",
+      "$ref": "#/$defs/Help"
+    },
+    "ids": {
+      "description": "How many values the command's positional arguments named ID received.\nIt is present only when the command has such an argument.",
+      "type": "integer",
+      "format": "uint",
+      "minimum": 0
+    },
+    "interrupted": {
+      "description": "Whether the line was written when the run ended on SIGINT or SIGTERM.\nIt is present only when that is so.",
+      "type": "boolean"
+    },
+    "ms": {
+      "description": "The run's wall time in milliseconds, from `start` to the line.",
+      "type": "integer",
+      "format": "uint64",
+      "minimum": 0
+    },
+    "nearest": {
+      "description": "The real flag that clap suggested for a refused flag.",
+      "$ref": "#/$defs/Name"
+    },
+    "out_bytes": {
+      "description": "The bytes that `finish` wrote to standard output.",
+      "type": "integer",
+      "format": "uint64",
+      "minimum": 0
+    },
+    "schema": {
+      "description": "The id of this record.",
+      "type": "string",
+      "const": "crumbkit/usage/v1"
+    },
+    "session": {
+      "description": "The keyed hash of the agent's session id, or of the parent process id\nwhen the agent gives no session id.",
+      "$ref": "#/$defs/Hash"
+    },
+    "tool": {
+      "description": "The name of the tool's root command, such as shelf.",
+      "$ref": "#/$defs/Name"
+    },
+    "truncated": {
+      "description": "Whether a listing showed fewer rows than its total. It is present only\nwhen one did.",
+      "type": "boolean"
+    },
+    "unknown_flags": {
+      "description": "How many flags of a refused command line name no flag of the command.",
+      "type": "integer",
+      "format": "uint",
+      "minimum": 0
+    },
+    "version": {
+      "description": "The tool's version, when its command has one.",
+      "$ref": "#/$defs/Name"
+    }
+  },
+  "required": [
+    "schema",
+    "tool",
+    "at",
+    "ms",
+    "caller",
+    "session",
+    "args"
+  ],
+  "$defs": {
+    "Hash": {
+      "description": "The keyed SipHash-2-4 hash of a list of byte strings, as 16 lowercase hex\ndigits.",
+      "type": "string",
+      "pattern": "^[0-9a-f]{16}$"
+    },
+    "Help": {
+      "description": "Which help page the caller asked for.",
+      "oneOf": [
+        {
+          "description": "`-h`.",
+          "type": "string",
+          "const": "short"
+        },
+        {
+          "description": "`--help`, or the help command.",
+          "type": "string",
+          "const": "long"
+        }
+      ]
+    },
+    "Name": {
+      "description": "A name from the tool's own vocabulary: a command path, a flag, a version\nor a failure code.\n\ncrumbkit builds every name from the tool's command tree and its codes,\nand never from a word that the caller typed.",
+      "type": "string"
+    },
+    "Section": {
+      "description": "The tool's own section of the record, which it sets with\n`crumbkit::usage::section`.",
+      "type": "object",
+      "properties": {
+        "data": {
+          "description": "The section's fields. The tool owns them and keeps argument values out\nof them, because crumbkit cannot check them."
+        },
+        "schema": {
+          "description": "The id of the section's document, such as shelf/usage-ext/v1.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "schema",
+        "data"
+      ]
+    }
+  }
+}

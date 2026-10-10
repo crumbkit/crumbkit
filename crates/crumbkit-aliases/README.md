@@ -8,11 +8,12 @@ the tool expands an alias before clap parses the command line.
 crumbkit is in design and is not published yet. This crate has three
 functions, the arguments and row types of one command, and its document.
 
-- `file(tool)` returns the path of the tool's aliases file:
-  `$XDG_CONFIG_HOME/<tool>/aliases.toml`, or
-  `$HOME/.config/<tool>/aliases.toml` when `XDG_CONFIG_HOME` is unset, empty
-  or relative. `<tool>` is the name of the root command. It returns `None`
-  when neither variable is an absolute path.
+- `file(tool)` returns the path of the tool's aliases file in the config
+  directory that the etcetera crate gives:
+  `$XDG_CONFIG_HOME/<tool>/aliases.toml`, or `~/.config/<tool>/aliases.toml`
+  when `XDG_CONFIG_HOME` is unset, empty or relative. `<tool>` is the name of
+  the root command. It returns `None` when the home directory cannot be
+  found.
 - `expand(&command, args, file)` returns the process arguments with a
   personal alias in the first word replaced by its words, for the tool to
   pass to `crumbkit::parse_from`. Only the first word after the tool's name
@@ -20,7 +21,9 @@ functions, the arguments and row types of one command, and its document.
   subcommand of the root or one of its aliases never expands, and `expand`
   does not read the file for it, or for a flag or an empty command line.
   `expand` never prints and never fails. A missing or broken file, an unknown
-  word or a bad entry leaves the arguments unchanged.
+  word or a bad entry leaves the arguments unchanged. When it replaces an
+  alias, it calls `crumbkit::usage::aliased`, so a tool with crumbkit's usage
+  log records that an alias expanded.
 - `list(&output, file, &args)` returns the rows of `<tool> aliases list` for
   `crumbkit::finish` with the document `ALIASES`, whose id is
   `crumbkit/aliases/v1`. The rows are the built-in aliases first, which are

@@ -47,12 +47,14 @@ fn config(test: &str) -> io::Result<PathBuf> {
 
 /// Runs the built `shelf` binary with `args`, a cleared environment and
 /// `XDG_CONFIG_HOME` set to `config`, and returns its output for
-/// assertions.
+/// assertions. `XDG_STATE_HOME` is the directory `state` beside `config`,
+/// so shelf's usage log stays out of the user's home directory.
 fn shelf(config: &Path, args: &[&str]) -> OutputAssert {
     Command::new(env!("CARGO_BIN_EXE_shelf"))
         .args(args)
         .env_clear()
         .env("XDG_CONFIG_HOME", config)
+        .env("XDG_STATE_HOME", config.with_file_name("state"))
         .assert()
 }
 

@@ -20,7 +20,9 @@ clap = { workspace = true, features = [
     "suggestions",
     "color",
 ] }
-crumbkit = { workspace = true }
+# shelf keeps crumbkit's usage log, which appends one line per run to
+# `usage.jsonl` in shelf's XDG state directory (ADR-0029).
+crumbkit = { workspace = true, features = ["usage-log"] }
 # shelf expands a person's aliases before parsing, and lists them with the
 # hidden `shelf aliases list`.
 crumbkit-aliases = { workspace = true }
@@ -34,6 +36,8 @@ schemars = { workspace = true, features = ["derive"] }
 crumbkit-test = { workspace = true }
 # `cmd` runs the built shelf binary in the end-to-end tests.
 snapbox = { workspace = true, features = ["cmd"] }
+# The usage log tests read each line of the log as JSON.
+serde_json = { workspace = true }
 
 [lints]
 workspace = true

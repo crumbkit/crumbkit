@@ -3,5 +3,8 @@
 use std::process::ExitCode;
 
 fn main() -> ExitCode {
+    // The guard writes this run's line to shelf's usage log when `main`
+    // returns, after shelf's output is flushed (ADR-0029).
+    let _log = crumbkit::usage::start();
     shelf::run()
 }
