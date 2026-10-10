@@ -8,7 +8,8 @@ use snapbox::Assert;
 use snapbox::assert::Action;
 
 use super::check;
-use crate::testing::{TempDir, panic_message};
+use crate::temp::TempDir;
+use crate::testing::panic_message;
 
 /// A tool with one group and one leaf.
 fn shelf() -> Command {
@@ -43,7 +44,7 @@ fn run(dir: &TempDir, action: Action) {
 
 #[test]
 fn overwrite_writes_a_golden_file_for_each_page_and_deletes_a_stale_one() {
-    let dir = TempDir::new("goldens-overwrite");
+    let dir = TempDir::new("goldens-overwrite").unwrap();
     dir.write("shelf-authors-h.txt", "Work with authors\n");
     dir.write("notes.md", "Only .txt files are golden files.\n");
 
@@ -58,7 +59,7 @@ fn overwrite_writes_a_golden_file_for_each_page_and_deletes_a_stale_one() {
 
 #[test]
 fn golden_files_that_hold_every_page_pass() {
-    let dir = TempDir::new("goldens-pass");
+    let dir = TempDir::new("goldens-pass").unwrap();
     run(&dir, Action::Overwrite);
 
     run(&dir, Action::Verify);
@@ -66,7 +67,7 @@ fn golden_files_that_hold_every_page_pass() {
 
 #[test]
 fn a_page_without_a_golden_file_fails_the_check() {
-    let dir = TempDir::new("goldens-missing");
+    let dir = TempDir::new("goldens-missing").unwrap();
     let file = |name: &str| dir.path().join(name).display().to_string();
 
     assert_eq!(
@@ -91,7 +92,7 @@ fn a_page_without_a_golden_file_fails_the_check() {
 
 #[test]
 fn a_golden_file_whose_content_differs_fails_the_check() {
-    let dir = TempDir::new("goldens-differs");
+    let dir = TempDir::new("goldens-differs").unwrap();
     run(&dir, Action::Overwrite);
     dir.write("shelf-books-h.txt", "Work with the books\n");
 
@@ -113,7 +114,7 @@ fn a_golden_file_whose_content_differs_fails_the_check() {
 
 #[test]
 fn a_stale_golden_file_fails_the_check() {
-    let dir = TempDir::new("goldens-stale");
+    let dir = TempDir::new("goldens-stale").unwrap();
     run(&dir, Action::Overwrite);
     dir.write("shelf-authors-h.txt", "Work with authors\n");
 
