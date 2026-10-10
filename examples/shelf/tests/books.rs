@@ -19,12 +19,14 @@ use snapbox::file;
 /// `test` names the directory that holds this run's XDG directories.
 fn shelf(test: &str, args: &[&str]) -> OutputAssert {
     // RUST-10: each test's XDG directories are paths under cargo's temporary
-    // directory for integration tests, and nothing creates or removes them,
-    // because shelf writes no XDG directory and these tests give it no
-    // aliases file, the one file it reads there. When shelf writes
-    // there, such as for a usage log, replace them with directories that each
-    // test creates and removes, such as the temporary directories of snapbox's
-    // `dir` feature.
+    // directory for integration tests, and nothing removes them. shelf
+    // writes its usage log under the state directory, so each run adds a line
+    // to a log that grows across test runs, and no test here reads it. The
+    // tests that read the log, in `tests/usage.rs`, use a state directory
+    // that each test empties first. When a log that grows across test runs
+    // matters, replace these paths with directories that each test creates
+    // and removes, such as the temporary directories of snapbox's `dir`
+    // feature.
     let xdg = Path::new(env!("CARGO_TARGET_TMPDIR")).join(test);
     Command::new(env!("CARGO_BIN_EXE_shelf"))
         .args(args)

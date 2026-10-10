@@ -135,9 +135,9 @@ fn listing(
     let note = match (file, text) {
         (Some(path), Some(_)) => format!("Aliases file: {}", path.display()),
         (Some(path), None) => format!("Aliases file: {}, which does not exist yet", path.display()),
-        (None, _) => format!(
-            "{tool} has no aliases file, because neither XDG_CONFIG_HOME nor HOME is an absolute path."
-        ),
+        (None, _) => {
+            format!("{tool} has no aliases file, because the home directory cannot be found.")
+        }
     };
     let rows = rows(command, file, text)?;
     Ok(Listing::from_all(rows, args.page.limit())

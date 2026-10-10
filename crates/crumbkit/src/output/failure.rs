@@ -98,6 +98,10 @@ impl FailureDocument {
         spelling: Spelling,
         command: Option<&Command>,
     ) -> Self {
+        // Every code that crumbkit prints is spelled here, so the usage log
+        // records the run's code here (ADR-0029).
+        #[cfg(feature = "usage-log")]
+        crate::usage::failed(spelling, failure.code());
         let causes = std::iter::successors(failure.source(), |error| error.source())
             .map(ToString::to_string)
             .collect();

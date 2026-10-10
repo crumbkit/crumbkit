@@ -220,11 +220,36 @@ pub fn finish<T: Rows, E: AsFailure>(
 /// result cannot be serialized, and the cause of a failed write goes to the
 /// sink's error writer before a batch's failures. It is 2 when `--fields`
 /// names an unknown field, which is checked before the result prints.
+pub fn finish_to<T: Rows, E: AsFailure, O: Write, W: Write>(
+    sink: &mut Sink<O, W>,
+    output: &Output,
+    spelling: Spelling,
+    document: Document<T>,
+    result: Result<T, E>,
+) -> ExitCode {
+    // With the usage log, the sink counts the bytes of standard output, and
+    // the run's line records them with the exit code (ADR-0029).
+    #[cfg(feature = "usage-log")]
+    let truncated = result.as_ref().is_ok_and(|value| {
+        value
+            .total()
+            .is_some_and(|total| value.rows().len() < total)
+    });
+    #[cfg(feature = "usage-log")]
+    let sink = &mut Sink::new(crate::usage::Counted::new(&mut sink.out), &mut sink.err);
+    let code = respond(sink, output, spelling, document, result);
+    #[cfg(feature = "usage-log")]
+    crate::usage::finished(code, sink.out.bytes(), truncated);
+    code
+}
+
+/// Prints the result to `sink` and returns the exit code, as [`finish_to`]
+/// describes.
 #[expect(
     clippy::needless_pass_by_value,
     reason = "finish_to takes the result by value, as finish does, so a tool passes the result it built in the same way to either"
 )]
-pub fn finish_to<T: Rows, E: AsFailure, O: Write, W: Write>(
+fn respond<T: Rows, E: AsFailure, O: Write, W: Write>(
     sink: &mut Sink<O, W>,
     output: &Output,
     spelling: Spelling,
