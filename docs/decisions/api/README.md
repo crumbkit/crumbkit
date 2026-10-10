@@ -1,6 +1,6 @@
 # ADR-0018. API
 
-These records decide what an adopter writes and what their tool's callers see: the error model, the public API and its compatibility promises, JSON documents, how a tool adopts crumbkit, the result formats, help, and the checks of a tool's help pages.
+These records decide what an adopter writes and what their tool's callers see: the error model, the public API and its compatibility promises, JSON documents, how a tool adopts crumbkit, the result formats, help, the checks of a tool's help pages, and personal aliases.
 
 ## Children
 
@@ -10,4 +10,5 @@ These records decide what an adopter writes and what their tool's callers see: t
 - [ADR-0015. Lightweight adoption](0015-lightweight-adoption.md)
 - [ADR-0016. Result formats](0016-result-formats.md)
 - [ADR-0025. Help checks](0025-help-checks.md)
+- [ADR-0027. Aliases](0027-aliases.md)
 - [ADR-0022. Help](help/README.md)

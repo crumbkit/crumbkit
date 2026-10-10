@@ -1,0 +1,38 @@
+[package]
+name = "crumbkit-aliases"
+description = "Personal command aliases for crumbkit tools, read from a file in the user's config directory"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+readme = "README.md"
+keywords = ["cli", "clap", "aliases", "config"]
+categories = ["command-line-interface"]
+include = ["src/**/*.rs", "schemas/*.json", "README.md", "LICENSE-APACHE", "LICENSE-MIT"]
+
+[dependencies]
+# `list` returns crumbkit's `Listing` of rows, takes `Output` and `Page`, and
+# fails with crumbkit's `Failure`, and the rows quote words with
+# `crumbkit::help::quote`.
+crumbkit = { workspace = true }
+# `AliasesList` derives `clap::Args`, and `expand` and `list` read the tool's
+# `clap::Command`.
+clap = { workspace = true, features = ["derive"] }
+# `AliasRow` and `AliasesList` derive `Serialize`. A tool that adopts crumbkit
+# derives `Serialize` for its own results, so the derive adds nothing new to
+# its build.
+serde = { workspace = true, features = ["derive"] }
+# `Row` requires `JsonSchema`, which `AliasRow` and `AliasesList` derive, as a
+# tool's own results do.
+schemars = { workspace = true, features = ["derive"] }
+# `parse` gives `toml::de::DeTable`, which the aliases file parses into. The
+# crate reads the parsed values directly and needs no other toml feature.
+toml = { workspace = true, features = ["parse"] }
+
+[dev-dependencies]
+# The tests read a listing as JSON, as `finish` writes it.
+serde_json = { workspace = true }
+
+[lints]
+workspace = true
