@@ -21,6 +21,9 @@ clap = { workspace = true, features = [
     "color",
 ] }
 crumbkit = { workspace = true }
+# shelf expands a person's aliases before parsing, and lists them with the
+# hidden `shelf aliases list`.
+crumbkit-aliases = { workspace = true }
 # shelf derives `Serialize` and `JsonSchema` for its results.
 serde = { workspace = true, features = ["derive"] }
 schemars = { workspace = true, features = ["derive"] }
