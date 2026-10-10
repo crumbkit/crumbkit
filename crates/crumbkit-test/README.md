@@ -203,9 +203,11 @@ crumbkit_test::check_help_goldens(&shelf, &Guide::new(), "tests/golden/help");
 `Examples::new` takes the path of the built binary and the golden
 directory. cargo sets `CARGO_BIN_EXE_<name>` only for the integration tests
 and benchmarks of the binary's own package, so a tool calls the check from
-one of those. cargo runs those tests from the package's manifest directory,
-and the binary starts there too, so a relative directory or `.env` value
-resolves from there.
+one of those. An integration test can import only from a library, so that
+package needs a library target that exports the clap command and the
+guide, and the binary calls that library. cargo runs those tests from the
+package's manifest directory, and the binary starts there too, so a
+relative directory or `.env` value resolves from there.
 
 ```rust,no_run
 use clap::Command;

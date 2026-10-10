@@ -32,7 +32,9 @@ const XDG: [(&str, &str); 4] = [
 /// A tool declares them as a constant in an integration test of the
 /// binary's own package, because cargo sets `CARGO_BIN_EXE_<name>`, the
 /// path of the built binary, only for that package's integration tests and
-/// benchmarks:
+/// benchmarks. An integration test can import only from a library, so the
+/// package needs a library target that exports the clap command and the
+/// guide, and the binary calls that library:
 ///
 /// ```
 /// use crumbkit_test::Examples;
@@ -102,6 +104,10 @@ impl Examples {
 /// `examples` names and checks that each run succeeds and prints the
 /// standard output in its golden file, and panics, as a failed test
 /// assertion does, naming every problem it finds.
+///
+/// A tool calls the check from an integration test of the binary's own
+/// package, so that package needs a library target that exports the clap
+/// command and the guide (see [`Examples`]).
 ///
 /// The check walks the leaves in declared order and each leaf's examples in
 /// order. It runs the binary once for each example, one run at a time, with
