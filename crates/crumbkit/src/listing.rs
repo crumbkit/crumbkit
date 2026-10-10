@@ -8,15 +8,15 @@ use crate::{Call, Row, Rows};
 mod tests;
 
 /// One page of rows, the total number of rows that matched, an optional
-/// phrase that names them, and an optional next step.
+/// phrase that names them, an optional note and an optional next step.
 ///
 /// A command returns a listing when it may show fewer rows than matched,
 /// and flattens [`Page`](crate::Page) into its arguments so the caller can
 /// choose how many. [`finish`](crate::finish) prints the total under `total`
 /// in JSON. In text it prints a footer after the table when fewer rows are
 /// shown than the total, such as `Showing 4 of 6 books. --all shows every
-/// one.`, and then the next step, such as `Next: shelf books show <ID>...
-/// takes up to 100 ids in one call.`
+/// one.`, then the note, and then the next step, such as `Next: shelf books
+/// show <ID>... takes up to 100 ids in one call.`
 ///
 /// ```
 /// # #[derive(serde::Serialize, schemars::JsonSchema)]
@@ -38,6 +38,9 @@ pub struct Listing<R: Row> {
     total: usize,
     /// The phrase that names the rows in the footer, such as `books`.
     description: Option<String>,
+    /// The line that the text output prints after the table and any
+    /// footer, such as the path of the file that the rows come from.
+    note: Option<String>,
     /// The command that the text output names as the next step, and the
     /// phrase that follows it on the `Next:` line.
     next: Option<(Call, String)>,
@@ -65,6 +68,7 @@ impl<R: Row> Listing<R> {
             rows,
             total,
             description: None,
+            note: None,
             next: None,
         }
     }
@@ -96,8 +100,20 @@ impl<R: Row> Listing<R> {
         self
     }
 
-    /// Sets the next step that the text output names after the table and the
-    /// footer: the line `Next: {call} {phrase}`, such as `Next: shelf books
+    /// Sets the note: a line that the text output prints after the table and
+    /// any footer, and before any next step, such as `Aliases file:
+    /// /home/ada/.config/shelf/aliases.toml`. The text carries its own full
+    /// stop when it needs one. The JSON document leaves it out, so a note
+    /// holds only what a person reading the table needs and a program can do
+    /// without.
+    #[must_use]
+    pub fn note(mut self, text: impl Into<String>) -> Self {
+        self.note = Some(text.into());
+        self
+    }
+
+    /// Sets the next step that the text output names after the table, the
+    /// footer and the note: the line `Next: {call} {phrase}`, such as `Next: shelf books
     /// show <ID>... takes up to 100 ids in one call.` The JSON document
     /// leaves it out.
     ///
@@ -134,6 +150,10 @@ impl<R: Row> Rows for Listing<R> {
 
     fn description(&self) -> Option<&str> {
         self.description.as_deref()
+    }
+
+    fn note(&self) -> Option<&str> {
+        self.note.as_deref()
     }
 
     fn next_step(&self) -> Option<(&Call, &str)> {

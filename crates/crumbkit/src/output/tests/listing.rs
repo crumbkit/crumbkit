@@ -1,0 +1,276 @@
+//! Tests for how `finish_to` prints a listing: the total in JSON, and the
+//! footer, the note and the `Next:` line in text.
+
+use std::process::ExitCode;
+
+use super::{PLANET_LISTING, Planet, finish_output, finish_with, mercury, parse, saturn};
+use crate::{Call, Listing};
+
+/// Returns a listing of Mercury and Saturn out of `total` planets.
+fn two_of(total: usize) -> Listing<Planet> {
+    Listing::new(vec![mercury(), saturn()], total)
+}
+
+/// Returns a listing of Mercury and Saturn out of `total` planets whose next
+/// step is `tool show <NAME>...`.
+fn two_of_with_next(total: usize) -> Listing<Planet> {
+    two_of(total).next(Call::new(&["show"]).arg("names"), "shows planets by name.")
+}
+
+#[test]
+fn a_listing_that_shows_fewer_rows_than_the_total_ends_with_a_footer() {
+    let finished = finish_with(&[], PLANET_LISTING, two_of(8));
+
+    let expected = "\
+NAME     MOONS
+Mercury  0
+Saturn   274
+Showing 2 of 8. --all shows every one.
+";
+    assert_eq!(finished.out, expected);
+    assert_eq!(finished.err, "");
+}
+
+#[test]
+fn the_footer_names_the_rows_with_the_listings_description() {
+    let finished = finish_with(&[], PLANET_LISTING, two_of(8).described("planets"));
+
+    assert!(
+        finished
+            .out
+            .ends_with("Saturn   274\nShowing 2 of 8 planets. --all shows every one.\n"),
+        "{}",
+        finished.out
+    );
+}
+
+#[test]
+fn a_listing_that_shows_every_row_has_no_footer() {
+    let finished = finish_with(&[], PLANET_LISTING, two_of(2).described("planets"));
+
+    assert_eq!(finished.out, "NAME     MOONS\nMercury  0\nSaturn   274\n");
+}
+
+#[test]
+fn the_footer_follows_the_table_with_long() {
+    let finished = finish_with(&["--long"], PLANET_LISTING, two_of(8));
+
+    let expected = "\
+NAME     MOONS  RINGED
+Mercury  0      false
+Saturn   274    true
+Showing 2 of 8. --all shows every one.
+";
+    assert_eq!(finished.out, expected);
+}
+
+#[test]
+fn the_footer_follows_the_table_with_fields() {
+    let finished = finish_with(&["--fields", "au"], PLANET_LISTING, two_of(8));
+
+    assert_eq!(
+        finished.out,
+        "AU\n0.39\n9.54\nShowing 2 of 8. --all shows every one.\n"
+    );
+}
+
+#[test]
+fn a_listings_json_has_the_total_beside_the_data_and_no_description() {
+    let finished = finish_with(&["--json"], PLANET_LISTING, two_of(8).described("planets"));
+
+    assert_eq!(
+        finished.out,
+        concat!(
+            r#"{"schema":"solar/planet-listing/v1","data":[{"name":"Mercury","moons":0},{"name":"Saturn","moons":274}],"total":8}"#,
+            "\n"
+        )
+    );
+}
+
+#[test]
+fn a_listings_json_has_the_total_when_every_row_is_shown() {
+    let finished = finish_with(&["--json"], PLANET_LISTING, Listing::new(Vec::new(), 0));
+
+    assert_eq!(
+        finished.out,
+        concat!(
+            r#"{"schema":"solar/planet-listing/v1","data":[],"total":0}"#,
+            "\n"
+        )
+    );
+}
+
+#[test]
+fn a_listings_json_has_the_total_with_full() {
+    let listing = Listing::new(vec![saturn()], 8);
+    let finished = finish_with(&["--json", "--full"], PLANET_LISTING, listing);
+
+    assert_eq!(
+        finished.out,
+        concat!(
+            r#"{"schema":"solar/planet-listing/v1","data":[{"name":"Saturn","moons":274,"ringed":true,"au":9.54}],"total":8}"#,
+            "\n"
+        )
+    );
+}
+
+#[test]
+fn a_listings_json_has_the_total_with_fields() {
+    let listing = Listing::new(vec![saturn()], 8);
+    let finished = finish_with(&["--json", "--fields", "au"], PLANET_LISTING, listing);
+
+    assert_eq!(
+        finished.out,
+        concat!(
+            r#"{"schema":"solar/planet-listing/v1","data":[{"au":9.54}],"total":8}"#,
+            "\n"
+        )
+    );
+}
+
+#[test]
+fn a_listing_with_a_next_step_ends_with_the_next_line_after_the_footer() {
+    let finished = finish_with(&[], PLANET_LISTING, two_of_with_next(8));
+
+    let expected = "\
+NAME     MOONS
+Mercury  0
+Saturn   274
+Showing 2 of 8. --all shows every one.
+Next: tool show <NAME>... shows planets by name.
+";
+    assert_eq!(finished.code, ExitCode::SUCCESS);
+    assert_eq!(finished.out, expected);
+    assert_eq!(finished.err, "");
+}
+
+#[test]
+fn the_next_line_follows_the_table_when_there_is_no_footer() {
+    let finished = finish_with(&[], PLANET_LISTING, two_of_with_next(2));
+
+    let expected = "\
+NAME     MOONS
+Mercury  0
+Saturn   274
+Next: tool show <NAME>... shows planets by name.
+";
+    assert_eq!(finished.out, expected);
+}
+
+#[test]
+fn the_next_line_follows_the_footer_with_long() {
+    let finished = finish_with(&["--long"], PLANET_LISTING, two_of_with_next(8));
+
+    assert!(
+        finished.out.ends_with(
+            "Saturn   274    true\nShowing 2 of 8. --all shows every one.\nNext: tool show <NAME>... shows planets by name.\n"
+        ),
+        "{}",
+        finished.out
+    );
+}
+
+#[test]
+fn the_next_line_follows_the_footer_with_fields() {
+    let finished = finish_with(&["--fields", "au"], PLANET_LISTING, two_of_with_next(8));
+
+    assert_eq!(
+        finished.out,
+        "AU\n0.39\n9.54\nShowing 2 of 8. --all shows every one.\nNext: tool show <NAME>... shows planets by name.\n"
+    );
+}
+
+#[test]
+fn json_output_has_no_next_line_and_no_next_field() {
+    let finished = finish_with(&["--json"], PLANET_LISTING, two_of_with_next(8));
+
+    assert_eq!(
+        finished.out,
+        concat!(
+            r#"{"schema":"solar/planet-listing/v1","data":[{"name":"Mercury","moons":0},{"name":"Saturn","moons":274}],"total":8}"#,
+            "\n"
+        )
+    );
+}
+
+/// Returns [`two_of_with_next`] with the note `Planets from the 2006
+/// definition.`
+fn two_of_with_note(total: usize) -> Listing<Planet> {
+    two_of_with_next(total).note("Planets from the 2006 definition.")
+}
+
+#[test]
+fn a_note_prints_after_the_footer_and_before_the_next_line() {
+    let finished = finish_with(&[], PLANET_LISTING, two_of_with_note(8));
+
+    let expected = "\
+NAME     MOONS
+Mercury  0
+Saturn   274
+Showing 2 of 8. --all shows every one.
+Planets from the 2006 definition.
+Next: tool show <NAME>... shows planets by name.
+";
+    assert_eq!(finished.out, expected);
+}
+
+#[test]
+fn a_note_prints_with_long_and_with_fields() {
+    let long = finish_with(&["--long"], PLANET_LISTING, two_of_with_note(2));
+    let fields = finish_with(&["--fields", "au"], PLANET_LISTING, two_of_with_note(2));
+
+    assert!(
+        long.out.ends_with(
+            "Saturn   274    true\nPlanets from the 2006 definition.\nNext: tool show <NAME>... shows planets by name.\n"
+        ),
+        "{}",
+        long.out
+    );
+    assert_eq!(
+        fields.out,
+        "AU\n0.39\n9.54\nPlanets from the 2006 definition.\nNext: tool show <NAME>... shows planets by name.\n"
+    );
+}
+
+#[test]
+fn json_output_has_no_note() {
+    let compact = finish_with(&["--json"], PLANET_LISTING, two_of_with_note(8));
+    let full = finish_with(&["--json", "--full"], PLANET_LISTING, two_of_with_note(8));
+
+    assert!(!compact.out.contains("2006"), "{}", compact.out);
+    assert!(!full.out.contains("2006"), "{}", full.out);
+}
+
+#[test]
+fn a_listing_prints_no_next_line_when_no_command_is_set() {
+    let output = parse(&[]).unwrap();
+
+    let finished = finish_output(&output, PLANET_LISTING, two_of_with_next(8));
+
+    assert_eq!(finished.code, ExitCode::SUCCESS);
+    assert!(
+        finished
+            .out
+            .ends_with("Showing 2 of 8. --all shows every one.\n"),
+        "{}",
+        finished.out
+    );
+    assert_eq!(finished.err, "");
+}
+
+#[test]
+fn a_next_step_whose_call_does_not_resolve_is_left_out_and_the_exit_code_is_0() {
+    let listing = two_of(8).next(Call::new(&["remove"]), "removes a planet.");
+
+    let finished = finish_with(&[], PLANET_LISTING, listing);
+
+    assert_eq!(finished.code, ExitCode::SUCCESS);
+    assert!(
+        finished
+            .out
+            .ends_with("Showing 2 of 8. --all shows every one.\n"),
+        "{}",
+        finished.out
+    );
+    assert_eq!(finished.err, "");
+}

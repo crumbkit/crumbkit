@@ -48,6 +48,9 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   show <ID>... takes up to 100 ids in one call.` The line is left out when no
   command is set or the call does not resolve, and the JSON document is
   unchanged.
+- `Listing::note` gives a listing a line that the text output prints after
+  the table and any footer and before the `Next:` line, also with `--long`
+  and `--fields`. The JSON document never holds it.
 - `Failure` extends `std::error::Error` with a stable `Code`, a `Recovery`
   and an optional url, and `Recovery` names the caller's next step: `Run` a
   `Call`, `Retry`, a `Hint`, or `None` with a reason.

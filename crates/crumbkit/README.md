@@ -88,6 +88,9 @@ next step in the same two formats.
   `Next: shelf books show <ID>... takes up to 100 ids in one call.` The line
   is left out when no command is set or the call does not resolve, and the
   JSON document never holds it.
+- `Listing::note` gives a listing a line that the text output prints after
+  the table and any footer and before the next step, such as the file that
+  the rows come from. The JSON document never holds it.
 - `Failure` extends `std::error::Error` with a stable `Code`, a `Recovery`
   and an optional url. A tool implements it for each of its error types.
 - `Code` has three segments: the owning component, the area and the reason,
