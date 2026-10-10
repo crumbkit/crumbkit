@@ -299,7 +299,7 @@ pub(crate) fn examples(
 // platforms use. It misses other shells, such as PowerShell or cmd.exe,
 // which read single quotes and backslashes differently. A rendering for
 // each shell replaces it if crumbkit supports Windows.
-fn quote(word: &str) -> String {
+pub(crate) fn quote(word: &str) -> String {
     let plain = !word.is_empty()
         && word
             .chars()

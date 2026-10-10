@@ -6,6 +6,8 @@ use std::fmt::{self, Write as _};
 
 use clap::Command;
 
+use crate::help::leaf::quote;
+
 #[cfg(test)]
 mod tests;
 
@@ -47,16 +49,22 @@ pub struct Call {
 }
 
 /// The two forms of a [`Call`]: a command with arguments that a tool names
-/// at compile time, and the `-h` of a command that the caller typed.
+/// at compile time and words that crumbkit adds at runtime, and the `-h` of
+/// a command that the caller typed.
 #[derive(Clone, Debug, PartialEq, Eq)]
 enum Target {
-    /// A command that [`Call::new`] and [`Call::arg`] name.
+    /// A command that [`Call::new`] and [`Call::arg`] name, followed by the
+    /// words of [`Call::word`].
     Command {
         /// The names of the subcommands from the root to the command, in
         /// order.
         path: &'static [&'static str],
         /// The clap ids of the arguments to show, in order.
         args: Vec<&'static str>,
+        /// The words to print after the arguments, in order, such as the
+        /// command names that `commands list` takes. crumbkit adds them at
+        /// runtime with [`Call::word`].
+        words: Vec<String>,
     },
     /// The `-h` of a command, which [`Call::help`] names for the recovery of
     /// a refused command line. It holds the names of the subcommands from
@@ -74,6 +82,7 @@ impl Call {
             target: Target::Command {
                 path,
                 args: Vec::new(),
+                words: Vec::new(),
             },
         }
     }
@@ -96,6 +105,21 @@ impl Call {
         // builds one, so it keeps none.
         if let Target::Command { args, .. } = &mut self.target {
             args.push(id);
+        }
+        self
+    }
+
+    /// Adds `word` after the arguments and the words already added, as a
+    /// word that the caller types as it is, such as `books` in
+    /// `shelf commands list books`. The recovery of `commands list` uses it,
+    /// because its words come from the caller at runtime. A word that a
+    /// POSIX shell would split or expand prints between single quotes, as
+    /// a leaf's examples do.
+    pub(crate) fn word(mut self, word: String) -> Self {
+        // A call from `Call::help` takes no words, and only crumbkit builds
+        // one, so it keeps none.
+        if let Target::Command { words, .. } = &mut self.target {
+            words.push(word);
         }
         self
     }
@@ -137,7 +161,7 @@ impl Call {
     /// the caller named.
     pub(crate) fn render_built(&self, command: &Command) -> Result<String, CallError> {
         let mut text = command.get_name().to_owned();
-        let (path, args) = match &self.target {
+        let (path, args, words) = match &self.target {
             Target::Help(path) => {
                 for name in path {
                     text.push(' ');
@@ -146,7 +170,7 @@ impl Call {
                 text.push_str(" -h");
                 return Ok(text);
             }
-            Target::Command { path, args } => (*path, args),
+            Target::Command { path, args, words } => (*path, args, words),
         };
         let mut current = command;
         for &name in path {
@@ -183,6 +207,10 @@ impl Call {
             // `Arg`'s `Display` writes the argument as clap's usage line does,
             // without styling. Writing to a `String` cannot fail.
             let _ = write!(text, " {arg}");
+        }
+        for word in words {
+            text.push(' ');
+            text.push_str(&quote(word));
         }
         Ok(text)
     }

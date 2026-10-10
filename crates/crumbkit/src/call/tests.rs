@@ -132,3 +132,16 @@ fn an_argument_id_that_names_a_hidden_argument_is_a_hidden_argument() {
         "'shelf books show' hides its argument 'trace'"
     );
 }
+
+#[test]
+fn a_call_renders_its_words_after_its_arguments_and_quotes_a_word_a_shell_would_split() {
+    let call = Call::new(&["books", "list"])
+        .arg("author")
+        .word("books".to_owned())
+        .word("two words".to_owned());
+
+    assert_eq!(
+        render(&call).unwrap(),
+        "shelf books list --author <AUTHOR> books 'two words'"
+    );
+}

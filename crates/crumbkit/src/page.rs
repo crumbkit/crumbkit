@@ -6,7 +6,7 @@ use std::num::NonZeroUsize;
 use clap::Args;
 use schemars::{JsonSchema, Schema, SchemaGenerator, json_schema};
 use serde::Serialize;
-use serde::ser::{SerializeStruct, Serializer};
+use serde::ser::{SerializeMap, Serializer};
 
 #[cfg(test)]
 mod tests;
@@ -103,10 +103,20 @@ impl<const N: usize> Page<N> {
 /// own.
 impl<const N: usize> Serialize for Page<N> {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        let mut page = serializer.serialize_struct("Page", 2)?;
-        page.serialize_field("limit", &self.limit)?;
-        page.serialize_field("all", &self.all)?;
+        let mut page = serializer.serialize_map(Some(2))?;
+        self.serialize_fields(&mut page)?;
         page.end()
+    }
+}
+
+impl<const N: usize> Page<N> {
+    /// Writes `limit` and `all` as two entries of `map`. `Page`'s own
+    /// `Serialize` writes them, and so does an arguments type in crumbkit
+    /// that flattens the page beside its own fields, because crumbkit has no
+    /// `serde_derive` for `#[serde(flatten)]`.
+    pub(crate) fn serialize_fields<M: SerializeMap>(&self, map: &mut M) -> Result<(), M::Error> {
+        map.serialize_entry("limit", &self.limit)?;
+        map.serialize_entry("all", &self.all)
     }
 }
 
