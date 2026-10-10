@@ -17,7 +17,8 @@ next step in the same two formats.
 - `Output` holds the flags `--json`, `--long`, `--full` and `--fields`. A tool
   adds them to its own clap parser with `#[command(flatten)]`, and after
   parsing passes the command tree it parsed against to
-  `Output::set_command`.
+  `Output::set_command`. `Output::command` returns that tree, which
+  `commands::list` and crumbkit-aliases read.
 - `parse` parses the command line in place of clap's `Cli::parse`, and
   returns the tool's parsed type and the command tree it parsed against, or
   the exit code for `main` to return. It takes the tool's `help::Guide`,
@@ -87,6 +88,9 @@ next step in the same two formats.
   `Next: shelf books show <ID>... takes up to 100 ids in one call.` The line
   is left out when no command is set or the call does not resolve, and the
   JSON document never holds it.
+- `Listing::note` gives a listing a line that the text output prints after
+  the table and any footer and before the next step, such as the file that
+  the rows come from. The JSON document never holds it.
 - `Failure` extends `std::error::Error` with a stable `Code`, a `Recovery`
   and an optional url. A tool implements it for each of its error types.
 - `Code` has three segments: the owning component, the area and the reason,
@@ -124,6 +128,8 @@ next step in the same two formats.
   `PATH` that names no visible command fails with the code
   `crumbkit::commands::not_found` and a recovery such as
   `shelf commands list books`. The module documentation shows the wiring.
+- `help::quote` quotes one word for a POSIX shell, such as
+  `'Jane Austen'`, as crumbkit quotes every command line it prints.
 
 A tool wires these parts into its own `main`:
 

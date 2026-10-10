@@ -132,9 +132,12 @@ impl Output {
     }
 
     /// Returns the built command that [`Output::set_command`] kept, or
-    /// `None` before the tool calls it. `commands::list` reads the tree
-    /// through it.
-    pub(crate) const fn command(&self) -> Option<&Command> {
+    /// `None` before the tool calls it. `commands::list` and
+    /// crumbkit-aliases' `list` read the tree through it, because
+    /// `set_command` takes the tree by value and the tree is never cloned
+    /// at runtime.
+    #[must_use]
+    pub const fn command(&self) -> Option<&Command> {
         self.command.as_ref()
     }
 }
@@ -168,8 +171,9 @@ pub fn finish<T: Rows, E: AsFailure>(
 /// A [`Listing`](crate::Listing)'s `data` is an array, and its JSON document
 /// also holds the number of matching rows under `total`. When a listing
 /// shows fewer rows than its total, the table ends with a footer line, such
-/// as `Showing 4 of 6 books. --all shows every one.` When a listing has a
-/// next step, a `Next:` line follows the table and any footer, such as
+/// as `Showing 4 of 6 books. --all shows every one.` A listing's note
+/// follows on its own line, in text only. When a listing has a next step, a
+/// `Next:` line follows the table, any footer and any note, such as
 /// `Next: shelf books show <ID>... takes up to 100 ids in one call.` The line
 /// is left out when [`Output::set_command`] was not called or the step's
 /// [`Call`](crate::Call) does not resolve in that command, and the exit code
@@ -363,6 +367,9 @@ fn write_result<T: Rows>(
     } else {
         table::write(out, &columns, &rows)?;
         write_footer(out, value)?;
+        if let Some(note) = value.note() {
+            writeln!(out, "{note}")?;
+        }
         write_next(out, output.command.as_ref(), value)?;
     }
     out.flush()

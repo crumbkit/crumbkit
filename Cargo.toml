@@ -2,6 +2,7 @@
 resolver = "3"
 members = [
     "crates/crumbkit",
+    "crates/crumbkit-aliases",
     "crates/crumbkit-test",
     "examples/shelf",
     "xtask",
@@ -22,6 +23,9 @@ crumbkit = { version = "0.0.0", path = "crates/crumbkit" }
 # shelf's tests check its failure codes and its command tree with
 # crumbkit-test, which takes a version beside the path for the same reason.
 crumbkit-test = { version = "0.0.0", path = "crates/crumbkit-test" }
+# shelf expands and lists personal aliases with crumbkit-aliases, which takes
+# a version beside the path for the same reason.
+crumbkit-aliases = { version = "0.0.0", path = "crates/crumbkit-aliases" }
 
 # clap parses the command line of every tool crumbkit serves. The workspace
 # entry enables only `std`. Cargo turns on a feature for every crate in a build
@@ -41,6 +45,11 @@ serde_json = { version = "1.0.151", default-features = false }
 # schemars describes a result type as a JSON Schema, and the schema's
 # properties are the field names that `--fields` accepts.
 schemars = { version = "1.2.2", default-features = false }
+
+# toml parses a person's aliases file in crumbkit-aliases (ADR-0027). The
+# workspace entry enables no feature, and crumbkit-aliases enables only
+# `parse`, which gives `toml::de::DeTable`.
+toml = { version = "1.1.8", default-features = false }
 
 # miette describes an error that points into a source, such as a file, with
 # labels on byte spans of that source. crumbkit reads the labels behind its

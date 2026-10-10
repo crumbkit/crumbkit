@@ -20,7 +20,8 @@ use snapbox::file;
 fn shelf(test: &str, args: &[&str]) -> OutputAssert {
     // RUST-10: each test's XDG directories are paths under cargo's temporary
     // directory for integration tests, and nothing creates or removes them,
-    // because shelf reads and writes no XDG directory yet. When shelf writes
+    // because shelf writes no XDG directory and these tests give it no
+    // aliases file, the one file it reads there. When shelf writes
     // there, such as for a usage log, replace them with directories that each
     // test creates and removes, such as the temporary directories of snapbox's
     // `dir` feature.

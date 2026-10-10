@@ -71,6 +71,12 @@ pub trait Rows: Serialize + sealed::Sealed {
         None
     }
 
+    /// Returns the line that the text output prints after the table and any
+    /// footer. Only a `Listing` returns one.
+    fn note(&self) -> Option<&str> {
+        None
+    }
+
     /// Returns the command that the text output names as the next step, and
     /// the phrase that follows it. Only a `Listing` returns one.
     fn next_step(&self) -> Option<(&Call, &str)> {

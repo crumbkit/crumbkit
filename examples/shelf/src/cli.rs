@@ -4,6 +4,7 @@ use clap::{Args, Parser, Subcommand};
 use crumbkit::commands::{COMMANDS, CommandsList};
 use crumbkit::help::{Example, Goal, Group, Guide, Leaf, Topic};
 use crumbkit::{Output, Page};
+use crumbkit_aliases::AliasesList;
 use schemars::JsonSchema;
 use serde::Serialize;
 
@@ -85,12 +86,24 @@ pub(crate) enum Resource {
         #[command(subcommand)]
         command: CommandsCommand,
     },
+    /// Work with a person's aliases for shelf's commands.
+    // The group is hidden, because aliases are for people, and an agent
+    // reads only the real commands.
+    #[command(hide = true)]
+    Aliases {
+        /// What to do with the aliases.
+        #[command(subcommand)]
+        command: AliasesCommand,
+    },
 }
 
 /// The commands for books.
 #[derive(Debug, Subcommand)]
 pub(crate) enum BooksCommand {
     /// List the books in the catalogue, in id order.
+    // `ls` is a hidden alias, so a person can type it, and help, `Next:`
+    // lines and `commands list` name only `list`.
+    #[command(alias = "ls")]
     List(BooksList),
     /// Show the books with the given ids, in the order given.
     Show(BooksShow),
@@ -101,6 +114,13 @@ pub(crate) enum BooksCommand {
 pub(crate) enum CommandsCommand {
     /// List a branch of shelf's commands with their arguments, examples and columns.
     List(CommandsList),
+}
+
+/// The commands for a person's aliases.
+#[derive(Debug, Subcommand)]
+pub(crate) enum AliasesCommand {
+    /// List the built-in aliases and the aliases in shelf's aliases file.
+    List(AliasesList),
 }
 
 /// The arguments of `shelf books list`.

@@ -48,6 +48,9 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   show <ID>... takes up to 100 ids in one call.` The line is left out when no
   command is set or the call does not resolve, and the JSON document is
   unchanged.
+- `Listing::note` gives a listing a line that the text output prints after
+  the table and any footer and before the `Next:` line, also with `--long`
+  and `--fields`. The JSON document never holds it.
 - `Failure` extends `std::error::Error` with a stable `Code`, a `Recovery`
   and an optional url, and `Recovery` names the caller's next step: `Run` a
   `Call`, `Retry`, a `Hint`, or `None` with a reason.
@@ -227,3 +230,18 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   `crumbkit::commands::unavailable`.
 - `crates/crumbkit/schemas/commands-v1.json` holds the JSON Schema of the
   `crumbkit/commands/v1` document.
+- The new crate crumbkit-aliases lets a person define aliases for a tool's
+  commands in `$XDG_CONFIG_HOME/<tool>/aliases.toml`, or
+  `$HOME/.config/<tool>/aliases.toml`. `crumbkit_aliases::file` returns the
+  path, and `crumbkit_aliases::expand` replaces an alias in the first word
+  with its words before `parse_from`, so help and every output print only
+  real commands. A real command always wins, and `expand` never prints or
+  fails. `crumbkit_aliases::list` gives a tool the hidden command
+  `<tool> aliases list`, which lists the built-in aliases and the file's
+  entries with the problem of each entry that does not expand, with the
+  document `crumbkit/aliases/v1`. Its text output ends with a note that
+  names the aliases file. A file that cannot be read or parsed fails
+  with the code `crumbkit::aliases::unreadable`.
+- `crumbkit::help::quote` quotes one word for a POSIX shell, as crumbkit
+  quotes the words of every command line it prints, and
+  `Output::command` returns the command that `Output::set_command` kept.

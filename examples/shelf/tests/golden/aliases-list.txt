@@ -1,0 +1,6 @@
+NAME      COMMAND            PROBLEM                                                            FROM
+books ls  books list                                                                            shelf
+books     books show 1       the tool has a command or built-in alias of this name, which wins  [..]/aliases-list/config/shelf/aliases.toml
+broken                       the value must be a list of one or more words                      [..]/aliases-list/config/shelf/aliases.toml
+firsts    books list --long                                                                     [..]/aliases-list/config/shelf/aliases.toml
+Aliases file: [..]/aliases-list/config/shelf/aliases.toml
