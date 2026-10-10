@@ -14,7 +14,7 @@ mod tests;
 /// Browse a small catalogue of public-domain books.
 #[derive(Debug, Parser)]
 #[command(name = "shelf", version = env!("SHELF_VERSION"))]
-pub(crate) struct Cli {
+pub struct Cli {
     /// The resource the command acts on.
     #[command(subcommand)]
     pub(crate) resource: Resource,
@@ -30,7 +30,7 @@ pub(crate) struct Cli {
 /// `shelf books list` and `shelf books show` lists their examples, and
 /// their `--help` describes the columns of the books they print.
 /// `shelf help catalogue` prints `cli/catalogue.txt`.
-pub(crate) const GUIDE: Guide = Guide::new()
+pub const GUIDE: Guide = Guide::new()
     .groups(&[Group::new(
         &[],
         &[Goal::new("Browse the catalogue", &["books"])],
