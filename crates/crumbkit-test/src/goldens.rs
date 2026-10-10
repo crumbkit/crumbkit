@@ -77,34 +77,56 @@ fn check(command: &Command, guide: &Guide, dir: &Path, assert: &Assert) {
         for (visit, page) in pages(command, guide, flag, &mut problems) {
             let line = format!("{} {flag}", visit.path());
             let name = format!("{}-{suffix}.txt", visit.path().replace(' ', "-"));
-            let file = dir.join(&name);
+            compare(assert, &line, "page", page, &dir.join(&name), &mut problems);
             names.push(name);
-            if !overwrite && !file.is_file() {
-                problems.push(format!(
-                    "{line}: the golden file `{}` is missing, and `SNAPSHOTS=overwrite` writes it",
-                    file.display()
-                ));
-                continue;
-            }
-            let expected = Data::read_from(&file, None).raw();
-            if let Err(error) = assert.try_eq(Some(&line), Data::text(page), expected) {
-                problems.push(format!(
-                    "{line}: the page differs from the golden file `{}`:\n{error}",
-                    file.display()
-                ));
-            }
         }
     }
-    remove_stale(dir, &names, overwrite, &mut problems);
+    remove_stale(dir, &names, overwrite, "help page", &mut problems);
     tree::report("golden help rules", &problems);
 }
 
+/// Compares `actual`, the `what` of the command line `line`, such as its
+/// page or its output, with the golden file `file` through `assert`, and
+/// adds a problem to `problems` when the file is missing or differs. When
+/// the action of `assert` is to overwrite, it writes or rewrites the file
+/// instead.
+pub(crate) fn compare(
+    assert: &Assert,
+    line: &str,
+    what: &str,
+    actual: String,
+    file: &Path,
+    problems: &mut Vec<String>,
+) {
+    if assert.selected_action() != Action::Overwrite && !file.is_file() {
+        problems.push(format!(
+            "{line}: the golden file `{}` is missing, and `SNAPSHOTS=overwrite` writes it",
+            file.display()
+        ));
+        return;
+    }
+    let expected = Data::read_from(file, None).raw();
+    if let Err(error) = assert.try_eq(Some(&line), Data::text(actual), expected) {
+        problems.push(format!(
+            "{line}: the {what} differs from the golden file `{}`:\n{error}",
+            file.display()
+        ));
+    }
+}
+
 /// Adds a problem to `problems` for each `.txt` file in `dir` whose name is
-/// not in `names`, or deletes the file when `overwrite` is set.
+/// not in `names`, saying that it belongs to no `owner`, such as a help
+/// page, or deletes the file when `overwrite` is set.
 ///
 /// A directory that does not exist or cannot be read holds no stale file,
-/// and each page then reports its own missing file.
-fn remove_stale(dir: &Path, names: &[String], overwrite: bool, problems: &mut Vec<String>) {
+/// and each name then reports its own missing file.
+pub(crate) fn remove_stale(
+    dir: &Path,
+    names: &[String],
+    overwrite: bool,
+    owner: &str,
+    problems: &mut Vec<String>,
+) {
     let Ok(entries) = fs::read_dir(dir) else {
         return;
     };
@@ -121,7 +143,7 @@ fn remove_stale(dir: &Path, names: &[String], overwrite: bool, problems: &mut Ve
     for file in stale {
         if !overwrite {
             problems.push(format!(
-                "the golden file `{}` belongs to no help page, and `SNAPSHOTS=overwrite` deletes it",
+                "the golden file `{}` belongs to no {owner}, and `SNAPSHOTS=overwrite` deletes it",
                 file.display()
             ));
             continue;

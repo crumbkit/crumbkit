@@ -2,6 +2,7 @@
 #![doc = include_str!("../README.md")]
 
 mod codes;
+mod examples;
 mod filters;
 mod goldens;
 mod grammar;
@@ -10,11 +11,13 @@ mod listings;
 mod names;
 mod pages;
 mod sizes;
+mod temp;
 #[cfg(test)]
 mod testing;
 mod tree;
 
 pub use crate::codes::check_codes;
+pub use crate::examples::{Examples, check_examples};
 pub use crate::filters::check_filters;
 pub use crate::goldens::check_help_goldens;
 pub use crate::grammar::check_grammar;
