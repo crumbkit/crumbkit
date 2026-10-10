@@ -132,9 +132,12 @@ impl Output {
     }
 
     /// Returns the built command that [`Output::set_command`] kept, or
-    /// `None` before the tool calls it. `commands::list` reads the tree
-    /// through it.
-    pub(crate) const fn command(&self) -> Option<&Command> {
+    /// `None` before the tool calls it. `commands::list` and
+    /// crumbkit-aliases' `list` read the tree through it, because
+    /// `set_command` takes the tree by value and the tree is never cloned
+    /// at runtime.
+    #[must_use]
+    pub const fn command(&self) -> Option<&Command> {
         self.command.as_ref()
     }
 }
