@@ -1,0 +1,19 @@
+List a branch of shelf's commands with their arguments, examples and columns
+
+Usage: shelf commands list [OPTIONS] [PATH]...
+
+Arguments:
+  [PATH]...  The names of the commands below the root that lead to the branch, such as `books list`
+
+Options:
+      --limit <N>  Print at most this many rows [default: 25]
+      --all        Print every row
+  -h, --help       Print help (see more with '--help')
+
+Examples:
+  shelf commands list
+  shelf commands list books
+  shelf commands list books list --json --full
+
+Global flags: --json, --fields <FIELD>, --long, --full. `shelf commands list --help` describes them.
+Next: shelf commands list --help explains each column.

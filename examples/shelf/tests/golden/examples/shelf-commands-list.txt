@@ -1,0 +1,7 @@
+PATH                 ABOUT
+shelf                Browse a small catalogue of public-domain books
+shelf books          Work with the books in the catalogue
+shelf books list     List the books in the catalogue, in id order
+shelf books show     Show the books with the given ids, in the order given
+shelf commands       Explore shelf's commands
+shelf commands list  List a branch of shelf's commands with their arguments, examples and columns

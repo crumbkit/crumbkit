@@ -1,6 +1,7 @@
 //! shelf's command-line grammar.
 
 use clap::{Args, Parser, Subcommand};
+use crumbkit::commands::{COMMANDS, CommandsList};
 use crumbkit::help::{Example, Goal, Group, Guide, Leaf, Topic};
 use crumbkit::{Output, Page};
 use schemars::JsonSchema;
@@ -25,15 +26,19 @@ pub struct Cli {
 }
 
 /// shelf's goal headings, leaves and help topics. shelf guides only its
-/// root, so `shelf -h` lists `books` under `Browse the catalogue`, and
-/// `shelf books -h` keeps clap's `Commands:` list. The help of
-/// `shelf books list` and `shelf books show` lists their examples, and
-/// their `--help` describes the columns of the books they print.
+/// root, so `shelf -h` lists `books` under `Browse the catalogue` and
+/// `commands` under `Explore the commands`, and `shelf books -h` keeps
+/// clap's `Commands:` list. The help of `shelf books list`,
+/// `shelf books show` and `shelf commands list` lists their examples, and
+/// their `--help` describes the columns of the rows they print.
 /// `shelf help catalogue` prints `cli/catalogue.txt`.
 pub const GUIDE: Guide = Guide::new()
     .groups(&[Group::new(
         &[],
-        &[Goal::new("Browse the catalogue", &["books"])],
+        &[
+            Goal::new("Browse the catalogue", &["books"]),
+            Goal::new("Explore the commands", &["commands"]),
+        ],
     )])
     .leaves(&[
         Leaf::new(&["books", "list"])
@@ -45,6 +50,19 @@ pub const GUIDE: Guide = Guide::new()
         Leaf::new(&["books", "show"])
             .examples(&[Example::new(&["2", "5"], "Show books 2 and 5")])
             .document(BOOKS_SHOW),
+        Leaf::new(&["commands", "list"])
+            .examples(&[
+                Example::new(&[], "List every command"),
+                Example::new(
+                    &["books"],
+                    "List the books command and the commands below it",
+                ),
+                Example::new(
+                    &["books", "list", "--json", "--full"],
+                    "Print books list with its arguments, examples and columns as JSON",
+                ),
+            ])
+            .document(COMMANDS),
     ])
     .topics(&[Topic::new(
         "catalogue",
@@ -61,6 +79,12 @@ pub(crate) enum Resource {
         #[command(subcommand)]
         command: BooksCommand,
     },
+    /// Explore shelf's commands.
+    Commands {
+        /// What to do with the commands.
+        #[command(subcommand)]
+        command: CommandsCommand,
+    },
 }
 
 /// The commands for books.
@@ -70,6 +94,13 @@ pub(crate) enum BooksCommand {
     List(BooksList),
     /// Show the books with the given ids, in the order given.
     Show(BooksShow),
+}
+
+/// The commands for shelf's own commands.
+#[derive(Debug, Subcommand)]
+pub(crate) enum CommandsCommand {
+    /// List a branch of shelf's commands with their arguments, examples and columns.
+    List(CommandsList),
 }
 
 /// The arguments of `shelf books list`.

@@ -13,7 +13,7 @@ use std::process::ExitCode;
 use clap::CommandFactory as _;
 use crumbkit::Spelling;
 
-use crate::cli::{BooksCommand, Resource};
+use crate::cli::{BooksCommand, CommandsCommand, Resource};
 pub use crate::cli::{Cli, GUIDE};
 
 #[cfg(test)]
@@ -32,7 +32,8 @@ const SPELLING: Spelling = Spelling::COLONS;
 ///
 /// shelf passes `set_command` the command that `crumbkit::parse` returns,
 /// which holds crumbkit's help lines, and `finish` renders the `Next:` line
-/// and a failure's recovery against it.
+/// and a failure's recovery against it. `shelf commands list` reads the
+/// same command, so it lists what the caller can run.
 #[must_use]
 pub fn run() -> ExitCode {
     let (mut cli, command) = match crumbkit::parse::<Cli>(Cli::command(), &GUIDE, SPELLING) {
@@ -48,6 +49,14 @@ pub fn run() -> ExitCode {
             BooksCommand::Show(args) => {
                 crumbkit::finish(&cli.output, SPELLING, books::BOOKS_SHOW, books::show(&args))
             }
+        },
+        Resource::Commands { command } => match command {
+            CommandsCommand::List(args) => crumbkit::finish(
+                &cli.output,
+                SPELLING,
+                crumbkit::commands::COMMANDS,
+                crumbkit::commands::list(&cli.output, &GUIDE, &args),
+            ),
         },
     }
 }
