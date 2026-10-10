@@ -11,7 +11,7 @@ use std::time::{Instant, SystemTime};
 use clap::{ArgMatches, Command};
 use etcetera::BaseStrategy as _;
 use serde::Serialize;
-use signal_hook::consts::{SIGHUP, SIGINT, SIGTERM};
+use signal_hook::consts::{SIGINT, SIGTERM};
 use signal_hook::iterator::Signals;
 use signal_hook::low_level::emulate_default_handler;
 
@@ -44,8 +44,9 @@ enum State {
 
 /// What the usage log knows about the run so far.
 struct Recorder {
-    /// The name of the tool's root command.
-    tool: Name,
+    /// The name of the tool's root command, which `parse` gives. A run
+    /// without it writes no line.
+    tool: Option<Name>,
     /// The tool's version, when its command has one.
     version: Option<Name>,
     /// When `start` ran.
@@ -79,33 +80,31 @@ impl Drop for Log {
 /// Starts the usage log of this run and returns the guard that writes its
 /// line.
 ///
-/// A tool's `main` calls it first, with the tool's command, and keeps the
-/// guard until `main` returns:
+/// A tool's `main` calls it first and keeps the guard until `main` returns:
 ///
 /// ```no_run
 /// # use std::process::ExitCode;
-/// # use clap::{CommandFactory, Parser};
-/// # #[derive(Parser)]
-/// # struct Cli {}
 /// # fn run() -> ExitCode { ExitCode::SUCCESS }
 /// fn main() -> ExitCode {
-///     let _log = crumbkit::usage::start(&Cli::command());
+///     let _log = crumbkit::usage::start();
 ///     run()
 /// }
 /// ```
 ///
-/// `start` reads the tool's name and version from `command`, notes the
-/// time, and installs the process's recorder, which `parse`, `finish`,
-/// [`aliased`](super::aliased) and [`section`] report to. It also starts the
-/// thread that writes the line when the run ends on SIGINT, SIGTERM or
-/// SIGHUP, and then lets the signal end the process as it would have.
+/// `start` notes the time and installs the process's recorder, which
+/// `parse`, `finish`, [`aliased`](super::aliased) and [`section`] report to.
+/// `parse` gives the recorder the tool's name and version from the command
+/// it parses against, so a run that ends before it reaches `parse` writes no
+/// line. `start` also starts the thread that writes the line when the run
+/// ends on SIGINT or SIGTERM, and then lets the signal end the process as it
+/// would have.
 ///
 /// The line goes to `usage.jsonl` in the tool's directory under the XDG
 /// state directory, such as `~/.local/state/shelf/usage.jsonl`. Any failure
 /// drops the line without a word, and recording never changes the tool's
 /// output or exit code (ADR-0029).
-pub fn start(command: &Command) -> Log {
-    let active = install(&RECORDER, command, Instant::now());
+pub fn start() -> Log {
+    let active = install(&RECORDER, Instant::now());
     if active {
         watch_signals();
     }
@@ -130,12 +129,11 @@ pub(super) fn aliased() {
     update(&RECORDER, |recorder| recorder.run.alias = true);
 }
 
-/// Records `args`, the command line that `parse` received, whose words
-/// after the program name the line holds as a keyed hash.
-pub(crate) fn typed(args: &[OsString]) {
-    update(&RECORDER, |recorder| {
-        recorder.words = args.get(1..).unwrap_or_default().to_vec();
-    });
+/// Records the name and version of `command`, the tool's root command, and
+/// `args`, the command line that `parse` received, whose words after the
+/// program name the line holds as a keyed hash.
+pub(crate) fn typed(command: &Command, args: &[OsString]) {
+    update(&RECORDER, |recorder| recorder.typed(command, args));
 }
 
 /// Records the command path, the flags typed and the ids of a command line
@@ -185,15 +183,22 @@ pub(crate) fn finished(exit: ExitCode, out_bytes: u64, truncated: bool) {
 }
 
 impl Recorder {
-    /// Returns the recorder of a run of `command` that started at `started`.
-    fn new(command: &Command, started: Instant) -> Self {
+    /// Returns the recorder of a run that started at `started`.
+    fn new(started: Instant) -> Self {
         Self {
-            tool: Name::new(command.get_name()),
-            version: command.get_version().map(Name::new),
+            tool: None,
+            version: None,
             started,
             words: Vec::new(),
             run: Run::default(),
         }
+    }
+
+    /// Records the tool's command and command line, as [`typed`] describes.
+    fn typed(&mut self, command: &Command, args: &[OsString]) {
+        self.tool = Some(Name::new(command.get_name()));
+        self.version = command.get_version().map(Name::new);
+        self.words = args.get(1..).unwrap_or_default().to_vec();
     }
 
     /// Records help for the command at `path`, as [`helped`] describes.
@@ -221,11 +226,17 @@ impl Recorder {
     }
 
     /// Returns the run's record, as it ended at `now`, with the hashes keyed
-    /// with `key`.
-    fn finish(self, key: &[u8; 16], now: SystemTime, interrupted: bool, caller: &Caller) -> Record {
-        Record {
+    /// with `key`, or `None` when the run never reached `parse`.
+    fn finish(
+        self,
+        key: &[u8; 16],
+        now: SystemTime,
+        interrupted: bool,
+        caller: &Caller,
+    ) -> Option<Record> {
+        Some(Record {
             schema: record::SCHEMA,
-            tool: self.tool,
+            tool: self.tool?,
             version: self.version,
             at: humantime::format_rfc3339_millis(now).to_string(),
             ms: u64::try_from(self.started.elapsed().as_millis()).unwrap_or(u64::MAX),
@@ -234,20 +245,20 @@ impl Recorder {
             args: Hash::new(key, self.words.iter().map(|word| word.as_encoded_bytes())),
             interrupted,
             run: self.run,
-        }
+        })
     }
 }
 
-/// Installs a recorder for `command` in `slot`, and returns whether it did.
-/// It installs none when `slot` already had one, or its lock is poisoned.
-fn install(slot: &Mutex<State>, command: &Command, started: Instant) -> bool {
+/// Installs a recorder in `slot`, and returns whether it did. It installs
+/// none when `slot` already had one, or its lock is poisoned.
+fn install(slot: &Mutex<State>, started: Instant) -> bool {
     let Ok(mut state) = slot.lock() else {
         return false;
     };
     if !matches!(*state, State::Idle) {
         return false;
     }
-    *state = State::Recording(Recorder::new(command, started));
+    *state = State::Recording(Recorder::new(started));
     true
 }
 
@@ -298,7 +309,8 @@ fn write(interrupted: bool) {
 }
 
 /// Writes the line of `recorder` to `usage.jsonl` in the tool's directory
-/// under the `state` directory, or returns `None` when any step fails.
+/// under the `state` directory, or returns `None` when the run never
+/// reached `parse` or any step fails.
 fn save(
     state: &Path,
     recorder: Recorder,
@@ -307,30 +319,30 @@ fn save(
     caller: &Caller,
     limits: &Limits,
 ) -> Option<()> {
-    let dir = state.join(recorder.tool.as_str());
+    let dir = state.join(recorder.tool.as_ref()?.as_str());
     file::create_dir(&dir).ok()?;
     let key = key::key(&dir)?;
-    let line = record::line(&recorder.finish(&key, now, interrupted, caller))?;
+    let line = record::line(&recorder.finish(&key, now, interrupted, caller)?)?;
     file::append(&dir, &line, limits).ok()
 }
 
-/// Starts the thread that writes the line when the run ends on SIGINT,
-/// SIGTERM or SIGHUP, and returns once the thread listens. After the line,
-/// the thread lets the signal take its default effect, so the process ends
-/// as it would have without the log.
+/// Starts the thread that writes the line when the run ends on SIGINT or
+/// SIGTERM, and returns once the thread listens. After the line, the thread
+/// lets the signal take its default effect, so the process ends as it would
+/// have without the log.
 //
-// RUST-10: the thread takes the three signals from the start of the run.
-// A process that started with one of them ignored, as `nohup` ignores
-// SIGHUP, now ends on it, and a tool that handles one of them itself ends
-// on it too. Reading each signal's disposition before taking it replaces
-// this, which needs the `sigaction` call that crumbkit's ban on unsafe code
-// rules out today.
+// RUST-10: the thread takes both signals from the start of the run. A
+// process that started with one of them ignored now ends on it, such as a
+// background job of a non-interactive shell, which starts with SIGINT
+// ignored. A tool that handles one of them itself ends on it too. Reading
+// each signal's disposition before taking it replaces this, which needs the
+// `sigaction` call that crumbkit's ban on unsafe code rules out today.
 fn watch_signals() {
     let (listening, listens) = mpsc::channel();
     let spawned = thread::Builder::new()
         .name("crumbkit-usage".to_owned())
         .spawn(move || {
-            let signals = Signals::new([SIGINT, SIGTERM, SIGHUP]);
+            let signals = Signals::new([SIGINT, SIGTERM]);
             let _ = listening.send(());
             let Ok(mut signals) = signals else {
                 return;

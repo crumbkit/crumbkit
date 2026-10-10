@@ -57,7 +57,7 @@
       "minimum": 0
     },
     "interrupted": {
-      "description": "Whether the line was written when the run ended on SIGINT, SIGTERM or\nSIGHUP. It is present only when that is so.",
+      "description": "Whether the line was written when the run ended on SIGINT or SIGTERM.\nIt is present only when that is so.",
       "type": "boolean"
     },
     "ms": {

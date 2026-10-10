@@ -223,7 +223,7 @@ where
 {
     let mut args: Vec<OsString> = args.into_iter().map(Into::into).collect();
     #[cfg(feature = "usage-log")]
-    crate::usage::typed(&args);
+    crate::usage::typed(&command, &args);
     // crumbkit answers `help` itself. clap propagates the setting to every
     // subcommand, so no `Commands:` list shows clap's `help` line, and
     // `Command::build` copies no subtree into a generated help tree.

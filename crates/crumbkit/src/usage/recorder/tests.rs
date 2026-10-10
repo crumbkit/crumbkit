@@ -7,7 +7,7 @@ use std::time::{Duration, Instant, SystemTime};
 use clap::Command;
 use serde_json::{Value, json};
 
-use super::{Recorder, State, install, save, start, take, update};
+use super::{Recorder, State, install, save, start, take, typed, update};
 use crate::usage::caller::Caller;
 use crate::usage::file::LIMITS;
 use crate::usage::record::Help;
@@ -20,6 +20,14 @@ const CHILD: &str = "CRUMBKIT_USAGE_SIGNAL_CHILD";
 /// Returns a tool's command with a version.
 fn tool() -> Command {
     Command::new("shelf").version("1.2.3")
+}
+
+/// Returns the recorder of a run of [`tool`] that reached `parse` with no
+/// words after the tool's name.
+fn parsed() -> Recorder {
+    let mut recorder = Recorder::new(Instant::now());
+    recorder.typed(&tool(), &["shelf".into()]);
+    recorder
 }
 
 /// Returns a person in a shell whose process id is 4242.
@@ -45,10 +53,10 @@ fn saved(state: &TempDir, recorder: Recorder, interrupted: bool) -> Vec<Value> {
 fn a_second_start_in_one_process_installs_no_second_recorder() {
     let slot = Mutex::new(State::Idle);
 
-    assert!(install(&slot, &tool(), Instant::now()));
-    assert!(!install(&slot, &tool(), Instant::now()));
+    assert!(install(&slot, Instant::now()));
+    assert!(!install(&slot, Instant::now()));
     take(&slot).unwrap();
-    assert!(!install(&slot, &tool(), Instant::now()));
+    assert!(!install(&slot, Instant::now()));
 }
 
 #[test]
@@ -65,7 +73,7 @@ fn without_a_recorder_a_report_does_nothing_and_there_is_no_line_to_write() {
 #[test]
 fn a_run_gives_up_its_recorder_once_so_it_writes_one_line() {
     let slot = Mutex::new(State::Idle);
-    install(&slot, &tool(), Instant::now());
+    install(&slot, Instant::now());
 
     assert!(take(&slot).is_some());
     assert!(take(&slot).is_none());
@@ -74,7 +82,7 @@ fn a_run_gives_up_its_recorder_once_so_it_writes_one_line() {
 #[test]
 fn a_saved_line_holds_the_tool_its_version_the_end_time_the_caller_and_the_hashes() {
     let state = TempDir::new("saved");
-    let mut recorder = Recorder::new(&tool(), Instant::now());
+    let mut recorder = parsed();
     recorder.words = vec!["books".into(), "show".into(), "s3cr3t".into()];
 
     let lines = saved(&state, recorder, false);
@@ -98,13 +106,42 @@ fn a_saved_line_holds_the_tool_its_version_the_end_time_the_caller_and_the_hashe
 }
 
 #[test]
+fn a_run_that_never_reached_parse_writes_no_line() {
+    let state = TempDir::new("unnamed");
+    let now = SystemTime::UNIX_EPOCH + Duration::from_millis(1_791_374_467_120);
+
+    let written = save(
+        state.path(),
+        Recorder::new(Instant::now()),
+        now,
+        false,
+        &person(),
+        &LIMITS,
+    );
+
+    assert!(written.is_none());
+    assert!(!state.path().exists());
+}
+
+#[test]
+fn parse_gives_the_recorder_the_tool_s_name_its_version_and_the_words_after_the_name() {
+    let mut recorder = Recorder::new(Instant::now());
+
+    recorder.typed(&tool(), &["shelf".into(), "books".into(), "list".into()]);
+
+    assert_eq!(recorder.tool.unwrap().as_str(), "shelf");
+    assert_eq!(recorder.version.unwrap().as_str(), "1.2.3");
+    assert_eq!(recorder.words, ["books", "list"]);
+}
+
+#[test]
 fn two_runs_with_the_same_words_and_session_share_their_hashes() {
     let state = TempDir::new("hashes");
     let words = || vec!["books".into(), "list".into()];
-    let mut first = Recorder::new(&tool(), Instant::now());
+    let mut first = parsed();
     first.words = words();
     saved(&state, first, false);
-    let mut second = Recorder::new(&tool(), Instant::now());
+    let mut second = parsed();
     second.words = words();
 
     let lines = saved(&state, second, true);
@@ -116,7 +153,7 @@ fn two_runs_with_the_same_words_and_session_share_their_hashes() {
 
 #[test]
 fn help_records_the_command_it_named_and_short_or_long() {
-    let mut recorder = Recorder::new(&tool(), Instant::now());
+    let mut recorder = parsed();
 
     recorder.helped(
         &["books".to_owned(), "show".to_owned()],
@@ -131,7 +168,7 @@ fn help_records_the_command_it_named_and_short_or_long() {
 
 #[test]
 fn the_first_failure_code_of_a_run_stays_in_the_tool_s_spelling() {
-    let mut recorder = Recorder::new(&tool(), Instant::now());
+    let mut recorder = parsed();
 
     recorder.failed(Spelling::DOTS, &Code::new("shelf", "books", "not_found"));
     recorder.failed(Spelling::DOTS, &Code::new("shelf", "books", "gone"));
@@ -142,7 +179,7 @@ fn the_first_failure_code_of_a_run_stays_in_the_tool_s_spelling() {
 #[test]
 fn the_tool_s_section_holds_its_document_id_and_its_value() {
     const EXT: Document<Value> = Document::new("shelf", "usage-ext", 1);
-    let mut recorder = Recorder::new(&tool(), Instant::now());
+    let mut recorder = parsed();
 
     recorder.section(EXT, &json!({"requests": 2}));
 
@@ -183,7 +220,8 @@ fn a_signal_writes_an_interrupted_line_and_then_ends_the_process_as_the_signal_d
 }
 
 /// Runs only as the child of the signal test, which sets [`CHILD`]. It
-/// starts the log and raises SIGTERM, which the log's thread answers.
+/// starts the log, gives it the tool's name as `parse` does, and raises
+/// SIGTERM, which the log's thread answers.
 #[test]
 fn the_signal_test_s_child_starts_the_log_and_raises_sigterm() {
     #[expect(
@@ -193,7 +231,8 @@ fn the_signal_test_s_child_starts_the_log_and_raises_sigterm() {
     if std::env::var_os(CHILD).is_none() {
         return;
     }
-    let _log = start(&Command::new("signalled"));
+    let _log = start();
+    typed(&Command::new("signalled"), &["signalled".into()]);
     signal_hook::low_level::raise(signal_hook::consts::SIGTERM).unwrap();
     // The signal ends the process, so the test never gets past the wait.
     std::thread::sleep(Duration::from_secs(10));

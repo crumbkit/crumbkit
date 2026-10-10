@@ -295,14 +295,15 @@ it on with `features = ["usage-log"]` and adds one line to `main`:
 
 ```rust,ignore
 fn main() -> ExitCode {
-    let _log = crumbkit::usage::start(&Cli::command());
+    let _log = crumbkit::usage::start();
     run()
 }
 ```
 
-`parse`, `finish` and crumbkit-aliases' `expand` then report what the run
-did, and the guard writes the line when `main` returns. A line looks like
-this:
+`parse` then gives the line the tool's name and version. `parse`, `finish`
+and crumbkit-aliases' `expand` report what the run did, and the guard writes
+the line when `main` returns. A run that ends before it reaches `parse`
+writes no line. A line looks like this:
 
 ```json
 {"schema":"crumbkit/usage/v1","tool":"shelf","version":"0.1.0","at":"2026-10-07T12:01:07.120Z","ms":3,"caller":"claude-code","session":"9c1e0f5ab2d47e18","args":"0b6a2e7f41c9d350","command":"books list","flags":["--json","--limit"],"exit":0,"out_bytes":194,"truncated":true}

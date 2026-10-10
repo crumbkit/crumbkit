@@ -47,13 +47,12 @@ jobs:
       - run: cargo fmt --check
       - run: cargo clippy --workspace --all-targets
       # shelf turns on crumbkit's `usage-log` feature, so the workspace run
-      # checks crumbkit with that feature only. clippy checks crumbkit on its
-      # own in the default build and with each feature, because a single
+      # checks crumbkit with that feature. clippy checks crumbkit on its own
+      # in the default build and with `miette`, because a single
       # `--all-features` run would miss a warning that only one build shows,
       # such as an import that only one feature uses.
       - run: cargo clippy -p crumbkit --all-targets
       - run: cargo clippy -p crumbkit --all-targets --features miette
-      - run: cargo clippy -p crumbkit --all-targets --features usage-log
       - run: cargo xtask check
       # The advisories check runs nightly in scheduled.yml, because a new
       # advisory can appear when no code has changed (ADR-0012).
@@ -90,14 +89,12 @@ jobs:
       # nextest does not run doctests, so cargo test runs them.
       - run: cargo test --workspace --doc
       # shelf turns on crumbkit's `usage-log` feature, so the workspace runs
-      # test crumbkit with that feature only. crumbkit's tests and doctests
-      # run again on their own in the default build and with each feature.
+      # test crumbkit with that feature. crumbkit's tests and doctests run
+      # again on their own in the default build and with `miette`.
       - run: cargo nextest run -p crumbkit --profile ci
       - run: cargo test -p crumbkit --doc
       - run: cargo nextest run -p crumbkit --features miette --profile ci
       - run: cargo test -p crumbkit --features miette --doc
-      - run: cargo nextest run -p crumbkit --features usage-log --profile ci
-      - run: cargo test -p crumbkit --features usage-log --doc
       # The MSRV check builds with the oldest supported toolchain (RUST-9).
       # It builds with every feature, which compiles every line of code once,
       # because no code is left out when a feature is on.

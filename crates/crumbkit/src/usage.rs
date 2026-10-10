@@ -6,8 +6,10 @@
 //! returns, as the example of `start` shows.
 //! [`parse`](crate::parse), [`finish`](crate::finish) and
 //! crumbkit-aliases' `expand` then report what the run did, and the guard
-//! writes the line when `main` returns. Without the feature, or without a
-//! started log, every report does nothing.
+//! writes the line when `main` returns. `parse` gives the line the tool's
+//! name and version, so a run that ends before it reaches `parse` writes no
+//! line. Without the feature, or without a started log, every report does
+//! nothing.
 
 #[cfg(feature = "usage-log")]
 mod caller;

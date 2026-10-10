@@ -52,8 +52,8 @@ pub(super) struct Record {
     /// The keyed hash of the words after the tool's name, so identical
     /// command lines share a hash.
     pub(super) args: Hash,
-    /// Whether the line was written when the run ended on SIGINT, SIGTERM or
-    /// SIGHUP. It is present only when that is so.
+    /// Whether the line was written when the run ended on SIGINT or SIGTERM.
+    /// It is present only when that is so.
     #[serde(default, skip_serializing_if = "is_false")]
     pub(super) interrupted: bool,
     /// What `parse`, `finish`, an alias and the tool reported during the

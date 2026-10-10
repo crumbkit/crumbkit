@@ -247,9 +247,10 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   `Output::command` returns the command that `Output::set_command` kept.
 - The `usage-log` feature, off by default, appends one JSON line per run of
   a tool to `usage.jsonl` in the tool's XDG state directory. A tool calls
-  `crumbkit::usage::start(&Cli::command())` first in `main` and keeps the
-  guard it returns, which writes the line when `main` returns, or when the
-  run ends on SIGINT, SIGTERM or SIGHUP. `parse`, `finish` and
+  `crumbkit::usage::start()` first in `main` and keeps the guard it
+  returns, which writes the line when `main` returns, or when the run ends
+  on SIGINT or SIGTERM. `parse` gives the line the tool's name and version,
+  so a run that ends before `parse` writes no line. `parse`, `finish` and
   `crumbkit_aliases::expand` report the command path, the flags typed, help
   requests, refused flags, the exit code, the failure code, the bytes
   written and whether a listing was cut short. The line holds no value that

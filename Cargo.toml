@@ -81,7 +81,7 @@ is-ai-agent = { version = "0.6.0", default-features = false }
 humantime = { version = "2.4.0", default-features = false }
 
 # signal-hook runs the thread that writes the usage log's line when a run ends
-# on SIGINT, SIGTERM or SIGHUP. crumbkit enables only `iterator`, which gives
+# on SIGINT or SIGTERM. crumbkit enables only `iterator`, which gives
 # `Signals`.
 signal-hook = { version = "0.4.5", default-features = false }
 
