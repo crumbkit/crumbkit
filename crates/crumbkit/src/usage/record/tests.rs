@@ -1,6 +1,6 @@
 use serde_json::{Value, json};
 
-use super::{Hash, Help, Name, Record, Run, Section, line};
+use super::{Hash, Help, Name, Record, Run, Section, SpanId, TraceId, TraceIds, line};
 
 const KEY: [u8; 16] = *b"0123456789abcdef";
 
@@ -16,6 +16,11 @@ fn bare() -> Record {
         caller: "person",
         session: Hash::new(&KEY, [b"4242".as_slice()]),
         args: Hash::new(&KEY, []),
+        trace: TraceIds {
+            trace: TraceId::new([0x4b; 16]),
+            run: SpanId::new([0x22; 8]),
+            parent: None,
+        },
         interrupted: false,
         run: Run::default(),
     }
@@ -35,7 +40,7 @@ fn a_record_leaves_out_every_field_that_does_not_apply() {
     assert_eq!(
         fields,
         [
-            "args", "at", "caller", "ms", "schema", "session", "tool", "version"
+            "args", "at", "caller", "ms", "run", "schema", "session", "tool", "trace", "version"
         ]
     );
     assert_eq!(record["schema"], "crumbkit/usage/v1");
@@ -44,6 +49,9 @@ fn a_record_leaves_out_every_field_that_does_not_apply() {
 #[test]
 fn a_record_writes_every_field_of_the_run_beside_its_own() {
     let mut record = bare();
+    record.trace.parent = Some(SpanId::new([
+        0x00, 0xf0, 0x67, 0xaa, 0x0b, 0xa9, 0x02, 0xb7,
+    ]));
     record.interrupted = true;
     record.run = Run {
         command: Some(Name::new("books show")),
@@ -65,6 +73,9 @@ fn a_record_writes_every_field_of_the_run_beside_its_own() {
 
     let record = parsed(&record);
 
+    assert_eq!(record["trace"], "4b4b4b4b4b4b4b4b4b4b4b4b4b4b4b4b");
+    assert_eq!(record["run"], "2222222222222222");
+    assert_eq!(record["parent"], "00f067aa0ba902b7");
     assert_eq!(record["command"], "books show");
     assert_eq!(record["help"], "long");
     assert_eq!(record["flags"], json!(["--json"]));

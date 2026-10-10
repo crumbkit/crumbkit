@@ -1,0 +1,108 @@
+//! The run's W3C trace context: the trace it joins, its own id, and the
+//! variables that put its children in the same trace (ADR-0030).
+
+use super::random;
+use super::record::{SpanId, TraceId, TraceIds};
+
+#[cfg(test)]
+mod tests;
+mod traceparent;
+
+/// The trace flags that a run keeps from its caller and passes on: sampled
+/// (0x01) and random trace id (0x02). W3C Trace Context Level 1 requires the
+/// other bits to be zero when they go on.
+const KNOWN_FLAGS: u8 = 0x03;
+
+/// The run's trace context.
+#[derive(Debug)]
+pub(super) struct Context {
+    /// The trace id, the run's id and the caller's span id.
+    pub(super) ids: TraceIds,
+    /// The trace flags that the run's children receive.
+    flags: u8,
+    /// The caller's TRACESTATE, kept only with a valid TRACEPARENT.
+    state: Option<String>,
+}
+
+/// Returns the context of this run from its TRACEPARENT and TRACESTATE and
+/// 24 random bytes from `/dev/urandom`, or `None` when the bytes cannot be
+/// read or an id would be all zero.
+pub(super) fn read() -> Option<Context> {
+    #[expect(
+        clippy::disallowed_methods,
+        reason = "the usage log owns its environment reads, which give the caller's trace context"
+    )]
+    let env = |name: &str| std::env::var(name).ok();
+    let bytes: [u8; 24] = random::bytes()?;
+    let (trace, run) = bytes.split_first_chunk::<16>()?;
+    Context::new(
+        env("TRACEPARENT").as_deref(),
+        env("TRACESTATE"),
+        *trace,
+        run.try_into().ok()?,
+    )
+}
+
+impl Context {
+    /// Returns the context of a run whose caller set `traceparent` and
+    /// `tracestate`, with `run` as the run's id.
+    ///
+    /// A valid `traceparent` gives the caller's trace id, its span id as the
+    /// parent, and its flags. Without one, the run starts a new trace whose
+    /// id is `new_trace`, with no parent, the flags `03` and no TRACESTATE,
+    /// as W3C requires. It returns `None` when the id that the run would use
+    /// from `new_trace` or `run` is all zero, which W3C forbids.
+    pub(super) fn new(
+        traceparent: Option<&str>,
+        tracestate: Option<String>,
+        new_trace: [u8; 16],
+        run: [u8; 8],
+    ) -> Option<Self> {
+        if run == [0; 8] {
+            return None;
+        }
+        let run = SpanId::new(run);
+        if let Some(parent) = traceparent.and_then(traceparent::parse) {
+            return Some(Self {
+                ids: TraceIds {
+                    trace: TraceId::new(parent.trace),
+                    run,
+                    parent: Some(SpanId::new(parent.parent)),
+                },
+                flags: parent.flags & KNOWN_FLAGS,
+                state: tracestate,
+            });
+        }
+        if new_trace == [0; 16] {
+            return None;
+        }
+        Some(Self {
+            ids: TraceIds {
+                trace: TraceId::new(new_trace),
+                run,
+                parent: None,
+            },
+            flags: KNOWN_FLAGS,
+            state: None,
+        })
+    }
+
+    /// Returns the environment variables that put a child process in this
+    /// run's trace with this run as its parent: TRACEPARENT in version `00`,
+    /// and the caller's TRACESTATE unchanged when the run kept one.
+    pub(super) fn child_env(&self) -> Vec<(&'static str, String)> {
+        let mut env = vec![(
+            "TRACEPARENT",
+            format!(
+                "00-{}-{}-{:02x}",
+                self.ids.trace.as_str(),
+                self.ids.run.as_str(),
+                self.flags
+            ),
+        )];
+        if let Some(state) = &self.state {
+            env.push(("TRACESTATE", state.clone()));
+        }
+        env
+    }
+}

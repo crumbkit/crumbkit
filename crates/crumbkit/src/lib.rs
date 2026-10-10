@@ -6,6 +6,8 @@ mod call;
 mod code;
 pub mod commands;
 mod document;
+#[cfg(any(feature = "usage-log", feature = "tracing"))]
+mod exit;
 mod failure;
 mod fetch;
 pub mod help;
@@ -19,6 +21,7 @@ mod report;
 mod row;
 mod segment;
 mod sink;
+pub mod trace;
 pub mod usage;
 
 pub use crate::batch::Batch;

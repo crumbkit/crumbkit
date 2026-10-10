@@ -1,9 +1,11 @@
 //! The key of the usage log's hashes, which stays on the machine.
 
-use std::fs::{self, File, OpenOptions};
-use std::io::{self, Read as _, Write as _};
+use std::fs::{self, OpenOptions};
+use std::io::{self, Write as _};
 use std::os::unix::fs::OpenOptionsExt as _;
 use std::path::Path;
+
+use super::random;
 
 #[cfg(test)]
 mod tests;
@@ -30,10 +32,7 @@ pub(super) fn key(dir: &Path) -> Option<[u8; 16]> {
 // misses that one line. Writing the key to a temporary file and linking it
 // into place replaces this if lines go missing.
 fn create(path: &Path) -> Option<[u8; 16]> {
-    let mut key = [0; 16];
-    File::open("/dev/urandom")
-        .and_then(|mut random| random.read_exact(&mut key))
-        .ok()?;
+    let key: [u8; 16] = random::bytes()?;
     #[expect(
         clippy::disallowed_methods,
         reason = "the usage log owns its key file, which only this function creates"

@@ -21,8 +21,10 @@ clap = { workspace = true, features = [
     "color",
 ] }
 # shelf keeps crumbkit's usage log, which appends one line per run to
-# `usage.jsonl` in shelf's XDG state directory (ADR-0029).
-crumbkit = { workspace = true, features = ["usage-log"] }
+# `usage.jsonl` in shelf's XDG state directory (ADR-0029), and enables the
+# `tracing` feature, so the workspace build also builds crumbkit's spans
+# (ADR-0030). shelf installs no subscriber, so its spans go nowhere.
+crumbkit = { workspace = true, features = ["usage-log", "tracing"] }
 # shelf expands a person's aliases before parsing, and lists them with the
 # hidden `shelf aliases list`.
 crumbkit-aliases = { workspace = true }

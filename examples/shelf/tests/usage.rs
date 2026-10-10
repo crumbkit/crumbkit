@@ -35,12 +35,21 @@ fn home(test: &str) -> io::Result<PathBuf> {
 /// Runs the built `shelf` binary with `args`, a cleared environment and XDG
 /// directories under `home`, and returns its output for assertions.
 fn shelf(home: &Path, args: &[&str]) -> OutputAssert {
-    Command::new(env!("CARGO_BIN_EXE_shelf"))
+    shelf_with(home, args, &[])
+}
+
+/// Runs shelf as [`shelf`] does, with the variables `env` added to its
+/// environment.
+fn shelf_with(home: &Path, args: &[&str], env: &[(&str, &str)]) -> OutputAssert {
+    let mut command = Command::new(env!("CARGO_BIN_EXE_shelf"))
         .args(args)
         .env_clear()
         .env("XDG_CONFIG_HOME", home.join("config"))
-        .env("XDG_STATE_HOME", home.join("state"))
-        .assert()
+        .env("XDG_STATE_HOME", home.join("state"));
+    for (name, value) in env {
+        command = command.env(name, value);
+    }
+    command.assert()
 }
 
 /// Returns each line of shelf's usage log under `home`, as JSON.
@@ -60,9 +69,9 @@ fn lines(home: &Path) -> Result<Vec<Value>, Box<dyn std::error::Error>> {
 /// run have their types, and setting each to `"<checked>"`, so a test
 /// compares the rest of the line exactly.
 fn stable(mut line: Value) -> Value {
-    let hash = |value: &Value| {
+    let hex = |value: &Value, len: usize| {
         value.as_str().is_some_and(|text| {
-            text.len() == 16
+            text.len() == len
                 && text
                     .bytes()
                     .all(|byte| matches!(byte, b'0'..=b'9' | b'a'..=b'f'))
@@ -73,9 +82,11 @@ fn stable(mut line: Value) -> Value {
         "{line}"
     );
     assert!(line["ms"].is_u64(), "{line}");
-    assert!(hash(&line["session"]), "{line}");
-    assert!(hash(&line["args"]), "{line}");
-    for field in ["at", "ms", "session", "args"] {
+    assert!(hex(&line["session"], 16), "{line}");
+    assert!(hex(&line["args"], 16), "{line}");
+    assert!(hex(&line["trace"], 32), "{line}");
+    assert!(hex(&line["run"], 16), "{line}");
+    for field in ["at", "ms", "session", "args", "trace", "run"] {
         line[field] = json!("<checked>");
     }
     line
@@ -101,6 +112,8 @@ fn a_run_appends_one_line_with_its_command_flags_exit_code_and_output_size() {
             "caller": "unknown",
             "session": "<checked>",
             "args": "<checked>",
+            "trace": "<checked>",
+            "run": "<checked>",
             "command": "books list",
             "flags": ["--json", "--limit"],
             "exit": 0,
@@ -165,6 +178,34 @@ fn a_run_of_an_alias_records_the_alias_and_the_command_it_expanded_to() {
 }
 
 #[test]
+fn a_run_with_a_valid_traceparent_records_the_caller_s_trace_and_names_the_caller_as_parent() {
+    let home = home("usage-traced").unwrap();
+    let traceparent = "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01";
+
+    shelf_with(&home, &["books", "list"], &[("TRACEPARENT", traceparent)]).success();
+
+    let line = lines(&home).unwrap().remove(0);
+    assert_eq!(line["trace"], "4bf92f3577b34da6a3ce929d0e0e4736");
+    assert_eq!(line["parent"], "00f067aa0ba902b7");
+    assert_ne!(line["run"], "00f067aa0ba902b7");
+}
+
+#[test]
+fn runs_without_a_traceparent_each_start_a_new_trace_with_no_parent() {
+    let home = home("usage-new-trace").unwrap();
+
+    shelf(&home, &["books", "list"]).success();
+    shelf(&home, &["books", "list"]).success();
+
+    let lines = lines(&home).unwrap();
+    for line in &lines {
+        assert_eq!(stable(line.clone()).get("parent"), None);
+    }
+    assert_ne!(lines[0]["trace"], lines[1]["trace"]);
+    assert_ne!(lines[0]["run"], lines[1]["run"]);
+}
+
+#[test]
 fn no_line_holds_a_value_that_the_caller_typed() {
     let home = home("usage-planted").unwrap();
     let runs: [&[&str]; 11] = [
@@ -181,12 +222,33 @@ fn no_line_holds_a_value_that_the_caller_typed() {
         &["s3cr3t-command-PLANTED"],
     ];
 
+    // The caller's trace context: a planted TRACEPARENT, which starts a new
+    // trace, and a planted TRACESTATE beside both an invalid and a valid
+    // TRACEPARENT.
+    let contexts: [&[(&str, &str)]; 3] = [
+        &[("TRACEPARENT", "00-s3cr3t-traceparent-PLANTED-01")],
+        &[
+            ("TRACEPARENT", "s3cr3t-PLANTED"),
+            ("TRACESTATE", "vendor=s3cr3t-tracestate-PLANTED"),
+        ],
+        &[
+            (
+                "TRACEPARENT",
+                "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01",
+            ),
+            ("TRACESTATE", "vendor=s3cr3t-tracestate-PLANTED"),
+        ],
+    ];
+
     for args in runs {
         let _ = shelf(&home, args);
     }
+    for env in contexts {
+        let _ = shelf_with(&home, &["books", "list"], env);
+    }
 
     let log = fs::read_to_string(home.join("state").join("shelf").join("usage.jsonl")).unwrap();
-    assert_eq!(log.lines().count(), runs.len());
+    assert_eq!(log.lines().count(), runs.len() + contexts.len());
     for line in log.lines() {
         assert!(!line.contains("PLANTED"), "{line}");
     }

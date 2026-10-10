@@ -203,10 +203,40 @@ where
     run(sink, command, guide, spelling, args, false)
 }
 
+/// Parses `args` against `command` as [`parse_to`] describes. With the
+/// `tracing` feature, parsing runs inside the `crumbkit.parse` span, which
+/// records the exit code when parsing ends the run (ADR-0030).
+fn run<C, I, T, O, E>(
+    sink: &mut Sink<O, E>,
+    command: Command,
+    guide: &Guide,
+    spelling: Spelling,
+    args: I,
+    colour: bool,
+) -> Result<(C, Command), ExitCode>
+where
+    C: FromArgMatches,
+    I: IntoIterator<Item = T>,
+    T: Into<OsString>,
+    O: Write,
+    E: Write,
+{
+    #[cfg(feature = "tracing")]
+    let span = crate::trace::spans::parse();
+    #[cfg(feature = "tracing")]
+    let _entered = span.enter();
+    let parsed = read(sink, command, guide, spelling, args, colour);
+    #[cfg(feature = "tracing")]
+    if let Err(code) = parsed {
+        crate::trace::spans::exited(&span, code);
+    }
+    parsed
+}
+
 /// Parses `args` against `command` as [`parse_to`] describes. With `colour`,
 /// help and the version print through clap, which writes them to standard
 /// output with the colours that the tool's clap features allow.
-fn run<C, I, T, O, E>(
+fn read<C, I, T, O, E>(
     sink: &mut Sink<O, E>,
     mut command: Command,
     guide: &Guide,
@@ -272,6 +302,8 @@ where
         .take_while(|word| *word != "--")
         .any(|word| word == "--help");
     let path = walk(&command, &args);
+    #[cfg(feature = "tracing")]
+    crate::trace::spans::command(&path);
     add_help_lines(&mut command, guide, topics, &path, long_help);
 
     let error = match command.try_get_matches_from_mut(args) {

@@ -85,6 +85,18 @@ humantime = { version = "2.4.0", default-features = false }
 # `Signals`.
 signal-hook = { version = "0.4.5", default-features = false }
 
+# tracing gives crumbkit's optional `tracing` feature the spans of `parse` and
+# `finish`, which reach whatever subscriber the tool installs (ADR-0030). The
+# entry enables no feature: the span macros need neither `std` nor
+# `attributes`, and crumbkit installs no subscriber.
+tracing = { version = "0.1.44", default-features = false }
+
+# tracing-core holds `span::Current`, which a subscriber returns to say which
+# span is entered and which tracing does not re-export. Only crumbkit's span
+# tests use it, for their small test subscriber. tracing already depends on
+# it, so it adds no crate to the build.
+tracing-core = { version = "0.1.36", default-features = false }
+
 # snapbox runs a built binary and compares its output with golden files
 # (ADR-0004, ADR-0005), and crumbkit-test's help golden check and example
 # check compare help pages and example output with golden files through it.
