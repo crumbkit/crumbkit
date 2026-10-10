@@ -1,7 +1,7 @@
 # ADR-0016. Result formats
 
 - Results come in two formats: compact text for people and agents, and JSON for programs. The text table already has a header row, one record per line and no repeated keys.
-- Markdown is used only to export help, through `schema cli --markdown`.
+- No command prints Markdown. A Markdown export of help is decided with the documentation (ADR-0013), and `commands list` exports a branch of the command tree in these two formats (ADR-0026).
 - A type that prints as a table row implements `Row`. Its `COLUMNS` are the compact columns in display order, its `LONG_COLUMNS` are the columns that `--long` adds after them, and both hold serialized field names. A field in neither list appears only with `--json --full`.
 - `finish` takes one `Row`, a `Vec` of rows, a `Listing` or a `Batch` through the sealed `Rows` trait. A single row's JSON `data` is an object, and the `data` of each of the others is an array.
 - The text table has a header row with each column name in upper case, then one line per row, and an empty result prints the header only, except a batch, which prints no table when it has no rows. Each column is as wide as its widest cell in characters, two spaces separate the columns, and a line ends with the text of its last non-empty cell, so no line ends in padding.

@@ -130,6 +130,13 @@ impl Output {
         command.build();
         self.command = Some(command);
     }
+
+    /// Returns the built command that [`Output::set_command`] kept, or
+    /// `None` before the tool calls it. `commands::list` reads the tree
+    /// through it.
+    pub(crate) const fn command(&self) -> Option<&Command> {
+        self.command.as_ref()
+    }
 }
 
 /// Prints a command's result in the format that `output` chooses, and

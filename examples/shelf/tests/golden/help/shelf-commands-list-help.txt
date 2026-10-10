@@ -1,0 +1,45 @@
+List a branch of shelf's commands with their arguments, examples and columns
+
+Usage: shelf commands list [OPTIONS] [PATH]...
+
+Arguments:
+  [PATH]...
+          The names of the commands below the root that lead to the branch, such as `books list`
+
+Options:
+      --limit <N>
+          Print at most this many rows
+          
+          [default: 25]
+
+      --all
+          Print every row
+
+      --json
+          Print the result as a JSON document on one line
+
+      --fields <FIELD>
+          Print only these comma-separated fields, in this order
+
+      --long
+          Add the long columns after the compact ones
+
+      --full
+          With --json, print every field of every row
+
+  -h, --help
+          Print help (see a summary with '-h')
+
+Examples:
+  shelf commands list
+          List every command
+
+  shelf commands list books
+          List the books command and the commands below it
+
+  shelf commands list books list --json --full
+          Print books list with its arguments, examples and columns as JSON
+
+Columns:
+  path   The command line that runs the command, such as `shelf books list`.
+  about  The command's one-line description, or its full description when it has no one-line description.

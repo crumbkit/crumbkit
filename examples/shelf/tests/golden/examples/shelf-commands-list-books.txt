@@ -1,0 +1,4 @@
+PATH              ABOUT
+shelf books       Work with the books in the catalogue
+shelf books list  List the books in the catalogue, in id order
+shelf books show  Show the books with the given ids, in the order given

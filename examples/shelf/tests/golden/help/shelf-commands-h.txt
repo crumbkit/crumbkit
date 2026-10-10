@@ -1,0 +1,12 @@
+Explore shelf's commands
+
+Usage: shelf commands [OPTIONS] <COMMAND>
+
+Commands:
+  list  List a branch of shelf's commands with their arguments, examples and columns
+
+Options:
+  -h, --help  Print help (see more with '--help')
+
+Global flags: --json, --fields <FIELD>, --long, --full. `shelf commands --help` describes them.
+Next: shelf commands <COMMAND> -h

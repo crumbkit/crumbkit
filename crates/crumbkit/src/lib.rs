@@ -4,6 +4,7 @@
 mod batch;
 mod call;
 mod code;
+pub mod commands;
 mod document;
 mod failure;
 mod fetch;

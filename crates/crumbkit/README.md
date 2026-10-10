@@ -111,6 +111,19 @@ next step in the same two formats.
   under `data` and the failures under `failures`, and exits with code 1
   when the batch holds a failure. `finish_to` does the same into a `Sink`
   over any two writers, so a test reads the output from memory.
+- `commands` gives a tool the command `<tool> commands list [PATH]...`,
+  which lists one branch of the tool's command tree in depth-first order,
+  so an agent loads a subtree in one call. The tool adds a `commands`
+  resource at its root with a `list` subcommand that takes
+  `commands::CommandsList`, and its handler passes
+  `commands::list(&output, &GUIDE, &args)` to `finish` with the document
+  `commands::COMMANDS`, whose id is `crumbkit/commands/v1`. The table
+  lists each visible command's path and about text, and `--json --full`
+  adds its arguments, the examples of its leaf and the columns of its
+  document. A hidden command and everything below it are left out. A
+  `PATH` that names no visible command fails with the code
+  `crumbkit::commands::not_found` and a recovery such as
+  `shelf commands list books`. The module documentation shows the wiring.
 
 A tool wires these parts into its own `main`:
 
