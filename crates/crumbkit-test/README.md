@@ -2,7 +2,7 @@
 
 crumbkit-test checks a tool built with crumbkit from an ordinary `#[test]`.
 
-crumbkit is in design and is not published yet. This crate has eight checks.
+crumbkit is in design and is not published yet. This crate has nine checks.
 Each check collects every problem it finds and fails the test with one
 problem on each line.
 
@@ -182,6 +182,53 @@ use crumbkit::help::Guide;
 let shelf = Command::new("shelf").subcommand(Command::new("books"));
 
 crumbkit_test::check_help_goldens(&shelf, &Guide::new(), "tests/golden/help");
+```
+
+- `check_examples` takes the tool's clap command, its `Guide` and an
+  `Examples`, and runs every example of every leaf against the tool's built
+  binary, one run at a time, with the leaf's path and the example's words
+  as separate arguments. It compares each run's standard output with a
+  golden file named after the tool, the path and the words, such as
+  `shelf-books-list.txt` and `shelf-books-list-all.txt`. It fails on a run
+  that exits with a code other than 0 or writes to standard error, also
+  with `SNAPSHOTS=overwrite`, on a binary that cannot start, on two
+  examples with one file name, on a missing file, a file whose content
+  differs and a stale file, so the directory holds only example golden
+  files. It skips a leaf whose path names no command and runs the examples
+  of hidden commands. Each run has a cleared environment, the variables of
+  `.env`, and fresh XDG directories that the check deletes afterwards.
+  `.exempt` skips the examples of each named command and everything below
+  it, and an exemption that names no command fails the check.
+
+`Examples::new` takes the path of the built binary and the golden
+directory. cargo sets `CARGO_BIN_EXE_<name>` only for the integration tests
+and benchmarks of the binary's own package, so a tool calls the check from
+one of those. cargo runs those tests from the package's manifest directory,
+and the binary starts there too, so a relative directory or `.env` value
+resolves from there.
+
+```rust,no_run
+use clap::Command;
+use crumbkit::help::{Example, Guide, Leaf};
+use crumbkit_test::Examples;
+
+const GUIDE: Guide = Guide::new().leaves(&[
+    Leaf::new(&["books", "list"]).examples(&[Example::new(&["--all"], "Print every book")]),
+    Leaf::new(&["books", "delete"]).examples(&[Example::new(&["2"], "Delete book 2")]),
+]);
+
+// In `tests/examples.rs`, the binary is `env!("CARGO_BIN_EXE_shelf")`.
+const EXAMPLES: Examples = Examples::new("/path/to/shelf", "tests/golden/examples")
+    .env(&[("SHELF_DATA", "tests/fixtures/books.json")])
+    .exempt(&["books delete"]);
+
+let shelf = Command::new("shelf").subcommand(
+    Command::new("books")
+        .subcommand(Command::new("list"))
+        .subcommand(Command::new("delete")),
+);
+
+crumbkit_test::check_examples(&shelf, &GUIDE, &EXAMPLES);
 ```
 
 Licensed under either of Apache License, Version 2.0 or MIT license at your

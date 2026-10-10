@@ -196,3 +196,15 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   `shelf-books-list-help.txt`, and fails on a missing file, a file whose
   content differs and a stale file. `SNAPSHOTS=overwrite` writes the files
   and deletes the stale ones.
+- crumbkit-test's `check_examples` runs every example in a tool's guide
+  against the tool's built binary, with a cleared environment, the
+  variables that `Examples::env` names and fresh XDG directories, and
+  compares each run's standard output with a golden file in a directory,
+  such as `shelf-books-list-all.txt`. It fails on a run that exits with a
+  code other than 0 or writes to standard error, on a binary that cannot
+  start, on two examples with one file name, on a missing file, a file
+  whose content differs and a stale file, and on an exemption that names
+  no command. `SNAPSHOTS=overwrite` writes the files of the runs that
+  succeed and deletes the stale ones. `Examples` is a `const fn` builder
+  that takes the binary's path and the directory, and `Examples::exempt`
+  skips the examples of named commands.
