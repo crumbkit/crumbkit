@@ -8,7 +8,7 @@ use crumbkit::{Error, Listing, Output, Sink, Spelling, finish_to};
 use schemars::{JsonSchema, Schema, SchemaGenerator, json_schema, schema_for};
 use serde_json::{Value, json};
 
-use super::{ALIASES, AliasRow, AliasesList, list, rows};
+use super::{ALIASES, AliasRow, AliasesList, list, listing};
 use crate::testing::tool;
 
 /// The path that the personal rows name as their source.
@@ -36,7 +36,8 @@ fn args(words: &[&str]) -> AliasesList {
 /// Returns the rows for an aliases file at [`FILE`] that holds `text`, as
 /// JSON.
 fn listed(text: &str) -> Value {
-    serde_json::to_value(rows(&tool(), Some(Path::new(FILE)), Some(text)).unwrap()).unwrap()
+    let listing = listing(&tool(), Some(Path::new(FILE)), Some(text), &args(&[]));
+    serde_json::to_value(listing.unwrap()).unwrap()
 }
 
 /// Returns the row named `name`.
@@ -161,7 +162,7 @@ fn an_entry_whose_value_is_not_a_list_of_one_or_more_words_says_so() {
 }
 
 #[test]
-fn a_missing_file_lists_the_built_in_aliases_and_names_the_file_it_looked_for() {
+fn a_missing_file_lists_the_built_in_aliases_and_a_note_says_it_does_not_exist_yet() {
     let missing = Path::new(env!("CARGO_MANIFEST_DIR")).join("no-such-aliases.toml");
 
     let listing = list(&output(), Some(&missing), &args(&["--limit", "1"])).unwrap();
@@ -172,9 +173,40 @@ fn a_missing_file_lists_the_built_in_aliases_and_names_the_file_it_looked_for() 
         format!(
             "NAME  COMMAND  PROBLEM  FROM\n\
              b     books             shelf\n\
-             Showing 1 of 2 aliases from shelf and {}. --all shows every one.\n",
+             Showing 1 of 2 aliases. --all shows every one.\n\
+             Aliases file: {}, which does not exist yet\n",
             missing.display()
         )
+    );
+}
+
+#[test]
+fn a_note_after_the_table_names_a_file_that_exists_even_when_it_is_empty() {
+    let listing = listing(&tool(), Some(Path::new(FILE)), Some(""), &args(&[]));
+
+    let finished = finish(&output(), listing.map_err(Error::from));
+
+    assert!(
+        finished.out.ends_with(&format!(
+            "books ls  books list           shelf\nAliases file: {FILE}\n"
+        )),
+        "{}",
+        finished.out
+    );
+}
+
+#[test]
+fn a_note_says_why_a_tool_without_a_config_directory_has_no_aliases_file() {
+    let listing = listing(&tool(), None, None, &args(&[]));
+
+    let finished = finish(&output(), listing.map_err(Error::from));
+
+    assert!(
+        finished.out.ends_with(
+            "shelf has no aliases file, because neither XDG_CONFIG_HOME nor HOME is an absolute path.\n"
+        ),
+        "{}",
+        finished.out
     );
 }
 
@@ -212,10 +244,11 @@ fn a_file_that_cannot_be_read_fails_with_its_path_and_the_reason() {
 
 #[test]
 fn a_file_that_cannot_be_parsed_fails_with_the_line_and_the_parser_s_message() {
-    let error = rows(
+    let error = listing(
         &tool(),
         Some(Path::new(FILE)),
         Some("mine = [\"books\"]\nours = ["),
+        &args(&[]),
     )
     .unwrap_err();
 

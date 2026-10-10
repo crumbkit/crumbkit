@@ -239,7 +239,8 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   fails. `crumbkit_aliases::list` gives a tool the hidden command
   `<tool> aliases list`, which lists the built-in aliases and the file's
   entries with the problem of each entry that does not expand, with the
-  document `crumbkit/aliases/v1`. A file that cannot be read or parsed fails
+  document `crumbkit/aliases/v1`. Its text output ends with a note that
+  names the aliases file. A file that cannot be read or parsed fails
   with the code `crumbkit::aliases::unreadable`.
 - `crumbkit::help::quote` quotes one word for a POSIX shell, as crumbkit
   quotes the words of every command line it prints, and

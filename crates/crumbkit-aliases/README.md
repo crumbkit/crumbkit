@@ -27,7 +27,9 @@ functions, the arguments and row types of one command, and its document.
   the clap aliases of the visible commands named by their full path such as
   `books ls`, and then the file's entries in name order. Each row has the
   columns `NAME`, `COMMAND`, `PROBLEM` and `FROM`, and an entry that does not
-  expand says why under `PROBLEM`. A file that exists but cannot be read or
+  expand says why under `PROBLEM`. In text output, a note after the table
+  names the aliases file and says when it does not exist yet, or says why
+  the tool has no aliases file. A file that exists but cannot be read or
   parsed fails with the code `crumbkit::aliases::unreadable`. The schema of
   the JSON document is `schemas/aliases-v1.json`.
 - `AliasesList` is the arguments type of `aliases list`: crumbkit's paging

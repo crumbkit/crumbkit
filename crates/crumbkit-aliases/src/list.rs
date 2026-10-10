@@ -85,8 +85,9 @@ impl Row for AliasRow {
 /// expanding, as [`expand`](crate::expand) decides it.
 ///
 /// A missing file, or no file because the environment gives no config
-/// directory, lists the built-in aliases only. The listing's description
-/// names the file it looked for.
+/// directory, lists the built-in aliases only. The listing's note, which
+/// the text output prints after the table, names the file and says when it
+/// does not exist yet, or says why the tool has no aliases file.
 ///
 /// # Errors
 ///
@@ -113,15 +114,35 @@ pub fn list(
         })?,
         None => None,
     };
-    let rows = rows(command, file, text.as_deref())?;
-    let description = match file {
-        Some(path) => format!("aliases from {} and {}", command.get_name(), path.display()),
-        None => format!(
-            "aliases from {}, which has no aliases file because neither XDG_CONFIG_HOME nor HOME is an absolute path",
-            command.get_name()
+    Ok(listing(command, file, text.as_deref(), args)?)
+}
+
+/// Returns the page of rows that `args` asks for, with the note that names
+/// the file: the built-in aliases of `command`, then the entries of `text`,
+/// the aliases file at `file`, in name order. `text` is `None` when no file
+/// is at `file`.
+///
+/// # Errors
+///
+/// Returns [`AliasesError::Unreadable`] when `text` is not a TOML table.
+fn listing(
+    command: &Command,
+    file: Option<&Path>,
+    text: Option<&str>,
+    args: &AliasesList,
+) -> Result<Listing<AliasRow>, AliasesError> {
+    let tool = command.get_name();
+    let note = match (file, text) {
+        (Some(path), Some(_)) => format!("Aliases file: {}", path.display()),
+        (Some(path), None) => format!("Aliases file: {}, which does not exist yet", path.display()),
+        (None, _) => format!(
+            "{tool} has no aliases file, because neither XDG_CONFIG_HOME nor HOME is an absolute path."
         ),
     };
-    Ok(Listing::from_all(rows, args.page.limit()).described(description))
+    let rows = rows(command, file, text)?;
+    Ok(Listing::from_all(rows, args.page.limit())
+        .described("aliases")
+        .note(note))
 }
 
 /// Returns every row: the built-in aliases of `command`, then the entries
