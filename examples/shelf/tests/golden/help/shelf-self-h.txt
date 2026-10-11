@@ -1,0 +1,12 @@
+Review shelf's own use
+
+Usage: shelf self [OPTIONS] <COMMAND>
+
+Commands:
+  usage  Report the patterns in shelf's usage log where callers waste effort
+
+Options:
+  -h, --help  Print help (see more with '--help')
+
+Global flags: --json, --fields <FIELD>, --long, --full. `shelf self --help` describes them.
+Next: shelf self <COMMAND> -h

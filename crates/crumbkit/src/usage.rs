@@ -28,14 +28,9 @@ mod record;
 #[cfg(feature = "usage-log")]
 mod recorder;
 #[cfg(feature = "usage-log")]
-#[cfg_attr(
-    not(test),
-    expect(
-        dead_code,
-        reason = "only the tests read the report until the `self usage` command exists"
-    )
-)]
 mod report;
+#[cfg(feature = "usage-log")]
+mod self_usage;
 #[cfg(feature = "usage-log")]
 mod shape;
 #[cfg(all(feature = "usage-log", test))]
@@ -51,6 +46,8 @@ pub use self::recorder::{Log, section, start};
 pub(crate) use self::recorder::{
     child_env, exited, failed, finished, helped, parsed, refused, typed,
 };
+#[cfg(feature = "usage-log")]
+pub use self::self_usage::{FindingRow, SelfUsage, USAGE_REPORT, UsageSummary, findings};
 
 // RUST-10: the log reads its key from `/dev/urandom`, finds the session in
 // the parent process id, and sets Unix file modes, so the feature builds

@@ -40,6 +40,9 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   ([ADR-0030]).
 - crumbkit: the `tracing` feature runs `parse` and `finish` inside spans
   ([`trace`]).
+- crumbkit: with the `usage-log` feature, `self usage` reports where
+  callers waste effort from the usage log, and a [`Listing`] can carry a
+  summary that prints above its table ([ADR-0016], [ADR-0034]).
 - crumbkit-test: the checks [`check_codes`], [`check_names`],
   [`check_grammar`], [`check_listings`], [`check_filters`],
   [`check_guide`] and [`check_help_sizes`] fail a test on a tool that
@@ -157,6 +160,7 @@ rustdoc, or at its decision record. -->
 [ADR-0001]: docs/decisions/api/0001-error-model.md
 [ADR-0004]: docs/decisions/testing/0004-golden-and-snapshot-tests.md
 [ADR-0007]: docs/decisions/api/0007-json-schemas.md
+[ADR-0016]: docs/decisions/api/output/0016-result-formats.md
 [ADR-0021]: docs/decisions/api/help/0021-help-pages.md
 [ADR-0023]: docs/decisions/api/help/0023-help-command-and-topics.md
 [ADR-0024]: docs/decisions/api/help/0024-leaf-examples-and-columns.md
@@ -169,3 +173,4 @@ rustdoc, or at its decision record. -->
 [cargo-crumbkit]: crates/cargo-crumbkit/README.md
 [`example_golden_name`]: crates/crumbkit-test/src/examples.rs
 [ADR-0033]: docs/decisions/api/help/0033-weigh.md
+[ADR-0034]: docs/decisions/api/usage/0034-usage-report.md

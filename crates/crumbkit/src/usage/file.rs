@@ -21,6 +21,10 @@ pub(super) struct Limits {
     pub(super) wait: Duration,
 }
 
+/// The name of the log file in the tool's directory under the XDG state
+/// directory.
+pub(super) const LOG: &str = "usage.jsonl";
+
 /// The limits of every tool's usage log: past 10 MB the file keeps its
 /// newest whole lines that fit in 5 MB, and a run waits at most 100 ms for
 /// the lock. A run appends at most 1,025 bytes, so after a trim at least
@@ -93,7 +97,7 @@ fn open_log(dir: &Path) -> io::Result<File> {
         .append(true)
         .create(true)
         .mode(0o600)
-        .open(dir.join("usage.jsonl"))
+        .open(dir.join(LOG))
 }
 
 /// Takes the lock on `file`, and retries every 5 ms for at most `wait`.
@@ -126,7 +130,7 @@ fn trim(dir: &Path, file: &mut File, keep: usize) -> io::Result<()> {
             clippy::disallowed_methods,
             reason = "the usage log owns its file, which a trim replaces"
         )]
-        fs::rename(&temporary, dir.join("usage.jsonl"))
+        fs::rename(&temporary, dir.join(LOG))
     });
     if replaced.is_err() {
         #[expect(

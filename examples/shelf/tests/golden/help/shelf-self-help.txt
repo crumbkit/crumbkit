@@ -1,0 +1,24 @@
+Review shelf's own use
+
+Usage: shelf self [OPTIONS] <COMMAND>
+
+Commands:
+  usage  Report the patterns in shelf's usage log where callers waste effort
+
+Options:
+      --json
+          Print the result as a JSON document on one line
+
+      --fields <FIELD>
+          Print only these comma-separated fields, in this order
+
+      --long
+          Add the long columns after the compact ones
+
+      --full
+          With --json, print every field of every row
+
+  -h, --help
+          Print help (see a summary with '-h')
+
+Next: shelf self <COMMAND> -h

@@ -5,6 +5,7 @@ use std::path::PathBuf;
 use clap::{Args, Parser, Subcommand};
 use crumbkit::commands::{COMMANDS, CommandsList};
 use crumbkit::help::{Example, Goal, Group, Guide, Leaf, Topic};
+use crumbkit::usage::{SelfUsage, USAGE_REPORT};
 use crumbkit::{Output, Page};
 use crumbkit_aliases::AliasesList;
 use schemars::JsonSchema;
@@ -29,11 +30,12 @@ pub struct Cli {
 }
 
 /// shelf's goal headings, leaves and help topics. shelf guides only its
-/// root, so `shelf -h` lists `books` under `Browse the catalogue` and
-/// `commands` under `Explore the commands`, and `shelf books -h` keeps
-/// clap's `Commands:` list. The help of `shelf books list`,
-/// `shelf books show` and `shelf commands list` lists their examples, and
-/// their `--help` describes the columns of the rows they print.
+/// root, so `shelf -h` lists `books` under `Browse the catalogue`,
+/// `commands` under `Explore the commands` and `self` under `Review how
+/// shelf is used`, and `shelf books -h` keeps clap's `Commands:` list. The
+/// help of `shelf books list`, `shelf books show`, `shelf commands list`
+/// and `shelf self usage` lists their examples, and their `--help`
+/// describes the columns of the rows they print.
 /// `shelf help catalogue` prints `cli/catalogue.txt`.
 pub const GUIDE: Guide = Guide::new()
     .groups(&[Group::new(
@@ -41,6 +43,7 @@ pub const GUIDE: Guide = Guide::new()
         &[
             Goal::new("Browse the catalogue", &["books"]),
             Goal::new("Explore the commands", &["commands"]),
+            Goal::new("Review how shelf is used", &["self"]),
         ],
     )])
     .leaves(&[
@@ -66,6 +69,12 @@ pub const GUIDE: Guide = Guide::new()
                 ),
             ])
             .document(COMMANDS),
+        Leaf::new(&["self", "usage"])
+            .examples(&[
+                Example::new(&[], "Report the findings of the last 7 days"),
+                Example::new(&["--since", "1d"], "Report the findings of the last day"),
+            ])
+            .document(USAGE_REPORT),
     ])
     .topics(&[Topic::new(
         "catalogue",
@@ -87,6 +96,13 @@ pub(crate) enum Resource {
         /// What to do with the commands.
         #[command(subcommand)]
         command: CommandsCommand,
+    },
+    /// Review shelf's own use.
+    #[command(name = "self")]
+    SelfCommand {
+        /// What to review.
+        #[command(subcommand)]
+        command: SelfCommand,
     },
     /// Work with a person's aliases for shelf's commands.
     // The group is hidden, because aliases are for people, and an agent
@@ -116,6 +132,13 @@ pub(crate) enum BooksCommand {
 pub(crate) enum CommandsCommand {
     /// List a branch of shelf's commands with their arguments, examples and columns.
     List(CommandsList),
+}
+
+/// The commands that review shelf itself.
+#[derive(Debug, Subcommand)]
+pub(crate) enum SelfCommand {
+    /// Report the patterns in shelf's usage log where callers waste effort.
+    Usage(SelfUsage),
 }
 
 /// The commands for a person's aliases.

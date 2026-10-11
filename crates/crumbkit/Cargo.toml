@@ -34,7 +34,8 @@ schemars = { workspace = true }
 # and converts a `miette::Report` into `Error` (ADR-0001). crumbkit needs no
 # miette feature.
 miette = { workspace = true, optional = true }
-# The `usage-log` feature needs these five crates (ADR-0029).
+# The `usage-log` feature needs these five crates (ADR-0029). humantime
+# also parses the duration of `self usage --since` (ADR-0034).
 siphasher = { workspace = true, optional = true }
 etcetera = { workspace = true, optional = true }
 is-ai-agent = { workspace = true, optional = true }

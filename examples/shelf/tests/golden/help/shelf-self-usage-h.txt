@@ -1,0 +1,14 @@
+Report the patterns in shelf's usage log where callers waste effort
+
+Usage: shelf self usage [OPTIONS]
+
+Options:
+      --since <DURATION>  How far back to read the usage log, such as 12h, 7d or 2w [default: 7d]
+  -h, --help              Print help (see more with '--help')
+
+Examples:
+  shelf self usage
+  shelf self usage --since 1d
+
+Global flags: --json, --fields <FIELD>, --long, --full. `shelf self usage --help` describes them.
+Next: shelf self usage --help explains each column.

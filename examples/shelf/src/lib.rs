@@ -13,7 +13,7 @@ use std::process::ExitCode;
 use clap::CommandFactory as _;
 use crumbkit::Spelling;
 
-use crate::cli::{AliasesCommand, BooksCommand, CommandsCommand, Resource};
+use crate::cli::{AliasesCommand, BooksCommand, CommandsCommand, Resource, SelfCommand};
 pub use crate::cli::{Cli, GUIDE};
 
 #[cfg(test)]
@@ -65,6 +65,14 @@ pub fn run() -> ExitCode {
                 SPELLING,
                 crumbkit::commands::COMMANDS,
                 crumbkit::commands::list(&cli.output, &GUIDE, &args),
+            ),
+        },
+        Resource::SelfCommand { command } => match command {
+            SelfCommand::Usage(args) => crumbkit::finish(
+                &cli.output,
+                SPELLING,
+                crumbkit::usage::USAGE_REPORT,
+                Ok::<_, crumbkit::Error>(crumbkit::usage::findings(&cli.output, &args)),
             ),
         },
         Resource::Aliases { command } => match command {

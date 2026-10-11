@@ -18,8 +18,8 @@ fn every_command_and_argument_has_one_name() {
 }
 
 #[test]
-fn every_command_is_a_resource_followed_by_list_or_show() {
-    crumbkit_test::check_grammar(&Cli::command(), &[], &[]);
+fn every_command_is_a_resource_followed_by_list_show_or_usage() {
+    crumbkit_test::check_grammar(&Cli::command(), &["usage"], &[]);
 }
 
 #[test]
