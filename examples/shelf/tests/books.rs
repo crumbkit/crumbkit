@@ -8,39 +8,35 @@
 //! from a unit test. These tests read two of those files, to prove that the
 //! built binary prints the same pages.
 
-use std::path::Path;
+use std::io;
 
 use snapbox::cmd::{Command, OutputAssert};
 use snapbox::file;
 
 /// Runs the built `shelf` binary with `args`, a cleared environment and XDG
-/// directories of its own, and returns its output for assertions.
+/// directories in a temporary directory of its own, which is removed once
+/// the run ends, and returns its output for assertions.
 ///
-/// `test` names the directory that holds this run's XDG directories.
-fn shelf(test: &str, args: &[&str]) -> OutputAssert {
-    // RUST-10: each test's XDG directories are paths under cargo's temporary
-    // directory for integration tests, and nothing removes them. shelf
-    // writes its usage log under the state directory, so each run adds a line
-    // to a log that grows across test runs, and no test here reads it. The
-    // tests that read the log, in `tests/usage.rs`, use a state directory
-    // that each test empties first. When a log that grows across test runs
-    // matters, replace these paths with directories that each test creates
-    // and removes, such as the temporary directories of snapbox's `dir`
-    // feature.
-    let xdg = Path::new(env!("CARGO_TARGET_TMPDIR")).join(test);
-    Command::new(env!("CARGO_BIN_EXE_shelf"))
+/// # Errors
+///
+/// Returns the I/O error of a temporary directory that cannot be created.
+fn shelf(args: &[&str]) -> io::Result<OutputAssert> {
+    let xdg = tempfile::tempdir()?;
+    let run = Command::new(env!("CARGO_BIN_EXE_shelf"))
         .args(args)
         .env_clear()
-        .env("XDG_CONFIG_HOME", xdg.join("config"))
-        .env("XDG_DATA_HOME", xdg.join("data"))
-        .env("XDG_STATE_HOME", xdg.join("state"))
-        .env("XDG_CACHE_HOME", xdg.join("cache"))
-        .assert()
+        .env("XDG_CONFIG_HOME", xdg.path().join("config"))
+        .env("XDG_DATA_HOME", xdg.path().join("data"))
+        .env("XDG_STATE_HOME", xdg.path().join("state"))
+        .env("XDG_CACHE_HOME", xdg.path().join("cache"))
+        .assert();
+    Ok(run)
 }
 
 #[test]
 fn books_list_long_adds_the_form_column_and_keeps_the_footer() {
-    shelf("books-list-long", &["books", "list", "--long"])
+    shelf(&["books", "list", "--long"])
+        .unwrap()
         .success()
         .stdout_eq(file!["golden/books-list-long.txt"].raw())
         .stderr_eq("");
@@ -48,7 +44,8 @@ fn books_list_long_adds_the_form_column_and_keeps_the_footer() {
 
 #[test]
 fn books_list_json_prints_the_compact_columns_and_the_total_as_one_json_line() {
-    shelf("books-list-json", &["books", "list", "--json"])
+    shelf(&["books", "list", "--json"])
+        .unwrap()
         .success()
         .stdout_eq(file!["golden/books-list-json.json"].raw())
         .stderr_eq("");
@@ -56,51 +53,44 @@ fn books_list_json_prints_the_compact_columns_and_the_total_as_one_json_line() {
 
 #[test]
 fn books_list_json_full_prints_every_field_of_the_first_4_books_and_the_total() {
-    shelf(
-        "books-list-json-full",
-        &["books", "list", "--json", "--full"],
-    )
-    .success()
-    .stdout_eq(file!["golden/books-list-json-full.json"].raw())
-    .stderr_eq("");
+    shelf(&["books", "list", "--json", "--full"])
+        .unwrap()
+        .success()
+        .stdout_eq(file!["golden/books-list-json-full.json"].raw())
+        .stderr_eq("");
 }
 
 #[test]
 fn books_list_fields_prints_only_the_named_fields_in_order_and_the_footer() {
-    shelf(
-        "books-list-fields",
-        &["books", "list", "--fields", "title,year"],
-    )
-    .success()
-    .stdout_eq(file!["golden/books-list-fields.txt"].raw())
-    .stderr_eq("");
+    shelf(&["books", "list", "--fields", "title,year"])
+        .unwrap()
+        .success()
+        .stdout_eq(file!["golden/books-list-fields.txt"].raw())
+        .stderr_eq("");
 }
 
 #[test]
 fn books_list_json_fields_prints_only_the_named_fields_in_order_and_the_total() {
-    shelf(
-        "books-list-json-fields",
-        &["books", "list", "--json", "--fields", "title,year"],
-    )
-    .success()
-    .stdout_eq(file!["golden/books-list-json-fields.json"].raw())
-    .stderr_eq("");
+    shelf(&["books", "list", "--json", "--fields", "title,year"])
+        .unwrap()
+        .success()
+        .stdout_eq(file!["golden/books-list-json-fields.json"].raw())
+        .stderr_eq("");
 }
 
 #[test]
 fn books_list_with_an_unknown_field_exits_with_code_2_and_hints_at_the_valid_fields() {
-    shelf(
-        "books-list-unknown-field",
-        &["books", "list", "--fields", "title,pages"],
-    )
-    .code(2)
-    .stdout_eq("")
-    .stderr_eq(file!["golden/books-list-unknown-field.stderr"].raw());
+    shelf(&["books", "list", "--fields", "title,pages"])
+        .unwrap()
+        .code(2)
+        .stdout_eq("")
+        .stderr_eq(file!["golden/books-list-unknown-field.stderr"].raw());
 }
 
 #[test]
 fn books_list_limit_2_prints_the_first_2_books_and_the_footer() {
-    shelf("books-list-limit-2", &["books", "list", "--limit", "2"])
+    shelf(&["books", "list", "--limit", "2"])
+        .unwrap()
         .success()
         .stdout_eq(file!["golden/books-list-limit-2.txt"].raw())
         .stderr_eq("");
@@ -108,7 +98,8 @@ fn books_list_limit_2_prints_the_first_2_books_and_the_footer() {
 
 #[test]
 fn books_list_limit_0_is_refused_with_code_2() {
-    shelf("books-list-limit-0", &["books", "list", "--limit", "0"])
+    shelf(&["books", "list", "--limit", "0"])
+        .unwrap()
         .code(2)
         .stdout_eq("")
         .stderr_eq(file!["golden/books-list-limit-0.stderr"].raw());
@@ -116,18 +107,17 @@ fn books_list_limit_0_is_refused_with_code_2() {
 
 #[test]
 fn books_list_all_with_limit_is_refused_with_code_2() {
-    shelf(
-        "books-list-all-limit-2",
-        &["books", "list", "--all", "--limit", "2"],
-    )
-    .code(2)
-    .stdout_eq("")
-    .stderr_eq(file!["golden/books-list-all-limit-2.stderr"].raw());
+    shelf(&["books", "list", "--all", "--limit", "2"])
+        .unwrap()
+        .code(2)
+        .stdout_eq("")
+        .stderr_eq(file!["golden/books-list-all-limit-2.stderr"].raw());
 }
 
 #[test]
 fn books_list_json_all_prints_every_book_and_the_total() {
-    shelf("books-list-json-all", &["books", "list", "--json", "--all"])
+    shelf(&["books", "list", "--json", "--all"])
+        .unwrap()
         .success()
         .stdout_eq(file!["golden/books-list-json-all.json"].raw())
         .stderr_eq("");
@@ -135,7 +125,8 @@ fn books_list_json_all_prints_every_book_and_the_total() {
 
 #[test]
 fn books_show_with_comma_separated_ids_is_refused_with_code_2() {
-    shelf("books-show-2-comma-5", &["books", "show", "2,5"])
+    shelf(&["books", "show", "2,5"])
+        .unwrap()
         .code(2)
         .stdout_eq("")
         .stderr_eq(file!["golden/books-show-2-comma-5.stderr"].raw());
@@ -143,7 +134,8 @@ fn books_show_with_comma_separated_ids_is_refused_with_code_2() {
 
 #[test]
 fn books_show_prints_the_books_in_the_order_given() {
-    shelf("books-show-5-2", &["books", "show", "5", "2"])
+    shelf(&["books", "show", "5", "2"])
+        .unwrap()
         .success()
         .stdout_eq(file!["golden/books-show-5-2.txt"].raw())
         .stderr_eq("");
@@ -151,7 +143,8 @@ fn books_show_prints_the_books_in_the_order_given() {
 
 #[test]
 fn books_show_with_only_an_id_outside_the_catalogue_prints_only_the_failure_with_code_1() {
-    shelf("books-show-7", &["books", "show", "7"])
+    shelf(&["books", "show", "7"])
+        .unwrap()
         .code(1)
         .stdout_eq("")
         .stderr_eq(file!["golden/books-show-7.stderr"].raw());
@@ -159,7 +152,8 @@ fn books_show_with_only_an_id_outside_the_catalogue_prints_only_the_failure_with
 
 #[test]
 fn books_show_prints_the_books_found_and_one_failure_naming_the_missing_ids_with_code_1() {
-    shelf("books-show-2-7-9", &["books", "show", "2", "7", "9"])
+    shelf(&["books", "show", "2", "7", "9"])
+        .unwrap()
         .code(1)
         .stdout_eq(file!["golden/books-show-2-7-9.txt"].raw())
         .stderr_eq(file!["golden/books-show-2-7-9.stderr"].raw());
@@ -167,7 +161,8 @@ fn books_show_prints_the_books_found_and_one_failure_naming_the_missing_ids_with
 
 #[test]
 fn books_show_json_with_only_an_id_outside_the_catalogue_prints_empty_data_and_the_failure() {
-    shelf("books-show-7-json", &["books", "show", "7", "--json"])
+    shelf(&["books", "show", "7", "--json"])
+        .unwrap()
         .code(1)
         .stdout_eq(file!["golden/books-show-7-json.json"].raw())
         .stderr_eq("");
@@ -175,13 +170,11 @@ fn books_show_json_with_only_an_id_outside_the_catalogue_prints_empty_data_and_t
 
 #[test]
 fn books_show_json_prints_one_document_with_the_books_found_and_the_failure_with_code_1() {
-    shelf(
-        "books-show-2-7-9-json",
-        &["books", "show", "2", "7", "9", "--json"],
-    )
-    .code(1)
-    .stdout_eq(file!["golden/books-show-2-7-9-json.json"].raw())
-    .stderr_eq("");
+    shelf(&["books", "show", "2", "7", "9", "--json"])
+        .unwrap()
+        .code(1)
+        .stdout_eq(file!["golden/books-show-2-7-9-json.json"].raw())
+        .stderr_eq("");
 }
 
 #[test]
@@ -189,7 +182,8 @@ fn books_show_with_101_ids_is_refused_with_code_2() {
     let mut args = vec!["books", "show"];
     args.extend(["1"; 101]);
 
-    shelf("books-show-101-ids", &args)
+    shelf(&args)
+        .unwrap()
         .code(2)
         .stdout_eq("")
         .stderr_eq(file!["golden/books-show-101-ids.stderr"].raw());
@@ -197,7 +191,8 @@ fn books_show_with_101_ids_is_refused_with_code_2() {
 
 #[test]
 fn books_show_without_ids_is_refused_with_code_2() {
-    shelf("books-show-no-ids", &["books", "show"])
+    shelf(&["books", "show"])
+        .unwrap()
         .code(2)
         .stdout_eq("")
         .stderr_eq(file!["golden/books-show-no-ids.stderr"].raw());
@@ -205,7 +200,8 @@ fn books_show_without_ids_is_refused_with_code_2() {
 
 #[test]
 fn books_show_json_prints_the_books_as_an_array_and_an_empty_failures_array_without_a_total() {
-    shelf("books-show-json", &["books", "show", "5", "2", "--json"])
+    shelf(&["books", "show", "5", "2", "--json"])
+        .unwrap()
         .success()
         .stdout_eq(file!["golden/books-show-json.json"].raw())
         .stderr_eq("");
@@ -215,7 +211,8 @@ fn books_show_json_prints_the_books_as_an_array_and_an_empty_failures_array_with
 /// test, and this test proves that shelf's `main` prints the same root page.
 #[test]
 fn short_help_prints_the_root_page_that_the_help_golden_check_pins() {
-    shelf("h", &["-h"])
+    shelf(&["-h"])
+        .unwrap()
         .success()
         .stdout_eq(file!["golden/help/shelf-h.txt"].raw())
         .stderr_eq("");
@@ -223,7 +220,8 @@ fn short_help_prints_the_root_page_that_the_help_golden_check_pins() {
 
 #[test]
 fn books_without_a_command_is_refused_with_code_2() {
-    shelf("books", &["books"])
+    shelf(&["books"])
+        .unwrap()
         .code(2)
         .stdout_eq("")
         .stderr_eq(file!["golden/books.stderr"].raw());
@@ -231,7 +229,8 @@ fn books_without_a_command_is_refused_with_code_2() {
 
 #[test]
 fn books_show_json_without_ids_prints_the_refusal_as_a_failure_document_with_code_2() {
-    shelf("books-show-json-no-ids", &["books", "show", "--json"])
+    shelf(&["books", "show", "--json"])
+        .unwrap()
         .code(2)
         .stdout_eq(file!["golden/books-show-json-no-ids.json"].raw())
         .stderr_eq("");
@@ -239,7 +238,8 @@ fn books_show_json_without_ids_prints_the_refusal_as_a_failure_document_with_cod
 
 #[test]
 fn help_lists_the_catalogue_topic_and_the_next_line() {
-    shelf("help", &["help"])
+    shelf(&["help"])
+        .unwrap()
         .success()
         .stdout_eq(file!["golden/help.txt"].raw())
         .stderr_eq("");
@@ -247,7 +247,8 @@ fn help_lists_the_catalogue_topic_and_the_next_line() {
 
 #[test]
 fn help_catalogue_prints_the_catalogue_topic() {
-    shelf("help-catalogue", &["help", "catalogue"])
+    shelf(&["help", "catalogue"])
+        .unwrap()
         .success()
         .stdout_eq(file!["golden/help-catalogue.txt"].raw())
         .stderr_eq("");
@@ -255,7 +256,8 @@ fn help_catalogue_prints_the_catalogue_topic() {
 
 #[test]
 fn help_books_show_prints_the_same_page_as_books_show_long_help() {
-    shelf("help-books-show", &["help", "books", "show"])
+    shelf(&["help", "books", "show"])
+        .unwrap()
         .success()
         .stdout_eq(file!["golden/help/shelf-books-show-help.txt"].raw())
         .stderr_eq("");
@@ -265,7 +267,8 @@ fn help_books_show_prints_the_same_page_as_books_show_long_help() {
 fn version_prints_shelf_and_its_version() {
     // The version holds the commit that shelf was built from, so the golden
     // file matches any text after the name.
-    shelf("version", &["--version"])
+    shelf(&["--version"])
+        .unwrap()
         .success()
         .stdout_eq(file!["golden/version.txt"])
         .stderr_eq("");
