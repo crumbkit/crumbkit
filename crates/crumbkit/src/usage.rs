@@ -2,7 +2,7 @@
 //! which records the shape of the run and never its values (ADR-0029).
 //!
 //! The log exists only with the `usage-log` feature, which is off by
-//! default. A tool's `main` calls [`start`] first and keeps the guard it
+//! default. A tool's `main` calls `start` first and keeps the guard it
 //! returns, as the example of `start` shows.
 //! [`parse`](crate::parse), [`finish`](crate::finish) and
 //! crumbkit-aliases' `expand` then report what the run did, and the guard

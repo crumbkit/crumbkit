@@ -66,6 +66,16 @@ jobs:
       # because no code is left out when a feature is on.
       - run: cargo +1.89.0 check --workspace --all-targets --all-features
       - run: cargo xtask check
+      # rustdoc fails on a warning, such as a broken link (DOCS-4). The
+      # workspace run documents crumbkit with the features that shelf turns
+      # on, and the crumbkit run documents its default build, where a link to
+      # an item behind a feature breaks.
+      - run: cargo doc --workspace --no-deps
+        env:
+          RUSTDOCFLAGS: -D warnings
+      - run: cargo doc -p crumbkit --no-deps
+        env:
+          RUSTDOCFLAGS: -D warnings
       # The advisories check runs nightly in scheduled.yml, because a new
       # advisory can appear when no code has changed (ADR-0012).
       - run: cargo deny check bans licenses sources

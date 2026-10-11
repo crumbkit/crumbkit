@@ -99,6 +99,9 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit: the usage log's `nearest` records the real flag when clap
   suggests a hidden alias, and records nothing when clap suggests a hidden
   flag ([`usage`]).
+- crumbkit: the rustdoc builds without warnings when the `usage-log`
+  feature is off, because it no longer links to `usage::start`, which only
+  that feature defines.
 - crumbkit-test: [`check_names`] skips hidden commands, everything below
   them and hidden arguments, because no help page shows them.
 
