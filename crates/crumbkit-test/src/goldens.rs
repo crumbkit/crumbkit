@@ -36,7 +36,10 @@ mod tests;
 /// The check compares each page with snapbox, as other golden files are
 /// compared (ADR-0004). With the environment variable `SNAPSHOTS=overwrite`,
 /// it writes each missing file, rewrites each file whose content differs
-/// and deletes each stale file. Otherwise it finds:
+/// and deletes each stale file. It finds two pages whose golden files have
+/// one name, such as the pages of `shelf books list` and of a root command
+/// `books-list`, naming both command lines, and compares or writes only the
+/// first of the two. Without `SNAPSHOTS=overwrite`, it also finds:
 ///
 /// - a page without a golden file;
 /// - a page that differs from its golden file, with snapbox's report of
@@ -72,15 +75,23 @@ pub fn check_help_goldens(command: &Command, guide: &Guide, dir: impl AsRef<Path
 fn check(command: &Command, guide: &Guide, dir: &Path, assert: &Assert) {
     let overwrite = assert.selected_action() == Action::Overwrite;
     let mut problems = Vec::new();
-    let mut names = Vec::new();
+    // Each golden file name with the command line of the page that has it.
+    let mut names: Vec<(String, String)> = Vec::new();
     for (flag, suffix) in [("-h", "h"), ("--help", "help")] {
         for (visit, page) in pages(command, guide, flag, &mut problems) {
             let line = format!("{} {flag}", visit.path());
             let name = format!("{}-{suffix}.txt", visit.path().replace(' ', "-"));
+            if let Some((_, other)) = names.iter().find(|(known, _)| *known == name) {
+                problems.push(format!(
+                    "{line}: the page's golden file name `{name}` is also the name for the page `{other}`"
+                ));
+                continue;
+            }
             compare(assert, &line, "page", page, &dir.join(&name), &mut problems);
-            names.push(name);
+            names.push((name, line));
         }
     }
+    let names: Vec<String> = names.into_iter().map(|(name, _)| name).collect();
     remove_stale(dir, &names, overwrite, "help page", &mut problems);
     tree::report("golden help rules", &problems);
 }

@@ -1,6 +1,7 @@
 # ADR-0011. CI lanes
 
 - Pull requests run a fast lane with a median wall time of at most 5 minutes. While the repository is private, the fast lane has two parallel work jobs, `lint` and `test`, on the single-CPU `ubuntu-slim` runner, because GitHub bills each job's minutes rounded up to a whole minute, every extra job repeats its setup time, and a slim minute costs a third of an `ubuntu-latest` minute.
+- `ci.yml` also runs `lint` and `test` on each push to `main`, so the merged code is tested even when `main` moved after a pull request's last run. This costs one extra run of the pull-request jobs per merge. A newer push to `main` cancels the run of an older one, and the repository has no merge queue, so `ci.yml` has no `merge_group` trigger.
 - The fast lane adds one required `gate` job when the repository becomes public and branch protection can require it. Until then `lint` and `test` report on their own.
 - `test` runs the tests with cargo-nextest, whose `ci` profile reports every failing test in one run, and runs the doctests with `cargo test --doc`, because nextest does not run doctests. It also checks the MSRV with `cargo +1.89.0 check --all-features`, which compiles the code behind every feature.
 - shelf turns on crumbkit's `usage-log` and `tracing` features, so the workspace runs build, test and lint crumbkit with both. `test` runs crumbkit's tests and doctests again on their own in the default build and with `miette`, and `lint` runs clippy on crumbkit in the same two builds and with `tracing` alone, which is the only build that compiles the spans without the usage log's ids. A separate `usage-log` run would repeat what the workspace runs already check. Each is one more step in an existing job, because a new job repeats the setup time and GitHub bills each job by the whole minute. Clippy runs once per build, because a single `--all-features` run misses a warning that only one build shows.
@@ -9,4 +10,4 @@
 - When a scheduled job fails, the `report` job comments the run's URL on the open issue titled "Scheduled CI failed", or opens that issue when none is open, so every failure stays on one issue.
 - Workflows start with `permissions: {}` and pin actions to commit SHAs, and zizmor lints the workflows and the Dependabot configuration in the `lint` job.
 
-Considered: one sequential job, one job per check, a separate job for each crumbkit feature, `ubuntu-latest` runners, `cargo test` for every test, sccache, code coverage, nightly macOS tests, one issue per failed run.
+Considered: one sequential job, no run on pushes to `main`, one job per check, a separate job for each crumbkit feature, `ubuntu-latest` runners, `cargo test` for every test, sccache, code coverage, nightly macOS tests, one issue per failed run.

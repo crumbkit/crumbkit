@@ -105,7 +105,7 @@ where
 /// way, the root included. A command that `guide` gives goals lists its
 /// subcommands under their headings, as
 /// [`help::extend`](crate::help::extend) describes, and crumbkit adds its
-/// lines:
+/// lines after the command's own `after_help` and `after_long_help`:
 ///
 /// - `-h` ends with a line that names the root's visible global flags, such
 ///   as ``Global flags: --json, --fields <FIELD>, --long, --full. `shelf

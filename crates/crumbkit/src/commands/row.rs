@@ -95,8 +95,10 @@ struct CommandColumn {
 impl CommandRow {
     /// Returns the row of `command`, whose path from the root of `tool`'s
     /// tree is `path`, the real names of its subcommands. `parent` is the
-    /// command above it, or `None` for the root, and `guide` holds the
-    /// leaf whose examples and columns the row lists.
+    /// command above it, or `None` for the first command of the branch,
+    /// whose row then lists every global argument it has, including those
+    /// it inherits. `guide` holds the leaf whose examples and columns the
+    /// row lists.
     ///
     /// The row reads only the command's name, about texts and arguments,
     /// and the guide. It never reads a command's help template,

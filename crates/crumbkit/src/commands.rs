@@ -174,6 +174,10 @@ impl JsonSchema for CommandsList {
 /// tool's name, its about texts, its arguments, and the examples and
 /// columns of the leaf in `guide` whose path names it.
 ///
+/// A global argument is listed once: on the command that defines it, or on
+/// the branch's first row when a command above the branch defines it, so a
+/// branch such as `shelf commands list books` shows `--json`.
+///
 /// The tree that [`parse`](crate::parse) returns has no `help`
 /// subcommands. A tool that builds its tree with plain clap and keeps
 /// clap's generated `help` subcommands sees them listed as commands.
@@ -203,13 +207,11 @@ pub fn list(
     let Some(root) = output.command() else {
         return Err(CommandsError::Unavailable.into());
     };
-    let mut parent = None;
     let mut node = root;
     let mut path = Vec::new();
     for word in &args.path {
         match node.find_subcommand(word) {
             Some(subcommand) if !subcommand.is_hide_set() => {
-                parent = Some(node);
                 node = subcommand;
                 path.push(subcommand.get_name());
             }
@@ -224,8 +226,10 @@ pub fn list(
             }
         }
     }
+    // The branch's first row has no parent, so it lists the global
+    // arguments that it inherits from the commands above the branch.
     let mut visits = Vec::new();
-    visit(node, parent, path, &mut visits);
+    visit(node, None, path, &mut visits);
     let total = visits.len();
     let shown = args.page.limit().unwrap_or(total);
     let rows = visits
@@ -248,7 +252,7 @@ pub fn list(
 struct Visit<'a> {
     /// The command.
     command: &'a Command,
-    /// The command above it, or `None` for the root.
+    /// The command above it, or `None` for the branch's first command.
     parent: Option<&'a Command>,
     /// The real names of the subcommands from the root to the command.
     path: Vec<&'a str>,

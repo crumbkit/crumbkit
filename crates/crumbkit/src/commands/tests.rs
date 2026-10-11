@@ -257,6 +257,19 @@ fn a_global_argument_is_listed_once_on_the_command_that_defines_it() {
 }
 
 #[test]
+fn a_branch_lists_the_global_arguments_of_the_commands_above_it_once_on_its_first_row() {
+    let rows = listed(&["books"]);
+
+    assert_eq!(argument_names(&rows, "shelf books"), ["--json"]);
+    assert_eq!(row(&rows, "shelf books")["arguments"][0]["global"], true);
+    assert_eq!(
+        argument_names(&rows, "shelf books list"),
+        ["--limit", "--form"]
+    );
+    assert_eq!(argument_names(&rows, "shelf books show"), ["<ID>"]);
+}
+
+#[test]
 fn an_argument_holds_what_its_help_shows() {
     let rows = listed(&["books"]);
 
