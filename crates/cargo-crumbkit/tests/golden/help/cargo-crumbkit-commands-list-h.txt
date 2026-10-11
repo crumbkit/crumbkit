@@ -1,0 +1,17 @@
+List a branch of cargo crumbkit's commands with their arguments, examples and columns
+
+Usage: cargo crumbkit commands list [OPTIONS] [PATH]...
+
+Arguments:
+  [PATH]...  The names of the commands below the root that lead to the branch, such as `books list`
+
+Options:
+      --limit <N>  Print at most this many rows [default: 25]
+      --all        Print every row
+  -h, --help       Print help (see more with '--help')
+
+Examples:
+  cargo crumbkit commands list
+
+Global flags: --json, --fields <FIELD>, --long, --full. `cargo crumbkit commands list --help` describes them.
+Next: cargo crumbkit commands list --help explains each column.

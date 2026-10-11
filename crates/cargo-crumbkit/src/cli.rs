@@ -9,6 +9,9 @@ use crumbkit::help::{Example, Goal, Group, Guide, Leaf};
 
 use crate::weigh::WEIGH;
 
+#[cfg(test)]
+mod tests;
+
 /// Cargo subcommands for tools built with crumbkit.
 // cargo runs the binary `cargo-crumbkit` with the words `crumbkit weigh`, so
 // the root is named `cargo` and `crumbkit` is its one subcommand. Help and

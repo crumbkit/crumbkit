@@ -90,6 +90,22 @@ pub(crate) enum WeighError {
     },
 }
 
+impl WeighError {
+    /// Every code that a `WeighError` returns. Only the tests read the list,
+    /// which they pass to crumbkit-test's codes check.
+    #[cfg(test)]
+    pub(crate) const CODES: &'static [&'static Code] = &[
+        &CARGO_UNAVAILABLE,
+        &BUILD_FAILED,
+        &NO_BINARY,
+        &NO_TEMP_DIR,
+        &TOOL_UNAVAILABLE,
+        &NO_COMMANDS_LIST,
+        &HELP_FAILED,
+        &GOLDEN_UNREADABLE,
+    ];
+}
+
 /// Prints what failed, such as ``` `cargo build --workspace --bin shelf`
 /// exited with exit status: 101 ```.
 impl fmt::Display for WeighError {

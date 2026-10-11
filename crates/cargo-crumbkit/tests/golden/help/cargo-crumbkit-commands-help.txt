@@ -1,0 +1,24 @@
+Explore cargo crumbkit's commands
+
+Usage: cargo crumbkit commands [OPTIONS] <COMMAND>
+
+Commands:
+  list  List a branch of cargo crumbkit's commands with their arguments, examples and columns
+
+Options:
+      --json
+          Print the result as a JSON document on one line
+
+      --fields <FIELD>
+          Print only these comma-separated fields, in this order
+
+      --long
+          Add the long columns after the compact ones
+
+      --full
+          With --json, print every field of every row
+
+  -h, --help
+          Print help (see a summary with '-h')
+
+Next: cargo crumbkit commands <COMMAND> -h

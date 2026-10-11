@@ -21,6 +21,9 @@ use crumbkit::Spelling;
 use crate::cli::{CargoCommand, CommandsCommand, CrumbkitCommand};
 pub use crate::cli::{Cli, GUIDE};
 
+#[cfg(test)]
+mod tests;
+
 /// How cargo-crumbkit spells its failure codes, such as
 /// `crumbkit::weigh::build_failed`. The tests pass the same spelling to
 /// crumbkit-test's codes check.

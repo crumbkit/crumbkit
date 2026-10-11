@@ -1,0 +1,12 @@
+Cargo subcommands for tools built with crumbkit
+
+Usage: cargo [OPTIONS] <COMMAND>
+
+Commands:
+  crumbkit  Measure and explore tools built with crumbkit
+
+Options:
+  -h, --help  Print help (see more with '--help')
+
+Global flags: --json, --fields <FIELD>, --long, --full. `cargo --help` describes them.
+Next: cargo <COMMAND> -h

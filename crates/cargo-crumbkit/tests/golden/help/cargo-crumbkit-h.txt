@@ -1,0 +1,16 @@
+Measure and explore tools built with crumbkit
+
+Usage: cargo crumbkit [OPTIONS] <COMMAND>
+
+Measure a tool's help
+  weigh     Measure the bytes that an agent reads on each path through a tool's help
+
+Explore the commands
+  commands  Explore cargo crumbkit's commands
+
+Options:
+  -h, --help     Print help (see more with '--help')
+  -V, --version  Print version
+
+Global flags: --json, --fields <FIELD>, --long, --full. `cargo crumbkit --help` describes them.
+Next: cargo crumbkit <COMMAND> -h
