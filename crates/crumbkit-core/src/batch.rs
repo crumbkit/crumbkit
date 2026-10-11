@@ -19,9 +19,9 @@ mod tests;
 /// A tool whose backend has a batch lookup, such as an SQL `IN` query or an
 /// API that takes many ids, builds the batch from that one call. A tool that
 /// can look up only one id per call runs its lookups with
-/// [`fetch_each`](crate::fetch_each).
+/// `crumbkit::fetch_each`.
 ///
-/// [`finish`](crate::finish) prints the rows as a `Vec` of rows prints, and
+/// `crumbkit::finish` prints the rows as a `Vec` of rows prints, and
 /// then each failure on standard error as it prints a failed command. A
 /// batch with no rows prints nothing on standard output in text. With
 /// `--json`, the document holds the rows under `data` and the failures under
@@ -29,10 +29,10 @@ mod tests;
 ///
 /// ```
 /// # use std::fmt;
-/// # use crumbkit::{Call, Code, Failure, Recovery};
+/// # use crumbkit_core::{Call, Code, Failure, Recovery};
 /// # #[derive(serde::Serialize, schemars::JsonSchema)]
 /// # struct Book { id: u32 }
-/// # impl crumbkit::Row for Book { const COLUMNS: &'static [&'static str] = &["id"]; }
+/// # impl crumbkit_core::Row for Book { const COLUMNS: &'static [&'static str] = &["id"]; }
 /// # const NOT_FOUND: Code = Code::new("shelf", "books", "not_found");
 /// # #[derive(Debug)]
 /// # struct NoSuchBooks(Vec<u32>);
@@ -49,18 +49,14 @@ mod tests;
 /// # fn find(id: u32) -> Result<Book, u32> {
 /// #     if id == 2 { Ok(Book { id }) } else { Err(id) }
 /// # }
-/// use std::num::NonZeroUsize;
-///
-/// use crumbkit::Batch;
-///
-/// const WORKERS: NonZeroUsize = NonZeroUsize::new(4).unwrap();
+/// use crumbkit_core::Batch;
 ///
 /// // `find` looks up one book and returns the id itself when it is missing.
 /// fn show(ids: &[u32]) -> Batch<Book, NoSuchBooks> {
 ///     let mut found = Vec::new();
 ///     let mut missing = Vec::new();
-///     for result in crumbkit::fetch_each(ids, WORKERS, |&id| find(id)) {
-///         match result {
+///     for &id in ids {
+///         match find(id) {
 ///             Ok(book) => found.push(book),
 ///             Err(id) => missing.push(id),
 ///         }
@@ -94,7 +90,7 @@ impl<R: Row, E: AsFailure> Batch<R, E> {
 }
 
 /// Serializes the batch as the array of its rows.
-/// [`finish`](crate::finish) writes the failures beside it, under
+/// `crumbkit::finish` writes the failures beside it, under
 /// `failures`.
 impl<R: Row, E: AsFailure> Serialize for Batch<R, E> {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {

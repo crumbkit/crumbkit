@@ -49,6 +49,9 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit-test: [`check_guide`] fails on two groups with one path.
 - crumbkit-aliases: the new crate expands a person's command aliases and
   lists them ([crumbkit-aliases], [ADR-0027]).
+- crumbkit-core: the new crate holds the types that need no clap, and
+  crumbkit re-exports each at its old path. `Call::render` comes from
+  crumbkit's [`RenderCall`] trait ([crumbkit-core], [ADR-0032]).
 
 ### Changed
 
@@ -92,21 +95,21 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 <!-- Each label below points at the source file that holds the item's
 rustdoc, or at its decision record. -->
 
-[`Row`]: crates/crumbkit/src/row.rs
-[`Document`]: crates/crumbkit/src/document.rs
+[`Row`]: crates/crumbkit-core/src/row.rs
+[`Document`]: crates/crumbkit-core/src/document.rs
 [`Output`]: crates/crumbkit/src/output.rs
 [`finish`]: crates/crumbkit/src/output.rs
 [`Page`]: crates/crumbkit/src/page.rs
-[`Listing`]: crates/crumbkit/src/listing.rs
-[`Call`]: crates/crumbkit/src/call.rs
-[`Failure`]: crates/crumbkit/src/failure.rs
-[`Recovery`]: crates/crumbkit/src/failure.rs
-[`Code`]: crates/crumbkit/src/code.rs
-[`Spelling`]: crates/crumbkit/src/code.rs
-[`Error`]: crates/crumbkit/src/failure.rs
-[`Batch`]: crates/crumbkit/src/batch.rs
+[`Listing`]: crates/crumbkit-core/src/listing.rs
+[`Call`]: crates/crumbkit-core/src/call.rs
+[`Failure`]: crates/crumbkit-core/src/failure.rs
+[`Recovery`]: crates/crumbkit-core/src/failure.rs
+[`Code`]: crates/crumbkit-core/src/code.rs
+[`Spelling`]: crates/crumbkit-core/src/code.rs
+[`Error`]: crates/crumbkit-core/src/failure.rs
+[`Batch`]: crates/crumbkit-core/src/batch.rs
 [`fetch_each`]: crates/crumbkit/src/fetch.rs
-[`report`]: crates/crumbkit/src/report.rs
+[`report`]: crates/crumbkit-core/src/report.rs
 [`parse`]: crates/crumbkit/src/parse.rs
 [`help`]: crates/crumbkit/src/help.rs
 [`help::quote`]: crates/crumbkit/src/help.rs
@@ -126,6 +129,8 @@ rustdoc, or at its decision record. -->
 [`check_examples`]: crates/crumbkit-test/src/examples.rs
 [`Examples`]: crates/crumbkit-test/src/examples.rs
 [crumbkit-aliases]: crates/crumbkit-aliases/README.md
+[crumbkit-core]: crates/crumbkit-core/README.md
+[`RenderCall`]: crates/crumbkit/src/call.rs
 [ADR-0001]: docs/decisions/api/0001-error-model.md
 [ADR-0004]: docs/decisions/testing/0004-golden-and-snapshot-tests.md
 [ADR-0007]: docs/decisions/api/0007-json-schemas.md
@@ -137,3 +142,4 @@ rustdoc, or at its decision record. -->
 [ADR-0027]: docs/decisions/api/0027-aliases.md
 [ADR-0029]: docs/decisions/api/usage/0029-usage-log.md
 [ADR-0030]: docs/decisions/api/usage/0030-trace-context.md
+[ADR-0032]: docs/decisions/api/0032-core-crate.md

@@ -23,6 +23,7 @@
 //! [golden files]: https://github.com/crumbkit/crumbkit/tree/main/examples/shelf/tests/golden
 //! [schemas]: https://github.com/crumbkit/crumbkit/tree/main/crates/crumbkit/schemas
 //! [crumbkit-test]: https://github.com/crumbkit/crumbkit/blob/main/crates/crumbkit-test/README.md
+//! [crumbkit-core]: https://github.com/crumbkit/crumbkit/blob/main/crates/crumbkit-core/README.md
 //! [ADR-0001]: https://github.com/crumbkit/crumbkit/blob/main/docs/decisions/api/0001-error-model.md
 //! [ADR-0007]: https://github.com/crumbkit/crumbkit/blob/main/docs/decisions/api/0007-json-schemas.md
 //! [ADR-0016]: https://github.com/crumbkit/crumbkit/blob/main/docs/decisions/api/output/0016-result-formats.md
@@ -32,40 +33,34 @@
 //! [ADR-0026]: https://github.com/crumbkit/crumbkit/blob/main/docs/decisions/api/help/0026-branch-export.md
 //! [ADR-0029]: https://github.com/crumbkit/crumbkit/blob/main/docs/decisions/api/usage/0029-usage-log.md
 //! [ADR-0030]: https://github.com/crumbkit/crumbkit/blob/main/docs/decisions/api/usage/0030-trace-context.md
+//! [ADR-0032]: https://github.com/crumbkit/crumbkit/blob/main/docs/decisions/api/0032-core-crate.md
 #![doc = include_str!("../README.md")]
 
-mod batch;
 mod call;
-mod code;
 pub mod commands;
-mod document;
 #[cfg(any(feature = "usage-log", feature = "tracing"))]
 mod exit;
-mod failure;
 mod fetch;
 pub mod help;
-mod listing;
 mod output;
 mod page;
 mod parse;
 mod refusal;
-#[cfg(feature = "miette")]
-mod report;
 mod row;
-mod segment;
 mod sink;
 pub mod trace;
 pub mod usage;
 
-pub use crate::batch::Batch;
-pub use crate::call::{Call, CallError};
-pub use crate::code::{Code, Spelling};
-pub use crate::document::Document;
-pub use crate::failure::{AsFailure, Error, Failure, Recovery};
+// crumbkit re-exports every item of crumbkit-core at the path it had in
+// crumbkit, so a tool depends on crumbkit alone (ADR-0032).
+pub use crumbkit_core::{
+    AsFailure, Batch, Call, CallError, CallTarget, Code, Document, Error, Failure, Listing,
+    Recovery, Row, Rows, Spelling,
+};
+
+pub use crate::call::RenderCall;
 pub use crate::fetch::fetch_each;
-pub use crate::listing::Listing;
 pub use crate::output::{Output, finish, finish_to};
 pub use crate::page::Page;
 pub use crate::parse::{parse, parse_from, parse_to};
-pub use crate::row::{Row, Rows};
 pub use crate::sink::Sink;

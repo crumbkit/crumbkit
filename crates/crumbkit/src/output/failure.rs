@@ -109,11 +109,16 @@ impl FailureDocument {
             .collect();
         let step = match failure.recovery() {
             Recovery::Run(call) => command
-                .and_then(|command| call.render_built(command).ok())
+                .and_then(|command| crate::call::render_built(&call, command).ok())
                 .map_or_else(|| Step::None(UNAVAILABLE.to_owned()), Step::Run),
             Recovery::Retry => Step::Retry,
             Recovery::Hint(text) => Step::Hint(text),
             Recovery::None { reason } => Step::None(reason),
+            // `Recovery` is `#[non_exhaustive]` and lives in crumbkit-core, so
+            // the compiler requires this arm. crumbkit-core releases with
+            // crumbkit (ADR-0012), so a new variant gets its own arm in the
+            // release that adds it, and this arm matches nothing until then.
+            _ => Step::None(UNAVAILABLE.to_owned()),
         };
         Self {
             code: spelling.spell(failure.code()),

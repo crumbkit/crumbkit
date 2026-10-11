@@ -12,15 +12,15 @@ mod tests;
 /// `shelf/books-list/v1`.
 ///
 /// A tool declares one constant for each result it prints, and passes it to
-/// [`finish`](crate::finish) with the result. The type parameter ties the id to
+/// `crumbkit::finish` with the result. The type parameter ties the id to
 /// the result type, so the compiler rejects a document paired with the wrong
 /// result.
 ///
 /// ```
 /// # #[derive(serde::Serialize, schemars::JsonSchema)]
 /// # struct Book { id: u32 }
-/// # impl crumbkit::Row for Book { const COLUMNS: &'static [&'static str] = &["id"]; }
-/// use crumbkit::Document;
+/// # impl crumbkit_core::Row for Book { const COLUMNS: &'static [&'static str] = &["id"]; }
+/// use crumbkit_core::Document;
 ///
 /// const BOOKS_LIST: Document<Vec<Book>> = Document::new("shelf", "books-list", 1);
 ///
@@ -53,7 +53,7 @@ impl<T> Document<T> {
     /// such arguments fails to compile:
     ///
     /// ```compile_fail
-    /// const BAD: crumbkit::Document<()> = crumbkit::Document::new("Shelf", "books-list", 1);
+    /// const BAD: crumbkit_core::Document<()> = crumbkit_core::Document::new("Shelf", "books-list", 1);
     /// ```
     #[must_use]
     pub const fn new(component: &'static str, name: &'static str, version: u32) -> Self {

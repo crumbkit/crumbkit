@@ -2,7 +2,8 @@
 
 use clap::{CommandFactory as _, Parser, Subcommand};
 
-use super::{Call, CallError};
+use super::RenderCall as _;
+use crate::{Call, CallError};
 
 /// A tool with a visible branch, a hidden command and a hidden argument.
 #[derive(Parser)]

@@ -12,7 +12,10 @@ use serde::{Serialize, Serializer};
 use super::{Output, finish_to};
 use crate::{Document, Error, Listing, Row, Rows, Sink, Spelling};
 
+mod batch;
 mod listing;
+#[cfg(feature = "miette")]
+mod report;
 
 /// A row with two compact columns, one long column and one field that only
 /// `--full` shows. The last field is renamed, so its column name is `au`.

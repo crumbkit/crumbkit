@@ -1,4 +1,4 @@
-//! Tests for batches and how `finish_to` prints them.
+//! Tests for how `finish_to` prints a batch: its rows, its failures and its document.
 
 use std::fmt;
 use std::io::{self, Write};
@@ -8,10 +8,9 @@ use clap::{CommandFactory as _, Parser, Subcommand};
 use schemars::JsonSchema;
 use serde::Serialize;
 
-use super::Batch;
 use crate::{
-    AsFailure, Call, Code, Document, Error, Failure, Listing, Output, Recovery, Row, Rows, Sink,
-    Spelling, finish_to,
+    AsFailure, Batch, Call, Code, Document, Error, Failure, Output, Recovery, Row, Sink, Spelling,
+    finish_to,
 };
 
 const NOT_FOUND: Code = Code::new("solar", "planets", "not_found");
@@ -487,23 +486,4 @@ fn a_failed_write_of_a_batch_exits_with_code_1_and_reports_the_cause_before_the_
         ),
         "{err}"
     );
-}
-
-#[test]
-fn only_a_batch_returns_failures_from_rows() {
-    let vec = vec![saturn()];
-    let listing = Listing::new(vec![saturn()], 1);
-    let batch = two_with(vec![missing("Vulcan")]);
-    let empty = two_with(Vec::new());
-
-    assert!(saturn().failures().is_none());
-    assert!(vec.failures().is_none());
-    assert!(listing.failures().is_none());
-    let failures = batch.failures().unwrap();
-    assert_eq!(failures.len(), 1);
-    assert_eq!(
-        failures[0].to_string(),
-        "the solar system has no planet Vulcan"
-    );
-    assert_eq!(empty.failures().map(|list| list.len()), Some(0));
 }

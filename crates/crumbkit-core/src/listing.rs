@@ -11,8 +11,8 @@ mod tests;
 /// phrase that names them, an optional note and an optional next step.
 ///
 /// A command returns a listing when it may show fewer rows than matched,
-/// and flattens [`Page`](crate::Page) into its arguments so the caller can
-/// choose how many. [`finish`](crate::finish) prints the total under `total`
+/// and flattens `crumbkit::Page` into its arguments so the caller can
+/// choose how many. `crumbkit::finish` prints the total under `total`
 /// in JSON. In text it prints a footer after the table when fewer rows are
 /// shown than the total, such as `Showing 4 of 6 books. --all shows every
 /// one.`, then the note, and then the next step, such as `Next: shelf books
@@ -21,8 +21,8 @@ mod tests;
 /// ```
 /// # #[derive(serde::Serialize, schemars::JsonSchema)]
 /// # struct Book { id: u32 }
-/// # impl crumbkit::Row for Book { const COLUMNS: &'static [&'static str] = &["id"]; }
-/// use crumbkit::{Call, Listing};
+/// # impl crumbkit_core::Row for Book { const COLUMNS: &'static [&'static str] = &["id"]; }
+/// use crumbkit_core::{Call, Listing};
 ///
 /// let books: Vec<Book> = (1..=6).map(|id| Book { id }).collect();
 /// let listing = Listing::from_all(books, Some(4))
@@ -117,8 +117,8 @@ impl<R: Row> Listing<R> {
     /// show <ID>... takes up to 100 ids in one call.` The JSON document
     /// leaves it out.
     ///
-    /// [`finish`](crate::finish) renders `call` against the command that
-    /// [`Output::set_command`](crate::Output::set_command) received, and
+    /// `crumbkit::finish` renders `call` against the command that
+    /// `crumbkit::Output::set_command` received, and
     /// leaves the line out when no command is set or `call` does not
     /// resolve. The phrase prints unchanged, so it carries its own full stop.
     #[must_use]
@@ -128,7 +128,7 @@ impl<R: Row> Listing<R> {
     }
 }
 
-/// Serializes the listing as the array of its rows. [`finish`](crate::finish)
+/// Serializes the listing as the array of its rows. `crumbkit::finish`
 /// writes the total beside it, under `total`.
 impl<R: Row> Serialize for Listing<R> {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {

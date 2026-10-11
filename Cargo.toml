@@ -2,6 +2,7 @@
 resolver = "3"
 members = [
     "crates/crumbkit",
+    "crates/crumbkit-core",
     "crates/crumbkit-aliases",
     "crates/crumbkit-test",
     "examples/shelf",
@@ -16,6 +17,10 @@ license = "MIT OR Apache-2.0"
 repository = "https://github.com/crumbkit/crumbkit"
 
 [workspace.dependencies]
+# crumbkit depends on crumbkit-core, which holds the types that need no clap
+# (ADR-0032). The entry gives a version beside the path, because cargo-deny
+# treats a path dependency without a version as a wildcard (ADR-0012).
+crumbkit-core = { version = "0.0.0", path = "crates/crumbkit-core" }
 # shelf depends on the crumbkit library in this workspace. The entry gives a
 # version beside the path, because cargo-deny treats a path dependency without
 # a version as a wildcard (ADR-0012).

@@ -5,9 +5,6 @@ use std::fmt;
 
 use crate::{Code, Error, Failure, Recovery};
 
-#[cfg(test)]
-mod tests;
-
 /// The code of every failure that comes from a `miette::Report`.
 const UNCHECKED: Code = Code::new("crumbkit", "report", "unchecked");
 
@@ -16,7 +13,8 @@ const NO_ADVICE: &str = "the error gives no advice";
 
 /// Converts a `miette::Report` into an `Error`, so `?` works on a
 /// `miette::Result` inside a handler that returns `Result<_, Error>`. The
-/// conversion exists only with crumbkit's `miette` feature.
+/// conversion exists only with the `miette` feature, which crumbkit's own
+/// `miette` feature turns on.
 ///
 /// The failure's code is `crumbkit::report::unchecked` in the tool's
 /// spelling for every report, because a report's own code is free text that
@@ -35,7 +33,7 @@ const NO_ADVICE: &str = "the error gives no advice";
 ///
 /// ```
 /// # use std::fmt;
-/// # use crumbkit::{Code, Failure, Recovery};
+/// # use crumbkit_core::{Code, Failure, Recovery};
 /// # const NOT_FOUND: Code = Code::new("shelf", "books", "not_found");
 /// # #[derive(Debug)]
 /// # struct NoSuchBook(u32);
@@ -50,7 +48,7 @@ const NO_ADVICE: &str = "the error gives no advice";
 /// #     fn code(&self) -> &'static Code { &NOT_FOUND }
 /// #     fn recovery(&self) -> Recovery { Recovery::Retry }
 /// # }
-/// fn classify(report: miette::Report) -> crumbkit::Error {
+/// fn classify(report: miette::Report) -> crumbkit_core::Error {
 ///     match report.downcast::<NoSuchBook>() {
 ///         Ok(failure) => failure.into(),
 ///         Err(report) => report.into(),

@@ -12,6 +12,9 @@ categories = ["command-line-interface"]
 include = ["src/**/*.rs", "schemas/*.json", "README.md", "LICENSE-APACHE", "LICENSE-MIT"]
 
 [dependencies]
+# crumbkit re-exports every item of crumbkit-core at the path the item had in
+# crumbkit, so a tool adds only crumbkit (ADR-0032).
+crumbkit-core = { workspace = true }
 # `Output` and `Page` derive `clap::Args`. `Page` gives `--limit` a default
 # that it formats at runtime from its const parameter, and clap accepts a
 # default held in an owned `String` only with its `string` feature.
@@ -43,8 +46,9 @@ tracing = { workspace = true, optional = true }
 
 [features]
 # `miette` is off by default, so the default build has no miette code and no
-# miette dependency (ADR-0003).
-miette = ["dep:miette"]
+# miette dependency (ADR-0003). It turns on crumbkit-core's `miette` feature,
+# which adds `Failure::diagnostic`.
+miette = ["dep:miette", "crumbkit-core/miette"]
 # `usage-log` is off by default, so the default build has no usage log code
 # and none of its dependencies (ADR-0003, ADR-0029). It enables serde's and
 # schemars' `derive`, because the usage record derives `Serialize` and

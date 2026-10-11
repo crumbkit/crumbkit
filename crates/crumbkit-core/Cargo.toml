@@ -1,0 +1,49 @@
+[package]
+name = "crumbkit-core"
+description = "The failure model, document ids, calls and row types of crumbkit, without clap"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+readme = "README.md"
+keywords = ["errors", "agents", "json", "schema"]
+categories = ["rust-patterns"]
+include = ["src/**/*.rs", "README.md", "LICENSE-APACHE", "LICENSE-MIT"]
+
+# clap must not enter this crate's dependency tree, because a crate that is
+# not a command-line tool, such as a web server, depends on crumbkit-core
+# alone. `deny.toml` bans clap for every crate that it does not list as a
+# direct user (ADR-0032).
+[dependencies]
+# `Row`, `Rows`, `Listing` and `Batch` need `Serialize`. crumbkit-core
+# implements `Serialize` by hand, so it needs no serde feature.
+serde = { workspace = true }
+# `Row` requires `JsonSchema`, so `--fields` and a leaf's columns can read a
+# row type's fields from its schema. The trait needs no schemars feature.
+schemars = { workspace = true }
+# The `miette` feature adds `Failure::diagnostic` and converts a
+# `miette::Report` into `Error` (ADR-0001). crumbkit-core needs no miette
+# feature.
+miette = { workspace = true, optional = true }
+
+[features]
+# `miette` is off by default, so the default build has no miette code and no
+# miette dependency (ADR-0003). crumbkit's `miette` feature turns it on.
+miette = ["dep:miette"]
+
+[dev-dependencies]
+# The tests and the README example derive `Serialize` and `JsonSchema` for
+# their rows.
+serde = { workspace = true, features = ["derive"] }
+schemars = { workspace = true, features = ["derive"] }
+# The listing tests compare a listing's JSON with a `serde_json::json!` value.
+# `std` is needed for serde_json to build at all.
+serde_json = { workspace = true, features = ["std"] }
+# `std` builds proptest on the standard library and gives the strategies that
+# generate strings from a regular expression, which the code segment tests
+# use.
+proptest = { workspace = true, features = ["std"] }
+
+[lints]
+workspace = true

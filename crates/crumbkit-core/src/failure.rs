@@ -12,7 +12,7 @@ mod tests;
 /// next step.
 ///
 /// A tool implements it beside `std::error::Error` for each of its error
-/// types. [`finish`](crate::finish) prints the error's `Display` as the
+/// types. `crumbkit::finish` prints the error's `Display` as the
 /// failure's message, each error in its `source()` chain as a cause, the
 /// recovery, the code in the tool's [`Spelling`](crate::Spelling), and the
 /// url when there is one.
@@ -20,7 +20,7 @@ mod tests;
 /// ```
 /// use std::fmt;
 ///
-/// use crumbkit::{Call, Code, Failure, Recovery};
+/// use crumbkit_core::{Call, Code, Failure, Recovery};
 ///
 /// const NOT_FOUND: Code = Code::new("shelf", "books", "not_found");
 ///
@@ -62,10 +62,11 @@ pub trait Failure: std::error::Error {
 
     /// Returns the failure as a `miette::Diagnostic` whose labels point into
     /// a source, such as a settings file, or `None`, the default. The method
-    /// exists only with crumbkit's `miette` feature.
+    /// exists only with the `miette` feature, which crumbkit's own
+    /// `miette` feature turns on.
     ///
     /// A failure type that also implements `miette::Diagnostic` returns
-    /// `Some(self)`. [`finish`](crate::finish) then reads the diagnostic's
+    /// `Some(self)`. `crumbkit::finish` then reads the diagnostic's
     /// `labels()` against its `source_code()`, and prints each label as an
     /// `at:` line with the source line and an underline in text, and under
     /// `labels` in JSON. crumbkit reads nothing else from the diagnostic, so
@@ -73,7 +74,7 @@ pub trait Failure: std::error::Error {
     ///
     /// ```
     /// # use std::fmt;
-    /// # use crumbkit::{Code, Failure, Recovery};
+    /// # use crumbkit_core::{Code, Failure, Recovery};
     /// # const UNKNOWN_KEY: Code = Code::new("shelf", "config", "unknown_key");
     /// # #[derive(Debug)]
     /// # struct UnknownKey { source: String, at: usize }
@@ -122,9 +123,9 @@ pub trait Failure: std::error::Error {
 #[derive(Clone, Debug, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum Recovery {
-    /// Run this command, such as `shelf books list`. [`finish`](crate::finish)
+    /// Run this command, such as `shelf books list`. `crumbkit::finish`
     /// renders the call against the command that
-    /// [`Output::set_command`](crate::Output::set_command) received. When no
+    /// `crumbkit::Output::set_command` received. When no
     /// command is set or the call does not resolve, the failure prints as
     /// `None` with the reason `the suggested command is not available`.
     Run(Call),
@@ -143,7 +144,7 @@ pub enum Recovery {
 /// can return one type and use `?` on each.
 ///
 /// Every type that implements `Failure`, `Send` and `Sync` converts into an
-/// `Error`, and [`finish`](crate::finish) prints it as it prints the failure
+/// `Error`, and `crumbkit::finish` prints it as it prints the failure
 /// inside.
 ///
 /// `Error` does not implement `Failure`. If it did, the blanket `From` impl
@@ -158,7 +159,7 @@ pub enum Recovery {
 ///
 /// ```
 /// # use std::fmt;
-/// # use crumbkit::{Code, Failure, Recovery};
+/// # use crumbkit_core::{Code, Failure, Recovery};
 /// # const TIMED_OUT: Code = Code::new("shelf", "network", "timed_out");
 /// # #[derive(Debug)]
 /// # struct Timeout;
@@ -174,7 +175,7 @@ pub enum Recovery {
 ///     Err(Timeout)
 /// }
 ///
-/// fn handler() -> Result<String, crumbkit::Error> {
+/// fn handler() -> Result<String, crumbkit_core::Error> {
 ///     let text = fetch()?;
 ///     Ok(text)
 /// }
@@ -221,7 +222,7 @@ impl std::error::Error for Error {
     }
 }
 
-/// A value that [`finish`](crate::finish) prints as a failure: any
+/// A value that `crumbkit::finish` prints as a failure: any
 /// [`Failure`], or an [`Error`].
 ///
 /// `finish` takes a handler's `Result<T, E>` with `E: AsFailure`, so a
