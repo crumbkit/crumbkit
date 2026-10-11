@@ -28,6 +28,15 @@ mod record;
 #[cfg(feature = "usage-log")]
 mod recorder;
 #[cfg(feature = "usage-log")]
+#[cfg_attr(
+    not(test),
+    expect(
+        dead_code,
+        reason = "only the tests read the report until the `self usage` command exists"
+    )
+)]
+mod report;
+#[cfg(feature = "usage-log")]
 mod shape;
 #[cfg(all(feature = "usage-log", test))]
 mod testing;
