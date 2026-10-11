@@ -302,3 +302,6 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - SIGINT or SIGTERM during the usage log's write at the end of a run waits
   for the write to finish, for at most 500 ms, before it ends the process,
   so the signal no longer cuts the line in half.
+- A trim of the usage log writes the kept lines to a temporary file and
+  renames it over the log, under a lock on a separate `usage.lock`, so a run
+  that ends during a trim no longer leaves an empty log.
