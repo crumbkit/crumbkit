@@ -205,7 +205,7 @@ pub fn check_help_sizes(command: &Command, guide: &Guide, budgets: &Budgets) {
     // A command whose page failed to render has no entry in `pages`, so the
     // budgets are matched against the visible tree, and that command's one
     // problem is the page that `pages` reports.
-    let visible = tree::walk_visible(command);
+    let visible = tree::walk_visible(command, &[], &mut problems);
     for &(path, budget) in budgets.nodes {
         let visit = visible
             .iter()

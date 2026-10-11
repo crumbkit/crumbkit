@@ -8,6 +8,7 @@ use clap::parser::ValueSource;
 use clap::{ArgMatches, Command};
 
 use super::record::{Name, Run};
+use crate::parse::suggestion::find_flag;
 
 #[cfg(test)]
 mod tests;
@@ -65,6 +66,8 @@ pub(super) fn refused(
 ) {
     let path = subcommands(command, path);
     let node = path.last().copied().unwrap_or(command);
+    let mut commands = vec![command];
+    commands.extend(&path);
     let unknown = words
         .iter()
         .take_while(|word| *word != "--")
@@ -72,7 +75,7 @@ pub(super) fn refused(
         .count();
     run.command = Name::path(&path);
     run.unknown_flags = (unknown > 0).then_some(unknown);
-    run.nearest = nearest(node, error);
+    run.nearest = nearest(&commands, error);
 }
 
 /// Adds to `flags` the name of each flag of `node` that the command line
@@ -160,22 +163,27 @@ fn names_no_flag(node: &Command, word: Option<&str>) -> bool {
     })
 }
 
-/// Returns the flag of `node` that clap suggested in `error` for a flag it
+/// Returns the real flag that clap suggested in `error` for a flag it
 /// refused, such as `--all` for `--al`, or `None` when clap suggested none.
+/// `commands` holds the root and each command on the path below it.
+///
+/// clap can suggest a hidden alias, such as `--max` of `--limit`, and the
+/// record then holds the real flag, `--limit`, as `parse`'s refusal does. A
+/// suggestion of a hidden flag, or of a hidden alias of one, is not
+/// recorded.
 //
 // RUST-10: this reads the suggestion from clap's rendered text, as
 // `parse`'s refusal message does, because clap gives the suggestion through
 // `Error::get` only with its `error-context` feature, which a tool chooses.
 // It misses a suggestion when clap changes the wording, and then records no
 // `nearest`. Reading `Error::get` replaces it if crumbkit enables that
-// feature. The suggestion is recorded only when it names a flag of `node`,
-// so the record never holds other text.
-fn nearest(node: &Command, error: &clap::Error) -> Option<Name> {
+// feature. The suggestion is recorded only when it names a flag of the
+// commands, so the record never holds other text.
+fn nearest(commands: &[&Command], error: &clap::Error) -> Option<Name> {
     let text = error.render().to_string();
     let (_, rest) = text.split_once("a similar argument exists: '")?;
     let (suggestion, _) = rest.split_once('\'')?;
-    let long = suggestion.strip_prefix("--")?;
-    node.get_arguments()
-        .find(|arg| arg.get_long() == Some(long))
+    find_flag(suggestion, commands)
+        .filter(|arg| !arg.is_hide_set())
         .and_then(Name::flag)
 }

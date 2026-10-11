@@ -16,6 +16,7 @@ use crate::refusal::Refusal;
 use crate::{Sink, Spelling};
 
 mod lines;
+pub(crate) mod suggestion;
 #[cfg(test)]
 mod tests;
 mod walk;
@@ -183,6 +184,12 @@ where
 ///   help:  run `shelf books show -h`
 ///   code:  crumbkit::cli::usage
 /// ```
+///
+/// clap suggests from every name that a flag or a subcommand accepts. When
+/// it suggests a hidden alias, such as `--max` of `--limit`, the message
+/// names the real flag or subcommand instead, once. The message leaves out a
+/// suggested flag or subcommand that the tool hid, and leaves out clap's tip
+/// when it suggests nothing else.
 ///
 /// A command line that stops at a command with subcommands, such as `shelf
 /// books`, prints the message ``the command `shelf books` needs a
@@ -425,23 +432,33 @@ fn exit_code<O: Write, E: Write>(sink: &mut Sink<O, E>, written: io::Result<()>)
 /// A command line that stops at a command that needs more, which clap
 /// answers with that command's help page or a list of its subcommands, says
 /// what the command needs. Every other refusal is clap's own message, from
-/// [`message`].
+/// [`message`], with the real name in place of each name that clap
+/// suggests and without the names of hidden items, from
+/// [`suggestion::real_names`].
 fn refusal_message(command: &Command, path: &[String], error: &clap::Error) -> String {
+    let mut text = command.get_name().to_owned();
+    let mut commands = vec![command];
+    for name in path {
+        text.push(' ');
+        text.push_str(name);
+        if let Some(subcommand) = commands.last().and_then(|node| node.find_subcommand(name)) {
+            commands.push(subcommand);
+        }
+    }
     if !matches!(
         error.kind(),
         ErrorKind::DisplayHelpOnMissingArgumentOrSubcommand | ErrorKind::MissingSubcommand
     ) {
-        return message(&error.render().to_string());
+        // `message` joins the parts with `; `, and `real_names` changes or
+        // drops only a part that starts with clap's suggestion, so splitting
+        // on `; ` and joining again keeps every other part as it was.
+        return message(&error.render().to_string())
+            .split("; ")
+            .filter_map(|part| suggestion::real_names(part, &commands))
+            .collect::<Vec<_>>()
+            .join("; ");
     }
-    let mut text = command.get_name().to_owned();
-    let mut node = command;
-    for name in path {
-        text.push(' ');
-        text.push_str(name);
-        if let Some(subcommand) = node.find_subcommand(name) {
-            node = subcommand;
-        }
-    }
+    let node = commands.last().copied().unwrap_or(command);
     if has_visible_subcommands(node) {
         format!("the command `{text}` needs a subcommand")
     } else {

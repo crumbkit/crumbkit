@@ -91,6 +91,19 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   before they take another id.
 - crumbkit-aliases: `aliases list` says that an entry named `help` loses to
   the tool's own help ([crumbkit-aliases]).
+- crumbkit: a refusal from [`parse`] names the real flag or subcommand
+  where clap suggests a hidden alias, and names it once.
+- crumbkit: a refusal from [`parse`] leaves out each command or flag that
+  clap suggests and the tool hid, and leaves out clap's tip when nothing
+  else remains.
+- crumbkit: the usage log's `nearest` records the real flag when clap
+  suggests a hidden alias, and records nothing when clap suggests a hidden
+  flag ([`usage`]).
+- crumbkit: the rustdoc builds without warnings when the `usage-log`
+  feature is off, because it no longer links to `usage::start`, which only
+  that feature defines.
+- crumbkit-test: [`check_names`] skips hidden commands, everything below
+  them and hidden arguments, because no help page shows them.
 
 <!-- Each label below points at the source file that holds the item's
 rustdoc, or at its decision record. -->

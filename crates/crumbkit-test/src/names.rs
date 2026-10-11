@@ -21,13 +21,17 @@ const ARGUMENT_RULE: &str = "and help shows one name for each argument";
 /// Help is what agents read and copy. A visible alias costs help tokens on
 /// every read and teaches a second spelling. A hidden alias costs neither,
 /// and lets a renamed command or flag keep its old name for a while, or
-/// accept a common wrong guess. crumbkit's `Next:` lines and recoveries print
-/// the real name, so a caller who uses a hidden alias still sees the real one.
+/// accept a common wrong guess. crumbkit's `Next:` lines, recoveries and
+/// refusal suggestions print the real name, so a caller who uses a hidden
+/// alias still sees the real one.
 ///
-/// The check walks `command` and every subcommand below it, including hidden
-/// ones, and skips each command that `exempt` names and everything below it.
-/// An exemption is a command's path below `command`, such as `"books list"`,
-/// and an exemption that names no command is a problem. The check finds:
+/// The check covers what help shows: `command`, every visible subcommand
+/// below it and every visible argument of each. It skips each hidden command
+/// and everything below it and each hidden argument, because no help page
+/// shows them, and it skips each command that `exempt` names and everything
+/// below it. An exemption is a command's path below `command`, such as
+/// `"books list"`, and an exemption that names no command is a problem. The
+/// check finds:
 ///
 /// - a command with a visible alias, a visible short-flag alias or a visible
 ///   long-flag alias;
@@ -36,8 +40,9 @@ const ARGUMENT_RULE: &str = "and help shows one name for each argument";
 ///   command's name;
 /// - an argument with a visible long alias or a visible short alias.
 ///
-/// Hidden aliases pass. An argument may have one short form beside its long
-/// name, such as `-l` with `--limit`, and clap allows at most one.
+/// Hidden aliases pass, and so does a visible alias of a hidden command or
+/// argument. An argument may have one short form beside its long name, such
+/// as `-l` with `--limit`, and clap allows at most one.
 ///
 /// A command that the tool gives to `Command::defer` adds its arguments only
 /// when clap builds it, and the check reads the unbuilt tree, so it sees no
@@ -62,7 +67,7 @@ const ARGUMENT_RULE: &str = "and help shows one name for each argument";
 /// as `shelf books list`.
 pub fn check_names(command: &Command, exempt: &[&str]) {
     let mut problems = Vec::new();
-    for visit in tree::walk(command, exempt, &mut problems) {
+    for visit in tree::walk_visible(command, exempt, &mut problems) {
         let path = visit.path();
         let command = visit.command();
         for alias in command.get_visible_aliases() {
@@ -90,7 +95,7 @@ pub fn check_names(command: &Command, exempt: &[&str]) {
                 "{path}: the command has the visible long flag alias `--{alias}`, {COMMAND_RULE}"
             ));
         }
-        for arg in command.get_arguments() {
+        for arg in command.get_arguments().filter(|arg| !arg.is_hide_set()) {
             let name = argument_name(arg);
             for alias in arg.get_visible_aliases().unwrap_or_default() {
                 problems.push(format!(

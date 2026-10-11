@@ -5,7 +5,7 @@
 //! with tracing on or another crumbkit tool, puts its trace context in the
 //! `TRACEPARENT` and `TRACESTATE` environment variables, as OpenTelemetry's
 //! environment-variable carrier describes. With the `usage-log` feature,
-//! [`usage::start`](crate::usage::start) reads both once. A valid
+//! `usage::start` reads both once. A valid
 //! `TRACEPARENT` gives the run the caller's trace id and names the caller's
 //! span as the run's parent. A missing or invalid one starts a new trace with
 //! a random id and no parent, and the run then discards the caller's
