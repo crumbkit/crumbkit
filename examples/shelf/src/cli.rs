@@ -10,7 +10,7 @@ use crumbkit_aliases::AliasesList;
 use schemars::JsonSchema;
 use serde::Serialize;
 
-use crate::books::{BOOKS_LIST, BOOKS_SHOW};
+use crate::books::{BOOKS_LIST, BOOKS_SHOW, MOST_IDS};
 
 #[cfg(test)]
 mod tests;
@@ -153,7 +153,7 @@ pub(crate) struct BooksShow {
     #[arg(
         required = true,
         value_name = "ID",
-        num_args = 1..=100,
+        num_args = 1..=MOST_IDS,
         conflicts_with = "from"
     )]
     pub(crate) ids: Vec<u32>,

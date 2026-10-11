@@ -1,8 +1,10 @@
 //! The built-in book catalogue.
 
+use std::fmt;
+use std::fs::File;
+use std::io::{self, BufRead, BufReader};
 use std::num::NonZeroUsize;
 use std::path::Path;
-use std::{fmt, fs, io};
 
 use crumbkit::{Batch, Call, Code, Document, Failure, Listing, Recovery, Row};
 use miette::{Diagnostic, LabeledSpan, NamedSource, SourceCode, SourceSpan};
@@ -22,6 +24,10 @@ pub(crate) const BOOKS_LIST: Document<Listing<Book>> = Document::new("shelf", "b
 /// that the catalogue holds, and a failure naming the ids it lacks.
 pub(crate) const BOOKS_SHOW: Document<Batch<Book, BooksError>> =
     Document::new("shelf", "books-show", 1);
+
+/// The most ids that `shelf books show` takes in one call, on the command
+/// line or in the file that `--from` names.
+pub(crate) const MOST_IDS: usize = 100;
 
 /// The number of threads that `show` looks up books on. The catalogue
 /// lookups are in memory, so one worker runs them in the calling thread; a
@@ -162,43 +168,96 @@ pub(crate) fn show(args: &BooksShow) -> Result<Batch<Book, BooksError>, BooksErr
 
 /// Returns the ids in the file at `path`, in file order. Each line holds one
 /// id, with any spaces around it, and a line that holds nothing else is
-/// skipped.
+/// skipped. The file holds at least 1 and at most [`MOST_IDS`] ids, as the
+/// command line does, and reading stops at the line of the id after the
+/// last one allowed.
 ///
 /// # Errors
 ///
 /// Returns `BooksError::UnreadableIdsFile` when the file cannot be read as
-/// UTF-8 text, and `BooksError::BadIdsFile`, which points at the first line
-/// that is not a book id, when a line is not one.
+/// UTF-8 text, `BooksError::BadIdsFile` at the first line that is not a book
+/// id, `BooksError::TooManyIds` at the line of the id after the last one
+/// allowed, and `BooksError::EmptyIdsFile` when the file holds no id.
 fn read_ids(path: &Path) -> Result<Vec<u32>, BooksError> {
     let name = path.display().to_string();
-    let text = match fs::read_to_string(path) {
-        Ok(text) => text,
-        Err(error) => return Err(BooksError::UnreadableIdsFile { name, error }),
+    let mut text = String::new();
+    let problem = match File::open(path) {
+        Ok(file) => match parse_ids(&mut BufReader::new(file), &mut text) {
+            Ok(ids) => return Ok(ids),
+            Err(problem) => problem,
+        },
+        Err(error) => IdsFileProblem::Unreadable(error),
     };
-    parse_ids(&text).map_err(|(span, problem)| BooksError::BadIdsFile {
-        file: NamedSource::new(name, text),
-        span,
-        problem,
+    Err(match problem {
+        IdsFileProblem::Unreadable(error) => BooksError::UnreadableIdsFile { name, error },
+        IdsFileProblem::BadLine { span, reason } => BooksError::BadIdsFile {
+            file: NamedSource::new(name, text),
+            span,
+            problem: reason,
+        },
+        IdsFileProblem::TooMany { span } => BooksError::TooManyIds {
+            file: NamedSource::new(name, text),
+            span,
+        },
+        IdsFileProblem::Empty => BooksError::EmptyIdsFile { name },
     })
 }
 
-/// Returns the ids in `text`, one per line, as [`read_ids`] describes, or
-/// the span of the first id that does not parse with the parser's reason.
-fn parse_ids(text: &str) -> Result<Vec<u32>, (SourceSpan, String)> {
+/// Why an ids file gives no ids. [`read_ids`] turns each into a
+/// `BooksError` that holds the file's name and, for a line, the text read.
+#[derive(Debug)]
+enum IdsFileProblem {
+    /// The file cannot be read as UTF-8 text.
+    Unreadable(io::Error),
+    /// The text at `span` is not a book id, for the parser's `reason`.
+    BadLine {
+        /// The span of the line's text without the spaces around it.
+        span: SourceSpan,
+        /// Why the text is not a book id.
+        reason: String,
+    },
+    /// The id at `span` comes after the last one allowed.
+    TooMany {
+        /// The span of the id without the spaces around it.
+        span: SourceSpan,
+    },
+    /// The file holds no id.
+    Empty,
+}
+
+/// Returns the ids that `reader` holds, one per line, as [`read_ids`]
+/// describes. It appends each line it reads to `text`, so `text` holds the
+/// file up to the line that a problem points at.
+fn parse_ids(reader: &mut impl BufRead, text: &mut String) -> Result<Vec<u32>, IdsFileProblem> {
     let mut ids = Vec::new();
-    let mut line_start = 0;
-    for line in text.split_inclusive('\n') {
+    loop {
+        let line_start = text.len();
+        let read = reader.read_line(text).map_err(IdsFileProblem::Unreadable)?;
+        if read == 0 {
+            break;
+        }
+        let line = &text[line_start..];
         let id = line.trim();
-        if !id.is_empty() {
-            match id.parse::<u32>() {
-                Ok(id) => ids.push(id),
-                Err(error) => {
-                    let start = line_start + (line.len() - line.trim_start().len());
-                    return Err((SourceSpan::new(start.into(), id.len()), error.to_string()));
-                }
+        if id.is_empty() {
+            continue;
+        }
+        let start = line_start + (line.len() - line.trim_start().len());
+        let span = SourceSpan::new(start.into(), id.len());
+        if ids.len() == MOST_IDS {
+            return Err(IdsFileProblem::TooMany { span });
+        }
+        match id.parse::<u32>() {
+            Ok(id) => ids.push(id),
+            Err(error) => {
+                return Err(IdsFileProblem::BadLine {
+                    span,
+                    reason: error.to_string(),
+                });
             }
         }
-        line_start += line.len();
+    }
+    if ids.is_empty() {
+        return Err(IdsFileProblem::Empty);
     }
     Ok(ids)
 }
@@ -221,6 +280,12 @@ const UNREADABLE_IDS_FILE: Code = Code::new("shelf", "books", "unreadable_ids_fi
 
 /// The code of a failure whose ids file holds a line that is not a book id.
 const BAD_IDS_FILE: Code = Code::new("shelf", "books", "bad_ids_file");
+
+/// The code of a failure whose ids file holds more than [`MOST_IDS`] ids.
+const TOO_MANY_IDS: Code = Code::new("shelf", "books", "too_many_ids");
+
+/// The code of a failure whose ids file holds no id.
+const EMPTY_IDS_FILE: Code = Code::new("shelf", "books", "empty_ids_file");
 
 /// A failure of a books command.
 #[derive(Debug)]
@@ -247,20 +312,39 @@ pub(crate) enum BooksError {
         /// Why the text is not a book id, as the id parser says it.
         problem: String,
     },
+    /// The file that `--from` names holds more than [`MOST_IDS`] ids.
+    TooManyIds {
+        /// The file's text up to the line of the first id after the last
+        /// one allowed, named by its path as the caller gave it.
+        file: NamedSource<String>,
+        /// The span of the first id after the last one allowed.
+        span: SourceSpan,
+    },
+    /// The file that `--from` names holds no id.
+    EmptyIdsFile {
+        /// The path of the file as the caller gave it.
+        name: String,
+    },
 }
 
 impl BooksError {
     /// Every code that a `BooksError` returns. Only shelf's test reads the
     /// list, which it passes to crumbkit-test's codes check.
     #[cfg(test)]
-    pub(crate) const CODES: &'static [&'static Code] =
-        &[&NOT_FOUND, &UNREADABLE_IDS_FILE, &BAD_IDS_FILE];
+    pub(crate) const CODES: &'static [&'static Code] = &[
+        &NOT_FOUND,
+        &UNREADABLE_IDS_FILE,
+        &BAD_IDS_FILE,
+        &TOO_MANY_IDS,
+        &EMPTY_IDS_FILE,
+    ];
 }
 
 /// Prints `the catalogue has no book 7` for one id, and `the catalogue has no
 /// books 7, 9` for more. An unreadable ids file prints `cannot read the ids
 /// file ids.txt`, and a bad line prints `the ids file holds a line that is
-/// not a book id`, with a label that says what is wrong with the line.
+/// not a book id`, with a label that says what is wrong with the line. A
+/// file with too many ids or with none names the file.
 impl fmt::Display for BooksError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
@@ -279,6 +363,12 @@ impl fmt::Display for BooksError {
             Self::BadIdsFile { .. } => {
                 f.write_str("the ids file holds a line that is not a book id")
             }
+            Self::TooManyIds { file, .. } => write!(
+                f,
+                "the ids file {} holds more than {MOST_IDS} ids",
+                file.name()
+            ),
+            Self::EmptyIdsFile { name } => write!(f, "the ids file {name} holds no book ids"),
         }
     }
 }
@@ -289,30 +379,42 @@ impl std::error::Error for BooksError {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         match self {
             Self::UnreadableIdsFile { error, .. } => Some(error),
-            Self::NotFound { .. } | Self::BadIdsFile { .. } => None,
+            Self::NotFound { .. }
+            | Self::BadIdsFile { .. }
+            | Self::TooManyIds { .. }
+            | Self::EmptyIdsFile { .. } => None,
         }
     }
 }
 
-/// A bad line in the ids file has the file as its source code and one label
-/// on the line's text, so crumbkit prints the line with an underline. The
-/// other failures have neither.
+/// A bad line in the ids file, and the id after the last one allowed, have
+/// the file as their source code and one label on the line's text, so
+/// crumbkit prints the line with an underline. The other failures have
+/// neither.
 impl Diagnostic for BooksError {
     fn source_code(&self) -> Option<&dyn SourceCode> {
         match self {
-            Self::BadIdsFile { file, .. } => Some(file),
-            Self::NotFound { .. } | Self::UnreadableIdsFile { .. } => None,
+            Self::BadIdsFile { file, .. } | Self::TooManyIds { file, .. } => Some(file),
+            Self::NotFound { .. } | Self::UnreadableIdsFile { .. } | Self::EmptyIdsFile { .. } => {
+                None
+            }
         }
     }
 
     fn labels(&self) -> Option<Box<dyn Iterator<Item = LabeledSpan> + '_>> {
-        match self {
+        let label = match self {
             Self::BadIdsFile { span, problem, .. } => {
-                let label = LabeledSpan::new_with_span(Some(problem.clone()), *span);
-                Some(Box::new(std::iter::once(label)))
+                LabeledSpan::new_with_span(Some(problem.clone()), *span)
             }
-            Self::NotFound { .. } | Self::UnreadableIdsFile { .. } => None,
-        }
+            Self::TooManyIds { span, .. } => LabeledSpan::new_with_span(
+                Some(format!("this is id {} of the file", MOST_IDS + 1)),
+                *span,
+            ),
+            Self::NotFound { .. } | Self::UnreadableIdsFile { .. } | Self::EmptyIdsFile { .. } => {
+                return None;
+            }
+        };
+        Some(Box::new(std::iter::once(label)))
     }
 }
 
@@ -324,25 +426,32 @@ impl Failure for BooksError {
             Self::NotFound { .. } => &NOT_FOUND,
             Self::UnreadableIdsFile { .. } => &UNREADABLE_IDS_FILE,
             Self::BadIdsFile { .. } => &BAD_IDS_FILE,
+            Self::TooManyIds { .. } => &TOO_MANY_IDS,
+            Self::EmptyIdsFile { .. } => &EMPTY_IDS_FILE,
         }
     }
 
     fn recovery(&self) -> Recovery {
-        match self {
-            Self::NotFound { .. } => Recovery::Run(Call::new(&["books", "list"])),
+        let hint = match self {
+            Self::NotFound { .. } => return Recovery::Run(Call::new(&["books", "list"])),
             Self::UnreadableIdsFile { .. } => {
-                Recovery::Hint("pass --from a file that exists and that shelf can read".to_owned())
+                "pass --from a file that exists and that shelf can read".to_owned()
             }
-            Self::BadIdsFile { .. } => {
-                Recovery::Hint("each line of the ids file holds one book id".to_owned())
+            Self::BadIdsFile { .. } => "each line of the ids file holds one book id".to_owned(),
+            Self::TooManyIds { .. } => {
+                format!("the ids file holds at most {MOST_IDS} ids, as the command line does")
             }
-        }
+            Self::EmptyIdsFile { .. } => "the ids file needs at least one book id".to_owned(),
+        };
+        Recovery::Hint(hint)
     }
 
     fn diagnostic(&self) -> Option<&dyn Diagnostic> {
         match self {
-            Self::BadIdsFile { .. } => Some(self),
-            Self::NotFound { .. } | Self::UnreadableIdsFile { .. } => None,
+            Self::BadIdsFile { .. } | Self::TooManyIds { .. } => Some(self),
+            Self::NotFound { .. } | Self::UnreadableIdsFile { .. } | Self::EmptyIdsFile { .. } => {
+                None
+            }
         }
     }
 }

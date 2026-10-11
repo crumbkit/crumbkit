@@ -1,0 +1,6 @@
+error: the ids file ids.txt holds more than 100 ids
+  at:    ids.txt:101:1: this is id 101 of the file
+   101 | 1
+       | ^
+  help:  the ids file holds at most 100 ids, as the command line does
+  code:  shelf::books::too_many_ids

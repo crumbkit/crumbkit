@@ -272,6 +272,24 @@ fn books_show_from_a_file_that_cannot_be_read_fails_with_its_own_code_and_code_1
 }
 
 #[test]
+fn books_show_from_a_file_with_101_ids_points_at_the_101st_and_exits_with_code_1() {
+    shelf_with_ids_file(&"1\n".repeat(101), &["books", "show", "--from", "ids.txt"])
+        .unwrap()
+        .code(1)
+        .stdout_eq("")
+        .stderr_eq(file!["golden/books-show-from-101-ids.stderr"].raw());
+}
+
+#[test]
+fn books_show_from_a_file_with_only_blank_lines_fails_with_code_1() {
+    shelf_with_ids_file("\n  \n", &["books", "show", "--from", "ids.txt"])
+        .unwrap()
+        .code(1)
+        .stdout_eq("")
+        .stderr_eq(file!["golden/books-show-from-no-ids.stderr"].raw());
+}
+
+#[test]
 fn books_show_with_ids_and_from_is_refused_with_code_2() {
     shelf_with_ids_file("5\n", &["books", "show", "2", "--from", "ids.txt"])
         .unwrap()
