@@ -111,10 +111,11 @@ where
 /// [`help::extend`](crate::help::extend) describes, and crumbkit adds its
 /// lines after the command's own `after_help` and `after_long_help`:
 ///
-/// - `-h` ends with a line that names the root's visible global flags, such
-///   as ``Global flags: --json, --fields <FIELD>, --long, --full. `shelf
-///   books list --help` describes them.`` crumbkit hides those flags from
-///   `-h`, so `-h` stays short and `--help` lists them in full.
+/// - `-h` ends with a line that names the visible global flags of the root
+///   and of each command on the way, the root's first, such as ``Global
+///   flags: --json, --fields <FIELD>, --long, --full. `shelf books list
+///   --help` describes them.`` crumbkit hides those flags from `-h`, so `-h`
+///   stays short and `--help` lists them in full.
 /// - The root's help names the guide's topics on one line, such as
 ///   ``Topics: catalogue. `shelf help <TOPIC>` prints one.``, in `-h` and in
 ///   `--help`.

@@ -313,3 +313,5 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - `parse` skips each option's values when it walks the typed words, so
   `shelf --fields books` no longer walks into `books`, and `shelf --fields id
   help` prints help.
+- A global flag that a subcommand defines is hidden from `-h` and named on
+  the `Global flags:` line of that subcommand and each command below it.

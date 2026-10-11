@@ -20,12 +20,15 @@ use crate::help::{self, Guide, Leaf, Topic, leaf, topic};
 /// `--help` describes the leaf's columns only when `long_help` is set,
 /// because that builds the row type's JSON Schema.
 ///
-/// It hides the root's visible global flags from `-h` first, so the copies
-/// that clap gives each subcommand are hidden too. It then builds the root
-/// alone with `Command::render_usage`, because `Arg`'s `Display` reads an
-/// option's number of values, which clap sets in the build. The parse that
-/// follows builds only the commands it reaches, and `Command::build` would
-/// build the whole tree.
+/// Each command on the path, the root included, hides its own visible global
+/// flags from `-h` before clap builds it, so the copies that clap gives each
+/// subcommand below it are hidden too. It then builds that command alone
+/// with `Command::render_usage`, because `Arg`'s `Display` reads an option's
+/// number of values, which clap sets in the build. The `Global flags:` line
+/// of a command names the visible global flags of the root and of each
+/// command on the path down to it, the root's first. The parse that follows
+/// builds only the commands it reaches, which are the same commands, and
+/// `Command::build` would build the whole tree.
 pub(super) fn add_help_lines(
     command: &mut Command,
     guide: &Guide,
@@ -33,20 +36,6 @@ pub(super) fn add_help_lines(
     path: &[String],
     long_help: bool,
 ) {
-    *command = std::mem::take(command).mut_args(|arg| {
-        if arg.is_global_set() && !arg.is_hide_set() {
-            arg.hide_short_help(true)
-        } else {
-            arg
-        }
-    });
-    let _ = command.render_usage();
-    let flags: Vec<String> = command
-        .get_arguments()
-        .filter(|arg| arg.is_global_set() && !arg.is_hide_set())
-        .map(ToString::to_string)
-        .collect();
-    let flags = flags.join(", ");
     let topics = topic::names(topics).join(", ");
     // Every guided page prints with the root's styles, as in `help::extend`.
     let styles = command.get_styles();
@@ -55,9 +44,13 @@ pub(super) fn add_help_lines(
     let leaf = guide.get_leaves().iter().find(|leaf| leaf.path() == path);
 
     let mut text = command.get_name().to_owned();
+    // The ids and the text of the global flags of the commands so far.
+    let mut flags: Vec<(String, String)> = Vec::new();
     let mut node = command;
     let mut depth = 0;
     loop {
+        add_global_flags(node, &mut flags);
+        let flag_list: Vec<&str> = flags.iter().map(|(_, flag)| flag.as_str()).collect();
         apply_groups(node, guide, &path[..depth], header, literal);
         let sections = match leaf {
             Some(leaf) if depth == path.len() => {
@@ -66,7 +59,7 @@ pub(super) fn add_help_lines(
             _ => Sections::default(),
         };
         let topics = if depth == 0 { topics.as_str() } else { "" };
-        set_help_lines(node, &text, &flags, topics, sections);
+        set_help_lines(node, &text, &flag_list.join(", "), topics, sections);
         let Some(name) = path.get(depth) else {
             break;
         };
@@ -77,6 +70,31 @@ pub(super) fn add_help_lines(
         text.push_str(name);
         node = subcommand;
         depth += 1;
+    }
+}
+
+/// Hides the visible global flags of `node` from `-h`, builds `node` alone,
+/// and adds to `flags` the id and the text of each visible global flag of
+/// `node` whose id `flags` does not hold yet, in definition order.
+///
+/// The build copies the global flags of `node` into each of its
+/// subcommands, so those copies are hidden too. A global flag of a command
+/// above `node` is already in `flags`, from that command.
+fn add_global_flags(node: &mut Command, flags: &mut Vec<(String, String)>) {
+    *node = std::mem::take(node).mut_args(|arg| {
+        if arg.is_global_set() && !arg.is_hide_set() {
+            arg.hide_short_help(true)
+        } else {
+            arg
+        }
+    });
+    let _ = node.render_usage();
+    for arg in node.get_arguments() {
+        let id = arg.get_id().as_str();
+        let listed = flags.iter().any(|(listed, _)| listed == id);
+        if arg.is_global_set() && !arg.is_hide_set() && !listed {
+            flags.push((id.to_owned(), arg.to_string()));
+        }
     }
 }
 
