@@ -34,6 +34,10 @@ const UNAVAILABLE: Code = Code::new("crumbkit", "aliases", "unavailable");
 /// The problem of an entry whose name a real command takes.
 const SHADOWED: &str = "the tool has a command or built-in alias of this name, which wins";
 
+/// The problem of an entry named `help` in a tool without a command of that
+/// name. crumbkit answers the word `help` itself, before any alias expands.
+const HELP: &str = "the tool answers the word help with its own help, which wins";
+
 /// The problem of an entry whose value is not a list of one or more words.
 const BAD_VALUE: &str = "the value must be a list of one or more words";
 
@@ -178,7 +182,9 @@ fn rows(
     entries.sort_by_key(|&(name, _)| name);
     for (name, value) in entries {
         let words = words(value);
-        let problem = if wins(command, name) {
+        let problem = if name == "help" && command.find_subcommand(name).is_none() {
+            HELP
+        } else if wins(command, name) {
             SHADOWED
         } else if words.is_none() {
             BAD_VALUE
