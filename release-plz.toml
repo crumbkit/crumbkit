@@ -4,14 +4,10 @@
 # out, such as `semver_check = true`, which runs cargo-semver-checks against the
 # last published version from 0.1.1 onward.
 
-[workspace]
-# release-plz releases no crate while this is false, so a merge to main cannot
-# publish the workspace's 0.0.0. The owner publishes 0.1.0 by hand and then
-# deletes this line, which turns publishing on.
-#
-# The owner's one-time steps, which the pull request that deletes this line
-# also deletes. Steps 1 and 2 come before release.yml first runs on main,
-# because its pull-request job needs the App's secrets:
+# The owner's one-time steps before the first automated release. The pull
+# request that follows the last step deletes this comment. release.yml runs
+# no job until step 6 sets the RELEASE_ENABLED variable, so a merge to main
+# cannot publish the workspace's 0.0.0.
 #
 # 1. Create a GitHub App for release pull requests, in the crumbkit
 #    organisation's settings under Developer settings, GitHub Apps. Give it
@@ -47,8 +43,11 @@
 #    Publishing, and add a GitHub publisher with the owner `crumbkit`, the
 #    repository `crumbkit`, the workflow `release.yml` and the environment
 #    `crates-io`.
-# 6. Merge a pull request that deletes this comment and the line below.
-release = false
+# 6. In the repository's settings under Secrets and variables, Actions,
+#    Variables, add the repository variable RELEASE_ENABLED with the value
+#    `true`.
+
+[workspace]
 # Only crumbkit updates the changelog and tags the release, because the five
 # crates share one CHANGELOG.md and one tag (ADR-0012).
 changelog_update = false
