@@ -1,9 +1,9 @@
 # The release lane of ADR-0011 and ADR-0012. On each push to main, release-plz
 # opens or updates the release pull request, and publishes to crates.io every
 # version that crates.io does not have yet. release-plz.toml says which crates
-# it releases, and its `release = false` keeps it from releasing any crate
-# until the owner turns publishing on. Both jobs run only in this repository,
-# so a push to a fork's main does nothing. Neither job uses rust-cache,
+# it releases. Both jobs run only in this repository, so a push to a fork's
+# main does nothing, and only while the repository variable RELEASE_ENABLED
+# is `true`, which the owner sets after publishing 0.1.0 by hand. Neither job uses rust-cache,
 # because a poisoned cache would reach the published crates, and zizmor fails
 # a release workflow that restores a cache.
 name: Release
@@ -20,7 +20,7 @@ jobs:
   # tags the release and creates its GitHub release. It has no concurrency
   # group, because a newer push to main would cancel a publish halfway.
   publish:
-    if: github.repository == 'crumbkit/crumbkit'
+    if: github.repository == 'crumbkit/crumbkit' && vars.RELEASE_ENABLED == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     # crates.io trusted publishing accepts a token request only from this
@@ -52,7 +52,7 @@ jobs:
   # request that the job's own token opens, and the ruleset needs ci.yml's
   # `gate` check.
   pull-request:
-    if: github.repository == 'crumbkit/crumbkit'
+    if: github.repository == 'crumbkit/crumbkit' && vars.RELEASE_ENABLED == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
