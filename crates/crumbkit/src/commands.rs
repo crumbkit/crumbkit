@@ -101,6 +101,10 @@ const UNAVAILABLE: Code = Code::new("crumbkit", "commands", "unavailable");
 /// `PATH` that names no visible command runs.
 const COMMANDS_LIST: &[&str] = &["commands", "list"];
 
+/// The help text of `PATH`, which the schema also uses as its description.
+const PATH_HELP: &str =
+    "The names of the commands below the root that lead to the branch, such as `books list`";
+
 /// The arguments of `<tool> commands list`: the names of the commands that
 /// lead from the root to the branch, and the paging flags.
 ///
@@ -108,8 +112,7 @@ const COMMANDS_LIST: &[&str] = &["commands", "list"];
 /// in the [module example](self).
 #[derive(Args, Clone, Debug, PartialEq, Eq)]
 pub struct CommandsList {
-    /// The names of the commands below the root that lead to the branch, such as `books list`
-    #[arg(value_name = "PATH")]
+    #[arg(value_name = "PATH", help = PATH_HELP)]
     path: Vec<String>,
 
     /// How many commands to print.
@@ -148,7 +151,7 @@ impl JsonSchema for CommandsList {
     fn json_schema(generator: &mut SchemaGenerator) -> Schema {
         let mut schema = <Page as JsonSchema>::json_schema(generator);
         let path = json_schema!({
-            "description": "The names of the commands below the root that lead to the branch, such as `books list`.",
+            "description": PATH_HELP,
             "type": "array",
             "items": { "type": "string" },
         });
