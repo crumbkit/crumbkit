@@ -1,5 +1,5 @@
 //! The CI time check: the median wall time of recent successful pull-request
-//! runs of `.github/workflows/ci.yml` may be at most 300 seconds (CI-3).
+//! runs of `.github/workflows/ci.yml` may be at most 180 seconds (CI-3).
 
 use std::fmt;
 
@@ -14,7 +14,7 @@ pub(crate) const WORKFLOW_FILE: &str = "ci.yml";
 pub(crate) const RUNS: usize = 20;
 
 /// The largest median wall time, in seconds, that passes.
-const LIMIT_SECONDS: u64 = 300;
+const LIMIT_SECONDS: u64 = 180;
 
 /// The outcome of measuring the recent runs.
 #[derive(Debug, PartialEq, Eq)]
@@ -29,7 +29,7 @@ pub(crate) enum Report {
         runs: usize,
         /// The median wall time in whole seconds. For an even number of runs
         /// it is the mean of the middle two, rounded up, so a median between
-        /// 300 and 301 seconds fails.
+        /// 180 and 181 seconds fails.
         seconds: u64,
     },
 }
@@ -65,7 +65,7 @@ pub(crate) fn measure(seconds: &[u64]) -> Report {
 
 /// Prints the report as one line that starts with the workflow path, such as
 /// `.github/workflows/ci.yml: 65 seconds median wall time of 20 pull-request
-/// runs, limit 300`.
+/// runs, limit 180`.
 impl fmt::Display for Report {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
