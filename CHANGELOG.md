@@ -32,7 +32,7 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   ([ADR-0026]).
 - crumbkit: [`help::quote`] quotes one word for a POSIX shell.
 - crumbkit: the [schemas] directory holds the JSON Schemas of the
-  `crumbkit/failure/v1`, `crumbkit/commands/v1` and `crumbkit/usage/v1`
+  `crumbkit/failure/v1`, `crumbkit/commands-list/v1` and `crumbkit/usage/v1`
   documents ([ADR-0007]).
 - crumbkit: the `usage-log` feature appends one line per run to a local
   usage log ([`usage`], [ADR-0029]). A run joins its caller's W3C trace,
@@ -59,6 +59,16 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   prints the bytes of each command's help pages and example output, and
   each path's total ([cargo-crumbkit], [ADR-0033]). crumbkit-test's
   [`example_golden_name`] names each example's golden file.
+- crumbkit: [`schemas`] gives a tool `schemas list`, which lists the JSON
+  documents it prints, and `schemas show <ID>...`, which prints the JSON
+  Schema of each ([ADR-0035]).
+- crumbkit: [`Document`] takes a one-line description, and each document's
+  name is the path of the command that prints it, such as
+  `crumbkit/commands-list/v1` ([ADR-0007]).
+- crumbkit-test: [`check_schema_goldens`] pins the JSON Schema of each
+  document a tool prints, [`check_document_ids`] checks each document's
+  name, and [`check_mounts`] checks the paths of crumbkit's commands
+  ([ADR-0035]).
 
 ### Changed
 
@@ -140,6 +150,7 @@ rustdoc, or at its decision record. -->
 [`help`]: crates/crumbkit/src/help.rs
 [`help::quote`]: crates/crumbkit/src/help.rs
 [`commands`]: crates/crumbkit/src/commands.rs
+[`schemas`]: crates/crumbkit/src/schemas.rs
 [`usage`]: crates/crumbkit/src/usage.rs
 [`trace`]: crates/crumbkit/src/trace.rs
 [`trace::child_env`]: crates/crumbkit/src/trace.rs
@@ -174,3 +185,7 @@ rustdoc, or at its decision record. -->
 [`example_golden_name`]: crates/crumbkit-test/src/examples.rs
 [ADR-0033]: docs/decisions/api/help/0033-weigh.md
 [ADR-0034]: docs/decisions/api/usage/0034-usage-report.md
+[ADR-0035]: docs/decisions/api/0035-schema-commands.md
+[`check_schema_goldens`]: crates/crumbkit-test/src/schemas.rs
+[`check_document_ids`]: crates/crumbkit-test/src/documents.rs
+[`check_mounts`]: crates/crumbkit-test/src/documents.rs

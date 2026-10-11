@@ -1,7 +1,7 @@
 # ADR-0024. Leaf examples and columns
 
 - A tool declares its leaves in its `Guide`. Each [`Leaf`](../../../../crates/crumbkit/src/help/leaf.rs) names a command by the real names of its subcommands from the root, as `Group` does, and holds its examples and the `Document` it prints.
-- `Leaf::document` keeps the row type's columns and a function pointer that builds its JSON Schema. `Leaf` therefore has no type parameter, and one guide holds leaves whose rows have different types.
+- `Leaf::document` keeps the document's id and description, the row type's columns, and function pointers that build the row's JSON Schema and the whole document's. `Leaf` therefore has no type parameter, and one guide holds leaves whose rows have different types. `Leaf::get_document` and `Leaf::document_schema` return them, for `schemas list`, `schemas show` and crumbkit-test's document checks (ADR-0035).
 - A leaf's `-h` lists the examples as full command lines, and ends with a `Next:` line that points to `--help` for the columns. A leaf's `--help` describes each example and each column.
 - A column's description is the doc comment of the row type's field, which schemars puts into the JSON Schema, so the doc comment is the only place a column is described. `--help` and crumbkit-test's `check_guide` both read the columns through `Leaf::column_descriptions`, so the check sees what the page prints.
 - `parse` builds the schema only when the typed words ask for `--help`, so a run that prints no long help never builds it.

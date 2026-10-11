@@ -6,6 +6,6 @@
 - A tool can lower a budget with [`Budgets`](../../../../crates/crumbkit-test/src/sizes.rs) and cannot raise one.
 - `check_help_goldens` compares each page with a golden file through snapbox (ADR-0004). It fails on a stale file, so the directory holds only help golden files.
 - `check_guide` holds the leaf rules (ADR-0024).
-- crumbkit-test has no bundled check that runs every check. Each check has its own settings and a tool calls each from its own `#[test]`, so a failure names the rule that broke.
+- crumbkit-test has no bundled check that runs every check. Each check has its own settings and a tool calls each from its own `#[test]`, so a failure names the rule that broke. By the same rule, `check_document_ids` and `check_mounts` are separate checks (ADR-0035): a wrong document name is fixed by renaming the document, and a crumbkit command at the wrong path is fixed by moving the command.
 
 Considered: measuring clap's `render_help` after `extend`, a plain `&[(path, bytes)]` slice of node budgets, a budget on `--help`, leaf rules in a separate `check_leaves`, a bundled `check(command, guide)`.
