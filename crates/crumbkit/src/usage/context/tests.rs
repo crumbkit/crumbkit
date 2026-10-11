@@ -1,4 +1,4 @@
-use super::Context;
+use super::{Context, tracestate};
 
 /// The caller's TRACEPARENT in the tests, with flags `ff`.
 const CALLER: &str = "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-ff";
@@ -70,10 +70,28 @@ fn a_new_trace_gives_its_children_the_sampled_and_random_flags() {
 }
 
 #[test]
-fn tracestate_passes_to_a_child_unchanged_only_with_a_valid_traceparent() {
-    let valid = context(Some(CALLER), Some("vendor=opaque,other=1")).child_env();
-    let invalid = context(Some("s3cr3t"), Some("vendor=opaque")).child_env();
+fn tracestate_passes_to_a_child_unchanged_with_a_valid_traceparent() {
+    let env = context(Some(CALLER), Some("vendor=opaque,other=1")).child_env();
 
-    assert_eq!(valid[1], ("TRACESTATE", "vendor=opaque,other=1".to_owned()));
-    assert_eq!(invalid.len(), 1);
+    assert_eq!(env[1], ("TRACESTATE", "vendor=opaque,other=1".to_owned()));
+}
+
+#[test]
+fn a_new_trace_gives_a_child_an_empty_tracestate_when_the_caller_set_one() {
+    let set = context(Some("s3cr3t"), Some("vendor=opaque")).child_env();
+    let unset = context(Some("s3cr3t"), None).child_env();
+
+    assert_eq!(set[1], ("TRACESTATE", String::new()));
+    assert_eq!(set.len(), 2);
+    assert_eq!(unset.len(), 1);
+}
+
+#[test]
+fn a_tracestate_that_is_not_utf_8_counts_as_empty() {
+    use std::os::unix::ffi::OsStringExt as _;
+
+    let state = tracestate(Some(std::ffi::OsString::from_vec(vec![0x76, 0xff])));
+
+    assert_eq!(state, Some(String::new()));
+    assert_eq!(tracestate(None), None);
 }

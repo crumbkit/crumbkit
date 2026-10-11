@@ -10,6 +10,7 @@ use schemars::JsonSchema;
 use serde::Serialize;
 use tracing::field::{Field, Visit};
 use tracing::span::{Attributes, Id, Record};
+use tracing::subscriber::Interest;
 use tracing::{Event, Level, Metadata, Subscriber};
 use tracing_core::span::Current;
 
@@ -54,9 +55,13 @@ impl Sightings {
 }
 
 /// A subscriber that keeps what it sees in shared memory, so the test reads
-/// it after the subscriber is gone.
+/// it after the subscriber is gone. With `quiet`, it disables every span
+/// whose target is `crumbkit`.
 #[derive(Clone, Default)]
-struct Collector(Arc<Mutex<Sightings>>);
+struct Collector {
+    seen: Arc<Mutex<Sightings>>,
+    quiet: bool,
+}
 
 /// Writes each field it visits into a list as text.
 struct Fields<'a>(&'a mut Vec<(&'static str, String)>);
@@ -77,12 +82,18 @@ fn index(id: &Id) -> usize {
 }
 
 impl Subscriber for Collector {
-    fn enabled(&self, _: &Metadata<'_>) -> bool {
-        true
+    // Each test installs its own collector, so the collector asks `enabled`
+    // on every call and never lets tracing cache one test's answer.
+    fn register_callsite(&self, _: &'static Metadata<'static>) -> Interest {
+        Interest::sometimes()
+    }
+
+    fn enabled(&self, metadata: &Metadata<'_>) -> bool {
+        !(self.quiet && metadata.target() == "crumbkit")
     }
 
     fn new_span(&self, span: &Attributes<'_>) -> Id {
-        let mut sightings = self.0.lock().unwrap();
+        let mut sightings = self.seen.lock().unwrap();
         let mut fields = Vec::new();
         span.record(&mut Fields(&mut fields));
         sightings.spans.push(Seen {
@@ -93,26 +104,26 @@ impl Subscriber for Collector {
     }
 
     fn record(&self, span: &Id, values: &Record<'_>) {
-        let mut sightings = self.0.lock().unwrap();
+        let mut sightings = self.seen.lock().unwrap();
         values.record(&mut Fields(&mut sightings.spans[index(span)].fields));
     }
 
     fn record_follows_from(&self, _: &Id, _: &Id) {}
 
     fn event(&self, _: &Event<'_>) {
-        self.0.lock().unwrap().events += 1;
+        self.seen.lock().unwrap().events += 1;
     }
 
     fn enter(&self, span: &Id) {
-        self.0.lock().unwrap().entered.push(span.clone());
+        self.seen.lock().unwrap().entered.push(span.clone());
     }
 
     fn exit(&self, _: &Id) {
-        self.0.lock().unwrap().entered.pop();
+        self.seen.lock().unwrap().entered.pop();
     }
 
     fn current_span(&self) -> Current {
-        let sightings = self.0.lock().unwrap();
+        let sightings = self.seen.lock().unwrap();
         match sightings.entered.last() {
             Some(id) => Current::new(id.clone(), sightings.spans[index(id)].metadata),
             None => Current::none(),
@@ -122,9 +133,14 @@ impl Subscriber for Collector {
 
 /// Returns what a subscriber for this thread saw while `run` ran.
 fn watch(run: impl FnOnce()) -> Sightings {
-    let collector = Collector::default();
+    watch_with(&Collector::default(), run)
+}
+
+/// Returns what `collector`, as the subscriber for this thread, saw while
+/// `run` ran.
+fn watch_with(collector: &Collector, run: impl FnOnce()) -> Sightings {
     tracing::subscriber::with_default(collector.clone(), run);
-    std::mem::take(&mut *collector.0.lock().unwrap())
+    std::mem::take(&mut *collector.seen.lock().unwrap())
 }
 
 /// A row with one column.
@@ -350,4 +366,30 @@ fn a_span_records_the_trace_id_and_the_run_s_id_that_the_usage_log_gives_it() {
             ("crumbkit.run", "2222222222222222".to_owned())
         ]
     );
+}
+
+#[test]
+fn a_subscriber_that_disables_crumbkit_s_spans_sees_no_crumbkit_field_on_the_tool_s_span() {
+    let collector = Collector {
+        quiet: true,
+        ..Collector::default()
+    };
+
+    let seen = watch_with(&collector, || {
+        let span = tracing::info_span!(
+            "solar",
+            "crumbkit.command" = tracing::field::Empty,
+            "error.type" = tracing::field::Empty,
+        );
+        let _entered = span.enter();
+        run(
+            &["solar", "planets", "show", "Vulcan"],
+            PLANETS,
+            Err(Missing),
+        );
+        let _ = parse(&["solar", "moons"]);
+    });
+
+    assert_eq!(seen.names(), ["solar"]);
+    assert_eq!(seen.fields("solar"), []);
 }

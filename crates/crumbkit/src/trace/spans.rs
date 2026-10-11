@@ -55,21 +55,35 @@ pub(crate) fn finish() -> Span {
 }
 
 /// Records the command path below the tool's name, such as `["books",
-/// "list"]`, on the current span, which is `crumbkit.parse` while `parse`
-/// runs. An empty path records nothing.
+/// "list"]`, on `crumbkit.parse` while `parse` runs. An empty path records
+/// nothing.
 pub(crate) fn command(path: &[String]) {
-    let span = Span::current();
-    if !span.is_disabled() && !path.is_empty() {
+    if let Some(span) = current()
+        && !path.is_empty()
+    {
         span.record("crumbkit.command", path.join(" "));
     }
 }
 
 /// Records `code`, a failure's code in the tool's spelling, as `error.type`
-/// on the current span, which is crumbkit's span while `parse` or `finish`
-/// runs. Each run prints at most one failure outside a batch, and a batch
-/// records only its first, so the field is recorded once.
+/// on crumbkit's span while `parse` or `finish` runs. Each run prints at
+/// most one failure outside a batch, and a batch records only its first, so
+/// the field is recorded once.
 pub(crate) fn failed(code: &str) {
-    Span::current().record("error.type", code);
+    if let Some(span) = current() {
+        span.record("error.type", code);
+    }
+}
+
+/// Returns the current span when it is one of crumbkit's, or `None`. When
+/// the subscriber disables crumbkit's spans, the current span is the tool's
+/// own, and crumbkit records nothing on it.
+fn current() -> Option<Span> {
+    let span = Span::current();
+    let ours = span
+        .metadata()
+        .is_some_and(|metadata| metadata.target() == "crumbkit");
+    ours.then_some(span)
 }
 
 /// Records `exit` as `process.exit.code` on `span`.

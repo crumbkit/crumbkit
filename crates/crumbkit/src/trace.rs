@@ -8,9 +8,9 @@
 //! [`usage::start`](crate::usage::start) reads both once. A valid
 //! `TRACEPARENT` gives the run the caller's trace id and names the caller's
 //! span as the run's parent. A missing or invalid one starts a new trace with
-//! a random id and no parent, and the run then discards `TRACESTATE`. Each
-//! run also has its own random id, and the usage log's line records the
-//! three ids as `trace`, `run` and `parent`.
+//! a random id and no parent, and the run then discards the caller's
+//! `TRACESTATE`. Each run also has its own random id, and the usage log's
+//! line records the three ids as `trace`, `run` and `parent`.
 //!
 //! A tool passes the trace to a child process with [`child_env`]:
 //!
@@ -71,20 +71,19 @@ pub(crate) mod spans;
 /// reached `parse`, it returns `TRACEPARENT` as
 /// `00-<trace id>-<run id>-<flags>`. The flags keep the caller's sampled
 /// bit (`01`) and random-trace-id bit (`02`) and clear the others, and a new
-/// trace has the flags `03`. When the caller's `TRACEPARENT` was valid and
-/// the caller set `TRACESTATE`, it also returns that `TRACESTATE` unchanged.
+/// trace has the flags `03`. When the caller set `TRACESTATE`, it also
+/// returns `TRACESTATE`: the caller's value unchanged when the caller's
+/// `TRACEPARENT` was valid, and an empty value when the run started a new
+/// trace. An empty `TRACESTATE` holds no entries, so a child started with
+/// `Command::envs` never inherits the state of the caller's trace beside the
+/// new trace's `TRACEPARENT`. When the caller set no `TRACESTATE`, it returns
+/// no `TRACESTATE`.
 ///
-/// Otherwise it returns no variables, so a child inherits the caller's
-/// `TRACEPARENT` unchanged, and never names a parent that nothing records.
-/// It exists in every build, so a tool calls it without a feature of its
-/// own, and without the `usage-log` feature it always returns no variables.
-//
-// RUST-10: the variables only add to the environment that the child
-// inherits. When the caller set `TRACESTATE` with a missing or invalid
-// `TRACEPARENT`, this run starts a new trace and returns no `TRACESTATE`, so
-// a child started with `Command::envs` still inherits the caller's
-// `TRACESTATE` beside the new `TRACEPARENT`. Returning `TRACESTATE` with an
-// empty value in that case replaces this once a child reads such a state.
+/// When nothing records this run, it returns no variables, so a child
+/// inherits the caller's `TRACEPARENT` and `TRACESTATE` unchanged, and never
+/// names a parent that nothing records. It exists in every build, so a tool
+/// calls it without a feature of its own, and without the `usage-log` feature
+/// it always returns no variables.
 #[must_use]
 pub fn child_env() -> Vec<(&'static str, String)> {
     #[cfg(feature = "usage-log")]
