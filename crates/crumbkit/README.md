@@ -111,11 +111,11 @@ fn main() -> ExitCode {
     };
     cli.output.set_command(command);
     let result = list(&cli);
-    crumbkit::finish(&cli.output, SPELLING, BOOKS_LIST, result)
+    crumbkit::finish(&mut cli.output, SPELLING, BOOKS_LIST, result)
 }
 ```
 
-The shelf example tool shows the exact output of a fuller tool in its
+The shelf example shows the exact output of a fuller tool in its
 [golden files].
 
 ## Where to read more

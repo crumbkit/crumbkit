@@ -31,7 +31,7 @@ fn printed(parse: impl FnOnce() -> miette::Result<Vec<Setting>>) -> String {
     let mut err = Vec::new();
     finish_to(
         &mut Sink::new(&mut out, &mut err),
-        &Output::default(),
+        &mut Output::default(),
         Spelling::DOTS,
         SETTINGS,
         handler(),

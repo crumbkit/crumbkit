@@ -55,7 +55,7 @@ struct Finished {
 }
 
 /// Finishes `result` into memory as a tool's handler does.
-fn finish(output: &Output, result: Result<Listing<AliasRow>, Error>) -> Finished {
+fn finish(output: &mut Output, result: Result<Listing<AliasRow>, Error>) -> Finished {
     let mut out = Vec::new();
     let mut err = Vec::new();
     let code = finish_to(
@@ -182,8 +182,8 @@ fn an_entry_whose_value_is_not_a_list_of_one_or_more_words_says_so() {
 fn a_missing_file_lists_the_built_in_aliases_and_a_note_says_it_does_not_exist_yet() {
     let missing = Path::new(env!("CARGO_MANIFEST_DIR")).join("no-such-aliases.toml");
 
-    let listing = list(&output(), Some(&missing), &args(&["--limit", "1"])).unwrap();
-    let finished = finish(&output(), Ok(listing));
+    let listing = list(&mut output(), Some(&missing), &args(&["--limit", "1"])).unwrap();
+    let finished = finish(&mut output(), Ok(listing));
 
     assert_eq!(
         finished.out,
@@ -201,7 +201,7 @@ fn a_missing_file_lists_the_built_in_aliases_and_a_note_says_it_does_not_exist_y
 fn a_note_after_the_table_names_a_file_that_exists_even_when_it_is_empty() {
     let listing = listing(&tool(), Some(Path::new(FILE)), Some(""), &args(&[]));
 
-    let finished = finish(&output(), listing.map_err(Error::from));
+    let finished = finish(&mut output(), listing.map_err(Error::from));
 
     assert!(
         finished.out.ends_with(&format!(
@@ -216,7 +216,7 @@ fn a_note_after_the_table_names_a_file_that_exists_even_when_it_is_empty() {
 fn a_note_says_why_a_tool_without_a_config_directory_has_no_aliases_file() {
     let listing = listing(&tool(), None, None, &args(&[]));
 
-    let finished = finish(&output(), listing.map_err(Error::from));
+    let finished = finish(&mut output(), listing.map_err(Error::from));
 
     assert!(
         finished
@@ -231,7 +231,10 @@ fn a_note_says_why_a_tool_without_a_config_directory_has_no_aliases_file() {
 fn a_file_that_cannot_be_read_fails_with_its_path_and_the_reason() {
     let directory = Path::new(env!("CARGO_MANIFEST_DIR"));
 
-    let finished = finish(&output(), list(&output(), Some(directory), &args(&[])));
+    let finished = finish(
+        &mut output(),
+        list(&mut output(), Some(directory), &args(&[])),
+    );
 
     assert_eq!(finished.code, ExitCode::FAILURE);
     assert_eq!(finished.out, "");
@@ -280,8 +283,8 @@ fn a_file_that_cannot_be_parsed_fails_with_the_line_and_the_parser_s_message() {
 #[test]
 fn a_tool_that_has_not_kept_its_command_tree_cannot_list_its_aliases() {
     let finished = finish(
-        &Output::default(),
-        list(&Output::default(), None, &args(&[])),
+        &mut Output::default(),
+        list(&mut Output::default(), None, &args(&[])),
     );
 
     assert_eq!(finished.code, ExitCode::FAILURE);

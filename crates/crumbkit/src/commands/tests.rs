@@ -127,7 +127,7 @@ fn args(words: &[&str]) -> CommandsList {
 
 /// Lists the branch that `words` name and returns the listing as JSON.
 fn listed(words: &[&str]) -> Value {
-    serde_json::to_value(list(&output(), &GUIDE, &args(words)).unwrap()).unwrap()
+    serde_json::to_value(list(&mut output(), &GUIDE, &args(words)).unwrap()).unwrap()
 }
 
 /// Returns the path of each row of `rows`.
@@ -167,7 +167,7 @@ struct Finished {
 
 /// Lists the branch that `words` name with `output`, and finishes the
 /// result into memory as a tool's handler does.
-fn finish(output: &Output, words: &[&str]) -> Finished {
+fn finish(output: &mut Output, words: &[&str]) -> Finished {
     let mut out = Vec::new();
     let mut err = Vec::new();
     let result: Result<Listing<CommandRow>, Error> = list(output, &GUIDE, &args(words));
@@ -216,7 +216,7 @@ fn no_path_lists_the_whole_tree_and_leaves_out_a_hidden_command_and_everything_b
 fn a_path_resolves_an_alias_to_the_command_s_real_name() {
     let mut output = Output::default();
     output.set_command(tool().mut_subcommand("books", |books| books.alias("book")));
-    let listing = list(&output, &GUIDE, &args(&["book", "show"])).unwrap();
+    let listing = list(&mut output, &GUIDE, &args(&["book", "show"])).unwrap();
     let rows = serde_json::to_value(listing).unwrap();
 
     assert_eq!(paths(&rows), ["shelf books show"]);
@@ -420,14 +420,14 @@ fn the_rows_are_the_same_from_the_command_that_parse_returns_after_it_added_help
     let mut from_parse = Output::default();
     from_parse.set_command(parsed);
 
-    let rows = list(&from_parse, &GUIDE, &args(&[])).unwrap();
+    let rows = list(&mut from_parse, &GUIDE, &args(&[])).unwrap();
 
-    assert_eq!(rows, list(&output(), &GUIDE, &args(&[])).unwrap());
+    assert_eq!(rows, list(&mut output(), &GUIDE, &args(&[])).unwrap());
 }
 
 #[test]
 fn the_limit_keeps_the_first_rows_and_the_total_counts_the_whole_branch() {
-    let finished = finish(&output(), &["--limit", "2"]);
+    let finished = finish(&mut output(), &["--limit", "2"]);
 
     let expected = "\
 PATH         ABOUT
@@ -441,7 +441,7 @@ Showing 2 of 6 commands. --all shows every one.
 
 #[test]
 fn a_path_that_names_no_command_fails_and_its_recovery_lists_the_longest_visible_prefix() {
-    let finished = finish(&output(), &["books", "shw", "all"]);
+    let finished = finish(&mut output(), &["books", "shw", "all"]);
 
     let expected = "\
 error: `shelf books shw` names no visible command
@@ -454,7 +454,7 @@ error: `shelf books shw` names no visible command
 
 #[test]
 fn a_path_that_names_a_hidden_command_fails_as_one_that_names_no_command() {
-    let finished = finish(&output(), &["books", "purge", "all"]);
+    let finished = finish(&mut output(), &["books", "purge", "all"]);
 
     let expected = "\
 error: `shelf books purge` names no visible command
@@ -466,7 +466,7 @@ error: `shelf books purge` names no visible command
 
 #[test]
 fn a_path_whose_first_word_names_no_command_recovers_with_the_whole_tree() {
-    let finished = finish(&output(), &["comets"]);
+    let finished = finish(&mut output(), &["comets"]);
 
     assert!(finished.err.contains("help:  run `shelf commands list`\n"));
 }
@@ -476,7 +476,7 @@ fn the_recovery_has_no_next_step_when_the_runtime_tree_hides_commands_list() {
     let mut output = Output::default();
     output.set_command(tool().mut_subcommand("commands", |commands| commands.hide(true)));
 
-    let finished = finish(&output, &["comets"]);
+    let finished = finish(&mut output, &["comets"]);
 
     assert!(
         finished
@@ -487,7 +487,7 @@ fn the_recovery_has_no_next_step_when_the_runtime_tree_hides_commands_list() {
 
 #[test]
 fn without_a_command_set_the_export_fails_with_no_next_step() {
-    let finished = finish(&Output::default(), &[]);
+    let finished = finish(&mut Output::default(), &[]);
 
     let expected = "\
 error: the tool has not kept its command tree, so it cannot list its commands

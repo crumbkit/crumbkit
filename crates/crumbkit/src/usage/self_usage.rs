@@ -151,7 +151,8 @@ struct CallerRuns {
 }
 
 /// Returns the findings in the usage log of the tool that the tool passed
-/// to [`Output::set_command`], for the runs that ended in the `--since`
+/// to [`Output::set_command`], which it builds in full through
+/// [`Output::command`], for the runs that ended in the `--since`
 /// duration before now, for the tool to pass to [`finish`](crate::finish)
 /// with [`SELF_USAGE`].
 ///
@@ -168,7 +169,7 @@ struct CallerRuns {
 /// never called [`Output::set_command`] has no name to find its log by, so
 /// its report has no runs.
 #[must_use]
-pub fn findings(output: &Output, args: &SelfUsage) -> Listing<FindingRow, UsageSummary> {
+pub fn findings(output: &mut Output, args: &SelfUsage) -> Listing<FindingRow, UsageSummary> {
     let empty = Command::new("");
     let tool = output.command().unwrap_or(&empty);
     report_from(tool, open(tool, args), args.since, SystemTime::now())

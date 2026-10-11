@@ -102,7 +102,7 @@ impl crate::Row for FiguresRow {
 /// order of the command paths, with the root first under the tool's name.
 /// A command that the log does not name has no row.
 #[must_use]
-pub fn figures(output: &Output, args: &SelfFigures) -> Listing<FiguresRow, UsageSummary> {
+pub fn figures(output: &mut Output, args: &SelfFigures) -> Listing<FiguresRow, UsageSummary> {
     let empty = Command::new("");
     let tool = output.command().unwrap_or(&empty);
     figures_from(

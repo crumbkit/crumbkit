@@ -47,15 +47,16 @@ pub fn run() -> ExitCode {
     match cli.cargo {
         CargoCommand::Crumbkit { command } => match command {
             CrumbkitCommand::Weigh(args) => {
-                crumbkit::finish(&cli.output, SPELLING, weigh::WEIGH, weigh::weigh(&args))
+                crumbkit::finish(&mut cli.output, SPELLING, weigh::WEIGH, weigh::weigh(&args))
             }
             CrumbkitCommand::Commands { command } => match command {
-                CommandsCommand::List(args) => crumbkit::finish(
-                    &cli.output,
-                    SPELLING,
-                    crumbkit::commands::COMMANDS_LIST,
-                    crumbkit::commands::list(&cli.output, &GUIDE, &args),
-                ),
+                // `commands list` reads the command tree through
+                // `&mut cli.output`, so it runs before `finish`.
+                CommandsCommand::List(args) => {
+                    let result = crumbkit::commands::list(&mut cli.output, &GUIDE, &args);
+                    let document = crumbkit::commands::COMMANDS_LIST;
+                    crumbkit::finish(&mut cli.output, SPELLING, document, result)
+                }
             },
         },
     }

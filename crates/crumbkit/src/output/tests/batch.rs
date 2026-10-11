@@ -150,7 +150,7 @@ fn finish_with<E: AsFailure>(flags: &[&str], batch: Batch<Planet, E>) -> Finishe
     let result: Result<_, Error> = Ok(batch);
     let code = finish_to(
         &mut Sink::new(&mut out, &mut err),
-        &output(flags),
+        &mut output(flags),
         Spelling::COLONS,
         document,
         result,
@@ -209,7 +209,7 @@ fn each_failure_in_a_batch_prints_exactly_as_a_failed_command_prints_it() {
     let failed: Result<Batch<Planet, Missing>, Missing> = Err(missing("Vulcan"));
     finish_to(
         &mut Sink::new(Vec::new(), &mut err),
-        &output(&[]),
+        &mut output(&[]),
         Spelling::COLONS,
         PLANETS,
         failed,
@@ -341,7 +341,7 @@ fn a_failure_in_a_batch_document_is_the_failure_document_without_its_schema() {
     });
     finish_to(
         &mut Sink::new(&mut out, Vec::new()),
-        &output(&["--json"]),
+        &mut output(&["--json"]),
         Spelling::COLONS,
         PLANETS,
         failed,
@@ -438,7 +438,7 @@ fn finish_failing(
     let result: Result<_, Missing> = Ok(batch);
     let code = finish_to(
         &mut Sink::new(Failing(kind), &mut err),
-        &output(flags),
+        &mut output(flags),
         Spelling::COLONS,
         PLANETS,
         result,

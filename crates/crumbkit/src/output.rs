@@ -35,7 +35,8 @@ mod tests;
 ///
 /// It also holds the command tree that the tool parsed against, which
 /// [`Output::set_command`] sets, so `finish` can render a listing's next step
-/// and a failure's recovery.
+/// and a failure's recovery. `finish` builds only the branch of the tree that
+/// such a call names.
 ///
 /// `Output` derives `Clone`, `Debug` and `Default`. It does not derive
 /// `PartialEq` or `Eq`, because `clap::Command` implements neither and nothing
@@ -64,8 +65,10 @@ pub struct Output {
     #[arg(long, global = true, requires = "json")]
     full: bool,
 
-    /// The command tree that the tool parsed against, built, or `None` until
-    /// the tool calls `set_command`. clap skips the field when it parses.
+    /// The command tree that the tool parsed against, or `None` until the
+    /// tool calls `set_command`. Its root and the commands on the typed path
+    /// are built, and the rest is built when a reader needs it. clap skips
+    /// the field when it parses.
     #[arg(skip)]
     command: Option<Command>,
 }
@@ -73,19 +76,29 @@ pub struct Output {
 impl Output {
     /// Keeps `command` so that [`finish`] can render a listing's next step
     /// and a failure's [`Recovery::Run`](crate::Recovery::Run) call against
-    /// it. A tool's `main` calls it once after parsing, with the same
-    /// command tree it parsed against.
+    /// it. A tool's `main` calls it once after parsing, with the command
+    /// tree that it parsed against, which [`parse`](crate::parse) returns.
     ///
-    /// It calls `Command::build`, which clap requires before a command's
-    /// arguments are read, and which does nothing to a command that parsing
-    /// already built. Without a command, `finish` leaves out the `Next:`
-    /// line and prints a failure's `Run` recovery as having no next step.
+    /// It does not build the tree. Parsing has already built the root and
+    /// each command on the typed path, `finish` builds only the branch that
+    /// a call names, and [`Output::command`] builds the whole tree for the
+    /// commands that read it, so a run builds only what it reads. Without a
+    /// command, `finish` leaves out the `Next:` line and prints a failure's
+    /// `Run` recovery as having no next step.
     ///
-    /// A tool that does not change its tree passes `Cli::command()`:
+    /// A call into a branch below the root resolves the root's global
+    /// arguments, such as `--json`, only when the root was built by parsing.
+    /// A tree that never went through parsing, such as a fresh
+    /// `Cli::command()` beside clap's `Cli::parse`, leaves out a `Next:` line
+    /// or a recovery whose call names one.
+    ///
+    /// A tool that parses with crumbkit passes the command that
+    /// [`parse`](crate::parse) returns:
     ///
     /// ```
     /// use clap::{CommandFactory, Parser};
-    /// use crumbkit::Output;
+    /// use crumbkit::help::Guide;
+    /// use crumbkit::{Output, Spelling};
     ///
     /// /// List the books in a small catalogue.
     /// #[derive(Parser)]
@@ -94,8 +107,10 @@ impl Output {
     ///     output: Output,
     /// }
     ///
-    /// let mut cli = Cli::parse_from(["shelf"]);
-    /// cli.output.set_command(Cli::command());
+    /// let parsed =
+    ///     crumbkit::parse_from::<Cli, _, _>(Cli::command(), &Guide::new(), Spelling::COLONS, ["shelf"]);
+    /// let (mut cli, command) = parsed.unwrap();
+    /// cli.output.set_command(command);
     /// ```
     ///
     /// A tool that hides commands at runtime parses against its changed
@@ -128,19 +143,24 @@ impl Output {
     /// let mut cli = Cli::from_arg_matches(&matches).unwrap();
     /// cli.output.set_command(command);
     /// ```
-    pub fn set_command(&mut self, mut command: Command) {
-        command.build();
+    pub fn set_command(&mut self, command: Command) {
         self.command = Some(command);
     }
 
-    /// Returns the built command that [`Output::set_command`] kept, or
-    /// `None` before the tool calls it. `commands::list` and
-    /// crumbkit-aliases' `list` read the tree through it, because
-    /// `set_command` takes the tree by value and the tree is never cloned
-    /// at runtime.
-    #[must_use]
-    pub const fn command(&self) -> Option<&Command> {
-        self.command.as_ref()
+    /// Builds the whole command tree that [`Output::set_command`] kept and
+    /// returns it, or returns `None` before the tool calls `set_command`.
+    ///
+    /// `commands::list`, `schemas::list`, `schemas::show`, the usage reports
+    /// and crumbkit-aliases' `list` read the tree through it. It calls
+    /// `Command::build`, which clap requires before a command's arguments
+    /// are read, and which does nothing to a command already built, so the
+    /// tree holds each command's global arguments from above, its help and
+    /// version flags and its argument groups. It takes `&mut self` because
+    /// it builds the tree in place, which is never cloned at runtime.
+    pub fn command(&mut self) -> Option<&Command> {
+        let command = self.command.as_mut()?;
+        command.build();
+        Some(command)
     }
 }
 
@@ -151,7 +171,7 @@ impl Output {
 /// exit code. It behaves as [`finish_to`] does with a sink over the process's
 /// standard output and standard error.
 pub fn finish<T: Rows, E: AsFailure>(
-    output: &Output,
+    output: &mut Output,
     spelling: Spelling,
     document: Document<T>,
     result: Result<T, E>,
@@ -183,6 +203,12 @@ pub fn finish<T: Rows, E: AsFailure>(
 /// is left out when [`Output::set_command`] was not called or the step's
 /// [`Call`](crate::Call) does not resolve in that command, and the exit code
 /// stays 0.
+///
+/// `finish` takes `output` by `&mut` because it builds, in place, the branch
+/// of the command tree that a next step's call or a failure's `Run` call
+/// names, and nothing else (ADR-0015). A handler that reads `output` with
+/// `&mut`, such as [`commands::list`](crate::commands::list), runs before
+/// `finish`, and `main` passes its result in.
 ///
 /// A [`Batch`](crate::Batch)'s rows print as a `Vec`'s do, and its JSON
 /// document also holds its failures under `failures`, which is present even
@@ -224,7 +250,7 @@ pub fn finish<T: Rows, E: AsFailure>(
 /// [books-show-7]: https://github.com/crumbkit/crumbkit/blob/main/examples/shelf/tests/golden/books-show-7.stderr
 pub fn finish_to<T: Rows, E: AsFailure, O: Write, W: Write>(
     sink: &mut Sink<O, W>,
-    output: &Output,
+    output: &mut Output,
     spelling: Spelling,
     document: Document<T>,
     result: Result<T, E>,
@@ -261,18 +287,18 @@ pub fn finish_to<T: Rows, E: AsFailure, O: Write, W: Write>(
 )]
 fn respond<T: Rows, E: AsFailure, O: Write, W: Write>(
     sink: &mut Sink<O, W>,
-    output: &Output,
+    output: &mut Output,
     spelling: Spelling,
     document: Document<T>,
     result: Result<T, E>,
 ) -> ExitCode {
     if let Some(refusal) = unknown_field::<T::Row>(&output.fields) {
-        return refusal.print(sink, output.json, spelling, output.command.as_ref());
+        return refusal.print(sink, output.json, spelling, output.command.as_mut());
     }
     let value = match &result {
         Ok(value) => value,
         Err(error) => {
-            let command = output.command.as_ref();
+            let command = output.command.as_mut();
             failure::print(sink, output.json, spelling, error.as_failure(), command);
             return ExitCode::FAILURE;
         }
@@ -282,7 +308,7 @@ fn respond<T: Rows, E: AsFailure, O: Write, W: Write>(
     let failures: Option<Vec<FailureDocument>> = value.failures().map(|failures| {
         failures
             .into_iter()
-            .map(|failure| FailureDocument::new(failure, spelling, output.command.as_ref()))
+            .map(|failure| FailureDocument::new(failure, spelling, output.command.as_mut()))
             .collect()
     });
     let code = match write_result(&mut sink.out, output, document, value, failures.as_deref()) {
@@ -353,7 +379,7 @@ fn unknown_field<R: Row>(fields: &[String]) -> Option<Refusal> {
 /// is reported as a failed write.
 fn write_result<T: Rows>(
     out: &mut impl Write,
-    output: &Output,
+    output: &mut Output,
     document: Document<T>,
     value: &T,
     failures: Option<&[FailureDocument]>,
@@ -413,7 +439,7 @@ fn write_result<T: Rows>(
         if let Some(note) = value.note() {
             writeln!(out, "{note}")?;
         }
-        write_next(out, output.command.as_ref(), value)?;
+        write_next(out, output.command.as_mut(), value)?;
     }
     out.flush()
 }
@@ -445,13 +471,13 @@ fn write_footer<T: Rows>(out: &mut impl Write, value: &T) -> io::Result<()> {
 /// nothing the tool hid.
 fn write_next<T: Rows>(
     out: &mut impl Write,
-    command: Option<&Command>,
+    command: Option<&mut Command>,
     value: &T,
 ) -> io::Result<()> {
     let (Some(command), Some((call, phrase))) = (command, value.next_step()) else {
         return Ok(());
     };
-    match crate::call::render_built(call, command) {
+    match crate::call::render(call, command) {
         Ok(rendered) => writeln!(out, "Next: {rendered} {phrase}"),
         Err(_) => Ok(()),
     }

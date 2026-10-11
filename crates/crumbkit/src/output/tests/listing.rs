@@ -3,7 +3,11 @@
 
 use std::process::ExitCode;
 
-use super::{PLANET_LISTING, Planet, finish_output, finish_with, mercury, parse, saturn};
+use clap::{Arg, Command, CommandFactory as _};
+
+use super::{
+    PLANET_LISTING, Planet, Tool, finish_output, finish_with, mercury, parse, parse_against, saturn,
+};
 use crate::{Call, Listing};
 
 /// Returns a listing of Mercury and Saturn out of `total` planets.
@@ -243,9 +247,9 @@ fn json_output_has_no_note() {
 
 #[test]
 fn a_listing_prints_no_next_line_when_no_command_is_set() {
-    let output = parse(&[]).unwrap();
+    let mut output = parse(&[]).unwrap();
 
-    let finished = finish_output(&output, PLANET_LISTING, two_of_with_next(8));
+    let finished = finish_output(&mut output, PLANET_LISTING, two_of_with_next(8));
 
     assert_eq!(finished.code, ExitCode::SUCCESS);
     assert!(
@@ -273,4 +277,28 @@ fn a_next_step_whose_call_does_not_resolve_is_left_out_and_the_exit_code_is_0() 
         finished.out
     );
     assert_eq!(finished.err, "");
+}
+
+#[test]
+fn a_next_step_into_a_branch_the_run_did_not_parse_names_a_global_flag_of_the_root() {
+    // The run parses `tool list`, so clap builds neither `moons` nor
+    // `moons show`, and only a build of `moons` copies `--json` into `show`.
+    let names = Arg::new("names")
+        .required(true)
+        .num_args(1..)
+        .value_name("NAME");
+    let moons = Command::new("moons").subcommand(Command::new("show").arg(names));
+    let mut output = parse_against(Tool::command().subcommand(moons), &[]);
+    let call = Call::new(&["moons", "show"]).arg("names").arg("json");
+    let listing = two_of(2).next(call, "shows moons as JSON.");
+
+    let finished = finish_output(&mut output, PLANET_LISTING, listing);
+
+    assert!(
+        finished
+            .out
+            .ends_with("Next: tool moons show <NAME>... --json shows moons as JSON.\n"),
+        "{}",
+        finished.out
+    );
 }

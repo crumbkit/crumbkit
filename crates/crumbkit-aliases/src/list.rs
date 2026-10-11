@@ -93,6 +93,9 @@ impl Row for AliasRow {
 /// file follow in name order, each with the problem that keeps it from
 /// expanding, as [`expand`](crate::expand) decides it.
 ///
+/// It builds the whole command tree through `Output::command`, so it sees
+/// each command that `Command::defer` adds.
+///
 /// A missing file, or no file because the environment gives no config
 /// directory, lists the built-in aliases only. The listing's note, which
 /// the text output prints after the table, names the file and says when it
@@ -109,7 +112,7 @@ impl Row for AliasRow {
 /// next step when the tool has not passed its command to
 /// [`Output::set_command`].
 pub fn list(
-    output: &Output,
+    output: &mut Output,
     file: Option<&Path>,
     args: &AliasesList,
 ) -> Result<Listing<AliasRow>, Error> {

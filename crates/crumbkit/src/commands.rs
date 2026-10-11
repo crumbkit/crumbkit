@@ -53,12 +53,12 @@
 //!         };
 //!     cli.output.set_command(command);
 //!     match cli.resource {
-//!         Resource::Commands { command: CommandsCommand::List(args) } => crumbkit::finish(
-//!             &cli.output,
-//!             SPELLING,
-//!             commands::COMMANDS_LIST,
-//!             commands::list(&cli.output, &GUIDE, &args),
-//!         ),
+//!         Resource::Commands { command: CommandsCommand::List(args) } => {
+//!             // `list` builds the command tree in `cli.output`, so it runs
+//!             // before `finish`.
+//!             let result = commands::list(&mut cli.output, &GUIDE, &args);
+//!             crumbkit::finish(&mut cli.output, SPELLING, commands::COMMANDS_LIST, result)
+//!         }
 //!     }
 //! }
 //!
@@ -191,8 +191,10 @@ impl JsonSchema for CommandsList {
 /// subcommands. A tool that builds its tree with plain clap and keeps
 /// clap's generated `help` subcommands sees them listed as commands.
 ///
-/// The work grows with the size of the branch, and happens only when the
-/// caller runs `commands list`. It builds rows for the page only, and
+/// It builds the whole command tree through [`Output::command`], so the
+/// rows show each command's inherited global arguments, argument groups and
+/// numbers of values. The rest of the work grows with the size of the
+/// branch, and happens only when the caller runs `commands list`. It builds rows for the page only, and
 /// builds a row type's JSON Schema once for each leaf with a document on
 /// the page.
 ///
@@ -209,7 +211,7 @@ impl JsonSchema for CommandsList {
 /// next step when the tool has not passed its command to
 /// [`Output::set_command`].
 pub fn list(
-    output: &Output,
+    output: &mut Output,
     guide: &Guide,
     args: &CommandsList,
 ) -> Result<Listing<CommandRow>, Error> {
