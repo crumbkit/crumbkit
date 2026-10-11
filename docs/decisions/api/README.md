@@ -8,7 +8,7 @@ These records decide what an adopter writes and what their tool's callers see: t
 - [ADR-0002. Public API and semver](0002-public-api-and-semver.md)
 - [ADR-0007. JSON schemas](0007-json-schemas.md)
 - [ADR-0015. Lightweight adoption](0015-lightweight-adoption.md)
-- [ADR-0016. Result formats](0016-result-formats.md)
 - [ADR-0027. Aliases](0027-aliases.md)
 - [ADR-0022. Help](help/README.md)
 - [ADR-0028. Usage](usage/README.md)
+- [ADR-0031. Output](output/README.md)
