@@ -8,6 +8,7 @@
 - The `scheduled.yml` workflow runs a nightly slow lane on `ubuntu-slim`. It runs `cargo deny check advisories` and `cargo xtask ci-time`, which fails when the median of the last 20 successful pull-request runs takes more than 5 minutes. Fuzzing and benchmarks join the nightly lane once code for them exists.
 - The same workflow runs the tests on macOS once a week, because a macOS minute costs ten times a Linux minute. Neither scheduled job uses rust-cache. GitHub evicts a cache that nothing reads for 7 days, so the weekly job would never find its cache, and the nightly job compiles little and its cache could not help pull requests, because rust-cache keys include the job ID.
 - When a scheduled job fails, the `report` job comments the run's URL on the open issue titled "Scheduled CI failed", or opens that issue when none is open, so every failure stays on one issue.
+- The local composite action `.github/actions/install-rust` installs rustup and the toolchain that `rust-toolchain.toml` pins, and the `lint`, `test` and `nightly` jobs use it so that those steps exist once.
 - Workflows start with `permissions: {}` and pin actions to commit SHAs, and zizmor lints the workflows and the Dependabot configuration in the `lint` job.
 
 Considered: one sequential job, no run on pushes to `main`, one job per check, a separate job for each crumbkit feature, `ubuntu-latest` runners, `cargo test` for every test, sccache, code coverage, nightly macOS tests, one issue per failed run.
