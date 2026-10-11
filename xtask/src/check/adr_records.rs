@@ -1,6 +1,6 @@
 //! The decision record check. Every Markdown file under `docs/decisions/` is a
 //! record whose first line is `# ADR-NNNN. Title`, no two records use one
-//! number, and every `ADR-NNNN` that a Rust or Markdown file cites names a
+//! number, and every `ADR-NNNN` that a file in the repository cites names a
 //! record.
 
 use std::collections::BTreeMap;
