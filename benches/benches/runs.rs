@@ -55,43 +55,55 @@ struct Limits {
     allocations: u64,
 }
 
-// The limits are unmeasured: each is 0, so every benchmark fails until the
-// counts of the first nightly run on `ubuntu-24.04` replace them.
+// Each limit's comment gives the count that it comes from. The counts come
+// from run 38163868931 of `scheduled.yml` on `ubuntu-24.04`.
 
 /// The limits of `shelf books list`.
 const BOOKS_LIST: Limits = Limits {
-    instructions: 0,
-    allocations: 0,
+    // The count was 808767 instructions.
+    instructions: 889_644,
+    // The count was 1149 blocks.
+    allocations: 1264,
 };
 
 /// The limits of `shelf -h`.
 const ROOT_HELP: Limits = Limits {
-    instructions: 0,
-    allocations: 0,
+    // The count was 350802 instructions.
+    instructions: 385_883,
+    // The count was 332 blocks.
+    allocations: 366,
 };
 
 /// The limits of `shelf books list -h`.
 const LEAF_HELP: Limits = Limits {
-    instructions: 0,
-    allocations: 0,
+    // The count was 447139 instructions.
+    instructions: 491_853,
+    // The count was 452 blocks.
+    allocations: 498,
 };
 
 /// The limits of `shelf commands list --all --json --full`.
 const COMMANDS_LIST: Limits = Limits {
-    instructions: 0,
-    allocations: 0,
+    // The count was 2058109 instructions.
+    instructions: 2_263_920,
+    // The count was 1942 blocks.
+    allocations: 2137,
 };
 
 /// The limits of `shelf books lst`, which clap refuses.
 const REFUSAL: Limits = Limits {
-    instructions: 0,
-    allocations: 0,
+    // The count was 376499 instructions.
+    instructions: 414_149,
+    // The count was 447 blocks.
+    allocations: 492,
 };
 
 /// The limits of `shelf books list` with the usage log started.
 const BOOKS_LIST_LOGGED: Limits = Limits {
-    instructions: 0,
-    allocations: 0,
+    // The count was 926028 instructions.
+    instructions: 1_018_631,
+    // The count was 1194 blocks.
+    allocations: 1314,
 };
 
 /// Returns the configuration that runs Callgrind and DHAT with `limits` and
