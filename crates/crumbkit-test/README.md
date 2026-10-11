@@ -147,9 +147,11 @@ never shows them.
   page of each visited command with a golden file there, named after the
   command's path and the flag: `shelf-h.txt` and `shelf-help.txt` for the
   root, and `shelf-books-list-h.txt` and `shelf-books-list-help.txt` for
-  `shelf books list`. It fails on a missing file, a file whose content
-  differs, and a stale file, which is a `.txt` file that no page produces,
-  so the directory holds only help golden files. With
+  `shelf books list`. It fails on two pages whose files have one name,
+  such as those of `shelf books list` and a root command `books-list`, on a
+  missing file, a file whose content differs, and a stale file, which is a
+  `.txt` file that no page produces, so the directory holds only help
+  golden files. With
   `SNAPSHOTS=overwrite`, the check writes and rewrites the files and
   deletes each stale one. A relative directory names a directory in the
   package that runs the test, because cargo runs tests from the package's

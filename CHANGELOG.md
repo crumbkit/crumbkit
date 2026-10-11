@@ -272,3 +272,7 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - `commands list <PATH>` lists the visible global arguments of the commands
   above the branch on the branch's first row, so `shelf commands list books`
   shows `--json`. The listing of the whole tree is unchanged.
+- crumbkit-test's `check_help_goldens` fails on two pages whose golden files
+  have one name, such as the pages of `shelf books list` and of a root
+  command `books-list`, and names both command lines. The two pages used to
+  share one file.

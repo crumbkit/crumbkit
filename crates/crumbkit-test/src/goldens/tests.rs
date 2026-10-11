@@ -127,3 +127,22 @@ fn a_stale_golden_file_fails_the_check() {
         )
     );
 }
+
+#[test]
+fn two_pages_with_one_golden_file_name_fail_the_check_naming_both_command_lines() {
+    let twins = shelf().subcommand(Command::new("books-list").about("List the books again"));
+    let dir = TempDir::new("goldens-collision").unwrap();
+
+    assert_eq!(
+        panic_message(|| check(
+            &twins,
+            &Guide::new(),
+            dir.path(),
+            &Assert::new().action(Action::Overwrite)
+        ))
+        .unwrap(),
+        "the command tree breaks crumbkit's golden help rules:\n\
+         shelf books-list -h: the page's golden file name `shelf-books-list-h.txt` is also the name for the page `shelf books list -h`\n\
+         shelf books-list --help: the page's golden file name `shelf-books-list-help.txt` is also the name for the page `shelf books list --help`"
+    );
+}
