@@ -5,6 +5,6 @@
 - `cargo xtask check` fails on a `.rs` file over 600 lines or an `AGENTS.md` over 200 words. It lists files with `git ls-files`, including untracked files that are not ignored.
 - `cargo xtask check docs` fails when the Markdown files directly inside any directory of the docs tree total more than 5,000 words. The tree includes `docs/` itself and every subdirectory, and each directory is counted on its own. Words are whitespace-separated and include code blocks and tables. ADR-0017 says how the decision records grow within this limit.
 - `cargo xtask check docs` also fails when a Markdown file under `docs/decisions/` does not start with an `# ADR-NNNN.` title, when two records share a number, when any file in the repository cites an `ADR-NNNN` that no record defines, when a record is missing from the `README.md` of the node above it, or when a node links to a file that does not exist.
-- `cargo xtask ci-time` reads the wall times of the last 20 successful pull-request runs of `ci.yml` through `gh api` and fails when their median is over 5 minutes or when there are no runs to measure.
+- `cargo xtask ci-time` reads the wall times of the last 20 successful pull-request runs of `ci.yml` through `gh api` and fails when their median is over the limit of CI-3 or when there are no runs to measure.
 
 Considered: shell scripts, just, cargo-make, an argument parser written by hand.

@@ -35,7 +35,7 @@ enum Cli {
         scope: Option<Scope>,
     },
     /// Fails when the median wall time of the last 20 successful pull-request
-    /// CI runs is over 300 seconds.
+    /// CI runs is over 180 seconds.
     CiTime,
 }
 

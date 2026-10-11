@@ -3,28 +3,28 @@
 use super::{Report, measure};
 
 #[test]
-fn a_median_of_exactly_300_seconds_passes() {
-    let report = measure(&[100, 300, 400]);
+fn a_median_of_exactly_180_seconds_passes() {
+    let report = measure(&[100, 180, 400]);
 
     assert_eq!(
         report,
         Report::Median {
             runs: 3,
-            seconds: 300
+            seconds: 180
         }
     );
     assert!(report.passes());
 }
 
 #[test]
-fn a_median_of_301_seconds_fails() {
-    let report = measure(&[100, 301, 400]);
+fn a_median_of_181_seconds_fails() {
+    let report = measure(&[100, 181, 400]);
 
     assert_eq!(
         report,
         Report::Median {
             runs: 3,
-            seconds: 301
+            seconds: 181
         }
     );
     assert!(!report.passes());
@@ -47,14 +47,14 @@ fn the_median_of_an_even_count_is_the_mean_of_the_middle_two() {
 }
 
 #[test]
-fn a_median_between_300_and_301_seconds_rounds_up_and_fails() {
-    let report = measure(&[300, 301]);
+fn a_median_between_180_and_181_seconds_rounds_up_and_fails() {
+    let report = measure(&[180, 181]);
 
     assert_eq!(
         report,
         Report::Median {
             runs: 2,
-            seconds: 301
+            seconds: 181
         }
     );
     assert!(!report.passes());
@@ -77,7 +77,7 @@ fn a_report_prints_the_workflow_the_median_the_run_count_and_the_limit() {
 
     assert_eq!(
         report.to_string(),
-        ".github/workflows/ci.yml: 65 seconds median wall time of 20 pull-request runs, limit 300"
+        ".github/workflows/ci.yml: 65 seconds median wall time of 20 pull-request runs, limit 180"
     );
 }
 
@@ -85,6 +85,6 @@ fn a_report_prints_the_workflow_the_median_the_run_count_and_the_limit() {
 fn a_report_without_runs_says_there_is_nothing_to_measure() {
     assert_eq!(
         Report::NoRuns.to_string(),
-        ".github/workflows/ci.yml: no successful pull-request runs to measure, limit 300 seconds"
+        ".github/workflows/ci.yml: no successful pull-request runs to measure, limit 180 seconds"
     );
 }
