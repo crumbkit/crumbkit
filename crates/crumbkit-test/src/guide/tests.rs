@@ -154,6 +154,34 @@ fn a_command_that_two_goals_name_fails_the_check() {
     );
 }
 
+#[test]
+fn a_command_that_one_goal_names_twice_fails_the_check() {
+    const GUIDE: Guide = Guide::new()
+        .groups(&[Group::new(
+            &["books"],
+            &[Goal::new("Read", &["list", "show", "show"])],
+        )])
+        .leaves(LEAVES);
+
+    assert_eq!(
+        panic_message(|| check_guide(&shelf(), &GUIDE)).unwrap(),
+        "the command tree breaks crumbkit's guide rules:\n\
+         shelf books: the goal `Read` names `show` more than once, so help lists it more than once under that heading"
+    );
+}
+
+#[test]
+fn two_groups_with_one_path_fail_the_check() {
+    const BOOKS: Group = Group::new(&["books"], &[Goal::new("Read", &["list", "show"])]);
+    const GUIDE: Guide = Guide::new().groups(&[BOOKS, BOOKS, BOOKS]).leaves(LEAVES);
+
+    assert_eq!(
+        panic_message(|| check_guide(&shelf(), &GUIDE)).unwrap(),
+        "the command tree breaks crumbkit's guide rules:\n\
+         shelf books: two groups name the command, and help shows only the goals of the last"
+    );
+}
+
 /// A topic that passes every topic rule.
 const CATALOGUE: Topic = Topic::new(
     "catalogue",
@@ -305,16 +333,17 @@ fn two_leaves_with_one_path_fail_the_check() {
 }
 
 #[test]
-fn an_example_that_clap_refuses_fails_the_check() {
+fn an_example_that_clap_refuses_fails_the_check_naming_its_command_line_as_help_prints_it() {
     const GUIDE: Guide = Guide::new().leaves(&[
-        Leaf::new(&["books", "list"]).examples(&[Example::new(&["--al"], "Print every book")]),
+        Leaf::new(&["books", "list"])
+            .examples(&[Example::new(&["--al", "Jane Austen"], "Print every book")]),
         Leaf::new(&["books", "show"]).examples(&[Example::new(&[], "Show no books")]),
     ]);
 
     assert_eq!(
         panic_message(|| check_guide(&shelf_with_arguments(), &GUIDE)).unwrap(),
         "the command tree breaks crumbkit's guide rules:\n\
-         shelf books list: clap refuses the example `shelf books list --al` with the error kind UnknownArgument\n\
+         shelf books list: clap refuses the example `shelf books list --al 'Jane Austen'` with the error kind UnknownArgument\n\
          shelf books show: clap refuses the example `shelf books show` with the error kind MissingRequiredArgument"
     );
 }

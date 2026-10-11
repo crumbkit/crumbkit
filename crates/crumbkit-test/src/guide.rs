@@ -2,7 +2,7 @@
 //! topics in step with its command tree.
 
 use clap::Command;
-use crumbkit::help::Guide;
+use crumbkit::help::{Guide, quote};
 
 use crate::tree::{self, DASHED_NAME};
 
@@ -28,11 +28,15 @@ mod tests;
 /// - a visible subcommand of a group that no goal names;
 /// - a subcommand that two goals of its group name, or that one goal names
 ///   twice;
+/// - two groups with one path, because each group replaces the goal
+///   headings of the one before it, so help shows only the last;
 /// - a leaf whose path names no command, matching real names only;
 /// - a leaf whose path names a command with subcommands;
 /// - two leaves with one path, because `parse` applies only the first;
 /// - an example that clap refuses when it parses the tool's name, the
-///   leaf's path and the example's words, naming clap's error kind. An
+///   leaf's path and the example's words, naming clap's error kind and the
+///   example's command line as help prints it, with each word that a POSIX
+///   shell would split or expand between single quotes. An
 ///   example with `--help` or `--version` counts as refused, because an
 ///   example shows a real run;
 /// - a visible command without subcommands, the root included when it has
@@ -95,7 +99,8 @@ mod tests;
 /// `command`, such as `shelf books`.
 pub fn check_guide(command: &Command, guide: &Guide) {
     let mut problems = Vec::new();
-    for group in guide.get_groups() {
+    let groups = guide.get_groups();
+    for (index, group) in groups.iter().enumerate() {
         let path = group.path();
         let Some(node) = tree::find(command, path.iter().copied()) else {
             problems.push(format!("the group `{}` names no command", path.join(" ")));
@@ -111,6 +116,17 @@ pub fn check_guide(command: &Command, guide: &Guide) {
             ));
             continue;
         }
+        // Only the second group with a path reports it, so a path that
+        // three groups share is one problem.
+        let earlier = groups[..index]
+            .iter()
+            .filter(|earlier| earlier.path() == path)
+            .count();
+        if earlier == 1 {
+            problems.push(format!(
+                "{text}: two groups name the command, and help shows only the goals of the last"
+            ));
+        }
         for goal in group.goals() {
             for &name in goal.commands() {
                 if tree::find(node, [name]).is_none() {
@@ -123,16 +139,23 @@ pub fn check_guide(command: &Command, guide: &Guide) {
         }
         for subcommand in node.get_subcommands() {
             let name = subcommand.get_name();
-            let headings: Vec<String> = group
-                .goals()
-                .iter()
-                .flat_map(|goal| {
-                    goal.commands()
-                        .iter()
-                        .filter(move |&&named| named == name)
-                        .map(|_| format!("`{}`", goal.heading()))
-                })
-                .collect();
+            let mut headings: Vec<String> = Vec::new();
+            for goal in group.goals() {
+                let times = goal
+                    .commands()
+                    .iter()
+                    .filter(|&&named| named == name)
+                    .count();
+                if times > 0 {
+                    headings.push(format!("`{}`", goal.heading()));
+                }
+                if times > 1 {
+                    problems.push(format!(
+                        "{text}: the goal `{}` names `{name}` more than once, so help lists it more than once under that heading",
+                        goal.heading()
+                    ));
+                }
+            }
             match headings.as_slice() {
                 [] if !subcommand.is_hide_set() => problems.push(format!(
                     "{text}: no goal names the visible subcommand `{name}`, so help lists it under a final `Commands` heading"
@@ -191,10 +214,7 @@ fn check_leaves(command: &Command, guide: &Guide, problems: &mut Vec<String>) {
                 .chain(path.iter().copied())
                 .chain(example.words().iter().copied());
             if let Err(error) = parser.try_get_matches_from_mut(args) {
-                let line = std::iter::once(text.as_str())
-                    .chain(example.words().iter().copied())
-                    .collect::<Vec<_>>()
-                    .join(" ");
+                let line = command_line(&text, example.words());
                 problems.push(format!(
                     "{text}: clap refuses the example `{line}` with the error kind {:?}",
                     error.kind()
@@ -225,6 +245,19 @@ fn check_leaves(command: &Command, guide: &Guide, problems: &mut Vec<String>) {
             ));
         }
     }
+}
+
+/// Returns the command line of an example as help prints it: `text`, the
+/// tool's name and the leaf's path joined by spaces, followed by each of
+/// `words` quoted for a POSIX shell by `crumbkit::help::quote`, such as
+/// `shelf books list --author 'Jane Austen'` (ADR-0024).
+pub(crate) fn command_line(text: &str, words: &[&str]) -> String {
+    let mut line = text.to_owned();
+    for &word in words {
+        line.push(' ');
+        line.push_str(&quote(word));
+    }
+    line
 }
 
 /// Adds a problem to `problems` for each topic of `guide` that breaks a

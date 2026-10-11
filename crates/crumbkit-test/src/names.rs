@@ -39,6 +39,10 @@ const ARGUMENT_RULE: &str = "and help shows one name for each argument";
 /// Hidden aliases pass. An argument may have one short form beside its long
 /// name, such as `-l` with `--limit`, and clap allows at most one.
 ///
+/// A command that the tool gives to `Command::defer` adds its arguments only
+/// when clap builds it, and the check reads the unbuilt tree, so it sees no
+/// arguments on such a command and checks none of them.
+///
 /// ```
 /// use clap::{Arg, ArgAction, Command};
 ///

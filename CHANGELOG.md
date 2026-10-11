@@ -278,6 +278,7 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   path, the exit code, the failure code and, with a started usage log, the
   trace id and the run's id. The feature adds the dependency tracing, and
   crumbkit installs no subscriber.
+- crumbkit-test's `check_guide` fails on two groups with one path.
 
 ### Fixed
 
@@ -291,6 +292,14 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   have one name, such as the pages of `shelf books list` and of a root
   command `books-list`, and names both command lines. The two pages used to
   share one file.
+- crumbkit-test's `check_guide` reports a goal that names one subcommand
+  twice as that goal naming it more than once.
+- crumbkit-test's `check_guide` and `check_examples` quote an example's
+  words in their messages as help prints them.
+- crumbkit-test's `check_examples` lists runs that fail, and a binary that
+  cannot start, under their own heading.
+- crumbkit-test's `check_help_sizes` reports a page that fails to render
+  once, without a second problem for that command's budget.
 - Past 10 MB, the usage log keeps its newest whole lines that fit in 5 MB,
   so a trim leaves the file well under the limit. It used to keep 9,999
   lines, which could stay over 10 MB and rewrite the file on every run.
