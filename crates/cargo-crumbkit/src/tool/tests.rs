@@ -9,9 +9,9 @@ use crumbkit::Spelling;
 
 use super::{Listed, Tool, listed};
 
-/// The start of a `crumbkit/commands/v1` document of two commands, with
+/// The start of a `crumbkit/commands-list/v1` document of two commands, with
 /// fields that `weigh` does not read.
-const DOCUMENT: &str = r#"{"schema":"crumbkit/commands/v1","data":[
+const DOCUMENT: &str = r#"{"schema":"crumbkit/commands-list/v1","data":[
 {"path":"shelf","about":"Browse","long_about":null,"arguments":[],"examples":[],"columns":[]},
 {"path":"shelf books list","about":"List","long_about":null,"arguments":[],"examples":[
 {"command":"shelf books list","about":"Print the first page"},
@@ -45,7 +45,7 @@ fn a_commands_document_gives_each_command_s_path_and_example_command_lines() {
 
 #[test]
 fn output_that_is_not_a_commands_document_gives_none() {
-    let other = DOCUMENT.replace("crumbkit/commands/v1", "shelf/books-list/v1");
+    let other = DOCUMENT.replace("crumbkit/commands-list/v1", "shelf/books-list/v1");
 
     assert_eq!(listed(other.as_bytes()), None);
     assert_eq!(listed(b"PATH  ABOUT\nshelf  Browse\n"), None);
@@ -114,7 +114,7 @@ fn a_tool_without_commands_list_fails_with_no_commands_list() {
     assert_eq!(code(&error), "crumbkit::weigh::no_commands_list");
     assert_eq!(
         error.to_string(),
-        "`sh commands list --all --json --full` prints no crumbkit/commands/v1 document, so the tool's commands cannot be read"
+        "`sh commands list --all --json --full` prints no crumbkit/commands-list/v1 document, so the tool's commands cannot be read"
     );
 }
 

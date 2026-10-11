@@ -4,13 +4,13 @@
 //! The tool owns the command. It adds a `self` group with a `usage`
 //! subcommand that takes [`SelfUsage`] to its own clap types, and its
 //! handler passes the result of [`findings`] to [`finish`](crate::finish)
-//! with the document [`USAGE_REPORT`]:
+//! with the document [`SELF_USAGE`]:
 //!
 //! ```ignore
 //! Resource::SelfCommand { command: SelfCommand::Usage(args) } => crumbkit::finish(
 //!     &cli.output,
 //!     SPELLING,
-//!     crumbkit::usage::USAGE_REPORT,
+//!     crumbkit::usage::SELF_USAGE,
 //!     Ok::<_, crumbkit::Error>(crumbkit::usage::findings(&cli.output, &args)),
 //! ),
 //! ```
@@ -36,7 +36,7 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use clap::{Args, Command};
 use etcetera::BaseStrategy as _;
-use schemars::{JsonSchema, Schema, SchemaGenerator, json_schema};
+use schemars::JsonSchema;
 use serde::Serialize;
 
 use super::file::LOG;
@@ -48,9 +48,14 @@ mod tests;
 
 /// The document that `self usage` prints: one row for each finding, and
 /// the summary of the runs that the report read. Its schema is
-/// `crates/crumbkit/schemas/usage-report-v1.json`.
-pub const USAGE_REPORT: Document<Listing<FindingRow, UsageSummary>> =
-    Document::new("crumbkit", "usage-report", 1);
+/// `crates/crumbkit/schemas/self-usage-v1.json`, which
+/// [`schemas::document_schema`](crate::schemas::document_schema) builds.
+pub const SELF_USAGE: Document<Listing<FindingRow, UsageSummary>> = Document::new(
+    "crumbkit",
+    "self-usage",
+    1,
+    "The patterns in the usage log where callers waste effort, and a summary of the runs read.",
+);
 
 /// The arguments of `<tool> self usage`: how far back the report reads.
 #[derive(Args, Clone, Debug, PartialEq, Eq)]
@@ -139,7 +144,7 @@ struct CallerRuns {
 /// Returns the findings in the usage log of the tool that the tool passed
 /// to [`Output::set_command`], for the runs that ended in the `--since`
 /// duration before now, for the tool to pass to [`finish`](crate::finish)
-/// with [`USAGE_REPORT`].
+/// with [`SELF_USAGE`].
 ///
 /// It reads `usage.jsonl` in the tool's directory under the XDG state
 /// directory once, a line at a time. A record that names a command path,
@@ -391,51 +396,4 @@ fn grouped(count: u64) -> String {
         text.push(digit);
     }
     text
-}
-
-/// The `crumbkit/usage-report/v1` document as `finish` writes the result
-/// of [`findings`] with `--json`: the id, the rows, the number of findings
-/// and the summary. The type exists only for its schema.
-#[cfg_attr(
-    not(test),
-    expect(
-        dead_code,
-        reason = "only the schema test reads the type until a tool serves its schemas (ADR-0007)"
-    )
-)]
-pub(crate) struct UsageReportDocument;
-
-impl JsonSchema for UsageReportDocument {
-    fn schema_name() -> Cow<'static, str> {
-        "UsageReportDocument".into()
-    }
-
-    fn schema_id() -> Cow<'static, str> {
-        "crumbkit/usage-report/v1".into()
-    }
-
-    fn json_schema(generator: &mut SchemaGenerator) -> Schema {
-        json_schema!({
-            "description": "The document that `self usage` prints with --json: one row for each pattern in the usage log where callers waste effort, and the summary of the runs read.",
-            "type": "object",
-            "properties": {
-                "schema": {
-                    "description": "The id of this document.",
-                    "const": "crumbkit/usage-report/v1",
-                },
-                "data": {
-                    "description": "The findings, the most runs first.",
-                    "type": "array",
-                    "items": generator.subschema_for::<FindingRow>(),
-                },
-                "total": {
-                    "description": "The number of findings.",
-                    "type": "integer",
-                    "minimum": 0,
-                },
-                "summary": generator.subschema_for::<UsageSummary>(),
-            },
-            "required": ["schema", "data", "total", "summary"],
-        })
-    }
 }

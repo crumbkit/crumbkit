@@ -63,7 +63,7 @@ fn every_failure_names_what_failed_and_hints_at_what_to_change() {
             WeighError::NoCommandsList {
                 line: "shelf commands list --all --json --full".to_owned(),
             },
-            "`shelf commands list --all --json --full` prints no crumbkit/commands/v1 document, so the tool's commands cannot be read",
+            "`shelf commands list --all --json --full` prints no crumbkit/commands-list/v1 document, so the tool's commands cannot be read",
             "add a `commands list` command at the tool's root that takes crumbkit::commands::CommandsList, as the crumbkit::commands module shows",
         ),
         (

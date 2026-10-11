@@ -2,7 +2,7 @@
 
 use serde::{Serialize, Serializer};
 
-use crate::{AsFailure, Failure, Row, Rows};
+use crate::{AsFailure, Failure, Row, Rows, Shape};
 
 #[cfg(test)]
 mod tests;
@@ -100,7 +100,7 @@ impl<R: Row, E: AsFailure> Serialize for Batch<R, E> {
 
 impl<R: Row, E: AsFailure> Rows for Batch<R, E> {
     type Row = R;
-    const SINGLE: bool = false;
+    const SHAPE: Shape = Shape::Batch;
     type Summary = crate::NoSummary;
 
     fn rows(&self) -> &[R] {

@@ -83,7 +83,7 @@ fn run(args: &[&str], file: Option<&Path>) -> ExitCode {
         Resource::Aliases { command: AliasesCommand::List(args) } => crumbkit::finish(
             &cli.output,
             SPELLING,
-            crumbkit_aliases::ALIASES,
+            crumbkit_aliases::ALIASES_LIST,
             crumbkit_aliases::list(&cli.output, file, &args),
         ),
     }
@@ -94,9 +94,9 @@ assert_eq!(run(&["shelf", "aliases", "list"], None), ExitCode::SUCCESS);
 
 ## Where to read more
 
-- [`file`], [`expand`], [`list`], [`AliasesList`] and [`ALIASES`] describe
+- [`file`], [`expand`], [`list`], [`AliasesList`] and [`ALIASES_LIST`] describe
   each item.
-- The [schema] describes the `crumbkit/aliases/v1` document.
+- The [schema] describes the `crumbkit/aliases-list/v1` document.
 - [ADR-0027] records the design and why it is a separate crate.
 
 Licensed under either of Apache License, Version 2.0 or MIT license at your
@@ -106,6 +106,6 @@ option.
 [`expand`]: src/expand.rs
 [`list`]: src/list.rs
 [`AliasesList`]: src/list.rs
-[`ALIASES`]: src/list.rs
-[schema]: schemas/aliases-v1.json
+[`ALIASES_LIST`]: src/list.rs
+[schema]: schemas/aliases-list-v1.json
 [ADR-0027]: ../../docs/decisions/api/0027-aliases.md

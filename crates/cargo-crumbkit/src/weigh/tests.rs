@@ -1,9 +1,5 @@
 //! Tests for the weights.
 
-use std::borrow::Cow;
-
-use schemars::{JsonSchema, Schema, SchemaGenerator, json_schema, schema_for};
-
 use super::{Weight, add_path_totals};
 
 /// Returns the weight of the command at `path` with `short_help` bytes of
@@ -58,42 +54,11 @@ fn a_root_without_subcommands_totals_its_own_page_and_output() {
     assert_eq!(totals(&rows), [712]);
 }
 
-/// The `crumbkit/weigh/v1` document as `finish` writes a `Vec` of weights
-/// with `--json`: the id and the rows.
-struct WeighDocument;
-
-impl JsonSchema for WeighDocument {
-    fn schema_name() -> Cow<'static, str> {
-        "WeighDocument".into()
-    }
-
-    fn schema_id() -> Cow<'static, str> {
-        "crumbkit/weigh/v1".into()
-    }
-
-    fn json_schema(generator: &mut SchemaGenerator) -> Schema {
-        json_schema!({
-            "description": "The document that `cargo crumbkit weigh` prints with --json: one row for each visible command of the tool.",
-            "type": "object",
-            "properties": {
-                "schema": {
-                    "description": "The id of this document.",
-                    "const": "crumbkit/weigh/v1",
-                },
-                "data": {
-                    "description": "The weights of the tool's visible commands, in depth-first order from the root.",
-                    "type": "array",
-                    "items": Weight::json_schema(generator),
-                },
-            },
-            "required": ["schema", "data"],
-        })
-    }
-}
-
 #[test]
 fn the_checked_in_schema_matches_the_weigh_document_schema() {
-    let generated = serde_json::to_string_pretty(&schema_for!(WeighDocument)).unwrap() + "\n";
+    let generated = serde_json::to_string_pretty(&crumbkit::schemas::document_schema(super::WEIGH))
+        .unwrap()
+        + "\n";
     let checked_in = include_str!(concat!(
         env!("CARGO_MANIFEST_DIR"),
         "/schemas/weigh-v1.json"

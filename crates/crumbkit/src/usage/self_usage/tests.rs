@@ -287,15 +287,15 @@ fn since_takes_a_humantime_duration_and_defaults_to_7_days() {
 
 #[test]
 fn the_checked_in_schema_matches_the_usage_report_document_schema() {
-    let generated = schemars::schema_for!(super::UsageReportDocument);
+    let generated = crate::schemas::document_schema(super::SELF_USAGE);
     let generated = serde_json::to_string_pretty(&generated).unwrap() + "\n";
     let checked_in = include_str!(concat!(
         env!("CARGO_MANIFEST_DIR"),
-        "/schemas/usage-report-v1.json"
+        "/schemas/self-usage-v1.json"
     ));
 
     assert_eq!(
         checked_in, generated,
-        "schemas/usage-report-v1.json differs from the generated schema; replace the file with the generated schema"
+        "schemas/self-usage-v1.json differs from the generated schema; replace the file with the generated schema"
     );
 }

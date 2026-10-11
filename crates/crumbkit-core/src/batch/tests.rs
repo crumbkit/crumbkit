@@ -6,7 +6,7 @@ use schemars::JsonSchema;
 use serde::Serialize;
 
 use super::Batch;
-use crate::{Call, Code, Failure, Listing, Recovery, Row, Rows};
+use crate::{Call, Code, Failure, Listing, Recovery, Row, Rows, Shape};
 
 const NOT_FOUND: Code = Code::new("solar", "planets", "not_found");
 
@@ -62,4 +62,9 @@ fn only_a_batch_returns_failures_from_rows() {
         "the solar system has no planet Vulcan"
     );
     assert_eq!(empty.failures().map(|list| list.len()), Some(0));
+}
+
+#[test]
+fn a_batch_names_its_shape() {
+    assert_eq!(<Batch<Planet, Missing> as Rows>::SHAPE, Shape::Batch);
 }

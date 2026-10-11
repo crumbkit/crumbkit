@@ -1,0 +1,31 @@
+Print the JSON Schema of each document
+
+Usage: shelf schemas show [OPTIONS] <ID>...
+
+Arguments:
+  <ID>...
+          The ids of the documents, such as `crumbkit/failure/v1`, separated by spaces
+
+Options:
+      --json
+          Print the result as a JSON document on one line
+
+      --fields <FIELD>
+          Print only these comma-separated fields, in this order
+
+      --long
+          Add the long columns after the compact ones
+
+      --full
+          With --json, print every field of every row
+
+  -h, --help
+          Print help (see a summary with '-h')
+
+Examples:
+  shelf schemas show shelf/books-list/v1
+          Print the JSON Schema of the document that books list prints
+
+Columns:
+  id      The document's id, such as `shelf/books-list/v1`.
+  schema  The document's 2020-12 JSON Schema.

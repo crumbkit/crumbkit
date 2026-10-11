@@ -2,9 +2,10 @@
 
 use std::fmt;
 
+use schemars::{JsonSchema, Schema, SchemaGenerator};
 use serde::{Serialize, Serializer};
 
-use crate::{Call, Row, Rows};
+use crate::{Call, Row, Rows, Shape};
 
 #[cfg(test)]
 mod tests;
@@ -115,12 +116,13 @@ impl<R: Row, S> Listing<R, S> {
 
     /// Sets the summary: a value that the text output prints with its
     /// `Display` as one line above the table, and that the JSON document
-    /// holds under `summary`, serialized with its `Serialize`. A summary
+    /// holds under `summary`, serialized with its `Serialize` and described
+    /// by its `JsonSchema`. A summary
     /// holds what describes the whole result, such as the figures the rows
     /// were counted from, so a program reads it as fields and a person reads
     /// it as a sentence.
     #[must_use]
-    pub fn summary<T: Serialize + fmt::Display>(self, summary: T) -> Listing<R, T> {
+    pub fn summary<T: Serialize + fmt::Display + JsonSchema>(self, summary: T) -> Listing<R, T> {
         Listing {
             rows: self.rows,
             total: self.total,
@@ -167,10 +169,10 @@ impl<R: Row, M> Serialize for Listing<R, M> {
     }
 }
 
-impl<R: Row, S: Serialize + fmt::Display> Rows for Listing<R, S> {
+impl<R: Row, S: Serialize + fmt::Display + JsonSchema> Rows for Listing<R, S> {
     type Row = R;
     type Summary = S;
-    const SINGLE: bool = false;
+    const SHAPE: Shape = Shape::Listing;
 
     fn rows(&self) -> &[R] {
         &self.rows
@@ -213,5 +215,24 @@ impl Serialize for NoSummary {
 impl fmt::Display for NoSummary {
     fn fmt(&self, _: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {}
+    }
+}
+
+/// Describes `NoSummary` as the schema `false`, which no value matches,
+/// because a listing of this type never holds a summary. The schema is
+/// inline, so a generator returns `false` itself and adds no definition,
+/// and crumbkit's document schema leaves out a `summary` whose schema is
+/// `false`.
+impl JsonSchema for NoSummary {
+    fn inline_schema() -> bool {
+        true
+    }
+
+    fn schema_name() -> std::borrow::Cow<'static, str> {
+        "NoSummary".into()
+    }
+
+    fn json_schema(_: &mut SchemaGenerator) -> Schema {
+        Schema::from(false)
     }
 }

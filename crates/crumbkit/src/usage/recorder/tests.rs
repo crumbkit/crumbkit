@@ -265,7 +265,7 @@ fn the_first_failure_code_of_a_run_stays_in_the_tool_s_spelling() {
 
 #[test]
 fn the_tool_s_section_holds_its_document_id_and_its_value() {
-    const EXT: Document<Value> = Document::new("shelf", "usage-ext", 1);
+    const EXT: Document<Value> = Document::new("shelf", "usage-ext", 1, "The test rows.");
     let mut recorder = parsed();
 
     recorder.section(EXT, &json!({"requests": 2}));

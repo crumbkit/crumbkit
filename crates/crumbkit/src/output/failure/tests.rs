@@ -8,7 +8,6 @@ use clap::{CommandFactory as _, Parser, Subcommand};
 use schemars::JsonSchema;
 use serde::Serialize;
 
-use super::FailureDocument;
 use crate::{
     Call, Code, Document, Error, Failure, Output, Recovery, Row, Sink, Spelling, finish_to,
 };
@@ -25,7 +24,7 @@ impl Row for Planet {
     const COLUMNS: &'static [&'static str] = &["name"];
 }
 
-const PLANETS: Document<Vec<Planet>> = Document::new("solar", "planets", 1);
+const PLANETS: Document<Vec<Planet>> = Document::new("solar", "planets", 1, "The test rows.");
 
 /// A tool with a `list` command that a recovery can name.
 #[derive(Parser)]
@@ -493,8 +492,7 @@ fn a_failed_write_of_the_text_failure_still_exits_with_code_1() {
 
 #[test]
 fn the_checked_in_schema_matches_the_failure_document_schema() {
-    let generated = schemars::schema_for!(FailureDocument);
-    let generated = serde_json::to_string_pretty(&generated).unwrap() + "\n";
+    let generated = serde_json::to_string_pretty(&super::document_schema()).unwrap() + "\n";
     let checked_in = include_str!(concat!(
         env!("CARGO_MANIFEST_DIR"),
         "/schemas/failure-v1.json"
@@ -503,5 +501,19 @@ fn the_checked_in_schema_matches_the_failure_document_schema() {
     assert_eq!(
         checked_in, generated,
         "schemas/failure-v1.json differs from the generated schema; replace the file with the generated schema"
+    );
+}
+
+#[test]
+fn a_batch_failure_entry_has_the_failure_document_schema_without_its_schema_property() {
+    let document = super::document_schema().to_value();
+    let entry = super::entry_schema().to_value();
+
+    let mut expected = document["properties"].clone();
+    expected.as_object_mut().unwrap().remove("schema");
+    assert_eq!(entry["properties"], expected);
+    assert_eq!(
+        entry["required"],
+        serde_json::json!(["code", "message", "recovery"])
     );
 }

@@ -1,14 +1,12 @@
 //! Tests for `aliases list`, which lists the built-in and personal aliases.
 
-use std::borrow::Cow;
 use std::path::Path;
 use std::process::ExitCode;
 
 use crumbkit::{Error, Listing, Output, Sink, Spelling, finish_to};
-use schemars::{JsonSchema, Schema, SchemaGenerator, json_schema, schema_for};
 use serde_json::{Value, json};
 
-use super::{ALIASES, AliasRow, AliasesList, list, listing};
+use super::{ALIASES_LIST, AliasRow, AliasesList, list, listing};
 use crate::testing::tool;
 
 /// The path that the personal rows name as their source.
@@ -64,7 +62,7 @@ fn finish(output: &Output, result: Result<Listing<AliasRow>, Error>) -> Finished
         &mut Sink::new(&mut out, &mut err),
         output,
         Spelling::COLONS,
-        ALIASES,
+        ALIASES_LIST,
         result,
     );
     Finished {
@@ -296,50 +294,14 @@ fn a_tool_that_has_not_kept_its_command_tree_cannot_list_its_aliases() {
     );
 }
 
-/// The `crumbkit/aliases/v1` document as `finish` writes a listing of alias
-/// rows with `--json`: the id, the rows and the number of aliases.
-struct AliasesDocument;
-
-impl JsonSchema for AliasesDocument {
-    fn schema_name() -> Cow<'static, str> {
-        "AliasesDocument".into()
-    }
-
-    fn schema_id() -> Cow<'static, str> {
-        "crumbkit/aliases/v1".into()
-    }
-
-    fn json_schema(generator: &mut SchemaGenerator) -> Schema {
-        json_schema!({
-            "description": "The document that `aliases list` prints with --json: one row for each built-in alias and each entry of the aliases file.",
-            "type": "object",
-            "properties": {
-                "schema": {
-                    "description": "The id of this document.",
-                    "const": "crumbkit/aliases/v1",
-                },
-                "data": {
-                    "description": "The built-in aliases in command tree order, then the entries of the aliases file in name order, up to the limit.",
-                    "type": "array",
-                    "items": AliasRow::json_schema(generator),
-                },
-                "total": {
-                    "description": "The number of built-in aliases and entries.",
-                    "type": "integer",
-                    "minimum": 0,
-                },
-            },
-            "required": ["schema", "data", "total"],
-        })
-    }
-}
-
 #[test]
 fn the_checked_in_schema_matches_the_aliases_document_schema() {
-    let generated = serde_json::to_string_pretty(&schema_for!(AliasesDocument)).unwrap() + "\n";
+    let generated = serde_json::to_string_pretty(&crumbkit::schemas::document_schema(ALIASES_LIST))
+        .unwrap()
+        + "\n";
     let checked_in = include_str!(concat!(
         env!("CARGO_MANIFEST_DIR"),
-        "/schemas/aliases-v1.json"
+        "/schemas/aliases-list-v1.json"
     ));
 
     assert_eq!(generated, checked_in);

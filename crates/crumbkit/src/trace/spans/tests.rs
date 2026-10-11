@@ -153,7 +153,7 @@ impl Row for Planet {
     const COLUMNS: &'static [&'static str] = &["name"];
 }
 
-const PLANETS: Document<Vec<Planet>> = Document::new("solar", "planets-show", 1);
+const PLANETS: Document<Vec<Planet>> = Document::new("solar", "planets-show", 1, "The test rows.");
 
 /// A failure that names a planet the solar system lacks.
 #[derive(Debug)]
@@ -331,7 +331,7 @@ fn a_batch_records_only_its_first_failure_s_code() {
         vec![Planet { name: "Saturn" }],
         vec![Error::from(Missing), Error::from(Missing)],
     );
-    let document = Document::new("solar", "planets-show", 1);
+    let document = Document::new("solar", "planets-show", 1, "The test rows.");
 
     let seen = watch(|| {
         run(

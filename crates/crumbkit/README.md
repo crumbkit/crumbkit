@@ -3,7 +3,6 @@
 crumbkit provides conventions for Rust command-line tools built on clap, so
 that people and agents can drill into a tool one level at a time. A tool keeps
 its own clap types and its own `main`, and adopts only the parts it wants.
-crumbkit is in design and is not published yet.
 
 ## Adding it
 
@@ -46,7 +45,8 @@ impl Row for Book {
     const LONG_COLUMNS: &'static [&'static str] = &["year"];
 }
 
-const BOOKS_LIST: Document<Listing<Book>> = Document::new("shelf", "books-list", 1);
+const BOOKS_LIST: Document<Listing<Book>> =
+    Document::new("shelf", "books-list", 1, "One page of the books.");
 const SPELLING: Spelling = Spelling::COLONS;
 const UNKNOWN_AUTHOR: Code = Code::new("shelf", "books", "unknown_author");
 
@@ -126,7 +126,8 @@ The shelf example tool shows the exact output of a fuller tool in its
   [`Error`], with [ADR-0001].
 - Parsing and help: [`parse`], [`help`] and [`Call`], with [ADR-0021],
   [ADR-0023] and [ADR-0024].
-- The command listing for agents: [`commands`], with [ADR-0026].
+- The listings for agents: [`commands`] and [`schemas`], with [ADR-0026]
+  and [ADR-0035].
 - Per-id lookups: [`fetch_each`].
 - The `miette` feature: the `diagnostic` method of [`Failure`] and the
   conversion of a `miette::Report` into [`Error`], with [ADR-0001].
@@ -157,6 +158,7 @@ option.
 [`help`]: src/help.rs
 [`Call`]: ../crumbkit-core/src/call.rs
 [`commands`]: src/commands.rs
+[`schemas`]: src/schemas.rs
 [`fetch_each`]: src/fetch.rs
 [`usage`]: src/usage.rs
 [`trace`]: src/trace.rs
@@ -173,3 +175,4 @@ option.
 [ADR-0029]: ../../docs/decisions/api/usage/0029-usage-log.md
 [ADR-0030]: ../../docs/decisions/api/usage/0030-trace-context.md
 [ADR-0032]: ../../docs/decisions/api/0032-core-crate.md
+[ADR-0035]: ../../docs/decisions/api/0035-schema-commands.md

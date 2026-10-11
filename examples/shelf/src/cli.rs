@@ -3,9 +3,10 @@
 use std::path::PathBuf;
 
 use clap::{Args, Parser, Subcommand};
-use crumbkit::commands::{COMMANDS, CommandsList};
+use crumbkit::commands::{COMMANDS_LIST, CommandsList};
 use crumbkit::help::{Example, Goal, Group, Guide, Leaf, Topic};
-use crumbkit::usage::{SelfUsage, USAGE_REPORT};
+use crumbkit::schemas::{SCHEMAS_LIST, SCHEMAS_SHOW, SchemasList, SchemasShow};
+use crumbkit::usage::{SELF_USAGE, SelfUsage};
 use crumbkit::{Output, Page};
 use crumbkit_aliases::AliasesList;
 use schemars::JsonSchema;
@@ -31,18 +32,17 @@ pub struct Cli {
 
 /// shelf's goal headings, leaves and help topics. shelf guides only its
 /// root, so `shelf -h` lists `books` under `Browse the catalogue`,
-/// `commands` under `Explore the commands` and `self` under `Review how
-/// shelf is used`, and `shelf books -h` keeps clap's `Commands:` list. The
-/// help of `shelf books list`, `shelf books show`, `shelf commands list`
-/// and `shelf self usage` lists their examples, and their `--help`
-/// describes the columns of the rows they print.
+/// `commands` and `schemas` under `Explore the commands` and `self` under
+/// `Review how shelf is used`, and `shelf books -h` keeps clap's
+/// `Commands:` list. The help of each leaf lists its examples, and its
+/// `--help` describes the columns of the rows it prints.
 /// `shelf help catalogue` prints `cli/catalogue.txt`.
 pub const GUIDE: Guide = Guide::new()
     .groups(&[Group::new(
         &[],
         &[
             Goal::new("Browse the catalogue", &["books"]),
-            Goal::new("Explore the commands", &["commands"]),
+            Goal::new("Explore the commands", &["commands", "schemas"]),
             Goal::new("Review how shelf is used", &["self"]),
         ],
     )])
@@ -68,13 +68,22 @@ pub const GUIDE: Guide = Guide::new()
                     "Print books list with its arguments, examples and columns as JSON",
                 ),
             ])
-            .document(COMMANDS),
+            .document(COMMANDS_LIST),
+        Leaf::new(&["schemas", "list"])
+            .examples(&[Example::new(&[], "List every document that shelf prints")])
+            .document(SCHEMAS_LIST),
+        Leaf::new(&["schemas", "show"])
+            .examples(&[Example::new(
+                &["shelf/books-list/v1"],
+                "Print the JSON Schema of the document that books list prints",
+            )])
+            .document(SCHEMAS_SHOW),
         Leaf::new(&["self", "usage"])
             .examples(&[
                 Example::new(&[], "Report the findings of the last 7 days"),
                 Example::new(&["--since", "1d"], "Report the findings of the last day"),
             ])
-            .document(USAGE_REPORT),
+            .document(SELF_USAGE),
     ])
     .topics(&[Topic::new(
         "catalogue",
@@ -96,6 +105,12 @@ pub(crate) enum Resource {
         /// What to do with the commands.
         #[command(subcommand)]
         command: CommandsCommand,
+    },
+    /// Explore the JSON documents that shelf prints.
+    Schemas {
+        /// What to do with the documents.
+        #[command(subcommand)]
+        command: SchemasCommand,
     },
     /// Review shelf's own use.
     #[command(name = "self")]
@@ -132,6 +147,15 @@ pub(crate) enum BooksCommand {
 pub(crate) enum CommandsCommand {
     /// List a branch of shelf's commands with their arguments, examples and columns.
     List(CommandsList),
+}
+
+/// The commands for the JSON documents that shelf prints.
+#[derive(Debug, Subcommand)]
+pub(crate) enum SchemasCommand {
+    /// List the JSON documents that shelf prints, with a description of each.
+    List(SchemasList),
+    /// Print the JSON Schema of each document.
+    Show(SchemasShow),
 }
 
 /// The commands that review shelf itself.

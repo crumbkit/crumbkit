@@ -19,8 +19,13 @@ mod tests;
 
 /// The document that `aliases list` prints: one page of alias rows and the
 /// number of aliases. Its schema is
-/// `crates/crumbkit-aliases/schemas/aliases-v1.json`.
-pub const ALIASES: Document<Listing<AliasRow>> = Document::new("crumbkit", "aliases", 1);
+/// `crates/crumbkit-aliases/schemas/aliases-list-v1.json`.
+pub const ALIASES_LIST: Document<Listing<AliasRow>> = Document::new(
+    "crumbkit",
+    "aliases-list",
+    1,
+    "The built-in aliases and the entries of the aliases file, with the problem of each entry that does not work.",
+);
 
 /// The code of an aliases file that exists but cannot be read or parsed, in
 /// the tool's spelling, such as `crumbkit::aliases::unreadable` (ADR-0027).
@@ -77,7 +82,7 @@ impl Row for AliasRow {
 /// Returns the built-in aliases of the command tree that the tool passed to
 /// [`Output::set_command`] and the entries of the aliases file at `file`,
 /// one page of them as `args` asks, for the tool to pass to
-/// [`finish`](crumbkit::finish) with [`ALIASES`].
+/// [`finish`](crumbkit::finish) with [`ALIASES_LIST`].
 ///
 /// The built-in aliases come first, in the depth-first order of the visible
 /// tree. A built-in alias is a clap alias, hidden or visible, of a visible

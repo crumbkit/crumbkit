@@ -18,12 +18,21 @@ mod tests;
 
 /// The document that `shelf books list` prints: one page of the catalogue and
 /// the number of books in it.
-pub(crate) const BOOKS_LIST: Document<Listing<Book>> = Document::new("shelf", "books-list", 1);
+pub(crate) const BOOKS_LIST: Document<Listing<Book>> = Document::new(
+    "shelf",
+    "books-list",
+    1,
+    "One page of the catalogue and the number of books in it.",
+);
 
 /// The document that `shelf books show` prints: the books for the given ids
 /// that the catalogue holds, and a failure naming the ids it lacks.
-pub(crate) const BOOKS_SHOW: Document<Batch<Book, BooksError>> =
-    Document::new("shelf", "books-show", 1);
+pub(crate) const BOOKS_SHOW: Document<Batch<Book, BooksError>> = Document::new(
+    "shelf",
+    "books-show",
+    1,
+    "The books for the given ids that the catalogue holds, and a failure for each id it lacks.",
+);
 
 /// The most ids that `shelf books show` takes in one call, on the command
 /// line or in the file that `--from` names.

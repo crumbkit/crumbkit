@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "FailureDocument",
+  "title": "crumbkit/failure/v1",
   "description": "The document that a command prints on standard output when it fails with --json.",
   "type": "object",
   "properties": {

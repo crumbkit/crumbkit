@@ -56,14 +56,16 @@ pub trait Rows: Serialize + sealed::Sealed {
     /// The type of each row.
     type Row: Row;
 
-    /// Whether the result is a single row. A single row's JSON `data` is an
-    /// object, and a list's is an array.
-    const SINGLE: bool;
+    /// The kind of result, which decides the fields of its JSON document. A
+    /// single row's `data` is an object, and every other result's is an
+    /// array.
+    const SHAPE: Shape;
 
     /// The type of the summary that prints above the table. Only a
     /// `Listing` can have a summary, and every other result has
-    /// [`NoSummary`](crate::NoSummary).
-    type Summary: Serialize + std::fmt::Display;
+    /// [`NoSummary`](crate::NoSummary). The summary's JSON Schema is the
+    /// schema of the document's `summary` field.
+    type Summary: Serialize + std::fmt::Display + JsonSchema;
 
     /// Returns the rows in order. A single row is a slice of one.
     fn rows(&self) -> &[Self::Row];
@@ -109,9 +111,26 @@ pub trait Rows: Serialize + sealed::Sealed {
     }
 }
 
+/// The kind of a [`Rows`] result, which decides the fields of its JSON
+/// document beside `schema`.
+#[non_exhaustive]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Shape {
+    /// One row, whose `data` is an object.
+    Row,
+    /// A `Vec` of rows, whose `data` is an array.
+    List,
+    /// A [`Listing`](crate::Listing), whose `data` is an array beside
+    /// `total` and, when it has one, `summary`.
+    Listing,
+    /// A [`Batch`](crate::Batch), whose `data` is an array beside
+    /// `failures`.
+    Batch,
+}
+
 impl<R: Row> Rows for R {
     type Row = R;
-    const SINGLE: bool = true;
+    const SHAPE: Shape = Shape::Row;
     type Summary = crate::NoSummary;
 
     fn rows(&self) -> &[R] {
@@ -121,7 +140,7 @@ impl<R: Row> Rows for R {
 
 impl<R: Row> Rows for Vec<R> {
     type Row = R;
-    const SINGLE: bool = false;
+    const SHAPE: Shape = Shape::List;
     type Summary = crate::NoSummary;
 
     fn rows(&self) -> &[R] {

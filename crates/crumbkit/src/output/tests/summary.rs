@@ -3,13 +3,14 @@
 
 use std::fmt;
 
+use schemars::JsonSchema;
 use serde::Serialize;
 
 use super::{Planet, finish_with, mercury, saturn};
 use crate::{Document, Listing};
 
 /// The summary of a listing of planets.
-#[derive(Serialize)]
+#[derive(Serialize, JsonSchema)]
 struct Census {
     planets: u32,
     star: &'static str,
@@ -21,7 +22,8 @@ impl fmt::Display for Census {
     }
 }
 
-const CENSUS: Document<Listing<Planet, Census>> = Document::new("solar", "census", 1);
+const CENSUS: Document<Listing<Planet, Census>> =
+    Document::new("solar", "census", 1, "The test rows.");
 
 /// Returns a listing of Mercury and Saturn out of 8 planets, with a summary
 /// and a note.

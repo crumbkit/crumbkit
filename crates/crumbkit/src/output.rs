@@ -15,7 +15,7 @@ use serde_json::Value;
 use self::failure::{Entry, FailureDocument};
 use crate::refusal::Refusal;
 use crate::row;
-use crate::{AsFailure, Document, Row, Rows, Sink, Spelling};
+use crate::{AsFailure, Document, Row, Rows, Shape, Sink, Spelling};
 
 #[cfg(test)]
 mod tests;
@@ -396,7 +396,7 @@ fn write_result<T: Rows>(
         // A single row's `data` is an object, and a list's is an array even
         // when it holds one row.
         match selected.as_slice() {
-            [single] if T::SINGLE => {
+            [single] if T::SHAPE == Shape::Row => {
                 write_document(out, document, single, total, summary, failures)?;
             }
             list => write_document(out, document, &list, total, summary, failures)?,

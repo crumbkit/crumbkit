@@ -4,8 +4,8 @@ use schemars::JsonSchema;
 use serde::Serialize;
 use serde_json::json;
 
-use super::Listing;
-use crate::{Call, Row, Rows};
+use super::{Listing, NoSummary};
+use crate::{Call, Row, Rows, Shape};
 
 #[derive(Serialize, JsonSchema, Debug, Clone, PartialEq, Eq)]
 struct Book {
@@ -106,7 +106,7 @@ fn a_single_row_and_a_vec_have_no_total_no_description_and_no_next_step() {
 }
 
 /// A summary of the books: how many there are, which prints as a line.
-#[derive(Serialize, Debug, Clone, PartialEq, Eq)]
+#[derive(Serialize, JsonSchema, Debug, Clone, PartialEq, Eq)]
 struct Shelved {
     books: u32,
 }
@@ -128,4 +128,23 @@ fn a_listing_has_no_summary_until_one_is_set() {
     assert_eq!(Rows::summary(&plain), None);
     assert_eq!(Rows::summary(&summarised), Some(&Shelved { books: 3 }));
     assert_eq!(summarised.description(), Some("books"));
+}
+
+#[test]
+fn a_row_a_vec_and_a_listing_each_name_their_shape() {
+    assert_eq!(<Book as Rows>::SHAPE, Shape::Row);
+    assert_eq!(<Vec<Book> as Rows>::SHAPE, Shape::List);
+    assert_eq!(<Listing<Book> as Rows>::SHAPE, Shape::Listing);
+    assert_eq!(<Listing<Book, Shelved> as Rows>::SHAPE, Shape::Listing);
+}
+
+#[test]
+fn the_schema_of_no_summary_is_false_and_inline_so_no_value_matches_it() {
+    let mut generator = schemars::SchemaGenerator::default();
+
+    assert_eq!(
+        generator.subschema_for::<NoSummary>().as_bool(),
+        Some(false)
+    );
+    assert!(generator.definitions().is_empty());
 }

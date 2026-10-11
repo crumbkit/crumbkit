@@ -23,7 +23,7 @@ const XDG: [(&str, &str); 4] = [
 ];
 
 /// The id of the document that `commands list --json` prints.
-const COMMANDS: &str = "crumbkit/commands/v1";
+const COMMANDS: &str = "crumbkit/commands-list/v1";
 
 /// The words after the binary that list every visible command with its
 /// examples as JSON.
@@ -39,7 +39,7 @@ pub(crate) struct Listed {
     pub(crate) examples: Vec<String>,
 }
 
-/// The `crumbkit/commands/v1` document, with only the fields that `weigh`
+/// The `crumbkit/commands-list/v1` document, with only the fields that `weigh`
 /// reads. serde ignores the other fields.
 #[derive(Deserialize)]
 struct CommandsDocument {
@@ -49,7 +49,7 @@ struct CommandsDocument {
     data: Vec<CommandRow>,
 }
 
-/// One row of the `crumbkit/commands/v1` document.
+/// One row of the `crumbkit/commands-list/v1` document.
 #[derive(Deserialize)]
 struct CommandRow {
     /// The command line that runs the command.
@@ -58,7 +58,7 @@ struct CommandRow {
     examples: Vec<CommandExample>,
 }
 
-/// One example of a row of the `crumbkit/commands/v1` document.
+/// One example of a row of the `crumbkit/commands-list/v1` document.
 #[derive(Deserialize)]
 struct CommandExample {
     /// The example's command line, with words quoted for a POSIX shell.
@@ -108,7 +108,7 @@ impl Tool {
     ///
     /// Returns [`WeighError::ToolUnavailable`] when the binary cannot start,
     /// and [`WeighError::NoCommandsList`] when the run fails or prints no
-    /// `crumbkit/commands/v1` document, such as for a tool that does not
+    /// `crumbkit/commands-list/v1` document, such as for a tool that does not
     /// mount `commands list`.
     pub(crate) fn commands(&self) -> Result<Vec<Listed>, WeighError> {
         let output = self.run(&COMMANDS_LIST)?;
@@ -179,7 +179,7 @@ impl Tool {
 }
 
 /// Returns the commands that `stdout`, the output of `commands list --json
-/// --full`, lists, or `None` when it is not a `crumbkit/commands/v1`
+/// --full`, lists, or `None` when it is not a `crumbkit/commands-list/v1`
 /// document.
 fn listed(stdout: &[u8]) -> Option<Vec<Listed>> {
     let document: CommandsDocument = serde_json::from_slice(stdout).ok()?;

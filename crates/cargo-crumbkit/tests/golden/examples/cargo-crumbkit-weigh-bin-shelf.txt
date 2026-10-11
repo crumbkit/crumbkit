@@ -1,9 +1,12 @@
 PATH                 SHORT_HELP  LONG_HELP  OUTPUT  PATH_TOTAL
-shelf                532         759        -       532
-shelf books          388         602        -       920
-shelf books list     447         932        512     1879
-shelf books show     488         916        111     1519
-shelf commands       355         566        -       887
-shelf commands list  664         1212       1941    3492
-shelf self           333         548        -       865
-shelf self usage     484         1034       -       1349
+shelf                589         816        -       589
+shelf books          388         602        -       977
+shelf books list     447         932        512     1936
+shelf books show     488         916        111     1576
+shelf commands       355         566        -       944
+shelf commands list  664         1212       1946    3554
+shelf schemas        412         624        -       1001
+shelf schemas list   456         1016       810     2267
+shelf schemas show   451         799        1481    2933
+shelf self           333         548        -       922
+shelf self usage     484         1034       -       1406

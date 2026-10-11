@@ -8,7 +8,7 @@ use schemars::JsonSchema;
 use serde::Serialize;
 use serde_json::{Value, json};
 
-use super::{COMMANDS, CommandRow, CommandsDocument, CommandsList, list};
+use super::{COMMANDS_LIST, CommandRow, CommandsList, list};
 use crate::help::{Example, Guide, Leaf};
 use crate::{Document, Error, Listing, Output, Row, Sink, Spelling, finish_to};
 
@@ -30,7 +30,7 @@ impl Row for Book {
     const LONG_COLUMNS: &'static [&'static str] = &["year"];
 }
 
-const BOOKS_LIST: Document<Vec<Book>> = Document::new("shelf", "books-list", 1);
+const BOOKS_LIST: Document<Vec<Book>> = Document::new("shelf", "books-list", 1, "The test rows.");
 
 /// A guide with one leaf, whose example has a word that needs quoting.
 const GUIDE: Guide = Guide::new().leaves(&[Leaf::new(&["books", "list"])
@@ -175,7 +175,7 @@ fn finish(output: &Output, words: &[&str]) -> Finished {
         &mut Sink::new(&mut out, &mut err),
         output,
         Spelling::COLONS,
-        COMMANDS,
+        COMMANDS_LIST,
         result,
     );
     Finished {
@@ -571,16 +571,16 @@ fn assert_fields_match(value: &Value, schema: &Value) {
 
 #[test]
 fn the_checked_in_schema_matches_the_commands_document_schema() {
-    let generated = schemars::schema_for!(CommandsDocument);
+    let generated = crate::schemas::document_schema(COMMANDS_LIST);
     let generated = serde_json::to_string_pretty(&generated).unwrap() + "\n";
 
     let checked_in = include_str!(concat!(
         env!("CARGO_MANIFEST_DIR"),
-        "/schemas/commands-v1.json"
+        "/schemas/commands-list-v1.json"
     ));
     assert_eq!(
         checked_in, generated,
-        "schemas/commands-v1.json differs from the generated schema; replace the file with the generated schema"
+        "schemas/commands-list-v1.json differs from the generated schema; replace the file with the generated schema"
     );
 }
 
