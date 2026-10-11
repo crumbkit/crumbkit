@@ -299,3 +299,6 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - The usage log's key goes into place only once it holds its 16 bytes, so a
   run that ends while it creates the key no longer stops every later line.
   A key file of the wrong length is replaced with a new key.
+- SIGINT or SIGTERM during the usage log's write at the end of a run waits
+  for the write to finish, for at most 500 ms, before it ends the process,
+  so the signal no longer cuts the line in half.

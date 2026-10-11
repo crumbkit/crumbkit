@@ -7,7 +7,10 @@ use std::time::{Duration, Instant, SystemTime};
 use clap::Command;
 use serde_json::{Value, json};
 
-use super::{Recorder, State, child_env_in, install, save, start, take, typed, update};
+use super::{
+    Recorder, State, child_env_in, install, save, start, take, typed, update, wait_for_line,
+    written,
+};
 use crate::usage::caller::Caller;
 use crate::usage::context::Context;
 use crate::usage::file::LIMITS;
@@ -88,6 +91,51 @@ fn a_run_gives_up_its_recorder_once_so_it_writes_one_line() {
 
     assert!(take(&slot).is_some());
     assert!(take(&slot).is_none());
+}
+
+#[test]
+fn a_taken_recorder_counts_as_writing_until_its_line_is_written() {
+    let slot = Mutex::new(State::Idle);
+    install(&slot, started(None));
+
+    take(&slot).unwrap();
+    assert!(matches!(*slot.lock().unwrap(), State::Writing));
+    written(&slot);
+
+    assert!(matches!(*slot.lock().unwrap(), State::Written));
+}
+
+#[test]
+fn the_signal_thread_waits_for_a_line_in_progress_until_it_is_written() {
+    let slot = Mutex::new(State::Idle);
+    install(&slot, started(None));
+    take(&slot).unwrap();
+    let waited = Instant::now();
+
+    let finished = std::thread::scope(|scope| {
+        scope.spawn(|| {
+            std::thread::sleep(Duration::from_millis(30));
+            written(&slot);
+        });
+        wait_for_line(&slot, Duration::from_secs(10))
+    });
+
+    assert!(finished);
+    assert!(waited.elapsed() >= Duration::from_millis(30));
+    assert!(waited.elapsed() < Duration::from_secs(10));
+}
+
+#[test]
+fn the_signal_thread_stops_waiting_for_a_line_in_progress_after_its_bound() {
+    let slot = Mutex::new(State::Idle);
+    install(&slot, started(None));
+    take(&slot).unwrap();
+    let waited = Instant::now();
+
+    let finished = wait_for_line(&slot, Duration::from_millis(30));
+
+    assert!(!finished);
+    assert!(waited.elapsed() >= Duration::from_millis(30));
 }
 
 #[test]

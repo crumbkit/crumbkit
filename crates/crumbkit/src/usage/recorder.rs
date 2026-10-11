@@ -6,7 +6,7 @@ use std::path::Path;
 use std::process::ExitCode;
 use std::sync::{Mutex, mpsc};
 use std::thread;
-use std::time::{Instant, SystemTime};
+use std::time::{Duration, Instant, SystemTime};
 
 use clap::{ArgMatches, Command};
 use etcetera::BaseStrategy as _;
@@ -29,6 +29,15 @@ mod tests;
 /// The recorder of this process. A poisoned lock counts as no recorder.
 static RECORDER: Mutex<State> = Mutex::new(State::Idle);
 
+/// How long the signal thread waits for a line that the main thread is
+/// writing before the signal takes effect. The main thread's write waits at
+/// most 100 ms for the file's lock, and a trim reads at most about 10 MB and
+/// writes 5 MB, which takes a few milliseconds from the page cache, so
+/// 500 ms covers the lock wait and a trim on a disk that reads and writes
+/// about 40 MB a second. A person who presses Ctrl-C waits at most this long
+/// for the tool to end.
+const LINE_WAIT: Duration = Duration::from_millis(500);
+
 /// Where the process's recorder is in its life.
 #[expect(
     clippy::large_enum_variant,
@@ -39,6 +48,8 @@ enum State {
     Idle,
     /// `start` ran, and the run's line is not written yet.
     Recording(Recorder),
+    /// A thread took the recorder and is writing the run's line.
+    Writing,
     /// The run's line is written, or was dropped.
     Written,
 }
@@ -318,15 +329,41 @@ fn update(slot: &Mutex<State>, change: impl FnOnce(&mut Recorder)) {
 }
 
 /// Takes the recorder out of `slot`, so no other line is written for the
-/// run, or returns `None` when there is none.
+/// run, or returns `None` when there is none. The slot then says that the
+/// line is being written, until [`written`] marks it written.
 fn take(slot: &Mutex<State>) -> Option<Recorder> {
     let mut state = slot.lock().ok()?;
-    match std::mem::replace(&mut *state, State::Written) {
+    match std::mem::replace(&mut *state, State::Writing) {
         State::Recording(recorder) => Some(recorder),
         other => {
             *state = other;
             None
         }
+    }
+}
+
+/// Marks the line of the run in `slot` written, after the thread that took
+/// the recorder wrote the line or dropped it.
+fn written(slot: &Mutex<State>) {
+    if let Ok(mut state) = slot.lock() {
+        *state = State::Written;
+    }
+}
+
+/// Waits while another thread writes the line of the run in `slot`, for at
+/// most `bound`, and returns whether no write is in progress any more. It
+/// checks every 5 ms, and a poisoned lock ends the wait.
+fn wait_for_line(slot: &Mutex<State>, bound: Duration) -> bool {
+    let started = Instant::now();
+    loop {
+        match slot.lock().as_deref() {
+            Ok(State::Writing) => {}
+            _ => return true,
+        }
+        if started.elapsed() >= bound {
+            return false;
+        }
+        thread::sleep(Duration::from_millis(5));
     }
 }
 
@@ -351,6 +388,7 @@ fn write(interrupted: bool) {
             &LIMITS,
         );
     }
+    written(&RECORDER);
 }
 
 /// Writes the line of `recorder` to `usage.jsonl` in the tool's directory
@@ -372,9 +410,10 @@ fn save(
 }
 
 /// Starts the thread that writes the line when the run ends on SIGINT or
-/// SIGTERM, and returns once the thread listens. After the line, the thread
-/// lets the signal take its default effect, so the process ends as it would
-/// have without the log.
+/// SIGTERM, and returns once the thread listens. When the main thread is
+/// already writing the line, the signal thread waits for it, for at most
+/// [`LINE_WAIT`]. After the line, the thread lets the signal take its
+/// default effect, so the process ends as it would have without the log.
 //
 // RUST-10: the thread takes both signals from the start of the run. A
 // process that started with one of them ignored now ends on it, such as a
@@ -394,6 +433,9 @@ fn watch_signals() {
             };
             if let Some(signal) = signals.forever().next() {
                 write(true);
+                // The main thread may hold the recorder and be writing the
+                // line, and the signal would end the process in the middle.
+                let _ = wait_for_line(&RECORDER, LINE_WAIT);
                 let _ = emulate_default_handler(signal);
             }
         });
