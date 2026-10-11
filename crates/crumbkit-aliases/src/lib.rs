@@ -9,6 +9,9 @@
 //! [schema]: https://github.com/crumbkit/crumbkit/blob/main/crates/crumbkit-aliases/schemas/aliases-list-v1.json
 //! [ADR-0027]: https://github.com/crumbkit/crumbkit/blob/main/docs/decisions/api/0027-aliases.md
 #![doc = include_str!("../README.md")]
+// docs.rs builds the docs on nightly with `--cfg docsrs`, and rustdoc's
+// `doc_cfg` feature labels each item behind a cargo feature with its name.
+#![cfg_attr(docsrs, feature(doc_cfg))]
 
 mod entry;
 mod expand;

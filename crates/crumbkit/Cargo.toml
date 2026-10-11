@@ -88,5 +88,11 @@ tracing = { workspace = true, features = ["std"] }
 # The test subscriber names the entered span with `tracing_core::span::Current`.
 tracing-core = { workspace = true }
 
+# docs.rs documents the crate with every feature on. `--cfg docsrs` turns on
+# the `doc_cfg` attribute in `lib.rs`, which labels each item behind a feature.
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
+
 [lints]
 workspace = true

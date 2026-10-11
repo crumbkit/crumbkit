@@ -5,6 +5,9 @@
 //! [shelf's weights]: https://github.com/crumbkit/crumbkit/blob/main/crates/cargo-crumbkit/tests/golden/examples/cargo-crumbkit-weigh-bin-shelf.txt
 //! [ADR-0033]: https://github.com/crumbkit/crumbkit/blob/main/docs/decisions/api/help/0033-weigh.md
 #![doc = include_str!("../README.md")]
+// docs.rs builds the docs on nightly with `--cfg docsrs`, and rustdoc's
+// `doc_cfg` feature labels each item behind a cargo feature with its name.
+#![cfg_attr(docsrs, feature(doc_cfg))]
 
 mod cargo;
 mod cli;
