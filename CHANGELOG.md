@@ -263,3 +263,18 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   nothing without the `usage-log` feature or a started log.
 - `crates/crumbkit/schemas/usage-v1.json` holds the JSON Schema of the
   `crumbkit/usage/v1` record.
+- With the `usage-log` feature, a run joins its caller's W3C trace. `start`
+  reads `TRACEPARENT` and `TRACESTATE` once. A valid `TRACEPARENT` gives the
+  run the caller's trace id and parent, and a missing or invalid one starts a
+  new random trace. The usage line records the trace id as `trace`, the run's
+  own random id as `run` and the caller's span id as `parent`.
+- `crumbkit::trace::child_env` returns the `TRACEPARENT` that puts a child
+  process in the run's trace with the run as its parent, and `TRACESTATE`
+  when the caller set one: the caller's value in the caller's trace, and an
+  empty value in a new trace. It returns nothing when nothing records the
+  run, and exists in every build.
+- The `tracing` feature, off by default, runs `parse` and `finish` inside the
+  spans `crumbkit.parse` and `crumbkit.finish`, which record the command
+  path, the exit code, the failure code and, with a started usage log, the
+  trace id and the run's id. The feature adds the dependency tracing, and
+  crumbkit installs no subscriber.

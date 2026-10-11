@@ -306,7 +306,7 @@ the line when `main` returns. A run that ends before it reaches `parse`
 writes no line. A line looks like this:
 
 ```json
-{"schema":"crumbkit/usage/v1","tool":"shelf","version":"0.1.0","at":"2026-10-07T12:01:07.120Z","ms":3,"caller":"claude-code","session":"9c1e0f5ab2d47e18","args":"0b6a2e7f41c9d350","command":"books list","flags":["--json","--limit"],"exit":0,"out_bytes":194,"truncated":true}
+{"schema":"crumbkit/usage/v1","tool":"shelf","version":"0.1.0","at":"2026-10-07T12:01:07.120Z","ms":3,"caller":"claude-code","session":"9c1e0f5ab2d47e18","args":"0b6a2e7f41c9d350","trace":"4bf92f3577b34da6a3ce929d0e0e4736","run":"b7ad6b7169203331","parent":"00f067aa0ba902b7","command":"books list","flags":["--json","--limit"],"exit":0,"out_bytes":194,"truncated":true}
 ```
 
 The line records the shape of the run and never a value that the caller
@@ -325,6 +325,36 @@ cannot check them.
 
 Recording never changes the tool's output or exit code, and every failure to
 write the line is silent. The feature builds only on Unix.
+
+## Trace context
+
+A run joins the W3C trace of whatever started it, such as a CI agent, a shell
+with OpenTelemetry or another crumbkit tool. With the `usage-log` feature,
+`start` reads the `TRACEPARENT` and `TRACESTATE` environment variables once. A
+valid `TRACEPARENT` gives the run the caller's trace id and names the caller's
+span as `parent`. A missing or invalid one starts a new trace with a random
+id. Each run also has its own random id, which the line records as `run`.
+
+A tool passes the trace to a child process with `child_env`, which names the
+run as the child's parent:
+
+```rust,ignore
+let status = std::process::Command::new("git")
+    .arg("status")
+    .envs(crumbkit::trace::child_env())
+    .status();
+```
+
+`child_env` returns no variables when nothing records the run, so the child
+inherits the caller's variables unchanged. crumbkit never reads or forwards
+`BAGGAGE`.
+
+The `tracing` feature, off by default, runs `parse` and `finish` inside the
+spans `crumbkit.parse` and `crumbkit.finish` of the `tracing` crate. The spans
+record `crumbkit.command`, `process.exit.code`, `error.type` and, with a
+started usage log, `trace_id` and `crumbkit.run`, and never an argument's
+value. crumbkit installs no subscriber, and a tool that wants one span for the
+whole run opens its own span in `main`, inside which crumbkit's spans nest.
 
 Licensed under either of Apache License, Version 2.0 or MIT license at your
 option.
