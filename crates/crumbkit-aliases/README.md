@@ -1,58 +1,31 @@
 # crumbkit-aliases
 
 crumbkit-aliases lets a person define their own aliases for the commands of a
-tool built with crumbkit. An agent never sees an alias: help, `commands list`,
-`Next:` lines, recoveries and JSON output all print the real command, because
-the tool expands an alias before clap parses the command line.
+tool built with crumbkit. The tool expands an alias before clap parses the
+command line, so help and every output print only real commands. crumbkit is
+in design and is not published yet.
 
-crumbkit is in design and is not published yet. This crate has three
-functions, the arguments and row types of one command, and its document.
+## Adding it
 
-- `file(tool)` returns the path of the tool's aliases file in the config
-  directory that the etcetera crate gives:
-  `$XDG_CONFIG_HOME/<tool>/aliases.toml`, or `~/.config/<tool>/aliases.toml`
-  when `XDG_CONFIG_HOME` is unset, empty or relative. `<tool>` is the name of
-  the root command. It returns `None` when the home directory cannot be
-  found.
-- `expand(&command, args, file)` returns the process arguments with a
-  personal alias in the first word replaced by its words, for the tool to
-  pass to `crumbkit::parse_from`. Only the first word after the tool's name
-  can be an alias, and it expands once. A first word that is `help`, a
-  subcommand of the root or one of its aliases never expands, and `expand`
-  does not read the file for it, or for a flag or an empty command line.
-  `expand` never prints and never fails. A missing or broken file, an unknown
-  word or a bad entry leaves the arguments unchanged. When it replaces an
-  alias, it calls `crumbkit::usage::aliased`, so a tool with crumbkit's usage
-  log records that an alias expanded.
-- `list(&output, file, &args)` returns the rows of `<tool> aliases list` for
-  `crumbkit::finish` with the document `ALIASES`, whose id is
-  `crumbkit/aliases/v1`. The rows are the built-in aliases first, which are
-  the clap aliases of the visible commands named by their full path such as
-  `books ls`, and then the file's entries in name order. Each row has the
-  columns `NAME`, `COMMAND`, `PROBLEM` and `FROM`, and an entry that does not
-  expand says why under `PROBLEM`. In text output, a note after the table
-  names the aliases file and says when it does not exist yet, or says why
-  the tool has no aliases file. A file that exists but cannot be read or
-  parsed fails with the code `crumbkit::aliases::unreadable`. The schema of
-  the JSON document is `schemas/aliases-v1.json`.
-- `AliasesList` is the arguments type of `aliases list`: crumbkit's paging
-  flags.
-
-The aliases file is TOML. Each key is an alias, and each value is a list of
-one or more words:
+A tool adds crumbkit-aliases beside crumbkit, from this repository until the
+first release:
 
 ```toml
-mine = ["books", "list", "--author", "4"]
+[dependencies]
+crumbkit-aliases = { git = "https://github.com/crumbkit/crumbkit" }
 ```
 
-With this file, `shelf mine --limit 1` runs
-`shelf books list --author 4 --limit 1`. A real command always wins, so an
-entry named `books` never expands.
+## Example
 
-A tool gives a command a built-in alias with clap's hidden `alias`, such as
-`#[command(alias = "ls")]`, which crumbkit-test's `check_names` accepts. A
-tool adopts personal aliases in the function that its `main` calls, and adds
-a hidden `aliases` group with a `list` command:
+A person writes aliases in the TOML file that [`file`] names. With this
+file, `shelf mine --limit 1` runs `shelf books list --long --limit 1`:
+
+```toml
+mine = ["books", "list", "--long"]
+```
+
+A tool passes its arguments through [`expand`] before it parses them, and
+adds a hidden `aliases list` command that [`list`] answers:
 
 ```rust
 use std::path::Path;
@@ -117,6 +90,20 @@ fn run(args: &[&str], file: Option<&Path>) -> ExitCode {
 assert_eq!(run(&["shelf", "aliases", "list"], None), ExitCode::SUCCESS);
 ```
 
-The crate is separate from crumbkit because only a tool with personal aliases
-needs a TOML parser, and crumbkit's default build depends only on clap,
-serde, `serde_json` and schemars. ADR-0027 records the design.
+## Where to read more
+
+- [`file`], [`expand`], [`list`], [`AliasesList`] and [`ALIASES`] describe
+  each item.
+- The [schema] describes the `crumbkit/aliases/v1` document.
+- [ADR-0027] records the design and why it is a separate crate.
+
+Licensed under either of Apache License, Version 2.0 or MIT license at your
+option.
+
+[`file`]: src/file.rs
+[`expand`]: src/expand.rs
+[`list`]: src/list.rs
+[`AliasesList`]: src/list.rs
+[`ALIASES`]: src/list.rs
+[schema]: schemas/aliases-v1.json
+[ADR-0027]: ../../docs/decisions/api/0027-aliases.md

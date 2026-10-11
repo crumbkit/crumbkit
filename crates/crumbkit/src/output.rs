@@ -27,7 +27,8 @@ mod tests;
 ///
 /// - `--json` prints a JSON document on one line.
 /// - `--long` adds the row type's [`Row::LONG_COLUMNS`].
-/// - `--full` prints every field of every row, and requires `--json`.
+/// - `--full` prints every field of every row in declaration order, and
+///   requires `--json`.
 /// - `--fields a,b` prints exactly the named fields in that order, and
 ///   conflicts with `--long` and `--full`.
 ///
@@ -164,7 +165,8 @@ pub fn finish<T: Rows, E: AsFailure>(
 /// check a command's exact output and exit code without starting a process.
 ///
 /// An `Ok` value prints to the sink's output writer. The text format is a
-/// table with a header row. The JSON format is one line holding an object
+/// table with a header row, and an empty result prints the header alone. The
+/// JSON format is one line holding an object
 /// with the `schema` id of `document` and the result under `data`; a single
 /// row's `data` is an object, and a `Vec`'s is an array.
 ///

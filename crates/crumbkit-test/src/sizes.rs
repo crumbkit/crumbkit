@@ -22,18 +22,20 @@ const LEAF: usize = 1_200;
 /// The budgets of a tool's `-h` pages, in bytes, which
 /// [`check_help_sizes`] checks.
 ///
-/// [`Budgets::new`] holds crumbkit's defaults: 1,500 bytes for the root, 800
-/// for a group, which is a command below the root with subcommands, and
-/// 1,200 for a leaf, which is a command below the root without
-/// subcommands. The root of a tool without subcommands has the root's
-/// budget. A tool can lower a whole class, or single commands, and cannot
-/// raise a budget above crumbkit's default:
+/// [`Budgets::new`] holds crumbkit's default budgets for the root, for a
+/// group, which is a command below the root with subcommands, and for a leaf,
+/// which is a command below the root without subcommands. [ADR-0025] records
+/// the default budgets. The root of a tool without subcommands has the
+/// root's budget. A tool can lower a whole class, or single commands, and
+/// cannot raise a budget above crumbkit's default:
 ///
 /// ```
 /// use crumbkit_test::Budgets;
 ///
 /// const BUDGETS: Budgets = Budgets::new().leaf(1_000).nodes(&[("books list", 600)]);
 /// ```
+///
+/// [ADR-0025]: https://github.com/crumbkit/crumbkit/blob/main/docs/decisions/api/help/0025-help-checks.md
 #[derive(Clone, Copy, Debug)]
 pub struct Budgets {
     /// The budget of the root's page.
@@ -48,8 +50,8 @@ pub struct Budgets {
 }
 
 impl Budgets {
-    /// Returns crumbkit's default budgets: 1,500 bytes for the root, 800 for
-    /// each group and 1,200 for each leaf, and no budget for a single
+    /// Returns crumbkit's default budgets for the root, each group and each
+    /// leaf, which [ADR-0025](https://github.com/crumbkit/crumbkit/blob/main/docs/decisions/api/help/0025-help-checks.md) records, and no budget for a single
     /// command.
     #[must_use]
     pub const fn new() -> Self {

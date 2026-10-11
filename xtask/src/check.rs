@@ -3,7 +3,9 @@
 
 mod adr_records;
 mod agents_words;
+mod changelog_entries;
 mod docs_words;
+mod readme_words;
 mod record_listings;
 mod rust_lines;
 
@@ -89,6 +91,8 @@ pub(crate) fn run(selection: Selection, files: &[File]) -> Vec<Violation> {
             let mut violations = rust_lines::check(files);
             violations.extend(agents_words::check(files));
             violations.extend(docs_words::check(files));
+            violations.extend(readme_words::check(files));
+            violations.extend(changelog_entries::check(files));
             violations.extend(adr_records::check(files));
             violations.extend(record_listings::check(files));
             violations
