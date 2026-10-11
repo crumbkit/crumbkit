@@ -1,9 +1,12 @@
 # ADR-0013. Documentation
 
 - rustdoc holds the API reference. A tutorial and a cookbook will join it in rustdoc once they are written. An mdBook site built from `docs/` will hold the standards and these records once code for it exists. Until then they are Markdown files in `docs/`.
-- Every terminal sample will be an included golden file. The READMEs and rustdoc still write their terminal samples inline.
-- Each README is short and doctested.
+- Each kind of fact has one home, and every other place links to it, because two copies of a fact drift apart and a reader cannot tell which copy is right.
+- How an item behaves lives in the rustdoc on that item or its module. Why a choice was made lives in its decision record, which links to the item and leaves exact output, flag lists, limits and numbers to the code and its rustdoc. A record names a number only when the number is the decision itself, such as a budget, and the rustdoc then links to the record for it.
+- What changed lives in `CHANGELOG.md`, which follows Keep a Changelog. Each entry names one change and the item it touches, and links to the item's rustdoc or record instead of describing the behaviour.
+- Each crate's README holds what the crate is, how to add it, one doctested example, and links to the item docs and records. The README is also the crate's rustdoc front page through `include_str!`. Its links are Markdown reference links to files in the repository, which work on GitHub. The crate's `lib.rs` defines the same labels as rustdoc paths before it includes the README, and rustdoc uses those, because Markdown uses the first definition of a label. crumbkit-test's `lib.rs` does not define them yet, so its README links to the files on GitHub.
+- Exact output, such as help pages, footers and failure lines, lives in golden files and constants. Docs include a golden file with `include_str!` or link to it, and do not retype it. Some rustdoc, such as that of `finish_to` and `help::extend`, still writes a terminal sample inline.
 - After 0.1, `cargo crumbkit docs` exports an adopter's help pages, golden examples, failure codes, schemas and weights as Markdown pages plus a JSON manifest with its own schema, for any static site builder.
 - Its built-in static site will be rendered from that export, and shelf's site will be its showcase.
 
-Considered: cargo-rdme, rustdoc theming, a Node site generator.
+Considered: cargo-rdme, rustdoc theming, a Node site generator, describing each behaviour in full in the README, the changelog and the record, links from the READMEs to docs.rs, which fail until a crate is published.
