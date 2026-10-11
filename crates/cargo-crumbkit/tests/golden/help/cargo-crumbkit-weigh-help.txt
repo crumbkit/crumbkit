@@ -1,0 +1,39 @@
+Measure the bytes that an agent reads on each path through a tool's help
+
+Usage: cargo crumbkit weigh [OPTIONS] --bin <NAME>
+
+Options:
+      --bin <NAME>
+          Build this binary of the current workspace and weigh its help
+
+      --goldens <DIR>
+          Read the examples' golden files from this directory [default: tests/golden/examples in the binary's package]
+
+      --json
+          Print the result as a JSON document on one line
+
+      --fields <FIELD>
+          Print only these comma-separated fields, in this order
+
+      --long
+          Add the long columns after the compact ones
+
+      --full
+          With --json, print every field of every row
+
+  -h, --help
+          Print help (see a summary with '-h')
+
+Examples:
+  cargo crumbkit weigh --bin shelf
+          Weigh each path through shelf's help
+
+  cargo crumbkit weigh --bin shelf --json
+          Print the weights as JSON
+
+Columns:
+  path        The command line that runs the command, such as `shelf books list`.
+  short_help  The bytes of the command's `-h` page.
+  long_help   The bytes of the command's `--help` page.
+  output      The bytes of the largest golden file of the command's examples, or null when no example has a golden file.
+  path_total  The bytes that an agent reads to find and run the command: each `-h` page from the root down to the command, and the command's output.

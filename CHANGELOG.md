@@ -52,6 +52,10 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit-core: the new crate holds the types that need no clap, and
   crumbkit re-exports each at its old path. `Call::render` comes from
   crumbkit's [`RenderCall`] trait ([crumbkit-core], [ADR-0032]).
+- cargo-crumbkit: the new crate's `cargo crumbkit weigh --bin <NAME>`
+  prints the bytes of each command's help pages and example output, and
+  each path's total ([cargo-crumbkit], [ADR-0033]). crumbkit-test's
+  [`example_golden_name`] names each example's golden file.
 
 ### Changed
 
@@ -162,3 +166,6 @@ rustdoc, or at its decision record. -->
 [ADR-0029]: docs/decisions/api/usage/0029-usage-log.md
 [ADR-0030]: docs/decisions/api/usage/0030-trace-context.md
 [ADR-0032]: docs/decisions/api/0032-core-crate.md
+[cargo-crumbkit]: crates/cargo-crumbkit/README.md
+[`example_golden_name`]: crates/crumbkit-test/src/examples.rs
+[ADR-0033]: docs/decisions/api/help/0033-weigh.md

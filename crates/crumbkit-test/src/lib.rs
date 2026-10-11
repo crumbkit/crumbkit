@@ -12,6 +12,7 @@
 //! [`check_help_goldens`]: crate::check_help_goldens
 //! [`check_examples`]: crate::check_examples
 //! [`Examples`]: crate::Examples
+//! [`example_golden_name`]: crate::example_golden_name
 //! [ADR-0025]: https://github.com/crumbkit/crumbkit/blob/main/docs/decisions/api/help/0025-help-checks.md
 //! [ADR-0004]: https://github.com/crumbkit/crumbkit/blob/main/docs/decisions/testing/0004-golden-and-snapshot-tests.md
 #![doc = include_str!("../README.md")]
@@ -32,7 +33,7 @@ mod testing;
 mod tree;
 
 pub use crate::codes::check_codes;
-pub use crate::examples::{Examples, check_examples};
+pub use crate::examples::{Examples, check_examples, example_golden_name};
 pub use crate::filters::check_filters;
 pub use crate::goldens::check_help_goldens;
 pub use crate::grammar::check_grammar;

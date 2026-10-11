@@ -13,7 +13,8 @@ use crumbkit::help::{Example, Guide, Leaf};
 use snapbox::Assert;
 use snapbox::assert::Action;
 
-use super::{Examples, check, file_name};
+use super::{Examples, check, example_golden_name};
+use crate::guide::command_line;
 use crate::temp::TempDir;
 use crate::testing::panic_message;
 
@@ -254,26 +255,33 @@ fn each_run_has_a_cleared_environment_with_the_tool_s_variables_and_fresh_xdg_di
 }
 
 #[test]
-fn a_golden_file_is_named_after_the_tool_the_path_and_the_words_joined_by_dashes() {
+fn a_golden_file_is_named_after_the_example_s_command_line_with_dashes_between_words() {
     assert_eq!(
-        file_name("shelf", &["books", "list"], &[]),
+        example_golden_name("shelf books list"),
         "shelf-books-list.txt"
     );
     assert_eq!(
-        file_name("shelf", &["books", "list"], &["--all"]),
+        example_golden_name("shelf books list --all"),
         "shelf-books-list-all.txt"
     );
     assert_eq!(
-        file_name("shelf", &["books", "show"], &["2", "5"]),
+        example_golden_name("shelf books show 2 5"),
         "shelf-books-show-2-5.txt"
     );
     assert_eq!(
-        file_name(
-            "shelf",
-            &["books", "list"],
-            &["--fields", "title, year", "--", "v1.2_rc/"]
-        ),
+        example_golden_name("shelf books list --fields 'title, year' -- v1.2_rc/"),
         "shelf-books-list-fields-title-year-v1.2_rc.txt"
+    );
+}
+
+#[test]
+fn a_quoted_word_names_the_golden_file_as_its_unquoted_letters_do() {
+    let line = command_line("shelf books list", &["--author", "O'Brien", ""]);
+
+    assert_eq!(line, "shelf books list --author 'O'\\''Brien' ''");
+    assert_eq!(
+        example_golden_name(&line),
+        "shelf-books-list-author-O-Brien.txt"
     );
 }
 

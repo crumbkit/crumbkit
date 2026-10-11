@@ -133,14 +133,10 @@ impl<'a> Examples<'a> {
 /// them passes them through [`Examples::env`], such as
 /// `("PATH", "/usr/bin:/bin")` or `("HOME", "tests/fixtures/home")`.
 ///
-/// The golden file of an example holds the run's standard output. Its name
-/// joins the tool's name, the leaf's path and the example's words with
-/// dashes and ends with `.txt`, such as `shelf-books-list.txt`,
-/// `shelf-books-list-all.txt` and `shelf-books-show-2-5.txt`. Within each
-/// part, every run of characters other than ASCII letters, digits, `.` and
-/// `_` becomes one dash, and a dash at the start or the end of the part is
-/// dropped, so `--all` becomes `all`. A part with no letter, digit, `.` or
-/// `_`, such as `--`, is left out.
+/// The golden file of an example holds the run's standard output, and
+/// [`example_golden_name`] names it after the example's command line, such
+/// as `shelf-books-list.txt`, `shelf-books-list-all.txt` and
+/// `shelf-books-show-2-5.txt`.
 ///
 /// The check compares each output with snapbox, as other golden files are
 /// compared (ADR-0004). With the environment variable `SNAPSHOTS=overwrite`,
@@ -232,7 +228,7 @@ fn check(command: &Command, guide: &Guide, examples: &Examples<'_>, assert: &Ass
                 .collect::<Vec<_>>()
                 .join(" ");
             let line = command_line(&text, example.words());
-            let name = file_name(tool, path, example.words());
+            let name = example_golden_name(&line);
             if let Some((_, other)) = names.iter().find(|(known, _)| *known == name) {
                 problems.push(format!(
                     "{line}: the example's golden file name `{name}` is also the name for the example `{other}`"
@@ -329,26 +325,32 @@ fn run(examples: &Examples<'_>, args: &[&str]) -> Result<Output, String> {
         .map_err(|error| format!("the binary `{}` cannot start: {error}", examples.binary))
 }
 
-/// Returns the name of the golden file of the example that runs `tool` with
-/// `path` and `words`: each of them as [`part`] writes it, left out when
-/// empty, joined by dashes, with `.txt` appended.
-fn file_name(tool: &str, path: &[&str], words: &[&str]) -> String {
-    let parts: Vec<String> = std::iter::once(tool)
-        .chain(path.iter().copied())
-        .chain(words.iter().copied())
-        .map(part)
-        .filter(|part| !part.is_empty())
-        .collect();
-    format!("{}.txt", parts.join("-"))
-}
-
-/// Returns `word` with each run of characters other than ASCII letters,
-/// digits, `.` and `_` written as one dash, and without a dash at its start
-/// or its end, so `--all` becomes `all` and `title, year` becomes
-/// `title-year`.
-fn part(word: &str) -> String {
-    word.split(|c: char| !(c.is_ascii_alphanumeric() || c == '.' || c == '_'))
+/// Returns the name of the golden file that [`check_examples`] keeps for
+/// the example whose command line is `line`, as help and `commands list`
+/// print it, such as `shelf books list --all`.
+///
+/// The name is the command line with each run of characters other than
+/// ASCII letters, digits, `.` and `_` written as one dash, without a dash at
+/// its start or its end, and with `.txt` appended, such as
+/// `shelf-books-list-all.txt`. The quotes that `crumbkit::help::quote` adds
+/// around a word are such characters, so a quoted word names the file as its
+/// unquoted characters do, and `'title, year'` becomes `title-year`.
+///
+/// A tool that reads its examples from `commands list`, such as
+/// `cargo crumbkit weigh`, finds each example's golden file through it.
+///
+/// ```
+/// assert_eq!(
+///     crumbkit_test::example_golden_name("shelf books list --all"),
+///     "shelf-books-list-all.txt"
+/// );
+/// ```
+#[must_use]
+pub fn example_golden_name(line: &str) -> String {
+    let stem = line
+        .split(|c: char| !(c.is_ascii_alphanumeric() || c == '.' || c == '_'))
         .filter(|piece| !piece.is_empty())
         .collect::<Vec<_>>()
-        .join("-")
+        .join("-");
+    format!("{stem}.txt")
 }

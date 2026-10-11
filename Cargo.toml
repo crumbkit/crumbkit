@@ -5,6 +5,7 @@ members = [
     "crates/crumbkit-core",
     "crates/crumbkit-aliases",
     "crates/crumbkit-test",
+    "crates/cargo-crumbkit",
     "examples/shelf",
     "xtask",
 ]
@@ -105,11 +106,12 @@ tracing-core = { version = "0.1.36", default-features = false }
 # snapbox runs a built binary and compares its output with golden files
 # (ADR-0004, ADR-0005), and crumbkit-test's help golden check and example
 # check compare help pages and example output with golden files through it.
-# Only tests use it.
+# Tests use it, and cargo-crumbkit links it through crumbkit-test.
 snapbox = { version = "1.2.2", default-features = false }
 
 # tempfile gives each of shelf's end-to-end tests its own XDG directories,
-# which it removes when the test ends (ADR-0005). Only tests use it. Its
+# which it removes when the test ends (ADR-0005), and cargo-crumbkit's
+# `weigh` gives the binary it measures the same isolation. Its
 # default `getrandom` feature seeds the directory names from the operating
 # system, and without it tempfile seeds them with fastrand, which is enough
 # for names that only need to differ between tests.
