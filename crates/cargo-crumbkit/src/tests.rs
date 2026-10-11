@@ -47,3 +47,13 @@ fn every_help_page_fits_its_size_budget() {
 fn every_help_page_matches_its_golden_file() {
     crumbkit_test::check_help_goldens(&Cli::command(), &GUIDE, "tests/golden/help");
 }
+
+#[test]
+fn every_document_is_named_after_the_path_of_the_command_that_prints_it() {
+    crumbkit_test::check_document_ids(&Cli::command(), &GUIDE);
+}
+
+#[test]
+fn every_crumbkit_command_sits_at_its_fixed_path() {
+    crumbkit_test::check_mounts(&Cli::command(), &GUIDE);
+}
