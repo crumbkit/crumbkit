@@ -82,6 +82,18 @@ fn every_failure_names_what_failed_and_hints_at_what_to_change() {
             "the golden file tests/golden/examples/shelf-books-list.txt cannot be read",
             "make the golden directory readable, or pass --goldens another directory",
         ),
+        (
+            WeighError::NoUsageFigures {
+                line: "shelf self figures list --all --json --log usage.jsonl".to_owned(),
+            },
+            "`shelf self figures list --all --json --log usage.jsonl` prints no crumbkit/self-figures-list/v1 document, so the usage figures cannot be read",
+            "run `shelf self figures list --all --json --log usage.jsonl` to see the failure; a tool needs a `self figures list` command that takes crumbkit::usage::SelfFigures, as shelf's shows",
+        ),
+        (
+            WeighError::NoStateDir,
+            "the usage log cannot be found, because the XDG state directory cannot be found",
+            "set HOME or XDG_STATE_HOME, or pass --log the usage log",
+        ),
     ];
 
     for (error, message, hint) in cases {

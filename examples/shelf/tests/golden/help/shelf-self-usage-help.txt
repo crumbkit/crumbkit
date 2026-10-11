@@ -8,6 +8,9 @@ Options:
           
           [default: 7d]
 
+      --log <FILE>
+          Read this usage log instead of the tool's own
+
       --json
           Print the result as a JSON document on one line
 

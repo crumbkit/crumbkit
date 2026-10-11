@@ -3,13 +3,17 @@ Measure the bytes that an agent reads on each path through a tool's help
 Usage: cargo crumbkit weigh [OPTIONS] --bin <NAME>
 
 Options:
-      --bin <NAME>     Build this binary of the current workspace and weigh its help
-      --goldens <DIR>  Read the examples' golden files from this directory [default: tests/golden/examples in the binary's package]
-  -h, --help           Print help (see more with '--help')
+      --bin <NAME>        Build this binary of the current workspace and weigh its help
+      --goldens <DIR>     Read the examples' golden files from this directory [default: tests/golden/examples in the binary's package]
+      --usage             Add the runs, help pages and output of each command from the tool's usage log
+      --log <FILE>        Read the usage figures from this log instead of the tool's own; implies --usage
+      --since <DURATION>  How far back to read the usage log, such as 12h, 7d or 2w [default: 7d]
+  -h, --help              Print help (see more with '--help')
 
 Examples:
   cargo crumbkit weigh --bin shelf
   cargo crumbkit weigh --bin shelf --json
+  cargo crumbkit weigh --bin shelf --usage
 
 Global flags: --json, --fields <FIELD>, --long, --full. `cargo crumbkit weigh --help` describes them.
 Next: cargo crumbkit weigh --help explains each column.

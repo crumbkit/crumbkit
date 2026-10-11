@@ -25,6 +25,15 @@
       "description": "What one visible command of a tool costs an agent to read, in bytes.",
       "type": "object",
       "properties": {
+        "help_before": {
+          "description": "With --usage, the help pages that each run's session read since its previous run that printed no help page, summed over the command's runs, and null without it.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint64",
+          "minimum": 0
+        },
         "long_help": {
           "description": "The bytes of the command's `--help` page.",
           "type": "integer",
@@ -40,6 +49,15 @@
           "format": "uint64",
           "minimum": 0
         },
+        "p95_output": {
+          "description": "With --usage, the 95th percentile of the bytes that the command's runs wrote to standard output, and null without it or when no run printed a result.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint64",
+          "minimum": 0
+        },
         "path": {
           "description": "The command line that runs the command, such as `shelf books list`.",
           "type": "string"
@@ -47,6 +65,15 @@
         "path_total": {
           "description": "The bytes that an agent reads to find and run the command: each `-h` page from the root down to the command, and the command's output.",
           "type": "integer",
+          "format": "uint64",
+          "minimum": 0
+        },
+        "runs": {
+          "description": "With --usage, the runs of the command in the usage log that printed no help page, and null without it.",
+          "type": [
+            "integer",
+            "null"
+          ],
           "format": "uint64",
           "minimum": 0
         },

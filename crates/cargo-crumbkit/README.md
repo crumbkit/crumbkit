@@ -36,6 +36,13 @@ log. It reads each example's output weight from the golden files that
 crumbkit-test's `check_examples` writes, in the directory that `--goldens`
 names, or in `tests/golden/examples` in the binary's package.
 
+`--usage` adds each command's runs, the help pages that callers read before
+it and the 95th percentile of its real output, from the tool's own usage
+log. `--log <FILE>` reads another copy of a log, and `--since <DURATION>`
+sets how far back to read. The tool needs crumbkit's `usage-log` feature
+and a `self figures list` command, as shelf has. The log stays on the
+machine, and `weigh` only reads it.
+
 ## Where to read more
 
 - `cargo crumbkit weigh --help` describes each column.

@@ -1,7 +1,7 @@
 //! Tests for shelf as a whole.
 
 use clap::CommandFactory as _;
-use crumbkit_test::Budgets;
+use crumbkit_test::{Budgets, PathBudgets};
 
 use crate::SPELLING;
 use crate::books::BooksError;
@@ -40,6 +40,18 @@ fn every_command_leaf_and_topic_meets_the_guide_rules() {
 #[test]
 fn every_help_page_fits_its_size_budget() {
     crumbkit_test::check_help_sizes(&Cli::command(), &GUIDE, &Budgets::new());
+}
+
+/// shelf's longest path, `commands list`, reads about 3,500 bytes, so a
+/// budget of 4,000 bytes leaves room for small changes and catches a page
+/// or an output that grows by much.
+#[test]
+fn every_path_through_the_help_fits_its_weight_budget() {
+    crumbkit_test::check_path_weights(
+        &Cli::command(),
+        &GUIDE,
+        &PathBudgets::new("tests/golden/examples").path(4_000),
+    );
 }
 
 #[test]

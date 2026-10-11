@@ -1,9 +1,12 @@
-//! The temporary directories that the usage log's unit tests write in, and
-//! the command tree that the report's unit tests check records against.
+//! The temporary directories that the usage log's unit tests write in, the
+//! command tree that the report's unit tests check records against, and the
+//! log lines that they read.
 
 use std::path::{Path, PathBuf};
+use std::time::{Duration, SystemTime};
 
 use clap::{Arg, ArgAction, Command};
+use serde_json::{Value, json};
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 /// The number of temporary directories that this process has created, which
@@ -65,4 +68,35 @@ pub(super) fn tool() -> Command {
         );
     tool.build();
     tool
+}
+
+/// The time that the tests report at: noon UTC on 11 October 2026.
+pub(super) fn now() -> SystemTime {
+    humantime::parse_rfc3339("2026-10-11T12:00:00Z").unwrap()
+}
+
+/// Returns one line of the log for a person's run of `command` in session
+/// `s1` that ended `secs` seconds before [`now`], with `fields` added.
+pub(super) fn line(secs: u64, command: &str, fields: &Value) -> String {
+    let at = humantime::format_rfc3339_millis(now() - Duration::from_secs(secs));
+    let mut record = json!({
+        "schema": "crumbkit/usage/v1",
+        "tool": "shelf",
+        "at": at.to_string(),
+        "ms": 10,
+        "caller": "person",
+        "session": "0123456789abcdef",
+        "args": format!("{secs:016x}"),
+        "trace": "4bf92f3577b34da6a3ce929d0e0e4736",
+        "run": "00f067aa0ba902b7",
+        "exit": 0,
+        "out_bytes": 100,
+    });
+    if !command.is_empty() {
+        record["command"] = json!(command);
+    }
+    for (field, value) in fields.as_object().unwrap() {
+        record[field] = value.clone();
+    }
+    format!("{record}\n")
 }

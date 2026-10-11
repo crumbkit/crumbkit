@@ -23,11 +23,18 @@ const XDG: [(&str, &str); 4] = [
 ];
 
 /// The id of the document that `commands list --json` prints.
-const COMMANDS: &str = "crumbkit/commands-list/v1";
+const COMMANDS_LIST: &str = "crumbkit/commands-list/v1";
 
 /// The words after the binary that list every visible command with its
 /// examples as JSON.
-const COMMANDS_LIST: [&str; 5] = ["commands", "list", "--all", "--json", "--full"];
+const COMMANDS_LIST_ARGS: [&str; 5] = ["commands", "list", "--all", "--json", "--full"];
+
+/// The id of the document that `self figures list --json` prints.
+const SELF_FIGURES_LIST: &str = "crumbkit/self-figures-list/v1";
+
+/// The words after the binary that list the figures of every command in a
+/// usage log as JSON, which `--log <FILE>` follows.
+const SELF_FIGURES_LIST_ARGS: [&str; 5] = ["self", "figures", "list", "--all", "--json"];
 
 /// One visible command of the tool, as `commands list` prints it.
 #[derive(Debug, PartialEq, Eq)]
@@ -63,6 +70,34 @@ struct CommandRow {
 struct CommandExample {
     /// The example's command line, with words quoted for a POSIX shell.
     command: String,
+}
+
+/// The figures of one command in a usage log, as `self figures list` prints
+/// them, with only the fields that `weigh` reads. serde ignores the other
+/// fields.
+#[derive(Debug, PartialEq, Eq, Deserialize)]
+pub(crate) struct Used {
+    /// The command path below the tool's name, such as `books show`, or the
+    /// tool's name for its root command.
+    pub(crate) command: String,
+    /// The runs that did not print a help page.
+    pub(crate) runs: u64,
+    /// The help pages that each run's session read since its last run that
+    /// printed no help page, summed over the runs.
+    pub(crate) help_before: u64,
+    /// The 95th percentile of the bytes that the runs wrote to standard
+    /// output, or `None` when no run printed a result.
+    pub(crate) p95_out_bytes: Option<u64>,
+}
+
+/// The `crumbkit/self-figures-list/v1` document, with only the fields that
+/// `weigh` reads.
+#[derive(Deserialize)]
+struct FiguresDocument {
+    /// The document's id.
+    schema: String,
+    /// One row for each command in the log.
+    data: Vec<Used>,
 }
 
 /// The tool's built binary, which runs with a cleared environment and XDG
@@ -111,24 +146,60 @@ impl Tool {
     /// `crumbkit/commands-list/v1` document, such as for a tool that does not
     /// mount `commands list`.
     pub(crate) fn commands(&self) -> Result<Vec<Listed>, WeighError> {
-        let output = self.run(&COMMANDS_LIST)?;
+        let output = self.run(&COMMANDS_LIST_ARGS)?;
         let listed = if output.status.success() {
             listed(&output.stdout)
         } else {
             None
         };
-        listed.ok_or_else(|| {
-            let name = self
-                .binary
-                .file_name()
-                .map_or_else(String::new, |name| name.to_string_lossy().into_owned());
-            WeighError::NoCommandsList {
-                line: std::iter::once(name.as_str())
-                    .chain(COMMANDS_LIST)
-                    .collect::<Vec<_>>()
-                    .join(" "),
-            }
+        listed.ok_or_else(|| WeighError::NoCommandsList {
+            line: std::iter::once(self.name().as_str())
+                .chain(COMMANDS_LIST_ARGS)
+                .collect::<Vec<_>>()
+                .join(" "),
         })
+    }
+
+    /// Returns the figures of each command in the usage log at `log`, read
+    /// from `<binary> self figures list --all --json --log <log>`, with
+    /// `--since <since>` when `since` is given.
+    ///
+    /// The run has the temporary XDG directories, so its own line goes to
+    /// the temporary state directory and never to the log it reads.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`WeighError::ToolUnavailable`] when the binary cannot start,
+    /// and [`WeighError::NoUsageFigures`] when the run fails or prints no
+    /// `crumbkit/self-figures-list/v1` document, such as for a tool that does
+    /// not mount `self figures list` or a `since` that the tool refuses.
+    pub(crate) fn figures(&self, log: &Path, since: Option<&str>) -> Result<Vec<Used>, WeighError> {
+        let log = log.to_string_lossy();
+        let mut args: Vec<&str> = SELF_FIGURES_LIST_ARGS.to_vec();
+        args.extend(["--log", &log]);
+        if let Some(since) = since {
+            args.extend(["--since", since]);
+        }
+        let output = self.run(&args)?;
+        let figures = if output.status.success() {
+            used(&output.stdout)
+        } else {
+            None
+        };
+        figures.ok_or_else(|| WeighError::NoUsageFigures {
+            line: std::iter::once(self.name().as_str())
+                .chain(args)
+                .collect::<Vec<_>>()
+                .join(" "),
+        })
+    }
+
+    /// Returns the file name of the binary, which stands for the tool's
+    /// name in the command lines that a failure names.
+    fn name(&self) -> String {
+        self.binary
+            .file_name()
+            .map_or_else(String::new, |name| name.to_string_lossy().into_owned())
     }
 
     /// Returns the number of bytes that the tool writes to standard output
@@ -183,7 +254,7 @@ impl Tool {
 /// document.
 fn listed(stdout: &[u8]) -> Option<Vec<Listed>> {
     let document: CommandsDocument = serde_json::from_slice(stdout).ok()?;
-    if document.schema != COMMANDS {
+    if document.schema != COMMANDS_LIST {
         return None;
     }
     let commands = document
@@ -199,4 +270,12 @@ fn listed(stdout: &[u8]) -> Option<Vec<Listed>> {
         })
         .collect();
     Some(commands)
+}
+
+/// Returns the figures that `stdout`, the output of `self figures list
+/// --json`, lists, or `None` when it is not a `crumbkit/self-figures-list/v1`
+/// document.
+fn used(stdout: &[u8]) -> Option<Vec<Used>> {
+    let document: FiguresDocument = serde_json::from_slice(stdout).ok()?;
+    (document.schema == SELF_FIGURES_LIST).then_some(document.data)
 }

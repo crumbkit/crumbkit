@@ -9,6 +9,10 @@
 //! [`check_guide`]: crate::check_guide
 //! [`check_help_sizes`]: crate::check_help_sizes
 //! [`Budgets`]: crate::Budgets
+//! [`check_path_weights`]: crate::check_path_weights
+//! [`PathBudgets`]: crate::PathBudgets
+//! [`path_totals`]: crate::path_totals
+//! [`output_weight`]: crate::output_weight
 //! [`check_help_goldens`]: crate::check_help_goldens
 //! [`check_schema_goldens`]: crate::check_schema_goldens
 //! [`check_document_ids`]: crate::check_document_ids
@@ -36,6 +40,7 @@ mod temp;
 #[cfg(test)]
 mod testing;
 mod tree;
+mod weights;
 
 pub use crate::codes::check_codes;
 pub use crate::documents::{check_document_ids, check_mounts};
@@ -48,3 +53,6 @@ pub use crate::listings::check_listings;
 pub use crate::names::check_names;
 pub use crate::schemas::check_schema_goldens;
 pub use crate::sizes::{Budgets, check_help_sizes};
+pub use crate::weights::{
+    PathBudgets, UnreadableGolden, check_path_weights, output_weight, path_totals,
+};

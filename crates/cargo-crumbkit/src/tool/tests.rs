@@ -7,7 +7,7 @@ use std::path::Path;
 
 use crumbkit::Spelling;
 
-use super::{Listed, Tool, listed};
+use super::{Listed, Tool, Used, listed, used};
 
 /// The start of a `crumbkit/commands-list/v1` document of two commands, with
 /// fields that `weigh` does not read.
@@ -49,6 +49,58 @@ fn output_that_is_not_a_commands_document_gives_none() {
 
     assert_eq!(listed(other.as_bytes()), None);
     assert_eq!(listed(b"PATH  ABOUT\nshelf  Browse\n"), None);
+}
+
+/// A `crumbkit/self-figures-list/v1` document of two commands, with fields
+/// that `weigh` does not read.
+const FIGURES: &str = r#"{"schema":"crumbkit/self-figures-list/v1","data":[
+{"command":"shelf","runs":0,"help_pages":1,"help_before":0,"refused":0,"failed":0,"p95_ms":null,"p95_out_bytes":null,"typed_full":0,"typed_all":0,"typed_long":0},
+{"command":"books show","runs":5,"help_pages":0,"help_before":3,"refused":0,"failed":2,"p95_ms":2,"p95_out_bytes":86,"typed_full":0,"typed_all":0,"typed_long":0}
+],"total":2,"summary":{"runs":6,"sessions":1,"callers":[],"since":"2026-10-04","skipped":0}}"#;
+
+#[test]
+fn a_figures_document_gives_each_command_s_runs_help_before_and_p95_output() {
+    assert_eq!(
+        used(FIGURES.as_bytes()),
+        Some(vec![
+            Used {
+                command: "shelf".to_owned(),
+                runs: 0,
+                help_before: 0,
+                p95_out_bytes: None,
+            },
+            Used {
+                command: "books show".to_owned(),
+                runs: 5,
+                help_before: 3,
+                p95_out_bytes: Some(86),
+            },
+        ])
+    );
+}
+
+#[test]
+fn output_that_is_not_a_figures_document_gives_none() {
+    let other = FIGURES.replace("crumbkit/self-figures-list/v1", "crumbkit/self-usage/v1");
+
+    assert_eq!(used(other.as_bytes()), None);
+    assert_eq!(used(DOCUMENT.as_bytes()), None);
+}
+
+#[test]
+fn a_tool_without_self_figures_list_fails_with_no_usage_figures() {
+    let tool = Tool::new(Path::new("/bin/sh"), &std::env::temp_dir()).unwrap();
+
+    // `sh self figures list ...` cannot open a script named `self`.
+    let error = tool
+        .figures(Path::new("/work/usage.jsonl"), Some("1d"))
+        .unwrap_err();
+
+    assert_eq!(code(&error), "crumbkit::weigh::no_usage_figures");
+    assert_eq!(
+        error.to_string(),
+        "`sh self figures list --all --json --log /work/usage.jsonl --since 1d` prints no crumbkit/self-figures-list/v1 document, so the usage figures cannot be read"
+    );
 }
 
 #[test]

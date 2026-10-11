@@ -9,7 +9,6 @@
 mod cargo;
 mod cli;
 mod error;
-mod goldens;
 mod tool;
 mod weigh;
 

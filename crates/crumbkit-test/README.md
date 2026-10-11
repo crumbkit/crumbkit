@@ -42,6 +42,9 @@ The rustdoc of each check says what it fails on and shows an example:
 - The help guide: [`check_guide`].
 - Help pages: [`check_help_sizes`] with [`Budgets`], and
   [`check_help_goldens`].
+- Paths through the help: [`check_path_weights`] with [`PathBudgets`], and
+  [`path_totals`] and [`output_weight`], which `cargo crumbkit weigh` also
+  calls.
 - Example output: [`check_examples`] with [`Examples`], and
   [`example_golden_name`], which names each example's golden file.
 - JSON documents: [`check_schema_goldens`], which pins each document's
@@ -64,6 +67,10 @@ option.
 [`check_help_sizes`]: src/sizes.rs
 [`Budgets`]: src/sizes.rs
 [`check_help_goldens`]: src/goldens.rs
+[`check_path_weights`]: src/weights.rs
+[`PathBudgets`]: src/weights.rs
+[`path_totals`]: src/weights.rs
+[`output_weight`]: src/weights.rs
 [`check_examples`]: src/examples.rs
 [`Examples`]: src/examples.rs
 [`example_golden_name`]: src/examples.rs

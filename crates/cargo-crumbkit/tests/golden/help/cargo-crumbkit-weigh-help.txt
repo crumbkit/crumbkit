@@ -15,11 +15,20 @@ Options:
       --fields <FIELD>
           Print only these comma-separated fields, in this order
 
+      --usage
+          Add the runs, help pages and output of each command from the tool's usage log
+
+      --log <FILE>
+          Read the usage figures from this log instead of the tool's own; implies --usage
+
       --long
           Add the long columns after the compact ones
 
       --full
           With --json, print every field of every row
+
+      --since <DURATION>
+          How far back to read the usage log, such as 12h, 7d or 2w [default: 7d]
 
   -h, --help
           Print help (see a summary with '-h')
@@ -31,9 +40,17 @@ Examples:
   cargo crumbkit weigh --bin shelf --json
           Print the weights as JSON
 
+  cargo crumbkit weigh --bin shelf --usage
+          Add the figures of shelf's own usage log
+
 Columns:
-  path        The command line that runs the command, such as `shelf books list`.
-  short_help  The bytes of the command's `-h` page.
-  long_help   The bytes of the command's `--help` page.
-  output      The bytes of the largest golden file of the command's examples, or null when no example has a golden file.
-  path_total  The bytes that an agent reads to find and run the command: each `-h` page from the root down to the command, and the command's output.
+  path         The command line that runs the command, such as `shelf books list`.
+  short_help   The bytes of the command's `-h` page.
+  output       The bytes of the largest golden file of the command's examples, or null when no example has a golden file.
+  path_total   The bytes that an agent reads to find and run the command: each `-h` page from the root down to the command, and the command's output.
+  runs         With --usage, the runs of the command in the usage log that printed no help page, and null without it.
+  help_before  With --usage, the help pages that each run's session read since its previous run that printed no help page, summed over the command's runs, and null without it.
+  p95_output   With --usage, the 95th percentile of the bytes that the command's runs wrote to standard output, and null without it or when no run printed a result.
+
+Columns that --long adds:
+  long_help  The bytes of the command's `--help` page.

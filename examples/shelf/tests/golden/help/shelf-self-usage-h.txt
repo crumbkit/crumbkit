@@ -4,6 +4,7 @@ Usage: shelf self usage [OPTIONS]
 
 Options:
       --since <DURATION>  How far back to read the usage log, such as 12h, 7d or 2w [default: 7d]
+      --log <FILE>        Read this usage log instead of the tool's own
   -h, --help              Print help (see more with '--help')
 
 Examples:

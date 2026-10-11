@@ -171,6 +171,10 @@ pub(super) struct Figures {
     pub(super) runs: u64,
     /// The runs that printed this command's help page.
     pub(super) help: u64,
+    /// The help pages that each run's session read since its last run that
+    /// printed no help page, summed over the runs. The pages may belong to
+    /// any command, such as the root and the group above this command.
+    pub(super) help_before: u64,
     /// The runs whose command line was refused.
     pub(super) refused: u64,
     /// The flags that clap suggested for the refused runs, the most
