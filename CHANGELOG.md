@@ -296,3 +296,7 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   twice as that goal naming it more than once.
 - crumbkit-test's `check_guide` and `check_examples` quote an example's
   words in their messages as help prints them.
+- crumbkit-test's `check_examples` lists runs that fail, and a binary that
+  cannot start, under their own heading.
+- crumbkit-test's `check_help_sizes` reports a page that fails to render
+  once, without a second problem for that command's budget.

@@ -150,7 +150,7 @@ fn an_example_that_exits_with_a_non_zero_code_fails_the_check_and_overwrite_writ
 
     assert_eq!(
         panic_message(|| run(&FAILS, &examples(&dir), Action::Overwrite)).unwrap(),
-        "the command tree breaks crumbkit's example rules:\n\
+        "these runs of the tool's examples fail:\n\
          sh -c 'echo partial; exit 3': an example must exit with code 0 and write nothing to standard error, and the run ends with exit status: 3"
     );
     assert!(dir.names().is_empty(), "{:?}", dir.names());
@@ -164,7 +164,7 @@ fn an_example_that_writes_to_standard_error_fails_the_check() {
 
     assert_eq!(
         panic_message(|| run(&WARNS, &examples(&dir), Action::Verify)).unwrap(),
-        "the command tree breaks crumbkit's example rules:\n\
+        "these runs of the tool's examples fail:\n\
          sh -c 'echo warning >&2': an example must exit with code 0 and write nothing to standard error, and the run ends with exit status: 0 after writing this to standard error:\n\
          warning\n"
     );
@@ -180,12 +180,32 @@ fn a_binary_that_cannot_start_fails_the_check_naming_its_path_and_the_error() {
 
     assert!(
         message.starts_with(
-            "the command tree breaks crumbkit's example rules:\n\
+            "these runs of the tool's examples fail:\n\
              sh -c 'echo books': the binary `/nonexistent/sh` cannot start: "
         ),
         "{message}"
     );
     assert_eq!(message.lines().count(), 2, "{message}");
+}
+
+#[test]
+fn failed_runs_and_broken_rules_are_reported_under_their_own_headings() {
+    const FAILS: Guide =
+        Guide::new().leaves(&[Leaf::new(&["-c"]).examples(&[Example::new(&["exit 3"], "Fail")])]);
+    let dir = TempDir::new("examples-headings").unwrap();
+
+    assert_eq!(
+        panic_message(|| run(
+            &FAILS,
+            &examples(&dir).exempt(&["books"]),
+            Action::Overwrite
+        ))
+        .unwrap(),
+        "the command tree breaks crumbkit's example rules:\n\
+         the exemption `books` names no command\n\
+         these runs of the tool's examples fail:\n\
+         sh -c 'exit 3': an example must exit with code 0 and write nothing to standard error, and the run ends with exit status: 3"
+    );
 }
 
 #[test]

@@ -180,9 +180,15 @@ impl Examples {
 /// Panics when a run, a golden file or an exemption breaks a rule above, or
 /// when the check cannot create a run's XDG directories, or
 /// `SNAPSHOTS=overwrite` cannot write or delete a file. The message lists
-/// each problem on its own line and names each example by its command line
-/// as help prints it, with each word that a POSIX shell would split or
-/// expand between single quotes, such as
+/// the problems of the command tree and the golden files under the line
+/// `the command tree breaks crumbkit's example rules:`, and the runs that
+/// fail, including a binary that cannot start, under the line
+/// `these runs of the tool's examples fail:`. Each problem starts on a new
+/// line, and a problem may continue over several lines: a failed run's
+/// problem ends with its standard error, and a differing output's problem
+/// ends with snapbox's report. The message names each example by its
+/// command line as help prints it, with each word that a POSIX shell would
+/// split or expand between single quotes, such as
 /// `shelf books list --author 'Jane Austen'`.
 pub fn check_examples(command: &Command, guide: &Guide, examples: &Examples) {
     let assert = Assert::new().action_env(DEFAULT_ACTION_ENV);
@@ -197,6 +203,10 @@ fn check(command: &Command, guide: &Guide, examples: &Examples, assert: &Assert)
     let dir = Path::new(examples.dir);
     let tool = command.get_name();
     let mut problems = Vec::new();
+    // The problems of runs that fail, which the message lists under a
+    // heading of their own, because the tool's binary breaks them and the
+    // command tree and golden files do not.
+    let mut failures = Vec::new();
     let visits = tree::walk(command, examples.exempt, &mut problems);
     // Each golden file name with the command line of the example that has
     // it.
@@ -225,7 +235,7 @@ fn check(command: &Command, guide: &Guide, examples: &Examples, assert: &Assert)
             let output = match run(examples, &args) {
                 Ok(output) => output,
                 Err(problem) => {
-                    problems.push(format!("{line}: {problem}"));
+                    failures.push(format!("{line}: {problem}"));
                     continue;
                 }
             };
@@ -238,7 +248,7 @@ fn check(command: &Command, guide: &Guide, examples: &Examples, assert: &Assert)
                     problem.push_str(" after writing this to standard error:\n");
                     problem.push_str(&String::from_utf8_lossy(&output.stderr));
                 }
-                problems.push(problem);
+                failures.push(problem);
                 continue;
             }
             // RUST-10: the check compares the output as UTF-8 text, as the
@@ -259,7 +269,30 @@ fn check(command: &Command, guide: &Guide, examples: &Examples, assert: &Assert)
     }
     let names: Vec<String> = names.into_iter().map(|(name, _)| name).collect();
     remove_stale(dir, &names, overwrite, "checked example", &mut problems);
-    tree::report("example rules", &problems);
+    report(&problems, &failures);
+}
+
+/// Panics, as a failed test assertion does, when `problems` or `failures`
+/// holds any problem. The problems of the command tree and the golden files
+/// follow the line `the command tree breaks crumbkit's example rules:`, and
+/// the failed runs follow the line `these runs of the tool's examples
+/// fail:`, so a reader sees whether the tree or the tool's binary broke.
+/// Each problem starts on a new line.
+fn report(problems: &[String], failures: &[String]) {
+    let mut sections = Vec::new();
+    if !problems.is_empty() {
+        sections.push(format!(
+            "the command tree breaks crumbkit's example rules:\n{}",
+            problems.join("\n")
+        ));
+    }
+    if !failures.is_empty() {
+        sections.push(format!(
+            "these runs of the tool's examples fail:\n{}",
+            failures.join("\n")
+        ));
+    }
+    assert!(sections.is_empty(), "{}", sections.join("\n"));
 }
 
 /// Runs the binary of `examples` once with `args`, a cleared environment,

@@ -39,7 +39,9 @@ mod tests;
 /// and deletes each stale file. It finds two pages whose golden files have
 /// one name, such as the pages of `shelf books list` and of a root command
 /// `books-list`, naming both command lines, and compares or writes only the
-/// first of the two. Without `SNAPSHOTS=overwrite`, it also finds:
+/// first of the two. It finds a visible command whose `-h` or `--help`
+/// prints no help page, such as one that turned its help flag off. Without
+/// `SNAPSHOTS=overwrite`, it also finds:
 ///
 /// - a page without a golden file;
 /// - a page that differs from its golden file, with snapbox's report of
