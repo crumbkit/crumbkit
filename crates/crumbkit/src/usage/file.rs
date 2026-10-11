@@ -1,9 +1,9 @@
-//! The usage log's file: its directory, its lock, its size limit and its
-//! trim.
+//! The usage log's file: its directory, its lock file, its size limit and
+//! its trim.
 
-use std::fs::{DirBuilder, File, OpenOptions, TryLockError};
+use std::fs::{self, DirBuilder, File, OpenOptions, TryLockError};
 use std::io::{self, Read as _, Seek as _, SeekFrom, Write as _};
-use std::os::unix::fs::{DirBuilderExt as _, OpenOptionsExt as _};
+use std::os::unix::fs::{DirBuilderExt as _, FileExt as _, OpenOptionsExt as _};
 use std::path::Path;
 use std::thread;
 use std::time::{Duration, Instant};
@@ -15,18 +15,19 @@ mod tests;
 pub(super) struct Limits {
     /// The size in bytes past which the next line trims the file.
     pub(super) size: u64,
-    /// How many of the newest lines a trim keeps.
+    /// The most bytes that a trim keeps, as the newest whole lines that fit.
     pub(super) keep: usize,
     /// How long a run waits for another run's lock before it drops its line.
     pub(super) wait: Duration,
 }
 
 /// The limits of every tool's usage log: past 10 MB the file keeps its
-/// newest 9,999 lines and the new one, and a run waits at most 100 ms for
-/// the lock.
+/// newest whole lines that fit in 5 MB, and a run waits at most 100 ms for
+/// the lock. A run appends at most 1,025 bytes, so after a trim at least
+/// 5 MB of new lines go in before the next trim.
 pub(super) const LIMITS: Limits = Limits {
     size: 10_000_000,
-    keep: 9_999,
+    keep: 5_000_000,
     wait: Duration::from_millis(100),
 };
 
@@ -39,9 +40,14 @@ pub(super) fn create_dir(dir: &Path) -> io::Result<()> {
 /// Appends `line` to the file `usage.jsonl` in `dir`, which it creates with
 /// mode 0600.
 ///
-/// It holds the file's lock while it trims and appends, so runs at the same
-/// time never interleave their lines. When the file is larger than
-/// `limits.size`, it first keeps only the newest `limits.keep` lines.
+/// It holds the lock on the file `usage.lock` in `dir`, which it also
+/// creates with mode 0600, while it trims and appends, so runs at the same
+/// time never interleave their lines. The lock has a file of its own because
+/// a trim renames a new log over `usage.jsonl`, and a lock on the old log
+/// would no longer guard the new one. When the log is larger than
+/// `limits.size`, it first keeps only the newest whole lines that fit in
+/// `limits.keep` bytes. When the log's last line has no newline, because a
+/// run ended while it wrote, the new line starts on a line of its own.
 ///
 /// # Errors
 ///
@@ -50,20 +56,44 @@ pub(super) fn create_dir(dir: &Path) -> io::Result<()> {
 pub(super) fn append(dir: &Path, line: &[u8], limits: &Limits) -> io::Result<()> {
     #[expect(
         clippy::disallowed_methods,
-        reason = "the usage log owns its file, which only this function writes"
+        reason = "the usage log owns its lock file, which only this function creates"
     )]
-    let mut file = OpenOptions::new()
+    let lock_file = OpenOptions::new()
+        .write(true)
+        .create(true)
+        .truncate(false)
+        .mode(0o600)
+        .open(dir.join("usage.lock"))?;
+    lock(&lock_file, limits.wait)?;
+    let mut file = open_log(dir)?;
+    let mut len = file.metadata()?.len();
+    if len > limits.size {
+        trim(dir, &mut file, limits.keep)?;
+        file = open_log(dir)?;
+        len = file.metadata()?.len();
+    }
+    if len > 0 && !ends_with_newline(&file, len)? {
+        file.write_all(b"\n")?;
+    }
+    file.write_all(line)?;
+    // Closing the lock file releases the lock, after the line is written.
+    drop(lock_file);
+    Ok(())
+}
+
+/// Opens the log `usage.jsonl` in `dir` to read and append, and creates it
+/// with mode 0600.
+fn open_log(dir: &Path) -> io::Result<File> {
+    #[expect(
+        clippy::disallowed_methods,
+        reason = "the usage log owns its file, which only this module writes"
+    )]
+    OpenOptions::new()
         .read(true)
         .append(true)
         .create(true)
         .mode(0o600)
-        .open(dir.join("usage.jsonl"))?;
-    lock(&file, limits.wait)?;
-    if file.metadata()?.len() > limits.size {
-        trim(&mut file, limits.keep)?;
-    }
-    // Closing the file when it drops releases the lock.
-    file.write_all(line)
+        .open(dir.join("usage.jsonl"))
 }
 
 /// Takes the lock on `file`, and retries every 5 ms for at most `wait`.
@@ -81,35 +111,75 @@ fn lock(file: &File, wait: Duration) -> io::Result<()> {
     }
 }
 
-/// Rewrites the locked `file` with only its newest `keep` lines.
-//
-// RUST-10: the trim truncates the file and writes the kept lines in place,
-// because a new file renamed into place would not carry the lock. A run that
-// ends between the two loses the log. A trim that cannot lose lines replaces
-// this if that matters.
-fn trim(file: &mut File, keep: usize) -> io::Result<()> {
+/// Replaces the log `file` in `dir` with a new log that holds only its
+/// newest whole lines that fit in `keep` bytes. The kept lines go to a
+/// temporary file in `dir`, which is synced and then renamed over
+/// `usage.jsonl`, so a run that ends during the trim leaves either the old
+/// log or the new one. The caller holds the lock.
+fn trim(dir: &Path, file: &mut File, keep: usize) -> io::Result<()> {
     let mut text = Vec::new();
     file.seek(SeekFrom::Start(0))?;
     file.read_to_end(&mut text)?;
-    let kept = newest(&text, keep);
-    file.set_len(0)?;
-    // The file appends, so the kept lines go to the start of the empty file.
-    file.write_all(kept)
+    let temporary = dir.join(format!("usage.jsonl.{}.tmp", std::process::id()));
+    let replaced = write_trimmed(&temporary, newest(&text, keep)).and_then(|()| {
+        #[expect(
+            clippy::disallowed_methods,
+            reason = "the usage log owns its file, which a trim replaces"
+        )]
+        fs::rename(&temporary, dir.join("usage.jsonl"))
+    });
+    if replaced.is_err() {
+        #[expect(
+            clippy::disallowed_methods,
+            reason = "the usage log owns its temporary file, and removes one that a trim could not finish"
+        )]
+        let _ = fs::remove_file(&temporary);
+    }
+    replaced
 }
 
-/// Returns the newest `keep` lines of `text`, whose lines each end with a
+/// Writes `kept` to the file at `temporary` with mode 0600, and syncs it, so
+/// the bytes reach the disk before the file replaces the log. A file left by
+/// an earlier process with the same id is overwritten.
+fn write_trimmed(temporary: &Path, kept: &[u8]) -> io::Result<()> {
+    #[expect(
+        clippy::disallowed_methods,
+        reason = "the usage log owns its file, which a trim writes to a temporary file first"
+    )]
+    let mut file = OpenOptions::new()
+        .write(true)
+        .create(true)
+        .truncate(true)
+        .mode(0o600)
+        .open(temporary)?;
+    file.write_all(kept)?;
+    file.sync_all()
+}
+
+/// Returns whether the last byte of `file`, which holds `len` bytes, is a
 /// newline.
+fn ends_with_newline(file: &File, len: u64) -> io::Result<bool> {
+    let mut last = [0];
+    file.read_exact_at(&mut last, len - 1)?;
+    Ok(last[0] == b'\n')
+}
+
+/// Returns the newest whole lines of `text` that fit in `keep` bytes. A last
+/// line without a newline is a write that ended early, and it is dropped.
 fn newest(text: &[u8], keep: usize) -> &[u8] {
-    let mut newlines = 0;
-    for (index, byte) in text.iter().enumerate().rev() {
-        if *byte == b'\n' {
-            newlines += 1;
-            // The first newline from the end closes the last line, so the
-            // newline before the kept lines is newline `keep + 1`.
-            if newlines == keep + 1 {
-                return &text[index + 1..];
-            }
-        }
-    }
-    text
+    let end = text
+        .iter()
+        .rposition(|byte| *byte == b'\n')
+        .map_or(0, |index| index + 1);
+    let whole = &text[..end];
+    let Some(earliest) = end.checked_sub(keep).filter(|earliest| *earliest > 0) else {
+        return whole;
+    };
+    // A kept line starts at `earliest` or later, so the kept lines start
+    // after the first newline at `earliest - 1` or later. `whole` ends with
+    // a newline, so there is one.
+    whole[earliest - 1..]
+        .iter()
+        .position(|byte| *byte == b'\n')
+        .map_or(&[], |offset| &whole[earliest + offset..])
 }

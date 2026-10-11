@@ -282,7 +282,7 @@ where
             // writes help, replaces this when a tool needs colour there.
             let code = print_text(sink, &page);
             #[cfg(feature = "usage-log")]
-            crate::usage::helped(&[], true, code);
+            crate::usage::helped(&command, &[], true, code);
             return Err(code);
         }
         ask_for_help(&mut args, help.position);
@@ -324,7 +324,7 @@ where
         let code = print_page(sink, &error, colour);
         #[cfg(feature = "usage-log")]
         if error.kind() == ErrorKind::DisplayHelp {
-            crate::usage::helped(&path, long_help, code);
+            crate::usage::helped(&command, &path, long_help, code);
         } else {
             crate::usage::exited(code);
         }

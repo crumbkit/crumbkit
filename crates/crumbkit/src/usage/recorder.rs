@@ -6,7 +6,7 @@ use std::path::Path;
 use std::process::ExitCode;
 use std::sync::{Mutex, mpsc};
 use std::thread;
-use std::time::{Instant, SystemTime};
+use std::time::{Duration, Instant, SystemTime};
 
 use clap::{ArgMatches, Command};
 use etcetera::BaseStrategy as _;
@@ -29,6 +29,15 @@ mod tests;
 /// The recorder of this process. A poisoned lock counts as no recorder.
 static RECORDER: Mutex<State> = Mutex::new(State::Idle);
 
+/// How long the main thread or the signal thread waits for a line that the
+/// other thread is writing, before `main` returns or the signal takes
+/// effect. A write waits at most 100 ms for the lock, and a trim reads at
+/// most about 10 MB and writes 5 MB, which takes a few milliseconds from the
+/// page cache, so 500 ms covers the lock wait and a trim on a disk that
+/// reads and writes about 40 MB a second. A person who presses Ctrl-C waits
+/// at most this long for the tool to end.
+const LINE_WAIT: Duration = Duration::from_millis(500);
+
 /// Where the process's recorder is in its life.
 #[expect(
     clippy::large_enum_variant,
@@ -39,6 +48,8 @@ enum State {
     Idle,
     /// `start` ran, and the run's line is not written yet.
     Recording(Recorder),
+    /// A thread took the recorder and is writing the run's line.
+    Writing,
     /// The run's line is written, or was dropped.
     Written,
 }
@@ -75,7 +86,7 @@ pub struct Log {
 impl Drop for Log {
     fn drop(&mut self) {
         if self.active {
-            write(false);
+            write(&RECORDER, false);
         }
     }
 }
@@ -173,10 +184,12 @@ pub(crate) fn parsed(command: &Command, matches: &ArgMatches) {
     });
 }
 
-/// Records that `parse` printed help for the command at `path`, the long
-/// page when `long`, and returned `exit`.
-pub(crate) fn helped(path: &[String], long: bool, exit: ExitCode) {
-    update(&RECORDER, |recorder| recorder.helped(path, long, exit));
+/// Records that `parse` printed help for the command at `path` below
+/// `command`, the long page when `long`, and returned `exit`.
+pub(crate) fn helped(command: &Command, path: &[String], long: bool, exit: ExitCode) {
+    update(&RECORDER, |recorder| {
+        recorder.helped(command, path, long, exit);
+    });
 }
 
 /// Records the exit code that `parse` returned after it printed the
@@ -229,14 +242,15 @@ impl Recorder {
 
     /// Records the tool's command and command line, as [`typed`] describes.
     fn typed(&mut self, command: &Command, args: &[OsString]) {
-        self.tool = Some(Name::new(command.get_name()));
-        self.version = command.get_version().map(Name::new);
+        self.tool = Some(Name::command(command));
+        self.version = Name::version(command);
         self.words = args.get(1..).unwrap_or_default().to_vec();
     }
 
-    /// Records help for the command at `path`, as [`helped`] describes.
-    fn helped(&mut self, path: &[String], long: bool, exit: ExitCode) {
-        self.run.command = (!path.is_empty()).then(|| Name::new(path.join(" ")));
+    /// Records help for the command at `path`, as [`helped`] describes. A
+    /// word of `path` that names no subcommand of `command` is left out.
+    fn helped(&mut self, command: &Command, path: &[String], long: bool, exit: ExitCode) {
+        self.run.command = Name::path(&shape::subcommands(command, path));
         self.run.help = Some(if long { Help::Long } else { Help::Short });
         self.run.exit = Some(exit::number(exit));
     }
@@ -244,7 +258,7 @@ impl Recorder {
     /// Records a failure's code, as [`failed`] describes.
     fn failed(&mut self, spelling: Spelling, code: &Code) {
         if self.run.code.is_none() {
-            self.run.code = Some(Name::new(spelling.spell(code)));
+            self.run.code = Some(Name::code(spelling, code));
         }
     }
 
@@ -318,10 +332,11 @@ fn update(slot: &Mutex<State>, change: impl FnOnce(&mut Recorder)) {
 }
 
 /// Takes the recorder out of `slot`, so no other line is written for the
-/// run, or returns `None` when there is none.
+/// run, or returns `None` when there is none. The slot then says that the
+/// line is being written, until [`written`] marks it written.
 fn take(slot: &Mutex<State>) -> Option<Recorder> {
     let mut state = slot.lock().ok()?;
-    match std::mem::replace(&mut *state, State::Written) {
+    match std::mem::replace(&mut *state, State::Writing) {
         State::Recording(recorder) => Some(recorder),
         other => {
             *state = other;
@@ -330,10 +345,38 @@ fn take(slot: &Mutex<State>) -> Option<Recorder> {
     }
 }
 
-/// Writes the run's line, once per run. `interrupted` says that a signal
-/// ended the run.
-fn write(interrupted: bool) {
-    let Some(recorder) = take(&RECORDER) else {
+/// Marks the line of the run in `slot` written, after the thread that took
+/// the recorder wrote the line or dropped it.
+fn written(slot: &Mutex<State>) {
+    if let Ok(mut state) = slot.lock() {
+        *state = State::Written;
+    }
+}
+
+/// Waits while another thread writes the line of the run in `slot`, for at
+/// most `bound`, and returns whether no write is in progress any more. It
+/// checks every 5 ms, and a poisoned lock ends the wait.
+fn wait_for_line(slot: &Mutex<State>, bound: Duration) -> bool {
+    let started = Instant::now();
+    loop {
+        match slot.lock().as_deref() {
+            Ok(State::Writing) => {}
+            _ => return true,
+        }
+        if started.elapsed() >= bound {
+            return false;
+        }
+        thread::sleep(Duration::from_millis(5));
+    }
+}
+
+/// Writes the line of the run in `slot`, once per run. `interrupted` says
+/// that a signal ended the run. When another thread is already writing the
+/// line, it waits for that write, for at most [`LINE_WAIT`], so neither the
+/// end of `main` nor a signal ends the process in the middle of the line.
+fn write(slot: &Mutex<State>, interrupted: bool) {
+    let Some(recorder) = take(slot) else {
+        let _ = wait_for_line(slot, LINE_WAIT);
         return;
     };
     let state = etcetera::choose_base_strategy()
@@ -351,6 +394,7 @@ fn write(interrupted: bool) {
             &LIMITS,
         );
     }
+    written(slot);
 }
 
 /// Writes the line of `recorder` to `usage.jsonl` in the tool's directory
@@ -372,9 +416,10 @@ fn save(
 }
 
 /// Starts the thread that writes the line when the run ends on SIGINT or
-/// SIGTERM, and returns once the thread listens. After the line, the thread
-/// lets the signal take its default effect, so the process ends as it would
-/// have without the log.
+/// SIGTERM, and returns once the thread listens. When the main thread is
+/// already writing the line, the signal thread waits for it, for at most
+/// [`LINE_WAIT`], as [`write`] describes. After the line, the thread lets the signal take its
+/// default effect, so the process ends as it would have without the log.
 //
 // RUST-10: the thread takes both signals from the start of the run. A
 // process that started with one of them ignored now ends on it, such as a
@@ -393,7 +438,7 @@ fn watch_signals() {
                 return;
             };
             if let Some(signal) = signals.forever().next() {
-                write(true);
+                write(&RECORDER, true);
                 let _ = emulate_default_handler(signal);
             }
         });

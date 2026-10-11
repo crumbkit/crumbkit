@@ -5,7 +5,7 @@
 use std::ffi::OsString;
 
 use clap::parser::ValueSource;
-use clap::{Arg, ArgMatches, Command};
+use clap::{ArgMatches, Command};
 
 use super::record::{Name, Run};
 
@@ -20,7 +20,7 @@ mod tests;
 /// not recorded. clap copies a global flag into the matches of every level,
 /// and the flag is recorded once.
 pub(super) fn parsed(run: &mut Run, command: &Command, matches: &ArgMatches) {
-    let mut path: Vec<&str> = Vec::new();
+    let mut path: Vec<&Command> = Vec::new();
     let mut flags = Vec::new();
     let mut node = command;
     let mut level = matches;
@@ -32,13 +32,13 @@ pub(super) fn parsed(run: &mut Run, command: &Command, matches: &ArgMatches) {
         let Some(subcommand) = node.find_subcommand(name) else {
             break;
         };
-        path.push(subcommand.get_name());
+        path.push(subcommand);
         node = subcommand;
         level = next;
     }
     flags.sort();
     flags.dedup();
-    run.command = (!path.is_empty()).then(|| Name::new(path.join(" ")));
+    run.command = Name::path(&path);
     run.flags = flags;
     run.ids = ids(node, level);
 }
@@ -64,18 +64,14 @@ pub(super) fn refused(
     words: &[OsString],
     error: &clap::Error,
 ) {
-    let mut node = command;
-    for name in path {
-        if let Some(subcommand) = node.find_subcommand(name) {
-            node = subcommand;
-        }
-    }
+    let path = subcommands(command, path);
+    let node = path.last().copied().unwrap_or(command);
     let unknown = words
         .iter()
         .take_while(|word| *word != "--")
         .filter(|word| names_no_flag(node, word.to_str()))
         .count();
-    run.command = (!path.is_empty()).then(|| Name::new(path.join(" ")));
+    run.command = Name::path(&path);
     run.unknown_flags = (unknown > 0).then_some(unknown);
     run.nearest = nearest(node, error);
 }
@@ -92,21 +88,25 @@ fn typed_flags(node: &Command, matches: &ArgMatches, flags: &mut Vec<Name>) {
         let flag = node
             .get_arguments()
             .find(|arg| arg.get_id() == id)
-            .and_then(flag_name);
+            .and_then(Name::flag);
         if let Some(flag) = flag {
             flags.push(flag);
         }
     }
 }
 
-/// Returns the name of `arg` as a flag: `--long`, or `-s` when it has no
-/// long name, or `None` for a positional argument.
-fn flag_name(arg: &Arg) -> Option<Name> {
-    match (arg.get_long(), arg.get_short()) {
-        (Some(long), _) => Some(Name::new(format!("--{long}"))),
-        (None, Some(short)) => Some(Name::new(format!("-{short}"))),
-        (None, None) => None,
+/// Returns the subcommands of `command` that `path` names, one level below
+/// the other, and leaves out a name that names no subcommand at its level.
+pub(super) fn subcommands<'a>(command: &'a Command, path: &[String]) -> Vec<&'a Command> {
+    let mut found = Vec::new();
+    let mut node = command;
+    for name in path {
+        if let Some(subcommand) = node.find_subcommand(name) {
+            found.push(subcommand);
+            node = subcommand;
+        }
     }
+    found
 }
 
 /// Returns how many values the positional arguments of `node` whose value
@@ -178,5 +178,5 @@ fn nearest(node: &Command, error: &clap::Error) -> Option<Name> {
     let long = suggestion.strip_prefix("--")?;
     node.get_arguments()
         .find(|arg| arg.get_long() == Some(long))
-        .and_then(flag_name)
+        .and_then(Name::flag)
 }

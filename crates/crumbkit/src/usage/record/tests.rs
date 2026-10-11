@@ -4,13 +4,19 @@ use super::{Hash, Help, Name, Record, Run, Section, SpanId, TraceId, TraceIds, l
 
 const KEY: [u8; 16] = *b"0123456789abcdef";
 
+/// Returns the name `text`, as one of `Name`'s constructors reads it from a
+/// tool's command tree or codes.
+fn name(text: &str) -> Name {
+    Name(text.to_owned())
+}
+
 /// Returns the record of a run that reported nothing, as the usage log
 /// writes it for a tool whose `main` returned before `parse`.
 fn bare() -> Record {
     Record {
         schema: super::SCHEMA,
-        tool: Name::new("shelf"),
-        version: Some(Name::new("0.0.0")),
+        tool: name("shelf"),
+        version: Some(name("0.0.0")),
         at: "2026-10-07T12:01:07.120Z".to_owned(),
         ms: 41,
         caller: "person",
@@ -54,15 +60,15 @@ fn a_record_writes_every_field_of_the_run_beside_its_own() {
     ]));
     record.interrupted = true;
     record.run = Run {
-        command: Some(Name::new("books show")),
+        command: Some(name("books show")),
         help: Some(Help::Long),
-        flags: vec![Name::new("--json")],
+        flags: vec![name("--json")],
         ids: Some(3),
         unknown_flags: Some(1),
-        nearest: Some(Name::new("--fields")),
+        nearest: Some(name("--fields")),
         alias: true,
         exit: Some(1),
-        code: Some(Name::new("shelf::books::not_found")),
+        code: Some(name("shelf::books::not_found")),
         out_bytes: Some(1840),
         truncated: true,
         ext: Some(Section {

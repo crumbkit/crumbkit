@@ -27,4 +27,5 @@ disallowed-methods = [
     { path = "std::fs::remove_file", reason = "file writes belong to the module that owns them; it suppresses this with #[expect] and a reason" },
     { path = "std::fs::remove_dir_all", reason = "file writes belong to the module that owns them; it suppresses this with #[expect] and a reason" },
     { path = "std::fs::rename", reason = "file writes belong to the module that owns them; it suppresses this with #[expect] and a reason" },
+    { path = "std::fs::hard_link", reason = "file writes belong to the module that owns them; it suppresses this with #[expect] and a reason" },
 ]

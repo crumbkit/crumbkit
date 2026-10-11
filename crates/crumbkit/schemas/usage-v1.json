@@ -149,7 +149,7 @@
       ]
     },
     "Name": {
-      "description": "A name from the tool's own vocabulary: a command path, a flag, a version\nor a failure code.\n\ncrumbkit builds every name from the tool's command tree and its codes,\nand never from a word that the caller typed.",
+      "description": "A name from the tool's own vocabulary: a command path, a flag, a version\nor a failure code.\n\ncrumbkit reads every name from the tool's clap command tree or its codes,\nand never from a word that the caller typed: each constructor takes a\n`clap::Command`, a `clap::Arg` or a crumbkit `Code`.",
       "type": "string"
     },
     "Section": {
