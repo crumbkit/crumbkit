@@ -315,3 +315,5 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   help` prints help.
 - A global flag that a subcommand defines is hidden from `-h` and named on
   the `Global flags:` line of that subcommand and each command below it.
+- When a lookup of `fetch_each` panics, the other workers stop before they
+  take another id.
