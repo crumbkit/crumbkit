@@ -42,12 +42,15 @@ fn a_flag_or_a_nearest_flag_that_the_command_lacks_is_not_known() {
 }
 
 #[test]
-fn a_code_in_one_of_the_predefined_spellings_is_known() {
+fn a_code_in_a_predefined_or_a_custom_spelling_is_known() {
     let tool = tool();
     let spelled = [
         "shelf::books::not_found",
         "shelf.books.not_found",
         "crumbkit/cli/usage",
+        "shelf-books-not_found",
+        "SHELF/BOOKS/NOT_FOUND",
+        &"a".repeat(128),
     ];
 
     for code in spelled {
@@ -58,15 +61,15 @@ fn a_code_in_one_of_the_predefined_spellings_is_known() {
 }
 
 #[test]
-fn a_code_that_is_not_three_segments_of_a_code_is_not_known() {
+fn a_code_with_a_space_another_character_or_more_than_128_characters_is_not_known() {
     let tool = tool();
     let codes = [
-        "shelf::books",
-        "shelf::books::not_found::again",
-        "shelf::Books::not_found",
-        "shelf.books::not_found",
-        "shelf::books::",
+        "",
+        "shelf books not_found",
+        "shelf::books::not_found\n",
+        "shelf::bücher::not_found",
         "token=ghp_16C7e42F292c6912E7710c838347Ae178B4a",
+        &"a".repeat(129),
     ];
 
     for code in codes {

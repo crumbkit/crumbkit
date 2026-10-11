@@ -16,9 +16,9 @@ mod tests;
 /// The callers that the usage log writes besides an agent's id.
 const OTHER_CALLERS: [&str; 2] = ["person", "unknown"];
 
-/// The separators of crumbkit's predefined spellings of a code: colons,
-/// dots and slashes.
-const CODE_SEPARATORS: [&str; 3] = ["::", ".", "/"];
+/// The longest code that the check keeps, in bytes, which are ASCII
+/// characters. A longer code is skipped.
+const LONGEST_CODE: usize = 128;
 
 /// Returns whether every name in `entry` is one that the writer could have
 /// produced for `tool`, a command that `Command::build` has prepared:
@@ -28,13 +28,11 @@ const CODE_SEPARATORS: [&str; 3] = ["::", ".", "/"];
 /// - each flag and the nearest flag is the name of an argument of `tool` or
 ///   of a command on the path, as the writer names it: `--long`, or `-s`
 ///   for an argument without a long name;
-/// - the code is three segments of lowercase ASCII letters, digits and
-///   underscores, joined by `::`, `.` or `/`, as crumbkit's predefined
-///   spellings write a [`Code`](crate::Code);
+/// - the code is 1 to 128 ASCII letters, digits, `_`, `-`, `:`, `.` and
+///   `/`, which covers crumbkit's predefined spellings of a
+///   [`Code`](crate::Code) and a tool's custom spelling, and keeps out
+///   whitespace and any other character;
 /// - the caller is an agent id from is-ai-agent, `person` or `unknown`.
-///
-/// A tool with a custom spelling writes codes that fail the code check, so
-/// the report skips its failed and refused runs.
 pub(super) fn known(tool: &Command, entry: &Entry) -> bool {
     let Some(path) = path(tool, entry.command.as_deref()) else {
         return false;
@@ -79,22 +77,13 @@ fn names(arg: &Arg, flag: &str) -> bool {
     }
 }
 
-/// Returns whether `text` is a code in one of crumbkit's predefined
-/// spellings.
+/// Returns whether `text` is 1 to [`LONGEST_CODE`] ASCII letters, digits,
+/// `_`, `-`, `:`, `.` and `/`.
 fn is_code(text: &str) -> bool {
-    CODE_SEPARATORS.iter().any(|separator| {
-        let segments: Vec<&str> = text.split(separator).collect();
-        segments.len() == 3 && segments.iter().all(|segment| is_segment(segment))
-    })
-}
-
-/// Returns whether `text` is a segment of a code: non-empty lowercase ASCII
-/// letters, digits and underscores, the rule that `Code::new` enforces.
-fn is_segment(text: &str) -> bool {
-    !text.is_empty()
+    (1..=LONGEST_CODE).contains(&text.len())
         && text
             .bytes()
-            .all(|byte| byte.is_ascii_lowercase() || byte.is_ascii_digit() || byte == b'_')
+            .all(|byte| byte.is_ascii_alphanumeric() || b"_-:./".contains(&byte))
 }
 
 /// Returns whether the usage log writes `name` as a caller. An agent's id

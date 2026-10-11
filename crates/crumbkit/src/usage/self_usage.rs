@@ -145,9 +145,9 @@ struct CallerRuns {
 /// directory once, a line at a time. A record that names a command path,
 /// flag, failure code or caller that the tool's usage log could not have
 /// written is left out and counted in the summary, so a hand-edited line
-/// cannot put its text in the report. A code counts only in crumbkit's
-/// predefined spellings, so a tool with a custom spelling has its failed
-/// and refused runs counted as skipped.
+/// cannot put its text in the report. A code counts when it is 1 to 128
+/// ASCII letters, digits, `_`, `-`, `:`, `.` and `/`, which covers the
+/// predefined spellings and a custom one.
 ///
 /// A failure to find or read the log stays silent, as every usage-log
 /// failure does, and the report holds the runs read before it. A tool that
