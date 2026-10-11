@@ -41,13 +41,29 @@ multiple-versions-include-dev = true
 # A `*` version requirement fails the check, because cargo may resolve it to
 # any version, and crates.io refuses to publish a crate that has one.
 wildcards = "deny"
-# ADR-0003 rules out an async runtime and a C build.
+# ADR-0003 rules out an async runtime and a C build, and ADR-0032 rules out
+# clap in crumbkit-core.
 deny = [
     { crate = "tokio", reason = "ADR-0003 rules out an async runtime" },
     { crate = "async-std", reason = "ADR-0003 rules out an async runtime" },
     { crate = "smol", reason = "ADR-0003 rules out an async runtime" },
     { crate = "cc", reason = "ADR-0003 rules out a C build" },
     { crate = "cmake", reason = "ADR-0003 rules out a C build" },
+    # Only the crates in `wrappers` may depend on clap directly, so the check
+    # fails when clap enters crumbkit-core's dependency tree (ADR-0032).
+    # clap_builder holds clap's parser, and a crate could depend on it without
+    # clap, so only clap itself may depend on it. A new crate that parses a
+    # command line joins the clap list.
+    { crate = "clap", wrappers = [
+        "crumbkit",
+        "crumbkit-aliases",
+        "crumbkit-test",
+        "shelf",
+        "xtask",
+    ], reason = "ADR-0032 keeps clap out of crumbkit-core" },
+    { crate = "clap_builder", wrappers = [
+        "clap",
+    ], reason = "ADR-0032 keeps clap out of crumbkit-core" },
 ]
 
 # A direct dependency on a crate whose function the standard library provides
