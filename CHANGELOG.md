@@ -291,3 +291,5 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   have one name, such as the pages of `shelf books list` and of a root
   command `books-list`, and names both command lines. The two pages used to
   share one file.
+- crumbkit-test's `check_guide` reports a goal that names one subcommand
+  twice as that goal naming it more than once.

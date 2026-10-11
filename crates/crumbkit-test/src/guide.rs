@@ -123,16 +123,23 @@ pub fn check_guide(command: &Command, guide: &Guide) {
         }
         for subcommand in node.get_subcommands() {
             let name = subcommand.get_name();
-            let headings: Vec<String> = group
-                .goals()
-                .iter()
-                .flat_map(|goal| {
-                    goal.commands()
-                        .iter()
-                        .filter(move |&&named| named == name)
-                        .map(|_| format!("`{}`", goal.heading()))
-                })
-                .collect();
+            let mut headings: Vec<String> = Vec::new();
+            for goal in group.goals() {
+                let times = goal
+                    .commands()
+                    .iter()
+                    .filter(|&&named| named == name)
+                    .count();
+                if times > 0 {
+                    headings.push(format!("`{}`", goal.heading()));
+                }
+                if times > 1 {
+                    problems.push(format!(
+                        "{text}: the goal `{}` names `{name}` more than once, so help lists it more than once under that heading",
+                        goal.heading()
+                    ));
+                }
+            }
             match headings.as_slice() {
                 [] if !subcommand.is_hide_set() => problems.push(format!(
                     "{text}: no goal names the visible subcommand `{name}`, so help lists it under a final `Commands` heading"

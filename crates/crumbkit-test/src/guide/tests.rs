@@ -154,6 +154,22 @@ fn a_command_that_two_goals_name_fails_the_check() {
     );
 }
 
+#[test]
+fn a_command_that_one_goal_names_twice_fails_the_check() {
+    const GUIDE: Guide = Guide::new()
+        .groups(&[Group::new(
+            &["books"],
+            &[Goal::new("Read", &["list", "show", "show"])],
+        )])
+        .leaves(LEAVES);
+
+    assert_eq!(
+        panic_message(|| check_guide(&shelf(), &GUIDE)).unwrap(),
+        "the command tree breaks crumbkit's guide rules:\n\
+         shelf books: the goal `Read` names `show` more than once, so help lists it more than once under that heading"
+    );
+}
+
 /// A topic that passes every topic rule.
 const CATALOGUE: Topic = Topic::new(
     "catalogue",
