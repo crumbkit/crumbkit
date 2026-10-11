@@ -2,7 +2,7 @@
 
 crumbkit-test checks a tool built with crumbkit from an ordinary `#[test]`.
 Each check collects every problem it finds and fails the test with all of
-them, and each problem starts on a new line. crumbkit is in design and is not published yet.
+them. crumbkit is in design and is not published yet.
 
 ## Adding it
 
@@ -48,16 +48,16 @@ files work.
 Licensed under either of Apache License, Version 2.0 or MIT license at your
 option.
 
-[`check_codes`]: https://github.com/crumbkit/crumbkit/blob/main/crates/crumbkit-test/src/codes.rs
-[`check_names`]: https://github.com/crumbkit/crumbkit/blob/main/crates/crumbkit-test/src/names.rs
-[`check_grammar`]: https://github.com/crumbkit/crumbkit/blob/main/crates/crumbkit-test/src/grammar.rs
-[`check_listings`]: https://github.com/crumbkit/crumbkit/blob/main/crates/crumbkit-test/src/listings.rs
-[`check_filters`]: https://github.com/crumbkit/crumbkit/blob/main/crates/crumbkit-test/src/filters.rs
-[`check_guide`]: https://github.com/crumbkit/crumbkit/blob/main/crates/crumbkit-test/src/guide.rs
-[`check_help_sizes`]: https://github.com/crumbkit/crumbkit/blob/main/crates/crumbkit-test/src/sizes.rs
-[`Budgets`]: https://github.com/crumbkit/crumbkit/blob/main/crates/crumbkit-test/src/sizes.rs
-[`check_help_goldens`]: https://github.com/crumbkit/crumbkit/blob/main/crates/crumbkit-test/src/goldens.rs
-[`check_examples`]: https://github.com/crumbkit/crumbkit/blob/main/crates/crumbkit-test/src/examples.rs
-[`Examples`]: https://github.com/crumbkit/crumbkit/blob/main/crates/crumbkit-test/src/examples.rs
-[ADR-0025]: https://github.com/crumbkit/crumbkit/blob/main/docs/decisions/api/help/0025-help-checks.md
-[ADR-0004]: https://github.com/crumbkit/crumbkit/blob/main/docs/decisions/testing/0004-golden-and-snapshot-tests.md
+[`check_codes`]: src/codes.rs
+[`check_names`]: src/names.rs
+[`check_grammar`]: src/grammar.rs
+[`check_listings`]: src/listings.rs
+[`check_filters`]: src/filters.rs
+[`check_guide`]: src/guide.rs
+[`check_help_sizes`]: src/sizes.rs
+[`Budgets`]: src/sizes.rs
+[`check_help_goldens`]: src/goldens.rs
+[`check_examples`]: src/examples.rs
+[`Examples`]: src/examples.rs
+[ADR-0025]: ../../docs/decisions/api/help/0025-help-checks.md
+[ADR-0004]: ../../docs/decisions/testing/0004-golden-and-snapshot-tests.md

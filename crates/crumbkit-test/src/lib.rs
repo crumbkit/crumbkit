@@ -1,4 +1,19 @@
-// The crate docs are the README, so its examples run as doctests.
+// The crate docs are the README, so its example runs as a doctest. The README
+// links to files in the repository, which work on GitHub. The definitions below
+// come first, so rustdoc uses them for the same labels (ADR-0013).
+//! [`check_codes`]: crate::check_codes
+//! [`check_names`]: crate::check_names
+//! [`check_grammar`]: crate::check_grammar
+//! [`check_listings`]: crate::check_listings
+//! [`check_filters`]: crate::check_filters
+//! [`check_guide`]: crate::check_guide
+//! [`check_help_sizes`]: crate::check_help_sizes
+//! [`Budgets`]: crate::Budgets
+//! [`check_help_goldens`]: crate::check_help_goldens
+//! [`check_examples`]: crate::check_examples
+//! [`Examples`]: crate::Examples
+//! [ADR-0025]: https://github.com/crumbkit/crumbkit/blob/main/docs/decisions/api/help/0025-help-checks.md
+//! [ADR-0004]: https://github.com/crumbkit/crumbkit/blob/main/docs/decisions/testing/0004-golden-and-snapshot-tests.md
 #![doc = include_str!("../README.md")]
 
 mod codes;
