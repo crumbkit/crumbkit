@@ -91,6 +91,8 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   before they take another id.
 - crumbkit-aliases: `aliases list` says that an entry named `help` loses to
   the tool's own help ([crumbkit-aliases]).
+- crumbkit: a refusal from [`parse`] names the real flag or subcommand
+  where clap suggests a hidden alias, and names it once.
 
 <!-- Each label below points at the source file that holds the item's
 rustdoc, or at its decision record. -->

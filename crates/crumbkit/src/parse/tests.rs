@@ -505,3 +505,38 @@ For more information, try '--help'.
         "the following required arguments were not provided: <NAME>..."
     );
 }
+
+/// A tool whose `books` command has the hidden alias `book`, and whose
+/// `books list` has a `--limit` option with the hidden alias `--max`.
+fn tool_with_hidden_aliases() -> Command {
+    Command::new("shelf").subcommand(Command::new("books").alias("book").subcommand(
+        Command::new("list").arg(Arg::new("limit").long("limit").alias("max").value_name("N")),
+    ))
+}
+
+#[test]
+fn a_refusal_suggests_the_real_name_of_a_flag_whose_hidden_alias_clap_suggested() {
+    let parsed = parse_tree(
+        tool_with_hidden_aliases(),
+        &["shelf", "books", "list", "--maxx", "5"],
+    );
+
+    let expected = "\
+error: unexpected argument '--maxx' found; a similar argument exists: '--limit'
+  help:  run `shelf books list -h`
+  code:  crumbkit::cli::usage
+";
+    assert_eq!(parsed.err, expected);
+}
+
+#[test]
+fn a_refusal_suggests_the_real_name_of_a_command_whose_hidden_alias_clap_suggested() {
+    let parsed = parse_tree(tool_with_hidden_aliases(), &["shelf", "bok"]);
+
+    let expected = "\
+error: unrecognized subcommand 'bok'; a similar subcommand exists: 'books'
+  help:  run `shelf -h`
+  code:  crumbkit::cli::usage
+";
+    assert_eq!(parsed.err, expected);
+}

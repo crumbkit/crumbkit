@@ -21,8 +21,9 @@ const ARGUMENT_RULE: &str = "and help shows one name for each argument";
 /// Help is what agents read and copy. A visible alias costs help tokens on
 /// every read and teaches a second spelling. A hidden alias costs neither,
 /// and lets a renamed command or flag keep its old name for a while, or
-/// accept a common wrong guess. crumbkit's `Next:` lines and recoveries print
-/// the real name, so a caller who uses a hidden alias still sees the real one.
+/// accept a common wrong guess. crumbkit's `Next:` lines, recoveries and
+/// refusal suggestions print the real name, so a caller who uses a hidden
+/// alias still sees the real one.
 ///
 /// The check walks `command` and every subcommand below it, including hidden
 /// ones, and skips each command that `exempt` names and everything below it.
