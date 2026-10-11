@@ -1,6 +1,6 @@
-# The scheduled lane of ADR-0011. The nightly job checks for new advisories and
-# measures the pull-request lane, and the report job keeps every failure on one
-# issue. A manual run runs the nightly job.
+# The scheduled lane of ADR-0011. The nightly job checks for new advisories,
+# measures the pull-request lane and builds the docs as docs.rs does, and the
+# report job keeps every failure on one issue. A manual run runs the nightly job.
 name: Scheduled
 
 on:
@@ -43,6 +43,21 @@ jobs:
         run: cargo xtask ci-time
         env:
           GH_TOKEN: ${{ github.token }}
+      # docs.rs builds each published crate's docs on nightly with every
+      # feature and `--cfg docsrs`, as each crate's
+      # `[package.metadata.docs.rs]` asks, so this build shows a docs.rs
+      # failure before a release does. It runs even when an earlier check
+      # failed, and it writes to a target directory of its own, apart from
+      # the stable builds.
+      - if: ${{ !cancelled() }}
+        run: rustup toolchain install nightly --profile minimal
+      - if: ${{ !cancelled() }}
+        run: >-
+          cargo +nightly doc --workspace --no-deps --all-features
+          --exclude shelf --exclude xtask
+        env:
+          CARGO_TARGET_DIR: target/docs-rs
+          RUSTDOCFLAGS: --cfg docsrs -D warnings
 
   # When the nightly job fails, this job comments on the open issue titled
   # "Scheduled CI failed", or opens that issue when none is open, so failures

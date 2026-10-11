@@ -23,6 +23,9 @@
 //! [ADR-0025]: https://github.com/crumbkit/crumbkit/blob/main/docs/decisions/api/help/0025-help-checks.md
 //! [ADR-0004]: https://github.com/crumbkit/crumbkit/blob/main/docs/decisions/testing/0004-golden-and-snapshot-tests.md
 #![doc = include_str!("../README.md")]
+// docs.rs builds the docs on nightly with `--cfg docsrs`, and rustdoc's
+// `doc_cfg` feature labels each item behind a cargo feature with its name.
+#![cfg_attr(docsrs, feature(doc_cfg))]
 
 mod codes;
 mod documents;

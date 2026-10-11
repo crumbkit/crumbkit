@@ -1,6 +1,6 @@
 # ADR-0013. Documentation
 
-- rustdoc holds the API reference. A tutorial and a cookbook will join it in rustdoc once they are written. An mdBook site built from `docs/` will hold the standards and these records once code for it exists. Until then they are Markdown files in `docs/`.
+- rustdoc holds the API reference, and docs.rs publishes it for each crate with every feature on, labelling each item that a feature adds. A tutorial and a cookbook will join it in rustdoc once they are written. The standards and these records are Markdown files in `docs/` for contributors, and 0.1 has no documentation site. A site built from `docs/` is a later follow-up.
 - Each kind of fact has one home, and every other place links to it, because two copies of a fact drift apart and a reader cannot tell which copy is right.
 - How an item behaves lives in the rustdoc on that item or its module. Why a choice was made lives in its decision record, which links to the item and leaves exact output, flag lists, limits and numbers to the code and its rustdoc. A record names a number only when the number is the decision itself, such as a budget, and the rustdoc then links to the record for it.
 - What changed lives in `CHANGELOG.md`, which follows Keep a Changelog. Each entry names one change and the item it touches, and links to the item's rustdoc or record instead of describing the behaviour.
@@ -10,4 +10,4 @@
 - After 0.1, `cargo crumbkit docs` exports an adopter's help pages, golden examples, failure codes, schemas and weights as Markdown pages plus a JSON manifest with its own schema, for any static site builder.
 - Its built-in static site will be rendered from that export, and shelf's site will be its showcase.
 
-Considered: cargo-rdme, rustdoc theming, a Node site generator, describing each behaviour in full in the README, the changelog and the record, links from the READMEs to docs.rs, which fail until a crate is published.
+Considered: cargo-rdme, rustdoc theming, a Node site generator, describing each behaviour in full in the README, the changelog and the record, links from the READMEs to docs.rs, which fail until a crate is published, an mdBook site for 0.1.

@@ -1,0 +1,89 @@
+# The release lane of ADR-0011 and ADR-0012. On each push to main, release-plz
+# opens or updates the release pull request, and publishes to crates.io every
+# version that crates.io does not have yet. release-plz.toml says which crates
+# it releases, and its `release = false` keeps it from releasing any crate
+# until the owner turns publishing on. Both jobs run only in this repository,
+# so a push to a fork's main does nothing. Neither job uses rust-cache,
+# because a poisoned cache would reach the published crates, and zizmor fails
+# a release workflow that restores a cache.
+name: Release
+
+on:
+  push:
+    branches: [main]
+
+# Each job grants only the permissions it needs.
+permissions: {}
+
+jobs:
+  # This job publishes the versions that the merged release pull request set,
+  # tags the release and creates its GitHub release. It has no concurrency
+  # group, because a newer push to main would cancel a publish halfway.
+  publish:
+    if: github.repository == 'crumbkit/crumbkit'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    # crates.io trusted publishing accepts a token request only from this
+    # repository, this workflow file and this environment.
+    environment: crates-io
+    permissions:
+      contents: write # release-plz pushes the release tag and creates the GitHub release.
+      pull-requests: read # release-plz finds the merged release pull request and its commits.
+      id-token: write # release-plz exchanges the job's OIDC token for a crates.io token.
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # release-plz reads the history to find the commits of a release.
+          fetch-depth: 0
+          persist-credentials: false
+      # The image includes rustup, which installs the toolchain that
+      # rust-toolchain.toml pins. cargo publish builds each crate with it.
+      - run: rustup toolchain install
+      - uses: release-plz/action@b8d6b54b02889ff2ae2bb82e8b57c3a8fc1683a5 # v0.5.139
+        with:
+          command: release
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+
+  # This job opens or updates the release pull request, which sets the next
+  # version, moves the changelog's entries under its heading and reports
+  # cargo-semver-checks against the last published version. It uses a token
+  # of the release GitHub App, because GitHub runs no workflow on a pull
+  # request that the job's own token opens, and the ruleset needs ci.yml's
+  # `gate` check.
+  pull-request:
+    if: github.repository == 'crumbkit/crumbkit'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read # actions/checkout reads the repository.
+    # A newer push to main waits for this run instead of cancelling it, so a
+    # half-written release branch is never left behind.
+    concurrency:
+      group: release-pull-request
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # release-plz reads the history to find the commits since the last
+          # release.
+          fetch-depth: 0
+          persist-credentials: false
+      # The image includes rustup, which installs the toolchain that
+      # rust-toolchain.toml pins. release-plz and cargo-semver-checks build
+      # the crates with it.
+      - run: rustup toolchain install
+      # The token can write only this repository's contents and pull
+      # requests, and the action revokes it when the job ends.
+      - id: app-token
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        with:
+          client-id: ${{ secrets.RELEASE_APP_CLIENT_ID }}
+          private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
+          permission-contents: write
+          permission-pull-requests: write
+      - uses: release-plz/action@b8d6b54b02889ff2ae2bb82e8b57c3a8fc1683a5 # v0.5.139
+        with:
+          command: release-pr
+        env:
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
