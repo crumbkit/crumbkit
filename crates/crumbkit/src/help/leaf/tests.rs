@@ -362,6 +362,33 @@ fn extend_gives_each_leaf_its_examples_and_no_columns() {
 }
 
 #[test]
+fn a_leaf_that_extend_already_gave_its_examples_prints_them_once_through_parse() {
+    const GUIDE: Guide = Guide::new().leaves(&[Leaf::new(&["planets", "list"])
+        .examples(EXAMPLES)
+        .document(PLANETS)]);
+
+    for flag in ["-h", "--help"] {
+        let mut out = Vec::new();
+        let mut err = Vec::new();
+        let result = parse_to::<(), _, _, _, _>(
+            &mut Sink::new(&mut out, &mut err),
+            extend(tool(), &GUIDE),
+            &GUIDE,
+            Spelling::COLONS,
+            ["tool", "planets", "list", flag],
+        );
+
+        assert_eq!(result.err(), Some(ExitCode::SUCCESS));
+        let page = String::from_utf8(out).unwrap();
+        assert_eq!(
+            page,
+            help(&GUIDE, &["tool", "planets", "list", flag]),
+            "{flag}"
+        );
+    }
+}
+
+#[test]
 fn extend_applies_only_the_first_of_two_leaves_with_one_path() {
     const GUIDE: Guide = Guide::new().leaves(&[
         Leaf::new(&["planets", "show"]).examples(&[Example::new(&["Mars"], "")]),

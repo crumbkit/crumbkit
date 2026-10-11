@@ -221,7 +221,7 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   the table shows the path and about text, and `--json --full` shows the
   rest. A hidden command and its subtree, hidden arguments, and the help
   and version flags are left out, and a global argument is listed once, on
-  the command that defines it.
+  the command that defines it or on the first row of a branch below it.
 - A `PATH` that names no visible command, or names a hidden one, fails
   with the code `crumbkit::commands::not_found` and a recovery that runs
   `commands list` with the longest start of `PATH` that names visible
@@ -263,3 +263,16 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   nothing without the `usage-log` feature or a started log.
 - `crates/crumbkit/schemas/usage-v1.json` holds the JSON Schema of the
   `crumbkit/usage/v1` record.
+
+### Fixed
+
+- `parse` keeps a command's own `after_help` and `after_long_help`, such as
+  a "Report bugs at" line on the root, and prints crumbkit's lines after
+  them. A leaf whose examples `help::extend` already added prints them once.
+- `commands list <PATH>` lists the visible global arguments of the commands
+  above the branch on the branch's first row, so `shelf commands list books`
+  shows `--json`. The listing of the whole tree is unchanged.
+- crumbkit-test's `check_help_goldens` fails on two pages whose golden files
+  have one name, such as the pages of `shelf books list` and of a root
+  command `books-list`, and names both command lines. The two pages used to
+  share one file.
