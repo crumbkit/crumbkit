@@ -1,19 +1,22 @@
 //! `cargo xtask` runs crumbkit's repository checks.
 //!
 //! `cargo xtask check` runs every check, `cargo xtask check docs` runs only the
-//! checks on `docs/`, and `cargo xtask ci-time` checks the median wall time of
-//! recent pull-request CI runs. This module holds every effect: it reads the
-//! command line, lists and reads the repository's files, runs `gh`, prints the
-//! results and sets the exit code. The checks themselves are pure functions in
-//! [`check`] and [`ci_time`].
+//! checks on `docs/`, `cargo xtask ci-time` checks the median wall time of
+//! recent pull-request CI runs, and `cargo xtask run-time` checks the median
+//! wall time of whole shelf runs. This module holds every effect: it reads the
+//! command line, lists and reads the repository's files, runs `gh`, `cargo`
+//! and shelf, prints the results and sets the exit code. The checks themselves
+//! are pure functions in [`check`], [`ci_time`] and [`run_time`].
 
 mod check;
 mod ci_time;
+mod run_time;
 
 use std::fs;
 use std::io::{self, Write};
 use std::path::Path;
-use std::process::{Command, ExitCode};
+use std::process::{Command, ExitCode, Stdio};
+use std::time::{Duration, Instant};
 
 use clap::{Parser, Subcommand};
 
@@ -37,6 +40,10 @@ enum Cli {
     /// Fails when the median wall time of the last 20 successful pull-request
     /// CI runs is over 180 seconds.
     CiTime,
+    /// Builds shelf in release mode and fails when the median wall time of
+    /// its runs of `books list` or `commands list --all --json --full` is
+    /// over 30 ms.
+    RunTime,
 }
 
 /// A part of the repository checks that `check` can run on its own.
@@ -65,6 +72,7 @@ fn main() -> ExitCode {
             scope: Some(Scope::Docs),
         } => check_repository(Selection::Docs, &mut stderr),
         Cli::CiTime => check_ci_time(&mut stderr),
+        Cli::RunTime => check_run_time(&mut stderr),
     };
     match outcome {
         Ok(true) => ExitCode::SUCCESS,
@@ -144,6 +152,100 @@ fn run_seconds() -> io::Result<Vec<u64>> {
             })
         })
         .collect()
+}
+
+/// Builds shelf in release mode, times its runs of each command in
+/// [`run_time::COMMANDS`] and writes one line per command to `out`. Returns
+/// whether every median passes.
+fn check_run_time(out: &mut impl Write) -> io::Result<bool> {
+    #[expect(
+        clippy::disallowed_methods,
+        reason = "this module owns xtask's process effects and runs cargo to build shelf"
+    )]
+    let mut cargo = Command::new("cargo");
+    let built = cargo
+        .args(["build", "--release", "--package", "shelf"])
+        .current_dir(ROOT)
+        .status()
+        .map_err(|error| io::Error::other(format!("cannot run cargo: {error}")))?;
+    if !built.success() {
+        return Err(io::Error::other(
+            "cargo build --release --package shelf failed",
+        ));
+    }
+    // The path assumes cargo's default target directory, which is all that
+    // crumbkit's CI and contributors use. A build into another directory,
+    // such as one that CARGO_TARGET_DIR names, needs the path that cargo
+    // reports with `--message-format=json` instead.
+    let shelf = Path::new(ROOT).join("target/release/shelf");
+
+    // Each run gets an empty home and XDG directories inside the target
+    // directory, so it reads no person's aliases and writes to no person's
+    // usage log, and every check starts from the same state.
+    let home = Path::new(ROOT).join("target/run-time");
+    #[expect(
+        clippy::disallowed_methods,
+        reason = "this module owns xtask's file effects and resets the directory that it owns"
+    )]
+    let reset = match fs::remove_dir_all(&home) {
+        Err(error) if error.kind() != io::ErrorKind::NotFound => Err(error),
+        _ => fs::create_dir_all(&home),
+    };
+    reset.map_err(|error| io::Error::other(format!("cannot reset {}: {error}", home.display())))?;
+
+    // The runs of the commands interleave, so a slow spell on the machine
+    // affects every command alike.
+    let mut times = vec![Vec::with_capacity(run_time::TIMED_RUNS); run_time::COMMANDS.len()];
+    for round in 0..run_time::WARM_UP_RUNS + run_time::TIMED_RUNS {
+        for (args, times) in run_time::COMMANDS.iter().zip(&mut times) {
+            let time = time_run(&shelf, args, &home)?;
+            if round >= run_time::WARM_UP_RUNS {
+                times.push(time);
+            }
+        }
+    }
+
+    let mut passes = true;
+    for (args, times) in run_time::COMMANDS.iter().zip(&times) {
+        let timing = run_time::measure(&args.join(" "), times);
+        writeln!(out, "{timing}")?;
+        passes &= timing.passes();
+    }
+    Ok(passes)
+}
+
+/// Runs `shelf` with `args` once, with an environment that holds only `HOME`
+/// and the XDG base directories under `home`, and returns its wall time. The
+/// time covers starting the process, its run and reading its output.
+fn time_run(shelf: &Path, args: &[&str], home: &Path) -> io::Result<Duration> {
+    #[expect(
+        clippy::disallowed_methods,
+        reason = "this module owns xtask's process effects and runs shelf to time it"
+    )]
+    let mut command = Command::new(shelf);
+    command
+        .args(args)
+        .env_clear()
+        .env("HOME", home)
+        .env("XDG_CONFIG_HOME", home.join("config"))
+        .env("XDG_DATA_HOME", home.join("data"))
+        .env("XDG_STATE_HOME", home.join("state"))
+        .env("XDG_CACHE_HOME", home.join("cache"))
+        .stdin(Stdio::null());
+    let start = Instant::now();
+    let output = command
+        .output()
+        .map_err(|error| io::Error::other(format!("cannot run {}: {error}", shelf.display())))?;
+    let time = start.elapsed();
+    if !output.status.success() {
+        let message = String::from_utf8_lossy(&output.stderr);
+        return Err(io::Error::other(format!(
+            "shelf {} failed: {}",
+            args.join(" "),
+            message.trim()
+        )));
+    }
+    Ok(time)
 }
 
 /// Lists the repository's files with `git ls-files`, including untracked files

@@ -1,0 +1,28 @@
+[package]
+name = "crumbkit-benches"
+description = "Benchmarks of shelf's runs, which the nightly lane checks against fixed limits"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+
+[dev-dependencies]
+# The benchmarks run shelf's whole path in-process through `shelf::run_from`.
+# The entry gives a version beside the path, because cargo-deny treats a path
+# dependency without a version as a wildcard (ADR-0012).
+shelf = { version = "0.0.0", path = "../examples/shelf" }
+# The usage log benchmark calls `crumbkit::usage::start`, as shelf's `main`
+# does, so it needs the `usage-log` feature, which shelf already turns on.
+crumbkit = { workspace = true, features = ["usage-log"] }
+# gungraun counts each benchmark's instructions with Valgrind's Callgrind and
+# its allocations with DHAT, and fails a run over a limit (ADR-0008).
+gungraun.workspace = true
+
+[[bench]]
+name = "runs"
+harness = false
+
+[lints]
+workspace = true

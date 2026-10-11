@@ -38,12 +38,18 @@ fn ci_time_selects_the_ci_time_check() {
 }
 
 #[test]
+fn run_time_selects_the_run_time_check() {
+    assert_eq!(parse(&["run-time"]).unwrap(), Cli::RunTime);
+}
+
+#[test]
 fn any_other_command_line_is_refused() {
     assert!(parse(&[]).is_err());
     assert!(parse(&["docs"]).is_err());
     assert!(parse(&["check", "rust"]).is_err());
     assert!(parse(&["check", "docs", "extra"]).is_err());
     assert!(parse(&["ci-time", "extra"]).is_err());
+    assert!(parse(&["run-time", "extra"]).is_err());
 }
 
 #[test]

@@ -8,6 +8,7 @@
 mod books;
 mod cli;
 
+use std::ffi::OsString;
 use std::process::ExitCode;
 
 use clap::CommandFactory as _;
@@ -44,9 +45,25 @@ const SPELLING: Spelling = Spelling::COLONS;
 /// caller can run.
 #[must_use]
 pub fn run() -> ExitCode {
+    run_from(std::env::args_os())
+}
+
+/// Runs shelf on `args` as [`run`] runs it on the process's command line,
+/// and returns the process's exit code. The first argument is the program
+/// name, as in `crumbkit::parse_from`. The output goes to the process's
+/// standard output and standard error.
+///
+/// crumbkit's benchmarks call it, so they measure the path that every run
+/// of the `shelf` binary takes (ADR-0008).
+#[must_use]
+pub fn run_from<I, T>(args: I) -> ExitCode
+where
+    I: IntoIterator<Item = T>,
+    T: Into<OsString>,
+{
     let command = Cli::command();
     let file = crumbkit_aliases::file(command.get_name());
-    let args = crumbkit_aliases::expand(&command, std::env::args_os(), file.as_deref());
+    let args = crumbkit_aliases::expand(&command, args, file.as_deref());
     let (mut cli, command) =
         match crumbkit::parse_from::<Cli, _, _>(command, &GUIDE, SPELLING, args) {
             Ok(parsed) => parsed,

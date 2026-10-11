@@ -66,6 +66,13 @@ deny = [
         "clap",
     ], reason = "ADR-0032 keeps clap out of crumbkit-core" },
 ]
+# gungraun, which only the benchmarks use (ADR-0008), reaches syn 2 through
+# derive_more, while the rest of the graph uses syn 3. The skip lasts until
+# derive_more moves to syn 3, and it names the exact version, so another syn 2
+# release still fails the check.
+skip = [
+    { crate = "syn@2.0.119", reason = "derive_more, which gungraun uses, still depends on syn 2" },
+]
 
 # A direct dependency on a crate whose function the standard library provides
 # at the workspace rust-version fails the check. The empty table enables the
