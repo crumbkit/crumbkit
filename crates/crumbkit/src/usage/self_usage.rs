@@ -182,9 +182,10 @@ fn open(tool: &str) -> Option<BufReader<File>> {
 const LAST_SECOND: u64 = 253_402_300_799;
 
 /// Returns the UTC day of `time` as `YYYY-MM-DD`, with a time after
-/// [`LAST_SECOND`] read as that second so that a wrong clock cannot panic.
+/// [`LAST_SECOND`] read as that second and a time before 1970 read as the
+/// epoch, so that a wrong clock cannot panic.
 fn day_of(time: SystemTime) -> String {
-    let time = time.min(UNIX_EPOCH + Duration::from_secs(LAST_SECOND));
+    let time = time.clamp(UNIX_EPOCH, UNIX_EPOCH + Duration::from_secs(LAST_SECOND));
     let stamp = humantime::format_rfc3339_seconds(time).to_string();
     // The first 10 characters of an RFC 3339 time are its day.
     stamp.get(..10).unwrap_or_default().to_owned()
@@ -199,7 +200,9 @@ fn report_from(
     since: Duration,
     now: SystemTime,
 ) -> Listing<FindingRow, UsageSummary> {
-    let start = now.checked_sub(since).unwrap_or(UNIX_EPOCH);
+    // A start before 1970 reads from 1970, because no record is older and
+    // humantime panics on a time before the epoch.
+    let start = now.checked_sub(since).unwrap_or(UNIX_EPOCH).max(UNIX_EPOCH);
     let start_ms = start.duration_since(UNIX_EPOCH).map_or(0, |elapsed| {
         u64::try_from(elapsed.as_millis()).unwrap_or(u64::MAX)
     });
