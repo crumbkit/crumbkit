@@ -1,0 +1,1 @@
+{"schema":"crumbkit/failure/v1","code":"shelf::books::bad_ids_file","message":"the ids file holds a line that is not a book id","labels":[{"offset":3,"length":4,"name":"ids.txt","line":3,"column":1,"text":"invalid digit found in string"}],"recovery":{"kind":"hint","text":"each line of the ids file holds one book id"}}

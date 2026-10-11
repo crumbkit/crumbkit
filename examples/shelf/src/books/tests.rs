@@ -3,7 +3,7 @@
 use clap::CommandFactory as _;
 use crumbkit::{Failure as _, Recovery, Rows as _};
 
-use super::{BooksError, show, show_call};
+use super::{BooksError, parse_ids, show, show_call};
 use crate::cli::{BooksShow, Cli};
 
 #[test]
@@ -22,7 +22,10 @@ fn every_call_that_shelf_prints_resolves_in_its_command_tree() {
 
 #[test]
 fn show_returns_the_books_in_the_order_given_and_repeats_a_repeated_id() {
-    let args = BooksShow { ids: vec![5, 2, 5] };
+    let args = BooksShow {
+        ids: vec![5, 2, 5],
+        from: None,
+    };
 
     let batch = show(&args).unwrap();
 
@@ -33,7 +36,10 @@ fn show_returns_the_books_in_the_order_given_and_repeats_a_repeated_id() {
 
 #[test]
 fn show_returns_one_failure_naming_one_missing_id_as_a_book_and_no_books() {
-    let args = BooksShow { ids: vec![7] };
+    let args = BooksShow {
+        ids: vec![7],
+        from: None,
+    };
 
     let batch = show(&args).unwrap();
 
@@ -51,6 +57,7 @@ fn show_returns_one_failure_naming_one_missing_id_as_a_book_and_no_books() {
 fn show_returns_the_books_found_and_one_failure_naming_each_missing_id_once_in_the_order_given() {
     let args = BooksShow {
         ids: vec![2, 9, 7, 9],
+        from: None,
     };
 
     let batch = show(&args).unwrap();
@@ -64,4 +71,12 @@ fn show_returns_the_books_found_and_one_failure_naming_each_missing_id_once_in_t
         .collect();
     assert_eq!(titles, ["Frankenstein"]);
     assert_eq!(failures, ["the catalogue has no books 9, 7"]);
+}
+
+#[test]
+fn parse_ids_points_at_a_bad_id_without_the_spaces_around_it() {
+    let (span, problem) = parse_ids("1\r\n  x2 \n3\n").unwrap_err();
+
+    assert_eq!((span.offset(), span.len()), (5, 2));
+    assert_eq!(problem, "invalid digit found in string");
 }

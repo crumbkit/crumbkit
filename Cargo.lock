@@ -525,6 +525,7 @@ dependencies = [
  "crumbkit",
  "crumbkit-aliases",
  "crumbkit-test",
+ "miette",
  "schemars",
  "serde",
  "serde_json",
