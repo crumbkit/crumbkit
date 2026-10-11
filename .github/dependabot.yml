@@ -14,6 +14,12 @@ updates:
     groups:
       cargo:
         patterns: ["*"]
+    # gungraun's version must match the gungraun-runner binary that the
+    # nightly bench job installs, and a new version can change the counts
+    # that the benchmark limits hold (ADR-0008). One hand-written pull
+    # request moves the crate, the runner and the limits together.
+    ignore:
+      - dependency-name: gungraun
   - package-ecosystem: github-actions
     directory: /
     schedule:

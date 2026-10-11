@@ -1,6 +1,8 @@
 # The scheduled lane of ADR-0011. The nightly job checks for new advisories,
-# measures the pull-request lane and builds the docs as docs.rs does, and the
-# report job keeps every failure on one issue. A manual run runs the nightly job.
+# measures the pull-request lane and builds the docs as docs.rs does. The bench
+# job checks the benchmarks and shelf's run time against their limits
+# (ADR-0008) when main has changed since they last passed. The report job keeps
+# every failure on one issue. A manual run runs both jobs in full.
 name: Scheduled
 
 on:
@@ -59,12 +61,74 @@ jobs:
           CARGO_TARGET_DIR: target/docs-rs
           RUSTDOCFLAGS: --cfg docsrs -D warnings
 
-  # When the nightly job fails, this job comments on the open issue titled
-  # "Scheduled CI failed", or opens that issue when none is open, so failures
-  # collect in one place. It uses the gh CLI that the ubuntu-slim image
+  # The bench job runs the benchmarks of PERF-1 and the run time check of
+  # PERF-2. It runs on a pinned image, so the counts stay comparable from
+  # night to night, and it has no rust-cache, as the nightly job has none.
+  bench:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      actions: read # The first step reads the earlier runs of this workflow.
+      contents: read # actions/checkout reads the repository.
+    steps:
+      # A scheduled run skips the checks when the newest completed run of
+      # this workflow on main whose bench job passed ran at the same commit,
+      # because nothing they measure has changed. A failed or missing earlier
+      # run, or a manual run, runs them. The step reads only the ten newest
+      # completed runs, so after ten runs without a passing bench job it runs
+      # the checks.
+      - id: changed
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT: ${{ github.event_name }}
+          SHA: ${{ github.sha }}
+        run: |
+          last=""
+          for run in $(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/scheduled.yml/runs?branch=main&status=completed&per_page=10" \
+            --jq '.workflow_runs[] | "\(.id):\(.head_sha)"'); do
+            conclusion=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/${run%%:*}/jobs" \
+              --jq '.jobs[] | select(.name == "bench") | .conclusion')
+            if [ "$conclusion" = success ]; then
+              last=${run#*:}
+              break
+            fi
+          done
+          if [ "$EVENT" = schedule ] && [ "$last" = "$SHA" ]; then
+            echo "The bench job last passed at $SHA, so this run skips its checks."
+            echo "run=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          fi
+      - if: steps.changed.outputs.run == 'true'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - if: steps.changed.outputs.run == 'true'
+        run: rustup toolchain install
+      # gungraun runs each benchmark under Valgrind, which the image lacks.
+      - if: steps.changed.outputs.run == 'true'
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends valgrind
+      # The runner's version must equal the gungraun version in Cargo.toml.
+      - if: steps.changed.outputs.run == 'true'
+        uses: taiki-e/install-action@f7e5d7c961414b23f5b25b2da9294395d08513ad # v2.87.26
+        with:
+          tool: gungraun-runner@0.20.0
+          fallback: none
+      - if: steps.changed.outputs.run == 'true'
+        run: cargo bench -p crumbkit-benches
+      # The run time check runs even when a benchmark fails, so one failure
+      # does not hide the other.
+      - if: ${{ !cancelled() && steps.changed.outputs.run == 'true' }}
+        run: cargo xtask run-time
+
+  # When the nightly or bench job fails, this job comments on the open issue
+  # titled "Scheduled CI failed", or opens that issue when none is open, so
+  # failures collect in one place. It uses the gh CLI that the ubuntu-slim image
   # includes.
   report:
-    needs: [nightly]
+    needs: [nightly, bench]
     if: failure()
     runs-on: ubuntu-slim
     timeout-minutes: 10

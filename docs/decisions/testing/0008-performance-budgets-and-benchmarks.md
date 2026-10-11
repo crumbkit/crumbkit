@@ -1,7 +1,9 @@
 # ADR-0008. Performance budgets
 
-- The fast lane will fail a pull request that goes over a limit on gungraun's instruction or allocation counts, which stay the same from run to run on shared CI machines, once benchmarks for them exist. Each limit will start at the measured count plus 10 percent.
+- gungraun benchmarks in the unpublished `benches/` package run shelf's whole path in-process through `shelf::run_from`: `books list`, root and leaf help, `commands list --all --json --full`, a refusal, and `books list` with the usage log. Each has a limit on Callgrind's instruction count and on DHAT's count of allocated blocks, because both counts stay the same from run to run on shared CI machines, where wall time does not.
+- The nightly `bench` job in `scheduled.yml` runs the benchmarks on the pinned `ubuntu-24.04` image and fails over a limit, so the report job records the failure on the "Scheduled CI failed" issue. The benchmarks stay out of pull requests, because the owner keeps pull-request CI fast and accepts that a regression shows up the next morning.
+- Each limit is the count of a nightly run plus 10 percent, rounded up, and sits beside a comment that gives the count. When the nightly job fails, the fix or a raised limit comes in a pull request whose description cites that run's counts. gungraun's version is exact and Dependabot leaves it alone, because the runner binary must match it and a new version can change the counts.
+- `cargo xtask run-time` times 200 whole runs of the release build of shelf for each of `books list` and `commands list --all --json --full` after 20 warm-up runs. A median over 10 ms prints a warning, and a median over 30 ms fails the nightly `bench` job.
 - Help pages stay within the byte budgets that ADR-0025 sets.
-- The slow lane will time whole shelf runs against a 10 ms budget and fail above 30 ms once code for the timing exists.
 
-Considered: criterion, divan, counting allocators.
+Considered: criterion, divan, counting allocators, the fast lane on every pull request, only on release pull requests, gungraun binary benchmarks, hyperfine.
