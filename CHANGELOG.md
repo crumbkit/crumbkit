@@ -291,3 +291,8 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   have one name, such as the pages of `shelf books list` and of a root
   command `books-list`, and names both command lines. The two pages used to
   share one file.
+- Past 10 MB, the usage log keeps its newest whole lines that fit in 5 MB,
+  so a trim leaves the file well under the limit. It used to keep 9,999
+  lines, which could stay over 10 MB and rewrite the file on every run.
+- A usage-log line that has no newline, because a run ended while it wrote,
+  is dropped at the next trim, and the next line starts on a new line.
