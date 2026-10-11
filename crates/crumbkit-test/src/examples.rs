@@ -123,7 +123,10 @@ impl Examples {
 /// variable of [`Examples::env`], and points `XDG_CONFIG_HOME`,
 /// `XDG_DATA_HOME`, `XDG_STATE_HOME` and `XDG_CACHE_HOME` at fresh
 /// directories that it creates for that run and deletes afterwards, so a
-/// run never reads or writes the caller's own configuration.
+/// run never reads or writes the caller's own configuration. The cleared
+/// environment has no `PATH` and no `HOME`, so a tool whose binary needs
+/// them passes them through [`Examples::env`], such as
+/// `("PATH", "/usr/bin:/bin")` or `("HOME", "tests/fixtures/home")`.
 ///
 /// The golden file of an example holds the run's standard output. Its name
 /// joins the tool's name, the leaf's path and the example's words with

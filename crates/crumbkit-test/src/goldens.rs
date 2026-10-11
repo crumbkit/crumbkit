@@ -63,9 +63,11 @@ mod tests;
 /// # Panics
 ///
 /// Panics when a page or a golden file breaks a rule above, or when
-/// `SNAPSHOTS=overwrite` cannot write or delete a file. The message lists
-/// each problem on its own line and names each page by its command line,
-/// such as `shelf books list -h`.
+/// `SNAPSHOTS=overwrite` cannot write or delete a file. Each problem in the
+/// message starts on a new line, and the problem of a page that differs
+/// from its golden file continues with snapbox's report of both texts. The
+/// message names each page by its command line, such as
+/// `shelf books list -h`.
 pub fn check_help_goldens(command: &Command, guide: &Guide, dir: impl AsRef<Path>) {
     let assert = Assert::new().action_env(DEFAULT_ACTION_ENV);
     check(command, guide, dir.as_ref(), &assert);

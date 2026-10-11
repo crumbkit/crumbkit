@@ -27,6 +27,12 @@ const MOST_IDS: usize = 100;
 ///   `num_args` takes at least 1 and at most 100 values and accepts more than
 ///   1, such as `num_args = 1..=100`.
 ///
+/// A command that the tool gives to `Command::defer` adds its arguments only
+/// when clap builds it, and the check reads the unbuilt tree, so it sees no
+/// arguments on such a command. A deferred `list` or `show` command
+/// therefore fails the check whatever arguments its deferred function adds,
+/// and a tool exempts it.
+///
 /// ```
 /// use clap::{Arg, ArgAction, Args, Command};
 /// use crumbkit::Page;
