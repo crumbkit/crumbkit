@@ -299,3 +299,19 @@ fn the_checked_in_schema_matches_the_usage_report_document_schema() {
         "schemas/self-usage-v1.json differs from the generated schema; replace the file with the generated schema"
     );
 }
+
+#[test]
+fn a_since_that_reaches_before_1970_reads_the_whole_log_from_1970() {
+    let log = line(100, "books list", &json!({}));
+
+    let listing = report_from(
+        &tool(),
+        Some(Cursor::new(log)),
+        Duration::from_secs(100 * 365 * 86_400),
+        now(),
+    );
+
+    let summary = Rows::summary(&listing).unwrap();
+    assert_eq!(summary.runs, 1);
+    assert_eq!(summary.since, "1970-01-01");
+}
