@@ -7,8 +7,9 @@ use std::time::{Duration, Instant, SystemTime};
 use clap::Command;
 use serde_json::{Value, json};
 
-use super::{Recorder, State, install, save, start, take, typed, update};
+use super::{Recorder, State, child_env_in, install, save, start, take, typed, update};
 use crate::usage::caller::Caller;
+use crate::usage::context::Context;
 use crate::usage::file::LIMITS;
 use crate::usage::record::Help;
 use crate::usage::testing::TempDir;
@@ -22,10 +23,20 @@ fn tool() -> Command {
     Command::new("shelf").version("1.2.3")
 }
 
+/// The W3C example TRACEPARENT, which names a valid caller's span.
+const CALLER: &str = "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01";
+
+/// Returns the recorder of a run that started now, under a caller that set
+/// `traceparent`, with the run id `2222222222222222`.
+fn started(traceparent: Option<&str>) -> Recorder {
+    let context = Context::new(traceparent, None, [0x11; 16], [0x22; 8]).unwrap();
+    Recorder::new(Instant::now(), context)
+}
+
 /// Returns the recorder of a run of [`tool`] that reached `parse` with no
 /// words after the tool's name.
 fn parsed() -> Recorder {
-    let mut recorder = Recorder::new(Instant::now());
+    let mut recorder = started(None);
     recorder.typed(&tool(), &["shelf".into()]);
     recorder
 }
@@ -53,10 +64,10 @@ fn saved(state: &TempDir, recorder: Recorder, interrupted: bool) -> Vec<Value> {
 fn a_second_start_in_one_process_installs_no_second_recorder() {
     let slot = Mutex::new(State::Idle);
 
-    assert!(install(&slot, Instant::now()));
-    assert!(!install(&slot, Instant::now()));
+    assert!(install(&slot, started(None)));
+    assert!(!install(&slot, started(None)));
     take(&slot).unwrap();
-    assert!(!install(&slot, Instant::now()));
+    assert!(!install(&slot, started(None)));
 }
 
 #[test]
@@ -73,7 +84,7 @@ fn without_a_recorder_a_report_does_nothing_and_there_is_no_line_to_write() {
 #[test]
 fn a_run_gives_up_its_recorder_once_so_it_writes_one_line() {
     let slot = Mutex::new(State::Idle);
-    install(&slot, Instant::now());
+    install(&slot, started(None));
 
     assert!(take(&slot).is_some());
     assert!(take(&slot).is_none());
@@ -106,18 +117,45 @@ fn a_saved_line_holds_the_tool_its_version_the_end_time_the_caller_and_the_hashe
 }
 
 #[test]
+fn a_saved_line_holds_the_caller_s_trace_the_run_s_id_and_the_caller_s_span_as_parent() {
+    let state = TempDir::new("traced");
+    let mut recorder = started(Some(CALLER));
+    recorder.typed(&tool(), &["shelf".into()]);
+
+    let lines = saved(&state, recorder, false);
+
+    assert_eq!(lines[0]["trace"], "4bf92f3577b34da6a3ce929d0e0e4736");
+    assert_eq!(lines[0]["run"], "2222222222222222");
+    assert_eq!(lines[0]["parent"], "00f067aa0ba902b7");
+}
+
+#[test]
+fn a_child_gets_trace_variables_only_from_a_run_that_reached_parse() {
+    let slot = Mutex::new(State::Idle);
+    assert_eq!(child_env_in(&slot), Vec::new());
+
+    install(&slot, started(Some(CALLER)));
+    assert_eq!(child_env_in(&slot), Vec::new());
+
+    update(&slot, |recorder| recorder.typed(&tool(), &["shelf".into()]));
+    assert_eq!(
+        child_env_in(&slot),
+        [(
+            "TRACEPARENT",
+            "00-4bf92f3577b34da6a3ce929d0e0e4736-2222222222222222-01".to_owned()
+        )]
+    );
+
+    take(&slot).unwrap();
+    assert_eq!(child_env_in(&slot), Vec::new());
+}
+
+#[test]
 fn a_run_that_never_reached_parse_writes_no_line() {
     let state = TempDir::new("unnamed");
     let now = SystemTime::UNIX_EPOCH + Duration::from_millis(1_791_374_467_120);
 
-    let written = save(
-        state.path(),
-        Recorder::new(Instant::now()),
-        now,
-        false,
-        &person(),
-        &LIMITS,
-    );
+    let written = save(state.path(), started(None), now, false, &person(), &LIMITS);
 
     assert!(written.is_none());
     assert!(!state.path().exists());
@@ -125,7 +163,7 @@ fn a_run_that_never_reached_parse_writes_no_line() {
 
 #[test]
 fn parse_gives_the_recorder_the_tool_s_name_its_version_and_the_words_after_the_name() {
-    let mut recorder = Recorder::new(Instant::now());
+    let mut recorder = started(None);
 
     recorder.typed(&tool(), &["shelf".into(), "books".into(), "list".into()]);
 

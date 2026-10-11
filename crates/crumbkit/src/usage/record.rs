@@ -1,10 +1,11 @@
 //! The record of one run, which the usage log holds as one line of JSON.
 //!
 //! Every field is a name from the tool's own vocabulary, a count, a flag, a
-//! time or a keyed hash, so no field can hold an argument's value. The
-//! app's section is the one exception that crumbkit cannot check
+//! time, a keyed hash or a hex trace id, so no field can hold an argument's
+//! value. The app's section is the one exception that crumbkit cannot check
 //! (ADR-0029).
 
+use std::fmt::Write as _;
 use std::hash::Hasher as _;
 
 use schemars::JsonSchema;
@@ -52,6 +53,9 @@ pub(super) struct Record {
     /// The keyed hash of the words after the tool's name, so identical
     /// command lines share a hash.
     pub(super) args: Hash,
+    /// The run's place in a W3C trace.
+    #[serde(flatten)]
+    pub(super) trace: TraceIds,
     /// Whether the line was written when the run ended on SIGINT or SIGTERM.
     /// It is present only when that is so.
     #[serde(default, skip_serializing_if = "is_false")]
@@ -158,6 +162,69 @@ impl Hash {
         }
         Self(format!("{:016x}", hasher.finish()))
     }
+}
+
+/// The run's place in a W3C trace, which the usage log shares with the
+/// caller and the run's children (ADR-0030).
+#[derive(Clone, Debug, Serialize, JsonSchema)]
+pub(super) struct TraceIds {
+    /// The id of the trace that the run belongs to: the caller's, from a
+    /// valid TRACEPARENT, or a new random id.
+    pub(super) trace: TraceId,
+    /// The run's own random span id, which its children name as their
+    /// parent.
+    pub(super) run: SpanId,
+    /// The caller's span id from a valid TRACEPARENT. It is left out when the
+    /// run started a new trace.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[schemars(with = "SpanId")]
+    pub(super) parent: Option<SpanId>,
+}
+
+/// A W3C trace id, as 32 lowercase hex digits.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, JsonSchema)]
+#[serde(transparent)]
+#[schemars(extend("pattern" = "^[0-9a-f]{32}$"))]
+pub(super) struct TraceId(String);
+
+impl TraceId {
+    /// Returns the id that `bytes` hold.
+    pub(super) fn new(bytes: [u8; 16]) -> Self {
+        Self(hex(&bytes))
+    }
+
+    /// Returns the id as hex.
+    pub(super) fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+
+/// A W3C span id, as 16 lowercase hex digits.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, JsonSchema)]
+#[serde(transparent)]
+#[schemars(extend("pattern" = "^[0-9a-f]{16}$"))]
+pub(super) struct SpanId(String);
+
+impl SpanId {
+    /// Returns the id that `bytes` hold.
+    pub(super) fn new(bytes: [u8; 8]) -> Self {
+        Self(hex(&bytes))
+    }
+
+    /// Returns the id as hex.
+    pub(super) fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+
+/// Returns `bytes` as lowercase hex, two digits per byte.
+fn hex(bytes: &[u8]) -> String {
+    let mut text = String::with_capacity(2 * bytes.len());
+    for byte in bytes {
+        // Writing to a `String` cannot fail.
+        let _ = write!(text, "{byte:02x}");
+    }
+    text
 }
 
 /// Which help page the caller asked for.

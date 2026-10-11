@@ -16,11 +16,12 @@ use signal_hook::iterator::Signals;
 use signal_hook::low_level::emulate_default_handler;
 
 use super::caller::{self, Caller};
+use super::context::{self, Context};
 use super::file::{self, LIMITS, Limits};
 use super::key;
 use super::record::{self, Hash, Help, Name, Record, Run, Section};
 use super::shape;
-use crate::{Code, Document, Spelling};
+use crate::{Code, Document, Spelling, exit};
 
 #[cfg(test)]
 mod tests;
@@ -51,6 +52,8 @@ struct Recorder {
     version: Option<Name>,
     /// When `start` ran.
     started: Instant,
+    /// The run's trace context, which `start` reads.
+    context: Context,
     /// The words after the tool's name, which the line holds only as a
     /// keyed hash.
     words: Vec<OsString>,
@@ -91,7 +94,8 @@ impl Drop for Log {
 /// }
 /// ```
 ///
-/// `start` notes the time and installs the process's recorder, which
+/// `start` notes the time, reads the caller's trace context from
+/// TRACEPARENT and TRACESTATE, and installs the process's recorder, which
 /// `parse`, `finish`, [`aliased`](super::aliased) and [`section`] report to.
 /// `parse` gives the recorder the tool's name and version from the command
 /// it parses against, so a run that ends before it reaches `parse` writes no
@@ -99,12 +103,19 @@ impl Drop for Log {
 /// ends on SIGINT or SIGTERM, and then lets the signal end the process as it
 /// would have.
 ///
+/// The run joins the caller's trace when TRACEPARENT is valid, and starts a
+/// new trace otherwise, as [`crate::trace`] describes. The random ids come
+/// from `/dev/urandom`, and a run whose ids cannot be read installs no
+/// recorder, so it writes no line and gives its children no variables.
+///
 /// The line goes to `usage.jsonl` in the tool's directory under the XDG
 /// state directory, such as `~/.local/state/shelf/usage.jsonl`. Any failure
 /// drops the line without a word, and recording never changes the tool's
 /// output or exit code (ADR-0029).
 pub fn start() -> Log {
-    let active = install(&RECORDER, Instant::now());
+    let started = Instant::now();
+    let active =
+        context::read().is_some_and(|context| install(&RECORDER, Recorder::new(started, context)));
     if active {
         watch_signals();
     }
@@ -122,6 +133,24 @@ pub fn start() -> Log {
 /// line's limit of 1 KiB, and a longer line is dropped.
 pub fn section<T: Serialize>(document: Document<T>, value: &T) {
     update(&RECORDER, |recorder| recorder.section(document, value));
+}
+
+/// Returns the variables that put a child process in this run's trace, as
+/// [`crate::trace::child_env`] describes.
+pub(crate) fn child_env() -> Vec<(&'static str, String)> {
+    child_env_in(&RECORDER)
+}
+
+/// Returns the trace id and the run's id as hex, or `None` without a
+/// recorder.
+#[cfg(feature = "tracing")]
+pub(crate) fn ids() -> Option<(String, String)> {
+    let state = RECORDER.lock().ok()?;
+    let State::Recording(recorder) = &*state else {
+        return None;
+    };
+    let ids = &recorder.context.ids;
+    Some((ids.trace.as_str().to_owned(), ids.run.as_str().to_owned()))
 }
 
 /// Records that a personal alias expanded.
@@ -153,7 +182,9 @@ pub(crate) fn helped(path: &[String], long: bool, exit: ExitCode) {
 /// Records the exit code that `parse` returned after it printed the
 /// version.
 pub(crate) fn exited(exit: ExitCode) {
-    update(&RECORDER, |recorder| recorder.run.exit = Some(number(exit)));
+    update(&RECORDER, |recorder| {
+        recorder.run.exit = Some(exit::number(exit));
+    });
 }
 
 /// Records a command line that clap refused with `error`, after `parse`
@@ -176,19 +207,21 @@ pub(crate) fn failed(spelling: Spelling, code: &Code) {
 /// it wrote to standard output, and whether a listing was `truncated`.
 pub(crate) fn finished(exit: ExitCode, out_bytes: u64, truncated: bool) {
     update(&RECORDER, |recorder| {
-        recorder.run.exit = Some(number(exit));
+        recorder.run.exit = Some(exit::number(exit));
         recorder.run.out_bytes = Some(out_bytes);
         recorder.run.truncated = truncated;
     });
 }
 
 impl Recorder {
-    /// Returns the recorder of a run that started at `started`.
-    fn new(started: Instant) -> Self {
+    /// Returns the recorder of a run that started at `started` in the trace
+    /// `context`.
+    fn new(started: Instant, context: Context) -> Self {
         Self {
             tool: None,
             version: None,
             started,
+            context,
             words: Vec::new(),
             run: Run::default(),
         }
@@ -205,7 +238,7 @@ impl Recorder {
     fn helped(&mut self, path: &[String], long: bool, exit: ExitCode) {
         self.run.command = (!path.is_empty()).then(|| Name::new(path.join(" ")));
         self.run.help = Some(if long { Help::Long } else { Help::Short });
-        self.run.exit = Some(number(exit));
+        self.run.exit = Some(exit::number(exit));
     }
 
     /// Records a failure's code, as [`failed`] describes.
@@ -243,23 +276,35 @@ impl Recorder {
             caller: caller.name,
             session: Hash::new(key, [caller.session.as_bytes()]),
             args: Hash::new(key, self.words.iter().map(|word| word.as_encoded_bytes())),
+            trace: self.context.ids,
             interrupted,
             run: self.run,
         })
     }
 }
 
-/// Installs a recorder in `slot`, and returns whether it did. It installs
+/// Installs `recorder` in `slot`, and returns whether it did. It installs
 /// none when `slot` already had one, or its lock is poisoned.
-fn install(slot: &Mutex<State>, started: Instant) -> bool {
+fn install(slot: &Mutex<State>, recorder: Recorder) -> bool {
     let Ok(mut state) = slot.lock() else {
         return false;
     };
     if !matches!(*state, State::Idle) {
         return false;
     }
-    *state = State::Recording(Recorder::new(started));
+    *state = State::Recording(recorder);
     true
+}
+
+/// Returns the variables that put a child process in the trace of the run
+/// in `slot`. It returns none when `slot` has no recorder, or the run has
+/// not reached `parse`, because such a run writes no line, and a child must
+/// never name a parent that nothing records.
+fn child_env_in(slot: &Mutex<State>) -> Vec<(&'static str, String)> {
+    match slot.lock().as_deref() {
+        Ok(State::Recording(recorder)) if recorder.tool.is_some() => recorder.context.child_env(),
+        _ => Vec::new(),
+    }
 }
 
 /// Applies `change` to the recorder in `slot`, and does nothing when there
@@ -356,17 +401,5 @@ fn watch_signals() {
         // The thread sends once it listens, and a thread that ended early
         // drops the sender, which ends the wait too.
         let _ = listens.recv();
-    }
-}
-
-/// Returns `exit` as a number. crumbkit's `parse` and `finish` return only
-/// 0, 1 and 2 (ADR-0002).
-fn number(exit: ExitCode) -> u8 {
-    if exit == ExitCode::SUCCESS {
-        0
-    } else if exit == ExitCode::from(2) {
-        2
-    } else {
-        1
     }
 }

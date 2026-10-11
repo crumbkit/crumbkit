@@ -37,6 +37,9 @@ etcetera = { workspace = true, optional = true }
 is-ai-agent = { workspace = true, optional = true }
 humantime = { workspace = true, optional = true }
 signal-hook = { workspace = true, optional = true, features = ["iterator"] }
+# The `tracing` feature puts `parse` and `finish` in spans of the tracing
+# crate (ADR-0030). crumbkit needs no tracing feature.
+tracing = { workspace = true, optional = true }
 
 [features]
 # `miette` is off by default, so the default build has no miette code and no
@@ -55,6 +58,9 @@ usage-log = [
     "serde/derive",
     "schemars/derive",
 ]
+# `tracing` is off by default, so the default build has no span code and no
+# tracing dependency (ADR-0003, ADR-0030).
+tracing = ["dep:tracing"]
 
 [dev-dependencies]
 # The tests compare the exact help pages and refusal messages that a tool
@@ -71,6 +77,11 @@ schemars = { workspace = true, features = ["derive"] }
 # generate strings from a regular expression. The default features add
 # forking, timeouts and bit-set strategies, which the tests do not use.
 proptest = { workspace = true, features = ["std"] }
+# The span tests install a small test subscriber for one thread with
+# `tracing::subscriber::with_default`, which needs tracing's `std` feature.
+tracing = { workspace = true, features = ["std"] }
+# The test subscriber names the entered span with `tracing_core::span::Current`.
+tracing-core = { workspace = true }
 
 [lints]
 workspace = true

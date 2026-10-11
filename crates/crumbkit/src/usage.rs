@@ -14,11 +14,15 @@
 #[cfg(feature = "usage-log")]
 mod caller;
 #[cfg(feature = "usage-log")]
+mod context;
+#[cfg(feature = "usage-log")]
 mod counted;
 #[cfg(feature = "usage-log")]
 mod file;
 #[cfg(feature = "usage-log")]
 mod key;
+#[cfg(feature = "usage-log")]
+mod random;
 #[cfg(feature = "usage-log")]
 mod record;
 #[cfg(feature = "usage-log")]
@@ -30,10 +34,14 @@ mod testing;
 
 #[cfg(feature = "usage-log")]
 pub(crate) use self::counted::Counted;
+#[cfg(all(feature = "usage-log", feature = "tracing"))]
+pub(crate) use self::recorder::ids;
 #[cfg(feature = "usage-log")]
 pub use self::recorder::{Log, section, start};
 #[cfg(feature = "usage-log")]
-pub(crate) use self::recorder::{exited, failed, finished, helped, parsed, refused, typed};
+pub(crate) use self::recorder::{
+    child_env, exited, failed, finished, helped, parsed, refused, typed,
+};
 
 // RUST-10: the log reads its key from `/dev/urandom`, finds the session in
 // the parent process id, and sets Unix file modes, so the feature builds

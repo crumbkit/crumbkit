@@ -67,7 +67,9 @@ interpreted = "deny"
 # the check even without a shebang line.
 enable-builtin-globs = true
 # The scan also covers the dependencies of compile-time crates, such as syn,
-# because they run inside the compiler too.
+# because they run inside the compiler too. cargo-deny counts every dependency
+# of such a crate, of any kind, so shelf's build script brings shelf's whole
+# dependency graph into the scan, including crumbkit's dev-dependencies.
 include-dependencies = true
 
 [sources]
@@ -99,3 +101,13 @@ allow-globs = ["cargo.sh", "win-cargo.bat", "ci/*.sh"]
 [[bans.build.bypass]]
 crate = "unicode-width"
 allow-globs = ["scripts/unicode.py"]
+
+# tracing, which crumbkit's optional `tracing` feature brings (ADR-0030), is in
+# the scan because shelf depends on it through crumbkit. tracing's published
+# sources hold `test-macros/bin/macro-results.sh`, which its authors use to
+# compare the output of its macro tests, and no build runs it: tracing sets
+# `build = false` and has no procedural macro. The entry allows only that
+# path, so a script elsewhere in the crate still fails the check.
+[[bans.build.bypass]]
+crate = "tracing"
+allow-globs = ["test-macros/bin/macro-results.sh"]

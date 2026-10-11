@@ -39,6 +39,8 @@ pub(crate) fn print<O: Write, W: Write>(
     command: Option<&Command>,
 ) {
     let document = FailureDocument::new(failure, spelling, command);
+    #[cfg(feature = "tracing")]
+    crate::trace::spans::failed(document.code());
     if json {
         if let Err(error) = write_json(&mut sink.out, &document) {
             // A reader that closed the pipe early has stopped reading, so
@@ -124,6 +126,12 @@ impl FailureDocument {
             step,
             url: failure.url().map(str::to_owned),
         }
+    }
+
+    /// Returns the failure's code in the tool's spelling.
+    #[cfg(feature = "tracing")]
+    pub(super) fn code(&self) -> &str {
+        &self.code
     }
 
     /// Returns the text of the `help:` line.

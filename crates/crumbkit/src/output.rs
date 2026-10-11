@@ -237,7 +237,15 @@ pub fn finish_to<T: Rows, E: AsFailure, O: Write, W: Write>(
     });
     #[cfg(feature = "usage-log")]
     let sink = &mut Sink::new(crate::usage::Counted::new(&mut sink.out), &mut sink.err);
+    // With the `tracing` feature, the response runs inside the
+    // `crumbkit.finish` span, which records the exit code (ADR-0030).
+    #[cfg(feature = "tracing")]
+    let span = crate::trace::spans::finish();
+    #[cfg(feature = "tracing")]
+    let _entered = span.enter();
     let code = respond(sink, output, spelling, document, result);
+    #[cfg(feature = "tracing")]
+    crate::trace::spans::exited(&span, code);
     #[cfg(feature = "usage-log")]
     crate::usage::finished(code, sink.out.bytes(), truncated);
     code
@@ -291,6 +299,11 @@ fn respond<T: Rows, E: AsFailure, O: Write, W: Write>(
     let Some(failures) = failures else {
         return code;
     };
+    // The span records only the batch's first failure, as the usage log does.
+    #[cfg(feature = "tracing")]
+    if let Some(first) = failures.first() {
+        crate::trace::spans::failed(first.code());
+    }
     if !output.json {
         for failure in &failures {
             // Standard error is the last place to report anything, so a
