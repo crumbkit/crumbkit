@@ -76,11 +76,17 @@ struct Parsed {
 /// Runs `parse_to` over `tool()` with `args` into memory, for a command line
 /// that does not parse.
 fn parse(args: &[&str]) -> Parsed {
+    parse_tree(tool(), args)
+}
+
+/// Runs `parse_to` over `command` with `args` into memory, for a command
+/// line that does not parse.
+fn parse_tree(command: Command, args: &[&str]) -> Parsed {
     let mut out = Vec::new();
     let mut err = Vec::new();
     let result = parse_to::<(), _, _, _, _>(
         &mut Sink::new(&mut out, &mut err),
-        tool(),
+        command,
         &Guide::new(),
         Spelling::COLONS,
         args,
@@ -255,6 +261,52 @@ Global flags: --json, --fields <FIELD>. `tool planets --help` describes them.
 Next: tool planets <COMMAND> -h
 ";
     assert_eq!(parsed.out, expected);
+}
+
+#[test]
+fn a_tool_s_own_after_help_prints_before_crumbkit_s_lines_in_short_and_long_help() {
+    let tool = tool().after_help("Report bugs at https://example.org/bugs.");
+
+    let short = parse_tree(tool.clone(), &["tool", "-h"]).out;
+    let long = parse_tree(tool, &["tool", "--help"]).out;
+
+    assert!(
+        short.ends_with(
+            "\
+Report bugs at https://example.org/bugs.
+
+Global flags: --json, --fields <FIELD>. `tool --help` describes them.
+Next: tool <COMMAND> -h
+"
+        ),
+        "{short}"
+    );
+    assert!(
+        long.ends_with(
+            "\
+Report bugs at https://example.org/bugs.
+
+Next: tool <COMMAND> -h
+"
+        ),
+        "{long}"
+    );
+}
+
+#[test]
+fn a_tool_s_own_after_long_help_prints_before_crumbkit_s_lines_in_long_help_only() {
+    let tool = tool()
+        .after_help("Report bugs.")
+        .after_long_help("Report bugs at https://example.org/bugs.");
+
+    let short = parse_tree(tool.clone(), &["tool", "-h"]).out;
+    let long = parse_tree(tool, &["tool", "--help"]).out;
+
+    assert!(short.contains("\nReport bugs.\n\nGlobal flags:"), "{short}");
+    assert!(
+        long.ends_with("\nReport bugs at https://example.org/bugs.\n\nNext: tool <COMMAND> -h\n"),
+        "{long}"
+    );
 }
 
 #[test]

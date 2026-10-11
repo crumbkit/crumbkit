@@ -2,7 +2,10 @@
 //! path, the goal headings it applies to them, and the sections of the
 //! deepest command's leaf.
 
+use std::fmt::Write as _;
+
 use clap::Command;
+use clap::builder::StyledStr;
 use clap::builder::styling::Style;
 
 use crate::help::{self, Guide, Leaf, Topic, leaf, topic};
@@ -125,13 +128,14 @@ fn leaf_sections(
 }
 
 /// Sets the text that ends the help of `node`, whose path is `text`: the
-/// leaf's `sections`, and then crumbkit's lines. The lines are the global
-/// flags line in `-h` when `flags` is not empty, the topics line in `-h`
-/// and `--help` when `topics` is not empty, and a `Next:` line. The `Next:`
-/// line opens a subcommand in `-h` and `--help` when `node` has a visible
-/// subcommand, and names `--help` in `-h` when the leaf has columns. Only
-/// the root gets `topics`. A blank line separates each section from the
-/// next and from the lines.
+/// command's own `after_help` or `after_long_help`, the leaf's `sections`,
+/// and then crumbkit's lines. The lines are the global flags line in `-h`
+/// when `flags` is not empty, the topics line in `-h` and `--help` when
+/// `topics` is not empty, and a `Next:` line. The `Next:` line opens a
+/// subcommand in `-h` and `--help` when `node` has a visible subcommand, and
+/// names `--help` in `-h` when the leaf has columns. Only the root gets
+/// `topics`. A blank line separates the command's own text, each section
+/// and the lines.
 fn set_help_lines(node: &mut Command, text: &str, flags: &str, topics: &str, sections: Sections) {
     let mut short = Vec::new();
     let mut long = Vec::new();
@@ -154,16 +158,52 @@ fn set_help_lines(node: &mut Command, text: &str, flags: &str, topics: &str, sec
     if sections.columns {
         short.push(format!("Next: {text} --help explains each column."));
     }
-    let short = join(sections.short, &short);
-    if short.is_empty() {
+    if short.is_empty() && sections.short.is_empty() {
         return;
     }
     // `--help` falls back to `after_help` when `after_long_help` is unset, so
-    // a command without a `Next:` line gets an empty `after_long_help`, and
-    // clap trims the blank lines it leaves.
-    *node = std::mem::take(node)
-        .after_help(short)
-        .after_long_help(join(sections.long, &long));
+    // the tool's own long text is its `after_help` when it has no
+    // `after_long_help`.
+    let own_short = own_text(node.get_after_help(), sections.short.first());
+    let own_long = own_text(
+        node.get_after_long_help().or_else(|| node.get_after_help()),
+        sections.long.first(),
+    );
+    let short = after(own_short, &join(sections.short, &short));
+    // A command without a `Next:` line and without text of its own gets an
+    // empty `after_long_help`, so `--help` does not fall back to the
+    // `after_help` set here, and clap trims the blank lines it leaves.
+    let long = after(own_long, &join(sections.long, &long));
+    *node = std::mem::take(node).after_help(short).after_long_help(long);
+}
+
+/// Returns a copy of `own`, one of the command's own `after_help` texts, or
+/// `None` when it is unset or empty or equals `examples`, the first of the
+/// leaf's sections. [`help::extend`] writes a leaf's examples section in
+/// place of the command's `after_help` and `after_long_help`, so that text
+/// is the section that `parse` adds, and it prints once.
+fn own_text(own: Option<&StyledStr>, examples: Option<&String>) -> Option<StyledStr> {
+    let own = own?;
+    let rewritten = examples.is_some_and(|examples| *own == StyledStr::from(examples));
+    if *own == StyledStr::new() || rewritten {
+        None
+    } else {
+        Some(own.clone())
+    }
+}
+
+/// Returns `own`, the command's own text, and then `text`, crumbkit's
+/// sections and lines, with a blank line between them. The text keeps the
+/// styles of both, because it is written as it is.
+fn after(own: Option<StyledStr>, text: &str) -> StyledStr {
+    let Some(mut own) = own else {
+        return StyledStr::from(text.to_owned());
+    };
+    if !text.is_empty() {
+        // Writing to a `StyledStr` cannot fail.
+        let _ = write!(own, "\n\n{text}");
+    }
+    own
 }
 
 /// Returns `sections` and then `lines` as one text: a blank line between

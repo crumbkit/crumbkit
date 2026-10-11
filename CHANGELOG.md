@@ -263,3 +263,9 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   nothing without the `usage-log` feature or a started log.
 - `crates/crumbkit/schemas/usage-v1.json` holds the JSON Schema of the
   `crumbkit/usage/v1` record.
+
+### Fixed
+
+- `parse` keeps a command's own `after_help` and `after_long_help`, such as
+  a "Report bugs at" line on the root, and prints crumbkit's lines after
+  them. A leaf whose examples `help::extend` already added prints them once.
