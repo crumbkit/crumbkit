@@ -238,11 +238,13 @@ fn two_runs_with_the_same_words_and_session_share_their_hashes() {
 }
 
 #[test]
-fn help_records_the_command_it_named_and_short_or_long() {
+fn help_records_the_commands_of_its_path_that_the_tool_defines_and_short_or_long() {
     let mut recorder = parsed();
+    let tool = tool().subcommand(Command::new("books").subcommand(Command::new("show")));
 
     recorder.helped(
-        &["books".to_owned(), "show".to_owned()],
+        &tool,
+        &["books".to_owned(), "s3cr3t".to_owned(), "show".to_owned()],
         true,
         ExitCode::SUCCESS,
     );
