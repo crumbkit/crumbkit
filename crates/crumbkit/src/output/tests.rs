@@ -34,9 +34,10 @@ impl Row for Planet {
     const LONG_COLUMNS: &'static [&'static str] = &["ringed"];
 }
 
-const PLANETS: Document<Vec<Planet>> = Document::new("solar", "planets", 1);
-const PLANET: Document<Planet> = Document::new("solar", "planet", 1);
-const PLANET_LISTING: Document<Listing<Planet>> = Document::new("solar", "planet-listing", 1);
+const PLANETS: Document<Vec<Planet>> = Document::new("solar", "planets", 1, "The test rows.");
+const PLANET: Document<Planet> = Document::new("solar", "planet", 1, "The test rows.");
+const PLANET_LISTING: Document<Listing<Planet>> =
+    Document::new("solar", "planet-listing", 1, "The test rows.");
 
 fn mercury() -> Planet {
     Planet {
@@ -298,7 +299,7 @@ impl Row for Body {
     const COLUMNS: &'static [&'static str] = &["name"];
 }
 
-const BODIES: Document<Vec<Body>> = Document::new("solar", "bodies", 1);
+const BODIES: Document<Vec<Body>> = Document::new("solar", "bodies", 1, "The test rows.");
 
 #[test]
 fn fields_accepts_the_fields_of_each_variant_of_a_row_type_without_top_level_properties() {
@@ -433,7 +434,7 @@ impl Row for Unserializable {
 
 #[test]
 fn a_result_that_cannot_be_serialized_exits_with_code_1_and_reports_the_cause() {
-    const BROKEN: Document<Unserializable> = Document::new("broken", "row", 1);
+    const BROKEN: Document<Unserializable> = Document::new("broken", "row", 1, "The test rows.");
 
     let finished = finish_with(&[], BROKEN, Unserializable { id: 7 });
 

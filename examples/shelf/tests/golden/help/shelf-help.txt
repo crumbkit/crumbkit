@@ -7,6 +7,7 @@ Browse the catalogue
 
 Explore the commands
   commands  Explore shelf's commands
+  schemas   Explore the JSON documents that shelf prints
 
 Review how shelf is used
   self      Review shelf's own use

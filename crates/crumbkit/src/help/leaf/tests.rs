@@ -62,7 +62,7 @@ impl Row for Planet {
 }
 
 /// The document of `tool planets list`.
-const PLANETS: Document<Vec<Planet>> = Document::new("tool", "planets", 1);
+const PLANETS: Document<Vec<Planet>> = Document::new("tool", "planets", 1, "The test rows.");
 
 /// The examples of `tool planets list`.
 const EXAMPLES: &[Example] = &[
@@ -244,10 +244,14 @@ impl Row for Moon {
 }
 
 /// A guide whose `tool planets show` prints moons.
-const MOONS: Guide =
-    Guide::new()
-        .leaves(&[Leaf::new(&["planets", "show"])
-            .document(Document::<Vec<Moon>>::new("tool", "moons", 1))]);
+const MOONS: Guide = Guide::new().leaves(&[Leaf::new(&["planets", "show"]).document(Document::<
+    Vec<Moon>,
+>::new(
+    "tool",
+    "moons",
+    1,
+    "The test rows.",
+))]);
 
 #[test]
 fn a_column_without_a_description_prints_its_name_alone() {
@@ -291,8 +295,9 @@ impl Row for Counted {
 
 #[test]
 fn the_schema_is_built_only_when_the_words_ask_for_long_help() {
-    const GUIDE: Guide = Guide::new().leaves(&[Leaf::new(&["planets", "show"])
-        .document(Document::<Vec<Counted>>::new("tool", "counted", 1))]);
+    const GUIDE: Guide = Guide::new().leaves(&[Leaf::new(&["planets", "show"]).document(
+        Document::<Vec<Counted>>::new("tool", "counted", 1, "The test rows."),
+    )]);
     let run = |args: &[&str]| {
         let _ = parse_to::<(), _, _, _, _>(
             &mut Sink::new(Vec::new(), Vec::new()),
@@ -456,10 +461,20 @@ impl Row for Comet {
 #[test]
 fn column_descriptions_reports_a_column_that_is_not_a_property_and_one_without_a_description() {
     let comets = Leaf::new(&["planets", "show"])
-        .document(Document::<Vec<Comet>>::new("tool", "comets", 1))
+        .document(Document::<Vec<Comet>>::new(
+            "tool",
+            "comets",
+            1,
+            "The test rows.",
+        ))
         .column_descriptions();
     let moons = Leaf::new(&["planets", "show"])
-        .document(Document::<Vec<Moon>>::new("tool", "moons", 1))
+        .document(Document::<Vec<Moon>>::new(
+            "tool",
+            "moons",
+            1,
+            "The test rows.",
+        ))
         .column_descriptions();
 
     assert_eq!(comets[1].name(), "period");
@@ -500,7 +515,12 @@ impl Row for Body {
 #[test]
 fn column_descriptions_read_the_fields_of_each_variant_of_a_row_type() {
     let columns = Leaf::new(&["planets", "show"])
-        .document(Document::<Vec<Body>>::new("tool", "bodies", 1))
+        .document(Document::<Vec<Body>>::new(
+            "tool",
+            "bodies",
+            1,
+            "The test rows.",
+        ))
         .column_descriptions();
 
     let read: Vec<(&str, bool, Option<&str>)> = columns
@@ -526,4 +546,26 @@ fn column_descriptions_of_a_leaf_without_a_document_is_empty() {
     let leaf = Leaf::new(&["planets", "list"]).examples(EXAMPLES);
 
     assert_eq!(leaf.column_descriptions(), Vec::<Column>::new());
+}
+
+#[test]
+fn a_leaf_returns_the_document_it_declares_and_no_document_when_it_declares_none() {
+    let leaf = Leaf::new(&["planets", "list"]).document(PLANETS);
+
+    let document = leaf.get_document().unwrap();
+
+    assert_eq!(document.to_string(), "tool/planets/v1");
+    assert_eq!(document.description(), "The test rows.");
+    assert!(Leaf::new(&["planets", "list"]).get_document().is_none());
+}
+
+#[test]
+fn a_leaf_builds_the_schema_of_the_whole_document_it_declares() {
+    let leaf = Leaf::new(&["planets", "list"]).document(PLANETS);
+
+    assert_eq!(
+        leaf.document_schema(),
+        Some(crate::schemas::document_schema(PLANETS))
+    );
+    assert_eq!(Leaf::new(&["planets", "list"]).document_schema(), None);
 }

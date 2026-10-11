@@ -44,9 +44,13 @@ The rustdoc of each check says what it fails on and shows an example:
   [`check_help_goldens`].
 - Example output: [`check_examples`] with [`Examples`], and
   [`example_golden_name`], which names each example's golden file.
+- JSON documents: [`check_schema_goldens`], which pins each document's
+  JSON Schema, [`check_document_ids`], which ties each document's name to
+  its command, and [`check_mounts`], which keeps crumbkit's own commands at
+  their fixed paths.
 
-[ADR-0025] records why these checks exist, and [ADR-0004] records how golden
-files work.
+[ADR-0025] records why these checks exist, [ADR-0035] records the document
+checks, and [ADR-0004] records how golden files work.
 
 Licensed under either of Apache License, Version 2.0 or MIT license at your
 option.
@@ -63,5 +67,9 @@ option.
 [`check_examples`]: src/examples.rs
 [`Examples`]: src/examples.rs
 [`example_golden_name`]: src/examples.rs
+[`check_schema_goldens`]: src/schemas.rs
+[`check_document_ids`]: src/documents.rs
+[`check_mounts`]: src/documents.rs
 [ADR-0025]: ../../docs/decisions/api/help/0025-help-checks.md
+[ADR-0035]: ../../docs/decisions/api/0035-schema-commands.md
 [ADR-0004]: ../../docs/decisions/testing/0004-golden-and-snapshot-tests.md

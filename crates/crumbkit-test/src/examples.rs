@@ -272,7 +272,14 @@ fn check(command: &Command, guide: &Guide, examples: &Examples<'_>, assert: &Ass
         }
     }
     let names: Vec<String> = names.into_iter().map(|(name, _)| name).collect();
-    remove_stale(dir, &names, overwrite, "checked example", &mut problems);
+    remove_stale(
+        dir,
+        &names,
+        "txt",
+        overwrite,
+        "checked example",
+        &mut problems,
+    );
     report(&problems, &failures);
 }
 

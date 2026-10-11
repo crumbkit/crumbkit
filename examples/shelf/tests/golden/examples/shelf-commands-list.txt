@@ -5,5 +5,8 @@ shelf books list     List the books in the catalogue, in id order
 shelf books show     Show the books with the given ids, in the order given
 shelf commands       Explore shelf's commands
 shelf commands list  List a branch of shelf's commands with their arguments, examples and columns
+shelf schemas        Explore the JSON documents that shelf prints
+shelf schemas list   List the JSON documents that shelf prints, with a description of each
+shelf schemas show   Print the JSON Schema of each document
 shelf self           Review shelf's own use
 shelf self usage     Report the patterns in shelf's usage log where callers waste effort

@@ -103,7 +103,8 @@ fn missing(names: &'static str) -> Missing {
     }
 }
 
-const PLANETS: Document<Batch<Planet, Missing>> = Document::new("solar", "planets-show", 1);
+const PLANETS: Document<Batch<Planet, Missing>> =
+    Document::new("solar", "planets-show", 1, "The test rows.");
 
 /// A tool with a `list` command that a recovery names and a `show` command
 /// that takes many names.
@@ -143,7 +144,7 @@ fn output(flags: &[&str]) -> Output {
 
 /// Finishes `batch` into memory with `flags`.
 fn finish_with<E: AsFailure>(flags: &[&str], batch: Batch<Planet, E>) -> Finished {
-    let document = Document::new("solar", "planets-show", 1);
+    let document = Document::new("solar", "planets-show", 1, "The test rows.");
     let mut out = Vec::new();
     let mut err = Vec::new();
     let result: Result<_, Error> = Ok(batch);

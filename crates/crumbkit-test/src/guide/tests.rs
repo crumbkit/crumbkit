@@ -442,7 +442,12 @@ impl Row for UndocumentedBook {
 #[test]
 fn a_leaf_whose_columns_are_documented_fields_of_its_row_type_passes() {
     const GUIDE: Guide = Guide::new().leaves(&[
-        leaf(&["books", "list"]).document(Document::<Vec<Book>>::new("shelf", "books-list", 1)),
+        leaf(&["books", "list"]).document(Document::<Vec<Book>>::new(
+            "shelf",
+            "books-list",
+            1,
+            "The test rows.",
+        )),
         leaf(&["books", "show"]),
         leaf(&["authors", "list"]),
     ]);
@@ -457,6 +462,7 @@ fn a_leaf_column_that_is_not_a_field_of_the_row_type_fails_the_check() {
             "shelf",
             "books-list",
             1,
+            "The test rows.",
         )),
         leaf(&["books", "show"]),
         leaf(&["authors", "list"]),
@@ -477,6 +483,7 @@ fn a_leaf_column_without_a_description_fails_the_check_naming_the_field() {
             "shelf",
             "books-list",
             1,
+            "The test rows.",
         )),
         leaf(&["books", "show"]),
         leaf(&["authors", "list"]),

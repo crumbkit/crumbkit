@@ -27,6 +27,10 @@ clap = { workspace = true }
 # in full, and without `cmd`, a run has no timeout and waits for the binary
 # to exit.
 snapbox = { workspace = true }
+# The schema golden check writes each document's JSON Schema as
+# pretty-printed JSON, as crumbkit's checked-in schema files hold it.
+# serde_json needs `std` or `alloc` to build at all.
+serde_json = { workspace = true, features = ["std"] }
 
 [dev-dependencies]
 # The guide check's tests give leaves row types, which derive `Serialize` and

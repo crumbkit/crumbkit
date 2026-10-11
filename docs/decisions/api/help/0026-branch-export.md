@@ -7,7 +7,7 @@
 - Every row has every field, with `null` or an empty list for what a command lacks, so a program reads every row the same way. An argument's environment variable is left out, because crumbkit does not enable clap's `env` feature and so cannot read it.
 - The rows leave out the help and version flags, which are the same on every command and which `parse` changes, so the rows are the same whether or not the tree went through `parse`. A global argument is listed once, so the listing does not repeat it on every row.
 - The text table shows only each command's path and about text, because the nested lists would print as compact JSON in a table cell. `--json --full` prints the arguments, examples and columns.
-- The schema of the `crumbkit/commands/v1` document is checked in (ADR-0007). crumbkit implements `Serialize` and `JsonSchema` for `CommandsList` and the row types by hand, so a build without the `usage-log` feature needs no serde or schemars derive macros (ADR-0016).
+- The schema of the `crumbkit/commands-list/v1` document is checked in (ADR-0007). crumbkit implements `Serialize` and `JsonSchema` for `CommandsList` and the row types by hand, so a build without the `usage-log` feature needs no serde or schemars derive macros (ADR-0016).
 - The two failure codes of `commands list` are fixed by crumbkit, as `crumbkit::cli::usage` is (ADR-0001), and are not listed in a `CODES` list.
 - A Markdown export of help is decided with the documentation (ADR-0013), and `commands list` prints only the two formats of ADR-0016.
 

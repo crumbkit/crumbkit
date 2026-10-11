@@ -5,8 +5,8 @@
 //! [`expand`]: crate::expand()
 //! [`list`]: crate::list()
 //! [`AliasesList`]: crate::AliasesList
-//! [`ALIASES`]: crate::ALIASES
-//! [schema]: https://github.com/crumbkit/crumbkit/blob/main/crates/crumbkit-aliases/schemas/aliases-v1.json
+//! [`ALIASES_LIST`]: crate::ALIASES_LIST
+//! [schema]: https://github.com/crumbkit/crumbkit/blob/main/crates/crumbkit-aliases/schemas/aliases-list-v1.json
 //! [ADR-0027]: https://github.com/crumbkit/crumbkit/blob/main/docs/decisions/api/0027-aliases.md
 #![doc = include_str!("../README.md")]
 
@@ -19,4 +19,4 @@ mod testing;
 
 pub use crate::expand::expand;
 pub use crate::file::file;
-pub use crate::list::{ALIASES, AliasRow, AliasesList, list};
+pub use crate::list::{ALIASES_LIST, AliasRow, AliasesList, list};

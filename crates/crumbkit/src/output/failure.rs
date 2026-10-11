@@ -18,7 +18,16 @@ mod label;
 mod tests;
 
 /// The id of the JSON document that a failure prints with `--json`.
-const FAILURE: Document<FailureDocument> = Document::new("crumbkit", "failure", 1);
+const FAILURE: Document<FailureDocument> = Document::new(
+    "crumbkit",
+    "failure",
+    1,
+    "The document that a command prints on standard output when it fails with --json.",
+);
+
+/// The failure document's id and description, without its result type,
+/// as `schemas list` serves it.
+pub(crate) const DOCUMENT: Document<()> = FAILURE.untyped();
 
 /// The reason a failure prints when its `Recovery::Run` call cannot be
 /// rendered, because no command is set or the call does not resolve.
@@ -346,6 +355,40 @@ impl JsonSchema for FailureDocument {
             "required": ["schema", "code", "message", "recovery"],
         })
     }
+}
+
+/// Returns the JSON Schema of the `crumbkit/failure/v1` document, with the
+/// document's id as its `title`, as `schemas show` serves it and
+/// `crates/crumbkit/schemas/failure-v1.json` holds it.
+pub(crate) fn document_schema() -> Schema {
+    let mut schema = schemars::schema_for!(FailureDocument);
+    schema.insert("title".to_owned(), FAILURE.to_string().into());
+    schema
+}
+
+/// Returns the JSON Schema of one entry of a batch's `failures` array: the
+/// schema of the `crumbkit/failure/v1` document without its `schema`
+/// property, as [`Entry`] writes it.
+pub(crate) fn entry_schema() -> Schema {
+    let mut schema = FailureDocument::json_schema(&mut SchemaGenerator::default());
+    schema.insert(
+        "description".to_owned(),
+        "A failure of some of the ids: the fields of the crumbkit/failure/v1 document without schema."
+            .into(),
+    );
+    if let Some(properties) = schema
+        .get_mut("properties")
+        .and_then(serde_json::Value::as_object_mut)
+    {
+        properties.remove("schema");
+    }
+    if let Some(required) = schema
+        .get_mut("required")
+        .and_then(serde_json::Value::as_array_mut)
+    {
+        required.retain(|name| name != "schema");
+    }
+    schema
 }
 
 /// Describes the `labels` array of the `crumbkit/failure/v1` document. The

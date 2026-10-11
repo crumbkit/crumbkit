@@ -19,6 +19,7 @@
 //! [`commands`]: crate::commands
 //! [`fetch_each`]: crate::fetch_each
 //! [`usage`]: crate::usage
+//! [`schemas`]: crate::schemas
 //! [`trace`]: crate::trace
 //! [golden files]: https://github.com/crumbkit/crumbkit/tree/main/examples/shelf/tests/golden
 //! [schemas]: https://github.com/crumbkit/crumbkit/tree/main/crates/crumbkit/schemas
@@ -47,6 +48,7 @@ mod page;
 mod parse;
 mod refusal;
 mod row;
+pub mod schemas;
 mod sink;
 pub mod trace;
 pub mod usage;
@@ -55,7 +57,7 @@ pub mod usage;
 // crumbkit, so a tool depends on crumbkit alone (ADR-0032).
 pub use crumbkit_core::{
     AsFailure, Batch, Call, CallError, CallTarget, Code, Document, Error, Failure, Listing,
-    NoSummary, Recovery, Row, Rows, Spelling,
+    NoSummary, Recovery, Row, Rows, Shape, Spelling,
 };
 
 pub use crate::call::RenderCall;

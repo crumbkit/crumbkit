@@ -6,7 +6,7 @@
 //! The tool owns the command. It adds a `commands` resource with a `list`
 //! subcommand that takes [`CommandsList`] to its own clap types, and its
 //! handler passes the result of [`list`] to [`finish`](crate::finish) with
-//! the document [`COMMANDS`]. A tool that does not want the command leaves
+//! the document [`COMMANDS_LIST`]. A tool that does not want the command leaves
 //! it out.
 //!
 //! ```
@@ -56,7 +56,7 @@
 //!         Resource::Commands { command: CommandsCommand::List(args) } => crumbkit::finish(
 //!             &cli.output,
 //!             SPELLING,
-//!             commands::COMMANDS,
+//!             commands::COMMANDS_LIST,
 //!             commands::list(&cli.output, &GUIDE, &args),
 //!         ),
 //!     }
@@ -85,58 +85,14 @@ mod tests;
 
 /// The document that `commands list` prints: one page of the rows of a
 /// branch and the number of visible commands in it. Its schema is
-/// `crates/crumbkit/schemas/commands-v1.json`.
-pub const COMMANDS: Document<Listing<CommandRow>> = Document::new("crumbkit", "commands", 1);
-
-/// The `crumbkit/commands/v1` document as `finish` writes a listing of
-/// command rows with `--json`: the id, the rows and the number of commands
-/// in the branch. The type exists only for its schema.
-///
-/// This impl is written by hand so crumbkit needs no schemars `derive`
-/// feature. `crates/crumbkit/schemas/commands-v1.json` holds the schema, and
-/// a test fails when the two differ (ADR-0007).
-#[cfg_attr(
-    not(test),
-    expect(
-        dead_code,
-        reason = "only the schema test reads the type until a tool serves its schemas (ADR-0007)"
-    )
-)]
-pub(crate) struct CommandsDocument;
-
-impl JsonSchema for CommandsDocument {
-    fn schema_name() -> Cow<'static, str> {
-        "CommandsDocument".into()
-    }
-
-    fn schema_id() -> Cow<'static, str> {
-        "crumbkit/commands/v1".into()
-    }
-
-    fn json_schema(generator: &mut SchemaGenerator) -> Schema {
-        json_schema!({
-            "description": "The document that `commands list` prints with --json: one row for each visible command of a branch of the command tree.",
-            "type": "object",
-            "properties": {
-                "schema": {
-                    "description": "The id of this document.",
-                    "const": "crumbkit/commands/v1",
-                },
-                "data": {
-                    "description": "The commands of the branch, in depth-first order, up to the limit.",
-                    "type": "array",
-                    "items": CommandRow::json_schema(generator),
-                },
-                "total": {
-                    "description": "The number of visible commands in the branch.",
-                    "type": "integer",
-                    "minimum": 0,
-                },
-            },
-            "required": ["schema", "data", "total"],
-        })
-    }
-}
+/// `crates/crumbkit/schemas/commands-list-v1.json`, which
+/// [`schemas::document_schema`](crate::schemas::document_schema) builds.
+pub const COMMANDS_LIST: Document<Listing<CommandRow>> = Document::new(
+    "crumbkit",
+    "commands-list",
+    1,
+    "One branch of the tool's commands with their arguments, examples and columns.",
+);
 
 /// The code of a `PATH` that names no visible command, in the tool's
 /// spelling, such as `crumbkit::commands::not_found` (ADR-0026).
@@ -149,7 +105,7 @@ const UNAVAILABLE: Code = Code::new("crumbkit", "commands", "unavailable");
 
 /// The path from the root to `commands list`, which the recovery of a
 /// `PATH` that names no visible command runs.
-const COMMANDS_LIST: &[&str] = &["commands", "list"];
+const LIST_PATH: &[&str] = &["commands", "list"];
 
 /// The help text of `PATH`, which the schema also uses as its description.
 const PATH_HELP: &str =
@@ -218,7 +174,7 @@ impl JsonSchema for CommandsList {
 /// Returns the rows of the branch that `args` names in the command tree
 /// that the tool passed to [`Output::set_command`], one page of them as
 /// `args` asks, for the tool to pass to [`finish`](crate::finish) with
-/// [`COMMANDS`].
+/// [`COMMANDS_LIST`].
 ///
 /// The branch is the command that the words of `args` name below the root,
 /// or the root when there are none, and then every visible command below it
@@ -378,11 +334,11 @@ impl Failure for CommandsError {
 
     fn recovery(&self) -> Recovery {
         match self {
-            Self::NotFound { prefix, .. } => {
-                Recovery::Run(prefix.iter().fold(Call::new(COMMANDS_LIST), |call, name| {
-                    call.word(name.clone())
-                }))
-            }
+            Self::NotFound { prefix, .. } => Recovery::Run(
+                prefix
+                    .iter()
+                    .fold(Call::new(LIST_PATH), |call, name| call.word(name.clone())),
+            ),
             Self::Unavailable => Recovery::None {
                 reason: "the tool's main does not pass its command to Output::set_command"
                     .to_owned(),

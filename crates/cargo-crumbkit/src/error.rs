@@ -68,7 +68,7 @@ pub(crate) enum WeighError {
         error: io::Error,
     },
     /// The tool's `commands list --all --json --full` prints no
-    /// `crumbkit/commands/v1` document.
+    /// `crumbkit/commands-list/v1` document.
     NoCommandsList {
         /// The command line that `weigh` ran, such as
         /// `shelf commands list --all --json --full`.
@@ -127,7 +127,7 @@ impl fmt::Display for WeighError {
             }
             Self::NoCommandsList { line } => write!(
                 f,
-                "`{line}` prints no crumbkit/commands/v1 document, so the tool's commands cannot be read"
+                "`{line}` prints no crumbkit/commands-list/v1 document, so the tool's commands cannot be read"
             ),
             Self::HelpFailed { line, status } => write!(f, "`{line}` exited with {status}"),
             Self::GoldenUnreadable { path, .. } => {

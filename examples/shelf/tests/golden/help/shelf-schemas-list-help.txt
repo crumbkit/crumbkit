@@ -1,0 +1,38 @@
+List the JSON documents that shelf prints, with a description of each
+
+Usage: shelf schemas list [OPTIONS]
+
+Options:
+      --limit <N>
+          Print at most this many rows
+          
+          [default: 25]
+
+      --all
+          Print every row
+
+      --json
+          Print the result as a JSON document on one line
+
+      --fields <FIELD>
+          Print only these comma-separated fields, in this order
+
+      --long
+          Add the long columns after the compact ones
+
+      --full
+          With --json, print every field of every row
+
+  -h, --help
+          Print help (see a summary with '-h')
+
+Examples:
+  shelf schemas list
+          List every document that shelf prints
+
+Columns:
+  id           The document's id, such as `shelf/books-list/v1`, which `schemas show` takes.
+  description  What the document holds, in one line.
+
+Columns that --long adds:
+  commands  The command lines that print the document. It is empty for the failure document, which every command prints when it fails with --json.

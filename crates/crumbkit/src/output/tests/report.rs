@@ -18,7 +18,7 @@ impl Row for Setting {
     const COLUMNS: &'static [&'static str] = &["key"];
 }
 
-const SETTINGS: Document<Vec<Setting>> = Document::new("shelf", "settings", 1);
+const SETTINGS: Document<Vec<Setting>> = Document::new("shelf", "settings", 1, "The test rows.");
 
 /// Runs `parse` in a handler that returns `crumbkit::Error`, so `?` converts
 /// the report, and returns the failure's text form.

@@ -51,7 +51,7 @@ pub fn run() -> ExitCode {
                 CommandsCommand::List(args) => crumbkit::finish(
                     &cli.output,
                     SPELLING,
-                    crumbkit::commands::COMMANDS,
+                    crumbkit::commands::COMMANDS_LIST,
                     crumbkit::commands::list(&cli.output, &GUIDE, &args),
                 ),
             },

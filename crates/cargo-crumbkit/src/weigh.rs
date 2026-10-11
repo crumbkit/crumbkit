@@ -17,7 +17,12 @@ mod tests;
 /// The document that `cargo crumbkit weigh` prints: one weight for each
 /// visible command of the tool, in depth-first order from the root. Its
 /// schema is `crates/cargo-crumbkit/schemas/weigh-v1.json`.
-pub(crate) const WEIGH: Document<Vec<Weight>> = Document::new("crumbkit", "weigh", 1);
+pub(crate) const WEIGH: Document<Vec<Weight>> = Document::new(
+    "crumbkit",
+    "weigh",
+    1,
+    "The bytes that an agent reads on each path through a tool's help.",
+);
 
 /// The directory of the example golden files in the binary's package, when
 /// `--goldens` names none. shelf keeps its example golden files there.

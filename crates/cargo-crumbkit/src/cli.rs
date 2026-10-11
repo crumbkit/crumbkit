@@ -4,7 +4,7 @@ use std::path::PathBuf;
 
 use clap::{Args, Parser, Subcommand};
 use crumbkit::Output;
-use crumbkit::commands::{COMMANDS, CommandsList};
+use crumbkit::commands::{COMMANDS_LIST, CommandsList};
 use crumbkit::help::{Example, Goal, Group, Guide, Leaf};
 
 use crate::weigh::WEIGH;
@@ -51,7 +51,7 @@ pub const GUIDE: Guide = Guide::new()
             .document(WEIGH),
         Leaf::new(&["crumbkit", "commands", "list"])
             .examples(&[Example::new(&[], "List every command")])
-            .document(COMMANDS),
+            .document(COMMANDS_LIST),
     ]);
 
 /// The cargo subcommands that cargo-crumbkit serves.

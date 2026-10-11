@@ -26,7 +26,8 @@ mod tests;
 /// use crumbkit::Document;
 /// use crumbkit::help::{Example, Guide, Leaf};
 ///
-/// const BOOKS_LIST: Document<Vec<Book>> = Document::new("shelf", "books-list", 1);
+/// const BOOKS_LIST: Document<Vec<Book>> =
+///     Document::new("shelf", "books-list", 1, "The books in the catalogue.");
 ///
 /// const GUIDE: Guide = Guide::new().leaves(&[Leaf::new(&["books", "list"])
 ///     .examples(&[
@@ -43,8 +44,8 @@ pub struct Leaf {
     path: &'static [&'static str],
     /// The examples, in the order the help page lists them.
     examples: &'static [Example],
-    /// The columns of the result that the command prints, or `None` when
-    /// the leaf has no document.
+    /// The document that the command prints and the columns of its rows,
+    /// or `None` when the leaf has no document.
     columns: Option<Columns>,
 }
 
@@ -86,19 +87,50 @@ impl Leaf {
     /// then lists the columns of the document's row type, each with the doc
     /// comment of its field, and its `-h` points at them.
     ///
-    /// The leaf keeps the row type's column lists and a function that
-    /// builds its JSON Schema, so one guide holds leaves whose rows have
-    /// different types.
+    /// The leaf keeps the document's id and description, the row type's
+    /// column lists, and functions that build the JSON Schemas of the row
+    /// type and of the whole document, so one guide holds leaves whose rows
+    /// have different types. [`schemas`](crate::schemas) serves each
+    /// leaf's document from them.
     #[must_use]
     pub const fn document<T: Rows>(mut self, document: Document<T>) -> Self {
-        // The document's id is not needed; its type names the row type.
-        let _ = document;
         self.columns = Some(Columns {
+            document: document.untyped(),
             compact: <T::Row as Row>::COLUMNS,
             long: <T::Row as Row>::LONG_COLUMNS,
             schema: schema::<T::Row>,
+            envelope: crate::schemas::envelope::<T>,
         });
         self
+    }
+
+    /// Returns the document that [`Leaf::document`] set, without its result
+    /// type, or `None` when the leaf has no document. The name has clap's
+    /// `get_` prefix, because `document` is the builder method.
+    #[must_use]
+    pub const fn get_document(&self) -> Option<Document<()>> {
+        match self.columns {
+            Some(columns) => Some(columns.document),
+            None => None,
+        }
+    }
+
+    /// Returns the JSON Schema of the whole document that the leaf prints,
+    /// as [`schemas::document_schema`](crate::schemas::document_schema)
+    /// builds it, or `None` when the leaf has no document. It builds the
+    /// schema on each call.
+    #[must_use]
+    pub fn document_schema(&self) -> Option<Schema> {
+        self.columns
+            .map(|columns| (columns.envelope)(columns.document))
+    }
+
+    /// Returns the function that builds the JSON Schema of the whole
+    /// document that the leaf prints, as
+    /// [`schemas::document_schema`](crate::schemas::document_schema)
+    /// builds it, or `None` when the leaf has no document.
+    pub(crate) fn envelope(&self) -> Option<fn(Document<()>) -> Schema> {
+        self.columns.map(|columns| columns.envelope)
     }
 
     /// Reports whether the leaf has a document, whose columns its `--help`
@@ -240,9 +272,12 @@ impl Example {
     }
 }
 
-/// The columns of a leaf's row type, as [`Leaf::document`] records them.
+/// The document of a leaf and the columns of its row type, as
+/// [`Leaf::document`] records them.
 #[derive(Clone, Copy, Debug)]
 struct Columns {
+    /// The document's id and description.
+    document: Document<()>,
     /// The row type's [`Row::COLUMNS`].
     compact: &'static [&'static str],
     /// The row type's [`Row::LONG_COLUMNS`].
@@ -250,6 +285,9 @@ struct Columns {
     /// Builds the row type's JSON Schema, whose properties hold the
     /// columns' descriptions.
     schema: fn() -> Schema,
+    /// Builds the JSON Schema of the whole document from its id and
+    /// description.
+    envelope: fn(Document<()>) -> Schema,
 }
 
 /// Returns the JSON Schema of `R`.

@@ -1,11 +1,11 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "UsageReportDocument",
-  "description": "The document that `self usage` prints with --json: one row for each pattern in the usage log where callers waste effort, and the summary of the runs read.",
+  "title": "crumbkit/self-usage/v1",
+  "description": "The patterns in the usage log where callers waste effort, and a summary of the runs read.",
   "type": "object",
   "properties": {
     "data": {
-      "description": "The findings, the most runs first.",
+      "description": "The rows of the page, up to the limit.",
       "type": "array",
       "items": {
         "$ref": "#/$defs/FindingRow"
@@ -13,13 +13,13 @@
     },
     "schema": {
       "description": "The id of this document.",
-      "const": "crumbkit/usage-report/v1"
+      "const": "crumbkit/self-usage/v1"
     },
     "summary": {
       "$ref": "#/$defs/UsageSummary"
     },
     "total": {
-      "description": "The number of findings.",
+      "description": "The number of rows that matched, of which data holds one page.",
       "type": "integer",
       "minimum": 0
     }

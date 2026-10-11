@@ -1,54 +1,14 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "WeighDocument",
-  "description": "The document that `cargo crumbkit weigh` prints with --json: one row for each visible command of the tool.",
+  "title": "crumbkit/weigh/v1",
+  "description": "The bytes that an agent reads on each path through a tool's help.",
   "type": "object",
   "properties": {
     "data": {
-      "description": "The weights of the tool's visible commands, in depth-first order from the root.",
+      "description": "The rows, in order.",
       "type": "array",
       "items": {
-        "description": "What one visible command of a tool costs an agent to read, in bytes.",
-        "type": "object",
-        "properties": {
-          "long_help": {
-            "description": "The bytes of the command's `--help` page.",
-            "type": "integer",
-            "format": "uint64",
-            "minimum": 0
-          },
-          "output": {
-            "description": "The bytes of the largest golden file of the command's examples, or null when no example has a golden file.",
-            "type": [
-              "integer",
-              "null"
-            ],
-            "format": "uint64",
-            "minimum": 0
-          },
-          "path": {
-            "description": "The command line that runs the command, such as `shelf books list`.",
-            "type": "string"
-          },
-          "path_total": {
-            "description": "The bytes that an agent reads to find and run the command: each `-h` page from the root down to the command, and the command's output.",
-            "type": "integer",
-            "format": "uint64",
-            "minimum": 0
-          },
-          "short_help": {
-            "description": "The bytes of the command's `-h` page.",
-            "type": "integer",
-            "format": "uint64",
-            "minimum": 0
-          }
-        },
-        "required": [
-          "path",
-          "short_help",
-          "long_help",
-          "path_total"
-        ]
+        "$ref": "#/$defs/Weight"
       }
     },
     "schema": {
@@ -59,5 +19,50 @@
   "required": [
     "schema",
     "data"
-  ]
+  ],
+  "$defs": {
+    "Weight": {
+      "description": "What one visible command of a tool costs an agent to read, in bytes.",
+      "type": "object",
+      "properties": {
+        "long_help": {
+          "description": "The bytes of the command's `--help` page.",
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0
+        },
+        "output": {
+          "description": "The bytes of the largest golden file of the command's examples, or null when no example has a golden file.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint64",
+          "minimum": 0
+        },
+        "path": {
+          "description": "The command line that runs the command, such as `shelf books list`.",
+          "type": "string"
+        },
+        "path_total": {
+          "description": "The bytes that an agent reads to find and run the command: each `-h` page from the root down to the command, and the command's output.",
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0
+        },
+        "short_help": {
+          "description": "The bytes of the command's `-h` page.",
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "path",
+        "short_help",
+        "long_help",
+        "path_total"
+      ]
+    }
+  }
 }

@@ -13,7 +13,9 @@ use std::process::ExitCode;
 use clap::CommandFactory as _;
 use crumbkit::Spelling;
 
-use crate::cli::{AliasesCommand, BooksCommand, CommandsCommand, Resource, SelfCommand};
+use crate::cli::{
+    AliasesCommand, BooksCommand, CommandsCommand, Resource, SchemasCommand, SelfCommand,
+};
 pub use crate::cli::{Cli, GUIDE};
 
 #[cfg(test)]
@@ -63,15 +65,29 @@ pub fn run() -> ExitCode {
             CommandsCommand::List(args) => crumbkit::finish(
                 &cli.output,
                 SPELLING,
-                crumbkit::commands::COMMANDS,
+                crumbkit::commands::COMMANDS_LIST,
                 crumbkit::commands::list(&cli.output, &GUIDE, &args),
+            ),
+        },
+        Resource::Schemas { command } => match command {
+            SchemasCommand::List(args) => crumbkit::finish(
+                &cli.output,
+                SPELLING,
+                crumbkit::schemas::SCHEMAS_LIST,
+                crumbkit::schemas::list(&cli.output, &GUIDE, &args),
+            ),
+            SchemasCommand::Show(args) => crumbkit::finish(
+                &cli.output,
+                SPELLING,
+                crumbkit::schemas::SCHEMAS_SHOW,
+                crumbkit::schemas::show(&cli.output, &GUIDE, &args),
             ),
         },
         Resource::SelfCommand { command } => match command {
             SelfCommand::Usage(args) => crumbkit::finish(
                 &cli.output,
                 SPELLING,
-                crumbkit::usage::USAGE_REPORT,
+                crumbkit::usage::SELF_USAGE,
                 Ok::<_, crumbkit::Error>(crumbkit::usage::findings(&cli.output, &args)),
             ),
         },
@@ -79,7 +95,7 @@ pub fn run() -> ExitCode {
             AliasesCommand::List(args) => crumbkit::finish(
                 &cli.output,
                 SPELLING,
-                crumbkit_aliases::ALIASES,
+                crumbkit_aliases::ALIASES_LIST,
                 crumbkit_aliases::list(&cli.output, file.as_deref(), &args),
             ),
         },

@@ -96,7 +96,7 @@ fn check(command: &Command, guide: &Guide, dir: &Path, assert: &Assert) {
         }
     }
     let names: Vec<String> = names.into_iter().map(|(name, _)| name).collect();
-    remove_stale(dir, &names, overwrite, "help page", &mut problems);
+    remove_stale(dir, &names, "txt", overwrite, "help page", &mut problems);
     tree::report("golden help rules", &problems);
 }
 
@@ -129,15 +129,17 @@ pub(crate) fn compare(
     }
 }
 
-/// Adds a problem to `problems` for each `.txt` file in `dir` whose name is
-/// not in `names`, saying that it belongs to no `owner`, such as a help
-/// page, or deletes the file when `overwrite` is set.
+/// Adds a problem to `problems` for each file in `dir` with the extension
+/// `extension`, such as `txt`, whose name is not in `names`, saying that it
+/// belongs to no `owner`, such as a help page, or deletes the file when
+/// `overwrite` is set.
 ///
 /// A directory that does not exist or cannot be read holds no stale file,
 /// and each name then reports its own missing file.
 pub(crate) fn remove_stale(
     dir: &Path,
     names: &[String],
+    extension: &str,
     overwrite: bool,
     owner: &str,
     problems: &mut Vec<String>,
@@ -148,7 +150,7 @@ pub(crate) fn remove_stale(
     let mut stale: Vec<_> = entries
         .filter_map(Result::ok)
         .map(|entry| entry.path())
-        .filter(|path| path.extension().is_some_and(|extension| extension == "txt"))
+        .filter(|path| path.extension().is_some_and(|found| found == extension))
         .filter(|path| {
             path.file_name()
                 .is_none_or(|name| !names.iter().any(|known| name == known.as_str()))

@@ -1,0 +1,57 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "crumbkit/schemas-list/v1",
+  "description": "The JSON documents that the tool prints, with a description of each.",
+  "type": "object",
+  "properties": {
+    "data": {
+      "description": "The rows of the page, up to the limit.",
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/SchemaRow"
+      }
+    },
+    "schema": {
+      "description": "The id of this document.",
+      "const": "crumbkit/schemas-list/v1"
+    },
+    "total": {
+      "description": "The number of rows that matched, of which data holds one page.",
+      "type": "integer",
+      "minimum": 0
+    }
+  },
+  "required": [
+    "schema",
+    "data",
+    "total"
+  ],
+  "$defs": {
+    "SchemaRow": {
+      "description": "One JSON document that the tool prints.",
+      "type": "object",
+      "properties": {
+        "commands": {
+          "description": "The command lines that print the document. It is empty for the failure document, which every command prints when it fails with --json.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "description": {
+          "description": "What the document holds, in one line.",
+          "type": "string"
+        },
+        "id": {
+          "description": "The document's id, such as `shelf/books-list/v1`, which `schemas show` takes.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "description",
+        "commands"
+      ]
+    }
+  }
+}

@@ -33,4 +33,4 @@ pub use crate::code::{Code, Spelling};
 pub use crate::document::Document;
 pub use crate::failure::{AsFailure, Error, Failure, Recovery};
 pub use crate::listing::{Listing, NoSummary};
-pub use crate::row::{Row, Rows};
+pub use crate::row::{Row, Rows, Shape};
