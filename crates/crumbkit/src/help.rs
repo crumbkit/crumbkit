@@ -208,16 +208,8 @@ impl Goal {
 ///
 /// Each group's help page lists its visible subcommands under its goals'
 /// headings, in the guide's order, and then the visible subcommands that no
-/// goal names under a final `Commands` heading:
-///
-/// ```text
-/// Read
-///   list    List the planets
-///   show    Show planets by name
-///
-/// Change
-///   rename  Rename a planet
-/// ```
+/// goal names under a final `Commands` heading. shelf's root page,
+/// [`shelf-h.txt`][shelf-h], shows two goal headings.
 ///
 /// Each line holds two spaces, the subcommand's name padded to the longest
 /// name on the page plus two spaces, and its description, which is its
@@ -250,6 +242,8 @@ impl Goal {
 ///
 /// Its work is one formatted line for each subcommand of each group and for
 /// each example of each leaf. It never clones the tree.
+///
+/// [shelf-h]: https://github.com/crumbkit/crumbkit/blob/main/examples/shelf/tests/golden/help/shelf-h.txt
 #[must_use]
 pub fn extend(mut command: Command, guide: &Guide) -> Command {
     // clap copies the root's styles to every subcommand when it builds the

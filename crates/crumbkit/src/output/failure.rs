@@ -150,13 +150,8 @@ impl FailureDocument {
     }
 }
 
-/// Writes the text form of `document` to `err`, then flushes it:
-///
-/// ```text
-/// error: the catalogue has no book 7
-///   help:  run `shelf books list`
-///   code:  shelf::books::not_found
-/// ```
+/// Writes the text form of `document` to `err`, then flushes it, as shelf's
+/// golden file [`books-show-7.stderr`][books-show-7] shows.
 ///
 /// A `cause:` line for each cause follows the `error:` line, and a `url:`
 /// line follows the `code:` line when the failure has a url. With the
@@ -164,6 +159,8 @@ impl FailureDocument {
 /// diagnostic follows the causes, each with its source line and an
 /// underline when the span could be read. Each control character in a value
 /// prints as its escape, so each line stays one line.
+///
+/// [books-show-7]: https://github.com/crumbkit/crumbkit/blob/main/examples/shelf/tests/golden/books-show-7.stderr
 pub(super) fn write_text(err: &mut impl Write, document: &FailureDocument) -> io::Result<()> {
     writeln!(err, "error: {}", escape_controls(&document.message))?;
     for cause in &document.causes {
