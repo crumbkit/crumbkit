@@ -1,14 +1,14 @@
-PATH                     SHORT_HELP  LONG_HELP  OUTPUT  PATH_TOTAL
-shelf                    589         816        -       589
-shelf books              388         602        -       977
-shelf books list         447         932        512     1936
-shelf books show         488         916        111     1576
-shelf commands           355         566        -       944
-shelf commands list      664         1212       1946    3554
-shelf schemas            412         624        -       1001
-shelf schemas list       456         1016       951     2408
-shelf schemas show       451         799        1481    2933
-shelf self               405         620        -       994
-shelf self usage         556         1110       -       1550
-shelf self figures       378         585        -       1372
-shelf self figures list  695         1890       -       2067
+PATH                     SHORT_HELP  OUTPUT  PATH_TOTAL  RUNS  HELP_BEFORE  P95_OUTPUT
+shelf                    589         -       589         -     -            -
+shelf books              388         -       977         -     -            -
+shelf books list         447         512     1936        -     -            -
+shelf books show         488         111     1576        -     -            -
+shelf commands           355         -       944         -     -            -
+shelf commands list      664         1946    3554        -     -            -
+shelf schemas            412         -       1001        -     -            -
+shelf schemas list       456         951     2408        -     -            -
+shelf schemas show       451         1481    2933        -     -            -
+shelf self               405         -       994         -     -            -
+shelf self usage         556         -       1550        -     -            -
+shelf self figures       378         -       1372        -     -            -
+shelf self figures list  695         -       2067        -     -            -

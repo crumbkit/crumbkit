@@ -1,7 +1,11 @@
-//! End-to-end test of a failed build: `weigh` passes cargo's standard error
-//! through to its own, so a person sees why the build failed.
+//! End-to-end tests of `weigh`: a failed build, whose cargo error `weigh`
+//! passes through to its own standard error, and the usage figures of a
+//! checked-in usage log of shelf.
 
+use std::fs;
 use std::process::Command;
+
+use serde_json::Value;
 
 #[test]
 fn a_failed_build_shows_cargo_s_own_error_on_standard_error() {
@@ -24,4 +28,48 @@ fn a_failed_build_shows_cargo_s_own_error_on_standard_error() {
         stderr.contains("crumbkit::weigh::build_failed"),
         "weigh's failure is missing from standard error:\n{stderr}"
     );
+}
+
+/// The usage log of eleven runs of shelf on 1 October 2026: three help
+/// pages, five runs of `books show` with two failures, and three runs of
+/// `books list`, one of them refused.
+const FIXTURE: &str = concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/tests/fixtures/shelf-usage.jsonl"
+);
+
+#[test]
+fn log_joins_the_figures_of_a_usage_log_to_each_command_and_leaves_the_log_unchanged() {
+    let before = fs::read(FIXTURE).unwrap();
+    #[expect(
+        clippy::disallowed_methods,
+        reason = "the test runs the built binary as cargo runs a subcommand"
+    )]
+    let output = Command::new(env!("CARGO_BIN_EXE_cargo-crumbkit"))
+        .args(["crumbkit", "weigh", "--bin", "shelf", "--json"])
+        .args(["--log", FIXTURE, "--since", "100y"])
+        .env("CARGO_TERM_QUIET", "true")
+        .output()
+        .unwrap();
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let document: Value = serde_json::from_slice(&output.stdout).unwrap();
+    let figures = |path: &str| {
+        let row = document["data"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|row| row["path"] == path)
+            .unwrap();
+        [&row["runs"], &row["help_before"], &row["p95_output"]].map(Value::as_u64)
+    };
+
+    assert_eq!(figures("shelf"), [Some(0), Some(0), None]);
+    assert_eq!(figures("shelf books list"), [Some(3), Some(0), Some(512)]);
+    assert_eq!(figures("shelf books show"), [Some(5), Some(3), Some(86)]);
+    assert_eq!(figures("shelf commands list"), [Some(0), Some(0), None]);
+    assert_eq!(fs::read(FIXTURE).unwrap(), before);
 }

@@ -69,6 +69,17 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   document a tool prints, [`check_document_ids`] checks each document's
   name, and [`check_mounts`] checks the paths of crumbkit's commands
   ([ADR-0035]).
+- crumbkit: with the `usage-log` feature, `self figures list` prints the
+  figures of every command in the usage log, and `self usage --full` adds
+  `help_before` to each command's figures ([`usage`], [ADR-0034]).
+- crumbkit: `self usage` and `self figures list` take `--log <FILE>` to
+  read a copy of a usage log ([ADR-0034]).
+- crumbkit-test: [`check_path_weights`] budgets the bytes of each path
+  through a tool's help, 8,000 by default, and [`path_totals`] and
+  [`output_weight`] compute them ([ADR-0025]).
+- cargo-crumbkit: `weigh --usage`, `--log` and `--since` add each
+  command's runs, help pages read before it and 95th percentile output
+  from a usage log ([cargo-crumbkit], [ADR-0033]).
 
 ### Changed
 
@@ -80,6 +91,8 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   conflicts with ([`commands`]).
 - crumbkit-test: [`check_listings`] accepts a `show` command whose ids sit
   in a required argument group.
+- cargo-crumbkit: `weigh` prints `long_help` only with `--long`
+  ([ADR-0033]).
 
 ### Fixed
 
@@ -189,3 +202,6 @@ rustdoc, or at its decision record. -->
 [`check_schema_goldens`]: crates/crumbkit-test/src/schemas.rs
 [`check_document_ids`]: crates/crumbkit-test/src/documents.rs
 [`check_mounts`]: crates/crumbkit-test/src/documents.rs
+[`check_path_weights`]: crates/crumbkit-test/src/weights.rs
+[`path_totals`]: crates/crumbkit-test/src/weights.rs
+[`output_weight`]: crates/crumbkit-test/src/weights.rs

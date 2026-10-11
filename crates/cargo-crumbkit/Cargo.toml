@@ -26,10 +26,16 @@ clap = { workspace = true, features = [
     "suggestions",
     "color",
 ] }
-# `weigh` finds each example's golden file with crumbkit-test's
-# `example_golden_name`, the rule that `check_examples` names the files by,
-# so the two cannot disagree.
+# `weigh` sums path totals and reads output weights with crumbkit-test's
+# `path_totals` and `output_weight`, which its `check_path_weights` uses, and
+# finds each golden file by the name that `check_examples` writes it under,
+# so weigh and the check cannot disagree.
 crumbkit-test = { workspace = true }
+# `weigh --usage` finds the tool's own usage log in the person's XDG state
+# directory with the call that crumbkit's `usage-log` feature uses to write
+# it (ADR-0029), so the two find the same file. etcetera is already in the
+# workspace's lockfile.
+etcetera = { workspace = true }
 # The weight row derives `Serialize` and `JsonSchema`, as a tool's results do.
 serde = { workspace = true, features = ["derive"] }
 schemars = { workspace = true, features = ["derive"] }

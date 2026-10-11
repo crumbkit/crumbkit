@@ -2,7 +2,7 @@
 
 use std::path::PathBuf;
 
-use clap::{Args, Parser, Subcommand};
+use clap::{ArgGroup, Args, Parser, Subcommand};
 use crumbkit::Output;
 use crumbkit::commands::{COMMANDS_LIST, CommandsList};
 use crumbkit::help::{Example, Goal, Group, Guide, Leaf};
@@ -47,6 +47,10 @@ pub const GUIDE: Guide = Guide::new()
             .examples(&[
                 Example::new(&["--bin", "shelf"], "Weigh each path through shelf's help"),
                 Example::new(&["--bin", "shelf", "--json"], "Print the weights as JSON"),
+                Example::new(
+                    &["--bin", "shelf", "--usage"],
+                    "Add the figures of shelf's own usage log",
+                ),
             ])
             .document(WEIGH),
         Leaf::new(&["crumbkit", "commands", "list"])
@@ -87,7 +91,10 @@ pub(crate) enum CommandsCommand {
 }
 
 /// The arguments of `cargo crumbkit weigh`.
+// `--since` requires the group of `--usage` and `--log`, so it needs one of
+// them, and `--log` alone turns the figures on.
 #[derive(Debug, Args)]
+#[command(group(ArgGroup::new("figures").args(["usage", "log"]).multiple(true)))]
 pub(crate) struct WeighArgs {
     /// Build this binary of the current workspace and weigh its help
     #[arg(long, value_name = "NAME")]
@@ -96,4 +103,24 @@ pub(crate) struct WeighArgs {
     /// Read the examples' golden files from this directory [default: tests/golden/examples in the binary's package]
     #[arg(long, value_name = "DIR")]
     pub(crate) goldens: Option<PathBuf>,
+
+    /// Add the runs, help pages and output of each command from the tool's usage log
+    #[arg(long)]
+    usage: bool,
+
+    /// Read the usage figures from this log instead of the tool's own; implies --usage
+    #[arg(long, value_name = "FILE")]
+    pub(crate) log: Option<PathBuf>,
+
+    /// How far back to read the usage log, such as 12h, 7d or 2w [default: 7d]
+    #[arg(long, value_name = "DURATION", requires = "figures")]
+    pub(crate) since: Option<String>,
+}
+
+impl WeighArgs {
+    /// Reports whether `weigh` adds the usage figures, which `--usage` or
+    /// `--log` asks for.
+    pub(crate) const fn usage(&self) -> bool {
+        self.usage || self.log.is_some()
+    }
 }

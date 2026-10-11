@@ -33,6 +33,13 @@ const HELP_FAILED: Code = Code::new("crumbkit", "weigh", "help_failed");
 /// The code of a failure whose golden file exists but cannot be read.
 const GOLDEN_UNREADABLE: Code = Code::new("crumbkit", "weigh", "golden_unreadable");
 
+/// The code of a failure whose tool prints no `self figures list` document.
+const NO_USAGE_FIGURES: Code = Code::new("crumbkit", "weigh", "no_usage_figures");
+
+/// The code of a failure whose usage log cannot be found, because the XDG
+/// state directory cannot be found.
+const NO_STATE_DIR: Code = Code::new("crumbkit", "weigh", "no_state_dir");
+
 /// A failure of `cargo crumbkit weigh`.
 #[derive(Debug)]
 pub(crate) enum WeighError {
@@ -88,6 +95,16 @@ pub(crate) enum WeighError {
         /// Why it cannot be read.
         error: io::Error,
     },
+    /// The tool's `self figures list --all --json --log <FILE>` prints no
+    /// `crumbkit/self-figures-list/v1` document.
+    NoUsageFigures {
+        /// The command line that `weigh` ran, such as
+        /// `shelf self figures list --all --json --log usage.jsonl`.
+        line: String,
+    },
+    /// `--usage` names no log, and neither `XDG_STATE_HOME` nor `HOME`
+    /// gives the state directory that holds the tool's own log.
+    NoStateDir,
 }
 
 impl WeighError {
@@ -103,6 +120,8 @@ impl WeighError {
         &NO_COMMANDS_LIST,
         &HELP_FAILED,
         &GOLDEN_UNREADABLE,
+        &NO_USAGE_FIGURES,
+        &NO_STATE_DIR,
     ];
 }
 
@@ -133,6 +152,13 @@ impl fmt::Display for WeighError {
             Self::GoldenUnreadable { path, .. } => {
                 write!(f, "the golden file {} cannot be read", path.display())
             }
+            Self::NoUsageFigures { line } => write!(
+                f,
+                "`{line}` prints no crumbkit/self-figures-list/v1 document, so the usage figures cannot be read"
+            ),
+            Self::NoStateDir => f.write_str(
+                "the usage log cannot be found, because the XDG state directory cannot be found",
+            ),
         }
     }
 }
@@ -149,7 +175,9 @@ impl std::error::Error for WeighError {
             Self::BuildFailed { .. }
             | Self::NoBinary { .. }
             | Self::NoCommandsList { .. }
-            | Self::HelpFailed { .. } => None,
+            | Self::HelpFailed { .. }
+            | Self::NoUsageFigures { .. }
+            | Self::NoStateDir => None,
         }
     }
 }
@@ -167,6 +195,8 @@ impl Failure for WeighError {
             Self::NoCommandsList { .. } => &NO_COMMANDS_LIST,
             Self::HelpFailed { .. } => &HELP_FAILED,
             Self::GoldenUnreadable { .. } => &GOLDEN_UNREADABLE,
+            Self::NoUsageFigures { .. } => &NO_USAGE_FIGURES,
+            Self::NoStateDir => &NO_STATE_DIR,
         }
     }
 
@@ -194,6 +224,10 @@ impl Failure for WeighError {
                 "make the golden directory readable, or pass --goldens another directory"
                     .to_owned()
             }
+            Self::NoUsageFigures { line } => format!(
+                "run `{line}` to see the failure; a tool needs a `self figures list` command that takes crumbkit::usage::SelfFigures, as shelf's shows"
+            ),
+            Self::NoStateDir => "set HOME or XDG_STATE_HOME, or pass --log the usage log".to_owned(),
         };
         Recovery::Hint(hint)
     }
