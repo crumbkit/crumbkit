@@ -187,7 +187,9 @@ where
 ///
 /// clap suggests from every name that a flag or a subcommand accepts. When
 /// it suggests a hidden alias, such as `--max` of `--limit`, the message
-/// names the real flag or subcommand instead, once.
+/// names the real flag or subcommand instead, once. The message leaves out a
+/// suggested flag or subcommand that the tool hid, and leaves out clap's tip
+/// when it suggests nothing else.
 ///
 /// A command line that stops at a command with subcommands, such as `shelf
 /// books`, prints the message ``the command `shelf books` needs a
@@ -431,7 +433,8 @@ fn exit_code<O: Write, E: Write>(sink: &mut Sink<O, E>, written: io::Result<()>)
 /// answers with that command's help page or a list of its subcommands, says
 /// what the command needs. Every other refusal is clap's own message, from
 /// [`message`], with the real name in place of each name that clap
-/// suggests, from [`suggestion::real_names`].
+/// suggests and without the names of hidden items, from
+/// [`suggestion::real_names`].
 fn refusal_message(command: &Command, path: &[String], error: &clap::Error) -> String {
     let mut text = command.get_name().to_owned();
     let mut commands = vec![command];
@@ -446,12 +449,12 @@ fn refusal_message(command: &Command, path: &[String], error: &clap::Error) -> S
         error.kind(),
         ErrorKind::DisplayHelpOnMissingArgumentOrSubcommand | ErrorKind::MissingSubcommand
     ) {
-        // `message` joins the parts with `; `, and `real_names` changes only
-        // a part that starts with clap's suggestion, so splitting on `; `
-        // and joining again keeps every other part as it was.
+        // `message` joins the parts with `; `, and `real_names` changes or
+        // drops only a part that starts with clap's suggestion, so splitting
+        // on `; ` and joining again keeps every other part as it was.
         return message(&error.render().to_string())
             .split("; ")
-            .map(|part| suggestion::real_names(part, &commands))
+            .filter_map(|part| suggestion::real_names(part, &commands))
             .collect::<Vec<_>>()
             .join("; ");
     }
