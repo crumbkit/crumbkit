@@ -1,15 +1,18 @@
 # The pull-request lane of ADR-0011. The lint and test jobs run in parallel
-# and report on their own.
+# and report on their own. A push to main runs them again on the merged code.
 name: CI
 
 on:
   pull_request:
+  push:
+    branches: [main]
   workflow_dispatch:
 
 # Each job grants only the permissions it needs.
 permissions: {}
 
-# A new push to a pull request cancels the run for the previous push.
+# A new push to a pull request, or to main, cancels the run for the previous
+# push, because the newer run tests the same changes and more.
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
