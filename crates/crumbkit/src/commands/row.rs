@@ -209,15 +209,21 @@ fn name(arg: &Arg) -> String {
     }
 }
 
-/// Returns the names of the other visible arguments in each required group
-/// of `command` that holds `arg`, in the order the groups list them. The
-/// command refuses a command line that gives none of a required group's
-/// arguments, so `arg` is needed only when none of these is given.
+/// Returns the names of the visible arguments that can be given in place of
+/// `arg`. These are the other members of each required group of `command`
+/// that holds `arg`, in the order the groups list them, and then, when `arg`
+/// is required, the arguments it conflicts with. The command refuses a
+/// command line that gives none of a required group's arguments. clap does
+/// not ask for a required argument when an argument it conflicts with is
+/// given. So `arg` is needed only when none of these names is given.
 //
 // RUST-10: a group may name another group as a member, and this reads only
 // the members that are arguments of `command`, so it leaves a nested group
 // out. Reading the members of a nested group replaces it once a tool nests
-// its groups.
+// its groups. This also reads only the conflicts that `arg` declares, and
+// leaves out an argument that declares a conflict with `arg`, because clap
+// has no getter for the arguments that conflict with a given one. A tool
+// that needs those declares the conflict on the required argument.
 fn one_of(arg: &Arg, command: &Command) -> Vec<String> {
     let mut names = Vec::new();
     for group in command.get_groups().filter(|group| group.is_required_set()) {
@@ -231,6 +237,22 @@ fn one_of(arg: &Arg, command: &Command) -> Vec<String> {
             else {
                 continue;
             };
+            let other = name(other);
+            if !names.contains(&other) {
+                names.push(other);
+            }
+        }
+    }
+    if arg.is_required_set() {
+        // `get_arg_conflicts_with` panics on a conflict with an id that
+        // `command` does not have. clap's debug build asserts that every
+        // conflict names an argument or group of the command when the
+        // command is built, so a tool whose tests build its command cannot
+        // reach that panic.
+        for other in command.get_arg_conflicts_with(arg) {
+            if other.is_hide_set() {
+                continue;
+            }
             let other = name(other);
             if !names.contains(&other) {
                 names.push(other);
@@ -461,7 +483,7 @@ fn argument_schema() -> Schema {
                 "type": "boolean",
             },
             "one_of": {
-                "description": "The other arguments of each required group that holds the argument. The command refuses a command line that gives neither the argument nor any of these, and the list is empty when no required group holds the argument.",
+                "description": "The visible arguments that can be given in place of this one. These are the other arguments of each required group that holds it and, when the argument is required, the arguments it conflicts with. The list is empty when no argument can be given in its place.",
                 "type": "array",
                 "items": { "type": "string" },
             },

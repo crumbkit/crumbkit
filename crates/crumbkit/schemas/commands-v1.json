@@ -58,7 +58,7 @@
                   "type": "string"
                 },
                 "one_of": {
-                  "description": "The other arguments of each required group that holds the argument. The command refuses a command line that gives neither the argument nor any of these, and the list is empty when no required group holds the argument.",
+                  "description": "The visible arguments that can be given in place of this one. These are the other arguments of each required group that holds it and, when the argument is required, the arguments it conflicts with. The list is empty when no argument can be given in its place.",
                   "type": "array",
                   "items": {
                     "type": "string"

@@ -339,30 +339,34 @@ fn an_argument_holds_what_its_help_shows() {
 }
 
 #[test]
-fn one_of_names_the_visible_members_of_required_groups_only() {
-    let mut command = Command::new("show")
+fn one_of_names_visible_required_group_members_and_conflicts_of_required_arguments() {
+    let command = Command::new("show")
         .arg(Arg::new("ids").value_name("ID").num_args(1..=100))
         .arg(Arg::new("from").long("from"))
         .arg(Arg::new("stdin").long("stdin").hide(true))
-        .arg(Arg::new("quiet").long("quiet"))
+        .arg(Arg::new("quiet").long("quiet").conflicts_with("from"))
+        .arg(
+            Arg::new("all")
+                .long("all")
+                .required(true)
+                .conflicts_with_all(["quiet", "stdin"]),
+        )
         .group(
             ArgGroup::new("source")
                 .args(["ids", "from", "stdin"])
                 .required(true),
         )
         .group(ArgGroup::new("loose").args(["ids", "quiet"]));
-    command.build();
-
     let row = CommandRow::new("shelf", &["show"], &command, None, &Guide::new());
     let row = serde_json::to_value(row).unwrap();
 
-    let one_of: Vec<&Value> = row["arguments"]
+    let one_of: Value = row["arguments"]
         .as_array()
         .unwrap()
         .iter()
-        .map(|argument| &argument["one_of"])
+        .map(|argument| argument["one_of"].clone())
         .collect();
-    assert_eq!(one_of, [&json!(["--from"]), &json!(["<ID>"]), &json!([])]);
+    assert_eq!(one_of, json!([["--from"], ["<ID>"], [], ["--quiet"]]));
 }
 
 #[test]

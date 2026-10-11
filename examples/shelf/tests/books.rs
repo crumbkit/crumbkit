@@ -373,3 +373,27 @@ fn version_prints_shelf_and_its_version() {
         .stdout_eq(file!["golden/version.txt"])
         .stderr_eq("");
 }
+
+#[test]
+fn commands_list_names_from_as_the_argument_that_can_stand_in_for_the_ids_of_books_show() {
+    let output = shelf(&["commands", "list", "books", "--json", "--full"])
+        .unwrap()
+        .success()
+        .get_output()
+        .stdout
+        .clone();
+    let listing: serde_json::Value = serde_json::from_slice(&output).unwrap();
+    let show = listing["data"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|row| row["path"] == "shelf books show")
+        .unwrap();
+    let ids = show["arguments"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|argument| argument["name"] == "<ID>")
+        .unwrap();
+    assert_eq!(ids["one_of"], serde_json::json!(["--from"]));
+}
