@@ -71,13 +71,47 @@ impl RenderCall for Call {
     }
 }
 
-/// Returns `call` as text, as [`RenderCall::render`] does, against a command
-/// that `Command::build` has already prepared.
+/// Builds the part of `command` that `call` needs and returns `call` as
+/// text, as [`RenderCall::render`] describes. `finish` renders the `Next:`
+/// line and each `Recovery::Run` call through it, so a run builds only the
+/// branch that a call names and the tree's other branches stay unbuilt.
 ///
-/// `Output::set_command` builds the command it keeps, so `finish` renders
-/// through a shared reference. `Arg`'s `Display` panics on an option of a
-/// command that was never built, because clap sets an option's number of
-/// values during the build.
+/// A global argument of the root resolves only when the root is already
+/// built, as parsing leaves it. In a tree that never went through parsing,
+/// a call into a branch below the root that names one does not resolve.
+pub(crate) fn render(call: &Call, command: &mut Command) -> Result<String, CallError> {
+    build_branch(call, command);
+    render_built(call, command)
+}
+
+/// Builds the branch below the root of `command` that the first path
+/// segment of `call` names, or the whole tree for a call to the root.
+///
+/// clap has no public way to build one command alone, and
+/// `Command::build` builds the command it is called on and everything below
+/// it. Parsing has already built the root, which copied the root's global
+/// arguments into each command one level below it, so a build of that
+/// command copies them down to every command of the branch. A call from
+/// `Call::help` is rendered without a lookup and needs no build.
+fn build_branch(call: &Call, command: &mut Command) {
+    let CallTarget::Command { path, .. } = call.target() else {
+        return;
+    };
+    match path.first() {
+        Some(name) => {
+            if let Some(branch) = command.find_subcommand_mut(name) {
+                branch.build();
+            }
+        }
+        None => command.build(),
+    }
+}
+
+/// Returns `call` as text, as [`RenderCall::render`] does, against a command
+/// whose branch for `call` is already built.
+///
+/// `Arg`'s `Display` panics on an option of a command that was never built,
+/// because clap sets an option's number of values during the build.
 ///
 /// A call from `Call::help` renders its path without looking it up, because
 /// the path holds the real names of commands that the caller typed, and

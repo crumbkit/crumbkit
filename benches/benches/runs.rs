@@ -55,15 +55,16 @@ struct Limits {
     allocations: u64,
 }
 
-// Each limit's comment gives the count that it comes from. The counts come
-// from run 38163868931 of `scheduled.yml` on `ubuntu-24.04`.
+// Each limit's comment gives the count that it comes from. The counts of
+// `books list` with and without the usage log come from run 38169846232 of
+// `scheduled.yml` on `ubuntu-24.04`, and the others from run 38163868931.
 
 /// The limits of `shelf books list`.
 const BOOKS_LIST: Limits = Limits {
-    // The count was 808767 instructions.
-    instructions: 889_644,
-    // The count was 1149 blocks.
-    allocations: 1264,
+    // The count was 574457 instructions.
+    instructions: 631_903,
+    // The count was 814 blocks.
+    allocations: 896,
 };
 
 /// The limits of `shelf -h`.
@@ -100,10 +101,10 @@ const REFUSAL: Limits = Limits {
 
 /// The limits of `shelf books list` with the usage log started.
 const BOOKS_LIST_LOGGED: Limits = Limits {
-    // The count was 926028 instructions.
-    instructions: 1_018_631,
-    // The count was 1194 blocks.
-    allocations: 1314,
+    // The count was 709788 instructions.
+    instructions: 780_767,
+    // The count was 859 blocks.
+    allocations: 945,
 };
 
 /// Returns the configuration that runs Callgrind and DHAT with `limits` and

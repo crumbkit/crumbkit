@@ -80,12 +80,12 @@ fn run(args: &[&str], file: Option<&Path>) -> ExitCode {
         };
     cli.output.set_command(command);
     match cli.resource {
-        Resource::Aliases { command: AliasesCommand::List(args) } => crumbkit::finish(
-            &cli.output,
-            SPELLING,
-            crumbkit_aliases::ALIASES_LIST,
-            crumbkit_aliases::list(&cli.output, file, &args),
-        ),
+        Resource::Aliases { command: AliasesCommand::List(args) } => {
+            // `list` builds the command tree in `cli.output`, so it runs
+            // before `finish`.
+            let result = crumbkit_aliases::list(&mut cli.output, file, &args);
+            crumbkit::finish(&mut cli.output, SPELLING, crumbkit_aliases::ALIASES_LIST, result)
+        }
     }
 }
 

@@ -93,6 +93,12 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   in a required argument group.
 - cargo-crumbkit: `weigh` prints `long_help` only with `--long`
   ([ADR-0033]).
+- crumbkit: [`finish`], `finish_to`, `Output::command`, `commands::list`,
+  `schemas::list`, `schemas::show`, `usage::findings` and `usage::figures`
+  take `&mut Output`, and `Output::set_command` no longer builds the command
+  tree, so a run builds only the commands it reads ([ADR-0015]).
+- crumbkit-aliases: `list` takes `&mut Output`, because it builds the
+  tool's command tree when it runs.
 
 ### Fixed
 
@@ -184,6 +190,7 @@ rustdoc, or at its decision record. -->
 [ADR-0001]: docs/decisions/api/0001-error-model.md
 [ADR-0004]: docs/decisions/testing/0004-golden-and-snapshot-tests.md
 [ADR-0007]: docs/decisions/api/0007-json-schemas.md
+[ADR-0015]: docs/decisions/api/0015-lightweight-adoption.md
 [ADR-0016]: docs/decisions/api/output/0016-result-formats.md
 [ADR-0021]: docs/decisions/api/help/0021-help-pages.md
 [ADR-0023]: docs/decisions/api/help/0023-help-command-and-topics.md

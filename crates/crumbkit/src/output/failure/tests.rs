@@ -138,11 +138,11 @@ fn fail_with(flags: &[&str], failure: impl Into<Error>) -> Finished {
     let args = ["tool", "list"].iter().chain(flags);
     let mut output = Tool::try_parse_from(args).unwrap().output;
     output.set_command(Tool::command());
-    fail_output(&output, failure.into())
+    fail_output(&mut output, failure.into())
 }
 
 /// Finishes `result` into memory with the flags and command in `output`.
-fn fail_output<E: crate::AsFailure>(output: &Output, error: E) -> Finished {
+fn fail_output<E: crate::AsFailure>(output: &mut Output, error: E) -> Finished {
     let mut out = Vec::new();
     let mut err = Vec::new();
     let result: Result<Vec<Planet>, E> = Err(error);
@@ -302,9 +302,9 @@ fn a_run_whose_call_does_not_resolve_prints_as_no_next_step() {
 
 #[test]
 fn a_run_prints_as_no_next_step_when_no_command_is_set() {
-    let output = Tool::try_parse_from(["tool", "list"]).unwrap().output;
+    let mut output = Tool::try_parse_from(["tool", "list"]).unwrap().output;
 
-    let finished = fail_output(&output, missing(run_list()));
+    let finished = fail_output(&mut output, missing(run_list()));
 
     assert!(
         finished
@@ -414,14 +414,11 @@ fn an_unknown_field_exits_with_code_2_before_the_failure_prints() {
 
 #[test]
 fn finish_prints_a_crumbkit_error_as_it_prints_the_failure_inside() {
-    let output = {
-        let mut output = Tool::try_parse_from(["tool", "list"]).unwrap().output;
-        output.set_command(Tool::command());
-        output
-    };
+    let mut output = Tool::try_parse_from(["tool", "list"]).unwrap().output;
+    output.set_command(Tool::command());
 
-    let direct = fail_output(&output, missing(run_list()));
-    let wrapped = fail_output(&output, Error::from(missing(run_list())));
+    let direct = fail_output(&mut output, missing(run_list()));
+    let wrapped = fail_output(&mut output, Error::from(missing(run_list())));
 
     assert_eq!(wrapped.code, ExitCode::FAILURE);
     assert_eq!(wrapped.err, direct.err);
@@ -449,7 +446,7 @@ fn json() -> Output {
 }
 
 /// Finishes a failure into `sink` with `output`.
-fn fail_into<O: Write, W: Write>(sink: &mut Sink<O, W>, output: &Output) -> ExitCode {
+fn fail_into<O: Write, W: Write>(sink: &mut Sink<O, W>, output: &mut Output) -> ExitCode {
     let result: Result<Vec<Planet>, Missing> = Err(missing(Recovery::Retry));
     finish_to(sink, output, Spelling::COLONS, PLANETS, result)
 }
@@ -459,7 +456,7 @@ fn a_failed_write_of_the_failure_document_exits_with_code_1_and_reports_the_caus
     let mut err = Vec::new();
     let mut sink = Sink::new(Failing(io::ErrorKind::Other), &mut err);
 
-    let code = fail_into(&mut sink, &json());
+    let code = fail_into(&mut sink, &mut json());
 
     assert_eq!(code, ExitCode::FAILURE);
     assert_eq!(
@@ -473,7 +470,7 @@ fn a_reader_that_closes_the_pipe_early_on_a_failure_document_leaves_code_1_and_n
     let mut err = Vec::new();
     let mut sink = Sink::new(Failing(io::ErrorKind::BrokenPipe), &mut err);
 
-    let code = fail_into(&mut sink, &json());
+    let code = fail_into(&mut sink, &mut json());
 
     assert_eq!(code, ExitCode::FAILURE);
     assert_eq!(String::from_utf8(err).unwrap(), "");
@@ -484,7 +481,7 @@ fn a_failed_write_of_the_text_failure_still_exits_with_code_1() {
     let mut out = Vec::new();
     let mut sink = Sink::new(&mut out, Failing(io::ErrorKind::Other));
 
-    let code = fail_into(&mut sink, &Output::default());
+    let code = fail_into(&mut sink, &mut Output::default());
 
     assert_eq!(code, ExitCode::FAILURE);
     assert_eq!(String::from_utf8(out).unwrap(), "");

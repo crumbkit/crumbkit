@@ -4,7 +4,7 @@ use std::io::{self, Write};
 use std::process::ExitCode;
 
 use clap::error::ErrorKind;
-use clap::{CommandFactory as _, Parser, Subcommand};
+use clap::{CommandFactory as _, FromArgMatches as _, Parser, Subcommand};
 use schemars::JsonSchema;
 use serde::ser::Error as _;
 use serde::{Serialize, Serializer};
@@ -90,17 +90,27 @@ struct Finished {
     err: String,
 }
 
+/// Parses `tool list` followed by `flags` against `command`, and returns the
+/// output flags with that command set, as a tool's `main` sets the command
+/// it parsed against.
+fn parse_against(mut command: clap::Command, flags: &[&str]) -> Output {
+    let args = ["tool", "list"].iter().chain(flags);
+    let matches = command.try_get_matches_from_mut(args).unwrap();
+    let mut output = Output::from_arg_matches(&matches).unwrap();
+    output.set_command(command);
+    output
+}
+
 /// Parses `flags`, sets the tool's command as its `main` would, and finishes
 /// `value` into memory.
 fn finish_with<T: Rows>(flags: &[&str], document: Document<T>, value: T) -> Finished {
-    let mut output = parse(flags).unwrap();
-    output.set_command(Tool::command());
-    finish_output(&output, document, value)
+    let mut output = parse_against(Tool::command(), flags);
+    finish_output(&mut output, document, value)
 }
 
 /// Finishes `value` into memory as an `Ok` result with the flags and command
 /// in `output`.
-fn finish_output<T: Rows>(output: &Output, document: Document<T>, value: T) -> Finished {
+fn finish_output<T: Rows>(output: &mut Output, document: Document<T>, value: T) -> Finished {
     let mut out = Vec::new();
     let mut err = Vec::new();
     let mut sink = Sink::new(&mut out, &mut err);
@@ -382,7 +392,7 @@ fn a_failed_write_exits_with_code_1_and_reports_the_cause() {
 
     let code = finish_to(
         &mut sink,
-        &Output::default(),
+        &mut Output::default(),
         Spelling::COLONS,
         PLANETS,
         result,
@@ -403,7 +413,7 @@ fn a_reader_that_closes_the_pipe_early_still_exits_with_code_0_and_no_error() {
 
     let code = finish_to(
         &mut sink,
-        &Output::default(),
+        &mut Output::default(),
         Spelling::COLONS,
         PLANETS,
         result,

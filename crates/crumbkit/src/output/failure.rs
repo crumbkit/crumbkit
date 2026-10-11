@@ -35,7 +35,8 @@ const UNAVAILABLE: &str = "the suggested command is not available";
 
 /// Prints `failure` to `sink`: as text on the error writer, or with `json`
 /// as one `crumbkit/failure/v1` document on the output writer. A
-/// `Recovery::Run` call renders against `command`.
+/// `Recovery::Run` call renders against `command`, which builds the branch
+/// that the call names.
 ///
 /// The caller returns the exit code: 1 from `finish` for a command that
 /// failed, and 2 for a refusal (ADR-0002). The flags `--long`, `--full` and
@@ -45,7 +46,7 @@ pub(crate) fn print<O: Write, W: Write>(
     json: bool,
     spelling: Spelling,
     failure: &dyn Failure,
-    command: Option<&Command>,
+    command: Option<&mut Command>,
 ) {
     let document = FailureDocument::new(failure, spelling, command);
     #[cfg(feature = "tracing")]
@@ -103,11 +104,11 @@ enum Step {
 impl FailureDocument {
     /// Reads `failure` into the fields that `finish` prints. It spells the
     /// code with `spelling` and renders a `Recovery::Run` call against
-    /// `command`.
+    /// `command`, which builds the branch that the call names.
     pub(super) fn new(
         failure: &dyn Failure,
         spelling: Spelling,
-        command: Option<&Command>,
+        command: Option<&mut Command>,
     ) -> Self {
         // Every code that crumbkit prints is spelled here, so the usage log
         // records the run's code here (ADR-0029).
@@ -118,7 +119,7 @@ impl FailureDocument {
             .collect();
         let step = match failure.recovery() {
             Recovery::Run(call) => command
-                .and_then(|command| crate::call::render_built(&call, command).ok())
+                .and_then(|command| crate::call::render(&call, command).ok())
                 .map_or_else(|| Step::None(UNAVAILABLE.to_owned()), Step::Run),
             Recovery::Retry => Step::Retry,
             Recovery::Hint(text) => Step::Hint(text),

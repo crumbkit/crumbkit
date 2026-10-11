@@ -53,7 +53,7 @@ impl Refusal {
         sink: &mut Sink<O, E>,
         json: bool,
         spelling: Spelling,
-        command: Option<&Command>,
+        command: Option<&mut Command>,
     ) -> ExitCode {
         failure::print(sink, json, spelling, self, command);
         ExitCode::from(2)

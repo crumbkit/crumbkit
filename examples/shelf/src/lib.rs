@@ -72,58 +72,63 @@ where
     cli.output.set_command(command);
     match cli.resource {
         Resource::Books { command } => match command {
-            BooksCommand::List(args) => {
-                crumbkit::finish(&cli.output, SPELLING, books::BOOKS_LIST, books::list(&args))
-            }
-            BooksCommand::Show(args) => {
-                crumbkit::finish(&cli.output, SPELLING, books::BOOKS_SHOW, books::show(&args))
-            }
-        },
-        Resource::Commands { command } => match command {
-            CommandsCommand::List(args) => crumbkit::finish(
-                &cli.output,
+            BooksCommand::List(args) => crumbkit::finish(
+                &mut cli.output,
                 SPELLING,
-                crumbkit::commands::COMMANDS_LIST,
-                crumbkit::commands::list(&cli.output, &GUIDE, &args),
+                books::BOOKS_LIST,
+                books::list(&args),
             ),
+            BooksCommand::Show(args) => crumbkit::finish(
+                &mut cli.output,
+                SPELLING,
+                books::BOOKS_SHOW,
+                books::show(&args),
+            ),
+        },
+        // `commands list`, `schemas`, `self` and `aliases list` read the
+        // command tree through `&mut cli.output`, so each runs before
+        // `finish` takes `cli.output` in turn.
+        Resource::Commands { command } => match command {
+            CommandsCommand::List(args) => {
+                let result = crumbkit::commands::list(&mut cli.output, &GUIDE, &args);
+                let document = crumbkit::commands::COMMANDS_LIST;
+                crumbkit::finish(&mut cli.output, SPELLING, document, result)
+            }
         },
         Resource::Schemas { command } => match command {
-            SchemasCommand::List(args) => crumbkit::finish(
-                &cli.output,
-                SPELLING,
-                crumbkit::schemas::SCHEMAS_LIST,
-                crumbkit::schemas::list(&cli.output, &GUIDE, &args),
-            ),
-            SchemasCommand::Show(args) => crumbkit::finish(
-                &cli.output,
-                SPELLING,
-                crumbkit::schemas::SCHEMAS_SHOW,
-                crumbkit::schemas::show(&cli.output, &GUIDE, &args),
-            ),
+            SchemasCommand::List(args) => {
+                let result = crumbkit::schemas::list(&mut cli.output, &GUIDE, &args);
+                let document = crumbkit::schemas::SCHEMAS_LIST;
+                crumbkit::finish(&mut cli.output, SPELLING, document, result)
+            }
+            SchemasCommand::Show(args) => {
+                let result = crumbkit::schemas::show(&mut cli.output, &GUIDE, &args);
+                let document = crumbkit::schemas::SCHEMAS_SHOW;
+                crumbkit::finish(&mut cli.output, SPELLING, document, result)
+            }
         },
         Resource::SelfCommand { command } => match command {
-            SelfCommand::Usage(args) => crumbkit::finish(
-                &cli.output,
-                SPELLING,
-                crumbkit::usage::SELF_USAGE,
-                Ok::<_, crumbkit::Error>(crumbkit::usage::findings(&cli.output, &args)),
-            ),
+            SelfCommand::Usage(args) => {
+                let result =
+                    Ok::<_, crumbkit::Error>(crumbkit::usage::findings(&mut cli.output, &args));
+                let document = crumbkit::usage::SELF_USAGE;
+                crumbkit::finish(&mut cli.output, SPELLING, document, result)
+            }
             SelfCommand::Figures {
                 command: FiguresCommand::List(args),
-            } => crumbkit::finish(
-                &cli.output,
-                SPELLING,
-                crumbkit::usage::SELF_FIGURES_LIST,
-                Ok::<_, crumbkit::Error>(crumbkit::usage::figures(&cli.output, &args)),
-            ),
+            } => {
+                let result =
+                    Ok::<_, crumbkit::Error>(crumbkit::usage::figures(&mut cli.output, &args));
+                let document = crumbkit::usage::SELF_FIGURES_LIST;
+                crumbkit::finish(&mut cli.output, SPELLING, document, result)
+            }
         },
         Resource::Aliases { command } => match command {
-            AliasesCommand::List(args) => crumbkit::finish(
-                &cli.output,
-                SPELLING,
-                crumbkit_aliases::ALIASES_LIST,
-                crumbkit_aliases::list(&cli.output, file.as_deref(), &args),
-            ),
+            AliasesCommand::List(args) => {
+                let result = crumbkit_aliases::list(&mut cli.output, file.as_deref(), &args);
+                let document = crumbkit_aliases::ALIASES_LIST;
+                crumbkit::finish(&mut cli.output, SPELLING, document, result)
+            }
         },
     }
 }

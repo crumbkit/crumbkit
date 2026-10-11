@@ -335,7 +335,7 @@ where
     #[cfg(feature = "usage-log")]
     crate::usage::refused(&command, &path, &error);
     let refusal = Refusal::command_line(refusal_message(&command, &path, &error), path);
-    Err(refusal.print(sink, json, spelling, Some(&command)))
+    Err(refusal.print(sink, json, spelling, Some(&mut command)))
 }
 
 /// Returns the page that `help` at the root prints without clap, for

@@ -65,18 +65,16 @@
 //!     cli.output.set_command(command);
 //!     match cli.resource {
 //!         Resource::Schemas { command } => match command {
-//!             SchemasCommand::List(args) => crumbkit::finish(
-//!                 &cli.output,
-//!                 SPELLING,
-//!                 SCHEMAS_LIST,
-//!                 schemas::list(&cli.output, &GUIDE, &args),
-//!             ),
-//!             SchemasCommand::Show(args) => crumbkit::finish(
-//!                 &cli.output,
-//!                 SPELLING,
-//!                 SCHEMAS_SHOW,
-//!                 schemas::show(&cli.output, &GUIDE, &args),
-//!             ),
+//!             // `list` and `show` build the command tree in `cli.output`,
+//!             // so each runs before `finish`.
+//!             SchemasCommand::List(args) => {
+//!                 let result = schemas::list(&mut cli.output, &GUIDE, &args);
+//!                 crumbkit::finish(&mut cli.output, SPELLING, SCHEMAS_LIST, result)
+//!             }
+//!             SchemasCommand::Show(args) => {
+//!                 let result = schemas::show(&mut cli.output, &GUIDE, &args);
+//!                 crumbkit::finish(&mut cli.output, SPELLING, SCHEMAS_SHOW, result)
+//!             }
 //!         },
 //!     }
 //! }
@@ -173,8 +171,8 @@ pub struct SchemasShow {
 /// [`SCHEMAS_LIST`]. [`documents`] says which documents those are and in
 /// which order.
 ///
-/// It builds no JSON Schema, so its work grows with the number of leaves in
-/// `guide` and the depth of their paths.
+/// It builds the whole command tree through [`Output::command`], so it sees
+/// each command that `Command::defer` adds, and it builds no JSON Schema.
 ///
 /// # Errors
 ///
@@ -182,7 +180,7 @@ pub struct SchemasShow {
 /// next step when the tool has not passed its command to
 /// [`Output::set_command`].
 pub fn list(
-    output: &Output,
+    output: &mut Output,
     guide: &Guide,
     args: &SchemasList,
 ) -> Result<Listing<SchemaRow>, Error> {
@@ -204,7 +202,8 @@ pub fn list(
 ///
 /// An id that names no document of [`documents`] adds a failure with the
 /// code `crumbkit::schemas::not_found` to the batch. Its recovery runs
-/// `schemas list`. It builds the JSON Schema of each id given once.
+/// `schemas list`. It builds the whole command tree through
+/// [`Output::command`], and the JSON Schema of each id given once.
 ///
 /// # Errors
 ///
@@ -212,7 +211,7 @@ pub fn list(
 /// next step when the tool has not passed its command to
 /// [`Output::set_command`].
 pub fn show(
-    output: &Output,
+    output: &mut Output,
     guide: &Guide,
     args: &SchemasShow,
 ) -> Result<Batch<SchemaShowRow, Error>, Error> {

@@ -124,7 +124,7 @@ struct Finished {
 
 /// Runs `shelf schemas show` with `words` and the output flags `output`,
 /// and finishes the result into memory as a tool's handler does.
-fn finish_show(output: &Output, words: &[&str]) -> Finished {
+fn finish_show(output: &mut Output, words: &[&str]) -> Finished {
     let mut out = Vec::new();
     let mut err = Vec::new();
     let result = show(output, &GUIDE, &args::<SchemasShow>("show", words));
@@ -312,7 +312,7 @@ fn the_failure_document_names_no_command_and_has_the_checked_in_schema() {
 
 #[test]
 fn list_prints_one_row_for_each_served_document_with_its_description() {
-    let listing = list(&output(), &GUIDE, &args::<SchemasList>("list", &[])).unwrap();
+    let listing = list(&mut output(), &GUIDE, &args::<SchemasList>("list", &[])).unwrap();
 
     let value = serde_json::to_value(&listing).unwrap();
     assert_eq!(
@@ -331,7 +331,7 @@ fn list_prints_one_page_and_counts_every_document_in_its_total() {
     use crate::Rows as _;
 
     let listing = list(
-        &output(),
+        &mut output(),
         &GUIDE,
         &args::<SchemasList>("list", &["--limit", "2"]),
     )
@@ -344,7 +344,7 @@ fn list_prints_one_page_and_counts_every_document_in_its_total() {
 #[test]
 fn list_fails_with_unavailable_when_the_tool_kept_no_command() {
     let error = list(
-        &Output::default(),
+        &mut Output::default(),
         &GUIDE,
         &args::<SchemasList>("list", &[]),
     )
@@ -357,7 +357,7 @@ fn list_fails_with_unavailable_when_the_tool_kept_no_command() {
 #[test]
 fn show_returns_the_schema_of_each_id_in_the_order_given() {
     let batch = show(
-        &output(),
+        &mut output(),
         &GUIDE,
         &args::<SchemasShow>("show", &["shelf/books-show/v1", "crumbkit/failure/v1"]),
     )
@@ -372,7 +372,7 @@ fn show_returns_the_schema_of_each_id_in_the_order_given() {
 #[test]
 fn show_fails_an_unknown_id_and_still_prints_the_ids_it_knows() {
     let finished = finish_show(
-        &output_with(&["--json"]),
+        &mut output_with(&["--json"]),
         &["shelf/books-lst/v1", "shelf/books-list/v1"],
     );
 
@@ -391,7 +391,7 @@ fn show_fails_an_unknown_id_and_still_prints_the_ids_it_knows() {
 
 #[test]
 fn show_in_text_prints_the_schema_as_one_line_of_json() {
-    let finished = finish_show(&output(), &["shelf/books-list/v1"]);
+    let finished = finish_show(&mut output(), &["shelf/books-list/v1"]);
 
     assert_eq!(finished.code, ExitCode::SUCCESS);
     let line = finished.out.lines().nth(1).unwrap();

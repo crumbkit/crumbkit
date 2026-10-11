@@ -225,9 +225,9 @@ fn run<T: crate::Rows, E: crate::AsFailure>(
     document: Document<T>,
     result: Result<T, E>,
 ) {
-    if let Ok(output) = parse(args) {
+    if let Ok(mut output) = parse(args) {
         let sink = &mut Sink::new(Vec::new(), Vec::new());
-        finish_to(sink, &output, Spelling::COLONS, document, result);
+        finish_to(sink, &mut output, Spelling::COLONS, document, result);
     }
 }
 
