@@ -49,16 +49,12 @@ const FILES: [&str; 3] = [
 
 /// Returns the settings that run `/bin/sh` and keep the golden files in
 /// `dir`.
-fn examples(dir: &TempDir) -> Examples {
-    // `Examples` holds `&'static str`, as a tool's constant does, so the
-    // test leaks its directory's path, a few bytes that live until the test
-    // process ends.
-    let dir = dir.path().to_str().unwrap().to_owned().leak();
-    Examples::new(SH, dir)
+fn examples(dir: &TempDir) -> Examples<'_> {
+    Examples::new(SH, dir.path().to_str().unwrap())
 }
 
 /// Runs the check of `guide` on `sh()` with `examples` and `action`.
-fn run(guide: &Guide, examples: &Examples, action: Action) {
+fn run(guide: &Guide, examples: &Examples<'_>, action: Action) {
     check(&sh(), guide, examples, &Assert::new().action(action));
 }
 
@@ -174,7 +170,7 @@ fn an_example_that_writes_to_standard_error_fails_the_check() {
 fn a_binary_that_cannot_start_fails_the_check_naming_its_path_and_the_error() {
     const ONE: Guide = Guide::new()
         .leaves(&[Leaf::new(&["-c"]).examples(&[Example::new(&["echo books"], "Print")])]);
-    const MISSING: Examples = Examples::new("/nonexistent/sh", "tests/golden/examples");
+    const MISSING: Examples<'_> = Examples::new("/nonexistent/sh", "tests/golden/examples");
 
     let message = panic_message(|| check(&sh(), &ONE, &MISSING, &Assert::new())).unwrap();
 

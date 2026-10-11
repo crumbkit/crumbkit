@@ -319,3 +319,5 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   take another id.
 - `aliases list` says that an entry named `help` loses to the tool's own
   help, instead of naming a command of that name.
+- crumbkit-test's `Examples` borrows its paths for a lifetime `'a`, so a
+  test can build one from a path it computes at runtime.

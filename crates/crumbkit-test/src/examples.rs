@@ -40,7 +40,7 @@ const XDG: [(&str, &str); 4] = [
 /// use crumbkit_test::Examples;
 ///
 /// // In `tests/examples.rs`, the binary is `env!("CARGO_BIN_EXE_shelf")`.
-/// const EXAMPLES: Examples = Examples::new("/path/to/shelf", "tests/golden/examples")
+/// const EXAMPLES: Examples<'_> = Examples::new("/path/to/shelf", "tests/golden/examples")
 ///     .env(&[("SHELF_DATA", "tests/fixtures/books.json")])
 ///     .exempt(&["books delete"]);
 /// ```
@@ -48,21 +48,26 @@ const XDG: [(&str, &str); 4] = [
 /// cargo runs those tests, and therefore the binary, from the package's
 /// manifest directory, so a relative path in `dir` or in an `.env` value
 /// resolves from there.
+///
+/// `Examples` borrows its paths, variables and exemptions for `'a`. A
+/// constant borrows them for `'static`, and a test that builds a path at
+/// runtime, such as a temporary golden directory, borrows the `String` that
+/// holds it.
 #[derive(Clone, Copy, Debug)]
-pub struct Examples {
+pub struct Examples<'a> {
     /// The path of the tool's built binary.
-    binary: &'static str,
+    binary: &'a str,
     /// The directory of the golden files, which holds only example golden
     /// files.
-    dir: &'static str,
+    dir: &'a str,
     /// The environment variables that each run sets, as name and value.
-    env: &'static [(&'static str, &'static str)],
+    env: &'a [(&'a str, &'a str)],
     /// The paths of the commands whose examples the check skips, each
     /// below the root.
-    exempt: &'static [&'static str],
+    exempt: &'a [&'a str],
 }
 
-impl Examples {
+impl<'a> Examples<'a> {
     /// Returns the settings that run the binary at `binary` and keep the
     /// golden files in `dir`, with no environment variables of the tool's
     /// own and no exempt command.
@@ -70,7 +75,7 @@ impl Examples {
     /// `dir` holds only example golden files, because the check counts every
     /// `.txt` file in it that no checked example produces as stale.
     #[must_use]
-    pub const fn new(binary: &'static str, dir: &'static str) -> Self {
+    pub const fn new(binary: &'a str, dir: &'a str) -> Self {
         Self {
             binary,
             dir,
@@ -84,7 +89,7 @@ impl Examples {
     /// tool can point its binary at fixture data or a fake server. The XDG
     /// directories that the check sets win over a variable of the same name.
     #[must_use]
-    pub const fn env(mut self, env: &'static [(&'static str, &'static str)]) -> Self {
+    pub const fn env(mut self, env: &'a [(&'a str, &'a str)]) -> Self {
         self.env = env;
         self
     }
@@ -94,7 +99,7 @@ impl Examples {
     /// `"books list"`. The check skips the examples of each named command and
     /// of every command below it.
     #[must_use]
-    pub const fn exempt(mut self, exempt: &'static [&'static str]) -> Self {
+    pub const fn exempt(mut self, exempt: &'a [&'a str]) -> Self {
         self.exempt = exempt;
         self
     }
@@ -166,7 +171,7 @@ impl Examples {
 ///     .examples(&[Example::new(&["--all"], "Print every book")])]);
 ///
 /// // In `tests/examples.rs`, the binary is `env!("CARGO_BIN_EXE_shelf")`.
-/// const EXAMPLES: Examples = Examples::new("/path/to/shelf", "tests/golden/examples");
+/// const EXAMPLES: Examples<'_> = Examples::new("/path/to/shelf", "tests/golden/examples");
 ///
 /// let shelf = Command::new("shelf")
 ///     .subcommand(Command::new("books").subcommand(Command::new("list")));
@@ -181,7 +186,7 @@ impl Examples {
 /// `SNAPSHOTS=overwrite` cannot write or delete a file. The message lists
 /// each problem on its own line and names each example by its command line,
 /// such as `shelf books list --all`.
-pub fn check_examples(command: &Command, guide: &Guide, examples: &Examples) {
+pub fn check_examples(command: &Command, guide: &Guide, examples: &Examples<'_>) {
     let assert = Assert::new().action_env(DEFAULT_ACTION_ENV);
     check(command, guide, examples, &assert);
 }
@@ -189,7 +194,7 @@ pub fn check_examples(command: &Command, guide: &Guide, examples: &Examples) {
 /// Runs [`check_examples`] with `assert`, whose action decides whether the
 /// check compares or overwrites, so a test chooses the action without
 /// setting `SNAPSHOTS`.
-fn check(command: &Command, guide: &Guide, examples: &Examples, assert: &Assert) {
+fn check(command: &Command, guide: &Guide, examples: &Examples<'_>, assert: &Assert) {
     let overwrite = assert.selected_action() == Action::Overwrite;
     let dir = Path::new(examples.dir);
     let tool = command.get_name();
@@ -266,7 +271,7 @@ fn check(command: &Command, guide: &Guide, examples: &Examples, assert: &Assert)
 /// The check owns the process effects of each run, and runs it through
 /// snapbox's `cmd` module, which captures standard output and standard
 /// error.
-fn run(examples: &Examples, args: &[&str]) -> Result<Output, String> {
+fn run(examples: &Examples<'_>, args: &[&str]) -> Result<Output, String> {
     let xdg = TempDir::new("example")
         .map_err(|error| format!("the run's XDG directories cannot be created: {error}"))?;
     let mut command = cmd::Command::new(examples.binary).args(args).env_clear();
