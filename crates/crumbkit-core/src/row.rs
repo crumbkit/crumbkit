@@ -60,6 +60,11 @@ pub trait Rows: Serialize + sealed::Sealed {
     /// object, and a list's is an array.
     const SINGLE: bool;
 
+    /// The type of the summary that prints above the table. Only a
+    /// `Listing` can have a summary, and every other result has
+    /// [`NoSummary`](crate::NoSummary).
+    type Summary: Serialize + std::fmt::Display;
+
     /// Returns the rows in order. A single row is a slice of one.
     fn rows(&self) -> &[Self::Row];
 
@@ -72,6 +77,12 @@ pub trait Rows: Serialize + sealed::Sealed {
     /// Returns the phrase that names the rows in the text footer, such as
     /// `books`. Only a `Listing` returns one.
     fn description(&self) -> Option<&str> {
+        None
+    }
+
+    /// Returns the summary that the text output prints above the table and
+    /// the JSON document holds under `summary`. Only a `Listing` returns one.
+    fn summary(&self) -> Option<&Self::Summary> {
         None
     }
 
@@ -101,6 +112,7 @@ pub trait Rows: Serialize + sealed::Sealed {
 impl<R: Row> Rows for R {
     type Row = R;
     const SINGLE: bool = true;
+    type Summary = crate::NoSummary;
 
     fn rows(&self) -> &[R] {
         std::slice::from_ref(self)
@@ -110,6 +122,7 @@ impl<R: Row> Rows for R {
 impl<R: Row> Rows for Vec<R> {
     type Row = R;
     const SINGLE: bool = false;
+    type Summary = crate::NoSummary;
 
     fn rows(&self) -> &[R] {
         self
@@ -127,7 +140,7 @@ mod sealed {
 
     impl<R: super::Row> Sealed for Vec<R> {}
 
-    impl<R: super::Row> Sealed for crate::Listing<R> {}
+    impl<R: super::Row, S> Sealed for crate::Listing<R, S> {}
 
     impl<R: super::Row, E: crate::AsFailure> Sealed for crate::Batch<R, E> {}
 }

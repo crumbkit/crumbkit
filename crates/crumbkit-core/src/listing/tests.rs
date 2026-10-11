@@ -104,3 +104,28 @@ fn a_single_row_and_a_vec_have_no_total_no_description_and_no_next_step() {
     assert_eq!(books(2).description(), None);
     assert_eq!(books(2).next_step(), None);
 }
+
+/// A summary of the books: how many there are, which prints as a line.
+#[derive(Serialize, Debug, Clone, PartialEq, Eq)]
+struct Shelved {
+    books: u32,
+}
+
+impl std::fmt::Display for Shelved {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{} books on the shelf.", self.books)
+    }
+}
+
+#[test]
+fn a_listing_has_no_summary_until_one_is_set() {
+    let plain = Listing::new(books(1), 3);
+    let summarised = Listing::new(books(1), 3)
+        .described("books")
+        .summary(Shelved { books: 3 });
+
+    // The builder `summary` shadows the `Rows` method of the same name.
+    assert_eq!(Rows::summary(&plain), None);
+    assert_eq!(Rows::summary(&summarised), Some(&Shelved { books: 3 }));
+    assert_eq!(summarised.description(), Some("books"));
+}

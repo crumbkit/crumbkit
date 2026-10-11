@@ -172,7 +172,9 @@ pub fn finish<T: Rows, E: AsFailure>(
 /// row's `data` is an object, and a `Vec`'s is an array.
 ///
 /// A [`Listing`](crate::Listing)'s `data` is an array, and its JSON document
-/// also holds the number of matching rows under `total`. When a listing
+/// also holds the number of matching rows under `total`, and its summary,
+/// when it has one, under `summary`. The summary also prints as one line
+/// above the table in text. When a listing
 /// shows fewer rows than its total, the table ends with a footer line, such
 /// as `Showing 4 of 6 books. --all shows every one.` A listing's note
 /// follows on its own line, in text only. When a listing has a next step, a
@@ -357,10 +359,11 @@ fn write_result<T: Rows>(
     failures: Option<&[FailureDocument]>,
 ) -> io::Result<()> {
     let total = value.total();
+    let summary = value.summary();
     if output.full {
         // Serializing the rows directly keeps every field in its declaration
         // order.
-        write_document(out, document, value, total, failures)?;
+        write_document(out, document, value, total, summary, failures)?;
         return out.flush();
     }
 
@@ -393,13 +396,18 @@ fn write_result<T: Rows>(
         // A single row's `data` is an object, and a list's is an array even
         // when it holds one row.
         match selected.as_slice() {
-            [single] if T::SINGLE => write_document(out, document, single, total, failures)?,
-            list => write_document(out, document, &list, total, failures)?,
+            [single] if T::SINGLE => {
+                write_document(out, document, single, total, summary, failures)?;
+            }
+            list => write_document(out, document, &list, total, summary, failures)?,
         }
     } else if failures.is_some() && rows.is_empty() {
         // A batch in which no id worked prints no table, so the caller sees
         // only its failures on standard error.
     } else {
+        if let Some(summary) = summary {
+            writeln!(out, "{summary}")?;
+        }
         table::write(out, &columns, &rows)?;
         write_footer(out, value)?;
         if let Some(note) = value.note() {
@@ -451,18 +459,21 @@ fn write_next<T: Rows>(
 
 /// Writes the JSON document `{"schema": <id>, "data": <data>}` to `out` on
 /// one line, with `"total": <total>` after `data` when `total` is `Some`,
-/// and then `"failures": [...]` when `failures` is `Some`.
-fn write_document<T, D: Serialize>(
+/// then `"summary": <summary>` when `summary` is `Some`, and then
+/// `"failures": [...]` when `failures` is `Some`.
+fn write_document<T, D: Serialize, M: Serialize>(
     out: &mut impl Write,
     document: Document<T>,
     data: &D,
     total: Option<usize>,
+    summary: Option<&M>,
     failures: Option<&[FailureDocument]>,
 ) -> io::Result<()> {
     let envelope = Envelope {
         document,
         data,
         total,
+        summary,
         failures,
     };
     serde_json::to_writer(&mut *out, &envelope)?;
@@ -470,24 +481,31 @@ fn write_document<T, D: Serialize>(
 }
 
 /// A JSON document: the `schema` id, the result under `data`, a listing's
-/// number of matching rows under `total`, and a batch's failures under
-/// `failures`.
-struct Envelope<'a, T, D> {
+/// number of matching rows under `total`, a listing's summary under
+/// `summary`, and a batch's failures under `failures`.
+struct Envelope<'a, T, D, M> {
     document: Document<T>,
     data: &'a D,
     total: Option<usize>,
+    summary: Option<&'a M>,
     failures: Option<&'a [FailureDocument]>,
 }
 
-impl<T, D: Serialize> Serialize for Envelope<'_, T, D> {
+impl<T, D: Serialize, M: Serialize> Serialize for Envelope<'_, T, D, M> {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        let len = 2 + usize::from(self.total.is_some()) + usize::from(self.failures.is_some());
+        let len = 2
+            + usize::from(self.total.is_some())
+            + usize::from(self.summary.is_some())
+            + usize::from(self.failures.is_some());
         let mut map = serializer.serialize_map(Some(len))?;
         // `format_args!` serializes as a string without building one.
         map.serialize_entry("schema", &format_args!("{}", self.document))?;
         map.serialize_entry("data", self.data)?;
         if let Some(total) = self.total {
             map.serialize_entry("total", &total)?;
+        }
+        if let Some(summary) = self.summary {
+            map.serialize_entry("summary", summary)?;
         }
         if let Some(failures) = self.failures {
             // Each entry is a failure document without `schema`.
