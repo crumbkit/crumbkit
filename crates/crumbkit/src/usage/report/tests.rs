@@ -7,6 +7,7 @@ use serde_json::json;
 
 use super::entry::Entry;
 use super::{LONGEST, Report, Tally, read};
+use crate::usage::testing::tool;
 
 /// Returns one line of the log for a run of `command` that ended `at`
 /// seconds after the Unix epoch.
@@ -32,7 +33,7 @@ fn line(at: u64, command: &str) -> String {
 /// seconds after the Unix epoch.
 fn report(log: &[u8], since: u64) -> Report {
     let mut tally = Tally::default();
-    read(Cursor::new(log), since * 1000, &mut tally);
+    read(Cursor::new(log), since * 1000, &tool(), &mut tally);
     tally.report()
 }
 
@@ -104,11 +105,28 @@ fn a_line_of_the_longest_length_that_the_log_writes_is_read() {
 }
 
 #[test]
+fn a_record_that_names_what_the_tool_lacks_is_counted_as_skipped_and_left_out() {
+    let edited = line(2, "books list").replace(r#""caller":"person""#, r#""caller":"ada""#);
+    let log = [line(1, "books list"), edited, line(3, "books burn")].concat();
+
+    let report = report(log.as_bytes(), 0);
+
+    assert_eq!(report.runs, 1);
+    assert_eq!(report.skipped, 2);
+    assert_eq!(report.callers.len(), 1);
+}
+
+#[test]
 fn the_reader_reads_through_a_small_buffer_as_through_a_large_one() {
     let log = [line(1, "books list"), line(2, "books show")].concat();
     let mut tally = Tally::default();
 
-    read(BufReader::with_capacity(7, log.as_bytes()), 0, &mut tally);
+    read(
+        BufReader::with_capacity(7, log.as_bytes()),
+        0,
+        &tool(),
+        &mut tally,
+    );
 
     assert_eq!(tally.report(), report(log.as_bytes(), 0));
 }
@@ -158,7 +176,8 @@ const COMMANDS: [&str; 3] = ["books list", "books show", ""];
 /// seconds apart within the session. A run prints help, is refused, fails,
 /// shows a cut-short listing or succeeds. It takes up to 1.4 seconds and
 /// has up to two ids and one of `--all`, `--limit` and `--full` or none, so
-/// every figure and finding occurs.
+/// every figure and finding occurs. Every run names only what [`tool`]
+/// has, so the reader skips none.
 fn runs() -> impl Strategy<Value = Vec<Entry>> {
     let run = (
         0..3_usize,
@@ -178,6 +197,9 @@ fn runs() -> impl Strategy<Value = Vec<Entry>> {
                 entry.args = format!("{command} {ids} {flags}");
                 entry.ms = gap * 20;
                 entry.ids = (command == 1).then_some(ids);
+                // Only `books list` has `--all` and `--limit`, so the other
+                // commands take `--full` or no flag.
+                let flags = if command == 0 { flags } else { flags / 3 * 3 };
                 entry.flags = [&[][..], &["--all"], &["--limit"], &["--full"]][flags]
                     .iter()
                     .map(|flag: &&str| (*flag).to_owned())
@@ -186,7 +208,8 @@ fn runs() -> impl Strategy<Value = Vec<Entry>> {
                     0 => entry.help = true,
                     1 => {
                         entry.exit = Some(2);
-                        entry.nearest = Some("--all".to_owned());
+                        let nearest = if command == 0 { "--all" } else { "--full" };
+                        entry.nearest = Some(nearest.to_owned());
                     }
                     2 => {
                         entry.exit = Some(1);
@@ -254,8 +277,9 @@ proptest! {
         }),
     ) {
         let mut tally = Tally::default();
-        read(Cursor::new(log_of(&runs[..split])), 0, &mut tally);
-        read(Cursor::new(log_of(&runs[split..])), 0, &mut tally);
+        let tool = tool();
+        read(Cursor::new(log_of(&runs[..split])), 0, &tool, &mut tally);
+        read(Cursor::new(log_of(&runs[split..])), 0, &tool, &mut tally);
 
         prop_assert_eq!(tally.report(), report(log_of(&runs).as_bytes(), 0));
     }

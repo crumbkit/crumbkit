@@ -1,6 +1,9 @@
-//! The temporary directories that the usage log's unit tests write in.
+//! The temporary directories that the usage log's unit tests write in, and
+//! the command tree that the report's unit tests check records against.
 
 use std::path::{Path, PathBuf};
+
+use clap::{Arg, ArgAction, Command};
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 /// The number of temporary directories that this process has created, which
@@ -41,4 +44,25 @@ impl Drop for TempDir {
         )]
         let _ = std::fs::remove_dir_all(&self.path);
     }
+}
+
+/// Returns a built tool named shelf with a global `--full`, `books list`
+/// with `--all`, `--limit` and `-n`, and `books show` with ids.
+pub(super) fn tool() -> Command {
+    let flag = |name: &'static str| Arg::new(name).long(name).action(ArgAction::SetTrue);
+    let mut tool = Command::new("shelf")
+        .arg(flag("full").global(true))
+        .subcommand(
+            Command::new("books")
+                .subcommand(
+                    Command::new("list")
+                        .alias("ls")
+                        .arg(flag("all"))
+                        .arg(Arg::new("limit").long("limit"))
+                        .arg(Arg::new("number").short('n')),
+                )
+                .subcommand(Command::new("show").arg(Arg::new("ids").num_args(1..))),
+        );
+    tool.build();
+    tool
 }

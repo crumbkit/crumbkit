@@ -28,6 +28,8 @@ const SLOW: u64 = 1_000;
 pub(in crate::usage) struct Tally {
     /// The number of runs.
     runs: u64,
+    /// The number of records that the reader skipped.
+    skipped: u64,
     /// What each session's findings need of its earlier runs, by the
     /// session's hash.
     sessions: HashMap<String, Session>,
@@ -101,6 +103,11 @@ impl Tally {
         command.long += u64::from(entry.typed("--long"));
     }
 
+    /// Counts a record that the reader skipped.
+    pub(super) const fn skip(&mut self) {
+        self.skipped += 1;
+    }
+
     /// Returns the report of every record added.
     pub(in crate::usage) fn report(mut self) -> Report {
         for session in self.sessions.values() {
@@ -159,6 +166,7 @@ impl Tally {
         Report {
             runs: self.runs,
             sessions: self.sessions.len() as u64,
+            skipped: self.skipped,
             callers: most_first(self.callers),
             findings,
             commands,
