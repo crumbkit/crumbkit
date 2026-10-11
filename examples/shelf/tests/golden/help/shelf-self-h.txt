@@ -3,7 +3,8 @@ Review shelf's own use
 Usage: shelf self [OPTIONS] <COMMAND>
 
 Commands:
-  usage  Report the patterns in shelf's usage log where callers waste effort
+  usage    Report the patterns in shelf's usage log where callers waste effort
+  figures  Work with the figures of each command in shelf's usage log
 
 Options:
   -h, --help  Print help (see more with '--help')

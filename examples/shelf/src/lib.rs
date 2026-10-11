@@ -14,7 +14,8 @@ use clap::CommandFactory as _;
 use crumbkit::Spelling;
 
 use crate::cli::{
-    AliasesCommand, BooksCommand, CommandsCommand, Resource, SchemasCommand, SelfCommand,
+    AliasesCommand, BooksCommand, CommandsCommand, FiguresCommand, Resource, SchemasCommand,
+    SelfCommand,
 };
 pub use crate::cli::{Cli, GUIDE};
 
@@ -89,6 +90,14 @@ pub fn run() -> ExitCode {
                 SPELLING,
                 crumbkit::usage::SELF_USAGE,
                 Ok::<_, crumbkit::Error>(crumbkit::usage::findings(&cli.output, &args)),
+            ),
+            SelfCommand::Figures {
+                command: FiguresCommand::List(args),
+            } => crumbkit::finish(
+                &cli.output,
+                SPELLING,
+                crumbkit::usage::SELF_FIGURES_LIST,
+                Ok::<_, crumbkit::Error>(crumbkit::usage::figures(&cli.output, &args)),
             ),
         },
         Resource::Aliases { command } => match command {

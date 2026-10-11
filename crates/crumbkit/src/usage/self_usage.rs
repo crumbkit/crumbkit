@@ -32,6 +32,7 @@ use std::borrow::Cow;
 use std::fmt;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
+use std::path::PathBuf;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use clap::{Args, Command};
@@ -57,12 +58,17 @@ pub const SELF_USAGE: Document<Listing<FindingRow, UsageSummary>> = Document::ne
     "The patterns in the usage log where callers waste effort, and a summary of the runs read.",
 );
 
-/// The arguments of `<tool> self usage`: how far back the report reads.
+/// The arguments of `<tool> self usage`: how far back the report reads,
+/// and the log it reads when the caller names one.
 #[derive(Args, Clone, Debug, PartialEq, Eq)]
 pub struct SelfUsage {
     /// How far back to read the usage log, such as 12h, 7d or 2w
     #[arg(long, value_name = "DURATION", default_value = "7d", value_parser = humantime::parse_duration)]
-    since: Duration,
+    pub(super) since: Duration,
+
+    /// Read this usage log instead of the tool's own
+    #[arg(long, value_name = "FILE")]
+    log: Option<PathBuf>,
 }
 
 /// One finding of `self usage`: a pattern in the runs of one command that
@@ -91,11 +97,14 @@ impl crate::Row for FindingRow {
 
 /// The figures of one command since the start of the report.
 #[derive(Debug, Serialize, JsonSchema)]
-struct CommandFigures {
+pub(super) struct CommandFigures {
     /// The runs that did not print a help page.
     runs: u64,
     /// The runs that printed the command's help page.
     help_pages: u64,
+    /// The help pages that each run's session read since its last run
+    /// that printed no help page, summed over the runs.
+    help_before: u64,
     /// The runs whose command line was refused.
     refused: u64,
     /// The runs that failed.
@@ -146,8 +155,8 @@ struct CallerRuns {
 /// duration before now, for the tool to pass to [`finish`](crate::finish)
 /// with [`SELF_USAGE`].
 ///
-/// It reads `usage.jsonl` in the tool's directory under the XDG state
-/// directory once, a line at a time. A record that names a command path,
+/// It reads the file that `--log` names, or else `usage.jsonl` in the
+/// tool's directory under the XDG state directory, once, a line at a time. A record that names a command path,
 /// flag, failure code or caller that the tool's usage log could not have
 /// written is left out and counted in the summary, so a hand-edited line
 /// cannot put its text in the report. A code counts when it is 1 to 128
@@ -162,19 +171,25 @@ struct CallerRuns {
 pub fn findings(output: &Output, args: &SelfUsage) -> Listing<FindingRow, UsageSummary> {
     let empty = Command::new("");
     let tool = output.command().unwrap_or(&empty);
-    let log = (!tool.get_name().is_empty())
-        .then(|| open(tool.get_name()))
-        .flatten();
-    report_from(tool, log, args.since, SystemTime::now())
+    report_from(tool, open(tool, args), args.since, SystemTime::now())
 }
 
-/// Opens the usage log of the tool named `tool` to read it, or returns
-/// `None` when it cannot.
-fn open(tool: &str) -> Option<BufReader<File>> {
-    let state = etcetera::choose_base_strategy().ok()?.state_dir()?;
-    File::open(state.join(tool).join(LOG))
-        .ok()
-        .map(BufReader::new)
+/// Opens the usage log that `args` names, or else the log of `tool`, to
+/// read it, or returns `None` when it cannot. A tool without a name has no
+/// log, because the reader checks each record against the tool's commands.
+pub(super) fn open(tool: &Command, args: &SelfUsage) -> Option<BufReader<File>> {
+    if tool.get_name().is_empty() {
+        return None;
+    }
+    let path = match &args.log {
+        Some(path) => path.clone(),
+        None => etcetera::choose_base_strategy()
+            .ok()?
+            .state_dir()?
+            .join(tool.get_name())
+            .join(LOG),
+    };
+    File::open(path).ok().map(BufReader::new)
 }
 
 /// The last second that humantime formats, 9999-12-31T23:59:59Z, in
@@ -200,6 +215,30 @@ fn report_from(
     since: Duration,
     now: SystemTime,
 ) -> Listing<FindingRow, UsageSummary> {
+    let (report, summary) = summarize(tool, log, since, now);
+    let rows: Vec<FindingRow> = report
+        .findings
+        .iter()
+        .map(|finding| row(tool.get_name(), finding, &report))
+        .collect();
+    let total = rows.len();
+    Listing::new(rows, total)
+        .described("findings")
+        .summary(summary)
+        .next(
+            Call::new(&["self", "usage"]).arg("json").arg("full"),
+            "adds the figures of each finding's command.",
+        )
+}
+
+/// Returns the report of the runs in `log` that ended in the `since`
+/// duration before `now`, checked against `tool`, and its summary.
+pub(super) fn summarize(
+    tool: &Command,
+    log: Option<impl BufRead>,
+    since: Duration,
+    now: SystemTime,
+) -> (Report, UsageSummary) {
     // A start before 1970 reads from 1970, because no record is older and
     // humantime panics on a time before the epoch.
     let start = now.checked_sub(since).unwrap_or(UNIX_EPOCH).max(UNIX_EPOCH);
@@ -210,17 +249,11 @@ fn report_from(
     if let Some(log) = log {
         read(log, start_ms, tool, &mut tally);
     }
-    let report = tally.report();
-    let rows: Vec<FindingRow> = report
-        .findings
-        .iter()
-        .map(|finding| row(tool.get_name(), finding, &report))
-        .collect();
+    let mut report = tally.report();
     let summary = UsageSummary {
         runs: report.runs,
         sessions: report.sessions,
-        callers: report
-            .callers
+        callers: std::mem::take(&mut report.callers)
             .into_iter()
             .map(|count| CallerRuns {
                 caller: count.name,
@@ -230,14 +263,7 @@ fn report_from(
         since: day_of(start),
         skipped: report.skipped,
     };
-    let total = rows.len();
-    Listing::new(rows, total)
-        .described("findings")
-        .summary(summary)
-        .next(
-            Call::new(&["self", "usage"]).arg("json").arg("full"),
-            "adds the figures of each finding's command.",
-        )
+    (report, summary)
 }
 
 /// Returns the row of `finding` in `report` for the tool named `tool`.
@@ -300,10 +326,11 @@ fn suggestion(finding: &Finding, figures: Option<&Figures>) -> String {
 
 impl CommandFigures {
     /// Returns the figures that `figures` holds.
-    const fn of(figures: &Figures) -> Self {
+    pub(super) const fn of(figures: &Figures) -> Self {
         Self {
             runs: figures.runs,
             help_pages: figures.help,
+            help_before: figures.help_before,
             refused: figures.refused,
             failed: figures.failed,
             p95_ms: figures.p95_ms,
@@ -319,6 +346,7 @@ impl CommandFigures {
         Self {
             runs: 0,
             help_pages: 0,
+            help_before: 0,
             refused: 0,
             failed: 0,
             p95_ms: None,

@@ -76,6 +76,9 @@ pub(super) struct Session {
     help_command: String,
     /// Whether the session has had a successful run.
     succeeded: bool,
+    /// The help pages that the session read since its last run that printed
+    /// no help page.
+    help_since_run: u64,
 }
 
 /// A single-id run of a command.
@@ -124,6 +127,19 @@ impl Session {
         if entry.succeeded() && !self.succeeded {
             self.succeeded = true;
             self.help_loop(found);
+        }
+    }
+
+    /// Returns the help pages that the session read since its last run
+    /// that printed no help page, when `entry` prints none, which the tally
+    /// credits to `entry`'s command. When `entry` prints a help page, it
+    /// counts that page and returns 0.
+    pub(super) fn help_before(&mut self, entry: &Entry) -> u64 {
+        if entry.help {
+            self.help_since_run += 1;
+            0
+        } else {
+            std::mem::take(&mut self.help_since_run)
         }
     }
 

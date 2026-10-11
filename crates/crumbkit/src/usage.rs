@@ -30,10 +30,15 @@ mod recorder;
 #[cfg(feature = "usage-log")]
 mod report;
 #[cfg(feature = "usage-log")]
+mod self_figures;
+#[cfg(feature = "usage-log")]
 mod self_usage;
 #[cfg(feature = "usage-log")]
 mod shape;
-#[cfg(all(feature = "usage-log", test))]
+// The two attributes stay apart, because clippy reads only a plain
+// `cfg(test)` as test code, where its helpers may unwrap.
+#[cfg(feature = "usage-log")]
+#[cfg(test)]
 mod testing;
 
 #[cfg(feature = "usage-log")]
@@ -46,6 +51,8 @@ pub use self::recorder::{Log, section, start};
 pub(crate) use self::recorder::{
     child_env, exited, failed, finished, helped, parsed, refused, typed,
 };
+#[cfg(feature = "usage-log")]
+pub use self::self_figures::{FiguresRow, SELF_FIGURES_LIST, SelfFigures, figures};
 #[cfg(feature = "usage-log")]
 pub use self::self_usage::{FindingRow, SELF_USAGE, SelfUsage, UsageSummary, findings};
 

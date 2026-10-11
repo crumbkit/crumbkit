@@ -1,43 +1,13 @@
 use std::io::Cursor;
+use std::path::PathBuf;
 use std::time::{Duration, SystemTime};
 
 use clap::Parser;
-use serde_json::{Value, json};
+use serde_json::json;
 
 use super::{CallerRuns, FindingRow, SelfUsage, UsageSummary, report_from};
 use crate::Rows;
-use crate::usage::testing::tool;
-
-/// The time that the tests report at: noon UTC on 11 October 2026.
-fn now() -> SystemTime {
-    humantime::parse_rfc3339("2026-10-11T12:00:00Z").unwrap()
-}
-
-/// Returns one line of the log for a person's run of `command` in session
-/// `s1` that ended `secs` seconds before [`now`], with `fields` added.
-fn line(secs: u64, command: &str, fields: &Value) -> String {
-    let at = humantime::format_rfc3339_millis(now() - Duration::from_secs(secs));
-    let mut record = json!({
-        "schema": "crumbkit/usage/v1",
-        "tool": "shelf",
-        "at": at.to_string(),
-        "ms": 10,
-        "caller": "person",
-        "session": "0123456789abcdef",
-        "args": format!("{secs:016x}"),
-        "trace": "4bf92f3577b34da6a3ce929d0e0e4736",
-        "run": "00f067aa0ba902b7",
-        "exit": 0,
-        "out_bytes": 100,
-    });
-    if !command.is_empty() {
-        record["command"] = json!(command);
-    }
-    for (field, value) in fields.as_object().unwrap() {
-        record[field] = value.clone();
-    }
-    format!("{record}\n")
-}
+use crate::usage::testing::{line, now, tool};
 
 /// Returns the summary of `runs` runs by people, in `sessions` sessions,
 /// since 30 September 2026, with `skipped` skipped records.
@@ -211,6 +181,7 @@ fn a_finding_row_carries_the_figures_of_its_command() {
         json!({
             "runs": 2,
             "help_pages": 1,
+            "help_before": 0,
             "refused": 1,
             "failed": 0,
             "p95_ms": 10,
@@ -283,6 +254,15 @@ fn since_takes_a_humantime_duration_and_defaults_to_7_days() {
     assert_eq!(default.args.since, Duration::from_secs(7 * 86_400));
     assert_eq!(twelve_hours.args.since, Duration::from_secs(12 * 3_600));
     assert!(refused.is_err());
+}
+
+#[test]
+fn log_names_a_file_to_read_in_place_of_the_tool_s_own_log() {
+    let default = Tool::try_parse_from(["tool"]).unwrap();
+    let named = Tool::try_parse_from(["tool", "--log", "copy.jsonl"]).unwrap();
+
+    assert_eq!(default.args.log, None);
+    assert_eq!(named.args.log, Some(PathBuf::from("copy.jsonl")));
 }
 
 #[test]

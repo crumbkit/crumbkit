@@ -83,6 +83,32 @@ fn a_help_page_counts_towards_its_command_s_help_and_not_its_runs_or_times() {
 }
 
 #[test]
+fn the_help_pages_a_session_read_since_its_last_other_run_count_towards_the_next_command() {
+    let help = |session, at, command| {
+        let mut entry = Entry::run(session, at, command);
+        entry.help = true;
+        entry
+    };
+    let entries = [
+        help("a", 1, ""),
+        help("b", 2, ""),
+        help("a", 3, "books"),
+        help("a", 4, "books show"),
+        Entry::run("a", 5, "books show"),
+        Entry::run("a", 6, "books show"),
+        help("a", 7, "books list"),
+        Entry::run("b", 8, "books show"),
+        Entry::run("a", 9, "books list"),
+    ];
+
+    let report = report(&entries);
+
+    assert_eq!(figures(&report, "books show").help_before, 4);
+    assert_eq!(figures(&report, "books list").help_before, 1);
+    assert_eq!(figures(&report, "").help_before, 0);
+}
+
+#[test]
 fn refused_runs_count_the_flags_that_clap_suggested_the_most_suggested_first() {
     let refused = |at, nearest: Option<&str>| {
         let mut entry = Entry::run("a", at, "books show");

@@ -48,6 +48,9 @@ struct Command {
     runs: u64,
     /// The runs that printed a help page.
     help: u64,
+    /// The help pages that the runs' sessions read since their last run
+    /// that printed no help page.
+    help_before: u64,
     /// The refused runs.
     refused: u64,
     /// The refused runs for each flag that clap suggested.
@@ -70,13 +73,16 @@ impl Tally {
     /// Adds the run that `entry` records.
     pub(super) fn add(&mut self, entry: &Entry) {
         self.runs += 1;
-        if let Some(session) = self.sessions.get_mut(&entry.session) {
+        let help_before = if let Some(session) = self.sessions.get_mut(&entry.session) {
             session.add(entry, &mut self.found);
+            session.help_before(entry)
         } else {
             let mut session = Session::default();
             session.add(entry, &mut self.found);
+            let help_before = session.help_before(entry);
             self.sessions.insert(entry.session.clone(), session);
-        }
+            help_before
+        };
         *self.callers.entry(entry.caller.clone()).or_default() += 1;
         let path = entry.command.clone().unwrap_or_default();
         let command = self.commands.entry(path).or_default();
@@ -85,6 +91,7 @@ impl Tally {
             return;
         }
         command.runs += 1;
+        command.help_before += help_before;
         command.ms.push(entry.ms);
         if let Some(bytes) = entry.out_bytes {
             command.out_bytes.push(bytes);
@@ -146,6 +153,7 @@ impl Tally {
                 command: path,
                 runs: command.runs,
                 help: command.help,
+                help_before: command.help_before,
                 refused: command.refused,
                 nearest: most_first(command.nearest),
                 failed: command.failed,

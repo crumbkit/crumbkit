@@ -61,6 +61,12 @@
           "format": "uint64",
           "minimum": 0
         },
+        "help_before": {
+          "description": "The help pages that each run's session read since its last run\nthat printed no help page, summed over the runs.",
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0
+        },
         "help_pages": {
           "description": "The runs that printed the command's help page.",
           "type": "integer",
@@ -119,6 +125,7 @@
       "required": [
         "runs",
         "help_pages",
+        "help_before",
         "refused",
         "failed",
         "typed_full",

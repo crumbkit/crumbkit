@@ -6,7 +6,7 @@ use clap::{Args, Parser, Subcommand};
 use crumbkit::commands::{COMMANDS_LIST, CommandsList};
 use crumbkit::help::{Example, Goal, Group, Guide, Leaf, Topic};
 use crumbkit::schemas::{SCHEMAS_LIST, SCHEMAS_SHOW, SchemasList, SchemasShow};
-use crumbkit::usage::{SELF_USAGE, SelfUsage};
+use crumbkit::usage::{SELF_FIGURES_LIST, SELF_USAGE, SelfFigures, SelfUsage};
 use crumbkit::{Output, Page};
 use crumbkit_aliases::AliasesList;
 use schemars::JsonSchema;
@@ -84,6 +84,18 @@ pub const GUIDE: Guide = Guide::new()
                 Example::new(&["--since", "1d"], "Report the findings of the last day"),
             ])
             .document(SELF_USAGE),
+        Leaf::new(&["self", "figures", "list"])
+            .examples(&[
+                Example::new(
+                    &[],
+                    "Print the figures of each command over the last 7 days",
+                ),
+                Example::new(
+                    &["--log", "usage.jsonl"],
+                    "Print the figures of the commands in a copy of the usage log",
+                ),
+            ])
+            .document(SELF_FIGURES_LIST),
     ])
     .topics(&[Topic::new(
         "catalogue",
@@ -163,6 +175,19 @@ pub(crate) enum SchemasCommand {
 pub(crate) enum SelfCommand {
     /// Report the patterns in shelf's usage log where callers waste effort.
     Usage(SelfUsage),
+    /// Work with the figures of each command in shelf's usage log.
+    Figures {
+        /// What to do with the figures.
+        #[command(subcommand)]
+        command: FiguresCommand,
+    },
+}
+
+/// The commands for the figures in shelf's usage log.
+#[derive(Debug, Subcommand)]
+pub(crate) enum FiguresCommand {
+    /// List the figures of each command in shelf's usage log.
+    List(SelfFigures),
 }
 
 /// The commands for a person's aliases.

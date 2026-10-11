@@ -1,0 +1,184 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "crumbkit/self-figures-list/v1",
+  "description": "The figures of each command in the usage log, and a summary of the runs read.",
+  "type": "object",
+  "properties": {
+    "data": {
+      "description": "The rows of the page, up to the limit.",
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/FiguresRow"
+      }
+    },
+    "schema": {
+      "description": "The id of this document.",
+      "const": "crumbkit/self-figures-list/v1"
+    },
+    "summary": {
+      "$ref": "#/$defs/UsageSummary"
+    },
+    "total": {
+      "description": "The number of rows that matched, of which data holds one page.",
+      "type": "integer",
+      "minimum": 0
+    }
+  },
+  "required": [
+    "schema",
+    "data",
+    "total",
+    "summary"
+  ],
+  "$defs": {
+    "CallerRuns": {
+      "description": "The runs of one caller.",
+      "type": "object",
+      "properties": {
+        "caller": {
+          "description": "The coding agent's id, such as claude-code, person or unknown.",
+          "type": "string"
+        },
+        "runs": {
+          "description": "The caller's runs.",
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "caller",
+        "runs"
+      ]
+    },
+    "FiguresRow": {
+      "description": "The figures of one command in the usage log.",
+      "type": "object",
+      "properties": {
+        "command": {
+          "description": "The command path below the tool's name, such as `books show`, or the\ntool's name for its root command.",
+          "type": "string"
+        },
+        "failed": {
+          "description": "The runs that failed.",
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0
+        },
+        "help_before": {
+          "description": "The help pages that each run's session read since its last run\nthat printed no help page, summed over the runs.",
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0
+        },
+        "help_pages": {
+          "description": "The runs that printed the command's help page.",
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0
+        },
+        "p95_ms": {
+          "description": "The 95th percentile of the runs' wall time in milliseconds, or null\nwhen every run printed help.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint64",
+          "minimum": 0
+        },
+        "p95_out_bytes": {
+          "description": "The 95th percentile of the bytes that the runs wrote to standard\noutput, or null when no run printed a result.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint64",
+          "minimum": 0
+        },
+        "refused": {
+          "description": "The runs whose command line was refused.",
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0
+        },
+        "runs": {
+          "description": "The runs that did not print a help page.",
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0
+        },
+        "typed_all": {
+          "description": "The runs that typed `--all`.",
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0
+        },
+        "typed_full": {
+          "description": "The runs that typed `--full`.",
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0
+        },
+        "typed_long": {
+          "description": "The runs that typed `--long`.",
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "command",
+        "runs",
+        "help_pages",
+        "help_before",
+        "refused",
+        "failed",
+        "typed_full",
+        "typed_all",
+        "typed_long"
+      ]
+    },
+    "UsageSummary": {
+      "description": "The summary of the runs that `self usage` read. The text output prints\nit as one line above the table, such as `1,284 runs in 23 sessions since\n30 Sep: claude-code 1,201, person 83.`",
+      "type": "object",
+      "properties": {
+        "callers": {
+          "description": "The runs of each caller, the most first.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/CallerRuns"
+          }
+        },
+        "runs": {
+          "description": "The runs that the report read.",
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0
+        },
+        "sessions": {
+          "description": "The sessions that the runs came from.",
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0
+        },
+        "since": {
+          "description": "The day in UTC on which the report starts, such as 2026-09-30.",
+          "type": "string"
+        },
+        "skipped": {
+          "description": "The records that the report left out, because they named a command,\nflag, code or caller that the tool does not write.",
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "runs",
+        "sessions",
+        "callers",
+        "since",
+        "skipped"
+      ]
+    }
+  }
+}

@@ -1,0 +1,12 @@
+Work with the figures of each command in shelf's usage log
+
+Usage: shelf self figures [OPTIONS] <COMMAND>
+
+Commands:
+  list  List the figures of each command in shelf's usage log
+
+Options:
+  -h, --help  Print help (see more with '--help')
+
+Global flags: --json, --fields <FIELD>, --long, --full. `shelf self figures --help` describes them.
+Next: shelf self figures <COMMAND> -h

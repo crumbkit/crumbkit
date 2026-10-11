@@ -1,4 +1,4 @@
-//! End-to-end tests of `shelf self usage`. Each test runs the built binary
+//! End-to-end tests of `shelf self usage` and `shelf self figures list`. Each test runs the built binary
 //! with XDG directories in a temporary directory of its own, so the runs
 //! before `self usage` write the log that it reads (ADR-0029).
 //!
@@ -71,6 +71,22 @@ fn self_usage_prints_the_findings_with_their_figures_and_the_summary_as_json() {
     shelf(dir.path(), &["self", "usage", "--json", "--full"])
         .success()
         .stdout_eq(file!["golden/self-usage-json-full.json"]);
+}
+
+#[test]
+fn self_figures_list_prints_the_figures_of_each_command_in_the_log_that_log_names() {
+    let runs = tempfile::tempdir().unwrap();
+    wasteful_runs(runs.path());
+    let reader = tempfile::tempdir().unwrap();
+    let path = log(runs.path());
+
+    shelf(
+        reader.path(),
+        &["self", "figures", "list", "--log", path.to_str().unwrap()],
+    )
+    .success()
+    .stdout_eq(file!["golden/self-figures-list.txt"])
+    .stderr_eq("");
 }
 
 /// Returns the hashes and trace ids in the usage log under `home`.
