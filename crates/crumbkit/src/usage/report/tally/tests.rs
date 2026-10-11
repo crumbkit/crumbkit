@@ -1,6 +1,6 @@
-use super::{Tally, p95};
+use super::{HEAVY_OUTPUT, SLOW, Tally, p95};
 use crate::usage::report::entry::Entry;
-use crate::usage::report::{Count, Figures, Report};
+use crate::usage::report::{Count, Figures, Finding, Kind, Report};
 
 /// Returns the report of `entries`, added in order.
 fn report(entries: &[Entry]) -> Report {
@@ -164,4 +164,111 @@ fn the_95th_percentile_is_the_smallest_value_that_95_percent_are_no_larger_than(
     assert_eq!(p95(&mut [7]), Some(7));
     assert_eq!(p95(&mut twenty), Some(19));
     assert_eq!(p95(&mut twenty_one), Some(20));
+}
+
+/// Returns the kind, command and runs of each finding of `report`, in order.
+fn kinds(report: &Report) -> Vec<(Kind, &str, u64)> {
+    report
+        .findings
+        .iter()
+        .map(|finding| (finding.kind, finding.command.as_str(), finding.runs))
+        .collect()
+}
+
+#[test]
+fn a_command_with_a_refused_run_is_a_usage_error_finding_that_counts_them() {
+    let mut refused = Entry::run("a", 1, "books show");
+    refused.exit = Some(2);
+
+    let report = report(&[refused, Entry::run("a", 2, "books show")]);
+
+    assert_eq!(kinds(&report), [(Kind::UsageError, "books show", 1)]);
+}
+
+#[test]
+fn a_command_whose_95th_percentile_output_reaches_the_limit_is_heavy_and_counts_the_heavy_runs() {
+    let sized = |at, bytes| {
+        let mut entry = Entry::run("a", at, "books list");
+        entry.out_bytes = Some(bytes);
+        entry
+    };
+    let heavy: Vec<Entry> = (0..20).map(|at| sized(at, HEAVY_OUTPUT)).collect();
+    let under: Vec<Entry> = (0..20).map(|at| sized(at, HEAVY_OUTPUT - 1)).collect();
+    let one_heavy_in_twenty: Vec<Entry> = (0..20)
+        .map(|at| sized(at, if at == 0 { HEAVY_OUTPUT } else { 10 }))
+        .collect();
+
+    assert_eq!(
+        kinds(&report(&heavy)),
+        [(Kind::HeavyOutput, "books list", 20)]
+    );
+    assert_eq!(kinds(&report(&under)), []);
+    assert_eq!(kinds(&report(&one_heavy_in_twenty)), []);
+}
+
+#[test]
+fn a_command_whose_95th_percentile_wall_time_reaches_a_second_is_slow_and_counts_the_slow_runs() {
+    let timed = |at, ms| {
+        let mut entry = Entry::run("a", at, "books list");
+        entry.ms = ms;
+        entry
+    };
+
+    let slow = report(&[timed(1, SLOW), timed(2, 10)]);
+    let quick = report(&[timed(1, SLOW - 1)]);
+
+    assert_eq!(kinds(&slow), [(Kind::SlowCommand, "books list", 1)]);
+    assert_eq!(kinds(&quick), []);
+}
+
+#[test]
+fn findings_come_most_runs_first_then_in_the_order_of_their_kind_and_command() {
+    let refused = |at, command| {
+        let mut entry = Entry::run("a", at, command);
+        entry.exit = Some(2);
+        entry
+    };
+    let mut slow = Entry::run("a", 10, "books list");
+    slow.ms = SLOW;
+    let entries = [
+        refused(1, "books show"),
+        refused(2, "books list"),
+        refused(3, "books list"),
+        slow,
+    ];
+
+    let report = report(&entries);
+
+    assert_eq!(
+        kinds(&report),
+        [
+            (Kind::UsageError, "books list", 2),
+            (Kind::UsageError, "books show", 1),
+            (Kind::SlowCommand, "books list", 1),
+        ]
+    );
+}
+
+#[test]
+fn a_session_finding_reaches_the_report_with_the_findings_of_its_figures() {
+    let mut help_pages: Vec<Entry> = (0..3)
+        .map(|at| {
+            let mut entry = Entry::run("a", at, "books list");
+            entry.help = true;
+            entry
+        })
+        .collect();
+    help_pages.push(Entry::run("b", 4, "books list"));
+
+    let report = report(&help_pages);
+
+    assert_eq!(
+        report.findings,
+        [Finding {
+            kind: Kind::HelpLoop,
+            command: "books list".to_owned(),
+            runs: 3,
+            code: None,
+        }]
+    );
 }

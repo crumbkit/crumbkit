@@ -72,6 +72,12 @@ impl Entry {
         (entry.schema == SCHEMA).then_some(entry)
     }
 
+    /// Returns whether the run did what the caller asked: it exited with 0,
+    /// printed no help page and was not interrupted.
+    pub(super) fn succeeded(&self) -> bool {
+        self.exit == Some(0) && !self.help && !self.interrupted
+    }
+
     /// Returns whether clap or `--fields` refused the run's command line,
     /// which exits with 2 (ADR-0002).
     pub(super) fn refused(&self) -> bool {

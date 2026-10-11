@@ -1,23 +1,38 @@
-//! The running reduction of the usage log's records into counts.
+//! The running reduction of the usage log's records into counts and
+//! findings.
 
-use std::collections::{BTreeMap, HashSet};
+use std::collections::{BTreeMap, HashMap};
 
 use super::entry::Entry;
-use super::{Count, Figures, Report};
+use super::session::{Found, Session};
+use super::{Count, Figures, Finding, Kind, Report};
 
 #[cfg(test)]
 mod tests;
 
+/// The 95th percentile of a command's output, in bytes, at or above which
+/// the command is a heavy-output finding. 20,000 bytes are about 5,000
+/// tokens of a coding agent's context.
+const HEAVY_OUTPUT: u64 = 20_000;
+
+/// The 95th percentile of a command's wall time, in milliseconds, at or
+/// above which the command is a slow-command finding.
+const SLOW: u64 = 1_000;
+
 /// The counts of the records read so far.
 ///
 /// Its memory grows with the number of records, by two numbers for each
-/// run of a command, and never holds a record's line.
+/// run of a command and what each session keeps of its earlier runs, and
+/// never holds a record's line.
 #[derive(Debug, Default)]
 pub(in crate::usage) struct Tally {
     /// The number of runs.
     runs: u64,
-    /// The session hashes seen.
-    sessions: HashSet<String>,
+    /// What each session's findings need of its earlier runs, by the
+    /// session's hash.
+    sessions: HashMap<String, Session>,
+    /// The runs that each finding of a session counts so far.
+    found: Found,
     /// The runs of each caller.
     callers: BTreeMap<String, u64>,
     /// What each command path's runs did.
@@ -53,8 +68,12 @@ impl Tally {
     /// Adds the run that `entry` records.
     pub(super) fn add(&mut self, entry: &Entry) {
         self.runs += 1;
-        if !self.sessions.contains(&entry.session) {
-            self.sessions.insert(entry.session.clone());
+        if let Some(session) = self.sessions.get_mut(&entry.session) {
+            session.add(entry, &mut self.found);
+        } else {
+            let mut session = Session::default();
+            session.add(entry, &mut self.found);
+            self.sessions.insert(entry.session.clone(), session);
         }
         *self.callers.entry(entry.caller.clone()).or_default() += 1;
         let path = entry.command.clone().unwrap_or_default();
@@ -83,28 +102,65 @@ impl Tally {
     }
 
     /// Returns the report of every record added.
-    pub(in crate::usage) fn report(self) -> Report {
-        let commands = self
-            .commands
-            .into_iter()
-            .map(|(path, mut command)| Figures {
+    pub(in crate::usage) fn report(mut self) -> Report {
+        for session in self.sessions.values() {
+            session.end(&mut self.found);
+        }
+        let mut findings: Vec<Finding> = self.found.into_findings().collect();
+        let mut commands = Vec::with_capacity(self.commands.len());
+        for (path, mut command) in self.commands {
+            // `p95` sorts the values, which the findings then count from.
+            let p95_ms = p95(&mut command.ms);
+            let p95_out_bytes = p95(&mut command.out_bytes);
+            let at_least = |values: &[u64], limit: u64| {
+                (values.len() - values.partition_point(|value| *value < limit)) as u64
+            };
+            let mut finding = |kind, runs| {
+                findings.push(Finding {
+                    kind,
+                    command: path.clone(),
+                    runs,
+                    code: None,
+                });
+            };
+            if command.refused > 0 {
+                finding(Kind::UsageError, command.refused);
+            }
+            if p95_out_bytes.is_some_and(|bytes| bytes >= HEAVY_OUTPUT) {
+                finding(
+                    Kind::HeavyOutput,
+                    at_least(&command.out_bytes, HEAVY_OUTPUT),
+                );
+            }
+            if p95_ms.is_some_and(|ms| ms >= SLOW) {
+                finding(Kind::SlowCommand, at_least(&command.ms, SLOW));
+            }
+            commands.push(Figures {
                 command: path,
                 runs: command.runs,
                 help: command.help,
                 refused: command.refused,
                 nearest: most_first(command.nearest),
                 failed: command.failed,
-                p95_ms: p95(&mut command.ms),
-                p95_out_bytes: p95(&mut command.out_bytes),
+                p95_ms,
+                p95_out_bytes,
                 full: command.full,
                 all: command.all,
                 long: command.long,
-            })
-            .collect();
+            });
+        }
+        findings.sort_by(|a, b| {
+            b.runs
+                .cmp(&a.runs)
+                .then(a.kind.cmp(&b.kind))
+                .then_with(|| a.command.cmp(&b.command))
+                .then_with(|| a.code.cmp(&b.code))
+        });
         Report {
             runs: self.runs,
             sessions: self.sessions.len() as u64,
             callers: most_first(self.callers),
+            findings,
             commands,
         }
     }

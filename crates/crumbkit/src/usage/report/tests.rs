@@ -154,14 +154,15 @@ fn line_of(entry: &Entry) -> String {
 const COMMANDS: [&str; 3] = ["books list", "books show", ""];
 
 /// Generates the runs of a log: up to 60 runs from three sessions, each
-/// session's runs in the order of their end times, which are 0 to 150
+/// session's runs in the order of their end times, which are 0 to 70
 /// seconds apart within the session. A run prints help, is refused, fails,
-/// shows a cut-short listing or succeeds, with up to two ids and some of
-/// `--all`, `--limit` and `--full`, so every figure and finding occurs.
+/// shows a cut-short listing or succeeds. It takes up to 1.4 seconds and
+/// has up to two ids and one of `--all`, `--limit` and `--full` or none, so
+/// every figure and finding occurs.
 fn runs() -> impl Strategy<Value = Vec<Entry>> {
     let run = (
         0..3_usize,
-        0..150_u64,
+        0..70_u64,
         0..3_usize,
         0..5_u8,
         0..3_u64,
@@ -174,7 +175,8 @@ fn runs() -> impl Strategy<Value = Vec<Entry>> {
                 clocks[session] += gap;
                 let mut entry =
                     Entry::run(&format!("s{session}"), clocks[session], COMMANDS[command]);
-                entry.args = format!("{command} {outcome} {ids} {flags}");
+                entry.args = format!("{command} {ids} {flags}");
+                entry.ms = gap * 20;
                 entry.ids = (command == 1).then_some(ids);
                 entry.flags = [&[][..], &["--all"], &["--limit"], &["--full"]][flags]
                     .iter()
