@@ -1,9 +1,9 @@
 # ADR-0007. JSON schemas
 
 - Every JSON document is an object with a `schema` id and the result under `data` ([`finish`](../../../crates/crumbkit/src/output.rs)).
-- A listing's document always holds `total`, with every output flag, so a program can tell whether it has every row ([`Listing`](../../../crates/crumbkit/src/listing.rs)).
-- A batch's document always holds `failures`, which is empty when every id worked, as `total` is present for every listing ([`Batch`](../../../crates/crumbkit/src/batch.rs)). Each entry has the fields of the failure document except `schema`, and crumbkit writes both from the same code, so the two shapes cannot drift.
-- A document id is a typed constant, a [`Document`](../../../crates/crumbkit/src/document.rs), so the compiler ties the id to its result type and rejects a malformed id.
+- A listing's document always holds `total`, with every output flag, so a program can tell whether it has every row ([`Listing`](../../../crates/crumbkit-core/src/listing.rs)).
+- A batch's document always holds `failures`, which is empty when every id worked, as `total` is present for every listing ([`Batch`](../../../crates/crumbkit-core/src/batch.rs)). Each entry has the fields of the failure document except `schema`, and crumbkit writes both from the same code, so the two shapes cannot drift.
+- A document id is a typed constant, a [`Document`](../../../crates/crumbkit-core/src/document.rs), so the compiler ties the id to its result type and rejects a malformed id.
 - Every JSON document type has a 2020-12 `JsonSchema`, and a test compares each of crumbkit's schemas with its checked-in file in a `schemas` directory. A tool will serve its schemas through `schemas list` and `schemas show` once those commands exist. The usage record is one line of a log, so it has its fields at the top level beside `schema`, without `data` (ADR-0029).
 - With the `miette` feature, the failure document and each batch failure hold the diagnostic's labels, and the source line stays out of the JSON. The checked-in schema lists `labels` whether or not the feature is on, so there is one schema file, and the optional field keeps the `v1` id because readers ignore unknown fields.
 - Removing, renaming or retyping a field, making it optional, or adding an enum value needs a new `/vN` id. Readers ignore unknown fields.

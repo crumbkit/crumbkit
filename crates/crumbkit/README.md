@@ -134,6 +134,8 @@ The shelf example tool shows the exact output of a fuller tool in its
   [ADR-0029] and [ADR-0030].
 - The JSON Schemas of crumbkit's own documents: [schemas], with [ADR-0007].
 - The tests that check a tool against these conventions: [crumbkit-test].
+- The types that need no clap, which crumbkit re-exports: [crumbkit-core],
+  with [ADR-0032].
 
 Licensed under either of Apache License, Version 2.0 or MIT license at your
 option.
@@ -141,25 +143,26 @@ option.
 [golden files]: ../../examples/shelf/tests/golden
 [`Output`]: src/output.rs
 [`finish`]: src/output.rs
-[`Row`]: src/row.rs
-[`Document`]: src/document.rs
-[`Listing`]: src/listing.rs
+[`Row`]: ../crumbkit-core/src/row.rs
+[`Document`]: ../crumbkit-core/src/document.rs
+[`Listing`]: ../crumbkit-core/src/listing.rs
 [`Page`]: src/page.rs
-[`Batch`]: src/batch.rs
-[`Failure`]: src/failure.rs
-[`Recovery`]: src/failure.rs
-[`Code`]: src/code.rs
-[`Spelling`]: src/code.rs
-[`Error`]: src/failure.rs
+[`Batch`]: ../crumbkit-core/src/batch.rs
+[`Failure`]: ../crumbkit-core/src/failure.rs
+[`Recovery`]: ../crumbkit-core/src/failure.rs
+[`Code`]: ../crumbkit-core/src/code.rs
+[`Spelling`]: ../crumbkit-core/src/code.rs
+[`Error`]: ../crumbkit-core/src/failure.rs
 [`parse`]: src/parse.rs
 [`help`]: src/help.rs
-[`Call`]: src/call.rs
+[`Call`]: ../crumbkit-core/src/call.rs
 [`commands`]: src/commands.rs
 [`fetch_each`]: src/fetch.rs
 [`usage`]: src/usage.rs
 [`trace`]: src/trace.rs
 [schemas]: schemas
 [crumbkit-test]: ../crumbkit-test/README.md
+[crumbkit-core]: ../crumbkit-core/README.md
 [ADR-0001]: ../../docs/decisions/api/0001-error-model.md
 [ADR-0007]: ../../docs/decisions/api/0007-json-schemas.md
 [ADR-0016]: ../../docs/decisions/api/output/0016-result-formats.md
@@ -169,3 +172,4 @@ option.
 [ADR-0026]: ../../docs/decisions/api/help/0026-branch-export.md
 [ADR-0029]: ../../docs/decisions/api/usage/0029-usage-log.md
 [ADR-0030]: ../../docs/decisions/api/usage/0030-trace-context.md
+[ADR-0032]: ../../docs/decisions/api/0032-core-crate.md

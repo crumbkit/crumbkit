@@ -446,7 +446,7 @@ fn write_next<T: Rows>(
     let (Some(command), Some((call, phrase))) = (command, value.next_step()) else {
         return Ok(());
     };
-    match call.render_built(command) {
+    match crate::call::render_built(call, command) {
         Ok(rendered) => writeln!(out, "Next: {rendered} {phrase}"),
         Err(_) => Ok(()),
     }

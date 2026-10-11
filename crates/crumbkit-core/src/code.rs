@@ -18,7 +18,7 @@ mod tests;
 /// [`Spelling`], so every printed code goes through that spelling.
 ///
 /// ```
-/// use crumbkit::{Code, Spelling};
+/// use crumbkit_core::{Code, Spelling};
 ///
 /// const NOT_FOUND: Code = Code::new("shelf", "books", "not_found");
 ///
@@ -44,7 +44,7 @@ impl Code {
     /// fails to compile:
     ///
     /// ```compile_fail
-    /// const BAD: crumbkit::Code = crumbkit::Code::new("shelf", "books", "not-found");
+    /// const BAD: crumbkit_core::Code = crumbkit_core::Code::new("shelf", "books", "not-found");
     /// ```
     #[must_use]
     pub const fn new(component: &'static str, area: &'static str, reason: &'static str) -> Self {
@@ -89,7 +89,7 @@ impl Code {
 
 /// How a tool spells its failure codes as text.
 ///
-/// A tool passes one spelling to [`finish`](crate::finish), and its test
+/// A tool passes one spelling to `crumbkit::finish`, and its test
 /// passes the same spelling to crumbkit-test's codes check. The built-in
 /// spellings join the three segments of a code with a separator. A tool that
 /// needs another form gives its own function to [`Spelling::custom`].
@@ -123,7 +123,7 @@ impl Spelling {
     /// ```
     /// use std::fmt;
     ///
-    /// use crumbkit::{Code, Spelling};
+    /// use crumbkit_core::{Code, Spelling};
     ///
     /// fn upper(code: &Code, f: &mut fmt::Formatter<'_>) -> fmt::Result {
     ///     write!(f, "{}_{}", code.component().to_uppercase(), code.reason().to_uppercase())
@@ -141,7 +141,7 @@ impl Spelling {
 
     /// Returns `code` as text in this spelling.
     ///
-    /// [`finish`](crate::finish) prints a failure's code this way, and a test
+    /// `crumbkit::finish` prints a failure's code this way, and a test
     /// calls it to check how a tool's codes print.
     #[must_use]
     pub fn spell(self, code: &Code) -> String {

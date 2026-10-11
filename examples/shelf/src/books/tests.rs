@@ -1,7 +1,7 @@
 //! Tests for the catalogue, its failures and the calls that shelf prints.
 
 use clap::CommandFactory as _;
-use crumbkit::{Failure as _, Recovery, Rows as _};
+use crumbkit::{Failure as _, Recovery, RenderCall as _, Rows as _};
 
 use super::{BooksError, IdsFileProblem, parse_ids, show, show_call};
 use crate::cli::{BooksShow, Cli};
