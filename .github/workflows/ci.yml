@@ -32,14 +32,9 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      # The ubuntu-slim image has no rustup, so this installs it with the
-      # official installer and no toolchain.
-      - run: |
-          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal --default-toolchain none
-          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
-      # rustup installs the toolchain that rust-toolchain.toml pins. It runs
-      # before rust-cache, which reads the rustc version for its cache key.
-      - run: rustup toolchain install
+      # This installs rustup and the pinned toolchain. It runs before
+      # rust-cache, which reads the rustc version for its cache key.
+      - uses: $/.github/actions/install-rust
       # install-action runs before rust-cache, so the cache leaves out the
       # tool binaries that install-action downloads on every run.
       - uses: taiki-e/install-action@f7e5d7c961414b23f5b25b2da9294395d08513ad # v2.87.26
@@ -76,14 +71,9 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      # The ubuntu-slim image has no rustup, so this installs it with the
-      # official installer and no toolchain.
-      - run: |
-          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal --default-toolchain none
-          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
-      # rustup installs the toolchain that rust-toolchain.toml pins. It runs
-      # before rust-cache, which reads the rustc version for its cache key.
-      - run: rustup toolchain install
+      # This installs rustup and the pinned toolchain. It runs before
+      # rust-cache, which reads the rustc version for its cache key.
+      - uses: $/.github/actions/install-rust
       # install-action runs before rust-cache, so the cache leaves out the
       # tool binaries that install-action downloads on every run.
       - uses: taiki-e/install-action@f7e5d7c961414b23f5b25b2da9294395d08513ad # v2.87.26

@@ -10,7 +10,6 @@
 mod check;
 mod ci_time;
 
-use std::ffi::OsStr;
 use std::fs;
 use std::io::{self, Write};
 use std::path::Path;
@@ -148,8 +147,9 @@ fn run_seconds() -> io::Result<Vec<u64>> {
 }
 
 /// Lists the repository's files with `git ls-files`, including untracked files
-/// that git does not ignore, and reads the Rust and Markdown files among them.
-/// The checks read no other kind of file.
+/// that git does not ignore, and reads every one of them. The citation check
+/// reads every text file, and the listing check needs every path, so that a
+/// node record may link to any file in the repository.
 fn read_files() -> io::Result<Vec<File>> {
     #[expect(
         clippy::disallowed_methods,
@@ -178,15 +178,14 @@ fn read_files() -> io::Result<Vec<File>> {
 
     let mut files = Vec::new();
     // With -z, git separates paths with a NUL byte and does not quote them.
-    for path in listing.split('\0') {
-        let extension = Path::new(path).extension().and_then(OsStr::to_str);
-        if !matches!(extension, Some("rs" | "md")) {
-            continue;
-        }
-        match fs::read_to_string(Path::new(ROOT).join(path)) {
-            Ok(contents) => files.push(File {
+    for path in listing.split('\0').filter(|path| !path.is_empty()) {
+        match fs::read(Path::new(ROOT).join(path)) {
+            Ok(bytes) => files.push(File {
                 path: path.to_owned(),
-                contents,
+                // A file that is not UTF-8 text, such as an image, keeps its
+                // path so that a link to it resolves, and has no contents,
+                // because no check reads binary data.
+                contents: String::from_utf8(bytes).unwrap_or_default(),
             }),
             // git still lists a tracked file that was deleted from the working
             // tree until the deletion is staged, and a deleted file has no

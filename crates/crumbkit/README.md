@@ -311,13 +311,13 @@ writes no line. A line looks like this:
 
 The line records the shape of the run and never a value that the caller
 typed. The command path and the flags come from the tool's command tree, the
-counts are numbers, and the command line and the session appear only as
-keyed hashes whose key stays in `usage.key` beside the log. The directory
-has mode 0700, and both files have mode 0600. `caller` names the coding
-agent that ran the tool, or is `person` or `unknown`. A run waits at most
-100 ms for the file's lock, a line over 1 KiB is dropped, and past 10 MB the
-file keeps its newest 10,000 lines. The schema of the record is
-`schemas/usage-v1.json`.
+counts are numbers, and the command line and the session appear only as keyed
+hashes whose key stays in `usage.key` beside the log. The directory has mode
+0700, and the log, the key and the lock file `usage.lock` have mode 0600.
+`caller` names the coding agent that ran the tool, or is `person` or
+`unknown`. A run waits at most 100 ms for the lock, a line over 1 KiB is
+dropped, and past 10 MB the file keeps its newest whole lines that fit in 5
+MB. The schema of the record is `schemas/usage-v1.json`.
 
 `crumbkit::usage::section(document, &value)` adds the tool's own fields to
 the line under `ext`. The tool keeps values out of them, because crumbkit

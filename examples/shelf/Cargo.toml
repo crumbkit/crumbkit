@@ -40,6 +40,9 @@ crumbkit-test = { workspace = true }
 snapbox = { workspace = true, features = ["cmd"] }
 # The usage log tests read each line of the log as JSON.
 serde_json = { workspace = true }
+# Each end-to-end test runs shelf with XDG directories in a temporary
+# directory of its own, which tempfile removes when the test ends.
+tempfile = { workspace = true }
 
 [lints]
 workspace = true

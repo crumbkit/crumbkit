@@ -300,3 +300,20 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   cannot start, under their own heading.
 - crumbkit-test's `check_help_sizes` reports a page that fails to render
   once, without a second problem for that command's budget.
+- Past 10 MB, the usage log keeps its newest whole lines that fit in 5 MB,
+  so a trim leaves the file well under the limit. It used to keep 9,999
+  lines, which could stay over 10 MB and rewrite the file on every run.
+- A usage-log line that has no newline, because a run ended while it wrote,
+  is dropped at the next trim, and the next line starts on a new line.
+- The usage log's key goes into place only once it holds its 16 bytes, so a
+  run that ends while it creates the key no longer stops every later line.
+  A key file of the wrong length is replaced with a new key.
+- SIGINT or SIGTERM during the usage log's write at the end of a run waits
+  for the write to finish, for at most 500 ms, before it ends the process,
+  so the signal no longer cuts the line in half.
+- A trim of the usage log writes the kept lines to a temporary file and
+  renames it over the log, under a lock on a separate `usage.lock`, so a run
+  that ends during a trim no longer leaves an empty log.
+- When `main` ends while the usage log's signal thread writes the line, the
+  guard waits for the write, for at most 500 ms, so the process no longer
+  exits in the middle of the line.

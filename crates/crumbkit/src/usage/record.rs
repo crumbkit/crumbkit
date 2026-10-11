@@ -8,9 +8,12 @@
 use std::fmt::Write as _;
 use std::hash::Hasher as _;
 
+use clap::{Arg, Command};
 use schemars::JsonSchema;
 use serde::Serialize;
 use siphasher::sip::SipHasher24;
+
+use crate::{Code, Spelling};
 
 #[cfg(test)]
 mod tests;
@@ -125,17 +128,48 @@ pub(super) struct Run {
 /// A name from the tool's own vocabulary: a command path, a flag, a version
 /// or a failure code.
 ///
-/// crumbkit builds every name from the tool's command tree and its codes,
-/// and never from a word that the caller typed.
+/// crumbkit reads every name from the tool's clap command tree or its codes,
+/// and never from a word that the caller typed: each constructor takes a
+/// `clap::Command`, a `clap::Arg` or a crumbkit `Code`.
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Serialize, JsonSchema)]
 #[serde(transparent)]
 pub(super) struct Name(String);
 
 impl Name {
-    /// Returns the name `text`, which the caller read from the tool's
-    /// command tree or its codes.
-    pub(super) fn new(text: impl Into<String>) -> Self {
-        Self(text.into())
+    /// Returns the name of `command`, such as `shelf`.
+    pub(super) fn command(command: &Command) -> Self {
+        Self(command.get_name().to_owned())
+    }
+
+    /// Returns the version of `command`, or `None` when it has none.
+    pub(super) fn version(command: &Command) -> Option<Self> {
+        command
+            .get_version()
+            .map(|version| Self(version.to_owned()))
+    }
+
+    /// Returns the names of `commands`, a path of subcommands below the
+    /// tool's root, joined with spaces, such as `books show`, or `None` for
+    /// an empty path.
+    pub(super) fn path(commands: &[&Command]) -> Option<Self> {
+        let names: Vec<&str> = commands.iter().map(|command| command.get_name()).collect();
+        (!names.is_empty()).then(|| Self(names.join(" ")))
+    }
+
+    /// Returns the name of `arg` as a flag: `--long`, or `-s` when it has no
+    /// long name, or `None` for a positional argument.
+    pub(super) fn flag(arg: &Arg) -> Option<Self> {
+        match (arg.get_long(), arg.get_short()) {
+            (Some(long), _) => Some(Self(format!("--{long}"))),
+            (None, Some(short)) => Some(Self(format!("-{short}"))),
+            (None, None) => None,
+        }
+    }
+
+    /// Returns `code` in the tool's `spelling`, such as
+    /// `shelf::books::not_found`.
+    pub(super) fn code(spelling: Spelling, code: &Code) -> Self {
+        Self(spelling.spell(code))
     }
 
     /// Returns the name as text.

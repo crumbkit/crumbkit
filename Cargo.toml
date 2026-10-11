@@ -103,6 +103,13 @@ tracing-core = { version = "0.1.36", default-features = false }
 # Only tests use it.
 snapbox = { version = "1.2.2", default-features = false }
 
+# tempfile gives each of shelf's end-to-end tests its own XDG directories,
+# which it removes when the test ends (ADR-0005). Only tests use it. Its
+# default `getrandom` feature seeds the directory names from the operating
+# system, and without it tempfile seeds them with fastrand, which is enough
+# for names that only need to differ between tests.
+tempfile = { version = "3.27.0", default-features = false }
+
 # proptest checks the code segment rule, the predefined spellings and table
 # rendering against generated inputs (ADR-0006). Only crumbkit's tests use it.
 proptest = { version = "1.11.0", default-features = false }

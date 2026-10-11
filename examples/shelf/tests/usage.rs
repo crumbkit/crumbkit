@@ -1,36 +1,15 @@
 //! End-to-end tests of shelf's usage log. Each test runs the built binary
-//! with a state directory of its own and reads the lines that the runs
-//! appended to `shelf/usage.jsonl` there (ADR-0029).
+//! with XDG directories in a temporary directory of its own, which is
+//! removed when the test ends, and reads the lines that the runs appended to
+//! `shelf/usage.jsonl` there (ADR-0029).
 
 use std::fs;
-use std::io;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 use clap::CommandFactory as _;
 use serde_json::{Value, json};
 use shelf::Cli;
 use snapbox::cmd::{Command, OutputAssert};
-
-/// Returns an empty directory for the test named `test`, with the
-/// directories `config` and `state` under it still to be created by shelf.
-///
-/// # Errors
-///
-/// Returns the I/O error of a directory left by an earlier run that cannot
-/// be removed.
-fn home(test: &str) -> io::Result<PathBuf> {
-    let home = Path::new(env!("CARGO_TARGET_TMPDIR")).join(test);
-    #[expect(
-        clippy::disallowed_methods,
-        reason = "this helper owns the tests' file removals, which empty the directory of an earlier run"
-    )]
-    match fs::remove_dir_all(&home) {
-        Ok(()) => {}
-        Err(error) if error.kind() == io::ErrorKind::NotFound => {}
-        Err(error) => return Err(error),
-    }
-    Ok(home)
-}
 
 /// Runs the built `shelf` binary with `args`, a cleared environment and XDG
 /// directories under `home`, and returns its output for assertions.
@@ -94,12 +73,13 @@ fn stable(mut line: Value) -> Value {
 
 #[test]
 fn a_run_appends_one_line_with_its_command_flags_exit_code_and_output_size() {
-    let home = home("usage-run").unwrap();
+    let dir = tempfile::tempdir().unwrap();
+    let home = dir.path();
 
-    let run = shelf(&home, &["books", "list", "--limit", "2", "--json"]).success();
+    let run = shelf(home, &["books", "list", "--limit", "2", "--json"]).success();
 
     let out_bytes = run.get_output().stdout.len();
-    let lines = lines(&home).unwrap();
+    let lines = lines(home).unwrap();
     assert_eq!(lines.len(), 1);
     assert_eq!(
         stable(lines[0].clone()),
@@ -125,11 +105,12 @@ fn a_run_appends_one_line_with_its_command_flags_exit_code_and_output_size() {
 
 #[test]
 fn a_refused_run_records_how_many_flags_were_unknown_and_the_nearest_real_one() {
-    let home = home("usage-refused").unwrap();
+    let dir = tempfile::tempdir().unwrap();
+    let home = dir.path();
 
-    shelf(&home, &["books", "list", "--al"]).code(2);
+    shelf(home, &["books", "list", "--al"]).code(2);
 
-    let line = stable(lines(&home).unwrap().remove(0));
+    let line = stable(lines(home).unwrap().remove(0));
     assert_eq!(line["command"], "books list");
     assert_eq!(line["unknown_flags"], 1);
     assert_eq!(line["nearest"], "--all");
@@ -140,12 +121,13 @@ fn a_refused_run_records_how_many_flags_were_unknown_and_the_nearest_real_one() 
 
 #[test]
 fn a_request_for_help_records_the_command_and_which_page() {
-    let home = home("usage-help").unwrap();
+    let dir = tempfile::tempdir().unwrap();
+    let home = dir.path();
 
-    shelf(&home, &["help", "books", "show"]).success();
-    shelf(&home, &["books", "-h"]).success();
+    shelf(home, &["help", "books", "show"]).success();
+    shelf(home, &["books", "-h"]).success();
 
-    let lines = lines(&home).unwrap();
+    let lines = lines(home).unwrap();
     assert_eq!(lines[0]["help"], "long");
     assert_eq!(lines[0]["command"], "books show");
     assert_eq!(lines[1]["help"], "short");
@@ -155,7 +137,8 @@ fn a_request_for_help_records_the_command_and_which_page() {
 
 #[test]
 fn a_run_of_an_alias_records_the_alias_and_the_command_it_expanded_to() {
-    let home = home("usage-alias").unwrap();
+    let dir = tempfile::tempdir().unwrap();
+    let home = dir.path();
     #[expect(
         clippy::disallowed_methods,
         reason = "this test owns its file writes, which set up the aliases file"
@@ -169,9 +152,9 @@ fn a_run_of_an_alias_records_the_alias_and_the_command_it_expanded_to() {
         .unwrap();
     }
 
-    shelf(&home, &["firsts", "--limit", "1"]).success();
+    shelf(home, &["firsts", "--limit", "1"]).success();
 
-    let line = stable(lines(&home).unwrap().remove(0));
+    let line = stable(lines(home).unwrap().remove(0));
     assert_eq!(line["alias"], true);
     assert_eq!(line["command"], "books list");
     assert_eq!(line["flags"], json!(["--limit", "--long"]));
@@ -179,12 +162,13 @@ fn a_run_of_an_alias_records_the_alias_and_the_command_it_expanded_to() {
 
 #[test]
 fn a_run_with_a_valid_traceparent_records_the_caller_s_trace_and_names_the_caller_as_parent() {
-    let home = home("usage-traced").unwrap();
+    let dir = tempfile::tempdir().unwrap();
+    let home = dir.path();
     let traceparent = "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01";
 
-    shelf_with(&home, &["books", "list"], &[("TRACEPARENT", traceparent)]).success();
+    shelf_with(home, &["books", "list"], &[("TRACEPARENT", traceparent)]).success();
 
-    let line = lines(&home).unwrap().remove(0);
+    let line = lines(home).unwrap().remove(0);
     assert_eq!(line["trace"], "4bf92f3577b34da6a3ce929d0e0e4736");
     assert_eq!(line["parent"], "00f067aa0ba902b7");
     assert_ne!(line["run"], "00f067aa0ba902b7");
@@ -192,12 +176,13 @@ fn a_run_with_a_valid_traceparent_records_the_caller_s_trace_and_names_the_calle
 
 #[test]
 fn runs_without_a_traceparent_each_start_a_new_trace_with_no_parent() {
-    let home = home("usage-new-trace").unwrap();
+    let dir = tempfile::tempdir().unwrap();
+    let home = dir.path();
 
-    shelf(&home, &["books", "list"]).success();
-    shelf(&home, &["books", "list"]).success();
+    shelf(home, &["books", "list"]).success();
+    shelf(home, &["books", "list"]).success();
 
-    let lines = lines(&home).unwrap();
+    let lines = lines(home).unwrap();
     for line in &lines {
         assert_eq!(stable(line.clone()).get("parent"), None);
     }
@@ -207,7 +192,8 @@ fn runs_without_a_traceparent_each_start_a_new_trace_with_no_parent() {
 
 #[test]
 fn no_line_holds_a_value_that_the_caller_typed() {
-    let home = home("usage-planted").unwrap();
+    let dir = tempfile::tempdir().unwrap();
+    let home = dir.path();
     let runs: [&[&str]; 11] = [
         &["books", "list", "--fields", "s3cr3t-fields-PLANTED"],
         &["books", "list", "--fields=s3cr3t-fields-equals-PLANTED"],
@@ -241,10 +227,10 @@ fn no_line_holds_a_value_that_the_caller_typed() {
     ];
 
     for args in runs {
-        let _ = shelf(&home, args);
+        let _ = shelf(home, args);
     }
     for env in contexts {
-        let _ = shelf_with(&home, &["books", "list"], env);
+        let _ = shelf_with(home, &["books", "list"], env);
     }
 
     let log = fs::read_to_string(home.join("state").join("shelf").join("usage.jsonl")).unwrap();
