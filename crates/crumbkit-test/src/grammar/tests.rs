@@ -109,7 +109,7 @@ fn an_argument_named_dry_run_fails_anywhere_in_the_tree() {
 }
 
 #[test]
-fn a_command_named_or_aliased_help_at_any_level_fails_the_check() {
+fn a_command_below_the_one_passed_in_named_or_aliased_help_fails_the_check() {
     let list = || Command::new("list");
     let shelf = Command::new("shelf")
         .subcommand(Command::new("help").subcommand(list()))
@@ -125,4 +125,13 @@ fn a_command_named_or_aliased_help_at_any_level_fails_the_check() {
          shelf help: the command answers to `help`, and crumbkit reserves that word for asking for help\n\
          shelf books guides: the command answers to `help`, and crumbkit reserves that word for asking for help"
     );
+}
+
+#[test]
+fn the_command_passed_in_may_be_named_or_aliased_help() {
+    let help = Command::new("help")
+        .alias("help")
+        .subcommand(Command::new("books").subcommand(Command::new("list")));
+
+    check_grammar(&help, &[], &[]);
 }

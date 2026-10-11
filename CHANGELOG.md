@@ -46,6 +46,7 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   breaks crumbkit's conventions ([ADR-0025]).
 - crumbkit-test: [`check_help_goldens`] and [`check_examples`] compare help
   pages and example output with golden files ([ADR-0004]).
+- crumbkit-test: [`check_guide`] fails on two groups with one path.
 - crumbkit-aliases: the new crate expands a person's command aliases and
   lists them ([crumbkit-aliases], [ADR-0027]).
 
@@ -57,6 +58,14 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   commands above the branch ([`commands`]).
 - crumbkit-test: [`check_help_goldens`] fails on two pages whose golden
   files have one name.
+- crumbkit-test: [`check_guide`] reports a goal that names one subcommand
+  twice.
+- crumbkit-test: [`check_guide`] and [`check_examples`] quote an example's
+  words as help prints them.
+- crumbkit-test: [`check_examples`] reports failed runs, and a binary that
+  cannot start, under their own heading.
+- crumbkit-test: [`check_help_sizes`] reports a page that fails to render as
+  one problem ([ADR-0025]).
 - crumbkit: a trim of the usage log keeps the newest whole lines within a
   size budget, drops a torn line, and replaces the log in one step under a
   separate lock file ([`usage`], [ADR-0029]).

@@ -166,7 +166,9 @@ impl Class {
 ///   the budget;
 /// - a class budget or a command's budget above crumbkit's default for its
 ///   class, because a tool can lower a budget and cannot raise one;
-/// - a command's budget whose path names no command or a hidden one.
+/// - a command's budget whose path names no command or a hidden one;
+/// - a visible command whose `-h` prints no help page, such as one that
+///   turned its help flag off.
 ///
 /// ```
 /// use clap::Command;
@@ -198,10 +200,13 @@ pub fn check_help_sizes(command: &Command, guide: &Guide, budgets: &Budgets) {
         }
     }
     let pages = pages(command, guide, "-h", &mut problems);
+    // A command whose page failed to render has no entry in `pages`, so the
+    // budgets are matched against the visible tree, and that command's one
+    // problem is the page that `pages` reports.
+    let visible = tree::walk_visible(command);
     for &(path, budget) in budgets.nodes {
-        let visit = pages
+        let visit = visible
             .iter()
-            .map(|(visit, _)| visit)
             .find(|visit| visit.depth() > 0 && visit.below() == path);
         let Some(visit) = visit else {
             problems.push(format!(

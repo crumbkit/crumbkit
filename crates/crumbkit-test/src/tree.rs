@@ -185,8 +185,10 @@ pub(crate) fn takes_values(arg: &Arg) -> bool {
 }
 
 /// Panics, as a failed test assertion does, when `problems` holds any
-/// problem, with one problem on each line after a first line that names the
-/// `rules` the tree breaks.
+/// problem. The message's first line names the `rules` the tree breaks, and
+/// each problem starts on a new line after it. A problem may continue over
+/// several lines, such as one that ends with snapbox's report of a golden
+/// file that differs.
 pub(crate) fn report(rules: &str, problems: &[String]) {
     assert!(
         problems.is_empty(),

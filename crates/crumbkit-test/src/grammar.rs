@@ -41,6 +41,10 @@ const BUILT_IN_VERBS: [&str; 2] = ["list", "show"];
 ///   `parse` answers it below every command with subcommands, unless such a
 ///   command takes it.
 ///
+/// A command that the tool gives to `Command::defer` adds its arguments only
+/// when clap builds it, and the check reads the unbuilt tree, so it sees no
+/// arguments on such a command and checks none of them.
+///
 /// ```
 /// use clap::Command;
 ///
