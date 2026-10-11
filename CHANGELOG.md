@@ -296,3 +296,6 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   lines, which could stay over 10 MB and rewrite the file on every run.
 - A usage-log line that has no newline, because a run ended while it wrote,
   is dropped at the next trim, and the next line starts on a new line.
+- The usage log's key goes into place only once it holds its 16 bytes, so a
+  run that ends while it creates the key no longer stops every later line.
+  A key file of the wrong length is replaced with a new key.
