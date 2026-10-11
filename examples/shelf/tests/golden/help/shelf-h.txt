@@ -8,6 +8,9 @@ Browse the catalogue
 Explore the commands
   commands  Explore shelf's commands
 
+Review how shelf is used
+  self      Review shelf's own use
+
 Options:
   -h, --help     Print help (see more with '--help')
   -V, --version  Print version

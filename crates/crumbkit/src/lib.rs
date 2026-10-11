@@ -55,7 +55,7 @@ pub mod usage;
 // crumbkit, so a tool depends on crumbkit alone (ADR-0032).
 pub use crumbkit_core::{
     AsFailure, Batch, Call, CallError, CallTarget, Code, Document, Error, Failure, Listing,
-    Recovery, Row, Rows, Spelling,
+    NoSummary, Recovery, Row, Rows, Spelling,
 };
 
 pub use crate::call::RenderCall;

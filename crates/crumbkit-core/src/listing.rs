@@ -1,5 +1,7 @@
 //! A page of rows with the total number of matching rows.
 
+use std::fmt;
+
 use serde::{Serialize, Serializer};
 
 use crate::{Call, Row, Rows};
@@ -8,7 +10,8 @@ use crate::{Call, Row, Rows};
 mod tests;
 
 /// One page of rows, the total number of rows that matched, an optional
-/// phrase that names them, an optional note and an optional next step.
+/// phrase that names them, an optional summary, an optional note and an
+/// optional next step.
 ///
 /// A command returns a listing when it may show fewer rows than matched,
 /// and flattens `crumbkit::Page` into its arguments so the caller can
@@ -29,8 +32,12 @@ mod tests;
 ///     .described("books")
 ///     .next(Call::new(&["books", "show"]).arg("ids"), "takes up to 100 ids in one call.");
 /// ```
+///
+/// The summary `S` is a value that prints as one line above the table in
+/// text and as an object under `summary` in JSON. A listing without one
+/// has the summary type [`NoSummary`].
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Listing<R: Row> {
+pub struct Listing<R: Row, S = NoSummary> {
     /// The rows to print, in order.
     rows: Vec<R>,
     /// The number of rows that matched, which `new` keeps at least
@@ -38,6 +45,9 @@ pub struct Listing<R: Row> {
     total: usize,
     /// The phrase that names the rows in the footer, such as `books`.
     description: Option<String>,
+    /// The summary that the text output prints above the table and the
+    /// JSON document holds under `summary`.
+    summary: Option<S>,
     /// The line that the text output prints after the table and any
     /// footer, such as the path of the file that the rows come from.
     note: Option<String>,
@@ -68,6 +78,7 @@ impl<R: Row> Listing<R> {
             rows,
             total,
             description: None,
+            summary: None,
             note: None,
             next: None,
         }
@@ -87,7 +98,9 @@ impl<R: Row> Listing<R> {
         }
         Self::new(rows, total)
     }
+}
 
+impl<R: Row, S> Listing<R, S> {
     /// Sets the phrase that names the rows in the text footer, such as
     /// `books` or `books by author 4`. The JSON document leaves it out.
     ///
@@ -98,6 +111,24 @@ impl<R: Row> Listing<R> {
     pub fn described(mut self, description: impl Into<String>) -> Self {
         self.description = Some(description.into());
         self
+    }
+
+    /// Sets the summary: a value that the text output prints with its
+    /// `Display` as one line above the table, and that the JSON document
+    /// holds under `summary`, serialized with its `Serialize`. A summary
+    /// holds what describes the whole result, such as the figures the rows
+    /// were counted from, so a program reads it as fields and a person reads
+    /// it as a sentence.
+    #[must_use]
+    pub fn summary<T: Serialize + fmt::Display>(self, summary: T) -> Listing<R, T> {
+        Listing {
+            rows: self.rows,
+            total: self.total,
+            description: self.description,
+            summary: Some(summary),
+            note: self.note,
+            next: self.next,
+        }
     }
 
     /// Sets the note: a line that the text output prints after the table and
@@ -130,14 +161,15 @@ impl<R: Row> Listing<R> {
 
 /// Serializes the listing as the array of its rows. `crumbkit::finish`
 /// writes the total beside it, under `total`.
-impl<R: Row> Serialize for Listing<R> {
+impl<R: Row, M> Serialize for Listing<R, M> {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         self.rows.serialize(serializer)
     }
 }
 
-impl<R: Row> Rows for Listing<R> {
+impl<R: Row, S: Serialize + fmt::Display> Rows for Listing<R, S> {
     type Row = R;
+    type Summary = S;
     const SINGLE: bool = false;
 
     fn rows(&self) -> &[R] {
@@ -152,6 +184,10 @@ impl<R: Row> Rows for Listing<R> {
         self.description.as_deref()
     }
 
+    fn summary(&self) -> Option<&S> {
+        self.summary.as_ref()
+    }
+
     fn note(&self) -> Option<&str> {
         self.note.as_deref()
     }
@@ -160,5 +196,22 @@ impl<R: Row> Rows for Listing<R> {
         self.next
             .as_ref()
             .map(|(call, phrase)| (call, phrase.as_str()))
+    }
+}
+
+/// The summary type of a listing without a summary. It has no values, so a
+/// listing of this type never holds a summary.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum NoSummary {}
+
+impl Serialize for NoSummary {
+    fn serialize<S: Serializer>(&self, _: S) -> Result<S::Ok, S::Error> {
+        match *self {}
+    }
+}
+
+impl fmt::Display for NoSummary {
+    fn fmt(&self, _: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match *self {}
     }
 }

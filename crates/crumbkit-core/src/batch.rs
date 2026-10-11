@@ -101,6 +101,7 @@ impl<R: Row, E: AsFailure> Serialize for Batch<R, E> {
 impl<R: Row, E: AsFailure> Rows for Batch<R, E> {
     type Row = R;
     const SINGLE: bool = false;
+    type Summary = crate::NoSummary;
 
     fn rows(&self) -> &[R] {
         &self.rows

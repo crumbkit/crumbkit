@@ -1,0 +1,259 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "UsageReportDocument",
+  "description": "The document that `self usage` prints with --json: one row for each pattern in the usage log where callers waste effort, and the summary of the runs read.",
+  "type": "object",
+  "properties": {
+    "data": {
+      "description": "The findings, the most runs first.",
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/FindingRow"
+      }
+    },
+    "schema": {
+      "description": "The id of this document.",
+      "const": "crumbkit/usage-report/v1"
+    },
+    "summary": {
+      "$ref": "#/$defs/UsageSummary"
+    },
+    "total": {
+      "description": "The number of findings.",
+      "type": "integer",
+      "minimum": 0
+    }
+  },
+  "required": [
+    "schema",
+    "data",
+    "total",
+    "summary"
+  ],
+  "$defs": {
+    "CallerRuns": {
+      "description": "The runs of one caller.",
+      "type": "object",
+      "properties": {
+        "caller": {
+          "description": "The coding agent's id, such as claude-code, person or unknown.",
+          "type": "string"
+        },
+        "runs": {
+          "description": "The caller's runs.",
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "caller",
+        "runs"
+      ]
+    },
+    "CommandFigures": {
+      "description": "The figures of one command since the start of the report.",
+      "type": "object",
+      "properties": {
+        "failed": {
+          "description": "The runs that failed.",
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0
+        },
+        "help_pages": {
+          "description": "The runs that printed the command's help page.",
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0
+        },
+        "p95_ms": {
+          "description": "The 95th percentile of the runs' wall time in milliseconds, or null\nwhen every run printed help.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint64",
+          "minimum": 0
+        },
+        "p95_out_bytes": {
+          "description": "The 95th percentile of the bytes that the runs wrote to standard\noutput, or null when no run printed a result.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint64",
+          "minimum": 0
+        },
+        "refused": {
+          "description": "The runs whose command line was refused.",
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0
+        },
+        "runs": {
+          "description": "The runs that did not print a help page.",
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0
+        },
+        "typed_all": {
+          "description": "The runs that typed `--all`.",
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0
+        },
+        "typed_full": {
+          "description": "The runs that typed `--full`.",
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0
+        },
+        "typed_long": {
+          "description": "The runs that typed `--long`.",
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "runs",
+        "help_pages",
+        "refused",
+        "failed",
+        "typed_full",
+        "typed_all",
+        "typed_long"
+      ]
+    },
+    "FindingRow": {
+      "description": "One finding of `self usage`: a pattern in the runs of one command that\nsuggests where callers waste effort.",
+      "type": "object",
+      "properties": {
+        "code": {
+          "description": "The code of the failure that the runs retried, for a retry after\nfailure only.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "command": {
+          "description": "The command path below the tool's name, such as `books show`, or the\ntool's name for its root command.",
+          "type": "string"
+        },
+        "figures": {
+          "description": "The figures of the command since the start of the report.",
+          "$ref": "#/$defs/CommandFigures"
+        },
+        "finding": {
+          "description": "What the pattern is.",
+          "$ref": "#/$defs/Kind"
+        },
+        "runs": {
+          "description": "The runs that show the pattern.",
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0
+        },
+        "suggestion": {
+          "description": "What the pattern suggests, or the figure that raised it.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "finding",
+        "runs",
+        "command",
+        "suggestion",
+        "figures"
+      ]
+    },
+    "Kind": {
+      "description": "The kinds of finding, with the runs that each one counts. Each kind\nserializes as the name that `self usage` prints, such as\n`one id at a time`.",
+      "oneOf": [
+        {
+          "description": "A session ran a command that takes many ids with one id at least 3\ntimes within 2 minutes. It counts those runs.",
+          "type": "string",
+          "const": "one id at a time"
+        },
+        {
+          "description": "A session ran the same command line again within 60 seconds. It\ncounts the repeats.",
+          "type": "string",
+          "const": "identical repeat"
+        },
+        {
+          "description": "A session read at least 3 help pages before its first successful\nrun, or without one. It counts the pages, under the command of the\nlast page.",
+          "type": "string",
+          "const": "help loop"
+        },
+        {
+          "description": "The parser refused the command line. It counts the refused runs.",
+          "type": "string",
+          "const": "usage error"
+        },
+        {
+          "description": "A session ran a command again within 60 seconds of its failure. It\ncounts the retries, under the code of the failure.",
+          "type": "string",
+          "const": "retry after failure"
+        },
+        {
+          "description": "A session followed a cut-short listing within 60 seconds with the\nsame command and `--all` or `--limit`. It counts those runs. The\nrecord holds no limit value, so any `--limit` counts, also one that\nasks for fewer rows than the default page.",
+          "type": "string",
+          "const": "short page"
+        },
+        {
+          "description": "The 95th percentile of a command's output is at least 20,000 bytes.\nIt counts the runs that wrote that much.",
+          "type": "string",
+          "const": "heavy output"
+        },
+        {
+          "description": "The 95th percentile of a command's wall time is at least 1 second.\nIt counts the runs that took that long.",
+          "type": "string",
+          "const": "slow command"
+        }
+      ]
+    },
+    "UsageSummary": {
+      "description": "The summary of the runs that `self usage` read. The text output prints\nit as one line above the table, such as `1,284 runs in 23 sessions since\n30 Sep: claude-code 1,201, person 83.`",
+      "type": "object",
+      "properties": {
+        "callers": {
+          "description": "The runs of each caller, the most first.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/CallerRuns"
+          }
+        },
+        "runs": {
+          "description": "The runs that the report read.",
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0
+        },
+        "sessions": {
+          "description": "The sessions that the runs came from.",
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0
+        },
+        "since": {
+          "description": "The day in UTC on which the report starts, such as 2026-09-30.",
+          "type": "string"
+        },
+        "skipped": {
+          "description": "The records that the report left out, because they named a command,\nflag, code or caller that the tool does not write.",
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "runs",
+        "sessions",
+        "callers",
+        "since",
+        "skipped"
+      ]
+    }
+  }
+}

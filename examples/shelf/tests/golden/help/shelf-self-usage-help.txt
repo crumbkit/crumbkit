@@ -1,0 +1,37 @@
+Report the patterns in shelf's usage log where callers waste effort
+
+Usage: shelf self usage [OPTIONS]
+
+Options:
+      --since <DURATION>
+          How far back to read the usage log, such as 12h, 7d or 2w
+          
+          [default: 7d]
+
+      --json
+          Print the result as a JSON document on one line
+
+      --fields <FIELD>
+          Print only these comma-separated fields, in this order
+
+      --long
+          Add the long columns after the compact ones
+
+      --full
+          With --json, print every field of every row
+
+  -h, --help
+          Print help (see a summary with '-h')
+
+Examples:
+  shelf self usage
+          Report the findings of the last 7 days
+
+  shelf self usage --since 1d
+          Report the findings of the last day
+
+Columns:
+  finding     What the pattern is.
+  runs        The runs that show the pattern.
+  command     The command path below the tool's name, such as `books show`, or the tool's name for its root command.
+  suggestion  What the pattern suggests, or the figure that raised it.

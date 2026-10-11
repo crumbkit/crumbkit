@@ -23,7 +23,7 @@ pub(super) const SCHEMA: &str = "crumbkit/usage/v1";
 
 /// The longest line, in bytes without its newline, that the usage log
 /// writes.
-const MAX_LINE: usize = 1024;
+pub(super) const MAX_LINE: usize = 1024;
 
 /// One run of a tool as its usage log records it.
 #[derive(Debug, Serialize, JsonSchema)]
