@@ -57,6 +57,12 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 - crumbkit-test: [`Examples`] borrows its paths for a lifetime, so a test
   can build one from a path it computes at runtime.
+- crumbkit: each argument row of `commands list` has a `one_of` field that
+  names the arguments that can be given in its place: the other members of
+  its required groups and, for a required argument, the arguments it
+  conflicts with ([`commands`]).
+- crumbkit-test: [`check_listings`] accepts a `show` command whose ids sit
+  in a required argument group.
 
 ### Fixed
 

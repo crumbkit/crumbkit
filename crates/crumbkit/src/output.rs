@@ -193,13 +193,8 @@ pub fn finish<T: Rows, E: AsFailure>(
 /// shape the rows and leave the failures unchanged.
 ///
 /// An `Err` prints the failure. The text form goes to the sink's error
-/// writer, and nothing goes to the output writer:
-///
-/// ```text
-/// error: the catalogue has no book 7
-///   help:  run `shelf books list`
-///   code:  shelf::books::not_found
-/// ```
+/// writer, as shelf's golden file [`books-show-7.stderr`][books-show-7]
+/// shows, and nothing goes to the output writer.
 ///
 /// The `error:` line is the failure's `Display`. A `cause:` line follows it
 /// for each error in the failure's `source()` chain, and a `url:` line
@@ -223,6 +218,8 @@ pub fn finish<T: Rows, E: AsFailure>(
 /// result cannot be serialized, and the cause of a failed write goes to the
 /// sink's error writer before a batch's failures. It is 2 when `--fields`
 /// names an unknown field, which is checked before the result prints.
+///
+/// [books-show-7]: https://github.com/crumbkit/crumbkit/blob/main/examples/shelf/tests/golden/books-show-7.stderr
 pub fn finish_to<T: Rows, E: AsFailure, O: Write, W: Write>(
     sink: &mut Sink<O, W>,
     output: &Output,

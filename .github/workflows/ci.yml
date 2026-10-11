@@ -51,13 +51,13 @@ jobs:
           save-if: ${{ github.ref == 'refs/heads/main' }}
       - run: cargo fmt --check
       - run: cargo clippy --workspace --all-targets
-      # shelf turns on crumbkit's `usage-log` and `tracing` features, so the
-      # workspace run checks crumbkit with both. clippy checks crumbkit on its
-      # own in the default build, with `miette`, and with `tracing` alone,
-      # because a single `--all-features` run would miss a warning that only
-      # one build shows, such as an import that only one feature uses. The
-      # `tracing` build compiles the spans without the usage log's ids, which
-      # no other build compiles.
+      # shelf turns on crumbkit's `miette`, `usage-log` and `tracing` features,
+      # so the workspace run checks crumbkit with all three. clippy checks
+      # crumbkit on its own in the default build, with `miette`, and with
+      # `tracing` alone, because a single `--all-features` run would miss a
+      # warning that only one build shows, such as an import that only one
+      # feature uses. The `tracing` build compiles the spans without the usage
+      # log's ids, which no other build compiles.
       - run: cargo clippy -p crumbkit --all-targets
       - run: cargo clippy -p crumbkit --all-targets --features miette
       - run: cargo clippy -p crumbkit --all-targets --features tracing
@@ -110,9 +110,10 @@ jobs:
       - run: cargo nextest run --workspace --profile ci
       # nextest does not run doctests, so cargo test runs them.
       - run: cargo test --workspace --doc
-      # shelf turns on crumbkit's `usage-log` feature, so the workspace runs
-      # test crumbkit with that feature. crumbkit's tests and doctests run
-      # again on their own in the default build and with `miette`.
+      # shelf turns on crumbkit's `miette`, `usage-log` and `tracing` features,
+      # so the workspace runs test crumbkit with all three. crumbkit's tests
+      # and doctests run again on their own in the default build and with
+      # `miette`.
       - run: cargo nextest run -p crumbkit --profile ci
       - run: cargo test -p crumbkit --doc
       - run: cargo nextest run -p crumbkit --features miette --profile ci

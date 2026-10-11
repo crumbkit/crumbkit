@@ -28,7 +28,8 @@ pub(crate) enum Selection {
 pub(crate) struct File {
     /// The path relative to the repository root, with `/` separators.
     pub(crate) path: String,
-    /// The file's text.
+    /// The file's text, or an empty string when the file is not UTF-8 text,
+    /// such as an image.
     pub(crate) contents: String,
 }
 

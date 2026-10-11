@@ -121,7 +121,7 @@ proptest = { version = "1.11.0", default-features = false }
 
 # Every lint warns except unsafe_code, and a build with
 # CARGO_BUILD_WARNINGS=deny fails on any warning. docs/standards/README.md
-# gives the reason for each rule.
+# lists the rules, and ADR-0009 gives their reasons.
 [workspace.lints.rust]
 unsafe_code = "forbid"
 missing_docs = "warn"

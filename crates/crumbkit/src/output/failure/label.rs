@@ -67,18 +67,16 @@ impl Label {
     }
 
     /// Writes the label's `at:` line to `err`. When the span could be read,
-    /// the source line that holds its start and a caret underline follow:
-    ///
-    /// ```text
-    ///   at:    shelf.toml:3:1: this key is not known
-    ///      3 | colour = "red"
-    ///        | ^^^^^^
-    /// ```
+    /// the source line that holds its start and a caret underline follow, as
+    /// shelf's golden file [`books-show-from-bad-line.stderr`][bad-line]
+    /// shows.
     ///
     /// The line number is right-aligned in six columns, so the source line
     /// starts in the same column as the values of the labelled lines. A span
     /// that the source cannot read prints as `at:    byte 400` with no
     /// source line.
+    ///
+    /// [bad-line]: https://github.com/crumbkit/crumbkit/blob/main/examples/shelf/tests/golden/books-show-from-bad-line.stderr
     pub(super) fn write_text(&self, err: &mut impl Write) -> io::Result<()> {
         let at = match &self.place {
             Some(place) => match &place.name {

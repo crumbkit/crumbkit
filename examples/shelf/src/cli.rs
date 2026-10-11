@@ -147,9 +147,15 @@ pub(crate) struct BooksShow {
     // `2,5` would count as one value and a comma-separated list could pass
     // more than 100 ids.
     //
-    // clap does not require an argument when an argument that conflicts with
-    // it is present, so `--from` alone satisfies `required = true`. The ids
-    // keep `required = true`, which crumbkit-test's `check_listings` reads.
+    // RUST-10: the ids are required and conflict with `--from`, so the usage
+    // line shows `<ID>...` although `--from` alone is enough. clap does not
+    // require an argument when an argument it conflicts with is given. The
+    // `one_of` field of `commands list` names `--from` on the ids, so a reader
+    // of the listing learns that `--from` can be given in their place. A
+    // required argument group of the ids and `--from` would show this in the
+    // usage line, but clap 4.6 prints that group as `<ID|--from <FILE>>`.
+    // The group replaces this once clap prints a group of a positional
+    // argument and an option in a form that reads as clearly as `<ID>...`.
     #[arg(
         required = true,
         value_name = "ID",

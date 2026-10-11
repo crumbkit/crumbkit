@@ -3,7 +3,7 @@
 
 use std::process::ExitCode;
 
-use clap::{Arg, ArgAction, Args as _, Command};
+use clap::{Arg, ArgAction, ArgGroup, Args as _, Command};
 use schemars::JsonSchema;
 use serde::Serialize;
 use serde_json::{Value, json};
@@ -85,12 +85,11 @@ fn tool() -> Command {
                         ),
                 )
                 .subcommand(
-                    Command::new("show").about("Show books").arg(
-                        Arg::new("ids")
-                            .value_name("ID")
-                            .required(true)
-                            .num_args(1..=100),
-                    ),
+                    Command::new("show")
+                        .about("Show books")
+                        .arg(Arg::new("ids").value_name("ID").num_args(1..=100))
+                        .arg(Arg::new("from").long("from").value_name("FILE"))
+                        .group(ArgGroup::new("source").args(["ids", "from"]).required(true)),
                 )
                 .subcommand(
                     Command::new("purge")
@@ -265,7 +264,10 @@ fn a_branch_lists_the_global_arguments_of_the_commands_above_it_once_on_its_firs
         argument_names(&rows, "shelf books list"),
         ["--limit", "--form"]
     );
-    assert_eq!(argument_names(&rows, "shelf books show"), ["<ID>"]);
+    assert_eq!(
+        argument_names(&rows, "shelf books show"),
+        ["<ID>", "--from"]
+    );
 }
 
 #[test]
@@ -286,6 +288,7 @@ fn an_argument_holds_what_its_help_shows() {
                 "help": "Print at most N books",
                 "long_help": "Print at most N books.\n\nThe default is 4.",
                 "global": false,
+                "one_of": [],
             },
             {
                 "name": "--form",
@@ -298,24 +301,72 @@ fn an_argument_holds_what_its_help_shows() {
                 "help": null,
                 "long_help": null,
                 "global": false,
+                "one_of": [],
             },
         ])
     );
     assert_eq!(
         row(&rows, "shelf books show")["arguments"],
-        json!([{
-            "name": "<ID>",
-            "short": null,
-            "value_names": ["ID"],
-            "required": true,
-            "many": true,
-            "defaults": [],
-            "possible_values": [],
-            "help": null,
-            "long_help": null,
-            "global": false,
-        }])
+        json!([
+            {
+                "name": "<ID>",
+                "short": null,
+                "value_names": ["ID"],
+                "required": false,
+                "many": true,
+                "defaults": [],
+                "possible_values": [],
+                "help": null,
+                "long_help": null,
+                "global": false,
+                "one_of": ["--from"],
+            },
+            {
+                "name": "--from",
+                "short": null,
+                "value_names": ["FILE"],
+                "required": false,
+                "many": false,
+                "defaults": [],
+                "possible_values": [],
+                "help": null,
+                "long_help": null,
+                "global": false,
+                "one_of": ["<ID>"],
+            },
+        ])
     );
+}
+
+#[test]
+fn one_of_names_visible_required_group_members_and_conflicts_of_required_arguments() {
+    let command = Command::new("show")
+        .arg(Arg::new("ids").value_name("ID").num_args(1..=100))
+        .arg(Arg::new("from").long("from"))
+        .arg(Arg::new("stdin").long("stdin").hide(true))
+        .arg(Arg::new("quiet").long("quiet").conflicts_with("from"))
+        .arg(
+            Arg::new("all")
+                .long("all")
+                .required(true)
+                .conflicts_with_all(["quiet", "stdin"]),
+        )
+        .group(
+            ArgGroup::new("source")
+                .args(["ids", "from", "stdin"])
+                .required(true),
+        )
+        .group(ArgGroup::new("loose").args(["ids", "quiet"]));
+    let row = CommandRow::new("shelf", &["show"], &command, None, &Guide::new());
+    let row = serde_json::to_value(row).unwrap();
+
+    let one_of: Value = row["arguments"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|argument| argument["one_of"].clone())
+        .collect();
+    assert_eq!(one_of, json!([["--from"], ["<ID>"], [], ["--quiet"]]));
 }
 
 #[test]

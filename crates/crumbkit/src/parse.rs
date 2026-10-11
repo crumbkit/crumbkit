@@ -177,13 +177,8 @@ where
 /// A command line that clap refuses prints as a failure with the code
 /// `crumbkit::cli::usage` in `spelling`, and the exit code is 2. The message
 /// is clap's error on one line, and the recovery runs the `-h` of the
-/// deepest command:
-///
-/// ```text
-/// error: unexpected argument '--id' found; a similar argument exists: '--ids'
-///   help:  run `shelf books show -h`
-///   code:  crumbkit::cli::usage
-/// ```
+/// deepest command, as shelf's golden file
+/// [`books-show-2-comma-5.stderr`][books-show-2-comma-5] shows.
 ///
 /// clap suggests from every name that a flag or a subcommand accepts. When
 /// it suggests a hidden alias, such as `--max` of `--limit`, the message
@@ -201,6 +196,8 @@ where
 ///
 /// Returns the exit code for `main` to return after crumbkit has printed
 /// help, the version or a refusal.
+///
+/// [books-show-2-comma-5]: https://github.com/crumbkit/crumbkit/blob/main/examples/shelf/tests/golden/books-show-2-comma-5.stderr
 pub fn parse_to<C, I, T, O, E>(
     sink: &mut Sink<O, E>,
     command: Command,
