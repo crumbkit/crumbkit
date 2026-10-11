@@ -57,6 +57,13 @@
                   "description": "The name as help writes it: `--all` for an argument with a long name, `-a` for one with only a short name, and `<ID>` for a positional argument.",
                   "type": "string"
                 },
+                "one_of": {
+                  "description": "The other arguments of each required group that holds the argument. The command refuses a command line that gives neither the argument nor any of these, and the list is empty when no required group holds the argument.",
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
                 "possible_values": {
                   "description": "The values that the argument accepts, as help shows them, and none when it accepts any value.",
                   "type": "array",
@@ -93,7 +100,8 @@
                 "possible_values",
                 "help",
                 "long_help",
-                "global"
+                "global",
+                "one_of"
               ]
             }
           },

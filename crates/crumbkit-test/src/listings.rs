@@ -25,7 +25,9 @@ const MOST_IDS: usize = 100;
 ///   without an `--all` flag, which flattening crumbkit's `Page` gives it;
 /// - a `show` command without a required positional argument whose
 ///   `num_args` takes at least 1 and at most 100 values and accepts more than
-///   1, such as `num_args = 1..=100`.
+///   1, such as `num_args = 1..=100`. An argument counts as required when it
+///   sets `required` or sits in a required `ArgGroup`, such as a group that
+///   holds the ids and a `--from` option that reads them from a file.
 ///
 /// A command that the tool gives to `Command::defer` adds its arguments only
 /// when clap builds it, and the check reads the unbuilt tree, so it sees no
@@ -77,7 +79,7 @@ pub fn check_listings(command: &Command, exempt: &[&str]) {
                     ));
                 }
             }
-            "show" if !command.get_arguments().any(is_ids) => problems.push(format!(
+            "show" if !command.get_arguments().any(|arg| is_ids(arg, command)) => problems.push(format!(
                 "{path}: the command has no required positional argument that takes from 1 to {MOST_IDS} values and accepts more than 1, and a `show` command has one"
             )),
             _ => {}
@@ -96,11 +98,15 @@ fn is_all(arg: &Arg) -> bool {
     arg.get_long() == Some("all") && matches!(arg.get_action(), ArgAction::SetTrue)
 }
 
-/// Reports whether `arg` is a required positional argument whose `num_args`
-/// takes at least 1 and at most [`MOST_IDS`] values and accepts more than 1.
-fn is_ids(arg: &Arg) -> bool {
+/// Reports whether `arg` is a positional argument of `command` that is
+/// required or sits in a required group, and whose `num_args` takes at least
+/// 1 and at most [`MOST_IDS`] values and accepts more than 1.
+fn is_ids(arg: &Arg, command: &Command) -> bool {
+    let in_required_group = command
+        .get_groups()
+        .any(|group| group.is_required_set() && group.get_args().any(|id| id == arg.get_id()));
     arg.is_positional()
-        && arg.is_required_set()
+        && (arg.is_required_set() || in_required_group)
         && arg.get_num_args().is_some_and(|range| {
             range.min_values() >= 1 && range.max_values() > 1 && range.max_values() <= MOST_IDS
         })

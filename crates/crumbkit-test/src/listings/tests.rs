@@ -1,7 +1,7 @@
 //! Tests for the listings check.
 
 use clap::builder::ValueRange;
-use clap::{Arg, ArgAction, Args as _, Command};
+use clap::{Arg, ArgAction, ArgGroup, Args as _, Command};
 use crumbkit::Page;
 
 use super::check_listings;
@@ -27,6 +27,24 @@ fn a_list_command_that_flattens_page_and_a_show_command_that_takes_1_to_100_ids_
     );
 
     check_listings(&shelf, &[]);
+}
+
+#[test]
+fn a_show_command_whose_ids_sit_in_a_required_group_passes() {
+    let show = show(false, 1..=100)
+        .arg(Arg::new("from").long("from"))
+        .group(ArgGroup::new("source").args(["ids", "from"]).required(true));
+
+    check_listings(&show, &[]);
+}
+
+#[test]
+fn a_show_command_whose_ids_sit_only_in_a_group_that_is_not_required_fails() {
+    let show = show(false, 1..=100)
+        .arg(Arg::new("from").long("from"))
+        .group(ArgGroup::new("source").args(["ids", "from"]));
+
+    assert!(panic_message(|| check_listings(&show, &[])).is_some());
 }
 
 #[test]

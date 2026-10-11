@@ -44,6 +44,7 @@ struct Argument {
     help: Option<String>,
     long_help: Option<String>,
     global: bool,
+    one_of: Vec<String>,
 }
 
 /// One example of a command, from the guide's leaf for the command.
@@ -116,7 +117,7 @@ impl CommandRow {
         let arguments = command
             .get_arguments()
             .filter(|arg| !arg.is_hide_set() && !prints_help(arg) && !is_inherited(arg, parent))
-            .map(Argument::new)
+            .map(|arg| Argument::new(arg, command))
             .collect();
         Self {
             path: line,
@@ -133,15 +134,16 @@ impl CommandRow {
 }
 
 impl Argument {
-    /// Returns `arg` as its command's help shows it. `arg` belongs to a
-    /// built command, because clap sets an argument's number of values
-    /// during the build.
+    /// Returns `arg` as its command's help shows it, with the other members
+    /// of each required group of `command` that holds it. `arg` belongs to
+    /// `command`, which is built, because clap sets an argument's number of
+    /// values during the build.
     //
     // RUST-10: the argument leaves out the environment variable that help
     // shows beside it, because `Arg::get_env` exists only with clap's `env`
     // feature, which crumbkit does not enable. A crumbkit feature that
     // enables clap's `env` and adds an `env` field replaces it.
-    fn new(arg: &Arg) -> Self {
+    fn new(arg: &Arg, command: &Command) -> Self {
         let takes_values = arg.get_action().takes_values();
         let value_names: Vec<String> = if takes_values {
             arg.get_value_names().map_or_else(
@@ -150,16 +152,6 @@ impl Argument {
             )
         } else {
             Vec::new()
-        };
-        let name = match (arg.get_long(), arg.get_short()) {
-            (Some(long), _) => format!("--{long}"),
-            (None, Some(short)) => format!("-{short}"),
-            (None, None) => format!(
-                "<{}>",
-                value_names
-                    .first()
-                    .map_or(arg.get_id().as_str(), String::as_str)
-            ),
         };
         let defaults = if takes_values && !arg.is_hide_default_value_set() {
             arg.get_default_values()
@@ -179,7 +171,7 @@ impl Argument {
             Vec::new()
         };
         Self {
-            name,
+            name: name(arg),
             short: arg.get_short().map(|short| format!("-{short}")),
             value_names,
             required: arg.is_required_set(),
@@ -195,8 +187,57 @@ impl Argument {
                 .map(ToString::to_string),
             long_help: arg.get_long_help().map(ToString::to_string),
             global: arg.is_global_set(),
+            one_of: one_of(arg, command),
         }
     }
+}
+
+/// Returns the name of `arg` as help writes it: `--all` for an argument with
+/// a long name, `-a` for one with only a short name, and `<ID>` for a
+/// positional argument, from its first value name or else its id.
+fn name(arg: &Arg) -> String {
+    match (arg.get_long(), arg.get_short()) {
+        (Some(long), _) => format!("--{long}"),
+        (None, Some(short)) => format!("-{short}"),
+        (None, None) => {
+            let value_name = arg
+                .get_value_names()
+                .and_then(|names| names.first())
+                .map_or_else(|| arg.get_id().to_string(), ToString::to_string);
+            format!("<{value_name}>")
+        }
+    }
+}
+
+/// Returns the names of the other visible arguments in each required group
+/// of `command` that holds `arg`, in the order the groups list them. The
+/// command refuses a command line that gives none of a required group's
+/// arguments, so `arg` is needed only when none of these is given.
+//
+// RUST-10: a group may name another group as a member, and this reads only
+// the members that are arguments of `command`, so it leaves a nested group
+// out. Reading the members of a nested group replaces it once a tool nests
+// its groups.
+fn one_of(arg: &Arg, command: &Command) -> Vec<String> {
+    let mut names = Vec::new();
+    for group in command.get_groups().filter(|group| group.is_required_set()) {
+        if !group.get_args().any(|member| member == arg.get_id()) {
+            continue;
+        }
+        for member in group.get_args().filter(|member| *member != arg.get_id()) {
+            let Some(other) = command
+                .get_arguments()
+                .find(|other| other.get_id() == member && !other.is_hide_set())
+            else {
+                continue;
+            };
+            let other = name(other);
+            if !names.contains(&other) {
+                names.push(other);
+            }
+        }
+    }
+    names
 }
 
 /// Reports whether `arg` prints help or the version, as clap's generated
@@ -251,7 +292,7 @@ impl Serialize for CommandRow {
 
 impl Serialize for Argument {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        let mut argument = serializer.serialize_struct("Argument", 10)?;
+        let mut argument = serializer.serialize_struct("Argument", 11)?;
         argument.serialize_field("name", &self.name)?;
         argument.serialize_field("short", &self.short)?;
         argument.serialize_field("value_names", &self.value_names)?;
@@ -262,6 +303,7 @@ impl Serialize for Argument {
         argument.serialize_field("help", &self.help)?;
         argument.serialize_field("long_help", &self.long_help)?;
         argument.serialize_field("global", &self.global)?;
+        argument.serialize_field("one_of", &self.one_of)?;
         argument.end()
     }
 }
@@ -418,6 +460,11 @@ fn argument_schema() -> Schema {
                 "description": "Whether the argument also works after every subcommand below the command that defines it.",
                 "type": "boolean",
             },
+            "one_of": {
+                "description": "The other arguments of each required group that holds the argument. The command refuses a command line that gives neither the argument nor any of these, and the list is empty when no required group holds the argument.",
+                "type": "array",
+                "items": { "type": "string" },
+            },
         },
         "required": [
             "name",
@@ -430,6 +477,7 @@ fn argument_schema() -> Schema {
             "help",
             "long_help",
             "global",
+            "one_of",
         ],
     })
 }
