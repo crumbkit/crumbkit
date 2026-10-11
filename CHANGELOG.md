@@ -278,6 +278,7 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   path, the exit code, the failure code and, with a started usage log, the
   trace id and the run's id. The feature adds the dependency tracing, and
   crumbkit installs no subscriber.
+- crumbkit-test's `check_guide` fails on two groups with one path.
 
 ### Fixed
 
@@ -293,3 +294,5 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   share one file.
 - crumbkit-test's `check_guide` reports a goal that names one subcommand
   twice as that goal naming it more than once.
+- crumbkit-test's `check_guide` and `check_examples` quote an example's
+  words in their messages as help prints them.

@@ -10,6 +10,7 @@ use snapbox::assert::{Action, DEFAULT_ACTION_ENV};
 use snapbox::{Assert, cmd};
 
 use crate::goldens::{compare, remove_stale};
+use crate::guide::command_line;
 use crate::temp::TempDir;
 use crate::tree;
 
@@ -179,8 +180,10 @@ impl Examples {
 /// Panics when a run, a golden file or an exemption breaks a rule above, or
 /// when the check cannot create a run's XDG directories, or
 /// `SNAPSHOTS=overwrite` cannot write or delete a file. The message lists
-/// each problem on its own line and names each example by its command line,
-/// such as `shelf books list --all`.
+/// each problem on its own line and names each example by its command line
+/// as help prints it, with each word that a POSIX shell would split or
+/// expand between single quotes, such as
+/// `shelf books list --author 'Jane Austen'`.
 pub fn check_examples(command: &Command, guide: &Guide, examples: &Examples) {
     let assert = Assert::new().action_env(DEFAULT_ACTION_ENV);
     check(command, guide, examples, &assert);
@@ -206,10 +209,11 @@ fn check(command: &Command, guide: &Guide, examples: &Examples, assert: &Assert)
         }
         for example in leaf.get_examples() {
             let args: Vec<&str> = path.iter().chain(example.words()).copied().collect();
-            let line = std::iter::once(tool)
-                .chain(args.iter().copied())
+            let text = std::iter::once(tool)
+                .chain(path.iter().copied())
                 .collect::<Vec<_>>()
                 .join(" ");
+            let line = command_line(&text, example.words());
             let name = file_name(tool, path, example.words());
             if let Some((_, other)) = names.iter().find(|(known, _)| *known == name) {
                 problems.push(format!(
