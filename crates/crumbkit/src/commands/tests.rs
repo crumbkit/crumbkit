@@ -532,3 +532,18 @@ fn the_checked_in_schema_matches_the_commands_document_schema() {
         "schemas/commands-v1.json differs from the generated schema; replace the file with the generated schema"
     );
 }
+
+#[test]
+fn the_schema_describes_path_with_the_text_of_its_help() {
+    let schema = schemars::schema_for!(CommandsList).to_value();
+    let command = CommandsList::augment_args(Command::new("list"));
+    let path = command
+        .get_arguments()
+        .find(|arg| arg.get_id() == "path")
+        .unwrap();
+
+    assert_eq!(
+        schema["properties"]["path"]["description"],
+        path.get_help().unwrap().to_string()
+    );
+}

@@ -36,6 +36,10 @@ mod tests;
 /// because clap has no documented getter for the settings that let a
 /// repeated option override itself.
 ///
+/// A command that the tool gives to `Command::defer` adds its arguments only
+/// when clap builds it, and the check reads the unbuilt tree, so it sees no
+/// arguments on such a command and checks none of them.
+///
 /// ```
 /// use clap::{Arg, ArgAction, Command};
 ///

@@ -7,7 +7,7 @@ use super::{expand, expand_with};
 use crate::testing::tool;
 
 /// An aliases file with one alias that takes extra words after its own.
-const MINE: &str = r#"mine = ["books", "list", "--author", "4"]"#;
+const MINE: &str = r#"mine = ["books", "list", "--long"]"#;
 
 /// Returns `words` as the arguments of a process.
 fn os(words: &[&str]) -> Vec<OsString> {
@@ -34,7 +34,7 @@ fn an_alias_is_replaced_by_its_words_and_the_words_typed_after_it_follow() {
 
     assert_eq!(
         args,
-        os(&["shelf", "books", "list", "--author", "4", "--limit", "1"])
+        os(&["shelf", "books", "list", "--long", "--limit", "1"])
     );
 }
 

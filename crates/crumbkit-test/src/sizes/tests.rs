@@ -110,3 +110,16 @@ fn a_command_s_budget_that_names_no_command_or_a_hidden_one_fails_the_check() {
          the budget of `books purge` names no visible command below the root"
     );
 }
+
+#[test]
+fn a_command_whose_page_fails_to_render_reports_only_the_missing_page() {
+    const BUDGETS: Budgets = Budgets::new().nodes(&[("books list", 600)]);
+    let shelf = Command::new("shelf")
+        .subcommand(Command::new("books").subcommand(Command::new("list").disable_help_flag(true)));
+
+    assert_eq!(
+        panic_message(|| check_help_sizes(&shelf, &Guide::new(), &BUDGETS)).unwrap(),
+        "the command tree breaks crumbkit's help size rules:\n\
+         shelf books list -h: the command line prints no help page"
+    );
+}

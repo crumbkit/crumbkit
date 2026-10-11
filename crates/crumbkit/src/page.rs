@@ -11,6 +11,12 @@ use serde::ser::{SerializeMap, Serializer};
 #[cfg(test)]
 mod tests;
 
+/// The help text of `--limit`, which the schema also uses as its description.
+const LIMIT_HELP: &str = "Print at most this many rows";
+
+/// The help text of `--all`, which the schema also uses as its description.
+const ALL_HELP: &str = "Print every row";
+
 /// The flags that choose how many rows a listing prints.
 ///
 /// A command that returns a [`Listing`](crate::Listing) adds them to its own
@@ -56,17 +62,15 @@ mod tests;
 /// ```
 #[derive(Args, Clone, Debug, PartialEq, Eq)]
 pub struct Page<const N: usize = 25> {
-    /// Print at most this many rows
     // clap's `default_value_t` keeps the default text in one `static` that
     // every `Page<N>` shares, so two commands with different sizes would
     // show the same default. `default_value` with an owned `String`, which
     // clap's `string` feature allows, gives each `N` its own default. The
     // field is a `NonZeroUsize`, so clap refuses 0 when it parses the value.
-    #[arg(long, value_name = "N", default_value = Self::DEFAULT_LIMIT.to_string())]
+    #[arg(long, value_name = "N", help = LIMIT_HELP, default_value = Self::DEFAULT_LIMIT.to_string())]
     limit: NonZeroUsize,
 
-    /// Print every row
-    #[arg(long, conflicts_with = "limit")]
+    #[arg(long, help = ALL_HELP, conflicts_with = "limit")]
     all: bool,
 }
 
@@ -140,13 +144,13 @@ impl<const N: usize> JsonSchema for Page<N> {
             "type": "object",
             "properties": {
                 "limit": {
-                    "description": "Print at most this many rows.",
+                    "description": LIMIT_HELP,
                     "type": "integer",
                     "minimum": 1,
                     "default": N,
                 },
                 "all": {
-                    "description": "Print every row.",
+                    "description": ALL_HELP,
                     "type": "boolean",
                     "default": false,
                 },

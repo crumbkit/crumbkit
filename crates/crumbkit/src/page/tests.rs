@@ -136,3 +136,22 @@ fn the_schema_describes_limit_with_its_default_and_all() {
     assert_eq!(schema["properties"]["all"]["type"], "boolean");
     assert_eq!(schema["properties"]["all"]["default"], false);
 }
+
+#[test]
+fn the_schema_describes_each_flag_with_the_text_of_its_help() {
+    let schema = schemars::schema_for!(Page<4>).to_value();
+    let tool = Tool::command();
+    let authors = tool.find_subcommand("authors").unwrap();
+
+    for id in ["limit", "all"] {
+        let arg = authors
+            .get_arguments()
+            .find(|arg| arg.get_id() == id)
+            .unwrap();
+        assert_eq!(
+            schema["properties"][id]["description"],
+            arg.get_help().unwrap().to_string(),
+            "--{id}"
+        );
+    }
+}

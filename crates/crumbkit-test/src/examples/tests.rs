@@ -90,9 +90,9 @@ fn an_example_without_a_golden_file_fails_the_check() {
         panic_message(|| run(&GUIDE, &examples(&dir), Action::Verify)).unwrap(),
         format!(
             "the command tree breaks crumbkit's example rules:\n\
-             sh -c echo books: the golden file `{}` is missing, and `SNAPSHOTS=overwrite` writes it\n\
-             sh -c echo authors: the golden file `{}` is missing, and `SNAPSHOTS=overwrite` writes it\n\
-             sh -e -c echo shelves: the golden file `{}` is missing, and `SNAPSHOTS=overwrite` writes it",
+             sh -c 'echo books': the golden file `{}` is missing, and `SNAPSHOTS=overwrite` writes it\n\
+             sh -c 'echo authors': the golden file `{}` is missing, and `SNAPSHOTS=overwrite` writes it\n\
+             sh -e -c 'echo shelves': the golden file `{}` is missing, and `SNAPSHOTS=overwrite` writes it",
             file("sh-c-echo-books.txt"),
             file("sh-c-echo-authors.txt"),
             file("sh-e-c-echo-shelves.txt"),
@@ -110,7 +110,7 @@ fn a_golden_file_whose_content_differs_fails_the_check() {
 
     let heading = format!(
         "the command tree breaks crumbkit's example rules:\n\
-         sh -c echo books: the output differs from the golden file `{}`:\n",
+         sh -c 'echo books': the output differs from the golden file `{}`:\n",
         dir.path().join("sh-c-echo-books.txt").display()
     );
     assert!(message.starts_with(&heading), "{message}");
@@ -146,8 +146,8 @@ fn an_example_that_exits_with_a_non_zero_code_fails_the_check_and_overwrite_writ
 
     assert_eq!(
         panic_message(|| run(&FAILS, &examples(&dir), Action::Overwrite)).unwrap(),
-        "the command tree breaks crumbkit's example rules:\n\
-         sh -c echo partial; exit 3: an example must exit with code 0 and write nothing to standard error, and the run ends with exit status: 3"
+        "these runs of the tool's examples fail:\n\
+         sh -c 'echo partial; exit 3': an example must exit with code 0 and write nothing to standard error, and the run ends with exit status: 3"
     );
     assert!(dir.names().is_empty(), "{:?}", dir.names());
 }
@@ -160,8 +160,8 @@ fn an_example_that_writes_to_standard_error_fails_the_check() {
 
     assert_eq!(
         panic_message(|| run(&WARNS, &examples(&dir), Action::Verify)).unwrap(),
-        "the command tree breaks crumbkit's example rules:\n\
-         sh -c echo warning >&2: an example must exit with code 0 and write nothing to standard error, and the run ends with exit status: 0 after writing this to standard error:\n\
+        "these runs of the tool's examples fail:\n\
+         sh -c 'echo warning >&2': an example must exit with code 0 and write nothing to standard error, and the run ends with exit status: 0 after writing this to standard error:\n\
          warning\n"
     );
 }
@@ -176,12 +176,32 @@ fn a_binary_that_cannot_start_fails_the_check_naming_its_path_and_the_error() {
 
     assert!(
         message.starts_with(
-            "the command tree breaks crumbkit's example rules:\n\
-             sh -c echo books: the binary `/nonexistent/sh` cannot start: "
+            "these runs of the tool's examples fail:\n\
+             sh -c 'echo books': the binary `/nonexistent/sh` cannot start: "
         ),
         "{message}"
     );
     assert_eq!(message.lines().count(), 2, "{message}");
+}
+
+#[test]
+fn failed_runs_and_broken_rules_are_reported_under_their_own_headings() {
+    const FAILS: Guide =
+        Guide::new().leaves(&[Leaf::new(&["-c"]).examples(&[Example::new(&["exit 3"], "Fail")])]);
+    let dir = TempDir::new("examples-headings").unwrap();
+
+    assert_eq!(
+        panic_message(|| run(
+            &FAILS,
+            &examples(&dir).exempt(&["books"]),
+            Action::Overwrite
+        ))
+        .unwrap(),
+        "the command tree breaks crumbkit's example rules:\n\
+         the exemption `books` names no command\n\
+         these runs of the tool's examples fail:\n\
+         sh -c 'exit 3': an example must exit with code 0 and write nothing to standard error, and the run ends with exit status: 3"
+    );
 }
 
 #[test]
@@ -268,6 +288,6 @@ fn two_examples_with_one_golden_file_name_fail_the_check_naming_both_command_lin
     assert_eq!(
         panic_message(|| run(&TWINS, &examples(&dir), Action::Overwrite)).unwrap(),
         "the command tree breaks crumbkit's example rules:\n\
-         sh -c echo 'books': the example's golden file name `sh-c-echo-books.txt` is also the name for the example `sh -c echo books`"
+         sh -c 'echo '\\''books'\\''': the example's golden file name `sh-c-echo-books.txt` is also the name for the example `sh -c 'echo books'`"
     );
 }

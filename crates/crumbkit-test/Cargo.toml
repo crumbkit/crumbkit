@@ -1,6 +1,6 @@
 [package]
 name = "crumbkit-test"
-description = "Tests that check a crumbkit tool's failure codes and command tree against the crumbkit conventions"
+description = "Tests that check a crumbkit tool's failure codes, command tree, guide, help pages and examples against the crumbkit conventions"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true

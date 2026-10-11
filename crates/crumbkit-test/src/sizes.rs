@@ -22,18 +22,20 @@ const LEAF: usize = 1_200;
 /// The budgets of a tool's `-h` pages, in bytes, which
 /// [`check_help_sizes`] checks.
 ///
-/// [`Budgets::new`] holds crumbkit's defaults: 1,500 bytes for the root, 800
-/// for a group, which is a command below the root with subcommands, and
-/// 1,200 for a leaf, which is a command below the root without
-/// subcommands. The root of a tool without subcommands has the root's
-/// budget. A tool can lower a whole class, or single commands, and cannot
-/// raise a budget above crumbkit's default:
+/// [`Budgets::new`] holds crumbkit's default budgets for the root, for a
+/// group, which is a command below the root with subcommands, and for a leaf,
+/// which is a command below the root without subcommands. [ADR-0025] records
+/// the default budgets. The root of a tool without subcommands has the
+/// root's budget. A tool can lower a whole class, or single commands, and
+/// cannot raise a budget above crumbkit's default:
 ///
 /// ```
 /// use crumbkit_test::Budgets;
 ///
 /// const BUDGETS: Budgets = Budgets::new().leaf(1_000).nodes(&[("books list", 600)]);
 /// ```
+///
+/// [ADR-0025]: https://github.com/crumbkit/crumbkit/blob/main/docs/decisions/api/help/0025-help-checks.md
 #[derive(Clone, Copy, Debug)]
 pub struct Budgets {
     /// The budget of the root's page.
@@ -48,8 +50,8 @@ pub struct Budgets {
 }
 
 impl Budgets {
-    /// Returns crumbkit's default budgets: 1,500 bytes for the root, 800 for
-    /// each group and 1,200 for each leaf, and no budget for a single
+    /// Returns crumbkit's default budgets for the root, each group and each
+    /// leaf, which [ADR-0025](https://github.com/crumbkit/crumbkit/blob/main/docs/decisions/api/help/0025-help-checks.md) records, and no budget for a single
     /// command.
     #[must_use]
     pub const fn new() -> Self {
@@ -166,7 +168,9 @@ impl Class {
 ///   the budget;
 /// - a class budget or a command's budget above crumbkit's default for its
 ///   class, because a tool can lower a budget and cannot raise one;
-/// - a command's budget whose path names no command or a hidden one.
+/// - a command's budget whose path names no command or a hidden one;
+/// - a visible command whose `-h` prints no help page, such as one that
+///   turned its help flag off.
 ///
 /// ```
 /// use clap::Command;
@@ -198,10 +202,13 @@ pub fn check_help_sizes(command: &Command, guide: &Guide, budgets: &Budgets) {
         }
     }
     let pages = pages(command, guide, "-h", &mut problems);
+    // A command whose page failed to render has no entry in `pages`, so the
+    // budgets are matched against the visible tree, and that command's one
+    // problem is the page that `pages` reports.
+    let visible = tree::walk_visible(command);
     for &(path, budget) in budgets.nodes {
-        let visit = pages
+        let visit = visible
             .iter()
-            .map(|(visit, _)| visit)
             .find(|visit| visit.depth() > 0 && visit.below() == path);
         let Some(visit) = visit else {
             problems.push(format!(

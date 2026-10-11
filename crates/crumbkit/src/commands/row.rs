@@ -20,63 +20,37 @@ use crate::help::leaf::quote;
 /// JSON, so they appear with `--json --full` or `--fields`.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct CommandRow {
-    /// The command line that runs the command, such as `shelf books list`.
+    // The `JsonSchema` impl below describes each field of this struct and of
+    // the structs it holds, and it is the one place those descriptions live.
     path: String,
-    /// The command's one-line description, or its full description when it
-    /// has no one-line description.
     about: Option<String>,
-    /// The full description that the command's `--help` shows, when the
-    /// command has one.
     long_about: Option<String>,
-    /// The arguments that the command's help shows, in definition order.
     arguments: Vec<Argument>,
-    /// The examples of the guide's leaf for the command, in guide order.
     examples: Vec<CommandExample>,
-    /// The columns of the result that the command prints, from the
-    /// document of the guide's leaf for the command.
     columns: Vec<CommandColumn>,
 }
 
 /// One argument of a command, as the command's help shows it.
 #[derive(Clone, Debug, PartialEq, Eq)]
 struct Argument {
-    /// The name as help writes it: `--all` for an argument with a long
-    /// name, `-a` for one with only a short name, and `<ID>` for a
-    /// positional argument.
+    // `CommandRow`'s `JsonSchema` impl describes each field.
     name: String,
-    /// The short form, such as `-n`, when the argument has one.
     short: Option<String>,
-    /// The names of the values that the argument takes, such as `N`, and
-    /// none for a flag.
     value_names: Vec<String>,
-    /// Whether the command refuses a command line without the argument.
     required: bool,
-    /// Whether the argument takes more than one value, through repeats,
-    /// commas or several words.
     many: bool,
-    /// The values that the argument takes when the caller leaves it out,
-    /// as help shows them.
     defaults: Vec<String>,
-    /// The values that the argument accepts, as help shows them, and none
-    /// when it accepts any value.
     possible_values: Vec<String>,
-    /// The one-line help: the argument's `help`, or its `long_help` when it
-    /// has no `help`.
     help: Option<String>,
-    /// The full help that `--help` shows, when the argument has one.
     long_help: Option<String>,
-    /// Whether the argument also works after every subcommand below the
-    /// command that defines it.
     global: bool,
 }
 
 /// One example of a command, from the guide's leaf for the command.
 #[derive(Clone, Debug, PartialEq, Eq)]
 struct CommandExample {
-    /// The full command line, such as `shelf books list --all`, with each
-    /// word that a POSIX shell would split or expand between single quotes.
+    // `CommandRow`'s `JsonSchema` impl describes each field.
     command: String,
-    /// The one-line description, which is empty when the example has none.
     about: &'static str,
 }
 
@@ -84,11 +58,9 @@ struct CommandExample {
 /// the guide's leaf for the command.
 #[derive(Clone, Debug, PartialEq, Eq)]
 struct CommandColumn {
-    /// The column's name, as the row type serializes the field.
+    // `CommandRow`'s `JsonSchema` impl describes each field.
     name: &'static str,
-    /// Whether `--long` adds the column.
     long: bool,
-    /// The first paragraph of the field's doc comment, when it has one.
     description: Option<String>,
 }
 
@@ -313,9 +285,9 @@ impl Serialize for CommandColumn {
     }
 }
 
-/// Describes the object that `Serialize` writes. Each description repeats
-/// the field's doc comment, because a leaf's `--help` describes the columns
-/// `path` and `about` from it.
+/// Describes the object that `Serialize` writes. The descriptions are the
+/// only ones the fields have, and a leaf's `--help` describes the columns
+/// `path` and `about` from them.
 ///
 /// This impl is written by hand so crumbkit needs no schemars `derive`
 /// feature. The nested objects are written inline, so the schema has no

@@ -39,7 +39,9 @@ mod tests;
 /// and deletes each stale file. It finds two pages whose golden files have
 /// one name, such as the pages of `shelf books list` and of a root command
 /// `books-list`, naming both command lines, and compares or writes only the
-/// first of the two. Without `SNAPSHOTS=overwrite`, it also finds:
+/// first of the two. It finds a visible command whose `-h` or `--help`
+/// prints no help page, such as one that turned its help flag off. Without
+/// `SNAPSHOTS=overwrite`, it also finds:
 ///
 /// - a page without a golden file;
 /// - a page that differs from its golden file, with snapbox's report of
@@ -61,9 +63,11 @@ mod tests;
 /// # Panics
 ///
 /// Panics when a page or a golden file breaks a rule above, or when
-/// `SNAPSHOTS=overwrite` cannot write or delete a file. The message lists
-/// each problem on its own line and names each page by its command line,
-/// such as `shelf books list -h`.
+/// `SNAPSHOTS=overwrite` cannot write or delete a file. Each problem in the
+/// message starts on a new line, and the problem of a page that differs
+/// from its golden file continues with snapbox's report of both texts. The
+/// message names each page by its command line, such as
+/// `shelf books list -h`.
 pub fn check_help_goldens(command: &Command, guide: &Guide, dir: impl AsRef<Path>) {
     let assert = Assert::new().action_env(DEFAULT_ACTION_ENV);
     check(command, guide, dir.as_ref(), &assert);

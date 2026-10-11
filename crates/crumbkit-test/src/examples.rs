@@ -10,6 +10,7 @@ use snapbox::assert::{Action, DEFAULT_ACTION_ENV};
 use snapbox::{Assert, cmd};
 
 use crate::goldens::{compare, remove_stale};
+use crate::guide::command_line;
 use crate::temp::TempDir;
 use crate::tree;
 
@@ -127,7 +128,10 @@ impl<'a> Examples<'a> {
 /// variable of [`Examples::env`], and points `XDG_CONFIG_HOME`,
 /// `XDG_DATA_HOME`, `XDG_STATE_HOME` and `XDG_CACHE_HOME` at fresh
 /// directories that it creates for that run and deletes afterwards, so a
-/// run never reads or writes the caller's own configuration.
+/// run never reads or writes the caller's own configuration. The cleared
+/// environment has no `PATH` and no `HOME`, so a tool whose binary needs
+/// them passes them through [`Examples::env`], such as
+/// `("PATH", "/usr/bin:/bin")` or `("HOME", "tests/fixtures/home")`.
 ///
 /// The golden file of an example holds the run's standard output. Its name
 /// joins the tool's name, the leaf's path and the example's words with
@@ -184,8 +188,16 @@ impl<'a> Examples<'a> {
 /// Panics when a run, a golden file or an exemption breaks a rule above, or
 /// when the check cannot create a run's XDG directories, or
 /// `SNAPSHOTS=overwrite` cannot write or delete a file. The message lists
-/// each problem on its own line and names each example by its command line,
-/// such as `shelf books list --all`.
+/// the problems of the command tree and the golden files under the line
+/// `the command tree breaks crumbkit's example rules:`, and the runs that
+/// fail, including a binary that cannot start, under the line
+/// `these runs of the tool's examples fail:`. Each problem starts on a new
+/// line, and a problem may continue over several lines: a failed run's
+/// problem ends with its standard error, and a differing output's problem
+/// ends with snapbox's report. The message names each example by its
+/// command line as help prints it, with each word that a POSIX shell would
+/// split or expand between single quotes, such as
+/// `shelf books list --author 'Jane Austen'`.
 pub fn check_examples(command: &Command, guide: &Guide, examples: &Examples<'_>) {
     let assert = Assert::new().action_env(DEFAULT_ACTION_ENV);
     check(command, guide, examples, &assert);
@@ -199,6 +211,10 @@ fn check(command: &Command, guide: &Guide, examples: &Examples<'_>, assert: &Ass
     let dir = Path::new(examples.dir);
     let tool = command.get_name();
     let mut problems = Vec::new();
+    // The problems of runs that fail, which the message lists under a
+    // heading of their own, because the tool's binary breaks them and the
+    // command tree and golden files do not.
+    let mut failures = Vec::new();
     let visits = tree::walk(command, examples.exempt, &mut problems);
     // Each golden file name with the command line of the example that has
     // it.
@@ -211,10 +227,11 @@ fn check(command: &Command, guide: &Guide, examples: &Examples<'_>, assert: &Ass
         }
         for example in leaf.get_examples() {
             let args: Vec<&str> = path.iter().chain(example.words()).copied().collect();
-            let line = std::iter::once(tool)
-                .chain(args.iter().copied())
+            let text = std::iter::once(tool)
+                .chain(path.iter().copied())
                 .collect::<Vec<_>>()
                 .join(" ");
+            let line = command_line(&text, example.words());
             let name = file_name(tool, path, example.words());
             if let Some((_, other)) = names.iter().find(|(known, _)| *known == name) {
                 problems.push(format!(
@@ -226,7 +243,7 @@ fn check(command: &Command, guide: &Guide, examples: &Examples<'_>, assert: &Ass
             let output = match run(examples, &args) {
                 Ok(output) => output,
                 Err(problem) => {
-                    problems.push(format!("{line}: {problem}"));
+                    failures.push(format!("{line}: {problem}"));
                     continue;
                 }
             };
@@ -239,7 +256,7 @@ fn check(command: &Command, guide: &Guide, examples: &Examples<'_>, assert: &Ass
                     problem.push_str(" after writing this to standard error:\n");
                     problem.push_str(&String::from_utf8_lossy(&output.stderr));
                 }
-                problems.push(problem);
+                failures.push(problem);
                 continue;
             }
             // RUST-10: the check compares the output as UTF-8 text, as the
@@ -260,7 +277,30 @@ fn check(command: &Command, guide: &Guide, examples: &Examples<'_>, assert: &Ass
     }
     let names: Vec<String> = names.into_iter().map(|(name, _)| name).collect();
     remove_stale(dir, &names, overwrite, "checked example", &mut problems);
-    tree::report("example rules", &problems);
+    report(&problems, &failures);
+}
+
+/// Panics, as a failed test assertion does, when `problems` or `failures`
+/// holds any problem. The problems of the command tree and the golden files
+/// follow the line `the command tree breaks crumbkit's example rules:`, and
+/// the failed runs follow the line `these runs of the tool's examples
+/// fail:`, so a reader sees whether the tree or the tool's binary broke.
+/// Each problem starts on a new line.
+fn report(problems: &[String], failures: &[String]) {
+    let mut sections = Vec::new();
+    if !problems.is_empty() {
+        sections.push(format!(
+            "the command tree breaks crumbkit's example rules:\n{}",
+            problems.join("\n")
+        ));
+    }
+    if !failures.is_empty() {
+        sections.push(format!(
+            "these runs of the tool's examples fail:\n{}",
+            failures.join("\n")
+        ));
+    }
+    assert!(sections.is_empty(), "{}", sections.join("\n"));
 }
 
 /// Runs the binary of `examples` once with `args`, a cleared environment,
