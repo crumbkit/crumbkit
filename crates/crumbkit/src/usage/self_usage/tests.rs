@@ -165,7 +165,7 @@ fn each_finding_prints_with_its_command_and_a_suggestion() {
                 "usage error".to_owned(),
                 1,
                 "books list".to_owned(),
-                "1 typed a flag close to --all".to_owned()
+                "1 of the runs typed a flag close to --all".to_owned()
             ),
             (
                 "retry after failure".to_owned(),

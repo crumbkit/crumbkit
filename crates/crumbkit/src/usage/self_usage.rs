@@ -264,7 +264,7 @@ fn suggestion(finding: &Finding, figures: Option<&Figures>) -> String {
         Kind::HelpLoop => "3+ help pages before the first success".to_owned(),
         Kind::UsageError => match figures.and_then(|figures| figures.nearest.first()) {
             Some(nearest) => format!(
-                "{} typed a flag close to {}",
+                "{} of the runs typed a flag close to {}",
                 grouped(nearest.runs),
                 nearest.name
             ),
