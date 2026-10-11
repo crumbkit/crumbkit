@@ -308,3 +308,5 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - When `main` ends while the usage log's signal thread writes the line, the
   guard waits for the write, for at most 500 ms, so the process no longer
   exits in the middle of the line.
+- `--fields` and a leaf's columns accept the fields of each `oneOf` or
+  `anyOf` variant of an enum row type.

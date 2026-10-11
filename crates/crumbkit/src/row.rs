@@ -1,14 +1,19 @@
 //! The traits that let a result print as a table.
 
-use schemars::JsonSchema;
+use schemars::{JsonSchema, Schema};
 use serde::Serialize;
+use serde_json::Value;
 
 use crate::{Call, Failure};
 
 /// A type that prints as one table row.
 ///
 /// The names in `COLUMNS` and `LONG_COLUMNS` are the field names as the type
-/// serializes them, after any `#[serde(rename)]`. A name that is not a field
+/// serializes them, after any `#[serde(rename)]`. The fields of a row type
+/// are the properties of its JSON Schema. When the type is an enum whose
+/// schema lists its variants under `oneOf` or `anyOf`, they also include the
+/// properties of each variant, so `--fields` and a leaf's columns can name a
+/// field that only some variants have. A name that is not a field
 /// prints `-` in every row of its column, and `null` in JSON. crumbkit-test's
 /// `check_guide` fails on such a name in the row type of each leaf that the
 /// tool's guide gives a document, and on a column whose field has no doc
@@ -110,6 +115,45 @@ impl<R: Row> Rows for Vec<R> {
     fn rows(&self) -> &[R] {
         self
     }
+}
+
+/// Returns the properties of the row type whose JSON Schema is `schema`, as
+/// pairs of a field name and the schema of the field, each name once in the
+/// order it is first found.
+///
+/// The properties are those at the top level of the schema, followed by
+/// those of each variant under `oneOf` and then under `anyOf`, in order. A
+/// variant's own properties come before those of the definition that its
+/// `$ref` names, which schemars keeps under the schema's `$defs`. A `$ref`
+/// that does not point into the schema itself adds nothing.
+pub(crate) fn properties(schema: &Schema) -> Vec<(&str, &Value)> {
+    let root = schema.as_value();
+    let mut objects = vec![root];
+    for keyword in ["oneOf", "anyOf"] {
+        let variants = root.get(keyword).and_then(Value::as_array);
+        for variant in variants.into_iter().flatten() {
+            objects.push(variant);
+            // A local `$ref` is a JSON Pointer into the schema after its `#`.
+            let reference = variant.get("$ref").and_then(Value::as_str);
+            let target = reference
+                .and_then(|reference| reference.strip_prefix('#'))
+                .and_then(|pointer| root.pointer(pointer));
+            objects.extend(target);
+        }
+    }
+
+    let mut found: Vec<(&str, &Value)> = Vec::new();
+    for object in objects {
+        let Some(properties) = object.get("properties").and_then(Value::as_object) else {
+            continue;
+        };
+        for (name, property) in properties {
+            if !found.iter().any(|(seen, _)| seen == name) {
+                found.push((name, property));
+            }
+        }
+    }
+    found
 }
 
 /// Holds the supertrait that keeps tools from implementing [`Rows`].

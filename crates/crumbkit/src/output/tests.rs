@@ -270,6 +270,68 @@ fn an_unknown_field_is_refused_in_json_even_when_the_result_has_no_rows() {
     assert!(finished.out.contains(recovery));
 }
 
+/// A star, one variant of `Body`, which `Body`'s schema reaches through a
+/// `$ref`.
+#[derive(Serialize, JsonSchema)]
+struct Star {
+    name: &'static str,
+    kelvin: u32,
+}
+
+/// A row type whose schema lists its variants under `anyOf` and has no
+/// top-level `properties`.
+#[derive(Serialize, JsonSchema)]
+#[serde(untagged)]
+enum Body {
+    Star(Star),
+    Moon {
+        name: &'static str,
+        planet: &'static str,
+    },
+}
+
+impl Row for Body {
+    const COLUMNS: &'static [&'static str] = &["name"];
+}
+
+const BODIES: Document<Vec<Body>> = Document::new("solar", "bodies", 1);
+
+#[test]
+fn fields_accepts_the_fields_of_each_variant_of_a_row_type_without_top_level_properties() {
+    let sun = Body::Star(Star {
+        name: "Sun",
+        kelvin: 5772,
+    });
+    let moon = Body::Moon {
+        name: "Titan",
+        planet: "Saturn",
+    };
+
+    let finished = finish_with(&["--fields", "name,kelvin,planet"], BODIES, vec![sun, moon]);
+
+    assert_eq!(finished.code, ExitCode::SUCCESS);
+    let expected = "\
+NAME   KELVIN  PLANET
+Sun    5772    -
+Titan  -       Saturn
+";
+    assert_eq!(finished.out, expected);
+}
+
+#[test]
+fn the_valid_fields_of_a_row_type_with_variants_are_each_variants_fields_once_in_order() {
+    let finished = finish_with(&["--fields", "radius"], BODIES, Vec::new());
+
+    assert_eq!(finished.code, ExitCode::from(2));
+    assert!(
+        finished
+            .err
+            .contains("help:  use the valid fields: kelvin, name, planet\n"),
+        "{}",
+        finished.err
+    );
+}
+
 #[test]
 fn the_flags_parse_before_and_after_the_subcommand() {
     let before = Tool::try_parse_from(["tool", "--json", "list", "--long"]).unwrap();
