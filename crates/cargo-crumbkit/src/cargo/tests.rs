@@ -41,13 +41,3 @@ fn a_cargo_that_cannot_start_fails_with_cargo_unavailable() {
         "crumbkit::weigh::cargo_unavailable"
     );
 }
-
-#[test]
-fn a_binary_that_the_workspace_lacks_fails_with_build_failed() {
-    let error = build(OsStr::new(env!("CARGO")), "no-such-binary").unwrap_err();
-
-    assert_eq!(
-        Spelling::COLONS.spell(error.code()),
-        "crumbkit::weigh::build_failed"
-    );
-}

@@ -26,6 +26,11 @@ const PASSED: [&str; 6] = [
     "CARGO_TARGET_DIR",
 ];
 
+/// `weigh` passes cargo's standard error through to its own, and an example
+/// must write nothing there, so the test turns off cargo's progress lines.
+/// cargo still prints its errors with `CARGO_TERM_QUIET` set.
+const QUIET: (&str, &str) = ("CARGO_TERM_QUIET", "true");
+
 #[test]
 fn every_example_in_the_guide_runs_and_prints_its_golden_output() {
     let passed: Vec<(&str, String)> = PASSED
@@ -39,10 +44,11 @@ fn every_example_in_the_guide_runs_and_prints_its_golden_output() {
             Some((name, value))
         })
         .collect();
-    let env: Vec<(&str, &str)> = passed
+    let mut env: Vec<(&str, &str)> = passed
         .iter()
         .map(|(name, value)| (*name, value.as_str()))
         .collect();
+    env.push(QUIET);
     let examples = Examples::new(
         env!("CARGO_BIN_EXE_cargo-crumbkit"),
         "tests/golden/examples",

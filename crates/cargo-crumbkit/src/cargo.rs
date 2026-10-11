@@ -37,10 +37,12 @@ pub(crate) fn program() -> OsString {
 /// directory with `cargo`, and returns its executable and package.
 ///
 /// cargo runs as `cargo build --workspace --bin <bin> --message-format
-/// json`, with the environment of `weigh`, and its standard output and
-/// standard error are captured, so a build prints nothing. `--workspace`
-/// makes cargo look for `bin` in every package of the workspace, so `weigh`
-/// finds it from any package's directory.
+/// json`, with the environment of `weigh`. `weigh` captures cargo's
+/// standard output, which holds the JSON messages, and cargo's standard
+/// error goes to `weigh`'s own, so a person sees cargo's progress lines and
+/// compiler errors as with any cargo subcommand. `--workspace` makes cargo
+/// look for `bin` in every package of the workspace, so `weigh` finds it
+/// from any package's directory.
 ///
 /// # Errors
 ///
@@ -62,6 +64,7 @@ pub(crate) fn build(cargo: &OsStr, bin: &str) -> Result<Built, WeighError> {
             "json",
         ])
         .stdin(Stdio::null())
+        .stderr(Stdio::inherit())
         .output()
         .map_err(|error| WeighError::CargoUnavailable {
             cargo: cargo.to_string_lossy().into_owned(),
