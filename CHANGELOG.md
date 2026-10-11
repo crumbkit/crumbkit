@@ -57,6 +57,13 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   commands above the branch ([`commands`]).
 - crumbkit-test: [`check_help_goldens`] fails on two pages whose golden
   files have one name.
+- crumbkit: a trim of the usage log keeps the newest whole lines within a
+  size budget, drops a torn line, and replaces the log in one step under a
+  separate lock file ([`usage`], [ADR-0029]).
+- crumbkit: a usage-log key file goes into place only when complete, and a
+  key of the wrong length is replaced ([ADR-0029]).
+- crumbkit: a signal or the end of `main` during the usage log's write
+  waits a bounded time for the line to finish ([ADR-0029]).
 
 <!-- Each label below points at the source file that holds the item's
 rustdoc, or at its decision record. -->

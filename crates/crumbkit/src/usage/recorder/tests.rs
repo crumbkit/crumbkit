@@ -7,7 +7,10 @@ use std::time::{Duration, Instant, SystemTime};
 use clap::Command;
 use serde_json::{Value, json};
 
-use super::{Recorder, State, child_env_in, install, save, start, take, typed, update};
+use super::{
+    Recorder, State, child_env_in, install, save, start, take, typed, update, wait_for_line, write,
+    written,
+};
 use crate::usage::caller::Caller;
 use crate::usage::context::Context;
 use crate::usage::file::LIMITS;
@@ -88,6 +91,50 @@ fn a_run_gives_up_its_recorder_once_so_it_writes_one_line() {
 
     assert!(take(&slot).is_some());
     assert!(take(&slot).is_none());
+}
+
+#[test]
+fn a_taken_recorder_counts_as_writing_until_its_line_is_written() {
+    let slot = Mutex::new(State::Idle);
+    install(&slot, started(None));
+
+    take(&slot).unwrap();
+    assert!(matches!(*slot.lock().unwrap(), State::Writing));
+    written(&slot);
+
+    assert!(matches!(*slot.lock().unwrap(), State::Written));
+}
+
+#[test]
+fn a_thread_that_ends_the_run_while_another_writes_the_line_waits_until_it_is_written() {
+    let slot = Mutex::new(State::Idle);
+    install(&slot, started(None));
+    take(&slot).unwrap();
+    let waited = Instant::now();
+
+    std::thread::scope(|scope| {
+        scope.spawn(|| {
+            std::thread::sleep(Duration::from_millis(30));
+            written(&slot);
+        });
+        write(&slot, false);
+    });
+
+    assert!(waited.elapsed() >= Duration::from_millis(30));
+    assert!(matches!(*slot.lock().unwrap(), State::Written));
+}
+
+#[test]
+fn the_signal_thread_stops_waiting_for_a_line_in_progress_after_its_bound() {
+    let slot = Mutex::new(State::Idle);
+    install(&slot, started(None));
+    take(&slot).unwrap();
+    let waited = Instant::now();
+
+    let finished = wait_for_line(&slot, Duration::from_millis(30));
+
+    assert!(!finished);
+    assert!(waited.elapsed() >= Duration::from_millis(30));
 }
 
 #[test]
@@ -190,11 +237,13 @@ fn two_runs_with_the_same_words_and_session_share_their_hashes() {
 }
 
 #[test]
-fn help_records_the_command_it_named_and_short_or_long() {
+fn help_records_the_commands_of_its_path_that_the_tool_defines_and_short_or_long() {
     let mut recorder = parsed();
+    let tool = tool().subcommand(Command::new("books").subcommand(Command::new("show")));
 
     recorder.helped(
-        &["books".to_owned(), "show".to_owned()],
+        &tool,
+        &["books".to_owned(), "s3cr3t".to_owned(), "show".to_owned()],
         true,
         ExitCode::SUCCESS,
     );
