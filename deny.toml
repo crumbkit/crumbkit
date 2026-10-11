@@ -55,6 +55,7 @@ deny = [
     # clap, so only clap itself may depend on it. A new crate that parses a
     # command line joins the clap list.
     { crate = "clap", wrappers = [
+        "cargo-crumbkit",
         "crumbkit",
         "crumbkit-aliases",
         "crumbkit-test",

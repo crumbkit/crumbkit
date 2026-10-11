@@ -42,7 +42,8 @@ The rustdoc of each check says what it fails on and shows an example:
 - The help guide: [`check_guide`].
 - Help pages: [`check_help_sizes`] with [`Budgets`], and
   [`check_help_goldens`].
-- Example output: [`check_examples`] with [`Examples`].
+- Example output: [`check_examples`] with [`Examples`], and
+  [`example_golden_name`], which names each example's golden file.
 
 [ADR-0025] records why these checks exist, and [ADR-0004] records how golden
 files work.
@@ -61,5 +62,6 @@ option.
 [`check_help_goldens`]: src/goldens.rs
 [`check_examples`]: src/examples.rs
 [`Examples`]: src/examples.rs
+[`example_golden_name`]: src/examples.rs
 [ADR-0025]: ../../docs/decisions/api/help/0025-help-checks.md
 [ADR-0004]: ../../docs/decisions/testing/0004-golden-and-snapshot-tests.md
