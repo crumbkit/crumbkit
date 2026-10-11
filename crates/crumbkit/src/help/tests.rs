@@ -183,6 +183,23 @@ fn a_guided_group_off_the_typed_path_keeps_its_default_help() {
 }
 
 #[test]
+fn a_guided_command_s_own_before_help_and_before_long_help_are_replaced_by_the_goal_list() {
+    const GUIDE: Guide = Guide::new().groups(&[Group::new(&[], &[Goal::new("Read", &["list"])])]);
+    let tool = Command::new("tool")
+        .before_help("The tool's own short text")
+        .before_long_help("The tool's own long text")
+        .subcommand(Command::new("list").about("List the planets"));
+
+    let tool = extend(tool, &GUIDE);
+
+    assert_eq!(
+        tool.get_before_help().map(ToString::to_string).as_deref(),
+        Some("Read\n  list  List the planets")
+    );
+    assert_eq!(tool.get_before_long_help(), None);
+}
+
+#[test]
 fn a_guided_page_without_long_help_keeps_clap_s_short_help_line() {
     const GUIDE: Guide = Guide::new().groups(&[Group::new(&[], &[Goal::new("Read", &["list"])])]);
     let tool = Command::new("tool").subcommand(Command::new("list").about("List the planets"));

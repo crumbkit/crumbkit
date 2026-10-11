@@ -228,6 +228,10 @@ impl Goal {
 /// is listed under both. The `Options:` section and crumbkit's lines from
 /// [`parse`](crate::parse) follow the list in `-h` and `--help`.
 ///
+/// The list replaces the guided command's own `before_help` and
+/// `before_long_help`, so neither text prints. A tool that needs its own
+/// text there leaves that command out of the guide.
+///
 /// Each leaf's help ends with its `Examples:` section after the options, in
 /// `-h` and in `--help`, as `parse` prints it, and the section replaces the
 /// command's own `after_help` and `after_long_help`. `extend` adds no
