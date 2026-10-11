@@ -1,8 +1,8 @@
 # ADR-0017. Decision records
 
 - Each record states a decision as crumbkit holds it now, in one to three sentences per point, and ends with a one-line list of the alternatives considered. A changed decision is edited in place, because git history keeps the old version.
-- Records form a tree. Every directory's `README.md` is a node record that states which decisions belong under it and links to each of its children, and it needs no Considered line because its scope is its only decision. When a directory nears the 5,000-word limit of ADR-0010, its records split by topic into child directories, and each new directory's `README.md` takes the next free number.
-- A record's number is global and never reused, and moving a record keeps its number. Text anywhere in the repository cites a record as `ADR-NNNN`.
+- Records form a tree. Every directory's `README.md` is a node record that states which decisions belong under it and links to its children as DOCS-3 requires, so every record can be reached from the root, and it needs no Considered line because its scope is its only decision. When a directory nears the 5,000-word limit of DOCS-2, its records split by topic into child directories, and each new directory's `README.md` takes the next free number.
+- A record's number is global and never reused, and moving a record keeps its number. Text anywhere in the repository cites a record by that number (DOCS-3), so one search finds every reference to a decision.
 
 Considered: a flat directory, numbers local to each directory, citing records by file path.
 
