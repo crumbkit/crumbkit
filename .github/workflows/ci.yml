@@ -1,5 +1,6 @@
-# The pull-request lane of ADR-0011. The lint and test jobs run in parallel
-# and report on their own. A push to main runs them again on the merged code.
+# The fast lane of ADR-0011. The lint and test jobs run in parallel, and the
+# gate job reports whether both passed. A push to main runs them again on the
+# merged code, and also runs the tests on macOS.
 name: CI
 
 on:
@@ -24,24 +25,30 @@ env:
 
 jobs:
   lint:
-    runs-on: ubuntu-slim
+    runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
-      contents: read # actions/checkout reads the private repository.
+      contents: read # actions/checkout reads the repository.
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      # This installs rustup and the pinned toolchain. It runs before
-      # rust-cache, which reads the rustc version for its cache key.
-      - uses: $/.github/actions/install-rust
+      # The image includes rustup, which installs the toolchain that
+      # rust-toolchain.toml pins and the MSRV toolchain. Both install before
+      # rust-cache, which reads the installed rustc versions for its cache key.
+      - run: rustup toolchain install
+      - run: rustup toolchain install 1.89.0 --profile minimal
       # install-action runs before rust-cache, so the cache leaves out the
       # tool binaries that install-action downloads on every run.
       - uses: taiki-e/install-action@f7e5d7c961414b23f5b25b2da9294395d08513ad # v2.87.26
         with:
           tool: zizmor,cargo-deny,cargo-shear
           fallback: none
+      # Only a run on main saves the cache. A pull request restores the cache
+      # that main saved and saves none of its own.
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+        with:
+          save-if: ${{ github.ref == 'refs/heads/main' }}
       - run: cargo fmt --check
       - run: cargo clippy --workspace --all-targets
       # shelf turns on crumbkit's `usage-log` and `tracing` features, so the
@@ -54,6 +61,10 @@ jobs:
       - run: cargo clippy -p crumbkit --all-targets
       - run: cargo clippy -p crumbkit --all-targets --features miette
       - run: cargo clippy -p crumbkit --all-targets --features tracing
+      # The MSRV check builds with the oldest supported toolchain (RUST-9).
+      # It builds with every feature, which compiles every line of code once,
+      # because no code is left out when a feature is on.
+      - run: cargo +1.89.0 check --workspace --all-targets --all-features
       - run: cargo xtask check
       # The advisories check runs nightly in scheduled.yml, because a new
       # advisory can appear when no code has changed (ADR-0012).
@@ -63,24 +74,29 @@ jobs:
       - run: zizmor .
 
   test:
-    runs-on: ubuntu-slim
+    runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
-      contents: read # actions/checkout reads the private repository.
+      contents: read # actions/checkout reads the repository.
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      # This installs rustup and the pinned toolchain. It runs before
-      # rust-cache, which reads the rustc version for its cache key.
-      - uses: $/.github/actions/install-rust
+      # The image includes rustup, which installs the toolchain that
+      # rust-toolchain.toml pins. It runs before rust-cache, which reads the
+      # rustc version for its cache key.
+      - run: rustup toolchain install
       # install-action runs before rust-cache, so the cache leaves out the
       # tool binaries that install-action downloads on every run.
       - uses: taiki-e/install-action@f7e5d7c961414b23f5b25b2da9294395d08513ad # v2.87.26
         with:
           tool: cargo-nextest
           fallback: none
+      # Only a run on main saves the cache. A pull request restores the cache
+      # that main saved and saves none of its own.
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+        with:
+          save-if: ${{ github.ref == 'refs/heads/main' }}
       - run: cargo nextest run --workspace --profile ci
       # nextest does not run doctests, so cargo test runs them.
       - run: cargo test --workspace --doc
@@ -91,8 +107,52 @@ jobs:
       - run: cargo test -p crumbkit --doc
       - run: cargo nextest run -p crumbkit --features miette --profile ci
       - run: cargo test -p crumbkit --features miette --doc
-      # The MSRV check builds with the oldest supported toolchain (RUST-9).
-      # It builds with every feature, which compiles every line of code once,
-      # because no code is left out when a feature is on.
-      - run: rustup toolchain install 1.89.0 --profile minimal
-      - run: cargo +1.89.0 check --workspace --all-targets --all-features
+
+  # The repository ruleset requires this one check, so a job that joins the
+  # fast lane joins this job's `needs` and the ruleset stays the same. The job
+  # runs even when a needed job failed or was cancelled, and it fails unless
+  # every needed job succeeded. A skipped job fails it too, because a skipped
+  # job ran none of its checks.
+  gate:
+    needs: [lint, test]
+    if: always()
+    runs-on: ubuntu-slim
+    timeout-minutes: 5
+    steps:
+      - env:
+          RESULTS: ${{ join(needs.*.result, ' ') }}
+        run: |
+          echo "The fast-lane jobs finished with these results: $RESULTS"
+          for result in $RESULTS; do
+            if [ "$result" != "success" ]; then
+              exit 1
+            fi
+          done
+
+  # The macOS tests run on each push to main and stay out of the pull-request
+  # lane and the gate, so a pull request never waits for a macOS runner.
+  macos:
+    if: github.event_name != 'pull_request'
+    runs-on: macos-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read # actions/checkout reads the repository.
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      # The image includes rustup, which installs the toolchain that
+      # rust-toolchain.toml pins.
+      - run: rustup toolchain install
+      - uses: taiki-e/install-action@f7e5d7c961414b23f5b25b2da9294395d08513ad # v2.87.26
+        with:
+          tool: cargo-nextest
+          fallback: none
+      # Only a run on main saves the cache, and the next push to main
+      # restores it.
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+        with:
+          save-if: ${{ github.ref == 'refs/heads/main' }}
+      - run: cargo nextest run --workspace --profile ci
+      # nextest does not run doctests, so cargo test runs them.
+      - run: cargo test --workspace --doc
