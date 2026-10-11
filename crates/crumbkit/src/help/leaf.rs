@@ -9,7 +9,7 @@ use schemars::{JsonSchema, Schema};
 use serde_json::Value;
 
 use super::write_line;
-use crate::{Document, Row, Rows};
+use crate::{Document, Row, Rows, row};
 
 #[cfg(test)]
 mod tests;
@@ -115,16 +115,18 @@ impl Leaf {
     /// It builds the row type's JSON Schema, so it costs a schema build on
     /// each call. A column's description is the first paragraph of the
     /// `description` of its property in the schema, which schemars takes
-    /// from the field's doc comment. crumbkit's `--help` and crumbkit-test's
-    /// `check_guide` both read the columns through this method.
+    /// from the field's doc comment. The properties are those that
+    /// [`Row`] describes as the fields of a row type, so a column of an
+    /// enum's variant has a property too. crumbkit's `--help` and
+    /// crumbkit-test's `check_guide` both read the columns through this
+    /// method.
     //
     // RUST-10: the description comes only from the property itself. A
     // column whose name is not a property, and a field without a doc
     // comment, whose type's doc comment schemars keeps under `$defs`, have
-    // no description, and a row type whose schema has no properties has no
-    // description for any column. crumbkit-test's `check_guide` fails on
-    // each such column, so a tool finds them in a test. A reader that
-    // follows `$ref` into `$defs` replaces this when a tool needs those
+    // no description. crumbkit-test's `check_guide` fails on each such
+    // column, so a tool finds them in a test. A reader that follows a
+    // property's `$ref` into `$defs` replaces this when a tool needs those
     // descriptions.
     #[must_use]
     pub fn column_descriptions(&self) -> Vec<Column> {
@@ -132,13 +134,16 @@ impl Leaf {
             return Vec::new();
         };
         let schema = (columns.schema)();
-        let properties = schema.get("properties").and_then(Value::as_object);
+        let properties = row::properties(&schema);
         let compact = columns.compact.iter().map(|name| (name, false));
         let long = columns.long.iter().map(|name| (name, true));
         compact
             .chain(long)
             .map(|(&name, long)| {
-                let property = properties.and_then(|properties| properties.get(name));
+                let property = properties
+                    .iter()
+                    .find(|(field, _)| *field == name)
+                    .map(|(_, property)| *property);
                 let description = property
                     .and_then(|property| property.get("description"))
                     .and_then(Value::as_str)

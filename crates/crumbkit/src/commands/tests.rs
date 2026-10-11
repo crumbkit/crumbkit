@@ -1,15 +1,14 @@
 //! Tests for `commands list`, which exports one branch of a tool's command
 //! tree.
 
-use std::borrow::Cow;
 use std::process::ExitCode;
 
 use clap::{Arg, ArgAction, Args as _, Command};
-use schemars::{JsonSchema, Schema, SchemaGenerator, json_schema};
+use schemars::JsonSchema;
 use serde::Serialize;
 use serde_json::{Value, json};
 
-use super::{COMMANDS, CommandRow, CommandsList, list};
+use super::{COMMANDS, CommandRow, CommandsDocument, CommandsList, list};
 use crate::help::{Example, Guide, Leaf};
 use crate::{Document, Error, Listing, Output, Row, Sink, Spelling, finish_to};
 
@@ -517,45 +516,6 @@ fn assert_fields_match(value: &Value, schema: &Value) {
     required.sort_unstable();
     assert_eq!(fields, properties);
     assert_eq!(fields, required);
-}
-
-/// The `crumbkit/commands/v1` document as `finish` writes a listing of
-/// command rows with `--json`: the id, the rows and the number of commands
-/// in the branch.
-struct CommandsDocument;
-
-impl JsonSchema for CommandsDocument {
-    fn schema_name() -> Cow<'static, str> {
-        "CommandsDocument".into()
-    }
-
-    fn schema_id() -> Cow<'static, str> {
-        "crumbkit/commands/v1".into()
-    }
-
-    fn json_schema(generator: &mut SchemaGenerator) -> Schema {
-        json_schema!({
-            "description": "The document that `commands list` prints with --json: one row for each visible command of a branch of the command tree.",
-            "type": "object",
-            "properties": {
-                "schema": {
-                    "description": "The id of this document.",
-                    "const": "crumbkit/commands/v1",
-                },
-                "data": {
-                    "description": "The commands of the branch, in depth-first order, up to the limit.",
-                    "type": "array",
-                    "items": CommandRow::json_schema(generator),
-                },
-                "total": {
-                    "description": "The number of visible commands in the branch.",
-                    "type": "integer",
-                    "minimum": 0,
-                },
-            },
-            "required": ["schema", "data", "total"],
-        })
-    }
 }
 
 #[test]

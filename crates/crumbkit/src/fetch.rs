@@ -1,8 +1,8 @@
 //! `fetch_each`, which runs one lookup per id on a bounded number of threads.
 
 use std::num::NonZeroUsize;
-use std::panic;
-use std::sync::atomic::{AtomicUsize, Ordering};
+use std::panic::{self, AssertUnwindSafe};
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::thread;
 
 #[cfg(test)]
@@ -53,8 +53,10 @@ mod tests;
 /// # Panics
 ///
 /// A panic in `lookup` propagates to the caller of `fetch_each` with its
-/// original payload, after every thread has stopped, as a panic in a thread
-/// of [`std::thread::scope`] does.
+/// original payload, after every thread has stopped. A worker whose lookup
+/// panics tells the other workers to stop, and each of them stops before it
+/// takes another id. A lookup that is already running finishes first,
+/// including its I/O, and its result is dropped.
 pub fn fetch_each<I, R, E>(
     ids: &[I],
     workers: NonZeroUsize,
@@ -71,22 +73,36 @@ where
     }
 
     // Each worker adds 1 to `next` and looks up the id at the index it read.
-    // `Relaxed` is enough, because the counter only hands out distinct
-    // indexes, and joining a thread makes its results visible to the caller.
+    // A worker whose lookup panics sets `stop`, and every worker checks it
+    // before it takes an index. `Relaxed` is enough, because the counter only
+    // hands out distinct indexes, a worker that reads `stop` late takes at
+    // most one more id, and joining a thread makes its results visible to
+    // the caller.
     let next = AtomicUsize::new(0);
+    let stop = AtomicBool::new(false);
     let mut done: Vec<(usize, Result<R, E>)> = Vec::with_capacity(ids.len());
     thread::scope(|scope| {
         let handles: Vec<_> = (0..threads)
             .map(|_| {
                 scope.spawn(|| {
                     let mut taken = Vec::new();
-                    loop {
+                    while !stop.load(Ordering::Relaxed) {
                         let index = next.fetch_add(1, Ordering::Relaxed);
                         let Some(id) = ids.get(index) else {
-                            return taken;
+                            break;
                         };
-                        taken.push((index, lookup(id)));
+                        // The worker passes the panic on at once, and the
+                        // other workers stop taking ids, so `lookup` needs
+                        // no `UnwindSafe`.
+                        match panic::catch_unwind(AssertUnwindSafe(|| lookup(id))) {
+                            Ok(result) => taken.push((index, result)),
+                            Err(payload) => {
+                                stop.store(true, Ordering::Relaxed);
+                                panic::resume_unwind(payload);
+                            }
+                        }
                     }
+                    taken
                 })
             })
             .collect();

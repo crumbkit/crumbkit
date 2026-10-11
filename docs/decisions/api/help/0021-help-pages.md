@@ -4,7 +4,7 @@
 - `-h` names the global flags on one line and `--help` lists them in full.
 - The help of a command with a visible subcommand ends with a `Next:` line that opens one of them.
 - Help and the version keep clap's colours only when standard output is a terminal.
-- crumbkit finds the deepest command the caller reached by walking the typed words once before parsing. The walk misreads an option's value or a positional that equals a subcommand name, and a walk that knows how many values each option takes replaces it when that matters.
+- crumbkit finds the deepest command the caller reached by walking the typed words once before parsing. The walk reads each option's values from clap's `Arg`, so an option's value that equals a subcommand name names no command.
 - A tool may list a group's subcommands under goal headings that it declares in a `const` [`Guide`](../../../../crates/crumbkit/src/help.rs), in place of clap's single `Commands:` list. `parse` applies the headings to the groups that the typed words pass through, and [`help::extend`](../../../../crates/crumbkit/src/help.rs) applies them to the whole tree for a tool that parses with plain clap and for tests, through the same per-group function.
 - A guided command gets clap's default template with the headed list in place of clap's argument sections. A guided page therefore has no `Arguments:` section and loses the tool's own `before_help`, and shelf's golden files fail when clap's default layout changes.
 - `parse` and `extend` never fail on a guide. crumbkit-test's [`check_guide`](../../../../crates/crumbkit-test/src/guide.rs) catches a guide that does not match the tree.

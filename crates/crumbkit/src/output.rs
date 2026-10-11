@@ -14,6 +14,7 @@ use serde_json::Value;
 
 use self::failure::{Entry, FailureDocument};
 use crate::refusal::Refusal;
+use crate::row;
 use crate::{AsFailure, Document, Row, Rows, Sink, Spelling};
 
 #[cfg(test)]
@@ -324,24 +325,21 @@ fn respond<T: Rows, E: AsFailure, O: Write, W: Write>(
 /// `R`, with a hint that lists the fields of `R`, or `None` when every name
 /// is a field.
 ///
-/// The fields of `R` are the properties of its JSON Schema, so a mistyped
-/// name fails even when the result has no rows.
+/// The fields of `R` are the properties that [`row::properties`] reads from
+/// its JSON Schema, so a mistyped name fails even when the result has no
+/// rows.
 fn unknown_field<R: Row>(fields: &[String]) -> Option<Refusal> {
     if fields.is_empty() {
         return None;
     }
     let schema = schemars::schema_for!(R);
-    let properties = schema.get("properties").and_then(Value::as_object);
-    let is_field = |name: &str| properties.is_some_and(|properties| properties.contains_key(name));
+    let properties = row::properties(&schema);
+    let is_field = |name: &str| properties.iter().any(|(field, _)| *field == name);
     let unknown = fields.iter().find(|name| !is_field(name))?;
 
     // serde_json keeps an object's keys sorted unless a crate in the build
     // enables its `preserve_order` feature, which keeps the schema's order.
-    let valid: Vec<&str> = properties
-        .into_iter()
-        .flat_map(|properties| properties.keys())
-        .map(String::as_str)
-        .collect();
+    let valid: Vec<&str> = properties.iter().map(|(name, _)| *name).collect();
     Some(Refusal::flag_value(
         format!("--fields names an unknown field '{unknown}'"),
         format!("use the valid fields: {}", valid.join(", ")),

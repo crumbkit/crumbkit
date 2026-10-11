@@ -8,7 +8,7 @@ use crumbkit_test::Examples;
 use shelf::{Cli, GUIDE};
 
 /// shelf's built binary and the directory that holds its example golden files.
-const EXAMPLES: Examples = Examples::new(env!("CARGO_BIN_EXE_shelf"), "tests/golden/examples");
+const EXAMPLES: Examples<'_> = Examples::new(env!("CARGO_BIN_EXE_shelf"), "tests/golden/examples");
 
 #[test]
 fn every_example_in_the_guide_runs_and_prints_its_golden_output() {

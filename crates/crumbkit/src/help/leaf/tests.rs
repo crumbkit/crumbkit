@@ -470,6 +470,57 @@ fn column_descriptions_reports_a_column_that_is_not_a_property_and_one_without_a
     assert_eq!(moons[1].description(), None);
 }
 
+/// A row type whose schema lists its variants under `oneOf`, one inline and
+/// one through a `$ref`, and has no top-level `properties`.
+#[derive(Serialize, JsonSchema)]
+#[serde(tag = "kind")]
+#[expect(
+    dead_code,
+    reason = "the test reads only the schema of the type, so it builds no value"
+)]
+enum Body {
+    Star(Star),
+    Moon {
+        /// The moon's name.
+        name: String,
+    },
+}
+
+/// A star, which `Body`'s schema reaches through a `$ref`.
+#[derive(Serialize, JsonSchema)]
+struct Star {
+    /// The star's surface temperature in kelvin.
+    kelvin: u32,
+}
+
+impl Row for Body {
+    const COLUMNS: &'static [&'static str] = &["kind", "name", "kelvin"];
+}
+
+#[test]
+fn column_descriptions_read_the_fields_of_each_variant_of_a_row_type() {
+    let columns = Leaf::new(&["planets", "show"])
+        .document(Document::<Vec<Body>>::new("tool", "bodies", 1))
+        .column_descriptions();
+
+    let read: Vec<(&str, bool, Option<&str>)> = columns
+        .iter()
+        .map(|column| (column.name(), column.is_property(), column.description()))
+        .collect();
+    assert_eq!(
+        read,
+        [
+            ("kind", true, None),
+            ("name", true, Some("The moon's name.")),
+            (
+                "kelvin",
+                true,
+                Some("The star's surface temperature in kelvin.")
+            ),
+        ]
+    );
+}
+
 #[test]
 fn column_descriptions_of_a_leaf_without_a_document_is_empty() {
     let leaf = Leaf::new(&["planets", "list"]).examples(EXAMPLES);

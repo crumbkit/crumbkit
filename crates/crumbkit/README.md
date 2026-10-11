@@ -15,6 +15,8 @@ until the first release:
 crumbkit = { git = "https://github.com/crumbkit/crumbkit" }
 ```
 
+The `main` branch can change without notice before the first release.
+
 ## Example
 
 This tool lists books as a text table or, with `--json`, as a JSON

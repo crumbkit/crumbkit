@@ -88,6 +88,56 @@ mod tests;
 /// `crates/crumbkit/schemas/commands-v1.json`.
 pub const COMMANDS: Document<Listing<CommandRow>> = Document::new("crumbkit", "commands", 1);
 
+/// The `crumbkit/commands/v1` document as `finish` writes a listing of
+/// command rows with `--json`: the id, the rows and the number of commands
+/// in the branch. The type exists only for its schema.
+///
+/// This impl is written by hand so crumbkit needs no schemars `derive`
+/// feature. `crates/crumbkit/schemas/commands-v1.json` holds the schema, and
+/// a test fails when the two differ (ADR-0007).
+#[cfg_attr(
+    not(test),
+    expect(
+        dead_code,
+        reason = "only the schema test reads the type until a tool serves its schemas (ADR-0007)"
+    )
+)]
+pub(crate) struct CommandsDocument;
+
+impl JsonSchema for CommandsDocument {
+    fn schema_name() -> Cow<'static, str> {
+        "CommandsDocument".into()
+    }
+
+    fn schema_id() -> Cow<'static, str> {
+        "crumbkit/commands/v1".into()
+    }
+
+    fn json_schema(generator: &mut SchemaGenerator) -> Schema {
+        json_schema!({
+            "description": "The document that `commands list` prints with --json: one row for each visible command of a branch of the command tree.",
+            "type": "object",
+            "properties": {
+                "schema": {
+                    "description": "The id of this document.",
+                    "const": "crumbkit/commands/v1",
+                },
+                "data": {
+                    "description": "The commands of the branch, in depth-first order, up to the limit.",
+                    "type": "array",
+                    "items": CommandRow::json_schema(generator),
+                },
+                "total": {
+                    "description": "The number of visible commands in the branch.",
+                    "type": "integer",
+                    "minimum": 0,
+                },
+            },
+            "required": ["schema", "data", "total"],
+        })
+    }
+}
+
 /// The code of a `PATH` that names no visible command, in the tool's
 /// spelling, such as `crumbkit::commands::not_found` (ADR-0026).
 const NOT_FOUND: Code = Code::new("crumbkit", "commands", "not_found");

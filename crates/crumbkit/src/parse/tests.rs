@@ -242,6 +242,60 @@ Options:
     assert_eq!(parsed.out, expected);
 }
 
+/// `tool()` with a global flag that the `planets` group defines.
+fn tool_with_a_group_global() -> Command {
+    tool().mut_subcommand("planets", |planets| {
+        planets.arg(
+            Arg::new("units")
+                .long("units")
+                .value_name("UNIT")
+                .global(true)
+                .help("Print masses in this unit"),
+        )
+    })
+}
+
+#[test]
+fn a_group_s_global_flag_is_named_on_the_line_of_the_group_and_each_command_below_it() {
+    let root = parse_tree(tool_with_a_group_global(), &["tool", "-h"]).out;
+    let group = parse_tree(tool_with_a_group_global(), &["tool", "planets", "-h"]).out;
+    let leaf = parse_tree(
+        tool_with_a_group_global(),
+        &["tool", "planets", "show", "-h"],
+    )
+    .out;
+
+    assert!(
+        root.contains("\nGlobal flags: --json, --fields <FIELD>. `tool --help`"),
+        "{root}"
+    );
+    assert!(
+        group.contains(
+            "\nGlobal flags: --json, --fields <FIELD>, --units <UNIT>. `tool planets --help`"
+        ),
+        "{group}"
+    );
+    assert!(
+        leaf.contains(
+            "\nGlobal flags: --json, --fields <FIELD>, --units <UNIT>. `tool planets show --help`"
+        ),
+        "{leaf}"
+    );
+    assert!(!group.contains("  --units"), "{group}");
+    assert!(!leaf.contains("  --units"), "{leaf}");
+}
+
+#[test]
+fn a_group_s_global_flag_stays_in_the_long_help_of_each_command_below_it() {
+    let long = parse_tree(
+        tool_with_a_group_global(),
+        &["tool", "planets", "show", "--help"],
+    )
+    .out;
+
+    assert!(long.contains("\n      --units <UNIT>\n"), "{long}");
+}
+
 #[test]
 fn a_groups_help_ends_with_the_next_line_that_opens_one_of_its_commands() {
     let parsed = parse(&["tool", "planets", "-h"]);

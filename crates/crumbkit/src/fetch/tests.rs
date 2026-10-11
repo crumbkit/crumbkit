@@ -2,8 +2,9 @@
 
 use std::collections::HashSet;
 use std::num::NonZeroUsize;
-use std::sync::Mutex;
+use std::panic::{self, AssertUnwindSafe};
 use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::{Barrier, Mutex};
 use std::thread::{self, ThreadId};
 use std::time::Duration;
 
@@ -132,4 +133,29 @@ fn a_panic_in_a_lookup_in_the_calling_thread_propagates_to_the_caller() {
         assert_ne!(id, 2, "the lookup of id 2 panicked");
         Ok::<u32, ()>(id)
     });
+}
+
+#[test]
+fn a_panic_in_a_lookup_stops_the_other_workers_before_they_take_another_id() {
+    let ids: Vec<u32> = (0..100).collect();
+    let started = Barrier::new(2);
+    let calls = AtomicUsize::new(0);
+
+    // Ids 0 and 1 go to different workers, because the worker that takes id 0
+    // panics in its lookup. Each lookup after the panic takes 1 ms, so a
+    // worker that kept going would make about 100 calls.
+    let result = panic::catch_unwind(AssertUnwindSafe(|| {
+        fetch_each(&ids, workers(2), |&id| {
+            calls.fetch_add(1, Ordering::Relaxed);
+            if id < 2 {
+                started.wait();
+            }
+            assert_ne!(id, 0, "the lookup of id 0 panicked");
+            thread::sleep(Duration::from_millis(1));
+            Ok::<u32, ()>(id)
+        })
+    }));
+
+    assert!(result.is_err());
+    assert!(calls.into_inner() < 10);
 }

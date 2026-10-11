@@ -116,17 +116,16 @@ fn personal_aliases_follow_in_name_order_with_their_words_quoted_for_a_shell() {
 }
 
 #[test]
-fn an_entry_named_after_a_command_or_built_in_alias_or_help_says_the_real_one_wins() {
+fn an_entry_named_after_a_command_or_built_in_alias_says_the_real_one_wins() {
     let rows = listed(
         r#"
         books = ["books", "show", "1"]
         adm = ["books", "list"]
         b = ["books", "list"]
-        help = ["books", "list"]
         "#,
     );
 
-    for name in ["books", "adm", "b", "help"] {
+    for name in ["books", "adm", "b"] {
         let personal = rows
             .as_array()
             .unwrap()
@@ -139,6 +138,26 @@ fn an_entry_named_after_a_command_or_built_in_alias_or_help_says_the_real_one_wi
             "{name}"
         );
     }
+}
+
+#[test]
+fn an_entry_named_help_says_that_the_tool_answers_help_with_its_own_help() {
+    let rows = listed(
+        r#"
+        help = ["books", "list"]
+        "#,
+    );
+
+    let personal = rows
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|row| row["name"] == "help" && row["from"] == FILE)
+        .unwrap();
+    assert_eq!(
+        personal["problem"],
+        "the tool answers the word help with its own help, which wins"
+    );
 }
 
 #[test]

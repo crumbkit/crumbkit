@@ -52,11 +52,10 @@ pub(super) fn parsed(run: &mut Run, command: &Command, matches: &ArgMatches) {
 /// name. Unlike clap, which stops at the first unknown flag, the count reads
 /// every word before any `--`.
 //
-// RUST-10: the count reads each word on its own, as `parse`'s walk does. It
-// counts a value that starts with `-`, such as `-5`, as a flag, and it reads
-// only the first letter of a group of short flags such as `-ab`. A walk that
-// reads how many values each option takes replaces it, as it replaces the
-// walk.
+// RUST-10: the count reads each word on its own. It counts a value that
+// starts with `-`, such as `-5`, as a flag, and it reads only the first
+// letter of a group of short flags such as `-ab`. A count that reads how many
+// values each option takes, as `parse`'s walk does, replaces it.
 pub(super) fn refused(
     run: &mut Run,
     command: &Command,

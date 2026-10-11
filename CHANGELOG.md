@@ -50,6 +50,11 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit-aliases: the new crate expands a person's command aliases and
   lists them ([crumbkit-aliases], [ADR-0027]).
 
+### Changed
+
+- crumbkit-test: [`Examples`] borrows its paths for a lifetime, so a test
+  can build one from a path it computes at runtime.
+
 ### Fixed
 
 - crumbkit: [`parse`] keeps a command's own `after_help` and
@@ -73,6 +78,16 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   key of the wrong length is replaced ([ADR-0029]).
 - crumbkit: a signal or the end of `main` during the usage log's write
   waits a bounded time for the line to finish ([ADR-0029]).
+- crumbkit: `--fields` and a leaf's columns accept the fields of each
+  variant of an enum row type ([`Row`]).
+- crumbkit: [`parse`] skips each option's values when it walks the typed
+  words, so a value never names a subcommand.
+- crumbkit: [`parse`] treats a subcommand's global flags as it treats the
+  root's on `-h` and the `Global flags:` line.
+- crumbkit: when a lookup of [`fetch_each`] panics, the other workers stop
+  before they take another id.
+- crumbkit-aliases: `aliases list` says that an entry named `help` loses to
+  the tool's own help ([crumbkit-aliases]).
 
 <!-- Each label below points at the source file that holds the item's
 rustdoc, or at its decision record. -->
@@ -109,6 +124,7 @@ rustdoc, or at its decision record. -->
 [`check_help_sizes`]: crates/crumbkit-test/src/sizes.rs
 [`check_help_goldens`]: crates/crumbkit-test/src/goldens.rs
 [`check_examples`]: crates/crumbkit-test/src/examples.rs
+[`Examples`]: crates/crumbkit-test/src/examples.rs
 [crumbkit-aliases]: crates/crumbkit-aliases/README.md
 [ADR-0001]: docs/decisions/api/0001-error-model.md
 [ADR-0004]: docs/decisions/testing/0004-golden-and-snapshot-tests.md
