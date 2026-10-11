@@ -15,6 +15,8 @@ first release:
 crumbkit-aliases = { git = "https://github.com/crumbkit/crumbkit" }
 ```
 
+The `main` branch can change without notice before the first release.
+
 ## Example
 
 A person writes aliases in the TOML file that [`file`] names. With this

@@ -14,6 +14,8 @@ the first release:
 crumbkit-test = { git = "https://github.com/crumbkit/crumbkit" }
 ```
 
+The `main` branch can change without notice before the first release.
+
 ## Example
 
 This test checks that no two of a tool's failure codes spell the same:
