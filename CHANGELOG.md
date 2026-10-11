@@ -93,6 +93,8 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   the tool's own help ([crumbkit-aliases]).
 - crumbkit: a refusal from [`parse`] names the real flag or subcommand
   where clap suggests a hidden alias, and names it once.
+- crumbkit-test: [`check_names`] skips hidden commands and everything
+  below them, because no help page shows them.
 
 <!-- Each label below points at the source file that holds the item's
 rustdoc, or at its decision record. -->

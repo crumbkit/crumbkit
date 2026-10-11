@@ -25,8 +25,10 @@ const ARGUMENT_RULE: &str = "and help shows one name for each argument";
 /// refusal suggestions print the real name, so a caller who uses a hidden
 /// alias still sees the real one.
 ///
-/// The check walks `command` and every subcommand below it, including hidden
-/// ones, and skips each command that `exempt` names and everything below it.
+/// The check walks `command` and every visible subcommand below it, as help
+/// shows the tree. It skips each hidden command and everything below it,
+/// because no help page shows them, and each command that `exempt` names and
+/// everything below it.
 /// An exemption is a command's path below `command`, such as `"books list"`,
 /// and an exemption that names no command is a problem. The check finds:
 ///
@@ -63,7 +65,7 @@ const ARGUMENT_RULE: &str = "and help shows one name for each argument";
 /// as `shelf books list`.
 pub fn check_names(command: &Command, exempt: &[&str]) {
     let mut problems = Vec::new();
-    for visit in tree::walk(command, exempt, &mut problems) {
+    for visit in tree::walk_visible(command, exempt, &mut problems) {
         let path = visit.path();
         let command = visit.command();
         for alias in command.get_visible_aliases() {

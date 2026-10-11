@@ -129,7 +129,7 @@ fn the_visible_walk_leaves_out_each_hidden_command_and_everything_below_it() {
                 .subcommand(Command::new("list")),
         );
 
-    let visits = walk_visible(&shelf);
+    let visits = walk_visible(&shelf, &[], &mut Vec::new());
 
     let paths: Vec<(&str, &str)> = visits
         .iter()
@@ -143,4 +143,18 @@ fn the_visible_walk_leaves_out_each_hidden_command_and_everything_below_it() {
             ("shelf books list", "books list")
         ]
     );
+}
+
+#[test]
+fn the_visible_walk_skips_an_exempt_command_and_reports_an_exemption_that_names_no_command() {
+    let mut problems = Vec::new();
+    let shelf = shelf();
+
+    let paths: Vec<String> = walk_visible(&shelf, &["books", "comets"], &mut problems)
+        .iter()
+        .map(|visit| visit.path().to_owned())
+        .collect();
+
+    assert_eq!(paths, ["shelf", "shelf schema"]);
+    assert_eq!(problems, ["the exemption `comets` names no command"]);
 }

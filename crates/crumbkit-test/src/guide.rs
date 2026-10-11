@@ -234,7 +234,7 @@ fn check_leaves(command: &Command, guide: &Guide, problems: &mut Vec<String>) {
             }
         }
     }
-    for visit in tree::walk_visible(command) {
+    for visit in tree::walk_visible(command, &[], problems) {
         let named = leaves
             .iter()
             .any(|leaf| !leaf.get_examples().is_empty() && leaf.path().join(" ") == visit.below());

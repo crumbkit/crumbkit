@@ -128,3 +128,12 @@ fn a_global_argument_with_a_visible_alias_fails_once_on_the_command_that_defines
          shelf: the argument `--json` has the visible alias `--as-json`, and help shows one name for each argument"
     );
 }
+
+#[test]
+fn a_hidden_command_with_a_visible_alias_passes_because_no_help_page_shows_it() {
+    let shelf = Command::new("shelf").subcommand(
+        Command::new("books").subcommand(Command::new("purge").hide(true).visible_alias("wipe")),
+    );
+
+    check_names(&shelf, &[]);
+}
