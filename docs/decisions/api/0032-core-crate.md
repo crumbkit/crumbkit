@@ -1,0 +1,9 @@
+# ADR-0032. The clap-free core crate
+
+- [crumbkit-core](../../../crates/crumbkit-core/README.md) holds the types that need no clap, so a crate that is not a command-line tool, such as a web server that maps a `Failure` to an RFC 9457 problem-details response, builds without clap. crumbkit depends on crumbkit-core and re-exports each of its items at the path the item had in crumbkit, so a tool built on crumbkit keeps its code.
+- An item belongs in crumbkit-core when it compiles without clap and a caller that is not a command-line tool would use it. By that rule crumbkit-core holds `Code` and `Spelling`, `Failure`, `Recovery`, `Error` and `AsFailure`, `Document`, `Call` and `CallError`, `Row` and `Rows`, `Listing` and `Batch`. crumbkit keeps parsing, help, `Output`, `Page`, `finish`, the failure document, refusals, `commands list`, `fetch_each`, the exit-code helper, the usage log and the trace context, because each is either built on clap or serves only a process run from a command line.
+- `Call` holds names only, and crumbkit's sealed `RenderCall` trait gives it the `render` method that reads a `clap::Command`. `Call::help`, `Call::word` and `Call::target` are public, because crumbkit builds and renders calls from outside crumbkit-core.
+- crumbkit-core's `miette` feature adds `Failure::diagnostic` and the conversion of a `miette::Report` into `Error`, and crumbkit's `miette` feature turns it on.
+- `deny.toml` bans clap and clap_builder for every crate except the ones it lists as direct users, so `cargo deny check bans` fails when clap enters crumbkit-core's dependency tree.
+
+Considered: clap behind an optional default feature of crumbkit, which needs cfg attributes across many modules and an extra CI build without the feature, and would not stop clap-free code from starting to use clap; `render` as a free function; the failure document in crumbkit-core; `fetch_each` in crumbkit-core; `Call::help` and `Call::word` hidden from the docs.
