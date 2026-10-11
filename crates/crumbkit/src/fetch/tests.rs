@@ -1,12 +1,13 @@
 //! Tests for `fetch_each`.
 
+use std::cell::RefCell;
 use std::collections::HashSet;
 use std::num::NonZeroUsize;
 use std::panic::{self, AssertUnwindSafe};
 use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::mpsc::{self, Sender};
 use std::sync::{Barrier, Mutex};
 use std::thread::{self, ThreadId};
-use std::time::Duration;
 
 use super::fetch_each;
 
@@ -36,17 +37,38 @@ fn many_workers_return_one_result_per_id_in_the_order_of_the_ids() {
 }
 
 #[test]
-fn lookups_that_finish_out_of_order_still_return_in_the_order_of_the_ids() {
-    // The first id sleeps longest and each later id sleeps less, so the lookups
-    // finish in roughly the reverse of the order they started.
-    let ids: Vec<u64> = (0..8).collect();
+fn ids_that_two_workers_take_in_turn_still_return_in_the_order_of_the_ids() {
+    // The lookups of each pair of neighbouring ids meet at a barrier, so a
+    // lookup cannot return until the next id's lookup has started. That
+    // lookup must run on the other worker, which makes the two workers take
+    // the ids in turn: one takes 0, 2 and 4, and the other takes 1, 3 and 5.
+    // Each worker's own results are therefore out of order with the
+    // other's, whichever worker the caller joins first.
+    let ids: Vec<usize> = (0..6).collect();
+    let neighbours: Vec<Barrier> = (1..ids.len()).map(|_| Barrier::new(2)).collect();
+    let threads = Mutex::new(Vec::new());
 
-    let results = fetch_each(&ids, workers(8), |&id| {
-        thread::sleep(Duration::from_millis(5 * (8 - id)));
-        Ok::<u64, ()>(id)
+    let results = fetch_each(&ids, workers(2), |&id| {
+        if id > 0 {
+            neighbours[id - 1].wait();
+        }
+        if let Some(next) = neighbours.get(id) {
+            next.wait();
+        }
+        threads.lock().unwrap().push((id, thread::current().id()));
+        Ok::<usize, ()>(id)
     });
 
-    assert_eq!(results, ids.into_iter().map(Ok).collect::<Vec<_>>());
+    assert_eq!(results, ids.iter().copied().map(Ok).collect::<Vec<_>>());
+    let mut threads = threads.into_inner().unwrap();
+    threads.sort_unstable_by_key(|&(id, _)| id);
+    for pair in threads.windows(2) {
+        assert_ne!(
+            pair[0].1, pair[1].1,
+            "ids {} and {} ran on one worker",
+            pair[0].0, pair[1].0
+        );
+    }
 }
 
 #[test]
@@ -72,20 +94,21 @@ fn one_id_runs_in_the_calling_thread_whatever_the_number_of_workers() {
 }
 
 #[test]
-fn more_workers_than_ids_start_at_most_one_thread_per_id() {
+fn more_workers_than_ids_run_each_lookup_on_a_worker_thread_of_its_own() {
+    // The three lookups wait for each other at a barrier, so none of them
+    // returns until all three are running at once on three threads.
+    let all_running = Barrier::new(3);
     let threads = Mutex::new(HashSet::new());
 
     let results = fetch_each(&[1, 2, 3], workers(16), |&id| {
-        // Each lookup sleeps, so every worker that starts has time to take an
-        // id and record its thread.
-        thread::sleep(Duration::from_millis(20));
+        all_running.wait();
         threads.lock().unwrap().insert(thread::current().id());
         Ok::<u32, ()>(id)
     });
 
     assert_eq!(results, [Ok(1), Ok(2), Ok(3)]);
     let threads = threads.into_inner().unwrap();
-    assert!(threads.len() <= 3, "{} threads ran lookups", threads.len());
+    assert_eq!(threads.len(), 3);
     assert!(!threads.contains(&thread::current().id()));
 }
 
@@ -135,27 +158,56 @@ fn a_panic_in_a_lookup_in_the_calling_thread_propagates_to_the_caller() {
     });
 }
 
+/// Sends one message on its channel when it drops.
+struct SendOnDrop(Sender<()>);
+
+impl Drop for SendOnDrop {
+    fn drop(&mut self) {
+        let _ = self.0.send(());
+    }
+}
+
+thread_local! {
+    /// Holds a `SendOnDrop` for a thread that should report its own exit.
+    /// Rust drops a thread's locals when the thread exits.
+    static ON_EXIT: RefCell<Option<SendOnDrop>> = const { RefCell::new(None) };
+}
+
 #[test]
 fn a_panic_in_a_lookup_stops_the_other_workers_before_they_take_another_id() {
     let ids: Vec<u32> = (0..100).collect();
-    let started = Barrier::new(2);
+    let both_running = Barrier::new(2);
+    let (exited, panicked_worker_exited) = mpsc::channel();
+    let panicked_worker_exited = Mutex::new(panicked_worker_exited);
     let calls = AtomicUsize::new(0);
 
-    // Ids 0 and 1 go to different workers, because the worker that takes id 0
-    // panics in its lookup. Each lookup after the panic takes 1 ms, so a
-    // worker that kept going would make about 100 calls.
+    // The lookups of ids 0 and 1 meet at a barrier, so they run on the two
+    // workers at once. The worker with id 0 panics, tells the other worker to
+    // stop, and then exits, which drops its `ON_EXIT` and sends on the
+    // channel. The lookup of id 1 returns only after that message, so the
+    // other worker checks whether to stop after the panicked worker has told
+    // it to.
     let result = panic::catch_unwind(AssertUnwindSafe(|| {
         fetch_each(&ids, workers(2), |&id| {
             calls.fetch_add(1, Ordering::Relaxed);
-            if id < 2 {
-                started.wait();
+            match id {
+                0 => {
+                    ON_EXIT.with(|on_exit| {
+                        *on_exit.borrow_mut() = Some(SendOnDrop(exited.clone()));
+                    });
+                    both_running.wait();
+                    panic!("the lookup of id 0 panicked");
+                }
+                1 => {
+                    both_running.wait();
+                    panicked_worker_exited.lock().unwrap().recv().unwrap();
+                }
+                _ => {}
             }
-            assert_ne!(id, 0, "the lookup of id 0 panicked");
-            thread::sleep(Duration::from_millis(1));
             Ok::<u32, ()>(id)
         })
     }));
 
     assert!(result.is_err());
-    assert!(calls.into_inner() < 10);
+    assert_eq!(calls.into_inner(), 2);
 }
