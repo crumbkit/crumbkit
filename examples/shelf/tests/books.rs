@@ -9,6 +9,7 @@
 //! built binary prints the same pages.
 
 use std::io;
+use std::path::Path;
 
 use snapbox::cmd::{Command, OutputAssert};
 use snapbox::file;
@@ -21,16 +22,41 @@ use snapbox::file;
 ///
 /// Returns the I/O error of a temporary directory that cannot be created.
 fn shelf(args: &[&str]) -> io::Result<OutputAssert> {
-    let xdg = tempfile::tempdir()?;
-    let run = Command::new(env!("CARGO_BIN_EXE_shelf"))
+    let dir = tempfile::tempdir()?;
+    Ok(run(dir.path(), args))
+}
+
+/// Runs shelf as [`shelf`] does, with a file named `ids.txt` that holds
+/// `ids` in the temporary directory, which is also the run's working
+/// directory.
+///
+/// # Errors
+///
+/// Returns the I/O error of a temporary directory or a file that cannot be
+/// created.
+fn shelf_with_ids_file(ids: &str, args: &[&str]) -> io::Result<OutputAssert> {
+    let dir = tempfile::tempdir()?;
+    #[expect(
+        clippy::disallowed_methods,
+        reason = "this helper owns the tests' file writes, which set up the ids file"
+    )]
+    std::fs::write(dir.path().join("ids.txt"), ids)?;
+    Ok(run(dir.path(), args))
+}
+
+/// Runs the built `shelf` binary with `args` in the working directory `dir`,
+/// with a cleared environment and XDG directories under `dir`, and returns
+/// its output for assertions.
+fn run(dir: &Path, args: &[&str]) -> OutputAssert {
+    Command::new(env!("CARGO_BIN_EXE_shelf"))
         .args(args)
+        .current_dir(dir)
         .env_clear()
-        .env("XDG_CONFIG_HOME", xdg.path().join("config"))
-        .env("XDG_DATA_HOME", xdg.path().join("data"))
-        .env("XDG_STATE_HOME", xdg.path().join("state"))
-        .env("XDG_CACHE_HOME", xdg.path().join("cache"))
-        .assert();
-    Ok(run)
+        .env("XDG_CONFIG_HOME", dir.join("config"))
+        .env("XDG_DATA_HOME", dir.join("data"))
+        .env("XDG_STATE_HOME", dir.join("state"))
+        .env("XDG_CACHE_HOME", dir.join("cache"))
+        .assert()
 }
 
 #[test]
@@ -196,6 +222,80 @@ fn books_show_without_ids_is_refused_with_code_2() {
         .code(2)
         .stdout_eq("")
         .stderr_eq(file!["golden/books-show-no-ids.stderr"].raw());
+}
+
+#[test]
+fn books_show_from_a_file_prints_the_books_for_its_ids_in_order_and_skips_blank_lines() {
+    shelf_with_ids_file("5\n\n  \n2\n", &["books", "show", "--from", "ids.txt"])
+        .unwrap()
+        .success()
+        .stdout_eq(file!["golden/books-show-5-2.txt"].raw())
+        .stderr_eq("");
+}
+
+#[test]
+fn books_show_from_a_file_with_a_bad_line_points_at_the_line_and_exits_with_code_1() {
+    shelf_with_ids_file("2\n\nfive\n5\n", &["books", "show", "--from", "ids.txt"])
+        .unwrap()
+        .code(1)
+        .stdout_eq("")
+        .stderr_eq(file!["golden/books-show-from-bad-line.stderr"].raw());
+}
+
+#[test]
+fn books_show_json_from_a_file_with_a_bad_line_prints_the_failure_with_its_label() {
+    shelf_with_ids_file(
+        "2\n\nfive\n5\n",
+        &["books", "show", "--from", "ids.txt", "--json"],
+    )
+    .unwrap()
+    .code(1)
+    .stdout_eq(file!["golden/books-show-from-bad-line-json.json"].raw())
+    .stderr_eq("");
+}
+
+#[test]
+fn books_show_from_a_file_that_cannot_be_read_fails_with_its_own_code_and_code_1() {
+    // The cause is the operating system's message, which differs between
+    // platforms, so the test matches any cause.
+    shelf(&["books", "show", "--from", "missing.txt"])
+        .unwrap()
+        .code(1)
+        .stdout_eq("")
+        .stderr_eq(
+            "error: cannot read the ids file missing.txt
+  cause: [..]
+  help:  pass --from a file that exists and that shelf can read
+  code:  shelf::books::unreadable_ids_file
+",
+        );
+}
+
+#[test]
+fn books_show_from_a_file_with_101_ids_points_at_the_101st_and_exits_with_code_1() {
+    shelf_with_ids_file(&"1\n".repeat(101), &["books", "show", "--from", "ids.txt"])
+        .unwrap()
+        .code(1)
+        .stdout_eq("")
+        .stderr_eq(file!["golden/books-show-from-101-ids.stderr"].raw());
+}
+
+#[test]
+fn books_show_from_a_file_with_only_blank_lines_fails_with_code_1() {
+    shelf_with_ids_file("\n  \n", &["books", "show", "--from", "ids.txt"])
+        .unwrap()
+        .code(1)
+        .stdout_eq("")
+        .stderr_eq(file!["golden/books-show-from-no-ids.stderr"].raw());
+}
+
+#[test]
+fn books_show_with_ids_and_from_is_refused_with_code_2() {
+    shelf_with_ids_file("5\n", &["books", "show", "2", "--from", "ids.txt"])
+        .unwrap()
+        .code(2)
+        .stdout_eq("")
+        .stderr_eq(file!["golden/books-show-2-from.stderr"].raw());
 }
 
 #[test]

@@ -1,0 +1,6 @@
+error: the ids file holds a line that is not a book id
+  at:    ids.txt:3:1: invalid digit found in string
+     3 | five
+       | ^^^^
+  help:  each line of the ids file holds one book id
+  code:  shelf::books::bad_ids_file
