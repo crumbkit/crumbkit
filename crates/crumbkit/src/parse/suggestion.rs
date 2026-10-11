@@ -122,7 +122,7 @@ fn real_flag_of_subcommand(
 /// global argument of a command above it, nearest first, as clap copies
 /// global arguments down. `commands` holds the root and each command on the
 /// path below it. The argument may be hidden.
-pub(super) fn find_flag<'a>(name: &str, commands: &[&'a Command]) -> Option<&'a Arg> {
+pub(crate) fn find_flag<'a>(name: &str, commands: &[&'a Command]) -> Option<&'a Arg> {
     let long = name.strip_prefix("--")?;
     let (last, above) = commands.split_last()?;
     let names_flag = |arg: &&Arg| {

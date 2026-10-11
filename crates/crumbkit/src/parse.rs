@@ -16,7 +16,7 @@ use crate::refusal::Refusal;
 use crate::{Sink, Spelling};
 
 mod lines;
-mod suggestion;
+pub(crate) mod suggestion;
 #[cfg(test)]
 mod tests;
 mod walk;

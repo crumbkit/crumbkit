@@ -96,6 +96,9 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit: a refusal from [`parse`] leaves out each command or flag that
   clap suggests and the tool hid, and leaves out clap's tip when nothing
   else remains.
+- crumbkit: the usage log's `nearest` records the real flag when clap
+  suggests a hidden alias, and records nothing when clap suggests a hidden
+  flag ([`usage`]).
 - crumbkit-test: [`check_names`] skips hidden commands, everything below
   them and hidden arguments, because no help page shows them.
 
