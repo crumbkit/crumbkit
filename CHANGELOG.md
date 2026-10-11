@@ -310,3 +310,6 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   exits in the middle of the line.
 - `--fields` and a leaf's columns accept the fields of each `oneOf` or
   `anyOf` variant of an enum row type.
+- `parse` skips each option's values when it walks the typed words, so
+  `shelf --fields books` no longer walks into `books`, and `shelf --fields id
+  help` prints help.

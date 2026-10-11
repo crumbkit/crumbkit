@@ -10,6 +10,7 @@ use clap::error::ErrorKind;
 use clap::{Command, FromArgMatches};
 
 use self::lines::{add_help_lines, has_visible_subcommands};
+use self::walk::{help_word, walk};
 use crate::help::{Guide, Topic, topic};
 use crate::refusal::Refusal;
 use crate::{Sink, Spelling};
@@ -17,6 +18,7 @@ use crate::{Sink, Spelling};
 mod lines;
 #[cfg(test)]
 mod tests;
+mod walk;
 
 /// Parses the process's command line against `command` with the tool's
 /// `guide`, and returns the tool's parsed type and the command that it
@@ -102,7 +104,9 @@ where
 ///
 /// Before parsing, crumbkit walks the typed words down the tree to the
 /// deepest command they name, and changes the help of each command on the
-/// way, the root included. A command that `guide` gives goals lists its
+/// way, the root included. The walk reads each option's values as clap's
+/// parser does, from the option's `Arg`, so an option's value that equals a
+/// subcommand name, as in `shelf --fields books`, names no command. A command that `guide` gives goals lists its
 /// subcommands under their headings, as
 /// [`help::extend`](crate::help::extend) describes, and crumbkit adds its
 /// lines after the command's own `after_help` and `after_long_help`:
@@ -130,9 +134,9 @@ where
 /// - `--help` lists the row type's columns under `Columns:` and the columns
 ///   that `--long` adds under `Columns that --long adds:`, each with the
 ///   first paragraph of its field's doc comment, which crumbkit reads from
-///   the row type's JSON Schema. crumbkit builds the schema only when the
-///   words before any `--` hold `--help`, so a run that prints no long help
-///   never builds it.
+///   the row type's JSON Schema. crumbkit builds the schema only when a
+///   word before any `--` reads as the flag `--help`, so a run that prints
+///   no long help never builds it.
 /// - `-h` of a leaf with a document ends with a line such as
 ///   `Next: shelf books list --help explains each column.`
 ///
@@ -288,20 +292,10 @@ where
         ask_for_help(&mut args, help.position);
     }
     // A leaf's `--help` describes its columns from the row type's JSON
-    // Schema, so crumbkit builds the schema only when the words before any
-    // `--` hold `--help`, also after the `help` rewrite above.
-    //
-    // RUST-10: crumbkit reads each word on its own, so it also takes an
-    // option's value spelled `--help` as a request for help, and then builds
-    // the schema for a run that prints no help. Help prints the same either
-    // way. The walk that reads how many values each option takes replaces
-    // this, as it replaces `walk`.
-    let long_help = args
-        .iter()
-        .skip(1)
-        .take_while(|word| *word != "--")
-        .any(|word| word == "--help");
-    let path = walk(&command, &args);
+    // Schema, so crumbkit builds the schema only when the walk reads
+    // `--help` as a flag, also after the `help` rewrite above.
+    let walked = walk(&command, &args);
+    let (path, long_help) = (walked.path, walked.long_help);
     #[cfg(feature = "tracing")]
     crate::trace::spans::command(&path);
     add_help_lines(&mut command, guide, topics, &path, long_help);
@@ -334,59 +328,6 @@ where
     crate::usage::refused(&command, &path, &error);
     let refusal = Refusal::command_line(refusal_message(&command, &path, &error), path);
     Err(refusal.print(sink, json, spelling, Some(&command)))
-}
-
-/// The word `help` that crumbkit answers in place of clap.
-struct HelpWord {
-    /// The position of the word in the arguments.
-    position: usize,
-    /// Whether the word comes directly after the program name, where it
-    /// can also print the tool's topics.
-    at_root: bool,
-}
-
-/// Returns the word `help` that crumbkit answers in `args`, or `None` when
-/// clap reads every word.
-///
-/// It reads the words as [`walk`] does: it skips the program name, stops at
-/// `--`, skips each word that starts with `-`, and descends into each word
-/// that names a subcommand of the current command, resolving aliases. It
-/// answers `help` when that word comes next below a command with
-/// subcommands, or directly after the program name when the tool
-/// `has_topics`, and it stops at the first word that names no subcommand,
-/// such as the value of a positional argument.
-///
-/// A command without subcommands reads `help` as an ordinary word, unless it
-/// is the root of a tool with topics, and a command with its own subcommand
-/// named or aliased `help` lets clap parse that subcommand.
-//
-// RUST-10: the search reads words as the walk does, so it misreads an
-// option's value in its own word, as in `shelf --fields id help`, and stops
-// there. crumbkit then leaves the command line to clap, which refuses it as
-// an ordinary usage refusal. A walk that reads how many values each option
-// takes replaces both.
-fn help_word(command: &Command, has_topics: bool, args: &[OsString]) -> Option<HelpWord> {
-    let mut current = command;
-    let mut at_root = true;
-    for (position, word) in args.iter().enumerate().skip(1) {
-        if word == "--" {
-            return None;
-        }
-        if word.as_encoded_bytes().starts_with(b"-") {
-            continue;
-        }
-        match current.find_subcommand(word) {
-            Some(subcommand) => {
-                current = subcommand;
-                at_root = false;
-            }
-            None if word == "help" && (current.has_subcommands() || at_root && has_topics) => {
-                return Some(HelpWord { position, at_root });
-            }
-            None => return None,
-        }
-    }
-    None
 }
 
 /// Returns the page that `help` at the root prints without clap, for
@@ -430,38 +371,6 @@ fn ask_for_help(args: &mut Vec<OsString>, position: usize) {
         .position(|word| word == "--")
         .unwrap_or(args.len());
     args.insert(end, OsString::from("--help"));
-}
-
-/// Returns the real names of the subcommands from the root to the deepest
-/// command that `args` names, after the program name.
-///
-/// It skips the program name, stops at `--`, skips each word that starts
-/// with `-`, and descends into each word that names a subcommand of the
-/// current command. `Command::find_subcommand` resolves an alias to its
-/// command and finds a hidden command, because the caller typed its name.
-//
-// RUST-10: the walk reads each word on its own, as a subcommand name or a
-// flag. It misreads an option's value in its own word, or a positional, that
-// equals a subcommand name, as in `shelf --fields books`, and descends into
-// that command. It runs before parsing because help needs its lines
-// before clap prints it. A walk that reads how many values each option
-// takes from the tree, as clap's parser does, replaces it.
-fn walk(command: &Command, args: &[OsString]) -> Vec<String> {
-    let mut path = Vec::new();
-    let mut current = command;
-    for word in args.iter().skip(1) {
-        if word == "--" {
-            break;
-        }
-        if word.as_encoded_bytes().starts_with(b"-") {
-            continue;
-        }
-        if let Some(subcommand) = current.find_subcommand(word) {
-            path.push(subcommand.get_name().to_owned());
-            current = subcommand;
-        }
-    }
-    path
 }
 
 /// Prints the help page or the version in `error` and returns the exit code:
