@@ -8,7 +8,7 @@ use clap::Command;
 use serde_json::{Value, json};
 
 use super::{
-    Recorder, State, child_env_in, install, save, start, take, typed, update, wait_for_line,
+    Recorder, State, child_env_in, install, save, start, take, typed, update, wait_for_line, write,
     written,
 };
 use crate::usage::caller::Caller;
@@ -106,23 +106,22 @@ fn a_taken_recorder_counts_as_writing_until_its_line_is_written() {
 }
 
 #[test]
-fn the_signal_thread_waits_for_a_line_in_progress_until_it_is_written() {
+fn a_thread_that_ends_the_run_while_another_writes_the_line_waits_until_it_is_written() {
     let slot = Mutex::new(State::Idle);
     install(&slot, started(None));
     take(&slot).unwrap();
     let waited = Instant::now();
 
-    let finished = std::thread::scope(|scope| {
+    std::thread::scope(|scope| {
         scope.spawn(|| {
             std::thread::sleep(Duration::from_millis(30));
             written(&slot);
         });
-        wait_for_line(&slot, Duration::from_secs(10))
+        write(&slot, false);
     });
 
-    assert!(finished);
     assert!(waited.elapsed() >= Duration::from_millis(30));
-    assert!(waited.elapsed() < Duration::from_secs(10));
+    assert!(matches!(*slot.lock().unwrap(), State::Written));
 }
 
 #[test]

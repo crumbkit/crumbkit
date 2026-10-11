@@ -29,13 +29,13 @@ mod tests;
 /// The recorder of this process. A poisoned lock counts as no recorder.
 static RECORDER: Mutex<State> = Mutex::new(State::Idle);
 
-/// How long the signal thread waits for a line that the main thread is
-/// writing before the signal takes effect. The main thread's write waits at
-/// most 100 ms for the file's lock, and a trim reads at most about 10 MB and
-/// writes 5 MB, which takes a few milliseconds from the page cache, so
-/// 500 ms covers the lock wait and a trim on a disk that reads and writes
-/// about 40 MB a second. A person who presses Ctrl-C waits at most this long
-/// for the tool to end.
+/// How long the main thread or the signal thread waits for a line that the
+/// other thread is writing, before `main` returns or the signal takes
+/// effect. A write waits at most 100 ms for the lock, and a trim reads at
+/// most about 10 MB and writes 5 MB, which takes a few milliseconds from the
+/// page cache, so 500 ms covers the lock wait and a trim on a disk that
+/// reads and writes about 40 MB a second. A person who presses Ctrl-C waits
+/// at most this long for the tool to end.
 const LINE_WAIT: Duration = Duration::from_millis(500);
 
 /// Where the process's recorder is in its life.
@@ -86,7 +86,7 @@ pub struct Log {
 impl Drop for Log {
     fn drop(&mut self) {
         if self.active {
-            write(false);
+            write(&RECORDER, false);
         }
     }
 }
@@ -370,10 +370,13 @@ fn wait_for_line(slot: &Mutex<State>, bound: Duration) -> bool {
     }
 }
 
-/// Writes the run's line, once per run. `interrupted` says that a signal
-/// ended the run.
-fn write(interrupted: bool) {
-    let Some(recorder) = take(&RECORDER) else {
+/// Writes the line of the run in `slot`, once per run. `interrupted` says
+/// that a signal ended the run. When another thread is already writing the
+/// line, it waits for that write, for at most [`LINE_WAIT`], so neither the
+/// end of `main` nor a signal ends the process in the middle of the line.
+fn write(slot: &Mutex<State>, interrupted: bool) {
+    let Some(recorder) = take(slot) else {
+        let _ = wait_for_line(slot, LINE_WAIT);
         return;
     };
     let state = etcetera::choose_base_strategy()
@@ -391,7 +394,7 @@ fn write(interrupted: bool) {
             &LIMITS,
         );
     }
-    written(&RECORDER);
+    written(slot);
 }
 
 /// Writes the line of `recorder` to `usage.jsonl` in the tool's directory
@@ -415,7 +418,7 @@ fn save(
 /// Starts the thread that writes the line when the run ends on SIGINT or
 /// SIGTERM, and returns once the thread listens. When the main thread is
 /// already writing the line, the signal thread waits for it, for at most
-/// [`LINE_WAIT`]. After the line, the thread lets the signal take its
+/// [`LINE_WAIT`], as [`write`] describes. After the line, the thread lets the signal take its
 /// default effect, so the process ends as it would have without the log.
 //
 // RUST-10: the thread takes both signals from the start of the run. A
@@ -435,10 +438,7 @@ fn watch_signals() {
                 return;
             };
             if let Some(signal) = signals.forever().next() {
-                write(true);
-                // The main thread may hold the recorder and be writing the
-                // line, and the signal would end the process in the middle.
-                let _ = wait_for_line(&RECORDER, LINE_WAIT);
+                write(&RECORDER, true);
                 let _ = emulate_default_handler(signal);
             }
         });

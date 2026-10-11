@@ -305,3 +305,6 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - A trim of the usage log writes the kept lines to a temporary file and
   renames it over the log, under a lock on a separate `usage.lock`, so a run
   that ends during a trim no longer leaves an empty log.
+- When `main` ends while the usage log's signal thread writes the line, the
+  guard waits for the write, for at most 500 ms, so the process no longer
+  exits in the middle of the line.
