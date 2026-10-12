@@ -211,6 +211,10 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit: `Effects::line` and `help::STREAM_LINE` are public, so another
   rendering of help prints the effects and stream lines in help's wording
   ([`Effects`], [ADR-0044]).
+- crumbkit-test: [`check_command_reference`] fails a test when a tool's
+  checked-in Markdown reference differs from the one crumbkit-markdown
+  writes from its help, and `SNAPSHOTS=overwrite` rewrites it
+  ([ADR-0044]).
 
 ### Changed
 
@@ -435,3 +439,4 @@ rustdoc, or at its decision record. -->
 [crumbkit-picker]: crates/crumbkit-picker/README.md
 [crumbkit-markdown]: crates/crumbkit-markdown/README.md
 [ADR-0044]: docs/decisions/api/help/0044-command-reference.md
+[`check_command_reference`]: crates/crumbkit-test/src/reference.rs

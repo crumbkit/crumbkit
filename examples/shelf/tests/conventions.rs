@@ -114,6 +114,11 @@ fn every_example_in_the_guide_runs_and_prints_its_golden_output() {
 }
 
 #[test]
+fn every_command_matches_the_checked_in_command_reference() {
+    crumbkit_test::check_command_reference(env!("CARGO_BIN_EXE_shelf"), "docs/commands.md");
+}
+
+#[test]
 fn every_opt_out_matches_the_opt_out_report() {
     crumbkit_test::check_opt_outs(
         &Cli::command(),
