@@ -85,7 +85,9 @@ impl Leaf {
     /// Sets the document that the command prints, the same constant that
     /// the tool passes to [`finish`](crate::finish). The command's `--help`
     /// then lists the columns of the document's row type, each with the doc
-    /// comment of its field, and its `-h` points at them.
+    /// comment of its field, and its `-h` points at them. A
+    /// [`Prose`](crate::Prose) document has no columns, so its leaf's help
+    /// lists none and its `-h` points at none.
     ///
     /// The leaf keeps the document's id and description, the row type's
     /// column lists, and functions that build the JSON Schemas of the row
@@ -133,10 +135,13 @@ impl Leaf {
         self.columns.map(|columns| columns.envelope)
     }
 
-    /// Reports whether the leaf has a document, whose columns its `--help`
-    /// lists.
-    pub(crate) const fn has_document(&self) -> bool {
-        self.columns.is_some()
+    /// Reports whether the leaf has a document whose row type has columns,
+    /// which its `--help` lists. A prose document has none.
+    pub(crate) const fn has_columns(&self) -> bool {
+        match self.columns {
+            Some(columns) => !columns.compact.is_empty() || !columns.long.is_empty(),
+            None => false,
+        }
     }
 
     /// Returns the columns of the leaf's row type as its `--help` describes

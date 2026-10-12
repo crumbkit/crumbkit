@@ -14,7 +14,7 @@ use super::{
 };
 use crate::help::{Guide, Leaf};
 use crate::{
-    AsFailure as _, Batch, Document, Error, Listing, NoSummary, Output, Row, Sink, Spelling,
+    AsFailure as _, Batch, Document, Error, Listing, NoSummary, Output, Prose, Row, Sink, Spelling,
     finish_to,
 };
 
@@ -232,6 +232,19 @@ fn a_batch_document_holds_its_failures_as_failure_documents_without_schema() {
     let entry = &schema["properties"]["failures"]["items"];
     assert_eq!(entry["required"], json!(["code", "message", "recovery"]));
     assert!(entry["properties"].get("schema").is_none());
+}
+
+#[test]
+fn a_prose_document_holds_the_schema_of_its_value_under_data_and_requires_failures() {
+    const SHELF_SUMMARY: Document<Prose<Shelved>> =
+        Document::new("shelf", "shelf-summary", 1, "What the shelf holds.");
+
+    let schema = document_schema(SHELF_SUMMARY).to_value();
+
+    assert_eq!(properties(&schema), ["data", "failures", "schema"]);
+    assert_eq!(schema["required"], json!(["schema", "data", "failures"]));
+    assert_eq!(schema["properties"]["data"]["$ref"], "#/$defs/Shelved");
+    assert!(schema["$defs"].get("NoRow").is_none());
 }
 
 #[test]

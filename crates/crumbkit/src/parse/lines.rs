@@ -116,8 +116,8 @@ struct Sections {
     short: Vec<String>,
     /// The sections of `--help`, in order.
     long: Vec<String>,
-    /// Whether the leaf has a document, so `-h` ends with a `Next:` line
-    /// that names the `--help` that lists its columns.
+    /// Whether the leaf has a document with columns, so `-h` ends with a
+    /// `Next:` line that names the `--help` that lists them.
     columns: bool,
 }
 
@@ -141,7 +141,7 @@ fn leaf_sections(
     Sections {
         short: short.into_iter().collect(),
         long,
-        columns: leaf.has_document(),
+        columns: leaf.has_columns(),
     }
 }
 

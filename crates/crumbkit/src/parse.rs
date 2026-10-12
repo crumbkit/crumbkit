@@ -147,8 +147,10 @@ where
 ///   the row type's JSON Schema. crumbkit builds the schema only when a
 ///   word before any `--` reads as the flag `--help`, so a run that prints
 ///   no long help never builds it.
-/// - `-h` of a leaf with a document ends with a line such as
-///   `Next: shelf books list --help explains each column.`
+/// - `-h` of a leaf whose document has columns ends with a line such as
+///   `Next: shelf books list --help explains each column.` A prose
+///   document has no columns, so its leaf has neither the line nor the
+///   column sections.
 ///
 /// A leaf off the typed path, and a leaf whose path names no command, leave
 /// every help page unchanged.

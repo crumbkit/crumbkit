@@ -14,6 +14,7 @@ use crate::{Document, Error, Listing, Row, Rows, Sink, Spelling};
 
 mod batch;
 mod listing;
+mod prose;
 #[cfg(feature = "miette")]
 mod report;
 mod summary;

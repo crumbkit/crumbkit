@@ -11,6 +11,7 @@
 //! [`Row`]: crate::Row
 //! [`Listing`]: crate::Listing
 //! [`Batch`]: crate::Batch
+//! [`Prose`]: crate::Prose
 //! [crumbkit]: https://github.com/crumbkit/crumbkit/blob/main/crates/crumbkit/README.md
 //! [ADR-0001]: https://github.com/crumbkit/crumbkit/blob/main/docs/decisions/api/0001-error-model.md
 //! [ADR-0032]: https://github.com/crumbkit/crumbkit/blob/main/docs/decisions/api/0032-core-crate.md
@@ -25,6 +26,7 @@ mod code;
 mod document;
 mod failure;
 mod listing;
+mod prose;
 #[cfg(feature = "miette")]
 mod report;
 mod row;
@@ -36,4 +38,5 @@ pub use crate::code::{Code, Spelling};
 pub use crate::document::Document;
 pub use crate::failure::{AsFailure, Error, Failure, Recovery};
 pub use crate::listing::{Listing, NoSummary};
-pub use crate::row::{Row, Rows, Shape};
+pub use crate::prose::Prose;
+pub use crate::row::{NoRow, Row, Rows, Shape};

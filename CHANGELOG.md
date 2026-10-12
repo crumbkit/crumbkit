@@ -96,6 +96,9 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit: `Call::value` adds an argument with a concrete value, such as
   `--author 'Le Guin'`, and rendering checks it against the tool's command
   tree ([`Call`], [ADR-0001]).
+- crumbkit: [`Prose`] holds a command's answer as text with a typed value
+  and optional failures. Text output prints the text, and `--json` prints
+  the value under `data` and the failures under `failures` ([ADR-0016]).
 
 - crumbkit-test: [`check_opt_outs`] pins a tool's opt-outs and budgets,
   with each reason and what it costs an agent, in a text and a JSON golden
@@ -208,6 +211,7 @@ rustdoc, or at its decision record. -->
 [`Spelling`]: crates/crumbkit-core/src/code.rs
 [`Error`]: crates/crumbkit-core/src/failure.rs
 [`Batch`]: crates/crumbkit-core/src/batch.rs
+[`Prose`]: crates/crumbkit-core/src/prose.rs
 [`fetch_each`]: crates/crumbkit/src/fetch.rs
 [`report`]: crates/crumbkit-core/src/report.rs
 [`parse`]: crates/crumbkit/src/parse.rs

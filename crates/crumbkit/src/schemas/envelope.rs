@@ -15,17 +15,19 @@ use crate::{Document, Rows, Shape};
 /// document's description. Its properties follow the [`Shape`] of `T`:
 ///
 /// - `schema` holds the id.
-/// - `data` holds the row for [`Shape::Row`], and an array of rows for
-///   every other shape.
+/// - `data` holds the row for [`Shape::Row`], the value for
+///   [`Shape::Prose`], and an array of rows for every other shape.
 /// - `total` holds the number of rows that matched, for [`Shape::Listing`].
 /// - `summary` holds the summary, for a listing that has one. A listing
 ///   without one has [`NoSummary`](crate::NoSummary), whose schema `false`
 ///   leaves the property out.
 /// - `failures` holds the failures of the ids that did not work, for
-///   [`Shape::Batch`]. Each entry has the fields of `crumbkit/failure/v1`
+///   [`Shape::Batch`], and the failures that a prose result leaves out, for
+///   [`Shape::Prose`]. Each entry has the fields of `crumbkit/failure/v1`
 ///   without `schema`.
 ///
-/// The schemas of the row type and the summary type sit under `$defs`.
+/// The schemas of the row type, the summary type and a prose result's value
+/// sit under `$defs`.
 /// `schemas show` serves this schema, and crumbkit's checked-in schema
 /// files hold it, so the two cannot differ (ADR-0007).
 ///
@@ -53,15 +55,14 @@ pub(crate) fn envelope<T: Rows>(document: Document<()>) -> Schema {
     let settings = SchemaSettings::draft2020_12();
     let meta_schema = settings.meta_schema.clone();
     let mut generator = settings.into_generator();
-    let row = generator.subschema_for::<T::Row>();
-    let data = if T::SHAPE == Shape::Row {
-        row
-    } else {
-        json_schema!({
+    let data = match T::prose_schema(&mut generator) {
+        Some(value) => value,
+        None if T::SHAPE == Shape::Row => generator.subschema_for::<T::Row>(),
+        None => json_schema!({
             "description": data_description(T::SHAPE),
             "type": "array",
-            "items": row,
-        })
+            "items": generator.subschema_for::<T::Row>(),
+        }),
     };
     let mut properties = serde_json::Map::new();
     let mut required = vec!["schema", "data"];
@@ -90,11 +91,11 @@ pub(crate) fn envelope<T: Rows>(document: Document<()>) -> Schema {
             required.push("summary");
         }
     }
-    if T::SHAPE == Shape::Batch {
+    if T::SHAPE == Shape::Batch || T::SHAPE == Shape::Prose {
         properties.insert(
             "failures".to_owned(),
             json!({
-                "description": "The failures of the ids that did not work. It is empty when every id worked.",
+                "description": failures_description(T::SHAPE),
                 "type": "array",
                 "items": failure::entry_schema(),
             }),
@@ -116,6 +117,15 @@ pub(crate) fn envelope<T: Rows>(document: Document<()>) -> Schema {
         schema.insert("$defs".to_owned(), Value::Object(definitions));
     }
     schema
+}
+
+/// Returns the description of the `failures` array of a document of
+/// `shape`, which is a batch or a prose result.
+fn failures_description(shape: Shape) -> &'static str {
+    match shape {
+        Shape::Prose => "The failures that the answer leaves out. It is empty when nothing failed.",
+        _ => "The failures of the ids that did not work. It is empty when every id worked.",
+    }
 }
 
 /// Returns the description of the `data` array of a document of `shape`.

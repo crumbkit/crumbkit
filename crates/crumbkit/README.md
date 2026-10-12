@@ -14,13 +14,13 @@ until the first release:
 crumbkit = { git = "https://github.com/crumbkit/crumbkit" }
 ```
 
-The `main` branch can change without notice before the first release.
+Until then, the `main` branch can change without notice.
 
 ## Example
 
-This tool lists books as a text table or, with `--json`, as a JSON
-document, pages the list with `--limit` and `--all`, and prints a failure
-with a stable code and a next step:
+This tool lists books as a text table or, with `--json`, as JSON, pages
+the list with `--limit` and `--all`, and prints a failure with a stable code
+and a next step:
 
 ```rust
 use std::fmt;
@@ -121,7 +121,7 @@ The shelf example shows the exact output of a fuller tool in its
 ## Where to read more
 
 - Output: [`Output`], [`finish`], [`Row`], [`Document`], [`Listing`],
-  [`Page`] and [`Batch`], with [ADR-0016].
+  [`Page`], [`Batch`] and [`Prose`], with [ADR-0016].
 - Failures: [`Failure`], [`Recovery`], [`Code`], [`Spelling`] and
   [`Error`], with [ADR-0001].
 - Parsing and help: [`parse`], [`help`] and [`Call`], with [ADR-0021],
@@ -149,6 +149,7 @@ option.
 [`Listing`]: ../crumbkit-core/src/listing.rs
 [`Page`]: src/page.rs
 [`Batch`]: ../crumbkit-core/src/batch.rs
+[`Prose`]: ../crumbkit-core/src/prose.rs
 [`Failure`]: ../crumbkit-core/src/failure.rs
 [`Recovery`]: ../crumbkit-core/src/failure.rs
 [`Code`]: ../crumbkit-core/src/code.rs
