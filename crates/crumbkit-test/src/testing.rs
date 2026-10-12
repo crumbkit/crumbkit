@@ -15,3 +15,21 @@ pub(crate) fn panic_message(check: impl FnOnce()) -> Option<String> {
             .unwrap_or_default(),
     )
 }
+
+/// Writes a `/bin/sh` script named `tool` in `dir`, which stands in for a
+/// tool's binary, and returns its path. The script prints the page of each
+/// entry of `pages` for the command line of its words, joined by single
+/// spaces, such as `books list -h`, and fails every other command line with
+/// code 2. A page holds no single quote.
+#[cfg(unix)]
+pub(crate) fn help_binary(dir: &crate::temp::TempDir, pages: &[(&str, &str)]) -> String {
+    use std::fmt::Write as _;
+
+    let mut script = String::from("#!/bin/sh\ncase \"$*\" in\n");
+    for (line, page) in pages {
+        writeln!(script, "  '{line}') printf '%s' '{page}';;").unwrap();
+    }
+    script.push_str("  *) exit 2;;\nesac\n");
+    dir.write_script("tool", &script);
+    dir.path().join("tool").display().to_string()
+}

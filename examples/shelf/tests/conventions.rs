@@ -10,7 +10,9 @@
 
 use clap::CommandFactory as _;
 use crumbkit::Spelling;
-use crumbkit_test::{Allow, Budgets, Examples, Failing, PathBudgets, Recoveries, Rule, Unprovoked};
+use crumbkit_test::{
+    Allow, Budgets, Examples, Failing, Pages, PathBudgets, Recoveries, Rule, Unprovoked,
+};
 use shelf::{Cli, GUIDE};
 
 /// The reason that the example check skips the examples of `self usage` and
@@ -81,17 +83,21 @@ fn every_exit_code_meets_the_exit_code_rules() {
 
 #[test]
 fn every_help_page_fits_its_size_budget() {
-    crumbkit_test::check_help_sizes(&Cli::command(), &GUIDE, &BUDGETS);
+    crumbkit_test::check_help_sizes(&Cli::command(), Pages::rendered(&GUIDE), &BUDGETS);
 }
 
 #[test]
 fn every_path_through_the_help_fits_its_weight_budget() {
-    crumbkit_test::check_path_weights(&Cli::command(), &GUIDE, &PATH_BUDGETS);
+    crumbkit_test::check_path_weights(&Cli::command(), Pages::rendered(&GUIDE), &PATH_BUDGETS);
 }
 
 #[test]
 fn every_help_page_matches_its_golden_file() {
-    crumbkit_test::check_help_goldens(&Cli::command(), &GUIDE, "tests/golden/help");
+    crumbkit_test::check_help_goldens(
+        &Cli::command(),
+        Pages::rendered(&GUIDE),
+        "tests/golden/help",
+    );
 }
 
 #[test]

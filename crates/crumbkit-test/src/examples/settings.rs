@@ -6,8 +6,9 @@ use crumbkit::form::FailureForm;
 use crate::allow::Allow;
 
 /// The settings of [`check_examples`](crate::check_examples): the tool's built binary, the
-/// directory of the golden files, the environment, working directory and
-/// redactions of each run, the tool's opt-outs and its failure form.
+/// directory of the golden files, the environment, XDG fixture, working
+/// directory and redactions of each run, the tool's opt-outs and its
+/// failure form.
 ///
 /// A tool declares them as a constant in an integration test of the
 /// binary's own package, because cargo sets `CARGO_BIN_EXE_<name>`, the
@@ -44,6 +45,10 @@ pub struct Examples<'a> {
     dir: &'a str,
     /// The environment variables that each run sets, as name and value.
     env: &'a [(&'a str, &'a str)],
+    /// The directory whose `config`, `data`, `state` and `cache`
+    /// directories each run's fresh XDG directories start as copies of, or
+    /// `None` for empty XDG directories.
+    xdg: Option<&'a str>,
     /// The directory that each run starts in, or `None` for the test's
     /// directory.
     current_dir: Option<&'a str>,
@@ -72,6 +77,7 @@ impl<'a> Examples<'a> {
             binary,
             dir,
             env: &[],
+            xdg: None,
             current_dir: None,
             redact: &[],
             allow: &[],
@@ -82,10 +88,39 @@ impl<'a> Examples<'a> {
     /// Sets the environment variables that each run sets, each a name and a
     /// value, such as `("SHELF_DATA", "tests/fixtures/books.json")`, so a
     /// tool can point its binary at fixture data or a fake server. The XDG
-    /// directories that the check sets win over a variable of the same name.
+    /// directories that the check sets win over a variable of the same name,
+    /// and [`Examples::xdg`] fills them.
     #[must_use]
     pub const fn env(mut self, env: &'a [(&'a str, &'a str)]) -> Self {
         self.env = env;
+        self
+    }
+
+    /// Sets the XDG fixture, a directory such as `"tests/fixtures/xdg"` that
+    /// holds any of the directories `config`, `data`, `state` and `cache`.
+    /// Before each run, the check copies each of them into the run's fresh
+    /// directory of `XDG_CONFIG_HOME`, `XDG_DATA_HOME`, `XDG_STATE_HOME` or
+    /// `XDG_CACHE_HOME`, so a tool whose command needs a plugin, a cache or
+    /// a configuration file located through those variables finds it, and
+    /// no run changes the fixture or what another run sees.
+    ///
+    /// Every run of [`check_examples`](crate::check_examples),
+    /// [`check_output_budget`](crate::check_output_budget)
+    /// and [`check_twin`](crate::check_twin), and every page that
+    /// [`Pages::binary`](crate::Pages::binary) runs, starts from a new copy, and
+    /// each chain of [`check_recoveries`](crate::check_recoveries) copies
+    /// once before its start, so its steps see what the earlier runs wrote.
+    /// A [`Failing::xdg`](crate::Failing::xdg) wins over this fixture for
+    /// its own runs. The check still replaces the path of each XDG directory
+    /// with its placeholder, such as `[XDG_DATA_HOME]`.
+    ///
+    /// A relative `dir` resolves from the test's directory. A check fails
+    /// before it runs anything when `dir` is not a directory or holds an
+    /// entry other than those four directories, and a run fails when the
+    /// fixture holds a symbolic link, which the check does not copy.
+    #[must_use]
+    pub const fn xdg(mut self, dir: &'a str) -> Self {
+        self.xdg = Some(dir);
         self
     }
 
@@ -170,6 +205,11 @@ impl<'a> Examples<'a> {
         self.env
     }
 
+    /// Returns the XDG fixture of each run, or `None`.
+    pub(crate) const fn xdg_fixture(&self) -> Option<&'a str> {
+        self.xdg
+    }
+
     /// Returns the directory that each run starts in, or `None`.
     pub(crate) const fn working_dir(&self) -> Option<&'a str> {
         self.current_dir
@@ -192,12 +232,15 @@ impl<'a> Examples<'a> {
 }
 
 /// Returns the problem of a working directory that is not a directory, or
-/// `None` when `examples` sets none or it is a directory.
-pub(crate) fn missing_dir(examples: &Examples<'_>) -> Option<String> {
-    let dir = examples.current_dir?;
-    (!std::path::Path::new(dir).is_dir()).then(|| {
-        format!(
+/// of an XDG fixture that breaks its rule, or `None` when `examples` sets
+/// neither or both are sound.
+pub(crate) fn setup_problem(examples: &Examples<'_>) -> Option<String> {
+    if let Some(dir) = examples.current_dir
+        && !std::path::Path::new(dir).is_dir()
+    {
+        return Some(format!(
             "Examples::current_dir names `{dir}`, which is not a directory, so the check runs no example"
-        )
-    })
+        ));
+    }
+    examples.xdg.and_then(crate::runs::fixture_problem)
 }

@@ -12,7 +12,7 @@ use crumbkit::help::Guide;
 
 use crate::budget::{Budget, Departure, Limit};
 use crate::guide::command_line;
-use crate::pages::pages;
+use crate::pages::Pages;
 use crate::sizes::{find, names_nothing};
 use crate::tree::{self, Visit};
 
@@ -131,8 +131,8 @@ impl<'a> PathBudgets<'a> {
 /// A path's weight is the sum of the sizes in bytes of the `-h` pages from
 /// the root down to the command, as [`check_help_sizes`](crate::check_help_sizes)
 /// reads them, and the command's output weight, which [`output_weight`]
-/// reads from the golden files of the examples that `guide` gives the
-/// command. A command without an example golden file has an output weight
+/// reads from the golden files of the examples that the guide of `pages`
+/// gives the command. A command without an example golden file has an output weight
 /// of 0. `cargo crumbkit weigh` prints the same sums as `path_total`. The
 /// check skips each hidden command and everything below it. It finds:
 ///
@@ -146,13 +146,17 @@ impl<'a> PathBudgets<'a> {
 /// ```
 /// use clap::Command;
 /// use crumbkit::help::Guide;
-/// use crumbkit_test::PathBudgets;
+/// use crumbkit_test::{Pages, PathBudgets};
 ///
 /// let shelf = Command::new("shelf")
 ///     .about("Browse a small catalogue")
 ///     .subcommand(Command::new("books").subcommand(Command::new("list")));
 ///
-/// crumbkit_test::check_path_weights(&shelf, &Guide::new(), &PathBudgets::new("tests/golden/examples"));
+/// crumbkit_test::check_path_weights(
+///     &shelf,
+///     Pages::rendered(&Guide::new()),
+///     &PathBudgets::new("tests/golden/examples"),
+/// );
 /// ```
 ///
 /// # Panics
@@ -160,9 +164,10 @@ impl<'a> PathBudgets<'a> {
 /// Panics when a path, a budget or a golden file breaks a rule above. The
 /// message lists each problem on its own line and names each command by its
 /// path from `command`, such as `shelf books list`.
-pub fn check_path_weights(command: &Command, guide: &Guide, budgets: &PathBudgets<'_>) {
+pub fn check_path_weights(command: &Command, pages: Pages<'_>, budgets: &PathBudgets<'_>) {
+    let guide = pages.guide();
     let mut problems = Vec::new();
-    let pages = pages(command, guide, "-h", &mut problems);
+    let pages = crate::pages::pages(command, pages, "-h", &mut problems);
     let visible = tree::walk_visible(command);
     for budget in budgets.nodes {
         if find(&visible, budget.path()).is_none() {

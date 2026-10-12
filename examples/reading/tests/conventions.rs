@@ -16,7 +16,9 @@ use std::path::Path;
 use clap::Command;
 use crumbkit::Spelling;
 use crumbkit::help::Guide;
-use crumbkit_test::{Allow, Budgets, Examples, Failing, PathBudgets, Recoveries, Rule, Unprovoked};
+use crumbkit_test::{
+    Allow, Budgets, Examples, Failing, Pages, PathBudgets, Recoveries, Rule, Unprovoked,
+};
 
 /// The directory of reading's fixture lists.
 const LISTS: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/tests/fixtures/lists");
@@ -110,19 +112,23 @@ fn every_exit_code_meets_the_exit_code_rules() {
 #[test]
 fn every_help_page_fits_its_size_budget() {
     let (command, guide) = fixture_tool();
-    crumbkit_test::check_help_sizes(&command, &guide, &BUDGETS);
+    crumbkit_test::check_help_sizes(&command, Pages::rendered(&guide), &BUDGETS);
 }
 
 #[test]
 fn every_path_through_the_help_fits_its_weight_budget() {
     let (command, guide) = fixture_tool();
-    crumbkit_test::check_path_weights(&command, &guide, &PATH_BUDGETS);
+    crumbkit_test::check_path_weights(&command, Pages::rendered(&guide), &PATH_BUDGETS);
 }
 
 #[test]
 fn every_help_page_matches_its_golden_file() {
     let (command, guide) = fixture_tool();
-    crumbkit_test::check_help_goldens(&command, &guide, "tests/golden/help");
+    crumbkit_test::check_help_goldens(
+        &command,
+        Pages::binary(&guide, &EXAMPLES),
+        "tests/golden/help",
+    );
 }
 
 #[test]

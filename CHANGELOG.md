@@ -321,6 +321,15 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   ([ADR-0005]).
 - crumbkit-test: `Allow::example` opts one example out of
   [`check_examples`] and [`check_output_budget`] by its words ([ADR-0036]).
+- crumbkit: re-exports schemars as `crumbkit::schemars`, so a
+  `FailureForm` needs no schemars dependency of its own ([ADR-0045]).
+- crumbkit-test: `Examples::xdg` and `Failing::xdg` name a fixture that
+  the checks copy into each run's fresh XDG directories, so a failing
+  command can find a plugin or cache there ([ADR-0005]).
+- crumbkit-test: [`check_help_sizes`], [`check_help_goldens`] and
+  [`check_path_weights`] take `Pages`, whose `Pages::binary` reads each
+  page from the tool's binary, for a tool that builds its help at run
+  time ([ADR-0025]).
 ### Changed
 
 - crumbkit: the help text of `--json` reads `Print the result as a JSON
@@ -447,6 +456,11 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit: with the `miette` feature, the carets under a label measure
   terminal columns with unicode-width, so they line up after wide
   characters such as CJK text ([ADR-0016]).
+- crumbkit-test: [`check_recoveries`] fills a lowercase placeholder such
+  as `<path>` from the value of the same name ([ADR-0005]).
+- crumbkit: `help::split` reads double-quoted words as a POSIX shell does,
+  and refuses a `$` or a backtick between double quotes, so
+  [`check_recoveries`] runs hints that a tool wrote with double quotes.
 ### Removed
 
 - crumbkit: `Call::word` is gone, because `Call::value` adds a runtime value

@@ -90,7 +90,8 @@ impl Walk<'_> {
             ));
             return;
         }
-        let xdg = match Xdg::new("recoveries") {
+        let fixture = start.fixture(self.recoveries.examples.xdg_fixture());
+        let xdg = match Xdg::new("recoveries", fixture) {
             Ok(xdg) => xdg,
             Err(problem) => {
                 self.problems.push(format!("{line}: {problem}"));
@@ -347,11 +348,12 @@ fn with_json(words: &[String]) -> Vec<String> {
 }
 
 /// Returns the name between the angle brackets of `word` when it is a
-/// placeholder, such as `ID` for `<ID>` or `<ID>...`.
+/// placeholder, such as `ID` for `<ID>` or `<ID>...` and `path` for
+/// `<path>`. A name holds ASCII letters of either case, digits, `_` and `-`.
 //
 // RUST-10: `crumbkit::help::split` returns plain words, so the check cannot
 // tell a quoted value from a placeholder. A call whose real value is such
-// text, such as `'<ID>'`, reads as a placeholder. A call that kept its
+// text, such as `'<ID>'` or `"<path>"`, reads as a placeholder. A call that kept its
 // placeholders apart from its values replaces this if a tool needs one.
 fn placeholder(word: &str) -> Option<&str> {
     let name = word
@@ -362,7 +364,7 @@ fn placeholder(word: &str) -> Option<&str> {
     let valid = !name.is_empty()
         && name
             .chars()
-            .all(|c| c.is_ascii_uppercase() || c.is_ascii_digit() || c == '_' || c == '-');
+            .all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '-');
     valid.then_some(name)
 }
 

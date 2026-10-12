@@ -1,7 +1,8 @@
 //! The runs of a tool's built binary that the example, command reference,
 //! recovery and twin checks make, each with a cleared environment and fresh XDG directories.
 
-use std::path::PathBuf;
+use std::fs;
+use std::path::{Path, PathBuf};
 use std::process::Output;
 use std::time::Duration;
 
@@ -9,7 +10,7 @@ use crumbkit::form::{FailureForm, ReadFailure, Step};
 use serde_json::Value;
 use snapbox::cmd;
 
-use crate::temp::TempDir;
+use crate::temp::{TempDir, copy_tree};
 
 /// The XDG base directory variables that each run sets, with the name of the
 /// fresh directory that each one points at and the placeholder that the
@@ -37,18 +38,29 @@ pub(crate) struct Xdg {
 
 impl Xdg {
     /// Creates the four XDG directories in a new temporary directory whose
-    /// name ends with `label`, or returns the problem when they cannot be
-    /// created.
-    pub(crate) fn new(label: &str) -> Result<Self, String> {
+    /// name ends with `label`, and copies into each one the directory of
+    /// the same name in `fixture`, such as `config` into the directory of
+    /// `XDG_CONFIG_HOME`, or returns the problem when the directories cannot
+    /// be created, the fixture breaks a rule of [`fixture_problem`] or a
+    /// file cannot be copied.
+    pub(crate) fn new(label: &str, fixture: Option<&str>) -> Result<Self, String> {
         let problem = |error| format!("the run's XDG directories cannot be created: {error}");
+        if let Some(problem) = fixture.and_then(fixture_problem) {
+            return Err(problem);
+        }
         let dir = TempDir::new(label).map_err(problem)?;
         let mut paths = Vec::with_capacity(XDG.len());
         for (variable, name, placeholder) in XDG {
-            paths.push((
-                variable,
-                dir.create_dir(name).map_err(problem)?,
-                placeholder,
-            ));
+            let path = dir.create_dir(name).map_err(problem)?;
+            if let Some(fixture) = fixture {
+                let from = Path::new(fixture).join(name);
+                if from.is_dir() {
+                    copy_tree(&from, &path).map_err(|error| {
+                        format!("the XDG fixture `{fixture}` cannot be copied: {error}")
+                    })?;
+                }
+            }
+            paths.push((variable, path, placeholder));
         }
         Ok(Self { _dir: dir, paths })
     }
@@ -60,6 +72,32 @@ impl Xdg {
             .iter()
             .map(|(_, path, placeholder)| (*placeholder, path))
     }
+}
+
+/// Returns the problem of the XDG fixture `fixture`, a directory whose
+/// entries may only be the directories `config`, `data`, `state` and
+/// `cache`, or `None` when it keeps that rule.
+pub(crate) fn fixture_problem(fixture: &str) -> Option<String> {
+    let Ok(entries) = fs::read_dir(fixture) else {
+        return Some(format!("the XDG fixture `{fixture}` is not a directory"));
+    };
+    let mut names: Vec<String> = Vec::new();
+    for entry in entries {
+        let Ok(entry) = entry else {
+            return Some(format!("the XDG fixture `{fixture}` cannot be read"));
+        };
+        let name = entry.file_name().to_string_lossy().into_owned();
+        let is_dir = entry.file_type().is_ok_and(|kind| kind.is_dir());
+        if !is_dir || !XDG.iter().any(|(_, known, _)| *known == name) {
+            names.push(name);
+        }
+    }
+    names.sort();
+    names.first().map(|name| {
+        format!(
+            "the XDG fixture `{fixture}` holds `{name}`, and a fixture holds only the directories config, data, state and cache"
+        )
+    })
 }
 
 /// The working directory and the standard input of a run. A run without a

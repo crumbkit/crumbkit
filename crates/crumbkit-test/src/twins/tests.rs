@@ -211,3 +211,24 @@ fn a_failing_line_without_a_dir_runs_in_the_current_dir_of_examples() {
         &["books", "list", "--limit", "1"],
     );
 }
+
+#[test]
+fn both_lines_of_a_twin_run_in_a_copy_of_the_refused_line_s_xdg_fixture() {
+    let (dir, path) = tool("twins-xdg");
+    dir.write_script(
+        "plugged",
+        "#!/bin/sh\ntest -f \"$XDG_CONFIG_HOME/tool/plugin\" || exit 3\nexec \"$(dirname \"$0\")/tool\" \"$@\"\n",
+    );
+    let fixture = TempDir::new("twins-xdg-fixture").unwrap();
+    fixture.create_dir("config/tool").unwrap();
+    fixture.write("config/tool/plugin", "");
+    let plugged = path.replace("/tool", "/plugged");
+    let fixture_path = fixture.path().display().to_string();
+
+    check_twin(
+        &Examples::new(&plugged, ""),
+        Spelling::COLONS,
+        &Failing::new(&USAGE, &["books", "list", "--limit", "0"]).xdg(&fixture_path),
+        &["books", "list", "--limit", "1"],
+    );
+}

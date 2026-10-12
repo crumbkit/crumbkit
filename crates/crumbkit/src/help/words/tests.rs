@@ -49,6 +49,42 @@ fn split_refuses_a_line_that_quote_cannot_print() {
     assert_eq!(split(r"shelf a\b"), None);
 }
 
+#[test]
+fn split_reads_a_double_quoted_word_as_a_posix_shell_does() {
+    assert_eq!(
+        split(
+            r#"shelf books list --author "Jane Austen" --title="Emma" "say \"hi\"" "a\\b" "C:\dir" """#
+        ),
+        Some(vec![
+            "shelf".to_owned(),
+            "books".to_owned(),
+            "list".to_owned(),
+            "--author".to_owned(),
+            "Jane Austen".to_owned(),
+            "--title=Emma".to_owned(),
+            r#"say "hi""#.to_owned(),
+            r"a\b".to_owned(),
+            r"C:\dir".to_owned(),
+            String::new(),
+        ])
+    );
+    assert_eq!(
+        split("shelf \"one\\\ntwo\" \"\\$HOME\""),
+        Some(vec![
+            "shelf".to_owned(),
+            "onetwo".to_owned(),
+            "$HOME".to_owned()
+        ])
+    );
+}
+
+#[test]
+fn split_refuses_a_double_quoted_word_that_a_shell_would_expand_or_that_does_not_close() {
+    assert_eq!(split(r#"shelf "$HOME""#), None);
+    assert_eq!(split("shelf \"`date`\""), None);
+    assert_eq!(split(r#"shelf "open"#), None);
+}
+
 proptest! {
     /// `split` reads back every line that `quote` and single spaces build,
     /// whatever characters the words hold.

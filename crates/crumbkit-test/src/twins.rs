@@ -108,7 +108,8 @@ fn twin(
     }
     let place = refused.place(examples.working_dir());
     let code = spelling.spell(refused.code());
-    let output = run(examples, refused.words(), place, &refused_line)?;
+    let fixture = refused.fixture(examples.xdg_fixture());
+    let output = run(examples, refused.words(), place, fixture, &refused_line)?;
     if output.status.success() {
         return Err(format!(
             "the refused line `{refused_line}` must fail with {code}, and it exits with code 0"
@@ -131,7 +132,7 @@ fn twin(
             ));
         }
     }
-    let other = run(examples, admitted, place, &admitted_line)?;
+    let other = run(examples, admitted, place, fixture, &admitted_line)?;
     if !other.status.success() {
         return Err(format!(
             "the admitted line `{admitted_line}` must exit with code 0, and it ends with {} after writing this to standard error:\n{}",
@@ -142,16 +143,18 @@ fn twin(
     Ok(output)
 }
 
-/// Runs `words` with fresh XDG directories and `place`, and returns the
-/// problem naming `line` when the run cannot start or does not end.
+/// Runs `words` with fresh XDG directories that start as copies of
+/// `fixture`, and with `place`, and returns the problem naming `line` when
+/// the run cannot start or does not end.
 fn run(
     examples: &Examples<'_>,
     words: &[&str],
     place: Place<'_>,
+    fixture: Option<&str>,
     line: &str,
 ) -> Result<Output, String> {
     let started = Instant::now();
-    let output = Xdg::new("twin")
+    let output = Xdg::new("twin", fixture)
         .and_then(|xdg| {
             runs::run(
                 examples.binary(),

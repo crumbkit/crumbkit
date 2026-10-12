@@ -25,6 +25,7 @@ mod layout;
 mod opt_out;
 mod redact;
 mod stderr;
+mod xdg;
 
 /// The binary that runs every example.
 const SH: &str = "/bin/sh";

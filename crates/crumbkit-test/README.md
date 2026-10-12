@@ -48,7 +48,7 @@ The rustdoc of each check says what it fails on and shows an example:
 - The help guide: [`check_guide`], and [`check_exit_codes`], which takes
   the tool's opt-outs.
 - Help pages: [`check_help_sizes`] with [`Budgets`], and
-  [`check_help_goldens`].
+  [`check_help_goldens`], which read the pages that [`Pages`] chooses.
 - Paths through the help: [`check_path_weights`] with [`PathBudgets`], and
   [`path_totals`] and [`output_weight`], which `cargo crumbkit weigh` also
   calls.
@@ -94,6 +94,7 @@ option.
 [`check_help_sizes`]: src/sizes.rs
 [`Budgets`]: src/sizes.rs
 [`check_help_goldens`]: src/goldens.rs
+[`Pages`]: src/pages.rs
 [`check_path_weights`]: src/weights.rs
 [`PathBudgets`]: src/weights.rs
 [`path_totals`]: src/weights.rs

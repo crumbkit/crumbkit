@@ -62,7 +62,7 @@ fn check(binary: &str, file: &Path, assert: &Assert) {
         .map_or_else(|| binary.into(), |stem| stem.to_string_lossy());
     let line = format!("{tool} {}", ARGS.join(" "));
     let mut problems = Vec::new();
-    match Xdg::new("reference")
+    match Xdg::new("reference", None)
         .and_then(|xdg| runs::run(binary, &[], &xdg, &ARGS, Place::default(), TIMEOUT))
     {
         Err(problem) => problems.push(format!("{line}: {problem}")),

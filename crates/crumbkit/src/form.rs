@@ -51,7 +51,7 @@ mod tests;
 /// use crumbkit::form::{FailureForm, PreparedFailure, ReadFailure, Step};
 /// use crumbkit::help::Guide;
 /// use crumbkit::Document;
-/// use schemars::{Schema, json_schema};
+/// use crumbkit::schemars::{Schema, json_schema};
 /// use serde_json::{Value, json};
 ///
 /// /// The `{"error": ...}` document that the tool printed before it
