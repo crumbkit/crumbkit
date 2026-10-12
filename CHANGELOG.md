@@ -88,6 +88,9 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit: `usage::start_with(Signals::Tool)` lets a tool handle SIGINT
   and SIGTERM itself while the usage log records the signal ([`usage`],
   [ADR-0029]).
+- crumbkit: [`Failure`] has `alternatives`, other repairs that print as
+  extra `help:` lines and under `alternatives` in the failure document
+  ([ADR-0001]).
 - crumbkit: `Call::value` adds an argument with a concrete value, such as
   `--author 'Le Guin'`, and rendering checks it against the tool's command
   tree ([`Call`], [ADR-0001]).

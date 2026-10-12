@@ -45,14 +45,116 @@ mod tests;
 ///     }
 /// }
 /// ```
+///
+/// crumbkit reads only the failure that a handler returns. It cannot find a
+/// `Failure` in the `source()` chain, because `source()` returns a
+/// `&dyn std::error::Error`. A type that wraps a failure to add context
+/// therefore implements `Failure` itself and returns the code and the
+/// repairs of the failure it wraps:
+///
+/// ```
+/// # use std::fmt;
+/// # use crumbkit_core::{Call, Code, Failure, Recovery};
+/// # const NOT_FOUND: Code = Code::new("shelf", "books", "not_found");
+/// # #[derive(Debug)]
+/// # struct NoSuchBook(u32);
+/// # impl fmt::Display for NoSuchBook {
+/// #     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+/// #         write!(f, "the catalogue has no book {}", self.0)
+/// #     }
+/// # }
+/// # impl std::error::Error for NoSuchBook {}
+/// # impl Failure for NoSuchBook {
+/// #     fn code(&self) -> &'static Code { &NOT_FOUND }
+/// #     fn recovery(&self) -> Recovery { Recovery::Run(Call::new(&["books", "list"])) }
+/// # }
+/// /// A failure to read a reading list, caused by the book it names.
+/// #[derive(Debug)]
+/// struct ReadingList {
+///     name: String,
+///     book: NoSuchBook,
+/// }
+///
+/// impl fmt::Display for ReadingList {
+///     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+///         write!(f, "cannot read the reading list {}", self.name)
+///     }
+/// }
+///
+/// impl std::error::Error for ReadingList {
+///     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+///         Some(&self.book)
+///     }
+/// }
+///
+/// impl Failure for ReadingList {
+///     fn code(&self) -> &'static Code {
+///         self.book.code()
+///     }
+///
+///     fn recovery(&self) -> Recovery {
+///         self.book.recovery()
+///     }
+///
+///     fn alternatives(&self) -> Vec<Recovery> {
+///         self.book.alternatives()
+///     }
+///
+///     fn url(&self) -> Option<&str> {
+///         self.book.url()
+///     }
+/// }
+///
+/// let failure = ReadingList { name: "summer".to_owned(), book: NoSuchBook(7) };
+/// assert_eq!(failure.recovery(), Recovery::Run(Call::new(&["books", "list"])));
+/// ```
 pub trait Failure: std::error::Error {
     /// Returns the failure's code. Each error type lists the codes it
     /// returns in a `CODES` constant, which the tool's test passes to
     /// crumbkit-test's codes check.
     fn code(&self) -> &'static Code;
 
-    /// Returns what the caller can do next.
+    /// Returns what the caller can do next, the preferred repair.
     fn recovery(&self) -> Recovery;
+
+    /// Returns other repairs that the caller can try when the preferred one
+    /// does not suit, such as setting a token variable instead of logging
+    /// in, in order of preference. The default is an empty list, which does
+    /// not allocate.
+    ///
+    /// `crumbkit::finish` prints each alternative on its own `help:` line
+    /// after the recovery's, and under `alternatives` in JSON. It leaves out
+    /// an alternative that offers no step: a `Recovery::Run` whose call does
+    /// not resolve, and a `Recovery::None`. When the recovery itself offers
+    /// no step, the first alternative that offers one prints in its place.
+    ///
+    /// ```
+    /// # use std::fmt;
+    /// # use crumbkit_core::{Call, Code, Failure, Recovery};
+    /// # const NO_LOGIN: Code = Code::new("shelf", "auth", "no_login");
+    /// # #[derive(Debug)]
+    /// # struct NoLogin;
+    /// # impl fmt::Display for NoLogin {
+    /// #     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result { f.write_str("not logged in") }
+    /// # }
+    /// # impl std::error::Error for NoLogin {}
+    /// impl Failure for NoLogin {
+    ///     fn code(&self) -> &'static Code {
+    ///         &NO_LOGIN
+    ///     }
+    ///
+    ///     fn recovery(&self) -> Recovery {
+    ///         Recovery::Run(Call::new(&["login"]))
+    ///     }
+    ///
+    ///     fn alternatives(&self) -> Vec<Recovery> {
+    ///         vec![Recovery::Hint("set SHELF_TOKEN to an access token".to_owned())]
+    ///     }
+    /// }
+    /// ```
+    fn alternatives(&self) -> Vec<Recovery> {
+        Vec::new()
+    }
 
     /// Returns a page that explains the failure, or `None`, the default,
     /// when there is none.
@@ -116,10 +218,11 @@ pub trait Failure: std::error::Error {
 }
 
 /// What the caller of a failed command can do next. Every failure states
-/// one.
+/// one, and may offer more through [`Failure::alternatives`].
 ///
 /// The text output prints it on the `help:` line, and the JSON failure
-/// document holds it under `recovery`, tagged by `kind`.
+/// document holds it under `recovery`, tagged by `kind`, and each
+/// alternative under `alternatives` in the same shape.
 #[derive(Clone, Debug, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum Recovery {

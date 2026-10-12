@@ -266,6 +266,7 @@ fn books_show_from_a_file_that_cannot_be_read_fails_with_its_own_code_and_code_1
             "error: cannot read the ids file missing.txt
   cause: [..]
   help:  pass --from a file that exists and that shelf can read
+  help:  run `shelf books show <ID>...`
   code:  shelf::books::unreadable_ids_file
 ",
         );

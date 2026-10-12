@@ -4,6 +4,75 @@
   "description": "The document that a command prints on standard output when it fails with --json.",
   "type": "object",
   "properties": {
+    "alternatives": {
+      "description": "Other repairs the caller can try, in order of preference, each in the shape of recovery. It is present only when the failure offers at least one.",
+      "type": "array",
+      "items": {
+        "description": "A repair the caller can try instead, tagged by kind.",
+        "oneOf": [
+          {
+            "description": "Run this command.",
+            "type": "object",
+            "properties": {
+              "call": {
+                "type": "string"
+              },
+              "kind": {
+                "const": "run"
+              }
+            },
+            "required": [
+              "kind",
+              "call"
+            ]
+          },
+          {
+            "description": "Run the same command again later.",
+            "type": "object",
+            "properties": {
+              "kind": {
+                "const": "retry"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          {
+            "description": "Follow this advice.",
+            "type": "object",
+            "properties": {
+              "kind": {
+                "const": "hint"
+              },
+              "text": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "kind",
+              "text"
+            ]
+          },
+          {
+            "description": "There is no next step, for this reason.",
+            "type": "object",
+            "properties": {
+              "kind": {
+                "const": "none"
+              },
+              "reason": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "kind",
+              "reason"
+            ]
+          }
+        ]
+      }
+    },
     "cause": {
       "description": "The errors that led to the failure, joined with \": \". It is present only when the failure has a cause.",
       "type": "string"

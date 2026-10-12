@@ -12,6 +12,8 @@ use crate::{
     Call, Code, Document, Error, Failure, Output, Recovery, Row, Sink, Spelling, finish_to,
 };
 
+mod alternatives;
+
 const NOT_FOUND: Code = Code::new("solar", "planets", "not_found");
 
 /// A row type for the result that the failing command would have printed.
@@ -68,6 +70,7 @@ struct Missing {
     message: &'static str,
     cause: Option<Cause>,
     recovery: Recovery,
+    alternatives: Vec<Recovery>,
     url: Option<&'static str>,
 }
 
@@ -94,17 +97,23 @@ impl Failure for Missing {
         self.recovery.clone()
     }
 
+    fn alternatives(&self) -> Vec<Recovery> {
+        self.alternatives.clone()
+    }
+
     fn url(&self) -> Option<&str> {
         self.url
     }
 }
 
-/// Returns a failure with no cause and no url, whose recovery is `recovery`.
+/// Returns a failure with no cause, no alternatives and no url, whose
+/// recovery is `recovery`.
 fn missing(recovery: Recovery) -> Missing {
     Missing {
         message: "the solar system has no planet Vulcan",
         cause: None,
         recovery,
+        alternatives: Vec::new(),
         url: None,
     }
 }

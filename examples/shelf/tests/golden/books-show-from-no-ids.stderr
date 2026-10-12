@@ -1,3 +1,4 @@
 error: the ids file ids.txt holds no book ids
   help:  the ids file needs at least one book id
+  help:  run `shelf books show <ID>...`
   code:  shelf::books::empty_ids_file

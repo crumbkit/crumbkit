@@ -82,8 +82,11 @@ pub(super) struct FailureDocument {
     /// them. It is empty when the failure has no diagnostic.
     #[cfg(feature = "miette")]
     labels: Vec<label::Label>,
-    /// The failure's recovery, with a `Run` call rendered as text.
+    /// The failure's recovery, with a `Run` call rendered as text, or the
+    /// first alternative that offers a step when the recovery offers none.
     step: Step,
+    /// The failure's other alternatives that offer a step, in order.
+    alternatives: Vec<Step>,
     /// The page that explains the failure, when there is one.
     url: Option<String>,
 }
@@ -117,18 +120,19 @@ impl FailureDocument {
         let causes = std::iter::successors(failure.source(), |error| error.source())
             .map(ToString::to_string)
             .collect();
-        let step = match failure.recovery() {
-            Recovery::Run(call) => command
-                .and_then(|command| crate::call::render(&call, command).ok())
-                .map_or_else(|| Step::None(UNAVAILABLE.to_owned()), Step::Run),
-            Recovery::Retry => Step::Retry,
-            Recovery::Hint(text) => Step::Hint(text),
-            Recovery::None { reason } => Step::None(reason),
-            // `Recovery` is `#[non_exhaustive]` and lives in crumbkit-core, so
-            // the compiler requires this arm. crumbkit-core releases with
-            // crumbkit (ADR-0012), so a new variant gets its own arm in the
-            // release that adds it, and this arm matches nothing until then.
-            _ => Step::None(UNAVAILABLE.to_owned()),
+        let mut command = command;
+        let preferred = Step::offered(failure.recovery(), command.as_deref_mut());
+        // A failure without alternatives returns an empty `Vec`, and
+        // collecting an empty iterator does not allocate.
+        let mut alternatives: Vec<Step> = failure
+            .alternatives()
+            .into_iter()
+            .filter_map(|recovery| Step::offered(recovery, command.as_deref_mut()).ok())
+            .collect();
+        let step = match preferred {
+            Ok(step) => step,
+            Err(none) if alternatives.is_empty() => none,
+            Err(_) => alternatives.remove(0),
         };
         Self {
             code: spelling.spell(failure.code()),
@@ -139,6 +143,7 @@ impl FailureDocument {
             #[cfg(feature = "miette")]
             labels: failure.diagnostic().map_or_else(Vec::new, label::read),
             step,
+            alternatives,
             url: failure.url().map(str::to_owned),
         }
     }
@@ -148,14 +153,37 @@ impl FailureDocument {
     pub(super) fn code(&self) -> &str {
         &self.code
     }
+}
 
-    /// Returns the text of the `help:` line.
+impl Step {
+    /// Reads `recovery` into a step, rendering a `Run` call against
+    /// `command`. It returns `Err` with a `Step::None` when the recovery
+    /// offers no step: a `Recovery::None`, or a `Run` call that cannot be
+    /// rendered because no command is set or the call does not resolve.
+    fn offered(recovery: Recovery, command: Option<&mut Command>) -> Result<Self, Self> {
+        match recovery {
+            Recovery::Run(call) => command
+                .and_then(|command| crate::call::render(&call, command).ok())
+                .map(Self::Run)
+                .ok_or_else(|| Self::None(UNAVAILABLE.to_owned())),
+            Recovery::Retry => Ok(Self::Retry),
+            Recovery::Hint(text) => Ok(Self::Hint(text)),
+            Recovery::None { reason } => Err(Self::None(reason)),
+            // `Recovery` is `#[non_exhaustive]` and lives in crumbkit-core, so
+            // the compiler requires this arm. crumbkit-core releases with
+            // crumbkit (ADR-0012), so a new variant gets its own arm in the
+            // release that adds it, and this arm matches nothing until then.
+            _ => Err(Self::None(UNAVAILABLE.to_owned())),
+        }
+    }
+
+    /// Returns the text of the step's `help:` line.
     fn help(&self) -> Cow<'_, str> {
-        match &self.step {
-            Step::Run(call) => Cow::Owned(format!("run `{call}`")),
-            Step::Retry => Cow::Borrowed("run the same command again later"),
-            Step::Hint(text) => Cow::Borrowed(text),
-            Step::None(reason) => Cow::Owned(format!("no next step: {reason}")),
+        match self {
+            Self::Run(call) => Cow::Owned(format!("run `{call}`")),
+            Self::Retry => Cow::Borrowed("run the same command again later"),
+            Self::Hint(text) => Cow::Borrowed(text),
+            Self::None(reason) => Cow::Owned(format!("no next step: {reason}")),
         }
     }
 }
@@ -163,7 +191,8 @@ impl FailureDocument {
 /// Writes the text form of `document` to `err`, then flushes it, as shelf's
 /// golden file [`books-show-7.stderr`][books-show-7] shows.
 ///
-/// A `cause:` line for each cause follows the `error:` line, and a `url:`
+/// A `cause:` line for each cause follows the `error:` line, a `help:` line
+/// for each alternative follows the recovery's `help:` line, and a `url:`
 /// line follows the `code:` line when the failure has a url. With the
 /// `miette` feature, an `at:` line for each label of the failure's
 /// diagnostic follows the causes, each with its source line and an
@@ -180,7 +209,10 @@ pub(super) fn write_text(err: &mut impl Write, document: &FailureDocument) -> io
     for label in &document.labels {
         label.write_text(err)?;
     }
-    write_labelled(err, "help:", &document.help())?;
+    write_labelled(err, "help:", &document.step.help())?;
+    for alternative in &document.alternatives {
+        write_labelled(err, "help:", &alternative.help())?;
+    }
     write_labelled(err, "code:", &document.code)?;
     if let Some(url) = &document.url {
         write_labelled(err, "url:", url)?;
@@ -204,8 +236,9 @@ fn write_json(out: &mut impl Write, document: &FailureDocument) -> io::Result<()
 impl FailureDocument {
     /// Writes every field of the document after `schema` into `map`: `code`,
     /// `message`, `cause` when the failure has a source, `labels` when the
-    /// failure has a diagnostic with at least one label, `recovery`, and
-    /// `url` when the failure has one. The failure document and an entry of
+    /// failure has a diagnostic with at least one label, `recovery`,
+    /// `alternatives` when at least one alternative offers a step, and `url`
+    /// when the failure has one. The failure document and an entry of
     /// a batch's `failures` both write their fields here, so the two differ
     /// only in `schema`.
     ///
@@ -222,6 +255,9 @@ impl FailureDocument {
             map.serialize_entry("labels", &self.labels)?;
         }
         map.serialize_entry("recovery", &self.step)?;
+        if !self.alternatives.is_empty() {
+            map.serialize_entry("alternatives", &self.alternatives)?;
+        }
         if let Some(url) = &self.url {
             map.serialize_entry("url", url)?;
         }
@@ -308,45 +344,11 @@ impl JsonSchema for FailureDocument {
                     "type": "string",
                 },
                 "labels": labels_schema(),
-                "recovery": {
-                    "description": "What the caller can do next, tagged by kind.",
-                    "oneOf": [
-                        {
-                            "description": "Run this command.",
-                            "type": "object",
-                            "properties": {
-                                "kind": { "const": "run" },
-                                "call": { "type": "string" },
-                            },
-                            "required": ["kind", "call"],
-                        },
-                        {
-                            "description": "Run the same command again later.",
-                            "type": "object",
-                            "properties": {
-                                "kind": { "const": "retry" },
-                            },
-                            "required": ["kind"],
-                        },
-                        {
-                            "description": "Follow this advice.",
-                            "type": "object",
-                            "properties": {
-                                "kind": { "const": "hint" },
-                                "text": { "type": "string" },
-                            },
-                            "required": ["kind", "text"],
-                        },
-                        {
-                            "description": "There is no next step, for this reason.",
-                            "type": "object",
-                            "properties": {
-                                "kind": { "const": "none" },
-                                "reason": { "type": "string" },
-                            },
-                            "required": ["kind", "reason"],
-                        },
-                    ],
+                "recovery": step_schema("What the caller can do next, tagged by kind."),
+                "alternatives": {
+                    "description": "Other repairs the caller can try, in order of preference, each in the shape of recovery. It is present only when the failure offers at least one.",
+                    "type": "array",
+                    "items": step_schema("A repair the caller can try instead, tagged by kind."),
                 },
                 "url": {
                     "description": "A page that explains the failure. It is present only when the failure has one.",
@@ -390,6 +392,52 @@ pub(crate) fn entry_schema() -> Schema {
         required.retain(|name| name != "schema");
     }
     schema
+}
+
+/// Describes one step of the `crumbkit/failure/v1` document, tagged by
+/// `kind`, as `recovery` and each entry of `alternatives` hold it, with
+/// `description` as its description.
+fn step_schema(description: &str) -> Schema {
+    json_schema!({
+        "description": description,
+        "oneOf": [
+            {
+                "description": "Run this command.",
+                "type": "object",
+                "properties": {
+                    "kind": { "const": "run" },
+                    "call": { "type": "string" },
+                },
+                "required": ["kind", "call"],
+            },
+            {
+                "description": "Run the same command again later.",
+                "type": "object",
+                "properties": {
+                    "kind": { "const": "retry" },
+                },
+                "required": ["kind"],
+            },
+            {
+                "description": "Follow this advice.",
+                "type": "object",
+                "properties": {
+                    "kind": { "const": "hint" },
+                    "text": { "type": "string" },
+                },
+                "required": ["kind", "text"],
+            },
+            {
+                "description": "There is no next step, for this reason.",
+                "type": "object",
+                "properties": {
+                    "kind": { "const": "none" },
+                    "reason": { "type": "string" },
+                },
+                "required": ["kind", "reason"],
+            },
+        ],
+    })
 }
 
 /// Describes the `labels` array of the `crumbkit/failure/v1` document. The
