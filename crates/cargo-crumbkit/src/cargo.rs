@@ -1,4 +1,4 @@
-//! Builds the binary that `weigh` measures with cargo, and finds its
+//! Builds the binary that `weigh` measures and `docs` describes with cargo, and finds its
 //! executable and its package in cargo's JSON build messages.
 
 use std::ffi::{OsStr, OsString};
@@ -7,7 +7,7 @@ use std::process::{Command, Stdio};
 
 use serde_json::Value;
 
-use crate::error::WeighError;
+use crate::error::ToolError;
 
 #[cfg(test)]
 mod tests;
@@ -46,10 +46,10 @@ pub(crate) fn program() -> OsString {
 ///
 /// # Errors
 ///
-/// Returns [`WeighError::CargoUnavailable`] when `cargo` cannot start,
-/// [`WeighError::BuildFailed`] when it exits with a failure, and
-/// [`WeighError::NoBinary`] when its messages name no executable for `bin`.
-pub(crate) fn build(cargo: &OsStr, bin: &str) -> Result<Built, WeighError> {
+/// Returns [`ToolError::CargoUnavailable`] when `cargo` cannot start,
+/// [`ToolError::BuildFailed`] when it exits with a failure, and
+/// [`ToolError::NoBinary`] when its messages name no executable for `bin`.
+pub(crate) fn build(cargo: &OsStr, bin: &str) -> Result<Built, ToolError> {
     #[expect(
         clippy::disallowed_methods,
         reason = "this module owns weigh's cargo process"
@@ -66,17 +66,17 @@ pub(crate) fn build(cargo: &OsStr, bin: &str) -> Result<Built, WeighError> {
         .stdin(Stdio::null())
         .stderr(Stdio::inherit())
         .output()
-        .map_err(|error| WeighError::CargoUnavailable {
+        .map_err(|error| ToolError::CargoUnavailable {
             cargo: cargo.to_string_lossy().into_owned(),
             error,
         })?;
     if !output.status.success() {
-        return Err(WeighError::BuildFailed {
+        return Err(ToolError::BuildFailed {
             bin: bin.to_owned(),
             status: output.status.to_string(),
         });
     }
-    built(&output.stdout, bin).ok_or_else(|| WeighError::NoBinary {
+    built(&output.stdout, bin).ok_or_else(|| ToolError::NoBinary {
         bin: bin.to_owned(),
     })
 }

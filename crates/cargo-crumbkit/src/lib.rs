@@ -4,6 +4,8 @@
 //! [schema]: https://github.com/crumbkit/crumbkit/blob/main/crates/cargo-crumbkit/schemas/weigh-v1.json
 //! [shelf's weights]: https://github.com/crumbkit/crumbkit/blob/main/crates/cargo-crumbkit/tests/golden/examples/cargo-crumbkit-weigh-bin-shelf.txt
 //! [ADR-0033]: https://github.com/crumbkit/crumbkit/blob/main/docs/decisions/api/help/0033-weigh.md
+//! [shelf's reference]: https://github.com/crumbkit/crumbkit/blob/main/examples/shelf/docs/commands.md
+//! [ADR-0044]: https://github.com/crumbkit/crumbkit/blob/main/docs/decisions/api/help/0044-command-reference.md
 #![doc = include_str!("../README.md")]
 // docs.rs builds the docs on nightly with `--cfg docsrs`, and rustdoc's
 // `doc_cfg` feature labels each item behind a cargo feature with its name.
@@ -11,6 +13,7 @@
 
 mod cargo;
 mod cli;
+mod docs;
 mod error;
 mod tool;
 mod weigh;
@@ -20,14 +23,14 @@ use std::process::ExitCode;
 use clap::CommandFactory as _;
 use crumbkit::Spelling;
 
+pub use crate::cli::{ALLOW, Cli, GUIDE};
 use crate::cli::{CargoCommand, CommandsCommand, CrumbkitCommand};
-pub use crate::cli::{Cli, GUIDE};
 
 #[cfg(test)]
 mod tests;
 
 /// How cargo-crumbkit spells its failure codes, such as
-/// `crumbkit::weigh::build_failed`. The tests pass the same spelling to
+/// `crumbkit::tool::build_failed`. The tests pass the same spelling to
 /// crumbkit-test's codes check.
 const SPELLING: Spelling = Spelling::COLONS;
 
@@ -48,6 +51,9 @@ pub fn run() -> ExitCode {
         CargoCommand::Crumbkit { command } => match command {
             CrumbkitCommand::Weigh(args) => {
                 crumbkit::finish(&mut cli.output, SPELLING, weigh::WEIGH, weigh::weigh(&args))
+            }
+            CrumbkitCommand::Docs(args) => {
+                crumbkit::finish(&mut cli.output, SPELLING, docs::DOCS, docs::docs(&args))
             }
             CrumbkitCommand::Commands { command } => match command {
                 // `commands list` reads the command tree through

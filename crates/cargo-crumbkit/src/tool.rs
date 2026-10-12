@@ -8,7 +8,7 @@ use std::process::{Command, Output, Stdio};
 use serde::Deserialize;
 use tempfile::TempDir;
 
-use crate::error::WeighError;
+use crate::error::{ToolError, WeighError};
 
 #[cfg(test)]
 mod tests;
@@ -118,17 +118,17 @@ impl Tool {
     ///
     /// # Errors
     ///
-    /// Returns [`WeighError::NoTempDir`] when the XDG directories cannot be
+    /// Returns [`ToolError::NoTempDir`] when the XDG directories cannot be
     /// created.
-    pub(crate) fn new(binary: &Path, temp: &Path) -> Result<Self, WeighError> {
-        let xdg = TempDir::new_in(temp).map_err(|error| WeighError::NoTempDir { error })?;
+    pub(crate) fn new(binary: &Path, temp: &Path) -> Result<Self, ToolError> {
+        let xdg = TempDir::new_in(temp).map_err(|error| ToolError::NoTempDir { error })?;
         for (_, name) in XDG {
             #[expect(
                 clippy::disallowed_methods,
                 reason = "the tool owns its temporary XDG directories"
             )]
             fs::create_dir_all(xdg.path().join(name))
-                .map_err(|error| WeighError::NoTempDir { error })?;
+                .map_err(|error| ToolError::NoTempDir { error })?;
         }
         Ok(Self {
             binary: binary.to_path_buf(),
@@ -141,23 +141,46 @@ impl Tool {
     ///
     /// # Errors
     ///
-    /// Returns [`WeighError::ToolUnavailable`] when the binary cannot start,
-    /// and [`WeighError::NoCommandsList`] when the run fails or prints no
+    /// Returns [`ToolError::ToolUnavailable`] when the binary cannot start,
+    /// and [`ToolError::NoCommandsList`] when the run fails or prints no
     /// `crumbkit/commands-list/v1` document, such as for a tool that does not
     /// mount `commands list`.
-    pub(crate) fn commands(&self) -> Result<Vec<Listed>, WeighError> {
+    pub(crate) fn commands(&self) -> Result<Vec<Listed>, ToolError> {
+        let document = self.document()?;
+        listed(&document).ok_or_else(|| self.no_commands_list())
+    }
+
+    /// Returns the bytes that `<binary> commands list --all --json --full`
+    /// prints, which `docs` renders as the tool's reference.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`ToolError::ToolUnavailable`] when the binary cannot start,
+    /// and [`ToolError::NoCommandsList`] when the run exits with a failure,
+    /// such as for a tool that does not mount `commands list`.
+    pub(crate) fn document(&self) -> Result<Vec<u8>, ToolError> {
         let output = self.run(&COMMANDS_LIST_ARGS)?;
-        let listed = if output.status.success() {
-            listed(&output.stdout)
+        if output.status.success() {
+            Ok(output.stdout)
         } else {
-            None
-        };
-        listed.ok_or_else(|| WeighError::NoCommandsList {
-            line: std::iter::once(self.name().as_str())
-                .chain(COMMANDS_LIST_ARGS)
-                .collect::<Vec<_>>()
-                .join(" "),
-        })
+            Err(self.no_commands_list())
+        }
+    }
+
+    /// Returns the command line of the tool's `commands list` run, such as
+    /// `shelf commands list --all --json --full`.
+    pub(crate) fn commands_line(&self) -> String {
+        std::iter::once(self.name().as_str())
+            .chain(COMMANDS_LIST_ARGS)
+            .collect::<Vec<_>>()
+            .join(" ")
+    }
+
+    /// Returns the failure of a `commands list` run that gives no document.
+    fn no_commands_list(&self) -> ToolError {
+        ToolError::NoCommandsList {
+            line: self.commands_line(),
+        }
     }
 
     /// Returns the figures of each command in the usage log at `log`, read
@@ -169,7 +192,7 @@ impl Tool {
     ///
     /// # Errors
     ///
-    /// Returns [`WeighError::ToolUnavailable`] when the binary cannot start,
+    /// Returns [`ToolError::ToolUnavailable`] when the binary cannot start,
     /// and [`WeighError::NoUsageFigures`] when the run fails or prints no
     /// `crumbkit/self-figures-list/v1` document, such as for a tool that does
     /// not mount `self figures list` or a `since` that the tool refuses.
@@ -208,7 +231,7 @@ impl Tool {
     ///
     /// # Errors
     ///
-    /// Returns [`WeighError::ToolUnavailable`] when the binary cannot start,
+    /// Returns [`ToolError::ToolUnavailable`] when the binary cannot start,
     /// and [`WeighError::HelpFailed`] when the run exits with a failure.
     pub(crate) fn help_bytes(&self, path: &str, flag: &str) -> Result<u64, WeighError> {
         // The first word of the path is the tool's name, which the binary
@@ -230,7 +253,7 @@ impl Tool {
 
     /// Runs the binary with `args`, a cleared environment and the XDG
     /// directories, with no standard input, and returns its output.
-    fn run(&self, args: &[&str]) -> Result<Output, WeighError> {
+    fn run(&self, args: &[&str]) -> Result<Output, ToolError> {
         #[expect(
             clippy::disallowed_methods,
             reason = "this module owns the runs of the tool's binary"
@@ -242,7 +265,7 @@ impl Tool {
         }
         command
             .output()
-            .map_err(|error| WeighError::ToolUnavailable {
+            .map_err(|error| ToolError::ToolUnavailable {
                 binary: self.binary.clone(),
                 error,
             })

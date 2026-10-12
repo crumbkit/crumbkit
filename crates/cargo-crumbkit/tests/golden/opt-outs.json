@@ -1,4 +1,15 @@
 {
   "schema": "crumbkit/opt-outs/v1",
-  "data": []
+  "data": [
+    {
+      "rule": "examples/run",
+      "applies_to": "cargo crumbkit docs",
+      "reason": "Each run of the example writes shelf's reference into the workspace, so tests/docs.rs runs docs with a file in a temporary directory instead.",
+      "costs": [
+        "The examples are not run, so help can show an example that fails.",
+        "The command's output weight counts 0 bytes, so its path weight is too low."
+      ],
+      "budget": null
+    }
+  ]
 }

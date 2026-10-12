@@ -15,6 +15,13 @@ use crate::{Document, Row, Rows, Stream, row};
 #[cfg(test)]
 mod tests;
 
+/// The line that the `-h` and `--help` of a leaf set with
+/// [`Leaf::stream`] print after the effects line, in help's wording
+/// (ADR-0041). Another rendering of help, such as a Markdown reference,
+/// prints this line so that it describes a stream as help does.
+pub const STREAM_LINE: &str =
+    "Output: one row per line as each arrives, and --json prints one JSON document per line.";
+
 /// A command without subcommands whose help shows examples, and whose
 /// `--help` describes the columns of the result it prints.
 ///

@@ -1,7 +1,7 @@
 # ADR-0016. Result formats
 
 - Results come in two formats: compact text for people and agents, and JSON for programs ([`finish`](../../../../crates/crumbkit/src/output.rs)). The text table already has a header row, one record per line and no repeated keys.
-- No command prints Markdown. A Markdown export of help is decided with the documentation (ADR-0013), and `commands list` exports a branch of the command tree in these two formats (ADR-0026).
+- No command prints Markdown. `cargo crumbkit docs` writes a Markdown reference of a tool's commands to a file (ADR-0044), and `commands list` exports a branch of the command tree in these two formats (ADR-0026).
 - A type that prints as a table row implements [`Row`](../../../../crates/crumbkit-core/src/row.rs), which names its compact columns and the columns that `--long` adds, and a field in neither list appears only with `--json --full`.
 - The text table pads columns by characters and escapes control characters, so each row stays on one line and no line ends in padding. Cell widths count characters, so a wide character misaligns a column.
 - The [`Output`](../../../../crates/crumbkit/src/output.rs) flags are global. An unknown `--fields` name is refused before anything prints (ADR-0001).

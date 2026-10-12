@@ -1,6 +1,6 @@
 [package]
 name = "cargo-crumbkit"
-description = "Cargo subcommand that measures what each path through a crumbkit tool's help costs an agent to read"
+description = "Cargo subcommand that measures what each path through a crumbkit tool's help costs an agent to read, and writes its command reference"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -31,6 +31,10 @@ clap = { workspace = true, features = [
 # finds each golden file by the name that `check_examples` writes it under,
 # so weigh and the check cannot disagree.
 crumbkit-test = { workspace = true }
+# `docs` renders the tool's `commands list` document with crumbkit-markdown,
+# which crumbkit-test's `check_command_reference` also calls, so the file that
+# `docs` writes is the file that the check expects (ADR-0044).
+crumbkit-markdown = { workspace = true }
 # `weigh --usage` finds the tool's own usage log in the person's XDG state
 # directory, or in `%LOCALAPPDATA%` on Windows, with the calls that
 # crumbkit's `usage-log` feature uses to write it (ADR-0029), so the two

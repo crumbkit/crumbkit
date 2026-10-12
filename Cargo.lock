@@ -80,6 +80,7 @@ version = "0.0.0"
 dependencies = [
  "clap",
  "crumbkit",
+ "crumbkit-markdown",
  "crumbkit-test",
  "etcetera",
  "schemars",
@@ -195,6 +196,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "crumbkit-markdown"
+version = "0.0.0"
+dependencies = [
+ "crumbkit",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "crumbkit-picker"
 version = "0.0.0"
 dependencies = [
@@ -208,6 +218,7 @@ version = "0.0.0"
 dependencies = [
  "clap",
  "crumbkit",
+ "crumbkit-markdown",
  "schemars",
  "serde",
  "serde_json",

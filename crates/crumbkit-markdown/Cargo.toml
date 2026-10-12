@@ -1,0 +1,27 @@
+[package]
+name = "crumbkit-markdown"
+description = "Writes a Markdown reference of every command of a crumbkit tool from its commands list document"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+readme = "README.md"
+keywords = ["cli", "clap", "markdown", "documentation", "reference"]
+categories = ["command-line-interface", "development-tools"]
+include = ["src/**/*.rs", "README.md", "LICENSE-APACHE", "LICENSE-MIT"]
+
+[dependencies]
+# The reference prints each command's effects and the stream line with
+# crumbkit's own `Effects::line` and `help::STREAM_LINE`, so it words them
+# as the tool's help does (ADR-0044).
+crumbkit = { workspace = true }
+# The reference reads the `crumbkit/commands-list/v1` document into structs
+# that derive `Deserialize`, which is the plainest code to read.
+serde = { workspace = true, features = ["derive"] }
+# serde_json parses the document. serde_json needs `std` or `alloc` to build
+# at all.
+serde_json = { workspace = true, features = ["std"] }
+
+[lints]
+workspace = true

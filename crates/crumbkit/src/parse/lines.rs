@@ -8,7 +8,7 @@ use clap::Command;
 use clap::builder::StyledStr;
 use clap::builder::styling::Style;
 
-use crate::help::{self, Effects, Guide, Leaf, leaf, topic};
+use crate::help::{self, Effects, Guide, Leaf, STREAM_LINE, leaf, topic};
 
 /// Adds crumbkit's help lines to the root and to each command on `path`, and
 /// applies to each of those commands the groups of `guide` that name it. A
@@ -153,11 +153,6 @@ struct Sections {
     /// [`STREAM_LINE`] after the effects line.
     stream: bool,
 }
-
-/// The line that the help of a stream leaf prints after its effects line
-/// (ADR-0041).
-const STREAM_LINE: &str =
-    "Output: one row per line as each arrives, and --json prints one JSON document per line.";
 
 /// Returns the sections of `leaf`, whose command line starts with `text`:
 /// its examples in `-h` and `--help`, and in `--help` the sections that

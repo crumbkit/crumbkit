@@ -174,7 +174,7 @@ fn a_tool_without_commands_list_fails_with_no_commands_list() {
     // `sh commands list ...` cannot open a script named `commands`.
     let error = tool.commands().unwrap_err();
 
-    assert_eq!(code(&error), "crumbkit::weigh::no_commands_list");
+    assert_eq!(code(&error), "crumbkit::tool::no_commands_list");
     assert_eq!(
         error.to_string(),
         "`sh commands list --all --json --full` prints no crumbkit/commands-list/v1 document, so the tool's commands cannot be read"
@@ -187,7 +187,7 @@ fn xdg_directories_that_cannot_be_created_fail_with_no_temp_dir() {
         .err()
         .unwrap();
 
-    assert_eq!(code(&error), "crumbkit::weigh::no_temp_dir");
+    assert_eq!(code(&error), "crumbkit::tool::no_temp_dir");
 }
 
 #[test]
@@ -196,5 +196,29 @@ fn a_binary_that_cannot_start_fails_with_tool_unavailable() {
 
     let error = tool.help_bytes("shelf", "-h").unwrap_err();
 
-    assert_eq!(code(&error), "crumbkit::weigh::tool_unavailable");
+    assert_eq!(code(&error), "crumbkit::tool::tool_unavailable");
+}
+
+// The test runs a program that Windows lacks.
+#[cfg(unix)]
+#[test]
+fn a_commands_list_run_that_succeeds_gives_the_bytes_it_prints() {
+    let tool = Tool::new(Path::new("/bin/echo"), &std::env::temp_dir()).unwrap();
+
+    // `/bin/echo commands list --all --json --full` prints its words.
+    assert_eq!(
+        tool.document().unwrap(),
+        b"commands list --all --json --full\n"
+    );
+}
+
+// The test runs a program that Windows lacks.
+#[cfg(unix)]
+#[test]
+fn a_commands_list_run_that_fails_gives_no_document() {
+    let tool = Tool::new(Path::new("/bin/sh"), &std::env::temp_dir()).unwrap();
+
+    let error = tool.document().unwrap_err();
+
+    assert_eq!(code(&error), "crumbkit::tool::no_commands_list");
 }

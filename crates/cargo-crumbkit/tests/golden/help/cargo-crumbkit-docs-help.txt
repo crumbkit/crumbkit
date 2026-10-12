@@ -1,0 +1,31 @@
+Write a Markdown reference of every command of a tool to a file
+
+Usage: cargo crumbkit docs [OPTIONS] --bin <NAME>
+
+Options:
+      --bin <NAME>
+          Build this binary of the current workspace and describe its commands
+
+      --json
+          Print the result as a JSON document on one line
+
+      --out <FILE>
+          Write the reference to this file [default: docs/commands.md in the binary's package]
+
+      --fields <FIELD>
+          Print only these comma-separated fields, in this order
+
+      --long
+          Add the long columns after the compact ones
+
+      --full
+          With --json, print every field of every row
+
+  -h, --help
+          Print help (see a summary with '-h')
+
+Examples:
+  cargo crumbkit docs --bin shelf
+          Write shelf's reference to its docs/commands.md
+
+Effects: additive, idempotent, closed-world.

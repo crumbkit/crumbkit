@@ -54,6 +54,9 @@ The rustdoc of each check says what it fails on and shows an example:
   calls.
 - Example output: [`check_examples`] with [`Examples`], and
   [`example_golden_name`], which names each example's golden file.
+- The command reference: [`check_command_reference`], which compares a
+  tool's checked-in Markdown reference with one written from its help
+  ([ADR-0044]).
 - JSON documents: [`check_schema_goldens`], which pins the JSON Schema of
   each document and file format, [`check_document_ids`], which ties each
   document's name to its command, requires an opt-out for a document
@@ -69,6 +72,7 @@ Licensed under either of Apache License, Version 2.0 or MIT license at your
 option.
 
 [`check_codes`]: src/codes.rs
+[`check_command_reference`]: src/reference.rs
 [`Allow`]: src/allow.rs
 [`check_opt_outs`]: src/opt_outs.rs
 [`check_names`]: src/names.rs
@@ -95,3 +99,4 @@ option.
 [ADR-0035]: ../../docs/decisions/api/schemas/0035-schema-commands.md
 [ADR-0036]: ../../docs/decisions/api/0036-opt-outs.md
 [ADR-0004]: ../../docs/decisions/testing/0004-golden-and-snapshot-tests.md
+[ADR-0044]: ../../docs/decisions/api/help/0044-command-reference.md

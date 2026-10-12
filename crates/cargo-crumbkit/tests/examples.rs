@@ -7,8 +7,12 @@
 //! is also weigh's end-to-end test, and its golden files pin weigh's text and
 //! JSON output for shelf. They change whenever shelf's help pages or example
 //! golden files change, and `SNAPSHOTS=overwrite` rewrites them.
+//!
+//! The example of `cargo crumbkit docs` would write shelf's reference into
+//! the workspace, so cargo-crumbkit opts out of running it, and
+//! `tests/docs.rs` runs `docs` with a file in a temporary directory.
 
-use cargo_crumbkit::{Cli, GUIDE};
+use cargo_crumbkit::{ALLOW, Cli, GUIDE};
 use clap::CommandFactory as _;
 use crumbkit_test::Examples;
 
@@ -94,7 +98,8 @@ fn every_example_in_the_guide_runs_and_prints_its_golden_output() {
         env!("CARGO_BIN_EXE_cargo-crumbkit"),
         "tests/golden/examples",
     )
-    .env(&env);
+    .env(&env)
+    .allow(ALLOW);
 
     crumbkit_test::check_examples(&Cli::command(), &GUIDE, &examples);
 }

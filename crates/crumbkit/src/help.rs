@@ -21,7 +21,7 @@ use clap::builder::styling::Style;
 pub use self::effects::Effects;
 pub use self::exit::Exit;
 pub use self::format::FileFormat;
-pub use self::leaf::{Column, Example, Leaf, quote};
+pub use self::leaf::{Column, Example, Leaf, STREAM_LINE, quote};
 pub use self::runtime::RuntimeLeaf;
 pub use self::topic::Topic;
 
