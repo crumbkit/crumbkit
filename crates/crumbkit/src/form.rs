@@ -148,6 +148,12 @@ pub trait FailureForm {
     /// cannot read needs this method for `check_recoveries` to follow its
     /// recoveries (ADR-0045).
     ///
+    /// A form can write another code in place of one of crumbkit's, such as
+    /// `crumbkit::cli::usage`, because it receives the code from
+    /// [`PreparedFailure::code`] and writes both the JSON and the text. A
+    /// form that does this maps the code back to crumbkit's in `read`, so
+    /// the checks still match it.
+    ///
     /// The provided method returns `None`.
     fn read(&self, out: &str, err: &str) -> Option<ReadFailure> {
         let _ = (out, err);
