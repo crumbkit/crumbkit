@@ -163,6 +163,14 @@ impl Picking {
     }
 }
 
+/// Returns the guide's picker, or `None` when it has none or turns terminal
+/// detection off, so a picker never runs without detection (ADR-0049).
+pub(super) fn picker(guide: &Guide) -> Option<&'static dyn Picker> {
+    guide
+        .get_picker()
+        .filter(|_| guide.get_terminal_detection())
+}
+
 /// Reports whether clap refused a command line with `error` because it
 /// leaves out a required argument, which a picker can fill in.
 pub(super) fn wanted(error: &clap::Error) -> bool {

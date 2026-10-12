@@ -1,0 +1,8 @@
+# ADR-0049. Terminal detection
+
+- A tool's result, failure or note prints the same bytes whether a stream is a terminal or a pipe, and whether or not a coding agent runs the tool. An agent, a script and a person then read the same output, and a golden file of a piped run also pins what a person sees at a terminal.
+- Detection changes only help colour, progress and questions. Help and the version keep clap's colours when standard output is a terminal (ADR-0021). `Output::progress_allowed` is true only when `--json` is off and standard error is a terminal (ADR-0016). A picker and `Output::confirm` ask only when standard input and standard error are terminals and no agent is detected (ADR-0043, ADR-0039). The usage log's `caller` field also reads detection, and the log is not output that a caller reads (ADR-0029).
+- A tool turns detection off with [`Guide::without_terminal_detection`](../../../../crates/crumbkit/src/help/terminal.rs), a `const fn` like the guide's other builders. With it off, crumbkit asks about no stream: help prints as plain text, also when another crate in the build turns on clap's `color` feature, `progress_allowed` is false, a picker never runs, and `confirm` fails with `crumbkit::confirm::needs_yes` as it does with `--no-input`. `Parsed` and `Stop` carry the setting into `Output`, as they carry the failure form (ADR-0045).
+- The setting belongs to the tool and has no environment variable. A caller already turns colour off with `NO_COLOR` or `TERM=dumb`, which clap reads, questions off with `--no-input`, and progress off with `--json`.
+
+Considered: an environment variable in place of or beside the guide setting, a separate switch for each of colour, progress and questions, `confirm` asking with detection off.

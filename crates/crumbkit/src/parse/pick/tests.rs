@@ -303,6 +303,17 @@ fn no_input_refuses_without_asking() {
 }
 
 #[test]
+fn with_terminal_detection_off_a_missing_argument_is_refused_without_asking_the_picker() {
+    const QUIET: Guide = GUIDE.without_terminal_detection();
+    assert_one_word_apart(&["show"], &["show", "--list=a"]);
+    let admitted = run(&QUIET, &["show", "--list=a"], "", true);
+    assert!(admitted.result.is_ok(), "{}", admitted.err);
+    let run = run(&QUIET, &["show"], "0\n", true);
+    assert_eq!(code(&run), ExitCode::from(2));
+    assert!(!run.err.contains("pick"));
+}
+
+#[test]
 fn an_argument_without_choices_is_refused_without_asking() {
     assert_one_word_apart(&["find"], &["find", "--pattern=mars"]);
     admits(&["find", "--pattern=mars"], "0\n", true);

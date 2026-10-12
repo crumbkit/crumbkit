@@ -5,7 +5,7 @@
 - A leaf's help prints its effects on one `Effects:` line, first among crumbkit's lines after the examples (ADR-0039).
 - The help of a command with a visible subcommand ends with a `Next:` line that opens one of them.
 - The clap root's help names a person's aliases on one line when the guide opts in with `Guide::personal_aliases` (ADR-0027).
-- Help and the version keep clap's colours only when standard output is a terminal.
+- Help and the version keep clap's colours only when standard output is a terminal and the guide keeps terminal detection on (ADR-0049).
 - crumbkit finds the deepest command the caller reached by walking the typed words once before parsing. The walk reads each option's values from clap's `Arg`, so an option's value that equals a subcommand name names no command.
 - The same walk finds `--json`, which makes a refusal print as a JSON document. It counts the word only where it reads it as a flag, so a value of an option that allows hyphen values is no request for JSON. A second parse with clap's `ignore_errors` is rejected, because it costs a full parse on every refusal and relies on clap's loosely specified handling of a command line that it cannot parse.
 - A tool cannot name its own output flags for the walk to treat as `--json`. On the parsed path, crumbkit cannot set the `Output` that the tool's own type builds from clap's matches, so `Output::is_json` would answer differently on the two paths.
