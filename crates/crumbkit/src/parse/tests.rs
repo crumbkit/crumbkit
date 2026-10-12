@@ -14,6 +14,7 @@ use crate::{Sink, Spelling};
 mod aliases;
 mod fields;
 mod hidden;
+mod limit;
 mod root;
 
 /// A tool with two global flags, a version, and a group that holds a visible

@@ -38,7 +38,7 @@ List the books in the catalogue, in id order
 
 ### Arguments
 
-- `--limit <N>`: Print at most this many rows. Default: `4`.
+- `--limit <N>`: Print at most this many rows, up to 100. Default: `4`.
 - `--all`: Print every row
 
 ### Examples

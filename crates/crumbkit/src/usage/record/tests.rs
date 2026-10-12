@@ -73,6 +73,7 @@ fn a_record_writes_every_field_of_the_run_beside_its_own() {
         tolerated: vec![name("shelf::catalogue::locked")],
         out_bytes: Some(1840),
         truncated: true,
+        empty: true,
         ext: Some(Section {
             schema: "shelf/usage-ext/v1".to_owned(),
             data: json!({"requests": 2}),
@@ -97,6 +98,7 @@ fn a_record_writes_every_field_of_the_run_beside_its_own() {
     assert_eq!(record["tolerated"], json!(["shelf::catalogue::locked"]));
     assert_eq!(record["out_bytes"], 1840);
     assert_eq!(record["truncated"], true);
+    assert_eq!(record["empty"], true);
     assert_eq!(record["interrupted"], true);
     assert_eq!(
         record["ext"],

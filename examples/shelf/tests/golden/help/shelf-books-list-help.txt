@@ -4,7 +4,7 @@ Usage: shelf books list [OPTIONS]
 
 Options:
       --limit <N>
-          Print at most this many rows
+          Print at most this many rows, up to 100
           
           [default: 4]
 

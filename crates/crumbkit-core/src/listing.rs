@@ -55,6 +55,9 @@ pub struct Listing<R: Row, S = NoSummary> {
     /// The command that the text output names as the next step, and the
     /// phrase that follows it on the `Next:` line.
     next: Option<(Call, String)>,
+    /// The most rows that the command's `--limit` takes, which the footer
+    /// names, or `None` when `--limit` has no upper bound.
+    bound: Option<usize>,
 }
 
 impl<R: Row> Listing<R> {
@@ -82,6 +85,7 @@ impl<R: Row> Listing<R> {
             summary: None,
             note: None,
             next: None,
+            bound: None,
         }
     }
 
@@ -130,6 +134,7 @@ impl<R: Row, S> Listing<R, S> {
             summary: Some(summary),
             note: self.note,
             next: self.next,
+            bound: self.bound,
         }
     }
 
@@ -157,6 +162,21 @@ impl<R: Row, S> Listing<R, S> {
     #[must_use]
     pub fn next(mut self, call: Call, phrase: impl Into<String>) -> Self {
         self.next = Some((call, phrase.into()));
+        self
+    }
+}
+
+impl<R: Row, S> Listing<R, S> {
+    /// Sets the most rows that the command's `--limit` takes, which the text
+    /// footer names, such as `Showing 4 of 6 books. --limit takes up to 100,
+    /// and --all shows every one.` The JSON document leaves it out.
+    ///
+    /// `crumbkit::Page::first_of` and `crumbkit::Page::listing` set it from
+    /// the page's bound, so a handler that builds its listing from the page
+    /// never calls it.
+    #[must_use]
+    pub const fn bounded(mut self, most: usize) -> Self {
+        self.bound = Some(most);
         self
     }
 }
@@ -198,6 +218,10 @@ impl<R: Row, S: Serialize + fmt::Display + JsonSchema> Rows for Listing<R, S> {
         self.next
             .as_ref()
             .map(|(call, phrase)| (call, phrase.as_str()))
+    }
+
+    fn limit_bound(&self) -> Option<usize> {
+        self.bound
     }
 }
 

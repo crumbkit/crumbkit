@@ -1,0 +1,1 @@
+{"schema":"crumbkit/failure/v1","code":"crumbkit::cli::usage","message":"invalid value '101' for '--limit <N>': --limit takes at most 100","fields":{"argument":"--limit","value":"101","most":100},"recovery":{"kind":"run","call":"shelf books list --all --json"},"alternatives":[{"kind":"run","call":"shelf books list --limit 100 --json"}]}

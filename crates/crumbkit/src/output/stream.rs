@@ -346,9 +346,12 @@ impl<R: Row, O: Write, W: Write> Streaming<'_, R, O, W> {
     /// Ends the stream with `result`, and returns the process's exit code.
     ///
     /// An `Err` prints as [`Streaming::failure`] prints a failure, and is the
-    /// stream's last line. The text of a dry run ends with the line
-    /// `This was a dry run, so nothing changed.`, and a document without the
-    /// envelope prints that line on the error writer with `--json`.
+    /// stream's last line. A stream that printed no items and no failure, and
+    /// whose pipe is still open, prints an empty note such as `note: no rows`
+    /// in text, and on the error writer with `--json` (ADR-0050). The text of
+    /// a dry run ends with the line `This was a dry run, so nothing
+    /// changed.`, and a document without the envelope prints that line on
+    /// the error writer with `--json`.
     ///
     /// The exit code is 0 when every item printed, and also when the reader
     /// closed the pipe early. It is 1 when the stream printed a failure or
@@ -362,6 +365,10 @@ impl<R: Row, O: Write, W: Write> Streaming<'_, R, O, W> {
     pub fn end<E: AsFailure>(mut self, result: Result<(), E>) -> ExitCode {
         if let Err(error) = &result {
             self.report(error.as_failure());
+        }
+        let empty = !self.failed && self.items == 0 && self.state == State::Open;
+        if empty {
+            self.note_empty();
         }
         if self.dry_run && self.state == State::Open {
             if !self.json {
@@ -379,8 +386,26 @@ impl<R: Row, O: Write, W: Write> Streaming<'_, R, O, W> {
         } else {
             ExitCode::SUCCESS
         };
-        self.record(code);
+        self.record(code, empty);
         code
+    }
+
+    /// Prints the note of a stream that ended with no rows, such as `note:
+    /// no rows`, in the document's own wording when it has one: after the
+    /// header in text, and on the error writer with `--json`, which prints
+    /// no line for the note (ADR-0050).
+    fn note_empty(&mut self) {
+        let wording = self.document.empty_note().unwrap_or("no rows");
+        if self.json {
+            // A failed write to standard error goes unreported, because it
+            // is the last place to report anything.
+            let _ = writeln!(self.err, "note: {wording}");
+        } else {
+            self.line.extend_from_slice(b"note: ");
+            self.line.extend_from_slice(wording.as_bytes());
+            self.line.push(b'\n');
+            let _ = self.send();
+        }
     }
 
     /// Writes `item` to the line, in the format that the flags choose.
@@ -467,7 +492,7 @@ impl<R: Row, O: Write, W: Write> Streaming<'_, R, O, W> {
             self.command.as_deref_mut(),
         );
         let _ = self.send();
-        self.record(code);
+        self.record(code, false);
         code
     }
 
@@ -503,7 +528,8 @@ impl<R: Row, O: Write, W: Write> Streaming<'_, R, O, W> {
         ControlFlow::Break(())
     }
 
-    /// Records `code` on the span and in the usage log.
+    /// Records `code` on the span, and records `code` and whether the stream
+    /// was `empty` in the usage log.
     #[cfg_attr(
         not(any(feature = "tracing", feature = "usage-log")),
         expect(
@@ -511,7 +537,7 @@ impl<R: Row, O: Write, W: Write> Streaming<'_, R, O, W> {
             reason = "only the tracing and usage-log features record the exit code"
         )
     )]
-    fn record(&self, code: ExitCode) {
+    fn record(&self, code: ExitCode, empty: bool) {
         #[cfg(feature = "tracing")]
         crate::trace::spans::exited(&self.span, code);
         #[cfg(feature = "usage-log")]
@@ -519,7 +545,8 @@ impl<R: Row, O: Write, W: Write> Streaming<'_, R, O, W> {
             code,
             u64::try_from(self.sent).unwrap_or(u64::MAX),
             self.state == State::Spent,
+            empty,
         );
-        let _ = code;
+        let _ = (code, empty);
     }
 }

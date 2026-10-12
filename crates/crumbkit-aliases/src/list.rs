@@ -153,9 +153,7 @@ fn listing(
         }
     };
     let rows = rows(command, file, text)?;
-    Ok(Listing::from_all(rows, args.page.limit())
-        .described("aliases")
-        .note(note))
+    Ok(args.page.first_of(rows).described("aliases").note(note))
 }
 
 /// Returns every row: the entries of `text`, the aliases file at `file`,

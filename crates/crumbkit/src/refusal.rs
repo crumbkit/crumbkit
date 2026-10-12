@@ -1,6 +1,7 @@
 //! A refusal: a command line that clap refused, or a flag value that crumbkit
 //! refused, printed as a failure with one fixed code and exit code 2.
 
+use std::ffi::OsString;
 use std::fmt;
 use std::io::Write;
 use std::process::ExitCode;
@@ -10,6 +11,7 @@ use clap::error::{ContextKind, ContextValue, ErrorKind};
 
 use crate::form::FailureForm;
 use crate::output::failure;
+use crate::page::LimitAbove;
 use crate::{Call, Code, Failure, Field, Recovery, Sink, Spelling, codes};
 
 /// A refused command line or flag value, as a [`Failure`] with the code
@@ -20,9 +22,13 @@ pub(crate) struct Refusal {
     message: String,
     /// What the caller does next.
     recovery: Recovery,
+    /// The other repairs that the caller can try.
+    alternatives: Vec<Recovery>,
     /// The values that the caller got wrong, under the names `argument`,
     /// `value` and `subcommand`, in that order.
     fields: Vec<(&'static str, String)>,
+    /// The bound of a `--limit` that the refused value passed.
+    most: Option<usize>,
 }
 
 impl Refusal {
@@ -30,11 +36,38 @@ impl Refusal {
     /// `error`, which says `message` and whose recovery runs the `-h` of the
     /// command at `path`, the names of the subcommands from the root. Its
     /// fields name what `error` names, as [`clap_fields`] reads them.
-    pub(crate) fn command_line(message: String, path: Vec<String>, error: &clap::Error) -> Self {
+    ///
+    /// When `error` refuses a `--limit` above the bound of a page, and
+    /// `words`, the caller's words after the program name, hold that
+    /// `--limit`, the recovery runs `words` with `--all` in its place, the
+    /// alternative runs them with `--limit` set to the bound, and the field
+    /// `most` names the bound (ADR-0050).
+    pub(crate) fn command_line(
+        message: String,
+        path: Vec<String>,
+        error: &clap::Error,
+        words: &[OsString],
+    ) -> Self {
+        let fields = clap_fields(error);
+        let above =
+            std::error::Error::source(error).and_then(|source| source.downcast_ref::<LimitAbove>());
+        if let Some(above) = above
+            && let Some((all, most)) = replace_limit(words, above.most)
+        {
+            return Self {
+                message,
+                recovery: Recovery::Run(Call::typed(all)),
+                alternatives: vec![Recovery::Run(Call::typed(most))],
+                fields,
+                most: Some(above.most),
+            };
+        }
         Self {
             message,
             recovery: Recovery::Run(Call::help(path)),
-            fields: clap_fields(error),
+            alternatives: Vec::new(),
+            fields,
+            most: None,
         }
     }
 
@@ -53,7 +86,9 @@ impl Refusal {
         Self {
             message,
             recovery: Recovery::Hint(hint),
+            alternatives: Vec::new(),
             fields,
+            most: None,
         }
     }
 
@@ -136,10 +171,55 @@ impl Failure for Refusal {
         self.recovery.clone()
     }
 
+    fn alternatives(&self) -> Vec<Recovery> {
+        self.alternatives.clone()
+    }
+
     fn fields(&self) -> Vec<Field<'_>> {
-        self.fields
+        let mut fields: Vec<Field<'_>> = self
+            .fields
             .iter()
             .map(|(name, value)| Field::new(name, value))
-            .collect()
+            .collect();
+        fields.extend(self.most.map(|most| Field::new("most", most)));
+        fields
     }
+}
+
+/// Returns `words` twice, with their first `--limit` and its value replaced:
+/// once by `--all`, and once by `--limit` with `most`. It returns `None`
+/// when no word before any `--` is `--limit` with a value after it or
+/// `--limit=` with its value.
+//
+// RUST-10: this reads only the spellings `--limit N` and `--limit=N`. An
+// alias that a tool adds to `--limit` leaves the recovery at the `-h` of
+// the command. Reading the flag's position from clap's matches replaces this
+// if a tool needs the alias.
+fn replace_limit(words: &[OsString], most: usize) -> Option<(Vec<String>, Vec<String>)> {
+    let words: Vec<String> = words
+        .iter()
+        .map(|word| word.to_string_lossy().into_owned())
+        .collect();
+    let end = words
+        .iter()
+        .position(|word| word == "--")
+        .unwrap_or(words.len());
+    let (start, width) = words
+        .get(..end)?
+        .iter()
+        .enumerate()
+        .find_map(|(index, word)| {
+            if word == "--limit" && index + 1 < end {
+                Some((index, 2))
+            } else if word.starts_with("--limit=") {
+                Some((index, 1))
+            } else {
+                None
+            }
+        })?;
+    let before = words.get(..start)?;
+    let after = words.get(start + width..)?;
+    let all = [before, &["--all".to_owned()], after].concat();
+    let limited = [before, &["--limit".to_owned(), most.to_string()], after].concat();
+    Some((all, limited))
 }

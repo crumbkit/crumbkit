@@ -1,5 +1,6 @@
 //! The lines that follow a listing's table in text: the footer of a
-//! listing cut short and the next step.
+//! listing cut short, the note of a listing with no matching rows and the
+//! next step.
 
 use std::io::{self, Write};
 
@@ -9,7 +10,9 @@ use crate::Rows;
 
 /// Writes the footer line that follows the table when `value` is a listing
 /// that shows fewer rows than its total, such as `Showing 4 of 6 books. --all
-/// shows every one.` Otherwise it writes nothing.
+/// shows every one.` A listing whose `--limit` has a bound names it, as in
+/// `Showing 4 of 6 books. --limit takes up to 100, and --all shows every
+/// one.` Otherwise it writes nothing.
 pub(super) fn write_footer<T: Rows>(out: &mut impl Write, value: &T) -> io::Result<()> {
     let shown = value.rows().len();
     let Some(total) = value.total() else {
@@ -18,12 +21,36 @@ pub(super) fn write_footer<T: Rows>(out: &mut impl Write, value: &T) -> io::Resu
     if shown >= total {
         return Ok(());
     }
-    match value.description() {
-        Some(description) => writeln!(
+    write!(out, "Showing {shown} of {total}")?;
+    if let Some(description) = value.description() {
+        write!(out, " {description}")?;
+    }
+    match value.limit_bound() {
+        Some(most) => writeln!(
             out,
-            "Showing {shown} of {total} {description}. --all shows every one."
+            ". --limit takes up to {most}, and --all shows every one."
         ),
-        None => writeln!(out, "Showing {shown} of {total}. --all shows every one."),
+        None => writeln!(out, ". --all shows every one."),
+    }
+}
+
+/// Writes the note that follows the table when `value` is a listing with no
+/// matching rows: `note: ` and `wording`, the document's own wording, or
+/// `no {description} match`, such as `note: no books match`, or `note: no
+/// rows match` for a listing without a description (ADR-0050). Otherwise it
+/// writes nothing.
+pub(super) fn write_empty_note<T: Rows>(
+    out: &mut impl Write,
+    value: &T,
+    wording: Option<&str>,
+) -> io::Result<()> {
+    if value.total() != Some(0) {
+        return Ok(());
+    }
+    match (wording, value.description()) {
+        (Some(wording), _) => writeln!(out, "note: {wording}"),
+        (None, Some(description)) => writeln!(out, "note: no {description} match"),
+        (None, None) => writeln!(out, "note: no rows match"),
     }
 }
 

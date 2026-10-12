@@ -56,7 +56,8 @@ pub const SELF_USAGE: Document<Listing<FindingRow, UsageSummary>> = Document::ne
     "self-usage",
     1,
     "The patterns in the usage log where callers waste effort, and a summary of the runs read.",
-);
+)
+.when_empty("the usage log holds no findings");
 
 /// The arguments of `<tool> self usage`: how far back the report reads,
 /// and the log it reads when the caller names one.

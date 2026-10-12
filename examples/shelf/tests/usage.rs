@@ -254,3 +254,23 @@ fn a_listing_cut_short_by_the_output_budget_records_truncated_with_the_over_budg
     assert_eq!(line["truncated"], true);
     assert_eq!(line["code"], "crumbkit::output::over_budget");
 }
+
+#[test]
+fn a_listing_with_no_rows_records_empty_and_a_listing_with_rows_leaves_it_out() {
+    let dir = tempfile::tempdir().unwrap();
+    let home = dir.path();
+
+    shelf(home, &["books", "list"]).success();
+    shelf(
+        home,
+        &["books", "remove", "1", "2", "3", "4", "5", "6", "--yes"],
+    )
+    .success();
+    shelf(home, &["books", "list"]).success();
+
+    let lines = lines(home).unwrap();
+    assert_eq!(lines.len(), 3);
+    assert_eq!(lines[0].get("empty"), None);
+    assert_eq!(lines[2]["command"], "books list");
+    assert_eq!(lines[2]["empty"], true);
+}

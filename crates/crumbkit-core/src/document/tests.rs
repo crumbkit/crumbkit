@@ -179,3 +179,29 @@ fn an_untyped_document_keeps_its_over_budget_code_and_its_first_answer_setting()
     assert_eq!(untyped.over_budget_code(), Some(&TOO_BIG));
     assert!(untyped.always_prints_first());
 }
+
+#[test]
+fn a_document_has_no_empty_note_until_the_tool_sets_one() {
+    let document: Document<()> = Document::new("shelf", "books-list", 1, "Books.");
+
+    assert_eq!(document.empty_note(), None);
+}
+
+#[test]
+fn when_empty_sets_the_note_and_untyped_keeps_it() {
+    let document: Document<()> =
+        Document::new("shelf", "books-list", 1, "Books.").when_empty("the shelf holds no books");
+
+    assert_eq!(document.empty_note(), Some("the shelf holds no books"));
+    assert_eq!(
+        document.untyped().empty_note(),
+        Some("the shelf holds no books")
+    );
+}
+
+#[test]
+#[should_panic(expected = "empty note")]
+fn an_empty_note_with_a_line_break_is_rejected() {
+    let _: Document<()> =
+        Document::new("shelf", "books-list", 1, "Books.").when_empty("no books\nat all");
+}

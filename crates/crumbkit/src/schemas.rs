@@ -183,12 +183,10 @@ pub fn list(
         return Err(SchemasError::Unavailable.into());
     };
     let rows = documents(root, guide).iter().map(SchemaRow::new).collect();
-    Ok(Listing::from_all(rows, args.page.limit())
-        .described("documents")
-        .next(
-            Call::new(SHOW_PATH).arg("ids"),
-            "prints the JSON Schema of each document.",
-        ))
+    Ok(args.page.first_of(rows).described("documents").next(
+        Call::new(SHOW_PATH).arg("ids"),
+        "prints the JSON Schema of each document.",
+    ))
 }
 
 /// Returns the JSON Schema of each document that `args` names, in the order

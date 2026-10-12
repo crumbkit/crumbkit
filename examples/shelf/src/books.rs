@@ -132,7 +132,8 @@ const CATALOGUE: [Book; 6] = [
 /// books that the file at `removed` names, as [`read_removed`] reads it.
 ///
 /// The catalogue is a constant in memory, so this builds every book and
-/// keeps the first page with `Listing::from_all`.
+/// keeps the first page with `Page::first_of`, which also gives the listing
+/// the bound of `--limit` for its footer.
 ///
 /// # Errors
 ///
@@ -144,7 +145,9 @@ pub(crate) fn list(args: &BooksList, removed: Option<&Path>) -> Result<Listing<B
         .into_iter()
         .filter(|book| !removed.contains(&book.id))
         .collect();
-    Ok(Listing::from_all(books, args.page.limit())
+    Ok(args
+        .page
+        .first_of(books)
         .described("books")
         .next(show_call(), "takes up to 100 ids in one call."))
 }

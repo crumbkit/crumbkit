@@ -310,9 +310,11 @@ pub fn finish<T: Rows, E: AsFailure>(
 /// when it has one, under `summary`. The summary also prints as one line
 /// above the table in text. When a listing
 /// shows fewer rows than its total, the table ends with a footer line, such
-/// as `Showing 4 of 6 books. --all shows every one.` A listing's note
-/// follows on its own line, in text only. When a listing has a next step, a
-/// `Next:` line follows the table, any footer and any note, such as
+/// as `Showing 4 of 6 books. --all shows every one.` A listing whose total
+/// is 0 prints an empty note after the header, such as `note: no books
+/// match` (ADR-0050). A listing's note follows on its own line, in text
+/// only. When a listing has a next step, a `Next:` line follows the table,
+/// any footer and any note, such as
 /// `Next: shelf books show <ID>... takes up to 100 ids in one call.` The line
 /// is left out when [`Output::set_command`] was not called or the step's
 /// [`Call`](crate::Call) does not resolve in that command, and the exit code
@@ -405,6 +407,8 @@ pub fn finish_to<T: Rows, E: AsFailure, O: Write, W: Write>(
             .is_some_and(|total| value.rows().len() < total)
     });
     #[cfg(feature = "usage-log")]
+    let empty = result.as_ref().is_ok_and(|value| value.total() == Some(0));
+    #[cfg(feature = "usage-log")]
     let sink = &mut Sink::new(crate::usage::Counted::new(&mut sink.out), &mut sink.err);
     // With the `tracing` feature, the response runs inside the
     // `crumbkit.finish` span, which records the exit code (ADR-0030).
@@ -416,7 +420,7 @@ pub fn finish_to<T: Rows, E: AsFailure, O: Write, W: Write>(
     #[cfg(feature = "tracing")]
     crate::trace::spans::exited(&span, code);
     #[cfg(feature = "usage-log")]
-    crate::usage::finished(code, sink.out.bytes(), truncated || cut);
+    crate::usage::finished(code, sink.out.bytes(), truncated || cut, empty);
     #[cfg(not(feature = "usage-log"))]
     let _ = cut;
     code

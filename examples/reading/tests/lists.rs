@@ -412,3 +412,76 @@ fn entries_set_fails_when_the_position_is_more_than_one_past_the_last_entry() ->
     .stderr_eq(file!["golden/entries-set-out-of-range.stderr"]);
     Ok(())
 }
+
+/// Returns a temporary directory that holds the list `empty`, whose file has
+/// a comment and a blank line and no entries.
+///
+/// # Errors
+///
+/// Returns the I/O error of a directory or a file that cannot be created.
+fn empty_list() -> io::Result<tempfile::TempDir> {
+    let dir = tempfile::tempdir()?;
+    #[expect(
+        clippy::disallowed_methods,
+        reason = "this helper writes the list file that the empty-list tests read"
+    )]
+    std::fs::write(dir.path().join("empty.txt"), "# Nothing yet\n\n")?;
+    Ok(dir)
+}
+
+#[test]
+fn entries_list_of_a_list_with_no_entries_prints_the_header_and_the_list_s_empty_note()
+-> io::Result<()> {
+    let dir = empty_list()?;
+    let dir = dir.path().to_string_lossy();
+
+    reading(&dir, &["entries", "list", "--list", "empty"])?
+        .success()
+        .stdout_eq("POSITION  TITLE\nnote: the list has no entries\n")
+        .stderr_eq("");
+    Ok(())
+}
+
+#[test]
+fn entries_list_with_json_of_a_list_with_no_entries_prints_no_rows_and_a_total_of_0()
+-> io::Result<()> {
+    let dir = empty_list()?;
+    let dir = dir.path().to_string_lossy();
+
+    let output = reading(&dir, &["entries", "list", "--list", "empty", "--json"])?
+        .success()
+        .stderr_eq("")
+        .get_output()
+        .stdout
+        .clone();
+    let stdout = String::from_utf8_lossy(&output);
+    assert!(stdout.contains(r#""data":[]"#), "{stdout}");
+    assert!(stdout.contains(r#""total":0"#), "{stdout}");
+    Ok(())
+}
+
+#[test]
+fn entries_stream_of_a_list_with_no_entries_prints_the_header_and_the_list_s_empty_note()
+-> io::Result<()> {
+    let dir = empty_list()?;
+    let dir = dir.path().to_string_lossy();
+
+    reading(&dir, &["entries", "stream", "--list", "empty"])?
+        .success()
+        .stdout_eq("POSITION  TITLE\nnote: the list has no entries\n")
+        .stderr_eq("");
+    Ok(())
+}
+
+#[test]
+fn entries_stream_with_json_of_a_list_with_no_entries_prints_the_note_on_standard_error()
+-> io::Result<()> {
+    let dir = empty_list()?;
+    let dir = dir.path().to_string_lossy();
+
+    reading(&dir, &["entries", "stream", "--list", "empty", "--json"])?
+        .success()
+        .stdout_eq("")
+        .stderr_eq("note: the list has no entries\n");
+    Ok(())
+}

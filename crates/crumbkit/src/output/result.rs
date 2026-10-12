@@ -406,9 +406,11 @@ impl<'a, T: Rows> Prepared<'a, T> {
         if let Some(table) = &mut self.table {
             table.write(out, shown)?;
         }
-        match cut {
-            Some(cut) => self.write_cut_line(out, shown, cut)?,
-            None => listing::write_footer(out, value)?,
+        if let Some(cut) = cut {
+            self.write_cut_line(out, shown, cut)?;
+        } else {
+            listing::write_footer(out, value)?;
+            listing::write_empty_note(out, value, self.document.empty_note())?;
         }
         if let Some(note) = value.note() {
             writeln!(out, "{note}")?;
