@@ -6,6 +6,8 @@
 
 use std::path::Path;
 
+use crumbkit::{Spelling, codes};
+use crumbkit_test::{Examples, Failing, check_twin};
 use snapbox::cmd::{Command, OutputAssert};
 use snapbox::file;
 
@@ -59,6 +61,23 @@ fn books_remove_without_yes_or_a_terminal_fails_with_needs_yes_and_removes_nothi
     run(dir.path(), &["books", "remove", "2", "--json"])
         .code(1)
         .stdout_eq(file!["golden/books-remove-2-json.json"].raw());
+
+    // The twins run in directories of their own, so the runs above are the
+    // ones that must leave book 2 in this directory (TEST-1).
+    let shelf = Examples::new(env!("CARGO_BIN_EXE_shelf"), "");
+    for refused in [
+        &["books", "remove", "2"][..],
+        &["books", "remove", "2", "--json"],
+    ] {
+        let mut admitted = refused.to_vec();
+        admitted.insert(3, "--yes");
+        check_twin(
+            &shelf,
+            Spelling::COLONS,
+            &Failing::new(&codes::CONFIRM_NEEDS_YES, refused),
+            &admitted,
+        );
+    }
 
     run(dir.path(), &["books", "list"])
         .success()

@@ -7,6 +7,7 @@ use clap::{Arg, ArgAction, Command};
 
 use super::Topic;
 use crate::help::{Exit, Guide, exit};
+use crate::twins::assert_one_word_apart;
 use crate::{Sink, Spelling, parse_to};
 
 /// A tool with a global flag and one group.
@@ -178,6 +179,8 @@ Next: tool help <TOPIC>
 fn a_root_with_its_own_help_command_gets_no_topics_and_clap_parses_that_command() {
     let tool = tool().subcommand(Command::new("assist").alias("help"));
 
+    assert_one_word_apart(&["tool", "help", "orbits"], &["tool", "help"]);
+    assert_eq!(run(tool.clone(), &GUIDE, &["tool", "help"]).code, None);
     let printed = run(tool, &GUIDE, &["tool", "help", "orbits"]);
 
     assert_eq!(printed.code, Some(ExitCode::from(2)));

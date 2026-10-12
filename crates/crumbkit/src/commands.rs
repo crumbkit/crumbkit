@@ -78,7 +78,7 @@ use serde_json::Value;
 
 pub use self::row::CommandRow;
 use crate::help::{Guide, exit};
-use crate::{Call, Code, Document, Error, Failure, Listing, Output, Page, Recovery};
+use crate::{Call, Code, Document, Error, Failure, Listing, Output, Page, Recovery, codes};
 
 #[cfg(test)]
 mod tests;
@@ -93,15 +93,6 @@ pub const COMMANDS_LIST: Document<Listing<CommandRow>> = Document::new(
     1,
     "One branch of the tool's commands with their arguments, examples and columns.",
 );
-
-/// The code of a `PATH` that names no visible command, in the tool's
-/// spelling, such as `crumbkit::commands::not_found` (ADR-0026).
-const NOT_FOUND: Code = Code::new("crumbkit", "commands", "not_found");
-
-/// The code of a `commands list` run in a tool that never passed its
-/// command to `Output::set_command`, in the tool's spelling, such as
-/// `crumbkit::commands::unavailable` (ADR-0026).
-const UNAVAILABLE: Code = Code::new("crumbkit", "commands", "unavailable");
 
 /// The path from the root to `commands list`, which the recovery of a
 /// `PATH` that names no visible command runs.
@@ -331,8 +322,8 @@ impl std::error::Error for CommandsError {}
 impl Failure for CommandsError {
     fn code(&self) -> &'static Code {
         match self {
-            Self::NotFound { .. } => &NOT_FOUND,
-            Self::Unavailable => &UNAVAILABLE,
+            Self::NotFound { .. } => &codes::COMMANDS_NOT_FOUND,
+            Self::Unavailable => &codes::COMMANDS_UNAVAILABLE,
         }
     }
 

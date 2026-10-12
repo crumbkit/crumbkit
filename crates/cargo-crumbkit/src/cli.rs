@@ -74,11 +74,18 @@ pub const GUIDE: Guide = Guide::new()
 
 /// cargo-crumbkit's opt-outs from crumbkit's conventions, which its tests
 /// pass to every check that takes them.
-pub const ALLOW: &[Allow] = &[Allow::new(
-    Rule::Examples,
-    "crumbkit docs",
-    "Each run of the example writes shelf's reference into the workspace, so tests/docs.rs runs docs with a file in a temporary directory instead.",
-)];
+pub const ALLOW: &[Allow] = &[
+    Allow::new(
+        Rule::Examples,
+        "crumbkit docs",
+        "Each run of the example writes shelf's reference into the workspace, so tests/docs.rs runs docs with a file in a temporary directory instead.",
+    ),
+    Allow::new(
+        Rule::Recoveries,
+        "",
+        "Each failure of weigh and docs comes from cargo, a build or the tool that it runs, so a test provokes one only by building a broken workspace.",
+    ),
+];
 
 /// The cargo subcommands that cargo-crumbkit serves.
 #[derive(Debug, Subcommand)]

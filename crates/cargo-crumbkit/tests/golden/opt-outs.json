@@ -10,6 +10,15 @@
         "The command's output weight counts 0 bytes, so its path weight is too low."
       ],
       "budget": null
+    },
+    {
+      "rule": "recoveries/follow",
+      "applies_to": "cargo",
+      "reason": "Each failure of weigh and docs comes from cargo, a build or the tool that it runs, so a test provokes one only by building a broken workspace.",
+      "costs": [
+        "No test shows that the command's recoveries lead anywhere, so a recovery can lead back to the same failure or name a command that no longer runs."
+      ],
+      "budget": null
     }
   ]
 }

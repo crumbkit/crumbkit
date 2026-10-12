@@ -2,18 +2,17 @@
 //! tool's built binary and pins each run's standard output in a golden file.
 
 use std::path::Path;
-use std::process::Output;
 use std::time::{Duration, Instant};
 
 use clap::Command;
 use crumbkit::help::{Guide, Leaf};
+use snapbox::Assert;
 use snapbox::assert::{Action, DEFAULT_ACTION_ENV};
-use snapbox::{Assert, cmd};
 
 use crate::allow::{Allow, Allowances, Rule};
 use crate::goldens::{compare, remove_stale};
 use crate::guide::command_line;
-use crate::temp::TempDir;
+use crate::runs::{self, Place, TIMEOUT, Xdg};
 use crate::tree;
 
 // The tests run `/bin/sh`, which Windows lacks. The two attributes stay
@@ -21,19 +20,6 @@ use crate::tree;
 #[cfg(unix)]
 #[cfg(test)]
 mod tests;
-
-/// The XDG base directory variables that each run sets, with the name of the
-/// fresh directory that each one points at.
-const XDG: [(&str, &str); 4] = [
-    ("XDG_CONFIG_HOME", "config"),
-    ("XDG_DATA_HOME", "data"),
-    ("XDG_STATE_HOME", "state"),
-    ("XDG_CACHE_HOME", "cache"),
-];
-
-/// How long [`check_examples`] and `check_command_reference` let one run
-/// take before they stop the run.
-pub(crate) const TIMEOUT: Duration = Duration::from_secs(10);
 
 /// The settings of [`check_examples`]: the tool's built binary, the
 /// directory of the golden files, the environment of each run and the
@@ -114,6 +100,21 @@ impl<'a> Examples<'a> {
     pub const fn allow(mut self, allow: &'a [Allow]) -> Self {
         self.allow = allow;
         self
+    }
+
+    /// Returns the path of the tool's built binary.
+    pub(crate) const fn binary(&self) -> &'a str {
+        self.binary
+    }
+
+    /// Returns the environment variables that each run sets.
+    pub(crate) const fn variables(&self) -> &'a [(&'a str, &'a str)] {
+        self.env
+    }
+
+    /// Returns the tool's opt-outs.
+    pub(crate) const fn opt_outs(&self) -> &'a [Allow] {
+        self.allow
     }
 }
 
@@ -268,7 +269,16 @@ fn check(
             }
             names.push((name.clone(), line.clone()));
             let started = Instant::now();
-            let output = match run(examples.binary, examples.env, &args, timeout) {
+            let output = match Xdg::new("example").and_then(|xdg| {
+                runs::run(
+                    examples.binary,
+                    examples.env,
+                    &xdg,
+                    &args,
+                    Place::default(),
+                    timeout,
+                )
+            }) {
                 Ok(output) => output,
                 Err(problem) => {
                     failures.push(format!("{line}: {problem}"));
@@ -378,42 +388,6 @@ fn report(problems: &[String], failures: &[String]) {
         ));
     }
     assert!(sections.is_empty(), "{}", sections.join("\n"));
-}
-
-/// Runs `binary` once with `args`, a cleared environment, the variables of
-/// `env` and fresh XDG directories, and returns its output, or the problem
-/// when the XDG directories cannot be created or the binary cannot start. A
-/// run that takes longer than `timeout` is killed, and its output holds
-/// what it printed until then.
-///
-/// The checks that run a tool's binary, [`check_examples`] and
-/// `check_command_reference`, own the process effects of each run, and run
-/// it through snapbox's `cmd` module, which captures standard output and
-/// standard error.
-pub(crate) fn run(
-    binary: &str,
-    env: &[(&str, &str)],
-    args: &[&str],
-    timeout: Duration,
-) -> Result<Output, String> {
-    let xdg = TempDir::new("run")
-        .map_err(|error| format!("the run's XDG directories cannot be created: {error}"))?;
-    let mut command = cmd::Command::new(binary)
-        .args(args)
-        .env_clear()
-        .timeout(timeout);
-    for &(name, value) in env {
-        command = command.env(name, value);
-    }
-    for (variable, name) in XDG {
-        let path = xdg
-            .create_dir(name)
-            .map_err(|error| format!("the run's XDG directories cannot be created: {error}"))?;
-        command = command.env(variable, path);
-    }
-    command
-        .output()
-        .map_err(|error| format!("the binary `{binary}` cannot start: {error}"))
 }
 
 /// Returns the name of the golden file that [`check_examples`] keeps for

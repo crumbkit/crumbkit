@@ -14,6 +14,10 @@ use std::process::ExitCode;
 use clap::CommandFactory as _;
 use crumbkit::Spelling;
 
+pub use crate::books::{
+    BAD_IDS_FILE, EMPTY_IDS_FILE, NO_STATE_DIRECTORY, NOT_FOUND, REMOVED_FILE, TOO_MANY_IDS,
+    UNREADABLE_IDS_FILE,
+};
 use crate::cli::{
     AliasesCommand, BooksCommand, CommandsCommand, FiguresCommand, Resource, SchemasCommand,
     SelfCommand,
@@ -22,6 +26,10 @@ pub use crate::cli::{Cli, GUIDE};
 
 #[cfg(test)]
 mod tests;
+
+/// Every failure code that shelf declares, which shelf's tests pass to
+/// crumbkit-test's codes and recovery checks.
+pub const CODES: &[&crumbkit::Code] = books::BooksError::CODES;
 
 /// How shelf spells its failure codes, such as `shelf::books::not_found`.
 /// shelf's test passes the same spelling to crumbkit-test's codes check.

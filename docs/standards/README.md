@@ -19,6 +19,10 @@ rule that cites none states its reason itself.
 - **RUST-10.** Code that deliberately does less than a maintained crate or a fuller design would says so in a comment at that spot: what it handles, what it misses, and what replaces it once it needs more, so a reader does not copy the shortcut as a convention. The comment is required where copying the shortcut would be costly, such as a hand-written argument or Markdown parser where a crate is the norm, and is unnecessary for a local choice, such as an `if` chain that could be a `match`. Gate: review.
 - **RUST-11.** Every property test runs with one fixed seed and without proptest's regression files, and a fix for a failing case adds a unit test that holds the failing input (ADR-0006). The `[env]` table in `.cargo/config.toml` sets `PROPTEST_RNG_SEED` and `PROPTEST_DISABLE_FAILURE_PERSISTENCE`, and `cargo test` and `cargo nextest` pass both to every test. Gate: `.cargo/config.toml`, which review guards.
 
+## Tests
+
+- **TEST-1.** A test that a command line is refused, in crumbkit or in an example tool, also runs a twin: a command line that differs from the refused one by one word added, removed or replaced, and that the tool accepts (ADR-0005). A test that runs the built binary uses crumbkit-test's `check_twin`, and a test inside crumbkit parses the twin with the same parser. The twin shows that the changed word causes the refusal, so the test cannot pass because the command fails for another reason. Gate: review.
+
 ## Documentation
 
 - **DOCS-1.** An `AGENTS.md` has at most 200 words and holds only what no tool or other document tells the agent (ADR-0010). Gate: `cargo xtask check` counts whitespace-separated words and fails, naming every file over 200.

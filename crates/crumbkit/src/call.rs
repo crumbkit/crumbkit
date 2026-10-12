@@ -5,7 +5,7 @@ use std::fmt::Write as _;
 
 use clap::{Arg, Command};
 
-use crate::help::leaf::quote;
+use crate::help::words::quote;
 use crate::{Call, CallArg, CallError, CallTarget};
 
 #[cfg(test)]

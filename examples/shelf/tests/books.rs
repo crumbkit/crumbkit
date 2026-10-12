@@ -11,8 +11,13 @@
 use std::io;
 use std::path::Path;
 
+use crumbkit::{Spelling, codes};
+use crumbkit_test::{Examples, Failing, check_twin};
 use snapbox::cmd::{Command, OutputAssert};
 use snapbox::file;
+
+/// shelf's built binary, which the twin check runs.
+const SHELF: Examples<'_> = Examples::new(env!("CARGO_BIN_EXE_shelf"), "tests/golden/examples");
 
 /// Runs the built `shelf` binary with `args`, a cleared environment and XDG
 /// directories in a temporary directory of its own, which is removed once
@@ -57,6 +62,19 @@ fn run(dir: &Path, args: &[&str]) -> OutputAssert {
         .env("XDG_STATE_HOME", dir.join("state"))
         .env("XDG_CACHE_HOME", dir.join("cache"))
         .assert()
+}
+
+/// Runs `refused`, which shelf refuses with crumbkit's usage code, beside
+/// `admitted`, which differs from it by one word and succeeds, and returns
+/// the output of `refused` for assertions (TEST-1). Each run has fresh XDG
+/// directories and starts in `dir`, or in the package's directory without
+/// one.
+fn refused_beside(dir: Option<&str>, refused: &[&str], admitted: &[&str]) -> OutputAssert {
+    let mut failing = Failing::new(&codes::CLI_USAGE, refused);
+    if let Some(dir) = dir {
+        failing = failing.dir(dir);
+    }
+    OutputAssert::new(check_twin(&SHELF, Spelling::COLONS, &failing, admitted))
 }
 
 #[test]
@@ -106,11 +124,14 @@ fn books_list_json_fields_prints_only_the_named_fields_in_order_and_the_total() 
 
 #[test]
 fn books_list_with_an_unknown_field_exits_with_code_2_and_hints_at_the_valid_fields() {
-    shelf(&["books", "list", "--fields", "title,pages"])
-        .unwrap()
-        .code(2)
-        .stdout_eq("")
-        .stderr_eq(file!["golden/books-list-unknown-field.stderr"].raw());
+    refused_beside(
+        None,
+        &["books", "list", "--fields", "title,pages"],
+        &["books", "list", "--fields", "title,year"],
+    )
+    .code(2)
+    .stdout_eq("")
+    .stderr_eq(file!["golden/books-list-unknown-field.stderr"].raw());
 }
 
 #[test]
@@ -124,20 +145,26 @@ fn books_list_limit_2_prints_the_first_2_books_and_the_footer() {
 
 #[test]
 fn books_list_limit_0_is_refused_with_code_2() {
-    shelf(&["books", "list", "--limit", "0"])
-        .unwrap()
-        .code(2)
-        .stdout_eq("")
-        .stderr_eq(file!["golden/books-list-limit-0.stderr"].raw());
+    refused_beside(
+        None,
+        &["books", "list", "--limit", "0"],
+        &["books", "list", "--limit", "1"],
+    )
+    .code(2)
+    .stdout_eq("")
+    .stderr_eq(file!["golden/books-list-limit-0.stderr"].raw());
 }
 
 #[test]
 fn books_list_all_with_limit_is_refused_with_code_2() {
-    shelf(&["books", "list", "--all", "--limit", "2"])
-        .unwrap()
-        .code(2)
-        .stdout_eq("")
-        .stderr_eq(file!["golden/books-list-all-limit-2.stderr"].raw());
+    refused_beside(
+        None,
+        &["books", "list", "--all", "--limit", "2"],
+        &["books", "list", "--limit", "2"],
+    )
+    .code(2)
+    .stdout_eq("")
+    .stderr_eq(file!["golden/books-list-all-limit-2.stderr"].raw());
 }
 
 #[test]
@@ -151,8 +178,7 @@ fn books_list_json_all_prints_every_book_and_the_total() {
 
 #[test]
 fn books_show_with_comma_separated_ids_is_refused_with_code_2() {
-    shelf(&["books", "show", "2,5"])
-        .unwrap()
+    refused_beside(None, &["books", "show", "2,5"], &["books", "show", "2"])
         .code(2)
         .stdout_eq("")
         .stderr_eq(file!["golden/books-show-2-comma-5.stderr"].raw());
@@ -208,8 +234,7 @@ fn books_show_with_101_ids_is_refused_with_code_2() {
     let mut args = vec!["books", "show"];
     args.extend(["1"; 101]);
 
-    shelf(&args)
-        .unwrap()
+    refused_beside(None, &args, &args[..args.len() - 1])
         .code(2)
         .stdout_eq("")
         .stderr_eq(file!["golden/books-show-101-ids.stderr"].raw());
@@ -217,8 +242,7 @@ fn books_show_with_101_ids_is_refused_with_code_2() {
 
 #[test]
 fn books_show_without_ids_is_refused_with_code_2() {
-    shelf(&["books", "show"])
-        .unwrap()
+    refused_beside(None, &["books", "show"], &["books", "show", "2"])
         .code(2)
         .stdout_eq("")
         .stderr_eq(file!["golden/books-show-no-ids.stderr"].raw());
@@ -292,11 +316,21 @@ fn books_show_from_a_file_with_only_blank_lines_fails_with_code_1() {
 
 #[test]
 fn books_show_with_ids_and_from_is_refused_with_code_2() {
-    shelf_with_ids_file("5\n", &["books", "show", "2", "--from", "ids.txt"])
-        .unwrap()
-        .code(2)
-        .stdout_eq("")
-        .stderr_eq(file!["golden/books-show-2-from.stderr"].raw());
+    let dir = tempfile::tempdir().unwrap();
+    #[expect(
+        clippy::disallowed_methods,
+        reason = "the test writes the ids file that both command lines read"
+    )]
+    std::fs::write(dir.path().join("ids.txt"), "5\n").unwrap();
+
+    refused_beside(
+        dir.path().to_str(),
+        &["books", "show", "2", "--from", "ids.txt"],
+        &["books", "show", "--from", "ids.txt"],
+    )
+    .code(2)
+    .stdout_eq("")
+    .stderr_eq(file!["golden/books-show-2-from.stderr"].raw());
 }
 
 #[test]
@@ -329,11 +363,14 @@ fn books_summarize_json_prints_the_summary_under_data_and_the_failure_with_code_
 
 #[test]
 fn books_summarize_with_fields_is_refused_with_code_2() {
-    shelf(&["books", "summarize", "--fields", "books"])
-        .unwrap()
-        .code(2)
-        .stdout_eq("")
-        .stderr_eq(file!["golden/books-summarize-fields.stderr"].raw());
+    refused_beside(
+        None,
+        &["books", "summarize", "--fields", "2"],
+        &["books", "summarize", "--json", "2"],
+    )
+    .code(2)
+    .stdout_eq("")
+    .stderr_eq(file!["golden/books-summarize-fields.stderr"].raw());
 }
 
 /// crumbkit-test's `check_help_goldens` pins every help page from a unit
@@ -349,8 +386,7 @@ fn short_help_prints_the_root_page_that_the_help_golden_check_pins() {
 
 #[test]
 fn books_without_a_command_is_refused_with_code_2() {
-    shelf(&["books"])
-        .unwrap()
+    refused_beside(None, &["books"], &["books", "list"])
         .code(2)
         .stdout_eq("")
         .stderr_eq(file!["golden/books.stderr"].raw());
@@ -358,11 +394,14 @@ fn books_without_a_command_is_refused_with_code_2() {
 
 #[test]
 fn books_show_json_without_ids_prints_the_refusal_as_a_failure_document_with_code_2() {
-    shelf(&["books", "show", "--json"])
-        .unwrap()
-        .code(2)
-        .stdout_eq(file!["golden/books-show-json-no-ids.json"].raw())
-        .stderr_eq("");
+    refused_beside(
+        None,
+        &["books", "show", "--json"],
+        &["books", "show", "--json", "2"],
+    )
+    .code(2)
+    .stdout_eq(file!["golden/books-show-json-no-ids.json"].raw())
+    .stderr_eq("");
 }
 
 #[test]

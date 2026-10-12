@@ -9,7 +9,8 @@
 //! writes, rewrites and deletes the golden files.
 
 use clap::CommandFactory as _;
-use crumbkit_test::{Allow, Budgets, Examples, PathBudgets, Rule};
+use crumbkit::Spelling;
+use crumbkit_test::{Allow, Budgets, Examples, Failing, PathBudgets, Recoveries, Rule, Unprovoked};
 use shelf::{Cli, GUIDE};
 
 /// The reason that the example check skips the examples of `self usage` and
@@ -127,4 +128,54 @@ fn every_opt_out_matches_the_opt_out_report() {
         Some(&PATH_BUDGETS),
         "tests/golden",
     );
+}
+
+/// The command lines that start shelf's recovery chains. Each `--from`
+/// start reads a file under `tests/fixtures/ids/`, and its alternative
+/// `shelf books show <ID>...` runs with the id 2.
+const STARTS: &[Failing<'_>] = &[
+    Failing::new(&shelf::NOT_FOUND, &["books", "show", "7"]),
+    Failing::new(
+        &shelf::UNREADABLE_IDS_FILE,
+        &["books", "show", "--from", "tests/fixtures/ids/missing.txt"],
+    ),
+    Failing::new(
+        &shelf::BAD_IDS_FILE,
+        &["books", "show", "--from", "tests/fixtures/ids/bad-line.txt"],
+    ),
+    Failing::new(
+        &shelf::TOO_MANY_IDS,
+        &["books", "show", "--from", "tests/fixtures/ids/101-ids.txt"],
+    ),
+    Failing::new(
+        &shelf::EMPTY_IDS_FILE,
+        &["books", "show", "--from", "tests/fixtures/ids/empty.txt"],
+    ),
+    Failing::new(
+        &crumbkit::codes::CONFIRM_NEEDS_YES,
+        &["books", "remove", "2"],
+    ),
+];
+
+/// shelf's declared codes that no command line in a test provokes.
+const UNPROVOKED: &[Unprovoked<'_>] = &[
+    Unprovoked::new(
+        &shelf::REMOVED_FILE,
+        "Only a file of removed books that shelf cannot read or write provokes it, such as one on a full disk.",
+    ),
+    Unprovoked::new(
+        &shelf::NO_STATE_DIRECTORY,
+        "The check always sets XDG_STATE_HOME, and only a run without it and without HOME provokes the code.",
+    ),
+];
+
+/// The settings of shelf's recovery check.
+const RECOVERIES: Recoveries<'_> = Recoveries::new(EXAMPLES, Spelling::COLONS, &[shelf::CODES])
+    .starts(STARTS)
+    .unprovoked(UNPROVOKED)
+    .values(&[("ID", "2")]);
+
+#[test]
+fn every_recovery_leads_to_a_command_that_runs() {
+    crumbkit_test::check_recoveries(&Cli::command(), &GUIDE, &RECOVERIES, "tests/golden");
 }

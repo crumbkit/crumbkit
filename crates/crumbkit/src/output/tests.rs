@@ -10,6 +10,7 @@ use serde::ser::Error as _;
 use serde::{Serialize, Serializer};
 
 use super::{Output, finish_to};
+use crate::twins::assert_one_word_apart;
 use crate::{Document, Error, Listing, Row, Rows, Sink, Spelling};
 
 mod batch;
@@ -265,7 +266,12 @@ fn fields_accepts_a_repeated_flag_as_well_as_commas() {
 
 #[test]
 fn an_unknown_field_is_a_refusal_whose_hint_names_the_valid_fields_and_exits_with_code_2() {
-    let finished = finish_with(&["--fields", "name,radius"], PLANETS, vec![saturn()]);
+    let refused = ["--fields", "name,radius"];
+    let admitted = ["--fields", "name,au"];
+    assert_one_word_apart(&refused, &admitted);
+    let twin = finish_with(&admitted, PLANETS, vec![saturn()]);
+    assert_eq!(twin.code, ExitCode::SUCCESS, "{}", twin.err);
+    let finished = finish_with(&refused, PLANETS, vec![saturn()]);
 
     assert_eq!(finished.code, ExitCode::from(2));
     assert_eq!(finished.out, "");
@@ -279,7 +285,12 @@ error: --fields names an unknown field 'radius'
 
 #[test]
 fn an_unknown_field_is_refused_in_json_even_when_the_result_has_no_rows() {
-    let finished = finish_with(&["--json", "--fields", "radius"], PLANETS, Vec::new());
+    let refused = ["--json", "--fields", "radius"];
+    let admitted = ["--json", "--fields", "au"];
+    assert_one_word_apart(&refused, &admitted);
+    let twin = finish_with(&admitted, PLANETS, Vec::new());
+    assert_eq!(twin.code, ExitCode::SUCCESS, "{}", twin.err);
+    let finished = finish_with(&refused, PLANETS, Vec::new());
 
     assert_eq!(finished.code, ExitCode::from(2));
     let recovery =
@@ -289,7 +300,12 @@ fn an_unknown_field_is_refused_in_json_even_when_the_result_has_no_rows() {
 
 #[test]
 fn an_unknown_field_refusal_names_the_flag_and_the_unknown_name_under_fields() {
-    let finished = finish_with(&["--json", "--fields", "name,radius"], PLANETS, Vec::new());
+    let refused = ["--json", "--fields", "name,radius"];
+    let admitted = ["--json", "--fields", "name,au"];
+    assert_one_word_apart(&refused, &admitted);
+    let twin = finish_with(&admitted, PLANETS, Vec::new());
+    assert_eq!(twin.code, ExitCode::SUCCESS, "{}", twin.err);
+    let finished = finish_with(&refused, PLANETS, Vec::new());
 
     assert!(
         finished
@@ -350,6 +366,9 @@ Titan  -       Saturn
 
 #[test]
 fn the_valid_fields_of_a_row_type_with_variants_are_each_variants_fields_once_in_order() {
+    assert_one_word_apart(&["--fields", "radius"], &["--fields", "kelvin"]);
+    let twin = finish_with(&["--fields", "kelvin"], BODIES, Vec::new());
+    assert_eq!(twin.code, ExitCode::SUCCESS, "{}", twin.err);
     let finished = finish_with(&["--fields", "radius"], BODIES, Vec::new());
 
     assert_eq!(finished.code, ExitCode::from(2));

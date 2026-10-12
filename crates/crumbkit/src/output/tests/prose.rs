@@ -8,6 +8,7 @@ use clap::{CommandFactory as _, Parser, Subcommand};
 use schemars::JsonSchema;
 use serde::Serialize;
 
+use crate::twins::assert_one_word_apart;
 use crate::{
     Call, Code, Document, Error, Failure, Output, Prose, Recovery, Sink, Spelling, finish_to,
 };
@@ -194,10 +195,12 @@ fn json_of_prose_with_failures_holds_them_as_a_batch_does_and_exits_with_code_1(
 
 #[test]
 fn fields_on_prose_is_a_refusal_that_exits_with_code_2_before_anything_prints() {
-    let finished = finish_with(
-        &["--fields", "planets"],
-        Prose::new(eight("Eight planets.")),
-    );
+    // `--fields=planets` is one word, so the twin without it differs by
+    // one word (TEST-1).
+    assert_one_word_apart(&["--fields=planets"], &[]);
+    let twin = finish_with(&[], Prose::new(eight("Eight planets.")));
+    assert_eq!(twin.code, ExitCode::SUCCESS, "{}", twin.err);
+    let finished = finish_with(&["--fields=planets"], Prose::new(eight("Eight planets.")));
 
     let expected = "\
 error: --fields selects the columns of a table, and this command prints prose

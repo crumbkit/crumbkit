@@ -1,6 +1,10 @@
-cargo has 1 opt-out from crumbkit's conventions.
+cargo has 2 opt-outs from crumbkit's conventions.
 
 examples/run: cargo crumbkit docs
   Reason: Each run of the example writes shelf's reference into the workspace, so tests/docs.rs runs docs with a file in a temporary directory instead.
   Cost: The examples are not run, so help can show an example that fails.
   Cost: The command's output weight counts 0 bytes, so its path weight is too low.
+
+recoveries/follow: cargo
+  Reason: Each failure of weigh and docs comes from cargo, a build or the tool that it runs, so a test provokes one only by building a broken workspace.
+  Cost: No test shows that the command's recoveries lead anywhere, so a recovery can lead back to the same failure or name a command that no longer runs.

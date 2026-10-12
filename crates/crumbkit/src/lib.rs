@@ -45,6 +45,7 @@ mod agent;
 mod call;
 #[cfg(feature = "hand-over")]
 pub mod child;
+pub mod codes;
 pub mod commands;
 #[cfg(any(feature = "usage-log", feature = "tracing"))]
 mod exit;
@@ -60,6 +61,8 @@ mod row;
 pub mod schemas;
 mod sink;
 pub mod trace;
+#[cfg(test)]
+mod twins;
 pub mod usage;
 
 // crumbkit re-exports every item of crumbkit-core at the path it had in

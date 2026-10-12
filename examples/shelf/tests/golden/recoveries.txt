@@ -1,0 +1,39 @@
+shelf books show 7
+  fails with shelf::books::not_found
+  run shelf books list
+    exits 0
+
+shelf books show --from tests/fixtures/ids/missing.txt
+  fails with shelf::books::unreadable_ids_file
+  hint
+  run shelf books show <ID>... as shelf books show 2
+    exits 0
+
+shelf books show --from tests/fixtures/ids/bad-line.txt
+  fails with shelf::books::bad_ids_file
+  hint
+  run shelf books show <ID>... as shelf books show 2
+    exits 0
+
+shelf books show --from tests/fixtures/ids/101-ids.txt
+  fails with shelf::books::too_many_ids
+  hint
+  run shelf books show <ID>... as shelf books show 2
+    exits 0
+
+shelf books show --from tests/fixtures/ids/empty.txt
+  fails with shelf::books::empty_ids_file
+  hint
+  run shelf books show <ID>... as shelf books show 2
+    exits 0
+
+shelf books remove 2
+  fails with crumbkit::confirm::needs_yes
+  run shelf books remove 2 --json --yes
+    exits 0
+
+codes that no start provokes:
+  shelf::books::removed_file: Only a file of removed books that shelf cannot read or write provokes it, such as one on a full disk.
+  shelf::books::no_state_directory: The check always sets XDG_STATE_HOME, and only a run without it and without HOME provokes the code.
+
+codes whose recoveries the check did not follow, because no declared code spells them: 0

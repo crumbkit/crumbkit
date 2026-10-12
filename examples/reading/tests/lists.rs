@@ -6,6 +6,8 @@
 
 use std::io;
 
+use crumbkit::{Spelling, codes};
+use crumbkit_test::{Examples, Failing, check_twin};
 use snapbox::cmd::{Command, OutputAssert};
 use snapbox::file;
 
@@ -72,7 +74,18 @@ fn entries_list_of_a_list_that_does_not_exist_fails_with_a_next_step() -> io::Re
 fn a_directory_without_lists_adds_no_command() -> io::Result<()> {
     let empty = tempfile::tempdir()?;
     let dir = empty.path().to_string_lossy().into_owned();
-    reading(&dir, &["to-read", "list"])?
+    let env = [("READING_DIR", dir.as_str())];
+    let examples = Examples::new(env!("CARGO_BIN_EXE_reading"), "").env(&env);
+
+    // `commands list` differs by one word and runs in the same directory, so
+    // the missing list is the reason for the refusal (TEST-1).
+    let refused = check_twin(
+        &examples,
+        Spelling::COLONS,
+        &Failing::new(&codes::CLI_USAGE, &["to-read", "list"]),
+        &["commands", "list"],
+    );
+    OutputAssert::new(refused)
         .code(2)
         .stdout_eq("")
         .stderr_eq(file!["golden/to-read-without-lists.stderr"]);

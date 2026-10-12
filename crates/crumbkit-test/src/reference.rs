@@ -6,8 +6,8 @@ use std::path::Path;
 use snapbox::Assert;
 use snapbox::assert::DEFAULT_ACTION_ENV;
 
-use crate::examples::{TIMEOUT, run};
 use crate::goldens::compare;
+use crate::runs::{self, Place, TIMEOUT, Xdg};
 use crate::tree;
 
 // The tests run shell scripts, which Windows cannot run. The two attributes
@@ -62,7 +62,9 @@ fn check(binary: &str, file: &Path, assert: &Assert) {
         .map_or_else(|| binary.into(), |stem| stem.to_string_lossy());
     let line = format!("{tool} {}", ARGS.join(" "));
     let mut problems = Vec::new();
-    match run(binary, &[], &ARGS, TIMEOUT) {
+    match Xdg::new("reference")
+        .and_then(|xdg| runs::run(binary, &[], &xdg, &ARGS, Place::default(), TIMEOUT))
+    {
         Err(problem) => problems.push(format!("{line}: {problem}")),
         Ok(output) if !output.status.success() => {
             let mut problem = format!(

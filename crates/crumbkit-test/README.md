@@ -57,6 +57,9 @@ The rustdoc of each check says what it fails on and shows an example:
 - The command reference: [`check_command_reference`], which compares a
   tool's checked-in Markdown reference with one written from its help
   ([ADR-0044]).
+- Recoveries: [`check_recoveries`] with [`Recoveries`], which runs failing
+  command lines and follows each recovery they print, and [`check_twin`],
+  which runs a refused command line beside one that succeeds.
 - JSON documents: [`check_schema_goldens`], which pins the JSON Schema of
   each document and file format, [`check_document_ids`], which ties each
   document's name to its command, requires an opt-out for a document
@@ -92,6 +95,9 @@ option.
 [`check_examples`]: src/examples.rs
 [`Examples`]: src/examples.rs
 [`example_golden_name`]: src/examples.rs
+[`check_recoveries`]: src/recoveries.rs
+[`Recoveries`]: src/recoveries.rs
+[`check_twin`]: src/twins.rs
 [`check_schema_goldens`]: src/schemas.rs
 [`check_document_ids`]: src/documents.rs
 [`check_mounts`]: src/documents.rs

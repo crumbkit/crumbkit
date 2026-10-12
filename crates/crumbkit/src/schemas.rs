@@ -103,7 +103,7 @@ pub(crate) use self::envelope::{envelope, file_format};
 pub use self::row::{SchemaRow, SchemaShowRow};
 pub use self::served::{Served, documents};
 use crate::help::Guide;
-use crate::{Batch, Call, Code, Document, Error, Failure, Listing, Output, Page, Recovery};
+use crate::{Batch, Call, Code, Document, Error, Failure, Listing, Output, Page, Recovery, codes};
 
 #[cfg(test)]
 mod tests;
@@ -127,15 +127,6 @@ pub const SCHEMAS_SHOW: Document<Batch<SchemaShowRow, Error>> = Document::new(
     1,
     "The JSON Schema of each document id given.",
 );
-
-/// The code of an id that names no document the tool prints, in the tool's
-/// spelling, such as `crumbkit::schemas::not_found` (ADR-0035).
-const NOT_FOUND: Code = Code::new("crumbkit", "schemas", "not_found");
-
-/// The code of a schema command run in a tool that never passed its
-/// command to `Output::set_command`, in the tool's spelling, such as
-/// `crumbkit::schemas::unavailable` (ADR-0035).
-const UNAVAILABLE: Code = Code::new("crumbkit", "schemas", "unavailable");
 
 /// The path from the root to `schemas list`, which the recovery of an
 /// unknown id runs.
@@ -271,8 +262,8 @@ impl std::error::Error for SchemasError {}
 impl Failure for SchemasError {
     fn code(&self) -> &'static Code {
         match self {
-            Self::NotFound { .. } => &NOT_FOUND,
-            Self::Unavailable => &UNAVAILABLE,
+            Self::NotFound { .. } => &codes::SCHEMAS_NOT_FOUND,
+            Self::Unavailable => &codes::SCHEMAS_UNAVAILABLE,
         }
     }
 

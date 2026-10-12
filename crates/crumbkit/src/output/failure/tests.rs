@@ -8,6 +8,7 @@ use clap::{CommandFactory as _, Parser, Subcommand};
 use schemars::JsonSchema;
 use serde::Serialize;
 
+use crate::twins::assert_one_word_apart;
 use crate::{
     Call, Code, Document, Error, Failure, Field, FieldValue, Output, Recovery, Row, Sink, Spelling,
     finish_to,
@@ -335,6 +336,41 @@ fn a_run_prints_as_no_next_step_when_no_command_is_set() {
     );
 }
 
+#[cfg(debug_assertions)]
+#[test]
+fn each_recovery_call_that_does_not_render_adds_a_warning_line_in_a_debug_build() {
+    let mut failure = missing(Recovery::Run(Call::new(&["remove"])));
+    failure.alternatives = vec![run_list(), Recovery::Run(Call::new(&["add"]))];
+
+    let finished = fail_with(&["--json"], failure);
+
+    assert_eq!(
+        finished.err,
+        concat!(
+            "warning: crumbkit left out a recovery of the failure solar::planets::not_found, ",
+            "because 'tool' has no subcommand 'remove'\n",
+            "warning: crumbkit left out a recovery of the failure solar::planets::not_found, ",
+            "because 'tool' has no subcommand 'add'\n",
+        )
+    );
+}
+
+#[cfg(debug_assertions)]
+#[test]
+fn a_recovery_call_adds_a_warning_line_in_a_debug_build_when_no_command_is_set() {
+    let mut output = Tool::try_parse_from(["tool", "list"]).unwrap().output;
+
+    let finished = fail_output(&mut output, missing(run_list()));
+
+    assert!(
+        finished.err.starts_with(
+            "warning: crumbkit left out a recovery of the failure solar::planets::not_found, because no command is set\nerror: "
+        ),
+        "{}",
+        finished.err
+    );
+}
+
 #[test]
 fn json_prints_one_failure_document_on_standard_output_and_exits_with_code_1() {
     let finished = fail_with(&["--json"], missing(run_list()));
@@ -421,6 +457,12 @@ fn full_and_fields_leave_the_failure_document_unchanged() {
 
 #[test]
 fn an_unknown_field_exits_with_code_2_before_the_failure_prints() {
+    // The twin fails with the same failure and code 1, which shows that the
+    // field passed (TEST-1).
+    assert_one_word_apart(&["--fields", "radius"], &["--fields", "name"]);
+    let twin = fail_with(&["--fields", "name"], missing(run_list()));
+    assert_eq!(twin.code, ExitCode::FAILURE);
+    assert!(twin.err.contains("Vulcan"), "{}", twin.err);
     let finished = fail_with(&["--fields", "radius"], missing(run_list()));
 
     assert_eq!(finished.code, ExitCode::from(2));

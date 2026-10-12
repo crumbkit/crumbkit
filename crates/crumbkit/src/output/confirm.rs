@@ -12,22 +12,13 @@ use serde::Serialize;
 use serde::ser::{SerializeMap, Serializer};
 
 use super::Output;
-use crate::{Call, Code, Error, Failure, Recovery, Sink};
+use crate::{Call, Code, Error, Failure, Recovery, Sink, codes};
 
 #[cfg(test)]
 mod tests;
 
 /// The help text of `--yes`, which the schema also uses as its description.
 const YES_HELP: &str = "Proceed without asking for confirmation";
-
-/// The code of a question that the person at the terminal did not answer
-/// with yes, in the tool's spelling, such as `crumbkit::confirm::declined`.
-const DECLINED: Code = Code::new("crumbkit", "confirm", "declined");
-
-/// The code of a question that no person can answer, because standard input
-/// or standard error is not a terminal, in the tool's spelling, such as
-/// `crumbkit::confirm::needs_yes`.
-const NEEDS_YES: Code = Code::new("crumbkit", "confirm", "needs_yes");
 
 /// The flag `--yes`, which lets a command that asks for confirmation proceed
 /// without asking.
@@ -138,8 +129,8 @@ impl std::error::Error for ConfirmError {}
 impl Failure for ConfirmError {
     fn code(&self) -> &'static Code {
         match self {
-            Self::Declined => &DECLINED,
-            Self::NeedsYes(_) => &NEEDS_YES,
+            Self::Declined => &codes::CONFIRM_DECLINED,
+            Self::NeedsYes(_) => &codes::CONFIRM_NEEDS_YES,
         }
     }
 

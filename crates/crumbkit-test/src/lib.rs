@@ -26,6 +26,9 @@
 //! [`Examples`]: crate::Examples
 //! [`example_golden_name`]: crate::example_golden_name
 //! [`check_command_reference`]: crate::check_command_reference
+//! [`check_recoveries`]: crate::check_recoveries
+//! [`Recoveries`]: crate::Recoveries
+//! [`check_twin`]: crate::check_twin
 //! [ADR-0025]: https://github.com/crumbkit/crumbkit/blob/main/docs/decisions/api/help/0025-help-checks.md
 //! [ADR-0036]: https://github.com/crumbkit/crumbkit/blob/main/docs/decisions/api/0036-opt-outs.md
 //! [ADR-0044]: https://github.com/crumbkit/crumbkit/blob/main/docs/decisions/api/help/0044-command-reference.md
@@ -50,13 +53,16 @@ mod listings;
 mod names;
 mod opt_outs;
 mod pages;
+mod recoveries;
 mod reference;
+mod runs;
 mod schemas;
 mod sizes;
 mod temp;
 #[cfg(test)]
 mod testing;
 mod tree;
+mod twins;
 mod weights;
 
 pub use crate::allow::{Allow, Rule};
@@ -73,9 +79,11 @@ pub use crate::guide::check_guide;
 pub use crate::listings::check_listings;
 pub use crate::names::check_names;
 pub use crate::opt_outs::check_opt_outs;
+pub use crate::recoveries::{Failing, Recoveries, Unprovoked, check_recoveries};
 pub use crate::reference::check_command_reference;
 pub use crate::schemas::check_schema_goldens;
 pub use crate::sizes::{Budgets, check_help_sizes};
+pub use crate::twins::check_twin;
 pub use crate::weights::{
     PathBudgets, UnreadableGolden, check_path_weights, output_weight, path_totals,
 };

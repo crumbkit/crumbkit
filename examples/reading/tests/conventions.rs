@@ -14,8 +14,9 @@
 use std::path::Path;
 
 use clap::Command;
+use crumbkit::Spelling;
 use crumbkit::help::Guide;
-use crumbkit_test::{Allow, Budgets, Examples, PathBudgets, Rule};
+use crumbkit_test::{Allow, Budgets, Examples, Failing, PathBudgets, Recoveries, Rule, Unprovoked};
 
 /// The directory of reading's fixture lists.
 const LISTS: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/tests/fixtures/lists");
@@ -148,4 +149,22 @@ fn every_opt_out_matches_the_opt_out_report() {
         Some(&PATH_BUDGETS),
         "tests/golden",
     );
+}
+
+/// The settings of reading's recovery check. A missing list starts the one
+/// chain.
+const RECOVERIES: Recoveries<'_> = Recoveries::new(EXAMPLES, Spelling::COLONS, &[reading::CODES])
+    .starts(&[Failing::new(
+        &reading::NOT_FOUND,
+        &["entries", "list", "--list", "unread"],
+    )])
+    .unprovoked(&[Unprovoked::new(
+        &reading::UNREADABLE,
+        "Only a list file that exists and that reading cannot read provokes it, and a file's permissions differ between platforms.",
+    )]);
+
+#[test]
+fn every_recovery_leads_to_a_command_that_runs() {
+    let (command, guide) = fixture_tool();
+    crumbkit_test::check_recoveries(&command, &guide, &RECOVERIES, "tests/golden");
 }
