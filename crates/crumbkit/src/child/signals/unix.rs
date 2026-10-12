@@ -9,6 +9,12 @@ use std::sync::atomic::AtomicBool;
 use signal_hook::consts::{SIGINT, SIGQUIT};
 use signal_hook::flag::register_conditional_default;
 
+/// Whether the tool takes the default actions of SIGINT and SIGQUIT again
+/// once a child exits. It does not, because a signal sent while the child
+/// ran can reach one of the tool's threads after the child has exited, and
+/// the handler would then end the tool.
+pub(super) const RESTORES: bool = false;
+
 /// Installs the handlers of SIGQUIT and, unless the usage log has taken
 /// it, SIGINT, which take each signal's default action while the returned
 /// flag is true. It returns `None` when signal-hook cannot install the

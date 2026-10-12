@@ -180,3 +180,48 @@ fn the_owned_hand_over_test_s_child_raises_sigint_after_its_child_exits() {
     )]
     std::process::exit(0);
 }
+
+#[cfg(feature = "hand-over")]
+#[test]
+fn a_sigint_that_arrives_after_a_child_has_held_the_terminal_leaves_the_tool_running() {
+    let state = TempDir::new("late-hand-over");
+
+    let status = run_child(
+        "usage::recorder::tests::processes::unix::the_late_hand_over_test_s_child_raises_sigint_after_its_child_exits",
+        &state,
+    );
+
+    assert_eq!(status.code(), Some(0), "the tool ended with {status:?}");
+    let lines = log_lines(&state, "late");
+    assert_eq!(lines.len(), 1);
+    assert_eq!(lines[0]["exit"], 0);
+}
+
+/// Runs only as the child of the late hand-over test, which sets [`CHILD`].
+/// It starts the log, which listens for SIGINT, hands the terminal to a
+/// shell that exits at once, which writes the line, then raises SIGINT, as
+/// a Ctrl-C sent while the child ran can arrive after the child exits, and
+/// ends with exit 0 if it is still running.
+#[cfg(feature = "hand-over")]
+#[test]
+fn the_late_hand_over_test_s_child_raises_sigint_after_its_child_exits() {
+    if !is_child() {
+        return;
+    }
+    let _log = start();
+    typed(&Command::new("late"), &["late".into()], Spelling::COLONS);
+    #[expect(
+        clippy::disallowed_methods,
+        reason = "the test builds the command that crumbkit hands the terminal to"
+    )]
+    let mut shell = std::process::Command::new("sh");
+    shell.args(["-c", "exit 0"]);
+    let _ = crate::child::hand_over(&mut crate::Output::default(), Spelling::COLONS, shell);
+    signal_hook::low_level::raise(signal_hook::consts::SIGINT).unwrap();
+    std::thread::sleep(Duration::from_millis(200));
+    #[expect(
+        clippy::disallowed_methods,
+        reason = "the child of the late hand-over test shows that it outlived SIGINT through its exit code"
+    )]
+    std::process::exit(0);
+}

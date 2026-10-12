@@ -6,7 +6,7 @@
 //! group of its own, so the SIGINT that a child sends to its process group
 //! reaches the tool and the child and never the test runner.
 
-use std::os::unix::process::{CommandExt as _, ExitStatusExt as _};
+use std::os::unix::process::CommandExt as _;
 use std::process::{self, ExitCode, ExitStatus};
 
 use super::{BOOKS_JSON, MISSING, command, output, respond};
@@ -120,19 +120,22 @@ fn ctrl_c_reaches_only_the_child_and_the_tool_returns_the_childs_code() {
 }
 
 #[test]
-fn ctrl_c_ends_the_tool_again_after_the_child_exits() {
+fn sigint_and_sigquit_that_arrive_after_the_child_exits_leave_the_tool_running() {
     if is_tool() {
         let mut output = output(&[]);
         let mut out = Vec::new();
         let mut err = Vec::new();
         let sink = &mut crate::Sink::new(&mut out, &mut err);
         let _ = hand_over_to(sink, &mut output, Spelling::COLONS, sh("exit 0"));
+        // A Ctrl-C sent while the child ran can reach a thread of the tool
+        // only after the child has exited, as these signals do.
         let _ = signal_hook::low_level::raise(signal_hook::consts::SIGINT);
-        std::thread::sleep(std::time::Duration::from_secs(5));
-        exit_tool(ExitCode::SUCCESS);
+        let _ = signal_hook::low_level::raise(signal_hook::consts::SIGQUIT);
+        exit_tool(ExitCode::from(7));
     }
-    let status =
-        run_tool("child::tests::process_tests::ctrl_c_ends_the_tool_again_after_the_child_exits");
+    let status = run_tool(
+        "child::tests::process_tests::sigint_and_sigquit_that_arrive_after_the_child_exits_leave_the_tool_running",
+    );
 
-    assert_eq!(status.signal(), Some(2), "the tool ended with {status:?}");
+    assert_eq!(status.code(), Some(7), "the tool ended with {status:?}");
 }

@@ -5,9 +5,10 @@
 //! [`hand_over_json`] last, in place of [`finish`](crate::finish), and
 //! returns the exit code it gives. Without `--json`, the child gets the
 //! terminal: it reads standard input and writes standard output and
-//! standard error directly. The tool ignores SIGINT and SIGQUIT while the
-//! child runs, or SIGINT and SIGBREAK on Windows, so Ctrl-C reaches only
-//! the child, and the tool returns the child's exit code.
+//! standard error directly. The tool ignores SIGINT and SIGQUIT from the
+//! moment the child starts until the tool ends, or SIGINT and SIGBREAK
+//! while the child runs on Windows, so Ctrl-C reaches only the child, and
+//! the tool returns the child's exit code.
 //!
 //! ```no_run
 //! use std::process::{Command, ExitCode};
@@ -61,7 +62,7 @@ use crate::{Document, Output, Rows, Sink, Spelling};
 mod tests;
 
 #[cfg(feature = "usage-log")]
-pub(crate) use self::signals::holds_terminal;
+pub(crate) use self::signals::held_terminal;
 
 /// How a child asks for JSON, and the document it then prints.
 ///
@@ -115,11 +116,13 @@ impl<T> Copy for Json<T> {}
 /// crumbkit sets the child's standard input, output and error to the
 /// tool's own, and adds the variables of
 /// [`trace::child_env`](crate::trace::child_env), so the child joins the
-/// run's trace. On Unix, the tool ignores SIGINT and SIGQUIT until the child
-/// exits, so Ctrl-C reaches only the child, and both signals then end the
-/// tool as before. On Windows, the tool ignores SIGINT and SIGBREAK in the
-/// same way, which Ctrl-C and Ctrl-Break raise. The child itself receives
-/// both signals with their default action.
+/// run's trace. On Unix, the tool ignores SIGINT and SIGQUIT from the moment
+/// the child starts until the tool ends, so Ctrl-C reaches only the child,
+/// even when the signal reaches the tool after the child has exited. On
+/// Windows, the tool ignores SIGINT and SIGBREAK, which Ctrl-C and
+/// Ctrl-Break raise, until the child exits, and both then end the tool as
+/// before. The child itself receives both signals with their default
+/// action.
 ///
 /// The exit code is the child's, so on this command 1 and 2 carry the
 /// child's meanings. A child that a signal ended returns 128 plus the
