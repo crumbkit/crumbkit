@@ -62,13 +62,14 @@ fn json_holds_the_summary_as_an_object_after_the_total() {
         compact.out,
         concat!(
             r#"{"schema":"solar/census/v1","data":[{"name":"Mercury","moons":0},{"name":"Saturn","moons":274}],"#,
-            r#""total":8,"summary":{"planets":8,"star":"Sun"}}"#,
+            r#""total":8,"truncated":true,"summary":{"planets":8,"star":"Sun"}}"#,
             "\n"
         )
     );
     assert!(
-        full.out
-            .ends_with("\"total\":8,\"summary\":{\"planets\":8,\"star\":\"Sun\"}}\n"),
+        full.out.ends_with(
+            "\"total\":8,\"truncated\":true,\"summary\":{\"planets\":8,\"star\":\"Sun\"}}\n"
+        ),
         "{}",
         full.out
     );

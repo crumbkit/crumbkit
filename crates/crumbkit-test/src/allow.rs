@@ -291,7 +291,7 @@ impl Rule {
             ],
             Self::Envelope => &[
                 "An agent cannot predict the document's shape from crumbkit's conventions and must read its schema with `schemas show`.",
-                "The document has no `schema` id, `total` or `failures`, so a program cannot tell which document it read, whether it holds every row, or which ids failed.",
+                "The document has no `schema` id, `truncated` or `failures`, so a program cannot tell which document it read, whether it holds every row, or which ids failed.",
             ],
             Self::FailureForm => &[
                 "An agent that knows crumbkit's failure document must learn this tool's failure document, which `schemas show` serves.",

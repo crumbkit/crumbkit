@@ -315,15 +315,17 @@ pub fn finish<T: Rows, E: AsFailure>(
 /// and its failures print as text on the error writer even with `--json`.
 ///
 /// A [`Listing`](crate::Listing)'s `data` is an array, and its JSON document
-/// also holds the number of matching rows under `total`, and its summary,
-/// when it has one, under `summary`. The summary also prints as one line
+/// also holds the number of matching rows under `total` when the tool
+/// counted them, `truncated`, which is true when the document leaves out
+/// rows, and its summary, when it has one, under `summary`. The summary also prints as one line
 /// above the table in text.
 ///
 /// In text, the lines that describe a listing print on the error writer
 /// after the output writer is flushed, so the output writer holds the
 /// result alone (ADR-0050). When a listing shows fewer rows than its total,
 /// a footer line says so, such as `Showing 4 of 6 books. --all shows every
-/// one.` A listing whose total is 0 prints an empty note, such as `note: no
+/// one.`, and a listing without a total that leaves out rows prints
+/// `Showing 4 books, and more match. --all shows every one.` A listing whose total is 0 prints an empty note, such as `note: no
 /// books match`. A listing's note follows on its own line. When a listing
 /// has a next step, a `Next:` line follows, such as
 /// `Next: shelf books show <ID>... takes up to 100 ids in one call.` The line
@@ -424,11 +426,7 @@ pub fn finish_to<T: Rows, E: AsFailure, O: Write, W: Write>(
     // With the usage log, the sink counts the bytes of standard output, and
     // the run's line records them with the exit code (ADR-0029).
     #[cfg(feature = "usage-log")]
-    let truncated = result.as_ref().is_ok_and(|value| {
-        value
-            .total()
-            .is_some_and(|total| value.rows().len() < total)
-    });
+    let truncated = result.as_ref().is_ok_and(listing::leaves_out);
     #[cfg(feature = "usage-log")]
     let empty = result.as_ref().is_ok_and(|value| value.total() == Some(0));
     #[cfg(feature = "usage-log")]

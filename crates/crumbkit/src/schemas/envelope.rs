@@ -19,7 +19,10 @@ use crate::{Bytes, Document, Row, Rows, Shape, Stream};
 /// - `data` holds the row for [`Shape::Row`], the value for
 ///   [`Shape::Prose`], the text or base64 object of [`Bytes`] for
 ///   [`Shape::Bytes`], and an array of rows for every other shape.
-/// - `total` holds the number of rows that matched, for [`Shape::Listing`].
+/// - `total` holds the number of rows that matched, for [`Shape::Listing`],
+///   and is absent when the tool did not count a source with more rows.
+/// - `truncated` is true when the document leaves out rows that matched,
+///   for [`Shape::Listing`].
 /// - `summary` holds the summary, for a listing that has one. A listing
 ///   without one has [`NoSummary`](crate::NoSummary), whose schema `false`
 ///   leaves the property out.
@@ -123,12 +126,19 @@ pub(crate) fn envelope<T: Rows>(document: Document<()>) -> Schema {
         properties.insert(
             "total".to_owned(),
             json!({
-                "description": "The number of rows that matched, of which data holds one page.",
+                "description": "The number of rows that matched, of which data holds one page. It is absent when the tool did not count a source that holds more rows.",
                 "type": "integer",
                 "minimum": 0,
             }),
         );
-        required.push("total");
+        properties.insert(
+            "truncated".to_owned(),
+            json!({
+                "description": "True when the document leaves out rows that matched, because of the limit or the output budget, and false when data holds every row.",
+                "type": "boolean",
+            }),
+        );
+        required.push("truncated");
         let summary = generator.subschema_for::<T::Summary>();
         if summary.as_bool() != Some(false) {
             properties.insert("summary".to_owned(), summary.to_value());

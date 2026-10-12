@@ -1,5 +1,5 @@
-//! Tests for how `finish_to` prints a listing: the total in JSON, and the
-//! footer, the note and the `Next:` line on standard error in text.
+//! Tests for how `finish_to` prints a listing: the total and `truncated`
+//! in JSON, and the footer, the note and the `Next:` line on standard error in text.
 
 use std::process::ExitCode;
 
@@ -53,6 +53,59 @@ fn a_listing_that_shows_every_row_has_no_footer() {
 }
 
 #[test]
+fn the_footer_of_a_listing_without_a_total_says_more_rows_match_without_a_count() {
+    let listing = Listing::uncounted(vec![mercury(), saturn()], true).described("planets");
+
+    let finished = finish_with(&[], PLANET_LISTING, listing);
+
+    assert_eq!(
+        finished.err,
+        "Showing 2 planets, and more match. --all shows every one.\n"
+    );
+}
+
+#[test]
+fn the_footer_of_a_listing_without_a_total_or_a_description_names_rows() {
+    let listing = Listing::uncounted(vec![mercury(), saturn()], true);
+
+    let finished = finish_with(&[], PLANET_LISTING, listing);
+
+    assert_eq!(
+        finished.err,
+        "Showing 2 rows, and more match. --all shows every one.\n"
+    );
+}
+
+#[test]
+fn the_footer_of_a_bounded_listing_without_a_total_names_the_bound() {
+    let listing = Listing::uncounted(vec![mercury(), saturn()], true)
+        .described("planets")
+        .bounded(100);
+
+    let finished = finish_with(&[], PLANET_LISTING, listing);
+
+    assert_eq!(
+        finished.err,
+        "Showing 2 planets, and more match. --limit takes up to 100, and --all shows every one.\n"
+    );
+}
+
+#[test]
+fn a_listings_json_without_a_total_has_truncated_and_no_total() {
+    let listing = Listing::uncounted(vec![mercury(), saturn()], true);
+
+    let finished = finish_with(&["--json"], PLANET_LISTING, listing);
+
+    assert_eq!(
+        finished.out,
+        concat!(
+            r#"{"schema":"solar/planet-listing/v1","data":[{"name":"Mercury","moons":0},{"name":"Saturn","moons":274}],"truncated":true}"#,
+            "\n"
+        )
+    );
+}
+
+#[test]
 fn the_footer_note_and_next_line_are_the_same_with_long_and_with_fields() {
     let plain = finish_with(&[], PLANET_LISTING, two_of_with_note(8));
     let long = finish_with(&["--long"], PLANET_LISTING, two_of_with_note(8));
@@ -68,26 +121,26 @@ fn the_footer_note_and_next_line_are_the_same_with_long_and_with_fields() {
 }
 
 #[test]
-fn a_listings_json_has_the_total_beside_the_data_and_no_description() {
+fn a_listings_json_has_the_total_and_truncated_beside_the_data_and_no_description() {
     let finished = finish_with(&["--json"], PLANET_LISTING, two_of(8).described("planets"));
 
     assert_eq!(
         finished.out,
         concat!(
-            r#"{"schema":"solar/planet-listing/v1","data":[{"name":"Mercury","moons":0},{"name":"Saturn","moons":274}],"total":8}"#,
+            r#"{"schema":"solar/planet-listing/v1","data":[{"name":"Mercury","moons":0},{"name":"Saturn","moons":274}],"total":8,"truncated":true}"#,
             "\n"
         )
     );
 }
 
 #[test]
-fn a_listings_json_has_the_total_when_every_row_is_shown() {
+fn a_listings_json_that_holds_every_row_has_the_total_and_truncated_false() {
     let finished = finish_with(&["--json"], PLANET_LISTING, Listing::new(Vec::new(), 0));
 
     assert_eq!(
         finished.out,
         concat!(
-            r#"{"schema":"solar/planet-listing/v1","data":[],"total":0}"#,
+            r#"{"schema":"solar/planet-listing/v1","data":[],"total":0,"truncated":false}"#,
             "\n"
         )
     );
@@ -101,7 +154,7 @@ fn a_listings_json_has_the_total_with_full() {
     assert_eq!(
         finished.out,
         concat!(
-            r#"{"schema":"solar/planet-listing/v1","data":[{"name":"Saturn","moons":274,"ringed":true,"au":9.54}],"total":8}"#,
+            r#"{"schema":"solar/planet-listing/v1","data":[{"name":"Saturn","moons":274,"ringed":true,"au":9.54}],"total":8,"truncated":true}"#,
             "\n"
         )
     );
@@ -115,7 +168,7 @@ fn a_listings_json_has_the_total_with_fields() {
     assert_eq!(
         finished.out,
         concat!(
-            r#"{"schema":"solar/planet-listing/v1","data":[{"au":9.54}],"total":8}"#,
+            r#"{"schema":"solar/planet-listing/v1","data":[{"au":9.54}],"total":8,"truncated":true}"#,
             "\n"
         )
     );
@@ -150,7 +203,7 @@ fn json_output_has_no_next_line_and_no_next_field() {
     assert_eq!(
         finished.out,
         concat!(
-            r#"{"schema":"solar/planet-listing/v1","data":[{"name":"Mercury","moons":0},{"name":"Saturn","moons":274}],"total":8}"#,
+            r#"{"schema":"solar/planet-listing/v1","data":[{"name":"Mercury","moons":0},{"name":"Saturn","moons":274}],"total":8,"truncated":true}"#,
             "\n"
         )
     );

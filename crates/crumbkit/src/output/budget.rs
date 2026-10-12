@@ -177,20 +177,19 @@ impl Serialize for Cut {
 
 /// Writes the line that ends the text of a result that the budget cut
 /// short, such as `Showing 812 of 5000 books, because output stops at
-/// 1048576 bytes. Ask for less with --limit or --fields.` A listing names
-/// `--limit`, and a list, which has no paging flags, names only `--fields`.
+/// 1048576 bytes. Ask for less with --limit or --fields.` A listing without
+/// a `total` gives no count, as in `Showing 812 books, because ...`. A
+/// listing names `--limit`, and a list, which has no paging flags, names
+/// only `--fields`.
 pub(super) fn write_cut_line(
     out: &mut impl Write,
     shown: usize,
-    total: usize,
+    total: Option<usize>,
     description: Option<&str>,
     budget: usize,
     listing: bool,
 ) -> io::Result<()> {
-    write!(out, "Showing {shown} of {total}")?;
-    if let Some(description) = description {
-        write!(out, " {description}")?;
-    }
+    super::listing::write_shown(out, shown, total, description)?;
     let flags = if listing {
         "--limit or --fields"
     } else {

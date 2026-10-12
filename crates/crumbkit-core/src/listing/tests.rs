@@ -37,6 +37,21 @@ fn a_total_smaller_than_the_rows_becomes_the_number_of_rows() {
 }
 
 #[test]
+fn an_uncounted_listing_with_more_rows_has_no_total() {
+    let listing = Listing::uncounted(books(2), true);
+
+    assert_eq!(listing.rows(), books(2));
+    assert_eq!(listing.total(), None);
+}
+
+#[test]
+fn an_uncounted_listing_without_more_rows_counts_the_rows_it_holds() {
+    let listing = Listing::uncounted(books(3), false);
+
+    assert_eq!(listing, Listing::new(books(3), 3));
+}
+
+#[test]
 fn from_all_with_a_limit_below_the_length_keeps_the_first_rows_and_counts_them_all() {
     let listing = Listing::from_all(books(6), Some(4));
 

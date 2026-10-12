@@ -67,6 +67,18 @@ fn a_listing_whose_page_is_empty_but_whose_total_is_not_prints_the_footer_and_no
 }
 
 #[test]
+fn a_listing_without_a_total_whose_page_is_empty_but_has_more_rows_prints_the_footer_and_no_note() {
+    let listing = Listing::uncounted(Vec::new(), true).described("planets");
+
+    let finished = finish_with(&[], PLANET_LISTING, listing);
+
+    assert_eq!(
+        finished.err,
+        "Showing 0 planets, and more match. --all shows every one.\n"
+    );
+}
+
+#[test]
 fn the_json_of_an_unwrapped_listing_with_no_rows_is_an_empty_array_and_nothing_else() {
     let document: Document<Listing<Planet>> = PLANET_LISTING.without_envelope();
 

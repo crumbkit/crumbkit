@@ -1,1 +1,1 @@
-{"schema":"shelf/books-list/v1","data":[{"title":"Pride and Prejudice","year":1813},{"title":"Frankenstein","year":1818},{"title":"Moby-Dick","year":1851},{"title":"Great Expectations","year":1861}],"total":6}
+{"schema":"shelf/books-list/v1","data":[{"title":"Pride and Prejudice","year":1813},{"title":"Frankenstein","year":1818},{"title":"Moby-Dick","year":1851},{"title":"Great Expectations","year":1861}],"total":6,"truncated":true}

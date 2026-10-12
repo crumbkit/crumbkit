@@ -40,15 +40,19 @@
       "const": "shelf/books-list/v1"
     },
     "total": {
-      "description": "The number of rows that matched, of which data holds one page.",
+      "description": "The number of rows that matched, of which data holds one page. It is absent when the tool did not count a source that holds more rows.",
       "type": "integer",
       "minimum": 0
+    },
+    "truncated": {
+      "description": "True when the document leaves out rows that matched, because of the limit or the output budget, and false when data holds every row.",
+      "type": "boolean"
     }
   },
   "required": [
     "schema",
     "data",
-    "total"
+    "truncated"
   ],
   "$defs": {
     "Book": {

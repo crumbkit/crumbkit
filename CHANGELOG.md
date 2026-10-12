@@ -303,6 +303,12 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   document per line ([ADR-0052]).
 - crumbkit-test: [`check_opt_outs`] lists a guide's JSON layout as
   `json-layout/pretty`, with its reason and cost ([ADR-0052]).
+- crumbkit: [`Listing::uncounted`] and [`Page::uncounted`] build a listing
+  from a source that the tool does not count. While more rows exist, its
+  JSON document leaves out `total` and its footer reads `Showing 4 books,
+  and more match.` ([ADR-0050]).
+- crumbkit: `Page::fetch_limit` gives the number of rows to fetch for
+  [`Page::uncounted`], one past the limit.
 ### Changed
 
 - crumbkit: the help text of `--json` reads `Print the result as a JSON
@@ -405,6 +411,18 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   ([ADR-0045]).
 - cargo-crumbkit: `weigh` adds the size of an example's `.stderr` golden
   file to the command's output weight ([ADR-0033]).
+- crumbkit: every listing's JSON document holds `truncated`, which is true
+  when the document leaves out rows because of `--limit` or the output
+  budget, and false when it holds every row ([ADR-0007]).
+- crumbkit-test: [`check_opt_outs`] gives the cost of a
+  `documents/envelope` opt-out as a document without `truncated` in place
+  of `total`.
+- crumbkit: every listing's JSON Schema marks `total` as optional, and the
+  documents keep their `v1` ids, because no schema has been released
+  ([ADR-0007]).
+- crumbkit-markdown: the reference refuses a `commands list` document that
+  leaves out `total` or holds `"truncated": true`, because it would leave
+  commands out.
 ### Removed
 
 - crumbkit: `Call::word` is gone, because `Call::value` adds a runtime value
@@ -478,6 +496,8 @@ rustdoc, or at its decision record. -->
 [`Stream`]: crates/crumbkit-core/src/stream.rs
 [`Streaming`]: crates/crumbkit/src/output/stream.rs
 [`Page`]: crates/crumbkit/src/page.rs
+[`Listing::uncounted`]: crates/crumbkit-core/src/listing.rs
+[`Page::uncounted`]: crates/crumbkit/src/page.rs
 [`Listing`]: crates/crumbkit-core/src/listing.rs
 [`Call`]: crates/crumbkit-core/src/call.rs
 [`Failure`]: crates/crumbkit-core/src/failure.rs

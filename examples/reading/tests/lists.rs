@@ -54,6 +54,54 @@ fn a_list_command_prints_the_entries_of_its_list_as_json() -> io::Result<()> {
 }
 
 #[test]
+fn entries_list_with_a_limit_reads_only_the_page_so_its_footer_gives_no_count() -> io::Result<()> {
+    reading(
+        LISTS,
+        &["entries", "list", "--list", "to-read", "--limit", "2"],
+    )?
+    .success()
+    .stderr_eq("Showing 2 entries, and more match. --all shows every one.\n");
+    Ok(())
+}
+
+#[test]
+fn entries_list_with_json_and_a_limit_leaves_out_the_total_and_marks_the_page_truncated()
+-> io::Result<()> {
+    let output = reading(
+        LISTS,
+        &[
+            "entries", "list", "--list", "to-read", "--limit", "2", "--json",
+        ],
+    )?
+    .success()
+    .get_output()
+    .stdout
+    .clone();
+    let stdout = String::from_utf8_lossy(&output);
+    assert!(!stdout.contains(r#""total""#), "{stdout}");
+    assert!(stdout.contains(r#""truncated":true"#), "{stdout}");
+    Ok(())
+}
+
+#[test]
+fn entries_list_with_json_and_all_holds_the_total_of_every_entry() -> io::Result<()> {
+    let output = reading(
+        LISTS,
+        &["entries", "list", "--list", "to-read", "--all", "--json"],
+    )?
+    .success()
+    .get_output()
+    .stdout
+    .clone();
+    let stdout = String::from_utf8_lossy(&output);
+    assert!(
+        stdout.contains(r#""total":5,"truncated":false"#),
+        "{stdout}"
+    );
+    Ok(())
+}
+
+#[test]
 fn entries_list_names_the_list_to_print() -> io::Result<()> {
     reading(LISTS, &["entries", "list", "--list", "finished"])?
         .success()

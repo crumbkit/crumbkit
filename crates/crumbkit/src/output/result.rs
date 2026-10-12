@@ -403,8 +403,13 @@ impl<'a, T: Rows> Prepared<'a, T> {
 
     /// Writes the line that says the budget cut the result short to `out`.
     fn write_cut_line(&self, out: &mut impl Write, shown: usize, cut: &Cut) -> io::Result<()> {
-        let total = self.value.total().unwrap_or(self.value.rows().len());
         let listing = T::SHAPE == Shape::Listing;
+        // A list holds every row it has, and a listing without a total has
+        // no count to give.
+        let total = match self.value.total() {
+            None if !listing => Some(self.value.rows().len()),
+            total => total,
+        };
         let description = self.value.description();
         budget::write_cut_line(out, shown, total, description, cut.budget, listing)
     }
@@ -437,6 +442,8 @@ impl<'a, T: Rows> Prepared<'a, T> {
         }
         let extras = Extras {
             total: value.total(),
+            truncated: (T::SHAPE == Shape::Listing)
+                .then(|| cut.is_some() || listing::leaves_out(value)),
             summary: value.summary(),
             cut,
             failures,

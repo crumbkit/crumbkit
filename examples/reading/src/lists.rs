@@ -31,13 +31,13 @@ pub(crate) use self::set::{ENTRIES_SET, set};
 pub(crate) use self::stream::{ENTRIES_STREAM, stream_entries};
 
 /// The document that `reading entries list` and the list command of each
-/// list print: one page of a list's entries and the number of entries in
-/// it.
+/// list print: one page of a list's entries, with the number of entries
+/// when the page reaches the end of the list.
 pub(crate) const ENTRIES_LIST: Document<Listing<Entry>> = Document::new(
     "reading",
     "entries-list",
     1,
-    "One page of a reading list's entries and the number of entries in it.",
+    "One page of a reading list's entries.",
 )
 .when_empty("the list has no entries");
 
@@ -230,33 +230,43 @@ fn about(path: &Path) -> io::Result<Option<String>> {
 }
 
 /// Returns the page of the entries of the list named `name` in `dir` that
-/// `page` asks for, with the number of entries in the list as the total.
+/// `page` asks for. The list's file is read line by line, and reading stops
+/// one entry past the page, so a page that leaves entries out has no total.
+/// A page that reaches the end of the list has the number of entries as its
+/// total.
 ///
 /// # Errors
 ///
 /// Returns `EntriesError::NotFound` when `dir` is `None` or holds no list
 /// named `name`, and `EntriesError::Unreadable` when the list's file cannot
-/// be read as UTF-8 text.
+/// be read as UTF-8 text up to the end of the page.
 pub(crate) fn entries<const N: usize>(
     dir: Option<&Path>,
     name: &str,
     page: &Page<N>,
 ) -> Result<Listing<Entry>, EntriesError> {
-    let text = fs::read_to_string(file(dir, name)?).map_err(|error| EntriesError::Unreadable {
+    let unreadable = |error| EntriesError::Unreadable {
         name: name.to_owned(),
         error,
-    })?;
-    let entries = text
+    };
+    let reader = BufReader::new(fs::File::open(file(dir, name)?).map_err(unreadable)?);
+    // The first read error stops the entries and is returned after the page
+    // is built.
+    let mut failure = None;
+    let entries = reader
         .lines()
+        .map_while(|line| line.map_err(|error| failure = Some(error)).ok())
         .filter(|line| is_entry(line))
-        .map(str::trim)
         .enumerate()
-        .map(|(index, title)| Entry {
+        .map(|(index, line)| Entry {
             position: index + 1,
-            title: title.to_owned(),
-        })
-        .collect();
-    Ok(page.first_of(entries).described("entries"))
+            title: line.trim().to_owned(),
+        });
+    let listing = page.uncounted(entries).described("entries");
+    match failure {
+        Some(error) => Err(unreadable(error)),
+        None => Ok(listing),
+    }
 }
 
 /// Returns the call of `reading entries list --list <name> --all`, which

@@ -28,8 +28,8 @@ pub(crate) enum Kind {
     Page {
         /// The rows that the document holds.
         shown: usize,
-        /// The rows that the listing has.
-        total: usize,
+        /// The rows that the listing has, when the tool counted them.
+        total: Option<usize>,
     },
     /// The document holds no command.
     Empty,
@@ -61,9 +61,16 @@ impl fmt::Display for RenderError {
                 f,
                 "the input is a {found} document, and the reference needs a crumbkit/commands-list/v1 document"
             ),
-            Kind::Page { shown, total } => write!(
+            Kind::Page {
+                shown,
+                total: Some(total),
+            } => write!(
                 f,
                 "the document holds {shown} of {total} commands, so the reference would leave some out; list them with `commands list --all`"
+            ),
+            Kind::Page { shown, total: None } => write!(
+                f,
+                "the document leaves out commands after its first {shown}, so the reference would leave some out; list them with `commands list --all`"
             ),
             Kind::Empty => f.write_str("the document holds no command"),
             Kind::AnchorClash {

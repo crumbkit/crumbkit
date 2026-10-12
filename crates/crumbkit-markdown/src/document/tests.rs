@@ -58,6 +58,25 @@ fn one_page_of_a_longer_listing_is_refused_so_no_command_is_left_out() {
 }
 
 #[test]
+fn a_page_without_a_total_is_refused_so_no_command_is_left_out() {
+    let page = ONE.replace(r#""total":1"#, r#""truncated":true"#);
+
+    let error = read(page.as_bytes()).unwrap_err();
+
+    assert_eq!(
+        error.to_string(),
+        "the document leaves out commands after its first 1, so the reference would leave some out; list them with `commands list --all`"
+    );
+}
+
+#[test]
+fn a_document_marked_truncated_is_refused_even_when_it_holds_its_total() {
+    let cut = ONE.replace(r#""total":1"#, r#""total":1,"truncated":true"#);
+
+    assert!(read(cut.as_bytes()).is_err());
+}
+
+#[test]
 fn a_document_without_commands_is_refused() {
     let empty = r#"{"schema":"crumbkit/commands-list/v1","data":[],"total":0}"#;
 

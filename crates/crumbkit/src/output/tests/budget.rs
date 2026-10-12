@@ -127,13 +127,14 @@ fn a_listing_over_the_budget_stops_before_the_row_that_would_pass_it_and_exits_0
 }
 
 #[test]
-fn a_cut_listing_json_document_holds_cut_with_the_code_and_the_budget_beside_total() {
+fn a_cut_listing_json_document_holds_cut_with_the_code_and_the_budget_beside_total_and_truncated() {
     let finished = finish_small(&["--json"], STAR_LISTING, Listing::new(stars(20), 20));
 
     assert_eq!(finished.code, ExitCode::SUCCESS);
     assert!(finished.out.len() <= BUDGET);
     let document = parsed(&finished.out);
     assert_eq!(document["total"], 20);
+    assert_eq!(document["truncated"], true);
     assert_eq!(
         document["cut"],
         json!({"code": "crumbkit::output::over_budget", "budget": 1024})
@@ -432,5 +433,21 @@ fn a_listing_cut_to_no_rows_prints_the_cut_line_and_no_empty_note() {
         finished.err,
         "Showing 0 of 1 stars, because output stops at 1024 bytes. \
          Ask for less with --limit or --fields.\n"
+    );
+}
+
+#[test]
+fn the_cut_line_of_a_listing_without_a_total_gives_no_count() {
+    let listing = Listing::uncounted(stars(20), true).described("stars");
+
+    let finished = finish_small(&[], STAR_LISTING, listing);
+
+    let shown = finished.out.lines().count() - 1;
+    assert_eq!(
+        finished.err,
+        format!(
+            "Showing {shown} stars, because output stops at 1024 bytes. \
+             Ask for less with --limit or --fields.\n"
+        )
     );
 }

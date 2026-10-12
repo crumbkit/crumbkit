@@ -1,4 +1,5 @@
-//! A page of rows with the total number of matching rows.
+//! A page of rows with the total number of matching rows, when the tool
+//! counted them.
 
 use std::fmt;
 
@@ -10,16 +11,19 @@ use crate::{Call, Row, Rows, Shape};
 #[cfg(test)]
 mod tests;
 
-/// One page of rows, the total number of rows that matched, an optional
-/// phrase that names them, an optional summary, an optional note and an
+/// One page of rows, the total number of rows that matched when the tool
+/// counted them, an optional phrase that names them, an optional summary, an optional note and an
 /// optional next step.
 ///
 /// A command returns a listing when it may show fewer rows than matched,
 /// and flattens `crumbkit::Page` into its arguments so the caller can
 /// choose how many. `crumbkit::finish` prints the total under `total`
-/// in JSON. In text it prints the table on standard output, and then, on
+/// in JSON, and `truncated`, which is true when the document leaves out
+/// rows. In text it prints the table on standard output, and then, on
 /// standard error, a footer when fewer rows are shown than the total, such
-/// as `Showing 4 of 6 books. --all shows every one.`, then the note, and
+/// as `Showing 4 of 6 books. --all shows every one.`, or `Showing 4 books,
+/// and more match. --all shows every one.` for a listing without a total,
+/// then the note, and
 /// then the next step, such as `Next: shelf books show <ID>... takes up to
 /// 100 ids in one call.`
 ///
@@ -43,8 +47,9 @@ pub struct Listing<R: Row, S = NoSummary> {
     /// The rows to print, in order.
     rows: Vec<R>,
     /// The number of rows that matched, which `new` keeps at least
-    /// `rows.len()`.
-    total: usize,
+    /// `rows.len()`, or `None` when the source holds more rows than these
+    /// and the tool did not count them.
+    total: Option<usize>,
     /// The phrase that names the rows in the footer, such as `books`.
     description: Option<String>,
     /// The summary that the text output prints above the table and the
@@ -81,12 +86,38 @@ impl<R: Row> Listing<R> {
         };
         Self {
             rows,
-            total,
+            total: Some(total),
             description: None,
             summary: None,
             note: None,
             next: None,
             bound: None,
+        }
+    }
+
+    /// Returns a listing of `rows`, one page of a source that the tool did
+    /// not count, such as a remote API that pages its answers or a log that
+    /// grows while it is read. `more` says whether the source holds rows
+    /// after these.
+    ///
+    /// A listing with more rows has no total: its JSON document leaves out
+    /// `total`, and its footer reads `Showing 4 books, and more match.
+    /// --all shows every one.` A listing without more rows holds every row,
+    /// so its total is the number of rows, and it is the listing that
+    /// [`Listing::new`] returns for that total.
+    ///
+    /// A handler learns `more` by fetching one row past the page, which
+    /// `crumbkit::Page::uncounted` does, or from a source that says whether
+    /// another page exists.
+    #[must_use]
+    pub const fn uncounted(rows: Vec<R>, more: bool) -> Self {
+        if more {
+            let mut listing = Self::new(rows, 0);
+            listing.total = None;
+            listing
+        } else {
+            let total = rows.len();
+            Self::new(rows, total)
         }
     }
 
@@ -200,7 +231,7 @@ impl<R: Row, S: Serialize + fmt::Display + JsonSchema> Rows for Listing<R, S> {
     }
 
     fn total(&self) -> Option<usize> {
-        Some(self.total)
+        self.total
     }
 
     fn description(&self) -> Option<&str> {

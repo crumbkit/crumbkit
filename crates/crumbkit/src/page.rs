@@ -168,6 +168,41 @@ impl<const N: usize, const MOST: usize> Page<N, MOST> {
         Self::carry(Listing::new(rows, total))
     }
 
+    /// Returns a listing of the first rows of `rows` that the flags ask for,
+    /// for a source that the tool does not count, as
+    /// [`Listing::uncounted`] does. The listing carries the page's bound, so
+    /// its footer names it.
+    ///
+    /// It reads at most one row past the limit, and that row tells it
+    /// whether more rows exist, so an iterator over a log or a remote API
+    /// stops there. With `--all` it reads every row and counts them. A
+    /// handler that fetches a `Vec` fetches [`Page::fetch_limit`] rows,
+    /// because a `Vec` of exactly the limit reads as a source with no more
+    /// rows.
+    #[must_use]
+    pub fn uncounted<R: Row>(&self, rows: impl IntoIterator<Item = R>) -> Listing<R> {
+        let Some(limit) = self.limit() else {
+            return Self::carry(Listing::uncounted(rows.into_iter().collect(), false));
+        };
+        // `take` on a `Vec`'s iterator collects in place, so a `Vec` is not
+        // copied.
+        let mut rows: Vec<R> = rows.into_iter().take(limit.saturating_add(1)).collect();
+        let more = rows.len() > limit;
+        rows.truncate(limit);
+        Self::carry(Listing::uncounted(rows, more))
+    }
+
+    /// Returns the number of rows that a handler fetches for
+    /// [`Page::uncounted`]: one past the limit, so the extra row says whether
+    /// more rows exist, or `None` when `--all` asks for every row.
+    #[must_use]
+    pub const fn fetch_limit(&self) -> Option<usize> {
+        match self.limit() {
+            Some(limit) => Some(limit.saturating_add(1)),
+            None => None,
+        }
+    }
+
     /// Returns `listing` with the page's bound, when it has one.
     const fn carry<R: Row>(listing: Listing<R>) -> Listing<R> {
         match Self::bound() {
