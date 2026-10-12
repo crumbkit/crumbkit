@@ -27,13 +27,14 @@ fn run(dir: &Path, args: &[&str]) -> OutputAssert {
 }
 
 #[test]
-fn books_remove_dry_run_prints_the_book_and_the_dry_run_line_and_list_still_holds_it() {
+fn books_remove_dry_run_prints_the_book_and_the_dry_run_line_on_standard_error_and_list_still_holds_it()
+ {
     let dir = tempfile::tempdir().unwrap();
 
     run(dir.path(), &["books", "remove", "2", "--dry-run"])
         .success()
         .stdout_eq(file!["golden/books-remove-2-dry-run.txt"].raw())
-        .stderr_eq("");
+        .stderr_eq(file!["golden/books-remove-2-dry-run.stderr"].raw());
 
     run(dir.path(), &["books", "list"])
         .success()
@@ -113,7 +114,7 @@ fn books_remove_yes_a_second_time_succeeds_and_prints_the_same_book() {
 }
 
 #[test]
-fn books_list_after_every_book_is_removed_prints_the_header_and_the_empty_note() {
+fn books_list_after_every_book_is_removed_prints_the_header_and_the_empty_note_on_standard_error() {
     let dir = tempfile::tempdir().unwrap();
     run(
         dir.path(),
@@ -124,7 +125,7 @@ fn books_list_after_every_book_is_removed_prints_the_header_and_the_empty_note()
     run(dir.path(), &["books", "list"])
         .success()
         .stdout_eq(file!["golden/books-list-after-remove-all.txt"].raw())
-        .stderr_eq("");
+        .stderr_eq(file!["golden/books-list-after-remove-all.stderr"].raw());
     run(dir.path(), &["books", "list", "--json"])
         .success()
         .stdout_eq(file!["golden/books-list-json-after-remove-all.json"].raw())

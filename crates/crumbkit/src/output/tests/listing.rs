@@ -1,5 +1,5 @@
 //! Tests for how `finish_to` prints a listing: the total in JSON, and the
-//! footer, the note and the `Next:` line in text.
+//! footer, the note and the `Next:` line on standard error in text.
 
 use std::process::ExitCode;
 
@@ -22,29 +22,25 @@ fn two_of_with_next(total: usize) -> Listing<Planet> {
 }
 
 #[test]
-fn a_listing_that_shows_fewer_rows_than_the_total_ends_with_a_footer() {
+fn a_listing_that_shows_fewer_rows_than_the_total_has_a_footer_on_standard_error() {
     let finished = finish_with(&[], PLANET_LISTING, two_of(8));
 
     let expected = "\
 NAME     MOONS
 Mercury  0
 Saturn   274
-Showing 2 of 8. --all shows every one.
 ";
     assert_eq!(finished.out, expected);
-    assert_eq!(finished.err, "");
+    assert_eq!(finished.err, "Showing 2 of 8. --all shows every one.\n");
 }
 
 #[test]
 fn the_footer_names_the_rows_with_the_listings_description() {
     let finished = finish_with(&[], PLANET_LISTING, two_of(8).described("planets"));
 
-    assert!(
-        finished
-            .out
-            .ends_with("Saturn   274\nShowing 2 of 8 planets. --all shows every one.\n"),
-        "{}",
-        finished.out
+    assert_eq!(
+        finished.err,
+        "Showing 2 of 8 planets. --all shows every one.\n"
     );
 }
 
@@ -53,29 +49,22 @@ fn a_listing_that_shows_every_row_has_no_footer() {
     let finished = finish_with(&[], PLANET_LISTING, two_of(2).described("planets"));
 
     assert_eq!(finished.out, "NAME     MOONS\nMercury  0\nSaturn   274\n");
+    assert_eq!(finished.err, "");
 }
 
 #[test]
-fn the_footer_follows_the_table_with_long() {
-    let finished = finish_with(&["--long"], PLANET_LISTING, two_of(8));
-
-    let expected = "\
-NAME     MOONS  RINGED
-Mercury  0      false
-Saturn   274    true
-Showing 2 of 8. --all shows every one.
-";
-    assert_eq!(finished.out, expected);
-}
-
-#[test]
-fn the_footer_follows_the_table_with_fields() {
-    let finished = finish_with(&["--fields", "au"], PLANET_LISTING, two_of(8));
+fn the_footer_note_and_next_line_are_the_same_with_long_and_with_fields() {
+    let plain = finish_with(&[], PLANET_LISTING, two_of_with_note(8));
+    let long = finish_with(&["--long"], PLANET_LISTING, two_of_with_note(8));
+    let fields = finish_with(&["--fields", "au"], PLANET_LISTING, two_of_with_note(8));
 
     assert_eq!(
-        finished.out,
-        "AU\n0.39\n9.54\nShowing 2 of 8. --all shows every one.\n"
+        long.out,
+        "NAME     MOONS  RINGED\nMercury  0      false\nSaturn   274    true\n"
     );
+    assert_eq!(fields.out, "AU\n0.39\n9.54\n");
+    assert_eq!(long.err, plain.err);
+    assert_eq!(fields.err, plain.err);
 }
 
 #[test]
@@ -133,54 +122,24 @@ fn a_listings_json_has_the_total_with_fields() {
 }
 
 #[test]
-fn a_listing_with_a_next_step_ends_with_the_next_line_after_the_footer() {
+fn the_next_line_follows_the_footer() {
     let finished = finish_with(&[], PLANET_LISTING, two_of_with_next(8));
 
     let expected = "\
-NAME     MOONS
-Mercury  0
-Saturn   274
 Showing 2 of 8. --all shows every one.
 Next: tool show <NAME>... shows planets by name.
 ";
     assert_eq!(finished.code, ExitCode::SUCCESS);
-    assert_eq!(finished.out, expected);
-    assert_eq!(finished.err, "");
+    assert_eq!(finished.err, expected);
 }
 
 #[test]
-fn the_next_line_follows_the_table_when_there_is_no_footer() {
+fn the_next_line_is_the_only_note_when_there_is_no_footer() {
     let finished = finish_with(&[], PLANET_LISTING, two_of_with_next(2));
 
-    let expected = "\
-NAME     MOONS
-Mercury  0
-Saturn   274
-Next: tool show <NAME>... shows planets by name.
-";
-    assert_eq!(finished.out, expected);
-}
-
-#[test]
-fn the_next_line_follows_the_footer_with_long() {
-    let finished = finish_with(&["--long"], PLANET_LISTING, two_of_with_next(8));
-
-    assert!(
-        finished.out.ends_with(
-            "Saturn   274    true\nShowing 2 of 8. --all shows every one.\nNext: tool show <NAME>... shows planets by name.\n"
-        ),
-        "{}",
-        finished.out
-    );
-}
-
-#[test]
-fn the_next_line_follows_the_footer_with_fields() {
-    let finished = finish_with(&["--fields", "au"], PLANET_LISTING, two_of_with_next(8));
-
     assert_eq!(
-        finished.out,
-        "AU\n0.39\n9.54\nShowing 2 of 8. --all shows every one.\nNext: tool show <NAME>... shows planets by name.\n"
+        finished.err,
+        "Next: tool show <NAME>... shows planets by name.\n"
     );
 }
 
@@ -195,6 +154,7 @@ fn json_output_has_no_next_line_and_no_next_field() {
             "\n"
         )
     );
+    assert_eq!(finished.err, "");
 }
 
 /// Returns [`two_of_with_next`] with the note `Planets from the 2006
@@ -208,32 +168,11 @@ fn a_note_prints_after_the_footer_and_before_the_next_line() {
     let finished = finish_with(&[], PLANET_LISTING, two_of_with_note(8));
 
     let expected = "\
-NAME     MOONS
-Mercury  0
-Saturn   274
 Showing 2 of 8. --all shows every one.
 Planets from the 2006 definition.
 Next: tool show <NAME>... shows planets by name.
 ";
-    assert_eq!(finished.out, expected);
-}
-
-#[test]
-fn a_note_prints_with_long_and_with_fields() {
-    let long = finish_with(&["--long"], PLANET_LISTING, two_of_with_note(2));
-    let fields = finish_with(&["--fields", "au"], PLANET_LISTING, two_of_with_note(2));
-
-    assert!(
-        long.out.ends_with(
-            "Saturn   274    true\nPlanets from the 2006 definition.\nNext: tool show <NAME>... shows planets by name.\n"
-        ),
-        "{}",
-        long.out
-    );
-    assert_eq!(
-        fields.out,
-        "AU\n0.39\n9.54\nPlanets from the 2006 definition.\nNext: tool show <NAME>... shows planets by name.\n"
-    );
+    assert_eq!(finished.err, expected);
 }
 
 #[test]
@@ -252,14 +191,7 @@ fn a_listing_prints_no_next_line_when_no_command_is_set() {
     let finished = finish_output(&mut output, PLANET_LISTING, two_of_with_next(8));
 
     assert_eq!(finished.code, ExitCode::SUCCESS);
-    assert!(
-        finished
-            .out
-            .ends_with("Showing 2 of 8. --all shows every one.\n"),
-        "{}",
-        finished.out
-    );
-    assert_eq!(finished.err, "");
+    assert_eq!(finished.err, "Showing 2 of 8. --all shows every one.\n");
 }
 
 #[test]
@@ -269,14 +201,7 @@ fn a_next_step_whose_call_does_not_resolve_is_left_out_and_the_exit_code_is_0() 
     let finished = finish_with(&[], PLANET_LISTING, listing);
 
     assert_eq!(finished.code, ExitCode::SUCCESS);
-    assert!(
-        finished
-            .out
-            .ends_with("Showing 2 of 8. --all shows every one.\n"),
-        "{}",
-        finished.out
-    );
-    assert_eq!(finished.err, "");
+    assert_eq!(finished.err, "Showing 2 of 8. --all shows every one.\n");
 }
 
 #[test]
@@ -294,11 +219,8 @@ fn a_next_step_into_a_branch_the_run_did_not_parse_names_a_global_flag_of_the_ro
 
     let finished = finish_output(&mut output, PLANET_LISTING, listing);
 
-    assert!(
-        finished
-            .out
-            .ends_with("Next: tool moons show <NAME>... --json shows moons as JSON.\n"),
-        "{}",
-        finished.out
+    assert_eq!(
+        finished.err,
+        "Next: tool moons show <NAME>... --json shows moons as JSON.\n"
     );
 }

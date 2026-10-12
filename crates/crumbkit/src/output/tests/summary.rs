@@ -45,10 +45,12 @@ fn a_summary_prints_above_the_table_in_text() {
 NAME     MOONS
 Mercury  0
 Saturn   274
-Showing 2 of 8. --all shows every one.
-Planets from the 2006 definition.
 ";
     assert_eq!(finished.out, expected);
+    assert_eq!(
+        finished.err,
+        "Showing 2 of 8. --all shows every one.\nPlanets from the 2006 definition.\n"
+    );
 }
 
 #[test]

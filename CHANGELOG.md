@@ -276,7 +276,7 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   half the bytes it prints and checks that the tool cuts or refuses the
   result ([ADR-0046]).
 - crumbkit: a listing with no rows, and a stream that ends with none,
-  print a note such as `note: no books match` after the header.
+  print a note such as `note: no books match`.
   `Document::when_empty` changes the wording ([ADR-0050]).
 - crumbkit: `Page<N, MOST>` refuses a `--limit` above `MOST` with a
   recovery that runs `--all`, and the help and the footer name the bound
@@ -293,6 +293,11 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   cut, and `--json` measures it with its base64 text ([ADR-0046]).
 - crumbkit: the help of a leaf that prints [`Bytes`] says how its output
   prints, and `help::BYTES_LINE` holds that line ([ADR-0016]).
+- crumbkit: [`FailureForm`] gains the provided method `read`, which reads a
+  failed run's code and steps into a [`ReadFailure`] and returns `None` by
+  default ([ADR-0045]).
+- crumbkit-test: [`Examples`] gains `failure_form`, which names the tool's
+  failure form for [`check_twin`] and [`check_examples`] ([ADR-0045]).
 ### Changed
 
 - crumbkit: with the `usage-log` feature, a run whose `COMPLETE` variable
@@ -375,6 +380,18 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit: the JSON Schema of each listing and list document holds the
   optional `cut` object, and the documents keep their `v1` ids
   ([ADR-0046]).
+- crumbkit: in text, a listing's footer, empty note and note, the `Next:`
+  line, the dry-run line, the cut line and a stream's notes print on
+  standard error after standard output is flushed ([ADR-0050]).
+- crumbkit-test: [`check_examples`] compares an example's standard error
+  with its `.stderr` golden file, and fails on standard error only for a
+  `warning: crumbkit ` line ([ADR-0005]).
+- crumbkit-test: [`check_twin`], [`check_recoveries`] and [`check_examples`]
+  read a failed run through `FailureForm::read`, and [`check_recoveries`]
+  runs a guide with a failure form instead of failing before any run
+  ([ADR-0045]).
+- cargo-crumbkit: `weigh` adds the size of an example's `.stderr` golden
+  file to the command's output weight ([ADR-0033]).
 ### Removed
 
 - crumbkit: `Call::word` is gone, because `Call::value` adds a runtime value
@@ -545,6 +562,7 @@ rustdoc, or at its decision record. -->
 [ADR-0044]: docs/decisions/api/help/0044-command-reference.md
 [`check_command_reference`]: crates/crumbkit-test/src/reference.rs
 [`FailureForm`]: crates/crumbkit/src/form.rs
+[`ReadFailure`]: crates/crumbkit/src/form.rs
 [`PreparedFailure`]: crates/crumbkit/src/output/failure/prepared.rs
 [ADR-0045]: docs/decisions/api/output/0045-failure-forms.md
 [ADR-0046]: docs/decisions/api/output/0046-output-budget.md

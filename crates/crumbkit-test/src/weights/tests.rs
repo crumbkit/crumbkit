@@ -186,6 +186,16 @@ fn the_output_weight_is_the_size_of_the_largest_golden_file_of_the_examples() {
 }
 
 #[test]
+fn an_examples_output_weight_adds_the_size_of_its_standard_error_golden_file() {
+    let dir = goldens();
+    dir.write("shelf-books-list-all.stderr", &"n".repeat(10));
+    dir.write("shelf-books-list.stderr", &"n".repeat(20));
+
+    // The example with --all weighs 40 and 10 bytes, more than 25 and 20.
+    assert_eq!(output_weight(dir.path(), &examples()).unwrap(), Some(50));
+}
+
+#[test]
 fn examples_without_golden_files_have_no_output_weight() {
     let dir = TempDir::new("no-goldens").unwrap();
     dir.write("shelf-books-list-all.txt", "every book\n");

@@ -100,8 +100,9 @@ impl Row for AliasRow {
 ///
 /// A missing file, or no file because the environment gives no config
 /// directory, lists the built-in aliases only. The listing's note, which
-/// the text output prints after the table, names the file and says when it
-/// does not exist yet, or says why the tool has no aliases file.
+/// the text output prints on standard error after the table, names the file
+/// and says when it does not exist yet, or says why the tool has no aliases
+/// file.
 ///
 /// # Errors
 ///

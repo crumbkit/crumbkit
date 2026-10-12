@@ -255,15 +255,19 @@ pub fn path_totals(rows: &[(usize, u64, Option<u64>)]) -> Vec<u64> {
         .collect()
 }
 
-/// Returns the size in bytes of the largest golden file in `dir` of the
-/// examples whose command lines are `examples`, or `None` when no example
-/// has a golden file there.
+/// Returns the largest size in bytes of one example's golden files in
+/// `dir`, of the examples whose command lines are `examples`, or `None`
+/// when no example has a golden file of its output there.
 ///
-/// Each example's golden file has the name that
-/// [`example_golden_name`](crate::example_golden_name) gives its command
-/// line, which is the name that [`check_examples`](crate::check_examples)
-/// writes it under. A missing file counts as no golden file, so a tool
-/// whose examples are not pinned has no output weight.
+/// An example's size is the size of the golden file of its standard output
+/// plus the size of the golden file of its standard error, because an agent
+/// reads both streams (ADR-0033). The output's golden file has the name
+/// that [`example_golden_name`](crate::example_golden_name) gives its
+/// command line, which is the name that
+/// [`check_examples`](crate::check_examples) writes it under, and the
+/// standard error's file has `.stderr` in place of `.txt`. A missing file
+/// counts as no golden file, so a tool whose examples are not pinned has no
+/// output weight.
 ///
 /// # Errors
 ///
@@ -272,11 +276,25 @@ pub fn path_totals(rows: &[(usize, u64, Option<u64>)]) -> Vec<u64> {
 pub fn output_weight(dir: &Path, examples: &[String]) -> Result<Option<u64>, UnreadableGolden> {
     let mut largest = None;
     for line in examples {
-        let path = dir.join(crate::example_golden_name(line));
+        let name = crate::example_golden_name(line);
+        let path = dir.join(&name);
         match fs::metadata(&path) {
             // `None` is less than every `Some`, so the first size wins over
             // no size.
-            Ok(metadata) => largest = largest.max(Some(metadata.len())),
+            Ok(metadata) => {
+                let stderr = dir.join(crate::examples::stderr_golden_name(&name));
+                let notes = match fs::metadata(&stderr) {
+                    Ok(metadata) => metadata.len(),
+                    Err(error) if error.kind() == io::ErrorKind::NotFound => 0,
+                    Err(error) => {
+                        return Err(UnreadableGolden {
+                            path: stderr,
+                            error,
+                        });
+                    }
+                };
+                largest = largest.max(Some(metadata.len().saturating_add(notes)));
+            }
             Err(error) if error.kind() == io::ErrorKind::NotFound => {
                 // Windows reports a path below a regular file as missing,
                 // where Unix reports that the parent is not a directory.

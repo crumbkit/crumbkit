@@ -60,7 +60,7 @@ fn self_usage_prints_the_findings_of_the_earlier_runs_as_text() {
     shelf(dir.path(), &["self", "usage"])
         .success()
         .stdout_eq(file!["golden/self-usage.txt"])
-        .stderr_eq("");
+        .stderr_eq(file!["golden/self-usage.stderr"]);
 }
 
 #[test]
@@ -185,18 +185,19 @@ fn records_edited_to_hold_other_text_are_left_out_and_counted() {
 }
 
 #[test]
-fn self_usage_without_findings_prints_the_note_that_the_log_holds_none() {
+fn self_usage_without_findings_prints_the_note_that_the_log_holds_none_on_standard_error() {
     let dir = tempfile::tempdir().unwrap();
 
-    let run = shelf(dir.path(), &["self", "usage"])
-        .success()
-        .stderr_eq("");
+    let run = shelf(dir.path(), &["self", "usage"]).success();
 
     let stdout = String::from_utf8_lossy(&run.get_output().stdout).into_owned();
+    let stderr = String::from_utf8_lossy(&run.get_output().stderr).into_owned();
     assert!(
-        stdout.contains(
-            "\nFINDING  RUNS  COMMAND  SUGGESTION\nnote: the usage log holds no findings\n"
-        ),
+        stdout.ends_with("\nFINDING  RUNS  COMMAND  SUGGESTION\n"),
         "{stdout}"
+    );
+    assert!(
+        stderr.starts_with("note: the usage log holds no findings\n"),
+        "{stderr}"
     );
 }

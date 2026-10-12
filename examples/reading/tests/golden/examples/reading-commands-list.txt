@@ -16,4 +16,3 @@ reading finished edit   Open this reading list in your editor: $VISUAL, $EDITOR 
 reading to-read         Books to read next
 reading to-read list    List the entries of this reading list, in file order
 reading to-read edit    Open this reading list in your editor: $VISUAL, $EDITOR or vi
-Exit codes: 0, 1 and 2 are crumbkit's. `reading help exit-codes` describes them.

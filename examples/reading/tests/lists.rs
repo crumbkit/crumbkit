@@ -292,7 +292,8 @@ fn entries_set_with_expect_none_fails_with_a_conflict_when_the_entry_exists() ->
 }
 
 #[test]
-fn entries_set_on_a_dry_run_prints_the_entry_and_changes_nothing() -> io::Result<()> {
+fn entries_set_on_a_dry_run_prints_the_entry_and_the_dry_run_line_on_standard_error_and_changes_nothing()
+-> io::Result<()> {
     let copy = copy_of_lists()?;
     let dir = copy.path().to_string_lossy().into_owned();
 
@@ -310,7 +311,8 @@ fn entries_set_on_a_dry_run_prints_the_entry_and_changes_nothing() -> io::Result
         ],
     )?
     .success()
-    .stdout_eq("POSITION  TITLE\n1         Emma\nThis was a dry run, so nothing changed.\n");
+    .stdout_eq("POSITION  TITLE\n1         Emma\n")
+    .stderr_eq("This was a dry run, so nothing changed.\n");
     assert_eq!(to_read(&copy)?, TO_READ);
     Ok(())
 }
@@ -430,15 +432,15 @@ fn empty_list() -> io::Result<tempfile::TempDir> {
 }
 
 #[test]
-fn entries_list_of_a_list_with_no_entries_prints_the_header_and_the_list_s_empty_note()
+fn entries_list_of_a_list_with_no_entries_prints_the_header_and_the_list_s_empty_note_on_standard_error()
 -> io::Result<()> {
     let dir = empty_list()?;
     let dir = dir.path().to_string_lossy();
 
     reading(&dir, &["entries", "list", "--list", "empty"])?
         .success()
-        .stdout_eq("POSITION  TITLE\nnote: the list has no entries\n")
-        .stderr_eq("");
+        .stdout_eq("POSITION  TITLE\n")
+        .stderr_eq("note: the list has no entries\n");
     Ok(())
 }
 
@@ -461,15 +463,15 @@ fn entries_list_with_json_of_a_list_with_no_entries_prints_no_rows_and_a_total_o
 }
 
 #[test]
-fn entries_stream_of_a_list_with_no_entries_prints_the_header_and_the_list_s_empty_note()
+fn entries_stream_of_a_list_with_no_entries_prints_the_header_and_the_list_s_empty_note_on_standard_error()
 -> io::Result<()> {
     let dir = empty_list()?;
     let dir = dir.path().to_string_lossy();
 
     reading(&dir, &["entries", "stream", "--list", "empty"])?
         .success()
-        .stdout_eq("POSITION  TITLE\nnote: the list has no entries\n")
-        .stderr_eq("");
+        .stdout_eq("POSITION  TITLE\n")
+        .stderr_eq("note: the list has no entries\n");
     Ok(())
 }
 

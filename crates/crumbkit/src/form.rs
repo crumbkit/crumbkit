@@ -44,11 +44,11 @@ mod tests;
 /// its `FailureForm` rule with a stated reason, and the opt-out report
 /// names what the form costs an agent (ADR-0036).
 ///
-/// A form that keeps crumbkit's text and prints the document that the
-/// tool's callers already read:
+/// A form that keeps crumbkit's text, prints the document that the tool's
+/// callers already read, and reads that document back for crumbkit-test:
 ///
 /// ```
-/// use crumbkit::form::{FailureForm, PreparedFailure, Step};
+/// use crumbkit::form::{FailureForm, PreparedFailure, ReadFailure, Step};
 /// use crumbkit::help::Guide;
 /// use crumbkit::Document;
 /// use schemars::{Schema, json_schema};
@@ -93,6 +93,14 @@ mod tests;
 ///         }
 ///         json!({ "error": error })
 ///     }
+///
+///     // The document keeps no step that a check can follow, so the
+///     // failure that crumbkit-test reads back has none.
+///     fn read(&self, out: &str, _err: &str) -> Option<ReadFailure> {
+///         let document: Value = serde_json::from_str(out.lines().last()?).ok()?;
+///         let code = document["error"]["code"].as_str()?;
+///         Some(ReadFailure::new(code.to_owned(), Vec::new()))
+///     }
 /// }
 ///
 /// const GUIDE: Guide = Guide::new().failure_form(&ErrorForm);
@@ -127,6 +135,61 @@ pub trait FailureForm {
     /// because standard error is the last place to report anything.
     fn write_text(&self, mut err: &mut dyn Write, failure: &PreparedFailure<'_>) -> io::Result<()> {
         crate::output::failure::write_crumbkit_text(&mut err, failure)
+    }
+
+    /// Reads the failure that one run printed in this form, from the run's
+    /// standard output `out` and standard error `err`, with or without
+    /// `--json`, and returns `None` when it finds none.
+    ///
+    /// crumbkit never calls it. crumbkit-test's `check_twin`,
+    /// `check_recoveries` and `check_examples` call it to learn a failed
+    /// run's code and steps, and fall back to crumbkit's own document and
+    /// text when it returns `None`. A form whose document crumbkit-test
+    /// cannot read needs this method for `check_recoveries` to follow its
+    /// recoveries (ADR-0045).
+    ///
+    /// A form can write another code in place of one of crumbkit's, such as
+    /// `crumbkit::cli::usage`, because it receives the code from
+    /// [`PreparedFailure::code`] and writes both the JSON and the text. A
+    /// form that does this maps the code back to crumbkit's in `read`, so
+    /// the checks still match it.
+    ///
+    /// The provided method returns `None`.
+    fn read(&self, out: &str, err: &str) -> Option<ReadFailure> {
+        let _ = (out, err);
+        None
+    }
+}
+
+/// The failure that one run printed in a tool's form, as
+/// [`FailureForm::read`] reads it back: the code in the tool's spelling, and
+/// the steps, the recovery first and then each alternative.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ReadFailure {
+    /// The code in the tool's spelling, such as `shelf::books::not_found`.
+    code: String,
+    /// The recovery first, then each alternative.
+    steps: Vec<Step>,
+}
+
+impl ReadFailure {
+    /// Returns the failure with `code`, in the tool's spelling, and `steps`,
+    /// the recovery first and then each alternative.
+    #[must_use]
+    pub const fn new(code: String, steps: Vec<Step>) -> Self {
+        Self { code, steps }
+    }
+
+    /// Returns the code in the tool's spelling.
+    #[must_use]
+    pub fn code(&self) -> &str {
+        &self.code
+    }
+
+    /// Returns the steps, the recovery first and then each alternative.
+    #[must_use]
+    pub fn steps(&self) -> &[Step] {
+        &self.steps
     }
 }
 

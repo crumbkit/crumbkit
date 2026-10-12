@@ -3,5 +3,3 @@ ID  TITLE                AUTHOR           YEAR
 3   Moby-Dick            Herman Melville  1851
 4   Great Expectations   Charles Dickens  1861
 5   Middlemarch          George Eliot     1871
-Showing 4 of 5 books. --limit takes up to 100, and --all shows every one.
-Next: shelf books show <ID>... takes up to 100 ids in one call.

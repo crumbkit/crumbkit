@@ -207,10 +207,12 @@ fn a_missing_file_lists_the_built_in_aliases_and_a_note_says_it_does_not_exist_y
 
     assert_eq!(
         finished.out,
+        "NAME  COMMAND  PROBLEM  FROM\nb     books             shelf\n"
+    );
+    assert_eq!(
+        finished.err,
         format!(
-            "NAME  COMMAND  PROBLEM  FROM\n\
-             b     books             shelf\n\
-             Showing 1 of 2 aliases. --all shows every one.\n\
+            "Showing 1 of 2 aliases. --all shows every one.\n\
              Aliases file: {}, which does not exist yet\n",
             missing.display()
         )
@@ -218,18 +220,19 @@ fn a_missing_file_lists_the_built_in_aliases_and_a_note_says_it_does_not_exist_y
 }
 
 #[test]
-fn a_note_after_the_table_names_a_file_that_exists_even_when_it_is_empty() {
+fn a_note_on_standard_error_names_a_file_that_exists_even_when_it_is_empty() {
     let listing = listing(&tool(), Some(Path::new(FILE)), Some(""), &args(&[]));
 
     let finished = finish(&mut output(), listing.map_err(Error::from));
 
     assert!(
-        finished.out.ends_with(&format!(
-            "books ls  books list           shelf\nAliases file: {FILE}\n"
-        )),
+        finished
+            .out
+            .ends_with("books ls  books list           shelf\n"),
         "{}",
         finished.out
     );
+    assert_eq!(finished.err, format!("Aliases file: {FILE}\n"));
 }
 
 #[test]
@@ -238,12 +241,9 @@ fn a_note_says_why_a_tool_without_a_config_directory_has_no_aliases_file() {
 
     let finished = finish(&mut output(), listing.map_err(Error::from));
 
-    assert!(
-        finished
-            .out
-            .ends_with("shelf has no aliases file, because the home directory cannot be found.\n"),
-        "{}",
-        finished.out
+    assert_eq!(
+        finished.err,
+        "shelf has no aliases file, because the home directory cannot be found.\n"
     );
 }
 

@@ -81,15 +81,17 @@ fn a_listing_over_the_budget_stops_before_the_row_that_would_pass_it_and_exits_0
 
     assert_eq!(finished.code, ExitCode::SUCCESS);
     assert!(finished.out.len() <= BUDGET, "{}", finished.out.len());
-    let shown = finished.out.lines().count() - 2;
+    let shown = finished.out.lines().count() - 1;
     assert!(shown > 0 && shown < 20, "{shown}");
-    assert!(finished.out.ends_with(&format!(
-        "Showing {shown} of 20 stars, because output stops at 1024 bytes. \
-         Ask for less with --limit or --fields.\n"
-    )));
+    assert_eq!(
+        finished.err,
+        format!(
+            "Showing {shown} of 20 stars, because output stops at 1024 bytes. \
+             Ask for less with --limit or --fields.\n"
+        )
+    );
     // Each row's line is 100 bytes, so one more row passes the budget.
     assert!(finished.out.len() + 100 > BUDGET);
-    assert_eq!(finished.err, "");
 }
 
 #[test]
@@ -123,10 +125,10 @@ fn a_list_over_the_budget_is_cut_as_a_listing_is_and_its_line_names_only_fields(
     assert!(finished.out.len() <= BUDGET);
     assert!(
         finished
-            .out
+            .err
             .ends_with(", because output stops at 1024 bytes. Ask for less with --fields.\n"),
         "{}",
-        finished.out
+        finished.err
     );
 }
 
@@ -393,13 +395,10 @@ fn a_listing_cut_to_no_rows_prints_the_cut_line_and_no_empty_note() {
 
     let finished = finish_small(&[], STAR_LISTING, listing);
 
-    assert!(
-        finished.out.ends_with(
-            "Showing 0 of 1 stars, because output stops at 1024 bytes. \
-             Ask for less with --limit or --fields.\n"
-        ),
-        "{}",
-        finished.out
+    assert_eq!(finished.out, "NAME  STORY\n");
+    assert_eq!(
+        finished.err,
+        "Showing 0 of 1 stars, because output stops at 1024 bytes. \
+         Ask for less with --limit or --fields.\n"
     );
-    assert!(!finished.out.contains("note:"), "{}", finished.out);
 }

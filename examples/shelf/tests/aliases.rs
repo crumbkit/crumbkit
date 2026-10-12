@@ -61,7 +61,7 @@ fn a_personal_alias_runs_its_command_with_the_words_typed_after_it() {
     shelf(home.path(), &["firsts", "--limit", "1"])
         .success()
         .stdout_eq(real.get_output().stdout.clone())
-        .stderr_eq("");
+        .stderr_eq(real.get_output().stderr.clone());
 }
 
 #[test]
@@ -71,7 +71,7 @@ fn aliases_list_prints_the_entries_with_a_problem_then_the_built_in_alias_then_t
     shelf(home.path(), &["aliases", "list"])
         .success()
         .stdout_eq(file!["golden/aliases-list.txt"])
-        .stderr_eq("");
+        .stderr_eq(file!["golden/aliases-list.stderr"]);
 }
 
 #[test]

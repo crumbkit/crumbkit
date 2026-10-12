@@ -12,19 +12,19 @@ fn none() -> Listing<Planet> {
 }
 
 #[test]
-fn a_listing_with_no_matching_rows_prints_a_note_after_its_header() {
+fn a_listing_with_no_matching_rows_prints_its_header_and_a_note_on_standard_error() {
     let finished = finish_with(&[], PLANET_LISTING, none().described("planets"));
 
     assert_eq!(finished.code, ExitCode::SUCCESS);
-    assert_eq!(finished.out, "NAME  MOONS\nnote: no planets match\n");
-    assert_eq!(finished.err, "");
+    assert_eq!(finished.out, "NAME  MOONS\n");
+    assert_eq!(finished.err, "note: no planets match\n");
 }
 
 #[test]
 fn the_note_of_a_listing_without_a_description_names_rows() {
     let finished = finish_with(&[], PLANET_LISTING, none());
 
-    assert_eq!(finished.out, "NAME  MOONS\nnote: no rows match\n");
+    assert_eq!(finished.err, "note: no rows match\n");
 }
 
 #[test]
@@ -33,10 +33,7 @@ fn a_document_sets_its_own_wording_of_the_note() {
 
     let finished = finish_with(&[], document, none().described("planets"));
 
-    assert_eq!(
-        finished.out,
-        "NAME  MOONS\nnote: the system has no planets\n"
-    );
+    assert_eq!(finished.err, "note: the system has no planets\n");
 }
 
 #[test]
@@ -49,12 +46,11 @@ fn the_note_comes_before_the_listings_own_note_and_next_step() {
     let finished = finish_with(&[], PLANET_LISTING, listing);
 
     let expected = "\
-NAME  MOONS
 note: no planets match
 Catalogue: solar.toml
 Next: tool show <NAME>... shows planets by name.
 ";
-    assert_eq!(finished.out, expected);
+    assert_eq!(finished.err, expected);
 }
 
 #[test]
@@ -63,9 +59,10 @@ fn a_listing_whose_page_is_empty_but_whose_total_is_not_prints_the_footer_and_no
 
     let finished = finish_with(&[], PLANET_LISTING, listing);
 
+    assert_eq!(finished.out, "NAME  MOONS\n");
     assert_eq!(
-        finished.out,
-        "NAME  MOONS\nShowing 0 of 3 planets. --all shows every one.\n"
+        finished.err,
+        "Showing 0 of 3 planets. --all shows every one.\n"
     );
 }
 
@@ -87,12 +84,9 @@ fn the_footer_of_a_bounded_listing_names_the_bound() {
 
     let finished = finish_with(&[], PLANET_LISTING, listing);
 
-    assert!(
-        finished.out.ends_with(
-            "Showing 2 of 8 planets. --limit takes up to 100, and --all shows every one.\n"
-        ),
-        "{}",
-        finished.out
+    assert_eq!(
+        finished.err,
+        "Showing 2 of 8 planets. --limit takes up to 100, and --all shows every one.\n"
     );
 }
 
@@ -102,11 +96,8 @@ fn the_footer_of_a_bounded_listing_without_a_description_names_the_bound() {
 
     let finished = finish_with(&[], PLANET_LISTING, listing);
 
-    assert!(
-        finished
-            .out
-            .ends_with("Showing 1 of 8. --limit takes up to 100, and --all shows every one.\n"),
-        "{}",
-        finished.out
+    assert_eq!(
+        finished.err,
+        "Showing 1 of 8. --limit takes up to 100, and --all shows every one.\n"
     );
 }

@@ -18,6 +18,7 @@ mod budget;
 mod bytes;
 mod empty;
 mod listing;
+mod notes;
 mod prose;
 #[cfg(feature = "miette")]
 mod report;

@@ -5,8 +5,10 @@ use std::process::Command;
 
 /// Runs `line`, a command line that starts with `cargo crumbkit`, as cargo
 /// runs it: cargo finds the binary `cargo-crumbkit` and passes it every
-/// word after `cargo`. Returns the run's standard output after checking
-/// that the run succeeded, or `None` when the binary cannot start.
+/// word after `cargo`. Returns the run's standard output followed by its
+/// standard error, as a terminal shows them, after checking that the run
+/// succeeded, or `None` when the binary cannot start. The notes of a text
+/// result, such as `commands list`'s exit-code note, are on standard error.
 fn run_as_cargo_does(line: &str) -> Option<String> {
     let mut words = line.split(' ');
     assert_eq!(words.next(), Some("cargo"), "{line}");
@@ -19,7 +21,9 @@ fn run_as_cargo_does(line: &str) -> Option<String> {
         .output()
         .ok()?;
     assert!(output.status.success(), "{line}: {output:?}");
-    String::from_utf8(output.stdout).ok()
+    let mut text = String::from_utf8(output.stdout).ok()?;
+    text.push_str(std::str::from_utf8(&output.stderr).ok()?);
+    Some(text)
 }
 
 /// Returns the command in the first pair of backticks of the line of

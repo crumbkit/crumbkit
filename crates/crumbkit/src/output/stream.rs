@@ -348,10 +348,10 @@ impl<R: Row, O: Write, W: Write> Streaming<'_, R, O, W> {
     /// An `Err` prints as [`Streaming::failure`] prints a failure, and is the
     /// stream's last line. A stream that printed no items and no failure, and
     /// whose pipe is still open, prints an empty note such as `note: no rows`
-    /// in text, and on the error writer with `--json` (ADR-0050). The text of
-    /// a dry run ends with the line `This was a dry run, so nothing
-    /// changed.`, and a document without the envelope prints that line on
-    /// the error writer with `--json`.
+    /// on the error writer (ADR-0050). A dry run then prints the line `This
+    /// was a dry run, so nothing changed.` on the error writer, in text and
+    /// with `--json` for a document without the envelope. Each line goes to
+    /// the error writer after the output writer was flushed.
     ///
     /// The exit code is 0 when every item printed, and also when the reader
     /// closed the pipe early. It is 1 when the stream printed a failure or
@@ -370,16 +370,11 @@ impl<R: Row, O: Write, W: Write> Streaming<'_, R, O, W> {
         if empty {
             self.note_empty();
         }
-        if self.dry_run && self.state == State::Open {
-            if !self.json {
-                self.line.extend_from_slice(DRY_RUN_LINE.as_bytes());
-                self.line.push(b'\n');
-                let _ = self.send();
-            } else if !self.document.has_envelope() {
-                // A failed write to standard error goes unreported, because
-                // it is the last place to report anything.
-                let _ = writeln!(self.err, "{DRY_RUN_LINE}");
-            }
+        if self.dry_run
+            && self.state == State::Open
+            && (!self.json || !self.document.has_envelope())
+        {
+            self.note(DRY_RUN_LINE);
         }
         let code = if self.failed || self.state == State::Broken {
             ExitCode::FAILURE
@@ -391,21 +386,27 @@ impl<R: Row, O: Write, W: Write> Streaming<'_, R, O, W> {
     }
 
     /// Prints the note of a stream that ended with no rows, such as `note:
-    /// no rows`, in the document's own wording when it has one: after the
-    /// header in text, and on the error writer with `--json`, which prints
-    /// no line for the note (ADR-0050).
+    /// no rows`, in the document's own wording when it has one, on the
+    /// error writer (ADR-0050).
     fn note_empty(&mut self) {
         let wording = self.document.empty_note().unwrap_or("no rows");
-        if self.json {
-            // A failed write to standard error goes unreported, because it
-            // is the last place to report anything.
-            let _ = writeln!(self.err, "note: {wording}");
-        } else {
-            self.line.extend_from_slice(b"note: ");
-            self.line.extend_from_slice(wording.as_bytes());
-            self.line.push(b'\n');
-            let _ = self.send();
-        }
+        self.note(&format!("note: {wording}"));
+    }
+
+    /// Prints `text` and a line feed on the error writer in one write, and
+    /// flushes it. The output writer was flushed after the last line, so a
+    /// reader that merges the two streams sees the note after the rows. A
+    /// failed write to standard error goes unreported, because it is the
+    /// last place to report anything.
+    fn note(&mut self, text: &str) {
+        self.line.clear();
+        self.line.extend_from_slice(text.as_bytes());
+        self.line.push(b'\n');
+        let _ = self
+            .err
+            .write_all(&self.line)
+            .and_then(|()| self.err.flush());
+        self.line.clear();
     }
 
     /// Writes `item` to the line, in the format that the flags choose.

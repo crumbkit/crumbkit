@@ -1,6 +1,6 @@
-//! The lines that follow a listing's table in text: the footer of a
-//! listing cut short, the note of a listing with no matching rows and the
-//! next step.
+//! The lines that describe a listing in text, which print on standard error
+//! after the table: the footer of a listing cut short, the note of a listing
+//! with no matching rows and the next step.
 
 use std::io::{self, Write};
 
@@ -8,7 +8,7 @@ use clap::Command;
 
 use crate::Rows;
 
-/// Writes the footer line that follows the table when `value` is a listing
+/// Writes the footer line that describes the table when `value` is a listing
 /// that shows fewer rows than its total, such as `Showing 4 of 6 books. --all
 /// shows every one.` A listing whose `--limit` has a bound names it, as in
 /// `Showing 4 of 6 books. --limit takes up to 100, and --all shows every
@@ -34,7 +34,7 @@ pub(super) fn write_footer<T: Rows>(out: &mut impl Write, value: &T) -> io::Resu
     }
 }
 
-/// Writes the note that follows the table when `value` is a listing with no
+/// Writes the note that describes the table when `value` is a listing with no
 /// matching rows: `note: ` and `wording`, the document's own wording, or
 /// `no {description} match`, such as `note: no books match`, or `note: no
 /// rows match` for a listing without a description (ADR-0050). Otherwise it
@@ -59,7 +59,8 @@ pub(super) fn write_empty_note<T: Rows>(
 /// Otherwise it returns `None`: without a command, or when the call names a
 /// missing or hidden command or argument, the tool still prints its result
 /// and crumbkit advertises nothing the tool hid. `finish` renders the line
-/// once, so it can measure the text and then write it.
+/// once, before it writes the result, so each note it writes later uses the
+/// same text.
 pub(super) fn next_line<'a, T: Rows>(
     command: Option<&mut Command>,
     value: &'a T,

@@ -1,10 +1,13 @@
 //! The example check, which runs every example in a tool's guide against the
 //! tool's built binary and pins each run's standard output in a golden file.
 
+use std::fmt::Write as _;
 use std::path::Path;
+use std::process::Output;
 use std::time::{Duration, Instant};
 
 use clap::Command;
+use crumbkit::form::{FailureForm, ReadFailure};
 use crumbkit::help::{Guide, Leaf};
 use snapbox::Assert;
 use snapbox::assert::{Action, DEFAULT_ACTION_ENV};
@@ -22,8 +25,8 @@ use crate::tree;
 mod tests;
 
 /// The settings of [`check_examples`]: the tool's built binary, the
-/// directory of the golden files, the environment of each run and the
-/// tool's opt-outs.
+/// directory of the golden files, the environment of each run, the tool's
+/// opt-outs and its failure form.
 ///
 /// A tool declares them as a constant in an integration test of the
 /// binary's own package, because cargo sets `CARGO_BIN_EXE_<name>`, the
@@ -63,6 +66,9 @@ pub struct Examples<'a> {
     /// The tool's opt-outs, of which the check reads those from
     /// [`Rule::Examples`].
     allow: &'a [Allow],
+    /// The failure form that the tool's guide sets, which reads back the
+    /// failure of a run.
+    failure_form: Option<&'a dyn FailureForm>,
 }
 
 impl<'a> Examples<'a> {
@@ -71,7 +77,8 @@ impl<'a> Examples<'a> {
     /// own and no opt-out.
     ///
     /// `dir` holds only example golden files, because the check counts every
-    /// `.txt` file in it that no checked example produces as stale.
+    /// `.txt` and `.stderr` file in it that no checked example produces as
+    /// stale.
     #[must_use]
     pub const fn new(binary: &'a str, dir: &'a str) -> Self {
         Self {
@@ -79,6 +86,7 @@ impl<'a> Examples<'a> {
             dir,
             env: &[],
             allow: &[],
+            failure_form: None,
         }
     }
 
@@ -102,6 +110,17 @@ impl<'a> Examples<'a> {
         self
     }
 
+    /// Sets the failure form that the tool's guide sets with
+    /// `Guide::failure_form`, so [`check_twin`](crate::check_twin) reads a
+    /// refused run's code through
+    /// [`FailureForm::read`](crumbkit::form::FailureForm::read).
+    /// [`check_examples`] fails when this form and the guide's form differ.
+    #[must_use]
+    pub const fn failure_form(mut self, form: &'a dyn FailureForm) -> Self {
+        self.failure_form = Some(form);
+        self
+    }
+
     /// Returns the path of the tool's built binary.
     pub(crate) const fn binary(&self) -> &'a str {
         self.binary
@@ -116,12 +135,17 @@ impl<'a> Examples<'a> {
     pub(crate) const fn opt_outs(&self) -> &'a [Allow] {
         self.allow
     }
+
+    /// Returns the tool's failure form, or `None`.
+    pub(crate) const fn form(&self) -> Option<&'a dyn FailureForm> {
+        self.failure_form
+    }
 }
 
 /// Runs every example in the leaves of `guide` against the binary that
 /// `examples` names and checks that each run succeeds and prints the
-/// standard output in its golden file, and panics, as a failed test
-/// assertion does, naming every problem it finds.
+/// standard output and standard error in its golden files, and panics, as a
+/// failed test assertion does, naming every problem it finds.
 ///
 /// A tool calls the check from an integration test of the binary's own
 /// package, so that package needs a library target that exports the clap
@@ -148,18 +172,32 @@ impl<'a> Examples<'a> {
 /// The golden file of an example holds the run's standard output, and
 /// [`example_golden_name`] names it after the example's command line, such
 /// as `shelf-books-list.txt`, `shelf-books-list-all.txt` and
-/// `shelf-books-show-2-5.txt`.
+/// `shelf-books-show-2-5.txt`. A run that writes to standard error, such as
+/// a listing's footer and `Next:` line, also has a golden file of its
+/// standard error, named with `.stderr` in place of `.txt`, such as
+/// `shelf-books-list.stderr`. A run that writes nothing there has no such
+/// file (ADR-0005).
 ///
 /// The check compares each output with snapbox, as other golden files are
 /// compared (ADR-0004). With the environment variable `SNAPSHOTS=overwrite`,
 /// it writes each missing file, rewrites each file whose content differs
 /// and deletes each stale file. It finds:
 ///
-/// - a run that exits with a code other than 0 or writes to standard error,
-///   naming the example's command line, the exit status and the standard
-///   error, because an example shows a run that works. This holds with
-///   `SNAPSHOTS=overwrite` too, and the check then writes no file for the
-///   example;
+/// - a run that exits with a code other than 0, naming the example's command
+///   line, the exit status, the failure's code and steps when the check can
+///   read them, and the standard error, because an example shows a run that
+///   works. The check reads the failure through the form of
+///   [`Examples::failure_form`] first, then from a `crumbkit/failure/v1`
+///   document on standard output, and then from the last `code:` line on
+///   standard error. This holds with `SNAPSHOTS=overwrite` too, and the
+///   check then writes no file for the example;
+/// - a run that writes a `warning: crumbkit` line to standard error, which a
+///   debug build writes for a recovery call that does not render. The check
+///   then writes no file for the example;
+/// - a guide that sets a failure form with `Guide::failure_form` while
+///   [`Examples::failure_form`] names none, or names a form whose document
+///   has another id, and an `Examples::failure_form` without a form in the
+///   guide;
 /// - a run whose binary cannot start, such as a wrong path, naming the path
 ///   and the error;
 /// - a run that does not end within 10 seconds, which the check stops, so a
@@ -178,10 +216,12 @@ impl<'a> Examples<'a> {
 /// and, without `SNAPSHOTS=overwrite`:
 ///
 /// - an example without a golden file;
-/// - an output that differs from its golden file, with snapbox's report of
-///   both texts;
+/// - a standard error without a golden file;
+/// - an output or a standard error that differs from its golden file, with
+///   snapbox's report of both texts;
 /// - a stale golden file: a `.txt` file in the directory that no checked
-///   example produces, such as the file of a removed or skipped example.
+///   example produces, such as the file of a removed or skipped example, or
+///   a `.stderr` file that no checked example's standard error produces.
 ///
 /// ```no_run
 /// use clap::Command;
@@ -241,9 +281,13 @@ fn check(
     let mut failures = Vec::new();
     let mut allowances = Allowances::new(examples.allow, &[Rule::Examples]);
     let visits = tree::walk(command);
+    let form = guide.get_failure_form();
+    check_form(form, examples.failure_form, &mut problems);
     // Each golden file name with the command line of the example that has
     // it.
     let mut names: Vec<(String, String)> = Vec::new();
+    // The name of each golden file of standard error.
+    let mut stderr_names: Vec<String> = Vec::new();
     for leaf in guide.get_leaves() {
         let path = leaf.path();
         let below = path.join(" ");
@@ -268,40 +312,21 @@ fn check(
                 continue;
             }
             names.push((name.clone(), line.clone()));
-            let started = Instant::now();
-            let output = match Xdg::new("example").and_then(|xdg| {
-                runs::run(
-                    examples.binary,
-                    examples.env,
-                    &xdg,
-                    &args,
-                    Place::default(),
-                    timeout,
-                )
-            }) {
+            let output = match run_example(examples, &args, timeout) {
                 Ok(output) => output,
                 Err(problem) => {
                     failures.push(format!("{line}: {problem}"));
                     continue;
                 }
             };
-            if !output.status.success() && started.elapsed() >= timeout {
-                failures.push(format!(
-                    "{line}: the run did not end within {} seconds, so the check stopped it, and an example must end on its own",
-                    timeout.as_secs_f64()
-                ));
+            let stderr = String::from_utf8_lossy(&output.stderr).into_owned();
+            if !output.status.success() {
+                failures.push(failed_run(&line, &output, form, &stderr));
                 continue;
             }
-            if !output.status.success() || !output.stderr.is_empty() {
-                let mut problem = format!(
-                    "{line}: an example must exit with code 0 and write nothing to standard error, and the run ends with {}",
-                    output.status
-                );
-                if !output.stderr.is_empty() {
-                    problem.push_str(" after writing this to standard error:\n");
-                    problem.push_str(&String::from_utf8_lossy(&output.stderr));
-                }
-                failures.push(problem);
+            let warnings = warnings(&line, &stderr);
+            if !warnings.is_empty() {
+                failures.extend(warnings);
                 continue;
             }
             // RUST-10: the check compares the output as UTF-8 text, as the
@@ -312,6 +337,18 @@ fn check(
             let stdout = String::from_utf8_lossy(&output.stdout).into_owned();
             if example.words().contains(&"--json") {
                 check_lines(leaf, &line, &stdout, &mut failures);
+            }
+            if !stderr.is_empty() {
+                let stderr_name = stderr_golden_name(&name);
+                compare(
+                    assert,
+                    &line,
+                    "standard error",
+                    stderr,
+                    &dir.join(&stderr_name),
+                    &mut problems,
+                );
+                stderr_names.push(stderr_name);
             }
             compare(
                 assert,
@@ -332,8 +369,111 @@ fn check(
         "checked example",
         &mut problems,
     );
+    remove_stale(
+        dir,
+        &stderr_names,
+        "stderr",
+        overwrite,
+        "checked example that writes to standard error",
+        &mut problems,
+    );
     allowances.finish(command, &mut problems);
     report(&problems, &failures);
+}
+
+/// Runs the example `args` of `examples.binary` in fresh XDG directories and
+/// returns its output, or a problem when the run cannot start or does not
+/// end within `timeout`.
+fn run_example(
+    examples: &Examples<'_>,
+    args: &[&str],
+    timeout: Duration,
+) -> Result<Output, String> {
+    let started = Instant::now();
+    let output = Xdg::new("example").and_then(|xdg| {
+        runs::run(
+            examples.binary,
+            examples.env,
+            &xdg,
+            args,
+            Place::default(),
+            timeout,
+        )
+    })?;
+    if !output.status.success() && started.elapsed() >= timeout {
+        return Err(format!(
+            "the run did not end within {} seconds, so the check stopped it, and an example must end on its own",
+            timeout.as_secs_f64()
+        ));
+    }
+    Ok(output)
+}
+
+/// Returns the problem of the example `line`, whose run exited with a code
+/// other than 0. The problem names the exit status, the failure's code and
+/// steps when `form` or crumbkit's failure document reads them, and the
+/// run's standard error `stderr` when it is not empty.
+fn failed_run(line: &str, output: &Output, form: Option<&dyn FailureForm>, stderr: &str) -> String {
+    let mut problem = format!(
+        "{line}: an example must exit with code 0, and the run ends with {}",
+        output.status
+    );
+    let failure = runs::read_failure(form, &output.stdout, &output.stderr)
+        .or_else(|| runs::text_code(&output.stderr).map(|code| ReadFailure::new(code, Vec::new())));
+    if let Some(failure) = failure {
+        let _ = write!(problem, " and fails with {}", runs::describe(&failure));
+    }
+    if !stderr.is_empty() {
+        problem.push_str(" after writing this to standard error:\n");
+        problem.push_str(stderr);
+    }
+    problem
+}
+
+/// Returns one problem for each line of `stderr` that is a debug build's
+/// warning from crumbkit, which marks a mistake in the tool even when the
+/// example `line` succeeds.
+fn warnings(line: &str, stderr: &str) -> Vec<String> {
+    stderr
+        .lines()
+        .filter(|text| text.starts_with("warning: crumbkit "))
+        .map(|warning| format!("{line}: the run writes a warning to standard error: {warning}"))
+        .collect()
+}
+
+/// Adds a problem to `problems` when `set`, the form that the guide sets,
+/// and `named`, the form of [`Examples::failure_form`], differ: when only
+/// one of them is set, or when their documents have different ids.
+fn check_form(
+    set: Option<&dyn FailureForm>,
+    named: Option<&dyn FailureForm>,
+    problems: &mut Vec<String>,
+) {
+    match (set, named) {
+        (Some(set), None) => problems.push(format!(
+            "the guide sets the failure form {}, and Examples names no failure form, so check_twin cannot read the tool's failures. Examples::failure_form names the guide's form",
+            set.document()
+        )),
+        (Some(set), Some(named)) if set.document().to_string() != named.document().to_string() => {
+            problems.push(format!(
+                "the guide sets the failure form {}, and Examples::failure_form names {}",
+                set.document(),
+                named.document()
+            ));
+        }
+        (None, Some(named)) => problems.push(format!(
+            "Examples::failure_form names {}, and the guide sets no failure form",
+            named.document()
+        )),
+        _ => {}
+    }
+}
+
+/// Returns the name of the golden file of an example's standard error: the
+/// name `name` of its output's golden file with `.stderr` in place of
+/// `.txt`, such as `shelf-books-list.stderr`.
+pub(crate) fn stderr_golden_name(name: &str) -> String {
+    format!("{}.stderr", name.strip_suffix(".txt").unwrap_or(name))
 }
 
 /// Adds to `failures` each problem of `stdout`, the output of the `--json`
