@@ -407,6 +407,8 @@ pub fn finish_to<T: Rows, E: AsFailure, O: Write, W: Write>(
             .is_some_and(|total| value.rows().len() < total)
     });
     #[cfg(feature = "usage-log")]
+    let empty = result.as_ref().is_ok_and(|value| value.total() == Some(0));
+    #[cfg(feature = "usage-log")]
     let sink = &mut Sink::new(crate::usage::Counted::new(&mut sink.out), &mut sink.err);
     // With the `tracing` feature, the response runs inside the
     // `crumbkit.finish` span, which records the exit code (ADR-0030).
@@ -418,7 +420,7 @@ pub fn finish_to<T: Rows, E: AsFailure, O: Write, W: Write>(
     #[cfg(feature = "tracing")]
     crate::trace::spans::exited(&span, code);
     #[cfg(feature = "usage-log")]
-    crate::usage::finished(code, sink.out.bytes(), truncated || cut);
+    crate::usage::finished(code, sink.out.bytes(), truncated || cut, empty);
     #[cfg(not(feature = "usage-log"))]
     let _ = cut;
     code

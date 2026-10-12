@@ -28,6 +28,10 @@
       "description": "The command path below the tool's name, such as books show.",
       "$ref": "#/$defs/Name"
     },
+    "empty": {
+      "description": "Whether a listing or a stream had no rows, so its output printed the\nempty note (ADR-0050). It is present only when one had none.",
+      "type": "boolean"
+    },
     "exit": {
       "description": "The exit code that `parse` or `finish` returned, or that the tool\nreported with `usage::ended`.",
       "type": "integer",

@@ -280,6 +280,8 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit: `Page<N, MOST>` refuses a `--limit` above `MOST` with a
   recovery that runs `--all`, and the help and the footer name the bound
   ([ADR-0050]).
+- crumbkit: with the `usage-log` feature, the line of a run whose listing
+  or stream had no rows holds `"empty": true` ([ADR-0029]).
 ### Changed
 
 - crumbkit: with the `usage-log` feature, a run whose `COMPLETE` variable

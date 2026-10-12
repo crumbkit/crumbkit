@@ -133,6 +133,10 @@ pub(super) struct Run {
     /// when one did.
     #[serde(default, skip_serializing_if = "is_false")]
     pub(super) truncated: bool,
+    /// Whether a listing or a stream had no rows, so its output printed the
+    /// empty note (ADR-0050). It is present only when one had none.
+    #[serde(default, skip_serializing_if = "is_false")]
+    pub(super) empty: bool,
     /// The tool's own section, when the tool sets one.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     #[schemars(with = "Section")]

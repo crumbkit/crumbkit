@@ -11,6 +11,7 @@ These decisions cover what a listing prints when it has no rows, and the upper b
 - With `--json`, a listing's document is unchanged: `data` is `[]` and `total` is 0. A listing printed without the envelope prints `[]`.
 - A stream that ends with `Ok`, printed no rows and no failure, and still has an open pipe prints the note after its header. Its default wording is `no rows`, and `Document::when_empty` sets its own. With `--json`, standard output stays empty and the note goes to standard error, because a JSON Lines reader expects no line for it ([`Streaming::end`](../../../../../crates/crumbkit/src/output/stream.rs)).
 - A list of rows, such as a `Vec`, prints no note, because it has no total and no description to word one from.
+- The usage log marks a run whose listing or stream printed the note with `"empty": true` (ADR-0029).
 
 ## An upper bound on `--limit`
 

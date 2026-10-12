@@ -366,7 +366,8 @@ impl<R: Row, O: Write, W: Write> Streaming<'_, R, O, W> {
         if let Err(error) = &result {
             self.report(error.as_failure());
         }
-        if !self.failed && self.items == 0 && self.state == State::Open {
+        let empty = !self.failed && self.items == 0 && self.state == State::Open;
+        if empty {
             self.note_empty();
         }
         if self.dry_run && self.state == State::Open {
@@ -385,7 +386,7 @@ impl<R: Row, O: Write, W: Write> Streaming<'_, R, O, W> {
         } else {
             ExitCode::SUCCESS
         };
-        self.record(code);
+        self.record(code, empty);
         code
     }
 
@@ -491,7 +492,7 @@ impl<R: Row, O: Write, W: Write> Streaming<'_, R, O, W> {
             self.command.as_deref_mut(),
         );
         let _ = self.send();
-        self.record(code);
+        self.record(code, false);
         code
     }
 
@@ -527,7 +528,8 @@ impl<R: Row, O: Write, W: Write> Streaming<'_, R, O, W> {
         ControlFlow::Break(())
     }
 
-    /// Records `code` on the span and in the usage log.
+    /// Records `code` on the span, and records `code` and whether the stream
+    /// was `empty` in the usage log.
     #[cfg_attr(
         not(any(feature = "tracing", feature = "usage-log")),
         expect(
@@ -535,7 +537,7 @@ impl<R: Row, O: Write, W: Write> Streaming<'_, R, O, W> {
             reason = "only the tracing and usage-log features record the exit code"
         )
     )]
-    fn record(&self, code: ExitCode) {
+    fn record(&self, code: ExitCode, empty: bool) {
         #[cfg(feature = "tracing")]
         crate::trace::spans::exited(&self.span, code);
         #[cfg(feature = "usage-log")]
@@ -543,7 +545,8 @@ impl<R: Row, O: Write, W: Write> Streaming<'_, R, O, W> {
             code,
             u64::try_from(self.sent).unwrap_or(u64::MAX),
             self.state == State::Spent,
+            empty,
         );
-        let _ = code;
+        let _ = (code, empty);
     }
 }
