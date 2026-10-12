@@ -20,7 +20,10 @@ use crate::temp::TempDir;
 use crate::testing::panic_message;
 
 mod forms;
+mod inputs;
 mod layout;
+mod opt_out;
+mod redact;
 mod stderr;
 
 /// The binary that runs every example.
@@ -233,7 +236,7 @@ fn an_opt_out_that_names_no_command_fails_the_check() {
 #[test]
 fn each_run_has_a_cleared_environment_with_the_tool_s_variables_and_fresh_xdg_directories() {
     const ENVIRONMENT: Guide = Guide::new().leaves(&[Leaf::new(&["-c"]).examples(&[Example::new(
-        &[r#"echo "[$HOME] [$SHELF_DATA]"; for dir in "$XDG_CONFIG_HOME" "$XDG_DATA_HOME" "$XDG_STATE_HOME" "$XDG_CACHE_HOME"; do test -d "$dir" && echo "$dir"; done"#],
+        &[r#"echo "[$HOME] [$SHELF_DATA]"; for dir in "$XDG_CONFIG_HOME" "$XDG_DATA_HOME" "$XDG_STATE_HOME" "$XDG_CACHE_HOME"; do test -d "$dir" && echo "${dir#/}"; done"#],
         "Print the environment",
     )])]);
     let dir = TempDir::new("examples-environment").unwrap();
@@ -241,13 +244,15 @@ fn each_run_has_a_cleared_environment_with_the_tool_s_variables_and_fresh_xdg_di
 
     run(&ENVIRONMENT, &examples, Action::Overwrite);
 
+    // The example drops the leading `/` of each XDG path, so the check's
+    // redaction of the full path leaves the line as it is.
     let names = dir.names();
     let output = fs::read_to_string(dir.path().join(&names[0])).unwrap();
     let lines: Vec<&str> = output.lines().collect();
     assert_eq!(lines.len(), 5, "{output}");
     assert_eq!(lines[0], "[] [tests/fixtures/books.json]");
     for (line, name) in lines[1..].iter().zip(["config", "data", "state", "cache"]) {
-        let path = Path::new(line);
+        let path = Path::new("/").join(line);
         assert!(path.ends_with(name), "{output}");
         assert!(!path.exists(), "the check removes {line} after the run");
     }

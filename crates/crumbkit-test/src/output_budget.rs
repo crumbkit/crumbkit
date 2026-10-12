@@ -2,13 +2,14 @@
 //! guide again with half the bytes it printed, and checks that the tool
 //! keeps crumbkit's contract for a result that does not fit (ADR-0046).
 
+use std::path::Path;
 use std::time::Duration;
 
 use clap::Command;
 use crumbkit::help::Guide;
 
 use crate::allow::{Allowances, Rule};
-use crate::examples::Examples;
+use crate::examples::{Examples, example_golden_name, missing_dir, read_stdin};
 use crate::guide::command_line;
 use crate::runs::{self, Place, TIMEOUT, Xdg};
 use crate::tree;
@@ -40,8 +41,13 @@ const VARIABLE: &str = "CRUMBKIT_OUTPUT_BUDGET";
 ///   `budget` set to the budget, or, for a document without the envelope,
 ///   standard error names the budget.
 ///
-/// It skips the examples that `examples` skips through
-/// [`Rule::Examples`](crate::Rule::Examples).
+/// Each run starts in the directory of
+/// [`Examples::current_dir`](crate::Examples::current_dir) and reads the
+/// example's `.stdin` file, as in `check_examples`. The check fails without
+/// running any example when that directory does not exist. It skips the
+/// examples that `examples` skips through
+/// [`Rule::Examples`](crate::Rule::Examples) and
+/// [`Allow::example`](crate::Allow::example).
 ///
 /// ```no_run
 /// use clap::Command;
@@ -84,6 +90,10 @@ fn check(
 ) -> Vec<String> {
     let tool = command.get_name();
     let mut problems = Vec::new();
+    if let Some(problem) = missing_dir(examples) {
+        problems.push(problem);
+        return problems;
+    }
     let mut allowances = Allowances::new(examples.opt_outs(), &[Rule::Examples]);
     let visits = tree::walk(command);
     for leaf in guide.get_leaves() {
@@ -104,7 +114,22 @@ fn check(
                 .collect::<Vec<_>>()
                 .join(" ");
             let line = command_line(&text, example.words());
-            let whole = match run(examples, examples.variables(), &args, timeout) {
+            if allowances.excuses_example(&below, example.words()) {
+                continue;
+            }
+            let dir = Path::new(examples.goldens());
+            let stdin = match read_stdin(dir, &example_golden_name(&line)) {
+                Ok(stdin) => stdin,
+                Err(problem) => {
+                    problems.push(format!("{line}: {problem}"));
+                    continue;
+                }
+            };
+            let place = Place {
+                dir: examples.working_dir(),
+                stdin: stdin.as_deref(),
+            };
+            let whole = match run(examples, examples.variables(), &args, place, timeout) {
                 Ok(output) if output.status.success() => output.stdout.len(),
                 Ok(_) => continue,
                 Err(problem) => {
@@ -119,7 +144,7 @@ fn check(
             let value = budget.to_string();
             let mut env = examples.variables().to_vec();
             env.push((VARIABLE, &value));
-            match run(examples, &env, &args, timeout) {
+            match run(examples, &env, &args, place, timeout) {
                 Ok(output) => {
                     let ran = Ran {
                         code: output.status.code(),
@@ -137,23 +162,17 @@ fn check(
     problems
 }
 
-/// Runs the binary of `examples` once with `env` and `args` in fresh XDG
-/// directories.
+/// Runs the binary of `examples` once with `env` and `args` at `place` in
+/// fresh XDG directories.
 fn run(
     examples: &Examples<'_>,
     env: &[(&str, &str)],
     args: &[&str],
+    place: Place<'_>,
     timeout: Duration,
 ) -> Result<std::process::Output, String> {
     let xdg = Xdg::new("output-budget")?;
-    runs::run(
-        examples.binary(),
-        env,
-        &xdg,
-        args,
-        Place::default(),
-        timeout,
-    )
+    runs::run(examples.binary(), env, &xdg, args, place, timeout)
 }
 
 /// What one run with a lowered budget printed and how it ended.

@@ -84,3 +84,25 @@ fn a_check_ignores_the_opt_outs_of_rules_it_does_not_own() {
     assert!(!allowances.excuses(Rule::ListPages, "nothing here"));
     assert_eq!(finish(allowances), Vec::<String>::new());
 }
+
+#[test]
+fn an_example_opt_out_excuses_only_its_example_and_never_the_whole_command() {
+    const ALLOW: &[Allow] = &[Allow::example("books list", &["--all"], "Too long.")];
+    let mut allowances = Allowances::new(ALLOW, &[Rule::Examples]);
+
+    assert!(!allowances.excuses(Rule::Examples, "books list"));
+    assert!(!allowances.excuses_example("books list", &["--limit", "2"]));
+    assert!(!allowances.excuses_example("books", &["--all"]));
+    assert!(allowances.excuses_example("books list", &["--all"]));
+    assert_eq!(finish(allowances), Vec::<String>::new());
+}
+
+#[test]
+fn an_example_opt_out_that_names_no_command_is_a_problem_naming_its_command_line() {
+    const ALLOW: &[Allow] = &[Allow::example("books find", &["Jane Austen"], "Too long.")];
+
+    assert_eq!(
+        finish(Allowances::new(ALLOW, &[Rule::Examples])),
+        ["the opt-out from `examples/run` for `shelf books find 'Jane Austen'` names no command"]
+    );
+}

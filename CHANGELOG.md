@@ -309,6 +309,18 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   and more match.` ([ADR-0050]).
 - crumbkit: `Page::fetch_limit` gives the number of rows to fetch for
   [`Page::uncounted`], one past the limit.
+- crumbkit-test: `Examples::current_dir` sets the directory that each
+  example run starts in, for [`check_examples`], [`check_output_budget`],
+  [`check_twin`] and [`check_recoveries`] ([ADR-0005]).
+- crumbkit-test: [`check_examples`] gives an example the bytes of its
+  `.stdin` file, such as `shelf-books-import.stdin`, on standard input, and
+  fails on a `.stdin` file that names no example ([ADR-0005]).
+- crumbkit-test: `Examples::redact` replaces each named value with its
+  placeholder before [`check_examples`] compares an output, and the check
+  replaces its own XDG paths with `[XDG_CONFIG_HOME]` and the like
+  ([ADR-0005]).
+- crumbkit-test: `Allow::example` opts one example out of
+  [`check_examples`] and [`check_output_budget`] by its words ([ADR-0036]).
 ### Changed
 
 - crumbkit: the help text of `--json` reads `Print the result as a JSON
@@ -548,7 +560,7 @@ rustdoc, or at its decision record. -->
 [`check_help_sizes`]: crates/crumbkit-test/src/sizes.rs
 [`check_help_goldens`]: crates/crumbkit-test/src/goldens.rs
 [`check_examples`]: crates/crumbkit-test/src/examples.rs
-[`Examples`]: crates/crumbkit-test/src/examples.rs
+[`Examples`]: crates/crumbkit-test/src/examples/settings.rs
 [crumbkit-aliases]: crates/crumbkit-aliases/README.md
 [crumbkit-core]: crates/crumbkit-core/README.md
 [`RenderCall`]: crates/crumbkit/src/call.rs

@@ -9,139 +9,27 @@ use std::time::{Duration, Instant};
 use clap::Command;
 use crumbkit::form::{FailureForm, ReadFailure};
 use crumbkit::help::Guide;
-use snapbox::Assert;
 use snapbox::assert::{Action, DEFAULT_ACTION_ENV};
+use snapbox::{Assert, Redactions};
 
-use crate::allow::{Allow, Allowances, Rule};
+use crate::allow::{Allowances, Rule};
 use crate::goldens::{compare, remove_stale};
 use crate::guide::command_line;
 use crate::runs::{self, Place, TIMEOUT, Xdg};
 use crate::tree;
 
+pub(crate) use self::inputs::read_stdin;
+pub use self::settings::Examples;
+pub(crate) use self::settings::missing_dir;
+
+mod inputs;
+mod lines;
+mod settings;
 // The tests run `/bin/sh`, which Windows lacks. The two attributes stay
 // apart, because clippy reads only a plain `cfg(test)` as test code.
-mod lines;
 #[cfg(unix)]
 #[cfg(test)]
 mod tests;
-
-/// The settings of [`check_examples`]: the tool's built binary, the
-/// directory of the golden files, the environment of each run, the tool's
-/// opt-outs and its failure form.
-///
-/// A tool declares them as a constant in an integration test of the
-/// binary's own package, because cargo sets `CARGO_BIN_EXE_<name>`, the
-/// path of the built binary, only for that package's integration tests and
-/// benchmarks. An integration test can import only from a library, so the
-/// package needs a library target that exports the clap command and the
-/// guide, and the binary calls that library:
-///
-/// ```
-/// use crumbkit_test::{Allow, Examples, Rule};
-///
-/// const ALLOW: &[Allow] = &[Allow::new(Rule::Examples, "books delete", "Each run deletes a book.")];
-///
-/// // In an integration test, the binary is `env!("CARGO_BIN_EXE_shelf")`.
-/// const EXAMPLES: Examples<'_> = Examples::new("/path/to/shelf", "tests/golden/examples")
-///     .env(&[("SHELF_DATA", "tests/fixtures/books.json")])
-///     .allow(ALLOW);
-/// ```
-///
-/// cargo runs those tests, and therefore the binary, from the package's
-/// manifest directory, so a relative path in `dir` or in an `.env` value
-/// resolves from there.
-///
-/// `Examples` borrows its paths, variables and opt-outs for `'a`. A
-/// constant borrows them for `'static`, and a test that builds a path at
-/// runtime, such as a temporary golden directory, borrows the `String` that
-/// holds it.
-#[derive(Clone, Copy, Debug)]
-pub struct Examples<'a> {
-    /// The path of the tool's built binary.
-    binary: &'a str,
-    /// The directory of the golden files, which holds only example golden
-    /// files.
-    dir: &'a str,
-    /// The environment variables that each run sets, as name and value.
-    env: &'a [(&'a str, &'a str)],
-    /// The tool's opt-outs, of which the check reads those from
-    /// [`Rule::Examples`].
-    allow: &'a [Allow],
-    /// The failure form that the tool's guide sets, which reads back the
-    /// failure of a run.
-    failure_form: Option<&'a dyn FailureForm>,
-}
-
-impl<'a> Examples<'a> {
-    /// Returns the settings that run the binary at `binary` and keep the
-    /// golden files in `dir`, with no environment variables of the tool's
-    /// own and no opt-out.
-    ///
-    /// `dir` holds only example golden files, because the check counts every
-    /// `.txt` and `.stderr` file in it that no checked example produces as
-    /// stale.
-    #[must_use]
-    pub const fn new(binary: &'a str, dir: &'a str) -> Self {
-        Self {
-            binary,
-            dir,
-            env: &[],
-            allow: &[],
-            failure_form: None,
-        }
-    }
-
-    /// Sets the environment variables that each run sets, each a name and a
-    /// value, such as `("SHELF_DATA", "tests/fixtures/books.json")`, so a
-    /// tool can point its binary at fixture data or a fake server. The XDG
-    /// directories that the check sets win over a variable of the same name.
-    #[must_use]
-    pub const fn env(mut self, env: &'a [(&'a str, &'a str)]) -> Self {
-        self.env = env;
-        self
-    }
-
-    /// Sets the tool's opt-outs. The check skips the examples of each
-    /// command that an opt-out from [`Rule::Examples`] names and of every
-    /// command below it, and reads no opt-out of another rule, so a tool
-    /// passes the same opt-outs that it passes to every other check.
-    #[must_use]
-    pub const fn allow(mut self, allow: &'a [Allow]) -> Self {
-        self.allow = allow;
-        self
-    }
-
-    /// Sets the failure form that the tool's guide sets with
-    /// `Guide::failure_form`, so [`check_twin`](crate::check_twin) reads a
-    /// refused run's code through
-    /// [`FailureForm::read`](crumbkit::form::FailureForm::read).
-    /// [`check_examples`] fails when this form and the guide's form differ.
-    #[must_use]
-    pub const fn failure_form(mut self, form: &'a dyn FailureForm) -> Self {
-        self.failure_form = Some(form);
-        self
-    }
-
-    /// Returns the path of the tool's built binary.
-    pub(crate) const fn binary(&self) -> &'a str {
-        self.binary
-    }
-
-    /// Returns the environment variables that each run sets.
-    pub(crate) const fn variables(&self) -> &'a [(&'a str, &'a str)] {
-        self.env
-    }
-
-    /// Returns the tool's opt-outs.
-    pub(crate) const fn opt_outs(&self) -> &'a [Allow] {
-        self.allow
-    }
-
-    /// Returns the tool's failure form, or `None`.
-    pub(crate) const fn form(&self) -> Option<&'a dyn FailureForm> {
-        self.failure_form
-    }
-}
 
 /// Runs every example in the leaves of `guide` against the binary that
 /// `examples` names and checks that each run succeeds and prints the
@@ -156,8 +44,9 @@ impl<'a> Examples<'a> {
 /// order. It runs the binary once for each example, one run at a time, with
 /// the leaf's path and the example's words as separate arguments and no
 /// shell. It skips a leaf whose path names no command, which
-/// [`check_guide`](crate::check_guide) reports, and the leaves of each
-/// command that an opt-out of `examples` covers. It runs
+/// [`check_guide`](crate::check_guide) reports, the leaves of each
+/// command that an opt-out of `examples` covers, and each example that an
+/// [`Allow::example`](crate::Allow::example) names. It runs
 /// the examples of a hidden command, because that command's own help lists
 /// them as runs that work.
 ///
@@ -170,6 +59,17 @@ impl<'a> Examples<'a> {
 /// them passes them through [`Examples::env`], such as
 /// `("PATH", "/usr/bin:/bin")` or `("HOME", "tests/fixtures/home")`.
 ///
+/// Each run starts in the directory of [`Examples::current_dir`], or in the
+/// test's directory without it. The check fails without running any
+/// example when that directory does not exist. Each run reads the bytes of
+/// the example's input file on standard input, a file in the golden
+/// directory named with `.stdin` in place of `.txt`, such as
+/// `shelf-books-import.stdin`. A run without that file reads an empty
+/// standard input. The check writes the whole input before the 10-second
+/// limit starts, so an input file holds at most 64 KiB: a tool that does
+/// not read a larger input blocks the check, because the operating
+/// system's pipe holds about 64 KiB.
+///
 /// The golden file of an example holds the run's standard output, and
 /// [`example_golden_name`] names it after the example's command line, such
 /// as `shelf-books-list.txt`, `shelf-books-list-all.txt` and
@@ -179,8 +79,12 @@ impl<'a> Examples<'a> {
 /// `shelf-books-list.stderr`. A run that writes nothing there has no such
 /// file (ADR-0005).
 ///
-/// The check compares each output with snapbox, as other golden files are
-/// compared (ADR-0004). With the environment variable `SNAPSHOTS=overwrite`,
+/// The check compares each output and standard error with its golden file
+/// byte for byte through snapbox (ADR-0004), after it replaces each value of
+/// [`Examples::redact`] and the path of each of the run's XDG directories,
+/// such as the directory of `XDG_CONFIG_HOME`, with its placeholder, such
+/// as `[XDG_CONFIG_HOME]`. snapbox's wildcards, such as `[..]`, are plain
+/// text in an example golden file. With the environment variable `SNAPSHOTS=overwrite`,
 /// it writes each missing file, rewrites each file whose content differs
 /// and deletes each stale file. It finds:
 ///
@@ -215,7 +119,15 @@ impl<'a> Examples<'a> {
 /// - two examples whose golden files have one name, naming both command
 ///   lines;
 /// - an opt-out from [`Rule::Examples`] that names no command or skips no
-///   example;
+///   example, and an [`Allow::example`](crate::Allow::example) that names no
+///   example that the check runs;
+/// - a directory of [`Examples::current_dir`] that does not exist;
+/// - a placeholder of [`Examples::redact`] that is not `[` and `]` around
+///   capital letters and underscores, and an empty value;
+/// - an input file that cannot be read, and an input file that names no
+///   example of the guide, which the check never deletes, even with
+///   `SNAPSHOTS=overwrite`, because only its author can write it again. An
+///   example that an opt-out skips keeps its input file;
 ///
 /// and, without `SNAPSHOTS=overwrite`:
 ///
@@ -276,7 +188,7 @@ fn check(
     timeout: Duration,
 ) {
     let overwrite = assert.selected_action() == Action::Overwrite;
-    let dir = Path::new(examples.dir);
+    let dir = Path::new(examples.goldens());
     let tool = command.get_name();
     let layout = guide.get_json_layout().map(|(layout, _)| layout);
     let mut problems = Vec::new();
@@ -284,10 +196,16 @@ fn check(
     // heading of their own, because the tool's binary breaks them and the
     // command tree and golden files do not.
     let mut failures = Vec::new();
-    let mut allowances = Allowances::new(examples.allow, &[Rule::Examples]);
+    let mut allowances = Allowances::new(examples.opt_outs(), &[Rule::Examples]);
     let visits = tree::walk(command);
     let form = guide.get_failure_form();
-    check_form(form, examples.failure_form, &mut problems);
+    check_form(form, examples.form(), &mut problems);
+    if let Some(problem) = missing_dir(examples) {
+        problems.push(problem);
+        report(&problems, &failures);
+        return;
+    }
+    let redactions = inputs::redactions(examples.redactions(), &mut problems);
     // Each golden file name with the command line of the example that has
     // it.
     let mut names: Vec<(String, String)> = Vec::new();
@@ -309,6 +227,9 @@ fn check(
                 .collect::<Vec<_>>()
                 .join(" ");
             let line = command_line(&text, example.words());
+            if allowances.excuses_example(&below, example.words()) {
+                continue;
+            }
             let name = example_golden_name(&line);
             if let Some((_, other)) = names.iter().find(|(known, _)| *known == name) {
                 problems.push(format!(
@@ -317,8 +238,16 @@ fn check(
                 continue;
             }
             names.push((name.clone(), line.clone()));
-            let output = match run_example(examples, &args, timeout) {
-                Ok(output) => output,
+            let stdin = match read_stdin(dir, &name) {
+                Ok(stdin) => stdin,
+                Err(problem) => {
+                    problems.push(format!("{line}: {problem}"));
+                    continue;
+                }
+            };
+            let run = run_example(examples, &args, stdin.as_deref(), &redactions, timeout);
+            let (output, redactions) = match run {
+                Ok(run) => run,
                 Err(problem) => {
                     failures.push(format!("{line}: {problem}"));
                     continue;
@@ -343,29 +272,13 @@ fn check(
             if example.words().contains(&"--json") {
                 lines::check_lines(leaf, layout, &line, &stdout, &mut failures);
             }
-            if !stderr.is_empty() {
-                let stderr_name = stderr_golden_name(&name);
-                compare(
-                    assert,
-                    &line,
-                    "standard error",
-                    stderr,
-                    &dir.join(&stderr_name),
-                    &mut problems,
-                );
-                stderr_names.push(stderr_name);
-            }
-            compare(
-                assert,
-                &line,
-                "output",
-                stdout,
-                &dir.join(&name),
-                &mut problems,
-            );
+            let outputs = [redactions.redact(&stdout), redactions.redact(&stderr)];
+            let stderr_name = compare_run(assert, dir, &line, &name, outputs, &mut problems);
+            stderr_names.extend(stderr_name);
         }
     }
     let names: Vec<String> = names.into_iter().map(|(name, _)| name).collect();
+    inputs::stale_stdin(tool, guide, dir, &mut problems);
     remove_stale(
         dir,
         &names,
@@ -386,32 +299,61 @@ fn check(
     report(&problems, &failures);
 }
 
-/// Runs the example `args` of `examples.binary` in fresh XDG directories and
-/// returns its output, or a problem when the run cannot start or does not
-/// end within `timeout`.
+/// Compares the redacted standard output and standard error in `outputs`
+/// of the example `line` with the golden files `name` and its `.stderr`
+/// file in `dir`, and returns the name of the `.stderr` file when the run
+/// wrote to standard error.
+fn compare_run(
+    assert: &Assert,
+    dir: &Path,
+    line: &str,
+    name: &str,
+    outputs: [String; 2],
+    problems: &mut Vec<String>,
+) -> Option<String> {
+    let [stdout, stderr] = outputs;
+    let stderr_name = (!stderr.is_empty()).then(|| stderr_golden_name(name));
+    if let Some(stderr_name) = &stderr_name {
+        let path = dir.join(stderr_name);
+        compare(assert, line, "standard error", stderr, &path, problems);
+    }
+    compare(assert, line, "output", stdout, &dir.join(name), problems);
+    stderr_name
+}
+
+/// Runs the example `args` of `examples.binary` in fresh XDG directories,
+/// in the working directory of `examples` and with `stdin` on standard
+/// input, and returns its output with `redactions` and the run's XDG
+/// directories, or a problem when the run cannot start or does not end
+/// within `timeout`.
 fn run_example(
     examples: &Examples<'_>,
     args: &[&str],
+    stdin: Option<&[u8]>,
+    redactions: &Redactions,
     timeout: Duration,
-) -> Result<Output, String> {
+) -> Result<(Output, Redactions), String> {
     let started = Instant::now();
-    let output = Xdg::new("example").and_then(|xdg| {
-        runs::run(
-            examples.binary,
-            examples.env,
-            &xdg,
-            args,
-            Place::default(),
-            timeout,
-        )
-    })?;
+    let xdg = Xdg::new("example")?;
+    let place = Place {
+        dir: examples.working_dir(),
+        stdin,
+    };
+    let output = runs::run(
+        examples.binary(),
+        examples.variables(),
+        &xdg,
+        args,
+        place,
+        timeout,
+    )?;
     if !output.status.success() && started.elapsed() >= timeout {
         return Err(format!(
             "the run did not end within {} seconds, so the check stopped it, and an example must end on its own",
             timeout.as_secs_f64()
         ));
     }
-    Ok(output)
+    Ok((output, inputs::with_xdg(redactions, &xdg)))
 }
 
 /// Returns the problem of the example `line`, whose run exited with a code

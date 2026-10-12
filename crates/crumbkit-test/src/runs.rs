@@ -12,12 +12,13 @@ use snapbox::cmd;
 use crate::temp::TempDir;
 
 /// The XDG base directory variables that each run sets, with the name of the
-/// fresh directory that each one points at.
-const XDG: [(&str, &str); 4] = [
-    ("XDG_CONFIG_HOME", "config"),
-    ("XDG_DATA_HOME", "data"),
-    ("XDG_STATE_HOME", "state"),
-    ("XDG_CACHE_HOME", "cache"),
+/// fresh directory that each one points at and the placeholder that the
+/// example check writes in place of its path.
+const XDG: [(&str, &str, &str); 4] = [
+    ("XDG_CONFIG_HOME", "config", "[XDG_CONFIG_HOME]"),
+    ("XDG_DATA_HOME", "data", "[XDG_DATA_HOME]"),
+    ("XDG_STATE_HOME", "state", "[XDG_STATE_HOME]"),
+    ("XDG_CACHE_HOME", "cache", "[XDG_CACHE_HOME]"),
 ];
 
 /// How long a check lets one run take before it stops the run.
@@ -29,8 +30,9 @@ pub(crate) const TIMEOUT: Duration = Duration::from_secs(10);
 pub(crate) struct Xdg {
     /// The directory that holds the four XDG directories.
     _dir: TempDir,
-    /// Each XDG variable with the path of its directory.
-    paths: Vec<(&'static str, PathBuf)>,
+    /// Each XDG variable with the path of its directory and its
+    /// placeholder.
+    paths: Vec<(&'static str, PathBuf, &'static str)>,
 }
 
 impl Xdg {
@@ -41,10 +43,22 @@ impl Xdg {
         let problem = |error| format!("the run's XDG directories cannot be created: {error}");
         let dir = TempDir::new(label).map_err(problem)?;
         let mut paths = Vec::with_capacity(XDG.len());
-        for (variable, name) in XDG {
-            paths.push((variable, dir.create_dir(name).map_err(problem)?));
+        for (variable, name, placeholder) in XDG {
+            paths.push((
+                variable,
+                dir.create_dir(name).map_err(problem)?,
+                placeholder,
+            ));
         }
         Ok(Self { _dir: dir, paths })
+    }
+
+    /// Returns each directory's placeholder, such as `[XDG_CONFIG_HOME]`,
+    /// with its path.
+    pub(crate) fn placeholders(&self) -> impl Iterator<Item = (&'static str, &PathBuf)> {
+        self.paths
+            .iter()
+            .map(|(_, path, placeholder)| (*placeholder, path))
     }
 }
 
@@ -55,8 +69,8 @@ impl Xdg {
 pub(crate) struct Place<'a> {
     /// The working directory, relative to the test's directory or absolute.
     pub(crate) dir: Option<&'a str>,
-    /// The text on standard input.
-    pub(crate) stdin: Option<&'a str>,
+    /// The bytes on standard input.
+    pub(crate) stdin: Option<&'a [u8]>,
 }
 
 /// Runs `binary` once with `args`, a cleared environment, the variables of
@@ -83,14 +97,14 @@ pub(crate) fn run(
     for &(name, value) in env {
         command = command.env(name, value);
     }
-    for (variable, path) in &xdg.paths {
+    for (variable, path, _) in &xdg.paths {
         command = command.env(variable, path);
     }
     if let Some(dir) = place.dir {
         command = command.current_dir(dir);
     }
     if let Some(stdin) = place.stdin {
-        command = command.stdin(stdin.to_owned());
+        command = command.stdin(stdin.to_vec());
     }
     command
         .output()

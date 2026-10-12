@@ -301,3 +301,25 @@ fn the_report_lists_the_json_layout_that_the_guide_sets_with_its_cost() {
     let json = read(&dir, "opt-outs.json");
     assert!(json.contains("\"rule\": \"json-layout/pretty\""), "{json}");
 }
+
+#[test]
+fn the_report_names_an_example_opt_out_by_its_command_line_with_its_own_costs() {
+    const EXAMPLE: &[Allow] = &[Allow::example(
+        "books show",
+        &["2", "Jane Austen"],
+        "The output names the day.",
+    )];
+    let dir = TempDir::new("opt-outs-example").unwrap();
+
+    run(EXAMPLE, &dir, Action::Overwrite);
+
+    assert_eq!(
+        read(&dir, "opt-outs.txt"),
+        "shelf has 1 opt-out from crumbkit's conventions.\n\
+         \n\
+         examples/run: shelf books show 2 'Jane Austen'\n\
+         \x20 Reason: The output names the day.\n\
+         \x20 Cost: The example is not run, so help can show an example that fails.\n\
+         \x20 Cost: The example's output is not counted, so the command's output weight is too low when this example prints the most.\n"
+    );
+}

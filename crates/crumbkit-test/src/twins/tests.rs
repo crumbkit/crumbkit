@@ -191,3 +191,23 @@ fn a_refused_line_whose_code_the_check_cannot_read_fails_the_check_naming_failur
         "the refused line `tool books list --limit -1` must fail with crumbkit::cli::usage, and it ends with exit status: 2 and prints no code that the check can read. A tool that prints failures in a form of its own implements FailureForm::read and passes the form to Examples::failure_form"
     );
 }
+
+#[test]
+fn a_failing_line_without_a_dir_runs_in_the_current_dir_of_examples() {
+    let (dir, path) = tool("twins-current-dir");
+    dir.write_script(
+        "picky",
+        "#!/bin/sh\ntest -f marker || exit 3\nexec \"$(dirname \"$0\")/tool\" \"$@\"\n",
+    );
+    let work = TempDir::new("twins-current-dir-work").unwrap();
+    work.write("marker", "");
+    let picky = path.replace("/tool", "/picky");
+    let work_path = work.path().display().to_string();
+
+    check_twin(
+        &Examples::new(&picky, "").current_dir(&work_path),
+        Spelling::COLONS,
+        &Failing::new(&USAGE, &["books", "list", "--limit", "0"]),
+        &["books", "list", "--limit", "1"],
+    );
+}

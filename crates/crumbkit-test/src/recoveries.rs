@@ -49,8 +49,9 @@ pub struct Failing<'a> {
 
 impl<'a> Failing<'a> {
     /// Returns the command line of `words`, the words after the tool's name,
-    /// which fails with `code`. Its runs start in the test's directory and
-    /// read an empty standard input.
+    /// which fails with `code`. Its runs start in the directory of
+    /// [`Examples::current_dir`], or in the test's directory, and read an
+    /// empty standard input.
     #[must_use]
     pub const fn new(code: &'a Code, words: &'a [&'a str]) -> Self {
         Self {
@@ -62,7 +63,9 @@ impl<'a> Failing<'a> {
     }
 
     /// Sets the working directory of the command line and of every step of
-    /// its chain, relative to the test's directory or absolute.
+    /// its chain, relative to the test's directory or absolute. Without it,
+    /// the runs start in the directory of [`Examples::current_dir`], or in
+    /// the test's directory when that is not set.
     #[must_use]
     pub const fn dir(mut self, dir: &'a str) -> Self {
         self.dir = Some(dir);
@@ -87,11 +90,17 @@ impl<'a> Failing<'a> {
         self.words
     }
 
-    /// Returns the working directory and standard input of its runs.
-    pub(crate) const fn place(&self) -> Place<'a> {
+    /// Returns the working directory and standard input of its runs. A
+    /// command line without a directory of its own runs in `dir`, the
+    /// directory of [`Examples::current_dir`], or in the test's directory
+    /// when that is `None` too.
+    pub(crate) fn place<'p>(&self, dir: Option<&'p str>) -> Place<'p>
+    where
+        'a: 'p,
+    {
         Place {
-            dir: self.dir,
-            stdin: self.stdin,
+            dir: self.dir.or(dir),
+            stdin: self.stdin.map(str::as_bytes),
         }
     }
 }

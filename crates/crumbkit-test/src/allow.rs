@@ -39,6 +39,10 @@ pub struct Allow {
     /// names joined by single spaces, such as `books list`. An empty path
     /// names the command passed to the check.
     path: &'static str,
+    /// The words of the one example that the opt-out covers, after the
+    /// command's path, or `None` for an opt-out that covers every command
+    /// below `path`.
+    words: Option<&'static [&'static str]>,
     /// Why the tool skips the rule, in one line.
     reason: &'static str,
 }
@@ -65,7 +69,52 @@ impl Allow {
     #[must_use]
     pub const fn new(rule: Rule, path: &'static str, reason: &'static str) -> Self {
         assert!(is_reason(reason), "a reason is one non-empty line");
-        Self { rule, path, reason }
+        Self {
+            rule,
+            path,
+            words: None,
+            reason,
+        }
+    }
+
+    /// Returns the opt-out from [`Rule::Examples`] for the one example of
+    /// the leaf at `path` whose words are `words`, for `reason`, so the
+    /// other examples of the leaf still run.
+    ///
+    /// `path` is the leaf's path below the command passed to the check,
+    /// such as `"books list"`, and `words` are the example's words after
+    /// it, exactly as the guide's `Example::new` declares them, such as
+    /// `&["--author", "Jane Austen"]`. [`check_opt_outs`] names the opt-out
+    /// by the example's command line, such as
+    /// `shelf books list --author 'Jane Austen'`. The example check fails on
+    /// an example opt-out whose path names no command or whose words name
+    /// no example that it runs.
+    ///
+    /// ```
+    /// use crumbkit_test::Allow;
+    ///
+    /// const ALLOW: &[Allow] = &[Allow::example("self usage", &["--days", "7"], "The output names the day.")];
+    /// ```
+    ///
+    /// # Panics
+    ///
+    /// Panics unless `reason` is non-empty and holds no line break, as
+    /// [`Allow::new`] does.
+    ///
+    /// [`check_opt_outs`]: crate::check_opt_outs
+    #[must_use]
+    pub const fn example(
+        path: &'static str,
+        words: &'static [&'static str],
+        reason: &'static str,
+    ) -> Self {
+        assert!(is_reason(reason), "a reason is one non-empty line");
+        Self {
+            rule: Rule::Examples,
+            path,
+            words: Some(words),
+            reason,
+        }
     }
 
     /// Returns the rule that the tool skips.
@@ -73,14 +122,33 @@ impl Allow {
         self.rule
     }
 
-    /// Returns the command's path below the command passed to the check.
-    pub(crate) const fn path(&self) -> &'static str {
-        self.path
-    }
-
     /// Returns the tool's reason.
     pub(crate) const fn reason(&self) -> &'static str {
         self.reason
+    }
+
+    /// Returns the command line that the opt-out covers below `root`, such
+    /// as `shelf books list`, or the example's command line, such as
+    /// `shelf books list --author 'Jane Austen'`.
+    pub(crate) fn line(&self, root: &Command) -> String {
+        let line = command_line(root, self.path);
+        match self.words {
+            Some(words) => crate::guide::command_line(&line, words),
+            None => line,
+        }
+    }
+
+    /// Returns what skipping the rule costs an agent, one sentence each:
+    /// the costs of the rule, or those of skipping one example.
+    pub(crate) const fn costs(&self) -> &'static [&'static str] {
+        if self.words.is_some() {
+            &[
+                "The example is not run, so help can show an example that fails.",
+                "The example's output is not counted, so the command's output weight is too low when this example prints the most.",
+            ]
+        } else {
+            self.rule.costs()
+        }
     }
 
     /// Reports whether the opt-out covers `rule` for the command at
@@ -88,10 +156,17 @@ impl Allow {
     /// command that the opt-out names or one below it.
     fn covers(&self, rule: Rule, below: &str) -> bool {
         self.rule == rule
+            && self.words.is_none()
             && (self.path.is_empty()
                 || below
                     .strip_prefix(self.path)
                     .is_some_and(|rest| rest.is_empty() || rest.starts_with(' ')))
+    }
+
+    /// Reports whether the opt-out covers the one example `words` of the
+    /// leaf at `below`.
+    fn covers_example(&self, below: &str, words: &[&str]) -> bool {
+        self.rule == Rule::Examples && self.path == below && self.words == Some(words)
     }
 }
 
@@ -162,7 +237,8 @@ pub enum Rule {
     /// several values. Its id is `filters/one-value-per-use`.
     OneValuePerUse,
     /// [`check_examples`](crate::check_examples): the check skips the
-    /// examples of a command. Its id is `examples/run`.
+    /// examples of a command, or one example that
+    /// [`Allow::example`] names. Its id is `examples/run`.
     Examples,
     /// [`check_document_ids`](crate::check_document_ids): the name of the
     /// document that a command prints is not the command's path below the
@@ -348,6 +424,19 @@ impl<'a> Allowances<'a> {
         excused
     }
 
+    /// Reports whether an example opt-out covers the example `words` of the
+    /// leaf at `below`, and records each one that does as used.
+    pub(crate) fn excuses_example(&mut self, below: &str, words: &[&str]) -> bool {
+        let mut excused = false;
+        for (allow, used) in self.allow.iter().zip(&mut self.used) {
+            if self.rules.contains(&Rule::Examples) && allow.covers_example(below, words) {
+                *used = true;
+                excused = true;
+            }
+        }
+        excused
+    }
+
     /// Adds a problem to `problems` for each opt-out of the check's rules
     /// that names no command below `root` or excused no problem.
     pub(crate) fn finish(self, root: &Command, problems: &mut Vec<String>) {
@@ -355,11 +444,15 @@ impl<'a> Allowances<'a> {
             if !self.rules.contains(&allow.rule) {
                 continue;
             }
-            let line = command_line(root, allow.path);
+            let line = allow.line(root);
             let id = allow.rule.id();
             if tree::find(root, words(allow.path)).is_none() {
                 problems.push(format!(
                     "the opt-out from `{id}` for `{line}` names no command"
+                ));
+            } else if !used && allow.words.is_some() {
+                problems.push(format!(
+                    "the opt-out from `{id}` for `{line}` names no example that the check runs, so it is stale"
                 ));
             } else if !used {
                 problems.push(format!(
