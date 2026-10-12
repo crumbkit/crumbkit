@@ -23,6 +23,10 @@ pub(super) struct Walk<'a> {
     /// The spelled codes whose recoveries the check follows: the declared
     /// codes and crumbkit's own codes.
     pub(super) known: Vec<String>,
+    /// The component of each declared code, which
+    /// [`Spelling::split`](crumbkit::Spelling::split) reads back. It is
+    /// empty for a custom spelling, which cannot be read back.
+    pub(super) components: Vec<String>,
     /// crumbkit's usage code, as the tool spells it.
     pub(super) usage: String,
     /// The opt-outs of `recoveries/follow` and `recoveries/same-code`.
@@ -190,6 +194,19 @@ impl Walk<'_> {
                 Some(Outcome::Fails(code, next)) => {
                     self.provoked.push(code.clone());
                     if !self.known.contains(&code) {
+                        if let Some((component, _, _)) = self.recoveries.spelling.split(&code)
+                            && self.components.iter().any(|known| known == component)
+                        {
+                            let _ = writeln!(
+                                self.report,
+                                "{indent}  fails with {code}, which no declared code spells"
+                            );
+                            self.problems.push(format!(
+                                "{}: {label} fails with {code}, whose component {component} is a declared component, and no declared code spells it",
+                                chain.start
+                            ));
+                            continue;
+                        }
                         self.skipped += 1;
                         let _ = writeln!(
                             self.report,

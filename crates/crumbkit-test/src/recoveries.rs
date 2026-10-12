@@ -245,14 +245,18 @@ impl<'a> Recoveries<'a> {
 /// [`Recoveries::steps`] steps after the start. A chain does not run a
 /// command line that it ran already, a step that an opt-out from
 /// [`Rule::Recoveries`] covers, or the recovery of a code that the tool
-/// does not declare and crumbkit does not own. The check counts such codes
-/// in the report.
+/// does not declare and crumbkit does not own, such as a run-time code from
+/// a plugin. The check counts such codes in the report.
 ///
 /// It finds:
 ///
 /// - a start whose code is not declared, which it does not run;
 /// - a start that does not fail with its code;
 /// - a step that the parser refuses with crumbkit's usage code;
+/// - a step that fails with a code that no declared code spells, when
+///   [`Spelling::split`](crumbkit::Spelling::split) reads the code's
+///   component as the component of a declared code, so a code missing from
+///   a `CODES` list is found;
 /// - a step that fails again with the code of the failure it follows,
 ///   unless an opt-out from [`Rule::SameCode`] covers the step's command;
 /// - a run that writes a `warning: crumbkit` line to standard error, which a
@@ -297,11 +301,23 @@ fn check(command: &Command, recoveries: &Recoveries<'_>, dir: &str, assert: &Ass
             .iter()
             .map(|&code| spelling.spell(code)),
     );
+    // crumbkit's add-on crates, such as crumbkit-aliases, own codes in the
+    // `crumbkit` component that `crumbkit::codes::ALL` does not list, so
+    // only the declared codes give components.
+    let mut components: Vec<String> = Vec::new();
+    for (text, _) in &declared {
+        if let Some((component, _, _)) = spelling.split(text)
+            && !components.iter().any(|seen| seen == component)
+        {
+            components.push(component.to_owned());
+        }
+    }
     let rules = [Rule::Recoveries, Rule::SameCode];
     let mut walk = chain::Walk {
         recoveries,
         command,
         known,
+        components,
         usage: spelling.spell(&crumbkit::codes::CLI_USAGE),
         allowances: Allowances::new(recoveries.examples.opt_outs(), &rules),
         problems: Vec::new(),

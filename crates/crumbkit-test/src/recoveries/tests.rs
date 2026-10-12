@@ -357,9 +357,9 @@ fn a_chain_stops_at_a_command_line_it_ran_and_at_its_step_limit() {
 }
 
 #[test]
-fn a_code_that_no_declared_code_spells_is_counted_and_its_recovery_is_not_followed() {
+fn a_code_from_a_component_the_tool_does_not_declare_is_counted_and_its_recovery_is_not_followed() {
     let show = failure("tool::books::not_found", &run("tool books list"));
-    let other = failure("tool::network::timed_out", &run("tool books show 8"));
+    let other = failure("git::network::timed_out", &run("tool books show 8"));
     let setup = Setup::new(
         "recoveries-unknown",
         &[
@@ -378,12 +378,40 @@ fn a_code_that_no_declared_code_spells_is_counted_and_its_recovery_is_not_follow
     assert!(
         report.contains(
             "\x20 run tool books list\n\
-             \x20   fails with tool::network::timed_out, which no declared code spells\n\n"
+             \x20   fails with git::network::timed_out, which no declared code spells\n\n"
         ),
         "{report}"
     );
     assert!(
         report.ends_with("because no declared code spells them: 1\n"),
+        "{report}"
+    );
+}
+
+#[test]
+fn an_undeclared_code_from_a_declared_component_fails_the_check() {
+    let show = failure("tool::books::not_found", &run("tool books list"));
+    let lost = failure("tool::books::lost", r#"{"kind":"none"}"#);
+    let setup = Setup::new(
+        "recoveries-undeclared",
+        &[
+            ("books show 7 --json", 1, show.as_str(), ""),
+            ("books list --json", 1, lost.as_str(), ""),
+        ],
+    );
+
+    let problems = problems(&setup, &recoveries(&setup, SHOW_7, OTHERS)).unwrap();
+
+    assert!(
+        problems.contains(
+            "tool books show 7: the step `tool books list` fails with tool::books::lost, \
+             whose component tool is a declared component, and no declared code spells it"
+        ),
+        "{problems}"
+    );
+    let report = setup.report();
+    assert!(
+        report.ends_with("because no declared code spells them: 0\n"),
         "{report}"
     );
 }
