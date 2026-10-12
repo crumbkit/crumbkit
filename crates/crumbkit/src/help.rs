@@ -85,6 +85,9 @@ pub struct Guide {
     documents: &'static [FileFormat],
     /// The tool's own exit codes, which `<tool> help exit-codes` lists.
     exits: &'static [Exit],
+    /// The path from the clap root to the command that callers run first,
+    /// which answers `help` with the topics.
+    root: &'static [&'static str],
 }
 
 impl Guide {
@@ -98,6 +101,7 @@ impl Guide {
             topics: &[],
             documents: &[],
             exits: &[],
+            root: &[],
         }
     }
 
@@ -166,6 +170,51 @@ impl Guide {
     pub const fn exits(mut self, exits: &'static [Exit]) -> Self {
         self.exits = exits;
         self
+    }
+
+    /// Sets the path from the clap root to the command that callers run
+    /// first, for a tool that another program runs with fixed words. A
+    /// cargo subcommand names its root `cargo` and sets `&["crumbkit"]`,
+    /// because cargo runs `cargo crumbkit help` as `cargo-crumbkit crumbkit
+    /// help`. That command then answers `help` with the topics, its help
+    /// has the `Topics:` line, and every line that names a topic starts
+    /// with `cargo crumbkit` (ADR-0037). A path that names no command
+    /// leaves the root at the clap root.
+    #[must_use]
+    pub const fn root(mut self, path: &'static [&'static str]) -> Self {
+        self.root = path;
+        self
+    }
+
+    /// Returns the path that [`Guide::root`] set, or an empty path for the
+    /// clap root. The name has clap's `get_` prefix, because `root` is the
+    /// builder method.
+    #[must_use]
+    pub const fn get_root(&self) -> &'static [&'static str] {
+        self.root
+    }
+
+    /// Returns the path that [`Guide::root`] set when it names a command of
+    /// `command`, the tool's clap root, and otherwise the empty path.
+    pub(crate) fn root_in(&self, command: &Command) -> &'static [&'static str] {
+        let mut node = command;
+        for &name in self.root {
+            match node.get_subcommands().find(|sub| sub.get_name() == name) {
+                Some(subcommand) => node = subcommand,
+                None => return &[],
+            }
+        }
+        self.root
+    }
+
+    /// Returns the command line that runs the root of `command`, the
+    /// tool's clap root, such as `cargo crumbkit`, which the lines that
+    /// name a topic start with.
+    pub(crate) fn invocation(&self, command: &Command) -> String {
+        std::iter::once(command.get_name())
+            .chain(self.root_in(command).iter().copied())
+            .collect::<Vec<_>>()
+            .join(" ")
     }
 
     /// Returns the exit codes that [`Guide::exits`] set. The name has

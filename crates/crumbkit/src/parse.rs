@@ -283,13 +283,20 @@ where
     // subcommand, so no `Commands:` list shows clap's `help` line, and
     // `Command::build` copies no subtree into a generated help tree.
     command = command.disable_help_subcommand(true);
-    // The root answers `help` with topics when it has subcommands or the
-    // tool declares topics, and then it also has crumbkit's `exit-codes`
-    // topic. A root command named or aliased `help` takes the word, so no
-    // topic can print.
-    let has_topics = command.find_subcommand("help").is_none()
-        && (command.has_subcommands() || !guide.get_topics().is_empty());
-    if let Some(help) = help_word(&command, has_topics, &args) {
+    // The guide's root, which is the clap root unless `Guide::root` names
+    // a subcommand, answers `help` with topics when it has subcommands or
+    // the tool declares topics, and then it also has crumbkit's
+    // `exit-codes` topic. A command named or aliased `help` below the root
+    // takes the word, so no topic can print.
+    let root = guide.root_in(&command);
+    let has_topics = {
+        let node = root.iter().fold(&command, |node, name| {
+            node.find_subcommand(name).unwrap_or(node)
+        });
+        node.find_subcommand("help").is_none()
+            && (node.has_subcommands() || !guide.get_topics().is_empty())
+    };
+    if let Some(help) = help_word(&command, root, has_topics, &args) {
         if help.at_root
             && let Some(page) = help_page(&command, guide, &args[help.position + 1..])
         {
@@ -299,7 +306,12 @@ where
             // writes help, replaces this when a tool needs colour there.
             let code = print_text(sink, &page);
             #[cfg(feature = "usage-log")]
-            crate::usage::helped(&command, &[], true, code);
+            crate::usage::helped(
+                &command,
+                &root.iter().map(|&name| name.to_owned()).collect::<Vec<_>>(),
+                true,
+                code,
+            );
             // Only this path ends before the walk below, so it walks the
             // words for `--json` here.
             let json = walk(&command, &args).json;
@@ -349,11 +361,11 @@ where
     Err(Stop::new(code, json, command))
 }
 
-/// Returns the page that `help` at the root prints without clap, for
-/// `rest`, the words after `help`: the list of the topics of `guide` and
-/// `exit-codes` when `rest` holds no word that names something, and a
-/// topic's text when its one such word names a topic and no root command
-/// or alias has that name. It returns `None` otherwise, and the caller asks
+/// Returns the page that `help` at the guide's root prints without clap,
+/// for `rest`, the words after `help`: the list of the topics of `guide`
+/// and `exit-codes` when `rest` holds no word that names something, and a
+/// topic's text when its one such word names a topic and no command or
+/// alias directly below the root has that name. It returns `None` otherwise, and the caller asks
 /// clap for help instead.
 ///
 /// The words that name something are the words before any `--` that do not
@@ -366,9 +378,12 @@ fn help_page(command: &Command, guide: &Guide, rest: &[OsString]) -> Option<Stri
         .iter()
         .take_while(|word| *word != "--")
         .filter(|word| !word.as_encoded_bytes().starts_with(b"-"));
+    let root = guide.root_in(command).iter().fold(command, |node, name| {
+        node.find_subcommand(name).unwrap_or(node)
+    });
     match (words.next(), words.next()) {
-        (None, _) => Some(topic::list(command.get_name(), guide.get_topics())),
-        (Some(word), None) if command.find_subcommand(word).is_none() => {
+        (None, _) => Some(topic::list(&guide.invocation(command), guide.get_topics())),
+        (Some(word), None) if root.find_subcommand(word).is_none() => {
             topic::text(command.get_name(), guide, word.to_str()?)
         }
         _ => None,

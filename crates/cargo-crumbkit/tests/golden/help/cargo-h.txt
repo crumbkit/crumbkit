@@ -9,5 +9,4 @@ Options:
   -h, --help  Print help (see more with '--help')
 
 Global flags: --json, --fields <FIELD>, --long, --full. `cargo --help` describes them.
-Topics: exit-codes. `cargo help <TOPIC>` prints one.
 Next: cargo <COMMAND> -h

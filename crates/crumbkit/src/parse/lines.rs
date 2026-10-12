@@ -13,8 +13,8 @@ use crate::help::{self, Guide, Leaf, leaf, topic};
 /// Adds crumbkit's help lines to the root and to each command on `path`, and
 /// applies to each of those commands the groups of `guide` that name it. A
 /// guided group off `path` keeps clap's help, so the work grows with the
-/// typed depth. When the root `has_topics`, its lines name the guide's
-/// topics and `exit-codes`.
+/// typed depth. When the tool `has_topics`, the lines of the guide's root
+/// name the guide's topics and `exit-codes`.
 ///
 /// The deepest command on `path` also gets the sections of the leaf of
 /// `guide` whose path is `path`, the first when two leaves share it. Its
@@ -37,6 +37,7 @@ pub(super) fn add_help_lines(
     path: &[String],
     long_help: bool,
 ) {
+    let root = guide.root_in(command);
     let topics = if has_topics {
         topic::names(guide.get_topics()).join(", ")
     } else {
@@ -63,7 +64,11 @@ pub(super) fn add_help_lines(
             }
             _ => Sections::default(),
         };
-        let topics = if depth == 0 { topics.as_str() } else { "" };
+        let topics = if path[..depth] == *root {
+            topics.as_str()
+        } else {
+            ""
+        };
         set_help_lines(node, &text, &flag_list.join(", "), topics, sections);
         let Some(name) = path.get(depth) else {
             break;

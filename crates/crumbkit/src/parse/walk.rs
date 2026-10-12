@@ -12,7 +12,7 @@ mod tests;
 pub(super) struct HelpWord {
     /// The position of the word in the arguments.
     pub(super) position: usize,
-    /// Whether the word comes directly after the program name, where it
+    /// Whether the word comes directly after the guide's root, where it
     /// can also print the tool's topics.
     pub(super) at_root: bool,
 }
@@ -36,20 +36,21 @@ pub(super) struct Walked {
 /// `--`, skips each flag and each value of an option, and descends into each
 /// word that names a subcommand of the current command, resolving aliases.
 /// It answers `help` when that word comes next below a command with
-/// subcommands, or directly after the program name when the tool
-/// `has_topics`, and it stops at the first word that names no subcommand,
-/// such as the value of a positional argument.
+/// subcommands, or directly after the words of `root`, the path of the
+/// guide's root, when the tool `has_topics`, and it stops at the first word
+/// that names no subcommand, such as the value of a positional argument.
 ///
 /// A command without subcommands reads `help` as an ordinary word, unless it
-/// is the root of a tool with topics, and a command with its own subcommand
-/// named or aliased `help` lets clap parse that subcommand.
+/// is the guide's root of a tool with topics, and a command with its own
+/// subcommand named or aliased `help` lets clap parse that subcommand.
 pub(super) fn help_word(
     command: &Command,
+    root: &[&str],
     has_topics: bool,
     args: &[OsString],
 ) -> Option<HelpWord> {
     let mut words = Words::new(command);
-    let mut at_root = true;
+    let mut path: Vec<&str> = Vec::new();
     for (position, word) in args.iter().enumerate().skip(1) {
         match words.read(word) {
             Kind::End => return None,
@@ -59,10 +60,14 @@ pub(super) fn help_word(
         let current = words.current;
         match current.find_subcommand(word) {
             Some(subcommand) => {
+                path.push(subcommand.get_name());
                 words.enter(subcommand);
-                at_root = false;
             }
-            None if word == "help" && (current.has_subcommands() || at_root && has_topics) => {
+            None if word == "help" => {
+                let at_root = path == root;
+                if !(current.has_subcommands() || at_root && has_topics) {
+                    return None;
+                }
                 return Some(HelpWord { position, at_root });
             }
             None => return None,

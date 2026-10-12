@@ -13,4 +13,5 @@ Options:
   -V, --version  Print version
 
 Global flags: --json, --fields <FIELD>, --long, --full. `cargo crumbkit --help` describes them.
+Topics: exit-codes. `cargo crumbkit help <TOPIC>` prints one.
 Next: cargo crumbkit <COMMAND> -h

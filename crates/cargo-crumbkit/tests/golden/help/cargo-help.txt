@@ -21,5 +21,4 @@ Options:
   -h, --help
           Print help (see a summary with '-h')
 
-Topics: exit-codes. `cargo help <TOPIC>` prints one.
 Next: cargo <COMMAND> -h

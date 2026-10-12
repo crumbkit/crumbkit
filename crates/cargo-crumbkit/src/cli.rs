@@ -34,7 +34,10 @@ pub struct Cli {
 /// and `commands` under `Explore the commands`. The help of
 /// `cargo crumbkit weigh` and `cargo crumbkit commands list` lists their
 /// examples, and their `--help` describes the columns of the rows they print.
+/// Its root is `crumbkit`, because cargo always passes that word, so
+/// `cargo crumbkit help` lists the topics.
 pub const GUIDE: Guide = Guide::new()
+    .root(&["crumbkit"])
     .groups(&[Group::new(
         &["crumbkit"],
         &[

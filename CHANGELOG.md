@@ -123,6 +123,10 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   not one line, and a command path that names no command ([ADR-0037]).
 - crumbkit-test: [`check_guide`] rejects a topic named `exit-codes`, which
   crumbkit's own topic replaces ([ADR-0023]).
+- crumbkit: `Guide::root` names the command that callers run first, such as
+  `crumbkit` under `cargo`, which answers `help` with the topics; cargo
+  crumbkit sets it, and [`check_guide`] rejects a root that names no
+  command ([ADR-0037]).
 - crumbkit: [`usage::tolerated`] records the code of a failure that a run
   carried on past, and the usage record lists up to 8 such codes in
   `tolerated` ([ADR-0029]).

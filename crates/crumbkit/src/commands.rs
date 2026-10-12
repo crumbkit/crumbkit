@@ -258,7 +258,7 @@ pub fn list(
         .collect();
     Ok(Listing::new(rows, total)
         .described("commands")
-        .note(exit::note(root.get_name(), guide)))
+        .note(exit::note(&guide.invocation(root), guide)))
 }
 
 /// One visible command of the branch, with what its row needs to know.
