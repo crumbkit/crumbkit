@@ -5,7 +5,7 @@ use std::ffi::OsString;
 
 use clap::{Arg, ArgAction, Command};
 
-use super::{help_word, walk};
+use super::{help_word, program_stem, walk};
 
 /// A tool whose root has a global option, an option with two values, an
 /// option with any number of values and a flag, and whose `planets` group
@@ -126,4 +126,13 @@ fn the_search_for_help_skips_the_value_of_an_option() {
 
     assert_eq!(found.map(|help| help.position), Some(4));
     assert!(help_word(&tool(), &[], false, &args(&["planets", "--sort", "help"])).is_none());
+}
+
+#[test]
+fn the_program_path_becomes_its_file_stem_so_help_names_the_tool_without_exe() {
+    let mut args = vec![OsString::from("/tools/shelf.exe"), OsString::from("books")];
+
+    program_stem(&mut args);
+
+    assert_eq!(args, ["shelf", "books"]);
 }
