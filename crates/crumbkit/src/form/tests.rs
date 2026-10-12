@@ -9,7 +9,7 @@ use schemars::{JsonSchema, Schema, json_schema};
 use serde::Serialize;
 use serde_json::{Value, json};
 
-use super::{FailureForm, PreparedFailure, Step};
+use super::{FailureForm, PreparedFailure, ReadFailure, Step};
 use crate::help::Guide;
 use crate::{
     Batch, Call, Code, Document, Failure, Field, Output, Parsed, Recovery, Row, Sink, Spelling,
@@ -164,6 +164,13 @@ impl FailureForm for LineForm {
 
     fn write_text(&self, err: &mut dyn Write, failure: &PreparedFailure<'_>) -> io::Result<()> {
         writeln!(err, "{}: {}", failure.code(), failure.message())
+    }
+
+    /// Reads the code from the last line of the text, which names no step,
+    /// so the failure offers a retry.
+    fn read(&self, _out: &str, err: &str) -> Option<ReadFailure> {
+        let (code, _) = err.lines().last()?.split_once(": ")?;
+        Some(ReadFailure::new(code.to_owned(), vec![Step::Retry]))
     }
 }
 
@@ -370,4 +377,25 @@ fn a_tool_that_parses_with_clap_alone_gets_the_form_through_parsed_guided() {
 
     assert_eq!(code, ExitCode::FAILURE);
     assert_eq!(String::from_utf8(out).unwrap(), ERROR_DOCUMENT);
+}
+
+#[test]
+fn a_form_that_does_not_implement_read_reads_no_failure_from_its_own_run() {
+    let ran = fail(&ERROR_GUIDE, &["--json"]);
+
+    assert_eq!(ErrorForm.read(&ran.out, &ran.err), None);
+}
+
+#[test]
+fn a_form_that_implements_read_reads_back_the_code_and_steps_of_the_failure_it_printed() {
+    let ran = fail(&LINE_GUIDE, &[]);
+
+    let read = LineForm.read(&ran.out, &ran.err).unwrap();
+
+    assert_eq!(read.code(), "solar.planets.not_found");
+    assert_eq!(read.steps(), [Step::Retry]);
+    assert_eq!(
+        read,
+        ReadFailure::new("solar.planets.not_found".to_owned(), vec![Step::Retry])
+    );
 }

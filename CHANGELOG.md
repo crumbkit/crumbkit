@@ -293,6 +293,9 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   cut, and `--json` measures it with its base64 text ([ADR-0046]).
 - crumbkit: the help of a leaf that prints [`Bytes`] says how its output
   prints, and `help::BYTES_LINE` holds that line ([ADR-0016]).
+- crumbkit: [`FailureForm`] gains the provided method `read`, which reads a
+  failed run's code and steps into a [`ReadFailure`] and returns `None` by
+  default ([ADR-0045]).
 ### Changed
 
 - crumbkit: with the `usage-log` feature, a run whose `COMPLETE` variable
@@ -545,6 +548,7 @@ rustdoc, or at its decision record. -->
 [ADR-0044]: docs/decisions/api/help/0044-command-reference.md
 [`check_command_reference`]: crates/crumbkit-test/src/reference.rs
 [`FailureForm`]: crates/crumbkit/src/form.rs
+[`ReadFailure`]: crates/crumbkit/src/form.rs
 [`PreparedFailure`]: crates/crumbkit/src/output/failure/prepared.rs
 [ADR-0045]: docs/decisions/api/output/0045-failure-forms.md
 [ADR-0046]: docs/decisions/api/output/0046-output-budget.md
