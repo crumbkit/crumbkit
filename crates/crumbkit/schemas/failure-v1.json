@@ -82,6 +82,20 @@
       "type": "string",
       "pattern": "^[!-~]+$"
     },
+    "fields": {
+      "description": "The values at fault, in the order the failure gives them, each under a name of one or more lowercase ASCII letters, digits and underscores. It is present only when the failure names at least one.",
+      "type": "object",
+      "additionalProperties": {
+        "type": [
+          "string",
+          "integer",
+          "boolean"
+        ]
+      },
+      "propertyNames": {
+        "pattern": "^[a-z0-9_]+$"
+      }
+    },
     "labels": {
       "description": "The places in a source, such as a file, that the failure points at, in the order the failure gives them. It is present only when the failure has at least one label.",
       "type": "array",

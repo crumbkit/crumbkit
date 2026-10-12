@@ -174,3 +174,30 @@ proptest! {
         }
     }
 }
+
+#[test]
+fn each_built_in_spelling_splits_a_spelled_code_into_its_segments() {
+    for spelling in [Spelling::COLONS, Spelling::DOTS, Spelling::SLASHES] {
+        let text = spelling.spell(&NOT_FOUND);
+
+        assert_eq!(
+            spelling.split(&text),
+            Some(("shelf", "books", "not_found")),
+            "{text}"
+        );
+    }
+}
+
+#[test]
+fn split_returns_none_for_text_that_is_not_three_parts() {
+    assert_eq!(Spelling::COLONS.split("shelf::books"), None);
+    assert_eq!(Spelling::COLONS.split("shelf::books::not::found"), None);
+    assert_eq!(Spelling::DOTS.split("shelf::books::not_found"), None);
+}
+
+#[test]
+fn a_custom_spelling_splits_nothing() {
+    const UPPER: Spelling = Spelling::custom(upper_area_and_reason);
+
+    assert_eq!(UPPER.split("BOOKS-NOT_FOUND"), None);
+}

@@ -379,7 +379,12 @@ impl<R: Row, O: Write, W: Write> Streaming<'_, R, O, W> {
         let span = self.span.clone();
         #[cfg(feature = "tracing")]
         let _entered = span.enter();
-        let document = FailureDocument::new(failure, self.spelling, self.command.as_deref_mut());
+        let document = FailureDocument::new(
+            failure,
+            self.spelling,
+            self.command.as_deref_mut(),
+            &mut self.err,
+        );
         // The span records only the stream's first failure, as the usage log
         // does.
         #[cfg(feature = "tracing")]

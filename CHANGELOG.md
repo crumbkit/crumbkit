@@ -198,6 +198,13 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit: help on Windows names the tool without `.exe`.
 - cargo-crumbkit: `weigh --usage` finds the usage log on Windows
   ([ADR-0033]).
+- crumbkit: [`Failure`] has a `fields` method, and the JSON failure
+  document holds the named values under `fields` ([ADR-0007]).
+- crumbkit: a refused command line or `--fields` name holds the refused
+  argument, value or subcommand under `fields` ([ADR-0001]).
+- crumbkit: [`Code::runtime`] builds a code known only at run time, and
+  `Spelling::split` reads a spelled code back into its segments
+  ([ADR-0001]).
 
 ### Changed
 
@@ -259,6 +266,8 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   [`check_effects`] checks.
 - crumbkit: `Output::confirm` asks only when no coding agent is detected,
   and otherwise fails as it does without a terminal ([ADR-0043]).
+- crumbkit: crumbkit enables clap's `error-context` feature, which adds
+  about 33 KB to a tool's release binary ([ADR-0003]).
 
 ### Removed
 
@@ -334,6 +343,7 @@ rustdoc, or at its decision record. -->
 [`Recovery`]: crates/crumbkit-core/src/failure.rs
 [`Code`]: crates/crumbkit-core/src/code.rs
 [`Spelling`]: crates/crumbkit-core/src/code.rs
+[`Code::runtime`]: crates/crumbkit-core/src/code/runtime.rs
 [`Error`]: crates/crumbkit-core/src/failure.rs
 [`Batch`]: crates/crumbkit-core/src/batch.rs
 [`Prose`]: crates/crumbkit-core/src/prose.rs

@@ -25,6 +25,7 @@ mod call;
 mod code;
 mod document;
 mod failure;
+mod field;
 mod listing;
 mod prose;
 #[cfg(feature = "miette")]
@@ -35,9 +36,10 @@ mod stream;
 
 pub use crate::batch::Batch;
 pub use crate::call::{Call, CallArg, CallError, CallTarget};
-pub use crate::code::{Code, Spelling};
+pub use crate::code::{Code, RuntimeCodeError, Spelling};
 pub use crate::document::Document;
 pub use crate::failure::{AsFailure, Error, Failure, Recovery};
+pub use crate::field::{Field, FieldValue};
 pub use crate::listing::{Listing, NoSummary};
 pub use crate::prose::Prose;
 pub use crate::row::{NoRow, Row, Rows, Shape};

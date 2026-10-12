@@ -47,6 +47,8 @@ impl Output {
         let refusal = Refusal::flag_value(
             "--fields selects the columns of a table, and this command hands the terminal to another program".to_owned(),
             "run the command without --fields".to_owned(),
+            "--fields",
+            None,
         );
         Some(self.print_refusal(sink, spelling, &refusal))
     }

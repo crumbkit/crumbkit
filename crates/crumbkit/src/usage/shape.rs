@@ -173,11 +173,10 @@ fn names_no_flag(node: &Command, word: Option<&str>) -> bool {
 /// recorded.
 //
 // RUST-10: this reads the suggestion from clap's rendered text, as
-// `parse`'s refusal message does, because clap gives the suggestion through
-// `Error::get` only with its `error-context` feature, which a tool chooses.
-// It misses a suggestion when clap changes the wording, and then records no
-// `nearest`. Reading `Error::get` replaces it if crumbkit enables that
-// feature. The suggestion is recorded only when it names a flag of the
+// `parse`'s refusal message does. It misses a suggestion when clap changes
+// the wording, and then records no `nearest`. crumbkit enables clap's
+// `error-context` feature (ADR-0003), so reading `ContextKind::SuggestedArg`
+// through `Error::get` can replace it. The suggestion is recorded only when it names a flag of the
 // commands, so the record never holds other text.
 fn nearest(commands: &[&Command], error: &clap::Error) -> Option<Name> {
     let text = error.render().to_string();

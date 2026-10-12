@@ -388,7 +388,9 @@ fn respond<T: Rows, E: AsFailure, O: Write, W: Write, R>(
     let failures: Option<Vec<FailureDocument>> = value.failures().map(|failures| {
         failures
             .into_iter()
-            .map(|failure| FailureDocument::new(failure, spelling, output.command.as_mut()))
+            .map(|failure| {
+                FailureDocument::new(failure, spelling, output.command.as_mut(), &mut sink.err)
+            })
             .collect()
     });
     let code = match write_result(&mut sink.out, output, document, value, failures.as_deref()) {

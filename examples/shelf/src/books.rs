@@ -7,7 +7,7 @@ use std::num::NonZeroUsize;
 use std::path::Path;
 
 use crumbkit::pick::Choice;
-use crumbkit::{Batch, Call, Code, Document, Failure, Listing, Recovery, Row};
+use crumbkit::{Batch, Call, Code, Document, Failure, Field, Listing, Recovery, Row};
 use miette::{Diagnostic, LabeledSpan, NamedSource, SourceCode, SourceSpan};
 use schemars::JsonSchema;
 use serde::Serialize;
@@ -551,6 +551,23 @@ impl Failure for BooksError {
             | Self::TooManyIds { .. }
             | Self::EmptyIdsFile { .. } => vec![Recovery::Run(show_call())],
             Self::NotFound { .. } | Self::RemovedFile { .. } | Self::NoStateDirectory => Vec::new(),
+        }
+    }
+
+    /// A missing book names its id as the field `book`. A failure that names
+    /// several missing ids has no field, because a field holds one value.
+    fn fields(&self) -> Vec<Field<'_>> {
+        match self {
+            Self::NotFound { ids } => match ids.as_slice() {
+                [id] => vec![Field::new("book", *id)],
+                _ => Vec::new(),
+            },
+            Self::UnreadableIdsFile { .. }
+            | Self::BadIdsFile { .. }
+            | Self::TooManyIds { .. }
+            | Self::EmptyIdsFile { .. }
+            | Self::RemovedFile { .. }
+            | Self::NoStateDirectory => Vec::new(),
         }
     }
 

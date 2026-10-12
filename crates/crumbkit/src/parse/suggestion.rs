@@ -40,12 +40,11 @@ enum Resolved {
 /// is no such tip, and a name that resolves to nothing, stay as clap wrote
 /// them.
 //
-// RUST-10: this reads clap's wording of the tips, as `message` does, because
-// clap gives the suggestions through `Error::get` only with its
-// `error-context` feature, which a tool chooses. It misses a suggestion when
-// clap changes the wording. Reading `ContextKind::SuggestedArg`,
+// RUST-10: this reads clap's wording of the tips, as `message` does. It
+// misses a suggestion when clap changes the wording. crumbkit enables clap's
+// `error-context` feature (ADR-0003), so reading `ContextKind::SuggestedArg`,
 // `ContextKind::SuggestedSubcommand` and `ContextKind::Suggested` through
-// `Error::get` replaces it if crumbkit enables that feature.
+// `Error::get` can replace it.
 pub(super) fn real_names(part: &str, commands: &[&Command]) -> Option<String> {
     let last = commands.last()?;
     if let Some(names) = part.strip_prefix(ARGUMENT).and_then(quoted) {
