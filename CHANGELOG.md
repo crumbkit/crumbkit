@@ -248,6 +248,19 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   shell's completion request when `COMPLETE` names the shell, and
   `complete_to`. It follows clap_complete's unstable API, so a minor release
   may change it ([ADR-0048]).
+- crumbkit: `Effects::replacing`, `Effects::all_or_none` and
+  `Effects::per_item` declare a command's write guards, which help prints
+  on a `Writes:` line and `commands list` writes under `writes`
+  ([ADR-0047]).
+- crumbkit: [`Expect`] adds `--expect <VERSION>`, and a target at another
+  version fails with `crumbkit::version::conflict`, whose recovery runs the
+  command that reads the target ([ADR-0047]).
+- crumbkit-test: [`check_effects`] requires crumbkit's `--expect` on a
+  replacing command and `all_or_none` or `per_item` on a write of many
+  items, with the opt-outs `Rule::Expect`, `Rule::ExpectFlag` and
+  `Rule::Items` ([ADR-0047]).
+- crumbkit-markdown: the reference prints a command's `Writes:` line after
+  its effects line ([ADR-0047]).
 
 ### Changed
 
@@ -498,3 +511,5 @@ rustdoc, or at its decision record. -->
 [`check_twin`]: crates/crumbkit-test/src/twins.rs
 [`complete`]: crates/crumbkit/src/complete.rs
 [ADR-0048]: docs/decisions/api/0048-completion.md
+[`Expect`]: crates/crumbkit/src/expect.rs
+[ADR-0047]: docs/decisions/api/effects/0047-write-guards.md
