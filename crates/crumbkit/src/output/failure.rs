@@ -138,7 +138,11 @@ impl<'a> PreparedFailure<'a> {
     /// It leaves out each field of the failure whose name breaks the rule or
     /// repeats an earlier name, and a debug build, such as the one a tool's
     /// tests run, writes a warning that names the field to `err`, so a test
-    /// that compares standard error shows it. A release build writes nothing.
+    /// that compares standard error shows it. A debug build also writes a
+    /// warning to `err` for each `Run` call of the recovery or an
+    /// alternative that does not render, with the reason, so a test sees a
+    /// recovery that names a command the tool lacks. A release build writes
+    /// neither.
     pub(super) fn new(
         failure: &'a dyn Failure,
         spelling: Spelling,
@@ -153,13 +157,16 @@ impl<'a> PreparedFailure<'a> {
             .map(ToString::to_string)
             .collect();
         let mut command = command;
-        let preferred = Step::offered(failure.recovery(), command.as_deref_mut());
+        let mut unrendered = Vec::new();
+        let preferred = Step::offered(failure.recovery(), command.as_deref_mut(), &mut unrendered);
         // A failure without alternatives returns an empty `Vec`, and
         // collecting an empty iterator does not allocate.
         let mut alternatives: Vec<Step> = failure
             .alternatives()
             .into_iter()
-            .filter_map(|recovery| Step::offered(recovery, command.as_deref_mut()).ok())
+            .filter_map(|recovery| {
+                Step::offered(recovery, command.as_deref_mut(), &mut unrendered).ok()
+            })
             .collect();
         let step = match preferred {
             Ok(step) => step,
@@ -169,6 +176,17 @@ impl<'a> PreparedFailure<'a> {
         #[cfg(feature = "miette")]
         let diagnostic = failure.diagnostic();
         let code = spelling.spell(failure.code());
+        if cfg!(debug_assertions) {
+            for reason in &unrendered {
+                // Standard error is the last place to report anything, so a
+                // failure to write there goes unreported.
+                let _ = writeln!(
+                    err,
+                    "warning: crumbkit left out a recovery of the failure {}, because {reason}",
+                    escape_controls(&code)
+                );
+            }
+        }
         let fields = read_fields(failure, &code, err);
         Self {
             failure,
@@ -231,13 +249,24 @@ impl Step {
     /// Reads `recovery` into a step, rendering a `Run` call against
     /// `command`. It returns `Err` with a `Step::None` when the recovery
     /// offers no step: a `Recovery::None`, or a `Run` call that cannot be
-    /// rendered because no command is set or the call does not resolve.
-    fn offered(recovery: Recovery, command: Option<&mut Command>) -> Result<Self, Self> {
+    /// rendered because no command is set or the call does not resolve. It
+    /// adds the reason that a `Run` call does not render to `unrendered`.
+    fn offered(
+        recovery: Recovery,
+        command: Option<&mut Command>,
+        unrendered: &mut Vec<String>,
+    ) -> Result<Self, Self> {
         match recovery {
-            Recovery::Run(call) => command
-                .and_then(|command| crate::call::render(&call, command).ok())
-                .map(Self::Run)
-                .ok_or_else(|| Self::None(UNAVAILABLE.to_owned())),
+            Recovery::Run(call) => {
+                let rendered = match command {
+                    Some(command) => crate::call::render(&call, command).map_err(|e| e.to_string()),
+                    None => Err("no command is set".to_owned()),
+                };
+                rendered.map(Self::Run).map_err(|reason| {
+                    unrendered.push(reason);
+                    Self::None(UNAVAILABLE.to_owned())
+                })
+            }
             Recovery::Retry => Ok(Self::Retry),
             Recovery::Hint(text) => Ok(Self::Hint(text)),
             Recovery::None { reason } => Err(Self::None(reason)),

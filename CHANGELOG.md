@@ -235,6 +235,9 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- crumbkit: a build with debug assertions writes a `warning:` line on
+  standard error for each recovery call of a failure that does not render,
+  with the reason ([ADR-0001]).
 - crumbkit: a guided list ends each description with the command's visible
   aliases, as clap's `Commands:` list does ([ADR-0021]).
 - crumbkit-test: [`check_names`] takes the tool's guide and fails on a
