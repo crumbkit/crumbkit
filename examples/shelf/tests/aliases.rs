@@ -73,3 +73,17 @@ fn aliases_list_prints_the_built_in_alias_then_each_entry_with_its_problem() {
         .stdout_eq(file!["golden/aliases-list.txt"])
         .stderr_eq("");
 }
+
+#[test]
+fn the_root_s_help_names_each_personal_alias_that_expands() {
+    let home = home().unwrap();
+
+    for flag in ["-h", "--help"] {
+        shelf(home.path(), &[flag])
+            .success()
+            .stdout_eq(
+                "...\nPersonal aliases: firsts. `shelf aliases list` shows what each runs.\nNext: shelf <COMMAND> -h\n",
+            )
+            .stderr_eq("");
+    }
+}

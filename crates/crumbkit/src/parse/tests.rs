@@ -10,6 +10,7 @@ use super::{Stop, message, parse_to};
 use crate::help::Guide;
 use crate::{Sink, Spelling};
 
+mod aliases;
 mod root;
 
 /// A tool with two global flags, a version, and a group that holds a visible

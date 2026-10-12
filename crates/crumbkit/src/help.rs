@@ -9,13 +9,13 @@ pub(crate) mod effects;
 pub(crate) mod exit;
 mod format;
 pub(crate) mod leaf;
+mod list;
 mod runtime;
 pub(crate) mod topic;
 
 use std::fmt::Write as _;
 
 use clap::Command;
-use clap::builder::StyledStr;
 use clap::builder::styling::Style;
 
 pub use self::effects::Effects;
@@ -25,6 +25,8 @@ pub use self::leaf::{Column, Example, Leaf, quote};
 pub use self::runtime::RuntimeLeaf;
 pub use self::topic::Topic;
 
+use self::list::{list, write_line};
+
 #[cfg(test)]
 mod tests;
 
@@ -32,8 +34,9 @@ mod tests;
 /// help lists its subcommands under goals, one [`Leaf`] for each command
 /// whose help shows examples and describes its columns, the tool's
 /// [`Topic`]s, the [`FileFormat`]s of the files that users write for the
-/// tool, and the [`Exit`] codes that the tool returns besides crumbkit's 0,
-/// 1 and 2.
+/// tool, the [`Exit`] codes that the tool returns besides crumbkit's 0, 1
+/// and 2, and the function that names a person's aliases on the root's
+/// help.
 ///
 /// A tool declares its guide once as a `const` and passes it to
 /// [`parse`](crate::parse), which applies its goal headings to the help of
@@ -87,6 +90,9 @@ pub struct Guide {
     documents: &'static [FileFormat],
     /// The tool's own exit codes, which `<tool> help exit-codes` lists.
     exits: &'static [Exit],
+    /// The function that returns the names of a person's aliases, which
+    /// the root's help names, or `None` when help names no aliases.
+    personal_aliases: Option<fn(&Command) -> Vec<String>>,
     /// The path from the clap root to the command that callers run first,
     /// which answers `help` with the topics.
     root: &'static [&'static str],
@@ -103,6 +109,7 @@ impl Guide {
             topics: &[],
             documents: &[],
             exits: &[],
+            personal_aliases: None,
             root: &[],
         }
     }
@@ -217,6 +224,46 @@ impl Guide {
             .chain(self.root_in(command).iter().copied())
             .collect::<Vec<_>>()
             .join(" ")
+    }
+
+    /// Sets the function that returns the names of a person's aliases, such
+    /// as `crumbkit_aliases::names`, so the `-h` and `--help` of the clap
+    /// root end with a line such as ``Personal aliases: firsts, mine.
+    /// `shelf aliases list` shows what each runs.``, between the `Topics:`
+    /// line and the `Next:` line. A person's aliases expand only in the
+    /// first word after the tool's name, so the line is on the clap root's
+    /// help alone.
+    ///
+    /// [`parse`](crate::parse) calls `names` with the clap root only when
+    /// it prints the root's help, so no other run reads a person's aliases.
+    /// The function reads the tool's name from the root, and can leave out
+    /// an alias that a real command shadows. When `names` returns no names,
+    /// the help has no such line.
+    ///
+    /// The root's help then differs between machines, so a tool that sets
+    /// it opts out of crumbkit-test's `Rule::PersonalAliases`, and
+    /// crumbkit-test's help checks print help without the line (ADR-0027).
+    #[must_use]
+    pub const fn personal_aliases(mut self, names: fn(&Command) -> Vec<String>) -> Self {
+        self.personal_aliases = Some(names);
+        self
+    }
+
+    /// Returns the guide without the function that
+    /// [`Guide::personal_aliases`] set, so the root's help is the same on
+    /// every machine, as crumbkit-test's help checks print it.
+    #[must_use]
+    pub const fn without_personal_aliases(mut self) -> Self {
+        self.personal_aliases = None;
+        self
+    }
+
+    /// Returns the function that [`Guide::personal_aliases`] set, or `None`
+    /// when help names no aliases. The name has clap's `get_` prefix,
+    /// because `personal_aliases` is the builder method.
+    #[must_use]
+    pub const fn get_personal_aliases(&self) -> Option<fn(&Command) -> Vec<String>> {
+        self.personal_aliases
     }
 
     /// Returns the exit codes that [`Guide::exits`] set. The name has
@@ -454,84 +501,4 @@ fn find_mut<'a>(command: &'a mut Command, path: &[&str]) -> Option<&'a mut Comma
             .find(|subcommand| subcommand.get_name() == name)?;
     }
     Some(node)
-}
-
-/// Returns the headed list of the visible subcommands of `node` under
-/// `goals`, with `header` as the style of each heading and `literal` as the
-/// style of each name, or `None` when it lists no subcommand.
-//
-// RUST-10: each line holds the name and the description and nothing else.
-// It leaves out visible aliases, which crumbkit-test's `check_names`
-// forbids. A description prints without its own styles, because clap
-// offers a description's styled text only with its `color` feature. A
-// description that clap's `wrap_help` feature wraps, or that
-// holds a line break, continues at column 0, where clap's own list indents
-// it under the description's first line. A list that indents continuation
-// lines as clap does replaces it when a tool needs long descriptions.
-fn list(node: &Command, goals: &[Goal], header: Style, literal: Style) -> Option<String> {
-    let mut sections: Vec<(&str, Vec<&Command>)> = Vec::new();
-    for goal in goals {
-        let commands: Vec<&Command> = goal
-            .commands
-            .iter()
-            .filter_map(|&name| {
-                node.get_subcommands()
-                    .find(|subcommand| subcommand.get_name() == name)
-            })
-            .filter(|subcommand| !subcommand.is_hide_set())
-            .collect();
-        if !commands.is_empty() {
-            sections.push((goal.heading, commands));
-        }
-    }
-    let unnamed: Vec<&Command> = node
-        .get_subcommands()
-        .filter(|subcommand| !subcommand.is_hide_set())
-        .filter(|subcommand| {
-            !goals
-                .iter()
-                .any(|goal| goal.commands.contains(&subcommand.get_name()))
-        })
-        .collect();
-    if !unnamed.is_empty() {
-        sections.push(("Commands", unnamed));
-    }
-
-    let width = sections
-        .iter()
-        .flat_map(|(_, commands)| commands)
-        .map(|command| command.get_name().chars().count())
-        .max()?;
-    let mut text = String::new();
-    for (heading, commands) in sections {
-        if !text.is_empty() {
-            text.push_str("\n\n");
-        }
-        // Writing to a `String` cannot fail.
-        let _ = write!(text, "{header}{heading}{header:#}");
-        for command in commands {
-            let about = command.get_about().or_else(|| command.get_long_about());
-            write_line(&mut text, command.get_name(), about, width, literal);
-        }
-    }
-    Some(text)
-}
-
-/// Writes one line of a list to `text`, which the goal list and the topic
-/// list share: a line break, two spaces and `name` in the `literal` style,
-/// then, when there is an `about`, padding to `width`, the length of the
-/// longest name in the list, plus two spaces, and the `about`.
-fn write_line(
-    text: &mut String,
-    name: &str,
-    about: Option<&StyledStr>,
-    width: usize,
-    literal: Style,
-) {
-    // Writing to a `String` cannot fail.
-    let _ = write!(text, "\n  {literal}{name}{literal:#}");
-    if let Some(about) = about {
-        let padding = width - name.chars().count() + 2;
-        let _ = write!(text, "{:padding$}{about}", "");
-    }
 }

@@ -4,6 +4,7 @@
 //! [`file`]: crate::file()
 //! [`expand`]: crate::expand()
 //! [`list`]: crate::list()
+//! [`names`]: crate::names()
 //! [`AliasesList`]: crate::AliasesList
 //! [`ALIASES_LIST`]: crate::ALIASES_LIST
 //! [schema]: https://github.com/crumbkit/crumbkit/blob/main/crates/crumbkit-aliases/schemas/aliases-list-v1.json
@@ -17,9 +18,11 @@ mod entry;
 mod expand;
 mod file;
 mod list;
+mod names;
 #[cfg(test)]
 mod testing;
 
 pub use crate::expand::expand;
 pub use crate::file::file;
 pub use crate::list::{ALIASES_LIST, AliasRow, AliasesList, list};
+pub use crate::names::names;

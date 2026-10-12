@@ -92,10 +92,14 @@ fn run(args: &[&str], file: Option<&Path>) -> ExitCode {
 assert_eq!(run(&["shelf", "aliases", "list"], None), ExitCode::SUCCESS);
 ```
 
+A tool that wants a person's aliases on its root's help passes [`names`] to
+`Guide::personal_aliases`, and its tests opt out of `Rule::PersonalAliases`,
+because the root's help then differs between machines ([ADR-0027]).
+
 ## Where to read more
 
-- [`file`], [`expand`], [`list`], [`AliasesList`] and [`ALIASES_LIST`] describe
-  each item.
+- [`file`], [`expand`], [`list`], [`names`], [`AliasesList`] and
+  [`ALIASES_LIST`] describe each item.
 - The [schema] describes the `crumbkit/aliases-list/v1` document.
 - [ADR-0027] records the design and why it is a separate crate.
 
@@ -105,6 +109,7 @@ option.
 [`file`]: src/file.rs
 [`expand`]: src/expand.rs
 [`list`]: src/list.rs
+[`names`]: src/names.rs
 [`AliasesList`]: src/list.rs
 [`ALIASES_LIST`]: src/list.rs
 [schema]: schemas/aliases-list-v1.json

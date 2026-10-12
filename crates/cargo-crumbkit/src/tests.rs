@@ -23,7 +23,7 @@ fn every_failure_code_spells_uniquely_as_printable_ascii() {
 
 #[test]
 fn every_command_and_argument_has_one_name() {
-    crumbkit_test::check_names(&Cli::command(), ALLOW);
+    crumbkit_test::check_names(&Cli::command(), &GUIDE, ALLOW);
 }
 
 #[test]

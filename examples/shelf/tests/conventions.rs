@@ -21,6 +21,11 @@ const DAILY: &str = "The output names the day the report starts, which changes e
 const ALLOW: &[Allow] = &[
     Allow::new(Rule::Examples, "self usage", DAILY),
     Allow::new(Rule::Examples, "self figures list", DAILY),
+    Allow::new(
+        Rule::PersonalAliases,
+        "",
+        "A person who runs shelf by hand sees the aliases they wrote on the root's help, and the help checks print it without them.",
+    ),
 ];
 
 /// The budgets of shelf's `-h` pages, which are crumbkit's defaults.
@@ -40,7 +45,7 @@ const EXAMPLES: Examples<'_> =
 
 #[test]
 fn every_command_and_argument_has_one_name() {
-    crumbkit_test::check_names(&Cli::command(), ALLOW);
+    crumbkit_test::check_names(&Cli::command(), &GUIDE, ALLOW);
 }
 
 #[test]

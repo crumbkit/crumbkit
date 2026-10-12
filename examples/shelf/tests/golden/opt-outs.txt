@@ -1,4 +1,4 @@
-shelf has 3 opt-outs from crumbkit's conventions.
+shelf has 4 opt-outs from crumbkit's conventions.
 
 examples/run: shelf self usage
   Reason: The output names the day the report starts, which changes every day, and tests/self_usage.rs checks the output without the day.
@@ -9,6 +9,12 @@ examples/run: shelf self figures list
   Reason: The output names the day the report starts, which changes every day, and tests/self_usage.rs checks the output without the day.
   Cost: The examples are not run, so help can show an example that fails.
   Cost: The command's output weight counts 0 bytes, so its path weight is too low.
+
+names/personal-aliases: shelf
+  Reason: A person who runs shelf by hand sees the aliases they wrote on the root's help, and the help checks print it without them.
+  Cost: Root help differs between machines, because each person's aliases file adds its own names.
+  Cost: An agent can copy an alias from help that does not exist on another machine or in a script that another person runs.
+  Cost: Help golden files and help budgets measure help without personal aliases, so a long aliases file can push the root help past its budget unchecked.
 
 path-budget/path: every path through shelf
   Budget: 4000 bytes, where crumbkit's default is 8000 bytes.

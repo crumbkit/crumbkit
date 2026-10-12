@@ -4,6 +4,7 @@
 - `-h` names the global flags on one line and `--help` lists them in full.
 - A leaf's help prints its effects on one `Effects:` line, first among crumbkit's lines after the examples (ADR-0039).
 - The help of a command with a visible subcommand ends with a `Next:` line that opens one of them.
+- The clap root's help names a person's aliases on one line when the guide opts in with `Guide::personal_aliases` (ADR-0027).
 - Help and the version keep clap's colours only when standard output is a terminal.
 - crumbkit finds the deepest command the caller reached by walking the typed words once before parsing. The walk reads each option's values from clap's `Arg`, so an option's value that equals a subcommand name names no command.
 - The same walk finds `--json`, which makes a refusal print as a JSON document. It counts the word only where it reads it as a flag, so a value of an option that allows hyphen values is no request for JSON. A second parse with clap's `ignore_errors` is rejected, because it costs a full parse on every refusal and relies on clap's loosely specified handling of a command line that it cannot parse.
@@ -13,6 +14,7 @@
 - clap expands each `{tag}` in a template and drops the text after an unmatched `{`, so a list that holds `{` goes in `before_help` instead, and that command loses the tool's own `before_help`.
 - A tool that adds commands to its tree at run time, such as one for each file a person writes, gives them examples with [`RuntimeLeaf`](../../../../crates/crumbkit/src/help/runtime.rs)s, which `Guide::with_runtime_leaves` joins after the `const` leaves into a guide that every reader takes as it takes the `const` one. The join leaks the runtime leaves for the rest of the process, so a tool without runtime commands does no work for them, and no function needs a second guide.
 - `parse` and `extend` never fail on a guide. crumbkit-test's [`check_guide`](../../../../crates/crumbkit-test/src/guide.rs) catches a guide that does not match the tree.
+- A guided list ends a description with the command's visible aliases as clap's `Commands:` list does, so a tool that opts out of `Rule::OneName` shows them on guided and unguided pages alike (ADR-0027).
 - A command that the guide does not name keeps clap's `Commands:` list. crumbkit's `after_help` lines appear on guided and unguided pages alike.
 - A refusal's message is clap's error on one line. The message depends on clap's wording, and shelf's golden files fail when it changes.
 

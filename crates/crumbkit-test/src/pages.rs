@@ -21,7 +21,9 @@ mod tests;
 /// `flag`, such as `shelf books list -h`, with `guide`: the plain text that
 /// a caller reads on a pipe, with the guide's goal headings, the leaf's
 /// examples and columns, and crumbkit's lines. `parse_to` builds the tree
-/// that it parses, so each page parses a clone of `command`.
+/// that it parses, so each page parses a clone of `command`. The pages
+/// leave out the line that names a person's aliases, because those names
+/// differ between machines (ADR-0027).
 ///
 /// A command line that prints no help page, such as `-h` on a command that
 /// turned its help flag off, adds a problem to `problems`, and the command
@@ -32,6 +34,7 @@ pub(crate) fn pages<'a>(
     flag: &str,
     problems: &mut Vec<String>,
 ) -> Vec<(Visit<'a>, String)> {
+    let guide = guide.without_personal_aliases();
     let mut pages = Vec::new();
     for visit in tree::walk_visible(command) {
         let line = format!("{} {flag}", visit.path());
@@ -42,7 +45,7 @@ pub(crate) fn pages<'a>(
         let result = crumbkit::parse_to::<(), _, _, _, _>(
             &mut Sink::new(&mut out, Vec::new()),
             command.clone(),
-            guide,
+            &guide,
             Spelling::COLONS,
             line.split(' '),
         );

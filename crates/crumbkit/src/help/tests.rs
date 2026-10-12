@@ -398,3 +398,44 @@ fn a_guide_path_that_names_no_command_or_a_command_without_subcommands_changes_n
         assert_eq!(help(&GUIDE, args), help(&Guide::new(), args), "{args:?}");
     }
 }
+
+#[test]
+fn a_guided_list_prints_each_visible_alias_after_the_description_as_clap_s_list_does() {
+    const GUIDE: Guide = Guide::new().groups(&[Group::new(
+        &["moons"],
+        &[Goal::new("Read", &["list", "forget"])],
+    )]);
+    let tool = tool().mut_subcommand("moons", |moons| {
+        moons
+            .mut_subcommand("list", |list| {
+                list.visible_aliases(["ls", "l"]).alias("hidden")
+            })
+            .mut_subcommand("forget", |forget| forget.visible_alias("drop"))
+    });
+    let page = |guide: &Guide| {
+        let mut out = Vec::new();
+        let _ = parse_to::<(), _, _, _, _>(
+            &mut Sink::new(&mut out, Vec::new()),
+            tool.clone(),
+            guide,
+            Spelling::COLONS,
+            ["tool", "moons", "-h"],
+        );
+        String::from_utf8(out).unwrap()
+    };
+
+    let expected = "\
+Read
+  list    List the moons [aliases: ls, l]
+  forget  [alias: drop]
+
+Options:
+";
+    assert_eq!(section(&page(&GUIDE)), expected);
+    let clap = page(&Guide::new());
+    assert!(
+        clap.contains("  list    List the moons [aliases: ls, l]\n"),
+        "{clap}"
+    );
+    assert!(clap.contains("  forget  [alias: drop]\n"), "{clap}");
+}
