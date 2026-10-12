@@ -44,11 +44,16 @@ pub fn file(tool: &str) -> Option<PathBuf> {
 /// [`file`], so this skips that work when `XDG_CONFIG_HOME` names the
 /// directory.
 fn file_in(tool: &str, config_home: Option<OsString>) -> Option<PathBuf> {
-    let config = match config_home.map(PathBuf::from) {
+    let mut path = match config_home.map(PathBuf::from) {
         Some(config) if config.is_absolute() => config,
         Some(_) | None => etcetera::choose_base_strategy().ok()?.config_dir(),
     };
-    Some(config.join(tool).join("aliases.toml"))
+    // Every run builds this path, so it grows once instead of allocating a
+    // new path for each part.
+    path.reserve(tool.len() + "/aliases.toml".len() + 1);
+    path.push(tool);
+    path.push("aliases.toml");
+    Some(path)
 }
 
 /// Returns the text of the aliases file at `path`, or `None` when no file is
