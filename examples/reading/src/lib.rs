@@ -1,0 +1,105 @@
+//! reading is crumbkit's example of a tool that adds commands at run time.
+//! It keeps reading lists as text files in a directory, and adds a command
+//! for each list, such as `reading to-read list`.
+//!
+//! The library holds the whole tool, and the `reading` binary calls [`run`].
+//! It exports the functions that build the command tree and the guide from a
+//! directory's lists, so reading's tests can pass the tree and the guide of
+//! their fixture lists to crumbkit-test's checks.
+
+mod cli;
+mod graft;
+mod lists;
+
+use std::ffi::OsString;
+use std::process::ExitCode;
+
+use crumbkit::Spelling;
+
+pub use crate::cli::{Cli, GUIDE};
+use crate::cli::{CommandsCommand, EntriesCommand, Resource, SchemasCommand};
+use crate::graft::{ListCommand, Parsed};
+pub use crate::graft::{command, guide};
+pub use crate::lists::{List, lists_in};
+
+#[cfg(test)]
+mod tests;
+
+/// How reading spells its failure codes, such as
+/// `reading::entries::not_found`.
+const SPELLING: Spelling = Spelling::COLONS;
+
+/// Parses the process's command line, runs the command and returns the
+/// process's exit code.
+#[must_use]
+pub fn run() -> ExitCode {
+    run_from(std::env::args_os())
+}
+
+/// Runs reading on `args` as [`run`] runs it on the process's command line,
+/// and returns the process's exit code. The first argument is the program
+/// name, as in `crumbkit::parse_from`.
+///
+/// Before parsing, reading reads the first line of each list in its
+/// directory and adds a command for each list to its tree, and a leaf with
+/// the command's examples to its guide. It passes the same guide to
+/// `commands list` and `schemas`, so they describe the commands it added.
+#[must_use]
+pub fn run_from<I, T>(args: I) -> ExitCode
+where
+    I: IntoIterator<Item = T>,
+    T: Into<OsString>,
+{
+    let dir = lists::dir();
+    let lists = dir.as_deref().map(lists_in).unwrap_or_default();
+    let guide = guide(&lists);
+    let (parsed, command) =
+        match crumbkit::parse_from::<Parsed, _, _>(command(&lists), &guide, SPELLING, args) {
+            Ok(parsed) => parsed,
+            Err(stop) => return stop.code(),
+        };
+    match parsed {
+        Parsed::Grafted {
+            mut output,
+            name,
+            command: ListCommand::List(args),
+        } => {
+            output.set_command(command);
+            let result = lists::entries(dir.as_deref(), &name, &args.page);
+            crumbkit::finish(&mut output, SPELLING, lists::ENTRIES_LIST, result)
+        }
+        Parsed::Static(mut cli) => {
+            cli.output.set_command(command);
+            match cli.resource {
+                Resource::Entries {
+                    command: EntriesCommand::List(args),
+                } => {
+                    let result = lists::entries(dir.as_deref(), &args.list, &args.page);
+                    crumbkit::finish(&mut cli.output, SPELLING, lists::ENTRIES_LIST, result)
+                }
+                // `commands list` and `schemas` read the command tree
+                // through `&mut cli.output`, so each runs before `finish`
+                // takes `cli.output` in turn.
+                Resource::Commands {
+                    command: CommandsCommand::List(args),
+                } => {
+                    let result = crumbkit::commands::list(&mut cli.output, &guide, &args);
+                    let document = crumbkit::commands::COMMANDS_LIST;
+                    crumbkit::finish(&mut cli.output, SPELLING, document, result)
+                }
+                Resource::Schemas { command } => match command {
+                    SchemasCommand::List(args) => {
+                        let result = crumbkit::schemas::list(&mut cli.output, &guide, &args);
+                        let document = crumbkit::schemas::SCHEMAS_LIST;
+                        crumbkit::finish(&mut cli.output, SPELLING, document, result)
+                    }
+                    SchemasCommand::Show(args) => {
+                        let result = crumbkit::schemas::show(&mut cli.output, &guide, &args);
+                        let document = crumbkit::schemas::SCHEMAS_SHOW;
+                        crumbkit::finish(&mut cli.output, SPELLING, document, result)
+                    }
+                },
+            }
+        }
+    }
+}

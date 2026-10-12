@@ -1,0 +1,12 @@
+Books to read next
+
+Usage: reading to-read [OPTIONS] <COMMAND>
+
+Commands:
+  list  List the entries of this reading list, in file order
+
+Options:
+  -h, --help  Print help (see more with '--help')
+
+Global flags: --json, --fields <FIELD>, --long, --full. `reading to-read --help` describes them.
+Next: reading to-read <COMMAND> -h

@@ -1,0 +1,113 @@
+//! reading's static command-line grammar and the guide of its static
+//! commands. The commands that reading adds for its lists are in
+//! `graft.rs`.
+
+use clap::{Args, Parser, Subcommand};
+use crumbkit::commands::{COMMANDS_LIST, CommandsList};
+use crumbkit::help::{Example, Guide, Leaf};
+use crumbkit::schemas::{SCHEMAS_LIST, SCHEMAS_SHOW, SchemasList, SchemasShow};
+use crumbkit::{Output, Page};
+
+use crate::lists::ENTRIES_LIST;
+
+/// Keep reading lists, and print the entries of each.
+#[derive(Debug, Parser)]
+#[command(name = "reading", version)]
+pub struct Cli {
+    /// The resource the command acts on.
+    #[command(subcommand)]
+    pub(crate) resource: Resource,
+
+    /// The flags that choose how the result prints.
+    #[command(flatten)]
+    pub(crate) output: Output,
+}
+
+/// The leaves of reading's static commands. reading guides no command, so
+/// `reading -h` keeps clap's `Commands:` list, which also lists the command
+/// of each reading list. `crate::guide` adds a leaf for each of those
+/// commands at run time.
+pub const GUIDE: Guide = Guide::new().leaves(&[
+    Leaf::new(&["entries", "list"])
+        .examples(&[Example::new(
+            &["--list", "to-read"],
+            "Print the first page of the to-read list",
+        )])
+        .document(ENTRIES_LIST),
+    Leaf::new(&["commands", "list"])
+        .examples(&[
+            Example::new(&[], "List every command"),
+            Example::new(
+                &["to-read", "list", "--json", "--full"],
+                "Print the list command of the to-read list with its arguments and examples as JSON",
+            ),
+        ])
+        .document(COMMANDS_LIST),
+    Leaf::new(&["schemas", "list"])
+        .examples(&[Example::new(&[], "List every document that reading prints")])
+        .document(SCHEMAS_LIST),
+    Leaf::new(&["schemas", "show"])
+        .examples(&[Example::new(
+            &["reading/entries-list/v1"],
+            "Print the JSON Schema of the document that each list command prints",
+        )])
+        .document(SCHEMAS_SHOW),
+]);
+
+/// The resources of reading's static grammar.
+#[derive(Debug, Subcommand)]
+pub(crate) enum Resource {
+    /// Work with the entries of any reading list.
+    Entries {
+        /// What to do with the entries.
+        #[command(subcommand)]
+        command: EntriesCommand,
+    },
+    /// Explore reading's commands.
+    Commands {
+        /// What to do with the commands.
+        #[command(subcommand)]
+        command: CommandsCommand,
+    },
+    /// Explore the JSON documents that reading prints.
+    Schemas {
+        /// What to do with the documents.
+        #[command(subcommand)]
+        command: SchemasCommand,
+    },
+}
+
+/// The commands for the entries of any reading list.
+#[derive(Debug, Subcommand)]
+pub(crate) enum EntriesCommand {
+    /// List the entries of the reading list that --list names, in file order.
+    List(EntriesList),
+}
+
+/// The commands for reading's own commands.
+#[derive(Debug, Subcommand)]
+pub(crate) enum CommandsCommand {
+    /// List a branch of reading's commands with their arguments and examples.
+    List(CommandsList),
+}
+
+/// The commands for the JSON documents that reading prints.
+#[derive(Debug, Subcommand)]
+pub(crate) enum SchemasCommand {
+    /// List the JSON documents that reading prints, with a description of each.
+    List(SchemasList),
+    /// Print the JSON Schema of each document.
+    Show(SchemasShow),
+}
+
+/// The arguments of `reading entries list`.
+#[derive(Debug, Args)]
+pub(crate) struct EntriesList {
+    /// The name of the reading list, such as to-read
+    #[arg(long, value_name = "NAME")]
+    pub(crate) list: String,
+
+    /// How many entries to print.
+    #[command(flatten)]
+    pub(crate) page: Page<3>,
+}

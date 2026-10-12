@@ -1,0 +1,18 @@
+List a branch of reading's commands with their arguments and examples
+
+Usage: reading commands list [OPTIONS] [PATH]...
+
+Arguments:
+  [PATH]...  The names of the commands below the root that lead to the branch, such as `books list`
+
+Options:
+      --limit <N>  Print at most this many rows [default: 25]
+      --all        Print every row
+  -h, --help       Print help (see more with '--help')
+
+Examples:
+  reading commands list
+  reading commands list to-read list --json --full
+
+Global flags: --json, --fields <FIELD>, --long, --full. `reading commands list --help` describes them.
+Next: reading commands list --help explains each column.

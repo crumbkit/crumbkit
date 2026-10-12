@@ -30,6 +30,13 @@ mod tests;
 /// assert_eq!(guide.get_leaves()[0].path(), ["classics", "list"]);
 /// ```
 ///
+/// crumbkit's example tool `reading`, in [`examples/reading`], adds a
+/// command for each reading list in a directory and builds its guide this
+/// way. Its tests pass the tree and the guide of a fixture directory to
+/// every crumbkit-test check.
+///
+/// [`examples/reading`]: https://github.com/crumbkit/crumbkit/tree/main/examples/reading
+///
 /// A runtime leaf has examples and no document, so its `--help` lists no
 /// columns. A document's name is the path of the command that prints it
 /// (ADR-0035), and a path chosen at run time names no document that the

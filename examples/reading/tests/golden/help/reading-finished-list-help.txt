@@ -1,0 +1,34 @@
+List the entries of this reading list, in file order
+
+Usage: reading finished list [OPTIONS]
+
+Options:
+      --limit <N>
+          Print at most this many rows
+          
+          [default: 3]
+
+      --all
+          Print every row
+
+      --json
+          Print the result as a JSON document on one line
+
+      --fields <FIELD>
+          Print only these comma-separated fields, in this order
+
+      --long
+          Add the long columns after the compact ones
+
+      --full
+          With --json, print every field of every row
+
+  -h, --help
+          Print help (see a summary with '-h')
+
+Examples:
+  reading finished list
+          Print the first page of the finished list
+
+  reading finished list --all
+          Print every entry of the finished list

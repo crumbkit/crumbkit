@@ -1,0 +1,12 @@
+Books finished this year
+
+Usage: reading finished [OPTIONS] <COMMAND>
+
+Commands:
+  list  List the entries of this reading list, in file order
+
+Options:
+  -h, --help  Print help (see more with '--help')
+
+Global flags: --json, --fields <FIELD>, --long, --full. `reading finished --help` describes them.
+Next: reading finished <COMMAND> -h

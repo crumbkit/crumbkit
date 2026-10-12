@@ -1,0 +1,12 @@
+Explore reading's commands
+
+Usage: reading commands [OPTIONS] <COMMAND>
+
+Commands:
+  list  List a branch of reading's commands with their arguments and examples
+
+Options:
+  -h, --help  Print help (see more with '--help')
+
+Global flags: --json, --fields <FIELD>, --long, --full. `reading commands --help` describes them.
+Next: reading commands <COMMAND> -h

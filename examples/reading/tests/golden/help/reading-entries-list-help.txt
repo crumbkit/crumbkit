@@ -1,0 +1,38 @@
+List the entries of the reading list that --list names, in file order
+
+Usage: reading entries list [OPTIONS] --list <NAME>
+
+Options:
+      --list <NAME>
+          The name of the reading list, such as to-read
+
+      --limit <N>
+          Print at most this many rows
+          
+          [default: 3]
+
+      --all
+          Print every row
+
+      --json
+          Print the result as a JSON document on one line
+
+      --fields <FIELD>
+          Print only these comma-separated fields, in this order
+
+      --long
+          Add the long columns after the compact ones
+
+      --full
+          With --json, print every field of every row
+
+  -h, --help
+          Print help (see a summary with '-h')
+
+Examples:
+  reading entries list --list to-read
+          Print the first page of the to-read list
+
+Columns:
+  position  The entry's position in the list, counting from 1.
+  title     The title of the book.
