@@ -9,7 +9,7 @@ use snapbox::Redactions;
 
 use super::example_golden_name;
 use crate::guide::command_line;
-use crate::runs::Xdg;
+use crate::runs::{WorkDir, Xdg};
 
 /// Returns the name of the file whose bytes are an example's standard
 /// input: the name `name` of its output's golden file with `.stdin` in
@@ -96,12 +96,16 @@ pub(super) fn redactions(
 }
 
 /// Returns `redactions` with the path of each of the run's XDG directories
-/// in `xdg` added under its placeholder, such as `[XDG_CONFIG_HOME]`.
-pub(super) fn with_xdg(redactions: &Redactions, xdg: &Xdg) -> Redactions {
+/// in `xdg` added under its placeholder, such as `[XDG_CONFIG_HOME]`, and
+/// each path of the fresh directory `work` under `[ROOT]`.
+pub(super) fn with_run(redactions: &Redactions, xdg: &Xdg, work: &WorkDir) -> Redactions {
     let mut run = redactions.clone();
+    // The placeholders are fixed and valid, so `insert` cannot fail.
     for (placeholder, path) in xdg.placeholders() {
-        // The placeholders are fixed and valid, so `insert` cannot fail.
         let _ = run.insert(placeholder, path.display().to_string());
+    }
+    for path in work.fresh_paths() {
+        let _ = run.insert("[ROOT]", path.display().to_string());
     }
     run
 }

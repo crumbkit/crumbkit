@@ -11,7 +11,7 @@ use crumbkit::help::split;
 use super::{Failing, Recoveries};
 use crate::allow::{Allowances, Rule};
 use crate::guide::command_line;
-use crate::runs::{self, Place, TIMEOUT, Xdg};
+use crate::runs::{self, Place, TIMEOUT, WorkDir, Xdg};
 
 /// What the check has found so far: its settings, the problems, the report
 /// and the codes that the chains provoked.
@@ -62,8 +62,11 @@ struct Chain<'c> {
     start: String,
     /// The XDG directories of every run of the chain.
     xdg: Xdg,
-    /// The working directory and standard input of every run.
-    place: Place<'c>,
+    /// The working directory of every run, which is one copy of a fresh
+    /// fixture for the whole chain.
+    dir: WorkDir,
+    /// The standard input of every run.
+    stdin: Option<&'c [u8]>,
     /// The words of each command line that the chain ran.
     ran: Vec<Vec<String>>,
 }
@@ -98,11 +101,22 @@ impl Walk<'_> {
                 return;
             }
         };
+        let dir = match WorkDir::new(
+            "recoveries-dir",
+            start.work_dir(self.recoveries.examples.working_dir()),
+        ) {
+            Ok(dir) => dir,
+            Err(problem) => {
+                self.problems.push(format!("{line}: {problem}"));
+                return;
+            }
+        };
         let _ = writeln!(self.report, "{line}");
         let mut chain = Chain {
             start: line,
             xdg,
-            place: start.place(self.recoveries.examples.working_dir()),
+            dir,
+            stdin: start.stdin_bytes(),
             ran: Vec::new(),
         };
         let words: Vec<String> = start.words.iter().map(|&word| word.to_owned()).collect();
@@ -281,7 +295,10 @@ impl Walk<'_> {
             self.recoveries.examples.variables(),
             &chain.xdg,
             &refs,
-            chain.place,
+            Place {
+                dir: chain.dir.path(),
+                stdin: chain.stdin,
+            },
             TIMEOUT,
         );
         chain.ran.push(args);

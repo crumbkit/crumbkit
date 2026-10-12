@@ -13,7 +13,7 @@ use snapbox::assert::DEFAULT_ACTION_ENV;
 use crate::allow::{Allowances, Rule, is_reason};
 use crate::examples::Examples;
 use crate::goldens::compare;
-use crate::runs::Place;
+use crate::runs::Dir;
 
 mod chain;
 // The tests run `/bin/sh` scripts, which Windows cannot run. The two
@@ -68,8 +68,9 @@ impl<'a> Failing<'a> {
 
     /// Sets the working directory of the command line and of every step of
     /// its chain, relative to the test's directory or absolute. Without it,
-    /// the runs start in the directory of [`Examples::current_dir`], or in
-    /// the test's directory when that is not set.
+    /// the runs start in the directory of [`Examples::current_dir`], in one
+    /// copy of the fixture of [`Examples::fresh_dir`] for the whole chain,
+    /// or in the test's directory when neither is set.
     #[must_use]
     pub const fn dir(mut self, dir: &'a str) -> Self {
         self.dir = Some(dir);
@@ -113,18 +114,20 @@ impl<'a> Failing<'a> {
         self.words
     }
 
-    /// Returns the working directory and standard input of its runs. A
-    /// command line without a directory of its own runs in `dir`, the
-    /// directory of [`Examples::current_dir`], or in the test's directory
-    /// when that is `None` too.
-    pub(crate) fn place<'p>(&self, dir: Option<&'p str>) -> Place<'p>
+    /// Returns the working directory of its runs. A command line without a
+    /// directory of its own runs in `fallback`, the directory or fresh
+    /// fixture of [`Examples`], or in the test's directory when that is
+    /// `None` too.
+    pub(crate) fn work_dir<'p>(&self, fallback: Option<Dir<'p>>) -> Option<Dir<'p>>
     where
         'a: 'p,
     {
-        Place {
-            dir: self.dir.or(dir),
-            stdin: self.stdin.map(str::as_bytes),
-        }
+        self.dir.map(Dir::Fixed).or(fallback)
+    }
+
+    /// Returns the bytes on standard input of its runs, or `None`.
+    pub(crate) fn stdin_bytes(&self) -> Option<&'a [u8]> {
+        self.stdin.map(str::as_bytes)
     }
 }
 
@@ -275,7 +278,8 @@ impl<'a> Recoveries<'a> {
 /// one chain share one set of fresh XDG directories, which start as copies
 /// of the fixture of [`Failing::xdg`] or [`Examples::xdg`], the working directory
 /// and the standard input of its start, so a step sees what the earlier
-/// runs wrote.
+/// runs wrote. A chain whose working directory comes from
+/// [`Examples::fresh_dir`] runs in one new copy of that fixture.
 ///
 /// A chain follows the recovery and then each alternative of a failure. A
 /// `run` step fills each placeholder, such as `<ID>...`, from

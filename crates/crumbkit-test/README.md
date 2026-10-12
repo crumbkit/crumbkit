@@ -54,8 +54,9 @@ The rustdoc of each check says what it fails on and shows an example:
   calls.
 - Example output: [`check_examples`] with [`Examples`], and
   [`example_golden_name`], which names each example's golden file.
-  `Examples` sets each run's working directory and the values that the
-  check replaces with placeholders, and an example's `.stdin` file holds
+  `Examples` sets each run's working directory, or a fixture that each run
+  starts in a new copy of, and the values that the check replaces with
+  placeholders, and an example's `.stdin` file holds
   its standard input.
 - The output budget: [`check_output_budget`], which runs each `--json`
   example with half the bytes it prints and checks that the tool cuts or

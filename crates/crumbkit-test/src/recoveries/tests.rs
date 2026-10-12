@@ -21,6 +21,7 @@ use crate::temp::TempDir;
 use crate::testing::panic_message;
 
 mod form;
+mod fresh;
 mod xdg;
 
 /// The code of a book that does not exist.
