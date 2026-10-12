@@ -14,13 +14,12 @@ until the first release:
 crumbkit = { git = "https://github.com/crumbkit/crumbkit" }
 ```
 
-Until then, the `main` branch can change without notice.
+Until then, `main` can change without notice.
 
 ## Example
 
-This tool lists books as a text table or, with `--json`, as JSON, pages
-the list with `--limit` and `--all`, and prints a failure with a stable code
-and a next step:
+This tool lists books as a table or as JSON, pages them, and prints a
+failure with a stable code and a next step:
 
 ```rust
 use std::fmt;
@@ -115,8 +114,7 @@ fn main() -> ExitCode {
 }
 ```
 
-The shelf example shows the exact output of a fuller tool in its
-[golden files].
+The shelf example's [golden files] show the output of a fuller tool.
 
 ## Where to read more
 
@@ -133,13 +131,15 @@ The shelf example shows the exact output of a fuller tool in its
   conversion of a `miette::Report` into [`Error`], with [ADR-0001].
 - The `usage-log` and `tracing` features: [`usage`] and [`trace`], with
   [ADR-0029] and [ADR-0030].
+- The `complete` feature: shell completion through `crumbkit::complete`,
+  which follows `clap_complete`'s unstable API, so a minor release may change
+  it ([ADR-0048]).
 - The JSON Schemas of crumbkit's own documents: [schemas], with [ADR-0007].
-- The tests that check a tool against these conventions: [crumbkit-test].
-- The types that need no clap, which crumbkit re-exports: [crumbkit-core],
+- Tests that check a tool against these conventions: [crumbkit-test].
+- Types without clap, which crumbkit re-exports: [crumbkit-core],
   with [ADR-0032].
 
-Licensed under either of Apache License, Version 2.0 or MIT license at your
-option.
+Licensed under Apache-2.0 or MIT, at your option.
 
 [golden files]: ../../examples/shelf/tests/golden
 [`Output`]: src/output.rs
@@ -177,3 +177,4 @@ option.
 [ADR-0030]: ../../docs/decisions/api/usage/0030-trace-context.md
 [ADR-0032]: ../../docs/decisions/api/0032-core-crate.md
 [ADR-0035]: ../../docs/decisions/api/schemas/0035-schema-commands.md
+[ADR-0048]: ../../docs/decisions/api/0048-completion.md
