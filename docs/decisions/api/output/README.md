@@ -1,6 +1,6 @@
 # ADR-0031. Output
 
-These records decide how a tool prints a command's result: the compact text table, the JSON document, the columns that a row type names, the failures, batches and listings that print beside the rows, the failure forms that a tool sets in place of crumbkit's failure document, the streams that print rows as they arrive, the output budget that limits the bytes of one run, the child processes that a command hands the terminal to, and the terminal detection that no result depends on.
+These records decide how a tool prints a command's result: the compact text table, the JSON document, the columns that a row type names, the failures, batches and listings that print beside the rows, the failure forms that a tool sets in place of crumbkit's failure document, the streams that print rows as they arrive, the output budget that limits the bytes of one run, the child processes that a command hands the terminal to, the terminal detection that no result depends on, and the layout of a JSON document.
 
 ## Children
 
@@ -9,5 +9,6 @@ These records decide how a tool prints a command's result: the compact text tabl
 - [ADR-0045. Failure forms](0045-failure-forms.md)
 - [ADR-0046. Output budget](0046-output-budget.md)
 - [ADR-0049. Terminal detection](0049-terminal-detection.md)
+- [ADR-0052. JSON layout](0052-json-layout.md)
 - [ADR-0050. Listings](listings/README.md)
 - [ADR-0051. Result shapes](results/README.md)
