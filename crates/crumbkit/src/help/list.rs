@@ -1,6 +1,7 @@
 //! The headed list of a guided group's subcommands, and the line of a list
 //! that the goal list, the topic list and the column list share.
 
+use std::borrow::Cow;
 use std::fmt::Write as _;
 
 use clap::Command;
@@ -8,6 +9,9 @@ use clap::builder::StyledStr;
 use clap::builder::styling::Style;
 
 use super::Goal;
+
+#[cfg(test)]
+mod tests;
 
 /// Returns the headed list of the visible subcommands of `node` under
 /// `goals`, with `header` as the style of each heading and `literal` as the
@@ -73,7 +77,7 @@ pub(super) fn list(
             write_line(
                 &mut text,
                 command.get_name(),
-                about.as_ref(),
+                about.as_deref(),
                 width,
                 literal,
             );
@@ -86,9 +90,16 @@ pub(super) fn list(
 /// `long_about` when it has no `about`, and then its visible flag aliases
 /// and aliases, as clap's `Commands:` list prints them, such as `List the
 /// moons [aliases: ls, l]`, or `[alias: ls]` for one alias. It returns
-/// `None` when the command has neither.
-fn description(command: &Command) -> Option<StyledStr> {
+/// `None` when the command has neither. A command without visible aliases
+/// borrows its `about`, so a list without aliases allocates no description.
+fn description(command: &Command) -> Option<Cow<'_, StyledStr>> {
     let about = command.get_about().or_else(|| command.get_long_about());
+    let visible = command.get_visible_short_flag_aliases().next().is_some()
+        || command.get_visible_long_flag_aliases().next().is_some()
+        || command.get_visible_aliases().next().is_some();
+    if !visible {
+        return about.map(Cow::Borrowed);
+    }
     let aliases: Vec<String> = command
         .get_visible_short_flag_aliases()
         .map(|alias| format!("-{alias}"))
@@ -99,9 +110,6 @@ fn description(command: &Command) -> Option<StyledStr> {
         )
         .chain(command.get_visible_aliases().map(str::to_owned))
         .collect();
-    if aliases.is_empty() {
-        return about.cloned();
-    }
     let mut text = about.cloned().unwrap_or_default();
     if text != StyledStr::new() {
         text.push_str(" ");
@@ -109,7 +117,7 @@ fn description(command: &Command) -> Option<StyledStr> {
     // Writing to a `StyledStr` cannot fail.
     let plural = if aliases.len() == 1 { "" } else { "es" };
     let _ = write!(text, "[alias{plural}: {}]", aliases.join(", "));
-    Some(text)
+    Some(Cow::Owned(text))
 }
 
 /// Writes one line of a list to `text`, which the goal list and the topic
