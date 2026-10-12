@@ -13,5 +13,6 @@ Examples:
   shelf self figures list
   shelf self figures list --log usage.jsonl
 
+Effects: read-only, closed-world.
 Global flags: --json, --fields <FIELD>, --long, --full. `shelf self figures list --help` describes them.
 Next: shelf self figures list --help explains each column.

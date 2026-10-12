@@ -58,6 +58,12 @@ fn every_command_is_a_resource_followed_by_list_or_show() {
 }
 
 #[test]
+fn every_command_declares_its_effects() {
+    let (command, guide) = fixture_tool();
+    crumbkit_test::check_effects(&command, &guide, ALLOW);
+}
+
+#[test]
 fn every_list_command_pages() {
     crumbkit_test::check_listings(&fixture_tool().0, ALLOW);
 }

@@ -38,8 +38,10 @@ const SPELLING: Spelling = Spelling::COLONS;
 /// the first word with its words from shelf's aliases file, so clap,
 /// help and every output see only real commands.
 ///
-/// shelf passes `set_command` the command that `crumbkit::parse_from`
-/// returns, which holds crumbkit's help lines, and `finish` renders the
+/// shelf passes `set_command` the `Parsed` that `crumbkit::parse_from`
+/// returns. It holds the command with crumbkit's help lines and the words
+/// that the caller typed, which `books remove` repeats with `--yes` when no
+/// person can confirm it. `finish` renders the
 /// `Next:` line and a failure's recovery against it. `shelf commands list`
 /// and `shelf aliases list` read the same command, so they list what the
 /// caller can run.
@@ -64,33 +66,43 @@ where
     let command = Cli::command();
     let file = crumbkit_aliases::file(command.get_name());
     let args = crumbkit_aliases::expand(&command, args, file.as_deref());
-    let (mut cli, command) =
-        match crumbkit::parse_from::<Cli, _, _>(command, &GUIDE, SPELLING, args) {
-            Ok(parsed) => parsed,
-            Err(stop) => return stop.code(),
-        };
-    cli.output.set_command(command);
+    let (mut cli, parsed) = match crumbkit::parse_from::<Cli, _, _>(command, &GUIDE, SPELLING, args)
+    {
+        Ok(parsed) => parsed,
+        Err(stop) => return stop.code(),
+    };
+    cli.output.set_command(parsed);
     match cli.resource {
-        Resource::Books { command } => match command {
-            BooksCommand::List(args) => crumbkit::finish(
-                &mut cli.output,
-                SPELLING,
-                books::BOOKS_LIST,
-                books::list(&args),
-            ),
-            BooksCommand::Show(args) => crumbkit::finish(
-                &mut cli.output,
-                SPELLING,
-                books::BOOKS_SHOW,
-                books::show(&args),
-            ),
-            BooksCommand::Summarize(args) => crumbkit::finish(
-                &mut cli.output,
-                SPELLING,
-                books::BOOKS_SUMMARIZE,
-                books::summarize(&args),
-            ),
-        },
+        Resource::Books { command } => {
+            let removed = books::removed_file();
+            let removed = removed.as_deref();
+            match command {
+                BooksCommand::List(args) => crumbkit::finish(
+                    &mut cli.output,
+                    SPELLING,
+                    books::BOOKS_LIST,
+                    books::list(&args, removed),
+                ),
+                BooksCommand::Show(args) => crumbkit::finish(
+                    &mut cli.output,
+                    SPELLING,
+                    books::BOOKS_SHOW,
+                    books::show(&args, removed),
+                ),
+                BooksCommand::Summarize(args) => crumbkit::finish(
+                    &mut cli.output,
+                    SPELLING,
+                    books::BOOKS_SUMMARIZE,
+                    books::summarize(&args, removed),
+                ),
+                // `remove` reads `--dry-run` and asks for confirmation
+                // through `&mut cli.output`, so it runs before `finish`.
+                BooksCommand::Remove(args) => {
+                    let result = books::remove(&mut cli.output, &args, removed);
+                    crumbkit::finish(&mut cli.output, SPELLING, books::BOOKS_REMOVE, result)
+                }
+            }
+        }
         // `commands list`, `schemas`, `self` and `aliases list` read the
         // command tree through `&mut cli.output`, so each runs before
         // `finish` takes `cli.output` in turn.

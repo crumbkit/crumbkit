@@ -44,8 +44,13 @@ fn every_command_and_argument_has_one_name() {
 }
 
 #[test]
-fn every_command_is_a_resource_followed_by_list_show_summarize_or_usage() {
-    crumbkit_test::check_grammar(&Cli::command(), &["summarize", "usage"], ALLOW);
+fn every_command_is_a_resource_followed_by_list_show_summarize_usage_or_remove() {
+    crumbkit_test::check_grammar(&Cli::command(), &["summarize", "usage", "remove"], ALLOW);
+}
+
+#[test]
+fn every_command_declares_its_effects() {
+    crumbkit_test::check_effects(&Cli::command(), &GUIDE, ALLOW);
 }
 
 #[test]

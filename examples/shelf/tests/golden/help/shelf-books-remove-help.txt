@@ -1,0 +1,47 @@
+Remove the books with the given ids from the shelf, so list and show skip them
+
+Usage: shelf books remove [OPTIONS] <ID>...
+
+Arguments:
+  <ID>...
+          The ids of the books to remove, separated by spaces
+
+Options:
+      --dry-run
+          Report what the command would change, and change nothing
+
+      --yes
+          Proceed without asking for confirmation
+
+      --json
+          Print the result as a JSON document on one line
+
+      --fields <FIELD>
+          Print only these comma-separated fields, in this order
+
+      --long
+          Add the long columns after the compact ones
+
+      --full
+          With --json, print every field of every row
+
+  -h, --help
+          Print help (see a summary with '-h')
+
+Examples:
+  shelf books remove 2 --dry-run
+          Print the book that removing book 2 would remove
+
+  shelf books remove 2 --yes
+          Remove book 2 without asking
+
+Columns:
+  id      The book's id, unique within the catalogue.
+  title   The book's title.
+  author  The book's author.
+  year    The year the book was first published.
+
+Columns that --long adds:
+  form  The book's literary form.
+
+Effects: destructive, idempotent, closed-world.

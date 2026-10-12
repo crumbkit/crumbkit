@@ -8,7 +8,7 @@
 //! the tree.
 
 use clap::{ArgMatches, Args, Command, CommandFactory as _, FromArgMatches, Subcommand};
-use crumbkit::help::{Guide, RuntimeLeaf};
+use crumbkit::help::{Effects, Guide, RuntimeLeaf};
 use crumbkit::{Output, Page};
 
 use crate::cli::{Cli, GUIDE, Resource};
@@ -106,6 +106,7 @@ pub fn guide(lists: &[List]) -> Guide {
                     vec!["--all".to_owned()],
                     format!("Print every entry of the {name} list"),
                 )
+                .effects(Effects::read_only())
         })
         .collect();
     GUIDE.with_runtime_leaves(leaves)

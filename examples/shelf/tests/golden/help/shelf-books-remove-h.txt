@@ -1,0 +1,19 @@
+Remove the books with the given ids from the shelf, so list and show skip them
+
+Usage: shelf books remove [OPTIONS] <ID>...
+
+Arguments:
+  <ID>...  The ids of the books to remove, separated by spaces
+
+Options:
+      --dry-run  Report what the command would change, and change nothing
+      --yes      Proceed without asking for confirmation
+  -h, --help     Print help (see more with '--help')
+
+Examples:
+  shelf books remove 2 --dry-run
+  shelf books remove 2 --yes
+
+Effects: destructive, idempotent, closed-world.
+Global flags: --json, --fields <FIELD>, --long, --full. `shelf books remove --help` describes them.
+Next: shelf books remove --help explains each column.

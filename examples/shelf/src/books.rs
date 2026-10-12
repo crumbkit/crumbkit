@@ -13,10 +13,13 @@ use serde::Serialize;
 
 use crate::cli::{BooksList, BooksShow};
 
+mod remove;
 mod summary;
 #[cfg(test)]
 mod tests;
 
+use remove::read_removed;
+pub(crate) use remove::{BOOKS_REMOVE, remove, removed_file};
 pub(crate) use summary::{BOOKS_SUMMARIZE, summarize};
 
 /// The document that `shelf books list` prints: one page of the catalogue and
@@ -124,16 +127,23 @@ const CATALOGUE: [Book; 6] = [
 ];
 
 /// Returns the books that `args` asks for, in id order, with the number of
-/// books in the catalogue as the total.
+/// books on the shelf as the total. The shelf is the catalogue without the
+/// books that the file at `removed` names, as [`read_removed`] reads it.
 ///
 /// The catalogue is a constant in memory, so this builds every book and
 /// keeps the first page with `Listing::from_all`.
-#[expect(
-    clippy::unnecessary_wraps,
-    reason = "every shelf handler returns Result<_, BooksError>, so main passes each result to finish in the same way"
-)]
-pub(crate) fn list(args: &BooksList) -> Result<Listing<Book>, BooksError> {
-    Ok(Listing::from_all(Vec::from(CATALOGUE), args.page.limit())
+///
+/// # Errors
+///
+/// Returns `BooksError::RemovedFile` when the file of removed books cannot
+/// be read.
+pub(crate) fn list(args: &BooksList, removed: Option<&Path>) -> Result<Listing<Book>, BooksError> {
+    let removed = read_removed(removed)?;
+    let books = CATALOGUE
+        .into_iter()
+        .filter(|book| !removed.contains(&book.id))
+        .collect();
+    Ok(Listing::from_all(books, args.page.limit())
         .described("books")
         .next(show_call(), "takes up to 100 ids in one call."))
 }
@@ -155,15 +165,20 @@ pub(crate) fn show_call() -> Call {
 /// # Errors
 ///
 /// Returns `BooksError::UnreadableIdsFile` or `BooksError::BadIdsFile` when
-/// the ids file cannot be read or holds a line that is not a book id.
-pub(crate) fn show(args: &BooksShow) -> Result<Batch<Book, BooksError>, BooksError> {
+/// the ids file cannot be read or holds a line that is not a book id, and
+/// `BooksError::RemovedFile` when the file of removed books cannot be read.
+pub(crate) fn show(
+    args: &BooksShow,
+    removed: Option<&Path>,
+) -> Result<Batch<Book, BooksError>, BooksError> {
     let ids = match &args.from {
         Some(path) => read_ids(path)?,
         None => args.ids.clone(),
     };
+    let removed = read_removed(removed)?;
     let mut books = Vec::with_capacity(ids.len());
     let mut missing = Vec::new();
-    for result in crumbkit::fetch_each(&ids, WORKERS, |&id| find(id)) {
+    for result in crumbkit::fetch_each(&ids, WORKERS, |&id| find(id, &removed)) {
         match result {
             Ok(book) => books.push(book),
             Err(id) if !missing.contains(&id) => missing.push(id),
@@ -275,11 +290,11 @@ fn parse_ids(reader: &mut impl BufRead, text: &mut String) -> Result<Vec<u32>, I
 }
 
 /// Returns the book with `id`, or `id` itself as the error when the
-/// catalogue has no such book.
-fn find(id: u32) -> Result<Book, u32> {
+/// catalogue has no such book or `removed` holds `id`.
+fn find(id: u32, removed: &[u32]) -> Result<Book, u32> {
     CATALOGUE
         .iter()
-        .find(|book| book.id == id)
+        .find(|book| book.id == id && !removed.contains(&id))
         .cloned()
         .ok_or(id)
 }
@@ -298,6 +313,14 @@ const TOO_MANY_IDS: Code = Code::new("shelf", "books", "too_many_ids");
 
 /// The code of a failure whose ids file holds no id.
 const EMPTY_IDS_FILE: Code = Code::new("shelf", "books", "empty_ids_file");
+
+/// The code of a failure whose file of removed books cannot be read or
+/// written.
+const REMOVED_FILE: Code = Code::new("shelf", "books", "removed_file");
+
+/// The code of a failure that finds no state directory for the file of
+/// removed books.
+const NO_STATE_DIRECTORY: Code = Code::new("shelf", "books", "no_state_directory");
 
 /// A failure of a books command.
 #[derive(Debug)]
@@ -337,6 +360,17 @@ pub(crate) enum BooksError {
         /// The path of the file as the caller gave it.
         name: String,
     },
+    /// The file of removed books cannot be read or written, or holds a line
+    /// that is not a book id.
+    RemovedFile {
+        /// The path of the file.
+        name: String,
+        /// Why the file cannot be read or written.
+        error: io::Error,
+    },
+    /// Neither `XDG_STATE_HOME` nor `HOME` names a directory, so shelf has
+    /// nowhere to keep the removed books.
+    NoStateDirectory,
 }
 
 impl BooksError {
@@ -349,6 +383,8 @@ impl BooksError {
         &BAD_IDS_FILE,
         &TOO_MANY_IDS,
         &EMPTY_IDS_FILE,
+        &REMOVED_FILE,
+        &NO_STATE_DIRECTORY,
     ];
 }
 
@@ -381,6 +417,12 @@ impl fmt::Display for BooksError {
                 file.name()
             ),
             Self::EmptyIdsFile { name } => write!(f, "the ids file {name} holds no book ids"),
+            Self::RemovedFile { name, .. } => {
+                write!(f, "cannot read or write the file of removed books {name}")
+            }
+            Self::NoStateDirectory => {
+                f.write_str("shelf cannot find a state directory to keep the removed books in")
+            }
         }
     }
 }
@@ -390,11 +432,12 @@ impl fmt::Display for BooksError {
 impl std::error::Error for BooksError {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         match self {
-            Self::UnreadableIdsFile { error, .. } => Some(error),
+            Self::UnreadableIdsFile { error, .. } | Self::RemovedFile { error, .. } => Some(error),
             Self::NotFound { .. }
             | Self::BadIdsFile { .. }
             | Self::TooManyIds { .. }
-            | Self::EmptyIdsFile { .. } => None,
+            | Self::EmptyIdsFile { .. }
+            | Self::NoStateDirectory => None,
         }
     }
 }
@@ -407,9 +450,11 @@ impl Diagnostic for BooksError {
     fn source_code(&self) -> Option<&dyn SourceCode> {
         match self {
             Self::BadIdsFile { file, .. } | Self::TooManyIds { file, .. } => Some(file),
-            Self::NotFound { .. } | Self::UnreadableIdsFile { .. } | Self::EmptyIdsFile { .. } => {
-                None
-            }
+            Self::NotFound { .. }
+            | Self::UnreadableIdsFile { .. }
+            | Self::EmptyIdsFile { .. }
+            | Self::RemovedFile { .. }
+            | Self::NoStateDirectory => None,
         }
     }
 
@@ -422,9 +467,11 @@ impl Diagnostic for BooksError {
                 Some(format!("this is id {} of the file", MOST_IDS + 1)),
                 *span,
             ),
-            Self::NotFound { .. } | Self::UnreadableIdsFile { .. } | Self::EmptyIdsFile { .. } => {
-                return None;
-            }
+            Self::NotFound { .. }
+            | Self::UnreadableIdsFile { .. }
+            | Self::EmptyIdsFile { .. }
+            | Self::RemovedFile { .. }
+            | Self::NoStateDirectory => return None,
         };
         Some(Box::new(std::iter::once(label)))
     }
@@ -441,6 +488,8 @@ impl Failure for BooksError {
             Self::BadIdsFile { .. } => &BAD_IDS_FILE,
             Self::TooManyIds { .. } => &TOO_MANY_IDS,
             Self::EmptyIdsFile { .. } => &EMPTY_IDS_FILE,
+            Self::RemovedFile { .. } => &REMOVED_FILE,
+            Self::NoStateDirectory => &NO_STATE_DIRECTORY,
         }
     }
 
@@ -455,6 +504,10 @@ impl Failure for BooksError {
                 format!("the ids file holds at most {MOST_IDS} ids, as the command line does")
             }
             Self::EmptyIdsFile { .. } => "the ids file needs at least one book id".to_owned(),
+            Self::RemovedFile { name, .. } => {
+                format!("make {name} a readable file that holds one book id per line, or delete it")
+            }
+            Self::NoStateDirectory => "set XDG_STATE_HOME or HOME to a directory".to_owned(),
         };
         Recovery::Hint(hint)
     }
@@ -467,16 +520,18 @@ impl Failure for BooksError {
             | Self::BadIdsFile { .. }
             | Self::TooManyIds { .. }
             | Self::EmptyIdsFile { .. } => vec![Recovery::Run(show_call())],
-            Self::NotFound { .. } => Vec::new(),
+            Self::NotFound { .. } | Self::RemovedFile { .. } | Self::NoStateDirectory => Vec::new(),
         }
     }
 
     fn diagnostic(&self) -> Option<&dyn Diagnostic> {
         match self {
             Self::BadIdsFile { .. } | Self::TooManyIds { .. } => Some(self),
-            Self::NotFound { .. } | Self::UnreadableIdsFile { .. } | Self::EmptyIdsFile { .. } => {
-                None
-            }
+            Self::NotFound { .. }
+            | Self::UnreadableIdsFile { .. }
+            | Self::EmptyIdsFile { .. }
+            | Self::RemovedFile { .. }
+            | Self::NoStateDirectory => None,
         }
     }
 }

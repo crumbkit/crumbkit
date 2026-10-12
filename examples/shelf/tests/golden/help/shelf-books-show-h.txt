@@ -12,5 +12,6 @@ Options:
 Examples:
   shelf books show 2 5
 
+Effects: read-only, closed-world.
 Global flags: --json, --fields <FIELD>, --long, --full. `shelf books show --help` describes them.
 Next: shelf books show --help explains each column.

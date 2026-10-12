@@ -10,5 +10,6 @@ Options:
 Examples:
   reading schemas list
 
+Effects: read-only, closed-world.
 Global flags: --json, --fields <FIELD>, --long, --full. `reading schemas list --help` describes them.
 Next: reading schemas list --help explains each column.

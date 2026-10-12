@@ -27,7 +27,7 @@ fn show_returns_the_books_in_the_order_given_and_repeats_a_repeated_id() {
         from: None,
     };
 
-    let batch = show(&args).unwrap();
+    let batch = show(&args, None).unwrap();
 
     let titles: Vec<&str> = batch.rows().iter().map(|book| book.title).collect();
     assert_eq!(titles, ["Middlemarch", "Frankenstein", "Middlemarch"]);
@@ -41,7 +41,7 @@ fn show_returns_one_failure_naming_one_missing_id_as_a_book_and_no_books() {
         from: None,
     };
 
-    let batch = show(&args).unwrap();
+    let batch = show(&args, None).unwrap();
 
     let failures: Vec<String> = batch
         .failures()
@@ -60,7 +60,7 @@ fn show_returns_the_books_found_and_one_failure_naming_each_missing_id_once_in_t
         from: None,
     };
 
-    let batch = show(&args).unwrap();
+    let batch = show(&args, None).unwrap();
 
     let titles: Vec<&str> = batch.rows().iter().map(|book| book.title).collect();
     let failures: Vec<String> = batch
@@ -103,7 +103,7 @@ fn parse_ids_stops_reading_at_the_line_of_id_101() {
 /// Returns the text and the failures of `shelf books summarize` for `ids`.
 fn summarize_ids(ids: &[u32]) -> (String, Vec<String>) {
     let args = BooksSummarize { ids: ids.to_vec() };
-    let prose = summarize(&args).unwrap();
+    let prose = summarize(&args, None).unwrap();
     let text = prose.prose().unwrap().to_string();
     let failures = prose
         .failures()
@@ -158,7 +158,7 @@ fn summarize_of_only_missing_ids_says_that_it_found_no_books() {
 fn summarize_serializes_its_counts_and_the_years_of_the_books_it_found() {
     let args = BooksSummarize { ids: vec![2, 5] };
 
-    let prose = summarize(&args).unwrap();
+    let prose = summarize(&args, None).unwrap();
 
     assert_eq!(
         serde_json::to_value(&prose).unwrap(),

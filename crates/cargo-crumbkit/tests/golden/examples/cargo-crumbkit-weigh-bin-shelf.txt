@@ -1,15 +1,16 @@
 PATH                     SHORT_HELP  OUTPUT  PATH_TOTAL  RUNS  HELP_BEFORE  P95_OUTPUT
 shelf                    601         -       601         -     -            -
-shelf books              490         -       1091        -     -            -
-shelf books list         447         512     2050        -     -            -
-shelf books show         488         111     1690        -     -            -
-shelf books summarize    465         101     1657        -     -            -
+shelf books              582         -       1183        -     -            -
+shelf books list         481         512     2176        -     -            -
+shelf books show         522         111     1816        -     -            -
+shelf books summarize    499         101     1783        -     -            -
+shelf books remove       669         114     1966        -     -            -
 shelf commands           355         -       956         -     -            -
-shelf commands list      664         1957    3577        -     -            -
+shelf commands list      698         2043    3697        -     -            -
 shelf schemas            412         -       1013        -     -            -
-shelf schemas list       456         1162    2631        -     -            -
-shelf schemas show       451         1481    2945        -     -            -
+shelf schemas list       490         1299    2802        -     -            -
+shelf schemas show       485         1590    3088        -     -            -
 shelf self               405         -       1006        -     -            -
-shelf self usage         556         -       1562        -     -            -
+shelf self usage         590         -       1596        -     -            -
 shelf self figures       378         -       1384        -     -            -
-shelf self figures list  695         -       2079        -     -            -
+shelf self figures list  729         -       2113        -     -            -
