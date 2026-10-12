@@ -125,6 +125,11 @@ pub enum Rule {
     /// [`check_names`](crate::check_names): help shows a second name for a
     /// command or an argument. Its id is `names/one-name`.
     OneName,
+    /// [`check_names`](crate::check_names): the guide names a person's
+    /// aliases on the root's help with
+    /// `crumbkit::help::Guide::personal_aliases`. Its id is
+    /// `names/personal-aliases`, and its opt-out names the root.
+    PersonalAliases,
     /// [`check_listings`](crate::check_listings): a `list` command lacks
     /// `--limit` or `--all`. Its id is `listings/list-pages`.
     ListPages,
@@ -169,6 +174,7 @@ impl Rule {
             Self::DryRun => "effects/dry-run",
             Self::Yes => "effects/yes",
             Self::OneName => "names/one-name",
+            Self::PersonalAliases => "names/personal-aliases",
             Self::ListPages => "listings/list-pages",
             Self::ShowIds => "listings/show-ids",
             Self::RepeatsAndCommas => "filters/repeats-and-commas",
@@ -206,6 +212,11 @@ impl Rule {
             Self::OneName => &[
                 "Each visible second name costs help bytes on every read of the page.",
                 "An agent learns two spellings and can copy either one.",
+            ],
+            Self::PersonalAliases => &[
+                "Root help differs between machines, because each person's aliases file adds its own names.",
+                "An agent can copy an alias from help that does not exist on another machine or in a script that another person runs.",
+                "Help golden files and help budgets measure help without personal aliases, so a long aliases file can push the root help past its budget unchecked.",
             ],
             Self::ListPages => &[
                 "An agent cannot bound the rows that the command prints, so one run can fill its context.",

@@ -60,7 +60,8 @@ fn fixture_tool() -> (Command, Guide) {
 
 #[test]
 fn every_command_and_argument_has_one_name() {
-    crumbkit_test::check_names(&fixture_tool().0, ALLOW);
+    let (command, guide) = fixture_tool();
+    crumbkit_test::check_names(&command, &guide, ALLOW);
 }
 
 #[test]

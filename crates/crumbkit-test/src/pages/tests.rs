@@ -69,3 +69,20 @@ fn a_command_line_that_prints_no_help_page_is_a_problem() {
         ["tool list -h: the command line prints no help page"]
     );
 }
+
+/// Fails the test, for a guide whose personal aliases no page may read.
+fn unread(_: &Command) -> Vec<String> {
+    panic!("a help page read the personal aliases");
+}
+
+#[test]
+fn the_pages_leave_out_the_personal_aliases_so_they_match_on_every_machine() {
+    let tool = tool();
+    let mut problems = Vec::new();
+
+    let guided = pages(&tool, &GUIDE.personal_aliases(unread), "-h", &mut problems);
+    let plain = pages(&tool, &GUIDE, "-h", &mut problems);
+
+    assert_eq!(guided[0].1, plain[0].1);
+    assert!(problems.is_empty(), "{problems:?}");
+}

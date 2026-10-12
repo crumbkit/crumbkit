@@ -2,6 +2,7 @@
 //! so a caller and an agent learn one spelling.
 
 use clap::Command;
+use crumbkit::help::Guide;
 
 use crate::allow::{Allow, Allowances, Rule};
 use crate::tree::{self, argument_name};
@@ -39,8 +40,12 @@ const ARGUMENT_RULE: &str = "and help shows one name for each argument";
 ///   `Command::short_flag`, because help lists a flag name beside the
 ///   command's name;
 /// - an argument with a visible long alias or a visible short alias;
-/// - an opt-out from [`Rule::OneName`] that names no command or excuses no
-///   problem.
+/// - a `guide` that names a person's aliases on the root's help with
+///   `Guide::personal_aliases`, unless an opt-out from
+///   [`Rule::PersonalAliases`] names the root, because those names differ
+///   between machines (ADR-0027);
+/// - an opt-out from [`Rule::OneName`] or [`Rule::PersonalAliases`] that
+///   names no command or excuses no problem.
 ///
 /// Hidden aliases pass, and so does a visible alias of a hidden command or
 /// argument. An argument may have one short form beside its long name, such
@@ -52,6 +57,7 @@ const ARGUMENT_RULE: &str = "and help shows one name for each argument";
 ///
 /// ```
 /// use clap::{Arg, ArgAction, Command};
+/// use crumbkit::help::Guide;
 ///
 /// let shelf = Command::new("shelf").subcommand(
 ///     Command::new("books").subcommand(
@@ -59,7 +65,7 @@ const ARGUMENT_RULE: &str = "and help shows one name for each argument";
 ///     ),
 /// );
 ///
-/// crumbkit_test::check_names(&shelf, &[]);
+/// crumbkit_test::check_names(&shelf, &Guide::new(), &[]);
 /// ```
 ///
 /// # Panics
@@ -67,9 +73,15 @@ const ARGUMENT_RULE: &str = "and help shows one name for each argument";
 /// Panics when the tree breaks a rule above. The message lists each problem
 /// on its own line and names each command by its path from `command`, such
 /// as `shelf books list`.
-pub fn check_names(command: &Command, allow: &[Allow]) {
-    let mut allowances = Allowances::new(allow, &[Rule::OneName]);
+pub fn check_names(command: &Command, guide: &Guide, allow: &[Allow]) {
+    let mut allowances = Allowances::new(allow, &[Rule::OneName, Rule::PersonalAliases]);
     let mut problems = Vec::new();
+    if guide.get_personal_aliases().is_some() && !allowances.excuses(Rule::PersonalAliases, "") {
+        problems.push(format!(
+            "{}: the guide names a person's aliases on the root's help, {COMMAND_RULE}",
+            command.get_name()
+        ));
+    }
     for visit in tree::walk_visible(command) {
         let path = visit.path();
         let command = visit.command();
