@@ -12,7 +12,7 @@ use clap::{ArgMatches, Command};
 use etcetera::BaseStrategy as _;
 use serde::Serialize;
 use signal_hook::consts::{SIGINT, SIGTERM};
-use signal_hook::iterator::Signals;
+use signal_hook::iterator::Signals as SignalSet;
 use signal_hook::low_level::emulate_default_handler;
 
 use super::caller::{self, Caller};
@@ -70,6 +70,37 @@ struct Recorder {
     words: Vec<OsString>,
     /// What the run reported.
     run: Run,
+    /// Whether SIGINT or SIGTERM arrived in a run whose tool owns its
+    /// signals. The line then says that the run was interrupted.
+    signalled: bool,
+}
+
+/// Who handles SIGINT and SIGTERM while the usage log runs, which
+/// [`start_with`] takes.
+#[non_exhaustive]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum Signals {
+    /// crumbkit handles both signals. On either one, it writes the run's
+    /// line with `"interrupted": true` and then lets the signal end the
+    /// process as it would have without the log. [`start`] chooses this.
+    #[default]
+    Crumbkit,
+    /// The tool handles both signals with its own handler. On either one,
+    /// crumbkit only notes that the run was interrupted and leaves the
+    /// process running. The tool ends the run itself and reports its exit
+    /// with [`ended`](crate::usage::ended), which writes the line with
+    /// `"interrupted": true`. A tool that returns from `main` without
+    /// calling `ended` gets its line from the guard.
+    ///
+    /// crumbkit's listener replaces the default action of both signals for
+    /// the whole process. A tool that chooses `Tool` and installs no handler
+    /// of its own therefore keeps running on Ctrl-C and on SIGTERM, and only
+    /// SIGKILL ends it. A handler that the tool installs later through
+    /// signal-hook runs beside crumbkit's listener. A handler that replaces
+    /// the signal's action directly, as the ctrlc crate does, removes
+    /// crumbkit's listener, and the line then records the tool's exit
+    /// without `interrupted`.
+    Tool,
 }
 
 /// The guard that [`start`] returns. It writes the run's line when it
@@ -124,11 +155,22 @@ impl Drop for Log {
 /// drops the line without a word, and recording never changes the tool's
 /// output or exit code (ADR-0029).
 pub fn start() -> Log {
+    start_with(Signals::Crumbkit)
+}
+
+/// Starts the usage log of this run as [`start`] does, with `signals`
+/// saying who handles SIGINT and SIGTERM.
+///
+/// A tool with its own handler for either signal calls
+/// `start_with(Signals::Tool)`, so the log never ends the process, and
+/// reports its exit with [`ended`](crate::usage::ended), as
+/// [`Signals::Tool`] describes.
+pub fn start_with(signals: Signals) -> Log {
     let started = Instant::now();
     let active =
         context::read().is_some_and(|context| install(&RECORDER, Recorder::new(started, context)));
     if active {
-        watch_signals();
+        watch_signals(signals);
     }
     Log { active }
 }
@@ -216,6 +258,17 @@ pub(crate) fn failed(spelling: Spelling, code: &Code) {
     update(&RECORDER, |recorder| recorder.failed(spelling, code));
 }
 
+/// Records that the tool ended the run with `exit` after writing
+/// `out_bytes` to standard output, and writes the run's line now, as
+/// [`crate::usage::ended`] describes.
+pub(crate) fn ended(exit: u8, out_bytes: Option<u64>) {
+    update(&RECORDER, |recorder| {
+        recorder.run.exit = Some(exit);
+        recorder.run.out_bytes = out_bytes;
+    });
+    write(&RECORDER, false);
+}
+
 /// Records what `finish` did: the `exit` code it returned, the `out_bytes`
 /// it wrote to standard output, and whether a listing was `truncated`.
 pub(crate) fn finished(exit: ExitCode, out_bytes: u64, truncated: bool) {
@@ -237,6 +290,7 @@ impl Recorder {
             context,
             words: Vec::new(),
             run: Run::default(),
+            signalled: false,
         }
     }
 
@@ -291,7 +345,7 @@ impl Recorder {
             session: Hash::new(key, [caller.session.as_bytes()]),
             args: Hash::new(key, self.words.iter().map(|word| word.as_encoded_bytes())),
             trace: self.context.ids,
-            interrupted,
+            interrupted: interrupted || self.signalled,
             run: self.run,
         })
     }
@@ -415,31 +469,42 @@ fn save(
     file::append(&dir, &line, limits).ok()
 }
 
-/// Starts the thread that writes the line when the run ends on SIGINT or
-/// SIGTERM, and returns once the thread listens. When the main thread is
-/// already writing the line, the signal thread waits for it, for at most
-/// [`LINE_WAIT`], as [`write`] describes. After the line, the thread lets the signal take its
-/// default effect, so the process ends as it would have without the log.
+/// Starts the thread that listens for SIGINT and SIGTERM, and returns once
+/// the thread listens.
+///
+/// With [`Signals::Crumbkit`], the thread writes the line on the first
+/// signal. When the main thread is already writing the line, the signal
+/// thread waits for it, for at most [`LINE_WAIT`], as [`write`] describes.
+/// After the line, the thread lets the signal take its default effect, so
+/// the process ends as it would have without the log. With
+/// [`Signals::Tool`], the thread notes each signal in the recorder and
+/// leaves the process running.
 //
 // RUST-10: the thread takes both signals from the start of the run. A
 // process that started with one of them ignored now ends on it, such as a
 // background job of a non-interactive shell, which starts with SIGINT
-// ignored. A tool that handles one of them itself ends on it too. Reading
+// ignored. A tool that handles one of them itself and starts the log with
+// `start` ends on it too, and `Signals::Tool` exists for it. Reading
 // each signal's disposition before taking it replaces this, which needs the
 // `sigaction` call that crumbkit's ban on unsafe code rules out today.
-fn watch_signals() {
+fn watch_signals(owner: Signals) {
     let (listening, listens) = mpsc::channel();
     let spawned = thread::Builder::new()
         .name("crumbkit-usage".to_owned())
         .spawn(move || {
-            let signals = Signals::new([SIGINT, SIGTERM]);
+            let signals = SignalSet::new([SIGINT, SIGTERM]);
             let _ = listening.send(());
             let Ok(mut signals) = signals else {
                 return;
             };
-            if let Some(signal) = signals.forever().next() {
+            for signal in signals.forever() {
+                if owner == Signals::Tool {
+                    update(&RECORDER, |recorder| recorder.signalled = true);
+                    continue;
+                }
                 write(&RECORDER, true);
                 let _ = emulate_default_handler(signal);
+                return;
             }
         });
     if spawned.is_ok() {

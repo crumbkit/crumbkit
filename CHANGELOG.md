@@ -83,6 +83,11 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit: `Output::is_json` says whether the caller asked for JSON, and
   `Output::progress_allowed` says whether a tool may draw progress
   ([`Output`], [ADR-0016]).
+- crumbkit: [`usage::ended`] records a tool's own exit number and output
+  bytes for a run that never reaches `finish` ([ADR-0029]).
+- crumbkit: `usage::start_with(Signals::Tool)` lets a tool handle SIGINT
+  and SIGTERM itself while the usage log records the signal ([`usage`],
+  [ADR-0029]).
 
 ### Changed
 
@@ -175,6 +180,7 @@ rustdoc, or at its decision record. -->
 [`report`]: crates/crumbkit-core/src/report.rs
 [`parse`]: crates/crumbkit/src/parse.rs
 [`Stop`]: crates/crumbkit/src/parse/stop.rs
+[`usage::ended`]: crates/crumbkit/src/usage.rs
 [`help`]: crates/crumbkit/src/help.rs
 [`help::quote`]: crates/crumbkit/src/help.rs
 [`commands`]: crates/crumbkit/src/commands.rs

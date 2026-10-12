@@ -101,7 +101,8 @@ pub(super) struct Run {
     /// Whether a personal alias expanded. It is present only when one did.
     #[serde(default, skip_serializing_if = "is_false")]
     pub(super) alias: bool,
-    /// The exit code that `parse` or `finish` returned.
+    /// The exit code that `parse` or `finish` returned, or that the tool
+    /// reported with `usage::ended`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     #[schemars(with = "u8")]
     pub(super) exit: Option<u8>,
@@ -111,7 +112,8 @@ pub(super) struct Run {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     #[schemars(with = "Name")]
     pub(super) code: Option<Name>,
-    /// The bytes that `finish` wrote to standard output.
+    /// The bytes that `finish` wrote to standard output, or that the tool
+    /// reported with `usage::ended`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     #[schemars(with = "u64")]
     pub(super) out_bytes: Option<u64>,
