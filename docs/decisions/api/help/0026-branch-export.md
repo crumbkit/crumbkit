@@ -11,6 +11,6 @@
 - The text table shows only each command's path and about text, because the nested lists would print as compact JSON in a table cell. `--json --full` prints the arguments, examples, columns and exit codes.
 - The schema of the `crumbkit/commands-list/v1` document is checked in (ADR-0007). crumbkit implements `Serialize` and `JsonSchema` for `CommandsList` and the row types by hand, so a build without the `usage-log` feature needs no serde or schemars derive macros (ADR-0016).
 - The two failure codes of `commands list` are fixed by crumbkit, as `crumbkit::cli::usage` is (ADR-0001), and are not listed in a `CODES` list.
-- A Markdown export of help is decided with the documentation (ADR-0013), and `commands list` prints only the two formats of ADR-0016.
+- `commands list` prints only the two formats of ADR-0016. crumbkit-markdown writes a Markdown reference from its JSON document (ADR-0044).
 
 Considered: `schema cli [PATH]` with built-in exemptions in the checks, `parse` adding and answering the command itself, one nested tree document, a `--markdown` flag now.

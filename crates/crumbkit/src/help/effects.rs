@@ -131,10 +131,23 @@ impl Effects {
         self.open_world
     }
 
-    /// Returns the line that help prints, such as `Effects: read-only,
+    /// Returns the line that a leaf's `-h` and `--help` print after its
+    /// examples, in help's wording, such as `Effects: read-only,
     /// closed-world.` A command that changes something names whether it is
-    /// idempotent, so a missing word never stands for "no".
-    pub(crate) const fn line(self) -> &'static str {
+    /// idempotent, so a missing word never stands for "no". Another
+    /// rendering of help, such as a Markdown reference, prints this line so
+    /// that it words the effects as help does.
+    ///
+    /// ```
+    /// use crumbkit::help::Effects;
+    ///
+    /// assert_eq!(
+    ///     Effects::destructive().idempotent().line(),
+    ///     "Effects: destructive, idempotent, closed-world."
+    /// );
+    /// ```
+    #[must_use]
+    pub const fn line(self) -> &'static str {
         match (self.change, self.idempotent, self.open_world) {
             (Change::Nothing, _, false) => "Effects: read-only, closed-world.",
             (Change::Nothing, _, true) => "Effects: read-only, open-world.",

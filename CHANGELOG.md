@@ -205,6 +205,12 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit: [`Code::runtime`] builds a code known only at run time, and
   `Spelling::split` reads a spelled code back into its segments
   ([ADR-0001]).
+- crumbkit-markdown: the new crate's `render` writes a Markdown reference
+  of every command of a tool from its `commands list --all --json --full`
+  document ([crumbkit-markdown], [ADR-0044]).
+- crumbkit: `Effects::line` and `help::STREAM_LINE` are public, so another
+  rendering of help prints the effects and stream lines in help's wording
+  ([`Effects`], [ADR-0044]).
 
 ### Changed
 
@@ -427,3 +433,5 @@ rustdoc, or at its decision record. -->
 [`Picker`]: crates/crumbkit/src/pick.rs
 [`NoInput`]: crates/crumbkit/src/pick/no_input.rs
 [crumbkit-picker]: crates/crumbkit-picker/README.md
+[crumbkit-markdown]: crates/crumbkit-markdown/README.md
+[ADR-0044]: docs/decisions/api/help/0044-command-reference.md
