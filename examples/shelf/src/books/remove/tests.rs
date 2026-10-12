@@ -5,7 +5,7 @@ use std::path::Path;
 use clap::Parser as _;
 use crumbkit::Output;
 
-use super::{read_removed, remove};
+use super::{read_removed, remove, removed_file_in};
 use crate::books::{BooksError, list, show};
 use crate::cli::{BooksCommand, BooksList, BooksRemove, BooksShow, Cli, Resource};
 
@@ -144,4 +144,27 @@ fn a_file_of_removed_books_with_a_line_that_is_not_an_id_fails_to_read() {
     let error = read_removed(Some(&file)).unwrap_err();
 
     assert!(matches!(error, BooksError::RemovedFile { .. }), "{error:?}");
+}
+
+#[test]
+fn an_absolute_xdg_state_home_names_the_state_directory_of_the_removed_file() {
+    let file = removed_file_in(Some("/srv/state".into()));
+
+    assert_eq!(
+        file.as_deref(),
+        Some(Path::new("/srv/state/shelf/removed.txt"))
+    );
+}
+
+#[test]
+fn a_relative_or_missing_xdg_state_home_leaves_the_removed_file_to_etcetera() {
+    use etcetera::BaseStrategy as _;
+
+    let etcetera = etcetera::choose_base_strategy()
+        .ok()
+        .and_then(|strategy| strategy.state_dir())
+        .map(|state| state.join("shelf").join("removed.txt"));
+
+    assert_eq!(removed_file_in(Some("state".into())), etcetera);
+    assert_eq!(removed_file_in(None), etcetera);
 }

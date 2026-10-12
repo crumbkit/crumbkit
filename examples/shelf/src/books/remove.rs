@@ -1,6 +1,7 @@
 //! `shelf books remove`, which removes books from the shelf, and the file
 //! that keeps the ids of the removed books.
 
+use std::ffi::OsString;
 use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
@@ -27,8 +28,26 @@ pub(crate) const BOOKS_REMOVE: Document<Vec<Book>> = Document::new(
 /// `shelf/removed.txt` in the person's XDG state directory, or `None` when
 /// neither `XDG_STATE_HOME` nor `HOME` names a directory.
 pub(crate) fn removed_file() -> Option<PathBuf> {
-    let strategy = etcetera::choose_base_strategy().ok()?;
-    let state = strategy.state_dir()?;
+    #[expect(
+        clippy::disallowed_methods,
+        reason = "this module owns the file of removed books, and XDG_STATE_HOME names its directory"
+    )]
+    let state_home = std::env::var_os("XDG_STATE_HOME");
+    removed_file_in(state_home)
+}
+
+/// Returns the path of the file of removed books when `XDG_STATE_HOME` is
+/// `state_home`, as [`removed_file`] describes.
+///
+/// An absolute `state_home` is the state directory. Otherwise etcetera
+/// finds it, and etcetera first finds the home directory, which reads the
+/// user database when `HOME` is unset. Every books command reads the file,
+/// so this skips that work when `XDG_STATE_HOME` names the directory.
+fn removed_file_in(state_home: Option<OsString>) -> Option<PathBuf> {
+    let state = match state_home.map(PathBuf::from) {
+        Some(state) if state.is_absolute() => state,
+        Some(_) | None => etcetera::choose_base_strategy().ok()?.state_dir()?,
+    };
     Some(state.join("shelf").join("removed.txt"))
 }
 
