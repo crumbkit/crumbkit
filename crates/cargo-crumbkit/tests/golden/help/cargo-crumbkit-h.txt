@@ -5,6 +5,9 @@ Usage: cargo crumbkit [OPTIONS] <COMMAND>
 Measure a tool's help
   weigh     Measure the bytes that an agent reads on each path through a tool's help
 
+Write a tool's reference
+  docs      Write a Markdown reference of every command of a tool to a file
+
 Explore the commands
   commands  Explore cargo crumbkit's commands
 

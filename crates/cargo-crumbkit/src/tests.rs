@@ -2,15 +2,11 @@
 //! measures in other tools.
 
 use clap::CommandFactory as _;
-use crumbkit_test::{Allow, Budgets};
+use crumbkit_test::Budgets;
 
 use crate::SPELLING;
-use crate::cli::{Cli, GUIDE};
-use crate::error::WeighError;
-
-/// cargo-crumbkit's opt-outs from crumbkit's conventions, which every check
-/// below reads. It has none.
-const ALLOW: &[Allow] = &[];
+use crate::cli::{ALLOW, Cli, GUIDE};
+use crate::error::{DocsError, ToolError, WeighError};
 
 /// The budgets of cargo-crumbkit's `-h` pages, which are crumbkit's
 /// defaults.
@@ -18,7 +14,10 @@ const BUDGETS: Budgets = Budgets::new();
 
 #[test]
 fn every_failure_code_spells_uniquely_as_printable_ascii() {
-    crumbkit_test::check_codes(SPELLING, &[WeighError::CODES]);
+    crumbkit_test::check_codes(
+        SPELLING,
+        &[ToolError::CODES, WeighError::CODES, DocsError::CODES],
+    );
 }
 
 #[test]
@@ -27,8 +26,8 @@ fn every_command_and_argument_has_one_name() {
 }
 
 #[test]
-fn every_command_is_a_resource_followed_by_list_or_weigh() {
-    crumbkit_test::check_grammar(&Cli::command(), &["weigh"], ALLOW);
+fn every_command_is_a_resource_followed_by_list_weigh_or_docs() {
+    crumbkit_test::check_grammar(&Cli::command(), &["weigh", "docs"], ALLOW);
 }
 
 #[test]

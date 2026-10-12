@@ -1,10 +1,11 @@
 # cargo-crumbkit
 
-cargo-crumbkit adds the `cargo crumbkit` subcommand, which measures a tool
-built with crumbkit. `cargo crumbkit weigh` counts the bytes that an agent
-reads on each path through the tool's help: each command's `-h` and `--help`
-pages, the output of its examples, and the total from the root down to the
-command. crumbkit is in design and is not published yet.
+cargo-crumbkit adds the `cargo crumbkit` subcommand, which measures and
+describes a tool built with crumbkit. `cargo crumbkit weigh` counts the
+bytes that an agent reads on each path through the tool's help: each
+command's `-h` and `--help` pages, the output of its examples, and the total
+from the root down to the command. `cargo crumbkit docs` writes a Markdown
+reference of every command. crumbkit is in design and is not published yet.
 
 ## Adding it
 
@@ -43,10 +44,21 @@ sets how far back to read. The tool needs crumbkit's `usage-log` feature
 and a `self figures list` command, as shelf has. The log stays on the
 machine, and `weigh` only reads it.
 
+## Writing the command reference
+
+`cargo crumbkit docs --bin shelf` builds `shelf` as `weigh` does and writes
+the reference to `docs/commands.md` in shelf's package, or to the file that
+`--out` names. crumbkit-markdown writes the reference from the tool's
+`commands list --all --json --full` document, and the reference for
+crumbkit's example tool is [shelf's reference]. crumbkit-test's
+`check_command_reference` fails a test when the checked-in file no longer
+matches the tool's help.
+
 ## Where to read more
 
 - `cargo crumbkit weigh --help` describes each column.
-- [ADR-0033] records the design and the alternatives considered.
+- [ADR-0033] records the design of `weigh`, and [ADR-0044] records the
+  command reference.
 
 Licensed under either of Apache License, Version 2.0 or MIT license at your
 option.
@@ -54,3 +66,5 @@ option.
 [shelf's weights]: tests/golden/examples/cargo-crumbkit-weigh-bin-shelf.txt
 [schema]: schemas/weigh-v1.json
 [ADR-0033]: ../../docs/decisions/api/help/0033-weigh.md
+[shelf's reference]: ../../examples/shelf/docs/commands.md
+[ADR-0044]: ../../docs/decisions/api/help/0044-command-reference.md

@@ -80,6 +80,7 @@ version = "0.0.0"
 dependencies = [
  "clap",
  "crumbkit",
+ "crumbkit-markdown",
  "crumbkit-test",
  "etcetera",
  "schemars",

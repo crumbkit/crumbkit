@@ -32,7 +32,7 @@ fn a_failed_build_shows_cargo_s_own_error_on_standard_error() {
         "cargo's error is missing from standard error:\n{stderr}"
     );
     assert!(
-        stderr.contains("crumbkit::weigh::build_failed"),
+        stderr.contains("crumbkit::tool::build_failed"),
         "weigh's failure is missing from standard error:\n{stderr}"
     );
 }

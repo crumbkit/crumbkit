@@ -16,8 +16,31 @@ fn weigh(args: &[&str]) -> Result<super::WeighArgs, clap::Error> {
     let super::CargoCommand::Crumbkit { command } = cli.cargo;
     match command {
         super::CrumbkitCommand::Weigh(args) => Ok(args),
-        super::CrumbkitCommand::Commands { .. } => panic!("weigh parsed as commands"),
+        other => panic!("weigh parsed as {other:?}"),
     }
+}
+
+/// Returns the arguments of `cargo crumbkit docs` with `args` after it.
+fn docs(args: &[&str]) -> Result<super::DocsArgs, clap::Error> {
+    let words = ["cargo", "crumbkit", "docs"];
+    let cli = Cli::try_parse_from(words.iter().chain(args))?;
+    let super::CargoCommand::Crumbkit { command } = cli.cargo;
+    match command {
+        super::CrumbkitCommand::Docs(args) => Ok(args),
+        other => panic!("docs parsed as {other:?}"),
+    }
+}
+
+#[test]
+fn docs_needs_a_binary_and_takes_an_optional_file() {
+    let args = docs(&["--bin", "shelf"]).unwrap();
+    assert_eq!((args.bin.as_str(), args.out), ("shelf", None));
+    let args = docs(&["--bin", "shelf", "--out", "commands.md"]).unwrap();
+    assert_eq!(args.out, Some("commands.md".into()));
+    assert_eq!(
+        docs(&[]).unwrap_err().kind(),
+        clap::error::ErrorKind::MissingRequiredArgument
+    );
 }
 
 #[test]

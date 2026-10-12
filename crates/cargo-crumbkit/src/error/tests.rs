@@ -5,10 +5,12 @@ use std::path::PathBuf;
 
 use crumbkit::{Failure as _, Recovery};
 
-use super::WeighError;
+use crumbkit_markdown::render;
+
+use super::{DocsError, ToolError, WeighError};
 
 /// Returns the message and the hint of `error`.
-fn rendered(error: &WeighError) -> (String, String) {
+fn rendered(error: &impl crumbkit::Failure) -> (String, String) {
     let Recovery::Hint(hint) = error.recovery() else {
         panic!("{error} has a next step other than a hint");
     };
@@ -21,10 +23,10 @@ fn not_found() -> io::Error {
 }
 
 #[test]
-fn every_failure_names_what_failed_and_hints_at_what_to_change() {
+fn every_failure_of_building_and_running_the_tool_names_what_failed_and_hints_at_what_to_change() {
     let cases = [
         (
-            WeighError::CargoUnavailable {
+            ToolError::CargoUnavailable {
                 cargo: "cargo".to_owned(),
                 error: not_found(),
             },
@@ -32,7 +34,7 @@ fn every_failure_names_what_failed_and_hints_at_what_to_change() {
             "run cargo crumbkit through cargo, which sets CARGO to its own path",
         ),
         (
-            WeighError::BuildFailed {
+            ToolError::BuildFailed {
                 bin: "shelf".to_owned(),
                 status: "exit status: 101".to_owned(),
             },
@@ -40,19 +42,19 @@ fn every_failure_names_what_failed_and_hints_at_what_to_change() {
             "run `cargo build --workspace --bin shelf` to see cargo's errors",
         ),
         (
-            WeighError::NoBinary {
+            ToolError::NoBinary {
                 bin: "shelf".to_owned(),
             },
             "cargo built no executable for the binary shelf",
             "run `cargo build --workspace --bin shelf --message-format json` to see the artifacts that cargo built",
         ),
         (
-            WeighError::NoTempDir { error: not_found() },
+            ToolError::NoTempDir { error: not_found() },
             "the temporary XDG directories for the tool's runs cannot be created",
             "make the system's temporary directory writable, or set TMPDIR to one that is",
         ),
         (
-            WeighError::ToolUnavailable {
+            ToolError::ToolUnavailable {
                 binary: PathBuf::from("/work/target/debug/shelf"),
                 error: not_found(),
             },
@@ -60,12 +62,22 @@ fn every_failure_names_what_failed_and_hints_at_what_to_change() {
             "check that the binary runs on this machine",
         ),
         (
-            WeighError::NoCommandsList {
+            ToolError::NoCommandsList {
                 line: "shelf commands list --all --json --full".to_owned(),
             },
             "`shelf commands list --all --json --full` prints no crumbkit/commands-list/v1 document, so the tool's commands cannot be read",
             "add a `commands list` command at the tool's root that takes crumbkit::commands::CommandsList, as the crumbkit::commands module shows",
         ),
+    ];
+
+    for (error, message, hint) in cases {
+        assert_eq!(rendered(&error), (message.to_owned(), hint.to_owned()));
+    }
+}
+
+#[test]
+fn every_failure_of_weigh_names_what_failed_and_hints_at_what_to_change() {
+    let cases = [
         (
             WeighError::HelpFailed {
                 line: "shelf books -h".to_owned(),
@@ -99,4 +111,49 @@ fn every_failure_names_what_failed_and_hints_at_what_to_change() {
     for (error, message, hint) in cases {
         assert_eq!(rendered(&error), (message.to_owned(), hint.to_owned()));
     }
+}
+
+#[test]
+fn every_failure_of_docs_names_what_failed_and_hints_at_what_to_change() {
+    let cases = [
+        (
+            DocsError::Unrenderable {
+                line: "shelf commands list --all --json --full".to_owned(),
+                error: render(b"{}").unwrap_err(),
+            },
+            "the reference cannot be written from the document that `shelf commands list --all --json --full` prints",
+            "run `shelf commands list --all --json --full` to see the document, and change the tool's help as the cause says",
+        ),
+        (
+            DocsError::WriteFailed {
+                path: PathBuf::from("examples/shelf/docs/commands.md"),
+                error: not_found(),
+            },
+            "the reference cannot be written to examples/shelf/docs/commands.md",
+            "make the file's directory writable, or pass --out another file",
+        ),
+    ];
+
+    for (error, message, hint) in cases {
+        assert_eq!(rendered(&error), (message.to_owned(), hint.to_owned()));
+    }
+}
+
+#[test]
+fn a_failure_to_build_or_run_the_tool_keeps_its_code_and_message_in_weigh_and_docs() {
+    let tool = || ToolError::NoBinary {
+        bin: "shelf".to_owned(),
+    };
+    let weigh = WeighError::from(tool());
+    let docs = DocsError::from(tool());
+
+    for (code, message) in [
+        (weigh.code(), weigh.to_string()),
+        (docs.code(), docs.to_string()),
+    ] {
+        assert_eq!(code, tool().code());
+        assert_eq!(message, "cargo built no executable for the binary shelf");
+    }
+    assert_eq!(rendered(&weigh), rendered(&tool()));
+    assert_eq!(rendered(&docs), rendered(&tool()));
 }

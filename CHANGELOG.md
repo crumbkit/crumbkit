@@ -215,6 +215,9 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   checked-in Markdown reference differs from the one crumbkit-markdown
   writes from its help, and `SNAPSHOTS=overwrite` rewrites it
   ([ADR-0044]).
+- cargo-crumbkit: `cargo crumbkit docs --bin <NAME>` writes the binary's
+  Markdown command reference to `docs/commands.md` in its package, or to
+  `--out <FILE>` ([cargo-crumbkit], [ADR-0044]).
 
 ### Changed
 
@@ -278,6 +281,9 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   and otherwise fails as it does without a terminal ([ADR-0043]).
 - crumbkit: crumbkit enables clap's `error-context` feature, which adds
   about 33 KB to a tool's release binary ([ADR-0003]).
+- cargo-crumbkit: the failures of building and running a tool's binary
+  have `crumbkit::tool::*` codes, such as `crumbkit::tool::build_failed`,
+  which `weigh` and `docs` share ([ADR-0033]).
 
 ### Removed
 
