@@ -1,0 +1,15 @@
+Describe the books with the given ids, or the whole catalogue, in one sentence
+
+Usage: shelf books summarize [OPTIONS] [ID]...
+
+Arguments:
+  [ID]...  The ids of the books to describe, separated by spaces; without ids, the whole catalogue
+
+Options:
+  -h, --help  Print help (see more with '--help')
+
+Examples:
+  shelf books summarize
+  shelf books summarize 2 5
+
+Global flags: --json, --fields <FIELD>, --long, --full. `shelf books summarize --help` describes them.

@@ -8,6 +8,7 @@
 //! [`Listing`]: crate::Listing
 //! [`Page`]: crate::Page
 //! [`Batch`]: crate::Batch
+//! [`Prose`]: crate::Prose
 //! [`Failure`]: crate::Failure
 //! [`Recovery`]: crate::Recovery
 //! [`Code`]: crate::Code
@@ -60,7 +61,7 @@ pub mod usage;
 // crumbkit, so a tool depends on crumbkit alone (ADR-0032).
 pub use crumbkit_core::{
     AsFailure, Batch, Call, CallArg, CallError, CallTarget, Code, Document, Error, Failure,
-    Listing, NoSummary, Recovery, Row, Rows, Shape, Spelling,
+    Listing, NoRow, NoSummary, Prose, Recovery, Row, Rows, Shape, Spelling,
 };
 
 pub use crate::call::RenderCall;

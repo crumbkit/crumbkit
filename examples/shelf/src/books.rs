@@ -13,8 +13,11 @@ use serde::Serialize;
 
 use crate::cli::{BooksList, BooksShow};
 
+mod summary;
 #[cfg(test)]
 mod tests;
+
+pub(crate) use summary::{BOOKS_SUMMARIZE, summarize};
 
 /// The document that `shelf books list` prints: one page of the catalogue and
 /// the number of books in it.

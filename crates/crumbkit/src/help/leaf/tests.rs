@@ -11,7 +11,7 @@ use serde::Serialize;
 
 use super::{Column, Example, Leaf, quote};
 use crate::help::{Guide, extend};
-use crate::{Document, Row, Sink, Spelling, parse_to};
+use crate::{Document, Prose, Row, Sink, Spelling, parse_to};
 
 /// A tool with a global flag and one group of two leaves.
 fn tool() -> Command {
@@ -212,6 +212,18 @@ fn a_leaf_without_examples_has_no_examples_section() {
         long.contains("Print help (see a summary with '-h')\n\nColumns:\n"),
         "{long}"
     );
+}
+
+#[test]
+fn a_leaf_whose_document_is_prose_has_no_column_line_and_no_columns_section() {
+    const COUNT: Document<Prose<String>> = Document::new("tool", "count", 1, "The count.");
+    const GUIDE: Guide = Guide::new().leaves(&[Leaf::new(&["planets", "list"]).document(COUNT)]);
+
+    let short = help(&GUIDE, &["tool", "planets", "list", "-h"]);
+    let long = help(&GUIDE, &["tool", "planets", "list", "--help"]);
+
+    assert!(!short.contains("explains each column"), "{short}");
+    assert!(!long.contains("Columns:"), "{long}");
 }
 
 #[test]

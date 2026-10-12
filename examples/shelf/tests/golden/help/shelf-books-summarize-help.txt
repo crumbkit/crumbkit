@@ -1,0 +1,30 @@
+Describe the books with the given ids, or the whole catalogue, in one sentence
+
+Usage: shelf books summarize [OPTIONS] [ID]...
+
+Arguments:
+  [ID]...
+          The ids of the books to describe, separated by spaces; without ids, the whole catalogue
+
+Options:
+      --json
+          Print the result as a JSON document on one line
+
+      --fields <FIELD>
+          Print only these comma-separated fields, in this order
+
+      --long
+          Add the long columns after the compact ones
+
+      --full
+          With --json, print every field of every row
+
+  -h, --help
+          Print help (see a summary with '-h')
+
+Examples:
+  shelf books summarize
+          Summarize the whole catalogue
+
+  shelf books summarize 2 5
+          Summarize books 2 and 5

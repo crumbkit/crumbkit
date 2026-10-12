@@ -1,0 +1,3 @@
+error: --fields selects the columns of a table, and this command prints prose
+  help:  use --json to read every field of the result
+  code:  crumbkit::cli::usage

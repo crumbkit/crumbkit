@@ -3,8 +3,8 @@
 use clap::CommandFactory as _;
 use crumbkit::{Failure as _, Recovery, RenderCall as _, Rows as _};
 
-use super::{BooksError, IdsFileProblem, parse_ids, show, show_call};
-use crate::cli::{BooksShow, Cli};
+use super::{BooksError, IdsFileProblem, parse_ids, show, show_call, summarize};
+use crate::cli::{BooksShow, BooksSummarize, Cli};
 
 #[test]
 fn every_call_that_shelf_prints_resolves_in_its_command_tree() {
@@ -98,4 +98,77 @@ fn parse_ids_stops_reading_at_the_line_of_id_101() {
     );
     assert_eq!(text, "1\n".repeat(101));
     assert_eq!(reader, b"1\n");
+}
+
+/// Returns the text and the failures of `shelf books summarize` for `ids`.
+fn summarize_ids(ids: &[u32]) -> (String, Vec<String>) {
+    let args = BooksSummarize { ids: ids.to_vec() };
+    let prose = summarize(&args).unwrap();
+    let text = prose.prose().unwrap().to_string();
+    let failures = prose
+        .failures()
+        .unwrap()
+        .iter()
+        .map(ToString::to_string)
+        .collect();
+    (text, failures)
+}
+
+#[test]
+fn summarize_without_ids_describes_the_whole_catalogue_in_one_sentence() {
+    let (text, failures) = summarize_ids(&[]);
+
+    assert_eq!(
+        text,
+        "6 books by 6 authors, first published from 1813 to 1892: 5 novels and 1 collection of short stories."
+    );
+    assert_eq!(failures.len(), 0);
+}
+
+#[test]
+fn summarize_of_one_book_uses_the_singular_and_names_one_year() {
+    let (text, _) = summarize_ids(&[2]);
+
+    assert_eq!(
+        text,
+        "1 book by 1 author, first published in 1818: 1 novel."
+    );
+}
+
+#[test]
+fn summarize_counts_a_repeated_id_once_and_returns_one_failure_naming_each_missing_id_once() {
+    let (text, failures) = summarize_ids(&[6, 7, 6, 9, 7]);
+
+    assert_eq!(
+        text,
+        "1 book by 1 author, first published in 1892: 1 collection of short stories."
+    );
+    assert_eq!(failures, ["the catalogue has no books 7, 9"]);
+}
+
+#[test]
+fn summarize_of_only_missing_ids_says_that_it_found_no_books() {
+    let (text, failures) = summarize_ids(&[7]);
+
+    assert_eq!(text, "No books.");
+    assert_eq!(failures, ["the catalogue has no book 7"]);
+}
+
+#[test]
+fn summarize_serializes_its_counts_and_the_years_of_the_books_it_found() {
+    let args = BooksSummarize { ids: vec![2, 5] };
+
+    let prose = summarize(&args).unwrap();
+
+    assert_eq!(
+        serde_json::to_value(&prose).unwrap(),
+        serde_json::json!({
+            "books": 2,
+            "authors": 2,
+            "earliest": 1818,
+            "latest": 1871,
+            "novels": 2,
+            "short_story_collections": 0
+        })
+    );
 }

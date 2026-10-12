@@ -3,8 +3,9 @@ Work with the books in the catalogue
 Usage: shelf books [OPTIONS] <COMMAND>
 
 Commands:
-  list  List the books in the catalogue, in id order
-  show  Show the books with the given ids, in the order given
+  list       List the books in the catalogue, in id order
+  show       Show the books with the given ids, in the order given
+  summarize  Describe the books with the given ids, or the whole catalogue, in one sentence
 
 Options:
       --json

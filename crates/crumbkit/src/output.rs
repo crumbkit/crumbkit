@@ -2,6 +2,8 @@
 //! format they choose.
 
 pub(crate) mod failure;
+mod fields;
+mod prose;
 mod table;
 
 use std::io::{self, Write};
@@ -13,8 +15,6 @@ use serde::ser::{SerializeMap, Serializer};
 use serde_json::Value;
 
 use self::failure::{Entry, FailureDocument};
-use crate::refusal::Refusal;
-use crate::row;
 use crate::{AsFailure, Document, Row, Rows, Shape, Sink, Spelling};
 
 #[cfg(test)]
@@ -259,6 +259,13 @@ pub fn finish<T: Rows, E: AsFailure>(
 /// so the caller sees only the failures. `--long`, `--full` and `--fields`
 /// shape the rows and leave the failures unchanged.
 ///
+/// A [`Prose`](crate::Prose) prints its text, with each control character
+/// other than a line feed or a tab escaped and a line feed added when the
+/// text lacks one, and its JSON document holds its value under `data`.
+/// Its failures print as a batch's do. `--long` and `--full` leave it
+/// unchanged, and `--fields` is refused with exit code 2, because it has no
+/// columns.
+///
 /// An `Err` prints the failure. The text form goes to the sink's error
 /// writer, as shelf's golden file [`books-show-7.stderr`][books-show-7]
 /// shows, and nothing goes to the output writer.
@@ -331,7 +338,7 @@ fn respond<T: Rows, E: AsFailure, O: Write, W: Write>(
     document: Document<T>,
     result: Result<T, E>,
 ) -> ExitCode {
-    if let Some(refusal) = unknown_field::<T::Row>(&output.fields) {
+    if let Some(refusal) = fields::refusal::<T>(&output.fields) {
         return refusal.print(sink, output.json, spelling, output.command.as_mut());
     }
     let value = match &result {
@@ -385,34 +392,10 @@ fn respond<T: Rows, E: AsFailure, O: Write, W: Write>(
     }
 }
 
-/// Returns the refusal of the first name in `fields` that is not a field of
-/// `R`, with a hint that lists the fields of `R`, or `None` when every name
-/// is a field.
-///
-/// The fields of `R` are the properties that [`row::properties`] reads from
-/// its JSON Schema, so a mistyped name fails even when the result has no
-/// rows.
-fn unknown_field<R: Row>(fields: &[String]) -> Option<Refusal> {
-    if fields.is_empty() {
-        return None;
-    }
-    let schema = schemars::schema_for!(R);
-    let properties = row::properties(&schema);
-    let is_field = |name: &str| properties.iter().any(|(field, _)| *field == name);
-    let unknown = fields.iter().find(|name| !is_field(name))?;
-
-    // serde_json keeps an object's keys sorted unless a crate in the build
-    // enables its `preserve_order` feature, which keeps the schema's order.
-    let valid: Vec<&str> = properties.iter().map(|(name, _)| *name).collect();
-    Some(Refusal::flag_value(
-        format!("--fields names an unknown field '{unknown}'"),
-        format!("use the valid fields: {}", valid.join(", ")),
-    ))
-}
-
 /// Writes `value` to `out` in the format that `output` chooses, then flushes
-/// `out`. `failures` holds a batch's failures, which the JSON document holds
-/// under `failures`, and is `None` for every other result.
+/// `out`. `failures` holds the failures of a batch or a prose result, which
+/// the JSON document holds under `failures`, and is `None` for every other
+/// result.
 ///
 /// A serialization error becomes an `io::Error` of kind `InvalidData`, so it
 /// is reported as a failed write.
@@ -423,6 +406,14 @@ fn write_result<T: Rows>(
     value: &T,
     failures: Option<&[FailureDocument]>,
 ) -> io::Result<()> {
+    if let Some(text) = value.prose() {
+        if output.json {
+            write_document(out, document, value, None, None::<&()>, failures)?;
+        } else {
+            prose::write_text(out, text)?;
+        }
+        return out.flush();
+    }
     let total = value.total();
     let summary = value.summary();
     if output.full {

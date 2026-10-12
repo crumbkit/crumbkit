@@ -1,7 +1,10 @@
 //! The traits that let a result print as a table.
 
-use schemars::JsonSchema;
-use serde::Serialize;
+use std::borrow::Cow;
+use std::fmt;
+
+use schemars::{JsonSchema, Schema, SchemaGenerator};
+use serde::{Serialize, Serializer};
 
 use crate::{Call, Failure};
 
@@ -47,25 +50,27 @@ pub trait Row: Serialize + JsonSchema {
     const LONG_COLUMNS: &'static [&'static str] = &[];
 }
 
-/// A result that prints as a table: one [`Row`], a `Vec` of rows, a
-/// [`Listing`](crate::Listing) or a [`Batch`](crate::Batch).
+/// A result that `crumbkit::finish` prints: one [`Row`], a `Vec` of rows, a
+/// [`Listing`](crate::Listing) or a [`Batch`](crate::Batch), which print as
+/// a table, or a [`Prose`](crate::Prose), which prints as text.
 ///
 /// crumbkit implements this trait, and a tool cannot implement it, so crumbkit
 /// can add result shapes later without breaking a tool.
 pub trait Rows: Serialize + sealed::Sealed {
-    /// The type of each row.
+    /// The type of each row. A `Prose` has no rows, and its row type is
+    /// [`NoRow`].
     type Row: Row;
 
     /// The kind of result, which decides the fields of its JSON document. A
-    /// single row's `data` is an object, and every other result's is an
-    /// array.
+    /// single row's `data` is an object, a prose result's is its value, and
+    /// every other result's is an array.
     const SHAPE: Shape;
 
     /// The type of the summary that prints above the table. Only a
     /// `Listing` can have a summary, and every other result has
     /// [`NoSummary`](crate::NoSummary). The summary's JSON Schema is the
     /// schema of the document's `summary` field.
-    type Summary: Serialize + std::fmt::Display + JsonSchema;
+    type Summary: Serialize + fmt::Display + JsonSchema;
 
     /// Returns the rows in order. A single row is a slice of one.
     fn rows(&self) -> &[Self::Row];
@@ -109,6 +114,21 @@ pub trait Rows: Serialize + sealed::Sealed {
     fn failures(&self) -> Option<Vec<&dyn Failure>> {
         None
     }
+
+    /// Returns the text that the text output prints in place of a table
+    /// when the result is a `Prose`, and `None` otherwise. Only a `Prose`
+    /// returns one.
+    fn prose(&self) -> Option<&dyn fmt::Display> {
+        None
+    }
+
+    /// Returns the JSON Schema of the document's `data` when the result is a
+    /// `Prose`, which is the schema of its value, and `None` otherwise. The
+    /// schema comes from `generator`, so a definition it names sits under the
+    /// document's `$defs`. Only a `Prose` returns one.
+    fn prose_schema(_generator: &mut SchemaGenerator) -> Option<Schema> {
+        None
+    }
 }
 
 /// The kind of a [`Rows`] result, which decides the fields of its JSON
@@ -126,6 +146,42 @@ pub enum Shape {
     /// A [`Batch`](crate::Batch), whose `data` is an array beside
     /// `failures`.
     Batch,
+    /// A [`Prose`](crate::Prose), whose `data` is its value beside
+    /// `failures`.
+    Prose,
+}
+
+/// The row type of a result without rows, which is a
+/// [`Prose`](crate::Prose). It has no values and no columns, so a result of
+/// this row type never holds a row.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum NoRow {}
+
+impl Row for NoRow {
+    const COLUMNS: &'static [&'static str] = &[];
+}
+
+impl Serialize for NoRow {
+    fn serialize<S: Serializer>(&self, _: S) -> Result<S::Ok, S::Error> {
+        match *self {}
+    }
+}
+
+/// Describes `NoRow` as the schema `false`, which no value matches, because
+/// a result of this row type never holds a row. The schema is inline, so a
+/// generator returns `false` itself and adds no definition.
+impl JsonSchema for NoRow {
+    fn inline_schema() -> bool {
+        true
+    }
+
+    fn schema_name() -> Cow<'static, str> {
+        "NoRow".into()
+    }
+
+    fn json_schema(_: &mut SchemaGenerator) -> Schema {
+        Schema::from(false)
+    }
 }
 
 impl<R: Row> Rows for R {
@@ -162,4 +218,6 @@ mod sealed {
     impl<R: super::Row, S> Sealed for crate::Listing<R, S> {}
 
     impl<R: super::Row, E: crate::AsFailure> Sealed for crate::Batch<R, E> {}
+
+    impl<T, E: crate::AsFailure> Sealed for crate::Prose<T, E> {}
 }

@@ -72,7 +72,7 @@ assert_eq!(Spelling::DOTS.spell(error.failure().code()), "shelf.books.not_found"
 
 - Failures: [`Failure`], [`Recovery`], [`Code`], [`Spelling`] and
   [`Error`], with [ADR-0001].
-- Results: [`Document`], [`Row`], [`Listing`] and [`Batch`].
+- Results: [`Document`], [`Row`], [`Listing`], [`Batch`] and [`Prose`].
 - Next steps: [`Call`], which crumbkit renders against a tool's commands.
 - Why this crate exists and what it holds: [ADR-0032].
 
@@ -90,5 +90,6 @@ option.
 [`Row`]: src/row.rs
 [`Listing`]: src/listing.rs
 [`Batch`]: src/batch.rs
+[`Prose`]: src/prose.rs
 [ADR-0001]: ../../docs/decisions/api/0001-error-model.md
 [ADR-0032]: ../../docs/decisions/api/0032-core-crate.md
