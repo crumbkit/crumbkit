@@ -144,3 +144,27 @@ pub fn ended(exit: u8, out_bytes: Option<u64>) -> ExitCode {
     let _ = out_bytes;
     ExitCode::from(exit)
 }
+
+/// Records that a signal ended the run's child process, so the run's line
+/// holds `"interrupted": true`. Without the `usage-log` feature, or without
+/// a started log, it does nothing.
+#[cfg(feature = "hand-over")]
+pub(crate) fn interrupted() {
+    #[cfg(feature = "usage-log")]
+    recorder::interrupted();
+}
+
+/// Reports whether the usage log's signal thread listens for SIGINT and
+/// lets it end the process, as a log started with `Signals::Crumbkit` does.
+/// Without the `usage-log` feature it is false.
+#[cfg(all(feature = "hand-over", unix))]
+pub(crate) fn listens() -> bool {
+    #[cfg(feature = "usage-log")]
+    {
+        recorder::listens()
+    }
+    #[cfg(not(feature = "usage-log"))]
+    {
+        false
+    }
+}

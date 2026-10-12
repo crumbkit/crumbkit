@@ -157,6 +157,15 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit-test: [`check_examples`] stops an example after 10 seconds and
   checks that each line of a `--json` example is a document with the
   leaf's id ([ADR-0041]).
+- crumbkit: the `hand-over` feature adds [`child::hand_over`], which hands
+  the terminal to a child process and returns its exit code. The tool
+  ignores SIGINT and SIGQUIT until the child exits ([ADR-0042]).
+- crumbkit: [`child::hand_over_json`] runs a child that prints JSON under
+  `--json` and prints its output as the declared document, so `--fields`,
+  `--long` and `--full` apply ([ADR-0042]).
+- crumbkit: with the `usage-log` feature, Ctrl-C while a child holds the
+  terminal ends only the child, and the run's line records the child's exit
+  code ([ADR-0042]).
 
 ### Changed
 
@@ -358,3 +367,6 @@ rustdoc, or at its decision record. -->
 [`check_effects`]: crates/crumbkit-test/src/effects.rs
 [ADR-0039]: docs/decisions/api/effects/0039-effects-dry-runs-and-confirmation.md
 [ADR-0041]: docs/decisions/api/output/0041-streams.md
+[`child::hand_over`]: crates/crumbkit/src/child.rs
+[`child::hand_over_json`]: crates/crumbkit/src/child.rs
+[ADR-0042]: docs/decisions/api/output/0042-child-processes.md

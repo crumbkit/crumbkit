@@ -9,6 +9,7 @@ use std::fmt;
 use std::fs;
 use std::io::{self, BufRead as _, BufReader};
 use std::path::{Path, PathBuf};
+use std::process::Command;
 
 use clap::Subcommand as _;
 use crumbkit::{Call, Code, Document, Failure, Listing, Page, Recovery, Row};
@@ -38,6 +39,10 @@ pub(crate) const ENTRIES_LIST: Document<Listing<Entry>> = Document::new(
 /// place of `reading/lists` under the XDG data directory. reading's tests
 /// set it to their fixture lists.
 const DIR_VARIABLE: &str = "READING_DIR";
+
+/// The environment variables that name the editor of `reading <list> edit`,
+/// in the order that reading reads them.
+const EDITOR_VARIABLES: [&str; 2] = ["VISUAL", "EDITOR"];
 
 /// One reading list in reading's directory.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -101,6 +106,39 @@ pub(crate) fn dir() -> Option<PathBuf> {
             Some(strategy.data_dir().join("reading").join("lists"))
         }
     }
+}
+
+/// Returns the command that opens the file of the list named `name` in `dir`
+/// in the caller's editor. The editor is the program and arguments that
+/// `VISUAL` names, or `EDITOR` when `VISUAL` is unset or blank, or `vi` when
+/// both are. The list's path follows the editor's own arguments. With `dir`
+/// `None`, the path is relative to the working directory.
+//
+// RUST-10: reading splits the variable on whitespace and runs no shell, so
+// an editor whose path holds a space, or a variable that quotes its words,
+// does not run as a shell would run it.
+#[must_use]
+pub(crate) fn editor(dir: Option<&Path>, name: &str) -> Command {
+    let variable = EDITOR_VARIABLES
+        .iter()
+        .find_map(|name| {
+            #[expect(
+                clippy::disallowed_methods,
+                reason = "this module owns reading's environment reads, which find the editor"
+            )]
+            let value = std::env::var(name).ok()?;
+            (!value.trim().is_empty()).then_some(value)
+        })
+        .unwrap_or_else(|| "vi".to_owned());
+    let mut words = variable.split_whitespace();
+    #[expect(
+        clippy::disallowed_methods,
+        reason = "this module builds the command that `reading <list> edit` hands the terminal to"
+    )]
+    let mut command = Command::new(words.next().unwrap_or("vi"));
+    command.args(words);
+    command.arg(dir.unwrap_or(Path::new("")).join(format!("{name}.txt")));
+    command
 }
 
 /// Returns the lists in `dir`, in name order, reading only the first line of

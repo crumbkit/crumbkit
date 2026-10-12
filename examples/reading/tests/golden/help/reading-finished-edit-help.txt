@@ -1,0 +1,25 @@
+Open this reading list in your editor: $VISUAL, $EDITOR or vi
+
+Usage: reading finished edit [OPTIONS]
+
+Options:
+      --json
+          Print the result as a JSON document on one line
+
+      --fields <FIELD>
+          Print only these comma-separated fields, in this order
+
+      --long
+          Add the long columns after the compact ones
+
+      --full
+          With --json, print every field of every row
+
+  -h, --help
+          Print help (see a summary with '-h')
+
+Examples:
+  reading finished edit
+          Open the finished list in your editor
+
+Effects: destructive, not idempotent, closed-world.

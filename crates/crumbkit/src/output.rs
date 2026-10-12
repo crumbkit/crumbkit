@@ -1,6 +1,8 @@
 //! The output flags, and `finish`, which prints a result or a failure in the
 //! format they choose.
 
+#[cfg(feature = "hand-over")]
+mod child;
 mod confirm;
 mod dry_run;
 mod envelope;
@@ -33,13 +35,11 @@ mod tests;
 /// The flags that choose how a command prints its result.
 ///
 /// A tool adds them to its own clap parser with `#[command(flatten)]`. Every
-/// flag is global, so it also works after a subcommand, as in
-/// `shelf books list --json`.
+/// flag is global, so it also works after a subcommand: `shelf books list --json`.
 ///
 /// - `--json` prints a JSON document on one line.
 /// - `--long` adds the row type's [`Row::LONG_COLUMNS`].
-/// - `--full` prints every field of every row in declaration order, and
-///   requires `--json`.
+/// - `--full` prints every field of every row in declaration order, and needs `--json`.
 /// - `--fields a,b` prints exactly the named fields in that order, and
 ///   conflicts with `--long` and `--full`.
 ///

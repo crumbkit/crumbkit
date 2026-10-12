@@ -15,14 +15,25 @@ use std::path::Path;
 
 use clap::Command;
 use crumbkit::help::Guide;
-use crumbkit_test::{Allow, Budgets, Examples, PathBudgets};
+use crumbkit_test::{Allow, Budgets, Examples, PathBudgets, Rule};
 
 /// The directory of reading's fixture lists.
 const LISTS: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/tests/fixtures/lists");
 
+/// The reason that the examples of each list's `edit` are not run.
+const EDITOR: &str = "edit hands the terminal to the caller's editor, which waits for a person and prints no output to compare";
+
+/// The reason that each list's `edit` has no `--yes`.
+const SAVE: &str = "the person in the editor chooses whether to save the list, so there is nothing for --yes to confirm";
+
 /// reading's opt-outs from crumbkit's conventions, which every check below
-/// reads. reading has none.
-const ALLOW: &[Allow] = &[];
+/// reads. They name the `edit` command of each fixture list.
+const ALLOW: &[Allow] = &[
+    Allow::new(Rule::Examples, "finished edit", EDITOR),
+    Allow::new(Rule::Examples, "to-read edit", EDITOR),
+    Allow::new(Rule::Yes, "finished edit", SAVE),
+    Allow::new(Rule::Yes, "to-read edit", SAVE),
+];
 
 /// The budgets of reading's `-h` pages, which are crumbkit's defaults.
 const BUDGETS: Budgets = Budgets::new();
@@ -53,8 +64,8 @@ fn every_command_and_argument_has_one_name() {
 }
 
 #[test]
-fn every_command_is_a_resource_followed_by_list_show_or_stream() {
-    crumbkit_test::check_grammar(&fixture_tool().0, &["stream"], ALLOW);
+fn every_command_is_a_resource_followed_by_list_show_stream_or_edit() {
+    crumbkit_test::check_grammar(&fixture_tool().0, &["stream", "edit"], ALLOW);
 }
 
 #[test]

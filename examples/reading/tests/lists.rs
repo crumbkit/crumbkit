@@ -20,6 +20,16 @@ const LISTS: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/tests/fixtures/lists")
 ///
 /// Returns the I/O error of a temporary directory that cannot be created.
 fn reading(dir: &str, args: &[&str]) -> io::Result<OutputAssert> {
+    reading_with(dir, args, &[])
+}
+
+/// Runs the built `reading` binary as [`reading`] does, with the variables
+/// `env` added to its environment.
+///
+/// # Errors
+///
+/// Returns the I/O error of a temporary directory that cannot be created.
+fn reading_with(dir: &str, args: &[&str], env: &[(&str, &str)]) -> io::Result<OutputAssert> {
     let xdg = tempfile::tempdir()?;
     Ok(Command::new(env!("CARGO_BIN_EXE_reading"))
         .args(args)
@@ -29,6 +39,7 @@ fn reading(dir: &str, args: &[&str]) -> io::Result<OutputAssert> {
         .env("XDG_DATA_HOME", xdg.path().join("data"))
         .env("XDG_STATE_HOME", xdg.path().join("state"))
         .env("XDG_CACHE_HOME", xdg.path().join("cache"))
+        .envs(env.iter().copied())
         .assert())
 }
 
@@ -94,5 +105,38 @@ fn entries_stream_with_json_prints_a_failure_of_a_missing_list_as_its_only_line(
             .starts_with(r#"{"schema":"crumbkit/failure/v1","code":"reading::entries::not_found""#),
         "{stdout}"
     );
+    Ok(())
+}
+
+#[cfg(unix)]
+#[test]
+fn edit_opens_the_list_in_the_editor_that_visual_names_and_returns_its_exit_code() -> io::Result<()>
+{
+    use std::fs;
+    use std::os::unix::fs::PermissionsExt as _;
+
+    let scratch = tempfile::tempdir()?;
+    let opened = scratch.path().join("opened.txt");
+    let editor = scratch.path().join("editor");
+    // The editor writes its arguments to `opened.txt`, one on each line,
+    // and exits with 3.
+    let script = format!(
+        "#!/bin/sh\nprintf '%s\\n' \"$@\" > '{}'\nexit 3\n",
+        opened.display()
+    );
+    #[expect(
+        clippy::disallowed_methods,
+        reason = "the test writes the editor script that reading runs"
+    )]
+    fs::write(&editor, script)?;
+    fs::set_permissions(&editor, fs::Permissions::from_mode(0o755))?;
+    let visual = format!("{} --wait", editor.display());
+
+    reading_with(LISTS, &["to-read", "edit"], &[("VISUAL", &visual)])?
+        .code(3)
+        .stdout_eq("")
+        .stderr_eq("");
+    let expected = format!("--wait\n{LISTS}/to-read.txt\n");
+    assert_eq!(fs::read_to_string(opened)?, expected);
     Ok(())
 }

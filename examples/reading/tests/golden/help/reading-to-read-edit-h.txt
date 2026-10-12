@@ -1,0 +1,12 @@
+Open this reading list in your editor: $VISUAL, $EDITOR or vi
+
+Usage: reading to-read edit [OPTIONS]
+
+Options:
+  -h, --help  Print help (see more with '--help')
+
+Examples:
+  reading to-read edit
+
+Effects: destructive, not idempotent, closed-world.
+Global flags: --json, --fields <FIELD>, --long, --full. `reading to-read edit --help` describes them.

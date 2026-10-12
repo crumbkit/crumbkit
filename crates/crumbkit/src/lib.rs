@@ -42,6 +42,8 @@
 #![cfg_attr(docsrs, feature(doc_cfg))]
 
 mod call;
+#[cfg(feature = "hand-over")]
+pub mod child;
 pub mod commands;
 #[cfg(any(feature = "usage-log", feature = "tracing"))]
 mod exit;

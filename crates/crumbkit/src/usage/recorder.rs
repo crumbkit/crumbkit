@@ -4,6 +4,7 @@
 use std::ffi::OsString;
 use std::path::Path;
 use std::process::ExitCode;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Mutex, mpsc};
 use std::thread;
 use std::time::{Duration, Instant, SystemTime};
@@ -28,6 +29,10 @@ mod tests;
 
 /// The recorder of this process. A poisoned lock counts as no recorder.
 static RECORDER: Mutex<State> = Mutex::new(State::Idle);
+
+/// Whether the signal thread listens for SIGINT and SIGTERM and lets them
+/// end the process, as it does with [`Signals::Crumbkit`].
+static LISTENS: AtomicBool = AtomicBool::new(false);
 
 /// The most tolerated codes that one line holds. A run that reports more
 /// distinct codes keeps the first eight, so the line stays within its
@@ -214,6 +219,20 @@ pub(crate) fn ids() -> Option<(String, String)> {
     };
     let ids = &recorder.context.ids;
     Some((ids.trace.as_str().to_owned(), ids.run.as_str().to_owned()))
+}
+
+/// Records that a signal ended the run's child process, so the line says
+/// that the run was interrupted.
+#[cfg(feature = "hand-over")]
+pub(crate) fn interrupted() {
+    update(&RECORDER, |recorder| recorder.signalled = true);
+}
+
+/// Reports whether the signal thread listens for SIGINT and lets it end the
+/// process.
+#[cfg(feature = "hand-over")]
+pub(crate) fn listens() -> bool {
+    LISTENS.load(Ordering::SeqCst)
 }
 
 /// Records that a personal alias expanded.
@@ -517,7 +536,9 @@ fn save(
 /// After the line, the thread lets the signal take its default effect, so
 /// the process ends as it would have without the log. With
 /// [`Signals::Tool`], the thread notes each signal in the recorder and
-/// leaves the process running.
+/// leaves the process running. With the `hand-over` feature, the thread
+/// leaves the process running on a SIGINT that arrives while a child holds
+/// the terminal, because Ctrl-C then belongs to the child (ADR-0042).
 //
 // RUST-10: the thread takes both signals from the start of the run. A
 // process that started with one of them ignored now ends on it, such as a
@@ -532,6 +553,11 @@ fn watch_signals(owner: Signals) {
         .name("crumbkit-usage".to_owned())
         .spawn(move || {
             let signals = SignalSet::new([SIGINT, SIGTERM]);
+            // The flag is set before the main thread goes on, so a child
+            // that `main` starts next already sees it.
+            if signals.is_ok() && owner == Signals::Crumbkit {
+                LISTENS.store(true, Ordering::SeqCst);
+            }
             let _ = listening.send(());
             let Ok(mut signals) = signals else {
                 return;
@@ -539,6 +565,10 @@ fn watch_signals(owner: Signals) {
             for signal in signals.forever() {
                 if owner == Signals::Tool {
                     update(&RECORDER, |recorder| recorder.signalled = true);
+                    continue;
+                }
+                #[cfg(feature = "hand-over")]
+                if signal == SIGINT && crate::child::holds_terminal() {
                     continue;
                 }
                 write(&RECORDER, true);

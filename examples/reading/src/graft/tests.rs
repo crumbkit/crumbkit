@@ -28,7 +28,7 @@ fn a_command_added_for_a_list_parses_as_the_list_name_and_its_command() {
             assert_eq!(args.page.limit(), Some(2));
             assert!(output.is_json());
         }
-        Parsed::Static(cli) => panic!("the command parsed as the static grammar: {cli:?}"),
+        other => panic!("the command parsed as another command: {other:?}"),
     }
 }
 
