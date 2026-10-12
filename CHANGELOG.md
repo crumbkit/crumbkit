@@ -304,10 +304,11 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit-test: [`check_opt_outs`] lists a guide's JSON layout as
   `json-layout/pretty`, with its reason and cost ([ADR-0052]).
 - crumbkit: [`Listing::uncounted`] and [`Page::uncounted`] build a listing
-  from a source that the tool does not count, and `Page::fetch_limit` gives
-  the number of rows to fetch, one past the limit. While more rows exist,
-  the listing's JSON document leaves out `total` and its footer reads
-  `Showing 4 books, and more match. --all shows every one.` ([ADR-0050]).
+  from a source that the tool does not count. While more rows exist, its
+  JSON document leaves out `total` and its footer reads `Showing 4 books,
+  and more match.` ([ADR-0050]).
+- crumbkit: `Page::fetch_limit` gives the number of rows to fetch for
+  [`Page::uncounted`], one past the limit.
 ### Changed
 
 - crumbkit: the help text of `--json` reads `Print the result as a JSON

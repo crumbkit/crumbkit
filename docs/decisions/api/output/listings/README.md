@@ -1,6 +1,6 @@
 # ADR-0050. Listings
 
-These decisions cover where the lines that describe a result print, what a listing prints when it has no rows, and the upper bound that a tool can set on `--limit`.
+These decisions cover where the lines that describe a result print, what a listing prints when it has no rows, what a listing prints when the tool did not count its source, and the upper bound that a tool can set on `--limit`.
 
 ## Notes on standard error
 
@@ -16,10 +16,19 @@ These decisions cover where the lines that describe a result print, what a listi
 - `Document::when_empty` sets the document's own wording, such as `the list has no entries` ([`Document`](../../../../../crates/crumbkit-core/src/document.rs)). The wording is one line. `self usage` prints `note: the usage log holds no findings`.
 - On standard output, the text order is the summary and the header. On standard error, it is the empty note, the tool's own note, the `Next:` line and the dry-run line.
 - A page that holds no rows from a total above 0 prints the footer in place of the note. A listing that the output budget cut to no rows prints the cut line and no note (ADR-0046).
-- With `--json`, a listing's document is unchanged: `data` is `[]` and `total` is 0. A listing printed without the envelope prints `[]`.
+- With `--json`, a listing's document is unchanged: `data` is `[]`, `total` is 0 and `truncated` is false. A listing printed without the envelope prints `[]`.
 - A stream that ends with `Ok`, printed no rows and no failure, and still has an open pipe prints the note on standard error, in text and with `--json`. Its default wording is `no rows`, and `Document::when_empty` sets its own ([`Streaming::end`](../../../../../crates/crumbkit/src/output/stream.rs)).
 - A list of rows, such as a `Vec`, prints no note, because it has no total and no description to word one from.
 - The usage log marks a run whose listing or stream printed the note with `"empty": true` (ADR-0029).
+
+## A listing without a total
+
+- A tool whose source cannot be counted cheaply, such as a remote API that pages its answers or a log that grows while it is read, builds its listing with `Listing::uncounted(rows, more)`, where `more` says whether the source holds rows after the page ([`Listing`](../../../../../crates/crumbkit-core/src/listing.rs)). `Page::uncounted(rows)` takes an iterator or a `Vec`, reads at most one row past the limit and sets `more` from that row, so a lazy source stops there. `Page::fetch_limit` gives a query the number of rows to fetch, which is one past the limit ([`Page`](../../../../../crates/crumbkit/src/page.rs)).
+- While more rows exist, the JSON document leaves out `total`. A listing without more rows holds every row, so its total is the number of rows, and it prints as the listing that `Listing::new` builds with that total.
+- The footer of a listing without a total gives no count and keeps `--all` as the next step: `Showing 4 books, and more match. --all shows every one.` It names the bound when the page has one, and says `rows` when the listing has no description. The output budget's cut line of such a listing also gives no count, as in `Showing 812 books, because output stops at 1048576 bytes.`
+- A page with no rows and more rows after it prints the footer and no empty note, as a counted page with no rows from a total above 0 does.
+- Every listing's document holds `truncated`, which is true when `--limit`, the output budget or an uncounted source left rows out, and false when `data` holds every row. `cut` says that the budget was the cause and names the budget (ADR-0046), so a listing with `cut` also holds `"truncated": true`. A list has no `truncated`, because only the budget shortens a list, and `cut` marks that.
+- The usage log marks a run whose listing left rows out with `"truncated": true` (ADR-0029).
 
 ## An upper bound on `--limit`
 
@@ -29,4 +38,4 @@ These decisions cover where the lines that describe a result print, what a listi
 - The help of a bounded `--limit` reads `Print at most this many rows, up to 100`, and the page's JSON Schema gives the limit a `maximum`.
 - `Page::first_of(rows)` and `Page::listing(rows, total)` build a listing that carries the bound. Its footer then reads `Showing 4 of 6 books. --limit takes up to 100, and --all shows every one.` A listing built with `Listing::from_all` or `Listing::new` has no bound and keeps the footer `Showing 4 of 6 books. --all shows every one.`
 
-Considered: notes on standard output after the result, a note on standard error only when standard output is not a terminal, the summary line on standard error, a `note` field in the JSON document, a line in a `--json` stream for the note, a note for a `Vec`, an empty note in the help of each leaf, a new usage record id for `empty`, a bound checked in the handler after parsing, a refusal code of its own for the bound, a recovery that runs `--limit MOST` first, a bound as a runtime setting of `Output`, a `--limit` that clamps a larger value to the bound without a refusal.
+Considered: notes on standard output after the result, a note on standard error only when standard output is not a terminal, the summary line on standard error, a `note` field in the JSON document, a line in a `--json` stream for the note, a note for a `Vec`, an empty note in the help of each leaf, a new usage record id for `empty`, a bound checked in the handler after parsing, a refusal code of its own for the bound, a recovery that runs `--limit MOST` first, a bound as a runtime setting of `Output`, a `--limit` that clamps a larger value to the bound without a refusal, a listing without a total that leaves out `total` on its last page too, a footer that reads `Showing 4 of at least 5 books`, `truncated` on a list, `truncated` in place of `cut`, an uncounted listing that only takes a `Vec`.
