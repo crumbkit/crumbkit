@@ -27,7 +27,7 @@
 //! [crumbkit-test]: https://github.com/crumbkit/crumbkit/blob/main/crates/crumbkit-test/README.md
 //! [crumbkit-core]: https://github.com/crumbkit/crumbkit/blob/main/crates/crumbkit-core/README.md
 //! [ADR-0001]: https://github.com/crumbkit/crumbkit/blob/main/docs/decisions/api/0001-error-model.md
-//! [ADR-0007]: https://github.com/crumbkit/crumbkit/blob/main/docs/decisions/api/0007-json-schemas.md
+//! [ADR-0007]: https://github.com/crumbkit/crumbkit/blob/main/docs/decisions/api/schemas/0007-json-schemas.md
 //! [ADR-0016]: https://github.com/crumbkit/crumbkit/blob/main/docs/decisions/api/output/0016-result-formats.md
 //! [ADR-0021]: https://github.com/crumbkit/crumbkit/blob/main/docs/decisions/api/help/0021-help-pages.md
 //! [ADR-0023]: https://github.com/crumbkit/crumbkit/blob/main/docs/decisions/api/help/0023-help-command-and-topics.md

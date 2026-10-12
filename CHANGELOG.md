@@ -308,7 +308,7 @@ rustdoc, or at its decision record. -->
 [ADR-0001]: docs/decisions/api/0001-error-model.md
 [ADR-0002]: docs/decisions/api/0002-public-api-and-semver.md
 [ADR-0004]: docs/decisions/testing/0004-golden-and-snapshot-tests.md
-[ADR-0007]: docs/decisions/api/0007-json-schemas.md
+[ADR-0007]: docs/decisions/api/schemas/0007-json-schemas.md
 [ADR-0015]: docs/decisions/api/0015-lightweight-adoption.md
 [ADR-0016]: docs/decisions/api/output/0016-result-formats.md
 [ADR-0021]: docs/decisions/api/help/0021-help-pages.md
@@ -324,7 +324,7 @@ rustdoc, or at its decision record. -->
 [`example_golden_name`]: crates/crumbkit-test/src/examples.rs
 [ADR-0033]: docs/decisions/api/help/0033-weigh.md
 [ADR-0034]: docs/decisions/api/usage/0034-usage-report.md
-[ADR-0035]: docs/decisions/api/0035-schema-commands.md
+[ADR-0035]: docs/decisions/api/schemas/0035-schema-commands.md
 [`check_schema_goldens`]: crates/crumbkit-test/src/schemas.rs
 [`check_document_ids`]: crates/crumbkit-test/src/documents.rs
 [`check_mounts`]: crates/crumbkit-test/src/documents.rs
