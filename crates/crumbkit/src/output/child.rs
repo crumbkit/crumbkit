@@ -59,7 +59,9 @@ impl Output {
         spelling: Spelling,
         refusal: &Refusal,
     ) -> ExitCode {
-        refusal.print(sink, self.json, spelling, self.command.as_mut());
+        // `print` returns exit code 2, the code that `ended` records and
+        // returns.
+        let _ = refusal.print(sink, self.json, spelling, self.command.as_mut());
         crate::usage::ended(2, None)
     }
 }
