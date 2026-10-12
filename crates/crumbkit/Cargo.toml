@@ -34,16 +34,24 @@ schemars = { workspace = true }
 # and converts a `miette::Report` into `Error` (ADR-0001). crumbkit needs no
 # miette feature.
 miette = { workspace = true, optional = true }
-# The `usage-log` feature needs these five crates (ADR-0029). humantime
-# also parses the duration of `self usage --since` (ADR-0034).
+# The `usage-log` feature needs these four crates and signal-hook below
+# (ADR-0029). humantime also parses the duration of `self usage --since`
+# (ADR-0034).
 siphasher = { workspace = true, optional = true }
 etcetera = { workspace = true, optional = true }
 is-ai-agent = { workspace = true, optional = true }
 humantime = { workspace = true, optional = true }
-signal-hook = { workspace = true, optional = true, features = ["iterator"] }
 # The `tracing` feature puts `parse` and `finish` in spans of the tracing
 # crate (ADR-0030). crumbkit needs no tracing feature.
 tracing = { workspace = true, optional = true }
+
+# signal-hook gives the usage log its signal thread, and gives `child` the
+# SIGINT and SIGQUIT handler that keeps the tool running while a child holds
+# the terminal (ADR-0042). Both uses are Unix only, so the dependency is too.
+# The usage log needs `iterator`, which gives `Signals`, and `child` needs
+# only `flag`, which every build of signal-hook has.
+[target.'cfg(unix)'.dependencies]
+signal-hook = { workspace = true, optional = true, features = ["iterator"] }
 
 [features]
 # `miette` is off by default, so the default build has no miette code and no
@@ -63,6 +71,10 @@ usage-log = [
     "serde/derive",
     "schemars/derive",
 ]
+# `hand-over` is off by default, so the default build has no `child` module
+# and no signal-hook (ADR-0003, ADR-0042). serde's `DeserializeOwned`, which
+# reads a child's JSON, needs no serde feature.
+hand-over = ["dep:signal-hook"]
 # `tracing` is off by default, so the default build has no span code and no
 # tracing dependency (ADR-0003, ADR-0030).
 tracing = ["dep:tracing"]

@@ -1,5 +1,5 @@
 use std::fs;
-use std::os::unix::process::ExitStatusExt as _;
+use std::os::unix::process::{CommandExt as _, ExitStatusExt as _};
 use std::process::ExitCode;
 use std::sync::Mutex;
 use std::time::{Duration, Instant, SystemTime};
@@ -22,7 +22,9 @@ use crate::{Code, Document, Spelling};
 const CHILD: &str = "CRUMBKIT_USAGE_SIGNAL_CHILD";
 
 /// Runs the test named `test` of this test binary as a child process with
-/// [`CHILD`] set and the state directory `state`, and returns how it ended.
+/// [`CHILD`] set and the state directory `state`, in a process group of its
+/// own, and returns how it ended. A signal that the child sends to its
+/// process group then never reaches the test runner.
 fn run_child(test: &str, state: &TempDir) -> std::process::ExitStatus {
     #[expect(
         clippy::disallowed_methods,
@@ -33,6 +35,7 @@ fn run_child(test: &str, state: &TempDir) -> std::process::ExitStatus {
         .args(["--exact", test, "--nocapture"])
         .env(CHILD, "1")
         .env("XDG_STATE_HOME", state.path())
+        .process_group(0)
         .status()
         .unwrap()
 }
@@ -441,4 +444,52 @@ fn the_owned_signal_test_s_child_raises_sigterm_and_ends_with_124() {
         std::thread::sleep(Duration::from_millis(5));
     }
     ended(124, Some(5));
+}
+
+#[cfg(feature = "hand-over")]
+#[test]
+fn ctrl_c_while_a_child_holds_the_terminal_ends_only_the_child_and_the_line_records_it() {
+    let state = TempDir::new("hand-over");
+
+    let status = run_child(
+        "usage::recorder::tests::the_hand_over_test_s_child_hands_the_terminal_to_a_child_that_ctrl_c_ends",
+        &state,
+    );
+
+    assert_eq!(status.code(), Some(130), "the tool ended with {status:?}");
+    let lines = log_lines(&state, "editing");
+    assert_eq!(lines.len(), 1);
+    assert_eq!(lines[0]["interrupted"], true);
+    assert_eq!(lines[0]["exit"], 130);
+}
+
+/// Runs only as the child of the hand-over test, which sets [`CHILD`]. It
+/// starts the log, which listens for SIGINT, and hands the terminal to a
+/// shell that sends SIGINT to its process group, as Ctrl-C does, and ends
+/// by it.
+#[cfg(feature = "hand-over")]
+#[test]
+fn the_hand_over_test_s_child_hands_the_terminal_to_a_child_that_ctrl_c_ends() {
+    if !is_child() {
+        return;
+    }
+    let _log = start();
+    typed(
+        &Command::new("editing"),
+        &["editing".into()],
+        Spelling::COLONS,
+    );
+    #[expect(
+        clippy::disallowed_methods,
+        reason = "the test builds the command that crumbkit hands the terminal to"
+    )]
+    let mut shell = std::process::Command::new("sh");
+    shell.args(["-c", "kill -INT 0; sleep 5"]);
+    let code = crate::child::hand_over(&mut crate::Output::default(), Spelling::COLONS, shell);
+    let number = if code == ExitCode::from(130) { 130 } else { 1 };
+    #[expect(
+        clippy::disallowed_methods,
+        reason = "the child of the hand-over test reports the tool's exit code through its own"
+    )]
+    std::process::exit(number);
 }
