@@ -146,6 +146,12 @@ fn every_example_in_the_guide_runs_and_prints_its_golden_output() {
 }
 
 #[test]
+fn every_json_example_cuts_or_refuses_a_result_past_its_output_budget() {
+    let (command, guide) = fixture_tool();
+    crumbkit_test::check_output_budget(&command, &guide, &EXAMPLES);
+}
+
+#[test]
 fn every_opt_out_matches_the_opt_out_report() {
     let (command, guide) = fixture_tool();
     crumbkit_test::check_opt_outs(

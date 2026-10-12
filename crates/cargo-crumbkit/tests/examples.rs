@@ -70,7 +70,7 @@ const TARGET_DIR: (&str, &str) = (
 const QUIET: (&str, &str) = ("CARGO_TERM_QUIET", "true");
 
 #[test]
-fn every_example_in_the_guide_runs_and_prints_its_golden_output() {
+fn every_example_in_the_guide_runs_prints_its_golden_output_and_keeps_its_output_budget() {
     let passed: Vec<(&str, String)> = PASSED
         .iter()
         .chain(&PLATFORM_PASSED)
@@ -102,6 +102,7 @@ fn every_example_in_the_guide_runs_and_prints_its_golden_output() {
     .allow(ALLOW);
 
     crumbkit_test::check_examples(&Cli::command(), &GUIDE, &examples);
+    crumbkit_test::check_output_budget(&Cli::command(), &GUIDE, &examples);
 }
 
 /// Builds shelf as weigh's cargo will, with the environment `env` alone, and

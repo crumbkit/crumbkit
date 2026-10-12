@@ -271,6 +271,9 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit-core: [`Document`] gains `over_budget`, which sets the code of
   a result past the output budget, and `always_print_first`, which prints
   the first answer even past the budget ([ADR-0046]).
+- crumbkit-test: [`check_output_budget`] runs each `--json` example with
+  half the bytes it prints and checks that the tool cuts or refuses the
+  result ([ADR-0046]).
 ### Changed
 
 - crumbkit: with the `usage-log` feature, a run whose `COMPLETE` variable
@@ -493,6 +496,7 @@ rustdoc, or at its decision record. -->
 [`output_weight`]: crates/crumbkit-test/src/weights.rs
 [`Allow`]: crates/crumbkit-test/src/allow.rs
 [`check_opt_outs`]: crates/crumbkit-test/src/opt_outs.rs
+[`check_output_budget`]: crates/crumbkit-test/src/output_budget.rs
 [`Budget`]: crates/crumbkit-test/src/budget.rs
 [`Budgets`]: crates/crumbkit-test/src/sizes.rs
 [`PathBudgets`]: crates/crumbkit-test/src/weights.rs

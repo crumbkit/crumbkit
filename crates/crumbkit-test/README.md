@@ -54,6 +54,9 @@ The rustdoc of each check says what it fails on and shows an example:
   calls.
 - Example output: [`check_examples`] with [`Examples`], and
   [`example_golden_name`], which names each example's golden file.
+- The output budget: [`check_output_budget`], which runs each `--json`
+  example with half the bytes it prints and checks that the tool cuts or
+  refuses the result as crumbkit does ([ADR-0046]).
 - The command reference: [`check_command_reference`], which compares a
   tool's checked-in Markdown reference with one written from its help
   ([ADR-0044]).
@@ -95,6 +98,7 @@ option.
 [`check_examples`]: src/examples.rs
 [`Examples`]: src/examples.rs
 [`example_golden_name`]: src/examples.rs
+[`check_output_budget`]: src/output_budget.rs
 [`check_recoveries`]: src/recoveries.rs
 [`Recoveries`]: src/recoveries.rs
 [`check_twin`]: src/twins.rs
@@ -106,3 +110,4 @@ option.
 [ADR-0036]: ../../docs/decisions/api/0036-opt-outs.md
 [ADR-0004]: ../../docs/decisions/testing/0004-golden-and-snapshot-tests.md
 [ADR-0044]: ../../docs/decisions/api/help/0044-command-reference.md
+[ADR-0046]: ../../docs/decisions/api/output/0046-output-budget.md
