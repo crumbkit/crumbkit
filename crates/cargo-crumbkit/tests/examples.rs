@@ -15,28 +15,16 @@ use crumbkit_test::Examples;
 /// The variables that weigh's cargo build needs, which the test passes on
 /// from its own environment when they are set: `CARGO` names the cargo that
 /// runs the test, `PATH` finds `rustc`, `HOME`, `CARGO_HOME` and
-/// `RUSTUP_HOME` find cargo's registry and the toolchain,
+/// `RUSTUP_HOME` find cargo's registry and the toolchain, and
 /// `RUSTUP_TOOLCHAIN` names the toolchain that runs the test so rustup does
-/// not look for another, and `CARGO_TARGET_DIR` keeps the build in the
-/// test's target directory.
-///
-/// `CARGO_INCREMENTAL`, `CARGO_PROFILE_DEV_DEBUG` and `RUSTFLAGS` change how
-/// cargo builds. weigh's cargo gets the values that built the test, so it
-/// finds shelf already built and leaves the shared binary in place. A build
-/// with other values rebuilds shelf, which can take longer than an example
-/// may run, and on Windows it fails while another test runs the binary,
-/// because Windows cannot replace a running executable.
-const PASSED: [&str; 10] = [
+/// not look for another.
+const PASSED: [&str; 6] = [
     "CARGO",
     "PATH",
     "HOME",
     "CARGO_HOME",
     "RUSTUP_HOME",
     "RUSTUP_TOOLCHAIN",
-    "CARGO_TARGET_DIR",
-    "CARGO_INCREMENTAL",
-    "CARGO_PROFILE_DEV_DEBUG",
-    "RUSTFLAGS",
 ];
 
 /// The variables that Windows programs need, which the test also passes on
@@ -58,6 +46,19 @@ const PLATFORM_PASSED: [&str; 7] = [
 /// Unix programs need no variables beyond [`PASSED`].
 #[cfg(not(windows))]
 const PLATFORM_PASSED: [&str; 0] = [];
+
+/// The target directory of weigh's cargo build, which only this test uses.
+///
+/// weigh builds shelf with shelf's own features, while the test build
+/// unifies the features of every package and its dev-dependencies, so a
+/// build in the shared target directory would replace the shelf binary
+/// that other tests run. Windows cannot replace a running executable, and
+/// on any platform the other tests would run a binary that changed under
+/// them.
+const TARGET_DIR: (&str, &str) = (
+    "CARGO_TARGET_DIR",
+    concat!(env!("CARGO_TARGET_TMPDIR"), "/weigh-examples"),
+);
 
 /// `weigh` passes cargo's standard error through to its own, and an example
 /// must write nothing there, so the test turns off cargo's progress lines.
@@ -82,7 +83,13 @@ fn every_example_in_the_guide_runs_and_prints_its_golden_output() {
         .iter()
         .map(|(name, value)| (*name, value.as_str()))
         .collect();
-    env.push(QUIET);
+    env.extend([TARGET_DIR, QUIET]);
+    let built = build_shelf(&env).unwrap();
+    assert!(
+        built.status.success(),
+        "{}",
+        String::from_utf8_lossy(&built.stderr)
+    );
     let examples = Examples::new(
         env!("CARGO_BIN_EXE_cargo-crumbkit"),
         "tests/golden/examples",
@@ -90,4 +97,23 @@ fn every_example_in_the_guide_runs_and_prints_its_golden_output() {
     .env(&env);
 
     crumbkit_test::check_examples(&Cli::command(), &GUIDE, &examples);
+}
+
+/// Builds shelf as weigh's cargo will, with the environment `env` alone, and
+/// returns cargo's output, so the examples find shelf built and none of them
+/// waits for a build that could take longer than an example may run.
+fn build_shelf(env: &[(&str, &str)]) -> std::io::Result<std::process::Output> {
+    let cargo = env
+        .iter()
+        .find(|(name, _)| *name == "CARGO")
+        .map_or("cargo", |(_, value)| *value);
+    #[expect(
+        clippy::disallowed_methods,
+        reason = "the test builds shelf before weigh's examples run"
+    )]
+    std::process::Command::new(cargo)
+        .args(["build", "--workspace", "--bin", "shelf"])
+        .env_clear()
+        .envs(env.iter().copied())
+        .output()
 }

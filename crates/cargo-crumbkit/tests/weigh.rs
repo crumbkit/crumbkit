@@ -7,6 +7,12 @@ use std::process::Command;
 
 use serde_json::Value;
 
+/// The target directory of weigh's cargo builds in these tests, which only
+/// these tests use. weigh builds shelf with shelf's own features, so a build
+/// in the shared target directory would replace the shelf binary that other
+/// tests run, and Windows cannot replace a running executable.
+const TARGET_DIR: &str = concat!(env!("CARGO_TARGET_TMPDIR"), "/weigh");
+
 #[test]
 fn a_failed_build_shows_cargo_s_own_error_on_standard_error() {
     #[expect(
@@ -15,6 +21,7 @@ fn a_failed_build_shows_cargo_s_own_error_on_standard_error() {
     )]
     let output = Command::new(env!("CARGO_BIN_EXE_cargo-crumbkit"))
         .args(["crumbkit", "weigh", "--bin", "no-such-binary"])
+        .env("CARGO_TARGET_DIR", TARGET_DIR)
         .output()
         .unwrap();
     let stderr = String::from_utf8_lossy(&output.stderr);
@@ -49,6 +56,7 @@ fn log_joins_the_figures_of_a_usage_log_to_each_command_and_leaves_the_log_uncha
         .args(["crumbkit", "weigh", "--bin", "shelf", "--json"])
         .args(["--log", FIXTURE, "--since", "100y"])
         .env("CARGO_TERM_QUIET", "true")
+        .env("CARGO_TARGET_DIR", TARGET_DIR)
         .output()
         .unwrap();
     assert!(
