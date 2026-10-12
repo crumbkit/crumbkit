@@ -101,7 +101,7 @@ impl Walk<'_> {
         let mut chain = Chain {
             start: line,
             xdg,
-            place: start.place(),
+            place: start.place(self.recoveries.examples.working_dir()),
             ran: Vec::new(),
         };
         let words: Vec<String> = start.words.iter().map(|&word| word.to_owned()).collect();

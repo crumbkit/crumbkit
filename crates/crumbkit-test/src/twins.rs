@@ -30,7 +30,8 @@ mod tests;
 /// without that change succeeds.
 ///
 /// Both runs use the environment of [`Examples::env`], the working
-/// directory and standard input of `refused`, and fresh XDG directories of
+/// directory and standard input of `refused`, or the directory of
+/// [`Examples::current_dir`] when `refused` sets none, and fresh XDG directories of
 /// their own, as [`check_examples`](crate::check_examples) runs an example.
 /// The check reads the refused line's code, spelled with `spelling`. When
 /// [`Examples::failure_form`] names a form, it reads the code through the
@@ -105,7 +106,7 @@ fn twin(
             "the refused line `{refused_line}` and the admitted line `{admitted_line}` must differ by one word added, removed or replaced"
         ));
     }
-    let place = refused.place();
+    let place = refused.place(examples.working_dir());
     let code = spelling.spell(refused.code());
     let output = run(examples, refused.words(), place, &refused_line)?;
     if output.status.success() {

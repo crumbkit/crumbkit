@@ -87,3 +87,49 @@ fn an_indented_cut_listing_that_holds_the_budget_keeps_the_contract() {
     let stdout = "{\n  \"data\": [],\n  \"cut\": {\n    \"budget\": 200\n  }\n}\n";
     assert_eq!(judge(&ran(0, stdout, ""), 200), None);
 }
+
+/// The words of an example that succeeds only in a directory that holds the
+/// file `marker` and with `input` on standard input, and that exits with
+/// code 4 when the check lowers its budget.
+#[cfg(unix)]
+const PICKY: &[&str] = &[
+    r#"test -f marker && test "$(cat)" = input || exit 2; test -n "$CRUMBKIT_OUTPUT_BUDGET" && exit 4; echo printed"#,
+    "--json",
+];
+
+#[cfg(unix)]
+#[test]
+fn the_output_budget_check_uses_current_dir_and_stdin_and_skips_an_opted_out_example() {
+    use clap::Command;
+    use crumbkit::help::{Example, Guide, Leaf};
+
+    use crate::allow::Allow;
+    use crate::examples::{Examples, example_golden_name};
+    use crate::guide::command_line;
+    use crate::temp::TempDir;
+
+    const GUIDE: Guide =
+        Guide::new().leaves(&[Leaf::new(&["-c"]).examples(&[Example::new(PICKY, "Print")])]);
+    const ALLOW: &[Allow] = &[Allow::example("-c", PICKY, "The output names the day.")];
+    let sh = Command::new("sh").subcommand(Command::new("-c"));
+    let goldens = TempDir::new("output-budget-inputs").unwrap();
+    let name = example_golden_name(&command_line("sh -c", PICKY));
+    goldens.write(&name.replace(".txt", ".stdin"), "input");
+    let work = TempDir::new("output-budget-inputs-work").unwrap();
+    work.write("marker", "");
+    let (dir, path) = (
+        goldens.path().display().to_string(),
+        work.path().display().to_string(),
+    );
+    let examples = Examples::new("/bin/sh", &dir).current_dir(&path);
+
+    let problems = super::check(&sh, &GUIDE, &examples, super::TIMEOUT);
+    let skipped = super::check(&sh, &GUIDE, &examples.allow(ALLOW), super::TIMEOUT);
+
+    assert_eq!(problems.len(), 1, "{problems:?}");
+    assert!(
+        problems[0].contains("ended with exit code 4"),
+        "{problems:?}"
+    );
+    assert_eq!(skipped, Vec::<String>::new());
+}

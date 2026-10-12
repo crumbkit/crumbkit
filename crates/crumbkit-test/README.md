@@ -54,6 +54,9 @@ The rustdoc of each check says what it fails on and shows an example:
   calls.
 - Example output: [`check_examples`] with [`Examples`], and
   [`example_golden_name`], which names each example's golden file.
+  `Examples` sets each run's working directory and the values that the
+  check replaces with placeholders, and an example's `.stdin` file holds
+  its standard input.
 - The output budget: [`check_output_budget`], which runs each `--json`
   example with half the bytes it prints and checks that the tool cuts or
   refuses the result as crumbkit does ([ADR-0046]).
@@ -96,7 +99,7 @@ option.
 [`path_totals`]: src/weights.rs
 [`output_weight`]: src/weights.rs
 [`check_examples`]: src/examples.rs
-[`Examples`]: src/examples.rs
+[`Examples`]: src/examples/settings.rs
 [`example_golden_name`]: src/examples.rs
 [`check_output_budget`]: src/output_budget.rs
 [`check_recoveries`]: src/recoveries.rs
