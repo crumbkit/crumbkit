@@ -187,6 +187,17 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   argument of the leaf.
 - crumbkit-picker: the new crate's `Menu` picks values from a numbered list
   that text narrows, using only the standard library ([crumbkit-picker]).
+- crumbkit: Windows is a tier-2 platform, which the scheduled lane builds
+  and tests ([ADR-0003]).
+- crumbkit: the `usage-log` feature builds on Windows, where the log lives
+  in `%LOCALAPPDATA%\<tool>`, or under `XDG_STATE_HOME` when it is an
+  absolute path ([ADR-0029]).
+- crumbkit: on Windows, [`child::hand_over`] keeps the tool running on
+  Ctrl-C or Ctrl-Break, and a child that Ctrl-C ended returns 130 and marks
+  the line interrupted ([ADR-0042]).
+- crumbkit: help on Windows names the tool without `.exe`.
+- cargo-crumbkit: `weigh --usage` finds the usage log on Windows
+  ([ADR-0033]).
 
 ### Changed
 
@@ -359,6 +370,7 @@ rustdoc, or at its decision record. -->
 [`RenderCall`]: crates/crumbkit/src/call.rs
 [ADR-0001]: docs/decisions/api/0001-error-model.md
 [ADR-0002]: docs/decisions/api/0002-public-api-and-semver.md
+[ADR-0003]: docs/decisions/project/0003-dependency-policy.md
 [ADR-0004]: docs/decisions/testing/0004-golden-and-snapshot-tests.md
 [ADR-0007]: docs/decisions/api/schemas/0007-json-schemas.md
 [ADR-0015]: docs/decisions/api/0015-lightweight-adoption.md

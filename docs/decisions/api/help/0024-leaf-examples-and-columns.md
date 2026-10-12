@@ -7,7 +7,7 @@
 - `Leaf::effects` declares what the command changes, and help prints it on an `Effects:` line after the examples (ADR-0039).
 - `Leaf::stream` declares a leaf whose document is a stream. It records what `Leaf::document` records, and help prints an `Output:` line after the effects line (ADR-0041).
 - `parse` builds the schema only when the typed words ask for `--help`, so a run that prints no long help never builds it.
-- crumbkit prints each command line with [`help::quote`](../../../../crates/crumbkit/src/help.rs), which quotes a word for a POSIX shell. The quoting suits the POSIX shells of crumbkit's supported platforms, and a rendering for each shell replaces it if crumbkit supports Windows.
+- crumbkit prints each command line with [`help::quote`](../../../../crates/crumbkit/src/help.rs), which quotes a word for a POSIX shell. The quoting suits the POSIX shells of crumbkit's tier-1 platforms. On Windows, which is tier 2, help prints the same POSIX quoting, so a line pasted into PowerShell or `cmd` may need other quoting, and a rendering for each shell replaces it if Windows becomes tier 1 (ADR-0003).
 - `parse` applies a leaf only to the deepest command on the walked path of ADR-0021. `help::extend` adds every leaf's examples and no columns, because it cannot know whether help will print. The runtime never fails on a leaf.
 - crumbkit-test's [`check_guide`](../../../../crates/crumbkit-test/src/guide.rs) checks the leaves. It parses each example with clap and refuses an example that asks for `--help` or `--version`, because an example shows a real run. It requires an example for every visible command without subcommands, so every command that runs shows an example, and a description for every column.
 
