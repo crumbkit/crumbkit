@@ -23,6 +23,10 @@ mod tests;
 /// The failure document's JSON Schema accepts exactly the codes that pass:
 /// one or more printable ASCII characters without spaces.
 ///
+/// The check cannot list a code from `Code::runtime`, which the tool learns
+/// only at run time, such as from a plugin, so it does not check such a code
+/// against the tool's own codes.
+///
 /// ```
 /// use crumbkit::{Code, Spelling};
 ///
