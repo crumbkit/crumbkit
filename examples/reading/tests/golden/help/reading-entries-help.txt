@@ -6,6 +6,7 @@ Commands:
   list    List the entries of the reading list that --list names, in file order
   stream  Print each entry of the reading list that --list names as reading reads it
   set     Replace or append an entry of the reading list that --list names
+  export  Print the file of the reading list that --list names, as the file holds it
 
 Options:
       --json

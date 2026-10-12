@@ -210,8 +210,8 @@ pub(super) enum Over {
     Batch(usize),
     /// A single row or a list of rows that crumbkit refused whole.
     Row,
-    /// A prose result, which no flag makes smaller.
-    Prose,
+    /// A prose or bytes result, which no flag makes smaller.
+    Whole,
     /// A stream that stopped before the line that would pass the budget.
     Stream,
 }
@@ -239,7 +239,7 @@ impl fmt::Display for OverBudget {
                 f,
                 "{left_out} more rows did not fit in the output budget of {budget} bytes"
             ),
-            Over::Row | Over::Prose => write!(
+            Over::Row | Over::Whole => write!(
                 f,
                 "the result is larger than the output budget of {budget} bytes"
             ),
@@ -264,7 +264,7 @@ impl Failure for OverBudget {
                 "run the command again with the ids that were not answered".to_owned(),
             ),
             Over::Row => Recovery::Hint("ask for fewer fields with --fields".to_owned()),
-            Over::Prose => Recovery::None {
+            Over::Whole => Recovery::None {
                 reason: "no flag makes this answer smaller".to_owned(),
             },
             Over::Stream => {
@@ -277,7 +277,7 @@ impl Failure for OverBudget {
         let budget = Field::new("budget", self.budget);
         match self.over {
             Over::Batch(left_out) => vec![Field::new("left_out", left_out), budget],
-            Over::Row | Over::Prose | Over::Stream => vec![budget],
+            Over::Row | Over::Whole | Over::Stream => vec![budget],
         }
     }
 }

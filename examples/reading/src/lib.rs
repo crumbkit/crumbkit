@@ -94,6 +94,12 @@ where
                 Resource::Entries {
                     command: EntriesCommand::Stream(args),
                 } => lists::stream_entries(&mut cli.output, SPELLING, dir.as_deref(), &args.list),
+                Resource::Entries {
+                    command: EntriesCommand::Export(args),
+                } => {
+                    let result = lists::export(dir.as_deref(), &args.list);
+                    crumbkit::finish(&mut cli.output, SPELLING, lists::ENTRIES_EXPORT, result)
+                }
                 // `set` reads `--dry-run` and asks for confirmation through
                 // `cli.output`, so it runs before `finish` takes it.
                 Resource::Entries {

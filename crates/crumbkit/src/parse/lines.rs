@@ -9,7 +9,7 @@ use clap::builder::StyledStr;
 use clap::builder::styling::Style;
 
 use crate::expect;
-use crate::help::{self, Effects, Guide, Leaf, STREAM_LINE, leaf, topic};
+use crate::help::{self, Effects, Guide, Leaf, leaf, topic};
 
 /// Adds crumbkit's help lines to the root and to each command on `path`, and
 /// applies to each of those commands the groups of `guide` that name it. A
@@ -154,9 +154,10 @@ struct Sections {
     /// and `--help` print after the effects line, or `None` when it has
     /// none.
     writes: Option<String>,
-    /// Whether the leaf prints a stream, so `-h` and `--help` print
-    /// [`STREAM_LINE`] after the effects line.
-    stream: bool,
+    /// The `Output:` line that `-h` and `--help` print after the effects
+    /// line, which [`Leaf::output_line`] returns, or `None` when the leaf
+    /// has none.
+    output: Option<&'static str>,
 }
 
 /// Returns the sections of `leaf`, whose command is `node` and whose
@@ -186,7 +187,7 @@ fn leaf_sections(
         writes: leaf
             .get_effects()
             .and_then(|effects| effects.writes_line(expect::takes_expect(node))),
-        stream: leaf.is_stream(),
+        output: leaf.output_line(),
     }
 }
 
@@ -207,8 +208,8 @@ struct Lines<'a> {
 /// and then crumbkit's `lines`. The lines are the leaf's effects line in
 /// `-h` and `--help` when it declares effects, its `Writes:` line in `-h`
 /// and `--help` when it guards what it writes, the `Output:` line in `-h`
-/// and `--help` when the leaf prints a stream, the global flags line in
-/// `-h`, the topics line and the aliases line in `-h` and `--help`, and a
+/// and `--help` when the leaf prints a stream or bytes, the global flags
+/// line in `-h`, the topics line and the aliases line in `-h` and `--help`, and a
 /// `Next:` line, each when it has text. The `Next:` line opens a
 /// subcommand in `-h` and `--help` when `node` has a visible subcommand, and
 /// names `--help` in `-h` when the leaf has columns. A blank line separates
@@ -229,9 +230,9 @@ fn set_help_lines(node: &mut Command, text: &str, lines: &Lines<'_>, sections: S
         short.push(writes.clone());
         long.push(writes);
     }
-    if sections.stream {
-        short.push(STREAM_LINE.to_owned());
-        long.push(STREAM_LINE.to_owned());
+    if let Some(output) = sections.output {
+        short.push(output.to_owned());
+        long.push(output.to_owned());
     }
     if !flags.is_empty() {
         short.push(format!(

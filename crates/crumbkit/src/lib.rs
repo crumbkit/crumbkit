@@ -28,7 +28,7 @@
 //! [crumbkit-core]: https://github.com/crumbkit/crumbkit/blob/main/crates/crumbkit-core/README.md
 //! [ADR-0001]: https://github.com/crumbkit/crumbkit/blob/main/docs/decisions/api/0001-error-model.md
 //! [ADR-0007]: https://github.com/crumbkit/crumbkit/blob/main/docs/decisions/api/schemas/0007-json-schemas.md
-//! [ADR-0016]: https://github.com/crumbkit/crumbkit/blob/main/docs/decisions/api/output/0016-result-formats.md
+//! [ADR-0016]: https://github.com/crumbkit/crumbkit/blob/main/docs/decisions/api/output/results/0016-result-formats.md
 //! [ADR-0021]: https://github.com/crumbkit/crumbkit/blob/main/docs/decisions/api/help/0021-help-pages.md
 //! [ADR-0023]: https://github.com/crumbkit/crumbkit/blob/main/docs/decisions/api/help/0023-help-command-and-topics.md
 //! [ADR-0024]: https://github.com/crumbkit/crumbkit/blob/main/docs/decisions/api/help/0024-leaf-examples-and-columns.md
@@ -72,9 +72,9 @@ pub mod usage;
 // crumbkit re-exports every item of crumbkit-core at the path it had in
 // crumbkit, so a tool depends on crumbkit alone (ADR-0032).
 pub use crumbkit_core::{
-    AsFailure, Batch, Call, CallArg, CallError, CallTarget, Code, Document, Error, Failure, Field,
-    FieldValue, Listing, NoRow, NoSummary, Prose, Recovery, Row, Rows, RuntimeCodeError, Shape,
-    Spelling, Stream,
+    AsFailure, Batch, Bytes, Call, CallArg, CallError, CallTarget, Code, Document, Error, Failure,
+    Field, FieldValue, Listing, NoRow, NoSummary, Prose, Recovery, Row, Rows, RuntimeCodeError,
+    Shape, Spelling, Stream,
 };
 
 pub use crate::call::RenderCall;

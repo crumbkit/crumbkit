@@ -42,3 +42,21 @@ fn a_tool_without_lists_has_the_guide_and_the_commands_of_its_static_grammar() {
         .collect();
     assert_eq!(names, ["entries", "commands", "schemas"]);
 }
+
+#[test]
+fn an_export_that_cannot_open_the_file_names_its_path_in_the_hint() {
+    let error = super::EntriesError::CannotOpen {
+        name: "to-read".to_owned(),
+        path: std::path::PathBuf::from("lists/to-read.txt"),
+        error: std::io::Error::from(std::io::ErrorKind::PermissionDenied),
+    };
+
+    assert_eq!(error.to_string(), "cannot read the list to-read");
+    assert_eq!(crumbkit::Failure::code(&error), &super::UNREADABLE);
+    assert_eq!(
+        crumbkit::Failure::recovery(&error),
+        crumbkit::Recovery::Hint(
+            "reading could not open lists/to-read.txt, so check that the file exists and that reading may read it".to_owned()
+        )
+    );
+}

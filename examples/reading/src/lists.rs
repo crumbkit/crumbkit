@@ -20,11 +20,13 @@ use serde::Serialize;
 
 use crate::cli::Resource;
 
+mod export;
 mod set;
 mod stream;
 #[cfg(test)]
 mod tests;
 
+pub(crate) use self::export::{ENTRIES_EXPORT, export};
 pub(crate) use self::set::{ENTRIES_SET, set};
 pub(crate) use self::stream::{ENTRIES_STREAM, stream_entries};
 
@@ -180,7 +182,8 @@ pub fn lists_in(dir: &Path) -> Vec<List> {
 }
 
 /// Returns the lists in reading's directory as choices for `--list`, which
-/// the menu offers when `entries list` or `entries stream` names no list.
+/// the menu offers when `entries list`, `entries stream` or `entries export`
+/// names no list.
 /// A directory that cannot be found holds no lists.
 #[expect(
     clippy::unnecessary_wraps,
@@ -313,6 +316,15 @@ pub(crate) enum EntriesError {
         /// Why the file cannot be read.
         error: io::Error,
     },
+    /// `entries export` cannot open or read the list's file.
+    CannotOpen {
+        /// The list's name.
+        name: String,
+        /// The path of the list's file.
+        path: PathBuf,
+        /// Why the file cannot be read.
+        error: io::Error,
+    },
     /// `--position` is more than one past the last entry of the list.
     OutOfRange {
         /// The list's name.
@@ -335,7 +347,9 @@ impl fmt::Display for EntriesError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::NotFound { name } => write!(f, "reading has no list named {name}"),
-            Self::Unreadable { name, .. } => write!(f, "cannot read the list {name}"),
+            Self::Unreadable { name, .. } | Self::CannotOpen { name, .. } => {
+                write!(f, "cannot read the list {name}")
+            }
             Self::OutOfRange { name, count } => write!(
                 f,
                 "the list {name} has {count} entries, so --position can be at most {}",
@@ -349,19 +363,20 @@ impl std::error::Error for EntriesError {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         match self {
             Self::NotFound { .. } | Self::OutOfRange { .. } => None,
-            Self::Unreadable { error, .. } => Some(error),
+            Self::Unreadable { error, .. } | Self::CannotOpen { error, .. } => Some(error),
         }
     }
 }
 
 /// A missing list's next step is `reading commands list`, which lists the
 /// command of each list. An unreadable list's next step is advice about its
-/// file. A position past the end's next step lists every entry of the list.
+/// file, and an export that cannot open its file names the file's path. A
+/// position past the end's next step lists every entry of the list.
 impl Failure for EntriesError {
     fn code(&self) -> &'static Code {
         match self {
             Self::NotFound { .. } => &NOT_FOUND,
-            Self::Unreadable { .. } => &UNREADABLE,
+            Self::Unreadable { .. } | Self::CannotOpen { .. } => &UNREADABLE,
             Self::OutOfRange { .. } => &OUT_OF_RANGE,
         }
     }
@@ -372,6 +387,10 @@ impl Failure for EntriesError {
             Self::Unreadable { .. } => Recovery::Hint(
                 "make the list's file a UTF-8 text file that reading can read".to_owned(),
             ),
+            Self::CannotOpen { path, .. } => Recovery::Hint(format!(
+                "reading could not open {}, so check that the file exists and that reading may read it",
+                path.display()
+            )),
             Self::OutOfRange { name, .. } => Recovery::Run(every_entry(name)),
         }
     }

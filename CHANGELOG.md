@@ -282,6 +282,16 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   ([ADR-0050]).
 - crumbkit: with the `usage-log` feature, the line of a run whose listing
   or stream had no rows holds `"empty": true` ([ADR-0029]).
+- crumbkit-core: [`Bytes`] is a result that `finish` prints unchanged as
+  text, and with `--json` as `text` when it is UTF-8 or `base64` otherwise.
+  A `Bytes` row field serializes the same way. `Shape::Bytes` and
+  `Rows::bytes` describe it ([ADR-0016], [ADR-0007]).
+- crumbkit: `--fields`, `--long` and `--full` are refused with exit code 2
+  for a [`Bytes`] result, which has no columns ([ADR-0016]).
+- crumbkit: a [`Bytes`] result past the output budget is refused and never
+  cut, and `--json` measures it with its base64 text ([ADR-0046]).
+- crumbkit: the help of a leaf that prints [`Bytes`] says how its output
+  prints, and `help::BYTES_LINE` holds that line ([ADR-0016]).
 ### Changed
 
 - crumbkit: with the `usage-log` feature, a run whose `COMPLETE` variable
@@ -443,6 +453,7 @@ rustdoc, or at its decision record. -->
 [`Error`]: crates/crumbkit-core/src/failure.rs
 [`Batch`]: crates/crumbkit-core/src/batch.rs
 [`Prose`]: crates/crumbkit-core/src/prose.rs
+[`Bytes`]: crates/crumbkit-core/src/bytes.rs
 [`fetch_each`]: crates/crumbkit/src/fetch.rs
 [`report`]: crates/crumbkit-core/src/report.rs
 [`parse`]: crates/crumbkit/src/parse.rs
@@ -481,7 +492,7 @@ rustdoc, or at its decision record. -->
 [ADR-0005]: docs/decisions/testing/0005-cli-end-to-end-tests.md
 [ADR-0007]: docs/decisions/api/schemas/0007-json-schemas.md
 [ADR-0015]: docs/decisions/api/0015-lightweight-adoption.md
-[ADR-0016]: docs/decisions/api/output/0016-result-formats.md
+[ADR-0016]: docs/decisions/api/output/results/0016-result-formats.md
 [ADR-0021]: docs/decisions/api/help/0021-help-pages.md
 [ADR-0023]: docs/decisions/api/help/0023-help-command-and-topics.md
 [ADR-0024]: docs/decisions/api/help/0024-leaf-examples-and-columns.md

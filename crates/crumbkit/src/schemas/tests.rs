@@ -18,6 +18,7 @@ use crate::{
     finish_to,
 };
 
+mod bytes;
 mod formats;
 mod streams;
 
