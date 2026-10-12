@@ -56,59 +56,66 @@ struct Limits {
 }
 
 // Each limit's comment gives the count that it comes from. The counts come
-// from runs of `scheduled.yml` on `ubuntu-24.04`. Run 38191991177 gave both
-// counts of `books list` with and without the usage log, of `commands list`
-// and of the refusal, and the block count of `books list -h`. Run
-// 38163868931 gave both counts of `shelf -h` and the instruction count of
-// `books list -h`.
+// from runs of `scheduled.yml` on `ubuntu-24.04`. Run 38191991177 gave the
+// instruction counts of `books list` with and without the usage log, of
+// `commands list` and of the refusal. Run 38163868931 gave the instruction
+// counts of `shelf -h` and `books list -h`. Run 38215644933 gave every
+// block count, with DHAT recording 500 stack frames.
 
 /// The limits of `shelf books list`.
 const BOOKS_LIST: Limits = Limits {
     // The count was 650642 instructions.
     instructions: 715_707,
-    // The count was 931 blocks.
-    allocations: 1025,
+    // The count was 1142 blocks.
+    allocations: 1257,
 };
 
 /// The limits of `shelf -h`.
 const ROOT_HELP: Limits = Limits {
     // The count was 350802 instructions.
     instructions: 385_883,
-    // The count was 332 blocks.
-    allocations: 366,
+    // The count was 413 blocks.
+    allocations: 455,
 };
 
 /// The limits of `shelf books list -h`.
 const LEAF_HELP: Limits = Limits {
     // The count was 447139 instructions.
     instructions: 491_853,
-    // The count was 509 blocks.
-    allocations: 560,
+    // The count was 628 blocks.
+    allocations: 691,
 };
 
 /// The limits of `shelf commands list --all --json --full`.
 const COMMANDS_LIST: Limits = Limits {
     // The count was 2581595 instructions.
     instructions: 2_839_755,
-    // The count was 2317 blocks.
-    allocations: 2549,
+    // The count was 3377 blocks.
+    allocations: 3715,
 };
 
 /// The limits of `shelf books lst`, which clap refuses.
 const REFUSAL: Limits = Limits {
     // The count was 417385 instructions.
     instructions: 459_124,
-    // The count was 500 blocks.
-    allocations: 550,
+    // The count was 539 blocks.
+    allocations: 593,
 };
 
 /// The limits of `shelf books list` with the usage log started.
 const BOOKS_LIST_LOGGED: Limits = Limits {
     // The count was 793688 instructions.
     instructions: 873_057,
-    // The count was 1029 blocks.
-    allocations: 1132,
+    // The count was 1203 blocks.
+    allocations: 1324,
 };
+
+/// The stack depth that valgrind records for each allocation, which is
+/// valgrind's largest. gungraun counts an allocation only when its recorded
+/// stack reaches the benchmark function, and valgrind's default of 12 frames
+/// left out allocations deeper than that, so a change in inlining moved the
+/// block count with no change in the allocations made.
+const NUM_CALLERS: &str = "num-callers=500";
 
 /// Returns the configuration that runs Callgrind and DHAT with `limits` and
 /// sets the XDG directories.
@@ -116,7 +123,10 @@ fn config(limits: &Limits) -> LibraryBenchmarkConfig {
     let mut config = LibraryBenchmarkConfig::default();
     config
         .tool(Callgrind::default().hard_limits([(EventKind::Ir, limits.instructions)]))
-        .tool(Dhat::default().hard_limits([(DhatMetric::TotalBlocks, limits.allocations)]));
+        .tool(
+            Dhat::with_args([NUM_CALLERS])
+                .hard_limits([(DhatMetric::TotalBlocks, limits.allocations)]),
+        );
     for (variable, name) in XDG {
         config.env(variable, format!("{XDG_ROOT}/{name}"));
     }
