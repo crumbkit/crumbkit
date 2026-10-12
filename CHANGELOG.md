@@ -101,6 +101,9 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   the value under `data` and the failures under `failures` ([ADR-0016]).
 - crumbkit: [`help::RuntimeLeaf`] and `Guide::with_runtime_leaves` give
   examples to commands that a tool adds at run time ([ADR-0021]).
+- crumbkit: `Document::without_envelope` marks a document that keeps an
+  existing shape. With `--json`, [`finish`] prints its result alone and its
+  partial failures as text on standard error ([ADR-0016]).
 
 - crumbkit-test: [`check_opt_outs`] pins a tool's opt-outs and budgets,
   with each reason and what it costs an agent, in a text and a JSON golden

@@ -134,3 +134,27 @@ fn an_untyped_document_keeps_the_id_and_the_description() {
     assert_eq!(untyped.to_string(), "shelf/books-list/v1");
     assert_eq!(untyped.description(), "Books.");
 }
+
+#[test]
+fn a_new_document_has_crumbkits_envelope() {
+    let document: Document<()> = Document::new("shelf", "books-list", 1, "Books.");
+
+    assert!(document.has_envelope());
+}
+
+#[test]
+fn a_document_without_its_envelope_keeps_its_id_and_reports_no_envelope() {
+    let document: Document<()> =
+        Document::new("shelf", "books-list", 3, "Books.").without_envelope();
+
+    assert!(!document.has_envelope());
+    assert_eq!(document.to_string(), "shelf/books-list/v3");
+}
+
+#[test]
+fn an_untyped_document_keeps_the_choice_of_envelope() {
+    let document: Document<Vec<u32>> =
+        Document::new("shelf", "books-list", 1, "Books.").without_envelope();
+
+    assert!(!document.untyped().has_envelope());
+}

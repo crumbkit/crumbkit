@@ -31,6 +31,10 @@ mod tests;
 /// The description is what `schemas list` shows for the document and the
 /// `description` of its JSON Schema.
 ///
+/// A document has crumbkit's envelope unless the tool calls
+/// [`Document::without_envelope`], which lets a command print an existing
+/// document unchanged while the tool migrates (ADR-0036).
+///
 /// ```
 /// # #[derive(serde::Serialize, schemars::JsonSchema)]
 /// # struct Book { id: u32 }
@@ -53,6 +57,10 @@ pub struct Document<T> {
     /// One line that says what the document holds, such as `One page of the
     /// catalogue and the number of books in it.`
     description: &'static str,
+    /// Whether `crumbkit::finish` prints the result inside crumbkit's
+    /// envelope, with `schema` and `data`, which is true unless the tool
+    /// called `without_envelope`.
+    envelope: bool,
     /// `PhantomData<fn() -> T>` ties the document to `T` without holding a
     /// `T`. A function pointer is `Send` and `Sync` whatever it returns, so
     /// `Document<T>` is `Send` and `Sync` for every `T`; `PhantomData<T>`
@@ -104,8 +112,34 @@ impl<T> Document<T> {
             name,
             version,
             description,
+            envelope: true,
             result: PhantomData,
         }
+    }
+
+    /// Returns the same document without crumbkit's envelope. With `--json`,
+    /// `crumbkit::finish` then prints the result alone, as its type
+    /// serializes it with every field, without `schema`, `total` or
+    /// `failures`, so a command can print an existing document unchanged and
+    /// keep its version while a tool migrates.
+    ///
+    /// It is an opt-out from crumbkit's conventions. crumbkit-test's
+    /// `check_document_ids` fails on a leaf whose document has no envelope
+    /// unless the tool opts out of the envelope rule for the command with a
+    /// stated reason, and `check_opt_outs` reports what the opt-out costs
+    /// (ADR-0036).
+    #[must_use]
+    pub const fn without_envelope(mut self) -> Self {
+        self.envelope = false;
+        self
+    }
+
+    /// Reports whether `crumbkit::finish` prints the result inside
+    /// crumbkit's envelope, which is true unless the tool called
+    /// [`Document::without_envelope`].
+    #[must_use]
+    pub const fn has_envelope(&self) -> bool {
+        self.envelope
     }
 
     /// Returns the component that owns the document, such as `shelf`.
@@ -133,10 +167,10 @@ impl<T> Document<T> {
         self.description
     }
 
-    /// Returns the same id and description as a `Document<()>`, which no
-    /// longer names the result type, so one list can hold the documents of
-    /// results of different types. crumbkit's help leaves keep their
-    /// documents in this form.
+    /// Returns the same id, description and choice of envelope as a
+    /// `Document<()>`, which no longer names the result type, so one list
+    /// can hold the documents of results of different types. crumbkit's
+    /// help leaves keep their documents in this form.
     #[must_use]
     pub const fn untyped(self) -> Document<()> {
         Document {
@@ -144,6 +178,7 @@ impl<T> Document<T> {
             name: self.name,
             version: self.version,
             description: self.description,
+            envelope: self.envelope,
             result: PhantomData,
         }
     }
