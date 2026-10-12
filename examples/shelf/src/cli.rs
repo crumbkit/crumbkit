@@ -248,13 +248,15 @@ pub(crate) enum AliasesCommand {
 /// The arguments of `shelf books list`.
 ///
 /// A page holds 4 books, fewer than the catalogue's 6, so the default output
-/// ends with crumbkit's footer and `--all` has books to add.
+/// ends with crumbkit's footer and `--all` has books to add. `--limit` takes
+/// at most 100, so a larger value is refused with a recovery that runs
+/// `--all`.
 #[derive(Debug, Args, Serialize, JsonSchema)]
 pub(crate) struct BooksList {
     /// How many books to print.
     #[command(flatten)]
     #[serde(flatten)]
-    pub(crate) page: Page<4>,
+    pub(crate) page: Page<4, 100>,
 }
 
 /// The arguments of `shelf books show`: the ids on the command line, or a

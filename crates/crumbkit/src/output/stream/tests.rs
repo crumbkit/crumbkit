@@ -15,6 +15,8 @@ use crate::{
     Call, Code, Document, DryRun, Error, Failure, Output, Recovery, Row, Sink, Spelling, Stream,
 };
 
+mod empty;
+
 /// A row with two compact columns, one long column and one field that only
 /// `--full` shows.
 #[derive(Serialize, JsonSchema)]

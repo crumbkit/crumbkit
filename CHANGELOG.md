@@ -274,6 +274,12 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit-test: [`check_output_budget`] runs each `--json` example with
   half the bytes it prints and checks that the tool cuts or refuses the
   result ([ADR-0046]).
+- crumbkit: a listing with no rows, and a stream that ends with none,
+  print a note such as `note: no books match` after the header.
+  `Document::when_empty` changes the wording ([ADR-0050]).
+- crumbkit: `Page<N, MOST>` refuses a `--limit` above `MOST` with a
+  recovery that runs `--all`, and the help and the footer name the bound
+  ([ADR-0050]).
 ### Changed
 
 - crumbkit: with the `usage-log` feature, a run whose `COMPLETE` variable
@@ -525,6 +531,7 @@ rustdoc, or at its decision record. -->
 [ADR-0045]: docs/decisions/api/output/0045-failure-forms.md
 [ADR-0046]: docs/decisions/api/output/0046-output-budget.md
 [ADR-0049]: docs/decisions/api/output/0049-terminal-detection.md
+[ADR-0050]: docs/decisions/api/output/listings/README.md
 [`codes`]: crates/crumbkit/src/codes.rs
 [`help::split`]: crates/crumbkit/src/help/words.rs
 [`check_recoveries`]: crates/crumbkit-test/src/recoveries.rs

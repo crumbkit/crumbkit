@@ -111,3 +111,22 @@ fn books_remove_yes_a_second_time_succeeds_and_prints_the_same_book() {
         .stdout_eq(file!["golden/examples/shelf-books-remove-2-yes.txt"].raw())
         .stderr_eq("");
 }
+
+#[test]
+fn books_list_after_every_book_is_removed_prints_the_header_and_the_empty_note() {
+    let dir = tempfile::tempdir().unwrap();
+    run(
+        dir.path(),
+        &["books", "remove", "1", "2", "3", "4", "5", "6", "--yes"],
+    )
+    .success();
+
+    run(dir.path(), &["books", "list"])
+        .success()
+        .stdout_eq(file!["golden/books-list-after-remove-all.txt"].raw())
+        .stderr_eq("");
+    run(dir.path(), &["books", "list", "--json"])
+        .success()
+        .stdout_eq(file!["golden/books-list-json-after-remove-all.json"].raw())
+        .stderr_eq("");
+}

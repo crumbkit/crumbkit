@@ -18,7 +18,8 @@ pub(crate) const ENTRIES_STREAM: Document<Stream<Entry>> = Document::new(
     "entries-stream",
     1,
     "Each entry of a reading list, printed as reading reads it.",
-);
+)
+.when_empty("the list has no entries");
 
 /// Prints each entry of the list named `name` in `dir` as a stream, in the
 /// format that `output` chooses, and returns the process's exit code.

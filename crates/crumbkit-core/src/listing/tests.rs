@@ -148,3 +148,24 @@ fn the_schema_of_no_summary_is_false_and_inline_so_no_value_matches_it() {
     );
     assert!(generator.definitions().is_empty());
 }
+
+#[test]
+fn a_listing_has_no_limit_bound_until_one_is_set() {
+    let listing = Listing::new(books(2), 2);
+
+    assert_eq!(listing.limit_bound(), None);
+}
+
+#[test]
+fn bounded_sets_the_most_that_limit_takes() {
+    let listing = Listing::new(books(2), 9).bounded(100);
+
+    assert_eq!(listing.limit_bound(), Some(100));
+}
+
+#[test]
+fn a_summary_keeps_the_limit_bound() {
+    let listing = Listing::new(books(2), 9).bounded(100).summary(7_u32);
+
+    assert_eq!(listing.limit_bound(), Some(100));
+}

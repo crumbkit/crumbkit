@@ -183,3 +183,20 @@ fn records_edited_to_hold_other_text_are_left_out_and_counted() {
     assert!(!json.contains("PLANTED"), "{json}");
     assert!(json.contains(r#""skipped":4"#), "{json}");
 }
+
+#[test]
+fn self_usage_without_findings_prints_the_note_that_the_log_holds_none() {
+    let dir = tempfile::tempdir().unwrap();
+
+    let run = shelf(dir.path(), &["self", "usage"])
+        .success()
+        .stderr_eq("");
+
+    let stdout = String::from_utf8_lossy(&run.get_output().stdout).into_owned();
+    assert!(
+        stdout.contains(
+            "\nFINDING  RUNS  COMMAND  SUGGESTION\nnote: the usage log holds no findings\n"
+        ),
+        "{stdout}"
+    );
+}

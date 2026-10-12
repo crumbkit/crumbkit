@@ -161,6 +161,10 @@ const STARTS: &[Failing<'_>] = &[
         &crumbkit::codes::CONFIRM_NEEDS_YES,
         &["books", "remove", "2"],
     ),
+    Failing::new(
+        &crumbkit::codes::CLI_USAGE,
+        &["books", "list", "--limit", "101"],
+    ),
 ];
 
 /// shelf's declared codes that no command line in a test provokes.

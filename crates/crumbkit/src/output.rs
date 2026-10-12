@@ -310,9 +310,11 @@ pub fn finish<T: Rows, E: AsFailure>(
 /// when it has one, under `summary`. The summary also prints as one line
 /// above the table in text. When a listing
 /// shows fewer rows than its total, the table ends with a footer line, such
-/// as `Showing 4 of 6 books. --all shows every one.` A listing's note
-/// follows on its own line, in text only. When a listing has a next step, a
-/// `Next:` line follows the table, any footer and any note, such as
+/// as `Showing 4 of 6 books. --all shows every one.` A listing whose total
+/// is 0 prints an empty note after the header, such as `note: no books
+/// match` (ADR-0050). A listing's note follows on its own line, in text
+/// only. When a listing has a next step, a `Next:` line follows the table,
+/// any footer and any note, such as
 /// `Next: shelf books show <ID>... takes up to 100 ids in one call.` The line
 /// is left out when [`Output::set_command`] was not called or the step's
 /// [`Call`](crate::Call) does not resolve in that command, and the exit code

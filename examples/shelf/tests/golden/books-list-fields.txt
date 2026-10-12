@@ -3,5 +3,5 @@ Pride and Prejudice  1813
 Frankenstein         1818
 Moby-Dick            1851
 Great Expectations   1861
-Showing 4 of 6 books. --all shows every one.
+Showing 4 of 6 books. --limit takes up to 100, and --all shows every one.
 Next: shelf books show <ID>... takes up to 100 ids in one call.

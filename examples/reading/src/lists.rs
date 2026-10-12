@@ -36,7 +36,8 @@ pub(crate) const ENTRIES_LIST: Document<Listing<Entry>> = Document::new(
     "entries-list",
     1,
     "One page of a reading list's entries and the number of entries in it.",
-);
+)
+.when_empty("the list has no entries");
 
 /// The environment variable that names the directory of reading's lists in
 /// place of `reading/lists` under the XDG data directory. reading's tests
@@ -252,7 +253,7 @@ pub(crate) fn entries<const N: usize>(
             title: title.to_owned(),
         })
         .collect();
-    Ok(Listing::from_all(entries, page.limit()).described("entries"))
+    Ok(page.first_of(entries).described("entries"))
 }
 
 /// Returns the call of `reading entries list --list <name> --all`, which

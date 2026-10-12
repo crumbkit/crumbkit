@@ -406,7 +406,8 @@ where
     }
     #[cfg(feature = "usage-log")]
     crate::usage::refused(&command, &path, &error);
-    let refusal = Refusal::command_line(refusal_message(&command, &path, &error), path, &error);
+    let message = refusal_message(&command, &path, &error);
+    let refusal = Refusal::command_line(message, path, &error, &words);
     let form = guide.get_failure_form();
     let code = refusal.print(sink, json, spelling, form, Some(&mut command));
     Err(Stop::new(code, json, command, guide))

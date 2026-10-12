@@ -105,6 +105,13 @@ pub trait Rows: Serialize + sealed::Sealed {
         None
     }
 
+    /// Returns the most rows that the command's `--limit` takes, which the
+    /// text footer names, or `None` when it has no bound. Only a `Listing`
+    /// returns one.
+    fn limit_bound(&self) -> Option<usize> {
+        None
+    }
+
     /// Returns the failures of the ids that did not work when the result is
     /// a batch, and `None` otherwise. Only a `Batch` returns them, and its
     /// list is empty when every id worked.

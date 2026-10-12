@@ -1,12 +1,16 @@
 //! The paging flags, which choose how many rows a listing prints.
 
 use std::borrow::Cow;
+use std::error::Error;
+use std::fmt;
 use std::num::NonZeroUsize;
 
 use clap::Args;
 use schemars::{JsonSchema, Schema, SchemaGenerator, json_schema};
 use serde::Serialize;
 use serde::ser::{SerializeMap, Serializer};
+
+use crate::{Listing, Row};
 
 #[cfg(test)]
 mod tests;
@@ -28,6 +32,13 @@ const ALL_HELP: &str = "Print every row";
 ///   `Page<10>`, and the command's `--help` shows it. clap refuses 0.
 /// - `--all` prints every row, and conflicts with `--limit`.
 ///
+/// The second const parameter `MOST` is the most rows that `--limit` takes.
+/// It has no bound unless the command names one, as in `Page<10, 100>`. A
+/// larger value is refused before the handler runs, with a recovery that
+/// runs the caller's command with `--all` in place of `--limit`. The help
+/// of `--limit` and the footer of a listing that the page builds with
+/// [`Page::first_of`] or [`Page::listing`] name the bound (ADR-0050).
+///
 /// ```
 /// use clap::Parser;
 /// use crumbkit::Page;
@@ -46,8 +57,8 @@ const ALL_HELP: &str = "Print every row";
 /// assert_eq!(args.page.limit(), None);
 /// ```
 ///
-/// `N` is at least 1, and a command that flattens `Page<0>` fails to
-/// build:
+/// `N` is at least 1 and at most `MOST`, and a command that flattens
+/// `Page<0>` or `Page<10, 5>` fails to build:
 ///
 /// ```compile_fail
 /// #[derive(clap::Parser)]
@@ -60,31 +71,110 @@ const ALL_HELP: &str = "Print every row";
 ///     let _ = <BooksList as clap::Parser>::parse();
 /// }
 /// ```
+///
+/// ```compile_fail
+/// #[derive(clap::Parser)]
+/// struct BooksList {
+///     #[command(flatten)]
+///     page: crumbkit::Page<10, 5>,
+/// }
+///
+/// fn main() {
+///     let _ = <BooksList as clap::Parser>::parse();
+/// }
+/// ```
 #[derive(Args, Clone, Debug, PartialEq, Eq)]
-pub struct Page<const N: usize = 25> {
+pub struct Page<const N: usize = 25, const MOST: usize = { usize::MAX }> {
     // clap's `default_value_t` keeps the default text in one `static` that
     // every `Page<N>` shares, so two commands with different sizes would
     // show the same default. `default_value` with an owned `String`, which
     // clap's `string` feature allows, gives each `N` its own default. The
-    // field is a `NonZeroUsize`, so clap refuses 0 when it parses the value.
-    #[arg(long, value_name = "N", help = LIMIT_HELP, default_value = Self::DEFAULT_LIMIT.to_string())]
+    // field is a `NonZeroUsize`, and `parse_limit` refuses 0 and any value
+    // above `MOST` when clap parses the value.
+    #[arg(
+        long,
+        value_name = "N",
+        help = Self::limit_help(),
+        default_value = Self::DEFAULT_LIMIT.to_string(),
+        value_parser = Self::parse_limit,
+    )]
     limit: NonZeroUsize,
 
     #[arg(long, help = ALL_HELP, conflicts_with = "limit")]
     all: bool,
 }
 
-impl<const N: usize> Page<N> {
+impl<const N: usize, const MOST: usize> Page<N, MOST> {
     /// The default of `--limit`, which is `N`.
     ///
-    /// clap refuses a limit of 0, so `Page<0>` would refuse every call that
-    /// leaves out `--limit`. The assertion turns that into a build error,
-    /// because the compiler evaluates this constant when it generates the
-    /// code that adds the flags to a command (RUST-5).
+    /// clap refuses a limit of 0 and a limit above `MOST`, so `Page<0>` or
+    /// `Page<10, 5>` would refuse every call that leaves out `--limit`. The
+    /// assertions turn that into a build error, because the compiler
+    /// evaluates this constant when it generates the code that adds the
+    /// flags to a command (RUST-5).
     const DEFAULT_LIMIT: usize = {
         assert!(N >= 1, "a Page's default limit is at least 1");
+        assert!(N <= MOST, "a Page's default limit is at most its bound");
         N
     };
+
+    /// Returns the help text of `--limit`, which names the bound when the
+    /// page has one, such as `Print at most this many rows, up to 100`.
+    fn limit_help() -> String {
+        match Self::bound() {
+            Some(most) => format!("{LIMIT_HELP}, up to {most}"),
+            None => LIMIT_HELP.to_owned(),
+        }
+    }
+
+    /// Reads the value of `--limit`: a whole number from 1 up to `MOST`. A
+    /// larger number fails with [`LimitAbove`], which `parse` reads to
+    /// offer `--all` in its recovery.
+    fn parse_limit(text: &str) -> Result<NonZeroUsize, Box<dyn Error + Send + Sync>> {
+        let limit: NonZeroUsize = text.parse()?;
+        if limit.get() > MOST {
+            return Err(Box::new(LimitAbove { most: MOST }));
+        }
+        Ok(limit)
+    }
+
+    /// Returns `MOST`, or `None` when `--limit` has no bound.
+    const fn bound() -> Option<usize> {
+        if MOST == usize::MAX { None } else { Some(MOST) }
+    }
+
+    /// Returns the most rows that `--limit` takes, or `None` when it has no
+    /// bound.
+    #[must_use]
+    pub const fn most(&self) -> Option<usize> {
+        Self::bound()
+    }
+
+    /// Returns a listing of the first rows of `rows` that the flags ask
+    /// for, with the length of `rows` as the total, as
+    /// [`Listing::from_all`] does. The listing carries the page's bound, so
+    /// its footer names it.
+    #[must_use]
+    pub fn first_of<R: Row>(&self, rows: Vec<R>) -> Listing<R> {
+        Self::carry(Listing::from_all(rows, self.limit()))
+    }
+
+    /// Returns a listing of `rows` out of `total` matching rows, as
+    /// [`Listing::new`] does, for a handler that fetched one page and
+    /// counted the matching rows itself. The listing carries the page's
+    /// bound, so its footer names it.
+    #[must_use]
+    pub fn listing<R: Row>(&self, rows: Vec<R>, total: usize) -> Listing<R> {
+        Self::carry(Listing::new(rows, total))
+    }
+
+    /// Returns `listing` with the page's bound, when it has one.
+    const fn carry<R: Row>(listing: Listing<R>) -> Listing<R> {
+        match Self::bound() {
+            Some(most) => listing.bounded(most),
+            None => listing,
+        }
+    }
 
     /// Returns the number of rows to print, or `None` when `--all` asks for
     /// every row.
@@ -105,7 +195,7 @@ impl<const N: usize> Page<N> {
 /// arguments struct that flattens the page into its clap arguments flattens
 /// it with `#[serde(flatten)]` too, so its fields sit beside the command's
 /// own.
-impl<const N: usize> Serialize for Page<N> {
+impl<const N: usize, const MOST: usize> Serialize for Page<N, MOST> {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         let mut page = serializer.serialize_map(Some(2))?;
         self.serialize_fields(&mut page)?;
@@ -113,7 +203,7 @@ impl<const N: usize> Serialize for Page<N> {
     }
 }
 
-impl<const N: usize> Page<N> {
+impl<const N: usize, const MOST: usize> Page<N, MOST> {
     /// Writes `limit` and `all` as two entries of `map`. `Page`'s own
     /// `Serialize` writes them, and so does an arguments type in crumbkit
     /// that flattens the page beside its own fields, because crumbkit has no
@@ -125,30 +215,40 @@ impl<const N: usize> Page<N> {
 }
 
 /// Describes the object that `Serialize` writes, with `N` as the default of
-/// `limit`.
+/// `limit` and `MOST`, when the page has a bound, as its maximum.
 ///
 /// This impl is written by hand so crumbkit needs no schemars `derive`
-/// feature. The name and the id include `N`, because the default differs
-/// for each `N`.
-impl<const N: usize> JsonSchema for Page<N> {
+/// feature. The name and the id include `N`, and `MOST` when the page has a
+/// bound, because the default and the maximum differ for each.
+impl<const N: usize, const MOST: usize> JsonSchema for Page<N, MOST> {
     fn schema_name() -> Cow<'static, str> {
-        format!("Page_{N}").into()
+        match Self::bound() {
+            Some(most) => format!("Page_{N}_{most}").into(),
+            None => format!("Page_{N}").into(),
+        }
     }
 
     fn schema_id() -> Cow<'static, str> {
-        format!("crumbkit::Page<{N}>").into()
+        match Self::bound() {
+            Some(most) => format!("crumbkit::Page<{N}, {most}>").into(),
+            None => format!("crumbkit::Page<{N}>").into(),
+        }
     }
 
     fn json_schema(_: &mut SchemaGenerator) -> Schema {
+        let mut limit = json_schema!({
+            "description": Self::limit_help(),
+            "type": "integer",
+            "minimum": 1,
+            "default": N,
+        });
+        if let Some(most) = Self::bound() {
+            limit.insert("maximum".to_owned(), most.into());
+        }
         json_schema!({
             "type": "object",
             "properties": {
-                "limit": {
-                    "description": LIMIT_HELP,
-                    "type": "integer",
-                    "minimum": 1,
-                    "default": N,
-                },
+                "limit": limit,
                 "all": {
                     "description": ALL_HELP,
                     "type": "boolean",
@@ -159,3 +259,19 @@ impl<const N: usize> JsonSchema for Page<N> {
         })
     }
 }
+
+/// The refusal of a `--limit` above the page's bound, which `parse` reads
+/// from clap's error to offer `--all` and `--limit MOST` in its recovery.
+#[derive(Debug)]
+pub(crate) struct LimitAbove {
+    /// The most rows that `--limit` takes.
+    pub(crate) most: usize,
+}
+
+impl fmt::Display for LimitAbove {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "--limit takes at most {}", self.most)
+    }
+}
+
+impl Error for LimitAbove {}

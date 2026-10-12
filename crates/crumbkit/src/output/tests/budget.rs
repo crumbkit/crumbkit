@@ -382,3 +382,24 @@ proptest! {
         }
     }
 }
+
+#[test]
+fn a_listing_cut_to_no_rows_prints_the_cut_line_and_no_empty_note() {
+    let big = Star {
+        name: "big".to_owned(),
+        story: "a".repeat(BUDGET),
+    };
+    let listing = Listing::new(vec![big], 1).described("stars");
+
+    let finished = finish_small(&[], STAR_LISTING, listing);
+
+    assert!(
+        finished.out.ends_with(
+            "Showing 0 of 1 stars, because output stops at 1024 bytes. \
+             Ask for less with --limit or --fields.\n"
+        ),
+        "{}",
+        finished.out
+    );
+    assert!(!finished.out.contains("note:"), "{}", finished.out);
+}

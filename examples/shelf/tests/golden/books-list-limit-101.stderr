@@ -1,0 +1,4 @@
+error: invalid value '101' for '--limit <N>': --limit takes at most 100
+  help:  run `shelf books list --all`
+  help:  run `shelf books list --limit 100`
+  code:  crumbkit::cli::usage

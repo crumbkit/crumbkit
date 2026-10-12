@@ -68,6 +68,9 @@ pub struct Document<T> {
     /// Whether the first answer prints even when it alone passes the output
     /// budget.
     first_always: bool,
+    /// The wording of the note that a listing or a stream with no rows
+    /// prints, or `None` for crumbkit's default wording.
+    empty: Option<&'static str>,
     /// `PhantomData<fn() -> T>` ties the document to `T` without holding a
     /// `T`. A function pointer is `Send` and `Sync` whatever it returns, so
     /// `Document<T>` is `Send` and `Sync` for every `T`; `PhantomData<T>`
@@ -122,6 +125,7 @@ impl<T> Document<T> {
             envelope: true,
             over_budget: None,
             first_always: false,
+            empty: None,
             result: PhantomData,
         }
     }
@@ -178,6 +182,31 @@ impl<T> Document<T> {
         self.first_always
     }
 
+    /// Returns the same document with `text` as the wording of the note that
+    /// a listing with no matching rows, or a stream that ends with no rows,
+    /// prints after its header, such as `note: the shelf holds no books`.
+    /// crumbkit adds the `note: ` prefix. Without it, the note reads `no
+    /// {description} match`, with the listing's description, such as `no
+    /// books match` (ADR-0050).
+    ///
+    /// # Panics
+    ///
+    /// Panics unless `text` is non-empty and holds no line break. A `const`
+    /// that calls it with such a text fails to compile.
+    #[must_use]
+    pub const fn when_empty(mut self, text: &'static str) -> Self {
+        assert!(is_one_line(text), "an empty note is one non-empty line");
+        self.empty = Some(text);
+        self
+    }
+
+    /// Returns the wording that [`Document::when_empty`] set, or `None` when
+    /// the document uses crumbkit's default wording.
+    #[must_use]
+    pub const fn empty_note(&self) -> Option<&'static str> {
+        self.empty
+    }
+
     /// Reports whether `crumbkit::finish` prints the result inside
     /// crumbkit's envelope, which is true unless the tool called
     /// [`Document::without_envelope`].
@@ -211,8 +240,8 @@ impl<T> Document<T> {
         self.description
     }
 
-    /// Returns the same id, description, choice of envelope and budget
-    /// settings as a `Document<()>`, which no longer names the result type,
+    /// Returns the same id, description, choice of envelope, budget
+    /// settings and empty note as a `Document<()>`, which no longer names the result type,
     /// so one list can hold the documents of results of different types. crumbkit's
     /// help leaves keep their documents in this form.
     #[must_use]
@@ -225,6 +254,7 @@ impl<T> Document<T> {
             envelope: self.envelope,
             over_budget: self.over_budget,
             first_always: self.first_always,
+            empty: self.empty,
             result: PhantomData,
         }
     }

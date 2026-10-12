@@ -156,6 +156,30 @@ fn books_list_limit_0_is_refused_with_code_2() {
 }
 
 #[test]
+fn books_list_limit_above_100_is_refused_with_a_recovery_that_runs_all() {
+    refused_beside(
+        None,
+        &["books", "list", "--limit", "101"],
+        &["books", "list", "--limit", "100"],
+    )
+    .code(2)
+    .stdout_eq("")
+    .stderr_eq(file!["golden/books-list-limit-101.stderr"].raw());
+}
+
+#[test]
+fn books_list_limit_above_100_with_json_names_the_bound_in_its_fields() {
+    refused_beside(
+        None,
+        &["books", "list", "--limit", "101", "--json"],
+        &["books", "list", "--limit", "100", "--json"],
+    )
+    .code(2)
+    .stdout_eq(file!["golden/books-list-limit-101-json.json"].raw())
+    .stderr_eq("");
+}
+
+#[test]
 fn books_list_all_with_limit_is_refused_with_code_2() {
     refused_beside(
         None,

@@ -10,3 +10,4 @@ These records decide how a tool prints a command's result: the compact text tabl
 - [ADR-0045. Failure forms](0045-failure-forms.md)
 - [ADR-0046. Output budget](0046-output-budget.md)
 - [ADR-0049. Terminal detection](0049-terminal-detection.md)
+- [ADR-0050. Listings](listings/README.md)
