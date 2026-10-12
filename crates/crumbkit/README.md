@@ -107,7 +107,7 @@ fn main() -> ExitCode {
     let parsed = crumbkit::parse::<Cli>(Cli::command(), &Guide::new(), SPELLING);
     let (mut cli, command) = match parsed {
         Ok(parsed) => parsed,
-        Err(code) => return code,
+        Err(stop) => return stop.code(),
     };
     cli.output.set_command(command);
     let result = list(&cli);

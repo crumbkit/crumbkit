@@ -82,7 +82,7 @@ fn help(guide: &Guide, args: &[&str]) -> String {
         Spelling::COLONS,
         args,
     );
-    assert_eq!(result.err(), Some(ExitCode::SUCCESS));
+    assert_eq!(result.err().map(ExitCode::from), Some(ExitCode::SUCCESS));
     assert_eq!(err, b"");
     String::from_utf8(out).unwrap()
 }
@@ -383,7 +383,7 @@ fn a_leaf_that_extend_already_gave_its_examples_prints_them_once_through_parse()
             ["tool", "planets", "list", flag],
         );
 
-        assert_eq!(result.err(), Some(ExitCode::SUCCESS));
+        assert_eq!(result.err().map(ExitCode::from), Some(ExitCode::SUCCESS));
         let page = String::from_utf8(out).unwrap();
         assert_eq!(
             page,

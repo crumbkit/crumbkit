@@ -8,8 +8,8 @@ use clap::Command;
 use serde_json::{Value, json};
 
 use super::{
-    Recorder, State, child_env_in, install, save, start, take, typed, update, wait_for_line, write,
-    written,
+    RECORDER, Recorder, Signals, State, child_env_in, ended, install, save, start, start_with,
+    take, typed, update, wait_for_line, write, written,
 };
 use crate::usage::caller::Caller;
 use crate::usage::context::Context;
@@ -18,8 +18,41 @@ use crate::usage::record::Help;
 use crate::usage::testing::TempDir;
 use crate::{Code, Document, Spelling};
 
-/// The variable that tells the signal test's child process to run.
+/// The variable that tells a signal test's child process to run.
 const CHILD: &str = "CRUMBKIT_USAGE_SIGNAL_CHILD";
+
+/// Runs the test named `test` of this test binary as a child process with
+/// [`CHILD`] set and the state directory `state`, and returns how it ended.
+fn run_child(test: &str, state: &TempDir) -> std::process::ExitStatus {
+    #[expect(
+        clippy::disallowed_methods,
+        reason = "a signal test runs this test binary again as the child that receives the signal"
+    )]
+    let mut child = std::process::Command::new(std::env::current_exe().unwrap());
+    child
+        .args(["--exact", test, "--nocapture"])
+        .env(CHILD, "1")
+        .env("XDG_STATE_HOME", state.path())
+        .status()
+        .unwrap()
+}
+
+/// Returns the lines of the log of the tool `tool` under `state`.
+fn log_lines(state: &TempDir, tool: &str) -> Vec<Value> {
+    let log = fs::read_to_string(state.path().join(tool).join("usage.jsonl")).unwrap();
+    log.lines()
+        .map(|line| serde_json::from_str(line).unwrap())
+        .collect()
+}
+
+/// Reports whether this process runs as the child of a signal test.
+fn is_child() -> bool {
+    #[expect(
+        clippy::disallowed_methods,
+        reason = "a signal test tells its child process to run through the environment"
+    )]
+    std::env::var_os(CHILD).is_some()
+}
 
 /// Returns a tool's command with a version.
 fn tool() -> Command {
@@ -280,27 +313,14 @@ fn the_tool_s_section_holds_its_document_id_and_its_value() {
 #[test]
 fn a_signal_writes_an_interrupted_line_and_then_ends_the_process_as_the_signal_does() {
     let state = TempDir::new("signal");
-    #[expect(
-        clippy::disallowed_methods,
-        reason = "the test runs this test binary again as the child that receives the signal"
-    )]
-    let status = std::process::Command::new(std::env::current_exe().unwrap())
-        .args([
-            "--exact",
-            "usage::recorder::tests::the_signal_test_s_child_starts_the_log_and_raises_sigterm",
-            "--nocapture",
-        ])
-        .env(CHILD, "1")
-        .env("XDG_STATE_HOME", state.path())
-        .status()
-        .unwrap();
+
+    let status = run_child(
+        "usage::recorder::tests::the_signal_test_s_child_starts_the_log_and_raises_sigterm",
+        &state,
+    );
 
     assert_eq!(status.signal(), Some(signal_hook::consts::SIGTERM));
-    let log = fs::read_to_string(state.path().join("signalled").join("usage.jsonl")).unwrap();
-    let lines: Vec<Value> = log
-        .lines()
-        .map(|line| serde_json::from_str(line).unwrap())
-        .collect();
+    let lines = log_lines(&state, "signalled");
     assert_eq!(lines.len(), 1);
     assert_eq!(lines[0]["tool"], "signalled");
     assert_eq!(lines[0]["interrupted"], true);
@@ -311,11 +331,7 @@ fn a_signal_writes_an_interrupted_line_and_then_ends_the_process_as_the_signal_d
 /// SIGTERM, which the log's thread answers.
 #[test]
 fn the_signal_test_s_child_starts_the_log_and_raises_sigterm() {
-    #[expect(
-        clippy::disallowed_methods,
-        reason = "the signal test tells its child process to run through the environment"
-    )]
-    if std::env::var_os(CHILD).is_none() {
+    if !is_child() {
         return;
     }
     let _log = start();
@@ -324,4 +340,43 @@ fn the_signal_test_s_child_starts_the_log_and_raises_sigterm() {
     // The signal ends the process, so the test never gets past the wait.
     std::thread::sleep(Duration::from_secs(10));
     panic!("SIGTERM did not end the process");
+}
+
+#[test]
+fn a_tool_that_owns_its_signals_keeps_running_after_sigterm_and_reports_its_own_exit() {
+    let state = TempDir::new("owned");
+
+    let status = run_child(
+        "usage::recorder::tests::the_owned_signal_test_s_child_raises_sigterm_and_ends_with_124",
+        &state,
+    );
+
+    assert!(status.success());
+    let lines = log_lines(&state, "owner");
+    assert_eq!(lines.len(), 1);
+    assert_eq!(lines[0]["interrupted"], true);
+    assert_eq!(lines[0]["exit"], 124);
+    assert_eq!(lines[0]["out_bytes"], 5);
+}
+
+/// Runs only as the child of the owned-signal test, which sets [`CHILD`].
+/// It starts the log for a tool that owns its signals, raises SIGTERM,
+/// waits until the log's thread has recorded it, and reports exit 124.
+#[test]
+fn the_owned_signal_test_s_child_raises_sigterm_and_ends_with_124() {
+    if !is_child() {
+        return;
+    }
+    let _log = start_with(Signals::Tool);
+    typed(&Command::new("owner"), &["owner".into()]);
+    signal_hook::low_level::raise(signal_hook::consts::SIGTERM).unwrap();
+    let waited = Instant::now();
+    while !matches!(&*RECORDER.lock().unwrap(), State::Recording(recorder) if recorder.signalled) {
+        assert!(
+            waited.elapsed() < Duration::from_secs(10),
+            "the signal was not recorded"
+        );
+        std::thread::sleep(Duration::from_millis(5));
+    }
+    ended(124, Some(5));
 }

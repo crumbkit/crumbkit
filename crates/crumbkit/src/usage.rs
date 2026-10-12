@@ -6,10 +6,13 @@
 //! returns, as the example of `start` shows.
 //! [`parse`](crate::parse), [`finish`](crate::finish) and
 //! crumbkit-aliases' `expand` then report what the run did, and the guard
-//! writes the line when `main` returns. `parse` gives the line the tool's
-//! name and version, so a run that ends before it reaches `parse` writes no
-//! line. Without the feature, or without a started log, every report does
-//! nothing.
+//! writes the line when `main` returns. A run that never reaches `finish`
+//! reports its exit with [`ended`], which writes the line at once. `parse`
+//! gives the line the tool's name and version, so a run that ends before it
+//! reaches `parse` writes no line. Without the feature, or without a started
+//! log, every report does nothing.
+
+use std::process::ExitCode;
 
 #[cfg(feature = "usage-log")]
 mod caller;
@@ -46,7 +49,7 @@ pub(crate) use self::counted::Counted;
 #[cfg(all(feature = "usage-log", feature = "tracing"))]
 pub(crate) use self::recorder::ids;
 #[cfg(feature = "usage-log")]
-pub use self::recorder::{Log, section, start};
+pub use self::recorder::{Log, Signals, section, start, start_with};
 #[cfg(feature = "usage-log")]
 pub(crate) use self::recorder::{
     child_env, exited, failed, finished, helped, parsed, refused, typed,
@@ -73,4 +76,41 @@ compile_error!("crumbkit's `usage-log` feature builds only on Unix");
 pub fn aliased() {
     #[cfg(feature = "usage-log")]
     recorder::aliased();
+}
+
+/// Records that the tool ended the run with `exit` after writing
+/// `out_bytes` to standard output, writes the run's line now, and returns
+/// `exit` as an `ExitCode` for `main` to return.
+///
+/// A run that never reaches [`finish`](crate::finish), such as a stream, a
+/// child process or the tool's own exit path, calls it last, so its line
+/// records the real exit number, such as 124, and the byte count. The line
+/// leaves `out_bytes` out when it is `None`. Because it returns the code, the
+/// number that the tool returns and the number that the line records are the
+/// same:
+///
+/// ```no_run
+/// # use std::process::ExitCode;
+/// fn main() -> ExitCode {
+///     // The tool ran out of time after it streamed 2048 bytes.
+///     crumbkit::usage::ended(124, Some(2048))
+/// }
+/// ```
+///
+/// crumbkit owns the exit codes 0, 1 and 2, and the tool owns the rest
+/// (ADR-0002). The line records the number as given.
+///
+/// The line is written at once, so a tool that then exits through its own
+/// path, such as `std::process::exit` on another thread, still has its line,
+/// and the guard that `start` returns writes nothing more. A report after `ended`
+/// does nothing. It exists in every build, so a tool calls it without a
+/// feature check. Without the `usage-log` feature, or without a started log,
+/// it only returns the code.
+#[must_use]
+pub fn ended(exit: u8, out_bytes: Option<u64>) -> ExitCode {
+    #[cfg(feature = "usage-log")]
+    recorder::ended(exit, out_bytes);
+    #[cfg(not(feature = "usage-log"))]
+    let _ = out_bytes;
+    ExitCode::from(exit)
 }

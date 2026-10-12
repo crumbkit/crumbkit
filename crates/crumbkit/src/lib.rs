@@ -67,5 +67,5 @@ pub use crate::call::RenderCall;
 pub use crate::fetch::fetch_each;
 pub use crate::output::{Output, finish, finish_to};
 pub use crate::page::Page;
-pub use crate::parse::{parse, parse_from, parse_to};
+pub use crate::parse::{Stop, parse, parse_from, parse_to};
 pub use crate::sink::Sink;

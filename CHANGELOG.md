@@ -80,6 +80,14 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - cargo-crumbkit: `weigh --usage`, `--log` and `--since` add each
   command's runs, help pages read before it and 95th percentile output
   from a usage log ([cargo-crumbkit], [ADR-0033]).
+- crumbkit: `Output::is_json` says whether the caller asked for JSON, and
+  `Output::progress_allowed` says whether a tool may draw progress
+  ([`Output`], [ADR-0016]).
+- crumbkit: [`usage::ended`] records a tool's own exit number and output
+  bytes for a run that never reaches `finish` ([ADR-0029]).
+- crumbkit: `usage::start_with(Signals::Tool)` lets a tool handle SIGINT
+  and SIGTERM itself while the usage log records the signal ([`usage`],
+  [ADR-0029]).
 
 ### Changed
 
@@ -99,6 +107,8 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   tree, so a run builds only the commands it reads ([ADR-0015]).
 - crumbkit-aliases: `list` takes `&mut Output`, because it builds the
   tool's command tree when it runs.
+- crumbkit: [`parse`] returns a [`Stop`] after help, the version or a
+  refusal, which holds the exit code and an `Output` ([ADR-0002]).
 
 ### Fixed
 
@@ -146,6 +156,9 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   that feature defines.
 - crumbkit-test: [`check_names`] skips hidden commands, everything below
   them and hidden arguments, because no help page shows them.
+- crumbkit: a refusal from [`parse`] prints as JSON only when the walk reads
+  `--json` as a flag, so an option's value of `--json` no longer counts
+  ([ADR-0021]).
 
 <!-- Each label below points at the source file that holds the item's
 rustdoc, or at its decision record. -->
@@ -166,6 +179,8 @@ rustdoc, or at its decision record. -->
 [`fetch_each`]: crates/crumbkit/src/fetch.rs
 [`report`]: crates/crumbkit-core/src/report.rs
 [`parse`]: crates/crumbkit/src/parse.rs
+[`Stop`]: crates/crumbkit/src/parse/stop.rs
+[`usage::ended`]: crates/crumbkit/src/usage.rs
 [`help`]: crates/crumbkit/src/help.rs
 [`help::quote`]: crates/crumbkit/src/help.rs
 [`commands`]: crates/crumbkit/src/commands.rs
@@ -188,6 +203,7 @@ rustdoc, or at its decision record. -->
 [crumbkit-core]: crates/crumbkit-core/README.md
 [`RenderCall`]: crates/crumbkit/src/call.rs
 [ADR-0001]: docs/decisions/api/0001-error-model.md
+[ADR-0002]: docs/decisions/api/0002-public-api-and-semver.md
 [ADR-0004]: docs/decisions/testing/0004-golden-and-snapshot-tests.md
 [ADR-0007]: docs/decisions/api/0007-json-schemas.md
 [ADR-0015]: docs/decisions/api/0015-lightweight-adoption.md

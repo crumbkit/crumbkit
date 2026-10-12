@@ -162,6 +162,45 @@ impl Output {
         command.build();
         Some(command)
     }
+
+    /// Reports whether the caller asked for JSON with `--json`.
+    ///
+    /// It answers on every path of a run. After parsing, it reads the flag
+    /// that clap parsed. After [`parse`](crate::parse) printed help, the
+    /// version or a refusal, the [`Stop`](crate::Stop) that it returned holds
+    /// an `Output` whose answer comes from the walk of the typed words, which
+    /// counts `--json` only where clap reads it as a flag, and never where it
+    /// is the value of an option. A refusal prints as a JSON document exactly
+    /// when this is true.
+    #[must_use]
+    pub const fn is_json(&self) -> bool {
+        self.json
+    }
+
+    /// Reports whether the tool may draw progress, such as a spinner or a
+    /// bar, on standard error. It is true only when `--json` is off and
+    /// standard error is a terminal.
+    ///
+    /// A tool draws progress with any library it likes when this is true,
+    /// and prints nothing extra otherwise, so a program or an agent that
+    /// reads the output, and a pipe or a file, receive no progress lines.
+    /// `check_examples` in crumbkit-test runs each example with standard
+    /// error piped, so an example never draws progress.
+    #[must_use]
+    pub fn progress_allowed(&self) -> bool {
+        !self.json && crate::sink::stderr_is_terminal()
+    }
+
+    /// Returns the output of a run that `parse` ended after it printed help,
+    /// the version or a refusal: `--json` as the walk found it, and the
+    /// command tree that `parse` built.
+    pub(crate) fn stopped(json: bool, command: Command) -> Self {
+        Self {
+            json,
+            command: Some(command),
+            ..Self::default()
+        }
+    }
 }
 
 /// Prints a command's result in the format that `output` chooses, and

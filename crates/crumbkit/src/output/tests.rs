@@ -455,3 +455,14 @@ fn a_result_that_cannot_be_serialized_exits_with_code_1_and_reports_the_cause() 
         "error: cannot write to standard output: row 7 cannot be serialized\n"
     );
 }
+
+#[test]
+fn is_json_reports_whether_the_caller_typed_json() {
+    assert!(parse(&["--json"]).unwrap().is_json());
+    assert!(!parse(&[]).unwrap().is_json());
+}
+
+#[test]
+fn progress_is_never_allowed_with_json() {
+    assert!(!parse(&["--json"]).unwrap().progress_allowed());
+}

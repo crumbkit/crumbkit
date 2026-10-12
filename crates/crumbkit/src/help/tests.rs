@@ -58,7 +58,7 @@ fn help(guide: &Guide, args: &[&str]) -> String {
         Spelling::COLONS,
         args,
     );
-    assert_eq!(result.err(), Some(ExitCode::SUCCESS));
+    assert_eq!(result.err().map(ExitCode::from), Some(ExitCode::SUCCESS));
     assert_eq!(err, b"");
     String::from_utf8(out).unwrap()
 }
