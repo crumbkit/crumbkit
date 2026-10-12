@@ -40,6 +40,9 @@ The rustdoc of each check says what it fails on and shows an example:
 - Command and flag names: [`check_names`], [`check_grammar`],
   [`check_listings`] and [`check_filters`], which take the tool's
   opt-outs, each an [`Allow`] with a reason.
+- Effects: [`check_effects`], which requires each leaf to declare its
+  effects and each destructive leaf to take `--yes`, and takes the tool's
+  opt-outs.
 - Opt-outs: [`check_opt_outs`], which pins the tool's opt-outs and
   budgets with their reasons and costs in golden files.
 - The help guide: [`check_guide`], and [`check_exit_codes`], which takes
@@ -70,6 +73,7 @@ option.
 [`check_opt_outs`]: src/opt_outs.rs
 [`check_names`]: src/names.rs
 [`check_grammar`]: src/grammar.rs
+[`check_effects`]: src/effects.rs
 [`check_listings`]: src/listings.rs
 [`check_filters`]: src/filters.rs
 [`check_guide`]: src/guide.rs

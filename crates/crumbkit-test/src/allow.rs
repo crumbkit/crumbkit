@@ -112,10 +112,16 @@ pub enum Rule {
     /// lowercase words joined by single dashes. Its id is
     /// `grammar/resource-name`.
     ResourceName,
-    /// [`check_grammar`](crate::check_grammar): a command has its own
-    /// `--dry-run`, a name that crumbkit reserves for its write verbs. Its
-    /// id is `grammar/dry-run`.
+    /// [`check_effects`](crate::check_effects): a visible leaf declares no
+    /// effects. Its id is `effects/declared`.
+    Effects,
+    /// [`check_effects`](crate::check_effects): a command has its own
+    /// `--dry-run` in place of crumbkit's `DryRun`. Its id is
+    /// `effects/dry-run`.
     DryRun,
+    /// [`check_effects`](crate::check_effects): a destructive leaf has no
+    /// `--yes`. Its id is `effects/yes`.
+    Yes,
     /// [`check_names`](crate::check_names): help shows a second name for a
     /// command or an argument. Its id is `names/one-name`.
     OneName,
@@ -159,7 +165,9 @@ impl Rule {
         match self {
             Self::RootLeaf => "grammar/root-leaf",
             Self::ResourceName => "grammar/resource-name",
-            Self::DryRun => "grammar/dry-run",
+            Self::Effects => "effects/declared",
+            Self::DryRun => "effects/dry-run",
+            Self::Yes => "effects/yes",
             Self::OneName => "names/one-name",
             Self::ListPages => "listings/list-pages",
             Self::ShowIds => "listings/show-ids",
@@ -184,8 +192,16 @@ impl Rule {
             Self::ResourceName => {
                 &["An agent that spells resources as lowercase dashed words mistypes this name."]
             }
+            Self::Effects => &[
+                "An undeclared leaf reads as unknown, and an agent must assume the worst.",
+                "Help prints no `Effects:` line, and `commands list` writes `null` under `effects`.",
+            ],
             Self::DryRun => &[
-                "The flag means what the tool makes it mean, which can differ from the `--dry-run` of crumbkit's write verbs.",
+                "The flag means what the tool makes it mean, which can differ from crumbkit's `--dry-run` in other tools.",
+                "The run's JSON document has no `dry_run` field, so an agent cannot tell a dry run from a real one.",
+            ],
+            Self::Yes => &[
+                "An agent without a terminal cannot run the command, or the command runs without asking anyone.",
             ],
             Self::OneName => &[
                 "Each visible second name costs help bytes on every read of the page.",
