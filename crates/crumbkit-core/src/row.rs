@@ -52,18 +52,20 @@ pub trait Row: Serialize + JsonSchema {
 
 /// A result that `crumbkit::finish` prints: one [`Row`], a `Vec` of rows, a
 /// [`Listing`](crate::Listing) or a [`Batch`](crate::Batch), which print as
-/// a table, or a [`Prose`](crate::Prose), which prints as text.
+/// a table, a [`Prose`](crate::Prose), which prints as text, or
+/// [`Bytes`](crate::Bytes), which print unchanged.
 ///
 /// crumbkit implements this trait, and a tool cannot implement it, so crumbkit
 /// can add result shapes later without breaking a tool.
 pub trait Rows: Serialize + sealed::Sealed {
-    /// The type of each row. A `Prose` has no rows, and its row type is
-    /// [`NoRow`].
+    /// The type of each row. A `Prose` and `Bytes` have no rows, and their
+    /// row type is [`NoRow`].
     type Row: Row;
 
     /// The kind of result, which decides the fields of its JSON document. A
-    /// single row's `data` is an object, a prose result's is its value, and
-    /// every other result's is an array.
+    /// single row's `data` is an object, a prose result's is its value, a
+    /// bytes result's is its text or base64 object, and every other
+    /// result's is an array.
     const SHAPE: Shape;
 
     /// The type of the summary that prints above the table. Only a
@@ -136,6 +138,12 @@ pub trait Rows: Serialize + sealed::Sealed {
     fn prose_schema(_generator: &mut SchemaGenerator) -> Option<Schema> {
         None
     }
+
+    /// Returns the bytes that the text output prints unchanged when the
+    /// result is [`Bytes`](crate::Bytes), and `None` otherwise.
+    fn bytes(&self) -> Option<&[u8]> {
+        None
+    }
 }
 
 /// The kind of a [`Rows`] result, which decides the fields of its JSON
@@ -156,6 +164,9 @@ pub enum Shape {
     /// A [`Prose`](crate::Prose), whose `data` is its value beside
     /// `failures`.
     Prose,
+    /// [`Bytes`](crate::Bytes), whose `data` is an object that holds the
+    /// bytes as `text` or `base64`.
+    Bytes,
 }
 
 /// The row type of a result without rows, which is a
@@ -227,4 +238,6 @@ mod sealed {
     impl<R: super::Row, E: crate::AsFailure> Sealed for crate::Batch<R, E> {}
 
     impl<T, E: crate::AsFailure> Sealed for crate::Prose<T, E> {}
+
+    impl Sealed for crate::Bytes {}
 }

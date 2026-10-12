@@ -21,6 +21,7 @@
 #![cfg_attr(docsrs, feature(doc_cfg))]
 
 mod batch;
+mod bytes;
 mod call;
 mod code;
 mod document;
@@ -35,6 +36,7 @@ mod segment;
 mod stream;
 
 pub use crate::batch::Batch;
+pub use crate::bytes::Bytes;
 pub use crate::call::{Call, CallArg, CallError, CallTarget};
 pub use crate::code::{Code, RuntimeCodeError, Spelling};
 pub use crate::document::Document;

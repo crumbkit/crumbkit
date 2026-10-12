@@ -1,8 +1,52 @@
-//! Which names `--fields` accepts for a result.
+//! Which names `--fields` accepts for a result, and which output flags a
+//! result without columns refuses.
 
+use super::Output;
 use crate::refusal::Refusal;
 use crate::row;
 use crate::{Row, Rows, Shape};
+
+/// The hint of each output flag that a bytes result refuses.
+const BYTES_HINT: &str = "use --json to read the bytes as text or base64";
+
+/// Returns the refusal of the output flags in `output` for a result of type
+/// `T`, or `None` when `T` accepts them.
+///
+/// A bytes result refuses `--fields`, `--long` and `--full`, because it has
+/// no columns and `--json` already prints all of it. Any other result
+/// refuses only a `--fields` name, as [`refusal`] describes.
+pub(super) fn flags_refusal<T: Rows>(output: &Output) -> Option<Refusal> {
+    if T::SHAPE != Shape::Bytes {
+        return refusal::<T>(&output.fields);
+    }
+    let (message, hint, flag) = if !output.fields.is_empty() {
+        (
+            "--fields selects the columns of a table, and this command prints raw bytes",
+            BYTES_HINT,
+            "--fields",
+        )
+    } else if output.long {
+        (
+            "--long adds the long columns of a table, and this command prints raw bytes",
+            BYTES_HINT,
+            "--long",
+        )
+    } else if output.full {
+        (
+            "--full prints every field of every row, and this command prints raw bytes",
+            "drop --full, because --json already prints the whole result",
+            "--full",
+        )
+    } else {
+        return None;
+    };
+    Some(Refusal::flag_value(
+        message.to_owned(),
+        hint.to_owned(),
+        flag,
+        None,
+    ))
+}
 
 /// Returns the refusal of `fields` for a result of type `T`, or `None` when
 /// `T` accepts every name in `fields`.

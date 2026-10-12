@@ -23,6 +23,11 @@ mod tests;
 pub const STREAM_LINE: &str =
     "Output: one row per line as each arrives, and --json prints one JSON document per line.";
 
+/// The line that the `-h` and `--help` of a leaf whose document holds
+/// [`Bytes`](crate::Bytes) print after the effects line, in help's wording.
+pub const BYTES_LINE: &str =
+    "Output: the bytes unchanged, and --json prints them as text or base64.";
+
 /// A command without subcommands whose help shows examples, and whose
 /// `--help` describes the columns of the result it prints.
 ///
@@ -192,6 +197,22 @@ impl Leaf {
         match self.columns {
             Some(columns) => columns.stream,
             None => false,
+        }
+    }
+
+    /// Returns the `Output:` line that the leaf's `-h` and `--help` print
+    /// after the effects line: [`STREAM_LINE`] for a stream,
+    /// [`BYTES_LINE`] for a document that holds [`Bytes`](crate::Bytes),
+    /// and `None` for any other leaf.
+    #[must_use]
+    pub const fn output_line(&self) -> Option<&'static str> {
+        match self.columns {
+            Some(columns) if columns.stream => Some(STREAM_LINE),
+            Some(Columns {
+                shape: Some(Shape::Bytes),
+                ..
+            }) => Some(BYTES_LINE),
+            _ => None,
         }
     }
 

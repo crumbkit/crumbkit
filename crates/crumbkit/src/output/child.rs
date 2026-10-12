@@ -28,15 +28,15 @@ impl Output {
         );
     }
 
-    /// Prints the refusal of a `--fields` name that a `T` lacks and returns
-    /// exit code 2, as `finish` does, or returns `None` when `T` has every
-    /// name.
+    /// Prints the refusal of a `--fields` name that a `T` lacks, or of an
+    /// output flag that a `T` refuses, and returns exit code 2, as `finish`
+    /// does, or returns `None` when `T` accepts the flags.
     pub(crate) fn refuse_fields<T: Rows, O: Write, W: Write>(
         &mut self,
         sink: &mut Sink<O, W>,
         spelling: Spelling,
     ) -> Option<ExitCode> {
-        let refusal = fields::refusal::<T>(&self.fields)?;
+        let refusal = fields::flags_refusal::<T>(self)?;
         Some(self.print_refusal(sink, spelling, &refusal))
     }
 

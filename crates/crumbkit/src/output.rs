@@ -33,7 +33,7 @@ use self::result::{Answer, write_result};
 pub use self::stream::{Streaming, stream, stream_to};
 use crate::form::FailureForm;
 use crate::help::Guide;
-use crate::{AsFailure, Document, Parsed, Rows, Sink, Spelling};
+use crate::{AsFailure, Document, Parsed, Rows, Shape, Sink, Spelling};
 
 #[cfg(test)]
 mod tests;
@@ -343,6 +343,13 @@ pub fn finish<T: Rows, E: AsFailure>(
 /// unchanged, and `--fields` is refused with exit code 2, because it has no
 /// columns.
 ///
+/// A [`Bytes`](crate::Bytes) prints its bytes unchanged, with no escaping
+/// and no added line feed, and its JSON document holds `{"text": "..."}`
+/// under `data` when the bytes are valid UTF-8 and `{"base64": "..."}`
+/// otherwise. `--fields`, `--long` and `--full` are refused with exit code
+/// 2, because it has no columns. On a dry run, the dry-run line of its text
+/// goes to the error writer, so the output writer holds the bytes alone.
+///
 /// An `Err` prints the failure. The text form goes to the sink's error
 /// writer, as shelf's golden file [`books-show-7.stderr`][books-show-7]
 /// shows, and nothing goes to the output writer.
@@ -372,10 +379,11 @@ pub fn finish<T: Rows, E: AsFailure>(
 /// or --fields.`, and its JSON document holds `cut` with the code
 /// `crumbkit::output::over_budget` and the budget. A batch prints the rows
 /// that fit and ends with one over-budget failure whose fields are
-/// `left_out` and `budget`, and exits 1. A single row or a prose result
-/// that does not fit prints nothing but the over-budget failure, and exits
-/// 1, unless its document is marked with `Document::always_print_first`
-/// (ADR-0046).
+/// `left_out` and `budget`, and exits 1. A single row, a prose result or a
+/// bytes result that does not fit prints nothing but the over-budget
+/// failure, and exits 1, unless its document is marked with
+/// `Document::always_print_first` (ADR-0046). A bytes result is measured in
+/// the form it prints, so with `--json` its base64 text counts.
 ///
 /// When `--fields` names a field that the row type does not have, nothing of
 /// the result prints. The refusal prints as a failure does, with the message
@@ -388,7 +396,8 @@ pub fn finish<T: Rows, E: AsFailure>(
 /// It is 1 as well when a write fails for any other reason, or when the
 /// result cannot be serialized, and the cause of a failed write goes to the
 /// sink's error writer before a batch's failures. It is 2 when `--fields`
-/// names an unknown field, which is checked before the result prints.
+/// names an unknown field, or when a bytes result gets `--fields`, `--long`
+/// or `--full`, which are checked before the result prints.
 ///
 /// [books-show-7]: https://github.com/crumbkit/crumbkit/blob/main/examples/shelf/tests/golden/books-show-7.stderr
 pub fn finish_to<T: Rows, E: AsFailure, O: Write, W: Write>(
@@ -439,7 +448,7 @@ fn respond<T: Rows, E: AsFailure, O: Write, W: Write, R>(
     document: Document<T>,
     result: Result<T, E>,
 ) -> (ExitCode, bool) {
-    if let Some(refusal) = fields::refusal::<T>(&output.fields) {
+    if let Some(refusal) = fields::flags_refusal::<T>(output) {
         let form = output.failure_form;
         let code = refusal.print(sink, output.json, spelling, form, output.command.as_mut());
         return (code, false);
@@ -482,10 +491,13 @@ fn respond<T: Rows, E: AsFailure, O: Write, W: Write, R>(
     let (code, answer) = match written {
         Ok((answer, bytes)) => {
             output.spent = output.spent.saturating_add(bytes);
-            if output.dry_run && output.json && !document.has_envelope() {
-                // A document without the envelope has no `dry_run` field, so
-                // the line that marks a dry run goes to standard error, and a
-                // failed write there goes unreported.
+            let unwrapped = output.json && !document.has_envelope();
+            let bytes = !output.json && T::SHAPE == Shape::Bytes;
+            if output.dry_run && (unwrapped || bytes) {
+                // A document without the envelope has no `dry_run` field, and
+                // the text of bytes prints them unchanged, so the line that
+                // marks a dry run goes to standard error, and a failed write
+                // there goes unreported.
                 let _ = writeln!(sink.err, "{DRY_RUN_LINE}");
             }
             (ExitCode::SUCCESS, answer)

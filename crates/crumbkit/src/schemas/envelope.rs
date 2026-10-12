@@ -6,7 +6,7 @@ use schemars::{JsonSchema, Schema, SchemaGenerator, json_schema};
 use serde_json::{Value, json};
 
 use crate::output::failure;
-use crate::{Document, Row, Rows, Shape, Stream};
+use crate::{Bytes, Document, Row, Rows, Shape, Stream};
 
 /// Returns the 2020-12 JSON Schema of the document that
 /// [`finish`](crate::finish) prints for `document` with `--json`.
@@ -17,7 +17,8 @@ use crate::{Document, Row, Rows, Shape, Stream};
 /// - `schema` holds the id.
 /// - `dry_run` is `true` on a dry run, and absent otherwise.
 /// - `data` holds the row for [`Shape::Row`], the value for
-///   [`Shape::Prose`], and an array of rows for every other shape.
+///   [`Shape::Prose`], the text or base64 object of [`Bytes`] for
+///   [`Shape::Bytes`], and an array of rows for every other shape.
 /// - `total` holds the number of rows that matched, for [`Shape::Listing`].
 /// - `summary` holds the summary, for a listing that has one. A listing
 ///   without one has [`NoSummary`](crate::NoSummary), whose schema `false`
@@ -89,6 +90,7 @@ pub(crate) fn envelope<T: Rows>(document: Document<()>) -> Schema {
     let data = match T::prose_schema(&mut generator) {
         Some(value) => value,
         None if T::SHAPE == Shape::Row => generator.subschema_for::<T::Row>(),
+        None if T::SHAPE == Shape::Bytes => generator.subschema_for::<Bytes>(),
         None => json_schema!({
             "description": data_description(T::SHAPE),
             "type": "array",

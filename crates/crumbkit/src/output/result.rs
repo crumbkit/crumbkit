@@ -45,9 +45,14 @@ pub(super) enum Answer {
 /// JSON of a document without the envelope goes to `err`, as does a debug
 /// build's warning about a failure.
 ///
+/// The text of a bytes result is the bytes unchanged. They print when they
+/// fit, or when the document always prints its first answer, and are
+/// refused otherwise, because a file cut short would look whole.
+///
 /// A serialization error becomes an `io::Error` of kind `InvalidData`, so it
 /// is reported as a failed write. The text of a dry run ends with
-/// [`DRY_RUN_LINE`].
+/// [`DRY_RUN_LINE`], except the text of a bytes result, whose line
+/// `finish` writes to standard error.
 pub(super) fn write_result<T: Rows>(
     out: &mut impl Write,
     err: &mut impl Write,
@@ -58,6 +63,24 @@ pub(super) fn write_result<T: Rows>(
     failures: Option<&[PreparedFailure<'_>]>,
 ) -> io::Result<(Answer, usize)> {
     let budget = output.budget();
+    let code = document
+        .over_budget_code()
+        .unwrap_or(&codes::OUTPUT_OVER_BUDGET);
+    if let Some(bytes) = value.bytes().filter(|_| !output.json) {
+        // The text of bytes is their own length, so it is measured without
+        // a buffer.
+        if bytes.len() > budget && !document.always_prints_first() {
+            let over = OverBudget {
+                code,
+                budget,
+                over: Over::Whole,
+            };
+            return Ok((Answer::Refused(over), 0));
+        }
+        out.write_all(bytes)?;
+        out.flush()?;
+        return Ok((Answer::Whole, bytes.len()));
+    }
     let next = if output.json {
         None
     } else {
@@ -75,9 +98,6 @@ pub(super) fn write_result<T: Rows>(
         out.flush()?;
         return Ok((Answer::Whole, bytes.len()));
     }
-    let code = document
-        .over_budget_code()
-        .unwrap_or(&codes::OUTPUT_OVER_BUDGET);
     match T::SHAPE {
         Shape::Listing | Shape::List if rows > 0 => {
             prepared.cut(out, err, spelling.spell(code), code, budget)
@@ -95,8 +115,8 @@ pub(super) fn write_result<T: Rows>(
             Ok((Answer::Whole, bytes))
         }
         shape => {
-            let over = if shape == Shape::Prose {
-                Over::Prose
+            let over = if matches!(shape, Shape::Prose | Shape::Bytes) {
+                Over::Whole
             } else {
                 Over::Row
             };
@@ -359,6 +379,13 @@ impl<'a, T: Rows> Prepared<'a, T> {
             cut,
             failures,
         };
+        if let Some(bytes) = value.bytes() {
+            return if self.json {
+                write_document(out, self.document, self.dry_run, value, &extras)
+            } else {
+                out.write_all(bytes)
+            };
+        }
         if value.prose().is_some() {
             return match &self.prose {
                 Some(text) => out.write_all(text.as_bytes()),

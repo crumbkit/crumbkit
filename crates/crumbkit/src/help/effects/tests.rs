@@ -225,6 +225,36 @@ fn long_help_of_a_stream_leaf_prints_the_output_line_after_the_effects() {
     assert!(page.ends_with(&expected), "{page}");
 }
 
+/// The guide of `tool()`, whose leaf prints a file's bytes.
+const BYTES: Guide = Guide::new().leaves(&[Leaf::new(&["planets", "remove"])
+    .examples(&[Example::new(&["ceres"], "Remove Ceres")])
+    .effects(Effects::destructive().idempotent())
+    .document(crate::Document::<crate::Bytes>::new(
+        "tool",
+        "planets-remove",
+        1,
+        "The removed planet's file.",
+    ))]);
+
+/// The line that the help of a bytes leaf prints after its effects.
+const BYTES_LINE: &str = "Output: the bytes unchanged, and --json prints them as text or base64.";
+
+#[test]
+fn short_help_of_a_bytes_leaf_prints_the_bytes_output_line_after_the_effects() {
+    let page = help(&BYTES, &["tool", "planets", "remove", "-h"]);
+
+    let expected = format!("Effects: destructive, idempotent, closed-world.\n{BYTES_LINE}\n");
+    assert!(page.contains(&expected), "{page}");
+}
+
+#[test]
+fn long_help_of_a_bytes_leaf_prints_the_bytes_output_line_after_the_effects() {
+    let page = help(&BYTES, &["tool", "planets", "remove", "--help"]);
+
+    let expected = format!("Effects: destructive, idempotent, closed-world.\n{BYTES_LINE}\n");
+    assert!(page.ends_with(&expected), "{page}");
+}
+
 #[test]
 fn a_leaf_that_prints_one_document_prints_no_output_line() {
     let page = help(&GUIDE, &["tool", "planets", "remove", "--help"]);
