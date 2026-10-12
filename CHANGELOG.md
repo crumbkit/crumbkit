@@ -423,6 +423,15 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit-markdown: the reference refuses a `commands list` document that
   leaves out `total` or holds `"truncated": true`, because it would leave
   commands out.
+- crumbkit: with the `miette` feature, a text failure prints one source
+  line before and after each label's lines, where the source has them
+  ([ADR-0016]).
+- crumbkit: with the `miette` feature, a text failure prints every line of
+  a span over several lines, with carets on its first and last line, and
+  counts the lines left out of a span over more than 7 lines ([ADR-0016]).
+- crumbkit: with the `miette` feature, labels on the same or nearby lines
+  print their `at:` lines together and share their source lines, and each
+  underline ends with its label's text ([ADR-0016]).
 ### Removed
 
 - crumbkit: `Call::word` is gone, because `Call::value` adds a runtime value
