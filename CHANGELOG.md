@@ -97,6 +97,10 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   `--author 'Le Guin'`, and rendering checks it against the tool's command
   tree ([`Call`], [ADR-0001]).
 
+- crumbkit-test: [`check_opt_outs`] pins a tool's opt-outs, with each
+  reason and what it costs an agent, in a text and a JSON golden file
+  ([ADR-0036]).
+
 ### Changed
 
 - crumbkit-test: [`Examples`] borrows its paths for a lifetime, so a test
@@ -117,6 +121,13 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   tool's command tree when it runs.
 - crumbkit: [`parse`] returns a [`Stop`] after help, the version or a
   refusal, which holds the exit code and an `Output` ([ADR-0002]).
+- crumbkit-test: [`check_grammar`], [`check_names`], [`check_listings`],
+  [`check_filters`] and [`Examples`] take opt-outs, each an [`Allow`] that
+  names one rule, a command and a reason, in place of exempt command paths
+  ([ADR-0036]).
+- crumbkit-test: [`check_grammar`] passes a leaf directly under the root,
+  a resource name or a command's own `--dry-run` that an opt-out names
+  ([ADR-0015]).
 
 ### Removed
 
@@ -241,3 +252,6 @@ rustdoc, or at its decision record. -->
 [`check_path_weights`]: crates/crumbkit-test/src/weights.rs
 [`path_totals`]: crates/crumbkit-test/src/weights.rs
 [`output_weight`]: crates/crumbkit-test/src/weights.rs
+[`Allow`]: crates/crumbkit-test/src/allow.rs
+[`check_opt_outs`]: crates/crumbkit-test/src/opt_outs.rs
+[ADR-0036]: docs/decisions/api/0036-opt-outs.md

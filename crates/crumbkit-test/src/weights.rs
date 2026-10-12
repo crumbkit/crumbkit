@@ -134,7 +134,7 @@ pub fn check_path_weights(command: &Command, guide: &Guide, budgets: &PathBudget
         problems.push(format!("the path {}", above(budgets.path)));
     }
     let pages = pages(command, guide, "-h", &mut problems);
-    let visible = tree::walk_visible(command, &[], &mut problems);
+    let visible = tree::walk_visible(command);
     for &(path, budget) in budgets.nodes {
         match visible
             .iter()

@@ -2,11 +2,15 @@
 //! measures in other tools.
 
 use clap::CommandFactory as _;
-use crumbkit_test::Budgets;
+use crumbkit_test::{Allow, Budgets};
 
 use crate::SPELLING;
 use crate::cli::{Cli, GUIDE};
 use crate::error::WeighError;
+
+/// cargo-crumbkit's opt-outs from crumbkit's conventions, which every check
+/// below reads. It has none.
+const ALLOW: &[Allow] = &[];
 
 #[test]
 fn every_failure_code_spells_uniquely_as_printable_ascii() {
@@ -15,22 +19,22 @@ fn every_failure_code_spells_uniquely_as_printable_ascii() {
 
 #[test]
 fn every_command_and_argument_has_one_name() {
-    crumbkit_test::check_names(&Cli::command(), &[]);
+    crumbkit_test::check_names(&Cli::command(), ALLOW);
 }
 
 #[test]
 fn every_command_is_a_resource_followed_by_list_or_weigh() {
-    crumbkit_test::check_grammar(&Cli::command(), &["weigh"], &[]);
+    crumbkit_test::check_grammar(&Cli::command(), &["weigh"], ALLOW);
 }
 
 #[test]
 fn every_list_command_pages() {
-    crumbkit_test::check_listings(&Cli::command(), &[]);
+    crumbkit_test::check_listings(&Cli::command(), ALLOW);
 }
 
 #[test]
 fn every_option_with_many_values_accepts_repeats_and_commas() {
-    crumbkit_test::check_filters(&Cli::command(), &[]);
+    crumbkit_test::check_filters(&Cli::command(), ALLOW);
 }
 
 #[test]
@@ -56,4 +60,9 @@ fn every_document_is_named_after_the_path_of_the_command_that_prints_it() {
 #[test]
 fn every_crumbkit_command_sits_at_its_fixed_path() {
     crumbkit_test::check_mounts(&Cli::command(), &GUIDE);
+}
+
+#[test]
+fn every_opt_out_matches_the_opt_out_report() {
+    crumbkit_test::check_opt_outs(&Cli::command(), ALLOW, "tests/golden");
 }

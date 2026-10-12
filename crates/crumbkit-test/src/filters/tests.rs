@@ -4,6 +4,7 @@ use clap::{Arg, ArgAction, Args as _, Command};
 use crumbkit::Output;
 
 use super::check_filters;
+use crate::allow::{Allow, Rule};
 use crate::testing::panic_message;
 
 #[test]
@@ -93,4 +94,27 @@ fn a_filter_that_takes_repeats_and_commas_and_several_values_in_one_use_fails() 
          list: the argument `--author` takes several values in one use through its `num_args`, and a filter takes one value per use\n\
          list: the argument `--year` takes several values in one use through its `num_args`, and a filter takes one value per use"
     );
+}
+
+#[test]
+fn an_option_keeps_its_own_way_of_taking_many_values_when_opt_outs_name_its_command() {
+    const ALLOW: &[Allow] = &[
+        Allow::new(Rule::RepeatsAndCommas, "", "Authors' names hold commas."),
+        Allow::new(
+            Rule::OneValuePerUse,
+            "",
+            "A range takes its two ends in one use.",
+        ),
+    ];
+    let list = Command::new("list")
+        .arg(Arg::new("author").long("author").action(ArgAction::Append))
+        .arg(
+            Arg::new("years")
+                .long("years")
+                .num_args(2)
+                .value_delimiter(',')
+                .action(ArgAction::Append),
+        );
+
+    check_filters(&list, ALLOW);
 }

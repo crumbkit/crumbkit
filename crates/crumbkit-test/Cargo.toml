@@ -31,11 +31,13 @@ snapbox = { workspace = true }
 # pretty-printed JSON, as crumbkit's checked-in schema files hold it.
 # serde_json needs `std` or `alloc` to build at all.
 serde_json = { workspace = true, features = ["std"] }
+# The opt-out report derives `Serialize` for its entries, so the JSON report
+# keeps its fields in the order a reader expects: the schema id first. The
+# guide check's tests also give leaves row types that derive `Serialize`.
+serde = { workspace = true, features = ["derive"] }
 
 [dev-dependencies]
-# The guide check's tests give leaves row types, which derive `Serialize` and
-# `JsonSchema`.
-serde = { workspace = true, features = ["derive"] }
+# The guide check's tests give leaves row types, which derive `JsonSchema`.
 schemars = { workspace = true, features = ["derive"] }
 
 # docs.rs documents the crate with every feature on. `--cfg docsrs` turns on
