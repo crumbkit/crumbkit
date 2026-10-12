@@ -26,6 +26,8 @@ rule that cites none states its reason itself.
 ## Output
 
 - **OUTPUT-1.** No result, failure or note that crumbkit or an example tool prints depends on whether a stream is a terminal or on agent detection. The exceptions are help colour, progress, and the questions of pickers and `Output::confirm` (ADR-0049). Gate: shelf's `tests/terminal.rs` on macOS and Linux, which compares each example's bytes at a pseudo-terminal with its golden file, and review.
+- **OUTPUT-2.** A failure code's area is a stable noun from the tool's domain, such as `books`, and never names a module or a verb (ADR-0001). Moving code or renaming a command therefore never changes a code. Gate: review.
+- **OUTPUT-3.** A listing that mixes healthy entries with degraded ones lists the degraded ones first. A degraded entry is one that a field marks as a problem. With this order, a limit on the number of entries shown never hides a problem behind healthy entries. Gate: review.
 
 ## Documentation
 
