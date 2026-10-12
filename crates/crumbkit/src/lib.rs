@@ -47,6 +47,8 @@ mod call;
 pub mod child;
 pub mod codes;
 pub mod commands;
+#[cfg(any(feature = "complete", feature = "usage-log"))]
+mod complete;
 #[cfg(any(feature = "usage-log", feature = "tracing"))]
 mod exit;
 mod fetch;
@@ -74,6 +76,8 @@ pub use crumbkit_core::{
 };
 
 pub use crate::call::RenderCall;
+#[cfg(feature = "complete")]
+pub use crate::complete::{complete, complete_to};
 pub use crate::fetch::fetch_each;
 pub use crate::output::{DryRun, Output, Streaming, Yes, finish, finish_to, stream, stream_to};
 pub use crate::page::Page;

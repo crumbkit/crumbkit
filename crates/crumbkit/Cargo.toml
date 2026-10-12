@@ -56,6 +56,11 @@ signal-hook = { workspace = true, optional = true, features = ["iterator"] }
 # crate (ADR-0030). crumbkit needs no tracing feature.
 tracing = { workspace = true, optional = true }
 
+# The `complete` feature answers a shell's completion request through
+# clap_complete's dynamic completion, which needs its `unstable-dynamic`
+# feature (ADR-0048).
+clap_complete = { workspace = true, optional = true, features = ["unstable-dynamic"] }
+
 # Windows has no `/dev/urandom`, so the usage log reads its random bytes
 # through getrandom there (ADR-0029).
 [target.'cfg(windows)'.dependencies]
@@ -86,6 +91,11 @@ hand-over = ["dep:signal-hook"]
 # `tracing` is off by default, so the default build has no span code and no
 # tracing dependency (ADR-0003, ADR-0030).
 tracing = ["dep:tracing"]
+# `complete` is off by default, so the default build has no completion code
+# and no clap_complete (ADR-0003, ADR-0048). It follows clap_complete's
+# unstable dynamic completion, so a crumbkit minor release may change it
+# (ADR-0002).
+complete = ["dep:clap_complete"]
 
 [dev-dependencies]
 # The tests compare the exact help pages and refusal messages that a tool

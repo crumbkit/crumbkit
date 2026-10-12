@@ -56,6 +56,7 @@ deny = [
     # command line joins the clap list.
     { crate = "clap", wrappers = [
         "cargo-crumbkit",
+        "clap_complete",
         "crumbkit",
         "crumbkit-aliases",
         "crumbkit-picker",
@@ -137,3 +138,12 @@ allow-globs = ["scripts/unicode.py"]
 [[bans.build.bypass]]
 crate = "tracing"
 allow-globs = ["test-macros/bin/macro-results.sh"]
+
+# is_executable, which crumbkit's optional `complete` feature brings through
+# clap_complete (ADR-0048), ships `tests/i_am_executable_on_windows.bat`, an
+# empty file that its own tests check for, and no build runs it:
+# is_executable sets `build = false`. The entry allows only that path, so a
+# script elsewhere in the crate still fails the check.
+[[bans.build.bypass]]
+crate = "is_executable"
+allow-globs = ["tests/i_am_executable_on_windows.bat"]

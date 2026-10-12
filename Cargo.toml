@@ -110,6 +110,13 @@ signal-hook = { version = "0.4.5", default-features = false }
 # file.
 getrandom = { version = "0.3.4", default-features = false }
 
+# clap_complete answers a shell's completion request for crumbkit's
+# optional `complete` feature (ADR-0048). Its dynamic completion needs
+# `unstable-dynamic`, which clap leaves outside its semver promise, so the
+# requirement allows only 4.6 patch releases. The feature brings shlex and
+# is_executable and turns on clap's `unstable-ext`.
+clap_complete = { version = "~4.6.11", default-features = false }
+
 # tracing gives crumbkit's optional `tracing` feature the spans of `parse` and
 # `finish`, which reach whatever subscriber the tool installs (ADR-0030). The
 # entry enables no feature: the span macros need neither `std` nor
