@@ -551,8 +551,9 @@ fn save(
 /// without the log. With
 /// [`Signals::Tool`], the thread notes each signal in the recorder and
 /// leaves the process running. With the `hand-over` feature, the thread
-/// leaves the process running on a SIGINT that arrives while a child holds
-/// the terminal, because Ctrl-C then belongs to the child (ADR-0042).
+/// leaves the process running on a SIGINT that arrives once a child has
+/// held the terminal on Unix, or while a child holds it on Windows, because
+/// Ctrl-C then belongs to the child (ADR-0042).
 //
 // RUST-10: the thread takes both signals from the start of the run. A
 // process that started with one of them ignored now ends on it, such as a
@@ -582,7 +583,7 @@ fn watch_signals(owner: Signals) {
                     continue;
                 }
                 #[cfg(feature = "hand-over")]
-                if signal == SIGINT && crate::child::holds_terminal() {
+                if signal == SIGINT && crate::child::held_terminal() {
                     continue;
                 }
                 write(&RECORDER, true);

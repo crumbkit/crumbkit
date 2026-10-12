@@ -16,6 +16,15 @@ use signal_hook::flag::register_conditional_shutdown;
 )]
 const CONTROL_C_EXIT: i32 = 0xC000_013A_u32 as i32;
 
+/// Whether the tool ends on Ctrl-C and Ctrl-Break again once a child
+/// exits. It does.
+//
+// RUST-10: a Ctrl-C sent while the child ran may reach the tool's handler
+// after the child has exited and end the tool, as it could on Unix. Nobody
+// has tested this on Windows. Keeping the signals ignored until the tool
+// ends, as Unix does, replaces this if it happens.
+pub(super) const RESTORES: bool = true;
+
 /// Installs the handlers of SIGBREAK and, unless the usage log has taken
 /// it, SIGINT, which end the process with `STATUS_CONTROL_C_EXIT` while the
 /// returned flag is true, as Ctrl-C and Ctrl-Break do without a handler.
