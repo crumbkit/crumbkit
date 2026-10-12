@@ -12,7 +12,7 @@ use crumbkit::schemas::{SCHEMAS_LIST, SCHEMAS_SHOW, SchemasList, SchemasShow};
 use crumbkit::{DryRun, Expect, NoInput, Output, Page, Yes};
 use crumbkit_picker::Menu;
 
-use crate::lists::{ENTRIES_LIST, ENTRIES_SET, ENTRIES_STREAM, choices};
+use crate::lists::{ENTRIES_EXPORT, ENTRIES_LIST, ENTRIES_SET, ENTRIES_STREAM, choices};
 
 /// Keep reading lists, and print the entries of each.
 #[derive(Debug, Parser)]
@@ -32,7 +32,7 @@ pub struct Cli {
 }
 
 /// The menu that asks a person at a terminal which list to read, when
-/// `entries list` or `entries stream` names none.
+/// `entries list`, `entries stream` or `entries export` names none.
 static MENU: Menu = Menu::new();
 
 /// The source of the names of reading's lists, which the menu offers for
@@ -66,6 +66,17 @@ pub const GUIDE: Guide = Guide::new().picker(&MENU).leaves(&[
         ])
         .effects(Effects::read_only())
         .stream(ENTRIES_STREAM)
+        .choices(LISTS),
+    Leaf::new(&["entries", "export"])
+        .examples(&[
+            Example::new(&["--list", "to-read"], "Print the file of the to-read list"),
+            Example::new(
+                &["--list", "to-read", "--json"],
+                "Print the file of the to-read list as JSON text, or as base64 when it is not UTF-8",
+            ),
+        ])
+        .effects(Effects::read_only())
+        .document(ENTRIES_EXPORT)
         .choices(LISTS),
     Leaf::new(&["entries", "set"])
         .examples(&[
@@ -153,6 +164,8 @@ pub(crate) enum EntriesCommand {
     Stream(EntriesStream),
     /// Replace or append an entry of the reading list that --list names.
     Set(EntriesSet),
+    /// Print the file of the reading list that --list names, as the file holds it.
+    Export(EntriesExport),
 }
 
 /// The commands for reading's own commands.
@@ -186,6 +199,14 @@ pub(crate) struct EntriesList {
 /// The arguments of `reading entries stream`.
 #[derive(Debug, Args)]
 pub(crate) struct EntriesStream {
+    /// The name of the reading list, such as to-read
+    #[arg(long, value_name = "NAME")]
+    pub(crate) list: String,
+}
+
+/// The arguments of `reading entries export`.
+#[derive(Debug, Args)]
+pub(crate) struct EntriesExport {
     /// The name of the reading list, such as to-read
     #[arg(long, value_name = "NAME")]
     pub(crate) list: String,

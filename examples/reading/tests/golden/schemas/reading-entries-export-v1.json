@@ -1,0 +1,57 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "reading/entries-export/v1",
+  "description": "The bytes of a reading list's file, as the file holds them.",
+  "type": "object",
+  "properties": {
+    "data": {
+      "$ref": "#/$defs/Bytes"
+    },
+    "dry_run": {
+      "description": "Present, and true, when the run was a dry run that changed nothing.",
+      "const": true
+    },
+    "schema": {
+      "description": "The id of this document.",
+      "const": "reading/entries-export/v1"
+    }
+  },
+  "required": [
+    "schema",
+    "data"
+  ],
+  "$defs": {
+    "Bytes": {
+      "description": "Bytes, such as a file's contents: text when they are valid UTF-8, and base64 otherwise.",
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "text": {
+              "description": "The bytes, which are valid UTF-8, as text.",
+              "type": "string"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "text"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "base64": {
+              "description": "The bytes, which are not valid UTF-8, in standard base64 with padding (RFC 4648).",
+              "type": "string",
+              "contentEncoding": "base64"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "base64"
+          ]
+        }
+      ]
+    }
+  }
+}

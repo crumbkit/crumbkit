@@ -1,0 +1,15 @@
+Print the file of the reading list that --list names, as the file holds it
+
+Usage: reading entries export [OPTIONS] --list <NAME>
+
+Options:
+      --list <NAME>  The name of the reading list, such as to-read
+  -h, --help         Print help (see more with '--help')
+
+Examples:
+  reading entries export --list to-read
+  reading entries export --list to-read --json
+
+Effects: read-only, closed-world.
+Output: the bytes unchanged, and --json prints them as text or base64.
+Global flags: --json, --fields <FIELD>, --long, --full, --no-input. `reading entries export --help` describes them.
