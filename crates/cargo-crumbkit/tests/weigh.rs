@@ -39,7 +39,8 @@ fn a_failed_build_shows_cargo_s_own_error_on_standard_error() {
 
 /// The usage log of eleven runs of shelf on 1 October 2026: three help
 /// pages, five runs of `books show` with two failures, and three runs of
-/// `books list`, one of them refused.
+/// `books list`, one of them refused. shelf's `self usage` JSON test reads it
+/// too, so a change to it also changes that test's golden file.
 const FIXTURE: &str = concat!(
     env!("CARGO_MANIFEST_DIR"),
     "/tests/fixtures/shelf-usage.jsonl"
