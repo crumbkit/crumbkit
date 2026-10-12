@@ -85,8 +85,8 @@ fn parse_ids_points_at_a_bad_id_without_the_spaces_around_it() {
 }
 
 #[test]
-fn parse_ids_stops_reading_at_the_line_of_id_101() {
-    let lines = "1\n".repeat(102);
+fn parse_ids_stops_reading_at_the_line_after_id_101() {
+    let lines = "1\n".repeat(103);
     let mut reader = lines.as_bytes();
     let mut text = String::new();
 
@@ -96,7 +96,7 @@ fn parse_ids_stops_reading_at_the_line_of_id_101() {
         matches!(problem, IdsFileProblem::TooMany { .. }),
         "{problem:?}"
     );
-    assert_eq!(text, "1\n".repeat(101));
+    assert_eq!(text, "1\n".repeat(102));
     assert_eq!(reader, b"1\n");
 }
 

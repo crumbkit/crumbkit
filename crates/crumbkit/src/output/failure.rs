@@ -314,9 +314,11 @@ pub(super) fn write_text(
 /// for each alternative follows the recovery's `help:` line, and a `url:`
 /// line follows the `code:` line when the failure has a url. With the
 /// `miette` feature, an `at:` line for each label of the failure's
-/// diagnostic follows the causes, each with its source line and an
-/// underline when the span could be read. Each control character in a value
-/// prints as its escape, so each line stays one line.
+/// diagnostic follows the causes. When the span could be read, the lines
+/// that it covers follow with one line before and after and a caret
+/// underline, and labels on nearby lines share their lines, as
+/// `label::write_text` describes. Each control character in a value prints
+/// as its escape, so each line stays one line.
 ///
 /// [books-show-7]: https://github.com/crumbkit/crumbkit/blob/main/examples/shelf/tests/golden/books-show-7.stderr
 pub(crate) fn write_crumbkit_text(
@@ -328,9 +330,7 @@ pub(crate) fn write_crumbkit_text(
         write_labelled(err, "cause:", cause)?;
     }
     #[cfg(feature = "miette")]
-    for label in &document.labels {
-        label.write_text(err)?;
-    }
+    label::write_text(err, &document.labels)?;
     write_labelled(err, "help:", &document.step.help())?;
     for alternative in &document.alternatives {
         write_labelled(err, "help:", &alternative.help())?;

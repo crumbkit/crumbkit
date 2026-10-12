@@ -109,6 +109,7 @@ fn a_report_prints_the_labels_of_its_diagnostic() {
     let expected = "\
 error: unknown key `colour`
   at:    shelf.toml:2:1: this key is not known
+     1 | [shelf]
      2 | colour = \"red\"
        | ^^^^^^
   help:  no next step: the error gives no advice
