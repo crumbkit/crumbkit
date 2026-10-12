@@ -232,3 +232,25 @@ fn both_lines_of_a_twin_run_in_a_copy_of_the_refused_line_s_xdg_fixture() {
         &["books", "list", "--limit", "1"],
     );
 }
+
+#[test]
+fn both_lines_of_a_twin_start_in_their_own_copy_of_the_fresh_dir_fixture() {
+    let (dir, path) = tool("twins-fresh");
+    dir.write_script(
+        "once",
+        "#!/bin/sh\ntest -f marker || exit 3\ntest -f made && exit 4\ntouch made\nexec \"$(dirname \"$0\")/tool\" \"$@\"\n",
+    );
+    let fixture = TempDir::new("twins-fresh-fixture").unwrap();
+    fixture.write("marker", "");
+    let once = path.replace("/tool", "/once");
+    let fixture_path = fixture.path().display().to_string();
+
+    check_twin(
+        &Examples::new(&once, "").fresh_dir(&fixture_path),
+        Spelling::COLONS,
+        &Failing::new(&USAGE, &["books", "list", "--limit", "0"]),
+        &["books", "list", "--limit", "1"],
+    );
+
+    assert_eq!(fixture.names(), ["marker"]);
+}

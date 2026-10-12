@@ -9,7 +9,7 @@ use crumbkit::help::Guide;
 use crumbkit::{Sink, Spelling};
 
 use crate::examples::{Examples, setup_problem};
-use crate::runs::{self, Place, TIMEOUT, Xdg};
+use crate::runs::{self, Place, TIMEOUT, WorkDir, Xdg};
 use crate::tree::{self, Visit};
 
 #[cfg(test)]
@@ -148,16 +148,17 @@ fn binary_pages<'a>(
         problems.push(problem);
         return Vec::new();
     }
-    let place = Place {
-        dir: examples.working_dir(),
-        stdin: None,
-    };
     let mut pages = Vec::new();
     for visit in tree::walk_visible(command) {
         let line = format!("{} {flag}", visit.path());
         let below = visit.below();
         let args: Vec<&str> = below.split_whitespace().chain([flag]).collect();
         let output = Xdg::new("help", examples.xdg_fixture()).and_then(|xdg| {
+            let work = WorkDir::new("help-dir", examples.working_dir())?;
+            let place = Place {
+                dir: work.path(),
+                stdin: None,
+            };
             runs::run(
                 examples.binary(),
                 examples.variables(),

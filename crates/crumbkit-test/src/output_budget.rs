@@ -11,7 +11,7 @@ use crumbkit::help::Guide;
 use crate::allow::{Allowances, Rule};
 use crate::examples::{Examples, example_golden_name, read_stdin, setup_problem};
 use crate::guide::command_line;
-use crate::runs::{self, Place, TIMEOUT, Xdg};
+use crate::runs::{self, Place, TIMEOUT, WorkDir, Xdg};
 use crate::tree;
 
 #[cfg(test)]
@@ -125,11 +125,8 @@ fn check(
                     continue;
                 }
             };
-            let place = Place {
-                dir: examples.working_dir(),
-                stdin: stdin.as_deref(),
-            };
-            let whole = match run(examples, examples.variables(), &args, place, timeout) {
+            let stdin = stdin.as_deref();
+            let whole = match run(examples, examples.variables(), &args, stdin, timeout) {
                 Ok(output) if output.status.success() => output.stdout.len(),
                 Ok(_) => continue,
                 Err(problem) => {
@@ -144,7 +141,7 @@ fn check(
             let value = budget.to_string();
             let mut env = examples.variables().to_vec();
             env.push((VARIABLE, &value));
-            match run(examples, &env, &args, place, timeout) {
+            match run(examples, &env, &args, stdin, timeout) {
                 Ok(output) => {
                     let ran = Ran {
                         code: output.status.code(),
@@ -162,16 +159,22 @@ fn check(
     problems
 }
 
-/// Runs the binary of `examples` once with `env` and `args` at `place` in
-/// fresh XDG directories.
+/// Runs the binary of `examples` once with `env`, `args` and `stdin` in
+/// fresh XDG directories, in the working directory of `examples` or a new
+/// copy of its fresh fixture.
 fn run(
     examples: &Examples<'_>,
     env: &[(&str, &str)],
     args: &[&str],
-    place: Place<'_>,
+    stdin: Option<&[u8]>,
     timeout: Duration,
 ) -> Result<std::process::Output, String> {
     let xdg = Xdg::new("output-budget", examples.xdg_fixture())?;
+    let work = WorkDir::new("output-budget-dir", examples.working_dir())?;
+    let place = Place {
+        dir: work.path(),
+        stdin,
+    };
     runs::run(examples.binary(), env, &xdg, args, place, timeout)
 }
 

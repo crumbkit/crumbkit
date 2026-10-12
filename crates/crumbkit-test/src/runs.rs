@@ -100,6 +100,83 @@ pub(crate) fn fixture_problem(fixture: &str) -> Option<String> {
     })
 }
 
+/// The directory that a run starts in, as a tool's settings name it.
+#[derive(Clone, Copy, Debug)]
+pub(crate) enum Dir<'a> {
+    /// A directory that every run starts in, which
+    /// [`Examples::current_dir`](crate::Examples::current_dir) or
+    /// [`Failing::dir`](crate::Failing::dir) names.
+    Fixed(&'a str),
+    /// A fixture that each run, or each recovery chain, starts in a new
+    /// copy of, which [`Examples::fresh_dir`](crate::Examples::fresh_dir)
+    /// names.
+    Fresh(&'a str),
+}
+
+/// The working directory of one run, or of every run of one recovery chain:
+/// none, a fixed directory, or a new copy of a fixture, which is deleted
+/// when the value drops.
+pub(crate) struct WorkDir {
+    /// The directory's path, or `None` for the test's directory.
+    path: Option<String>,
+    /// The new copy of a fixture, which owns the directory of `path`.
+    fresh: Option<TempDir>,
+}
+
+impl WorkDir {
+    /// Returns the working directory that `dir` names. For a fixture, it
+    /// creates a new temporary directory whose name ends with `label` and
+    /// copies the fixture into it, or returns the problem when the directory
+    /// cannot be created or a file cannot be copied.
+    pub(crate) fn new(label: &str, dir: Option<Dir<'_>>) -> Result<Self, String> {
+        match dir {
+            None => Ok(Self {
+                path: None,
+                fresh: None,
+            }),
+            Some(Dir::Fixed(path)) => Ok(Self {
+                path: Some(path.to_owned()),
+                fresh: None,
+            }),
+            Some(Dir::Fresh(fixture)) => {
+                let problem = |error| {
+                    format!(
+                        "the fixture `{fixture}` of Examples::fresh_dir cannot be copied: {error}"
+                    )
+                };
+                let temp = TempDir::new(label).map_err(problem)?;
+                copy_tree(Path::new(fixture), temp.path()).map_err(problem)?;
+                Ok(Self {
+                    path: Some(temp.path().display().to_string()),
+                    fresh: Some(temp),
+                })
+            }
+        }
+    }
+
+    /// Returns the directory's path, or `None` for the test's directory.
+    pub(crate) fn path(&self) -> Option<&str> {
+        self.path.as_deref()
+    }
+
+    /// Returns the paths that the example check replaces with `[ROOT]`: the
+    /// path of a new copy and its canonical path, which differs where a
+    /// symbolic link leads to the temporary directory, as `/var` does on
+    /// macOS. A fixed directory and the test's directory have none.
+    pub(crate) fn fresh_paths(&self) -> Vec<PathBuf> {
+        let Some(temp) = &self.fresh else {
+            return Vec::new();
+        };
+        let mut paths = vec![temp.path().to_path_buf()];
+        if let Ok(canonical) = fs::canonicalize(temp.path())
+            && canonical != temp.path()
+        {
+            paths.push(canonical);
+        }
+        paths
+    }
+}
+
 /// The working directory and the standard input of a run. A run without a
 /// working directory starts in the directory of the test that runs it, and
 /// a run without standard input reads an empty one.
@@ -164,6 +241,30 @@ pub(crate) fn failure(stdout: &[u8]) -> Option<Value> {
             let failures = value.get_mut("failures")?.as_array_mut()?;
             (!failures.is_empty()).then(|| failures.swap_remove(0))
         })
+}
+
+/// Returns the `fields` of the failure that [`failure`] finds on `stdout`,
+/// each a name and its value as text, in order. A string is its own text,
+/// an integer or a boolean is written as JSON writes it, and a field of
+/// another type is left out.
+pub(crate) fn fields(stdout: &[u8]) -> Vec<(String, String)> {
+    let Some(document) = failure(stdout) else {
+        return Vec::new();
+    };
+    let Some(fields) = document.get("fields").and_then(Value::as_object) else {
+        return Vec::new();
+    };
+    fields
+        .iter()
+        .filter_map(|(name, value)| {
+            let text = match value {
+                Value::String(text) => text.clone(),
+                Value::Number(_) | Value::Bool(_) => value.to_string(),
+                _ => return None,
+            };
+            Some((name.clone(), text))
+        })
+        .collect()
 }
 
 /// Returns the failure that a failed run printed on `stdout` and `stderr`:

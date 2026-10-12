@@ -21,6 +21,9 @@ use crate::temp::TempDir;
 use crate::testing::panic_message;
 
 mod form;
+mod fresh;
+mod values;
+mod words;
 mod xdg;
 
 /// The code of a book that does not exist.
@@ -221,7 +224,7 @@ fn a_placeholder_without_a_value_fails_the_check() {
     assert_eq!(
         problems(&setup, &recoveries(&setup, SHOW_7, OTHERS)).unwrap(),
         "the tool's recoveries break crumbkit's recovery rules:\n\
-         tool books show 7: the step `tool books show <ID>...` has the placeholder <ID>, and no value of Recoveries::values fills it"
+         tool books show 7: the step `tool books show <ID>...` has the placeholder <ID>, and no value of Failing::values, the fields of the failure or Recoveries::values fills it"
     );
 }
 
@@ -263,7 +266,7 @@ fn a_value_fills_only_the_placeholder_whose_name_matches_its_case() {
     assert_eq!(
         problems(&setup, &recoveries).unwrap(),
         "the tool's recoveries break crumbkit's recovery rules:\n\
-         tool books show 7: the step `tool books show <id>...` has the placeholder <id>, and no value of Recoveries::values fills it"
+         tool books show 7: the step `tool books show <id>...` has the placeholder <id>, and no value of Failing::values, the fields of the failure or Recoveries::values fills it"
     );
 }
 

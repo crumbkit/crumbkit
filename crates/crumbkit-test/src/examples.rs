@@ -15,7 +15,7 @@ use snapbox::{Assert, Redactions};
 use crate::allow::{Allowances, Rule};
 use crate::goldens::{compare, remove_stale};
 use crate::guide::command_line;
-use crate::runs::{self, Place, TIMEOUT, Xdg};
+use crate::runs::{self, Place, TIMEOUT, WorkDir, Xdg};
 use crate::tree;
 
 pub(crate) use self::inputs::read_stdin;
@@ -61,9 +61,10 @@ mod tests;
 /// them passes them through [`Examples::env`], such as
 /// `("PATH", "/usr/bin:/bin")` or `("HOME", "tests/fixtures/home")`.
 ///
-/// Each run starts in the directory of [`Examples::current_dir`], or in the
-/// test's directory without it. The check fails without running any
-/// example when that directory does not exist. Each run reads the bytes of
+/// Each run starts in the directory of [`Examples::current_dir`], or in a
+/// new copy of the fixture of [`Examples::fresh_dir`], or in the test's
+/// directory without either. The check fails without running any example
+/// when that directory or fixture does not exist. Each run reads the bytes of
 /// the example's input file on standard input, a file in the golden
 /// directory named with `.stdin` in place of `.txt`, such as
 /// `shelf-books-import.stdin`. A run without that file reads an empty
@@ -85,7 +86,8 @@ mod tests;
 /// byte for byte through snapbox (ADR-0004), after it replaces each value of
 /// [`Examples::redact`] and the path of each of the run's XDG directories,
 /// such as the directory of `XDG_CONFIG_HOME`, with its placeholder, such
-/// as `[XDG_CONFIG_HOME]`. snapbox's wildcards, such as `[..]`, are plain
+/// as `[XDG_CONFIG_HOME]`, and the path of the copy of
+/// [`Examples::fresh_dir`] with `[ROOT]`. snapbox's wildcards, such as `[..]`, are plain
 /// text in an example golden file. With the environment variable `SNAPSHOTS=overwrite`,
 /// it writes each missing file, rewrites each file whose content differs
 /// and deletes each stale file. It finds:
@@ -123,7 +125,8 @@ mod tests;
 /// - an opt-out from [`Rule::Examples`] that names no command or skips no
 ///   example, and an [`Allow::example`](crate::Allow::example) that names no
 ///   example that the check runs;
-/// - a directory of [`Examples::current_dir`] that does not exist;
+/// - a directory of [`Examples::current_dir`] or a fixture of
+///   [`Examples::fresh_dir`] that does not exist;
 /// - a placeholder of [`Examples::redact`] that is not `[` and `]` around
 ///   capital letters and underscores, and an empty value;
 /// - an input file that cannot be read, and an input file that names no
@@ -324,9 +327,9 @@ fn compare_run(
 }
 
 /// Runs the example `args` of `examples.binary` in fresh XDG directories,
-/// in the working directory of `examples` and with `stdin` on standard
-/// input, and returns its output with `redactions` and the run's XDG
-/// directories, or a problem when the run cannot start or does not end
+/// in the working directory of `examples` or a new copy of its fresh
+/// fixture, and with `stdin` on standard input, and returns its output with
+/// `redactions` and the run's XDG directories and fresh directory, or a problem when the run cannot start or does not end
 /// within `timeout`.
 fn run_example(
     examples: &Examples<'_>,
@@ -337,8 +340,9 @@ fn run_example(
 ) -> Result<(Output, Redactions), String> {
     let started = Instant::now();
     let xdg = Xdg::new("example", examples.xdg_fixture())?;
+    let work = WorkDir::new("example-dir", examples.working_dir())?;
     let place = Place {
-        dir: examples.working_dir(),
+        dir: work.path(),
         stdin,
     };
     let output = runs::run(
@@ -355,7 +359,7 @@ fn run_example(
             timeout.as_secs_f64()
         ));
     }
-    Ok((output, inputs::with_xdg(redactions, &xdg)))
+    Ok((output, inputs::with_run(redactions, &xdg, &work)))
 }
 
 /// Returns the problem of the example `line`, whose run exited with a code

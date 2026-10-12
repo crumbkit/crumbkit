@@ -10,7 +10,7 @@ use crumbkit::Spelling;
 use crate::examples::Examples;
 use crate::guide::command_line;
 use crate::recoveries::Failing;
-use crate::runs::{self, Place, TIMEOUT, Xdg};
+use crate::runs::{self, Dir, Place, TIMEOUT, WorkDir, Xdg};
 
 // The tests run `/bin/sh` scripts, which Windows cannot run. The two
 // attributes stay apart, because clippy reads only a plain `cfg(test)` as
@@ -31,7 +31,8 @@ mod tests;
 ///
 /// Both runs use the environment of [`Examples::env`], the working
 /// directory and standard input of `refused`, or the directory of
-/// [`Examples::current_dir`] when `refused` sets none, and fresh XDG directories of
+/// [`Examples::current_dir`] when `refused` sets none, or a new copy each
+/// of the fixture of [`Examples::fresh_dir`], and fresh XDG directories of
 /// their own, as [`check_examples`](crate::check_examples) runs an example.
 /// The check reads the refused line's code, spelled with `spelling`. When
 /// [`Examples::failure_form`] names a form, it reads the code through the
@@ -106,10 +107,17 @@ fn twin(
             "the refused line `{refused_line}` and the admitted line `{admitted_line}` must differ by one word added, removed or replaced"
         ));
     }
-    let place = refused.place(examples.working_dir());
+    let dir = refused.work_dir(examples.working_dir());
+    let stdin = refused.stdin_bytes();
     let code = spelling.spell(refused.code());
     let fixture = refused.fixture(examples.xdg_fixture());
-    let output = run(examples, refused.words(), place, fixture, &refused_line)?;
+    let output = run(
+        examples,
+        refused.words(),
+        (dir, stdin),
+        fixture,
+        &refused_line,
+    )?;
     if output.status.success() {
         return Err(format!(
             "the refused line `{refused_line}` must fail with {code}, and it exits with code 0"
@@ -132,7 +140,7 @@ fn twin(
             ));
         }
     }
-    let other = run(examples, admitted, place, fixture, &admitted_line)?;
+    let other = run(examples, admitted, (dir, stdin), fixture, &admitted_line)?;
     if !other.status.success() {
         return Err(format!(
             "the admitted line `{admitted_line}` must exit with code 0, and it ends with {} after writing this to standard error:\n{}",
@@ -144,18 +152,25 @@ fn twin(
 }
 
 /// Runs `words` with fresh XDG directories that start as copies of
-/// `fixture`, and with `place`, and returns the problem naming `line` when
-/// the run cannot start or does not end.
+/// `fixture`, and with the working directory and standard input of `start`,
+/// a new copy for a fresh fixture, and returns the problem naming `line`
+/// when the run cannot start or does not end.
 fn run(
     examples: &Examples<'_>,
     words: &[&str],
-    place: Place<'_>,
+    start: (Option<Dir<'_>>, Option<&[u8]>),
     fixture: Option<&str>,
     line: &str,
 ) -> Result<Output, String> {
     let started = Instant::now();
+    let (dir, stdin) = start;
     let output = Xdg::new("twin", fixture)
         .and_then(|xdg| {
+            let work = WorkDir::new("twin-dir", dir)?;
+            let place = Place {
+                dir: work.path(),
+                stdin,
+            };
             runs::run(
                 examples.binary(),
                 examples.variables(),

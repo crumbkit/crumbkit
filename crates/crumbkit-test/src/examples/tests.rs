@@ -20,6 +20,7 @@ use crate::temp::TempDir;
 use crate::testing::panic_message;
 
 mod forms;
+mod fresh;
 mod inputs;
 mod layout;
 mod opt_out;
