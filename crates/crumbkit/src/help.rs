@@ -5,6 +5,7 @@
 //! which `<tool> help <TOPIC>` prints.
 
 pub(crate) mod leaf;
+mod runtime;
 pub(crate) mod topic;
 
 use std::fmt::Write as _;
@@ -14,6 +15,7 @@ use clap::builder::StyledStr;
 use clap::builder::styling::Style;
 
 pub use self::leaf::{Column, Example, Leaf, quote};
+pub use self::runtime::RuntimeLeaf;
 pub use self::topic::Topic;
 
 #[cfg(test)]
