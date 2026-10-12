@@ -321,6 +321,8 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   ([ADR-0005]).
 - crumbkit-test: `Allow::example` opts one example out of
   [`check_examples`] and [`check_output_budget`] by its words ([ADR-0036]).
+- crumbkit: re-exports schemars as `crumbkit::schemars`, so a
+  `FailureForm` needs no schemars dependency of its own ([ADR-0045]).
 ### Changed
 
 - crumbkit: the help text of `--json` reads `Print the result as a JSON

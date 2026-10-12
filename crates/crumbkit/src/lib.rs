@@ -89,3 +89,21 @@ pub use crate::page::Page;
 pub use crate::parse::{Parsed, Stop, parse, parse_from, parse_to};
 pub use crate::pick::NoInput;
 pub use crate::sink::Sink;
+
+/// The schemars crate that crumbkit builds against, so a tool can write a
+/// [`FailureForm`](crate::form::FailureForm)'s schema with
+/// `crumbkit::schemars::{Schema, json_schema}` and needs no schemars
+/// dependency of its own (ADR-0045).
+///
+/// `FailureForm::schema` and the `JsonSchema` bound on a result already
+/// make schemars' major version part of crumbkit's API, so a new major
+/// version of schemars is a breaking release of crumbkit with or without
+/// this re-export.
+///
+/// crumbkit turns on no schemars feature in its default build, so
+/// `#[derive(JsonSchema)]` through this path works only when some crate in
+/// the build turns on schemars' `derive` feature, and it then needs
+/// `#[schemars(crate = "crumbkit::schemars")]`. A tool that derives
+/// `JsonSchema` for its results keeps its own schemars dependency with
+/// `derive`, as the README shows.
+pub use schemars;
