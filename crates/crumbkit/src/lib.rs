@@ -59,8 +59,8 @@ pub mod usage;
 // crumbkit re-exports every item of crumbkit-core at the path it had in
 // crumbkit, so a tool depends on crumbkit alone (ADR-0032).
 pub use crumbkit_core::{
-    AsFailure, Batch, Call, CallError, CallTarget, Code, Document, Error, Failure, Listing,
-    NoSummary, Recovery, Row, Rows, Shape, Spelling,
+    AsFailure, Batch, Call, CallArg, CallError, CallTarget, Code, Document, Error, Failure,
+    Listing, NoSummary, Recovery, Row, Rows, Shape, Spelling,
 };
 
 pub use crate::call::RenderCall;

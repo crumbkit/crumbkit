@@ -31,7 +31,7 @@ mod row;
 mod segment;
 
 pub use crate::batch::Batch;
-pub use crate::call::{Call, CallError, CallTarget};
+pub use crate::call::{Call, CallArg, CallError, CallTarget};
 pub use crate::code::{Code, Spelling};
 pub use crate::document::Document;
 pub use crate::failure::{AsFailure, Error, Failure, Recovery};

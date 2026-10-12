@@ -3,10 +3,10 @@
 
 use std::fmt::Write as _;
 
-use clap::Command;
+use clap::{Arg, Command};
 
 use crate::help::leaf::quote;
-use crate::{Call, CallError, CallTarget};
+use crate::{Call, CallArg, CallError, CallTarget};
 
 #[cfg(test)]
 mod tests;
@@ -45,7 +45,8 @@ pub trait RenderCall: sealed::Sealed {
     /// Returns the call as text: the name of `command`, then the name of each
     /// subcommand on the path, then each argument in the form clap's usage
     /// line gives it, such as `<ID>...` for a positional that takes many
-    /// values or `--author <AUTHOR>` for an option, then each word.
+    /// values or `--author <AUTHOR>` for an option, or with its value, such
+    /// as `--author 'Le Guin'`.
     ///
     /// `command` is the root of the tool's tree. `render` first calls
     /// `Command::build`, which clap requires before a command's arguments are
@@ -53,14 +54,17 @@ pub trait RenderCall: sealed::Sealed {
     /// segment is looked up with `Command::find_subcommand`, so an alias
     /// resolves and prints as the subcommand's name. Each argument is looked
     /// up on the final command, which after the build also holds the global
-    /// arguments of the commands above it. A word that a POSIX shell would
+    /// arguments of the commands above it. A value that a POSIX shell would
     /// split or expand prints between single quotes.
     ///
     /// # Errors
     ///
     /// Returns a [`CallError`] naming the first path segment or argument that
-    /// is missing or hidden. A hidden command or argument counts as
-    /// unresolved, because crumbkit never prints what the tool hid.
+    /// is missing or hidden, or the first value that the argument would
+    /// refuse: a value for a flag, a value outside the argument's possible
+    /// values, or a positional value that clap would read as a flag. A hidden
+    /// command or argument counts as unresolved, because crumbkit never
+    /// prints what the tool hid.
     fn render(&self, command: &mut Command) -> Result<String, CallError>;
 }
 
@@ -119,7 +123,7 @@ fn build_branch(call: &Call, command: &mut Command) {
 /// named.
 pub(crate) fn render_built(call: &Call, command: &Command) -> Result<String, CallError> {
     let mut text = command.get_name().to_owned();
-    let (path, args, words) = match call.target() {
+    let (path, args) = match call.target() {
         CallTarget::Help(path) => {
             for name in path {
                 text.push(' ');
@@ -128,7 +132,7 @@ pub(crate) fn render_built(call: &Call, command: &Command) -> Result<String, Cal
             text.push_str(" -h");
             return Ok(text);
         }
-        CallTarget::Command { path, args, words } => (*path, args, words),
+        CallTarget::Command { path, args } => (*path, args),
     };
     let mut current = command;
     for &name in path {
@@ -149,28 +153,108 @@ pub(crate) fn render_built(call: &Call, command: &Command) -> Result<String, Cal
         current = subcommand;
     }
 
-    for &id in args {
-        let Some(arg) = current.get_arguments().find(|arg| arg.get_id() == id) else {
-            return Err(CallError::MissingArgument {
-                command: text,
-                id: id.to_owned(),
-            });
+    // Each error names the command without the arguments before it, so the
+    // loop reads the text up to `command_end`.
+    let command_end = text.len();
+    for call_arg in args {
+        let (id, value) = match call_arg {
+            CallArg::Placeholder(id) => (*id, None),
+            CallArg::Value { id, value } => (*id, Some(value.as_str())),
         };
-        if arg.is_hide_set() {
-            return Err(CallError::HiddenArgument {
-                command: text,
-                id: id.to_owned(),
-            });
+        let arg = find_arg(current, &text[..command_end], id)?;
+        match value {
+            // `Arg`'s `Display` writes the argument as clap's usage line
+            // does, without styling. Writing to a `String` cannot fail.
+            None => {
+                let _ = write!(text, " {arg}");
+            }
+            Some(value) => {
+                let rendered = render_value(arg, &text[..command_end], value)?;
+                text.push(' ');
+                text.push_str(&rendered);
+            }
         }
-        // `Arg`'s `Display` writes the argument as clap's usage line does,
-        // without styling. Writing to a `String` cannot fail.
-        let _ = write!(text, " {arg}");
-    }
-    for word in words {
-        text.push(' ');
-        text.push_str(&quote(word));
     }
     Ok(text)
+}
+
+/// Returns the visible argument of `command` whose id is `id`. `text` is the
+/// call's text up to the command, which each error names.
+fn find_arg<'a>(command: &'a Command, text: &str, id: &str) -> Result<&'a Arg, CallError> {
+    let Some(arg) = command.get_arguments().find(|arg| arg.get_id() == id) else {
+        return Err(CallError::MissingArgument {
+            command: text.to_owned(),
+            id: id.to_owned(),
+        });
+    };
+    if arg.is_hide_set() {
+        return Err(CallError::HiddenArgument {
+            command: text.to_owned(),
+            id: id.to_owned(),
+        });
+    }
+    Ok(arg)
+}
+
+/// Returns `arg` with `value` as the caller types it: `--author 'Le Guin'`
+/// for an option, with its short name when it has no long name, and the
+/// value alone for a positional. `text` is the call's text up to the
+/// command, which each error names.
+///
+/// An option value that starts with `-` follows an `=`, such as
+/// `--author=-x`, because clap reads a separate word that starts with `-` as
+/// a flag. A positional value that starts with `-` is refused unless the
+/// argument allows hyphen values, or allows negative numbers and the value is
+/// one. A lone `-` is a value to clap.
+///
+/// RUST-10: rendering checks a value against the argument's possible values
+/// only. clap keeps the argument's value parser private, so a value that the
+/// parser would refuse, such as `x` for a number, still renders. Each value
+/// renders as one occurrence, so two values of an option that takes several
+/// values in one occurrence, such as `--ids 2 9`, render as `--ids 2 --ids
+/// 9`, which clap refuses for an option that may not repeat. A call that
+/// needs these reads the argument's value range and parses the value once
+/// clap exposes its parser.
+fn render_value(arg: &Arg, text: &str, value: &str) -> Result<String, CallError> {
+    let id = arg.get_id().as_str();
+    if !arg.get_action().takes_values() {
+        return Err(CallError::TakesNoValue {
+            command: text.to_owned(),
+            id: id.to_owned(),
+        });
+    }
+    let possible = arg.get_possible_values();
+    if !possible.is_empty()
+        && !possible
+            .iter()
+            .any(|known| known.matches(value, arg.is_ignore_case_set()))
+    {
+        return Err(CallError::UnknownValue {
+            command: text.to_owned(),
+            id: id.to_owned(),
+            value: value.to_owned(),
+        });
+    }
+    let quoted = quote(value);
+    let hyphen = value.len() > 1 && value.starts_with('-');
+    let flag = match (arg.get_long(), arg.get_short()) {
+        (Some(long), _) => format!("--{long}"),
+        (None, Some(short)) => format!("-{short}"),
+        (None, None) => {
+            let allowed = arg.is_allow_hyphen_values_set()
+                || (arg.is_allow_negative_numbers_set() && value.parse::<f64>().is_ok());
+            if hyphen && !allowed {
+                return Err(CallError::HyphenValue {
+                    command: text.to_owned(),
+                    id: id.to_owned(),
+                    value: value.to_owned(),
+                });
+            }
+            return Ok(quoted);
+        }
+    };
+    let separator = if hyphen { '=' } else { ' ' };
+    Ok(format!("{flag}{separator}{quoted}"))
 }
 
 /// Holds the supertrait that keeps tools from implementing [`RenderCall`].
