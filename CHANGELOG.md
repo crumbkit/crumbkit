@@ -154,6 +154,9 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   declares it in help ([ADR-0041]).
 - crumbkit: `commands list` rows and `schemas list` rows hold `form`,
   which is `document` or `stream` ([ADR-0041]).
+- crumbkit-test: [`check_examples`] stops an example after 10 seconds and
+  checks that each line of a `--json` example is a document with the
+  leaf's id ([ADR-0041]).
 
 ### Changed
 

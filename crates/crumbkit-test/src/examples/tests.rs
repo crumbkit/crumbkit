@@ -19,6 +19,8 @@ use crate::guide::command_line;
 use crate::temp::TempDir;
 use crate::testing::panic_message;
 
+mod forms;
+
 /// The binary that runs every example.
 const SH: &str = "/bin/sh";
 
@@ -61,7 +63,13 @@ fn examples(dir: &TempDir) -> Examples<'_> {
 
 /// Runs the check of `guide` on `sh()` with `examples` and `action`.
 fn run(guide: &Guide, examples: &Examples<'_>, action: Action) {
-    check(&sh(), guide, examples, &Assert::new().action(action));
+    check(
+        &sh(),
+        guide,
+        examples,
+        &Assert::new().action(action),
+        super::TIMEOUT,
+    );
 }
 
 #[test]
@@ -178,7 +186,8 @@ fn a_binary_that_cannot_start_fails_the_check_naming_its_path_and_the_error() {
         .leaves(&[Leaf::new(&["-c"]).examples(&[Example::new(&["echo books"], "Print")])]);
     const MISSING: Examples<'_> = Examples::new("/nonexistent/sh", "tests/golden/examples");
 
-    let message = panic_message(|| check(&sh(), &ONE, &MISSING, &Assert::new())).unwrap();
+    let message =
+        panic_message(|| check(&sh(), &ONE, &MISSING, &Assert::new(), super::TIMEOUT)).unwrap();
 
     assert!(
         message.starts_with(
