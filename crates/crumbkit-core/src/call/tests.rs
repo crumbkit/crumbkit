@@ -47,3 +47,11 @@ fn a_help_call_keeps_no_arguments_or_values() {
 
     assert_eq!(call.target(), &CallTarget::Help(vec!["books".to_owned()]));
 }
+
+#[test]
+fn a_typed_call_holds_the_words_and_keeps_no_arguments_or_values() {
+    let words = vec!["books".to_owned(), "remove".to_owned(), "2".to_owned()];
+    let call = Call::typed(words.clone()).arg("ids").value("ids", "7");
+
+    assert_eq!(call.target(), &CallTarget::Typed(words));
+}

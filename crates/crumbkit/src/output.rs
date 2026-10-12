@@ -1,22 +1,28 @@
 //! The output flags, and `finish`, which prints a result or a failure in the
 //! format they choose.
 
+mod confirm;
+mod dry_run;
+mod envelope;
 pub(crate) mod failure;
 mod fields;
 mod prose;
 mod table;
 mod unwrapped;
 
+use std::ffi::OsString;
 use std::io::{self, Write};
 use std::process::ExitCode;
 
 use clap::{Args, Command};
-use serde::Serialize;
-use serde::ser::{SerializeMap, Serializer};
 use serde_json::Value;
 
-use self::failure::{Entry, FailureDocument};
-use crate::{AsFailure, Document, Row, Rows, Shape, Sink, Spelling};
+pub use self::confirm::Yes;
+use self::dry_run::DRY_RUN_LINE;
+pub use self::dry_run::DryRun;
+use self::envelope::{Selected, write_document};
+use self::failure::FailureDocument;
+use crate::{AsFailure, Document, Parsed, Row, Rows, Shape, Sink, Spelling};
 
 #[cfg(test)]
 mod tests;
@@ -43,6 +49,10 @@ mod tests;
 /// `PartialEq` or `Eq`, because `clap::Command` implements neither and nothing
 /// compares two `Output` values.
 #[derive(Args, Clone, Debug, Default)]
+#[expect(
+    clippy::struct_excessive_bools,
+    reason = "each bool is one independent flag or mark of the run, and no two of them form a state machine"
+)]
 pub struct Output {
     /// Print the result as a JSON document on one line
     #[arg(long, global = true)]
@@ -72,6 +82,16 @@ pub struct Output {
     /// the field when it parses.
     #[arg(skip)]
     command: Option<Command>,
+
+    /// The words that the caller typed after the program name, which
+    /// `confirm` repeats with `--yes`, or `None` when the tool passed a bare
+    /// command to `set_command`.
+    #[arg(skip)]
+    words: Option<Vec<OsString>>,
+
+    /// Whether the run is a dry run, which [`Output::dry_run`] records.
+    #[arg(skip)]
+    dry_run: bool,
 }
 
 impl Output {
@@ -110,8 +130,8 @@ impl Output {
     ///
     /// let parsed =
     ///     crumbkit::parse_from::<Cli, _, _>(Cli::command(), &Guide::new(), Spelling::COLONS, ["shelf"]);
-    /// let (mut cli, command) = parsed.unwrap();
-    /// cli.output.set_command(command);
+    /// let (mut cli, parsed) = parsed.unwrap();
+    /// cli.output.set_command(parsed);
     /// ```
     ///
     /// A tool that hides commands at runtime parses against its changed
@@ -144,8 +164,10 @@ impl Output {
     /// let mut cli = Cli::from_arg_matches(&matches).unwrap();
     /// cli.output.set_command(command);
     /// ```
-    pub fn set_command(&mut self, command: Command) {
-        self.command = Some(command);
+    pub fn set_command(&mut self, parsed: impl Into<Parsed>) {
+        let parsed = parsed.into();
+        self.words = parsed.words;
+        self.command = Some(parsed.command);
     }
 
     /// Builds the whole command tree that [`Output::set_command`] kept and
@@ -334,8 +356,8 @@ pub fn finish_to<T: Rows, E: AsFailure, O: Write, W: Write>(
     clippy::needless_pass_by_value,
     reason = "finish_to takes the result by value, as finish does, so a tool passes the result it built in the same way to either"
 )]
-fn respond<T: Rows, E: AsFailure, O: Write, W: Write>(
-    sink: &mut Sink<O, W>,
+fn respond<T: Rows, E: AsFailure, O: Write, W: Write, R>(
+    sink: &mut Sink<O, W, R>,
     output: &mut Output,
     spelling: Spelling,
     document: Document<T>,
@@ -361,6 +383,13 @@ fn respond<T: Rows, E: AsFailure, O: Write, W: Write>(
             .collect()
     });
     let code = match write_result(&mut sink.out, output, document, value, failures.as_deref()) {
+        Ok(()) if output.dry_run && output.json && !document.has_envelope() => {
+            // A document without the envelope has no `dry_run` field, so the
+            // line that marks a dry run goes to standard error, and a failed
+            // write there goes unreported.
+            let _ = writeln!(sink.err, "{DRY_RUN_LINE}");
+            ExitCode::SUCCESS
+        }
         Ok(()) => ExitCode::SUCCESS,
         // A reader that stops early, as `shelf books list | head -1` does,
         // closes the pipe after it has read every line it wanted, so the
@@ -403,8 +432,25 @@ fn respond<T: Rows, E: AsFailure, O: Write, W: Write>(
 /// result.
 ///
 /// A serialization error becomes an `io::Error` of kind `InvalidData`, so it
-/// is reported as a failed write.
+/// is reported as a failed write. The text of a dry run ends with
+/// [`DRY_RUN_LINE`].
 fn write_result<T: Rows>(
+    out: &mut impl Write,
+    output: &mut Output,
+    document: Document<T>,
+    value: &T,
+    failures: Option<&[FailureDocument]>,
+) -> io::Result<()> {
+    write_value(out, output, document, value, failures)?;
+    if output.dry_run && !output.json {
+        writeln!(out, "{DRY_RUN_LINE}")?;
+    }
+    out.flush()
+}
+
+/// Writes `value` to `out` as [`write_result`] describes, without the line
+/// of a dry run.
+fn write_value<T: Rows>(
     out: &mut impl Write,
     output: &mut Output,
     document: Document<T>,
@@ -416,7 +462,15 @@ fn write_result<T: Rows>(
     }
     if let Some(text) = value.prose() {
         if output.json {
-            write_document(out, document, value, None, None::<&()>, failures)?;
+            write_document(
+                out,
+                document,
+                output.dry_run,
+                value,
+                None,
+                None::<&()>,
+                failures,
+            )?;
         } else {
             prose::write_text(out, text)?;
         }
@@ -427,7 +481,15 @@ fn write_result<T: Rows>(
     if output.full {
         // Serializing the rows directly keeps every field in its declaration
         // order.
-        write_document(out, document, value, total, summary, failures)?;
+        write_document(
+            out,
+            document,
+            output.dry_run,
+            value,
+            total,
+            summary,
+            failures,
+        )?;
         return out.flush();
     }
 
@@ -461,9 +523,25 @@ fn write_result<T: Rows>(
         // when it holds one row.
         match selected.as_slice() {
             [single] if T::SHAPE == Shape::Row => {
-                write_document(out, document, single, total, summary, failures)?;
+                write_document(
+                    out,
+                    document,
+                    output.dry_run,
+                    single,
+                    total,
+                    summary,
+                    failures,
+                )?;
             }
-            list => write_document(out, document, &list, total, summary, failures)?,
+            list => write_document(
+                out,
+                document,
+                output.dry_run,
+                &list,
+                total,
+                summary,
+                failures,
+            )?,
         }
     } else if failures.is_some() && rows.is_empty() {
         // A batch in which no id worked prints no table, so the caller sees
@@ -518,82 +596,5 @@ fn write_next<T: Rows>(
     match crate::call::render(call, command) {
         Ok(rendered) => writeln!(out, "Next: {rendered} {phrase}"),
         Err(_) => Ok(()),
-    }
-}
-
-/// Writes the JSON document `{"schema": <id>, "data": <data>}` to `out` on
-/// one line, with `"total": <total>` after `data` when `total` is `Some`,
-/// then `"summary": <summary>` when `summary` is `Some`, and then
-/// `"failures": [...]` when `failures` is `Some`.
-fn write_document<T, D: Serialize, M: Serialize>(
-    out: &mut impl Write,
-    document: Document<T>,
-    data: &D,
-    total: Option<usize>,
-    summary: Option<&M>,
-    failures: Option<&[FailureDocument]>,
-) -> io::Result<()> {
-    let envelope = Envelope {
-        document,
-        data,
-        total,
-        summary,
-        failures,
-    };
-    serde_json::to_writer(&mut *out, &envelope)?;
-    out.write_all(b"\n")
-}
-
-/// A JSON document: the `schema` id, the result under `data`, a listing's
-/// number of matching rows under `total`, a listing's summary under
-/// `summary`, and a batch's failures under `failures`.
-struct Envelope<'a, T, D, M> {
-    document: Document<T>,
-    data: &'a D,
-    total: Option<usize>,
-    summary: Option<&'a M>,
-    failures: Option<&'a [FailureDocument]>,
-}
-
-impl<T, D: Serialize, M: Serialize> Serialize for Envelope<'_, T, D, M> {
-    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        let len = 2
-            + usize::from(self.total.is_some())
-            + usize::from(self.summary.is_some())
-            + usize::from(self.failures.is_some());
-        let mut map = serializer.serialize_map(Some(len))?;
-        // `format_args!` serializes as a string without building one.
-        map.serialize_entry("schema", &format_args!("{}", self.document))?;
-        map.serialize_entry("data", self.data)?;
-        if let Some(total) = self.total {
-            map.serialize_entry("total", &total)?;
-        }
-        if let Some(summary) = self.summary {
-            map.serialize_entry("summary", summary)?;
-        }
-        if let Some(failures) = self.failures {
-            // Each entry is a failure document without `schema`.
-            let entries: Vec<Entry<'_>> = failures.iter().map(Entry).collect();
-            map.serialize_entry("failures", &entries)?;
-        }
-        map.end()
-    }
-}
-
-/// One serialized row, limited to `columns` and written in their order.
-struct Selected<'a> {
-    row: &'a Value,
-    columns: &'a [&'a str],
-}
-
-impl Serialize for Selected<'_> {
-    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        let mut map = serializer.serialize_map(Some(self.columns.len()))?;
-        for &name in self.columns {
-            // A name that is not a field of the row writes `null`, as the
-            // table writes `-`.
-            map.serialize_entry(name, self.row.get(name).unwrap_or(&Value::Null))?;
-        }
-        map.end()
     }
 }

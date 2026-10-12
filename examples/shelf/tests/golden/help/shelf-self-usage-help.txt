@@ -38,3 +38,5 @@ Columns:
   runs        The runs that show the pattern.
   command     The command path below the tool's name, such as `books show`, or the tool's name for its root command.
   suggestion  What the pattern suggests, or the figure that raised it.
+
+Effects: read-only, closed-world.

@@ -5,6 +5,7 @@
 //! `<tool> help <TOPIC>` prints, and file formats, whose schemas
 //! `<tool> schemas show` prints.
 
+pub(crate) mod effects;
 pub(crate) mod exit;
 mod format;
 pub(crate) mod leaf;
@@ -17,6 +18,7 @@ use clap::Command;
 use clap::builder::StyledStr;
 use clap::builder::styling::Style;
 
+pub use self::effects::Effects;
 pub use self::exit::Exit;
 pub use self::format::FileFormat;
 pub use self::leaf::{Column, Example, Leaf, quote};
@@ -326,9 +328,10 @@ impl Goal {
 /// command's own `after_help` and `after_long_help`. `extend` adds no
 /// `Columns:` sections and no `Next:` line, because describing the columns
 /// builds the row type's JSON Schema, and `extend` runs before parsing and
-/// cannot know whether help will print. A leaf without examples leaves its
-/// command unchanged, and of two leaves with one path only the first
-/// applies, as in `parse`.
+/// cannot know whether help will print. `extend` adds no `Effects:` line
+/// either, because `parse` prints that line with crumbkit's other lines. A
+/// leaf without examples leaves its command unchanged, and of two leaves
+/// with one path only the first applies, as in `parse`.
 ///
 /// `extend` skips a group whose path names no command or a command without
 /// visible subcommands, a leaf whose path names no command, and leaves every

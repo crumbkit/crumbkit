@@ -8,7 +8,7 @@ use clap::Command;
 use clap::builder::StyledStr;
 use clap::builder::styling::Style;
 
-use crate::help::{self, Guide, Leaf, leaf, topic};
+use crate::help::{self, Effects, Guide, Leaf, leaf, topic};
 
 /// Adds crumbkit's help lines to the root and to each command on `path`, and
 /// applies to each of those commands the groups of `guide` that name it. A
@@ -129,6 +129,10 @@ struct Sections {
     /// Whether the leaf has a document with columns, so `-h` ends with a
     /// `Next:` line that names the `--help` that lists them.
     columns: bool,
+    /// The line that names the leaf's effects, which `-h` and `--help`
+    /// print first among crumbkit's lines, or `None` when the leaf declares
+    /// none.
+    effects: Option<&'static str>,
 }
 
 /// Returns the sections of `leaf`, whose command line starts with `text`:
@@ -152,12 +156,14 @@ fn leaf_sections(
         short: short.into_iter().collect(),
         long,
         columns: leaf.has_columns(),
+        effects: leaf.get_effects().map(Effects::line),
     }
 }
 
 /// Sets the text that ends the help of `node`, whose path is `text`: the
 /// command's own `after_help` or `after_long_help`, the leaf's `sections`,
-/// and then crumbkit's lines. The lines are the global flags line in `-h`
+/// and then crumbkit's lines. The lines are the leaf's effects line in `-h`
+/// and `--help` when it declares effects, the global flags line in `-h`
 /// when `flags` is not empty, the topics line in `-h` and `--help` when
 /// `topics` is not empty, and a `Next:` line. The `Next:` line opens a
 /// subcommand in `-h` and `--help` when `node` has a visible subcommand, and
@@ -167,6 +173,10 @@ fn leaf_sections(
 fn set_help_lines(node: &mut Command, text: &str, flags: &str, topics: &str, sections: Sections) {
     let mut short = Vec::new();
     let mut long = Vec::new();
+    if let Some(effects) = sections.effects {
+        short.push(effects.to_owned());
+        long.push(effects.to_owned());
+    }
     if !flags.is_empty() {
         short.push(format!(
             "Global flags: {flags}. `{text} --help` describes them."

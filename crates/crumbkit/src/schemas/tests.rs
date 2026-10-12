@@ -177,7 +177,7 @@ fn a_document_schema_names_the_id_as_its_title_and_the_const_of_schema() {
 fn a_listing_without_a_summary_holds_data_and_total_and_no_summary() {
     let schema = document_schema(BOOKS_LIST).to_value();
 
-    assert_eq!(properties(&schema), ["data", "schema", "total"]);
+    assert_eq!(properties(&schema), ["data", "dry_run", "schema", "total"]);
     assert_eq!(schema["required"], json!(["schema", "data", "total"]));
     assert_eq!(schema["properties"]["data"]["type"], "array");
     assert_eq!(
@@ -194,7 +194,10 @@ fn a_listing_with_a_summary_requires_the_summary_and_holds_its_schema() {
 
     let schema = document_schema(SHELVED).to_value();
 
-    assert_eq!(properties(&schema), ["data", "schema", "summary", "total"]);
+    assert_eq!(
+        properties(&schema),
+        ["data", "dry_run", "schema", "summary", "total"]
+    );
     assert_eq!(
         schema["required"],
         json!(["schema", "data", "total", "summary"])
@@ -212,7 +215,7 @@ fn a_single_row_document_holds_the_row_schema_under_data() {
 
     let schema = document_schema(BOOK).to_value();
 
-    assert_eq!(properties(&schema), ["data", "schema"]);
+    assert_eq!(properties(&schema), ["data", "dry_run", "schema"]);
     assert_eq!(schema["required"], json!(["schema", "data"]));
     assert_eq!(schema["properties"]["data"]["$ref"], "#/$defs/Book");
 }
@@ -221,7 +224,7 @@ fn a_single_row_document_holds_the_row_schema_under_data() {
 fn a_vec_document_holds_an_array_of_rows_under_data() {
     let schema = document_schema(BOOKS_PURGE).to_value();
 
-    assert_eq!(properties(&schema), ["data", "schema"]);
+    assert_eq!(properties(&schema), ["data", "dry_run", "schema"]);
     assert_eq!(schema["properties"]["data"]["type"], "array");
 }
 
@@ -229,7 +232,10 @@ fn a_vec_document_holds_an_array_of_rows_under_data() {
 fn a_batch_document_holds_its_failures_as_failure_documents_without_schema() {
     let schema = document_schema(BOOKS_SHOW).to_value();
 
-    assert_eq!(properties(&schema), ["data", "failures", "schema"]);
+    assert_eq!(
+        properties(&schema),
+        ["data", "dry_run", "failures", "schema"]
+    );
     assert_eq!(schema["required"], json!(["schema", "data", "failures"]));
     let entry = &schema["properties"]["failures"]["items"];
     assert_eq!(entry["required"], json!(["code", "message", "recovery"]));
@@ -243,7 +249,10 @@ fn a_prose_document_holds_the_schema_of_its_value_under_data_and_requires_failur
 
     let schema = document_schema(SHELF_SUMMARY).to_value();
 
-    assert_eq!(properties(&schema), ["data", "failures", "schema"]);
+    assert_eq!(
+        properties(&schema),
+        ["data", "dry_run", "failures", "schema"]
+    );
     assert_eq!(schema["required"], json!(["schema", "data", "failures"]));
     assert_eq!(schema["properties"]["data"]["$ref"], "#/$defs/Shelved");
     assert!(schema["$defs"].get("NoRow").is_none());
@@ -439,4 +448,17 @@ fn the_checked_in_schemas_match_the_schemas_of_the_two_documents() {
             "a file under schemas/ differs from the generated schema; replace the file with the generated schema"
         );
     }
+}
+
+#[test]
+fn every_document_with_the_envelope_may_hold_dry_run_true_and_never_requires_it() {
+    let schema = document_schema(BOOKS_LIST).to_value();
+
+    assert_eq!(schema["properties"]["dry_run"]["const"], true);
+    assert!(
+        !schema["required"]
+            .as_array()
+            .unwrap()
+            .contains(&json!("dry_run"))
+    );
 }

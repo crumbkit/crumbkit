@@ -1,0 +1,8 @@
+# ADR-0040. Schemas
+
+These records decide the shape of the JSON documents that a tool prints and how a caller reads their schemas: the envelope, document ids and their versions, and the `schemas list` and `schemas show` commands with the checks that pin each schema.
+
+## Children
+
+- [ADR-0007. JSON schemas](0007-json-schemas.md)
+- [ADR-0035. Schema commands](0035-schema-commands.md)

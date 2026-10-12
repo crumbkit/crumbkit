@@ -167,7 +167,7 @@ option.
 [crumbkit-test]: ../crumbkit-test/README.md
 [crumbkit-core]: ../crumbkit-core/README.md
 [ADR-0001]: ../../docs/decisions/api/0001-error-model.md
-[ADR-0007]: ../../docs/decisions/api/0007-json-schemas.md
+[ADR-0007]: ../../docs/decisions/api/schemas/0007-json-schemas.md
 [ADR-0016]: ../../docs/decisions/api/output/0016-result-formats.md
 [ADR-0021]: ../../docs/decisions/api/help/0021-help-pages.md
 [ADR-0023]: ../../docs/decisions/api/help/0023-help-command-and-topics.md
@@ -176,4 +176,4 @@ option.
 [ADR-0029]: ../../docs/decisions/api/usage/0029-usage-log.md
 [ADR-0030]: ../../docs/decisions/api/usage/0030-trace-context.md
 [ADR-0032]: ../../docs/decisions/api/0032-core-crate.md
-[ADR-0035]: ../../docs/decisions/api/0035-schema-commands.md
+[ADR-0035]: ../../docs/decisions/api/schemas/0035-schema-commands.md

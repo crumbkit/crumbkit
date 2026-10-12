@@ -119,7 +119,9 @@ fn a_command_line_that_parses_returns_the_parsed_type_and_the_command() {
         panic!("the command line did not parse");
     };
     assert!(flags.json);
-    assert_eq!(command.get_name(), "tool");
+    assert_eq!(command.command().get_name(), "tool");
+    let words = ["--json", "planets", "show", "Mars"].map(std::ffi::OsString::from);
+    assert_eq!(command.words, Some(words.to_vec()));
     assert_eq!(out, b"");
     assert_eq!(err, b"");
 }

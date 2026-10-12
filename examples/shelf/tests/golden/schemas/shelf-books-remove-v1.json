@@ -1,0 +1,82 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "shelf/books-remove/v1",
+  "description": "The books with the given ids, which the run removes from the shelf, or would remove on a dry run.",
+  "type": "object",
+  "properties": {
+    "data": {
+      "description": "The rows, in order.",
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/Book"
+      }
+    },
+    "dry_run": {
+      "description": "Present, and true, when the run was a dry run that changed nothing.",
+      "const": true
+    },
+    "schema": {
+      "description": "The id of this document.",
+      "const": "shelf/books-remove/v1"
+    }
+  },
+  "required": [
+    "schema",
+    "data"
+  ],
+  "$defs": {
+    "Book": {
+      "description": "One book in the catalogue. `show` clones a book for each id it is given.",
+      "type": "object",
+      "properties": {
+        "author": {
+          "description": "The book's author.",
+          "type": "string"
+        },
+        "form": {
+          "description": "The book's literary form.",
+          "$ref": "#/$defs/Form"
+        },
+        "id": {
+          "description": "The book's id, unique within the catalogue.",
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0
+        },
+        "title": {
+          "description": "The book's title.",
+          "type": "string"
+        },
+        "year": {
+          "description": "The year the book was first published.",
+          "type": "integer",
+          "format": "uint16",
+          "maximum": 65535,
+          "minimum": 0
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "author",
+        "year",
+        "form"
+      ]
+    },
+    "Form": {
+      "description": "The literary form of a book, which serializes in lower case.",
+      "oneOf": [
+        {
+          "description": "One long work of prose fiction.",
+          "type": "string",
+          "const": "novel"
+        },
+        {
+          "description": "A collection of short stories.",
+          "type": "string",
+          "const": "short stories"
+        }
+      ]
+    }
+  }
+}

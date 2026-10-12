@@ -10,7 +10,7 @@ use crate::tree::{self, DASHED_NAME};
 mod tests;
 
 /// The rules of the grammar check that a tool can opt out of.
-const RULES: [Rule; 3] = [Rule::RootLeaf, Rule::ResourceName, Rule::DryRun];
+const RULES: [Rule; 2] = [Rule::RootLeaf, Rule::ResourceName];
 
 /// The verbs that every tool has, which a tool does not pass to
 /// [`check_grammar`].
@@ -37,22 +37,17 @@ const BUILT_IN_VERBS: [&str; 2] = ["list", "show"];
 ///   from [`Rule::ResourceName`] covers it. Resources may nest;
 /// - an entry of `verbs` that is `list` or `show`, or whose name breaks the
 ///   same rule as a resource's;
-/// - an argument anywhere in the tree with the long name `--dry-run`, which
-///   crumbkit reserves for its write verbs, unless an opt-out from
-///   [`Rule::DryRun`] covers its command;
 /// - a command below `command` named `help` or with the alias `help`,
 ///   because crumbkit reserves that word for asking for help. crumbkit's
 ///   `parse` answers it below every command with subcommands, unless such a
 ///   command takes it, so this rule has no opt-out;
-/// - an opt-out from one of the three rules above that names no command or
-///   excuses no problem.
+/// - an opt-out from [`Rule::RootLeaf`] or [`Rule::ResourceName`] that
+///   names no command or excuses no problem.
 ///
 /// An opt-out covers the command it names and every command below it, and
 /// the check reads only the opt-outs of its own rules from `allow`.
 ///
-/// A command that the tool gives to `Command::defer` adds its arguments only
-/// when clap builds it, and the check reads the unbuilt tree, so it sees no
-/// arguments on such a command and checks none of them.
+/// [`check_effects`](crate::check_effects) checks `--dry-run`.
 ///
 /// ```
 /// use clap::Command;
@@ -128,13 +123,6 @@ pub fn check_grammar(command: &Command, verbs: &[&str], allow: &[Allow]) {
             problems.push(format!(
                 "{path}: the command answers to `help`, and crumbkit reserves that word for asking for help"
             ));
-        }
-        for arg in command.get_arguments() {
-            if arg.get_long() == Some("dry-run") && !allowances.excuses(Rule::DryRun, below) {
-                problems.push(format!(
-                    "{path}: the command has the argument `--dry-run`, and crumbkit reserves that name for its write verbs"
-                ));
-            }
         }
     }
     allowances.report(command, "grammar", problems);

@@ -60,12 +60,12 @@
 //! const SPELLING: Spelling = Spelling::COLONS;
 //!
 //! fn run(args: &[&str]) -> ExitCode {
-//!     let (mut cli, command) =
+//!     let (mut cli, parsed) =
 //!         match crumbkit::parse_from::<Cli, _, _>(Cli::command(), &GUIDE, SPELLING, args) {
 //!             Ok(parsed) => parsed,
 //!             Err(stop) => return stop.code(),
 //!         };
-//!     cli.output.set_command(command);
+//!     cli.output.set_command(parsed);
 //!     match cli.resource {
 //!         Resource::Schemas { command } => match command {
 //!             // `list` and `show` build the command tree in `cli.output`,

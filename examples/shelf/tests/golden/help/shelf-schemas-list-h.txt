@@ -10,5 +10,6 @@ Options:
 Examples:
   shelf schemas list
 
+Effects: read-only, closed-world.
 Global flags: --json, --fields <FIELD>, --long, --full. `shelf schemas list --help` describes them.
 Next: shelf schemas list --help explains each column.

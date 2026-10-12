@@ -36,8 +36,9 @@ pub struct Call {
     target: CallTarget,
 }
 
-/// The two forms of a [`Call`]: a command with arguments that a tool names,
-/// and the `-h` of a command that the caller typed.
+/// The three forms of a [`Call`]: a command with arguments that a tool
+/// names, the `-h` of a command that the caller typed, and a command line as
+/// the caller typed it.
 ///
 /// [`Call::target`] returns it, so crumbkit can render the call. The enum
 /// has no `#[non_exhaustive]`, because crumbkit renders every form, and a
@@ -57,6 +58,9 @@ pub enum CallTarget {
     /// of the subcommands from the root to the command, as the caller typed
     /// them and the tree resolved them.
     Help(Vec<String>),
+    /// A command line as the caller typed it, which [`Call::typed`] names. It
+    /// holds the words after the program name, in order.
+    Typed(Vec<String>),
 }
 
 /// One argument of a [`CallTarget::Command`], named by its clap id.
@@ -113,6 +117,31 @@ impl Call {
     pub const fn help(path: Vec<String>) -> Self {
         Self {
             target: CallTarget::Help(path),
+        }
+    }
+
+    /// Returns a call of the command line whose words after the program
+    /// name are `words`, such as `books remove 2 --yes`.
+    ///
+    /// `crumbkit::Output::confirm` uses it as the recovery of a run that
+    /// needs `--yes`, because the caller's own words, with `--yes` added,
+    /// are the command to run next. The call renders each word without
+    /// looking it up, and quotes a word that a POSIX shell would split or
+    /// expand. A typed call takes no arguments, so [`Call::arg`] and
+    /// [`Call::value`] leave it unchanged.
+    ///
+    /// ```
+    /// use crumbkit_core::{Call, CallTarget};
+    ///
+    /// let words = vec!["books".to_owned(), "remove".to_owned(), "--yes".to_owned()];
+    /// let call = Call::typed(words.clone());
+    ///
+    /// assert_eq!(call.target(), &CallTarget::Typed(words));
+    /// ```
+    #[must_use]
+    pub const fn typed(words: Vec<String>) -> Self {
+        Self {
+            target: CallTarget::Typed(words),
         }
     }
 

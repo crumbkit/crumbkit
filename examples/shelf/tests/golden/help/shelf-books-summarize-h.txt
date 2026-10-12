@@ -12,4 +12,5 @@ Examples:
   shelf books summarize
   shelf books summarize 2 5
 
+Effects: read-only, closed-world.
 Global flags: --json, --fields <FIELD>, --long, --full. `shelf books summarize --help` describes them.

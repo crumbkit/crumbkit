@@ -9,6 +9,7 @@ use std::process::ExitCode;
 use clap::error::ErrorKind;
 use clap::{Command, FromArgMatches};
 
+pub use self::parsed::Parsed;
 pub use self::stop::Stop;
 
 use self::lines::{add_help_lines, has_visible_subcommands};
@@ -18,6 +19,7 @@ use crate::refusal::Refusal;
 use crate::{Sink, Spelling};
 
 mod lines;
+mod parsed;
 mod stop;
 pub(crate) mod suggestion;
 #[cfg(test)]
@@ -25,11 +27,11 @@ mod tests;
 mod walk;
 
 /// Parses the process's command line against `command` with the tool's
-/// `guide`, and returns the tool's parsed type and the command that it
-/// parsed against.
+/// `guide`, and returns the tool's parsed type and a [`Parsed`], which holds
+/// the command that it parsed against and the words that the caller typed.
 ///
 /// A tool's `main` calls it in place of clap's `Cli::parse`, and passes the
-/// returned command to [`Output::set_command`](crate::Output::set_command).
+/// returned `Parsed` to [`Output::set_command`](crate::Output::set_command).
 /// A tool without goal headings or topics passes `&Guide::new()`:
 ///
 /// ```no_run
@@ -49,11 +51,11 @@ mod walk;
 ///
 /// fn main() -> ExitCode {
 ///     let parsed = crumbkit::parse::<Cli>(Cli::command(), &Guide::new(), Spelling::COLONS);
-///     let (mut cli, command) = match parsed {
+///     let (mut cli, parsed) = match parsed {
 ///         Ok(parsed) => parsed,
 ///         Err(stop) => return stop.code(),
 ///     };
-///     cli.output.set_command(command);
+///     cli.output.set_command(parsed);
 ///     // Run the command, then return `crumbkit::finish(...)`.
 ///     ExitCode::SUCCESS
 /// }
@@ -73,7 +75,7 @@ pub fn parse<C: FromArgMatches>(
     command: Command,
     guide: &Guide,
     spelling: Spelling,
-) -> Result<(C, Command), Stop> {
+) -> Result<(C, Parsed), Stop> {
     parse_from(command, guide, spelling, std::env::args_os())
 }
 
@@ -90,7 +92,7 @@ pub fn parse_from<C, I, T>(
     guide: &Guide,
     spelling: Spelling,
     args: I,
-) -> Result<(C, Command), Stop>
+) -> Result<(C, Parsed), Stop>
 where
     C: FromArgMatches,
     I: IntoIterator<Item = T>,
@@ -151,6 +153,10 @@ where
 ///   `Next: shelf books list --help explains each column.` A prose
 ///   document has no columns, so its leaf has neither the line nor the
 ///   column sections.
+/// - `-h` and `--help` of a leaf that declares its
+///   [`Effects`](crate::help::Effects) print them on one line before
+///   crumbkit's lines, such as `Effects: destructive, idempotent,
+///   closed-world.` A leaf without effects prints no such line.
 ///
 /// A leaf off the typed path, and a leaf whose path names no command, leave
 /// every help page unchanged.
@@ -217,7 +223,7 @@ pub fn parse_to<C, I, T, O, E>(
     guide: &Guide,
     spelling: Spelling,
     args: I,
-) -> Result<(C, Command), Stop>
+) -> Result<(C, Parsed), Stop>
 where
     C: FromArgMatches,
     I: IntoIterator<Item = T>,
@@ -231,14 +237,14 @@ where
 /// Parses `args` against `command` as [`parse_to`] describes. With the
 /// `tracing` feature, parsing runs inside the `crumbkit.parse` span, which
 /// records the exit code when parsing ends the run (ADR-0030).
-fn run<C, I, T, O, E>(
-    sink: &mut Sink<O, E>,
+fn run<C, I, T, O, E, R>(
+    sink: &mut Sink<O, E, R>,
     command: Command,
     guide: &Guide,
     spelling: Spelling,
     args: I,
     colour: bool,
-) -> Result<(C, Command), Stop>
+) -> Result<(C, Parsed), Stop>
 where
     C: FromArgMatches,
     I: IntoIterator<Item = T>,
@@ -261,14 +267,14 @@ where
 /// Parses `args` against `command` as [`parse_to`] describes. With `colour`,
 /// help and the version print through clap, which writes them to standard
 /// output with the colours that the tool's clap features allow.
-fn read<C, I, T, O, E>(
-    sink: &mut Sink<O, E>,
+fn read<C, I, T, O, E, R>(
+    sink: &mut Sink<O, E, R>,
     mut command: Command,
     guide: &Guide,
     spelling: Spelling,
     args: I,
     colour: bool,
-) -> Result<(C, Command), Stop>
+) -> Result<(C, Parsed), Stop>
 where
     C: FromArgMatches,
     I: IntoIterator<Item = T>,
@@ -330,12 +336,14 @@ where
     crate::trace::spans::command(&path);
     add_help_lines(&mut command, guide, has_topics, &path, long_help);
 
+    // `Output::confirm` repeats the typed words, so they outlive parsing.
+    let words = args.get(1..).unwrap_or_default().to_vec();
     let error = match command.try_get_matches_from_mut(args) {
         Ok(mut matches) => {
             #[cfg(feature = "usage-log")]
             crate::usage::parsed(&command, &matches);
             match C::from_arg_matches_mut(&mut matches) {
-                Ok(parsed) => return Ok((parsed, command)),
+                Ok(parsed) => return Ok((parsed, Parsed::new(command, words))),
                 Err(error) => error,
             }
         }
@@ -413,8 +421,8 @@ fn ask_for_help(args: &mut Vec<OsString>, position: usize) {
 /// write fails for another reason. With `colour`, clap's `Error::print`
 /// writes it to standard output with clap's colours, and otherwise it goes
 /// to the sink's output writer as plain text.
-fn print_page<O: Write, E: Write>(
-    sink: &mut Sink<O, E>,
+fn print_page<O: Write, E: Write, R>(
+    sink: &mut Sink<O, E, R>,
     error: &clap::Error,
     colour: bool,
 ) -> ExitCode {
@@ -428,14 +436,14 @@ fn print_page<O: Write, E: Write>(
 
 /// Prints `text` to the sink's output writer as plain text and returns the
 /// exit code, as [`print_page`] does.
-fn print_text<O: Write, E: Write>(sink: &mut Sink<O, E>, text: &dyn Display) -> ExitCode {
+fn print_text<O: Write, E: Write, R>(sink: &mut Sink<O, E, R>, text: &dyn Display) -> ExitCode {
     let written = write!(sink.out, "{text}").and_then(|()| sink.out.flush());
     exit_code(sink, written)
 }
 
 /// Returns the exit code after a page was `written`, and reports a failed
 /// write on the sink's error writer.
-fn exit_code<O: Write, E: Write>(sink: &mut Sink<O, E>, written: io::Result<()>) -> ExitCode {
+fn exit_code<O: Write, E: Write, R>(sink: &mut Sink<O, E, R>, written: io::Result<()>) -> ExitCode {
     match written {
         Ok(()) => ExitCode::SUCCESS,
         // A reader that stops early, as `shelf -h | head -1` does, closes the

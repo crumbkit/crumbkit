@@ -7,6 +7,10 @@
     "data": {
       "$ref": "#/$defs/Summary"
     },
+    "dry_run": {
+      "description": "Present, and true, when the run was a dry run that changed nothing.",
+      "const": true
+    },
     "failures": {
       "description": "The failures that the answer leaves out. It is empty when nothing failed.",
       "type": "array",

@@ -32,3 +32,5 @@ Examples:
 
   reading to-read list --all
           Print every entry of the to-read list
+
+Effects: read-only, closed-world.

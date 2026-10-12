@@ -4,15 +4,15 @@ use std::path::PathBuf;
 
 use clap::{Args, Parser, Subcommand};
 use crumbkit::commands::{COMMANDS_LIST, CommandsList};
-use crumbkit::help::{Example, Goal, Group, Guide, Leaf, Topic};
+use crumbkit::help::{Effects, Example, Goal, Group, Guide, Leaf, Topic};
 use crumbkit::schemas::{SCHEMAS_LIST, SCHEMAS_SHOW, SchemasList, SchemasShow};
 use crumbkit::usage::{SELF_FIGURES_LIST, SELF_USAGE, SelfFigures, SelfUsage};
-use crumbkit::{Output, Page};
+use crumbkit::{DryRun, Output, Page, Yes};
 use crumbkit_aliases::AliasesList;
 use schemars::JsonSchema;
 use serde::Serialize;
 
-use crate::books::{BOOKS_LIST, BOOKS_SHOW, BOOKS_SUMMARIZE, MOST_IDS};
+use crate::books::{BOOKS_LIST, BOOKS_REMOVE, BOOKS_SHOW, BOOKS_SUMMARIZE, MOST_IDS};
 
 #[cfg(test)]
 mod tests;
@@ -52,16 +52,29 @@ pub const GUIDE: Guide = Guide::new()
                 Example::new(&[], "Print the first page of books"),
                 Example::new(&["--all"], "Print every book"),
             ])
+            .effects(Effects::read_only())
             .document(BOOKS_LIST),
         Leaf::new(&["books", "show"])
             .examples(&[Example::new(&["2", "5"], "Show books 2 and 5")])
+            .effects(Effects::read_only())
             .document(BOOKS_SHOW),
         Leaf::new(&["books", "summarize"])
             .examples(&[
                 Example::new(&[], "Summarize the whole catalogue"),
                 Example::new(&["2", "5"], "Summarize books 2 and 5"),
             ])
+            .effects(Effects::read_only())
             .document(BOOKS_SUMMARIZE),
+        Leaf::new(&["books", "remove"])
+            .examples(&[
+                Example::new(
+                    &["2", "--dry-run"],
+                    "Print the book that removing book 2 would remove",
+                ),
+                Example::new(&["2", "--yes"], "Remove book 2 without asking"),
+            ])
+            .effects(Effects::destructive().idempotent())
+            .document(BOOKS_REMOVE),
         Leaf::new(&["commands", "list"])
             .examples(&[
                 Example::new(&[], "List every command"),
@@ -74,21 +87,25 @@ pub const GUIDE: Guide = Guide::new()
                     "Print books list with its arguments, examples and columns as JSON",
                 ),
             ])
+            .effects(Effects::read_only())
             .document(COMMANDS_LIST),
         Leaf::new(&["schemas", "list"])
             .examples(&[Example::new(&[], "List every document that shelf prints")])
+            .effects(Effects::read_only())
             .document(SCHEMAS_LIST),
         Leaf::new(&["schemas", "show"])
             .examples(&[Example::new(
                 &["shelf/books-list/v1"],
                 "Print the JSON Schema of the document that books list prints",
             )])
+            .effects(Effects::read_only())
             .document(SCHEMAS_SHOW),
         Leaf::new(&["self", "usage"])
             .examples(&[
                 Example::new(&[], "Report the findings of the last 7 days"),
                 Example::new(&["--since", "1d"], "Report the findings of the last day"),
             ])
+            .effects(Effects::read_only())
             .document(SELF_USAGE),
         Leaf::new(&["self", "figures", "list"])
             .examples(&[
@@ -101,6 +118,7 @@ pub const GUIDE: Guide = Guide::new()
                     "Print the figures of the commands in a copy of the usage log",
                 ),
             ])
+            .effects(Effects::read_only())
             .document(SELF_FIGURES_LIST),
     ])
     .topics(&[Topic::new(
@@ -160,6 +178,8 @@ pub(crate) enum BooksCommand {
     Show(BooksShow),
     /// Describe the books with the given ids, or the whole catalogue, in one sentence.
     Summarize(BooksSummarize),
+    /// Remove the books with the given ids from the shelf, so list and show skip them.
+    Remove(BooksRemove),
 }
 
 /// The commands for shelf's own commands.
@@ -256,4 +276,21 @@ pub(crate) struct BooksSummarize {
     /// The ids of the books to describe, separated by spaces; without ids, the whole catalogue
     #[arg(value_name = "ID", num_args = 0..=MOST_IDS)]
     pub(crate) ids: Vec<u32>,
+}
+
+/// The arguments of `shelf books remove`: the ids of the books to remove,
+/// and the flags that skip the change or the question.
+#[derive(Debug, Args)]
+pub(crate) struct BooksRemove {
+    /// The ids of the books to remove, separated by spaces
+    #[arg(required = true, value_name = "ID", num_args = 1..=MOST_IDS)]
+    pub(crate) ids: Vec<u32>,
+
+    /// Print the books that the command would remove, and remove nothing.
+    #[command(flatten)]
+    pub(crate) dry_run: DryRun,
+
+    /// Remove the books without asking.
+    #[command(flatten)]
+    pub(crate) yes: Yes,
 }

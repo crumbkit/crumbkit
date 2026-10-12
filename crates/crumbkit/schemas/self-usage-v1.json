@@ -11,6 +11,10 @@
         "$ref": "#/$defs/FindingRow"
       }
     },
+    "dry_run": {
+      "description": "Present, and true, when the run was a dry run that changed nothing.",
+      "const": true
+    },
     "schema": {
       "description": "The id of this document.",
       "const": "crumbkit/self-usage/v1"

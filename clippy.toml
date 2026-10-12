@@ -19,6 +19,7 @@ disallowed-methods = [
     { path = "std::process::exit", reason = "process effects belong to the module that owns them; it suppresses this with #[expect] and a reason" },
     { path = "std::process::Command::new", reason = "process effects belong to the module that owns them; it suppresses this with #[expect] and a reason" },
     { path = "std::io::stdout", reason = "standard output belongs to the module that owns it; it suppresses this with #[expect] and a reason" },
+    { path = "std::io::stdin", reason = "standard input belongs to the module that owns it; it suppresses this with #[expect] and a reason" },
     { path = "std::io::stderr", reason = "standard error belongs to the module that owns it; it suppresses this with #[expect] and a reason" },
     { path = "std::fs::write", reason = "file writes belong to the module that owns them; it suppresses this with #[expect] and a reason" },
     { path = "std::fs::File::create", reason = "file writes belong to the module that owns them; it suppresses this with #[expect] and a reason" },

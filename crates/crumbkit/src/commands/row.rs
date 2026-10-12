@@ -9,15 +9,19 @@ use serde::Serialize;
 use serde::ser::{SerializeStruct, Serializer};
 
 use crate::Row;
-use crate::help::Guide;
 use crate::help::leaf::quote;
+use crate::help::{Effects, Guide, Leaf, effects};
+
+#[cfg(test)]
+mod tests;
 
 /// One visible command of a branch, as `commands list` prints it: what the
 /// command's `-h` and `--help` show, apart from layout.
 ///
 /// The text table shows the path and the about text. The arguments,
-/// examples, columns and exit codes are lists, which a table cell prints as compact
-/// JSON, so they appear with `--json --full` or `--fields`.
+/// examples, columns, exit codes and effects are lists or objects, which a
+/// table cell prints as compact JSON, so they appear with `--json --full` or
+/// `--fields`.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct CommandRow {
     // The `JsonSchema` impl below describes each field of this struct and of
@@ -29,6 +33,7 @@ pub struct CommandRow {
     examples: Vec<CommandExample>,
     columns: Vec<CommandColumn>,
     exits: Vec<CommandExit>,
+    effects: Option<Effects>,
 }
 
 /// One argument of a command, as the command's help shows it.
@@ -149,6 +154,7 @@ impl CommandRow {
             examples,
             columns,
             exits,
+            effects: leaf.and_then(Leaf::get_effects),
         }
     }
 }
@@ -329,6 +335,7 @@ impl Serialize for CommandRow {
         row.serialize_field("examples", &self.examples)?;
         row.serialize_field("columns", &self.columns)?;
         row.serialize_field("exits", &self.exits)?;
+        row.serialize_field("effects", &self.effects)?;
         row.end()
     }
 }
@@ -477,8 +484,9 @@ impl JsonSchema for CommandRow {
                         "required": ["exit", "meaning"],
                     },
                 },
+                "effects": effects::schema(),
             },
-            "required": ["path", "about", "long_about", "arguments", "examples", "columns", "exits"],
+            "required": ["path", "about", "long_about", "arguments", "examples", "columns", "exits", "effects"],
         })
     }
 }

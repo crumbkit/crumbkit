@@ -11,6 +11,10 @@
         "$ref": "#/$defs/CommandRow"
       }
     },
+    "dry_run": {
+      "description": "Present, and true, when the run was a dry run that changed nothing.",
+      "const": true
+    },
     "schema": {
       "description": "The id of this document.",
       "const": "crumbkit/commands-list/v1"
@@ -154,6 +158,37 @@
             ]
           }
         },
+        "effects": {
+          "description": "The command's effects, as the Model Context Protocol's tool annotations name them, or null when the tool declares none, in which case a caller assumes the command may destroy data.",
+          "type": [
+            "object",
+            "null"
+          ],
+          "properties": {
+            "destructive": {
+              "description": "Whether the command may delete or overwrite data.",
+              "type": "boolean"
+            },
+            "idempotent": {
+              "description": "Whether a second run with the same arguments changes nothing more than the first.",
+              "type": "boolean"
+            },
+            "open_world": {
+              "description": "Whether the command reaches systems outside the tool, such as a web service.",
+              "type": "boolean"
+            },
+            "read_only": {
+              "description": "Whether the command changes nothing.",
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "read_only",
+            "destructive",
+            "idempotent",
+            "open_world"
+          ]
+        },
         "examples": {
           "description": "The examples of the guide's leaf for the command, in guide order.",
           "type": "array",
@@ -217,7 +252,8 @@
         "arguments",
         "examples",
         "columns",
-        "exits"
+        "exits",
+        "effects"
       ]
     }
   }

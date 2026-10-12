@@ -41,3 +41,5 @@ Columns:
 
 Columns that --long adds:
   form  The book's literary form.
+
+Effects: read-only, closed-world.

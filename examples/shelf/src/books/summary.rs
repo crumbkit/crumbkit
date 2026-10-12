@@ -3,12 +3,13 @@
 
 use std::collections::BTreeSet;
 use std::fmt;
+use std::path::Path;
 
 use crumbkit::{Document, Prose};
 use schemars::JsonSchema;
 use serde::Serialize;
 
-use super::{BooksError, CATALOGUE, Form, find};
+use super::{BooksError, CATALOGUE, Form, find, read_removed};
 use crate::cli::BooksSummarize;
 
 /// The document that `shelf books summarize` prints: the counts and years of
@@ -83,16 +84,22 @@ fn counted(count: u32, one: &str, many: &str) -> String {
 }
 
 /// Returns the summary of the books that `args` names, or of the whole
-/// catalogue when it names none. A repeated id counts once.
+/// shelf when it names none. A repeated id counts once. The shelf is the
+/// catalogue without the books that the file at `removed` names.
 ///
 /// The result holds one `BooksError::NotFound` naming every id that the
-/// catalogue lacks, each once and in the order given, and no failure when
+/// shelf lacks, each once and in the order given, and no failure when
 /// every id names a book.
-#[expect(
-    clippy::unnecessary_wraps,
-    reason = "every shelf handler returns Result<_, BooksError>, so main passes each result to finish in the same way"
-)]
-pub(crate) fn summarize(args: &BooksSummarize) -> Result<Prose<Summary, BooksError>, BooksError> {
+///
+/// # Errors
+///
+/// Returns `BooksError::RemovedFile` when the file of removed books cannot
+/// be read.
+pub(crate) fn summarize(
+    args: &BooksSummarize,
+    removed: Option<&Path>,
+) -> Result<Prose<Summary, BooksError>, BooksError> {
+    let removed = read_removed(removed)?;
     let mut ids = Vec::new();
     for &id in &args.ids {
         if !ids.contains(&id) {
@@ -100,13 +107,17 @@ pub(crate) fn summarize(args: &BooksSummarize) -> Result<Prose<Summary, BooksErr
         }
     }
     if args.ids.is_empty() {
-        ids = CATALOGUE.iter().map(|book| book.id).collect();
+        ids = CATALOGUE
+            .iter()
+            .map(|book| book.id)
+            .filter(|id| !removed.contains(id))
+            .collect();
     }
     let mut summary = Summary::default();
     let mut authors = BTreeSet::new();
     let mut missing = Vec::new();
     for id in ids {
-        let Ok(book) = find(id) else {
+        let Ok(book) = find(id, &removed) else {
             missing.push(id);
             continue;
         };

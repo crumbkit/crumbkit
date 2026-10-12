@@ -43,3 +43,5 @@ Examples:
 Columns:
   path   The command line that runs the command, such as `shelf books list`.
   about  The command's one-line description, or its full description when it has no one-line description.
+
+Effects: read-only, closed-world.

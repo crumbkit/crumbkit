@@ -36,3 +36,5 @@ Examples:
 Columns:
   position  The entry's position in the list, counting from 1.
   title     The title of the book.
+
+Effects: read-only, closed-world.

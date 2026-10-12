@@ -15,6 +15,7 @@ use crate::{Document, Rows, Shape};
 /// document's description. Its properties follow the [`Shape`] of `T`:
 ///
 /// - `schema` holds the id.
+/// - `dry_run` is `true` on a dry run, and absent otherwise.
 /// - `data` holds the row for [`Shape::Row`], the value for
 ///   [`Shape::Prose`], and an array of rows for every other shape.
 /// - `total` holds the number of rows that matched, for [`Shape::Listing`].
@@ -78,6 +79,14 @@ pub(crate) fn envelope<T: Rows>(document: Document<()>) -> Schema {
         json_schema!({
             "description": "The id of this document.",
             "const": document.to_string(),
+        })
+        .to_value(),
+    );
+    properties.insert(
+        "dry_run".to_owned(),
+        json_schema!({
+            "description": "Present, and true, when the run was a dry run that changed nothing.",
+            "const": true,
         })
         .to_value(),
     );

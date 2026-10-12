@@ -4,7 +4,7 @@
 
 use clap::{Args, Parser, Subcommand};
 use crumbkit::commands::{COMMANDS_LIST, CommandsList};
-use crumbkit::help::{Example, Guide, Leaf};
+use crumbkit::help::{Effects, Example, Guide, Leaf};
 use crumbkit::schemas::{SCHEMAS_LIST, SCHEMAS_SHOW, SchemasList, SchemasShow};
 use crumbkit::{Output, Page};
 
@@ -33,6 +33,7 @@ pub const GUIDE: Guide = Guide::new().leaves(&[
             &["--list", "to-read"],
             "Print the first page of the to-read list",
         )])
+        .effects(Effects::read_only())
         .document(ENTRIES_LIST),
     Leaf::new(&["commands", "list"])
         .examples(&[
@@ -42,15 +43,18 @@ pub const GUIDE: Guide = Guide::new().leaves(&[
                 "Print the list command of the to-read list with its arguments and examples as JSON",
             ),
         ])
+        .effects(Effects::read_only())
         .document(COMMANDS_LIST),
     Leaf::new(&["schemas", "list"])
         .examples(&[Example::new(&[], "List every document that reading prints")])
+        .effects(Effects::read_only())
         .document(SCHEMAS_LIST),
     Leaf::new(&["schemas", "show"])
         .examples(&[Example::new(
             &["reading/entries-list/v1"],
             "Print the JSON Schema of the document that each list command prints",
         )])
+        .effects(Effects::read_only())
         .document(SCHEMAS_SHOW),
 ]);
 

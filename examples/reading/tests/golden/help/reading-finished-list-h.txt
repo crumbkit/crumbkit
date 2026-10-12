@@ -11,4 +11,5 @@ Examples:
   reading finished list
   reading finished list --all
 
+Effects: read-only, closed-world.
 Global flags: --json, --fields <FIELD>, --long, --full. `reading finished list --help` describes them.

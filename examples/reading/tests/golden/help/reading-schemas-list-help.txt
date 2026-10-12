@@ -37,3 +37,5 @@ Columns:
 
 Columns that --long adds:
   commands  The command lines that print the document. It is empty for the failure document, which every command prints when it fails with --json, and for a file format.
+
+Effects: read-only, closed-world.

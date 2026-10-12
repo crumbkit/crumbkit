@@ -283,3 +283,14 @@ fn a_single_hyphen_is_a_value_and_renders_as_a_positional() {
 
     assert_eq!(render(&call).unwrap(), "shelf books show -");
 }
+
+#[test]
+fn a_typed_call_renders_its_words_after_the_root_quoting_each_word_a_shell_would_split() {
+    let words = ["admin", "Le Guin", "--yes", "--", "-7"].map(str::to_owned);
+    let call = Call::typed(words.to_vec());
+
+    assert_eq!(
+        call.render(&mut Tool::command()).unwrap(),
+        "shelf admin 'Le Guin' --yes -- -7"
+    );
+}

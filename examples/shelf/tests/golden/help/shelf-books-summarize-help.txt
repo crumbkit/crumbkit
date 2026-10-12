@@ -28,3 +28,5 @@ Examples:
 
   shelf books summarize 2 5
           Summarize books 2 and 5
+
+Effects: read-only, closed-world.

@@ -1,6 +1,6 @@
 //! Tests for the grammar check.
 
-use clap::{Arg, ArgAction, Command};
+use clap::Command;
 
 use super::check_grammar;
 use crate::allow::{Allow, Rule};
@@ -89,25 +89,6 @@ fn a_passed_verb_that_is_built_in_or_badly_formed_fails() {
 }
 
 #[test]
-fn an_argument_named_dry_run_fails_anywhere_in_the_tree() {
-    let dry_run = || {
-        Arg::new("dry-run")
-            .long("dry-run")
-            .action(ArgAction::SetTrue)
-    };
-    let shelf = Command::new("shelf")
-        .arg(dry_run())
-        .subcommand(Command::new("books").subcommand(Command::new("list").arg(dry_run())));
-
-    assert_eq!(
-        panic_message(|| check_grammar(&shelf, &[], &[])).unwrap(),
-        "the command tree breaks crumbkit's grammar:\n\
-         shelf: the command has the argument `--dry-run`, and crumbkit reserves that name for its write verbs\n\
-         shelf books list: the command has the argument `--dry-run`, and crumbkit reserves that name for its write verbs"
-    );
-}
-
-#[test]
 fn a_command_below_the_one_passed_in_named_or_aliased_help_fails_the_check() {
     let list = || Command::new("list");
     let shelf = Command::new("shelf")
@@ -145,39 +126,13 @@ fn a_leaf_directly_under_the_tool_passes_when_an_opt_out_names_it_and_its_other_
     )];
     let shelf = Command::new("shelf")
         .subcommand(Command::new("books").subcommand(Command::new("list")))
-        .subcommand(
-            Command::new("version").arg(
-                Arg::new("dry-run")
-                    .long("dry-run")
-                    .action(ArgAction::SetTrue),
-            ),
-        );
+        .subcommand(Command::new("version").alias("help"));
 
     assert_eq!(
         panic_message(|| check_grammar(&shelf, &[], ALLOW)).unwrap(),
         "the command tree breaks crumbkit's grammar:\n\
-         shelf version: the command has the argument `--dry-run`, and crumbkit reserves that name for its write verbs"
+         shelf version: the command answers to `help`, and crumbkit reserves that word for asking for help"
     );
-}
-
-#[test]
-fn a_command_keeps_its_own_dry_run_when_an_opt_out_names_it() {
-    const ALLOW: &[Allow] = &[Allow::new(
-        Rule::DryRun,
-        "books",
-        "The tool's scripts pass `--dry-run` today.",
-    )];
-    let shelf = Command::new("shelf").subcommand(
-        Command::new("books").subcommand(
-            Command::new("import").arg(
-                Arg::new("dry-run")
-                    .long("dry-run")
-                    .action(ArgAction::SetTrue),
-            ),
-        ),
-    );
-
-    check_grammar(&shelf, &["import"], ALLOW);
 }
 
 #[test]

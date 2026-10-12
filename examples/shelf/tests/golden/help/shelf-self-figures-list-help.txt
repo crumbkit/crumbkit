@@ -55,3 +55,5 @@ Columns that --long adds:
   typed_full  The runs that typed `--full`.
   typed_all   The runs that typed `--all`.
   typed_long  The runs that typed `--long`.
+
+Effects: read-only, closed-world.

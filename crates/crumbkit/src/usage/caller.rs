@@ -1,6 +1,5 @@
 //! Who ran the tool, and the session the run belongs to.
 
-use std::io::IsTerminal as _;
 use std::path::Path;
 
 #[cfg(test)]
@@ -30,7 +29,7 @@ pub(super) fn detect() -> Caller {
     identify(
         env,
         |path| Path::new(path).exists(),
-        std::io::stdin().is_terminal(),
+        crate::sink::stdin_is_terminal(),
         std::os::unix::process::parent_id(),
     )
 }

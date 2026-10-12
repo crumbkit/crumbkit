@@ -6,6 +6,7 @@
 //! [`check_opt_outs`]: crate::check_opt_outs
 //! [`check_names`]: crate::check_names
 //! [`check_grammar`]: crate::check_grammar
+//! [`check_effects`]: crate::check_effects
 //! [`check_listings`]: crate::check_listings
 //! [`check_filters`]: crate::check_filters
 //! [`check_guide`]: crate::check_guide
@@ -36,6 +37,7 @@ mod allow;
 mod budget;
 mod codes;
 mod documents;
+mod effects;
 mod examples;
 mod exits;
 mod filters;
@@ -58,6 +60,7 @@ pub use crate::allow::{Allow, Rule};
 pub use crate::budget::Budget;
 pub use crate::codes::check_codes;
 pub use crate::documents::{check_document_ids, check_mounts};
+pub use crate::effects::check_effects;
 pub use crate::examples::{Examples, check_examples, example_golden_name};
 pub use crate::exits::check_exit_codes;
 pub use crate::filters::check_filters;
