@@ -24,6 +24,8 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   and [`fetch_each`] runs the per-id lookups on scoped threads.
 - crumbkit: the `miette` feature adds `Failure::diagnostic` and converts a
   `miette::Report` into [`Error`] ([`report`]).
+- crumbkit: with the `miette` feature, the JSON failure document holds the
+  diagnostic's related diagnostics and a source excerpt for each label.
 - crumbkit: [`parse`] parses the command line, prints help and refusals,
   and never exits the process.
 - crumbkit: [`help`] adds goal headings, help topics, and leaf examples and

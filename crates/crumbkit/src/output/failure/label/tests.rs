@@ -204,7 +204,7 @@ fn json_holds_each_label_with_its_place_when_the_span_could_be_read() {
         json,
         concat!(
             r#"{"schema":"crumbkit/failure/v1","code":"shelf::config::unknown_key","message":"unknown key `colour`","#,
-            r#""labels":[{"offset":22,"length":6,"name":"shelf.toml","line":3,"column":1,"text":"this key is not known"},{"offset":400,"length":6}],"#,
+            r#""labels":[{"offset":22,"length":6,"name":"shelf.toml","line":3,"column":1,"excerpt":{"line":2,"text":"name = \"mine\"\ncolour = \"red\"\nsize = 3"},"text":"this key is not known"},{"offset":400,"length":6}],"#,
             r#""recovery":{"kind":"hint","text":"use `color`"}}"#
         )
     );
@@ -224,7 +224,7 @@ fn a_batch_entry_holds_the_labels_as_the_failure_document_does() {
         json,
         concat!(
             r#"{"code":"shelf::config::unknown_key","message":"unknown key `colour`","#,
-            r#""labels":[{"offset":0,"length":6,"line":1,"column":1}],"#,
+            r#""labels":[{"offset":0,"length":6,"line":1,"column":1,"excerpt":{"line":1,"text":"colour = \"red\""}}],"#,
             r#""recovery":{"kind":"hint","text":"use `color`"}}"#
         )
     );
@@ -238,4 +238,21 @@ fn json_leaves_out_labels_when_the_diagnostic_has_none() {
     let json = serde_json::to_string(&document).unwrap();
 
     assert!(!json.contains("labels"), "{json}");
+}
+
+#[test]
+fn a_label_excerpt_holds_every_line_of_its_span_and_one_line_before_and_after() {
+    // The span runs from `name` on line 2 into `colour` on line 3.
+    let failure = in_shelf_toml(vec![LabeledSpan::new(None, 8, 20)]);
+    let document = FailureDocument::new(&failure, Spelling::COLONS, None);
+
+    let json = serde_json::to_value(&document).unwrap();
+
+    assert_eq!(
+        json["labels"][0]["excerpt"],
+        serde_json::json!({
+            "line": 1,
+            "text": "[shelf]\nname = \"mine\"\ncolour = \"red\"\nsize = 3",
+        })
+    );
 }

@@ -14,6 +14,8 @@ use crate::{Document, Failure, Recovery, Sink, Spelling};
 
 #[cfg(feature = "miette")]
 mod label;
+#[cfg(feature = "miette")]
+mod related;
 #[cfg(test)]
 mod tests;
 
@@ -82,6 +84,10 @@ pub(super) struct FailureDocument {
     /// them. It is empty when the failure has no diagnostic.
     #[cfg(feature = "miette")]
     labels: Vec<label::Label>,
+    /// The related diagnostics of the failure's miette diagnostic, in the
+    /// order it gives them. It is empty when the failure has no diagnostic.
+    #[cfg(feature = "miette")]
+    related: Vec<related::Related>,
     /// The failure's recovery, with a `Run` call rendered as text, or the
     /// first alternative that offers a step when the recovery offers none.
     step: Step,
@@ -134,6 +140,8 @@ impl FailureDocument {
             Err(none) if alternatives.is_empty() => none,
             Err(_) => alternatives.remove(0),
         };
+        #[cfg(feature = "miette")]
+        let diagnostic = failure.diagnostic();
         Self {
             code: spelling.spell(failure.code()),
             message: failure.to_string(),
@@ -141,7 +149,13 @@ impl FailureDocument {
             // A failure without a diagnostic costs one `None` check, and an
             // empty `Vec` does not allocate.
             #[cfg(feature = "miette")]
-            labels: failure.diagnostic().map_or_else(Vec::new, label::read),
+            labels: diagnostic.map_or_else(Vec::new, |diagnostic| {
+                label::read(diagnostic, diagnostic.source_code())
+            }),
+            #[cfg(feature = "miette")]
+            related: diagnostic.map_or_else(Vec::new, |diagnostic| {
+                related::read(diagnostic, diagnostic.source_code())
+            }),
             step,
             alternatives,
             url: failure.url().map(str::to_owned),
@@ -236,7 +250,8 @@ fn write_json(out: &mut impl Write, document: &FailureDocument) -> io::Result<()
 impl FailureDocument {
     /// Writes every field of the document after `schema` into `map`: `code`,
     /// `message`, `cause` when the failure has a source, `labels` when the
-    /// failure has a diagnostic with at least one label, `recovery`,
+    /// failure has a diagnostic with at least one label, `related` when that
+    /// diagnostic has related diagnostics, `recovery`,
     /// `alternatives` when at least one alternative offers a step, and `url`
     /// when the failure has one. The failure document and an entry of
     /// a batch's `failures` both write their fields here, so the two differ
@@ -253,6 +268,10 @@ impl FailureDocument {
         #[cfg(feature = "miette")]
         if !self.labels.is_empty() {
             map.serialize_entry("labels", &self.labels)?;
+        }
+        #[cfg(feature = "miette")]
+        if !self.related.is_empty() {
+            map.serialize_entry("related", &self.related)?;
         }
         map.serialize_entry("recovery", &self.step)?;
         if !self.alternatives.is_empty() {
@@ -344,6 +363,7 @@ impl JsonSchema for FailureDocument {
                     "type": "string",
                 },
                 "labels": labels_schema(),
+                "related": related_schema(),
                 "recovery": step_schema("What the caller can do next, tagged by kind."),
                 "alternatives": {
                     "description": "Other repairs the caller can try, in order of preference, each in the shape of recovery. It is present only when the failure offers at least one.",
@@ -475,12 +495,77 @@ fn labels_schema() -> Schema {
                     "type": "integer",
                     "minimum": 1,
                 },
+                "excerpt": {
+                    "description": "The lines of the source that the span covers, with one line before and one after where the source has them. It is present only when the span could be read.",
+                    "type": "object",
+                    "properties": {
+                        "line": {
+                            "description": "The 1-based number of the first line of the excerpt.",
+                            "type": "integer",
+                            "minimum": 1,
+                        },
+                        "text": {
+                            "description": "The lines, joined by the line breaks of the source, without a line break at the end.",
+                            "type": "string",
+                        },
+                    },
+                    "required": ["line", "text"],
+                },
                 "text": {
                     "description": "What the label says about the span. It is present only when the label has text.",
                     "type": "string",
                 },
             },
             "required": ["offset", "length"],
+        },
+    })
+}
+
+/// Describes the `related` array of the `crumbkit/failure/v1` document. Each
+/// entry has the `$anchor` `related`, and its own `related` array refers to
+/// the entry's schema through it, because related diagnostics nest. The
+/// schema lists the array whether or not the `miette` feature is on, as it
+/// does `labels`.
+fn related_schema() -> Schema {
+    json_schema!({
+        "description": "The diagnostics that the failure's diagnostic relates to it, in the order it gives them. It is present only when there is at least one.",
+        "type": "array",
+        "items": {
+            "$anchor": "related",
+            "type": "object",
+            "properties": {
+                "message": {
+                    "description": "What the related diagnostic says.",
+                    "type": "string",
+                },
+                "code": {
+                    "description": "The related diagnostic's own code, which is free text. It is present only when the diagnostic has one.",
+                    "type": "string",
+                },
+                "severity": {
+                    "description": "How severe the related diagnostic is. A diagnostic that gives no severity is an error.",
+                    "enum": ["error", "warning", "advice"],
+                },
+                "cause": {
+                    "description": "The errors below the related diagnostic, joined with \": \". It is present only when there is one.",
+                    "type": "string",
+                },
+                "labels": labels_schema(),
+                "help": {
+                    "description": "The related diagnostic's advice. It is present only when it gives some.",
+                    "type": "string",
+                },
+                "url": {
+                    "description": "A page that explains the related diagnostic. It is present only when it has one.",
+                    "type": "string",
+                },
+                "related": {
+                    "description": "The diagnostics related to this one, in the same shape, to at most eight levels below the failure.",
+                    "type": "array",
+                    "items": { "$ref": "#related" },
+                },
+            },
+            "required": ["message", "severity"],
         },
     })
 }

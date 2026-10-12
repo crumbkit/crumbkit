@@ -171,8 +171,12 @@ pub trait Failure: std::error::Error {
     /// `Some(self)`. `crumbkit::finish` then reads the diagnostic's
     /// `labels()` against its `source_code()`, and prints each label as an
     /// `at:` line with the source line and an underline in text, and under
-    /// `labels` in JSON. crumbkit reads nothing else from the diagnostic, so
-    /// the code, the recovery and the url still come from this trait.
+    /// `labels` in JSON, where each label also holds an excerpt of the source
+    /// with one line before and after it. The JSON document also holds the
+    /// diagnostic's `related()` diagnostics under `related`, each with its
+    /// message, code, severity, causes, labels, help, url and own related
+    /// diagnostics, down to 8 levels. The code, the recovery and the url of
+    /// the failure itself still come from this trait.
     ///
     /// ```
     /// # use std::fmt;
