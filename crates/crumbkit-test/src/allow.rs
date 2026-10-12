@@ -160,6 +160,12 @@ pub enum Rule {
     /// comes from `Document::without_envelope`. Its id is
     /// `documents/envelope`.
     Envelope,
+    /// [`check_document_ids`](crate::check_document_ids): the guide sets a
+    /// failure form with `crumbkit::help::Guide::failure_form`, so the tool
+    /// prints its failures in its own document in place of
+    /// `crumbkit/failure/v1`. Its id is `documents/failure-form`, and its
+    /// opt-out names the root.
+    FailureForm,
     /// [`check_exit_codes`](crate::check_exit_codes): the guide declares
     /// an exit code from 126 to 255, which a shell also reports for its own
     /// reasons. Its id is `exit-codes/shell-code`.
@@ -188,6 +194,7 @@ impl Rule {
             Self::Examples => "examples/run",
             Self::DocumentName => "documents/document-name",
             Self::Envelope => "documents/envelope",
+            Self::FailureForm => "documents/failure-form",
             Self::ShellExitCode => "exit-codes/shell-code",
         }
     }
@@ -249,6 +256,11 @@ impl Rule {
             Self::Envelope => &[
                 "An agent cannot predict the document's shape from crumbkit's conventions and must read its schema with `schemas show`.",
                 "The document has no `schema` id, `total` or `failures`, so a program cannot tell which document it read, whether it holds every row, or which ids failed.",
+            ],
+            Self::FailureForm => &[
+                "An agent that knows crumbkit's failure document must learn this tool's failure document, which `schemas show` serves.",
+                "The tool owns the schema of its failure document, and changing it breaks its callers unless the document gets a new id.",
+                "Each entry of a batch's `failures` keeps crumbkit's shape, so the tool's JSON holds two failure shapes.",
             ],
             Self::ShellExitCode => &[
                 "An agent cannot tell the code from the one a shell reports, such as 127 when the shell cannot find the tool or 130 when Ctrl-C ends it.",
