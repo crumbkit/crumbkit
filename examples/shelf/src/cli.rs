@@ -36,7 +36,9 @@ pub struct Cli {
 /// `Review how shelf is used`, and `shelf books -h` keeps clap's
 /// `Commands:` list. The help of each leaf lists its examples, and the
 /// `--help` of a leaf that prints rows describes their columns.
-/// `shelf help catalogue` prints `cli/catalogue.txt`.
+/// `shelf help catalogue` prints `cli/catalogue.txt`. `shelf -h` names the
+/// person's aliases that expand, which differ between machines, so shelf's
+/// tests opt out of crumbkit's rule against that.
 pub const GUIDE: Guide = Guide::new()
     .groups(&[Group::new(
         &[],
@@ -125,7 +127,8 @@ pub const GUIDE: Guide = Guide::new()
         "catalogue",
         "Where shelf's books come from and how their ids work",
         include_str!("cli/catalogue.txt"),
-    )]);
+    )])
+    .personal_aliases(crumbkit_aliases::names);
 
 /// The resources that shelf serves.
 #[derive(Debug, Subcommand)]

@@ -22,6 +22,17 @@
       "budget": null
     },
     {
+      "rule": "names/personal-aliases",
+      "applies_to": "shelf",
+      "reason": "A person who runs shelf by hand sees the aliases they wrote on the root's help, and the help checks print it without them.",
+      "costs": [
+        "Root help differs between machines, because each person's aliases file adds its own names.",
+        "An agent can copy an alias from help that does not exist on another machine or in a script that another person runs.",
+        "Help golden files and help budgets measure help without personal aliases, so a long aliases file can push the root help past its budget unchecked."
+      ],
+      "budget": null
+    },
+    {
       "rule": "path-budget/path",
       "applies_to": "every path through shelf",
       "reason": "shelf's longest path reads about 3,500 bytes, so 4,000 bytes leaves room for small changes and catches a page or an output that grows by much.",

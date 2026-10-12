@@ -166,9 +166,19 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit: with the `usage-log` feature, Ctrl-C while a child holds the
   terminal ends only the child, and the run's line records the child's exit
   code ([ADR-0042]).
+- crumbkit: `Guide::personal_aliases` makes the root's help name each
+  personal alias that expands, and only a run that prints that help reads
+  the aliases file ([ADR-0027]).
+- crumbkit-aliases: `names` returns the names of the aliases file's entries
+  that expand, for `Guide::personal_aliases` ([crumbkit-aliases]).
 
 ### Changed
 
+- crumbkit: a guided list ends each description with the command's visible
+  aliases, as clap's `Commands:` list does ([ADR-0021]).
+- crumbkit-test: [`check_names`] takes the tool's guide and fails on a
+  guide that names personal aliases unless an opt-out of
+  `Rule::PersonalAliases` covers the root ([ADR-0027]).
 - crumbkit: a guided command's help prints the tool's own `before_help`
   and `before_long_help` above the goal list ([ADR-0021]).
 - crumbkit-test: [`Examples`] borrows its paths for a lifetime, so a test
