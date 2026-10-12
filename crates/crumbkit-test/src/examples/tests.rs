@@ -1,7 +1,7 @@
 //! Tests for the example check.
 //!
-//! The tests run `/bin/sh`, which Linux and macOS, crumbkit's supported
-//! platforms, both have, so they need no binary of their own. The tree of
+//! The tests run `/bin/sh`, which Linux and macOS both have, so they need
+//! no binary of their own. They run only on Unix. The tree of
 //! `sh()` names sh's options as commands, so each example's words are a
 //! script that prints, fails or writes to standard error as a test needs.
 

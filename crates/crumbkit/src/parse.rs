@@ -14,7 +14,7 @@ pub use self::stop::Stop;
 
 use self::lines::{add_help_lines, has_visible_subcommands};
 use self::pick::{Picking, Step};
-use self::walk::{help_word, walk};
+use self::walk::{help_word, program_stem, walk};
 use crate::help::{Guide, topic};
 use crate::refusal::Refusal;
 use crate::{Sink, Spelling};
@@ -296,6 +296,9 @@ where
     R: BufRead,
 {
     let mut args: Vec<OsString> = args.into_iter().map(Into::into).collect();
+    if cfg!(windows) {
+        program_stem(&mut args);
+    }
     #[cfg(feature = "usage-log")]
     crate::usage::typed(&command, &args, spelling);
     // crumbkit answers `help` itself. clap propagates the setting to every

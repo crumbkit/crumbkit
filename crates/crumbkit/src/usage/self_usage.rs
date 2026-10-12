@@ -36,7 +36,6 @@ use std::path::PathBuf;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use clap::{Args, Command};
-use etcetera::BaseStrategy as _;
 use schemars::JsonSchema;
 use serde::Serialize;
 
@@ -189,7 +188,8 @@ struct CallerRuns {
 /// the meaning of each exit from 3 in a command's figures.
 ///
 /// It reads the file that `--log` names, or else `usage.jsonl` in the
-/// tool's directory under the XDG state directory, once, a line at a time. A record that names a command path,
+/// tool's directory under the directory where [`start`](super::start)
+/// writes it, once, a line at a time. A record that names a command path,
 /// flag, failure code or caller that the tool's usage log could not have
 /// written is left out and counted in the summary, so a hand-edited line
 /// cannot put its text in the report. A code counts when it is 1 to 128
@@ -220,9 +220,7 @@ pub(super) fn open(tool: &Command, args: &SelfUsage) -> Option<BufReader<File>> 
     }
     let path = match &args.log {
         Some(path) => path.clone(),
-        None => etcetera::choose_base_strategy()
-            .ok()?
-            .state_dir()?
+        None => super::platform::state_home()?
             .join(tool.get_name())
             .join(LOG),
     };

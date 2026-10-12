@@ -277,7 +277,14 @@ pub fn output_weight(dir: &Path, examples: &[String]) -> Result<Option<u64>, Unr
             // `None` is less than every `Some`, so the first size wins over
             // no size.
             Ok(metadata) => largest = largest.max(Some(metadata.len())),
-            Err(error) if error.kind() == io::ErrorKind::NotFound => {}
+            Err(error) if error.kind() == io::ErrorKind::NotFound => {
+                // Windows reports a path below a regular file as missing,
+                // where Unix reports that the parent is not a directory.
+                if fs::metadata(dir).is_ok_and(|metadata| !metadata.is_dir()) {
+                    let error = io::Error::from(io::ErrorKind::NotADirectory);
+                    return Err(UnreadableGolden { path, error });
+                }
+            }
             Err(error) => return Err(UnreadableGolden { path, error }),
         }
     }

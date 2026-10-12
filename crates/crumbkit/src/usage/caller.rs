@@ -1,5 +1,7 @@
 //! Who ran the tool, and the session the run belongs to.
 
+use super::platform;
+
 #[cfg(test)]
 mod tests;
 
@@ -10,34 +12,40 @@ pub(super) struct Caller {
     /// when no agent is detected and standard input is a terminal; and
     /// `unknown` otherwise.
     pub(super) name: &'static str,
-    /// The agent's session id, or the parent process id when the agent gives
-    /// none or no agent is detected. A person typing in one shell keeps one
-    /// parent process id. The usage log stores only its keyed hash.
+    /// The agent's session id, or the platform's fallback when the agent
+    /// gives none or no agent is detected: the parent process id on Unix,
+    /// which stays the same for a person typing in one shell, and the
+    /// Windows Terminal session or the text `windows` on Windows. The usage
+    /// log stores only its keyed hash.
     pub(super) session: String,
 }
 
 /// Returns the caller of this process, from the agent that
-/// [`crate::agent::detect`] finds, its standard input and its parent
-/// process.
+/// [`crate::agent::detect`] finds, its standard input and the platform's
+/// fallback session.
 pub(super) fn detect() -> Caller {
     identify(
         crate::agent::detect(),
         crate::sink::stdin_is_terminal(),
-        std::os::unix::process::parent_id(),
+        platform::fallback_session,
     )
 }
 
 /// Returns the caller from the detected `agent`, whether standard input is
-/// a `terminal`, and the `parent` process id, as [`detect`] reads them.
-fn identify(agent: Option<is_ai_agent::Agent>, terminal: bool, parent: u32) -> Caller {
+/// a `terminal`, and the `fallback` session, as [`detect`] reads them.
+fn identify(
+    agent: Option<is_ai_agent::Agent>,
+    terminal: bool,
+    fallback: impl FnOnce() -> String,
+) -> Caller {
     match agent {
         Some(agent) => Caller {
             name: agent.id.as_str(),
-            session: agent.session_id.unwrap_or_else(|| parent.to_string()),
+            session: agent.session_id.unwrap_or_else(fallback),
         },
         None => Caller {
             name: if terminal { "person" } else { "unknown" },
-            session: parent.to_string(),
+            session: fallback(),
         },
     }
 }

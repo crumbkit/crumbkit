@@ -10,16 +10,15 @@ use std::thread;
 use std::time::{Duration, Instant, SystemTime};
 
 use clap::{ArgMatches, Command};
-use etcetera::BaseStrategy as _;
 use serde::Serialize;
-use signal_hook::consts::{SIGINT, SIGTERM};
-use signal_hook::iterator::Signals as SignalSet;
-use signal_hook::low_level::emulate_default_handler;
+#[cfg(feature = "hand-over")]
+use signal_hook::consts::SIGINT;
 
 use super::caller::{self, Caller};
 use super::context::{self, Context};
 use super::file::{self, LIMITS, Limits};
 use super::key;
+use super::platform::{self, Interrupts};
 use super::record::{self, Hash, Help, Name, Record, Run, Section};
 use super::shape;
 use crate::{Code, Document, Spelling, exit};
@@ -30,8 +29,8 @@ mod tests;
 /// The recorder of this process. A poisoned lock counts as no recorder.
 static RECORDER: Mutex<State> = Mutex::new(State::Idle);
 
-/// Whether the signal thread listens for SIGINT and SIGTERM and lets them
-/// end the process, as it does with [`Signals::Crumbkit`].
+/// Whether the signal thread has taken SIGINT, which it does with either
+/// [`Signals`] value.
 static LISTENS: AtomicBool = AtomicBool::new(false);
 
 /// The most tolerated codes that one line holds. A run that reports more
@@ -91,7 +90,8 @@ struct Recorder {
 }
 
 /// Who handles SIGINT and SIGTERM while the usage log runs, which
-/// [`start_with`] takes.
+/// [`start_with`] takes. On Windows the log takes only SIGINT, which Ctrl-C
+/// raises, so these values apply to SIGINT alone there.
 #[non_exhaustive]
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum Signals {
@@ -158,15 +158,19 @@ impl Drop for Log {
 /// it parses against, so a run that ends before it reaches `parse` writes no
 /// line. `start` also starts the thread that writes the line when the run
 /// ends on SIGINT or SIGTERM, and then lets the signal end the process as it
-/// would have.
+/// would have. On Windows the thread takes only SIGINT, and the process
+/// then ends with the exit code that Ctrl-C gives, `STATUS_CONTROL_C_EXIT`.
 ///
 /// The run joins the caller's trace when TRACEPARENT is valid, and starts a
 /// new trace otherwise, as [`crate::trace`] describes. The random ids come
-/// from `/dev/urandom`, and a run whose ids cannot be read installs no
+/// from the operating system, and a run whose ids cannot be read installs no
 /// recorder, so it writes no line and gives its children no variables.
 ///
 /// The line goes to `usage.jsonl` in the tool's directory under the XDG
-/// state directory, such as `~/.local/state/shelf/usage.jsonl`. Any failure
+/// state directory, such as `~/.local/state/shelf/usage.jsonl`. On Windows
+/// the directory is `XDG_STATE_HOME` when it is an absolute path, and
+/// otherwise `%LOCALAPPDATA%`, such as
+/// `C:\Users\me\AppData\Local\shelf\usage.jsonl`. Any failure
 /// drops the line without a word, and recording never changes the tool's
 /// output or exit code (ADR-0029).
 pub fn start() -> Log {
@@ -228,8 +232,7 @@ pub(crate) fn interrupted() {
     update(&RECORDER, |recorder| recorder.signalled = true);
 }
 
-/// Reports whether the signal thread listens for SIGINT and lets it end the
-/// process.
+/// Reports whether the signal thread has taken SIGINT.
 #[cfg(feature = "hand-over")]
 pub(crate) fn listens() -> bool {
     LISTENS.load(Ordering::SeqCst)
@@ -497,10 +500,7 @@ fn write(slot: &Mutex<State>, interrupted: bool) {
         let _ = wait_for_line(slot, LINE_WAIT);
         return;
     };
-    let state = etcetera::choose_base_strategy()
-        .ok()
-        .and_then(|strategy| strategy.state_dir());
-    if let Some(state) = state {
+    if let Some(state) = platform::state_home() {
         let now = SystemTime::now();
         // Every failure drops the line without a word (ADR-0029).
         let _ = save(
@@ -533,14 +533,14 @@ fn save(
     file::append(&dir, &line, limits).ok()
 }
 
-/// Starts the thread that listens for SIGINT and SIGTERM, and returns once
-/// the thread listens.
+/// Starts the thread that listens for SIGINT and SIGTERM, or for SIGINT
+/// alone on Windows, and returns once the thread listens.
 ///
 /// With [`Signals::Crumbkit`], the thread writes the line on the first
 /// signal. When the main thread is already writing the line, the signal
 /// thread waits for it, for at most [`LINE_WAIT`], as [`write`] describes.
-/// After the line, the thread lets the signal take its default effect, so
-/// the process ends as it would have without the log. With
+/// After the line, the thread ends the process as the signal would have
+/// without the log. With
 /// [`Signals::Tool`], the thread notes each signal in the recorder and
 /// leaves the process running. With the `hand-over` feature, the thread
 /// leaves the process running on a SIGINT that arrives while a child holds
@@ -558,17 +558,17 @@ fn watch_signals(owner: Signals) {
     let spawned = thread::Builder::new()
         .name("crumbkit-usage".to_owned())
         .spawn(move || {
-            let signals = SignalSet::new([SIGINT, SIGTERM]);
+            let interrupts = Interrupts::listen();
             // The flag is set before the main thread goes on, so a child
             // that `main` starts next already sees it.
-            if signals.is_ok() && owner == Signals::Crumbkit {
+            if interrupts.is_some() {
                 LISTENS.store(true, Ordering::SeqCst);
             }
             let _ = listening.send(());
-            let Ok(mut signals) = signals else {
+            let Some(mut interrupts) = interrupts else {
                 return;
             };
-            for signal in signals.forever() {
+            while let Some(signal) = interrupts.wait() {
                 if owner == Signals::Tool {
                     update(&RECORDER, |recorder| recorder.signalled = true);
                     continue;
@@ -578,7 +578,7 @@ fn watch_signals(owner: Signals) {
                     continue;
                 }
                 write(&RECORDER, true);
-                let _ = emulate_default_handler(signal);
+                Interrupts::end_process(signal);
                 return;
             }
         });

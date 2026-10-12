@@ -1,7 +1,8 @@
 //! Tests for running the tool's binary.
 //!
-//! The tests run programs that Linux and macOS, crumbkit's supported
-//! platforms, both have: `/bin/sh`, `/bin/echo` and `/usr/bin/env`.
+//! Most tests run programs that Linux and macOS both have: `/bin/sh`,
+//! `/bin/echo` and `/usr/bin/env`. Windows lacks them, so those tests run
+//! only on Unix.
 
 use std::path::Path;
 
@@ -87,6 +88,8 @@ fn output_that_is_not_a_figures_document_gives_none() {
     assert_eq!(used(DOCUMENT.as_bytes()), None);
 }
 
+// The test runs a program that Windows lacks.
+#[cfg(unix)]
 #[test]
 fn a_tool_without_self_figures_list_fails_with_no_usage_figures() {
     let tool = Tool::new(Path::new("/bin/sh"), &std::env::temp_dir()).unwrap();
@@ -103,6 +106,8 @@ fn a_tool_without_self_figures_list_fails_with_no_usage_figures() {
     );
 }
 
+// The test runs a program that Windows lacks.
+#[cfg(unix)]
 #[test]
 fn each_run_has_only_the_xdg_variables_each_pointing_at_a_directory_that_exists() {
     let tool = Tool::new(Path::new("/usr/bin/env"), &std::env::temp_dir()).unwrap();
@@ -132,6 +137,8 @@ fn each_run_has_only_the_xdg_variables_each_pointing_at_a_directory_that_exists(
     );
 }
 
+// The test runs a program that Windows lacks.
+#[cfg(unix)]
 #[test]
 fn a_help_page_weighs_the_bytes_the_run_writes_to_standard_output() {
     let tool = Tool::new(Path::new("/bin/echo"), &std::env::temp_dir()).unwrap();
@@ -140,6 +147,8 @@ fn a_help_page_weighs_the_bytes_the_run_writes_to_standard_output() {
     assert_eq!(tool.help_bytes("echo books", "-h").unwrap(), 9);
 }
 
+// The test runs a program that Windows lacks.
+#[cfg(unix)]
 #[test]
 fn a_help_run_that_exits_with_a_failure_fails_with_help_failed() {
     let tool = Tool::new(Path::new("/bin/sh"), &std::env::temp_dir()).unwrap();
@@ -156,6 +165,8 @@ fn a_help_run_that_exits_with_a_failure_fails_with_help_failed() {
     );
 }
 
+// The test runs a program that Windows lacks.
+#[cfg(unix)]
 #[test]
 fn a_tool_without_commands_list_fails_with_no_commands_list() {
     let tool = Tool::new(Path::new("/bin/sh"), &std::env::temp_dir()).unwrap();

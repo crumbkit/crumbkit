@@ -3,10 +3,11 @@
 
 use std::fs::{self, DirBuilder, File, OpenOptions, TryLockError};
 use std::io::{self, Read as _, Seek as _, SeekFrom, Write as _};
-use std::os::unix::fs::{DirBuilderExt as _, FileExt as _, OpenOptionsExt as _};
 use std::path::Path;
 use std::thread;
 use std::time::{Duration, Instant};
+
+use super::platform;
 
 #[cfg(test)]
 mod tests;
@@ -35,18 +36,19 @@ pub(super) const LIMITS: Limits = Limits {
     wait: Duration::from_millis(100),
 };
 
-/// Creates `dir` and its missing parents with mode 0700, so only the user
-/// can list the log and its key. A directory that exists keeps its mode.
+/// Creates `dir` and its missing parents so that only the user can list
+/// the log and its key, with mode 0700 on Unix. A directory that exists
+/// keeps its permissions.
 pub(super) fn create_dir(dir: &Path) -> io::Result<()> {
-    DirBuilder::new().recursive(true).mode(0o700).create(dir)
+    platform::private_dir(DirBuilder::new().recursive(true)).create(dir)
 }
 
-/// Appends `line` to the file `usage.jsonl` in `dir`, which it creates with
-/// mode 0600.
+/// Appends `line` to the file `usage.jsonl` in `dir`, which it creates so
+/// that only the user can read it, with mode 0600 on Unix.
 ///
-/// It holds the lock on the file `usage.lock` in `dir`, which it also
-/// creates with mode 0600, while it trims and appends, so runs at the same
-/// time never interleave their lines. The lock has a file of its own because
+/// It holds the lock on the file `usage.lock` in `dir`, which it creates in
+/// the same way, while it trims and appends, so runs at the same time never
+/// interleave their lines. The lock has a file of its own because
 /// a trim renames a new log over `usage.jsonl`, and a lock on the old log
 /// would no longer guard the new one. When the log is larger than
 /// `limits.size`, it first keeps only the newest whole lines that fit in
@@ -62,17 +64,14 @@ pub(super) fn append(dir: &Path, line: &[u8], limits: &Limits) -> io::Result<()>
         clippy::disallowed_methods,
         reason = "the usage log owns its lock file, which only this function creates"
     )]
-    let lock_file = OpenOptions::new()
-        .write(true)
-        .create(true)
-        .truncate(false)
-        .mode(0o600)
-        .open(dir.join("usage.lock"))?;
+    let lock_file =
+        platform::private_file(OpenOptions::new().write(true).create(true).truncate(false))
+            .open(dir.join("usage.lock"))?;
     lock(&lock_file, limits.wait)?;
     let mut file = open_log(dir)?;
     let mut len = file.metadata()?.len();
     if len > limits.size {
-        trim(dir, &mut file, limits.keep)?;
+        trim(dir, file, limits.keep)?;
         file = open_log(dir)?;
         len = file.metadata()?.len();
     }
@@ -86,17 +85,13 @@ pub(super) fn append(dir: &Path, line: &[u8], limits: &Limits) -> io::Result<()>
 }
 
 /// Opens the log `usage.jsonl` in `dir` to read and append, and creates it
-/// with mode 0600.
+/// so that only the user can read it.
 fn open_log(dir: &Path) -> io::Result<File> {
     #[expect(
         clippy::disallowed_methods,
         reason = "the usage log owns its file, which only this module writes"
     )]
-    OpenOptions::new()
-        .read(true)
-        .append(true)
-        .create(true)
-        .mode(0o600)
+    platform::private_file(OpenOptions::new().read(true).append(true).create(true))
         .open(dir.join(LOG))
 }
 
@@ -119,11 +114,13 @@ fn lock(file: &File, wait: Duration) -> io::Result<()> {
 /// newest whole lines that fit in `keep` bytes. The kept lines go to a
 /// temporary file in `dir`, which is synced and then renamed over
 /// `usage.jsonl`, so a run that ends during the trim leaves either the old
-/// log or the new one. The caller holds the lock.
-fn trim(dir: &Path, file: &mut File, keep: usize) -> io::Result<()> {
+/// log or the new one. The caller holds the lock. `file` closes before the
+/// rename, because Windows can refuse to rename over a file that is open.
+fn trim(dir: &Path, mut file: File, keep: usize) -> io::Result<()> {
     let mut text = Vec::new();
     file.seek(SeekFrom::Start(0))?;
     file.read_to_end(&mut text)?;
+    drop(file);
     let temporary = dir.join(format!("usage.jsonl.{}.tmp", std::process::id()));
     let replaced = write_trimmed(&temporary, newest(&text, keep)).and_then(|()| {
         #[expect(
@@ -142,20 +139,17 @@ fn trim(dir: &Path, file: &mut File, keep: usize) -> io::Result<()> {
     replaced
 }
 
-/// Writes `kept` to the file at `temporary` with mode 0600, and syncs it, so
-/// the bytes reach the disk before the file replaces the log. A file left by
+/// Writes `kept` to the file at `temporary`, which only the user can read,
+/// and syncs it, so the bytes reach the disk before the file replaces the log. A file left by
 /// an earlier process with the same id is overwritten.
 fn write_trimmed(temporary: &Path, kept: &[u8]) -> io::Result<()> {
     #[expect(
         clippy::disallowed_methods,
         reason = "the usage log owns its file, which a trim writes to a temporary file first"
     )]
-    let mut file = OpenOptions::new()
-        .write(true)
-        .create(true)
-        .truncate(true)
-        .mode(0o600)
-        .open(temporary)?;
+    let mut file =
+        platform::private_file(OpenOptions::new().write(true).create(true).truncate(true))
+            .open(temporary)?;
     file.write_all(kept)?;
     file.sync_all()
 }
@@ -163,9 +157,7 @@ fn write_trimmed(temporary: &Path, kept: &[u8]) -> io::Result<()> {
 /// Returns whether the last byte of `file`, which holds `len` bytes, is a
 /// newline.
 fn ends_with_newline(file: &File, len: u64) -> io::Result<bool> {
-    let mut last = [0];
-    file.read_exact_at(&mut last, len - 1)?;
-    Ok(last[0] == b'\n')
+    Ok(platform::read_byte_at(file, len - 1)? == b'\n')
 }
 
 /// Returns the newest whole lines of `text` that fit in `keep` bytes. A last

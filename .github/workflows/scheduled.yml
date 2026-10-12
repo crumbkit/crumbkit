@@ -1,8 +1,10 @@
 # The scheduled lane of ADR-0011. The nightly job checks for new advisories,
 # measures the pull-request lane and builds the docs as docs.rs does. The bench
 # job checks the benchmarks and shelf's run time against their limits
-# (ADR-0008) when main has changed since they last passed. The report job keeps
-# every failure on one issue. A manual run runs both jobs in full.
+# (ADR-0008) when main has changed since they last passed. The windows job
+# builds, lints and tests the workspace on Windows (CI-4) when main has
+# changed since it last passed. The report job keeps every failure on one
+# issue. A manual run runs every job in full.
 name: Scheduled
 
 on:
@@ -71,38 +73,28 @@ jobs:
       actions: read # The first step reads the earlier runs of this workflow.
       contents: read # actions/checkout reads the repository.
     steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       # A scheduled run skips the checks when the newest completed run of
       # this workflow on main whose bench job passed ran at the same commit,
       # because nothing they measure has changed. A failed or missing earlier
-      # run, or a manual run, runs them. The step reads only the ten newest
-      # completed runs, so after ten runs without a passing bench job it runs
-      # the checks.
+      # run, or a manual run, runs them. The script reads only the ten newest
+      # completed runs, so after ten runs without a passing bench job the
+      # checks run.
       - id: changed
         env:
           GH_TOKEN: ${{ github.token }}
           EVENT: ${{ github.event_name }}
           SHA: ${{ github.sha }}
         run: |
-          last=""
-          for run in $(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/scheduled.yml/runs?branch=main&status=completed&per_page=10" \
-            --jq '.workflow_runs[] | "\(.id):\(.head_sha)"'); do
-            conclusion=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/${run%%:*}/jobs" \
-              --jq '.jobs[] | select(.name == "bench") | .conclusion')
-            if [ "$conclusion" = success ]; then
-              last=${run#*:}
-              break
-            fi
-          done
+          last=$(.github/scripts/last-passed.sh bench)
           if [ "$EVENT" = schedule ] && [ "$last" = "$SHA" ]; then
             echo "The bench job last passed at $SHA, so this run skips its checks."
             echo "run=false" >> "$GITHUB_OUTPUT"
           else
             echo "run=true" >> "$GITHUB_OUTPUT"
           fi
-      - if: steps.changed.outputs.run == 'true'
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
       - if: steps.changed.outputs.run == 'true'
         run: rustup toolchain install
       # gungraun runs each benchmark under Valgrind, which the image lacks.
@@ -123,12 +115,80 @@ jobs:
       - if: ${{ !cancelled() && steps.changed.outputs.run == 'true' }}
         run: cargo xtask run-time
 
-  # When the nightly or bench job fails, this job comments on the open issue
+  # The changed job tells the windows job whether main has changed since the
+  # windows job last passed, as the bench job's first step does for itself.
+  # It uses the gh CLI that the ubuntu-slim image includes.
+  changed:
+    runs-on: ubuntu-slim
+    timeout-minutes: 5
+    permissions:
+      actions: read # The script reads the earlier runs of this workflow.
+      contents: read # actions/checkout reads the repository.
+    outputs:
+      run: ${{ steps.changed.outputs.run }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          sparse-checkout: .github/scripts
+      - id: changed
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT: ${{ github.event_name }}
+          SHA: ${{ github.sha }}
+        run: |
+          last=$(.github/scripts/last-passed.sh windows)
+          if [ "$EVENT" = schedule ] && [ "$last" = "$SHA" ]; then
+            echo "The windows job last passed at $SHA, so this run skips it."
+            echo "run=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          fi
+
+  # The windows job builds, lints and tests the workspace on Windows, which
+  # is crumbkit's tier-2 platform (ADR-0003, CI-4). A failure here opens or
+  # comments on the scheduled issue and blocks no release. It has no
+  # rust-cache, as the nightly job has none, and it turns off debug info and
+  # incremental builds, which the job would only write and never read.
+  windows:
+    needs: changed
+    if: needs.changed.outputs.run == 'true'
+    runs-on: windows-latest
+    timeout-minutes: 40
+    permissions:
+      contents: read # actions/checkout reads the repository.
+    env:
+      CARGO_INCREMENTAL: 0
+      CARGO_PROFILE_DEV_DEBUG: 0
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      # The image includes rustup, which installs the toolchain that
+      # rust-toolchain.toml pins.
+      - run: rustup toolchain install
+      - uses: taiki-e/install-action@f7e5d7c961414b23f5b25b2da9294395d08513ad # v2.87.26
+        with:
+          tool: cargo-nextest
+          fallback: none
+      - run: cargo clippy --workspace --all-targets
+      # Each later step runs even when an earlier one fails, so one failure
+      # does not hide another.
+      - if: ${{ !cancelled() }}
+        run: cargo clippy -p crumbkit --all-targets --features hand-over
+      - if: ${{ !cancelled() }}
+        run: cargo nextest run --workspace --profile ci
+      - if: ${{ !cancelled() }}
+        run: cargo test --workspace --doc
+      - if: ${{ !cancelled() }}
+        run: cargo nextest run -p crumbkit --features hand-over --profile ci
+
+  # When the nightly, bench, changed or windows job fails, this job comments on the open issue
   # titled "Scheduled CI failed", or opens that issue when none is open, so
   # failures collect in one place. It uses the gh CLI that the ubuntu-slim image
   # includes.
   report:
-    needs: [nightly, bench]
+    needs: [nightly, bench, changed, windows]
     if: failure()
     runs-on: ubuntu-slim
     timeout-minutes: 10

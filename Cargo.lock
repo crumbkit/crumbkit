@@ -147,6 +147,7 @@ dependencies = [
  "clap",
  "crumbkit-core",
  "etcetera",
+ "getrandom",
  "humantime",
  "is-ai-agent",
  "miette",

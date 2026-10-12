@@ -96,7 +96,7 @@
       "const": "crumbkit/usage/v1"
     },
     "session": {
-      "description": "The keyed hash of the agent's session id, or of the parent process id\nwhen the agent gives no session id.",
+      "description": "The keyed hash of the agent's session id, or, when the agent gives no\nsession id, of the parent process id on Unix and of the Windows\nTerminal session or the text `windows` on Windows.",
       "$ref": "#/$defs/Hash"
     },
     "tolerated": {

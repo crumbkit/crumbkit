@@ -38,23 +38,26 @@ miette = { workspace = true, optional = true }
 # picker nor `Output::confirm` asks it a question (ADR-0043), and the usage
 # log names the agent (ADR-0029). It has no dependencies.
 is-ai-agent = { workspace = true }
-# The `usage-log` feature needs these three crates and signal-hook below
-# (ADR-0029). humantime also parses the duration of `self usage --since`
-# (ADR-0034).
+# The `usage-log` feature needs these three crates, signal-hook, and
+# getrandom on Windows (ADR-0029). humantime also parses the duration of
+# `self usage --since` (ADR-0034).
 siphasher = { workspace = true, optional = true }
 etcetera = { workspace = true, optional = true }
 humantime = { workspace = true, optional = true }
+# signal-hook gives the usage log its signal thread, and gives `child` the
+# handlers that keep the tool running while a child holds the terminal
+# (ADR-0042). The usage log needs `iterator`, which gives `Signals` on Unix
+# and builds nothing on Windows, where the log uses `flag`. `child` needs
+# only `flag`, which every build of signal-hook has.
+signal-hook = { workspace = true, optional = true, features = ["iterator"] }
 # The `tracing` feature puts `parse` and `finish` in spans of the tracing
 # crate (ADR-0030). crumbkit needs no tracing feature.
 tracing = { workspace = true, optional = true }
 
-# signal-hook gives the usage log its signal thread, and gives `child` the
-# SIGINT and SIGQUIT handler that keeps the tool running while a child holds
-# the terminal (ADR-0042). Both uses are Unix only, so the dependency is too.
-# The usage log needs `iterator`, which gives `Signals`, and `child` needs
-# only `flag`, which every build of signal-hook has.
-[target.'cfg(unix)'.dependencies]
-signal-hook = { workspace = true, optional = true, features = ["iterator"] }
+# Windows has no `/dev/urandom`, so the usage log reads its random bytes
+# through getrandom there (ADR-0029).
+[target.'cfg(windows)'.dependencies]
+getrandom = { workspace = true, optional = true }
 
 [features]
 # `miette` is off by default, so the default build has no miette code and no
@@ -70,6 +73,7 @@ usage-log = [
     "dep:etcetera",
     "dep:humantime",
     "dep:signal-hook",
+    "dep:getrandom",
     "serde/derive",
     "schemars/derive",
 ]

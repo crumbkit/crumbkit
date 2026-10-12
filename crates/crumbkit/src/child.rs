@@ -6,8 +6,8 @@
 //! returns the exit code it gives. Without `--json`, the child gets the
 //! terminal: it reads standard input and writes standard output and
 //! standard error directly. The tool ignores SIGINT and SIGQUIT while the
-//! child runs, so Ctrl-C and Ctrl-\ reach only the child, and the tool
-//! returns the child's exit code.
+//! child runs, or SIGINT and SIGBREAK on Windows, so Ctrl-C reaches only
+//! the child, and the tool returns the child's exit code.
 //!
 //! ```no_run
 //! use std::process::{Command, ExitCode};
@@ -117,23 +117,21 @@ impl<T> Copy for Json<T> {}
 /// [`trace::child_env`](crate::trace::child_env), so the child joins the
 /// run's trace. On Unix, the tool ignores SIGINT and SIGQUIT until the child
 /// exits, so Ctrl-C reaches only the child, and both signals then end the
-/// tool as before. The child itself receives both signals with their default
-/// action.
+/// tool as before. On Windows, the tool ignores SIGINT and SIGBREAK in the
+/// same way, which Ctrl-C and Ctrl-Break raise. The child itself receives
+/// both signals with their default action.
 ///
 /// The exit code is the child's, so on this command 1 and 2 carry the
 /// child's meanings. A child that a signal ended returns 128 plus the
-/// signal's number, such as 130 for SIGINT, as a shell reports it. With the
-/// usage log, the run's line records that number, and `"interrupted": true`
-/// when a signal ended the child.
+/// signal's number, such as 130 for SIGINT, as a shell reports it. On
+/// Windows, a child that exited with `STATUS_CONTROL_C_EXIT`, as Ctrl-C
+/// leaves it, returns 130 too. With the usage log, the run's line records
+/// that number, and `"interrupted": true` when a signal ended the child.
 ///
 /// It runs no child and fails with `crumbkit::child::no_json` and exit
 /// code 2 when the caller passed `--json`, and with `crumbkit::cli::usage`
 /// and exit code 2 when the caller passed `--fields`. The module
 /// documentation lists the failures of a child that cannot start.
-//
-// RUST-10: on Windows the tool keeps Ctrl-C's default action, so Ctrl-C
-// ends the tool beside the child. A console control handler replaces this
-// when crumbkit supports Windows (ADR-0042).
 pub fn hand_over(output: &mut Output, spelling: Spelling, child: Command) -> ExitCode {
     hand_over_to(&mut Sink::standard(), output, spelling, child)
 }
@@ -236,7 +234,7 @@ fn respond_text<O: Write, W: Write>(
 ) -> ExitCode {
     match status {
         Ok(status) => {
-            if signal(status).is_some() {
+            if signals::ended_by(status).is_some() {
                 crate::usage::interrupted();
             }
             crate::usage::ended(exit_number(status), None)
@@ -275,7 +273,7 @@ fn respond_json<T: Rows + DeserializeOwned, O: Write, W: Write>(
         }
     };
     if !captured.status.success() {
-        if signal(captured.status).is_some() {
+        if signals::ended_by(captured.status).is_some() {
             crate::usage::interrupted();
         }
         let exit = exit_number(captured.status);
@@ -326,28 +324,16 @@ fn display(name: &OsStr) -> String {
     name.to_string_lossy().into_owned()
 }
 
-/// Returns the exit number of a child that ended with `status`: its exit
-/// code, or 128 plus the number of the signal that ended it. An exit code
-/// outside 0 to 255, which only Windows gives, counts as 1.
+/// Returns the exit number of a child that ended with `status`: 128 plus
+/// the number of the signal that ended it, and otherwise its exit code. On
+/// Windows a child that Ctrl-C ended counts as ended by SIGINT, so it gives
+/// 130. Any other exit code outside 0 to 255, which only Windows gives,
+/// counts as 1.
 fn exit_number(status: ExitStatus) -> u8 {
-    if let Some(code) = status.code() {
-        return u8::try_from(code).unwrap_or(1);
+    if let Some(signal) = signals::ended_by(status) {
+        return u8::try_from(128 + signal).unwrap_or(1);
     }
-    signal(status)
-        .and_then(|signal| u8::try_from(128 + signal).ok())
-        .unwrap_or(1)
-}
-
-/// Returns the number of the signal that ended a child with `status`, or
-/// `None` when the child exited.
-fn signal(status: ExitStatus) -> Option<i32> {
-    #[cfg(unix)]
-    {
-        std::os::unix::process::ExitStatusExt::signal(&status)
-    }
-    #[cfg(not(unix))]
-    {
-        let _ = status;
-        None
-    }
+    status
+        .code()
+        .map_or(1, |code| u8::try_from(code).unwrap_or(1))
 }

@@ -50,8 +50,9 @@ pub(super) struct Record {
     /// person when no agent is detected and standard input is a terminal;
     /// and unknown otherwise.
     pub(super) caller: &'static str,
-    /// The keyed hash of the agent's session id, or of the parent process id
-    /// when the agent gives no session id.
+    /// The keyed hash of the agent's session id, or, when the agent gives no
+    /// session id, of the parent process id on Unix and of the Windows
+    /// Terminal session or the text `windows` on Windows.
     pub(super) session: Hash,
     /// The keyed hash of the words after the tool's name, so identical
     /// command lines share a hash.

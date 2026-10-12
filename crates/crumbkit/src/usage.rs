@@ -25,7 +25,7 @@ mod file;
 #[cfg(feature = "usage-log")]
 mod key;
 #[cfg(feature = "usage-log")]
-mod random;
+mod platform;
 #[cfg(feature = "usage-log")]
 mod record;
 #[cfg(feature = "usage-log")]
@@ -59,12 +59,10 @@ pub use self::self_figures::{FiguresRow, SELF_FIGURES_LIST, SelfFigures, figures
 #[cfg(feature = "usage-log")]
 pub use self::self_usage::{FindingRow, SELF_USAGE, SelfUsage, UsageSummary, findings};
 
-// RUST-10: the log reads its key from `/dev/urandom`, finds the session in
-// the parent process id, and sets Unix file modes, so the feature builds
-// only on Unix. Windows equivalents of the three replace this when a tool
-// needs the log there.
-#[cfg(all(feature = "usage-log", not(unix)))]
-compile_error!("crumbkit's `usage-log` feature builds only on Unix");
+// The log's platform module has a Unix half and a Windows half, so the
+// feature builds on those two (ADR-0003).
+#[cfg(all(feature = "usage-log", not(any(unix, windows))))]
+compile_error!("crumbkit's `usage-log` feature builds only on Unix and Windows");
 
 /// Records that a personal alias expanded the run's command line.
 /// crumbkit-aliases' `expand` calls it, so the run's line holds
@@ -154,10 +152,10 @@ pub(crate) fn interrupted() {
     recorder::interrupted();
 }
 
-/// Reports whether the usage log's signal thread listens for SIGINT and
-/// lets it end the process, as a log started with `Signals::Crumbkit` does.
-/// Without the `usage-log` feature it is false.
-#[cfg(all(feature = "hand-over", unix))]
+/// Reports whether the usage log's signal thread has taken SIGINT, as a log
+/// started with either `Signals` value has. Without the `usage-log` feature
+/// it is false.
+#[cfg(feature = "hand-over")]
 pub(crate) fn listens() -> bool {
     #[cfg(feature = "usage-log")]
     {

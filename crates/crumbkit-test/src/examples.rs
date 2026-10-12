@@ -16,6 +16,9 @@ use crate::guide::command_line;
 use crate::temp::TempDir;
 use crate::tree;
 
+// The tests run `/bin/sh`, which Windows lacks. The two attributes stay
+// apart, because clippy reads only a plain `cfg(test)` as test code.
+#[cfg(unix)]
 #[cfg(test)]
 mod tests;
 

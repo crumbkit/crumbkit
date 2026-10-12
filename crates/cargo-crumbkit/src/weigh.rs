@@ -122,19 +122,54 @@ pub(crate) fn join(rows: &mut [Weight], used: &[Used]) {
 
 /// Returns the usage log that `args` names with `--log`, or else the log of
 /// the tool whose commands are `commands`: `usage.jsonl` in the tool's
-/// directory under the person's XDG state directory, where crumbkit's
-/// `usage-log` feature writes it.
+/// directory under [`state_home`], where crumbkit's `usage-log` feature
+/// writes it.
 fn usage_log(args: &WeighArgs, commands: &[Listed]) -> Result<PathBuf, WeighError> {
     if let Some(log) = &args.log {
         return Ok(log.clone());
     }
     // The first command is the root, whose path is the tool's name.
     let tool = commands.first().map_or("", |root| root.path.as_str());
-    let state = etcetera::choose_base_strategy()
-        .ok()
-        .and_then(|strategy| strategy.state_dir())
-        .ok_or(WeighError::NoStateDir)?;
+    let state = state_home().ok_or(WeighError::NoStateDir)?;
     Ok(state.join(tool).join(LOG))
+}
+
+/// Returns the directory that holds each tool's log directory, found as
+/// crumbkit's `usage-log` feature finds it (ADR-0029): the XDG state
+/// directory on Unix, and on Windows `XDG_STATE_HOME` when it is an
+/// absolute path, and otherwise `%LOCALAPPDATA%`.
+#[cfg(not(windows))]
+fn state_home() -> Option<PathBuf> {
+    etcetera::choose_base_strategy().ok()?.state_dir()
+}
+
+/// Returns the directory that holds each tool's log directory on Windows,
+/// as the Unix version of this function describes.
+#[cfg(windows)]
+fn state_home() -> Option<PathBuf> {
+    #[expect(
+        clippy::disallowed_methods,
+        reason = "weigh reads XDG_STATE_HOME to find the usage log where crumbkit writes it"
+    )]
+    let xdg = std::env::var_os("XDG_STATE_HOME");
+    windows_state_home(xdg, || {
+        etcetera::choose_base_strategy()
+            .ok()
+            .map(|strategy| strategy.cache_dir())
+    })
+}
+
+/// Returns `xdg` when it is an absolute path, and otherwise what `local`
+/// returns, as crumbkit's usage log chooses its directory on Windows.
+#[cfg(windows)]
+fn windows_state_home(
+    xdg: Option<std::ffi::OsString>,
+    local: impl FnOnce() -> Option<PathBuf>,
+) -> Option<PathBuf> {
+    match xdg.map(PathBuf::from) {
+        Some(path) if path.is_absolute() => Some(path),
+        _ => local(),
+    }
 }
 
 /// Builds the binary that `args` names, and returns the weight of each of

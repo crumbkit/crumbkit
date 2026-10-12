@@ -1,7 +1,9 @@
 //! The walk, which reads the typed words down the command tree before clap
-//! parses them, and finds the word `help` that crumbkit answers.
+//! parses them, and finds the word `help` that crumbkit answers. The module
+//! also names the program by its file stem on Windows.
 
 use std::ffi::{OsStr, OsString};
+use std::path::Path;
 
 use clap::{Arg, Command};
 
@@ -388,4 +390,16 @@ fn most_values(arg: &Arg) -> usize {
 /// Reports whether `word` starts with `-`.
 fn starts_with_hyphen(word: &OsStr) -> bool {
     word.as_encoded_bytes().starts_with(b"-")
+}
+
+/// Replaces the program path in `args[0]` with its file stem. On Windows,
+/// clap names the tool after the file name of `args[0]`, so without this a
+/// tool's help and usage lines would say `shelf.exe` where they say `shelf`
+/// on Unix.
+pub(super) fn program_stem(args: &mut [OsString]) {
+    if let Some(program) = args.first_mut()
+        && let Some(stem) = Path::new(program).file_stem()
+    {
+        *program = stem.to_owned();
+    }
 }

@@ -3,7 +3,10 @@
 //! `process.rs` run real children through `sh`.
 
 use std::io;
+#[cfg(unix)]
 use std::os::unix::process::ExitStatusExt as _;
+#[cfg(windows)]
+use std::os::windows::process::ExitStatusExt as _;
 use std::process::{self, ExitCode, ExitStatus};
 
 use clap::Parser;
@@ -13,6 +16,8 @@ use serde::{Deserialize, Serialize};
 use super::{Json, hand_over_json_to, hand_over_to, respond_json, respond_text};
 use crate::{Document, Output, Row, Sink, Spelling};
 
+// The process tests run their children through `sh` and send them Unix
+// signals.
 #[cfg(unix)]
 mod process_tests;
 
@@ -65,13 +70,29 @@ fn respond(respond: impl FnOnce(&mut Sink<&mut Vec<u8>, &mut Vec<u8>>) -> ExitCo
 
 /// Returns the status of a child that exited with `code`, as `waitpid`
 /// reports it.
+#[cfg(unix)]
 fn exited(code: i32) -> ExitStatus {
     ExitStatus::from_raw(code << 8)
 }
 
+/// Returns the status of a child that exited with `code`, as
+/// `GetExitCodeProcess` reports it.
+#[cfg(windows)]
+fn exited(code: i32) -> ExitStatus {
+    ExitStatus::from_raw(code.cast_unsigned())
+}
+
 /// Returns the status of a child that the signal `signal` ended.
+#[cfg(unix)]
 fn killed(signal: i32) -> ExitStatus {
     ExitStatus::from_raw(signal)
+}
+
+/// Returns the status of a child that Ctrl-C ended, which exits with
+/// `STATUS_CONTROL_C_EXIT`.
+#[cfg(windows)]
+fn interrupted() -> ExitStatus {
+    ExitStatus::from_raw(0xC000_013A)
 }
 
 /// Returns what `respond_text` does for a child that ended with `status`.
@@ -111,6 +132,8 @@ fn a_child_that_holds_the_terminal_returns_its_own_exit_code_and_prints_nothing(
     }
 }
 
+// Only Unix ends a process with a signal number.
+#[cfg(unix)]
 #[test]
 fn a_child_that_a_signal_ended_returns_128_plus_the_signal_number() {
     assert_eq!(text(Ok(killed(2))).code, ExitCode::from(130));
@@ -192,9 +215,24 @@ fn a_child_that_fails_under_json_prints_failed_and_returns_its_own_code() {
     assert_eq!(document["message"], "`vault-log` exited with code 3");
 }
 
+// Only Unix ends a process with a signal number.
+#[cfg(unix)]
 #[test]
 fn a_child_that_a_signal_ended_under_json_returns_128_plus_the_signal_number() {
     assert_eq!(json(&[], killed(2), "").code, ExitCode::from(130));
+}
+
+#[cfg(windows)]
+#[test]
+fn a_child_that_ctrl_c_ended_returns_130_as_a_child_that_sigint_ended_does() {
+    assert_eq!(text(Ok(interrupted())).code, ExitCode::from(130));
+    assert_eq!(json(&[], interrupted(), "").code, ExitCode::from(130));
+}
+
+#[cfg(windows)]
+#[test]
+fn a_windows_exit_code_above_255_that_ctrl_c_did_not_give_returns_1() {
+    assert_eq!(text(Ok(exited(-1))).code, ExitCode::from(1));
 }
 
 /// Returns a command that runs `program`.

@@ -3,7 +3,7 @@
 
 use std::ffi::OsString;
 
-use super::random;
+use super::platform;
 use super::record::{SpanId, TraceId, TraceIds};
 
 #[cfg(test)]
@@ -29,7 +29,7 @@ pub(super) struct Context {
 }
 
 /// Returns the context of this run from its TRACEPARENT and TRACESTATE and
-/// 24 random bytes from `/dev/urandom`, or `None` when the bytes cannot be
+/// 24 random bytes from the operating system, or `None` when the bytes cannot be
 /// read or an id would be all zero.
 pub(super) fn read() -> Option<Context> {
     #[expect(
@@ -42,7 +42,7 @@ pub(super) fn read() -> Option<Context> {
         reason = "the usage log owns its environment reads, which give the caller's trace context"
     )]
     let state = std::env::var_os("TRACESTATE");
-    let bytes: [u8; 24] = random::bytes()?;
+    let bytes: [u8; 24] = platform::random_bytes()?;
     let (trace, run) = bytes.split_first_chunk::<16>()?;
     Context::new(
         env("TRACEPARENT").as_deref(),

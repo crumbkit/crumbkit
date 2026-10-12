@@ -1,5 +1,6 @@
 use std::fs::{self, File};
 use std::io;
+#[cfg(unix)]
 use std::os::unix::fs::{MetadataExt as _, PermissionsExt as _};
 use std::time::Duration;
 
@@ -29,6 +30,8 @@ fn write_log(dir: &TempDir, text: &str) {
     fs::write(dir.path().join("usage.jsonl"), text).unwrap();
 }
 
+// Windows files have access control lists in place of Unix modes.
+#[cfg(unix)]
 #[test]
 fn the_directory_has_mode_0700_and_the_log_and_its_lock_file_mode_0600() {
     let dir = TempDir::new("modes");
@@ -81,13 +84,9 @@ fn a_log_past_the_limit_whose_newest_line_is_over_the_budget_keeps_no_old_line()
 fn a_trim_renames_a_new_log_into_place_and_leaves_no_temporary_file() {
     let dir = TempDir::new("trim-rename");
     write_log(&dir, "line-1\nline-2\nline-3\n");
-    let before = fs::metadata(dir.path().join("usage.jsonl")).unwrap().ino();
 
     append(dir.path(), b"new\n", &SMALL).unwrap();
 
-    let after = fs::metadata(dir.path().join("usage.jsonl")).unwrap();
-    assert_ne!(after.ino(), before);
-    assert_eq!(after.permissions().mode() & 0o777, 0o600);
     assert_eq!(log(&dir), "line-3\nnew\n");
     let mut names: Vec<String> = fs::read_dir(dir.path())
         .unwrap()
@@ -95,6 +94,21 @@ fn a_trim_renames_a_new_log_into_place_and_leaves_no_temporary_file() {
         .collect();
     names.sort();
     assert_eq!(names, ["usage.jsonl", "usage.lock"]);
+}
+
+// Windows has no inode numbers and no Unix modes.
+#[cfg(unix)]
+#[test]
+fn a_trimmed_log_is_a_new_file_with_mode_0600() {
+    let dir = TempDir::new("trim-inode");
+    write_log(&dir, "line-1\nline-2\nline-3\n");
+    let before = fs::metadata(dir.path().join("usage.jsonl")).unwrap().ino();
+
+    append(dir.path(), b"new\n", &SMALL).unwrap();
+
+    let after = fs::metadata(dir.path().join("usage.jsonl")).unwrap();
+    assert_ne!(after.ino(), before);
+    assert_eq!(after.permissions().mode() & 0o777, 0o600);
 }
 
 #[test]

@@ -146,13 +146,20 @@ fn a_file_of_removed_books_with_a_line_that_is_not_an_id_fails_to_read() {
     assert!(matches!(error, BooksError::RemovedFile { .. }), "{error:?}");
 }
 
+/// An absolute state directory on this platform.
+#[cfg(unix)]
+const ABSOLUTE_STATE: &str = "/srv/state";
+/// An absolute state directory on this platform.
+#[cfg(windows)]
+const ABSOLUTE_STATE: &str = r"C:\srv\state";
+
 #[test]
 fn an_absolute_xdg_state_home_names_the_state_directory_of_the_removed_file() {
-    let file = removed_file_in(Some("/srv/state".into()));
+    let file = removed_file_in(Some(ABSOLUTE_STATE.into()));
 
     assert_eq!(
-        file.as_deref(),
-        Some(Path::new("/srv/state/shelf/removed.txt"))
+        file,
+        Some(Path::new(ABSOLUTE_STATE).join("shelf").join("removed.txt"))
     );
 }
 
