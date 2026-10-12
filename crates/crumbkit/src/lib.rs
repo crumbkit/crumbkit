@@ -36,6 +36,7 @@
 //! [ADR-0029]: https://github.com/crumbkit/crumbkit/blob/main/docs/decisions/api/usage/0029-usage-log.md
 //! [ADR-0030]: https://github.com/crumbkit/crumbkit/blob/main/docs/decisions/api/usage/0030-trace-context.md
 //! [ADR-0032]: https://github.com/crumbkit/crumbkit/blob/main/docs/decisions/api/0032-core-crate.md
+//! [ADR-0048]: https://github.com/crumbkit/crumbkit/blob/main/docs/decisions/api/0048-completion.md
 #![doc = include_str!("../README.md")]
 // docs.rs builds the docs on nightly with `--cfg docsrs`, and rustdoc's
 // `doc_cfg` feature labels each item behind a cargo feature with its name.
@@ -47,6 +48,8 @@ mod call;
 pub mod child;
 pub mod codes;
 pub mod commands;
+#[cfg(any(feature = "complete", feature = "usage-log"))]
+mod complete;
 #[cfg(any(feature = "usage-log", feature = "tracing"))]
 mod exit;
 mod fetch;
@@ -74,6 +77,8 @@ pub use crumbkit_core::{
 };
 
 pub use crate::call::RenderCall;
+#[cfg(feature = "complete")]
+pub use crate::complete::{complete, complete_to};
 pub use crate::fetch::fetch_each;
 pub use crate::output::{DryRun, Output, Streaming, Yes, finish, finish_to, stream, stream_to};
 pub use crate::page::Page;

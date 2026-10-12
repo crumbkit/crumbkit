@@ -25,8 +25,9 @@ clap = { workspace = true, features = [
 # `tracing` feature, so the workspace build also builds crumbkit's spans
 # (ADR-0030). shelf installs no subscriber, so its spans go nowhere. The
 # `miette` feature lets the failure of a bad line in the file that
-# `shelf books show --from` reads point at that line (ADR-0001).
-crumbkit = { workspace = true, features = ["miette", "usage-log", "tracing"] }
+# `shelf books show --from` reads point at that line (ADR-0001). The
+# `complete` feature answers a shell's completion request (ADR-0048).
+crumbkit = { workspace = true, features = ["miette", "usage-log", "tracing", "complete"] }
 # `shelf books remove` keeps the ids of the removed books in shelf's XDG
 # state directory, which etcetera finds as crumbkit's usage log finds it.
 etcetera = { workspace = true }

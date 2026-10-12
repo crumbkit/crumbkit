@@ -241,9 +241,15 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit-test: [`check_recoveries`] takes the tool's guide and fails
   before it runs anything on a guide with a failure form, unless an opt-out
   from `Rule::Recoveries` names the root ([ADR-0045]).
+- crumbkit: the `complete` feature adds [`complete`], which answers a
+  shell's completion request when `COMPLETE` names the shell, and
+  `complete_to`. It follows clap_complete's unstable API, so a minor release
+  may change it ([ADR-0048]).
 
 ### Changed
 
+- crumbkit: with the `usage-log` feature, a run whose `COMPLETE` variable
+  asks for shell completion writes no line ([ADR-0048]).
 - crumbkit: a build with debug assertions writes a `warning:` line on
   standard error for each recovery call of a failure that does not render,
   with the reason ([ADR-0001]).
@@ -480,3 +486,5 @@ rustdoc, or at its decision record. -->
 [`help::split`]: crates/crumbkit/src/help/words.rs
 [`check_recoveries`]: crates/crumbkit-test/src/recoveries.rs
 [`check_twin`]: crates/crumbkit-test/src/twins.rs
+[`complete`]: crates/crumbkit/src/complete.rs
+[ADR-0048]: docs/decisions/api/0048-completion.md
