@@ -330,27 +330,28 @@ fn find(id: u32, removed: &[u32]) -> Result<Book, u32> {
 }
 
 /// The code of a failure that names a book the catalogue lacks.
-const NOT_FOUND: Code = Code::new("shelf", "books", "not_found");
+pub const NOT_FOUND: Code = Code::new("shelf", "books", "not_found");
 
 /// The code of a failure whose ids file cannot be read.
-const UNREADABLE_IDS_FILE: Code = Code::new("shelf", "books", "unreadable_ids_file");
+pub const UNREADABLE_IDS_FILE: Code = Code::new("shelf", "books", "unreadable_ids_file");
 
 /// The code of a failure whose ids file holds a line that is not a book id.
-const BAD_IDS_FILE: Code = Code::new("shelf", "books", "bad_ids_file");
+pub const BAD_IDS_FILE: Code = Code::new("shelf", "books", "bad_ids_file");
 
-/// The code of a failure whose ids file holds more than [`MOST_IDS`] ids.
-const TOO_MANY_IDS: Code = Code::new("shelf", "books", "too_many_ids");
+/// The code of a failure whose ids file holds more than 100 ids, the most
+/// that `books show` takes.
+pub const TOO_MANY_IDS: Code = Code::new("shelf", "books", "too_many_ids");
 
 /// The code of a failure whose ids file holds no id.
-const EMPTY_IDS_FILE: Code = Code::new("shelf", "books", "empty_ids_file");
+pub const EMPTY_IDS_FILE: Code = Code::new("shelf", "books", "empty_ids_file");
 
 /// The code of a failure whose file of removed books cannot be read or
 /// written.
-const REMOVED_FILE: Code = Code::new("shelf", "books", "removed_file");
+pub const REMOVED_FILE: Code = Code::new("shelf", "books", "removed_file");
 
 /// The code of a failure that finds no state directory for the file of
 /// removed books.
-const NO_STATE_DIRECTORY: Code = Code::new("shelf", "books", "no_state_directory");
+pub const NO_STATE_DIRECTORY: Code = Code::new("shelf", "books", "no_state_directory");
 
 /// A failure of a books command.
 #[derive(Debug)]
@@ -404,9 +405,8 @@ pub(crate) enum BooksError {
 }
 
 impl BooksError {
-    /// Every code that a `BooksError` returns. Only shelf's test reads the
-    /// list, which it passes to crumbkit-test's codes check.
-    #[cfg(test)]
+    /// Every code that a `BooksError` returns, which shelf's tests pass to
+    /// crumbkit-test's codes and recovery checks.
     pub(crate) const CODES: &'static [&'static Code] = &[
         &NOT_FOUND,
         &UNREADABLE_IDS_FILE,

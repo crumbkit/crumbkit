@@ -21,9 +21,14 @@ use crate::cli::{CommandsCommand, EntriesCommand, Resource, SchemasCommand};
 use crate::graft::{ListCommand, Parsed};
 pub use crate::graft::{command, guide};
 pub use crate::lists::{List, lists_in};
+pub use crate::lists::{NOT_FOUND, UNREADABLE};
 
 #[cfg(test)]
 mod tests;
+
+/// Every failure code that reading declares, which reading's tests pass to
+/// crumbkit-test's codes and recovery checks.
+pub const CODES: &[&crumbkit::Code] = lists::EntriesError::CODES;
 
 /// How reading spells its failure codes, such as
 /// `reading::entries::not_found`.

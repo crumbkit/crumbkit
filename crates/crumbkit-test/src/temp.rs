@@ -66,6 +66,17 @@ impl TempDir {
         fs::write(self.path.join(name), contents).unwrap();
     }
 
+    /// Writes `contents` to the file `name` in the directory and lets its
+    /// owner run it, so a test can run a script as a tool's binary.
+    #[cfg(unix)]
+    #[cfg(test)]
+    pub(crate) fn write_script(&self, name: &str, contents: &str) {
+        use std::os::unix::fs::PermissionsExt as _;
+
+        self.write(name, contents);
+        fs::set_permissions(self.path.join(name), fs::Permissions::from_mode(0o700)).unwrap();
+    }
+
     /// Returns the names of the files in the directory, sorted.
     #[cfg(test)]
     pub(crate) fn names(&self) -> Vec<String> {

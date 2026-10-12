@@ -1,0 +1,9 @@
+reading entries list --list unread
+  fails with reading::entries::not_found
+  run reading commands list
+    exits 0
+
+codes that no start provokes:
+  reading::entries::unreadable: Only a list file that exists and that reading cannot read provokes it, and a file's permissions differ between platforms.
+
+codes whose recoveries the check did not follow, because no declared code spells them: 0

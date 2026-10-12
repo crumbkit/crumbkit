@@ -232,6 +232,12 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   ([ADR-0001]).
 - crumbkit: [`help::split`] reads back the words of a command line whose
   words `help::quote` quoted.
+- crumbkit-test: [`check_recoveries`] runs failing command lines, follows
+  each recovery they print and pins the chains in a golden report, and
+  [`check_twin`] runs a refused command line beside one that succeeds
+  ([ADR-0005]).
+- crumbkit-test: `Rule::Recoveries` and `Rule::SameCode` let a tool opt out
+  of the recovery check ([ADR-0036]).
 
 ### Changed
 
@@ -415,6 +421,7 @@ rustdoc, or at its decision record. -->
 [ADR-0002]: docs/decisions/api/0002-public-api-and-semver.md
 [ADR-0003]: docs/decisions/project/0003-dependency-policy.md
 [ADR-0004]: docs/decisions/testing/0004-golden-and-snapshot-tests.md
+[ADR-0005]: docs/decisions/testing/0005-cli-end-to-end-tests.md
 [ADR-0007]: docs/decisions/api/schemas/0007-json-schemas.md
 [ADR-0015]: docs/decisions/api/0015-lightweight-adoption.md
 [ADR-0016]: docs/decisions/api/output/0016-result-formats.md
@@ -468,3 +475,5 @@ rustdoc, or at its decision record. -->
 [ADR-0045]: docs/decisions/api/output/0045-failure-forms.md
 [`codes`]: crates/crumbkit/src/codes.rs
 [`help::split`]: crates/crumbkit/src/help/words.rs
+[`check_recoveries`]: crates/crumbkit-test/src/recoveries.rs
+[`check_twin`]: crates/crumbkit-test/src/twins.rs

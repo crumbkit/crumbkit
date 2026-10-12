@@ -271,10 +271,10 @@ fn file(dir: Option<&Path>, name: &str) -> Result<PathBuf, EntriesError> {
 }
 
 /// The code of a failure whose list does not exist.
-const NOT_FOUND: Code = Code::new("reading", "entries", "not_found");
+pub const NOT_FOUND: Code = Code::new("reading", "entries", "not_found");
 
 /// The code of a failure whose list's file cannot be read.
-const UNREADABLE: Code = Code::new("reading", "entries", "unreadable");
+pub const UNREADABLE: Code = Code::new("reading", "entries", "unreadable");
 
 /// A failure of a command that prints a list's entries.
 #[derive(Debug)]
@@ -294,9 +294,8 @@ pub(crate) enum EntriesError {
 }
 
 impl EntriesError {
-    /// Every code that an `EntriesError` returns. Only reading's test reads
-    /// the list, which it passes to crumbkit-test's codes check.
-    #[cfg(test)]
+    /// Every code that an `EntriesError` returns, which reading's tests pass
+    /// to crumbkit-test's codes and recovery checks.
     pub(crate) const CODES: &'static [&'static Code] = &[&NOT_FOUND, &UNREADABLE];
 }
 

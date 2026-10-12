@@ -170,6 +170,14 @@ pub enum Rule {
     /// an exit code from 126 to 255, which a shell also reports for its own
     /// reasons. Its id is `exit-codes/shell-code`.
     ShellExitCode,
+    /// [`check_recoveries`](crate::check_recoveries): the check runs no
+    /// command line below a command and follows no recovery into it. Its id
+    /// is `recoveries/follow`.
+    Recoveries,
+    /// [`check_recoveries`](crate::check_recoveries): a recovery of a
+    /// command fails again with the code of the failure it follows. Its id
+    /// is `recoveries/same-code`.
+    SameCode,
 }
 
 impl Rule {
@@ -196,6 +204,8 @@ impl Rule {
             Self::Envelope => "documents/envelope",
             Self::FailureForm => "documents/failure-form",
             Self::ShellExitCode => "exit-codes/shell-code",
+            Self::Recoveries => "recoveries/follow",
+            Self::SameCode => "recoveries/same-code",
         }
     }
 
@@ -264,6 +274,12 @@ impl Rule {
             ],
             Self::ShellExitCode => &[
                 "An agent cannot tell the code from the one a shell reports, such as 127 when the shell cannot find the tool or 130 when Ctrl-C ends it.",
+            ],
+            Self::Recoveries => &[
+                "No test shows that the command's recoveries lead anywhere, so a recovery can lead back to the same failure or name a command that no longer runs.",
+            ],
+            Self::SameCode => &[
+                "An agent that follows the recovery sees the same code again and must read the output to learn that the step worked.",
             ],
         }
     }
