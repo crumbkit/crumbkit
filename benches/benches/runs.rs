@@ -55,17 +55,19 @@ struct Limits {
     allocations: u64,
 }
 
-// Each limit's comment gives the count that it comes from. The counts of
-// `books list` with and without the usage log come from run 38169846232 of
-// `scheduled.yml` on `ubuntu-24.04`, the instruction count of
-// `commands list` from run 38190318078, and the others from run 38163868931.
+// Each limit's comment gives the count that it comes from. The counts come
+// from runs of `scheduled.yml` on `ubuntu-24.04`. Run 38191227265 gave both
+// counts of `books list` with and without the usage log, of `commands list`
+// and of the refusal, and the block count of `books list -h`. Run
+// 38163868931 gave both counts of `shelf -h` and the instruction count of
+// `books list -h`.
 
 /// The limits of `shelf books list`.
 const BOOKS_LIST: Limits = Limits {
-    // The count was 574457 instructions.
-    instructions: 631_903,
-    // The count was 814 blocks.
-    allocations: 896,
+    // The count was 703544 instructions.
+    instructions: 773_899,
+    // The count was 936 blocks.
+    allocations: 1030,
 };
 
 /// The limits of `shelf -h`.
@@ -80,32 +82,32 @@ const ROOT_HELP: Limits = Limits {
 const LEAF_HELP: Limits = Limits {
     // The count was 447139 instructions.
     instructions: 491_853,
-    // The count was 452 blocks.
-    allocations: 498,
+    // The count was 511 blocks.
+    allocations: 563,
 };
 
 /// The limits of `shelf commands list --all --json --full`.
 const COMMANDS_LIST: Limits = Limits {
-    // The count was 2284495 instructions.
-    instructions: 2_512_945,
-    // The count was 1942 blocks.
-    allocations: 2137,
+    // The count was 2585149 instructions.
+    instructions: 2_843_664,
+    // The count was 2319 blocks.
+    allocations: 2551,
 };
 
 /// The limits of `shelf books lst`, which clap refuses.
 const REFUSAL: Limits = Limits {
-    // The count was 376499 instructions.
-    instructions: 414_149,
-    // The count was 447 blocks.
-    allocations: 492,
+    // The count was 418778 instructions.
+    instructions: 460_656,
+    // The count was 502 blocks.
+    allocations: 553,
 };
 
 /// The limits of `shelf books list` with the usage log started.
 const BOOKS_LIST_LOGGED: Limits = Limits {
-    // The count was 709788 instructions.
-    instructions: 780_767,
-    // The count was 859 blocks.
-    allocations: 945,
+    // The count was 841014 instructions.
+    instructions: 925_116,
+    // The count was 1035 blocks.
+    allocations: 1139,
 };
 
 /// Returns the configuration that runs Callgrind and DHAT with `limits` and
