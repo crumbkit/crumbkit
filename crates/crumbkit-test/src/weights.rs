@@ -10,8 +10,10 @@ use std::path::{Path, PathBuf};
 use clap::Command;
 use crumbkit::help::Guide;
 
+use crate::budget::{Budget, Departure, Limit};
 use crate::guide::command_line;
 use crate::pages::pages;
+use crate::sizes::{find, names_nothing};
 use crate::tree::{self, Visit};
 
 #[cfg(test)]
@@ -28,16 +30,16 @@ const PATH: u64 = 8_000;
 /// of the root, of each command between the root and the command, and of
 /// the command, and then the largest output of the command's examples.
 /// [`PathBudgets::new`] holds crumbkit's default budget of 8,000 bytes for
-/// every path, which [ADR-0025] records. A tool can lower the budget of
-/// every path, or of single commands, and cannot raise a budget above the
-/// default:
+/// every path, which [ADR-0025] records. A tool can raise or lower the
+/// budget of every path, or of single commands, and gives a reason for each
+/// budget it sets, which [`check_opt_outs`](crate::check_opt_outs) lists:
 ///
 /// ```
-/// use crumbkit_test::PathBudgets;
+/// use crumbkit_test::{Budget, PathBudgets};
 ///
 /// const BUDGETS: PathBudgets<'_> = PathBudgets::new("tests/golden/examples")
-///     .path(4_000)
-///     .nodes(&[("books list", 2_500)]);
+///     .path(4_000, "Every path of the tool reads short pages.")
+///     .nodes(&[Budget::new("books list", 9_000, "The listing's example prints many rows.")]);
 /// ```
 ///
 /// [ADR-0025]: https://github.com/crumbkit/crumbkit/blob/main/docs/decisions/api/help/0025-help-checks.md
@@ -47,10 +49,10 @@ pub struct PathBudgets<'a> {
     /// [`check_examples`](crate::check_examples) writes.
     goldens: &'a str,
     /// The budget of each path.
-    path: u64,
-    /// The budgets of single commands, each named by its path below the
-    /// root, which win over the budget of every path.
-    nodes: &'a [(&'a str, u64)],
+    path: Limit,
+    /// The budgets of single commands, which win over the budget of every
+    /// path.
+    nodes: &'a [Budget],
 }
 
 impl<'a> PathBudgets<'a> {
@@ -61,27 +63,64 @@ impl<'a> PathBudgets<'a> {
     pub const fn new(goldens: &'a str) -> Self {
         Self {
             goldens,
-            path: PATH,
+            path: Limit::default_of(PATH),
             nodes: &[],
         }
     }
 
-    /// Sets the budget of every path to `bytes`.
+    /// Sets the budget of every path to `bytes`, for `reason`.
+    ///
+    /// # Panics
+    ///
+    /// Panics unless `reason` is non-empty and holds no line break, so a
+    /// `const` that passes such a reason fails to compile.
     #[must_use]
-    pub const fn path(mut self, bytes: u64) -> Self {
-        self.path = bytes;
+    pub const fn path(mut self, bytes: u64, reason: &'static str) -> Self {
+        self.path = Limit::set(bytes, reason);
         self
     }
 
-    /// Sets the budgets of single commands, each a command's path below the
-    /// root, with its names joined by single spaces, such as
-    /// `"books list"`, and a number of bytes. A command's own budget wins
+    /// Sets the budgets of single commands. A command's own budget wins
     /// over the budget of every path, and the first entry for a path wins
     /// over a later one.
     #[must_use]
-    pub const fn nodes(mut self, nodes: &'a [(&'a str, u64)]) -> Self {
+    pub const fn nodes(mut self, nodes: &'a [Budget]) -> Self {
         self.nodes = nodes;
         self
+    }
+
+    /// Returns each budget that the tool set, for the tool `command`, and
+    /// adds a problem to `problems` for a command's budget whose path names
+    /// no visible command below the root.
+    pub(crate) fn departures(
+        &self,
+        command: &Command,
+        problems: &mut Vec<String>,
+    ) -> Vec<Departure> {
+        let mut departures = Vec::new();
+        if let Some(reason) = self.path.reason {
+            departures.push(Departure {
+                rule: "path-budget/path",
+                applies_to: format!("every path through {}", command.get_name()),
+                reason,
+                bytes: self.path.bytes,
+                default: PATH,
+            });
+        }
+        let visible = tree::walk_visible(command);
+        for budget in self.nodes {
+            match find(&visible, budget.path()) {
+                Some(visit) => departures.push(Departure {
+                    rule: "path-budget/command",
+                    applies_to: visit.path().to_owned(),
+                    reason: budget.reason(),
+                    bytes: budget.bytes(),
+                    default: PATH,
+                }),
+                None => problems.push(names_nothing(budget)),
+            }
+        }
+        departures
     }
 }
 
@@ -99,8 +138,6 @@ impl<'a> PathBudgets<'a> {
 ///
 /// - a path whose weight is over its budget, naming the command, the
 ///   weight, the bytes of its pages and of its output, and the budget;
-/// - a budget above crumbkit's default, because a tool can lower a budget
-///   and cannot raise one;
 /// - a command's budget whose path names no command or a hidden one;
 /// - a golden file whose size cannot be read for a reason other than its
 ///   absence;
@@ -125,28 +162,11 @@ impl<'a> PathBudgets<'a> {
 /// path from `command`, such as `shelf books list`.
 pub fn check_path_weights(command: &Command, guide: &Guide, budgets: &PathBudgets<'_>) {
     let mut problems = Vec::new();
-    let above = |budget: u64| {
-        format!(
-            "budget of {budget} bytes is above crumbkit's default of {PATH} bytes, and a tool can lower a budget and cannot raise one"
-        )
-    };
-    if budgets.path > PATH {
-        problems.push(format!("the path {}", above(budgets.path)));
-    }
     let pages = pages(command, guide, "-h", &mut problems);
-    let visible = tree::walk_visible(command, &[], &mut problems);
-    for &(path, budget) in budgets.nodes {
-        match visible
-            .iter()
-            .find(|visit| visit.depth() > 0 && visit.below() == path)
-        {
-            Some(visit) if budget > PATH => {
-                problems.push(format!("{}: the {}", visit.path(), above(budget)));
-            }
-            Some(_) => {}
-            None => problems.push(format!(
-                "the budget of `{path}` names no visible command below the root"
-            )),
+    let visible = tree::walk_visible(command);
+    for budget in budgets.nodes {
+        if find(&visible, budget.path()).is_none() {
+            problems.push(names_nothing(budget));
         }
     }
     let dir = Path::new(budgets.goldens);
@@ -165,8 +185,8 @@ pub fn check_path_weights(command: &Command, guide: &Guide, budgets: &PathBudget
         let own = budgets
             .nodes
             .iter()
-            .find(|(path, _)| visit.depth() > 0 && *path == visit.below());
-        let budget = own.map_or(budgets.path, |&(_, bytes)| bytes);
+            .find(|budget| visit.depth() > 0 && budget.path() == visit.below());
+        let budget = own.map_or(budgets.path.bytes, Budget::bytes);
         if total > budget {
             let output = output.unwrap_or(0);
             problems.push(format!(

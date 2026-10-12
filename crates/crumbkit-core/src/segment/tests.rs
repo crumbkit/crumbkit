@@ -1,8 +1,8 @@
-//! Property tests for the segment rule (ADR-0006).
+//! Property tests for the segment rule and the component rule (ADR-0006).
 
 use proptest::prelude::*;
 
-use super::is_segment;
+use super::{is_component, is_segment};
 
 /// Generates strings of up to eight characters drawn from the characters that
 /// a segment allows and the characters next to them: the upper-case letters,
@@ -23,6 +23,23 @@ fn follows_the_rule(text: &str, punctuation: u8) -> bool {
                 || character.is_ascii_digit()
                 || character == char::from(punctuation)
         })
+}
+
+/// Returns whether `text` follows the component rule, stated over the
+/// labels that `split` returns: every label is non-empty, and each of its
+/// characters is a lowercase ASCII letter, an ASCII digit, `_` or `-`.
+/// `is_component` walks bytes instead, so this states the same rule a second
+/// way.
+fn follows_the_component_rule(text: &str) -> bool {
+    text.split('.').all(|label| {
+        !label.is_empty()
+            && label.chars().all(|character| {
+                character.is_ascii_lowercase()
+                    || character.is_ascii_digit()
+                    || character == '_'
+                    || character == '-'
+            })
+    })
 }
 
 proptest! {
@@ -49,5 +66,19 @@ proptest! {
             is_segment(&text, punctuation),
             follows_the_rule(&text, punctuation)
         );
+    }
+
+    #[test]
+    fn labels_joined_by_single_dots_are_a_component(
+        text in r"[a-z0-9_-]{1,6}(\.[a-z0-9_-]{1,6}){0,3}",
+    ) {
+        prop_assert!(is_component(&text));
+    }
+
+    #[test]
+    fn any_string_is_a_component_exactly_when_it_follows_the_rule(
+        text in prop_oneof![NEAR_SEGMENTS, any::<String>()],
+    ) {
+        prop_assert_eq!(is_component(&text), follows_the_component_rule(&text));
     }
 }

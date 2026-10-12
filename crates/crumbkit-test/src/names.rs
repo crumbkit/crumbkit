@@ -3,6 +3,7 @@
 
 use clap::Command;
 
+use crate::allow::{Allow, Allowances, Rule};
 use crate::tree::{self, argument_name};
 
 #[cfg(test)]
@@ -28,17 +29,18 @@ const ARGUMENT_RULE: &str = "and help shows one name for each argument";
 /// The check covers what help shows: `command`, every visible subcommand
 /// below it and every visible argument of each. It skips each hidden command
 /// and everything below it and each hidden argument, because no help page
-/// shows them, and it skips each command that `exempt` names and everything
-/// below it. An exemption is a command's path below `command`, such as
-/// `"books list"`, and an exemption that names no command is a problem. The
-/// check finds:
+/// shows them. It finds the problems below, except on a command that an
+/// opt-out from [`Rule::OneName`] in `allow` covers: the command it names
+/// and every command below it. It finds:
 ///
 /// - a command with a visible alias, a visible short-flag alias or a visible
 ///   long-flag alias;
 /// - a command with a short or a long flag name, such as `-B` from
 ///   `Command::short_flag`, because help lists a flag name beside the
 ///   command's name;
-/// - an argument with a visible long alias or a visible short alias.
+/// - an argument with a visible long alias or a visible short alias;
+/// - an opt-out from [`Rule::OneName`] that names no command or excuses no
+///   problem.
 ///
 /// Hidden aliases pass, and so does a visible alias of a hidden command or
 /// argument. An argument may have one short form beside its long name, such
@@ -65,49 +67,55 @@ const ARGUMENT_RULE: &str = "and help shows one name for each argument";
 /// Panics when the tree breaks a rule above. The message lists each problem
 /// on its own line and names each command by its path from `command`, such
 /// as `shelf books list`.
-pub fn check_names(command: &Command, exempt: &[&str]) {
+pub fn check_names(command: &Command, allow: &[Allow]) {
+    let mut allowances = Allowances::new(allow, &[Rule::OneName]);
     let mut problems = Vec::new();
-    for visit in tree::walk_visible(command, exempt, &mut problems) {
+    for visit in tree::walk_visible(command) {
         let path = visit.path();
         let command = visit.command();
+        // The problems of this command, which an opt-out may excuse.
+        let mut found = Vec::new();
         for alias in command.get_visible_aliases() {
-            problems.push(format!(
+            found.push(format!(
                 "{path}: the command has the visible alias `{alias}`, {COMMAND_RULE}"
             ));
         }
         if let Some(flag) = command.get_short_flag() {
-            problems.push(format!(
+            found.push(format!(
                 "{path}: the command has the short flag name `-{flag}`, {COMMAND_RULE}"
             ));
         }
         if let Some(flag) = command.get_long_flag() {
-            problems.push(format!(
+            found.push(format!(
                 "{path}: the command has the long flag name `--{flag}`, {COMMAND_RULE}"
             ));
         }
         for alias in command.get_visible_short_flag_aliases() {
-            problems.push(format!(
+            found.push(format!(
                 "{path}: the command has the visible short flag alias `-{alias}`, {COMMAND_RULE}"
             ));
         }
         for alias in command.get_visible_long_flag_aliases() {
-            problems.push(format!(
+            found.push(format!(
                 "{path}: the command has the visible long flag alias `--{alias}`, {COMMAND_RULE}"
             ));
         }
         for arg in command.get_arguments().filter(|arg| !arg.is_hide_set()) {
             let name = argument_name(arg);
             for alias in arg.get_visible_aliases().unwrap_or_default() {
-                problems.push(format!(
+                found.push(format!(
                     "{path}: the argument `{name}` has the visible alias `--{alias}`, {ARGUMENT_RULE}"
                 ));
             }
             for alias in arg.get_visible_short_aliases().unwrap_or_default() {
-                problems.push(format!(
+                found.push(format!(
                     "{path}: the argument `{name}` has the visible short alias `-{alias}`, {ARGUMENT_RULE}"
                 ));
             }
         }
+        if !found.is_empty() && !allowances.excuses(Rule::OneName, visit.below()) {
+            problems.append(&mut found);
+        }
     }
-    tree::report("naming rules", &problems);
+    allowances.report(command, "naming rules", problems);
 }

@@ -14,6 +14,7 @@ use snapbox::Assert;
 use snapbox::assert::Action;
 
 use super::{Examples, check, example_golden_name};
+use crate::allow::{Allow, Rule};
 use crate::guide::command_line;
 use crate::temp::TempDir;
 use crate::testing::panic_message;
@@ -47,6 +48,10 @@ const FILES: [&str; 3] = [
     "sh-c-echo-books.txt",
     "sh-e-c-echo-shelves.txt",
 ];
+
+/// An opt-out from running the examples of `books`, which names no command
+/// of `sh()`.
+const NO_COMMAND: &[Allow] = &[Allow::new(Rule::Examples, "books", "No such command.")];
 
 /// Returns the settings that run `/bin/sh` and keep the golden files in
 /// `dir`.
@@ -192,42 +197,39 @@ fn failed_runs_and_broken_rules_are_reported_under_their_own_headings() {
     let dir = TempDir::new("examples-headings").unwrap();
 
     assert_eq!(
-        panic_message(|| run(
-            &FAILS,
-            &examples(&dir).exempt(&["books"]),
-            Action::Overwrite
-        ))
-        .unwrap(),
+        panic_message(|| run(&FAILS, &examples(&dir).allow(NO_COMMAND), Action::Overwrite))
+            .unwrap(),
         "the command tree breaks crumbkit's example rules:\n\
-         the exemption `books` names no command\n\
+         the opt-out from `examples/run` for `sh books` names no command\n\
          these runs of the tool's examples fail:\n\
          sh -c 'exit 3': an example must exit with code 0 and write nothing to standard error, and the run ends with exit status: 3"
     );
 }
 
 #[test]
-fn the_examples_of_an_exempt_command_and_everything_below_it_are_skipped() {
-    let dir = TempDir::new("examples-exempt").unwrap();
+fn the_examples_of_a_command_that_an_opt_out_names_and_of_everything_below_it_are_skipped() {
+    const ALLOW: &[Allow] = &[Allow::new(
+        Rule::Examples,
+        "-e",
+        "The output names the day.",
+    )];
+    let dir = TempDir::new("examples-allow").unwrap();
     run(&GUIDE, &examples(&dir), Action::Overwrite);
 
-    run(&GUIDE, &examples(&dir).exempt(&["-e"]), Action::Overwrite);
+    run(&GUIDE, &examples(&dir).allow(ALLOW), Action::Overwrite);
 
     assert_eq!(dir.names(), FILES[..2]);
 }
 
 #[test]
-fn an_exemption_that_names_no_command_fails_the_check() {
-    let dir = TempDir::new("examples-exemption").unwrap();
+fn an_opt_out_that_names_no_command_fails_the_check() {
+    let dir = TempDir::new("examples-no-command").unwrap();
 
     assert_eq!(
-        panic_message(|| run(
-            &GUIDE,
-            &examples(&dir).exempt(&["books"]),
-            Action::Overwrite
-        ))
-        .unwrap(),
+        panic_message(|| run(&GUIDE, &examples(&dir).allow(NO_COMMAND), Action::Overwrite))
+            .unwrap(),
         "the command tree breaks crumbkit's example rules:\n\
-         the exemption `books` names no command"
+         the opt-out from `examples/run` for `sh books` names no command"
     );
 }
 

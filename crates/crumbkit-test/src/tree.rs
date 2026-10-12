@@ -33,23 +33,17 @@ impl<'a> Visit<'a> {
     }
 
     /// Returns the command's names below the command passed to the walk,
-    /// separated by single spaces, such as `books list`, as an exemption or
-    /// a node budget names the command. It is empty for the command passed
+    /// separated by single spaces, such as `books list`, as an opt-out or a
+    /// node budget names the command. It is empty for the command passed
     /// to the walk.
     pub(crate) fn below(&self) -> &str {
         self.path.split_once(' ').map_or("", |(_, below)| below)
     }
 }
 
-/// Returns `root` and every command below it, in depth-first order, leaving
-/// out each command that `exempt` names and everything below it. It adds a
-/// problem to `problems` for each exemption that names no command, so the
-/// exemption of a removed command cannot stay in a tool's list.
-///
-/// An exemption is a command's path below `root`, with its names separated
-/// by single spaces, such as `books list`. The walk includes hidden commands,
-/// and `Command::get_arguments` on each visited command includes hidden
-/// arguments.
+/// Returns `root` and every command below it, in depth-first order. The walk
+/// includes hidden commands, and `Command::get_arguments` on each visited
+/// command includes hidden arguments.
 ///
 /// The walk reads the tree as the tool built it and never calls
 /// `Command::build`. clap's build adds a `help` subcommand to every command
@@ -60,59 +54,36 @@ impl<'a> Visit<'a> {
 /// command, so the walk leaves the tree unbuilt. A command that the tool
 /// gives to `Command::defer` adds its arguments only when it is built, so the
 /// checks see no arguments on it.
-pub(crate) fn walk<'a>(
-    root: &'a Command,
-    exempt: &[&str],
-    problems: &mut Vec<String>,
-) -> Vec<Visit<'a>> {
-    walk_tree(root, exempt, problems, true)
+pub(crate) fn walk(root: &Command) -> Vec<Visit<'_>> {
+    walk_tree(root, true)
 }
 
 /// Returns `root` and every visible command below it, as [`walk`] does,
 /// leaving out each hidden command and everything below it, as help shows
 /// the tree. A command that a tool hides is absent from every help page,
-/// and so is every command below it, because no page lists it. An
-/// exemption may name a hidden command, which the walk leaves out anyway.
-pub(crate) fn walk_visible<'a>(
-    root: &'a Command,
-    exempt: &[&str],
-    problems: &mut Vec<String>,
-) -> Vec<Visit<'a>> {
-    walk_tree(root, exempt, problems, false)
+/// and so is every command below it, because no page lists it.
+pub(crate) fn walk_visible(root: &Command) -> Vec<Visit<'_>> {
+    walk_tree(root, false)
 }
 
 /// Returns the commands that [`walk`] returns, or those that
 /// [`walk_visible`] returns when `hidden` is unset.
-fn walk_tree<'a>(
-    root: &'a Command,
-    exempt: &[&str],
-    problems: &mut Vec<String>,
-    hidden: bool,
-) -> Vec<Visit<'a>> {
-    for &exemption in exempt {
-        if !names_command(root, exemption) {
-            problems.push(format!("the exemption `{exemption}` names no command"));
-        }
-    }
+fn walk_tree(root: &Command, hidden: bool) -> Vec<Visit<'_>> {
     let mut visits = Vec::new();
-    visit(root, "", root.get_name(), 0, exempt, hidden, &mut visits);
+    visit(root, root.get_name(), 0, hidden, &mut visits);
     visits
 }
 
-/// Adds `command` and every command below it to `visits`, unless `exempt`
-/// names `below`, the command's path below the root of the walk, which is
-/// empty for the root itself. A hidden command and everything below it are
-/// left out unless `hidden` is set.
+/// Adds `command` and every command below it to `visits`. A hidden command
+/// and everything below it are left out unless `hidden` is set.
 fn visit<'a>(
     command: &'a Command,
-    below: &str,
     path: &str,
     depth: usize,
-    exempt: &[&str],
     hidden: bool,
     visits: &mut Vec<Visit<'a>>,
 ) {
-    if depth > 0 && (exempt.contains(&below) || !hidden && command.is_hide_set()) {
+    if depth > 0 && !hidden && command.is_hide_set() {
         return;
     }
     visits.push(Visit {
@@ -121,28 +92,9 @@ fn visit<'a>(
         depth,
     });
     for subcommand in command.get_subcommands() {
-        let name = subcommand.get_name();
-        let below = if depth == 0 {
-            name.to_owned()
-        } else {
-            format!("{below} {name}")
-        };
-        visit(
-            subcommand,
-            &below,
-            &format!("{path} {name}"),
-            depth + 1,
-            exempt,
-            hidden,
-            visits,
-        );
+        let path = format!("{path} {}", subcommand.get_name());
+        visit(subcommand, &path, depth + 1, hidden, visits);
     }
-}
-
-/// Reports whether `exemption`, a path of names separated by single spaces,
-/// leads from `root` to a command.
-fn names_command(root: &Command, exemption: &str) -> bool {
-    find(root, exemption.split(' ')).is_some()
 }
 
 /// Returns the command that `path`, a sequence of names, leads to from

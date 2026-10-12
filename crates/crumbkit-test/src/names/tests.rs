@@ -3,6 +3,7 @@
 use clap::{Arg, ArgAction, Command};
 
 use super::check_names;
+use crate::allow::{Allow, Rule};
 use crate::testing::panic_message;
 
 #[test]
@@ -150,4 +151,19 @@ fn a_hidden_argument_with_a_visible_alias_passes_because_no_help_page_shows_it()
     );
 
     check_names(&list, &[]);
+}
+
+#[test]
+fn a_visible_alias_passes_when_an_opt_out_names_its_command() {
+    const ALLOW: &[Allow] = &[Allow::new(
+        Rule::OneName,
+        "books",
+        "Scripts written before the rename call `shelf book`.",
+    )];
+    let shelf =
+        Command::new("shelf").subcommand(Command::new("books").visible_alias("book").subcommand(
+            Command::new("list").arg(Arg::new("limit").long("limit").visible_alias("max")),
+        ));
+
+    check_names(&shelf, ALLOW);
 }

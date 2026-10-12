@@ -39,7 +39,10 @@ mod tests;
 /// it writes each missing file, rewrites each file whose content differs
 /// and deletes each stale file. It finds two leaves that declare one id
 /// with different schemas, naming both command lines, because
-/// `schemas show` serves only the schema of the first. Without
+/// `schemas show` serves only the schema of the first. It finds two ids
+/// whose golden files have one name, such as `shelf/books-list/v1` and
+/// `shelf-books/list/v1`, which a component with dashes allows, naming
+/// both ids, and compares or writes only the first of the two. Without
 /// `SNAPSHOTS=overwrite`, it also finds:
 ///
 /// - a document without a golden file;
@@ -75,7 +78,8 @@ fn check(command: &Command, guide: &Guide, dir: &Path, assert: &Assert) {
     let overwrite = assert.selected_action() == Action::Overwrite;
     let mut problems = Vec::new();
     find_conflicts(command, guide, &mut problems);
-    let mut names = Vec::new();
+    // Each golden file name with the id of the document that has it.
+    let mut names: Vec<(String, String)> = Vec::new();
     for served in crumbkit::schemas::documents(command, guide) {
         let document = served.document();
         if document.component() == "crumbkit" {
@@ -87,19 +91,20 @@ fn check(command: &Command, guide: &Guide, dir: &Path, assert: &Assert) {
             document.name(),
             document.version()
         );
+        let id = served.id();
+        if let Some((_, other)) = names.iter().find(|(known, _)| *known == name) {
+            problems.push(format!(
+                "{id}: the golden file name `{name}` is also the name for the document {other}, so one of the two needs another id"
+            ));
+            continue;
+        }
         // Serializing a `Schema`, which holds a `serde_json::Value`, cannot
         // fail, and an empty text would show as a differing file.
         let text = serde_json::to_string_pretty(&served.schema()).unwrap_or_default() + "\n";
-        compare(
-            assert,
-            &served.id(),
-            "schema",
-            text,
-            &dir.join(&name),
-            &mut problems,
-        );
-        names.push(name);
+        compare(assert, &id, "schema", text, &dir.join(&name), &mut problems);
+        names.push((name, id));
     }
+    let names: Vec<String> = names.into_iter().map(|(name, _)| name).collect();
     remove_stale(dir, &names, "json", overwrite, "document", &mut problems);
     tree::report("golden schema rules", &problems);
 }

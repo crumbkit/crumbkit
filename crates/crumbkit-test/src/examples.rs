@@ -9,6 +9,7 @@ use crumbkit::help::Guide;
 use snapbox::assert::{Action, DEFAULT_ACTION_ENV};
 use snapbox::{Assert, cmd};
 
+use crate::allow::{Allow, Allowances, Rule};
 use crate::goldens::{compare, remove_stale};
 use crate::guide::command_line;
 use crate::temp::TempDir;
@@ -28,7 +29,7 @@ const XDG: [(&str, &str); 4] = [
 
 /// The settings of [`check_examples`]: the tool's built binary, the
 /// directory of the golden files, the environment of each run and the
-/// exempt commands.
+/// tool's opt-outs.
 ///
 /// A tool declares them as a constant in an integration test of the
 /// binary's own package, because cargo sets `CARGO_BIN_EXE_<name>`, the
@@ -38,19 +39,21 @@ const XDG: [(&str, &str); 4] = [
 /// guide, and the binary calls that library:
 ///
 /// ```
-/// use crumbkit_test::Examples;
+/// use crumbkit_test::{Allow, Examples, Rule};
 ///
-/// // In `tests/examples.rs`, the binary is `env!("CARGO_BIN_EXE_shelf")`.
+/// const ALLOW: &[Allow] = &[Allow::new(Rule::Examples, "books delete", "Each run deletes a book.")];
+///
+/// // In an integration test, the binary is `env!("CARGO_BIN_EXE_shelf")`.
 /// const EXAMPLES: Examples<'_> = Examples::new("/path/to/shelf", "tests/golden/examples")
 ///     .env(&[("SHELF_DATA", "tests/fixtures/books.json")])
-///     .exempt(&["books delete"]);
+///     .allow(ALLOW);
 /// ```
 ///
 /// cargo runs those tests, and therefore the binary, from the package's
 /// manifest directory, so a relative path in `dir` or in an `.env` value
 /// resolves from there.
 ///
-/// `Examples` borrows its paths, variables and exemptions for `'a`. A
+/// `Examples` borrows its paths, variables and opt-outs for `'a`. A
 /// constant borrows them for `'static`, and a test that builds a path at
 /// runtime, such as a temporary golden directory, borrows the `String` that
 /// holds it.
@@ -63,15 +66,15 @@ pub struct Examples<'a> {
     dir: &'a str,
     /// The environment variables that each run sets, as name and value.
     env: &'a [(&'a str, &'a str)],
-    /// The paths of the commands whose examples the check skips, each
-    /// below the root.
-    exempt: &'a [&'a str],
+    /// The tool's opt-outs, of which the check reads those from
+    /// [`Rule::Examples`].
+    allow: &'a [Allow],
 }
 
 impl<'a> Examples<'a> {
     /// Returns the settings that run the binary at `binary` and keep the
     /// golden files in `dir`, with no environment variables of the tool's
-    /// own and no exempt command.
+    /// own and no opt-out.
     ///
     /// `dir` holds only example golden files, because the check counts every
     /// `.txt` file in it that no checked example produces as stale.
@@ -81,7 +84,7 @@ impl<'a> Examples<'a> {
             binary,
             dir,
             env: &[],
-            exempt: &[],
+            allow: &[],
         }
     }
 
@@ -95,13 +98,13 @@ impl<'a> Examples<'a> {
         self
     }
 
-    /// Sets the commands whose examples the check skips, each a command's
-    /// path below the root, with its names joined by single spaces, such as
-    /// `"books list"`. The check skips the examples of each named command and
-    /// of every command below it.
+    /// Sets the tool's opt-outs. The check skips the examples of each
+    /// command that an opt-out from [`Rule::Examples`] names and of every
+    /// command below it, and reads no opt-out of another rule, so a tool
+    /// passes the same opt-outs that it passes to every other check.
     #[must_use]
-    pub const fn exempt(mut self, exempt: &'a [&'a str]) -> Self {
-        self.exempt = exempt;
+    pub const fn allow(mut self, allow: &'a [Allow]) -> Self {
+        self.allow = allow;
         self
     }
 }
@@ -120,7 +123,7 @@ impl<'a> Examples<'a> {
 /// the leaf's path and the example's words as separate arguments and no
 /// shell. It skips a leaf whose path names no command, which
 /// [`check_guide`](crate::check_guide) reports, and the leaves of each
-/// command that `examples` exempts and of every command below it. It runs
+/// command that an opt-out of `examples` covers. It runs
 /// the examples of a hidden command, because that command's own help lists
 /// them as runs that work.
 ///
@@ -152,7 +155,8 @@ impl<'a> Examples<'a> {
 ///   and the error;
 /// - two examples whose golden files have one name, naming both command
 ///   lines;
-/// - an exemption that names no command;
+/// - an opt-out from [`Rule::Examples`] that names no command or skips no
+///   example;
 ///
 /// and, without `SNAPSHOTS=overwrite`:
 ///
@@ -160,7 +164,7 @@ impl<'a> Examples<'a> {
 /// - an output that differs from its golden file, with snapbox's report of
 ///   both texts;
 /// - a stale golden file: a `.txt` file in the directory that no checked
-///   example produces, such as the file of a removed or exempt example.
+///   example produces, such as the file of a removed or skipped example.
 ///
 /// ```no_run
 /// use clap::Command;
@@ -170,7 +174,7 @@ impl<'a> Examples<'a> {
 /// const GUIDE: Guide = Guide::new().leaves(&[Leaf::new(&["books", "list"])
 ///     .examples(&[Example::new(&["--all"], "Print every book")])]);
 ///
-/// // In `tests/examples.rs`, the binary is `env!("CARGO_BIN_EXE_shelf")`.
+/// // In an integration test, the binary is `env!("CARGO_BIN_EXE_shelf")`.
 /// const EXAMPLES: Examples<'_> = Examples::new("/path/to/shelf", "tests/golden/examples");
 ///
 /// let shelf = Command::new("shelf")
@@ -181,7 +185,7 @@ impl<'a> Examples<'a> {
 ///
 /// # Panics
 ///
-/// Panics when a run, a golden file or an exemption breaks a rule above, or
+/// Panics when a run, a golden file or an opt-out breaks a rule above, or
 /// when the check cannot create a run's XDG directories, or
 /// `SNAPSHOTS=overwrite` cannot write or delete a file. The message lists
 /// the problems of the command tree and the golden files under the line
@@ -211,7 +215,8 @@ fn check(command: &Command, guide: &Guide, examples: &Examples<'_>, assert: &Ass
     // heading of their own, because the tool's binary breaks them and the
     // command tree and golden files do not.
     let mut failures = Vec::new();
-    let visits = tree::walk(command, examples.exempt, &mut problems);
+    let mut allowances = Allowances::new(examples.allow, &[Rule::Examples]);
+    let visits = tree::walk(command);
     // Each golden file name with the command line of the example that has
     // it.
     let mut names: Vec<(String, String)> = Vec::new();
@@ -219,6 +224,9 @@ fn check(command: &Command, guide: &Guide, examples: &Examples<'_>, assert: &Ass
         let path = leaf.path();
         let below = path.join(" ");
         if !visits.iter().any(|visit| visit.below() == below) {
+            continue;
+        }
+        if !leaf.get_examples().is_empty() && allowances.excuses(Rule::Examples, &below) {
             continue;
         }
         for example in leaf.get_examples() {
@@ -280,6 +288,7 @@ fn check(command: &Command, guide: &Guide, examples: &Examples<'_>, assert: &Ass
         "checked example",
         &mut problems,
     );
+    allowances.finish(command, &mut problems);
     report(&problems, &failures);
 }
 

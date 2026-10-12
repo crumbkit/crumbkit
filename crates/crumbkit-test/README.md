@@ -38,7 +38,10 @@ The rustdoc of each check says what it fails on and shows an example:
 
 - Failure codes: [`check_codes`].
 - Command and flag names: [`check_names`], [`check_grammar`],
-  [`check_listings`] and [`check_filters`].
+  [`check_listings`] and [`check_filters`], which take the tool's
+  opt-outs, each an [`Allow`] with a reason.
+- Opt-outs: [`check_opt_outs`], which pins the tool's opt-outs and
+  budgets with their reasons and costs in golden files.
 - The help guide: [`check_guide`].
 - Help pages: [`check_help_sizes`] with [`Budgets`], and
   [`check_help_goldens`].
@@ -49,16 +52,19 @@ The rustdoc of each check says what it fails on and shows an example:
   [`example_golden_name`], which names each example's golden file.
 - JSON documents: [`check_schema_goldens`], which pins each document's
   JSON Schema, [`check_document_ids`], which ties each document's name to
-  its command, and [`check_mounts`], which keeps crumbkit's own commands at
+  its command and takes the tool's opt-outs, and [`check_mounts`], which keeps crumbkit's own commands at
   their fixed paths.
 
-[ADR-0025] records why these checks exist, [ADR-0035] records the document
-checks, and [ADR-0004] records how golden files work.
+[ADR-0025] records why these checks exist, [ADR-0036] records opt-outs,
+[ADR-0035] records the document checks, and [ADR-0004] records how golden
+files work.
 
 Licensed under either of Apache License, Version 2.0 or MIT license at your
 option.
 
 [`check_codes`]: src/codes.rs
+[`Allow`]: src/allow.rs
+[`check_opt_outs`]: src/opt_outs.rs
 [`check_names`]: src/names.rs
 [`check_grammar`]: src/grammar.rs
 [`check_listings`]: src/listings.rs
@@ -79,4 +85,5 @@ option.
 [`check_mounts`]: src/documents.rs
 [ADR-0025]: ../../docs/decisions/api/help/0025-help-checks.md
 [ADR-0035]: ../../docs/decisions/api/0035-schema-commands.md
+[ADR-0036]: ../../docs/decisions/api/0036-opt-outs.md
 [ADR-0004]: ../../docs/decisions/testing/0004-golden-and-snapshot-tests.md

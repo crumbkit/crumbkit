@@ -1,0 +1,1 @@
+cargo has no opt-outs from crumbkit's conventions.

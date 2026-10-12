@@ -1,0 +1,39 @@
+{
+  "schema": "crumbkit/opt-outs/v1",
+  "data": [
+    {
+      "rule": "examples/run",
+      "applies_to": "shelf self usage",
+      "reason": "The output names the day the report starts, which changes every day, and tests/self_usage.rs checks the output without the day.",
+      "costs": [
+        "The examples are not run, so help can show an example that fails.",
+        "The command's output weight counts 0 bytes, so its path weight is too low."
+      ],
+      "budget": null
+    },
+    {
+      "rule": "examples/run",
+      "applies_to": "shelf self figures list",
+      "reason": "The output names the day the report starts, which changes every day, and tests/self_usage.rs checks the output without the day.",
+      "costs": [
+        "The examples are not run, so help can show an example that fails.",
+        "The command's output weight counts 0 bytes, so its path weight is too low."
+      ],
+      "budget": null
+    },
+    {
+      "rule": "path-budget/path",
+      "applies_to": "every path through shelf",
+      "reason": "shelf's longest path reads about 3,500 bytes, so 4,000 bytes leaves room for small changes and catches a page or an output that grows by much.",
+      "costs": [
+        "None, because the budget is at or below crumbkit's default."
+      ],
+      "budget": {
+        "bytes": 4000,
+        "default": 8000,
+        "extra_bytes": 0,
+        "extra_tokens": 0
+      }
+    }
+  ]
+}

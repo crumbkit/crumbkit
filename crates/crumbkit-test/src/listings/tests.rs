@@ -5,6 +5,7 @@ use clap::{Arg, ArgAction, ArgGroup, Args as _, Command};
 use crumbkit::Page;
 
 use super::check_listings;
+use crate::allow::{Allow, Rule};
 use crate::testing::panic_message;
 
 /// Returns a `show` command whose positional `ids` argument is required or
@@ -96,4 +97,27 @@ fn a_show_command_without_a_required_positional_argument_for_1_to_100_values_fai
              shelf from-zero show: {rule}"
         )
     );
+}
+
+#[test]
+fn a_list_command_without_page_and_a_show_command_with_one_id_pass_when_opt_outs_name_them() {
+    const ALLOW: &[Allow] = &[
+        Allow::new(
+            Rule::ListPages,
+            "shelves list",
+            "A library has at most five shelves.",
+        ),
+        Allow::new(
+            Rule::ShowIds,
+            "shelves show",
+            "The backend looks up one shelf at a time.",
+        ),
+    ];
+    let shelf = Command::new("shelf").subcommand(
+        Command::new("shelves")
+            .subcommand(Command::new("list"))
+            .subcommand(show(true, 1)),
+    );
+
+    check_listings(&shelf, ALLOW);
 }

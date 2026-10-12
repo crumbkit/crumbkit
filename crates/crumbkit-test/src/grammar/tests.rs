@@ -3,25 +3,24 @@
 use clap::{Arg, ArgAction, Command};
 
 use super::check_grammar;
+use crate::allow::{Allow, Rule};
 use crate::testing::panic_message;
 
 #[test]
 fn resources_that_nest_and_end_in_list_show_or_a_passed_verb_pass() {
-    let shelf = Command::new("shelf")
-        .subcommand(
-            Command::new("books")
-                .subcommand(Command::new("list"))
-                .subcommand(Command::new("show"))
-                .subcommand(Command::new("export"))
-                .subcommand(
-                    Command::new("reading-lists2")
-                        .subcommand(Command::new("list"))
-                        .subcommand(Command::new("export")),
-                ),
-        )
-        .subcommand(Command::new("schema"));
+    let shelf = Command::new("shelf").subcommand(
+        Command::new("books")
+            .subcommand(Command::new("list"))
+            .subcommand(Command::new("show"))
+            .subcommand(Command::new("export"))
+            .subcommand(
+                Command::new("reading-lists2")
+                    .subcommand(Command::new("list"))
+                    .subcommand(Command::new("export")),
+            ),
+    );
 
-    check_grammar(&shelf, &["export"], &["schema"]);
+    check_grammar(&shelf, &["export"], &[]);
 }
 
 #[test]
@@ -134,4 +133,75 @@ fn the_command_passed_in_may_be_named_or_aliased_help() {
         .subcommand(Command::new("books").subcommand(Command::new("list")));
 
     check_grammar(&help, &[], &[]);
+}
+
+#[test]
+fn a_leaf_directly_under_the_tool_passes_when_an_opt_out_names_it_and_its_other_rules_still_apply()
+{
+    const ALLOW: &[Allow] = &[Allow::new(
+        Rule::RootLeaf,
+        "version",
+        "People type `shelf version` from habit.",
+    )];
+    let shelf = Command::new("shelf")
+        .subcommand(Command::new("books").subcommand(Command::new("list")))
+        .subcommand(
+            Command::new("version").arg(
+                Arg::new("dry-run")
+                    .long("dry-run")
+                    .action(ArgAction::SetTrue),
+            ),
+        );
+
+    assert_eq!(
+        panic_message(|| check_grammar(&shelf, &[], ALLOW)).unwrap(),
+        "the command tree breaks crumbkit's grammar:\n\
+         shelf version: the command has the argument `--dry-run`, and crumbkit reserves that name for its write verbs"
+    );
+}
+
+#[test]
+fn a_command_keeps_its_own_dry_run_when_an_opt_out_names_it() {
+    const ALLOW: &[Allow] = &[Allow::new(
+        Rule::DryRun,
+        "books",
+        "The tool's scripts pass `--dry-run` today.",
+    )];
+    let shelf = Command::new("shelf").subcommand(
+        Command::new("books").subcommand(
+            Command::new("import").arg(
+                Arg::new("dry-run")
+                    .long("dry-run")
+                    .action(ArgAction::SetTrue),
+            ),
+        ),
+    );
+
+    check_grammar(&shelf, &["import"], ALLOW);
+}
+
+#[test]
+fn a_resource_keeps_its_name_when_an_opt_out_names_it() {
+    const ALLOW: &[Allow] = &[Allow::new(
+        Rule::ResourceName,
+        "reading_lists",
+        "The name matches the service's own API.",
+    )];
+    let shelf = Command::new("shelf")
+        .subcommand(Command::new("reading_lists").subcommand(Command::new("list")));
+
+    check_grammar(&shelf, &[], ALLOW);
+}
+
+#[test]
+fn an_opt_out_from_a_grammar_rule_that_excuses_nothing_fails_the_check() {
+    const ALLOW: &[Allow] = &[Allow::new(Rule::RootLeaf, "books", "Old habit.")];
+    let shelf =
+        Command::new("shelf").subcommand(Command::new("books").subcommand(Command::new("list")));
+
+    assert_eq!(
+        panic_message(|| check_grammar(&shelf, &[], ALLOW)).unwrap(),
+        "the command tree breaks crumbkit's grammar:\n\
+         the opt-out from `grammar/root-leaf` for `shelf books` excuses no problem, so it is stale"
+    );
 }

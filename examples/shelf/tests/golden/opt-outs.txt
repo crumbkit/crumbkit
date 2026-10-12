@@ -1,0 +1,16 @@
+shelf has 3 opt-outs from crumbkit's conventions.
+
+examples/run: shelf self usage
+  Reason: The output names the day the report starts, which changes every day, and tests/self_usage.rs checks the output without the day.
+  Cost: The examples are not run, so help can show an example that fails.
+  Cost: The command's output weight counts 0 bytes, so its path weight is too low.
+
+examples/run: shelf self figures list
+  Reason: The output names the day the report starts, which changes every day, and tests/self_usage.rs checks the output without the day.
+  Cost: The examples are not run, so help can show an example that fails.
+  Cost: The command's output weight counts 0 bytes, so its path weight is too low.
+
+path-budget/path: every path through shelf
+  Budget: 4000 bytes, where crumbkit's default is 8000 bytes.
+  Reason: shelf's longest path reads about 3,500 bytes, so 4,000 bytes leaves room for small changes and catches a page or an output that grows by much.
+  Cost: None, because the budget is at or below crumbkit's default.

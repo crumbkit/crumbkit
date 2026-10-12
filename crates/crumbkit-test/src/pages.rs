@@ -33,7 +33,7 @@ pub(crate) fn pages<'a>(
     problems: &mut Vec<String>,
 ) -> Vec<(Visit<'a>, String)> {
     let mut pages = Vec::new();
-    for visit in tree::walk_visible(command, &[], problems) {
+    for visit in tree::walk_visible(command) {
         let line = format!("{} {flag}", visit.path());
         let mut out = Vec::new();
         // `()` takes no values from the matches, and help never reaches it.

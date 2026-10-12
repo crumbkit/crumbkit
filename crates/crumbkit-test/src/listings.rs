@@ -3,6 +3,7 @@
 
 use clap::{Arg, ArgAction, Command};
 
+use crate::allow::{Allow, Allowances, Rule};
 use crate::tree::{self, takes_values};
 
 #[cfg(test)]
@@ -17,23 +18,27 @@ const MOST_IDS: usize = 100;
 ///
 /// A `list` or `show` command is one with that name and no subcommands. The
 /// check walks `command` and every subcommand below it, including hidden
-/// ones, and skips each command that `exempt` names and everything below it.
-/// An exemption is a command's path below `command`, such as `"books list"`,
-/// and an exemption that names no command is a problem. The check finds:
+/// ones. It finds:
 ///
 /// - a `list` command without a `--limit` argument that takes a value or
-///   without an `--all` flag, which flattening crumbkit's `Page` gives it;
+///   without an `--all` flag, which flattening crumbkit's `Page` gives it,
+///   unless an opt-out from [`Rule::ListPages`] in `allow` covers it;
 /// - a `show` command without a required positional argument whose
 ///   `num_args` takes at least 1 and at most 100 values and accepts more than
-///   1, such as `num_args = 1..=100`. An argument counts as required when it
+///   1, such as `num_args = 1..=100`, unless an opt-out from
+///   [`Rule::ShowIds`] covers it. An argument counts as required when it
 ///   sets `required` or sits in a required `ArgGroup`, such as a group that
-///   holds the ids and a `--from` option that reads them from a file.
+///   holds the ids and a `--from` option that reads them from a file;
+/// - an opt-out from either rule that names no command or excuses no
+///   problem.
+///
+/// An opt-out covers the command it names and every command below it.
 ///
 /// A command that the tool gives to `Command::defer` adds its arguments only
 /// when clap builds it, and the check reads the unbuilt tree, so it sees no
 /// arguments on such a command. A deferred `list` or `show` command
 /// therefore fails the check whatever arguments its deferred function adds,
-/// and a tool exempts it.
+/// and a tool opts out of the rule for it.
 ///
 /// ```
 /// use clap::{Arg, ArgAction, Args, Command};
@@ -58,9 +63,10 @@ const MOST_IDS: usize = 100;
 /// Panics when the tree breaks a rule above. The message lists each problem
 /// on its own line and names each command by its path from `command`, such
 /// as `shelf books list`.
-pub fn check_listings(command: &Command, exempt: &[&str]) {
+pub fn check_listings(command: &Command, allow: &[Allow]) {
+    let mut allowances = Allowances::new(allow, &[Rule::ListPages, Rule::ShowIds]);
     let mut problems = Vec::new();
-    for visit in tree::walk(command, exempt, &mut problems) {
+    for visit in tree::walk(command) {
         let path = visit.path();
         let command = visit.command();
         if command.has_subcommands() {
@@ -68,24 +74,34 @@ pub fn check_listings(command: &Command, exempt: &[&str]) {
         }
         match command.get_name() {
             "list" => {
+                // The problems of this command, which an opt-out may excuse.
+                let mut found = Vec::new();
                 if !command.get_arguments().any(is_limit) {
-                    problems.push(format!(
+                    found.push(format!(
                         "{path}: the command has no `--limit` argument that takes a value, and a `list` command has one, as flattening crumbkit's `Page` gives it"
                     ));
                 }
                 if !command.get_arguments().any(is_all) {
-                    problems.push(format!(
+                    found.push(format!(
                         "{path}: the command has no `--all` flag, and a `list` command has one, as flattening crumbkit's `Page` gives it"
                     ));
                 }
+                if !found.is_empty() && !allowances.excuses(Rule::ListPages, visit.below()) {
+                    problems.append(&mut found);
+                }
             }
-            "show" if !command.get_arguments().any(|arg| is_ids(arg, command)) => problems.push(format!(
+            "show"
+                if !command.get_arguments().any(|arg| is_ids(arg, command))
+                    && !allowances.excuses(Rule::ShowIds, visit.below()) =>
+            {
+                problems.push(format!(
                 "{path}: the command has no required positional argument that takes from 1 to {MOST_IDS} values and accepts more than 1, and a `show` command has one"
-            )),
+                ));
+            }
             _ => {}
         }
     }
-    tree::report("listing rules", &problems);
+    allowances.report(command, "listing rules", problems);
 }
 
 /// Reports whether `arg` is `--limit` and takes a value.
