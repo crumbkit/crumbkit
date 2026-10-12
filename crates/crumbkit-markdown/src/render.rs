@@ -8,7 +8,7 @@ use std::fmt::Write as _;
 
 use crumbkit::help::{self, Effects as HelpEffects};
 
-use crate::document::{self, Argument, Command, Effects};
+use crate::document::{self, Argument, Command, Effects, Writes};
 use crate::error::{Kind, RenderError};
 use crate::text::{anchor, code, fence, one_line, paragraphs, sentence};
 
@@ -46,10 +46,10 @@ impl Reference {
 ///
 /// The reference has a title, then one section for each command in the
 /// order of the document. A section holds the command's description, links
-/// to its subcommands, its arguments, examples and columns, the effects and
-/// stream lines that its help prints, and its exit codes. The section's
-/// heading is the command line in a code span, and its anchor is the one
-/// that GitHub gives that heading.
+/// to its subcommands, its arguments, examples and columns, the effects,
+/// writes and stream lines that its help prints, and its exit codes. The
+/// section's heading is the command line in a code span, and its anchor is
+/// the one that GitHub gives that heading.
 ///
 /// # Errors
 ///
@@ -129,6 +129,13 @@ fn section(text: &mut String, command: &Command, commands: &[Command]) {
     columns(text, command);
     if let Some(effects) = command.effects {
         let _ = write!(text, "\n{}\n", effects_line(effects));
+        if let Some(line) = command
+            .writes
+            .as_ref()
+            .and_then(|writes| writes_line(effects, writes))
+        {
+            let _ = write!(text, "\n{line}\n");
+        }
     }
     if command.form.as_deref() == Some("stream") {
         let _ = write!(text, "\n{}\n", help::STREAM_LINE);
@@ -278,8 +285,29 @@ fn columns(text: &mut String, command: &Command) {
     }
 }
 
+/// Returns the `Writes:` line that help prints for a command with
+/// `effects` and `writes`, or `None` when help prints none.
+fn writes_line(effects: Effects, writes: &Writes) -> Option<String> {
+    let mut guards = if writes.replaces {
+        HelpEffects::replacing()
+    } else {
+        help_effects(effects)
+    };
+    guards = match writes.items.as_deref() {
+        Some("all_or_none") => guards.all_or_none(),
+        Some("per_item") => guards.per_item(),
+        _ => guards,
+    };
+    guards.writes_line(writes.expect)
+}
+
 /// Returns the effects line that help prints for `effects`.
 fn effects_line(effects: Effects) -> &'static str {
+    help_effects(effects).line()
+}
+
+/// Returns `effects` as crumbkit's help builds them.
+fn help_effects(effects: Effects) -> HelpEffects {
     let mut line = if effects.read_only {
         HelpEffects::read_only()
     } else if effects.destructive {
@@ -293,5 +321,5 @@ fn effects_line(effects: Effects) -> &'static str {
     if effects.open_world {
         line = line.open_world();
     }
-    line.line()
+    line
 }

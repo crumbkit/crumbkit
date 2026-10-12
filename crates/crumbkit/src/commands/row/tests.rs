@@ -1,6 +1,6 @@
 //! Tests for the row that `commands list` prints for one command.
 
-use clap::Command;
+use clap::{Args as _, Command};
 use serde_json::{Value, json};
 
 use super::CommandRow;
@@ -27,6 +27,32 @@ fn a_row_holds_the_effects_that_the_leaf_declares() {
 #[test]
 fn a_row_holds_null_effects_when_no_leaf_declares_them() {
     assert_eq!(row(&Guide::new())["effects"], Value::Null);
+}
+
+#[test]
+fn a_row_holds_the_writes_of_a_replacing_leaf_and_whether_the_command_takes_expect() {
+    const GUIDE: Guide = Guide::new()
+        .leaves(&[Leaf::new(&["books", "remove"]).effects(Effects::replacing().all_or_none())]);
+    let command = crate::Expect::augment_args(Command::new("remove"));
+    let with_expect = CommandRow::new("shelf", &["books", "remove"], &command, None, &GUIDE);
+
+    assert_eq!(
+        serde_json::to_value(with_expect).unwrap()["writes"],
+        json!({"replaces": true, "expect": true, "items": "all_or_none"})
+    );
+    assert_eq!(
+        row(&GUIDE)["writes"],
+        json!({"replaces": true, "expect": false, "items": "all_or_none"})
+    );
+}
+
+#[test]
+fn a_row_holds_null_writes_for_a_read_only_leaf_or_no_leaf() {
+    const GUIDE: Guide =
+        Guide::new().leaves(&[Leaf::new(&["books", "remove"]).effects(Effects::read_only())]);
+
+    assert_eq!(row(&GUIDE)["writes"], Value::Null);
+    assert_eq!(row(&Guide::new())["writes"], Value::Null);
 }
 
 /// A row type for the leaves of the form tests.

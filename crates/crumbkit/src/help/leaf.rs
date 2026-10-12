@@ -11,7 +11,7 @@ use serde_json::Value;
 use super::words::quote;
 use super::{Effects, write_line};
 use crate::pick::Choices;
-use crate::{Document, Row, Rows, Stream, row};
+use crate::{Document, Row, Rows, Shape, Stream, row};
 
 #[cfg(test)]
 mod tests;
@@ -159,6 +159,7 @@ impl Leaf {
             long: <T::Row as Row>::LONG_COLUMNS,
             schema: schema::<T::Row>,
             envelope: crate::schemas::envelope::<T>,
+            shape: Some(T::SHAPE),
             stream: false,
         });
         self
@@ -178,6 +179,7 @@ impl Leaf {
             long: R::LONG_COLUMNS,
             schema: schema::<R>,
             envelope: crate::schemas::envelope::<R>,
+            shape: None,
             stream: true,
         });
         self
@@ -200,6 +202,20 @@ impl Leaf {
     pub const fn get_document(&self) -> Option<Document<()>> {
         match self.columns {
             Some(columns) => Some(columns.document),
+            None => None,
+        }
+    }
+
+    /// Returns the [`Shape`] of the result that [`Leaf::document`] set, such
+    /// as [`Shape::Batch`], or `None` when the leaf has no document or
+    /// [`Leaf::stream`] set it. crumbkit-test's `check_effects` reads it to
+    /// require that a leaf whose effects are
+    /// [`per_item`](crate::help::Effects::per_item) prints a document that
+    /// reports each item.
+    #[must_use]
+    pub const fn shape(&self) -> Option<Shape> {
+        match self.columns {
+            Some(columns) => columns.shape,
             None => None,
         }
     }
@@ -380,6 +396,8 @@ struct Columns {
     /// Builds the JSON Schema of the whole document from its id and
     /// description. A stream's schema describes one line.
     envelope: fn(Document<()>) -> Schema,
+    /// The shape of the document's result, or `None` for a stream.
+    shape: Option<Shape>,
     /// Whether [`Leaf::stream`] set the document.
     stream: bool,
 }

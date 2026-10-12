@@ -181,6 +181,50 @@ fn the_effects_line_words_the_effects_as_help_does() {
 }
 
 #[test]
+fn the_writes_line_follows_the_effects_line_and_words_the_guards_as_help_does() {
+    let input = document(&[command(
+        "tool",
+        "Edit",
+        json!({
+            "effects": {"read_only": false, "destructive": true, "idempotent": false, "open_world": false},
+            "writes": {"replaces": true, "expect": true, "items": "all_or_none"},
+        }),
+    )]);
+
+    let reference = render(&input).unwrap();
+
+    assert!(
+        reference.text().contains(
+            "\n\nEffects: destructive, not idempotent, closed-world.\n\nWrites: replaces existing data; --expect <VERSION> fails with a conflict when the data changed; applies all items or none.\n"
+        ),
+        "{}",
+        reference.text()
+    );
+}
+
+#[test]
+fn a_command_without_writes_or_with_null_writes_has_no_writes_line() {
+    let effects =
+        json!({"read_only": false, "destructive": true, "idempotent": true, "open_world": false});
+    let input = document(&[
+        command("tool one", "Remove", json!({"effects": effects})),
+        command(
+            "tool two",
+            "Remove",
+            json!({"effects": effects, "writes": null}),
+        ),
+    ]);
+
+    let reference = render(&input).unwrap();
+
+    assert!(
+        !reference.text().contains("Writes:"),
+        "{}",
+        reference.text()
+    );
+}
+
+#[test]
 fn an_argument_with_several_alternatives_and_defaults_names_them_all() {
     let from = argument(
         "--from",

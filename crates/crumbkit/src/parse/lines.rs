@@ -8,6 +8,7 @@ use clap::Command;
 use clap::builder::StyledStr;
 use clap::builder::styling::Style;
 
+use crate::expect;
 use crate::help::{self, Effects, Guide, Leaf, STREAM_LINE, leaf, topic};
 
 /// Adds crumbkit's help lines to the root and to each command on `path`, and
@@ -71,7 +72,7 @@ pub(super) fn add_help_lines(
         apply_groups(node, guide, &path[..depth], header, literal);
         let sections = match leaf {
             Some(leaf) if depth == path.len() => {
-                leaf_sections(leaf, &text, long_help, header, literal)
+                leaf_sections(leaf, node, &text, long_help, header, literal)
             }
             _ => Sections::default(),
         };
@@ -149,16 +150,22 @@ struct Sections {
     /// print first among crumbkit's lines, or `None` when the leaf declares
     /// none.
     effects: Option<&'static str>,
+    /// The line that names how the leaf guards what it writes, which `-h`
+    /// and `--help` print after the effects line, or `None` when it has
+    /// none.
+    writes: Option<String>,
     /// Whether the leaf prints a stream, so `-h` and `--help` print
     /// [`STREAM_LINE`] after the effects line.
     stream: bool,
 }
 
-/// Returns the sections of `leaf`, whose command line starts with `text`:
+/// Returns the sections of `leaf`, whose command is `node` and whose
+/// command line starts with `text`:
 /// its examples in `-h` and `--help`, and in `--help` the sections that
 /// describe its columns when `long_help` is set.
 fn leaf_sections(
     leaf: &Leaf,
+    node: &Command,
     text: &str,
     long_help: bool,
     header: Style,
@@ -176,6 +183,9 @@ fn leaf_sections(
         long,
         columns: leaf.has_columns(),
         effects: leaf.get_effects().map(Effects::line),
+        writes: leaf
+            .get_effects()
+            .and_then(|effects| effects.writes_line(expect::takes_expect(node))),
         stream: leaf.is_stream(),
     }
 }
@@ -195,7 +205,8 @@ struct Lines<'a> {
 /// Sets the text that ends the help of `node`, whose path is `text`: the
 /// command's own `after_help` or `after_long_help`, the leaf's `sections`,
 /// and then crumbkit's `lines`. The lines are the leaf's effects line in
-/// `-h` and `--help` when it declares effects, the `Output:` line in `-h`
+/// `-h` and `--help` when it declares effects, its `Writes:` line in `-h`
+/// and `--help` when it guards what it writes, the `Output:` line in `-h`
 /// and `--help` when the leaf prints a stream, the global flags line in
 /// `-h`, the topics line and the aliases line in `-h` and `--help`, and a
 /// `Next:` line, each when it has text. The `Next:` line opens a
@@ -213,6 +224,10 @@ fn set_help_lines(node: &mut Command, text: &str, lines: &Lines<'_>, sections: S
     if let Some(effects) = sections.effects {
         short.push(effects.to_owned());
         long.push(effects.to_owned());
+    }
+    if let Some(writes) = sections.writes {
+        short.push(writes.clone());
+        long.push(writes);
     }
     if sections.stream {
         short.push(STREAM_LINE.to_owned());

@@ -5,7 +5,7 @@ use std::process::ExitCode;
 
 use clap::{Arg, ArgAction, Command};
 
-use super::Effects;
+use super::{Effects, Items};
 use crate::help::{Example, Guide, Leaf};
 use crate::{Sink, Spelling, parse_to};
 
@@ -230,4 +230,85 @@ fn a_leaf_that_prints_one_document_prints_no_output_line() {
     let page = help(&GUIDE, &["tool", "planets", "remove", "--help"]);
 
     assert!(!page.contains("Output:"), "{page}");
+}
+
+#[test]
+fn replacing_effects_are_destructive_and_report_that_they_replace_data() {
+    let effects = Effects::replacing().idempotent();
+
+    assert!(effects.is_destructive());
+    assert!(effects.is_replacing());
+    assert!(!Effects::destructive().is_replacing());
+    assert_eq!(
+        effects.line(),
+        "Effects: destructive, idempotent, closed-world."
+    );
+}
+
+#[test]
+fn a_write_of_many_items_declares_all_or_none_or_a_result_for_each_item() {
+    assert_eq!(Effects::additive().items(), None);
+    assert_eq!(
+        Effects::destructive().all_or_none().items(),
+        Some(Items::AllOrNone)
+    );
+    assert_eq!(Effects::additive().per_item().items(), Some(Items::PerItem));
+}
+
+#[test]
+fn the_writes_line_names_each_guard_and_says_when_a_replacing_write_has_no_version_check() {
+    let lines = [
+        Effects::replacing().writes_line(true),
+        Effects::replacing().writes_line(false),
+        Effects::additive().writes_line(true),
+        Effects::destructive().all_or_none().writes_line(false),
+        Effects::replacing().per_item().writes_line(true),
+    ];
+
+    assert_eq!(
+        lines.map(Option::unwrap_or_default),
+        [
+            "Writes: replaces existing data; --expect <VERSION> fails with a conflict when the data changed.",
+            "Writes: replaces existing data, without a version check.",
+            "Writes: --expect <VERSION> fails with a conflict when the data changed.",
+            "Writes: applies all items or none.",
+            "Writes: replaces existing data; --expect <VERSION> fails with a conflict when the data changed; reports each item and exits 1 when any item fails.",
+        ]
+    );
+}
+
+#[test]
+fn a_read_only_command_or_a_write_without_guards_has_no_writes_line() {
+    assert_eq!(Effects::read_only().writes_line(false), None);
+    assert_eq!(Effects::additive().writes_line(false), None);
+    assert_eq!(Effects::destructive().writes_line(false), None);
+}
+
+/// The guide of `tool()`, whose leaf replaces data and applies all its
+/// items or none.
+const REPLACING: Guide = Guide::new().leaves(&[Leaf::new(&["planets", "remove"])
+    .examples(&[Example::new(&["ceres"], "Remove Ceres")])
+    .effects(Effects::replacing().all_or_none())]);
+
+#[test]
+fn both_help_pages_print_the_writes_line_after_the_effects_line() {
+    let expected = "Effects: destructive, not idempotent, closed-world.\nWrites: replaces existing data, without a version check; applies all items or none.\n";
+    for flag in ["-h", "--help"] {
+        let page = help(&REPLACING, &["tool", "planets", "remove", flag]);
+
+        assert!(page.contains(expected), "{page}");
+    }
+}
+
+#[test]
+fn the_writes_object_holds_replaces_expect_and_items() {
+    let writes = super::writes(Some(Effects::replacing().per_item()), true);
+    let json = serde_json::to_string(&writes).unwrap();
+
+    assert_eq!(
+        json,
+        r#"{"replaces":true,"expect":true,"items":"per_item"}"#
+    );
+    assert_eq!(super::writes(Some(Effects::read_only()), false), None);
+    assert_eq!(super::writes(None, false), None);
 }

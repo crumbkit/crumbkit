@@ -570,3 +570,19 @@ fn a_leaf_builds_the_schema_of_the_whole_document_it_declares() {
     );
     assert_eq!(Leaf::new(&["planets", "list"]).document_schema(), None);
 }
+
+#[test]
+fn a_leaf_returns_the_shape_of_its_document_and_none_for_a_stream_or_no_document() {
+    const STREAM: Document<crate::Stream<Planet>> =
+        Document::new("tool", "planets-watch", 1, "Each planet.");
+
+    assert_eq!(
+        Leaf::new(&["planets", "list"]).document(PLANETS).shape(),
+        Some(crate::Shape::List)
+    );
+    assert_eq!(
+        Leaf::new(&["planets", "watch"]).stream(STREAM).shape(),
+        None
+    );
+    assert_eq!(Leaf::new(&["planets", "list"]).shape(), None);
+}
