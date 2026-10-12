@@ -1,10 +1,13 @@
 //! End-to-end tests of `shelf self usage` and `shelf self figures list`. Each test runs the built binary
-//! with XDG directories in a temporary directory of its own, so the runs
-//! before `self usage` write the log that it reads (ADR-0029).
+//! with XDG directories in a temporary directory of its own. Most tests run
+//! shelf first, so those runs write the log that `self usage` reads
+//! (ADR-0029).
 //!
-//! The golden files hold `[..]` where the output names the day the report
-//! starts or a wall time, which change from run to run, so these tests
-//! compare without snapbox's `raw`, which would turn the wildcard off.
+//! The golden files of those tests hold `[..]` where the output names the
+//! day the report starts, which changes from run to run, so they compare
+//! without snapbox's `raw`, which would turn the wildcard off. The JSON test
+//! reads a checked-in log instead, so its golden file holds every value and
+//! it compares with `raw`.
 
 use std::fs;
 use std::path::Path;
@@ -63,14 +66,30 @@ fn self_usage_prints_the_findings_of_the_earlier_runs_as_text() {
         .stderr_eq(file!["golden/self-usage.stderr"]);
 }
 
-#[test]
-fn self_usage_prints_the_findings_with_their_figures_and_the_summary_as_json() {
-    let dir = tempfile::tempdir().unwrap();
-    wasteful_runs(dir.path());
+/// The checked-in usage log of shelf that `weigh`'s tests also read. Its
+/// times, durations and output sizes are fixed, so the report of it does not
+/// change with the speed of the machine.
+const FIXTURE: &str = concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/../../crates/cargo-crumbkit/tests/fixtures/shelf-usage.jsonl"
+);
 
-    shelf(dir.path(), &["self", "usage", "--json", "--full"])
-        .success()
-        .stdout_eq(file!["golden/self-usage-json-full.json"]);
+/// The JSON test reads the last 100 years of [`FIXTURE`]. That window starts
+/// before 1970, so the report clamps its start to 1970-01-01 and the golden
+/// file names that day. The day stays fixed until 2070, when the window
+/// starts after 1970 and the golden file needs a new day.
+#[test]
+fn self_usage_prints_the_findings_of_a_fixed_log_with_their_figures_and_the_summary_as_json() {
+    let dir = tempfile::tempdir().unwrap();
+
+    shelf(
+        dir.path(),
+        &[
+            "self", "usage", "--json", "--full", "--log", FIXTURE, "--since", "100y",
+        ],
+    )
+    .success()
+    .stdout_eq(file!["golden/self-usage-json-full.json"].raw());
 }
 
 #[test]
