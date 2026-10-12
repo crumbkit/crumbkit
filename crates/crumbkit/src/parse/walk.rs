@@ -24,6 +24,9 @@ pub(super) struct Walked {
     pub(super) path: Vec<String>,
     /// Whether a word reads as the flag `--help`, so clap prints long help.
     pub(super) long_help: bool,
+    /// Whether a word reads as the flag `-h` or `--help`, so clap prints
+    /// help.
+    pub(super) help: bool,
     /// Whether a word reads as the flag `--json`, so a refusal prints as a
     /// JSON document.
     pub(super) json: bool,
@@ -77,7 +80,7 @@ pub(super) fn help_word(
 }
 
 /// Returns the deepest command that `args` names after the program name, and
-/// whether `args` asks for long help and for JSON.
+/// whether `args` asks for help, for long help and for JSON.
 ///
 /// It skips the program name, stops at `--`, skips each flag and each value
 /// of an option, and descends into each word that names a subcommand of the
@@ -92,6 +95,7 @@ pub(super) fn walk(command: &Command, args: &[OsString]) -> Walked {
     let mut walked = Walked {
         path: Vec::new(),
         long_help: false,
+        help: false,
         json: false,
     };
     for word in args.iter().skip(1) {
@@ -100,6 +104,12 @@ pub(super) fn walk(command: &Command, args: &[OsString]) -> Walked {
             Kind::Value => {}
             Kind::Flag => {
                 walked.long_help |= word == "--help";
+                // RUST-10: only the words `-h` and `--help` count, so `-h`
+                // inside a group of short flags, such as `-qh`, and a help
+                // flag that the tool renamed ask for help without counting.
+                // The only cost is that the root's help then has no line
+                // that names a person's aliases.
+                walked.help |= word == "-h" || word == "--help";
                 walked.json |= word == "--json";
             }
             Kind::Name => {

@@ -14,7 +14,9 @@ use crate::help::{self, Effects, Guide, Leaf, leaf, topic};
 /// applies to each of those commands the groups of `guide` that name it. A
 /// guided group off `path` keeps clap's help, so the work grows with the
 /// typed depth. When the tool `has_topics`, the lines of the guide's root
-/// name the guide's topics and `exit-codes`.
+/// name the guide's topics and `exit-codes`. When `aliases` is set, the
+/// lines of the clap root name the aliases that it returns for the clap
+/// root.
 ///
 /// The deepest command on `path` also gets the sections of the leaf of
 /// `guide` whose path is `path`, the first when two leaves share it. Its
@@ -34,10 +36,19 @@ pub(super) fn add_help_lines(
     command: &mut Command,
     guide: &Guide,
     has_topics: bool,
+    aliases: Option<fn(&Command) -> Vec<String>>,
     path: &[String],
     long_help: bool,
 ) {
     let root = guide.root_in(command);
+    let tool = command.get_name();
+    let aliases = match aliases.map(|names| names(command)) {
+        Some(names) if !names.is_empty() => format!(
+            "Personal aliases: {}. `{tool} aliases list` shows what each runs.",
+            names.join(", ")
+        ),
+        _ => String::new(),
+    };
     let topics = if has_topics {
         topic::names(guide.get_topics()).join(", ")
     } else {
@@ -69,7 +80,12 @@ pub(super) fn add_help_lines(
         } else {
             ""
         };
-        set_help_lines(node, &text, &flag_list.join(", "), topics, sections);
+        let lines = Lines {
+            flags: &flag_list.join(", "),
+            topics,
+            aliases: if depth == 0 { aliases.as_str() } else { "" },
+        };
+        set_help_lines(node, &text, &lines, sections);
         let Some(name) = path.get(depth) else {
             break;
         };
@@ -169,18 +185,34 @@ fn leaf_sections(
     }
 }
 
+/// The text of crumbkit's lines for one command, each empty when the
+/// command has no such line.
+struct Lines<'a> {
+    /// The visible global flags of the command and of the commands above it.
+    flags: &'a str,
+    /// The names of the topics, which only the guide's root has.
+    topics: &'a str,
+    /// The whole line that names a person's aliases, which only the clap
+    /// root has.
+    aliases: &'a str,
+}
+
 /// Sets the text that ends the help of `node`, whose path is `text`: the
 /// command's own `after_help` or `after_long_help`, the leaf's `sections`,
-/// and then crumbkit's lines. The lines are the leaf's effects line in `-h`
-/// and `--help` when it declares effects, the `Output:` line in `-h` and
-/// `--help` when the leaf prints a stream, the global flags line in `-h`
-/// when `flags` is not empty, the topics line in `-h` and `--help` when
-/// `topics` is not empty, and a `Next:` line. The `Next:` line opens a
+/// and then crumbkit's `lines`. The lines are the leaf's effects line in
+/// `-h` and `--help` when it declares effects, the `Output:` line in `-h`
+/// and `--help` when the leaf prints a stream, the global flags line in
+/// `-h`, the topics line and the aliases line in `-h` and `--help`, and a
+/// `Next:` line, each when it has text. The `Next:` line opens a
 /// subcommand in `-h` and `--help` when `node` has a visible subcommand, and
-/// names `--help` in `-h` when the leaf has columns. Only the root gets
-/// `topics`. A blank line separates the command's own text, each section
-/// and the lines.
-fn set_help_lines(node: &mut Command, text: &str, flags: &str, topics: &str, sections: Sections) {
+/// names `--help` in `-h` when the leaf has columns. A blank line separates
+/// the command's own text, each section and the lines.
+fn set_help_lines(node: &mut Command, text: &str, lines: &Lines<'_>, sections: Sections) {
+    let Lines {
+        flags,
+        topics,
+        aliases,
+    } = *lines;
     let mut short = Vec::new();
     let mut long = Vec::new();
     if let Some(effects) = sections.effects {
@@ -200,6 +232,10 @@ fn set_help_lines(node: &mut Command, text: &str, flags: &str, topics: &str, sec
         let line = format!("Topics: {topics}. `{text} help <TOPIC>` prints one.");
         short.push(line.clone());
         long.push(line);
+    }
+    if !aliases.is_empty() {
+        short.push(aliases.to_owned());
+        long.push(aliases.to_owned());
     }
     if has_visible_subcommands(node) {
         let value_name = node.get_subcommand_value_name().unwrap_or("COMMAND");

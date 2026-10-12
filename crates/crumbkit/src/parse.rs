@@ -130,6 +130,11 @@ where
 ///   topic on one line, such as ``Topics: catalogue, exit-codes. `shelf
 ///   help <TOPIC>` prints one.``, in `-h` and in `--help`. A root without
 ///   subcommands and without topics of the tool's own has no such line.
+/// - When `guide` has [`Guide::personal_aliases`], the clap root's `-h` and
+///   `--help` name the person's aliases on one line, such as ``Personal
+///   aliases: firsts, mine. `shelf aliases list` shows what each runs.``
+///   Only a run that prints the clap root's help calls the guide's
+///   function.
 /// - The help of a command with a visible subcommand ends with a line that
 ///   opens one of them, such as `Next: shelf books <COMMAND> -h`, in `-h`
 ///   and in `--help`.
@@ -332,9 +337,15 @@ where
     // No `Output` exists before parsing, so a refusal and a `Stop` take
     // `--json` from the walk.
     let (path, long_help, json) = (walked.path, walked.long_help, walked.json);
+    // Only a run that prints the clap root's help reads a person's aliases.
+    let aliases = if walked.help && path.is_empty() {
+        guide.get_personal_aliases()
+    } else {
+        None
+    };
     #[cfg(feature = "tracing")]
     crate::trace::spans::command(&path);
-    add_help_lines(&mut command, guide, has_topics, &path, long_help);
+    add_help_lines(&mut command, guide, has_topics, aliases, &path, long_help);
 
     // `Output::confirm` repeats the typed words, so they outlive parsing.
     let words = args.get(1..).unwrap_or_default().to_vec();
