@@ -98,13 +98,13 @@ pub(crate) fn run(
 }
 
 /// Returns the failure that a run printed on `stdout` with `--json`: the
-/// last line that is a `crumbkit/failure/v1` document, or the first entry of
-/// the `failures` of the last line that has any, as a batch prints them.
+/// last `crumbkit/failure/v1` document, or the first entry of the
+/// `failures` of the last document that has any, as a batch prints them.
+/// It reads documents on one line and indented documents alike.
 pub(crate) fn failure(stdout: &[u8]) -> Option<Value> {
-    String::from_utf8_lossy(stdout)
-        .lines()
+    documents(&String::from_utf8_lossy(stdout))
+        .into_iter()
         .rev()
-        .filter_map(|line| serde_json::from_str::<Value>(line).ok())
         .find_map(|mut value| {
             if value.get("schema").and_then(Value::as_str) == Some("crumbkit/failure/v1") {
                 return Some(value);
@@ -196,3 +196,24 @@ pub(crate) fn describe(failure: &ReadFailure) -> String {
         format!("{}, whose steps are: {}", failure.code(), steps.join("; "))
     }
 }
+
+/// Returns each JSON document in `stdout` in order, whether it fills one
+/// line or spans several lines indented. A line where no document starts,
+/// such as a line of text, is skipped.
+pub(crate) fn documents(stdout: &str) -> Vec<Value> {
+    let mut found = Vec::new();
+    let mut rest = stdout;
+    while !rest.trim_start().is_empty() {
+        let mut stream = serde_json::Deserializer::from_str(rest).into_iter::<Value>();
+        if let Some(Ok(value)) = stream.next() {
+            found.push(value);
+            rest = &rest[stream.byte_offset()..];
+        } else {
+            rest = rest.split_once('\n').map_or("", |(_, after)| after);
+        }
+    }
+    found
+}
+
+#[cfg(test)]
+mod tests;

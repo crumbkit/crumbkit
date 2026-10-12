@@ -75,3 +75,15 @@ fn a_run_that_ends_with_another_exit_code_breaks_the_contract() {
     let problem = judge(&signalled, 100).expect("a problem");
     assert!(problem.contains("a signal"), "{problem}");
 }
+
+#[test]
+fn an_indented_failure_document_with_the_budget_keeps_the_contract() {
+    let stdout = "{\n  \"schema\": \"crumbkit/failure/v1\",\n  \"code\": \"crumbkit::output::over_budget\",\n  \"fields\": {\n    \"budget\": 100\n  }\n}\n";
+    assert_eq!(judge(&ran(1, stdout, ""), 100), None);
+}
+
+#[test]
+fn an_indented_cut_listing_that_holds_the_budget_keeps_the_contract() {
+    let stdout = "{\n  \"data\": [],\n  \"cut\": {\n    \"budget\": 200\n  }\n}\n";
+    assert_eq!(judge(&ran(0, stdout, ""), 200), None);
+}

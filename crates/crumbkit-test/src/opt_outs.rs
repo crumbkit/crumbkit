@@ -29,7 +29,7 @@ const SCHEMA: &str = "crumbkit/opt-outs/v1";
 /// naming every problem it finds.
 ///
 /// `command` is the tool's root command, `guide` is the tool's guide, whose
-/// output budget the report lists, `allow` holds every opt-out that
+/// output budget and JSON layout the report lists, `allow` holds every opt-out that
 /// the tool passes to the checks ([ADR-0036]), `budgets` holds the budgets
 /// that it passes to [`check_help_sizes`](crate::check_help_sizes), and
 /// `paths` holds the budgets that it passes to
@@ -42,7 +42,9 @@ const SCHEMA: &str = "crumbkit/opt-outs/v1";
 /// bytes a token that each read can cost. When the guide sets an output
 /// budget, the report ends with it beside crumbkit's default of 1048576
 /// bytes, under the rule `output-budget/run` (ADR-0046). No opt-out removes
-/// the output budget.
+/// the output budget. When the guide sets a
+/// [`JsonLayout`](crumbkit::JsonLayout), the report then lists it under the
+/// rule `json-layout/pretty`, with its reason and its cost (ADR-0052).
 /// A reviewer reads a change to a tool's opt-outs as a change to these two
 /// files, and an agent reads `opt-outs.json` to learn where the tool
 /// departs from crumbkit's conventions.
@@ -160,6 +162,15 @@ fn check(
         );
         entries.push(Entry::of(departure, cost));
     }
+    if let Some((_, reason)) = guide.get_json_layout() {
+        entries.push(Entry {
+            rule: "json-layout/pretty",
+            applies_to: format!("every run of {}", command.get_name()),
+            reason,
+            costs: vec![JSON_LAYOUT_COST.to_owned()],
+            budget: None,
+        });
+    }
     let line = command.get_name();
     compare(
         assert,
@@ -179,6 +190,10 @@ fn check(
     );
     tree::report("opt-out report rules", &problems);
 }
+
+/// What an indented JSON layout costs an agent, which the report lists
+/// under the rule `json-layout/pretty`.
+const JSON_LAYOUT_COST: &str = "Every JSON document that is not a stream line is indented by two spaces, which made the documents of crumbkit's example tool shelf 20 to 62 percent larger, so an agent reads more tokens for each result and fewer rows fit in the output budget.";
 
 /// Returns the output budget that `guide` sets as the report lists it, or
 /// `None` when the tool keeps crumbkit's default.
