@@ -1,0 +1,55 @@
+Replace or append an entry of the reading list that --list names
+
+Usage: reading entries set [OPTIONS] --list <NAME> --position <N> <TITLE>
+
+Arguments:
+  <TITLE>
+          The title of the book
+
+Options:
+      --list <NAME>
+          The name of the reading list, such as to-read
+
+      --position <N>
+          The entry's position from 1, where one past the last appends
+
+      --expect <VERSION>
+          Fail with a conflict unless the target is at VERSION, or does not exist when VERSION is none
+
+      --dry-run
+          Report what the command would change, and change nothing
+
+      --json
+          Print the result as a JSON document on one line
+
+      --fields <FIELD>
+          Print only these comma-separated fields, in this order
+
+      --yes
+          Proceed without asking for confirmation
+
+      --long
+          Add the long columns after the compact ones
+
+      --full
+          With --json, print every field of every row
+
+      --no-input
+          Fail instead of asking a question
+
+  -h, --help
+          Print help (see a summary with '-h')
+
+Examples:
+  reading entries set --list to-read --position 2 --expect 'Wuthering Heights' --dry-run 'Mary Barton'
+          Print the entry that replacing entry 2 of the to-read list would write
+
+  reading entries set --list to-read --position 6 --expect none --dry-run Emma
+          Print the entry that appending Emma to the to-read list would write
+
+Columns:
+  position  The entry's position in the list, counting from 1.
+  title     The title of the book.
+
+Effects: destructive, not idempotent, closed-world.
+Writes: replaces existing data; --expect <VERSION> fails with a conflict when the data changed.

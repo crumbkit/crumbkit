@@ -27,6 +27,9 @@ const EDITOR: &str = "edit hands the terminal to the caller's editor, which wait
 /// The reason that each list's `edit` has no `--yes`.
 const SAVE: &str = "the person in the editor chooses whether to save the list, so there is nothing for --yes to confirm";
 
+/// The reason that each list's `edit` has no `--expect`.
+const WHOLE_FILE: &str = "the editor saves the whole file, and the person in the editor sees the list as it is when the editor opens it";
+
 /// reading's opt-outs from crumbkit's conventions, which every check below
 /// reads. They name the `edit` command of each fixture list.
 const ALLOW: &[Allow] = &[
@@ -34,6 +37,8 @@ const ALLOW: &[Allow] = &[
     Allow::new(Rule::Examples, "to-read edit", EDITOR),
     Allow::new(Rule::Yes, "finished edit", SAVE),
     Allow::new(Rule::Yes, "to-read edit", SAVE),
+    Allow::new(Rule::Expect, "finished edit", WHOLE_FILE),
+    Allow::new(Rule::Expect, "to-read edit", WHOLE_FILE),
 ];
 
 /// The budgets of reading's `-h` pages, which are crumbkit's defaults.
@@ -66,8 +71,8 @@ fn every_command_and_argument_has_one_name() {
 }
 
 #[test]
-fn every_command_is_a_resource_followed_by_list_show_stream_or_edit() {
-    crumbkit_test::check_grammar(&fixture_tool().0, &["stream", "edit"], ALLOW);
+fn every_command_is_a_resource_followed_by_list_show_stream_edit_or_set() {
+    crumbkit_test::check_grammar(&fixture_tool().0, &["stream", "edit", "set"], ALLOW);
 }
 
 #[test]
@@ -151,13 +156,24 @@ fn every_opt_out_matches_the_opt_out_report() {
     );
 }
 
-/// The settings of reading's recovery check. A missing list starts the one
-/// chain.
+/// The settings of reading's recovery check. A missing list, a position
+/// past the end of a list and a version conflict each start a chain. The
+/// last two run on a dry run, so the check writes no fixture list.
 const RECOVERIES: Recoveries<'_> = Recoveries::new(EXAMPLES, Spelling::COLONS, &[reading::CODES])
-    .starts(&[Failing::new(
-        &reading::NOT_FOUND,
-        &["entries", "list", "--list", "unread"],
-    )])
+    .starts(&[
+        Failing::new(&reading::NOT_FOUND, &["entries", "list", "--list", "unread"]),
+        Failing::new(
+            &reading::OUT_OF_RANGE,
+            &["entries", "set", "--list", "to-read", "--position", "7", "--dry-run", "Emma"],
+        ),
+        Failing::new(
+            &crumbkit::codes::VERSION_CONFLICT,
+            &[
+                "entries", "set", "--list", "to-read", "--position", "2", "--expect", "Emma",
+                "--dry-run", "Mary Barton",
+            ],
+        ),
+    ])
     .unprovoked(&[Unprovoked::new(
         &reading::UNREADABLE,
         "Only a list file that exists and that reading cannot read provokes it, and a file's permissions differ between platforms.",

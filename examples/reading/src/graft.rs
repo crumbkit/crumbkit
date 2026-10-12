@@ -110,10 +110,11 @@ pub fn guide(lists: &[List]) -> Guide {
                     format!("Print every entry of the {name} list"),
                 )
                 .effects(Effects::read_only());
-            // The editor can delete or overwrite any line of the list.
+            // The editor can delete or overwrite any line of the list, and
+            // it saves the whole file over the one it opened.
             let edit_leaf = RuntimeLeaf::new(vec![name.to_owned(), "edit".to_owned()])
                 .example(Vec::new(), format!("Open the {name} list in your editor"))
-                .effects(Effects::destructive());
+                .effects(Effects::replacing());
             [list_leaf, edit_leaf]
         })
         .collect();

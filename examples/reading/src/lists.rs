@@ -20,10 +20,12 @@ use serde::Serialize;
 
 use crate::cli::Resource;
 
+mod set;
 mod stream;
 #[cfg(test)]
 mod tests;
 
+pub(crate) use self::set::{ENTRIES_SET, set};
 pub(crate) use self::stream::{ENTRIES_STREAM, stream_entries};
 
 /// The document that `reading entries list` and the list command of each
@@ -242,8 +244,8 @@ pub(crate) fn entries<const N: usize>(
     })?;
     let entries = text
         .lines()
+        .filter(|line| is_entry(line))
         .map(str::trim)
-        .filter(|line| !line.is_empty() && !line.starts_with('#'))
         .enumerate()
         .map(|(index, title)| Entry {
             position: index + 1,
@@ -251,6 +253,21 @@ pub(crate) fn entries<const N: usize>(
         })
         .collect();
     Ok(Listing::from_all(entries, page.limit()).described("entries"))
+}
+
+/// Returns the call of `reading entries list --list <name> --all`, which
+/// prints every entry of the list named `name` with its position.
+pub(crate) fn every_entry(name: &str) -> Call {
+    Call::new(&["entries", "list"])
+        .value("list", name)
+        .arg("all")
+}
+
+/// Reports whether `line` of a list's file holds an entry: it is not blank
+/// and does not start with `#`.
+fn is_entry(line: &str) -> bool {
+    let line = line.trim();
+    !line.is_empty() && !line.starts_with('#')
 }
 
 /// Returns the path of the file of the list named `name` in `dir`.
@@ -276,6 +293,10 @@ pub const NOT_FOUND: Code = Code::new("reading", "entries", "not_found");
 /// The code of a failure whose list's file cannot be read.
 pub const UNREADABLE: Code = Code::new("reading", "entries", "unreadable");
 
+/// The code of a failure whose `--position` is more than one past the last
+/// entry of its list.
+pub const OUT_OF_RANGE: Code = Code::new("reading", "entries", "out_of_range");
+
 /// A failure of a command that prints a list's entries.
 #[derive(Debug)]
 pub(crate) enum EntriesError {
@@ -291,21 +312,34 @@ pub(crate) enum EntriesError {
         /// Why the file cannot be read.
         error: io::Error,
     },
+    /// `--position` is more than one past the last entry of the list.
+    OutOfRange {
+        /// The list's name.
+        name: String,
+        /// The number of entries in the list.
+        count: usize,
+    },
 }
 
 impl EntriesError {
     /// Every code that an `EntriesError` returns, which reading's tests pass
     /// to crumbkit-test's codes and recovery checks.
-    pub(crate) const CODES: &'static [&'static Code] = &[&NOT_FOUND, &UNREADABLE];
+    pub(crate) const CODES: &'static [&'static Code] = &[&NOT_FOUND, &UNREADABLE, &OUT_OF_RANGE];
 }
 
-/// Prints `reading has no list named unread`, or `cannot read the list
-/// to-read` with the I/O error as its cause.
+/// Prints `reading has no list named unread`, `cannot read the list
+/// to-read` with the I/O error as its cause, or the highest position that
+/// a list takes.
 impl fmt::Display for EntriesError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::NotFound { name } => write!(f, "reading has no list named {name}"),
             Self::Unreadable { name, .. } => write!(f, "cannot read the list {name}"),
+            Self::OutOfRange { name, count } => write!(
+                f,
+                "the list {name} has {count} entries, so --position can be at most {}",
+                count + 1
+            ),
         }
     }
 }
@@ -313,7 +347,7 @@ impl fmt::Display for EntriesError {
 impl std::error::Error for EntriesError {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         match self {
-            Self::NotFound { .. } => None,
+            Self::NotFound { .. } | Self::OutOfRange { .. } => None,
             Self::Unreadable { error, .. } => Some(error),
         }
     }
@@ -321,12 +355,13 @@ impl std::error::Error for EntriesError {
 
 /// A missing list's next step is `reading commands list`, which lists the
 /// command of each list. An unreadable list's next step is advice about its
-/// file.
+/// file. A position past the end's next step lists every entry of the list.
 impl Failure for EntriesError {
     fn code(&self) -> &'static Code {
         match self {
             Self::NotFound { .. } => &NOT_FOUND,
             Self::Unreadable { .. } => &UNREADABLE,
+            Self::OutOfRange { .. } => &OUT_OF_RANGE,
         }
     }
 
@@ -336,6 +371,7 @@ impl Failure for EntriesError {
             Self::Unreadable { .. } => Recovery::Hint(
                 "make the list's file a UTF-8 text file that reading can read".to_owned(),
             ),
+            Self::OutOfRange { name, .. } => Recovery::Run(every_entry(name)),
         }
     }
 }

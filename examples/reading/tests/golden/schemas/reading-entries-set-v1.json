@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "reading/entries-set/v1",
+  "description": "The entry that the run writes to a reading list, or would write on a dry run.",
+  "type": "object",
+  "properties": {
+    "data": {
+      "$ref": "#/$defs/Entry"
+    },
+    "dry_run": {
+      "description": "Present, and true, when the run was a dry run that changed nothing.",
+      "const": true
+    },
+    "schema": {
+      "description": "The id of this document.",
+      "const": "reading/entries-set/v1"
+    }
+  },
+  "required": [
+    "schema",
+    "data"
+  ],
+  "$defs": {
+    "Entry": {
+      "description": "One entry of a reading list.",
+      "type": "object",
+      "properties": {
+        "position": {
+          "description": "The entry's position in the list, counting from 1.",
+          "type": "integer",
+          "format": "uint",
+          "minimum": 0
+        },
+        "title": {
+          "description": "The title of the book.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "position",
+        "title"
+      ]
+    }
+  }
+}

@@ -26,3 +26,4 @@ Examples:
           Open the finished list in your editor
 
 Effects: destructive, not idempotent, closed-world.
+Writes: replaces existing data, without a version check.

@@ -5,6 +5,7 @@ Usage: reading entries [OPTIONS] <COMMAND>
 Commands:
   list    List the entries of the reading list that --list names, in file order
   stream  Print each entry of the reading list that --list names as reading reads it
+  set     Replace or append an entry of the reading list that --list names
 
 Options:
   -h, --help  Print help (see more with '--help')

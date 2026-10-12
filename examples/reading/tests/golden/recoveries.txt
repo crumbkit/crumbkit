@@ -3,6 +3,16 @@ reading entries list --list unread
   run reading commands list
     exits 0
 
+reading entries set --list to-read --position 7 --dry-run Emma
+  fails with reading::entries::out_of_range
+  run reading entries list --list to-read --all
+    exits 0
+
+reading entries set --list to-read --position 2 --expect Emma --dry-run 'Mary Barton'
+  fails with crumbkit::version::conflict
+  run reading entries list --list to-read --all
+    exits 0
+
 codes that no start provokes:
   reading::entries::unreadable: Only a list file that exists and that reading cannot read provokes it, and a file's permissions differ between platforms.
 

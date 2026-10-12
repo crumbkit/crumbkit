@@ -1,4 +1,4 @@
-reading has 5 opt-outs from crumbkit's conventions.
+reading has 7 opt-outs from crumbkit's conventions.
 
 examples/run: reading finished edit
   Reason: edit hands the terminal to the caller's editor, which waits for a person and prints no output to compare
@@ -17,6 +17,14 @@ effects/yes: reading finished edit
 effects/yes: reading to-read edit
   Reason: the person in the editor chooses whether to save the list, so there is nothing for --yes to confirm
   Cost: An agent without a terminal cannot run the command, or the command runs without asking anyone.
+
+effects/expect: reading finished edit
+  Reason: the editor saves the whole file, and the person in the editor sees the list as it is when the editor opens it
+  Cost: Two concurrent writers can lose each other's changes, because the command replaces data without checking that it is the version the caller read.
+
+effects/expect: reading to-read edit
+  Reason: the editor saves the whole file, and the person in the editor sees the list as it is when the editor opens it
+  Cost: Two concurrent writers can lose each other's changes, because the command replaces data without checking that it is the version the caller read.
 
 path-budget/path: every path through reading
   Budget: 3900 bytes, where crumbkit's default is 8000 bytes.
