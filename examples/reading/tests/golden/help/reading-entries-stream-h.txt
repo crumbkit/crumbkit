@@ -1,0 +1,16 @@
+Print each entry of the reading list that --list names as reading reads it
+
+Usage: reading entries stream [OPTIONS] --list <NAME>
+
+Options:
+      --list <NAME>  The name of the reading list, such as to-read
+  -h, --help         Print help (see more with '--help')
+
+Examples:
+  reading entries stream --list to-read
+  reading entries stream --list to-read --json
+
+Effects: read-only, closed-world.
+Output: one row per line as each arrives, and --json prints one JSON document per line.
+Global flags: --json, --fields <FIELD>, --long, --full. `reading entries stream --help` describes them.
+Next: reading entries stream --help explains each column.

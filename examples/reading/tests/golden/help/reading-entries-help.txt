@@ -3,7 +3,8 @@ Work with the entries of any reading list
 Usage: reading entries [OPTIONS] <COMMAND>
 
 Commands:
-  list  List the entries of the reading list that --list names, in file order
+  list    List the entries of the reading list that --list names, in file order
+  stream  Print each entry of the reading list that --list names as reading reads it
 
 Options:
       --json

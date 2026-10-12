@@ -67,3 +67,32 @@ fn a_directory_without_lists_adds_no_command() -> io::Result<()> {
         .stderr_eq(file!["golden/to-read-without-lists.stderr"]);
     Ok(())
 }
+
+#[test]
+fn entries_stream_of_a_list_that_does_not_exist_prints_the_header_and_then_the_failure()
+-> io::Result<()> {
+    reading(LISTS, &["entries", "stream", "--list", "unread"])?
+        .code(1)
+        .stdout_eq("POSITION  TITLE\n")
+        .stderr_eq(file!["golden/entries-list-unread.stderr"]);
+    Ok(())
+}
+
+#[test]
+fn entries_stream_with_json_prints_a_failure_of_a_missing_list_as_its_only_line() -> io::Result<()>
+{
+    let output = reading(LISTS, &["entries", "stream", "--list", "unread", "--json"])?
+        .code(1)
+        .stderr_eq("")
+        .get_output()
+        .stdout
+        .clone();
+    let stdout = String::from_utf8_lossy(&output);
+    assert_eq!(stdout.lines().count(), 1);
+    assert!(
+        stdout
+            .starts_with(r#"{"schema":"crumbkit/failure/v1","code":"reading::entries::not_found""#),
+        "{stdout}"
+    );
+    Ok(())
+}
