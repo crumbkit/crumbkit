@@ -2,7 +2,7 @@
 //! [`finish`](crate::finish) prints with `--json`, around the rows.
 
 use schemars::generate::SchemaSettings;
-use schemars::{Schema, json_schema};
+use schemars::{JsonSchema, Schema, SchemaGenerator, json_schema};
 use serde_json::{Value, json};
 
 use crate::output::failure;
@@ -51,6 +51,10 @@ pub fn document_schema<T: Rows>(document: Document<T>) -> Schema {
 /// Returns the schema that [`document_schema`] describes for the document
 /// `document` of the result type `T`. A help leaf keeps a pointer to it,
 /// because the leaf holds its document without the result type.
+///
+/// A document without crumbkit's envelope has the schema of its `data` at
+/// the top, with the document's `title` and `description`, because
+/// `finish` prints the result alone (ADR-0007).
 pub(crate) fn envelope<T: Rows>(document: Document<()>) -> Schema {
     let settings = SchemaSettings::draft2020_12();
     let meta_schema = settings.meta_schema.clone();
@@ -64,6 +68,9 @@ pub(crate) fn envelope<T: Rows>(document: Document<()>) -> Schema {
             "items": generator.subschema_for::<T::Row>(),
         }),
     };
+    if !document.has_envelope() {
+        return top(document, data, meta_schema.as_deref(), &mut generator);
+    }
     let mut properties = serde_json::Map::new();
     let mut required = vec!["schema", "data"];
     properties.insert(
@@ -102,15 +109,54 @@ pub(crate) fn envelope<T: Rows>(document: Document<()>) -> Schema {
         );
         required.push("failures");
     }
-    let mut schema = json_schema!({
-        "title": document.to_string(),
-        "description": document.description(),
+    let body = json_schema!({
         "type": "object",
         "properties": properties,
         "required": required,
     });
+    top(document, body, meta_schema.as_deref(), &mut generator)
+}
+
+/// Returns the JSON Schema of the file format `document` whose files hold a
+/// `T`: the schema of `T` with the format's `title` and `description`, as
+/// [`FileFormat`](crate::help::FileFormat) describes.
+pub(crate) fn file_format<T: JsonSchema>(document: Document<()>) -> Schema {
+    let settings = SchemaSettings::draft2020_12();
+    let meta_schema = settings.meta_schema.clone();
+    let mut generator = settings.into_generator();
+    let body = generator.subschema_for::<T>();
+    top(document, body, meta_schema.as_deref(), &mut generator)
+}
+
+/// Returns the top of a document's schema: the document's id as `title`
+/// and its description, then the other keywords of `body`, `$schema` when `meta_schema` is set, and the definitions
+/// that `generator` collected under `$defs`.
+fn top(
+    document: Document<()>,
+    body: Schema,
+    meta_schema: Option<&str>,
+    generator: &mut SchemaGenerator,
+) -> Schema {
+    let mut schema = json_schema!({
+        "title": document.to_string(),
+        "description": document.description(),
+    });
+    match body.as_object() {
+        Some(keywords) => {
+            for (keyword, value) in keywords {
+                if keyword != "title" && keyword != "description" {
+                    schema.insert(keyword.clone(), value.clone());
+                }
+            }
+        }
+        // A boolean schema has no keywords, so the top holds it under
+        // `allOf`. No result type of crumbkit's has one at the top.
+        None => {
+            schema.insert("allOf".to_owned(), json!([body.to_value()]));
+        }
+    }
     if let Some(meta_schema) = meta_schema {
-        schema.insert("$schema".to_owned(), Value::from(meta_schema.as_ref()));
+        schema.insert("$schema".to_owned(), Value::from(meta_schema));
     }
     let definitions = generator.take_definitions(true);
     if !definitions.is_empty() {

@@ -20,7 +20,8 @@ mod tests;
 ///
 /// The documents are those that `crumbkit::schemas::documents` serves for
 /// `command` and `guide`, which `schemas show` prints: the document of each
-/// leaf of `guide` whose command is visible. The check skips the documents
+/// leaf of `guide` whose command is visible, and each file format that
+/// `Guide::documents` registers. The check skips the documents
 /// of the component `crumbkit`, such as `crumbkit/failure/v1` and
 /// `crumbkit/commands-list/v1`, because crumbkit's own tests pin their
 /// schemas. The golden file of a document is named after its id, such as
@@ -42,8 +43,10 @@ mod tests;
 /// `schemas show` serves only the schema of the first. It finds two ids
 /// whose golden files have one name, such as `shelf/books-list/v1` and
 /// `shelf-books/list/v1`, which a component with dashes allows, naming
-/// both ids, and compares or writes only the first of the two. Without
-/// `SNAPSHOTS=overwrite`, it also finds:
+/// both ids, and compares or writes only the first of the two. It finds a
+/// file format whose id is also the id of a leaf's document or of an
+/// earlier file format, because `schemas show` serves only the first.
+/// Without `SNAPSHOTS=overwrite`, it also finds:
 ///
 /// - a document without a golden file;
 /// - a schema that differs from its golden file, with snapbox's report of
@@ -93,9 +96,17 @@ fn check(command: &Command, guide: &Guide, dir: &Path, assert: &Assert) {
         );
         let id = served.id();
         if let Some((_, other)) = names.iter().find(|(known, _)| *known == name) {
-            problems.push(format!(
-                "{id}: the golden file name `{name}` is also the name for the document {other}, so one of the two needs another id"
-            ));
+            // `documents` serves the documents of leaves once for each id,
+            // so a second entry with the same id is a file format.
+            if *other == id {
+                problems.push(format!(
+                    "{id}: a file format has the id of another document, so one of the two needs another id"
+                ));
+            } else {
+                problems.push(format!(
+                    "{id}: the golden file name `{name}` is also the name for the document {other}, so one of the two needs another id"
+                ));
+            }
             continue;
         }
         // Serializing a `Schema`, which holds a `serde_json::Value`, cannot

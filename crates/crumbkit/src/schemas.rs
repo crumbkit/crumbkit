@@ -6,7 +6,10 @@
 //! The documents come from the tool's [`Guide`]: each leaf that declares
 //! the document it prints with [`Leaf::document`](crate::help::Leaf::document)
 //! adds that document, and crumbkit adds `crumbkit/failure/v1`, which every
-//! command prints when it fails with `--json`.
+//! command prints when it fails with `--json`. Each
+//! [`FileFormat`](crate::help::FileFormat) that the guide declares with
+//! [`Guide::documents`] adds the schema of a file that users write and no
+//! command prints, after the leaves' documents.
 //!
 //! The tool owns the commands. It adds a `schemas` resource with a `list`
 //! subcommand that takes [`SchemasList`] and a `show` subcommand that takes
@@ -95,7 +98,7 @@ use std::fmt;
 use clap::Args;
 
 pub use self::envelope::document_schema;
-pub(crate) use self::envelope::envelope;
+pub(crate) use self::envelope::{envelope, file_format};
 pub use self::row::{SchemaRow, SchemaShowRow};
 pub use self::served::{Served, documents};
 use crate::help::Guide;

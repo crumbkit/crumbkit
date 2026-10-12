@@ -1,9 +1,11 @@
 //! The guide to a tool's help: goal headings, which list a group's
 //! subcommands under headings that the tool declares, such as `Read` and
 //! `Change`, in place of clap's single `Commands:` list, leaves, which give
-//! a command examples and describe its output columns, and help topics,
-//! which `<tool> help <TOPIC>` prints.
+//! a command examples and describe its output columns, help topics, which
+//! `<tool> help <TOPIC>` prints, and file formats, whose schemas
+//! `<tool> schemas show` prints.
 
+mod format;
 pub(crate) mod leaf;
 mod runtime;
 pub(crate) mod topic;
@@ -14,6 +16,7 @@ use clap::Command;
 use clap::builder::StyledStr;
 use clap::builder::styling::Style;
 
+pub use self::format::FileFormat;
 pub use self::leaf::{Column, Example, Leaf, quote};
 pub use self::runtime::RuntimeLeaf;
 pub use self::topic::Topic;
@@ -23,8 +26,9 @@ mod tests;
 
 /// The guide to a tool's help pages: one [`Group`] for each command whose
 /// help lists its subcommands under goals, one [`Leaf`] for each command
-/// whose help shows examples and describes its columns, and the tool's
-/// [`Topic`]s.
+/// whose help shows examples and describes its columns, the tool's
+/// [`Topic`]s, and the [`FileFormat`]s of the files that users write for the
+/// tool.
 ///
 /// A tool declares its guide once as a `const` and passes it to
 /// [`parse`](crate::parse), which applies its goal headings to the help of
@@ -74,17 +78,20 @@ pub struct Guide {
     leaves: &'static [Leaf],
     /// The topics that `<tool> help` lists, in order.
     topics: &'static [Topic],
+    /// The file formats that the schema commands serve, in order.
+    documents: &'static [FileFormat],
 }
 
 impl Guide {
-    /// Returns a guide with no groups, no leaves and no topics, which
-    /// changes no help page.
+    /// Returns a guide with no groups, no leaves, no topics and no file
+    /// formats, which changes no help page.
     #[must_use]
     pub const fn new() -> Self {
         Self {
             groups: &[],
             leaves: &[],
             topics: &[],
+            documents: &[],
         }
     }
 
@@ -129,6 +136,22 @@ impl Guide {
     #[must_use]
     pub const fn get_topics(&self) -> &'static [Topic] {
         self.topics
+    }
+
+    /// Sets the file formats that users write and no command prints, such
+    /// as a configuration file, which `schemas list` and `schemas show`
+    /// serve after the documents of the leaves, in this order (ADR-0035).
+    #[must_use]
+    pub const fn documents(mut self, documents: &'static [FileFormat]) -> Self {
+        self.documents = documents;
+        self
+    }
+
+    /// Returns the file formats that [`Guide::documents`] set. The name has
+    /// clap's `get_` prefix, because `documents` is the builder method.
+    #[must_use]
+    pub const fn get_documents(&self) -> &'static [FileFormat] {
+        self.documents
     }
 }
 

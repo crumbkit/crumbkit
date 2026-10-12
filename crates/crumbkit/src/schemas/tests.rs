@@ -18,6 +18,8 @@ use crate::{
     finish_to,
 };
 
+mod formats;
+
 /// A row type for the test tool's leaves.
 #[derive(Serialize, JsonSchema)]
 struct Book {
@@ -332,6 +334,7 @@ fn list_prints_one_row_for_each_served_document_with_its_description() {
         value[1],
         json!({
             "id": "shelf/books-list/v1",
+            "kind": "output",
             "description": "One page of the books.",
             "commands": ["shelf books list", "shelf books find"],
         })

@@ -3,7 +3,7 @@
 use std::fs;
 
 use clap::Command;
-use crumbkit::help::{Guide, Leaf};
+use crumbkit::help::{FileFormat, Guide, Leaf};
 use crumbkit::schemas::{SCHEMAS_LIST, document_schema};
 use crumbkit::{Document, Listing, Row};
 use schemars::JsonSchema;
@@ -147,5 +147,56 @@ fn two_ids_that_share_a_golden_file_name_fail() {
         message,
         "the command tree breaks crumbkit's golden schema rules:\n\
          shelf-books/list/v1: the golden file name `shelf-books-list-v1.json` is also the name for the document shelf/books-list/v1, so one of the two needs another id"
+    );
+}
+
+/// The settings file of the test tool, which users write.
+#[derive(Serialize, JsonSchema)]
+struct Settings {
+    /// The number of books that a page shows.
+    page: u32,
+}
+
+#[test]
+fn overwrite_writes_a_golden_file_for_a_file_format() {
+    const SETTINGS: Document<Settings> = Document::new(
+        "shelf",
+        "settings",
+        1,
+        "The settings file that users write.",
+    );
+    const FORMATS: Guide = Guide::new()
+        .leaves(&[Leaf::new(&["books", "list"]).document(BOOKS_LIST)])
+        .documents(&[FileFormat::new(SETTINGS)]);
+    let dir = TempDir::new("schemas-format").unwrap();
+
+    run(&FORMATS, &dir, Action::Overwrite);
+
+    let written = fs::read_to_string(dir.path().join("shelf-settings-v1.json")).unwrap();
+    assert_eq!(
+        written,
+        serde_json::to_string_pretty(&FileFormat::new(SETTINGS).schema()).unwrap() + "\n"
+    );
+}
+
+#[test]
+fn a_file_format_with_the_id_of_a_command_s_document_fails() {
+    const CLASH: Document<Settings> = Document::new(
+        "shelf",
+        "books-list",
+        1,
+        "The settings file that users write.",
+    );
+    const FORMATS: Guide = Guide::new()
+        .leaves(&[Leaf::new(&["books", "list"]).document(BOOKS_LIST)])
+        .documents(&[FileFormat::new(CLASH)]);
+    let dir = TempDir::new("schemas-clash").unwrap();
+
+    let message = panic_message(|| run(&FORMATS, &dir, Action::Overwrite)).unwrap();
+
+    assert_eq!(
+        message,
+        "the command tree breaks crumbkit's golden schema rules:\n\
+         shelf/books-list/v1: a file format has the id of another document, so one of the two needs another id"
     );
 }

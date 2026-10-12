@@ -10,14 +10,15 @@ use serde_json::Value;
 use super::Served;
 use crate::Row;
 
-/// One document that the tool prints, as `schemas list` prints it.
+/// One document that the tool serves, as `schemas list` prints it.
 ///
-/// The text table shows the id and the description, and `--long` adds the
-/// command lines that print the document.
+/// The text table shows the id, the kind and the description, and `--long`
+/// adds the command lines that print the document.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct SchemaRow {
     // The `JsonSchema` impl below describes each field.
     id: String,
+    kind: &'static str,
     description: &'static str,
     commands: Vec<String>,
 }
@@ -27,6 +28,7 @@ impl SchemaRow {
     pub(super) fn new(served: &Served) -> Self {
         Self {
             id: served.id(),
+            kind: served.kind(),
             description: served.description(),
             commands: served.commands().to_vec(),
         }
@@ -34,7 +36,7 @@ impl SchemaRow {
 }
 
 impl Row for SchemaRow {
-    const COLUMNS: &'static [&'static str] = &["id", "description"];
+    const COLUMNS: &'static [&'static str] = &["id", "kind", "description"];
     const LONG_COLUMNS: &'static [&'static str] = &["commands"];
 }
 
@@ -44,8 +46,9 @@ impl Row for SchemaRow {
 /// needs no `serde_derive`.
 impl Serialize for SchemaRow {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        let mut row = serializer.serialize_struct("SchemaRow", 3)?;
+        let mut row = serializer.serialize_struct("SchemaRow", 4)?;
         row.serialize_field("id", &self.id)?;
+        row.serialize_field("kind", self.kind)?;
         row.serialize_field("description", self.description)?;
         row.serialize_field("commands", &self.commands)?;
         row.end()
@@ -65,24 +68,28 @@ impl JsonSchema for SchemaRow {
 
     fn json_schema(_: &mut SchemaGenerator) -> Schema {
         json_schema!({
-            "description": "One JSON document that the tool prints.",
+            "description": "One JSON document that the tool prints, or a file format that users write.",
             "type": "object",
             "properties": {
                 "id": {
                     "description": "The document's id, such as `shelf/books-list/v1`, which `schemas show` takes.",
                     "type": "string",
                 },
+                "kind": {
+                    "description": "output when a command prints the document with its schema id, unwrapped when a command prints it without crumbkit's envelope, and file when it is a file format that users write and no command prints.",
+                    "enum": ["output", "unwrapped", "file"],
+                },
                 "description": {
                     "description": "What the document holds, in one line.",
                     "type": "string",
                 },
                 "commands": {
-                    "description": "The command lines that print the document. It is empty for the failure document, which every command prints when it fails with --json.",
+                    "description": "The command lines that print the document. It is empty for the failure document, which every command prints when it fails with --json, and for a file format.",
                     "type": "array",
                     "items": { "type": "string" },
                 },
             },
-            "required": ["id", "description", "commands"],
+            "required": ["id", "kind", "description", "commands"],
         })
     }
 }

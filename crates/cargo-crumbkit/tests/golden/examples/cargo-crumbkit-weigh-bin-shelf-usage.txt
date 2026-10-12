@@ -7,7 +7,7 @@ shelf books summarize    465         101     1645        0     0            -
 shelf commands           355         -       944         0     0            -
 shelf commands list      664         1946    3554        0     0            -
 shelf schemas            412         -       1001        0     0            -
-shelf schemas list       456         1082    2539        0     0            -
+shelf schemas list       456         1162    2619        0     0            -
 shelf schemas show       451         1481    2933        0     0            -
 shelf self               405         -       994         0     0            -
 shelf self usage         556         -       1550        0     0            -

@@ -5,6 +5,7 @@ pub(crate) mod failure;
 mod fields;
 mod prose;
 mod table;
+mod unwrapped;
 
 use std::io::{self, Write};
 use std::process::ExitCode;
@@ -229,6 +230,8 @@ pub fn finish<T: Rows, E: AsFailure>(
 /// JSON format is one line holding an object
 /// with the `schema` id of `document` and the result under `data`; a single
 /// row's `data` is an object, and a `Vec`'s is an array.
+/// A document from [`Document::without_envelope`] prints the result alone,
+/// and its failures print as text on the error writer even with `--json`.
 ///
 /// A [`Listing`](crate::Listing)'s `data` is an array, and its JSON document
 /// also holds the number of matching rows under `total`, and its summary,
@@ -378,7 +381,9 @@ fn respond<T: Rows, E: AsFailure, O: Write, W: Write>(
     if let Some(first) = failures.first() {
         crate::trace::spans::failed(first.code());
     }
-    if !output.json {
+    // A document without the envelope has no `failures` field, so its
+    // failures print as text even with `--json`.
+    if !output.json || !document.has_envelope() {
         for failure in &failures {
             // Standard error is the last place to report anything, so a
             // failure to write there goes unreported.
@@ -406,6 +411,9 @@ fn write_result<T: Rows>(
     value: &T,
     failures: Option<&[FailureDocument]>,
 ) -> io::Result<()> {
+    if output.json && !document.has_envelope() {
+        return unwrapped::write_json(out, &output.fields, value);
+    }
     if let Some(text) = value.prose() {
         if output.json {
             write_document(out, document, value, None, None::<&()>, failures)?;

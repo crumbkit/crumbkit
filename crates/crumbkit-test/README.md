@@ -50,10 +50,12 @@ The rustdoc of each check says what it fails on and shows an example:
   calls.
 - Example output: [`check_examples`] with [`Examples`], and
   [`example_golden_name`], which names each example's golden file.
-- JSON documents: [`check_schema_goldens`], which pins each document's
-  JSON Schema, [`check_document_ids`], which ties each document's name to
-  its command and takes the tool's opt-outs, and [`check_mounts`], which keeps crumbkit's own commands at
-  their fixed paths.
+- JSON documents: [`check_schema_goldens`], which pins the JSON Schema of
+  each document and file format, [`check_document_ids`], which ties each
+  document's name to its command, requires an opt-out for a document
+  without crumbkit's envelope and takes the tool's opt-outs, and
+  [`check_mounts`], which keeps crumbkit's own commands at their fixed
+  paths.
 
 [ADR-0025] records why these checks exist, [ADR-0036] records opt-outs,
 [ADR-0035] records the document checks, and [ADR-0004] records how golden
