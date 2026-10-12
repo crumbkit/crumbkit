@@ -11,21 +11,24 @@ mod tests;
 /// `shelf books show <ID>...`.
 ///
 /// A call names a command by its path from the root and names the arguments
-/// to show by their clap ids. It holds names only. crumbkit's
-/// `crumbkit::RenderCall::render` turns them into text against the
-/// `clap::Command` that the tool built at runtime, so a call that names a
-/// hidden or removed command never prints.
+/// to show by their clap ids, each as a placeholder such as `<ID>...` or with
+/// a concrete value. crumbkit's `crumbkit::RenderCall::render` turns them
+/// into text against the `clap::Command` that the tool built at runtime, so
+/// a call that names a hidden or removed command never prints.
 ///
 /// ```
-/// use crumbkit_core::{Call, CallTarget};
+/// use crumbkit_core::{Call, CallArg, CallTarget};
 ///
-/// let call = Call::new(&["books", "show"]).arg("ids");
+/// let call = Call::new(&["books", "list"]).value("author", "Le Guin");
 ///
-/// let CallTarget::Command { path, args, .. } = call.target() else {
+/// let CallTarget::Command { path, args } = call.target() else {
 ///     unreachable!("Call::new names a command");
 /// };
-/// assert_eq!(*path, ["books", "show"]);
-/// assert_eq!(*args, ["ids"]);
+/// assert_eq!(*path, ["books", "list"]);
+/// assert_eq!(
+///     *args,
+///     [CallArg::Value { id: "author", value: "Le Guin".to_owned() }]
+/// );
 /// ```
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Call {
@@ -33,31 +36,43 @@ pub struct Call {
     target: CallTarget,
 }
 
-/// The two forms of a [`Call`]: a command with arguments that a tool names
-/// at compile time and words added at runtime, and the `-h` of a command
-/// that the caller typed.
+/// The two forms of a [`Call`]: a command with arguments that a tool names,
+/// and the `-h` of a command that the caller typed.
 ///
 /// [`Call::target`] returns it, so crumbkit can render the call. The enum
 /// has no `#[non_exhaustive]`, because crumbkit renders every form, and a
 /// new form needs a new rendering in the same release.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum CallTarget {
-    /// A command that [`Call::new`] and [`Call::arg`] name, followed by the
-    /// words of [`Call::word`].
+    /// A command that [`Call::new`] names, with the arguments that
+    /// [`Call::arg`] and [`Call::value`] add.
     Command {
         /// The names of the subcommands from the root to the command, in
         /// order.
         path: &'static [&'static str],
-        /// The clap ids of the arguments to show, in order.
-        args: Vec<&'static str>,
-        /// The words to print after the arguments, in order, such as the
-        /// command names that `commands list` takes.
-        words: Vec<String>,
+        /// The arguments to show, in the order they were added.
+        args: Vec<CallArg>,
     },
     /// The `-h` of a command, which [`Call::help`] names. It holds the names
     /// of the subcommands from the root to the command, as the caller typed
     /// them and the tree resolved them.
     Help(Vec<String>),
+}
+
+/// One argument of a [`CallTarget::Command`], named by its clap id.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum CallArg {
+    /// The argument as clap's usage line shows it, such as `<ID>...` or
+    /// `--author <AUTHOR>`, which [`Call::arg`] adds.
+    Placeholder(&'static str),
+    /// The argument with a concrete value, such as `--author 'Le Guin'`,
+    /// which [`Call::value`] adds.
+    Value {
+        /// The clap id of the argument.
+        id: &'static str,
+        /// The value, as the caller types it before a shell quotes it.
+        value: String,
+    },
 }
 
 impl Call {
@@ -69,7 +84,6 @@ impl Call {
             target: CallTarget::Command {
                 path,
                 args: Vec::new(),
-                words: Vec::new(),
             },
         }
     }
@@ -82,8 +96,8 @@ impl Call {
     /// `Call` built with [`Call::new`] holds only a `&'static` path. The
     /// call renders its path without looking it up, so it can point the
     /// caller back at a hidden command that the caller named. A help call
-    /// takes no arguments and no words, so [`Call::arg`] and [`Call::word`]
-    /// leave it unchanged.
+    /// takes no arguments, so [`Call::arg`] and [`Call::value`] leave it
+    /// unchanged.
     ///
     /// ```
     /// use crumbkit_core::{Call, CallTarget};
@@ -103,38 +117,45 @@ impl Call {
     }
 
     /// Adds the argument whose clap id is `id`, such as `ids` for a field
-    /// named `ids`, after the arguments already added.
+    /// named `ids`, after the arguments already added. It renders as clap's
+    /// usage line shows it, such as `<ID>...`.
     #[must_use]
     pub fn arg(mut self, id: &'static str) -> Self {
         if let CallTarget::Command { args, .. } = &mut self.target {
-            args.push(id);
+            args.push(CallArg::Placeholder(id));
         }
         self
     }
 
-    /// Adds `word` after the arguments and the words already added, as a
-    /// word that the caller types as it is, such as `books` in
-    /// `shelf commands list books`.
+    /// Adds the argument whose clap id is `id` with the concrete value
+    /// `value`, after the arguments already added, so the caller can run the
+    /// command as it prints.
     ///
-    /// The recovery of crumbkit's `commands list` uses it, because its words
-    /// come from the caller at runtime. A word that a POSIX shell would
-    /// split or expand renders between single quotes, as a leaf's examples
-    /// do.
+    /// An option renders as `--author 'Le Guin'`, with its short name when
+    /// it has no long name, and a positional renders as the value alone. A
+    /// value that a POSIX shell would split or expand renders between single
+    /// quotes, as a leaf's examples do. Each call adds one occurrence, so two
+    /// values of one positional render as two words, and two values of one
+    /// option repeat the option. crumbkit's `RenderCall::render` says which
+    /// values it refuses.
     ///
     /// ```
-    /// use crumbkit_core::{Call, CallTarget};
+    /// use crumbkit_core::{Call, CallArg, CallTarget};
     ///
-    /// let call = Call::new(&["commands", "list"]).word("books".to_owned());
+    /// let call = Call::new(&["books", "show"]).value("ids", "7");
     ///
-    /// let CallTarget::Command { words, .. } = call.target() else {
+    /// let CallTarget::Command { args, .. } = call.target() else {
     ///     unreachable!("Call::new names a command");
     /// };
-    /// assert_eq!(*words, ["books"]);
+    /// assert_eq!(*args, [CallArg::Value { id: "ids", value: "7".to_owned() }]);
     /// ```
     #[must_use]
-    pub fn word(mut self, word: String) -> Self {
-        if let CallTarget::Command { words, .. } = &mut self.target {
-            words.push(word);
+    pub fn value(mut self, id: &'static str, value: impl Into<String>) -> Self {
+        if let CallTarget::Command { args, .. } = &mut self.target {
+            args.push(CallArg::Value {
+                id,
+                value: value.into(),
+            });
         }
         self
     }
@@ -186,6 +207,35 @@ pub enum CallError {
         /// The id of the hidden argument.
         id: String,
     },
+    /// The call gives a value to the argument `id` of `command`, and the
+    /// argument is a flag that takes no value.
+    TakesNoValue {
+        /// The final command of the call, such as `shelf books list`.
+        command: String,
+        /// The id of the flag.
+        id: String,
+    },
+    /// The call gives the argument `id` of `command` a value that is not one
+    /// of the argument's possible values.
+    UnknownValue {
+        /// The final command of the call, such as `shelf books list`.
+        command: String,
+        /// The id of the argument.
+        id: String,
+        /// The value that the argument does not accept.
+        value: String,
+    },
+    /// The call gives the positional argument `id` of `command` a value that
+    /// starts with `-`, which clap reads as a flag, and the argument does not
+    /// allow such values.
+    HyphenValue {
+        /// The final command of the call, such as `shelf books show`.
+        command: String,
+        /// The id of the positional argument.
+        id: String,
+        /// The value that starts with `-`.
+        value: String,
+    },
 }
 
 /// Prints the reason on one line, such as `'shelf books' has no subcommand
@@ -205,6 +255,19 @@ impl fmt::Display for CallError {
             Self::HiddenArgument { command, id } => {
                 write!(f, "'{command}' hides its argument '{id}'")
             }
+            Self::TakesNoValue { command, id } => {
+                write!(f, "'{command}' takes no value for its argument '{id}'")
+            }
+            Self::UnknownValue { command, id, value } => {
+                write!(
+                    f,
+                    "'{command}' does not accept '{value}' for its argument '{id}'"
+                )
+            }
+            Self::HyphenValue { command, id, value } => write!(
+                f,
+                "'{command}' would read the value '{value}' of its argument '{id}' as a flag"
+            ),
         }
     }
 }

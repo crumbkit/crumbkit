@@ -12,7 +12,7 @@
 - When a listing shows fewer rows than its total, a footer on standard output says so and names `--all`. crumbkit owns the wording, and the tool supplies only the description.
 - A listing may carry one next step and a note, which print in text only. A next step whose `Call` does not resolve is left out, so crumbkit never prints a command the tool hid.
 - A listing may carry a summary of the whole result. Its type is the listing's second type parameter and implements `Serialize` and `Display`, so the text output prints it as one line above the table and the JSON document holds it as an object under `summary`. A listing without a summary writes no `summary` field.
-- A failure prints as text on standard error, with nothing on standard output, or with `--json` as one failure document on standard output.
+- A failure prints as text on standard error, with nothing on standard output, or with `--json` as one failure document on standard output. In text, each alternative repair prints on its own `help:` line after the recovery's.
 - With the `miette` feature, each label of a failure's diagnostic prints with its source line and a caret underline, drawn by crumbkit.
 - A command that takes many ids returns a [`Batch`](../../../../crates/crumbkit-core/src/batch.rs). The rows print on standard output and the failures on standard error, and with `--json` both go into one document (ADR-0007). A batch with at least one failure exits with code 1.
 - `finish` writes through a [`Sink`](../../../../crates/crumbkit/src/sink.rs), and `finish_to` writes into a given sink, so tests run in memory. A pipe that the reader closed early keeps the exit code of the result.

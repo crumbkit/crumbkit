@@ -24,6 +24,8 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   and [`fetch_each`] runs the per-id lookups on scoped threads.
 - crumbkit: the `miette` feature adds `Failure::diagnostic` and converts a
   `miette::Report` into [`Error`] ([`report`]).
+- crumbkit: with the `miette` feature, the JSON failure document holds the
+  diagnostic's related diagnostics and a source excerpt for each label.
 - crumbkit: [`parse`] parses the command line, prints help and refusals,
   and never exits the process.
 - crumbkit: [`help`] adds goal headings, help topics, and leaf examples and
@@ -88,6 +90,12 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit: `usage::start_with(Signals::Tool)` lets a tool handle SIGINT
   and SIGTERM itself while the usage log records the signal ([`usage`],
   [ADR-0029]).
+- crumbkit: [`Failure`] has `alternatives`, other repairs that print as
+  extra `help:` lines and under `alternatives` in the failure document
+  ([ADR-0001]).
+- crumbkit: `Call::value` adds an argument with a concrete value, such as
+  `--author 'Le Guin'`, and rendering checks it against the tool's command
+  tree ([`Call`], [ADR-0001]).
 
 ### Changed
 
@@ -109,6 +117,11 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   tool's command tree when it runs.
 - crumbkit: [`parse`] returns a [`Stop`] after help, the version or a
   refusal, which holds the exit code and an `Output` ([ADR-0002]).
+
+### Removed
+
+- crumbkit: `Call::word` is gone, because `Call::value` adds a runtime value
+  and checks it against the tool's command tree ([`Call`]).
 
 ### Fixed
 

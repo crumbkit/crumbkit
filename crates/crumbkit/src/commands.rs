@@ -336,11 +336,11 @@ impl Failure for CommandsError {
 
     fn recovery(&self) -> Recovery {
         match self {
-            Self::NotFound { prefix, .. } => Recovery::Run(
-                prefix
-                    .iter()
-                    .fold(Call::new(LIST_PATH), |call, name| call.word(name.clone())),
-            ),
+            Self::NotFound { prefix, .. } => {
+                Recovery::Run(prefix.iter().fold(Call::new(LIST_PATH), |call, name| {
+                    call.value("path", name.clone())
+                }))
+            }
             Self::Unavailable => Recovery::None {
                 reason: "the tool's main does not pass its command to Output::set_command"
                     .to_owned(),

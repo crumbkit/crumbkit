@@ -428,7 +428,8 @@ impl Diagnostic for BooksError {
 }
 
 /// A missing book's next step is `shelf books list`, which prints the ids
-/// that exist. An ids file failure's next step is advice about the file.
+/// that exist. An ids file failure's next step is advice about the file, and
+/// its alternative passes the ids on the command line.
 impl Failure for BooksError {
     fn code(&self) -> &'static Code {
         match self {
@@ -453,6 +454,18 @@ impl Failure for BooksError {
             Self::EmptyIdsFile { .. } => "the ids file needs at least one book id".to_owned(),
         };
         Recovery::Hint(hint)
+    }
+
+    /// An ids file failure offers to pass the ids on the command line
+    /// instead, as `shelf books show <ID>...`.
+    fn alternatives(&self) -> Vec<Recovery> {
+        match self {
+            Self::UnreadableIdsFile { .. }
+            | Self::BadIdsFile { .. }
+            | Self::TooManyIds { .. }
+            | Self::EmptyIdsFile { .. } => vec![Recovery::Run(show_call())],
+            Self::NotFound { .. } => Vec::new(),
+        }
     }
 
     fn diagnostic(&self) -> Option<&dyn Diagnostic> {

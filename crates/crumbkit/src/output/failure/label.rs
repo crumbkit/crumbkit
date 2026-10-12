@@ -1,6 +1,7 @@
 //! The labels of a failure's miette diagnostic. With the `miette` feature, a
 //! failure prints each label as an `at:` line in text and as one entry of
-//! `labels` in JSON.
+//! `labels` in JSON, which also holds an excerpt of the source around the
+//! label's span.
 
 use std::io::{self, Write};
 
@@ -29,9 +30,9 @@ pub(super) struct Label {
 }
 
 /// Where a label's span starts in its source, with the source line that
-/// holds that start. The line is held in three parts, without its line
-/// break: the text before the span, the text of the span up to the end of
-/// the line, and the rest of the line.
+/// holds that start and the excerpt around the span. The line is held in
+/// three parts, without its line break: the text before the span, the text
+/// of the span up to the end of the line, and the rest of the line.
 struct Place {
     /// The name of the source, such as a file name, when it has one.
     name: Option<String>,
@@ -43,15 +44,33 @@ struct Place {
     marked: String,
     /// The text of the line after the span.
     after: String,
+    /// The lines that the span covers with one line before and after, or
+    /// `None` when the source cannot read them.
+    excerpt: Option<Excerpt>,
 }
 
-/// Reads every label of `diagnostic` against its source code, in the order
-/// the diagnostic gives them.
-pub(super) fn read(diagnostic: &dyn Diagnostic) -> Vec<Label> {
+/// The lines of a source around a span: every line the span covers, with one
+/// line before and one after where the source has them, as miette's
+/// graphical report shows a span by default.
+///
+/// The excerpt holds whole lines, so a span on a very long line, such as a
+/// minified file, brings that whole line into the JSON document.
+struct Excerpt {
+    /// The 1-based number of the first line of the excerpt.
+    line: usize,
+    /// The lines, joined by the line breaks of the source, without a line
+    /// break at the end.
+    text: String,
+}
+
+/// Reads every label of `diagnostic` against `source`, in the order the
+/// diagnostic gives them. `source` is the diagnostic's source code, or for a
+/// related diagnostic without one, the source code of the diagnostic it
+/// relates to, as miette's graphical report reads it.
+pub(super) fn read(diagnostic: &dyn Diagnostic, source: Option<&dyn SourceCode>) -> Vec<Label> {
     let Some(labels) = diagnostic.labels() else {
         return Vec::new();
     };
-    let source = diagnostic.source_code();
     labels.map(|label| Label::read(&label, source)).collect()
 }
 
@@ -143,6 +162,7 @@ impl Place {
             before: String::from_utf8_lossy(before).into_owned(),
             marked: String::from_utf8_lossy(marked).into_owned(),
             after: String::from_utf8_lossy(after).into_owned(),
+            excerpt: Excerpt::read(source, span),
         })
     }
 
@@ -153,9 +173,41 @@ impl Place {
     }
 }
 
+impl Excerpt {
+    /// Reads the lines around `span` in `source`, or returns `None` when
+    /// `source` cannot read them.
+    fn read(source: &dyn SourceCode, span: &SourceSpan) -> Option<Self> {
+        // With one context line on each side, `read_span` returns the bytes
+        // from the start of the line before the span to the end of the line
+        // after it, with that line's break, and the 0-based number of the
+        // first line it returns.
+        let contents = source.read_span(span, 1, 1).ok()?;
+        let data = contents.data();
+        let data = data
+            .strip_suffix(b"\r\n")
+            .or_else(|| data.strip_suffix(b"\n"))
+            .or_else(|| data.strip_suffix(b"\r"))
+            .unwrap_or(data);
+        Some(Self {
+            line: contents.line() + 1,
+            text: String::from_utf8_lossy(data).into_owned(),
+        })
+    }
+}
+
+/// Serializes the excerpt as an object with `line` and `text`.
+impl Serialize for Excerpt {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        let mut map = serializer.serialize_map(Some(2))?;
+        map.serialize_entry("line", &self.line)?;
+        map.serialize_entry("text", &self.text)?;
+        map.end()
+    }
+}
+
 /// Serializes the label as an object with `offset` and `length`, then
-/// `name`, `line` and `column` when the span could be read, and `text` when
-/// the label has text. The source line stays out of the JSON document.
+/// `name`, `line`, `column` and `excerpt` when the span could be read, and
+/// `text` when the label has text.
 impl Serialize for Label {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         let mut map = serializer.serialize_map(None)?;
@@ -167,6 +219,9 @@ impl Serialize for Label {
             }
             map.serialize_entry("line", &place.line)?;
             map.serialize_entry("column", &place.column())?;
+            if let Some(excerpt) = &place.excerpt {
+                map.serialize_entry("excerpt", excerpt)?;
+            }
         }
         if let Some(text) = &self.text {
             map.serialize_entry("text", text)?;

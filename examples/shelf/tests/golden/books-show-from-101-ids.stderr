@@ -3,4 +3,5 @@ error: the ids file ids.txt holds more than 100 ids
    101 | 1
        | ^
   help:  the ids file holds at most 100 ids, as the command line does
+  help:  run `shelf books show <ID>...`
   code:  shelf::books::too_many_ids

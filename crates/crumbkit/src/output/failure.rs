@@ -14,6 +14,8 @@ use crate::{Document, Failure, Recovery, Sink, Spelling};
 
 #[cfg(feature = "miette")]
 mod label;
+#[cfg(feature = "miette")]
+mod related;
 #[cfg(test)]
 mod tests;
 
@@ -82,8 +84,15 @@ pub(super) struct FailureDocument {
     /// them. It is empty when the failure has no diagnostic.
     #[cfg(feature = "miette")]
     labels: Vec<label::Label>,
-    /// The failure's recovery, with a `Run` call rendered as text.
+    /// The related diagnostics of the failure's miette diagnostic, in the
+    /// order it gives them. It is empty when the failure has no diagnostic.
+    #[cfg(feature = "miette")]
+    related: Vec<related::Related>,
+    /// The failure's recovery, with a `Run` call rendered as text, or the
+    /// first alternative that offers a step when the recovery offers none.
     step: Step,
+    /// The failure's other alternatives that offer a step, in order.
+    alternatives: Vec<Step>,
     /// The page that explains the failure, when there is one.
     url: Option<String>,
 }
@@ -117,19 +126,22 @@ impl FailureDocument {
         let causes = std::iter::successors(failure.source(), |error| error.source())
             .map(ToString::to_string)
             .collect();
-        let step = match failure.recovery() {
-            Recovery::Run(call) => command
-                .and_then(|command| crate::call::render(&call, command).ok())
-                .map_or_else(|| Step::None(UNAVAILABLE.to_owned()), Step::Run),
-            Recovery::Retry => Step::Retry,
-            Recovery::Hint(text) => Step::Hint(text),
-            Recovery::None { reason } => Step::None(reason),
-            // `Recovery` is `#[non_exhaustive]` and lives in crumbkit-core, so
-            // the compiler requires this arm. crumbkit-core releases with
-            // crumbkit (ADR-0012), so a new variant gets its own arm in the
-            // release that adds it, and this arm matches nothing until then.
-            _ => Step::None(UNAVAILABLE.to_owned()),
+        let mut command = command;
+        let preferred = Step::offered(failure.recovery(), command.as_deref_mut());
+        // A failure without alternatives returns an empty `Vec`, and
+        // collecting an empty iterator does not allocate.
+        let mut alternatives: Vec<Step> = failure
+            .alternatives()
+            .into_iter()
+            .filter_map(|recovery| Step::offered(recovery, command.as_deref_mut()).ok())
+            .collect();
+        let step = match preferred {
+            Ok(step) => step,
+            Err(none) if alternatives.is_empty() => none,
+            Err(_) => alternatives.remove(0),
         };
+        #[cfg(feature = "miette")]
+        let diagnostic = failure.diagnostic();
         Self {
             code: spelling.spell(failure.code()),
             message: failure.to_string(),
@@ -137,8 +149,15 @@ impl FailureDocument {
             // A failure without a diagnostic costs one `None` check, and an
             // empty `Vec` does not allocate.
             #[cfg(feature = "miette")]
-            labels: failure.diagnostic().map_or_else(Vec::new, label::read),
+            labels: diagnostic.map_or_else(Vec::new, |diagnostic| {
+                label::read(diagnostic, diagnostic.source_code())
+            }),
+            #[cfg(feature = "miette")]
+            related: diagnostic.map_or_else(Vec::new, |diagnostic| {
+                related::read(diagnostic, diagnostic.source_code())
+            }),
             step,
+            alternatives,
             url: failure.url().map(str::to_owned),
         }
     }
@@ -148,14 +167,37 @@ impl FailureDocument {
     pub(super) fn code(&self) -> &str {
         &self.code
     }
+}
 
-    /// Returns the text of the `help:` line.
+impl Step {
+    /// Reads `recovery` into a step, rendering a `Run` call against
+    /// `command`. It returns `Err` with a `Step::None` when the recovery
+    /// offers no step: a `Recovery::None`, or a `Run` call that cannot be
+    /// rendered because no command is set or the call does not resolve.
+    fn offered(recovery: Recovery, command: Option<&mut Command>) -> Result<Self, Self> {
+        match recovery {
+            Recovery::Run(call) => command
+                .and_then(|command| crate::call::render(&call, command).ok())
+                .map(Self::Run)
+                .ok_or_else(|| Self::None(UNAVAILABLE.to_owned())),
+            Recovery::Retry => Ok(Self::Retry),
+            Recovery::Hint(text) => Ok(Self::Hint(text)),
+            Recovery::None { reason } => Err(Self::None(reason)),
+            // `Recovery` is `#[non_exhaustive]` and lives in crumbkit-core, so
+            // the compiler requires this arm. crumbkit-core releases with
+            // crumbkit (ADR-0012), so a new variant gets its own arm in the
+            // release that adds it, and this arm matches nothing until then.
+            _ => Err(Self::None(UNAVAILABLE.to_owned())),
+        }
+    }
+
+    /// Returns the text of the step's `help:` line.
     fn help(&self) -> Cow<'_, str> {
-        match &self.step {
-            Step::Run(call) => Cow::Owned(format!("run `{call}`")),
-            Step::Retry => Cow::Borrowed("run the same command again later"),
-            Step::Hint(text) => Cow::Borrowed(text),
-            Step::None(reason) => Cow::Owned(format!("no next step: {reason}")),
+        match self {
+            Self::Run(call) => Cow::Owned(format!("run `{call}`")),
+            Self::Retry => Cow::Borrowed("run the same command again later"),
+            Self::Hint(text) => Cow::Borrowed(text),
+            Self::None(reason) => Cow::Owned(format!("no next step: {reason}")),
         }
     }
 }
@@ -163,7 +205,8 @@ impl FailureDocument {
 /// Writes the text form of `document` to `err`, then flushes it, as shelf's
 /// golden file [`books-show-7.stderr`][books-show-7] shows.
 ///
-/// A `cause:` line for each cause follows the `error:` line, and a `url:`
+/// A `cause:` line for each cause follows the `error:` line, a `help:` line
+/// for each alternative follows the recovery's `help:` line, and a `url:`
 /// line follows the `code:` line when the failure has a url. With the
 /// `miette` feature, an `at:` line for each label of the failure's
 /// diagnostic follows the causes, each with its source line and an
@@ -180,7 +223,10 @@ pub(super) fn write_text(err: &mut impl Write, document: &FailureDocument) -> io
     for label in &document.labels {
         label.write_text(err)?;
     }
-    write_labelled(err, "help:", &document.help())?;
+    write_labelled(err, "help:", &document.step.help())?;
+    for alternative in &document.alternatives {
+        write_labelled(err, "help:", &alternative.help())?;
+    }
     write_labelled(err, "code:", &document.code)?;
     if let Some(url) = &document.url {
         write_labelled(err, "url:", url)?;
@@ -204,8 +250,10 @@ fn write_json(out: &mut impl Write, document: &FailureDocument) -> io::Result<()
 impl FailureDocument {
     /// Writes every field of the document after `schema` into `map`: `code`,
     /// `message`, `cause` when the failure has a source, `labels` when the
-    /// failure has a diagnostic with at least one label, `recovery`, and
-    /// `url` when the failure has one. The failure document and an entry of
+    /// failure has a diagnostic with at least one label, `related` when that
+    /// diagnostic has related diagnostics, `recovery`,
+    /// `alternatives` when at least one alternative offers a step, and `url`
+    /// when the failure has one. The failure document and an entry of
     /// a batch's `failures` both write their fields here, so the two differ
     /// only in `schema`.
     ///
@@ -221,7 +269,14 @@ impl FailureDocument {
         if !self.labels.is_empty() {
             map.serialize_entry("labels", &self.labels)?;
         }
+        #[cfg(feature = "miette")]
+        if !self.related.is_empty() {
+            map.serialize_entry("related", &self.related)?;
+        }
         map.serialize_entry("recovery", &self.step)?;
+        if !self.alternatives.is_empty() {
+            map.serialize_entry("alternatives", &self.alternatives)?;
+        }
         if let Some(url) = &self.url {
             map.serialize_entry("url", url)?;
         }
@@ -308,45 +363,12 @@ impl JsonSchema for FailureDocument {
                     "type": "string",
                 },
                 "labels": labels_schema(),
-                "recovery": {
-                    "description": "What the caller can do next, tagged by kind.",
-                    "oneOf": [
-                        {
-                            "description": "Run this command.",
-                            "type": "object",
-                            "properties": {
-                                "kind": { "const": "run" },
-                                "call": { "type": "string" },
-                            },
-                            "required": ["kind", "call"],
-                        },
-                        {
-                            "description": "Run the same command again later.",
-                            "type": "object",
-                            "properties": {
-                                "kind": { "const": "retry" },
-                            },
-                            "required": ["kind"],
-                        },
-                        {
-                            "description": "Follow this advice.",
-                            "type": "object",
-                            "properties": {
-                                "kind": { "const": "hint" },
-                                "text": { "type": "string" },
-                            },
-                            "required": ["kind", "text"],
-                        },
-                        {
-                            "description": "There is no next step, for this reason.",
-                            "type": "object",
-                            "properties": {
-                                "kind": { "const": "none" },
-                                "reason": { "type": "string" },
-                            },
-                            "required": ["kind", "reason"],
-                        },
-                    ],
+                "related": related_schema(),
+                "recovery": step_schema("What the caller can do next, tagged by kind."),
+                "alternatives": {
+                    "description": "Other repairs the caller can try, in order of preference, each in the shape of recovery. It is present only when the failure offers at least one.",
+                    "type": "array",
+                    "items": step_schema("A repair the caller can try instead, tagged by kind."),
                 },
                 "url": {
                     "description": "A page that explains the failure. It is present only when the failure has one.",
@@ -392,6 +414,52 @@ pub(crate) fn entry_schema() -> Schema {
     schema
 }
 
+/// Describes one step of the `crumbkit/failure/v1` document, tagged by
+/// `kind`, as `recovery` and each entry of `alternatives` hold it, with
+/// `description` as its description.
+fn step_schema(description: &str) -> Schema {
+    json_schema!({
+        "description": description,
+        "oneOf": [
+            {
+                "description": "Run this command.",
+                "type": "object",
+                "properties": {
+                    "kind": { "const": "run" },
+                    "call": { "type": "string" },
+                },
+                "required": ["kind", "call"],
+            },
+            {
+                "description": "Run the same command again later.",
+                "type": "object",
+                "properties": {
+                    "kind": { "const": "retry" },
+                },
+                "required": ["kind"],
+            },
+            {
+                "description": "Follow this advice.",
+                "type": "object",
+                "properties": {
+                    "kind": { "const": "hint" },
+                    "text": { "type": "string" },
+                },
+                "required": ["kind", "text"],
+            },
+            {
+                "description": "There is no next step, for this reason.",
+                "type": "object",
+                "properties": {
+                    "kind": { "const": "none" },
+                    "reason": { "type": "string" },
+                },
+                "required": ["kind", "reason"],
+            },
+        ],
+    })
+}
+
 /// Describes the `labels` array of the `crumbkit/failure/v1` document. The
 /// schema lists it whether or not the `miette` feature is on, so there is
 /// one checked-in schema file, and readers ignore a field they do not know
@@ -427,12 +495,77 @@ fn labels_schema() -> Schema {
                     "type": "integer",
                     "minimum": 1,
                 },
+                "excerpt": {
+                    "description": "The lines of the source that the span covers, with one line before and one after where the source has them. It is present only when the span could be read.",
+                    "type": "object",
+                    "properties": {
+                        "line": {
+                            "description": "The 1-based number of the first line of the excerpt.",
+                            "type": "integer",
+                            "minimum": 1,
+                        },
+                        "text": {
+                            "description": "The lines, joined by the line breaks of the source, without a line break at the end.",
+                            "type": "string",
+                        },
+                    },
+                    "required": ["line", "text"],
+                },
                 "text": {
                     "description": "What the label says about the span. It is present only when the label has text.",
                     "type": "string",
                 },
             },
             "required": ["offset", "length"],
+        },
+    })
+}
+
+/// Describes the `related` array of the `crumbkit/failure/v1` document. Each
+/// entry has the `$anchor` `related`, and its own `related` array refers to
+/// the entry's schema through it, because related diagnostics nest. The
+/// schema lists the array whether or not the `miette` feature is on, as it
+/// does `labels`.
+fn related_schema() -> Schema {
+    json_schema!({
+        "description": "The diagnostics that the failure's diagnostic relates to it, in the order it gives them. It is present only when there is at least one.",
+        "type": "array",
+        "items": {
+            "$anchor": "related",
+            "type": "object",
+            "properties": {
+                "message": {
+                    "description": "What the related diagnostic says.",
+                    "type": "string",
+                },
+                "code": {
+                    "description": "The related diagnostic's own code, which is free text. It is present only when the diagnostic has one.",
+                    "type": "string",
+                },
+                "severity": {
+                    "description": "How severe the related diagnostic is. A diagnostic that gives no severity is an error.",
+                    "enum": ["error", "warning", "advice"],
+                },
+                "cause": {
+                    "description": "The errors below the related diagnostic, joined with \": \". It is present only when there is one.",
+                    "type": "string",
+                },
+                "labels": labels_schema(),
+                "help": {
+                    "description": "The related diagnostic's advice. It is present only when it gives some.",
+                    "type": "string",
+                },
+                "url": {
+                    "description": "A page that explains the related diagnostic. It is present only when it has one.",
+                    "type": "string",
+                },
+                "related": {
+                    "description": "The diagnostics related to this one, in the same shape, to at most eight levels below the failure.",
+                    "type": "array",
+                    "items": { "$ref": "#related" },
+                },
+            },
+            "required": ["message", "severity"],
         },
     })
 }
