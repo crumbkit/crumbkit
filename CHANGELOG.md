@@ -133,6 +133,20 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit: the `self usage` summary counts the runs that tolerated each
   code, and each command's figures count the runs of each exit code from 3
   with its declared meaning ([ADR-0034]).
+- crumbkit: [`Effects`] declares a leaf's effects in the terms of MCP's
+  tool annotations with `Leaf::effects`, and help and `commands list` show
+  them ([ADR-0039]).
+- crumbkit: [`DryRun`] adds `--dry-run`. After `Output::dry_run`, the JSON
+  document holds `dry_run: true` and the text ends with a dry-run line
+  ([ADR-0039]).
+- crumbkit: [`Yes`] adds `--yes`. `Output::confirm` asks at a terminal,
+  proceeds with `--yes`, and otherwise fails with the typed command plus
+  `--yes` as its recovery ([ADR-0039]).
+- crumbkit: [`Call`] gains `Call::typed`, which repeats the words that the
+  caller typed without a lookup in the command tree.
+- crumbkit-test: [`check_effects`] requires effects on every visible leaf,
+  `--yes` on destructive leaves, and crumbkit's `--dry-run` in place of a
+  tool's own ([ADR-0039]).
 
 ### Changed
 
@@ -180,6 +194,13 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   and fails on a file format with the id of another document ([ADR-0035]).
 - crumbkit: `usage::findings` and `usage::figures` take the tool's
   `Guide`, which gives the meaning of each exit code ([ADR-0034]).
+- crumbkit: [`parse`] returns a [`Parsed`] in place of the `Command`. It
+  holds the command and the typed words, and `Output::set_command` takes
+  either ([ADR-0002]).
+- crumbkit: [`Sink`] has a third type parameter for standard input, and
+  `Sink::with_input` builds one for tests.
+- crumbkit-test: [`check_grammar`] no longer checks `--dry-run`, which
+  [`check_effects`] checks.
 
 ### Removed
 
@@ -317,3 +338,10 @@ rustdoc, or at its decision record. -->
 [`PathBudgets`]: crates/crumbkit-test/src/weights.rs
 [ADR-0036]: docs/decisions/api/0036-opt-outs.md
 [ADR-0037]: docs/decisions/api/help/0037-exit-codes.md
+[`Effects`]: crates/crumbkit/src/help/effects.rs
+[`DryRun`]: crates/crumbkit/src/output/dry_run.rs
+[`Yes`]: crates/crumbkit/src/output/confirm.rs
+[`Parsed`]: crates/crumbkit/src/parse/parsed.rs
+[`Sink`]: crates/crumbkit/src/sink.rs
+[`check_effects`]: crates/crumbkit-test/src/effects.rs
+[ADR-0039]: docs/decisions/api/effects/0039-effects-dry-runs-and-confirmation.md

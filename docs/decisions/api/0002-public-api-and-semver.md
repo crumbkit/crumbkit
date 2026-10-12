@@ -6,5 +6,6 @@
 - Handlers take an arguments struct deriving `clap::Args`, `Serialize` and `JsonSchema`, and never see `ArgMatches`.
 - Failure codes are never reused. crumbkit owns the exit codes 0, 1 and 2, whose meanings are fixed, and the tool owns 3 to 125, which crumbkit never returns. A shell reports 126 and above for its own reasons, such as 130 when SIGINT ends the process and 143 when SIGTERM does, and the usage log's signal handling leaves those codes in place. ADR-0037 records how a tool declares its codes.
 - `parse` returns a [`Stop`](../../../crates/crumbkit/src/parse/stop.rs) in place of a bare `ExitCode` when it ends the run, so a tool can still ask whether the caller wanted JSON. Its `Output` sits in a `Box`, because `Output` holds a whole `clap::Command` and clippy's `result_large_err` flags a large error type, and the box costs one allocation only on a run that `parse` ends.
+- `parse` returns a `Parsed` that keeps the caller's words for `Output::confirm` (ADR-0039).
 
 Considered: `parse` returning an `ExitCode` and a separate function that finds `--json`, a `Stop` with its own `is_json` and no `Output`, public-field structs, a feature-gated schema bound, `Call` methods hidden from the docs.

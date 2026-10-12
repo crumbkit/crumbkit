@@ -2,6 +2,7 @@
 
 - [`parse`](../../../../crates/crumbkit/src/parse.rs) keeps clap's help template for each command and adds crumbkit's lines after the command's own `after_help` and `after_long_help`, so a tool keeps clap's layout and its own text. It changes only the commands that the typed words pass through, so crumbkit's extra work on every run grows with the depth of the command typed, and the command tree is never cloned.
 - `-h` names the global flags on one line and `--help` lists them in full.
+- A leaf's help prints its effects on one `Effects:` line, first among crumbkit's lines after the examples (ADR-0039).
 - The help of a command with a visible subcommand ends with a `Next:` line that opens one of them.
 - Help and the version keep clap's colours only when standard output is a terminal.
 - crumbkit finds the deepest command the caller reached by walking the typed words once before parsing. The walk reads each option's values from clap's `Arg`, so an option's value that equals a subcommand name names no command.

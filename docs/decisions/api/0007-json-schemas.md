@@ -1,6 +1,7 @@
 # ADR-0007. JSON schemas
 
 - Every JSON document is an object with a `schema` id and the result under `data` ([`finish`](../../../crates/crumbkit/src/output.rs)). A document from `Document::without_envelope` prints the result alone, and its schema is the schema of `data` with the id as its title (ADR-0016, ADR-0036).
+- A dry run's document holds `dry_run: true` after `schema`, and a real run's holds no `dry_run` field (ADR-0039).
 - A listing's document always holds `total`, with every output flag, so a program can tell whether it has every row ([`Listing`](../../../crates/crumbkit-core/src/listing.rs)).
 - A batch's document always holds `failures`, which is empty when every id worked, as `total` is present for every listing ([`Batch`](../../../crates/crumbkit-core/src/batch.rs)). A prose result's document holds its value under `data` and holds `failures` in the same way ([`Prose`](../../../crates/crumbkit-core/src/prose.rs)). Each entry has the fields of the failure document except `schema`, and crumbkit writes both from the same code, so the two shapes cannot drift.
 - A document id is a typed constant, a [`Document`](../../../crates/crumbkit-core/src/document.rs), so the compiler ties the id to its result type and rejects a malformed id. It holds a one-line description, which becomes the schema's `description`.

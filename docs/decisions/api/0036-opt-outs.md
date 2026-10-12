@@ -1,10 +1,10 @@
 # ADR-0036. Opt-outs
 
 - crumbkit's conventions are the defaults, and a tool can opt out of a rule with a stated reason, so crumbkit meets a tool where it is. An opt-out is an [`Allow`](../../../crates/crumbkit-test/src/allow.rs) that names one `Rule`, the command it covers with every command below it, and the reason. Each check that takes opt-outs reads only those of its own rules, so a tool keeps one list and passes it to every such check.
-- An opt-out skips one rule. The other rules of the same check still apply to the command, so a root leaf that a tool allows still cannot take `--dry-run` without an opt-out of its own.
+- An opt-out skips one rule. The other rules of the same check still apply to the command.
 - A check fails on an opt-out of its rules that names no command or excuses no problem, so the opt-out of a removed or fixed command cannot stay in a tool's list.
 - A command that keeps the shape of an existing document declares its document with `Document::without_envelope`, because `finish` and `schemas show` read only the `Document`, and its `Allow` of `Rule::Envelope` carries the reason.
-- The rule that reserves `help` has no opt-out, because crumbkit's `parse` answers `help` itself and an opt-out could not change that. The rule that reserves `--dry-run` has one, so a tool can keep its own `--dry-run` with a stated reason until crumbkit designs dry runs.
+- The rule that reserves `help` has no opt-out, because crumbkit's `parse` answers `help` itself and an opt-out could not change that. A tool that keeps its own `--dry-run` opts out of `Rule::DryRun` with a reason (ADR-0039).
 - A tool pins its opt-outs in a report with [`check_opt_outs`](../../../crates/crumbkit-test/src/opt_outs.rs), which compares a text and a JSON golden file. Each entry names the rule, the command line, the reason and what skipping the rule costs an agent, and the report also lists each help or path budget that the tool set (ADR-0025), so a reviewer sees a new opt-out as a change to the golden files and an agent reads the JSON to learn where the tool departs from crumbkit's conventions. The report is a test check only, because a tool's opt-outs live in its tests.
 - The checks without opt-outs keep their reasons: a tool declares its verbs to `check_grammar`, a tool that wants clap's list for a command leaves the command out of its guide (ADR-0021), `check_mounts` exists to keep crumbkit's commands at fixed paths (ADR-0035), and `check_codes` keeps failure codes unique.
 
