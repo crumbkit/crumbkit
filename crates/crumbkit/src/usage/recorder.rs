@@ -166,6 +166,10 @@ impl Drop for Log {
 /// from the operating system, and a run whose ids cannot be read installs no
 /// recorder, so it writes no line and gives its children no variables.
 ///
+/// A run whose `COMPLETE` variable asks for shell completion, as
+/// `crumbkit::complete` of the `complete` feature reads it, installs no
+/// recorder either, so a Tab press writes no line.
+///
 /// The line goes to `usage.jsonl` in the tool's directory under the XDG
 /// state directory, such as `~/.local/state/shelf/usage.jsonl`. On Windows
 /// the directory is `XDG_STATE_HOME` when it is an absolute path, and
@@ -186,8 +190,9 @@ pub fn start() -> Log {
 /// [`Signals::Tool`] describes.
 pub fn start_with(signals: Signals) -> Log {
     let started = Instant::now();
-    let active =
-        context::read().is_some_and(|context| install(&RECORDER, Recorder::new(started, context)));
+    let active = !context::completing()
+        && context::read()
+            .is_some_and(|context| install(&RECORDER, Recorder::new(started, context)));
     if active {
         watch_signals(signals);
     }

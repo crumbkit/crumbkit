@@ -52,6 +52,17 @@ pub(super) fn read() -> Option<Context> {
     )
 }
 
+/// Reports whether the run answers a shell's completion request, which
+/// writes no line.
+pub(super) fn completing() -> bool {
+    #[expect(
+        clippy::disallowed_methods,
+        reason = "the usage log owns its environment reads, and a completion request writes no line"
+    )]
+    let value = std::env::var_os(crate::complete::VAR);
+    crate::complete::requested(value.as_deref())
+}
+
 /// Returns the caller's TRACESTATE from `value`, the variable as the
 /// environment holds it. A value that is not UTF-8 is not a valid
 /// TRACESTATE, and it counts as empty, so the run still knows that the
