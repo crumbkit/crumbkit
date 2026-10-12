@@ -6,6 +6,7 @@ use std::process::ExitCode;
 use super::{Parsed, tool};
 use crate::help::Guide;
 use crate::parse::{Stop, parse_to};
+use crate::twins::assert_one_word_apart;
 use crate::{Sink, Spelling};
 
 /// A guide that roots the tool at its `planets` group, as cargo roots a
@@ -78,7 +79,11 @@ fn the_topics_line_sits_on_the_help_of_the_guide_s_root_and_names_its_command_li
 
 #[test]
 fn help_above_the_guide_s_root_prints_no_topic() {
-    let parsed = parse(&["tool", "help", "exit-codes"]);
+    let refused = ["tool", "help", "exit-codes"];
+    let admitted = ["tool", "planets", "help", "exit-codes"];
+    assert_one_word_apart(&refused, &admitted);
+    assert_eq!(parse(&admitted).code, Some(ExitCode::SUCCESS));
+    let parsed = parse(&refused);
 
     assert_eq!(parsed.code, Some(ExitCode::from(2)));
     assert_eq!(parsed.out, "");

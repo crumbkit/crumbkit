@@ -8,6 +8,7 @@ use clap::{CommandFactory as _, Parser, Subcommand};
 use schemars::JsonSchema;
 use serde::Serialize;
 
+use crate::twins::assert_one_word_apart;
 use crate::{
     AsFailure, Batch, Call, Code, Document, Error, Failure, Output, Recovery, Row, Sink, Spelling,
     finish_to,
@@ -402,6 +403,12 @@ fn json_fields_shapes_the_data_and_leaves_the_failures_unchanged() {
 
 #[test]
 fn an_unknown_field_exits_with_code_2_before_anything_of_the_batch_prints() {
+    // The twin's batch holds the same failure, so it exits with code 1
+    // after printing it, which shows that the field passed (TEST-1).
+    assert_one_word_apart(&["--fields", "radius"], &["--fields", "au"]);
+    let twin = finish_with(&["--fields", "au"], two_with(vec![missing("Vulcan")]));
+    assert_eq!(twin.code, ExitCode::FAILURE);
+    assert!(twin.err.contains("Vulcan"), "{}", twin.err);
     let finished = finish_with(&["--fields", "radius"], two_with(vec![missing("Vulcan")]));
 
     assert_eq!(finished.code, ExitCode::from(2));

@@ -14,6 +14,7 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use super::{Json, hand_over_json_to, hand_over_to, respond_json, respond_text};
+use crate::twins::assert_one_word_apart;
 use crate::{Document, Output, Row, Sink, Spelling};
 
 // The process tests run their children through `sh` and send them Unix
@@ -248,11 +249,31 @@ fn command(program: &str) -> process::Command {
 /// with `crumbkit::child::not_found`.
 const MISSING: &str = "crumbkit-test-no-such-program";
 
+/// Checks the twin of a refusal that comes before the child runs: `flags`
+/// differ from `refused` by one word, and with them the child runs, so the
+/// missing program fails with `crumbkit::child::not_found` (TEST-1).
+#[track_caller]
+fn admits(refused: &[&str], flags: &[&str], json: bool) {
+    assert_one_word_apart(refused, flags);
+    let mut output = output(flags);
+    let responded = respond(|sink| {
+        let child = command(MISSING);
+        if json {
+            hand_over_json_to(sink, &mut output, Spelling::COLONS, child, BOOKS_JSON)
+        } else {
+            hand_over_to(sink, &mut output, Spelling::COLONS, child)
+        }
+    });
+    let printed = format!("{}{}", responded.out, responded.err);
+    assert!(printed.contains("crumbkit::child::not_found"), "{printed}");
+}
+
 /// The JSON form of a child that prints [`BOOKS`].
 const BOOKS_JSON: Json<Vec<Book>> = Json::new(&["--json"], BOOKS);
 
 #[test]
 fn json_for_a_child_without_a_json_form_is_refused_with_no_json_before_it_runs() {
+    admits(&["--json"], &[], false);
     let mut output = output(&["--json"]);
     let responded = respond(|sink| {
         let child = command(MISSING);
@@ -270,6 +291,11 @@ fn json_for_a_child_without_a_json_form_is_refused_with_no_json_before_it_runs()
 
 #[test]
 fn fields_without_json_are_refused_with_exit_code_2_before_the_child_runs() {
+    admits(
+        &["--fields", "title"],
+        &["--json", "--fields", "title"],
+        true,
+    );
     let mut output = output(&["--fields", "title"]);
     let responded = respond(|sink| {
         let child = command(MISSING);
@@ -287,6 +313,11 @@ error: --fields selects the columns of a table, and this command hands the termi
 
 #[test]
 fn an_unknown_field_under_json_is_refused_before_the_child_runs() {
+    admits(
+        &["--json", "--fields", "author"],
+        &["--json", "--fields", "title"],
+        true,
+    );
     let mut output = output(&["--json", "--fields", "author"]);
     let responded = respond(|sink| {
         let child = command(MISSING);

@@ -8,10 +8,12 @@ use clap::{Arg, ArgAction, Command};
 
 use super::{Stop, message, parse_to};
 use crate::help::Guide;
+use crate::twins::assert_one_word_apart;
 use crate::{Sink, Spelling};
 
 mod aliases;
 mod fields;
+mod hidden;
 mod root;
 
 /// A tool with two global flags, a version, and a group that holds a visible
@@ -105,6 +107,20 @@ fn parse_tree(command: Command, args: &[&str]) -> Parsed {
     }
 }
 
+/// Checks that `admitted`, the twin of the refused `refused`, differs from
+/// it by one word and that `parse_to` over `command` accepts it or prints
+/// help with code 0 (TEST-1).
+#[track_caller]
+fn admits(command: Command, refused: &[&str], admitted: &[&str]) {
+    assert_one_word_apart(refused, admitted);
+    let parsed = parse_tree(command, admitted);
+    assert!(
+        parsed.code.is_none_or(|code| code == ExitCode::SUCCESS),
+        "the admitted words {admitted:?} are refused:\n{}",
+        parsed.err
+    );
+}
+
 #[test]
 fn a_command_line_that_parses_returns_the_parsed_type_and_the_command() {
     let mut out = Vec::new();
@@ -130,7 +146,13 @@ fn a_command_line_that_parses_returns_the_parsed_type_and_the_command() {
 
 #[test]
 fn a_refused_command_line_prints_the_usage_failure_on_standard_error_and_exits_with_code_2() {
-    let parsed = parse(&["tool", "planets", "show", "Mars", "--srot", "name"]);
+    let refused = ["tool", "planets", "show", "Mars", "--srot", "name"];
+    admits(
+        tool(),
+        &refused,
+        &["tool", "planets", "show", "Mars", "--sort", "name"],
+    );
+    let parsed = parse(&refused);
 
     assert_eq!(parsed.code, Some(ExitCode::from(2)));
     assert_eq!(parsed.out, "");
@@ -144,9 +166,17 @@ error: unexpected argument '--srot' found; a similar argument exists: '--sort'
 
 #[test]
 fn a_refused_command_line_with_json_prints_the_failure_document_and_its_stop_asks_for_json() {
-    let parsed = parse(&[
+    let refused = [
         "tool", "planets", "show", "Mars", "--srot", "name", "--json",
-    ]);
+    ];
+    admits(
+        tool(),
+        &refused,
+        &[
+            "tool", "planets", "show", "Mars", "--sort", "name", "--json",
+        ],
+    );
+    let parsed = parse(&refused);
 
     assert_eq!(parsed.code, Some(ExitCode::from(2)));
     assert_eq!(parsed.json, Some(true));
@@ -167,18 +197,17 @@ fn a_value_of_an_option_that_allows_hyphen_values_is_no_request_for_json() {
         .long("pattern")
         .allow_hyphen_values(true)
         .global(true);
-    let parsed = parse_tree(
-        tool().arg(pattern),
-        &[
-            "tool",
-            "--pattern",
-            "--json",
-            "planets",
-            "show",
-            "Mars",
-            "--srot",
-        ],
-    );
+    let refused = [
+        "tool",
+        "--pattern",
+        "--json",
+        "planets",
+        "show",
+        "Mars",
+        "--srot",
+    ];
+    admits(tool().arg(pattern.clone()), &refused, &refused[..6]);
+    let parsed = parse_tree(tool().arg(pattern), &refused);
 
     assert_eq!(parsed.code, Some(ExitCode::from(2)));
     assert_eq!(parsed.json, Some(false));
@@ -192,14 +221,18 @@ fn a_value_of_an_option_that_allows_hyphen_values_is_no_request_for_json() {
 
 #[test]
 fn the_recovery_names_a_command_typed_by_its_alias_by_its_real_name() {
-    let parsed = parse(&["tool", "planets", "get", "--bogus"]);
+    let refused = ["tool", "planets", "get", "--bogus"];
+    admits(tool(), &refused, &["tool", "planets", "get", "Mars"]);
+    let parsed = parse(&refused);
 
     assert!(parsed.err.contains("  help:  run `tool planets show -h`\n"));
 }
 
 #[test]
 fn the_recovery_names_a_hidden_command_that_the_caller_typed() {
-    let parsed = parse(&["tool", "planets", "weigh", "--bogus"]);
+    let refused = ["tool", "planets", "weigh", "--bogus"];
+    admits(tool(), &refused, &refused[..3]);
+    let parsed = parse(&refused);
 
     assert!(
         parsed
@@ -210,13 +243,16 @@ fn the_recovery_names_a_hidden_command_that_the_caller_typed() {
 
 #[test]
 fn the_walk_stops_at_a_double_dash() {
-    let parsed = parse(&["tool", "planets", "--", "show", "Mars"]);
+    let refused = ["tool", "planets", "--", "show", "Mars"];
+    admits(tool(), &refused, &["tool", "planets", "show", "Mars"]);
+    let parsed = parse(&refused);
 
     assert!(parsed.err.contains("  help:  run `tool planets -h`\n"));
 }
 
 #[test]
 fn a_command_line_that_stops_at_a_group_says_that_the_group_needs_a_subcommand() {
+    admits(tool(), &["tool", "planets"], &["tool", "planets", "weigh"]);
     let parsed = parse(&["tool", "planets"]);
 
     assert_eq!(parsed.code, Some(ExitCode::from(2)));
@@ -455,6 +491,11 @@ fn help_as_the_last_word_after_a_group_prints_that_group_s_long_help() {
 
 #[test]
 fn help_with_an_unknown_word_is_refused_with_the_root_s_short_help_as_the_recovery() {
+    admits(
+        tool(),
+        &["tool", "help", "plants"],
+        &["tool", "help", "planets"],
+    );
     let parsed = parse(&["tool", "help", "plants"]);
 
     assert_eq!(parsed.code, Some(ExitCode::from(2)));
@@ -544,39 +585,4 @@ For more information, try '--help'.
         message(rendered),
         "the following required arguments were not provided: <NAME>..."
     );
-}
-
-/// A tool whose `books` command has the hidden alias `book`, and whose
-/// `books list` has a `--limit` option with the hidden alias `--max`.
-fn tool_with_hidden_aliases() -> Command {
-    Command::new("shelf").subcommand(Command::new("books").alias("book").subcommand(
-        Command::new("list").arg(Arg::new("limit").long("limit").alias("max").value_name("N")),
-    ))
-}
-
-#[test]
-fn a_refusal_suggests_the_real_name_of_a_flag_whose_hidden_alias_clap_suggested() {
-    let parsed = parse_tree(
-        tool_with_hidden_aliases(),
-        &["shelf", "books", "list", "--maxx", "5"],
-    );
-
-    let expected = "\
-error: unexpected argument '--maxx' found; a similar argument exists: '--limit'
-  help:  run `shelf books list -h`
-  code:  crumbkit::cli::usage
-";
-    assert_eq!(parsed.err, expected);
-}
-
-#[test]
-fn a_refusal_suggests_the_real_name_of_a_command_whose_hidden_alias_clap_suggested() {
-    let parsed = parse_tree(tool_with_hidden_aliases(), &["shelf", "bok"]);
-
-    let expected = "\
-error: unrecognized subcommand 'bok'; a similar subcommand exists: 'books'
-  help:  run `shelf -h`
-  code:  crumbkit::cli::usage
-";
-    assert_eq!(parsed.err, expected);
 }

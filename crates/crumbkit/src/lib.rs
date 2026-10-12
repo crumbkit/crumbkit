@@ -61,6 +61,8 @@ mod row;
 pub mod schemas;
 mod sink;
 pub mod trace;
+#[cfg(test)]
+mod twins;
 pub mod usage;
 
 // crumbkit re-exports every item of crumbkit-core at the path it had in

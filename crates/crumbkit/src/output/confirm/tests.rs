@@ -4,6 +4,7 @@ use clap::{Args as _, Command, CommandFactory as _, Parser, Subcommand};
 
 use super::Yes;
 use crate::help::Guide;
+use crate::twins::assert_one_word_apart;
 use crate::{Call, DryRun, Error, NoInput, Output, Recovery, Sink, Spelling};
 
 /// A tool whose `remove` command takes `--dry-run` and `--yes`.
@@ -111,7 +112,11 @@ fn at_a_terminal_any_other_answer_or_no_answer_declines_with_exit_code_1() {
 
 #[test]
 fn without_a_terminal_the_run_fails_with_the_same_command_and_yes_as_its_recovery() {
-    let confirmed = confirm(&["remove", "Le Guin", "--", "-7"], "y\n", false);
+    let refused = ["remove", "Le Guin", "--", "-7"];
+    let admitted = ["remove", "Le Guin", "--yes", "--", "-7"];
+    assert_one_word_apart(&refused, &admitted);
+    assert!(confirm(&admitted, "", false).result.is_ok());
+    let confirmed = confirm(&refused, "y\n", false);
 
     assert_eq!(confirmed.err, "");
     assert_eq!(code(&confirmed.result), "crumbkit::confirm::needs_yes");
@@ -176,6 +181,8 @@ fn dry_run_and_yes_add_their_flags_and_no_argument_group() {
 
 #[test]
 fn no_input_fails_with_needs_yes_without_asking_at_a_terminal() {
+    assert_one_word_apart(&["remove", "pluto", "--no-input"], &["remove", "pluto"]);
+    assert!(confirm(&["remove", "pluto"], "y\n", true).result.is_ok());
     let confirmed = confirm(&["remove", "pluto", "--no-input"], "y\n", true);
 
     assert_eq!(code(&confirmed.result), "crumbkit::confirm::needs_yes");

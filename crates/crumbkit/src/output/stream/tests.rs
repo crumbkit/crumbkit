@@ -10,6 +10,7 @@ use schemars::JsonSchema;
 use serde::Serialize;
 
 use super::stream_to;
+use crate::twins::assert_one_word_apart;
 use crate::{
     Call, Code, Document, DryRun, Error, Failure, Output, Recovery, Row, Sink, Spelling, Stream,
 };
@@ -245,6 +246,9 @@ fn full_prints_every_field_of_each_item() {
 
 #[test]
 fn an_unknown_field_is_refused_with_exit_code_2_before_anything_prints() {
+    assert_one_word_apart(&["--fields", "wingspan"], &["--fields", "bird"]);
+    let twin = run_ok(&["--fields", "bird"], &[robin()]);
+    assert_eq!(twin.code, ExitCode::SUCCESS, "{}", twin.err);
     let mut output = parse(&["--fields", "wingspan"]);
     let mut out = Vec::new();
     let mut err = Vec::new();

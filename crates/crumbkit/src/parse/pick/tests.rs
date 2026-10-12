@@ -8,6 +8,7 @@ use clap::{Arg, ArgAction, ArgMatches, Command, FromArgMatches};
 
 use crate::help::{Guide, Leaf};
 use crate::pick::{Answer, Choice, Choices, Picker, Question};
+use crate::twins::assert_one_word_apart;
 use crate::{Error, Parsed, Sink, Spelling, Stop, parse_to};
 
 /// A tool whose `show` takes a required `--list` and an optional `--sort`,
@@ -188,6 +189,15 @@ fn run(guide: &Guide, words: &[&str], answer: &str, interactive: bool) -> Run {
     }
 }
 
+/// Checks that `parse_to` accepts the twin of a refusal: `words` with
+/// `answer` when `interactive` (TEST-1). A twin of a refusal that an answer
+/// or the terminal causes keeps the words and changes only that.
+#[track_caller]
+fn admits(words: &[&str], answer: &str, interactive: bool) {
+    let admitted = run(&GUIDE, words, answer, interactive);
+    assert!(admitted.result.is_ok(), "{}", admitted.err);
+}
+
 /// Returns the words of a parsed run.
 fn words(run: &Run) -> Vec<String> {
     let (_, parsed) = run.result.as_ref().unwrap();
@@ -253,6 +263,7 @@ fn a_command_line_with_json_still_picks() {
 
 #[test]
 fn a_cancelled_pick_prints_the_refusal_that_parse_prints_without_a_picker() {
+    admits(&["show"], "0\n", true);
     let picked = run(&GUIDE, &["show"], "\n", true);
     let refused = run(&Guide::new(), &["show"], "", true);
     assert_eq!(code(&picked), ExitCode::from(2));
@@ -262,18 +273,21 @@ fn a_cancelled_pick_prints_the_refusal_that_parse_prints_without_a_picker() {
 
 #[test]
 fn an_answer_outside_the_list_is_refused() {
+    admits(&["show"], "0\n", true);
     let run = run(&GUIDE, &["show"], "7\n", true);
     assert_eq!(code(&run), ExitCode::from(2));
 }
 
 #[test]
 fn an_answer_with_more_values_than_the_argument_takes_is_refused() {
+    admits(&["show"], "0\n", true);
     let run = run(&GUIDE, &["show"], "0 1\n", true);
     assert_eq!(code(&run), ExitCode::from(2));
 }
 
 #[test]
 fn a_sink_where_nobody_can_answer_refuses_without_asking() {
+    admits(&["show"], "0\n", true);
     let run = run(&GUIDE, &["show"], "0\n", false);
     assert_eq!(code(&run), ExitCode::from(2));
     assert!(!run.err.contains("pick"));
@@ -281,6 +295,8 @@ fn a_sink_where_nobody_can_answer_refuses_without_asking() {
 
 #[test]
 fn no_input_refuses_without_asking() {
+    assert_one_word_apart(&["show", "--no-input"], &["show"]);
+    admits(&["show"], "0\n", true);
     let run = run(&GUIDE, &["show", "--no-input"], "0\n", true);
     assert_eq!(code(&run), ExitCode::from(2));
     assert!(!run.err.contains("pick"));
@@ -288,6 +304,8 @@ fn no_input_refuses_without_asking() {
 
 #[test]
 fn an_argument_without_choices_is_refused_without_asking() {
+    assert_one_word_apart(&["find"], &["find", "--pattern=mars"]);
+    admits(&["find", "--pattern=mars"], "0\n", true);
     let run = run(&GUIDE, &["find"], "0\n", true);
     assert_eq!(code(&run), ExitCode::from(2));
     assert!(!run.err.contains("pick"));
