@@ -4,8 +4,11 @@ use clap::{Arg, ArgAction, Command};
 use crumbkit::help::{Example, Goal, Group, Guide, Leaf};
 
 use super::{Pages, pages};
+#[cfg(unix)]
 use crate::examples::Examples;
+#[cfg(unix)]
 use crate::temp::TempDir;
+#[cfg(unix)]
 use crate::testing::help_binary;
 
 /// A tool with a global flag, a guided root and one leaf with examples.
