@@ -18,6 +18,8 @@ pub(super) fn refusal<T: Rows>(fields: &[String]) -> Option<Refusal> {
         return Some(Refusal::flag_value(
             "--fields selects the columns of a table, and this command prints prose".to_owned(),
             "use --json to read every field of the result".to_owned(),
+            "--fields",
+            None,
         ));
     }
     unknown_field::<T::Row>(fields)
@@ -42,5 +44,7 @@ fn unknown_field<R: Row>(fields: &[String]) -> Option<Refusal> {
     Some(Refusal::flag_value(
         format!("--fields names an unknown field '{unknown}'"),
         format!("use the valid fields: {}", valid.join(", ")),
+        "--fields",
+        Some(unknown.clone()),
     ))
 }

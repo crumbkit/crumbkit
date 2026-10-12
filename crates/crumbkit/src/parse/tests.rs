@@ -11,6 +11,7 @@ use crate::help::Guide;
 use crate::{Sink, Spelling};
 
 mod aliases;
+mod fields;
 mod root;
 
 /// A tool with two global flags, a version, and a group that holds a visible
@@ -152,6 +153,7 @@ fn a_refused_command_line_with_json_prints_the_failure_document_and_its_stop_ask
     let expected = concat!(
         r#"{"schema":"crumbkit/failure/v1","code":"crumbkit::cli::usage","#,
         r#""message":"unexpected argument '--srot' found; a similar argument exists: '--sort'","#,
+        r#""fields":{"argument":"--srot"},"#,
         r#""recovery":{"kind":"run","call":"tool planets show -h"}}"#,
         "\n",
     );
@@ -525,14 +527,6 @@ fn help_exits_with_code_0_when_the_reader_closed_the_pipe() {
 
     assert_eq!(result.err().map(ExitCode::from), Some(ExitCode::SUCCESS));
     assert_eq!(err, b"");
-}
-
-#[test]
-fn a_message_without_clap_error_context_is_its_one_line() {
-    assert_eq!(
-        message("error: unexpected argument found\n"),
-        "unexpected argument found"
-    );
 }
 
 #[test]

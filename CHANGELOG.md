@@ -200,6 +200,8 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   ([ADR-0033]).
 - crumbkit: [`Failure`] has a `fields` method, and the JSON failure
   document holds the named values under `fields` ([ADR-0007]).
+- crumbkit: a refused command line or `--fields` name holds the refused
+  argument, value or subcommand under `fields` ([ADR-0001]).
 
 ### Changed
 
@@ -261,6 +263,8 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   [`check_effects`] checks.
 - crumbkit: `Output::confirm` asks only when no coding agent is detected,
   and otherwise fails as it does without a terminal ([ADR-0043]).
+- crumbkit: crumbkit enables clap's `error-context` feature, which adds
+  about 33 KB to a tool's release binary ([ADR-0003]).
 
 ### Removed
 

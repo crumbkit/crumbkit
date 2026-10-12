@@ -210,6 +210,22 @@ error: --fields selects the columns of a table, and this command prints prose
 }
 
 #[test]
+fn the_refusal_of_fields_on_prose_names_the_flag_under_fields() {
+    let finished = finish_with(
+        &["--json", "--fields", "planets"],
+        Prose::new(eight("Eight planets.")),
+    );
+
+    assert!(
+        finished
+            .out
+            .contains(r#""fields":{"argument":"--fields"},"#),
+        "{}",
+        finished.out
+    );
+}
+
+#[test]
 fn long_and_full_leave_prose_unchanged() {
     let text = finish_with(&[], Prose::new(eight("Eight planets.")));
     let long = finish_with(&["--long"], Prose::new(eight("Eight planets.")));

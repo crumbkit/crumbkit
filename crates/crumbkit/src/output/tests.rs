@@ -287,6 +287,19 @@ fn an_unknown_field_is_refused_in_json_even_when_the_result_has_no_rows() {
     assert!(finished.out.contains(recovery));
 }
 
+#[test]
+fn an_unknown_field_refusal_names_the_flag_and_the_unknown_name_under_fields() {
+    let finished = finish_with(&["--json", "--fields", "name,radius"], PLANETS, Vec::new());
+
+    assert!(
+        finished
+            .out
+            .contains(r#""fields":{"argument":"--fields","value":"radius"}"#),
+        "{}",
+        finished.out
+    );
+}
+
 /// A star, one variant of `Body`, which `Body`'s schema reaches through a
 /// `$ref`.
 #[derive(Serialize, JsonSchema)]

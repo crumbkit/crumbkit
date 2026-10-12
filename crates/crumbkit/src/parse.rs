@@ -402,7 +402,7 @@ where
     }
     #[cfg(feature = "usage-log")]
     crate::usage::refused(&command, &path, &error);
-    let refusal = Refusal::command_line(refusal_message(&command, &path, &error), path);
+    let refusal = Refusal::command_line(refusal_message(&command, &path, &error), path, &error);
     let code = refusal.print(sink, json, spelling, Some(&mut command));
     Err(Stop::new(code, json, command))
 }
@@ -556,8 +556,6 @@ fn refusal_message(command: &Command, path: &[String], error: &clap::Error) -> S
 /// line, and drops the `error:` and `tip:` labels. The lines of a paragraph
 /// join with spaces, and paragraphs and tips join with `; `, as in
 /// `unexpected argument '--id' found; a similar argument exists: '--ids'`.
-/// Without clap's `error-context` feature, clap's text is one line, such as
-/// `error: unexpected argument found`, and the message is that line.
 //
 // RUST-10: this reads clap's wording and layout, which clap does not
 // promise to keep. It misses any part that clap adds below the usage line.
