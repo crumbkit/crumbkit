@@ -112,6 +112,12 @@ pub(super) struct Run {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     #[schemars(with = "Name")]
     pub(super) code: Option<Name>,
+    /// The codes of the failures that the run met and recovered from, which
+    /// the tool reported with `usage::tolerated`, in the tool's spelling.
+    /// Each code appears once, in report order, and the list holds at most
+    /// 8 codes. It is present only when the tool reported one.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub(super) tolerated: Vec<Name>,
     /// The bytes that `finish` wrote to standard output, or that the tool
     /// reported with `usage::ended`.
     #[serde(default, skip_serializing_if = "Option::is_none")]

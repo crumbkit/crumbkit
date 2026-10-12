@@ -78,6 +78,36 @@ pub fn aliased() {
     recorder::aliased();
 }
 
+/// Records that the run met the failure `code` and recovered from it, such
+/// as a lock that the tool waited out or a download that it retried, so
+/// the run's line lists the code under `tolerated`.
+///
+/// ```
+/// use crumbkit::Code;
+///
+/// static LOCKED: Code = Code::new("shelf", "catalogue", "locked");
+///
+/// // The tool waited for the lock and then read the catalogue.
+/// crumbkit::usage::tolerated(&LOCKED);
+/// ```
+///
+/// The line spells each code as the tool's failures spell it, with the
+/// `Spelling` that the tool passed to [`parse`](crate::parse), and holds
+/// each code once, in the order the tool reported them, up to eight codes.
+/// `self usage` counts the runs that tolerated each code. A code that the
+/// run then fails with belongs to [`finish`](crate::finish), which records
+/// it as the run's failure.
+///
+/// It exists in every build, so a tool calls it without a feature check.
+/// Without the `usage-log` feature, or without a started log, it does
+/// nothing.
+pub fn tolerated(code: &'static crate::Code) {
+    #[cfg(feature = "usage-log")]
+    recorder::tolerated(code);
+    #[cfg(not(feature = "usage-log"))]
+    let _ = code;
+}
+
 /// Records that the tool ended the run with `exit` after writing
 /// `out_bytes` to standard output, writes the run's line now, and returns
 /// `exit` as an `ExitCode` for `main` to return.

@@ -51,6 +51,56 @@
         "runs"
       ]
     },
+    "CodeRuns": {
+      "description": "The runs that tolerated one code.",
+      "type": "object",
+      "properties": {
+        "code": {
+          "description": "The code, in the tool's spelling.",
+          "type": "string"
+        },
+        "runs": {
+          "description": "The runs that tolerated the code. A run counts each code once.",
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "code",
+        "runs"
+      ]
+    },
+    "ExitRuns": {
+      "description": "The runs of a command that exited with one of the tool's codes.",
+      "type": "object",
+      "properties": {
+        "exit": {
+          "description": "The exit code, from 3 to 255.",
+          "type": "integer",
+          "format": "uint8",
+          "maximum": 255,
+          "minimum": 0
+        },
+        "meaning": {
+          "description": "What the tool's guide says the code means for the command, or null\nwhen the guide declares no such code for it.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "runs": {
+          "description": "The runs that exited with the code.",
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "exit",
+        "runs"
+      ]
+    },
     "FiguresRow": {
       "description": "The figures of one command in the usage log.",
       "type": "object",
@@ -58,6 +108,13 @@
         "command": {
           "description": "The command path below the tool's name, such as `books show`, or the\ntool's name for its root command.",
           "type": "string"
+        },
+        "exits": {
+          "description": "The runs that exited with each code from 3, which the tool declares,\nin code order.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ExitRuns"
+          }
         },
         "failed": {
           "description": "The runs that failed.",
@@ -135,7 +192,8 @@
         "failed",
         "typed_full",
         "typed_all",
-        "typed_long"
+        "typed_long",
+        "exits"
       ]
     },
     "UsageSummary": {
@@ -170,6 +228,13 @@
           "type": "integer",
           "format": "uint64",
           "minimum": 0
+        },
+        "tolerated": {
+          "description": "The codes of the failures that runs reported and carried on past,\nwith the runs that tolerated each, the most first, at most 10.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/CodeRuns"
+          }
         }
       },
       "required": [
@@ -177,7 +242,8 @@
         "sessions",
         "callers",
         "since",
-        "skipped"
+        "skipped",
+        "tolerated"
       ]
     }
   }

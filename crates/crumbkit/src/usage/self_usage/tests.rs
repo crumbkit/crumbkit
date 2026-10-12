@@ -5,8 +5,9 @@ use std::time::{Duration, SystemTime};
 use clap::Parser;
 use serde_json::json;
 
-use super::{CallerRuns, FindingRow, SelfUsage, UsageSummary, report_from};
+use super::{CallerRuns, CodeRuns, FindingRow, SelfUsage, UsageSummary, report_from};
 use crate::Rows;
+use crate::help::{Exit, Guide};
 use crate::usage::testing::{line, now, tool};
 
 /// Returns the summary of `runs` runs by people, in `sessions` sessions,
@@ -21,6 +22,7 @@ fn summary(runs: u64, sessions: u64, skipped: u64) -> UsageSummary {
         }],
         since: "2026-09-30".to_owned(),
         skipped,
+        tolerated: Vec::new(),
     }
 }
 
@@ -69,6 +71,56 @@ fn the_summary_line_says_how_many_records_were_skipped() {
 }
 
 #[test]
+fn the_summary_line_ends_with_the_codes_tolerated_most_often() {
+    let mut summary = summary(2, 1, 0);
+    summary.tolerated = vec![
+        CodeRuns {
+            code: "shelf::catalogue::locked".to_owned(),
+            runs: 1_200,
+        },
+        CodeRuns {
+            code: "shelf::network::timed_out".to_owned(),
+            runs: 1,
+        },
+    ];
+
+    assert_eq!(
+        summary.to_string(),
+        "2 runs in 1 session since 30 Sep: person 2. Tolerated most often: shelf::catalogue::locked 1,200, shelf::network::timed_out 1."
+    );
+}
+
+#[test]
+fn the_summary_lists_the_ten_codes_tolerated_by_the_most_runs() {
+    let log: String = (0..12_u64)
+        .map(|index| {
+            let codes: Vec<String> = (0..=index.min(9))
+                .map(|code| format!("shelf::books::c{code}"))
+                .chain((index >= 10).then(|| format!("shelf::books::rare{index}")))
+                .collect();
+            line(index + 1, "books list", &json!({ "tolerated": codes }))
+        })
+        .collect();
+    let listing = report_from(
+        &tool(),
+        &Guide::new(),
+        Some(Cursor::new(log)),
+        Duration::from_secs(60),
+        now(),
+    );
+
+    let summary = serde_json::to_value(Rows::summary(&listing)).unwrap();
+
+    let tolerated = summary["tolerated"].as_array().unwrap();
+    assert_eq!(tolerated.len(), 10);
+    assert_eq!(
+        tolerated[0],
+        json!({"code": "shelf::books::c0", "runs": 12})
+    );
+    assert_eq!(tolerated[9], json!({"code": "shelf::books::c9", "runs": 3}));
+}
+
+#[test]
 fn the_summary_serializes_its_figures_as_fields() {
     assert_eq!(
         serde_json::to_value(summary(2, 1, 3)).unwrap(),
@@ -78,6 +130,7 @@ fn the_summary_serializes_its_figures_as_fields() {
             "callers": [{"caller": "person", "runs": 2}],
             "since": "2026-09-30",
             "skipped": 3,
+            "tolerated": [],
         })
     );
 }
@@ -87,6 +140,7 @@ fn the_summary_serializes_its_figures_as_fields() {
 fn rows(log: &str) -> Vec<(String, u64, String, String)> {
     let listing = report_from(
         &tool(),
+        &Guide::new(),
         Some(Cursor::new(log)),
         Duration::from_secs(7 * 86_400),
         now(),
@@ -168,6 +222,7 @@ fn a_finding_row_carries_the_figures_of_its_command() {
     .concat();
     let listing = report_from(
         &tool(),
+        &Guide::new(),
         Some(Cursor::new(log)),
         Duration::from_secs(60),
         now(),
@@ -189,7 +244,40 @@ fn a_finding_row_carries_the_figures_of_its_command() {
             "typed_full": 1,
             "typed_all": 1,
             "typed_long": 0,
+            "exits": [],
         })
+    );
+}
+
+#[test]
+fn a_finding_row_counts_each_exit_from_3_with_the_meaning_that_the_guide_declares_for_it() {
+    const GUIDE: Guide = Guide::new().exits(&[
+        Exit::new(3, "The catalogue was locked."),
+        Exit::new(124, "The import ran out of time.").commands(&[&["books", "show"]]),
+    ]);
+    let log = [
+        line(40, "books list", &json!({"exit": 2})),
+        line(30, "books list", &json!({"exit": 124})),
+        line(20, "books list", &json!({"exit": 3})),
+        line(10, "books list", &json!({"exit": 3})),
+    ]
+    .concat();
+    let listing = report_from(
+        &tool(),
+        &GUIDE,
+        Some(Cursor::new(log)),
+        Duration::from_secs(60),
+        now(),
+    );
+
+    let row = serde_json::to_value(&listing.rows()[0]).unwrap();
+
+    assert_eq!(
+        row["figures"]["exits"],
+        json!([
+            {"exit": 3, "meaning": "The catalogue was locked.", "runs": 2},
+            {"exit": 124, "meaning": null, "runs": 1},
+        ])
     );
 }
 
@@ -203,6 +291,7 @@ fn the_report_reads_the_runs_since_the_duration_before_now_and_names_that_day() 
 
     let listing = report_from(
         &tool(),
+        &Guide::new(),
         Some(Cursor::new(log)),
         Duration::from_secs(86_400),
         now(),
@@ -217,6 +306,7 @@ fn the_report_reads_the_runs_since_the_duration_before_now_and_names_that_day() 
 fn without_a_log_the_report_has_no_runs_and_no_findings() {
     let listing = report_from(
         &tool(),
+        &Guide::new(),
         None::<Cursor<&str>>,
         Duration::from_secs(60),
         now(),
@@ -233,7 +323,13 @@ fn without_a_log_the_report_has_no_runs_and_no_findings() {
 fn a_clock_past_the_year_9999_reports_the_last_day_that_humantime_formats() {
     let far = SystemTime::UNIX_EPOCH + Duration::from_secs(300_000_000_000);
 
-    let listing = report_from(&tool(), None::<Cursor<&str>>, Duration::from_secs(60), far);
+    let listing = report_from(
+        &tool(),
+        &Guide::new(),
+        None::<Cursor<&str>>,
+        Duration::from_secs(60),
+        far,
+    );
 
     assert_eq!(Rows::summary(&listing).unwrap().since, "9999-12-31");
 }
@@ -286,6 +382,7 @@ fn a_since_that_reaches_before_1970_reads_the_whole_log_from_1970() {
 
     let listing = report_from(
         &tool(),
+        &Guide::new(),
         Some(Cursor::new(log)),
         Duration::from_secs(100 * 365 * 86_400),
         now(),

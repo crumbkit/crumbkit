@@ -93,6 +93,9 @@ pub(super) struct Report {
     pub(super) findings: Vec<Finding>,
     /// The figures of each command, in the order of their paths.
     pub(super) commands: Vec<Figures>,
+    /// The runs that tolerated each code, the most first. A run counts
+    /// each code once.
+    pub(super) tolerated: Vec<Count>,
 }
 
 /// A pattern in the runs of one command that suggests where callers waste
@@ -182,6 +185,9 @@ pub(super) struct Figures {
     pub(super) nearest: Vec<Count>,
     /// The runs that failed.
     pub(super) failed: u64,
+    /// The runs that exited with each code from 3, and the code, in code
+    /// order. The tool declares these codes (ADR-0002).
+    pub(super) exits: Vec<(u8, u64)>,
     /// The 95th percentile of the runs' wall time in milliseconds, or `None`
     /// when every run printed help.
     pub(super) p95_ms: Option<u64>,

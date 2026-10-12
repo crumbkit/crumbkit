@@ -29,6 +29,11 @@ mod tests;
 /// The recorder of this process. A poisoned lock counts as no recorder.
 static RECORDER: Mutex<State> = Mutex::new(State::Idle);
 
+/// The most tolerated codes that one line holds. A run that reports more
+/// distinct codes keeps the first eight, so the line stays within its
+/// limit of 1 KiB.
+const MAX_TOLERATED: usize = 8;
+
 /// How long the main thread or the signal thread waits for a line that the
 /// other thread is writing, before `main` returns or the signal takes
 /// effect. A write waits at most 100 ms for the lock, and a trim reads at
@@ -68,6 +73,11 @@ struct Recorder {
     /// The words after the tool's name, which the line holds only as a
     /// keyed hash.
     words: Vec<OsString>,
+    /// How the tool spells its failure codes, which `parse` gives.
+    spelling: Option<Spelling>,
+    /// The distinct codes of the failures that the tool recovered from, in
+    /// the order it reported them, at most [`MAX_TOLERATED`].
+    tolerated: Vec<&'static Code>,
     /// What the run reported.
     run: Run,
     /// Whether SIGINT or SIGTERM arrived in a run whose tool owns its
@@ -211,11 +221,20 @@ pub(super) fn aliased() {
     update(&RECORDER, |recorder| recorder.run.alias = true);
 }
 
-/// Records the name and version of `command`, the tool's root command, and
+/// Records the name and version of `command`, the tool's root command,
 /// `args`, the command line that `parse` received, whose words after the
-/// program name the line holds as a keyed hash.
-pub(crate) fn typed(command: &Command, args: &[OsString]) {
-    update(&RECORDER, |recorder| recorder.typed(command, args));
+/// program name the line holds as a keyed hash, and `spelling`, in which
+/// the line spells tolerated codes.
+pub(crate) fn typed(command: &Command, args: &[OsString], spelling: Spelling) {
+    update(&RECORDER, |recorder| {
+        recorder.typed(command, args, spelling);
+    });
+}
+
+/// Records that the run met the failure `code` and recovered from it, as
+/// [`crate::usage::tolerated`] describes.
+pub(super) fn tolerated(code: &'static Code) {
+    update(&RECORDER, |recorder| recorder.tolerated(code));
 }
 
 /// Records the command path, the flags typed and the ids of a command line
@@ -289,16 +308,28 @@ impl Recorder {
             started,
             context,
             words: Vec::new(),
+            spelling: None,
+            tolerated: Vec::new(),
             run: Run::default(),
             signalled: false,
         }
     }
 
     /// Records the tool's command and command line, as [`typed`] describes.
-    fn typed(&mut self, command: &Command, args: &[OsString]) {
+    fn typed(&mut self, command: &Command, args: &[OsString], spelling: Spelling) {
         self.tool = Some(Name::command(command));
         self.version = Name::version(command);
         self.words = args.get(1..).unwrap_or_default().to_vec();
+        self.spelling = Some(spelling);
+    }
+
+    /// Records a tolerated code, as [`tolerated`] describes. A code that the
+    /// run already reported, and every code after the first
+    /// [`MAX_TOLERATED`], is left out.
+    fn tolerated(&mut self, code: &'static Code) {
+        if self.tolerated.len() < MAX_TOLERATED && !self.tolerated.contains(&code) {
+            self.tolerated.push(code);
+        }
     }
 
     /// Records help for the command at `path`, as [`helped`] describes. A
@@ -335,6 +366,14 @@ impl Recorder {
         interrupted: bool,
         caller: &Caller,
     ) -> Option<Record> {
+        let mut run = self.run;
+        if let Some(spelling) = self.spelling {
+            run.tolerated = self
+                .tolerated
+                .iter()
+                .map(|code| Name::code(spelling, code))
+                .collect();
+        }
         Some(Record {
             schema: record::SCHEMA,
             tool: self.tool?,
@@ -346,7 +385,7 @@ impl Recorder {
             args: Hash::new(key, self.words.iter().map(|word| word.as_encoded_bytes())),
             trace: self.context.ids,
             interrupted: interrupted || self.signalled,
-            run: self.run,
+            run,
         })
     }
 }

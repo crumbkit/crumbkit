@@ -123,6 +123,12 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   not one line, and a command path that names no command ([ADR-0037]).
 - crumbkit-test: [`check_guide`] rejects a topic named `exit-codes`, which
   crumbkit's own topic replaces ([ADR-0023]).
+- crumbkit: [`usage::tolerated`] records the code of a failure that a run
+  carried on past, and the usage record lists up to 8 such codes in
+  `tolerated` ([ADR-0029]).
+- crumbkit: the `self usage` summary counts the runs that tolerated each
+  code, and each command's figures count the runs of each exit code from 3
+  with its declared meaning ([ADR-0034]).
 
 ### Changed
 
@@ -168,6 +174,8 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   command ([ADR-0036]).
 - crumbkit-test: [`check_schema_goldens`] pins the schemas of file formats
   and fails on a file format with the id of another document ([ADR-0035]).
+- crumbkit: `usage::findings` and `usage::figures` take the tool's
+  `Guide`, which gives the meaning of each exit code ([ADR-0034]).
 
 ### Removed
 
@@ -246,6 +254,7 @@ rustdoc, or at its decision record. -->
 [`parse`]: crates/crumbkit/src/parse.rs
 [`Stop`]: crates/crumbkit/src/parse/stop.rs
 [`usage::ended`]: crates/crumbkit/src/usage.rs
+[`usage::tolerated`]: crates/crumbkit/src/usage.rs
 [`help`]: crates/crumbkit/src/help.rs
 [`help::quote`]: crates/crumbkit/src/help.rs
 [`help::RuntimeLeaf`]: crates/crumbkit/src/help/runtime.rs

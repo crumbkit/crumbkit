@@ -69,6 +69,7 @@ fn a_record_writes_every_field_of_the_run_beside_its_own() {
         alias: true,
         exit: Some(1),
         code: Some(name("shelf::books::not_found")),
+        tolerated: vec![name("shelf::catalogue::locked")],
         out_bytes: Some(1840),
         truncated: true,
         ext: Some(Section {
@@ -91,6 +92,7 @@ fn a_record_writes_every_field_of_the_run_beside_its_own() {
     assert_eq!(record["alias"], true);
     assert_eq!(record["exit"], 1);
     assert_eq!(record["code"], "shelf::books::not_found");
+    assert_eq!(record["tolerated"], json!(["shelf::catalogue::locked"]));
     assert_eq!(record["out_bytes"], 1840);
     assert_eq!(record["truncated"], true);
     assert_eq!(record["interrupted"], true);

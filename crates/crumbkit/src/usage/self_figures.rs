@@ -11,7 +11,7 @@
 //!     &cli.output,
 //!     SPELLING,
 //!     crumbkit::usage::SELF_FIGURES_LIST,
-//!     Ok::<_, crumbkit::Error>(crumbkit::usage::figures(&cli.output, &args)),
+//!     Ok::<_, crumbkit::Error>(crumbkit::usage::figures(&cli.output, &GUIDE, &args)),
 //! ),
 //! ```
 //!
@@ -39,6 +39,7 @@ use schemars::JsonSchema;
 use serde::Serialize;
 
 use super::self_usage::{CommandFigures, SelfUsage, UsageSummary, open, summarize};
+use crate::help::Guide;
 use crate::{Document, Listing, Output, Page};
 
 #[cfg(test)]
@@ -100,13 +101,19 @@ impl crate::Row for FiguresRow {
 /// It reads the log that [`findings`](super::findings) reads, in the same
 /// way, and leaves out and counts the same records. The rows follow the
 /// order of the command paths, with the root first under the tool's name.
-/// A command that the log does not name has no row.
+/// A command that the log does not name has no row. `guide` is the tool's
+/// guide, whose exit codes give the meaning of each exit from 3.
 #[must_use]
-pub fn figures(output: &mut Output, args: &SelfFigures) -> Listing<FiguresRow, UsageSummary> {
+pub fn figures(
+    output: &mut Output,
+    guide: &Guide,
+    args: &SelfFigures,
+) -> Listing<FiguresRow, UsageSummary> {
     let empty = Command::new("");
     let tool = output.command().unwrap_or(&empty);
     figures_from(
         tool,
+        guide,
         open(tool, &args.usage),
         args.usage.since,
         SystemTime::now(),
@@ -116,9 +123,10 @@ pub fn figures(output: &mut Output, args: &SelfFigures) -> Listing<FiguresRow, U
 
 /// Returns the figures in `log` for the runs that ended in the `since`
 /// duration before `now`, checked against `tool`, with at most `limit`
-/// rows, as [`figures`] describes.
+/// rows, as [`figures`] describes for `guide`.
 fn figures_from(
     tool: &Command,
+    guide: &Guide,
     log: Option<impl BufRead>,
     since: Duration,
     now: SystemTime,
@@ -134,7 +142,7 @@ fn figures_from(
             } else {
                 figures.command.clone()
             },
-            figures: CommandFigures::of(figures),
+            figures: CommandFigures::of(figures, guide),
         })
         .collect();
     Listing::from_all(rows, limit)

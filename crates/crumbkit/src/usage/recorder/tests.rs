@@ -73,7 +73,7 @@ fn started(traceparent: Option<&str>) -> Recorder {
 /// words after the tool's name.
 fn parsed() -> Recorder {
     let mut recorder = started(None);
-    recorder.typed(&tool(), &["shelf".into()]);
+    recorder.typed(&tool(), &["shelf".into()], Spelling::DOTS);
     recorder
 }
 
@@ -200,7 +200,7 @@ fn a_saved_line_holds_the_tool_its_version_the_end_time_the_caller_and_the_hashe
 fn a_saved_line_holds_the_caller_s_trace_the_run_s_id_and_the_caller_s_span_as_parent() {
     let state = TempDir::new("traced");
     let mut recorder = started(Some(CALLER));
-    recorder.typed(&tool(), &["shelf".into()]);
+    recorder.typed(&tool(), &["shelf".into()], Spelling::DOTS);
 
     let lines = saved(&state, recorder, false);
 
@@ -217,7 +217,9 @@ fn a_child_gets_trace_variables_only_from_a_run_that_reached_parse() {
     install(&slot, started(Some(CALLER)));
     assert_eq!(child_env_in(&slot), Vec::new());
 
-    update(&slot, |recorder| recorder.typed(&tool(), &["shelf".into()]));
+    update(&slot, |recorder| {
+        recorder.typed(&tool(), &["shelf".into()], Spelling::DOTS);
+    });
     assert_eq!(
         child_env_in(&slot),
         [(
@@ -245,7 +247,11 @@ fn a_run_that_never_reached_parse_writes_no_line() {
 fn parse_gives_the_recorder_the_tool_s_name_its_version_and_the_words_after_the_name() {
     let mut recorder = started(None);
 
-    recorder.typed(&tool(), &["shelf".into(), "books".into(), "list".into()]);
+    recorder.typed(
+        &tool(),
+        &["shelf".into(), "books".into(), "list".into()],
+        Spelling::DOTS,
+    );
 
     assert_eq!(recorder.tool.unwrap().as_str(), "shelf");
     assert_eq!(recorder.version.unwrap().as_str(), "1.2.3");
@@ -296,6 +302,58 @@ fn the_first_failure_code_of_a_run_stays_in_the_tool_s_spelling() {
     assert_eq!(recorder.run.code.unwrap().as_str(), "shelf.books.not_found");
 }
 
+/// Ten distinct codes, which a run can report as tolerated.
+static CODES: [Code; 10] = [
+    Code::new("shelf", "books", "locked"),
+    Code::new("shelf", "network", "timed_out"),
+    Code::new("shelf", "cache", "stale"),
+    Code::new("shelf", "cache", "missing"),
+    Code::new("shelf", "books", "gone"),
+    Code::new("shelf", "books", "moved"),
+    Code::new("shelf", "network", "refused"),
+    Code::new("shelf", "network", "reset"),
+    Code::new("shelf", "config", "unread"),
+    Code::new("shelf", "config", "old"),
+];
+
+#[test]
+fn a_line_holds_each_tolerated_code_once_in_report_order_in_the_tool_s_spelling() {
+    let state = TempDir::new("tolerated-1");
+    let mut recorder = parsed();
+
+    recorder.tolerated(&CODES[1]);
+    recorder.tolerated(&CODES[0]);
+    recorder.tolerated(&CODES[1]);
+
+    assert_eq!(
+        saved(&state, recorder, false)[0]["tolerated"],
+        json!(["shelf.network.timed_out", "shelf.books.locked"])
+    );
+}
+
+#[test]
+fn a_line_holds_the_first_eight_distinct_tolerated_codes() {
+    let state = TempDir::new("tolerated-2");
+    let mut recorder = parsed();
+
+    for code in &CODES {
+        recorder.tolerated(code);
+    }
+
+    let line = &saved(&state, recorder, false)[0];
+    assert_eq!(line["tolerated"].as_array().unwrap().len(), 8);
+    assert_eq!(line["tolerated"][7], "shelf.network.reset");
+}
+
+#[test]
+fn a_line_without_tolerated_codes_leaves_the_field_out() {
+    let state = TempDir::new("tolerated-3");
+
+    let line = &saved(&state, parsed(), false)[0];
+
+    assert!(line.get("tolerated").is_none(), "{line}");
+}
+
 #[test]
 fn the_tool_s_section_holds_its_document_id_and_its_value() {
     const EXT: Document<Value> = Document::new("shelf", "usage-ext", 1, "The test rows.");
@@ -335,7 +393,11 @@ fn the_signal_test_s_child_starts_the_log_and_raises_sigterm() {
         return;
     }
     let _log = start();
-    typed(&Command::new("signalled"), &["signalled".into()]);
+    typed(
+        &Command::new("signalled"),
+        &["signalled".into()],
+        Spelling::COLONS,
+    );
     signal_hook::low_level::raise(signal_hook::consts::SIGTERM).unwrap();
     // The signal ends the process, so the test never gets past the wait.
     std::thread::sleep(Duration::from_secs(10));
@@ -368,7 +430,7 @@ fn the_owned_signal_test_s_child_raises_sigterm_and_ends_with_124() {
         return;
     }
     let _log = start_with(Signals::Tool);
-    typed(&Command::new("owner"), &["owner".into()]);
+    typed(&Command::new("owner"), &["owner".into()], Spelling::COLONS);
     signal_hook::low_level::raise(signal_hook::consts::SIGTERM).unwrap();
     let waited = Instant::now();
     while !matches!(&*RECORDER.lock().unwrap(), State::Recording(recorder) if recorder.signalled) {

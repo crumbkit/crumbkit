@@ -6,6 +6,7 @@ use serde_json::{Value, json};
 
 use super::{SelfFigures, figures_from};
 use crate::Rows;
+use crate::help::Guide;
 use crate::usage::testing::{line, now, tool};
 
 /// A log of a help page of the root, two runs of `books list` and one of
@@ -33,6 +34,7 @@ fn log() -> String {
 fn rows(log: &str, limit: Option<usize>) -> (Vec<Value>, Option<usize>) {
     let listing = figures_from(
         &tool(),
+        &Guide::new(),
         Some(Cursor::new(log)),
         Duration::from_secs(86_400),
         now(),
@@ -56,13 +58,13 @@ fn each_command_in_the_log_has_a_row_of_its_figures_in_the_order_of_its_path() {
         [
             json!({"command": "shelf", "runs": 0, "help_pages": 1, "help_before": 0,
                 "refused": 0, "failed": 0, "p95_ms": null, "p95_out_bytes": null,
-                "typed_full": 0, "typed_all": 0, "typed_long": 0}),
+                "typed_full": 0, "typed_all": 0, "typed_long": 0, "exits": []}),
             json!({"command": "books list", "runs": 2, "help_pages": 0, "help_before": 0,
                 "refused": 0, "failed": 1, "p95_ms": 10, "p95_out_bytes": 500,
-                "typed_full": 0, "typed_all": 1, "typed_long": 0}),
+                "typed_full": 0, "typed_all": 1, "typed_long": 0, "exits": []}),
             json!({"command": "books show", "runs": 1, "help_pages": 0, "help_before": 1,
                 "refused": 0, "failed": 0, "p95_ms": 10, "p95_out_bytes": 90,
-                "typed_full": 0, "typed_all": 0, "typed_long": 0}),
+                "typed_full": 0, "typed_all": 0, "typed_long": 0, "exits": []}),
         ]
     );
 }

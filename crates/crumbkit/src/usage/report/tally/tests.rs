@@ -150,6 +150,55 @@ fn a_run_that_exited_with_1_counts_as_failed_unless_a_signal_ended_it() {
 }
 
 #[test]
+fn the_report_counts_the_runs_of_each_exit_code_from_3_in_code_order() {
+    let exited = |at, exit| {
+        let mut entry = Entry::run("a", at, "books import");
+        entry.exit = Some(exit);
+        entry
+    };
+    let mut help = exited(6, 124);
+    help.help = true;
+
+    let report = report(&[
+        exited(1, 124),
+        exited(2, 3),
+        exited(3, 124),
+        exited(4, 1),
+        exited(5, 2),
+        help,
+    ]);
+
+    assert_eq!(figures(&report, "books import").exits, [(3, 1), (124, 2)]);
+}
+
+#[test]
+fn the_report_counts_the_runs_that_tolerated_each_code_the_most_first() {
+    let tolerated = |at, codes: &[&str]| {
+        let mut entry = Entry::run("a", at, "books list");
+        entry.tolerated = codes.iter().map(|code| (*code).to_owned()).collect();
+        entry
+    };
+
+    let report = report(&[
+        tolerated(1, &["shelf::network::timed_out"]),
+        tolerated(
+            2,
+            &["shelf::catalogue::locked", "shelf::network::timed_out"],
+        ),
+        tolerated(3, &["shelf::catalogue::locked", "shelf::catalogue::locked"]),
+        tolerated(4, &["shelf::network::timed_out"]),
+    ]);
+
+    assert_eq!(
+        report.tolerated,
+        [
+            count("shelf::network::timed_out", 3),
+            count("shelf::catalogue::locked", 2)
+        ]
+    );
+}
+
+#[test]
 fn the_report_counts_the_runs_that_typed_full_all_and_long() {
     let typed = |at, flags: &[&str]| {
         let mut entry = Entry::run("a", at, "books list");
