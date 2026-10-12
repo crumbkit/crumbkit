@@ -8,6 +8,7 @@ use snapbox::Assert;
 use snapbox::assert::Action;
 
 use super::check;
+use crate::pages::Pages;
 use crate::temp::TempDir;
 use crate::testing::panic_message;
 
@@ -36,7 +37,7 @@ const FILES: [&str; 6] = [
 fn run(dir: &TempDir, action: Action) {
     check(
         &shelf(),
-        &Guide::new(),
+        Pages::rendered(&Guide::new()),
         dir.path(),
         &Assert::new().action(action),
     );
@@ -136,7 +137,7 @@ fn two_pages_with_one_golden_file_name_fail_the_check_naming_both_command_lines(
     assert_eq!(
         panic_message(|| check(
             &twins,
-            &Guide::new(),
+            Pages::rendered(&Guide::new()),
             dir.path(),
             &Assert::new().action(Action::Overwrite)
         ))
@@ -144,5 +145,43 @@ fn two_pages_with_one_golden_file_name_fail_the_check_naming_both_command_lines(
         "the command tree breaks crumbkit's golden help rules:\n\
          shelf books-list -h: the page's golden file name `shelf-books-list-h.txt` is also the name for the page `shelf books list -h`\n\
          shelf books-list --help: the page's golden file name `shelf-books-list-help.txt` is also the name for the page `shelf books list --help`"
+    );
+}
+
+#[cfg(unix)]
+#[test]
+fn a_binary_s_pages_are_compared_with_the_golden_files() {
+    let dir = TempDir::new("goldens-binary").unwrap();
+    let tool = TempDir::new("goldens-binary-tool").unwrap();
+    let binary = crate::testing::help_binary(
+        &tool,
+        &[
+            ("-h", "shelf -h\n"),
+            ("--help", "shelf --help\n"),
+            ("books -h", "books -h\n"),
+            ("books --help", "books --help\n"),
+            ("books list -h", "list -h\n"),
+            ("books list --help", "list --help\n"),
+        ],
+    );
+    let examples = crate::Examples::new(&binary, "");
+    let guide = Guide::new();
+    let pages = Pages::binary(&guide, &examples);
+
+    check(
+        &shelf(),
+        pages,
+        dir.path(),
+        &Assert::new().action(Action::Overwrite),
+    );
+
+    assert_eq!(dir.names(), FILES);
+    let page = fs::read_to_string(dir.path().join("shelf-books-list-h.txt")).unwrap();
+    assert_eq!(page, "list -h\n");
+    check(
+        &shelf(),
+        pages,
+        dir.path(),
+        &Assert::new().action(Action::Verify),
     );
 }

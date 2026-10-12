@@ -326,6 +326,10 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit-test: `Examples::xdg` and `Failing::xdg` name a fixture that
   the checks copy into each run's fresh XDG directories, so a failing
   command can find a plugin or cache there ([ADR-0005]).
+- crumbkit-test: [`check_help_sizes`], [`check_help_goldens`] and
+  [`check_path_weights`] take `Pages`, whose `Pages::binary` reads each
+  page from the tool's binary, for a tool that builds its help at run
+  time ([ADR-0025]).
 ### Changed
 
 - crumbkit: the help text of `--json` reads `Print the result as a JSON

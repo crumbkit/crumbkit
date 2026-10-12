@@ -105,8 +105,9 @@ impl<'a> Examples<'a> {
     /// no run changes the fixture or what another run sees.
     ///
     /// Every run of [`check_examples`](crate::check_examples),
-    /// [`check_output_budget`](crate::check_output_budget),
-    /// and [`check_twin`](crate::check_twin) starts from a new copy, and
+    /// [`check_output_budget`](crate::check_output_budget)
+    /// and [`check_twin`](crate::check_twin), and every page that
+    /// [`Pages::binary`](crate::Pages::binary) runs, starts from a new copy, and
     /// each chain of [`check_recoveries`](crate::check_recoveries) copies
     /// once before its start, so its steps see what the earlier runs wrote.
     /// A [`Failing::xdg`](crate::Failing::xdg) wins over this fixture for

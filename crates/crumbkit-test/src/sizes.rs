@@ -2,10 +2,9 @@
 //! budget of bytes.
 
 use clap::Command;
-use crumbkit::help::Guide;
 
 use crate::budget::{Budget, Departure, Limit};
-use crate::pages::pages;
+use crate::pages::Pages;
 use crate::tree::{self, Visit};
 
 #[cfg(test)]
@@ -240,8 +239,9 @@ impl Class {
 /// does, naming every problem it finds.
 ///
 /// A page is the plain text that `crumbkit::parse` prints for the command's
-/// path and `-h` with `guide`, as a caller reads it on a pipe, and its size
-/// is its number of bytes. `--help` has no budget, because it describes
+/// path and `-h` with the guide of `pages`, as a caller reads it on a pipe,
+/// or what the tool's binary prints, as [`Pages`] chooses, and its size is
+/// its number of bytes. `--help` has no budget, because it describes
 /// every flag and column in full. The check skips each hidden command and
 /// everything below it, because help never shows them. It finds:
 ///
@@ -254,13 +254,13 @@ impl Class {
 /// ```
 /// use clap::Command;
 /// use crumbkit::help::Guide;
-/// use crumbkit_test::Budgets;
+/// use crumbkit_test::{Budgets, Pages};
 ///
 /// let shelf = Command::new("shelf")
 ///     .about("Browse a small catalogue")
 ///     .subcommand(Command::new("books").subcommand(Command::new("list")));
 ///
-/// crumbkit_test::check_help_sizes(&shelf, &Guide::new(), &Budgets::new());
+/// crumbkit_test::check_help_sizes(&shelf, Pages::rendered(&Guide::new()), &Budgets::new());
 /// ```
 ///
 /// # Panics
@@ -268,9 +268,9 @@ impl Class {
 /// Panics when a page or a budget breaks a rule above. The message lists
 /// each problem on its own line and names each command by its path from
 /// `command`, such as `shelf books list`.
-pub fn check_help_sizes(command: &Command, guide: &Guide, budgets: &Budgets) {
+pub fn check_help_sizes(command: &Command, pages: Pages<'_>, budgets: &Budgets) {
     let mut problems = Vec::new();
-    let pages = pages(command, guide, "-h", &mut problems);
+    let pages = crate::pages::pages(command, pages, "-h", &mut problems);
     // A command whose page failed to render has no entry in `pages`, so the
     // budgets are matched against the visible tree, and that command's one
     // problem is the page that `pages` reports.
