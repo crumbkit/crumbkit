@@ -78,7 +78,9 @@ pub trait Rows: Serialize + sealed::Sealed {
     fn rows(&self) -> &[Self::Row];
 
     /// Returns the number of rows that matched when the result is one page
-    /// of them, and `None` otherwise. Only a `Listing` returns a total.
+    /// of them, and `None` otherwise. Only a `Listing` returns a total, and
+    /// a listing whose source holds more rows that the tool did not count
+    /// returns `None` (`Listing::uncounted`).
     fn total(&self) -> Option<usize> {
         None
     }
@@ -156,7 +158,8 @@ pub enum Shape {
     /// A `Vec` of rows, whose `data` is an array.
     List,
     /// A [`Listing`](crate::Listing), whose `data` is an array beside
-    /// `total` and, when it has one, `summary`.
+    /// `total` when the tool counted the rows, `truncated` and, when it has
+    /// one, `summary`.
     Listing,
     /// A [`Batch`](crate::Batch), whose `data` is an array beside
     /// `failures`.

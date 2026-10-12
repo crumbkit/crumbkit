@@ -6,10 +6,10 @@ shelf books show         534         111     1852        0     0            -
 shelf books summarize    511         101     1819        0     0            -
 shelf books remove       716         114     2037        0     0            -
 shelf commands           367         -       980         0     0            -
-shelf commands list      710         2277    3967        0     0            -
+shelf commands list      710         2295    3985        0     0            -
 shelf schemas            424         -       1037        0     0            -
 shelf schemas list       502         1409    2948        0     0            -
-shelf schemas show       497         1990    3524        0     0            -
+shelf schemas show       497         2182    3716        0     0            -
 shelf self               417         -       1030        0     0            -
 shelf self usage         602         -       1632        0     0            -
 shelf self figures       390         -       1420        0     0            -

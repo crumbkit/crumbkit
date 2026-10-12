@@ -285,3 +285,51 @@ fn a_listing_from_an_unbounded_page_has_no_bound() {
 
     assert_eq!(page.first_of(rows(1)).limit_bound(), None);
 }
+
+#[test]
+fn uncounted_keeps_the_first_page_and_says_more_rows_exist_when_the_source_has_one_more() {
+    let page = shelves(&["--limit", "2"]).unwrap();
+
+    let listing = page.uncounted(rows(3));
+
+    assert_eq!(listing, Listing::uncounted(rows(2), true).bounded(10));
+}
+
+#[test]
+fn uncounted_counts_the_rows_when_the_source_ends_within_the_page() {
+    let page = shelves(&["--limit", "2"]).unwrap();
+
+    let listing = page.uncounted(rows(2));
+
+    assert_eq!(listing, Listing::new(rows(2), 2).bounded(10));
+}
+
+#[test]
+fn uncounted_stops_reading_the_source_one_row_past_the_page() {
+    let page = shelves(&["--limit", "2"]).unwrap();
+    let mut read = 0;
+    let source = (1..).map(|number| {
+        read += 1;
+        Shelf { number }
+    });
+
+    let listing = page.uncounted(source);
+
+    assert_eq!(listing.total(), None);
+    assert_eq!(read, 3);
+}
+
+#[test]
+fn uncounted_with_all_reads_every_row_and_counts_them() {
+    let page = shelves(&["--all"]).unwrap();
+
+    let listing = page.uncounted(rows(30));
+
+    assert_eq!(listing, Listing::new(rows(30), 30).bounded(10));
+}
+
+#[test]
+fn fetch_limit_is_one_past_the_limit_and_none_with_all() {
+    assert_eq!(shelves(&["--limit", "2"]).unwrap().fetch_limit(), Some(3));
+    assert_eq!(shelves(&["--all"]).unwrap().fetch_limit(), None);
+}

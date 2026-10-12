@@ -6,24 +6,32 @@ use std::io::{self, Write};
 
 use clap::Command;
 
-use crate::Rows;
+use crate::{Rows, Shape};
+
+/// Returns whether `value` is a listing whose source holds rows that it
+/// leaves out: fewer rows than its total, or more rows that the tool did not
+/// count. Its JSON document then holds `"truncated": true`, as does a
+/// document that the output budget cut short.
+pub(super) fn leaves_out<T: Rows>(value: &T) -> bool {
+    T::SHAPE == Shape::Listing && value.total().is_none_or(|total| value.rows().len() < total)
+}
 
 /// Writes the footer line that describes the table when `value` is a listing
-/// that shows fewer rows than its total, such as `Showing 4 of 6 books. --all
-/// shows every one.` A listing whose `--limit` has a bound names it, as in
-/// `Showing 4 of 6 books. --limit takes up to 100, and --all shows every
-/// one.` Otherwise it writes nothing.
+/// that leaves out rows. A listing with a total gives the count, such as
+/// `Showing 4 of 6 books. --all shows every one.`, and a listing without one
+/// says that more match, such as `Showing 4 books, and more match. --all
+/// shows every one.`, with `rows` when it has no description. A listing
+/// whose `--limit` has a bound names it, as in `Showing 4 of 6 books.
+/// --limit takes up to 100, and --all shows every one.` Otherwise it writes
+/// nothing.
 pub(super) fn write_footer<T: Rows>(out: &mut impl Write, value: &T) -> io::Result<()> {
-    let shown = value.rows().len();
-    let Some(total) = value.total() else {
-        return Ok(());
-    };
-    if shown >= total {
+    if !leaves_out(value) {
         return Ok(());
     }
-    write!(out, "Showing {shown} of {total}")?;
-    if let Some(description) = value.description() {
-        write!(out, " {description}")?;
+    let total = value.total();
+    write_shown(out, value.rows().len(), total, value.description())?;
+    if total.is_none() {
+        write!(out, ", and more match")?;
     }
     match value.limit_bound() {
         Some(most) => writeln!(
@@ -31,6 +39,23 @@ pub(super) fn write_footer<T: Rows>(out: &mut impl Write, value: &T) -> io::Resu
             ". --limit takes up to {most}, and --all shows every one."
         ),
         None => writeln!(out, ". --all shows every one."),
+    }
+}
+
+/// Writes the start of the footer and of the cut line: `Showing {shown} of
+/// {total} {description}`, with no description when there is none, or
+/// `Showing {shown} {description}` without a total, with `rows` when there
+/// is no description.
+pub(super) fn write_shown(
+    out: &mut impl Write,
+    shown: usize,
+    total: Option<usize>,
+    description: Option<&str>,
+) -> io::Result<()> {
+    match (total, description) {
+        (Some(total), Some(description)) => write!(out, "Showing {shown} of {total} {description}"),
+        (Some(total), None) => write!(out, "Showing {shown} of {total}"),
+        (None, description) => write!(out, "Showing {shown} {}", description.unwrap_or("rows")),
     }
 }
 

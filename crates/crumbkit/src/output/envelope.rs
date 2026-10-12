@@ -33,8 +33,10 @@ impl<'a> Failures<'a> {
 /// The parts of a JSON document beside `schema` and `data`, each of which
 /// the document leaves out when it is `None`.
 pub(super) struct Extras<'a, M> {
-    /// A listing's number of matching rows.
+    /// A listing's number of matching rows, when the tool counted them.
     pub(super) total: Option<usize>,
+    /// Whether a listing's document leaves out rows.
+    pub(super) truncated: Option<bool>,
     /// A listing's summary.
     pub(super) summary: Option<&'a M>,
     /// The mark of a result that the output budget cut short.
@@ -48,6 +50,7 @@ impl Extras<'_, ()> {
     pub(super) const fn none() -> Self {
         Self {
             total: None,
+            truncated: None,
             summary: None,
             cut: None,
             failures: None,
@@ -58,7 +61,8 @@ impl Extras<'_, ()> {
 /// Writes the JSON document `{"schema": <id>, "data": <data>}` to `out` in
 /// `layout`, or on one line when `layout` is `None`, with `"dry_run": true`
 /// after `schema` when `dry_run` is set, `"total": <total>` after `data`
-/// when the extras hold a total, then `"summary": <summary>`, `"cut": {...}`
+/// when the extras hold a total, then `"truncated": <bool>`,
+/// `"summary": <summary>`, `"cut": {...}`
 /// and `"failures": [...]` when the extras hold each of them.
 pub(super) fn write_document<T, D: Serialize, M: Serialize>(
     out: &mut impl Write,
@@ -92,6 +96,7 @@ impl<T, D: Serialize, M: Serialize> Serialize for Envelope<'_, T, D, M> {
         let len = 2
             + usize::from(self.dry_run)
             + usize::from(extras.total.is_some())
+            + usize::from(extras.truncated.is_some())
             + usize::from(extras.summary.is_some())
             + usize::from(extras.cut.is_some())
             + usize::from(extras.failures.is_some());
@@ -104,6 +109,9 @@ impl<T, D: Serialize, M: Serialize> Serialize for Envelope<'_, T, D, M> {
         map.serialize_entry("data", self.data)?;
         if let Some(total) = extras.total {
             map.serialize_entry("total", &total)?;
+        }
+        if let Some(truncated) = extras.truncated {
+            map.serialize_entry("truncated", &truncated)?;
         }
         if let Some(summary) = extras.summary {
             map.serialize_entry("summary", summary)?;

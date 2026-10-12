@@ -20,6 +20,8 @@ use crate::{Bytes, Document, Row, Rows, Shape, Stream};
 ///   [`Shape::Prose`], the text or base64 object of [`Bytes`] for
 ///   [`Shape::Bytes`], and an array of rows for every other shape.
 /// - `total` holds the number of rows that matched, for [`Shape::Listing`].
+/// - `truncated` is true when the document leaves out rows that matched,
+///   for [`Shape::Listing`].
 /// - `summary` holds the summary, for a listing that has one. A listing
 ///   without one has [`NoSummary`](crate::NoSummary), whose schema `false`
 ///   leaves the property out.
@@ -129,6 +131,14 @@ pub(crate) fn envelope<T: Rows>(document: Document<()>) -> Schema {
             }),
         );
         required.push("total");
+        properties.insert(
+            "truncated".to_owned(),
+            json!({
+                "description": "True when the document leaves out rows that matched, because of the limit or the output budget, and false when data holds every row.",
+                "type": "boolean",
+            }),
+        );
+        required.push("truncated");
         let summary = generator.subschema_for::<T::Summary>();
         if summary.as_bool() != Some(false) {
             properties.insert("summary".to_owned(), summary.to_value());

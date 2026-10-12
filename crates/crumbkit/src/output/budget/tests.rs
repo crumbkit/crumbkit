@@ -68,8 +68,8 @@ fn the_cut_line_of_a_listing_names_limit_and_of_a_list_only_fields() {
     let mut listing = Vec::new();
     let mut list = Vec::new();
 
-    write_cut_line(&mut listing, 3, 50, Some("books"), 400, true).unwrap();
-    write_cut_line(&mut list, 3, 7, None, 400, false).unwrap();
+    write_cut_line(&mut listing, 3, Some(50), Some("books"), 400, true).unwrap();
+    write_cut_line(&mut list, 3, Some(7), None, 400, false).unwrap();
 
     assert_eq!(
         String::from_utf8(listing).unwrap(),
