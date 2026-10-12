@@ -68,6 +68,15 @@ where
             let result = lists::entries(dir.as_deref(), &name, &args.page);
             crumbkit::finish(&mut output, SPELLING, lists::ENTRIES_LIST, result)
         }
+        Parsed::Grafted {
+            mut output,
+            name,
+            command: ListCommand::Edit,
+        } => {
+            output.set_command(command);
+            let editor = lists::editor(dir.as_deref(), &name);
+            crumbkit::child::hand_over(&mut output, SPELLING, editor)
+        }
         Parsed::Static(mut cli) => {
             cli.output.set_command(command);
             match cli.resource {

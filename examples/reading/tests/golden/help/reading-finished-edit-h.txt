@@ -1,0 +1,12 @@
+Open this reading list in your editor: $VISUAL, $EDITOR or vi
+
+Usage: reading finished edit [OPTIONS]
+
+Options:
+  -h, --help  Print help (see more with '--help')
+
+Examples:
+  reading finished edit
+
+Effects: destructive, not idempotent, closed-world.
+Global flags: --json, --fields <FIELD>, --long, --full. `reading finished edit --help` describes them.

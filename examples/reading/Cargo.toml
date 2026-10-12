@@ -22,7 +22,9 @@ clap = { workspace = true, features = [
 ] }
 # reading parses its command line, prints its help and its results, and
 # builds the guide of the commands it adds at run time with crumbkit.
-crumbkit = { workspace = true }
+# `hand-over` lets `reading <list> edit` hand the terminal to the caller's
+# editor.
+crumbkit = { workspace = true, features = ["hand-over"] }
 # reading finds its lists in its directory under the XDG data directory,
 # which etcetera's base strategy gives.
 etcetera = { workspace = true }

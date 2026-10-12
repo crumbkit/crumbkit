@@ -2,6 +2,44 @@
   "schema": "crumbkit/opt-outs/v1",
   "data": [
     {
+      "rule": "examples/run",
+      "applies_to": "reading finished edit",
+      "reason": "edit hands the terminal to the caller's editor, which waits for a person and prints no output to compare",
+      "costs": [
+        "The examples are not run, so help can show an example that fails.",
+        "The command's output weight counts 0 bytes, so its path weight is too low."
+      ],
+      "budget": null
+    },
+    {
+      "rule": "examples/run",
+      "applies_to": "reading to-read edit",
+      "reason": "edit hands the terminal to the caller's editor, which waits for a person and prints no output to compare",
+      "costs": [
+        "The examples are not run, so help can show an example that fails.",
+        "The command's output weight counts 0 bytes, so its path weight is too low."
+      ],
+      "budget": null
+    },
+    {
+      "rule": "effects/yes",
+      "applies_to": "reading finished edit",
+      "reason": "the person in the editor chooses whether to save the list, so there is nothing for --yes to confirm",
+      "costs": [
+        "An agent without a terminal cannot run the command, or the command runs without asking anyone."
+      ],
+      "budget": null
+    },
+    {
+      "rule": "effects/yes",
+      "applies_to": "reading to-read edit",
+      "reason": "the person in the editor chooses whether to save the list, so there is nothing for --yes to confirm",
+      "costs": [
+        "An agent without a terminal cannot run the command, or the command runs without asking anyone."
+      ],
+      "budget": null
+    },
+    {
       "rule": "path-budget/path",
       "applies_to": "every path through reading",
       "reason": "reading's longest path, commands list, reads about 3,200 bytes, so 3,500 bytes leaves room for small changes and catches a page or an output that grows by much.",

@@ -22,6 +22,8 @@ mod tests;
 pub(crate) enum ListCommand {
     /// List the entries of this reading list, in file order.
     List(ListEntries),
+    /// Open this reading list in your editor: $VISUAL, $EDITOR or vi.
+    Edit,
 }
 
 /// The arguments of `reading <name> list`.
@@ -71,7 +73,7 @@ impl FromArgMatches for Parsed {
 
 /// Returns reading's command tree: the static grammar, with a command for
 /// each of `lists` after the static commands. Each list's command has the
-/// list's about text and one subcommand, `list`.
+/// list's about text and two subcommands, `list` and `edit`.
 #[must_use]
 pub fn command(lists: &[List]) -> Command {
     lists.iter().fold(Cli::command(), |command, list| {
@@ -86,7 +88,8 @@ pub fn command(lists: &[List]) -> Command {
 }
 
 /// Returns reading's guide: [`GUIDE`], with a leaf that lists two examples
-/// for the `list` command of each of `lists`. With no lists it returns
+/// for the `list` command of each of `lists`, and a leaf with one example
+/// for its `edit` command. With no lists it returns
 /// [`GUIDE`] itself and allocates nothing.
 #[must_use]
 pub fn guide(lists: &[List]) -> Guide {
@@ -95,9 +98,9 @@ pub fn guide(lists: &[List]) -> Guide {
     }
     let leaves = lists
         .iter()
-        .map(|list| {
+        .flat_map(|list| {
             let name = list.name();
-            RuntimeLeaf::new(vec![name.to_owned(), "list".to_owned()])
+            let list_leaf = RuntimeLeaf::new(vec![name.to_owned(), "list".to_owned()])
                 .example(
                     Vec::new(),
                     format!("Print the first page of the {name} list"),
@@ -106,7 +109,12 @@ pub fn guide(lists: &[List]) -> Guide {
                     vec!["--all".to_owned()],
                     format!("Print every entry of the {name} list"),
                 )
-                .effects(Effects::read_only())
+                .effects(Effects::read_only());
+            // The editor can delete or overwrite any line of the list.
+            let edit_leaf = RuntimeLeaf::new(vec![name.to_owned(), "edit".to_owned()])
+                .example(Vec::new(), format!("Open the {name} list in your editor"))
+                .effects(Effects::destructive());
+            [list_leaf, edit_leaf]
         })
         .collect();
     GUIDE.with_runtime_leaves(leaves)

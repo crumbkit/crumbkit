@@ -4,6 +4,7 @@ Usage: reading finished [OPTIONS] <COMMAND>
 
 Commands:
   list  List the entries of this reading list, in file order
+  edit  Open this reading list in your editor: $VISUAL, $EDITOR or vi
 
 Options:
       --json
