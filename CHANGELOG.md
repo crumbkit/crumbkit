@@ -447,6 +447,8 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit: with the `miette` feature, the carets under a label measure
   terminal columns with unicode-width, so they line up after wide
   characters such as CJK text ([ADR-0016]).
+- crumbkit-test: [`check_recoveries`] fills a lowercase placeholder such
+  as `<path>` from the value of the same name ([ADR-0005]).
 ### Removed
 
 - crumbkit: `Call::word` is gone, because `Call::value` adds a runtime value

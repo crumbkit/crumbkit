@@ -225,6 +225,48 @@ fn a_placeholder_without_a_value_fails_the_check() {
 }
 
 #[test]
+fn a_lowercase_placeholder_takes_the_value_of_its_name() {
+    let show = failure("tool::books::not_found", &run("tool books show <id>..."));
+    let setup = Setup::new(
+        "recoveries-lowercase",
+        &[
+            ("books show 7 --json", 1, show.as_str(), ""),
+            ("books show 2 --json", 0, "{}\n", ""),
+        ],
+    );
+
+    check_with(
+        &setup,
+        &recoveries(&setup, SHOW_7, OTHERS).values(&[("id", "2")]),
+        Action::Overwrite,
+    );
+
+    assert!(
+        setup
+            .report()
+            .contains("  run tool books show <id>... as tool books show 2\n    exits 0\n"),
+        "{}",
+        setup.report()
+    );
+}
+
+#[test]
+fn a_value_fills_only_the_placeholder_whose_name_matches_its_case() {
+    let show = failure("tool::books::not_found", &run("tool books show <id>..."));
+    let setup = Setup::new(
+        "recoveries-case",
+        &[("books show 7 --json", 1, show.as_str(), "")],
+    );
+    let recoveries = recoveries(&setup, SHOW_7, OTHERS).values(&[("ID", "2")]);
+
+    assert_eq!(
+        problems(&setup, &recoveries).unwrap(),
+        "the tool's recoveries break crumbkit's recovery rules:\n\
+         tool books show 7: the step `tool books show <id>...` has the placeholder <id>, and no value of Recoveries::values fills it"
+    );
+}
+
+#[test]
 fn a_start_that_succeeds_or_fails_with_another_code_fails_the_check() {
     let unreadable = failure("tool::books::unreadable", r#"{"kind":"retry"}"#);
     let setup = Setup::new(

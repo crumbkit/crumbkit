@@ -216,7 +216,10 @@ impl<'a> Recoveries<'a> {
 
     /// Sets the value of each placeholder, as a name and a value, such as
     /// `("ID", "2")` for the placeholder `<ID>...` in the recovery
-    /// `shelf books show <ID>...`.
+    /// `shelf books show <ID>...`. A placeholder's name may hold capital or
+    /// lowercase letters, and a value fills only the placeholder whose name
+    /// matches it exactly, case included, so `("path", "x")` fills `<path>`
+    /// and not `<PATH>`.
     #[must_use]
     pub const fn values(mut self, values: &'a [(&'a str, &'a str)]) -> Self {
         self.values = values;
