@@ -42,7 +42,7 @@ const NO_INPUT_HELP: &str = "Fail instead of asking a question";
 /// With the flag, [`parse`](crate::parse) never asks a picker for a missing
 /// argument and refuses the command line instead, and
 /// [`Output::confirm`](crate::Output::confirm) fails with
-/// `crumbkit::confirm::needs_yes` instead of asking. The flag's clap id is
+/// `crumbkit::confirmation::needs_yes` instead of asking. The flag's clap id is
 /// `crumbkit_no_input`. `parse` reads it from the matches, so the type has
 /// no getter. crumbkit-test's `check_effects` requires the flag at the root
 /// of a tool that has a picker or a `--yes` (ADR-0043).

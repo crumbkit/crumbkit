@@ -65,7 +65,7 @@ fn a_personal_alias_runs_its_command_with_the_words_typed_after_it() {
 }
 
 #[test]
-fn aliases_list_prints_the_built_in_alias_then_each_entry_with_its_problem() {
+fn aliases_list_prints_the_entries_with_a_problem_then_the_built_in_alias_then_the_rest() {
     let home = home().unwrap();
 
     shelf(home.path(), &["aliases", "list"])

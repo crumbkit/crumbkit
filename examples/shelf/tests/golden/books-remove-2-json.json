@@ -1,1 +1,1 @@
-{"schema":"crumbkit/failure/v1","code":"crumbkit::confirm::needs_yes","message":"the command asks for confirmation, and no person can answer at a terminal, so it changed nothing","recovery":{"kind":"run","call":"shelf books remove 2 --json --yes"}}
+{"schema":"crumbkit/failure/v1","code":"crumbkit::confirmation::needs_yes","message":"the command asks for confirmation, and no person can answer at a terminal, so it changed nothing","recovery":{"kind":"run","call":"shelf books remove 2 --json --yes"}}

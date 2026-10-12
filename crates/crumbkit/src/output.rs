@@ -12,6 +12,7 @@ mod listing;
 mod prose;
 mod stream;
 pub(crate) mod table;
+mod terminal;
 mod unwrapped;
 
 use std::ffi::OsString;
@@ -28,6 +29,7 @@ use self::envelope::{Selected, write_document};
 use self::failure::PreparedFailure;
 pub use self::stream::{Streaming, stream, stream_to};
 use crate::form::FailureForm;
+use crate::help::Guide;
 use crate::{AsFailure, Document, Parsed, Row, Rows, Shape, Sink, Spelling};
 
 #[cfg(test)]
@@ -106,6 +108,11 @@ pub struct Output {
     /// `Parsed`, or `None` for crumbkit's form (ADR-0045).
     #[arg(skip)]
     failure_form: Option<&'static dyn FailureForm>,
+
+    /// Whether the tool's guide turned terminal detection off, which
+    /// `set_command` copies from the `Parsed` (ADR-0049).
+    #[arg(skip)]
+    no_terminal: bool,
 }
 
 impl Output {
@@ -183,6 +190,7 @@ impl Output {
         self.words = parsed.words;
         self.no_input = parsed.no_input;
         self.failure_form = parsed.failure_form;
+        self.no_terminal = parsed.no_terminal;
         self.command = Some(parsed.command);
     }
 
@@ -216,32 +224,16 @@ impl Output {
         self.json
     }
 
-    /// Reports whether the tool may draw progress, such as a spinner or a
-    /// bar, on standard error. It is true only when `--json` is off and
-    /// standard error is a terminal.
-    ///
-    /// A tool draws progress with any library it likes when this is true,
-    /// and prints nothing extra otherwise, so a program or an agent that
-    /// reads the output, and a pipe or a file, receive no progress lines.
-    /// `check_examples` in crumbkit-test runs each example with standard
-    /// error piped, so an example never draws progress.
-    #[must_use]
-    pub fn progress_allowed(&self) -> bool {
-        !self.json && crate::sink::stderr_is_terminal()
-    }
-
     /// Returns the output of a run that `parse` ended after it printed help,
     /// the version or a refusal: `--json` as the walk found it, the command
-    /// tree that `parse` built, and the guide's failure form.
-    pub(crate) fn stopped(
-        json: bool,
-        command: Command,
-        failure_form: Option<&'static dyn FailureForm>,
-    ) -> Self {
+    /// tree that `parse` built, and the guide's failure form and terminal
+    /// detection.
+    pub(crate) fn stopped(json: bool, command: Command, guide: &Guide) -> Self {
         Self {
             json,
             command: Some(command),
-            failure_form,
+            failure_form: guide.get_failure_form(),
+            no_terminal: !guide.get_terminal_detection(),
             ..Self::default()
         }
     }

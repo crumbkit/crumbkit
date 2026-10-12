@@ -33,7 +33,7 @@ impl Stop {
     pub(crate) fn new(code: ExitCode, json: bool, command: Command, guide: &Guide) -> Self {
         Self {
             code,
-            output: Box::new(Output::stopped(json, command, guide.get_failure_form())),
+            output: Box::new(Output::stopped(json, command, guide)),
         }
     }
 

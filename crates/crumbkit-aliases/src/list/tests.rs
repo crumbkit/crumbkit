@@ -114,6 +114,26 @@ fn personal_aliases_follow_in_name_order_with_their_words_quoted_for_a_shell() {
 }
 
 #[test]
+fn aliases_with_a_problem_are_listed_before_healthy_aliases() {
+    let rows = listed(
+        r#"
+        zed = ["books", "show", "1"]
+        books = ["books", "show", "1"]
+        austen = ["books", "list"]
+        bad = 3
+        "#,
+    );
+
+    let names: Vec<&str> = rows
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|row| row["name"].as_str().unwrap())
+        .collect();
+    assert_eq!(names, ["bad", "books", "b", "books ls", "austen", "zed"]);
+}
+
+#[test]
 fn an_entry_named_after_a_command_or_built_in_alias_says_the_real_one_wins() {
     let rows = listed(
         r#"

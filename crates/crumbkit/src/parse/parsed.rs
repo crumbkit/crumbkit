@@ -33,12 +33,14 @@ pub struct Parsed {
     pub(crate) no_input: bool,
     /// The failure form of the tool's guide, or `None` for crumbkit's form.
     pub(crate) failure_form: Option<&'static dyn FailureForm>,
+    /// Whether the guide turned terminal detection off (ADR-0049).
+    pub(crate) no_terminal: bool,
 }
 
 impl Parsed {
     /// Returns the command tree, the words after the program name, which
     /// hold any values that a picker added, whether the caller passed
-    /// `--no-input`, and the failure form of `guide`.
+    /// `--no-input`, and the failure form and terminal detection of `guide`.
     pub(crate) const fn new(
         command: Command,
         words: Vec<OsString>,
@@ -50,13 +52,15 @@ impl Parsed {
             words: Some(words),
             no_input,
             failure_form: guide.get_failure_form(),
+            no_terminal: !guide.get_terminal_detection(),
         }
     }
 
     /// Returns a `Parsed` without words for a tool that parsed `command`
     /// with clap alone, which keeps the failure form of `guide`, so
-    /// `finish` prints failures in it (ADR-0045). A tool whose guide sets no
-    /// form passes its `Command` to `Output::set_command` directly.
+    /// `finish` prints failures in it (ADR-0045), and whether `guide` turns
+    /// terminal detection off (ADR-0049). A tool whose guide sets neither
+    /// passes its `Command` to `Output::set_command` directly.
     #[must_use]
     pub const fn guided(command: Command, guide: &Guide) -> Self {
         Self {
@@ -64,6 +68,7 @@ impl Parsed {
             words: None,
             no_input: false,
             failure_form: guide.get_failure_form(),
+            no_terminal: !guide.get_terminal_detection(),
         }
     }
 
@@ -88,6 +93,7 @@ impl From<Command> for Parsed {
             words: None,
             no_input: false,
             failure_form: None,
+            no_terminal: false,
         }
     }
 }

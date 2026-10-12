@@ -65,8 +65,8 @@ mod walk;
 ///
 /// It behaves as [`parse_to`] does with a sink over the process's standard
 /// output and standard error, except that help and the version keep clap's
-/// colours when standard output is a terminal. clap prints those colours only
-/// when the tool enables clap's `color` feature.
+/// colours when standard output is a terminal and the guide detects terminals.
+/// clap prints those colours only when the tool enables clap's `color` feature.
 ///
 /// # Errors
 ///
@@ -101,7 +101,7 @@ where
     T: Into<OsString>,
 {
     let mut sink = Sink::standard();
-    let colour = sink.out.is_terminal();
+    let colour = guide.detects(|| sink.out.is_terminal());
     run(&mut sink, command, guide, spelling, args, colour, true)
 }
 
@@ -365,7 +365,7 @@ where
     let mut parsed = attempt::<C>(&mut command, args);
     // A command line that leaves out a required argument can have it
     // picked, one argument at a time, and parses again after each pick.
-    if let Some(picker) = guide.get_picker() {
+    if let Some(picker) = pick::picker(guide) {
         let mut picking = Picking::new(picker, stdin);
         let mut picked = 0;
         while let Err(error) = &parsed

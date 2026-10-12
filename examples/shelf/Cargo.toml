@@ -58,5 +58,10 @@ serde_json = { workspace = true }
 # directory of its own, which tempfile removes when the test ends.
 tempfile = { workspace = true }
 
+# The terminal test runs shelf's examples on pseudo-terminals, which rustix
+# opens on macOS and Linux (ADR-0049).
+[target.'cfg(any(target_os = "linux", target_os = "macos"))'.dev-dependencies]
+rustix = { workspace = true, features = ["std", "fs", "pty", "termios"] }
+
 [lints]
 workspace = true

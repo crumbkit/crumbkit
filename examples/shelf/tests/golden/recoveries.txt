@@ -28,7 +28,7 @@ shelf books show --from tests/fixtures/ids/empty.txt
     exits 0
 
 shelf books remove 2
-  fails with crumbkit::confirm::needs_yes
+  fails with crumbkit::confirmation::needs_yes
   run shelf books remove 2 --json --yes
     exits 0
 

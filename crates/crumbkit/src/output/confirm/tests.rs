@@ -40,12 +40,17 @@ struct Confirmed {
 /// parsed command, and asks "Remove Pluto?" with `input` as the caller's
 /// answer, through a sink that is `interactive` or not.
 fn confirm(words: &[&str], input: &str, interactive: bool) -> Confirmed {
+    confirm_with(&Guide::new(), words, input, interactive)
+}
+
+/// Asks as [`confirm`] does, with the tool parsed against `guide`.
+fn confirm_with(guide: &Guide, words: &[&str], input: &str, interactive: bool) -> Confirmed {
     let args = std::iter::once("tool").chain(words.iter().copied());
     let mut sink = Sink::new(Vec::new(), Vec::new());
     let (tool, parsed) = crate::parse_to::<Tool, _, _, _, _>(
         &mut sink,
         Tool::command(),
-        &Guide::new(),
+        guide,
         Spelling::COLONS,
         args,
     )
@@ -102,7 +107,7 @@ fn at_a_terminal_any_other_answer_or_no_answer_declines_with_exit_code_1() {
 
         assert_eq!(
             code(&confirmed.result),
-            "crumbkit::confirm::declined",
+            "crumbkit::confirmation::declined",
             "{answer:?}"
         );
         let failure = confirmed.result.as_ref().unwrap_err().failure();
@@ -119,7 +124,7 @@ fn without_a_terminal_the_run_fails_with_the_same_command_and_yes_as_its_recover
     let confirmed = confirm(&refused, "y\n", false);
 
     assert_eq!(confirmed.err, "");
-    assert_eq!(code(&confirmed.result), "crumbkit::confirm::needs_yes");
+    assert_eq!(code(&confirmed.result), "crumbkit::confirmation::needs_yes");
     let failure = confirmed.result.as_ref().unwrap_err().failure();
     let words = ["remove", "Le Guin", "--yes", "--", "-7"].map(str::to_owned);
     assert_eq!(
@@ -137,7 +142,7 @@ fn without_the_typed_words_the_needs_yes_failure_has_no_next_step() {
 
     let result = output.confirm_to(&mut sink, Yes::default(), "Remove Pluto?");
 
-    assert_eq!(code(&result), "crumbkit::confirm::needs_yes");
+    assert_eq!(code(&result), "crumbkit::confirmation::needs_yes");
     assert!(matches!(
         result.unwrap_err().failure().recovery(),
         Recovery::None { .. }
@@ -185,6 +190,34 @@ fn no_input_fails_with_needs_yes_without_asking_at_a_terminal() {
     assert!(confirm(&["remove", "pluto"], "y\n", true).result.is_ok());
     let confirmed = confirm(&["remove", "pluto", "--no-input"], "y\n", true);
 
-    assert_eq!(code(&confirmed.result), "crumbkit::confirm::needs_yes");
+    assert_eq!(code(&confirmed.result), "crumbkit::confirmation::needs_yes");
     assert_eq!(confirmed.err, "");
+}
+
+#[test]
+fn with_terminal_detection_off_confirm_fails_with_needs_yes_without_asking_at_a_terminal() {
+    const QUIET: Guide = Guide::new().without_terminal_detection();
+    let refused = ["remove", "pluto"];
+    let admitted = ["remove", "pluto", "--yes"];
+    assert_one_word_apart(&refused, &admitted);
+    assert!(confirm_with(&QUIET, &admitted, "", true).result.is_ok());
+
+    let confirmed = confirm_with(&QUIET, &refused, "y\n", true);
+
+    assert_eq!(confirmed.err, "");
+    assert_eq!(code(&confirmed.result), "crumbkit::confirmation::needs_yes");
+}
+
+#[test]
+fn a_tool_that_parses_with_clap_alone_keeps_the_guides_terminal_detection() {
+    const QUIET: Guide = Guide::new().without_terminal_detection();
+    let mut output = Output::default();
+    output.set_command(crate::Parsed::guided(Tool::command(), &QUIET));
+    let mut err = Vec::new();
+    let mut sink = Sink::with_input(Vec::new(), &mut err, &b"y\n"[..], true);
+
+    let result = output.confirm_to(&mut sink, Yes::default(), "Remove Pluto?");
+
+    assert_eq!(String::from_utf8(err).unwrap(), "");
+    assert_eq!(code(&result), "crumbkit::confirmation::needs_yes");
 }

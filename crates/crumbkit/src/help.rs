@@ -11,6 +11,7 @@ mod format;
 pub(crate) mod leaf;
 mod list;
 mod runtime;
+mod terminal;
 pub(crate) mod topic;
 pub(crate) mod words;
 
@@ -103,6 +104,8 @@ pub struct Guide {
     /// The tool's own form of a failure, or `None` when failures print in
     /// crumbkit's form.
     failure_form: Option<&'static dyn FailureForm>,
+    /// Whether crumbkit asks whether a stream is a terminal (ADR-0049).
+    terminal_detection: bool,
     /// The path from the clap root to the command that callers run first,
     /// which answers `help` with the topics.
     root: &'static [&'static str],
@@ -122,6 +125,7 @@ impl Guide {
             personal_aliases: None,
             picker: None,
             failure_form: None,
+            terminal_detection: true,
             root: &[],
         }
     }
@@ -286,10 +290,11 @@ impl Guide {
     /// the argument's values from its possible values, or else from the
     /// source that the leaf's [`Leaf::choices`] names. It asks only when a
     /// person can answer: standard input and standard error are terminals,
-    /// no coding agent runs the tool, and the caller did not pass
-    /// `--no-input`. It then adds the picked values to the command line,
-    /// prints the whole command line on standard error after `Running:`,
-    /// and parses again. Without a picker, or when it cannot ask, `parse`
+    /// no coding agent runs the tool, the caller did not pass `--no-input`,
+    /// and the guide keeps terminal detection on
+    /// ([`Guide::without_terminal_detection`]). It then adds the picked
+    /// values to the command line, prints the whole command line on
+    /// standard error after `Running:`, and parses again. Without a picker, or when it cannot ask, `parse`
     /// refuses the command line as clap does.
     #[must_use]
     pub const fn picker(mut self, picker: &'static dyn Picker) -> Self {

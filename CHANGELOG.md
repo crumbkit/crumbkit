@@ -238,6 +238,9 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   ([ADR-0005]).
 - crumbkit-test: `Rule::Recoveries` and `Rule::SameCode` let a tool opt out
   of the recovery check ([ADR-0036]).
+- crumbkit: `Guide::without_terminal_detection` turns terminal detection
+  off, so help has no colour, `Output::progress_allowed` is false, and
+  pickers and `Output::confirm` never ask ([ADR-0049]).
 - crumbkit-test: [`check_recoveries`] takes the tool's guide and fails
   before it runs anything on a guide with a failure form, unless an opt-out
   from `Rule::Recoveries` names the root ([ADR-0045]).
@@ -316,6 +319,12 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - cargo-crumbkit: the failures of building and running a tool's binary
   have `crumbkit::tool::*` codes, such as `crumbkit::tool::build_failed`,
   which `weigh` and `docs` share ([ADR-0033]).
+- crumbkit-aliases: `aliases list` lists the entries with a problem first,
+  so a page cut short by `--limit` still shows them ([crumbkit-aliases]).
+- crumbkit: the confirmation codes are `crumbkit::confirmation::declined`
+  and `crumbkit::confirmation::needs_yes`, whose area is a noun ([ADR-0001]).
+- cargo-crumbkit: the failures of `weigh` have `crumbkit::weight::*` codes,
+  such as `crumbkit::weight::help_failed` ([ADR-0033]).
 
 ### Removed
 
@@ -482,6 +491,7 @@ rustdoc, or at its decision record. -->
 [`FailureForm`]: crates/crumbkit/src/form.rs
 [`PreparedFailure`]: crates/crumbkit/src/output/failure/prepared.rs
 [ADR-0045]: docs/decisions/api/output/0045-failure-forms.md
+[ADR-0049]: docs/decisions/api/output/0049-terminal-detection.md
 [`codes`]: crates/crumbkit/src/codes.rs
 [`help::split`]: crates/crumbkit/src/help/words.rs
 [`check_recoveries`]: crates/crumbkit-test/src/recoveries.rs

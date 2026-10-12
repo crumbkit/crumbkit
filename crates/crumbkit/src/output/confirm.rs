@@ -45,6 +45,11 @@ impl Output {
     ///
     /// Returns the failures that [`Output::confirm_to`] describes.
     pub fn confirm(&mut self, yes: Yes, question: &str) -> Result<(), Error> {
+        // With terminal detection off, `confirm_to` never asks, so the run
+        // neither locks standard input nor detects a terminal or an agent.
+        if self.no_terminal {
+            return self.confirm_to(&mut Sink::standard(), yes, question);
+        }
         self.confirm_to(&mut Sink::standard_with_input(), yes, question)
     }
 
@@ -67,12 +72,14 @@ impl Output {
     ///
     /// Returns a failure with exit code 1 from `finish`:
     ///
-    /// - `crumbkit::confirm::declined`, when the answer is anything else or
+    /// - `crumbkit::confirmation::declined`, when the answer is anything else or
     ///   standard input ends first. It has no next step, because a person
     ///   chose not to proceed.
-    /// - `crumbkit::confirm::needs_yes`, when the sink is not interactive
-    ///   or the caller passed `--no-input`, so no person can answer. Its recovery runs the words that the
-    ///   caller typed with `--yes` added before any `--`, such as
+    /// - `crumbkit::confirmation::needs_yes`, when the sink is not interactive,
+    ///   the caller passed `--no-input`, or the tool's guide turned terminal
+    ///   detection off, so no person can answer. Its recovery runs the
+    ///   words that the caller typed with `--yes` added before any `--`,
+    ///   such as
     ///   `shelf books remove 2 --yes`. The recovery has no next step when
     ///   the tool passed a bare `Command` to [`Output::set_command`], or a
     ///   typed word is not UTF-8.
@@ -85,7 +92,7 @@ impl Output {
         if yes.yes || self.dry_run {
             return Ok(());
         }
-        if self.no_input || !sink.interactive {
+        if self.no_input || self.no_terminal || !sink.interactive {
             return Err(ConfirmError::NeedsYes(self.words.clone()).into());
         }
         // A prompt that cannot be written or an answer that cannot be read

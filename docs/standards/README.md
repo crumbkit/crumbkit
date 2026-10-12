@@ -23,6 +23,12 @@ rule that cites none states its reason itself.
 
 - **TEST-1.** A test that a command line is refused, in crumbkit or in an example tool, also runs a twin: a command line that differs from the refused one by one word added, removed or replaced, and that the tool accepts (ADR-0005). A test that runs the built binary uses crumbkit-test's `check_twin`, and a test inside crumbkit parses the twin with the same parser. The twin shows that the changed word causes the refusal, so the test cannot pass because the command fails for another reason. Gate: review.
 
+## Output
+
+- **OUTPUT-1.** No result, failure or note that crumbkit or an example tool prints depends on whether a stream is a terminal or on agent detection. The exceptions are help colour, progress, and the questions of pickers and `Output::confirm` (ADR-0049). Gate: shelf's `tests/terminal.rs` on macOS and Linux, which compares each example's bytes at a pseudo-terminal with its golden file, and review.
+- **OUTPUT-2.** A failure code's area is a stable noun from the tool's domain, such as `books`, and never names a module or a verb (ADR-0001). Moving code or renaming a command therefore never changes a code. Gate: review.
+- **OUTPUT-3.** A listing that mixes healthy entries with degraded ones lists the degraded ones first. A degraded entry is one that a field marks as a problem. With this order, a limit on the number of entries shown never hides a problem behind healthy entries. Gate: review.
+
 ## Documentation
 
 - **DOCS-1.** An `AGENTS.md` has at most 200 words and holds only what no tool or other document tells the agent (ADR-0010). Gate: `cargo xtask check` counts whitespace-separated words and fails, naming every file over 200.
