@@ -14,6 +14,7 @@ use crate::twins::assert_one_word_apart;
 use crate::{Document, Error, Listing, Row, Rows, Sink, Spelling};
 
 mod batch;
+mod budget;
 mod listing;
 mod prose;
 #[cfg(feature = "miette")]

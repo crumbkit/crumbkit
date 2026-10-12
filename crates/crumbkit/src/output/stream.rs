@@ -8,12 +8,13 @@ use std::process::ExitCode;
 
 use clap::Command;
 
+use super::budget::{Over, OverBudget};
 use super::dry_run::DRY_RUN_LINE;
-use super::envelope::{Selected, write_document};
+use super::envelope::{Extras, Selected, write_document};
 use super::failure::{self, PreparedFailure};
 use super::{Output, fields, table, unwrapped};
 use crate::form::FailureForm;
-use crate::{AsFailure, Document, Failure, Row, Sink, Spelling, Stream};
+use crate::{AsFailure, Document, Failure, Row, Sink, Spelling, Stream, codes};
 
 #[cfg(test)]
 mod tests;
@@ -62,6 +63,14 @@ pub fn stream<R: Row>(
 ///
 /// The stream flushes the output writer after each line, so a reader sees
 /// each item as soon as it is printed.
+///
+/// The stream prints within the bytes that [`Output::budget`] has left when
+/// it opens. Its first item always prints. A later item whose line would
+/// pass the budget does not print: the stream prints the failure
+/// `crumbkit::output::over_budget`, or the document's own over-budget code,
+/// in its place, stops, and ends with exit code 1 (ADR-0046). A tool whose
+/// stream runs for a long time sets a larger budget with
+/// [`Guide::output_budget`](crate::help::Guide::output_budget).
 ///
 /// A tool cannot pass a stream document to [`finish`](crate::finish), and
 /// cannot pass a document of one result here:
@@ -171,9 +180,13 @@ pub struct Streaming<'a, R, O, W> {
     state: State,
     /// The line being written, which is reused for each line.
     line: Vec<u8>,
-    /// The bytes written to the output writer, which the usage log records.
-    #[cfg(feature = "usage-log")]
-    bytes: u64,
+    /// The most bytes that the stream prints on the output writer.
+    budget: usize,
+    /// The bytes written to the output writer, which the budget limits and
+    /// the usage log records.
+    sent: usize,
+    /// The number of items printed.
+    items: usize,
     /// The `crumbkit.finish` span, which records the exit code (ADR-0030).
     #[cfg(feature = "tracing")]
     span: tracing::Span,
@@ -189,6 +202,9 @@ enum State {
     /// A write failed for another reason, which the stream reported once, so
     /// the stream stops and exits with 1.
     Broken,
+    /// The next item would have passed the output budget, which the stream
+    /// reported once, so the stream stops and exits with 1.
+    Spent,
 }
 
 /// Opens the stream on `out` and `err`, as [`stream_to`] describes.
@@ -199,6 +215,7 @@ fn open<R: Row, O: Write, W: Write>(
     spelling: Spelling,
     document: Document<Stream<R>>,
 ) -> Result<Streaming<'_, R, O, W>, ExitCode> {
+    let budget = output.budget();
     let Output {
         json,
         fields,
@@ -231,8 +248,9 @@ fn open<R: Row, O: Write, W: Write>(
         failed: false,
         state: State::Open,
         line: Vec::new(),
-        #[cfg(feature = "usage-log")]
-        bytes: 0,
+        budget,
+        sent: 0,
+        items: 0,
         #[cfg(feature = "tracing")]
         span: crate::trace::spans::finish(),
     };
@@ -258,11 +276,14 @@ impl<R: Row, O: Write, W: Write> Streaming<'_, R, O, W> {
     /// Prints `item` on its own line and flushes the output writer.
     ///
     /// It returns `ControlFlow::Break` when the stream can print nothing
-    /// more, because the reader closed the pipe or a write failed, and the
-    /// tool stops producing items and calls [`Streaming::end`]. A failed
-    /// write other than a closed pipe prints
+    /// more, because the reader closed the pipe, a write failed or the
+    /// output budget is spent, and the tool stops producing items and calls
+    /// [`Streaming::end`]. A failed write other than a closed pipe prints
     /// `error: cannot write to standard output:` and its cause on the error
-    /// writer once, and the stream ends with exit code 1.
+    /// writer once, and the stream ends with exit code 1. An item after the
+    /// first whose line would pass the output budget does not print, and the
+    /// stream prints the over-budget failure in its place and ends with exit
+    /// code 1.
     pub fn item(&mut self, item: &R) -> ControlFlow<()> {
         if self.state != State::Open {
             return ControlFlow::Break(());
@@ -271,7 +292,34 @@ impl<R: Row, O: Write, W: Write> Streaming<'_, R, O, W> {
             self.line.clear();
             return self.stop(&error);
         }
+        if self.items > 0 && self.sent.saturating_add(self.line.len()) > self.budget {
+            self.line.clear();
+            let code = self
+                .document
+                .over_budget_code()
+                .unwrap_or(&codes::OUTPUT_OVER_BUDGET);
+            let over = OverBudget {
+                code,
+                budget: self.budget,
+                over: Over::Stream,
+            };
+            self.report(&over);
+            if self.state == State::Open {
+                self.state = State::Spent;
+            }
+            return ControlFlow::Break(());
+        }
+        self.items += 1;
         self.send()
+    }
+
+    /// Returns the bytes that the stream can still print on the output
+    /// writer: the budget that [`Output::budget`] had left when the stream
+    /// opened, less the bytes printed since. A tool reads it to stop
+    /// producing items that cannot print.
+    #[must_use]
+    pub const fn budget(&self) -> usize {
+        self.budget.saturating_sub(self.sent)
     }
 
     /// Prints `failure` while the stream goes on, and makes the stream end
@@ -304,8 +352,8 @@ impl<R: Row, O: Write, W: Write> Streaming<'_, R, O, W> {
     ///
     /// The exit code is 0 when every item printed, and also when the reader
     /// closed the pipe early. It is 1 when the stream printed a failure or
-    /// `result` is an `Err`, and when a write failed for a reason other than
-    /// a closed pipe.
+    /// `result` is an `Err`, when a write failed for a reason other than
+    /// a closed pipe, and when the stream stopped at the output budget.
     #[must_use]
     #[expect(
         clippy::needless_pass_by_value,
@@ -344,15 +392,7 @@ impl<R: Row, O: Write, W: Write> Streaming<'_, R, O, W> {
         if self.json && self.full {
             // Serializing the item directly keeps every field in its
             // declaration order.
-            return write_document(
-                line,
-                self.document,
-                self.dry_run,
-                item,
-                None,
-                None::<&()>,
-                None,
-            );
+            return write_document(line, self.document, self.dry_run, item, &Extras::none());
         }
         let row = serde_json::to_value(item)?;
         if self.json {
@@ -365,9 +405,7 @@ impl<R: Row, O: Write, W: Write> Streaming<'_, R, O, W> {
                 self.document,
                 self.dry_run,
                 &selected,
-                None,
-                None::<&()>,
-                None,
+                &Extras::none(),
             )
         } else {
             let cells: Vec<Cow<'_, str>> = self
@@ -441,9 +479,8 @@ impl<R: Row, O: Write, W: Write> Streaming<'_, R, O, W> {
             .out
             .write_all(&self.line)
             .and_then(|()| self.out.flush());
-        #[cfg(feature = "usage-log")]
         if written.is_ok() {
-            self.bytes += self.line.len() as u64;
+            self.sent = self.sent.saturating_add(self.line.len());
         }
         self.line.clear();
         match written {
@@ -478,7 +515,11 @@ impl<R: Row, O: Write, W: Write> Streaming<'_, R, O, W> {
         #[cfg(feature = "tracing")]
         crate::trace::spans::exited(&self.span, code);
         #[cfg(feature = "usage-log")]
-        crate::usage::finished(code, self.bytes, false);
+        crate::usage::finished(
+            code,
+            u64::try_from(self.sent).unwrap_or(u64::MAX),
+            self.state == State::Spent,
+        );
         let _ = code;
     }
 }

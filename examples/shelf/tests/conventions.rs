@@ -123,6 +123,7 @@ fn every_command_matches_the_checked_in_command_reference() {
 fn every_opt_out_matches_the_opt_out_report() {
     crumbkit_test::check_opt_outs(
         &Cli::command(),
+        &GUIDE,
         ALLOW,
         &BUDGETS,
         Some(&PATH_BUDGETS),

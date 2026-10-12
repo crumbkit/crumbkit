@@ -463,3 +463,102 @@ fn another_write_error_is_reported_once_and_the_stream_exits_with_1() {
         "{err}"
     );
 }
+
+/// Streams `count` robins with `flags` and a guide whose output budget is
+/// 1024 bytes, until the stream breaks, and returns what it wrote and the
+/// number of items it accepted.
+fn run_budgeted(flags: &[&str], count: usize) -> (Streamed, usize) {
+    let mut command = Tool::command();
+    let args = ["birds", "watch"].iter().chain(flags);
+    let matches = command.try_get_matches_from_mut(args).unwrap();
+    let mut output = Tool::from_arg_matches(&matches).unwrap().output;
+    let guide = crate::help::Guide::new().output_budget(1024, "a short watch");
+    output.set_command(crate::Parsed::guided(command, &guide));
+    let mut out = Vec::new();
+    let mut err = Vec::new();
+    let mut sink = Sink::new(&mut out, &mut err);
+    let mut accepted = 0;
+    let code = match stream_to(&mut sink, &mut output, Spelling::COLONS, SIGHTINGS) {
+        Ok(mut streaming) => {
+            for _ in 0..count {
+                if streaming.item(&robin()).is_break() {
+                    break;
+                }
+                accepted += 1;
+                assert!(streaming.budget() <= 1024);
+            }
+            streaming.end(Ok::<(), Unreadable>(()))
+        }
+        Err(code) => code,
+    };
+    let streamed = Streamed {
+        code,
+        out: String::from_utf8(out).unwrap(),
+        err: String::from_utf8(err).unwrap(),
+    };
+    (streamed, accepted)
+}
+
+#[test]
+fn a_stream_stops_before_the_item_that_would_pass_the_budget_and_exits_1() {
+    let (streamed, accepted) = run_budgeted(&[], 1000);
+
+    assert_eq!(streamed.code, ExitCode::FAILURE);
+    assert!(streamed.out.len() <= 1024);
+    // Each line of a robin is 14 bytes, after a header of 13.
+    assert_eq!(accepted, (1024 - 13) / 14);
+    assert!(
+        streamed
+            .err
+            .starts_with("error: the stream stopped at the output budget of 1024 bytes\n"),
+        "{}",
+        streamed.err
+    );
+}
+
+#[test]
+fn a_stream_that_fits_its_budget_exits_0() {
+    let (streamed, accepted) = run_budgeted(&[], 3);
+
+    assert_eq!(streamed.code, ExitCode::SUCCESS);
+    assert_eq!(accepted, 3);
+    assert_eq!(streamed.err, "");
+}
+
+#[test]
+fn a_json_stream_ends_with_the_over_budget_failure_document() {
+    let (streamed, _) = run_budgeted(&["--json"], 1000);
+
+    assert_eq!(streamed.code, ExitCode::FAILURE);
+    let last = streamed.out.lines().last().unwrap();
+    assert!(
+        last.contains(r#""code":"crumbkit::output::over_budget""#),
+        "{last}"
+    );
+}
+
+#[test]
+fn a_stream_always_prints_its_first_item_even_past_the_budget() {
+    let mut command = Tool::command();
+    let matches = command
+        .try_get_matches_from_mut(["birds", "watch"])
+        .unwrap();
+    let mut output = Tool::from_arg_matches(&matches).unwrap().output;
+    let guide = crate::help::Guide::new().output_budget(1024, "a short watch");
+    output.set_command(crate::Parsed::guided(command, &guide));
+    let long: &'static str = Box::leak("w".repeat(2000).into_boxed_str());
+    let wren = Sighting {
+        bird: long,
+        ..robin()
+    };
+    let mut out = Vec::new();
+    let mut err = Vec::new();
+    let mut sink = Sink::new(&mut out, &mut err);
+    let mut streaming = stream_to(&mut sink, &mut output, Spelling::COLONS, SIGHTINGS).unwrap();
+
+    assert_eq!(streaming.item(&wren), ControlFlow::Continue(()));
+    assert_eq!(streaming.budget(), 0);
+    assert_eq!(streaming.item(&robin()), ControlFlow::Break(()));
+    assert_eq!(streaming.end(Ok::<(), Unreadable>(())), ExitCode::FAILURE);
+    assert!(String::from_utf8(out).unwrap().contains(long));
+}

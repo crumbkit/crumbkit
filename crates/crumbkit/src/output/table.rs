@@ -8,43 +8,65 @@ use serde_json::Value;
 #[cfg(test)]
 mod tests;
 
-/// Writes `rows` to `out` as a table of `columns`.
-///
-/// The first line is the header, which shows each column name in upper case,
-/// and each row follows on its own line. Each column is as wide as its widest
-/// cell, and two spaces separate the columns. A line ends with the text of its
-/// last non-empty cell, so no line ends in padding or separator spaces. A
-/// cell's own text prints unchanged, including any spaces at its end. Each row
-/// is a serialized row, and a cell is the row's field with the column's name.
-pub(super) fn write(out: &mut impl Write, columns: &[&str], rows: &[Value]) -> io::Result<()> {
-    let mut lines: Vec<Vec<Cow<'_, str>>> = Vec::with_capacity(rows.len() + 1);
-    lines.push(
-        columns
-            .iter()
-            .map(|name| Cow::Owned(name.to_uppercase()))
-            .collect(),
-    );
-    for row in rows {
-        lines.push(columns.iter().map(|name| cell(row.get(name))).collect());
-    }
+/// A text table of rows: each column's name in upper case as the header,
+/// and the cells of each row, which `finish` builds once and can then
+/// measure and write with any number of its first rows.
+pub(super) struct Table<'a> {
+    /// The header line and then one line of cells for each row.
+    lines: Vec<Vec<Cow<'a, str>>>,
+    /// The width of each column over the lines last written, kept so that
+    /// writing the table again allocates nothing.
+    widths: Vec<usize>,
+}
 
-    // RUST-10: the width of a cell is its number of characters, and the
-    // padding that `write!` adds counts characters too. This aligns text whose
-    // characters each take one terminal column. CJK text and most emoji take
-    // two columns and combining marks take none, so a table holding them
-    // misaligns. Replace `chars().count()` and the `write!` padding with the
-    // unicode-width crate when a tool needs to print such text.
-    let mut widths = vec![0; columns.len()];
-    for line in &lines {
-        for (width, cell) in widths.iter_mut().zip(line) {
-            *width = (*width).max(cell.chars().count());
+impl<'a> Table<'a> {
+    /// Returns the table of `rows` with `columns`. Each row is a serialized
+    /// row, and a cell is the row's field with the column's name.
+    pub(super) fn new(columns: &[&str], rows: &'a [Value]) -> Self {
+        let mut lines: Vec<Vec<Cow<'a, str>>> = Vec::with_capacity(rows.len() + 1);
+        lines.push(
+            columns
+                .iter()
+                .map(|name| Cow::Owned(name.to_uppercase()))
+                .collect(),
+        );
+        for row in rows {
+            lines.push(columns.iter().map(|name| cell(row.get(name))).collect());
+        }
+        Self {
+            lines,
+            widths: vec![0; columns.len()],
         }
     }
 
-    for line in &lines {
-        write_line(out, line, &widths)?;
+    /// Writes the header and the first `rows` rows to `out`.
+    ///
+    /// The first line is the header, which shows each column name in upper
+    /// case, and each row follows on its own line. Each column is as wide as
+    /// its widest cell among the lines written, and two spaces separate the
+    /// columns. A line ends with the text of its last non-empty cell, so no
+    /// line ends in padding or separator spaces. A cell's own text prints
+    /// unchanged, including any spaces at its end.
+    pub(super) fn write(&mut self, out: &mut impl Write, rows: usize) -> io::Result<()> {
+        let lines = self.lines.get(..=rows).unwrap_or(&self.lines);
+        // RUST-10: the width of a cell is its number of characters, and the
+        // padding that `write!` adds counts characters too. This aligns text
+        // whose characters each take one terminal column. CJK text and most
+        // emoji take two columns and combining marks take none, so a table
+        // holding them misaligns. Replace `chars().count()` and the `write!`
+        // padding with the unicode-width crate when a tool needs to print
+        // such text.
+        self.widths.fill(0);
+        for line in lines {
+            for (width, cell) in self.widths.iter_mut().zip(line) {
+                *width = (*width).max(cell.chars().count());
+            }
+        }
+        for line in lines {
+            write_line(out, line, &self.widths)?;
+        }
+        Ok(())
     }
-    Ok(())
 }
 
 /// Writes one line of the table. Each cell starts at its column's offset,

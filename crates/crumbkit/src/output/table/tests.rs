@@ -5,13 +5,36 @@ use std::borrow::Cow;
 use proptest::prelude::*;
 use serde_json::{Value, json};
 
-use super::{cell, escape_controls, write};
+use super::{Table, cell, escape_controls};
 
-/// Returns the table that `write` prints for `columns` and `rows`.
+/// Returns the table that `Table::write` prints for `columns` and every
+/// row of `rows`.
 fn table(columns: &[&str], rows: &[Value]) -> String {
     let mut out = Vec::new();
-    write(&mut out, columns, rows).unwrap();
+    Table::new(columns, rows)
+        .write(&mut out, rows.len())
+        .unwrap();
     String::from_utf8(out).unwrap()
+}
+
+#[test]
+fn a_table_written_with_its_first_rows_is_as_wide_as_those_rows_alone() {
+    let rows = [
+        json!({"id": 1, "title": "Emma"}),
+        json!({"id": 2, "title": "Northanger Abbey"}),
+    ];
+    let mut table = Table::new(&["id", "title"], &rows);
+    let mut first = Vec::new();
+    let mut both = Vec::new();
+
+    table.write(&mut first, 1).unwrap();
+    table.write(&mut both, 2).unwrap();
+
+    assert_eq!(String::from_utf8(first).unwrap(), "ID  TITLE\n1   Emma\n");
+    assert_eq!(
+        String::from_utf8(both).unwrap(),
+        "ID  TITLE\n1   Emma\n2   Northanger Abbey\n"
+    );
 }
 
 #[test]

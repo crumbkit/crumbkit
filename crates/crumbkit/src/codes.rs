@@ -55,6 +55,12 @@ pub const CONFIRM_NEEDS_YES: Code = Code::new("crumbkit", "confirmation", "needs
 /// names, so the command changed nothing (ADR-0047).
 pub const VERSION_CONFLICT: Code = Code::new("crumbkit", "version", "conflict");
 
+/// The code of a result that does not fit in the output budget: a single
+/// row or a prose result that crumbkit refused, the ids of a batch that it
+/// left out, a stream that it stopped, and the mark of a listing that it cut
+/// short. A document can set its own code in place of this one (ADR-0046).
+pub const OUTPUT_OVER_BUDGET: Code = Code::new("crumbkit", "output", "over_budget");
+
 /// The code of `--json` passed to a command whose child has no JSON form
 /// (ADR-0042).
 #[cfg(feature = "hand-over")]
@@ -92,6 +98,7 @@ pub const ALL: &[&Code] = &[
     &CONFIRM_DECLINED,
     &CONFIRM_NEEDS_YES,
     &VERSION_CONFLICT,
+    &OUTPUT_OVER_BUDGET,
 ];
 
 /// Every code above, in the order this module declares them. The `child`
@@ -107,6 +114,7 @@ pub const ALL: &[&Code] = &[
     &CONFIRM_DECLINED,
     &CONFIRM_NEEDS_YES,
     &VERSION_CONFLICT,
+    &OUTPUT_OVER_BUDGET,
     &CHILD_NO_JSON,
     &CHILD_NOT_FOUND,
     &CHILD_NOT_STARTED,

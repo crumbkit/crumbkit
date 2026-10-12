@@ -27,21 +27,19 @@ pub(super) fn write_footer<T: Rows>(out: &mut impl Write, value: &T) -> io::Resu
     }
 }
 
-/// Writes the line `Next: {call} {phrase}` when `value` is a listing with a
-/// next step whose call resolves in `command`. Otherwise it writes nothing:
-/// without a command, or when the call names a missing or hidden command or
-/// argument, the tool still prints its result and crumbkit advertises
-/// nothing the tool hid.
-pub(super) fn write_next<T: Rows>(
-    out: &mut impl Write,
+/// Returns the rendered call and the phrase of the line `Next: {call}
+/// {phrase}` when `value` is a listing with a next step whose call resolves in `command`.
+/// Otherwise it returns `None`: without a command, or when the call names a
+/// missing or hidden command or argument, the tool still prints its result
+/// and crumbkit advertises nothing the tool hid. `finish` renders the line
+/// once, so it can measure the text and then write it.
+pub(super) fn next_line<'a, T: Rows>(
     command: Option<&mut Command>,
-    value: &T,
-) -> io::Result<()> {
+    value: &'a T,
+) -> Option<(String, &'a str)> {
     let (Some(command), Some((call, phrase))) = (command, value.next_step()) else {
-        return Ok(());
+        return None;
     };
-    match crate::call::render(call, command) {
-        Ok(rendered) => writeln!(out, "Next: {rendered} {phrase}"),
-        Err(_) => Ok(()),
-    }
+    let rendered = crate::call::render(call, command).ok()?;
+    Some((rendered, phrase))
 }

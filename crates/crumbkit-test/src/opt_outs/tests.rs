@@ -3,6 +3,7 @@
 use std::fs;
 
 use clap::Command;
+use crumbkit::help::Guide;
 use snapbox::Assert;
 use snapbox::assert::Action;
 
@@ -38,6 +39,20 @@ fn run(allow: &[Allow], dir: &TempDir, action: Action) {
     run_with(allow, &Budgets::new(), None, dir, action);
 }
 
+/// Runs the check on `shelf()` with `guide` and no opt-outs against `dir`
+/// with `action`.
+fn run_guided(guide: &Guide, dir: &TempDir, action: Action) {
+    check(
+        &shelf(),
+        guide,
+        &[],
+        &Budgets::new(),
+        None,
+        dir.path(),
+        &Assert::new().action(action),
+    );
+}
+
 /// Runs the check on `shelf()` with `allow`, `budgets` and `paths` against
 /// `dir` with `action`.
 fn run_with(
@@ -49,6 +64,7 @@ fn run_with(
 ) {
     check(
         &shelf(),
+        &Guide::new(),
         allow,
         budgets,
         paths,
@@ -226,5 +242,35 @@ fn the_json_report_gives_a_raised_budget_its_extra_bytes_and_tokens() {
   ]
 }
 "#
+    );
+}
+
+#[test]
+fn the_report_lists_the_output_budget_that_the_guide_sets_beside_crumbkit_s_default() {
+    const GUIDE: Guide = Guide::new().output_budget(2_097_152, "Exports print every book.");
+    let dir = TempDir::new("opt-outs-output-budget").unwrap();
+
+    run_guided(&GUIDE, &dir, Action::Overwrite);
+
+    assert_eq!(
+        read(&dir, "opt-outs.txt"),
+        "shelf has 1 opt-out from crumbkit's conventions.\n\
+         \n\
+         output-budget/run: every run of shelf\n\
+         \x20 Budget: 2097152 bytes, where crumbkit's default is 1048576 bytes.\n\
+         \x20 Reason: Exports print every book.\n\
+         \x20 Cost: A run can print 1048576 bytes more than crumbkit's default, about 262144 tokens.\n"
+    );
+}
+
+#[test]
+fn a_guide_that_keeps_the_default_output_budget_adds_no_entry() {
+    let dir = TempDir::new("opt-outs-default-output-budget").unwrap();
+
+    run_guided(&Guide::new(), &dir, Action::Overwrite);
+
+    assert_eq!(
+        read(&dir, "opt-outs.txt"),
+        "shelf has no opt-outs from crumbkit's conventions.\n"
     );
 }

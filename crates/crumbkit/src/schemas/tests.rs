@@ -175,10 +175,13 @@ fn a_document_schema_names_the_id_as_its_title_and_the_const_of_schema() {
 }
 
 #[test]
-fn a_listing_without_a_summary_holds_data_and_total_and_no_summary() {
+fn a_listing_without_a_summary_holds_data_total_and_an_optional_cut_and_no_summary() {
     let schema = document_schema(BOOKS_LIST).to_value();
 
-    assert_eq!(properties(&schema), ["data", "dry_run", "schema", "total"]);
+    assert_eq!(
+        properties(&schema),
+        ["cut", "data", "dry_run", "schema", "total"]
+    );
     assert_eq!(schema["required"], json!(["schema", "data", "total"]));
     assert_eq!(schema["properties"]["data"]["type"], "array");
     assert_eq!(
@@ -197,7 +200,7 @@ fn a_listing_with_a_summary_requires_the_summary_and_holds_its_schema() {
 
     assert_eq!(
         properties(&schema),
-        ["data", "dry_run", "schema", "summary", "total"]
+        ["cut", "data", "dry_run", "schema", "summary", "total"]
     );
     assert_eq!(
         schema["required"],
@@ -222,11 +225,24 @@ fn a_single_row_document_holds_the_row_schema_under_data() {
 }
 
 #[test]
-fn a_vec_document_holds_an_array_of_rows_under_data() {
+fn a_vec_document_holds_an_array_of_rows_under_data_and_an_optional_cut() {
     let schema = document_schema(BOOKS_PURGE).to_value();
 
-    assert_eq!(properties(&schema), ["data", "dry_run", "schema"]);
+    assert_eq!(properties(&schema), ["cut", "data", "dry_run", "schema"]);
+    assert_eq!(schema["required"], json!(["schema", "data"]));
     assert_eq!(schema["properties"]["data"]["type"], "array");
+}
+
+#[test]
+fn the_cut_of_a_document_requires_the_code_and_the_budget_and_nothing_else() {
+    let schema = document_schema(BOOKS_LIST).to_value();
+    let cut = &schema["properties"]["cut"];
+
+    assert_eq!(cut["type"], "object");
+    assert_eq!(cut["required"], json!(["code", "budget"]));
+    assert_eq!(cut["additionalProperties"], false);
+    assert_eq!(cut["properties"]["code"]["type"], "string");
+    assert_eq!(cut["properties"]["budget"]["type"], "integer");
 }
 
 #[test]

@@ -322,7 +322,8 @@ pub(crate) fn ended(exit: u8, out_bytes: Option<u64>) {
 }
 
 /// Records what `finish` did: the `exit` code it returned, the `out_bytes`
-/// it wrote to standard output, and whether a listing was `truncated`.
+/// it wrote to standard output, and whether a listing was `truncated` or the
+/// output budget cut the result short.
 pub(crate) fn finished(exit: ExitCode, out_bytes: u64, truncated: bool) {
     update(&RECORDER, |recorder| {
         recorder.run.exit = Some(exit::number(exit));

@@ -133,6 +133,9 @@ pub(crate) fn envelope<T: Rows>(document: Document<()>) -> Schema {
             required.push("summary");
         }
     }
+    if T::SHAPE == Shape::Listing || T::SHAPE == Shape::List {
+        properties.insert("cut".to_owned(), cut_schema());
+    }
     if T::SHAPE == Shape::Batch || T::SHAPE == Shape::Prose {
         properties.insert(
             "failures".to_owned(),
@@ -150,6 +153,28 @@ pub(crate) fn envelope<T: Rows>(document: Document<()>) -> Schema {
         "required": required,
     });
     top(document, body, meta_schema.as_deref(), &mut generator)
+}
+
+/// Returns the schema of `cut`, which a listing's or a list's document holds
+/// when the output budget cut it short (ADR-0046).
+fn cut_schema() -> Value {
+    json!({
+        "description": "Present when the output budget cut the result short, so data holds only its first rows.",
+        "type": "object",
+        "properties": {
+            "code": {
+                "description": "The over-budget code, in the tool's spelling.",
+                "type": "string",
+            },
+            "budget": {
+                "description": "The most bytes that the run printed on standard output.",
+                "type": "integer",
+                "minimum": 0,
+            },
+        },
+        "required": ["code", "budget"],
+        "additionalProperties": false,
+    })
 }
 
 /// Returns the JSON Schema of the file format `document` whose files hold a

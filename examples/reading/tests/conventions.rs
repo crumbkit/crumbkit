@@ -147,8 +147,10 @@ fn every_example_in_the_guide_runs_and_prints_its_golden_output() {
 
 #[test]
 fn every_opt_out_matches_the_opt_out_report() {
+    let (command, guide) = fixture_tool();
     crumbkit_test::check_opt_outs(
-        &fixture_tool().0,
+        &command,
+        &guide,
         ALLOW,
         &BUDGETS,
         Some(&PATH_BUDGETS),

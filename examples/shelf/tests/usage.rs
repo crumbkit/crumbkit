@@ -239,3 +239,18 @@ fn no_line_holds_a_value_that_the_caller_typed() {
         assert!(!line.contains("PLANTED"), "{line}");
     }
 }
+
+#[test]
+fn a_listing_cut_short_by_the_output_budget_records_truncated_with_the_over_budget_code() {
+    let dir = tempfile::tempdir().unwrap();
+    let home = dir.path();
+
+    let budget = [("CRUMBKIT_OUTPUT_BUDGET", "300")];
+    let run = shelf_with(home, &["books", "list", "--all"], &budget).success();
+
+    assert!(run.get_output().stdout.len() <= 300);
+    let line = stable(lines(home).unwrap().remove(0));
+    assert_eq!(line["exit"], 0);
+    assert_eq!(line["truncated"], true);
+    assert_eq!(line["code"], "crumbkit::output::over_budget");
+}

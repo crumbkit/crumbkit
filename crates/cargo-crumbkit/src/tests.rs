@@ -72,5 +72,12 @@ fn every_crumbkit_command_sits_at_its_fixed_path() {
 
 #[test]
 fn every_opt_out_matches_the_opt_out_report() {
-    crumbkit_test::check_opt_outs(&Cli::command(), ALLOW, &BUDGETS, None, "tests/golden");
+    crumbkit_test::check_opt_outs(
+        &Cli::command(),
+        &GUIDE,
+        ALLOW,
+        &BUDGETS,
+        None,
+        "tests/golden",
+    );
 }
