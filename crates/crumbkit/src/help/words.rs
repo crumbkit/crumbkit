@@ -38,16 +38,23 @@ pub fn quote(word: &str) -> String {
     }
 }
 
-/// Returns the words of `line`, a command line whose words [`quote`] wrote
-/// and spaces separate, as a POSIX shell reads them, or `None` when `line`
-/// holds a quote that does not close or a backslash outside quotes that is
-/// not followed by `'`.
+/// Returns the words of `line`, a command line whose words spaces separate,
+/// as a POSIX shell reads them, or `None` when `line` holds a quote that
+/// does not close, a backslash outside quotes that is not followed by `'`,
+/// or a `$` or a backtick between double quotes that is not escaped.
 ///
 /// Spaces outside quotes separate words. Text between single quotes is
-/// part of the word as it is, and `\'` outside quotes is a `'`. Every other
-/// character outside quotes is part of the word, so a placeholder of a
-/// call, such as `<ID>...`, is one word. crumbkit-test reads each `run`
-/// recovery with it, so it runs the words that the recovery names.
+/// part of the word as it is, and `\'` outside quotes is a `'`. Text between
+/// double quotes is part of the word too, except that a backslash before
+/// `"`, `\`, `$` or a backtick stands for that character and a backslash
+/// before a line break removes both. A `$` or a backtick between double
+/// quotes would make a shell expand the text, so `split` refuses it. Every
+/// other character outside quotes is part of the word, so a placeholder of
+/// a call, such as `<ID>...`, is one word. [`quote`] writes only single
+/// quotes, and a tool that writes its hints with double quotes, such as
+/// `shelf books list --author "Jane Austen"`, is read the same way.
+/// crumbkit-test reads each `run` recovery with it, so it runs the words
+/// that the recovery names.
 ///
 /// ```
 /// use crumbkit::help::split;
@@ -58,10 +65,10 @@ pub fn quote(word: &str) -> String {
 /// );
 /// ```
 //
-// RUST-10: the reading covers what `quote` writes and nothing more. It
-// misses double quotes, backslashes before other characters and expansions,
-// which a shell reads and `quote` never writes. A crate such as shlex
-// replaces it if crumbkit reads lines that a person typed.
+// RUST-10: the reading covers what `quote` writes and double-quoted words.
+// It misses backslashes outside quotes before characters other than `'`,
+// and every expansion, which it refuses. A crate such as shlex replaces it
+// if crumbkit reads lines that a person typed.
 #[must_use]
 pub fn split(line: &str) -> Option<Vec<String>> {
     let mut words = Vec::new();
@@ -80,6 +87,24 @@ pub fn split(line: &str) -> Option<Vec<String>> {
                 loop {
                     match chars.next()? {
                         '\'' => break,
+                        inside => current.push(inside),
+                    }
+                }
+            }
+            '"' => {
+                let current = word.get_or_insert_with(String::new);
+                loop {
+                    match chars.next()? {
+                        '"' => break,
+                        '$' | '`' => return None,
+                        '\\' => match chars.next()? {
+                            '\n' => {}
+                            escaped @ ('"' | '\\' | '$' | '`') => current.push(escaped),
+                            other => {
+                                current.push('\\');
+                                current.push(other);
+                            }
+                        },
                         inside => current.push(inside),
                     }
                 }

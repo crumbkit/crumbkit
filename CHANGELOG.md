@@ -449,6 +449,9 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   characters such as CJK text ([ADR-0016]).
 - crumbkit-test: [`check_recoveries`] fills a lowercase placeholder such
   as `<path>` from the value of the same name ([ADR-0005]).
+- crumbkit: `help::split` reads double-quoted words as a POSIX shell does,
+  and refuses a `$` or a backtick between double quotes, so
+  [`check_recoveries`] runs hints that a tool wrote with double quotes.
 ### Removed
 
 - crumbkit: `Call::word` is gone, because `Call::value` adds a runtime value
