@@ -12,7 +12,7 @@ use crumbkit_aliases::AliasesList;
 use schemars::JsonSchema;
 use serde::Serialize;
 
-use crate::books::{BOOKS_LIST, BOOKS_SHOW, MOST_IDS};
+use crate::books::{BOOKS_LIST, BOOKS_SHOW, BOOKS_SUMMARIZE, MOST_IDS};
 
 #[cfg(test)]
 mod tests;
@@ -34,8 +34,8 @@ pub struct Cli {
 /// root, so `shelf -h` lists `books` under `Browse the catalogue`,
 /// `commands` and `schemas` under `Explore the commands` and `self` under
 /// `Review how shelf is used`, and `shelf books -h` keeps clap's
-/// `Commands:` list. The help of each leaf lists its examples, and its
-/// `--help` describes the columns of the rows it prints.
+/// `Commands:` list. The help of each leaf lists its examples, and the
+/// `--help` of a leaf that prints rows describes their columns.
 /// `shelf help catalogue` prints `cli/catalogue.txt`.
 pub const GUIDE: Guide = Guide::new()
     .groups(&[Group::new(
@@ -56,6 +56,12 @@ pub const GUIDE: Guide = Guide::new()
         Leaf::new(&["books", "show"])
             .examples(&[Example::new(&["2", "5"], "Show books 2 and 5")])
             .document(BOOKS_SHOW),
+        Leaf::new(&["books", "summarize"])
+            .examples(&[
+                Example::new(&[], "Summarize the whole catalogue"),
+                Example::new(&["2", "5"], "Summarize books 2 and 5"),
+            ])
+            .document(BOOKS_SUMMARIZE),
         Leaf::new(&["commands", "list"])
             .examples(&[
                 Example::new(&[], "List every command"),
@@ -152,6 +158,8 @@ pub(crate) enum BooksCommand {
     List(BooksList),
     /// Show the books with the given ids, in the order given.
     Show(BooksShow),
+    /// Describe the books with the given ids, or the whole catalogue, in one sentence.
+    Summarize(BooksSummarize),
 }
 
 /// The commands for shelf's own commands.
@@ -239,4 +247,13 @@ pub(crate) struct BooksShow {
     /// Read the ids from this file, one id per line
     #[arg(long, value_name = "FILE")]
     pub(crate) from: Option<PathBuf>,
+}
+
+/// The arguments of `shelf books summarize`: the ids of the books to
+/// describe, or none for the whole catalogue.
+#[derive(Debug, Args)]
+pub(crate) struct BooksSummarize {
+    /// The ids of the books to describe, separated by spaces; without ids, the whole catalogue
+    #[arg(value_name = "ID", num_args = 0..=MOST_IDS)]
+    pub(crate) ids: Vec<u32>,
 }

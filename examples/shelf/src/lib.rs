@@ -84,6 +84,12 @@ where
                 books::BOOKS_SHOW,
                 books::show(&args),
             ),
+            BooksCommand::Summarize(args) => crumbkit::finish(
+                &mut cli.output,
+                SPELLING,
+                books::BOOKS_SUMMARIZE,
+                books::summarize(&args),
+            ),
         },
         // `commands list`, `schemas`, `self` and `aliases list` read the
         // command tree through `&mut cli.output`, so each runs before

@@ -308,6 +308,34 @@ fn books_show_json_prints_the_books_as_an_array_and_an_empty_failures_array_with
         .stderr_eq("");
 }
 
+#[test]
+fn books_summarize_prints_the_books_found_as_prose_and_one_failure_naming_the_missing_ids_with_code_1()
+ {
+    shelf(&["books", "summarize", "2", "7"])
+        .unwrap()
+        .code(1)
+        .stdout_eq(file!["golden/books-summarize-2-7.txt"].raw())
+        .stderr_eq(file!["golden/books-summarize-2-7.stderr"].raw());
+}
+
+#[test]
+fn books_summarize_json_prints_the_summary_under_data_and_the_failure_with_code_1() {
+    shelf(&["books", "summarize", "2", "7", "--json"])
+        .unwrap()
+        .code(1)
+        .stdout_eq(file!["golden/books-summarize-2-7-json.json"].raw())
+        .stderr_eq("");
+}
+
+#[test]
+fn books_summarize_with_fields_is_refused_with_code_2() {
+    shelf(&["books", "summarize", "--fields", "books"])
+        .unwrap()
+        .code(2)
+        .stdout_eq("")
+        .stderr_eq(file!["golden/books-summarize-fields.stderr"].raw());
+}
+
 /// crumbkit-test's `check_help_goldens` pins every help page from a unit
 /// test, and this test proves that shelf's `main` prints the same root page.
 #[test]
