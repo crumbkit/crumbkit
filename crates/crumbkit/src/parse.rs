@@ -296,6 +296,9 @@ where
     R: BufRead,
 {
     let mut args: Vec<OsString> = args.into_iter().map(Into::into).collect();
+    if cfg!(windows) {
+        program_stem(&mut args);
+    }
     #[cfg(feature = "usage-log")]
     crate::usage::typed(&command, &args, spelling);
     // crumbkit answers `help` itself. clap propagates the setting to every
@@ -463,6 +466,18 @@ fn ask_for_help(args: &mut Vec<OsString>, position: usize) {
         .position(|word| word == "--")
         .unwrap_or(args.len());
     args.insert(end, OsString::from("--help"));
+}
+
+/// Replaces the program path in `args[0]` with its file stem. On Windows,
+/// clap names the tool after the file name of `args[0]`, so without this a
+/// tool's help and usage lines would say `shelf.exe` where they say `shelf`
+/// on Unix.
+fn program_stem(args: &mut [OsString]) {
+    if let Some(program) = args.first_mut()
+        && let Some(stem) = std::path::Path::new(program).file_stem()
+    {
+        *program = stem.to_owned();
+    }
 }
 
 /// Prints the help page or the version in `error` and returns the exit code:

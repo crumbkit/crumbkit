@@ -6,7 +6,7 @@ use std::process::ExitCode;
 
 use clap::{Arg, ArgAction, Command};
 
-use super::{Stop, message, parse_to};
+use super::{Stop, message, parse_to, program_stem};
 use crate::help::Guide;
 use crate::{Sink, Spelling};
 
@@ -585,4 +585,16 @@ error: unrecognized subcommand 'bok'; a similar subcommand exists: 'books'
   code:  crumbkit::cli::usage
 ";
     assert_eq!(parsed.err, expected);
+}
+
+#[test]
+fn the_program_path_becomes_its_file_stem_so_help_names_the_tool_without_exe() {
+    let mut args = vec![
+        std::ffi::OsString::from("/tools/shelf.exe"),
+        std::ffi::OsString::from("books"),
+    ];
+
+    program_stem(&mut args);
+
+    assert_eq!(args, ["shelf", "books"]);
 }

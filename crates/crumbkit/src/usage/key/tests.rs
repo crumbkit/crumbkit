@@ -1,4 +1,5 @@
 use std::fs;
+#[cfg(unix)]
 use std::os::unix::fs::PermissionsExt as _;
 
 use super::{create, key};
@@ -26,7 +27,7 @@ fn write_key(dir: &TempDir, bytes: &[u8]) {
 }
 
 #[test]
-fn the_first_run_creates_a_16_byte_key_with_mode_0600_and_later_runs_reuse_it() {
+fn the_first_run_creates_a_16_byte_key_and_later_runs_reuse_it() {
     let dir = TempDir::new("key-created");
     create_dir(dir.path()).unwrap();
 
@@ -34,13 +35,24 @@ fn the_first_run_creates_a_16_byte_key_with_mode_0600_and_later_runs_reuse_it() 
     let second = key(dir.path()).unwrap();
 
     assert_eq!(first, second);
+    assert_eq!(fs::read(dir.path().join("usage.key")).unwrap(), first);
+    assert_eq!(files(&dir), ["usage.key"]);
+}
+
+// Windows files have access control lists in place of Unix modes.
+#[cfg(unix)]
+#[test]
+fn the_key_file_has_mode_0600() {
+    let dir = TempDir::new("key-mode");
+    create_dir(dir.path()).unwrap();
+
+    key(dir.path()).unwrap();
+
     let file = dir.path().join("usage.key");
-    assert_eq!(fs::read(&file).unwrap(), first);
     assert_eq!(
         fs::metadata(&file).unwrap().permissions().mode() & 0o777,
         0o600
     );
-    assert_eq!(files(&dir), ["usage.key"]);
 }
 
 #[test]

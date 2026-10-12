@@ -110,3 +110,24 @@ fn the_checked_in_schema_matches_the_weigh_document_schema() {
         "schemas/weigh-v1.json differs from the generated schema; replace the file with the generated schema"
     );
 }
+
+#[cfg(windows)]
+#[test]
+fn on_windows_an_absolute_xdg_state_home_holds_the_log_and_otherwise_local_app_data_does() {
+    use std::ffi::OsString;
+    use std::path::PathBuf;
+
+    use super::windows_state_home;
+
+    let local = || Some(PathBuf::from(r"C:\Users\me\AppData\Local"));
+
+    assert_eq!(
+        windows_state_home(Some(OsString::from(r"C:\state")), local),
+        Some(PathBuf::from(r"C:\state"))
+    );
+    assert_eq!(
+        windows_state_home(Some(OsString::from("state")), local),
+        local()
+    );
+    assert_eq!(windows_state_home(None, local), local());
+}

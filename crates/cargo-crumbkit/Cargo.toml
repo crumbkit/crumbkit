@@ -32,8 +32,9 @@ clap = { workspace = true, features = [
 # so weigh and the check cannot disagree.
 crumbkit-test = { workspace = true }
 # `weigh --usage` finds the tool's own usage log in the person's XDG state
-# directory with the call that crumbkit's `usage-log` feature uses to write
-# it (ADR-0029), so the two find the same file. etcetera is already in the
+# directory, or in `%LOCALAPPDATA%` on Windows, with the calls that
+# crumbkit's `usage-log` feature uses to write it (ADR-0029), so the two
+# find the same file. etcetera is already in the
 # workspace's lockfile.
 etcetera = { workspace = true }
 # The weight row derives `Serialize` and `JsonSchema`, as a tool's results do.

@@ -86,11 +86,24 @@ fn a_new_trace_gives_a_child_an_empty_tracestate_when_the_caller_set_one() {
     assert_eq!(unset.len(), 1);
 }
 
+/// Returns `v` followed by a value that is not UTF-8: the byte 0xFF on
+/// Unix, and a lone surrogate on Windows.
+fn not_utf_8() -> std::ffi::OsString {
+    #[cfg(unix)]
+    {
+        use std::os::unix::ffi::OsStringExt as _;
+        std::ffi::OsString::from_vec(vec![0x76, 0xff])
+    }
+    #[cfg(windows)]
+    {
+        use std::os::windows::ffi::OsStringExt as _;
+        std::ffi::OsString::from_wide(&[0x76, 0xD800])
+    }
+}
+
 #[test]
 fn a_tracestate_that_is_not_utf_8_counts_as_empty() {
-    use std::os::unix::ffi::OsStringExt as _;
-
-    let state = tracestate(Some(std::ffi::OsString::from_vec(vec![0x76, 0xff])));
+    let state = tracestate(Some(not_utf_8()));
 
     assert_eq!(state, Some(String::new()));
     assert_eq!(tracestate(None), None);

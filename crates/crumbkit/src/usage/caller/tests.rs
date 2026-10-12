@@ -21,7 +21,7 @@ fn an_agent_with_a_session_id_is_the_caller_and_its_session_id_is_the_session() 
     let caller = identify(
         agent(&[("CLAUDECODE", "1"), ("CLAUDE_CODE_SESSION_ID", "s-1")]),
         true,
-        4242,
+        || "4242".to_owned(),
     );
 
     assert_eq!(
@@ -34,8 +34,8 @@ fn an_agent_with_a_session_id_is_the_caller_and_its_session_id_is_the_session() 
 }
 
 #[test]
-fn an_agent_without_a_session_id_has_the_parent_process_id_as_its_session() {
-    let caller = identify(agent(&[("CLAUDECODE", "1")]), false, 4242);
+fn an_agent_without_a_session_id_has_the_platform_s_fallback_as_its_session() {
+    let caller = identify(agent(&[("CLAUDECODE", "1")]), false, || "4242".to_owned());
 
     assert_eq!(
         caller,
@@ -48,7 +48,7 @@ fn an_agent_without_a_session_id_has_the_parent_process_id_as_its_session() {
 
 #[test]
 fn without_an_agent_a_terminal_on_standard_input_means_a_person() {
-    let caller = identify(agent(&[]), true, 4242);
+    let caller = identify(agent(&[]), true, || "4242".to_owned());
 
     assert_eq!(
         caller,
@@ -61,7 +61,7 @@ fn without_an_agent_a_terminal_on_standard_input_means_a_person() {
 
 #[test]
 fn without_an_agent_or_a_terminal_the_caller_is_unknown() {
-    let caller = identify(agent(&[]), false, 4242);
+    let caller = identify(agent(&[]), false, || "4242".to_owned());
 
     assert_eq!(caller.name, "unknown");
 }

@@ -103,7 +103,8 @@ pub(crate) enum WeighError {
         line: String,
     },
     /// `--usage` names no log, and neither `XDG_STATE_HOME` nor `HOME`
-    /// gives the state directory that holds the tool's own log.
+    /// gives the state directory that holds the tool's own log. Windows
+    /// always has `%LOCALAPPDATA%`, so this happens only on Unix.
     NoStateDir,
 }
 

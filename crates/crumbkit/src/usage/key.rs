@@ -6,10 +6,9 @@
 
 use std::fs::{self, OpenOptions};
 use std::io::{self, Write as _};
-use std::os::unix::fs::OpenOptionsExt as _;
 use std::path::{Path, PathBuf};
 
-use super::random;
+use super::platform;
 
 #[cfg(test)]
 mod tests;
@@ -73,29 +72,26 @@ fn replace(dir: &Path) -> Option<[u8; 16]> {
     Some(key)
 }
 
-/// Writes 16 bytes from `/dev/urandom` to a temporary file in `dir` with
-/// mode 0600, and returns the key and the file's path. The file's name holds
+/// Writes 16 random bytes to a temporary file in `dir` that only the user
+/// can read, and returns the key and the file's path. The file's name holds
 /// the process id, so runs at the same time never share it, and a file left
 /// by an earlier process with the same id is overwritten.
 fn write_temporary(dir: &Path) -> Option<([u8; 16], PathBuf)> {
-    let key: [u8; 16] = random::bytes()?;
+    let key: [u8; 16] = platform::random_bytes()?;
     let temporary = dir.join(format!("usage.key.{}.tmp", std::process::id()));
     #[expect(
         clippy::disallowed_methods,
         reason = "the usage log owns its key file, which this module writes to a temporary file first"
     )]
-    let written = OpenOptions::new()
-        .write(true)
-        .create(true)
-        .truncate(true)
-        .mode(0o600)
-        .open(&temporary)
-        .and_then(|mut file| {
-            file.write_all(&key)?;
-            // The bytes reach the disk before the name does, so a machine
-            // that stops never leaves a named key without its bytes.
-            file.sync_all()
-        });
+    let written =
+        platform::private_file(OpenOptions::new().write(true).create(true).truncate(true))
+            .open(&temporary)
+            .and_then(|mut file| {
+                file.write_all(&key)?;
+                // The bytes reach the disk before the name does, so a machine
+                // that stops never leaves a named key without its bytes.
+                file.sync_all()
+            });
     if written.is_err() {
         remove(&temporary);
         return None;
