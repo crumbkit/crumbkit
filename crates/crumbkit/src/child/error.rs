@@ -4,27 +4,7 @@
 use std::fmt;
 use std::io;
 
-use crate::{Code, Failure, Recovery};
-
-/// The code of `--json` passed to a command whose child has no JSON form,
-/// such as `crumbkit::child::no_json`.
-const NO_JSON: Code = Code::new("crumbkit", "child", "no_json");
-
-/// The code of a program that does not exist, such as
-/// `crumbkit::child::not_found`.
-const NOT_FOUND: Code = Code::new("crumbkit", "child", "not_found");
-
-/// The code of a program that the operating system refused to start or to
-/// wait for, such as `crumbkit::child::not_started`.
-const NOT_STARTED: Code = Code::new("crumbkit", "child", "not_started");
-
-/// The code of a child's output that is not the declared document, such as
-/// `crumbkit::child::bad_json`.
-const BAD_JSON: Code = Code::new("crumbkit", "child", "bad_json");
-
-/// The code of a child that exited with a code other than 0 under `--json`,
-/// such as `crumbkit::child::failed`.
-const FAILED: Code = Code::new("crumbkit", "child", "failed");
+use crate::{Code, Failure, Recovery, codes};
 
 /// A failure of a child process. Each variant holds the name of the program.
 #[derive(Debug)]
@@ -103,11 +83,11 @@ impl std::error::Error for ChildError {
 impl Failure for ChildError {
     fn code(&self) -> &'static Code {
         match self {
-            Self::NoJson(_) => &NO_JSON,
-            Self::NotFound(_) => &NOT_FOUND,
-            Self::NotStarted { .. } => &NOT_STARTED,
-            Self::BadJson { .. } => &BAD_JSON,
-            Self::Failed { .. } => &FAILED,
+            Self::NoJson(_) => &codes::CHILD_NO_JSON,
+            Self::NotFound(_) => &codes::CHILD_NOT_FOUND,
+            Self::NotStarted { .. } => &codes::CHILD_NOT_STARTED,
+            Self::BadJson { .. } => &codes::CHILD_BAD_JSON,
+            Self::Failed { .. } => &codes::CHILD_FAILED,
         }
     }
 

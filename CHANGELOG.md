@@ -227,6 +227,9 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit-test: [`check_document_ids`] fails on a guide with a failure
   form unless an opt-out from `Rule::FailureForm` names the root
   ([ADR-0045]).
+- crumbkit: [`codes`] makes crumbkit's own failure codes public constants
+  and lists them in `codes::ALL`, so a tool's test can name them
+  ([ADR-0001]).
 
 ### Changed
 
@@ -458,3 +461,4 @@ rustdoc, or at its decision record. -->
 [`FailureForm`]: crates/crumbkit/src/form.rs
 [`PreparedFailure`]: crates/crumbkit/src/output/failure/prepared.rs
 [ADR-0045]: docs/decisions/api/output/0045-failure-forms.md
+[`codes`]: crates/crumbkit/src/codes.rs

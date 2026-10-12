@@ -10,11 +10,7 @@ use clap::error::{ContextKind, ContextValue, ErrorKind};
 
 use crate::form::FailureForm;
 use crate::output::failure;
-use crate::{Call, Code, Failure, Field, Recovery, Sink, Spelling};
-
-/// The code of every refusal, in the tool's spelling, such as
-/// `crumbkit::cli::usage` (ADR-0001).
-const USAGE: Code = Code::new("crumbkit", "cli", "usage");
+use crate::{Call, Code, Failure, Field, Recovery, Sink, Spelling, codes};
 
 /// A refused command line or flag value, as a [`Failure`] with the code
 /// `crumbkit::cli::usage`.
@@ -133,7 +129,7 @@ fn clap_fields(error: &clap::Error) -> Vec<(&'static str, String)> {
 
 impl Failure for Refusal {
     fn code(&self) -> &'static Code {
-        &USAGE
+        &codes::CLI_USAGE
     }
 
     fn recovery(&self) -> Recovery {
