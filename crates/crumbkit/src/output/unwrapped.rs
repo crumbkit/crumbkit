@@ -5,7 +5,7 @@ use std::io::{self, Write};
 
 use serde_json::Value;
 
-use super::Selected;
+use super::envelope::Selected;
 use crate::{Rows, Shape};
 
 /// Writes `value` to `out` as JSON on one line, without `schema`, `total`,

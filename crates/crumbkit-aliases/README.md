@@ -73,12 +73,12 @@ const SPELLING: Spelling = Spelling::COLONS;
 fn run(args: &[&str], file: Option<&Path>) -> ExitCode {
     let command = Cli::command();
     let args = crumbkit_aliases::expand(&command, args, file);
-    let (mut cli, command) =
+    let (mut cli, parsed) =
         match crumbkit::parse_from::<Cli, _, _>(command, &GUIDE, SPELLING, args) {
             Ok(parsed) => parsed,
             Err(stop) => return stop.code(),
         };
-    cli.output.set_command(command);
+    cli.output.set_command(parsed);
     match cli.resource {
         Resource::Aliases { command: AliasesCommand::List(args) } => {
             // `list` builds the command tree in `cli.output`, so it runs

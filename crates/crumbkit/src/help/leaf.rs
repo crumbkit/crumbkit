@@ -8,7 +8,7 @@ use clap::builder::styling::Style;
 use schemars::{JsonSchema, Schema};
 use serde_json::Value;
 
-use super::write_line;
+use super::{Effects, write_line};
 use crate::{Document, Row, Rows, row};
 
 #[cfg(test)]
@@ -47,6 +47,8 @@ pub struct Leaf {
     /// The document that the command prints and the columns of its rows,
     /// or `None` when the leaf has no document.
     columns: Option<Columns>,
+    /// The command's effects, or `None` when the tool declares none.
+    effects: Option<Effects>,
 }
 
 impl Leaf {
@@ -59,6 +61,7 @@ impl Leaf {
             path,
             examples: &[],
             columns: None,
+            effects: None,
         }
     }
 
@@ -80,6 +83,28 @@ impl Leaf {
     #[must_use]
     pub const fn get_examples(&self) -> &'static [Example] {
         self.examples
+    }
+
+    /// Sets the command's effects. Its `-h` and `--help` then print them on
+    /// one line after the examples, such as `Effects: read-only,
+    /// closed-world.`, and `commands list` writes them under `effects`.
+    ///
+    /// A leaf without effects prints no such line, and `commands list`
+    /// writes `null`, which a caller reads as a command that may destroy
+    /// data. crumbkit-test's `check_effects` fails on a visible leaf without
+    /// effects unless the tool opts out with a reason.
+    #[must_use]
+    pub const fn effects(mut self, effects: Effects) -> Self {
+        self.effects = Some(effects);
+        self
+    }
+
+    /// Returns the effects that [`Leaf::effects`] set, or `None` when the
+    /// tool declares none. The name has clap's `get_` prefix, because
+    /// `effects` is the builder method.
+    #[must_use]
+    pub const fn get_effects(&self) -> Option<Effects> {
+        self.effects
     }
 
     /// Sets the document that the command prints, the same constant that

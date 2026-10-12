@@ -11,6 +11,10 @@
         "$ref": "#/$defs/SchemaShowRow"
       }
     },
+    "dry_run": {
+      "description": "Present, and true, when the run was a dry run that changed nothing.",
+      "const": true
+    },
     "failures": {
       "description": "The failures of the ids that did not work. It is empty when every id worked.",
       "type": "array",

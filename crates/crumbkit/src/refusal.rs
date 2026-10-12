@@ -48,9 +48,9 @@ impl Refusal {
     /// with `json` as one `crumbkit/failure/v1` document, and returns exit
     /// code 2 (ADR-0002). The recovery renders against `command`, so it
     /// prints as having no next step when there is no command.
-    pub(crate) fn print<O: Write, E: Write>(
+    pub(crate) fn print<O: Write, E: Write, R>(
         &self,
-        sink: &mut Sink<O, E>,
+        sink: &mut Sink<O, E, R>,
         json: bool,
         spelling: Spelling,
         command: Option<&mut Command>,

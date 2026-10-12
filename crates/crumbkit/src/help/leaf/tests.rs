@@ -347,6 +347,7 @@ fn a_leaf_off_the_typed_path_keeps_its_help() {
         panic!("the command line did not parse");
     };
     let list = command
+        .command()
         .find_subcommand("planets")
         .and_then(|planets| planets.find_subcommand("list"))
         .unwrap();

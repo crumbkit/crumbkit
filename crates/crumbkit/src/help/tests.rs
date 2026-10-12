@@ -179,7 +179,11 @@ fn a_guided_group_off_the_typed_path_keeps_its_default_help() {
     let Ok(((), command)) = result else {
         panic!("the command line did not parse");
     };
-    let mut planets = command.find_subcommand("planets").unwrap().clone();
+    let mut planets = command
+        .command()
+        .find_subcommand("planets")
+        .unwrap()
+        .clone();
     let page = planets.render_help().to_string();
     assert!(page.contains("Commands:\n"), "{page}");
     assert!(!page.contains("Read\n"), "{page}");

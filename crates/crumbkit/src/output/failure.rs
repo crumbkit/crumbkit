@@ -43,8 +43,8 @@ const UNAVAILABLE: &str = "the suggested command is not available";
 /// The caller returns the exit code: 1 from `finish` for a command that
 /// failed, and 2 for a refusal (ADR-0002). The flags `--long`, `--full` and
 /// `--fields` do not change a failure.
-pub(crate) fn print<O: Write, W: Write>(
-    sink: &mut Sink<O, W>,
+pub(crate) fn print<O: Write, W: Write, R>(
+    sink: &mut Sink<O, W, R>,
     json: bool,
     spelling: Spelling,
     failure: &dyn Failure,

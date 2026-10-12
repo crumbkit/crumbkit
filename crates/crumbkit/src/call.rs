@@ -96,7 +96,8 @@ pub(crate) fn render(call: &Call, command: &mut Command) -> Result<String, CallE
 /// it. Parsing has already built the root, which copied the root's global
 /// arguments into each command one level below it, so a build of that
 /// command copies them down to every command of the branch. A call from
-/// `Call::help` is rendered without a lookup and needs no build.
+/// `Call::help` or `Call::typed` is rendered without a lookup and needs no
+/// build.
 fn build_branch(call: &Call, command: &mut Command) {
     let CallTarget::Command { path, .. } = call.target() else {
         return;
@@ -121,6 +122,8 @@ fn build_branch(call: &Call, command: &mut Command) {
 /// the path holds the real names of commands that the caller typed, and
 /// crumbkit points the caller back at a hidden command that the caller
 /// named.
+/// A call from `Call::typed` renders the caller's words in the same way,
+/// each quoted when a POSIX shell would split or expand it.
 pub(crate) fn render_built(call: &Call, command: &Command) -> Result<String, CallError> {
     let mut text = command.get_name().to_owned();
     let (path, args) = match call.target() {
@@ -130,6 +133,13 @@ pub(crate) fn render_built(call: &Call, command: &Command) -> Result<String, Cal
                 text.push_str(name);
             }
             text.push_str(" -h");
+            return Ok(text);
+        }
+        CallTarget::Typed(words) => {
+            for word in words {
+                text.push(' ');
+                text.push_str(&quote(word));
+            }
             return Ok(text);
         }
         CallTarget::Command { path, args } => (*path, args),

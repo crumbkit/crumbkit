@@ -39,11 +39,11 @@ const SPELLING: Spelling = Spelling::COLONS;
 /// `Next:` lines and recoveries print starts with `cargo crumbkit`.
 #[must_use]
 pub fn run() -> ExitCode {
-    let (mut cli, command) = match crumbkit::parse::<Cli>(Cli::command(), &GUIDE, SPELLING) {
+    let (mut cli, parsed) = match crumbkit::parse::<Cli>(Cli::command(), &GUIDE, SPELLING) {
         Ok(parsed) => parsed,
         Err(stop) => return stop.code(),
     };
-    cli.output.set_command(command);
+    cli.output.set_command(parsed);
     match cli.cargo {
         CargoCommand::Crumbkit { command } => match command {
             CrumbkitCommand::Weigh(args) => {

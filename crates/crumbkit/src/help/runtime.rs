@@ -2,7 +2,7 @@
 //! its command tree at run time, such as one command for each file that a
 //! person writes.
 
-use super::{Example, Guide, Leaf};
+use super::{Effects, Example, Guide, Leaf};
 
 #[cfg(test)]
 mod tests;
@@ -49,6 +49,8 @@ pub struct RuntimeLeaf {
     /// The examples, each the words after the path and a description, in
     /// the order the help page lists them.
     examples: Vec<(Vec<String>, String)>,
+    /// The command's effects, or `None` when the tool declares none.
+    effects: Option<Effects>,
 }
 
 impl RuntimeLeaf {
@@ -60,6 +62,7 @@ impl RuntimeLeaf {
         Self {
             path,
             examples: Vec::new(),
+            effects: None,
         }
     }
 
@@ -74,12 +77,19 @@ impl RuntimeLeaf {
         self.examples.push((words, about));
         self
     }
+
+    /// Sets the command's effects, as [`Leaf::effects`] does.
+    #[must_use]
+    pub const fn effects(mut self, effects: Effects) -> Self {
+        self.effects = Some(effects);
+        self
+    }
 }
 
 impl Guide {
     /// Returns a guide with the groups, topics and exit codes of `self`, and
-    /// the leaves of `self` followed by `leaves`, each with its path and
-    /// examples.
+    /// the leaves of `self` followed by `leaves`, each with its path,
+    /// examples and effects.
     ///
     /// Every function that reads a guide reads the joined one as it reads a
     /// `const` guide, and of two leaves with one path only the first
@@ -104,7 +114,11 @@ impl Guide {
                 .into_iter()
                 .map(|(words, about)| Example::new(leak_words(words), about.leak()))
                 .collect();
-            joined.push(Leaf::new(leak_words(leaf.path)).examples(examples.leak()));
+            let mut joined_leaf = Leaf::new(leak_words(leaf.path)).examples(examples.leak());
+            if let Some(effects) = leaf.effects {
+                joined_leaf = joined_leaf.effects(effects);
+            }
+            joined.push(joined_leaf);
         }
         self.leaves(joined.leak())
     }

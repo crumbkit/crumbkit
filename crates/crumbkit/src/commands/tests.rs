@@ -1,5 +1,4 @@
-//! Tests for `commands list`, which exports one branch of a tool's command
-//! tree.
+//! Tests for `commands list`, which exports one branch of a tool's command tree.
 
 use std::process::ExitCode;
 
@@ -403,6 +402,7 @@ fn a_row_holds_its_leaf_s_examples_as_quoted_command_lines_and_its_columns() {
                 },
             ],
             "exits": [],
+            "effects": null,
         }])
     );
 }
