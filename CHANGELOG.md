@@ -99,6 +99,8 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit: [`Prose`] holds a command's answer as text with a typed value
   and optional failures. Text output prints the text, and `--json` prints
   the value under `data` and the failures under `failures` ([ADR-0016]).
+- crumbkit: [`help::RuntimeLeaf`] and `Guide::with_runtime_leaves` give
+  examples to commands that a tool adds at run time ([ADR-0021]).
 
 - crumbkit-test: [`check_opt_outs`] pins a tool's opt-outs and budgets,
   with each reason and what it costs an agent, in a text and a JSON golden
@@ -106,6 +108,8 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- crumbkit: a guided command's help prints the tool's own `before_help`
+  and `before_long_help` above the goal list ([ADR-0021]).
 - crumbkit-test: [`Examples`] borrows its paths for a lifetime, so a test
   can build one from a path it computes at runtime.
 - crumbkit: each argument row of `commands list` has a `one_of` field that
@@ -219,6 +223,7 @@ rustdoc, or at its decision record. -->
 [`usage::ended`]: crates/crumbkit/src/usage.rs
 [`help`]: crates/crumbkit/src/help.rs
 [`help::quote`]: crates/crumbkit/src/help.rs
+[`help::RuntimeLeaf`]: crates/crumbkit/src/help/runtime.rs
 [`commands`]: crates/crumbkit/src/commands.rs
 [`schemas`]: crates/crumbkit/src/schemas.rs
 [`usage`]: crates/crumbkit/src/usage.rs

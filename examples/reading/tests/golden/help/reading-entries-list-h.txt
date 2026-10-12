@@ -1,0 +1,15 @@
+List the entries of the reading list that --list names, in file order
+
+Usage: reading entries list [OPTIONS] --list <NAME>
+
+Options:
+      --list <NAME>  The name of the reading list, such as to-read
+      --limit <N>    Print at most this many rows [default: 3]
+      --all          Print every row
+  -h, --help         Print help (see more with '--help')
+
+Examples:
+  reading entries list --list to-read
+
+Global flags: --json, --fields <FIELD>, --long, --full. `reading entries list --help` describes them.
+Next: reading entries list --help explains each column.

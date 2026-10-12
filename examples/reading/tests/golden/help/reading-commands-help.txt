@@ -1,0 +1,24 @@
+Explore reading's commands
+
+Usage: reading commands [OPTIONS] <COMMAND>
+
+Commands:
+  list  List a branch of reading's commands with their arguments and examples
+
+Options:
+      --json
+          Print the result as a JSON document on one line
+
+      --fields <FIELD>
+          Print only these comma-separated fields, in this order
+
+      --long
+          Add the long columns after the compact ones
+
+      --full
+          With --json, print every field of every row
+
+  -h, --help
+          Print help (see a summary with '-h')
+
+Next: reading commands <COMMAND> -h

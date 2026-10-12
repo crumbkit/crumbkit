@@ -1,0 +1,12 @@
+Work with the entries of any reading list
+
+Usage: reading entries [OPTIONS] <COMMAND>
+
+Commands:
+  list  List the entries of the reading list that --list names, in file order
+
+Options:
+  -h, --help  Print help (see more with '--help')
+
+Global flags: --json, --fields <FIELD>, --long, --full. `reading entries --help` describes them.
+Next: reading entries <COMMAND> -h

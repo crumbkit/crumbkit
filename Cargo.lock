@@ -557,6 +557,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "reading"
+version = "0.0.0"
+dependencies = [
+ "clap",
+ "crumbkit",
+ "crumbkit-test",
+ "etcetera",
+ "schemars",
+ "serde",
+ "snapbox",
+ "tempfile",
+]
+
+[[package]]
 name = "ref-cast"
 version = "1.0.27"
 source = "registry+https://github.com/rust-lang/crates.io-index"

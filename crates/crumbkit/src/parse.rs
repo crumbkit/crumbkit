@@ -115,10 +115,9 @@ where
 /// subcommand name, as in `shelf --fields books`, names no command.
 ///
 /// A command that `guide` gives goals lists its subcommands under their
-/// headings, as [`help::extend`](crate::help::extend) describes. The list
-/// replaces the command's own `before_help` and `before_long_help`, so
-/// neither text prints. crumbkit adds its lines after the command's own
-/// `after_help` and `after_long_help`:
+/// headings, as [`help::extend`](crate::help::extend) describes, below the
+/// command's own `before_help` or `before_long_help`. crumbkit adds its
+/// lines after the command's own `after_help` and `after_long_help`:
 ///
 /// - `-h` ends with a line that names the visible global flags of the root
 ///   and of each command on the way, the root's first, such as ``Global

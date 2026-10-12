@@ -1,0 +1,31 @@
+Keep reading lists, and print the entries of each
+
+Usage: reading [OPTIONS] <COMMAND>
+
+Commands:
+  entries   Work with the entries of any reading list
+  commands  Explore reading's commands
+  schemas   Explore the JSON documents that reading prints
+  finished  Books finished this year
+  to-read   Books to read next
+
+Options:
+      --json
+          Print the result as a JSON document on one line
+
+      --fields <FIELD>
+          Print only these comma-separated fields, in this order
+
+      --long
+          Add the long columns after the compact ones
+
+      --full
+          With --json, print every field of every row
+
+  -h, --help
+          Print help (see a summary with '-h')
+
+  -V, --version
+          Print version
+
+Next: reading <COMMAND> -h

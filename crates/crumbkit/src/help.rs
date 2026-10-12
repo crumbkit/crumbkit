@@ -5,6 +5,7 @@
 //! which `<tool> help <TOPIC>` prints.
 
 pub(crate) mod leaf;
+mod runtime;
 pub(crate) mod topic;
 
 use std::fmt::Write as _;
@@ -14,6 +15,7 @@ use clap::builder::StyledStr;
 use clap::builder::styling::Style;
 
 pub use self::leaf::{Column, Example, Leaf, quote};
+pub use self::runtime::RuntimeLeaf;
 pub use self::topic::Topic;
 
 #[cfg(test)]
@@ -220,9 +222,11 @@ impl Goal {
 /// is listed under both. The `Options:` section and crumbkit's lines from
 /// [`parse`](crate::parse) follow the list in `-h` and `--help`.
 ///
-/// The list replaces the guided command's own `before_help` and
-/// `before_long_help`, so neither text prints. A tool that needs its own
-/// text there leaves that command out of the guide.
+/// The guided command's own `before_help` prints at the top of `-h`, and its
+/// `before_long_help` at the top of `--help`, as in clap's default layout.
+/// A list that holds `{` replaces them, because clap's template would expand
+/// or drop that text, so a description or a heading with a brace costs the
+/// command its own `before_help`.
 ///
 /// Each leaf's help ends with its `Examples:` section after the options, in
 /// `-h` and in `--help`, as `parse` prints it, and the section replaces the
@@ -280,37 +284,45 @@ pub fn extend(mut command: Command, guide: &Guide) -> Command {
     command
 }
 
-/// Gives `node`, the command at the path of `group`, the help template and
-/// the headed list of `group`'s goals, with `header` as the style of each
-/// heading and `literal` as the style of each name. It leaves `node`
+/// Gives `node`, the command at the path of `group`, a help template that
+/// holds the headed list of `group`'s goals, with `header` as the style of
+/// each heading and `literal` as the style of each name. It leaves `node`
 /// unchanged when the list would be empty. [`extend`] and
 /// [`parse`](crate::parse) both apply a group through it.
+///
+/// The command's own `before_help` and `before_long_help` stay as the tool
+/// set them, and the template prints them at the top of the page, as clap's
+/// default template does.
 pub(crate) fn apply(node: &mut Command, group: &Group, header: Style, literal: Style) {
     let Some(list) = list(node, group.goals, header, literal) else {
         return;
     };
-    // `--help` falls back to `before_help` when `before_long_help` is
-    // unset, so the list shows in both. A set `before_long_help` would make
-    // clap's `-h` line say `(see more with '--help')` on a page whose
-    // `--help` shows nothing more.
+    // clap expands each `{tag}` in a template and drops the text after a
+    // `{` without a closing `}`, and it expands no tags in `before_help`.
     //
-    // RUST-10: the list replaces a tool's own `before_help` and
-    // `before_long_help` on a guided command. A tool that needs its own text
-    // there keeps that command out of the guide, until a template tag of
-    // crumbkit's own replaces `before_help` as the list's place.
-    *node = std::mem::take(node)
-        .help_template(template(header))
-        .before_help(list)
-        .before_long_help(None::<&str>);
+    // RUST-10: a list that holds `{`, from a heading or a subcommand's
+    // description, goes in `before_help` instead of the template, so it
+    // prints as written and the command loses its own `before_help` and
+    // `before_long_help`. Clearing `before_long_help` keeps clap's `-h`
+    // line from saying `(see more with '--help')` on a page whose `--help`
+    // shows nothing more. A template tag that clap leaves to crumbkit
+    // replaces this fallback if clap adds one.
+    if list.contains('{') {
+        *node = std::mem::take(node)
+            .help_template(template(header, ""))
+            .before_help(list)
+            .before_long_help(None::<&str>);
+    } else {
+        *node = std::mem::take(node).help_template(template(header, &list));
+    }
 }
 
-/// Returns the help template of a guided command, with `header` as the style
-/// of its `Options:` heading.
+/// Returns the help template of a guided command, with `list` after the
+/// usage line and `header` as the style of its `Options:` heading.
 ///
-/// It is clap's default template with the guide's list in `{before-help}` in
-/// place of `{all-args}`. clap expands no tags in `before_help`, so a `{` in
-/// a description prints as it is. The one exception is `{n}`, which clap
-/// turns into a line break in `before_help`.
+/// It is clap's default template with the guide's list in place of
+/// `{all-args}`. An empty `list` leaves its place to `{before-help}`, which
+/// then holds the list, as [`apply`] describes.
 //
 // RUST-10: the template copies the layout of clap's default template, and
 // shelf's golden files fail when clap changes that layout. It handles
@@ -319,10 +331,21 @@ pub(crate) fn apply(node: &mut Command, group: &Group, header: Style, literal: S
 // help heading under `Options:` (clap's help_template.rs). A template that
 // writes each of clap's sections replaces it when a guided command needs
 // positional arguments or help headings.
-fn template(header: Style) -> String {
-    format!(
-        "{{about-with-newline}}\n{{usage-heading}} {{usage}}\n\n{{before-help}}{header}Options:{header:#}\n{{options}}{{after-help}}"
-    )
+fn template(header: Style, list: &str) -> String {
+    let mut template = String::with_capacity(list.len() + 160);
+    if list.is_empty() {
+        template.push_str("{about-with-newline}\n{usage-heading} {usage}\n\n{before-help}");
+    } else {
+        template.push_str("{before-help}{about-with-newline}\n{usage-heading} {usage}\n\n");
+        template.push_str(list);
+        template.push_str("\n\n");
+    }
+    // Writing to a `String` cannot fail.
+    let _ = write!(
+        template,
+        "{header}Options:{header:#}\n{{options}}{{after-help}}"
+    );
+    template
 }
 
 /// Returns the command at `path` below `command`, matching each name against

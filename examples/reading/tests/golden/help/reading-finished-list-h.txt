@@ -1,0 +1,14 @@
+List the entries of this reading list, in file order
+
+Usage: reading finished list [OPTIONS]
+
+Options:
+      --limit <N>  Print at most this many rows [default: 3]
+      --all        Print every row
+  -h, --help       Print help (see more with '--help')
+
+Examples:
+  reading finished list
+  reading finished list --all
+
+Global flags: --json, --fields <FIELD>, --long, --full. `reading finished list --help` describes them.

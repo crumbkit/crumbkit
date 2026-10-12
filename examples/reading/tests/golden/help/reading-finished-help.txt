@@ -1,0 +1,24 @@
+Books finished this year
+
+Usage: reading finished [OPTIONS] <COMMAND>
+
+Commands:
+  list  List the entries of this reading list, in file order
+
+Options:
+      --json
+          Print the result as a JSON document on one line
+
+      --fields <FIELD>
+          Print only these comma-separated fields, in this order
+
+      --long
+          Add the long columns after the compact ones
+
+      --full
+          With --json, print every field of every row
+
+  -h, --help
+          Print help (see a summary with '-h')
+
+Next: reading finished <COMMAND> -h

@@ -1,0 +1,44 @@
+[package]
+name = "reading"
+description = "crumbkit's example of a tool that adds commands at run time, one for each reading list in a directory"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+
+[dependencies]
+# reading is a binary, so it chooses clap's user-facing features, as shelf
+# does: help, usage lines, error context, suggestions for mistyped commands,
+# and colour when the output goes to a terminal.
+clap = { workspace = true, features = [
+    "derive",
+    "help",
+    "usage",
+    "error-context",
+    "suggestions",
+    "color",
+] }
+# reading parses its command line, prints its help and its results, and
+# builds the guide of the commands it adds at run time with crumbkit.
+crumbkit = { workspace = true }
+# reading finds its lists in its directory under the XDG data directory,
+# which etcetera's base strategy gives.
+etcetera = { workspace = true }
+# reading derives `Serialize` and `JsonSchema` for the entries it prints.
+serde = { workspace = true, features = ["derive"] }
+schemars = { workspace = true, features = ["derive"] }
+
+[dev-dependencies]
+# reading's tests check its failure codes, its command tree and its examples
+# with crumbkit-test.
+crumbkit-test = { workspace = true }
+# `cmd` runs the built reading binary in the end-to-end tests.
+snapbox = { workspace = true, features = ["cmd"] }
+# Each end-to-end test runs reading with XDG directories in a temporary
+# directory of its own, which tempfile removes when the test ends.
+tempfile = { workspace = true }
+
+[lints]
+workspace = true

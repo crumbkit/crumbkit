@@ -7,6 +7,7 @@ members = [
     "crates/crumbkit-test",
     "crates/cargo-crumbkit",
     "examples/shelf",
+    "examples/reading",
     "benches",
     "xtask",
 ]

@@ -1,0 +1,3 @@
+error: reading has no list named unread
+  help:  run `reading commands list`
+  code:  reading::entries::not_found

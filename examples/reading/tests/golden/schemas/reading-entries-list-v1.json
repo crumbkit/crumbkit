@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "reading/entries-list/v1",
+  "description": "One page of a reading list's entries and the number of entries in it.",
+  "type": "object",
+  "properties": {
+    "data": {
+      "description": "The rows of the page, up to the limit.",
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/Entry"
+      }
+    },
+    "schema": {
+      "description": "The id of this document.",
+      "const": "reading/entries-list/v1"
+    },
+    "total": {
+      "description": "The number of rows that matched, of which data holds one page.",
+      "type": "integer",
+      "minimum": 0
+    }
+  },
+  "required": [
+    "schema",
+    "data",
+    "total"
+  ],
+  "$defs": {
+    "Entry": {
+      "description": "One entry of a reading list.",
+      "type": "object",
+      "properties": {
+        "position": {
+          "description": "The entry's position in the list, counting from 1.",
+          "type": "integer",
+          "format": "uint",
+          "minimum": 0
+        },
+        "title": {
+          "description": "The title of the book.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "position",
+        "title"
+      ]
+    }
+  }
+}
