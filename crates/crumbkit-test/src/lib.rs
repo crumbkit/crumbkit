@@ -11,6 +11,7 @@
 //! [`check_guide`]: crate::check_guide
 //! [`check_help_sizes`]: crate::check_help_sizes
 //! [`Budgets`]: crate::Budgets
+//! [`Budget`]: crate::Budget
 //! [`check_path_weights`]: crate::check_path_weights
 //! [`PathBudgets`]: crate::PathBudgets
 //! [`path_totals`]: crate::path_totals
@@ -31,6 +32,7 @@
 #![cfg_attr(docsrs, feature(doc_cfg))]
 
 mod allow;
+mod budget;
 mod codes;
 mod documents;
 mod examples;
@@ -51,6 +53,7 @@ mod tree;
 mod weights;
 
 pub use crate::allow::{Allow, Rule};
+pub use crate::budget::Budget;
 pub use crate::codes::check_codes;
 pub use crate::documents::{check_document_ids, check_mounts};
 pub use crate::examples::{Examples, check_examples, example_golden_name};

@@ -4,6 +4,7 @@ use clap::Command;
 use crumbkit::help::Guide;
 
 use super::{Budgets, check_help_sizes};
+use crate::Budget;
 use crate::pages::pages;
 use crate::testing::panic_message;
 
@@ -42,7 +43,10 @@ fn pages_within_crumbkit_s_default_budgets_pass() {
 
 #[test]
 fn a_page_over_its_budget_fails_the_check() {
-    const BUDGETS: Budgets = Budgets::new().root(10).group(20).leaf(30);
+    const BUDGETS: Budgets = Budgets::new()
+        .root(10, "A test.")
+        .group(20, "A test.")
+        .leaf(30, "A test.");
 
     assert_eq!(
         panic_message(|| check_help_sizes(&shelf(), &Guide::new(), &BUDGETS)).unwrap(),
@@ -62,7 +66,10 @@ fn a_page_over_its_budget_fails_the_check() {
 
 #[test]
 fn a_command_s_budget_wins_over_the_budget_of_its_class() {
-    const BUDGETS: Budgets = Budgets::new().leaf(1).nodes(&[("books list", 1_200)]);
+    const BUDGETS: Budgets =
+        Budgets::new()
+            .leaf(1, "A test.")
+            .nodes(&[Budget::new("books list", 1_200, "A test.")]);
 
     assert_eq!(
         panic_message(|| check_help_sizes(&shelf(), &Guide::new(), &BUDGETS)).unwrap(),
@@ -75,33 +82,26 @@ fn a_command_s_budget_wins_over_the_budget_of_its_class() {
 }
 
 #[test]
-fn a_class_budget_above_crumbkit_s_default_fails_the_check() {
-    const BUDGETS: Budgets = Budgets::new().root(1_501).group(801).leaf(1_201);
+fn a_tool_can_raise_any_budget_above_crumbkit_s_default_with_a_reason() {
+    const BUDGETS: Budgets = Budgets::new()
+        .root(1_501, "The root lists every resource.")
+        .group(801, "Groups name their verbs in full.")
+        .leaf(1_201, "Leaves show long examples.")
+        .nodes(&[Budget::new(
+            "books list",
+            2_000,
+            "The listing has many filters.",
+        )]);
 
-    assert_eq!(
-        panic_message(|| check_help_sizes(&shelf(), &Guide::new(), &BUDGETS)).unwrap(),
-        "the command tree breaks crumbkit's help size rules:\n\
-         the root budget of 1501 bytes is above crumbkit's default of 1500 bytes, and a tool can lower a budget and cannot raise one\n\
-         the group budget of 801 bytes is above crumbkit's default of 800 bytes, and a tool can lower a budget and cannot raise one\n\
-         the leaf budget of 1201 bytes is above crumbkit's default of 1200 bytes, and a tool can lower a budget and cannot raise one"
-    );
-}
-
-#[test]
-fn a_command_s_budget_above_crumbkit_s_default_for_its_class_fails_the_check() {
-    const BUDGETS: Budgets = Budgets::new().nodes(&[("books", 801), ("books list", 1_201)]);
-
-    assert_eq!(
-        panic_message(|| check_help_sizes(&shelf(), &Guide::new(), &BUDGETS)).unwrap(),
-        "the command tree breaks crumbkit's help size rules:\n\
-         shelf books: the budget of 801 bytes is above crumbkit's default of 800 bytes for a group, and a tool can lower a budget and cannot raise one\n\
-         shelf books list: the budget of 1201 bytes is above crumbkit's default of 1200 bytes for a leaf, and a tool can lower a budget and cannot raise one"
-    );
+    check_help_sizes(&shelf(), &Guide::new(), &BUDGETS);
 }
 
 #[test]
 fn a_command_s_budget_that_names_no_command_or_a_hidden_one_fails_the_check() {
-    const BUDGETS: Budgets = Budgets::new().nodes(&[("books lst", 600), ("books purge", 600)]);
+    const BUDGETS: Budgets = Budgets::new().nodes(&[
+        Budget::new("books lst", 600, "A test."),
+        Budget::new("books purge", 600, "A test."),
+    ]);
 
     assert_eq!(
         panic_message(|| check_help_sizes(&shelf(), &Guide::new(), &BUDGETS)).unwrap(),
@@ -113,7 +113,7 @@ fn a_command_s_budget_that_names_no_command_or_a_hidden_one_fails_the_check() {
 
 #[test]
 fn a_command_whose_page_fails_to_render_reports_only_the_missing_page() {
-    const BUDGETS: Budgets = Budgets::new().nodes(&[("books list", 600)]);
+    const BUDGETS: Budgets = Budgets::new().nodes(&[Budget::new("books list", 600, "A test.")]);
     let shelf = Command::new("shelf")
         .subcommand(Command::new("books").subcommand(Command::new("list").disable_help_flag(true)));
 

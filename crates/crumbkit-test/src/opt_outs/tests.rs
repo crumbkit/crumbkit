@@ -9,7 +9,7 @@ use snapbox::assert::Action;
 use super::check;
 use crate::temp::TempDir;
 use crate::testing::panic_message;
-use crate::{Allow, Rule};
+use crate::{Allow, Budget, Budgets, PathBudgets, Rule};
 
 /// The opt-outs of the test tool.
 const ALLOW: &[Allow] = &[
@@ -32,9 +32,29 @@ fn shelf() -> Command {
         .subcommand(Command::new("version"))
 }
 
-/// Runs the check on `shelf()` with `allow` against `dir` with `action`.
+/// Runs the check on `shelf()` with `allow` and crumbkit's default budgets
+/// against `dir` with `action`.
 fn run(allow: &[Allow], dir: &TempDir, action: Action) {
-    check(&shelf(), allow, dir.path(), &Assert::new().action(action));
+    run_with(allow, &Budgets::new(), None, dir, action);
+}
+
+/// Runs the check on `shelf()` with `allow`, `budgets` and `paths` against
+/// `dir` with `action`.
+fn run_with(
+    allow: &[Allow],
+    budgets: &Budgets,
+    paths: Option<&PathBudgets<'_>>,
+    dir: &TempDir,
+    action: Action,
+) {
+    check(
+        &shelf(),
+        allow,
+        budgets,
+        paths,
+        dir.path(),
+        &Assert::new().action(action),
+    );
 }
 
 /// Returns the text of the file `name` in `dir`.
@@ -81,7 +101,8 @@ fn overwrite_writes_each_opt_out_as_json() {
       "reason": "The store looks up one book at a time.",
       "costs": [
         "An agent runs the command once for each id."
-      ]
+      ],
+      "budget": null
     }
   ]
 }
@@ -136,5 +157,74 @@ fn a_missing_and_a_differing_report_each_fail() {
     assert!(
         message.contains("opt-outs.json` is missing, and `SNAPSHOTS=overwrite` writes it"),
         "{message}"
+    );
+}
+
+#[test]
+fn the_report_lists_each_budget_that_differs_from_crumbkit_s_default() {
+    const BUDGETS: Budgets = Budgets::new()
+        .leaf(1_500, "Leaves show long examples.")
+        .nodes(&[Budget::new("books", 600, "The group has two verbs.")]);
+    let paths = PathBudgets::new("tests/golden/examples").path(4_000, "Paths are short.");
+    let dir = TempDir::new("opt-outs-budgets").unwrap();
+
+    run_with(&[], &BUDGETS, Some(&paths), &dir, Action::Overwrite);
+
+    assert_eq!(
+        read(&dir, "opt-outs.txt"),
+        "shelf has 3 opt-outs from crumbkit's conventions.\n\
+         \n\
+         help-budget/leaf: every leaf of shelf\n\
+         \x20 Budget: 1500 bytes, where crumbkit's default is 1200 bytes.\n\
+         \x20 Reason: Leaves show long examples.\n\
+         \x20 Cost: Each read of the page can cost 300 bytes more than crumbkit's default, about 75 tokens.\n\
+         \n\
+         help-budget/command: shelf books\n\
+         \x20 Budget: 600 bytes, where crumbkit's default is 800 bytes.\n\
+         \x20 Reason: The group has two verbs.\n\
+         \x20 Cost: None, because the budget is at or below crumbkit's default.\n\
+         \n\
+         path-budget/path: every path through shelf\n\
+         \x20 Budget: 4000 bytes, where crumbkit's default is 8000 bytes.\n\
+         \x20 Reason: Paths are short.\n\
+         \x20 Cost: None, because the budget is at or below crumbkit's default.\n"
+    );
+}
+
+#[test]
+fn the_json_report_gives_a_raised_budget_its_extra_bytes_and_tokens() {
+    const BUDGETS: Budgets = Budgets::new();
+    const NODES: &[Budget] = &[Budget::new(
+        "books show",
+        9_001,
+        "The page lists every field.",
+    )];
+    let paths = PathBudgets::new("tests/golden/examples").nodes(NODES);
+    let dir = TempDir::new("opt-outs-budget-json").unwrap();
+
+    run_with(&[], &BUDGETS, Some(&paths), &dir, Action::Overwrite);
+
+    assert_eq!(
+        read(&dir, "opt-outs.json"),
+        r#"{
+  "schema": "crumbkit/opt-outs/v1",
+  "data": [
+    {
+      "rule": "path-budget/command",
+      "applies_to": "shelf books show",
+      "reason": "The page lists every field.",
+      "costs": [
+        "An agent that finds and runs the command can read 1001 bytes more than crumbkit's default, about 251 tokens."
+      ],
+      "budget": {
+        "bytes": 9001,
+        "default": 8000,
+        "extra_bytes": 1001,
+        "extra_tokens": 251
+      }
+    }
+  ]
+}
+"#
     );
 }

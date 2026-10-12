@@ -12,6 +12,10 @@ use crate::error::WeighError;
 /// below reads. It has none.
 const ALLOW: &[Allow] = &[];
 
+/// The budgets of cargo-crumbkit's `-h` pages, which are crumbkit's
+/// defaults.
+const BUDGETS: Budgets = Budgets::new();
+
 #[test]
 fn every_failure_code_spells_uniquely_as_printable_ascii() {
     crumbkit_test::check_codes(SPELLING, &[WeighError::CODES]);
@@ -44,7 +48,7 @@ fn every_command_leaf_and_topic_meets_the_guide_rules() {
 
 #[test]
 fn every_help_page_fits_its_size_budget() {
-    crumbkit_test::check_help_sizes(&Cli::command(), &GUIDE, &Budgets::new());
+    crumbkit_test::check_help_sizes(&Cli::command(), &GUIDE, &BUDGETS);
 }
 
 #[test]
@@ -64,5 +68,5 @@ fn every_crumbkit_command_sits_at_its_fixed_path() {
 
 #[test]
 fn every_opt_out_matches_the_opt_out_report() {
-    crumbkit_test::check_opt_outs(&Cli::command(), ALLOW, "tests/golden");
+    crumbkit_test::check_opt_outs(&Cli::command(), ALLOW, &BUDGETS, None, "tests/golden");
 }

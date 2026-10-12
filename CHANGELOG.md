@@ -97,9 +97,9 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   `--author 'Le Guin'`, and rendering checks it against the tool's command
   tree ([`Call`], [ADR-0001]).
 
-- crumbkit-test: [`check_opt_outs`] pins a tool's opt-outs, with each
-  reason and what it costs an agent, in a text and a JSON golden file
-  ([ADR-0036]).
+- crumbkit-test: [`check_opt_outs`] pins a tool's opt-outs and budgets,
+  with each reason and what it costs an agent, in a text and a JSON golden
+  file ([ADR-0036]).
 
 ### Changed
 
@@ -128,6 +128,9 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit-test: [`check_grammar`] passes a leaf directly under the root,
   a resource name or a command's own `--dry-run` that an opt-out names
   ([ADR-0015]).
+- crumbkit-test: [`Budgets`] and [`PathBudgets`] take a reason with each
+  budget, a command's budget is a [`Budget`], and a tool can raise a
+  budget above crumbkit's default ([ADR-0025]).
 
 ### Removed
 
@@ -254,4 +257,7 @@ rustdoc, or at its decision record. -->
 [`output_weight`]: crates/crumbkit-test/src/weights.rs
 [`Allow`]: crates/crumbkit-test/src/allow.rs
 [`check_opt_outs`]: crates/crumbkit-test/src/opt_outs.rs
+[`Budget`]: crates/crumbkit-test/src/budget.rs
+[`Budgets`]: crates/crumbkit-test/src/sizes.rs
+[`PathBudgets`]: crates/crumbkit-test/src/weights.rs
 [ADR-0036]: docs/decisions/api/0036-opt-outs.md

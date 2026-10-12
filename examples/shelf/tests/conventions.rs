@@ -23,6 +23,16 @@ const ALLOW: &[Allow] = &[
     Allow::new(Rule::Examples, "self figures list", DAILY),
 ];
 
+/// The budgets of shelf's `-h` pages, which are crumbkit's defaults.
+const BUDGETS: Budgets = Budgets::new();
+
+/// The budgets of the paths through shelf's help. shelf's longest path,
+/// `commands list`, reads about 3,500 bytes.
+const PATH_BUDGETS: PathBudgets<'_> = PathBudgets::new("tests/golden/examples").path(
+    4_000,
+    "shelf's longest path reads about 3,500 bytes, so 4,000 bytes leaves room for small changes and catches a page or an output that grows by much.",
+);
+
 /// shelf's built binary and the directory that holds its example golden
 /// files.
 const EXAMPLES: Examples<'_> =
@@ -55,19 +65,12 @@ fn every_command_leaf_and_topic_meets_the_guide_rules() {
 
 #[test]
 fn every_help_page_fits_its_size_budget() {
-    crumbkit_test::check_help_sizes(&Cli::command(), &GUIDE, &Budgets::new());
+    crumbkit_test::check_help_sizes(&Cli::command(), &GUIDE, &BUDGETS);
 }
 
-/// shelf's longest path, `commands list`, reads about 3,500 bytes, so a
-/// budget of 4,000 bytes leaves room for small changes and catches a page
-/// or an output that grows by much.
 #[test]
 fn every_path_through_the_help_fits_its_weight_budget() {
-    crumbkit_test::check_path_weights(
-        &Cli::command(),
-        &GUIDE,
-        &PathBudgets::new("tests/golden/examples").path(4_000),
-    );
+    crumbkit_test::check_path_weights(&Cli::command(), &GUIDE, &PATH_BUDGETS);
 }
 
 #[test]
@@ -97,5 +100,11 @@ fn every_example_in_the_guide_runs_and_prints_its_golden_output() {
 
 #[test]
 fn every_opt_out_matches_the_opt_out_report() {
-    crumbkit_test::check_opt_outs(&Cli::command(), ALLOW, "tests/golden");
+    crumbkit_test::check_opt_outs(
+        &Cli::command(),
+        ALLOW,
+        &BUDGETS,
+        Some(&PATH_BUDGETS),
+        "tests/golden",
+    );
 }

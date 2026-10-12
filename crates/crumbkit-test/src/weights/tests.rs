@@ -4,6 +4,7 @@ use clap::Command;
 use crumbkit::help::{Example, Guide, Leaf};
 
 use super::{PathBudgets, check_path_weights, output_weight, path_totals};
+use crate::Budget;
 use crate::pages::pages;
 use crate::temp::TempDir;
 use crate::testing::panic_message;
@@ -66,7 +67,7 @@ fn a_path_over_its_budget_fails_with_its_pages_and_output() {
     let dir = goldens();
     let pages = size("shelf") + size("shelf books") + size("shelf books list");
     let budget = pages + 39;
-    let leaves = [("books list", budget)];
+    let leaves = [Budget::new("books list", budget, "A test.")];
     let budgets = PathBudgets::new(dir.path().to_str().unwrap()).nodes(&leaves);
 
     assert_eq!(
@@ -83,30 +84,44 @@ fn a_path_over_its_budget_fails_with_its_pages_and_output() {
 fn a_command_s_budget_wins_over_the_path_budget() {
     let dir = goldens();
     let budget = size("shelf") + size("shelf books") + size("shelf books list") + 40;
-    let leaves = [("books list", budget)];
+    let leaves = [Budget::new("books list", budget, "A test.")];
     let budgets = PathBudgets::new(dir.path().to_str().unwrap())
-        .path(size("shelf") + size("shelf books") + size("shelf books show"))
+        .path(
+            size("shelf") + size("shelf books") + size("shelf books show"),
+            "A test.",
+        )
         .nodes(&leaves);
 
     check_path_weights(&shelf(), &GUIDE, &budgets);
 }
 
 #[test]
-fn a_budget_above_crumbkit_s_default_fails_the_check() {
+fn a_tool_can_raise_a_budget_above_crumbkit_s_default_with_a_reason() {
+    const NODES: &[Budget] = &[Budget::new(
+        "books list",
+        9_000,
+        "The listing's example prints many rows.",
+    )];
     let dir = goldens();
     let budgets = PathBudgets::new(dir.path().to_str().unwrap())
-        .path(8_001)
-        .nodes(&[
-            ("books list", 8_001),
-            ("books purge", 100),
-            ("books gone", 100),
-        ]);
+        .path(8_001, "Every path reads a long root page.")
+        .nodes(NODES);
+
+    check_path_weights(&shelf(), &GUIDE, &budgets);
+}
+
+#[test]
+fn a_command_s_budget_that_names_no_command_or_a_hidden_one_fails_the_check() {
+    const NODES: &[Budget] = &[
+        Budget::new("books purge", 100, "A test."),
+        Budget::new("books gone", 100, "A test."),
+    ];
+    let dir = goldens();
+    let budgets = PathBudgets::new(dir.path().to_str().unwrap()).nodes(NODES);
 
     assert_eq!(
         panic_message(|| check_path_weights(&shelf(), &GUIDE, &budgets)).unwrap(),
         "the command tree breaks crumbkit's path weight rules:\n\
-         the path budget of 8001 bytes is above crumbkit's default of 8000 bytes, and a tool can lower a budget and cannot raise one\n\
-         shelf books list: the budget of 8001 bytes is above crumbkit's default of 8000 bytes, and a tool can lower a budget and cannot raise one\n\
          the budget of `books purge` names no visible command below the root\n\
          the budget of `books gone` names no visible command below the root"
     );

@@ -40,8 +40,8 @@ The rustdoc of each check says what it fails on and shows an example:
 - Command and flag names: [`check_names`], [`check_grammar`],
   [`check_listings`] and [`check_filters`], which take the tool's
   opt-outs, each an [`Allow`] with a reason.
-- Opt-outs: [`check_opt_outs`], which pins the tool's opt-outs with their
-  reasons and costs in golden files.
+- Opt-outs: [`check_opt_outs`], which pins the tool's opt-outs and
+  budgets with their reasons and costs in golden files.
 - The help guide: [`check_guide`].
 - Help pages: [`check_help_sizes`] with [`Budgets`], and
   [`check_help_goldens`].
