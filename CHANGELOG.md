@@ -432,6 +432,9 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit: with the `miette` feature, labels on the same or nearby lines
   print their `at:` lines together and share their source lines, and each
   underline ends with its label's text ([ADR-0016]).
+- crumbkit: with the `miette` feature, the carets under a label measure
+  terminal columns with unicode-width, so they line up after wide
+  characters such as CJK text ([ADR-0016]).
 ### Removed
 
 - crumbkit: `Call::word` is gone, because `Call::value` adds a runtime value

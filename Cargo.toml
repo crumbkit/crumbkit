@@ -74,6 +74,13 @@ toml = { version = "1.1.8", default-features = false }
 # neither the `derive` macro nor miette's graphical renderer (ADR-0003).
 miette = { version = "7.6.0", default-features = false }
 
+# unicode-width measures how many terminal columns a text takes, so the caret
+# under a failure's label lines up after wide characters such as CJK text
+# (ADR-0016). Only crumbkit's `miette` feature uses it. miette already
+# depends on this version, so it adds no crate to the build. The entry
+# leaves out the `cjk` feature, which only `width_cjk` needs.
+unicode-width = { version = "0.1.14", default-features = false }
+
 # is-ai-agent tells whether a coding agent runs the tool and which one, and
 # gives the agent's session id when the agent sets one. crumbkit's default
 # build uses it, so no picker or confirmation asks an agent a question. It

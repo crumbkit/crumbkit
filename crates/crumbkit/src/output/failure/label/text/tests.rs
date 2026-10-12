@@ -243,6 +243,25 @@ fn a_label_inside_a_long_span_prints_the_lines_between_them_when_only_one_line_w
 }
 
 #[test]
+fn the_carets_after_wide_characters_start_under_the_labelled_text() {
+    // Each of the three CJK characters takes two terminal columns, so the
+    // 24 characters before `colour` take 27 columns. The `at:` column
+    // counts characters, as an editor does.
+    let failure = UnknownKey {
+        source: "[shelf]\nbooks = { name = \"猫の本\", colour = \"red\" }\nsize = 3\n",
+        labels: vec![LabeledSpan::new(None, 38, 6)],
+    };
+
+    let expected = "  at:    2:25
+     1 | [shelf]
+     2 | books = { name = \"猫の本\", colour = \"red\" }
+       |                            ^^^^^^
+     3 | size = 3
+";
+    assert!(text(&failure).contains(expected), "{}", text(&failure));
+}
+
+#[test]
 fn an_empty_span_is_underlined_with_one_caret() {
     let failure = in_shelf_toml(vec![LabeledSpan::new(None, 28, 0)]);
 

@@ -173,6 +173,7 @@ dependencies = [
  "siphasher",
  "tracing",
  "tracing-core",
+ "unicode-width",
 ]
 
 [[package]]

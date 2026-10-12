@@ -6,6 +6,8 @@
 
 use std::io::{self, Write};
 
+use unicode_width::UnicodeWidthStr;
+
 use super::super::super::table::escape_controls;
 use super::super::write_labelled;
 use super::{Label, Line, Place};
@@ -161,13 +163,19 @@ fn write_line(err: &mut impl Write, labels: &[Label], number: usize) -> io::Resu
 /// Returns the number of terminal columns that `text` takes, which places
 /// the carets of an underline.
 ///
-/// RUST-10: the width counts characters, so the carets line up when each
-/// character takes one terminal column. A control character prints as its
-/// escape, such as `\t`, before it is counted. A wide character, such as
-/// most CJK text and emoji, takes two columns and a combining mark takes
-/// none, so a line holding one misaligns the carets after it.
+/// unicode-width gives each character its width under Unicode's East Asian
+/// Width rules, so a wide character such as most CJK text and emoji counts
+/// two columns and a combining mark counts none. A control character prints
+/// as its escape, such as `\t`, before it is measured.
+///
+/// RUST-10: unicode-width measures by Unicode's rules, which give an emoji
+/// sequence joined by zero-width joiners, such as a family emoji, two
+/// columns. A terminal whose font has no glyph for the sequence draws each
+/// emoji of it on its own, so the sequence shows wider than it measures and
+/// the carets after it sit to the left of the labelled text. crumbkit cannot
+/// see the terminal's font, so no measure fixes this for every terminal.
 fn width(text: &str) -> usize {
-    text.chars().count()
+    UnicodeWidthStr::width(text)
 }
 
 impl Place {
