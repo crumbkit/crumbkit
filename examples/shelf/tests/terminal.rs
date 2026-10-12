@@ -1,8 +1,9 @@
 //! The terminal test of shelf, which runs each example with standard input,
 //! standard output and standard error on pseudo-terminals and compares the
-//! bytes with the example's golden file, which a piped run wrote. A result
-//! prints the same bytes at a terminal as through a pipe (ADR-0049,
-//! OUTPUT-1).
+//! bytes with the example's golden files, which a piped run wrote: the
+//! `.txt` file for standard output and the `.stderr` file, when the example
+//! has one, for standard error. A result prints the same bytes at a
+//! terminal as through a pipe (ADR-0049, OUTPUT-1).
 //!
 //! The test opens the pseudo-terminals with rustix's safe functions and runs
 //! on macOS and Linux only. Each terminal is in raw mode, so the terminal
@@ -216,9 +217,14 @@ fn every_example_prints_the_same_bytes_at_a_terminal_as_through_a_pipe() {
                 "{line} prints different bytes at a terminal than its golden file {golden} holds:\n{}",
                 String::from_utf8_lossy(&run.stdout)
             );
+            // An example that writes to standard error has a `.stderr`
+            // golden file beside its `.txt` one, and an example without one
+            // writes nothing there.
+            let stderr_golden = golden.replace(".txt", ".stderr");
+            let expected_stderr = std::fs::read(&stderr_golden).unwrap_or_default();
             assert!(
-                run.stderr.is_empty(),
-                "{line} writes to standard error at a terminal: {}",
+                run.stderr == expected_stderr,
+                "{line} writes different bytes to standard error at a terminal than {stderr_golden} holds:\n{}",
                 String::from_utf8_lossy(&run.stderr)
             );
             compared += 1;

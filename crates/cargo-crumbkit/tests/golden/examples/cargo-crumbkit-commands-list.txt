@@ -5,4 +5,3 @@ cargo crumbkit weigh          Measure the bytes that an agent reads on each path
 cargo crumbkit docs           Write a Markdown reference of every command of a tool to a file
 cargo crumbkit commands       Explore cargo crumbkit's commands
 cargo crumbkit commands list  List a branch of cargo crumbkit's commands with their arguments, examples and columns
-Exit codes: 0, 1 and 2 are crumbkit's. `cargo crumbkit help exit-codes` describes them.

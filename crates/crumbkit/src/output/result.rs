@@ -7,7 +7,6 @@ use std::io::{self, Write};
 use serde_json::Value;
 
 use super::budget::{self, Cut, Over, OverBudget};
-use super::dry_run::DRY_RUN_LINE;
 use super::envelope::{Extras, Failures, Selected, SelectedRows, write_document};
 use super::failure::PreparedFailure;
 use super::table::Table;
@@ -41,18 +40,19 @@ pub(super) enum Answer {
 /// prints the most rows that fit, marked as cut short, and a batch prints
 /// the most rows that fit and always its first. A single row or a prose
 /// result prints nothing, unless its document always prints its first
-/// answer, in which case it prints whole. The line that marks a cut in the
-/// JSON of a document without the envelope goes to `err`, as does a debug
-/// build's warning about a failure.
+/// answer, in which case it prints whole. After `out` is flushed, the lines
+/// that describe the result go to `err`: in text, a listing's footer or
+/// empty note, the cut line, the tool's note and the `Next:` line, and with
+/// `--json`, the cut line of a document without the envelope (ADR-0050). A
+/// debug build's warning about a failure also goes to `err`.
 ///
 /// The text of a bytes result is the bytes unchanged. They print when they
 /// fit, or when the document always prints its first answer, and are
 /// refused otherwise, because a file cut short would look whole.
 ///
 /// A serialization error becomes an `io::Error` of kind `InvalidData`, so it
-/// is reported as a failed write. The text of a dry run ends with
-/// [`DRY_RUN_LINE`], except the text of a bytes result, whose line
-/// `finish` writes to standard error.
+/// is reported as a failed write. `finish` writes the line of a dry run to
+/// standard error itself, after a batch's failures.
 pub(super) fn write_result<T: Rows>(
     out: &mut impl Write,
     err: &mut impl Write,
@@ -93,10 +93,13 @@ pub(super) fn write_result<T: Rows>(
     let listed = failures.map(|listed| Failures { listed, over: None });
     let rows = value.rows().len();
     let whole = budget::buffered(budget, |buffer| prepared.write(buffer, rows, None, listed))?;
-    if let Some(bytes) = whole {
+    if let Some(mut bytes) = whole {
         out.write_all(&bytes)?;
         out.flush()?;
-        return Ok((Answer::Whole, bytes.len()));
+        let written = bytes.len();
+        // The buffer of the result is free again, so the notes reuse it.
+        prepared.send_notes(err, &mut bytes, rows, None);
+        return Ok((Answer::Whole, written));
     }
     match T::SHAPE {
         Shape::Listing | Shape::List if rows > 0 => {
@@ -108,10 +111,12 @@ pub(super) fn write_result<T: Rows>(
         }
         Shape::Listing | Shape::List | Shape::Batch => {
             let bytes = prepared.measured_write(out, rows, None, listed)?;
+            prepared.send_notes(err, &mut Vec::new(), rows, None);
             Ok((Answer::Whole, bytes))
         }
         _ if document.always_prints_first() => {
             let bytes = prepared.measured_write(out, rows, None, listed)?;
+            prepared.send_notes(err, &mut Vec::new(), rows, None);
             Ok((Answer::Whole, bytes))
         }
         shape => {
@@ -228,8 +233,9 @@ impl<'a, T: Rows> Prepared<'a, T> {
     }
 
     /// Writes the result with its first `shown` rows to `out`, marked with
-    /// `cut` when the budget cut it short, then the line of a dry run in
-    /// text, and flushes `out`.
+    /// `cut` when the budget cut it short, and flushes `out`. The lines that
+    /// describe the result go to standard error through
+    /// [`Prepared::send_notes`].
     fn write(
         &mut self,
         out: &mut impl Write,
@@ -238,10 +244,57 @@ impl<'a, T: Rows> Prepared<'a, T> {
         failures: Option<Failures<'_>>,
     ) -> io::Result<()> {
         self.write_value(out, shown, cut, failures)?;
-        if self.dry_run && !self.json {
-            writeln!(out, "{DRY_RUN_LINE}")?;
-        }
         out.flush()
+    }
+
+    /// Writes the lines that describe the result with its first `shown`
+    /// rows to `err`, after the result is written and flushed (ADR-0050).
+    ///
+    /// The lines are rendered into `buffer`, which is cleared first, and
+    /// reach `err` in one write, so a reader that merges the two streams
+    /// never sees a note split by other output. A failed write to `err`
+    /// goes unreported, because standard error is the last place to report
+    /// anything.
+    fn send_notes(
+        &self,
+        err: &mut impl Write,
+        buffer: &mut Vec<u8>,
+        shown: usize,
+        cut: Option<&Cut>,
+    ) {
+        buffer.clear();
+        // A `Vec` takes every byte, so writing the notes cannot fail.
+        let _ = self.write_notes(buffer, shown, cut);
+        if !buffer.is_empty() {
+            let _ = err.write_all(buffer).and_then(|()| err.flush());
+        }
+    }
+
+    /// Writes the lines that describe the result to `out`: in text, the cut
+    /// line, or else the footer and the empty note, then the tool's note
+    /// and the `Next:` line; with `--json`, only the cut line of a document
+    /// without the envelope, which has no `cut` field.
+    fn write_notes(&self, out: &mut impl Write, shown: usize, cut: Option<&Cut>) -> io::Result<()> {
+        let value = self.value;
+        if self.json {
+            if let Some(cut) = cut.filter(|_| !self.document.has_envelope()) {
+                self.write_cut_line(out, shown, cut)?;
+            }
+            return Ok(());
+        }
+        if let Some(cut) = cut {
+            self.write_cut_line(out, shown, cut)?;
+        } else {
+            listing::write_footer(out, value)?;
+            listing::write_empty_note(out, value, self.document.empty_note())?;
+        }
+        if let Some(note) = value.note() {
+            writeln!(out, "{note}")?;
+        }
+        if let Some((call, phrase)) = &self.next {
+            writeln!(out, "Next: {call} {phrase}")?;
+        }
+        Ok(())
     }
 
     /// Measures the result as [`Prepared::write`] writes it, then writes
@@ -292,12 +345,7 @@ impl<'a, T: Rows> Prepared<'a, T> {
             return Ok((Answer::Refused(over), 0));
         }
         let bytes = self.measured_write(out, shown, Some(&cut), None)?;
-        if self.json && !self.document.has_envelope() {
-            // A document without the envelope has no `cut` field, so the line
-            // goes to standard error, and a failed write there goes
-            // unreported.
-            let _ = self.write_cut_line(err, shown, &cut);
-        }
+        self.send_notes(err, &mut Vec::new(), shown, Some(&cut));
         Ok((Answer::Cut(code), bytes))
     }
 
@@ -349,8 +397,7 @@ impl<'a, T: Rows> Prepared<'a, T> {
         Ok((Answer::Partial(over), bytes))
     }
 
-    /// Writes the line that ends the text of a result that the budget cut
-    /// short to `out`.
+    /// Writes the line that says the budget cut the result short to `out`.
     fn write_cut_line(&self, out: &mut impl Write, shown: usize, cut: &Cut) -> io::Result<()> {
         let total = self.value.total().unwrap_or(self.value.rows().len());
         let listing = T::SHAPE == Shape::Listing;
@@ -432,18 +479,6 @@ impl<'a, T: Rows> Prepared<'a, T> {
         }
         if let Some(table) = &mut self.table {
             table.write(out, shown)?;
-        }
-        if let Some(cut) = cut {
-            self.write_cut_line(out, shown, cut)?;
-        } else {
-            listing::write_footer(out, value)?;
-            listing::write_empty_note(out, value, self.document.empty_note())?;
-        }
-        if let Some(note) = value.note() {
-            writeln!(out, "{note}")?;
-        }
-        if let Some((call, phrase)) = &self.next {
-            writeln!(out, "Next: {call} {phrase}")?;
         }
         Ok(())
     }

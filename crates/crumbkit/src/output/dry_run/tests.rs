@@ -45,6 +45,7 @@ struct Finished {
     dry_run: bool,
     code: ExitCode,
     out: String,
+    err: String,
 }
 
 /// Parses `tool remove` followed by `flags`, records the dry run, and
@@ -73,6 +74,7 @@ fn finish_with<T: crate::Rows>(
         dry_run,
         code,
         out: String::from_utf8(out).unwrap(),
+        err: String::from_utf8(err).unwrap(),
     }
 }
 
@@ -108,24 +110,20 @@ fn a_run_without_dry_run_prints_no_dry_run_field() {
 }
 
 #[test]
-fn a_dry_run_in_text_ends_with_a_line_that_says_nothing_changed() {
+fn a_dry_run_in_text_prints_a_line_on_standard_error_that_says_nothing_changed() {
     let finished = finish_with(&["--dry-run"], REMOVED, Ok(pluto()));
 
-    assert_eq!(
-        finished.out,
-        "NAME\nPluto\nThis was a dry run, so nothing changed.\n"
-    );
+    assert_eq!(finished.out, "NAME\nPluto\n");
+    assert_eq!(finished.err, "This was a dry run, so nothing changed.\n");
 }
 
 #[test]
-fn a_dry_run_s_prose_ends_with_the_same_line() {
+fn a_dry_run_s_prose_prints_the_same_line_on_standard_error() {
     const SAID: Document<Prose<&str>> = Document::new("solar", "said", 1, "A sentence.");
     let finished = finish_with(&["--dry-run"], SAID, Ok(Prose::new("Pluto would go.")));
 
-    assert_eq!(
-        finished.out,
-        "Pluto would go.\nThis was a dry run, so nothing changed.\n"
-    );
+    assert_eq!(finished.out, "Pluto would go.\n");
+    assert_eq!(finished.err, "This was a dry run, so nothing changed.\n");
 }
 
 #[test]

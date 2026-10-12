@@ -11,6 +11,7 @@ pub(crate) mod failure;
 mod fields;
 mod listing;
 mod prose;
+mod respond;
 mod result;
 mod stream;
 pub(crate) mod table;
@@ -18,22 +19,18 @@ mod terminal;
 mod unwrapped;
 
 use std::ffi::OsString;
-use std::io::{self, Write};
+use std::io::Write;
 use std::process::ExitCode;
 
 use clap::{Args, Command};
 
-use self::budget::OverBudget;
 pub(crate) use self::budget::SMALLEST as SMALLEST_BUDGET;
 pub use self::confirm::Yes;
-use self::dry_run::DRY_RUN_LINE;
 pub use self::dry_run::DryRun;
-use self::failure::PreparedFailure;
-use self::result::{Answer, write_result};
 pub use self::stream::{Streaming, stream, stream_to};
 use crate::form::FailureForm;
 use crate::help::Guide;
-use crate::{AsFailure, Document, Parsed, Rows, Shape, Sink, Spelling};
+use crate::{AsFailure, Document, Parsed, Rows, Sink, Spelling};
 
 #[cfg(test)]
 mod tests;
@@ -308,13 +305,15 @@ pub fn finish<T: Rows, E: AsFailure>(
 /// A [`Listing`](crate::Listing)'s `data` is an array, and its JSON document
 /// also holds the number of matching rows under `total`, and its summary,
 /// when it has one, under `summary`. The summary also prints as one line
-/// above the table in text. When a listing
-/// shows fewer rows than its total, the table ends with a footer line, such
-/// as `Showing 4 of 6 books. --all shows every one.` A listing whose total
-/// is 0 prints an empty note after the header, such as `note: no books
-/// match` (ADR-0050). A listing's note follows on its own line, in text
-/// only. When a listing has a next step, a `Next:` line follows the table,
-/// any footer and any note, such as
+/// above the table in text.
+///
+/// In text, the lines that describe a listing print on the error writer
+/// after the output writer is flushed, so the output writer holds the
+/// result alone (ADR-0050). When a listing shows fewer rows than its total,
+/// a footer line says so, such as `Showing 4 of 6 books. --all shows every
+/// one.` A listing whose total is 0 prints an empty note, such as `note: no
+/// books match`. A listing's note follows on its own line. When a listing
+/// has a next step, a `Next:` line follows, such as
 /// `Next: shelf books show <ID>... takes up to 100 ids in one call.` The line
 /// is left out when [`Output::set_command`] was not called or the step's
 /// [`Call`](crate::Call) does not resolve in that command, and the exit code
@@ -347,8 +346,11 @@ pub fn finish<T: Rows, E: AsFailure>(
 /// and no added line feed, and its JSON document holds `{"text": "..."}`
 /// under `data` when the bytes are valid UTF-8 and `{"base64": "..."}`
 /// otherwise. `--fields`, `--long` and `--full` are refused with exit code
-/// 2, because it has no columns. On a dry run, the dry-run line of its text
-/// goes to the error writer, so the output writer holds the bytes alone.
+/// 2, because it has no columns.
+///
+/// On a dry run, the line `This was a dry run, so nothing changed.` prints
+/// last on the error writer, after a batch's failures, in text and with
+/// `--json` for a document without the envelope.
 ///
 /// An `Err` prints the failure. The text form goes to the sink's error
 /// writer, as shelf's golden file [`books-show-7.stderr`][books-show-7]
@@ -374,9 +376,9 @@ pub fn finish<T: Rows, E: AsFailure>(
 /// The result prints within [`Output::budget`] bytes on the output writer.
 /// `finish` measures it first, and prints a result that fits as described
 /// above. A listing or a `Vec` that does not fit prints the most rows that
-/// fit and exits 0: its text ends with a line such as `Showing 812 of 5000
-/// books, because output stops at 1048576 bytes. Ask for less with --limit
-/// or --fields.`, and its JSON document holds `cut` with the code
+/// fit and exits 0: in text, a line on the error writer such as `Showing
+/// 812 of 5000 books, because output stops at 1048576 bytes. Ask for less
+/// with --limit or --fields.` says so, and its JSON document holds `cut` with the code
 /// `crumbkit::output::over_budget` and the budget. A batch prints the rows
 /// that fit and ends with one over-budget failure whose fields are
 /// `left_out` and `budget`, and exits 1. A single row, a prose result or a
@@ -425,7 +427,7 @@ pub fn finish_to<T: Rows, E: AsFailure, O: Write, W: Write>(
     let span = crate::trace::spans::finish();
     #[cfg(feature = "tracing")]
     let _entered = span.enter();
-    let (code, cut) = respond(sink, output, spelling, document, result);
+    let (code, cut) = respond::respond(sink, output, spelling, document, result);
     #[cfg(feature = "tracing")]
     crate::trace::spans::exited(&span, code);
     #[cfg(feature = "usage-log")]
@@ -433,155 +435,4 @@ pub fn finish_to<T: Rows, E: AsFailure, O: Write, W: Write>(
     #[cfg(not(feature = "usage-log"))]
     let _ = cut;
     code
-}
-
-/// Prints the result to `sink` and returns the exit code, as [`finish_to`]
-/// describes, and whether the output budget cut a listing or a list short.
-#[expect(
-    clippy::needless_pass_by_value,
-    reason = "finish_to takes the result by value, as finish does, so a tool passes the result it built in the same way to either"
-)]
-fn respond<T: Rows, E: AsFailure, O: Write, W: Write, R>(
-    sink: &mut Sink<O, W, R>,
-    output: &mut Output,
-    spelling: Spelling,
-    document: Document<T>,
-    result: Result<T, E>,
-) -> (ExitCode, bool) {
-    if let Some(refusal) = fields::flags_refusal::<T>(output) {
-        let form = output.failure_form;
-        let code = refusal.print(sink, output.json, spelling, form, output.command.as_mut());
-        return (code, false);
-    }
-    let value = match &result {
-        Ok(value) => value,
-        Err(error) => {
-            let command = output.command.as_mut();
-            let form = output.failure_form;
-            failure::print(
-                sink,
-                output.json,
-                spelling,
-                form,
-                error.as_failure(),
-                command,
-            );
-            return (ExitCode::FAILURE, false);
-        }
-    };
-    // A batch's failures are read once, so its JSON document and its text
-    // form print the same fields. Every other result has `None` here.
-    let failures: Option<Vec<PreparedFailure<'_>>> = value.failures().map(|failures| {
-        failures
-            .into_iter()
-            .map(|failure| {
-                PreparedFailure::new(failure, spelling, output.command.as_mut(), &mut sink.err)
-            })
-            .collect()
-    });
-    let written = write_result(
-        &mut sink.out,
-        &mut sink.err,
-        output,
-        spelling,
-        document,
-        value,
-        failures.as_deref(),
-    );
-    let (code, answer) = match written {
-        Ok((answer, bytes)) => {
-            output.spent = output.spent.saturating_add(bytes);
-            let unwrapped = output.json && !document.has_envelope();
-            let bytes = !output.json && T::SHAPE == Shape::Bytes;
-            if output.dry_run && (unwrapped || bytes) {
-                // A document without the envelope has no `dry_run` field, and
-                // the text of bytes prints them unchanged, so the line that
-                // marks a dry run goes to standard error, and a failed write
-                // there goes unreported.
-                let _ = writeln!(sink.err, "{DRY_RUN_LINE}");
-            }
-            (ExitCode::SUCCESS, answer)
-        }
-        // A reader that stops early, as `shelf books list | head -1` does,
-        // closes the pipe after it has read every line it wanted, so the
-        // command did its job.
-        Err(error) if error.kind() == io::ErrorKind::BrokenPipe => {
-            (ExitCode::SUCCESS, Answer::Whole)
-        }
-        Err(error) => {
-            // The process is already failing, and a failed report has nowhere
-            // else to go.
-            let _ = writeln!(sink.err, "error: cannot write to standard output: {error}");
-            (ExitCode::FAILURE, Answer::Whole)
-        }
-    };
-    let (code, cut, left_out) = answered(sink, output, spelling, &answer, code);
-    let Some(failures) = failures else {
-        return (code, cut);
-    };
-    // The span records only the batch's first failure, as the usage log does.
-    #[cfg(feature = "tracing")]
-    match (failures.first(), left_out) {
-        (Some(first), _) => crate::trace::spans::failed(first.code()),
-        (None, Some(over)) => crate::trace::spans::failed(&spelling.spell(over.code)),
-        (None, None) => {}
-    }
-    // A document without the envelope has no `failures` field, so its
-    // failures print as text even with `--json`.
-    if !output.json || !document.has_envelope() {
-        for failure in &failures {
-            // Standard error is the last place to report anything, so a
-            // failure to write there goes unreported.
-            let _ = failure::write_text(&mut sink.err, output.failure_form, failure);
-        }
-        if let Some(over) = left_out {
-            let command = output.command.as_mut();
-            let over = PreparedFailure::new(over, spelling, command, &mut sink.err);
-            let _ = failure::write_text(&mut sink.err, output.failure_form, &over);
-        }
-    }
-    if failures.is_empty() {
-        (code, cut)
-    } else {
-        (ExitCode::FAILURE, cut)
-    }
-}
-
-/// Prints the failure of a result that `write_result` refused, and returns
-/// the exit code after `answer`, whether the budget cut a listing or a list
-/// short, and the failure that ends a batch whose later rows were left out.
-fn answered<'a, O: Write, W: Write, R>(
-    sink: &mut Sink<O, W, R>,
-    output: &mut Output,
-    spelling: Spelling,
-    answer: &'a Answer,
-    code: ExitCode,
-) -> (ExitCode, bool, Option<&'a OverBudget>) {
-    match answer {
-        Answer::Whole => (code, false, None),
-        Answer::Cut(over) => {
-            // A listing cut short exits 0, and the usage log and the span
-            // still record its code (ADR-0046).
-            #[cfg(feature = "usage-log")]
-            crate::usage::failed(spelling, over);
-            #[cfg(feature = "tracing")]
-            crate::trace::spans::failed(&spelling.spell(over));
-            #[cfg(not(any(feature = "usage-log", feature = "tracing")))]
-            let _ = (over, spelling);
-            (code, true, None)
-        }
-        Answer::Partial(over) => (ExitCode::FAILURE, false, Some(over)),
-        Answer::Refused(over) => {
-            let form = output.failure_form;
-            failure::print(
-                sink,
-                output.json,
-                spelling,
-                form,
-                over,
-                output.command.as_mut(),
-            );
-            (ExitCode::FAILURE, false, None)
-        }
-    }
 }

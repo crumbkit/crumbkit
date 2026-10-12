@@ -17,7 +17,7 @@ mod tests;
 /// description.
 const DRY_RUN_HELP: &str = "Report what the command would change, and change nothing";
 
-/// The line that ends the text of a dry run's result.
+/// The line on standard error that marks a dry run's result.
 pub(super) const DRY_RUN_LINE: &str = "This was a dry run, so nothing changed.";
 
 /// The flag `--dry-run`, which asks a command to report what it would change
@@ -63,11 +63,12 @@ impl Output {
     /// A handler that receives `true` reports what it would change in the
     /// result it would return, and changes nothing. [`finish`](crate::finish)
     /// then marks the result as a dry run. The JSON document holds
-    /// `"dry_run": true` right after `schema`, and the text ends with the
-    /// line `This was a dry run, so nothing changed.` A document without
+    /// `"dry_run": true` right after `schema`. In text, the line `This was a
+    /// dry run, so nothing changed.` prints last on standard error, so
+    /// standard output holds the result alone. A document without
     /// crumbkit's envelope has no place for the field, so with `--json` that
-    /// line goes to standard error instead. A failure prints as it does in
-    /// any run. [`Output::confirm`] asks nothing in a dry run.
+    /// line also goes to standard error. A failure prints as it does in any
+    /// run. [`Output::confirm`] asks nothing in a dry run.
     pub fn dry_run(&mut self, flag: DryRun) -> bool {
         self.dry_run = flag.dry_run;
         self.dry_run

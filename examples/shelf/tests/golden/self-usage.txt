@@ -6,4 +6,3 @@ identical repeat     1     books show  the same call ran again within 60 s
 usage error          1     books list  1 of the runs typed a flag close to --all
 retry after failure  1     books show  shelf::books::not_found failed and the command ran again within 60 s
 short page           1     books list  a cut-short list ran again with --all or --limit
-Next: shelf self usage --json --full adds the figures of each finding's command.

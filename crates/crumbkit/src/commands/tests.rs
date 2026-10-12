@@ -439,11 +439,14 @@ fn the_limit_keeps_the_first_rows_and_the_total_counts_the_whole_branch() {
 PATH         ABOUT
 shelf        Browse a catalogue
 shelf books  Work with the books
-Showing 2 of 6 commands. --all shows every one.
-Exit codes: 0, 1 and 2 are crumbkit's. `shelf help exit-codes` describes them.
 ";
     assert_eq!(finished.code, ExitCode::SUCCESS);
     assert_eq!(finished.out, expected);
+    assert_eq!(
+        finished.err,
+        "Showing 2 of 6 commands. --all shows every one.\n\
+         Exit codes: 0, 1 and 2 are crumbkit's. `shelf help exit-codes` describes them.\n"
+    );
 }
 
 #[test]

@@ -78,12 +78,12 @@ fn refused_beside(dir: Option<&str>, refused: &[&str], admitted: &[&str]) -> Out
 }
 
 #[test]
-fn books_list_long_adds_the_form_column_and_keeps_the_footer() {
+fn books_list_long_adds_the_form_column_and_keeps_the_footer_on_standard_error() {
     shelf(&["books", "list", "--long"])
         .unwrap()
         .success()
         .stdout_eq(file!["golden/books-list-long.txt"].raw())
-        .stderr_eq("");
+        .stderr_eq(file!["golden/books-list-long.stderr"].raw());
 }
 
 #[test]
@@ -105,12 +105,12 @@ fn books_list_json_full_prints_every_field_of_the_first_4_books_and_the_total() 
 }
 
 #[test]
-fn books_list_fields_prints_only_the_named_fields_in_order_and_the_footer() {
+fn books_list_fields_prints_only_the_named_fields_in_order_and_the_footer_on_standard_error() {
     shelf(&["books", "list", "--fields", "title,year"])
         .unwrap()
         .success()
         .stdout_eq(file!["golden/books-list-fields.txt"].raw())
-        .stderr_eq("");
+        .stderr_eq(file!["golden/books-list-fields.stderr"].raw());
 }
 
 #[test]
@@ -135,12 +135,12 @@ fn books_list_with_an_unknown_field_exits_with_code_2_and_hints_at_the_valid_fie
 }
 
 #[test]
-fn books_list_limit_2_prints_the_first_2_books_and_the_footer() {
+fn books_list_limit_2_prints_the_first_2_books_and_the_footer_on_standard_error() {
     shelf(&["books", "list", "--limit", "2"])
         .unwrap()
         .success()
         .stdout_eq(file!["golden/books-list-limit-2.txt"].raw())
-        .stderr_eq("");
+        .stderr_eq(file!["golden/books-list-limit-2.stderr"].raw());
 }
 
 #[test]

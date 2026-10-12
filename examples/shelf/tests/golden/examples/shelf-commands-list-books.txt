@@ -4,4 +4,3 @@ shelf books list       List the books in the catalogue, in id order
 shelf books show       Show the books with the given ids, in the order given
 shelf books summarize  Describe the books with the given ids, or the whole catalogue, in one sentence
 shelf books remove     Remove the books with the given ids from the shelf, so list and show skip them
-Exit codes: 0, 1 and 2 are crumbkit's. `shelf help exit-codes` describes them.

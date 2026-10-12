@@ -117,7 +117,7 @@ fn json_prints_one_page_of_an_unwrapped_listing_without_its_total() {
 }
 
 #[test]
-fn text_output_of_an_unwrapped_listing_keeps_its_footer_and_next_step() {
+fn text_output_of_an_unwrapped_listing_prints_its_footer_and_next_step_on_standard_error() {
     let listing = Listing::from_all(vec![mercury(), saturn()], Some(1))
         .described("planets")
         .next(Call::new(&["show"]).arg("names"), "shows each planet.");
@@ -125,12 +125,11 @@ fn text_output_of_an_unwrapped_listing_keeps_its_footer_and_next_step() {
     let finished = finish_with(&[], PLANET_LISTING.without_envelope(), listing);
 
     let expected = "\
-NAME     MOONS
-Mercury  0
 Showing 1 of 2 planets. --all shows every one.
 Next: tool show <NAME>... shows each planet.
 ";
-    assert_eq!(finished.out, expected);
+    assert_eq!(finished.out, "NAME     MOONS\nMercury  0\n");
+    assert_eq!(finished.err, expected);
 }
 
 #[test]

@@ -2,4 +2,3 @@ POSITION  TITLE
 1         North and South
 2         Wuthering Heights
 3         The Moonstone
-Showing 3 of 5 entries. --all shows every one.

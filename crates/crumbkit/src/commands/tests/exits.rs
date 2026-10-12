@@ -32,9 +32,9 @@ fn codes(guide: &Guide, words: &[&str]) -> Vec<(String, Vec<u64>)> {
         .collect()
 }
 
-/// Returns what `finish_to` prints for `commands list` with `words` and
-/// `guide`, as text.
-fn text(guide: &Guide, words: &[&str]) -> String {
+/// Returns what `finish_to` prints on the error writer for `commands list`
+/// with `words` and `guide`, in text.
+fn notes(guide: &Guide, words: &[&str]) -> String {
     let mut output = output();
     let result = list(&mut output, guide, &args(words));
     let mut out = Vec::new();
@@ -46,7 +46,7 @@ fn text(guide: &Guide, words: &[&str]) -> String {
         COMMANDS_LIST,
         result,
     );
-    String::from_utf8(out).unwrap()
+    String::from_utf8(err).unwrap()
 }
 
 #[test]
@@ -99,12 +99,12 @@ fn the_row_schema_describes_each_field_of_an_exit_code_and_requires_it() {
 }
 
 #[test]
-fn the_text_table_ends_with_a_note_that_names_the_exit_codes_and_the_topic() {
-    let printed = text(&GUIDE, &["books", "list"]);
+fn the_text_tables_last_note_on_standard_error_names_the_exit_codes_and_the_topic() {
+    let printed = notes(&GUIDE, &["books", "list"]);
 
     assert!(
         printed.ends_with(
-            "\nExit codes: 0, 1 and 2 are crumbkit's, and shelf adds 3 and 124. `shelf help exit-codes` describes them.\n"
+            "Exit codes: 0, 1 and 2 are crumbkit's, and shelf adds 3 and 124. `shelf help exit-codes` describes them.\n"
         ),
         "{printed}"
     );
@@ -116,11 +116,11 @@ fn the_note_names_the_topic_with_the_command_line_of_the_guide_s_root() {
         .root(&["books"])
         .exits(&[Exit::new(3, "The catalogue was locked by another run.")]);
 
-    let printed = text(&ROOTED, &["books", "list"]);
+    let printed = notes(&ROOTED, &["books", "list"]);
 
     assert!(
         printed.ends_with(
-            "\nExit codes: 0, 1 and 2 are crumbkit's, and shelf books adds 3. `shelf books help exit-codes` describes them.\n"
+            "Exit codes: 0, 1 and 2 are crumbkit's, and shelf books adds 3. `shelf books help exit-codes` describes them.\n"
         ),
         "{printed}"
     );

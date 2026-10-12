@@ -17,10 +17,11 @@ mod tests;
 /// A command returns a listing when it may show fewer rows than matched,
 /// and flattens `crumbkit::Page` into its arguments so the caller can
 /// choose how many. `crumbkit::finish` prints the total under `total`
-/// in JSON. In text it prints a footer after the table when fewer rows are
-/// shown than the total, such as `Showing 4 of 6 books. --all shows every
-/// one.`, then the note, and then the next step, such as `Next: shelf books
-/// show <ID>... takes up to 100 ids in one call.`
+/// in JSON. In text it prints the table on standard output, and then, on
+/// standard error, a footer when fewer rows are shown than the total, such
+/// as `Showing 4 of 6 books. --all shows every one.`, then the note, and
+/// then the next step, such as `Next: shelf books show <ID>... takes up to
+/// 100 ids in one call.`
 ///
 /// ```
 /// # #[derive(serde::Serialize, schemars::JsonSchema)]
@@ -138,8 +139,8 @@ impl<R: Row, S> Listing<R, S> {
         }
     }
 
-    /// Sets the note: a line that the text output prints after the table and
-    /// any footer, and before any next step, such as `Aliases file:
+    /// Sets the note: a line that the text output prints on standard error
+    /// after any footer and before any next step, such as `Aliases file:
     /// /home/ada/.config/shelf/aliases.toml`. The text carries its own full
     /// stop when it needs one. The JSON document leaves it out, so a note
     /// holds only what a person reading the table needs and a program can do
@@ -150,10 +151,10 @@ impl<R: Row, S> Listing<R, S> {
         self
     }
 
-    /// Sets the next step that the text output names after the table, the
-    /// footer and the note: the line `Next: {call} {phrase}`, such as `Next: shelf books
-    /// show <ID>... takes up to 100 ids in one call.` The JSON document
-    /// leaves it out.
+    /// Sets the next step that the text output names on standard error after
+    /// the footer and the note: the line `Next: {call} {phrase}`, such as
+    /// `Next: shelf books show <ID>... takes up to 100 ids in one call.` The
+    /// JSON document leaves it out.
     ///
     /// `crumbkit::finish` renders `call` against the command that
     /// `crumbkit::Output::set_command` received, and

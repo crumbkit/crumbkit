@@ -3,4 +3,3 @@ books     books show 1       the tool has a command or built-in alias of this na
 broken                       the value must be a list of one or more words                      [..]/config/shelf/aliases.toml
 books ls  books list                                                                            shelf
 firsts    books list --long                                                                     [..]/config/shelf/aliases.toml
-Aliases file: [..]/config/shelf/aliases.toml

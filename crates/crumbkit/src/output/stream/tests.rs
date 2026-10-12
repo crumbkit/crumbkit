@@ -334,14 +334,13 @@ fn a_failure_at_the_end_prints_last_and_the_stream_exits_with_1() {
 }
 
 #[test]
-fn a_dry_run_marks_each_json_line_and_ends_the_text_with_the_dry_run_line() {
+fn a_dry_run_marks_each_json_line_and_prints_the_dry_run_line_on_standard_error_in_text() {
     let text = run_ok(&["--dry-run"], &[robin()]);
     let json = run_ok(&["--dry-run", "--json"], &[robin()]);
 
-    assert_eq!(
-        text.out,
-        "NUMBER  BIRD\n1       robin\nThis was a dry run, so nothing changed.\n"
-    );
+    assert_eq!(text.out, "NUMBER  BIRD\n1       robin\n");
+    assert_eq!(text.err, "This was a dry run, so nothing changed.\n");
+    assert_eq!(json.err, "");
     assert_eq!(
         json.out,
         concat!(

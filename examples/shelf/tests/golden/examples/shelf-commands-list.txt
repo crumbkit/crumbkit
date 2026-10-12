@@ -14,4 +14,3 @@ shelf self               Review shelf's own use
 shelf self usage         Report the patterns in shelf's usage log where callers waste effort
 shelf self figures       Work with the figures of each command in shelf's usage log
 shelf self figures list  List the figures of each command in shelf's usage log
-Exit codes: 0, 1 and 2 are crumbkit's. `shelf help exit-codes` describes them.

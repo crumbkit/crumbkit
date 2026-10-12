@@ -9,4 +9,3 @@ crumbkit/schemas-list/v1       output  document  The JSON documents that the too
 crumbkit/schemas-show/v1       output  document  The JSON Schema of each document id given.
 crumbkit/self-usage/v1         output  document  The patterns in the usage log where callers waste effort, and a summary of the runs read.
 crumbkit/self-figures-list/v1  output  document  The figures of each command in the usage log, and a summary of the runs read.
-Next: shelf schemas show <ID>... prints the JSON Schema of each document.

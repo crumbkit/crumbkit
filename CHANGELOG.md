@@ -276,7 +276,7 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   half the bytes it prints and checks that the tool cuts or refuses the
   result ([ADR-0046]).
 - crumbkit: a listing with no rows, and a stream that ends with none,
-  print a note such as `note: no books match` after the header.
+  print a note such as `note: no books match`.
   `Document::when_empty` changes the wording ([ADR-0050]).
 - crumbkit: `Page<N, MOST>` refuses a `--limit` above `MOST` with a
   recovery that runs `--all`, and the help and the footer name the bound
@@ -380,6 +380,9 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit: the JSON Schema of each listing and list document holds the
   optional `cut` object, and the documents keep their `v1` ids
   ([ADR-0046]).
+- crumbkit: in text, a listing's footer, empty note and note, the `Next:`
+  line, the dry-run line, the cut line and a stream's notes print on
+  standard error after standard output is flushed ([ADR-0050]).
 - crumbkit-test: [`check_examples`] compares an example's standard error
   with its `.stderr` golden file, and fails on standard error only for a
   `warning: crumbkit ` line ([ADR-0005]).
