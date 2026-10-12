@@ -1,0 +1,93 @@
+//! Tests for how `finish_to` prints a failure's named values.
+
+use super::{Missing, fail_with, missing, run_list, two_causes};
+use crate::FieldValue;
+
+/// Returns a failure with `fields`.
+fn with_fields(fields: Vec<(&'static str, FieldValue<'static>)>) -> Missing {
+    Missing {
+        fields,
+        ..missing(run_list())
+    }
+}
+
+#[test]
+fn json_holds_the_fields_after_the_cause_as_one_object_in_their_order() {
+    let failure = Missing {
+        cause: Some(two_causes()),
+        ..with_fields(vec![
+            ("planet", "Vulcan".into()),
+            ("moons", 0_u8.into()),
+            ("offset", (-3_i32).into()),
+            ("named", true.into()),
+        ])
+    };
+
+    let finished = fail_with(&["--json"], failure);
+
+    assert_eq!(
+        finished.out,
+        concat!(
+            r#"{"schema":"crumbkit/failure/v1","code":"solar::planets::not_found","message":"the solar system has no planet Vulcan","cause":"the catalogue cannot be read: permission denied","fields":{"planet":"Vulcan","moons":0,"offset":-3,"named":true},"recovery":{"kind":"run","call":"tool list"}}"#,
+            "\n"
+        )
+    );
+    assert_eq!(finished.err, "");
+}
+
+#[test]
+fn text_output_prints_no_line_for_the_fields() {
+    let finished = fail_with(&[], with_fields(vec![("planet", "Vulcan".into())]));
+
+    assert_eq!(
+        finished.err,
+        concat!(
+            "error: the solar system has no planet Vulcan\n",
+            "  help:  run `tool list`\n",
+            "  code:  solar::planets::not_found\n",
+        )
+    );
+}
+
+// A release build leaves the field out without the warning.
+#[cfg(debug_assertions)]
+#[test]
+fn a_field_whose_name_breaks_the_rule_is_left_out_with_a_warning_in_a_debug_build() {
+    let failure = with_fields(vec![("Planet", "Vulcan".into()), ("moons", 0_u8.into())]);
+
+    let finished = fail_with(&["--json"], failure);
+
+    assert_eq!(
+        finished.out,
+        concat!(
+            r#"{"schema":"crumbkit/failure/v1","code":"solar::planets::not_found","message":"the solar system has no planet Vulcan","fields":{"moons":0},"recovery":{"kind":"run","call":"tool list"}}"#,
+            "\n"
+        )
+    );
+    assert_eq!(
+        finished.err,
+        "warning: crumbkit left out the field \"Planet\" of the failure solar::planets::not_found, because a field name is one or more lowercase ASCII letters, digits and underscores\n"
+    );
+}
+
+// A release build leaves the field out without the warning.
+#[cfg(debug_assertions)]
+#[test]
+fn a_field_whose_name_an_earlier_field_has_is_left_out_with_a_warning_in_a_debug_build() {
+    let failure = with_fields(vec![
+        ("planet", "Vulcan".into()),
+        ("planet", "Krypton".into()),
+    ]);
+
+    let finished = fail_with(&[], failure);
+
+    assert_eq!(
+        finished.err,
+        concat!(
+            "warning: crumbkit left out the field \"planet\" of the failure solar::planets::not_found, because an earlier field has that name\n",
+            "error: the solar system has no planet Vulcan\n",
+            "  help:  run `tool list`\n",
+            "  code:  solar::planets::not_found\n",
+        )
+    );
+}

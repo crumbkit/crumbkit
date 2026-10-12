@@ -3,7 +3,7 @@
 
 use std::fmt;
 
-use crate::{Call, Code};
+use crate::{Call, Code, Field};
 
 #[cfg(test)]
 mod tests;
@@ -54,7 +54,7 @@ mod tests;
 ///
 /// ```
 /// # use std::fmt;
-/// # use crumbkit_core::{Call, Code, Failure, Recovery};
+/// # use crumbkit_core::{Call, Code, Failure, Field, Recovery};
 /// # const NOT_FOUND: Code = Code::new("shelf", "books", "not_found");
 /// # #[derive(Debug)]
 /// # struct NoSuchBook(u32);
@@ -98,6 +98,10 @@ mod tests;
 ///
 ///     fn alternatives(&self) -> Vec<Recovery> {
 ///         self.book.alternatives()
+///     }
+///
+///     fn fields(&self) -> Vec<Field<'_>> {
+///         self.book.fields()
 ///     }
 ///
 ///     fn url(&self) -> Option<&str> {
@@ -153,6 +157,49 @@ pub trait Failure: std::error::Error {
     /// }
     /// ```
     fn alternatives(&self) -> Vec<Recovery> {
+        Vec::new()
+    }
+
+    /// Returns the values at fault under names, such as the id of a book
+    /// that the catalogue does not hold, so an agent can read a value
+    /// without parsing the message. The default is an empty list, which does
+    /// not allocate.
+    ///
+    /// `crumbkit::finish` prints the fields under `fields` in JSON, in
+    /// order, and prints nothing more in text, because the message already
+    /// names each value for a person. A name is one or more lowercase ASCII
+    /// letters, digits and underscores, as a code segment is. `finish` leaves
+    /// out a field whose name breaks that rule or repeats an earlier name,
+    /// and in a debug build, such as a test's, it also writes a `warning:`
+    /// line that names the field on standard error.
+    ///
+    /// ```
+    /// # use std::fmt;
+    /// # use crumbkit_core::{Call, Code, Failure, Field, Recovery};
+    /// # const NOT_FOUND: Code = Code::new("shelf", "books", "not_found");
+    /// # #[derive(Debug)]
+    /// # struct NoSuchBook(u32);
+    /// # impl fmt::Display for NoSuchBook {
+    /// #     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    /// #         write!(f, "the catalogue has no book {}", self.0)
+    /// #     }
+    /// # }
+    /// # impl std::error::Error for NoSuchBook {}
+    /// impl Failure for NoSuchBook {
+    ///     fn code(&self) -> &'static Code {
+    ///         &NOT_FOUND
+    ///     }
+    ///
+    ///     fn recovery(&self) -> Recovery {
+    ///         Recovery::Run(Call::new(&["books", "list"]))
+    ///     }
+    ///
+    ///     fn fields(&self) -> Vec<Field<'_>> {
+    ///         vec![Field::new("book", self.0)]
+    ///     }
+    /// }
+    /// ```
+    fn fields(&self) -> Vec<Field<'_>> {
         Vec::new()
     }
 

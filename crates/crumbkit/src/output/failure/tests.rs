@@ -9,10 +9,12 @@ use schemars::JsonSchema;
 use serde::Serialize;
 
 use crate::{
-    Call, Code, Document, Error, Failure, Output, Recovery, Row, Sink, Spelling, finish_to,
+    Call, Code, Document, Error, Failure, Field, FieldValue, Output, Recovery, Row, Sink, Spelling,
+    finish_to,
 };
 
 mod alternatives;
+mod fields;
 
 const NOT_FOUND: Code = Code::new("solar", "planets", "not_found");
 
@@ -71,6 +73,7 @@ struct Missing {
     cause: Option<Cause>,
     recovery: Recovery,
     alternatives: Vec<Recovery>,
+    fields: Vec<(&'static str, FieldValue<'static>)>,
     url: Option<&'static str>,
 }
 
@@ -101,6 +104,13 @@ impl Failure for Missing {
         self.alternatives.clone()
     }
 
+    fn fields(&self) -> Vec<Field<'_>> {
+        self.fields
+            .iter()
+            .map(|(name, value)| Field::new(name, value.clone()))
+            .collect()
+    }
+
     fn url(&self) -> Option<&str> {
         self.url
     }
@@ -114,6 +124,7 @@ fn missing(recovery: Recovery) -> Missing {
         cause: None,
         recovery,
         alternatives: Vec::new(),
+        fields: Vec::new(),
         url: None,
     }
 }

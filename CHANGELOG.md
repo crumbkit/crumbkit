@@ -198,6 +198,8 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit: help on Windows names the tool without `.exe`.
 - cargo-crumbkit: `weigh --usage` finds the usage log on Windows
   ([ADR-0033]).
+- crumbkit: [`Failure`] has a `fields` method, and the JSON failure
+  document holds the named values under `fields` ([ADR-0007]).
 
 ### Changed
 

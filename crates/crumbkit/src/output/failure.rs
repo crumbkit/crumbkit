@@ -5,19 +5,21 @@ use std::borrow::Cow;
 use std::io::{self, Write};
 
 use clap::Command;
-use schemars::{JsonSchema, Schema, SchemaGenerator, json_schema};
 use serde::Serialize;
 use serde::ser::{SerializeMap, Serializer};
 
 use super::table::escape_controls;
-use crate::{Document, Failure, Recovery, Sink, Spelling};
+use crate::{Document, Failure, FieldValue, Recovery, Sink, Spelling};
 
 #[cfg(feature = "miette")]
 mod label;
 #[cfg(feature = "miette")]
 mod related;
+mod schema;
 #[cfg(test)]
 mod tests;
+
+pub(crate) use self::schema::{document_schema, entry_schema};
 
 /// The id of the JSON document that a failure prints with `--json`.
 const FAILURE: Document<FailureDocument> = Document::new(
@@ -50,7 +52,7 @@ pub(crate) fn print<O: Write, W: Write, R>(
     failure: &dyn Failure,
     command: Option<&mut Command>,
 ) {
-    let document = FailureDocument::new(failure, spelling, command);
+    let document = FailureDocument::new(failure, spelling, command, &mut sink.err);
     #[cfg(feature = "tracing")]
     crate::trace::spans::failed(document.code());
     if json {
@@ -93,6 +95,9 @@ pub(super) struct FailureDocument {
     step: Step,
     /// The failure's other alternatives that offer a step, in order.
     alternatives: Vec<Step>,
+    /// The failure's fields whose names follow the rule and come first, in
+    /// order.
+    fields: Vec<(String, FieldValue<'static>)>,
     /// The page that explains the failure, when there is one.
     url: Option<String>,
 }
@@ -114,10 +119,16 @@ impl FailureDocument {
     /// Reads `failure` into the fields that `finish` prints. It spells the
     /// code with `spelling` and renders a `Recovery::Run` call against
     /// `command`, which builds the branch that the call names.
+    ///
+    /// It leaves out each field of the failure whose name breaks the rule or
+    /// repeats an earlier name, and a debug build, such as the one a tool's
+    /// tests run, writes a warning that names the field to `err`, so a test
+    /// that compares standard error shows it. A release build writes nothing.
     pub(super) fn new(
         failure: &dyn Failure,
         spelling: Spelling,
         command: Option<&mut Command>,
+        err: &mut impl Write,
     ) -> Self {
         // Every code that crumbkit prints is spelled here, so the usage log
         // records the run's code here (ADR-0029).
@@ -142,8 +153,10 @@ impl FailureDocument {
         };
         #[cfg(feature = "miette")]
         let diagnostic = failure.diagnostic();
+        let code = spelling.spell(failure.code());
+        let fields = read_fields(failure, &code, err);
         Self {
-            code: spelling.spell(failure.code()),
+            code,
             message: failure.to_string(),
             causes,
             // A failure without a diagnostic costs one `None` check, and an
@@ -158,6 +171,7 @@ impl FailureDocument {
             }),
             step,
             alternatives,
+            fields,
             url: failure.url().map(str::to_owned),
         }
     }
@@ -167,6 +181,40 @@ impl FailureDocument {
     pub(super) fn code(&self) -> &str {
         &self.code
     }
+}
+
+/// Returns the fields of `failure` whose names follow the rule and come
+/// first, and in a debug build writes a warning to `err` for each other
+/// field, which names `code`.
+///
+/// A failure without fields returns an empty `Vec`, which does not allocate.
+fn read_fields(
+    failure: &dyn Failure,
+    code: &str,
+    err: &mut impl Write,
+) -> Vec<(String, FieldValue<'static>)> {
+    let mut fields: Vec<(String, FieldValue<'static>)> = Vec::new();
+    for field in failure.fields() {
+        let reason = if !field.follows_name_rule() {
+            "a field name is one or more lowercase ASCII letters, digits and underscores"
+        } else if fields.iter().any(|(name, _)| name == field.name()) {
+            "an earlier field has that name"
+        } else {
+            fields.push((field.name().to_owned(), field.value().clone().into_owned()));
+            continue;
+        };
+        if cfg!(debug_assertions) {
+            // Standard error is the last place to report anything, so a
+            // failure to write there goes unreported.
+            let _ = writeln!(
+                err,
+                "warning: crumbkit left out the field {:?} of the failure {}, because {reason}",
+                field.name(),
+                escape_controls(code)
+            );
+        }
+    }
+    fields
 }
 
 impl Step {
@@ -249,7 +297,8 @@ pub(super) fn write_json(out: &mut impl Write, document: &FailureDocument) -> io
 
 impl FailureDocument {
     /// Writes every field of the document after `schema` into `map`: `code`,
-    /// `message`, `cause` when the failure has a source, `labels` when the
+    /// `message`, `cause` when the failure has a source, `fields` when the
+    /// failure names at least one value, `labels` when the
     /// failure has a diagnostic with at least one label, `related` when that
     /// diagnostic has related diagnostics, `recovery`,
     /// `alternatives` when at least one alternative offers a step, and `url`
@@ -264,6 +313,9 @@ impl FailureDocument {
         map.serialize_entry("message", &self.message)?;
         if !self.causes.is_empty() {
             map.serialize_entry("cause", &self.causes.join(": "))?;
+        }
+        if !self.fields.is_empty() {
+            map.serialize_entry("fields", &Fields(&self.fields))?;
         }
         #[cfg(feature = "miette")]
         if !self.labels.is_empty() {
@@ -291,6 +343,19 @@ impl Serialize for FailureDocument {
         let mut map = serializer.serialize_map(None)?;
         map.serialize_entry("schema", &format_args!("{FAILURE}"))?;
         self.serialize_fields(&mut map)?;
+        map.end()
+    }
+}
+
+/// A failure's fields, which serialize as one JSON object in their order.
+struct Fields<'a>(&'a [(String, FieldValue<'static>)]);
+
+impl Serialize for Fields<'_> {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        let mut map = serializer.serialize_map(Some(self.0.len()))?;
+        for (name, value) in self.0 {
+            map.serialize_entry(name, value)?;
+        }
         map.end()
     }
 }
@@ -324,248 +389,4 @@ impl Serialize for Step {
         }
         map.end()
     }
-}
-
-/// Describes the `crumbkit/failure/v1` document as a 2020-12 JSON Schema.
-///
-/// This impl is written by hand so crumbkit needs no schemars `derive`
-/// feature. `crates/crumbkit/schemas/failure-v1.json` holds the schema, and a
-/// test fails when the two differ (ADR-0007).
-impl JsonSchema for FailureDocument {
-    fn schema_name() -> Cow<'static, str> {
-        "FailureDocument".into()
-    }
-
-    fn schema_id() -> Cow<'static, str> {
-        "crumbkit/failure/v1".into()
-    }
-
-    fn json_schema(_: &mut SchemaGenerator) -> Schema {
-        json_schema!({
-            "description": "The document that a command prints on standard output when it fails with --json.",
-            "type": "object",
-            "properties": {
-                "schema": {
-                    "description": "The id of this document.",
-                    "const": "crumbkit/failure/v1",
-                },
-                "code": {
-                    "description": "The failure's stable code in the tool's spelling, such as shelf::books::not_found. It is one or more printable ASCII characters without spaces, from ! to ~.",
-                    "type": "string",
-                    "pattern": "^[!-~]+$",
-                },
-                "message": {
-                    "description": "What went wrong.",
-                    "type": "string",
-                },
-                "cause": {
-                    "description": "The errors that led to the failure, joined with \": \". It is present only when the failure has a cause.",
-                    "type": "string",
-                },
-                "labels": labels_schema(),
-                "related": related_schema(),
-                "recovery": step_schema("What the caller can do next, tagged by kind."),
-                "alternatives": {
-                    "description": "Other repairs the caller can try, in order of preference, each in the shape of recovery. It is present only when the failure offers at least one.",
-                    "type": "array",
-                    "items": step_schema("A repair the caller can try instead, tagged by kind."),
-                },
-                "url": {
-                    "description": "A page that explains the failure. It is present only when the failure has one.",
-                    "type": "string",
-                },
-            },
-            "required": ["schema", "code", "message", "recovery"],
-        })
-    }
-}
-
-/// Returns the JSON Schema of the `crumbkit/failure/v1` document, with the
-/// document's id as its `title`, as `schemas show` serves it and
-/// `crates/crumbkit/schemas/failure-v1.json` holds it.
-pub(crate) fn document_schema() -> Schema {
-    let mut schema = schemars::schema_for!(FailureDocument);
-    schema.insert("title".to_owned(), FAILURE.to_string().into());
-    schema
-}
-
-/// Returns the JSON Schema of one entry of a batch's `failures` array: the
-/// schema of the `crumbkit/failure/v1` document without its `schema`
-/// property, as [`Entry`] writes it.
-pub(crate) fn entry_schema() -> Schema {
-    let mut schema = FailureDocument::json_schema(&mut SchemaGenerator::default());
-    schema.insert(
-        "description".to_owned(),
-        "A failure of some of the ids: the fields of the crumbkit/failure/v1 document without schema."
-            .into(),
-    );
-    if let Some(properties) = schema
-        .get_mut("properties")
-        .and_then(serde_json::Value::as_object_mut)
-    {
-        properties.remove("schema");
-    }
-    if let Some(required) = schema
-        .get_mut("required")
-        .and_then(serde_json::Value::as_array_mut)
-    {
-        required.retain(|name| name != "schema");
-    }
-    schema
-}
-
-/// Describes one step of the `crumbkit/failure/v1` document, tagged by
-/// `kind`, as `recovery` and each entry of `alternatives` hold it, with
-/// `description` as its description.
-fn step_schema(description: &str) -> Schema {
-    json_schema!({
-        "description": description,
-        "oneOf": [
-            {
-                "description": "Run this command.",
-                "type": "object",
-                "properties": {
-                    "kind": { "const": "run" },
-                    "call": { "type": "string" },
-                },
-                "required": ["kind", "call"],
-            },
-            {
-                "description": "Run the same command again later.",
-                "type": "object",
-                "properties": {
-                    "kind": { "const": "retry" },
-                },
-                "required": ["kind"],
-            },
-            {
-                "description": "Follow this advice.",
-                "type": "object",
-                "properties": {
-                    "kind": { "const": "hint" },
-                    "text": { "type": "string" },
-                },
-                "required": ["kind", "text"],
-            },
-            {
-                "description": "There is no next step, for this reason.",
-                "type": "object",
-                "properties": {
-                    "kind": { "const": "none" },
-                    "reason": { "type": "string" },
-                },
-                "required": ["kind", "reason"],
-            },
-        ],
-    })
-}
-
-/// Describes the `labels` array of the `crumbkit/failure/v1` document. The
-/// schema lists it whether or not the `miette` feature is on, so there is
-/// one checked-in schema file, and readers ignore a field they do not know
-/// (ADR-0007).
-fn labels_schema() -> Schema {
-    json_schema!({
-        "description": "The places in a source, such as a file, that the failure points at, in the order the failure gives them. It is present only when the failure has at least one label.",
-        "type": "array",
-        "items": {
-            "type": "object",
-            "properties": {
-                "offset": {
-                    "description": "The byte offset of the start of the span from the start of the source.",
-                    "type": "integer",
-                    "minimum": 0,
-                },
-                "length": {
-                    "description": "The length of the span in bytes.",
-                    "type": "integer",
-                    "minimum": 0,
-                },
-                "name": {
-                    "description": "The name of the source, such as a file name. It is present only when the span could be read and the source has a name.",
-                    "type": "string",
-                },
-                "line": {
-                    "description": "The 1-based line that holds the start of the span. It is present only when the span could be read.",
-                    "type": "integer",
-                    "minimum": 1,
-                },
-                "column": {
-                    "description": "The 1-based column of the start of the span, counted in characters of its line. It is present only when the span could be read.",
-                    "type": "integer",
-                    "minimum": 1,
-                },
-                "excerpt": {
-                    "description": "The lines of the source that the span covers, with one line before and one after where the source has them. It is present only when the span could be read.",
-                    "type": "object",
-                    "properties": {
-                        "line": {
-                            "description": "The 1-based number of the first line of the excerpt.",
-                            "type": "integer",
-                            "minimum": 1,
-                        },
-                        "text": {
-                            "description": "The lines, joined by the line breaks of the source, without a line break at the end.",
-                            "type": "string",
-                        },
-                    },
-                    "required": ["line", "text"],
-                },
-                "text": {
-                    "description": "What the label says about the span. It is present only when the label has text.",
-                    "type": "string",
-                },
-            },
-            "required": ["offset", "length"],
-        },
-    })
-}
-
-/// Describes the `related` array of the `crumbkit/failure/v1` document. Each
-/// entry has the `$anchor` `related`, and its own `related` array refers to
-/// the entry's schema through it, because related diagnostics nest. The
-/// schema lists the array whether or not the `miette` feature is on, as it
-/// does `labels`.
-fn related_schema() -> Schema {
-    json_schema!({
-        "description": "The diagnostics that the failure's diagnostic relates to it, in the order it gives them. It is present only when there is at least one.",
-        "type": "array",
-        "items": {
-            "$anchor": "related",
-            "type": "object",
-            "properties": {
-                "message": {
-                    "description": "What the related diagnostic says.",
-                    "type": "string",
-                },
-                "code": {
-                    "description": "The related diagnostic's own code, which is free text. It is present only when the diagnostic has one.",
-                    "type": "string",
-                },
-                "severity": {
-                    "description": "How severe the related diagnostic is. A diagnostic that gives no severity is an error.",
-                    "enum": ["error", "warning", "advice"],
-                },
-                "cause": {
-                    "description": "The errors below the related diagnostic, joined with \": \". It is present only when there is one.",
-                    "type": "string",
-                },
-                "labels": labels_schema(),
-                "help": {
-                    "description": "The related diagnostic's advice. It is present only when it gives some.",
-                    "type": "string",
-                },
-                "url": {
-                    "description": "A page that explains the related diagnostic. It is present only when it has one.",
-                    "type": "string",
-                },
-                "related": {
-                    "description": "The diagnostics related to this one, in the same shape, to at most eight levels below the failure.",
-                    "type": "array",
-                    "items": { "$ref": "#related" },
-                },
-            },
-            "required": ["message", "severity"],
-        },
-    })
 }
