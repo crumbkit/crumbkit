@@ -15,5 +15,6 @@ Examples:
   shelf books remove 2 --yes
 
 Effects: destructive, idempotent, closed-world.
+Writes: applies all items or none.
 Global flags: --json, --fields <FIELD>, --long, --full, --no-input. `shelf books remove --help` describes them.
 Next: shelf books remove --help explains each column.

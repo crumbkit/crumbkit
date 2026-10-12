@@ -92,7 +92,7 @@ pub const GUIDE: Guide = Guide::new()
                 ),
                 Example::new(&["2", "--yes"], "Remove book 2 without asking"),
             ])
-            .effects(Effects::destructive().idempotent())
+            .effects(Effects::destructive().idempotent().all_or_none())
             .document(BOOKS_REMOVE),
         Leaf::new(&["commands", "list"])
             .examples(&[

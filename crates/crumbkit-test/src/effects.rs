@@ -1,17 +1,27 @@
 //! The effects check, which requires every leaf to declare its effects and
 //! gives `--dry-run`, `--yes` and `--no-input` one meaning in every tool.
 
-use clap::Command;
-use crumbkit::help::{Effects, Guide, Leaf};
+use clap::{Arg, Command};
+use crumbkit::Shape;
+use crumbkit::help::{Effects, Guide, Items, Leaf};
 
 use crate::allow::{Allow, Allowances, Rule, words};
+use crate::filters::accepts_many;
 use crate::tree;
 
 #[cfg(test)]
 mod tests;
 
 /// The rules of the effects check that a tool can opt out of.
-const RULES: [Rule; 4] = [Rule::Effects, Rule::DryRun, Rule::Yes, Rule::NoInput];
+const RULES: [Rule; 7] = [
+    Rule::Effects,
+    Rule::DryRun,
+    Rule::Yes,
+    Rule::NoInput,
+    Rule::Expect,
+    Rule::ExpectFlag,
+    Rule::Items,
+];
 
 /// The id that `crumbkit::DryRun` gives its `--dry-run`, which tells it
 /// apart from a tool's own flag with the same name.
@@ -19,6 +29,9 @@ const CRUMBKIT_DRY_RUN: &str = "crumbkit_dry_run";
 
 /// The id that `crumbkit::NoInput` gives its `--no-input`.
 const CRUMBKIT_NO_INPUT: &str = "crumbkit_no_input";
+
+/// The id that `crumbkit::Expect` gives its `--expect`.
+const CRUMBKIT_EXPECT: &str = "crumbkit_expect";
 
 /// Checks that every leaf in the tree of `command` declares its effects in
 /// `guide`, and that `--dry-run`, `--yes` and `--no-input` sit where crumbkit's
@@ -48,7 +61,24 @@ const CRUMBKIT_NO_INPUT: &str = "crumbkit_no_input";
 ///   `--no-input` of `crumbkit::NoInput` at the root, unless an opt-out
 ///   from [`Rule::NoInput`] names the root, because a script or an agent
 ///   then has no way to say that nobody can answer;
-/// - an opt-out from one of the four rules above that names no command or
+/// - a leaf whose effects are [`Effects::replacing`] without the `--expect`
+///   of `crumbkit::Expect`, unless an opt-out from [`Rule::Expect`] covers
+///   it, because two writers can then lose each other's changes;
+/// - an argument anywhere in the tree with the long name `--expect` that
+///   `crumbkit::Expect` did not add, unless an opt-out from
+///   [`Rule::ExpectFlag`] covers its command;
+/// - crumbkit's `--expect` on a read-only leaf, which has nothing to guard.
+///   This rule has no opt-out;
+/// - a leaf that writes, takes many values in a visible positional
+///   argument, and declares neither [`Effects::all_or_none`] nor
+///   [`Effects::per_item`], unless an opt-out from [`Rule::Items`] covers
+///   it, because an agent cannot tell what a failed run changed;
+/// - a read-only leaf that declares [`Effects::all_or_none`] or
+///   [`Effects::per_item`]. This rule has no opt-out;
+/// - a leaf that declares [`Effects::per_item`] and whose document is not a
+///   `Batch`, a `Prose` or a stream, which are the documents that report a
+///   failure for each item. This rule has no opt-out;
+/// - an opt-out from one of the seven rules above that names no command or
 ///   excuses no problem.
 ///
 /// An opt-out covers the command it names and every command below it, and
@@ -85,6 +115,9 @@ const CRUMBKIT_NO_INPUT: &str = "crumbkit_no_input";
 ///
 /// [`Leaf`]: crumbkit::help::Leaf
 /// [`Leaf::effects`]: crumbkit::help::Leaf::effects
+/// [`Effects::replacing`]: crumbkit::help::Effects::replacing
+/// [`Effects::all_or_none`]: crumbkit::help::Effects::all_or_none
+/// [`Effects::per_item`]: crumbkit::help::Effects::per_item
 pub fn check_effects(command: &Command, guide: &Guide, allow: &[Allow]) {
     let mut allowances = Allowances::new(allow, &RULES);
     let mut problems = Vec::new();
@@ -93,11 +126,12 @@ pub fn check_effects(command: &Command, guide: &Guide, allow: &[Allow]) {
         let path = visit.path();
         let below = visit.below();
         let node = visit.command();
-        let effects = if node.has_subcommands() {
+        let leaf = if node.has_subcommands() {
             None
         } else {
-            effects_of(guide, below)
+            leaf_of(guide, below)
         };
+        let effects = leaf.and_then(Leaf::get_effects);
         if !node.has_subcommands()
             && effects.is_none()
             && is_visible(command, below)
@@ -122,6 +156,10 @@ pub fn check_effects(command: &Command, guide: &Guide, allow: &[Allow]) {
                     "{path}: the command has its own `--dry-run`, and crumbkit's `DryRun` gives that flag one meaning in every tool"
                 ));
             }
+        }
+        check_expect(node, path, effects, &mut allowances, &mut problems);
+        if let Some(leaf) = leaf {
+            check_items(node, path, leaf, &mut allowances, &mut problems);
         }
         let has_yes = node
             .get_arguments()
@@ -148,14 +186,109 @@ pub fn check_effects(command: &Command, guide: &Guide, allow: &[Allow]) {
     allowances.report(command, "effects rules", problems);
 }
 
-/// Returns the effects of the first leaf of `guide` whose path is `below`,
-/// a command's names below the root joined by single spaces.
-fn effects_of(guide: &Guide, below: &str) -> Option<Effects> {
+/// Returns the first leaf of `guide` whose path is `below`, a command's
+/// names below the root joined by single spaces.
+fn leaf_of<'a>(guide: &'a Guide, below: &str) -> Option<&'a Leaf> {
     guide
         .get_leaves()
         .iter()
         .find(|leaf| leaf.path().iter().copied().eq(words(below)))
-        .and_then(Leaf::get_effects)
+}
+
+/// Adds to `problems` each `--expect` rule that `node`, at `path`, breaks
+/// with `effects`, the effects of its leaf or `None` for a branch or a
+/// leaf without effects.
+fn check_expect(
+    node: &Command,
+    path: &str,
+    effects: Option<Effects>,
+    allowances: &mut Allowances<'_>,
+    problems: &mut Vec<String>,
+) {
+    let below = below_of(path);
+    let mut takes_expect = false;
+    for arg in node.get_arguments() {
+        if arg.get_long() != Some("expect") {
+            continue;
+        }
+        if arg.get_id() == CRUMBKIT_EXPECT {
+            takes_expect = true;
+            if effects.is_some_and(|effects| effects.is_read_only()) {
+                problems.push(format!(
+                    "{path}: the command is read-only and takes crumbkit's `--expect`, which has nothing to guard"
+                ));
+            }
+        } else if !allowances.excuses(Rule::ExpectFlag, below) {
+            problems.push(format!(
+                "{path}: the command has its own `--expect`, and crumbkit's `Expect` gives that flag one meaning in every tool"
+            ));
+        }
+    }
+    if effects.is_some_and(|effects| effects.is_replacing())
+        && !takes_expect
+        && !allowances.excuses(Rule::Expect, below)
+    {
+        problems.push(format!(
+            "{path}: the command replaces existing data and has no `--expect` from crumbkit's `Expect`, so two writers can lose each other's changes"
+        ));
+    }
+}
+
+/// Adds to `problems` each rule about many items that `node`, at `path`,
+/// breaks with `leaf`, the leaf of `guide` for the command.
+fn check_items(
+    node: &Command,
+    path: &str,
+    leaf: &Leaf,
+    allowances: &mut Allowances<'_>,
+    problems: &mut Vec<String>,
+) {
+    let Some(effects) = leaf.get_effects() else {
+        return;
+    };
+    match (effects.is_read_only(), effects.items()) {
+        (true, Some(_)) => problems.push(format!(
+            "{path}: the command is read-only and declares how a write of many items ends, which it never writes"
+        )),
+        (false, Some(Items::PerItem)) => {
+            let reports = leaf.is_stream()
+                || matches!(leaf.shape(), Some(Shape::Batch | Shape::Prose));
+            if !reports {
+                problems.push(format!(
+                    "{path}: the command declares `per_item` and its document is not a `Batch`, a `Prose` or a stream, so it cannot report a failure for each item"
+                ));
+            }
+        }
+        (true, None) | (false, Some(_)) => {}
+        (false, None) => {
+            // The check reads a visible positional argument that takes many
+            // values as the items that a write changes, such as the ids of
+            // `books remove`. An option with many values more often filters
+            // or describes the change, such as `--tag`, so the check leaves
+            // options alone, and a tool whose positional values are not the
+            // items it writes opts out.
+            if let Some(items) = node.get_arguments().find(|arg| names_many_items(arg))
+                && !allowances.excuses(Rule::Items, below_of(path))
+            {
+                problems.push(format!(
+                    "{path}: the command writes the many items of `{}` and declares neither `all_or_none` nor `per_item`, so an agent cannot tell what a failed run changed",
+                    items.get_id()
+                ));
+            }
+        }
+    }
+}
+
+/// Reports whether `arg` is a visible positional argument that takes many
+/// values.
+fn names_many_items(arg: &Arg) -> bool {
+    arg.is_positional() && !arg.is_hide_set() && accepts_many(arg)
+}
+
+/// Returns the names below the root in `path`, such as `books remove` for
+/// `shelf books remove`, as an opt-out names the command.
+fn below_of(path: &str) -> &str {
+    path.split_once(' ').map_or("", |(_, below)| below)
 }
 
 /// Reports whether the command at `below` and every command above it are

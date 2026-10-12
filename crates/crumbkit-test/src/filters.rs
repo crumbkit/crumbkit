@@ -112,7 +112,7 @@ pub fn check_filters(command: &Command, allow: &[Allow]) {
 
 /// Reports whether `arg` accepts more than one value, either because its
 /// action appends a value on each use or because one use takes several.
-fn accepts_many(arg: &Arg) -> bool {
+pub(crate) fn accepts_many(arg: &Arg) -> bool {
     matches!(arg.get_action(), ArgAction::Append) || takes_many_in_one_use(arg)
 }
 

@@ -159,6 +159,8 @@ shelf books remove 2 --yes
 
 Effects: destructive, idempotent, closed-world.
 
+Writes: applies all items or none.
+
 ## `shelf commands`
 
 Explore shelf's commands

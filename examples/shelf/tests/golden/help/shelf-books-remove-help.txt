@@ -48,3 +48,4 @@ Columns that --long adds:
   form  The book's literary form.
 
 Effects: destructive, idempotent, closed-world.
+Writes: applies all items or none.
