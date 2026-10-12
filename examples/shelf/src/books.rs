@@ -229,7 +229,7 @@ pub(crate) fn show(
 /// Returns the ids in the file at `path`, in file order. Each line holds one
 /// id, with any spaces around it, and a line that holds nothing else is
 /// skipped. The file holds at least 1 and at most [`MOST_IDS`] ids, as the
-/// command line does, and reading stops at the line of the id after the
+/// command line does, and reading stops one line after the id after the
 /// last one allowed.
 ///
 /// # Errors
@@ -287,7 +287,8 @@ enum IdsFileProblem {
 
 /// Returns the ids that `reader` holds, one per line, as [`read_ids`]
 /// describes. It appends each line it reads to `text`, so `text` holds the
-/// file up to the line that a problem points at.
+/// file up to the line after the line that a problem points at, and the
+/// failure's excerpt shows one line on each side of the problem.
 fn parse_ids(reader: &mut impl BufRead, text: &mut String) -> Result<Vec<u32>, IdsFileProblem> {
     let mut ids = Vec::new();
     loop {
@@ -303,18 +304,26 @@ fn parse_ids(reader: &mut impl BufRead, text: &mut String) -> Result<Vec<u32>, I
         }
         let start = line_start + (line.len() - line.trim_start().len());
         let span = SourceSpan::new(start.into(), id.len());
-        if ids.len() == MOST_IDS {
-            return Err(IdsFileProblem::TooMany { span });
-        }
-        match id.parse::<u32>() {
-            Ok(id) => ids.push(id),
-            Err(error) => {
-                return Err(IdsFileProblem::BadLine {
+        let problem = if ids.len() == MOST_IDS {
+            IdsFileProblem::TooMany { span }
+        } else {
+            match id.parse::<u32>() {
+                Ok(id) => {
+                    ids.push(id);
+                    continue;
+                }
+                Err(error) => IdsFileProblem::BadLine {
                     span,
                     reason: error.to_string(),
-                });
+                },
             }
-        }
+        };
+        // The line after the problem is only context for the excerpt, so a
+        // line that cannot be read is left out and the problem stays the
+        // one reported. `read_line` leaves `text` unchanged when the line is
+        // not UTF-8.
+        let _ = reader.read_line(text);
+        return Err(problem);
     }
     if ids.is_empty() {
         return Err(IdsFileProblem::Empty);
@@ -383,7 +392,7 @@ pub(crate) enum BooksError {
     },
     /// The file that `--from` names holds more than [`MOST_IDS`] ids.
     TooManyIds {
-        /// The file's text up to the line of the first id after the last
+        /// The file's text up to the line after the first id after the last
         /// one allowed, named by its path as the caller gave it.
         file: NamedSource<String>,
         /// The span of the first id after the last one allowed.
