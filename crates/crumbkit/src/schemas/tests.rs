@@ -19,6 +19,7 @@ use crate::{
 };
 
 mod formats;
+mod streams;
 
 /// A row type for the test tool's leaves.
 #[derive(Serialize, JsonSchema)]
@@ -344,6 +345,7 @@ fn list_prints_one_row_for_each_served_document_with_its_description() {
         json!({
             "id": "shelf/books-list/v1",
             "kind": "output",
+            "form": "document",
             "description": "One page of the books.",
             "commands": ["shelf books list", "shelf books find"],
         })

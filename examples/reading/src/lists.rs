@@ -18,8 +18,11 @@ use serde::Serialize;
 
 use crate::cli::Resource;
 
+mod stream;
 #[cfg(test)]
 mod tests;
+
+pub(crate) use self::stream::{ENTRIES_STREAM, stream_entries};
 
 /// The document that `reading entries list` and the list command of each
 /// list print: one page of a list's entries and the number of entries in
@@ -171,18 +174,9 @@ pub(crate) fn entries<const N: usize>(
     name: &str,
     page: &Page<N>,
 ) -> Result<Listing<Entry>, EntriesError> {
-    let not_found = || EntriesError::NotFound {
+    let text = fs::read_to_string(file(dir, name)?).map_err(|error| EntriesError::Unreadable {
         name: name.to_owned(),
-    };
-    let dir = dir.ok_or_else(not_found)?;
-    if !lists_in(dir).iter().any(|list| list.name == name) {
-        return Err(not_found());
-    }
-    let text = fs::read_to_string(dir.join(format!("{name}.txt"))).map_err(|error| {
-        EntriesError::Unreadable {
-            name: name.to_owned(),
-            error,
-        }
+        error,
     })?;
     let entries = text
         .lines()
@@ -195,6 +189,23 @@ pub(crate) fn entries<const N: usize>(
         })
         .collect();
     Ok(Listing::from_all(entries, page.limit()).described("entries"))
+}
+
+/// Returns the path of the file of the list named `name` in `dir`.
+///
+/// # Errors
+///
+/// Returns `EntriesError::NotFound` when `dir` is `None` or holds no list
+/// named `name`.
+fn file(dir: Option<&Path>, name: &str) -> Result<PathBuf, EntriesError> {
+    let not_found = || EntriesError::NotFound {
+        name: name.to_owned(),
+    };
+    let dir = dir.ok_or_else(not_found)?;
+    if !lists_in(dir).iter().any(|list| list.name == name) {
+        return Err(not_found());
+    }
+    Ok(dir.join(format!("{name}.txt")))
 }
 
 /// The code of a failure whose list does not exist.

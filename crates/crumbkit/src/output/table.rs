@@ -50,8 +50,14 @@ pub(super) fn write(out: &mut impl Write, columns: &[&str], rows: &[Value]) -> i
 /// Writes one line of the table. Each cell starts at its column's offset,
 /// which is the end of the cell before it plus that cell's padding to its
 /// column's width plus two separator spaces. Those spaces are held back and
-/// written only before a non-empty cell, so a line never ends in them.
-fn write_line(out: &mut impl Write, cells: &[Cow<'_, str>], widths: &[usize]) -> io::Result<()> {
+/// written only before a non-empty cell, so a line never ends in them. A cell
+/// wider than its column gets no padding and moves the rest of its line
+/// right, which happens only in a stream, whose widths come from the header.
+pub(super) fn write_line(
+    out: &mut impl Write,
+    cells: &[Cow<'_, str>],
+    widths: &[usize],
+) -> io::Result<()> {
     let mut spaces = 0;
     for (cell, &width) in cells.iter().zip(widths) {
         if !cell.is_empty() {
@@ -60,7 +66,7 @@ fn write_line(out: &mut impl Write, cells: &[Cow<'_, str>], widths: &[usize]) ->
             write!(out, "{:spaces$}{cell}", "")?;
             spaces = 0;
         }
-        spaces += width - cell.chars().count() + 2;
+        spaces += width.saturating_sub(cell.chars().count()) + 2;
     }
     writeln!(out)
 }
@@ -69,7 +75,7 @@ fn write_line(out: &mut impl Write, cells: &[Cow<'_, str>], widths: &[usize]) ->
 /// control character shows as its escape, such as `\n`, so every row stays on
 /// one line. A number or a boolean shows in its JSON form, `null` or a missing
 /// field as `-`, and an array or an object as compact JSON.
-fn cell(value: Option<&Value>) -> Cow<'_, str> {
+pub(super) fn cell(value: Option<&Value>) -> Cow<'_, str> {
     match value {
         None | Some(Value::Null) => Cow::Borrowed("-"),
         Some(Value::String(text)) => escape_controls(text),

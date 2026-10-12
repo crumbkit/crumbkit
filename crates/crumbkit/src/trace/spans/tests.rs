@@ -351,6 +351,34 @@ fn a_batch_records_only_its_first_failure_s_code() {
 }
 
 #[test]
+fn a_stream_records_its_first_failure_s_code_and_its_exit_code_on_the_finish_span() {
+    let document: Document<crate::Stream<Planet>> =
+        Document::new("solar", "planets-watch", 1, "The test rows.");
+
+    let seen = watch(|| {
+        if let Ok(mut output) = parse(&["solar", "planets", "show", "Saturn"]) {
+            let sink = &mut Sink::new(Vec::new(), Vec::new());
+            if let Ok(mut streaming) =
+                crate::stream_to(sink, &mut output, Spelling::COLONS, document)
+            {
+                let _ = streaming.item(&Planet { name: "Saturn" });
+                let _ = streaming.failure(&Missing);
+                let _ = streaming.failure(&Error::from(Missing));
+                let _ = streaming.end(Ok::<(), Error>(()));
+            }
+        }
+    });
+
+    assert_eq!(
+        seen.fields("crumbkit.finish"),
+        [
+            ("error.type", "solar::planets::not_found".to_owned()),
+            ("process.exit.code", "1".to_owned())
+        ]
+    );
+}
+
+#[test]
 fn a_span_records_the_trace_id_and_the_run_s_id_that_the_usage_log_gives_it() {
     let ids = Some((
         "4bf92f3577b34da6a3ce929d0e0e4736".to_owned(),

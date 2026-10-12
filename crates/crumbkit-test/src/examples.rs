@@ -3,9 +3,10 @@
 
 use std::path::Path;
 use std::process::Output;
+use std::time::{Duration, Instant};
 
 use clap::Command;
-use crumbkit::help::Guide;
+use crumbkit::help::{Guide, Leaf};
 use snapbox::assert::{Action, DEFAULT_ACTION_ENV};
 use snapbox::{Assert, cmd};
 
@@ -26,6 +27,9 @@ const XDG: [(&str, &str); 4] = [
     ("XDG_STATE_HOME", "state"),
     ("XDG_CACHE_HOME", "cache"),
 ];
+
+/// How long [`check_examples`] lets one run take before it stops the run.
+const TIMEOUT: Duration = Duration::from_secs(10);
 
 /// The settings of [`check_examples`]: the tool's built binary, the
 /// directory of the golden files, the environment of each run and the
@@ -153,6 +157,14 @@ impl<'a> Examples<'a> {
 ///   example;
 /// - a run whose binary cannot start, such as a wrong path, naming the path
 ///   and the error;
+/// - a run that does not end within 10 seconds, which the check stops, so a
+///   stream command's example reads a finite input and never follows one;
+/// - a run of an example whose words hold `--json`, for a leaf whose
+///   document has crumbkit's envelope, that prints a line that is not a JSON
+///   object whose `schema` is the document's id, or that prints a number of
+///   lines other than one when the leaf declares a document of one result.
+///   A leaf that declares a stream with `Leaf::stream` may print any number
+///   of lines (ADR-0041);
 /// - two examples whose golden files have one name, naming both command
 ///   lines;
 /// - an opt-out from [`Rule::Examples`] that names no command or skips no
@@ -200,13 +212,20 @@ impl<'a> Examples<'a> {
 /// `shelf books list --author 'Jane Austen'`.
 pub fn check_examples(command: &Command, guide: &Guide, examples: &Examples<'_>) {
     let assert = Assert::new().action_env(DEFAULT_ACTION_ENV);
-    check(command, guide, examples, &assert);
+    check(command, guide, examples, &assert, TIMEOUT);
 }
 
 /// Runs [`check_examples`] with `assert`, whose action decides whether the
-/// check compares or overwrites, so a test chooses the action without
-/// setting `SNAPSHOTS`.
-fn check(command: &Command, guide: &Guide, examples: &Examples<'_>, assert: &Assert) {
+/// check compares or overwrites, and with `timeout` for each run, so a test
+/// chooses the action without setting `SNAPSHOTS` and stops a slow run
+/// early.
+fn check(
+    command: &Command,
+    guide: &Guide,
+    examples: &Examples<'_>,
+    assert: &Assert,
+    timeout: Duration,
+) {
     let overwrite = assert.selected_action() == Action::Overwrite;
     let dir = Path::new(examples.dir);
     let tool = command.get_name();
@@ -244,13 +263,21 @@ fn check(command: &Command, guide: &Guide, examples: &Examples<'_>, assert: &Ass
                 continue;
             }
             names.push((name.clone(), line.clone()));
-            let output = match run(examples, &args) {
+            let started = Instant::now();
+            let output = match run(examples, &args, timeout) {
                 Ok(output) => output,
                 Err(problem) => {
                     failures.push(format!("{line}: {problem}"));
                     continue;
                 }
             };
+            if !output.status.success() && started.elapsed() >= timeout {
+                failures.push(format!(
+                    "{line}: the run did not end within {} seconds, so the check stopped it, and an example must end on its own",
+                    timeout.as_secs_f64()
+                ));
+                continue;
+            }
             if !output.status.success() || !output.stderr.is_empty() {
                 let mut problem = format!(
                     "{line}: an example must exit with code 0 and write nothing to standard error, and the run ends with {}",
@@ -269,6 +296,9 @@ fn check(command: &Command, guide: &Guide, examples: &Examples<'_>, assert: &Ass
             // binary output. A comparison of `Data::binary` replaces it when
             // a tool's examples print bytes.
             let stdout = String::from_utf8_lossy(&output.stdout).into_owned();
+            if example.words().contains(&"--json") {
+                check_lines(leaf, &line, &stdout, &mut failures);
+            }
             compare(
                 assert,
                 &line,
@@ -290,6 +320,37 @@ fn check(command: &Command, guide: &Guide, examples: &Examples<'_>, assert: &Ass
     );
     allowances.finish(command, &mut problems);
     report(&problems, &failures);
+}
+
+/// Adds to `failures` each problem of `stdout`, the output of the `--json`
+/// example `line` of `leaf`, as [`check_examples`] describes. A leaf
+/// without a document, or whose document has no envelope, has none.
+fn check_lines(leaf: &Leaf, line: &str, stdout: &str, failures: &mut Vec<String>) {
+    let Some(document) = leaf.get_document() else {
+        return;
+    };
+    if !document.has_envelope() {
+        return;
+    }
+    let lines: Vec<&str> = stdout.lines().collect();
+    if !leaf.is_stream() && lines.len() != 1 {
+        failures.push(format!(
+            "{line}: the command prints one document, so its --json output must be exactly one line, and the run printed {} lines",
+            lines.len()
+        ));
+        return;
+    }
+    let id = document.to_string();
+    for (number, text) in (1..).zip(&lines) {
+        let schema = serde_json::from_str::<serde_json::Value>(text)
+            .ok()
+            .and_then(|value| value.get("schema").cloned());
+        if schema.as_ref().and_then(serde_json::Value::as_str) != Some(id.as_str()) {
+            failures.push(format!(
+                "{line}: line {number} of the --json output must be a JSON object whose schema is {id}"
+            ));
+        }
+    }
 }
 
 /// Panics, as a failed test assertion does, when `problems` or `failures`
@@ -318,15 +379,19 @@ fn report(problems: &[String], failures: &[String]) {
 /// Runs the binary of `examples` once with `args`, a cleared environment,
 /// the variables of [`Examples::env`] and fresh XDG directories, and returns
 /// its output, or the problem when the XDG directories cannot be created or
-/// the binary cannot start.
+/// the binary cannot start. A run that takes longer than `timeout` is
+/// killed, and its output holds what it printed until then.
 ///
 /// The check owns the process effects of each run, and runs it through
 /// snapbox's `cmd` module, which captures standard output and standard
 /// error.
-fn run(examples: &Examples<'_>, args: &[&str]) -> Result<Output, String> {
+fn run(examples: &Examples<'_>, args: &[&str], timeout: Duration) -> Result<Output, String> {
     let xdg = TempDir::new("example")
         .map_err(|error| format!("the run's XDG directories cannot be created: {error}"))?;
-    let mut command = cmd::Command::new(examples.binary).args(args).env_clear();
+    let mut command = cmd::Command::new(examples.binary)
+        .args(args)
+        .env_clear()
+        .timeout(timeout);
     for &(name, value) in examples.env {
         command = command.env(name, value);
     }

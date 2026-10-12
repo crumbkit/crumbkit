@@ -31,6 +31,7 @@ mod prose;
 mod report;
 mod row;
 mod segment;
+mod stream;
 
 pub use crate::batch::Batch;
 pub use crate::call::{Call, CallArg, CallError, CallTarget};
@@ -40,3 +41,4 @@ pub use crate::failure::{AsFailure, Error, Failure, Recovery};
 pub use crate::listing::{Listing, NoSummary};
 pub use crate::prose::Prose;
 pub use crate::row::{NoRow, Row, Rows, Shape};
+pub use crate::stream::Stream;

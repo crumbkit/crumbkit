@@ -12,13 +12,14 @@ use crate::Row;
 
 /// One document that the tool serves, as `schemas list` prints it.
 ///
-/// The text table shows the id, the kind and the description, and `--long`
+/// The text table shows the id, the kind, the form and the description, and `--long`
 /// adds the command lines that print the document.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct SchemaRow {
     // The `JsonSchema` impl below describes each field.
     id: String,
     kind: &'static str,
+    form: &'static str,
     description: &'static str,
     commands: Vec<String>,
 }
@@ -29,6 +30,7 @@ impl SchemaRow {
         Self {
             id: served.id(),
             kind: served.kind(),
+            form: served.form(),
             description: served.description(),
             commands: served.commands().to_vec(),
         }
@@ -36,7 +38,7 @@ impl SchemaRow {
 }
 
 impl Row for SchemaRow {
-    const COLUMNS: &'static [&'static str] = &["id", "kind", "description"];
+    const COLUMNS: &'static [&'static str] = &["id", "kind", "form", "description"];
     const LONG_COLUMNS: &'static [&'static str] = &["commands"];
 }
 
@@ -46,9 +48,10 @@ impl Row for SchemaRow {
 /// needs no `serde_derive`.
 impl Serialize for SchemaRow {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        let mut row = serializer.serialize_struct("SchemaRow", 4)?;
+        let mut row = serializer.serialize_struct("SchemaRow", 5)?;
         row.serialize_field("id", &self.id)?;
         row.serialize_field("kind", self.kind)?;
+        row.serialize_field("form", self.form)?;
         row.serialize_field("description", self.description)?;
         row.serialize_field("commands", &self.commands)?;
         row.end()
@@ -79,6 +82,10 @@ impl JsonSchema for SchemaRow {
                     "description": "output when a command prints the document with its schema id, unwrapped when a command prints it without crumbkit's envelope, and file when it is a file format that users write and no command prints.",
                     "enum": ["output", "unwrapped", "file"],
                 },
+                "form": {
+                    "description": "stream when a command prints the document as a stream, one document on each line as each row arrives, and document when a command prints it once or it is a file format.",
+                    "enum": ["document", "stream"],
+                },
                 "description": {
                     "description": "What the document holds, in one line.",
                     "type": "string",
@@ -89,7 +96,7 @@ impl JsonSchema for SchemaRow {
                     "items": { "type": "string" },
                 },
             },
-            "required": ["id", "kind", "description", "commands"],
+            "required": ["id", "kind", "form", "description", "commands"],
         })
     }
 }

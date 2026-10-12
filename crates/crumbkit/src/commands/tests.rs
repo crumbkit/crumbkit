@@ -401,6 +401,7 @@ fn a_row_holds_its_leaf_s_examples_as_quoted_command_lines_and_its_columns() {
                     "description": "The year the book was first published.",
                 },
             ],
+            "form": "document",
             "exits": [],
             "effects": null,
         }])

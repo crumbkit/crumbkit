@@ -241,7 +241,7 @@ fn write_labelled(err: &mut impl Write, label: &str, value: &str) -> io::Result<
 }
 
 /// Writes `document` to `out` as JSON on one line, then flushes `out`.
-fn write_json(out: &mut impl Write, document: &FailureDocument) -> io::Result<()> {
+pub(super) fn write_json(out: &mut impl Write, document: &FailureDocument) -> io::Result<()> {
     serde_json::to_writer(&mut *out, document)?;
     out.write_all(b"\n")?;
     out.flush()

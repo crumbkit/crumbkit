@@ -1,0 +1,5 @@
+{"schema":"reading/entries-stream/v1","data":{"position":1,"title":"North and South"}}
+{"schema":"reading/entries-stream/v1","data":{"position":2,"title":"Wuthering Heights"}}
+{"schema":"reading/entries-stream/v1","data":{"position":3,"title":"The Moonstone"}}
+{"schema":"reading/entries-stream/v1","data":{"position":4,"title":"Dracula"}}
+{"schema":"reading/entries-stream/v1","data":{"position":5,"title":"Little Women"}}

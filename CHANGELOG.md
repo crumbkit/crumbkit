@@ -147,6 +147,16 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit-test: [`check_effects`] requires effects on every visible leaf,
   `--yes` on destructive leaves, and crumbkit's `--dry-run` in place of a
   tool's own ([ADR-0039]).
+- crumbkit-core: [`Stream`] is the result type of a document whose command
+  prints rows as they arrive ([ADR-0041]).
+- crumbkit: `stream` opens a [`Streaming`], which prints each row as it
+  arrives as a table line or a JSON Lines document, and `Leaf::stream`
+  declares it in help ([ADR-0041]).
+- crumbkit: `commands list` rows and `schemas list` rows hold `form`,
+  which is `document` or `stream` ([ADR-0041]).
+- crumbkit-test: [`check_examples`] stops an example after 10 seconds and
+  checks that each line of a `--json` example is a document with the
+  leaf's id ([ADR-0041]).
 
 ### Changed
 
@@ -264,6 +274,8 @@ rustdoc, or at its decision record. -->
 [`Document`]: crates/crumbkit-core/src/document.rs
 [`Output`]: crates/crumbkit/src/output.rs
 [`finish`]: crates/crumbkit/src/output.rs
+[`Stream`]: crates/crumbkit-core/src/stream.rs
+[`Streaming`]: crates/crumbkit/src/output/stream.rs
 [`Page`]: crates/crumbkit/src/page.rs
 [`Listing`]: crates/crumbkit-core/src/listing.rs
 [`Call`]: crates/crumbkit-core/src/call.rs
@@ -345,3 +357,4 @@ rustdoc, or at its decision record. -->
 [`Sink`]: crates/crumbkit/src/sink.rs
 [`check_effects`]: crates/crumbkit-test/src/effects.rs
 [ADR-0039]: docs/decisions/api/effects/0039-effects-dry-runs-and-confirmation.md
+[ADR-0041]: docs/decisions/api/output/0041-streams.md

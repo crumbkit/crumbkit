@@ -77,6 +77,9 @@ where
                     let result = lists::entries(dir.as_deref(), &args.list, &args.page);
                     crumbkit::finish(&mut cli.output, SPELLING, lists::ENTRIES_LIST, result)
                 }
+                Resource::Entries {
+                    command: EntriesCommand::Stream(args),
+                } => lists::stream_entries(&mut cli.output, SPELLING, dir.as_deref(), &args.list),
                 // `commands list` and `schemas` read the command tree
                 // through `&mut cli.output`, so each runs before `finish`
                 // takes `cli.output` in turn.

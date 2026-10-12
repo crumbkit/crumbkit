@@ -97,7 +97,7 @@ use std::fmt;
 
 use clap::Args;
 
-pub use self::envelope::document_schema;
+pub use self::envelope::{document_schema, stream_schema};
 pub(crate) use self::envelope::{envelope, file_format};
 pub use self::row::{SchemaRow, SchemaShowRow};
 pub use self::served::{Served, documents};

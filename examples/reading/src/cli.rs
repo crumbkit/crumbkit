@@ -8,7 +8,7 @@ use crumbkit::help::{Effects, Example, Guide, Leaf};
 use crumbkit::schemas::{SCHEMAS_LIST, SCHEMAS_SHOW, SchemasList, SchemasShow};
 use crumbkit::{Output, Page};
 
-use crate::lists::ENTRIES_LIST;
+use crate::lists::{ENTRIES_LIST, ENTRIES_STREAM};
 
 /// Keep reading lists, and print the entries of each.
 #[derive(Debug, Parser)]
@@ -35,6 +35,19 @@ pub const GUIDE: Guide = Guide::new().leaves(&[
         )])
         .effects(Effects::read_only())
         .document(ENTRIES_LIST),
+    Leaf::new(&["entries", "stream"])
+        .examples(&[
+            Example::new(
+                &["--list", "to-read"],
+                "Print each entry of the to-read list as reading reads it",
+            ),
+            Example::new(
+                &["--list", "to-read", "--json"],
+                "Print each entry of the to-read list as one JSON document on each line",
+            ),
+        ])
+        .effects(Effects::read_only())
+        .stream(ENTRIES_STREAM),
     Leaf::new(&["commands", "list"])
         .examples(&[
             Example::new(&[], "List every command"),
@@ -86,6 +99,8 @@ pub(crate) enum Resource {
 pub(crate) enum EntriesCommand {
     /// List the entries of the reading list that --list names, in file order.
     List(EntriesList),
+    /// Print each entry of the reading list that --list names as reading reads it.
+    Stream(EntriesStream),
 }
 
 /// The commands for reading's own commands.
@@ -114,4 +129,12 @@ pub(crate) struct EntriesList {
     /// How many entries to print.
     #[command(flatten)]
     pub(crate) page: Page<3>,
+}
+
+/// The arguments of `reading entries stream`.
+#[derive(Debug, Args)]
+pub(crate) struct EntriesStream {
+    /// The name of the reading list, such as to-read
+    #[arg(long, value_name = "NAME")]
+    pub(crate) list: String,
 }

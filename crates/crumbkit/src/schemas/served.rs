@@ -20,6 +20,9 @@ pub struct Served {
     /// The command lines of the visible leaves that print the document,
     /// such as `shelf books list`, in guide order.
     commands: Vec<String>,
+    /// Whether the leaves that print the document print it as a stream,
+    /// one line for each row.
+    stream: bool,
     /// Builds the document's JSON Schema from its id and description: the
     /// envelope of the first leaf in guide order that declares the
     /// document, the failure document's schema, or a file format's schema.
@@ -64,6 +67,13 @@ impl Served {
         }
     }
 
+    /// Returns the document's form as `schemas list` prints it: `stream`
+    /// when a command prints it as a stream of lines, and `document`
+    /// otherwise (ADR-0041).
+    pub(crate) const fn form(&self) -> &'static str {
+        if self.stream { "stream" } else { "document" }
+    }
+
     /// Returns the document's 2020-12 JSON Schema. It builds the schema on
     /// each call.
     #[must_use]
@@ -97,6 +107,7 @@ pub fn documents(command: &Command, guide: &Guide) -> Vec<Served> {
         document: failure::DOCUMENT,
         kind: Kind::Output,
         commands: Vec::new(),
+        stream: false,
         schema: |_| failure::document_schema(),
     }];
     for leaf in guide.get_leaves() {
@@ -121,6 +132,7 @@ pub fn documents(command: &Command, guide: &Guide) -> Vec<Served> {
                     Kind::Unwrapped
                 },
                 commands: vec![line],
+                stream: leaf.is_stream(),
                 schema,
             }),
         }
@@ -129,6 +141,7 @@ pub fn documents(command: &Command, guide: &Guide) -> Vec<Served> {
         document: format.document(),
         kind: Kind::File,
         commands: Vec::new(),
+        stream: false,
         schema: format.schema_fn(),
     }));
     served
