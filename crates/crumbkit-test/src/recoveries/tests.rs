@@ -23,6 +23,7 @@ use crate::testing::panic_message;
 mod form;
 mod fresh;
 mod values;
+mod words;
 mod xdg;
 
 /// The code of a book that does not exist.

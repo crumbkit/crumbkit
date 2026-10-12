@@ -308,8 +308,9 @@ impl<'a> Recoveries<'a> {
 /// [`Examples::fresh_dir`] runs in one new copy of that fixture.
 ///
 /// A chain follows the recovery and then each alternative of a failure. A
-/// `run` step fills each placeholder, such as `<ID>...`, drops the tool's
-/// name and runs the words. A placeholder takes the first value that one of
+/// `run` step fills each placeholder, such as `<ID>...` or each of the two
+/// in `<plugin>.<capability>`, keeps the text between placeholders in a
+/// word, drops the tool's name and runs the words. A placeholder takes the first value that one of
 /// these sources gives:
 ///
 /// 1. the value of [`Failing::values`] whose name matches it exactly;

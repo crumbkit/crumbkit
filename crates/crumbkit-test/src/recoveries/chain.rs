@@ -270,26 +270,19 @@ impl Walk<'_> {
                 format!("the step `{call}` must start with the tool's name, {tool}")
             }
             Some(words) => {
-                let mut filled = Vec::with_capacity(words.len() - 1);
-                let mut missing = None;
-                for word in words.into_iter().skip(1) {
-                    match placeholder(&word) {
-                        None => filled.push(word),
-                        Some(name) => {
-                            match value(chain.values, fields, self.recoveries.values, name) {
-                                Some(value) => filled.push(value.to_owned()),
-                                None => missing = Some(word),
-                            }
-                        }
-                    }
+                let shared = self.recoveries.values;
+                let lookup = |name: &str| value(chain.values, fields, shared, name);
+                let filled: Result<Vec<String>, String> = words
+                    .iter()
+                    .skip(1)
+                    .map(|word| fill_word(word, lookup))
+                    .collect();
+                match filled {
+                    Ok(filled) => return Some(filled),
+                    Err(missing) => format!(
+                        "the step `{call}` has the placeholder {missing}, and no value of Failing::values, the fields of the failure or Recoveries::values fills it"
+                    ),
                 }
-                let Some(word) = missing else {
-                    return Some(filled);
-                };
-                format!(
-                    "the step `{call}` has the placeholder {}, and no value of Failing::values, the fields of the failure or Recoveries::values fills it",
-                    word.trim_end_matches("...")
-                )
             }
         };
         self.problems.push(format!("{}: {problem}", chain.start));
@@ -415,25 +408,51 @@ fn with_json(words: &[String]) -> Vec<String> {
     args
 }
 
-/// Returns the name between the angle brackets of `word` when it is a
-/// placeholder, such as `ID` for `<ID>` or `<ID>...` and `path` for
-/// `<path>`. A name holds ASCII letters of either case, digits, `_` and `-`.
+/// Returns `word` with each placeholder replaced by the value that `lookup`
+/// gives its name, or the first placeholder that `lookup` gives no value,
+/// such as `<capability>`.
+///
+/// A placeholder is `<`, a name of one or more ASCII letters of either
+/// case, digits, `_` and `-`, and `>`, anywhere in the word, so
+/// `<plugin>.<capability>` holds two placeholders and keeps the `.` between
+/// them, and `--to=<path>` keeps `--to=`. A `...` right after a placeholder
+/// at the end of the word is clap's mark of a repeated value, which the
+/// filled word drops. A `<` that starts no placeholder stays as it is.
 //
 // RUST-10: `crumbkit::help::split` returns plain words, so the check cannot
-// tell a quoted value from a placeholder. A call whose real value is such
-// text, such as `'<ID>'` or `"<path>"`, reads as a placeholder. A call that kept its
-// placeholders apart from its values replaces this if a tool needs one.
-fn placeholder(word: &str) -> Option<&str> {
-    let name = word
-        .strip_suffix("...")
-        .unwrap_or(word)
-        .strip_prefix('<')?
-        .strip_suffix('>')?;
-    let valid = !name.is_empty()
-        && name
-            .chars()
-            .all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '-');
-    valid.then_some(name)
+// tell a quoted value from a placeholder. A call whose real value holds
+// such text, such as `'<ID>'` or `"a<path>b"`, reads as holding a
+// placeholder. A call that kept its placeholders apart from its values
+// replaces this if a tool needs one.
+pub(super) fn fill_word<'v>(
+    word: &str,
+    lookup: impl Fn(&str) -> Option<&'v str>,
+) -> Result<String, String> {
+    let mut filled = String::with_capacity(word.len());
+    let mut rest = word;
+    while let Some(open) = rest.find('<') {
+        filled.push_str(&rest[..open]);
+        let after = &rest[open + 1..];
+        let length = after
+            .find(|c: char| !(c.is_ascii_alphanumeric() || c == '_' || c == '-'))
+            .unwrap_or(after.len());
+        if length == 0 || !after[length..].starts_with('>') {
+            filled.push('<');
+            rest = after;
+            continue;
+        }
+        let name = &after[..length];
+        let Some(value) = lookup(name) else {
+            return Err(format!("<{name}>"));
+        };
+        filled.push_str(value);
+        rest = &after[length + 1..];
+        if rest == "..." {
+            rest = "";
+        }
+    }
+    filled.push_str(rest);
+    Ok(filled)
 }
 
 /// Returns the path below `root` of the deepest command that `words` name

@@ -340,6 +340,9 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit-test: [`check_recoveries`] fills a placeholder from the `fields`
   of the failure that offers the step before it reads `Recoveries::values`
   ([ADR-0005]).
+- crumbkit-test: [`check_recoveries`] fills each placeholder inside a word,
+  such as `<plugin>.<capability>`, and keeps the text between them
+  ([ADR-0005]).
 - crumbkit: the help text of `--json` reads `Print the result as a JSON
   document` and no longer names a layout.
 - crumbkit-test: when the guide sets `JsonLayout::Pretty`, [`check_examples`]
