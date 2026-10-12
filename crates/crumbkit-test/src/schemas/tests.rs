@@ -130,3 +130,22 @@ fn two_leaves_that_declare_one_id_with_different_schemas_fail() {
          shelf/books-list/v1: `shelf books list` and `shelf schemas list` print the document with different schemas, so one of them needs a document of its own"
     );
 }
+
+#[test]
+fn two_ids_that_share_a_golden_file_name_fail() {
+    const DASHED: Document<Listing<Book>> =
+        Document::new("shelf-books", "list", 1, "One page of the books.");
+    const SHARED: Guide = Guide::new().leaves(&[
+        Leaf::new(&["books", "list"]).document(BOOKS_LIST),
+        Leaf::new(&["schemas", "list"]).document(DASHED),
+    ]);
+    let dir = TempDir::new("schemas-shared").unwrap();
+
+    let message = panic_message(|| run(&SHARED, &dir, Action::Overwrite)).unwrap();
+
+    assert_eq!(
+        message,
+        "the command tree breaks crumbkit's golden schema rules:\n\
+         shelf-books/list/v1: the golden file name `shelf-books-list-v1.json` is also the name for the document shelf/books-list/v1, so one of the two needs another id"
+    );
+}

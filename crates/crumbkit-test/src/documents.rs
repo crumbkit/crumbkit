@@ -4,6 +4,7 @@
 use clap::Command;
 use crumbkit::help::Guide;
 
+use crate::allow::{Allow, Allowances, Rule};
 use crate::schemas::command_line;
 use crate::tree;
 
@@ -36,6 +37,12 @@ pub(crate) const MOUNTS: [(&str, &[&str]); 6] = [
 /// the component and the version, and crumbkit's `Document::new` checks
 /// their form.
 ///
+/// A tool can opt out of the rule for a command and every command below it
+/// with an [`Allow`] of [`Rule::DocumentName`] and a stated reason, such as
+/// a document that scripts read under a name from before a rename
+/// ([ADR-0036]). The check fails on such an opt-out that names no command
+/// or excuses no problem.
+///
 /// The check skips a leaf that declares the document of one of crumbkit's
 /// commands at fixed paths, such as `crumbkit/schemas-list/v1`, because a
 /// tool cannot rename those documents, and [`check_mounts`] checks where
@@ -45,15 +52,18 @@ pub(crate) const MOUNTS: [(&str, &[&str]); 6] = [
 /// use clap::Command;
 /// use crumbkit::help::Guide;
 ///
-/// crumbkit_test::check_document_ids(&Command::new("shelf"), &Guide::new());
+/// crumbkit_test::check_document_ids(&Command::new("shelf"), &Guide::new(), &[]);
 /// ```
 ///
 /// # Panics
 ///
-/// Panics when a document's name breaks the rule. Each problem in the
-/// message starts on a new line and names the leaf's command line, the id,
-/// and the name the rule gives.
-pub fn check_document_ids(command: &Command, guide: &Guide) {
+/// Panics when a document's name or an opt-out breaks a rule above. Each
+/// problem in the message starts on a new line and names the leaf's
+/// command line, the id, and the name the rule gives.
+///
+/// [ADR-0036]: https://github.com/crumbkit/crumbkit/blob/main/docs/decisions/api/0036-opt-outs.md
+pub fn check_document_ids(command: &Command, guide: &Guide, allow: &[Allow]) {
+    let mut allowances = Allowances::new(allow, &[Rule::DocumentName]);
     let mut problems = Vec::new();
     for leaf in guide.get_leaves() {
         let Some(document) = leaf.get_document() else {
@@ -64,14 +74,16 @@ pub fn check_document_ids(command: &Command, guide: &Guide) {
         }
         let (_, below) = split(command, leaf.path());
         let expected = below.join("-");
-        if document.name() != expected {
+        if document.name() != expected
+            && !allowances.excuses(Rule::DocumentName, &leaf.path().join(" "))
+        {
             problems.push(format!(
                 "{}: the command prints {document}, and the name of the document that a command prints is the command's path below the tool joined with dashes, `{expected}`",
                 command_line(command, leaf.path())
             ));
         }
     }
-    tree::report("document id rules", &problems);
+    allowances.report(command, "document id rules", problems);
 }
 
 /// Checks that each leaf of `guide` that declares the document of one of

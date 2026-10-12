@@ -60,7 +60,7 @@ mod tests;
 /// and is not checked. The column rules read
 /// [`Leaf::column_descriptions`](crumbkit::help::Leaf::column_descriptions),
 /// the data that the leaf's `--help` lists. A topic with
-/// an empty summary passes. The check takes no exemptions, because a tool
+/// an empty summary passes. The check takes no opt-outs, because a tool
 /// that wants clap's list for a command leaves that command out of the
 /// guide.
 ///

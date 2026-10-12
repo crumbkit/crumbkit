@@ -58,7 +58,7 @@ fn every_help_page_matches_its_golden_file() {
 
 #[test]
 fn every_document_is_named_after_the_path_of_the_command_that_prints_it() {
-    crumbkit_test::check_document_ids(&Cli::command(), &GUIDE);
+    crumbkit_test::check_document_ids(&Cli::command(), &GUIDE, ALLOW);
 }
 
 #[test]

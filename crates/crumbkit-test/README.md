@@ -52,7 +52,7 @@ The rustdoc of each check says what it fails on and shows an example:
   [`example_golden_name`], which names each example's golden file.
 - JSON documents: [`check_schema_goldens`], which pins each document's
   JSON Schema, [`check_document_ids`], which ties each document's name to
-  its command, and [`check_mounts`], which keeps crumbkit's own commands at
+  its command and takes the tool's opt-outs, and [`check_mounts`], which keeps crumbkit's own commands at
   their fixed paths.
 
 [ADR-0025] records why these checks exist, [ADR-0036] records opt-outs,

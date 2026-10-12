@@ -32,9 +32,36 @@ fn a_component_with_an_uppercase_letter_is_rejected() {
 }
 
 #[test]
+fn a_component_may_hold_dots_and_dashes_as_a_domain_does() {
+    let domain: Document<()> = Document::new("example.dev", "books-list", 1, "Books.");
+    let dashed: Document<()> = Document::new("my-shelf.example_2", "books-list", 1, "Books.");
+
+    assert_eq!(domain.to_string(), "example.dev/books-list/v1");
+    assert_eq!(dashed.to_string(), "my-shelf.example_2/books-list/v1");
+}
+
+#[test]
 #[should_panic(expected = "component")]
-fn a_component_with_a_dash_is_rejected() {
-    let _: Document<()> = Document::new("my-shelf", "books-list", 1, "Books.");
+fn a_component_that_starts_with_a_dot_is_rejected() {
+    let _: Document<()> = Document::new(".dev", "books-list", 1, "Books.");
+}
+
+#[test]
+#[should_panic(expected = "component")]
+fn a_component_that_ends_with_a_dot_is_rejected() {
+    let _: Document<()> = Document::new("example.", "books-list", 1, "Books.");
+}
+
+#[test]
+#[should_panic(expected = "component")]
+fn a_component_with_two_dots_in_a_row_is_rejected() {
+    let _: Document<()> = Document::new("example..dev", "books-list", 1, "Books.");
+}
+
+#[test]
+#[should_panic(expected = "component")]
+fn a_component_with_a_slash_is_rejected() {
+    let _: Document<()> = Document::new("example/dev", "books-list", 1, "Books.");
 }
 
 #[test]

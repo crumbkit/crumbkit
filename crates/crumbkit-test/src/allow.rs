@@ -135,6 +135,10 @@ pub enum Rule {
     /// [`check_examples`](crate::check_examples): the check skips the
     /// examples of a command. Its id is `examples/run`.
     Examples,
+    /// [`check_document_ids`](crate::check_document_ids): the name of the
+    /// document that a command prints is not the command's path below the
+    /// tool joined with dashes. Its id is `documents/document-name`.
+    DocumentName,
 }
 
 impl Rule {
@@ -153,6 +157,7 @@ impl Rule {
             Self::RepeatsAndCommas => "filters/repeats-and-commas",
             Self::OneValuePerUse => "filters/one-value-per-use",
             Self::Examples => "examples/run",
+            Self::DocumentName => "documents/document-name",
         }
     }
 
@@ -189,6 +194,9 @@ impl Rule {
             Self::Examples => &[
                 "The examples are not run, so help can show an example that fails.",
                 "The command's output weight counts 0 bytes, so its path weight is too low.",
+            ],
+            Self::DocumentName => &[
+                "An agent cannot predict the document's id from the command it ran, or the command from the id.",
             ],
         }
     }

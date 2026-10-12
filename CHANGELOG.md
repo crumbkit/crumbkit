@@ -131,6 +131,11 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit-test: [`Budgets`] and [`PathBudgets`] take a reason with each
   budget, a command's budget is a [`Budget`], and a tool can raise a
   budget above crumbkit's default ([ADR-0025]).
+- crumbkit: a [`Document`] component may hold dots and dashes, so a
+  domain such as `example.dev` names a document's owner ([ADR-0007]).
+- crumbkit-test: [`check_document_ids`] takes opt-outs from the document
+  name rule, and [`check_schema_goldens`] fails on two ids whose golden
+  files share a name ([ADR-0035]).
 
 ### Removed
 

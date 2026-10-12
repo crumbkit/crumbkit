@@ -10,6 +10,7 @@ use serde::Serialize;
 
 use super::{MOUNTS, check_document_ids, check_mounts};
 use crate::testing::panic_message;
+use crate::{Allow, Rule};
 
 /// A row of the test tools.
 #[derive(Serialize, JsonSchema)]
@@ -35,14 +36,15 @@ fn a_document_named_after_its_leaf_s_path_passes() {
         Leaf::new(&["commands", "list"]).document(COMMANDS_LIST),
     ]);
 
-    check_document_ids(&Command::new("shelf"), &GUIDE);
+    check_document_ids(&Command::new("shelf"), &GUIDE, &[]);
 }
 
 #[test]
 fn a_document_named_after_another_path_fails_and_names_the_expected_name() {
     const GUIDE: Guide = Guide::new().leaves(&[Leaf::new(&["books", "list"]).document(BOOK_LIST)]);
 
-    let message = panic_message(|| check_document_ids(&Command::new("shelf"), &GUIDE)).unwrap();
+    let message =
+        panic_message(|| check_document_ids(&Command::new("shelf"), &GUIDE, &[])).unwrap();
 
     assert_eq!(
         message,
@@ -58,7 +60,7 @@ fn a_cargo_subcommand_names_its_documents_after_the_path_below_its_own_name() {
         Leaf::new(&["crumbkit", "commands", "list"]).document(COMMANDS_LIST),
     ]);
 
-    check_document_ids(&Command::new("cargo"), &GUIDE);
+    check_document_ids(&Command::new("cargo"), &GUIDE, &[]);
     check_mounts(&Command::new("cargo"), &GUIDE);
 }
 
@@ -67,7 +69,7 @@ fn the_document_id_check_leaves_crumbkit_s_fixed_commands_to_the_mount_check() {
     const GUIDE: Guide =
         Guide::new().leaves(&[Leaf::new(&["meta", "schemas"]).document(SCHEMAS_LIST)]);
 
-    check_document_ids(&Command::new("shelf"), &GUIDE);
+    check_document_ids(&Command::new("shelf"), &GUIDE, &[]);
 }
 
 #[test]
@@ -101,4 +103,35 @@ fn each_fixed_path_names_its_document_by_the_document_id_rule() {
     for (name, path) in MOUNTS {
         assert_eq!(name, path.join("-"));
     }
+}
+
+/// A tool with the command `books list`.
+fn shelf() -> Command {
+    Command::new("shelf").subcommand(Command::new("books").subcommand(Command::new("list")))
+}
+
+#[test]
+fn a_document_that_an_opt_out_names_may_have_any_name() {
+    const GUIDE: Guide = Guide::new().leaves(&[Leaf::new(&["books", "list"]).document(BOOK_LIST)]);
+    const ALLOW: &[Allow] = &[Allow::new(
+        Rule::DocumentName,
+        "books",
+        "Scripts read the document under its name from before the rename.",
+    )];
+
+    check_document_ids(&shelf(), &GUIDE, ALLOW);
+}
+
+#[test]
+fn an_opt_out_from_the_document_name_rule_that_excuses_no_problem_fails() {
+    const GUIDE: Guide = Guide::new().leaves(&[Leaf::new(&["books", "list"]).document(BOOKS_LIST)]);
+    const ALLOW: &[Allow] = &[Allow::new(Rule::DocumentName, "books list", "Old scripts.")];
+
+    let message = panic_message(|| check_document_ids(&shelf(), &GUIDE, ALLOW)).unwrap();
+
+    assert_eq!(
+        message,
+        "the command tree breaks crumbkit's document id rules:\n\
+         the opt-out from `documents/document-name` for `shelf books list` excuses no problem, so it is stale"
+    );
 }

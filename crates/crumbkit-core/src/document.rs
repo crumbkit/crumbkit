@@ -3,7 +3,7 @@
 use std::fmt;
 use std::marker::PhantomData;
 
-use crate::segment::is_segment;
+use crate::segment::{is_component, is_segment};
 
 #[cfg(test)]
 mod tests;
@@ -16,14 +16,17 @@ mod tests;
 /// the result type, so the compiler rejects a document paired with the wrong
 /// result.
 ///
-/// The name of a document that a command prints is the command's path below
-/// the tool's name, with its words joined by `-`, so `shelf books list`
+/// The component names the document's owner, such as `shelf`, and may be
+/// a domain such as `example.dev`. The name of a document that a command
+/// prints is the command's path below the tool's name, with its words
+/// joined by `-`, so `shelf books list`
 /// prints `shelf/books-list/v1` and an agent can tell the id from the
 /// command and the command from the id (ADR-0007). A cargo subcommand's
 /// path starts below `cargo <name>`, so `cargo crumbkit weigh` prints
 /// `crumbkit/weigh/v1`. A document that no command prints on its own, such
 /// as `crumbkit/failure/v1`, names what it holds. crumbkit-test's
-/// `check_document_ids` checks the rule for every leaf of a tool's guide.
+/// `check_document_ids` checks the rule for every leaf of a tool's guide,
+/// and a tool can opt out of it for a command with a stated reason.
 ///
 /// The description is what `schemas list` shows for the document and the
 /// `description` of its JSON Schema.
@@ -40,7 +43,8 @@ mod tests;
 /// assert_eq!(BOOKS_LIST.to_string(), "shelf/books-list/v1");
 /// ```
 pub struct Document<T> {
-    /// The component that owns the document, such as `shelf`.
+    /// The component that owns the document, such as `shelf` or
+    /// `example.dev`.
     component: &'static str,
     /// The document's name within its component, such as `books-list`.
     name: &'static str,
@@ -64,8 +68,9 @@ impl<T> Document<T> {
     ///
     /// # Panics
     ///
-    /// Panics unless `component` is non-empty lowercase ASCII letters, digits
-    /// and underscores, `name` is non-empty lowercase ASCII letters, digits
+    /// Panics unless `component` is labels joined by single dots, such as
+    /// `shelf` or `example.dev`, each label non-empty lowercase ASCII
+    /// letters, digits, underscores and dashes, `name` is non-empty lowercase ASCII letters, digits
     /// and dashes, `version` is at least 1, and `description` is non-empty
     /// and holds no line break. A `const` that calls it with such arguments
     /// fails to compile:
@@ -82,8 +87,8 @@ impl<T> Document<T> {
         description: &'static str,
     ) -> Self {
         assert!(
-            is_segment(component, b'_'),
-            "a document component is non-empty lowercase ASCII letters, digits and underscores"
+            is_component(component),
+            "a document component is labels joined by single dots, each non-empty lowercase ASCII letters, digits, underscores and dashes"
         );
         assert!(
             is_segment(name, b'-'),
