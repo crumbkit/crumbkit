@@ -9,6 +9,7 @@ mod dry_run;
 mod envelope;
 pub(crate) mod failure;
 mod fields;
+mod layout;
 mod listing;
 mod prose;
 mod respond;
@@ -27,6 +28,7 @@ use clap::{Args, Command};
 pub(crate) use self::budget::SMALLEST as SMALLEST_BUDGET;
 pub use self::confirm::Yes;
 pub use self::dry_run::DryRun;
+pub use self::layout::JsonLayout;
 pub use self::stream::{Streaming, stream, stream_to};
 use crate::form::FailureForm;
 use crate::help::Guide;
@@ -40,7 +42,8 @@ mod tests;
 /// A tool adds them to its own clap parser with `#[command(flatten)]`. Every
 /// flag is global, so it also works after a subcommand: `shelf books list --json`.
 ///
-/// - `--json` prints a JSON document on one line.
+/// - `--json` prints a JSON document, on one line unless the guide sets a
+///   [`JsonLayout`].
 /// - `--long` adds the row type's [`Row::LONG_COLUMNS`](crate::Row::LONG_COLUMNS).
 /// - `--full` prints every field of every row in declaration order, and needs `--json`.
 /// - `--fields a,b` prints exactly the named fields in that order, and
@@ -60,7 +63,7 @@ mod tests;
     reason = "each bool is one independent flag or mark of the run, and no two of them form a state machine"
 )]
 pub struct Output {
-    /// Print the result as a JSON document on one line
+    /// Print the result as a JSON document
     #[arg(long, global = true)]
     json: bool,
 
@@ -113,6 +116,12 @@ pub struct Output {
     /// `set_command` copies from the `Parsed` (ADR-0049).
     #[arg(skip)]
     no_terminal: bool,
+
+    /// The layout of a whole JSON document, which `set_command` copies from
+    /// the `Parsed`, or `None` for one line (ADR-0052).
+    #[arg(skip)]
+    json_layout: Option<JsonLayout>,
+
     /// The most bytes that the run prints on standard output, which
     /// `set_command` sets from the `Parsed` and the environment, or `None`
     /// for crumbkit's default lowered by the environment (ADR-0046).
@@ -204,6 +213,7 @@ impl Output {
         self.no_input = parsed.no_input;
         self.failure_form = parsed.failure_form;
         self.no_terminal = parsed.no_terminal;
+        self.json_layout = parsed.json_layout;
         self.budget = Some(budget::from_environment(
             parsed.output_budget.unwrap_or(budget::DEFAULT),
         ));
@@ -268,6 +278,7 @@ impl Output {
             command: Some(command),
             failure_form: guide.get_failure_form(),
             no_terminal: !guide.get_terminal_detection(),
+            json_layout: guide.layout(),
             ..Self::default()
         }
     }
@@ -296,7 +307,8 @@ pub fn finish<T: Rows, E: AsFailure>(
 ///
 /// An `Ok` value prints to the sink's output writer. The text format is a
 /// table with a header row, and an empty result prints the header alone. The
-/// JSON format is one line holding an object
+/// JSON format is one line holding an object, or the object indented by two
+/// spaces when the guide sets [`JsonLayout::Pretty`] (ADR-0052),
 /// with the `schema` id of `document` and the result under `data`; a single
 /// row's `data` is an object, and a `Vec`'s is an array.
 /// A document from [`Document::without_envelope`] prints the result alone,
@@ -363,8 +375,8 @@ pub fn finish<T: Rows, E: AsFailure>(
 /// against the command that [`Output::set_command`] received, and prints as
 /// `no next step: the suggested command is not available` when no command is
 /// set or the call does not resolve. With `--json`, the failure prints to the
-/// output writer as one `crumbkit/failure/v1` document on one line, which
-/// `--full` and `--fields` do not change.
+/// output writer as one `crumbkit/failure/v1` document, on one line or in
+/// the guide's layout, which `--full` and `--fields` do not change.
 ///
 /// When the tool's guide sets a
 /// [`FailureForm`](crate::form::FailureForm), the form writes the JSON

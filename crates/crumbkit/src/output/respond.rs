@@ -27,7 +27,15 @@ pub(super) fn respond<T: Rows, E: AsFailure, O: Write, W: Write, R>(
 ) -> (ExitCode, bool) {
     if let Some(refusal) = fields::flags_refusal::<T>(output) {
         let form = output.failure_form;
-        let code = refusal.print(sink, output.json, spelling, form, output.command.as_mut());
+        let layout = output.json_layout;
+        let code = refusal.print(
+            sink,
+            output.json,
+            spelling,
+            form,
+            layout,
+            output.command.as_mut(),
+        );
         return (code, false);
     }
     let value = match &result {
@@ -40,6 +48,7 @@ pub(super) fn respond<T: Rows, E: AsFailure, O: Write, W: Write, R>(
                 output.json,
                 spelling,
                 form,
+                output.json_layout,
                 error.as_failure(),
                 command,
             );
@@ -174,6 +183,7 @@ fn answered<'a, O: Write, W: Write, R>(
                 output.json,
                 spelling,
                 form,
+                output.json_layout,
                 over,
                 output.command.as_mut(),
             );

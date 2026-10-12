@@ -12,8 +12,8 @@ use serde_json::{Value, json};
 use super::{FailureForm, PreparedFailure, ReadFailure, Step};
 use crate::help::Guide;
 use crate::{
-    Batch, Call, Code, Document, Failure, Field, Output, Parsed, Recovery, Row, Sink, Spelling,
-    Stream, finish_to, parse_to, stream_to,
+    Batch, Call, Code, Document, Failure, Field, JsonLayout, Output, Parsed, Recovery, Row, Sink,
+    Spelling, Stream, finish_to, parse_to, stream_to,
 };
 
 const NOT_FOUND: Code = Code::new("solar", "planets", "not_found");
@@ -177,6 +177,10 @@ impl FailureForm for LineForm {
 const ERROR_GUIDE: Guide = Guide::new().failure_form(&ErrorForm);
 
 const LINE_GUIDE: Guide = Guide::new().failure_form(&LineForm);
+
+const PRETTY_GUIDE: Guide = Guide::new()
+    .failure_form(&ErrorForm)
+    .json_layout(JsonLayout::Pretty, "the readers expect it");
 
 /// The document that `ErrorForm` prints for a `Missing` spelled with dots.
 const ERROR_DOCUMENT: &str = concat!(
@@ -355,6 +359,55 @@ fn a_failure_in_a_json_stream_prints_one_line_of_the_form_document_between_the_r
     assert_eq!(lines.len(), 3);
     assert_eq!(format!("{}\n", lines[1]), ERROR_DOCUMENT);
     assert!(lines[2].contains("Venus"));
+}
+
+#[test]
+fn a_pretty_layout_indents_the_form_document() {
+    let ran = fail(&PRETTY_GUIDE, &["--json"]);
+
+    assert_eq!(ran.code, ExitCode::FAILURE);
+    let document: Value = serde_json::from_str(ERROR_DOCUMENT).unwrap();
+    let indented = serde_json::to_string_pretty(&document).unwrap() + "\n";
+    assert_eq!(ran.out, indented);
+}
+
+#[test]
+fn a_command_line_that_clap_refuses_prints_indented_with_a_pretty_layout() {
+    let ran = finish(&PRETTY_GUIDE, &["lst", "--json"], PLANETS, Ok(Vec::new()));
+
+    assert_eq!(ran.code, ExitCode::from(2));
+    assert!(ran.out.starts_with("{\n  \"error\": {\n"), "{}", ran.out);
+    let document: Value = serde_json::from_str(&ran.out).unwrap();
+    assert_eq!(document["error"]["code"], "crumbkit.cli.usage");
+}
+
+#[test]
+fn a_json_stream_keeps_one_line_for_each_row_and_failure_with_a_pretty_layout() {
+    let mut out = Vec::new();
+    let mut err = Vec::new();
+    let mut sink = Sink::new(&mut out, &mut err);
+    let (mut tool, parsed) = parse_to::<Tool, _, _, _, _>(
+        &mut sink,
+        Tool::command(),
+        &PRETTY_GUIDE,
+        Spelling::DOTS,
+        ["tool", "list", "--json"],
+    )
+    .unwrap();
+    tool.output.set_command(parsed);
+    let mut streaming =
+        stream_to(&mut sink, &mut tool.output, Spelling::DOTS, PLANETS_STREAM).unwrap();
+    let _ = streaming.item(&Planet { name: "Mars" });
+    let _ = streaming.failure(&Missing);
+    let code = streaming.end(Ok::<(), Missing>(()));
+
+    assert_eq!(code, ExitCode::FAILURE);
+    let out = String::from_utf8(out).unwrap();
+    let expected = concat!(
+        r#"{"schema":"solar/planets-stream/v1","data":{"name":"Mars"}}"#,
+        "\n"
+    );
+    assert_eq!(out, format!("{expected}{ERROR_DOCUMENT}"));
 }
 
 #[test]

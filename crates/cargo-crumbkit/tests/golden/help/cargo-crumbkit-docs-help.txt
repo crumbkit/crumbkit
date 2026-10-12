@@ -7,7 +7,7 @@ Options:
           Build this binary of the current workspace and describe its commands
 
       --json
-          Print the result as a JSON document on one line
+          Print the result as a JSON document
 
       --out <FILE>
           Write the reference to this file [default: docs/commands.md in the binary's package]

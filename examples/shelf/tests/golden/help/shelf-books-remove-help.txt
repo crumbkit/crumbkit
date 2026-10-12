@@ -14,7 +14,7 @@ Options:
           Proceed without asking for confirmation
 
       --json
-          Print the result as a JSON document on one line
+          Print the result as a JSON document
 
       --fields <FIELD>
           Print only these comma-separated fields, in this order

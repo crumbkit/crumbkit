@@ -5,6 +5,7 @@ use std::ffi::OsString;
 
 use clap::Command;
 
+use crate::JsonLayout;
 use crate::form::FailureForm;
 use crate::help::Guide;
 
@@ -20,8 +21,8 @@ use crate::help::Guide;
 /// when the caller passed `--no-input`. A tool that parses with
 /// clap alone passes its `Command`, which converts into a `Parsed` without
 /// words, so `confirm` has no command line to repeat, or builds it with
-/// [`Parsed::guided`] when its guide sets a failure form or an output
-/// budget.
+/// [`Parsed::guided`] when its guide sets a failure form, an output budget
+/// or a JSON layout.
 #[derive(Clone, Debug)]
 pub struct Parsed {
     /// The command tree, built as parsing left it.
@@ -39,13 +40,16 @@ pub struct Parsed {
     /// The output budget of the tool's guide, or `None` for crumbkit's
     /// default.
     pub(crate) output_budget: Option<usize>,
+    /// The layout of a whole JSON document that the tool's guide sets, or
+    /// `None` for one line (ADR-0052).
+    pub(crate) json_layout: Option<JsonLayout>,
 }
 
 impl Parsed {
     /// Returns the command tree, the words after the program name, which
     /// hold any values that a picker added, whether the caller passed
-    /// `--no-input`, and the failure form, terminal detection and output
-    /// budget of `guide`.
+    /// `--no-input`, and the failure form, terminal detection, output budget
+    /// and JSON layout of `guide`.
     pub(crate) const fn new(
         command: Command,
         words: Vec<OsString>,
@@ -59,15 +63,17 @@ impl Parsed {
             failure_form: guide.get_failure_form(),
             no_terminal: !guide.get_terminal_detection(),
             output_budget: budget_of(guide),
+            json_layout: guide.layout(),
         }
     }
 
     /// Returns a `Parsed` without words for a tool that parsed `command`
-    /// with clap alone, which keeps the failure form and the output budget
-    /// of `guide`, so `finish` prints failures in the form (ADR-0045) and
-    /// results within the budget (ADR-0046), and whether `guide` turns
-    /// terminal detection off (ADR-0049). A tool whose guide sets neither
-    /// passes its `Command` to `Output::set_command` directly.
+    /// with clap alone, which keeps the failure form, the output budget and
+    /// the JSON layout of `guide`, so `finish` prints failures in the form
+    /// (ADR-0045), results within the budget (ADR-0046) and documents in the
+    /// layout (ADR-0052), and whether `guide` turns terminal detection off
+    /// (ADR-0049). A tool whose guide sets none of them passes its `Command`
+    /// to `Output::set_command` directly.
     #[must_use]
     pub const fn guided(command: Command, guide: &Guide) -> Self {
         Self {
@@ -77,6 +83,7 @@ impl Parsed {
             failure_form: guide.get_failure_form(),
             no_terminal: !guide.get_terminal_detection(),
             output_budget: budget_of(guide),
+            json_layout: guide.layout(),
         }
     }
 
@@ -111,6 +118,7 @@ impl From<Command> for Parsed {
             failure_form: None,
             no_terminal: false,
             output_budget: None,
+            json_layout: None,
         }
     }
 }

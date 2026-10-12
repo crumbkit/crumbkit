@@ -8,7 +8,7 @@ Arguments:
 
 Options:
       --json
-          Print the result as a JSON document on one line
+          Print the result as a JSON document
 
       --fields <FIELD>
           Print only these comma-separated fields, in this order

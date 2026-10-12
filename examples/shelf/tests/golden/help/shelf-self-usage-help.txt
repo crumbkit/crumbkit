@@ -12,7 +12,7 @@ Options:
           Read this usage log instead of the tool's own
 
       --json
-          Print the result as a JSON document on one line
+          Print the result as a JSON document
 
       --fields <FIELD>
           Print only these comma-separated fields, in this order

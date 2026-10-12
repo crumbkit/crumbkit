@@ -124,7 +124,9 @@ impl Picking {
             Ok(choices) => choices,
             Err(error) => {
                 let form = guide.get_failure_form();
-                failure::print(sink, json, spelling, form, error.failure(), Some(command));
+                let layout = guide.layout();
+                let failure = error.failure();
+                failure::print(sink, json, spelling, form, layout, failure, Some(command));
                 #[cfg(feature = "usage-log")]
                 crate::usage::exited(ExitCode::FAILURE);
                 return Step::Stop(ExitCode::FAILURE);
