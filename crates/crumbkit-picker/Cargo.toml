@@ -1,0 +1,32 @@
+[package]
+name = "crumbkit-picker"
+description = "A numbered-menu picker for crumbkit tools, which asks a person for a missing argument"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+readme = "README.md"
+keywords = ["cli", "clap", "prompt", "menu"]
+categories = ["command-line-interface"]
+include = ["src/**/*.rs", "README.md", "LICENSE-APACHE", "LICENSE-MIT"]
+
+[dependencies]
+# `Menu` implements crumbkit's `Picker` trait, which `crumbkit::parse` calls
+# for a missing argument. The menu needs nothing else beyond the standard
+# library (ADR-0043).
+crumbkit = { workspace = true }
+
+[dev-dependencies]
+# The README's example derives a tool's arguments with clap, as a tool that
+# adopts crumbkit does.
+clap = { workspace = true, features = ["derive"] }
+
+# cargo-shear reads the crate's Rust files and not the README, which
+# `lib.rs` includes as the crate's documentation, so it cannot see the
+# example's use of clap.
+[package.metadata.cargo-shear]
+ignored = ["clap"]
+
+[lints]
+workspace = true

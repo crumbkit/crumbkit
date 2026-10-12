@@ -171,6 +171,22 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   the aliases file ([ADR-0027]).
 - crumbkit-aliases: `names` returns the names of the aliases file's entries
   that expand, for `Guide::personal_aliases` ([crumbkit-aliases]).
+- crumbkit: `parse` asks the guide's [`Picker`] for a missing required
+  argument's values when a person can answer, adds them and prints the run's
+  command line on standard error ([ADR-0043]).
+- crumbkit: `Leaf::choices` names a source of choices for an argument, and
+  `pick::from_rows` turns a command's rows into choices ([ADR-0043]).
+- crumbkit: [`NoInput`] adds the global `--no-input`, which stops pickers
+  and makes `Output::confirm` fail without asking ([ADR-0043]).
+- crumbkit: with the `usage-log` feature, a run's line records `picked`, the
+  number of arguments that a picker filled ([ADR-0029]).
+- crumbkit-test: [`check_effects`] requires `--no-input` from `NoInput` on a
+  tool that can ask a question, unless the tool opts out of
+  `Rule::NoInput` ([ADR-0043]).
+- crumbkit-test: [`check_guide`] fails on leaf choices that name no
+  argument of the leaf.
+- crumbkit-picker: the new crate's `Menu` picks values from a numbered list
+  that text narrows, using only the standard library ([crumbkit-picker]).
 
 ### Changed
 
@@ -230,6 +246,8 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   `Sink::with_input` builds one for tests.
 - crumbkit-test: [`check_grammar`] no longer checks `--dry-run`, which
   [`check_effects`] checks.
+- crumbkit: `Output::confirm` asks only when no coding agent is detected,
+  and otherwise fails as it does without a terminal ([ADR-0043]).
 
 ### Removed
 
@@ -380,3 +398,7 @@ rustdoc, or at its decision record. -->
 [`child::hand_over`]: crates/crumbkit/src/child.rs
 [`child::hand_over_json`]: crates/crumbkit/src/child.rs
 [ADR-0042]: docs/decisions/api/output/0042-child-processes.md
+[ADR-0043]: docs/decisions/api/effects/0043-pickers-and-interactive-input.md
+[`Picker`]: crates/crumbkit/src/pick.rs
+[`NoInput`]: crates/crumbkit/src/pick/no_input.rs
+[crumbkit-picker]: crates/crumbkit-picker/README.md

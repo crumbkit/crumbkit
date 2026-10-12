@@ -26,6 +26,7 @@ pub use self::runtime::RuntimeLeaf;
 pub use self::topic::Topic;
 
 use self::list::{list, write_line};
+use crate::pick::Picker;
 
 #[cfg(test)]
 mod tests;
@@ -93,6 +94,9 @@ pub struct Guide {
     /// The function that returns the names of a person's aliases, which
     /// the root's help names, or `None` when help names no aliases.
     personal_aliases: Option<fn(&Command) -> Vec<String>>,
+    /// The picker that asks a person for a missing argument, or `None` when
+    /// `parse` refuses every command line that leaves one out.
+    picker: Option<&'static dyn Picker>,
     /// The path from the clap root to the command that callers run first,
     /// which answers `help` with the topics.
     root: &'static [&'static str],
@@ -110,6 +114,7 @@ impl Guide {
             documents: &[],
             exits: &[],
             personal_aliases: None,
+            picker: None,
             root: &[],
         }
     }
@@ -264,6 +269,32 @@ impl Guide {
     #[must_use]
     pub const fn get_personal_aliases(&self) -> Option<fn(&Command) -> Vec<String>> {
         self.personal_aliases
+    }
+
+    /// Sets the picker that asks a person for the value of a missing
+    /// required argument, such as crumbkit-picker's `Menu` (ADR-0043).
+    ///
+    /// When clap refuses a command line because it leaves out a required
+    /// argument of a leaf, [`parse`](crate::parse) asks the picker to pick
+    /// the argument's values from its possible values, or else from the
+    /// source that the leaf's [`Leaf::choices`] names. It asks only when a
+    /// person can answer: standard input and standard error are terminals,
+    /// no coding agent runs the tool, and the caller did not pass
+    /// `--no-input`. It then adds the picked values to the command line,
+    /// prints the whole command line on standard error after `Running:`,
+    /// and parses again. Without a picker, or when it cannot ask, `parse`
+    /// refuses the command line as clap does.
+    #[must_use]
+    pub const fn picker(mut self, picker: &'static dyn Picker) -> Self {
+        self.picker = Some(picker);
+        self
+    }
+
+    /// Returns the picker that [`Guide::picker`] set, or `None`. The name
+    /// has clap's `get_` prefix, because `picker` is the builder method.
+    #[must_use]
+    pub const fn get_picker(&self) -> Option<&'static dyn Picker> {
+        self.picker
     }
 
     /// Returns the exit codes that [`Guide::exits`] set. The name has

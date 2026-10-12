@@ -101,6 +101,11 @@ pub(super) struct Run {
     /// Whether a personal alias expanded. It is present only when one did.
     #[serde(default, skip_serializing_if = "is_false")]
     pub(super) alias: bool,
+    /// How many missing arguments a picker filled in before the command line
+    /// parsed. It is present only when a picker filled one in.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[schemars(with = "usize")]
+    pub(super) picked: Option<usize>,
     /// The exit code that `parse` or `finish` returned, or that the tool
     /// reported with `usage::ended`.
     #[serde(default, skip_serializing_if = "Option::is_none")]

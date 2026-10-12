@@ -58,6 +58,7 @@ deny = [
         "cargo-crumbkit",
         "crumbkit",
         "crumbkit-aliases",
+        "crumbkit-picker",
         "crumbkit-test",
         "reading",
         "shelf",

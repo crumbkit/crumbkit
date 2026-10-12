@@ -44,6 +44,9 @@ mod tests;
 /// - a visible command without subcommands, the root included when it has
 ///   none, that no leaf with at least one example names, because its help
 ///   then shows no example;
+/// - a leaf's [`Choices`](crumbkit::pick::Choices) whose argument id names
+///   no argument of the leaf's command, because a picker then never offers
+///   them;
 /// - a leaf column whose name is not a field of the leaf's row type, such
 ///   as a misspelt name in `Row::COLUMNS` or `Row::LONG_COLUMNS`, because
 ///   the table prints `-` in every row of it;
@@ -224,6 +227,14 @@ fn check_leaves(command: &Command, guide: &Guide, problems: &mut Vec<String>) {
                 problems.push(format!(
                     "{text}: clap refuses the example `{line}` with the error kind {:?}",
                     error.kind()
+                ));
+            }
+        }
+        for choices in leaf.get_choices() {
+            let id = choices.arg();
+            if !node.get_arguments().any(|arg| arg.get_id() == id) {
+                problems.push(format!(
+                    "{text}: the choices for `{id}` name no argument of the command, so a picker never offers them"
                 ));
             }
         }

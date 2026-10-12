@@ -4,7 +4,7 @@ use clap::{Args as _, Command, CommandFactory as _, Parser, Subcommand};
 
 use super::Yes;
 use crate::help::Guide;
-use crate::{Call, DryRun, Error, Output, Recovery, Sink, Spelling};
+use crate::{Call, DryRun, Error, NoInput, Output, Recovery, Sink, Spelling};
 
 /// A tool whose `remove` command takes `--dry-run` and `--yes`.
 #[derive(Parser)]
@@ -14,6 +14,8 @@ struct Tool {
     command: Commands,
     #[command(flatten)]
     output: Output,
+    #[command(flatten)]
+    no_input: NoInput,
 }
 
 #[derive(Subcommand)]
@@ -170,4 +172,12 @@ fn dry_run_and_yes_add_their_flags_and_no_argument_group() {
             .get_arguments()
             .any(|arg| arg.get_long() == Some("yes"))
     );
+}
+
+#[test]
+fn no_input_fails_with_needs_yes_without_asking_at_a_terminal() {
+    let confirmed = confirm(&["remove", "pluto", "--no-input"], "y\n", true);
+
+    assert_eq!(code(&confirmed.result), "crumbkit::confirm::needs_yes");
+    assert_eq!(confirmed.err, "");
 }

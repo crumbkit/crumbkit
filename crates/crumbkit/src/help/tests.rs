@@ -439,3 +439,41 @@ Options:
     );
     assert!(clap.contains("  forget  [alias: drop]\n"), "{clap}");
 }
+
+/// A picker that picks nothing.
+struct Nobody;
+
+impl crate::pick::Picker for Nobody {
+    fn pick(
+        &self,
+        _question: &crate::pick::Question<'_>,
+        _input: &mut dyn std::io::BufRead,
+        _output: &mut dyn std::io::Write,
+    ) -> std::io::Result<crate::pick::Answer> {
+        Ok(crate::pick::Answer::Cancelled)
+    }
+}
+
+static NOBODY: Nobody = Nobody;
+
+#[test]
+fn a_guide_has_no_picker_until_its_builder_sets_one() {
+    assert!(Guide::new().get_picker().is_none());
+    assert!(Guide::new().picker(&NOBODY).get_picker().is_some());
+}
+
+#[expect(
+    clippy::unnecessary_wraps,
+    reason = "a choices source returns a `Result`"
+)]
+fn planets() -> Result<Vec<crate::pick::Choice>, crate::Error> {
+    Ok(Vec::new())
+}
+
+#[test]
+fn a_leaf_keeps_the_choices_that_its_builder_sets() {
+    const CHOICES: &[crate::pick::Choices] = &[crate::pick::Choices::new("name", planets)];
+    let leaf = super::Leaf::new(&["planets", "show"]);
+    assert!(leaf.get_choices().is_empty());
+    assert_eq!(leaf.choices(CHOICES).get_choices()[0].arg(), "name");
+}

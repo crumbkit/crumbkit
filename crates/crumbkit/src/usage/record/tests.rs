@@ -67,6 +67,7 @@ fn a_record_writes_every_field_of_the_run_beside_its_own() {
         unknown_flags: Some(1),
         nearest: Some(name("--fields")),
         alias: true,
+        picked: Some(1),
         exit: Some(1),
         code: Some(name("shelf::books::not_found")),
         tolerated: vec![name("shelf::catalogue::locked")],
@@ -90,6 +91,7 @@ fn a_record_writes_every_field_of_the_run_beside_its_own() {
     assert_eq!(record["unknown_flags"], 1);
     assert_eq!(record["nearest"], "--fields");
     assert_eq!(record["alias"], true);
+    assert_eq!(record["picked"], 1);
     assert_eq!(record["exit"], 1);
     assert_eq!(record["code"], "shelf::books::not_found");
     assert_eq!(record["tolerated"], json!(["shelf::catalogue::locked"]));

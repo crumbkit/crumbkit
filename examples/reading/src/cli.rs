@@ -6,7 +6,7 @@ use clap::{Args, Parser, Subcommand};
 use crumbkit::commands::{COMMANDS_LIST, CommandsList};
 use crumbkit::help::{Effects, Example, Guide, Leaf};
 use crumbkit::schemas::{SCHEMAS_LIST, SCHEMAS_SHOW, SchemasList, SchemasShow};
-use crumbkit::{Output, Page};
+use crumbkit::{NoInput, Output, Page};
 
 use crate::lists::{ENTRIES_LIST, ENTRIES_STREAM};
 
@@ -21,6 +21,10 @@ pub struct Cli {
     /// The flags that choose how the result prints.
     #[command(flatten)]
     pub(crate) output: Output,
+
+    /// The flag that tells reading that nobody can answer a question.
+    #[command(flatten)]
+    pub(crate) no_input: NoInput,
 }
 
 /// The leaves of reading's static commands. reading guides no command, so

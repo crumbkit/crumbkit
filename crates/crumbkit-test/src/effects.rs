@@ -1,5 +1,5 @@
 //! The effects check, which requires every leaf to declare its effects and
-//! gives `--dry-run` and `--yes` one meaning in every tool.
+//! gives `--dry-run`, `--yes` and `--no-input` one meaning in every tool.
 
 use clap::Command;
 use crumbkit::help::{Effects, Guide, Leaf};
@@ -11,14 +11,17 @@ use crate::tree;
 mod tests;
 
 /// The rules of the effects check that a tool can opt out of.
-const RULES: [Rule; 3] = [Rule::Effects, Rule::DryRun, Rule::Yes];
+const RULES: [Rule; 4] = [Rule::Effects, Rule::DryRun, Rule::Yes, Rule::NoInput];
 
 /// The id that `crumbkit::DryRun` gives its `--dry-run`, which tells it
 /// apart from a tool's own flag with the same name.
 const CRUMBKIT_DRY_RUN: &str = "crumbkit_dry_run";
 
+/// The id that `crumbkit::NoInput` gives its `--no-input`.
+const CRUMBKIT_NO_INPUT: &str = "crumbkit_no_input";
+
 /// Checks that every leaf in the tree of `command` declares its effects in
-/// `guide`, and that `--dry-run` and `--yes` sit where crumbkit's
+/// `guide`, and that `--dry-run`, `--yes` and `--no-input` sit where crumbkit's
 /// conventions put them, and panics, as a failed test assertion does,
 /// naming every problem it finds.
 ///
@@ -40,7 +43,12 @@ const CRUMBKIT_DRY_RUN: &str = "crumbkit_dry_run";
 ///   unless an opt-out from [`Rule::Yes`] covers it, because
 ///   `Output::confirm` fails without a terminal unless the caller passes
 ///   `--yes`;
-/// - an opt-out from one of the three rules above that names no command or
+/// - a tool that can ask a question, because `guide` has a picker or a
+///   command has an argument with the long name `--yes`, without the
+///   `--no-input` of `crumbkit::NoInput` at the root, unless an opt-out
+///   from [`Rule::NoInput`] names the root, because a script or an agent
+///   then has no way to say that nobody can answer;
+/// - an opt-out from one of the four rules above that names no command or
 ///   excuses no problem.
 ///
 /// An opt-out covers the command it names and every command below it, and
@@ -57,7 +65,8 @@ const CRUMBKIT_DRY_RUN: &str = "crumbkit_dry_run";
 ///     Leaf::new(&["books", "remove"]).effects(Effects::destructive().idempotent()),
 /// ]);
 ///
-/// let shelf = Command::new("shelf").subcommand(
+/// let no_input = Arg::new("crumbkit_no_input").long("no-input").global(true).action(ArgAction::SetTrue);
+/// let shelf = Command::new("shelf").arg(no_input).subcommand(
 ///     Command::new("books")
 ///         .subcommand(Command::new("list"))
 ///         .subcommand(
@@ -79,6 +88,7 @@ const CRUMBKIT_DRY_RUN: &str = "crumbkit_dry_run";
 pub fn check_effects(command: &Command, guide: &Guide, allow: &[Allow]) {
     let mut allowances = Allowances::new(allow, &RULES);
     let mut problems = Vec::new();
+    let mut asks = guide.get_picker().is_some();
     for visit in tree::walk(command) {
         let path = visit.path();
         let below = visit.below();
@@ -113,16 +123,27 @@ pub fn check_effects(command: &Command, guide: &Guide, allow: &[Allow]) {
                 ));
             }
         }
+        let has_yes = node
+            .get_arguments()
+            .any(|arg| arg.get_long() == Some("yes"));
+        asks |= has_yes;
         if effects.is_some_and(|effects| effects.is_destructive())
-            && !node
-                .get_arguments()
-                .any(|arg| arg.get_long() == Some("yes"))
+            && !has_yes
             && !allowances.excuses(Rule::Yes, below)
         {
             problems.push(format!(
                 "{path}: the command is destructive and has no `--yes`, so an agent without a terminal cannot confirm it"
             ));
         }
+    }
+    let has_no_input = command
+        .get_arguments()
+        .any(|arg| arg.get_id() == CRUMBKIT_NO_INPUT && arg.get_long() == Some("no-input"));
+    if asks && !has_no_input && !allowances.excuses(Rule::NoInput, "") {
+        problems.push(format!(
+            "{}: the tool can ask a question and has no `--no-input` from crumbkit's `NoInput`, so a caller cannot say that nobody can answer",
+            command.get_name()
+        ));
     }
     allowances.report(command, "effects rules", problems);
 }

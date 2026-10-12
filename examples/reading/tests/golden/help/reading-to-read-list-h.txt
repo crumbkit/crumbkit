@@ -12,4 +12,4 @@ Examples:
   reading to-read list --all
 
 Effects: read-only, closed-world.
-Global flags: --json, --fields <FIELD>, --long, --full. `reading to-read list --help` describes them.
+Global flags: --json, --fields <FIELD>, --long, --full, --no-input. `reading to-read list --help` describes them.

@@ -7,7 +7,7 @@ use crumbkit::commands::{COMMANDS_LIST, CommandsList};
 use crumbkit::help::{Effects, Example, Goal, Group, Guide, Leaf, Topic};
 use crumbkit::schemas::{SCHEMAS_LIST, SCHEMAS_SHOW, SchemasList, SchemasShow};
 use crumbkit::usage::{SELF_FIGURES_LIST, SELF_USAGE, SelfFigures, SelfUsage};
-use crumbkit::{DryRun, Output, Page, Yes};
+use crumbkit::{DryRun, NoInput, Output, Page, Yes};
 use crumbkit_aliases::AliasesList;
 use schemars::JsonSchema;
 use serde::Serialize;
@@ -28,6 +28,10 @@ pub struct Cli {
     /// The flags that choose how the result prints.
     #[command(flatten)]
     pub(crate) output: Output,
+
+    /// The flag that tells shelf that nobody can answer a question.
+    #[command(flatten)]
+    pub(crate) no_input: NoInput,
 }
 
 /// shelf's goal headings, leaves and help topics. shelf guides only its

@@ -75,7 +75,7 @@ pub(super) fn write_line(
 /// control character shows as its escape, such as `\n`, so every row stays on
 /// one line. A number or a boolean shows in its JSON form, `null` or a missing
 /// field as `-`, and an array or an object as compact JSON.
-pub(super) fn cell(value: Option<&Value>) -> Cow<'_, str> {
+pub(crate) fn cell(value: Option<&Value>) -> Cow<'_, str> {
     match value {
         None | Some(Value::Null) => Cow::Borrowed("-"),
         Some(Value::String(text)) => escape_controls(text),
@@ -88,7 +88,7 @@ pub(super) fn cell(value: Option<&Value>) -> Cow<'_, str> {
 /// `char::escape_default` form, such as `\n`, `\t` or `\u{1b}`. A string
 /// without a control character is borrowed unchanged, so it costs no
 /// allocation.
-pub(super) fn escape_controls(text: &str) -> Cow<'_, str> {
+pub(crate) fn escape_controls(text: &str) -> Cow<'_, str> {
     if !text.chars().any(char::is_control) {
         return Cow::Borrowed(text);
     }

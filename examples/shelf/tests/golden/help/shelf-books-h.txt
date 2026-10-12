@@ -11,5 +11,5 @@ Commands:
 Options:
   -h, --help  Print help (see more with '--help')
 
-Global flags: --json, --fields <FIELD>, --long, --full. `shelf books --help` describes them.
+Global flags: --json, --fields <FIELD>, --long, --full, --no-input. `shelf books --help` describes them.
 Next: shelf books <COMMAND> -h

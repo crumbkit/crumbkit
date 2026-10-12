@@ -9,6 +9,7 @@ use schemars::{JsonSchema, Schema};
 use serde_json::Value;
 
 use super::{Effects, write_line};
+use crate::pick::Choices;
 use crate::{Document, Row, Rows, Stream, row};
 
 #[cfg(test)]
@@ -49,6 +50,9 @@ pub struct Leaf {
     columns: Option<Columns>,
     /// The command's effects, or `None` when the tool declares none.
     effects: Option<Effects>,
+    /// The sources of the values of the command's arguments, which a picker
+    /// offers when an argument is missing.
+    choices: &'static [Choices],
 }
 
 impl Leaf {
@@ -62,6 +66,7 @@ impl Leaf {
             examples: &[],
             columns: None,
             effects: None,
+            choices: &[],
         }
     }
 
@@ -105,6 +110,25 @@ impl Leaf {
     #[must_use]
     pub const fn get_effects(&self) -> Option<Effects> {
         self.effects
+    }
+
+    /// Sets the sources of the values of the command's arguments, which the
+    /// guide's [`Guide::picker`](super::Guide::picker) offers when the
+    /// caller leaves a required argument out (ADR-0043). An argument with
+    /// possible values offers them and never calls its source.
+    /// crumbkit-test's `check_guide` fails on a source whose argument id
+    /// names no argument of the command.
+    #[must_use]
+    pub const fn choices(mut self, choices: &'static [Choices]) -> Self {
+        self.choices = choices;
+        self
+    }
+
+    /// Returns the sources that [`Leaf::choices`] set. The name has clap's
+    /// `get_` prefix, because `choices` is the builder method.
+    #[must_use]
+    pub const fn get_choices(&self) -> &'static [Choices] {
+        self.choices
     }
 
     /// Sets the document that the command prints, the same constant that

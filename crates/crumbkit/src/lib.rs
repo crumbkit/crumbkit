@@ -41,6 +41,7 @@
 // `doc_cfg` feature labels each item behind a cargo feature with its name.
 #![cfg_attr(docsrs, feature(doc_cfg))]
 
+mod agent;
 mod call;
 #[cfg(feature = "hand-over")]
 pub mod child;
@@ -52,6 +53,7 @@ pub mod help;
 mod output;
 mod page;
 mod parse;
+pub mod pick;
 mod refusal;
 mod row;
 pub mod schemas;
@@ -71,4 +73,5 @@ pub use crate::fetch::fetch_each;
 pub use crate::output::{DryRun, Output, Streaming, Yes, finish, finish_to, stream, stream_to};
 pub use crate::page::Page;
 pub use crate::parse::{Parsed, Stop, parse, parse_from, parse_to};
+pub use crate::pick::NoInput;
 pub use crate::sink::Sink;

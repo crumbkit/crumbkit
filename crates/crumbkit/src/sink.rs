@@ -30,7 +30,7 @@ pub struct Sink<O, E, I = Empty> {
     /// Holds the caller's answers to questions.
     pub(crate) input: I,
     /// Whether a person can answer a question: standard input and standard
-    /// error are both terminals.
+    /// error are both terminals, and no coding agent runs the tool.
     pub(crate) interactive: bool,
 }
 
@@ -92,9 +92,10 @@ impl Sink<StdoutLock<'static>, Stderr> {
 impl Sink<StdoutLock<'static>, Stderr, StdinLock<'static>> {
     /// Returns a sink over the process's standard output, standard error and
     /// standard input, which is interactive when standard input and standard
-    /// error are both terminals. Only a question reads standard input, so
-    /// only [`Output::confirm`](crate::Output::confirm) locks it, and a run
-    /// that asks nothing leaves it unlocked.
+    /// error are both terminals and no coding agent runs the tool (ADR-0043).
+    /// Only a question reads standard input, so only
+    /// [`Output::confirm`](crate::Output::confirm) and a picker lock it, and
+    /// a run that asks nothing leaves it unlocked and detects no agent.
     pub(crate) fn standard_with_input() -> Self {
         let Sink { out, err, .. } = Sink::standard();
         #[expect(
@@ -102,7 +103,9 @@ impl Sink<StdoutLock<'static>, Stderr, StdinLock<'static>> {
             reason = "the sink owns standard input, where a person answers a question"
         )]
         let input = io::stdin().lock();
-        let interactive = input.is_terminal() && err.is_terminal();
+        let terminals = input.is_terminal() && err.is_terminal();
+        let interactive =
+            crate::agent::person_can_answer(terminals, || crate::agent::detect().is_some());
         Self::with_input(out, err, input, interactive)
     }
 }

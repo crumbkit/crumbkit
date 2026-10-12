@@ -35,12 +35,12 @@
     {
       "rule": "path-budget/path",
       "applies_to": "every path through shelf",
-      "reason": "shelf's longest path reads about 3,500 bytes, so 4,000 bytes leaves room for small changes and catches a page or an output that grows by much.",
+      "reason": "shelf's longest path reads about 3,950 bytes, so 4,300 bytes leaves room for small changes and catches a page or an output that grows by much.",
       "costs": [
         "None, because the budget is at or below crumbkit's default."
       ],
       "budget": {
-        "bytes": 4000,
+        "bytes": 4300,
         "default": 8000,
         "extra_bytes": 0,
         "extra_tokens": 0

@@ -32,6 +32,61 @@ pub(super) struct Walked {
     pub(super) json: bool,
 }
 
+/// What [`given`] read from the words of a command line.
+pub(super) struct Given {
+    /// The real names of the subcommands from the root to the deepest
+    /// command that the words name.
+    pub(super) path: Vec<String>,
+    /// The clap ids of the arguments that the words pass as flags.
+    pub(super) ids: Vec<String>,
+    /// The number of words that are positional values of the deepest
+    /// command.
+    pub(super) positionals: usize,
+}
+
+/// Returns what `words`, the words after the program name, give the
+/// deepest command that they name in `command`: the path to it, the ids of
+/// the flags typed, and the number of positional values.
+///
+/// It reads the words as [`walk`] does. A word that names no subcommand,
+/// and each word after `--`, is a positional value, and the walk descends
+/// into no subcommand after the first positional value.
+pub(super) fn given(command: &Command, words: &[OsString]) -> Given {
+    let mut reader = Words::new(command);
+    let mut given = Given {
+        path: Vec::new(),
+        ids: Vec::new(),
+        positionals: 0,
+    };
+    let mut ended = false;
+    for word in words {
+        if ended {
+            given.positionals += 1;
+            continue;
+        }
+        match reader.read(word) {
+            Kind::End => ended = true,
+            Kind::Value => {}
+            Kind::Flag => given.ids.extend(reader.ids(word)),
+            Kind::Name => {
+                let subcommand = if given.positionals == 0 {
+                    reader.current.find_subcommand(word)
+                } else {
+                    None
+                };
+                match subcommand {
+                    Some(subcommand) => {
+                        given.path.push(subcommand.get_name().to_owned());
+                        reader.enter(subcommand);
+                    }
+                    None => given.positionals += 1,
+                }
+            }
+        }
+    }
+    given
+}
+
 /// Returns the word `help` that crumbkit answers in `args`, or `None` when
 /// clap reads every word.
 ///
@@ -218,13 +273,56 @@ impl<'a> Words<'a> {
         if long.contains('=') {
             return None;
         }
-        let arg = self.find(|arg| {
+        takes_next(self.find_long(long)?)
+    }
+
+    /// Returns the argument whose long name or alias is `long`.
+    fn find_long(&self, long: &str) -> Option<&'a Arg> {
+        self.find(|arg| {
             arg.get_long() == Some(long)
                 || arg
                     .get_all_aliases()
                     .is_some_and(|aliases| aliases.contains(&long))
-        })?;
-        takes_next(arg)
+        })
+    }
+
+    /// Returns the argument whose short name or short alias is `letter`.
+    fn find_short(&self, letter: char) -> Option<&'a Arg> {
+        self.find(|arg| {
+            arg.get_short() == Some(letter)
+                || arg
+                    .get_all_short_aliases()
+                    .is_some_and(|aliases| aliases.contains(&letter))
+        })
+    }
+
+    /// Returns the clap ids of the arguments that the flag word `word`
+    /// passes: the argument of a long flag, with or without `=value`, or
+    /// each argument of a group of short flags up to the first that takes
+    /// a value. A name that no argument has passes nothing.
+    fn ids(&self, word: &OsStr) -> Vec<String> {
+        let Some(text) = word.to_str() else {
+            return Vec::new();
+        };
+        if let Some(long) = text.strip_prefix("--") {
+            let long = long.split_once('=').map_or(long, |(name, _)| name);
+            return self
+                .find_long(long)
+                .map(|arg| arg.get_id().to_string())
+                .into_iter()
+                .collect();
+        }
+        let mut ids = Vec::new();
+        for letter in text.trim_start_matches('-').chars() {
+            let Some(arg) = self.find_short(letter) else {
+                break;
+            };
+            ids.push(arg.get_id().to_string());
+            if most_values(arg) > 0 {
+                break;
+            }
+        }
+        ids
     }
 
     /// Returns the option that takes the next words as its values after the
@@ -235,12 +333,7 @@ impl<'a> Words<'a> {
     /// and the rest of the word, when there is any, is its value.
     fn read_short(&self, shorts: &str) -> Option<(&'a Arg, usize)> {
         for (index, letter) in shorts.char_indices() {
-            let arg = self.find(|arg| {
-                arg.get_short() == Some(letter)
-                    || arg
-                        .get_all_short_aliases()
-                        .is_some_and(|aliases| aliases.contains(&letter))
-            })?;
+            let arg = self.find_short(letter)?;
             if most_values(arg) > 0 {
                 let rest = &shorts[index + letter.len_utf8()..];
                 return if rest.is_empty() {

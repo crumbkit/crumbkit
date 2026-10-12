@@ -52,7 +52,7 @@ pub(crate) use self::recorder::ids;
 pub use self::recorder::{Log, Signals, section, start, start_with};
 #[cfg(feature = "usage-log")]
 pub(crate) use self::recorder::{
-    child_env, exited, failed, finished, helped, parsed, refused, typed,
+    child_env, exited, failed, finished, helped, parsed, picked, refused, typed,
 };
 #[cfg(feature = "usage-log")]
 pub use self::self_figures::{FiguresRow, SELF_FIGURES_LIST, SelfFigures, figures};

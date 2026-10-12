@@ -4,6 +4,7 @@ members = [
     "crates/crumbkit",
     "crates/crumbkit-core",
     "crates/crumbkit-aliases",
+    "crates/crumbkit-picker",
     "crates/crumbkit-test",
     "crates/cargo-crumbkit",
     "examples/shelf",
@@ -34,6 +35,9 @@ crumbkit-test = { version = "0.0.0", path = "crates/crumbkit-test" }
 # shelf expands and lists personal aliases with crumbkit-aliases, which takes
 # a version beside the path for the same reason.
 crumbkit-aliases = { version = "0.0.0", path = "crates/crumbkit-aliases" }
+# shelf and reading ask a person for a missing argument with crumbkit-picker's
+# menu, which takes a version beside the path for the same reason.
+crumbkit-picker = { version = "0.0.0", path = "crates/crumbkit-picker" }
 
 # clap parses the command line of every tool crumbkit serves. The workspace
 # entry enables only `std`. Cargo turns on a feature for every crate in a build
@@ -66,7 +70,13 @@ toml = { version = "1.1.8", default-features = false }
 # neither the `derive` macro nor miette's graphical renderer (ADR-0003).
 miette = { version = "7.6.0", default-features = false }
 
-# The next five crates build only with crumbkit's optional `usage-log`
+# is-ai-agent tells whether a coding agent runs the tool and which one, and
+# gives the agent's session id when the agent sets one. crumbkit's default
+# build uses it, so no picker or confirmation asks an agent a question. It
+# has no features.
+is-ai-agent = { version = "0.6.0", default-features = false }
+
+# The next four crates build only with crumbkit's optional `usage-log`
 # feature, which appends one line per run to a local file (ADR-0029).
 #
 # siphasher computes the keyed SipHash-2-4 hashes of the usage log's session
@@ -78,10 +88,6 @@ siphasher = { version = "1.0.4", default-features = false }
 # log, and the config directory of crumbkit-aliases (ADR-0027). It has no
 # features.
 etcetera = { version = "0.11.0", default-features = false }
-
-# is-ai-agent tells which coding agent ran the tool, and gives the agent's
-# session id when the agent sets one. It has no features.
-is-ai-agent = { version = "0.6.0", default-features = false }
 
 # humantime formats the time a run ended as RFC 3339 with milliseconds. Its
 # one feature, `mu`, prints microseconds with the Greek letter, which crumbkit

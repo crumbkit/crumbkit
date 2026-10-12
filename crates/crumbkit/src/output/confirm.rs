@@ -68,7 +68,9 @@ impl Output {
     ///
     /// A sink from [`Sink::new`] is never interactive, and the sink of
     /// [`Output::confirm`] is interactive when standard input and standard
-    /// error are both terminals.
+    /// error are both terminals and no coding agent runs the tool. A run
+    /// whose caller passed [`NoInput`](crate::NoInput)'s `--no-input` never
+    /// asks.
     ///
     /// # Errors
     ///
@@ -77,8 +79,8 @@ impl Output {
     /// - `crumbkit::confirm::declined`, when the answer is anything else or
     ///   standard input ends first. It has no next step, because a person
     ///   chose not to proceed.
-    /// - `crumbkit::confirm::needs_yes`, when the sink is not interactive,
-    ///   so no person can answer. Its recovery runs the words that the
+    /// - `crumbkit::confirm::needs_yes`, when the sink is not interactive
+    ///   or the caller passed `--no-input`, so no person can answer. Its recovery runs the words that the
     ///   caller typed with `--yes` added before any `--`, such as
     ///   `shelf books remove 2 --yes`. The recovery has no next step when
     ///   the tool passed a bare `Command` to [`Output::set_command`], or a
@@ -92,7 +94,7 @@ impl Output {
         if yes.yes || self.dry_run {
             return Ok(());
         }
-        if !sink.interactive {
+        if self.no_input || !sink.interactive {
             return Err(ConfirmError::NeedsYes(self.words.clone()).into());
         }
         // A prompt that cannot be written or an answer that cannot be read
