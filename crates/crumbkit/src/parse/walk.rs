@@ -24,6 +24,9 @@ pub(super) struct Walked {
     pub(super) path: Vec<String>,
     /// Whether a word reads as the flag `--help`, so clap prints long help.
     pub(super) long_help: bool,
+    /// Whether a word reads as the flag `--json`, so a refusal prints as a
+    /// JSON document.
+    pub(super) json: bool,
 }
 
 /// Returns the word `help` that crumbkit answers in `args`, or `None` when
@@ -69,25 +72,31 @@ pub(super) fn help_word(
 }
 
 /// Returns the deepest command that `args` names after the program name, and
-/// whether `args` asks for long help.
+/// whether `args` asks for long help and for JSON.
 ///
 /// It skips the program name, stops at `--`, skips each flag and each value
 /// of an option, and descends into each word that names a subcommand of the
 /// current command. `Command::find_subcommand` resolves an alias to its
 /// command and finds a hidden command, because the caller typed its name.
 /// The walk runs before parsing, because help needs its lines before clap
-/// prints it.
+/// prints it. A word counts as `--help` or `--json` only where the reader
+/// reads it as a flag, so the value of an option that allows hyphen values
+/// counts as neither.
 pub(super) fn walk(command: &Command, args: &[OsString]) -> Walked {
     let mut words = Words::new(command);
     let mut walked = Walked {
         path: Vec::new(),
         long_help: false,
+        json: false,
     };
     for word in args.iter().skip(1) {
         match words.read(word) {
             Kind::End => break,
             Kind::Value => {}
-            Kind::Flag => walked.long_help |= word == "--help",
+            Kind::Flag => {
+                walked.long_help |= word == "--help";
+                walked.json |= word == "--json";
+            }
             Kind::Name => {
                 if let Some(subcommand) = words.current.find_subcommand(word) {
                     walked.path.push(subcommand.get_name().to_owned());

@@ -46,7 +46,7 @@ pub(crate) fn pages<'a>(
             Spelling::COLONS,
             line.split(' '),
         );
-        if result.err() == Some(ExitCode::SUCCESS) {
+        if result.err().map(ExitCode::from) == Some(ExitCode::SUCCESS) {
             pages.push((visit, String::from_utf8_lossy(&out).into_owned()));
         } else {
             problems.push(format!("{line}: the command line prints no help page"));

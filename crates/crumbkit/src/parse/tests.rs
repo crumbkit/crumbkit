@@ -6,7 +6,7 @@ use std::process::ExitCode;
 
 use clap::{Arg, ArgAction, Command};
 
-use super::{message, parse_to};
+use super::{Stop, message, parse_to};
 use crate::help::Guide;
 use crate::{Sink, Spelling};
 
@@ -65,10 +65,11 @@ struct Flags {
     json: bool,
 }
 
-/// What `parse_to` printed, and the exit code it returned when it did not
-/// return a parsed type.
+/// What `parse_to` printed, and the exit code it returned and whether its
+/// output asked for JSON when it did not return a parsed type.
 struct Parsed {
     code: Option<ExitCode>,
+    json: Option<bool>,
     out: String,
     err: String,
 }
@@ -91,8 +92,10 @@ fn parse_tree(command: Command, args: &[&str]) -> Parsed {
         Spelling::COLONS,
         args,
     );
+    let stop = result.err();
     Parsed {
-        code: result.err(),
+        code: stop.as_ref().map(Stop::code),
+        json: stop.as_ref().map(|stop| stop.output().is_json()),
         out: String::from_utf8(out).unwrap(),
         err: String::from_utf8(err).unwrap(),
     }
@@ -134,12 +137,13 @@ error: unexpected argument '--srot' found; a similar argument exists: '--sort'
 }
 
 #[test]
-fn a_refused_command_line_with_json_before_the_double_dash_prints_the_failure_document() {
+fn a_refused_command_line_with_json_prints_the_failure_document_and_its_stop_asks_for_json() {
     let parsed = parse(&[
         "tool", "planets", "show", "Mars", "--srot", "name", "--json",
     ]);
 
     assert_eq!(parsed.code, Some(ExitCode::from(2)));
+    assert_eq!(parsed.json, Some(true));
     let expected = concat!(
         r#"{"schema":"crumbkit/failure/v1","code":"crumbkit::cli::usage","#,
         r#""message":"unexpected argument '--srot' found; a similar argument exists: '--sort'","#,
@@ -148,6 +152,35 @@ fn a_refused_command_line_with_json_before_the_double_dash_prints_the_failure_do
     );
     assert_eq!(parsed.out, expected);
     assert_eq!(parsed.err, "");
+}
+
+#[test]
+fn a_value_of_an_option_that_allows_hyphen_values_is_no_request_for_json() {
+    let pattern = Arg::new("pattern")
+        .long("pattern")
+        .allow_hyphen_values(true)
+        .global(true);
+    let parsed = parse_tree(
+        tool().arg(pattern),
+        &[
+            "tool",
+            "--pattern",
+            "--json",
+            "planets",
+            "show",
+            "Mars",
+            "--srot",
+        ],
+    );
+
+    assert_eq!(parsed.code, Some(ExitCode::from(2)));
+    assert_eq!(parsed.json, Some(false));
+    assert_eq!(parsed.out, "");
+    assert!(
+        parsed
+            .err
+            .starts_with("error: unexpected argument '--srot'")
+    );
 }
 
 #[test]
@@ -477,7 +510,7 @@ fn help_exits_with_code_0_when_the_reader_closed_the_pipe() {
         ["tool", "-h"],
     );
 
-    assert_eq!(result.err(), Some(ExitCode::SUCCESS));
+    assert_eq!(result.err().map(ExitCode::from), Some(ExitCode::SUCCESS));
     assert_eq!(err, b"");
 }
 

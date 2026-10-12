@@ -62,7 +62,7 @@ fn run(command: Command, guide: &Guide, args: &[&str]) -> Printed {
         args,
     );
     Printed {
-        code: result.err(),
+        code: result.err().map(ExitCode::from),
         out: String::from_utf8(out).unwrap(),
         err: String::from_utf8(err).unwrap(),
     }

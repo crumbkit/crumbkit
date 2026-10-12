@@ -9,6 +9,8 @@ use std::process::ExitCode;
 use clap::error::ErrorKind;
 use clap::{Command, FromArgMatches};
 
+pub use self::stop::Stop;
+
 use self::lines::{add_help_lines, has_visible_subcommands};
 use self::walk::{help_word, walk};
 use crate::help::{Guide, Topic, topic};
@@ -16,6 +18,7 @@ use crate::refusal::Refusal;
 use crate::{Sink, Spelling};
 
 mod lines;
+mod stop;
 pub(crate) mod suggestion;
 #[cfg(test)]
 mod tests;
@@ -48,7 +51,7 @@ mod walk;
 ///     let parsed = crumbkit::parse::<Cli>(Cli::command(), &Guide::new(), Spelling::COLONS);
 ///     let (mut cli, command) = match parsed {
 ///         Ok(parsed) => parsed,
-///         Err(code) => return code,
+///         Err(stop) => return stop.code(),
 ///     };
 ///     cli.output.set_command(command);
 ///     // Run the command, then return `crumbkit::finish(...)`.
@@ -63,13 +66,14 @@ mod walk;
 ///
 /// # Errors
 ///
-/// Returns the exit code for `main` to return after crumbkit has printed
-/// help, the version or a refusal.
+/// Returns a [`Stop`] after crumbkit has printed help, the version or a
+/// refusal. It holds the exit code for `main` to return, and whether the
+/// caller asked for JSON.
 pub fn parse<C: FromArgMatches>(
     command: Command,
     guide: &Guide,
     spelling: Spelling,
-) -> Result<(C, Command), ExitCode> {
+) -> Result<(C, Command), Stop> {
     parse_from(command, guide, spelling, std::env::args_os())
 }
 
@@ -78,14 +82,15 @@ pub fn parse<C: FromArgMatches>(
 ///
 /// # Errors
 ///
-/// Returns the exit code for `main` to return after crumbkit has printed
-/// help, the version or a refusal.
+/// Returns a [`Stop`] after crumbkit has printed help, the version or a
+/// refusal. It holds the exit code for `main` to return, and whether the
+/// caller asked for JSON.
 pub fn parse_from<C, I, T>(
     command: Command,
     guide: &Guide,
     spelling: Spelling,
     args: I,
-) -> Result<(C, Command), ExitCode>
+) -> Result<(C, Command), Stop>
 where
     C: FromArgMatches,
     I: IntoIterator<Item = T>,
@@ -188,14 +193,17 @@ where
 ///
 /// A command line that stops at a command with subcommands, such as `shelf
 /// books`, prints the message ``the command `shelf books` needs a
-/// subcommand``. With `--json` before any `--`, the refusal prints to the
-/// output writer as one `crumbkit/failure/v1` document, as a failure does
-/// with `finish`.
+/// subcommand``. With `--json`, the refusal prints to the output writer as
+/// one `crumbkit/failure/v1` document, as a failure does with `finish`. The
+/// walk finds `--json` in the words before any `--` where clap reads it as a
+/// flag, so a value of an option that allows hyphen values, as in
+/// `--pattern --json`, is no request for JSON.
 ///
 /// # Errors
 ///
-/// Returns the exit code for `main` to return after crumbkit has printed
-/// help, the version or a refusal.
+/// Returns a [`Stop`] after crumbkit has printed help, the version or a
+/// refusal. It holds the exit code for `main` to return, and whether the
+/// caller asked for JSON.
 ///
 /// [books-show-2-comma-5]: https://github.com/crumbkit/crumbkit/blob/main/examples/shelf/tests/golden/books-show-2-comma-5.stderr
 pub fn parse_to<C, I, T, O, E>(
@@ -204,7 +212,7 @@ pub fn parse_to<C, I, T, O, E>(
     guide: &Guide,
     spelling: Spelling,
     args: I,
-) -> Result<(C, Command), ExitCode>
+) -> Result<(C, Command), Stop>
 where
     C: FromArgMatches,
     I: IntoIterator<Item = T>,
@@ -225,7 +233,7 @@ fn run<C, I, T, O, E>(
     spelling: Spelling,
     args: I,
     colour: bool,
-) -> Result<(C, Command), ExitCode>
+) -> Result<(C, Command), Stop>
 where
     C: FromArgMatches,
     I: IntoIterator<Item = T>,
@@ -239,8 +247,8 @@ where
     let _entered = span.enter();
     let parsed = read(sink, command, guide, spelling, args, colour);
     #[cfg(feature = "tracing")]
-    if let Err(code) = parsed {
-        crate::trace::spans::exited(&span, code);
+    if let Err(stop) = &parsed {
+        crate::trace::spans::exited(&span, stop.code());
     }
     parsed
 }
@@ -255,7 +263,7 @@ fn read<C, I, T, O, E>(
     spelling: Spelling,
     args: I,
     colour: bool,
-) -> Result<(C, Command), ExitCode>
+) -> Result<(C, Command), Stop>
 where
     C: FromArgMatches,
     I: IntoIterator<Item = T>,
@@ -277,13 +285,6 @@ where
     } else {
         guide.get_topics()
     };
-    // No `Output` exists before parsing, so crumbkit looks for `--json` in
-    // the words before any `--`.
-    let json = args
-        .iter()
-        .skip(1)
-        .take_while(|word| *word != "--")
-        .any(|word| word == "--json");
     if let Some(help) = help_word(&command, !topics.is_empty(), &args) {
         if help.at_root
             && let Some(page) = help_page(&command, topics, &args[help.position + 1..])
@@ -295,7 +296,10 @@ where
             let code = print_text(sink, &page);
             #[cfg(feature = "usage-log")]
             crate::usage::helped(&command, &[], true, code);
-            return Err(code);
+            // Only this path ends before the walk below, so it walks the
+            // words for `--json` here.
+            let json = walk(&command, &args).json;
+            return Err(Stop::new(code, json, command));
         }
         ask_for_help(&mut args, help.position);
     }
@@ -303,7 +307,9 @@ where
     // Schema, so crumbkit builds the schema only when the walk reads
     // `--help` as a flag, also after the `help` rewrite above.
     let walked = walk(&command, &args);
-    let (path, long_help) = (walked.path, walked.long_help);
+    // No `Output` exists before parsing, so a refusal and a `Stop` take
+    // `--json` from the walk.
+    let (path, long_help, json) = (walked.path, walked.long_help, walked.json);
     #[cfg(feature = "tracing")]
     crate::trace::spans::command(&path);
     add_help_lines(&mut command, guide, topics, &path, long_help);
@@ -330,12 +336,13 @@ where
         } else {
             crate::usage::exited(code);
         }
-        return Err(code);
+        return Err(Stop::new(code, json, command));
     }
     #[cfg(feature = "usage-log")]
     crate::usage::refused(&command, &path, &error);
     let refusal = Refusal::command_line(refusal_message(&command, &path, &error), path);
-    Err(refusal.print(sink, json, spelling, Some(&mut command)))
+    let code = refusal.print(sink, json, spelling, Some(&mut command));
+    Err(Stop::new(code, json, command))
 }
 
 /// Returns the page that `help` at the root prints without clap, for

@@ -1,6 +1,6 @@
 //! The writers that a tool's result, its failure and its error lines go to.
 
-use std::io::{self, Stderr, StdoutLock, Write};
+use std::io::{self, IsTerminal as _, Stderr, StdoutLock, Write};
 
 /// The destination of a tool's output: a writer for standard output and a
 /// writer for standard error.
@@ -49,4 +49,15 @@ impl Sink<StdoutLock<'static>, Stderr> {
         let err = io::stderr();
         Self { out, err }
     }
+}
+
+/// Reports whether the process's standard error is a terminal, which
+/// [`Output::progress_allowed`](crate::Output::progress_allowed) reads.
+pub(crate) fn stderr_is_terminal() -> bool {
+    #[expect(
+        clippy::disallowed_methods,
+        reason = "the sink owns standard error, and progress needs to know whether it is a terminal"
+    )]
+    let err = io::stderr();
+    err.is_terminal()
 }

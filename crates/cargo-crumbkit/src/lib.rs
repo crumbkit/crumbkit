@@ -41,7 +41,7 @@ const SPELLING: Spelling = Spelling::COLONS;
 pub fn run() -> ExitCode {
     let (mut cli, command) = match crumbkit::parse::<Cli>(Cli::command(), &GUIDE, SPELLING) {
         Ok(parsed) => parsed,
-        Err(code) => return code,
+        Err(stop) => return stop.code(),
     };
     cli.output.set_command(command);
     match cli.cargo {

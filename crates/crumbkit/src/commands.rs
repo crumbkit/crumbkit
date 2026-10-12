@@ -49,7 +49,7 @@
 //!     let (mut cli, command) =
 //!         match crumbkit::parse_from::<Cli, _, _>(Cli::command(), &GUIDE, SPELLING, args) {
 //!             Ok(parsed) => parsed,
-//!             Err(code) => return code,
+//!             Err(stop) => return stop.code(),
 //!         };
 //!     cli.output.set_command(command);
 //!     match cli.resource {
