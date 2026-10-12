@@ -43,7 +43,7 @@
       "$ref": "#/$defs/UsageSummary"
     },
     "total": {
-      "description": "The number of rows that matched, of which data holds one page.",
+      "description": "The number of rows that matched, of which data holds one page. It is absent when the tool did not count a source that holds more rows.",
       "type": "integer",
       "minimum": 0
     },
@@ -55,7 +55,6 @@
   "required": [
     "schema",
     "data",
-    "total",
     "truncated",
     "summary"
   ],

@@ -28,7 +28,12 @@ struct Document {
     /// One row for each visible command, in depth-first order.
     data: Vec<Command>,
     /// The number of commands in the branch, of which `data` holds a page.
-    total: usize,
+    /// A listing whose tool did not count its rows leaves it out.
+    total: Option<usize>,
+    /// Whether the document leaves out commands. A document from a
+    /// crumbkit release before the field existed has none.
+    #[serde(default)]
+    truncated: bool,
 }
 
 /// One visible command.
@@ -159,9 +164,10 @@ pub(crate) fn read(input: &[u8]) -> Result<Vec<Command>, RenderError> {
         return Err(RenderError::new(Kind::OtherSchema { found: head.schema }));
     }
     let document: Document = serde_json::from_slice(input).map_err(not_a_document)?;
-    if document.data.len() < document.total {
+    let shown = document.data.len();
+    if document.truncated || document.total.is_none_or(|total| shown < total) {
         return Err(RenderError::new(Kind::Page {
-            shown: document.data.len(),
+            shown,
             total: document.total,
         }));
     }

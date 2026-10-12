@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "reading/entries-list/v1",
-  "description": "One page of a reading list's entries and the number of entries in it.",
+  "description": "One page of a reading list's entries.",
   "type": "object",
   "properties": {
     "cut": {
@@ -40,7 +40,7 @@
       "const": "reading/entries-list/v1"
     },
     "total": {
-      "description": "The number of rows that matched, of which data holds one page.",
+      "description": "The number of rows that matched, of which data holds one page. It is absent when the tool did not count a source that holds more rows.",
       "type": "integer",
       "minimum": 0
     },
@@ -52,7 +52,6 @@
   "required": [
     "schema",
     "data",
-    "total",
     "truncated"
   ],
   "$defs": {

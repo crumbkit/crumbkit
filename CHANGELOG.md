@@ -417,6 +417,12 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit-test: [`check_opt_outs`] gives the cost of a
   `documents/envelope` opt-out as a document without `truncated` in place
   of `total`.
+- crumbkit: every listing's JSON Schema marks `total` as optional, and the
+  documents keep their `v1` ids, because no schema has been released
+  ([ADR-0007]).
+- crumbkit-markdown: the reference refuses a `commands list` document that
+  leaves out `total` or holds `"truncated": true`, because it would leave
+  commands out.
 ### Removed
 
 - crumbkit: `Call::word` is gone, because `Call::value` adds a runtime value
