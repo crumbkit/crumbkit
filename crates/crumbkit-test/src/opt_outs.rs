@@ -11,7 +11,7 @@ use serde::Serialize;
 use snapbox::Assert;
 use snapbox::assert::DEFAULT_ACTION_ENV;
 
-use crate::allow::{Allow, command_line};
+use crate::allow::Allow;
 use crate::budget::Departure;
 use crate::goldens::compare;
 use crate::{Budgets, PathBudgets, tree};
@@ -125,14 +125,9 @@ fn check(
         .iter()
         .map(|allow| Entry {
             rule: allow.rule().id(),
-            applies_to: command_line(command, allow.path()),
+            applies_to: allow.line(command),
             reason: allow.reason(),
-            costs: allow
-                .rule()
-                .costs()
-                .iter()
-                .map(|&cost| cost.to_owned())
-                .collect(),
+            costs: allow.costs().iter().map(|&cost| cost.to_owned()).collect(),
             budget: None,
         })
         .collect();
