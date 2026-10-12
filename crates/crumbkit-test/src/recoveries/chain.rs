@@ -51,9 +51,9 @@ pub(super) struct Walk<'a> {
 enum Outcome {
     /// The run exited with code 0.
     Succeeds,
-    /// The run failed with this code and offers these steps, the recovery
-    /// first.
-    Fails(String, Vec<Step>),
+    /// The run failed with this code, offers these steps, the recovery
+    /// first, and names these fields, which fill the steps' placeholders.
+    Fails(String, Vec<Step>, Vec<(String, String)>),
 }
 
 /// The settings that every run of one chain shares.
@@ -67,6 +67,8 @@ struct Chain<'c> {
     dir: WorkDir,
     /// The standard input of every run.
     stdin: Option<&'c [u8]>,
+    /// The start's own value of each placeholder.
+    values: &'c [(&'c str, &'c str)],
     /// The words of each command line that the chain ran.
     ran: Vec<Vec<String>>,
 }
@@ -117,6 +119,7 @@ impl Walk<'_> {
             xdg,
             dir,
             stdin: start.stdin_bytes(),
+            values: start.own_values(),
             ran: Vec::new(),
         };
         let words: Vec<String> = start.words.iter().map(|&word| word.to_owned()).collect();
@@ -125,11 +128,11 @@ impl Walk<'_> {
                 "{}: the start must fail with {code}, and it exits with code 0",
                 chain.start
             )),
-            Some(Outcome::Fails(failed, steps)) => {
+            Some(Outcome::Fails(failed, steps, fields)) => {
                 self.provoked.push(failed.clone());
                 if failed == code {
                     let _ = writeln!(self.report, "  fails with {code}");
-                    self.follow(&mut chain, &code, &steps, 1);
+                    self.follow(&mut chain, (&code, &fields), &steps, 1);
                 } else {
                     self.problems.push(format!(
                         "{}: the start must fail with {code}, and it fails with {failed}",
@@ -142,10 +145,17 @@ impl Walk<'_> {
         self.report.push('\n');
     }
 
-    /// Follows each of `steps`, which a failure with the code `parent`
-    /// offers, as the `depth`th step of `chain`, writing each to the report
-    /// indented by `depth`.
-    fn follow(&mut self, chain: &mut Chain<'_>, parent: &str, steps: &[Step], depth: u8) {
+    /// Follows each of `steps`, which a failure with the code and the fields
+    /// of `parent` offers, as the `depth`th step of `chain`, writing each to
+    /// the report indented by `depth`.
+    fn follow(
+        &mut self,
+        chain: &mut Chain<'_>,
+        parent: (&str, &[(String, String)]),
+        steps: &[Step],
+        depth: u8,
+    ) {
+        let (parent, fields) = parent;
         let indent = "  ".repeat(usize::from(depth));
         for step in steps {
             if self.stopped.is_some() {
@@ -166,7 +176,7 @@ impl Walk<'_> {
                     continue;
                 }
             };
-            let Some(words) = self.fill(chain, call) else {
+            let Some(words) = self.fill(chain, call, fields) else {
                 continue;
             };
             let refs: Vec<&str> = words.iter().map(String::as_str).collect();
@@ -198,14 +208,14 @@ impl Walk<'_> {
                 Some(Outcome::Succeeds) => {
                     let _ = writeln!(self.report, "{indent}  exits 0");
                 }
-                Some(Outcome::Fails(code, _)) if code == self.usage => {
+                Some(Outcome::Fails(code, ..)) if code == self.usage => {
                     let _ = writeln!(self.report, "{indent}  refused by the parser with {code}");
                     self.problems.push(format!(
                         "{}: the parser refuses {label} with {code}",
                         chain.start
                     ));
                 }
-                Some(Outcome::Fails(code, next)) => {
+                Some(Outcome::Fails(code, next, next_fields)) => {
                     self.provoked.push(code.clone());
                     if !self.known.contains(&code) {
                         if let Some((component, _, _)) = self.recoveries.spelling.split(&code)
@@ -235,7 +245,7 @@ impl Walk<'_> {
                         ));
                     }
                     let _ = writeln!(self.report, "{indent}  fails with {code}");
-                    self.follow(chain, &code, &next, depth + 1);
+                    self.follow(chain, (&code, &next_fields), &next, depth + 1);
                 }
                 None => {}
             }
@@ -243,10 +253,16 @@ impl Walk<'_> {
     }
 
     /// Returns the words of `call` after the tool's name, with each
-    /// placeholder replaced by its value, or adds the problem and returns
-    /// `None` when the call cannot be read, does not start with the tool's
-    /// name or has a placeholder without a value.
-    fn fill(&mut self, chain: &Chain<'_>, call: &str) -> Option<Vec<String>> {
+    /// placeholder replaced by its value from the start's values, `fields`
+    /// or the shared values, or adds the problem and returns `None` when the
+    /// call cannot be read, does not start with the tool's name or has a
+    /// placeholder without a value.
+    fn fill(
+        &mut self,
+        chain: &Chain<'_>,
+        call: &str,
+        fields: &[(String, String)],
+    ) -> Option<Vec<String>> {
         let tool = self.command.get_name();
         let problem = match split(call) {
             None => format!("the step `{call}` is not a command line that crumbkit quotes"),
@@ -260,8 +276,8 @@ impl Walk<'_> {
                     match placeholder(&word) {
                         None => filled.push(word),
                         Some(name) => {
-                            match self.recoveries.values.iter().find(|(key, _)| *key == name) {
-                                Some(&(_, value)) => filled.push(value.to_owned()),
+                            match value(chain.values, fields, self.recoveries.values, name) {
+                                Some(value) => filled.push(value.to_owned()),
                                 None => missing = Some(word),
                             }
                         }
@@ -271,7 +287,7 @@ impl Walk<'_> {
                     return Some(filled);
                 };
                 format!(
-                    "the step `{call}` has the placeholder {}, and no value of Recoveries::values fills it",
+                    "the step `{call}` has the placeholder {}, and no value of Failing::values, the fields of the failure or Recoveries::values fills it",
                     word.trim_end_matches("...")
                 )
             }
@@ -351,8 +367,43 @@ impl Walk<'_> {
         Some(Outcome::Fails(
             failure.code().to_owned(),
             failure.steps().to_vec(),
+            runs::fields(&output.stdout),
         ))
     }
+}
+
+/// Returns the value of the placeholder `name`: the start's own value in
+/// `own` whose name matches exactly, then the field in `fields` whose name
+/// matches with capitals lowered and `-` read as `_`, then the shared value
+/// in `shared` whose name matches exactly, or `None`.
+//
+// RUST-10: a field fills any placeholder whose name matches it, whatever
+// the step means by that placeholder. crumbkit's usage failure names the
+// refused `value`, so a recovery holding `<VALUE>` would run the refused
+// value again. No recovery that crumbkit offers for its own failures holds
+// such a placeholder today. A tool whose recovery does sets its own value
+// with `Failing::values`, which wins over the field.
+fn value<'v>(
+    own: &'v [(&str, &'v str)],
+    fields: &'v [(String, String)],
+    shared: &'v [(&str, &'v str)],
+    name: &str,
+) -> Option<&'v str> {
+    let exact = |table: &'v [(&str, &'v str)]| {
+        table
+            .iter()
+            .find(|(key, _)| *key == name)
+            .map(|&(_, value)| value)
+    };
+    let field_name = name.to_ascii_lowercase().replace('-', "_");
+    exact(own)
+        .or_else(|| {
+            fields
+                .iter()
+                .find(|(key, _)| *key == field_name)
+                .map(|(_, value)| value.as_str())
+        })
+        .or_else(|| exact(shared))
 }
 
 /// Returns `words` with `--json` added at the end when they lack it.

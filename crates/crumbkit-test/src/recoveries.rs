@@ -48,6 +48,9 @@ pub struct Failing<'a> {
     /// The XDG fixture of the chain, which wins over the fixture of
     /// [`Examples::xdg`].
     xdg: Option<&'a str>,
+    /// The value of each placeholder in the steps of the chain, which wins
+    /// over every other source.
+    values: &'a [(&'a str, &'a str)],
 }
 
 impl<'a> Failing<'a> {
@@ -63,6 +66,7 @@ impl<'a> Failing<'a> {
             dir: None,
             stdin: None,
             xdg: None,
+            values: &[],
         }
     }
 
@@ -93,6 +97,23 @@ impl<'a> Failing<'a> {
     pub const fn xdg(mut self, dir: &'a str) -> Self {
         self.xdg = Some(dir);
         self
+    }
+
+    /// Sets the value of each placeholder in the steps of its chain, as a
+    /// name and a value, such as `("path", "/tasks/a")`, so each chain can
+    /// fill a placeholder with the value that fits its own failure. A value
+    /// matches a placeholder's name exactly, case included, as
+    /// [`Recoveries::values`] does, and wins over a field of the failure
+    /// and over [`Recoveries::values`].
+    #[must_use]
+    pub const fn values(mut self, values: &'a [(&'a str, &'a str)]) -> Self {
+        self.values = values;
+        self
+    }
+
+    /// Returns the value of each placeholder in the steps of its chain.
+    pub(crate) const fn own_values(&self) -> &'a [(&'a str, &'a str)] {
+        self.values
     }
 
     /// Returns the XDG fixture of its runs: its own, or `fallback`, the
@@ -246,6 +267,11 @@ impl<'a> Recoveries<'a> {
     /// lowercase letters, and a value fills only the placeholder whose name
     /// matches it exactly, case included, so `("path", "x")` fills `<path>`
     /// and not `<PATH>`.
+    ///
+    /// Every chain shares these values. A value of
+    /// [`Failing::values`] wins over them for one chain, and so does a field
+    /// of the failure that offers the step, as [`check_recoveries`]
+    /// describes.
     #[must_use]
     pub const fn values(mut self, values: &'a [(&'a str, &'a str)]) -> Self {
         self.values = values;
@@ -282,9 +308,19 @@ impl<'a> Recoveries<'a> {
 /// [`Examples::fresh_dir`] runs in one new copy of that fixture.
 ///
 /// A chain follows the recovery and then each alternative of a failure. A
-/// `run` step fills each placeholder, such as `<ID>...`, from
-/// [`Recoveries::values`], drops the tool's name and runs the words. A step
-/// that exits with code 0 ends its branch, and so do a `retry`, a `hint` and
+/// `run` step fills each placeholder, such as `<ID>...`, drops the tool's
+/// name and runs the words. A placeholder takes the first value that one of
+/// these sources gives:
+///
+/// 1. the value of [`Failing::values`] whose name matches it exactly;
+/// 2. the field, in the `fields` of crumbkit's failure document or of a
+///    batch's first failure, of the failure that offers the step, whose name
+///    matches it with capitals lowered and `-` read as `_`, so the field
+///    `book_id` fills `<BOOK-ID>`. An integer or a boolean is written as
+///    text. A failure that only the tool's own form reads gives no fields;
+/// 3. the value of [`Recoveries::values`] whose name matches it exactly.
+///
+/// A step that exits with code 0 ends its branch, and so do a `retry`, a `hint` and
 /// a `none` step. A step that fails continues the chain, up to
 /// [`Recoveries::steps`] steps after the start. A chain does not run a
 /// command line that it ran already, a step that an opt-out from

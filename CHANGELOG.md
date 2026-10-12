@@ -329,12 +329,17 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit-test: `Examples::fresh_dir` names a fixture that the checks copy
   into a new working directory for each run, or once for each recovery
   chain, and example outputs show the copy's path as `[ROOT]` ([ADR-0005]).
+- crumbkit-test: `Failing::values` gives one recovery chain its own
+  placeholder values, which win over every other source ([ADR-0005]).
 - crumbkit-test: [`check_help_sizes`], [`check_help_goldens`] and
   [`check_path_weights`] take `Pages`, whose `Pages::binary` reads each
   page from the tool's binary, for a tool that builds its help at run
   time ([ADR-0025]).
 ### Changed
 
+- crumbkit-test: [`check_recoveries`] fills a placeholder from the `fields`
+  of the failure that offers the step before it reads `Recoveries::values`
+  ([ADR-0005]).
 - crumbkit: the help text of `--json` reads `Print the result as a JSON
   document` and no longer names a layout.
 - crumbkit-test: when the guide sets `JsonLayout::Pretty`, [`check_examples`]

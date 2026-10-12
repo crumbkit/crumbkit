@@ -243,6 +243,30 @@ pub(crate) fn failure(stdout: &[u8]) -> Option<Value> {
         })
 }
 
+/// Returns the `fields` of the failure that [`failure`] finds on `stdout`,
+/// each a name and its value as text, in order. A string is its own text,
+/// an integer or a boolean is written as JSON writes it, and a field of
+/// another type is left out.
+pub(crate) fn fields(stdout: &[u8]) -> Vec<(String, String)> {
+    let Some(document) = failure(stdout) else {
+        return Vec::new();
+    };
+    let Some(fields) = document.get("fields").and_then(Value::as_object) else {
+        return Vec::new();
+    };
+    fields
+        .iter()
+        .filter_map(|(name, value)| {
+            let text = match value {
+                Value::String(text) => text.clone(),
+                Value::Number(_) | Value::Bool(_) => value.to_string(),
+                _ => return None,
+            };
+            Some((name.clone(), text))
+        })
+        .collect()
+}
+
 /// Returns the failure that a failed run printed on `stdout` and `stderr`:
 /// what `form` reads back when the guide sets a form and its
 /// [`FailureForm::read`] finds one, and otherwise the code and steps of
