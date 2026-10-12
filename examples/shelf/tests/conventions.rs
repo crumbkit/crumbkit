@@ -32,10 +32,10 @@ const ALLOW: &[Allow] = &[
 const BUDGETS: Budgets = Budgets::new();
 
 /// The budgets of the paths through shelf's help. shelf's longest path,
-/// `commands list`, reads about 3,500 bytes.
+/// `commands list`, reads about 3,950 bytes.
 const PATH_BUDGETS: PathBudgets<'_> = PathBudgets::new("tests/golden/examples").path(
-    4_000,
-    "shelf's longest path reads about 3,500 bytes, so 4,000 bytes leaves room for small changes and catches a page or an output that grows by much.",
+    4_300,
+    "shelf's longest path reads about 3,950 bytes, so 4,300 bytes leaves room for small changes and catches a page or an output that grows by much.",
 );
 
 /// shelf's built binary and the directory that holds its example golden

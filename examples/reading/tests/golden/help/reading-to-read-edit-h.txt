@@ -9,4 +9,4 @@ Examples:
   reading to-read edit
 
 Effects: destructive, not idempotent, closed-world.
-Global flags: --json, --fields <FIELD>, --long, --full. `reading to-read edit --help` describes them.
+Global flags: --json, --fields <FIELD>, --long, --full, --no-input. `reading to-read edit --help` describes them.

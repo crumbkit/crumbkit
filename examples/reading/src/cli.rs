@@ -5,10 +5,12 @@
 use clap::{Args, Parser, Subcommand};
 use crumbkit::commands::{COMMANDS_LIST, CommandsList};
 use crumbkit::help::{Effects, Example, Guide, Leaf};
+use crumbkit::pick::Choices;
 use crumbkit::schemas::{SCHEMAS_LIST, SCHEMAS_SHOW, SchemasList, SchemasShow};
-use crumbkit::{Output, Page};
+use crumbkit::{NoInput, Output, Page};
+use crumbkit_picker::Menu;
 
-use crate::lists::{ENTRIES_LIST, ENTRIES_STREAM};
+use crate::lists::{ENTRIES_LIST, ENTRIES_STREAM, choices};
 
 /// Keep reading lists, and print the entries of each.
 #[derive(Debug, Parser)]
@@ -21,20 +23,34 @@ pub struct Cli {
     /// The flags that choose how the result prints.
     #[command(flatten)]
     pub(crate) output: Output,
+
+    /// The flag that tells reading that nobody can answer a question.
+    #[command(flatten)]
+    pub(crate) no_input: NoInput,
 }
+
+/// The menu that asks a person at a terminal which list to read, when
+/// `entries list` or `entries stream` names none.
+static MENU: Menu = Menu::new();
+
+/// The source of the names of reading's lists, which the menu offers for
+/// `--list`.
+const LISTS: &[Choices] = &[Choices::new("list", choices)];
 
 /// The leaves of reading's static commands. reading guides no command, so
 /// `reading -h` keeps clap's `Commands:` list, which also lists the command
 /// of each reading list. `crate::guide` adds a leaf for each of those
-/// commands at run time.
-pub const GUIDE: Guide = Guide::new().leaves(&[
+/// commands at run time. A person at a terminal who leaves out `--list`
+/// picks a list from the menu.
+pub const GUIDE: Guide = Guide::new().picker(&MENU).leaves(&[
     Leaf::new(&["entries", "list"])
         .examples(&[Example::new(
             &["--list", "to-read"],
             "Print the first page of the to-read list",
         )])
         .effects(Effects::read_only())
-        .document(ENTRIES_LIST),
+        .document(ENTRIES_LIST)
+        .choices(LISTS),
     Leaf::new(&["entries", "stream"])
         .examples(&[
             Example::new(
@@ -47,7 +63,8 @@ pub const GUIDE: Guide = Guide::new().leaves(&[
             ),
         ])
         .effects(Effects::read_only())
-        .stream(ENTRIES_STREAM),
+        .stream(ENTRIES_STREAM)
+        .choices(LISTS),
     Leaf::new(&["commands", "list"])
         .examples(&[
             Example::new(&[], "List every command"),

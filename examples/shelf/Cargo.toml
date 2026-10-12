@@ -33,6 +33,10 @@ etcetera = { workspace = true }
 # shelf expands a person's aliases before parsing, and lists them with the
 # hidden `shelf aliases list`.
 crumbkit-aliases = { workspace = true }
+# shelf asks a person at a terminal which books `shelf books show` should
+# show, when the command line names no ids, with crumbkit-picker's numbered
+# menu (ADR-0043).
+crumbkit-picker = { workspace = true }
 # The failure of a bad line in the ids file of `shelf books show --from`
 # implements `miette::Diagnostic` and holds the file as a
 # `miette::NamedSource`, which need no miette feature.

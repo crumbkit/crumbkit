@@ -13,6 +13,6 @@ Options:
   -h, --help     Print help (see more with '--help')
   -V, --version  Print version
 
-Global flags: --json, --fields <FIELD>, --long, --full. `reading --help` describes them.
+Global flags: --json, --fields <FIELD>, --long, --full, --no-input. `reading --help` describes them.
 Topics: exit-codes. `reading help <TOPIC>` prints one.
 Next: reading <COMMAND> -h

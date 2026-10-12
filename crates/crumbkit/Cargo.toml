@@ -34,12 +34,15 @@ schemars = { workspace = true }
 # and converts a `miette::Report` into `Error` (ADR-0001). crumbkit needs no
 # miette feature.
 miette = { workspace = true, optional = true }
-# The `usage-log` feature needs these four crates and signal-hook below
+# is-ai-agent tells whether a coding agent runs the tool, so neither a
+# picker nor `Output::confirm` asks it a question (ADR-0043), and the usage
+# log names the agent (ADR-0029). It has no dependencies.
+is-ai-agent = { workspace = true }
+# The `usage-log` feature needs these three crates and signal-hook below
 # (ADR-0029). humantime also parses the duration of `self usage --since`
 # (ADR-0034).
 siphasher = { workspace = true, optional = true }
 etcetera = { workspace = true, optional = true }
-is-ai-agent = { workspace = true, optional = true }
 humantime = { workspace = true, optional = true }
 # The `tracing` feature puts `parse` and `finish` in spans of the tracing
 # crate (ADR-0030). crumbkit needs no tracing feature.
@@ -65,7 +68,6 @@ miette = ["dep:miette", "crumbkit-core/miette"]
 usage-log = [
     "dep:siphasher",
     "dep:etcetera",
-    "dep:is-ai-agent",
     "dep:humantime",
     "dep:signal-hook",
     "serde/derive",

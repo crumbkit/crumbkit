@@ -80,6 +80,12 @@
       "description": "The caller's span id from a valid TRACEPARENT. It is left out when the\nrun started a new trace.",
       "$ref": "#/$defs/SpanId"
     },
+    "picked": {
+      "description": "How many missing arguments a picker filled in before the command line\nparsed. It is present only when a picker filled one in.",
+      "type": "integer",
+      "format": "uint",
+      "minimum": 0
+    },
     "run": {
       "description": "The run's own random span id, which its children name as their\nparent.",
       "$ref": "#/$defs/SpanId"

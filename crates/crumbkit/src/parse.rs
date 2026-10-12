@@ -3,7 +3,7 @@
 
 use std::ffi::OsString;
 use std::fmt::Display;
-use std::io::{self, IsTerminal as _, Write};
+use std::io::{self, BufRead, IsTerminal as _, Write};
 use std::process::ExitCode;
 
 use clap::error::ErrorKind;
@@ -13,6 +13,7 @@ pub use self::parsed::Parsed;
 pub use self::stop::Stop;
 
 use self::lines::{add_help_lines, has_visible_subcommands};
+use self::pick::{Picking, Step};
 use self::walk::{help_word, walk};
 use crate::help::{Guide, topic};
 use crate::refusal::Refusal;
@@ -20,6 +21,7 @@ use crate::{Sink, Spelling};
 
 mod lines;
 mod parsed;
+mod pick;
 mod stop;
 pub(crate) mod suggestion;
 #[cfg(test)]
@@ -100,7 +102,7 @@ where
 {
     let mut sink = Sink::standard();
     let colour = sink.out.is_terminal();
-    run(&mut sink, command, guide, spelling, args, colour)
+    run(&mut sink, command, guide, spelling, args, colour, true)
 }
 
 /// Parses `args` against `command` and prints help, the version or a
@@ -223,7 +225,7 @@ where
 ///
 /// [books-show-2-comma-5]: https://github.com/crumbkit/crumbkit/blob/main/examples/shelf/tests/golden/books-show-2-comma-5.stderr
 pub fn parse_to<C, I, T, O, E>(
-    sink: &mut Sink<O, E>,
+    sink: &mut Sink<O, E, impl BufRead>,
     command: Command,
     guide: &Guide,
     spelling: Spelling,
@@ -236,7 +238,7 @@ where
     O: Write,
     E: Write,
 {
-    run(sink, command, guide, spelling, args, false)
+    run(sink, command, guide, spelling, args, false, false)
 }
 
 /// Parses `args` against `command` as [`parse_to`] describes. With the
@@ -249,6 +251,7 @@ fn run<C, I, T, O, E, R>(
     spelling: Spelling,
     args: I,
     colour: bool,
+    stdin: bool,
 ) -> Result<(C, Parsed), Stop>
 where
     C: FromArgMatches,
@@ -256,12 +259,13 @@ where
     T: Into<OsString>,
     O: Write,
     E: Write,
+    R: BufRead,
 {
     #[cfg(feature = "tracing")]
     let span = crate::trace::spans::parse();
     #[cfg(feature = "tracing")]
     let _entered = span.enter();
-    let parsed = read(sink, command, guide, spelling, args, colour);
+    let parsed = read(sink, command, guide, spelling, args, colour, stdin);
     #[cfg(feature = "tracing")]
     if let Err(stop) = &parsed {
         crate::trace::spans::exited(&span, stop.code());
@@ -269,9 +273,11 @@ where
     parsed
 }
 
-/// Parses `args` against `command` as [`parse_to`] describes. With `colour`,
-/// help and the version print through clap, which writes them to standard
-/// output with the colours that the tool's clap features allow.
+/// Parses `args` against `command` as [`parse_to`] describes. With `colour`, help and the version print
+/// through clap, which writes them to standard output with the colours that
+/// the tool's clap features allow. With `stdin`, the guide's picker reads
+/// the process's standard input and writes to its standard error, and
+/// otherwise it uses the sink's input and error writer.
 fn read<C, I, T, O, E, R>(
     sink: &mut Sink<O, E, R>,
     mut command: Command,
@@ -279,6 +285,7 @@ fn read<C, I, T, O, E, R>(
     spelling: Spelling,
     args: I,
     colour: bool,
+    stdin: bool,
 ) -> Result<(C, Parsed), Stop>
 where
     C: FromArgMatches,
@@ -286,6 +293,7 @@ where
     T: Into<OsString>,
     O: Write,
     E: Write,
+    R: BufRead,
 {
     let mut args: Vec<OsString> = args.into_iter().map(Into::into).collect();
     #[cfg(feature = "usage-log")]
@@ -348,16 +356,32 @@ where
     add_help_lines(&mut command, guide, has_topics, aliases, &path, long_help);
 
     // `Output::confirm` repeats the typed words, so they outlive parsing.
-    let words = args.get(1..).unwrap_or_default().to_vec();
-    let error = match command.try_get_matches_from_mut(args) {
-        Ok(mut matches) => {
-            #[cfg(feature = "usage-log")]
-            crate::usage::parsed(&command, &matches);
-            match C::from_arg_matches_mut(&mut matches) {
-                Ok(parsed) => return Ok((parsed, Parsed::new(command, words))),
-                Err(error) => error,
+    let mut words = args.get(1..).unwrap_or_default().to_vec();
+    let mut parsed = attempt::<C>(&mut command, args);
+    // A command line that leaves out a required argument can have it
+    // picked, one argument at a time, and parses again after each pick.
+    if let Some(picker) = guide.get_picker() {
+        let mut picking = Picking::new(picker, stdin);
+        let mut picked = 0;
+        while let Err(error) = &parsed
+            && pick::wanted(error)
+        {
+            match picking.pick(sink, &mut command, guide, &mut words, json, spelling) {
+                Step::Picked => picked += 1,
+                Step::Refuse => break,
+                Step::Stop(code) => return Err(Stop::new(code, json, command)),
             }
+            let args = pick::args(&command, &words);
+            parsed = attempt::<C>(&mut command, args);
         }
+        if picked > 0 && parsed.is_ok() {
+            pick::echo(sink, &command, &words);
+            #[cfg(feature = "usage-log")]
+            crate::usage::picked(picked);
+        }
+    }
+    let error = match parsed {
+        Ok((parsed, no_input)) => return Ok((parsed, Parsed::new(command, words, no_input))),
         Err(error) => error,
     };
     if matches!(
@@ -378,6 +402,20 @@ where
     let refusal = Refusal::command_line(refusal_message(&command, &path, &error), path);
     let code = refusal.print(sink, json, spelling, Some(&mut command));
     Err(Stop::new(code, json, command))
+}
+
+/// Parses `args` against `command`, and returns the tool's parsed type and
+/// whether the caller passed `--no-input`, which parsing reads before the
+/// tool's type takes the values out of the matches.
+fn attempt<C: FromArgMatches>(
+    command: &mut Command,
+    args: Vec<OsString>,
+) -> Result<(C, bool), clap::Error> {
+    let mut matches = command.try_get_matches_from_mut(args)?;
+    #[cfg(feature = "usage-log")]
+    crate::usage::parsed(command, &matches);
+    let no_input = pick::no_input(&matches);
+    C::from_arg_matches_mut(&mut matches).map(|parsed| (parsed, no_input))
 }
 
 /// Returns the page that `help` at the guide's root prints without clap,

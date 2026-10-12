@@ -12,5 +12,5 @@ Examples:
   shelf books list --all
 
 Effects: read-only, closed-world.
-Global flags: --json, --fields <FIELD>, --long, --full. `shelf books list --help` describes them.
+Global flags: --json, --fields <FIELD>, --long, --full, --no-input. `shelf books list --help` describes them.
 Next: shelf books list --help explains each column.

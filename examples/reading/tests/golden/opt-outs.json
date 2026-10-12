@@ -42,12 +42,12 @@
     {
       "rule": "path-budget/path",
       "applies_to": "every path through reading",
-      "reason": "reading's longest path, commands list, reads about 3,200 bytes, so 3,500 bytes leaves room for small changes and catches a page or an output that grows by much.",
+      "reason": "reading's longest path, commands list, reads about 3,600 bytes, so 3,900 bytes leaves room for small changes and catches a page or an output that grows by much.",
       "costs": [
         "None, because the budget is at or below crumbkit's default."
       ],
       "budget": {
-        "bytes": 3500,
+        "bytes": 3900,
         "default": 8000,
         "extra_bytes": 0,
         "extra_tokens": 0

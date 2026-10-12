@@ -1,7 +1,5 @@
 //! Who ran the tool, and the session the run belongs to.
 
-use std::path::Path;
-
 #[cfg(test)]
 mod tests;
 
@@ -18,32 +16,21 @@ pub(super) struct Caller {
     pub(super) session: String,
 }
 
-/// Returns the caller of this process, from its environment, the files that
-/// mark an agent, its standard input and its parent process.
+/// Returns the caller of this process, from the agent that
+/// [`crate::agent::detect`] finds, its standard input and its parent
+/// process.
 pub(super) fn detect() -> Caller {
-    #[expect(
-        clippy::disallowed_methods,
-        reason = "the usage log owns its environment reads, which tell which agent ran the tool"
-    )]
-    let env = |name: &str| std::env::var(name).ok();
     identify(
-        env,
-        |path| Path::new(path).exists(),
+        crate::agent::detect(),
         crate::sink::stdin_is_terminal(),
         std::os::unix::process::parent_id(),
     )
 }
 
-/// Returns the caller from an environment lookup `env`, a file check
-/// `file_exists`, whether standard input is a `terminal`, and the `parent`
-/// process id, as [`detect`] reads them.
-fn identify(
-    env: impl Fn(&str) -> Option<String>,
-    file_exists: impl Fn(&str) -> bool,
-    terminal: bool,
-    parent: u32,
-) -> Caller {
-    match is_ai_agent::detect_with(env, file_exists) {
+/// Returns the caller from the detected `agent`, whether standard input is
+/// a `terminal`, and the `parent` process id, as [`detect`] reads them.
+fn identify(agent: Option<is_ai_agent::Agent>, terminal: bool, parent: u32) -> Caller {
+    match agent {
         Some(agent) => Caller {
             name: agent.id.as_str(),
             session: agent.session_id.unwrap_or_else(|| parent.to_string()),

@@ -27,9 +27,19 @@ fn yes() -> Arg {
     Arg::new("yes").long("yes").action(ArgAction::SetTrue)
 }
 
-/// Returns `shelf books` with `list`, and `remove` with `args`.
+/// Returns crumbkit's `--no-input`, with the id that `crumbkit::NoInput`
+/// gives it.
+fn no_input() -> Arg {
+    Arg::new("crumbkit_no_input")
+        .long("no-input")
+        .global(true)
+        .action(ArgAction::SetTrue)
+}
+
+/// Returns `shelf books` with `list`, and `remove` with `args`, and
+/// crumbkit's `--no-input` at the root.
 fn shelf(remove: impl IntoIterator<Item = Arg>) -> Command {
-    Command::new("shelf").subcommand(
+    Command::new("shelf").arg(no_input()).subcommand(
         Command::new("books")
             .subcommand(Command::new("list"))
             .subcommand(Command::new("remove").args(remove)),
@@ -79,7 +89,7 @@ fn a_leaf_without_effects_passes_when_an_opt_out_names_it() {
 
 #[test]
 fn crumbkit_s_dry_run_on_a_read_only_leaf_fails() {
-    let shelf = Command::new("shelf").subcommand(
+    let shelf = Command::new("shelf").arg(no_input()).subcommand(
         Command::new("books")
             .subcommand(Command::new("list").arg(crumbkit_dry_run()))
             .subcommand(Command::new("remove").arg(yes())),
@@ -156,4 +166,66 @@ fn a_root_without_subcommands_is_a_leaf() {
         "the command tree breaks crumbkit's effects rules:\n\
          shelf: the command declares no effects, so an agent must assume it may destroy data"
     );
+}
+
+/// A picker that picks nothing.
+struct Nobody;
+
+impl crumbkit::pick::Picker for Nobody {
+    fn pick(
+        &self,
+        _question: &crumbkit::pick::Question<'_>,
+        _input: &mut dyn std::io::BufRead,
+        _output: &mut dyn std::io::Write,
+    ) -> std::io::Result<crumbkit::pick::Answer> {
+        Ok(crumbkit::pick::Answer::Cancelled)
+    }
+}
+
+static NOBODY: Nobody = Nobody;
+
+/// Returns `shelf books` with `list` and `remove`, without `--no-input`.
+fn without_no_input(remove: impl IntoIterator<Item = Arg>) -> Command {
+    Command::new("shelf").subcommand(
+        Command::new("books")
+            .subcommand(Command::new("list"))
+            .subcommand(Command::new("remove").args(remove)),
+    )
+}
+
+#[test]
+fn a_tool_with_yes_and_without_crumbkit_s_no_input_fails_unless_an_opt_out_names_the_root() {
+    const ALLOW: &[Allow] = &[Allow::new(
+        Rule::NoInput,
+        "",
+        "Only scripts run the tool, and they pass `--yes`.",
+    )];
+
+    assert_eq!(
+        panic_message(|| check_effects(&without_no_input([yes()]), &GUIDE, &[])).unwrap(),
+        "the command tree breaks crumbkit's effects rules:\n\
+         shelf: the tool can ask a question and has no `--no-input` from crumbkit's `NoInput`, so a caller cannot say that nobody can answer"
+    );
+    check_effects(&without_no_input([yes()]), &GUIDE, ALLOW);
+}
+
+#[test]
+fn a_tool_with_a_picker_needs_crumbkit_s_no_input() {
+    const GUIDE: Guide = Guide::new().picker(&NOBODY).leaves(&[
+        Leaf::new(&["books", "list"]).effects(Effects::read_only()),
+        Leaf::new(&["books", "remove"]).effects(Effects::additive()),
+    ]);
+
+    assert!(panic_message(|| check_effects(&without_no_input([]), &GUIDE, &[])).is_some());
+    check_effects(&shelf([]), &GUIDE, &[]);
+}
+
+#[test]
+fn a_tool_that_never_asks_needs_no_no_input() {
+    const GUIDE: Guide = Guide::new().leaves(&[
+        Leaf::new(&["books", "list"]).effects(Effects::read_only()),
+        Leaf::new(&["books", "remove"]).effects(Effects::additive()),
+    ]);
+
+    check_effects(&without_no_input([]), &GUIDE, &[]);
 }

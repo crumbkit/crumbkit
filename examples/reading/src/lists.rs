@@ -12,7 +12,8 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 
 use clap::Subcommand as _;
-use crumbkit::{Call, Code, Document, Failure, Listing, Page, Recovery, Row};
+use crumbkit::pick::Choice;
+use crumbkit::{Call, Code, Document, Error, Failure, Listing, Page, Recovery, Row};
 use etcetera::BaseStrategy as _;
 use schemars::JsonSchema;
 use serde::Serialize;
@@ -173,6 +174,29 @@ pub fn lists_in(dir: &Path) -> Vec<List> {
         .collect();
     lists.sort_by(|a, b| a.name.cmp(&b.name));
     lists
+}
+
+/// Returns the lists in reading's directory as choices for `--list`, which
+/// the menu offers when `entries list` or `entries stream` names no list.
+/// A directory that cannot be found holds no lists.
+#[expect(
+    clippy::unnecessary_wraps,
+    reason = "a picker's source returns a Result, and reading's lists_in reports no error"
+)]
+pub(crate) fn choices() -> Result<Vec<Choice>, Error> {
+    Ok(dir().as_deref().map(choices_in).unwrap_or_default())
+}
+
+/// Returns the lists in `dir` as choices, each labelled with its name and
+/// its about text.
+pub(crate) fn choices_in(dir: &Path) -> Vec<Choice> {
+    lists_in(dir)
+        .into_iter()
+        .map(|list| {
+            let label = format!("{}  {}", list.name, list.about);
+            Choice::new(list.name, label)
+        })
+        .collect()
 }
 
 /// Returns whether `name` is lowercase ASCII letters and digits in words

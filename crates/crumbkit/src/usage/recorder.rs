@@ -272,6 +272,12 @@ pub(crate) fn helped(command: &Command, path: &[String], long: bool, exit: ExitC
     });
 }
 
+/// Records that a picker filled in `count` missing arguments before the
+/// command line parsed.
+pub(crate) fn picked(count: usize) {
+    update(&RECORDER, |recorder| recorder.run.picked = Some(count));
+}
+
 /// Records the exit code that `parse` returned after it printed the
 /// version.
 pub(crate) fn exited(exit: ExitCode) {

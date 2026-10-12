@@ -8,5 +8,5 @@ Commands:
 Options:
   -h, --help  Print help (see more with '--help')
 
-Global flags: --json, --fields <FIELD>, --long, --full. `reading commands --help` describes them.
+Global flags: --json, --fields <FIELD>, --long, --full, --no-input. `reading commands --help` describes them.
 Next: reading commands <COMMAND> -h

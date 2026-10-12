@@ -11,7 +11,7 @@ mod fields;
 mod listing;
 mod prose;
 mod stream;
-mod table;
+pub(crate) mod table;
 mod unwrapped;
 
 use std::ffi::OsString;
@@ -95,6 +95,11 @@ pub struct Output {
     /// Whether the run is a dry run, which [`Output::dry_run`] records.
     #[arg(skip)]
     dry_run: bool,
+
+    /// Whether the caller passed `--no-input`, which `set_command` copies
+    /// from the `Parsed`.
+    #[arg(skip)]
+    no_input: bool,
 }
 
 impl Output {
@@ -170,6 +175,7 @@ impl Output {
     pub fn set_command(&mut self, parsed: impl Into<Parsed>) {
         let parsed = parsed.into();
         self.words = parsed.words;
+        self.no_input = parsed.no_input;
         self.command = Some(parsed.command);
     }
 

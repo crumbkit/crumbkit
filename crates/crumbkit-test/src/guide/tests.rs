@@ -521,3 +521,30 @@ fn a_leaf_column_without_a_description_fails_the_check_naming_the_field() {
          shelf books list: the column `pages` has no description, because the field `pages` of the row type has no doc comment"
     );
 }
+
+#[expect(
+    clippy::unnecessary_wraps,
+    reason = "a choices source returns a `Result`"
+)]
+fn no_choices() -> Result<Vec<crumbkit::pick::Choice>, crumbkit::Error> {
+    Ok(Vec::new())
+}
+
+#[test]
+fn choices_whose_argument_id_names_no_argument_of_the_leaf_fail_the_check() {
+    const GUIDE: Guide = Guide::new().leaves(&[
+        Leaf::new(&["books", "list"]).examples(RUN),
+        Leaf::new(&["books", "show"])
+            .examples(&[Example::new(&["2"], "Show a book")])
+            .choices(&[
+                crumbkit::pick::Choices::new("ids", no_choices),
+                crumbkit::pick::Choices::new("id", no_choices),
+            ]),
+    ]);
+
+    assert_eq!(
+        panic_message(|| check_guide(&shelf_with_arguments(), &GUIDE)).unwrap(),
+        "the command tree breaks crumbkit's guide rules:\n\
+         shelf books show: the choices for `id` name no argument of the command, so a picker never offers them"
+    );
+}

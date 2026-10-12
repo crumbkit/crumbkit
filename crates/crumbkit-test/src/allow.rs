@@ -122,6 +122,11 @@ pub enum Rule {
     /// [`check_effects`](crate::check_effects): a destructive leaf has no
     /// `--yes`. Its id is `effects/yes`.
     Yes,
+    /// [`check_effects`](crate::check_effects): a tool that can ask a
+    /// question, because its guide has a picker or a command has `--yes`,
+    /// has no `--no-input` from `crumbkit::NoInput` at its root. Its id is
+    /// `effects/no-input`, and its opt-out names the root.
+    NoInput,
     /// [`check_names`](crate::check_names): help shows a second name for a
     /// command or an argument. Its id is `names/one-name`.
     OneName,
@@ -173,6 +178,7 @@ impl Rule {
             Self::Effects => "effects/declared",
             Self::DryRun => "effects/dry-run",
             Self::Yes => "effects/yes",
+            Self::NoInput => "effects/no-input",
             Self::OneName => "names/one-name",
             Self::PersonalAliases => "names/personal-aliases",
             Self::ListPages => "listings/list-pages",
@@ -208,6 +214,10 @@ impl Rule {
             ],
             Self::Yes => &[
                 "An agent without a terminal cannot run the command, or the command runs without asking anyone.",
+            ],
+            Self::NoInput => &[
+                "A script or an agent cannot tell the tool that nobody can answer, so the tool relies on detecting it.",
+                "The flag is missing from this tool while other crumbkit tools take it, so a caller that passes it gets a refusal.",
             ],
             Self::OneName => &[
                 "Each visible second name costs help bytes on every read of the page.",

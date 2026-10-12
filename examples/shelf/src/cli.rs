@@ -5,14 +5,16 @@ use std::path::PathBuf;
 use clap::{Args, Parser, Subcommand};
 use crumbkit::commands::{COMMANDS_LIST, CommandsList};
 use crumbkit::help::{Effects, Example, Goal, Group, Guide, Leaf, Topic};
+use crumbkit::pick::Choices;
 use crumbkit::schemas::{SCHEMAS_LIST, SCHEMAS_SHOW, SchemasList, SchemasShow};
 use crumbkit::usage::{SELF_FIGURES_LIST, SELF_USAGE, SelfFigures, SelfUsage};
-use crumbkit::{DryRun, Output, Page, Yes};
+use crumbkit::{DryRun, NoInput, Output, Page, Yes};
 use crumbkit_aliases::AliasesList;
+use crumbkit_picker::Menu;
 use schemars::JsonSchema;
 use serde::Serialize;
 
-use crate::books::{BOOKS_LIST, BOOKS_REMOVE, BOOKS_SHOW, BOOKS_SUMMARIZE, MOST_IDS};
+use crate::books::{self, BOOKS_LIST, BOOKS_REMOVE, BOOKS_SHOW, BOOKS_SUMMARIZE, MOST_IDS};
 
 #[cfg(test)]
 mod tests;
@@ -28,7 +30,19 @@ pub struct Cli {
     /// The flags that choose how the result prints.
     #[command(flatten)]
     pub(crate) output: Output,
+
+    /// The flag that tells shelf that nobody can answer a question.
+    #[command(flatten)]
+    pub(crate) no_input: NoInput,
 }
+
+/// The menu that asks a person at a terminal which books to show, when
+/// `shelf books show` names no ids and no `--from` file.
+static MENU: Menu = Menu::new();
+
+/// The source of the books on the shelf, which the menu offers for the ids
+/// of `shelf books show`.
+const BOOK_IDS: &[Choices] = &[Choices::new("ids", books::choices)];
 
 /// shelf's goal headings, leaves and help topics. shelf guides only its
 /// root, so `shelf -h` lists `books` under `Browse the catalogue`,
@@ -38,8 +52,10 @@ pub struct Cli {
 /// `--help` of a leaf that prints rows describes their columns.
 /// `shelf help catalogue` prints `cli/catalogue.txt`. `shelf -h` names the
 /// person's aliases that expand, which differ between machines, so shelf's
-/// tests opt out of crumbkit's rule against that.
+/// tests opt out of crumbkit's rule against that. A person at a terminal who
+/// leaves out the ids of `shelf books show` picks books from the menu.
 pub const GUIDE: Guide = Guide::new()
+    .picker(&MENU)
     .groups(&[Group::new(
         &[],
         &[
@@ -59,7 +75,8 @@ pub const GUIDE: Guide = Guide::new()
         Leaf::new(&["books", "show"])
             .examples(&[Example::new(&["2", "5"], "Show books 2 and 5")])
             .effects(Effects::read_only())
-            .document(BOOKS_SHOW),
+            .document(BOOKS_SHOW)
+            .choices(BOOK_IDS),
         Leaf::new(&["books", "summarize"])
             .examples(&[
                 Example::new(&[], "Summarize the whole catalogue"),
