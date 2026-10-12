@@ -3,7 +3,9 @@
 //! Each test writes a `/bin/sh` script that stands in for a tool, as the
 //! recovery check's tests do.
 
-use crumbkit::{Code, Spelling};
+use crumbkit::form::{FailureForm, PreparedFailure, ReadFailure};
+use crumbkit::{Code, Document, Spelling};
+use schemars::{Schema, json_schema};
 
 use super::check_twin;
 use crate::examples::Examples;
@@ -15,12 +17,14 @@ use crate::testing::panic_message;
 const USAGE: Code = crumbkit::codes::CLI_USAGE;
 
 /// The script's answers: `books list --limit 0` fails with the usage code in
-/// text and in JSON, `--limit 1` succeeds, and `--limit 2` exits with code 0
-/// as well. Any other command line fails with code 3.
+/// text and in JSON, `--limit -1` fails with the usage code in the text of
+/// `LineForm`, `--limit 1` succeeds, and `--limit 2` exits with code 0 as
+/// well. Any other command line fails with code 3.
 const SCRIPT: &str = r#"#!/bin/sh
 case "$*" in
   'books list --limit 0') printf 'error: 0 is not a limit\n  help:  run `tool books list -h`\n  code:  crumbkit::cli::usage\n' >&2; exit 2;;
   'books list --limit 0 --json') printf '%s\n' '{"schema":"crumbkit/failure/v1","code":"crumbkit::cli::usage","message":"m","recovery":{"kind":"retry"}}'; exit 2;;
+  'books list --limit -1') printf 'ERR crumbkit::cli::usage\n' >&2; exit 2;;
   'books list --limit 1'|'books list --limit 1 --json'|'books list --limit 2') echo listed; exit 0;;
   *) echo "unexpected: $*" >&2; exit 3;;
 esac
@@ -124,5 +128,66 @@ fn twins_that_differ_by_more_than_one_word_fail_the_check() {
     assert_eq!(
         message.unwrap(),
         "the refused line `tool books list --limit 0` and the admitted line `tool books list` must differ by one word added, removed or replaced"
+    );
+}
+
+/// A failure form whose text is one line, `ERR` and the code, and which
+/// reads that line back.
+struct LineForm;
+
+impl FailureForm for LineForm {
+    fn document(&self) -> Document<()> {
+        Document::new("tool", "error", 1, "The document of a failed command.")
+    }
+
+    fn schema(&self) -> Schema {
+        json_schema!({ "type": "object" })
+    }
+
+    fn json(&self, failure: &PreparedFailure<'_>) -> serde_json::Value {
+        serde_json::json!({ "error": failure.code() })
+    }
+
+    fn read(&self, _out: &str, err: &str) -> Option<ReadFailure> {
+        let code = err.lines().last()?.strip_prefix("ERR ")?;
+        Some(ReadFailure::new(code.to_owned(), Vec::new()))
+    }
+}
+
+static FORM: LineForm = LineForm;
+
+#[test]
+fn a_twin_reads_the_refused_lines_code_through_the_failure_form_of_examples() {
+    let (_dir, path) = tool("twins-form");
+
+    let output = check_twin(
+        &Examples::new(&path, "").failure_form(&FORM),
+        Spelling::COLONS,
+        &Failing::new(&USAGE, &["books", "list", "--limit", "-1"]),
+        &["books", "list", "--limit", "1"],
+    );
+
+    assert_eq!(
+        String::from_utf8_lossy(&output.stderr),
+        "ERR crumbkit::cli::usage\n"
+    );
+}
+
+#[test]
+fn a_refused_line_whose_code_the_check_cannot_read_fails_the_check_naming_failure_form_read() {
+    let (_dir, path) = tool("twins-unread");
+
+    let message = panic_message(|| {
+        check_twin(
+            &Examples::new(&path, ""),
+            Spelling::COLONS,
+            &Failing::new(&USAGE, &["books", "list", "--limit", "-1"]),
+            &["books", "list", "--limit", "1"],
+        );
+    });
+
+    assert_eq!(
+        message.unwrap(),
+        "the refused line `tool books list --limit -1` must fail with crumbkit::cli::usage, and it ends with exit status: 2 and prints no code that the check can read. A tool that prints failures in a form of its own implements FailureForm::read and passes the form to Examples::failure_form"
     );
 }

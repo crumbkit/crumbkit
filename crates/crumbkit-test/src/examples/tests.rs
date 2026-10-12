@@ -20,6 +20,7 @@ use crate::temp::TempDir;
 use crate::testing::panic_message;
 
 mod forms;
+mod stderr;
 
 /// The binary that runs every example.
 const SH: &str = "/bin/sh";
@@ -161,23 +162,9 @@ fn an_example_that_exits_with_a_non_zero_code_fails_the_check_and_overwrite_writ
     assert_eq!(
         panic_message(|| run(&FAILS, &examples(&dir), Action::Overwrite)).unwrap(),
         "these runs of the tool's examples fail:\n\
-         sh -c 'echo partial; exit 3': an example must exit with code 0 and write nothing to standard error, and the run ends with exit status: 3"
+         sh -c 'echo partial; exit 3': an example must exit with code 0, and the run ends with exit status: 3"
     );
     assert!(dir.names().is_empty(), "{:?}", dir.names());
-}
-
-#[test]
-fn an_example_that_writes_to_standard_error_fails_the_check() {
-    const WARNS: Guide = Guide::new()
-        .leaves(&[Leaf::new(&["-c"]).examples(&[Example::new(&["echo warning >&2"], "Warn")])]);
-    let dir = TempDir::new("examples-stderr").unwrap();
-
-    assert_eq!(
-        panic_message(|| run(&WARNS, &examples(&dir), Action::Verify)).unwrap(),
-        "these runs of the tool's examples fail:\n\
-         sh -c 'echo warning >&2': an example must exit with code 0 and write nothing to standard error, and the run ends with exit status: 0 after writing this to standard error:\n\
-         warning\n"
-    );
 }
 
 #[test]
@@ -211,7 +198,7 @@ fn failed_runs_and_broken_rules_are_reported_under_their_own_headings() {
         "the command tree breaks crumbkit's example rules:\n\
          the opt-out from `examples/run` for `sh books` names no command\n\
          these runs of the tool's examples fail:\n\
-         sh -c 'exit 3': an example must exit with code 0 and write nothing to standard error, and the run ends with exit status: 3"
+         sh -c 'exit 3': an example must exit with code 0, and the run ends with exit status: 3"
     );
 }
 

@@ -230,10 +230,13 @@ impl<'a> Recoveries<'a> {
 /// A tool calls the check from an integration test of the binary's own
 /// package, as it calls [`check_examples`](crate::check_examples).
 ///
-/// Every run adds `--json` when its words lack it, and reads the failure of
-/// the last line of standard output that is a `crumbkit/failure/v1`
-/// document or that has `failures`, as a batch prints them. It follows the
-/// first entry of a batch's `failures`. The runs of
+/// Every run adds `--json` when its words lack it. When the guide sets a
+/// failure form, the check reads each failed run through the form's
+/// [`FailureForm::read`](crumbkit::form::FailureForm::read) first.
+/// Otherwise, or when `read` returns `None`, it reads the failure of the
+/// last line of standard output that is a `crumbkit/failure/v1` document or
+/// that has `failures`, as a batch prints them. It follows the first entry
+/// of a batch's `failures`. The runs of
 /// one chain share one set of fresh XDG directories, the working directory
 /// and the standard input of its start, so a step sees what the earlier
 /// runs wrote.
@@ -260,10 +263,13 @@ impl<'a> Recoveries<'a> {
 ///   a `CODES` list is found;
 /// - a step that fails again with the code of the failure it follows,
 ///   unless an opt-out from [`Rule::SameCode`] covers the step's command;
-/// - a guide that sets a failure form with `Guide::failure_form` when no
-///   opt-out from [`Rule::Recoveries`] names the root, because the tool
-///   prints no `crumbkit/failure/v1` document to read. The check reports
-///   this problem alone, before it runs anything (ADR-0045);
+/// - a failed run whose failure the tool's form, set with
+///   `Guide::failure_form`, does not read through
+///   [`FailureForm::read`](crumbkit::form::FailureForm::read), and that
+///   prints no `crumbkit/failure/v1` document. The first such run stops the
+///   check, which reports this problem alone and says to implement `read`
+///   or to add an opt-out from [`Rule::Recoveries`] that names the root
+///   (ADR-0045);
 /// - a run that writes a `warning: crumbkit` line to standard error, which a
 ///   debug build writes for a recovery call that does not render;
 /// - a step that crumbkit's quoting cannot read, that does not start with
@@ -324,19 +330,7 @@ fn check(
         }
     }
     let rules = [Rule::Recoveries, Rule::SameCode];
-    let mut allowances = Allowances::new(recoveries.examples.opt_outs(), &rules);
-    if let Some(form) = guide.get_failure_form()
-        && !allowances.excuses(Rule::Recoveries, "")
-    {
-        let problem = format!(
-            "{}: the tool prints its failures as {} in place of crumbkit/failure/v1, so the check cannot follow its recoveries, and the tool needs an opt-out from `{}` that names the root, with a reason",
-            command.get_name(),
-            form.document(),
-            Rule::Recoveries.id()
-        );
-        fail(&[problem]);
-        return;
-    }
+    let allowances = Allowances::new(recoveries.examples.opt_outs(), &rules);
     let mut walk = chain::Walk {
         recoveries,
         command,
@@ -348,9 +342,15 @@ fn check(
         report: String::new(),
         provoked: Vec::new(),
         skipped: 0,
+        form: guide.get_failure_form(),
+        stopped: None,
     };
     for start in recoveries.starts {
         walk.start(start);
+    }
+    if let Some(problem) = walk.stopped {
+        fail(&[problem]);
+        return;
     }
     let chain::Walk {
         allowances,

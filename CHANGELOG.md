@@ -296,6 +296,8 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit: [`FailureForm`] gains the provided method `read`, which reads a
   failed run's code and steps into a [`ReadFailure`] and returns `None` by
   default ([ADR-0045]).
+- crumbkit-test: [`Examples`] gains `failure_form`, which names the tool's
+  failure form for [`check_twin`] and [`check_examples`] ([ADR-0045]).
 ### Changed
 
 - crumbkit: with the `usage-log` feature, a run whose `COMPLETE` variable
@@ -378,6 +380,15 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit: the JSON Schema of each listing and list document holds the
   optional `cut` object, and the documents keep their `v1` ids
   ([ADR-0046]).
+- crumbkit-test: [`check_examples`] compares an example's standard error
+  with its `.stderr` golden file, and fails on standard error only for a
+  `warning: crumbkit ` line ([ADR-0005]).
+- crumbkit-test: [`check_twin`], [`check_recoveries`] and [`check_examples`]
+  read a failed run through `FailureForm::read`, and [`check_recoveries`]
+  runs a guide with a failure form instead of failing before any run
+  ([ADR-0045]).
+- cargo-crumbkit: `weigh` adds the size of an example's `.stderr` golden
+  file to the command's output weight ([ADR-0033]).
 ### Removed
 
 - crumbkit: `Call::word` is gone, because `Call::value` adds a runtime value

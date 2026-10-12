@@ -5,8 +5,8 @@ use std::fmt::Write as _;
 use std::time::Instant;
 
 use clap::Command;
+use crumbkit::form::{FailureForm, Step};
 use crumbkit::help::split;
-use serde_json::Value;
 
 use super::{Failing, Recoveries};
 use crate::allow::{Allowances, Rule};
@@ -39,18 +39,11 @@ pub(super) struct Walk<'a> {
     pub(super) provoked: Vec<String>,
     /// The number of failures whose codes the check did not know.
     pub(super) skipped: usize,
-}
-
-/// A step that a failure offers, read from its JSON document.
-enum Step {
-    /// Run this command line.
-    Run(String),
-    /// Run the same command again later.
-    Retry,
-    /// Follow some advice.
-    Hint,
-    /// There is no next step.
-    None,
+    /// The tool's failure form, which reads each failed run first.
+    pub(super) form: Option<&'a dyn FailureForm>,
+    /// The problem that stopped the walk: a failed run whose failure the
+    /// tool's form does not read, so no later run can be followed.
+    pub(super) stopped: Option<String>,
 }
 
 /// How a run ended: with code 0, or with a failure document's code and
@@ -81,6 +74,9 @@ impl Walk<'_> {
     pub(super) fn start(&mut self, start: &Failing<'_>) {
         let tool = self.command.get_name();
         let line = command_line(tool, start.words);
+        if self.stopped.is_some() {
+            return;
+        }
         if self
             .allowances
             .excuses(Rule::Recoveries, &path_below(self.command, start.words))
@@ -137,17 +133,20 @@ impl Walk<'_> {
     fn follow(&mut self, chain: &mut Chain<'_>, parent: &str, steps: &[Step], depth: u8) {
         let indent = "  ".repeat(usize::from(depth));
         for step in steps {
+            if self.stopped.is_some() {
+                return;
+            }
             let call = match step {
                 Step::Run(call) => call,
                 Step::Retry => {
                     let _ = writeln!(self.report, "{indent}retry");
                     continue;
                 }
-                Step::Hint => {
+                Step::Hint(_) => {
                     let _ = writeln!(self.report, "{indent}hint");
                     continue;
                 }
-                Step::None => {
+                _ => {
                     let _ = writeln!(self.report, "{indent}no next step");
                     continue;
                 }
@@ -269,8 +268,9 @@ impl Walk<'_> {
     /// Runs `words`, with `--json` added when they lack it, as one run of
     /// `chain`, and returns how it ended, or adds the problem and returns
     /// `None` when the run cannot start, does not end, writes a crumbkit
-    /// warning or fails without a failure document. `label` names the run
-    /// in a problem, such as "the start".
+    /// warning or fails with a failure that the check cannot read. A failure
+    /// that the tool's form does not read stops the walk. `label` names the
+    /// run in a problem, such as "the start".
     fn run(&mut self, chain: &mut Chain<'_>, label: &str, words: &[String]) -> Option<Outcome> {
         let args = with_json(words);
         let refs: Vec<&str> = args.iter().map(String::as_str).collect();
@@ -312,39 +312,29 @@ impl Walk<'_> {
         if output.status.success() {
             return Some(Outcome::Succeeds);
         }
-        let Some((code, steps)) = runs::failure(&output.stdout).as_ref().and_then(read) else {
-            self.problems.push(format!(
-                "{}: {label} ends with {} and prints no failure on standard output",
-                chain.start, output.status
-            ));
+        let Some(failure) = runs::read_failure(self.form, &output.stdout, &output.stderr) else {
+            match self.form {
+                Some(form) => {
+                    self.stopped = Some(format!(
+                        "{}: {label} ends with {}, and the failure form {} reads no failure from it, so the check cannot follow the tool's recoveries. The tool implements FailureForm::read, or adds an opt-out from `{}` that names the root, with a reason",
+                        chain.start,
+                        output.status,
+                        form.document(),
+                        Rule::Recoveries.id()
+                    ));
+                }
+                None => self.problems.push(format!(
+                    "{}: {label} ends with {} and prints no failure on standard output",
+                    chain.start, output.status
+                )),
+            }
             return None;
         };
-        Some(Outcome::Fails(code, steps))
+        Some(Outcome::Fails(
+            failure.code().to_owned(),
+            failure.steps().to_vec(),
+        ))
     }
-}
-
-/// Returns the code of the failure document `document` and its steps, the
-/// recovery first and then each alternative, or `None` when it has no code
-/// or no recovery.
-fn read(document: &Value) -> Option<(String, Vec<Step>)> {
-    let code = document.get("code")?.as_str()?.to_owned();
-    let alternatives = document
-        .get("alternatives")
-        .and_then(Value::as_array)
-        .map_or(&[][..], Vec::as_slice);
-    let steps = std::iter::once(document.get("recovery")?)
-        .chain(alternatives)
-        .map(|step| match step.get("kind").and_then(Value::as_str) {
-            Some("run") => step
-                .get("call")
-                .and_then(Value::as_str)
-                .map_or(Step::None, |call| Step::Run(call.to_owned())),
-            Some("retry") => Step::Retry,
-            Some("hint") => Step::Hint,
-            _ => Step::None,
-        })
-        .collect();
-    Some((code, steps))
 }
 
 /// Returns `words` with `--json` added at the end when they lack it.

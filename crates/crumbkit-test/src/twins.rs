@@ -32,10 +32,13 @@ mod tests;
 /// Both runs use the environment of [`Examples::env`], the working
 /// directory and standard input of `refused`, and fresh XDG directories of
 /// their own, as [`check_examples`](crate::check_examples) runs an example.
-/// The check reads the refused line's code from its `crumbkit/failure/v1`
-/// document on standard output when its words hold `--json`, or from the
-/// first entry of a batch's `failures`, and otherwise
-/// from the last `code:` line on standard error, spelled with `spelling`.
+/// The check reads the refused line's code, spelled with `spelling`. When
+/// [`Examples::failure_form`] names a form, it reads the code through the
+/// form's [`FailureForm::read`](crumbkit::form::FailureForm::read) first.
+/// Otherwise, or when `read` returns `None`, it reads the code from a
+/// `crumbkit/failure/v1` document on standard output, or from the first
+/// entry of a batch's `failures`, and then from the last `code:` line on
+/// standard error.
 ///
 /// ```no_run
 /// use crumbkit::Spelling;
@@ -56,8 +59,8 @@ mod tests;
 /// # Panics
 ///
 /// Panics when the two lines differ by more or less than one word added,
-/// removed or replaced, when `refused` exits with code 0 or fails with
-/// another code, when `admitted` exits with a code other than 0, or when a
+/// removed or replaced, when `refused` exits with code 0, fails with
+/// another code or prints no code that the check can read, when `admitted` exits with a code other than 0, or when a
 /// run cannot start or does not end within 10 seconds. The message names
 /// each line as help prints it, with the binary's file name first.
 #[expect(
@@ -110,12 +113,9 @@ fn twin(
             "the refused line `{refused_line}` must fail with {code}, and it exits with code 0"
         ));
     }
-    let printed = if refused.words().contains(&"--json") {
-        runs::failure(&output.stdout)
-            .and_then(|failure| failure.get("code")?.as_str().map(str::to_owned))
-    } else {
-        text_code(&output.stderr)
-    };
+    let printed = runs::read_failure(examples.form(), &output.stdout, &output.stderr)
+        .map(|failure| failure.code().to_owned())
+        .or_else(|| runs::text_code(&output.stderr));
     match printed {
         Some(printed) if printed == code => {}
         Some(printed) => {
@@ -125,7 +125,7 @@ fn twin(
         }
         None => {
             return Err(format!(
-                "the refused line `{refused_line}` must fail with {code}, and it ends with {} and prints no code",
+                "the refused line `{refused_line}` must fail with {code}, and it ends with {} and prints no code that the check can read. A tool that prints failures in a form of its own implements FailureForm::read and passes the form to Examples::failure_form",
                 output.status
             ));
         }
@@ -169,15 +169,6 @@ fn run(
         ));
     }
     Ok(output)
-}
-
-/// Returns the code of the last `code:` line in `stderr`.
-fn text_code(stderr: &[u8]) -> Option<String> {
-    String::from_utf8_lossy(stderr)
-        .lines()
-        .rev()
-        .find_map(|line| line.trim_start().strip_prefix("code:"))
-        .map(|code| code.trim().to_owned())
 }
 
 /// Reports whether `a` and `b` differ by one word added, removed or
