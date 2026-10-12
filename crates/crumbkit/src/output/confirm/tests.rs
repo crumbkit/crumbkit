@@ -147,3 +147,27 @@ fn yes_is_the_flag_yes_and_serializes_as_one_field() {
     let Commands::Remove { yes, .. } = tool.command;
     assert_eq!(serde_json::to_string(&yes).unwrap(), "{\"yes\":true}");
 }
+
+#[test]
+fn dry_run_and_yes_add_their_flags_and_no_argument_group() {
+    let command = Tool::command();
+    let remove = command.find_subcommand("remove").unwrap();
+
+    let groups: Vec<&str> = remove
+        .get_groups()
+        .map(|group| group.get_id().as_str())
+        .collect();
+
+    assert!(!groups.contains(&"DryRun"), "{groups:?}");
+    assert!(!groups.contains(&"Yes"), "{groups:?}");
+    assert!(
+        remove
+            .get_arguments()
+            .any(|arg| arg.get_long() == Some("dry-run"))
+    );
+    assert!(
+        remove
+            .get_arguments()
+            .any(|arg| arg.get_long() == Some("yes"))
+    );
+}

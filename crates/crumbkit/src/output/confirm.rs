@@ -37,6 +37,9 @@ const NEEDS_YES: Code = Code::new("crumbkit", "confirm", "needs_yes");
 /// crumbkit-test's `check_effects` requires `--yes` on every command whose
 /// [`Effects`](crate::help::Effects) are destructive.
 #[derive(Args, Clone, Copy, Debug, Default, PartialEq, Eq)]
+// clap builds the arguments of every command on every run, so the type
+// skips the argument group that clap would build for its one flag.
+#[group(skip)]
 pub struct Yes {
     #[arg(long, help = YES_HELP)]
     yes: bool,

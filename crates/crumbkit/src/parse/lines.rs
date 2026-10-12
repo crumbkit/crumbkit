@@ -132,7 +132,7 @@ struct Sections {
     /// The line that names the leaf's effects, which `-h` and `--help`
     /// print first among crumbkit's lines, or `None` when the leaf declares
     /// none.
-    effects: Option<String>,
+    effects: Option<&'static str>,
 }
 
 /// Returns the sections of `leaf`, whose command line starts with `text`:
@@ -174,8 +174,8 @@ fn set_help_lines(node: &mut Command, text: &str, flags: &str, topics: &str, sec
     let mut short = Vec::new();
     let mut long = Vec::new();
     if let Some(effects) = sections.effects {
-        short.push(effects.clone());
-        long.push(effects);
+        short.push(effects.to_owned());
+        long.push(effects.to_owned());
     }
     if !flags.is_empty() {
         short.push(format!(

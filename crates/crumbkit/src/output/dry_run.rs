@@ -49,6 +49,9 @@ pub(super) const DRY_RUN_LINE: &str = "This was a dry run, so nothing changed.";
 /// getter, so a tool reads it only through `Output::dry_run`, and `finish`
 /// always knows when a run is a dry run.
 #[derive(Args, Clone, Copy, Debug, Default, PartialEq, Eq)]
+// clap builds the arguments of every command on every run, so the type
+// skips the argument group that clap would build for its one flag.
+#[group(skip)]
 pub struct DryRun {
     #[arg(id = "crumbkit_dry_run", long = "dry-run", help = DRY_RUN_HELP)]
     dry_run: bool,

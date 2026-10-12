@@ -134,21 +134,22 @@ impl Effects {
     /// Returns the line that help prints, such as `Effects: read-only,
     /// closed-world.` A command that changes something names whether it is
     /// idempotent, so a missing word never stands for "no".
-    pub(crate) fn line(self) -> String {
-        let world = if self.open_world {
-            "open-world"
-        } else {
-            "closed-world"
-        };
-        let repeat = if self.idempotent {
-            "idempotent"
-        } else {
-            "not idempotent"
-        };
-        match self.change {
-            Change::Nothing => format!("Effects: read-only, {world}."),
-            Change::Additive => format!("Effects: additive, {repeat}, {world}."),
-            Change::Destructive => format!("Effects: destructive, {repeat}, {world}."),
+    pub(crate) const fn line(self) -> &'static str {
+        match (self.change, self.idempotent, self.open_world) {
+            (Change::Nothing, _, false) => "Effects: read-only, closed-world.",
+            (Change::Nothing, _, true) => "Effects: read-only, open-world.",
+            (Change::Additive, false, false) => "Effects: additive, not idempotent, closed-world.",
+            (Change::Additive, false, true) => "Effects: additive, not idempotent, open-world.",
+            (Change::Additive, true, false) => "Effects: additive, idempotent, closed-world.",
+            (Change::Additive, true, true) => "Effects: additive, idempotent, open-world.",
+            (Change::Destructive, false, false) => {
+                "Effects: destructive, not idempotent, closed-world."
+            }
+            (Change::Destructive, false, true) => {
+                "Effects: destructive, not idempotent, open-world."
+            }
+            (Change::Destructive, true, false) => "Effects: destructive, idempotent, closed-world.",
+            (Change::Destructive, true, true) => "Effects: destructive, idempotent, open-world.",
         }
     }
 }

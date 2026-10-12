@@ -148,6 +148,30 @@ fn long_help_prints_the_effects_after_the_examples() {
 }
 
 #[test]
+fn help_names_each_combination_of_change_repetition_and_world() {
+    let lines = [
+        Effects::additive().open_world().line(),
+        Effects::additive().idempotent().line(),
+        Effects::additive().idempotent().open_world().line(),
+        Effects::destructive().line(),
+        Effects::destructive().open_world().line(),
+        Effects::destructive().idempotent().line(),
+    ];
+
+    assert_eq!(
+        lines,
+        [
+            "Effects: additive, not idempotent, open-world.",
+            "Effects: additive, idempotent, closed-world.",
+            "Effects: additive, idempotent, open-world.",
+            "Effects: destructive, not idempotent, closed-world.",
+            "Effects: destructive, not idempotent, open-world.",
+            "Effects: destructive, idempotent, closed-world.",
+        ]
+    );
+}
+
+#[test]
 fn a_leaf_without_effects_prints_no_effects_line() {
     const PLAIN: Guide =
         Guide::new()
