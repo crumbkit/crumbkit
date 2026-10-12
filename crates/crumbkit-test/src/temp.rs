@@ -3,7 +3,7 @@
 
 use std::fs;
 use std::io;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 /// The number of temporary directories that this process has created, which
@@ -40,7 +40,7 @@ impl TempDir {
 
     /// Returns the directory's path.
     #[cfg(test)]
-    pub(crate) fn path(&self) -> &std::path::Path {
+    pub(crate) fn path(&self) -> &Path {
         &self.path
     }
 
@@ -87,6 +87,41 @@ impl TempDir {
         names.sort();
         names
     }
+}
+
+/// Copies every file and directory below `from` into the existing
+/// directory `to`, keeping their relative paths, or returns the error of
+/// the first entry that cannot be copied.
+//
+// RUST-10: the copy handles plain files and directories, which a fixture
+// of a tool's XDG directories holds. It refuses a symbolic link, because a
+// copied link could point a run at files outside its fresh directories,
+// and it keeps no permissions beyond what `fs::copy` keeps. A crate such as
+// fs_extra replaces it if a fixture needs links.
+pub(crate) fn copy_tree(from: &Path, to: &Path) -> io::Result<()> {
+    for entry in fs::read_dir(from)? {
+        let entry = entry?;
+        let kind = entry.file_type()?;
+        let source = entry.path();
+        let target = to.join(entry.file_name());
+        if kind.is_symlink() {
+            return Err(io::Error::other(format!(
+                "`{}` is a symbolic link, which the check does not copy",
+                source.display()
+            )));
+        }
+        if kind.is_dir() {
+            #[expect(
+                clippy::disallowed_methods,
+                reason = "the copy writes only below `to`, a fresh directory that a TempDir owns"
+            )]
+            fs::create_dir_all(&target)?;
+            copy_tree(&source, &target)?;
+        } else {
+            fs::copy(&source, &target)?;
+        }
+    }
+    Ok(())
 }
 
 impl Drop for TempDir {

@@ -21,6 +21,7 @@ use crate::temp::TempDir;
 use crate::testing::panic_message;
 
 mod form;
+mod xdg;
 
 /// The code of a book that does not exist.
 const NOT_FOUND: Code = Code::new("tool", "books", "not_found");

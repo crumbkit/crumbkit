@@ -323,6 +323,9 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   [`check_examples`] and [`check_output_budget`] by its words ([ADR-0036]).
 - crumbkit: re-exports schemars as `crumbkit::schemars`, so a
   `FailureForm` needs no schemars dependency of its own ([ADR-0045]).
+- crumbkit-test: `Examples::xdg` and `Failing::xdg` name a fixture that
+  the checks copy into each run's fresh XDG directories, so a failing
+  command can find a plugin or cache there ([ADR-0005]).
 ### Changed
 
 - crumbkit: the help text of `--json` reads `Print the result as a JSON

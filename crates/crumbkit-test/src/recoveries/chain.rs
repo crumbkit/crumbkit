@@ -90,7 +90,8 @@ impl Walk<'_> {
             ));
             return;
         }
-        let xdg = match Xdg::new("recoveries") {
+        let fixture = start.fixture(self.recoveries.examples.xdg_fixture());
+        let xdg = match Xdg::new("recoveries", fixture) {
             Ok(xdg) => xdg,
             Err(problem) => {
                 self.problems.push(format!("{line}: {problem}"));

@@ -9,7 +9,7 @@ use clap::Command;
 use crumbkit::help::Guide;
 
 use crate::allow::{Allowances, Rule};
-use crate::examples::{Examples, example_golden_name, missing_dir, read_stdin};
+use crate::examples::{Examples, example_golden_name, read_stdin, setup_problem};
 use crate::guide::command_line;
 use crate::runs::{self, Place, TIMEOUT, Xdg};
 use crate::tree;
@@ -90,7 +90,7 @@ fn check(
 ) -> Vec<String> {
     let tool = command.get_name();
     let mut problems = Vec::new();
-    if let Some(problem) = missing_dir(examples) {
+    if let Some(problem) = setup_problem(examples) {
         problems.push(problem);
         return problems;
     }
@@ -171,7 +171,7 @@ fn run(
     place: Place<'_>,
     timeout: Duration,
 ) -> Result<std::process::Output, String> {
-    let xdg = Xdg::new("output-budget")?;
+    let xdg = Xdg::new("output-budget", examples.xdg_fixture())?;
     runs::run(examples.binary(), env, &xdg, args, place, timeout)
 }
 

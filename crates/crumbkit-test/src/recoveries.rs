@@ -45,6 +45,9 @@ pub struct Failing<'a> {
     dir: Option<&'a str>,
     /// The standard input of every run of the chain.
     stdin: Option<&'a str>,
+    /// The XDG fixture of the chain, which wins over the fixture of
+    /// [`Examples::xdg`].
+    xdg: Option<&'a str>,
 }
 
 impl<'a> Failing<'a> {
@@ -59,6 +62,7 @@ impl<'a> Failing<'a> {
             words,
             dir: None,
             stdin: None,
+            xdg: None,
         }
     }
 
@@ -78,6 +82,25 @@ impl<'a> Failing<'a> {
     pub const fn stdin(mut self, stdin: &'a str) -> Self {
         self.stdin = Some(stdin);
         self
+    }
+
+    /// Sets the XDG fixture of the command line and of every step of its
+    /// chain, which wins over the fixture of [`Examples::xdg`] and follows
+    /// the same rules. [`check_twin`](crate::check_twin) runs both of its
+    /// lines in a copy of the refused line's fixture.
+    #[must_use]
+    pub const fn xdg(mut self, dir: &'a str) -> Self {
+        self.xdg = Some(dir);
+        self
+    }
+
+    /// Returns the XDG fixture of its runs: its own, or `fallback`, the
+    /// fixture of [`Examples::xdg`].
+    pub(crate) fn fixture<'p>(&self, fallback: Option<&'p str>) -> Option<&'p str>
+    where
+        'a: 'p,
+    {
+        self.xdg.or(fallback)
     }
 
     /// Returns the code that the command line fails with.
@@ -249,7 +272,8 @@ impl<'a> Recoveries<'a> {
 /// last line of standard output that is a `crumbkit/failure/v1` document or
 /// that has `failures`, as a batch prints them. It follows the first entry
 /// of a batch's `failures`. The runs of
-/// one chain share one set of fresh XDG directories, the working directory
+/// one chain share one set of fresh XDG directories, which start as copies
+/// of the fixture of [`Failing::xdg`] or [`Examples::xdg`], the working directory
 /// and the standard input of its start, so a step sees what the earlier
 /// runs wrote.
 ///
