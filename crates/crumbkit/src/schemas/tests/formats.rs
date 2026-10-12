@@ -109,6 +109,7 @@ fn list_marks_each_document_as_output_unwrapped_or_file() {
         json!({
             "id": "shelf/settings/v1",
             "kind": "file",
+            "form": "document",
             "description": "The settings file that users write.",
             "commands": [],
         })

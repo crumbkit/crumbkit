@@ -61,12 +61,12 @@ pub mod usage;
 // crumbkit, so a tool depends on crumbkit alone (ADR-0032).
 pub use crumbkit_core::{
     AsFailure, Batch, Call, CallArg, CallError, CallTarget, Code, Document, Error, Failure,
-    Listing, NoRow, NoSummary, Prose, Recovery, Row, Rows, Shape, Spelling,
+    Listing, NoRow, NoSummary, Prose, Recovery, Row, Rows, Shape, Spelling, Stream,
 };
 
 pub use crate::call::RenderCall;
 pub use crate::fetch::fetch_each;
-pub use crate::output::{DryRun, Output, Yes, finish, finish_to};
+pub use crate::output::{DryRun, Output, Streaming, Yes, finish, finish_to, stream, stream_to};
 pub use crate::page::Page;
 pub use crate::parse::{Parsed, Stop, parse, parse_from, parse_to};
 pub use crate::sink::Sink;

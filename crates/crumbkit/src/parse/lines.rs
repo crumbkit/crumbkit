@@ -133,7 +133,15 @@ struct Sections {
     /// print first among crumbkit's lines, or `None` when the leaf declares
     /// none.
     effects: Option<&'static str>,
+    /// Whether the leaf prints a stream, so `-h` and `--help` print
+    /// [`STREAM_LINE`] after the effects line.
+    stream: bool,
 }
+
+/// The line that the help of a stream leaf prints after its effects line
+/// (ADR-0041).
+const STREAM_LINE: &str =
+    "Output: one row per line as each arrives, and --json prints one JSON document per line.";
 
 /// Returns the sections of `leaf`, whose command line starts with `text`:
 /// its examples in `-h` and `--help`, and in `--help` the sections that
@@ -157,13 +165,15 @@ fn leaf_sections(
         long,
         columns: leaf.has_columns(),
         effects: leaf.get_effects().map(Effects::line),
+        stream: leaf.is_stream(),
     }
 }
 
 /// Sets the text that ends the help of `node`, whose path is `text`: the
 /// command's own `after_help` or `after_long_help`, the leaf's `sections`,
 /// and then crumbkit's lines. The lines are the leaf's effects line in `-h`
-/// and `--help` when it declares effects, the global flags line in `-h`
+/// and `--help` when it declares effects, the `Output:` line in `-h` and
+/// `--help` when the leaf prints a stream, the global flags line in `-h`
 /// when `flags` is not empty, the topics line in `-h` and `--help` when
 /// `topics` is not empty, and a `Next:` line. The `Next:` line opens a
 /// subcommand in `-h` and `--help` when `node` has a visible subcommand, and
@@ -176,6 +186,10 @@ fn set_help_lines(node: &mut Command, text: &str, flags: &str, topics: &str, sec
     if let Some(effects) = sections.effects {
         short.push(effects.to_owned());
         long.push(effects.to_owned());
+    }
+    if sections.stream {
+        short.push(STREAM_LINE.to_owned());
+        long.push(STREAM_LINE.to_owned());
     }
     if !flags.is_empty() {
         short.push(format!(

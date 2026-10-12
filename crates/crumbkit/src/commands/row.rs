@@ -32,6 +32,7 @@ pub struct CommandRow {
     arguments: Vec<Argument>,
     examples: Vec<CommandExample>,
     columns: Vec<CommandColumn>,
+    form: Option<&'static str>,
     exits: Vec<CommandExit>,
     effects: Option<Effects>,
 }
@@ -153,10 +154,23 @@ impl CommandRow {
             arguments,
             examples,
             columns,
+            form: leaf.and_then(form),
             exits,
             effects: leaf.and_then(Leaf::get_effects),
         }
     }
+}
+
+/// Returns the form of the document that `leaf` declares, as `commands
+/// list` writes it: `stream`, `document`, or `None` when the leaf declares
+/// no document.
+fn form(leaf: &Leaf) -> Option<&'static str> {
+    leaf.get_document()?;
+    Some(if leaf.is_stream() {
+        "stream"
+    } else {
+        "document"
+    })
 }
 
 impl Argument {
@@ -327,13 +341,14 @@ impl Row for CommandRow {
 /// needs no `serde_derive`.
 impl Serialize for CommandRow {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        let mut row = serializer.serialize_struct("CommandRow", 7)?;
+        let mut row = serializer.serialize_struct("CommandRow", 9)?;
         row.serialize_field("path", &self.path)?;
         row.serialize_field("about", &self.about)?;
         row.serialize_field("long_about", &self.long_about)?;
         row.serialize_field("arguments", &self.arguments)?;
         row.serialize_field("examples", &self.examples)?;
         row.serialize_field("columns", &self.columns)?;
+        row.serialize_field("form", &self.form)?;
         row.serialize_field("exits", &self.exits)?;
         row.serialize_field("effects", &self.effects)?;
         row.end()
@@ -464,6 +479,10 @@ impl JsonSchema for CommandRow {
                         "required": ["name", "long", "description"],
                     },
                 },
+                "form": {
+                    "description": "stream when the command prints a stream, one row on each line as each arrives, document when it prints one document, and null when the guide's leaf for the command declares no document.",
+                    "enum": ["document", "stream", null],
+                },
                 "exits": {
                     "description": "The exit codes that the tool declares for the command besides crumbkit's 0, 1 and 2, in guide order. `<tool> help exit-codes` describes every code.",
                     "type": "array",
@@ -486,7 +505,7 @@ impl JsonSchema for CommandRow {
                 },
                 "effects": effects::schema(),
             },
-            "required": ["path", "about", "long_about", "arguments", "examples", "columns", "exits", "effects"],
+            "required": ["path", "about", "long_about", "arguments", "examples", "columns", "form", "exits", "effects"],
         })
     }
 }

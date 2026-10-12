@@ -182,3 +182,52 @@ fn a_leaf_without_effects_prints_no_effects_line() {
 
     assert!(!page.contains("Effects:"), "{page}");
 }
+
+/// A row type for the stream leaf of the tests below.
+#[derive(serde::Serialize, schemars::JsonSchema)]
+struct Removal {
+    /// The removed planet's name.
+    name: String,
+}
+
+impl crate::Row for Removal {
+    const COLUMNS: &'static [&'static str] = &["name"];
+}
+
+/// The guide of `tool()`, whose leaf prints a stream of removals.
+const STREAM: Guide = Guide::new().leaves(&[Leaf::new(&["planets", "remove"])
+    .examples(&[Example::new(&["ceres"], "Remove Ceres")])
+    .effects(Effects::destructive().idempotent())
+    .stream(crate::Document::<crate::Stream<Removal>>::new(
+        "tool",
+        "planets-remove",
+        1,
+        "Each removed planet.",
+    ))]);
+
+/// The line that the help of a stream leaf prints after its effects.
+const OUTPUT_LINE: &str =
+    "Output: one row per line as each arrives, and --json prints one JSON document per line.";
+
+#[test]
+fn short_help_of_a_stream_leaf_prints_the_output_line_after_the_effects() {
+    let page = help(&STREAM, &["tool", "planets", "remove", "-h"]);
+
+    let expected = format!("Effects: destructive, idempotent, closed-world.\n{OUTPUT_LINE}\n");
+    assert!(page.contains(&expected), "{page}");
+}
+
+#[test]
+fn long_help_of_a_stream_leaf_prints_the_output_line_after_the_effects() {
+    let page = help(&STREAM, &["tool", "planets", "remove", "--help"]);
+
+    let expected = format!("Effects: destructive, idempotent, closed-world.\n{OUTPUT_LINE}\n");
+    assert!(page.ends_with(&expected), "{page}");
+}
+
+#[test]
+fn a_leaf_that_prints_one_document_prints_no_output_line() {
+    let page = help(&GUIDE, &["tool", "planets", "remove", "--help"]);
+
+    assert!(!page.contains("Output:"), "{page}");
+}

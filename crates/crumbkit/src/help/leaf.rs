@@ -9,7 +9,7 @@ use schemars::{JsonSchema, Schema};
 use serde_json::Value;
 
 use super::{Effects, write_line};
-use crate::{Document, Row, Rows, row};
+use crate::{Document, Row, Rows, Stream, row};
 
 #[cfg(test)]
 mod tests;
@@ -127,8 +127,38 @@ impl Leaf {
             long: <T::Row as Row>::LONG_COLUMNS,
             schema: schema::<T::Row>,
             envelope: crate::schemas::envelope::<T>,
+            stream: false,
         });
         self
+    }
+
+    /// Sets the stream document that the command prints, the same constant
+    /// that the tool passes to [`stream`](crate::stream). The leaf then
+    /// holds the document as [`Leaf::document`] does, and also marks the
+    /// command as a stream: its `-h` and `--help` print an `Output:` line
+    /// after the effects, `commands list` writes the form `stream`, and
+    /// `schemas list` writes the form `stream` for its document (ADR-0041).
+    #[must_use]
+    pub const fn stream<R: Row>(mut self, document: Document<Stream<R>>) -> Self {
+        self.columns = Some(Columns {
+            document: document.untyped(),
+            compact: R::COLUMNS,
+            long: R::LONG_COLUMNS,
+            schema: schema::<R>,
+            envelope: crate::schemas::envelope::<R>,
+            stream: true,
+        });
+        self
+    }
+
+    /// Reports whether [`Leaf::stream`] set the leaf's document, so the
+    /// command prints a stream of rows, one line for each.
+    #[must_use]
+    pub const fn is_stream(&self) -> bool {
+        match self.columns {
+            Some(columns) => columns.stream,
+            None => false,
+        }
     }
 
     /// Returns the document that [`Leaf::document`] set, without its result
@@ -316,8 +346,10 @@ struct Columns {
     /// columns' descriptions.
     schema: fn() -> Schema,
     /// Builds the JSON Schema of the whole document from its id and
-    /// description.
+    /// description. A stream's schema describes one line.
     envelope: fn(Document<()>) -> Schema,
+    /// Whether [`Leaf::stream`] set the document.
+    stream: bool,
 }
 
 /// Returns the JSON Schema of `R`.

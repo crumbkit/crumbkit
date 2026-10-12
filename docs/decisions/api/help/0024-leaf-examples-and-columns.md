@@ -5,6 +5,7 @@
 - A leaf's `-h` lists the examples as full command lines, and ends with a `Next:` line that points to `--help` for the columns. A leaf's `--help` describes each example and each column. A prose document has no columns, so its leaf has neither the line nor the column sections, and `schemas show` describes its fields.
 - A column's description is the doc comment of the row type's field, which schemars puts into the JSON Schema, so the doc comment is the only place a column is described. `--help` and crumbkit-test's `check_guide` both read the columns through `Leaf::column_descriptions`, so the check sees what the page prints.
 - `Leaf::effects` declares what the command changes, and help prints it on an `Effects:` line after the examples (ADR-0039).
+- `Leaf::stream` declares a leaf whose document is a stream. It records what `Leaf::document` records, and help prints an `Output:` line after the effects line (ADR-0041).
 - `parse` builds the schema only when the typed words ask for `--help`, so a run that prints no long help never builds it.
 - crumbkit prints each command line with [`help::quote`](../../../../crates/crumbkit/src/help.rs), which quotes a word for a POSIX shell. The quoting suits the POSIX shells of crumbkit's supported platforms, and a rendering for each shell replaces it if crumbkit supports Windows.
 - `parse` applies a leaf only to the deepest command on the walked path of ADR-0021. `help::extend` adds every leaf's examples and no columns, because it cannot know whether help will print. The runtime never fails on a leaf.

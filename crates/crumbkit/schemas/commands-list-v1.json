@@ -233,6 +233,14 @@
             ]
           }
         },
+        "form": {
+          "description": "stream when the command prints a stream, one row on each line as each arrives, document when it prints one document, and null when the guide's leaf for the command declares no document.",
+          "enum": [
+            "document",
+            "stream",
+            null
+          ]
+        },
         "long_about": {
           "description": "The full description that the command's `--help` shows, when the command has one.",
           "type": [
@@ -252,6 +260,7 @@
         "arguments",
         "examples",
         "columns",
+        "form",
         "exits",
         "effects"
       ]

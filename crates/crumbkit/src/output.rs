@@ -6,7 +6,9 @@ mod dry_run;
 mod envelope;
 pub(crate) mod failure;
 mod fields;
+mod listing;
 mod prose;
+mod stream;
 mod table;
 mod unwrapped;
 
@@ -22,6 +24,7 @@ use self::dry_run::DRY_RUN_LINE;
 pub use self::dry_run::DryRun;
 use self::envelope::{Selected, write_document};
 use self::failure::FailureDocument;
+pub use self::stream::{Streaming, stream, stream_to};
 use crate::{AsFailure, Document, Parsed, Row, Rows, Shape, Sink, Spelling};
 
 #[cfg(test)]
@@ -551,50 +554,11 @@ fn write_value<T: Rows>(
             writeln!(out, "{summary}")?;
         }
         table::write(out, &columns, &rows)?;
-        write_footer(out, value)?;
+        listing::write_footer(out, value)?;
         if let Some(note) = value.note() {
             writeln!(out, "{note}")?;
         }
-        write_next(out, output.command.as_mut(), value)?;
+        listing::write_next(out, output.command.as_mut(), value)?;
     }
     out.flush()
-}
-
-/// Writes the footer line that follows the table when `value` is a listing
-/// that shows fewer rows than its total, such as `Showing 4 of 6 books. --all
-/// shows every one.` Otherwise it writes nothing.
-fn write_footer<T: Rows>(out: &mut impl Write, value: &T) -> io::Result<()> {
-    let shown = value.rows().len();
-    let Some(total) = value.total() else {
-        return Ok(());
-    };
-    if shown >= total {
-        return Ok(());
-    }
-    match value.description() {
-        Some(description) => writeln!(
-            out,
-            "Showing {shown} of {total} {description}. --all shows every one."
-        ),
-        None => writeln!(out, "Showing {shown} of {total}. --all shows every one."),
-    }
-}
-
-/// Writes the line `Next: {call} {phrase}` when `value` is a listing with a
-/// next step whose call resolves in `command`. Otherwise it writes nothing:
-/// without a command, or when the call names a missing or hidden command or
-/// argument, the tool still prints its result and crumbkit advertises
-/// nothing the tool hid.
-fn write_next<T: Rows>(
-    out: &mut impl Write,
-    command: Option<&mut Command>,
-    value: &T,
-) -> io::Result<()> {
-    let (Some(command), Some((call, phrase))) = (command, value.next_step()) else {
-        return Ok(());
-    };
-    match crate::call::render(call, command) {
-        Ok(rendered) => writeln!(out, "Next: {rendered} {phrase}"),
-        Err(_) => Ok(()),
-    }
 }
