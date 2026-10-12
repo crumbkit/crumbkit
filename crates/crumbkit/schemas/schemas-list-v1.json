@@ -28,11 +28,11 @@
   ],
   "$defs": {
     "SchemaRow": {
-      "description": "One JSON document that the tool prints.",
+      "description": "One JSON document that the tool prints, or a file format that users write.",
       "type": "object",
       "properties": {
         "commands": {
-          "description": "The command lines that print the document. It is empty for the failure document, which every command prints when it fails with --json.",
+          "description": "The command lines that print the document. It is empty for the failure document, which every command prints when it fails with --json, and for a file format.",
           "type": "array",
           "items": {
             "type": "string"
@@ -45,10 +45,19 @@
         "id": {
           "description": "The document's id, such as `shelf/books-list/v1`, which `schemas show` takes.",
           "type": "string"
+        },
+        "kind": {
+          "description": "output when a command prints the document with its schema id, unwrapped when a command prints it without crumbkit's envelope, and file when it is a file format that users write and no command prints.",
+          "enum": [
+            "output",
+            "unwrapped",
+            "file"
+          ]
         }
       },
       "required": [
         "id",
+        "kind",
         "description",
         "commands"
       ]

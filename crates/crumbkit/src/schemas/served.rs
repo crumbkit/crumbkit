@@ -7,18 +7,22 @@ use crate::Document;
 use crate::help::Guide;
 use crate::output::failure;
 
-/// One document that a tool prints: its id, its description, the command
-/// lines that print it, and how to build its JSON Schema.
+/// One document that the schema commands serve: its id, its description,
+/// its kind, the command lines that print it, and how to build its JSON
+/// Schema.
 #[derive(Clone, Debug)]
 pub struct Served {
     /// The document's id and description.
     document: Document<()>,
+    /// Whether a command prints the document in crumbkit's envelope, a
+    /// command prints it without the envelope, or no command prints it.
+    kind: Kind,
     /// The command lines of the visible leaves that print the document,
     /// such as `shelf books list`, in guide order.
     commands: Vec<String>,
     /// Builds the document's JSON Schema from its id and description: the
     /// envelope of the first leaf in guide order that declares the
-    /// document, or the failure document's schema.
+    /// document, the failure document's schema, or a file format's schema.
     schema: fn(Document<()>) -> Schema,
 }
 
@@ -43,10 +47,21 @@ impl Served {
 
     /// Returns the command lines that print the document, such as
     /// `shelf books list`, in guide order. The failure document has none,
-    /// because every command prints it when it fails with `--json`.
+    /// because every command prints it when it fails with `--json`, and a
+    /// file format has none, because no command prints it.
     #[must_use]
     pub fn commands(&self) -> &[String] {
         &self.commands
+    }
+
+    /// Returns the document's kind as `schemas list` prints it: `output`,
+    /// `unwrapped` or `file`.
+    pub(crate) const fn kind(&self) -> &'static str {
+        match self.kind {
+            Kind::Output => "output",
+            Kind::Unwrapped => "unwrapped",
+            Kind::File => "file",
+        }
     }
 
     /// Returns the document's 2020-12 JSON Schema. It builds the schema on
@@ -58,8 +73,9 @@ impl Served {
 }
 
 /// Returns the documents that the tool whose built command tree is
-/// `command` prints: `crumbkit/failure/v1` first, and then the document of
-/// each leaf of `guide` in guide order.
+/// `command` serves: `crumbkit/failure/v1` first, then the document of
+/// each leaf of `guide` in guide order, and then each file format of
+/// `guide` in the order that `Guide::documents` set (ADR-0035).
 ///
 /// A leaf counts when it declares a document and its path names a visible
 /// command by real names. A leaf whose command, or a command above it, is
@@ -69,12 +85,17 @@ impl Served {
 /// them. crumbkit-test's `check_schema_goldens` fails when two leaves with
 /// one id have different schemas.
 ///
+/// A file format is always served, because no command can hide it.
+/// crumbkit-test's `check_schema_goldens` fails on a file format whose id
+/// another document also has.
+///
 /// It builds no JSON Schema, and its work grows with the number of leaves
-/// in `guide` and the depth of their paths.
+/// and file formats in `guide` and the depth of the leaves' paths.
 #[must_use]
 pub fn documents(command: &Command, guide: &Guide) -> Vec<Served> {
     let mut served = vec![Served {
         document: failure::DOCUMENT,
+        kind: Kind::Output,
         commands: Vec::new(),
         schema: |_| failure::document_schema(),
     }];
@@ -94,12 +115,35 @@ pub fn documents(command: &Command, guide: &Guide) -> Vec<Served> {
             Some(entry) => entry.commands.push(line),
             None => served.push(Served {
                 document,
+                kind: if document.has_envelope() {
+                    Kind::Output
+                } else {
+                    Kind::Unwrapped
+                },
                 commands: vec![line],
                 schema,
             }),
         }
     }
+    served.extend(guide.get_documents().iter().map(|format| Served {
+        document: format.document(),
+        kind: Kind::File,
+        commands: Vec::new(),
+        schema: format.schema_fn(),
+    }));
     served
+}
+
+/// What a served document is, which `schemas list` prints as its `kind`.
+#[derive(Clone, Copy, Debug)]
+enum Kind {
+    /// A command prints the document in crumbkit's envelope, or every
+    /// command prints it on failure, as the failure document.
+    Output,
+    /// A command prints the document without crumbkit's envelope.
+    Unwrapped,
+    /// A file format that users write and no command prints.
+    File,
 }
 
 /// Reports whether `path`, the real names of subcommands below `command`,

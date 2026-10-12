@@ -101,6 +101,9 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   the value under `data` and the failures under `failures` ([ADR-0016]).
 - crumbkit: [`help::RuntimeLeaf`] and `Guide::with_runtime_leaves` give
   examples to commands that a tool adds at run time ([ADR-0021]).
+- crumbkit: `Guide::documents` declares [`help::FileFormat`]s, the formats
+  of files that users write for a tool, and `schemas list` and
+  `schemas show` serve their schemas ([ADR-0035]).
 - crumbkit: `Document::without_envelope` marks a document that keeps an
   existing shape. With `--json`, [`finish`] prints its result alone and its
   partial failures as text on standard error ([ADR-0016]).
@@ -146,6 +149,8 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit-test: [`check_document_ids`] takes opt-outs from the document
   name rule, and [`check_schema_goldens`] fails on two ids whose golden
   files share a name ([ADR-0035]).
+- crumbkit: each row of `schemas list` has a `kind` field and column, which
+  is `output`, `unwrapped` or `file` ([ADR-0035]).
 
 ### Removed
 
@@ -227,6 +232,7 @@ rustdoc, or at its decision record. -->
 [`help`]: crates/crumbkit/src/help.rs
 [`help::quote`]: crates/crumbkit/src/help.rs
 [`help::RuntimeLeaf`]: crates/crumbkit/src/help/runtime.rs
+[`help::FileFormat`]: crates/crumbkit/src/help/format.rs
 [`commands`]: crates/crumbkit/src/commands.rs
 [`schemas`]: crates/crumbkit/src/schemas.rs
 [`usage`]: crates/crumbkit/src/usage.rs

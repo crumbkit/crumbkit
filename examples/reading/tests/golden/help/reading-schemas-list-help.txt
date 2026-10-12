@@ -32,7 +32,8 @@ Examples:
 
 Columns:
   id           The document's id, such as `shelf/books-list/v1`, which `schemas show` takes.
+  kind         output when a command prints the document with its schema id, unwrapped when a command prints it without crumbkit's envelope, and file when it is a file format that users write and no command prints.
   description  What the document holds, in one line.
 
 Columns that --long adds:
-  commands  The command lines that print the document. It is empty for the failure document, which every command prints when it fails with --json.
+  commands  The command lines that print the document. It is empty for the failure document, which every command prints when it fails with --json, and for a file format.
