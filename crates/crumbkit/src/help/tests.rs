@@ -178,25 +178,74 @@ fn a_guided_group_off_the_typed_path_keeps_its_default_help() {
     let Ok(((), command)) = result else {
         panic!("the command line did not parse");
     };
-    let planets = command.find_subcommand("planets").unwrap();
-    assert_eq!(planets.get_before_help(), None);
+    let mut planets = command.find_subcommand("planets").unwrap().clone();
+    let page = planets.render_help().to_string();
+    assert!(page.contains("Commands:\n"), "{page}");
+    assert!(!page.contains("Read\n"), "{page}");
 }
 
 #[test]
-fn a_guided_command_s_own_before_help_and_before_long_help_are_replaced_by_the_goal_list() {
+fn a_guided_command_prints_its_own_before_help_above_its_about_and_the_goal_list_below_its_usage() {
     const GUIDE: Guide = Guide::new().groups(&[Group::new(&[], &[Goal::new("Read", &["list"])])]);
     let tool = Command::new("tool")
+        .about("Explore a small solar system")
         .before_help("The tool's own short text")
         .before_long_help("The tool's own long text")
         .subcommand(Command::new("list").about("List the planets"));
 
-    let tool = extend(tool, &GUIDE);
+    let page = extend(tool, &GUIDE).render_help().to_string();
 
-    assert_eq!(
-        tool.get_before_help().map(ToString::to_string).as_deref(),
-        Some("Read\n  list  List the planets")
+    let expected = "\
+The tool's own short text
+
+Explore a small solar system
+
+Usage: tool [COMMAND]
+
+Read
+  list  List the planets
+
+Options:
+  -h, --help  Print help (see more with '--help')
+";
+    assert_eq!(page, expected);
+}
+
+#[test]
+fn a_guided_command_prints_its_own_before_long_help_in_its_long_help() {
+    const GUIDE: Guide = Guide::new().groups(&[Group::new(&[], &[Goal::new("Read", &["list"])])]);
+    let tool = Command::new("tool")
+        .about("Explore a small solar system")
+        .before_help("The tool's own short text")
+        .before_long_help("The tool's own long text")
+        .subcommand(Command::new("list").about("List the planets"));
+
+    let page = extend(tool, &GUIDE).render_long_help().to_string();
+
+    assert!(
+        page.starts_with("The tool's own long text\n\nExplore a small solar system\n\nUsage: tool [COMMAND]\n\nRead\n  list  List the planets\n\nOptions:\n"),
+        "{page}"
     );
-    assert_eq!(tool.get_before_long_help(), None);
+}
+
+#[test]
+fn a_guided_command_whose_list_holds_a_brace_keeps_the_list_in_before_help() {
+    const GUIDE: Guide = Guide::new().groups(&[Group::new(&[], &[Goal::new("Read", &["list"])])]);
+    let tool = Command::new("tool")
+        .before_help("The tool's own short text")
+        .subcommand(Command::new("list").about(r#"Print {"a": {"b": 1}} and {version}"#));
+
+    let page = extend(tool, &GUIDE).render_help().to_string();
+
+    let expected = r#"Usage: tool [COMMAND]
+
+Read
+  list  Print {"a": {"b": 1}} and {version}
+
+Options:
+  -h, --help  Print help
+"#;
+    assert_eq!(page, expected);
 }
 
 #[test]

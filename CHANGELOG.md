@@ -106,6 +106,8 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- crumbkit: a guided command's help prints the tool's own `before_help`
+  and `before_long_help` above the goal list ([ADR-0021]).
 - crumbkit-test: [`Examples`] borrows its paths for a lifetime, so a test
   can build one from a path it computes at runtime.
 - crumbkit: each argument row of `commands list` has a `one_of` field that
