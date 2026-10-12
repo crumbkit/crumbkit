@@ -135,3 +135,33 @@ fn an_opt_out_from_the_document_name_rule_that_excuses_no_problem_fails() {
          the opt-out from `documents/document-name` for `shelf books list` excuses no problem, so it is stale"
     );
 }
+
+/// The document of `books list` without crumbkit's envelope, as scripts
+/// read it before the tool adopted crumbkit.
+const UNWRAPPED: Document<Vec<Book>> =
+    Document::new("shelf", "books-list", 2, "One page of the books.").without_envelope();
+
+#[test]
+fn a_document_without_the_envelope_and_without_an_opt_out_fails() {
+    const GUIDE: Guide = Guide::new().leaves(&[Leaf::new(&["books", "list"]).document(UNWRAPPED)]);
+
+    let message = panic_message(|| check_document_ids(&shelf(), &GUIDE, &[])).unwrap();
+
+    assert_eq!(
+        message,
+        "the command tree breaks crumbkit's document id rules:\n\
+         shelf books list: the command prints shelf/books-list/v2 without crumbkit's envelope, which needs an opt-out from `documents/envelope` with a reason"
+    );
+}
+
+#[test]
+fn a_document_without_the_envelope_that_an_opt_out_names_passes() {
+    const GUIDE: Guide = Guide::new().leaves(&[Leaf::new(&["books", "list"]).document(UNWRAPPED)]);
+    const ALLOW: &[Allow] = &[Allow::new(
+        Rule::Envelope,
+        "books list",
+        "Scripts read the bare array that shelf printed before it adopted crumbkit.",
+    )];
+
+    check_document_ids(&shelf(), &GUIDE, ALLOW);
+}

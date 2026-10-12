@@ -151,6 +151,11 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   files share a name ([ADR-0035]).
 - crumbkit: each row of `schemas list` has a `kind` field and column, which
   is `output`, `unwrapped` or `file` ([ADR-0035]).
+- crumbkit-test: [`check_document_ids`] fails on a document without
+  crumbkit's envelope unless an opt-out of `Rule::Envelope` names its
+  command ([ADR-0036]).
+- crumbkit-test: [`check_schema_goldens`] pins the schemas of file formats
+  and fails on a file format with the id of another document ([ADR-0035]).
 
 ### Removed
 

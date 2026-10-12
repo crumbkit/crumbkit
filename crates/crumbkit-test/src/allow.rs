@@ -139,6 +139,11 @@ pub enum Rule {
     /// document that a command prints is not the command's path below the
     /// tool joined with dashes. Its id is `documents/document-name`.
     DocumentName,
+    /// [`check_document_ids`](crate::check_document_ids): a command prints
+    /// its document without crumbkit's envelope, because its document
+    /// comes from `Document::without_envelope`. Its id is
+    /// `documents/envelope`.
+    Envelope,
 }
 
 impl Rule {
@@ -158,6 +163,7 @@ impl Rule {
             Self::OneValuePerUse => "filters/one-value-per-use",
             Self::Examples => "examples/run",
             Self::DocumentName => "documents/document-name",
+            Self::Envelope => "documents/envelope",
         }
     }
 
@@ -197,6 +203,10 @@ impl Rule {
             ],
             Self::DocumentName => &[
                 "An agent cannot predict the document's id from the command it ran, or the command from the id.",
+            ],
+            Self::Envelope => &[
+                "An agent cannot predict the document's shape from crumbkit's conventions and must read its schema with `schemas show`.",
+                "The document has no `schema` id, `total` or `failures`, so a program cannot tell which document it read, whether it holds every row, or which ids failed.",
             ],
         }
     }

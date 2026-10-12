@@ -43,6 +43,14 @@ pub(crate) const MOUNTS: [(&str, &[&str]); 6] = [
 /// ([ADR-0036]). The check fails on such an opt-out that names no command
 /// or excuses no problem.
 ///
+/// The check also fails on a leaf whose document has no envelope, because
+/// the tool built it with `Document::without_envelope`, unless an [`Allow`]
+/// of [`Rule::Envelope`] with a stated reason covers the command, so
+/// [`check_opt_outs`](crate::check_opt_outs) reports what printing the
+/// document unwrapped costs an agent (ADR-0036). A command that prints such
+/// a document without a leaf that declares it escapes the check, and review
+/// covers it.
+///
 /// The check skips a leaf that declares the document of one of crumbkit's
 /// commands at fixed paths, such as `crumbkit/schemas-list/v1`, because a
 /// tool cannot rename those documents, and [`check_mounts`] checks where
@@ -63,12 +71,19 @@ pub(crate) const MOUNTS: [(&str, &[&str]); 6] = [
 ///
 /// [ADR-0036]: https://github.com/crumbkit/crumbkit/blob/main/docs/decisions/api/0036-opt-outs.md
 pub fn check_document_ids(command: &Command, guide: &Guide, allow: &[Allow]) {
-    let mut allowances = Allowances::new(allow, &[Rule::DocumentName]);
+    let mut allowances = Allowances::new(allow, &[Rule::DocumentName, Rule::Envelope]);
     let mut problems = Vec::new();
     for leaf in guide.get_leaves() {
         let Some(document) = leaf.get_document() else {
             continue;
         };
+        if !document.has_envelope() && !allowances.excuses(Rule::Envelope, &leaf.path().join(" ")) {
+            problems.push(format!(
+                "{}: the command prints {document} without crumbkit's envelope, which needs an opt-out from `{}` with a reason",
+                command_line(command, leaf.path()),
+                Rule::Envelope.id()
+            ));
+        }
         if fixed_path(document.component(), document.name()).is_some() {
             continue;
         }
