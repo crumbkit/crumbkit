@@ -5,6 +5,7 @@ use std::process::ExitCode;
 use clap::Command;
 
 use crate::Output;
+use crate::help::Guide;
 
 /// What [`parse`](crate::parse) returns after it printed help, the version
 /// or a refusal, so the run ends without a parsed command.
@@ -27,11 +28,12 @@ pub struct Stop {
 
 impl Stop {
     /// Returns the stop of a run that ends with `code`, in which the walk
-    /// found `--json` when `json` is true, after parsing against `command`.
-    pub(crate) fn new(code: ExitCode, json: bool, command: Command) -> Self {
+    /// found `--json` when `json` is true, after parsing against `command`
+    /// with `guide`.
+    pub(crate) fn new(code: ExitCode, json: bool, command: Command, guide: &Guide) -> Self {
         Self {
             code,
-            output: Box::new(Output::stopped(json, command)),
+            output: Box::new(Output::stopped(json, command, guide.get_failure_form())),
         }
     }
 

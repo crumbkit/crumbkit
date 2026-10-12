@@ -17,7 +17,8 @@ mod tests;
 /// One label of a failure's diagnostic: a byte span of the source, what the
 /// label says about the span, and where the span starts when the source can
 /// be read there.
-pub(super) struct Label {
+#[derive(Debug)]
+pub struct Label {
     /// The byte offset of the span from the start of the source.
     offset: usize,
     /// The length of the span in bytes.
@@ -33,6 +34,7 @@ pub(super) struct Label {
 /// holds that start and the excerpt around the span. The line is held in
 /// three parts, without its line break: the text before the span, the text
 /// of the span up to the end of the line, and the rest of the line.
+#[derive(Debug)]
 struct Place {
     /// The name of the source, such as a file name, when it has one.
     name: Option<String>,
@@ -55,7 +57,8 @@ struct Place {
 ///
 /// The excerpt holds whole lines, so a span on a very long line, such as a
 /// minified file, brings that whole line into the JSON document.
-struct Excerpt {
+#[derive(Debug)]
+pub struct Excerpt {
     /// The 1-based number of the first line of the excerpt.
     line: usize,
     /// The lines, joined by the line breaks of the source, without a line
@@ -75,6 +78,53 @@ pub(super) fn read(diagnostic: &dyn Diagnostic, source: Option<&dyn SourceCode>)
 }
 
 impl Label {
+    /// Returns the byte offset of the start of the span from the start of
+    /// the source.
+    #[must_use]
+    pub const fn offset(&self) -> usize {
+        self.offset
+    }
+
+    /// Returns the length of the span in bytes.
+    #[must_use]
+    pub const fn length(&self) -> usize {
+        self.length
+    }
+
+    /// Returns what the label says about the span, when it says anything.
+    #[must_use]
+    pub fn text(&self) -> Option<&str> {
+        self.text.as_deref()
+    }
+
+    /// Returns the name of the source, such as a file name, when the span
+    /// could be read and the source has a name.
+    #[must_use]
+    pub fn name(&self) -> Option<&str> {
+        self.place.as_ref()?.name.as_deref()
+    }
+
+    /// Returns the 1-based line that holds the start of the span, when the
+    /// span could be read.
+    #[must_use]
+    pub fn line(&self) -> Option<usize> {
+        self.place.as_ref().map(|place| place.line)
+    }
+
+    /// Returns the 1-based column of the start of the span, counted in
+    /// characters of its line, when the span could be read.
+    #[must_use]
+    pub fn column(&self) -> Option<usize> {
+        self.place.as_ref().map(Place::column)
+    }
+
+    /// Returns the lines of the source around the span, when they could be
+    /// read.
+    #[must_use]
+    pub fn excerpt(&self) -> Option<&Excerpt> {
+        self.place.as_ref()?.excerpt.as_ref()
+    }
+
     /// Reads `label` against `source`.
     fn read(label: &LabeledSpan, source: Option<&dyn SourceCode>) -> Self {
         Self {
@@ -174,6 +224,19 @@ impl Place {
 }
 
 impl Excerpt {
+    /// Returns the 1-based number of the first line of the excerpt.
+    #[must_use]
+    pub const fn line(&self) -> usize {
+        self.line
+    }
+
+    /// Returns the lines, joined by the line breaks of the source, without a
+    /// line break at the end.
+    #[must_use]
+    pub fn text(&self) -> &str {
+        &self.text
+    }
+
     /// Reads the lines around `span` in `source`, or returns `None` when
     /// `source` cannot read them.
     fn read(source: &dyn SourceCode, span: &SourceSpan) -> Option<Self> {

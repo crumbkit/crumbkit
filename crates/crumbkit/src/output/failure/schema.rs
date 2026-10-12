@@ -6,14 +6,14 @@ use std::borrow::Cow;
 
 use schemars::{JsonSchema, Schema, SchemaGenerator, json_schema};
 
-use super::{FAILURE, FailureDocument};
+use super::{FAILURE, PreparedFailure};
 
 /// Describes the `crumbkit/failure/v1` document as a 2020-12 JSON Schema.
 ///
 /// This impl is written by hand so crumbkit needs no schemars `derive`
 /// feature. `crates/crumbkit/schemas/failure-v1.json` holds the schema, and a
 /// test fails when the two differ (ADR-0007).
-impl JsonSchema for FailureDocument {
+impl JsonSchema for PreparedFailure<'_> {
     fn schema_name() -> Cow<'static, str> {
         "FailureDocument".into()
     }
@@ -72,7 +72,7 @@ impl JsonSchema for FailureDocument {
 /// document's id as its `title`, as `schemas show` serves it and
 /// `crates/crumbkit/schemas/failure-v1.json` holds it.
 pub(crate) fn document_schema() -> Schema {
-    let mut schema = schemars::schema_for!(FailureDocument);
+    let mut schema = schemars::schema_for!(PreparedFailure<'static>);
     schema.insert("title".to_owned(), FAILURE.to_string().into());
     schema
 }
@@ -81,7 +81,7 @@ pub(crate) fn document_schema() -> Schema {
 /// schema of the `crumbkit/failure/v1` document without its `schema`
 /// property, as [`Entry`] writes it.
 pub(crate) fn entry_schema() -> Schema {
-    let mut schema = FailureDocument::json_schema(&mut SchemaGenerator::default());
+    let mut schema = <PreparedFailure<'static>>::json_schema(&mut SchemaGenerator::default());
     schema.insert(
         "description".to_owned(),
         "A failure of some of the ids: the fields of the crumbkit/failure/v1 document without schema."

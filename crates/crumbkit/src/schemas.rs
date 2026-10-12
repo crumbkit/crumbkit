@@ -6,7 +6,8 @@
 //! The documents come from the tool's [`Guide`]: each leaf that declares
 //! the document it prints with [`Leaf::document`](crate::help::Leaf::document)
 //! adds that document, and crumbkit adds `crumbkit/failure/v1`, which every
-//! command prints when it fails with `--json`. Each
+//! command prints when it fails with `--json`, or the document of the
+//! guide's [`FailureForm`](crate::form::FailureForm) when it sets one. Each
 //! [`FileFormat`](crate::help::FileFormat) that the guide declares with
 //! [`Guide::documents`] adds the schema of a file that users write and no
 //! command prints, after the leaves' documents.

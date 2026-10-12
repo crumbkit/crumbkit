@@ -8,6 +8,7 @@ use std::process::ExitCode;
 use clap::Command;
 use clap::error::{ContextKind, ContextValue, ErrorKind};
 
+use crate::form::FailureForm;
 use crate::output::failure;
 use crate::{Call, Code, Failure, Field, Recovery, Sink, Spelling};
 
@@ -61,17 +62,19 @@ impl Refusal {
     }
 
     /// Prints the refusal to `sink` as `finish` prints a failure, as text or
-    /// with `json` as one `crumbkit/failure/v1` document, and returns exit
-    /// code 2 (ADR-0002). The recovery renders against `command`, so it
-    /// prints as having no next step when there is no command.
+    /// with `json` as one JSON document, in `form` or in crumbkit's form when
+    /// `form` is `None`, and returns exit code 2 (ADR-0002). The recovery
+    /// renders against `command`, so it prints as having no next step when
+    /// there is no command.
     pub(crate) fn print<O: Write, E: Write, R>(
         &self,
         sink: &mut Sink<O, E, R>,
         json: bool,
         spelling: Spelling,
+        form: Option<&dyn FailureForm>,
         command: Option<&mut Command>,
     ) -> ExitCode {
-        failure::print(sink, json, spelling, self, command);
+        failure::print(sink, json, spelling, form, self, command);
         ExitCode::from(2)
     }
 }

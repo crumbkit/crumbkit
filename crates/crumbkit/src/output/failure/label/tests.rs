@@ -4,7 +4,7 @@ use std::fmt;
 
 use miette::{Diagnostic, LabeledSpan, NamedSource, SourceCode};
 
-use super::super::{Entry, FailureDocument, write_text};
+use super::super::{Entry, PreparedFailure, write_crumbkit_text};
 use crate::{Code, Failure, Recovery, Spelling};
 
 const UNKNOWN_KEY: Code = Code::new("shelf", "config", "unknown_key");
@@ -69,9 +69,9 @@ fn on_colour() -> LabeledSpan {
 
 /// Returns the text form of `failure`.
 fn text(failure: &dyn Failure) -> String {
-    let document = FailureDocument::new(failure, Spelling::COLONS, None, &mut std::io::sink());
+    let document = PreparedFailure::new(failure, Spelling::COLONS, None, &mut std::io::sink());
     let mut err = Vec::new();
-    write_text(&mut err, &document).unwrap();
+    write_crumbkit_text(&mut err, &document).unwrap();
     String::from_utf8(err).unwrap()
 }
 
@@ -196,7 +196,7 @@ fn a_control_character_in_the_source_line_or_the_label_prints_as_its_escape() {
 #[test]
 fn json_holds_each_label_with_its_place_when_the_span_could_be_read() {
     let failure = in_shelf_toml(vec![on_colour(), LabeledSpan::new(None, 400, 6)]);
-    let document = FailureDocument::new(&failure, Spelling::COLONS, None, &mut std::io::sink());
+    let document = PreparedFailure::new(&failure, Spelling::COLONS, None, &mut std::io::sink());
 
     let json = serde_json::to_string(&document).unwrap();
 
@@ -216,7 +216,7 @@ fn a_batch_entry_holds_the_labels_as_the_failure_document_does() {
         source: "colour = \"red\"\n",
         labels: vec![LabeledSpan::new(None, 0, 6)],
     };
-    let document = FailureDocument::new(&failure, Spelling::COLONS, None, &mut std::io::sink());
+    let document = PreparedFailure::new(&failure, Spelling::COLONS, None, &mut std::io::sink());
 
     let json = serde_json::to_string(&Entry(&document)).unwrap();
 
@@ -233,7 +233,7 @@ fn a_batch_entry_holds_the_labels_as_the_failure_document_does() {
 #[test]
 fn json_leaves_out_labels_when_the_diagnostic_has_none() {
     let failure = in_shelf_toml(Vec::new());
-    let document = FailureDocument::new(&failure, Spelling::COLONS, None, &mut std::io::sink());
+    let document = PreparedFailure::new(&failure, Spelling::COLONS, None, &mut std::io::sink());
 
     let json = serde_json::to_string(&document).unwrap();
 
@@ -244,7 +244,7 @@ fn json_leaves_out_labels_when_the_diagnostic_has_none() {
 fn a_label_excerpt_holds_every_line_of_its_span_and_one_line_before_and_after() {
     // The span runs from `name` on line 2 into `colour` on line 3.
     let failure = in_shelf_toml(vec![LabeledSpan::new(None, 8, 20)]);
-    let document = FailureDocument::new(&failure, Spelling::COLONS, None, &mut std::io::sink());
+    let document = PreparedFailure::new(&failure, Spelling::COLONS, None, &mut std::io::sink());
 
     let json = serde_json::to_value(&document).unwrap();
 

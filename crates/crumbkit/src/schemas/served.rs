@@ -4,6 +4,7 @@ use clap::Command;
 use schemars::Schema;
 
 use crate::Document;
+use crate::form::FailureForm;
 use crate::help::Guide;
 use crate::output::failure;
 
@@ -23,10 +24,20 @@ pub struct Served {
     /// Whether the leaves that print the document print it as a stream,
     /// one line for each row.
     stream: bool,
-    /// Builds the document's JSON Schema from its id and description: the
-    /// envelope of the first leaf in guide order that declares the
-    /// document, the failure document's schema, or a file format's schema.
-    schema: fn(Document<()>) -> Schema,
+    /// Builds the document's JSON Schema.
+    schema: Build,
+}
+
+/// How a served document builds its JSON Schema.
+#[derive(Clone, Copy, Debug)]
+enum Build {
+    /// A function of the document's id and description: the envelope of
+    /// the first leaf in guide order that declares the document, the
+    /// failure document's schema, or a file format's schema.
+    Function(fn(Document<()>) -> Schema),
+    /// The schema of a tool's failure form, with the document's id as its
+    /// `title`.
+    Form(&'static dyn FailureForm),
 }
 
 impl Served {
@@ -49,9 +60,10 @@ impl Served {
     }
 
     /// Returns the command lines that print the document, such as
-    /// `shelf books list`, in guide order. The failure document has none,
-    /// because every command prints it when it fails with `--json`, and a
-    /// file format has none, because no command prints it.
+    /// `shelf books list`, in guide order. The failure document and a
+    /// failure form's document have none, because every command prints them
+    /// when it fails with `--json`, and a file format has none, because no
+    /// command prints it.
     #[must_use]
     pub fn commands(&self) -> &[String] {
         &self.commands
@@ -78,14 +90,26 @@ impl Served {
     /// each call.
     #[must_use]
     pub fn schema(&self) -> Schema {
-        (self.schema)(self.document)
+        match self.schema {
+            Build::Function(build) => build(self.document),
+            Build::Form(form) => {
+                let mut schema = form.schema();
+                schema.insert("title".to_owned(), self.id().into());
+                schema
+            }
+        }
     }
 }
 
 /// Returns the documents that the tool whose built command tree is
-/// `command` serves: `crumbkit/failure/v1` first, then the document of
+/// `command` serves: the failure document first, then the document of
 /// each leaf of `guide` in guide order, and then each file format of
 /// `guide` in the order that `Guide::documents` set (ADR-0035).
+///
+/// The failure document is `crumbkit/failure/v1`, or the document of the
+/// guide's failure form when it has one. A failure form's document is
+/// `unwrapped`, because crumbkit's envelope does not hold it, and it names
+/// no command, because every command prints it when it fails (ADR-0045).
 ///
 /// A leaf counts when it declares a document and its path names a visible
 /// command by real names. A leaf whose command, or a command above it, is
@@ -103,12 +127,21 @@ impl Served {
 /// and file formats in `guide` and the depth of the leaves' paths.
 #[must_use]
 pub fn documents(command: &Command, guide: &Guide) -> Vec<Served> {
-    let mut served = vec![Served {
-        document: failure::DOCUMENT,
-        kind: Kind::Output,
-        commands: Vec::new(),
-        stream: false,
-        schema: |_| failure::document_schema(),
+    let mut served = vec![match guide.get_failure_form() {
+        Some(form) => Served {
+            document: form.document(),
+            kind: Kind::Unwrapped,
+            commands: Vec::new(),
+            stream: false,
+            schema: Build::Form(form),
+        },
+        None => Served {
+            document: failure::DOCUMENT,
+            kind: Kind::Output,
+            commands: Vec::new(),
+            stream: false,
+            schema: Build::Function(|_| failure::document_schema()),
+        },
     }];
     for leaf in guide.get_leaves() {
         let Some((document, schema)) = leaf.get_document().zip(leaf.envelope()) else {
@@ -133,7 +166,7 @@ pub fn documents(command: &Command, guide: &Guide) -> Vec<Served> {
                 },
                 commands: vec![line],
                 stream: leaf.is_stream(),
-                schema,
+                schema: Build::Function(schema),
             }),
         }
     }
@@ -142,7 +175,7 @@ pub fn documents(command: &Command, guide: &Guide) -> Vec<Served> {
         kind: Kind::File,
         commands: Vec::new(),
         stream: false,
-        schema: format.schema_fn(),
+        schema: Build::Function(format.schema_fn()),
     }));
     served
 }
@@ -153,7 +186,8 @@ enum Kind {
     /// A command prints the document in crumbkit's envelope, or every
     /// command prints it on failure, as the failure document.
     Output,
-    /// A command prints the document without crumbkit's envelope.
+    /// A command prints the document without crumbkit's envelope, or every
+    /// command prints it on failure, as a failure form's document.
     Unwrapped,
     /// A file format that users write and no command prints.
     File,

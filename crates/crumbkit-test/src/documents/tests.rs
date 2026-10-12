@@ -2,10 +2,11 @@
 
 use clap::Command;
 use crumbkit::commands::COMMANDS_LIST;
+use crumbkit::form::{FailureForm, PreparedFailure};
 use crumbkit::help::{Guide, Leaf};
 use crumbkit::schemas::{SCHEMAS_LIST, SCHEMAS_SHOW};
 use crumbkit::{Document, Row};
-use schemars::JsonSchema;
+use schemars::{JsonSchema, Schema, json_schema};
 use serde::Serialize;
 
 use super::{MOUNTS, check_document_ids, check_mounts};
@@ -164,4 +165,79 @@ fn a_document_without_the_envelope_that_an_opt_out_names_passes() {
     )];
 
     check_document_ids(&shelf(), &GUIDE, ALLOW);
+}
+
+/// A failure form whose document has the id that `document` returns.
+struct ErrorForm(fn() -> Document<()>);
+
+impl FailureForm for ErrorForm {
+    fn document(&self) -> Document<()> {
+        (self.0)()
+    }
+
+    fn schema(&self) -> Schema {
+        json_schema!({ "type": "object" })
+    }
+
+    fn json(&self, failure: &PreparedFailure<'_>) -> serde_json::Value {
+        serde_json::json!({ "error": failure.message() })
+    }
+}
+
+/// The failure form of a tool whose callers read `shelf/error/v2`.
+static SHELF_FORM: ErrorForm =
+    ErrorForm(|| Document::new("shelf", "error", 2, "The document of a failed command."));
+
+/// The opt-out that keeps [`SHELF_FORM`].
+const FORM_ALLOW: &[Allow] = &[Allow::new(
+    Rule::FailureForm,
+    "",
+    "Scripts read the error document that shelf printed before it adopted crumbkit.",
+)];
+
+#[test]
+fn a_guide_with_a_failure_form_and_without_an_opt_out_fails() {
+    const GUIDE: Guide = Guide::new().failure_form(&SHELF_FORM);
+
+    let message = panic_message(|| check_document_ids(&shelf(), &GUIDE, &[])).unwrap();
+
+    assert_eq!(
+        message,
+        "the command tree breaks crumbkit's document id rules:\n\
+         shelf: the tool prints its failures as shelf/error/v2 in place of crumbkit/failure/v1, which needs an opt-out from `documents/failure-form` with a reason"
+    );
+}
+
+#[test]
+fn a_guide_with_a_failure_form_that_an_opt_out_at_the_root_names_passes() {
+    const GUIDE: Guide = Guide::new().failure_form(&SHELF_FORM);
+
+    check_document_ids(&shelf(), &GUIDE, FORM_ALLOW);
+}
+
+#[test]
+fn an_opt_out_from_the_failure_form_rule_without_a_failure_form_is_stale() {
+    let message =
+        panic_message(|| check_document_ids(&shelf(), &Guide::new(), FORM_ALLOW)).unwrap();
+
+    assert_eq!(
+        message,
+        "the command tree breaks crumbkit's document id rules:\n\
+         the opt-out from `documents/failure-form` for `shelf` excuses no problem, so it is stale"
+    );
+}
+
+#[test]
+fn a_failure_form_document_in_the_component_crumbkit_fails_even_with_an_opt_out() {
+    static FORM: ErrorForm =
+        ErrorForm(|| Document::new("crumbkit", "failure", 2, "A failure document."));
+    const GUIDE: Guide = Guide::new().failure_form(&FORM);
+
+    let message = panic_message(|| check_document_ids(&shelf(), &GUIDE, FORM_ALLOW)).unwrap();
+
+    assert_eq!(
+        message,
+        "the command tree breaks crumbkit's document id rules:\n\
+         shelf: the tool's failure form prints crumbkit/failure/v2, and only crumbkit names documents in the component `crumbkit`, so the form's document needs the tool's own component"
+    );
 }

@@ -1,0 +1,140 @@
+//! Failure forms, which let a tool print its failures in a document and a
+//! text form of its own (ADR-0045).
+//!
+//! crumbkit prints every failure in its own form by default: the
+//! `crumbkit/failure/v1` document with `--json`, and the `error:`, `help:`
+//! and `code:` lines in text. A tool that already publishes its own failure
+//! document, which its callers read, sets a [`FailureForm`] with
+//! [`Guide::failure_form`](crate::help::Guide::failure_form) and keeps that
+//! document. crumbkit still prepares each failure, so the form receives the
+//! code in the tool's spelling and each recovery already rendered against
+//! the tool's command tree.
+
+use std::fmt;
+use std::io::{self, Write};
+
+use schemars::Schema;
+
+#[cfg(feature = "miette")]
+pub use crate::output::failure::label::{Excerpt, Label};
+pub use crate::output::failure::{PreparedFailure, Step};
+
+use crate::Document;
+
+#[cfg(test)]
+mod tests;
+
+/// A tool's own form of a failure: the JSON document that a failure prints
+/// with `--json`, its id and schema, and the text that it prints on
+/// standard error.
+///
+/// A tool sets its form with
+/// [`Guide::failure_form`](crate::help::Guide::failure_form). The form then
+/// writes every failure that prints alone: the failure of a whole command
+/// from [`finish`](crate::finish), each failure line of a `--json` stream,
+/// a refused command line, a refused `--fields` name, and the failures of a
+/// picker's source and of a child process. Its text form also prints each
+/// failure of a batch or a prose result on standard error. Each entry of a
+/// batch's `failures` keeps crumbkit's shape, because the batch's document
+/// is crumbkit's envelope.
+///
+/// `schemas list` serves the form's document in place of
+/// `crumbkit/failure/v1`, and crumbkit-test's `check_schema_goldens` pins
+/// its schema. crumbkit-test's `check_document_ids` asks for an opt-out of
+/// its `FailureForm` rule with a stated reason, and the opt-out report
+/// names what the form costs an agent (ADR-0036).
+///
+/// A form that keeps crumbkit's text and prints the document that the
+/// tool's callers already read:
+///
+/// ```
+/// use crumbkit::form::{FailureForm, PreparedFailure, Step};
+/// use crumbkit::help::Guide;
+/// use crumbkit::Document;
+/// use schemars::{Schema, json_schema};
+/// use serde_json::{Value, json};
+///
+/// /// The `{"error": ...}` document that the tool printed before it
+/// /// adopted crumbkit.
+/// struct ErrorForm;
+///
+/// impl FailureForm for ErrorForm {
+///     fn document(&self) -> Document<()> {
+///         Document::new("shelf", "error", 2, "The document that a command prints when it fails with --json.")
+///     }
+///
+///     fn schema(&self) -> Schema {
+///         json_schema!({
+///             "type": "object",
+///             "properties": {
+///                 "error": {
+///                     "type": "object",
+///                     "properties": {
+///                         "code": { "type": "string" },
+///                         "message": { "type": "string" },
+///                         "hint": { "type": "string" },
+///                     },
+///                     "required": ["code", "message"],
+///                 },
+///             },
+///             "required": ["error"],
+///         })
+///     }
+///
+///     fn json(&self, failure: &PreparedFailure<'_>) -> Value {
+///         let mut error = json!({ "code": failure.code(), "message": failure.message() });
+///         let hint = match failure.recovery() {
+///             Step::Run(call) => Some(format!("run `{call}`")),
+///             Step::Hint(text) => Some(text.clone()),
+///             _ => None,
+///         };
+///         if let Some(hint) = hint {
+///             error["hint"] = hint.into();
+///         }
+///         json!({ "error": error })
+///     }
+/// }
+///
+/// const GUIDE: Guide = Guide::new().failure_form(&ErrorForm);
+/// ```
+pub trait FailureForm {
+    /// Returns the id and description of the form's document, which
+    /// `schemas list` serves in place of `crumbkit/failure/v1`. The id names
+    /// the document in `schemas list` and `schemas show`, and the document
+    /// itself need not hold it.
+    fn document(&self) -> Document<()>;
+
+    /// Returns the 2020-12 JSON Schema of the form's document. `schemas
+    /// show` serves it with the document's id as its `title`.
+    fn schema(&self) -> Schema;
+
+    /// Returns the JSON document of `failure`. crumbkit writes it on one
+    /// line and flushes it, so each failure line of a `--json` stream stays
+    /// one line, and crumbkit handles a reader that closed the pipe.
+    fn json(&self, failure: &PreparedFailure<'_>) -> serde_json::Value;
+
+    /// Writes the text form of `failure` to `err`, which is standard error
+    /// in a real run. crumbkit flushes `err` afterwards.
+    ///
+    /// The provided method writes crumbkit's text form, so a form that
+    /// changes only the JSON document keeps crumbkit's text. A form that
+    /// writes its own text escapes the control characters of the values
+    /// itself, because they come from the failure and its data.
+    ///
+    /// # Errors
+    ///
+    /// Returns the error of a failed write. crumbkit leaves it unreported,
+    /// because standard error is the last place to report anything.
+    fn write_text(&self, mut err: &mut dyn Write, failure: &PreparedFailure<'_>) -> io::Result<()> {
+        crate::output::failure::write_crumbkit_text(&mut err, failure)
+    }
+}
+
+/// Prints `FailureForm`, so a [`Guide`](crate::help::Guide), a
+/// [`Parsed`](crate::Parsed) and an [`Output`](crate::Output) that hold a
+/// form can derive `Debug`.
+impl fmt::Debug for dyn FailureForm + '_ {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str("FailureForm")
+    }
+}

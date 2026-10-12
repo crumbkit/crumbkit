@@ -218,6 +218,15 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - cargo-crumbkit: `cargo crumbkit docs --bin <NAME>` writes the binary's
   Markdown command reference to `docs/commands.md` in its package, or to
   `--out <FILE>` ([cargo-crumbkit], [ADR-0044]).
+- crumbkit: [`FailureForm`] and `Guide::failure_form` let a tool print
+  every failure in its own JSON document and text, from a
+  [`PreparedFailure`] with the code spelled and the recoveries rendered
+  ([ADR-0045]).
+- crumbkit: `schemas list` serves a failure form's document in place of
+  `crumbkit/failure/v1`, as an `unwrapped` document ([ADR-0045]).
+- crumbkit-test: [`check_document_ids`] fails on a guide with a failure
+  form unless an opt-out from `Rule::FailureForm` names the root
+  ([ADR-0045]).
 
 ### Changed
 
@@ -446,3 +455,6 @@ rustdoc, or at its decision record. -->
 [crumbkit-markdown]: crates/crumbkit-markdown/README.md
 [ADR-0044]: docs/decisions/api/help/0044-command-reference.md
 [`check_command_reference`]: crates/crumbkit-test/src/reference.rs
+[`FailureForm`]: crates/crumbkit/src/form.rs
+[`PreparedFailure`]: crates/crumbkit/src/output/failure/prepared.rs
+[ADR-0045]: docs/decisions/api/output/0045-failure-forms.md

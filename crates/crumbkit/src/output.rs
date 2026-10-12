@@ -25,8 +25,9 @@ pub use self::confirm::Yes;
 use self::dry_run::DRY_RUN_LINE;
 pub use self::dry_run::DryRun;
 use self::envelope::{Selected, write_document};
-use self::failure::FailureDocument;
+use self::failure::PreparedFailure;
 pub use self::stream::{Streaming, stream, stream_to};
+use crate::form::FailureForm;
 use crate::{AsFailure, Document, Parsed, Row, Rows, Shape, Sink, Spelling};
 
 #[cfg(test)]
@@ -100,6 +101,11 @@ pub struct Output {
     /// from the `Parsed`.
     #[arg(skip)]
     no_input: bool,
+
+    /// The tool's own form of a failure, which `set_command` copies from the
+    /// `Parsed`, or `None` for crumbkit's form (ADR-0045).
+    #[arg(skip)]
+    failure_form: Option<&'static dyn FailureForm>,
 }
 
 impl Output {
@@ -176,6 +182,7 @@ impl Output {
         let parsed = parsed.into();
         self.words = parsed.words;
         self.no_input = parsed.no_input;
+        self.failure_form = parsed.failure_form;
         self.command = Some(parsed.command);
     }
 
@@ -224,12 +231,17 @@ impl Output {
     }
 
     /// Returns the output of a run that `parse` ended after it printed help,
-    /// the version or a refusal: `--json` as the walk found it, and the
-    /// command tree that `parse` built.
-    pub(crate) fn stopped(json: bool, command: Command) -> Self {
+    /// the version or a refusal: `--json` as the walk found it, the command
+    /// tree that `parse` built, and the guide's failure form.
+    pub(crate) fn stopped(
+        json: bool,
+        command: Command,
+        failure_form: Option<&'static dyn FailureForm>,
+    ) -> Self {
         Self {
             json,
             command: Some(command),
+            failure_form,
             ..Self::default()
         }
     }
@@ -314,6 +326,13 @@ pub fn finish<T: Rows, E: AsFailure>(
 /// output writer as one `crumbkit/failure/v1` document on one line, which
 /// `--full` and `--fields` do not change.
 ///
+/// When the tool's guide sets a
+/// [`FailureForm`](crate::form::FailureForm), the form writes the JSON
+/// document and the text of the failure and of a refusal in place of
+/// crumbkit's, and the text of each failure of a batch or a prose result.
+/// Each entry of a batch's `failures` keeps the shape described above
+/// (ADR-0045).
+///
 /// When `--fields` names a field that the row type does not have, nothing of
 /// the result prints. The refusal prints as a failure does, with the message
 /// `--fields names an unknown field 'radius'`, the code `crumbkit::cli::usage`
@@ -373,23 +392,32 @@ fn respond<T: Rows, E: AsFailure, O: Write, W: Write, R>(
     result: Result<T, E>,
 ) -> ExitCode {
     if let Some(refusal) = fields::refusal::<T>(&output.fields) {
-        return refusal.print(sink, output.json, spelling, output.command.as_mut());
+        let form = output.failure_form;
+        return refusal.print(sink, output.json, spelling, form, output.command.as_mut());
     }
     let value = match &result {
         Ok(value) => value,
         Err(error) => {
             let command = output.command.as_mut();
-            failure::print(sink, output.json, spelling, error.as_failure(), command);
+            let form = output.failure_form;
+            failure::print(
+                sink,
+                output.json,
+                spelling,
+                form,
+                error.as_failure(),
+                command,
+            );
             return ExitCode::FAILURE;
         }
     };
     // A batch's failures are read once, so its JSON document and its text
     // form print the same fields. Every other result has `None` here.
-    let failures: Option<Vec<FailureDocument>> = value.failures().map(|failures| {
+    let failures: Option<Vec<PreparedFailure<'_>>> = value.failures().map(|failures| {
         failures
             .into_iter()
             .map(|failure| {
-                FailureDocument::new(failure, spelling, output.command.as_mut(), &mut sink.err)
+                PreparedFailure::new(failure, spelling, output.command.as_mut(), &mut sink.err)
             })
             .collect()
     });
@@ -427,7 +455,7 @@ fn respond<T: Rows, E: AsFailure, O: Write, W: Write, R>(
         for failure in &failures {
             // Standard error is the last place to report anything, so a
             // failure to write there goes unreported.
-            let _ = failure::write_text(&mut sink.err, failure);
+            let _ = failure::write_text(&mut sink.err, output.failure_form, failure);
         }
     }
     if failures.is_empty() {
@@ -450,7 +478,7 @@ fn write_result<T: Rows>(
     output: &mut Output,
     document: Document<T>,
     value: &T,
-    failures: Option<&[FailureDocument]>,
+    failures: Option<&[PreparedFailure<'_>]>,
 ) -> io::Result<()> {
     write_value(out, output, document, value, failures)?;
     if output.dry_run && !output.json {
@@ -466,7 +494,7 @@ fn write_value<T: Rows>(
     output: &mut Output,
     document: Document<T>,
     value: &T,
-    failures: Option<&[FailureDocument]>,
+    failures: Option<&[PreparedFailure<'_>]>,
 ) -> io::Result<()> {
     if output.json && !document.has_envelope() {
         return unwrapped::write_json(out, &output.fields, value);
