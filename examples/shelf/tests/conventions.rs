@@ -177,5 +177,5 @@ const RECOVERIES: Recoveries<'_> = Recoveries::new(EXAMPLES, Spelling::COLONS, &
 
 #[test]
 fn every_recovery_leads_to_a_command_that_runs() {
-    crumbkit_test::check_recoveries(&Cli::command(), &RECOVERIES, "tests/golden");
+    crumbkit_test::check_recoveries(&Cli::command(), &GUIDE, &RECOVERIES, "tests/golden");
 }

@@ -238,6 +238,9 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   ([ADR-0005]).
 - crumbkit-test: `Rule::Recoveries` and `Rule::SameCode` let a tool opt out
   of the recovery check ([ADR-0036]).
+- crumbkit-test: [`check_recoveries`] takes the tool's guide and fails
+  before it runs anything on a guide with a failure form, unless an opt-out
+  from `Rule::Recoveries` names the root ([ADR-0045]).
 
 ### Changed
 

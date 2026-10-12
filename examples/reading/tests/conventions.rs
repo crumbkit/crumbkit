@@ -165,6 +165,6 @@ const RECOVERIES: Recoveries<'_> = Recoveries::new(EXAMPLES, Spelling::COLONS, &
 
 #[test]
 fn every_recovery_leads_to_a_command_that_runs() {
-    let (command, _) = fixture_tool();
-    crumbkit_test::check_recoveries(&command, &RECOVERIES, "tests/golden");
+    let (command, guide) = fixture_tool();
+    crumbkit_test::check_recoveries(&command, &guide, &RECOVERIES, "tests/golden");
 }

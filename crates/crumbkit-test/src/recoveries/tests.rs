@@ -9,6 +9,7 @@ use std::fmt::Write as _;
 use std::fs;
 
 use clap::Command;
+use crumbkit::help::Guide;
 use crumbkit::{Code, Spelling};
 use snapbox::Assert;
 use snapbox::assert::Action;
@@ -18,6 +19,8 @@ use crate::allow::{Allow, Rule};
 use crate::examples::Examples;
 use crate::temp::TempDir;
 use crate::testing::panic_message;
+
+mod form;
 
 /// The code of a book that does not exist.
 const NOT_FOUND: Code = Code::new("tool", "books", "not_found");
@@ -108,6 +111,7 @@ impl Setup {
 fn check_with(setup: &Setup, recoveries: &Recoveries<'_>, action: Action) {
     check(
         &tool(),
+        &Guide::new(),
         recoveries,
         &setup.golden(),
         &Assert::new().action(action),

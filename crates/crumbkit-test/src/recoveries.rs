@@ -5,6 +5,7 @@ use std::fmt::Write as _;
 use std::path::Path;
 
 use clap::Command;
+use crumbkit::help::Guide;
 use crumbkit::{Code, Spelling};
 use snapbox::Assert;
 use snapbox::assert::DEFAULT_ACTION_ENV;
@@ -259,6 +260,10 @@ impl<'a> Recoveries<'a> {
 ///   a `CODES` list is found;
 /// - a step that fails again with the code of the failure it follows,
 ///   unless an opt-out from [`Rule::SameCode`] covers the step's command;
+/// - a guide that sets a failure form with `Guide::failure_form` when no
+///   opt-out from [`Rule::Recoveries`] names the root, because the tool
+///   prints no `crumbkit/failure/v1` document to read. The check reports
+///   this problem alone, before it runs anything (ADR-0045);
 /// - a run that writes a `warning: crumbkit` line to standard error, which a
 ///   debug build writes for a recovery call that does not render;
 /// - a step that crumbkit's quoting cannot read, that does not start with
@@ -280,14 +285,20 @@ impl<'a> Recoveries<'a> {
 /// Panics when a rule above is broken. The message lists each problem on
 /// its own line under `the tool's recoveries break crumbkit's recovery
 /// rules:`.
-pub fn check_recoveries(command: &Command, recoveries: &Recoveries<'_>, dir: &str) {
+pub fn check_recoveries(command: &Command, guide: &Guide, recoveries: &Recoveries<'_>, dir: &str) {
     let assert = Assert::new().action_env(DEFAULT_ACTION_ENV);
-    check(command, recoveries, dir, &assert);
+    check(command, guide, recoveries, dir, &assert);
 }
 
 /// Runs [`check_recoveries`] with `assert`, whose action decides whether
 /// the check compares or overwrites the golden file.
-fn check(command: &Command, recoveries: &Recoveries<'_>, dir: &str, assert: &Assert) {
+fn check(
+    command: &Command,
+    guide: &Guide,
+    recoveries: &Recoveries<'_>,
+    dir: &str,
+    assert: &Assert,
+) {
     let spelling = recoveries.spelling;
     let mut declared: Vec<(String, &Code)> = Vec::new();
     for &code in recoveries.codes.iter().flat_map(|list| list.iter()) {
@@ -313,13 +324,26 @@ fn check(command: &Command, recoveries: &Recoveries<'_>, dir: &str, assert: &Ass
         }
     }
     let rules = [Rule::Recoveries, Rule::SameCode];
+    let mut allowances = Allowances::new(recoveries.examples.opt_outs(), &rules);
+    if let Some(form) = guide.get_failure_form()
+        && !allowances.excuses(Rule::Recoveries, "")
+    {
+        let problem = format!(
+            "{}: the tool prints its failures as {} in place of crumbkit/failure/v1, so the check cannot follow its recoveries, and the tool needs an opt-out from `{}` that names the root, with a reason",
+            command.get_name(),
+            form.document(),
+            Rule::Recoveries.id()
+        );
+        fail(&[problem]);
+        return;
+    }
     let mut walk = chain::Walk {
         recoveries,
         command,
         known,
         components,
         usage: spelling.spell(&crumbkit::codes::CLI_USAGE),
-        allowances: Allowances::new(recoveries.examples.opt_outs(), &rules),
+        allowances,
         problems: Vec::new(),
         report: String::new(),
         provoked: Vec::new(),
@@ -369,6 +393,12 @@ fn check(command: &Command, recoveries: &Recoveries<'_>, dir: &str, assert: &Ass
     let line = format!("{} recoveries", command.get_name());
     compare(assert, &line, "report", report, &file, &mut problems);
     allowances.finish(command, &mut problems);
+    fail(&problems);
+}
+
+/// Panics, as a failed test assertion does, when `problems` holds a
+/// problem, with each problem on its own line.
+fn fail(problems: &[String]) {
     assert!(
         problems.is_empty(),
         "the tool's recoveries break crumbkit's recovery rules:\n{}",
