@@ -212,7 +212,9 @@ where
 /// A command line that stops at a command with subcommands, such as `shelf
 /// books`, prints the message ``the command `shelf books` needs a
 /// subcommand``. With `--json`, the refusal prints to the output writer as
-/// one `crumbkit/failure/v1` document, as a failure does with `finish`. The
+/// one `crumbkit/failure/v1` document, as a failure does with `finish`. When
+/// `guide` sets a [`FailureForm`](crate::form::FailureForm), the refusal
+/// prints in that form in text and with `--json`. The
 /// walk finds `--json` in the words before any `--` where clap reads it as a
 /// flag, so a value of an option that allows hyphen values, as in
 /// `--pattern --json`, is no request for JSON.
@@ -337,7 +339,7 @@ where
             // Only this path ends before the walk below, so it walks the
             // words for `--json` here.
             let json = walk(&command, &args).json;
-            return Err(Stop::new(code, json, command));
+            return Err(Stop::new(code, json, command, guide));
         }
         ask_for_help(&mut args, help.position);
     }
@@ -372,7 +374,7 @@ where
             match picking.pick(sink, &mut command, guide, &mut words, json, spelling) {
                 Step::Picked => picked += 1,
                 Step::Refuse => break,
-                Step::Stop(code) => return Err(Stop::new(code, json, command)),
+                Step::Stop(code) => return Err(Stop::new(code, json, command, guide)),
             }
             let args = pick::args(&command, &words);
             parsed = attempt::<C>(&mut command, args);
@@ -384,7 +386,9 @@ where
         }
     }
     let error = match parsed {
-        Ok((parsed, no_input)) => return Ok((parsed, Parsed::new(command, words, no_input))),
+        Ok((parsed, no_input)) => {
+            return Ok((parsed, Parsed::new(command, words, no_input, guide)));
+        }
         Err(error) => error,
     };
     if matches!(
@@ -398,13 +402,14 @@ where
         } else {
             crate::usage::exited(code);
         }
-        return Err(Stop::new(code, json, command));
+        return Err(Stop::new(code, json, command, guide));
     }
     #[cfg(feature = "usage-log")]
     crate::usage::refused(&command, &path, &error);
     let refusal = Refusal::command_line(refusal_message(&command, &path, &error), path, &error);
-    let code = refusal.print(sink, json, spelling, Some(&mut command));
-    Err(Stop::new(code, json, command))
+    let form = guide.get_failure_form();
+    let code = refusal.print(sink, json, spelling, form, Some(&mut command));
+    Err(Stop::new(code, json, command, guide))
 }
 
 /// Parses `args` against `command`, and returns the tool's parsed type and

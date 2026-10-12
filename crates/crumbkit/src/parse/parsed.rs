@@ -5,6 +5,9 @@ use std::ffi::OsString;
 
 use clap::Command;
 
+use crate::form::FailureForm;
+use crate::help::Guide;
+
 /// The command tree that [`parse`](crate::parse) parsed against, with the
 /// words that the caller typed after the program name and the values that
 /// the guide's picker added to them.
@@ -16,7 +19,8 @@ use clap::Command;
 /// `--yes` as the recovery of a run that needs it, and fails without asking
 /// when the caller passed `--no-input`. A tool that parses with
 /// clap alone passes its `Command`, which converts into a `Parsed` without
-/// words, so `confirm` has no command line to repeat.
+/// words, so `confirm` has no command line to repeat, or builds it with
+/// [`Parsed::guided`] when its guide sets a failure form.
 #[derive(Clone, Debug)]
 pub struct Parsed {
     /// The command tree, built as parsing left it.
@@ -27,17 +31,39 @@ pub struct Parsed {
     /// Whether the caller passed `--no-input`, so no person can answer a
     /// question.
     pub(crate) no_input: bool,
+    /// The failure form of the tool's guide, or `None` for crumbkit's form.
+    pub(crate) failure_form: Option<&'static dyn FailureForm>,
 }
 
 impl Parsed {
     /// Returns the command tree, the words after the program name, which
-    /// hold any values that a picker added, and whether the caller passed
-    /// `--no-input`.
-    pub(crate) const fn new(command: Command, words: Vec<OsString>, no_input: bool) -> Self {
+    /// hold any values that a picker added, whether the caller passed
+    /// `--no-input`, and the failure form of `guide`.
+    pub(crate) const fn new(
+        command: Command,
+        words: Vec<OsString>,
+        no_input: bool,
+        guide: &Guide,
+    ) -> Self {
         Self {
             command,
             words: Some(words),
             no_input,
+            failure_form: guide.get_failure_form(),
+        }
+    }
+
+    /// Returns a `Parsed` without words for a tool that parsed `command`
+    /// with clap alone, which keeps the failure form of `guide`, so
+    /// `finish` prints failures in it (ADR-0045). A tool whose guide sets no
+    /// form passes its `Command` to `Output::set_command` directly.
+    #[must_use]
+    pub const fn guided(command: Command, guide: &Guide) -> Self {
+        Self {
+            command,
+            words: None,
+            no_input: false,
+            failure_form: guide.get_failure_form(),
         }
     }
 
@@ -61,6 +87,7 @@ impl From<Command> for Parsed {
             command,
             words: None,
             no_input: false,
+            failure_form: None,
         }
     }
 }

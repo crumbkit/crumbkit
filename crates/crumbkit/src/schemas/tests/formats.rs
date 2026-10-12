@@ -2,11 +2,12 @@
 //! that commands print in crumbkit's envelope: documents without the
 //! envelope and file formats that no command prints.
 
-use schemars::JsonSchema;
+use schemars::{JsonSchema, Schema, json_schema};
 use serde::Serialize;
 use serde_json::json;
 
 use super::{Book, Shelved, args, output, tool};
+use crate::form::{FailureForm, PreparedFailure};
 use crate::help::{FileFormat, Guide, Leaf};
 use crate::schemas::{SchemasList, SchemasShow, document_schema, documents, list, show};
 use crate::{Document, Listing, Prose};
@@ -129,5 +130,53 @@ fn show_serves_the_schema_of_a_file_format() {
     assert_eq!(
         value[0]["schema"],
         FileFormat::new(SETTINGS).schema().to_value()
+    );
+}
+
+/// A tool's own failure form, whose document is `shelf/error/v2`.
+struct ErrorForm;
+
+impl FailureForm for ErrorForm {
+    fn document(&self) -> Document<()> {
+        Document::new("shelf", "error", 2, "The document of a failed command.")
+    }
+
+    fn schema(&self) -> Schema {
+        json_schema!({ "type": "object", "required": ["error"] })
+    }
+
+    fn json(&self, failure: &PreparedFailure<'_>) -> serde_json::Value {
+        json!({ "error": failure.message() })
+    }
+}
+
+#[test]
+fn a_failure_form_document_replaces_the_failure_document_as_unwrapped_with_no_command() {
+    const GUIDE: Guide = FORMATS.failure_form(&ErrorForm);
+
+    let listing = list(&mut output(), &GUIDE, &args::<SchemasList>("list", &[])).unwrap();
+    let batch = show(
+        &mut output(),
+        &GUIDE,
+        &args::<SchemasShow>("show", &["shelf/error/v2"]),
+    )
+    .unwrap();
+
+    let value = serde_json::to_value(&listing).unwrap();
+    assert_eq!(value.as_array().unwrap().len(), 4);
+    assert_eq!(
+        value[0],
+        json!({
+            "id": "shelf/error/v2",
+            "kind": "unwrapped",
+            "form": "document",
+            "description": "The document of a failed command.",
+            "commands": [],
+        })
+    );
+    let shown = serde_json::to_value(&batch).unwrap();
+    assert_eq!(
+        shown[0]["schema"],
+        json!({ "type": "object", "required": ["error"], "title": "shelf/error/v2" })
     );
 }

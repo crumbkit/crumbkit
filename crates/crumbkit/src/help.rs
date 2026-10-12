@@ -26,6 +26,7 @@ pub use self::runtime::RuntimeLeaf;
 pub use self::topic::Topic;
 
 use self::list::{list, write_line};
+use crate::form::FailureForm;
 use crate::pick::Picker;
 
 #[cfg(test)]
@@ -97,6 +98,9 @@ pub struct Guide {
     /// The picker that asks a person for a missing argument, or `None` when
     /// `parse` refuses every command line that leaves one out.
     picker: Option<&'static dyn Picker>,
+    /// The tool's own form of a failure, or `None` when failures print in
+    /// crumbkit's form.
+    failure_form: Option<&'static dyn FailureForm>,
     /// The path from the clap root to the command that callers run first,
     /// which answers `help` with the topics.
     root: &'static [&'static str],
@@ -115,6 +119,7 @@ impl Guide {
             exits: &[],
             personal_aliases: None,
             picker: None,
+            failure_form: None,
             root: &[],
         }
     }
@@ -295,6 +300,31 @@ impl Guide {
     #[must_use]
     pub const fn get_picker(&self) -> Option<&'static dyn Picker> {
         self.picker
+    }
+
+    /// Sets the tool's own form of a failure, which writes the JSON document
+    /// and the text of each failure in place of crumbkit's (ADR-0045).
+    ///
+    /// [`parse`](crate::parse) prints its refusals in the form and passes it
+    /// on in the [`Parsed`](crate::Parsed) that it returns, so
+    /// [`Output::set_command`](crate::Output::set_command) gives it to
+    /// `finish` and `stream`. A tool that parses with clap alone builds its
+    /// `Parsed` with [`Parsed::guided`](crate::Parsed::guided). The schema
+    /// commands serve the form's document in place of
+    /// `crumbkit/failure/v1`. [`FailureForm`] says which outputs the form
+    /// covers.
+    #[must_use]
+    pub const fn failure_form(mut self, form: &'static dyn FailureForm) -> Self {
+        self.failure_form = Some(form);
+        self
+    }
+
+    /// Returns the form that [`Guide::failure_form`] set, or `None`. The name
+    /// has clap's `get_` prefix, because `failure_form` is the builder
+    /// method.
+    #[must_use]
+    pub const fn get_failure_form(&self) -> Option<&'static dyn FailureForm> {
+        self.failure_form
     }
 
     /// Returns the exit codes that [`Guide::exits`] set. The name has

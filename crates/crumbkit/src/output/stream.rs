@@ -10,8 +10,9 @@ use clap::Command;
 
 use super::dry_run::DRY_RUN_LINE;
 use super::envelope::{Selected, write_document};
-use super::failure::{self, FailureDocument};
+use super::failure::{self, PreparedFailure};
 use super::{Output, fields, table, unwrapped};
+use crate::form::FailureForm;
 use crate::{AsFailure, Document, Failure, Row, Sink, Spelling, Stream};
 
 #[cfg(test)]
@@ -160,6 +161,8 @@ pub struct Streaming<'a, R, O, W> {
     command: Option<&'a mut Command>,
     /// The spelling of the failures' codes.
     spelling: Spelling,
+    /// The tool's own form of a failure, or `None` for crumbkit's form.
+    form: Option<&'static dyn FailureForm>,
     /// The stream's document.
     document: Document<Stream<R>>,
     /// Whether the stream printed a failure.
@@ -203,6 +206,7 @@ fn open<R: Row, O: Write, W: Write>(
         full,
         command,
         dry_run,
+        failure_form,
         ..
     } = output;
     let columns: Vec<&str> = if fields.is_empty() {
@@ -222,6 +226,7 @@ fn open<R: Row, O: Write, W: Write>(
         columns,
         command: command.as_mut(),
         spelling,
+        form: *failure_form,
         document,
         failed: false,
         state: State::Open,
@@ -275,7 +280,9 @@ impl<R: Row, O: Write, W: Write> Streaming<'_, R, O, W> {
     /// In text, the failure prints on the error writer in the form that a
     /// failed command prints. With `--json`, it prints on the output writer
     /// as one `crumbkit/failure/v1` document on its own line, between the
-    /// items. A document without the envelope prints it as text.
+    /// items. A document without the envelope prints it as text. When the
+    /// tool's guide sets a [`FailureForm`](crate::form::FailureForm), the
+    /// form writes the line and the text in place of crumbkit's.
     ///
     /// It returns `ControlFlow::Break` when the stream can print nothing
     /// more, as [`Streaming::item`] does.
@@ -379,7 +386,7 @@ impl<R: Row, O: Write, W: Write> Streaming<'_, R, O, W> {
         let span = self.span.clone();
         #[cfg(feature = "tracing")]
         let _entered = span.enter();
-        let document = FailureDocument::new(
+        let document = PreparedFailure::new(
             failure,
             self.spelling,
             self.command.as_deref_mut(),
@@ -395,14 +402,16 @@ impl<R: Row, O: Write, W: Write> Streaming<'_, R, O, W> {
         if self.json && self.document.has_envelope() {
             // A failure document written to a `Vec` never fails, and a closed
             // stream prints nothing more.
-            if self.state == State::Open && failure::write_json(&mut self.line, &document).is_ok() {
+            if self.state == State::Open
+                && failure::write_json(&mut self.line, self.form, &document).is_ok()
+            {
                 let _ = self.send();
             }
             self.line.clear();
         } else {
             // Standard error is the last place to report anything, so a
             // failure to write there goes unreported.
-            let _ = failure::write_text(&mut self.err, &document);
+            let _ = failure::write_text(&mut self.err, self.form, &document);
         }
     }
 
@@ -416,6 +425,7 @@ impl<R: Row, O: Write, W: Write> Streaming<'_, R, O, W> {
             &mut Sink::new(&mut self.line, &mut self.err),
             self.json,
             self.spelling,
+            self.form,
             self.command.as_deref_mut(),
         );
         let _ = self.send();

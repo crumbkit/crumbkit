@@ -9,10 +9,12 @@ use serde::Serialize;
 use serde::ser::{SerializeMap, Serializer};
 
 use super::table::escape_controls;
+use crate::form::FailureForm;
 use crate::{Document, Failure, FieldValue, Recovery, Sink, Spelling};
 
 #[cfg(feature = "miette")]
-mod label;
+pub(crate) mod label;
+mod prepared;
 #[cfg(feature = "miette")]
 mod related;
 mod schema;
@@ -22,7 +24,7 @@ mod tests;
 pub(crate) use self::schema::{document_schema, entry_schema};
 
 /// The id of the JSON document that a failure prints with `--json`.
-const FAILURE: Document<FailureDocument> = Document::new(
+const FAILURE: Document<()> = Document::new(
     "crumbkit",
     "failure",
     1,
@@ -31,7 +33,7 @@ const FAILURE: Document<FailureDocument> = Document::new(
 
 /// The failure document's id and description, without its result type,
 /// as `schemas list` serves it.
-pub(crate) const DOCUMENT: Document<()> = FAILURE.untyped();
+pub(crate) const DOCUMENT: Document<()> = FAILURE;
 
 /// The reason a failure prints when its `Recovery::Run` call cannot be
 /// rendered, because no command is set or the call does not resolve.
@@ -49,14 +51,15 @@ pub(crate) fn print<O: Write, W: Write, R>(
     sink: &mut Sink<O, W, R>,
     json: bool,
     spelling: Spelling,
+    form: Option<&dyn FailureForm>,
     failure: &dyn Failure,
     command: Option<&mut Command>,
 ) {
-    let document = FailureDocument::new(failure, spelling, command, &mut sink.err);
+    let document = PreparedFailure::new(failure, spelling, command, &mut sink.err);
     #[cfg(feature = "tracing")]
     crate::trace::spans::failed(document.code());
     if json {
-        if let Err(error) = write_json(&mut sink.out, &document) {
+        if let Err(error) = write_json(&mut sink.out, form, &document) {
             // A reader that closed the pipe early has stopped reading, so
             // only another write error is reported. The process is already
             // failing, and a failed report has nowhere else to go.
@@ -67,14 +70,23 @@ pub(crate) fn print<O: Write, W: Write, R>(
     } else {
         // Standard error is the last place to report anything, so a failure
         // to write there goes unreported.
-        let _ = write_text(&mut sink.err, &document);
+        let _ = write_text(&mut sink.err, form, &document);
     }
 }
 
-/// A failure as `finish` prints it. It holds the fields of the
-/// `crumbkit/failure/v1` document, and the text form prints the same fields.
-/// A batch prints each of its failures from one of these as well.
-pub(super) struct FailureDocument {
+/// A failure ready to print: its code spelled in the tool's spelling, its
+/// message and causes, its recovery and alternatives rendered against the
+/// tool's command tree, its fields and, with the `miette` feature, its
+/// labels.
+///
+/// crumbkit prepares every failure that it prints once, and a
+/// [`FailureForm`](crate::form::FailureForm) writes its document and its
+/// text from this value, so a tool's form never spells a code or renders a
+/// call itself. crumbkit's own form writes the `crumbkit/failure/v1`
+/// document and its text form from the same fields.
+pub struct PreparedFailure<'a> {
+    /// The failure that crumbkit prepared.
+    failure: &'a dyn Failure,
     /// The failure's code in the tool's spelling.
     code: String,
     /// The failure's `Display`.
@@ -103,9 +115,12 @@ pub(super) struct FailureDocument {
 }
 
 /// A [`Recovery`] ready to print: a `Run` call is rendered against the tool's
-/// command, and a call that cannot be rendered becomes `None`.
-enum Step {
-    /// Run this command line.
+/// command, and a call that cannot be rendered becomes `None` with
+/// crumbkit's reason.
+#[derive(Clone, Debug, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum Step {
+    /// Run this command line, such as `shelf books list`.
     Run(String),
     /// Run the same command again later.
     Retry,
@@ -115,7 +130,7 @@ enum Step {
     None(String),
 }
 
-impl FailureDocument {
+impl<'a> PreparedFailure<'a> {
     /// Reads `failure` into the fields that `finish` prints. It spells the
     /// code with `spelling` and renders a `Recovery::Run` call against
     /// `command`, which builds the branch that the call names.
@@ -125,7 +140,7 @@ impl FailureDocument {
     /// tests run, writes a warning that names the field to `err`, so a test
     /// that compares standard error shows it. A release build writes nothing.
     pub(super) fn new(
-        failure: &dyn Failure,
+        failure: &'a dyn Failure,
         spelling: Spelling,
         command: Option<&mut Command>,
         err: &mut impl Write,
@@ -156,6 +171,7 @@ impl FailureDocument {
         let code = spelling.spell(failure.code());
         let fields = read_fields(failure, &code, err);
         Self {
+            failure,
             code,
             message: failure.to_string(),
             causes,
@@ -174,12 +190,6 @@ impl FailureDocument {
             fields,
             url: failure.url().map(str::to_owned),
         }
-    }
-
-    /// Returns the failure's code in the tool's spelling.
-    #[cfg(feature = "tracing")]
-    pub(super) fn code(&self) -> &str {
-        &self.code
     }
 }
 
@@ -250,7 +260,23 @@ impl Step {
     }
 }
 
-/// Writes the text form of `document` to `err`, then flushes it, as shelf's
+/// Writes the text form of `document` to `err` in `form`, or in crumbkit's
+/// form when `form` is `None`, then flushes `err`.
+pub(super) fn write_text(
+    err: &mut impl Write,
+    form: Option<&dyn FailureForm>,
+    document: &PreparedFailure<'_>,
+) -> io::Result<()> {
+    match form {
+        Some(form) => {
+            form.write_text(err, document)?;
+            err.flush()
+        }
+        None => write_crumbkit_text(err, document),
+    }
+}
+
+/// Writes crumbkit's text form of `document` to `err`, then flushes it, as shelf's
 /// golden file [`books-show-7.stderr`][books-show-7] shows.
 ///
 /// A `cause:` line for each cause follows the `error:` line, a `help:` line
@@ -262,7 +288,10 @@ impl Step {
 /// prints as its escape, so each line stays one line.
 ///
 /// [books-show-7]: https://github.com/crumbkit/crumbkit/blob/main/examples/shelf/tests/golden/books-show-7.stderr
-pub(super) fn write_text(err: &mut impl Write, document: &FailureDocument) -> io::Result<()> {
+pub(crate) fn write_crumbkit_text(
+    err: &mut impl Write,
+    document: &PreparedFailure<'_>,
+) -> io::Result<()> {
     writeln!(err, "error: {}", escape_controls(&document.message))?;
     for cause in &document.causes {
         write_labelled(err, "cause:", cause)?;
@@ -288,14 +317,22 @@ fn write_labelled(err: &mut impl Write, label: &str, value: &str) -> io::Result<
     writeln!(err, "  {label:<6} {}", escape_controls(value))
 }
 
-/// Writes `document` to `out` as JSON on one line, then flushes `out`.
-pub(super) fn write_json(out: &mut impl Write, document: &FailureDocument) -> io::Result<()> {
-    serde_json::to_writer(&mut *out, document)?;
+/// Writes `document` to `out` as JSON on one line in `form`, or as the
+/// `crumbkit/failure/v1` document when `form` is `None`, then flushes `out`.
+pub(super) fn write_json(
+    out: &mut impl Write,
+    form: Option<&dyn FailureForm>,
+    document: &PreparedFailure<'_>,
+) -> io::Result<()> {
+    match form {
+        Some(form) => serde_json::to_writer(&mut *out, &form.json(document))?,
+        None => serde_json::to_writer(&mut *out, document)?,
+    }
     out.write_all(b"\n")?;
     out.flush()
 }
 
-impl FailureDocument {
+impl PreparedFailure<'_> {
     /// Writes every field of the document after `schema` into `map`: `code`,
     /// `message`, `cause` when the failure has a source, `fields` when the
     /// failure names at least one value, `labels` when the
@@ -337,8 +374,8 @@ impl FailureDocument {
 }
 
 /// Serializes the `crumbkit/failure/v1` document: `schema`, then the fields
-/// that [`FailureDocument::serialize_fields`] writes.
-impl Serialize for FailureDocument {
+/// that `PreparedFailure::serialize_fields` writes.
+impl Serialize for PreparedFailure<'_> {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         let mut map = serializer.serialize_map(None)?;
         map.serialize_entry("schema", &format_args!("{FAILURE}"))?;
@@ -362,7 +399,7 @@ impl Serialize for Fields<'_> {
 
 /// One entry of a batch's `failures` array: the fields of the
 /// `crumbkit/failure/v1` document without `schema`.
-pub(super) struct Entry<'a>(pub(super) &'a FailureDocument);
+pub(super) struct Entry<'a>(pub(super) &'a PreparedFailure<'a>);
 
 impl Serialize for Entry<'_> {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {

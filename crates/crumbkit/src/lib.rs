@@ -49,6 +49,7 @@ pub mod commands;
 #[cfg(any(feature = "usage-log", feature = "tracing"))]
 mod exit;
 mod fetch;
+pub mod form;
 pub mod help;
 mod output;
 mod page;

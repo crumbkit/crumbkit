@@ -7,7 +7,7 @@ use serde::Serialize;
 use serde::ser::{SerializeMap, Serializer};
 use serde_json::Value;
 
-use super::failure::{Entry, FailureDocument};
+use super::failure::{Entry, PreparedFailure};
 use crate::Document;
 
 /// Writes the JSON document `{"schema": <id>, "data": <data>}` to `out` on
@@ -22,7 +22,7 @@ pub(super) fn write_document<T, D: Serialize, M: Serialize>(
     data: &D,
     total: Option<usize>,
     summary: Option<&M>,
-    failures: Option<&[FailureDocument]>,
+    failures: Option<&[PreparedFailure<'_>]>,
 ) -> io::Result<()> {
     let envelope = Envelope {
         document,
@@ -46,7 +46,7 @@ struct Envelope<'a, T, D, M> {
     data: &'a D,
     total: Option<usize>,
     summary: Option<&'a M>,
-    failures: Option<&'a [FailureDocument]>,
+    failures: Option<&'a [PreparedFailure<'a>]>,
 }
 
 impl<T, D: Serialize, M: Serialize> Serialize for Envelope<'_, T, D, M> {

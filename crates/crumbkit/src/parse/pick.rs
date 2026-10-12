@@ -123,7 +123,8 @@ impl Picking {
         let choices = match choices(&arg, leaf) {
             Ok(choices) => choices,
             Err(error) => {
-                failure::print(sink, json, spelling, error.failure(), Some(command));
+                let form = guide.get_failure_form();
+                failure::print(sink, json, spelling, form, error.failure(), Some(command));
                 #[cfg(feature = "usage-log")]
                 crate::usage::exited(ExitCode::FAILURE);
                 return Step::Stop(ExitCode::FAILURE);

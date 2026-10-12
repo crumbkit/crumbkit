@@ -18,7 +18,14 @@ impl Output {
         spelling: Spelling,
         failure: &dyn Failure,
     ) {
-        failure::print(sink, self.json, spelling, failure, self.command.as_mut());
+        failure::print(
+            sink,
+            self.json,
+            spelling,
+            self.failure_form,
+            failure,
+            self.command.as_mut(),
+        );
     }
 
     /// Prints the refusal of a `--fields` name that a `T` lacks and returns
@@ -63,7 +70,13 @@ impl Output {
     ) -> ExitCode {
         // `print` returns exit code 2, the code that `ended` records and
         // returns.
-        let _ = refusal.print(sink, self.json, spelling, self.command.as_mut());
+        let _ = refusal.print(
+            sink,
+            self.json,
+            spelling,
+            self.failure_form,
+            self.command.as_mut(),
+        );
         crate::usage::ended(2, None)
     }
 }
