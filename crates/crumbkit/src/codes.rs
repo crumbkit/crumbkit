@@ -45,11 +45,11 @@ pub const SCHEMAS_UNAVAILABLE: Code = Code::new("crumbkit", "schemas", "unavaila
 
 /// The code of a question that the person at the terminal did not answer
 /// with yes (ADR-0039).
-pub const CONFIRM_DECLINED: Code = Code::new("crumbkit", "confirm", "declined");
+pub const CONFIRM_DECLINED: Code = Code::new("crumbkit", "confirmation", "declined");
 
 /// The code of a question that no person can answer, because standard input
 /// or standard error is not a terminal (ADR-0039).
-pub const CONFIRM_NEEDS_YES: Code = Code::new("crumbkit", "confirm", "needs_yes");
+pub const CONFIRM_NEEDS_YES: Code = Code::new("crumbkit", "confirmation", "needs_yes");
 
 /// The code of `--json` passed to a command whose child has no JSON form
 /// (ADR-0042).

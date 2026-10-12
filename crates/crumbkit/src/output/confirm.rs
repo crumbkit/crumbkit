@@ -72,10 +72,10 @@ impl Output {
     ///
     /// Returns a failure with exit code 1 from `finish`:
     ///
-    /// - `crumbkit::confirm::declined`, when the answer is anything else or
+    /// - `crumbkit::confirmation::declined`, when the answer is anything else or
     ///   standard input ends first. It has no next step, because a person
     ///   chose not to proceed.
-    /// - `crumbkit::confirm::needs_yes`, when the sink is not interactive,
+    /// - `crumbkit::confirmation::needs_yes`, when the sink is not interactive,
     ///   the caller passed `--no-input`, or the tool's guide turned terminal
     ///   detection off, so no person can answer. Its recovery runs the
     ///   words that the caller typed with `--yes` added before any `--`,

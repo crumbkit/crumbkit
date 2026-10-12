@@ -321,6 +321,10 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   which `weigh` and `docs` share ([ADR-0033]).
 - crumbkit-aliases: `aliases list` lists the entries with a problem first,
   so a page cut short by `--limit` still shows them ([crumbkit-aliases]).
+- crumbkit: the confirmation codes are `crumbkit::confirmation::declined`
+  and `crumbkit::confirmation::needs_yes`, whose area is a noun ([ADR-0001]).
+- cargo-crumbkit: the failures of `weigh` have `crumbkit::weight::*` codes,
+  such as `crumbkit::weight::help_failed` ([ADR-0033]).
 
 ### Removed
 

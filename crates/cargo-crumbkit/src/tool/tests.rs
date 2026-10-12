@@ -99,7 +99,7 @@ fn a_tool_without_self_figures_list_fails_with_no_usage_figures() {
         .figures(Path::new("/work/usage.jsonl"), Some("1d"))
         .unwrap_err();
 
-    assert_eq!(code(&error), "crumbkit::weigh::no_usage_figures");
+    assert_eq!(code(&error), "crumbkit::weight::no_usage_figures");
     assert_eq!(
         error.to_string(),
         "`sh self figures list --all --json --log /work/usage.jsonl --since 1d` prints no crumbkit/self-figures-list/v1 document, so the usage figures cannot be read"
@@ -156,7 +156,7 @@ fn a_help_run_that_exits_with_a_failure_fails_with_help_failed() {
     // `sh no-such-script --help` cannot open the script and exits with 127.
     let error = tool.help_bytes("sh no-such-script", "--help").unwrap_err();
 
-    assert_eq!(code(&error), "crumbkit::weigh::help_failed");
+    assert_eq!(code(&error), "crumbkit::weight::help_failed");
     assert!(
         error
             .to_string()

@@ -30,17 +30,17 @@ const TOOL_UNAVAILABLE: Code = Code::new("crumbkit", "tool", "tool_unavailable")
 const NO_COMMANDS_LIST: Code = Code::new("crumbkit", "tool", "no_commands_list");
 
 /// The code of a failure whose tool fails to print a help page.
-const HELP_FAILED: Code = Code::new("crumbkit", "weigh", "help_failed");
+const HELP_FAILED: Code = Code::new("crumbkit", "weight", "help_failed");
 
 /// The code of a failure whose golden file exists but cannot be read.
-const GOLDEN_UNREADABLE: Code = Code::new("crumbkit", "weigh", "golden_unreadable");
+const GOLDEN_UNREADABLE: Code = Code::new("crumbkit", "weight", "golden_unreadable");
 
 /// The code of a failure whose tool prints no `self figures list` document.
-const NO_USAGE_FIGURES: Code = Code::new("crumbkit", "weigh", "no_usage_figures");
+const NO_USAGE_FIGURES: Code = Code::new("crumbkit", "weight", "no_usage_figures");
 
 /// The code of a failure whose usage log cannot be found, because the XDG
 /// state directory cannot be found.
-const NO_STATE_DIR: Code = Code::new("crumbkit", "weigh", "no_state_dir");
+const NO_STATE_DIR: Code = Code::new("crumbkit", "weight", "no_state_dir");
 
 /// The code of a failure whose `commands list` document cannot become a
 /// reference.
