@@ -19,7 +19,14 @@ use crumbkit_test::Examples;
 /// `RUSTUP_TOOLCHAIN` names the toolchain that runs the test so rustup does
 /// not look for another, and `CARGO_TARGET_DIR` keeps the build in the
 /// test's target directory.
-const PASSED: [&str; 7] = [
+///
+/// `CARGO_INCREMENTAL`, `CARGO_PROFILE_DEV_DEBUG` and `RUSTFLAGS` change how
+/// cargo builds. weigh's cargo gets the values that built the test, so it
+/// finds shelf already built and leaves the shared binary in place. A build
+/// with other values rebuilds shelf, which can take longer than an example
+/// may run, and on Windows it fails while another test runs the binary,
+/// because Windows cannot replace a running executable.
+const PASSED: [&str; 10] = [
     "CARGO",
     "PATH",
     "HOME",
@@ -27,6 +34,9 @@ const PASSED: [&str; 7] = [
     "RUSTUP_HOME",
     "RUSTUP_TOOLCHAIN",
     "CARGO_TARGET_DIR",
+    "CARGO_INCREMENTAL",
+    "CARGO_PROFILE_DEV_DEBUG",
+    "RUSTFLAGS",
 ];
 
 /// The variables that Windows programs need, which the test also passes on
