@@ -7,55 +7,93 @@ use serde::Serialize;
 use serde::ser::{SerializeMap, Serializer};
 use serde_json::Value;
 
+use super::budget::Cut;
 use super::failure::{Entry, PreparedFailure};
 use crate::Document;
 
+/// The failures of a batch or a prose result: the tool's own, in order, and
+/// then the failure of the rows that the output budget left out, when there
+/// is one.
+#[derive(Clone, Copy)]
+pub(super) struct Failures<'a> {
+    /// The failures that the tool returned.
+    pub(super) listed: &'a [PreparedFailure<'a>],
+    /// The failure of the rows that did not fit in the output budget.
+    pub(super) over: Option<&'a PreparedFailure<'a>>,
+}
+
+impl<'a> Failures<'a> {
+    /// Returns every failure in the order it prints.
+    pub(super) fn iter(self) -> impl Iterator<Item = &'a PreparedFailure<'a>> {
+        self.listed.iter().chain(self.over)
+    }
+}
+
+/// The parts of a JSON document beside `schema` and `data`, each of which
+/// the document leaves out when it is `None`.
+pub(super) struct Extras<'a, M> {
+    /// A listing's number of matching rows.
+    pub(super) total: Option<usize>,
+    /// A listing's summary.
+    pub(super) summary: Option<&'a M>,
+    /// The mark of a result that the output budget cut short.
+    pub(super) cut: Option<&'a Cut>,
+    /// A batch's or a prose result's failures.
+    pub(super) failures: Option<Failures<'a>>,
+}
+
+impl Extras<'_, ()> {
+    /// Returns the extras of a document that has none.
+    pub(super) const fn none() -> Self {
+        Self {
+            total: None,
+            summary: None,
+            cut: None,
+            failures: None,
+        }
+    }
+}
+
 /// Writes the JSON document `{"schema": <id>, "data": <data>}` to `out` on
 /// one line, with `"dry_run": true` after `schema` when `dry_run` is set,
-/// `"total": <total>` after `data` when `total` is `Some`,
-/// then `"summary": <summary>` when `summary` is `Some`, and then
-/// `"failures": [...]` when `failures` is `Some`.
+/// `"total": <total>` after `data` when the extras hold a total, then
+/// `"summary": <summary>`, `"cut": {...}` and `"failures": [...]` when the
+/// extras hold each of them.
 pub(super) fn write_document<T, D: Serialize, M: Serialize>(
     out: &mut impl Write,
     document: Document<T>,
     dry_run: bool,
     data: &D,
-    total: Option<usize>,
-    summary: Option<&M>,
-    failures: Option<&[PreparedFailure<'_>]>,
+    extras: &Extras<'_, M>,
 ) -> io::Result<()> {
     let envelope = Envelope {
         document,
         dry_run,
         data,
-        total,
-        summary,
-        failures,
+        extras,
     };
     serde_json::to_writer(&mut *out, &envelope)?;
     out.write_all(b"\n")
 }
 
 /// A JSON document: the `schema` id, `dry_run` on a dry run, the result
-/// under `data`, a listing's
-/// number of matching rows under `total`, a listing's summary under
-/// `summary`, and a batch's failures under `failures`.
+/// under `data`, and the extras.
 struct Envelope<'a, T, D, M> {
     document: Document<T>,
     dry_run: bool,
     data: &'a D,
-    total: Option<usize>,
-    summary: Option<&'a M>,
-    failures: Option<&'a [PreparedFailure<'a>]>,
+    extras: &'a Extras<'a, M>,
 }
 
 impl<T, D: Serialize, M: Serialize> Serialize for Envelope<'_, T, D, M> {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        let extras = self.extras;
         let len = 2
             + usize::from(self.dry_run)
-            + usize::from(self.total.is_some())
-            + usize::from(self.summary.is_some())
-            + usize::from(self.failures.is_some());
+            + usize::from(extras.total.is_some())
+            + usize::from(extras.summary.is_some())
+            + usize::from(extras.cut.is_some())
+            + usize::from(extras.failures.is_some());
         let mut map = serializer.serialize_map(Some(len))?;
         // `format_args!` serializes as a string without building one.
         map.serialize_entry("schema", &format_args!("{}", self.document))?;
@@ -63,16 +101,17 @@ impl<T, D: Serialize, M: Serialize> Serialize for Envelope<'_, T, D, M> {
             map.serialize_entry("dry_run", &true)?;
         }
         map.serialize_entry("data", self.data)?;
-        if let Some(total) = self.total {
+        if let Some(total) = extras.total {
             map.serialize_entry("total", &total)?;
         }
-        if let Some(summary) = self.summary {
+        if let Some(summary) = extras.summary {
             map.serialize_entry("summary", summary)?;
         }
-        if let Some(failures) = self.failures {
-            // Each entry is a failure document without `schema`.
-            let entries: Vec<Entry<'_>> = failures.iter().map(Entry).collect();
-            map.serialize_entry("failures", &entries)?;
+        if let Some(cut) = extras.cut {
+            map.serialize_entry("cut", cut)?;
+        }
+        if let Some(failures) = extras.failures {
+            map.serialize_entry("failures", &Entries(failures))?;
         }
         map.end()
     }
@@ -93,5 +132,31 @@ impl Serialize for Selected<'_> {
             map.serialize_entry(name, self.row.get(name).unwrap_or(&Value::Null))?;
         }
         map.end()
+    }
+}
+
+/// The entries of `failures`, each a failure document without `schema`,
+/// written one by one so that nothing is collected first.
+struct Entries<'a>(Failures<'a>);
+
+impl Serialize for Entries<'_> {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.collect_seq(self.0.iter().map(Entry))
+    }
+}
+
+/// Serialized rows, each limited to `columns` and written in their order,
+/// as one array.
+pub(super) struct SelectedRows<'a> {
+    pub(super) rows: &'a [Value],
+    pub(super) columns: &'a [&'a str],
+}
+
+impl Serialize for SelectedRows<'_> {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.collect_seq(self.rows.iter().map(|row| Selected {
+            row,
+            columns: self.columns,
+        }))
     }
 }

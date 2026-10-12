@@ -3,6 +3,7 @@
 use std::fmt;
 use std::marker::PhantomData;
 
+use crate::Code;
 use crate::segment::{is_component, is_segment};
 
 #[cfg(test)]
@@ -61,6 +62,12 @@ pub struct Document<T> {
     /// envelope, with `schema` and `data`, which is true unless the tool
     /// called `without_envelope`.
     envelope: bool,
+    /// The code that `crumbkit::finish` reports when the result passes the
+    /// tool's output budget, or `None` for crumbkit's own code.
+    over_budget: Option<&'static Code>,
+    /// Whether the first answer prints even when it alone passes the output
+    /// budget.
+    first_always: bool,
     /// `PhantomData<fn() -> T>` ties the document to `T` without holding a
     /// `T`. A function pointer is `Send` and `Sync` whatever it returns, so
     /// `Document<T>` is `Send` and `Sync` for every `T`; `PhantomData<T>`
@@ -113,6 +120,8 @@ impl<T> Document<T> {
             version,
             description,
             envelope: true,
+            over_budget: None,
+            first_always: false,
             result: PhantomData,
         }
     }
@@ -132,6 +141,41 @@ impl<T> Document<T> {
     pub const fn without_envelope(mut self) -> Self {
         self.envelope = false;
         self
+    }
+
+    /// Returns the same document with `code` as the code that
+    /// `crumbkit::finish` and `crumbkit::stream` report when the result
+    /// passes the tool's output budget, in place of crumbkit's
+    /// `crumbkit::output::over_budget`. The failure keeps crumbkit's message
+    /// and recovery (ADR-0046).
+    #[must_use]
+    pub const fn over_budget(mut self, code: &'static Code) -> Self {
+        self.over_budget = Some(code);
+        self
+    }
+
+    /// Returns the code that [`Document::over_budget`] set, or `None` when
+    /// the document reports crumbkit's own code.
+    #[must_use]
+    pub const fn over_budget_code(&self) -> Option<&'static Code> {
+        self.over_budget
+    }
+
+    /// Returns the same document with its first answer always printed: a
+    /// single row or a prose result prints whole even when it passes the
+    /// tool's output budget, and a listing or a list prints at least its
+    /// first row. Without it, `crumbkit::finish` refuses a single result
+    /// that passes the budget (ADR-0046).
+    #[must_use]
+    pub const fn always_print_first(mut self) -> Self {
+        self.first_always = true;
+        self
+    }
+
+    /// Reports whether [`Document::always_print_first`] was called.
+    #[must_use]
+    pub const fn always_prints_first(&self) -> bool {
+        self.first_always
     }
 
     /// Reports whether `crumbkit::finish` prints the result inside
@@ -167,9 +211,9 @@ impl<T> Document<T> {
         self.description
     }
 
-    /// Returns the same id, description and choice of envelope as a
-    /// `Document<()>`, which no longer names the result type, so one list
-    /// can hold the documents of results of different types. crumbkit's
+    /// Returns the same id, description, choice of envelope and budget
+    /// settings as a `Document<()>`, which no longer names the result type,
+    /// so one list can hold the documents of results of different types. crumbkit's
     /// help leaves keep their documents in this form.
     #[must_use]
     pub const fn untyped(self) -> Document<()> {
@@ -179,6 +223,8 @@ impl<T> Document<T> {
             version: self.version,
             description: self.description,
             envelope: self.envelope,
+            over_budget: self.over_budget,
+            first_always: self.first_always,
             result: PhantomData,
         }
     }

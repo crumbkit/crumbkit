@@ -20,7 +20,8 @@ use crate::help::Guide;
 /// when the caller passed `--no-input`. A tool that parses with
 /// clap alone passes its `Command`, which converts into a `Parsed` without
 /// words, so `confirm` has no command line to repeat, or builds it with
-/// [`Parsed::guided`] when its guide sets a failure form.
+/// [`Parsed::guided`] when its guide sets a failure form or an output
+/// budget.
 #[derive(Clone, Debug)]
 pub struct Parsed {
     /// The command tree, built as parsing left it.
@@ -35,12 +36,16 @@ pub struct Parsed {
     pub(crate) failure_form: Option<&'static dyn FailureForm>,
     /// Whether the guide turned terminal detection off (ADR-0049).
     pub(crate) no_terminal: bool,
+    /// The output budget of the tool's guide, or `None` for crumbkit's
+    /// default.
+    pub(crate) output_budget: Option<usize>,
 }
 
 impl Parsed {
     /// Returns the command tree, the words after the program name, which
     /// hold any values that a picker added, whether the caller passed
-    /// `--no-input`, and the failure form and terminal detection of `guide`.
+    /// `--no-input`, and the failure form, terminal detection and output
+    /// budget of `guide`.
     pub(crate) const fn new(
         command: Command,
         words: Vec<OsString>,
@@ -53,12 +58,14 @@ impl Parsed {
             no_input,
             failure_form: guide.get_failure_form(),
             no_terminal: !guide.get_terminal_detection(),
+            output_budget: budget_of(guide),
         }
     }
 
     /// Returns a `Parsed` without words for a tool that parsed `command`
-    /// with clap alone, which keeps the failure form of `guide`, so
-    /// `finish` prints failures in it (ADR-0045), and whether `guide` turns
+    /// with clap alone, which keeps the failure form and the output budget
+    /// of `guide`, so `finish` prints failures in the form (ADR-0045) and
+    /// results within the budget (ADR-0046), and whether `guide` turns
     /// terminal detection off (ADR-0049). A tool whose guide sets neither
     /// passes its `Command` to `Output::set_command` directly.
     #[must_use]
@@ -69,6 +76,7 @@ impl Parsed {
             no_input: false,
             failure_form: guide.get_failure_form(),
             no_terminal: !guide.get_terminal_detection(),
+            output_budget: budget_of(guide),
         }
     }
 
@@ -85,6 +93,14 @@ impl Parsed {
     }
 }
 
+/// Returns the bytes of the output budget that `guide` sets, or `None`.
+const fn budget_of(guide: &Guide) -> Option<usize> {
+    match guide.get_output_budget() {
+        Some((bytes, _)) => Some(bytes),
+        None => None,
+    }
+}
+
 /// Returns a `Parsed` without words, for a tool that parsed with clap alone.
 impl From<Command> for Parsed {
     fn from(command: Command) -> Self {
@@ -94,6 +110,7 @@ impl From<Command> for Parsed {
             no_input: false,
             failure_form: None,
             no_terminal: false,
+            output_budget: None,
         }
     }
 }

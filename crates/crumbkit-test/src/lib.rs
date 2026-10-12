@@ -23,6 +23,7 @@
 //! [`check_document_ids`]: crate::check_document_ids
 //! [`check_mounts`]: crate::check_mounts
 //! [`check_examples`]: crate::check_examples
+//! [`check_output_budget`]: crate::check_output_budget
 //! [`Examples`]: crate::Examples
 //! [`example_golden_name`]: crate::example_golden_name
 //! [`check_command_reference`]: crate::check_command_reference
@@ -32,6 +33,7 @@
 //! [ADR-0025]: https://github.com/crumbkit/crumbkit/blob/main/docs/decisions/api/help/0025-help-checks.md
 //! [ADR-0036]: https://github.com/crumbkit/crumbkit/blob/main/docs/decisions/api/0036-opt-outs.md
 //! [ADR-0044]: https://github.com/crumbkit/crumbkit/blob/main/docs/decisions/api/help/0044-command-reference.md
+//! [ADR-0046]: https://github.com/crumbkit/crumbkit/blob/main/docs/decisions/api/output/0046-output-budget.md
 //! [ADR-0004]: https://github.com/crumbkit/crumbkit/blob/main/docs/decisions/testing/0004-golden-and-snapshot-tests.md
 #![doc = include_str!("../README.md")]
 // docs.rs builds the docs on nightly with `--cfg docsrs`, and rustdoc's
@@ -52,6 +54,7 @@ mod guide;
 mod listings;
 mod names;
 mod opt_outs;
+mod output_budget;
 mod pages;
 mod recoveries;
 mod reference;
@@ -79,6 +82,7 @@ pub use crate::guide::check_guide;
 pub use crate::listings::check_listings;
 pub use crate::names::check_names;
 pub use crate::opt_outs::check_opt_outs;
+pub use crate::output_budget::check_output_budget;
 pub use crate::recoveries::{Failing, Recoveries, Unprovoked, check_recoveries};
 pub use crate::reference::check_command_reference;
 pub use crate::schemas::check_schema_goldens;

@@ -262,6 +262,18 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit-markdown: the reference prints a command's `Writes:` line after
   its effects line ([ADR-0047]).
 
+- crumbkit: [`finish`] and [`stream`] print at most an output budget of
+  1 MiB on standard output in one run. `Guide::output_budget` sets another
+  budget, and `CRUMBKIT_OUTPUT_BUDGET` only lowers it ([ADR-0046]).
+- crumbkit: a listing or list past the output budget prints the rows that
+  fit and is marked with `cut`. Other results past it fail with
+  `crumbkit::output::over_budget` ([ADR-0046]).
+- crumbkit-core: [`Document`] gains `over_budget`, which sets the code of
+  a result past the output budget, and `always_print_first`, which prints
+  the first answer even past the budget ([ADR-0046]).
+- crumbkit-test: [`check_output_budget`] runs each `--json` example with
+  half the bytes it prints and checks that the tool cuts or refuses the
+  result ([ADR-0046]).
 ### Changed
 
 - crumbkit: with the `usage-log` feature, a run whose `COMPLETE` variable
@@ -339,6 +351,11 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - cargo-crumbkit: the failures of `weigh` have `crumbkit::weight::*` codes,
   such as `crumbkit::weight::help_failed` ([ADR-0033]).
 
+- crumbkit-test: [`check_opt_outs`] takes the tool's guide and lists an
+  output budget that the guide sets as `output-budget/run` ([ADR-0046]).
+- crumbkit: the JSON Schema of each listing and list document holds the
+  optional `cut` object, and the documents keep their `v1` ids
+  ([ADR-0046]).
 ### Removed
 
 - crumbkit: `Call::word` is gone, because `Call::value` adds a runtime value
@@ -404,6 +421,7 @@ rustdoc, or at its decision record. -->
 [`Document`]: crates/crumbkit-core/src/document.rs
 [`Output`]: crates/crumbkit/src/output.rs
 [`finish`]: crates/crumbkit/src/output.rs
+[`stream`]: crates/crumbkit/src/output/stream.rs
 [`Stream`]: crates/crumbkit-core/src/stream.rs
 [`Streaming`]: crates/crumbkit/src/output/stream.rs
 [`Page`]: crates/crumbkit/src/page.rs
@@ -478,6 +496,7 @@ rustdoc, or at its decision record. -->
 [`output_weight`]: crates/crumbkit-test/src/weights.rs
 [`Allow`]: crates/crumbkit-test/src/allow.rs
 [`check_opt_outs`]: crates/crumbkit-test/src/opt_outs.rs
+[`check_output_budget`]: crates/crumbkit-test/src/output_budget.rs
 [`Budget`]: crates/crumbkit-test/src/budget.rs
 [`Budgets`]: crates/crumbkit-test/src/sizes.rs
 [`PathBudgets`]: crates/crumbkit-test/src/weights.rs
@@ -504,6 +523,7 @@ rustdoc, or at its decision record. -->
 [`FailureForm`]: crates/crumbkit/src/form.rs
 [`PreparedFailure`]: crates/crumbkit/src/output/failure/prepared.rs
 [ADR-0045]: docs/decisions/api/output/0045-failure-forms.md
+[ADR-0046]: docs/decisions/api/output/0046-output-budget.md
 [ADR-0049]: docs/decisions/api/output/0049-terminal-detection.md
 [`codes`]: crates/crumbkit/src/codes.rs
 [`help::split`]: crates/crumbkit/src/help/words.rs

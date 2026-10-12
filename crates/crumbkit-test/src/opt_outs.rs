@@ -5,6 +5,8 @@ use std::fmt::Write as _;
 use std::path::Path;
 
 use clap::Command;
+use crumbkit::Output;
+use crumbkit::help::Guide;
 use serde::Serialize;
 use snapbox::Assert;
 use snapbox::assert::DEFAULT_ACTION_ENV;
@@ -26,7 +28,8 @@ const SCHEMA: &str = "crumbkit/opt-outs/v1";
 /// `opt-outs.json` in `dir`, and panics, as a failed test assertion does,
 /// naming every problem it finds.
 ///
-/// `command` is the tool's root command, `allow` holds every opt-out that
+/// `command` is the tool's root command, `guide` is the tool's guide, whose
+/// output budget the report lists, `allow` holds every opt-out that
 /// the tool passes to the checks ([ADR-0036]), `budgets` holds the budgets
 /// that it passes to [`check_help_sizes`](crate::check_help_sizes), and
 /// `paths` holds the budgets that it passes to
@@ -36,7 +39,10 @@ const SCHEMA: &str = "crumbkit/opt-outs/v1";
 /// the tool's reason and what skipping the rule costs an agent. Then it
 /// lists each budget that the tool set, with the budget, crumbkit's default
 /// and, for a budget above the default, the extra bytes and tokens at 4
-/// bytes a token that each read can cost.
+/// bytes a token that each read can cost. When the guide sets an output
+/// budget, the report ends with it beside crumbkit's default of 1048576
+/// bytes, under the rule `output-budget/run` (ADR-0046). No opt-out removes
+/// the output budget.
 /// A reviewer reads a change to a tool's opt-outs as a change to these two
 /// files, and an agent reads `opt-outs.json` to learn where the tool
 /// departs from crumbkit's conventions.
@@ -66,6 +72,7 @@ const SCHEMA: &str = "crumbkit/opt-outs/v1";
 ///
 /// ```no_run
 /// use clap::Command;
+/// use crumbkit::help::Guide;
 /// use crumbkit_test::{Allow, Budgets, Rule};
 ///
 /// const ALLOW: &[Allow] = &[Allow::new(
@@ -76,7 +83,7 @@ const SCHEMA: &str = "crumbkit/opt-outs/v1";
 ///
 /// let shelf = Command::new("shelf").subcommand(Command::new("version"));
 ///
-/// crumbkit_test::check_opt_outs(&shelf, ALLOW, &Budgets::new(), None, "tests/golden");
+/// crumbkit_test::check_opt_outs(&shelf, &Guide::new(), ALLOW, &Budgets::new(), None, "tests/golden");
 /// ```
 ///
 /// # Panics
@@ -89,13 +96,14 @@ const SCHEMA: &str = "crumbkit/opt-outs/v1";
 /// [ADR-0036]: https://github.com/crumbkit/crumbkit/blob/main/docs/decisions/api/0036-opt-outs.md
 pub fn check_opt_outs(
     command: &Command,
+    guide: &Guide,
     allow: &[Allow],
     budgets: &Budgets,
     paths: Option<&PathBudgets<'_>>,
     dir: impl AsRef<Path>,
 ) {
     let assert = Assert::new().action_env(DEFAULT_ACTION_ENV);
-    check(command, allow, budgets, paths, dir.as_ref(), &assert);
+    check(command, guide, allow, budgets, paths, dir.as_ref(), &assert);
 }
 
 /// Runs [`check_opt_outs`] with `assert`, whose action decides whether the
@@ -103,6 +111,7 @@ pub fn check_opt_outs(
 /// setting `SNAPSHOTS`.
 fn check(
     command: &Command,
+    guide: &Guide,
     allow: &[Allow],
     budgets: &Budgets,
     paths: Option<&PathBudgets<'_>>,
@@ -143,6 +152,14 @@ fn check(
         );
         Entry::of(departure, cost)
     }));
+    if let Some(departure) = output_budget(command, guide) {
+        let cost = format!(
+            "A run can print {} bytes more than crumbkit's default, about {} tokens.",
+            departure.extra_bytes(),
+            departure.extra_tokens()
+        );
+        entries.push(Entry::of(departure, cost));
+    }
     let line = command.get_name();
     compare(
         assert,
@@ -161,6 +178,19 @@ fn check(
         &mut problems,
     );
     tree::report("opt-out report rules", &problems);
+}
+
+/// Returns the output budget that `guide` sets as the report lists it, or
+/// `None` when the tool keeps crumbkit's default.
+fn output_budget(command: &Command, guide: &Guide) -> Option<Departure> {
+    let (bytes, reason) = guide.get_output_budget()?;
+    Some(Departure {
+        rule: "output-budget/run",
+        applies_to: format!("every run of {}", command.get_name()),
+        reason,
+        bytes: u64::try_from(bytes).unwrap_or(u64::MAX),
+        default: u64::try_from(Output::DEFAULT_BUDGET).unwrap_or(u64::MAX),
+    })
 }
 
 /// One opt-out as the report shows it.
