@@ -93,6 +93,13 @@
       "description": "The keyed hash of the agent's session id, or of the parent process id\nwhen the agent gives no session id.",
       "$ref": "#/$defs/Hash"
     },
+    "tolerated": {
+      "description": "The codes of the failures that the run met and recovered from, which\nthe tool reported with `usage::tolerated`, in the tool's spelling.\nEach code appears once, in report order, and the list holds at most\n8 codes. It is present only when the tool reported one.",
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/Name"
+      }
+    },
     "tool": {
       "description": "The name of the tool's root command, such as shelf.",
       "$ref": "#/$defs/Name"

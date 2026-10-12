@@ -27,4 +27,5 @@ Options:
   -V, --version
           Print version
 
+Topics: exit-codes. `cargo crumbkit help <TOPIC>` prints one.
 Next: cargo crumbkit <COMMAND> -h

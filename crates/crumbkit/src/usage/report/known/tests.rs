@@ -80,6 +80,26 @@ fn a_code_with_a_space_another_character_or_more_than_128_characters_is_not_know
 }
 
 #[test]
+fn a_tolerated_code_is_checked_as_the_failure_code_is() {
+    let tool = tool();
+    let tolerated = |codes: &[&str]| {
+        let mut entry = run("books show", &[]);
+        entry.tolerated = codes.iter().map(|code| (*code).to_owned()).collect();
+        known(&tool, &entry)
+    };
+
+    assert!(tolerated(&[
+        "shelf::catalogue::locked",
+        "shelf.network.timed_out"
+    ]));
+    assert!(!tolerated(&[
+        "shelf::catalogue::locked",
+        "token=ghp_16C7e42F"
+    ]));
+    assert!(!tolerated(&[""]));
+}
+
+#[test]
 fn a_caller_is_known_only_when_the_log_writes_it() {
     let tool = tool();
     let caller = |name: &str| {

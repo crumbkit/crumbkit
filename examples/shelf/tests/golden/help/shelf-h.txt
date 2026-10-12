@@ -17,5 +17,5 @@ Options:
   -V, --version  Print version
 
 Global flags: --json, --fields <FIELD>, --long, --full. `shelf --help` describes them.
-Topics: catalogue. `shelf help <TOPIC>` prints one.
+Topics: catalogue, exit-codes. `shelf help <TOPIC>` prints one.
 Next: shelf <COMMAND> -h

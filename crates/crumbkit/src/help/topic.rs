@@ -1,10 +1,11 @@
 //! Help topics, which [`parse`](crate::parse) reads from the guide it takes
-//! through [`text`], [`list`] and [`names`].
+//! through [`text`], [`list`] and [`names`]. Each of them adds crumbkit's
+//! own `exit-codes` topic after the tool's topics.
 
 use clap::builder::StyledStr;
 use clap::builder::styling::Style;
 
-use super::write_line;
+use super::{Guide, exit, write_line};
 
 #[cfg(test)]
 mod tests;
@@ -67,20 +68,25 @@ impl Topic {
 
 /// Returns the topics in guide order, leaving out each topic whose name an
 /// earlier topic already has, so the first of two topics with one name is
-/// the one that prints.
+/// the one that prints, and a topic named `exit-codes`, because crumbkit's
+/// own topic has that name.
 fn distinct(topics: &[Topic]) -> impl Iterator<Item = &Topic> {
     topics.iter().enumerate().filter_map(|(index, topic)| {
         let repeated = topics[..index]
             .iter()
             .any(|earlier| earlier.name == topic.name);
-        (!repeated).then_some(topic)
+        (!repeated && topic.name != exit::TOPIC).then_some(topic)
     })
 }
 
-/// Returns the text of the topic called `name`, ending with a line break,
-/// or `None` when `topics` has no such topic.
-pub(crate) fn text(topics: &[Topic], name: &str) -> Option<String> {
-    let topic = topics.iter().find(|topic| topic.name == name)?;
+/// Returns the text of the topic called `name` in `guide` of the tool
+/// called `tool`, ending with a line break, or `None` when the guide has no
+/// such topic. The name `exit-codes` gives crumbkit's list of exit codes.
+pub(crate) fn text(tool: &str, guide: &Guide, name: &str) -> Option<String> {
+    if name == exit::TOPIC {
+        return Some(exit::text(tool, guide));
+    }
+    let topic = guide.get_topics().iter().find(|topic| topic.name == name)?;
     let mut text = topic.text.to_owned();
     if !text.ends_with('\n') {
         text.push('\n');
@@ -89,26 +95,33 @@ pub(crate) fn text(topics: &[Topic], name: &str) -> Option<String> {
 }
 
 /// Returns the page that `<tool> help` prints, where `tool` is the tool's
-/// name: the topics in guide order under the heading `Topics`, in the
-/// layout of the goal list, and a `Next:` line that prints one. It returns
-/// `None` when `topics` is empty.
-pub(crate) fn list(tool: &str, topics: &[Topic]) -> Option<String> {
-    let width = topics
-        .iter()
+/// name: the topics in guide order and then `exit-codes` under the heading
+/// `Topics`, in the layout of the goal list, and a `Next:` line that prints
+/// one.
+pub(crate) fn list(tool: &str, topics: &[Topic]) -> String {
+    let width = distinct(topics)
         .map(|topic| topic.name.chars().count())
-        .max()?;
+        .chain(std::iter::once(exit::TOPIC.len()))
+        .max()
+        .unwrap_or_default();
     let mut text = String::from("Topics");
     for topic in distinct(topics) {
         let about = (!topic.about.is_empty()).then(|| StyledStr::from(topic.about));
         write_line(&mut text, topic.name, about.as_ref(), width, Style::new());
     }
+    let about = StyledStr::from(exit::ABOUT);
+    write_line(&mut text, exit::TOPIC, Some(&about), width, Style::new());
     text.push_str("\n\nNext: ");
     text.push_str(tool);
     text.push_str(" help <TOPIC>\n");
-    Some(text)
+    text
 }
 
-/// Returns the names of `topics` in guide order, each once.
+/// Returns the names of `topics` in guide order, each once, and then
+/// `exit-codes`.
 pub(crate) fn names(topics: &[Topic]) -> Vec<&str> {
-    distinct(topics).map(|topic| topic.name).collect()
+    distinct(topics)
+        .map(|topic| topic.name)
+        .chain(std::iter::once(exit::TOPIC))
+        .collect()
 }

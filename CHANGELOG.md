@@ -111,6 +111,28 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit-test: [`check_opt_outs`] pins a tool's opt-outs and budgets,
   with each reason and what it costs an agent, in a text and a JSON golden
   file ([ADR-0036]).
+- crumbkit: `Guide::exits` declares a tool's own exit codes, each an
+  [`help::Exit`] with a meaning and optional commands, and the built-in
+  `help exit-codes` topic lists crumbkit's codes and the tool's
+  ([ADR-0037]).
+- crumbkit: each `commands list` row has `exits`, the declared codes that
+  the command can return, and the text output ends with a note that names
+  every code ([ADR-0026]).
+- crumbkit-test: [`check_exit_codes`] rejects a declared exit code that
+  crumbkit owns or that a shell reports, a repeated code, a meaning that is
+  not one line, and a command path that names no command ([ADR-0037]).
+- crumbkit-test: [`check_guide`] rejects a topic named `exit-codes`, which
+  crumbkit's own topic replaces ([ADR-0023]).
+- crumbkit: `Guide::root` names the command that callers run first, such as
+  `crumbkit` under `cargo`, which answers `help` with the topics; cargo
+  crumbkit sets it, and [`check_guide`] rejects a root that names no
+  command ([ADR-0037]).
+- crumbkit: [`usage::tolerated`] records the code of a failure that a run
+  carried on past, and the usage record lists up to 8 such codes in
+  `tolerated` ([ADR-0029]).
+- crumbkit: the `self usage` summary counts the runs that tolerated each
+  code, and each command's figures count the runs of each exit code from 3
+  with its declared meaning ([ADR-0034]).
 
 ### Changed
 
@@ -156,6 +178,8 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   command ([ADR-0036]).
 - crumbkit-test: [`check_schema_goldens`] pins the schemas of file formats
   and fails on a file format with the id of another document ([ADR-0035]).
+- crumbkit: `usage::findings` and `usage::figures` take the tool's
+  `Guide`, which gives the meaning of each exit code ([ADR-0034]).
 
 ### Removed
 
@@ -234,6 +258,7 @@ rustdoc, or at its decision record. -->
 [`parse`]: crates/crumbkit/src/parse.rs
 [`Stop`]: crates/crumbkit/src/parse/stop.rs
 [`usage::ended`]: crates/crumbkit/src/usage.rs
+[`usage::tolerated`]: crates/crumbkit/src/usage.rs
 [`help`]: crates/crumbkit/src/help.rs
 [`help::quote`]: crates/crumbkit/src/help.rs
 [`help::RuntimeLeaf`]: crates/crumbkit/src/help/runtime.rs
@@ -250,6 +275,8 @@ rustdoc, or at its decision record. -->
 [`check_listings`]: crates/crumbkit-test/src/listings.rs
 [`check_filters`]: crates/crumbkit-test/src/filters.rs
 [`check_guide`]: crates/crumbkit-test/src/guide.rs
+[`check_exit_codes`]: crates/crumbkit-test/src/exits.rs
+[`help::Exit`]: crates/crumbkit/src/help/exit.rs
 [`check_help_sizes`]: crates/crumbkit-test/src/sizes.rs
 [`check_help_goldens`]: crates/crumbkit-test/src/goldens.rs
 [`check_examples`]: crates/crumbkit-test/src/examples.rs
@@ -289,3 +316,4 @@ rustdoc, or at its decision record. -->
 [`Budgets`]: crates/crumbkit-test/src/sizes.rs
 [`PathBudgets`]: crates/crumbkit-test/src/weights.rs
 [ADR-0036]: docs/decisions/api/0036-opt-outs.md
+[ADR-0037]: docs/decisions/api/help/0037-exit-codes.md

@@ -144,6 +144,10 @@ pub enum Rule {
     /// comes from `Document::without_envelope`. Its id is
     /// `documents/envelope`.
     Envelope,
+    /// [`check_exit_codes`](crate::check_exit_codes): the guide declares
+    /// an exit code from 126 to 255, which a shell also reports for its own
+    /// reasons. Its id is `exit-codes/shell-code`.
+    ShellExitCode,
 }
 
 impl Rule {
@@ -164,6 +168,7 @@ impl Rule {
             Self::Examples => "examples/run",
             Self::DocumentName => "documents/document-name",
             Self::Envelope => "documents/envelope",
+            Self::ShellExitCode => "exit-codes/shell-code",
         }
     }
 
@@ -207,6 +212,9 @@ impl Rule {
             Self::Envelope => &[
                 "An agent cannot predict the document's shape from crumbkit's conventions and must read its schema with `schemas show`.",
                 "The document has no `schema` id, `total` or `failures`, so a program cannot tell which document it read, whether it holds every row, or which ids failed.",
+            ],
+            Self::ShellExitCode => &[
+                "An agent cannot tell the code from the one a shell reports, such as 127 when the shell cannot find the tool or 130 when Ctrl-C ends it.",
             ],
         }
     }

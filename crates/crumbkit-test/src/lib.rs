@@ -9,6 +9,7 @@
 //! [`check_listings`]: crate::check_listings
 //! [`check_filters`]: crate::check_filters
 //! [`check_guide`]: crate::check_guide
+//! [`check_exit_codes`]: crate::check_exit_codes
 //! [`check_help_sizes`]: crate::check_help_sizes
 //! [`Budgets`]: crate::Budgets
 //! [`Budget`]: crate::Budget
@@ -36,6 +37,7 @@ mod budget;
 mod codes;
 mod documents;
 mod examples;
+mod exits;
 mod filters;
 mod goldens;
 mod grammar;
@@ -57,6 +59,7 @@ pub use crate::budget::Budget;
 pub use crate::codes::check_codes;
 pub use crate::documents::{check_document_ids, check_mounts};
 pub use crate::examples::{Examples, check_examples, example_golden_name};
+pub use crate::exits::check_exit_codes;
 pub use crate::filters::check_filters;
 pub use crate::goldens::check_help_goldens;
 pub use crate::grammar::check_grammar;

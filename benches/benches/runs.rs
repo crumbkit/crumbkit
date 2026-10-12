@@ -57,7 +57,8 @@ struct Limits {
 
 // Each limit's comment gives the count that it comes from. The counts of
 // `books list` with and without the usage log come from run 38169846232 of
-// `scheduled.yml` on `ubuntu-24.04`, and the others from run 38163868931.
+// `scheduled.yml` on `ubuntu-24.04`, the instruction count of
+// `commands list` from run 38190318078, and the others from run 38163868931.
 
 /// The limits of `shelf books list`.
 const BOOKS_LIST: Limits = Limits {
@@ -85,8 +86,8 @@ const LEAF_HELP: Limits = Limits {
 
 /// The limits of `shelf commands list --all --json --full`.
 const COMMANDS_LIST: Limits = Limits {
-    // The count was 2058109 instructions.
-    instructions: 2_263_920,
+    // The count was 2284495 instructions.
+    instructions: 2_512_945,
     // The count was 1942 blocks.
     allocations: 2137,
 };

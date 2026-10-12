@@ -98,6 +98,7 @@ Options:
   -h, --help  Print help (see more with '--help')
 
 Global flags: --json. `tool --help` describes them.
+Topics: exit-codes. `tool help <TOPIC>` prints one.
 Next: tool <COMMAND> -h
 ";
     assert_eq!(help(&GUIDE, &["tool", "-h"]), expected);

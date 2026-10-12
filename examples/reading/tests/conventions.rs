@@ -74,6 +74,12 @@ fn every_command_and_leaf_meets_the_guide_rules() {
 }
 
 #[test]
+fn every_exit_code_meets_the_exit_code_rules() {
+    let (command, guide) = fixture_tool();
+    crumbkit_test::check_exit_codes(&command, &guide, ALLOW);
+}
+
+#[test]
 fn every_help_page_fits_its_size_budget() {
     let (command, guide) = fixture_tool();
     crumbkit_test::check_help_sizes(&command, &guide, &BUDGETS);

@@ -52,6 +52,10 @@ pub(super) struct Entry {
     /// The code of the run's failure or refusal.
     #[serde(default)]
     pub(super) code: Option<String>,
+    /// The codes of the failures that the run reported and carried on
+    /// past, in the tool's spelling.
+    #[serde(default)]
+    pub(super) tolerated: Vec<String>,
     /// The bytes that the run wrote to standard output.
     #[serde(default)]
     pub(super) out_bytes: Option<u64>,
@@ -136,6 +140,7 @@ impl Entry {
             nearest: None,
             exit: Some(0),
             code: None,
+            tolerated: Vec::new(),
             out_bytes: Some(100),
             truncated: false,
             interrupted: false,

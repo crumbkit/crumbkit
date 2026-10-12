@@ -120,6 +120,17 @@ fn a_group_path_that_names_no_command_fails_the_check() {
 }
 
 #[test]
+fn a_root_path_that_names_no_command_fails_the_check() {
+    const GUIDE: Guide = Guide::new().root(&["shelves"]).leaves(LEAVES);
+
+    assert_eq!(
+        panic_message(|| check_guide(&shelf(), &GUIDE)).unwrap(),
+        "the command tree breaks crumbkit's guide rules:\n\
+         the root `shelves` names no command"
+    );
+}
+
+#[test]
 fn a_group_path_that_names_a_command_without_subcommands_fails_the_check() {
     const GUIDE: Guide = Guide::new()
         .groups(&[Group::new(
@@ -237,6 +248,20 @@ fn two_topics_with_one_name_fail_the_check() {
         panic_message(|| check_guide(&shelf(), &GUIDE)).unwrap(),
         "the command tree breaks crumbkit's guide rules:\n\
          two topics are named `catalogue`, and `shelf help catalogue` prints only the first"
+    );
+}
+
+#[test]
+fn a_topic_named_like_crumbkit_s_exit_codes_topic_fails_the_check() {
+    const GUIDE: Guide =
+        Guide::new()
+            .leaves(LEAVES)
+            .topics(&[Topic::new("exit-codes", "", "Codes.\n")]);
+
+    assert_eq!(
+        panic_message(|| check_guide(&shelf(), &GUIDE)).unwrap(),
+        "the command tree breaks crumbkit's guide rules:\n\
+         the topic `exit-codes` has the name of crumbkit's own topic, so `shelf help exit-codes` prints crumbkit's exit codes in its place"
     );
 }
 

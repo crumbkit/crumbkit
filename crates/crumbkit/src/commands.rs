@@ -77,7 +77,7 @@ use serde::ser::{SerializeMap, Serializer};
 use serde_json::Value;
 
 pub use self::row::CommandRow;
-use crate::help::Guide;
+use crate::help::{Guide, exit};
 use crate::{Call, Code, Document, Error, Failure, Listing, Output, Page, Recovery};
 
 #[cfg(test)]
@@ -256,7 +256,9 @@ pub fn list(
             )
         })
         .collect();
-    Ok(Listing::new(rows, total).described("commands"))
+    Ok(Listing::new(rows, total)
+        .described("commands")
+        .note(exit::note(&guide.invocation(root), guide)))
 }
 
 /// One visible command of the branch, with what its row needs to know.

@@ -117,8 +117,13 @@ fn the_walk_reports_help_typed_as_a_flag_and_not_as_a_value() {
 
 #[test]
 fn the_search_for_help_skips_the_value_of_an_option() {
-    let found = help_word(&tool(), false, &args(&["planets", "--sort", "id", "help"]));
+    let found = help_word(
+        &tool(),
+        &[],
+        false,
+        &args(&["planets", "--sort", "id", "help"]),
+    );
 
     assert_eq!(found.map(|help| help.position), Some(4));
-    assert!(help_word(&tool(), false, &args(&["planets", "--sort", "help"])).is_none());
+    assert!(help_word(&tool(), &[], false, &args(&["planets", "--sort", "help"])).is_none());
 }

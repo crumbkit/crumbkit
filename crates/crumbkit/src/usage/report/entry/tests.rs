@@ -32,6 +32,21 @@ fn bytes(value: &Value) -> Vec<u8> {
 }
 
 #[test]
+fn a_line_of_the_log_reads_its_tolerated_codes_and_a_line_without_them_reads_none() {
+    let mut line = refused();
+    line["tolerated"] = json!(["shelf::catalogue::locked"]);
+
+    assert_eq!(
+        Entry::parse(&bytes(&line)).unwrap().tolerated,
+        ["shelf::catalogue::locked"]
+    );
+    assert_eq!(
+        Entry::parse(&bytes(&refused())).unwrap().tolerated,
+        Vec::<String>::new()
+    );
+}
+
+#[test]
 fn a_line_of_the_log_reads_as_an_entry_with_its_end_time_in_milliseconds() {
     let entry = Entry::parse(&bytes(&refused())).unwrap();
 

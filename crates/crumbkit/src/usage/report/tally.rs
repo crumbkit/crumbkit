@@ -39,6 +39,8 @@ pub(in crate::usage) struct Tally {
     callers: BTreeMap<String, u64>,
     /// What each command path's runs did.
     commands: BTreeMap<String, Command>,
+    /// The runs that tolerated each code, by the code.
+    tolerated: BTreeMap<String, u64>,
 }
 
 /// What the runs of one command path did.
@@ -57,6 +59,8 @@ struct Command {
     nearest: BTreeMap<String, u64>,
     /// The failed runs.
     failed: u64,
+    /// The runs that exited with each code from 3, by the code.
+    exits: BTreeMap<u8, u64>,
     /// The wall time of each run that did not print a help page.
     ms: Vec<u64>,
     /// The bytes that each run that reached `finish` wrote.
@@ -84,6 +88,12 @@ impl Tally {
             help_before
         };
         *self.callers.entry(entry.caller.clone()).or_default() += 1;
+        for (index, code) in entry.tolerated.iter().enumerate() {
+            // A run counts a code once, however often its line holds it.
+            if !entry.tolerated[..index].contains(code) {
+                *self.tolerated.entry(code.clone()).or_default() += 1;
+            }
+        }
         let path = entry.command.clone().unwrap_or_default();
         let command = self.commands.entry(path).or_default();
         if entry.help {
@@ -104,6 +114,9 @@ impl Tally {
         }
         if entry.failure().is_some() {
             command.failed += 1;
+        }
+        if let Some(exit) = entry.exit.filter(|exit| *exit >= 3) {
+            *command.exits.entry(exit).or_default() += 1;
         }
         command.full += u64::from(entry.typed("--full"));
         command.all += u64::from(entry.typed("--all"));
@@ -157,6 +170,7 @@ impl Tally {
                 refused: command.refused,
                 nearest: most_first(command.nearest),
                 failed: command.failed,
+                exits: command.exits.into_iter().collect(),
                 p95_ms,
                 p95_out_bytes,
                 full: command.full,
@@ -178,6 +192,7 @@ impl Tally {
             callers: most_first(self.callers),
             findings,
             commands,
+            tolerated: most_first(self.tolerated),
         }
     }
 }

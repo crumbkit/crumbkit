@@ -14,4 +14,5 @@ Options:
   -V, --version  Print version
 
 Global flags: --json, --fields <FIELD>, --long, --full. `reading --help` describes them.
+Topics: exit-codes. `reading help <TOPIC>` prints one.
 Next: reading <COMMAND> -h

@@ -12,6 +12,9 @@ use super::{COMMANDS_LIST, CommandRow, CommandsList, list};
 use crate::help::{Example, Guide, Leaf};
 use crate::{Document, Error, Listing, Output, Row, Sink, Spelling, finish_to};
 
+mod arguments;
+mod exits;
+
 /// A row type for the leaf whose columns the export lists.
 #[derive(Serialize, JsonSchema)]
 struct Book {
@@ -399,6 +402,7 @@ fn a_row_holds_its_leaf_s_examples_as_quoted_command_lines_and_its_columns() {
                     "description": "The year the book was first published.",
                 },
             ],
+            "exits": [],
         }])
     );
 }
@@ -434,6 +438,7 @@ PATH         ABOUT
 shelf        Browse a catalogue
 shelf books  Work with the books
 Showing 2 of 6 commands. --all shows every one.
+Exit codes: 0, 1 and 2 are crumbkit's. `shelf help exit-codes` describes them.
 ";
     assert_eq!(finished.code, ExitCode::SUCCESS);
     assert_eq!(finished.out, expected);
@@ -496,39 +501,6 @@ error: the tool has not kept its command tree, so it cannot list its commands
 ";
     assert_eq!(finished.code, ExitCode::FAILURE);
     assert_eq!(finished.err, expected);
-}
-
-#[test]
-fn the_arguments_serialize_as_the_path_beside_the_page_flags() {
-    let value = serde_json::to_value(args(&["books", "list", "--all"])).unwrap();
-
-    assert_eq!(
-        value,
-        json!({ "path": ["books", "list"], "limit": 25, "all": true })
-    );
-}
-
-#[test]
-fn the_arguments_schema_describes_the_path_and_the_page_flags_and_requires_each() {
-    let schema = schemars::schema_for!(CommandsList);
-
-    let mut properties: Vec<&String> = schema
-        .get("properties")
-        .and_then(Value::as_object)
-        .unwrap()
-        .keys()
-        .collect();
-    properties.sort();
-    assert_eq!(properties, ["all", "limit", "path"]);
-    let mut required: Vec<&str> = schema
-        .get("required")
-        .and_then(Value::as_array)
-        .unwrap()
-        .iter()
-        .map(|name| name.as_str().unwrap())
-        .collect();
-    required.sort_unstable();
-    assert_eq!(required, ["all", "limit", "path"]);
 }
 
 #[test]

@@ -175,6 +175,29 @@
             ]
           }
         },
+        "exits": {
+          "description": "The exit codes that the tool declares for the command besides crumbkit's 0, 1 and 2, in guide order. `<tool> help exit-codes` describes every code.",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "exit": {
+                "description": "The exit code.",
+                "type": "integer",
+                "maximum": 255,
+                "minimum": 0
+              },
+              "meaning": {
+                "description": "What the code means, as one sentence.",
+                "type": "string"
+              }
+            },
+            "required": [
+              "exit",
+              "meaning"
+            ]
+          }
+        },
         "long_about": {
           "description": "The full description that the command's `--help` shows, when the command has one.",
           "type": [
@@ -193,7 +216,8 @@
         "long_about",
         "arguments",
         "examples",
-        "columns"
+        "columns",
+        "exits"
       ]
     }
   }

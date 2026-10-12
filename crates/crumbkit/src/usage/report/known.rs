@@ -28,7 +28,7 @@ const LONGEST_CODE: usize = 128;
 /// - each flag and the nearest flag is the name of an argument of `tool` or
 ///   of a command on the path, as the writer names it: `--long`, or `-s`
 ///   for an argument without a long name;
-/// - the code is 1 to 128 ASCII letters, digits, `_`, `-`, `:`, `.` and
+/// - the code and each tolerated code is 1 to 128 ASCII letters, digits, `_`, `-`, `:`, `.` and
 ///   `/`, which covers crumbkit's predefined spellings of a
 ///   [`Code`](crate::Code) and a tool's custom spelling, and keeps out
 ///   whitespace and any other character;
@@ -44,6 +44,7 @@ pub(super) fn known(tool: &Command, entry: &Entry) -> bool {
     entry.flags.iter().all(flag)
         && entry.nearest.as_ref().is_none_or(flag)
         && entry.code.as_deref().is_none_or(is_code)
+        && entry.tolerated.iter().all(|code| is_code(code))
         && is_caller(&entry.caller)
 }
 

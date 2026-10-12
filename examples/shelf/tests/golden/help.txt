@@ -1,4 +1,5 @@
 Topics
-  catalogue  Where shelf's books come from and how their ids work
+  catalogue   Where shelf's books come from and how their ids work
+  exit-codes  What each exit code means
 
 Next: shelf help <TOPIC>

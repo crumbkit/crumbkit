@@ -21,6 +21,8 @@ mod tests;
 /// runs from `command`, and the check reads the tree as the tool built it,
 /// so clap's generated `help` subcommand is never a child. It finds:
 ///
+/// - a root, set with `Guide::root`, whose path names no command, matching
+///   real names only, because `parse` then answers topics at the clap root;
 /// - a group whose path names no command, matching real names only;
 /// - a group whose path names a command without subcommands;
 /// - a goal that names a command that is not a subcommand of its group,
@@ -99,6 +101,10 @@ mod tests;
 /// `command`, such as `shelf books`.
 pub fn check_guide(command: &Command, guide: &Guide) {
     let mut problems = Vec::new();
+    let root = guide.get_root();
+    if tree::find(command, root.iter().copied()).is_none() {
+        problems.push(format!("the root `{}` names no command", root.join(" ")));
+    }
     let groups = guide.get_groups();
     for (index, group) in groups.iter().enumerate() {
         let path = group.path();
@@ -275,6 +281,13 @@ fn check_topics(command: &Command, guide: &Guide, problems: &mut Vec<String>) {
             problems.push(format!(
                 "the topic `{name}` is a name of the command `{tool} {}`, so `{tool} help {name}` prints that command's help",
                 subcommand.get_name()
+            ));
+        }
+        // crumbkit's `help` prints its own exit-codes topic before it looks
+        // for a tool's topic with that name.
+        if name == "exit-codes" {
+            problems.push(format!(
+                "the topic `{name}` has the name of crumbkit's own topic, so `{tool} help {name}` prints crumbkit's exit codes in its place"
             ));
         }
         if topic.text().trim().is_empty() {

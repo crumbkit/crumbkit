@@ -5,7 +5,7 @@ use std::process::ExitCode;
 use clap::Command;
 
 use super::RuntimeLeaf;
-use crate::help::{Example, Goal, Group, Guide, Leaf, Topic};
+use crate::help::{Example, Exit, Goal, Group, Guide, Leaf, Topic};
 use crate::{Sink, Spelling, parse_to};
 
 const GUIDE: Guide = Guide::new()
@@ -15,7 +15,8 @@ const GUIDE: Guide = Guide::new()
         "orbits",
         "How the orbits work",
         "Planets orbit.\n",
-    )]);
+    )])
+    .exits(&[Exit::new(124, "The telescope ran out of time.")]);
 
 #[test]
 fn runtime_leaves_follow_the_const_leaves_with_their_paths_and_examples_in_order() {
@@ -57,11 +58,12 @@ fn runtime_leaves_follow_the_const_leaves_with_their_paths_and_examples_in_order
 }
 
 #[test]
-fn runtime_leaves_keep_the_groups_and_topics_of_the_const_guide() {
+fn runtime_leaves_keep_the_groups_topics_and_exit_codes_of_the_const_guide() {
     let guide = GUIDE.with_runtime_leaves(Vec::new());
 
     assert_eq!(guide.get_groups(), GUIDE.get_groups());
     assert_eq!(guide.get_topics(), GUIDE.get_topics());
+    assert_eq!(guide.get_exits(), GUIDE.get_exits());
     assert_eq!(guide.get_leaves().len(), 1);
 }
 

@@ -11,3 +11,4 @@ reading finished       Books finished this year
 reading finished list  List the entries of this reading list, in file order
 reading to-read        Books to read next
 reading to-read list   List the entries of this reading list, in file order
+Exit codes: 0, 1 and 2 are crumbkit's. `reading help exit-codes` describes them.

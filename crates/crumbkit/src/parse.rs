@@ -13,7 +13,7 @@ pub use self::stop::Stop;
 
 use self::lines::{add_help_lines, has_visible_subcommands};
 use self::walk::{help_word, walk};
-use crate::help::{Guide, Topic, topic};
+use crate::help::{Guide, topic};
 use crate::refusal::Refusal;
 use crate::{Sink, Spelling};
 
@@ -124,9 +124,10 @@ where
 ///   flags: --json, --fields <FIELD>, --long, --full. `shelf books list
 ///   --help` describes them.`` crumbkit hides those flags from `-h`, so `-h`
 ///   stays short and `--help` lists them in full.
-/// - The root's help names the guide's topics on one line, such as
-///   ``Topics: catalogue. `shelf help <TOPIC>` prints one.``, in `-h` and in
-///   `--help`.
+/// - The root's help names the guide's topics and crumbkit's `exit-codes`
+///   topic on one line, such as ``Topics: catalogue, exit-codes. `shelf
+///   help <TOPIC>` prints one.``, in `-h` and in `--help`. A root without
+///   subcommands and without topics of the tool's own has no such line.
 /// - The help of a command with a visible subcommand ends with a line that
 ///   opens one of them, such as `Next: shelf books <COMMAND> -h`, in `-h`
 ///   and in `--help`.
@@ -157,15 +158,18 @@ where
 /// crumbkit answers the word `help` in place of clap, whose generated
 /// `help` subcommand it turns off. It answers `help` as the next word below
 /// any command with subcommands, and directly after the program name when
-/// the guide has topics:
+/// the root has subcommands or the guide has topics:
 ///
-/// - `shelf help` lists the tool's topics under the heading `Topics` and
-///   ends with `Next: shelf help <TOPIC>`. A tool without topics prints the
-///   root's `--help`.
+/// - `shelf help` lists the tool's topics and then `exit-codes` under the
+///   heading `Topics`, and ends with `Next: shelf help <TOPIC>`.
 /// - `shelf help catalogue` prints the text of the topic `catalogue`. A root
 ///   command or alias with that name wins over the topic. Topics belong to
 ///   the root, so `shelf books help catalogue` names no command. A root with
 ///   its own command named or aliased `help` has no topics.
+/// - `shelf help exit-codes` lists crumbkit's exit codes 0, 1 and 2 and
+///   then the [`Exit`](crate::help::Exit) codes of the guide, each with its
+///   meaning. A topic of the tool's own named `exit-codes` never prints,
+///   because crumbkit's topic has the name.
 /// - Any other `help` command line drops the word `help` and asks for
 ///   `--help`. `shelf help books show` and `shelf books help show` print
 ///   what `shelf books show --help` prints, `shelf books help` prints what
@@ -274,21 +278,27 @@ where
 {
     let mut args: Vec<OsString> = args.into_iter().map(Into::into).collect();
     #[cfg(feature = "usage-log")]
-    crate::usage::typed(&command, &args);
+    crate::usage::typed(&command, &args, spelling);
     // crumbkit answers `help` itself. clap propagates the setting to every
     // subcommand, so no `Commands:` list shows clap's `help` line, and
     // `Command::build` copies no subtree into a generated help tree.
     command = command.disable_help_subcommand(true);
-    // A root command named or aliased `help` takes the word, so no topic
-    // can print.
-    let topics = if command.find_subcommand("help").is_some() {
-        &[]
-    } else {
-        guide.get_topics()
+    // The guide's root, which is the clap root unless `Guide::root` names
+    // a subcommand, answers `help` with topics when it has subcommands or
+    // the tool declares topics, and then it also has crumbkit's
+    // `exit-codes` topic. A command named or aliased `help` below the root
+    // takes the word, so no topic can print.
+    let root = guide.root_in(&command);
+    let has_topics = {
+        let node = root.iter().fold(&command, |node, name| {
+            node.find_subcommand(name).unwrap_or(node)
+        });
+        node.find_subcommand("help").is_none()
+            && (node.has_subcommands() || !guide.get_topics().is_empty())
     };
-    if let Some(help) = help_word(&command, !topics.is_empty(), &args) {
+    if let Some(help) = help_word(&command, root, has_topics, &args) {
         if help.at_root
-            && let Some(page) = help_page(&command, topics, &args[help.position + 1..])
+            && let Some(page) = help_page(&command, guide, &args[help.position + 1..])
         {
             // RUST-10: a topic and the topic list print as plain text, also
             // on a terminal, because `StyledStr`'s `Display` drops styles. A
@@ -296,7 +306,12 @@ where
             // writes help, replaces this when a tool needs colour there.
             let code = print_text(sink, &page);
             #[cfg(feature = "usage-log")]
-            crate::usage::helped(&command, &[], true, code);
+            crate::usage::helped(
+                &command,
+                &root.iter().map(|&name| name.to_owned()).collect::<Vec<_>>(),
+                true,
+                code,
+            );
             // Only this path ends before the walk below, so it walks the
             // words for `--json` here.
             let json = walk(&command, &args).json;
@@ -313,7 +328,7 @@ where
     let (path, long_help, json) = (walked.path, walked.long_help, walked.json);
     #[cfg(feature = "tracing")]
     crate::trace::spans::command(&path);
-    add_help_lines(&mut command, guide, topics, &path, long_help);
+    add_help_lines(&mut command, guide, has_topics, &path, long_help);
 
     let error = match command.try_get_matches_from_mut(args) {
         Ok(mut matches) => {
@@ -346,26 +361,30 @@ where
     Err(Stop::new(code, json, command))
 }
 
-/// Returns the page that `help` at the root prints without clap, for
-/// `rest`, the words after `help`: the list of `topics` when `rest` holds no
-/// word that names something, and a topic's text when its one such word
-/// names a topic and no root command or alias has that name. It returns
-/// `None` otherwise, and the caller asks clap for help instead.
+/// Returns the page that `help` at the guide's root prints without clap,
+/// for `rest`, the words after `help`: the list of the topics of `guide`
+/// and `exit-codes` when `rest` holds no word that names something, and a
+/// topic's text when its one such word names a topic and no command or
+/// alias directly below the root has that name. It returns `None` otherwise, and the caller asks
+/// clap for help instead.
 ///
 /// The words that name something are the words before any `--` that do not
 /// start with `-`.
 //
 // RUST-10: the page ignores flags, so `shelf help catalogue --json` prints
 // the topic as text. A topic in JSON replaces this when a caller needs it.
-fn help_page(command: &Command, topics: &[Topic], rest: &[OsString]) -> Option<String> {
+fn help_page(command: &Command, guide: &Guide, rest: &[OsString]) -> Option<String> {
     let mut words = rest
         .iter()
         .take_while(|word| *word != "--")
         .filter(|word| !word.as_encoded_bytes().starts_with(b"-"));
+    let root = guide.root_in(command).iter().fold(command, |node, name| {
+        node.find_subcommand(name).unwrap_or(node)
+    });
     match (words.next(), words.next()) {
-        (None, _) => topic::list(command.get_name(), topics),
-        (Some(word), None) if command.find_subcommand(word).is_none() => {
-            topic::text(topics, word.to_str()?)
+        (None, _) => Some(topic::list(&guide.invocation(command), guide.get_topics())),
+        (Some(word), None) if root.find_subcommand(word).is_none() => {
+            topic::text(command.get_name(), guide, word.to_str()?)
         }
         _ => None,
     }

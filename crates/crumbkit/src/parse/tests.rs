@@ -10,6 +10,8 @@ use super::{Stop, message, parse_to};
 use crate::help::Guide;
 use crate::{Sink, Spelling};
 
+mod root;
+
 /// A tool with two global flags, a version, and a group that holds a visible
 /// leaf with an alias and a hidden leaf.
 fn tool() -> Command {
@@ -363,6 +365,7 @@ fn a_tool_s_own_after_help_prints_before_crumbkit_s_lines_in_short_and_long_help
 Report bugs at https://example.org/bugs.
 
 Global flags: --json, --fields <FIELD>. `tool --help` describes them.
+Topics: exit-codes. `tool help <TOPIC>` prints one.
 Next: tool <COMMAND> -h
 "
         ),
@@ -373,6 +376,7 @@ Next: tool <COMMAND> -h
             "\
 Report bugs at https://example.org/bugs.
 
+Topics: exit-codes. `tool help <TOPIC>` prints one.
 Next: tool <COMMAND> -h
 "
         ),
@@ -391,7 +395,9 @@ fn a_tool_s_own_after_long_help_prints_before_crumbkit_s_lines_in_long_help_only
 
     assert!(short.contains("\nReport bugs.\n\nGlobal flags:"), "{short}");
     assert!(
-        long.ends_with("\nReport bugs at https://example.org/bugs.\n\nNext: tool <COMMAND> -h\n"),
+        long.ends_with(
+            "\nReport bugs at https://example.org/bugs.\n\nTopics: exit-codes. `tool help <TOPIC>` prints one.\nNext: tool <COMMAND> -h\n"
+        ),
         "{long}"
     );
 }
@@ -409,11 +415,15 @@ fn help_with_a_command_path_prints_that_command_s_long_help() {
 }
 
 #[test]
-fn help_without_words_prints_the_root_s_long_help_when_there_are_no_topics() {
+fn help_without_words_lists_the_topics_when_the_tool_declares_none() {
     let parsed = parse(&["tool", "help"]);
 
     assert_eq!(parsed.code, Some(ExitCode::SUCCESS));
-    assert_eq!(parsed.out, parse(&["tool", "--help"]).out);
+    assert!(
+        parsed.out.starts_with("Topics\n  exit-codes"),
+        "{}",
+        parsed.out
+    );
     assert_eq!(parsed.err, "");
 }
 

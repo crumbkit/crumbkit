@@ -11,7 +11,7 @@
 //!     &cli.output,
 //!     SPELLING,
 //!     crumbkit::usage::SELF_USAGE,
-//!     Ok::<_, crumbkit::Error>(crumbkit::usage::findings(&cli.output, &args)),
+//!     Ok::<_, crumbkit::Error>(crumbkit::usage::findings(&cli.output, &GUIDE, &args)),
 //! ),
 //! ```
 //!
@@ -42,6 +42,7 @@ use serde::Serialize;
 
 use super::file::LOG;
 use super::report::{Figures, Finding, Kind, Report, Tally, read};
+use crate::help::Guide;
 use crate::{Call, Document, Listing, Output};
 
 #[cfg(test)]
@@ -121,7 +122,25 @@ pub(super) struct CommandFigures {
     typed_all: u64,
     /// The runs that typed `--long`.
     typed_long: u64,
+    /// The runs that exited with each code from 3, which the tool declares,
+    /// in code order.
+    exits: Vec<ExitRuns>,
 }
+
+/// The runs of a command that exited with one of the tool's codes.
+#[derive(Debug, Serialize, JsonSchema)]
+struct ExitRuns {
+    /// The exit code, from 3 to 255.
+    exit: u8,
+    /// What the tool's guide says the code means for the command, or null
+    /// when the guide declares no such code for it.
+    meaning: Option<&'static str>,
+    /// The runs that exited with the code.
+    runs: u64,
+}
+
+/// The most codes that the summary of `self usage` lists as tolerated.
+const MOST_TOLERATED: usize = 10;
 
 /// The summary of the runs that `self usage` read. The text output prints
 /// it as one line above the table, such as `1,284 runs in 23 sessions since
@@ -139,6 +158,18 @@ pub struct UsageSummary {
     /// The records that the report left out, because they named a command,
     /// flag, code or caller that the tool does not write.
     skipped: u64,
+    /// The codes of the failures that runs reported and carried on past,
+    /// with the runs that tolerated each, the most first, at most 10.
+    tolerated: Vec<CodeRuns>,
+}
+
+/// The runs that tolerated one code.
+#[derive(Debug, Serialize, JsonSchema)]
+struct CodeRuns {
+    /// The code, in the tool's spelling.
+    code: String,
+    /// The runs that tolerated the code. A run counts each code once.
+    runs: u64,
 }
 
 /// The runs of one caller.
@@ -154,7 +185,8 @@ struct CallerRuns {
 /// to [`Output::set_command`], which it builds in full through
 /// [`Output::command`], for the runs that ended in the `--since`
 /// duration before now, for the tool to pass to [`finish`](crate::finish)
-/// with [`SELF_USAGE`].
+/// with [`SELF_USAGE`]. `guide` is the tool's guide, whose exit codes give
+/// the meaning of each exit from 3 in a command's figures.
 ///
 /// It reads the file that `--log` names, or else `usage.jsonl` in the
 /// tool's directory under the XDG state directory, once, a line at a time. A record that names a command path,
@@ -169,10 +201,14 @@ struct CallerRuns {
 /// never called [`Output::set_command`] has no name to find its log by, so
 /// its report has no runs.
 #[must_use]
-pub fn findings(output: &mut Output, args: &SelfUsage) -> Listing<FindingRow, UsageSummary> {
+pub fn findings(
+    output: &mut Output,
+    guide: &Guide,
+    args: &SelfUsage,
+) -> Listing<FindingRow, UsageSummary> {
     let empty = Command::new("");
     let tool = output.command().unwrap_or(&empty);
-    report_from(tool, open(tool, args), args.since, SystemTime::now())
+    report_from(tool, guide, open(tool, args), args.since, SystemTime::now())
 }
 
 /// Opens the usage log that `args` names, or else the log of `tool`, to
@@ -209,9 +245,10 @@ fn day_of(time: SystemTime) -> String {
 
 /// Returns the findings in `log` for the runs that ended in the `since`
 /// duration before `now`, checked against `tool`, as [`findings`]
-/// describes.
+/// describes for `guide`.
 fn report_from(
     tool: &Command,
+    guide: &Guide,
     log: Option<impl BufRead>,
     since: Duration,
     now: SystemTime,
@@ -220,7 +257,7 @@ fn report_from(
     let rows: Vec<FindingRow> = report
         .findings
         .iter()
-        .map(|finding| row(tool.get_name(), finding, &report))
+        .map(|finding| row(tool.get_name(), guide, finding, &report))
         .collect();
     let total = rows.len();
     Listing::new(rows, total)
@@ -263,12 +300,21 @@ pub(super) fn summarize(
             .collect(),
         since: day_of(start),
         skipped: report.skipped,
+        tolerated: std::mem::take(&mut report.tolerated)
+            .into_iter()
+            .take(MOST_TOLERATED)
+            .map(|count| CodeRuns {
+                code: count.name,
+                runs: count.runs,
+            })
+            .collect(),
     };
     (report, summary)
 }
 
-/// Returns the row of `finding` in `report` for the tool named `tool`.
-fn row(tool: &str, finding: &Finding, report: &Report) -> FindingRow {
+/// Returns the row of `finding` in `report` for the tool named `tool`,
+/// whose guide is `guide`.
+fn row(tool: &str, guide: &Guide, finding: &Finding, report: &Report) -> FindingRow {
     // Every finding names a command that the report has figures for.
     let figures = report
         .commands
@@ -286,7 +332,9 @@ fn row(tool: &str, finding: &Finding, report: &Report) -> FindingRow {
         command,
         suggestion: suggestion(finding, figures),
         code: finding.code.clone(),
-        figures: figures.map_or_else(CommandFigures::none, CommandFigures::of),
+        figures: figures.map_or_else(CommandFigures::none, |figures| {
+            CommandFigures::of(figures, guide)
+        }),
     }
 }
 
@@ -326,8 +374,27 @@ fn suggestion(finding: &Finding, figures: Option<&Figures>) -> String {
 }
 
 impl CommandFigures {
-    /// Returns the figures that `figures` holds.
-    pub(super) const fn of(figures: &Figures) -> Self {
+    /// Returns the figures that `figures` holds, with the meaning that
+    /// `guide` gives each exit code for the command.
+    pub(super) fn of(figures: &Figures, guide: &Guide) -> Self {
+        let path: Vec<&str> = if figures.command.is_empty() {
+            Vec::new()
+        } else {
+            figures.command.split(' ').collect()
+        };
+        let exits = figures
+            .exits
+            .iter()
+            .map(|&(exit, runs)| ExitRuns {
+                exit,
+                meaning: guide
+                    .get_exits()
+                    .iter()
+                    .find(|declared| declared.code() == exit && declared.covers(&path))
+                    .map(crate::help::Exit::meaning),
+                runs,
+            })
+            .collect();
         Self {
             runs: figures.runs,
             help_pages: figures.help,
@@ -339,6 +406,7 @@ impl CommandFigures {
             typed_full: figures.full,
             typed_all: figures.all,
             typed_long: figures.long,
+            exits,
         }
     }
 
@@ -355,6 +423,7 @@ impl CommandFigures {
             typed_full: 0,
             typed_all: 0,
             typed_long: 0,
+            exits: Vec::new(),
         }
     }
 }
@@ -396,6 +465,17 @@ impl fmt::Display for UsageSummary {
                 grouped(self.skipped),
                 plural(self.skipped, "record was", "records were")
             )?;
+        }
+        for (index, count) in self.tolerated.iter().enumerate() {
+            let lead = if index == 0 {
+                " Tolerated most often:"
+            } else {
+                ","
+            };
+            write!(f, "{lead} {} {}", count.code, grouped(count.runs))?;
+        }
+        if !self.tolerated.is_empty() {
+            f.write_str(".")?;
         }
         Ok(())
     }
