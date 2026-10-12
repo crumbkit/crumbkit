@@ -52,6 +52,7 @@ pub mod commands;
 mod complete;
 #[cfg(any(feature = "usage-log", feature = "tracing"))]
 mod exit;
+mod expect;
 mod fetch;
 pub mod form;
 pub mod help;
@@ -79,6 +80,7 @@ pub use crumbkit_core::{
 pub use crate::call::RenderCall;
 #[cfg(feature = "complete")]
 pub use crate::complete::{complete, complete_to};
+pub use crate::expect::{Expect, Expected};
 pub use crate::fetch::fetch_each;
 pub use crate::output::{DryRun, Output, Streaming, Yes, finish, finish_to, stream, stream_to};
 pub use crate::page::Page;

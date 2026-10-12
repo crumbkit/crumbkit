@@ -15,6 +15,7 @@ fn every_crumbkit_code_is_in_all_once_and_spells_with_its_own_component_area_and
         "crumbkit::schemas::unavailable",
         "crumbkit::confirmation::declined",
         "crumbkit::confirmation::needs_yes",
+        "crumbkit::version::conflict",
     ];
     if cfg!(feature = "hand-over") {
         expected.extend([

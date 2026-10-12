@@ -20,7 +20,7 @@ use std::fmt::Write as _;
 use clap::Command;
 use clap::builder::styling::Style;
 
-pub use self::effects::Effects;
+pub use self::effects::{Effects, Items};
 pub use self::exit::Exit;
 pub use self::format::FileFormat;
 pub use self::leaf::{Column, Example, Leaf, STREAM_LINE};

@@ -9,4 +9,5 @@ Examples:
   reading finished edit
 
 Effects: destructive, not idempotent, closed-world.
+Writes: replaces existing data, without a version check.
 Global flags: --json, --fields <FIELD>, --long, --full, --no-input. `reading finished edit --help` describes them.

@@ -51,6 +51,10 @@ pub const CONFIRM_DECLINED: Code = Code::new("crumbkit", "confirmation", "declin
 /// or standard error is not a terminal (ADR-0039).
 pub const CONFIRM_NEEDS_YES: Code = Code::new("crumbkit", "confirmation", "needs_yes");
 
+/// The code of a write whose target is not at the version that `--expect`
+/// names, so the command changed nothing (ADR-0047).
+pub const VERSION_CONFLICT: Code = Code::new("crumbkit", "version", "conflict");
+
 /// The code of `--json` passed to a command whose child has no JSON form
 /// (ADR-0042).
 #[cfg(feature = "hand-over")]
@@ -87,6 +91,7 @@ pub const ALL: &[&Code] = &[
     &SCHEMAS_UNAVAILABLE,
     &CONFIRM_DECLINED,
     &CONFIRM_NEEDS_YES,
+    &VERSION_CONFLICT,
 ];
 
 /// Every code above, in the order this module declares them. The `child`
@@ -101,6 +106,7 @@ pub const ALL: &[&Code] = &[
     &SCHEMAS_UNAVAILABLE,
     &CONFIRM_DECLINED,
     &CONFIRM_NEEDS_YES,
+    &VERSION_CONFLICT,
     &CHILD_NO_JSON,
     &CHILD_NOT_FOUND,
     &CHILD_NOT_STARTED,

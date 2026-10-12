@@ -2,15 +2,17 @@
 //! commands. The commands that reading adds for its lists are in
 //! `graft.rs`.
 
+use std::num::NonZeroUsize;
+
 use clap::{Args, Parser, Subcommand};
 use crumbkit::commands::{COMMANDS_LIST, CommandsList};
 use crumbkit::help::{Effects, Example, Guide, Leaf};
 use crumbkit::pick::Choices;
 use crumbkit::schemas::{SCHEMAS_LIST, SCHEMAS_SHOW, SchemasList, SchemasShow};
-use crumbkit::{NoInput, Output, Page};
+use crumbkit::{DryRun, Expect, NoInput, Output, Page, Yes};
 use crumbkit_picker::Menu;
 
-use crate::lists::{ENTRIES_LIST, ENTRIES_STREAM, choices};
+use crate::lists::{ENTRIES_LIST, ENTRIES_SET, ENTRIES_STREAM, choices};
 
 /// Keep reading lists, and print the entries of each.
 #[derive(Debug, Parser)]
@@ -65,6 +67,37 @@ pub const GUIDE: Guide = Guide::new().picker(&MENU).leaves(&[
         .effects(Effects::read_only())
         .stream(ENTRIES_STREAM)
         .choices(LISTS),
+    Leaf::new(&["entries", "set"])
+        .examples(&[
+            Example::new(
+                &[
+                    "--list",
+                    "to-read",
+                    "--position",
+                    "2",
+                    "--expect",
+                    "Wuthering Heights",
+                    "--dry-run",
+                    "Mary Barton",
+                ],
+                "Print the entry that replacing entry 2 of the to-read list would write",
+            ),
+            Example::new(
+                &[
+                    "--list",
+                    "to-read",
+                    "--position",
+                    "6",
+                    "--expect",
+                    "none",
+                    "--dry-run",
+                    "Emma",
+                ],
+                "Print the entry that appending Emma to the to-read list would write",
+            ),
+        ])
+        .effects(Effects::replacing())
+        .document(ENTRIES_SET),
     Leaf::new(&["commands", "list"])
         .examples(&[
             Example::new(&[], "List every command"),
@@ -118,6 +151,8 @@ pub(crate) enum EntriesCommand {
     List(EntriesList),
     /// Print each entry of the reading list that --list names as reading reads it.
     Stream(EntriesStream),
+    /// Replace or append an entry of the reading list that --list names.
+    Set(EntriesSet),
 }
 
 /// The commands for reading's own commands.
@@ -154,4 +189,47 @@ pub(crate) struct EntriesStream {
     /// The name of the reading list, such as to-read
     #[arg(long, value_name = "NAME")]
     pub(crate) list: String,
+}
+
+/// The arguments of `reading entries set`.
+#[derive(Debug, Args)]
+pub(crate) struct EntriesSet {
+    /// The name of the reading list, such as to-read
+    #[arg(long, value_name = "NAME")]
+    pub(crate) list: String,
+
+    /// The entry's position from 1, where one past the last appends
+    #[arg(long, value_name = "N")]
+    pub(crate) position: NonZeroUsize,
+
+    /// The title of the book
+    #[arg(value_name = "TITLE", value_parser = title)]
+    pub(crate) title: String,
+
+    /// The title that the entry has now, which is the entry's version.
+    #[command(flatten)]
+    pub(crate) expect: Expect,
+
+    /// Print the entry that the command would write, and write nothing.
+    #[command(flatten)]
+    pub(crate) dry_run: DryRun,
+
+    /// Write the entry without asking.
+    #[command(flatten)]
+    pub(crate) yes: Yes,
+}
+
+/// Returns `value` as a title, or refuses a value that is empty, holds a
+/// line break or starts with `#`, because a list's file holds one entry on
+/// each line and reads a line that starts with `#` as a comment.
+fn title(value: &str) -> Result<String, String> {
+    if value.trim().is_empty() {
+        Err("a title cannot be empty".to_owned())
+    } else if value.contains(['\n', '\r']) {
+        Err("a title cannot hold a line break".to_owned())
+    } else if value.trim_start().starts_with('#') {
+        Err("a title cannot start with #, which marks a comment in a list's file".to_owned())
+    } else {
+        Ok(value.trim().to_owned())
+    }
 }

@@ -1,0 +1,23 @@
+Replace or append an entry of the reading list that --list names
+
+Usage: reading entries set [OPTIONS] --list <NAME> --position <N> <TITLE>
+
+Arguments:
+  <TITLE>  The title of the book
+
+Options:
+      --list <NAME>       The name of the reading list, such as to-read
+      --position <N>      The entry's position from 1, where one past the last appends
+      --expect <VERSION>  Fail with a conflict unless the target is at VERSION, or does not exist when VERSION is none
+      --dry-run           Report what the command would change, and change nothing
+      --yes               Proceed without asking for confirmation
+  -h, --help              Print help (see more with '--help')
+
+Examples:
+  reading entries set --list to-read --position 2 --expect 'Wuthering Heights' --dry-run 'Mary Barton'
+  reading entries set --list to-read --position 6 --expect none --dry-run Emma
+
+Effects: destructive, not idempotent, closed-world.
+Writes: replaces existing data; --expect <VERSION> fails with a conflict when the data changed.
+Global flags: --json, --fields <FIELD>, --long, --full, --no-input. `reading entries set --help` describes them.
+Next: reading entries set --help explains each column.

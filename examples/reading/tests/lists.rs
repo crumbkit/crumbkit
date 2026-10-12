@@ -153,3 +153,262 @@ fn edit_opens_the_list_in_the_editor_that_visual_names_and_returns_its_exit_code
     assert_eq!(fs::read_to_string(opened)?, expected);
     Ok(())
 }
+
+/// Returns a temporary directory that holds a copy of the fixture lists, so
+/// a test can write to a list without changing the fixtures.
+///
+/// # Errors
+///
+/// Returns the I/O error of a directory or a file that cannot be created.
+fn copy_of_lists() -> io::Result<tempfile::TempDir> {
+    let copy = tempfile::tempdir()?;
+    for name in ["finished.txt", "to-read.txt"] {
+        std::fs::copy(
+            std::path::Path::new(LISTS).join(name),
+            copy.path().join(name),
+        )?;
+    }
+    Ok(copy)
+}
+
+/// Returns the text of the to-read list in `dir`.
+///
+/// # Errors
+///
+/// Returns the I/O error of a file that cannot be read.
+fn to_read(dir: &tempfile::TempDir) -> io::Result<String> {
+    std::fs::read_to_string(dir.path().join("to-read.txt"))
+}
+
+/// The text of the to-read fixture list.
+const TO_READ: &str = "# Books to read next\nNorth and South\nWuthering Heights\nThe Moonstone\nDracula\nLittle Women\n";
+
+#[test]
+fn entries_set_replaces_the_entry_when_the_expected_title_matches() -> io::Result<()> {
+    let copy = copy_of_lists()?;
+    let dir = copy.path().to_string_lossy().into_owned();
+
+    reading(
+        &dir,
+        &[
+            "entries",
+            "set",
+            "--list",
+            "to-read",
+            "--position",
+            "2",
+            "--expect",
+            "Wuthering Heights",
+            "--yes",
+            "Mary Barton",
+        ],
+    )?
+    .success()
+    .stdout_eq("POSITION  TITLE\n2         Mary Barton\n");
+    assert_eq!(
+        to_read(&copy)?,
+        TO_READ.replace("Wuthering Heights", "Mary Barton")
+    );
+    Ok(())
+}
+
+#[test]
+fn entries_set_with_expect_none_appends_an_entry_after_the_last() -> io::Result<()> {
+    let copy = copy_of_lists()?;
+    let dir = copy.path().to_string_lossy().into_owned();
+
+    reading(
+        &dir,
+        &[
+            "entries",
+            "set",
+            "--list",
+            "to-read",
+            "--position",
+            "6",
+            "--expect",
+            "none",
+            "--yes",
+            "Emma",
+        ],
+    )?
+    .success();
+    assert_eq!(to_read(&copy)?, format!("{TO_READ}Emma\n"));
+    Ok(())
+}
+
+#[test]
+fn entries_set_fails_with_a_conflict_and_changes_nothing_when_the_title_differs() -> io::Result<()>
+{
+    let copy = copy_of_lists()?;
+    let dir = copy.path().to_string_lossy().into_owned();
+
+    reading(
+        &dir,
+        &[
+            "entries",
+            "set",
+            "--list",
+            "to-read",
+            "--position",
+            "2",
+            "--expect",
+            "Emma",
+            "--yes",
+            "Mary Barton",
+        ],
+    )?
+    .code(1)
+    .stdout_eq("")
+    .stderr_eq(file!["golden/entries-set-conflict.stderr"]);
+    assert_eq!(to_read(&copy)?, TO_READ);
+    Ok(())
+}
+
+#[test]
+fn entries_set_with_expect_none_fails_with_a_conflict_when_the_entry_exists() -> io::Result<()> {
+    let copy = copy_of_lists()?;
+    let dir = copy.path().to_string_lossy().into_owned();
+
+    reading(
+        &dir,
+        &[
+            "entries",
+            "set",
+            "--list",
+            "to-read",
+            "--position",
+            "5",
+            "--expect",
+            "none",
+            "--yes",
+            "Emma",
+        ],
+    )?
+    .code(1)
+    .stdout_eq("");
+    assert_eq!(to_read(&copy)?, TO_READ);
+    Ok(())
+}
+
+#[test]
+fn entries_set_on_a_dry_run_prints_the_entry_and_changes_nothing() -> io::Result<()> {
+    let copy = copy_of_lists()?;
+    let dir = copy.path().to_string_lossy().into_owned();
+
+    reading(
+        &dir,
+        &[
+            "entries",
+            "set",
+            "--list",
+            "to-read",
+            "--position",
+            "1",
+            "--dry-run",
+            "Emma",
+        ],
+    )?
+    .success()
+    .stdout_eq("POSITION  TITLE\n1         Emma\nThis was a dry run, so nothing changed.\n");
+    assert_eq!(to_read(&copy)?, TO_READ);
+    Ok(())
+}
+
+#[test]
+fn entries_set_refuses_an_empty_expect_and_admits_its_twin_with_a_title() {
+    let examples = Examples::new(env!("CARGO_BIN_EXE_reading"), "").env(&[("READING_DIR", LISTS)]);
+
+    // The twin differs from the refused command line in the value of
+    // `--expect` alone, and it runs on a dry run, so the empty value is the
+    // reason for the refusal (TEST-1).
+    let refused = check_twin(
+        &examples,
+        Spelling::COLONS,
+        &Failing::new(
+            &codes::CLI_USAGE,
+            &[
+                "entries",
+                "set",
+                "--list",
+                "to-read",
+                "--position",
+                "1",
+                "--expect",
+                "",
+                "--dry-run",
+                "Emma",
+            ],
+        ),
+        &[
+            "entries",
+            "set",
+            "--list",
+            "to-read",
+            "--position",
+            "1",
+            "--expect",
+            "North and South",
+            "--dry-run",
+            "Emma",
+        ],
+    );
+    OutputAssert::new(refused).code(2).stdout_eq("");
+}
+
+#[test]
+fn entries_set_refuses_a_title_with_a_line_break_and_admits_its_twin_without_one() {
+    let examples = Examples::new(env!("CARGO_BIN_EXE_reading"), "").env(&[("READING_DIR", LISTS)]);
+
+    // The twin differs from the refused command line in the title alone,
+    // so the line break is the reason for the refusal (TEST-1).
+    let refused = check_twin(
+        &examples,
+        Spelling::COLONS,
+        &Failing::new(
+            &codes::CLI_USAGE,
+            &[
+                "entries",
+                "set",
+                "--list",
+                "to-read",
+                "--position",
+                "1",
+                "--dry-run",
+                "Emma\nWoodhouse",
+            ],
+        ),
+        &[
+            "entries",
+            "set",
+            "--list",
+            "to-read",
+            "--position",
+            "1",
+            "--dry-run",
+            "Emma",
+        ],
+    );
+    OutputAssert::new(refused).code(2).stdout_eq("");
+}
+
+#[test]
+fn entries_set_fails_when_the_position_is_more_than_one_past_the_last_entry() -> io::Result<()> {
+    reading(
+        LISTS,
+        &[
+            "entries",
+            "set",
+            "--list",
+            "to-read",
+            "--position",
+            "7",
+            "--dry-run",
+            "Emma",
+        ],
+    )?
+    .code(1)
+    .stdout_eq("")
+    .stderr_eq(file!["golden/entries-set-out-of-range.stderr"]);
+    Ok(())
+}

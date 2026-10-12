@@ -251,6 +251,36 @@
         "path": {
           "description": "The command line that runs the command, such as `shelf books list`.",
           "type": "string"
+        },
+        "writes": {
+          "description": "How the command guards what it writes, or null when the command is read-only or the tool declares no effects.",
+          "type": [
+            "object",
+            "null"
+          ],
+          "properties": {
+            "expect": {
+              "description": "Whether the command takes `--expect <VERSION>`, which fails with a conflict unless the target's current version is VERSION, or `none` when the target must not exist.",
+              "type": "boolean"
+            },
+            "items": {
+              "description": "all_or_none when the command writes every item or none, per_item when it reports each item and exits 1 when any item fails, and null when the tool declares neither.",
+              "enum": [
+                "all_or_none",
+                "per_item",
+                null
+              ]
+            },
+            "replaces": {
+              "description": "Whether the command replaces existing data.",
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "replaces",
+            "expect",
+            "items"
+          ]
         }
       },
       "required": [
@@ -262,7 +292,8 @@
         "columns",
         "form",
         "exits",
-        "effects"
+        "effects",
+        "writes"
       ]
     }
   }

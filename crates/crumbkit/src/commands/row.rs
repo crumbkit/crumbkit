@@ -9,6 +9,8 @@ use serde::Serialize;
 use serde::ser::{SerializeStruct, Serializer};
 
 use crate::Row;
+use crate::expect::takes_expect;
+use crate::help::effects::Writes;
 use crate::help::words::quote;
 use crate::help::{Effects, Guide, Leaf, effects};
 
@@ -19,9 +21,9 @@ mod tests;
 /// command's `-h` and `--help` show, apart from layout.
 ///
 /// The text table shows the path and the about text. The arguments,
-/// examples, columns, exit codes and effects are lists or objects, which a
-/// table cell prints as compact JSON, so they appear with `--json --full` or
-/// `--fields`.
+/// examples, columns, exit codes, effects and writes are lists or objects,
+/// which a table cell prints as compact JSON, so they appear with
+/// `--json --full` or `--fields`.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct CommandRow {
     // The `JsonSchema` impl below describes each field of this struct and of
@@ -35,6 +37,7 @@ pub struct CommandRow {
     form: Option<&'static str>,
     exits: Vec<CommandExit>,
     effects: Option<Effects>,
+    writes: Option<Writes>,
 }
 
 /// One argument of a command, as the command's help shows it.
@@ -157,6 +160,7 @@ impl CommandRow {
             form: leaf.and_then(form),
             exits,
             effects: leaf.and_then(Leaf::get_effects),
+            writes: effects::writes(leaf.and_then(Leaf::get_effects), takes_expect(command)),
         }
     }
 }
@@ -341,7 +345,7 @@ impl Row for CommandRow {
 /// needs no `serde_derive`.
 impl Serialize for CommandRow {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        let mut row = serializer.serialize_struct("CommandRow", 9)?;
+        let mut row = serializer.serialize_struct("CommandRow", 10)?;
         row.serialize_field("path", &self.path)?;
         row.serialize_field("about", &self.about)?;
         row.serialize_field("long_about", &self.long_about)?;
@@ -351,6 +355,7 @@ impl Serialize for CommandRow {
         row.serialize_field("form", &self.form)?;
         row.serialize_field("exits", &self.exits)?;
         row.serialize_field("effects", &self.effects)?;
+        row.serialize_field("writes", &self.writes)?;
         row.end()
     }
 }
@@ -504,8 +509,9 @@ impl JsonSchema for CommandRow {
                     },
                 },
                 "effects": effects::schema(),
+                "writes": effects::writes_schema(),
             },
-            "required": ["path", "about", "long_about", "arguments", "examples", "columns", "form", "exits", "effects"],
+            "required": ["path", "about", "long_about", "arguments", "examples", "columns", "form", "exits", "effects", "writes"],
         })
     }
 }

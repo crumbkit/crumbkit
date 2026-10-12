@@ -3,6 +3,7 @@ reading                 Keep reading lists, and print the entries of each
 reading entries         Work with the entries of any reading list
 reading entries list    List the entries of the reading list that --list names, in file order
 reading entries stream  Print each entry of the reading list that --list names as reading reads it
+reading entries set     Replace or append an entry of the reading list that --list names
 reading commands        Explore reading's commands
 reading commands list   List a branch of reading's commands with their arguments and examples
 reading schemas         Explore the JSON documents that reading prints

@@ -52,6 +52,10 @@ pub(crate) struct Command {
     pub(crate) exits: Vec<Exit>,
     /// The effects, or `None` when the tool declares none.
     pub(crate) effects: Option<Effects>,
+    /// The write guards, or `None` for a command that writes nothing or a
+    /// document from a crumbkit release before the field existed.
+    #[serde(default)]
+    pub(crate) writes: Option<Writes>,
 }
 
 /// One argument of a command.
@@ -126,6 +130,17 @@ pub(crate) struct Effects {
     pub(crate) idempotent: bool,
     /// Whether the command reaches systems outside the tool.
     pub(crate) open_world: bool,
+}
+
+/// The guards of a command that writes (ADR-0047).
+#[derive(Clone, Debug, Deserialize)]
+pub(crate) struct Writes {
+    /// Whether the command replaces existing data.
+    pub(crate) replaces: bool,
+    /// Whether the command takes crumbkit's `--expect`.
+    pub(crate) expect: bool,
+    /// `all_or_none`, `per_item`, or `None` when the tool declares neither.
+    pub(crate) items: Option<String>,
 }
 
 /// Returns the commands of `input`, the bytes of a

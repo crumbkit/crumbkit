@@ -21,7 +21,7 @@ use crate::cli::{CommandsCommand, EntriesCommand, Resource, SchemasCommand};
 use crate::graft::{ListCommand, Parsed};
 pub use crate::graft::{command, guide};
 pub use crate::lists::{List, lists_in};
-pub use crate::lists::{NOT_FOUND, UNREADABLE};
+pub use crate::lists::{NOT_FOUND, OUT_OF_RANGE, UNREADABLE};
 
 #[cfg(test)]
 mod tests;
@@ -94,6 +94,14 @@ where
                 Resource::Entries {
                     command: EntriesCommand::Stream(args),
                 } => lists::stream_entries(&mut cli.output, SPELLING, dir.as_deref(), &args.list),
+                // `set` reads `--dry-run` and asks for confirmation through
+                // `cli.output`, so it runs before `finish` takes it.
+                Resource::Entries {
+                    command: EntriesCommand::Set(args),
+                } => {
+                    let result = lists::set(&mut cli.output, dir.as_deref(), &args);
+                    crumbkit::finish(&mut cli.output, SPELLING, lists::ENTRIES_SET, result)
+                }
                 // `commands list` and `schemas` read the command tree
                 // through `&mut cli.output`, so each runs before `finish`
                 // takes `cli.output` in turn.

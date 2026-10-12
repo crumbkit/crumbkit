@@ -40,6 +40,24 @@
       "budget": null
     },
     {
+      "rule": "effects/expect",
+      "applies_to": "reading finished edit",
+      "reason": "the editor saves the whole file, and the person in the editor sees the list as it is when the editor opens it",
+      "costs": [
+        "Two concurrent writers can lose each other's changes, because the command replaces data without checking that it is the version the caller read."
+      ],
+      "budget": null
+    },
+    {
+      "rule": "effects/expect",
+      "applies_to": "reading to-read edit",
+      "reason": "the editor saves the whole file, and the person in the editor sees the list as it is when the editor opens it",
+      "costs": [
+        "Two concurrent writers can lose each other's changes, because the command replaces data without checking that it is the version the caller read."
+      ],
+      "budget": null
+    },
+    {
       "rule": "path-budget/path",
       "applies_to": "every path through reading",
       "reason": "reading's longest path, commands list, reads about 3,600 bytes, so 3,900 bytes leaves room for small changes and catches a page or an output that grows by much.",

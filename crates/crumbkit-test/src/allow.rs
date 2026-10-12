@@ -127,6 +127,19 @@ pub enum Rule {
     /// has no `--no-input` from `crumbkit::NoInput` at its root. Its id is
     /// `effects/no-input`, and its opt-out names the root.
     NoInput,
+    /// [`check_effects`](crate::check_effects): a leaf whose effects are
+    /// `crumbkit::help::Effects::replacing` has no `--expect` from
+    /// `crumbkit::Expect`. Its id is `effects/expect`.
+    Expect,
+    /// [`check_effects`](crate::check_effects): a command has its own
+    /// `--expect` in place of crumbkit's `Expect`. Its id is
+    /// `effects/expect-flag`.
+    ExpectFlag,
+    /// [`check_effects`](crate::check_effects): a leaf that writes takes
+    /// many items in a positional argument and declares neither
+    /// `all_or_none` nor `per_item` on its effects. Its id is
+    /// `effects/items`.
+    Items,
     /// [`check_names`](crate::check_names): help shows a second name for a
     /// command or an argument. Its id is `names/one-name`.
     OneName,
@@ -193,6 +206,9 @@ impl Rule {
             Self::DryRun => "effects/dry-run",
             Self::Yes => "effects/yes",
             Self::NoInput => "effects/no-input",
+            Self::Expect => "effects/expect",
+            Self::ExpectFlag => "effects/expect-flag",
+            Self::Items => "effects/items",
             Self::OneName => "names/one-name",
             Self::PersonalAliases => "names/personal-aliases",
             Self::ListPages => "listings/list-pages",
@@ -235,6 +251,16 @@ impl Rule {
             Self::NoInput => &[
                 "A script or an agent cannot tell the tool that nobody can answer, so the tool relies on detecting it.",
                 "The flag is missing from this tool while other crumbkit tools take it, so a caller that passes it gets a refusal.",
+            ],
+            Self::Expect => &[
+                "Two concurrent writers can lose each other's changes, because the command replaces data without checking that it is the version the caller read.",
+            ],
+            Self::ExpectFlag => &[
+                "The flag means what the tool makes it mean, which can differ from crumbkit's `--expect` in other tools.",
+                "A failed check does not fail with `crumbkit::version::conflict`, so an agent cannot tell a conflict from another failure by its code.",
+            ],
+            Self::Items => &[
+                "An agent that retries after a failure cannot tell which items the first run changed.",
             ],
             Self::OneName => &[
                 "Each visible second name costs help bytes on every read of the page.",
