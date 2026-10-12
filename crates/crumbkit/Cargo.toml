@@ -117,9 +117,11 @@ schemars = { workspace = true, features = ["derive"] }
 # generate strings from a regular expression. The default features add
 # forking, timeouts and bit-set strategies, which the tests do not use.
 proptest = { workspace = true, features = ["std"] }
-# The span tests install a small test subscriber for one thread with
-# `tracing::subscriber::with_default`, which needs tracing's `std` feature.
-tracing = { workspace = true, features = ["std"] }
+# The example in the `trace` module's docs opens a span with
+# `tracing::info_span!`, and its doctest also builds without the `tracing`
+# feature. The span tests install their test subscriber with
+# `tracing::subscriber::set_global_default`, which needs no tracing feature.
+tracing = { workspace = true }
 # The test subscriber names the entered span with `tracing_core::span::Current`.
 tracing-core = { workspace = true }
 

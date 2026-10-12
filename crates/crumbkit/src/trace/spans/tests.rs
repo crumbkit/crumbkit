@@ -1,14 +1,17 @@
 //! Tests for the spans of `parse` and `finish`, through a small subscriber
 //! that keeps every span, field and event it sees.
 
+use std::cell::RefCell;
 use std::fmt;
 use std::process::ExitCode;
-use std::sync::{Arc, Mutex};
+use std::sync::Once;
+use std::sync::atomic::{AtomicBool, Ordering};
 
 use clap::{CommandFactory as _, Parser, Subcommand};
 use schemars::JsonSchema;
 use serde::Serialize;
 use tracing::field::{Field, Visit};
+use tracing::level_filters::LevelFilter;
 use tracing::span::{Attributes, Id, Record};
 use tracing::subscriber::Interest;
 use tracing::{Event, Level, Metadata, Subscriber};
@@ -54,14 +57,39 @@ impl Sightings {
     }
 }
 
-/// A subscriber that keeps what it sees in shared memory, so the test reads
-/// it after the subscriber is gone. With `quiet`, it disables every span
-/// whose target is `crumbkit`.
-#[derive(Clone, Default)]
-struct Collector {
-    seen: Arc<Mutex<Sightings>>,
+/// What a test that watches its thread has seen so far. With `quiet`, the
+/// subscriber disables every span whose target is `crumbkit`.
+struct Watch {
+    seen: Sightings,
     quiet: bool,
 }
+
+thread_local! {
+    /// The watch of the test that runs on this thread, or `None` when the
+    /// thread's test does not watch.
+    static WATCHING: RefCell<Option<Watch>> = const { RefCell::new(None) };
+}
+
+/// Whether [`install`] has made [`Collector`] the global subscriber. Until
+/// then, the collector asks tracing to enable no level.
+static ARMED: AtomicBool = AtomicBool::new(false);
+
+/// Installs [`Collector`] once for the whole test process.
+static INSTALL: Once = Once::new();
+
+/// The global subscriber of the test process. It keeps what it sees in the
+/// [`Watch`] of the thread that sees it, and enables nothing on a thread
+/// that no test watches.
+///
+/// tracing caches each callsite's interest for the whole process the first
+/// time the callsite opens a span. With a subscriber that `with_default`
+/// installs for one thread, tracing can take that interest from another
+/// thread, which has no subscriber and answers `never`, and a span test
+/// that runs at the same time then sees no span (crumbkit/crumbkit#100).
+/// One global subscriber answers for every thread, and it answers
+/// `sometimes`, so tracing asks `enabled` for each span, and the answer
+/// depends on the test that runs on the span's thread.
+struct Collector;
 
 /// Writes each field it visits into a list as text.
 struct Fields<'a>(&'a mut Vec<(&'static str, String)>);
@@ -81,66 +109,106 @@ fn index(id: &Id) -> usize {
     usize::try_from(id.into_u64()).unwrap() - 1
 }
 
+/// Runs `change` on what this thread's test has seen. tracing calls it only
+/// for a span that [`Collector::enabled`] enabled, so a test watches the
+/// thread.
+fn seen<T>(change: impl FnOnce(&mut Sightings) -> T) -> T {
+    WATCHING.with_borrow_mut(|watch| change(&mut watch.as_mut().unwrap().seen))
+}
+
 impl Subscriber for Collector {
-    // Each test installs its own collector, so the collector asks `enabled`
-    // on every call and never lets tracing cache one test's answer.
     fn register_callsite(&self, _: &'static Metadata<'static>) -> Interest {
         Interest::sometimes()
     }
 
+    // `set_global_default` raises tracing's maximum level before the
+    // collector becomes the global subscriber. A callsite that another
+    // thread reached in between would cache `never`, so the collector
+    // enables no level until `install` arms it.
+    fn max_level_hint(&self) -> Option<LevelFilter> {
+        if ARMED.load(Ordering::SeqCst) {
+            None
+        } else {
+            Some(LevelFilter::OFF)
+        }
+    }
+
     fn enabled(&self, metadata: &Metadata<'_>) -> bool {
-        !(self.quiet && metadata.target() == "crumbkit")
+        WATCHING.with_borrow(|watch| {
+            watch
+                .as_ref()
+                .is_some_and(|watch| !(watch.quiet && metadata.target() == "crumbkit"))
+        })
     }
 
     fn new_span(&self, span: &Attributes<'_>) -> Id {
-        let mut sightings = self.seen.lock().unwrap();
-        let mut fields = Vec::new();
-        span.record(&mut Fields(&mut fields));
-        sightings.spans.push(Seen {
-            metadata: span.metadata(),
-            fields,
-        });
-        Id::from_u64(u64::try_from(sightings.spans.len()).unwrap())
+        seen(|sightings| {
+            let mut fields = Vec::new();
+            span.record(&mut Fields(&mut fields));
+            sightings.spans.push(Seen {
+                metadata: span.metadata(),
+                fields,
+            });
+            Id::from_u64(u64::try_from(sightings.spans.len()).unwrap())
+        })
     }
 
     fn record(&self, span: &Id, values: &Record<'_>) {
-        let mut sightings = self.seen.lock().unwrap();
-        values.record(&mut Fields(&mut sightings.spans[index(span)].fields));
+        seen(|sightings| values.record(&mut Fields(&mut sightings.spans[index(span)].fields)));
     }
 
     fn record_follows_from(&self, _: &Id, _: &Id) {}
 
     fn event(&self, _: &Event<'_>) {
-        self.seen.lock().unwrap().events += 1;
+        seen(|sightings| sightings.events += 1);
     }
 
     fn enter(&self, span: &Id) {
-        self.seen.lock().unwrap().entered.push(span.clone());
+        seen(|sightings| sightings.entered.push(span.clone()));
     }
 
     fn exit(&self, _: &Id) {
-        self.seen.lock().unwrap().entered.pop();
+        seen(|sightings| sightings.entered.pop());
     }
 
     fn current_span(&self) -> Current {
-        let sightings = self.seen.lock().unwrap();
-        match sightings.entered.last() {
-            Some(id) => Current::new(id.clone(), sightings.spans[index(id)].metadata),
-            None => Current::none(),
-        }
+        WATCHING.with_borrow(|watch| {
+            let Some(watch) = watch else {
+                return Current::none();
+            };
+            match watch.seen.entered.last() {
+                Some(id) => Current::new(id.clone(), watch.seen.spans[index(id)].metadata),
+                None => Current::none(),
+            }
+        })
     }
 }
 
-/// Returns what a subscriber for this thread saw while `run` ran.
-fn watch(run: impl FnOnce()) -> Sightings {
-    watch_with(&Collector::default(), run)
+/// Makes [`Collector`] the global subscriber, once per process, and then
+/// lets it enable every level.
+fn install() {
+    INSTALL.call_once(|| {
+        tracing::subscriber::set_global_default(Collector).unwrap();
+        ARMED.store(true, Ordering::SeqCst);
+        tracing::callsite::rebuild_interest_cache();
+    });
 }
 
-/// Returns what `collector`, as the subscriber for this thread, saw while
-/// `run` ran.
-fn watch_with(collector: &Collector, run: impl FnOnce()) -> Sightings {
-    tracing::subscriber::with_default(collector.clone(), run);
-    std::mem::take(&mut *collector.seen.lock().unwrap())
+/// Returns what the subscriber saw on this thread while `run` ran.
+fn watch(run: impl FnOnce()) -> Sightings {
+    watch_with(false, run)
+}
+
+/// Returns what the subscriber saw on this thread while `run` ran. With
+/// `quiet`, it disables crumbkit's spans.
+fn watch_with(quiet: bool, run: impl FnOnce()) -> Sightings {
+    install();
+    WATCHING.set(Some(Watch {
+        seen: Sightings::default(),
+        quiet,
+    }));
+    run();
+    WATCHING.take().unwrap().seen
 }
 
 /// A row with one column.
@@ -398,12 +466,7 @@ fn a_span_records_the_trace_id_and_the_run_s_id_that_the_usage_log_gives_it() {
 
 #[test]
 fn a_subscriber_that_disables_crumbkit_s_spans_sees_no_crumbkit_field_on_the_tool_s_span() {
-    let collector = Collector {
-        quiet: true,
-        ..Collector::default()
-    };
-
-    let seen = watch_with(&collector, || {
+    let seen = watch_with(true, || {
         let span = tracing::info_span!(
             "solar",
             "crumbkit.command" = tracing::field::Empty,
