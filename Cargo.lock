@@ -570,6 +570,7 @@ version = "0.0.0"
 dependencies = [
  "clap",
  "crumbkit",
+ "crumbkit-picker",
  "crumbkit-test",
  "etcetera",
  "schemars",
@@ -727,6 +728,7 @@ dependencies = [
  "clap",
  "crumbkit",
  "crumbkit-aliases",
+ "crumbkit-picker",
  "crumbkit-test",
  "etcetera",
  "miette",

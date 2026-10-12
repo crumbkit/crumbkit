@@ -6,6 +6,7 @@ use std::io::{self, BufRead, BufReader};
 use std::num::NonZeroUsize;
 use std::path::Path;
 
+use crumbkit::pick::Choice;
 use crumbkit::{Batch, Call, Code, Document, Failure, Listing, Recovery, Row};
 use miette::{Diagnostic, LabeledSpan, NamedSource, SourceCode, SourceSpan};
 use schemars::JsonSchema;
@@ -146,6 +147,35 @@ pub(crate) fn list(args: &BooksList, removed: Option<&Path>) -> Result<Listing<B
     Ok(Listing::from_all(books, args.page.limit())
         .described("books")
         .next(show_call(), "takes up to 100 ids in one call."))
+}
+
+/// Returns the books on the shelf as the choices that a picker offers for
+/// the ids of `shelf books show`, as [`choices_from`] reads them from the
+/// file that [`removed_file`] names.
+///
+/// # Errors
+///
+/// Returns `BooksError::RemovedFile` when the file of removed books cannot
+/// be read.
+pub(crate) fn choices() -> Result<Vec<Choice>, crumbkit::Error> {
+    Ok(choices_from(removed_file().as_deref())?)
+}
+
+/// Returns the books on the shelf as choices: the catalogue without the
+/// books that the file at `removed` names. Each choice's value is the
+/// book's id, and its label is the book's title, author and year.
+///
+/// # Errors
+///
+/// Returns `BooksError::RemovedFile` when the file of removed books cannot
+/// be read.
+pub(crate) fn choices_from(removed: Option<&Path>) -> Result<Vec<Choice>, BooksError> {
+    let removed = read_removed(removed)?;
+    let books: Vec<Book> = CATALOGUE
+        .into_iter()
+        .filter(|book| !removed.contains(&book.id))
+        .collect();
+    Ok(crumbkit::pick::from_rows(&books, "id"))
 }
 
 /// Returns the call that the output of `shelf books list` names as its next
