@@ -13,7 +13,10 @@ use serde_json::{Value, json};
 use super::{Finished, Tool, finish_output};
 use crate::help::Guide;
 use crate::twins::assert_one_word_apart;
-use crate::{Batch, Code, Document, Error, Failure, Listing, Output, Parsed, Prose, Recovery, Row};
+use crate::{
+    Batch, Code, Document, Error, Failure, JsonLayout, Listing, Output, Parsed, Prose, Recovery,
+    Row,
+};
 
 /// The smallest budget that a tool can set, which the tests use so that a
 /// few rows pass it.
@@ -56,12 +59,20 @@ fn stars(count: usize) -> Vec<Star> {
 /// Returns the output flags for `flags` with a guide whose budget is
 /// `budget`, as a tool's `main` sets them.
 fn budgeted(budget: usize, flags: &[&str]) -> Output {
+    guided(
+        &Guide::new().output_budget(budget, "the tests print little"),
+        flags,
+    )
+}
+
+/// Returns the output flags for `flags` with `guide`, as a tool's `main`
+/// sets them.
+fn guided(guide: &Guide, flags: &[&str]) -> Output {
     let mut command = Tool::command();
     let args = ["tool", "list"].iter().chain(flags);
     let matches = command.try_get_matches_from_mut(args).unwrap();
     let mut output = Output::from_arg_matches(&matches).unwrap();
-    let guide = Guide::new().output_budget(budget, "the tests print little");
-    output.set_command(Parsed::guided(command, &guide));
+    output.set_command(Parsed::guided(command, guide));
     output
 }
 
@@ -72,6 +83,27 @@ fn finish_small<T: crate::Rows>(flags: &[&str], document: Document<T>, value: T)
 
 fn parsed(out: &str) -> Value {
     serde_json::from_str(out).unwrap()
+}
+
+#[test]
+fn a_pretty_layout_cuts_a_listing_where_its_indented_bytes_stop_fitting() {
+    let listing = || Listing::new(stars(20), 20).described("stars");
+    let guide = Guide::new()
+        .output_budget(BUDGET, "the tests print little")
+        .json_layout(JsonLayout::Pretty, "the readers expect it");
+    let compact = finish_small(&["--json"], STAR_LISTING, listing());
+    let indented = finish_output(&mut guided(&guide, &["--json"]), STAR_LISTING, listing());
+
+    assert_eq!(indented.code, ExitCode::SUCCESS);
+    assert!(indented.out.len() <= BUDGET, "{}", indented.out.len());
+    assert!(
+        indented.out.starts_with("{\n  \"schema\""),
+        "{}",
+        indented.out
+    );
+    let shown = |out: &str| parsed(out)["data"].as_array().unwrap().len();
+    assert!(shown(&indented.out) < shown(&compact.out));
+    assert_eq!(parsed(&indented.out)["cut"]["budget"], BUDGET);
 }
 
 #[test]

@@ -10,7 +10,7 @@ Options:
           Read the examples' golden files from this directory [default: tests/golden/examples in the binary's package]
 
       --json
-          Print the result as a JSON document on one line
+          Print the result as a JSON document
 
       --fields <FIELD>
           Print only these comma-separated fields, in this order

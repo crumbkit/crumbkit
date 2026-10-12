@@ -408,8 +408,8 @@ where
     crate::usage::refused(&command, &path, &error);
     let message = refusal_message(&command, &path, &error);
     let refusal = Refusal::command_line(message, path, &error, &words);
-    let form = guide.get_failure_form();
-    let code = refusal.print(sink, json, spelling, form, Some(&mut command));
+    let (form, layout) = (guide.get_failure_form(), guide.layout());
+    let code = refusal.print(sink, json, spelling, form, layout, Some(&mut command));
     Err(Stop::new(code, json, command, guide))
 }
 

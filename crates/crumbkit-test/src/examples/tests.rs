@@ -20,6 +20,7 @@ use crate::temp::TempDir;
 use crate::testing::panic_message;
 
 mod forms;
+mod layout;
 mod stderr;
 
 /// The binary that runs every example.

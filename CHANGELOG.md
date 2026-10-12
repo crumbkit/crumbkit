@@ -298,8 +298,21 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   default ([ADR-0045]).
 - crumbkit-test: [`Examples`] gains `failure_form`, which names the tool's
   failure form for [`check_twin`] and [`check_examples`] ([ADR-0045]).
+- crumbkit: `Guide::json_layout(JsonLayout::Pretty, reason)` prints every
+  whole JSON document indented by two spaces, and a stream keeps one
+  document per line ([ADR-0052]).
+- crumbkit-test: [`check_opt_outs`] lists a guide's JSON layout as
+  `json-layout/pretty`, with its reason and cost ([ADR-0052]).
 ### Changed
 
+- crumbkit: the help text of `--json` reads `Print the result as a JSON
+  document` and no longer names a layout.
+- crumbkit-test: when the guide sets `JsonLayout::Pretty`, [`check_examples`]
+  requires a `--json` example of one result to print one indented document
+  ([ADR-0052]).
+- crumbkit-test: [`check_output_budget`], [`check_twin`],
+  [`check_recoveries`] and [`check_examples`] read an indented JSON document
+  as well as a document on one line.
 - crumbkit: with the `usage-log` feature, a run whose `COMPLETE` variable
   asks for shell completion writes no line ([ADR-0048]).
 - crumbkit: a build with debug assertions writes a `warning:` line on
@@ -567,6 +580,7 @@ rustdoc, or at its decision record. -->
 [ADR-0045]: docs/decisions/api/output/0045-failure-forms.md
 [ADR-0046]: docs/decisions/api/output/0046-output-budget.md
 [ADR-0049]: docs/decisions/api/output/0049-terminal-detection.md
+[ADR-0052]: docs/decisions/api/output/0052-json-layout.md
 [ADR-0050]: docs/decisions/api/output/listings/README.md
 [`codes`]: crates/crumbkit/src/codes.rs
 [`help::split`]: crates/crumbkit/src/help/words.rs

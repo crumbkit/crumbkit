@@ -8,9 +8,10 @@ use clap::Command;
 use serde::Serialize;
 use serde::ser::{SerializeMap, Serializer};
 
+use super::layout;
 use super::table::escape_controls;
 use crate::form::FailureForm;
-use crate::{Document, Failure, FieldValue, Recovery, Sink, Spelling};
+use crate::{Document, Failure, FieldValue, JsonLayout, Recovery, Sink, Spelling};
 
 #[cfg(feature = "miette")]
 pub(crate) mod label;
@@ -40,9 +41,9 @@ pub(crate) const DOCUMENT: Document<()> = FAILURE;
 const UNAVAILABLE: &str = "the suggested command is not available";
 
 /// Prints `failure` to `sink`: as text on the error writer, or with `json`
-/// as one `crumbkit/failure/v1` document on the output writer. A
-/// `Recovery::Run` call renders against `command`, which builds the branch
-/// that the call names.
+/// as one `crumbkit/failure/v1` document in `layout` on the output writer.
+/// A `Recovery::Run` call renders against `command`, which builds the
+/// branch that the call names.
 ///
 /// The caller returns the exit code: 1 from `finish` for a command that
 /// failed, and 2 for a refusal (ADR-0002). The flags `--long`, `--full` and
@@ -52,6 +53,7 @@ pub(crate) fn print<O: Write, W: Write, R>(
     json: bool,
     spelling: Spelling,
     form: Option<&dyn FailureForm>,
+    layout: Option<JsonLayout>,
     failure: &dyn Failure,
     command: Option<&mut Command>,
 ) {
@@ -59,7 +61,7 @@ pub(crate) fn print<O: Write, W: Write, R>(
     #[cfg(feature = "tracing")]
     crate::trace::spans::failed(document.code());
     if json {
-        if let Err(error) = write_json(&mut sink.out, form, &document) {
+        if let Err(error) = write_json(&mut sink.out, form, layout, &document) {
             // A reader that closed the pipe early has stopped reading, so
             // only another write error is reported. The process is already
             // failing, and a failed report has nowhere else to go.
@@ -346,18 +348,20 @@ fn write_labelled(err: &mut impl Write, label: &str, value: &str) -> io::Result<
     writeln!(err, "  {label:<6} {}", escape_controls(value))
 }
 
-/// Writes `document` to `out` as JSON on one line in `form`, or as the
-/// `crumbkit/failure/v1` document when `form` is `None`, then flushes `out`.
+/// Writes `document` to `out` as JSON in `layout`, or on one line when
+/// `layout` is `None`, in `form`, or as the `crumbkit/failure/v1` document
+/// when `form` is `None`, then flushes `out`. A stream passes `None`, so
+/// each of its failures stays one line.
 pub(super) fn write_json(
     out: &mut impl Write,
     form: Option<&dyn FailureForm>,
+    layout: Option<JsonLayout>,
     document: &PreparedFailure<'_>,
 ) -> io::Result<()> {
     match form {
-        Some(form) => serde_json::to_writer(&mut *out, &form.json(document))?,
-        None => serde_json::to_writer(&mut *out, document)?,
+        Some(form) => layout::write(out, &form.json(document), layout)?,
+        None => layout::write(out, document, layout)?,
     }
-    out.write_all(b"\n")?;
     out.flush()
 }
 

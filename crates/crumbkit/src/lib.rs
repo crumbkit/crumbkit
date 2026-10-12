@@ -82,7 +82,9 @@ pub use crate::call::RenderCall;
 pub use crate::complete::{complete, complete_to};
 pub use crate::expect::{Expect, Expected};
 pub use crate::fetch::fetch_each;
-pub use crate::output::{DryRun, Output, Streaming, Yes, finish, finish_to, stream, stream_to};
+pub use crate::output::{
+    DryRun, JsonLayout, Output, Streaming, Yes, finish, finish_to, stream, stream_to,
+};
 pub use crate::page::Page;
 pub use crate::parse::{Parsed, Stop, parse, parse_from, parse_to};
 pub use crate::pick::NoInput;

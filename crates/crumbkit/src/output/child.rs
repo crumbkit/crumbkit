@@ -23,6 +23,7 @@ impl Output {
             self.json,
             spelling,
             self.failure_form,
+            self.json_layout,
             failure,
             self.command.as_mut(),
         );
@@ -75,6 +76,7 @@ impl Output {
             self.json,
             spelling,
             self.failure_form,
+            self.json_layout,
             self.command.as_mut(),
         );
         crate::usage::ended(2, None)

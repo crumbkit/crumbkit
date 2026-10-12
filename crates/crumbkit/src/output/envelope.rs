@@ -9,7 +9,8 @@ use serde_json::Value;
 
 use super::budget::Cut;
 use super::failure::{Entry, PreparedFailure};
-use crate::Document;
+use super::layout;
+use crate::{Document, JsonLayout};
 
 /// The failures of a batch or a prose result: the tool's own, in order, and
 /// then the failure of the rows that the output budget left out, when there
@@ -54,15 +55,16 @@ impl Extras<'_, ()> {
     }
 }
 
-/// Writes the JSON document `{"schema": <id>, "data": <data>}` to `out` on
-/// one line, with `"dry_run": true` after `schema` when `dry_run` is set,
-/// `"total": <total>` after `data` when the extras hold a total, then
-/// `"summary": <summary>`, `"cut": {...}` and `"failures": [...]` when the
-/// extras hold each of them.
+/// Writes the JSON document `{"schema": <id>, "data": <data>}` to `out` in
+/// `layout`, or on one line when `layout` is `None`, with `"dry_run": true`
+/// after `schema` when `dry_run` is set, `"total": <total>` after `data`
+/// when the extras hold a total, then `"summary": <summary>`, `"cut": {...}`
+/// and `"failures": [...]` when the extras hold each of them.
 pub(super) fn write_document<T, D: Serialize, M: Serialize>(
     out: &mut impl Write,
     document: Document<T>,
     dry_run: bool,
+    layout: Option<JsonLayout>,
     data: &D,
     extras: &Extras<'_, M>,
 ) -> io::Result<()> {
@@ -72,8 +74,7 @@ pub(super) fn write_document<T, D: Serialize, M: Serialize>(
         data,
         extras,
     };
-    serde_json::to_writer(&mut *out, &envelope)?;
-    out.write_all(b"\n")
+    layout::write(out, &envelope, layout)
 }
 
 /// A JSON document: the `schema` id, `dry_run` on a dry run, the result

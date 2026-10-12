@@ -3,6 +3,7 @@
 use std::fs;
 
 use clap::Command;
+use crumbkit::JsonLayout;
 use crumbkit::help::Guide;
 use snapbox::Assert;
 use snapbox::assert::Action;
@@ -273,4 +274,30 @@ fn a_guide_that_keeps_the_default_output_budget_adds_no_entry() {
         read(&dir, "opt-outs.txt"),
         "shelf has no opt-outs from crumbkit's conventions.\n"
     );
+}
+
+#[test]
+fn the_report_lists_the_json_layout_that_the_guide_sets_with_its_cost() {
+    const GUIDE: Guide = Guide::new()
+        .output_budget(2_097_152, "Exports print every book.")
+        .json_layout(JsonLayout::Pretty, "Our scripts read indented JSON.");
+    let dir = TempDir::new("opt-outs-json-layout").unwrap();
+
+    run_guided(&GUIDE, &dir, Action::Overwrite);
+
+    let text = read(&dir, "opt-outs.txt");
+    assert!(
+        text.starts_with("shelf has 2 opt-outs from crumbkit's conventions.\n"),
+        "{text}"
+    );
+    assert!(
+        text.ends_with(
+            "\njson-layout/pretty: every run of shelf\n\
+             \x20 Reason: Our scripts read indented JSON.\n\
+             \x20 Cost: Every JSON document that is not a stream line is indented by two spaces, which made the documents of crumbkit's example tool shelf 20 to 62 percent larger, so an agent reads more tokens for each result and fewer rows fit in the output budget.\n"
+        ),
+        "{text}"
+    );
+    let json = read(&dir, "opt-outs.json");
+    assert!(json.contains("\"rule\": \"json-layout/pretty\""), "{json}");
 }

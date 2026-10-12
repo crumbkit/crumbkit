@@ -8,7 +8,7 @@ use std::time::{Duration, Instant};
 
 use clap::Command;
 use crumbkit::form::{FailureForm, ReadFailure};
-use crumbkit::help::{Guide, Leaf};
+use crumbkit::help::Guide;
 use snapbox::Assert;
 use snapbox::assert::{Action, DEFAULT_ACTION_ENV};
 
@@ -20,6 +20,7 @@ use crate::tree;
 
 // The tests run `/bin/sh`, which Windows lacks. The two attributes stay
 // apart, because clippy reads only a plain `cfg(test)` as test code.
+mod lines;
 #[cfg(unix)]
 #[cfg(test)]
 mod tests;
@@ -207,7 +208,10 @@ impl<'a> Examples<'a> {
 ///   object whose `schema` is the document's id, or that prints a number of
 ///   lines other than one when the leaf declares a document of one result.
 ///   A leaf that declares a stream with `Leaf::stream` may print any number
-///   of lines (ADR-0041);
+///   of lines (ADR-0041). When the guide sets
+///   [`JsonLayout::Pretty`](crumbkit::JsonLayout::Pretty), a leaf of one
+///   result must instead print exactly one such object, indented by two
+///   spaces, and a stream keeps one object per line (ADR-0052);
 /// - two examples whose golden files have one name, naming both command
 ///   lines;
 /// - an opt-out from [`Rule::Examples`] that names no command or skips no
@@ -274,6 +278,7 @@ fn check(
     let overwrite = assert.selected_action() == Action::Overwrite;
     let dir = Path::new(examples.dir);
     let tool = command.get_name();
+    let layout = guide.get_json_layout().map(|(layout, _)| layout);
     let mut problems = Vec::new();
     // The problems of runs that fail, which the message lists under a
     // heading of their own, because the tool's binary breaks them and the
@@ -336,7 +341,7 @@ fn check(
             // a tool's examples print bytes.
             let stdout = String::from_utf8_lossy(&output.stdout).into_owned();
             if example.words().contains(&"--json") {
-                check_lines(leaf, &line, &stdout, &mut failures);
+                lines::check_lines(leaf, layout, &line, &stdout, &mut failures);
             }
             if !stderr.is_empty() {
                 let stderr_name = stderr_golden_name(&name);
@@ -474,37 +479,6 @@ fn check_form(
 /// `.txt`, such as `shelf-books-list.stderr`.
 pub(crate) fn stderr_golden_name(name: &str) -> String {
     format!("{}.stderr", name.strip_suffix(".txt").unwrap_or(name))
-}
-
-/// Adds to `failures` each problem of `stdout`, the output of the `--json`
-/// example `line` of `leaf`, as [`check_examples`] describes. A leaf
-/// without a document, or whose document has no envelope, has none.
-fn check_lines(leaf: &Leaf, line: &str, stdout: &str, failures: &mut Vec<String>) {
-    let Some(document) = leaf.get_document() else {
-        return;
-    };
-    if !document.has_envelope() {
-        return;
-    }
-    let lines: Vec<&str> = stdout.lines().collect();
-    if !leaf.is_stream() && lines.len() != 1 {
-        failures.push(format!(
-            "{line}: the command prints one document, so its --json output must be exactly one line, and the run printed {} lines",
-            lines.len()
-        ));
-        return;
-    }
-    let id = document.to_string();
-    for (number, text) in (1..).zip(&lines) {
-        let schema = serde_json::from_str::<serde_json::Value>(text)
-            .ok()
-            .and_then(|value| value.get("schema").cloned());
-        if schema.as_ref().and_then(serde_json::Value::as_str) != Some(id.as_str()) {
-            failures.push(format!(
-                "{line}: line {number} of the --json output must be a JSON object whose schema is {id}"
-            ));
-        }
-    }
 }
 
 /// Panics, as a failed test assertion does, when `problems` or `failures`

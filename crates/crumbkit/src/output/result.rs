@@ -4,14 +4,15 @@
 
 use std::io::{self, Write};
 
+use serde::Serialize;
 use serde_json::Value;
 
 use super::budget::{self, Cut, Over, OverBudget};
 use super::envelope::{Extras, Failures, Selected, SelectedRows, write_document};
 use super::failure::PreparedFailure;
 use super::table::Table;
-use super::{Output, listing, prose};
-use crate::{Code, Document, Row, Rows, Shape, Spelling, codes};
+use super::{Output, layout, listing, prose};
+use crate::{Code, Document, JsonLayout, Row, Rows, Shape, Spelling, codes};
 
 /// What [`write_result`] printed of a result.
 #[derive(Debug)]
@@ -185,6 +186,8 @@ struct Prepared<'a, T> {
     json: bool,
     /// Whether the run is a dry run.
     dry_run: bool,
+    /// The layout of the JSON document, or `None` for one line.
+    layout: Option<JsonLayout>,
     /// Whether the JSON document holds every field of each row.
     full: bool,
     /// Whether the caller passed `--fields`.
@@ -222,6 +225,7 @@ impl<'a, T: Rows> Prepared<'a, T> {
             value,
             json: output.json,
             dry_run: output.dry_run,
+            layout: output.json_layout,
             full: output.full,
             fields: !output.fields.is_empty(),
             columns,
@@ -405,6 +409,17 @@ impl<'a, T: Rows> Prepared<'a, T> {
         budget::write_cut_line(out, shown, total, description, cut.budget, listing)
     }
 
+    /// Writes `data` with `extras` in the document's envelope, with the
+    /// run's dry-run mark and the guide's JSON layout.
+    fn envelope<D: Serialize, M: Serialize>(
+        &self,
+        out: &mut impl Write,
+        data: &D,
+        extras: &Extras<'_, M>,
+    ) -> io::Result<()> {
+        write_document(out, self.document, self.dry_run, self.layout, data, extras)
+    }
+
     /// Writes the result as [`Prepared::write`] does, without the line of a
     /// dry run.
     fn write_value(
@@ -428,7 +443,7 @@ impl<'a, T: Rows> Prepared<'a, T> {
         };
         if let Some(bytes) = value.bytes() {
             return if self.json {
-                write_document(out, self.document, self.dry_run, value, &extras)
+                self.envelope(out, value, &extras)
             } else {
                 out.write_all(bytes)
             };
@@ -436,17 +451,15 @@ impl<'a, T: Rows> Prepared<'a, T> {
         if value.prose().is_some() {
             return match &self.prose {
                 Some(text) => out.write_all(text.as_bytes()),
-                None => write_document(out, self.document, self.dry_run, value, &extras),
+                None => self.envelope(out, value, &extras),
             };
         }
         if self.json && self.full {
             // Serializing the rows directly keeps every field in its
             // declaration order.
             return match rows.get(..shown) {
-                Some(first) if !all => {
-                    write_document(out, self.document, self.dry_run, &first, &extras)
-                }
-                _ => write_document(out, self.document, self.dry_run, value, &extras),
+                Some(first) if !all => self.envelope(out, &first, &extras),
+                _ => self.envelope(out, value, &extras),
             };
         }
         if self.json {
@@ -458,14 +471,14 @@ impl<'a, T: Rows> Prepared<'a, T> {
                         row: single,
                         columns: self.columns,
                     };
-                    write_document(out, self.document, self.dry_run, &selected, &extras)
+                    self.envelope(out, &selected, &extras)
                 }
                 list => {
                     let selected = SelectedRows {
                         rows: list.get(..shown).unwrap_or(list),
                         columns: self.columns,
                     };
-                    write_document(out, self.document, self.dry_run, &selected, &extras)
+                    self.envelope(out, &selected, &extras)
                 }
             };
         }
@@ -493,29 +506,27 @@ impl<'a, T: Rows> Prepared<'a, T> {
     /// otherwise.
     fn write_unwrapped(&self, out: &mut impl Write, shown: usize, all: bool) -> io::Result<()> {
         let rows = self.value.rows();
-        if self.fields {
-            match self.values {
-                [single] if T::SHAPE == Shape::Row => {
-                    let selected = Selected {
-                        row: single,
-                        columns: self.columns,
-                    };
-                    serde_json::to_writer(&mut *out, &selected)?;
-                }
-                list => {
-                    let selected = SelectedRows {
-                        rows: list.get(..shown).unwrap_or(list),
-                        columns: self.columns,
-                    };
-                    serde_json::to_writer(&mut *out, &selected)?;
-                }
+        if !self.fields {
+            return match rows.get(..shown) {
+                Some(first) if !all => layout::write(out, first, self.layout),
+                _ => layout::write(out, self.value, self.layout),
+            };
+        }
+        match self.values {
+            [single] if T::SHAPE == Shape::Row => {
+                let selected = Selected {
+                    row: single,
+                    columns: self.columns,
+                };
+                layout::write(out, &selected, self.layout)
             }
-        } else {
-            match rows.get(..shown) {
-                Some(first) if !all => serde_json::to_writer(&mut *out, first)?,
-                _ => serde_json::to_writer(&mut *out, self.value)?,
+            list => {
+                let selected = SelectedRows {
+                    rows: list.get(..shown).unwrap_or(list),
+                    columns: self.columns,
+                };
+                layout::write(out, &selected, self.layout)
             }
         }
-        out.write_all(b"\n")
     }
 }

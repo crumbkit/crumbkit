@@ -10,6 +10,7 @@ pub(crate) mod exit;
 mod format;
 pub(crate) mod leaf;
 mod list;
+mod output;
 mod runtime;
 mod terminal;
 pub(crate) mod topic;
@@ -29,6 +30,7 @@ pub use self::topic::Topic;
 pub use self::words::{quote, split};
 
 use self::list::{list, write_line};
+use crate::JsonLayout;
 use crate::form::FailureForm;
 use crate::pick::Picker;
 
@@ -109,6 +111,9 @@ pub struct Guide {
     /// The most bytes that one run prints on standard output, with the
     /// reason the tool gives for it, or `None` for crumbkit's default.
     output_budget: Option<(usize, &'static str)>,
+    /// The layout of a whole JSON document, with the reason the tool gives
+    /// for it, or `None` for one line (ADR-0052).
+    json_layout: Option<(JsonLayout, &'static str)>,
     /// The path from the clap root to the command that callers run first,
     /// which answers `help` with the topics.
     root: &'static [&'static str],
@@ -130,6 +135,7 @@ impl Guide {
             failure_form: None,
             terminal_detection: true,
             output_budget: None,
+            json_layout: None,
             root: &[],
         }
     }
@@ -336,29 +342,6 @@ impl Guide {
     #[must_use]
     pub const fn get_failure_form(&self) -> Option<&'static dyn FailureForm> {
         self.failure_form
-    }
-
-    /// Sets the most bytes that one run prints on standard output, and the
-    /// reason the tool needs that budget, which crumbkit-test's opt-out
-    /// report shows beside crumbkit's default of 1 MiB (ADR-0046).
-    ///
-    /// # Panics
-    ///
-    /// It panics when `bytes` is below 1024, which leaves no room for a
-    /// failure document. A `const` guide reports it when the tool builds.
-    #[must_use]
-    pub const fn output_budget(mut self, bytes: usize, reason: &'static str) -> Self {
-        let smallest = crate::output::SMALLEST_BUDGET;
-        assert!(bytes >= smallest, "an output budget is at least 1024 bytes");
-        self.output_budget = Some((bytes, reason));
-        self
-    }
-
-    /// Returns the budget and the reason that [`Guide::output_budget`] set,
-    /// or `None` for crumbkit's default. The name has clap's `get_` prefix.
-    #[must_use]
-    pub const fn get_output_budget(&self) -> Option<(usize, &'static str)> {
-        self.output_budget
     }
 
     /// Returns the exit codes that [`Guide::exits`] set. The name has

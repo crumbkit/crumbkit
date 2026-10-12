@@ -1,5 +1,5 @@
-//! How `finish` prints the JSON of a document without crumbkit's envelope
-//! (ADR-0016).
+//! How a stream prints the JSON of each item of a document without
+//! crumbkit's envelope, one item per line (ADR-0016, ADR-0041).
 
 use std::io::{self, Write};
 

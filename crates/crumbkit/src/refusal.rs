@@ -12,7 +12,7 @@ use clap::error::{ContextKind, ContextValue, ErrorKind};
 use crate::form::FailureForm;
 use crate::output::failure;
 use crate::page::LimitAbove;
-use crate::{Call, Code, Failure, Field, Recovery, Sink, Spelling, codes};
+use crate::{Call, Code, Failure, Field, JsonLayout, Recovery, Sink, Spelling, codes};
 
 /// A refused command line or flag value, as a [`Failure`] with the code
 /// `crumbkit::cli::usage`.
@@ -93,8 +93,8 @@ impl Refusal {
     }
 
     /// Prints the refusal to `sink` as `finish` prints a failure, as text or
-    /// with `json` as one JSON document, in `form` or in crumbkit's form when
-    /// `form` is `None`, and returns exit code 2 (ADR-0002). The recovery
+    /// with `json` as one JSON document in `layout`, in `form` or in
+    /// crumbkit's form when `form` is `None`, and returns exit code 2 (ADR-0002). The recovery
     /// renders against `command`, so it prints as having no next step when
     /// there is no command.
     pub(crate) fn print<O: Write, E: Write, R>(
@@ -103,9 +103,10 @@ impl Refusal {
         json: bool,
         spelling: Spelling,
         form: Option<&dyn FailureForm>,
+        layout: Option<JsonLayout>,
         command: Option<&mut Command>,
     ) -> ExitCode {
-        failure::print(sink, json, spelling, form, self, command);
+        failure::print(sink, json, spelling, form, layout, self, command);
         ExitCode::from(2)
     }
 }

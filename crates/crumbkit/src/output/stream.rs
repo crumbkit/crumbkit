@@ -418,7 +418,14 @@ impl<R: Row, O: Write, W: Write> Streaming<'_, R, O, W> {
         if self.json && self.full {
             // Serializing the item directly keeps every field in its
             // declaration order.
-            return write_document(line, self.document, self.dry_run, item, &Extras::none());
+            return write_document(
+                line,
+                self.document,
+                self.dry_run,
+                None,
+                item,
+                &Extras::none(),
+            );
         }
         let row = serde_json::to_value(item)?;
         if self.json {
@@ -430,6 +437,7 @@ impl<R: Row, O: Write, W: Write> Streaming<'_, R, O, W> {
                 line,
                 self.document,
                 self.dry_run,
+                None,
                 &selected,
                 &Extras::none(),
             )
@@ -467,7 +475,7 @@ impl<R: Row, O: Write, W: Write> Streaming<'_, R, O, W> {
             // A failure document written to a `Vec` never fails, and a closed
             // stream prints nothing more.
             if self.state == State::Open
-                && failure::write_json(&mut self.line, self.form, &document).is_ok()
+                && failure::write_json(&mut self.line, self.form, None, &document).is_ok()
             {
                 let _ = self.send();
             }
@@ -490,6 +498,7 @@ impl<R: Row, O: Write, W: Write> Streaming<'_, R, O, W> {
             self.json,
             self.spelling,
             self.form,
+            None,
             self.command.as_deref_mut(),
         );
         let _ = self.send();

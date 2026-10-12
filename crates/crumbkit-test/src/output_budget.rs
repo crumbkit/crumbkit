@@ -6,7 +6,6 @@ use std::time::Duration;
 
 use clap::Command;
 use crumbkit::help::Guide;
-use serde_json::Value;
 
 use crate::allow::{Allowances, Rule};
 use crate::examples::Examples;
@@ -35,8 +34,9 @@ const VARIABLE: &str = "CRUMBKIT_OUTPUT_BUDGET";
 ///   at the budget;
 /// - it exits with code 0 and prints one document whose `data` is one
 ///   object, which a document that always prints its first answer does;
-/// - it exits with code 1 and its last line is a failure document, or a
-///   document whose last entry of `failures` is one, with the field
+/// - it exits with code 1 and its last JSON document, on one line or
+///   indented, is a failure document, or a document whose last entry of
+///   `failures` is one, with the field
 ///   `budget` set to the budget, or, for a document without the envelope,
 ///   standard error names the budget.
 ///
@@ -170,11 +170,7 @@ pub(crate) struct Ran<'a> {
 /// bytes, or `None` when it keeps the contract that
 /// [`check_output_budget`] describes.
 pub(crate) fn judge(ran: &Ran<'_>, budget: usize) -> Option<String> {
-    let documents: Vec<Value> = ran
-        .stdout
-        .lines()
-        .filter_map(|line| serde_json::from_str(line).ok())
-        .collect();
+    let documents = runs::documents(ran.stdout);
     let printed = ran.stdout.len();
     let names_budget = ran
         .stderr
