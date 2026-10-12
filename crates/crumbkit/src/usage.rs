@@ -154,9 +154,9 @@ pub(crate) fn interrupted() {
     recorder::interrupted();
 }
 
-/// Reports whether the usage log's signal thread listens for SIGINT and
-/// lets it end the process, as a log started with `Signals::Crumbkit` does.
-/// Without the `usage-log` feature it is false.
+/// Reports whether the usage log's signal thread has taken SIGINT, as a log
+/// started with either `Signals` value has. Without the `usage-log` feature
+/// it is false.
 #[cfg(all(feature = "hand-over", unix))]
 pub(crate) fn listens() -> bool {
     #[cfg(feature = "usage-log")]

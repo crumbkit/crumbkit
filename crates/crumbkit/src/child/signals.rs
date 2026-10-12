@@ -9,13 +9,12 @@
 //! resets to the default action when the child starts its program, so the
 //! child receives both signals as it would without the tool.
 //!
-//! A usage log started with `Signals::Crumbkit` already listens for SIGINT
-//! and lets it end the process after it writes the run's line. Then this
-//! module installs no SIGINT handler, and the log's signal thread asks
-//! [`holds_terminal`] and leaves the process running while a child holds the
-//! terminal (ADR-0029). A usage log started with `Signals::Tool` has already
-//! replaced SIGINT's default action, so the tool's own handler sees SIGINT
-//! while the child runs.
+//! A usage log has already taken SIGINT with its signal thread. Then this
+//! module installs no SIGINT handler. With `Signals::Crumbkit`, the log's
+//! thread asks [`holds_terminal`] and leaves the process running while a
+//! child holds the terminal (ADR-0029). With `Signals::Tool`, the log's
+//! thread never ends the process, so the tool's own handler decides what
+//! SIGINT does whether or not a child runs.
 
 #[cfg(unix)]
 use std::sync::Arc;
@@ -58,7 +57,7 @@ pub(crate) fn holds_terminal() -> bool {
     HOLDING.load(Ordering::SeqCst)
 }
 
-/// Installs the handlers of SIGQUIT and, unless the usage log listens for
+/// Installs the handlers of SIGQUIT and, unless the usage log has taken
 /// it, SIGINT, which take each signal's default action while the returned
 /// flag is true. It returns `None` when signal-hook cannot install the
 /// handlers, and the tool then keeps both signals' default actions.

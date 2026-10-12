@@ -287,6 +287,9 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   before they take another id.
 - crumbkit-aliases: `aliases list` says that an entry named `help` loses to
   the tool's own help ([crumbkit-aliases]).
+- crumbkit: a tool that starts the usage log with `Signals::Tool` keeps
+  handling Ctrl-C itself after [`child::hand_over`] has run a child
+  ([ADR-0042]).
 - crumbkit: a refusal from [`parse`] names the real flag or subcommand
   where clap suggests a hidden alias, and names it once.
 - crumbkit: a refusal from [`parse`] leaves out each command or flag that

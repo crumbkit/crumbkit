@@ -30,8 +30,8 @@ mod tests;
 /// The recorder of this process. A poisoned lock counts as no recorder.
 static RECORDER: Mutex<State> = Mutex::new(State::Idle);
 
-/// Whether the signal thread listens for SIGINT and SIGTERM and lets them
-/// end the process, as it does with [`Signals::Crumbkit`].
+/// Whether the signal thread has taken SIGINT and SIGTERM, which it does
+/// with either [`Signals`] value.
 static LISTENS: AtomicBool = AtomicBool::new(false);
 
 /// The most tolerated codes that one line holds. A run that reports more
@@ -228,8 +228,7 @@ pub(crate) fn interrupted() {
     update(&RECORDER, |recorder| recorder.signalled = true);
 }
 
-/// Reports whether the signal thread listens for SIGINT and lets it end the
-/// process.
+/// Reports whether the signal thread has taken SIGINT.
 #[cfg(feature = "hand-over")]
 pub(crate) fn listens() -> bool {
     LISTENS.load(Ordering::SeqCst)
@@ -561,7 +560,7 @@ fn watch_signals(owner: Signals) {
             let signals = SignalSet::new([SIGINT, SIGTERM]);
             // The flag is set before the main thread goes on, so a child
             // that `main` starts next already sees it.
-            if signals.is_ok() && owner == Signals::Crumbkit {
+            if signals.is_ok() {
                 LISTENS.store(true, Ordering::SeqCst);
             }
             let _ = listening.send(());
