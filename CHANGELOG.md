@@ -230,6 +230,8 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit: [`codes`] makes crumbkit's own failure codes public constants
   and lists them in `codes::ALL`, so a tool's test can name them
   ([ADR-0001]).
+- crumbkit: [`help::split`] reads back the words of a command line whose
+  words `help::quote` quoted.
 
 ### Changed
 
@@ -462,3 +464,4 @@ rustdoc, or at its decision record. -->
 [`PreparedFailure`]: crates/crumbkit/src/output/failure/prepared.rs
 [ADR-0045]: docs/decisions/api/output/0045-failure-forms.md
 [`codes`]: crates/crumbkit/src/codes.rs
+[`help::split`]: crates/crumbkit/src/help/words.rs

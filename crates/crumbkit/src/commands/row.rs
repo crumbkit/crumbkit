@@ -9,7 +9,7 @@ use serde::Serialize;
 use serde::ser::{SerializeStruct, Serializer};
 
 use crate::Row;
-use crate::help::leaf::quote;
+use crate::help::words::quote;
 use crate::help::{Effects, Guide, Leaf, effects};
 
 #[cfg(test)]

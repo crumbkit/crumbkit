@@ -12,6 +12,7 @@ pub(crate) mod leaf;
 mod list;
 mod runtime;
 pub(crate) mod topic;
+pub(crate) mod words;
 
 use std::fmt::Write as _;
 
@@ -21,9 +22,10 @@ use clap::builder::styling::Style;
 pub use self::effects::Effects;
 pub use self::exit::Exit;
 pub use self::format::FileFormat;
-pub use self::leaf::{Column, Example, Leaf, STREAM_LINE, quote};
+pub use self::leaf::{Column, Example, Leaf, STREAM_LINE};
 pub use self::runtime::RuntimeLeaf;
 pub use self::topic::Topic;
+pub use self::words::{quote, split};
 
 use self::list::{list, write_line};
 use crate::form::FailureForm;
