@@ -319,6 +319,8 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - cargo-crumbkit: the failures of building and running a tool's binary
   have `crumbkit::tool::*` codes, such as `crumbkit::tool::build_failed`,
   which `weigh` and `docs` share ([ADR-0033]).
+- crumbkit-aliases: `aliases list` lists the entries with a problem first,
+  so a page cut short by `--limit` still shows them ([crumbkit-aliases]).
 
 ### Removed
 

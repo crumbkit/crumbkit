@@ -84,14 +84,16 @@ impl Row for AliasRow {
 /// one page of them as `args` asks, for the tool to pass to
 /// [`finish`](crumbkit::finish) with [`ALIASES_LIST`].
 ///
-/// The built-in aliases come first, in the depth-first order of the visible
-/// tree. A built-in alias is a clap alias, hidden or visible, of a visible
+/// The entries with a problem come first, so a page cut short by a limit
+/// still shows every problem it can (OUTPUT-3). The built-in aliases
+/// follow, in the depth-first order of the visible tree. A built-in alias is a clap alias, hidden or visible, of a visible
 /// subcommand, and its name is its full path below the root, such as
 /// `books ls` for the alias `ls` of `books list`. A hidden command and
 /// everything below it are left out, and so are the aliases of arguments and
 /// the short and long flag aliases of flag subcommands. The entries of the
-/// file follow in name order, each with the problem that keeps it from
-/// expanding, as [`expand`](crate::expand) decides it.
+/// file come last in name order. Each entry has the problem that keeps it
+/// from expanding, as [`expand`](crate::expand) decides it, and the entries
+/// with a problem keep name order among themselves.
 ///
 /// It builds the whole command tree through `Output::command`, so it sees
 /// each command that `Command::defer` adds.
@@ -130,8 +132,7 @@ pub fn list(
 }
 
 /// Returns the page of rows that `args` asks for, with the note that names
-/// the file: the built-in aliases of `command`, then the entries of `text`,
-/// the aliases file at `file`, in name order. `text` is `None` when no file
+/// the file, in the order that [`rows`] gives. `text` is `None` when no file
 /// is at `file`.
 ///
 /// # Errors
@@ -157,8 +158,10 @@ fn listing(
         .note(note))
 }
 
-/// Returns every row: the built-in aliases of `command`, then the entries
-/// of `text`, the aliases file at `file`, in name order.
+/// Returns every row: the entries of `text`, the aliases file at `file`,
+/// that have a problem, then the built-in aliases of `command`, then the
+/// entries without a problem. The entries are in name order within each
+/// group.
 ///
 /// # Errors
 ///
@@ -206,6 +209,8 @@ fn rows(
             from: path.clone(),
         });
     }
+    // A stable sort keeps the order above within each group (OUTPUT-3).
+    rows.sort_by_key(|row| row.problem.is_empty());
     Ok(rows)
 }
 
