@@ -8,12 +8,13 @@ use clap::Command;
 use clap::builder::StyledStr;
 use clap::builder::styling::Style;
 
-use crate::help::{self, Guide, Leaf, Topic, leaf, topic};
+use crate::help::{self, Guide, Leaf, leaf, topic};
 
 /// Adds crumbkit's help lines to the root and to each command on `path`, and
 /// applies to each of those commands the groups of `guide` that name it. A
 /// guided group off `path` keeps clap's help, so the work grows with the
-/// typed depth. The root's lines name `topics`.
+/// typed depth. When the root `has_topics`, its lines name the guide's
+/// topics and `exit-codes`.
 ///
 /// The deepest command on `path` also gets the sections of the leaf of
 /// `guide` whose path is `path`, the first when two leaves share it. Its
@@ -32,11 +33,15 @@ use crate::help::{self, Guide, Leaf, Topic, leaf, topic};
 pub(super) fn add_help_lines(
     command: &mut Command,
     guide: &Guide,
-    topics: &[Topic],
+    has_topics: bool,
     path: &[String],
     long_help: bool,
 ) {
-    let topics = topic::names(topics).join(", ");
+    let topics = if has_topics {
+        topic::names(guide.get_topics()).join(", ")
+    } else {
+        String::new()
+    };
     // Every guided page prints with the root's styles, as in `help::extend`.
     let styles = command.get_styles();
     let header = *styles.get_header();

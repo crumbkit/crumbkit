@@ -1,0 +1,8 @@
+# ADR-0037. Exit codes
+
+- A tool declares the exit codes it returns besides crumbkit's 0, 1 and 2 in its `Guide`, each an [`Exit`](../../../../crates/crumbkit/src/help/exit.rs) with a one-sentence meaning and, optionally, the command paths that return it. A code without paths covers every command, and a path covers its command and every command below it. The declaration lives on the `Guide`, because most codes apply to many commands.
+- `<tool> help exit-codes` lists crumbkit's codes, then the tool's, and says that a shell reports 126 and above for its own reasons (ADR-0023). `commands list` gives each row the codes that cover its command, and its text table ends with a note that names the codes and the topic (ADR-0026).
+- crumbkit-test's [`check_exit_codes`](../../../../crates/crumbkit-test/src/exits.rs) reports a declared code from 0 to 2, a duplicate code, an empty or multi-line meaning, and a path that names no command. A code from 126 to 255 needs an opt-out of `exit-codes/shell-code` that covers every command returning it (ADR-0036). A code from 0 to 2 has no opt-out, because crumbkit's meaning of the code would contradict the tool's. crumbkit never checks the declarations at run time, so a wrong declaration cannot end a run.
+- `self usage` and `self figures list` count each command's runs that exited with each code from 3, with the meaning that the guide declares for that command, or null (ADR-0034).
+
+Considered: exit codes declared on each leaf, a declared code that must name its commands, a runtime check of the declarations, an opt-out for codes from 0 to 2.

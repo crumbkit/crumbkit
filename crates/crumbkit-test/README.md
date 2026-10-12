@@ -42,7 +42,8 @@ The rustdoc of each check says what it fails on and shows an example:
   opt-outs, each an [`Allow`] with a reason.
 - Opt-outs: [`check_opt_outs`], which pins the tool's opt-outs and
   budgets with their reasons and costs in golden files.
-- The help guide: [`check_guide`].
+- The help guide: [`check_guide`], and [`check_exit_codes`], which takes
+  the tool's opt-outs.
 - Help pages: [`check_help_sizes`] with [`Budgets`], and
   [`check_help_goldens`].
 - Paths through the help: [`check_path_weights`] with [`PathBudgets`], and
@@ -72,6 +73,7 @@ option.
 [`check_listings`]: src/listings.rs
 [`check_filters`]: src/filters.rs
 [`check_guide`]: src/guide.rs
+[`check_exit_codes`]: src/exits.rs
 [`check_help_sizes`]: src/sizes.rs
 [`Budgets`]: src/sizes.rs
 [`check_help_goldens`]: src/goldens.rs

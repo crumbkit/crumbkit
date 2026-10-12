@@ -366,7 +366,7 @@ fn books_show_json_without_ids_prints_the_refusal_as_a_failure_document_with_cod
 }
 
 #[test]
-fn help_lists_the_catalogue_topic_and_the_next_line() {
+fn help_lists_the_catalogue_and_exit_codes_topics_and_the_next_line() {
     shelf(&["help"])
         .unwrap()
         .success()
@@ -380,6 +380,15 @@ fn help_catalogue_prints_the_catalogue_topic() {
         .unwrap()
         .success()
         .stdout_eq(file!["golden/help-catalogue.txt"].raw())
+        .stderr_eq("");
+}
+
+#[test]
+fn help_exit_codes_prints_crumbkit_s_codes_when_shelf_declares_none() {
+    shelf(&["help", "exit-codes"])
+        .unwrap()
+        .success()
+        .stdout_eq(file!["golden/help-exit-codes.txt"].raw())
         .stderr_eq("");
 }
 

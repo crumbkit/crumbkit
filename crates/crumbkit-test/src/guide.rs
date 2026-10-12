@@ -277,6 +277,13 @@ fn check_topics(command: &Command, guide: &Guide, problems: &mut Vec<String>) {
                 subcommand.get_name()
             ));
         }
+        // crumbkit's `help` prints its own exit-codes topic before it looks
+        // for a tool's topic with that name.
+        if name == "exit-codes" {
+            problems.push(format!(
+                "the topic `{name}` has the name of crumbkit's own topic, so `{tool} help {name}` prints crumbkit's exit codes in its place"
+            ));
+        }
         if topic.text().trim().is_empty() {
             problems.push(format!("the topic `{name}` has no text"));
         }

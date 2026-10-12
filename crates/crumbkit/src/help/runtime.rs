@@ -77,8 +77,9 @@ impl RuntimeLeaf {
 }
 
 impl Guide {
-    /// Returns a guide with the groups and topics of `self`, and the leaves
-    /// of `self` followed by `leaves`, each with its path and examples.
+    /// Returns a guide with the groups, topics and exit codes of `self`, and
+    /// the leaves of `self` followed by `leaves`, each with its path and
+    /// examples.
     ///
     /// Every function that reads a guide reads the joined one as it reads a
     /// `const` guide, and of two leaves with one path only the first

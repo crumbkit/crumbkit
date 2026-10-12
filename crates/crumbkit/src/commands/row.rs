@@ -16,7 +16,7 @@ use crate::help::leaf::quote;
 /// command's `-h` and `--help` show, apart from layout.
 ///
 /// The text table shows the path and the about text. The arguments,
-/// examples and columns are lists, which a table cell prints as compact
+/// examples, columns and exit codes are lists, which a table cell prints as compact
 /// JSON, so they appear with `--json --full` or `--fields`.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct CommandRow {
@@ -28,6 +28,7 @@ pub struct CommandRow {
     arguments: Vec<Argument>,
     examples: Vec<CommandExample>,
     columns: Vec<CommandColumn>,
+    exits: Vec<CommandExit>,
 }
 
 /// One argument of a command, as the command's help shows it.
@@ -65,13 +66,22 @@ struct CommandColumn {
     description: Option<String>,
 }
 
+/// One exit code that the guide declares for the command, besides
+/// crumbkit's 0, 1 and 2.
+#[derive(Clone, Debug, PartialEq, Eq)]
+struct CommandExit {
+    // `CommandRow`'s `JsonSchema` impl describes each field.
+    exit: u8,
+    meaning: &'static str,
+}
+
 impl CommandRow {
     /// Returns the row of `command`, whose path from the root of `tool`'s
     /// tree is `path`, the real names of its subcommands. `parent` is the
     /// command above it, or `None` for the first command of the branch,
     /// whose row then lists every global argument it has, including those
     /// it inherits. `guide` holds the leaf whose examples and columns the
-    /// row lists.
+    /// row lists and the exit codes that cover the command.
     ///
     /// The row reads only the command's name, about texts and arguments,
     /// and the guide. It never reads a command's help template,
@@ -114,6 +124,15 @@ impl CommandRow {
                 })
                 .collect()
         });
+        let exits = guide
+            .get_exits()
+            .iter()
+            .filter(|exit| exit.covers(path))
+            .map(|exit| CommandExit {
+                exit: exit.code(),
+                meaning: exit.meaning(),
+            })
+            .collect();
         let arguments = command
             .get_arguments()
             .filter(|arg| !arg.is_hide_set() && !prints_help(arg) && !is_inherited(arg, parent))
@@ -129,6 +148,7 @@ impl CommandRow {
             arguments,
             examples,
             columns,
+            exits,
         }
     }
 }
@@ -301,13 +321,14 @@ impl Row for CommandRow {
 /// needs no `serde_derive`.
 impl Serialize for CommandRow {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        let mut row = serializer.serialize_struct("CommandRow", 6)?;
+        let mut row = serializer.serialize_struct("CommandRow", 7)?;
         row.serialize_field("path", &self.path)?;
         row.serialize_field("about", &self.about)?;
         row.serialize_field("long_about", &self.long_about)?;
         row.serialize_field("arguments", &self.arguments)?;
         row.serialize_field("examples", &self.examples)?;
         row.serialize_field("columns", &self.columns)?;
+        row.serialize_field("exits", &self.exits)?;
         row.end()
     }
 }
@@ -336,6 +357,15 @@ impl Serialize for CommandExample {
         example.serialize_field("command", &self.command)?;
         example.serialize_field("about", &self.about)?;
         example.end()
+    }
+}
+
+impl Serialize for CommandExit {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        let mut exit = serializer.serialize_struct("CommandExit", 2)?;
+        exit.serialize_field("exit", &self.exit)?;
+        exit.serialize_field("meaning", &self.meaning)?;
+        exit.end()
     }
 }
 
@@ -427,8 +457,28 @@ impl JsonSchema for CommandRow {
                         "required": ["name", "long", "description"],
                     },
                 },
+                "exits": {
+                    "description": "The exit codes that the tool declares for the command besides crumbkit's 0, 1 and 2, in guide order. `<tool> help exit-codes` describes every code.",
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "exit": {
+                                "description": "The exit code.",
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 255,
+                            },
+                            "meaning": {
+                                "description": "What the code means, as one sentence.",
+                                "type": "string",
+                            },
+                        },
+                        "required": ["exit", "meaning"],
+                    },
+                },
             },
-            "required": ["path", "about", "long_about", "arguments", "examples", "columns"],
+            "required": ["path", "about", "long_about", "arguments", "examples", "columns", "exits"],
         })
     }
 }

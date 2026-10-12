@@ -64,6 +64,11 @@ fn every_command_leaf_and_topic_meets_the_guide_rules() {
 }
 
 #[test]
+fn every_exit_code_meets_the_exit_code_rules() {
+    crumbkit_test::check_exit_codes(&Cli::command(), &GUIDE, ALLOW);
+}
+
+#[test]
 fn every_help_page_fits_its_size_budget() {
     crumbkit_test::check_help_sizes(&Cli::command(), &GUIDE, &BUDGETS);
 }

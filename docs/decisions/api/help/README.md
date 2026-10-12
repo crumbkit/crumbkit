@@ -1,6 +1,6 @@
 # ADR-0022. Help
 
-These records decide what a tool's help shows and how a caller reaches it: the lines crumbkit adds to clap's help pages, goal headings, the message of a refused command line, crumbkit's own `help` command, the help topics that a tool declares, the examples and column descriptions of leaf commands, the export of a branch of commands with their arguments, the checks of a tool's help pages, and the measure of the bytes that each path through a tool's help costs.
+These records decide what a tool's help shows and how a caller reaches it: the lines crumbkit adds to clap's help pages, goal headings, the message of a refused command line, crumbkit's own `help` command, the help topics that a tool declares, the examples and column descriptions of leaf commands, the export of a branch of commands with their arguments, the checks of a tool's help pages, the exit codes that a tool declares, and the measure of the bytes that each path through a tool's help costs.
 
 ## Children
 
@@ -10,3 +10,4 @@ These records decide what a tool's help shows and how a caller reaches it: the l
 - [ADR-0025. Help checks](0025-help-checks.md)
 - [ADR-0026. Branch export](0026-branch-export.md)
 - [ADR-0033. Help weight](0033-weigh.md)
+- [ADR-0037. Exit codes](0037-exit-codes.md)

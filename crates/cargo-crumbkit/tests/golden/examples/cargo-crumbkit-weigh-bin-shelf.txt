@@ -1,15 +1,15 @@
 PATH                     SHORT_HELP  OUTPUT  PATH_TOTAL  RUNS  HELP_BEFORE  P95_OUTPUT
-shelf                    589         -       589         -     -            -
-shelf books              490         -       1079        -     -            -
-shelf books list         447         512     2038        -     -            -
-shelf books show         488         111     1678        -     -            -
-shelf books summarize    465         101     1645        -     -            -
-shelf commands           355         -       944         -     -            -
-shelf commands list      664         1946    3554        -     -            -
-shelf schemas            412         -       1001        -     -            -
-shelf schemas list       456         1162    2619        -     -            -
-shelf schemas show       451         1481    2933        -     -            -
-shelf self               405         -       994         -     -            -
-shelf self usage         556         -       1550        -     -            -
-shelf self figures       378         -       1372        -     -            -
-shelf self figures list  695         -       2067        -     -            -
+shelf                    601         -       601         -     -            -
+shelf books              490         -       1091        -     -            -
+shelf books list         447         512     2050        -     -            -
+shelf books show         488         111     1690        -     -            -
+shelf books summarize    465         101     1657        -     -            -
+shelf commands           355         -       956         -     -            -
+shelf commands list      664         1957    3577        -     -            -
+shelf schemas            412         -       1013        -     -            -
+shelf schemas list       456         1162    2631        -     -            -
+shelf schemas show       451         1481    2945        -     -            -
+shelf self               405         -       1006        -     -            -
+shelf self usage         556         -       1562        -     -            -
+shelf self figures       378         -       1384        -     -            -
+shelf self figures list  695         -       2079        -     -            -

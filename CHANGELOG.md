@@ -111,6 +111,18 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit-test: [`check_opt_outs`] pins a tool's opt-outs and budgets,
   with each reason and what it costs an agent, in a text and a JSON golden
   file ([ADR-0036]).
+- crumbkit: `Guide::exits` declares a tool's own exit codes, each an
+  [`help::Exit`] with a meaning and optional commands, and the built-in
+  `help exit-codes` topic lists crumbkit's codes and the tool's
+  ([ADR-0037]).
+- crumbkit: each `commands list` row has `exits`, the declared codes that
+  the command can return, and the text output ends with a note that names
+  every code ([ADR-0026]).
+- crumbkit-test: [`check_exit_codes`] rejects a declared exit code that
+  crumbkit owns or that a shell reports, a repeated code, a meaning that is
+  not one line, and a command path that names no command ([ADR-0037]).
+- crumbkit-test: [`check_guide`] rejects a topic named `exit-codes`, which
+  crumbkit's own topic replaces ([ADR-0023]).
 
 ### Changed
 
@@ -250,6 +262,8 @@ rustdoc, or at its decision record. -->
 [`check_listings`]: crates/crumbkit-test/src/listings.rs
 [`check_filters`]: crates/crumbkit-test/src/filters.rs
 [`check_guide`]: crates/crumbkit-test/src/guide.rs
+[`check_exit_codes`]: crates/crumbkit-test/src/exits.rs
+[`help::Exit`]: crates/crumbkit/src/help/exit.rs
 [`check_help_sizes`]: crates/crumbkit-test/src/sizes.rs
 [`check_help_goldens`]: crates/crumbkit-test/src/goldens.rs
 [`check_examples`]: crates/crumbkit-test/src/examples.rs
@@ -289,3 +303,4 @@ rustdoc, or at its decision record. -->
 [`Budgets`]: crates/crumbkit-test/src/sizes.rs
 [`PathBudgets`]: crates/crumbkit-test/src/weights.rs
 [ADR-0036]: docs/decisions/api/0036-opt-outs.md
+[ADR-0037]: docs/decisions/api/help/0037-exit-codes.md
