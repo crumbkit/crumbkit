@@ -56,7 +56,7 @@ struct Limits {
 }
 
 // Each limit's comment gives the count that it comes from. The counts come
-// from runs of `scheduled.yml` on `ubuntu-24.04`. Run 38191227265 gave both
+// from runs of `scheduled.yml` on `ubuntu-24.04`. Run 38191991177 gave both
 // counts of `books list` with and without the usage log, of `commands list`
 // and of the refusal, and the block count of `books list -h`. Run
 // 38163868931 gave both counts of `shelf -h` and the instruction count of
@@ -64,10 +64,10 @@ struct Limits {
 
 /// The limits of `shelf books list`.
 const BOOKS_LIST: Limits = Limits {
-    // The count was 703544 instructions.
-    instructions: 773_899,
-    // The count was 936 blocks.
-    allocations: 1030,
+    // The count was 650642 instructions.
+    instructions: 715_707,
+    // The count was 931 blocks.
+    allocations: 1025,
 };
 
 /// The limits of `shelf -h`.
@@ -82,32 +82,32 @@ const ROOT_HELP: Limits = Limits {
 const LEAF_HELP: Limits = Limits {
     // The count was 447139 instructions.
     instructions: 491_853,
-    // The count was 511 blocks.
-    allocations: 563,
+    // The count was 509 blocks.
+    allocations: 560,
 };
 
 /// The limits of `shelf commands list --all --json --full`.
 const COMMANDS_LIST: Limits = Limits {
-    // The count was 2585149 instructions.
-    instructions: 2_843_664,
-    // The count was 2319 blocks.
-    allocations: 2551,
+    // The count was 2581595 instructions.
+    instructions: 2_839_755,
+    // The count was 2317 blocks.
+    allocations: 2549,
 };
 
 /// The limits of `shelf books lst`, which clap refuses.
 const REFUSAL: Limits = Limits {
-    // The count was 418778 instructions.
-    instructions: 460_656,
-    // The count was 502 blocks.
-    allocations: 553,
+    // The count was 417385 instructions.
+    instructions: 459_124,
+    // The count was 500 blocks.
+    allocations: 550,
 };
 
 /// The limits of `shelf books list` with the usage log started.
 const BOOKS_LIST_LOGGED: Limits = Limits {
-    // The count was 841014 instructions.
-    instructions: 925_116,
-    // The count was 1035 blocks.
-    allocations: 1139,
+    // The count was 793688 instructions.
+    instructions: 873_057,
+    // The count was 1029 blocks.
+    allocations: 1132,
 };
 
 /// Returns the configuration that runs Callgrind and DHAT with `limits` and
