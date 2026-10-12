@@ -158,8 +158,9 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   checks that each line of a `--json` example is a document with the
   leaf's id ([ADR-0041]).
 - crumbkit: the `hand-over` feature adds [`child::hand_over`], which hands
-  the terminal to a child process and returns its exit code. The tool
-  ignores SIGINT and SIGQUIT until the child exits ([ADR-0042]).
+  the terminal to a child process and returns its exit code. On Unix the
+  tool ignores SIGINT and SIGQUIT from the moment the child starts until
+  the tool ends ([ADR-0042]).
 - crumbkit: [`child::hand_over_json`] runs a child that prints JSON under
   `--json` and prints its output as the declared document, so `--fields`,
   `--long` and `--full` apply ([ADR-0042]).
@@ -414,6 +415,10 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   the tool's own help ([crumbkit-aliases]).
 - crumbkit: a tool that starts the usage log with `Signals::Tool` keeps
   handling Ctrl-C itself after [`child::hand_over`] has run a child
+  ([ADR-0042]).
+- crumbkit: on Unix, a Ctrl-C sent while [`child::hand_over`] runs a child
+  no longer ends a tool with more than one thread, such as one with the
+  usage log, when the signal reaches the tool after the child has exited
   ([ADR-0042]).
 - crumbkit: a refusal from [`parse`] names the real flag or subcommand
   where clap suggests a hidden alias, and names it once.
