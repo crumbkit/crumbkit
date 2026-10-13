@@ -127,6 +127,22 @@ impl<'a> Failing<'a> {
         self.xdg.or(fallback)
     }
 
+    /// Returns the same command line with the words `words` in place of
+    /// its own, with its directory, input, fixture and values.
+    pub(crate) const fn with_words<'b>(&self, words: &'b [&'b str]) -> Failing<'b>
+    where
+        'a: 'b,
+    {
+        Failing {
+            code: self.code,
+            words,
+            dir: self.dir,
+            stdin: self.stdin,
+            xdg: self.xdg,
+            values: self.values,
+        }
+    }
+
     /// Returns the code that the command line fails with.
     pub(crate) const fn code(&self) -> &'a Code {
         self.code
@@ -303,7 +319,8 @@ impl<'a> Recoveries<'a> {
 /// A tool calls the check from an integration test of the binary's own
 /// package, as it calls [`check_examples`](crate::check_examples).
 ///
-/// Every run adds `--json` when its words lack it. When the guide sets a
+/// Every run adds `--json` when its words lack it, before a `--` word or at
+/// the end, so the tool reads it as a flag. When the guide sets a
 /// failure form, the check reads each failed run through the form's
 /// [`FailureForm::read`](crumbkit::form::FailureForm::read) first, and when
 /// [`Examples`] sets a [`FailureReader`](crate::FailureReader), through

@@ -318,6 +318,21 @@ fn collect(reader: Option<JoinHandle<Vec<u8>>>) -> Vec<u8> {
         .unwrap_or_default()
 }
 
+/// Returns `words` with `--json` added when they lack it: before the first
+/// `--`, after which a tool reads every word as a positional value, or at
+/// the end of a line without one.
+pub(crate) fn with_json(words: &[String]) -> Vec<String> {
+    let mut args = words.to_vec();
+    if !args.iter().any(|word| word == "--json") {
+        let at = args
+            .iter()
+            .position(|word| word == "--")
+            .unwrap_or(args.len());
+        args.insert(at, "--json".to_owned());
+    }
+    args
+}
+
 /// Returns each JSON document in `stdout` in order, whether it fills one
 /// line or spans several lines indented. A line where no document starts,
 /// such as a line of text, is skipped.

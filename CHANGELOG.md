@@ -501,6 +501,9 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit-test: [`check_twin`], [`check_examples`] and
   [`check_recoveries`] fail when the guide sets a failure form and
   `Examples` sets a failure reader ([ADR-0045]).
+- crumbkit-test: [`check_twins`] adds `--json` to both lines of each twin
+  when neither line holds it, as [`check_recoveries`] does, so a tool's
+  reader sees the failure an agent reads ([ADR-0005]).
 ### Removed
 
 - crumbkit: `help::split` is gone. [`check_recoveries`] reads a recovery's
@@ -577,6 +580,8 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit: a refusal from [`parse`] prints as JSON only when the walk reads
   `--json` as a flag, so an option's value of `--json` no longer counts
   ([ADR-0021]).
+- crumbkit-test: [`check_recoveries`] adds `--json` before a `--` word, so
+  the tool reads it as a flag and not as a positional value ([ADR-0053]).
 
 <!-- Each label below points at the source file that holds the item's
 rustdoc, or at its decision record. -->

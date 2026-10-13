@@ -23,9 +23,11 @@ const CODES: &[&[&Code]] = &[&[&NOT_FOUND, &UNREADABLE, &REMOVED]];
 /// The script's answers: `books show 7` fails with `NOT_FOUND`, `books
 /// list --limit 0` fails with crumbkit's usage code, `books show 8` fails
 /// with `UNREADABLE`, and `books show 2` and `books list --limit 1` exit with
-/// code 0. Any other command line fails with code 3.
+/// code 0, with or without `--json` at the end. Any other command line
+/// fails with code 3.
 const SCRIPT: &str = r#"#!/bin/sh
-case "$*" in
+line="$*"
+case "${line% --json}" in
   'books show 7') printf 'error: no book 7\n  code:  tool::books::not_found\n' >&2; exit 1;;
   'books show 8') printf 'error: unreadable\n  code:  tool::books::unreadable\n' >&2; exit 1;;
   'books list --limit 0') printf 'error: 0 is not a limit\n  code:  crumbkit::cli::usage\n' >&2; exit 2;;
@@ -117,10 +119,54 @@ fn every_broken_pair_is_reported_and_the_check_does_not_stop_at_the_first() {
         checked(&pairs, &unprovoked).as_deref(),
         Some(
             "the tool's twins break crumbkit's twin rule:\n\
-             the admitted line `tool books show 8` must exit with code 0, and it ends with exit status: 1 after writing this to standard error:\n\
+             the admitted line `tool books show 8 --json` must exit with code 0, and it ends with exit status: 1 after writing this to standard error:\n\
              error: unreadable\n  code:  tool::books::unreadable\n\n\
-             the refused line `tool books show 2` must fail with tool::books::unreadable, and it exits with code 0\n\
+             the refused line `tool books show 2 --json` must fail with tool::books::unreadable, and it exits with code 0\n\
              the refused line `tool books show 9` fails with tool::stray::gone, which is not a declared code or one of crumbkit's codes"
         )
     );
+}
+
+/// Returns the panic message of `check_twins` on the tool `script`, which
+/// declares `NOT_FOUND` alone, with `pairs`, or `None` when it passes.
+fn checked_with(script: &str, pairs: &[Twin<'_>]) -> Option<String> {
+    let dir = TempDir::new("twins-json").unwrap();
+    dir.write_script("tool", script);
+    let path = dir.path().join("tool").display().to_string();
+    let twins =
+        Twins::new(Examples::new(&path, ""), Spelling::COLONS, &[&[&NOT_FOUND]]).pairs(pairs);
+    panic_message(|| check_twins(&Guide::new(), &twins))
+}
+
+#[test]
+fn check_twins_adds_json_to_both_lines_of_a_twin_that_lacks_it() {
+    // The tool answers only command lines that end with `--json`.
+    const JSON_ONLY: &str = r#"#!/bin/sh
+case "$*" in
+  'books show 7 --json') printf '%s\n' '{"schema":"crumbkit/failure/v1","code":"tool::books::not_found","message":"m","recovery":{"kind":"retry"}}'; exit 1;;
+  'books show 2 --json') echo '{}'; exit 0;;
+  *) echo "unexpected: $*" >&2; exit 3;;
+esac
+"#;
+
+    assert_eq!(checked_with(JSON_ONLY, &[SHOW_7]), None);
+}
+
+#[test]
+fn check_twins_runs_a_twin_whose_changed_word_is_json_as_written() {
+    // `books show 7` fails only with `--json`, so a check that added
+    // `--json` to the admitted line would see it fail.
+    const JSON_REFUSED: &str = r#"#!/bin/sh
+case "$*" in
+  'books show 7 --json') printf 'error: no JSON\n  code:  tool::books::not_found\n' >&2; exit 1;;
+  'books show 7') echo shown; exit 0;;
+  *) echo "unexpected: $*" >&2; exit 3;;
+esac
+"#;
+    let pair = Twin::new(
+        Failing::new(&NOT_FOUND, &["books", "show", "7", "--json"]),
+        &["books", "show", "7"],
+    );
+
+    assert_eq!(checked_with(JSON_REFUSED, &[pair]), None);
 }

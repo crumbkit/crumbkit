@@ -1,5 +1,5 @@
-//! The words of a chain's steps: the value of each placeholder, the words
-//! of a run with `--json`, and the path of the command that words name.
+//! The words of a chain's steps: the value of each placeholder and the path
+//! of the command that words name.
 
 use clap::Command;
 
@@ -38,15 +38,6 @@ pub(super) fn value<'v>(
                 .map(|(key, value)| (value.as_str(), Some(key.as_str())))
         })
         .or_else(|| exact(shared).map(|value| (value, None)))
-}
-
-/// Returns `words` with `--json` added at the end when they lack it.
-pub(super) fn with_json(words: &[String]) -> Vec<String> {
-    let mut args = words.to_vec();
-    if !args.iter().any(|word| word == "--json") {
-        args.push("--json".to_owned());
-    }
-    args
 }
 
 /// Returns `word` with each placeholder replaced by the value that `lookup`
