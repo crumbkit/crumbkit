@@ -65,8 +65,10 @@ The rustdoc of each check says what it fails on and shows an example:
   tool's checked-in Markdown reference with one written from its help
   ([ADR-0044]).
 - Recoveries: [`check_recoveries`] with [`Recoveries`], which runs failing
-  command lines and follows each recovery they print, and [`check_twin`],
-  which runs a refused command line beside one that succeeds. A tool that
+  command lines and follows each recovery they print, [`check_twin`],
+  which runs a refused command line beside one that succeeds, and
+  [`check_twins`] with [`Twins`], which runs a tool's twins and requires
+  one for each declared code. A tool that
   prints its failures in a shape of its own without a failure form gives
   these checks and [`check_examples`] a [`FailureReader`].
 - JSON documents: [`check_schema_goldens`], which pins the JSON Schema of
@@ -109,6 +111,8 @@ option.
 [`check_recoveries`]: src/recoveries.rs
 [`Recoveries`]: src/recoveries.rs
 [`check_twin`]: src/twins.rs
+[`check_twins`]: src/twins.rs
+[`Twins`]: src/twins.rs
 [`check_schema_goldens`]: src/schemas.rs
 [`check_document_ids`]: src/documents.rs
 [`check_mounts`]: src/documents.rs

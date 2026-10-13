@@ -91,7 +91,7 @@ pub use crate::recoveries::{Failing, Recoveries, Unprovoked, check_recoveries};
 pub use crate::reference::check_command_reference;
 pub use crate::schemas::check_schema_goldens;
 pub use crate::sizes::{Budgets, check_help_sizes};
-pub use crate::twins::check_twin;
+pub use crate::twins::{Twin, Twins, check_twin, check_twins};
 pub use crate::weights::{
     PathBudgets, UnreadableGolden, check_path_weights, output_weight, path_totals,
 };

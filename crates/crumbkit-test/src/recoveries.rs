@@ -155,7 +155,9 @@ impl<'a> Failing<'a> {
 }
 
 /// A declared code that no command line in a test can provoke, with the
-/// reason, such as a failure that needs a full disk.
+/// reason, such as a failure that needs a full disk. [`check_recoveries`]
+/// starts no chain for it, and [`check_twins`](crate::check_twins) needs no
+/// twin for it, so a tool passes the same list to both.
 #[derive(Clone, Copy, Debug)]
 pub struct Unprovoked<'a> {
     /// The declared code.
@@ -183,6 +185,11 @@ impl<'a> Unprovoked<'a> {
     pub const fn new(code: &'a Code, reason: &'a str) -> Self {
         assert!(is_reason(reason), "a reason is one non-empty line");
         Self { code, reason }
+    }
+
+    /// Returns the declared code.
+    pub(crate) const fn code(&self) -> &'a Code {
+        self.code
     }
 }
 

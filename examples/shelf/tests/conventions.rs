@@ -11,7 +11,8 @@
 use clap::CommandFactory as _;
 use crumbkit::Spelling;
 use crumbkit_test::{
-    Allow, Budgets, Examples, Failing, Pages, PathBudgets, Recoveries, Rule, Unprovoked,
+    Allow, Budgets, Examples, Failing, Pages, PathBudgets, Recoveries, Rule, Twin, Twins,
+    Unprovoked,
 };
 use shelf::{Cli, GUIDE};
 
@@ -142,27 +143,46 @@ fn every_opt_out_matches_the_opt_out_report() {
     );
 }
 
+/// `books show` of a book that does not exist.
+const SHOW_7: Failing<'_> = Failing::new(&shelf::NOT_FOUND, &["books", "show", "7"]);
+
+/// `books show --from` of an ids file that does not exist.
+const MISSING_FILE: Failing<'_> = Failing::new(
+    &shelf::UNREADABLE_IDS_FILE,
+    &["books", "show", "--from", "tests/fixtures/ids/missing.txt"],
+);
+
+/// `books show --from` of an ids file with a line that is not an id.
+const BAD_LINE: Failing<'_> = Failing::new(
+    &shelf::BAD_IDS_FILE,
+    &["books", "show", "--from", "tests/fixtures/ids/bad-line.txt"],
+);
+
+/// `books show --from` of an ids file with 101 ids.
+const TOO_MANY: Failing<'_> = Failing::new(
+    &shelf::TOO_MANY_IDS,
+    &["books", "show", "--from", "tests/fixtures/ids/101-ids.txt"],
+);
+
+/// `books show --from` of an empty ids file.
+const EMPTY_FILE: Failing<'_> = Failing::new(
+    &shelf::EMPTY_IDS_FILE,
+    &["books", "show", "--from", "tests/fixtures/ids/empty.txt"],
+);
+
+/// The words of `books show --from` of an ids file that holds the id 2,
+/// which each `--from` line above differs from in the file alone.
+const ONE_ID: &[&str] = &["books", "show", "--from", "tests/fixtures/ids/one-id.txt"];
+
 /// The command lines that start shelf's recovery chains. Each `--from`
 /// start reads a file under `tests/fixtures/ids/`, and its alternative
 /// `shelf books show <ID>...` runs with the id 2.
 const STARTS: &[Failing<'_>] = &[
-    Failing::new(&shelf::NOT_FOUND, &["books", "show", "7"]),
-    Failing::new(
-        &shelf::UNREADABLE_IDS_FILE,
-        &["books", "show", "--from", "tests/fixtures/ids/missing.txt"],
-    ),
-    Failing::new(
-        &shelf::BAD_IDS_FILE,
-        &["books", "show", "--from", "tests/fixtures/ids/bad-line.txt"],
-    ),
-    Failing::new(
-        &shelf::TOO_MANY_IDS,
-        &["books", "show", "--from", "tests/fixtures/ids/101-ids.txt"],
-    ),
-    Failing::new(
-        &shelf::EMPTY_IDS_FILE,
-        &["books", "show", "--from", "tests/fixtures/ids/empty.txt"],
-    ),
+    SHOW_7,
+    MISSING_FILE,
+    BAD_LINE,
+    TOO_MANY,
+    EMPTY_FILE,
     Failing::new(
         &crumbkit::codes::CONFIRM_NEEDS_YES,
         &["books", "remove", "2"],
@@ -173,7 +193,8 @@ const STARTS: &[Failing<'_>] = &[
     ),
 ];
 
-/// shelf's declared codes that no command line in a test provokes.
+/// shelf's declared codes that no command line in a test provokes, which
+/// neither the recovery check nor the twin check needs a command line for.
 const UNPROVOKED: &[Unprovoked<'_>] = &[
     Unprovoked::new(
         &shelf::REMOVED_FILE,
@@ -194,4 +215,22 @@ const RECOVERIES: Recoveries<'_> = Recoveries::new(EXAMPLES, Spelling::COLONS, &
 #[test]
 fn every_recovery_leads_to_a_command_that_runs() {
     crumbkit_test::check_recoveries(&Cli::command(), &GUIDE, &RECOVERIES, "tests/golden");
+}
+
+/// The settings of shelf's twin check: one twin for each declared code that
+/// a command line can provoke. Each twin differs from its refused line in
+/// one word, so that word is the reason for the refusal (TEST-1).
+const TWINS: Twins<'_> = Twins::new(EXAMPLES, Spelling::COLONS, &[shelf::CODES])
+    .pairs(&[
+        Twin::new(SHOW_7, &["books", "show", "2"]),
+        Twin::new(MISSING_FILE, ONE_ID),
+        Twin::new(BAD_LINE, ONE_ID),
+        Twin::new(TOO_MANY, ONE_ID),
+        Twin::new(EMPTY_FILE, ONE_ID),
+    ])
+    .unprovoked(UNPROVOKED);
+
+#[test]
+fn every_declared_code_has_a_twin_that_the_tool_accepts() {
+    crumbkit_test::check_twins(&GUIDE, &TWINS);
 }

@@ -17,7 +17,8 @@ use clap::Command;
 use crumbkit::Spelling;
 use crumbkit::help::Guide;
 use crumbkit_test::{
-    Allow, Budgets, Examples, Failing, Pages, PathBudgets, Recoveries, Rule, Unprovoked,
+    Allow, Budgets, Examples, Failing, Pages, PathBudgets, Recoveries, Rule, Twin, Twins,
+    Unprovoked,
 };
 
 /// The directory of reading's fixture lists.
@@ -174,31 +175,88 @@ fn every_opt_out_matches_the_opt_out_report() {
     );
 }
 
+/// `entries list` of a list that does not exist.
+const UNREAD: Failing<'_> = Failing::new(
+    &reading::NOT_FOUND,
+    &["entries", "list", "--list", "unread"],
+);
+
+/// A dry run of `entries set` at a position past the end of the list.
+const POSITION_7: Failing<'_> = Failing::new(
+    &reading::OUT_OF_RANGE,
+    &[
+        "entries",
+        "set",
+        "--list",
+        "to-read",
+        "--position",
+        "7",
+        "--dry-run",
+        "Emma",
+    ],
+);
+
+/// reading's declared code that no command line in a test provokes, which
+/// neither the recovery check nor the twin check needs a command line for.
+const UNPROVOKED: &[Unprovoked<'_>] = &[Unprovoked::new(
+    &reading::UNREADABLE,
+    "Only a list file that exists and that reading cannot read provokes it, and a file's permissions differ between platforms.",
+)];
+
 /// The settings of reading's recovery check. A missing list, a position
 /// past the end of a list and a version conflict each start a chain. The
 /// last two run on a dry run, so the check writes no fixture list.
 const RECOVERIES: Recoveries<'_> = Recoveries::new(EXAMPLES, Spelling::COLONS, &[reading::CODES])
     .starts(&[
-        Failing::new(&reading::NOT_FOUND, &["entries", "list", "--list", "unread"]),
-        Failing::new(
-            &reading::OUT_OF_RANGE,
-            &["entries", "set", "--list", "to-read", "--position", "7", "--dry-run", "Emma"],
-        ),
+        UNREAD,
+        POSITION_7,
         Failing::new(
             &crumbkit::codes::VERSION_CONFLICT,
             &[
-                "entries", "set", "--list", "to-read", "--position", "2", "--expect", "Emma",
-                "--dry-run", "Mary Barton",
+                "entries",
+                "set",
+                "--list",
+                "to-read",
+                "--position",
+                "2",
+                "--expect",
+                "Emma",
+                "--dry-run",
+                "Mary Barton",
             ],
         ),
     ])
-    .unprovoked(&[Unprovoked::new(
-        &reading::UNREADABLE,
-        "Only a list file that exists and that reading cannot read provokes it, and a file's permissions differ between platforms.",
-    )]);
+    .unprovoked(UNPROVOKED);
 
 #[test]
 fn every_recovery_leads_to_a_command_that_runs() {
     let (command, guide) = fixture_tool();
     crumbkit_test::check_recoveries(&command, &guide, &RECOVERIES, "tests/golden");
+}
+
+/// The settings of reading's twin check: one twin for each declared code
+/// that a command line can provoke. Each twin differs from its refused line
+/// in one word, so that word is the reason for the refusal (TEST-1).
+const TWINS: Twins<'_> = Twins::new(EXAMPLES, Spelling::COLONS, &[reading::CODES])
+    .pairs(&[
+        Twin::new(UNREAD, &["entries", "list", "--list", "to-read"]),
+        Twin::new(
+            POSITION_7,
+            &[
+                "entries",
+                "set",
+                "--list",
+                "to-read",
+                "--position",
+                "1",
+                "--dry-run",
+                "Emma",
+            ],
+        ),
+    ])
+    .unprovoked(UNPROVOKED);
+
+#[test]
+fn every_declared_code_has_a_twin_that_the_tool_accepts() {
+    crumbkit_test::check_twins(&reading::GUIDE, &TWINS);
 }
