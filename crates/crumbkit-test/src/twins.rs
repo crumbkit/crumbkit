@@ -46,8 +46,9 @@ mod tests;
 /// command of a line from `command` with [`crumbkit::command_path`], which
 /// skips options and their values, global options before the path
 /// included, and resolves aliases. A line runs the command it names when
-/// that command has no subcommands, and a refused line that runs no
-/// command, such as a misspelt command, keeps its twin. A code that no single word
+/// that command has no subcommands. A refused line that runs no command,
+/// such as the misspelt `books lst`, needs an admitted line that runs one,
+/// such as `books list`. A code that no single word
 /// causes needs an opt-out made with [`Allow::untwinned`](crate::Allow::untwinned).
 ///
 /// Both runs use the environment of [`Examples::env`], the working
@@ -93,7 +94,7 @@ mod tests;
 /// Panics when the guide sets a failure form and `examples` sets a failure
 /// reader, when the two lines differ by more or less than one word added,
 /// removed or replaced, when `admitted` adds a help or version word or
-/// runs another command than `refused`, when `refused` exits with code 0, fails with
+/// runs another command than `refused`, when neither line runs a command, when `refused` exits with code 0, fails with
 /// another code or prints no code that the check can read, when `admitted` exits with a code other than 0, or when a
 /// run cannot start or does not end within 10 seconds. The message names
 /// each line as help prints it, with the binary's file name first.
@@ -220,7 +221,8 @@ pub(super) fn named(tool: &str, words: &[&str], env: &[(&str, Option<&str>)]) ->
 /// Returns the problem of a twin whose lines, named `refused_line` and
 /// `admitted_line`, do not differ by one word, whose admitted line adds a
 /// word that skips the command's work, or whose admitted line runs another
-/// command of `command`, the tool's tree, than the refused line.
+/// command of `command`, the tool's tree, than the refused line, or no
+/// command when the refused line runs none.
 fn one_word(
     command: &Command,
     refused: &[&str],
@@ -239,19 +241,22 @@ fn one_word(
         ));
     }
     let named = words::named(command, refused);
-    if named.runs {
-        let other = words::named(command, admitted);
-        if other.path != named.path {
-            let runs = if other.runs {
-                format!("runs `{}`", other.path.join(" "))
-            } else {
-                "runs no command".to_owned()
-            };
-            return Err(format!(
-                "the refused line {refused_line} runs the command `{}`, and the admitted line {admitted_line} {runs}, so the twin proves nothing about the refused command. A code that no word of the command causes needs an opt-out made with Allow::untwinned",
-                named.path.join(" ")
-            ));
-        }
+    let other = words::named(command, admitted);
+    if !named.runs && !other.runs {
+        return Err(format!(
+            "the refused line {refused_line} runs no command, and the admitted line {admitted_line} runs none either, so the twin proves nothing about a command. A twin of a line that runs no command admits a line that runs one"
+        ));
+    }
+    if named.runs && other.path != named.path {
+        let runs = if other.runs {
+            format!("runs `{}`", other.path.join(" "))
+        } else {
+            "runs no command".to_owned()
+        };
+        return Err(format!(
+            "the refused line {refused_line} runs the command `{}`, and the admitted line {admitted_line} {runs}, so the twin proves nothing about the refused command. A code that no word of the command causes needs an opt-out made with Allow::untwinned",
+            named.path.join(" ")
+        ));
     }
     Ok(())
 }

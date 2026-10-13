@@ -407,6 +407,36 @@ fn a_twin_whose_admitted_line_runs_another_command_fails_the_check_whatever_leav
 }
 
 #[test]
+fn a_twin_whose_refused_line_runs_no_command_fails_when_its_admitted_line_runs_none_either() {
+    let (_dir, path) = tool("twins-no-command");
+    let examples = Examples::new(&path, "");
+    let checked = |refused: &'static [&'static str], admitted: &[&str]| {
+        panic_message(|| {
+            check_twin(
+                &tree(),
+                &GUIDE,
+                &examples,
+                Spelling::COLONS,
+                &Failing::new(&USAGE, refused),
+                admitted,
+            );
+        })
+    };
+
+    assert_eq!(
+        checked(&["books", "lst"], &["books"]).unwrap(),
+        "the refused line `tool books lst` runs no command, and the admitted line `tool books` runs none either, so the twin proves nothing about a command. A twin of a line that runs no command admits a line that runs one"
+    );
+    // `books list` runs a command, so the twin keeps its rule. The run
+    // fails, because the script does not know the refused line.
+    assert!(
+        checked(&["books", "lst"], &["books", "list"])
+            .unwrap()
+            .starts_with("the refused line `tool books lst` must fail with crumbkit::cli::usage")
+    );
+}
+
+#[test]
 fn a_twin_with_a_global_option_before_the_path_runs_the_command_after_the_option_s_value() {
     let (_dir, path) = tool("twins-global");
     let examples = Examples::new(&path, "");
