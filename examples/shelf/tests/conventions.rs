@@ -176,7 +176,9 @@ const ONE_ID: &[&str] = &["books", "show", "--from", "tests/fixtures/ids/one-id.
 
 /// The command lines that start shelf's recovery chains. Each `--from`
 /// start reads a file under `tests/fixtures/ids/`, and its alternative
-/// `shelf books show <ID>...` runs with the id 2.
+/// `shelf books show <ID>...` runs with the id 2. The last start lowers the
+/// output budget, so `books show` leaves out ids and its failure runs
+/// `shelf books show <ID>` with the first id left out.
 const STARTS: &[Failing<'_>] = &[
     SHOW_7,
     MISSING_FILE,
@@ -192,6 +194,11 @@ const STARTS: &[Failing<'_>] = &[
         &["books", "list", "--limit", "101"],
     ),
     Failing::new(&crumbkit::codes::CLI_USAGE, &["books", "show"]),
+    Failing::new(
+        &crumbkit::codes::OUTPUT_OVER_BUDGET,
+        &["books", "show", "1", "2", "3", "4", "5", "6"],
+    )
+    .env(&[("CRUMBKIT_OUTPUT_BUDGET", Some("480"))]),
 ];
 
 /// shelf's declared codes that no command line in a test provokes, which
