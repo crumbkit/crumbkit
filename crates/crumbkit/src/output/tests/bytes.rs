@@ -9,6 +9,7 @@ use schemars::JsonSchema;
 use serde::Serialize;
 
 use super::Tool;
+use crate::answered::answered;
 use crate::help::Guide;
 use crate::twins::assert_one_word_apart;
 use crate::{
@@ -269,7 +270,7 @@ fn a_batch_prints_a_bytes_field_in_its_json_form_with_full() {
     let files: Document<Batch<File, Error>> =
         Document::new("files", "files", 1, "The bytes of each file.");
     let mut output = output_with(Output::DEFAULT_BUDGET, &["--json", "--full"]);
-    let batch = Batch::new(
+    let batch = answered(
         vec![File {
             name: "cover.png",
             content: Bytes::new(vec![0x89, 0x50]),

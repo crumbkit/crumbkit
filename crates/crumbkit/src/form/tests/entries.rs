@@ -9,9 +9,10 @@ use serde::Serialize;
 use serde_json::{Value, json};
 
 use super::{ErrorForm, Missing, PLANETS_SHOW, Planet, finish};
+use crate::answered::answered;
 use crate::form::{FailureForm, PreparedFailure};
 use crate::help::Guide;
-use crate::{Batch, Document, Prose};
+use crate::{Document, Prose};
 
 /// A form whose entries are `{"error": {"code": ..., "message": ...}}`.
 struct EntryForm;
@@ -65,7 +66,7 @@ fn missing_entry() -> Value {
 
 #[test]
 fn a_batch_entry_is_written_by_the_guide_failure_form() {
-    let batch = Batch::new(vec![Planet { name: "Mars" }], vec![Missing]);
+    let batch = answered(vec![Planet { name: "Mars" }], vec![Missing]);
     let ran = finish(&ENTRY_GUIDE, &["list", "--json"], PLANETS_SHOW, Ok(batch));
 
     assert_eq!(ran.code, ExitCode::FAILURE);
@@ -89,7 +90,7 @@ fn a_prose_result_entry_is_written_by_the_guide_failure_form() {
 fn the_failure_of_the_ids_that_the_budget_leaves_out_is_written_by_the_form_entry() {
     const BUDGET_GUIDE: Guide = ENTRY_GUIDE.output_budget(1_024, "the tests print little");
     let rows = (0..200).map(|_| Planet { name: "Mars" }).collect();
-    let batch = Batch::new(rows, vec![Missing]);
+    let batch = answered(rows, vec![Missing]);
     let ran = finish(&BUDGET_GUIDE, &["list", "--json"], PLANETS_SHOW, Ok(batch));
 
     assert_eq!(ran.code, ExitCode::FAILURE);

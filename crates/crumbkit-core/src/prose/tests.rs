@@ -103,7 +103,7 @@ fn new_holds_no_failures_and_with_failures_holds_the_failures_in_order() {
 fn only_a_prose_result_returns_a_text_and_the_schema_of_its_value() {
     let mut generator = SchemaGenerator::default();
     let listing = Listing::new(vec![Planet { name: "Saturn" }], 1);
-    let batch: Batch<Planet, Missing> = Batch::new(Vec::new(), Vec::new());
+    let batch: Batch<Planet, Missing> = Batch::new(&["show"], "names", &["Saturn"]);
 
     assert!(Planet { name: "Saturn" }.prose().is_none());
     assert!(listing.prose().is_none());

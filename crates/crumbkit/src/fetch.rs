@@ -12,18 +12,20 @@ mod tests;
 /// and returns one result per id in the order of `ids`.
 ///
 /// A command that takes many ids, such as `shelf books show 2 7 9`, uses it
-/// when its backend can look up only one id per call. The command then puts
-/// the `Ok` values and the failures it builds from the `Err` values into a
-/// [`Batch`](crate::Batch). A repeated id is looked up again, so the ids need
-/// no `Hash` or `Eq`.
+/// when its backend can look up only one id per call. The command then
+/// extends a [`Batch`](crate::Batch) with the results, in order. A repeated
+/// id is looked up again, so the ids need no `Hash` or `Eq`. A command that
+/// stops once its rows fill the output budget calls `fetch_each` on one
+/// chunk of `workers` ids at a time and asks
+/// [`Batch::has_room`](crate::Batch::has_room) before each chunk.
 ///
 /// Who should use it, and who should not:
 ///
 /// - A synchronous tool that does blocking I/O for each id, such as a call
 ///   through a blocking HTTP client, uses it.
 /// - A tool whose backend has a batch lookup, such as an SQL `IN` query or an
-///   API that takes many ids, calls that lookup once and builds
-///   [`Batch::new`](crate::Batch::new) from its answer.
+///   API that takes many ids, calls that lookup once and pushes its answers
+///   into a [`Batch`](crate::Batch) in the order of the ids.
 /// - An async tool, or one that builds a tokio runtime, uses its own bounded
 ///   stream, such as `buffered(n)` from the `futures` crate. It must not call
 ///   `fetch_each` from async code, because `fetch_each` blocks the calling

@@ -11,6 +11,7 @@ use serde::Serialize;
 use serde_json::{Value, json};
 
 use super::{Failing, Tool, finish_output, finish_with};
+use crate::answered::answered;
 use crate::help::Guide;
 use crate::{
     Batch, Code, Document, Error, Failure, Listing, Output, Parsed, Recovery, Row, Sink, Spelling,
@@ -133,7 +134,7 @@ fn a_batch_failure_decides_the_exit_before_a_row_that_reports_a_problem() {
         Guide::new()
             .exits(&[crate::help::Exit::new(3, "A check is unreadable.").failures(&[&UNREADABLE])]);
     let mut output = guided(&MAPPED, &[]);
-    let batch = Batch::new(vec![broken("one")], vec![Unreadable]);
+    let batch = answered(vec![broken("one")], vec![Unreadable]);
 
     let finished = finish_output(&mut output, CHECK_BATCH, batch);
 

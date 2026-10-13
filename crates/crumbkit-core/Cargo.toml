@@ -22,6 +22,10 @@ serde = { workspace = true }
 # `Row` requires `JsonSchema`, so `--fields` and a leaf's columns can read a
 # row type's fields from its schema. The trait needs no schemars feature.
 schemars = { workspace = true }
+# `Batch::has_room` measures each row as the compact JSON that crumbkit
+# prints, by writing it with serde_json into a writer that only counts bytes.
+# `std` gives `to_writer` over an `io::Write`.
+serde_json = { workspace = true, features = ["std"] }
 # The `miette` feature adds `Failure::diagnostic` and converts a
 # `miette::Report` into `Error` (ADR-0001). crumbkit-core needs no miette
 # feature.
@@ -37,9 +41,6 @@ miette = ["dep:miette"]
 # their rows.
 serde = { workspace = true, features = ["derive"] }
 schemars = { workspace = true, features = ["derive"] }
-# The listing tests compare a listing's JSON with a `serde_json::json!` value.
-# `std` is needed for serde_json to build at all.
-serde_json = { workspace = true, features = ["std"] }
 # `std` builds proptest on the standard library and gives the strategies that
 # generate strings from a regular expression, which the code segment tests
 # use.

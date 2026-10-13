@@ -16,10 +16,10 @@ use tracing::{Event, Level, Metadata, Subscriber};
 use tracing_core::span::Current;
 
 use super::record_ids;
+use crate::answered::answered;
 use crate::help::{Exit, Guide};
 use crate::{
-    Batch, Code, Document, Error, Failure, Output, Recovery, Row, Sink, Spelling, finish_to,
-    parse_to,
+    Code, Document, Error, Failure, Output, Recovery, Row, Sink, Spelling, finish_to, parse_to,
 };
 
 const NOT_FOUND: Code = Code::new("solar", "planets", "not_found");
@@ -389,7 +389,7 @@ fn a_failure_records_its_code_in_the_tool_s_spelling_and_exit_code_1_on_the_fini
 
 #[test]
 fn a_batch_records_only_its_first_failure_s_code() {
-    let batch = Batch::new(
+    let batch = answered(
         vec![Planet { name: "Saturn" }],
         vec![Error::from(Missing), Error::from(Missing)],
     );

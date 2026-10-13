@@ -15,6 +15,7 @@ use super::{
     PLANET_LISTING, PLANETS, Planet, Tool, finish_output, finish_with, mercury, parse_against,
     saturn,
 };
+use crate::answered::answered;
 use crate::{
     Batch, Call, Code, Document, Error, Failure, Listing, Recovery, Sink, Spelling, finish_to,
 };
@@ -172,7 +173,7 @@ fn a_dry_runs_line_prints_on_standard_error_after_a_batchs_failures() {
         Document::new("solar", "planets-show", 1, "The test rows.");
     let mut output = parse_against(Tool::command(), &[]);
     output.dry_run = true;
-    let finished = finish_output(&mut output, SHOWN, Batch::new(vec![saturn()], vec![Gone]));
+    let finished = finish_output(&mut output, SHOWN, answered(vec![saturn()], vec![Gone]));
 
     assert_eq!(finished.code, ExitCode::FAILURE);
     assert_eq!(finished.out, "NAME    MOONS\nSaturn  274\n");

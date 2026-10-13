@@ -212,21 +212,19 @@ pub fn show(
         return Err(SchemasError::Unavailable.into());
     };
     let served = documents(root, guide);
-    let mut rows = Vec::new();
-    let mut failures = Vec::new();
+    let mut batch = Batch::new(SHOW_PATH, "ids", &args.ids);
     for id in &args.ids {
-        match served.iter().find(|document| document.id() == *id) {
-            Some(document) => rows.push(SchemaShowRow::new(document)),
-            None => failures.push(
-                SchemasError::NotFound {
-                    tool: root.get_name().to_owned(),
-                    id: id.clone(),
-                }
-                .into(),
-            ),
-        }
+        let result = match served.iter().find(|document| document.id() == *id) {
+            Some(document) => Ok(SchemaShowRow::new(document)),
+            None => Err(SchemasError::NotFound {
+                tool: root.get_name().to_owned(),
+                id: id.clone(),
+            }
+            .into()),
+        };
+        batch.push(result);
     }
-    Ok(Batch::new(rows, failures))
+    Ok(batch)
 }
 
 /// A failure of `schemas list` or `schemas show`.

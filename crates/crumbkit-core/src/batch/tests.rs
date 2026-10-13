@@ -49,8 +49,10 @@ impl Failure for Missing {
 fn only_a_batch_returns_failures_from_rows() {
     let vec = vec![saturn()];
     let listing = Listing::new(vec![saturn()], 1);
-    let batch = Batch::new(vec![saturn()], vec![Missing("Vulcan")]);
-    let empty: Batch<Planet, Missing> = Batch::new(vec![saturn()], Vec::new());
+    let mut batch = Batch::new(&["show"], "names", &["Saturn", "Vulcan"]);
+    batch.extend([Ok(saturn()), Err(Missing("Vulcan"))]);
+    let mut empty: Batch<Planet, Missing> = Batch::new(&["show"], "names", &["Saturn"]);
+    empty.push(Ok(saturn()));
 
     assert!(saturn().failures().is_none());
     assert!(vec.failures().is_none());
@@ -67,4 +69,89 @@ fn only_a_batch_returns_failures_from_rows() {
 #[test]
 fn a_batch_names_its_shape() {
     assert_eq!(<Batch<Planet, Missing> as Rows>::SHAPE, Shape::Batch);
+}
+
+fn planet(name: &'static str) -> Planet {
+    Planet { name }
+}
+
+#[test]
+fn a_batch_holds_its_rows_and_failures_in_the_order_of_their_keys() {
+    let mut batch = Batch::new(&["show"], "names", &["Mars", "Vulcan", "Venus"]);
+    batch.push(Ok(planet("Mars")));
+    batch.push(Err(Missing("Vulcan")));
+    batch.push(Ok(planet("Venus")));
+
+    let names: Vec<_> = batch.rows().iter().map(|row| row.name).collect();
+    assert_eq!(names, ["Mars", "Venus"]);
+    assert_eq!(batch.failures().map(|list| list.len()), Some(1));
+    assert_eq!(batch.left_out(2), Vec::<Option<&str>>::new());
+}
+
+#[test]
+fn the_keys_of_the_rows_after_the_shown_ones_and_the_keys_never_fetched_are_left_out() {
+    let mut batch: Batch<Planet, Missing> =
+        Batch::new(&["show"], "names", &["Mars", "Venus", "Earth", "Saturn"]);
+    batch.push(Ok(planet("Mars")));
+    batch.push(Ok(planet("Venus")));
+
+    assert_eq!(
+        batch.left_out(1),
+        [Some("Venus"), Some("Earth"), Some("Saturn")]
+    );
+    assert_eq!(batch.left_out(2), [Some("Earth"), Some("Saturn")]);
+}
+
+#[test]
+fn a_failed_key_is_never_left_out() {
+    let mut batch = Batch::new(&["show"], "ids", &[1, 2, 3]);
+    batch.push(Ok(planet("Mars")));
+    batch.push(Err(Missing("Vulcan")));
+    batch.push(Ok(planet("Venus")));
+
+    assert_eq!(batch.left_out(0), [Some("1"), Some("3")]);
+}
+
+#[test]
+fn a_result_pushed_after_the_last_key_has_no_key() {
+    let mut batch: Batch<Planet, Missing> = Batch::new(&["show"], "names", &["Mars"]);
+    batch.extend([Ok(planet("Mars")), Ok(planet("Venus"))]);
+
+    assert_eq!(batch.left_out(0), [Some("Mars"), None]);
+}
+
+#[test]
+fn a_batch_fetches_its_left_out_keys_with_its_command_one_key_at_a_time() {
+    let batch: Batch<Planet, Missing> = Batch::new(&["planets", "show"], "names", &["Mars"]);
+
+    assert_eq!(
+        batch.fetch(),
+        Some(Call::new(&["planets", "show"]).each("names", "left_out"))
+    );
+    assert_eq!(saturn().fetch(), None);
+}
+
+#[test]
+fn a_batch_has_room_until_the_json_of_its_rows_reaches_the_budget() {
+    // Each row is `{"name":"Mars"}`, which is 15 bytes of compact JSON.
+    let mut batch: Batch<Planet, Missing> = Batch::new(&["show"], "names", &["Mars", "Mars"]);
+    assert!(batch.has_room(30));
+    batch.push(Ok(planet("Mars")));
+    assert!(batch.has_room(30));
+    batch.push(Ok(planet("Mars")));
+    assert!(!batch.has_room(30));
+    assert!(batch.has_room(31));
+}
+
+#[test]
+fn a_key_given_twice_is_left_out_twice_in_the_order_of_the_keys() {
+    let mut batch: Batch<Planet, Missing> =
+        Batch::new(&["show"], "names", &["Mars", "Venus", "Mars", "Mars"]);
+    batch.push(Ok(planet("Mars")));
+    batch.push(Ok(planet("Venus")));
+
+    assert_eq!(
+        batch.left_out(0),
+        [Some("Mars"), Some("Venus"), Some("Mars"), Some("Mars")]
+    );
 }

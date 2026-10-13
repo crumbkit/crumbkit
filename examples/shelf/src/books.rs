@@ -33,7 +33,7 @@ pub(crate) const BOOKS_LIST: Document<Listing<Book>> = Document::new(
 );
 
 /// The document that `shelf books show` prints: the books for the given ids
-/// that the catalogue holds, and a failure naming the ids it lacks.
+/// that the catalogue holds, and a failure for each id it lacks.
 pub(crate) const BOOKS_SHOW: Document<Batch<Book, BooksError>> = Document::new(
     "shelf",
     "books-show",
@@ -191,9 +191,11 @@ pub(crate) fn show_call() -> Call {
 /// repeated id returns its book again. The ids come from the command line,
 /// or from the file that `--from` names, as [`read_ids`] reads it.
 ///
-/// The batch holds one `BooksError::NotFound` naming every id that the
-/// catalogue lacks, each once and in the order given, and no failure when
-/// every id names a book.
+/// The batch holds one `BooksError::NotFound` for each id that the
+/// catalogue lacks, in the order given. `show` looks up one chunk of
+/// [`WORKERS`] ids at a time, and stops once the books it found take
+/// `budget` bytes, the bytes that the run has left, so crumbkit names the
+/// ids it did not look up in the over-budget failure.
 ///
 /// # Errors
 ///
@@ -203,27 +205,23 @@ pub(crate) fn show_call() -> Call {
 pub(crate) fn show(
     args: &BooksShow,
     removed: Option<&Path>,
+    budget: usize,
 ) -> Result<Batch<Book, BooksError>, BooksError> {
     let ids = match &args.from {
         Some(path) => read_ids(path)?,
         None => args.ids.clone(),
     };
     let removed = read_removed(removed)?;
-    let mut books = Vec::with_capacity(ids.len());
-    let mut missing = Vec::new();
-    for result in crumbkit::fetch_each(&ids, WORKERS, |&id| find(id, &removed)) {
-        match result {
-            Ok(book) => books.push(book),
-            Err(id) if !missing.contains(&id) => missing.push(id),
-            Err(_) => {}
+    let mut batch = Batch::new(&["books", "show"], "ids", &ids);
+    for chunk in ids.chunks(WORKERS.get()) {
+        if !batch.has_room(budget) {
+            break;
         }
+        batch.extend(crumbkit::fetch_each(chunk, WORKERS, |&id| {
+            find(id, &removed).map_err(|id| BooksError::NotFound { ids: vec![id] })
+        }));
     }
-    let failures = if missing.is_empty() {
-        Vec::new()
-    } else {
-        vec![BooksError::NotFound { ids: missing }]
-    };
-    Ok(Batch::new(books, failures))
+    Ok(batch)
 }
 
 /// Returns the ids in the file at `path`, in file order. Each line holds one

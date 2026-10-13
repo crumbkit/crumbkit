@@ -4,6 +4,7 @@
 
 use std::io::{self, Write};
 
+use clap::Command;
 use serde::Serialize;
 use serde_json::Value;
 
@@ -16,6 +17,8 @@ use crate::form::FailureForm;
 use crate::help::rename;
 use crate::{Code, Document, JsonLayout, Row, Rows, Shape, Spelling, codes};
 
+mod batch;
+
 /// What [`write_result`] printed of a result.
 #[derive(Debug)]
 pub(super) enum Answer {
@@ -24,7 +27,7 @@ pub(super) enum Answer {
     /// The first rows of a listing or a list, marked as cut short with this
     /// code.
     Cut(&'static Code),
-    /// The first rows of a batch. The failure of the rows left out follows
+    /// The first rows of a batch. The failure of the keys left out follows
     /// the batch's own failures.
     Partial(OverBudget),
     /// Nothing, because the result does not fit in the output budget and its
@@ -40,9 +43,13 @@ pub(super) enum Answer {
 /// `failures` holds the failures of a batch or a prose result, which the
 /// JSON document holds under `failures`, and is `None` for every other
 /// result. `problems` is the number of rows that report a problem, which
-/// the text's note counts when there is no failure (ADR-0050). A result that fits prints whole. Otherwise a listing or a list
-/// prints the most rows that fit, marked as cut short, and a batch prints
-/// the most rows that fit and always its first. A single row or a prose
+/// the text's note counts when there is no failure (ADR-0050).
+///
+/// A result that fits prints whole. Otherwise a listing or a list prints the
+/// most rows that fit, marked as cut short. A batch prints the most rows
+/// that fit and always its first, followed by one failure that names the
+/// keys left out. A batch that has keys it never fetched prints that
+/// failure even when its rows fit. A single row or a prose
 /// result prints nothing, unless its document always prints its first
 /// answer, in which case it prints whole. After `out` is flushed, the lines
 /// that describe the result go to `err`: in text, a listing's footer or
@@ -91,12 +98,51 @@ pub(super) fn write_result<T: Rows>(
         out.flush()?;
         return Ok((Answer::Whole, bytes.len()));
     }
+    // `Prepared` borrows the output flags for the whole write, and the
+    // failure of a batch's left-out keys renders its call against the
+    // command, so the write takes the command out of `output` and puts it
+    // back after.
+    let mut command = output.command.take();
+    let written = write_rows(
+        out,
+        err,
+        output,
+        command.as_mut(),
+        spelling,
+        document,
+        value,
+        failures,
+        problems,
+    );
+    output.command = command;
+    written
+}
+
+/// Writes a result that is not bytes in text, as [`write_result`] does.
+/// `command` is the tool's command, which the `Next:` line and the failure
+/// of a batch's left-out keys render their calls against.
+#[expect(
+    clippy::too_many_arguments,
+    reason = "write_result passes its own arguments on, with the command taken out of the output flags"
+)]
+fn write_rows<T: Rows>(
+    out: &mut impl Write,
+    err: &mut impl Write,
+    output: &Output,
+    mut command: Option<&mut Command>,
+    spelling: Spelling,
+    document: Document<T>,
+    value: &T,
+    failures: Option<&[PreparedFailure<'_>]>,
+    problems: usize,
+) -> io::Result<(Answer, usize)> {
+    let budget = output.budget();
+    let code = rename::printed(output.renames, &codes::OUTPUT_OVER_BUDGET);
     let next = if output.json {
         None
     } else {
-        listing::next_line(output.command.as_mut(), value)
+        listing::next_line(command.as_deref_mut(), value)
     };
-    let output = &*output;
     let columns = columns(output, document, value);
     let values = values(&columns, value)?;
     // A failure decides the exit, so the note of the problem rows, which
@@ -113,7 +159,13 @@ pub(super) fn write_result<T: Rows>(
         form: output.failure_form,
     });
     let rows = value.rows().len();
-    let whole = budget::buffered(budget, |buffer| prepared.write(buffer, rows, None, listed))?;
+    // A batch that never fetched some of its keys ends with their failure
+    // even when its rows fit.
+    let whole = if value.left_out(rows).is_empty() {
+        budget::buffered(budget, |buffer| prepared.write(buffer, rows, None, listed))?
+    } else {
+        None
+    };
     if let Some(mut bytes) = whole {
         out.write_all(&bytes)?;
         out.flush()?;
@@ -126,11 +178,17 @@ pub(super) fn write_result<T: Rows>(
         Shape::Listing | Shape::List if rows > 0 => {
             prepared.cut(out, err, spelling.spell(code), code, budget)
         }
-        Shape::Batch if rows > 1 => {
+        Shape::Batch => {
             let listed = failures.unwrap_or_default();
-            prepared.partial(out, err, spelling, listed, code, budget)
+            let left_out = batch::LeftOut {
+                spelling,
+                command,
+                code,
+                budget,
+            };
+            prepared.partial(out, err, listed, left_out)
         }
-        Shape::Listing | Shape::List | Shape::Batch => {
+        Shape::Listing | Shape::List => {
             let bytes = prepared.measured_write(out, rows, None, listed)?;
             prepared.send_notes(err, &mut Vec::new(), rows, None);
             Ok((Answer::Whole, bytes))
@@ -386,59 +444,6 @@ impl<'a, T: Rows> Prepared<'a, T> {
         let bytes = self.measured_write(out, shown, Some(&cut), None)?;
         self.send_notes(err, &mut Vec::new(), shown, Some(&cut));
         Ok((Answer::Cut(code), bytes))
-    }
-
-    /// Writes the most first rows of a batch that fit in `budget`, and
-    /// always its first, with the failure of the rows left out after the
-    /// batch's own failures in the JSON document.
-    fn partial(
-        &mut self,
-        out: &mut impl Write,
-        err: &mut impl Write,
-        spelling: Spelling,
-        listed: &[PreparedFailure<'_>],
-        code: &'static Code,
-        budget: usize,
-    ) -> io::Result<(Answer, usize)> {
-        let rows = self.value.rows().len();
-        let in_document = self.json && self.document.has_envelope();
-        // Each count is measured with the failure of every row left out,
-        // whose numbers are the largest, so the failure that prints is never
-        // longer than the one measured.
-        let most = OverBudget {
-            code,
-            budget,
-            over: Over::Batch(rows),
-        };
-        // `code` is already the code that the run prints, so no rename
-        // applies to it.
-        let most = in_document.then(|| PreparedFailure::new(&most, spelling, &[], None, err));
-        let shown = budget::largest(1, rows - 1, |shown| {
-            let failures = Failures {
-                listed,
-                over: most.as_ref(),
-                form: self.form,
-            };
-            let bytes =
-                budget::measure(|counter| self.write(counter, shown, None, Some(failures)))?;
-            Ok(bytes <= budget)
-        })?;
-        let over = OverBudget {
-            code,
-            budget,
-            over: Over::Batch(rows - shown),
-        };
-        let bytes = {
-            let prepared =
-                in_document.then(|| PreparedFailure::new(&over, spelling, &[], None, err));
-            let failures = Failures {
-                listed,
-                over: prepared.as_ref(),
-                form: self.form,
-            };
-            self.measured_write(out, shown, None, Some(failures))?
-        };
-        Ok((Answer::Partial(over), bytes))
     }
 
     /// Writes the line that says the budget cut the result short to `out`.

@@ -10,6 +10,7 @@ use serde::Serialize;
 use serde_json::{Value, json};
 
 use super::{FailureForm, PreparedFailure, ReadFailure, Step};
+use crate::answered::answered;
 use crate::help::Guide;
 use crate::{
     Batch, Call, Code, Document, Failure, Field, JsonLayout, Output, Parsed, Recovery, Row, Sink,
@@ -318,7 +319,7 @@ fn a_fields_name_that_finish_refuses_prints_in_the_form() {
 #[test]
 fn a_batch_prints_its_failures_in_the_form_text_and_a_form_without_its_own_entry_keeps_crumbkit_entries()
  {
-    let batch = || Batch::new(vec![Planet { name: "Mars" }], vec![Missing]);
+    let batch = || answered(vec![Planet { name: "Mars" }], vec![Missing]);
     let text = finish(&LINE_GUIDE, &["list"], PLANETS_SHOW, Ok(batch()));
     let json = finish(&LINE_GUIDE, &["list", "--json"], PLANETS_SHOW, Ok(batch()));
 

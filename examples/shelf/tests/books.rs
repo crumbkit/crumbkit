@@ -54,6 +54,13 @@ fn shelf_with_ids_file(ids: &str, args: &[&str]) -> io::Result<OutputAssert> {
 /// with a cleared environment and XDG directories under `dir`, and returns
 /// its output for assertions.
 fn run(dir: &Path, args: &[&str]) -> OutputAssert {
+    command(dir, args).assert()
+}
+
+/// Returns the command that runs the built `shelf` binary with `args` in
+/// the working directory `dir`, with a cleared environment and XDG
+/// directories under `dir`.
+fn command(dir: &Path, args: &[&str]) -> Command {
     Command::new(env!("CARGO_BIN_EXE_shelf"))
         .args(args)
         .current_dir(dir)
@@ -62,7 +69,18 @@ fn run(dir: &Path, args: &[&str]) -> OutputAssert {
         .env("XDG_DATA_HOME", dir.join("data"))
         .env("XDG_STATE_HOME", dir.join("state"))
         .env("XDG_CACHE_HOME", dir.join("cache"))
-        .assert()
+}
+
+/// Runs shelf as [`shelf`] does, with the output budget lowered to `bytes`.
+///
+/// # Errors
+///
+/// Returns the I/O error of a temporary directory that cannot be created.
+fn shelf_with_budget(bytes: &str, args: &[&str]) -> io::Result<OutputAssert> {
+    let dir = tempfile::tempdir()?;
+    Ok(command(dir.path(), args)
+        .env("CRUMBKIT_OUTPUT_BUDGET", bytes)
+        .assert())
 }
 
 /// Runs `refused`, which shelf refuses with crumbkit's usage code, beside
@@ -235,7 +253,7 @@ fn books_show_with_only_an_id_outside_the_catalogue_prints_only_the_failure_with
 }
 
 #[test]
-fn books_show_prints_the_books_found_and_one_failure_naming_the_missing_ids_with_code_1() {
+fn books_show_prints_the_books_found_and_one_failure_for_each_missing_id_with_code_1() {
     shelf(&["books", "show", "2", "7", "9"])
         .unwrap()
         .code(1)
@@ -253,11 +271,31 @@ fn books_show_json_with_only_an_id_outside_the_catalogue_prints_empty_data_and_t
 }
 
 #[test]
-fn books_show_json_prints_one_document_with_the_books_found_and_the_failure_with_code_1() {
+fn books_show_json_prints_one_document_with_the_books_found_and_the_failures_with_code_1() {
     shelf(&["books", "show", "2", "7", "9", "--json"])
         .unwrap()
         .code(1)
         .stdout_eq(file!["golden/books-show-2-7-9-json.json"].raw())
+        .stderr_eq("");
+}
+
+#[test]
+fn books_show_over_the_budget_prints_the_first_books_and_names_the_ids_left_out_with_code_1() {
+    let ids = ["books", "show", "1", "2", "3", "4", "5", "6"];
+    shelf_with_budget("200", &ids)
+        .unwrap()
+        .code(1)
+        .stdout_eq(file!["golden/books-show-over-budget.txt"].raw())
+        .stderr_eq(file!["golden/books-show-over-budget.stderr"].raw());
+}
+
+#[test]
+fn books_show_json_over_the_budget_names_the_ids_left_out_in_its_last_failure_with_code_1() {
+    let ids = ["books", "show", "1", "2", "3", "4", "5", "6", "--json"];
+    shelf_with_budget("480", &ids)
+        .unwrap()
+        .code(1)
+        .stdout_eq(file!["golden/books-show-over-budget-json.json"].raw())
         .stderr_eq("");
 }
 
