@@ -415,6 +415,9 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   calls from a refused command line naming the leaf, such as the line with
   the refused value corrected, and the refusal offers each call whose line
   parses after crumbkit's own alternatives ([ADR-0056]).
+- crumbkit: `RuntimeLeaf::refusal_alternatives` gives a command that a
+  tool adds at run time the alternatives that a refusal of its line offers
+  ([ADR-0021]).
 
 ### Changed
 
@@ -620,6 +623,8 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit: [`ReadFailure`] holds each field as a `FieldValue`, so a
   form's `read` gives back a null, list or object field as the failure
   held it ([ADR-0045]).
+- crumbkit: [`help::RuntimeLeaf`] no longer implements `PartialEq` and
+  `Eq`, because it holds the function of its refusal alternatives.
 
 ### Removed
 

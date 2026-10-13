@@ -5,8 +5,8 @@ use std::process::ExitCode;
 use clap::Command;
 
 use super::RuntimeLeaf;
-use crate::help::{Example, Exit, Goal, Group, Guide, Leaf, Topic};
-use crate::{Sink, Spelling, parse_to};
+use crate::help::{Example, Exit, Goal, Group, Guide, Leaf, RefusalContext, Rename, Topic};
+use crate::{Call, Code, Sink, Spelling, parse_to};
 
 const GUIDE: Guide = Guide::new()
     .groups(&[Group::new(&[], &[Goal::new("Read", &["planets"])])])
@@ -108,4 +108,44 @@ fn a_runtime_leaf_keeps_the_program_whose_exit_code_it_passes_on() {
         .map(Leaf::get_passes_on_exit)
         .collect();
     assert_eq!(programs, [Some("the editor"), None]);
+}
+
+/// The tool's own code for crumbkit's usage code.
+const BAD_LINE: Code = Code::new("tool", "cli", "bad_line");
+
+/// The guide's rename of crumbkit's usage code.
+const RENAMES: &[Rename] = &[Rename::new(&crate::codes::CLI_USAGE, &BAD_LINE)];
+
+/// Returns `tool moons list` for any refusal of a runtime leaf's command.
+fn list_moons(_: &RefusalContext<'_>) -> Vec<Call> {
+    vec![Call::new(&["moons", "list"])]
+}
+
+#[test]
+fn a_refusal_of_a_runtime_leafs_command_offers_its_alternatives_and_prints_the_guides_rename() {
+    let name = String::from("moons");
+    let tool = Command::new("tool").subcommand(
+        Command::new(name.clone())
+            .subcommand(Command::new("list").about("List the moons"))
+            .subcommand(Command::new("show").about("Show a moon")),
+    );
+    let guide = Guide::new().codes(RENAMES).with_runtime_leaves(vec![
+        RuntimeLeaf::new(vec![name, "show".to_owned()]).refusal_alternatives(list_moons),
+    ]);
+    let mut err = Vec::new();
+
+    let result = parse_to::<(), _, _, _, _>(
+        &mut Sink::new(Vec::new(), &mut err),
+        tool,
+        &guide,
+        Spelling::COLONS,
+        ["tool", "moons", "show", "--bogus"],
+    );
+
+    assert_eq!(result.err().map(ExitCode::from), Some(ExitCode::from(2)));
+    let text = String::from_utf8(err).unwrap();
+    assert!(
+        text.contains("  help:  run `tool moons list`\n  code:  tool::cli::bad_line\n"),
+        "{text}"
+    );
 }
