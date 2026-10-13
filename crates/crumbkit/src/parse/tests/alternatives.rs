@@ -1,5 +1,6 @@
-//! Tests for the alternatives that a leaf's function returns for a refusal
-//! of a command line that names the leaf.
+//! Tests for the alternatives that a leaf's function, or the guide's
+//! function for a leaf that sets none, returns for a refusal of a command
+//! line that names the leaf.
 
 use std::process::ExitCode;
 
@@ -65,15 +66,35 @@ const GUIDE: Guide = Guide::new().leaves(&[
     Leaf::new(&["planets", "orbit"]).refusal_alternatives(without_extension),
 ]);
 
+/// Returns the calls of [`without_extension`] and then `tool planets list`,
+/// for a refusal of any command line.
+fn every_command(context: &RefusalContext<'_>) -> Vec<Call> {
+    let mut calls = without_extension(context);
+    calls.push(Call::new(&["planets", "list"]));
+    calls
+}
+
+/// A guide whose function [`every_command`] serves every command line, and
+/// whose leaf `planets list` sets its own function.
+const GUIDE_WIDE: Guide = Guide::new()
+    .refusal_alternatives(every_command)
+    .leaves(&[Leaf::new(&["planets", "list"]).refusal_alternatives(show_mars)]);
+
 /// Runs `parse_to` over `bounded()` and [`GUIDE`] with `args` into memory,
 /// for a command line that does not parse.
 fn parse(args: &[&str]) -> Parsed {
+    parse_guided(&GUIDE, args)
+}
+
+/// Runs `parse_to` over `bounded()` and `guide` with `args` into memory,
+/// for a command line that does not parse.
+fn parse_guided(guide: &Guide, args: &[&str]) -> Parsed {
     let mut out = Vec::new();
     let mut err = Vec::new();
     let result = parse_to::<(), _, _, _, _>(
         &mut Sink::new(&mut out, &mut err),
         bounded(),
-        &GUIDE,
+        guide,
         Spelling::COLONS,
         args,
     );
@@ -156,5 +177,43 @@ error: unexpected argument '--srot' found; a similar argument exists: '--sort'
         bounded(),
         &refused,
         &["tool", "planets", "show", "Mars", "--sort", "name"],
+    );
+}
+
+#[test]
+fn a_refusal_of_a_line_whose_command_sets_no_function_offers_the_guides_alternatives() {
+    let refused = ["tool", "planets", "orbit", "mars.json"];
+
+    let parsed = parse_guided(&GUIDE_WIDE, &refused);
+
+    let expected = "\
+error: invalid value 'mars.json' for '<NAME>': no planet is named mars.json
+  help:  run `tool planets orbit -h`
+  help:  run `tool planets orbit mars`
+  help:  run `tool planets list`
+  code:  crumbkit::cli::usage
+";
+    assert_eq!(parsed.err, expected);
+    admits(bounded(), &refused, &["tool", "planets", "orbit", "mars"]);
+}
+
+#[test]
+fn a_leafs_own_function_replaces_the_guides_function_for_its_command_line() {
+    let refused = ["tool", "planets", "list", "--limit", "11"];
+
+    let parsed = parse_guided(&GUIDE_WIDE, &refused);
+
+    let expected = "\
+error: invalid value '11' for '--limit <N>': --limit takes at most 10
+  help:  run `tool planets list --all`
+  help:  run `tool planets list --limit 10`
+  help:  run `tool planets show Mars`
+  code:  crumbkit::cli::usage
+";
+    assert_eq!(parsed.err, expected);
+    admits(
+        bounded(),
+        &refused,
+        &["tool", "planets", "list", "--limit", "10"],
     );
 }

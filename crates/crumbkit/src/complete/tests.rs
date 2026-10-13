@@ -1,5 +1,5 @@
 //! Tests for `requested`, the rule that the usage log shares, and for
-//! `complete_to`.
+//! `complete_to` and the words that it passes to the tool's builder.
 
 use std::ffi::OsStr;
 
@@ -57,7 +57,7 @@ mod answers {
         let args = ["shelf", "--"].iter().chain(words);
         let code = complete_to(
             &mut Sink::new(&mut out, &mut err),
-            command,
+            |_| command,
             guide,
             variable,
             OsStr::new(shell),
@@ -163,7 +163,7 @@ mod answers {
 
         let code = complete_to(
             &mut Sink::new(Broken, &mut err),
-            tool(),
+            |_| tool(),
             &Guide::new(),
             VAR,
             OsStr::new("fish"),
@@ -173,5 +173,82 @@ mod answers {
 
         assert_eq!(code, ExitCode::FAILURE);
         assert_eq!(err, b"");
+    }
+}
+
+#[cfg(feature = "complete")]
+mod words {
+    use std::ffi::{OsStr, OsString};
+    use std::process::ExitCode;
+
+    use clap::{Arg, Command};
+
+    use super::super::{VAR, complete_to};
+    use crate::Sink;
+    use crate::help::Guide;
+
+    /// Builds shelf with a global `-C <DIR>` and one subcommand for the
+    /// directory that `words` choose with `-C`, such as `archive-books` for
+    /// `-C archive`, as a tool builds completers for a directory that the
+    /// caller chose earlier on the line.
+    fn for_directory(words: &[OsString]) -> Command {
+        let directory = words
+            .iter()
+            .position(|word| word == "-C")
+            .and_then(|position| words.get(position + 1))
+            .map_or("current".to_owned(), |word| {
+                word.to_string_lossy().into_owned()
+            });
+        Command::new("shelf")
+            .arg(Arg::new("dir").short('C').global(true))
+            .subcommand(Command::new(format!("{directory}-books")))
+    }
+
+    /// Completes `args` with a builder that records the words it receives
+    /// and builds [`for_directory`], and returns the exit code, standard
+    /// output and the recorded words.
+    fn complete(args: &[&str]) -> (ExitCode, String, Option<Vec<OsString>>) {
+        let mut out = Vec::new();
+        let mut received = None;
+        let code = complete_to(
+            &mut Sink::new(&mut out, Vec::new()),
+            |words| {
+                received = Some(words.to_vec());
+                for_directory(words)
+            },
+            &Guide::new(),
+            VAR,
+            OsStr::new("fish"),
+            args,
+            None,
+        );
+        (code, String::from_utf8(out).unwrap(), received)
+    }
+
+    #[test]
+    fn a_completion_builds_the_command_from_the_words_after_the_program_name() {
+        let (code, out, received) = complete(&["shelf", "--", "shelf", "-C", "archive", ""]);
+
+        assert_eq!(code, ExitCode::SUCCESS);
+        assert_eq!(
+            received,
+            Some(vec![
+                OsString::from("-C"),
+                OsString::from("archive"),
+                OsString::new()
+            ])
+        );
+        assert!(
+            out.lines().any(|line| line.starts_with("archive-books")),
+            "{out}"
+        );
+    }
+
+    #[test]
+    fn a_registration_request_builds_the_command_from_no_words() {
+        let (code, _, received) = complete(&["shelf", "--"]);
+
+        assert_eq!(code, ExitCode::SUCCESS);
+        assert_eq!(received, Some(Vec::new()));
     }
 }

@@ -1,5 +1,6 @@
 //! The alternatives that a refusal of a leaf's command line offers after
-//! crumbkit's own, which a function of the tool builds from the refusal
+//! crumbkit's own, which a function of the tool builds from the refusal,
+//! set on the leaf or on the guide for every leaf that sets none
 //! (ADR-0056).
 
 use std::ffi::OsString;
@@ -9,12 +10,14 @@ use clap::error::{ContextKind, ContextValue, ErrorKind};
 
 use super::Leaf;
 use crate::Call;
+use crate::help::Guide;
 
 #[cfg(test)]
 mod tests;
 
-/// What clap refused in a command line that names a leaf, which the leaf's
-/// function from [`Leaf::refusal_alternatives`] reads to build its calls.
+/// What clap refused in a command line that names a leaf, which the
+/// function from [`Leaf::refusal_alternatives`] or
+/// [`Guide::refusal_alternatives`] reads to build its calls.
 ///
 /// The fields are private so that a later release can add more of the
 /// refusal without breaking a tool's function.
@@ -128,6 +131,10 @@ impl Leaf {
     /// [`Call::arg`] as the run would. It leaves out a call that does not
     /// render or whose line does not parse, without a warning, so a
     /// function can return a correction that it has not checked.
+    ///
+    /// The leaf's function replaces the function of
+    /// [`Guide::refusal_alternatives`] for this command line, and one that
+    /// wants the guide's calls too calls the guide's function itself.
     #[must_use]
     pub const fn refusal_alternatives(
         mut self,
@@ -144,5 +151,72 @@ impl Leaf {
     #[must_use]
     pub const fn get_refusal_alternatives(&self) -> Option<fn(&RefusalContext<'_>) -> Vec<Call>> {
         self.refusal_alternatives
+    }
+}
+
+impl Guide {
+    /// Sets the function that builds the alternatives for a refused command
+    /// line whose command has no function of its own from
+    /// [`Leaf::refusal_alternatives`], including a command with no leaf in
+    /// the guide (ADR-0056).
+    ///
+    /// A tool whose correction is one rule for every command, such as
+    /// rewriting a refused value and keeping the corrected line when it
+    /// parses, declares it here once. crumbkit treats the calls that it
+    /// returns as it treats a leaf's calls, and a leaf's own function
+    /// replaces this one for the leaf's command line:
+    ///
+    /// ```
+    /// use crumbkit::Call;
+    /// use crumbkit::help::{Guide, RefusalContext};
+    ///
+    /// /// Offers the refused line with `.json` cut from the refused value.
+    /// fn without_json(context: &RefusalContext<'_>) -> Vec<Call> {
+    ///     let Some(value) = context.value() else {
+    ///         return Vec::new();
+    ///     };
+    ///     let Some(stem) = value.strip_suffix(".json") else {
+    ///         return Vec::new();
+    ///     };
+    ///     let words = context.words().iter().map(|word| {
+    ///         let word = word.to_string_lossy();
+    ///         if word == value { stem.to_owned() } else { word.into_owned() }
+    ///     });
+    ///     vec![Call::typed(words.collect())]
+    /// }
+    ///
+    /// const GUIDE: Guide = Guide::new().refusal_alternatives(without_json);
+    /// # assert!(GUIDE.get_refusal_alternatives().is_some());
+    /// ```
+    #[must_use]
+    pub const fn refusal_alternatives(
+        mut self,
+        alternatives: fn(&RefusalContext<'_>) -> Vec<Call>,
+    ) -> Self {
+        self.refusal_alternatives = Some(alternatives);
+        self
+    }
+
+    /// Returns the function that [`Guide::refusal_alternatives`] set, or
+    /// `None` when a command without a function of its own offers
+    /// crumbkit's alternatives alone. The name has clap's `get_` prefix,
+    /// because `refusal_alternatives` is the builder method.
+    #[must_use]
+    pub const fn get_refusal_alternatives(&self) -> Option<fn(&RefusalContext<'_>) -> Vec<Call>> {
+        self.refusal_alternatives
+    }
+
+    /// Returns the function that builds the alternatives for a refused
+    /// command line that names the command at `path`: the function of the
+    /// command's leaf, or else the guide's, or `None` when neither is set.
+    pub(crate) fn refusal_function(
+        &self,
+        path: &[String],
+    ) -> Option<fn(&RefusalContext<'_>) -> Vec<Call>> {
+        self.leaves
+            .iter()
+            .find(|leaf| leaf.path() == path)
+            .and_then(Leaf::get_refusal_alternatives)
+            .or(self.refusal_alternatives)
     }
 }

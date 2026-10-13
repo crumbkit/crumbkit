@@ -25,7 +25,8 @@ pub(super) struct Customisation {
 
 /// Returns the declarations of `guide` for the tool whose root command is
 /// `command`, in this order: the failure form, each code rename, each exit
-/// that lists one of crumbkit's codes or the tool's rename of it, the
+/// that lists one of crumbkit's codes or the tool's rename of it, whether
+/// the guide declares refusal alternatives for every command, the
 /// [`Guide::dashed_forms`] declaration followed by each command that
 /// answers to its dashed form, as [`dashed_names`] lists them, and then for
 /// each leaf in guide order its document's name when the leaf's path gives
@@ -77,6 +78,15 @@ pub(super) fn customisations(command: &Command, guide: &Guide) -> Vec<Customisat
             });
         }
     }
+    if guide.get_refusal_alternatives().is_some() {
+        list.push(Customisation {
+            declaration: "refusal-alternatives",
+            applies_to: every_run.clone(),
+            declares: "A refused command line for a command without its own function also offers \
+                       the tool's own alternatives."
+                .to_owned(),
+        });
+    }
     if guide.get_dashed_forms() {
         list.push(Customisation {
             declaration: "dashed-forms",
@@ -107,7 +117,8 @@ pub(super) fn customisations(command: &Command, guide: &Guide) -> Vec<Customisat
             });
         }
         // The report states that the leaf declares refusal alternatives and
-        // leaves out the calls, so this getter is the only line that reads them.
+        // leaves out the calls, so this getter and the guide's are the only
+        // lines that read them.
         if leaf.get_refusal_alternatives().is_some() {
             list.push(Customisation {
                 declaration: "refusal-alternatives",
