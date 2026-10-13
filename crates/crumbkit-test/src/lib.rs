@@ -13,6 +13,11 @@
 //! [`check_exit_codes`]: crate::check_exit_codes
 //! [`check_help_sizes`]: crate::check_help_sizes
 //! [`Budgets`]: crate::Budgets
+//! [`Guide`]: crate::Guide
+//! [`Pages::clap`]: crate::Pages::clap
+//! [`Pages::rendered`]: crate::Pages::rendered
+//! [`Pages::binary`]: crate::Pages::binary
+//! [`PathBudgets::help_only`]: crate::PathBudgets::help_only
 //! [`Budget`]: crate::Budget
 //! [`check_path_weights`]: crate::check_path_weights
 //! [`PathBudgets`]: crate::PathBudgets
@@ -95,3 +100,6 @@ pub use crate::twins::{Twin, Twins, check_twin, check_twins};
 pub use crate::weights::{
     PathBudgets, UnreadableGolden, check_path_weights, output_weight, path_totals,
 };
+/// crumbkit's guide, which several checks take, so a tool that does not
+/// depend on crumbkit can pass `&Guide::new()` with crumbkit-test alone.
+pub use crumbkit::help::Guide;
