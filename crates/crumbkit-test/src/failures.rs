@@ -132,6 +132,11 @@ pub(crate) fn reader<'a>(
 /// every entry of the `failures` of the last document that has any, as a
 /// batch prints them; then the last `code:` line on `stderr`, which gives a
 /// failure without steps or fields.
+///
+/// When `reader` is a failure form, each entry of `failures` is read
+/// through [`FailureForm::read`] as one line of standard output with an
+/// empty standard error, and an entry that the form cannot read is read in
+/// crumbkit's shape.
 pub(crate) fn read_failures(
     reader: Option<Reader<'_>>,
     stdout: &[u8],
@@ -145,7 +150,11 @@ pub(crate) fn read_failures(
             return read;
         }
     }
-    let read = crumbkit_failures(&out);
+    let form = match reader {
+        Some(Reader::Form(form)) => Some(form),
+        _ => None,
+    };
+    let read = crumbkit_failures(&out, form);
     if !read.is_empty() {
         return read;
     }
@@ -158,8 +167,9 @@ pub(crate) fn read_failures(
 }
 
 /// Returns the failures of the last document on `out` that is a
-/// `crumbkit/failure/v1` document or has a non-empty `failures` array.
-fn crumbkit_failures(out: &str) -> Vec<ReadFailure> {
+/// `crumbkit/failure/v1` document or has a non-empty `failures` array. A
+/// `form` reads each entry of the array first.
+fn crumbkit_failures(out: &str, form: Option<&dyn FailureForm>) -> Vec<ReadFailure> {
     for document in runs::documents(out).iter().rev() {
         if document.get("schema").and_then(Value::as_str) == Some("crumbkit/failure/v1") {
             return read_document(document).into_iter().collect();
@@ -167,7 +177,13 @@ fn crumbkit_failures(out: &str) -> Vec<ReadFailure> {
         if let Some(failures) = document.get("failures").and_then(Value::as_array)
             && !failures.is_empty()
         {
-            return failures.iter().filter_map(read_document).collect();
+            return failures
+                .iter()
+                .filter_map(|entry| {
+                    form.and_then(|form| form.read(&entry.to_string(), ""))
+                        .or_else(|| read_document(entry))
+                })
+                .collect();
         }
     }
     Vec::new()

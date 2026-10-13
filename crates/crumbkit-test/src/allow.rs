@@ -475,7 +475,7 @@ impl Rule {
             Self::FailureForm => &[
                 "An agent that knows crumbkit's failure document must learn this tool's failure document, which `schemas show` serves.",
                 "The tool owns the schema of its failure document, and changing it breaks its callers unless the document gets a new id.",
-                "Each entry of a batch's `failures` keeps crumbkit's shape, so the tool's JSON holds two failure shapes.",
+                "Each entry of a batch's `failures` keeps crumbkit's shape unless the form implements `FailureForm::entry`, so the tool's JSON can hold two failure shapes.",
             ],
             Self::ShellExitCode => &[
                 "An agent cannot tell the code from the one a shell reports, such as 127 when the shell cannot find the tool or 130 when Ctrl-C ends it.",
