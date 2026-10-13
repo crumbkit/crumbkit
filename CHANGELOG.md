@@ -367,10 +367,10 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit-test: [`check_twin`] and [`check_recoveries`] fail a run whose
   exit code differs from the one that the guide lists for its first
   failure, or is a listing exit code for an unlisted failure ([ADR-0037]).
-- crumbkit-test: [`RuntimeFailing`] builds a failing line from words,
-  paths, input, values and variables that a test reads at run time, and
-  gives a `Failing`, a `Twin` or an `Allow::untwinned` opt-out
-  ([ADR-0002]).
+- crumbkit-test: [`RuntimeFailing`] builds failing lines from a code,
+  words, paths, input, values and variables that a test gets at run time,
+  reuses its settings across lines with `line`, and gives a `Failing`, a
+  `Twin` or an `Allow::untwinned` opt-out ([ADR-0002]).
 
 ### Changed
 

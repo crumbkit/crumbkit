@@ -7,7 +7,7 @@
 use std::ffi::OsStr;
 use std::fs;
 use std::os::unix::ffi::OsStrExt as _;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use clap::{Arg, Command};
 use crumbkit::help::Guide;
@@ -101,11 +101,6 @@ fn strict(label: &str) -> TempDir {
     fixture
 }
 
-/// Returns the words of `line`, split at spaces, as owned strings.
-fn words(line: &str) -> Vec<String> {
-    line.split(' ').map(str::to_owned).collect()
-}
-
 /// Runs the recovery check of `recoveries` with `SNAPSHOTS=overwrite`,
 /// requires it to pass and returns the report that it wrote.
 fn report(recoveries: &Recoveries<'_>, label: &str) -> String {
@@ -142,12 +137,12 @@ fn a_runtime_failing_built_from_owned_strings_runs_as_a_borrowed_failing_does() 
         .xdg(&xdg_text)
         .values(&[("NAME", "present")])
         .env(&[("DEPTH", Some("1"))])];
-    let owned = [RuntimeFailing::new(&NOT_FOUND, words("lists check"))
-        .dir(work.path().to_path_buf())
-        .stdin("everything".to_owned())
-        .xdg(xdg.path().to_path_buf())
-        .values(vec![("NAME".to_owned(), "present".to_owned())])
-        .env(vec![("DEPTH".to_owned(), Some("1".to_owned()))])
+    let owned = [RuntimeFailing::new(NOT_FOUND, ["lists", "check"])
+        .dir(work.path())
+        .stdin(String::from("everything"))
+        .xdg(xdg.path())
+        .values([("NAME", String::from("present"))])
+        .env("DEPTH", "1")
         .into_failing()];
     let recoveries = |starts| {
         Recoveries::new(examples, Spelling::COLONS, CODES)
@@ -175,7 +170,7 @@ fn a_runtime_failing_gives_an_untwinned_opt_out_a_static_line() {
     let allow = {
         let name = String::from("broken");
         let reason = format!("The list {name} is broken, and no word of the line names that.");
-        RuntimeFailing::new(&UNREADABLE, words(&format!("lists show {name}"))).untwinned(reason)
+        RuntimeFailing::new(UNREADABLE, ["lists", "show", name.as_str()]).untwinned(reason)
     };
 
     assert_eq!(allow.line(&tree()), "tool lists show broken");
@@ -183,6 +178,64 @@ fn a_runtime_failing_gives_an_untwinned_opt_out_a_static_line() {
         allow.reason(),
         "The list broken is broken, and no word of the line names that."
     );
+}
+
+#[test]
+fn an_untwinned_opt_out_keeps_a_constant_reason_without_copying_it() {
+    const REASON: &str = "The list is broken, and no word of the line names that.";
+
+    let allow = RuntimeFailing::new(UNREADABLE, ["lists", "show", "broken"]).untwinned(REASON);
+
+    assert!(std::ptr::eq(allow.reason(), REASON));
+}
+
+#[test]
+fn a_runtime_failing_takes_its_code_by_value() {
+    let code = Code::new("tool", "lists", "not_found");
+
+    let failing = RuntimeFailing::new(code, ["lists", "check"]).into_failing();
+
+    assert_eq!(*failing.code(), NOT_FOUND);
+    assert_eq!(failing.words(), ["lists", "check"]);
+}
+
+#[test]
+fn a_line_keeps_the_directory_input_fixture_values_and_variables_and_replaces_the_code_and_words() {
+    let place = RuntimeFailing::new(NOT_FOUND, ["lists", "check"])
+        .dir("work")
+        .stdin("everything")
+        .xdg("fixture")
+        .values([("NAME", "present")])
+        .env("DEPTH", "1")
+        .env_remove("HOME");
+
+    let failing = place
+        .line(UNREADABLE, ["lists", "show", "broken"])
+        .into_failing();
+
+    assert_eq!(*failing.code(), UNREADABLE);
+    assert_eq!(failing.words(), ["lists", "show", "broken"]);
+    let Some(Dir::Fixed(dir)) = failing.work_dir(None) else {
+        panic!("the line has no directory of its own");
+    };
+    assert_eq!(dir.path(), Path::new("work"));
+    assert_eq!(failing.stdin_bytes(), Some("everything".as_bytes()));
+    assert_eq!(failing.fixture(None), Some(Path::new("fixture")));
+    assert_eq!(failing.own_values(), [("NAME", "present")]);
+    assert_eq!(failing.own_env(), [("DEPTH", Some("1")), ("HOME", None)]);
+    assert_eq!(*place.into_failing().code(), NOT_FOUND);
+}
+
+#[test]
+fn an_optional_xdg_fixture_sets_the_fixture_when_it_is_some_and_none_when_it_is_none() {
+    let fixture: Option<PathBuf> = Some(PathBuf::from("fixture"));
+    let line = RuntimeFailing::new(NOT_FOUND, ["lists", "check"]);
+
+    let with = line.clone().xdg_option(fixture).into_failing();
+    let without = line.xdg("fixture").xdg_option(None).into_failing();
+
+    assert_eq!(with.fixture(None), Some(Path::new("fixture")));
+    assert_eq!(without.fixture(None), None);
 }
 
 #[test]
@@ -201,19 +254,18 @@ fn a_test_builds_a_twin_a_recovery_start_and_an_untwinned_opt_out_from_a_directo
         }
     }
     let missing = format!("{present}-gone");
-    let show = |name: &str| words(&format!("lists show {name}"));
-    let refused = |code: &'static Code, name: &str| {
-        RuntimeFailing::new(code, show(name)).dir(work.path().to_path_buf())
-    };
-    let pairs = [refused(&NOT_FOUND, &missing).twin(show(&present))];
-    let allow = [refused(&UNREADABLE, &broken).untwinned(format!(
+    let place = RuntimeFailing::new(NOT_FOUND, ["lists"]).dir(work.path());
+    let show = |name: &str| ["lists".to_owned(), "show".to_owned(), name.to_owned()];
+    let pairs = [place.line(NOT_FOUND, show(&missing)).twin(show(&present))];
+    let allow = [place.line(UNREADABLE, show(&broken)).untwinned(format!(
         "The list {broken} is broken, and no word of the line names that."
     ))];
     let starts = [
-        refused(&NOT_FOUND, &missing)
-            .values(vec![("NAME".to_owned(), present.clone())])
+        place
+            .line(NOT_FOUND, show(&missing))
+            .values([("NAME", present.clone())])
             .into_failing(),
-        refused(&UNREADABLE, &broken).into_failing(),
+        place.line(UNREADABLE, show(&broken)).into_failing(),
     ];
     let examples = Examples::new(&script, "").allow(&allow);
     let twins = Twins::new(examples, Spelling::COLONS, CODES).pairs(&pairs);
@@ -238,7 +290,7 @@ fn a_test_builds_a_twin_a_recovery_start_and_an_untwinned_opt_out_from_a_directo
 fn a_runtime_failing_keeps_a_directory_and_a_fixture_whose_paths_are_not_utf_8() {
     let path = PathBuf::from(OsStr::from_bytes(b"lists-\xff"));
 
-    let failing = RuntimeFailing::new(&NOT_FOUND, words("lists check"))
+    let failing = RuntimeFailing::new(NOT_FOUND, ["lists", "check"])
         .dir(path.clone())
         .xdg(path.clone())
         .into_failing();

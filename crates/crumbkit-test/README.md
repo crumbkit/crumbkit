@@ -70,7 +70,8 @@ The rustdoc of each check says what it fails on and shows an example:
   [`check_twins`] with [`Twins`], which runs a tool's twins and requires
   one for each declared code. A test that reads its failing command lines
   at run time, such as file names in a temporary directory, builds them
-  with [`RuntimeFailing`]. A tool that
+  with [`RuntimeFailing`], which gives several lines one set of settings.
+  A tool that
   prints its failures in a shape of its own without a failure form gives
   these checks and [`check_examples`] a [`FailureReader`].
 - JSON documents: [`check_schema_goldens`], which pins the JSON Schema of
