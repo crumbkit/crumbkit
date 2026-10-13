@@ -3,13 +3,8 @@
 
 use std::fmt;
 
+use crate::codes::{NO_ADVICE, REPORT_UNCHECKED};
 use crate::{Code, Error, Failure, Recovery};
-
-/// The code of every failure that comes from a `miette::Report`.
-const UNCHECKED: Code = Code::new("crumbkit", "report", "unchecked");
-
-/// The reason of the `Recovery::None` of a report without help.
-const NO_ADVICE: &str = "the error gives no advice";
 
 /// Converts a `miette::Report` into an `Error`, so `?` works on a
 /// `miette::Result` inside a handler that returns `Result<_, Error>`. The
@@ -103,7 +98,7 @@ impl std::error::Error for ReportFailure {
 
 impl Failure for ReportFailure {
     fn code(&self) -> &'static Code {
-        &UNCHECKED
+        &REPORT_UNCHECKED
     }
 
     fn recovery(&self) -> Recovery {

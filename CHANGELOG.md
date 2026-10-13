@@ -448,6 +448,11 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit-test: [`check_recoveries`] follows a `run` step with `all` once,
   with every value of the named field, and accepts the same code again when
   fewer values are left ([ADR-0053]).
+- crumbkit-core: [`Error::unclassified`] holds an error that the tool did
+  not classify, such as one from an error library, with the code
+  `crumbkit::report::unchecked` and no next step ([ADR-0001]).
+- crumbkit: [`codes`] gains `REPORT_UNCHECKED`, the code of an unclassified
+  error and of a converted `miette::Report`, and `codes::ALL` lists it.
 
 ### Changed
 
@@ -832,6 +837,7 @@ rustdoc, or at its decision record. -->
 [`FailureReader`]: crates/crumbkit-test/src/failures.rs
 [crumbkit-aliases]: crates/crumbkit-aliases/README.md
 [crumbkit-core]: crates/crumbkit-core/README.md
+[`Error::unclassified`]: crates/crumbkit-core/src/unclassified.rs
 [`RenderCall`]: crates/crumbkit/src/call.rs
 [ADR-0001]: docs/decisions/api/failures/0001-error-model.md
 [ADR-0002]: docs/decisions/api/0002-public-api-and-semver.md

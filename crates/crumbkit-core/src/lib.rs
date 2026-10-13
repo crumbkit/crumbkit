@@ -24,6 +24,7 @@ mod batch;
 mod bytes;
 mod call;
 mod code;
+pub mod codes;
 mod document;
 mod failure;
 mod field;
@@ -34,6 +35,7 @@ mod report;
 mod row;
 mod segment;
 mod stream;
+mod unclassified;
 
 pub use crate::batch::Batch;
 pub use crate::bytes::Bytes;
