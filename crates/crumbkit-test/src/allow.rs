@@ -314,21 +314,11 @@ pub enum Rule {
     /// examples of a command, or one example that
     /// [`Allow::example`] names. Its id is `examples/run`.
     Examples,
-    /// [`check_document_ids`](crate::check_document_ids): the name of the
-    /// document that a command prints is not the command's path below the
-    /// tool joined with dashes. Its id is `documents/document-name`.
-    DocumentName,
     /// [`check_document_ids`](crate::check_document_ids): a command prints
     /// its document without crumbkit's envelope, because its document
     /// comes from `Document::without_envelope`. Its id is
     /// `documents/envelope`.
     Envelope,
-    /// [`check_document_ids`](crate::check_document_ids): the guide sets a
-    /// failure form with `crumbkit::help::Guide::failure_form`, so the tool
-    /// prints its failures in its own document in place of
-    /// `crumbkit/failure/v1`. Its id is `documents/failure-form`, and its
-    /// opt-out names the root.
-    FailureForm,
     /// [`check_exit_codes`](crate::check_exit_codes): the guide declares
     /// an exit code from 126 to 255, which a shell also reports for its own
     /// reasons. Its id is `exit-codes/shell-code`.
@@ -391,9 +381,7 @@ impl Rule {
             Self::RepeatsAndCommas => "filters/repeats-and-commas",
             Self::OneValuePerUse => "filters/one-value-per-use",
             Self::Examples => "examples/run",
-            Self::DocumentName => "documents/document-name",
             Self::Envelope => "documents/envelope",
-            Self::FailureForm => "documents/failure-form",
             Self::ShellExitCode => "exit-codes/shell-code",
             Self::SharedExit => "exit-codes/shared-exit",
             Self::Recoveries => "recoveries/follow",
@@ -465,17 +453,9 @@ impl Rule {
                 "The examples are not run, so help can show an example that fails.",
                 "The command's output weight counts 0 bytes, so its path weight is too low.",
             ],
-            Self::DocumentName => &[
-                "An agent cannot predict the document's id from the command it ran, or the command from the id.",
-            ],
             Self::Envelope => &[
                 "An agent cannot predict the document's shape from crumbkit's conventions and must read its schema with `schemas show`.",
                 "The document has no `schema` id, `truncated` or `failures`, so a program cannot tell which document it read, whether it holds every row, or which ids failed.",
-            ],
-            Self::FailureForm => &[
-                "An agent that knows crumbkit's failure document must learn this tool's failure document, which `schemas show` serves.",
-                "The tool owns the schema of its failure document, and changing it breaks its callers unless the document gets a new id.",
-                "Each entry of a batch's `failures` keeps crumbkit's shape unless the form implements `FailureForm::entry`, so the tool's JSON can hold two failure shapes.",
             ],
             Self::ShellExitCode => &[
                 "An agent cannot tell the code from the one a shell reports, such as 127 when the shell cannot find the tool or 130 when Ctrl-C ends it.",

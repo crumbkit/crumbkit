@@ -71,5 +71,17 @@
         "extra_tokens": 0
       }
     }
+  ],
+  "customisations": [
+    {
+      "declaration": "passes-on-exit",
+      "applies_to": "reading finished edit",
+      "declares": "The command exits with the exit code of the editor."
+    },
+    {
+      "declaration": "passes-on-exit",
+      "applies_to": "reading to-read edit",
+      "declares": "The command exits with the exit code of the editor."
+    }
   ]
 }

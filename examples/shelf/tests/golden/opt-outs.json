@@ -46,5 +46,12 @@
         "extra_tokens": 0
       }
     }
+  ],
+  "customisations": [
+    {
+      "declaration": "refusal-alternatives",
+      "applies_to": "shelf books show",
+      "declares": "A refused command line for this command also offers the tool's own alternatives."
+    }
   ]
 }

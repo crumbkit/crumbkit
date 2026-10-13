@@ -30,3 +30,11 @@ path-budget/path: every path through reading
   Budget: 3900 bytes, where crumbkit's default is 8000 bytes.
   Reason: reading's longest path, commands list, reads about 3,600 bytes, so 3,900 bytes leaves room for small changes and catches a page or an output that grows by much.
   Cost: None, because the budget is at or below crumbkit's default.
+
+reading declares 2 customisations, which need no reason.
+
+passes-on-exit: reading finished edit
+  Declares: The command exits with the exit code of the editor.
+
+passes-on-exit: reading to-read edit
+  Declares: The command exits with the exit code of the editor.
