@@ -162,6 +162,10 @@ struct Sections {
     /// `Output:` line for a leaf that passes on a program's exit code, or
     /// `None` when the leaf passes on none.
     exit: Option<String>,
+    /// The `Problems:` line that `-h` and `--help` print after the
+    /// `Output:` line, which [`Leaf::problems_line`] returns, or `None`
+    /// when the leaf's rows name no problem field.
+    problems: Option<String>,
 }
 
 /// Returns the sections of `leaf`, whose command is `node` and whose
@@ -195,6 +199,7 @@ fn leaf_sections(
         exit: leaf
             .get_passes_on_exit()
             .map(|program| format!("Exit code: the command passes on the exit code of {program}.")),
+        problems: leaf.problems_line(),
     }
 }
 
@@ -217,7 +222,8 @@ struct Lines<'a> {
 /// and `--help` when it guards what it writes, the `Output:` line in `-h`
 /// and `--help` when the leaf prints a stream or bytes, the `Exit code:`
 /// line in `-h` and `--help` when the leaf passes on a program's exit code,
-/// the global flags
+/// the `Problems:` line in `-h` and `--help` when its rows name a problem
+/// field, the global flags
 /// line in `-h`, the topics line and the aliases line in `-h` and `--help`, and a
 /// `Next:` line, each when it has text. The `Next:` line opens a
 /// subcommand in `-h` and `--help` when `node` has a visible subcommand, and
@@ -246,6 +252,10 @@ fn set_help_lines(node: &mut Command, text: &str, lines: &Lines<'_>, sections: S
     if let Some(exit) = sections.exit {
         short.push(exit.clone());
         long.push(exit);
+    }
+    if let Some(problems) = sections.problems {
+        short.push(problems.clone());
+        long.push(problems);
     }
     if !flags.is_empty() {
         short.push(format!(

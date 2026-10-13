@@ -77,6 +77,9 @@ impl Row for AliasRow {
     // shows without `--long`. The source comes last because a file's path is
     // the longest cell, and the columns before it stay aligned.
     const COLUMNS: &'static [&'static str] = &["name", "command", "problem", "from"];
+    // An entry that does not work makes `aliases list` exit with 1, so a
+    // check of the aliases file fails on it.
+    const PROBLEM: Option<&'static str> = Some("problem");
 }
 
 /// Returns the built-in aliases of the command tree that the tool passed to

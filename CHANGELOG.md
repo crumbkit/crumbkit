@@ -385,6 +385,13 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit: a failure field can hold null, a list or an object, built
   with `FieldValue::list`, `FieldValue::object` or an `Option`, and the
   failure document holds it as a JSON value ([ADR-0007]).
+- crumbkit-core: [`Row`] gains `PROBLEM`, which names the field that marks
+  a row as reporting a problem ([ADR-0050]).
+- crumbkit: a leaf whose row type names a problem field prints a
+  `Problems:` line in `-h` and `--help` ([ADR-0050]).
+- crumbkit-test: [`check_guide`] fails when a row type's problem field is
+  not one of its `COLUMNS`, or when its type has no value that means no
+  problem ([ADR-0050]).
 
 ### Changed
 
@@ -568,6 +575,13 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   `Rule::SharedExit`. [`check_twin`], [`check_recoveries`] and
   [`check_output_budget`] expect the codes and exits that the guide
   declares ([ADR-0056]).
+- crumbkit: [`finish`] and [`stream`] exit with 1 when a row reports a
+  problem and the run has no failure, and the text ends with a note that
+  counts those rows ([ADR-0050]).
+- crumbkit: `help exit-codes` says that 1 also means a row of the result
+  reported a problem ([ADR-0050]).
+- crumbkit-aliases: `aliases list` exits with 1 while an entry of the
+  aliases file has a problem ([ADR-0027]).
 
 ### Removed
 

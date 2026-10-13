@@ -11,7 +11,7 @@ use super::budget::{self, Cut, Over, OverBudget};
 use super::envelope::{Extras, Failures, Selected, SelectedRows, write_document};
 use super::failure::PreparedFailure;
 use super::table::Table;
-use super::{Output, layout, listing, prose};
+use super::{Output, layout, listing, problems, prose};
 use crate::help::rename;
 use crate::{Code, Document, JsonLayout, Row, Rows, Shape, Spelling, codes};
 
@@ -38,13 +38,15 @@ pub(super) enum Answer {
 ///
 /// `failures` holds the failures of a batch or a prose result, which the
 /// JSON document holds under `failures`, and is `None` for every other
-/// result. A result that fits prints whole. Otherwise a listing or a list
+/// result. `problems` is the number of rows that report a problem, which
+/// the text's note counts when there is no failure (ADR-0050). A result that fits prints whole. Otherwise a listing or a list
 /// prints the most rows that fit, marked as cut short, and a batch prints
 /// the most rows that fit and always its first. A single row or a prose
 /// result prints nothing, unless its document always prints its first
 /// answer, in which case it prints whole. After `out` is flushed, the lines
 /// that describe the result go to `err`: in text, a listing's footer or
-/// empty note, the cut line, the tool's note and the `Next:` line, and with
+/// empty note, the cut line, the note of the rows that report a problem,
+/// the tool's note and the `Next:` line, and with
 /// `--json`, the cut line of a document without the envelope (ADR-0050). A
 /// debug build's warning about a failure also goes to `err`.
 ///
@@ -55,6 +57,10 @@ pub(super) enum Answer {
 /// A serialization error becomes an `io::Error` of kind `InvalidData`, so it
 /// is reported as a failed write. `finish` writes the line of a dry run to
 /// standard error itself, after a batch's failures.
+#[expect(
+    clippy::too_many_arguments,
+    reason = "respond reads the failures and counts the problem rows once, and passes both with the result it prints"
+)]
 pub(super) fn write_result<T: Rows>(
     out: &mut impl Write,
     err: &mut impl Write,
@@ -63,6 +69,7 @@ pub(super) fn write_result<T: Rows>(
     document: Document<T>,
     value: &T,
     failures: Option<&[PreparedFailure<'_>]>,
+    problems: usize,
 ) -> io::Result<(Answer, usize)> {
     let budget = output.budget();
     // The code is the tool's rename when the guide has one, so the cut,
@@ -91,7 +98,14 @@ pub(super) fn write_result<T: Rows>(
     let output = &*output;
     let columns = columns(output, document, value);
     let values = values(&columns, value)?;
-    let mut prepared = Prepared::new(output, document, value, &columns, &values, next)?;
+    // A failure decides the exit, so the note of the problem rows, which
+    // names the exit, prints only without one.
+    let problems = if failures.is_some_and(|listed| !listed.is_empty()) {
+        0
+    } else {
+        problems
+    };
+    let mut prepared = Prepared::new(output, document, value, &columns, &values, next, problems)?;
     let listed = failures.map(|listed| Failures { listed, over: None });
     let rows = value.rows().len();
     let whole = budget::buffered(budget, |buffer| prepared.write(buffer, rows, None, listed))?;
@@ -203,6 +217,9 @@ struct Prepared<'a, T> {
     prose: Option<String>,
     /// The rendered call and the phrase of the `Next:` line.
     next: Option<(String, &'a str)>,
+    /// The number of rows that report a problem, which the text's note
+    /// counts, or 0 when the run has a failure.
+    problems: usize,
 }
 
 impl<'a, T: Rows> Prepared<'a, T> {
@@ -214,6 +231,7 @@ impl<'a, T: Rows> Prepared<'a, T> {
         columns: &'a [&'a str],
         values: &'a [Value],
         next: Option<(String, &'a str)>,
+        problems: usize,
     ) -> io::Result<Self> {
         let text = !output.json;
         let prose = match value.prose() {
@@ -234,6 +252,7 @@ impl<'a, T: Rows> Prepared<'a, T> {
             table,
             prose,
             next,
+            problems,
         })
     }
 
@@ -276,8 +295,8 @@ impl<'a, T: Rows> Prepared<'a, T> {
     }
 
     /// Writes the lines that describe the result to `out`: in text, the cut
-    /// line, or else the footer and the empty note, then the tool's note
-    /// and the `Next:` line; with `--json`, only the cut line of a document
+    /// line, or else the footer and the empty note, then the note of the
+    /// rows that report a problem, the tool's note and the `Next:` line; with `--json`, only the cut line of a document
     /// without the envelope, which has no `cut` field.
     fn write_notes(&self, out: &mut impl Write, shown: usize, cut: Option<&Cut>) -> io::Result<()> {
         let value = self.value;
@@ -292,6 +311,13 @@ impl<'a, T: Rows> Prepared<'a, T> {
         } else {
             listing::write_footer(out, value)?;
             listing::write_empty_note(out, value, self.document.empty_note())?;
+        }
+        if self.problems > 0 {
+            writeln!(
+                out,
+                "{}",
+                problems::note(self.problems, value.description())
+            )?;
         }
         if let Some(note) = value.note() {
             writeln!(out, "{note}")?;

@@ -2,7 +2,7 @@
 //! topics in step with its command tree.
 
 use clap::Command;
-use crumbkit::help::{Guide, quote};
+use crumbkit::help::{Column, Guide, quote};
 
 use crate::tree::{self, DASHED_NAME};
 
@@ -52,6 +52,12 @@ mod tests;
 ///   the table prints `-` in every row of it;
 /// - a leaf column without a description, naming the field whose doc
 ///   comment is missing, because `--help` lists the column without one;
+/// - a leaf whose row type's `Row::PROBLEM` names a field that is not one
+///   of its `Row::COLUMNS`, because the compact table then hides the
+///   problem that makes the run exit with 1;
+/// - a leaf whose problem field's type is not a string, a boolean or a
+///   value that can be null, because no value of it then means that the
+///   row has no problem;
 /// - a topic whose name is the name or an alias of a command directly under
 ///   `command`, because `<tool> help <name>` prints that command's help;
 /// - a topic whose text is empty or only whitespace;
@@ -238,7 +244,11 @@ fn check_leaves(command: &Command, guide: &Guide, problems: &mut Vec<String>) {
                 ));
             }
         }
-        for column in leaf.column_descriptions() {
+        let columns = leaf.column_descriptions();
+        if let Some(field) = leaf.problem() {
+            check_problem(&text, field, &columns, problems);
+        }
+        for column in columns {
             let name = column.name();
             if !column.is_property() {
                 problems.push(format!(
@@ -261,6 +271,24 @@ fn check_leaves(command: &Command, guide: &Guide, problems: &mut Vec<String>) {
                 visit.path()
             ));
         }
+    }
+}
+
+/// Adds a problem to `problems` when `field`, the field that `Row::PROBLEM`
+/// names for the leaf at `text`, is not one of `columns` without `--long`,
+/// or when its type has no value that means no problem.
+fn check_problem(text: &str, field: &str, columns: &[Column], problems: &mut Vec<String>) {
+    let column = columns
+        .iter()
+        .find(|column| column.name() == field && !column.is_long());
+    match column {
+        None => problems.push(format!(
+            "{text}: the problem field `{field}` is not one of the row type's COLUMNS, so the compact table hides the problem that decides the exit"
+        )),
+        Some(column) if column.is_property() && !column.can_be_empty() => problems.push(format!(
+            "{text}: the problem field `{field}` is not a string, a boolean or a value that can be null, so no value of it means that the row has no problem"
+        )),
+        Some(_) => {}
     }
 }
 

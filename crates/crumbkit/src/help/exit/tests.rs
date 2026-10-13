@@ -31,7 +31,7 @@ fn the_topic_lists_crumbkit_s_codes_when_the_tool_declares_none() {
     let expected = "\
 Exit codes
   0  The command did what it was asked.
-  1  The command failed. The failure names its code and the next step.
+  1  The command failed, or a row of its result reports a problem. A failure names its code and the next step.
   2  The command line was refused. The refusal names the help to read.
 
 A shell reports 126 and above for its own reasons, such as 127 when it cannot find shelf and 130 when Ctrl-C ends it.
@@ -46,7 +46,7 @@ fn the_topic_lists_the_tool_s_codes_after_crumbkit_s_with_the_commands_that_retu
     let expected = "\
 Exit codes
   0    The command did what it was asked.
-  1    The command failed. The failure names its code and the next step.
+  1    The command failed, or a row of its result reports a problem. A failure names its code and the next step.
   2    The command line was refused. The refusal names the help to read.
   3    The catalogue was locked by another run.
   124  The download ran out of time. Commands: `shelf books import`, `shelf sync`.
@@ -91,7 +91,7 @@ fn the_topic_leaves_out_crumbkit_s_2_when_the_guide_gives_a_refusal_another_code
     let expected = "\
 Exit codes
   0   The command did what it was asked.
-  1   The command failed. The failure names its code and the next step.
+  1   The command failed, or a row of its result reports a problem. A failure names its code and the next step.
   64  The command line was refused. The refusal names the help to read.
 
 A shell reports 126 and above for its own reasons, such as 127 when it cannot find shelf and 130 when Ctrl-C ends it.
@@ -117,7 +117,7 @@ fn the_topic_names_each_command_that_passes_on_a_program_s_exit_code() {
     let expected = "\
 Exit codes
   0  The command did what it was asked.
-  1  The command failed. The failure names its code and the next step.
+  1  The command failed, or a row of its result reports a problem. A failure names its code and the next step.
   2  The command line was refused. The refusal names the help to read.
   3  The catalogue was locked by another run.
 
