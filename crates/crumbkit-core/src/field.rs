@@ -2,6 +2,7 @@
 
 use std::borrow::Cow;
 
+use serde::ser::{SerializeMap, SerializeSeq};
 use serde::{Serialize, Serializer};
 
 use crate::segment::is_segment;
@@ -15,7 +16,8 @@ mod tests;
 /// [`Failure::fields`](crate::Failure::fields) returns a failure's fields,
 /// and the JSON failure document holds them under `fields`, so an agent can
 /// read the value without parsing the message. The text output prints no
-/// extra line, because the message already names the value for a person.
+/// extra line, because the message already describes the value for a
+/// person.
 ///
 /// A name follows the rule of a code segment: one or more lowercase ASCII
 /// letters, digits and underscores, such as `book_id`.
@@ -38,7 +40,8 @@ pub struct Field<'a> {
 
 impl<'a> Field<'a> {
     /// Returns the field named `name` that holds `value`, which is text, an
-    /// integer or a boolean.
+    /// integer, a boolean, null, or a list or object of such values, as
+    /// [`FieldValue`] describes.
     ///
     /// `crumbkit::finish` leaves out a field whose name breaks the rule that
     /// [`Field::follows_name_rule`] checks, and a field whose name an earlier
@@ -74,11 +77,33 @@ impl<'a> Field<'a> {
     }
 }
 
-/// The value of a [`Field`]: a JSON string, integer or boolean.
+/// The value of a [`Field`]: a JSON string, integer, boolean or null, or a
+/// list or object of such values.
 ///
-/// It has no floating-point variant, because JSON has no form for NaN or an
-/// infinity. Each `From` impl picks the variant of its type, so a caller
-/// writes `Field::new("book", id)` with the id's own type.
+/// It has no floating-point variant at any depth, because JSON has no form
+/// for NaN or an infinity. Each `From` impl picks the variant of its type,
+/// so a caller writes `Field::new("book", id)` with the id's own type, and
+/// an `Option` gives `Null` for `None`. [`FieldValue::list`] and
+/// [`FieldValue::object`] build the values that hold other values. A tool
+/// chooses the shape of its own fields, so no shape needs an opt-out.
+///
+/// ```
+/// use crumbkit_core::{Field, FieldValue};
+///
+/// let refusals = [(3_u32, "not a number"), (9, "empty")];
+/// let field = Field::new(
+///     "refusals",
+///     FieldValue::list(refusals.iter().map(|&(line, reason)| {
+///         FieldValue::object([
+///             ("line", FieldValue::from(line)),
+///             ("reason", FieldValue::from(reason)),
+///         ])
+///     })),
+/// );
+/// let found = Field::new("found", None::<&str>);
+///
+/// assert_eq!(found.value(), &FieldValue::Null);
+/// ```
 #[derive(Clone, Debug, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum FieldValue<'a> {
@@ -90,6 +115,39 @@ pub enum FieldValue<'a> {
     Unsigned(u64),
     /// A boolean.
     Boolean(bool),
+    /// JSON null, such as a `found` field when nothing was found.
+    Null,
+    /// A JSON array of values, in order.
+    List(Vec<FieldValue<'a>>),
+    /// A JSON object of keys and values, in the order given. A key is any
+    /// text. `crumbkit::finish` leaves out an entry whose key an earlier
+    /// entry of the same object has.
+    Object(Vec<(Cow<'a, str>, FieldValue<'a>)>),
+}
+
+impl<'a> FieldValue<'a> {
+    /// Returns a list of `items`, each converted as [`Field::new`] converts
+    /// a value, such as `FieldValue::list(&tables)` for a `Vec<String>`.
+    #[must_use]
+    pub fn list<V: Into<Self>>(items: impl IntoIterator<Item = V>) -> Self {
+        Self::List(items.into_iter().map(Into::into).collect())
+    }
+
+    /// Returns an object of `entries`, each a key and a value, in the order
+    /// given, such as `FieldValue::object([("line", FieldValue::from(3))])`.
+    #[must_use]
+    pub fn object<K, V>(entries: impl IntoIterator<Item = (K, V)>) -> Self
+    where
+        K: Into<Cow<'a, str>>,
+        V: Into<Self>,
+    {
+        Self::Object(
+            entries
+                .into_iter()
+                .map(|(key, value)| (key.into(), value.into()))
+                .collect(),
+        )
+    }
 }
 
 impl FieldValue<'_> {
@@ -102,11 +160,22 @@ impl FieldValue<'_> {
             Self::Integer(value) => FieldValue::Integer(value),
             Self::Unsigned(value) => FieldValue::Unsigned(value),
             Self::Boolean(value) => FieldValue::Boolean(value),
+            Self::Null => FieldValue::Null,
+            Self::List(items) => {
+                FieldValue::List(items.into_iter().map(FieldValue::into_owned).collect())
+            }
+            Self::Object(entries) => FieldValue::Object(
+                entries
+                    .into_iter()
+                    .map(|(key, value)| (Cow::Owned(key.into_owned()), value.into_owned()))
+                    .collect(),
+            ),
         }
     }
 }
 
-/// Serializes the value as a JSON string, number or boolean.
+/// Serializes the value as a JSON string, number, boolean, null, array or
+/// object, with an object's keys in their order.
 impl Serialize for FieldValue<'_> {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         match self {
@@ -114,6 +183,21 @@ impl Serialize for FieldValue<'_> {
             Self::Integer(value) => serializer.serialize_i64(*value),
             Self::Unsigned(value) => serializer.serialize_u64(*value),
             Self::Boolean(value) => serializer.serialize_bool(*value),
+            Self::Null => serializer.serialize_none(),
+            Self::List(items) => {
+                let mut seq = serializer.serialize_seq(Some(items.len()))?;
+                for item in items {
+                    seq.serialize_element(item)?;
+                }
+                seq.end()
+            }
+            Self::Object(entries) => {
+                let mut map = serializer.serialize_map(Some(entries.len()))?;
+                for (key, value) in entries {
+                    map.serialize_entry(key.as_ref(), value)?;
+                }
+                map.end()
+            }
         }
     }
 }
@@ -201,5 +285,11 @@ impl From<usize> for FieldValue<'_> {
 impl From<bool> for FieldValue<'_> {
     fn from(value: bool) -> Self {
         Self::Boolean(value)
+    }
+}
+
+impl<'a, T: Into<FieldValue<'a>>> From<Option<T>> for FieldValue<'a> {
+    fn from(value: Option<T>) -> Self {
+        value.map_or(Self::Null, Into::into)
     }
 }

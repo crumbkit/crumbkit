@@ -101,14 +101,24 @@
             "pattern": "^[!-~]+$"
           },
           "fields": {
-            "description": "The values at fault, in the order the failure gives them, each under a name of one or more lowercase ASCII letters, digits and underscores. It is present only when the failure names at least one.",
+            "description": "The values at fault, in the order the failure gives them, each under a name of one or more lowercase ASCII letters, digits and underscores. A value is a string, an integer, a boolean, null, or an array or object of such values, and an object holds each key once. It is present only when the failure names at least one.",
             "type": "object",
             "additionalProperties": {
               "type": [
                 "string",
                 "integer",
-                "boolean"
-              ]
+                "boolean",
+                "null",
+                "array",
+                "object"
+              ],
+              "$anchor": "field_value",
+              "additionalProperties": {
+                "$ref": "#field_value"
+              },
+              "items": {
+                "$ref": "#field_value"
+              }
             },
             "propertyNames": {
               "pattern": "^[a-z0-9_]+$"

@@ -168,11 +168,14 @@ pub trait Failure: std::error::Error {
     ///
     /// `crumbkit::finish` prints the fields under `fields` in JSON, in
     /// order, and prints nothing more in text, because the message already
-    /// names each value for a person. A name is one or more lowercase ASCII
-    /// letters, digits and underscores, as a code segment is. `finish` leaves
-    /// out a field whose name breaks that rule or repeats an earlier name,
-    /// and in a debug build, such as a test's, it also writes a `warning:`
-    /// line that names the field on standard error.
+    /// describes each value for a person. A value can be a list, an object or
+    /// null as well as text, an integer or a boolean
+    /// ([`FieldValue`](crate::FieldValue)). A name is one or more lowercase
+    /// ASCII letters, digits and underscores, as a code segment is. `finish`
+    /// leaves out a field whose name breaks that rule or repeats an earlier
+    /// name, and an object's entry whose key repeats an earlier key of that
+    /// object. In a debug build, such as a test's, it also writes a
+    /// `warning:` line that names the field on standard error.
     ///
     /// ```
     /// # use std::fmt;
