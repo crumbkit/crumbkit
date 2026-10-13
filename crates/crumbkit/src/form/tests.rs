@@ -112,7 +112,7 @@ impl Failure for Missing {
 fn step(step: &Step) -> String {
     match step {
         Step::Run(call) => format!("run {call}"),
-        Step::RunEach { call, field } => format!("run {call} for each {field}"),
+        Step::RunAll { call, field } => format!("run {call} with every {field}"),
         Step::Retry => "retry".to_owned(),
         Step::Hint(text) => format!("hint {text}"),
         Step::None(reason) => format!("none {reason}"),

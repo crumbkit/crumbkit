@@ -4,7 +4,6 @@
 use std::fmt::Write as _;
 
 use clap::Command;
-use crumbkit::FieldValue;
 use crumbkit::form::{ReadFailure, Step};
 use crumbkit::help::Guide;
 
@@ -17,6 +16,7 @@ use crate::guide::command_line;
 use crate::runs::{self, Place, Ran, TIMEOUT, WorkDir, Xdg, env_note, with_json};
 use fill::{fill_word, path_below, value};
 
+mod all;
 pub(super) mod fill;
 
 /// What the check has found so far: its settings, the problems, the report
@@ -61,6 +61,7 @@ pub(super) struct Walk<'a> {
 }
 
 /// The failure that offers a chain's next steps.
+#[derive(Clone, Copy)]
 struct Parent<'p> {
     /// The codes of the failure and of every earlier failure of its chain,
     /// the start's first, as the tool spells them.
@@ -68,6 +69,13 @@ struct Parent<'p> {
     /// The failure's fields that fill the steps' placeholders, each a name
     /// and its value's text.
     fields: &'p [(String, String)],
+    /// The failure's list fields whose every item fills a placeholder, each
+    /// a name and its items' text, which a `RunAll` step runs with.
+    lists: &'p [(String, Vec<String>)],
+    /// The number of values that the step being followed ran with, when it
+    /// is a `RunAll` step. A failure of that run with the same code and
+    /// fewer values left is progress.
+    ran_all: Option<usize>,
     /// The path below the root of the command that failed, which an
     /// opt-out from `recoveries/field-value` names.
     path: &'p str,
@@ -202,18 +210,18 @@ impl Walk<'_> {
             if self.stopped.is_some() {
                 return;
             }
-            let (call, each) = match step {
+            let (call, values) = match step {
                 Step::Run(call) => (call, None),
-                Step::RunEach { call, field } => {
-                    let first = parent.fields.iter().find(|(name, _)| name == field);
-                    let Some((_, value)) = first else {
+                Step::RunAll { call, field } => {
+                    let list = parent.lists.iter().find(|(name, _)| name == field);
+                    let Some((_, values)) = list.filter(|(_, values)| !values.is_empty()) else {
                         self.problems.push(format!(
-                            "{}: the step `{call}` runs once for each value of the failure's field {field}, which is not a list that holds a value",
+                            "{}: the step `{call}` runs with every value of the failure's field {field}, which is not a list that holds a value",
                             chain.start
                         ));
                         continue;
                     };
-                    (call, Some(value.as_str()))
+                    (call, Some(values.as_slice()))
                 }
                 Step::Retry => {
                     let _ = writeln!(self.report, "{indent}retry");
@@ -228,7 +236,7 @@ impl Walk<'_> {
                     continue;
                 }
             };
-            let Some((words, used)) = self.fill(chain, call, parent.fields, each) else {
+            let Some((words, used)) = self.fill(chain, call, parent.fields, values) else {
                 continue;
             };
             let refs: Vec<&str> = words.iter().map(String::as_str).collect();
@@ -270,7 +278,11 @@ impl Walk<'_> {
                         if !warned {
                             self.next_step(chain, &label, &path, failure);
                         }
-                        self.branch(chain, Some(parent), &label, &path, failure, depth);
+                        let ran = Parent {
+                            ran_all: values.map(<[String]>::len),
+                            ..*parent
+                        };
+                        self.branch(chain, Some(&ran), &label, &path, failure, depth);
                     }
                 }
                 None => {}
@@ -311,7 +323,14 @@ impl Walk<'_> {
             return;
         }
         let earlier = parent.map_or(&[][..], |parent| parent.codes);
-        if earlier.iter().any(|seen| seen == code) && !self.allowances.excuses(Rule::SameCode, path)
+        // A run with every value of a list field that leaves fewer values
+        // out makes progress, because a batch always answers its first key.
+        let progress = parent
+            .and_then(|parent| parent.ran_all)
+            .is_some_and(|ran| all::fewer_left(failure, ran));
+        if earlier.iter().any(|seen| seen == code)
+            && !progress
+            && !self.allowances.excuses(Rule::SameCode, path)
         {
             self.problems.push(format!(
                 "{}: {label} fails again with {code}, so an agent that follows the recovery learns nothing new",
@@ -321,28 +340,17 @@ impl Walk<'_> {
         let _ = writeln!(self.report, "{indent}fails with {code}");
         let mut codes = earlier.to_vec();
         codes.push(code.to_owned());
-        // A list field that a `RunEach` step names gives the text of its
-        // first item, which the step runs with.
-        let named_by_each = |name: &str| {
-            failure
-                .steps()
-                .iter()
-                .any(|step| matches!(step, Step::RunEach { field, .. } if field == name))
-        };
         let fields: Vec<(String, String)> = failure
             .fields()
             .iter()
-            .filter_map(|(name, value)| {
-                let value = match value {
-                    FieldValue::List(items) if named_by_each(name) => items.first()?,
-                    value => value,
-                };
-                Some((name.clone(), failures::placeholder_text(value)?))
-            })
+            .filter_map(|(name, value)| Some((name.clone(), failures::placeholder_text(value)?)))
             .collect();
+        let lists = all::lists(failure);
         let next = Parent {
             codes: &codes,
             fields: &fields,
+            lists: &lists,
+            ran_all: None,
             path,
         };
         self.follow(chain, &next, failure.steps(), depth + 1);
@@ -359,7 +367,7 @@ impl Walk<'_> {
         let offers = failure.steps().iter().any(|step| {
             matches!(
                 step,
-                Step::Run(_) | Step::RunEach { .. } | Step::Retry | Step::Hint(_)
+                Step::Run(_) | Step::RunAll { .. } | Step::Retry | Step::Hint(_)
             )
         });
         if offers
@@ -431,22 +439,19 @@ impl Walk<'_> {
     /// when the call cannot be read, does not start with the tool's name or
     /// has a placeholder without a value.
     ///
-    /// `each` is the first value of the list field that a `RunEach` step
-    /// runs its call for, which fills every placeholder of the call before
-    /// any other source and is no finding of `recoveries/field-value`,
-    /// because the step tells the agent to substitute each value.
-    //
-    // RUST-10: a call with an argument from `Call::each` renders that
-    // argument as its value name, and the check cannot tell it from another
-    // placeholder, so `each` fills them all. No call that crumbkit offers
-    // holds another placeholder beside it. The check tells them apart once
-    // a tool needs such a call.
+    /// `values` holds every value of the list field that a `RunAll` step
+    /// runs its call with. They replace the first word of the call that is
+    /// one placeholder, such as `<ID>...`, as one word each, before any other
+    /// source, and they are no finding of `recoveries/field-value`, because
+    /// the step names the field they come from. crumbkit refuses to render a
+    /// call from `Call::all` with another placeholder, so that word is the
+    /// argument that takes the values.
     fn fill(
         &mut self,
         chain: &Chain<'_>,
         call: &str,
         fields: &[(String, String)],
-        each: Option<&str>,
+        values: Option<&[String]>,
     ) -> Option<Filled> {
         let tool = self.command.get_name();
         let problem = match split(call) {
@@ -458,9 +463,6 @@ impl Walk<'_> {
                 let shared = self.recoveries.values;
                 let mut used: Vec<(String, String)> = Vec::new();
                 let mut lookup = |name: &str| {
-                    if each.is_some() {
-                        return each;
-                    }
                     let (value, field) = value(chain.values, fields, shared, name)?;
                     if let Some(field) = field
                         && !used.iter().any(|(seen, _)| seen == name)
@@ -469,14 +471,27 @@ impl Walk<'_> {
                     }
                     Some(value)
                 };
-                let filled: Result<Vec<String>, String> = words
-                    .iter()
-                    .skip(1)
-                    .map(|word| fill_word(word, &mut lookup))
-                    .collect();
-                match filled {
-                    Ok(filled) => return Some((filled, used)),
-                    Err(missing) => format!(
+                let mut values = values;
+                let mut filled = Vec::with_capacity(words.len());
+                let mut missing = None;
+                for word in words.iter().skip(1) {
+                    match values {
+                        Some(all) if all::is_placeholder(word) => {
+                            filled.extend(all.iter().cloned());
+                            values = None;
+                        }
+                        _ => match fill_word(word, &mut lookup) {
+                            Ok(word) => filled.push(word),
+                            Err(placeholder) => {
+                                missing = Some(placeholder);
+                                break;
+                            }
+                        },
+                    }
+                }
+                match missing {
+                    None => return Some((filled, used)),
+                    Some(missing) => format!(
                         "the step `{call}` has the placeholder {missing}, and no value of Failing::values, the fields of the failure or Recoveries::values fills it"
                     ),
                 }

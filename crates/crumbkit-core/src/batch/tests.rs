@@ -121,12 +121,12 @@ fn a_result_pushed_after_the_last_key_has_no_key() {
 }
 
 #[test]
-fn a_batch_fetches_its_left_out_keys_with_its_command_one_key_at_a_time() {
+fn a_batch_fetches_its_left_out_keys_with_its_command_in_one_call() {
     let batch: Batch<Planet, Missing> = Batch::new(&["planets", "show"], "names", &["Mars"]);
 
     assert_eq!(
         batch.fetch(),
-        Some(Call::new(&["planets", "show"]).each("names", "left_out"))
+        Some(Call::new(&["planets", "show"]).all("names", "left_out"))
     );
     assert_eq!(saturn().fetch(), None);
 }

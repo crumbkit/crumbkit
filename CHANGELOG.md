@@ -441,12 +441,13 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit-core: `Batch::has_room` returns whether the rows pushed so far
   leave room in a number of bytes, so a handler can stop fetching keys
   whose rows would not print ([ADR-0046]).
-- crumbkit-core: `Call::each` adds an argument that takes each value of a
-  list field of the failure in turn, and the failure document's `run` step
-  names that field in `each` ([ADR-0007]).
-- crumbkit-test: [`check_recoveries`] follows a `run` step with `each` once,
-  with the first value of the named field, and fails the check when that
-  field holds no value ([ADR-0053]).
+- crumbkit-core: `Call::all` adds an argument that takes every value of a
+  list field of the failure in one run, which the `run` step names in
+  `all`. Rendering refuses an argument that takes one value or a placeholder
+  beside it ([ADR-0007]).
+- crumbkit-test: [`check_recoveries`] follows a `run` step with `all` once,
+  with every value of the named field, and accepts the same code again when
+  fewer values are left ([ADR-0053]).
 
 ### Changed
 
@@ -655,8 +656,8 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   that the caller gave, and the handler pushes one result for each key, so
   each failed key has its own failure ([ADR-0016]).
 - crumbkit: a batch past the output budget ends with a failure whose
-  `left_out` lists the keys it left out, in input order, and whose recovery
-  runs the command for each key. `unlisted` counts the keys that do not fit
+  `left_out` lists the keys it left out in input order, and whose recovery
+  runs the command once with those keys. `unlisted` counts the rest
   ([ADR-0046]).
 - crumbkit: a batch whose handler stopped before its last key ends with the
   over-budget failure that lists the keys it never fetched, even when its

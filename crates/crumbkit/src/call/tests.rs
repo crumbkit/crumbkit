@@ -34,6 +34,8 @@ enum Books {
         sort: Option<String>,
         #[arg(short = 'n')]
         number: Option<u32>,
+        #[arg(long, num_args = 1..)]
+        tags: Vec<String>,
     },
     Show {
         #[arg(required = true, num_args = 1..=100, value_name = "ID")]
@@ -328,29 +330,54 @@ fn a_call_with_a_placeholder_has_no_words() {
 }
 
 #[test]
-fn an_each_argument_renders_its_value_name_once_for_a_positional_and_after_the_flag_for_an_option()
-{
-    let positional = Call::new(&["books", "show"]).each("ids", "left_out");
-    let option = Call::new(&["books", "list"]).each("author", "authors");
-    let short = Call::new(&["books", "list"]).each("number", "numbers");
+fn an_all_argument_renders_as_the_placeholder_of_a_positional_or_option_that_takes_many_values() {
+    let positional = Call::new(&["books", "show"]).all("ids", "left_out");
+    let option = Call::new(&["books", "list"]).all("tags", "tags");
 
-    assert_eq!(render(&positional).unwrap(), "shelf books show <ID>");
+    assert_eq!(render(&positional).unwrap(), "shelf books show <ID>...");
     assert_eq!(
         render(&option).unwrap(),
-        "shelf books list --author <AUTHOR>"
+        "shelf books list --tags <TAGS>..."
     );
-    assert_eq!(render(&short).unwrap(), "shelf books list -n <NUMBER>");
 }
 
 #[test]
-fn an_each_argument_for_a_flag_is_refused_because_the_flag_takes_no_value() {
-    let call = Call::new(&["books", "list"]).each("json", "left_out");
+fn an_all_argument_for_an_argument_that_takes_one_value_is_refused() {
+    let call = Call::new(&["books", "list"]).all("author", "authors");
+
+    assert_eq!(
+        render(&call),
+        Err(CallError::TakesOneValue {
+            command: "shelf books list".to_owned(),
+            id: "author".to_owned(),
+        })
+    );
+}
+
+#[test]
+fn an_all_argument_for_a_flag_is_refused_because_the_flag_takes_no_value() {
+    let call = Call::new(&["books", "list"]).all("json", "left_out");
 
     assert_eq!(
         render(&call),
         Err(CallError::TakesNoValue {
             command: "shelf books list".to_owned(),
             id: "json".to_owned(),
+        })
+    );
+}
+
+#[test]
+fn a_placeholder_beside_an_all_argument_is_refused_because_only_the_field_fills_the_call() {
+    let call = Call::new(&["books", "list"])
+        .arg("author")
+        .all("tags", "tags");
+
+    assert_eq!(
+        render(&call),
+        Err(CallError::PlaceholderBesideAll {
+            command: "shelf books list".to_owned(),
+            id: "author".to_owned(),
         })
     );
 }

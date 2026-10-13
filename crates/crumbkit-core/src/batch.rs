@@ -104,7 +104,9 @@ impl<R: Row, E: AsFailure> Batch<R, E> {
     /// Returns an empty batch of the command at `command`, the names of its
     /// subcommands from the root, whose argument with the clap id `arg`
     /// takes `keys`. Each key is kept as its text, which is how the
-    /// over-budget failure names the keys it leaves out.
+    /// over-budget failure names the keys it leaves out. The argument takes
+    /// many values, because that failure's recovery passes it every key
+    /// left out in one run.
     ///
     /// The function is not `const`, because it writes each key as text.
     #[must_use]
@@ -216,6 +218,6 @@ impl<R: Row, E: AsFailure> Rows for Batch<R, E> {
     }
 
     fn fetch(&self) -> Option<Call> {
-        Some(Call::new(self.command).each(self.arg, "left_out"))
+        Some(Call::new(self.command).all(self.arg, "left_out"))
     }
 }

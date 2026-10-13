@@ -148,9 +148,9 @@ pub trait Rows: Serialize + sealed::Sealed {
         Vec::new()
     }
 
-    /// Returns the call that fetches the keys a batch leaves out, one value
-    /// of the over-budget failure's `left_out` field at a time, and `None`
-    /// when the result is not a batch.
+    /// Returns the call that fetches the keys a batch leaves out, with every
+    /// value of the over-budget failure's `left_out` field in one run, and
+    /// `None` when the result is not a batch.
     fn fetch(&self) -> Option<Call> {
         None
     }

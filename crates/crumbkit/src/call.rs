@@ -166,6 +166,7 @@ pub(crate) fn render_built(call: &Call, command: &Command) -> Result<String, Cal
     // Each error names the command without the arguments before it, so the
     // loop reads the text up to `command_end`.
     let command_end = text.len();
+    refuse_placeholder_beside_all(args, &text[..command_end])?;
     for call_arg in args {
         match call_arg {
             // `Arg`'s `Display` writes the argument as clap's usage line
@@ -180,24 +181,47 @@ pub(crate) fn render_built(call: &Call, command: &Command) -> Result<String, Cal
                 text.push(' ');
                 text.push_str(&rendered);
             }
-            CallArg::Each { id, .. } => {
+            CallArg::All { id, .. } => {
                 let arg = find_arg(current, &text[..command_end], id)?;
-                let rendered = render_each(arg, &text[..command_end])?;
-                text.push(' ');
-                text.push_str(&rendered);
+                refuse_one_value(arg, &text[..command_end])?;
+                let _ = write!(text, " {arg}");
             }
         }
     }
     Ok(text)
 }
 
-/// Returns `arg` with its value name once, as the argument of a call that
-/// runs once per value of a failure's field: `<ID>` for a positional and
-/// `--author <AUTHOR>` for an option, with its short name when it has no
-/// long name. The value name is the argument's first value name, or its id
-/// in capitals. `text` is the call's text up to the command, which the error
-/// for a flag names.
-fn render_each(arg: &Arg, text: &str) -> Result<String, CallError> {
+/// Returns an error when `args` holds an argument from `Call::all` beside
+/// a placeholder from `Call::arg` or a second one from `Call::all`, because
+/// the values of one field must fill the whole call. The error names the
+/// first placeholder, or the second argument from `Call::all` when there is
+/// no placeholder. `text` is the call's text up to the command.
+fn refuse_placeholder_beside_all(args: &[CallArg], text: &str) -> Result<(), CallError> {
+    let mut all = args.iter().filter_map(|arg| match arg {
+        CallArg::All { id, .. } => Some(*id),
+        CallArg::Placeholder(_) | CallArg::Value { .. } => None,
+    });
+    if all.next().is_none() {
+        return Ok(());
+    }
+    let placeholder = args.iter().find_map(|arg| match arg {
+        CallArg::Placeholder(id) => Some(*id),
+        CallArg::All { .. } | CallArg::Value { .. } => None,
+    });
+    match placeholder.or_else(|| all.next()) {
+        Some(id) => Err(CallError::PlaceholderBesideAll {
+            command: text.to_owned(),
+            id: id.to_owned(),
+        }),
+        None => Ok(()),
+    }
+}
+
+/// Returns an error when `arg` cannot take every value of a field in one
+/// occurrence: a flag, which takes no value, or an argument that takes one
+/// value. `text` is the call's text up to the command, which the error
+/// names.
+fn refuse_one_value(arg: &Arg, text: &str) -> Result<(), CallError> {
     let id = arg.get_id().as_str();
     if !arg.get_action().takes_values() {
         return Err(CallError::TakesNoValue {
@@ -205,21 +229,22 @@ fn render_each(arg: &Arg, text: &str) -> Result<String, CallError> {
             id: id.to_owned(),
         });
     }
-    let name = arg
-        .get_value_names()
-        .and_then(<[_]>::first)
-        .map_or_else(|| id.to_uppercase(), ToString::to_string);
-    Ok(match (arg.get_long(), arg.get_short()) {
-        (Some(long), _) => format!("--{long} <{name}>"),
-        (None, Some(short)) => format!("-{short} <{name}>"),
-        (None, None) => format!("<{name}>"),
-    })
+    let many = arg
+        .get_num_args()
+        .is_some_and(|range| range.max_values() > 1);
+    if !many {
+        return Err(CallError::TakesOneValue {
+            command: text.to_owned(),
+            id: id.to_owned(),
+        });
+    }
+    Ok(())
 }
 
 /// Returns the words of the command line that `call` names, from the
 /// program name on, as a shell passes the line that
 /// [`RenderCall::render`] prints, or `None` when `call` holds a placeholder
-/// from `Call::arg` or `Call::each`, which names no value to parse.
+/// from `Call::arg` or `Call::all`, which names no value to parse.
 /// `command` is the root of a tree that `call` already rendered against, so
 /// each lookup finds what the rendering found, and `None` also covers a
 /// lookup that would fail.

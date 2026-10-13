@@ -51,12 +51,12 @@ fn a_batch_over_the_budget_answers_its_first_keys_and_names_the_rest_in_one_fail
     );
     assert_eq!(
         failures[0]["recovery"],
-        json!({"kind": "run", "call": "tool show <NAME>", "each": "left_out"})
+        json!({"kind": "run", "call": "tool show <NAME>...", "all": "left_out"})
     );
 }
 
 #[test]
-fn a_batch_over_the_budget_in_text_names_every_key_left_out_on_standard_error() {
+fn a_batch_over_the_budget_in_text_names_every_key_left_out_in_one_call_on_standard_error() {
     let finished = finish_small(&[], STAR_BATCH, keyed(stars(20), Vec::<Error>::new()));
 
     assert_eq!(finished.code, ExitCode::FAILURE);
@@ -66,10 +66,10 @@ fn a_batch_over_the_budget_in_text_names_every_key_left_out_on_standard_error() 
         finished.err,
         format!(
             "error: {} more answers did not fit in the output budget of 1024 bytes\n  \
-             help:  run `tool show <NAME>` for each value of left_out: {}\n  \
+             help:  run `tool show {}`\n  \
              code:  crumbkit::output::over_budget\n",
             20 - shown,
-            names(shown + 1, 20).join(", ")
+            names(shown + 1, 20).join(" ")
         )
     );
 }
@@ -89,14 +89,14 @@ fn a_batch_whose_rows_fit_fails_with_the_keys_that_were_never_fetched() {
 }
 
 #[test]
-fn a_key_left_out_quotes_for_a_shell_in_text_and_repeats_as_often_as_it_was_given() {
+fn a_key_left_out_is_quoted_for_a_shell_in_text_and_repeats_as_often_as_it_was_given() {
     let keys = ["star-01", "Le Guin", "Le Guin"].map(str::to_owned);
     let finished = finish_small(&[], STAR_BATCH, fetched(&keys, stars(1)));
 
     assert!(
         finished
             .err
-            .contains("for each value of left_out: 'Le Guin', 'Le Guin'\n"),
+            .contains("help:  run `tool show 'Le Guin' 'Le Guin'`\n"),
         "{}",
         finished.err
     );
@@ -133,7 +133,10 @@ fn a_failure_too_long_for_the_budget_names_its_first_keys_and_counts_the_rest_as
     assert_eq!(fields["unlisted"], 99 - listed.len());
     assert_eq!(
         document["failures"][0]["message"],
-        "99 more answers did not fit in the output budget of 1024 bytes"
+        format!(
+            "99 more answers did not fit in the output budget of 1024 bytes. The recovery covers the keys listed in left_out, and a later run covers the other {}",
+            99 - listed.len()
+        )
     );
 }
 
@@ -153,5 +156,9 @@ fn a_batch_always_answers_its_first_key_and_lists_no_key_when_that_answer_passes
     assert_eq!(
         document["failures"][0]["fields"],
         json!({"left_out": [], "unlisted": 1, "budget": 1024})
+    );
+    assert_eq!(
+        document["failures"][0]["recovery"],
+        json!({"kind": "hint", "text": "run the command again with the keys that were not answered"})
     );
 }

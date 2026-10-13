@@ -209,9 +209,9 @@ fn read_document(document: &Value) -> Option<ReadFailure> {
         .chain(alternatives)
         .map(|step| {
             let call = step.get("call").and_then(Value::as_str);
-            let each = step.get("each").and_then(Value::as_str);
-            match (step.get("kind").and_then(Value::as_str), call, each) {
-                (Some("run"), Some(call), Some(field)) => Step::RunEach {
+            let all = step.get("all").and_then(Value::as_str);
+            match (step.get("kind").and_then(Value::as_str), call, all) {
+                (Some("run"), Some(call), Some(field)) => Step::RunAll {
                     call: call.to_owned(),
                     field: field.to_owned(),
                 },
@@ -292,7 +292,7 @@ pub(crate) fn describe(failure: &ReadFailure) -> String {
         .iter()
         .map(|step| match step {
             Step::Run(call) => format!("run `{call}`"),
-            Step::RunEach { call, field } => format!("run `{call}` for each value of {field}"),
+            Step::RunAll { call, field } => format!("run `{call}` with every value of {field}"),
             Step::Retry => "retry".to_owned(),
             Step::Hint(text) => format!("hint: {text}"),
             Step::None(reason) if reason.is_empty() => "no next step".to_owned(),

@@ -110,12 +110,12 @@ fn step_schema(description: &str) -> Schema {
         "description": description,
         "oneOf": [
             {
-                "description": "Run this command. With `each`, run it once for each value of the failure's field that `each` names, with the value in place of the argument's value name, such as `<ID>`.",
+                "description": "Run this command. With `all`, run it once with every value of the failure's field that `all` names in place of the argument's placeholder, such as `<ID>...`.",
                 "type": "object",
                 "properties": {
                     "kind": { "const": "run" },
                     "call": { "type": "string" },
-                    "each": { "type": "string" },
+                    "all": { "type": "string" },
                 },
                 "required": ["kind", "call"],
             },

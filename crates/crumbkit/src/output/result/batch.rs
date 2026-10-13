@@ -92,8 +92,11 @@ impl<T: Rows> Prepared<'_, T> {
     /// binary search finds the count. When the first row does not fit
     /// beside that failure, the first row prints, and the failure names the
     /// most first keys that fit. Naming one more key adds at least the key's
-    /// quotes and comma, which outweigh the digit that the count of
-    /// `unlisted` can lose, so a binary search finds that number too.
+    /// quotes and comma, which outweigh the two digits that the count of
+    /// the rest can lose in `unlisted` and in the message, so a binary
+    /// search finds that number too. The search stops one key short of every
+    /// key, so the count of the rest is never 0 and the message never drops
+    /// its sentence about the rest.
     fn fit_failure(
         &mut self,
         err: &mut impl Write,

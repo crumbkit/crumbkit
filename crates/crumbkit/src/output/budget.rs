@@ -213,7 +213,7 @@ pub(super) enum Over {
         /// The number of answers left out that the failure does not name:
         /// those without a key, and those whose keys did not fit.
         unlisted: usize,
-        /// The call that fetches the keys left out, one at a time.
+        /// The call that fetches every key left out in one run.
         fetch: Option<Call>,
     },
     /// A single row or a list of rows that crumbkit refused whole.
@@ -241,16 +241,25 @@ impl fmt::Display for OverBudget {
         match &self.over {
             Over::Batch {
                 left_out, unlisted, ..
-            } => match left_out.len().saturating_add(*unlisted) {
-                1 => write!(
-                    f,
-                    "1 more answer did not fit in the output budget of {budget} bytes"
-                ),
-                count => write!(
-                    f,
-                    "{count} more answers did not fit in the output budget of {budget} bytes"
-                ),
-            },
+            } => {
+                match left_out.len().saturating_add(*unlisted) {
+                    1 => write!(
+                        f,
+                        "1 more answer did not fit in the output budget of {budget} bytes"
+                    )?,
+                    count => write!(
+                        f,
+                        "{count} more answers did not fit in the output budget of {budget} bytes"
+                    )?,
+                }
+                if *unlisted > 0 && !left_out.is_empty() {
+                    write!(
+                        f,
+                        ". The recovery covers the keys listed in left_out, and a later run covers the other {unlisted}"
+                    )?;
+                }
+                Ok(())
+            }
             Over::Row | Over::Whole => write!(
                 f,
                 "the result is larger than the output budget of {budget} bytes"
@@ -273,9 +282,11 @@ impl Failure for OverBudget {
     fn recovery(&self) -> Recovery {
         match &self.over {
             Over::Batch {
-                fetch: Some(call), ..
-            } => Recovery::Run(call.clone()),
-            Over::Batch { fetch: None, .. } => Recovery::Hint(
+                left_out,
+                fetch: Some(call),
+                ..
+            } if !left_out.is_empty() => Recovery::Run(call.clone()),
+            Over::Batch { .. } => Recovery::Hint(
                 "run the command again with the keys that were not answered".to_owned(),
             ),
             Over::Row => Recovery::Hint("ask for fewer fields with --fields".to_owned()),
