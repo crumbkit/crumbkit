@@ -415,10 +415,10 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   calls from a refused command line naming the leaf, such as the line with
   the refused value corrected, and the refusal offers each call whose line
   parses after crumbkit's own alternatives ([ADR-0056]).
-- crumbkit: a command named in another style, such as `reading_lists`,
-  also answers to its dashed form, such as `reading-lists`, in [`parse`],
-  completion and [`command_path`], and [`dashed_form`] returns that form
-  ([ADR-0015]).
+- crumbkit: with `Guide::dashed_forms`, a command named in another style,
+  such as `reading_lists`, also answers to its dashed form, such as
+  `reading-lists`, in [`parse`], completion and [`command_path`], and
+  [`dashed_form`] returns that form ([ADR-0015]).
 
 ### Changed
 
@@ -621,12 +621,16 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   document without the envelope ([ADR-0016]).
 - crumbkit: `complete_to` takes the name of the completion variable, which
   the registration script sets ([ADR-0048]).
-- crumbkit-test: [`check_grammar`] accepts a resource or verb named in
-  another style that answers to its dashed form, and asks for an opt-out of
-  `Rule::ResourceName` only for a resource without one ([ADR-0015]).
-- crumbkit-test: [`check_opt_outs`] lists each command named in another
-  style as a `resource-name` or `verb-name` customisation with its dashed
-  form ([ADR-0056]).
+- crumbkit: [`complete`], [`complete_with`], `complete_to` and
+  [`command_path`] take the tool's guide, so they read its
+  `Guide::dashed_forms` declaration as [`parse`] does ([ADR-0015]).
+- crumbkit-test: [`check_grammar`] takes the tool's guide, and with
+  `Guide::dashed_forms` it accepts a resource or verb named in another style
+  that answers to its dashed form without an opt-out of
+  `Rule::ResourceName` ([ADR-0015]).
+- crumbkit-test: [`check_opt_outs`] lists the `Guide::dashed_forms`
+  declaration and each command that answers to its dashed form as
+  customisations ([ADR-0056]).
 
 ### Removed
 
