@@ -11,8 +11,8 @@ use super::{Failing, Recoveries};
 use crate::allow::{self, Allowances, Rule};
 use crate::failures::{self, Reader};
 use crate::guide::command_line;
-use crate::runs::{self, Place, Ran, TIMEOUT, WorkDir, Xdg};
-use fill::{fill_word, path_below, value, with_json};
+use crate::runs::{self, Place, Ran, TIMEOUT, WorkDir, Xdg, env_note, with_json};
+use fill::{fill_word, path_below, value};
 
 pub(super) mod fill;
 
@@ -97,6 +97,8 @@ struct Chain<'c> {
     stdin: Option<&'c [u8]>,
     /// The start's own value of each placeholder.
     values: &'c [(&'c str, &'c str)],
+    /// The variables that every run sets or removes.
+    env: &'c [(&'c str, Option<&'c str>)],
     /// The words of each command line that the chain ran.
     ran: Vec<Vec<String>>,
 }
@@ -106,7 +108,7 @@ impl Walk<'_> {
     /// from `recoveries/follow` covers its command.
     pub(super) fn start(&mut self, start: &Failing<'_>) {
         let tool = self.command.get_name();
-        let line = command_line(tool, start.words);
+        let line = command_line(tool, start.words) + &env_note(start.own_env());
         if self.stopped.is_some() {
             return;
         }
@@ -148,6 +150,7 @@ impl Walk<'_> {
             dir,
             stdin: start.stdin_bytes(),
             values: start.own_values(),
+            env: start.own_env(),
             ran: Vec::new(),
         };
         let words: Vec<String> = start.words.iter().map(|&word| word.to_owned()).collect();
@@ -446,6 +449,7 @@ impl Walk<'_> {
             Place {
                 dir: chain.dir.path(),
                 stdin: chain.stdin,
+                env: chain.env,
             },
             TIMEOUT,
         );

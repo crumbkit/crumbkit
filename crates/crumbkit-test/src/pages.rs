@@ -158,6 +158,7 @@ fn binary_pages<'a>(
             let place = Place {
                 dir: work.path(),
                 stdin: None,
+                env: &[],
             };
             runs::run(
                 examples.binary(),

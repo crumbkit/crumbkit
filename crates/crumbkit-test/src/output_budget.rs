@@ -178,6 +178,7 @@ fn run(
     let place = Place {
         dir: work.path(),
         stdin,
+        env: &[],
     };
     runs::run(examples.binary(), env, &xdg, args, place, timeout)
 }

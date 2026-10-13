@@ -340,6 +340,7 @@ fn run_example(
     let place = Place {
         dir: work.path(),
         stdin,
+        env: &[],
     };
     let ran = runs::run(
         examples.binary(),

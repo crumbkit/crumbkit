@@ -16,6 +16,7 @@ use crate::temp::TempDir;
 use crate::testing::panic_message;
 
 mod coverage;
+mod variable;
 
 /// The code of a refused command line.
 const USAGE: Code = crumbkit::codes::CLI_USAGE;
@@ -300,4 +301,78 @@ fn both_lines_of_a_twin_start_in_their_own_copy_of_the_fresh_dir_fixture() {
     );
 
     assert_eq!(fixture.names(), ["marker"]);
+}
+
+#[test]
+fn an_admitted_line_that_only_adds_help_or_version_fails_the_check() {
+    let (_dir, path) = tool("twins-help");
+    let examples = Examples::new(&path, "");
+
+    for word in ["-h", "--help", "-V", "--version"] {
+        let message = panic_message(|| {
+            check_twin(
+                &GUIDE,
+                &examples,
+                Spelling::COLONS,
+                &Failing::new(&USAGE, &["books", "list", "--limit", "0"]),
+                &["books", "list", "--limit", "0", word],
+            );
+        });
+
+        assert_eq!(
+            message.unwrap(),
+            format!(
+                "the admitted line `tool books list --limit 0 {word}` adds `{word}`, which makes the tool answer without running the command, so the twin proves nothing about the refused line `tool books list --limit 0`. A code that no word of a command line causes needs an opt-out made with Allow::untwinned"
+            )
+        );
+    }
+    let help = panic_message(|| {
+        check_twin(
+            &GUIDE,
+            &examples,
+            Spelling::COLONS,
+            &Failing::new(&USAGE, &["books", "list"]),
+            &["help", "books", "list"],
+        );
+    });
+
+    assert!(help.unwrap().contains("adds `help`"));
+}
+
+#[test]
+fn a_twin_whose_admitted_line_runs_another_command_fails_the_check() {
+    use crumbkit::help::Leaf;
+
+    const LEAVES: Guide =
+        Guide::new().leaves(&[Leaf::new(&["books", "put"]), Leaf::new(&["books", "get"])]);
+    let (_dir, path) = tool("twins-leaf");
+    let examples = Examples::new(&path, "");
+    let checked = |refused: &'static [&'static str], admitted: &[&str]| {
+        panic_message(|| {
+            check_twin(
+                &LEAVES,
+                &examples,
+                Spelling::COLONS,
+                &Failing::new(&USAGE, refused),
+                admitted,
+            );
+        })
+    };
+
+    assert_eq!(
+        checked(&["books", "put", "7"], &["books", "get", "7"]).unwrap(),
+        "the refused line `tool books put 7` runs the command `books put`, and the admitted line `tool books get 7` runs `books get`, so the twin proves nothing about the refused command. A code that no word of the command causes needs an opt-out made with Allow::untwinned"
+    );
+    assert_eq!(
+        checked(&["books", "put", "7"], &["books", "pt", "7"]).unwrap(),
+        "the refused line `tool books put 7` runs the command `books put`, and the admitted line `tool books pt 7` runs no command of the guide, so the twin proves nothing about the refused command. A code that no word of the command causes needs an opt-out made with Allow::untwinned"
+    );
+    // A refused line that runs no command of the guide, such as a
+    // misspelt command, keeps its twin. The run of this one fails, because
+    // the script does not know it.
+    assert!(
+        checked(&["books", "pt", "7"], &["books", "put", "7"])
+            .unwrap()
+            .starts_with("the refused line `tool books pt 7` must fail with crumbkit::cli::usage")
+    );
 }
