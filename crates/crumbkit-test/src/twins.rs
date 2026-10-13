@@ -180,6 +180,7 @@ pub(super) fn twin(
             let admitted_line = named(&tool, words, refused.own_env());
             one_word(
                 command,
+                guide,
                 refused.words(),
                 words,
                 &refused_line,
@@ -235,9 +236,11 @@ pub(super) fn named(tool: &str, words: &[&str], env: &[(&str, Option<&str>)]) ->
 /// `admitted_line`, do not differ by one word, whose admitted line adds a
 /// word that skips the command's work, or whose admitted line runs another
 /// command of `command`, the tool's tree, than the refused line, or no
-/// command when the refused line runs none.
+/// command when the refused line runs none. `guide` is the tool's guide,
+/// whose declarations say which words name a command.
 fn one_word(
     command: &Command,
+    guide: &Guide,
     refused: &[&str],
     admitted: &[&str],
     refused_line: &str,
@@ -253,8 +256,8 @@ fn one_word(
             "the admitted line {admitted_line} adds `{word}`, which makes the tool answer without running the command, so the twin proves nothing about the refused line {refused_line}. A code that no word of a command line causes needs an opt-out made with Allow::untwinned"
         ));
     }
-    let named = words::named(command, refused);
-    let other = words::named(command, admitted);
+    let named = words::named(command, guide, refused);
+    let other = words::named(command, guide, admitted);
     if !named.runs && !other.runs {
         return Err(format!(
             "the refused line {refused_line} runs no command, and the admitted line {admitted_line} runs none either, so the twin proves nothing about a command. A twin of a line that runs no command admits a line that runs one"
@@ -305,7 +308,7 @@ pub(super) fn refuse(
         .map(|failure| failure.code().to_owned());
     match printed {
         Some(printed) if printed == code => {
-            let path = crumbkit::command_path(command, refused.words());
+            let path = crumbkit::command_path(command, guide, refused.words());
             match exits::exit_problem(guide, spelling, &path, &printed, output.status) {
                 Some(problem) => Err(format!("the refused line {refused_line} {problem}")),
                 None => Ok(output),

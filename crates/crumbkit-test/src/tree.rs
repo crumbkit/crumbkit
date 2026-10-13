@@ -9,6 +9,7 @@ mod tests;
 /// One command that a walk visits.
 pub(crate) struct Visit<'a> {
     command: &'a Command,
+    parent: Option<&'a Command>,
     path: String,
     depth: usize,
 }
@@ -17,6 +18,12 @@ impl<'a> Visit<'a> {
     /// Returns the command.
     pub(crate) fn command(&self) -> &'a Command {
         self.command
+    }
+
+    /// Returns the command that holds this command, or `None` for the
+    /// command passed to the walk.
+    pub(crate) fn parent(&self) -> Option<&'a Command> {
+        self.parent
     }
 
     /// Returns the command's names from the command passed to the walk down
@@ -70,14 +77,16 @@ pub(crate) fn walk_visible(root: &Command) -> Vec<Visit<'_>> {
 /// [`walk_visible`] returns when `hidden` is unset.
 fn walk_tree(root: &Command, hidden: bool) -> Vec<Visit<'_>> {
     let mut visits = Vec::new();
-    visit(root, root.get_name(), 0, hidden, &mut visits);
+    visit(root, None, root.get_name(), 0, hidden, &mut visits);
     visits
 }
 
-/// Adds `command` and every command below it to `visits`. A hidden command
-/// and everything below it are left out unless `hidden` is set.
+/// Adds `command`, which `parent` holds, and every command below it to
+/// `visits`. A hidden command and everything below it are left out unless
+/// `hidden` is set.
 fn visit<'a>(
     command: &'a Command,
+    parent: Option<&'a Command>,
     path: &str,
     depth: usize,
     hidden: bool,
@@ -88,12 +97,13 @@ fn visit<'a>(
     }
     visits.push(Visit {
         command,
+        parent,
         path: path.to_owned(),
         depth,
     });
     for subcommand in command.get_subcommands() {
         let path = format!("{path} {}", subcommand.get_name());
-        visit(subcommand, &path, depth + 1, hidden, visits);
+        visit(subcommand, Some(command), &path, depth + 1, hidden, visits);
     }
 }
 

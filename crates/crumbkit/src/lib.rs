@@ -50,6 +50,7 @@ pub mod codes;
 pub mod commands;
 #[cfg(any(feature = "complete", feature = "usage-log"))]
 mod complete;
+mod dashed;
 mod exit;
 mod expect;
 mod fetch;
@@ -79,6 +80,7 @@ pub use crumbkit_core::{
 pub use crate::call::RenderCall;
 #[cfg(feature = "complete")]
 pub use crate::complete::{complete, complete_to, complete_with, complete_with_words};
+pub use crate::dashed::{dashed_form, dashed_name};
 pub use crate::expect::{Expect, Expected};
 pub use crate::fetch::fetch_each;
 pub use crate::output::{

@@ -415,6 +415,10 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   calls from a refused command line naming the leaf, such as the line with
   the refused value corrected, and the refusal offers each call whose line
   parses after crumbkit's own alternatives ([ADR-0056]).
+- crumbkit: with `Guide::dashed_forms`, a command named in another style,
+  such as `reading_lists`, also answers to its dashed form, such as
+  `reading-lists`, in [`parse`], completion and [`command_path`], and
+  [`dashed_form`] returns that form ([ADR-0015]).
 - crumbkit: `RuntimeLeaf::refusal_alternatives` gives a command that a
   tool adds at run time the alternatives that a refusal of its line offers
   ([ADR-0021]).
@@ -638,6 +642,16 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   document without the envelope ([ADR-0016]).
 - crumbkit: `complete_to` takes the name of the completion variable, which
   the registration script sets ([ADR-0048]).
+- crumbkit: [`complete`], [`complete_with`], [`complete_with_words`],
+  `complete_to` and [`command_path`] take the tool's guide, so they read its
+  `Guide::dashed_forms` declaration as [`parse`] does ([ADR-0015]).
+- crumbkit-test: [`check_grammar`] takes the tool's guide, and with
+  `Guide::dashed_forms` it accepts a resource or verb named in another style
+  that answers to its dashed form without an opt-out of
+  `Rule::ResourceName` ([ADR-0015]).
+- crumbkit-test: [`check_opt_outs`] lists the `Guide::dashed_forms`
+  declaration and each command that answers to its dashed form as
+  customisations ([ADR-0056]).
 - crumbkit: [`ReadFailure`] holds each field as a `FieldValue`, so a
   form's `read` gives back a null, list or object field as the failure
   held it ([ADR-0045]).
@@ -766,6 +780,7 @@ rustdoc, or at its decision record. -->
 [`report`]: crates/crumbkit-core/src/report.rs
 [`parse`]: crates/crumbkit/src/parse.rs
 [`command_path`]: crates/crumbkit/src/parse/walk.rs
+[`dashed_form`]: crates/crumbkit/src/dashed.rs
 [`RuntimeFailing`]: crates/crumbkit-test/src/recoveries/runtime.rs
 [`Stop`]: crates/crumbkit/src/parse/stop.rs
 [`usage::ended`]: crates/crumbkit/src/usage.rs

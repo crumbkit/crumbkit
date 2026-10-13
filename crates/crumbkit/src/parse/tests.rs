@@ -13,6 +13,7 @@ use crate::{Sink, Spelling};
 
 mod aliases;
 mod alternatives;
+mod dashed;
 mod fields;
 mod hidden;
 mod limit;

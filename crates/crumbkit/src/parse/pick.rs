@@ -85,7 +85,7 @@ impl Picking {
         json: bool,
         spelling: Spelling,
     ) -> Step {
-        let given = given(command, words);
+        let given = given(command, words, guide.get_dashed_forms());
         if given.ids.iter().any(|id| id == NO_INPUT_ID) {
             return Step::Refuse;
         }

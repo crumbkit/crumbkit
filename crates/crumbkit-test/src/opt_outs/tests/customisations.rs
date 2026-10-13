@@ -154,3 +154,40 @@ fn a_cargo_subcommand_names_its_documents_after_the_path_below_its_own_name() {
 
     assert!(customisations(&Command::new("cargo"), &GUIDE).is_empty());
 }
+
+#[test]
+fn the_dashed_forms_declaration_and_each_command_named_in_another_style_are_customisations() {
+    let shelf = Command::new("shelf").subcommand(
+        Command::new("reading_lists")
+            .subcommand(Command::new("ExportAll"))
+            .subcommand(Command::new("list")),
+    );
+    let listed = |guide: &Guide| -> Vec<_> {
+        customisations(&shelf, guide)
+            .into_iter()
+            .map(|entry| (entry.declaration, entry.applies_to, entry.declares))
+            .collect()
+    };
+
+    assert_eq!(
+        listed(&Guide::new().dashed_forms()),
+        [
+            (
+                "dashed-forms",
+                "every run of shelf".to_owned(),
+                "A command named in another style also answers to its dashed form.".to_owned()
+            ),
+            (
+                "resource-name",
+                "shelf reading_lists".to_owned(),
+                "The command also answers to reading-lists.".to_owned()
+            ),
+            (
+                "verb-name",
+                "shelf reading_lists ExportAll".to_owned(),
+                "The command also answers to export-all.".to_owned()
+            ),
+        ]
+    );
+    assert_eq!(listed(&Guide::new()), Vec::new());
+}
