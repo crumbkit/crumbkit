@@ -3,7 +3,6 @@
 
 use std::path::Path;
 use std::process::Output;
-use std::time::Instant;
 
 use crumbkit::help::Guide;
 use crumbkit::{Code, Spelling};
@@ -12,7 +11,7 @@ use crate::examples::Examples;
 use crate::failures;
 use crate::guide::command_line;
 use crate::recoveries::{Failing, Unprovoked};
-use crate::runs::{self, Dir, Place, TIMEOUT, WorkDir, Xdg};
+use crate::runs::{self, Dir, Place, Ran, TIMEOUT, WorkDir, Xdg};
 
 // The tests run `/bin/sh` scripts, which Windows cannot run. The two
 // attributes stay apart, because clippy reads only a plain `cfg(test)` as
@@ -364,9 +363,8 @@ fn run(
     fixture: Option<&str>,
     line: &str,
 ) -> Result<Output, String> {
-    let started = Instant::now();
     let (dir, stdin) = start;
-    let output = Xdg::new("twin", fixture)
+    let ran = Xdg::new("twin", fixture)
         .and_then(|xdg| {
             let work = WorkDir::new("twin-dir", dir)?;
             let place = Place {
@@ -383,12 +381,12 @@ fn run(
             )
         })
         .map_err(|problem| format!("`{line}`: {problem}"))?;
-    if !output.status.success() && started.elapsed() >= TIMEOUT {
+    let Ran::Exited(output) = ran else {
         return Err(format!(
             "`{line}` did not end within {} seconds, so the check stopped it",
             TIMEOUT.as_secs()
         ));
-    }
+    };
     Ok(output)
 }
 

@@ -7,7 +7,7 @@ use snapbox::Assert;
 use snapbox::assert::DEFAULT_ACTION_ENV;
 
 use crate::goldens::compare;
-use crate::runs::{self, Place, TIMEOUT, Xdg};
+use crate::runs::{self, Place, Ran, TIMEOUT, Xdg};
 use crate::tree;
 
 // The tests run shell scripts, which Windows cannot run. The two attributes
@@ -66,7 +66,8 @@ fn check(binary: &str, file: &Path, assert: &Assert) {
         .and_then(|xdg| runs::run(binary, &[], &xdg, &ARGS, Place::default(), TIMEOUT))
     {
         Err(problem) => problems.push(format!("{line}: {problem}")),
-        Ok(output) if !output.status.success() => {
+        Ok(Ran::Stopped) => problems.push(format!("{line}: {}", runs::stopped(TIMEOUT))),
+        Ok(Ran::Exited(output)) if !output.status.success() => {
             let mut problem = format!(
                 "{line}: the run must exit with code 0, and it ends with {}",
                 output.status
@@ -77,7 +78,7 @@ fn check(binary: &str, file: &Path, assert: &Assert) {
             }
             problems.push(problem);
         }
-        Ok(output) => match crumbkit_markdown::render(&output.stdout) {
+        Ok(Ran::Exited(output)) => match crumbkit_markdown::render(&output.stdout) {
             Ok(reference) => compare(
                 assert,
                 &line,

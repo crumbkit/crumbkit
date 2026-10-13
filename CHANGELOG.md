@@ -527,6 +527,12 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   cannot start, under their own heading.
 - crumbkit-test: [`check_help_sizes`] reports a page that fails to render as
   one problem ([ADR-0025]).
+- crumbkit-test: [`check_examples`], [`check_twin`] and [`check_recoveries`]
+  report each run that their timeout stopped as stopped, where a stop up to
+  1 ms early showed as a failed run that ended with SIGKILL ([ADR-0005]).
+- crumbkit-test: [`check_output_budget`], [`check_command_reference`] and
+  the help checks that run the binary say when their timeout stopped a run,
+  and a run without input reads an empty, closed standard input.
 - crumbkit: a trim of the usage log keeps the newest whole lines within a
   size budget, drops a torn line, and replaces the log in one step under a
   separate lock file ([`usage`], [ADR-0029]).

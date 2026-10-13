@@ -133,3 +133,44 @@ fn the_output_budget_check_uses_current_dir_and_stdin_and_skips_an_opted_out_exa
     );
     assert_eq!(skipped, Vec::<String>::new());
 }
+
+/// A `--json` example that prints a line, and that never ends when the
+/// output budget is set.
+#[cfg(unix)]
+const STALLS: &[&str] = &[
+    r#"test -n "$CRUMBKIT_OUTPUT_BUDGET" && exec sleep 5; echo printed"#,
+    "--json",
+];
+
+#[cfg(unix)]
+#[test]
+fn a_run_with_the_budget_that_does_not_end_within_the_timeout_is_stopped_and_breaks_the_contract() {
+    use std::time::Duration;
+
+    use clap::Command;
+    use crumbkit::help::{Example, Guide, Leaf};
+
+    use crate::examples::Examples;
+    use crate::temp::TempDir;
+
+    const GUIDE: Guide =
+        Guide::new().leaves(&[Leaf::new(&["-c"]).examples(&[Example::new(STALLS, "Print")])]);
+    let sh = Command::new("sh").subcommand(Command::new("-c"));
+    let goldens = TempDir::new("output-budget-stalls").unwrap();
+    let dir = goldens.path().display().to_string();
+
+    let problems = super::check(
+        &sh,
+        &GUIDE,
+        &Examples::new("/bin/sh", &dir),
+        Duration::from_millis(200),
+    );
+
+    assert_eq!(problems.len(), 1, "{problems:?}");
+    assert!(
+        problems[0].ends_with(
+            "with an output budget of 4 bytes, the run did not end within 0.2 seconds, so the check stopped it"
+        ),
+        "{problems:?}"
+    );
+}

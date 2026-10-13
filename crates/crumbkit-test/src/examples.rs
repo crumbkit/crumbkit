@@ -4,7 +4,7 @@
 use std::fmt::Write as _;
 use std::path::Path;
 use std::process::Output;
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
 use clap::Command;
 use crumbkit::help::Guide;
@@ -15,7 +15,7 @@ use crate::allow::{Allowances, Rule};
 use crate::failures::{self, Reader};
 use crate::goldens::{compare, remove_stale};
 use crate::guide::command_line;
-use crate::runs::{self, Place, TIMEOUT, WorkDir, Xdg};
+use crate::runs::{self, Place, Ran, TIMEOUT, WorkDir, Xdg};
 use crate::tree;
 
 pub(crate) use self::inputs::read_stdin;
@@ -337,14 +337,13 @@ fn run_example(
     redactions: &Redactions,
     timeout: Duration,
 ) -> Result<(Output, Redactions), String> {
-    let started = Instant::now();
     let xdg = Xdg::new("example", examples.xdg_fixture())?;
     let work = WorkDir::new("example-dir", examples.working_dir())?;
     let place = Place {
         dir: work.path(),
         stdin,
     };
-    let output = runs::run(
+    let ran = runs::run(
         examples.binary(),
         examples.variables(),
         &xdg,
@@ -352,12 +351,12 @@ fn run_example(
         place,
         timeout,
     )?;
-    if !output.status.success() && started.elapsed() >= timeout {
+    let Ran::Exited(output) = ran else {
         return Err(format!(
-            "the run did not end within {} seconds, so the check stopped it, and an example must end on its own",
-            timeout.as_secs_f64()
+            "{}, and an example must end on its own",
+            runs::stopped(timeout)
         ));
-    }
+    };
     Ok((output, inputs::with_run(redactions, &xdg, &work)))
 }
 

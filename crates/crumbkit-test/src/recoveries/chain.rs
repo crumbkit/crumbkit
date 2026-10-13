@@ -2,7 +2,6 @@
 //! each start prints.
 
 use std::fmt::Write as _;
-use std::time::Instant;
 
 use clap::Command;
 use crumbkit::form::{ReadFailure, Step};
@@ -12,7 +11,7 @@ use super::{Failing, Recoveries};
 use crate::allow::{self, Allowances, Rule};
 use crate::failures::{self, Reader};
 use crate::guide::command_line;
-use crate::runs::{self, Place, TIMEOUT, WorkDir, Xdg};
+use crate::runs::{self, Place, Ran, TIMEOUT, WorkDir, Xdg};
 use fill::{fill_word, path_below, value, with_json};
 
 pub(super) mod fill;
@@ -439,7 +438,6 @@ impl Walk<'_> {
     fn run(&mut self, chain: &mut Chain<'_>, label: &str, words: &[String]) -> Option<Outcome> {
         let args = with_json(words);
         let refs: Vec<&str> = args.iter().map(String::as_str).collect();
-        let started = Instant::now();
         let result = runs::run(
             self.recoveries.examples.binary(),
             self.recoveries.examples.variables(),
@@ -453,20 +451,20 @@ impl Walk<'_> {
         );
         chain.ran.push(args);
         let output = match result {
-            Ok(output) => output,
+            Ok(Ran::Exited(output)) => output,
+            Ok(Ran::Stopped) => {
+                self.problems.push(format!(
+                    "{}: {label} did not end within {} seconds, so the check stopped it",
+                    chain.start,
+                    TIMEOUT.as_secs()
+                ));
+                return None;
+            }
             Err(problem) => {
                 self.problems.push(format!("{}: {problem}", chain.start));
                 return None;
             }
         };
-        if !output.status.success() && started.elapsed() >= TIMEOUT {
-            self.problems.push(format!(
-                "{}: {label} did not end within {} seconds, so the check stopped it",
-                chain.start,
-                TIMEOUT.as_secs()
-            ));
-            return None;
-        }
         let stderr = String::from_utf8_lossy(&output.stderr);
         let mut warned = false;
         for warning in stderr
