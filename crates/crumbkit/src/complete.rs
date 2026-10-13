@@ -2,7 +2,8 @@
 //! `clap_complete`'s dynamic completion (ADR-0048), and the rule that tells a
 //! completion request from an ordinary run, which the usage log shares.
 //! [`complete_with`] declares the tool's own name for the completion
-//! variable (ADR-0056).
+//! variable (ADR-0056), and [`complete_with_words`] builds the command from
+//! the words that the caller typed.
 
 use std::ffi::OsStr;
 #[cfg(feature = "complete")]
@@ -100,7 +101,8 @@ pub(crate) fn requested(value: Option<&OsStr>) -> bool {
 /// It behaves as [`complete_to`] does with a sink over the process's
 /// standard output, the process's arguments and its current directory.
 /// [`complete_with`] answers the same requests under a variable that the
-/// tool names.
+/// tool names, and [`complete_with_words`] also passes the typed words to
+/// the function that builds the command.
 ///
 /// The `complete` feature follows `clap_complete`'s dynamic completion, which
 /// clap marks as unstable, so a crumbkit minor release may change what it
@@ -155,6 +157,56 @@ pub fn complete_with(
     variable: &'static str,
     command: impl FnOnce() -> Command,
 ) -> Option<ExitCode> {
+    complete_with_words(variable, |_| command())
+}
+
+/// Answers a shell's completion request as [`complete_with`] does, and
+/// passes `command` the words of the shell's command line after the program
+/// name, so the tool builds its command for what the caller typed.
+///
+/// A tool whose completers depend on an earlier word, such as path
+/// completers under the directory that a global `-C <DIR>` chooses, reads
+/// that word here and builds its completers for it:
+///
+/// ```no_run
+/// use std::ffi::OsString;
+/// use std::process::ExitCode;
+///
+/// use clap::{Arg, Command};
+///
+/// /// Returns the directory after the first `-C` in `words`, if any.
+/// fn directory(words: &[OsString]) -> Option<&OsString> {
+///     let position = words.iter().position(|word| word == "-C")?;
+///     words.get(position + 1)
+/// }
+///
+/// fn shelf(words: &[OsString]) -> Command {
+///     let base = directory(words).map(std::path::PathBuf::from);
+///     // Build the path completers relative to `base` here.
+///     Command::new("shelf").arg(Arg::new("dir").short('C').global(true))
+/// }
+///
+/// fn main() -> ExitCode {
+///     if let Some(code) = crumbkit::complete_with_words("COMPLETE", shelf) {
+///         return code;
+///     }
+///     // Start the usage log, parse and run the command.
+///     ExitCode::SUCCESS
+/// }
+/// ```
+///
+/// The words are the shell's words in the order it sends them, including
+/// the word at the cursor, which may be partial or empty. A shell may send
+/// words after the cursor too. A request for the registration script passes
+/// no words. A tool that passes `COMPLETE` as `variable` keeps the default
+/// name, and [`complete`] and [`complete_with`] serve a tool whose command
+/// does not depend on the typed words.
+#[cfg(feature = "complete")]
+#[must_use]
+pub fn complete_with_words(
+    variable: &'static str,
+    command: impl FnOnce(&[OsString]) -> Command,
+) -> Option<ExitCode> {
     // A second declaration keeps the first, so the usage log and the
     // registration agree within one run.
     let _ = DECLARED.set(variable);
@@ -174,7 +226,7 @@ pub fn complete_with(
     let mut sink = Sink::standard();
     Some(complete_to(
         &mut sink,
-        command(),
+        command,
         variable,
         &shell,
         std::env::args_os(),
@@ -182,8 +234,10 @@ pub fn complete_with(
     ))
 }
 
-/// Answers the completion request of `shell` for `command`, writes the
-/// answer to the sink's output writer, and returns the exit code.
+/// Answers the completion request of `shell` for the command that
+/// `command` builds from the typed words, as [`complete_with_words`]
+/// describes, writes the answer to the sink's output writer, and returns
+/// the exit code.
 /// `variable` is the name of the completion variable, `COMPLETE` or the
 /// name that the tool passes to [`complete_with`], which a registration
 /// script sets for each completion. `args` are
@@ -213,7 +267,7 @@ pub fn complete_with(
 #[cfg(feature = "complete")]
 pub fn complete_to<O, E, R, I, T>(
     sink: &mut Sink<O, E, R>,
-    command: Command,
+    command: impl FnOnce(&[OsString]) -> Command,
     variable: &str,
     shell: &OsStr,
     args: I,
@@ -251,7 +305,7 @@ where
 #[cfg(feature = "complete")]
 fn answer_into(
     answer: &mut Vec<u8>,
-    command: Command,
+    command: impl FnOnce(&[OsString]) -> Command,
     variable: &str,
     shell: &OsStr,
     mut args: Vec<OsString>,
@@ -262,7 +316,6 @@ fn answer_into(
     let shell = shells
         .completer(&name.to_string_lossy())
         .ok_or_else(|| io::Error::other("unknown shell"))?;
-    let mut command = command.disable_help_subcommand(true);
     if args.is_empty() {
         return Err(io::Error::other("no program name"));
     }
@@ -272,6 +325,10 @@ fn answer_into(
         .position(|word| word == "--")
         .map_or(args.len(), |position| position + 1);
     args.drain(..words);
+    // The shell's first word is the program as the caller typed it, and the
+    // tool reads the words after it.
+    let typed = args.get(1..).unwrap_or_default();
+    let mut command = command(typed).disable_help_subcommand(true);
     if !args.is_empty() {
         return shell.write_complete(&mut command, args, current_dir, answer);
     }
