@@ -342,3 +342,20 @@ fn the_writes_object_holds_replaces_expect_and_items() {
     assert_eq!(super::writes(Some(Effects::read_only()), false), None);
     assert_eq!(super::writes(None, false), None);
 }
+
+/// The guide of `tool()`, whose leaf passes on the exit code of the
+/// program that removes the planets.
+const PASSES_ON: Guide = Guide::new().leaves(&[Leaf::new(&["planets", "remove"])
+    .effects(Effects::destructive().idempotent())
+    .passes_on_exit("the planet remover")]);
+
+#[test]
+fn help_of_a_leaf_that_passes_on_a_program_s_exit_code_names_the_program_after_the_effects() {
+    let expected = "Effects: destructive, idempotent, closed-world.\n\
+                    Exit code: the command passes on the exit code of the planet remover.\n";
+    for flag in ["-h", "--help"] {
+        let page = help(&PASSES_ON, &["tool", "planets", "remove", flag]);
+
+        assert!(page.contains(expected), "{page}");
+    }
+}

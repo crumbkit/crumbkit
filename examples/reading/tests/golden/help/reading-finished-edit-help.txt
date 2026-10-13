@@ -27,3 +27,4 @@ Examples:
 
 Effects: destructive, not idempotent, closed-world.
 Writes: replaces existing data, without a version check.
+Exit code: the command passes on the exit code of the editor.

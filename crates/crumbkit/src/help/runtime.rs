@@ -51,6 +51,8 @@ pub struct RuntimeLeaf {
     examples: Vec<(Vec<String>, String)>,
     /// The command's effects, or `None` when the tool declares none.
     effects: Option<Effects>,
+    /// The program whose exit code the command passes on, or `None`.
+    passes_on_exit: Option<&'static str>,
 }
 
 impl RuntimeLeaf {
@@ -63,6 +65,7 @@ impl RuntimeLeaf {
             path,
             examples: Vec::new(),
             effects: None,
+            passes_on_exit: None,
         }
     }
 
@@ -84,12 +87,20 @@ impl RuntimeLeaf {
         self.effects = Some(effects);
         self
     }
+
+    /// Declares that the command passes on the exit code of `program`, as
+    /// [`Leaf::passes_on_exit`] does.
+    #[must_use]
+    pub const fn passes_on_exit(mut self, program: &'static str) -> Self {
+        self.passes_on_exit = Some(program);
+        self
+    }
 }
 
 impl Guide {
     /// Returns a guide with the groups, topics and exit codes of `self`, and
     /// the leaves of `self` followed by `leaves`, each with its path,
-    /// examples and effects.
+    /// examples, effects and the program whose exit code it passes on.
     ///
     /// Every function that reads a guide reads the joined one as it reads a
     /// `const` guide, and of two leaves with one path only the first
@@ -117,6 +128,9 @@ impl Guide {
             let mut joined_leaf = Leaf::new(leak_words(leaf.path)).examples(examples.leak());
             if let Some(effects) = leaf.effects {
                 joined_leaf = joined_leaf.effects(effects);
+            }
+            if let Some(program) = leaf.passes_on_exit {
+                joined_leaf = joined_leaf.passes_on_exit(program);
             }
             joined.push(joined_leaf);
         }
