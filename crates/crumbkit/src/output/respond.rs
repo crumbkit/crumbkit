@@ -188,14 +188,11 @@ fn answered<'a, O: Write, W: Write, R>(
     match answer {
         Answer::Whole => (code, false, None),
         Answer::Cut(over) => {
-            // A listing cut short exits 0, and the usage log and the span
-            // still record its code (ADR-0046).
-            #[cfg(feature = "usage-log")]
-            crate::usage::failed(spelling, over);
+            // A listing cut short exits 0, and the observer and the span
+            // still receive its code (ADR-0046).
+            crate::events::failed(spelling, over);
             #[cfg(feature = "tracing")]
             crate::trace::spans::failed(&spelling.spell(over));
-            #[cfg(not(any(feature = "usage-log", feature = "tracing")))]
-            let _ = (over, spelling);
             (code, true, None)
         }
         Answer::Partial(over) => (1, false, Some(over)),

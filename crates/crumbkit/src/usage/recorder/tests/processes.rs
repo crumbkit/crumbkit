@@ -6,8 +6,9 @@ use std::fs;
 use clap::Command;
 use serde_json::Value;
 
+use crate::events::typed;
 use crate::help::{Exit, Guide};
-use crate::usage::recorder::{start, typed};
+use crate::usage::recorder::start;
 use crate::usage::testing::TempDir;
 use crate::{Code, Document, Output, Parsed, Sink, Spelling, Stream, stream_to};
 

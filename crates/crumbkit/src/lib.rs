@@ -19,7 +19,8 @@
 //! [`Call`]: crate::Call
 //! [`commands`]: crate::commands
 //! [`fetch_each`]: crate::fetch_each
-//! [`usage`]: crate::usage
+//! [`events`]: crate::events
+//! [`usage`]: https://github.com/crumbkit/crumbkit/blob/main/crates/crumbkit/src/usage.rs
 //! [`schemas`]: crate::schemas
 //! [`trace`]: crate::trace
 //! [tutorial]: https://github.com/crumbkit/crumbkit/blob/main/docs/tutorial.md
@@ -38,6 +39,7 @@
 //! [ADR-0030]: https://github.com/crumbkit/crumbkit/blob/main/docs/decisions/api/usage/0030-trace-context.md
 //! [ADR-0032]: https://github.com/crumbkit/crumbkit/blob/main/docs/decisions/api/0032-core-crate.md
 //! [ADR-0048]: https://github.com/crumbkit/crumbkit/blob/main/docs/decisions/api/0048-completion.md
+//! [ADR-0057]: https://github.com/crumbkit/crumbkit/blob/main/docs/decisions/api/0057-run-observer.md
 #![doc = include_str!("../README.md")]
 // docs.rs builds the docs on nightly with `--cfg docsrs`, and rustdoc's
 // `doc_cfg` feature labels each item behind a cargo feature with its name.
@@ -51,9 +53,9 @@ mod call;
 pub mod child;
 pub mod codes;
 pub mod commands;
-#[cfg(any(feature = "complete", feature = "usage-log"))]
 mod complete;
 mod dashed;
+pub mod events;
 mod exit;
 mod expect;
 mod fetch;
@@ -70,6 +72,7 @@ mod sink;
 pub mod trace;
 #[cfg(test)]
 mod twins;
+#[cfg(feature = "usage-log")]
 pub mod usage;
 
 // crumbkit re-exports every item of crumbkit-core at the path it had in

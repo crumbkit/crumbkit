@@ -3,6 +3,7 @@ use std::ffi::OsString;
 use clap::{Arg, ArgAction, Command};
 
 use super::{parsed, refused};
+use crate::events::Refused;
 use crate::usage::record::{Name, Run};
 
 /// Returns a tool with a global flag and a global option, a branch with a
@@ -63,7 +64,8 @@ fn rejected(line: &str, path: &[&str]) -> Run {
     let error = command.try_get_matches_from_mut(words(line)).unwrap_err();
     let path: Vec<String> = path.iter().map(|name| (*name).to_owned()).collect();
     let mut run = Run::default();
-    refused(&mut run, &command, &path, &words(line)[1..], &error);
+    let refusal = Refused::new(&command, &path, &error, 2);
+    refused(&mut run, &refusal, &words(line)[1..]);
     run
 }
 
@@ -140,44 +142,4 @@ fn a_refusal_reads_no_word_after_a_double_dash() {
     let run = rejected("shelf books list -- --nope", &["books", "list"]);
 
     assert_eq!(run.unknown_flags, None);
-}
-
-/// Returns what the usage log records for `line` on a tool whose `books`
-/// command has a `--limit` option with the hidden alias `--max` and a hidden
-/// `--legacy` flag. clap refuses `line` at `books`.
-fn rejected_with_hidden_names(line: &str) -> Run {
-    let mut command = Command::new("shelf").subcommand(
-        Command::new("books")
-            .arg(Arg::new("limit").long("limit").alias("max"))
-            .arg(
-                Arg::new("legacy")
-                    .long("legacy")
-                    .hide(true)
-                    .action(ArgAction::SetTrue),
-            ),
-    );
-    let error = command.try_get_matches_from_mut(words(line)).unwrap_err();
-    let mut run = Run::default();
-    refused(
-        &mut run,
-        &command,
-        &["books".to_owned()],
-        &words(line)[1..],
-        &error,
-    );
-    run
-}
-
-#[test]
-fn a_refusal_records_the_real_flag_when_clap_suggested_its_hidden_alias() {
-    let run = rejected_with_hidden_names("shelf books --maxx 5");
-
-    assert_eq!(run.nearest.unwrap().as_str(), "--limit");
-}
-
-#[test]
-fn a_refusal_records_no_suggestion_when_clap_suggested_a_hidden_flag() {
-    let run = rejected_with_hidden_names("shelf books --legac");
-
-    assert_eq!(run.nearest, None);
 }

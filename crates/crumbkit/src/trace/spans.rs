@@ -12,11 +12,13 @@
 use tracing::Span;
 use tracing::field::Empty;
 
+use crate::events::TraceIds;
+
 #[cfg(test)]
 mod tests;
 
-/// Returns the span of `parse`, with the run's trace ids when the usage log
-/// started.
+/// Returns the span of `parse`, with the run's trace ids when the observer
+/// gives them.
 pub(crate) fn parse() -> Span {
     // The test build installs the span tests' subscriber before any thread
     // reaches the span's callsite, so tracing never caches the callsite's
@@ -33,13 +35,13 @@ pub(crate) fn parse() -> Span {
         "crumbkit.run" = Empty,
     );
     if !span.is_disabled() {
-        record_ids(&span, ids());
+        record_ids(&span, crate::events::trace_ids());
     }
     span
 }
 
-/// Returns the span of `finish`, with the run's trace ids when the usage log
-/// started.
+/// Returns the span of `finish`, with the run's trace ids when the observer
+/// gives them.
 pub(crate) fn finish() -> Span {
     // The test build installs the span tests' subscriber before any thread
     // reaches the span's callsite, so tracing never caches the callsite's
@@ -55,7 +57,7 @@ pub(crate) fn finish() -> Span {
         "crumbkit.run" = Empty,
     );
     if !span.is_disabled() {
-        record_ids(&span, ids());
+        record_ids(&span, crate::events::trace_ids());
     }
     span
 }
@@ -99,24 +101,11 @@ pub(crate) fn exited(span: &Span, exit: u8) {
 
 /// Records `ids`, the trace id and the run's id as hex, on `span`. It
 /// records nothing when `ids` is `None`. The callers skip it when no
-/// subscriber wants the span, so a tool without a subscriber never locks the
-/// recorder or formats the ids.
-fn record_ids(span: &Span, ids: Option<(String, String)>) {
-    if let Some((trace, run)) = ids {
-        span.record("trace_id", trace);
-        span.record("crumbkit.run", run);
-    }
-}
-
-/// Returns the trace id and the run's id from the usage log's recorder, or
-/// `None` without the `usage-log` feature or a started log.
-fn ids() -> Option<(String, String)> {
-    #[cfg(feature = "usage-log")]
-    {
-        crate::usage::ids()
-    }
-    #[cfg(not(feature = "usage-log"))]
-    {
-        None
+/// subscriber wants the span, so a tool without a subscriber never asks the
+/// observer for its ids.
+fn record_ids(span: &Span, ids: Option<TraceIds>) {
+    if let Some(ids) = ids {
+        span.record("trace_id", ids.trace());
+        span.record("crumbkit.run", ids.run());
     }
 }

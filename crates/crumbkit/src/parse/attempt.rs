@@ -20,8 +20,7 @@ pub(super) fn attempt<C: FromArgMatches>(
     guide: &Guide,
 ) -> Result<(C, bool, Option<Refusal>), clap::Error> {
     let mut matches = command.try_get_matches_from_mut(args)?;
-    #[cfg(feature = "usage-log")]
-    crate::usage::parsed(command, &matches);
+    crate::events::parsed(command, &matches);
     let no_input = pick::no_input(&matches);
     let refusal = refusal(command, &matches, guide);
     C::from_arg_matches_mut(&mut matches).map(|parsed| (parsed, no_input, refusal))

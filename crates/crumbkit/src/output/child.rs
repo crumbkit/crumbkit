@@ -63,7 +63,7 @@ impl Output {
         Some(self.print_refusal(sink, spelling, &refusal))
     }
 
-    /// Prints `refusal`, records its exit code in the usage log, and
+    /// Prints `refusal`, reports its exit code to the observer, and
     /// returns it. The exit code is 2 unless the guide lists another for
     /// the usage code.
     fn print_refusal<O: Write, W: Write>(
@@ -74,7 +74,7 @@ impl Output {
     ) -> ExitCode {
         let printing = self.printing();
         let exit = refusal.print(sink, self.json, spelling, printing, self.command.as_mut());
-        crate::usage::ended(exit, None)
+        crate::events::ended(exit, None)
     }
 
     /// Returns the exit code of a run whose first failure has `code`, as

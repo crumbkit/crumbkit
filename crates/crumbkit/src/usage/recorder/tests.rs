@@ -1,5 +1,4 @@
 use std::fs;
-use std::process::ExitCode;
 use std::sync::Mutex;
 use std::time::{Duration, Instant, SystemTime};
 
@@ -248,7 +247,7 @@ fn help_records_the_commands_of_its_path_that_the_tool_defines_and_short_or_long
         &tool,
         &["books".to_owned(), "s3cr3t".to_owned(), "show".to_owned()],
         true,
-        ExitCode::SUCCESS,
+        0,
     );
 
     assert_eq!(recorder.run.command.unwrap().as_str(), "books show");

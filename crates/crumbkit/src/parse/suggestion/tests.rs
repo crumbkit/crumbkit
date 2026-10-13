@@ -91,3 +91,24 @@ fn a_refusal_drops_a_suggested_flag_that_is_hidden() {
         "{err}"
     );
 }
+
+/// Returns the id of the flag that `nearest_flag` finds when `tool` refuses
+/// `args` at `books`.
+fn nearest(args: &[&str]) -> Option<String> {
+    let mut command = tool();
+    let error = command.try_get_matches_from_mut(args).unwrap_err();
+    super::nearest_flag(&command, &["books".to_owned()], &error).map(|arg| arg.get_id().to_string())
+}
+
+#[test]
+fn the_nearest_flag_of_a_suggested_hidden_alias_is_the_flag_that_the_alias_belongs_to() {
+    assert_eq!(
+        nearest(&["shelf", "books", "--maxx", "5"]).as_deref(),
+        Some("limit")
+    );
+}
+
+#[test]
+fn a_suggested_hidden_flag_gives_no_nearest_flag() {
+    assert_eq!(nearest(&["shelf", "books", "--legac"]), None);
+}

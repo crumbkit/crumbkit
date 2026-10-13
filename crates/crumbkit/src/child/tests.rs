@@ -141,6 +141,15 @@ fn a_child_that_a_signal_ended_returns_128_plus_the_signal_number() {
     assert_eq!(text(Ok(killed(15))).code, ExitCode::from(143));
 }
 
+// Only Unix ends a process with a signal number.
+#[cfg(unix)]
+#[test]
+fn a_child_that_a_signal_ended_reports_that_it_was_interrupted_and_then_its_exit() {
+    let seen = crate::events::testing::watch(|| drop(text(Ok(killed(2)))));
+
+    assert_eq!(seen, ["interrupted", "ended 130 None"]);
+}
+
 #[test]
 fn a_missing_program_fails_with_not_found_and_a_hint_to_install_it() {
     let missing = io::Error::from(io::ErrorKind::NotFound);

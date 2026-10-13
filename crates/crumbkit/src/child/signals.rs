@@ -20,16 +20,18 @@
 //! reach a thread of the tool after the child has exited. On Unix the tool
 //! therefore keeps ignoring both signals from the first child until it
 //! ends. A command hands the terminal over as its last step, so only the
-//! child's result, the usage log's line and the exit remain. On Windows the
-//! tool takes the default actions again once the child exits.
+//! child's result, the observer's last report and the exit remain. On
+//! Windows the tool takes the default actions again once the child exits.
 //!
-//! A usage log has already taken SIGINT with its signal thread. Then this
-//! module installs no SIGINT handler. With `Signals::Crumbkit`, the log's
-//! thread asks [`held_terminal`] and leaves the process running once a
-//! child has held the terminal on Unix, or while a child holds it on
-//! Windows (ADR-0029). With `Signals::Tool`, the log's thread never ends
-//! the process, so the tool's own handler decides what SIGINT does whether
-//! or not a child runs.
+//! Before the child starts, this module reports
+//! [`Observer::handed_over`](crate::events::Observer::handed_over), and on
+//! Windows it reports [`Observer::taken_back`](crate::events::Observer::taken_back)
+//! after the child exits. An observer that has already taken SIGINT, as the
+//! usage log's signal thread does, says so through
+//! [`Observer::handles_interrupt`](crate::events::Observer::handles_interrupt),
+//! and this module then installs no SIGINT handler. The usage log's thread
+//! leaves the process running on SIGINT once a child took the terminal, and
+//! on Windows until the child gave it back (ADR-0042).
 
 #[cfg(unix)]
 mod unix;
@@ -48,10 +50,6 @@ pub(super) use self::windows::ended_by;
 #[cfg(windows)]
 use self::windows::{RESTORES, install};
 
-/// Whether a child holds the terminal now, or on Unix has held it in this
-/// run.
-static HELD: AtomicBool = AtomicBool::new(false);
-
 /// The flag that signal-hook's handlers read: true when no child holds the
 /// terminal, so a signal takes its default action. It is set once, by the
 /// first child, and is `None` when no handler could be installed.
@@ -65,21 +63,13 @@ pub(super) fn while_running<R>(child: impl FnOnce() -> R) -> R {
     if let Some(no_child) = no_child {
         no_child.store(false, Ordering::SeqCst);
     }
-    HELD.store(true, Ordering::SeqCst);
+    crate::events::handed_over();
     let result = child();
     if RESTORES {
-        HELD.store(false, Ordering::SeqCst);
+        crate::events::taken_back();
         if let Some(no_child) = no_child {
             no_child.store(true, Ordering::SeqCst);
         }
     }
     result
-}
-
-/// Reports whether a child has held the terminal in this run on Unix, or
-/// holds it now on Windows, which the usage log's signal thread asks before
-/// it lets SIGINT end the process.
-#[cfg(feature = "usage-log")]
-pub(crate) fn held_terminal() -> bool {
-    HELD.load(Ordering::SeqCst)
 }

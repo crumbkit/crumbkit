@@ -5,6 +5,7 @@ mod budget;
 #[cfg(feature = "hand-over")]
 mod child;
 mod confirm;
+mod counted;
 mod dry_run;
 mod envelope;
 pub(crate) mod failure;
@@ -28,6 +29,7 @@ use clap::{Args, Command};
 
 pub(crate) use self::budget::SMALLEST as SMALLEST_BUDGET;
 pub use self::confirm::Yes;
+use self::counted::Counted;
 pub use self::dry_run::DryRun;
 use self::failure::Printing;
 pub use self::layout::JsonLayout;
@@ -475,14 +477,11 @@ pub fn finish_to<T: Rows, E: AsFailure, O: Write, W: Write>(
     document: Document<T>,
     result: Result<T, E>,
 ) -> ExitCode {
-    // With the usage log, the sink counts the bytes of standard output, and
-    // the run's line records them with the exit code (ADR-0029).
-    #[cfg(feature = "usage-log")]
+    // The sink counts the bytes of standard output, which `finish` reports
+    // to the observer with the exit code (ADR-0057).
     let truncated = result.as_ref().is_ok_and(listing::leaves_out);
-    #[cfg(feature = "usage-log")]
     let empty = result.as_ref().is_ok_and(|value| value.total() == Some(0));
-    #[cfg(feature = "usage-log")]
-    let sink = &mut Sink::new(crate::usage::Counted::new(&mut sink.out), &mut sink.err);
+    let sink = &mut Sink::new(Counted::new(&mut sink.out), &mut sink.err);
     // With the `tracing` feature, the response runs inside the
     // `crumbkit.finish` span, which records the exit code (ADR-0030).
     #[cfg(feature = "tracing")]
@@ -492,9 +491,6 @@ pub fn finish_to<T: Rows, E: AsFailure, O: Write, W: Write>(
     let (exit, cut) = respond::respond(sink, output, spelling, document, result);
     #[cfg(feature = "tracing")]
     crate::trace::spans::exited(&span, exit);
-    #[cfg(feature = "usage-log")]
-    crate::usage::finished(exit, sink.out.bytes(), truncated || cut, empty);
-    #[cfg(not(feature = "usage-log"))]
-    let _ = cut;
+    crate::events::finished(exit, sink.out.bytes(), truncated || cut, empty);
     ExitCode::from(exit)
 }
