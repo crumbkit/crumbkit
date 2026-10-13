@@ -415,6 +415,17 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   calls from a refused command line naming the leaf, such as the line with
   the refused value corrected, and the refusal offers each call whose line
   parses after crumbkit's own alternatives ([ADR-0056]).
+- crumbkit: `RuntimeLeaf::refusal_alternatives` gives a command that a
+  tool adds at run time the alternatives that a refusal of its line offers
+  ([ADR-0021]).
+- crumbkit-test: `RuntimeFailing::at` makes a place that holds a working
+  directory and no command line, and `RuntimeFailing::get_dir` returns its
+  directory ([ADR-0002]).
+- crumbkit-test: `RuntimeFailing::variable_twin` makes a variable twin
+  from a variable name that the test builds at run time ([ADR-0005]).
+- crumbkit-test: `Twins::from_codes`, `Recoveries::from_codes` and
+  `Unprovoked::from_code` take codes held by value, such as codes that a
+  tool builds at run time ([ADR-0002]).
 - crumbkit: [`complete_with_words`] passes the words of the shell's command
   line after the program name to the function that builds the command, so
   completers can depend on an earlier flag such as `-C <DIR>` ([ADR-0048]).
@@ -646,6 +657,11 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit: a batch whose handler stopped before its last key ends with the
   over-budget failure that lists the keys it never fetched, even when its
   rows fit ([ADR-0046]).
+- crumbkit: [`ReadFailure`] holds each field as a `FieldValue`, so a
+  form's `read` gives back a null, list or object field as the failure
+  held it ([ADR-0045]).
+- crumbkit: [`help::RuntimeLeaf`] no longer implements `PartialEq` and
+  `Eq`, because it holds the function of its refusal alternatives.
 
 ### Removed
 
@@ -669,6 +685,9 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- crumbkit-test: [`check_twins`] requires no twin for a declared code that
+  the guide's `Rename` prints in place of one of crumbkit's codes, as its
+  docs said ([ADR-0005]).
 - crumbkit: [`parse`] keeps a command's own `after_help` and
   `after_long_help`, and prints a leaf's examples once.
 - crumbkit: `commands list <PATH>` lists the global arguments of the

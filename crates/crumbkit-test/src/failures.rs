@@ -4,6 +4,7 @@
 
 use std::fmt;
 
+use crumbkit::FieldValue;
 use crumbkit::form::{FailureForm, ReadFailure, Step};
 use crumbkit::help::Guide;
 use serde_json::Value;
@@ -222,42 +223,65 @@ fn read_document(document: &Value) -> Option<ReadFailure> {
             }
         })
         .collect();
-    let fields = fields(document, &steps);
+    let fields = fields(document);
     Some(ReadFailure::new(code, steps).with_fields(fields))
 }
 
 /// Returns the `fields` of the failure document `document`, each a name and
-/// its value as text, in the order the JSON object keeps them. A string is
-/// its own text, a number or a boolean is written as JSON writes it, and a
-/// null, list or object field is left out, so it fills no placeholder: an
-/// agent cannot pass JSON as one word of a command line (ADR-0053).
-///
-/// A list field that a `RunEach` step of `steps` names gives the text of its
-/// first item instead, which `check_recoveries` runs the step with.
-fn fields(document: &Value, steps: &[Step]) -> Vec<(String, String)> {
+/// its value, in the order the JSON object keeps them.
+fn fields(document: &Value) -> Vec<(String, FieldValue<'static>)> {
     let Some(fields) = document.get("fields").and_then(Value::as_object) else {
         return Vec::new();
     };
-    let named_by_each = |name: &str| {
-        steps
-            .iter()
-            .any(|step| matches!(step, Step::RunEach { field, .. } if field == name))
-    };
     fields
         .iter()
-        .filter_map(|(name, value)| {
-            let value = match value {
-                Value::Array(items) if named_by_each(name) => items.first()?,
-                value => value,
-            };
-            let text = match value {
-                Value::String(text) => text.clone(),
-                Value::Number(_) | Value::Bool(_) => value.to_string(),
-                _ => return None,
-            };
-            Some((name.clone(), text))
-        })
+        .map(|(name, value)| (name.clone(), field_value(value)))
         .collect()
+}
+
+/// Returns the JSON value `value` as a field value. A number that fits a
+/// `u64` is unsigned and any other integer is signed, because JSON does not
+/// say which type the tool wrote.
+//
+// RUST-10: `FieldValue` has no variant for a fraction, which crumbkit never
+// writes in a field, so a fraction becomes its JSON text. A float variant
+// of `FieldValue` replaces this if crumbkit starts writing fractions.
+fn field_value(value: &Value) -> FieldValue<'static> {
+    match value {
+        Value::Null => FieldValue::Null,
+        Value::Bool(value) => FieldValue::Boolean(*value),
+        Value::Number(number) => number.as_u64().map_or_else(
+            || {
+                number
+                    .as_i64()
+                    .map_or_else(|| FieldValue::from(number.to_string()), FieldValue::Integer)
+            },
+            FieldValue::Unsigned,
+        ),
+        Value::String(text) => FieldValue::from(text.clone()),
+        Value::Array(items) => FieldValue::List(items.iter().map(field_value).collect()),
+        Value::Object(entries) => FieldValue::Object(
+            entries
+                .iter()
+                .map(|(key, value)| (key.clone().into(), field_value(value)))
+                .collect(),
+        ),
+    }
+}
+
+/// Returns the text with which `value` fills a recovery's placeholder: a
+/// text field as it is, and an integer or a boolean as JSON writes it. It
+/// returns `None` for a null, list or object field, which fills no
+/// placeholder, because an agent cannot pass JSON as one word of a command
+/// line (ADR-0053).
+pub(crate) fn placeholder_text(value: &FieldValue<'_>) -> Option<String> {
+    match value {
+        FieldValue::Text(text) => Some(text.to_string()),
+        FieldValue::Integer(value) => Some(value.to_string()),
+        FieldValue::Unsigned(value) => Some(value.to_string()),
+        FieldValue::Boolean(value) => Some(value.to_string()),
+        _ => None,
+    }
 }
 
 /// Returns the code of `failure` and its steps as one phrase, such as
