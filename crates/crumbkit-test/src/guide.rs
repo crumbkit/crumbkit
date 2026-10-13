@@ -48,6 +48,15 @@ mod tests;
 /// - a visible command without subcommands, the root included when it has
 ///   none, that no leaf with at least one example names, because its help
 ///   then shows no example;
+/// - a leaf whose [`Effects`](crumbkit::help::Effects) change something
+///   and that declares no document with `Leaf::document` or
+///   `Leaf::stream`, because the leaf then offers every view flag, and
+///   only `finish` or `stream` refuses a flag that the output cannot use,
+///   after the handler has made its change (ADR-0016). A read-only leaf,
+///   a leaf without effects and a leaf that passes on a program's exit
+///   code (`Leaf::passes_on_exit`) pass without a document, because
+///   `child::hand_over` refuses `--json` and `--fields` before the program
+///   starts;
 /// - a leaf's [`Choices`](crumbkit::pick::Choices) whose argument id names
 ///   no argument of the leaf's command, because a picker then never offers
 ///   them;
@@ -77,7 +86,8 @@ mod tests;
 /// the data that the leaf's `--help` lists. A topic with
 /// an empty summary passes. The check takes no opt-outs, because a tool
 /// that wants clap's list for a command leaves that command out of the
-/// guide.
+/// guide, and a leaf that changes something can always name the document
+/// that its handler passes to `finish` or `stream`.
 ///
 /// ```
 /// use clap::Command;
@@ -247,6 +257,18 @@ fn check_leaves(command: &Command, guide: &Guide, problems: &mut Vec<String>) {
                     error.kind()
                 )),
             }
+        }
+        // A leaf that passes on a program's exit code hands the terminal
+        // to it, and `child::hand_over` refuses `--json` and `--fields`
+        // before the program starts.
+        let changes = leaf
+            .get_effects()
+            .is_some_and(|effects| !effects.is_read_only());
+        let hands_over = leaf.get_passes_on_exit().is_some();
+        if changes && !hands_over && leaf.get_document().is_none() {
+            problems.push(format!(
+                "{text}: the leaf declares effects that change something and no document, so crumbkit refuses a view flag that the output cannot use only after the change; declare the document with `Leaf::document`, or with `Leaf::stream` for a stream"
+            ));
         }
         for choices in leaf.get_choices() {
             let id = choices.arg();
