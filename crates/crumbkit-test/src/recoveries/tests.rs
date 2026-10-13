@@ -20,8 +20,10 @@ use crate::examples::Examples;
 use crate::temp::TempDir;
 use crate::testing::panic_message;
 
+mod chains;
 mod form;
 mod fresh;
+mod next_step;
 mod reading;
 mod values;
 mod words;
@@ -296,43 +298,6 @@ fn a_start_that_succeeds_or_fails_with_another_code_fails_the_check() {
 }
 
 #[test]
-fn a_step_that_fails_again_with_the_same_code_fails_the_check_unless_an_opt_out_covers_it() {
-    let show = failure("tool::books::not_found", &run("tool books show 8"));
-    let again = failure("tool::books::not_found", r#"{"kind":"retry"}"#);
-    let setup = Setup::new(
-        "recoveries-same",
-        &[
-            ("books show 7 --json", 1, show.as_str(), ""),
-            ("books show 8 --json", 1, again.as_str(), ""),
-        ],
-    );
-    let allow = [Allow::new(
-        Rule::SameCode,
-        "books show",
-        "Each id fails on its own.",
-    )];
-
-    let message = problems(&setup, &recoveries(&setup, SHOW_7, OTHERS)).unwrap();
-    let allowed = problems(
-        &setup,
-        &Recoveries::new(
-            Examples::new(&setup.script, "").allow(&allow),
-            Spelling::COLONS,
-            CODES,
-        )
-        .starts(SHOW_7)
-        .unprovoked(OTHERS),
-    );
-
-    assert_eq!(
-        message,
-        "the tool's recoveries break crumbkit's recovery rules:\n\
-         tool books show 7: the step `tool books show 8` fails again with tool::books::not_found, so an agent that follows the recovery learns nothing new"
-    );
-    assert_eq!(allowed, None);
-}
-
-#[test]
 fn a_step_that_the_parser_refuses_or_that_warns_fails_the_check() {
     let show = format!(
         r#"{{"schema":"crumbkit/failure/v1","code":"tool::books::not_found","message":"m","recovery":{},"alternatives":[{}]}}"#,
@@ -547,33 +512,5 @@ fn a_call_that_does_not_start_with_the_tool_s_name_fails_the_check() {
         problems(&setup, &recoveries(&setup, SHOW_7, OTHERS)).unwrap(),
         "the tool's recoveries break crumbkit's recovery rules:\n\
          tool books show 7: the step `other books list` must start with the tool's name, tool"
-    );
-}
-
-#[test]
-fn a_batch_s_first_failure_starts_the_chain() {
-    let batch = format!(
-        r#"{{"schema":"tool/books-show/v1","data":[],"failures":[{{"code":"tool::books::not_found","message":"m","recovery":{}}}]}}"#,
-        run("tool books list")
-    );
-    let mut answers = vec![("books show 7 --json", 1, batch.as_str(), "")];
-    answers.extend(listed());
-    let setup = Setup::new("recoveries-batch", &answers);
-
-    check_with(
-        &setup,
-        &recoveries(&setup, SHOW_7, OTHERS),
-        Action::Overwrite,
-    );
-
-    assert!(
-        setup.report().starts_with(
-            "tool books show 7\n\
-             \x20 fails with tool::books::not_found\n\
-             \x20 run tool books list\n\
-             \x20   exits 0\n\n"
-        ),
-        "{}",
-        setup.report()
     );
 }

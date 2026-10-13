@@ -264,8 +264,10 @@ pub enum Rule {
     /// is `recoveries/follow`.
     Recoveries,
     /// [`check_recoveries`](crate::check_recoveries): a recovery of a
-    /// command fails again with the code of the failure it follows. Its id
-    /// is `recoveries/same-code`.
+    /// command fails with the code of the failure it follows or of an
+    /// earlier failure of its chain. Its id is `recoveries/same-code`, and
+    /// its opt-out names the command that the recovery runs, which marks a
+    /// step that a person or an agent must complete by hand first.
     SameCode,
     /// [`check_recoveries`](crate::check_recoveries): a recovery of a
     /// command holds a placeholder that a field of the command's failure
@@ -273,6 +275,14 @@ pub enum Rule {
     /// `recoveries/field-value`, and its opt-out names the command whose
     /// failure printed the recovery.
     FieldValue,
+    /// [`check_recoveries`](crate::check_recoveries): a failure with one of
+    /// the tool's declared codes offers no `run`, `retry` or `hint` step,
+    /// such as a failure whose recovery is `Recovery::None`. Its id is
+    /// `recoveries/next-step`, and its opt-out names the command that
+    /// failed. The opt-out declares the exception that ADR-0001 allows, so
+    /// the reason shows in the report of
+    /// [`check_opt_outs`](crate::check_opt_outs).
+    NextStep,
 }
 
 impl Rule {
@@ -305,6 +315,7 @@ impl Rule {
             Self::Recoveries => "recoveries/follow",
             Self::SameCode => "recoveries/same-code",
             Self::FieldValue => "recoveries/field-value",
+            Self::NextStep => "recoveries/next-step",
         }
     }
 
@@ -388,10 +399,13 @@ impl Rule {
                 "No test shows that the command's recoveries lead anywhere, so a recovery can lead back to the same failure or name a command that no longer runs.",
             ],
             Self::SameCode => &[
-                "An agent that follows the recovery sees the same code again and must read the output to learn that the step worked.",
+                "An agent that follows the recovery sees a code that its chain already had and must read the output to learn that the step worked.",
             ],
             Self::FieldValue => &[
                 "An agent that follows the recovery must copy the value from the failure's field into the placeholder itself, where a recovery built with `Call::value` would carry the value.",
+            ],
+            Self::NextStep => &[
+                "An agent that reads the failure has no command, retry or advice to act on, so it must stop or guess.",
             ],
         }
     }

@@ -128,7 +128,15 @@ fn the_recovery_check_reads_the_code_line_of_a_failed_run_that_prints_no_documen
         "error: no book 7\n  code:  tool::books::not_found\n",
     )];
 
-    let (message, setup) = checked(answers, None, &[]);
+    // A `code:` line gives a failure without steps, which
+    // `recoveries/next-step` reports unless an opt-out covers it.
+    let allow = [Allow::new(
+        Rule::NextStep,
+        "books show",
+        "The tool prints its recoveries only as text.",
+    )];
+
+    let (message, setup) = checked(answers, None, &allow);
 
     assert_eq!(message, None);
     assert!(

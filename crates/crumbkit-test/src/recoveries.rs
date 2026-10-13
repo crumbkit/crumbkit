@@ -155,7 +155,9 @@ impl<'a> Failing<'a> {
 }
 
 /// A declared code that no command line in a test can provoke, with the
-/// reason, such as a failure that needs a full disk.
+/// reason, such as a failure that needs a full disk. [`check_recoveries`]
+/// starts no chain for it, and [`check_twins`](crate::check_twins) needs no
+/// twin for it, so a tool passes the same list to both.
 #[derive(Clone, Copy, Debug)]
 pub struct Unprovoked<'a> {
     /// The declared code.
@@ -183,6 +185,11 @@ impl<'a> Unprovoked<'a> {
     pub const fn new(code: &'a Code, reason: &'a str) -> Self {
         assert!(is_reason(reason), "a reason is one non-empty line");
         Self { code, reason }
+    }
+
+    /// Returns the declared code.
+    pub(crate) const fn code(&self) -> &'a Code {
+        self.code
     }
 }
 
@@ -304,8 +311,11 @@ impl<'a> Recoveries<'a> {
 /// the failure of the last document on standard output that is a
 /// `crumbkit/failure/v1` document or that has `failures`, as a batch prints
 /// them, and then the last `code:` line on standard error, which gives a
-/// failure without steps or fields. It follows the first failure that it
-/// reads, such as the first entry of a batch's `failures`. The runs of
+/// failure without steps or fields. It follows every failure that it
+/// reads, such as each entry of a batch's `failures`, and each failure
+/// starts its own branch, which may run a command line that a sibling
+/// branch ran. A start passes when any of its failures carries the start's
+/// code. The runs of
 /// one chain share one set of fresh XDG directories, which start as copies
 /// of the fixture of [`Failing::xdg`] or [`Examples::xdg`], the working directory
 /// and the standard input of its start, so a step sees what the earlier
@@ -337,14 +347,21 @@ impl<'a> Recoveries<'a> {
 /// It finds:
 ///
 /// - a start whose code is not declared, which it does not run;
-/// - a start that does not fail with its code;
+/// - a start that exits with code 0, or none of whose failures carries its
+///   code;
 /// - a step that the parser refuses with crumbkit's usage code;
 /// - a step that fails with a code that no declared code spells, when
 ///   [`Spelling::split`](crumbkit::Spelling::split) reads the code's
 ///   component as the component of a declared code, so a code missing from
 ///   a `CODES` list is found;
-/// - a step that fails again with the code of the failure it follows,
-///   unless an opt-out from [`Rule::SameCode`] covers the step's command;
+/// - a step that fails with the code of the failure it follows or of an
+///   earlier failure of its chain, unless an opt-out from
+///   [`Rule::SameCode`] covers the step's command;
+/// - a failure with one of the tool's declared codes that offers no `run`,
+///   `retry` or `hint` step, such as a failure whose recovery is
+///   `Recovery::None` with a reason, unless an opt-out from
+///   [`Rule::NextStep`] covers the command that failed. A failure from a
+///   run that writes a `warning: crumbkit` line is not also reported here;
 /// - a placeholder that a field of the failure fills, which the report
 ///   also shows under the step, unless an opt-out from
 ///   [`Rule::FieldValue`] covers the command whose failure printed the
@@ -372,8 +389,9 @@ impl<'a> Recoveries<'a> {
 ///   provokes;
 /// - a golden file that differs, or is missing without
 ///   `SNAPSHOTS=overwrite`;
-/// - an opt-out from [`Rule::Recoveries`], [`Rule::SameCode`] or
-///   [`Rule::FieldValue`] that names no command or excuses no problem.
+/// - an opt-out from [`Rule::Recoveries`], [`Rule::SameCode`],
+///   [`Rule::FieldValue`] or [`Rule::NextStep`] that names no command or
+///   excuses no problem.
 ///
 /// An opt-out from [`Rule::Recoveries`] skips each start below its command.
 ///
@@ -427,11 +445,17 @@ fn check(
             components.push(component.to_owned());
         }
     }
-    let rules = [Rule::Recoveries, Rule::SameCode, Rule::FieldValue];
+    let rules = [
+        Rule::Recoveries,
+        Rule::SameCode,
+        Rule::FieldValue,
+        Rule::NextStep,
+    ];
     let allowances = Allowances::new(recoveries.examples.opt_outs(), &rules);
     let mut walk = chain::Walk {
         recoveries,
         command,
+        declared: declared.iter().map(|(text, _)| text.clone()).collect(),
         known,
         components,
         usage: spelling.spell(&crumbkit::codes::CLI_USAGE),

@@ -341,6 +341,12 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit: [`ReadFailure`] carries the failure's fields, so a form's
   `read` gives crumbkit-test the values that fill a recovery's
   placeholders ([ADR-0053]).
+- crumbkit-test: [`check_twins`] runs every twin of a tool and fails on a
+  declared code that no twin refuses and `Twins::unprovoked` does not list
+  ([ADR-0005]).
+- crumbkit-test: [`check_recoveries`] fails on a failure with a declared
+  code that offers no `run`, `retry` or `hint` step, unless an opt-out from
+  `Rule::NextStep` names the failing command ([ADR-0053]).
 - crumbkit-test: [`FailureReader`] and `Examples::failure_reader` let a
   tool that prints its own failures without a failure form give the twin,
   example and recovery checks its failures ([ADR-0045]).
@@ -484,6 +490,12 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit-test: [`check_recoveries`] fills placeholders and reports
   `recoveries/field-value` from the fields of the failure that a form or a
   reader returns ([ADR-0053]).
+- crumbkit-test: [`check_recoveries`] follows every failure that a run
+  prints, such as each entry of a batch, and a start passes when any of
+  its failures carries its code ([ADR-0053]).
+- crumbkit-test: [`check_recoveries`] compares a step's code with the code
+  of every earlier failure of its chain, so a chain that returns to an
+  earlier code through another code fails the check ([ADR-0053]).
 - crumbkit-test: [`check_recoveries`] reads a failed run's last `code:`
   line when the run prints no failure document ([ADR-0045]).
 - crumbkit-test: [`check_twin`], [`check_examples`] and
@@ -678,6 +690,7 @@ rustdoc, or at its decision record. -->
 [`codes`]: crates/crumbkit/src/codes.rs
 [`check_recoveries`]: crates/crumbkit-test/src/recoveries.rs
 [`check_twin`]: crates/crumbkit-test/src/twins.rs
+[`check_twins`]: crates/crumbkit-test/src/twins.rs
 [`complete`]: crates/crumbkit/src/complete.rs
 [ADR-0048]: docs/decisions/api/0048-completion.md
 [`Expect`]: crates/crumbkit/src/expect.rs

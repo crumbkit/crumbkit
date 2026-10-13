@@ -5,7 +5,7 @@ use std::fmt::Write as _;
 use std::time::Instant;
 
 use clap::Command;
-use crumbkit::form::Step;
+use crumbkit::form::{ReadFailure, Step};
 
 use super::words::split;
 use super::{Failing, Recoveries};
@@ -13,6 +13,9 @@ use crate::allow::{self, Allowances, Rule};
 use crate::failures::{self, Reader};
 use crate::guide::command_line;
 use crate::runs::{self, Place, TIMEOUT, WorkDir, Xdg};
+use fill::{fill_word, path_below, value, with_json};
+
+pub(super) mod fill;
 
 /// What the check has found so far: its settings, the problems, the report
 /// and the codes that the chains provoked.
@@ -21,6 +24,8 @@ pub(super) struct Walk<'a> {
     pub(super) recoveries: &'a Recoveries<'a>,
     /// The tool's command tree.
     pub(super) command: &'a Command,
+    /// The tool's declared codes, spelled.
+    pub(super) declared: Vec<String>,
     /// The spelled codes whose recoveries the check follows: the declared
     /// codes and crumbkit's own codes.
     pub(super) known: Vec<String>,
@@ -30,8 +35,8 @@ pub(super) struct Walk<'a> {
     pub(super) components: Vec<String>,
     /// crumbkit's usage code, as the tool spells it.
     pub(super) usage: String,
-    /// The opt-outs of `recoveries/follow`, `recoveries/same-code` and
-    /// `recoveries/field-value`.
+    /// The opt-outs of `recoveries/follow`, `recoveries/same-code`,
+    /// `recoveries/field-value` and `recoveries/next-step`.
     pub(super) allowances: Allowances<'a>,
     /// The problems found, one line each.
     pub(super) problems: Vec<String>,
@@ -52,8 +57,9 @@ pub(super) struct Walk<'a> {
 
 /// The failure that offers a chain's next steps.
 struct Parent<'p> {
-    /// The failure's code, as the tool spells it.
-    code: &'p str,
+    /// The codes of the failure and of every earlier failure of its chain,
+    /// the start's first, as the tool spells them.
+    codes: &'p [String],
     /// The failure's fields, which fill the steps' placeholders.
     fields: &'p [(String, String)],
     /// The path below the root of the command that failed, which an
@@ -65,14 +71,18 @@ struct Parent<'p> {
 /// placeholder that a field filled with the field's name.
 type Filled = (Vec<String>, Vec<(String, String)>);
 
-/// How a run ended: with code 0, or with a failure document's code and
-/// steps.
+/// How a run ended: with code 0, or with the failures that it printed.
 enum Outcome {
     /// The run exited with code 0.
     Succeeds,
-    /// The run failed with this code, offers these steps, the recovery
-    /// first, and names these fields, which fill the steps' placeholders.
-    Fails(String, Vec<Step>, Vec<(String, String)>),
+    /// The run failed and printed `failures`, the first failure first, each
+    /// with its code, its steps and its fields. `warned` says whether it
+    /// wrote a `warning: crumbkit` line, which a debug build writes for a
+    /// recovery call that does not render.
+    Fails {
+        failures: Vec<ReadFailure>,
+        warned: bool,
+    },
 }
 
 /// The settings that every run of one chain shares.
@@ -147,21 +157,25 @@ impl Walk<'_> {
                 "{}: the start must fail with {code}, and it exits with code 0",
                 chain.start
             )),
-            Some(Outcome::Fails(failed, steps, fields)) => {
-                self.provoked.push(failed.clone());
-                if failed == code {
-                    let _ = writeln!(self.report, "  fails with {code}");
+            Some(Outcome::Fails { failures, warned }) => {
+                if failures.iter().any(|failure| failure.code() == code) {
                     let path = path_below(self.command, start.words);
-                    let parent = Parent {
-                        code: &code,
-                        fields: &fields,
-                        path: &path,
-                    };
-                    self.follow(&mut chain, &parent, &steps, 1);
+                    let mark = chain.ran.len();
+                    for failure in &failures {
+                        chain.ran.truncate(mark);
+                        if !warned {
+                            self.next_step(&chain, "the start", &path, failure);
+                        }
+                        self.branch(&mut chain, None, "the start", &path, failure, 0);
+                    }
                 } else {
+                    let failed: Vec<&str> = failures.iter().map(ReadFailure::code).collect();
+                    self.provoked
+                        .extend(failed.iter().map(|&failed| failed.to_owned()));
                     self.problems.push(format!(
-                        "{}: the start must fail with {code}, and it fails with {failed}",
-                        chain.start
+                        "{}: the start must fail with {code}, and it fails with {}",
+                        chain.start,
+                        failed.join(", ")
                     ));
                 }
             }
@@ -227,52 +241,117 @@ impl Walk<'_> {
                 Some(Outcome::Succeeds) => {
                     let _ = writeln!(self.report, "{indent}  exits 0");
                 }
-                Some(Outcome::Fails(code, ..)) if code == self.usage => {
-                    let _ = writeln!(self.report, "{indent}  refused by the parser with {code}");
-                    self.problems.push(format!(
-                        "{}: the parser refuses {label} with {code}",
-                        chain.start
-                    ));
-                }
-                Some(Outcome::Fails(code, next, next_fields)) => {
-                    self.provoked.push(code.clone());
-                    if !self.known.contains(&code) {
-                        if let Some((component, _, _)) = self.recoveries.spelling.split(&code)
-                            && self.components.iter().any(|known| known == component)
-                        {
-                            let _ = writeln!(
-                                self.report,
-                                "{indent}  fails with {code}, which no declared code spells"
-                            );
-                            self.problems.push(format!(
-                                "{}: {label} fails with {code}, whose component {component} is a declared component, and no declared code spells it",
-                                chain.start
-                            ));
-                            continue;
+                Some(Outcome::Fails { failures, warned }) => {
+                    // Each failure starts its own branch, which may run a
+                    // command line that a sibling branch ran.
+                    let mark = chain.ran.len();
+                    for failure in &failures {
+                        chain.ran.truncate(mark);
+                        if !warned {
+                            self.next_step(chain, &label, &path, failure);
                         }
-                        self.skipped += 1;
-                        let _ = writeln!(
-                            self.report,
-                            "{indent}  fails with {code}, which no declared code spells"
-                        );
-                        continue;
+                        self.branch(chain, Some(parent), &label, &path, failure, depth);
                     }
-                    if code == parent.code && !self.allowances.excuses(Rule::SameCode, &path) {
-                        self.problems.push(format!(
-                            "{}: {label} fails again with {code}, so an agent that follows the recovery learns nothing new",
-                            chain.start
-                        ));
-                    }
-                    let _ = writeln!(self.report, "{indent}  fails with {code}");
-                    let next_parent = Parent {
-                        code: &code,
-                        fields: &next_fields,
-                        path: &path,
-                    };
-                    self.follow(chain, &next_parent, &next, depth + 1);
                 }
                 None => {}
             }
+        }
+    }
+
+    /// Follows `failure`, one failure that the run `label` of the command at
+    /// `path` printed, as a branch of `chain` at `depth`, the start's
+    /// failures at 0. `parent` is the failure whose step ran, or `None` for
+    /// the start. It reports a refusal by the parser, an undeclared code and
+    /// a code that an earlier failure of the chain had, and then follows the
+    /// failure's steps.
+    fn branch(
+        &mut self,
+        chain: &mut Chain<'_>,
+        parent: Option<&Parent<'_>>,
+        label: &str,
+        path: &str,
+        failure: &ReadFailure,
+        depth: u8,
+    ) {
+        let indent = "  ".repeat(usize::from(depth) + 1);
+        let code = failure.code();
+        self.provoked.push(code.to_owned());
+        // A start may fail with the usage code on purpose, so only a step
+        // that the parser refuses is a problem.
+        if code == self.usage && parent.is_some() {
+            let _ = writeln!(self.report, "{indent}refused by the parser with {code}");
+            self.problems.push(format!(
+                "{}: the parser refuses {label} with {code}",
+                chain.start
+            ));
+            return;
+        }
+        if !self.known.iter().any(|known| known == code) {
+            self.unknown(chain, label, code, &indent);
+            return;
+        }
+        let earlier = parent.map_or(&[][..], |parent| parent.codes);
+        if earlier.iter().any(|seen| seen == code) && !self.allowances.excuses(Rule::SameCode, path)
+        {
+            self.problems.push(format!(
+                "{}: {label} fails again with {code}, so an agent that follows the recovery learns nothing new",
+                chain.start
+            ));
+        }
+        let _ = writeln!(self.report, "{indent}fails with {code}");
+        let mut codes = earlier.to_vec();
+        codes.push(code.to_owned());
+        let next = Parent {
+            codes: &codes,
+            fields: failure.fields(),
+            path,
+        };
+        self.follow(chain, &next, failure.steps(), depth + 1);
+    }
+
+    /// Adds a problem when `failure`, which the run `label` of the command
+    /// at `path` printed, has one of the tool's declared codes and offers no
+    /// `run`, `retry` or `hint` step, unless an opt-out from
+    /// `recoveries/next-step` covers the command. A `none` step with a
+    /// reason is still no next step, because the opt-out is where a tool
+    /// declares that exception.
+    fn next_step(&mut self, chain: &Chain<'_>, label: &str, path: &str, failure: &ReadFailure) {
+        let code = failure.code();
+        let offers = failure
+            .steps()
+            .iter()
+            .any(|step| matches!(step, Step::Run(_) | Step::Retry | Step::Hint(_)));
+        if offers
+            || !self.declared.iter().any(|declared| declared == code)
+            || self.allowances.excuses(Rule::NextStep, path)
+        {
+            return;
+        }
+        self.problems.push(format!(
+            "{}: {label} fails with {code}, whose failure offers no run, retry or hint step, so an agent has no next step. The failure can offer a recovery, or an opt-out from `{}` names `{}` with a reason",
+            chain.start,
+            Rule::NextStep.id(),
+            allow::command_line(self.command, path)
+        ));
+    }
+
+    /// Writes `code`, which `label` failed with and which no declared code
+    /// spells, to the report indented by `indent`. It adds a problem when
+    /// the code's component is a declared component, and otherwise counts
+    /// the code as skipped.
+    fn unknown(&mut self, chain: &Chain<'_>, label: &str, code: &str, indent: &str) {
+        let _ = writeln!(
+            self.report,
+            "{indent}fails with {code}, which no declared code spells"
+        );
+        match self.recoveries.spelling.split(code) {
+            Some((component, _, _)) if self.components.iter().any(|known| known == component) => {
+                self.problems.push(format!(
+                    "{}: {label} fails with {code}, whose component {component} is a declared component, and no declared code spells it",
+                    chain.start
+                ));
+            }
+            _ => self.skipped += 1,
         }
     }
 
@@ -389,10 +468,12 @@ impl Walk<'_> {
             return None;
         }
         let stderr = String::from_utf8_lossy(&output.stderr);
+        let mut warned = false;
         for warning in stderr
             .lines()
             .filter(|line| line.starts_with("warning: crumbkit "))
         {
+            warned = true;
             self.problems.push(format!(
                 "{}: {label} writes a warning to standard error: {warning}",
                 chain.start
@@ -401,11 +482,8 @@ impl Walk<'_> {
         if output.status.success() {
             return Some(Outcome::Succeeds);
         }
-        // The first failure is the one the run fails with.
-        let Some(failure) = failures::read_failures(self.reader, &output.stdout, &output.stderr)
-            .into_iter()
-            .next()
-        else {
+        let failures = failures::read_failures(self.reader, &output.stdout, &output.stderr);
+        if failures.is_empty() {
             match self.reader {
                 Some(reader) => {
                     let (name, remedy) = reader.name_and_remedy();
@@ -422,118 +500,7 @@ impl Walk<'_> {
                 )),
             }
             return None;
-        };
-        let code = failure.code().to_owned();
-        let steps = failure.steps().to_vec();
-        Some(Outcome::Fails(code, steps, failure.fields().to_vec()))
-    }
-}
-
-/// Returns the value of the placeholder `name`: the start's own value in
-/// `own` whose name matches exactly, then the field in `fields` whose name
-/// matches with capitals lowered and `-` read as `_`, then the shared value
-/// in `shared` whose name matches exactly, or `None`. A value from a field
-/// comes with the field's name.
-//
-// RUST-10: a field fills any placeholder whose name matches it, whatever
-// the step means by that placeholder. crumbkit's usage failure names the
-// refused `value`, so a recovery holding `<VALUE>` would run the refused
-// value again. No recovery that crumbkit offers for its own failures holds
-// such a placeholder today. A tool whose recovery does sets its own value
-// with `Failing::values`, which wins over the field. Every fill from a
-// field is a finding of `recoveries/field-value`, so a tool sees each one.
-fn value<'v>(
-    own: &'v [(&str, &'v str)],
-    fields: &'v [(String, String)],
-    shared: &'v [(&str, &'v str)],
-    name: &str,
-) -> Option<(&'v str, Option<&'v str>)> {
-    let exact = |table: &'v [(&str, &'v str)]| {
-        table
-            .iter()
-            .find(|(key, _)| *key == name)
-            .map(|&(_, value)| value)
-    };
-    let field_name = name.to_ascii_lowercase().replace('-', "_");
-    exact(own)
-        .map(|value| (value, None))
-        .or_else(|| {
-            fields
-                .iter()
-                .find(|(key, _)| *key == field_name)
-                .map(|(key, value)| (value.as_str(), Some(key.as_str())))
-        })
-        .or_else(|| exact(shared).map(|value| (value, None)))
-}
-
-/// Returns `words` with `--json` added at the end when they lack it.
-fn with_json(words: &[String]) -> Vec<String> {
-    let mut args = words.to_vec();
-    if !args.iter().any(|word| word == "--json") {
-        args.push("--json".to_owned());
-    }
-    args
-}
-
-/// Returns `word` with each placeholder replaced by the value that `lookup`
-/// gives its name, or the first placeholder that `lookup` gives no value,
-/// such as `<capability>`.
-///
-/// A placeholder is `<`, a name of one or more ASCII letters of either
-/// case, digits, `_` and `-`, and `>`, anywhere in the word, so
-/// `<plugin>.<capability>` holds two placeholders and keeps the `.` between
-/// them, and `--to=<path>` keeps `--to=`. A `...` right after a placeholder
-/// at the end of the word is clap's mark of a repeated value, which the
-/// filled word drops. A `<` that starts no placeholder stays as it is.
-//
-// RUST-10: `split` returns plain words, so the check cannot
-// tell a quoted value from a placeholder. A call whose real value holds
-// such text, such as `'<ID>'` or `"a<path>b"`, reads as holding a
-// placeholder. A call that kept its placeholders apart from its values
-// replaces this if a tool needs one.
-pub(super) fn fill_word<'v>(
-    word: &str,
-    mut lookup: impl FnMut(&str) -> Option<&'v str>,
-) -> Result<String, String> {
-    let mut filled = String::with_capacity(word.len());
-    let mut rest = word;
-    while let Some(open) = rest.find('<') {
-        filled.push_str(&rest[..open]);
-        let after = &rest[open + 1..];
-        let length = after
-            .find(|c: char| !(c.is_ascii_alphanumeric() || c == '_' || c == '-'))
-            .unwrap_or(after.len());
-        if length == 0 || !after[length..].starts_with('>') {
-            filled.push('<');
-            rest = after;
-            continue;
         }
-        let name = &after[..length];
-        let Some(value) = lookup(name) else {
-            return Err(format!("<{name}>"));
-        };
-        filled.push_str(value);
-        rest = &after[length + 1..];
-        if rest == "..." {
-            rest = "";
-        }
+        Some(Outcome::Fails { failures, warned })
     }
-    filled.push_str(rest);
-    Ok(filled)
-}
-
-/// Returns the path below `root` of the deepest command that `words` name
-/// from their start, with its names joined by single spaces, such as
-/// `books show` for `books show 7`.
-fn path_below<S: AsRef<str>>(root: &Command, words: &[S]) -> String {
-    let mut command = root;
-    let mut names = Vec::new();
-    for word in words {
-        let Some(sub) = command.find_subcommand(word.as_ref()) else {
-            break;
-        };
-        names.push(sub.get_name());
-        command = sub;
-    }
-    names.join(" ")
 }

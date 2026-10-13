@@ -1,6 +1,6 @@
 //! Tests for the reading of the placeholders inside one word of a step.
 
-use super::super::chain::fill_word;
+use super::super::chain::fill::fill_word;
 use super::{NOT_FOUND, OTHERS, Setup, failure, problems, recoveries, run};
 use crate::recoveries::Failing;
 
