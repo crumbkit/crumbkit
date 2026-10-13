@@ -167,19 +167,22 @@ pub(crate) fn render_built(call: &Call, command: &Command) -> Result<String, Cal
     // loop reads the text up to `command_end`.
     let command_end = text.len();
     for call_arg in args {
-        let (id, value) = match call_arg {
-            CallArg::Placeholder(id) => (*id, None),
-            CallArg::Value { id, value } => (*id, Some(value.as_str())),
-        };
-        let arg = find_arg(current, &text[..command_end], id)?;
-        match value {
+        match call_arg {
             // `Arg`'s `Display` writes the argument as clap's usage line
             // does, without styling. Writing to a `String` cannot fail.
-            None => {
+            CallArg::Placeholder(id) => {
+                let arg = find_arg(current, &text[..command_end], id)?;
                 let _ = write!(text, " {arg}");
             }
-            Some(value) => {
+            CallArg::Value { id, value } => {
+                let arg = find_arg(current, &text[..command_end], id)?;
                 let rendered = render_value(arg, &text[..command_end], value)?;
+                text.push(' ');
+                text.push_str(&rendered);
+            }
+            CallArg::Each { id, .. } => {
+                let arg = find_arg(current, &text[..command_end], id)?;
+                let rendered = render_each(arg, &text[..command_end])?;
                 text.push(' ');
                 text.push_str(&rendered);
             }
@@ -188,12 +191,38 @@ pub(crate) fn render_built(call: &Call, command: &Command) -> Result<String, Cal
     Ok(text)
 }
 
+/// Returns `arg` with its value name once, as the argument of a call that
+/// runs once per value of a failure's field: `<ID>` for a positional and
+/// `--author <AUTHOR>` for an option, with its short name when it has no
+/// long name. The value name is the argument's first value name, or its id
+/// in capitals. `text` is the call's text up to the command, which the error
+/// for a flag names.
+fn render_each(arg: &Arg, text: &str) -> Result<String, CallError> {
+    let id = arg.get_id().as_str();
+    if !arg.get_action().takes_values() {
+        return Err(CallError::TakesNoValue {
+            command: text.to_owned(),
+            id: id.to_owned(),
+        });
+    }
+    let name = arg
+        .get_value_names()
+        .and_then(<[_]>::first)
+        .map_or_else(|| id.to_uppercase(), ToString::to_string);
+    Ok(match (arg.get_long(), arg.get_short()) {
+        (Some(long), _) => format!("--{long} <{name}>"),
+        (None, Some(short)) => format!("-{short} <{name}>"),
+        (None, None) => format!("<{name}>"),
+    })
+}
+
 /// Returns the words of the command line that `call` names, from the
 /// program name on, as a shell passes the line that
 /// [`RenderCall::render`] prints, or `None` when `call` holds a placeholder
-/// from `Call::arg`, which names no value to parse. `command` is the root
-/// of a tree that `call` already rendered against, so each lookup finds what
-/// the rendering found, and `None` also covers a lookup that would fail.
+/// from `Call::arg` or `Call::each`, which names no value to parse.
+/// `command` is the root of a tree that `call` already rendered against, so
+/// each lookup finds what the rendering found, and `None` also covers a
+/// lookup that would fail.
 pub(crate) fn words(call: &Call, command: &Command) -> Option<Vec<String>> {
     let mut words = vec![command.get_name().to_owned()];
     let (path, args) = match call.target() {

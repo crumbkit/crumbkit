@@ -200,8 +200,19 @@ impl Walk<'_> {
             if self.stopped.is_some() {
                 return;
             }
-            let call = match step {
-                Step::Run(call) => call,
+            let (call, each) = match step {
+                Step::Run(call) => (call, None),
+                Step::RunEach { call, field } => {
+                    let first = parent.fields.iter().find(|(name, _)| name == field);
+                    let Some((_, value)) = first else {
+                        self.problems.push(format!(
+                            "{}: the step `{call}` runs once for each value of the failure's field {field}, which is not a list that holds a value",
+                            chain.start
+                        ));
+                        continue;
+                    };
+                    (call, Some(value.as_str()))
+                }
                 Step::Retry => {
                     let _ = writeln!(self.report, "{indent}retry");
                     continue;
@@ -215,7 +226,7 @@ impl Walk<'_> {
                     continue;
                 }
             };
-            let Some((words, used)) = self.fill(chain, call, parent.fields) else {
+            let Some((words, used)) = self.fill(chain, call, parent.fields, each) else {
                 continue;
             };
             let refs: Vec<&str> = words.iter().map(String::as_str).collect();
@@ -324,10 +335,12 @@ impl Walk<'_> {
     /// declares that exception.
     fn next_step(&mut self, chain: &Chain<'_>, label: &str, path: &str, failure: &ReadFailure) {
         let code = failure.code();
-        let offers = failure
-            .steps()
-            .iter()
-            .any(|step| matches!(step, Step::Run(_) | Step::Retry | Step::Hint(_)));
+        let offers = failure.steps().iter().any(|step| {
+            matches!(
+                step,
+                Step::Run(_) | Step::RunEach { .. } | Step::Retry | Step::Hint(_)
+            )
+        });
         if offers
             || !self.declared.iter().any(|declared| declared == code)
             || self.allowances.excuses(Rule::NextStep, path)
@@ -396,11 +409,23 @@ impl Walk<'_> {
     /// filled with the field's name. It adds the problem and returns `None`
     /// when the call cannot be read, does not start with the tool's name or
     /// has a placeholder without a value.
+    ///
+    /// `each` is the first value of the list field that a `RunEach` step
+    /// runs its call for, which fills every placeholder of the call before
+    /// any other source and is no finding of `recoveries/field-value`,
+    /// because the step tells the agent to substitute each value.
+    //
+    // RUST-10: a call with an argument from `Call::each` renders that
+    // argument as its value name, and the check cannot tell it from another
+    // placeholder, so `each` fills them all. No call that crumbkit offers
+    // holds another placeholder beside it. The check tells them apart once
+    // a tool needs such a call.
     fn fill(
         &mut self,
         chain: &Chain<'_>,
         call: &str,
         fields: &[(String, String)],
+        each: Option<&str>,
     ) -> Option<Filled> {
         let tool = self.command.get_name();
         let problem = match split(call) {
@@ -412,6 +437,9 @@ impl Walk<'_> {
                 let shared = self.recoveries.values;
                 let mut used: Vec<(String, String)> = Vec::new();
                 let mut lookup = |name: &str| {
+                    if each.is_some() {
+                        return each;
+                    }
                     let (value, field) = value(chain.values, fields, shared, name)?;
                     if let Some(field) = field
                         && !used.iter().any(|(seen, _)| seen == name)

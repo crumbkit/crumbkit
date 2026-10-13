@@ -13,7 +13,7 @@ use super::table::escape_controls;
 use crate::form::FailureForm;
 use crate::help::rename::{self, Rename};
 use crate::help::{Exit, Guide};
-use crate::{Code, Document, Failure, FieldValue, JsonLayout, Recovery, Sink, Spelling};
+use crate::{Code, Document, Failure, FieldValue, JsonLayout, Sink, Spelling};
 
 #[cfg(feature = "miette")]
 pub(crate) mod label;
@@ -21,10 +21,12 @@ mod prepared;
 #[cfg(feature = "miette")]
 mod related;
 mod schema;
+mod step;
 #[cfg(test)]
 mod tests;
 
 pub(crate) use self::schema::{document_schema, entry_schema};
+pub use self::step::Step;
 
 /// The id of the JSON document that a failure prints with `--json`.
 const FAILURE: Document<()> = Document::new(
@@ -150,22 +152,6 @@ pub struct PreparedFailure<'a> {
     fields: Vec<(String, FieldValue<'static>)>,
     /// The page that explains the failure, when there is one.
     url: Option<String>,
-}
-
-/// A [`Recovery`] ready to print: a `Run` call is rendered against the tool's
-/// command, and a call that cannot be rendered becomes `None` with
-/// crumbkit's reason.
-#[derive(Clone, Debug, PartialEq, Eq)]
-#[non_exhaustive]
-pub enum Step {
-    /// Run this command line, such as `shelf books list`.
-    Run(String),
-    /// Run the same command again later.
-    Retry,
-    /// Follow this advice.
-    Hint(String),
-    /// There is no next step, for this reason.
-    None(String),
 }
 
 impl<'a> PreparedFailure<'a> {
@@ -335,50 +321,6 @@ fn drop_repeated_keys(value: &mut FieldValue<'static>, repeated: &mut Vec<String
     }
 }
 
-impl Step {
-    /// Reads `recovery` into a step, rendering a `Run` call against
-    /// `command`. It returns `Err` with a `Step::None` when the recovery
-    /// offers no step: a `Recovery::None`, or a `Run` call that cannot be
-    /// rendered because no command is set or the call does not resolve. It
-    /// adds the reason that a `Run` call does not render to `unrendered`.
-    fn offered(
-        recovery: Recovery,
-        command: Option<&mut Command>,
-        unrendered: &mut Vec<String>,
-    ) -> Result<Self, Self> {
-        match recovery {
-            Recovery::Run(call) => {
-                let rendered = match command {
-                    Some(command) => crate::call::render(&call, command).map_err(|e| e.to_string()),
-                    None => Err("no command is set".to_owned()),
-                };
-                rendered.map(Self::Run).map_err(|reason| {
-                    unrendered.push(reason);
-                    Self::None(UNAVAILABLE.to_owned())
-                })
-            }
-            Recovery::Retry => Ok(Self::Retry),
-            Recovery::Hint(text) => Ok(Self::Hint(text)),
-            Recovery::None { reason } => Err(Self::None(reason)),
-            // `Recovery` is `#[non_exhaustive]` and lives in crumbkit-core, so
-            // the compiler requires this arm. crumbkit-core releases with
-            // crumbkit (ADR-0012), so a new variant gets its own arm in the
-            // release that adds it, and this arm matches nothing until then.
-            _ => Err(Self::None(UNAVAILABLE.to_owned())),
-        }
-    }
-
-    /// Returns the text of the step's `help:` line.
-    fn help(&self) -> Cow<'_, str> {
-        match self {
-            Self::Run(call) => Cow::Owned(format!("run `{call}`")),
-            Self::Retry => Cow::Borrowed("run the same command again later"),
-            Self::Hint(text) => Cow::Borrowed(text),
-            Self::None(reason) => Cow::Owned(format!("no next step: {reason}")),
-        }
-    }
-}
-
 /// Writes the text form of `document` to `err` in `form`, or in crumbkit's
 /// form when `form` is `None`, then flushes `err`.
 pub(super) fn write_text(
@@ -419,9 +361,9 @@ pub(crate) fn write_crumbkit_text(
     }
     #[cfg(feature = "miette")]
     label::write_text(err, &document.labels)?;
-    write_labelled(err, "help:", &document.step.help())?;
+    write_labelled(err, "help:", &document.step.help(&document.fields))?;
     for alternative in &document.alternatives {
-        write_labelled(err, "help:", &alternative.help())?;
+        write_labelled(err, "help:", &alternative.help(&document.fields))?;
     }
     write_labelled(err, "code:", &document.code)?;
     if let Some(url) = &document.url {
@@ -537,23 +479,4 @@ pub(crate) fn crumbkit_entry(failure: &PreparedFailure<'_>) -> serde_json::Value
     // An entry's keys are all strings, so the conversion cannot fail, and
     // `null` stands in rather than a panic if it ever did.
     serde_json::to_value(Entry(failure)).unwrap_or_default()
-}
-
-/// Serializes the step as an object tagged by `kind`, such as
-/// `{"kind":"run","call":"shelf books list"}` or `{"kind":"retry"}`.
-impl Serialize for Step {
-    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        let (kind, field) = match self {
-            Self::Run(call) => ("run", Some(("call", call))),
-            Self::Retry => ("retry", None),
-            Self::Hint(text) => ("hint", Some(("text", text))),
-            Self::None(reason) => ("none", Some(("reason", reason))),
-        };
-        let mut map = serializer.serialize_map(Some(1 + usize::from(field.is_some())))?;
-        map.serialize_entry("kind", kind)?;
-        if let Some((name, value)) = field {
-            map.serialize_entry(name, value)?;
-        }
-        map.end()
-    }
 }

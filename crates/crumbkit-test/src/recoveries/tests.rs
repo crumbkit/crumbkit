@@ -21,6 +21,7 @@ use crate::temp::TempDir;
 use crate::testing::panic_message;
 
 mod chains;
+mod each;
 mod env;
 mod exits;
 mod form;

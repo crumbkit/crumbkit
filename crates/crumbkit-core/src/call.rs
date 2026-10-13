@@ -77,6 +77,15 @@ pub enum CallArg {
         /// The value, as the caller types it before a shell quotes it.
         value: String,
     },
+    /// The argument with one value at a time from a list field of the
+    /// failure that offers the call, which [`Call::each`] adds. It renders
+    /// as its value name once, such as `<ID>`.
+    Each {
+        /// The clap id of the argument.
+        id: &'static str,
+        /// The name of the failure's field whose values the argument takes.
+        field: &'static str,
+    },
 }
 
 impl Call {
@@ -185,6 +194,35 @@ impl Call {
                 id,
                 value: value.into(),
             });
+        }
+        self
+    }
+
+    /// Adds the argument whose clap id is `id`, to be given each value of the
+    /// list field `field` of the failure that offers the call, after the
+    /// arguments already added.
+    ///
+    /// The argument renders as its value name once, such as `<ID>` for a
+    /// positional or `--id <ID>` for an option. A failure whose recovery
+    /// holds such a call prints the step with the field's name, so the
+    /// caller runs the command once per value, or once with every value when
+    /// the argument takes many. A batch's over-budget failure uses it to name
+    /// the command that fetches the keys it left out.
+    ///
+    /// ```
+    /// use crumbkit_core::{Call, CallArg, CallTarget};
+    ///
+    /// let call = Call::new(&["books", "show"]).each("ids", "left_out");
+    ///
+    /// let CallTarget::Command { args, .. } = call.target() else {
+    ///     unreachable!("Call::new names a command");
+    /// };
+    /// assert_eq!(*args, [CallArg::Each { id: "ids", field: "left_out" }]);
+    /// ```
+    #[must_use]
+    pub fn each(mut self, id: &'static str, field: &'static str) -> Self {
+        if let CallTarget::Command { args, .. } = &mut self.target {
+            args.push(CallArg::Each { id, field });
         }
         self
     }

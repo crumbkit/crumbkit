@@ -423,6 +423,12 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   own function replaces it ([ADR-0056]).
 - crumbkit-test: [`check_opt_outs`] lists the guide's refusal alternatives
   once under customisations ([ADR-0056]).
+- crumbkit-core: `Call::each` adds an argument that takes each value of a
+  list field of the failure in turn, and the failure document's `run` step
+  names that field in `each` ([ADR-0007]).
+- crumbkit-test: [`check_recoveries`] follows a `run` step with `each` once,
+  with the first value of the named field, and fails the check when that
+  field holds no value ([ADR-0053]).
 
 ### Changed
 

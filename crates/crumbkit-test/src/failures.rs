@@ -204,19 +204,26 @@ fn read_document(document: &Value) -> Option<ReadFailure> {
             .unwrap_or_default()
             .to_owned()
     };
-    let steps = std::iter::once(document.get("recovery")?)
+    let steps: Vec<Step> = std::iter::once(document.get("recovery")?)
         .chain(alternatives)
-        .map(|step| match step.get("kind").and_then(Value::as_str) {
-            Some("run") => step.get("call").and_then(Value::as_str).map_or_else(
-                || Step::None(String::new()),
-                |call| Step::Run(call.to_owned()),
-            ),
-            Some("retry") => Step::Retry,
-            Some("hint") => Step::Hint(text(step, "text")),
-            _ => Step::None(text(step, "reason")),
+        .map(|step| {
+            let call = step.get("call").and_then(Value::as_str);
+            let each = step.get("each").and_then(Value::as_str);
+            match (step.get("kind").and_then(Value::as_str), call, each) {
+                (Some("run"), Some(call), Some(field)) => Step::RunEach {
+                    call: call.to_owned(),
+                    field: field.to_owned(),
+                },
+                (Some("run"), Some(call), None) => Step::Run(call.to_owned()),
+                (Some("run"), None, _) => Step::None(String::new()),
+                (Some("retry"), ..) => Step::Retry,
+                (Some("hint"), ..) => Step::Hint(text(step, "text")),
+                _ => Step::None(text(step, "reason")),
+            }
         })
         .collect();
-    Some(ReadFailure::new(code, steps).with_fields(fields(document)))
+    let fields = fields(document, &steps);
+    Some(ReadFailure::new(code, steps).with_fields(fields))
 }
 
 /// Returns the `fields` of the failure document `document`, each a name and
@@ -224,13 +231,25 @@ fn read_document(document: &Value) -> Option<ReadFailure> {
 /// its own text, a number or a boolean is written as JSON writes it, and a
 /// null, list or object field is left out, so it fills no placeholder: an
 /// agent cannot pass JSON as one word of a command line (ADR-0053).
-fn fields(document: &Value) -> Vec<(String, String)> {
+///
+/// A list field that a `RunEach` step of `steps` names gives the text of its
+/// first item instead, which `check_recoveries` runs the step with.
+fn fields(document: &Value, steps: &[Step]) -> Vec<(String, String)> {
     let Some(fields) = document.get("fields").and_then(Value::as_object) else {
         return Vec::new();
+    };
+    let named_by_each = |name: &str| {
+        steps
+            .iter()
+            .any(|step| matches!(step, Step::RunEach { field, .. } if field == name))
     };
     fields
         .iter()
         .filter_map(|(name, value)| {
+            let value = match value {
+                Value::Array(items) if named_by_each(name) => items.first()?,
+                value => value,
+            };
             let text = match value {
                 Value::String(text) => text.clone(),
                 Value::Number(_) | Value::Bool(_) => value.to_string(),
@@ -249,6 +268,7 @@ pub(crate) fn describe(failure: &ReadFailure) -> String {
         .iter()
         .map(|step| match step {
             Step::Run(call) => format!("run `{call}`"),
+            Step::RunEach { call, field } => format!("run `{call}` for each value of {field}"),
             Step::Retry => "retry".to_owned(),
             Step::Hint(text) => format!("hint: {text}"),
             Step::None(reason) if reason.is_empty() => "no next step".to_owned(),

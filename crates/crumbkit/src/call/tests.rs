@@ -326,3 +326,31 @@ fn a_call_with_a_placeholder_has_no_words() {
 
     assert_eq!(super::words(&call, &command), None);
 }
+
+#[test]
+fn an_each_argument_renders_its_value_name_once_for_a_positional_and_after_the_flag_for_an_option()
+{
+    let positional = Call::new(&["books", "show"]).each("ids", "left_out");
+    let option = Call::new(&["books", "list"]).each("author", "authors");
+    let short = Call::new(&["books", "list"]).each("number", "numbers");
+
+    assert_eq!(render(&positional).unwrap(), "shelf books show <ID>");
+    assert_eq!(
+        render(&option).unwrap(),
+        "shelf books list --author <AUTHOR>"
+    );
+    assert_eq!(render(&short).unwrap(), "shelf books list -n <NUMBER>");
+}
+
+#[test]
+fn an_each_argument_for_a_flag_is_refused_because_the_flag_takes_no_value() {
+    let call = Call::new(&["books", "list"]).each("json", "left_out");
+
+    assert_eq!(
+        render(&call),
+        Err(CallError::TakesNoValue {
+            command: "shelf books list".to_owned(),
+            id: "json".to_owned(),
+        })
+    );
+}

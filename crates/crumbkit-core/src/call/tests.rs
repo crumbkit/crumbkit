@@ -55,3 +55,19 @@ fn a_typed_call_holds_the_words_and_keeps_no_arguments_or_values() {
 
     assert_eq!(call.target(), &CallTarget::Typed(words));
 }
+
+#[test]
+fn an_each_argument_names_the_field_whose_values_it_takes_one_at_a_time() {
+    let call = Call::new(&["books", "show"]).each("ids", "left_out");
+
+    assert_eq!(
+        call.target(),
+        &CallTarget::Command {
+            path: &["books", "show"],
+            args: vec![CallArg::Each {
+                id: "ids",
+                field: "left_out",
+            }],
+        }
+    );
+}
