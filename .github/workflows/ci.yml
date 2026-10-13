@@ -30,9 +30,21 @@ jobs:
     permissions:
       contents: read # actions/checkout reads the repository.
     steps:
+      # The full history includes every commit of a pull request, which the
+      # commit check reads.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+          fetch-depth: 0
+      # The commit check fails a pull request when one of its commits matches
+      # the COMMIT_PATTERN secret, and passes with a notice when the secret is
+      # empty, as in a pull request from a fork (ADR-0011).
+      - if: github.event_name == 'pull_request'
+        env:
+          COMMIT_PATTERN: ${{ secrets.COMMIT_PATTERN }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: .github/scripts/commit-check.sh "$BASE_SHA" "$HEAD_SHA"
       # The image includes rustup, which installs the toolchain that
       # rust-toolchain.toml pins and the MSRV toolchain. Both install before
       # rust-cache, which reads the installed rustc versions for its cache key.
