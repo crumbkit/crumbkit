@@ -7,7 +7,7 @@ use std::num::NonZeroUsize;
 use std::path::Path;
 
 use crumbkit::pick::Choice;
-use crumbkit::{Batch, Call, Code, Document, Failure, Field, Listing, Recovery, Row};
+use crumbkit::{Batch, Call, Code, Document, Failure, Field, FieldValue, Listing, Recovery, Row};
 use miette::{Diagnostic, LabeledSpan, NamedSource, SourceCode, SourceSpan};
 use schemars::JsonSchema;
 use serde::Serialize;
@@ -566,14 +566,13 @@ impl Failure for BooksError {
         }
     }
 
-    /// A missing book names its id as the field `book`. A failure that names
-    /// several missing ids has no field, because a field holds one value.
+    /// Missing books name their ids as the field `books`, which is a list
+    /// even for one id, so an agent reads one shape for the code.
     fn fields(&self) -> Vec<Field<'_>> {
         match self {
-            Self::NotFound { ids } => match ids.as_slice() {
-                [id] => vec![Field::new("book", *id)],
-                _ => Vec::new(),
-            },
+            Self::NotFound { ids } => {
+                vec![Field::new("books", FieldValue::list(ids.iter().copied()))]
+            }
             Self::UnreadableIdsFile { .. }
             | Self::BadIdsFile { .. }
             | Self::TooManyIds { .. }
