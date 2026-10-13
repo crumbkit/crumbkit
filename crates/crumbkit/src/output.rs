@@ -31,7 +31,7 @@ pub use self::dry_run::DryRun;
 pub use self::layout::JsonLayout;
 pub use self::stream::{Streaming, stream, stream_to};
 use crate::form::FailureForm;
-use crate::help::Guide;
+use crate::help::{Exit, Guide};
 use crate::{AsFailure, Document, Parsed, Rows, Sink, Spelling};
 
 #[cfg(test)]
@@ -131,6 +131,12 @@ pub struct Output {
     /// The bytes that the run has printed on standard output so far.
     #[arg(skip)]
     spent: usize,
+
+    /// The exit codes that the tool's guide declares, which `set_command`
+    /// copies from the `Parsed`. A failure whose code one of them lists
+    /// ends the run with that exit code (ADR-0037).
+    #[arg(skip)]
+    exits: &'static [Exit],
 }
 
 impl Output {
@@ -214,6 +220,7 @@ impl Output {
         self.failure_form = parsed.failure_form;
         self.no_terminal = parsed.no_terminal;
         self.json_layout = parsed.json_layout;
+        self.exits = parsed.exits;
         self.budget = Some(budget::from_environment(
             parsed.output_budget.unwrap_or(budget::DEFAULT),
         ));
@@ -407,9 +414,14 @@ pub fn finish<T: Rows, E: AsFailure>(
 /// in `spelling`, and the hint `use the valid fields: a, b`.
 ///
 /// The exit code is 0 when the result is written, and also when the reader
-/// closed the pipe early. It is 1 when the result is a failure or a batch
-/// with at least one failure, also after the reader closed the pipe early.
-/// It is 1 as well when a write fails for any other reason, or when the
+/// closed the pipe early. When the result is a failure, or a batch or prose
+/// result with at least one failure, the exit code belongs to the run's
+/// first failure: the code of the guide's [`Exit`] whose
+/// [`Exit::failures`] list that failure's code, or 1 when none does, also
+/// after the reader closed the pipe early (ADR-0037). The guide reaches
+/// `finish` through [`Output::set_command`] with the `Parsed` that
+/// [`parse`](crate::parse) or [`Parsed::guided`] returns. The exit code is
+/// 1 as well when a write fails for any other reason, or when the
 /// result cannot be serialized, and the cause of a failed write goes to the
 /// sink's error writer before a batch's failures. It is 2 when `--fields`
 /// names an unknown field, or when a bytes result gets `--fields`, `--long`
@@ -437,12 +449,12 @@ pub fn finish_to<T: Rows, E: AsFailure, O: Write, W: Write>(
     let span = crate::trace::spans::finish();
     #[cfg(feature = "tracing")]
     let _entered = span.enter();
-    let (code, cut) = respond::respond(sink, output, spelling, document, result);
+    let (exit, cut) = respond::respond(sink, output, spelling, document, result);
     #[cfg(feature = "tracing")]
-    crate::trace::spans::exited(&span, code);
+    crate::trace::spans::exited(&span, exit);
     #[cfg(feature = "usage-log")]
-    crate::usage::finished(code, sink.out.bytes(), truncated || cut, empty);
+    crate::usage::finished(exit, sink.out.bytes(), truncated || cut, empty);
     #[cfg(not(feature = "usage-log"))]
     let _ = cut;
-    code
+    ExitCode::from(exit)
 }

@@ -9,12 +9,8 @@
 //! `crumbkit.run` have no convention, so they sit under crumbkit's own
 //! namespace.
 
-use std::process::ExitCode;
-
 use tracing::Span;
 use tracing::field::Empty;
-
-use crate::exit;
 
 #[cfg(test)]
 mod tests;
@@ -96,9 +92,9 @@ fn current() -> Option<Span> {
     ours.then_some(span)
 }
 
-/// Records `exit` as `process.exit.code` on `span`.
-pub(crate) fn exited(span: &Span, exit: ExitCode) {
-    span.record("process.exit.code", i64::from(exit::number(exit)));
+/// Records the exit code `exit` as `process.exit.code` on `span`.
+pub(crate) fn exited(span: &Span, exit: u8) {
+    span.record("process.exit.code", i64::from(exit));
 }
 
 /// Records `ids`, the trace id and the run's id as hex, on `span`. It

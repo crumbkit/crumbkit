@@ -270,7 +270,7 @@ where
     let parsed = read(sink, command, guide, spelling, args, colour, stdin);
     #[cfg(feature = "tracing")]
     if let Err(stop) = &parsed {
-        crate::trace::spans::exited(&span, stop.code());
+        crate::trace::spans::exited(&span, crate::exit::number(stop.code()));
     }
     parsed
 }

@@ -17,6 +17,7 @@ use crate::temp::TempDir;
 use crate::testing::panic_message;
 
 mod coverage;
+mod exits;
 mod variable;
 
 /// The code of a refused command line.

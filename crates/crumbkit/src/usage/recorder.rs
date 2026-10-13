@@ -325,9 +325,9 @@ pub(crate) fn ended(exit: u8, out_bytes: Option<u64>) {
 /// it wrote to standard output, whether a listing was `truncated` or the
 /// output budget cut the result short, and whether a listing or a stream
 /// was `empty`.
-pub(crate) fn finished(exit: ExitCode, out_bytes: u64, truncated: bool, empty: bool) {
+pub(crate) fn finished(exit: u8, out_bytes: u64, truncated: bool, empty: bool) {
     update(&RECORDER, |recorder| {
-        recorder.run.exit = Some(exit::number(exit));
+        recorder.run.exit = Some(exit);
         recorder.run.out_bytes = Some(out_bytes);
         recorder.run.truncated = truncated;
         recorder.run.empty = empty;

@@ -4,6 +4,7 @@
 use std::fmt::Write as _;
 
 use super::Guide;
+use crate::Code;
 
 #[cfg(test)]
 mod tests;
@@ -45,6 +46,24 @@ const CRUMBKIT: [(u8, &str); 3] = [
 /// assert_eq!(GUIDE.get_exits()[0].code(), 124);
 /// ```
 ///
+/// An exit can list the failure codes that end a run with it. A run whose
+/// first failure has one of those codes exits with the exit's number, in
+/// [`finish`](crate::finish), a batch and a stream alike, and any other
+/// failure exits with 1:
+///
+/// ```
+/// use crumbkit::Code;
+/// use crumbkit::help::{Exit, Guide};
+///
+/// const TIMED_OUT: Code = Code::new("shelf", "download", "timed_out");
+///
+/// const GUIDE: Guide = Guide::new().exits(&[
+///     Exit::new(124, "The download ran out of time.").failures(&[&TIMED_OUT]),
+/// ]);
+///
+/// assert_eq!(GUIDE.get_exits()[0].get_failures(), [&TIMED_OUT]);
+/// ```
+///
 /// crumbkit owns 0, 1 and 2, and a shell reports 126 and above for its own
 /// reasons, so a tool's codes run from 3 to 125 (ADR-0002). crumbkit-test's
 /// `check_exit_codes` checks the declarations, and crumbkit never fails on
@@ -58,6 +77,8 @@ pub struct Exit {
     /// The paths of the commands that return the code, each covering the
     /// commands below it. An empty list covers every command.
     commands: &'static [&'static [&'static str]],
+    /// The failure codes that end a run with the code.
+    failures: &'static [&'static Code],
 }
 
 impl Exit {
@@ -70,6 +91,7 @@ impl Exit {
             code,
             meaning,
             commands: &[],
+            failures: &[],
         }
     }
 
@@ -81,6 +103,23 @@ impl Exit {
     pub const fn commands(mut self, paths: &'static [&'static [&'static str]]) -> Self {
         self.commands = paths;
         self
+    }
+
+    /// Sets the failure codes that end a run with the code. A run whose
+    /// first failure has one of `codes` exits with this code in place of 1
+    /// (ADR-0037). A code that crumbkit learns only at run time, from
+    /// `Code::runtime`, cannot be listed, so its failure exits with 1.
+    #[must_use]
+    pub const fn failures(mut self, codes: &'static [&'static Code]) -> Self {
+        self.failures = codes;
+        self
+    }
+
+    /// Returns the failure codes that [`Exit::failures`] set, or an empty
+    /// list when no failure ends a run with the code.
+    #[must_use]
+    pub const fn get_failures(&self) -> &'static [&'static Code] {
+        self.failures
     }
 
     /// Returns the exit code.

@@ -5,10 +5,12 @@ use std::fmt::Write as _;
 
 use clap::Command;
 use crumbkit::form::{ReadFailure, Step};
+use crumbkit::help::Exit;
 
 use super::words::split;
 use super::{Failing, Recoveries};
 use crate::allow::{self, Allowances, Rule};
+use crate::exits;
 use crate::failures::{self, Reader};
 use crate::guide::command_line;
 use crate::runs::{self, Place, Ran, TIMEOUT, WorkDir, Xdg, env_note, with_json};
@@ -48,6 +50,9 @@ pub(super) struct Walk<'a> {
     /// The tool's failure form or failure reader, which reads each failed
     /// run first.
     pub(super) reader: Option<Reader<'a>>,
+    /// The exits that the tool's guide declares, which give the exit code
+    /// of a failed run.
+    pub(super) exits: &'a [Exit],
     /// The problem that stopped the walk: a failed run whose failure the
     /// tool's form or reader does not read, so no later run can be
     /// followed.
@@ -502,6 +507,14 @@ impl Walk<'_> {
                 )),
             }
             return None;
+        }
+        // The first failure of a run decides its exit code (ADR-0037).
+        let first = failures.first().map(ReadFailure::code);
+        if let Some(problem) = first.and_then(|first| {
+            exits::exit_problem(self.exits, self.recoveries.spelling, first, output.status)
+        }) {
+            self.problems
+                .push(format!("{}: {label} {problem}", chain.start));
         }
         Some(Outcome::Fails { failures, warned })
     }

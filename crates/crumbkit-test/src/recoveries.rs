@@ -425,6 +425,8 @@ impl<'a> Recoveries<'a> {
 ///   the tool's name, or that has a placeholder without a value;
 /// - a run that cannot start, that does not end within 10 seconds or that
 ///   fails without a failure that the check can read;
+/// - a failed run whose exit code breaks the guide's exits, as
+///   [`check_twin`](crate::check_twin) finds for a refused line;
 /// - a declared code that no chain provokes and [`Recoveries::unprovoked`]
 ///   does not list, and a listed code that is not declared or that a chain
 ///   provokes;
@@ -506,6 +508,7 @@ fn check(
         provoked: Vec::new(),
         skipped: 0,
         reader,
+        exits: guide.get_exits(),
         stopped: None,
     };
     for start in recoveries.starts {

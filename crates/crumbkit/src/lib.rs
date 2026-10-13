@@ -50,7 +50,6 @@ pub mod codes;
 pub mod commands;
 #[cfg(any(feature = "complete", feature = "usage-log"))]
 mod complete;
-#[cfg(any(feature = "usage-log", feature = "tracing"))]
 mod exit;
 mod expect;
 mod fetch;

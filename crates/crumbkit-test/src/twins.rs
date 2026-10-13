@@ -9,6 +9,7 @@ use crumbkit::Spelling;
 use crumbkit::help::Guide;
 
 use crate::examples::Examples;
+use crate::exits;
 use crate::failures;
 use crate::guide::command_line;
 use crate::recoveries::Failing;
@@ -66,6 +67,12 @@ mod tests;
 /// the first entry of a batch's `failures`, and then from the last `code:`
 /// line on standard error.
 ///
+/// The refused line must exit with the code of the guide's
+/// [`Exit`](crumbkit::help::Exit) that lists its code with
+/// [`Exit::failures`](crumbkit::help::Exit::failures). A refused line whose
+/// code no exit lists must not exit with the code of an exit that lists
+/// failure codes.
+///
 /// ```no_run
 /// use clap::Command;
 /// use crumbkit::Spelling;
@@ -95,7 +102,8 @@ mod tests;
 /// reader, when the two lines differ by more or less than one word added,
 /// removed or replaced, when `admitted` adds a help or version word or
 /// runs another command than `refused`, when neither line runs a command, when `refused` exits with code 0, fails with
-/// another code or prints no code that the check can read, when `admitted` exits with a code other than 0, or when a
+/// another code, exits with a code that breaks the rule of the guide's exits
+/// above or prints no code that the check can read, when `admitted` exits with a code other than 0, or when a
 /// run cannot start or does not end within 10 seconds. The message names
 /// each line as help prints it, with the binary's file name first.
 #[expect(
@@ -290,7 +298,12 @@ pub(super) fn refuse(
         .first()
         .map(|failure| failure.code().to_owned());
     match printed {
-        Some(printed) if printed == code => Ok(output),
+        Some(printed) if printed == code => {
+            match exits::exit_problem(guide.get_exits(), spelling, &printed, output.status) {
+                Some(problem) => Err(format!("the refused line {refused_line} {problem}")),
+                None => Ok(output),
+            }
+        }
         Some(printed) => Err(format!(
             "the refused line {refused_line} must fail with {code}, and it fails with {printed}"
         )),
