@@ -30,8 +30,9 @@ pub(super) struct Customisation {
 /// [`Guide::dashed_forms`] declaration followed by each command that
 /// answers to its dashed form, as [`dashed_names`] lists them, and then for
 /// each leaf in guide order its document's name when the leaf's path gives
-/// another, the program whose exit code it passes on, and whether it
-/// declares refusal alternatives. A declaration that a later change adds
+/// another, the program whose exit code it passes on, whether it
+/// declares refusal alternatives, and whether its batch prints its failures
+/// in input order (`Document::failures_in_order`). A declaration that a later change adds
 /// joins this list beside the declarations of the same scope: a guide
 /// setting before the leaves, and a leaf's declaration after its
 /// refusal-alternatives entry. The completion variable is not listed,
@@ -125,6 +126,15 @@ pub(super) fn customisations(command: &Command, guide: &Guide) -> Vec<Customisat
                 applies_to: command_line(command, &leaf.path().join(" ")),
                 declares: "A refused command line for this command also offers the tool's own \
                            alternatives."
+                    .to_owned(),
+            });
+        }
+        if document.is_some_and(|document| document.prints_failures_in_order()) {
+            list.push(Customisation {
+                declaration: "failures-in-order",
+                applies_to: command_line(command, &leaf.path().join(" ")),
+                declares: "With --json, the command prints its failures among its rows in input \
+                           order, in place of text on standard error."
                     .to_owned(),
             });
         }

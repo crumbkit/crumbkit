@@ -100,6 +100,9 @@ impl Served {
                 let mut schema = build(self.document);
                 if let Some(form) = form {
                     set_entry_schema(&mut schema, form.entry_schema());
+                    if self.document.prints_failures_in_order() {
+                        set_in_order_failure_schema(&mut schema, form.schema());
+                    }
                 }
                 schema
             }
@@ -201,6 +204,19 @@ fn set_entry_schema(schema: &mut Schema, entry: Schema) {
         .and_then(serde_json::Value::as_object_mut);
     if let Some(failures) = failures {
         failures.insert("items".to_owned(), entry.to_value());
+    }
+}
+
+/// Puts `failure` as the second kind of item of `schema`, the schema of a
+/// batch that prints its failures in input order, in place of the
+/// `crumbkit/failure/v1` document.
+fn set_in_order_failure_schema(schema: &mut Schema, failure: Schema) {
+    let kinds = schema
+        .get_mut("items")
+        .and_then(|items| items.get_mut("anyOf"))
+        .and_then(serde_json::Value::as_array_mut);
+    if let Some(slot) = kinds.and_then(|kinds| kinds.get_mut(1)) {
+        *slot = failure.to_value();
     }
 }
 

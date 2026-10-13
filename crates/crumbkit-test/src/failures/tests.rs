@@ -141,3 +141,24 @@ fn each_batch_entry_is_read_through_the_form_and_an_entry_it_cannot_read_in_crum
         ]
     );
 }
+
+#[test]
+fn each_failure_document_of_an_array_in_input_order_is_read_and_its_rows_are_skipped() {
+    let stdout = br#"[{"id":1,"code":"row","recovery":{"kind":"retry"}},{"schema":"crumbkit/failure/v1","key":"7","index":1,"code":"a","recovery":{"kind":"retry"}},{"id":3},{"schema":"crumbkit/failure/v1","code":"b","recovery":{"kind":"retry"}}]"#;
+
+    let codes: Vec<String> = read_failures(None, stdout, b"")
+        .iter()
+        .map(|failure| failure.code().to_owned())
+        .collect();
+
+    assert_eq!(codes, ["a", "b"]);
+}
+
+#[test]
+fn each_form_document_of_an_array_in_input_order_is_read_through_the_form() {
+    let stdout = br#"[{"id":1},{"error":{"code":"a"}}]"#;
+
+    let read = read_failures(Some(Reader::Form(&EntryForm)), stdout, b"");
+
+    assert_eq!(read, [ReadFailure::new("a".to_owned(), vec![Step::Retry])]);
+}

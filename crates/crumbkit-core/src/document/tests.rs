@@ -201,3 +201,37 @@ fn an_empty_note_with_a_line_break_is_rejected() {
     let _: Document<()> =
         Document::new("shelf", "books-list", 1, "Books.").when_empty("no books\nat all");
 }
+
+/// A row of the batches in these tests.
+#[derive(serde::Serialize, schemars::JsonSchema)]
+struct Moon {
+    name: &'static str,
+}
+
+impl crate::Row for Moon {
+    const COLUMNS: &'static [&'static str] = &["name"];
+}
+
+#[test]
+fn a_document_prints_a_batchs_failures_apart_from_its_rows_until_the_tool_asks_for_input_order() {
+    const MOONS: Document<crate::Batch<Moon, crate::Error>> =
+        Document::new("solar", "moons-show", 1, "Moons.").without_envelope();
+
+    assert!(!MOONS.prints_failures_in_order());
+    assert!(MOONS.failures_in_order().prints_failures_in_order());
+    assert!(
+        MOONS
+            .failures_in_order()
+            .untyped()
+            .prints_failures_in_order()
+    );
+}
+
+#[test]
+#[should_panic(expected = "without its envelope")]
+fn failures_in_order_is_rejected_for_a_document_with_the_envelope() {
+    let document: Document<crate::Batch<Moon, crate::Error>> =
+        Document::new("solar", "moons-show", 1, "Moons.");
+
+    let _ = document.failures_in_order();
+}

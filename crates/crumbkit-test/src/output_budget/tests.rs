@@ -58,6 +58,12 @@ fn a_batch_whose_last_failure_holds_the_budget_keeps_the_contract() {
 }
 
 #[test]
+fn an_array_in_input_order_whose_last_item_holds_the_budget_keeps_the_contract() {
+    let stdout = "[{\"id\":1},{\"schema\":\"crumbkit/failure/v1\",\"code\":\"crumbkit::output::over_budget\",\"fields\":{\"left_out\":[\"2\"],\"budget\":100}}]\n";
+    assert_eq!(judge(&ran(1, stdout, ""), 100, 1), None);
+}
+
+#[test]
 fn an_exit_1_without_the_over_budget_failure_breaks_the_contract() {
     let stdout = "{\"code\":\"shelf::books::not_found\",\"fields\":{}}\n";
     let problem = judge(&ran(1, stdout, ""), 100, 1).expect("a problem");

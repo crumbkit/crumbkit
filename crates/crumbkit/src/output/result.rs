@@ -18,6 +18,7 @@ use crate::help::rename;
 use crate::{Code, Document, JsonLayout, Row, Rows, Shape, Spelling, codes};
 
 mod batch;
+mod in_order;
 
 /// What [`write_result`] printed of a result.
 #[derive(Debug)]
@@ -483,7 +484,10 @@ impl<'a, T: Rows> Prepared<'a, T> {
         let rows = value.rows();
         let all = shown >= rows.len();
         if self.json && !self.document.has_envelope() {
-            return self.write_unwrapped(out, shown, all);
+            return match failures.filter(|_| self.document.prints_failures_in_order()) {
+                Some(failures) => self.write_in_order(out, shown, failures),
+                None => self.write_unwrapped(out, shown, all),
+            };
         }
         let extras = Extras {
             total: value.total(),
