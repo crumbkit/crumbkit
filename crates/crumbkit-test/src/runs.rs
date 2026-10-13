@@ -6,7 +6,6 @@ use std::path::{Path, PathBuf};
 use std::process::Output;
 use std::time::Duration;
 
-use crumbkit::form::{FailureForm, ReadFailure, Step};
 use serde_json::Value;
 use snapbox::cmd;
 
@@ -224,130 +223,6 @@ pub(crate) fn run(
     command
         .output()
         .map_err(|error| format!("the binary `{binary}` cannot start: {error}"))
-}
-
-/// Returns the failure that a run printed on `stdout` with `--json`: the
-/// last `crumbkit/failure/v1` document, or the first entry of the
-/// `failures` of the last document that has any, as a batch prints them.
-/// It reads documents on one line and indented documents alike.
-pub(crate) fn failure(stdout: &[u8]) -> Option<Value> {
-    documents(&String::from_utf8_lossy(stdout))
-        .into_iter()
-        .rev()
-        .find_map(|mut value| {
-            if value.get("schema").and_then(Value::as_str) == Some("crumbkit/failure/v1") {
-                return Some(value);
-            }
-            let failures = value.get_mut("failures")?.as_array_mut()?;
-            (!failures.is_empty()).then(|| failures.swap_remove(0))
-        })
-}
-
-/// Returns the `fields` of the failure that [`failure`] finds on `stdout`,
-/// each a name and its value as text, in order. A string is its own text,
-/// an integer or a boolean is written as JSON writes it, and a field of
-/// another type is left out.
-pub(crate) fn fields(stdout: &[u8]) -> Vec<(String, String)> {
-    let Some(document) = failure(stdout) else {
-        return Vec::new();
-    };
-    let Some(fields) = document.get("fields").and_then(Value::as_object) else {
-        return Vec::new();
-    };
-    fields
-        .iter()
-        .filter_map(|(name, value)| {
-            let text = match value {
-                Value::String(text) => text.clone(),
-                Value::Number(_) | Value::Bool(_) => value.to_string(),
-                _ => return None,
-            };
-            Some((name.clone(), text))
-        })
-        .collect()
-}
-
-/// Returns the failure that a failed run printed on `stdout` and `stderr`:
-/// what `form` reads back when the guide sets a form and its
-/// [`FailureForm::read`] finds one, and otherwise the code and steps of
-/// crumbkit's own document, which [`failure`] finds on `stdout`.
-pub(crate) fn read_failure(
-    form: Option<&dyn FailureForm>,
-    stdout: &[u8],
-    stderr: &[u8],
-) -> Option<ReadFailure> {
-    if let Some(form) = form {
-        let read = form.read(
-            &String::from_utf8_lossy(stdout),
-            &String::from_utf8_lossy(stderr),
-        );
-        if read.is_some() {
-            return read;
-        }
-    }
-    failure(stdout).as_ref().and_then(read_document)
-}
-
-/// Returns the code of the failure document `document` and its steps, the
-/// recovery first and then each alternative, or `None` when it has no code
-/// or no recovery.
-fn read_document(document: &Value) -> Option<ReadFailure> {
-    let code = document.get("code")?.as_str()?.to_owned();
-    let alternatives = document
-        .get("alternatives")
-        .and_then(Value::as_array)
-        .map_or(&[][..], Vec::as_slice);
-    let text = |step: &Value, key: &str| {
-        step.get(key)
-            .and_then(Value::as_str)
-            .unwrap_or_default()
-            .to_owned()
-    };
-    let steps = std::iter::once(document.get("recovery")?)
-        .chain(alternatives)
-        .map(|step| match step.get("kind").and_then(Value::as_str) {
-            Some("run") => step.get("call").and_then(Value::as_str).map_or_else(
-                || Step::None(String::new()),
-                |call| Step::Run(call.to_owned()),
-            ),
-            Some("retry") => Step::Retry,
-            Some("hint") => Step::Hint(text(step, "text")),
-            _ => Step::None(text(step, "reason")),
-        })
-        .collect();
-    Some(ReadFailure::new(code, steps))
-}
-
-/// Returns the code of the last `code:` line in `stderr`, which crumbkit's
-/// text form of a failure ends with.
-pub(crate) fn text_code(stderr: &[u8]) -> Option<String> {
-    String::from_utf8_lossy(stderr)
-        .lines()
-        .rev()
-        .find_map(|line| line.trim_start().strip_prefix("code:"))
-        .map(|code| code.trim().to_owned())
-}
-
-/// Returns the code of `failure` and its steps as one phrase, such as
-/// `tool::books::not_found, whose steps are: run `tool books list`; retry`.
-pub(crate) fn describe(failure: &ReadFailure) -> String {
-    let steps: Vec<String> = failure
-        .steps()
-        .iter()
-        .map(|step| match step {
-            Step::Run(call) => format!("run `{call}`"),
-            Step::Retry => "retry".to_owned(),
-            Step::Hint(text) => format!("hint: {text}"),
-            Step::None(reason) if reason.is_empty() => "no next step".to_owned(),
-            Step::None(reason) => format!("no next step: {reason}"),
-            _ => "a step that crumbkit-test cannot name".to_owned(),
-        })
-        .collect();
-    if steps.is_empty() {
-        failure.code().to_owned()
-    } else {
-        format!("{}, whose steps are: {}", failure.code(), steps.join("; "))
-    }
 }
 
 /// Returns each JSON document in `stdout` in order, whether it fills one

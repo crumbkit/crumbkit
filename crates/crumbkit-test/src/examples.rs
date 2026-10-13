@@ -7,12 +7,12 @@ use std::process::Output;
 use std::time::{Duration, Instant};
 
 use clap::Command;
-use crumbkit::form::{FailureForm, ReadFailure};
 use crumbkit::help::Guide;
 use snapbox::assert::{Action, DEFAULT_ACTION_ENV};
 use snapbox::{Assert, Redactions};
 
 use crate::allow::{Allowances, Rule};
+use crate::failures::{self, Reader};
 use crate::goldens::{compare, remove_stale};
 use crate::guide::command_line;
 use crate::runs::{self, Place, TIMEOUT, WorkDir, Xdg};
@@ -96,8 +96,9 @@ mod tests;
 ///   line, the exit status, the failure's code and steps when the check can
 ///   read them, and the standard error, because an example shows a run that
 ///   works. The check reads the failure through the guide's failure form
-///   first, then from a `crumbkit/failure/v1` document on standard output,
-///   and then from the last `code:` line on standard error. This holds with `SNAPSHOTS=overwrite` too, and the
+///   or the [`FailureReader`](crate::FailureReader) of `examples` first,
+///   then from a `crumbkit/failure/v1` document on standard output, and
+///   then from the last `code:` line on standard error. This holds with `SNAPSHOTS=overwrite` too, and the
 ///   check then writes no file for the example;
 /// - a run that writes a `warning: crumbkit` line to standard error, which a
 ///   debug build writes for a recovery call that does not render. The check
@@ -120,6 +121,9 @@ mod tests;
 /// - an opt-out from [`Rule::Examples`] that names no command or skips no
 ///   example, and an [`Allow::example`](crate::Allow::example) that names no
 ///   example that the check runs;
+/// - a guide that sets a failure form and examples that set a failure
+///   reader with [`Examples::failure_reader`], which stops the check before
+///   any run;
 /// - a directory of [`Examples::current_dir`] or a fixture of
 ///   [`Examples::fresh_dir`] that does not exist;
 /// - a placeholder of [`Examples::redact`] that is not `[` and `]` around
@@ -198,12 +202,13 @@ fn check(
     let mut failures = Vec::new();
     let mut allowances = Allowances::new(examples.opt_outs(), &[Rule::Examples]);
     let visits = tree::walk(command);
-    let form = guide.get_failure_form();
-    if let Some(problem) = setup_problem(examples) {
-        problems.push(problem);
-        report(&problems, &failures);
-        return;
-    }
+    let reader = match setup(guide, examples) {
+        Ok(reader) => reader,
+        Err(problem) => {
+            report(&[problem], &[]);
+            return;
+        }
+    };
     let redactions = inputs::redactions(examples.redactions(), &mut problems);
     // Each golden file name with the command line of the example that has
     // it.
@@ -254,7 +259,7 @@ fn check(
             };
             let stderr = String::from_utf8_lossy(&output.stderr).into_owned();
             if !output.status.success() {
-                failures.push(failed_run(&line, &output, form, &stderr));
+                failures.push(failed_run(&line, &output, reader, &stderr));
                 continue;
             }
             let warnings = warnings(&line, &stderr);
@@ -356,19 +361,25 @@ fn run_example(
     Ok((output, inputs::with_run(redactions, &xdg, &work)))
 }
 
+/// Returns the tool's failure form or failure reader, or the problem of a
+/// setting that stops the check before any run.
+fn setup<'a>(guide: &Guide, examples: &Examples<'a>) -> Result<Option<Reader<'a>>, String> {
+    let reader = failures::reader(guide, examples)?;
+    setup_problem(examples).map_or(Ok(reader), Err)
+}
+
 /// Returns the problem of the example `line`, whose run exited with a code
-/// other than 0. The problem names the exit status, the failure's code and
-/// steps when `form` or crumbkit's failure document reads them, and the
-/// run's standard error `stderr` when it is not empty.
-fn failed_run(line: &str, output: &Output, form: Option<&dyn FailureForm>, stderr: &str) -> String {
+/// other than 0. The problem names the exit status, the first failure's
+/// code and steps when `reader`, crumbkit's failure document or its
+/// `code:` line gives them, and the run's standard error `stderr` when it
+/// is not empty.
+fn failed_run(line: &str, output: &Output, reader: Option<Reader<'_>>, stderr: &str) -> String {
     let mut problem = format!(
         "{line}: an example must exit with code 0, and the run ends with {}",
         output.status
     );
-    let failure = runs::read_failure(form, &output.stdout, &output.stderr)
-        .or_else(|| runs::text_code(&output.stderr).map(|code| ReadFailure::new(code, Vec::new())));
-    if let Some(failure) = failure {
-        let _ = write!(problem, " and fails with {}", runs::describe(&failure));
+    if let Some(failure) = failures::read_failures(reader, &output.stdout, &output.stderr).first() {
+        let _ = write!(problem, " and fails with {}", failures::describe(failure));
     }
     if !stderr.is_empty() {
         problem.push_str(" after writing this to standard error:\n");

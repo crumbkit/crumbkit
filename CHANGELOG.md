@@ -338,6 +338,12 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   [`check_path_weights`] take `Pages`, whose `Pages::binary` reads each
   page from the tool's binary, for a tool that builds its help at run
   time. A tool passes the same `Pages` to all three ([ADR-0025]).
+- crumbkit: [`ReadFailure`] carries the failure's fields, so a form's
+  `read` gives crumbkit-test the values that fill a recovery's
+  placeholders ([ADR-0053]).
+- crumbkit-test: [`FailureReader`] and `Examples::failure_reader` let a
+  tool that prints its own failures without a failure form give the twin,
+  example and recovery checks its failures ([ADR-0045]).
 ### Changed
 
 - crumbkit-test: [`check_twin`] takes the tool's guide as its first
@@ -475,6 +481,14 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   characters such as CJK text ([ADR-0016]).
 - crumbkit-test: [`check_recoveries`] fills a lowercase placeholder such
   as `<path>` from the value of the same name ([ADR-0053]).
+- crumbkit-test: [`check_recoveries`] fills placeholders and reports
+  `recoveries/field-value` from the fields of the failure that a form or a
+  reader returns ([ADR-0053]).
+- crumbkit-test: [`check_recoveries`] reads a failed run's last `code:`
+  line when the run prints no failure document ([ADR-0045]).
+- crumbkit-test: [`check_twin`], [`check_examples`] and
+  [`check_recoveries`] fail when the guide sets a failure form and
+  `Examples` sets a failure reader ([ADR-0045]).
 ### Removed
 
 - crumbkit: `help::split` is gone. [`check_recoveries`] reads a recovery's
@@ -594,6 +608,7 @@ rustdoc, or at its decision record. -->
 [`check_help_goldens`]: crates/crumbkit-test/src/goldens.rs
 [`check_examples`]: crates/crumbkit-test/src/examples.rs
 [`Examples`]: crates/crumbkit-test/src/examples/settings.rs
+[`FailureReader`]: crates/crumbkit-test/src/failures.rs
 [crumbkit-aliases]: crates/crumbkit-aliases/README.md
 [crumbkit-core]: crates/crumbkit-core/README.md
 [`RenderCall`]: crates/crumbkit/src/call.rs

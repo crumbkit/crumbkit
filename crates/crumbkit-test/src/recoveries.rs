@@ -12,6 +12,7 @@ use snapbox::assert::DEFAULT_ACTION_ENV;
 
 use crate::allow::{Allowances, Rule, is_reason};
 use crate::examples::Examples;
+use crate::failures;
 use crate::goldens::compare;
 use crate::runs::Dir;
 
@@ -297,11 +298,14 @@ impl<'a> Recoveries<'a> {
 ///
 /// Every run adds `--json` when its words lack it. When the guide sets a
 /// failure form, the check reads each failed run through the form's
-/// [`FailureForm::read`](crumbkit::form::FailureForm::read) first.
-/// Otherwise, or when `read` returns `None`, it reads the failure of the
-/// last line of standard output that is a `crumbkit/failure/v1` document or
-/// that has `failures`, as a batch prints them. It follows the first entry
-/// of a batch's `failures`. The runs of
+/// [`FailureForm::read`](crumbkit::form::FailureForm::read) first, and when
+/// [`Examples`] sets a [`FailureReader`](crate::FailureReader), through
+/// that reader first. Otherwise, or when neither reads a failure, it reads
+/// the failure of the last document on standard output that is a
+/// `crumbkit/failure/v1` document or that has `failures`, as a batch prints
+/// them, and then the last `code:` line on standard error, which gives a
+/// failure without steps or fields. It follows the first failure that it
+/// reads, such as the first entry of a batch's `failures`. The runs of
 /// one chain share one set of fresh XDG directories, which start as copies
 /// of the fixture of [`Failing::xdg`] or [`Examples::xdg`], the working directory
 /// and the standard input of its start, so a step sees what the earlier
@@ -315,11 +319,11 @@ impl<'a> Recoveries<'a> {
 /// these sources gives:
 ///
 /// 1. the value of [`Failing::values`] whose name matches it exactly;
-/// 2. the field, in the `fields` of crumbkit's failure document or of a
-///    batch's first failure, of the failure that offers the step, whose name
-///    matches it with capitals lowered and `-` read as `_`, so the field
-///    `book_id` fills `<BOOK-ID>`. An integer or a boolean is written as
-///    text. A failure that only the tool's own form reads gives no fields;
+/// 2. the field of the failure that offers the step whose name matches it
+///    with capitals lowered and `-` read as `_`, so the field `book_id`
+///    fills `<BOOK-ID>`. The fields are those that the form or reader
+///    returns with the failure, or the `fields` of crumbkit's failure
+///    document, where an integer or a boolean is written as text;
 /// 3. the value of [`Recoveries::values`] whose name matches it exactly.
 ///
 /// A step that exits with code 0 ends its branch, and so do a `retry`, a `hint` and
@@ -347,19 +351,22 @@ impl<'a> Recoveries<'a> {
 ///   step. A recovery built with `Call::value` carries the value, so an
 ///   agent need not copy it from the field. A value of [`Failing::values`]
 ///   that wins over the field is no finding;
-/// - a failed run whose failure the tool's form, set with
-///   `Guide::failure_form`, does not read through
-///   [`FailureForm::read`](crumbkit::form::FailureForm::read), and that
-///   prints no `crumbkit/failure/v1` document. The first such run stops the
-///   check, which reports this problem alone and says to implement `read`
-///   or to add an opt-out from [`Rule::Recoveries`] that names the root
-///   (ADR-0045);
+/// - a guide that sets a failure form and examples that set a failure
+///   reader with [`Examples::failure_reader`], which stops the check before
+///   any run;
+/// - a failed run whose failure neither the tool's form, set with
+///   `Guide::failure_form`, nor its reader, set with
+///   [`Examples::failure_reader`], reads, and that prints no
+///   `crumbkit/failure/v1` document and no `code:` line. The first such run
+///   stops the check, which reports this problem alone and says to make
+///   the form or reader read it or to add an opt-out from
+///   [`Rule::Recoveries`] that names the root (ADR-0045);
 /// - a run that writes a `warning: crumbkit` line to standard error, which a
 ///   debug build writes for a recovery call that does not render;
 /// - a step that crumbkit's quoting cannot read, that does not start with
 ///   the tool's name, or that has a placeholder without a value;
 /// - a run that cannot start, that does not end within 10 seconds or that
-///   fails without a failure document;
+///   fails without a failure that the check can read;
 /// - a declared code that no chain provokes and [`Recoveries::unprovoked`]
 ///   does not list, and a listed code that is not declared or that a chain
 ///   provokes;
@@ -389,6 +396,13 @@ fn check(
     dir: &str,
     assert: &Assert,
 ) {
+    let reader = match failures::reader(guide, &recoveries.examples) {
+        Ok(reader) => reader,
+        Err(problem) => {
+            fail(&[problem]);
+            return;
+        }
+    };
     let spelling = recoveries.spelling;
     let mut declared: Vec<(String, &Code)> = Vec::new();
     for &code in recoveries.codes.iter().flat_map(|list| list.iter()) {
@@ -426,7 +440,7 @@ fn check(
         report: String::new(),
         provoked: Vec::new(),
         skipped: 0,
-        form: guide.get_failure_form(),
+        reader,
         stopped: None,
     };
     for start in recoveries.starts {

@@ -22,6 +22,7 @@ use crate::testing::panic_message;
 
 mod form;
 mod fresh;
+mod reading;
 mod values;
 mod words;
 mod xdg;

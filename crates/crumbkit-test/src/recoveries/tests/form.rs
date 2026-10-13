@@ -124,8 +124,8 @@ fn a_form_that_reads_no_failure_stops_the_check_at_the_first_failed_run_with_one
             "the tool's recoveries break crumbkit's recovery rules:\n\
              tool books show 7: the start ends with exit status: 1, and the failure form \
              tool/error/v1 reads no failure from it, so the check cannot follow the tool's \
-             recoveries. The tool implements FailureForm::read, or adds an opt-out from \
-             `recoveries/follow` that names the root, with a reason"
+             recoveries. The tool implements FailureForm::read, or the tool adds an opt-out \
+             from `recoveries/follow` that names the root, with a reason"
         )
     );
 }
