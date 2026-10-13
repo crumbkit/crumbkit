@@ -39,6 +39,13 @@ shelf books list --limit 101
   run shelf books list --limit 100 --json
     exits 0
 
+shelf books show
+  fails with crumbkit::cli::usage
+  run shelf books show -h
+    exits 0
+  run shelf books list
+    exits 0
+
 codes that no start provokes:
   shelf::books::removed_file: Only a file of removed books that shelf cannot read or write provokes it, such as one on a full disk.
   shelf::books::no_state_directory: The check always sets XDG_STATE_HOME, and only a run without it and without HOME provokes the code.

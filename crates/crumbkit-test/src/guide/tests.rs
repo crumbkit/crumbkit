@@ -551,3 +551,23 @@ fn choices_whose_argument_id_names_no_argument_of_the_leaf_fail_the_check() {
          shelf books show: the choices for `id` name no argument of the command, so a picker never offers them"
     );
 }
+
+#[test]
+fn a_refusal_alternative_that_names_no_command_fails_the_check() {
+    const MISSPELT: &[crumbkit::Call] = &[crumbkit::Call::new(&["books", "lst"])];
+    const LIST: &[crumbkit::Call] = &[crumbkit::Call::new(&["books", "list"])];
+    const GUIDE: Guide = Guide::new().leaves(&[
+        Leaf::new(&["books", "list"])
+            .examples(RUN)
+            .refusal_alternatives(MISSPELT),
+        Leaf::new(&["books", "show"])
+            .examples(&[Example::new(&["2"], "Show a book")])
+            .refusal_alternatives(LIST),
+    ]);
+
+    assert_eq!(
+        panic_message(|| check_guide(&shelf_with_arguments(), &GUIDE)).unwrap(),
+        "the command tree breaks crumbkit's guide rules:\n\
+         shelf books list: a refusal alternative does not render, because 'shelf books' has no subcommand 'lst', so a refusal leaves it out"
+    );
+}

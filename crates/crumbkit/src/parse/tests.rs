@@ -12,6 +12,7 @@ use crate::twins::assert_one_word_apart;
 use crate::{Sink, Spelling};
 
 mod aliases;
+mod alternatives;
 mod fields;
 mod hidden;
 mod limit;

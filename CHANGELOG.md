@@ -411,6 +411,11 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit: [`complete_with`] answers a shell's completion request under a
   variable that the tool names, and the registration script and the usage
   log use that name ([ADR-0048], [ADR-0056]).
+- crumbkit: `Leaf::refusal_alternatives` declares calls that a refused
+  command line naming the leaf offers after crumbkit's own alternatives
+  ([ADR-0056]).
+- crumbkit-test: [`check_guide`] fails on a refusal alternative that does
+  not render against the command tree ([ADR-0056]).
 
 ### Changed
 

@@ -8,7 +8,7 @@ use crumbkit::help::{Effects, Example, Goal, Group, Guide, Leaf, Topic};
 use crumbkit::pick::Choices;
 use crumbkit::schemas::{SCHEMAS_LIST, SCHEMAS_SHOW, SchemasList, SchemasShow};
 use crumbkit::usage::{SELF_FIGURES_LIST, SELF_USAGE, SelfFigures, SelfUsage};
-use crumbkit::{DryRun, NoInput, Output, Page, Yes};
+use crumbkit::{Call, DryRun, NoInput, Output, Page, Yes};
 use crumbkit_aliases::AliasesList;
 use crumbkit_picker::Menu;
 use schemars::JsonSchema;
@@ -44,6 +44,10 @@ static MENU: Menu = Menu::new();
 /// of `shelf books show`.
 const BOOK_IDS: &[Choices] = &[Choices::new("ids", books::choices)];
 
+/// The alternative that a refused `shelf books show` offers after
+/// crumbkit's own: `shelf books list`, which prints the ids it takes.
+const LIST_BOOKS: &[Call] = &[Call::new(&["books", "list"])];
+
 /// shelf's goal headings, leaves and help topics. shelf guides only its
 /// root, so `shelf -h` lists `books` under `Browse the catalogue`,
 /// `commands` and `schemas` under `Explore the commands` and `self` under
@@ -53,7 +57,8 @@ const BOOK_IDS: &[Choices] = &[Choices::new("ids", books::choices)];
 /// `shelf help catalogue` prints `cli/catalogue.txt`. `shelf -h` names the
 /// person's aliases that expand, which differ between machines, so shelf's
 /// tests opt out of crumbkit's rule against that. A person at a terminal who
-/// leaves out the ids of `shelf books show` picks books from the menu.
+/// leaves out the ids of `shelf books show` picks books from the menu, and a
+/// refused `shelf books show` also offers `shelf books list`.
 pub const GUIDE: Guide = Guide::new()
     .picker(&MENU)
     .groups(&[Group::new(
@@ -76,7 +81,8 @@ pub const GUIDE: Guide = Guide::new()
             .examples(&[Example::new(&["2", "5"], "Show books 2 and 5")])
             .effects(Effects::read_only())
             .document(BOOKS_SHOW)
-            .choices(BOOK_IDS),
+            .choices(BOOK_IDS)
+            .refusal_alternatives(LIST_BOOKS),
         Leaf::new(&["books", "summarize"])
             .examples(&[
                 Example::new(&[], "Summarize the whole catalogue"),

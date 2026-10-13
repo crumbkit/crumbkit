@@ -1,3 +1,4 @@
 error: the argument '<ID>...' cannot be used with '--from <FILE>'
   help:  run `shelf books show -h`
+  help:  run `shelf books list`
   code:  crumbkit::cli::usage
