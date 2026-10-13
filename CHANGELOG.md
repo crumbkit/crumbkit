@@ -353,6 +353,9 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit-test: [`Allow::untwinned`] opts a declared code out of its twin
   with the `Failing` that provokes it, and [`check_twins`] runs that line
   ([ADR-0005], [ADR-0036]).
+- crumbkit-test: [`Failing::env`] sets or removes environment variables
+  for a failing line and its chain, and [`Twin::variable`] makes a twin
+  that differs by one variable ([ADR-0005], [ADR-0053]).
 ### Changed
 
 - crumbkit-test: [`check_twin`] takes the tool's guide as its first
@@ -675,6 +678,8 @@ rustdoc, or at its decision record. -->
 [`output_weight`]: crates/crumbkit-test/src/weights.rs
 [`Allow`]: crates/crumbkit-test/src/allow.rs
 [`Allow::untwinned`]: crates/crumbkit-test/src/allow.rs
+[`Failing::env`]: crates/crumbkit-test/src/recoveries.rs
+[`Twin::variable`]: crates/crumbkit-test/src/twins/coverage.rs
 [`check_opt_outs`]: crates/crumbkit-test/src/opt_outs.rs
 [`check_output_budget`]: crates/crumbkit-test/src/output_budget.rs
 [`Budget`]: crates/crumbkit-test/src/budget.rs

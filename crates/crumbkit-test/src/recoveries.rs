@@ -27,7 +27,8 @@ mod tests;
 
 /// One command line that fails, which [`check_recoveries`] runs to start a
 /// chain of recoveries: the code it fails with, its words after the tool's
-/// name, and the working directory and standard input of its runs.
+/// name, and the working directory, standard input and environment
+/// variables of its runs.
 ///
 /// ```
 /// use crumbkit::Code;
@@ -53,6 +54,8 @@ pub struct Failing<'a> {
     /// The value of each placeholder in the steps of the chain, which wins
     /// over every other source.
     values: &'a [(&'a str, &'a str)],
+    /// The variables that every run of the chain sets or removes.
+    env: &'a [(&'a str, Option<&'a str>)],
 }
 
 impl<'a> Failing<'a> {
@@ -69,6 +72,7 @@ impl<'a> Failing<'a> {
             stdin: None,
             xdg: None,
             values: &[],
+            env: &[],
         }
     }
 
@@ -113,6 +117,25 @@ impl<'a> Failing<'a> {
         self
     }
 
+    /// Sets environment variables of the command line and of every step of
+    /// its chain, as a name and a value, such as `("DEPTH", Some("1"))`, or
+    /// `None` to remove the variable, such as `("HOME", None)`. Each entry
+    /// wins over [`Examples::env`] and over the fresh XDG directories of the
+    /// check. A problem and the report name the line with its variables,
+    /// such as `tool books list (with DEPTH=1)`.
+    /// [`Twin::variable`](crate::Twin::variable) makes a twin that differs
+    /// by one of them.
+    #[must_use]
+    pub const fn env(mut self, env: &'a [(&'a str, Option<&'a str>)]) -> Self {
+        self.env = env;
+        self
+    }
+
+    /// Returns the variables that its runs set or remove.
+    pub(crate) const fn own_env(&self) -> &'a [(&'a str, Option<&'a str>)] {
+        self.env
+    }
+
     /// Returns the value of each placeholder in the steps of its chain.
     pub(crate) const fn own_values(&self) -> &'a [(&'a str, &'a str)] {
         self.values
@@ -128,7 +151,7 @@ impl<'a> Failing<'a> {
     }
 
     /// Returns the same command line with the words `words` in place of
-    /// its own, with its directory, input, fixture and values.
+    /// its own, with its directory, input, fixture, values and variables.
     pub(crate) const fn with_words<'b>(&self, words: &'b [&'b str]) -> Failing<'b>
     where
         'a: 'b,
@@ -140,6 +163,7 @@ impl<'a> Failing<'a> {
             stdin: self.stdin,
             xdg: self.xdg,
             values: self.values,
+            env: self.env,
         }
     }
 

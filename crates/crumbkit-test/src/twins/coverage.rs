@@ -4,7 +4,7 @@
 use crumbkit::help::Guide;
 use crumbkit::{Code, Spelling};
 
-use super::{refuse, tool_name, twin};
+use super::{Admitted, named, refuse, tool_name, twin};
 use crate::allow::{Allow, Rule};
 use crate::examples::Examples;
 use crate::guide::command_line;
@@ -32,6 +32,9 @@ pub struct Twin<'a> {
     refused: Failing<'a>,
     /// The words of the admitted line after the tool's name.
     admitted: &'a [&'a str],
+    /// The variable whose entry the admitted line runs without, for a twin
+    /// made with [`Twin::variable`].
+    variable: Option<&'a str>,
 }
 
 impl<'a> Twin<'a> {
@@ -39,7 +42,40 @@ impl<'a> Twin<'a> {
     /// admitted line after the tool's name.
     #[must_use]
     pub const fn new(refused: Failing<'a>, admitted: &'a [&'a str]) -> Self {
-        Self { refused, admitted }
+        Self {
+            refused,
+            admitted,
+            variable: None,
+        }
+    }
+
+    /// Returns the twin of `refused` and the same line run without the
+    /// entry for the variable `name` that [`Failing::env`] gives `refused`.
+    /// The admitted line keeps the refused line's other variables and gets
+    /// the variable from [`Examples::env`](crate::Examples::env) or not at
+    /// all, as a run without [`Failing::env`] does. The twin shows that the
+    /// variable causes the refusal, for a code that the environment
+    /// provokes. [`check_twins`] runs it, and [`check_twin`](crate::check_twin)
+    /// takes only a line that differs by one word.
+    ///
+    /// ```
+    /// use crumbkit::Code;
+    /// use crumbkit_test::{Failing, Twin};
+    ///
+    /// const TOO_DEEP: Code = Code::new("shelf", "books", "too_deep");
+    ///
+    /// const DEPTH_1: Twin<'_> = Twin::variable(
+    ///     Failing::new(&TOO_DEEP, &["books", "list"]).env(&[("SHELF_DEPTH", Some("1"))]),
+    ///     "SHELF_DEPTH",
+    /// );
+    /// ```
+    #[must_use]
+    pub const fn variable(refused: Failing<'a>, name: &'a str) -> Self {
+        Self {
+            refused,
+            admitted: refused.words(),
+            variable: Some(name),
+        }
     }
 }
 
@@ -180,7 +216,10 @@ pub fn check_twins(guide: &Guide, twins: &Twins<'_>) {
         let refused_words: Vec<&str> = refused_words.iter().map(String::as_str).collect();
         let admitted: Vec<&str> = admitted.iter().map(String::as_str).collect();
         let refused = pair.refused.with_words(&refused_words);
-        if let Err(problem) = twin(guide, &twins.examples, spelling, &refused, &admitted) {
+        let admitted = pair
+            .variable
+            .map_or(Admitted::Words(&admitted), Admitted::Without);
+        if let Err(problem) = twin(guide, &twins.examples, spelling, &refused, admitted) {
             problems.push(problem);
         }
     }
@@ -196,8 +235,12 @@ pub fn check_twins(guide: &Guide, twins: &Twins<'_>) {
     {
         let code = failing.code();
         let text = spelling.spell(code);
-        let line = command_line(&tool_name(&twins.examples), failing.words());
-        let opt_out = format!("the opt-out from `{}` for `{line}`", Rule::NoTwin.id());
+        let line = named(
+            &tool_name(&twins.examples),
+            failing.words(),
+            failing.own_env(),
+        );
+        let opt_out = format!("the opt-out from `{}` for {line}", Rule::NoTwin.id());
         if crumbkit::codes::ALL.contains(&code) {
             problems.push(format!(
                 "{opt_out} names {text}, one of crumbkit's codes, which need no twin, so it is stale"

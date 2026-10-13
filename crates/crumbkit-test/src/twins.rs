@@ -11,7 +11,7 @@ use crate::examples::Examples;
 use crate::failures;
 use crate::guide::command_line;
 use crate::recoveries::Failing;
-use crate::runs::{self, Dir, Place, Ran, TIMEOUT, WorkDir, Xdg};
+use crate::runs::{self, Place, Ran, TIMEOUT, WorkDir, Xdg, env_note};
 
 mod coverage;
 mod words;
@@ -99,7 +99,13 @@ pub fn check_twin(
     refused: &Failing<'_>,
     admitted: &[&str],
 ) -> Output {
-    match twin(guide, examples, spelling, refused, admitted) {
+    match twin(
+        guide,
+        examples,
+        spelling,
+        refused,
+        Admitted::Words(admitted),
+    ) {
         Ok(output) => output,
         Err(problem) => {
             #[expect(
@@ -121,6 +127,17 @@ pub(super) fn tool_name(examples: &Examples<'_>) -> String {
         .map_or_else(String::new, |name| name.to_string_lossy().into_owned())
 }
 
+/// The admitted line of a twin.
+#[derive(Clone, Copy, Debug)]
+pub(super) enum Admitted<'a> {
+    /// The words of a line that differs from the refused line by one word,
+    /// which runs with the refused line's variables.
+    Words(&'a [&'a str]),
+    /// The refused line's words, run without the refused line's own entry
+    /// for the variable of this name.
+    Without(&'a str),
+}
+
 /// Runs the two lines of [`check_twin`] and returns the output of
 /// `refused`, or the problem when a rule is broken.
 pub(super) fn twin(
@@ -128,42 +145,46 @@ pub(super) fn twin(
     examples: &Examples<'_>,
     spelling: Spelling,
     refused: &Failing<'_>,
-    admitted: &[&str],
+    admitted: Admitted<'_>,
 ) -> Result<Output, String> {
     let tool = tool_name(examples);
-    let refused_line = command_line(&tool, refused.words());
-    let admitted_line = command_line(&tool, admitted);
-    if !words::one_word_apart(refused.words(), admitted) {
-        return Err(format!(
-            "the refused line `{refused_line}` and the admitted line `{admitted_line}` must differ by one word added, removed or replaced"
-        ));
-    }
-    if let Some(word) = words::skipping_word(refused.words(), admitted) {
-        return Err(format!(
-            "the admitted line `{admitted_line}` adds `{word}`, which makes the tool answer without running the command, so the twin proves nothing about the refused line `{refused_line}`. {UNTWINNED}"
-        ));
-    }
-    if let Some(path) = words::leaf(guide, refused.words()) {
-        let other = words::leaf(guide, admitted);
-        if other != Some(path) {
-            let runs = other.map_or_else(
-                || "runs no command of the guide".to_owned(),
-                |other| format!("runs `{}`", other.join(" ")),
-            );
-            return Err(format!(
-                "the refused line `{refused_line}` runs the command `{}`, and the admitted line `{admitted_line}` {runs}, so the twin proves nothing about the refused command. A code that no word of the command causes needs an opt-out made with Allow::untwinned",
-                path.join(" ")
-            ));
+    let refused_line = named(&tool, refused.words(), refused.own_env());
+    let (words, env, admitted_line) = match admitted {
+        Admitted::Words(words) => {
+            let admitted_line = named(&tool, words, refused.own_env());
+            one_word(guide, refused.words(), words, &refused_line, &admitted_line)?;
+            (words, refused.own_env().to_vec(), admitted_line)
         }
-    }
+        Admitted::Without(name) => {
+            let env = refused.own_env();
+            let Some(&(_, value)) = env.iter().find(|&&(own, _)| own == name) else {
+                return Err(format!(
+                    "the variable twin of the refused line {refused_line} names {name}, which the refused line neither sets nor removes"
+                ));
+            };
+            let rest: Vec<_> = env
+                .iter()
+                .copied()
+                .filter(|&(own, _)| own != name)
+                .collect();
+            let without = value.map_or_else(
+                || format!("without removing {name}"),
+                |value| format!("without {name}={value}"),
+            );
+            let note = env_note(&rest);
+            let note = note.strip_suffix(')').map_or_else(
+                || format!(" ({without})"),
+                |note| format!("{note}, {without})"),
+            );
+            let line = format!("`{}`{note}", command_line(&tool, refused.words()));
+            (refused.words(), rest, line)
+        }
+    };
     let output = refuse(guide, examples, spelling, refused)?;
-    let dir = refused.work_dir(examples.working_dir());
-    let stdin = refused.stdin_bytes();
-    let fixture = refused.fixture(examples.xdg_fixture());
-    let other = run(examples, admitted, (dir, stdin), fixture, &admitted_line)?;
+    let other = run(examples, refused, words, &env, &admitted_line)?;
     if !other.status.success() {
         return Err(format!(
-            "the admitted line `{admitted_line}` must exit with code 0, and it ends with {} after writing this to standard error:\n{}",
+            "the admitted line {admitted_line} must exit with code 0, and it ends with {} after writing this to standard error:\n{}",
             other.status,
             String::from_utf8_lossy(&other.stderr)
         ));
@@ -171,10 +192,49 @@ pub(super) fn twin(
     Ok(output)
 }
 
-/// The end of the problem of a twin whose admitted line skips the
-/// command's work.
-const UNTWINNED: &str =
-    "A code that no word of a command line causes needs an opt-out made with Allow::untwinned";
+/// Returns the command line of `words` in backticks, with the note of the
+/// variables of `env` when there are any, such as
+/// `` `tool books list` (with DEPTH=1) ``.
+pub(super) fn named(tool: &str, words: &[&str], env: &[(&str, Option<&str>)]) -> String {
+    format!("`{}`{}", command_line(tool, words), env_note(env))
+}
+
+/// Returns the problem of a twin whose lines, named `refused_line` and
+/// `admitted_line`, do not differ by one word, whose admitted line adds a
+/// word that skips the command's work, or whose admitted line runs another
+/// leaf of `guide` than the refused line.
+fn one_word(
+    guide: &Guide,
+    refused: &[&str],
+    admitted: &[&str],
+    refused_line: &str,
+    admitted_line: &str,
+) -> Result<(), String> {
+    if !words::one_word_apart(refused, admitted) {
+        return Err(format!(
+            "the refused line {refused_line} and the admitted line {admitted_line} must differ by one word added, removed or replaced"
+        ));
+    }
+    if let Some(word) = words::skipping_word(refused, admitted) {
+        return Err(format!(
+            "the admitted line {admitted_line} adds `{word}`, which makes the tool answer without running the command, so the twin proves nothing about the refused line {refused_line}. A code that no word of a command line causes needs an opt-out made with Allow::untwinned"
+        ));
+    }
+    if let Some(path) = words::leaf(guide, refused) {
+        let other = words::leaf(guide, admitted);
+        if other != Some(path) {
+            let runs = other.map_or_else(
+                || "runs no command of the guide".to_owned(),
+                |other| format!("runs `{}`", other.join(" ")),
+            );
+            return Err(format!(
+                "the refused line {refused_line} runs the command `{}`, and the admitted line {admitted_line} {runs}, so the twin proves nothing about the refused command. A code that no word of the command causes needs an opt-out made with Allow::untwinned",
+                path.join(" ")
+            ));
+        }
+    }
+    Ok(())
+}
 
 /// Runs `refused`, checks that it fails with its code, and returns its
 /// output, or the problem when it exits with code 0, fails with another
@@ -186,21 +246,18 @@ pub(super) fn refuse(
     refused: &Failing<'_>,
 ) -> Result<Output, String> {
     let reader = failures::reader(guide, examples)?;
-    let refused_line = command_line(&tool_name(examples), refused.words());
-    let dir = refused.work_dir(examples.working_dir());
-    let stdin = refused.stdin_bytes();
+    let refused_line = named(&tool_name(examples), refused.words(), refused.own_env());
     let code = spelling.spell(refused.code());
-    let fixture = refused.fixture(examples.xdg_fixture());
     let output = run(
         examples,
+        refused,
         refused.words(),
-        (dir, stdin),
-        fixture,
+        refused.own_env(),
         &refused_line,
     )?;
     if output.status.success() {
         return Err(format!(
-            "the refused line `{refused_line}` must fail with {code}, and it exits with code 0"
+            "the refused line {refused_line} must fail with {code}, and it exits with code 0"
         ));
     }
     // The first failure is the one the refused line fails with.
@@ -210,33 +267,36 @@ pub(super) fn refuse(
     match printed {
         Some(printed) if printed == code => Ok(output),
         Some(printed) => Err(format!(
-            "the refused line `{refused_line}` must fail with {code}, and it fails with {printed}"
+            "the refused line {refused_line} must fail with {code}, and it fails with {printed}"
         )),
         None => Err(format!(
-            "the refused line `{refused_line}` must fail with {code}, and it ends with {} and prints no code that the check can read. A tool that prints failures in a form of its own implements FailureForm::read and sets the form with Guide::failure_form, or implements FailureReader and sets it with Examples::failure_reader",
+            "the refused line {refused_line} must fail with {code}, and it ends with {} and prints no code that the check can read. A tool that prints failures in a form of its own implements FailureForm::read and sets the form with Guide::failure_form, or implements FailureReader and sets it with Examples::failure_reader",
             output.status
         )),
     }
 }
 
-/// Runs `words` with fresh XDG directories that start as copies of
-/// `fixture`, and with the working directory and standard input of `start`,
-/// a new copy for a fresh fixture, and returns the problem naming `line`
-/// when the run cannot start or does not end.
+/// Runs `words` with the variables of `env`, in the working directory,
+/// with the standard input and in fresh XDG directories that start as
+/// copies of the fixture of `refused`, and returns its output, or the
+/// problem, which names the run by `line`, when the run cannot start or
+/// does not end.
 fn run(
     examples: &Examples<'_>,
+    refused: &Failing<'_>,
     words: &[&str],
-    start: (Option<Dir<'_>>, Option<&[u8]>),
-    fixture: Option<&str>,
+    env: &[(&str, Option<&str>)],
     line: &str,
 ) -> Result<Output, String> {
-    let (dir, stdin) = start;
+    let fixture = refused.fixture(examples.xdg_fixture());
+    let dir = refused.work_dir(examples.working_dir());
     let ran = Xdg::new("twin", fixture)
         .and_then(|xdg| {
             let work = WorkDir::new("twin-dir", dir)?;
             let place = Place {
                 dir: work.path(),
-                stdin,
+                stdin: refused.stdin_bytes(),
+                env,
             };
             runs::run(
                 examples.binary(),
@@ -247,10 +307,10 @@ fn run(
                 TIMEOUT,
             )
         })
-        .map_err(|problem| format!("`{line}`: {problem}"))?;
+        .map_err(|problem| format!("{line}: {problem}"))?;
     let Ran::Exited(output) = ran else {
         return Err(format!(
-            "`{line}` did not end within {} seconds, so the check stopped it",
+            "{line} did not end within {} seconds, so the check stopped it",
             TIMEOUT.as_secs()
         ));
     };

@@ -186,6 +186,9 @@ pub(crate) struct Place<'a> {
     pub(crate) dir: Option<&'a str>,
     /// The bytes on standard input.
     pub(crate) stdin: Option<&'a [u8]>,
+    /// The variables of a failing line, each set to its value or removed
+    /// for `None`, which win over every other variable of the run.
+    pub(crate) env: &'a [(&'a str, Option<&'a str>)],
 }
 
 /// How a run of the binary ended.
@@ -205,8 +208,8 @@ pub(crate) fn stopped(timeout: Duration) -> String {
 }
 
 /// Runs `binary` once with `args`, a cleared environment, the variables of
-/// `env`, the directories of `xdg` and the working directory and standard
-/// input of `place`, and returns how the run ended, or the problem when the
+/// `env`, the directories of `xdg` and the working directory, standard
+/// input and variables of `place`, which it applies last, and returns how the run ended, or the problem when the
 /// binary cannot start or the check cannot wait for it. The run's `timeout`
 /// starts when the binary starts. A run that has not exited when `timeout`
 /// ends is killed and returns [`Ran::Stopped`], so a caller learns of a
@@ -241,6 +244,12 @@ pub(crate) fn run(
     }
     for (variable, path, _) in &xdg.paths {
         command.env(variable, path);
+    }
+    for &(name, value) in place.env {
+        match value {
+            Some(value) => command.env(name, value),
+            None => command.env_remove(name),
+        };
     }
     if let Some(dir) = place.dir {
         command.current_dir(dir);
@@ -316,6 +325,23 @@ fn collect(reader: Option<JoinHandle<Vec<u8>>>) -> Vec<u8> {
     reader
         .and_then(|reader| reader.join().ok())
         .unwrap_or_default()
+}
+
+/// Returns the note that follows a command line whose run sets or removes
+/// the variables of `env`, such as ` (with DEPTH=1, HOME removed)`, or an
+/// empty note when `env` is empty.
+pub(crate) fn env_note(env: &[(&str, Option<&str>)]) -> String {
+    if env.is_empty() {
+        return String::new();
+    }
+    let entries: Vec<String> = env
+        .iter()
+        .map(|&(name, value)| match value {
+            Some(value) => format!("{name}={value}"),
+            None => format!("{name} removed"),
+        })
+        .collect();
+    format!(" (with {})", entries.join(", "))
 }
 
 /// Returns `words` with `--json` added when they lack it: before the first

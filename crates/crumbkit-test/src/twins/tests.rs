@@ -16,6 +16,7 @@ use crate::temp::TempDir;
 use crate::testing::panic_message;
 
 mod coverage;
+mod variable;
 
 /// The code of a refused command line.
 const USAGE: Code = crumbkit::codes::CLI_USAGE;

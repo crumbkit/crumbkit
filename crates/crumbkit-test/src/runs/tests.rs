@@ -36,6 +36,7 @@ fn a_run_that_never_reads_more_input_than_a_pipe_holds_is_stopped_at_its_timeout
     let place = Place {
         dir: None,
         stdin: Some(&input),
+        env: &[],
     };
 
     let ran = run(
