@@ -4,7 +4,7 @@
 use std::fmt::Write as _;
 use std::path::Path;
 use std::process::Output;
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
 use clap::Command;
 use crumbkit::help::Guide;
@@ -15,7 +15,7 @@ use crate::allow::{Allowances, Rule};
 use crate::failures::{self, Reader};
 use crate::goldens::{compare, remove_stale};
 use crate::guide::command_line;
-use crate::runs::{self, Place, TIMEOUT, WorkDir, Xdg};
+use crate::runs::{self, Place, Ran, TIMEOUT, WorkDir, Xdg};
 use crate::tree;
 
 pub(crate) use self::inputs::read_stdin;
@@ -68,10 +68,8 @@ mod tests;
 /// the example's input file on standard input, a file in the golden
 /// directory named with `.stdin` in place of `.txt`, such as
 /// `shelf-books-import.stdin`. A run without that file reads an empty
-/// standard input. The check writes the whole input before the 10-second
-/// limit starts, so an input file holds at most 64 KiB: a tool that does
-/// not read a larger input blocks the check, because the operating
-/// system's pipe holds about 64 KiB.
+/// standard input. The check writes the input while the run goes on, so a
+/// tool that does not read its input still ends at the 10-second limit.
 ///
 /// The golden file of an example holds the run's standard output, and
 /// [`example_golden_name`] names it after the example's command line, such
@@ -337,14 +335,13 @@ fn run_example(
     redactions: &Redactions,
     timeout: Duration,
 ) -> Result<(Output, Redactions), String> {
-    let started = Instant::now();
     let xdg = Xdg::new("example", examples.xdg_fixture())?;
     let work = WorkDir::new("example-dir", examples.working_dir())?;
     let place = Place {
         dir: work.path(),
         stdin,
     };
-    let output = runs::run(
+    let ran = runs::run(
         examples.binary(),
         examples.variables(),
         &xdg,
@@ -352,12 +349,12 @@ fn run_example(
         place,
         timeout,
     )?;
-    if !output.status.success() && started.elapsed() >= timeout {
+    let Ran::Exited(output) = ran else {
         return Err(format!(
-            "the run did not end within {} seconds, so the check stopped it, and an example must end on its own",
-            timeout.as_secs_f64()
+            "{}, and an example must end on its own",
+            runs::stopped(timeout)
         ));
-    }
+    };
     Ok((output, inputs::with_run(redactions, &xdg, &work)))
 }
 

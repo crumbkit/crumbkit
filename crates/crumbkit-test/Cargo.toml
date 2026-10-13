@@ -25,13 +25,11 @@ clap = { workspace = true }
 # The help golden check and the example check compare each help page and
 # each example's output with its golden file and rewrite the file with
 # `SNAPSHOTS=overwrite`, as shelf's other golden files do (ADR-0004). The
-# example check runs the tool's binary through snapbox's `cmd` module, which
-# captures standard output and standard error. The `cmd` feature gives each
-# run a timeout, so the check stops an example that never ends, such as a
-# stream that follows its input. Its crates were already in the build through
-# the examples' tests. Without `diff`, a mismatch shows the expected and the
+# checks run the tool's binary through `std::process` and not through
+# snapbox's `cmd` module, because they must know whether a run's timeout
+# stopped it (ADR-0005). Without `diff`, a mismatch shows the expected and the
 # actual text in full.
-snapbox = { workspace = true, features = ["cmd"] }
+snapbox = { workspace = true }
 # The schema golden check writes each document's JSON Schema as
 # pretty-printed JSON, as crumbkit's checked-in schema files hold it.
 # serde_json needs `std` or `alloc` to build at all.

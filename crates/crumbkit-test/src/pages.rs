@@ -9,7 +9,7 @@ use crumbkit::help::Guide;
 use crumbkit::{Sink, Spelling};
 
 use crate::examples::{Examples, setup_problem};
-use crate::runs::{self, Place, TIMEOUT, WorkDir, Xdg};
+use crate::runs::{self, Place, Ran, TIMEOUT, WorkDir, Xdg};
 use crate::tree::{self, Visit};
 
 #[cfg(test)]
@@ -169,12 +169,16 @@ fn binary_pages<'a>(
             )
         });
         match output {
-            Ok(output) if output.status.success() => {
+            Ok(Ran::Exited(output)) if output.status.success() => {
                 pages.push((visit, String::from_utf8_lossy(&output.stdout).into_owned()));
             }
-            Ok(output) => problems.push(format!(
+            Ok(Ran::Exited(output)) => problems.push(format!(
                 "{line}: the command line prints no help page, and the binary ends with {}",
                 output.status
+            )),
+            Ok(Ran::Stopped) => problems.push(format!(
+                "{line}: the command line prints no help page, because {}",
+                runs::stopped(TIMEOUT)
             )),
             Err(problem) => problems.push(format!(
                 "{line}: the command line prints no help page, because {problem}"

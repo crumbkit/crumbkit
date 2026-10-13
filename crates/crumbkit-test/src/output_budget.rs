@@ -127,7 +127,7 @@ fn check(
             };
             let stdin = stdin.as_deref();
             let whole = match run(examples, examples.variables(), &args, stdin, timeout) {
-                Ok(output) if output.status.success() => output.stdout.len(),
+                Ok(runs::Ran::Exited(output)) if output.status.success() => output.stdout.len(),
                 Ok(_) => continue,
                 Err(problem) => {
                     problems.push(format!("{line}: {problem}"));
@@ -142,7 +142,7 @@ fn check(
             let mut env = examples.variables().to_vec();
             env.push((VARIABLE, &value));
             match run(examples, &env, &args, stdin, timeout) {
-                Ok(output) => {
+                Ok(runs::Ran::Exited(output)) => {
                     let ran = Ran {
                         code: output.status.code(),
                         stdout: &String::from_utf8_lossy(&output.stdout),
@@ -152,6 +152,10 @@ fn check(
                         problems.push(format!("{line}: {problem}"));
                     }
                 }
+                Ok(runs::Ran::Stopped) => problems.push(format!(
+                    "{line}: with an output budget of {budget} bytes, {}",
+                    runs::stopped(timeout)
+                )),
                 Err(problem) => problems.push(format!("{line}: {problem}")),
             }
         }
@@ -168,7 +172,7 @@ fn run(
     args: &[&str],
     stdin: Option<&[u8]>,
     timeout: Duration,
-) -> Result<std::process::Output, String> {
+) -> Result<runs::Ran, String> {
     let xdg = Xdg::new("output-budget", examples.xdg_fixture())?;
     let work = WorkDir::new("output-budget-dir", examples.working_dir())?;
     let place = Place {

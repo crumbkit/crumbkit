@@ -2,12 +2,13 @@
 //! recovery and twin checks make, each with a cleared environment and fresh XDG directories.
 
 use std::fs;
+use std::io::{self, Read, Write};
 use std::path::{Path, PathBuf};
-use std::process::Output;
-use std::time::Duration;
+use std::process::{Child, Command, ExitStatus, Output, Stdio};
+use std::thread::{self, JoinHandle};
+use std::time::{Duration, Instant};
 
 use serde_json::Value;
-use snapbox::cmd;
 
 use crate::temp::{TempDir, copy_tree};
 
@@ -187,15 +188,35 @@ pub(crate) struct Place<'a> {
     pub(crate) stdin: Option<&'a [u8]>,
 }
 
+/// How a run of the binary ended.
+pub(crate) enum Ran {
+    /// The run exited on its own, with what it printed and its exit status.
+    Exited(Output),
+    /// The run did not end within its timeout, so the check killed it.
+    Stopped,
+}
+
+/// Returns the problem of a run that the check stopped after `timeout`.
+pub(crate) fn stopped(timeout: Duration) -> String {
+    format!(
+        "the run did not end within {} seconds, so the check stopped it",
+        timeout.as_secs_f64()
+    )
+}
+
 /// Runs `binary` once with `args`, a cleared environment, the variables of
-/// `env`, the directories of `xdg` and the
-/// working directory and standard input of `place`, and returns its output,
-/// or the problem when the binary cannot start. A run that takes longer than
-/// `timeout` is killed, and its output holds what it printed until then.
+/// `env`, the directories of `xdg` and the working directory and standard
+/// input of `place`, and returns how the run ended, or the problem when the
+/// binary cannot start or the check cannot wait for it. The run's `timeout`
+/// starts when the binary starts. A run that has not exited when `timeout`
+/// ends is killed and returns [`Ran::Stopped`], so a caller learns of a
+/// timeout from the run itself.
 ///
-/// The checks own the process effects of each run, and run it through
-/// snapbox's `cmd` module, which captures standard output and standard
-/// error.
+/// The checks own the process effects of each run. One thread writes the
+/// standard input and then closes it, and two threads read standard output
+/// and standard error while the run goes on, so a run that never reads more
+/// input than a pipe holds, or prints more than a pipe holds, does not block
+/// the check.
 pub(crate) fn run(
     binary: &str,
     env: &[(&str, &str)],
@@ -203,26 +224,98 @@ pub(crate) fn run(
     args: &[&str],
     place: Place<'_>,
     timeout: Duration,
-) -> Result<Output, String> {
-    let mut command = cmd::Command::new(binary)
+) -> Result<Ran, String> {
+    #[expect(
+        clippy::disallowed_methods,
+        reason = "the checks own the runs of a tool's binary"
+    )]
+    let mut command = Command::new(binary);
+    command
         .args(args)
         .env_clear()
-        .timeout(timeout);
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped());
     for &(name, value) in env {
-        command = command.env(name, value);
+        command.env(name, value);
     }
     for (variable, path, _) in &xdg.paths {
-        command = command.env(variable, path);
+        command.env(variable, path);
     }
     if let Some(dir) = place.dir {
-        command = command.current_dir(dir);
+        command.current_dir(dir);
     }
-    if let Some(stdin) = place.stdin {
-        command = command.stdin(stdin.to_vec());
+    let mut child = command
+        .spawn()
+        .map_err(|error| format!("the binary `{binary}` cannot start: {error}"))?;
+    let started = Instant::now();
+    if let Some(pipe) = child.stdin.take() {
+        write_all(pipe, place.stdin.unwrap_or_default().to_vec());
     }
-    command
-        .output()
-        .map_err(|error| format!("the binary `{binary}` cannot start: {error}"))
+    let stdout = child.stdout.take().map(read_all);
+    let stderr = child.stderr.take().map(read_all);
+    let waited = wait(&mut child, started, timeout)
+        .map_err(|error| format!("the run of `{binary}` cannot be waited for: {error}"))?;
+    let Some(status) = waited else {
+        return Ok(Ran::Stopped);
+    };
+    Ok(Ran::Exited(Output {
+        status,
+        stdout: collect(stdout),
+        stderr: collect(stderr),
+    }))
+}
+
+/// The longest pause between two checks of whether a run has exited.
+const LONGEST_PAUSE: Duration = Duration::from_millis(10);
+
+/// Waits for `child` to exit and returns its exit status, or kills it and
+/// returns `None` when it has not exited `timeout` after `started`. It checks after
+/// 1 ms and then doubles the pause up to [`LONGEST_PAUSE`], so a short run
+/// waits little and a long run costs few checks.
+fn wait(child: &mut Child, started: Instant, timeout: Duration) -> io::Result<Option<ExitStatus>> {
+    let mut pause = Duration::from_millis(1);
+    loop {
+        if let Some(status) = child.try_wait()? {
+            return Ok(Some(status));
+        }
+        let left = timeout.saturating_sub(started.elapsed());
+        if left.is_zero() {
+            child.kill()?;
+            child.wait()?;
+            return Ok(None);
+        }
+        thread::sleep(pause.min(left));
+        pause = (pause * 2).min(LONGEST_PAUSE);
+    }
+}
+
+/// Writes `bytes` to `pipe` on a new thread and then drops the pipe, which
+/// closes the run's standard input. Nothing waits for the thread: a run may
+/// exit or be killed without reading its input, so a failed write, such as
+/// a broken pipe, is not a problem of the check.
+fn write_all(mut pipe: impl Write + Send + 'static, bytes: Vec<u8>) {
+    thread::spawn(move || {
+        let _ = pipe.write_all(&bytes);
+    });
+}
+
+/// Reads everything from `pipe` on a new thread, and returns the thread.
+fn read_all(mut pipe: impl Read + Send + 'static) -> JoinHandle<Vec<u8>> {
+    thread::spawn(move || {
+        let mut bytes = Vec::new();
+        // A read that fails keeps the bytes read until then.
+        let _ = pipe.read_to_end(&mut bytes);
+        bytes
+    })
+}
+
+/// Returns the bytes that the thread `reader` read, or none when there is
+/// no thread or it panicked.
+fn collect(reader: Option<JoinHandle<Vec<u8>>>) -> Vec<u8> {
+    reader
+        .and_then(|reader| reader.join().ok())
+        .unwrap_or_default()
 }
 
 /// Returns each JSON document in `stdout` in order, whether it fills one
