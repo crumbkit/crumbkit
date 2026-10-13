@@ -103,6 +103,9 @@ pub struct Guide {
     exits: &'static [Exit],
     /// The tool's own codes for crumbkit's failures.
     codes: &'static [Rename],
+    /// The function that builds refusal alternatives for a command whose
+    /// leaf sets none, or `None` for crumbkit's alternatives alone.
+    refusal_alternatives: Option<fn(&RefusalContext<'_>) -> Vec<crate::Call>>,
     /// The function that returns the names of a person's aliases, which
     /// the root's help names, or `None` when help names no aliases.
     personal_aliases: Option<fn(&Command) -> Vec<String>>,
@@ -138,6 +141,7 @@ impl Guide {
             documents: &[],
             exits: &[],
             codes: &[],
+            refusal_alternatives: None,
             personal_aliases: None,
             picker: None,
             failure_form: None,

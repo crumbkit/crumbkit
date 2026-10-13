@@ -24,7 +24,8 @@ pub(super) struct Customisation {
 
 /// Returns the declarations of `guide` for the tool whose root command is
 /// `command`, in this order: the failure form, each code rename, each exit
-/// that lists one of crumbkit's codes or the tool's rename of it, and then
+/// that lists one of crumbkit's codes or the tool's rename of it, whether
+/// the guide declares refusal alternatives for every command, and then
 /// for each leaf in guide order its document's name when the leaf's path
 /// gives another, the program whose exit code it passes on, and whether it
 /// declares refusal alternatives. A declaration that a later change adds
@@ -74,6 +75,15 @@ pub(super) fn customisations(command: &Command, guide: &Guide) -> Vec<Customisat
             });
         }
     }
+    if guide.get_refusal_alternatives().is_some() {
+        list.push(Customisation {
+            declaration: "refusal-alternatives",
+            applies_to: every_run.clone(),
+            declares: "A refused command line for a command without its own function also offers \
+                       the tool's own alternatives."
+                .to_owned(),
+        });
+    }
     for leaf in guide.get_leaves() {
         let document = leaf.get_document();
         if let Some((document, name)) = document
@@ -95,7 +105,8 @@ pub(super) fn customisations(command: &Command, guide: &Guide) -> Vec<Customisat
             });
         }
         // The report states that the leaf declares refusal alternatives and
-        // leaves out the calls, so this getter is the only line that reads them.
+        // leaves out the calls, so this getter and the guide's are the only
+        // lines that read them.
         if leaf.get_refusal_alternatives().is_some() {
             list.push(Customisation {
                 declaration: "refusal-alternatives",

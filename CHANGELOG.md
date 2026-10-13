@@ -418,6 +418,11 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit: [`complete_with_words`] passes the words of the shell's command
   line after the program name to the function that builds the command, so
   completers can depend on an earlier flag such as `-C <DIR>` ([ADR-0048]).
+- crumbkit: `Guide::refusal_alternatives` takes a function that builds
+  refusal alternatives for every command whose leaf sets none, and a leaf's
+  own function replaces it ([ADR-0056]).
+- crumbkit-test: [`check_opt_outs`] lists the guide's refusal alternatives
+  once under customisations ([ADR-0056]).
 
 ### Changed
 
