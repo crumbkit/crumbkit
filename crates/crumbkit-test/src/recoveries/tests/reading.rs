@@ -1,9 +1,9 @@
 //! Tests for the recovery check on a tool that prints its failures without
 //! a crumbkit document: through a `FailureReader`, or as a `code:` line.
 
-use crumbkit::Spelling;
 use crumbkit::form::{ReadFailure, Step};
 use crumbkit::help::Guide;
+use crumbkit::{FieldValue, Spelling};
 use snapbox::Assert;
 use snapbox::assert::Action;
 
@@ -36,7 +36,7 @@ impl FailureReader for LineReader {
         };
         vec![
             ReadFailure::new(code.to_owned(), vec![Step::Run(call.to_owned())])
-                .with_fields(vec![("path".to_owned(), path.to_owned())]),
+                .with_fields(vec![("path".to_owned(), FieldValue::from(path.to_owned()))]),
         ]
     }
 }

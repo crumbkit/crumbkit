@@ -617,6 +617,9 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   document without the envelope ([ADR-0016]).
 - crumbkit: `complete_to` takes the name of the completion variable, which
   the registration script sets ([ADR-0048]).
+- crumbkit: [`ReadFailure`] holds each field as a `FieldValue`, so a
+  form's `read` gives back a null, list or object field as the failure
+  held it ([ADR-0045]).
 
 ### Removed
 
