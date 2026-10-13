@@ -22,7 +22,7 @@ mod runtime;
 mod unprovoked;
 mod words;
 
-pub use runtime::RuntimeFailing;
+pub use runtime::{RuntimeFailing, RuntimePlace};
 pub use unprovoked::Unprovoked;
 
 // The tests run `/bin/sh` scripts, which Windows cannot run. The two

@@ -92,7 +92,9 @@ pub use crate::names::check_names;
 pub use crate::opt_outs::check_opt_outs;
 pub use crate::output_budget::check_output_budget;
 pub use crate::pages::Pages;
-pub use crate::recoveries::{Failing, Recoveries, RuntimeFailing, Unprovoked, check_recoveries};
+pub use crate::recoveries::{
+    Failing, Recoveries, RuntimeFailing, RuntimePlace, Unprovoked, check_recoveries,
+};
 pub use crate::reference::check_command_reference;
 pub use crate::schemas::check_schema_goldens;
 pub use crate::sizes::{Budgets, check_help_sizes};

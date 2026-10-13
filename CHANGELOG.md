@@ -703,6 +703,9 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   held it ([ADR-0045]).
 - crumbkit: [`help::RuntimeLeaf`] no longer implements `PartialEq` and
   `Eq`, because it holds the function of its refusal alternatives.
+- crumbkit-test: `RuntimeFailing::at` returns a `RuntimePlace`, which has
+  no code or words and no method that turns it into a `Failing`, so a place
+  used as a command line is a compile error ([ADR-0002]).
 - crumbkit-test: the failure reader leaves out a field of crumbkit's
   failure document that holds a fraction, which it read as text before.
 
