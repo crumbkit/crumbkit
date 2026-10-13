@@ -350,6 +350,9 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit-test: [`FailureReader`] and `Examples::failure_reader` let a
   tool that prints its own failures without a failure form give the twin,
   example and recovery checks its failures ([ADR-0045]).
+- crumbkit-test: [`Allow::untwinned`] opts a declared code out of its twin
+  with the `Failing` that provokes it, and [`check_twins`] runs that line
+  ([ADR-0005], [ADR-0036]).
 ### Changed
 
 - crumbkit-test: [`check_twin`] takes the tool's guide as its first
@@ -504,6 +507,9 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit-test: [`check_twins`] adds `--json` to both lines of each twin
   when neither line holds it, as [`check_recoveries`] does, so a tool's
   reader sees the failure an agent reads ([ADR-0005]).
+- crumbkit-test: [`check_twin`] refuses a twin whose admitted line adds a
+  help or version word, or runs another leaf of the guide than the refused
+  line ([ADR-0005]).
 ### Removed
 
 - crumbkit: `help::split` is gone. [`check_recoveries`] reads a recovery's
@@ -668,6 +674,7 @@ rustdoc, or at its decision record. -->
 [`path_totals`]: crates/crumbkit-test/src/weights.rs
 [`output_weight`]: crates/crumbkit-test/src/weights.rs
 [`Allow`]: crates/crumbkit-test/src/allow.rs
+[`Allow::untwinned`]: crates/crumbkit-test/src/allow.rs
 [`check_opt_outs`]: crates/crumbkit-test/src/opt_outs.rs
 [`check_output_budget`]: crates/crumbkit-test/src/output_budget.rs
 [`Budget`]: crates/crumbkit-test/src/budget.rs
@@ -705,7 +712,7 @@ rustdoc, or at its decision record. -->
 [`codes`]: crates/crumbkit/src/codes.rs
 [`check_recoveries`]: crates/crumbkit-test/src/recoveries.rs
 [`check_twin`]: crates/crumbkit-test/src/twins.rs
-[`check_twins`]: crates/crumbkit-test/src/twins.rs
+[`check_twins`]: crates/crumbkit-test/src/twins/coverage.rs
 [`complete`]: crates/crumbkit/src/complete.rs
 [ADR-0048]: docs/decisions/api/0048-completion.md
 [`Expect`]: crates/crumbkit/src/expect.rs

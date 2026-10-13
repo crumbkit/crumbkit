@@ -14,6 +14,7 @@ use crate::recoveries::Failing;
 use crate::runs::{self, Dir, Place, Ran, TIMEOUT, WorkDir, Xdg};
 
 mod coverage;
+mod words;
 
 pub use coverage::{Twin, Twins, check_twins};
 
@@ -33,6 +34,16 @@ mod tests;
 /// A test of a refusal proves only that the tool fails. Its twin proves
 /// that the one word it changes is the reason, because the admitted line
 /// without that change succeeds.
+///
+/// Two kinds of twin prove nothing, and the check refuses them before it
+/// runs either line. An admitted line that adds `-h`, `--help`, `-V` or
+/// `--version`, or `help` as its first word, or puts one of them in place
+/// of a word, makes the tool answer without running the command. An
+/// admitted line that runs another leaf of the guide than the refused line,
+/// or no leaf, runs another command. The leaf of a line is the longest leaf
+/// path that its words start with, and a refused line that runs no leaf,
+/// such as a misspelt command, keeps its twin. A code that no single word
+/// causes needs an opt-out made with [`Allow::untwinned`](crate::Allow::untwinned).
 ///
 /// Both runs use the environment of [`Examples::env`], the working
 /// directory and standard input of `refused`, or the directory of
@@ -72,7 +83,8 @@ mod tests;
 ///
 /// Panics when the guide sets a failure form and `examples` sets a failure
 /// reader, when the two lines differ by more or less than one word added,
-/// removed or replaced, when `refused` exits with code 0, fails with
+/// removed or replaced, when `admitted` adds a help or version word or
+/// runs another leaf than `refused`, when `refused` exits with code 0, fails with
 /// another code or prints no code that the check can read, when `admitted` exits with a code other than 0, or when a
 /// run cannot start or does not end within 10 seconds. The message names
 /// each line as help prints it, with the binary's file name first.
@@ -119,14 +131,62 @@ pub(super) fn twin(
     admitted: &[&str],
 ) -> Result<Output, String> {
     let tool = tool_name(examples);
-    let reader = failures::reader(guide, examples)?;
     let refused_line = command_line(&tool, refused.words());
     let admitted_line = command_line(&tool, admitted);
-    if !one_word_apart(refused.words(), admitted) {
+    if !words::one_word_apart(refused.words(), admitted) {
         return Err(format!(
             "the refused line `{refused_line}` and the admitted line `{admitted_line}` must differ by one word added, removed or replaced"
         ));
     }
+    if let Some(word) = words::skipping_word(refused.words(), admitted) {
+        return Err(format!(
+            "the admitted line `{admitted_line}` adds `{word}`, which makes the tool answer without running the command, so the twin proves nothing about the refused line `{refused_line}`. {UNTWINNED}"
+        ));
+    }
+    if let Some(path) = words::leaf(guide, refused.words()) {
+        let other = words::leaf(guide, admitted);
+        if other != Some(path) {
+            let runs = other.map_or_else(
+                || "runs no command of the guide".to_owned(),
+                |other| format!("runs `{}`", other.join(" ")),
+            );
+            return Err(format!(
+                "the refused line `{refused_line}` runs the command `{}`, and the admitted line `{admitted_line}` {runs}, so the twin proves nothing about the refused command. A code that no word of the command causes needs an opt-out made with Allow::untwinned",
+                path.join(" ")
+            ));
+        }
+    }
+    let output = refuse(guide, examples, spelling, refused)?;
+    let dir = refused.work_dir(examples.working_dir());
+    let stdin = refused.stdin_bytes();
+    let fixture = refused.fixture(examples.xdg_fixture());
+    let other = run(examples, admitted, (dir, stdin), fixture, &admitted_line)?;
+    if !other.status.success() {
+        return Err(format!(
+            "the admitted line `{admitted_line}` must exit with code 0, and it ends with {} after writing this to standard error:\n{}",
+            other.status,
+            String::from_utf8_lossy(&other.stderr)
+        ));
+    }
+    Ok(output)
+}
+
+/// The end of the problem of a twin whose admitted line skips the
+/// command's work.
+const UNTWINNED: &str =
+    "A code that no word of a command line causes needs an opt-out made with Allow::untwinned";
+
+/// Runs `refused`, checks that it fails with its code, and returns its
+/// output, or the problem when it exits with code 0, fails with another
+/// code or prints no code that the check can read.
+pub(super) fn refuse(
+    guide: &Guide,
+    examples: &Examples<'_>,
+    spelling: Spelling,
+    refused: &Failing<'_>,
+) -> Result<Output, String> {
+    let reader = failures::reader(guide, examples)?;
+    let refused_line = command_line(&tool_name(examples), refused.words());
     let dir = refused.work_dir(examples.working_dir());
     let stdin = refused.stdin_bytes();
     let code = spelling.spell(refused.code());
@@ -148,28 +208,15 @@ pub(super) fn twin(
         .first()
         .map(|failure| failure.code().to_owned());
     match printed {
-        Some(printed) if printed == code => {}
-        Some(printed) => {
-            return Err(format!(
-                "the refused line `{refused_line}` must fail with {code}, and it fails with {printed}"
-            ));
-        }
-        None => {
-            return Err(format!(
-                "the refused line `{refused_line}` must fail with {code}, and it ends with {} and prints no code that the check can read. A tool that prints failures in a form of its own implements FailureForm::read and sets the form with Guide::failure_form, or implements FailureReader and sets it with Examples::failure_reader",
-                output.status
-            ));
-        }
+        Some(printed) if printed == code => Ok(output),
+        Some(printed) => Err(format!(
+            "the refused line `{refused_line}` must fail with {code}, and it fails with {printed}"
+        )),
+        None => Err(format!(
+            "the refused line `{refused_line}` must fail with {code}, and it ends with {} and prints no code that the check can read. A tool that prints failures in a form of its own implements FailureForm::read and sets the form with Guide::failure_form, or implements FailureReader and sets it with Examples::failure_reader",
+            output.status
+        )),
     }
-    let other = run(examples, admitted, (dir, stdin), fixture, &admitted_line)?;
-    if !other.status.success() {
-        return Err(format!(
-            "the admitted line `{admitted_line}` must exit with code 0, and it ends with {} after writing this to standard error:\n{}",
-            other.status,
-            String::from_utf8_lossy(&other.stderr)
-        ));
-    }
-    Ok(output)
 }
 
 /// Runs `words` with fresh XDG directories that start as copies of
@@ -208,20 +255,4 @@ fn run(
         ));
     };
     Ok(output)
-}
-
-/// Reports whether `a` and `b` differ by one word added, removed or
-/// replaced.
-fn one_word_apart(a: &[&str], b: &[&str]) -> bool {
-    let (long, short) = if a.len() >= b.len() { (a, b) } else { (b, a) };
-    let first = long
-        .iter()
-        .zip(short)
-        .position(|(x, y)| x != y)
-        .unwrap_or(short.len());
-    match long.len() - short.len() {
-        0 => first < long.len() && long[first + 1..] == short[first + 1..],
-        1 => long[first + 1..] == short[first..],
-        _ => false,
-    }
 }

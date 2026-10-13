@@ -3,10 +3,13 @@
 
 use clap::Command;
 
-use crate::tree;
+use crate::recoveries::Failing;
 
+mod allowances;
 #[cfg(test)]
 mod tests;
+
+pub(crate) use allowances::Allowances;
 
 /// One rule of crumbkit's conventions that a tool opts out of for one
 /// command and every command below it, with the tool's reason.
@@ -43,6 +46,9 @@ pub struct Allow {
     /// command's path, or `None` for an opt-out that covers every command
     /// below `path`.
     words: Option<&'static [&'static str]>,
+    /// The refused command line of an opt-out from [`Rule::NoTwin`], or
+    /// `None` for an opt-out that names a command.
+    refused: Option<Failing<'static>>,
     /// Why the tool skips the rule, in one line.
     reason: &'static str,
 }
@@ -66,13 +72,28 @@ impl Allow {
     ///
     /// const BAD: Allow = Allow::new(Rule::RootLeaf, "version", "");
     /// ```
+    ///
+    /// It also panics for [`Rule::NoTwin`], whose opt-out names a refused
+    /// command line with [`Allow::untwinned`], because a command's path
+    /// names no code:
+    ///
+    /// ```compile_fail
+    /// use crumbkit_test::{Allow, Rule};
+    ///
+    /// const BAD: Allow = Allow::new(Rule::NoTwin, "books show", "A broken file causes it.");
+    /// ```
     #[must_use]
     pub const fn new(rule: Rule, path: &'static str, reason: &'static str) -> Self {
         assert!(is_reason(reason), "a reason is one non-empty line");
+        assert!(
+            !matches!(rule, Rule::NoTwin),
+            "an opt-out from twins/no-twin names its refused line with Allow::untwinned"
+        );
         Self {
             rule,
             path,
             words: None,
+            refused: None,
             reason,
         }
     }
@@ -113,8 +134,57 @@ impl Allow {
             rule: Rule::Examples,
             path,
             words: Some(words),
+            refused: None,
             reason,
         }
+    }
+
+    /// Returns the opt-out from [`Rule::NoTwin`] for the code of `refused`,
+    /// a command line that fails with that code, for `reason`, so
+    /// [`check_twins`] needs no twin for the code.
+    ///
+    /// A twin shows which one word of a command line causes a failure. Some
+    /// failures come from state that no word names, such as a list file
+    /// that cannot be read. The check runs `refused` and requires it to
+    /// fail with its code, so the opt-out shows that a test provokes the
+    /// code. [`check_opt_outs`] names the opt-out by the refused command
+    /// line.
+    ///
+    /// ```
+    /// use crumbkit::Code;
+    /// use crumbkit_test::{Allow, Failing};
+    ///
+    /// const UNREADABLE: Code = Code::new("reading", "lists", "unreadable");
+    ///
+    /// const ALLOW: &[Allow] = &[Allow::untwinned(
+    ///     Failing::new(&UNREADABLE, &["entries", "list", "--list", "locked"]),
+    ///     "The list file cannot be read, and no word of the command line names that.",
+    /// )];
+    /// ```
+    ///
+    /// # Panics
+    ///
+    /// Panics unless `reason` is non-empty and holds no line break, as
+    /// [`Allow::new`] does.
+    ///
+    /// [`check_twins`]: crate::check_twins
+    /// [`check_opt_outs`]: crate::check_opt_outs
+    #[must_use]
+    pub const fn untwinned(refused: Failing<'static>, reason: &'static str) -> Self {
+        assert!(is_reason(reason), "a reason is one non-empty line");
+        Self {
+            rule: Rule::NoTwin,
+            path: "",
+            words: None,
+            refused: Some(refused),
+            reason,
+        }
+    }
+
+    /// Returns the refused command line of an opt-out from
+    /// [`Rule::NoTwin`], or `None`.
+    pub(crate) const fn refused(&self) -> Option<Failing<'static>> {
+        self.refused
     }
 
     /// Returns the rule that the tool skips.
@@ -131,6 +201,9 @@ impl Allow {
     /// as `shelf books list`, or the example's command line, such as
     /// `shelf books list --author 'Jane Austen'`.
     pub(crate) fn line(&self, root: &Command) -> String {
+        if let Some(refused) = self.refused {
+            return crate::guide::command_line(root.get_name(), refused.words());
+        }
         let line = command_line(root, self.path);
         match self.words {
             Some(words) => crate::guide::command_line(&line, words),
@@ -157,6 +230,7 @@ impl Allow {
     fn covers(&self, rule: Rule, below: &str) -> bool {
         self.rule == rule
             && self.words.is_none()
+            && self.refused.is_none()
             && (self.path.is_empty()
                 || below
                     .strip_prefix(self.path)
@@ -283,6 +357,11 @@ pub enum Rule {
     /// the reason shows in the report of
     /// [`check_opt_outs`](crate::check_opt_outs).
     NextStep,
+    /// [`check_twins`](crate::check_twins): a declared code that a command
+    /// line provokes has no twin, because no single word of the line causes
+    /// it. Its id is `twins/no-twin`, and its opt-out, made with
+    /// [`Allow::untwinned`], names the refused command line.
+    NoTwin,
 }
 
 impl Rule {
@@ -316,6 +395,7 @@ impl Rule {
             Self::SameCode => "recoveries/same-code",
             Self::FieldValue => "recoveries/field-value",
             Self::NextStep => "recoveries/next-step",
+            Self::NoTwin => "twins/no-twin",
         }
     }
 
@@ -407,92 +487,10 @@ impl Rule {
             Self::NextStep => &[
                 "An agent that reads the failure has no command, retry or advice to act on, so it must stop or guess.",
             ],
+            Self::NoTwin => &[
+                "No test shows which word of the command line causes the failure, so a test of the refusal can pass while the command fails for another reason.",
+            ],
         }
-    }
-}
-
-/// The opt-outs of the rules that one check owns, with a record of which
-/// of them excused a problem.
-pub(crate) struct Allowances<'a> {
-    /// The tool's opt-outs, of every rule.
-    allow: &'a [Allow],
-    /// The rules that the check owns.
-    rules: &'a [Rule],
-    /// Whether each entry of `allow` excused a problem.
-    used: Vec<bool>,
-}
-
-impl<'a> Allowances<'a> {
-    /// Returns the opt-outs in `allow` of the check that owns `rules`, none
-    /// of them used yet.
-    pub(crate) fn new(allow: &'a [Allow], rules: &'a [Rule]) -> Self {
-        Self {
-            allow,
-            rules,
-            used: vec![false; allow.len()],
-        }
-    }
-
-    /// Reports whether an opt-out covers `rule` for the command at `below`,
-    /// its path below the command passed to the check, and records each
-    /// opt-out that does as used. A check calls it only for a problem it
-    /// found, so a used opt-out is one that excused a problem.
-    pub(crate) fn excuses(&mut self, rule: Rule, below: &str) -> bool {
-        let mut excused = false;
-        for (allow, used) in self.allow.iter().zip(&mut self.used) {
-            if self.rules.contains(&rule) && allow.covers(rule, below) {
-                *used = true;
-                excused = true;
-            }
-        }
-        excused
-    }
-
-    /// Reports whether an example opt-out covers the example `words` of the
-    /// leaf at `below`, and records each one that does as used.
-    pub(crate) fn excuses_example(&mut self, below: &str, words: &[&str]) -> bool {
-        let mut excused = false;
-        for (allow, used) in self.allow.iter().zip(&mut self.used) {
-            if self.rules.contains(&Rule::Examples) && allow.covers_example(below, words) {
-                *used = true;
-                excused = true;
-            }
-        }
-        excused
-    }
-
-    /// Adds a problem to `problems` for each opt-out of the check's rules
-    /// that names no command below `root` or excused no problem.
-    pub(crate) fn finish(self, root: &Command, problems: &mut Vec<String>) {
-        for (allow, used) in self.allow.iter().zip(self.used) {
-            if !self.rules.contains(&allow.rule) {
-                continue;
-            }
-            let line = allow.line(root);
-            let id = allow.rule.id();
-            if tree::find(root, words(allow.path)).is_none() {
-                problems.push(format!(
-                    "the opt-out from `{id}` for `{line}` names no command"
-                ));
-            } else if !used && allow.words.is_some() {
-                problems.push(format!(
-                    "the opt-out from `{id}` for `{line}` names no example that the check runs, so it is stale"
-                ));
-            } else if !used {
-                problems.push(format!(
-                    "the opt-out from `{id}` for `{line}` excuses no problem, so it is stale"
-                ));
-            }
-        }
-    }
-
-    /// Adds the problems of [`Allowances::finish`] to `problems` and
-    /// panics, as [`tree::report`] does, when there is any problem. Every
-    /// check that takes opt-outs reports through it, so none can leave out
-    /// the problems of its opt-outs.
-    pub(crate) fn report(self, root: &Command, rules: &str, mut problems: Vec<String>) {
-        self.finish(root, &mut problems);
-        tree::report(rules, &problems);
     }
 }
 

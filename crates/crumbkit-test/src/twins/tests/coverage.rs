@@ -4,6 +4,7 @@
 use crumbkit::help::Guide;
 use crumbkit::{Code, Spelling};
 
+use crate::allow::Allow;
 use crate::examples::Examples;
 use crate::recoveries::{Failing, Unprovoked};
 use crate::temp::TempDir;
@@ -54,12 +55,27 @@ const LIMIT_0: Twin<'_> = Twin::new(
 /// Returns the panic message of `check_twins` on the tool, with `pairs` and
 /// the listed codes `unprovoked`, or `None` when it passes.
 fn checked(pairs: &[Twin<'_>], unprovoked: &[Unprovoked<'_>]) -> Option<String> {
+    checked_allowing(pairs, unprovoked, &[])
+}
+
+/// Returns the panic message of `check_twins` on the tool, with `pairs`,
+/// the listed codes `unprovoked` and the opt-outs `allow`, or `None` when
+/// it passes.
+fn checked_allowing(
+    pairs: &[Twin<'_>],
+    unprovoked: &[Unprovoked<'_>],
+    allow: &[Allow],
+) -> Option<String> {
     let dir = TempDir::new("twins-coverage").unwrap();
     dir.write_script("tool", SCRIPT);
     let path = dir.path().join("tool").display().to_string();
-    let twins = Twins::new(Examples::new(&path, ""), Spelling::COLONS, CODES)
-        .pairs(pairs)
-        .unprovoked(unprovoked);
+    let twins = Twins::new(
+        Examples::new(&path, "").allow(allow),
+        Spelling::COLONS,
+        CODES,
+    )
+    .pairs(pairs)
+    .unprovoked(unprovoked);
     panic_message(|| check_twins(&Guide::new(), &twins))
 }
 
@@ -71,7 +87,7 @@ fn a_declared_code_without_a_twin_or_an_unprovoked_entry_fails_the_twin_check() 
         checked(&[SHOW_7, LIMIT_0], &unprovoked).as_deref(),
         Some(
             "the tool's twins break crumbkit's twin rule:\n\
-             tool::books::unreadable: no twin refuses the declared code, and Twins::unprovoked does not list it"
+             tool::books::unreadable: no twin refuses the declared code, Twins::unprovoked does not list it, and no opt-out made with Allow::untwinned names it"
         )
     );
 }
@@ -169,4 +185,77 @@ esac
     );
 
     assert_eq!(checked_with(JSON_REFUSED, &[pair]), None);
+}
+
+/// The reason of each untwinned opt-out in these tests.
+const BROKEN_FILE: &str = "A broken file causes it, and no single word does.";
+
+/// The listed code that no command line provokes.
+const REMOVED_ENTRY: Unprovoked<'_> = Unprovoked::new(&REMOVED, "Only a full disk provokes it.");
+
+#[test]
+fn a_declared_code_without_a_twin_passes_when_an_untwinned_opt_out_names_a_line_that_fails_with_it()
+{
+    const ALLOW: &[Allow] = &[Allow::untwinned(
+        Failing::new(&UNREADABLE, &["books", "show", "8"]),
+        BROKEN_FILE,
+    )];
+
+    assert_eq!(checked_allowing(&[SHOW_7], &[REMOVED_ENTRY], ALLOW), None);
+}
+
+#[test]
+fn an_untwinned_opt_out_whose_code_a_twin_refuses_or_twins_unprovoked_lists_or_crumbkit_owns_is_stale()
+ {
+    const ALLOW: &[Allow] = &[
+        Allow::untwinned(
+            Failing::new(&NOT_FOUND, &["books", "show", "7"]),
+            BROKEN_FILE,
+        ),
+        Allow::untwinned(Failing::new(&REMOVED, &["books", "show", "8"]), BROKEN_FILE),
+        Allow::untwinned(
+            Failing::new(
+                &crumbkit::codes::CLI_USAGE,
+                &["books", "list", "--limit", "0"],
+            ),
+            BROKEN_FILE,
+        ),
+        Allow::untwinned(
+            Failing::new(&UNREADABLE, &["books", "show", "8"]),
+            BROKEN_FILE,
+        ),
+    ];
+
+    assert_eq!(
+        checked_allowing(&[SHOW_7], &[REMOVED_ENTRY], ALLOW).as_deref(),
+        Some(
+            "the tool's twins break crumbkit's twin rule:\n\
+             the opt-out from `twins/no-twin` for `tool books show 7` names tool::books::not_found, which a twin refuses, so it is stale\n\
+             the opt-out from `twins/no-twin` for `tool books show 8` names tool::books::removed_file, which Twins::unprovoked lists, so it is stale\n\
+             the opt-out from `twins/no-twin` for `tool books list --limit 0` names crumbkit::cli::usage, one of crumbkit's codes, which need no twin, so it is stale"
+        )
+    );
+}
+
+#[test]
+fn an_untwinned_opt_out_whose_line_succeeds_or_fails_with_another_code_fails_the_check() {
+    const ALLOW: &[Allow] = &[
+        Allow::untwinned(
+            Failing::new(&UNREADABLE, &["books", "show", "2"]),
+            BROKEN_FILE,
+        ),
+        Allow::untwinned(
+            Failing::new(&UNREADABLE, &["books", "show", "7"]),
+            BROKEN_FILE,
+        ),
+    ];
+
+    assert_eq!(
+        checked_allowing(&[SHOW_7], &[REMOVED_ENTRY], ALLOW).as_deref(),
+        Some(
+            "the tool's twins break crumbkit's twin rule:\n\
+             the opt-out from `twins/no-twin` for `tool books show 2`: the refused line `tool books show 2 --json` must fail with tool::books::unreadable, and it exits with code 0\n\
+             the opt-out from `twins/no-twin` for `tool books show 7`: the refused line `tool books show 7 --json` must fail with tool::books::unreadable, and it fails with tool::books::not_found"
+        )
+    );
 }

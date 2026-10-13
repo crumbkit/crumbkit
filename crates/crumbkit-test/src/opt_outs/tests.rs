@@ -11,7 +11,7 @@ use snapbox::assert::Action;
 use super::check;
 use crate::temp::TempDir;
 use crate::testing::panic_message;
-use crate::{Allow, Budget, Budgets, PathBudgets, Rule};
+use crate::{Allow, Budget, Budgets, Failing, PathBudgets, Rule};
 
 /// The opt-outs of the test tool.
 const ALLOW: &[Allow] = &[
@@ -346,5 +346,26 @@ fn the_report_names_an_example_opt_out_by_its_command_line_with_its_own_costs() 
          \x20 Reason: The output names the day.\n\
          \x20 Cost: The example is not run, so help can show an example that fails.\n\
          \x20 Cost: The example's output is not counted, so the command's output weight is too low when this example prints the most.\n"
+    );
+}
+
+#[test]
+fn the_report_names_an_untwinned_opt_out_by_its_refused_command_line_and_its_cost() {
+    const BROKEN: crumbkit::Code = crumbkit::Code::new("shelf", "books", "broken_file");
+    const ALLOW: &[Allow] = &[Allow::untwinned(
+        Failing::new(&BROKEN, &["books", "show", "--from", "broken file.txt"]),
+        "A broken file causes it, and no single word does.",
+    )];
+    let dir = TempDir::new("opt-outs-untwinned").unwrap();
+
+    run(ALLOW, &dir, Action::Overwrite);
+
+    assert_eq!(
+        read(&dir, "opt-outs.txt"),
+        "shelf has 1 opt-out from crumbkit's conventions.\n\
+         \n\
+         twins/no-twin: shelf books show --from 'broken file.txt'\n\
+         \x20 Reason: A broken file causes it, and no single word does.\n\
+         \x20 Cost: No test shows which word of the command line causes the failure, so a test of the refusal can pass while the command fails for another reason.\n"
     );
 }

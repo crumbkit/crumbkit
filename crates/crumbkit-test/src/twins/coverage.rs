@@ -4,7 +4,8 @@
 use crumbkit::help::Guide;
 use crumbkit::{Code, Spelling};
 
-use super::{tool_name, twin};
+use super::{refuse, tool_name, twin};
+use crate::allow::{Allow, Rule};
 use crate::examples::Examples;
 use crate::guide::command_line;
 use crate::recoveries::{Failing, Unprovoked};
@@ -124,8 +125,13 @@ impl<'a> Twins<'a> {
 ///   whatever an earlier one found;
 /// - a twin whose refused line's code is neither a declared code nor one of
 ///   crumbkit's codes, which it does not run;
-/// - a declared code that no twin refuses and [`Twins::unprovoked`] does
-///   not list;
+/// - a declared code that no twin refuses, [`Twins::unprovoked`] does not
+///   list and no opt-out made with [`Allow::untwinned`] names;
+/// - an untwinned opt-out whose refused line, run with `--json` added,
+///   exits with code 0 or fails with another code;
+/// - an untwinned opt-out that names a code that is not declared, that a
+///   twin refuses, that [`Twins::unprovoked`] lists or that crumbkit owns.
+///   The last three are stale.
 /// - a listed code that is not declared or that a twin refuses.
 ///
 /// Each line runs with `--json` added, as each run of
@@ -138,6 +144,14 @@ impl<'a> Twins<'a> {
 /// A twin may refuse with one of crumbkit's codes, such as
 /// `crumbkit::cli::usage`, and the check requires no twin for crumbkit's
 /// codes.
+///
+/// The check reads the untwinned opt-outs from the
+/// [`Examples::allow`](crate::Examples::allow) list of the settings'
+/// examples. An untwinned opt-out excuses a declared code that no single
+/// word of a command line causes, such as a failure that only a broken file
+/// provokes.
+///
+/// [`Allow::untwinned`]: crate::Allow::untwinned
 ///
 /// # Panics
 ///
@@ -171,11 +185,49 @@ pub fn check_twins(guide: &Guide, twins: &Twins<'_>) {
         }
     }
     let refused = |code: &Code| twins.pairs.iter().any(|pair| pair.refused.code() == code);
-    for &code in &declared {
-        let listed = twins.unprovoked.iter().any(|entry| entry.code() == code);
-        if !listed && !refused(code) {
+    let listed = |code: &Code| twins.unprovoked.iter().any(|entry| entry.code() == code);
+    let mut untwinned = Vec::new();
+    for failing in twins
+        .examples
+        .opt_outs()
+        .iter()
+        .filter(|allow| allow.rule() == Rule::NoTwin)
+        .filter_map(Allow::refused)
+    {
+        let code = failing.code();
+        let text = spelling.spell(code);
+        let line = command_line(&tool_name(&twins.examples), failing.words());
+        let opt_out = format!("the opt-out from `{}` for `{line}`", Rule::NoTwin.id());
+        if crumbkit::codes::ALL.contains(&code) {
             problems.push(format!(
-                "{}: no twin refuses the declared code, and Twins::unprovoked does not list it",
+                "{opt_out} names {text}, one of crumbkit's codes, which need no twin, so it is stale"
+            ));
+        } else if !declared.contains(&code) {
+            problems.push(format!(
+                "{opt_out} names {text}, which is not a declared code"
+            ));
+        } else if refused(code) {
+            problems.push(format!(
+                "{opt_out} names {text}, which a twin refuses, so it is stale"
+            ));
+        } else if listed(code) {
+            problems.push(format!(
+                "{opt_out} names {text}, which Twins::unprovoked lists, so it is stale"
+            ));
+        } else {
+            untwinned.push(code);
+            let words = json_lines(failing.words(), &[]).0;
+            let words: Vec<&str> = words.iter().map(String::as_str).collect();
+            let run = failing.with_words(&words);
+            if let Err(problem) = refuse(guide, &twins.examples, spelling, &run) {
+                problems.push(format!("{opt_out}: {problem}"));
+            }
+        }
+    }
+    for &code in &declared {
+        if !listed(code) && !refused(code) && !untwinned.contains(&code) {
+            problems.push(format!(
+                "{}: no twin refuses the declared code, Twins::unprovoked does not list it, and no opt-out made with Allow::untwinned names it",
                 spelling.spell(code)
             ));
         }
