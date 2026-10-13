@@ -116,7 +116,9 @@ impl Leaf {
     /// A leaf without effects prints no such line, and `commands list`
     /// writes `null`, which a caller reads as a command that may destroy
     /// data. crumbkit-test's `check_effects` fails on a visible leaf without
-    /// effects unless the tool opts out with a reason.
+    /// effects unless the tool opts out with a reason, and its `check_guide`
+    /// fails on a leaf whose effects change something and that has no
+    /// document, unless the leaf passes on a program's exit code.
     #[must_use]
     pub const fn effects(mut self, effects: Effects) -> Self {
         self.effects = Some(effects);

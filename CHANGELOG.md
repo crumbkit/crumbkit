@@ -397,6 +397,10 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   ([ADR-0016]).
 - crumbkit-test: [`check_guide`] fails on an example that types a view flag
   that its leaf does not offer ([ADR-0016]).
+- crumbkit-test: [`check_guide`] fails on a leaf whose effects change
+  something and that declares no document, unless it passes on a program's
+  exit code, because crumbkit refuses an unusable view flag only after the
+  change ([ADR-0016]).
 
 ### Changed
 
