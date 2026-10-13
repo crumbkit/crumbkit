@@ -4,7 +4,7 @@
 use clap::Command;
 use crumbkit::codes::CLI_USAGE;
 use crumbkit::form::{FailureForm, PreparedFailure};
-use crumbkit::help::{Exit, Guide, Leaf, Rename};
+use crumbkit::help::{Exit, Guide, Leaf, RefusalContext, Rename};
 use crumbkit::schemas::SCHEMAS_LIST;
 use crumbkit::{Call, Code, Document, Prose};
 use schemars::{Schema, json_schema};
@@ -32,8 +32,10 @@ impl FailureForm for ErrorForm {
     }
 }
 
-/// The call a refused `books show` command line offers instead.
-const VERSION_CALL: &[Call] = &[Call::new(&["version"])];
+/// Returns the call that a refused `books show` command line offers instead.
+fn version_call(_: &RefusalContext<'_>) -> Vec<Call> {
+    vec![Call::new(&["version"])]
+}
 
 /// The tool's code for crumbkit's usage code.
 const USAGE: Code = Code::new("shelf", "cli", "usage");
@@ -47,7 +49,7 @@ const DECLARING: Guide = Guide::new()
     .exits(&[Exit::new(64, "The command line was refused.").failures(&[&USAGE])])
     .leaves(&[Leaf::new(&["books", "show"])
         .passes_on_exit("the pager")
-        .refusal_alternatives(VERSION_CALL)]);
+        .refusal_alternatives(version_call)]);
 
 #[test]
 fn the_report_lists_declarations_under_customisations_without_a_reason_or_a_cost() {

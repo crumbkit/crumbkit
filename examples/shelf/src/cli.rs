@@ -4,7 +4,7 @@ use std::path::PathBuf;
 
 use clap::{Args, Parser, Subcommand};
 use crumbkit::commands::{COMMANDS_LIST, CommandsList};
-use crumbkit::help::{Effects, Example, Goal, Group, Guide, Leaf, Topic};
+use crumbkit::help::{Effects, Example, Goal, Group, Guide, Leaf, RefusalContext, Topic};
 use crumbkit::pick::Choices;
 use crumbkit::schemas::{SCHEMAS_LIST, SCHEMAS_SHOW, SchemasList, SchemasShow};
 use crumbkit::usage::{SELF_FIGURES_LIST, SELF_USAGE, SelfFigures, SelfUsage};
@@ -44,9 +44,11 @@ static MENU: Menu = Menu::new();
 /// of `shelf books show`.
 const BOOK_IDS: &[Choices] = &[Choices::new("ids", books::choices)];
 
-/// The alternative that a refused `shelf books show` offers after
+/// Returns the alternative that a refused `shelf books show` offers after
 /// crumbkit's own: `shelf books list`, which prints the ids it takes.
-const LIST_BOOKS: &[Call] = &[Call::new(&["books", "list"])];
+fn list_books(_: &RefusalContext<'_>) -> Vec<Call> {
+    vec![Call::new(&["books", "list"])]
+}
 
 /// shelf's goal headings, leaves and help topics. shelf guides only its
 /// root, so `shelf -h` lists `books` under `Browse the catalogue`,
@@ -82,7 +84,7 @@ pub const GUIDE: Guide = Guide::new()
             .effects(Effects::read_only())
             .document(BOOKS_SHOW)
             .choices(BOOK_IDS)
-            .refusal_alternatives(LIST_BOOKS),
+            .refusal_alternatives(list_books),
         Leaf::new(&["books", "summarize"])
             .examples(&[
                 Example::new(&[], "Summarize the whole catalogue"),

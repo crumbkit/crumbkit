@@ -96,7 +96,7 @@ pub(super) fn customisations(command: &Command, guide: &Guide) -> Vec<Customisat
         }
         // The report states that the leaf declares refusal alternatives and
         // leaves out the calls, so this getter is the only line that reads them.
-        if !leaf.get_refusal_alternatives().is_empty() {
+        if leaf.get_refusal_alternatives().is_some() {
             list.push(Customisation {
                 declaration: "refusal-alternatives",
                 applies_to: command_line(command, &leaf.path().join(" ")),

@@ -16,10 +16,12 @@ use crate::{Call, Document, Row, Rows, Shape, Stream, row};
 
 mod column;
 mod passes;
+mod refusal;
 #[cfg(test)]
 mod tests;
 
 pub use column::Column;
+pub use refusal::RefusalContext;
 
 /// The line that the `-h` and `--help` of a leaf set with
 /// [`Leaf::stream`] print after the effects line, in help's wording
@@ -74,9 +76,9 @@ pub struct Leaf {
     /// The program whose exit code the command passes on, or `None` when
     /// the command exits as the guide's exits declare.
     passes_on_exit: Option<&'static str>,
-    /// The calls that a refusal of a command line that names the command
-    /// offers after crumbkit's own alternatives.
-    refusal_alternatives: &'static [Call],
+    /// The function that builds the calls that a refusal of a command line
+    /// that names the command offers after crumbkit's own alternatives.
+    refusal_alternatives: Option<fn(&RefusalContext<'_>) -> Vec<Call>>,
 }
 
 impl Leaf {
@@ -92,7 +94,7 @@ impl Leaf {
             effects: None,
             choices: &[],
             passes_on_exit: None,
-            refusal_alternatives: &[],
+            refusal_alternatives: None,
         }
     }
 
@@ -157,52 +159,6 @@ impl Leaf {
     #[must_use]
     pub const fn get_choices(&self) -> &'static [Choices] {
         self.choices
-    }
-
-    /// Sets the calls that a refusal of a command line that names the
-    /// command offers as alternatives, after the alternatives that crumbkit
-    /// works out itself (ADR-0056). A tool that knows a better next step
-    /// than crumbkit's, such as listing the ids that `books show` takes,
-    /// declares it here. The calls sit in a `const` of their own, because a
-    /// `Call` owns a `Vec`, and Rust does not let a `const` drop a
-    /// temporary that holds one:
-    ///
-    /// ```
-    /// use crumbkit::Call;
-    /// use crumbkit::help::Leaf;
-    ///
-    /// const LIST_BOOKS: &[Call] = &[Call::new(&["books", "list"])];
-    /// const SHOW: Leaf = Leaf::new(&["books", "show"]).refusal_alternatives(LIST_BOOKS);
-    ///
-    /// assert_eq!(SHOW.get_refusal_alternatives(), LIST_BOOKS);
-    /// ```
-    ///
-    /// A command line names the command when its words reach it, so a
-    /// misspelt subcommand below its parent names the parent and offers
-    /// none of these. The refusal keeps its recovery, its code and its exit
-    /// code. A call renders as every recovery call does, and a call that
-    /// does not render, such as one that names a hidden command, is left
-    /// out with a warning in a debug build. crumbkit-test's `check_guide`
-    /// fails on such a call. A leaf without refusal alternatives offers
-    /// crumbkit's alternatives alone.
-    //
-    // RUST-10: a `const` holds only calls made with `Call::new`, because
-    // `Call::arg` and `Call::value` are not `const fn`. A declared call
-    // therefore names a command without arguments. A function on the guide
-    // that builds calls from the refusal replaces this when a tool needs
-    // arguments or values in a declared call.
-    #[must_use]
-    pub const fn refusal_alternatives(mut self, calls: &'static [Call]) -> Self {
-        self.refusal_alternatives = calls;
-        self
-    }
-
-    /// Returns the calls that [`Leaf::refusal_alternatives`] set. The name
-    /// has clap's `get_` prefix, because `refusal_alternatives` is the
-    /// builder method.
-    #[must_use]
-    pub const fn get_refusal_alternatives(&self) -> &'static [Call] {
-        self.refusal_alternatives
     }
 
     /// Sets the document that the command prints, the same constant that

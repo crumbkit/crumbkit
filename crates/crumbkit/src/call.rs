@@ -188,6 +188,55 @@ pub(crate) fn render_built(call: &Call, command: &Command) -> Result<String, Cal
     Ok(text)
 }
 
+/// Returns the words of the command line that `call` names, from the
+/// program name on, as a shell passes the line that
+/// [`RenderCall::render`] prints, or `None` when `call` holds a placeholder
+/// from `Call::arg`, which names no value to parse. `command` is the root
+/// of a tree that `call` already rendered against, so each lookup finds what
+/// the rendering found, and `None` also covers a lookup that would fail.
+pub(crate) fn words(call: &Call, command: &Command) -> Option<Vec<String>> {
+    let mut words = vec![command.get_name().to_owned()];
+    let (path, args) = match call.target() {
+        CallTarget::Help(path) => {
+            words.extend(path.iter().cloned());
+            words.push("-h".to_owned());
+            return Some(words);
+        }
+        CallTarget::Typed(typed) => {
+            words.extend(typed.iter().cloned());
+            return Some(words);
+        }
+        CallTarget::Command { path, args } => (*path, args),
+    };
+    let mut current = command;
+    for &name in path {
+        current = current.find_subcommand(name)?;
+        words.push(current.get_name().to_owned());
+    }
+    for call_arg in args {
+        let CallArg::Value { id, value } = call_arg else {
+            return None;
+        };
+        let arg = current.get_arguments().find(|arg| arg.get_id() == id)?;
+        let hyphen = value.len() > 1 && value.starts_with('-');
+        let flag = match (arg.get_long(), arg.get_short()) {
+            (Some(long), _) => format!("--{long}"),
+            (None, Some(short)) => format!("-{short}"),
+            (None, None) => {
+                words.push(value.clone());
+                continue;
+            }
+        };
+        if hyphen {
+            words.push(format!("{flag}={value}"));
+        } else {
+            words.push(flag);
+            words.push(value.clone());
+        }
+    }
+    Some(words)
+}
+
 /// Returns the visible argument of `command` whose id is `id`. `text` is the
 /// call's text up to the command, which each error names.
 fn find_arg<'a>(command: &'a Command, text: &str, id: &str) -> Result<&'a Arg, CallError> {
