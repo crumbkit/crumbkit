@@ -56,10 +56,11 @@ const SCHEMA: &str = "crumbkit/opt-outs/v1";
 /// behaviour, so they have no reason and no cost (ADR-0056). They are the
 /// guide's failure form, each code rename, each exit that lists one of
 /// crumbkit's codes or its rename, each document whose name is not its
-/// command's path, each leaf that passes on a program's exit code, and
-/// each leaf that declares refusal alternatives. The report spells codes
-/// with colons. The section
-/// is left out when the tool declares nothing.
+/// command's path, each leaf that passes on a program's exit code, each
+/// leaf that declares refusal alternatives, and each command named in
+/// another style that also answers to its dashed form, such as
+/// `reading_lists` for `reading-lists`. The report spells codes with
+/// colons. The section is left out when the tool declares nothing.
 /// A reviewer reads a change to a tool's opt-outs as a change to these two
 /// files, and an agent reads `opt-outs.json` to learn where the tool
 /// departs from crumbkit's conventions.

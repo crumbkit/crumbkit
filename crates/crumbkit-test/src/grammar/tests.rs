@@ -52,26 +52,44 @@ fn a_command_without_subcommands_directly_under_the_tool_fails() {
 }
 
 #[test]
-fn a_resource_name_that_is_not_lowercase_words_joined_by_single_dashes_fails() {
+fn a_resource_or_verb_named_in_another_style_passes_because_it_answers_to_its_dashed_form() {
+    let shelf = Command::new("shelf")
+        .subcommand(Command::new("Books").subcommand(Command::new("export_all")))
+        .subcommand(Command::new("reading_lists").subcommand(Command::new("list")))
+        .subcommand(Command::new("AuthorNotes").subcommand(Command::new("list")));
+
+    check_grammar(&shelf, &["export_all"], &[]);
+}
+
+#[test]
+fn a_resource_name_with_no_dashed_form_or_whose_dashed_form_another_command_takes_fails() {
+    let list = || Command::new("list");
     let mut shelf = Command::new("shelf");
     for name in [
-        "Books",
-        "reading_lists",
         "reading--lists",
         "-books",
         "2books",
+        "Authors",
+        "authors",
+        "Help",
     ] {
-        shelf = shelf.subcommand(Command::new(name).subcommand(Command::new("list")));
+        shelf = shelf.subcommand(Command::new(name).subcommand(list()));
     }
+    shelf = shelf.subcommand(
+        Command::new("books")
+            .subcommand(Command::new("export_all"))
+            .subcommand(Command::new("export-all")),
+    );
 
     assert_eq!(
-        panic_message(|| check_grammar(&shelf, &[], &[])).unwrap(),
+        panic_message(|| check_grammar(&shelf, &["export_all", "export-all"], &[])).unwrap(),
         "the command tree breaks crumbkit's grammar:\n\
-         shelf Books: the resource name `Books` is not lowercase letters and digits in words joined by single dashes, starting with a letter\n\
-         shelf reading_lists: the resource name `reading_lists` is not lowercase letters and digits in words joined by single dashes, starting with a letter\n\
-         shelf reading--lists: the resource name `reading--lists` is not lowercase letters and digits in words joined by single dashes, starting with a letter\n\
-         shelf -books: the resource name `-books` is not lowercase letters and digits in words joined by single dashes, starting with a letter\n\
-         shelf 2books: the resource name `2books` is not lowercase letters and digits in words joined by single dashes, starting with a letter"
+         shelf reading--lists: the resource name `reading--lists` is not lowercase letters and digits in words joined by single dashes, starting with a letter, and maps to no such name\n\
+         shelf -books: the resource name `-books` is not lowercase letters and digits in words joined by single dashes, starting with a letter, and maps to no such name\n\
+         shelf 2books: the resource name `2books` is not lowercase letters and digits in words joined by single dashes, starting with a letter, and maps to no such name\n\
+         shelf Authors: the resource name `Authors` maps to `authors`, which another command beside it has or maps to\n\
+         shelf Help: the resource name `Help` maps to `help`, which crumbkit reserves for asking for help\n\
+         shelf books export_all: the verb name `export_all` maps to `export-all`, which another command beside it has or maps to"
     );
 }
 
@@ -80,11 +98,11 @@ fn a_passed_verb_that_is_built_in_or_badly_formed_fails() {
     let shelf = Command::new("shelf");
 
     assert_eq!(
-        panic_message(|| check_grammar(&shelf, &["show", "Export", ""], &[])).unwrap(),
+        panic_message(|| check_grammar(&shelf, &["show", "2export", ""], &[])).unwrap(),
         "the command tree breaks crumbkit's grammar:\n\
          the tool passes the verb `show`, which is built in, and a tool passes only its other verbs\n\
-         the verb `Export` is not lowercase letters and digits in words joined by single dashes, starting with a letter\n\
-         the verb `` is not lowercase letters and digits in words joined by single dashes, starting with a letter"
+         the verb `2export` is not lowercase letters and digits in words joined by single dashes, starting with a letter, and maps to no such name\n\
+         the verb `` is not lowercase letters and digits in words joined by single dashes, starting with a letter, and maps to no such name"
     );
 }
 
@@ -136,14 +154,14 @@ fn a_leaf_directly_under_the_tool_passes_when_an_opt_out_names_it_and_its_other_
 }
 
 #[test]
-fn a_resource_keeps_its_name_when_an_opt_out_names_it() {
+fn a_resource_without_a_dashed_form_passes_when_an_opt_out_names_it() {
     const ALLOW: &[Allow] = &[Allow::new(
         Rule::ResourceName,
-        "reading_lists",
+        "2fa-keys",
         "The name matches the service's own API.",
     )];
-    let shelf = Command::new("shelf")
-        .subcommand(Command::new("reading_lists").subcommand(Command::new("list")));
+    let shelf =
+        Command::new("shelf").subcommand(Command::new("2fa-keys").subcommand(Command::new("list")));
 
     check_grammar(&shelf, &[], ALLOW);
 }

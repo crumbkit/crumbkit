@@ -415,6 +415,10 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   calls from a refused command line naming the leaf, such as the line with
   the refused value corrected, and the refusal offers each call whose line
   parses after crumbkit's own alternatives ([ADR-0056]).
+- crumbkit: a command named in another style, such as `reading_lists`,
+  also answers to its dashed form, such as `reading-lists`, in [`parse`],
+  completion and [`command_path`], and [`dashed_form`] returns that form
+  ([ADR-0015]).
 
 ### Changed
 
@@ -617,6 +621,12 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   document without the envelope ([ADR-0016]).
 - crumbkit: `complete_to` takes the name of the completion variable, which
   the registration script sets ([ADR-0048]).
+- crumbkit-test: [`check_grammar`] accepts a resource or verb named in
+  another style that answers to its dashed form, and asks for an opt-out of
+  `Rule::ResourceName` only for a resource without one ([ADR-0015]).
+- crumbkit-test: [`check_opt_outs`] lists each command named in another
+  style as a `resource-name` or `verb-name` customisation with its dashed
+  form ([ADR-0056]).
 
 ### Removed
 
@@ -737,6 +747,7 @@ rustdoc, or at its decision record. -->
 [`report`]: crates/crumbkit-core/src/report.rs
 [`parse`]: crates/crumbkit/src/parse.rs
 [`command_path`]: crates/crumbkit/src/parse/walk.rs
+[`dashed_form`]: crates/crumbkit/src/dashed.rs
 [`RuntimeFailing`]: crates/crumbkit-test/src/recoveries/runtime.rs
 [`Stop`]: crates/crumbkit/src/parse/stop.rs
 [`usage::ended`]: crates/crumbkit/src/usage.rs

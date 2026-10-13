@@ -150,3 +150,33 @@ fn a_cargo_subcommand_names_its_documents_after_the_path_below_its_own_name() {
 
     assert!(customisations(&Command::new("cargo"), &GUIDE).is_empty());
 }
+
+#[test]
+fn a_command_named_in_another_style_is_a_customisation_that_states_its_dashed_form() {
+    let shelf = Command::new("shelf").subcommand(
+        Command::new("reading_lists")
+            .subcommand(Command::new("ExportAll"))
+            .subcommand(Command::new("list")),
+    );
+
+    let listed: Vec<_> = customisations(&shelf, &Guide::new())
+        .into_iter()
+        .map(|entry| (entry.declaration, entry.applies_to, entry.declares))
+        .collect();
+
+    assert_eq!(
+        listed,
+        [
+            (
+                "resource-name",
+                "shelf reading_lists".to_owned(),
+                "The command also answers to reading-lists.".to_owned()
+            ),
+            (
+                "verb-name",
+                "shelf reading_lists ExportAll".to_owned(),
+                "The command also answers to export-all.".to_owned()
+            ),
+        ]
+    );
+}

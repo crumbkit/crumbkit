@@ -9,6 +9,7 @@ use serde::Serialize;
 
 use crate::allow::command_line;
 use crate::documents::declared_name;
+use crate::tree;
 
 /// One declaration as the report shows it.
 #[derive(Serialize)]
@@ -27,10 +28,14 @@ pub(super) struct Customisation {
 /// that lists one of crumbkit's codes or the tool's rename of it, and then
 /// for each leaf in guide order its document's name when the leaf's path
 /// gives another, the program whose exit code it passes on, and whether it
-/// declares refusal alternatives. A declaration that a later change adds
-/// joins this list beside the declarations of the same scope: a guide
-/// setting before the leaves, and a leaf's declaration after its
-/// refusal-alternatives entry. The completion variable is not listed,
+/// declares refusal alternatives, and last each command in the tree, hidden
+/// ones included, whose name is not in crumbkit's dashed form and that
+/// answers to its dashed form (`crumbkit::dashed_form`), as a
+/// `resource-name` for a command with subcommands and a `verb-name` for
+/// one without. A declaration that a later change adds joins this list
+/// beside the declarations of the same scope: a guide setting before the
+/// leaves, a leaf's declaration after its refusal-alternatives entry, and a
+/// command's name after the leaves. The completion variable is not listed,
 /// because `complete_with` sets it for the process and the guide does not
 /// hold it.
 pub(super) fn customisations(command: &Command, guide: &Guide) -> Vec<Customisation> {
@@ -103,6 +108,23 @@ pub(super) fn customisations(command: &Command, guide: &Guide) -> Vec<Customisat
                 declares: "A refused command line for this command also offers the tool's own \
                            alternatives."
                     .to_owned(),
+            });
+        }
+    }
+    for visit in tree::walk(command) {
+        let Some(parent) = visit.parent() else {
+            continue;
+        };
+        let name = visit.command().get_name();
+        if let Some(form) = crumbkit::dashed_form(parent, name) {
+            list.push(Customisation {
+                declaration: if visit.command().has_subcommands() {
+                    "resource-name"
+                } else {
+                    "verb-name"
+                },
+                applies_to: visit.path().to_owned(),
+                declares: format!("The command also answers to {form}."),
             });
         }
     }
