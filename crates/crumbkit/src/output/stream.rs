@@ -11,11 +11,10 @@ use clap::Command;
 use super::budget::{Over, OverBudget};
 use super::dry_run::DRY_RUN_LINE;
 use super::envelope::{Extras, Selected, write_document};
-use super::failure::{self, PreparedFailure};
+use super::failure::{self, PreparedFailure, Printing};
 use super::{Output, fields, table, unwrapped};
-use crate::form::FailureForm;
-use crate::help::Exit;
-use crate::{AsFailure, Document, Failure, Row, Sink, Spelling, Stream, codes, exit};
+use crate::help::rename;
+use crate::{AsFailure, Document, Failure, Row, Sink, Spelling, Stream, codes};
 
 #[cfg(test)]
 mod tests;
@@ -30,8 +29,9 @@ mod tests;
 ///
 /// # Errors
 ///
-/// It returns `Err` with exit code 2 after it prints the refusal when
-/// `--fields` names a field that `R` does not have. The tool's `main`
+/// It returns `Err` with the exit code of a refused command line, 2 unless
+/// the guide lists another, after it prints the refusal when `--fields`
+/// names a field that `R` does not have. The tool's `main`
 /// returns that exit code.
 pub fn stream<R: Row>(
     output: &mut Output,
@@ -68,8 +68,9 @@ pub fn stream<R: Row>(
 /// The stream prints within the bytes that [`Output::budget`] has left when
 /// it opens. Its first item always prints. A later item whose line would
 /// pass the budget does not print: the stream prints the failure
-/// `crumbkit::output::over_budget`, or the document's own over-budget code,
-/// in its place, stops, and ends with exit code 1 (ADR-0046). A tool whose
+/// `crumbkit::output::over_budget`, or the guide's rename of it, in its
+/// place, stops, and ends with exit code 1 unless the guide lists another
+/// for the code (ADR-0046). A tool whose
 /// stream runs for a long time sets a larger budget with
 /// [`Guide::output_budget`](crate::help::Guide::output_budget).
 ///
@@ -123,8 +124,9 @@ pub fn stream<R: Row>(
 ///
 /// # Errors
 ///
-/// It returns `Err` with exit code 2 when `--fields` names a field that `R`
-/// does not have. The refusal prints as [`finish_to`](crate::finish_to)
+/// It returns `Err` with the exit code of a refused command line, 2 unless
+/// the guide lists another, when `--fields` names a field that `R` does not
+/// have. The refusal prints as [`finish_to`](crate::finish_to)
 /// prints it, and nothing of the stream prints.
 pub fn stream_to<'a, R: Row, O: Write, W: Write>(
     sink: &'a mut Sink<O, W>,
@@ -170,14 +172,13 @@ pub struct Streaming<'a, R, O, W> {
     command: Option<&'a mut Command>,
     /// The spelling of the failures' codes.
     spelling: Spelling,
-    /// The tool's own form of a failure, or `None` for crumbkit's form.
-    form: Option<&'static dyn FailureForm>,
     /// The stream's document.
     document: Document<Stream<R>>,
     /// Whether the stream printed a failure.
     failed: bool,
-    /// The exit codes that the tool's guide declares (ADR-0037).
-    exits: &'static [Exit],
+    /// What the tool's guide decides about failures: the form, the exit
+    /// codes (ADR-0037) and the renames of crumbkit's codes (ADR-0056).
+    printing: Printing,
     /// The exit code of the stream's first failure, which is 1 until a
     /// failure prints.
     exit: u8,
@@ -221,6 +222,7 @@ fn open<R: Row, O: Write, W: Write>(
     document: Document<Stream<R>>,
 ) -> Result<Streaming<'_, R, O, W>, ExitCode> {
     let budget = output.budget();
+    let printing = output.printing();
     let Output {
         json,
         fields,
@@ -228,8 +230,6 @@ fn open<R: Row, O: Write, W: Write>(
         full,
         command,
         dry_run,
-        failure_form,
-        exits,
         ..
     } = output;
     let columns: Vec<&str> = if fields.is_empty() {
@@ -249,10 +249,9 @@ fn open<R: Row, O: Write, W: Write>(
         columns,
         command: command.as_mut(),
         spelling,
-        form: *failure_form,
+        printing,
         document,
         failed: false,
-        exits,
         exit: 1,
         state: State::Open,
         line: Vec::new(),
@@ -302,10 +301,7 @@ impl<R: Row, O: Write, W: Write> Streaming<'_, R, O, W> {
         }
         if self.items > 0 && self.sent.saturating_add(self.line.len()) > self.budget {
             self.line.clear();
-            let code = self
-                .document
-                .over_budget_code()
-                .unwrap_or(&codes::OUTPUT_OVER_BUDGET);
+            let code = rename::printed(self.printing.renames, &codes::OUTPUT_OVER_BUDGET);
             let over = OverBudget {
                 code,
                 budget: self.budget,
@@ -474,6 +470,7 @@ impl<R: Row, O: Write, W: Write> Streaming<'_, R, O, W> {
         let document = PreparedFailure::new(
             failure,
             self.spelling,
+            self.printing.renames,
             self.command.as_deref_mut(),
             &mut self.err,
         );
@@ -482,14 +479,14 @@ impl<R: Row, O: Write, W: Write> Streaming<'_, R, O, W> {
         if !self.failed {
             #[cfg(feature = "tracing")]
             crate::trace::spans::failed(document.code());
-            self.exit = exit::failed(self.exits, failure.code());
+            self.exit = self.printing.exit(failure.code());
         }
         self.failed = true;
         if self.json && self.document.has_envelope() {
             // A failure document written to a `Vec` never fails, and a closed
             // stream prints nothing more.
             if self.state == State::Open
-                && failure::write_json(&mut self.line, self.form, None, &document).is_ok()
+                && failure::write_json(&mut self.line, self.printing.form, None, &document).is_ok()
             {
                 let _ = self.send();
             }
@@ -497,27 +494,33 @@ impl<R: Row, O: Write, W: Write> Streaming<'_, R, O, W> {
         } else {
             // Standard error is the last place to report anything, so a
             // failure to write there goes unreported.
-            let _ = failure::write_text(&mut self.err, self.form, &document);
+            let _ = failure::write_text(&mut self.err, self.printing.form, &document);
         }
     }
 
-    /// Refuses the stream with `refusal`, and returns exit code 2.
+    /// Refuses the stream with `refusal`, and returns the exit code of the
+    /// usage code, which is 2 unless the guide lists another.
     fn refuse(mut self, refusal: &crate::refusal::Refusal) -> ExitCode {
         #[cfg(feature = "tracing")]
         let span = self.span.clone();
         #[cfg(feature = "tracing")]
         let _entered = span.enter();
+        // A stream writes each document on one line, whatever the guide's
+        // layout.
+        let printing = Printing {
+            layout: None,
+            ..self.printing
+        };
         let code = refusal.print(
             &mut Sink::new(&mut self.line, &mut self.err),
             self.json,
             self.spelling,
-            self.form,
-            None,
+            printing,
             self.command.as_deref_mut(),
         );
         let _ = self.send();
-        self.record(exit::number(code), false);
-        code
+        self.record(code, false);
+        ExitCode::from(code)
     }
 
     /// Writes the line to the output writer, flushes it and clears the line.

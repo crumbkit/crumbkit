@@ -160,23 +160,19 @@ fn an_untyped_document_keeps_the_choice_of_envelope() {
 }
 
 #[test]
-fn a_new_document_has_no_over_budget_code_of_its_own_and_may_refuse_its_first_answer() {
+fn a_new_document_may_refuse_its_first_answer() {
     let document: Document<()> = Document::new("shelf", "books-list", 1, "Books.");
 
-    assert!(document.over_budget_code().is_none());
     assert!(!document.always_prints_first());
 }
 
 #[test]
-fn an_untyped_document_keeps_its_over_budget_code_and_its_first_answer_setting() {
-    const TOO_BIG: crate::Code = crate::Code::new("shelf", "books", "too_big");
-    let document: Document<u32> = Document::new("shelf", "books-show", 1, "Books.")
-        .over_budget(&TOO_BIG)
-        .always_print_first();
+fn an_untyped_document_keeps_its_first_answer_setting() {
+    let document: Document<u32> =
+        Document::new("shelf", "books-show", 1, "Books.").always_print_first();
 
     let untyped = document.untyped();
 
-    assert_eq!(untyped.over_budget_code(), Some(&TOO_BIG));
     assert!(untyped.always_prints_first());
 }
 

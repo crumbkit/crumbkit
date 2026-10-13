@@ -9,7 +9,7 @@ use super::dry_run::DRY_RUN_LINE;
 use super::failure::{self, PreparedFailure};
 use super::result::{Answer, write_result};
 use super::{Output, fields};
-use crate::{AsFailure, Document, Rows, Sink, Spelling, exit};
+use crate::{AsFailure, Document, Rows, Sink, Spelling};
 
 /// Prints the result to `sink` and returns the exit code as a number, as
 /// [`finish_to`] describes, and whether the output budget cut a listing or a
@@ -25,34 +25,30 @@ pub(super) fn respond<T: Rows, E: AsFailure, O: Write, W: Write, R>(
     document: Document<T>,
     result: Result<T, E>,
 ) -> (u8, bool) {
+    let printing = output.printing();
     if let Some(refusal) = fields::flags_refusal::<T>(output) {
-        let form = output.failure_form;
-        let layout = output.json_layout;
         let code = refusal.print(
             sink,
             output.json,
             spelling,
-            form,
-            layout,
+            printing,
             output.command.as_mut(),
         );
-        return (exit::number(code), false);
+        return (code, false);
     }
     let value = match &result {
         Ok(value) => value,
         Err(error) => {
             let command = output.command.as_mut();
-            let form = output.failure_form;
             failure::print(
                 sink,
                 output.json,
                 spelling,
-                form,
-                output.json_layout,
+                printing,
                 error.as_failure(),
                 command,
             );
-            return (exit::failed(output.exits, error.as_failure().code()), false);
+            return (printing.exit(error.as_failure().code()), false);
         }
     };
     // A batch's failures are read once, so its JSON document and its text
@@ -61,7 +57,13 @@ pub(super) fn respond<T: Rows, E: AsFailure, O: Write, W: Write, R>(
         failures
             .into_iter()
             .map(|failure| {
-                PreparedFailure::new(failure, spelling, output.command.as_mut(), &mut sink.err)
+                PreparedFailure::new(
+                    failure,
+                    spelling,
+                    printing.renames,
+                    output.command.as_mut(),
+                    &mut sink.err,
+                )
             })
             .collect()
     });
@@ -141,13 +143,14 @@ fn print_failures<T: Rows, O: Write, W: Write, R>(
         }
         if let Some(over) = left_out {
             let command = output.command.as_mut();
-            let over = PreparedFailure::new(over, spelling, command, &mut sink.err);
+            let renames = output.renames;
+            let over = PreparedFailure::new(over, spelling, renames, command, &mut sink.err);
             let _ = failure::write_text(&mut sink.err, output.failure_form, &over);
         }
     }
     match (failures.first(), left_out) {
-        (Some(first), _) => exit::failed(output.exits, first.failure().code()),
-        (None, Some(over)) => exit::failed(output.exits, over.code),
+        (Some(first), _) => output.printing().exit(first.failure().code()),
+        (None, Some(over)) => output.printing().exit(over.code),
         (None, None) => code,
     }
 }
@@ -177,17 +180,16 @@ fn answered<'a, O: Write, W: Write, R>(
         }
         Answer::Partial(over) => (1, false, Some(over)),
         Answer::Refused(over) => {
-            let form = output.failure_form;
+            let printing = output.printing();
             failure::print(
                 sink,
                 output.json,
                 spelling,
-                form,
-                output.json_layout,
+                printing,
                 over,
                 output.command.as_mut(),
             );
-            (exit::failed(output.exits, over.code), false, None)
+            (printing.exit(over.code), false, None)
         }
     }
 }

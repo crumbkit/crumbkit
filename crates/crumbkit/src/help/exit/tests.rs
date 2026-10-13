@@ -78,3 +78,31 @@ fn the_note_names_each_of_the_tool_s_codes() {
         "Exit codes: 0, 1 and 2 are crumbkit's, and shelf adds 3, 4 and 124. `shelf help exit-codes` describes them."
     );
 }
+
+/// A guide that gives a refused command line 64 in place of 2.
+const USAGE_64: Guide = Guide::new().exits(&[Exit::new(
+    64,
+    "The command line was refused. The refusal names the help to read.",
+)
+.failures(&[&crate::codes::CLI_USAGE])]);
+
+#[test]
+fn the_topic_leaves_out_crumbkit_s_2_when_the_guide_gives_a_refusal_another_code() {
+    let expected = "\
+Exit codes
+  0   The command did what it was asked.
+  1   The command failed. The failure names its code and the next step.
+  64  The command line was refused. The refusal names the help to read.
+
+A shell reports 126 and above for its own reasons, such as 127 when it cannot find shelf and 130 when Ctrl-C ends it.
+";
+    assert_eq!(text("shelf", &USAGE_64), expected);
+}
+
+#[test]
+fn the_note_names_0_and_1_as_crumbkit_s_when_the_guide_gives_a_refusal_another_code() {
+    assert_eq!(
+        note("shelf", &USAGE_64),
+        "Exit codes: 0 and 1 are crumbkit's, and shelf adds 64. `shelf help exit-codes` describes them."
+    );
+}

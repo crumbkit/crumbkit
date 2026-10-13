@@ -12,6 +12,7 @@ use super::envelope::{Extras, Failures, Selected, SelectedRows, write_document};
 use super::failure::PreparedFailure;
 use super::table::Table;
 use super::{Output, layout, listing, prose};
+use crate::help::rename;
 use crate::{Code, Document, JsonLayout, Row, Rows, Shape, Spelling, codes};
 
 /// What [`write_result`] printed of a result.
@@ -64,9 +65,9 @@ pub(super) fn write_result<T: Rows>(
     failures: Option<&[PreparedFailure<'_>]>,
 ) -> io::Result<(Answer, usize)> {
     let budget = output.budget();
-    let code = document
-        .over_budget_code()
-        .unwrap_or(&codes::OUTPUT_OVER_BUDGET);
+    // The code is the tool's rename when the guide has one, so the cut,
+    // the failure, the usage log and the trace all carry it.
+    let code = rename::printed(output.renames, &codes::OUTPUT_OVER_BUDGET);
     if let Some(bytes) = value.bytes().filter(|_| !output.json) {
         // The text of bytes is their own length, so it is measured without
         // a buffer.
@@ -375,7 +376,9 @@ impl<'a, T: Rows> Prepared<'a, T> {
             budget,
             over: Over::Batch(rows),
         };
-        let most = in_document.then(|| PreparedFailure::new(&most, spelling, None, err));
+        // `code` is already the code that the run prints, so no rename
+        // applies to it.
+        let most = in_document.then(|| PreparedFailure::new(&most, spelling, &[], None, err));
         let shown = budget::largest(1, rows - 1, |shown| {
             let failures = Failures {
                 listed,
@@ -391,7 +394,8 @@ impl<'a, T: Rows> Prepared<'a, T> {
             over: Over::Batch(rows - shown),
         };
         let bytes = {
-            let prepared = in_document.then(|| PreparedFailure::new(&over, spelling, None, err));
+            let prepared =
+                in_document.then(|| PreparedFailure::new(&over, spelling, &[], None, err));
             let failures = Failures {
                 listed,
                 over: prepared.as_ref(),

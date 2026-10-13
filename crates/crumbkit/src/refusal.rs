@@ -1,18 +1,17 @@
 //! A refusal: a command line that clap refused, or a flag value that crumbkit
-//! refused, printed as a failure with one fixed code and exit code 2.
+//! refused, printed as a failure with crumbkit's usage code, or the tool's
+//! rename of it, and exit code 2 unless the guide lists another.
 
 use std::ffi::OsString;
 use std::fmt;
 use std::io::Write;
-use std::process::ExitCode;
 
 use clap::Command;
 use clap::error::{ContextKind, ContextValue, ErrorKind};
 
-use crate::form::FailureForm;
-use crate::output::failure;
+use crate::output::failure::{self, Printing};
 use crate::page::LimitAbove;
-use crate::{Call, Code, Failure, Field, JsonLayout, Recovery, Sink, Spelling, codes};
+use crate::{Call, Code, Failure, Field, Recovery, Sink, Spelling, codes};
 
 /// A refused command line or flag value, as a [`Failure`] with the code
 /// `crumbkit::cli::usage`.
@@ -93,21 +92,21 @@ impl Refusal {
     }
 
     /// Prints the refusal to `sink` as `finish` prints a failure, as text or
-    /// with `json` as one JSON document in `layout`, in `form` or in
-    /// crumbkit's form when `form` is `None`, and returns exit code 2 (ADR-0002). The recovery
-    /// renders against `command`, so it prints as having no next step when
-    /// there is no command.
+    /// with `json` as one JSON document, as `printing` decides, and returns
+    /// the exit code that `printing` gives the usage code: 2 unless the
+    /// guide lists another (ADR-0002). The recovery renders against
+    /// `command`, so it prints as having no next step when there is no
+    /// command.
     pub(crate) fn print<O: Write, E: Write, R>(
         &self,
         sink: &mut Sink<O, E, R>,
         json: bool,
         spelling: Spelling,
-        form: Option<&dyn FailureForm>,
-        layout: Option<JsonLayout>,
+        printing: Printing,
         command: Option<&mut Command>,
-    ) -> ExitCode {
-        failure::print(sink, json, spelling, form, layout, self, command);
-        ExitCode::from(2)
+    ) -> u8 {
+        failure::print(sink, json, spelling, printing, self, command);
+        printing.exit(&codes::CLI_USAGE)
     }
 }
 

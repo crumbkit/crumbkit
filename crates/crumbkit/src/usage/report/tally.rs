@@ -24,8 +24,11 @@ const SLOW: u64 = 1_000;
 /// Its memory grows with the number of records, by two numbers for each
 /// run of a command and what each session keeps of its earlier runs, and
 /// never holds a record's line.
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub(in crate::usage) struct Tally {
+    /// The exit code of a refused command line, which the tool's guide
+    /// decides and which is 2 unless the guide lists another (ADR-0002).
+    refusal: u8,
     /// The number of runs.
     runs: u64,
     /// The number of records that the reader skipped.
@@ -59,7 +62,8 @@ struct Command {
     nearest: BTreeMap<String, u64>,
     /// The failed runs.
     failed: u64,
-    /// The runs that exited with each code from 3, by the code.
+    /// The runs that exited with each code from 3 other than the
+    /// refusal's, by the code.
     exits: BTreeMap<u8, u64>,
     /// The wall time of each run that did not print a help page.
     ms: Vec<u64>,
@@ -74,6 +78,21 @@ struct Command {
 }
 
 impl Tally {
+    /// Returns an empty tally that counts a run that exited with `refusal`
+    /// as refused.
+    pub(in crate::usage) fn new(refusal: u8) -> Self {
+        Self {
+            refusal,
+            runs: 0,
+            skipped: 0,
+            sessions: HashMap::new(),
+            found: Found::default(),
+            callers: BTreeMap::new(),
+            commands: BTreeMap::new(),
+            tolerated: BTreeMap::new(),
+        }
+    }
+
     /// Adds the run that `entry` records.
     pub(super) fn add(&mut self, entry: &Entry) {
         self.runs += 1;
@@ -106,7 +125,7 @@ impl Tally {
         if let Some(bytes) = entry.out_bytes {
             command.out_bytes.push(bytes);
         }
-        if entry.refused() {
+        if entry.exit == Some(self.refusal) {
             command.refused += 1;
             if let Some(flag) = &entry.nearest {
                 *command.nearest.entry(flag.clone()).or_default() += 1;
@@ -115,7 +134,10 @@ impl Tally {
         if entry.failure().is_some() {
             command.failed += 1;
         }
-        if let Some(exit) = entry.exit.filter(|exit| *exit >= 3) {
+        if let Some(exit) = entry
+            .exit
+            .filter(|exit| *exit >= 3 && *exit != self.refusal)
+        {
             *command.exits.entry(exit).or_default() += 1;
         }
         command.full += u64::from(entry.typed("--full"));

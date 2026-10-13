@@ -252,7 +252,7 @@ fn report_from(
     since: Duration,
     now: SystemTime,
 ) -> Listing<FindingRow, UsageSummary> {
-    let (report, summary) = summarize(tool, log, since, now);
+    let (report, summary) = summarize(tool, guide, log, since, now);
     let rows: Vec<FindingRow> = report
         .findings
         .iter()
@@ -269,9 +269,12 @@ fn report_from(
 }
 
 /// Returns the report of the runs in `log` that ended in the `since`
-/// duration before `now`, checked against `tool`, and its summary.
+/// duration before `now`, checked against `tool`, and its summary. A run
+/// that exited with the code that `guide` gives a refused command line
+/// counts as refused.
 pub(super) fn summarize(
     tool: &Command,
+    guide: &Guide,
     log: Option<impl BufRead>,
     since: Duration,
     now: SystemTime,
@@ -282,7 +285,7 @@ pub(super) fn summarize(
     let start_ms = start.duration_since(UNIX_EPOCH).map_or(0, |elapsed| {
         u64::try_from(elapsed.as_millis()).unwrap_or(u64::MAX)
     });
-    let mut tally = Tally::default();
+    let mut tally = Tally::new(guide.failure_exit(&crate::codes::CLI_USAGE));
     if let Some(log) = log {
         read(log, start_ms, tool, &mut tally);
     }

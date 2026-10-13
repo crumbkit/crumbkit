@@ -32,7 +32,7 @@ fn line(at: u64, command: &str) -> String {
 /// Returns the report of `log` for the runs that ended at or after `since`
 /// seconds after the Unix epoch.
 fn report(log: &[u8], since: u64) -> Report {
-    let mut tally = Tally::default();
+    let mut tally = Tally::new(2);
     read(Cursor::new(log), since * 1000, &tool(), &mut tally);
     tally.report()
 }
@@ -119,7 +119,7 @@ fn a_record_that_names_what_the_tool_lacks_is_counted_as_skipped_and_left_out() 
 #[test]
 fn the_reader_reads_through_a_small_buffer_as_through_a_large_one() {
     let log = [line(1, "books list"), line(2, "books show")].concat();
-    let mut tally = Tally::default();
+    let mut tally = Tally::new(2);
 
     read(
         BufReader::with_capacity(7, log.as_bytes()),
@@ -276,7 +276,7 @@ proptest! {
             (Just(runs), 0..=len)
         }),
     ) {
-        let mut tally = Tally::default();
+        let mut tally = Tally::new(2);
         let tool = tool();
         read(Cursor::new(log_of(&runs[..split])), 0, &tool, &mut tally);
         read(Cursor::new(log_of(&runs[split..])), 0, &tool, &mut tally);

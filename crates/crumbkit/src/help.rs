@@ -11,6 +11,7 @@ mod format;
 pub(crate) mod leaf;
 mod list;
 mod output;
+pub(crate) mod rename;
 mod runtime;
 mod terminal;
 pub(crate) mod topic;
@@ -25,6 +26,7 @@ pub use self::effects::{Effects, Items};
 pub use self::exit::Exit;
 pub use self::format::FileFormat;
 pub use self::leaf::{BYTES_LINE, Column, Example, Leaf, STREAM_LINE};
+pub use self::rename::Rename;
 pub use self::runtime::RuntimeLeaf;
 pub use self::topic::Topic;
 pub use self::words::quote;
@@ -97,6 +99,8 @@ pub struct Guide {
     documents: &'static [FileFormat],
     /// The tool's own exit codes, which `<tool> help exit-codes` lists.
     exits: &'static [Exit],
+    /// The tool's own codes for crumbkit's failures.
+    codes: &'static [Rename],
     /// The function that returns the names of a person's aliases, which
     /// the root's help names, or `None` when help names no aliases.
     personal_aliases: Option<fn(&Command) -> Vec<String>>,
@@ -131,6 +135,7 @@ impl Guide {
             topics: &[],
             documents: &[],
             exits: &[],
+            codes: &[],
             personal_aliases: None,
             picker: None,
             failure_form: None,
@@ -201,7 +206,10 @@ impl Guide {
     }
 
     /// Sets the exit codes that the tool returns besides crumbkit's 0, 1
-    /// and 2, in the order that `<tool> help exit-codes` lists them.
+    /// and 2, in the order that `<tool> help exit-codes` lists them. An
+    /// exit can list the tool's failure codes and crumbkit's, so a tool
+    /// gives a refused command line its own number, such as 64, by listing
+    /// `crumbkit::codes::CLI_USAGE` or the tool's rename of it (ADR-0056).
     #[must_use]
     pub const fn exits(mut self, exits: &'static [Exit]) -> Self {
         self.exits = exits;

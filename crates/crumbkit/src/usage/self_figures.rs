@@ -132,7 +132,7 @@ fn figures_from(
     now: SystemTime,
     limit: Option<usize>,
 ) -> Listing<FiguresRow, UsageSummary> {
-    let (report, summary) = summarize(tool, log, since, now);
+    let (report, summary) = summarize(tool, guide, log, since, now);
     let rows = report
         .commands
         .iter()

@@ -11,7 +11,9 @@ use serde::ser::{SerializeMap, Serializer};
 use super::layout;
 use super::table::escape_controls;
 use crate::form::FailureForm;
-use crate::{Document, Failure, FieldValue, JsonLayout, Recovery, Sink, Spelling};
+use crate::help::rename::{self, Rename};
+use crate::help::{Exit, Guide};
+use crate::{Code, Document, Failure, FieldValue, JsonLayout, Recovery, Sink, Spelling};
 
 #[cfg(feature = "miette")]
 pub(crate) mod label;
@@ -40,28 +42,62 @@ pub(crate) const DOCUMENT: Document<()> = FAILURE;
 /// rendered, because no command is set or the call does not resolve.
 const UNAVAILABLE: &str = "the suggested command is not available";
 
+/// What the guide decides about each failure that crumbkit prints: the
+/// tool's form, the layout of a JSON document, the exit codes and the
+/// renames of crumbkit's codes.
+#[derive(Clone, Copy, Debug)]
+pub(crate) struct Printing {
+    /// The tool's own form of a failure, or `None` for crumbkit's form.
+    pub(crate) form: Option<&'static dyn FailureForm>,
+    /// The layout of a JSON document, or `None` for one line.
+    pub(crate) layout: Option<JsonLayout>,
+    /// The exit codes that the tool's guide declares (ADR-0037).
+    pub(crate) exits: &'static [Exit],
+    /// The tool's own codes for crumbkit's failures (ADR-0056).
+    pub(crate) renames: &'static [Rename],
+}
+
+impl Printing {
+    /// Returns what `guide` decides about failures.
+    pub(crate) fn of(guide: &Guide) -> Self {
+        Self {
+            form: guide.get_failure_form(),
+            layout: guide.layout(),
+            exits: guide.get_exits(),
+            renames: guide.get_codes(),
+        }
+    }
+
+    /// Returns the exit code of a run whose first failure has `code`, as
+    /// [`Guide::failure_exit`] describes.
+    pub(crate) fn exit(self, code: &'static Code) -> u8 {
+        rename::failure_exit(self.exits, self.renames, code)
+    }
+}
+
 /// Prints `failure` to `sink`: as text on the error writer, or with `json`
-/// as one `crumbkit/failure/v1` document in `layout` on the output writer.
-/// A `Recovery::Run` call renders against `command`, which builds the
-/// branch that the call names.
+/// as one document on the output writer, in the form and the layout that
+/// `printing` names, with the code that `printing` prints for it. A
+/// `Recovery::Run` call renders against `command`, which builds the branch
+/// that the call names.
 ///
-/// The caller returns the exit code: 1 from `finish` for a command that
-/// failed, and 2 for a refusal (ADR-0002). The flags `--long`, `--full` and
-/// `--fields` do not change a failure.
+/// The caller returns the exit code, which `printing` gives for the
+/// failure's code (ADR-0002). The flags `--long`, `--full` and `--fields`
+/// do not change a failure.
 pub(crate) fn print<O: Write, W: Write, R>(
     sink: &mut Sink<O, W, R>,
     json: bool,
     spelling: Spelling,
-    form: Option<&dyn FailureForm>,
-    layout: Option<JsonLayout>,
+    printing: Printing,
     failure: &dyn Failure,
     command: Option<&mut Command>,
 ) {
-    let document = PreparedFailure::new(failure, spelling, command, &mut sink.err);
+    let document =
+        PreparedFailure::new(failure, spelling, printing.renames, command, &mut sink.err);
     #[cfg(feature = "tracing")]
     crate::trace::spans::failed(document.code());
     if json {
-        if let Err(error) = write_json(&mut sink.out, form, layout, &document) {
+        if let Err(error) = write_json(&mut sink.out, printing.form, printing.layout, &document) {
             // A reader that closed the pipe early has stopped reading, so
             // only another write error is reported. The process is already
             // failing, and a failed report has nowhere else to go.
@@ -72,7 +108,7 @@ pub(crate) fn print<O: Write, W: Write, R>(
     } else {
         // Standard error is the last place to report anything, so a failure
         // to write there goes unreported.
-        let _ = write_text(&mut sink.err, form, &document);
+        let _ = write_text(&mut sink.err, printing.form, &document);
     }
 }
 
@@ -134,7 +170,8 @@ pub enum Step {
 
 impl<'a> PreparedFailure<'a> {
     /// Reads `failure` into the fields that `finish` prints. It spells the
-    /// code with `spelling` and renders a `Recovery::Run` call against
+    /// code that `renames` prints for the failure with `spelling`, and
+    /// renders a `Recovery::Run` call against
     /// `command`, which builds the branch that the call names.
     ///
     /// It leaves out each field of the failure whose name breaks the rule or
@@ -148,13 +185,15 @@ impl<'a> PreparedFailure<'a> {
     pub(super) fn new(
         failure: &'a dyn Failure,
         spelling: Spelling,
+        renames: &[Rename],
         command: Option<&mut Command>,
         err: &mut impl Write,
     ) -> Self {
+        let printed = rename::printed(renames, failure.code());
         // Every code that crumbkit prints is spelled here, so the usage log
         // records the run's code here (ADR-0029).
         #[cfg(feature = "usage-log")]
-        crate::usage::failed(spelling, failure.code());
+        crate::usage::failed(spelling, printed);
         let causes = std::iter::successors(failure.source(), |error| error.source())
             .map(ToString::to_string)
             .collect();
@@ -177,7 +216,7 @@ impl<'a> PreparedFailure<'a> {
         };
         #[cfg(feature = "miette")]
         let diagnostic = failure.diagnostic();
-        let code = spelling.spell(failure.code());
+        let code = spelling.spell(printed);
         if cfg!(debug_assertions) {
             for reason in &unrendered {
                 // Standard error is the last place to report anything, so a

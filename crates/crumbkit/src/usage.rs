@@ -125,8 +125,9 @@ pub fn tolerated(code: &'static crate::Code) {
 /// }
 /// ```
 ///
-/// crumbkit owns the exit codes 0, 1 and 2, and the tool owns the rest
-/// (ADR-0002). The line records the number as given.
+/// crumbkit gives 0, 1 and 2 their meanings unless the tool's guide moves a
+/// failure to another code (ADR-0002). The line records the number as
+/// given.
 ///
 /// The line is written at once, so a tool that then exits through its own
 /// path, such as `std::process::exit` on another thread, still has its line,

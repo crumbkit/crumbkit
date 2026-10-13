@@ -7,7 +7,7 @@ use std::process::ExitCode;
 use clap::{CommandFactory as _, Parser, Subcommand};
 
 use super::{PLANETS, Planet, mercury};
-use crate::help::{Exit, Guide};
+use crate::help::{Exit, Guide, Rename};
 use crate::{Batch, Code, Document, Failure, Output, Parsed, Recovery, Sink, Spelling, finish_to};
 
 const TIMED_OUT: Code = Code::new("solar", "charts", "timed_out");
@@ -120,4 +120,33 @@ fn a_batch_whose_first_failure_is_unmapped_exits_with_code_1_though_a_later_one_
     );
     let code = finish(&mut guided(), PLANETS_SHOW, Ok(batch));
     assert_eq!(code, ExitCode::FAILURE);
+}
+
+#[test]
+fn a_renamed_crumbkit_failure_in_a_batch_prints_the_tool_s_code_and_exits_with_its_listed_code() {
+    const STALE: Code = Code::new("solar", "planets", "stale");
+    const RENAMED: Guide = Guide::new()
+        .codes(&[Rename::new(&crate::codes::VERSION_CONFLICT, &STALE)])
+        .exits(&[Exit::new(5, "The planet changed since it was read.").failures(&[&STALE])]);
+    let mut output = Tool::try_parse_from(["tool", "list", "--json"])
+        .unwrap()
+        .output;
+    output.set_command(Parsed::guided(Tool::command(), &RENAMED));
+    let batch = Batch::new(
+        vec![mercury()],
+        vec![Failed(&crate::codes::VERSION_CONFLICT)],
+    );
+    let mut out = Vec::new();
+    let mut err = Vec::new();
+    let code = finish_to(
+        &mut Sink::new(&mut out, &mut err),
+        &mut output,
+        Spelling::COLONS,
+        PLANETS_SHOW,
+        Ok::<_, Failed>(batch),
+    );
+
+    assert_eq!(code, ExitCode::from(5));
+    let document: serde_json::Value = serde_json::from_slice(&out).unwrap();
+    assert_eq!(document["failures"][0]["code"], "solar::planets::stale");
 }

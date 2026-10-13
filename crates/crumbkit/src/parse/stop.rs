@@ -19,8 +19,8 @@ use crate::help::Guide;
 /// on the path that parses.
 #[derive(Debug)]
 pub struct Stop {
-    /// The exit code for `main` to return.
-    code: ExitCode,
+    /// The exit code for `main` to return, as a number.
+    code: u8,
     /// The output flags as far as the walk of the typed words found them,
     /// with the command tree that `parse` built.
     output: Box<Output>,
@@ -30,7 +30,7 @@ impl Stop {
     /// Returns the stop of a run that ends with `code`, in which the walk
     /// found `--json` when `json` is true, after parsing against `command`
     /// with `guide`.
-    pub(crate) fn new(code: ExitCode, json: bool, command: Command, guide: &Guide) -> Self {
+    pub(crate) fn new(code: u8, json: bool, command: Command, guide: &Guide) -> Self {
         Self {
             code,
             output: Box::new(Output::stopped(json, command, guide)),
@@ -38,9 +38,16 @@ impl Stop {
     }
 
     /// Returns the exit code for `main` to return: 0 after help or the
-    /// version, 2 after a refusal, and 1 when the page could not be written.
+    /// version, 2 after a refusal unless the guide lists another code for
+    /// it, and 1 when the page could not be written.
     #[must_use]
-    pub const fn code(&self) -> ExitCode {
+    pub fn code(&self) -> ExitCode {
+        ExitCode::from(self.code)
+    }
+
+    /// Returns the exit code as a number, which the trace records.
+    #[cfg(feature = "tracing")]
+    pub(crate) const fn number(&self) -> u8 {
         self.code
     }
 
@@ -56,6 +63,6 @@ impl Stop {
 
 impl From<Stop> for ExitCode {
     fn from(stop: Stop) -> Self {
-        stop.code
+        Self::from(stop.code)
     }
 }

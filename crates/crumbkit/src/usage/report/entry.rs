@@ -82,12 +82,6 @@ impl Entry {
         self.exit == Some(0) && !self.help && !self.interrupted
     }
 
-    /// Returns whether clap or `--fields` refused the run's command line,
-    /// which exits with 2 (ADR-0002).
-    pub(super) fn refused(&self) -> bool {
-        self.exit == Some(2)
-    }
-
     /// Returns the code of the run's failure when the command failed, which
     /// exits with 1 (ADR-0002), or `None` otherwise.
     pub(super) fn failure(&self) -> Option<&str> {
