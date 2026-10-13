@@ -76,6 +76,57 @@ fn a_command_line_that_prints_no_help_page_is_a_problem() {
     );
 }
 
+/// Returns the page that clap renders for the command at `path` below the
+/// root of `tool`, with `-h` or, when `long` is set, with `--help`.
+fn clap_page(tool: &Command, path: &[&str], long: bool) -> String {
+    let mut built = tool.clone();
+    built.build();
+    let mut command = &mut built;
+    for name in path {
+        command = command.find_subcommand_mut(name).unwrap();
+    }
+    if long {
+        command.render_long_help().to_string()
+    } else {
+        command.render_help().to_string()
+    }
+}
+
+#[test]
+fn a_clap_page_is_the_page_that_clap_renders_for_the_command_and_flag() {
+    // clap prints `--help` in the long layout only when some help is long,
+    // so the global flag gets a long description on every command.
+    let tool = tool().mut_arg("json", |arg| arg.long_help("Print the result as JSON"));
+    let mut problems = Vec::new();
+
+    let short = pages(&tool, Pages::clap(), "-h", &mut problems);
+    let long = pages(&tool, Pages::clap(), "--help", &mut problems);
+
+    let paths: Vec<&str> = short.iter().map(|(visit, _)| visit.path()).collect();
+    assert_eq!(paths, ["tool", "tool books", "tool books list"]);
+    let commands: [&[&str]; 3] = [&[], &["books"], &["books", "list"]];
+    for (index, path) in commands.iter().enumerate() {
+        assert_eq!(short[index].1, clap_page(&tool, path, false));
+        assert_eq!(long[index].1, clap_page(&tool, path, true));
+    }
+    assert!(problems.is_empty(), "{problems:?}");
+}
+
+#[test]
+fn a_command_without_a_help_flag_has_no_clap_page_and_one_problem() {
+    let tool = Command::new("tool").subcommand(Command::new("list").disable_help_flag(true));
+    let mut problems = Vec::new();
+
+    let pages = pages(&tool, Pages::clap(), "-h", &mut problems);
+
+    let paths: Vec<&str> = pages.iter().map(|(visit, _)| visit.path()).collect();
+    assert_eq!(paths, ["tool"]);
+    assert_eq!(
+        problems,
+        ["tool list -h: the command line prints no help page"]
+    );
+}
+
 /// Fails the test, for a guide whose personal aliases no page may read.
 fn unread(_: &Command) -> Vec<String> {
     panic!("a help page read the personal aliases");

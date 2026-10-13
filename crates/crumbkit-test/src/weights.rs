@@ -42,12 +42,17 @@ const PATH: u64 = 8_000;
 ///     .nodes(&[Budget::new("books list", 9_000, "The listing's example prints many rows.")]);
 /// ```
 ///
+/// A tool without a guide, whose pages come from [`Pages::clap`], has no
+/// examples, and [`PathBudgets::help_only`] budgets its paths by their
+/// `-h` pages alone.
+///
 /// [ADR-0025]: https://github.com/crumbkit/crumbkit/blob/main/docs/decisions/api/help/0025-help-checks.md
 #[derive(Clone, Copy, Debug)]
 pub struct PathBudgets<'a> {
     /// The directory of the example golden files that
-    /// [`check_examples`](crate::check_examples) writes.
-    goldens: &'a str,
+    /// [`check_examples`](crate::check_examples) writes, or `None` for a
+    /// tool whose paths are its `-h` pages alone.
+    goldens: Option<&'a str>,
     /// The budget of each path.
     path: Limit,
     /// The budgets of single commands, which win over the budget of every
@@ -62,7 +67,22 @@ impl<'a> PathBudgets<'a> {
     #[must_use]
     pub const fn new(goldens: &'a str) -> Self {
         Self {
-            goldens,
+            goldens: Some(goldens),
+            path: Limit::default_of(PATH),
+            nodes: &[],
+        }
+    }
+
+    /// Returns crumbkit's default budget for every path and no budget for a
+    /// single command, for a tool whose paths are its `-h` pages alone,
+    /// with no example golden files, such as a tool whose pages come from
+    /// [`Pages::clap`]. [`check_path_weights`] fails when the guide of its
+    /// pages gives a command examples, because their output would go
+    /// uncounted.
+    #[must_use]
+    pub const fn help_only() -> Self {
+        Self {
+            goldens: None,
             path: Limit::default_of(PATH),
             nodes: &[],
         }
@@ -133,7 +153,8 @@ impl<'a> PathBudgets<'a> {
 /// reads them, and the command's output weight, which [`output_weight`]
 /// reads from the golden files of the examples that the guide of `pages`
 /// gives the command. A command without an example golden file has an output weight
-/// of 0. `cargo crumbkit weigh` prints the same sums as `path_total`. The
+/// of 0, and so does every command with [`Pages::clap`], which has no
+/// guide, or with [`PathBudgets::help_only`]. `cargo crumbkit weigh` prints the same sums as `path_total`. The
 /// check skips each hidden command and everything below it. It finds:
 ///
 /// - a path whose weight is over its budget, naming the command, the
@@ -141,6 +162,8 @@ impl<'a> PathBudgets<'a> {
 /// - a command's budget whose path names no command or a hidden one;
 /// - a golden file whose size cannot be read for a reason other than its
 ///   absence;
+/// - with [`PathBudgets::help_only`], a command that the guide of `pages`
+///   gives examples, whose output the path would leave out;
 /// - a visible command whose `-h` prints no help page.
 ///
 /// ```
@@ -174,15 +197,24 @@ pub fn check_path_weights(command: &Command, pages: Pages<'_>, budgets: &PathBud
             problems.push(names_nothing(budget));
         }
     }
-    let dir = Path::new(budgets.goldens);
     let rows: Vec<(usize, u64, Option<u64>)> = pages
         .iter()
         .map(|(visit, page)| {
-            let output =
-                output_weight(dir, &examples(command, guide, visit)).unwrap_or_else(|error| {
+            let lines = guide.map_or_else(Vec::new, |guide| examples(command, guide, visit));
+            let output = match budgets.goldens {
+                Some(dir) => output_weight(Path::new(dir), &lines).unwrap_or_else(|error| {
                     problems.push(format!("{}: {error}", visit.path()));
                     None
-                });
+                }),
+                None if lines.is_empty() => None,
+                None => {
+                    problems.push(format!(
+                        "{}: the guide gives the command examples, and `PathBudgets::help_only` reads no example golden files, so the path counts no output; `PathBudgets::new` names their directory",
+                        visit.path()
+                    ));
+                    None
+                }
+            };
             (visit.depth(), page.len() as u64, output)
         })
         .collect();
