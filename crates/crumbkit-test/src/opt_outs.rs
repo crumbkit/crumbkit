@@ -95,7 +95,7 @@ const SCHEMA: &str = "crumbkit/opt-outs/v1";
 /// `SNAPSHOTS=overwrite` cannot write a file. Each problem in the
 /// message starts on a new line.
 ///
-/// [ADR-0036]: https://github.com/crumbkit/crumbkit/blob/main/docs/decisions/api/0036-opt-outs.md
+/// [ADR-0036]: https://github.com/crumbkit/crumbkit/blob/main/docs/decisions/api/adoption/0036-opt-outs.md
 pub fn check_opt_outs(
     command: &Command,
     guide: &Guide,

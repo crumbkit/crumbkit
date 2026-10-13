@@ -236,7 +236,7 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit-test: [`check_recoveries`] runs failing command lines, follows
   each recovery they print and pins the chains in a golden report, and
   [`check_twin`] runs a refused command line beside one that succeeds
-  ([ADR-0005]).
+  ([ADR-0005], [ADR-0053]).
 - crumbkit-test: `Rule::Recoveries` and `Rule::SameCode` let a tool opt out
   of the recovery check ([ADR-0036]).
 - crumbkit: `Guide::without_terminal_detection` turns terminal detection
@@ -330,7 +330,7 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   into a new working directory for each run, or once for each recovery
   chain, and example outputs show the copy's path as `[ROOT]` ([ADR-0005]).
 - crumbkit-test: `Failing::values` gives one recovery chain its own
-  placeholder values, which win over every other source ([ADR-0005]).
+  placeholder values, which win over every other source ([ADR-0053]).
 - crumbkit-test: [`check_help_sizes`], [`check_help_goldens`] and
   [`check_path_weights`] take `Pages`, whose `Pages::binary` reads each
   page from the tool's binary, for a tool that builds its help at run
@@ -339,10 +339,10 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 - crumbkit-test: [`check_recoveries`] fills a placeholder from the `fields`
   of the failure that offers the step before it reads `Recoveries::values`
-  ([ADR-0005]).
+  ([ADR-0053]).
 - crumbkit-test: [`check_recoveries`] fills each placeholder inside a word,
   such as `<plugin>.<capability>`, and keeps the text between them
-  ([ADR-0005]).
+  ([ADR-0053]).
 - crumbkit: the help text of `--json` reads `Print the result as a JSON
   document` and no longer names a layout.
 - crumbkit-test: when the guide sets `JsonLayout::Pretty`, [`check_examples`]
@@ -468,7 +468,7 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   terminal columns with unicode-width, so they line up after wide
   characters such as CJK text ([ADR-0016]).
 - crumbkit-test: [`check_recoveries`] fills a lowercase placeholder such
-  as `<path>` from the value of the same name ([ADR-0005]).
+  as `<path>` from the value of the same name ([ADR-0053]).
 - crumbkit: `help::split` reads double-quoted words as a POSIX shell does,
   and refuses a `$` or a backtick between double quotes, so
   [`check_recoveries`] runs hints that a tool wrote with double quotes.
@@ -589,13 +589,13 @@ rustdoc, or at its decision record. -->
 [crumbkit-aliases]: crates/crumbkit-aliases/README.md
 [crumbkit-core]: crates/crumbkit-core/README.md
 [`RenderCall`]: crates/crumbkit/src/call.rs
-[ADR-0001]: docs/decisions/api/0001-error-model.md
+[ADR-0001]: docs/decisions/api/failures/0001-error-model.md
 [ADR-0002]: docs/decisions/api/0002-public-api-and-semver.md
 [ADR-0003]: docs/decisions/project/0003-dependency-policy.md
 [ADR-0004]: docs/decisions/testing/0004-golden-and-snapshot-tests.md
 [ADR-0005]: docs/decisions/testing/0005-cli-end-to-end-tests.md
 [ADR-0007]: docs/decisions/api/schemas/0007-json-schemas.md
-[ADR-0015]: docs/decisions/api/0015-lightweight-adoption.md
+[ADR-0015]: docs/decisions/api/adoption/0015-lightweight-adoption.md
 [ADR-0016]: docs/decisions/api/output/results/0016-result-formats.md
 [ADR-0021]: docs/decisions/api/help/0021-help-pages.md
 [ADR-0023]: docs/decisions/api/help/0023-help-command-and-topics.md
@@ -623,7 +623,7 @@ rustdoc, or at its decision record. -->
 [`Budget`]: crates/crumbkit-test/src/budget.rs
 [`Budgets`]: crates/crumbkit-test/src/sizes.rs
 [`PathBudgets`]: crates/crumbkit-test/src/weights.rs
-[ADR-0036]: docs/decisions/api/0036-opt-outs.md
+[ADR-0036]: docs/decisions/api/adoption/0036-opt-outs.md
 [ADR-0037]: docs/decisions/api/help/0037-exit-codes.md
 [`Effects`]: crates/crumbkit/src/help/effects.rs
 [`DryRun`]: crates/crumbkit/src/output/dry_run.rs
@@ -646,10 +646,11 @@ rustdoc, or at its decision record. -->
 [`FailureForm`]: crates/crumbkit/src/form.rs
 [`ReadFailure`]: crates/crumbkit/src/form.rs
 [`PreparedFailure`]: crates/crumbkit/src/output/failure/prepared.rs
-[ADR-0045]: docs/decisions/api/output/0045-failure-forms.md
+[ADR-0045]: docs/decisions/api/failures/0045-failure-forms.md
 [ADR-0046]: docs/decisions/api/output/0046-output-budget.md
 [ADR-0049]: docs/decisions/api/output/0049-terminal-detection.md
 [ADR-0052]: docs/decisions/api/output/0052-json-layout.md
+[ADR-0053]: docs/decisions/testing/0053-recovery-chains.md
 [ADR-0050]: docs/decisions/api/output/listings/README.md
 [`codes`]: crates/crumbkit/src/codes.rs
 [`help::split`]: crates/crumbkit/src/help/words.rs

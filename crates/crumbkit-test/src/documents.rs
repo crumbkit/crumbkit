@@ -77,7 +77,7 @@ pub(crate) const MOUNTS: [(&str, &[&str]); 6] = [
 /// problem in the message starts on a new line and names the leaf's
 /// command line, the id, and the name the rule gives.
 ///
-/// [ADR-0036]: https://github.com/crumbkit/crumbkit/blob/main/docs/decisions/api/0036-opt-outs.md
+/// [ADR-0036]: https://github.com/crumbkit/crumbkit/blob/main/docs/decisions/api/adoption/0036-opt-outs.md
 pub fn check_document_ids(command: &Command, guide: &Guide, allow: &[Allow]) {
     let mut allowances = Allowances::new(
         allow,

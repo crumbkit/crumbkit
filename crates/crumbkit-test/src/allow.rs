@@ -30,7 +30,7 @@ mod tests;
 /// opt-outs, with their reasons and costs, in golden files.
 ///
 /// [`check_opt_outs`]: crate::check_opt_outs
-/// [ADR-0036]: https://github.com/crumbkit/crumbkit/blob/main/docs/decisions/api/0036-opt-outs.md
+/// [ADR-0036]: https://github.com/crumbkit/crumbkit/blob/main/docs/decisions/api/adoption/0036-opt-outs.md
 #[derive(Clone, Copy, Debug)]
 pub struct Allow {
     /// The rule that the tool skips.

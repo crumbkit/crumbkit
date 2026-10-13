@@ -166,7 +166,7 @@ Licensed under Apache-2.0 or MIT, at your option.
 [schemas]: schemas
 [crumbkit-test]: ../crumbkit-test/README.md
 [crumbkit-core]: ../crumbkit-core/README.md
-[ADR-0001]: ../../docs/decisions/api/0001-error-model.md
+[ADR-0001]: ../../docs/decisions/api/failures/0001-error-model.md
 [ADR-0007]: ../../docs/decisions/api/schemas/0007-json-schemas.md
 [ADR-0016]: ../../docs/decisions/api/output/results/0016-result-formats.md
 [ADR-0021]: ../../docs/decisions/api/help/0021-help-pages.md
