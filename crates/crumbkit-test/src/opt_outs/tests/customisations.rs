@@ -6,7 +6,7 @@ use crumbkit::codes::CLI_USAGE;
 use crumbkit::form::{FailureForm, PreparedFailure};
 use crumbkit::help::{Exit, Guide, Leaf, RefusalContext, Rename};
 use crumbkit::schemas::SCHEMAS_LIST;
-use crumbkit::{Call, Code, Document, Prose};
+use crumbkit::{Batch, Call, Code, Document, Prose};
 use schemars::{Schema, json_schema};
 use serde_json::{Value, json};
 use snapbox::assert::Action;
@@ -190,4 +190,36 @@ fn the_dashed_forms_declaration_and_each_command_named_in_another_style_are_cust
         ]
     );
     assert_eq!(listed(&Guide::new()), Vec::new());
+}
+
+/// A book of the batch of `books show`.
+#[derive(serde::Serialize, schemars::JsonSchema)]
+struct Book {
+    /// The book's id.
+    id: u32,
+}
+
+impl crumbkit::Row for Book {
+    const COLUMNS: &'static [&'static str] = &["id"];
+}
+
+#[test]
+fn a_batch_that_prints_its_failures_in_input_order_is_a_failures_in_order_customisation() {
+    const BOOKS_SHOW: Document<Batch<Book, crumbkit::Error>> =
+        Document::new("shelf", "books-show", 1, "The books.")
+            .without_envelope()
+            .failures_in_order();
+    const GUIDE: Guide = Guide::new().leaves(&[Leaf::new(&["books", "show"]).document(BOOKS_SHOW)]);
+
+    let list = customisations(&Command::new("shelf"), &GUIDE);
+
+    let list = serde_json::to_value(&list).unwrap();
+    assert_eq!(
+        list,
+        json!([{
+            "declaration": "failures-in-order",
+            "applies_to": "shelf books show",
+            "declares": "With --json, the command prints its failures among its rows in input order, in place of text on standard error.",
+        }])
+    );
 }

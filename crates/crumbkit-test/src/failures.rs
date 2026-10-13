@@ -131,7 +131,9 @@ pub(crate) fn reader<'a>(
 /// The first of these sources that reads a failure gives them all:
 /// `reader`; then the last `crumbkit/failure/v1` document on `stdout`, or
 /// every entry of the `failures` of the last document that has any, as a
-/// batch prints them; then the last `code:` line on `stderr`, which gives a
+/// batch prints them, or every failure document of the last array that
+/// holds any, as a batch in input order prints them; then the last `code:`
+/// line on `stderr`, which gives a
 /// failure without steps or fields.
 ///
 /// When `reader` is a failure form, each entry of `failures` is read
@@ -168,26 +170,45 @@ pub(crate) fn read_failures(
 }
 
 /// Returns the failures of the last document on `out` that is a
-/// `crumbkit/failure/v1` document or has a non-empty `failures` array. A
-/// `form` reads each entry of the array first.
+/// `crumbkit/failure/v1` document, has a non-empty `failures` array, or is
+/// an array that holds at least one failure document, as a batch that
+/// prints its failures in input order prints it. A `form` reads each entry
+/// of `failures` and each item of such an array first. An item that the
+/// form does not read is a failure only when it is a
+/// `crumbkit/failure/v1` document, so a row is never read as one.
 fn crumbkit_failures(out: &str, form: Option<&dyn FailureForm>) -> Vec<ReadFailure> {
+    let through_form = |item: &Value| form.and_then(|form| form.read(&item.to_string(), ""));
     for document in runs::documents(out).iter().rev() {
-        if document.get("schema").and_then(Value::as_str) == Some("crumbkit/failure/v1") {
+        if is_failure_document(document) {
             return read_document(document).into_iter().collect();
+        }
+        if let Some(items) = document.as_array() {
+            let read: Vec<ReadFailure> = items
+                .iter()
+                .filter_map(|item| {
+                    through_form(item)
+                        .or_else(|| is_failure_document(item).then(|| read_document(item))?)
+                })
+                .collect();
+            if !read.is_empty() {
+                return read;
+            }
         }
         if let Some(failures) = document.get("failures").and_then(Value::as_array)
             && !failures.is_empty()
         {
             return failures
                 .iter()
-                .filter_map(|entry| {
-                    form.and_then(|form| form.read(&entry.to_string(), ""))
-                        .or_else(|| read_document(entry))
-                })
+                .filter_map(|entry| through_form(entry).or_else(|| read_document(entry)))
                 .collect();
         }
     }
     Vec::new()
+}
+
+/// Reports whether `document` is a `crumbkit/failure/v1` document.
+fn is_failure_document(document: &Value) -> bool {
+    document.get("schema").and_then(Value::as_str) == Some("crumbkit/failure/v1")
 }
 
 /// Returns the failure of the failure document `document`: its code, its

@@ -60,6 +60,10 @@ mod tests;
 /// - a leaf's [`Choices`](crumbkit::pick::Choices) whose argument id names
 ///   no argument of the leaf's command, because a picker then never offers
 ///   them;
+/// - a leaf whose document prints a batch's failures among its rows in
+///   input order (`Document::failures_in_order`) and whose row type has a
+///   field named `schema`, because a reader tells a failure document from
+///   a row by its `schema`;
 /// - a leaf column whose name is not a field of the leaf's row type, such
 ///   as a misspelt name in `Row::COLUMNS` or `Row::LONG_COLUMNS`, because
 ///   the table prints `-` in every row of it;
@@ -202,6 +206,21 @@ pub fn check_guide(command: &Command, guide: &Guide) {
     tree::report("guide rules", &problems);
 }
 
+/// Adds a problem when `leaf` prints a batch's failures among its rows in
+/// input order and its row type has a field named `schema`. A reader tells
+/// a failure document from a row by its `schema`, so such a row could pass
+/// for a failure.
+fn check_in_order(text: &str, leaf: &Leaf, problems: &mut Vec<String>) {
+    let in_order = leaf
+        .get_document()
+        .is_some_and(|document| document.prints_failures_in_order());
+    if in_order && leaf.row_has_field("schema") {
+        problems.push(format!(
+            "{text}: the row type has a field named `schema`, and the document prints its failures among its rows in input order, so a reader could take a row for a failure document; rename the field"
+        ));
+    }
+}
+
 /// Adds a problem to `problems` for each leaf of `guide` that breaks a leaf
 /// rule of [`check_guide`], and for each visible command without
 /// subcommands that no leaf with an example names.
@@ -270,6 +289,7 @@ fn check_leaves(command: &Command, guide: &Guide, problems: &mut Vec<String>) {
                 "{text}: the leaf declares effects that change something and no document, so crumbkit refuses a view flag that the output cannot use only after the change; declare the document with `Leaf::document`, or with `Leaf::stream` for a stream"
             ));
         }
+        check_in_order(&text, leaf, problems);
         for choices in leaf.get_choices() {
             let id = choices.arg();
             if !node.get_arguments().any(|arg| arg.get_id() == id) {
