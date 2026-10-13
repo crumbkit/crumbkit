@@ -356,6 +356,9 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit-test: [`Failing::env`] sets or removes environment variables
   for a failing line and its chain, and [`Twin::variable`] makes a twin
   that differs by one variable ([ADR-0005], [ADR-0053]).
+- crumbkit: [`command_path`] returns the path of the command that a tool's
+  words name, reading options as [`parse`] does, without building the
+  tree ([ADR-0021]).
 ### Changed
 
 - crumbkit-test: [`check_twin`] takes the tool's guide as its first
@@ -516,6 +519,9 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit-test: a check's run whose tool exits while a process it started
   keeps standard output or standard error open ends with a problem at the
   run's timeout, and the check no longer waits for that process ([ADR-0005]).
+- crumbkit-test: [`check_twin`] and [`check_twins`] take the tool's command
+  tree first and read each line's command from it, so a global option
+  before the path and an alias name the same command ([ADR-0005]).
 ### Removed
 
 - crumbkit: `help::split` is gone. [`check_recoveries`] reads a recovery's
@@ -624,6 +630,7 @@ rustdoc, or at its decision record. -->
 [`fetch_each`]: crates/crumbkit/src/fetch.rs
 [`report`]: crates/crumbkit-core/src/report.rs
 [`parse`]: crates/crumbkit/src/parse.rs
+[`command_path`]: crates/crumbkit/src/parse/walk.rs
 [`Stop`]: crates/crumbkit/src/parse/stop.rs
 [`usage::ended`]: crates/crumbkit/src/usage.rs
 [`usage::tolerated`]: crates/crumbkit/src/usage.rs

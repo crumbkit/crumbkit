@@ -26,7 +26,7 @@ mod stop;
 pub(crate) mod suggestion;
 #[cfg(test)]
 mod tests;
-mod walk;
+pub(crate) mod walk;
 
 /// Parses the process's command line against `command` with the tool's
 /// `guide`, and returns the tool's parsed type and a [`Parsed`], which holds

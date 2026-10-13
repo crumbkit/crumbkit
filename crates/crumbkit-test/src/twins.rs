@@ -4,6 +4,7 @@
 use std::path::Path;
 use std::process::Output;
 
+use clap::Command;
 use crumbkit::Spelling;
 use crumbkit::help::Guide;
 
@@ -26,7 +27,8 @@ pub use coverage::{Twin, Twins, check_twins};
 mod tests;
 
 /// Runs `refused` and `admitted`, two command lines of the binary of
-/// `examples` that differ by one word, for the tool whose guide is `guide`, checks that `refused` fails with its
+/// `examples` that differ by one word, for the tool whose unbuilt command
+/// tree is `command` and whose guide is `guide`, checks that `refused` fails with its
 /// code and that `admitted` exits with code 0, and returns the output of
 /// `refused`, so the test can compare it with its golden files. It panics,
 /// as a failed test assertion does, when a rule is broken.
@@ -39,10 +41,13 @@ mod tests;
 /// runs either line. An admitted line that adds `-h`, `--help`, `-V` or
 /// `--version`, or `help` as its first word, or puts one of them in place
 /// of a word, makes the tool answer without running the command. An
-/// admitted line that runs another leaf of the guide than the refused line,
-/// or no leaf, runs another command. The leaf of a line is the longest leaf
-/// path that its words start with, and a refused line that runs no leaf,
-/// such as a misspelt command, keeps its twin. A code that no single word
+/// admitted line that runs another command than the refused line, or no
+/// command, proves nothing about the refused command. The check reads the
+/// command of a line from `command` with [`crumbkit::command_path`], which
+/// skips options and their values, global options before the path
+/// included, and resolves aliases. A line runs the command it names when
+/// that command has no subcommands, and a refused line that runs no
+/// command, such as a misspelt command, keeps its twin. A code that no single word
 /// causes needs an opt-out made with [`Allow::untwinned`](crate::Allow::untwinned).
 ///
 /// Both runs use the environment of [`Examples::env`], the working
@@ -61,15 +66,19 @@ mod tests;
 /// line on standard error.
 ///
 /// ```no_run
+/// use clap::Command;
 /// use crumbkit::Spelling;
 /// use crumbkit::help::Guide;
 /// use crumbkit_test::{Examples, Failing};
 ///
 /// const GUIDE: Guide = Guide::new();
+/// let command = Command::new("shelf")
+///     .subcommand(Command::new("books").subcommand(Command::new("list")));
 /// // In an integration test, the binary is `env!("CARGO_BIN_EXE_shelf")`.
 /// const EXAMPLES: Examples<'_> = Examples::new("/path/to/shelf", "tests/golden/examples");
 ///
 /// let output = crumbkit_test::check_twin(
+///     &command,
 ///     &GUIDE,
 ///     &EXAMPLES,
 ///     Spelling::COLONS,
@@ -84,7 +93,7 @@ mod tests;
 /// Panics when the guide sets a failure form and `examples` sets a failure
 /// reader, when the two lines differ by more or less than one word added,
 /// removed or replaced, when `admitted` adds a help or version word or
-/// runs another leaf than `refused`, when `refused` exits with code 0, fails with
+/// runs another command than `refused`, when `refused` exits with code 0, fails with
 /// another code or prints no code that the check can read, when `admitted` exits with a code other than 0, or when a
 /// run cannot start or does not end within 10 seconds. The message names
 /// each line as help prints it, with the binary's file name first.
@@ -93,6 +102,7 @@ mod tests;
     reason = "a test that compares no output with golden files calls the check only for its assertions"
 )]
 pub fn check_twin(
+    command: &Command,
     guide: &Guide,
     examples: &Examples<'_>,
     spelling: Spelling,
@@ -100,6 +110,7 @@ pub fn check_twin(
     admitted: &[&str],
 ) -> Output {
     match twin(
+        command,
         guide,
         examples,
         spelling,
@@ -141,6 +152,7 @@ pub(super) enum Admitted<'a> {
 /// Runs the two lines of [`check_twin`] and returns the output of
 /// `refused`, or the problem when a rule is broken.
 pub(super) fn twin(
+    command: &Command,
     guide: &Guide,
     examples: &Examples<'_>,
     spelling: Spelling,
@@ -152,7 +164,13 @@ pub(super) fn twin(
     let (words, env, admitted_line) = match admitted {
         Admitted::Words(words) => {
             let admitted_line = named(&tool, words, refused.own_env());
-            one_word(guide, refused.words(), words, &refused_line, &admitted_line)?;
+            one_word(
+                command,
+                refused.words(),
+                words,
+                &refused_line,
+                &admitted_line,
+            )?;
             (words, refused.own_env().to_vec(), admitted_line)
         }
         Admitted::Without(name) => {
@@ -202,9 +220,9 @@ pub(super) fn named(tool: &str, words: &[&str], env: &[(&str, Option<&str>)]) ->
 /// Returns the problem of a twin whose lines, named `refused_line` and
 /// `admitted_line`, do not differ by one word, whose admitted line adds a
 /// word that skips the command's work, or whose admitted line runs another
-/// leaf of `guide` than the refused line.
+/// command of `command`, the tool's tree, than the refused line.
 fn one_word(
-    guide: &Guide,
+    command: &Command,
     refused: &[&str],
     admitted: &[&str],
     refused_line: &str,
@@ -220,16 +238,18 @@ fn one_word(
             "the admitted line {admitted_line} adds `{word}`, which makes the tool answer without running the command, so the twin proves nothing about the refused line {refused_line}. A code that no word of a command line causes needs an opt-out made with Allow::untwinned"
         ));
     }
-    if let Some(path) = words::leaf(guide, refused) {
-        let other = words::leaf(guide, admitted);
-        if other != Some(path) {
-            let runs = other.map_or_else(
-                || "runs no command of the guide".to_owned(),
-                |other| format!("runs `{}`", other.join(" ")),
-            );
+    let named = words::named(command, refused);
+    if named.runs {
+        let other = words::named(command, admitted);
+        if other.path != named.path {
+            let runs = if other.runs {
+                format!("runs `{}`", other.path.join(" "))
+            } else {
+                "runs no command".to_owned()
+            };
             return Err(format!(
                 "the refused line {refused_line} runs the command `{}`, and the admitted line {admitted_line} {runs}, so the twin proves nothing about the refused command. A code that no word of the command causes needs an opt-out made with Allow::untwinned",
-                path.join(" ")
+                named.path.join(" ")
             ));
         }
     }

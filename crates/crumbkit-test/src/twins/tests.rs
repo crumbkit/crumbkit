@@ -3,6 +3,7 @@
 //! Each test writes a `/bin/sh` script that stands in for a tool, as the
 //! recovery check's tests do.
 
+use clap::{Arg, Command};
 use crumbkit::form::{FailureForm, PreparedFailure, ReadFailure};
 use crumbkit::help::Guide;
 use crumbkit::{Code, Document, Spelling};
@@ -23,6 +24,23 @@ const USAGE: Code = crumbkit::codes::CLI_USAGE;
 
 /// The guide of a tool without a failure form.
 const GUIDE: Guide = Guide::new();
+
+/// Returns the command tree of the scripts: a global `-C` option that
+/// takes a directory, and a `books` group with the commands `list`, `show`,
+/// `put`, aliased `add`, `get` and `stuck`. Every twin test uses it.
+pub(super) fn tree() -> Command {
+    let leaf = |name: &'static str| Command::new(name).arg(Arg::new("limit").long("limit"));
+    Command::new("tool")
+        .arg(Arg::new("dir").short('C').global(true))
+        .subcommand(
+            Command::new("books")
+                .subcommand(leaf("list"))
+                .subcommand(leaf("show"))
+                .subcommand(leaf("put").alias("add"))
+                .subcommand(leaf("get"))
+                .subcommand(leaf("stuck")),
+        )
+}
 
 /// The script's answers: `books list --limit 0` fails with the usage code in
 /// text and in JSON, `--limit -1` fails with the usage code in the text of
@@ -52,6 +70,7 @@ fn a_twin_passes_when_the_refused_line_fails_with_its_code_and_the_admitted_line
     let examples = Examples::new(&path, "");
 
     let text = check_twin(
+        &tree(),
         &GUIDE,
         &examples,
         Spelling::COLONS,
@@ -59,6 +78,7 @@ fn a_twin_passes_when_the_refused_line_fails_with_its_code_and_the_admitted_line
         &["books", "list", "--limit", "1"],
     );
     let json = check_twin(
+        &tree(),
         &GUIDE,
         &examples,
         Spelling::COLONS,
@@ -78,6 +98,7 @@ fn a_refused_line_that_succeeds_or_fails_with_another_code_fails_the_check() {
 
     let succeeds = panic_message(|| {
         check_twin(
+            &tree(),
             &GUIDE,
             &examples,
             Spelling::COLONS,
@@ -87,6 +108,7 @@ fn a_refused_line_that_succeeds_or_fails_with_another_code_fails_the_check() {
     });
     let other = panic_message(|| {
         check_twin(
+            &tree(),
             &GUIDE,
             &examples,
             Spelling::COLONS,
@@ -111,6 +133,7 @@ fn an_admitted_line_that_fails_fails_the_check() {
 
     let message = panic_message(|| {
         check_twin(
+            &tree(),
             &GUIDE,
             &Examples::new(&path, ""),
             Spelling::COLONS,
@@ -131,6 +154,7 @@ fn twins_that_differ_by_more_than_one_word_fail_the_check() {
 
     let message = panic_message(|| {
         check_twin(
+            &tree(),
             &GUIDE,
             &Examples::new(&path, ""),
             Spelling::COLONS,
@@ -176,6 +200,7 @@ fn a_twin_reads_the_refused_lines_code_through_the_failure_form_of_the_guide() {
     let (_dir, path) = tool("twins-form");
 
     let output = check_twin(
+        &tree(),
         &FORM_GUIDE,
         &Examples::new(&path, ""),
         Spelling::COLONS,
@@ -204,6 +229,7 @@ fn a_failure_reader_in_examples_reads_the_code_of_a_refused_twin() {
     let (_dir, path) = tool("twins-reader");
 
     let output = check_twin(
+        &tree(),
         &GUIDE,
         &Examples::new(&path, "").failure_reader(&LineReader),
         Spelling::COLONS,
@@ -223,6 +249,7 @@ fn a_refused_line_whose_code_the_check_cannot_read_fails_the_check_naming_both_w
 
     let message = panic_message(|| {
         check_twin(
+            &tree(),
             &GUIDE,
             &Examples::new(&path, ""),
             Spelling::COLONS,
@@ -250,6 +277,7 @@ fn a_failing_line_without_a_dir_runs_in_the_current_dir_of_examples() {
     let work_path = work.path().display().to_string();
 
     check_twin(
+        &tree(),
         &GUIDE,
         &Examples::new(&picky, "").current_dir(&work_path),
         Spelling::COLONS,
@@ -272,6 +300,7 @@ fn both_lines_of_a_twin_run_in_a_copy_of_the_refused_line_s_xdg_fixture() {
     let fixture_path = fixture.path().display().to_string();
 
     check_twin(
+        &tree(),
         &GUIDE,
         &Examples::new(&plugged, ""),
         Spelling::COLONS,
@@ -293,6 +322,7 @@ fn both_lines_of_a_twin_start_in_their_own_copy_of_the_fresh_dir_fixture() {
     let fixture_path = fixture.path().display().to_string();
 
     check_twin(
+        &tree(),
         &GUIDE,
         &Examples::new(&once, "").fresh_dir(&fixture_path),
         Spelling::COLONS,
@@ -311,6 +341,7 @@ fn an_admitted_line_that_only_adds_help_or_version_fails_the_check() {
     for word in ["-h", "--help", "-V", "--version"] {
         let message = panic_message(|| {
             check_twin(
+                &tree(),
                 &GUIDE,
                 &examples,
                 Spelling::COLONS,
@@ -328,6 +359,7 @@ fn an_admitted_line_that_only_adds_help_or_version_fails_the_check() {
     }
     let help = panic_message(|| {
         check_twin(
+            &tree(),
             &GUIDE,
             &examples,
             Spelling::COLONS,
@@ -340,17 +372,14 @@ fn an_admitted_line_that_only_adds_help_or_version_fails_the_check() {
 }
 
 #[test]
-fn a_twin_whose_admitted_line_runs_another_command_fails_the_check() {
-    use crumbkit::help::Leaf;
-
-    const LEAVES: Guide =
-        Guide::new().leaves(&[Leaf::new(&["books", "put"]), Leaf::new(&["books", "get"])]);
+fn a_twin_whose_admitted_line_runs_another_command_fails_the_check_whatever_leaves_the_guide_has() {
     let (_dir, path) = tool("twins-leaf");
     let examples = Examples::new(&path, "");
     let checked = |refused: &'static [&'static str], admitted: &[&str]| {
         panic_message(|| {
             check_twin(
-                &LEAVES,
+                &tree(),
+                &GUIDE,
                 &examples,
                 Spelling::COLONS,
                 &Failing::new(&USAGE, refused),
@@ -365,14 +394,50 @@ fn a_twin_whose_admitted_line_runs_another_command_fails_the_check() {
     );
     assert_eq!(
         checked(&["books", "put", "7"], &["books", "pt", "7"]).unwrap(),
-        "the refused line `tool books put 7` runs the command `books put`, and the admitted line `tool books pt 7` runs no command of the guide, so the twin proves nothing about the refused command. A code that no word of the command causes needs an opt-out made with Allow::untwinned"
+        "the refused line `tool books put 7` runs the command `books put`, and the admitted line `tool books pt 7` runs no command, so the twin proves nothing about the refused command. A code that no word of the command causes needs an opt-out made with Allow::untwinned"
     );
-    // A refused line that runs no command of the guide, such as a
-    // misspelt command, keeps its twin. The run of this one fails, because
-    // the script does not know it.
+    // A refused line that runs no command, such as a misspelt command,
+    // keeps its twin. The run of this one fails, because the script does
+    // not know it.
     assert!(
         checked(&["books", "pt", "7"], &["books", "put", "7"])
             .unwrap()
             .starts_with("the refused line `tool books pt 7` must fail with crumbkit::cli::usage")
+    );
+}
+
+#[test]
+fn a_twin_with_a_global_option_before_the_path_runs_the_command_after_the_option_s_value() {
+    let (_dir, path) = tool("twins-global");
+    let examples = Examples::new(&path, "");
+    let checked = |refused: &'static [&'static str], admitted: &[&str]| {
+        panic_message(|| {
+            check_twin(
+                &tree(),
+                &GUIDE,
+                &examples,
+                Spelling::COLONS,
+                &Failing::new(&USAGE, refused),
+                admitted,
+            );
+        })
+    };
+
+    assert!(
+        checked(&["-C", "books", "books", "put", "7"], &["-C", "books", "books", "get", "7"])
+            .unwrap()
+            .starts_with("the refused line `tool -C books books put 7` runs the command `books put`, and the admitted line `tool -C books books get 7` runs `books get`")
+    );
+    // The alias `add` runs `books put`, so the twin keeps its command. The
+    // run fails, because the script does not know the line.
+    assert!(
+        checked(
+            &["-C", "empty", "books", "put", "7"],
+            &["-C", "empty", "books", "add", "7"]
+        )
+        .unwrap()
+        .starts_with(
+            "the refused line `tool -C empty books put 7` must fail with crumbkit::cli::usage"
+        )
     );
 }

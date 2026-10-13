@@ -4,6 +4,7 @@
 use crumbkit::help::Guide;
 use crumbkit::{Code, Spelling};
 
+use super::tree;
 use crate::examples::Examples;
 use crate::recoveries::Failing;
 use crate::temp::TempDir;
@@ -48,7 +49,7 @@ fn checked(pairs: &[Twin<'_>]) -> Option<String> {
     let path = dir.path().join("tool").display().to_string();
     let examples = Examples::new(&path, "").env(&[("BOOKS", "/b")]);
     let twins = Twins::new(examples, Spelling::COLONS, &[&[&TOO_DEEP, &NO_SHELF]]).pairs(pairs);
-    panic_message(|| check_twins(&Guide::new(), &twins))
+    panic_message(|| check_twins(&tree(), &Guide::new(), &twins))
 }
 
 #[test]
@@ -116,6 +117,7 @@ esac
         .env(&[("BOOKS", Some("b")), ("XDG_CONFIG_HOME", Some("/nowhere"))]);
 
     let output = check_twin(
+        &tree(),
         &Guide::new(),
         &examples,
         Spelling::COLONS,

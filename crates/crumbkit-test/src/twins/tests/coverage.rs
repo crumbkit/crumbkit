@@ -4,6 +4,7 @@
 use crumbkit::help::Guide;
 use crumbkit::{Code, Spelling};
 
+use super::tree;
 use crate::allow::Allow;
 use crate::examples::Examples;
 use crate::recoveries::{Failing, Unprovoked};
@@ -76,7 +77,7 @@ fn checked_allowing(
     )
     .pairs(pairs)
     .unprovoked(unprovoked);
-    panic_message(|| check_twins(&Guide::new(), &twins))
+    panic_message(|| check_twins(&tree(), &Guide::new(), &twins))
 }
 
 #[test]
@@ -151,7 +152,7 @@ fn checked_with(script: &str, pairs: &[Twin<'_>]) -> Option<String> {
     let path = dir.path().join("tool").display().to_string();
     let twins =
         Twins::new(Examples::new(&path, ""), Spelling::COLONS, &[&[&NOT_FOUND]]).pairs(pairs);
-    panic_message(|| check_twins(&Guide::new(), &twins))
+    panic_message(|| check_twins(&tree(), &Guide::new(), &twins))
 }
 
 #[test]

@@ -53,7 +53,7 @@ pub(super) struct Given {
 /// It reads the words as [`walk`] does. A word that names no subcommand,
 /// and each word after `--`, is a positional value, and the walk descends
 /// into no subcommand after the first positional value.
-pub(super) fn given(command: &Command, words: &[OsString]) -> Given {
+pub(super) fn given<T: AsRef<OsStr>>(command: &Command, words: &[T]) -> Given {
     let mut reader = Words::new(command);
     let mut given = Given {
         path: Vec::new(),
@@ -62,6 +62,7 @@ pub(super) fn given(command: &Command, words: &[OsString]) -> Given {
     };
     let mut ended = false;
     for word in words {
+        let word = word.as_ref();
         if ended {
             given.positionals += 1;
             continue;
@@ -87,6 +88,36 @@ pub(super) fn given(command: &Command, words: &[OsString]) -> Given {
         }
     }
     given
+}
+
+/// Returns the real names of the subcommands from the root `command` down
+/// to the deepest command that `words`, the words after the program name,
+/// name, such as `["books", "list"]` for `--json books ls` when `ls` is an
+/// alias of `list`. An empty path names the root.
+///
+/// The function reads the words as [`parse`](crate::parse) does before
+/// clap parses them, and it never builds or clones the tree. It skips each
+/// flag and each value of an option, including the global options of the
+/// commands above, so a value that equals a command's name names no
+/// command. It stops at `--` and at the first word that names no
+/// subcommand, so it also names the command of a line that clap refuses,
+/// such as `books` for `books lst`. A tool can use it to learn which
+/// command a run named, for its own log of a refused run or to choose
+/// work before it parses.
+///
+/// ```
+/// use clap::{Arg, Command};
+///
+/// let tool = Command::new("shelf")
+///     .arg(Arg::new("dir").short('C').global(true))
+///     .subcommand(Command::new("books").subcommand(Command::new("list").alias("ls")));
+///
+/// assert_eq!(crumbkit::command_path(&tool, &["-C", "books", "books", "ls"]), ["books", "list"]);
+/// assert_eq!(crumbkit::command_path(&tool, &["books", "lst"]), ["books"]);
+/// ```
+#[must_use]
+pub fn command_path<T: AsRef<OsStr>>(command: &Command, words: &[T]) -> Vec<String> {
+    given(command, words).path
 }
 
 /// Returns the word `help` that crumbkit answers in `args`, or `None` when

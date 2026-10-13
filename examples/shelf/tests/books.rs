@@ -11,6 +11,7 @@
 use std::io;
 use std::path::Path;
 
+use clap::CommandFactory as _;
 use crumbkit::{Spelling, codes};
 use crumbkit_test::{Examples, Failing, check_twin};
 use snapbox::cmd::{Command, OutputAssert};
@@ -75,6 +76,7 @@ fn refused_beside(dir: Option<&str>, refused: &[&str], admitted: &[&str]) -> Out
         failing = failing.dir(dir);
     }
     OutputAssert::new(check_twin(
+        &shelf::Cli::command(),
         &shelf::GUIDE,
         &SHELF,
         Spelling::COLONS,

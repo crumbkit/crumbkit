@@ -5,11 +5,11 @@ use std::ffi::OsString;
 
 use clap::{Arg, ArgAction, Command};
 
-use super::{help_word, program_stem, walk};
+use super::{command_path, help_word, program_stem, walk};
 
 /// A tool whose root has a global option, an option with two values, an
-/// option with any number of values and a flag, and whose `planets` group
-/// has an option of its own.
+/// option with any number of values and a flag, and whose `planets` group,
+/// aliased `worlds`, has an option of its own.
 fn tool() -> Command {
     Command::new("tool")
         .arg(
@@ -36,6 +36,7 @@ fn tool() -> Command {
         .arg(Arg::new("keyed").long("keyed").require_equals(true))
         .subcommand(
             Command::new("planets")
+                .alias("worlds")
                 .arg(Arg::new("sort").long("sort"))
                 .subcommand(Command::new("show")),
         )
@@ -107,6 +108,17 @@ fn an_option_that_requires_equals_takes_no_value_from_the_next_word() {
 fn the_walk_reads_a_global_option_of_a_command_above_the_current_one() {
     assert_eq!(path(&["planets", "--fields", "show"]), ["planets"]);
     assert_eq!(path(&["planets", "--sort", "show"]), ["planets"]);
+}
+
+#[test]
+fn command_path_names_real_commands_and_stops_at_the_first_positional_value() {
+    let tool = tool();
+
+    assert_eq!(
+        command_path(&tool, &["-f", "id", "worlds", "show"]),
+        ["planets", "show"]
+    );
+    assert_eq!(command_path(&tool, &["planets", "7", "show"]), ["planets"]);
 }
 
 #[test]
