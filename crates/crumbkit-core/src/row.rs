@@ -48,6 +48,19 @@ pub trait Row: Serialize + JsonSchema {
     /// The columns that `--long` adds after `COLUMNS`, in display order. A
     /// field in neither list appears only with `--json --full`.
     const LONG_COLUMNS: &'static [&'static str] = &[];
+
+    /// The field whose value marks the row as reporting a problem, or `None`
+    /// when the row type never reports one.
+    ///
+    /// A row reports a problem when this field serializes to a value other
+    /// than `null`, `false` or an empty string, and a missing field reports
+    /// none. A run whose rows report a problem, and that has no failure,
+    /// exits with 1, and its text ends with a note that counts those rows.
+    /// The exit reads only the rows that the result holds, so a listing puts
+    /// the rows that report a problem first (OUTPUT-3). crumbkit-test's
+    /// `check_guide` fails when the field is not one of `COLUMNS`, or when
+    /// its type is not a string, a boolean or a value that can be null.
+    const PROBLEM: Option<&'static str> = None;
 }
 
 /// A result that `crumbkit::finish` prints: one [`Row`], a `Vec` of rows, a

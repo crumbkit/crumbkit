@@ -1,6 +1,6 @@
 Exit codes
   0  The command did what it was asked.
-  1  The command failed. The failure names its code and the next step.
+  1  The command failed, or a row of its result reports a problem. A failure names its code and the next step.
   2  The command line was refused. The refusal names the help to read.
 
 A shell reports 126 and above for its own reasons, such as 127 when it cannot find shelf and 130 when Ctrl-C ends it.

@@ -262,6 +262,52 @@ fn a_leaf_that_prints_one_document_prints_no_output_line() {
     assert!(!page.contains("Output:"), "{page}");
 }
 
+/// A row type whose `problem` field marks a problem.
+#[derive(serde::Serialize, schemars::JsonSchema)]
+struct Check {
+    /// The planet's name.
+    name: String,
+    /// What is wrong with the planet, or nothing.
+    problem: String,
+}
+
+impl crate::Row for Check {
+    const COLUMNS: &'static [&'static str] = &["name", "problem"];
+    const PROBLEM: Option<&'static str> = Some("problem");
+}
+
+/// The guide of `tool()`, whose leaf prints rows that can report a problem.
+const PROBLEMS: Guide = Guide::new().leaves(&[Leaf::new(&["planets", "remove"])
+    .examples(&[Example::new(&["ceres"], "Remove Ceres")])
+    .effects(Effects::destructive().idempotent())
+    .document(crate::Document::<Vec<Check>>::new(
+        "tool",
+        "planets-remove",
+        1,
+        "The removed planets.",
+    ))]);
+
+/// The line that the help of a leaf whose rows name a problem field prints
+/// after its effects.
+const PROBLEMS_LINE: &str = "Problems: a value in the problem column marks a row with a problem, and the command then exits with 1.";
+
+#[test]
+fn the_help_of_a_leaf_whose_rows_name_a_problem_field_says_that_a_problem_exits_with_1() {
+    let short = help(&PROBLEMS, &["tool", "planets", "remove", "-h"]);
+    let long = help(&PROBLEMS, &["tool", "planets", "remove", "--help"]);
+
+    let expected = format!("Effects: destructive, idempotent, closed-world.\n{PROBLEMS_LINE}\n");
+    assert!(short.contains(&expected), "{short}");
+    assert!(long.ends_with(&expected), "{long}");
+}
+
+#[test]
+fn the_help_of_a_leaf_whose_rows_name_no_problem_field_has_no_problems_line() {
+    let page = help(&STREAM, &["tool", "planets", "remove", "--help"]);
+
+    assert!(!page.contains("Problems:"), "{page}");
+}
+
 #[test]
 fn replacing_effects_are_destructive_and_report_that_they_replace_data() {
     let effects = Effects::replacing().idempotent();

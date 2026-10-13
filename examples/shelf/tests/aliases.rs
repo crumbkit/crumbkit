@@ -27,6 +27,16 @@ broken = "books list"
 ///
 /// Returns the I/O error of a directory or file that cannot be written.
 fn home() -> io::Result<TempDir> {
+    home_with(ALIASES)
+}
+
+/// Returns a temporary directory as [`home`] does, with `aliases` written
+/// to shelf's aliases file.
+///
+/// # Errors
+///
+/// Returns the I/O error of a directory or file that cannot be written.
+fn home_with(aliases: &str) -> io::Result<TempDir> {
     let home = tempfile::tempdir()?;
     let config = home.path().join("config").join("shelf");
     #[expect(
@@ -35,7 +45,7 @@ fn home() -> io::Result<TempDir> {
     )]
     {
         std::fs::create_dir_all(&config)?;
-        std::fs::write(config.join("aliases.toml"), ALIASES)?;
+        std::fs::write(config.join("aliases.toml"), aliases)?;
     }
     Ok(home)
 }
@@ -69,9 +79,18 @@ fn aliases_list_prints_the_entries_with_a_problem_then_the_built_in_alias_then_t
     let home = home().unwrap();
 
     shelf(home.path(), &["aliases", "list"])
-        .success()
+        .code(1)
         .stdout_eq(file!["golden/aliases-list.txt"])
         .stderr_eq(file!["golden/aliases-list.stderr"]);
+}
+
+#[test]
+fn aliases_list_exits_with_0_when_every_alias_works() {
+    let home = home_with(r#"firsts = ["books", "list", "--long"]"#).unwrap();
+
+    shelf(home.path(), &["aliases", "list"])
+        .success()
+        .stderr_eq("Aliases file: [..]/config/shelf/aliases.toml\n");
 }
 
 #[test]
