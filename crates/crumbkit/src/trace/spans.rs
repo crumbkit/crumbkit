@@ -22,6 +22,11 @@ mod tests;
 /// Returns the span of `parse`, with the run's trace ids when the usage log
 /// started.
 pub(crate) fn parse() -> Span {
+    // The test build installs the span tests' subscriber before any thread
+    // reaches the span's callsite, so tracing never caches the callsite's
+    // interest from a process without that subscriber.
+    #[cfg(test)]
+    tests::install();
     let span = tracing::info_span!(
         target: "crumbkit",
         "crumbkit.parse",
@@ -40,6 +45,11 @@ pub(crate) fn parse() -> Span {
 /// Returns the span of `finish`, with the run's trace ids when the usage log
 /// started.
 pub(crate) fn finish() -> Span {
+    // The test build installs the span tests' subscriber before any thread
+    // reaches the span's callsite, so tracing never caches the callsite's
+    // interest from a process without that subscriber.
+    #[cfg(test)]
+    tests::install();
     let span = tracing::info_span!(
         target: "crumbkit",
         "crumbkit.finish",
