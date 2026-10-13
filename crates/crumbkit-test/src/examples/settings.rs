@@ -1,9 +1,11 @@
 //! The settings of the example check, which the twin, recovery and output
 //! budget checks share.
 
+use std::path::Path;
+
 use crate::allow::Allow;
 use crate::failures::FailureReader;
-use crate::runs::Dir;
+use crate::runs::{Dir, Location};
 
 /// The settings of [`check_examples`](crate::check_examples): the tool's built binary, the
 /// directory of the golden files, the environment, XDG fixture, working
@@ -142,7 +144,7 @@ impl<'a> Examples<'a> {
     /// later call replaces the earlier one.
     #[must_use]
     pub const fn current_dir(mut self, dir: &'a str) -> Self {
-        self.dir_of_runs = Some(Dir::Fixed(dir));
+        self.dir_of_runs = Some(Dir::Fixed(Location::Text(dir)));
         self
     }
 
@@ -239,8 +241,8 @@ impl<'a> Examples<'a> {
     }
 
     /// Returns the XDG fixture of each run, or `None`.
-    pub(crate) const fn xdg_fixture(&self) -> Option<&'a str> {
-        self.xdg
+    pub(crate) fn xdg_fixture(&self) -> Option<&'a Path> {
+        self.xdg.map(Path::new)
     }
 
     /// Returns the directory or the fixture that each run starts in, or
@@ -270,16 +272,19 @@ impl<'a> Examples<'a> {
 /// when `examples` sets none of them or each is sound.
 pub(crate) fn setup_problem(examples: &Examples<'_>) -> Option<String> {
     let named = match examples.dir_of_runs {
-        Some(Dir::Fixed(dir)) => Some(("current_dir", dir)),
-        Some(Dir::Fresh(dir)) => Some(("fresh_dir", dir)),
+        Some(Dir::Fixed(dir)) => Some(("current_dir", dir.path())),
+        Some(Dir::Fresh(dir)) => Some(("fresh_dir", Path::new(dir))),
         None => None,
     };
     if let Some((setting, dir)) = named
-        && !std::path::Path::new(dir).is_dir()
+        && !dir.is_dir()
     {
         return Some(format!(
-            "Examples::{setting} names `{dir}`, which is not a directory, so the check runs no example"
+            "Examples::{setting} names `{}`, which is not a directory, so the check runs no example",
+            dir.display()
         ));
     }
-    examples.xdg.and_then(crate::runs::fixture_problem)
+    examples
+        .xdg_fixture()
+        .and_then(crate::runs::fixture_problem)
 }

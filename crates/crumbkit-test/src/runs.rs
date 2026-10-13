@@ -44,7 +44,7 @@ impl Xdg {
     /// `XDG_CONFIG_HOME`, or returns the problem when the directories cannot
     /// be created, the fixture breaks a rule of [`fixture_problem`] or a
     /// file cannot be copied.
-    pub(crate) fn new(label: &str, fixture: Option<&str>) -> Result<Self, String> {
+    pub(crate) fn new(label: &str, fixture: Option<&Path>) -> Result<Self, String> {
         let problem = |error| format!("the run's XDG directories cannot be created: {error}");
         if let Some(problem) = fixture.and_then(fixture_problem) {
             return Err(problem);
@@ -54,10 +54,13 @@ impl Xdg {
         for (variable, name, placeholder) in XDG {
             let path = dir.create_dir(name).map_err(problem)?;
             if let Some(fixture) = fixture {
-                let from = Path::new(fixture).join(name);
+                let from = fixture.join(name);
                 if from.is_dir() {
                     copy_tree(&from, &path).map_err(|error| {
-                        format!("the XDG fixture `{fixture}` cannot be copied: {error}")
+                        format!(
+                            "the XDG fixture `{}` cannot be copied: {error}",
+                            fixture.display()
+                        )
                     })?;
                 }
             }
@@ -75,11 +78,12 @@ impl Xdg {
     }
 }
 
-/// Returns the problem of the XDG fixture `fixture`, a directory whose
+/// Returns the problem of the XDG fixture at `path`, a directory whose
 /// entries may only be the directories `config`, `data`, `state` and
 /// `cache`, or `None` when it keeps that rule.
-pub(crate) fn fixture_problem(fixture: &str) -> Option<String> {
-    let Ok(entries) = fs::read_dir(fixture) else {
+pub(crate) fn fixture_problem(path: &Path) -> Option<String> {
+    let fixture = path.display();
+    let Ok(entries) = fs::read_dir(path) else {
         return Some(format!("the XDG fixture `{fixture}` is not a directory"));
     };
     let mut names: Vec<String> = Vec::new();
@@ -101,13 +105,38 @@ pub(crate) fn fixture_problem(fixture: &str) -> Option<String> {
     })
 }
 
+/// A directory that a setting names: text, which a `const` setting gives,
+/// or a path, which [`RuntimeFailing`](crate::RuntimeFailing) gives and
+/// which need not be UTF-8.
+///
+/// `Path::new` is not a `const fn`, so a `const` builder keeps the text and
+/// a run reads it as a path.
+#[derive(Clone, Copy, Debug)]
+pub(crate) enum Location<'a> {
+    /// A directory named by text.
+    Text(&'a str),
+    /// A directory named by a path.
+    Path(&'a Path),
+}
+
+impl<'a> Location<'a> {
+    /// Returns the directory's path.
+    pub(crate) fn path(self) -> &'a Path {
+        match self {
+            Self::Text(text) => Path::new(text),
+            Self::Path(path) => path,
+        }
+    }
+}
+
 /// The directory that a run starts in, as a tool's settings name it.
 #[derive(Clone, Copy, Debug)]
 pub(crate) enum Dir<'a> {
     /// A directory that every run starts in, which
-    /// [`Examples::current_dir`](crate::Examples::current_dir) or
-    /// [`Failing::dir`](crate::Failing::dir) names.
-    Fixed(&'a str),
+    /// [`Examples::current_dir`](crate::Examples::current_dir),
+    /// [`Failing::dir`](crate::Failing::dir) or
+    /// [`RuntimeFailing::dir`](crate::RuntimeFailing::dir) names.
+    Fixed(Location<'a>),
     /// A fixture that each run, or each recovery chain, starts in a new
     /// copy of, which [`Examples::fresh_dir`](crate::Examples::fresh_dir)
     /// names.
@@ -119,7 +148,7 @@ pub(crate) enum Dir<'a> {
 /// when the value drops.
 pub(crate) struct WorkDir {
     /// The directory's path, or `None` for the test's directory.
-    path: Option<String>,
+    path: Option<PathBuf>,
     /// The new copy of a fixture, which owns the directory of `path`.
     fresh: Option<TempDir>,
 }
@@ -136,7 +165,7 @@ impl WorkDir {
                 fresh: None,
             }),
             Some(Dir::Fixed(path)) => Ok(Self {
-                path: Some(path.to_owned()),
+                path: Some(path.path().to_path_buf()),
                 fresh: None,
             }),
             Some(Dir::Fresh(fixture)) => {
@@ -148,7 +177,7 @@ impl WorkDir {
                 let temp = TempDir::new(label).map_err(problem)?;
                 copy_tree(Path::new(fixture), temp.path()).map_err(problem)?;
                 Ok(Self {
-                    path: Some(temp.path().display().to_string()),
+                    path: Some(temp.path().to_path_buf()),
                     fresh: Some(temp),
                 })
             }
@@ -156,7 +185,7 @@ impl WorkDir {
     }
 
     /// Returns the directory's path, or `None` for the test's directory.
-    pub(crate) fn path(&self) -> Option<&str> {
+    pub(crate) fn path(&self) -> Option<&Path> {
         self.path.as_deref()
     }
 
@@ -184,7 +213,7 @@ impl WorkDir {
 #[derive(Clone, Copy, Default)]
 pub(crate) struct Place<'a> {
     /// The working directory, relative to the test's directory or absolute.
-    pub(crate) dir: Option<&'a str>,
+    pub(crate) dir: Option<&'a Path>,
     /// The bytes on standard input.
     pub(crate) stdin: Option<&'a [u8]>,
     /// The variables of a failing line, each set to its value or removed

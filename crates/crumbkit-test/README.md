@@ -68,7 +68,9 @@ The rustdoc of each check says what it fails on and shows an example:
   command lines and follows each recovery they print, [`check_twin`],
   which runs a refused command line beside one that succeeds, and
   [`check_twins`] with [`Twins`], which runs a tool's twins and requires
-  one for each declared code. A tool that
+  one for each declared code. A test that reads its failing command lines
+  at run time, such as file names in a temporary directory, builds them
+  with [`RuntimeFailing`]. A tool that
   prints its failures in a shape of its own without a failure form gives
   these checks and [`check_examples`] a [`FailureReader`].
 - JSON documents: [`check_schema_goldens`], which pins the JSON Schema of
@@ -113,6 +115,7 @@ option.
 [`check_twin`]: src/twins.rs
 [`check_twins`]: src/twins.rs
 [`Twins`]: src/twins.rs
+[`RuntimeFailing`]: src/recoveries/runtime.rs
 [`check_schema_goldens`]: src/schemas.rs
 [`check_document_ids`]: src/documents.rs
 [`check_mounts`]: src/documents.rs

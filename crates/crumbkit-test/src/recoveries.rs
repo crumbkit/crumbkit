@@ -14,10 +14,14 @@ use crate::allow::{Allowances, Rule, is_reason};
 use crate::examples::Examples;
 use crate::failures;
 use crate::goldens::compare;
-use crate::runs::Dir;
+use crate::runs::{Dir, Location};
 
 mod chain;
+mod runtime;
 mod words;
+
+pub use runtime::RuntimeFailing;
+
 // The tests run `/bin/sh` scripts, which Windows cannot run. The two
 // attributes stay apart, because clippy reads only a plain `cfg(test)` as
 // test code.
@@ -45,12 +49,12 @@ pub struct Failing<'a> {
     /// The words after the tool's name.
     words: &'a [&'a str],
     /// The working directory of every run of the chain.
-    dir: Option<&'a str>,
+    dir: Option<Location<'a>>,
     /// The standard input of every run of the chain.
     stdin: Option<&'a str>,
     /// The XDG fixture of the chain, which wins over the fixture of
     /// [`Examples::xdg`].
-    xdg: Option<&'a str>,
+    xdg: Option<Location<'a>>,
     /// The value of each placeholder in the steps of the chain, which wins
     /// over every other source.
     values: &'a [(&'a str, &'a str)],
@@ -83,7 +87,7 @@ impl<'a> Failing<'a> {
     /// or in the test's directory when neither is set.
     #[must_use]
     pub const fn dir(mut self, dir: &'a str) -> Self {
-        self.dir = Some(dir);
+        self.dir = Some(Location::Text(dir));
         self
     }
 
@@ -101,7 +105,21 @@ impl<'a> Failing<'a> {
     /// lines in a copy of the refused line's fixture.
     #[must_use]
     pub const fn xdg(mut self, dir: &'a str) -> Self {
-        self.xdg = Some(dir);
+        self.xdg = Some(Location::Text(dir));
+        self
+    }
+
+    /// Sets the working directory to `dir`, a path that need not be UTF-8,
+    /// as [`Failing::dir`] sets it.
+    pub(crate) const fn dir_path(mut self, dir: &'a Path) -> Self {
+        self.dir = Some(Location::Path(dir));
+        self
+    }
+
+    /// Sets the XDG fixture to `dir`, a path that need not be UTF-8, as
+    /// [`Failing::xdg`] sets it.
+    pub(crate) const fn xdg_path(mut self, dir: &'a Path) -> Self {
+        self.xdg = Some(Location::Path(dir));
         self
     }
 
@@ -143,11 +161,11 @@ impl<'a> Failing<'a> {
 
     /// Returns the XDG fixture of its runs: its own, or `fallback`, the
     /// fixture of [`Examples::xdg`].
-    pub(crate) fn fixture<'p>(&self, fallback: Option<&'p str>) -> Option<&'p str>
+    pub(crate) fn fixture<'p>(&self, fallback: Option<&'p Path>) -> Option<&'p Path>
     where
         'a: 'p,
     {
-        self.xdg.or(fallback)
+        self.xdg.map(Location::path).or(fallback)
     }
 
     /// Returns the same command line with the words `words` in place of
