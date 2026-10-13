@@ -9,7 +9,6 @@ use std::io::Write;
 use clap::Command;
 use clap::error::{ContextKind, ContextValue, ErrorKind};
 
-use crate::help::{Guide, Leaf};
 use crate::output::failure::{self, Printing};
 use crate::page::LimitAbove;
 use crate::{Call, Code, Failure, Field, Recovery, Sink, Spelling, codes};
@@ -43,25 +42,18 @@ impl Refusal {
     /// alternative runs them with `--limit` set to the bound, and the field
     /// `most` names the bound (ADR-0050).
     ///
-    /// The calls that the leaf of `guide` at `path` declares with
-    /// [`Leaf::refusal_alternatives`] follow crumbkit's own alternatives
-    /// (ADR-0056).
+    /// `declared`, the calls that the function of the leaf at `path`
+    /// returned and that render and parse, follow crumbkit's own
+    /// alternatives (ADR-0056).
     pub(crate) fn command_line(
         message: String,
         path: Vec<String>,
         error: &clap::Error,
         words: &[OsString],
-        guide: &Guide,
+        declared: Vec<Call>,
     ) -> Self {
         let fields = clap_fields(error);
-        let declared = guide
-            .get_leaves()
-            .iter()
-            .find(|leaf| leaf.path() == path)
-            .map_or(&[][..], Leaf::get_refusal_alternatives)
-            .iter()
-            .cloned()
-            .map(Recovery::Run);
+        let declared = declared.into_iter().map(Recovery::Run);
         let above =
             std::error::Error::source(error).and_then(|source| source.downcast_ref::<LimitAbove>());
         if let Some(above) = above

@@ -38,7 +38,7 @@ pub(super) fn attempt<C: FromArgMatches>(
 /// before the command path too. A flag counts only when the command's
 /// argument with the flag's id is global, so a tool's own argument with
 /// that id is never refused.
-fn refusal(command: &Command, matches: &ArgMatches, guide: &Guide) -> Option<Refusal> {
+pub(super) fn refusal(command: &Command, matches: &ArgMatches, guide: &Guide) -> Option<Refusal> {
     let mut path: Vec<&str> = Vec::new();
     let mut node = command;
     let mut level = matches;

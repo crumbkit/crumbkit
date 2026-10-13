@@ -21,6 +21,7 @@ use crate::refusal::Refusal;
 use crate::{Sink, Spelling};
 
 mod attempt;
+mod declared;
 mod lines;
 mod page;
 mod parsed;
@@ -421,7 +422,8 @@ where
         Printing::of(guide).exit(&crate::codes::CLI_USAGE),
     );
     let message = refusal_message(&command, &path, &error);
-    let refusal = Refusal::command_line(message, path, &error, &words, guide);
+    let declared = declared::alternatives::<C>(&mut command, guide, &path, &error, &words);
+    let refusal = Refusal::command_line(message, path, &error, &words, declared);
     Err(refuse(sink, &refusal, json, spelling, guide, command))
 }
 

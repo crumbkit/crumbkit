@@ -294,3 +294,35 @@ fn a_typed_call_renders_its_words_after_the_root_quoting_each_word_a_shell_would
         "shelf admin 'Le Guin' --yes -- -7"
     );
 }
+
+#[test]
+fn the_words_of_a_call_with_values_are_the_line_that_its_text_shows() {
+    let mut command = Tool::command();
+    let call = Call::new(&["books", "list"])
+        .value("author", "Le Guin")
+        .value("sort", "year")
+        .value("number", "-3");
+    let text = super::render(&call, &mut command).unwrap();
+
+    let words = super::words(&call, &command);
+
+    assert_eq!(
+        text,
+        "shelf books list --author 'Le Guin' --sort year -n=-3"
+    );
+    assert_eq!(
+        words.unwrap(),
+        [
+            "shelf", "books", "list", "--author", "Le Guin", "--sort", "year", "-n=-3"
+        ]
+    );
+}
+
+#[test]
+fn a_call_with_a_placeholder_has_no_words() {
+    let mut command = Tool::command();
+    let call = Call::new(&["books", "show"]).arg("ids");
+    super::render(&call, &mut command).unwrap();
+
+    assert_eq!(super::words(&call, &command), None);
+}
