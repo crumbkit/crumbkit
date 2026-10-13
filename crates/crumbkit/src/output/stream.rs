@@ -14,7 +14,8 @@ use super::envelope::{Extras, Selected, write_document};
 use super::failure::{self, PreparedFailure};
 use super::{Output, fields, table, unwrapped};
 use crate::form::FailureForm;
-use crate::{AsFailure, Document, Failure, Row, Sink, Spelling, Stream, codes};
+use crate::help::Exit;
+use crate::{AsFailure, Document, Failure, Row, Sink, Spelling, Stream, codes, exit};
 
 #[cfg(test)]
 mod tests;
@@ -140,9 +141,8 @@ pub fn stream_to<'a, R: Row, O: Write, W: Write>(
 /// [`stream`] and [`stream_to`] open it. A stream that is dropped without
 /// `end` has printed every line that it was given, and records no exit code.
 ///
-/// A stream ends with exit code 0 or 1, as [`Streaming::end`] describes. A
-/// tool that needs its own exit code, from 3 to 125, at the end of a stream
-/// is not served yet.
+/// A stream ends with exit code 0, 1, or the code that the tool's guide
+/// declares for its first failure, as [`Streaming::end`] describes.
 #[derive(Debug)]
 #[expect(
     clippy::struct_excessive_bools,
@@ -176,6 +176,11 @@ pub struct Streaming<'a, R, O, W> {
     document: Document<Stream<R>>,
     /// Whether the stream printed a failure.
     failed: bool,
+    /// The exit codes that the tool's guide declares (ADR-0037).
+    exits: &'static [Exit],
+    /// The exit code of the stream's first failure, which is 1 until a
+    /// failure prints.
+    exit: u8,
     /// Whether the output writer still takes lines.
     state: State,
     /// The line being written, which is reused for each line.
@@ -224,6 +229,7 @@ fn open<R: Row, O: Write, W: Write>(
         command,
         dry_run,
         failure_form,
+        exits,
         ..
     } = output;
     let columns: Vec<&str> = if fields.is_empty() {
@@ -246,6 +252,8 @@ fn open<R: Row, O: Write, W: Write>(
         form: *failure_form,
         document,
         failed: false,
+        exits,
+        exit: 1,
         state: State::Open,
         line: Vec::new(),
         budget,
@@ -354,9 +362,14 @@ impl<R: Row, O: Write, W: Write> Streaming<'_, R, O, W> {
     /// the error writer after the output writer was flushed.
     ///
     /// The exit code is 0 when every item printed, and also when the reader
-    /// closed the pipe early. It is 1 when the stream printed a failure or
-    /// `result` is an `Err`, when a write failed for a reason other than
-    /// a closed pipe, and when the stream stopped at the output budget.
+    /// closed the pipe early. When the stream printed a failure or `result`
+    /// is an `Err`, the exit code is the one that the tool's guide declares
+    /// for the code of the stream's first failure with
+    /// [`Exit::failures`](crate::help::Exit::failures), or 1 when it
+    /// declares none, as [`finish_to`](crate::finish_to) exits (ADR-0037).
+    /// It is 1 when a write failed for a reason other than a closed pipe,
+    /// and when the stream stopped at the output budget, unless an earlier
+    /// failure chose the code.
     #[must_use]
     #[expect(
         clippy::needless_pass_by_value,
@@ -376,13 +389,13 @@ impl<R: Row, O: Write, W: Write> Streaming<'_, R, O, W> {
         {
             self.note(DRY_RUN_LINE);
         }
-        let code = if self.failed || self.state == State::Broken {
-            ExitCode::FAILURE
+        let exit = if self.failed {
+            self.exit
         } else {
-            ExitCode::SUCCESS
+            u8::from(self.state == State::Broken)
         };
-        self.record(code, empty);
-        code
+        self.record(exit, empty);
+        ExitCode::from(exit)
     }
 
     /// Prints the note of a stream that ended with no rows, such as `note:
@@ -464,11 +477,12 @@ impl<R: Row, O: Write, W: Write> Streaming<'_, R, O, W> {
             self.command.as_deref_mut(),
             &mut self.err,
         );
-        // The span records only the stream's first failure, as the usage log
-        // does.
-        #[cfg(feature = "tracing")]
+        // The stream's first failure chooses the exit code, and the span
+        // records only that failure, as the usage log does.
         if !self.failed {
+            #[cfg(feature = "tracing")]
             crate::trace::spans::failed(document.code());
+            self.exit = exit::failed(self.exits, failure.code());
         }
         self.failed = true;
         if self.json && self.document.has_envelope() {
@@ -502,7 +516,7 @@ impl<R: Row, O: Write, W: Write> Streaming<'_, R, O, W> {
             self.command.as_deref_mut(),
         );
         let _ = self.send();
-        self.record(code, false);
+        self.record(exit::number(code), false);
         code
     }
 
@@ -538,8 +552,8 @@ impl<R: Row, O: Write, W: Write> Streaming<'_, R, O, W> {
         ControlFlow::Break(())
     }
 
-    /// Records `code` on the span, and records `code` and whether the stream
-    /// was `empty` in the usage log.
+    /// Records the exit code `exit` on the span, and records `exit` and
+    /// whether the stream was `empty` in the usage log.
     #[cfg_attr(
         not(any(feature = "tracing", feature = "usage-log")),
         expect(
@@ -547,16 +561,16 @@ impl<R: Row, O: Write, W: Write> Streaming<'_, R, O, W> {
             reason = "only the tracing and usage-log features record the exit code"
         )
     )]
-    fn record(&self, code: ExitCode, empty: bool) {
+    fn record(&self, exit: u8, empty: bool) {
         #[cfg(feature = "tracing")]
-        crate::trace::spans::exited(&self.span, code);
+        crate::trace::spans::exited(&self.span, exit);
         #[cfg(feature = "usage-log")]
         crate::usage::finished(
-            code,
+            exit,
             u64::try_from(self.sent).unwrap_or(u64::MAX),
             self.state == State::Spent,
             empty,
         );
-        let _ = (code, empty);
+        let _ = (exit, empty);
     }
 }

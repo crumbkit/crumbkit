@@ -3,17 +3,17 @@
 //! dry-run line.
 
 use std::io::{self, Write};
-use std::process::ExitCode;
 
 use super::budget::OverBudget;
 use super::dry_run::DRY_RUN_LINE;
 use super::failure::{self, PreparedFailure};
 use super::result::{Answer, write_result};
 use super::{Output, fields};
-use crate::{AsFailure, Document, Rows, Sink, Spelling};
+use crate::{AsFailure, Document, Rows, Sink, Spelling, exit};
 
-/// Prints the result to `sink` and returns the exit code, as [`finish_to`]
-/// describes, and whether the output budget cut a listing or a list short.
+/// Prints the result to `sink` and returns the exit code as a number, as
+/// [`finish_to`] describes, and whether the output budget cut a listing or a
+/// list short.
 #[expect(
     clippy::needless_pass_by_value,
     reason = "finish_to takes the result by value, as finish does, so a tool passes the result it built in the same way to either"
@@ -24,7 +24,7 @@ pub(super) fn respond<T: Rows, E: AsFailure, O: Write, W: Write, R>(
     spelling: Spelling,
     document: Document<T>,
     result: Result<T, E>,
-) -> (ExitCode, bool) {
+) -> (u8, bool) {
     if let Some(refusal) = fields::flags_refusal::<T>(output) {
         let form = output.failure_form;
         let layout = output.json_layout;
@@ -36,7 +36,7 @@ pub(super) fn respond<T: Rows, E: AsFailure, O: Write, W: Write, R>(
             layout,
             output.command.as_mut(),
         );
-        return (code, false);
+        return (exit::number(code), false);
     }
     let value = match &result {
         Ok(value) => value,
@@ -52,7 +52,7 @@ pub(super) fn respond<T: Rows, E: AsFailure, O: Write, W: Write, R>(
                 error.as_failure(),
                 command,
             );
-            return (ExitCode::FAILURE, false);
+            return (exit::failed(output.exits, error.as_failure().code()), false);
         }
     };
     // A batch's failures are read once, so its JSON document and its text
@@ -77,19 +77,17 @@ pub(super) fn respond<T: Rows, E: AsFailure, O: Write, W: Write, R>(
     let (code, answer) = match written {
         Ok((answer, bytes)) => {
             output.spent = output.spent.saturating_add(bytes);
-            (ExitCode::SUCCESS, answer)
+            (0, answer)
         }
         // A reader that stops early, as `shelf books list | head -1` does,
         // closes the pipe after it has read every line it wanted, so the
         // command did its job.
-        Err(error) if error.kind() == io::ErrorKind::BrokenPipe => {
-            (ExitCode::SUCCESS, Answer::Whole)
-        }
+        Err(error) if error.kind() == io::ErrorKind::BrokenPipe => (0, Answer::Whole),
         Err(error) => {
             // The process is already failing, and a failed report has nowhere
             // else to go.
             let _ = writeln!(sink.err, "error: cannot write to standard output: {error}");
-            (ExitCode::FAILURE, Answer::Whole)
+            (1, Answer::Whole)
         }
     };
     // The text and a document without the envelope have no `dry_run` field,
@@ -97,7 +95,7 @@ pub(super) fn respond<T: Rows, E: AsFailure, O: Write, W: Write, R>(
     // result that was refused or failed to print gets no line.
     let dry_run_line = output.dry_run
         && (!output.json || !document.has_envelope())
-        && code == ExitCode::SUCCESS
+        && code == 0
         && !matches!(answer, Answer::Refused(_));
     let (code, cut, left_out) = answered(sink, output, spelling, &answer, code);
     let code = print_failures(sink, output, spelling, document, failures, left_out, code);
@@ -111,7 +109,9 @@ pub(super) fn respond<T: Rows, E: AsFailure, O: Write, W: Write, R>(
 
 /// Prints the failures of a batch or a prose result in text, and the
 /// failure of the rows that the budget left out, and returns the exit code:
-/// 1 when there is any failure, and `code` otherwise.
+/// the exit code of the first failure when there is any, which is 1 unless
+/// the guide declares another for its code (ADR-0037), and `code`
+/// otherwise.
 fn print_failures<T: Rows, O: Write, W: Write, R>(
     sink: &mut Sink<O, W, R>,
     output: &mut Output,
@@ -119,8 +119,8 @@ fn print_failures<T: Rows, O: Write, W: Write, R>(
     document: Document<T>,
     failures: Option<Vec<PreparedFailure<'_>>>,
     left_out: Option<&OverBudget>,
-    code: ExitCode,
-) -> ExitCode {
+    code: u8,
+) -> u8 {
     let Some(failures) = failures else {
         return code;
     };
@@ -145,10 +145,10 @@ fn print_failures<T: Rows, O: Write, W: Write, R>(
             let _ = failure::write_text(&mut sink.err, output.failure_form, &over);
         }
     }
-    if failures.is_empty() {
-        code
-    } else {
-        ExitCode::FAILURE
+    match (failures.first(), left_out) {
+        (Some(first), _) => exit::failed(output.exits, first.failure().code()),
+        (None, Some(over)) => exit::failed(output.exits, over.code),
+        (None, None) => code,
     }
 }
 
@@ -160,8 +160,8 @@ fn answered<'a, O: Write, W: Write, R>(
     output: &mut Output,
     spelling: Spelling,
     answer: &'a Answer,
-    code: ExitCode,
-) -> (ExitCode, bool, Option<&'a OverBudget>) {
+    code: u8,
+) -> (u8, bool, Option<&'a OverBudget>) {
     match answer {
         Answer::Whole => (code, false, None),
         Answer::Cut(over) => {
@@ -175,7 +175,7 @@ fn answered<'a, O: Write, W: Write, R>(
             let _ = (over, spelling);
             (code, true, None)
         }
-        Answer::Partial(over) => (ExitCode::FAILURE, false, Some(over)),
+        Answer::Partial(over) => (1, false, Some(over)),
         Answer::Refused(over) => {
             let form = output.failure_form;
             failure::print(
@@ -187,7 +187,7 @@ fn answered<'a, O: Write, W: Write, R>(
                 over,
                 output.command.as_mut(),
             );
-            (ExitCode::FAILURE, false, None)
+            (exit::failed(output.exits, over.code), false, None)
         }
     }
 }

@@ -17,6 +17,7 @@ mod batch;
 mod budget;
 mod bytes;
 mod empty;
+mod exits;
 mod layout;
 mod listing;
 mod notes;

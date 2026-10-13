@@ -16,6 +16,7 @@ use crate::{
 };
 
 mod empty;
+mod exits;
 
 /// A row with two compact columns, one long column and one field that only
 /// `--full` shows.

@@ -16,13 +16,18 @@ use tracing::{Event, Level, Metadata, Subscriber};
 use tracing_core::span::Current;
 
 use super::record_ids;
-use crate::help::Guide;
+use crate::help::{Exit, Guide};
 use crate::{
     Batch, Code, Document, Error, Failure, Output, Recovery, Row, Sink, Spelling, finish_to,
     parse_to,
 };
 
 const NOT_FOUND: Code = Code::new("solar", "planets", "not_found");
+const TIMED_OUT: Code = Code::new("solar", "charts", "timed_out");
+
+/// A guide that maps `TIMED_OUT` to 124 (ADR-0037).
+const GUIDE: Guide = Guide::new()
+    .exits(&[Exit::new(124, "The star chart ran out of time.").failures(&[&TIMED_OUT])]);
 
 /// A word that no span may hold, because the caller typed it.
 const PLANTED: &str = "s3cr3t";
@@ -266,7 +271,7 @@ fn parse(args: &[&str]) -> Result<Output, ExitCode> {
     let (tool, command) = parse_to::<Tool, _, _, _, _>(
         &mut Sink::new(Vec::new(), Vec::new()),
         Tool::command(),
-        &Guide::new(),
+        &GUIDE,
         Spelling::COLONS,
         args,
     )?;
@@ -472,4 +477,57 @@ fn a_subscriber_that_disables_crumbkit_s_spans_sees_no_crumbkit_field_on_the_too
 
     assert_eq!(seen.names(), ["solar"]);
     assert_eq!(seen.fields("solar"), []);
+}
+
+/// A failure whose code the guide maps to 124.
+#[derive(Debug)]
+struct TimedOut;
+
+impl fmt::Display for TimedOut {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str("the star chart ran out of time")
+    }
+}
+
+impl std::error::Error for TimedOut {}
+
+impl Failure for TimedOut {
+    fn code(&self) -> &'static Code {
+        &TIMED_OUT
+    }
+
+    fn recovery(&self) -> Recovery {
+        Recovery::Retry
+    }
+}
+
+#[test]
+fn a_failure_that_the_guide_maps_records_its_declared_exit_code_on_the_finish_span() {
+    let finished = watch(|| {
+        run(
+            &["solar", "planets", "show", "Saturn"],
+            PLANETS,
+            Err(TimedOut),
+        );
+    });
+    let document: Document<crate::Stream<Planet>> =
+        Document::new("solar", "planets-watch", 1, "The test rows.");
+    let streamed = watch(|| {
+        if let Ok(mut output) = parse(&["solar", "planets", "show", "Saturn"]) {
+            let sink = &mut Sink::new(Vec::new(), Vec::new());
+            if let Ok(streaming) = crate::stream_to(sink, &mut output, Spelling::COLONS, document) {
+                let _ = streaming.end(Err(TimedOut));
+            }
+        }
+    });
+
+    for seen in [finished, streamed] {
+        assert_eq!(
+            seen.fields("crumbkit.finish"),
+            [
+                ("error.type", "solar::charts::timed_out".to_owned()),
+                ("process.exit.code", "124".to_owned())
+            ]
+        );
+    }
 }
