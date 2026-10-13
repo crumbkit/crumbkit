@@ -5,7 +5,7 @@ use std::fmt::Write as _;
 use std::time::Instant;
 
 use clap::Command;
-use crumbkit::form::Step;
+use crumbkit::form::{ReadFailure, Step};
 
 use super::words::split;
 use super::{Failing, Recoveries};
@@ -69,14 +69,13 @@ struct Parent<'p> {
 /// placeholder that a field filled with the field's name.
 type Filled = (Vec<String>, Vec<(String, String)>);
 
-/// How a run ended: with code 0, or with a failure document's code and
-/// steps.
+/// How a run ended: with code 0, or with the failures that it printed.
 enum Outcome {
     /// The run exited with code 0.
     Succeeds,
-    /// The run failed with this code, offers these steps, the recovery
-    /// first, and names these fields, which fill the steps' placeholders.
-    Fails(String, Vec<Step>, Vec<(String, String)>),
+    /// The run failed and printed these failures, the first failure first,
+    /// each with its code, its steps and its fields.
+    Fails(Vec<ReadFailure>),
 }
 
 /// The settings that every run of one chain shares.
@@ -151,21 +150,22 @@ impl Walk<'_> {
                 "{}: the start must fail with {code}, and it exits with code 0",
                 chain.start
             )),
-            Some(Outcome::Fails(failed, steps, fields)) => {
-                self.provoked.push(failed.clone());
-                if failed == code {
-                    let _ = writeln!(self.report, "  fails with {code}");
+            Some(Outcome::Fails(failures)) => {
+                if failures.iter().any(|failure| failure.code() == code) {
                     let path = path_below(self.command, start.words);
-                    let parent = Parent {
-                        codes: std::slice::from_ref(&code),
-                        fields: &fields,
-                        path: &path,
-                    };
-                    self.follow(&mut chain, &parent, &steps, 1);
+                    let mark = chain.ran.len();
+                    for failure in &failures {
+                        chain.ran.truncate(mark);
+                        self.branch(&mut chain, None, "the start", &path, failure, 0);
+                    }
                 } else {
+                    let failed: Vec<&str> = failures.iter().map(ReadFailure::code).collect();
+                    self.provoked
+                        .extend(failed.iter().map(|&failed| failed.to_owned()));
                     self.problems.push(format!(
-                        "{}: the start must fail with {code}, and it fails with {failed}",
-                        chain.start
+                        "{}: the start must fail with {code}, and it fails with {}",
+                        chain.start,
+                        failed.join(", ")
                     ));
                 }
             }
@@ -231,40 +231,69 @@ impl Walk<'_> {
                 Some(Outcome::Succeeds) => {
                     let _ = writeln!(self.report, "{indent}  exits 0");
                 }
-                Some(Outcome::Fails(code, ..)) if code == self.usage => {
-                    let _ = writeln!(self.report, "{indent}  refused by the parser with {code}");
-                    self.problems.push(format!(
-                        "{}: the parser refuses {label} with {code}",
-                        chain.start
-                    ));
-                }
-                Some(Outcome::Fails(code, next, next_fields)) => {
-                    self.provoked.push(code.clone());
-                    if !self.known.contains(&code) {
-                        self.unknown(chain, &label, &code, &indent);
-                        continue;
+                Some(Outcome::Fails(failures)) => {
+                    // Each failure starts its own branch, which may run a
+                    // command line that a sibling branch ran.
+                    let mark = chain.ran.len();
+                    for failure in &failures {
+                        chain.ran.truncate(mark);
+                        self.branch(chain, Some(parent), &label, &path, failure, depth);
                     }
-                    if parent.codes.contains(&code)
-                        && !self.allowances.excuses(Rule::SameCode, &path)
-                    {
-                        self.problems.push(format!(
-                            "{}: {label} fails again with {code}, so an agent that follows the recovery learns nothing new",
-                            chain.start
-                        ));
-                    }
-                    let _ = writeln!(self.report, "{indent}  fails with {code}");
-                    let mut codes = parent.codes.to_vec();
-                    codes.push(code);
-                    let next_parent = Parent {
-                        codes: &codes,
-                        fields: &next_fields,
-                        path: &path,
-                    };
-                    self.follow(chain, &next_parent, &next, depth + 1);
                 }
                 None => {}
             }
         }
+    }
+
+    /// Follows `failure`, one failure that the run `label` of the command at
+    /// `path` printed, as a branch of `chain` at `depth`, the start's
+    /// failures at 0. `parent` is the failure whose step ran, or `None` for
+    /// the start. It reports a refusal by the parser, an undeclared code and
+    /// a code that an earlier failure of the chain had, and then follows the
+    /// failure's steps.
+    fn branch(
+        &mut self,
+        chain: &mut Chain<'_>,
+        parent: Option<&Parent<'_>>,
+        label: &str,
+        path: &str,
+        failure: &ReadFailure,
+        depth: u8,
+    ) {
+        let indent = "  ".repeat(usize::from(depth) + 1);
+        let code = failure.code();
+        self.provoked.push(code.to_owned());
+        // A start may fail with the usage code on purpose, so only a step
+        // that the parser refuses is a problem.
+        if code == self.usage && parent.is_some() {
+            let _ = writeln!(self.report, "{indent}refused by the parser with {code}");
+            self.problems.push(format!(
+                "{}: the parser refuses {label} with {code}",
+                chain.start
+            ));
+            return;
+        }
+        if !self.known.iter().any(|known| known == code) {
+            self.unknown(chain, label, code, &indent);
+            return;
+        }
+        let earlier = parent.map_or(&[][..], |parent| parent.codes);
+        if earlier.iter().any(|seen| seen == code) && !self.allowances.excuses(Rule::SameCode, path)
+        {
+            self.problems.push(format!(
+                "{}: {label} fails again with {code}, so an agent that follows the recovery learns nothing new",
+                chain.start
+            ));
+        }
+        let _ = writeln!(self.report, "{indent}fails with {code}");
+        let mut codes = earlier.to_vec();
+        codes.push(code.to_owned());
+        let next = Parent {
+            codes: &codes,
+            fields: failure.fields(),
+            path,
+        };
+        self.follow(chain, &next, failure.steps(), depth + 1);
     }
 
     /// Writes `code`, which `label` failed with and which no declared code
@@ -274,7 +303,7 @@ impl Walk<'_> {
     fn unknown(&mut self, chain: &Chain<'_>, label: &str, code: &str, indent: &str) {
         let _ = writeln!(
             self.report,
-            "{indent}  fails with {code}, which no declared code spells"
+            "{indent}fails with {code}, which no declared code spells"
         );
         match self.recoveries.spelling.split(code) {
             Some((component, _, _)) if self.components.iter().any(|known| known == component) => {
@@ -412,11 +441,8 @@ impl Walk<'_> {
         if output.status.success() {
             return Some(Outcome::Succeeds);
         }
-        // The first failure is the one the run fails with.
-        let Some(failure) = failures::read_failures(self.reader, &output.stdout, &output.stderr)
-            .into_iter()
-            .next()
-        else {
+        let failures = failures::read_failures(self.reader, &output.stdout, &output.stderr);
+        if failures.is_empty() {
             match self.reader {
                 Some(reader) => {
                     let (name, remedy) = reader.name_and_remedy();
@@ -433,9 +459,7 @@ impl Walk<'_> {
                 )),
             }
             return None;
-        };
-        let code = failure.code().to_owned();
-        let steps = failure.steps().to_vec();
-        Some(Outcome::Fails(code, steps, failure.fields().to_vec()))
+        }
+        Some(Outcome::Fails(failures))
     }
 }

@@ -304,8 +304,11 @@ impl<'a> Recoveries<'a> {
 /// the failure of the last document on standard output that is a
 /// `crumbkit/failure/v1` document or that has `failures`, as a batch prints
 /// them, and then the last `code:` line on standard error, which gives a
-/// failure without steps or fields. It follows the first failure that it
-/// reads, such as the first entry of a batch's `failures`. The runs of
+/// failure without steps or fields. It follows every failure that it
+/// reads, such as each entry of a batch's `failures`, and each failure
+/// starts its own branch, which may run a command line that a sibling
+/// branch ran. A start passes when any of its failures carries the start's
+/// code. The runs of
 /// one chain share one set of fresh XDG directories, which start as copies
 /// of the fixture of [`Failing::xdg`] or [`Examples::xdg`], the working directory
 /// and the standard input of its start, so a step sees what the earlier
@@ -337,7 +340,8 @@ impl<'a> Recoveries<'a> {
 /// It finds:
 ///
 /// - a start whose code is not declared, which it does not run;
-/// - a start that does not fail with its code;
+/// - a start that exits with code 0, or none of whose failures carries its
+///   code;
 /// - a step that the parser refuses with crumbkit's usage code;
 /// - a step that fails with a code that no declared code spells, when
 ///   [`Spelling::split`](crumbkit::Spelling::split) reads the code's

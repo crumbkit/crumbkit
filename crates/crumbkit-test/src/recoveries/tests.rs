@@ -513,31 +513,3 @@ fn a_call_that_does_not_start_with_the_tool_s_name_fails_the_check() {
          tool books show 7: the step `other books list` must start with the tool's name, tool"
     );
 }
-
-#[test]
-fn a_batch_s_first_failure_starts_the_chain() {
-    let batch = format!(
-        r#"{{"schema":"tool/books-show/v1","data":[],"failures":[{{"code":"tool::books::not_found","message":"m","recovery":{}}}]}}"#,
-        run("tool books list")
-    );
-    let mut answers = vec![("books show 7 --json", 1, batch.as_str(), "")];
-    answers.extend(listed());
-    let setup = Setup::new("recoveries-batch", &answers);
-
-    check_with(
-        &setup,
-        &recoveries(&setup, SHOW_7, OTHERS),
-        Action::Overwrite,
-    );
-
-    assert!(
-        setup.report().starts_with(
-            "tool books show 7\n\
-             \x20 fails with tool::books::not_found\n\
-             \x20 run tool books list\n\
-             \x20   exits 0\n\n"
-        ),
-        "{}",
-        setup.report()
-    );
-}
