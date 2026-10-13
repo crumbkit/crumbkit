@@ -61,7 +61,7 @@ impl Parsed {
             words: Some(words),
             no_input,
             failure_form: guide.get_failure_form(),
-            no_terminal: !guide.get_terminal_detection(),
+            no_terminal: !guide.terminal_detection(),
             output_budget: budget_of(guide),
             json_layout: guide.layout(),
         }
@@ -81,7 +81,7 @@ impl Parsed {
             words: None,
             no_input: false,
             failure_form: guide.get_failure_form(),
-            no_terminal: !guide.get_terminal_detection(),
+            no_terminal: !guide.terminal_detection(),
             output_budget: budget_of(guide),
             json_layout: guide.layout(),
         }

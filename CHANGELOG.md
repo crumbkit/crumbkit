@@ -240,9 +240,13 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit-test: [`check_recoveries`] fails on a placeholder that a field
   of the failure fills, and shows the fill in the report, unless an opt-out
   from `Rule::FieldValue` names the failing command ([ADR-0053]).
-- crumbkit: `Guide::without_terminal_detection` turns terminal detection
-  off, so help has no colour, `Output::progress_allowed` is false, and
-  pickers and `Output::confirm` never ask ([ADR-0049]).
+- crumbkit: `Guide::without_terminal_detection(reason)` turns terminal
+  detection off, so help has no colour, `Output::progress_allowed` is false,
+  and pickers and `Output::confirm` never ask. `get_without_terminal_detection`
+  returns the reason ([ADR-0049]).
+- crumbkit-test: [`check_opt_outs`] lists a guide without terminal detection
+  as `terminal-detection/off`, with the tool's reason and its costs
+  ([ADR-0049]).
 - crumbkit-test: [`check_recoveries`] takes the tool's guide and fails
   before it runs anything on a guide with a failure form, unless an opt-out
   from `Rule::Recoveries` names the root ([ADR-0045]).

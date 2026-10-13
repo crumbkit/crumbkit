@@ -304,7 +304,7 @@ fn no_input_refuses_without_asking() {
 
 #[test]
 fn with_terminal_detection_off_a_missing_argument_is_refused_without_asking_the_picker() {
-    const QUIET: Guide = GUIDE.without_terminal_detection();
+    const QUIET: Guide = GUIDE.without_terminal_detection("Our CI runs in a pseudo-terminal.");
     assert_one_word_apart(&["show"], &["show", "--list=a"]);
     let admitted = run(&QUIET, &["show", "--list=a"], "", true);
     assert!(admitted.result.is_ok(), "{}", admitted.err);
