@@ -43,6 +43,9 @@ mod tests;
 ///
 /// A tool adds them to its own clap parser with `#[command(flatten)]`. Every
 /// flag is global, so it also works after a subcommand: `shelf books list --json`.
+/// `Output` adds no description to the command that flattens it, and nor
+/// does any other argument type of crumbkit, so a command without a doc
+/// comment of its own has none in its help.
 ///
 /// - `--json` prints a JSON document, on one line unless the guide sets a
 ///   [`JsonLayout`].
@@ -64,6 +67,9 @@ mod tests;
 /// `PartialEq` or `Eq`, because `clap::Command` implements neither and nothing
 /// compares two `Output` values.
 #[derive(Args, Clone, Debug, Default)]
+// The doc comment is rustdoc, and clap would copy it into the help of a
+// command without a description of its own.
+#[command(about = None, long_about = None)]
 #[expect(
     clippy::struct_excessive_bools,
     reason = "each bool is one independent flag or mark of the run, and no two of them form a state machine"

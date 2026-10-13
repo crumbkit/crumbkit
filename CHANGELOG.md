@@ -700,6 +700,10 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- crumbkit: a command without a doc comment that flattens `Output`,
+  `Page`, `NoInput`, `DryRun`, `Yes` or `Expect`, or takes one of
+  crumbkit's argument types, shows no description instead of crumbkit's
+  rustdoc ([ADR-0015]).
 - crumbkit-test: [`check_twins`] requires no twin for a declared code that
   the guide's `Rename` prints in place of one of crumbkit's codes, as its
   docs said ([ADR-0005]).

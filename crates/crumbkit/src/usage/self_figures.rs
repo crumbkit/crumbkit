@@ -59,6 +59,9 @@ pub const SELF_FIGURES_LIST: Document<Listing<FiguresRow, UsageSummary>> = Docum
 /// The arguments of `<tool> self figures list`: the arguments of
 /// [`SelfUsage`], and how many rows to print.
 #[derive(Args, Clone, Debug, PartialEq, Eq)]
+// The doc comment is rustdoc, and clap would copy it into the help of a
+// command without a description of its own.
+#[command(about = None, long_about = None)]
 pub struct SelfFigures {
     /// How far back to read and which log to read.
     #[command(flatten)]

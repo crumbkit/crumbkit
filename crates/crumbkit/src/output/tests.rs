@@ -13,6 +13,7 @@ use super::{Output, finish_to};
 use crate::twins::assert_one_word_apart;
 use crate::{Document, Error, Listing, Row, Rows, Sink, Spelling};
 
+mod about;
 mod batch;
 mod budget;
 mod bytes;

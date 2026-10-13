@@ -51,6 +51,9 @@ const BAD_VALUE: &str = "the value must be a list of one or more words";
 /// A tool's hidden `aliases list` subcommand takes it as its arguments
 /// type, as in the [crate example](crate).
 #[derive(Args, Clone, Debug, PartialEq, Eq, Serialize, JsonSchema)]
+// The doc comment is rustdoc, and clap would copy it into the help of a
+// command without a description of its own.
+#[command(about = None, long_about = None)]
 pub struct AliasesList {
     /// How many aliases to print.
     #[command(flatten)]
