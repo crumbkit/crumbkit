@@ -67,6 +67,9 @@ const NONE: &str = "none";
 /// [`Effects`](crate::help::Effects) are
 /// [`replacing`](crate::help::Effects::replacing).
 #[derive(Args, Clone, Debug, Default, PartialEq, Eq)]
+// The doc comment is rustdoc, and clap would copy it into the help of a
+// command without a description of its own.
+#[command(about = None, long_about = None)]
 // clap builds the arguments of every command on every run, so the type
 // skips the argument group that clap would build for its one option.
 #[group(skip)]

@@ -33,7 +33,7 @@ use self::failure::Printing;
 pub use self::layout::JsonLayout;
 pub use self::stream::{Streaming, stream, stream_to};
 use crate::form::FailureForm;
-use crate::help::{Exit, Guide, Rename};
+use crate::help::{Exit, Guide, Rename, view};
 use crate::{AsFailure, Document, Parsed, Rows, Sink, Spelling};
 
 #[cfg(test)]
@@ -43,6 +43,9 @@ mod tests;
 ///
 /// A tool adds them to its own clap parser with `#[command(flatten)]`. Every
 /// flag is global, so it also works after a subcommand: `shelf books list --json`.
+/// `Output` adds no description to the command that flattens it, and nor
+/// does any other argument type of crumbkit, so a command without a doc
+/// comment of its own has none in its help.
 ///
 /// - `--json` prints a JSON document, on one line unless the guide sets a
 ///   [`JsonLayout`].
@@ -55,6 +58,13 @@ mod tests;
 /// that flag out of its help, and `parse` and `finish` refuse it, as
 /// [`help::Leaf::offers`](crate::help::Leaf::offers) describes.
 ///
+/// `parse`, `finish` and `stream` refuse `--full` without `--json`, and
+/// `--fields` with `--long` or `--full`, as a refused command line with the
+/// code `crumbkit::cli::usage`, such as `--full prints every field of every
+/// row in JSON, so it needs --json` with the hint `add --json, or drop
+/// --full`. clap parses each of these lines, so a tool that parses with
+/// clap alone gets the refusal from `finish` or `stream`.
+///
 /// It also holds the command tree that the tool parsed against, which
 /// [`Output::set_command`] sets, so `finish` can render a listing's next step
 /// and a failure's recovery. `finish` builds only the branch of the tree that
@@ -64,6 +74,9 @@ mod tests;
 /// `PartialEq` or `Eq`, because `clap::Command` implements neither and nothing
 /// compares two `Output` values.
 #[derive(Args, Clone, Debug, Default)]
+// The doc comment is rustdoc, and clap would copy it into the help of a
+// command without a description of its own.
+#[command(about = None, long_about = None)]
 #[expect(
     clippy::struct_excessive_bools,
     reason = "each bool is one independent flag or mark of the run, and no two of them form a state machine"
@@ -74,13 +87,7 @@ pub struct Output {
     json: bool,
 
     /// Print only these comma-separated fields, in this order
-    #[arg(
-        long,
-        global = true,
-        value_name = "FIELD",
-        value_delimiter = ',',
-        conflicts_with_all = ["long", "full"]
-    )]
+    #[arg(long, global = true, value_name = "FIELD", value_delimiter = ',')]
     fields: Vec<String>,
 
     /// Add the long columns after the compact ones
@@ -88,7 +95,7 @@ pub struct Output {
     long: bool,
 
     /// With --json, print every field of every row
-    #[arg(long, global = true, requires = "json")]
+    #[arg(long, global = true)]
     full: bool,
 
     /// The command tree that the tool parsed against, or `None` until the
@@ -150,6 +157,10 @@ pub struct Output {
     renames: &'static [Rename],
 }
 
+/// The warning that a debug build of `finish` and `stream` writes when the
+/// tool never passed its command to [`Output::set_command`].
+pub(crate) const NO_COMMAND: &str = "warning: crumbkit leaves out every Next: line and every recovery that runs a command, because the tool's main does not pass its command to Output::set_command";
+
 impl Output {
     /// The output budget of a tool whose guide sets none: 1 MiB, the most
     /// bytes that one run prints on standard output (ADR-0046).
@@ -165,7 +176,10 @@ impl Output {
     /// a call names, and [`Output::command`] builds the whole tree for the
     /// commands that read it, so a run builds only what it reads. Without a
     /// command, `finish` leaves out the `Next:` line and prints a failure's
-    /// `Run` recovery as having no next step.
+    /// `Run` recovery as having no next step. A debug build of a tool that
+    /// never calls `set_command` then writes one `warning: crumbkit` line to
+    /// standard error from `finish` and `stream`, and crumbkit-test's
+    /// `check_examples` and `check_recoveries` fail on that line.
     ///
     /// A call into a branch below the root resolves the root's global
     /// arguments, such as `--json`, only when the root was built by parsing.
@@ -304,6 +318,29 @@ impl Output {
         }
     }
 
+    /// Writes a warning to `err` in a debug build when the tool never passed
+    /// its command to [`Output::set_command`], because `finish` and `stream`
+    /// then leave out every `Next:` line and every recovery that runs a
+    /// command. crumbkit-test's `check_examples` and `check_recoveries` fail
+    /// on the warning, so a tool's tests catch a `main` that forgot the call.
+    pub(crate) fn warn_without_command(&self, err: &mut impl Write) {
+        if cfg!(debug_assertions) && self.command.is_none() {
+            // Standard error is the last place to report anything, so a
+            // failure to write there goes unreported.
+            let _ = writeln!(err, "{NO_COMMAND}");
+        }
+    }
+
+    /// Returns the view flags that the caller typed.
+    pub(crate) const fn typed(&self) -> view::Typed {
+        view::Typed {
+            json: self.json,
+            fields: !self.fields.is_empty(),
+            long: self.long,
+            full: self.full,
+        }
+    }
+
     /// Returns what the guide that `set_command` copied decides about the
     /// run's failures: the form, the JSON layout, the exit codes and the
     /// renames.
@@ -364,7 +401,8 @@ pub fn finish<T: Rows, E: AsFailure>(
 /// `Next: shelf books show <ID>... takes up to 100 ids in one call.` The line
 /// is left out when [`Output::set_command`] was not called or the step's
 /// [`Call`](crate::Call) does not resolve in that command, and the exit code
-/// stays 0.
+/// stays 0. A debug build writes a warning first when `set_command` was not
+/// called, as [`Output::set_command`] describes.
 ///
 /// `finish` takes `output` by `&mut` because it builds, in place, the branch
 /// of the command tree that a next step's call or a failure's `Run` call

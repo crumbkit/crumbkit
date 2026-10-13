@@ -130,3 +130,60 @@ const fn because(reason: Unoffered) -> &'static str {
         Unoffered::Unwrapped => "this command's JSON already holds every field",
     }
 }
+
+/// The view flags that the caller typed, each set when the flag is on the
+/// command line, and `fields` set when `--fields` names at least one field.
+#[derive(Clone, Copy)]
+#[expect(
+    clippy::struct_excessive_bools,
+    reason = "each bool is one independent view flag, and no two of them form a state machine"
+)]
+pub(crate) struct Typed {
+    pub(crate) json: bool,
+    pub(crate) fields: bool,
+    pub(crate) long: bool,
+    pub(crate) full: bool,
+}
+
+/// Returns the refusal of the view flags in `typed` when two of them cannot
+/// work together, or `None` when they can.
+///
+/// `--fields` prints only the fields it names, so it cannot be used with
+/// `--long` or `--full`, and `--full` prints every field in JSON, so it needs
+/// `--json`. The refusal names the flag to drop or the one that needs
+/// `--json` under `argument`, and it prints as a refused command line does.
+pub(crate) fn pairing(typed: Typed) -> Option<Refusal> {
+    let Typed {
+        json,
+        fields,
+        long,
+        full,
+    } = typed;
+    let (message, hint, flag) = if fields && long {
+        (
+            "--fields prints only the fields it names, so it cannot be used with --long",
+            "drop --long, and name the long columns in --fields",
+            ViewFlag::Long,
+        )
+    } else if fields && full {
+        (
+            "--fields prints only the fields it names, so it cannot be used with --full",
+            "drop --full to print only the named fields, or drop --fields to print every field",
+            ViewFlag::Full,
+        )
+    } else if full && !json {
+        (
+            "--full prints every field of every row in JSON, so it needs --json",
+            "add --json, or drop --full",
+            ViewFlag::Full,
+        )
+    } else {
+        return None;
+    };
+    Some(Refusal::flag_value(
+        message.to_owned(),
+        hint.to_owned(),
+        flag.name(),
+        None,
+    ))
+}

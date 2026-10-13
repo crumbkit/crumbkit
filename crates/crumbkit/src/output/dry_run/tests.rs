@@ -151,6 +151,7 @@ fn a_dry_run_of_a_document_without_the_envelope_prints_it_unchanged_and_says_so_
     let args = ["tool", "remove", "--dry-run", "--json"];
     let tool = Tool::try_parse_from(args).unwrap();
     let mut output = tool.output;
+    output.set_command(Tool::command());
     let Commands::Remove { dry_run } = tool.command;
     output.dry_run(dry_run);
     let mut out = Vec::new();

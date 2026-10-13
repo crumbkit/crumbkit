@@ -723,6 +723,17 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- crumbkit: a debug build of a tool whose `main` never calls
+  `Output::set_command` writes a warning from `finish` and `stream`, and
+  crumbkit-test's `check_examples` and `check_recoveries` fail on it
+  ([ADR-0015]).
+- crumbkit: `--full` without `--json`, and `--fields` with `--long` or
+  `--full`, are refused in crumbkit's words with a hint that names the flag
+  to add or drop, in place of clap's error ([ADR-0016]).
+- crumbkit: a command without a doc comment that flattens `Output`,
+  `Page`, `NoInput`, `DryRun`, `Yes` or `Expect`, or takes one of
+  crumbkit's argument types, shows no description instead of crumbkit's
+  rustdoc ([ADR-0015]).
 - crumbkit-test: [`check_twins`] requires no twin for a declared code that
   the guide's `Rename` prints in place of one of crumbkit's codes, as its
   docs said ([ADR-0005]).

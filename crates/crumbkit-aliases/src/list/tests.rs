@@ -329,3 +329,11 @@ fn the_checked_in_schema_matches_the_aliases_document_schema() {
 
     assert_eq!(generated, checked_in);
 }
+
+#[test]
+fn a_subcommand_without_a_doc_comment_takes_no_description_from_the_list_arguments() {
+    let command = <AliasesList as clap::Args>::augment_args(clap::Command::new("list"));
+
+    assert_eq!(command.get_about(), None);
+    assert_eq!(command.get_long_about(), None);
+}

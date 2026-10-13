@@ -294,3 +294,58 @@ fn an_unoffered_view_flag_prints_the_tool_s_usage_code_and_exits_with_the_code_i
     let err = String::from_utf8(err).unwrap();
     assert!(err.ends_with("  code:  tool::cli::usage\n"), "{err}");
 }
+
+#[test]
+fn full_without_json_is_refused_in_crumbkit_s_words_before_the_handler_runs() {
+    let refused = ["tool", "books", "list", "--full"];
+    let admitted = ["tool", "books", "list", "--json", "--full"];
+    assert_one_word_apart(&refused, &admitted);
+    assert_eq!(parse(&admitted).code, None, "{}", parse(&admitted).err);
+
+    let parsed = parse(&refused);
+
+    assert_eq!(parsed.code, Some(ExitCode::from(2)));
+    assert_eq!(parsed.out, "");
+    assert_eq!(
+        parsed.err,
+        "\
+error: --full prints every field of every row in JSON, so it needs --json
+  help:  add --json, or drop --full
+  code:  crumbkit::cli::usage
+"
+    );
+}
+
+#[test]
+fn fields_with_long_is_refused_in_crumbkit_s_words_on_a_command_that_the_guide_does_not_name() {
+    let run = |args: &[&str]| {
+        let mut err = Vec::new();
+        let result = parse_to::<(), _, _, _, _>(
+            &mut Sink::new(Vec::new(), &mut err),
+            tool(),
+            &Guide::new(),
+            Spelling::COLONS,
+            args,
+        );
+        (
+            result.err().map(ExitCode::from),
+            String::from_utf8(err).unwrap(),
+        )
+    };
+    let refused = ["tool", "books", "list", "--fields", "id", "--long"];
+    let admitted = ["tool", "books", "list", "--fields", "id"];
+    assert_one_word_apart(&refused, &admitted);
+    assert_eq!(run(&admitted).0, None, "{}", run(&admitted).1);
+
+    let (code, err) = run(&refused);
+
+    assert_eq!(code, Some(ExitCode::from(2)));
+    assert_eq!(
+        err,
+        "\
+error: --fields prints only the fields it names, so it cannot be used with --long
+  help:  drop --long, and name the long columns in --fields
+  code:  crumbkit::cli::usage
+"
+    );
+}

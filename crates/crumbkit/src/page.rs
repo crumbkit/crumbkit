@@ -84,6 +84,9 @@ const ALL_HELP: &str = "Print every row";
 /// }
 /// ```
 #[derive(Args, Clone, Debug, PartialEq, Eq)]
+// The doc comment is rustdoc, and clap would copy it into the help of a
+// command without a description of its own.
+#[command(about = None, long_about = None)]
 pub struct Page<const N: usize = 25, const MOST: usize = { usize::MAX }> {
     // clap's `default_value_t` keeps the default text in one `static` that
     // every `Page<N>` shares, so two commands with different sizes would
