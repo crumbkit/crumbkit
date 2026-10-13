@@ -94,3 +94,18 @@ fn a_command_added_at_run_time_lists_the_examples_of_its_runtime_leaf_in_its_hel
         "{page}"
     );
 }
+
+#[test]
+fn a_runtime_leaf_keeps_the_program_whose_exit_code_it_passes_on() {
+    let guide = Guide::new().with_runtime_leaves(vec![
+        RuntimeLeaf::new(vec!["moons".to_owned(), "edit".to_owned()]).passes_on_exit("the editor"),
+        RuntimeLeaf::new(vec!["moons".to_owned(), "list".to_owned()]),
+    ]);
+
+    let programs: Vec<Option<&str>> = guide
+        .get_leaves()
+        .iter()
+        .map(Leaf::get_passes_on_exit)
+        .collect();
+    assert_eq!(programs, [Some("the editor"), None]);
+}

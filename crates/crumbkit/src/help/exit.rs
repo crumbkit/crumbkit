@@ -163,7 +163,8 @@ impl Exit {
 /// the tool's name: crumbkit's codes that `guide` keeps, then each code of
 /// `guide` in order,
 /// each with its meaning and, for a code that only some commands return,
-/// those commands, and a closing line about the codes that a shell reports.
+/// those commands, a line for each leaf that passes on a program's exit
+/// code, and a closing line about the codes that a shell reports.
 pub(crate) fn text(tool: &str, guide: &Guide) -> String {
     let exits = guide.get_exits();
     let width = exits
@@ -194,6 +195,20 @@ pub(crate) fn text(tool: &str, guide: &Guide) -> String {
             text.push('.');
         }
         text.push('\n');
+    }
+    let passing: Vec<_> = guide
+        .get_leaves()
+        .iter()
+        .filter_map(|leaf| Some((leaf.path().join(" "), leaf.get_passes_on_exit()?)))
+        .collect();
+    if !passing.is_empty() {
+        text.push('\n');
+    }
+    for (path, program) in passing {
+        let _ = writeln!(
+            text,
+            "`{tool} {path}` passes on the exit code of {program}."
+        );
     }
     let _ = writeln!(
         text,

@@ -371,9 +371,13 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   2 with a stated reason, and [`check_exit_codes`] reports a crumbkit code
   that the guide renames twice and two renames to one code of the tool
   ([ADR-0037], [ADR-0056]).
-- crumbkit-test: [`check_twin`] and [`check_recoveries`] fail a run whose
-  exit code differs from the one that the guide lists for its first
-  failure, or is a listing exit code for an unlisted failure ([ADR-0037]).
+- crumbkit-test: [`check_twin`] and [`check_recoveries`] fail a run that
+  exits otherwise than `Guide::failure_exit` decides for its first failure,
+  so an unlisted failure exits 1 and a usage refusal 2 by default
+  ([ADR-0037]).
+- crumbkit: `Leaf::passes_on_exit` declares that a command passes on a
+  program's exit code. Help and `help exit-codes` say so, and the run
+  checks then accept any code but 0 for an unlisted failure ([ADR-0042]).
 - crumbkit-test: [`RuntimeFailing`] builds failing lines from a code,
   words, paths, input, values and variables that a test gets at run time,
   reuses its settings across lines with `line`, and gives a `Failing`, a

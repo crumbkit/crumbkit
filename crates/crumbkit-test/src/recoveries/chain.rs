@@ -446,6 +446,7 @@ impl Walk<'_> {
     fn run(&mut self, chain: &mut Chain<'_>, label: &str, words: &[String]) -> Option<Outcome> {
         let args = with_json(words);
         let refs: Vec<&str> = args.iter().map(String::as_str).collect();
+        let path = crumbkit::command_path(self.command, &refs);
         let result = runs::run(
             self.recoveries.examples.binary(),
             self.recoveries.examples.variables(),
@@ -511,7 +512,8 @@ impl Walk<'_> {
         // The first failure of a run decides its exit code (ADR-0037).
         let first = failures.first().map(ReadFailure::code);
         if let Some(problem) = first.and_then(|first| {
-            exits::exit_problem(self.guide, self.recoveries.spelling, first, output.status)
+            let spelling = self.recoveries.spelling;
+            exits::exit_problem(self.guide, spelling, &path, first, output.status)
         }) {
             self.problems
                 .push(format!("{}: {label} {problem}", chain.start));

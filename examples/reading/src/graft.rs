@@ -89,8 +89,8 @@ pub fn command(lists: &[List]) -> Command {
 
 /// Returns reading's guide: [`GUIDE`], with a leaf that lists two examples
 /// for the `list` command of each of `lists`, and a leaf with one example
-/// for its `edit` command. With no lists it returns
-/// [`GUIDE`] itself and allocates nothing.
+/// for its `edit` command, which passes on the editor's exit code. With no
+/// lists it returns [`GUIDE`] itself and allocates nothing.
 #[must_use]
 pub fn guide(lists: &[List]) -> Guide {
     if lists.is_empty() {
@@ -114,7 +114,8 @@ pub fn guide(lists: &[List]) -> Guide {
             // it saves the whole file over the one it opened.
             let edit_leaf = RuntimeLeaf::new(vec![name.to_owned(), "edit".to_owned()])
                 .example(Vec::new(), format!("Open the {name} list in your editor"))
-                .effects(Effects::replacing());
+                .effects(Effects::replacing())
+                .passes_on_exit("the editor");
             [list_leaf, edit_leaf]
         })
         .collect();

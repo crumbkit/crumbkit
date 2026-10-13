@@ -183,45 +183,83 @@ fn renamed(renames: &[Rename], problems: &mut Vec<String>) {
     }
 }
 
-/// Returns the problem when a failed run whose first failure the tool
-/// spells `printed` with `spelling` ends with `status`, which the run
-/// names in the problem after its own text, such as a command line.
+/// crumbkit's code of a `--json` that a command whose child has no JSON
+/// form refuses. crumbkit declares it only with its `hand-over` feature, so
+/// the check names it here.
+const CHILD_NO_JSON: Code = Code::new("crumbkit", "child", "no_json");
+
+/// Returns the problem when a failed run of the command at `path`, whose
+/// first failure the tool spells `printed` with `spelling`, ends with
+/// `status`. The problem starts with a verb, and the caller puts the run's
+/// name before it, such as its command line.
 ///
-/// The run must exit with the code of the exit of `guide` that lists the
-/// failure's code, or one of crumbkit's codes that the guide prints as it.
-/// A run whose failure no exit lists must not exit with the code of an
-/// exit that lists failures, because a caller reads that code as one of
-/// those failures. It may exit with any other code, so a tool can pass on
-/// the code of a child process.
+/// The run must exit as [`Guide::failure_exit`] decides for its first
+/// failure (ADR-0037):
+///
+/// - with the code of the exit of `guide` that lists the failure's code,
+///   or one of crumbkit's codes that the guide prints as it;
+/// - with the code that the guide gives a refused command line, 2 unless an
+///   exit lists `crumbkit::cli::usage`, for `crumbkit::cli::usage` and
+///   `crumbkit::child::no_json`;
+/// - with 1 for any other failure, unless the guide's leaf at `path`
+///   declares with [`Leaf::passes_on_exit`](crumbkit::help::Leaf::passes_on_exit)
+///   that the command passes on a program's exit code, which may be any
+///   code but 0.
+///
+/// A run whose failure no exit lists never exits with the code of an exit
+/// that lists failures, because a caller reads that code as one of those
+/// failures.
 pub(crate) fn exit_problem(
     guide: &Guide,
     spelling: Spelling,
+    path: &[String],
     printed: &str,
     status: ExitStatus,
 ) -> Option<String> {
+    let is = |code: &Code| spelling.spell(guide.printed(code)) == printed;
     let exits = guide.get_exits();
-    let mapped = exits.iter().find(|exit| {
-        exit.get_failures()
-            .iter()
-            .any(|&code| spelling.spell(guide.printed(code)) == printed)
-    });
-    match (mapped, status.code()) {
-        (Some(exit), Some(code)) if code == i32::from(exit.code()) => None,
-        (Some(exit), _) => Some(format!(
-            "fails with {printed}, which the guide's exit code {} lists, and it ends with {status}",
-            exit.code()
-        )),
-        (None, Some(code))
-            if exits
-                .iter()
-                .any(|exit| i32::from(exit.code()) == code && !exit.get_failures().is_empty()) =>
-        {
-            Some(format!(
-                "fails with {printed}, which no exit code of the guide lists, and it exits with {code}, which the guide declares for the failure codes that it lists"
-            ))
-        }
-        (None, _) => None,
+    let listed = exits
+        .iter()
+        .flat_map(|exit| exit.get_failures().iter().copied())
+        .find(|&code| is(code));
+    let code = status.code();
+    if let Some(listed) = listed {
+        let expected = guide.failure_exit(listed);
+        return (code != Some(i32::from(expected))).then(|| {
+            format!(
+                "fails with {printed}, which the guide's exit code {expected} lists, and it ends with {status}"
+            )
+        });
     }
+    if is(&crumbkit::codes::CLI_USAGE) || is(&CHILD_NO_JSON) {
+        let expected = guide.failure_exit(&crumbkit::codes::CLI_USAGE);
+        return (code != Some(i32::from(expected))).then(|| {
+            format!(
+                "fails with {printed}, which refuses the command line, and it ends with {status}, where the guide gives a refused command line the exit code {expected}"
+            )
+        });
+    }
+    if let Some(code) = code
+        && exits
+            .iter()
+            .any(|exit| i32::from(exit.code()) == code && !exit.get_failures().is_empty())
+    {
+        return Some(format!(
+            "fails with {printed}, which no exit code of the guide lists, and it exits with {code}, which the guide declares for the failure codes that it lists"
+        ));
+    }
+    let passes = guide
+        .get_leaves()
+        .iter()
+        .any(|leaf| leaf.path().iter().eq(path.iter()) && leaf.get_passes_on_exit().is_some());
+    // A failed run never exits with 0, because the check reads a failure
+    // only from a run that did not succeed.
+    if code == Some(1) || (passes && code.is_some()) {
+        return None;
+    }
+    Some(format!(
+        "fails with {printed}, which no exit code of the guide lists, and it ends with {status}, where such a failure exits with code 1. A command that passes on the exit code of a program it runs declares it with `Leaf::passes_on_exit`"
+    ))
 }
 
 /// Reports whether an opt-out from `rule` covers each command path in

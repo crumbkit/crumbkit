@@ -14,6 +14,7 @@ use super::{Effects, write_line};
 use crate::pick::Choices;
 use crate::{Document, Row, Rows, Shape, Stream, row};
 
+mod passes;
 #[cfg(test)]
 mod tests;
 
@@ -67,6 +68,9 @@ pub struct Leaf {
     /// The sources of the values of the command's arguments, which a picker
     /// offers when an argument is missing.
     choices: &'static [Choices],
+    /// The program whose exit code the command passes on, or `None` when
+    /// the command exits as the guide's exits declare.
+    passes_on_exit: Option<&'static str>,
 }
 
 impl Leaf {
@@ -81,6 +85,7 @@ impl Leaf {
             columns: None,
             effects: None,
             choices: &[],
+            passes_on_exit: None,
         }
     }
 

@@ -258,7 +258,7 @@ pub fn check_twins(command: &Command, guide: &Guide, twins: &Twins<'_>) {
             let words = json_lines(failing.words(), &[]).0;
             let words: Vec<&str> = words.iter().map(String::as_str).collect();
             let run = failing.with_words(&words);
-            if let Err(problem) = refuse(guide, &twins.examples, spelling, &run) {
+            if let Err(problem) = refuse(command, guide, &twins.examples, spelling, &run) {
                 problems.push(format!("{opt_out}: {problem}"));
             }
         }

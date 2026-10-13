@@ -2,7 +2,7 @@
 //! of `help exit-codes` and the note of `commands list`.
 
 use super::{Exit, note, text};
-use crate::help::Guide;
+use crate::help::{Guide, Leaf};
 
 /// A code that every command returns.
 const BUSY: Exit = Exit::new(3, "The catalogue was locked by another run.");
@@ -105,4 +105,25 @@ fn the_note_names_0_and_1_as_crumbkit_s_when_the_guide_gives_a_refusal_another_c
         note("shelf", &USAGE_64),
         "Exit codes: 0 and 1 are crumbkit's, and shelf adds 64. `shelf help exit-codes` describes them."
     );
+}
+
+#[test]
+fn the_topic_names_each_command_that_passes_on_a_program_s_exit_code() {
+    const GUIDE: Guide = Guide::new().exits(&[BUSY]).leaves(&[
+        Leaf::new(&["books", "edit"]).passes_on_exit("the editor"),
+        Leaf::new(&["books", "list"]),
+    ]);
+
+    let expected = "\
+Exit codes
+  0  The command did what it was asked.
+  1  The command failed, or a row of its result reports a problem. A failure names its code and the next step.
+  2  The command line was refused. The refusal names the help to read.
+  3  The catalogue was locked by another run.
+
+`shelf books edit` passes on the exit code of the editor.
+
+A shell reports 126 and above for its own reasons, such as 127 when it cannot find shelf and 130 when Ctrl-C ends it.
+";
+    assert_eq!(text("shelf", &GUIDE), expected);
 }
