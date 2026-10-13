@@ -122,10 +122,10 @@ where
 /// parser does, from the option's `Arg`, so an option's value that equals a
 /// subcommand name, as in `shelf --fields books`, names no command.
 ///
-/// A command that the tool named in another style, such as `reading_lists`
-/// or `ReadingLists`, also answers to its
-/// [`dashed_form`](crate::dashed_form), such as `reading-lists`, with no
-/// setting. Before anything else reads the words, crumbkit replaces each
+/// When `guide` declares [`Guide::dashed_forms`], a command that the tool
+/// named in another style, such as `reading_lists` or `ReadingLists`, also
+/// answers to its [`dashed_form`](crate::dashed_form), such as
+/// `reading-lists`. Before anything else reads the words, crumbkit replaces each
 /// word that reaches a command by its dashed form with the command's own
 /// name, so help, refusals, the usage log and the words in the returned
 /// [`Parsed`] name the command as the tool does. An option's value that
@@ -315,7 +315,7 @@ where
     if cfg!(windows) {
         program_stem(&mut args);
     }
-    own_names(&command, &mut args);
+    own_names(&command, guide.get_dashed_forms(), &mut args);
     #[cfg(feature = "usage-log")]
     crate::usage::typed(&command, &args, spelling);
     // crumbkit answers `help` itself. clap propagates the setting to every

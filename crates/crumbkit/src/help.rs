@@ -5,6 +5,7 @@
 //! `<tool> help <TOPIC>` prints, and file formats, whose schemas
 //! `<tool> schemas show` prints.
 
+mod dashed;
 pub(crate) mod effects;
 pub(crate) mod exit;
 mod format;
@@ -124,6 +125,9 @@ pub struct Guide {
     /// The path from the clap root to the command that callers run first,
     /// which answers `help` with the topics.
     root: &'static [&'static str],
+    /// Whether a command named in another style also answers to its
+    /// dashed form.
+    dashed_forms: bool,
 }
 
 impl Guide {
@@ -145,6 +149,7 @@ impl Guide {
             output_budget: None,
             json_layout: None,
             root: &[],
+            dashed_forms: false,
         }
     }
 

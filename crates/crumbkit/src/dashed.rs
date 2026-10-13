@@ -53,10 +53,13 @@ pub fn dashed_name(name: &str) -> Option<String> {
 /// Returns the dashed form that the subcommand `name` of `parent` also
 /// answers to, or `None` when it answers to none beside its own names.
 ///
-/// A subcommand whose name is not lowercase dashed words, such as
-/// `reading_lists`, answers to its [`dashed_name`], such as
-/// `reading-lists`, and [`parse`](crate::parse()), completion and
+/// When the tool's guide declares
+/// [`Guide::dashed_forms`](crate::help::Guide::dashed_forms), a subcommand
+/// whose name is not lowercase dashed words, such as `reading_lists`,
+/// answers to its [`dashed_name`], such as `reading-lists`, and
+/// [`parse`](crate::parse()), completion and
 /// [`command_path`](crate::command_path) read that word as the subcommand.
+/// This function reports the form whether or not the guide declares it.
 /// Help, completion candidates, the usage log and the parsed words name the
 /// subcommand by its own name only. The subcommand answers to no dashed
 /// form when its name is already in that form, when its name maps to none,

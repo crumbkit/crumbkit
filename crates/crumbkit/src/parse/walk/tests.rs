@@ -6,6 +6,7 @@ use std::ffi::OsString;
 use clap::{Arg, ArgAction, Command};
 
 use super::{command_path, help_word, program_stem, walk};
+use crate::help::Guide;
 
 /// A tool whose root has a global option, an option with two values, an
 /// option with any number of values and a flag, and whose `planets` group,
@@ -115,20 +116,28 @@ fn command_path_names_real_commands_and_stops_at_the_first_positional_value() {
     let tool = tool();
 
     assert_eq!(
-        command_path(&tool, &["-f", "id", "worlds", "show"]),
+        command_path(&tool, &Guide::new(), &["-f", "id", "worlds", "show"]),
         ["planets", "show"]
     );
-    assert_eq!(command_path(&tool, &["planets", "7", "show"]), ["planets"]);
+    assert_eq!(
+        command_path(&tool, &Guide::new(), &["planets", "7", "show"]),
+        ["planets"]
+    );
 }
 
 #[test]
-fn command_path_names_the_command_that_a_dashed_form_reaches_by_its_own_name() {
+fn command_path_follows_a_dashed_form_only_when_the_guide_declares_dashed_forms() {
     let tool = Command::new("tool")
         .subcommand(Command::new("reading_lists").subcommand(Command::new("list")));
+    let words = ["reading-lists", "list"];
 
     assert_eq!(
-        command_path(&tool, &["reading-lists", "list"]),
+        command_path(&tool, &Guide::new().dashed_forms(), &words),
         ["reading_lists", "list"]
+    );
+    assert_eq!(
+        command_path(&tool, &Guide::new(), &words),
+        Vec::<String>::new()
     );
 }
 

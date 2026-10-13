@@ -24,6 +24,8 @@ use clap_complete::env::Shells;
 #[cfg(feature = "complete")]
 use crate::Sink;
 #[cfg(feature = "complete")]
+use crate::help::Guide;
+#[cfg(feature = "complete")]
 use crate::parse::walk::own_names;
 
 #[cfg(test)]
@@ -64,20 +66,23 @@ pub(crate) fn requested(value: Option<&OsStr>) -> bool {
 ///
 /// A tool's `main` calls it first, before
 /// [`usage::start`](crate::usage), and passes the function that builds the
-/// command the tool parses against:
+/// command the tool parses against and the guide it parses with:
 ///
 /// ```no_run
 /// use std::process::ExitCode;
 ///
 /// use clap::{CommandFactory, Parser};
+/// use crumbkit::help::Guide;
 ///
 /// /// List the books in a small catalogue.
 /// #[derive(Parser)]
 /// #[command(name = "shelf")]
 /// struct Cli {}
 ///
+/// const GUIDE: Guide = Guide::new();
+///
 /// fn main() -> ExitCode {
-///     if let Some(code) = crumbkit::complete(Cli::command) {
+///     if let Some(code) = crumbkit::complete(Cli::command, &GUIDE) {
 ///         return code;
 ///     }
 ///     // Start the usage log, parse and run the command.
@@ -86,7 +91,9 @@ pub(crate) fn requested(value: Option<&OsStr>) -> bool {
 /// ```
 ///
 /// `complete` calls `command` only for a completion request, so an ordinary
-/// run builds its command once, for parsing. A tool that hides or removes
+/// run builds its command once, for parsing. Completion reads the guide's
+/// [`Guide::dashed_forms`] declaration, so a dashed form completes when
+/// `parse` accepts it. A tool that hides or removes
 /// commands at run time does so inside the function it passes here and to
 /// [`parse`](crate::parse()), so completion offers what parsing accepts.
 ///
@@ -109,8 +116,8 @@ pub(crate) fn requested(value: Option<&OsStr>) -> bool {
 /// offers and how a shell registers it (ADR-0002).
 #[cfg(feature = "complete")]
 #[must_use]
-pub fn complete(command: impl FnOnce() -> Command) -> Option<ExitCode> {
-    complete_with(VAR, command)
+pub fn complete(command: impl FnOnce() -> Command, guide: &Guide) -> Option<ExitCode> {
+    complete_with(VAR, command, guide)
 }
 
 /// Answers a shell's completion request as [`complete`] does, when the
@@ -123,14 +130,17 @@ pub fn complete(command: impl FnOnce() -> Command) -> Option<ExitCode> {
 /// use std::process::ExitCode;
 ///
 /// use clap::{CommandFactory, Parser};
+/// use crumbkit::help::Guide;
 ///
 /// /// List the books in a small catalogue.
 /// #[derive(Parser)]
 /// #[command(name = "shelf")]
 /// struct Cli {}
 ///
+/// const GUIDE: Guide = Guide::new();
+///
 /// fn main() -> ExitCode {
-///     if let Some(code) = crumbkit::complete_with("SHELF_COMPLETE", Cli::command) {
+///     if let Some(code) = crumbkit::complete_with("SHELF_COMPLETE", Cli::command, &GUIDE) {
 ///         return code;
 ///     }
 ///     // Start the usage log, parse and run the command.
@@ -156,6 +166,7 @@ pub fn complete(command: impl FnOnce() -> Command) -> Option<ExitCode> {
 pub fn complete_with(
     variable: &'static str,
     command: impl FnOnce() -> Command,
+    guide: &Guide,
 ) -> Option<ExitCode> {
     // A second declaration keeps the first, so the usage log and the
     // registration agree within one run.
@@ -177,6 +188,7 @@ pub fn complete_with(
     Some(complete_to(
         &mut sink,
         command(),
+        guide,
         variable,
         &shell,
         std::env::args_os(),
@@ -184,8 +196,9 @@ pub fn complete_with(
     ))
 }
 
-/// Answers the completion request of `shell` for `command`, writes the
-/// answer to the sink's output writer, and returns the exit code.
+/// Answers the completion request of `shell` for `command`, which the tool
+/// parses with `guide`, writes the answer to the sink's output writer, and
+/// returns the exit code.
 /// `variable` is the name of the completion variable, `COMPLETE` or the
 /// name that the tool passes to [`complete_with`], which a registration
 /// script sets for each completion. `args` are
@@ -204,10 +217,11 @@ pub fn complete_with(
 /// The candidates are those of `clap_complete`. They leave out every
 /// subcommand, flag and alias that the tool hid, except that a word that
 /// matches only hidden names completes to them, so `shelf books ls` still
-/// completes when `ls` is a hidden alias of `list`. A word before the
-/// cursor that is a command's [`dashed_form`](crate::dashed_form) reaches
-/// that command, as it does in [`parse_to`](crate::parse_to), and the
-/// candidates name each command by the tool's own name. clap's `help`
+/// completes when `ls` is a hidden alias of `list`. When `guide` declares
+/// [`Guide::dashed_forms`], a word before the cursor that is a command's
+/// [`dashed_form`](crate::dashed_form) reaches that command, as it does in
+/// [`parse_to`](crate::parse_to), and the candidates name each command by
+/// the tool's own name. clap's `help`
 /// subcommand is turned off, as [`parse_to`](crate::parse_to) turns it off.
 ///
 /// A completion never prints a failure into the shell. An unknown shell, a
@@ -219,6 +233,7 @@ pub fn complete_with(
 pub fn complete_to<O, E, R, I, T>(
     sink: &mut Sink<O, E, R>,
     command: Command,
+    guide: &Guide,
     variable: &str,
     shell: &OsStr,
     args: I,
@@ -231,7 +246,18 @@ where
 {
     let mut answer = Vec::new();
     let args = args.into_iter().map(Into::into).collect();
-    if answer_into(&mut answer, command, variable, shell, args, current_dir).is_err() {
+    let dashed_forms = guide.get_dashed_forms();
+    if answer_into(
+        &mut answer,
+        command,
+        dashed_forms,
+        variable,
+        shell,
+        args,
+        current_dir,
+    )
+    .is_err()
+    {
         return ExitCode::FAILURE;
     }
     match sink.out.write_all(&answer).and_then(|()| sink.out.flush()) {
@@ -242,7 +268,8 @@ where
 }
 
 /// Writes the answer to the completion request of `shell` into `answer`, as
-/// [`complete_to`] describes.
+/// [`complete_to`] describes. `dashed_forms` is the guide's
+/// [`Guide::dashed_forms`] declaration.
 //
 // RUST-10: this repeats clap_complete's `CompleteEnv::try_complete`, which
 // writes to the process's standard output itself, so that the answer goes
@@ -257,6 +284,7 @@ where
 fn answer_into(
     answer: &mut Vec<u8>,
     command: Command,
+    dashed_forms: bool,
     variable: &str,
     shell: &OsStr,
     mut args: Vec<OsString>,
@@ -287,7 +315,7 @@ fn answer_into(
         // word in the middle of the line, and a dashed form at its cursor
         // then reads as the tool's own name. Reading clap_complete's index
         // variable replaces this if that case matters.
-        own_names(&command, &mut args[..last]);
+        own_names(&command, dashed_forms, &mut args[..last]);
         return shell.write_complete(&mut command, args, current_dir, answer);
     }
     let mut program = PathBuf::from(program);

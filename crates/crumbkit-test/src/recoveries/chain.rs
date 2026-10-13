@@ -446,7 +446,7 @@ impl Walk<'_> {
     fn run(&mut self, chain: &mut Chain<'_>, label: &str, words: &[String]) -> Option<Outcome> {
         let args = with_json(words);
         let refs: Vec<&str> = args.iter().map(String::as_str).collect();
-        let path = crumbkit::command_path(self.command, &refs);
+        let path = crumbkit::command_path(self.command, self.guide, &refs);
         let result = runs::run(
             self.recoveries.examples.binary(),
             self.recoveries.examples.variables(),

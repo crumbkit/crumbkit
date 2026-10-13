@@ -8,7 +8,7 @@ fn main() -> ExitCode {
     // A shell's completion request ends the run here, before the usage log
     // starts, so a Tab press writes no line (ADR-0048). shelf parses against
     // `Cli::command()`, so completion offers what parsing accepts.
-    if let Some(code) = crumbkit::complete(shelf::Cli::command) {
+    if let Some(code) = crumbkit::complete(shelf::Cli::command, &shelf::GUIDE) {
         return code;
     }
     // The guard writes this run's line to shelf's usage log when `main`
