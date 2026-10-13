@@ -408,6 +408,14 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   something and that declares no document, unless it passes on a program's
   exit code, because crumbkit refuses an unusable view flag only after the
   change ([ADR-0016]).
+- crumbkit: [`complete_with`] answers a shell's completion request under a
+  variable that the tool names, and the registration script and the usage
+  log use that name ([ADR-0048], [ADR-0056]).
+- crumbkit: `Leaf::refusal_alternatives` declares calls that a refused
+  command line naming the leaf offers after crumbkit's own alternatives
+  ([ADR-0056]).
+- crumbkit-test: [`check_guide`] fails on a refusal alternative that does
+  not render against the command tree ([ADR-0056]).
 
 ### Changed
 
@@ -604,6 +612,8 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit: [`finish`] and [`stream`] refuse `--long` and `--full` for
   prose, `--long` for rows without long columns, and `--full` for a
   document without the envelope ([ADR-0016]).
+- crumbkit: `complete_to` takes the name of the completion variable, which
+  the registration script sets ([ADR-0048]).
 
 ### Removed
 
@@ -821,6 +831,7 @@ rustdoc, or at its decision record. -->
 [`check_twin`]: crates/crumbkit-test/src/twins.rs
 [`check_twins`]: crates/crumbkit-test/src/twins/coverage.rs
 [`complete`]: crates/crumbkit/src/complete.rs
+[`complete_with`]: crates/crumbkit/src/complete.rs
 [ADR-0048]: docs/decisions/api/0048-completion.md
 [`Expect`]: crates/crumbkit/src/expect.rs
 [ADR-0047]: docs/decisions/api/effects/0047-write-guards.md

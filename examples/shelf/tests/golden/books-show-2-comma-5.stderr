@@ -1,3 +1,4 @@
 error: invalid value '2,5' for '<ID>...': invalid digit found in string
   help:  run `shelf books show -h`
+  help:  run `shelf books list`
   code:  crumbkit::cli::usage

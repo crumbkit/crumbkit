@@ -3,6 +3,7 @@
 
 use clap::parser::ValueSource;
 use clap::{ArgMatches, Command};
+use crumbkit::RenderCall as _;
 use crumbkit::help::{Column, Guide, Leaf, ViewFlag, quote};
 
 use crate::tree::{self, DASHED_NAME};
@@ -60,6 +61,9 @@ mod tests;
 /// - a leaf's [`Choices`](crumbkit::pick::Choices) whose argument id names
 ///   no argument of the leaf's command, because a picker then never offers
 ///   them;
+/// - a leaf's refusal alternative, set with `Leaf::refusal_alternatives`,
+///   that does not render against the tree, such as one that names a
+///   missing or hidden command, because a refusal then leaves it out;
 /// - a leaf column whose name is not a field of the leaf's row type, such
 ///   as a misspelt name in `Row::COLUMNS` or `Row::LONG_COLUMNS`, because
 ///   the table prints `-` in every row of it;
@@ -275,6 +279,13 @@ fn check_leaves(command: &Command, guide: &Guide, problems: &mut Vec<String>) {
             if !node.get_arguments().any(|arg| arg.get_id() == id) {
                 problems.push(format!(
                     "{text}: the choices for `{id}` name no argument of the command, so a picker never offers them"
+                ));
+            }
+        }
+        for call in leaf.get_refusal_alternatives() {
+            if let Err(error) = call.render(&mut parser) {
+                problems.push(format!(
+                    "{text}: a refusal alternative does not render, because {error}, so a refusal leaves it out"
                 ));
             }
         }

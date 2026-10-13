@@ -421,7 +421,7 @@ where
         Printing::of(guide).exit(&crate::codes::CLI_USAGE),
     );
     let message = refusal_message(&command, &path, &error);
-    let refusal = Refusal::command_line(message, path, &error, &words);
+    let refusal = Refusal::command_line(message, path, &error, &words, guide);
     Err(refuse(sink, &refusal, json, spelling, guide, command))
 }
 

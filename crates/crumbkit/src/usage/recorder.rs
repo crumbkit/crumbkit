@@ -166,9 +166,9 @@ impl Drop for Log {
 /// from the operating system, and a run whose ids cannot be read installs no
 /// recorder, so it writes no line and gives its children no variables.
 ///
-/// A run whose `COMPLETE` variable asks for shell completion, as
-/// `crumbkit::complete` of the `complete` feature reads it, installs no
-/// recorder either, so a Tab press writes no line.
+/// A run whose completion variable, `COMPLETE` or the name that the tool
+/// passed to `crumbkit::complete_with` before it called `start`, asks for
+/// shell completion installs no recorder either, so a Tab press writes no line.
 ///
 /// The line goes to `usage.jsonl` in the tool's directory under the XDG
 /// state directory, such as `~/.local/state/shelf/usage.jsonl`. On Windows

@@ -21,7 +21,7 @@ mod answers {
 
     use clap::Command;
 
-    use super::super::complete_to;
+    use super::super::{VAR, complete_to};
     use crate::Sink;
 
     /// A tool named shelf with `books list`, which has the hidden alias
@@ -36,15 +36,27 @@ mod answers {
     }
 
     /// Completes `words` against `command` for `shell`, as the shell runs
-    /// `shelf -- <words>`, and returns the exit code, standard output and
-    /// standard error.
+    /// `shelf -- <words>` with `COMPLETE` set, and returns the exit code,
+    /// standard output and standard error.
     fn complete(command: Command, shell: &str, words: &[&str]) -> (ExitCode, String, String) {
+        complete_with(command, VAR, shell, words)
+    }
+
+    /// Completes `words` as [`complete`] does, for a tool whose completion
+    /// variable is `variable`.
+    fn complete_with(
+        command: Command,
+        variable: &str,
+        shell: &str,
+        words: &[&str],
+    ) -> (ExitCode, String, String) {
         let mut out = Vec::new();
         let mut err = Vec::new();
         let args = ["shelf", "--"].iter().chain(words);
         let code = complete_to(
             &mut Sink::new(&mut out, &mut err),
             command,
+            variable,
             OsStr::new(shell),
             args,
             None,
@@ -90,6 +102,16 @@ mod answers {
     }
 
     #[test]
+    fn a_registration_request_names_the_completion_variable_that_the_tool_declared() {
+        let (code, out, err) = complete_with(tool(), "SHELF_COMPLETE", "fish", &[]);
+
+        assert_eq!(code, ExitCode::SUCCESS);
+        assert!(out.contains("SHELF_COMPLETE=fish"), "{out}");
+        assert!(!out.contains(" COMPLETE=fish"), "{out}");
+        assert_eq!(err, "");
+    }
+
+    #[test]
     fn a_completion_for_an_unknown_shell_writes_nothing_and_returns_failure() {
         let (code, out, err) = complete(tool(), "tcsh", &["shelf", ""]);
 
@@ -119,6 +141,7 @@ mod answers {
         let code = complete_to(
             &mut Sink::new(Broken, &mut err),
             tool(),
+            VAR,
             OsStr::new("fish"),
             args,
             None,

@@ -78,7 +78,7 @@ pub use crumbkit_core::{
 
 pub use crate::call::RenderCall;
 #[cfg(feature = "complete")]
-pub use crate::complete::{complete, complete_to};
+pub use crate::complete::{complete, complete_to, complete_with};
 pub use crate::expect::{Expect, Expected};
 pub use crate::fetch::fetch_each;
 pub use crate::output::{

@@ -1,6 +1,8 @@
 //! `complete`, which answers a shell's completion request through
 //! `clap_complete`'s dynamic completion (ADR-0048), and the rule that tells a
 //! completion request from an ordinary run, which the usage log shares.
+//! [`complete_with`] declares the tool's own name for the completion
+//! variable (ADR-0056).
 
 use std::ffi::OsStr;
 #[cfg(feature = "complete")]
@@ -11,6 +13,8 @@ use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 #[cfg(feature = "complete")]
 use std::process::ExitCode;
+#[cfg(feature = "complete")]
+use std::sync::OnceLock;
 
 #[cfg(feature = "complete")]
 use clap::Command;
@@ -26,6 +30,23 @@ mod tests;
 /// The environment variable that asks a tool to complete its command line,
 /// with the shell as its value, as `clap_complete` names it.
 pub(crate) const VAR: &str = "COMPLETE";
+
+/// The completion variable that the tool declared with [`complete_with`],
+/// which the first call of [`complete_with`] in the process sets.
+#[cfg(feature = "complete")]
+static DECLARED: OnceLock<&'static str> = OnceLock::new();
+
+/// Returns the name of the completion variable of this process: the name
+/// that the tool declared with [`complete_with`], or [`VAR`] when it
+/// declared none. The usage log reads it to skip a completion request.
+#[cfg(feature = "usage-log")]
+pub(crate) fn variable() -> &'static str {
+    #[cfg(feature = "complete")]
+    if let Some(declared) = DECLARED.get() {
+        return declared;
+    }
+    VAR
+}
 
 /// Reports whether `value`, the value of [`VAR`] in the environment, asks
 /// for completion. An unset or empty variable and `0` ask for none, as
@@ -78,6 +99,8 @@ pub(crate) fn requested(value: Option<&OsStr>) -> bool {
 ///
 /// It behaves as [`complete_to`] does with a sink over the process's
 /// standard output, the process's arguments and its current directory.
+/// [`complete_with`] answers the same requests under a variable that the
+/// tool names.
 ///
 /// The `complete` feature follows `clap_complete`'s dynamic completion, which
 /// clap marks as unstable, so a crumbkit minor release may change what it
@@ -85,11 +108,61 @@ pub(crate) fn requested(value: Option<&OsStr>) -> bool {
 #[cfg(feature = "complete")]
 #[must_use]
 pub fn complete(command: impl FnOnce() -> Command) -> Option<ExitCode> {
+    complete_with(VAR, command)
+}
+
+/// Answers a shell's completion request as [`complete`] does, when the
+/// environment variable named `variable` holds the shell's name. A tool
+/// whose users already register its completion under a variable of its own,
+/// such as `SHELF_COMPLETE`, declares that name here and keeps it
+/// (ADR-0056):
+///
+/// ```no_run
+/// use std::process::ExitCode;
+///
+/// use clap::{CommandFactory, Parser};
+///
+/// /// List the books in a small catalogue.
+/// #[derive(Parser)]
+/// #[command(name = "shelf")]
+/// struct Cli {}
+///
+/// fn main() -> ExitCode {
+///     if let Some(code) = crumbkit::complete_with("SHELF_COMPLETE", Cli::command) {
+///         return code;
+///     }
+///     // Start the usage log, parse and run the command.
+///     ExitCode::SUCCESS
+/// }
+/// ```
+///
+/// The registration script that it writes sets `variable` in place of
+/// `COMPLETE`, so the registration lines of [`complete`] work with the
+/// variable's name in place of `COMPLETE`, such as
+/// `echo "SHELF_COMPLETE=fish shelf | source" >> ~/.config/fish/completions/shelf.fish`.
+/// The name is one that every shell accepts in an assignment: ASCII letters,
+/// digits and underscores, starting with a letter or an underscore.
+///
+/// The first call in the process also declares `variable` as the process's
+/// completion variable, and a later call with another name changes nothing.
+/// The usage log reads that declaration and writes no line for a run whose
+/// declared variable asks for completion, so `main` calls `complete_with`
+/// before [`usage::start`](crate::usage). A tool that never calls it keeps
+/// `COMPLETE`.
+#[cfg(feature = "complete")]
+#[must_use]
+pub fn complete_with(
+    variable: &'static str,
+    command: impl FnOnce() -> Command,
+) -> Option<ExitCode> {
+    // A second declaration keeps the first, so the usage log and the
+    // registration agree within one run.
+    let _ = DECLARED.set(variable);
     #[expect(
         clippy::disallowed_methods,
-        reason = "completion owns its environment reads, and COMPLETE names the shell that asks"
+        reason = "completion owns its environment reads, and the completion variable names the shell that asks"
     )]
-    let shell = std::env::var_os(VAR)?;
+    let shell = std::env::var_os(variable)?;
     if !requested(Some(&shell)) {
         return None;
     }
@@ -102,6 +175,7 @@ pub fn complete(command: impl FnOnce() -> Command) -> Option<ExitCode> {
     Some(complete_to(
         &mut sink,
         command(),
+        variable,
         &shell,
         std::env::args_os(),
         current_dir.as_deref(),
@@ -109,13 +183,16 @@ pub fn complete(command: impl FnOnce() -> Command) -> Option<ExitCode> {
 }
 
 /// Answers the completion request of `shell` for `command`, writes the
-/// answer to the sink's output writer, and returns the exit code. `args` are
+/// answer to the sink's output writer, and returns the exit code.
+/// `variable` is the name of the completion variable, `COMPLETE` or the
+/// name that the tool passes to [`complete_with`], which a registration
+/// script sets for each completion. `args` are
 /// the process's arguments, the program name first, as in
 /// [`parse_from`](crate::parse_from), and `current_dir` is the directory
 /// that a relative program path starts from. Tests call it with a sink over
 /// in-memory writers.
 ///
-/// `shell` is the value of `COMPLETE`, such as `fish` or `/bin/zsh`, whose
+/// `shell` is the value of the completion variable, such as `fish` or `/bin/zsh`, whose
 /// file stem names one of `bash`, `elvish`, `fish`, `powershell` and `zsh`.
 /// Arguments with no words after `--` ask for the shell's registration
 /// script, which runs the program at its path for each completion. Words
@@ -137,6 +214,7 @@ pub fn complete(command: impl FnOnce() -> Command) -> Option<ExitCode> {
 pub fn complete_to<O, E, R, I, T>(
     sink: &mut Sink<O, E, R>,
     command: Command,
+    variable: &str,
     shell: &OsStr,
     args: I,
     current_dir: Option<&Path>,
@@ -148,7 +226,7 @@ where
 {
     let mut answer = Vec::new();
     let args = args.into_iter().map(Into::into).collect();
-    if answer_into(&mut answer, command, shell, args, current_dir).is_err() {
+    if answer_into(&mut answer, command, variable, shell, args, current_dir).is_err() {
         return ExitCode::FAILURE;
     }
     match sink.out.write_all(&answer).and_then(|()| sink.out.flush()) {
@@ -163,8 +241,9 @@ where
 //
 // RUST-10: this repeats clap_complete's `CompleteEnv::try_complete`, which
 // writes to the process's standard output itself, so that the answer goes
-// through crumbkit's sink. Unlike `try_complete`, it leaves `COMPLETE` set,
-// because removing an environment variable needs unsafe code. A custom
+// through crumbkit's sink. Unlike `try_complete`, it leaves the completion
+// variable set, because removing an environment variable needs unsafe code.
+// A custom
 // completer of the tool that runs another clap_complete tool as a child
 // would make that child answer a completion request too, so such a
 // completer removes the variable from its child's environment with
@@ -173,6 +252,7 @@ where
 fn answer_into(
     answer: &mut Vec<u8>,
     command: Command,
+    variable: &str,
     shell: &OsStr,
     mut args: Vec<OsString>,
     current_dir: Option<&Path>,
@@ -203,5 +283,5 @@ fn answer_into(
     }
     let name = command.get_name();
     let bin = command.get_bin_name().unwrap_or(name);
-    shell.write_registration(VAR, name, bin, &program.to_string_lossy(), answer)
+    shell.write_registration(variable, name, bin, &program.to_string_lossy(), answer)
 }
