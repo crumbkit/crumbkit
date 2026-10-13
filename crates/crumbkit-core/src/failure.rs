@@ -112,6 +112,11 @@ mod tests;
 /// let failure = ReadingList { name: "summer".to_owned(), book: NoSuchBook(7) };
 /// assert_eq!(failure.recovery(), Recovery::Run(Call::new(&["books", "list"])));
 /// ```
+///
+/// With the `derive` feature, `#[derive(Failure)]` writes these impls from
+/// attributes. `#[failure(forward = book)]` on `ReadingList` writes the
+/// forwarding impl above, and `#[failure(forward)]` on an enum variant
+/// forwards to the failure that the variant wraps.
 pub trait Failure: std::error::Error {
     /// Returns the failure's code. Each error type lists the codes it
     /// returns in a `CODES` constant, which the tool's test passes to

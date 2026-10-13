@@ -7,7 +7,7 @@ use std::num::NonZeroUsize;
 use std::path::Path;
 
 use crumbkit::pick::Choice;
-use crumbkit::{Batch, Call, Code, Document, Failure, Field, FieldValue, Listing, Recovery, Row};
+use crumbkit::{Batch, Call, Code, Document, Failure, FieldValue, Listing, Recovery, Row};
 use miette::{Diagnostic, LabeledSpan, NamedSource, SourceCode, SourceSpan};
 use schemars::JsonSchema;
 use serde::Serialize;
@@ -363,23 +363,47 @@ pub const REMOVED_FILE: Code = Code::new("shelf", "books", "removed_file");
 /// removed books.
 pub const NO_STATE_DIRECTORY: Code = Code::new("shelf", "books", "no_state_directory");
 
-/// A failure of a books command.
-#[derive(Debug)]
+/// A failure of a books command. A missing book's next step is `shelf books
+/// list`, which prints the ids that exist. An ids file failure's next step is
+/// advice about the file, and its alternative passes the ids on the command
+/// line instead, as `shelf books show <ID>...`.
+///
+/// `#[derive(Failure)]` also writes `BooksError::CODES`, which shelf's tests
+/// pass to crumbkit-test's codes and recovery checks.
+#[derive(Debug, Failure)]
 pub(crate) enum BooksError {
     /// The catalogue has no book with these ids. Each id appears once, in
-    /// the order the caller gave it.
+    /// the order the caller gave it. The field `books` is a list even for
+    /// one id, so an agent reads one shape for the code.
+    #[failure(
+        code = NOT_FOUND,
+        recovery = Recovery::Run(Call::new(&["books", "list"])),
+        field(books = FieldValue::list(ids.iter().copied())),
+    )]
     NotFound {
         /// The ids that name no book.
         ids: Vec<u32>,
     },
     /// The file that `--from` names cannot be read.
+    #[failure(
+        code = UNREADABLE_IDS_FILE,
+        hint = "pass --from a file that exists and that shelf can read",
+        alternative = Recovery::Run(show_call()),
+    )]
     UnreadableIdsFile {
         /// The path of the file as the caller gave it.
         name: String,
         /// Why the file cannot be read.
         error: io::Error,
     },
-    /// A line of the file that `--from` names is not a book id.
+    /// A line of the file that `--from` names is not a book id. The failure
+    /// is its own diagnostic, so crumbkit prints the line with a label.
+    #[failure(
+        code = BAD_IDS_FILE,
+        hint = "each line of the ids file holds one book id",
+        alternative = Recovery::Run(show_call()),
+        diagnostic,
+    )]
     BadIdsFile {
         /// The file's text, named by its path as the caller gave it.
         file: NamedSource<String>,
@@ -388,7 +412,15 @@ pub(crate) enum BooksError {
         /// Why the text is not a book id, as the id parser says it.
         problem: String,
     },
-    /// The file that `--from` names holds more than [`MOST_IDS`] ids.
+    /// The file that `--from` names holds more than [`MOST_IDS`] ids. The
+    /// failure is its own diagnostic, so crumbkit prints the first id after
+    /// the last one allowed with a label.
+    #[failure(
+        code = TOO_MANY_IDS,
+        hint = "the ids file holds at most {MOST_IDS} ids, as the command line does",
+        alternative = Recovery::Run(show_call()),
+        diagnostic,
+    )]
     TooManyIds {
         /// The file's text up to the line after the first id after the last
         /// one allowed, named by its path as the caller gave it.
@@ -397,12 +429,21 @@ pub(crate) enum BooksError {
         span: SourceSpan,
     },
     /// The file that `--from` names holds no id.
+    #[failure(
+        code = EMPTY_IDS_FILE,
+        hint = "the ids file needs at least one book id",
+        alternative = Recovery::Run(show_call()),
+    )]
     EmptyIdsFile {
         /// The path of the file as the caller gave it.
         name: String,
     },
     /// The file of removed books cannot be read or written, or holds a line
     /// that is not a book id.
+    #[failure(
+        code = REMOVED_FILE,
+        hint = "make {name} a readable file that holds one book id per line, or delete it",
+    )]
     RemovedFile {
         /// The path of the file.
         name: String,
@@ -411,21 +452,8 @@ pub(crate) enum BooksError {
     },
     /// Neither `XDG_STATE_HOME` nor `HOME` names a directory, so shelf has
     /// nowhere to keep the removed books.
+    #[failure(code = NO_STATE_DIRECTORY, hint = "set XDG_STATE_HOME or HOME to a directory")]
     NoStateDirectory,
-}
-
-impl BooksError {
-    /// Every code that a `BooksError` returns, which shelf's tests pass to
-    /// crumbkit-test's codes and recovery checks.
-    pub(crate) const CODES: &'static [&'static Code] = &[
-        &NOT_FOUND,
-        &UNREADABLE_IDS_FILE,
-        &BAD_IDS_FILE,
-        &TOO_MANY_IDS,
-        &EMPTY_IDS_FILE,
-        &REMOVED_FILE,
-        &NO_STATE_DIRECTORY,
-    ];
 }
 
 /// Prints `the catalogue has no book 7` for one id, and `the catalogue has no
@@ -514,80 +542,5 @@ impl Diagnostic for BooksError {
             | Self::NoStateDirectory => return None,
         };
         Some(Box::new(std::iter::once(label)))
-    }
-}
-
-/// A missing book's next step is `shelf books list`, which prints the ids
-/// that exist. An ids file failure's next step is advice about the file, and
-/// its alternative passes the ids on the command line.
-impl Failure for BooksError {
-    fn code(&self) -> &'static Code {
-        match self {
-            Self::NotFound { .. } => &NOT_FOUND,
-            Self::UnreadableIdsFile { .. } => &UNREADABLE_IDS_FILE,
-            Self::BadIdsFile { .. } => &BAD_IDS_FILE,
-            Self::TooManyIds { .. } => &TOO_MANY_IDS,
-            Self::EmptyIdsFile { .. } => &EMPTY_IDS_FILE,
-            Self::RemovedFile { .. } => &REMOVED_FILE,
-            Self::NoStateDirectory => &NO_STATE_DIRECTORY,
-        }
-    }
-
-    fn recovery(&self) -> Recovery {
-        let hint = match self {
-            Self::NotFound { .. } => return Recovery::Run(Call::new(&["books", "list"])),
-            Self::UnreadableIdsFile { .. } => {
-                "pass --from a file that exists and that shelf can read".to_owned()
-            }
-            Self::BadIdsFile { .. } => "each line of the ids file holds one book id".to_owned(),
-            Self::TooManyIds { .. } => {
-                format!("the ids file holds at most {MOST_IDS} ids, as the command line does")
-            }
-            Self::EmptyIdsFile { .. } => "the ids file needs at least one book id".to_owned(),
-            Self::RemovedFile { name, .. } => {
-                format!("make {name} a readable file that holds one book id per line, or delete it")
-            }
-            Self::NoStateDirectory => "set XDG_STATE_HOME or HOME to a directory".to_owned(),
-        };
-        Recovery::Hint(hint)
-    }
-
-    /// An ids file failure offers to pass the ids on the command line
-    /// instead, as `shelf books show <ID>...`.
-    fn alternatives(&self) -> Vec<Recovery> {
-        match self {
-            Self::UnreadableIdsFile { .. }
-            | Self::BadIdsFile { .. }
-            | Self::TooManyIds { .. }
-            | Self::EmptyIdsFile { .. } => vec![Recovery::Run(show_call())],
-            Self::NotFound { .. } | Self::RemovedFile { .. } | Self::NoStateDirectory => Vec::new(),
-        }
-    }
-
-    /// Missing books name their ids as the field `books`, which is a list
-    /// even for one id, so an agent reads one shape for the code.
-    fn fields(&self) -> Vec<Field<'_>> {
-        match self {
-            Self::NotFound { ids } => {
-                vec![Field::new("books", FieldValue::list(ids.iter().copied()))]
-            }
-            Self::UnreadableIdsFile { .. }
-            | Self::BadIdsFile { .. }
-            | Self::TooManyIds { .. }
-            | Self::EmptyIdsFile { .. }
-            | Self::RemovedFile { .. }
-            | Self::NoStateDirectory => Vec::new(),
-        }
-    }
-
-    fn diagnostic(&self) -> Option<&dyn Diagnostic> {
-        match self {
-            Self::BadIdsFile { .. } | Self::TooManyIds { .. } => Some(self),
-            Self::NotFound { .. }
-            | Self::UnreadableIdsFile { .. }
-            | Self::EmptyIdsFile { .. }
-            | Self::RemovedFile { .. }
-            | Self::NoStateDirectory => None,
-        }
     }
 }

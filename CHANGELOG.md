@@ -454,6 +454,15 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   pages alone, for a tool without example golden files ([ADR-0025]).
 - crumbkit-test: crumbkit-test re-exports `Guide`, so a tool without a
   crumbkit dependency can run `check_names` and `check_grammar` ([ADR-0015]).
+- crumbkit-derive: the new crate's `#[derive(Failure)]` writes a
+  [`Failure`] impl and a `CODES` list from `#[failure(...)]` attributes.
+  The `derive` feature of crumbkit and crumbkit-core re-exports it
+  ([crumbkit-derive], [ADR-0001]).
+- crumbkit-core: [`Error::unclassified`] holds an error that the tool did
+  not classify, such as one from an error library, with the code
+  `crumbkit::report::unchecked` and no next step ([ADR-0001]).
+- crumbkit: [`codes`] gains `REPORT_UNCHECKED`, the code of an unclassified
+  error and of a converted `miette::Report`, and `codes::ALL` lists it.
 
 - crumbkit: a batch failure holds the `key` it failed on and that key's
   `index` in JSON, and prints a `key:` line in text. The failure document's
@@ -874,6 +883,8 @@ rustdoc, or at its decision record. -->
 [`FailureReader`]: crates/crumbkit-test/src/failures.rs
 [crumbkit-aliases]: crates/crumbkit-aliases/README.md
 [crumbkit-core]: crates/crumbkit-core/README.md
+[crumbkit-derive]: crates/crumbkit-derive/README.md
+[`Error::unclassified`]: crates/crumbkit-core/src/unclassified.rs
 [`RenderCall`]: crates/crumbkit/src/call.rs
 [ADR-0001]: docs/decisions/api/failures/0001-error-model.md
 [ADR-0002]: docs/decisions/api/0002-public-api-and-semver.md

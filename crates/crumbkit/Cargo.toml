@@ -101,6 +101,10 @@ tracing = ["dep:tracing"]
 # unstable dynamic completion, so a crumbkit minor release may change it
 # (ADR-0002).
 complete = ["dep:clap_complete"]
+# `derive` is off by default, so a tool that writes its `Failure` impls by
+# hand builds no syn (ADR-0003). It turns on crumbkit-core's `derive`
+# feature, which adds `#[derive(Failure)]` at `crumbkit::Failure`.
+derive = ["crumbkit-core/derive"]
 
 [dev-dependencies]
 # The tests compare the exact help pages and refusal messages that a tool

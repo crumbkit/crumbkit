@@ -30,11 +30,17 @@ serde_json = { workspace = true, features = ["std"] }
 # `miette::Report` into `Error` (ADR-0001). crumbkit-core needs no miette
 # feature.
 miette = { workspace = true, optional = true }
+# The `derive` feature re-exports the `Failure` derive (ADR-0001).
+crumbkit-derive = { workspace = true, optional = true }
 
 [features]
 # `miette` is off by default, so the default build has no miette code and no
 # miette dependency (ADR-0003). crumbkit's `miette` feature turns it on.
 miette = ["dep:miette"]
+# `derive` is off by default, so a crate that writes its `Failure` impls by
+# hand builds no syn (ADR-0003). It re-exports `#[derive(Failure)]` beside the
+# trait of the same name.
+derive = ["dep:crumbkit-derive"]
 
 [dev-dependencies]
 # The tests and the README example derive `Serialize` and `JsonSchema` for
@@ -45,6 +51,10 @@ schemars = { workspace = true, features = ["derive"] }
 # generate strings from a regular expression, which the code segment tests
 # use.
 proptest = { workspace = true, features = ["std"] }
+# `tests/derive.rs` checks what `#[derive(Failure)]` generates against this
+# crate's `Failure` trait. The tests live here, so crumbkit-derive needs no
+# dependency on the crate that re-exports it.
+crumbkit-derive = { workspace = true }
 
 # docs.rs documents the crate with every feature on. `--cfg docsrs` turns on
 # the `doc_cfg` attribute in `lib.rs`, which labels each item behind a feature.

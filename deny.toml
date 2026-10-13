@@ -41,6 +41,11 @@ multiple-versions-include-dev = true
 # A `*` version requirement fails the check, because cargo may resolve it to
 # any version, and crates.io refuses to publish a crate that has one.
 wildcards = "deny"
+# A path dependency with no version passes in a dev-dependency or in a crate
+# that is not published, because `cargo publish` leaves out such a
+# dev-dependency. crumbkit-derive's README example builds on crumbkit-core
+# through one, so the two crates publish without a cycle (ADR-0012).
+allow-wildcard-paths = true
 # ADR-0003 rules out an async runtime and a C build, and ADR-0032 rules out
 # clap in crumbkit-core.
 deny = [
