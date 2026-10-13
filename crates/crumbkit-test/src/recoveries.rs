@@ -10,7 +10,8 @@ use crumbkit::{Code, Spelling};
 use snapbox::Assert;
 use snapbox::assert::DEFAULT_ACTION_ENV;
 
-use crate::allow::{Allowances, Rule, is_reason};
+use crate::allow::{Allowances, Rule};
+use crate::codes::Declared;
 use crate::examples::Examples;
 use crate::failures;
 use crate::goldens::compare;
@@ -18,9 +19,11 @@ use crate::runs::{Dir, Location};
 
 mod chain;
 mod runtime;
+mod unprovoked;
 mod words;
 
 pub use runtime::RuntimeFailing;
+pub use unprovoked::Unprovoked;
 
 // The tests run `/bin/sh` scripts, which Windows cannot run. The two
 // attributes stay apart, because clippy reads only a plain `cfg(test)` as
@@ -212,45 +215,6 @@ impl<'a> Failing<'a> {
     }
 }
 
-/// A declared code that no command line in a test can provoke, with the
-/// reason, such as a failure that needs a full disk. [`check_recoveries`]
-/// starts no chain for it, and [`check_twins`](crate::check_twins) needs no
-/// twin for it, so a tool passes the same list to both.
-#[derive(Clone, Copy, Debug)]
-pub struct Unprovoked<'a> {
-    /// The declared code.
-    code: &'a Code,
-    /// Why no test can provoke it, in one line.
-    reason: &'a str,
-}
-
-impl<'a> Unprovoked<'a> {
-    /// Returns the entry that lists `code` as unprovoked for `reason`.
-    ///
-    /// # Panics
-    ///
-    /// Panics unless `reason` is non-empty and holds no line break. A
-    /// `const` that calls it with such a reason fails to compile:
-    ///
-    /// ```compile_fail
-    /// use crumbkit::Code;
-    /// use crumbkit_test::Unprovoked;
-    ///
-    /// const GONE: Code = Code::new("shelf", "books", "removed_file");
-    /// const BAD: Unprovoked<'_> = Unprovoked::new(&GONE, "");
-    /// ```
-    #[must_use]
-    pub const fn new(code: &'a Code, reason: &'a str) -> Self {
-        assert!(is_reason(reason), "a reason is one non-empty line");
-        Self { code, reason }
-    }
-
-    /// Returns the declared code.
-    pub(crate) const fn code(&self) -> &'a Code {
-        self.code
-    }
-}
-
 /// The settings of [`check_recoveries`]: how to run the tool's binary, how
 /// the tool spells its codes, its declared codes, the command lines that
 /// start the chains, the declared codes that no command line provokes, the
@@ -278,8 +242,8 @@ pub struct Recoveries<'a> {
     examples: Examples<'a>,
     /// How the tool spells its codes.
     spelling: Spelling,
-    /// The `CODES` list of each of the tool's error types.
-    codes: &'a [&'a [&'a Code]],
+    /// The tool's declared codes.
+    codes: Declared<'a>,
     /// The command lines that start the chains.
     starts: &'a [Failing<'a>],
     /// The declared codes that no command line provokes.
@@ -306,11 +270,22 @@ impl<'a> Recoveries<'a> {
         Self {
             examples,
             spelling,
-            codes,
+            codes: Declared::Lists(codes),
             starts: &[],
             unprovoked: &[],
             values: &[],
             steps: 3,
+        }
+    }
+
+    /// Returns the settings that [`Recoveries::new`] returns, for `codes`,
+    /// one list of the tool's declared codes held by value, such as codes
+    /// that the tool builds at run time.
+    #[must_use]
+    pub const fn from_codes(examples: Examples<'a>, spelling: Spelling, codes: &'a [Code]) -> Self {
+        Self {
+            codes: Declared::Codes(codes),
+            ..Self::new(examples, spelling, &[])
         }
     }
 
@@ -486,7 +461,7 @@ fn check(
     };
     let spelling = recoveries.spelling;
     let mut declared: Vec<(String, &Code)> = Vec::new();
-    for &code in recoveries.codes.iter().flat_map(|list| list.iter()) {
+    for code in recoveries.codes.to_vec() {
         if !declared.iter().any(|&(_, seen)| seen == code) {
             declared.push((spelling.spell(code), code));
         }
@@ -550,7 +525,7 @@ fn check(
         let listed = recoveries
             .unprovoked
             .iter()
-            .any(|entry| spelling.spell(entry.code) == *text);
+            .any(|entry| spelling.spell(entry.code()) == *text);
         if !listed && !provoked.contains(text) {
             problems.push(format!(
                 "{text}: no start provokes the declared code, and Recoveries::unprovoked does not list it"
@@ -559,8 +534,8 @@ fn check(
     }
     report.push_str("codes that no start provokes:\n");
     for entry in recoveries.unprovoked {
-        let text = spelling.spell(entry.code);
-        if !declared.iter().any(|&(_, code)| code == entry.code) {
+        let text = spelling.spell(entry.code());
+        if !declared.iter().any(|&(_, code)| code == entry.code()) {
             problems.push(format!(
                 "{text}: Recoveries::unprovoked lists the code, and it is not a declared code"
             ));
@@ -569,7 +544,7 @@ fn check(
                 "{text}: Recoveries::unprovoked lists the code, and a start provokes it"
             ));
         }
-        let _ = writeln!(report, "  {text}: {}", entry.reason);
+        let _ = writeln!(report, "  {text}: {}", entry.reason());
     }
     let _ = writeln!(
         report,

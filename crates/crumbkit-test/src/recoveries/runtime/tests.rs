@@ -301,3 +301,110 @@ fn a_runtime_failing_keeps_a_directory_and_a_fixture_whose_paths_are_not_utf_8()
     assert_eq!(dir.path(), path);
     assert_eq!(failing.fixture(None), Some(path.as_path()));
 }
+
+#[test]
+fn a_place_made_with_at_gives_each_line_built_from_it_its_directory() {
+    let place = RuntimeFailing::at("work").env("DEPTH", "1");
+
+    let failing = place.line(NOT_FOUND, ["lists", "check"]).into_failing();
+
+    let Some(Dir::Fixed(dir)) = failing.work_dir(None) else {
+        panic!("the line has no directory of its own");
+    };
+    assert_eq!(dir.path(), Path::new("work"));
+    assert_eq!(*failing.code(), NOT_FOUND);
+    assert_eq!(failing.words(), ["lists", "check"]);
+    assert_eq!(failing.own_env(), [("DEPTH", Some("1"))]);
+}
+
+#[test]
+fn a_place_made_with_at_panics_when_a_test_runs_it_without_building_a_line() {
+    let problem = panic_message(|| {
+        let _failing = RuntimeFailing::at("work").into_failing();
+    });
+
+    assert_eq!(
+        problem.as_deref(),
+        Some(
+            "the place at `work`, made with RuntimeFailing::at, has no code and no words, so a test builds each command line from it with RuntimeFailing::line"
+        )
+    );
+}
+
+#[test]
+fn get_dir_returns_the_directory_that_at_or_dir_set_and_none_without_one() {
+    let at = RuntimeFailing::at("work");
+    let dir = RuntimeFailing::new(NOT_FOUND, ["lists"]).dir("other");
+    let none = RuntimeFailing::new(NOT_FOUND, ["lists"]);
+
+    assert_eq!(at.get_dir(), Some(Path::new("work")));
+    assert_eq!(dir.get_dir(), Some(Path::new("other")));
+    assert_eq!(none.get_dir(), None);
+}
+
+/// A script whose `lists check` fails with `NOT_FOUND` when `DEPTH` is `1`
+/// and exits with code 0 otherwise, with or without `--json` at the end.
+const DEPTH_SCRIPT: &str = r#"#!/bin/sh
+line="$*"
+case "${line% --json}" in
+  'lists check')
+    if [ "$DEPTH" = 1 ]; then
+      printf '%s\n' '{"schema":"crumbkit/failure/v1","code":"tool::lists::not_found","message":"m","recovery":{"kind":"retry"}}'
+      exit 1
+    fi
+    exit 0;;
+  *) echo "unexpected: $*" >&2; exit 3;;
+esac
+"#;
+
+#[test]
+fn a_variable_twin_takes_a_variable_name_that_the_test_builds_at_run_time() {
+    let dir = TempDir::new("runtime-variable").unwrap();
+    dir.write_script("tool", DEPTH_SCRIPT);
+    let script = dir.path().join("tool").display().to_string();
+    let name = ["DEP", "TH"].concat();
+    let pairs = [RuntimeFailing::new(NOT_FOUND, ["lists", "check"])
+        .env(name.clone(), "1")
+        .variable_twin(name)];
+    let unprovoked = [Unprovoked::new(
+        &UNREADABLE,
+        "Only a broken list provokes it.",
+    )];
+    let twins = Twins::new(Examples::new(&script, ""), Spelling::COLONS, CODES)
+        .pairs(&pairs)
+        .unprovoked(&unprovoked);
+
+    let problems = panic_message(|| check_twins(&tree(), &Guide::new(), &twins));
+
+    assert_eq!(problems, None);
+}
+
+#[test]
+fn recoveries_built_from_owned_codes_report_as_recoveries_built_from_code_lists_do() {
+    let (_tool, script) = tool("runtime-owned-codes");
+    let work = lists("runtime-owned-codes-work");
+    let work_text = work.path().display().to_string();
+    let examples = Examples::new(&script, "");
+    let starts = [Failing::new(&NOT_FOUND, &["lists", "show", "gone"])
+        .dir(&work_text)
+        .values(&[("NAME", "present")])];
+    let reason = "Only a broken list provokes it.";
+    let listed = [Unprovoked::new(&UNREADABLE, reason)];
+    let codes: Vec<Code> = vec![NOT_FOUND, UNREADABLE];
+    let owned = [Unprovoked::from_code(codes[1], reason)];
+    let from_lists = Recoveries::new(examples, Spelling::COLONS, CODES)
+        .starts(&starts)
+        .unprovoked(&listed);
+    let from_codes = Recoveries::from_codes(examples, Spelling::COLONS, &codes)
+        .starts(&starts)
+        .unprovoked(&owned);
+
+    let lists_report = report(&from_lists, "runtime-owned-codes-lists");
+    let codes_report = report(&from_codes, "runtime-owned-codes-codes");
+
+    assert!(
+        codes_report.contains("tool::lists::unreadable: Only a broken list provokes it."),
+        "{codes_report}"
+    );
+    assert_eq!(codes_report, lists_report);
+}
