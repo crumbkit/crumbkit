@@ -275,6 +275,14 @@ pub enum Rule {
     /// `recoveries/field-value`, and its opt-out names the command whose
     /// failure printed the recovery.
     FieldValue,
+    /// [`check_recoveries`](crate::check_recoveries): a failure with one of
+    /// the tool's declared codes offers no `run`, `retry` or `hint` step,
+    /// such as a failure whose recovery is `Recovery::None`. Its id is
+    /// `recoveries/next-step`, and its opt-out names the command that
+    /// failed. The opt-out declares the exception that ADR-0001 allows, so
+    /// the reason shows in the report of
+    /// [`check_opt_outs`](crate::check_opt_outs).
+    NextStep,
 }
 
 impl Rule {
@@ -307,6 +315,7 @@ impl Rule {
             Self::Recoveries => "recoveries/follow",
             Self::SameCode => "recoveries/same-code",
             Self::FieldValue => "recoveries/field-value",
+            Self::NextStep => "recoveries/next-step",
         }
     }
 
@@ -394,6 +403,9 @@ impl Rule {
             ],
             Self::FieldValue => &[
                 "An agent that follows the recovery must copy the value from the failure's field into the placeholder itself, where a recovery built with `Call::value` would carry the value.",
+            ],
+            Self::NextStep => &[
+                "An agent that reads the failure has no command, retry or advice to act on, so it must stop or guess.",
             ],
         }
     }

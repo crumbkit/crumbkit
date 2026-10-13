@@ -24,6 +24,8 @@ pub(super) struct Walk<'a> {
     pub(super) recoveries: &'a Recoveries<'a>,
     /// The tool's command tree.
     pub(super) command: &'a Command,
+    /// The tool's declared codes, spelled.
+    pub(super) declared: Vec<String>,
     /// The spelled codes whose recoveries the check follows: the declared
     /// codes and crumbkit's own codes.
     pub(super) known: Vec<String>,
@@ -33,8 +35,8 @@ pub(super) struct Walk<'a> {
     pub(super) components: Vec<String>,
     /// crumbkit's usage code, as the tool spells it.
     pub(super) usage: String,
-    /// The opt-outs of `recoveries/follow`, `recoveries/same-code` and
-    /// `recoveries/field-value`.
+    /// The opt-outs of `recoveries/follow`, `recoveries/same-code`,
+    /// `recoveries/field-value` and `recoveries/next-step`.
     pub(super) allowances: Allowances<'a>,
     /// The problems found, one line each.
     pub(super) problems: Vec<String>,
@@ -73,9 +75,14 @@ type Filled = (Vec<String>, Vec<(String, String)>);
 enum Outcome {
     /// The run exited with code 0.
     Succeeds,
-    /// The run failed and printed these failures, the first failure first,
-    /// each with its code, its steps and its fields.
-    Fails(Vec<ReadFailure>),
+    /// The run failed and printed `failures`, the first failure first, each
+    /// with its code, its steps and its fields. `warned` says whether it
+    /// wrote a `warning: crumbkit` line, which a debug build writes for a
+    /// recovery call that does not render.
+    Fails {
+        failures: Vec<ReadFailure>,
+        warned: bool,
+    },
 }
 
 /// The settings that every run of one chain shares.
@@ -150,12 +157,15 @@ impl Walk<'_> {
                 "{}: the start must fail with {code}, and it exits with code 0",
                 chain.start
             )),
-            Some(Outcome::Fails(failures)) => {
+            Some(Outcome::Fails { failures, warned }) => {
                 if failures.iter().any(|failure| failure.code() == code) {
                     let path = path_below(self.command, start.words);
                     let mark = chain.ran.len();
                     for failure in &failures {
                         chain.ran.truncate(mark);
+                        if !warned {
+                            self.next_step(&chain, "the start", &path, failure);
+                        }
                         self.branch(&mut chain, None, "the start", &path, failure, 0);
                     }
                 } else {
@@ -231,12 +241,15 @@ impl Walk<'_> {
                 Some(Outcome::Succeeds) => {
                     let _ = writeln!(self.report, "{indent}  exits 0");
                 }
-                Some(Outcome::Fails(failures)) => {
+                Some(Outcome::Fails { failures, warned }) => {
                     // Each failure starts its own branch, which may run a
                     // command line that a sibling branch ran.
                     let mark = chain.ran.len();
                     for failure in &failures {
                         chain.ran.truncate(mark);
+                        if !warned {
+                            self.next_step(chain, &label, &path, failure);
+                        }
                         self.branch(chain, Some(parent), &label, &path, failure, depth);
                     }
                 }
@@ -294,6 +307,32 @@ impl Walk<'_> {
             path,
         };
         self.follow(chain, &next, failure.steps(), depth + 1);
+    }
+
+    /// Adds a problem when `failure`, which the run `label` of the command
+    /// at `path` printed, has one of the tool's declared codes and offers no
+    /// `run`, `retry` or `hint` step, unless an opt-out from
+    /// `recoveries/next-step` covers the command. A `none` step with a
+    /// reason is still no next step, because the opt-out is where a tool
+    /// declares that exception.
+    fn next_step(&mut self, chain: &Chain<'_>, label: &str, path: &str, failure: &ReadFailure) {
+        let code = failure.code();
+        let offers = failure
+            .steps()
+            .iter()
+            .any(|step| matches!(step, Step::Run(_) | Step::Retry | Step::Hint(_)));
+        if offers
+            || !self.declared.iter().any(|declared| declared == code)
+            || self.allowances.excuses(Rule::NextStep, path)
+        {
+            return;
+        }
+        self.problems.push(format!(
+            "{}: {label} fails with {code}, whose failure offers no run, retry or hint step, so an agent has no next step. The failure can offer a recovery, or an opt-out from `{}` names `{}` with a reason",
+            chain.start,
+            Rule::NextStep.id(),
+            allow::command_line(self.command, path)
+        ));
     }
 
     /// Writes `code`, which `label` failed with and which no declared code
@@ -429,10 +468,12 @@ impl Walk<'_> {
             return None;
         }
         let stderr = String::from_utf8_lossy(&output.stderr);
+        let mut warned = false;
         for warning in stderr
             .lines()
             .filter(|line| line.starts_with("warning: crumbkit "))
         {
+            warned = true;
             self.problems.push(format!(
                 "{}: {label} writes a warning to standard error: {warning}",
                 chain.start
@@ -460,6 +501,6 @@ impl Walk<'_> {
             }
             return None;
         }
-        Some(Outcome::Fails(failures))
+        Some(Outcome::Fails { failures, warned })
     }
 }

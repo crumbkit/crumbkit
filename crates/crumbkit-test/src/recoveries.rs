@@ -350,6 +350,11 @@ impl<'a> Recoveries<'a> {
 /// - a step that fails with the code of the failure it follows or of an
 ///   earlier failure of its chain, unless an opt-out from
 ///   [`Rule::SameCode`] covers the step's command;
+/// - a failure with one of the tool's declared codes that offers no `run`,
+///   `retry` or `hint` step, such as a failure whose recovery is
+///   `Recovery::None` with a reason, unless an opt-out from
+///   [`Rule::NextStep`] covers the command that failed. A failure from a
+///   run that writes a `warning: crumbkit` line is not also reported here;
 /// - a placeholder that a field of the failure fills, which the report
 ///   also shows under the step, unless an opt-out from
 ///   [`Rule::FieldValue`] covers the command whose failure printed the
@@ -377,8 +382,9 @@ impl<'a> Recoveries<'a> {
 ///   provokes;
 /// - a golden file that differs, or is missing without
 ///   `SNAPSHOTS=overwrite`;
-/// - an opt-out from [`Rule::Recoveries`], [`Rule::SameCode`] or
-///   [`Rule::FieldValue`] that names no command or excuses no problem.
+/// - an opt-out from [`Rule::Recoveries`], [`Rule::SameCode`],
+///   [`Rule::FieldValue`] or [`Rule::NextStep`] that names no command or
+///   excuses no problem.
 ///
 /// An opt-out from [`Rule::Recoveries`] skips each start below its command.
 ///
@@ -432,11 +438,17 @@ fn check(
             components.push(component.to_owned());
         }
     }
-    let rules = [Rule::Recoveries, Rule::SameCode, Rule::FieldValue];
+    let rules = [
+        Rule::Recoveries,
+        Rule::SameCode,
+        Rule::FieldValue,
+        Rule::NextStep,
+    ];
     let allowances = Allowances::new(recoveries.examples.opt_outs(), &rules);
     let mut walk = chain::Walk {
         recoveries,
         command,
+        declared: declared.iter().map(|(text, _)| text.clone()).collect(),
         known,
         components,
         usage: spelling.spell(&crumbkit::codes::CLI_USAGE),

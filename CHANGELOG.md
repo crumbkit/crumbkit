@@ -341,6 +341,9 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit: [`ReadFailure`] carries the failure's fields, so a form's
   `read` gives crumbkit-test the values that fill a recovery's
   placeholders ([ADR-0053]).
+- crumbkit-test: [`check_recoveries`] fails on a failure with a declared
+  code that offers no `run`, `retry` or `hint` step, unless an opt-out from
+  `Rule::NextStep` names the failing command ([ADR-0053]).
 - crumbkit-test: [`FailureReader`] and `Examples::failure_reader` let a
   tool that prints its own failures without a failure form give the twin,
   example and recovery checks its failures ([ADR-0045]).
