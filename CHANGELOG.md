@@ -237,6 +237,9 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   ([ADR-0005], [ADR-0053]).
 - crumbkit-test: `Rule::Recoveries` and `Rule::SameCode` let a tool opt out
   of the recovery check ([ADR-0036]).
+- crumbkit-test: [`check_recoveries`] fails on a placeholder that a field
+  of the failure fills, and shows the fill in the report, unless an opt-out
+  from `Rule::FieldValue` names the failing command ([ADR-0053]).
 - crumbkit: `Guide::without_terminal_detection` turns terminal detection
   off, so help has no colour, `Output::progress_allowed` is false, and
   pickers and `Output::confirm` never ask ([ADR-0049]).

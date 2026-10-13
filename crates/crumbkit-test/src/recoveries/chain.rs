@@ -9,7 +9,7 @@ use crumbkit::form::{FailureForm, Step};
 
 use super::words::split;
 use super::{Failing, Recoveries};
-use crate::allow::{Allowances, Rule};
+use crate::allow::{self, Allowances, Rule};
 use crate::guide::command_line;
 use crate::runs::{self, Place, TIMEOUT, WorkDir, Xdg};
 
@@ -29,7 +29,8 @@ pub(super) struct Walk<'a> {
     pub(super) components: Vec<String>,
     /// crumbkit's usage code, as the tool spells it.
     pub(super) usage: String,
-    /// The opt-outs of `recoveries/follow` and `recoveries/same-code`.
+    /// The opt-outs of `recoveries/follow`, `recoveries/same-code` and
+    /// `recoveries/field-value`.
     pub(super) allowances: Allowances<'a>,
     /// The problems found, one line each.
     pub(super) problems: Vec<String>,
@@ -45,6 +46,21 @@ pub(super) struct Walk<'a> {
     /// tool's form does not read, so no later run can be followed.
     pub(super) stopped: Option<String>,
 }
+
+/// The failure that offers a chain's next steps.
+struct Parent<'p> {
+    /// The failure's code, as the tool spells it.
+    code: &'p str,
+    /// The failure's fields, which fill the steps' placeholders.
+    fields: &'p [(String, String)],
+    /// The path below the root of the command that failed, which an
+    /// opt-out from `recoveries/field-value` names.
+    path: &'p str,
+}
+
+/// The words of a filled call after the tool's name, and the name of each
+/// placeholder that a field filled with the field's name.
+type Filled = (Vec<String>, Vec<(String, String)>);
 
 /// How a run ended: with code 0, or with a failure document's code and
 /// steps.
@@ -132,7 +148,13 @@ impl Walk<'_> {
                 self.provoked.push(failed.clone());
                 if failed == code {
                     let _ = writeln!(self.report, "  fails with {code}");
-                    self.follow(&mut chain, (&code, &fields), &steps, 1);
+                    let path = path_below(self.command, start.words);
+                    let parent = Parent {
+                        code: &code,
+                        fields: &fields,
+                        path: &path,
+                    };
+                    self.follow(&mut chain, &parent, &steps, 1);
                 } else {
                     self.problems.push(format!(
                         "{}: the start must fail with {code}, and it fails with {failed}",
@@ -145,17 +167,10 @@ impl Walk<'_> {
         self.report.push('\n');
     }
 
-    /// Follows each of `steps`, which a failure with the code and the fields
-    /// of `parent` offers, as the `depth`th step of `chain`, writing each to
-    /// the report indented by `depth`.
-    fn follow(
-        &mut self,
-        chain: &mut Chain<'_>,
-        parent: (&str, &[(String, String)]),
-        steps: &[Step],
-        depth: u8,
-    ) {
-        let (parent, fields) = parent;
+    /// Follows each of `steps`, which the failure `parent` offers, as the
+    /// `depth`th step of `chain`, writing each to the report indented by
+    /// `depth`.
+    fn follow(&mut self, chain: &mut Chain<'_>, parent: &Parent<'_>, steps: &[Step], depth: u8) {
         let indent = "  ".repeat(usize::from(depth));
         for step in steps {
             if self.stopped.is_some() {
@@ -176,7 +191,7 @@ impl Walk<'_> {
                     continue;
                 }
             };
-            let Some(words) = self.fill(chain, call, fields) else {
+            let Some((words, used)) = self.fill(chain, call, parent.fields) else {
                 continue;
             };
             let refs: Vec<&str> = words.iter().map(String::as_str).collect();
@@ -186,6 +201,7 @@ impl Walk<'_> {
             } else {
                 let _ = writeln!(self.report, "{indent}run {call} as {filled}");
             }
+            self.report_fields(chain, parent, call, &used, &indent);
             let path = path_below(self.command, &refs);
             let stopped = if self.allowances.excuses(Rule::Recoveries, &path) {
                 Some("an opt-out from recoveries/follow covers it".to_owned())
@@ -238,31 +254,65 @@ impl Walk<'_> {
                         );
                         continue;
                     }
-                    if code == parent && !self.allowances.excuses(Rule::SameCode, &path) {
+                    if code == parent.code && !self.allowances.excuses(Rule::SameCode, &path) {
                         self.problems.push(format!(
                             "{}: {label} fails again with {code}, so an agent that follows the recovery learns nothing new",
                             chain.start
                         ));
                     }
                     let _ = writeln!(self.report, "{indent}  fails with {code}");
-                    self.follow(chain, (&code, &next_fields), &next, depth + 1);
+                    let next_parent = Parent {
+                        code: &code,
+                        fields: &next_fields,
+                        path: &path,
+                    };
+                    self.follow(chain, &next_parent, &next, depth + 1);
                 }
                 None => {}
             }
         }
     }
 
+    /// Writes each placeholder of `call` that a field of `parent` filled,
+    /// as `used` names them, to the report indented by `indent`, and adds
+    /// a problem for each unless an opt-out from `recoveries/field-value`
+    /// covers the command whose failure printed `call`.
+    fn report_fields(
+        &mut self,
+        chain: &Chain<'_>,
+        parent: &Parent<'_>,
+        call: &str,
+        used: &[(String, String)],
+        indent: &str,
+    ) {
+        for (placeholder, field) in used {
+            let _ = writeln!(
+                self.report,
+                "{indent}  <{placeholder}> from the failure's field {field}"
+            );
+            if !self.allowances.excuses(Rule::FieldValue, parent.path) {
+                self.problems.push(format!(
+                    "{}: the step `{call}` takes `<{placeholder}>` from the failure's field {field}, so an agent must substitute the value itself. The failure's recovery can carry the value with Call::value, or an opt-out from `{}` names `{}` with a reason",
+                    chain.start,
+                    Rule::FieldValue.id(),
+                    allow::command_line(self.command, parent.path)
+                ));
+            }
+        }
+    }
+
     /// Returns the words of `call` after the tool's name, with each
     /// placeholder replaced by its value from the start's values, `fields`
-    /// or the shared values, or adds the problem and returns `None` when the
-    /// call cannot be read, does not start with the tool's name or has a
-    /// placeholder without a value.
+    /// or the shared values, and the name of each placeholder that a field
+    /// filled with the field's name. It adds the problem and returns `None`
+    /// when the call cannot be read, does not start with the tool's name or
+    /// has a placeholder without a value.
     fn fill(
         &mut self,
         chain: &Chain<'_>,
         call: &str,
         fields: &[(String, String)],
-    ) -> Option<Vec<String>> {
+    ) -> Option<Filled> {
         let tool = self.command.get_name();
         let problem = match split(call) {
             None => format!("the step `{call}` is not a command line that crumbkit quotes"),
@@ -271,14 +321,23 @@ impl Walk<'_> {
             }
             Some(words) => {
                 let shared = self.recoveries.values;
-                let lookup = |name: &str| value(chain.values, fields, shared, name);
+                let mut used: Vec<(String, String)> = Vec::new();
+                let mut lookup = |name: &str| {
+                    let (value, field) = value(chain.values, fields, shared, name)?;
+                    if let Some(field) = field
+                        && !used.iter().any(|(seen, _)| seen == name)
+                    {
+                        used.push((name.to_owned(), field.to_owned()));
+                    }
+                    Some(value)
+                };
                 let filled: Result<Vec<String>, String> = words
                     .iter()
                     .skip(1)
-                    .map(|word| fill_word(word, lookup))
+                    .map(|word| fill_word(word, &mut lookup))
                     .collect();
                 match filled {
-                    Ok(filled) => return Some(filled),
+                    Ok(filled) => return Some((filled, used)),
                     Err(missing) => format!(
                         "the step `{call}` has the placeholder {missing}, and no value of Failing::values, the fields of the failure or Recoveries::values fills it"
                     ),
@@ -368,20 +427,22 @@ impl Walk<'_> {
 /// Returns the value of the placeholder `name`: the start's own value in
 /// `own` whose name matches exactly, then the field in `fields` whose name
 /// matches with capitals lowered and `-` read as `_`, then the shared value
-/// in `shared` whose name matches exactly, or `None`.
+/// in `shared` whose name matches exactly, or `None`. A value from a field
+/// comes with the field's name.
 //
 // RUST-10: a field fills any placeholder whose name matches it, whatever
 // the step means by that placeholder. crumbkit's usage failure names the
 // refused `value`, so a recovery holding `<VALUE>` would run the refused
 // value again. No recovery that crumbkit offers for its own failures holds
 // such a placeholder today. A tool whose recovery does sets its own value
-// with `Failing::values`, which wins over the field.
+// with `Failing::values`, which wins over the field. Every fill from a
+// field is a finding of `recoveries/field-value`, so a tool sees each one.
 fn value<'v>(
     own: &'v [(&str, &'v str)],
     fields: &'v [(String, String)],
     shared: &'v [(&str, &'v str)],
     name: &str,
-) -> Option<&'v str> {
+) -> Option<(&'v str, Option<&'v str>)> {
     let exact = |table: &'v [(&str, &'v str)]| {
         table
             .iter()
@@ -390,13 +451,14 @@ fn value<'v>(
     };
     let field_name = name.to_ascii_lowercase().replace('-', "_");
     exact(own)
+        .map(|value| (value, None))
         .or_else(|| {
             fields
                 .iter()
                 .find(|(key, _)| *key == field_name)
-                .map(|(_, value)| value.as_str())
+                .map(|(key, value)| (value.as_str(), Some(key.as_str())))
         })
-        .or_else(|| exact(shared))
+        .or_else(|| exact(shared).map(|value| (value, None)))
 }
 
 /// Returns `words` with `--json` added at the end when they lack it.
@@ -426,7 +488,7 @@ fn with_json(words: &[String]) -> Vec<String> {
 // replaces this if a tool needs one.
 pub(super) fn fill_word<'v>(
     word: &str,
-    lookup: impl Fn(&str) -> Option<&'v str>,
+    mut lookup: impl FnMut(&str) -> Option<&'v str>,
 ) -> Result<String, String> {
     let mut filled = String::with_capacity(word.len());
     let mut rest = word;
