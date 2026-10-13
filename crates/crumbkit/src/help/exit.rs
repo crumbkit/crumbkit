@@ -18,12 +18,14 @@ pub(crate) const ABOUT: &str = "What each exit code means";
 
 /// crumbkit's own exit codes and their meanings, which `<tool> help
 /// exit-codes` lists before the tool's codes (ADR-0002). It leaves out 2
-/// when the guide gives a refused command line another code.
+/// when the guide gives a refused command line another code. The meaning
+/// of 1 names the rows that report a problem, because
+/// [`exit::problem_rows`](crate::exit::problem_rows) returns 1.
 const CRUMBKIT: [(u8, &str); 3] = [
     (0, "The command did what it was asked."),
     (
         1,
-        "The command failed. The failure names its code and the next step.",
+        "The command failed, or a row of its result reports a problem. A failure names its code and the next step.",
     ),
     (
         2,

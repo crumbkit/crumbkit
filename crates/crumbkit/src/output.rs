@@ -11,6 +11,7 @@ pub(crate) mod failure;
 mod fields;
 mod layout;
 mod listing;
+mod problems;
 mod prose;
 mod respond;
 mod result;
@@ -450,6 +451,14 @@ pub fn finish<T: Rows, E: AsFailure>(
 /// refused command line, 2 unless the guide lists another, when `--fields`
 /// names an unknown field, or when a bytes result gets `--fields`, `--long`
 /// or `--full`, which are checked before the result prints.
+///
+/// A run without a failure whose rows report a problem through the field
+/// that [`Row::PROBLEM`](crate::Row::PROBLEM) names exits with 1, also
+/// after the reader closed the pipe early. The exit reads every row that
+/// the result holds, including rows that the budget left unprinted. In
+/// text, a note such as `note: 2 of the aliases report a problem, so the
+/// command exits with 1.` goes to the error writer after the footer and
+/// before the tool's note (ADR-0050).
 ///
 /// [books-show-7]: https://github.com/crumbkit/crumbkit/blob/main/examples/shelf/tests/golden/books-show-7.stderr
 pub fn finish_to<T: Rows, E: AsFailure, O: Write, W: Write>(

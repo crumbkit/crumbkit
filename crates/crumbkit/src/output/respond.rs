@@ -8,8 +8,8 @@ use super::budget::OverBudget;
 use super::dry_run::DRY_RUN_LINE;
 use super::failure::{self, PreparedFailure};
 use super::result::{Answer, write_result};
-use super::{Output, fields};
-use crate::{AsFailure, Document, Rows, Sink, Spelling};
+use super::{Output, fields, problems};
+use crate::{AsFailure, Document, Rows, Sink, Spelling, exit};
 
 /// Prints the result to `sink` and returns the exit code as a number, as
 /// [`finish_to`] describes, and whether the output budget cut a listing or a
@@ -67,6 +67,9 @@ pub(super) fn respond<T: Rows, E: AsFailure, O: Write, W: Write, R>(
             })
             .collect()
     });
+    // The exit reads every row that the result holds, including rows that
+    // the output budget leaves unprinted.
+    let problems = problems::count(value.rows());
     let written = write_result(
         &mut sink.out,
         &mut sink.err,
@@ -75,6 +78,7 @@ pub(super) fn respond<T: Rows, E: AsFailure, O: Write, W: Write, R>(
         document,
         value,
         failures.as_deref(),
+        problems,
     );
     let (code, answer) = match written {
         Ok((answer, bytes)) => {
@@ -101,6 +105,13 @@ pub(super) fn respond<T: Rows, E: AsFailure, O: Write, W: Write, R>(
         && !matches!(answer, Answer::Refused(_));
     let (code, cut, left_out) = answered(sink, output, spelling, &answer, code);
     let code = print_failures(sink, output, spelling, document, failures, left_out, code);
+    // A failure decides the exit before a row that reports a problem, and a
+    // reader that closed the pipe early still sees the problem's exit.
+    let code = if code == 0 && problems > 0 {
+        exit::problem_rows()
+    } else {
+        code
+    };
     if dry_run_line {
         // Standard error is the last place to report anything, so a failed
         // write there goes unreported.

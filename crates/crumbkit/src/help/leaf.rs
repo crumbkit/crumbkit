@@ -162,6 +162,7 @@ impl Leaf {
             document: document.untyped(),
             compact: <T::Row as Row>::COLUMNS,
             long: <T::Row as Row>::LONG_COLUMNS,
+            problem: <T::Row as Row>::PROBLEM,
             schema: schema::<T::Row>,
             envelope: crate::schemas::envelope::<T>,
             shape: Some(T::SHAPE),
@@ -182,6 +183,7 @@ impl Leaf {
             document: document.untyped(),
             compact: R::COLUMNS,
             long: R::LONG_COLUMNS,
+            problem: R::PROBLEM,
             schema: schema::<R>,
             envelope: crate::schemas::envelope::<R>,
             shape: None,
@@ -225,6 +227,29 @@ impl Leaf {
             Some(columns) => Some(columns.document),
             None => None,
         }
+    }
+
+    /// Returns the field that marks a row of the leaf's document as
+    /// reporting a problem, the row type's [`Row::PROBLEM`], or `None` when
+    /// the leaf has no document or its row type names no such field.
+    #[must_use]
+    pub const fn problem(&self) -> Option<&'static str> {
+        match self.columns {
+            Some(columns) => columns.problem,
+            None => None,
+        }
+    }
+
+    /// Returns the `Problems:` line that the leaf's `-h` and `--help` print
+    /// after the `Output:` line when its row type names a problem field,
+    /// such as `Problems: a value in the problem column marks a row with a
+    /// problem, and the command then exits with 1.`, or `None` otherwise.
+    pub(crate) fn problems_line(&self) -> Option<String> {
+        let field = self.problem()?;
+        let exit = crate::exit::problem_rows();
+        Some(format!(
+            "Problems: a value in the {field} column marks a row with a problem, and the command then exits with {exit}."
+        ))
     }
 
     /// Returns the [`Shape`] of the result that [`Leaf::document`] set, such
@@ -313,6 +338,7 @@ impl Leaf {
                     name,
                     long,
                     property: property.is_some(),
+                    empty: property.is_some_and(can_be_empty),
                     description,
                 }
             })
@@ -333,6 +359,9 @@ pub struct Column {
     /// Whether the name is a property of the row type's JSON Schema, which
     /// holds one property for each field as the type serializes it.
     property: bool,
+    /// Whether the property's type has a value that a problem field reads
+    /// as no problem.
+    empty: bool,
     /// The first paragraph of the property's description, or `None` when
     /// the property has no description or the name is not a property.
     description: Option<String>,
@@ -358,6 +387,21 @@ impl Column {
     #[must_use]
     pub const fn is_property(&self) -> bool {
         self.property
+    }
+
+    /// Reports whether the column's type has a value that means no
+    /// problem when the column is the field that [`Row::PROBLEM`] names:
+    /// its JSON Schema type is a string or a boolean, or it can be null.
+    /// crumbkit-test's `check_guide` reads it for that field.
+    //
+    // RUST-10: the type is read from the property itself and from the
+    // variants under its `anyOf` or `oneOf`. A field whose type schemars
+    // keeps under `$defs`, such as an enum of strings, counts as having no
+    // such value. A reader that follows the `$ref` replaces this when a
+    // tool names such a field.
+    #[must_use]
+    pub const fn can_be_empty(&self) -> bool {
+        self.empty
     }
 
     /// Returns the first paragraph of the column's description, with its
@@ -411,6 +455,8 @@ struct Columns {
     compact: &'static [&'static str],
     /// The row type's [`Row::LONG_COLUMNS`].
     long: &'static [&'static str],
+    /// The row type's [`Row::PROBLEM`].
+    problem: Option<&'static str>,
     /// Builds the row type's JSON Schema, whose properties hold the
     /// columns' descriptions.
     schema: fn() -> Schema,
@@ -421,6 +467,24 @@ struct Columns {
     shape: Option<Shape>,
     /// Whether [`Leaf::stream`] set the document.
     stream: bool,
+}
+
+/// Reports whether `property`, the JSON Schema of one field, allows a
+/// string, a boolean or null, in its own `type` or in the `type` of a
+/// variant under its `anyOf` or `oneOf`.
+fn can_be_empty(property: &Value) -> bool {
+    let mut schemas = vec![property];
+    for keyword in ["anyOf", "oneOf"] {
+        if let Some(variants) = property.get(keyword).and_then(Value::as_array) {
+            schemas.extend(variants);
+        }
+    }
+    let empty = |kind: &Value| matches!(kind.as_str(), Some("string" | "boolean" | "null"));
+    schemas.iter().any(|schema| match schema.get("type") {
+        Some(Value::Array(kinds)) => kinds.iter().any(empty),
+        Some(kind) => empty(kind),
+        None => false,
+    })
 }
 
 /// Returns the JSON Schema of `R`.

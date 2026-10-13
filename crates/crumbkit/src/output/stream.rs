@@ -12,9 +12,9 @@ use super::budget::{Over, OverBudget};
 use super::dry_run::DRY_RUN_LINE;
 use super::envelope::{Extras, Selected, write_document};
 use super::failure::{self, PreparedFailure, Printing};
-use super::{Output, fields, table, unwrapped};
+use super::{Output, fields, problems, table, unwrapped};
 use crate::help::rename;
-use crate::{AsFailure, Document, Failure, Row, Sink, Spelling, Stream, codes};
+use crate::{AsFailure, Document, Failure, Row, Sink, Spelling, Stream, codes, exit};
 
 #[cfg(test)]
 mod tests;
@@ -193,6 +193,8 @@ pub struct Streaming<'a, R, O, W> {
     sent: usize,
     /// The number of items printed.
     items: usize,
+    /// The number of printed items that report a problem (ADR-0050).
+    problems: usize,
     /// The `crumbkit.finish` span, which records the exit code (ADR-0030).
     #[cfg(feature = "tracing")]
     span: tracing::Span,
@@ -258,6 +260,7 @@ fn open<R: Row, O: Write, W: Write>(
         budget,
         sent: 0,
         items: 0,
+        problems: 0,
         #[cfg(feature = "tracing")]
         span: crate::trace::spans::finish(),
     };
@@ -314,6 +317,7 @@ impl<R: Row, O: Write, W: Write> Streaming<'_, R, O, W> {
             return ControlFlow::Break(());
         }
         self.items += 1;
+        self.problems += usize::from(problems::reports(item));
         self.send()
     }
 
@@ -366,6 +370,12 @@ impl<R: Row, O: Write, W: Write> Streaming<'_, R, O, W> {
     /// It is 1 when a write failed for a reason other than a closed pipe,
     /// and when the stream stopped at the output budget, unless an earlier
     /// failure chose the code.
+    ///
+    /// A stream without a failure whose printed items report a problem
+    /// through the field that [`Row::PROBLEM`] names exits with 1, and in
+    /// text, while the pipe is open, it prints a note such as `note: 2 of
+    /// the rows report a problem, so the command exits with 1.` on the error
+    /// writer (ADR-0050).
     #[must_use]
     #[expect(
         clippy::needless_pass_by_value,
@@ -379,6 +389,9 @@ impl<R: Row, O: Write, W: Write> Streaming<'_, R, O, W> {
         if empty {
             self.note_empty();
         }
+        if !self.json && !self.failed && self.state == State::Open && self.problems > 0 {
+            self.note(&problems::note(self.problems, None));
+        }
         if self.dry_run
             && self.state == State::Open
             && (!self.json || !self.document.has_envelope())
@@ -387,8 +400,12 @@ impl<R: Row, O: Write, W: Write> Streaming<'_, R, O, W> {
         }
         let exit = if self.failed {
             self.exit
+        } else if self.state == State::Broken {
+            1
+        } else if self.problems > 0 {
+            exit::problem_rows()
         } else {
-            u8::from(self.state == State::Broken)
+            0
         };
         self.record(exit, empty);
         ExitCode::from(exit)

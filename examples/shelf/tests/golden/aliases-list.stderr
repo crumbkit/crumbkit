@@ -1,1 +1,2 @@
+note: 2 of the aliases report a problem, so the command exits with 1.
 Aliases file: [..]/config/shelf/aliases.toml

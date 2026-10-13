@@ -21,6 +21,7 @@ mod exits;
 mod layout;
 mod listing;
 mod notes;
+mod problems;
 mod prose;
 #[cfg(feature = "miette")]
 mod report;
