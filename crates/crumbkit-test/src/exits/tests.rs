@@ -1,6 +1,7 @@
 //! Tests for the exit code check.
 
 use clap::Command;
+use crumbkit::Code;
 use crumbkit::help::{Exit, Guide};
 
 use super::check_exit_codes;
@@ -142,4 +143,44 @@ fn a_command_path_that_names_no_command_fails_the_check() {
         "the command tree breaks crumbkit's exit code rules:\n\
          the exit code 3 names `shelf books export`, which is no command"
     );
+}
+
+#[test]
+fn a_failure_code_that_two_exits_list_fails_the_check() {
+    const LOCKED: Code = Code::new("shelf", "books", "locked");
+    const GUIDE: Guide = Guide::new().exits(&[
+        Exit::new(3, "Locked.").failures(&[&LOCKED]),
+        Exit::new(4, "Busy.").failures(&[&LOCKED]),
+        Exit::new(5, "Taken.").failures(&[&LOCKED]),
+    ]);
+
+    assert_eq!(
+        checked(&GUIDE, &[]).unwrap(),
+        "the command tree breaks crumbkit's exit code rules:\n\
+         the exit code 4 lists the failure code shelf::books::locked, which the exit code 3 lists already, so a run that fails with it cannot exit with both"
+    );
+}
+
+#[test]
+fn a_failure_code_that_crumbkit_owns_listed_by_an_exit_fails_the_check() {
+    const GUIDE: Guide =
+        Guide::new().exits(&[Exit::new(3, "Refused.").failures(&[&crumbkit::codes::CLI_USAGE])]);
+
+    assert_eq!(
+        checked(&GUIDE, &[]).unwrap(),
+        "the command tree breaks crumbkit's exit code rules:\n\
+         the exit code 3 lists the failure code crumbkit::cli::usage, which belongs to crumbkit, and crumbkit decides the exit code of its own failures"
+    );
+}
+
+#[test]
+fn exits_that_list_different_failure_codes_pass() {
+    const LOCKED: Code = Code::new("shelf", "books", "locked");
+    const SLOW: Code = Code::new("shelf", "books", "timed_out");
+    const GUIDE: Guide = Guide::new().exits(&[
+        Exit::new(3, "Locked.").failures(&[&LOCKED]),
+        Exit::new(124, "Slow.").failures(&[&SLOW]),
+    ]);
+
+    assert_eq!(checked(&GUIDE, &[]), None);
 }

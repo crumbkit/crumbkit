@@ -169,7 +169,9 @@ impl<'a> Twins<'a> {
 /// - an untwinned opt-out that names a code that is not declared, that a
 ///   twin refuses, that [`Twins::unprovoked`] lists or that crumbkit owns.
 ///   The last three are stale.
-/// - a listed code that is not declared or that a twin refuses.
+/// - a listed code that is not declared or that a twin refuses;
+/// - a failure code that [`Exit::failures`](crumbkit::help::Exit::failures)
+///   lists and no `CODES` list holds.
 ///
 /// Each line runs with `--json` added, as each run of
 /// [`check_recoveries`](crate::check_recoveries) does, so the check reads
@@ -281,11 +283,30 @@ pub fn check_twins(command: &Command, guide: &Guide, twins: &Twins<'_>) {
             ));
         }
     }
+    unheld(guide, spelling, &declared, &mut problems);
     assert!(
         problems.is_empty(),
         "the tool's twins break crumbkit's twin rule:\n{}",
         problems.join("\n")
     );
+}
+
+/// Pushes a problem for each failure code that an exit of `guide` lists and
+/// `declared`, the codes of the tool's `CODES` lists, does not hold.
+/// [`check_exit_codes`](crate::check_exit_codes) reports a listed code that
+/// belongs to crumbkit, so this check skips it.
+fn unheld(guide: &Guide, spelling: Spelling, declared: &[&Code], problems: &mut Vec<String>) {
+    for exit in guide.get_exits() {
+        for &code in exit.get_failures() {
+            if !declared.contains(&code) && code.component() != "crumbkit" {
+                problems.push(format!(
+                    "{}: the guide's exit code {} lists the failure code, and no CODES list holds it",
+                    spelling.spell(code),
+                    exit.code()
+                ));
+            }
+        }
+    }
 }
 
 /// Runs `pair`, one twin of `twins`, with `--json` added as

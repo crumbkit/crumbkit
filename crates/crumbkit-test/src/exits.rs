@@ -1,8 +1,11 @@
 //! The exit code check, which a tool's test runs over the exit codes that
 //! its guide declares.
 
+use std::process::ExitStatus;
+
 use clap::Command;
-use crumbkit::help::Guide;
+use crumbkit::help::{Exit, Guide};
+use crumbkit::{Code, Spelling};
 
 use crate::allow::{Allow, Allowances, Rule, command_line};
 use crate::tree;
@@ -24,7 +27,10 @@ mod tests;
 ///   ends it;
 /// - a code that the guide declares more than once;
 /// - a meaning that is empty, only whitespace or more than one line;
-/// - a command path of a code that names no command below `command`.
+/// - a command path of a code that names no command below `command`;
+/// - a failure code that [`Exit::failures`] lists for two codes, or that
+///   belongs to crumbkit, which decides the exit code of its own failures.
+///   The problem spells the failure code with [`Spelling::COLONS`].
 ///
 /// A tool can opt out of the rule for codes from 126 with an [`Allow`] of
 /// [`Rule::ShellExitCode`] and a stated reason, such as a tool that passes
@@ -86,6 +92,9 @@ pub fn check_exit_codes(command: &Command, guide: &Guide, allow: &[Allow]) {
                 "the meaning of the exit code {code} is more than one line, and help and `commands list` print it on one"
             ));
         }
+        for &failure in exit.get_failures() {
+            listed(exits, index, failure, &mut problems);
+        }
         for path in exit.get_commands() {
             if tree::find(command, path.iter().copied()).is_none() {
                 problems.push(format!(
@@ -96,6 +105,70 @@ pub fn check_exit_codes(command: &Command, guide: &Guide, allow: &[Allow]) {
         }
     }
     allowances.report(command, "exit code rules", problems);
+}
+
+/// Pushes a problem when `failure`, which the exit at `index` of `exits`
+/// lists, belongs to crumbkit, or when an earlier exit lists it. Only the
+/// second exit that lists a code reports it, so a code that three exits
+/// list is one problem.
+fn listed(exits: &[Exit], index: usize, failure: &Code, problems: &mut Vec<String>) {
+    let code = exits[index].code();
+    let text = Spelling::COLONS.spell(failure);
+    if failure.component() == "crumbkit" {
+        problems.push(format!(
+            "the exit code {code} lists the failure code {text}, which belongs to crumbkit, and crumbkit decides the exit code of its own failures"
+        ));
+    }
+    let mut earlier = exits[..index]
+        .iter()
+        .filter(|exit| exit.get_failures().contains(&failure));
+    if let Some(first) = earlier.next()
+        && earlier.next().is_none()
+    {
+        problems.push(format!(
+            "the exit code {code} lists the failure code {text}, which the exit code {} lists already, so a run that fails with it cannot exit with both",
+            first.code()
+        ));
+    }
+}
+
+/// Returns the problem when a failed run whose first failure the tool
+/// spells `printed` with `spelling` ends with `status`, which the run
+/// names in the problem after its own text, such as a command line.
+///
+/// The run must exit with the code of the exit in `exits` that lists the
+/// failure's code. A run whose failure no exit lists must not exit with
+/// the code of an exit that lists failures, because a caller reads that
+/// code as one of those failures. It may exit with any other code, so a
+/// tool can pass on the code of a child process.
+pub(crate) fn exit_problem(
+    exits: &[Exit],
+    spelling: Spelling,
+    printed: &str,
+    status: ExitStatus,
+) -> Option<String> {
+    let mapped = exits.iter().find(|exit| {
+        exit.get_failures()
+            .iter()
+            .any(|&code| spelling.spell(code) == printed)
+    });
+    match (mapped, status.code()) {
+        (Some(exit), Some(code)) if code == i32::from(exit.code()) => None,
+        (Some(exit), _) => Some(format!(
+            "fails with {printed}, which the guide's exit code {} lists, and it ends with {status}",
+            exit.code()
+        )),
+        (None, Some(code))
+            if exits
+                .iter()
+                .any(|exit| i32::from(exit.code()) == code && !exit.get_failures().is_empty()) =>
+        {
+            Some(format!(
+                "fails with {printed}, which no exit code of the guide lists, and it exits with {code}, which the guide declares for the failure codes that it lists"
+            ))
+        }
+        (None, _) => None,
+    }
 }
 
 /// Reports whether an opt-out from [`Rule::ShellExitCode`] covers each

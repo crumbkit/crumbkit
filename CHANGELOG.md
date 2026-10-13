@@ -361,6 +361,13 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   tree ([ADR-0021]).
 - crumbkit: `Exit::failures` lists the failure codes that end a run with
   the tool's exit code ([`help::Exit`], [ADR-0037]).
+- crumbkit-test: [`check_exit_codes`] rejects a failure code that two
+  exits list or that crumbkit owns, and [`check_twins`] rejects a listed
+  code that no `CODES` list holds ([ADR-0037]).
+- crumbkit-test: [`check_twin`] and [`check_recoveries`] fail a run whose
+  exit code differs from the one that the guide lists for its first
+  failure, or is a listing exit code for an unlisted failure ([ADR-0037]).
+
 ### Changed
 
 - crumbkit: [`finish`], batches and [`Streaming`] exit with the code that
