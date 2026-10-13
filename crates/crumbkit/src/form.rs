@@ -145,7 +145,7 @@ pub trait FailureForm {
     ///
     /// crumbkit never calls it. crumbkit-test's `check_twin`,
     /// `check_recoveries` and `check_examples` call it to learn a failed
-    /// run's code and steps, and fall back to crumbkit's own document and
+    /// run's code, steps and fields, and fall back to crumbkit's own document and
     /// text when it returns `None`. A form whose document crumbkit-test
     /// cannot read needs this method for `check_recoveries` to follow its
     /// recoveries (ADR-0045).
@@ -164,14 +164,16 @@ pub trait FailureForm {
 }
 
 /// The failure that one run printed in a tool's form, as
-/// [`FailureForm::read`] reads it back: the code in the tool's spelling, and
-/// the steps, the recovery first and then each alternative.
+/// [`FailureForm::read`] reads it back: the code in the tool's spelling, the
+/// steps, the recovery first and then each alternative, and the fields.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ReadFailure {
     /// The code in the tool's spelling, such as `shelf::books::not_found`.
     code: String,
     /// The recovery first, then each alternative.
     steps: Vec<Step>,
+    /// Each field of the failure as a name and its value's text.
+    fields: Vec<(String, String)>,
 }
 
 impl ReadFailure {
@@ -179,7 +181,24 @@ impl ReadFailure {
     /// the recovery first and then each alternative.
     #[must_use]
     pub const fn new(code: String, steps: Vec<Step>) -> Self {
-        Self { code, steps }
+        Self {
+            code,
+            steps,
+            fields: Vec::new(),
+        }
+    }
+
+    /// Returns the failure with `fields`, each a field's name and its value's
+    /// text, such as `("id", "7")`. `check_recoveries` fills a recovery's
+    /// placeholders from these fields. A failure has no fields until this
+    /// method gives it some.
+    ///
+    /// This builder is not a `const fn`, because a `const fn` cannot drop the
+    /// fields it replaces.
+    #[must_use]
+    pub fn with_fields(mut self, fields: Vec<(String, String)>) -> Self {
+        self.fields = fields;
+        self
     }
 
     /// Returns the code in the tool's spelling.
@@ -192,6 +211,12 @@ impl ReadFailure {
     #[must_use]
     pub fn steps(&self) -> &[Step] {
         &self.steps
+    }
+
+    /// Returns each field as a name and its value's text.
+    #[must_use]
+    pub fn fields(&self) -> &[(String, String)] {
+        &self.fields
     }
 }
 
