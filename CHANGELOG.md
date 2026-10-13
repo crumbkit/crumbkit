@@ -454,6 +454,15 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   pages alone, for a tool without example golden files ([ADR-0025]).
 - crumbkit-test: crumbkit-test re-exports `Guide`, so a tool without a
   crumbkit dependency can run `check_names` and `check_grammar` ([ADR-0015]).
+- crumbkit-derive: the new crate's `#[derive(Failure)]` writes a
+  [`Failure`] impl and a `CODES` list from `#[failure(...)]` attributes.
+  The `derive` feature of crumbkit and crumbkit-core re-exports it
+  ([crumbkit-derive], [ADR-0001]).
+- crumbkit-core: [`Error::unclassified`] holds an error that the tool did
+  not classify, such as one from an error library, with the code
+  `crumbkit::report::unchecked` and no next step ([ADR-0001]).
+- crumbkit: [`codes`] gains `REPORT_UNCHECKED`, the code of an unclassified
+  error and of a converted `miette::Report`, and `codes::ALL` lists it.
 
 - crumbkit: a batch failure holds the `key` it failed on and that key's
   `index` in JSON, and prints a `key:` line in text. The failure document's
@@ -723,6 +732,17 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- crumbkit: a debug build of a tool whose `main` never calls
+  `Output::set_command` writes a warning from `finish` and `stream`, and
+  crumbkit-test's `check_examples` and `check_recoveries` fail on it
+  ([ADR-0015]).
+- crumbkit: `--full` without `--json`, and `--fields` with `--long` or
+  `--full`, are refused in crumbkit's words with a hint that names the flag
+  to add or drop, in place of clap's error ([ADR-0016]).
+- crumbkit: a command without a doc comment that flattens `Output`,
+  `Page`, `NoInput`, `DryRun`, `Yes` or `Expect`, or takes one of
+  crumbkit's argument types, shows no description instead of crumbkit's
+  rustdoc ([ADR-0015]).
 - crumbkit-test: [`check_twins`] requires no twin for a declared code that
   the guide's `Rename` prints in place of one of crumbkit's codes, as its
   docs said ([ADR-0005]).
@@ -855,6 +875,8 @@ rustdoc, or at its decision record. -->
 [`FailureReader`]: crates/crumbkit-test/src/failures.rs
 [crumbkit-aliases]: crates/crumbkit-aliases/README.md
 [crumbkit-core]: crates/crumbkit-core/README.md
+[crumbkit-derive]: crates/crumbkit-derive/README.md
+[`Error::unclassified`]: crates/crumbkit-core/src/unclassified.rs
 [`RenderCall`]: crates/crumbkit/src/call.rs
 [ADR-0001]: docs/decisions/api/failures/0001-error-model.md
 [ADR-0002]: docs/decisions/api/0002-public-api-and-semver.md

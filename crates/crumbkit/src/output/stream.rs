@@ -30,11 +30,10 @@ mod tests;
 /// # Errors
 ///
 /// It returns `Err` with the exit code of a refused command line, 2 unless
-/// the guide lists another, after it prints the refusal when `--fields`
-/// names a field that `R` does not have, or when the caller passed a view
-/// flag that the stream cannot use: `--long` when `R` has no long columns,
-/// or `--full` when the document has no envelope. The tool's `main` returns
-/// that exit code.
+/// the guide lists another, after it prints the refusal of a view flag that
+/// the stream cannot use. `--fields` names only fields of `R`, `--long`
+/// needs long columns in `R`, `--full` needs `--json` and an envelope, and
+/// `--fields` rules out `--long` and `--full`. `main` returns that code.
 pub fn stream<R: Row>(
     output: &mut Output,
     spelling: Spelling,
@@ -127,10 +126,9 @@ pub fn stream<R: Row>(
 /// # Errors
 ///
 /// It returns `Err` with the exit code of a refused command line, 2 unless
-/// the guide lists another, when `--fields` names a field that `R` does not
-/// have, or for a view flag that [`stream`] refuses. The refusal prints as
-/// [`finish_to`](crate::finish_to)
-/// prints it, and nothing of the stream prints.
+/// the guide lists another, for a view flag that [`stream`] refuses. The
+/// refusal prints as [`finish_to`](crate::finish_to) prints it, and nothing
+/// of the stream prints.
 pub fn stream_to<'a, R: Row, O: Write, W: Write>(
     sink: &'a mut Sink<O, W>,
     output: &'a mut Output,
@@ -221,11 +219,13 @@ enum State {
 /// Opens the stream on `out` and `err`, as [`stream_to`] describes.
 fn open<R: Row, O: Write, W: Write>(
     out: O,
-    err: W,
+    mut err: W,
     output: &mut Output,
     spelling: Spelling,
     document: Document<Stream<R>>,
 ) -> Result<Streaming<'_, R, O, W>, ExitCode> {
+    output.warn_without_command(&mut err);
+    let typed = output.typed();
     let budget = output.budget();
     let printing = output.printing();
     let Output {
@@ -268,7 +268,7 @@ fn open<R: Row, O: Write, W: Write>(
         span: crate::trace::spans::finish(),
     };
     let envelope = document.has_envelope();
-    if let Some(refusal) = fields::refusal::<R>(None, envelope, streaming.fields, *long, *full) {
+    if let Some(refusal) = fields::refusal::<R>(None, envelope, streaming.fields, typed) {
         return Err(streaming.refuse(&refusal));
     }
     if !streaming.json {

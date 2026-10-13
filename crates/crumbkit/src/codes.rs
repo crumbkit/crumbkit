@@ -63,6 +63,12 @@ pub const VERSION_CONFLICT: Code = Code::new("crumbkit", "version", "conflict");
 /// short. A document can set its own code in place of this one (ADR-0046).
 pub const OUTPUT_OVER_BUDGET: Code = Code::new("crumbkit", "output", "over_budget");
 
+/// The code of a failure that the tool did not classify: an error passed to
+/// [`Error::unclassified`](crate::Error::unclassified), and a
+/// `miette::Report` converted into an [`Error`](crate::Error) under the
+/// `miette` feature (ADR-0001).
+pub use crumbkit_core::codes::REPORT_UNCHECKED;
+
 /// The code of `--json` passed to a command whose child has no JSON form
 /// (ADR-0042).
 #[cfg(feature = "hand-over")]
@@ -101,6 +107,7 @@ pub const ALL: &[&Code] = &[
     &CONFIRM_NEEDS_YES,
     &VERSION_CONFLICT,
     &OUTPUT_OVER_BUDGET,
+    &REPORT_UNCHECKED,
 ];
 
 /// Every code above, in the order this module declares them. The `child`
@@ -117,6 +124,7 @@ pub const ALL: &[&Code] = &[
     &CONFIRM_NEEDS_YES,
     &VERSION_CONFLICT,
     &OUTPUT_OVER_BUDGET,
+    &REPORT_UNCHECKED,
     &CHILD_NO_JSON,
     &CHILD_NOT_FOUND,
     &CHILD_NOT_STARTED,

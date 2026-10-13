@@ -62,6 +62,9 @@ pub const SELF_USAGE: Document<Listing<FindingRow, UsageSummary>> = Document::ne
 /// The arguments of `<tool> self usage`: how far back the report reads,
 /// and the log it reads when the caller names one.
 #[derive(Args, Clone, Debug, PartialEq, Eq)]
+// The doc comment is rustdoc, and clap would copy it into the help of a
+// command without a description of its own.
+#[command(about = None, long_about = None)]
 pub struct SelfUsage {
     /// How far back to read the usage log, such as 12h, 7d or 2w
     #[arg(long, value_name = "DURATION", default_value = "7d", value_parser = humantime::parse_duration)]

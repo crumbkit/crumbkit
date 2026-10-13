@@ -3,7 +3,6 @@
 use std::io::{self, Write};
 use std::process::ExitCode;
 
-use clap::error::ErrorKind;
 use clap::{CommandFactory as _, FromArgMatches as _, Parser, Subcommand};
 use schemars::JsonSchema;
 use serde::ser::Error as _;
@@ -13,6 +12,7 @@ use super::{Output, finish_to};
 use crate::twins::assert_one_word_apart;
 use crate::{Document, Error, Listing, Row, Rows, Sink, Spelling};
 
+mod about;
 mod batch;
 mod budget;
 mod bytes;
@@ -398,22 +398,6 @@ fn the_flags_parse_before_and_after_the_subcommand() {
     assert!(before.output.long);
 }
 
-#[test]
-fn fields_conflicts_with_long_and_with_full() {
-    let with_long = parse(&["--fields", "name", "--long"]).unwrap_err();
-    let with_full = parse(&["--json", "--fields", "name", "--full"]).unwrap_err();
-
-    assert_eq!(with_long.kind(), ErrorKind::ArgumentConflict);
-    assert_eq!(with_full.kind(), ErrorKind::ArgumentConflict);
-}
-
-#[test]
-fn full_requires_json() {
-    let error = parse(&["--full"]).unwrap_err();
-
-    assert_eq!(error.kind(), ErrorKind::MissingRequiredArgument);
-}
-
 /// A writer whose every write fails with an error of `kind`.
 struct Failing(io::ErrorKind);
 
@@ -435,7 +419,7 @@ fn a_failed_write_exits_with_code_1_and_reports_the_cause() {
 
     let code = finish_to(
         &mut sink,
-        &mut Output::default(),
+        &mut parse_against(Tool::command(), &[]),
         Spelling::COLONS,
         PLANETS,
         result,
@@ -456,7 +440,7 @@ fn a_reader_that_closes_the_pipe_early_still_exits_with_code_0_and_no_error() {
 
     let code = finish_to(
         &mut sink,
-        &mut Output::default(),
+        &mut parse_against(Tool::command(), &[]),
         Spelling::COLONS,
         PLANETS,
         result,
@@ -508,4 +492,21 @@ fn is_json_reports_whether_the_caller_typed_json() {
 #[test]
 fn progress_is_never_allowed_with_json() {
     assert!(!parse(&["--json"]).unwrap().progress_allowed());
+}
+
+#[cfg(debug_assertions)]
+#[test]
+fn finish_warns_in_a_debug_build_when_the_tool_never_passed_its_command() {
+    let mut output = Tool::try_parse_from(["tool", "list"]).unwrap().output;
+
+    let finished = finish_output(&mut output, PLANETS, vec![mercury()]);
+
+    assert_eq!(finished.code, ExitCode::SUCCESS);
+    assert_eq!(
+        finished.err,
+        concat!(
+            "warning: crumbkit leaves out every Next: line and every recovery that runs a command, ",
+            "because the tool's main does not pass its command to Output::set_command\n"
+        )
+    );
 }

@@ -25,6 +25,7 @@ pub(super) fn respond<T: Rows, E: AsFailure, O: Write, W: Write, R>(
     document: Document<T>,
     result: Result<T, E>,
 ) -> (u8, bool) {
+    output.warn_without_command(&mut sink.err);
     let printing = output.printing();
     if let Some(refusal) = fields::flags_refusal::<T>(output, document.has_envelope()) {
         let code = refusal.print(

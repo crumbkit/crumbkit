@@ -108,6 +108,9 @@ const PATH_HELP: &str =
 /// A tool's `commands list` subcommand takes it as its arguments type, as
 /// in the [module example](self).
 #[derive(Args, Clone, Debug, PartialEq, Eq)]
+// The doc comment is rustdoc, and clap would copy it into the help of a
+// command without a description of its own.
+#[command(about = None, long_about = None)]
 pub struct CommandsList {
     #[arg(value_name = "PATH", help = PATH_HELP)]
     path: Vec<String>,

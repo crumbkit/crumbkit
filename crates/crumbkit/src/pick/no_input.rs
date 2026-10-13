@@ -47,6 +47,9 @@ const NO_INPUT_HELP: &str = "Fail instead of asking a question";
 /// no getter. crumbkit-test's `check_effects` requires the flag at the root
 /// of a tool that has a picker or a `--yes` (ADR-0043).
 #[derive(Args, Clone, Copy, Debug, Default, PartialEq, Eq)]
+// The doc comment is rustdoc, and clap would copy it into the help of a
+// command without a description of its own.
+#[command(about = None, long_about = None)]
 // clap builds the arguments of every command on every run, so the type
 // skips the argument group that clap would build for its one flag.
 #[group(skip)]

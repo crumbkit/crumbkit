@@ -141,6 +141,9 @@ const SHOW_PATH: &[&str] = &["schemas", "show"];
 /// A tool's `schemas list` subcommand takes it as its arguments type, as in
 /// the [module example](self).
 #[derive(Args, Clone, Debug, PartialEq, Eq)]
+// The doc comment is rustdoc, and clap would copy it into the help of a
+// command without a description of its own.
+#[command(about = None, long_about = None)]
 pub struct SchemasList {
     /// How many documents to print.
     #[command(flatten)]
@@ -154,6 +157,9 @@ pub struct SchemasList {
 /// A tool's `schemas show` subcommand takes it as its arguments type, as in
 /// the [module example](self).
 #[derive(Args, Clone, Debug, PartialEq, Eq)]
+// The doc comment is rustdoc, and clap would copy it into the help of a
+// command without a description of its own.
+#[command(about = None, long_about = None)]
 pub struct SchemasShow {
     /// The ids of the documents, such as `crumbkit/failure/v1`, separated
     /// by spaces

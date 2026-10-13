@@ -49,6 +49,9 @@ pub(super) const DRY_RUN_LINE: &str = "This was a dry run, so nothing changed.";
 /// getter, so a tool reads it only through `Output::dry_run`, and `finish`
 /// always knows when a run is a dry run.
 #[derive(Args, Clone, Copy, Debug, Default, PartialEq, Eq)]
+// The doc comment is rustdoc, and clap would copy it into the help of a
+// command without a description of its own.
+#[command(about = None, long_about = None)]
 // clap builds the arguments of every command on every run, so the type
 // skips the argument group that clap would build for its one flag.
 #[group(skip)]
