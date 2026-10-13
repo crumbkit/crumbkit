@@ -337,7 +337,7 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit-test: [`check_help_sizes`], [`check_help_goldens`] and
   [`check_path_weights`] take `Pages`, whose `Pages::binary` reads each
   page from the tool's binary, for a tool that builds its help at run
-  time ([ADR-0025]).
+  time. A tool passes the same `Pages` to all three ([ADR-0025]).
 ### Changed
 
 - crumbkit-test: [`check_twin`] takes the tool's guide as its first
