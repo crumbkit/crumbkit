@@ -33,7 +33,7 @@ These decisions cover where the lines that describe a result print, what a listi
 ## An upper bound on `--limit`
 
 - `Page<N, MOST>` takes an optional second constant, the most rows that `--limit` takes ([`Page`](../../../../../crates/crumbkit/src/page.rs)). It defaults to `usize::MAX`, which means no bound. The compiler refuses a page whose default `N` is above `MOST`. shelf's `books list` uses `Page<4, 100>`.
-- clap refuses a larger value as it parses the command line. The refusal has the code `crumbkit::cli::usage` and exit code 2, as every refused command line does (ADR-0001). Its fields are `argument`, `value` and `most`, the bound as an integer.
+- clap refuses a larger value as it parses the command line. The refusal has the code `crumbkit::cli::usage` and the exit code 2, or the guide's rename and exit for them, as every refused command line does (ADR-0001, ADR-0056). Its fields are `argument`, `value` and `most`, the bound as an integer.
 - The refusal's recovery runs the caller's own words with `--limit N` replaced by `--all`, so the caller's filters stay. Its alternative runs the same words with `--limit MOST`. A `--limit` spelled through an alias that the tool adds falls back to the `-h` recovery.
 - The help of a bounded `--limit` reads `Print at most this many rows, up to 100`, and the page's JSON Schema gives the limit a `maximum`.
 - `Page::first_of(rows)` and `Page::listing(rows, total)` build a listing that carries the bound. Its footer then reads `Showing 4 of 6 books. --limit takes up to 100, and --all shows every one.` A listing built with `Listing::from_all` or `Listing::new` has no bound and keeps the footer `Showing 4 of 6 books. --all shows every one.`

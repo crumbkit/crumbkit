@@ -29,9 +29,12 @@
 //! inside the usual envelope. A child without a JSON form refuses `--json`.
 //!
 //! Every failure prints as `finish` prints one, with one of these codes in
-//! the tool's spelling:
+//! the tool's spelling, or the tool's own code when its guide renames it.
+//! Each exit code below is crumbkit's default, which an
+//! [`Exit`](crate::help::Exit) of the guide that lists the code replaces:
 //!
-//! - `crumbkit::child::no_json`, exit code 2, when the caller passed
+//! - `crumbkit::child::no_json`, the exit code of a refused command line,
+//!   which is 2 by default, when the caller passed
 //!   `--json` to a command whose child has no JSON form.
 //! - `crumbkit::child::not_found`, exit code 1, when the program does not
 //!   exist.
@@ -43,7 +46,7 @@
 //!   failed under `--json`.
 //!
 //! `--fields` without `--json` is refused with `crumbkit::cli::usage` and
-//! exit code 2, because the child's own text has no columns to select, and
+//! the exit code of a refused command line, because the child's own text has no columns to select, and
 //! `--long` changes nothing.
 
 mod error;
@@ -56,7 +59,7 @@ use std::process::{self, Command, ExitCode, ExitStatus, Stdio};
 use serde::de::DeserializeOwned;
 
 use self::error::ChildError;
-use crate::{Document, Output, Rows, Sink, Spelling};
+use crate::{Document, Failure as _, Output, Rows, Sink, Spelling};
 
 #[cfg(test)]
 mod tests;
@@ -131,9 +134,10 @@ impl<T> Copy for Json<T> {}
 /// leaves it, returns 130 too. With the usage log, the run's line records
 /// that number, and `"interrupted": true` when a signal ended the child.
 ///
-/// It runs no child and fails with `crumbkit::child::no_json` and exit
-/// code 2 when the caller passed `--json`, and with `crumbkit::cli::usage`
-/// and exit code 2 when the caller passed `--fields`. The module
+/// It runs no child and fails with `crumbkit::child::no_json` when the
+/// caller passed `--json`, and with `crumbkit::cli::usage` when the caller
+/// passed `--fields`. Both exit with the code of a refused command line,
+/// which is 2 unless the guide lists another. The module
 /// documentation lists the failures of a child that cannot start.
 pub fn hand_over(output: &mut Output, spelling: Spelling, child: Command) -> ExitCode {
     hand_over_to(&mut Sink::standard(), output, spelling, child)
@@ -149,7 +153,7 @@ fn hand_over_to<O: Write, W: Write>(
 ) -> ExitCode {
     if output.is_json() {
         let failure = ChildError::NoJson(program(&child));
-        return fail(sink, output, spelling, &failure, 2);
+        return fail(sink, output, spelling, &failure);
     }
     terminal(sink, output, spelling, child)
 }
@@ -242,13 +246,7 @@ fn respond_text<O: Write, W: Write>(
             }
             crate::usage::ended(exit_number(status), None)
         }
-        Err(error) => fail(
-            sink,
-            output,
-            spelling,
-            &ChildError::start(program, error),
-            1,
-        ),
+        Err(error) => fail(sink, output, spelling, &ChildError::start(program, error)),
     }
 }
 
@@ -266,13 +264,7 @@ fn respond_json<T: Rows + DeserializeOwned, O: Write, W: Write>(
     let captured = match captured {
         Ok(captured) => captured,
         Err(error) => {
-            return fail(
-                sink,
-                output,
-                spelling,
-                &ChildError::start(program, error),
-                1,
-            );
+            return fail(sink, output, spelling, &ChildError::start(program, error));
         }
     };
     if !captured.status.success() {
@@ -280,13 +272,8 @@ fn respond_json<T: Rows + DeserializeOwned, O: Write, W: Write>(
             crate::usage::interrupted();
         }
         let exit = exit_number(captured.status);
-        return fail(
-            sink,
-            output,
-            spelling,
-            &ChildError::Failed { program, exit },
-            exit,
-        );
+        output.print_failure(sink, spelling, &ChildError::Failed { program, exit });
+        return crate::usage::ended(exit, None);
     }
     match serde_json::from_slice::<T>(&captured.stdout) {
         Ok(value) => {
@@ -299,22 +286,23 @@ fn respond_json<T: Rows + DeserializeOwned, O: Write, W: Write>(
                 document: document.to_string(),
                 error,
             };
-            fail(sink, output, spelling, &failure, 1)
+            fail(sink, output, spelling, &failure)
         }
     }
 }
 
-/// Prints `failure` as `finish` prints a failure, records `exit` in the
-/// usage log, and returns it.
+/// Prints `failure` as `finish` prints a failure, records its exit code in
+/// the usage log, and returns it. The exit code is the one that the guide
+/// lists for the failure's code, or crumbkit's default: the refusal's code
+/// for `crumbkit::child::no_json`, and 1 for the others (ADR-0042).
 fn fail<O: Write, W: Write>(
     sink: &mut Sink<O, W>,
     output: &mut Output,
     spelling: Spelling,
     failure: &ChildError,
-    exit: u8,
 ) -> ExitCode {
     output.print_failure(sink, spelling, failure);
-    crate::usage::ended(exit, None)
+    crate::usage::ended(output.failure_exit(failure.code()), None)
 }
 
 /// Returns the name of the program that `child` runs, for messages.

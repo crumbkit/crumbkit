@@ -146,6 +146,7 @@ fn json(related: Vec<Note>) -> serde_json::Value {
     serde_json::to_value(PreparedFailure::new(
         &failure,
         Spelling::COLONS,
+        &[],
         None,
         &mut std::io::sink(),
     ))
@@ -169,7 +170,8 @@ fn json_holds_each_related_diagnostic_with_every_part_it_has_after_the_labels() 
         source: NamedSource::new("shelf.toml", SHELF_TOML),
         related: vec![note],
     };
-    let document = PreparedFailure::new(&failure, Spelling::COLONS, None, &mut std::io::sink());
+    let document =
+        PreparedFailure::new(&failure, Spelling::COLONS, &[], None, &mut std::io::sink());
 
     assert_eq!(
         serde_json::to_string(&document).unwrap(),
@@ -266,7 +268,7 @@ impl Failure for Loop {
 
 #[test]
 fn related_diagnostics_nest_at_most_eight_levels_deep() {
-    let document = PreparedFailure::new(&Loop, Spelling::COLONS, None, &mut std::io::sink());
+    let document = PreparedFailure::new(&Loop, Spelling::COLONS, &[], None, &mut std::io::sink());
 
     let json = serde_json::to_string(&document).unwrap();
 

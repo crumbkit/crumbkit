@@ -21,7 +21,7 @@ fn over_long_array() -> LabeledSpan {
 
 /// Returns the text form of `failure`.
 fn text(failure: &dyn Failure) -> String {
-    let document = PreparedFailure::new(failure, Spelling::COLONS, None, &mut std::io::sink());
+    let document = PreparedFailure::new(failure, Spelling::COLONS, &[], None, &mut std::io::sink());
     let mut err = Vec::new();
     write_crumbkit_text(&mut err, &document).unwrap();
     String::from_utf8(err).unwrap()

@@ -280,7 +280,7 @@ pub(super) fn refuse(
 ) -> Result<Output, String> {
     let reader = failures::reader(guide, examples)?;
     let refused_line = named(&tool_name(examples), refused.words(), refused.own_env());
-    let code = spelling.spell(refused.code());
+    let code = spelling.spell(guide.printed(refused.code()));
     let output = run(
         examples,
         refused,
@@ -299,7 +299,7 @@ pub(super) fn refuse(
         .map(|failure| failure.code().to_owned());
     match printed {
         Some(printed) if printed == code => {
-            match exits::exit_problem(guide.get_exits(), spelling, &printed, output.status) {
+            match exits::exit_problem(guide, spelling, &printed, output.status) {
                 Some(problem) => Err(format!("the refused line {refused_line} {problem}")),
                 None => Ok(output),
             }

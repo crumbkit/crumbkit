@@ -4,7 +4,7 @@ use crate::usage::report::{Count, Figures, Finding, Kind, Report};
 
 /// Returns the report of `entries`, added in order.
 fn report(entries: &[Entry]) -> Report {
-    let mut tally = Tally::default();
+    let mut tally = Tally::new(2);
     for entry in entries {
         tally.add(entry);
     }
@@ -258,6 +258,24 @@ fn a_command_with_a_refused_run_is_a_usage_error_finding_that_counts_them() {
     let report = report(&[refused, Entry::run("a", 2, "books show")]);
 
     assert_eq!(kinds(&report), [(Kind::UsageError, "books show", 1)]);
+}
+
+#[test]
+fn a_tool_whose_guide_gives_a_refusal_another_exit_counts_runs_with_that_exit_as_refused() {
+    let exited = |at, exit| {
+        let mut entry = Entry::run("a", at, "books show");
+        entry.exit = Some(exit);
+        entry
+    };
+    let mut tally = Tally::new(64);
+    for entry in [exited(1, 64), exited(2, 2), exited(3, 70)] {
+        tally.add(&entry);
+    }
+
+    let report = tally.report();
+
+    assert_eq!(figures(&report, "books show").refused, 1);
+    assert_eq!(figures(&report, "books show").exits, [(70, 1)]);
 }
 
 #[test]

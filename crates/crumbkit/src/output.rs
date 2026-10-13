@@ -28,10 +28,11 @@ use clap::{Args, Command};
 pub(crate) use self::budget::SMALLEST as SMALLEST_BUDGET;
 pub use self::confirm::Yes;
 pub use self::dry_run::DryRun;
+use self::failure::Printing;
 pub use self::layout::JsonLayout;
 pub use self::stream::{Streaming, stream, stream_to};
 use crate::form::FailureForm;
-use crate::help::{Exit, Guide};
+use crate::help::{Exit, Guide, Rename};
 use crate::{AsFailure, Document, Parsed, Rows, Sink, Spelling};
 
 #[cfg(test)]
@@ -137,6 +138,11 @@ pub struct Output {
     /// ends the run with that exit code (ADR-0037).
     #[arg(skip)]
     exits: &'static [Exit],
+
+    /// The tool's own codes for crumbkit's failures, which `set_command`
+    /// copies from the `Parsed` (ADR-0056).
+    #[arg(skip)]
+    renames: &'static [Rename],
 }
 
 impl Output {
@@ -221,6 +227,7 @@ impl Output {
         self.no_terminal = parsed.no_terminal;
         self.json_layout = parsed.json_layout;
         self.exits = parsed.exits;
+        self.renames = parsed.renames;
         self.budget = Some(budget::from_environment(
             parsed.output_budget.unwrap_or(budget::DEFAULT),
         ));
@@ -286,7 +293,21 @@ impl Output {
             failure_form: guide.get_failure_form(),
             no_terminal: !guide.terminal_detection(),
             json_layout: guide.layout(),
+            exits: guide.get_exits(),
+            renames: guide.get_codes(),
             ..Self::default()
+        }
+    }
+
+    /// Returns what the guide that `set_command` copied decides about the
+    /// run's failures: the form, the JSON layout, the exit codes and the
+    /// renames.
+    pub(crate) const fn printing(&self) -> Printing {
+        Printing {
+            form: self.failure_form,
+            layout: self.json_layout,
+            exits: self.exits,
+            renames: self.renames,
         }
     }
 }
@@ -360,8 +381,7 @@ pub fn finish<T: Rows, E: AsFailure>(
 /// other than a line feed or a tab escaped and a line feed added when the
 /// text lacks one, and its JSON document holds its value under `data`.
 /// Its failures print as a batch's do. `--long` and `--full` leave it
-/// unchanged, and `--fields` is refused with exit code 2, because it has no
-/// columns.
+/// unchanged, and `--fields` is refused, because it has no columns.
 ///
 /// A [`Bytes`](crate::Bytes) prints its bytes unchanged, with no escaping
 /// and no added line feed, and its JSON document holds `{"text": "..."}`
@@ -400,7 +420,8 @@ pub fn finish<T: Rows, E: AsFailure>(
 /// fit and exits 0: in text, a line on the error writer such as `Showing
 /// 812 of 5000 books, because output stops at 1048576 bytes. Ask for less
 /// with --limit or --fields.` says so, and its JSON document holds `cut` with the code
-/// `crumbkit::output::over_budget` and the budget. A batch prints the rows
+/// `crumbkit::output::over_budget`, or the tool's rename of it, and the
+/// budget. A batch prints the rows
 /// that fit and ends with one over-budget failure whose fields are
 /// `left_out` and `budget`, and exits 1. A single row, a prose result or a
 /// bytes result that does not fit prints nothing but the over-budget
@@ -417,13 +438,16 @@ pub fn finish<T: Rows, E: AsFailure>(
 /// closed the pipe early. When the result is a failure, or a batch or prose
 /// result with at least one failure, the exit code belongs to the run's
 /// first failure: the code of the guide's [`Exit`] whose
-/// [`Exit::failures`] list that failure's code, or 1 when none does, also
-/// after the reader closed the pipe early (ADR-0037). The guide reaches
+/// [`Exit::failures`] list that failure's printed code, or 1 when none
+/// does, also after the reader closed the pipe early (ADR-0037). The
+/// printed code is the tool's own code when the guide renames one of
+/// crumbkit's with [`Guide::codes`](crate::help::Guide::codes). The guide reaches
 /// `finish` through [`Output::set_command`] with the `Parsed` that
 /// [`parse`](crate::parse) or [`Parsed::guided`] returns. The exit code is
 /// 1 as well when a write fails for any other reason, or when the
 /// result cannot be serialized, and the cause of a failed write goes to the
-/// sink's error writer before a batch's failures. It is 2 when `--fields`
+/// sink's error writer before a batch's failures. It is the exit code of a
+/// refused command line, 2 unless the guide lists another, when `--fields`
 /// names an unknown field, or when a bytes result gets `--fields`, `--long`
 /// or `--full`, which are checked before the result prints.
 ///

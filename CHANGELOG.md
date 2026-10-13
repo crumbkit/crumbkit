@@ -274,9 +274,8 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit: a listing or list past the output budget prints the rows that
   fit and is marked with `cut`. Other results past it fail with
   `crumbkit::output::over_budget` ([ADR-0046]).
-- crumbkit-core: [`Document`] gains `over_budget`, which sets the code of
-  a result past the output budget, and `always_print_first`, which prints
-  the first answer even past the budget ([ADR-0046]).
+- crumbkit-core: [`Document`] gains `always_print_first`, which prints the
+  first answer even past the output budget ([ADR-0046]).
 - crumbkit-test: [`check_output_budget`] runs each `--json` example with
   half the bytes it prints and checks that the tool cuts or refuses the
   result ([ADR-0046]).
@@ -362,8 +361,16 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit: `Exit::failures` lists the failure codes that end a run with
   the tool's exit code ([`help::Exit`], [ADR-0037]).
 - crumbkit-test: [`check_exit_codes`] rejects a failure code that two
-  exits list or that crumbkit owns, and [`check_twins`] rejects a listed
-  code that no `CODES` list holds ([ADR-0037]).
+  exits list, and [`check_twins`] rejects a listed code that no `CODES`
+  list holds ([ADR-0037]).
+- crumbkit: `Guide::codes` takes [`help::Rename`] values, each of which
+  prints the tool's own code in place of one of crumbkit's failure codes.
+  `Guide::printed` and `Guide::failure_exit` return the printed code and
+  the exit code of a failure ([ADR-0056]).
+- crumbkit-test: `Rule::SharedExit` lets a tool declare the exit code 1 or
+  2 with a stated reason, and [`check_exit_codes`] reports a crumbkit code
+  that the guide renames twice and two renames to one code of the tool
+  ([ADR-0037], [ADR-0056]).
 - crumbkit-test: [`check_twin`] and [`check_recoveries`] fail a run whose
   exit code differs from the one that the guide lists for its first
   failure, or is a listing exit code for an unlisted failure ([ADR-0037]).
@@ -544,6 +551,20 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit-test: [`check_twin`] refuses a twin in which neither line runs a
   command, so a twin of the misspelt `books lst` admits `books list` and
   not `books` ([ADR-0005]).
+- crumbkit: an `Exit` may list one of crumbkit's failure codes or the
+  tool's rename of it, so a refused command line can exit with the tool's
+  code ([ADR-0056]).
+- crumbkit: `help exit-codes` and the `commands list` note leave out
+  crumbkit's 2 when a refusal exits with another code ([ADR-0037]).
+- crumbkit: `self usage` and `self figures list` count a run as refused
+  when it exited with the code that the guide gives a refused command line
+  ([ADR-0034]).
+- crumbkit-test: [`check_exit_codes`] accepts an exit that lists one of
+  crumbkit's codes, and refuses the exit code 1 or 2 without an opt-out of
+  `Rule::SharedExit`. [`check_twin`], [`check_recoveries`] and
+  [`check_output_budget`] expect the codes and exits that the guide
+  declares ([ADR-0056]).
+
 ### Removed
 
 - crumbkit: `help::split` is gone. [`check_recoveries`] reads a recovery's
@@ -551,6 +572,9 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   and refuses a `$` or a backtick between double quotes ([ADR-0053]).
 - crumbkit-test: `Examples::failure_form` is gone, because [`check_twin`]
   reads the failure form from the tool's guide ([ADR-0045]).
+- crumbkit-core: `Document::over_budget` and `Document::over_budget_code`
+  are gone, because a rename of `crumbkit::output::over_budget` in
+  `Guide::codes` sets the code for every document ([ADR-0046]).
 - crumbkit: `Call::word` is gone, because `Call::value` adds a runtime value
   and checks it against the tool's command tree ([`Call`]).
 
@@ -675,6 +699,7 @@ rustdoc, or at its decision record. -->
 [`check_guide`]: crates/crumbkit-test/src/guide.rs
 [`check_exit_codes`]: crates/crumbkit-test/src/exits.rs
 [`help::Exit`]: crates/crumbkit/src/help/exit.rs
+[`help::Rename`]: crates/crumbkit/src/help/rename.rs
 [`check_help_sizes`]: crates/crumbkit-test/src/sizes.rs
 [`check_help_goldens`]: crates/crumbkit-test/src/goldens.rs
 [`check_examples`]: crates/crumbkit-test/src/examples.rs
@@ -748,6 +773,7 @@ rustdoc, or at its decision record. -->
 [ADR-0049]: docs/decisions/api/output/0049-terminal-detection.md
 [ADR-0052]: docs/decisions/api/output/0052-json-layout.md
 [ADR-0053]: docs/decisions/testing/0053-recovery-chains.md
+[ADR-0056]: docs/decisions/api/adoption/0056-declarations.md
 [ADR-0050]: docs/decisions/api/output/listings/README.md
 [`codes`]: crates/crumbkit/src/codes.rs
 [`check_recoveries`]: crates/crumbkit-test/src/recoveries.rs

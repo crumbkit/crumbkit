@@ -11,7 +11,7 @@ use serde::Serialize;
 use serde_json::{Value, json};
 
 use super::{Finished, Tool, finish_output};
-use crate::help::Guide;
+use crate::help::{Exit, Guide, Rename};
 use crate::twins::assert_one_word_apart;
 use crate::{
     Batch, Code, Document, Error, Failure, JsonLayout, Listing, Output, Parsed, Prose, Recovery,
@@ -31,6 +31,13 @@ const STAR_BATCH: Document<Batch<Star, Error>> =
 const CHART: Document<Prose<String, Error>> = Document::new("sky", "chart", 1, "The test text.");
 
 const TOO_MUCH: Code = Code::new("sky", "stars", "too_much");
+
+/// A guide with the budget of [`BUDGET`] that prints `TOO_MUCH` in place of
+/// crumbkit's over-budget code and lists it under 9.
+const RENAMED: Guide = Guide::new()
+    .output_budget(BUDGET, "the tests print little")
+    .codes(&[Rename::new(&crate::codes::OUTPUT_OVER_BUDGET, &TOO_MUCH)])
+    .exits(&[Exit::new(9, "The answer was too long.").failures(&[&TOO_MUCH])]);
 
 /// A row whose `story` column is long, so a few rows pass the budget.
 #[derive(Serialize, JsonSchema)]
@@ -178,11 +185,24 @@ fn a_full_json_listing_over_the_budget_is_cut_too() {
 }
 
 #[test]
-fn a_document_with_its_own_over_budget_code_marks_its_cut_with_that_code() {
-    let document = STAR_LISTING.over_budget(&TOO_MUCH);
-    let finished = finish_small(&["--json"], document, Listing::new(stars(20), 20));
+fn a_guide_that_renames_the_over_budget_code_marks_a_cut_with_the_tool_s_code() {
+    let mut output = guided(&RENAMED, &["--json"]);
+    let finished = finish_output(&mut output, STAR_LISTING, Listing::new(stars(20), 20));
 
     assert_eq!(parsed(&finished.out)["cut"]["code"], "sky::stars::too_much");
+}
+
+#[test]
+fn a_row_refused_with_a_renamed_over_budget_code_exits_with_the_code_the_guide_lists() {
+    let star = Star {
+        name: "vega".to_owned(),
+        story: "a".repeat(2 * BUDGET),
+    };
+    let mut output = guided(&RENAMED, &["--json"]);
+    let finished = finish_output(&mut output, STAR, star);
+
+    assert_eq!(parsed(&finished.out)["code"], "sky::stars::too_much");
+    assert_eq!(finished.code, ExitCode::from(9));
 }
 
 #[test]

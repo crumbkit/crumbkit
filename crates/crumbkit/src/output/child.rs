@@ -18,20 +18,20 @@ impl Output {
         spelling: Spelling,
         failure: &dyn Failure,
     ) {
+        let printing = self.printing();
         failure::print(
             sink,
             self.json,
             spelling,
-            self.failure_form,
-            self.json_layout,
+            printing,
             failure,
             self.command.as_mut(),
         );
     }
 
     /// Prints the refusal of a `--fields` name that a `T` lacks, or of an
-    /// output flag that a `T` refuses, and returns exit code 2, as `finish`
-    /// does, or returns `None` when `T` accepts the flags.
+    /// output flag that a `T` refuses, and returns the refusal's exit code,
+    /// as `finish` does, or returns `None` when `T` accepts the flags.
     pub(crate) fn refuse_fields<T: Rows, O: Write, W: Write>(
         &mut self,
         sink: &mut Sink<O, W>,
@@ -42,8 +42,8 @@ impl Output {
     }
 
     /// Prints the refusal of `--fields` for a child that holds the terminal,
-    /// whose own text has no columns, and returns exit code 2, or returns
-    /// `None` when the caller passed no `--fields`.
+    /// whose own text has no columns, and returns the refusal's exit code,
+    /// or returns `None` when the caller passed no `--fields`.
     pub(crate) fn refuse_fields_for_child<O: Write, W: Write>(
         &mut self,
         sink: &mut Sink<O, W>,
@@ -61,24 +61,23 @@ impl Output {
         Some(self.print_refusal(sink, spelling, &refusal))
     }
 
-    /// Prints `refusal`, records exit code 2 in the usage log, and returns
-    /// it.
+    /// Prints `refusal`, records its exit code in the usage log, and
+    /// returns it. The exit code is 2 unless the guide lists another for
+    /// the usage code.
     fn print_refusal<O: Write, W: Write>(
         &mut self,
         sink: &mut Sink<O, W>,
         spelling: Spelling,
         refusal: &Refusal,
     ) -> ExitCode {
-        // `print` returns exit code 2, the code that `ended` records and
-        // returns.
-        let _ = refusal.print(
-            sink,
-            self.json,
-            spelling,
-            self.failure_form,
-            self.json_layout,
-            self.command.as_mut(),
-        );
-        crate::usage::ended(2, None)
+        let printing = self.printing();
+        let exit = refusal.print(sink, self.json, spelling, printing, self.command.as_mut());
+        crate::usage::ended(exit, None)
+    }
+
+    /// Returns the exit code of a run whose first failure has `code`, as
+    /// the guide that `set_command` copied decides.
+    pub(crate) fn failure_exit(&self, code: &'static crate::Code) -> u8 {
+        self.printing().exit(code)
     }
 }

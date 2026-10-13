@@ -5,7 +5,7 @@ use std::fmt::Write as _;
 
 use clap::Command;
 use crumbkit::form::{ReadFailure, Step};
-use crumbkit::help::Exit;
+use crumbkit::help::Guide;
 
 use super::words::split;
 use super::{Failing, Recoveries};
@@ -50,9 +50,9 @@ pub(super) struct Walk<'a> {
     /// The tool's failure form or failure reader, which reads each failed
     /// run first.
     pub(super) reader: Option<Reader<'a>>,
-    /// The exits that the tool's guide declares, which give the exit code
-    /// of a failed run.
-    pub(super) exits: &'a [Exit],
+    /// The tool's guide, whose exits and renames give the exit code of a
+    /// failed run.
+    pub(super) guide: &'a Guide,
     /// The problem that stopped the walk: a failed run whose failure the
     /// tool's form or reader does not read, so no later run can be
     /// followed.
@@ -511,7 +511,7 @@ impl Walk<'_> {
         // The first failure of a run decides its exit code (ADR-0037).
         let first = failures.first().map(ReadFailure::code);
         if let Some(problem) = first.and_then(|first| {
-            exits::exit_problem(self.exits, self.recoveries.spelling, first, output.status)
+            exits::exit_problem(self.guide, self.recoveries.spelling, first, output.status)
         }) {
             self.problems
                 .push(format!("{}: {label} {problem}", chain.start));

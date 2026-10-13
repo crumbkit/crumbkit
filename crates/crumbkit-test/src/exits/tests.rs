@@ -2,7 +2,7 @@
 
 use clap::Command;
 use crumbkit::Code;
-use crumbkit::help::{Exit, Guide};
+use crumbkit::help::{Exit, Guide, Rename};
 
 use super::check_exit_codes;
 use crate::testing::panic_message;
@@ -39,28 +39,42 @@ fn a_tool_without_exit_codes_passes() {
 }
 
 #[test]
-fn a_code_that_crumbkit_owns_fails_the_check() {
-    const GUIDE: Guide = Guide::new().exits(&[Exit::new(0, "Done."), Exit::new(2, "Refused.")]);
-
-    assert_eq!(
-        checked(&GUIDE, &[]).unwrap(),
-        "the command tree breaks crumbkit's exit code rules:\n\
-         the exit code 0 is one of crumbkit's codes 0, 1 and 2, which `shelf help exit-codes` already describes\n\
-         the exit code 2 is one of crumbkit's codes 0, 1 and 2, which `shelf help exit-codes` already describes"
-    );
-}
-
-#[test]
-fn an_opt_out_does_not_excuse_a_code_that_crumbkit_owns() {
-    const GUIDE: Guide = Guide::new().exits(&[Exit::new(1, "Failed.")]);
-    const ALLOW: &[Allow] = &[Allow::new(Rule::ShellExitCode, "", "Old scripts.")];
+fn the_exit_code_0_fails_the_check_and_an_opt_out_does_not_excuse_it() {
+    const GUIDE: Guide = Guide::new().exits(&[Exit::new(0, "Done.")]);
+    const ALLOW: &[Allow] = &[Allow::new(Rule::SharedExit, "", "Old scripts.")];
 
     assert_eq!(
         checked(&GUIDE, ALLOW).unwrap(),
         "the command tree breaks crumbkit's exit code rules:\n\
-         the exit code 1 is one of crumbkit's codes 0, 1 and 2, which `shelf help exit-codes` already describes\n\
-         the opt-out from `exit-codes/shell-code` for `shelf` excuses no problem, so it is stale"
+         the exit code 0 means that the run succeeded, so a caller cannot tell a failure from a success\n\
+         the opt-out from `exit-codes/shared-exit` for `shelf` excuses no problem, so it is stale"
     );
+}
+
+#[test]
+fn the_exit_codes_1_and_2_fail_the_check_because_crumbkit_gives_them_a_meaning() {
+    const GUIDE: Guide = Guide::new().exits(&[Exit::new(1, "Failed."), Exit::new(2, "Refused.")]);
+
+    assert_eq!(
+        checked(&GUIDE, &[]).unwrap(),
+        "the command tree breaks crumbkit's exit code rules:\n\
+         the exit code 1 already means that crumbkit's default failure ended the run, so it has two meanings\n\
+         the exit code 2 already means that crumbkit refused the command line, so it has two meanings"
+    );
+}
+
+#[test]
+fn an_opt_out_from_the_shared_exit_rule_excuses_the_exit_code_1_or_2() {
+    const LOCKED: Code = Code::new("shelf", "books", "locked");
+    const GUIDE: Guide =
+        Guide::new().exits(&[Exit::new(1, "The catalogue was locked.").failures(&[&LOCKED])]);
+    const ALLOW: &[Allow] = &[Allow::new(
+        Rule::SharedExit,
+        "",
+        "Scripts read 1 as locked.",
+    )];
+
+    assert_eq!(checked(&GUIDE, ALLOW), None);
 }
 
 #[test]
@@ -162,14 +176,58 @@ fn a_failure_code_that_two_exits_list_fails_the_check() {
 }
 
 #[test]
-fn a_failure_code_that_crumbkit_owns_listed_by_an_exit_fails_the_check() {
+fn an_exit_that_lists_one_of_crumbkit_s_failure_codes_passes() {
     const GUIDE: Guide =
-        Guide::new().exits(&[Exit::new(3, "Refused.").failures(&[&crumbkit::codes::CLI_USAGE])]);
+        Guide::new().exits(&[Exit::new(64, "Refused.").failures(&[&crumbkit::codes::CLI_USAGE])]);
+
+    assert_eq!(checked(&GUIDE, &[]), None);
+}
+
+#[test]
+fn an_exit_that_lists_a_crumbkit_code_and_another_that_lists_its_rename_fail_the_check() {
+    const USAGE: Code = Code::new("shelf", "cli", "usage");
+    const GUIDE: Guide = Guide::new()
+        .codes(&[Rename::new(&crumbkit::codes::CLI_USAGE, &USAGE)])
+        .exits(&[
+            Exit::new(64, "Refused.").failures(&[&crumbkit::codes::CLI_USAGE]),
+            Exit::new(65, "Usage.").failures(&[&USAGE]),
+        ]);
 
     assert_eq!(
         checked(&GUIDE, &[]).unwrap(),
         "the command tree breaks crumbkit's exit code rules:\n\
-         the exit code 3 lists the failure code crumbkit::cli::usage, which belongs to crumbkit, and crumbkit decides the exit code of its own failures"
+         the exit code 65 lists the failure code shelf::cli::usage, which the exit code 64 lists already, so a run that fails with it cannot exit with both"
+    );
+}
+
+#[test]
+fn a_crumbkit_code_that_two_renames_name_fails_the_check() {
+    const USAGE: Code = Code::new("shelf", "cli", "usage");
+    const BAD: Code = Code::new("shelf", "cli", "bad");
+    const GUIDE: Guide = Guide::new().codes(&[
+        Rename::new(&crumbkit::codes::CLI_USAGE, &USAGE),
+        Rename::new(&crumbkit::codes::CLI_USAGE, &BAD),
+    ]);
+
+    assert_eq!(
+        checked(&GUIDE, &[]).unwrap(),
+        "the command tree breaks crumbkit's exit code rules:\n\
+         the guide renames crumbkit::cli::usage twice, and a run prints only the first rename, shelf::cli::usage"
+    );
+}
+
+#[test]
+fn two_renames_to_one_code_of_the_tool_fail_the_check() {
+    const USAGE: Code = Code::new("shelf", "cli", "usage");
+    const GUIDE: Guide = Guide::new().codes(&[
+        Rename::new(&crumbkit::codes::CLI_USAGE, &USAGE),
+        Rename::new(&crumbkit::codes::COMMANDS_NOT_FOUND, &USAGE),
+    ]);
+
+    assert_eq!(
+        checked(&GUIDE, &[]).unwrap(),
+        "the command tree breaks crumbkit's exit code rules:\n\
+         the guide renames crumbkit::commands::not_found to shelf::cli::usage, which it gives crumbkit::cli::usage already, so a caller cannot tell the two failures apart"
     );
 }
 

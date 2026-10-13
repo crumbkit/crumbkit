@@ -75,8 +75,7 @@ struct CommandColumn {
     description: Option<String>,
 }
 
-/// One exit code that the guide declares for the command, besides
-/// crumbkit's 0, 1 and 2.
+/// One exit code that the guide declares for the command.
 #[derive(Clone, Debug, PartialEq, Eq)]
 struct CommandExit {
     // `CommandRow`'s `JsonSchema` impl describes each field.

@@ -206,7 +206,7 @@ pub fn check_twins(command: &Command, guide: &Guide, twins: &Twins<'_>) {
     let mut problems = Vec::new();
     for pair in twins.pairs {
         let code = pair.refused.code();
-        if !declared.contains(&code) && !crumbkit::codes::ALL.contains(&code) {
+        if !declared.contains(&code) && !crumbkit_owned(guide, code) {
             let tool = tool_name(&twins.examples);
             problems.push(format!(
                 "the refused line `{}` fails with {}, which is not a declared code or one of crumbkit's codes",
@@ -237,7 +237,7 @@ pub fn check_twins(command: &Command, guide: &Guide, twins: &Twins<'_>) {
             failing.own_env(),
         );
         let opt_out = format!("the opt-out from `{}` for {line}", Rule::NoTwin.id());
-        if crumbkit::codes::ALL.contains(&code) {
+        if crumbkit_owned(guide, code) {
             problems.push(format!(
                 "{opt_out} names {text}, one of crumbkit's codes, which need no twin, so it is stale"
             ));
@@ -292,13 +292,16 @@ pub fn check_twins(command: &Command, guide: &Guide, twins: &Twins<'_>) {
 }
 
 /// Pushes a problem for each failure code that an exit of `guide` lists and
-/// `declared`, the codes of the tool's `CODES` lists, does not hold.
-/// [`check_exit_codes`](crate::check_exit_codes) reports a listed code that
-/// belongs to crumbkit, so this check skips it.
+/// `declared`, the codes of the tool's `CODES` lists, does not hold. A
+/// listed code of crumbkit's, or the tool's rename of one, needs no `CODES`
+/// list, because crumbkit raises the failure.
 fn unheld(guide: &Guide, spelling: Spelling, declared: &[&Code], problems: &mut Vec<String>) {
     for exit in guide.get_exits() {
         for &code in exit.get_failures() {
-            if !declared.contains(&code) && code.component() != "crumbkit" {
+            if !declared.contains(&code)
+                && code.component() != "crumbkit"
+                && !renamed_to(guide, code)
+            {
                 problems.push(format!(
                     "{}: the guide's exit code {} lists the failure code, and no CODES list holds it",
                     spelling.spell(code),
@@ -353,4 +356,17 @@ fn json_lines(refused: &[&str], admitted: &[&str]) -> (Vec<String>, Vec<String>)
     } else {
         (with_json(&refused), with_json(&admitted))
     }
+}
+
+/// Returns whether `code` is one of crumbkit's codes, or the tool's code
+/// that `guide` prints in place of one of them, which crumbkit raises and
+/// which needs no twin.
+fn crumbkit_owned(guide: &Guide, code: &Code) -> bool {
+    crumbkit::codes::ALL.contains(&code) || renamed_to(guide, code)
+}
+
+/// Returns whether `guide` prints `code` in place of one of crumbkit's
+/// codes.
+fn renamed_to(guide: &Guide, code: &Code) -> bool {
+    guide.get_codes().iter().any(|rename| rename.tool() == code)
 }

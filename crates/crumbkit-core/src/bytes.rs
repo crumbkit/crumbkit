@@ -29,8 +29,8 @@ mod tests;
 /// usually keeps it out of its columns, and a caller reads it with `--json
 /// --full` or `--fields`.
 ///
-/// `--fields`, `--long` and `--full` are refused for a bytes result with
-/// exit code 2, because it has no columns. The result is never cut short:
+/// `--fields`, `--long` and `--full` are refused for a bytes result, with
+/// the exit code of a refused command line, because it has no columns. The result is never cut short:
 /// when it does not fit in the output budget, it is refused, unless its
 /// document always prints its first answer.
 ///

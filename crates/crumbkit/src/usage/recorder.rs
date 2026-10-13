@@ -287,19 +287,20 @@ pub(crate) fn picked(count: usize) {
 }
 
 /// Records the exit code that `parse` returned after it printed the
-/// version.
-pub(crate) fn exited(exit: ExitCode) {
+/// version, or after a picker's source failed.
+pub(crate) fn exited(exit: u8) {
     update(&RECORDER, |recorder| {
-        recorder.run.exit = Some(exit::number(exit));
+        recorder.run.exit = Some(exit);
     });
 }
 
 /// Records a command line that clap refused with `error`, after `parse`
-/// walked it to the command at `path` of `command`. `parse` returns 2.
-pub(crate) fn refused(command: &Command, path: &[String], error: &clap::Error) {
+/// walked it to the command at `path` of `command`, and the `exit` code
+/// that `parse` returns for it.
+pub(crate) fn refused(command: &Command, path: &[String], error: &clap::Error, exit: u8) {
     update(&RECORDER, |recorder| {
         shape::refused(&mut recorder.run, command, path, &recorder.words, error);
-        recorder.run.exit = Some(2);
+        recorder.run.exit = Some(exit);
     });
 }
 

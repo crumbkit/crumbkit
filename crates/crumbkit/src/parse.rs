@@ -2,9 +2,7 @@
 //! and prints help, the version or a refusal in crumbkit's formats.
 
 use std::ffi::OsString;
-use std::fmt::Display;
-use std::io::{self, BufRead, IsTerminal as _, Write};
-use std::process::ExitCode;
+use std::io::{BufRead, IsTerminal as _, Write};
 
 use clap::error::ErrorKind;
 use clap::{Command, FromArgMatches};
@@ -13,13 +11,16 @@ pub use self::parsed::Parsed;
 pub use self::stop::Stop;
 
 use self::lines::{add_help_lines, has_visible_subcommands};
+use self::page::{print_page, print_text};
 use self::pick::{Picking, Step};
 use self::walk::{help_word, program_stem, walk};
 use crate::help::{Guide, topic};
+use crate::output::failure::Printing;
 use crate::refusal::Refusal;
 use crate::{Sink, Spelling};
 
 mod lines;
+mod page;
 mod parsed;
 mod pick;
 mod stop;
@@ -181,7 +182,8 @@ where
 ///   its own command named or aliased `help` has no topics.
 /// - `shelf help exit-codes` lists crumbkit's exit codes 0, 1 and 2 and
 ///   then the [`Exit`](crate::help::Exit) codes of the guide, each with its
-///   meaning. A topic of the tool's own named `exit-codes` never prints,
+///   meaning. It leaves out 2 when the guide lists another exit for a
+///   refused command line. A topic of the tool's own named `exit-codes` never prints,
 ///   because crumbkit's topic has the name.
 /// - Any other `help` command line drops the word `help` and asks for
 ///   `--help`. `shelf help books show` and `shelf books help show` print
@@ -270,7 +272,7 @@ where
     let parsed = read(sink, command, guide, spelling, args, colour, stdin);
     #[cfg(feature = "tracing")]
     if let Err(stop) = &parsed {
-        crate::trace::spans::exited(&span, crate::exit::number(stop.code()));
+        crate::trace::spans::exited(&span, stop.number());
     }
     parsed
 }
@@ -339,7 +341,7 @@ where
             // Only this path ends before the walk below, so it walks the
             // words for `--json` here.
             let json = walk(&command, &args).json;
-            return Err(Stop::new(code, json, command, guide));
+            return Err(Stop::new(crate::exit::number(code), json, command, guide));
         }
         ask_for_help(&mut args, help.position);
     }
@@ -400,16 +402,21 @@ where
         if error.kind() == ErrorKind::DisplayHelp {
             crate::usage::helped(&command, &path, long_help, code);
         } else {
-            crate::usage::exited(code);
+            crate::usage::exited(crate::exit::number(code));
         }
-        return Err(Stop::new(code, json, command, guide));
+        return Err(Stop::new(crate::exit::number(code), json, command, guide));
     }
+    let printing = Printing::of(guide);
     #[cfg(feature = "usage-log")]
-    crate::usage::refused(&command, &path, &error);
+    crate::usage::refused(
+        &command,
+        &path,
+        &error,
+        printing.exit(&crate::codes::CLI_USAGE),
+    );
     let message = refusal_message(&command, &path, &error);
     let refusal = Refusal::command_line(message, path, &error, &words);
-    let (form, layout) = (guide.get_failure_form(), guide.layout());
-    let code = refusal.print(sink, json, spelling, form, layout, Some(&mut command));
+    let code = refusal.print(sink, json, spelling, printing, Some(&mut command));
     Err(Stop::new(code, json, command, guide))
 }
 
@@ -472,48 +479,6 @@ fn ask_for_help(args: &mut Vec<OsString>, position: usize) {
         .position(|word| word == "--")
         .unwrap_or(args.len());
     args.insert(end, OsString::from("--help"));
-}
-
-/// Prints the help page or the version in `error` and returns the exit code:
-/// 0 when it is written or the reader closed the pipe early, and 1 when the
-/// write fails for another reason. With `colour`, clap's `Error::print`
-/// writes it to standard output with clap's colours, and otherwise it goes
-/// to the sink's output writer as plain text.
-fn print_page<O: Write, E: Write, R>(
-    sink: &mut Sink<O, E, R>,
-    error: &clap::Error,
-    colour: bool,
-) -> ExitCode {
-    if colour {
-        let written = error.print();
-        exit_code(sink, written)
-    } else {
-        print_text(sink, &error.render())
-    }
-}
-
-/// Prints `text` to the sink's output writer as plain text and returns the
-/// exit code, as [`print_page`] does.
-fn print_text<O: Write, E: Write, R>(sink: &mut Sink<O, E, R>, text: &dyn Display) -> ExitCode {
-    let written = write!(sink.out, "{text}").and_then(|()| sink.out.flush());
-    exit_code(sink, written)
-}
-
-/// Returns the exit code after a page was `written`, and reports a failed
-/// write on the sink's error writer.
-fn exit_code<O: Write, E: Write, R>(sink: &mut Sink<O, E, R>, written: io::Result<()>) -> ExitCode {
-    match written {
-        Ok(()) => ExitCode::SUCCESS,
-        // A reader that stops early, as `shelf -h | head -1` does, closes the
-        // pipe after it has read every line it wanted.
-        Err(error) if error.kind() == io::ErrorKind::BrokenPipe => ExitCode::SUCCESS,
-        Err(error) => {
-            // The process is already failing, and a failed report has nowhere
-            // else to go.
-            let _ = writeln!(sink.err, "error: cannot write to standard output: {error}");
-            ExitCode::FAILURE
-        }
-    }
 }
 
 /// Returns the message of a refusal of a command line that ends at the
