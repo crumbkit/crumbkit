@@ -20,6 +20,7 @@ use crate::{
 
 mod bytes;
 mod formats;
+mod in_order;
 mod streams;
 
 /// A row type for the test tool's leaves.
@@ -257,7 +258,7 @@ fn the_cut_of_a_document_requires_the_code_and_the_budget_and_nothing_else() {
 }
 
 #[test]
-fn a_batch_document_holds_its_failures_as_failure_documents_without_schema() {
+fn a_batch_document_holds_its_failures_as_failure_documents_with_an_optional_key_and_no_schema() {
     let schema = document_schema(BOOKS_SHOW).to_value();
 
     assert_eq!(
@@ -268,6 +269,8 @@ fn a_batch_document_holds_its_failures_as_failure_documents_without_schema() {
     let entry = &schema["properties"]["failures"]["items"];
     assert_eq!(entry["required"], json!(["code", "message", "recovery"]));
     assert!(entry["properties"].get("schema").is_none());
+    assert_eq!(entry["properties"]["key"]["type"], "string");
+    assert_eq!(entry["properties"]["index"]["type"], "integer");
 }
 
 #[test]
@@ -436,6 +439,8 @@ fn show_fails_an_unknown_id_and_still_prints_the_ids_it_knows() {
     assert_eq!(
         document["failures"],
         json!([{
+            "key": "shelf/books-lst/v1",
+            "index": 0,
             "code": "crumbkit::schemas::not_found",
             "message": "shelf has no document shelf/books-lst/v1",
             "recovery": {"kind": "run", "call": "shelf schemas list"},

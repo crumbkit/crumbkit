@@ -33,10 +33,12 @@ mod tests;
 /// fit. A result pushed after the last key has no key.
 ///
 /// `crumbkit::finish` prints the rows as a `Vec` of rows prints, and
-/// then each failure on standard error as it prints a failed command. A
+/// then each failure on standard error as it prints a failed command, with
+/// a `key:` line that names the key it failed on and the key's index. A
 /// batch with no rows prints nothing on standard output in text. With
 /// `--json`, the document holds the rows under `data` and the failures under
-/// `failures`. A batch with at least one failure exits with code 1.
+/// `failures`, each with its `key` and `index`. A batch with at least one
+/// failure exits with code 1.
 ///
 /// ```
 /// # use std::fmt;
@@ -92,6 +94,9 @@ pub struct Batch<R: Row, E: AsFailure> {
     positions: Vec<usize>,
     /// The failures, in the order of their keys.
     failures: Vec<E>,
+    /// For each failure, the position of its result among the pushed
+    /// results, which is the position of its key in `keys`.
+    failure_positions: Vec<usize>,
     /// The number of results pushed so far.
     pushed: usize,
     /// The number of rows that `has_room` has measured.
@@ -122,6 +127,7 @@ impl<R: Row, E: AsFailure> Batch<R, E> {
             rows: Vec::new(),
             positions: Vec::new(),
             failures: Vec::new(),
+            failure_positions: Vec::new(),
             pushed: 0,
             measured: 0,
             bytes: 0,
@@ -136,7 +142,10 @@ impl<R: Row, E: AsFailure> Batch<R, E> {
                 self.rows.push(row);
                 self.positions.push(self.pushed);
             }
-            Err(failure) => self.failures.push(failure),
+            Err(failure) => {
+                self.failures.push(failure);
+                self.failure_positions.push(self.pushed);
+            }
         }
         self.pushed += 1;
     }
@@ -215,6 +224,25 @@ impl<R: Row, E: AsFailure> Rows for Batch<R, E> {
             .map(|&position| self.keys.get(position).map(String::as_str))
             .chain(unfetched.iter().map(|key| Some(key.as_str())))
             .collect()
+    }
+
+    fn failure_indexes(&self) -> &[usize] {
+        &self.failure_positions
+    }
+
+    fn key(&self, index: usize) -> Option<&str> {
+        self.keys.get(index).map(String::as_str)
+    }
+
+    fn row_indexes(&self) -> &[usize] {
+        &self.positions
+    }
+
+    fn left_out_from(&self, shown: usize) -> Option<usize> {
+        match self.positions.get(shown) {
+            Some(&position) => Some(position),
+            None => (self.pushed < self.keys.len()).then_some(self.pushed),
+        }
     }
 
     fn fetch(&self) -> Option<Call> {

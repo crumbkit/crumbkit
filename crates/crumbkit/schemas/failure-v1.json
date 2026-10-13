@@ -109,6 +109,15 @@
         "pattern": "^[a-z0-9_]+$"
       }
     },
+    "index": {
+      "description": "The position of key among the keys that the caller gave, counted from 0, so two failures of the same key differ. It is present only with key.",
+      "type": "integer",
+      "minimum": 0
+    },
+    "key": {
+      "description": "The key that the caller gave for the answer that failed, when the failure is one answer of a batch.",
+      "type": "string"
+    },
     "labels": {
       "description": "The places in a source, such as a file, that the failure points at, in the order the failure gives them. It is present only when the failure has at least one label.",
       "type": "array",

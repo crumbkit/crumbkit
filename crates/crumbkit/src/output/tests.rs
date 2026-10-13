@@ -18,6 +18,7 @@ mod budget;
 mod bytes;
 mod empty;
 mod exits;
+mod in_order;
 mod layout;
 mod listing;
 mod notes;

@@ -114,7 +114,8 @@ fn main() -> ExitCode {
 }
 ```
 
-The shelf example's [golden files] show the output of a fuller tool.
+The [tutorial] builds a tool step by step, and shelf's [golden files] show
+a fuller one.
 
 ## Where to read more
 
@@ -132,8 +133,7 @@ The shelf example's [golden files] show the output of a fuller tool.
 - The `usage-log` and `tracing` features: [`usage`] and [`trace`], with
   [ADR-0029] and [ADR-0030].
 - The `complete` feature: shell completion through `crumbkit::complete`,
-  which follows `clap_complete`'s unstable API, so a minor release may change
-  it ([ADR-0048]).
+  which a minor release may change ([ADR-0048]).
 - The JSON Schemas of crumbkit's own documents: [schemas], with [ADR-0007].
 - Tests that check a tool against these conventions: [crumbkit-test].
 - Types without clap, which crumbkit re-exports: [crumbkit-core],
@@ -141,6 +141,7 @@ The shelf example's [golden files] show the output of a fuller tool.
 
 Licensed under Apache-2.0 or MIT, at your option.
 
+[tutorial]: ../../docs/tutorial.md
 [golden files]: ../../examples/shelf/tests/golden
 [`Output`]: src/output.rs
 [`finish`]: src/output.rs

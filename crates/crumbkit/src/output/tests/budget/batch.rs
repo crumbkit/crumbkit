@@ -6,7 +6,7 @@ use std::process::ExitCode;
 
 use serde_json::json;
 
-use super::{BUDGET, STAR_BATCH, Star, finish_small, keyed, parsed, star, stars};
+use super::{BUDGET, DIM_BATCH, Dim, STAR_BATCH, Star, finish_small, keyed, parsed, star, stars};
 use crate::{Batch, Error};
 
 /// Returns a batch of `tool show` that takes `keys` and holds `rows`, one
@@ -47,7 +47,7 @@ fn a_batch_over_the_budget_answers_its_first_keys_and_names_the_rest_in_one_fail
     );
     assert_eq!(
         failures[0]["fields"],
-        json!({"left_out": names(shown + 1, 20), "budget": 1024})
+        json!({"left_out": names(shown + 1, 20), "left_out_from": shown, "budget": 1024})
     );
     assert_eq!(
         failures[0]["recovery"],
@@ -84,7 +84,7 @@ fn a_batch_whose_rows_fit_fails_with_the_keys_that_were_never_fetched() {
     assert_eq!(document["data"].as_array().unwrap().len(), 2);
     assert_eq!(
         document["failures"][0]["fields"],
-        json!({"left_out": ["star-03", "star-04"], "budget": 1024})
+        json!({"left_out": ["star-03", "star-04"], "left_out_from": 2, "budget": 1024})
     );
 }
 
@@ -111,7 +111,7 @@ fn a_row_pushed_after_the_last_key_counts_as_unlisted_when_it_is_left_out() {
     let shown = document["data"].as_array().unwrap().len();
     assert_eq!(
         document["failures"][0]["fields"],
-        json!({"left_out": [], "unlisted": 20 - shown, "budget": 1024})
+        json!({"left_out": [], "left_out_from": shown, "unlisted": 20 - shown, "budget": 1024})
     );
 }
 
@@ -155,10 +155,49 @@ fn a_batch_always_answers_its_first_key_and_lists_no_key_when_that_answer_passes
     assert_eq!(document["data"].as_array().unwrap().len(), 1);
     assert_eq!(
         document["failures"][0]["fields"],
-        json!({"left_out": [], "unlisted": 1, "budget": 1024})
+        json!({"left_out": [], "left_out_from": 1, "unlisted": 1, "budget": 1024})
     );
     assert_eq!(
         document["failures"][0]["recovery"],
         json!({"kind": "hint", "text": "run the command again with the keys that were not answered"})
+    );
+}
+
+#[test]
+fn the_failure_of_the_answers_left_out_gives_the_index_of_the_first_one_past_a_failure_that_printed()
+ {
+    let keys = names(1, 20);
+    let mut batch = Batch::new(&["show"], "names", &keys);
+    batch.push(Ok(star(1)));
+    batch.push(Err(Dim(2)));
+    batch.extend((3..=20).map(|number| Ok(star(number))));
+
+    let finished = finish_small(&["--json"], DIM_BATCH, batch);
+
+    let document = parsed(&finished.out);
+    let shown = document["data"].as_array().unwrap().len();
+    let fields = &document["failures"][1]["fields"];
+    assert_eq!(fields["left_out_from"], shown + 1);
+    assert_eq!(fields["left_out"][0], keys[shown + 1]);
+}
+
+#[test]
+fn a_batch_in_input_order_over_the_budget_ends_its_array_with_the_failure_of_the_answers_left_out()
+{
+    let document = STAR_BATCH.without_envelope().failures_in_order();
+    let finished = finish_small(&["--json"], document, keyed(stars(20), Vec::<Error>::new()));
+
+    assert_eq!(finished.code, ExitCode::FAILURE);
+    assert!(finished.out.len() <= BUDGET, "{}", finished.out.len());
+    assert_eq!(finished.err, "");
+    let array = parsed(&finished.out);
+    let array = array.as_array().unwrap();
+    let (over, rows) = array.split_last().unwrap();
+    assert!(!rows.is_empty() && rows.len() < 20, "{}", rows.len());
+    assert_eq!(over["schema"], "crumbkit/failure/v1");
+    assert_eq!(over["code"], "crumbkit::output::over_budget");
+    assert_eq!(
+        over["fields"],
+        json!({"left_out": names(rows.len() + 1, 20), "left_out_from": rows.len(), "budget": 1024})
     );
 }

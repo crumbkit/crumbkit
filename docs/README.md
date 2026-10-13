@@ -1,5 +1,7 @@
 # crumbkit documentation
 
+- [Getting started](tutorial.md) takes a clap tool to crumbkit in four
+  steps, from `parse` and `finish` to convention tests.
 - [Decisions](decisions/README.md) records each choice that shapes crumbkit's
   code or what adopters must accept, with the alternatives that were
   considered.

@@ -148,6 +148,35 @@ pub trait Rows: Serialize + sealed::Sealed {
         Vec::new()
     }
 
+    /// Returns the position of each failure that [`Rows::failures`]
+    /// returns among a batch's pushed results, counted from 0, which for a
+    /// failure with a key is the position of its key. Every result that is
+    /// not a batch returns no position.
+    fn failure_indexes(&self) -> &[usize] {
+        &[]
+    }
+
+    /// Returns the key at `index` among a batch's keys, or `None` past the
+    /// last key and for every result that is not a batch.
+    fn key(&self, _index: usize) -> Option<&str> {
+        None
+    }
+
+    /// Returns the position of each row's result among a batch's pushed
+    /// results, which for a row with a key is the position of its key.
+    /// Every result that is not a batch returns no position.
+    fn row_indexes(&self) -> &[usize] {
+        &[]
+    }
+
+    /// Returns the position of the first answer that a batch leaves out
+    /// when it shows only its first `shown` rows, or `None` when it leaves
+    /// out nothing. Every answer from that position on that is not a
+    /// failure is left out. Every other result returns `None`.
+    fn left_out_from(&self, _shown: usize) -> Option<usize> {
+        None
+    }
+
     /// Returns the call that fetches the keys a batch leaves out, with every
     /// value of the over-budget failure's `left_out` field in one run, and
     /// `None` when the result is not a batch.

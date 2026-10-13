@@ -1,8 +1,9 @@
 # crumbkit-test
 
-crumbkit-test checks a tool built with crumbkit from an ordinary `#[test]`.
-Each check collects every problem it finds and fails the test with all of
-them. crumbkit is in design and is not published yet.
+crumbkit-test checks a clap tool against crumbkit's conventions from an
+ordinary `#[test]`. Each check runs on its own, collects every problem it
+finds and fails the test with all of them, so a tool turns checks on one at
+a time. crumbkit is in design and is not published yet.
 
 ## Adding it
 
@@ -16,70 +17,61 @@ crumbkit-test = { git = "https://github.com/crumbkit/crumbkit" }
 
 The `main` branch can change without notice before the first release.
 
-## Example
+## Checks for any clap tool
 
-This test checks that no two of a tool's failure codes spell the same:
+These checks read a `clap::Command`, so a tool that parses with clap alone
+can run them without crumbkit's runtime:
 
 ```rust
-use crumbkit::{Code, Spelling};
+use clap::{Arg, ArgAction, Command};
+use crumbkit_test::{Budgets, Guide, Pages};
 
-const NOT_FOUND: Code = Code::new("shelf", "books", "not_found");
-const TIMED_OUT: Code = Code::new("shelf", "network", "timed_out");
+let tool = Command::new("shelf").subcommand(Command::new("books").subcommand(
+    Command::new("list").arg(
+        Arg::new("author").long("author").value_delimiter(',').action(ArgAction::Append),
+    ),
+));
 
-const BOOK_CODES: &[&Code] = &[&NOT_FOUND];
-const NETWORK_CODES: &[&Code] = &[&TIMED_OUT];
-
-crumbkit_test::check_codes(Spelling::COLONS, &[BOOK_CODES, NETWORK_CODES]);
+crumbkit_test::check_filters(&tool, &[]);
+crumbkit_test::check_names(&tool, &Guide::new(), &[]);
+crumbkit_test::check_help_sizes(&tool, Pages::clap(), &Budgets::new());
 ```
 
-## Where to read more
+- Names: [`check_names`] and [`check_grammar`], which take an empty
+  [`Guide`].
+- Arguments: [`check_listings`] and [`check_filters`].
+- Help pages: [`check_help_sizes`] with [`Budgets`], [`check_help_goldens`],
+  and [`check_path_weights`] with [`PathBudgets::help_only`], each reading
+  clap's pages through [`Pages::clap`].
 
-The rustdoc of each check says what it fails on and shows an example:
+A check that takes opt-outs accepts `&[]`, or an [`Allow`] with a reason
+for each rule the tool skips.
+
+## Checks for tools built with crumbkit
+
+These checks read the tool's guide, failure codes or crumbkit's output:
 
 - Failure codes: [`check_codes`].
-- Command and flag names: [`check_names`], [`check_grammar`],
-  [`check_listings`] and [`check_filters`], which take the tool's
-  opt-outs, each an [`Allow`] with a reason.
-- Effects: [`check_effects`], which requires each leaf to declare its
-  effects and each destructive leaf to take `--yes`, and takes the tool's
-  opt-outs.
-- Opt-outs: [`check_opt_outs`], which pins the tool's opt-outs and
-  budgets with their reasons and costs in golden files.
-- The help guide: [`check_guide`], and [`check_exit_codes`], which takes
-  the tool's opt-outs.
-- Help pages: [`check_help_sizes`] with [`Budgets`], and
-  [`check_help_goldens`], which read the pages that [`Pages`] chooses.
-- Paths through the help: [`check_path_weights`] with [`PathBudgets`], and
+- Effects: [`check_effects`].
+- The guide: [`check_guide`], and [`check_exit_codes`].
+- Help pages: the checks above with [`Pages::rendered`] or
+  [`Pages::binary`], and [`PathBudgets`] with the example golden files, and
   [`path_totals`] and [`output_weight`], which `cargo crumbkit weigh` also
   calls.
 - Example output: [`check_examples`] with [`Examples`], and
-  [`example_golden_name`], which names each example's golden file.
-  `Examples` sets each run's working directory, or a fixture that each run
-  starts in a new copy of, and the values that the check replaces with
-  placeholders, and an example's `.stdin` file holds
-  its standard input.
-- The output budget: [`check_output_budget`], which runs each `--json`
-  example with half the bytes it prints and checks that the tool cuts or
-  refuses the result as crumbkit does ([ADR-0046]).
-- The command reference: [`check_command_reference`], which compares a
-  tool's checked-in Markdown reference with one written from its help
-  ([ADR-0044]).
-- Recoveries: [`check_recoveries`] with [`Recoveries`], which runs failing
-  command lines and follows each recovery they print, [`check_twin`],
-  which runs a refused command line beside one that succeeds, and
-  [`check_twins`] with [`Twins`], which runs a tool's twins and requires
-  one for each declared code. A test that reads its failing command lines
-  at run time, such as file names in a temporary directory, builds them
-  with [`RuntimeFailing`], which gives several lines one set of settings.
-  A tool that
-  prints its failures in a shape of its own without a failure form gives
-  these checks and [`check_examples`] a [`FailureReader`].
-- JSON documents: [`check_schema_goldens`], which pins the JSON Schema of
-  each document and file format, [`check_document_ids`], which ties each
-  document's name to its command, requires an opt-out for a document
-  without crumbkit's envelope and takes the tool's opt-outs, and
-  [`check_mounts`], which keeps crumbkit's own commands at their fixed
-  paths.
+  [`example_golden_name`]. `Examples` sets each run's working directory or
+  fixture, and the values replaced with placeholders.
+- The output budget: [`check_output_budget`] ([ADR-0046]).
+- The command reference: [`check_command_reference`] ([ADR-0044]).
+- Recoveries: [`check_recoveries`] with [`Recoveries`], [`check_twin`], and
+  [`check_twins`] with [`Twins`]. [`RuntimeFailing`] builds command lines
+  read at run time, and a [`FailureReader`] reads failures printed in a
+  tool's own shape.
+- JSON documents: [`check_schema_goldens`], [`check_document_ids`] and
+  [`check_mounts`].
+- Opt-outs: [`check_opt_outs`] pins the opt-outs and budgets that a tool
+  passes to the other checks, with their reasons and costs, in golden
+  files.
 
 [ADR-0025] records why these checks exist, [ADR-0036] records opt-outs,
 [ADR-0035] records the document checks, and [ADR-0004] records how golden
@@ -102,7 +94,11 @@ option.
 [`check_help_sizes`]: src/sizes.rs
 [`Budgets`]: src/sizes.rs
 [`check_help_goldens`]: src/goldens.rs
-[`Pages`]: src/pages.rs
+[`Guide`]: ../crumbkit/src/help.rs
+[`Pages::clap`]: src/pages.rs
+[`Pages::rendered`]: src/pages.rs
+[`Pages::binary`]: src/pages.rs
+[`PathBudgets::help_only`]: src/weights.rs
 [`check_path_weights`]: src/weights.rs
 [`PathBudgets`]: src/weights.rs
 [`path_totals`]: src/weights.rs
