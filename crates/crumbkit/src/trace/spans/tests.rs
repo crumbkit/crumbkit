@@ -5,13 +5,11 @@ use std::cell::RefCell;
 use std::fmt;
 use std::process::ExitCode;
 use std::sync::Once;
-use std::sync::atomic::{AtomicBool, Ordering};
 
 use clap::{CommandFactory as _, Parser, Subcommand};
 use schemars::JsonSchema;
 use serde::Serialize;
 use tracing::field::{Field, Visit};
-use tracing::level_filters::LevelFilter;
 use tracing::span::{Attributes, Id, Record};
 use tracing::subscriber::Interest;
 use tracing::{Event, Level, Metadata, Subscriber};
@@ -70,10 +68,6 @@ thread_local! {
     static WATCHING: RefCell<Option<Watch>> = const { RefCell::new(None) };
 }
 
-/// Whether [`install`] has made [`Collector`] the global subscriber. Until
-/// then, the collector asks tracing to enable no level.
-static ARMED: AtomicBool = AtomicBool::new(false);
-
 /// Installs [`Collector`] once for the whole test process.
 static INSTALL: Once = Once::new();
 
@@ -89,6 +83,14 @@ static INSTALL: Once = Once::new();
 /// One global subscriber answers for every thread, and it answers
 /// `sometimes`, so tracing asks `enabled` for each span, and the answer
 /// depends on the test that runs on the span's thread.
+///
+/// A thread that registers a callsite while it sees no global subscriber
+/// caches `never` for it. tracing reads its maximum level without
+/// ordering, so a thread can see the level that installing the collector
+/// raised and still see no global subscriber. In the test build,
+/// `super::parse` and `super::finish` therefore call [`install`] before
+/// they reach their callsites, and every thread waits until the collector
+/// is the global subscriber.
 struct Collector;
 
 /// Writes each field it visits into a list as text.
@@ -119,18 +121,6 @@ fn seen<T>(change: impl FnOnce(&mut Sightings) -> T) -> T {
 impl Subscriber for Collector {
     fn register_callsite(&self, _: &'static Metadata<'static>) -> Interest {
         Interest::sometimes()
-    }
-
-    // `set_global_default` raises tracing's maximum level before the
-    // collector becomes the global subscriber. A callsite that another
-    // thread reached in between would cache `never`, so the collector
-    // enables no level until `install` arms it.
-    fn max_level_hint(&self) -> Option<LevelFilter> {
-        if ARMED.load(Ordering::SeqCst) {
-            None
-        } else {
-            Some(LevelFilter::OFF)
-        }
     }
 
     fn enabled(&self, metadata: &Metadata<'_>) -> bool {
@@ -184,13 +174,12 @@ impl Subscriber for Collector {
     }
 }
 
-/// Makes [`Collector`] the global subscriber, once per process, and then
-/// lets it enable every level.
-fn install() {
+/// Makes [`Collector`] the global subscriber, once per process. A thread
+/// that calls it while another thread installs the collector waits until
+/// the collector is installed.
+pub(super) fn install() {
     INSTALL.call_once(|| {
         tracing::subscriber::set_global_default(Collector).unwrap();
-        ARMED.store(true, Ordering::SeqCst);
-        tracing::callsite::rebuild_interest_cache();
     });
 }
 
