@@ -91,6 +91,22 @@ mod answers {
     }
 
     #[test]
+    fn completion_reads_a_dashed_form_as_its_command_and_offers_only_the_tool_s_own_names() {
+        let command = Command::new("shelf").subcommand(
+            Command::new("reading_lists")
+                .subcommand(Command::new("list"))
+                .subcommand(Command::new("show")),
+        );
+
+        let (_, below, _) = complete(command.clone(), "fish", &["shelf", "reading-lists", ""]);
+        let (_, root, _) = complete(command, "fish", &["shelf", "r"]);
+
+        assert_eq!(values(&below), ["list", "show", "--help"], "{below}");
+        assert!(values(&root).contains(&"reading_lists"), "{root}");
+        assert!(!root.contains("reading-lists"), "{root}");
+    }
+
+    #[test]
     fn a_registration_request_writes_the_shells_script_with_the_tools_name() {
         let (code, out, err) = complete(tool(), "/usr/bin/fish", &[]);
 

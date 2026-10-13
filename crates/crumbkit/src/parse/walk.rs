@@ -7,6 +7,8 @@ use std::path::Path;
 
 use clap::{Arg, Command};
 
+use crate::dashed;
+
 #[cfg(test)]
 mod tests;
 
@@ -50,9 +52,11 @@ pub(super) struct Given {
 /// deepest command that they name in `command`: the path to it, the ids of
 /// the flags typed, and the number of positional values.
 ///
-/// It reads the words as [`walk`] does. A word that names no subcommand,
-/// and each word after `--`, is a positional value, and the walk descends
-/// into no subcommand after the first positional value.
+/// It reads the words as [`walk`] does, and a word that is a subcommand's
+/// dashed form, such as `reading-lists` for `reading_lists`, names that
+/// subcommand (ADR-0015). A word that names no subcommand, and each word
+/// after `--`, is a positional value, and the walk descends into no
+/// subcommand after the first positional value.
 pub(super) fn given<T: AsRef<OsStr>>(command: &Command, words: &[T]) -> Given {
     let mut reader = Words::new(command);
     let mut given = Given {
@@ -73,7 +77,7 @@ pub(super) fn given<T: AsRef<OsStr>>(command: &Command, words: &[T]) -> Given {
             Kind::Flag => given.ids.extend(reader.ids(word)),
             Kind::Name => {
                 let subcommand = if given.positionals == 0 {
-                    reader.current.find_subcommand(word)
+                    dashed::subcommand(reader.current, word)
                 } else {
                     None
                 };
@@ -93,7 +97,9 @@ pub(super) fn given<T: AsRef<OsStr>>(command: &Command, words: &[T]) -> Given {
 /// Returns the real names of the subcommands from the root `command` down
 /// to the deepest command that `words`, the words after the program name,
 /// name, such as `["books", "list"]` for `--json books ls` when `ls` is an
-/// alias of `list`. An empty path names the root.
+/// alias of `list`. An empty path names the root. A word that is a
+/// subcommand's [`dashed_form`](crate::dashed_form) names that subcommand,
+/// as it does for [`parse`](crate::parse()).
 ///
 /// The function reads the words as [`parse`](crate::parse) does before
 /// clap parses them, and it never builds or clones the tree. It skips each
@@ -118,6 +124,37 @@ pub(super) fn given<T: AsRef<OsStr>>(command: &Command, words: &[T]) -> Given {
 #[must_use]
 pub fn command_path<T: AsRef<OsStr>>(command: &Command, words: &[T]) -> Vec<String> {
     given(command, words).path
+}
+
+/// Replaces each word of `args` that reaches a subcommand by its
+/// [`dashed_form`](crate::dashed_form) with the subcommand's own name, so
+/// clap, help, the usage log and the parsed words all name the command as
+/// the tool does. `args` starts with the program name.
+///
+/// It reads the words as [`given`] does, so an option's value that equals a
+/// dashed form stays as typed. It skips the word `help` where no
+/// subcommand has that name, because crumbkit answers it, so the words
+/// after it in `shelf help reading-lists` change too. It stops at `--` and
+/// at the first other word that names no subcommand, which is a positional
+/// value. A run that types only the tool's own names changes no word.
+pub(crate) fn own_names(command: &Command, args: &mut [OsString]) {
+    let mut reader = Words::new(command);
+    for word in args.iter_mut().skip(1) {
+        match reader.read(word) {
+            Kind::End => return,
+            Kind::Flag | Kind::Value => continue,
+            Kind::Name => {}
+        }
+        let current = reader.current;
+        if let Some(subcommand) = current.find_subcommand(&*word) {
+            reader.enter(subcommand);
+        } else if let Some(subcommand) = dashed::by_form(current, word) {
+            *word = OsString::from(subcommand.get_name());
+            reader.enter(subcommand);
+        } else if word != "help" {
+            return;
+        }
+    }
 }
 
 /// Returns the word `help` that crumbkit answers in `args`, or `None` when

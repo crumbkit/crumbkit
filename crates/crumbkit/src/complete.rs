@@ -23,6 +23,8 @@ use clap_complete::env::Shells;
 
 #[cfg(feature = "complete")]
 use crate::Sink;
+#[cfg(feature = "complete")]
+use crate::parse::walk::own_names;
 
 #[cfg(test)]
 mod tests;
@@ -202,7 +204,10 @@ pub fn complete_with(
 /// The candidates are those of `clap_complete`. They leave out every
 /// subcommand, flag and alias that the tool hid, except that a word that
 /// matches only hidden names completes to them, so `shelf books ls` still
-/// completes when `ls` is a hidden alias of `list`. clap's `help`
+/// completes when `ls` is a hidden alias of `list`. A word before the
+/// cursor that is a command's [`dashed_form`](crate::dashed_form) reaches
+/// that command, as it does in [`parse_to`](crate::parse_to), and the
+/// candidates name each command by the tool's own name. clap's `help`
 /// subcommand is turned off, as [`parse_to`](crate::parse_to) turns it off.
 ///
 /// A completion never prints a failure into the shell. An unknown shell, a
@@ -272,7 +277,17 @@ fn answer_into(
         .position(|word| word == "--")
         .map_or(args.len(), |position| position + 1);
     args.drain(..words);
-    if !args.is_empty() {
+    if let Some(last) = args.len().checked_sub(1) {
+        // A dashed form reaches its command as it does in `parse`, so the
+        // words after it complete. The word at the cursor keeps its
+        // spelling, because the shell matches candidates against it.
+        //
+        // RUST-10: the cursor is taken to be on the last word, as fish,
+        // zsh, elvish and PowerShell send the line. Bash can complete a
+        // word in the middle of the line, and a dashed form at its cursor
+        // then reads as the tool's own name. Reading clap_complete's index
+        // variable replaces this if that case matters.
+        own_names(&command, &mut args[..last]);
         return shell.write_complete(&mut command, args, current_dir, answer);
     }
     let mut program = PathBuf::from(program);

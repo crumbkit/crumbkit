@@ -122,6 +122,17 @@ fn command_path_names_real_commands_and_stops_at_the_first_positional_value() {
 }
 
 #[test]
+fn command_path_names_the_command_that_a_dashed_form_reaches_by_its_own_name() {
+    let tool = Command::new("tool")
+        .subcommand(Command::new("reading_lists").subcommand(Command::new("list")));
+
+    assert_eq!(
+        command_path(&tool, &["reading-lists", "list"]),
+        ["reading_lists", "list"]
+    );
+}
+
+#[test]
 fn the_walk_reports_help_typed_as_a_flag_and_not_as_a_value() {
     assert!(walk(&tool(), &args(&["planets", "--help"])).long_help);
     assert!(!walk(&tool(), &args(&["planets", "--", "--help"])).long_help);
