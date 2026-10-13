@@ -85,7 +85,7 @@ fn a_failing_s_own_xdg_fixture_wins_over_the_examples_fixture() {
     assert_eq!(
         without.unwrap(),
         "the tool's recoveries break crumbkit's recovery rules:\n\
-         tool books show 7: the start ends with exit status: 3 and prints no failure on standard output\n\
+         tool books show 7: the start ends with exit status: 3 and prints no failure that the check can read\n\
          tool::books::not_found: no start provokes the declared code, and Recoveries::unprovoked does not list it"
     );
 }

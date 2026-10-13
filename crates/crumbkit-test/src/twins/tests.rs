@@ -10,6 +10,7 @@ use schemars::{Schema, json_schema};
 
 use super::check_twin;
 use crate::examples::Examples;
+use crate::failures::FailureReader;
 use crate::recoveries::Failing;
 use crate::temp::TempDir;
 use crate::testing::panic_message;
@@ -185,8 +186,36 @@ fn a_twin_reads_the_refused_lines_code_through_the_failure_form_of_the_guide() {
     );
 }
 
+/// A failure reader that reads the line `ERR` and a code that `LineForm`
+/// prints.
+struct LineReader;
+
+impl FailureReader for LineReader {
+    fn read(&self, out: &str, err: &str) -> Vec<ReadFailure> {
+        LineForm.read(out, err).into_iter().collect()
+    }
+}
+
 #[test]
-fn a_refused_line_whose_code_the_check_cannot_read_fails_the_check_naming_failure_form_read() {
+fn a_failure_reader_in_examples_reads_the_code_of_a_refused_twin() {
+    let (_dir, path) = tool("twins-reader");
+
+    let output = check_twin(
+        &GUIDE,
+        &Examples::new(&path, "").failure_reader(&LineReader),
+        Spelling::COLONS,
+        &Failing::new(&USAGE, &["books", "list", "--limit", "-1"]),
+        &["books", "list", "--limit", "1"],
+    );
+
+    assert_eq!(
+        String::from_utf8_lossy(&output.stderr),
+        "ERR crumbkit::cli::usage\n"
+    );
+}
+
+#[test]
+fn a_refused_line_whose_code_the_check_cannot_read_fails_the_check_naming_both_ways_to_read_it() {
     let (_dir, path) = tool("twins-unread");
 
     let message = panic_message(|| {
@@ -201,7 +230,7 @@ fn a_refused_line_whose_code_the_check_cannot_read_fails_the_check_naming_failur
 
     assert_eq!(
         message.unwrap(),
-        "the refused line `tool books list --limit -1` must fail with crumbkit::cli::usage, and it ends with exit status: 2 and prints no code that the check can read. A tool that prints failures in a form of its own implements FailureForm::read and sets the form with Guide::failure_form"
+        "the refused line `tool books list --limit -1` must fail with crumbkit::cli::usage, and it ends with exit status: 2 and prints no code that the check can read. A tool that prints failures in a form of its own implements FailureForm::read and sets the form with Guide::failure_form, or implements FailureReader and sets it with Examples::failure_reader"
     );
 }
 

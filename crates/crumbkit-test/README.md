@@ -66,7 +66,9 @@ The rustdoc of each check says what it fails on and shows an example:
   ([ADR-0044]).
 - Recoveries: [`check_recoveries`] with [`Recoveries`], which runs failing
   command lines and follows each recovery they print, and [`check_twin`],
-  which runs a refused command line beside one that succeeds.
+  which runs a refused command line beside one that succeeds. A tool that
+  prints its failures in a shape of its own without a failure form gives
+  these checks and [`check_examples`] a [`FailureReader`].
 - JSON documents: [`check_schema_goldens`], which pins the JSON Schema of
   each document and file format, [`check_document_ids`], which ties each
   document's name to its command, requires an opt-out for a document

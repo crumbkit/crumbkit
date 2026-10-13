@@ -453,6 +453,20 @@ fn a_form_that_implements_read_reads_back_the_code_and_steps_of_the_failure_it_p
     );
 }
 
+#[test]
+fn a_read_failure_keeps_the_fields_it_is_given_and_has_none_without_them() {
+    let fields = vec![("id".to_owned(), "7".to_owned())];
+
+    let read = ReadFailure::new("solar.planets.not_found".to_owned(), Vec::new())
+        .with_fields(fields.clone());
+
+    assert_eq!(read.fields(), fields);
+    assert_eq!(
+        ReadFailure::new("solar.planets.not_found".to_owned(), Vec::new()).fields(),
+        []
+    );
+}
+
 /// The code that `RenamingForm` writes in place of crumbkit's usage code.
 const TOOL_USAGE: &str = "solar.cli.usage";
 

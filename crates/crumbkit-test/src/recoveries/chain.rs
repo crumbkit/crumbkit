@@ -5,11 +5,12 @@ use std::fmt::Write as _;
 use std::time::Instant;
 
 use clap::Command;
-use crumbkit::form::{FailureForm, Step};
+use crumbkit::form::Step;
 
 use super::words::split;
 use super::{Failing, Recoveries};
 use crate::allow::{self, Allowances, Rule};
+use crate::failures::{self, Reader};
 use crate::guide::command_line;
 use crate::runs::{self, Place, TIMEOUT, WorkDir, Xdg};
 
@@ -40,10 +41,12 @@ pub(super) struct Walk<'a> {
     pub(super) provoked: Vec<String>,
     /// The number of failures whose codes the check did not know.
     pub(super) skipped: usize,
-    /// The tool's failure form, which reads each failed run first.
-    pub(super) form: Option<&'a dyn FailureForm>,
+    /// The tool's failure form or failure reader, which reads each failed
+    /// run first.
+    pub(super) reader: Option<Reader<'a>>,
     /// The problem that stopped the walk: a failed run whose failure the
-    /// tool's form does not read, so no later run can be followed.
+    /// tool's form or reader does not read, so no later run can be
+    /// followed.
     pub(super) stopped: Option<String>,
 }
 
@@ -398,29 +401,31 @@ impl Walk<'_> {
         if output.status.success() {
             return Some(Outcome::Succeeds);
         }
-        let Some(failure) = runs::read_failure(self.form, &output.stdout, &output.stderr) else {
-            match self.form {
-                Some(form) => {
+        // The first failure is the one the run fails with.
+        let Some(failure) = failures::read_failures(self.reader, &output.stdout, &output.stderr)
+            .into_iter()
+            .next()
+        else {
+            match self.reader {
+                Some(reader) => {
+                    let (name, remedy) = reader.name_and_remedy();
                     self.stopped = Some(format!(
-                        "{}: {label} ends with {}, and the failure form {} reads no failure from it, so the check cannot follow the tool's recoveries. The tool implements FailureForm::read, or adds an opt-out from `{}` that names the root, with a reason",
+                        "{}: {label} ends with {}, and {name} reads no failure from it, so the check cannot follow the tool's recoveries. {remedy}, or the tool adds an opt-out from `{}` that names the root, with a reason",
                         chain.start,
                         output.status,
-                        form.document(),
                         Rule::Recoveries.id()
                     ));
                 }
                 None => self.problems.push(format!(
-                    "{}: {label} ends with {} and prints no failure on standard output",
+                    "{}: {label} ends with {} and prints no failure that the check can read",
                     chain.start, output.status
                 )),
             }
             return None;
         };
-        Some(Outcome::Fails(
-            failure.code().to_owned(),
-            failure.steps().to_vec(),
-            runs::fields(&output.stdout),
-        ))
+        let code = failure.code().to_owned();
+        let steps = failure.steps().to_vec();
+        Some(Outcome::Fails(code, steps, failure.fields().to_vec()))
     }
 }
 

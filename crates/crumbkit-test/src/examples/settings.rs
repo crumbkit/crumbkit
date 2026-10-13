@@ -2,12 +2,13 @@
 //! budget checks share.
 
 use crate::allow::Allow;
+use crate::failures::FailureReader;
 use crate::runs::Dir;
 
 /// The settings of [`check_examples`](crate::check_examples): the tool's built binary, the
 /// directory of the golden files, the environment, XDG fixture, working
-/// directory or fresh fixture and redactions of each run, and the tool's
-/// opt-outs.
+/// directory or fresh fixture and redactions of each run, the tool's
+/// opt-outs, and the reader of its failures.
 ///
 /// A tool declares them as a constant in an integration test of the
 /// binary's own package, because cargo sets `CARGO_BIN_EXE_<name>`, the
@@ -56,6 +57,9 @@ pub struct Examples<'a> {
     /// The tool's opt-outs, of which the check reads those from
     /// [`Rule::Examples`](crate::Rule::Examples).
     allow: &'a [Allow],
+    /// The reader of the tool's failed runs, or `None` for crumbkit's own
+    /// failure document and text.
+    reader: Option<&'a dyn FailureReader>,
 }
 
 impl<'a> Examples<'a> {
@@ -77,6 +81,7 @@ impl<'a> Examples<'a> {
             dir_of_runs: None,
             redact: &[],
             allow: &[],
+            reader: None,
         }
     }
 
@@ -208,6 +213,16 @@ impl<'a> Examples<'a> {
         self
     }
 
+    /// Sets the reader of the failures that the tool prints without a
+    /// failure form, which the twin, example and recovery checks read each
+    /// failed run through. A check fails when the guide also sets a failure
+    /// form with `Guide::failure_form`.
+    #[must_use]
+    pub const fn failure_reader(mut self, reader: &'a dyn FailureReader) -> Self {
+        self.reader = Some(reader);
+        self
+    }
+
     /// Returns the path of the tool's built binary.
     pub(crate) const fn binary(&self) -> &'a str {
         self.binary
@@ -242,6 +257,11 @@ impl<'a> Examples<'a> {
     /// Returns the tool's opt-outs.
     pub(crate) const fn opt_outs(&self) -> &'a [Allow] {
         self.allow
+    }
+
+    /// Returns the reader of the tool's failures, or `None`.
+    pub(crate) const fn reader(&self) -> Option<&'a dyn FailureReader> {
+        self.reader
     }
 }
 

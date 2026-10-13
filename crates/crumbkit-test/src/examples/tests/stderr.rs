@@ -1,6 +1,6 @@
 //! Tests for the example check's golden files of standard error, its
-//! report of a failed run's failure, and the failure form that `Examples`
-//! names.
+//! report of a failed run's failure, and the failure form and failure
+//! reader that read it.
 
 use std::fs;
 
@@ -11,6 +11,7 @@ use schemars::{Schema, json_schema};
 use snapbox::assert::Action;
 
 use super::{examples, run};
+use crate::failures::FailureReader;
 use crate::temp::TempDir;
 use crate::testing::panic_message;
 
@@ -207,4 +208,62 @@ fn an_example_that_fails_names_the_code_that_the_failure_form_reads() {
         ),
         "{message}"
     );
+}
+
+/// A failure reader that reads the line `ERR` and a code that `LineForm`
+/// prints.
+struct LineReader;
+
+impl FailureReader for LineReader {
+    fn read(&self, out: &str, err: &str) -> Vec<ReadFailure> {
+        LineForm.read(out, err).into_iter().collect()
+    }
+}
+
+#[test]
+fn an_example_that_fails_names_the_code_that_the_failure_reader_reads() {
+    const FAILS: Guide = Guide::new().leaves(&[Leaf::new(&["-c"]).examples(&[Example::new(
+        &["echo 'ERR sh::books::gone' >&2; exit 1"],
+        "Fail",
+    )])]);
+    let dir = TempDir::new("examples-failure-reader").unwrap();
+
+    let message = panic_message(|| {
+        run(
+            &FAILS,
+            &examples(&dir).failure_reader(&LineReader),
+            Action::Overwrite,
+        );
+    })
+    .unwrap();
+
+    assert!(
+        message.contains(
+            ": an example must exit with code 0, and the run ends with exit status: 1 \
+             and fails with sh::books::gone after writing"
+        ),
+        "{message}"
+    );
+}
+
+#[test]
+fn a_guide_with_a_failure_form_and_examples_with_a_failure_reader_fail_the_check() {
+    let dir = TempDir::new("examples-form-and-reader").unwrap();
+
+    let message = panic_message(|| {
+        run(
+            &FAILS_IN_FORM,
+            &examples(&dir).failure_reader(&LineReader),
+            Action::Overwrite,
+        );
+    });
+
+    assert_eq!(
+        message.unwrap(),
+        "the command tree breaks crumbkit's example rules:\n\
+         the guide sets a failure form with Guide::failure_form and the examples set a \
+         failure reader with Examples::failure_reader, and a tool reads its failures \
+         through only one of them"
+    );
+    assert!(dir.names().is_empty(), "{:?}", dir.names());
 }

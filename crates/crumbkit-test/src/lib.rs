@@ -25,6 +25,7 @@
 //! [`check_examples`]: crate::check_examples
 //! [`check_output_budget`]: crate::check_output_budget
 //! [`Examples`]: crate::Examples
+//! [`FailureReader`]: crate::FailureReader
 //! [`example_golden_name`]: crate::example_golden_name
 //! [`check_command_reference`]: crate::check_command_reference
 //! [`check_recoveries`]: crate::check_recoveries
@@ -47,6 +48,7 @@ mod documents;
 mod effects;
 mod examples;
 mod exits;
+mod failures;
 mod filters;
 mod goldens;
 mod grammar;
@@ -75,6 +77,7 @@ pub use crate::documents::{check_document_ids, check_mounts};
 pub use crate::effects::check_effects;
 pub use crate::examples::{Examples, check_examples, example_golden_name};
 pub use crate::exits::check_exit_codes;
+pub use crate::failures::FailureReader;
 pub use crate::filters::check_filters;
 pub use crate::goldens::check_help_goldens;
 pub use crate::grammar::check_grammar;

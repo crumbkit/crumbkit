@@ -9,6 +9,7 @@ use crumbkit::Spelling;
 use crumbkit::help::Guide;
 
 use crate::examples::Examples;
+use crate::failures;
 use crate::guide::command_line;
 use crate::recoveries::Failing;
 use crate::runs::{self, Dir, Place, TIMEOUT, WorkDir, Xdg};
@@ -38,11 +39,12 @@ mod tests;
 /// The check reads the refused line's code, spelled with `spelling`. When
 /// the guide sets a form with `Guide::failure_form`, it reads the code
 /// through the form's
-/// [`FailureForm::read`](crumbkit::form::FailureForm::read) first.
-/// Otherwise, or when `read` returns `None`, it reads the code from a
-/// `crumbkit/failure/v1` document on standard output, or from the first
-/// entry of a batch's `failures`, and then from the last `code:` line on
-/// standard error.
+/// [`FailureForm::read`](crumbkit::form::FailureForm::read) first, and when
+/// `examples` sets a [`FailureReader`](crate::FailureReader), through that
+/// reader first. Otherwise, or when neither reads a failure, it reads the
+/// code from a `crumbkit/failure/v1` document on standard output, or from
+/// the first entry of a batch's `failures`, and then from the last `code:`
+/// line on standard error.
 ///
 /// ```no_run
 /// use crumbkit::Spelling;
@@ -65,7 +67,8 @@ mod tests;
 ///
 /// # Panics
 ///
-/// Panics when the two lines differ by more or less than one word added,
+/// Panics when the guide sets a failure form and `examples` sets a failure
+/// reader, when the two lines differ by more or less than one word added,
 /// removed or replaced, when `refused` exits with code 0, fails with
 /// another code or prints no code that the check can read, when `admitted` exits with a code other than 0, or when a
 /// run cannot start or does not end within 10 seconds. The message names
@@ -107,6 +110,7 @@ fn twin(
     let tool = Path::new(examples.binary())
         .file_stem()
         .map_or_else(String::new, |name| name.to_string_lossy().into_owned());
+    let reader = failures::reader(guide, examples)?;
     let refused_line = command_line(&tool, refused.words());
     let admitted_line = command_line(&tool, admitted);
     if !one_word_apart(refused.words(), admitted) {
@@ -130,9 +134,10 @@ fn twin(
             "the refused line `{refused_line}` must fail with {code}, and it exits with code 0"
         ));
     }
-    let printed = runs::read_failure(guide.get_failure_form(), &output.stdout, &output.stderr)
-        .map(|failure| failure.code().to_owned())
-        .or_else(|| runs::text_code(&output.stderr));
+    // The first failure is the one the refused line fails with.
+    let printed = failures::read_failures(reader, &output.stdout, &output.stderr)
+        .first()
+        .map(|failure| failure.code().to_owned());
     match printed {
         Some(printed) if printed == code => {}
         Some(printed) => {
@@ -142,7 +147,7 @@ fn twin(
         }
         None => {
             return Err(format!(
-                "the refused line `{refused_line}` must fail with {code}, and it ends with {} and prints no code that the check can read. A tool that prints failures in a form of its own implements FailureForm::read and sets the form with Guide::failure_form",
+                "the refused line `{refused_line}` must fail with {code}, and it ends with {} and prints no code that the check can read. A tool that prints failures in a form of its own implements FailureForm::read and sets the form with Guide::failure_form, or implements FailureReader and sets it with Examples::failure_reader",
                 output.status
             ));
         }
