@@ -7,6 +7,7 @@ use crumbkit::{Code, Spelling};
 
 use super::{Admitted, named, refuse, tool_name, twin};
 use crate::allow::{Allow, Rule};
+use crate::codes::Declared;
 use crate::examples::Examples;
 use crate::guide::command_line;
 use crate::recoveries::{Failing, Unprovoked};
@@ -107,8 +108,8 @@ pub struct Twins<'a> {
     examples: Examples<'a>,
     /// How the tool spells its codes.
     spelling: Spelling,
-    /// The `CODES` list of each of the tool's error types.
-    codes: &'a [&'a [&'a Code]],
+    /// The tool's declared codes.
+    codes: Declared<'a>,
     /// The twins.
     pairs: &'a [Twin<'a>],
     /// The declared codes that no command line provokes.
@@ -129,7 +130,21 @@ impl<'a> Twins<'a> {
         Self {
             examples,
             spelling,
-            codes,
+            codes: Declared::Lists(codes),
+            pairs: &[],
+            unprovoked: &[],
+        }
+    }
+
+    /// Returns the settings that [`Twins::new`] returns, for `codes`, one
+    /// list of the tool's declared codes held by value, such as codes that
+    /// the tool builds at run time.
+    #[must_use]
+    pub const fn from_codes(examples: Examples<'a>, spelling: Spelling, codes: &'a [Code]) -> Self {
+        Self {
+            examples,
+            spelling,
+            codes: Declared::Codes(codes),
             pairs: &[],
             unprovoked: &[],
         }
@@ -163,7 +178,8 @@ impl<'a> Twins<'a> {
 /// - a twin whose refused line's code is neither a declared code nor one of
 ///   crumbkit's codes, which it does not run;
 /// - a declared code that no twin refuses, [`Twins::unprovoked`] does not
-///   list and no opt-out made with [`Allow::untwinned`] names;
+///   list, no opt-out made with [`Allow::untwinned`] names and the guide
+///   does not print in place of one of crumbkit's codes;
 /// - an untwinned opt-out whose refused line, run with `--json` added,
 ///   exits with code 0 or fails with another code;
 /// - an untwinned opt-out that names a code that is not declared, that a
@@ -182,7 +198,9 @@ impl<'a> Twins<'a> {
 ///
 /// A twin may refuse with one of crumbkit's codes, such as
 /// `crumbkit::cli::usage`, and the check requires no twin for crumbkit's
-/// codes.
+/// codes, nor for a declared code that the guide's
+/// [`Guide::codes`](crumbkit::help::Guide::codes) prints in place of one of
+/// them, because crumbkit raises that failure.
 ///
 /// The check reads the untwinned opt-outs from the
 /// [`Examples::allow`](crate::Examples::allow) list of the settings'
@@ -198,11 +216,7 @@ impl<'a> Twins<'a> {
 /// its own line under `the tool's twins break crumbkit's twin rule:`.
 pub fn check_twins(command: &Command, guide: &Guide, twins: &Twins<'_>) {
     let spelling = twins.spelling;
-    let declared: Vec<&Code> = twins
-        .codes
-        .iter()
-        .flat_map(|list| list.iter().copied())
-        .collect();
+    let declared: Vec<&Code> = twins.codes.to_vec();
     let mut problems = Vec::new();
     for pair in twins.pairs {
         let code = pair.refused.code();
@@ -264,7 +278,11 @@ pub fn check_twins(command: &Command, guide: &Guide, twins: &Twins<'_>) {
         }
     }
     for &code in &declared {
-        if !listed(code) && !refused(code) && !untwinned.contains(&code) {
+        if !crumbkit_owned(guide, code)
+            && !listed(code)
+            && !refused(code)
+            && !untwinned.contains(&code)
+        {
             problems.push(format!(
                 "{}: no twin refuses the declared code, Twins::unprovoked does not list it, and no opt-out made with Allow::untwinned names it",
                 spelling.spell(code)

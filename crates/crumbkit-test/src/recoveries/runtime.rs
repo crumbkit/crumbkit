@@ -24,14 +24,16 @@ mod tests;
 ///
 /// A test builds one with builders like those of a [`Failing`] and turns
 /// it into a [`Failing`] with [`RuntimeFailing::into_failing`], into a
-/// [`Twin`] with [`RuntimeFailing::twin`], or into an opt-out from
+/// [`Twin`] with [`RuntimeFailing::twin`] or
+/// [`RuntimeFailing::variable_twin`], or into an opt-out from
 /// [`Rule::NoTwin`](crate::Rule::NoTwin) with
 /// [`RuntimeFailing::untwinned`]. A test passes the results to
 /// [`Recoveries::starts`](crate::Recoveries::starts),
 /// [`Twins::pairs`](crate::Twins::pairs) and
 /// [`Examples::allow`](crate::Examples::allow) as it passes constants.
 /// [`RuntimeFailing::line`] gives several command lines one directory,
-/// input, fixture, values and variables:
+/// input, fixture, values and variables, and [`RuntimeFailing::at`] makes
+/// a place that holds only those settings:
 ///
 /// ```
 /// use crumbkit::Code;
@@ -41,9 +43,7 @@ mod tests;
 /// const UNREADABLE: Code = Code::new("shelf", "books", "unreadable");
 ///
 /// let id = 7.to_string();
-/// let place = RuntimeFailing::new(NOT_FOUND, ["books", "list"])
-///     .dir("tests/fixtures/shelf")
-///     .env("SHELF_DEPTH", "1");
+/// let place = RuntimeFailing::at("tests/fixtures/shelf").env("SHELF_DEPTH", "1");
 /// let start: Failing<'static> = place.line(NOT_FOUND, ["books", "show", &id]).into_failing();
 /// let twin: Twin<'static> = place
 ///     .line(NOT_FOUND, ["books", "show", &id])
@@ -60,8 +60,9 @@ mod tests;
 /// owned value, and a `const fn` cannot drop the value it replaces.
 #[derive(Clone, Debug)]
 pub struct RuntimeFailing {
-    /// The code that the command line fails with.
-    code: Code,
+    /// The code that the command line fails with, or `None` for a place
+    /// made with [`RuntimeFailing::at`].
+    code: Option<Code>,
     /// The words after the tool's name.
     words: Vec<String>,
     /// The working directory of every run of the chain.
@@ -84,9 +85,30 @@ impl RuntimeFailing {
     #[must_use]
     pub fn new(code: Code, words: impl IntoIterator<Item = impl Into<String>>) -> Self {
         Self {
-            code,
+            code: Some(code),
             words: owned(words),
             dir: None,
+            stdin: None,
+            xdg: None,
+            values: Vec::new(),
+            env: Vec::new(),
+        }
+    }
+
+    /// Returns a place: the working directory `dir` with no input, fixture,
+    /// values or variables, and with no code and no words. A test adds the
+    /// other settings with the builders and builds each command line from
+    /// the place with [`RuntimeFailing::line`].
+    ///
+    /// A place has no command line of its own, so
+    /// [`RuntimeFailing::into_failing`] and the methods that call it panic
+    /// on a place that [`RuntimeFailing::line`] did not give a code.
+    #[must_use]
+    pub fn at(dir: impl Into<PathBuf>) -> Self {
+        Self {
+            code: None,
+            words: Vec::new(),
+            dir: Some(dir.into()),
             stdin: None,
             xdg: None,
             values: Vec::new(),
@@ -100,7 +122,7 @@ impl RuntimeFailing {
     #[must_use]
     pub fn line(&self, code: Code, words: impl IntoIterator<Item = impl Into<String>>) -> Self {
         Self {
-            code,
+            code: Some(code),
             words: owned(words),
             ..self.clone()
         }
@@ -112,6 +134,14 @@ impl RuntimeFailing {
     pub fn dir(mut self, dir: impl Into<PathBuf>) -> Self {
         self.dir = Some(dir.into());
         self
+    }
+
+    /// Returns the working directory that [`RuntimeFailing::at`] or
+    /// [`RuntimeFailing::dir`] set, or `None` when neither set one. The name
+    /// has clap's `get_` prefix, because `dir` is the builder method.
+    #[must_use]
+    pub fn get_dir(&self) -> Option<&Path> {
+        self.dir.as_deref()
     }
 
     /// Sets the text on standard input of the command line and of every
@@ -175,6 +205,12 @@ impl RuntimeFailing {
     /// Returns the [`Failing`] with the same code, words, directory,
     /// input, fixture, values and variables, which the checks run as they
     /// run a constant.
+    ///
+    /// # Panics
+    ///
+    /// Panics on a place made with [`RuntimeFailing::at`] that
+    /// [`RuntimeFailing::line`] did not give a code and words, as a failed
+    /// test assertion does.
     //
     // RUST-10: `Allow` holds a `'static` refused line, and a `'static`
     // line also lets a test keep its starts and twins anywhere, so this
@@ -194,7 +230,19 @@ impl RuntimeFailing {
             .into_iter()
             .map(|(name, value)| (&*name.leak(), value.map(|value| &*value.leak())))
             .collect();
-        let code: &'static Code = Box::leak(Box::new(self.code));
+        let Some(code) = self.code else {
+            #[expect(
+                clippy::panic,
+                reason = "a test that runs a place without a command line is wrong, and a test reports that by panicking"
+            )]
+            {
+                panic!(
+                    "the place at `{}`, made with RuntimeFailing::at, has no code and no words, so a test builds each command line from it with RuntimeFailing::line",
+                    self.dir.unwrap_or_default().display()
+                )
+            }
+        };
+        let code: &'static Code = Box::leak(Box::new(code));
         let mut failing = Failing::new(code, leak_words(self.words))
             .values(values.leak())
             .env(env.leak());
@@ -215,6 +263,15 @@ impl RuntimeFailing {
     #[must_use]
     pub fn twin(self, admitted: impl IntoIterator<Item = impl Into<String>>) -> Twin<'static> {
         Twin::new(self.into_failing(), leak_words(owned(admitted)))
+    }
+
+    /// Returns the twin of this refused line and the same line run without
+    /// the entry for the variable `name` that [`RuntimeFailing::env`] or
+    /// [`RuntimeFailing::env_remove`] gives it, as [`Twin::variable`] does.
+    /// The name may be text that the test builds.
+    #[must_use]
+    pub fn variable_twin(self, name: impl Into<String>) -> Twin<'static> {
+        Twin::variable(self.into_failing(), name.into().leak())
     }
 
     /// Returns the opt-out from [`Rule::NoTwin`](crate::Rule::NoTwin) for

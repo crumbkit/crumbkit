@@ -19,7 +19,7 @@ use schemars::Schema;
 pub use crate::output::failure::label::{Excerpt, Label};
 pub use crate::output::failure::{PreparedFailure, Step};
 
-use crate::Document;
+use crate::{Document, FieldValue};
 
 #[cfg(test)]
 mod tests;
@@ -203,8 +203,8 @@ pub struct ReadFailure {
     code: String,
     /// The recovery first, then each alternative.
     steps: Vec<Step>,
-    /// Each field of the failure as a name and its value's text.
-    fields: Vec<(String, String)>,
+    /// Each field of the failure as a name and its value.
+    fields: Vec<(String, FieldValue<'static>)>,
 }
 
 impl ReadFailure {
@@ -219,15 +219,17 @@ impl ReadFailure {
         }
     }
 
-    /// Returns the failure with `fields`, each a field's name and its value's
-    /// text, such as `("id", "7")`. `check_recoveries` fills a recovery's
-    /// placeholders from these fields. A failure has no fields until this
-    /// method gives it some.
+    /// Returns the failure with `fields`, each a field's name and its value,
+    /// such as `("id", FieldValue::Unsigned(7))`. A value can be any
+    /// [`FieldValue`], so a form's `read` gives back a null, list or object
+    /// field as the failure held it. `check_recoveries` fills a recovery's
+    /// placeholders from the text, integer and boolean fields. A failure has
+    /// no fields until this method gives it some.
     ///
     /// This builder is not a `const fn`, because a `const fn` cannot drop the
     /// fields it replaces.
     #[must_use]
-    pub fn with_fields(mut self, fields: Vec<(String, String)>) -> Self {
+    pub fn with_fields(mut self, fields: Vec<(String, FieldValue<'static>)>) -> Self {
         self.fields = fields;
         self
     }
@@ -244,9 +246,9 @@ impl ReadFailure {
         &self.steps
     }
 
-    /// Returns each field as a name and its value's text.
+    /// Returns each field as a name and its value.
     #[must_use]
-    pub fn fields(&self) -> &[(String, String)] {
+    pub fn fields(&self) -> &[(String, FieldValue<'static>)] {
         &self.fields
     }
 }

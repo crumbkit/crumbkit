@@ -1,5 +1,5 @@
-use crumbkit::Document;
 use crumbkit::form::{FailureForm, PreparedFailure, ReadFailure, Step};
+use crumbkit::{Document, FieldValue};
 use schemars::{Schema, json_schema};
 use serde_json::{Value, json};
 
@@ -23,7 +23,7 @@ impl FailureReader for ErrReader {
 }
 
 #[test]
-fn crumbkit_s_document_gives_each_failure_with_its_code_steps_and_fields() {
+fn crumbkit_s_document_gives_each_failure_with_its_code_steps_and_every_field_value() {
     let stdout = br#"{"schema":"crumbkit/failure/v1","code":"a","message":"m","fields":{"path":"/a","id":7,"kept":true,"tags":["x"],"found":null,"lines":{"a":1}},"recovery":{"kind":"run","call":"tool books list"},"alternatives":[{"kind":"retry"}]}"#;
 
     let read = read_failures(None, stdout, b"");
@@ -35,9 +35,15 @@ fn crumbkit_s_document_gives_each_failure_with_its_code_steps_and_fields() {
             vec![Step::Run("tool books list".to_owned()), Step::Retry],
         )
         .with_fields(vec![
-            ("id".to_owned(), "7".to_owned()),
-            ("kept".to_owned(), "true".to_owned()),
-            ("path".to_owned(), "/a".to_owned()),
+            ("found".to_owned(), FieldValue::Null),
+            ("id".to_owned(), FieldValue::Unsigned(7)),
+            ("kept".to_owned(), FieldValue::Boolean(true)),
+            (
+                "lines".to_owned(),
+                FieldValue::object([("a", FieldValue::Unsigned(1))]),
+            ),
+            ("path".to_owned(), FieldValue::from("/a".to_owned())),
+            ("tags".to_owned(), FieldValue::list(["x".to_owned()])),
         ])]
     );
 }
