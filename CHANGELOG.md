@@ -426,9 +426,19 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit-test: `Twins::from_codes`, `Recoveries::from_codes` and
   `Unprovoked::from_code` take codes held by value, such as codes that a
   tool builds at run time ([ADR-0002]).
+- crumbkit: [`complete_with_words`] passes the words of the shell's command
+  line after the program name to the function that builds the command, so
+  completers can depend on an earlier flag such as `-C <DIR>` ([ADR-0048]).
+- crumbkit: `Guide::refusal_alternatives` takes a function that builds
+  refusal alternatives for every command whose leaf sets none, and a leaf's
+  own function replaces it ([ADR-0056]).
+- crumbkit-test: [`check_opt_outs`] lists the guide's refusal alternatives
+  once under customisations ([ADR-0056]).
 
 ### Changed
 
+- crumbkit: [`complete_to`] takes the function that builds the command from
+  the typed words in place of a built command ([ADR-0048]).
 - crumbkit-test: [`check_opt_outs`] lists the failure form, code renames,
   exits of crumbkit's codes, passes-on-exit leaves and refusal alternatives
   under a customisations section without reasons, as a `customisations`
@@ -861,6 +871,8 @@ rustdoc, or at its decision record. -->
 [`check_twins`]: crates/crumbkit-test/src/twins/coverage.rs
 [`complete`]: crates/crumbkit/src/complete.rs
 [`complete_with`]: crates/crumbkit/src/complete.rs
+[`complete_with_words`]: crates/crumbkit/src/complete.rs
+[`complete_to`]: crates/crumbkit/src/complete.rs
 [ADR-0048]: docs/decisions/api/0048-completion.md
 [`Expect`]: crates/crumbkit/src/expect.rs
 [ADR-0047]: docs/decisions/api/effects/0047-write-guards.md

@@ -1,6 +1,6 @@
-//! The alternatives that a leaf's function returns for a refusal of a
-//! command line that names the leaf, kept when they render and their line
-//! parses (ADR-0056).
+//! The alternatives that a leaf's function, or else the guide's, returns
+//! for a refusal of a command line that names the leaf, kept when they
+//! render and their line parses (ADR-0056).
 
 use std::ffi::OsString;
 
@@ -11,15 +11,15 @@ use super::attempt;
 use crate::Call;
 use crate::help::{Guide, RefusalContext};
 
-/// Returns the calls that the function of the leaf of `guide` at `path`
-/// returns for `error`, with which clap refused `words`, the caller's words
-/// after the program name. It keeps each call that renders against
-/// `command` and whose line [`parses`], and returns no calls when no leaf
-/// is at `path` or the leaf has no function.
+/// Returns the calls that the function of the leaf of `guide` at `path`,
+/// or else the guide's function, returns for `error`, with which clap
+/// refused `words`, the caller's words after the program name. It keeps
+/// each call that renders against `command` and whose line [`parses`], and
+/// returns no calls when neither function is set.
 ///
-/// Only a refused line that names a leaf with a function builds the leaf's
-/// branch of the tree and parses again, so other refusals cost one lookup
-/// in the guide's leaves.
+/// Only a refused line with a function builds the branch of the tree on
+/// `path` and parses again, so for a guide without a function of its own
+/// other refusals cost one lookup in the guide's leaves.
 pub(super) fn alternatives<C: FromArgMatches>(
     command: &mut Command,
     guide: &Guide,
@@ -27,12 +27,7 @@ pub(super) fn alternatives<C: FromArgMatches>(
     error: &clap::Error,
     words: &[OsString],
 ) -> Vec<Call> {
-    let Some(function) = guide
-        .get_leaves()
-        .iter()
-        .find(|leaf| leaf.path() == path)
-        .and_then(|leaf| leaf.get_refusal_alternatives())
-    else {
+    let Some(function) = guide.refusal_function(path) else {
         return Vec::new();
     };
     // `RefusalContext::new` displays the leaf's arguments, which clap
