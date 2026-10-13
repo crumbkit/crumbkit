@@ -188,52 +188,20 @@ impl FailureForm for ErrorForm {
 static SHELF_FORM: ErrorForm =
     ErrorForm(|| Document::new("shelf", "error", 2, "The document of a failed command."));
 
-/// The opt-out that keeps [`SHELF_FORM`].
-const FORM_ALLOW: &[Allow] = &[Allow::new(
-    Rule::FailureForm,
-    "",
-    "Scripts read the error document that shelf printed before it adopted crumbkit.",
-)];
-
 #[test]
-fn a_guide_with_a_failure_form_and_without_an_opt_out_fails() {
+fn a_guide_with_a_failure_form_passes_without_an_opt_out() {
     const GUIDE: Guide = Guide::new().failure_form(&SHELF_FORM);
 
-    let message = panic_message(|| check_document_ids(&shelf(), &GUIDE, &[])).unwrap();
-
-    assert_eq!(
-        message,
-        "the command tree breaks crumbkit's document id rules:\n\
-         shelf: the tool prints its failures as shelf/error/v2 in place of crumbkit/failure/v1, which needs an opt-out from `documents/failure-form` with a reason"
-    );
+    check_document_ids(&shelf(), &GUIDE, &[]);
 }
 
 #[test]
-fn a_guide_with_a_failure_form_that_an_opt_out_at_the_root_names_passes() {
-    const GUIDE: Guide = Guide::new().failure_form(&SHELF_FORM);
-
-    check_document_ids(&shelf(), &GUIDE, FORM_ALLOW);
-}
-
-#[test]
-fn an_opt_out_from_the_failure_form_rule_without_a_failure_form_is_stale() {
-    let message =
-        panic_message(|| check_document_ids(&shelf(), &Guide::new(), FORM_ALLOW)).unwrap();
-
-    assert_eq!(
-        message,
-        "the command tree breaks crumbkit's document id rules:\n\
-         the opt-out from `documents/failure-form` for `shelf` excuses no problem, so it is stale"
-    );
-}
-
-#[test]
-fn a_failure_form_document_in_the_component_crumbkit_fails_even_with_an_opt_out() {
+fn a_failure_form_document_in_the_component_crumbkit_fails() {
     static FORM: ErrorForm =
         ErrorForm(|| Document::new("crumbkit", "failure", 2, "A failure document."));
     const GUIDE: Guide = Guide::new().failure_form(&FORM);
 
-    let message = panic_message(|| check_document_ids(&shelf(), &GUIDE, FORM_ALLOW)).unwrap();
+    let message = panic_message(|| check_document_ids(&shelf(), &GUIDE, &[])).unwrap();
 
     assert_eq!(
         message,

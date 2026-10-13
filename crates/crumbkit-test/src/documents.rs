@@ -51,13 +51,12 @@ pub(crate) const MOUNTS: [(&str, &[&str]); 6] = [
 /// a document without a leaf that declares it escapes the check, and review
 /// covers it.
 ///
-/// The check also fails on a guide that sets a failure form with
-/// `Guide::failure_form`, unless an [`Allow`] of [`Rule::FailureForm`] with
-/// a stated reason names the root, so
-/// [`check_opt_outs`](crate::check_opt_outs) reports what the tool's own
-/// failure document costs an agent (ADR-0045). It fails on a form whose
-/// document is in the component `crumbkit` with or without an opt-out,
-/// because crumbkit owns the documents of that component.
+/// The check also fails on a guide whose failure form, set with
+/// `Guide::failure_form`, prints a document in the component `crumbkit`,
+/// because crumbkit owns the documents of that component. A failure form
+/// is a declaration, which needs no opt-out, and
+/// [`check_opt_outs`](crate::check_opt_outs) lists it under the
+/// customisations (ADR-0056).
 ///
 /// The check skips a leaf that declares the document of one of crumbkit's
 /// commands at fixed paths, such as `crumbkit/schemas-list/v1`, because a
@@ -79,10 +78,7 @@ pub(crate) const MOUNTS: [(&str, &[&str]); 6] = [
 ///
 /// [ADR-0036]: https://github.com/crumbkit/crumbkit/blob/main/docs/decisions/api/adoption/0036-opt-outs.md
 pub fn check_document_ids(command: &Command, guide: &Guide, allow: &[Allow]) {
-    let mut allowances = Allowances::new(
-        allow,
-        &[Rule::DocumentName, Rule::Envelope, Rule::FailureForm],
-    );
+    let mut allowances = Allowances::new(allow, &[Rule::DocumentName, Rule::Envelope]);
     let mut problems = Vec::new();
     if let Some(form) = guide.get_failure_form() {
         let document = form.document();
@@ -90,13 +86,6 @@ pub fn check_document_ids(command: &Command, guide: &Guide, allow: &[Allow]) {
             problems.push(format!(
                 "{}: the tool's failure form prints {document}, and only crumbkit names documents in the component `crumbkit`, so the form's document needs the tool's own component",
                 command.get_name()
-            ));
-        }
-        if !allowances.excuses(Rule::FailureForm, "") {
-            problems.push(format!(
-                "{}: the tool prints its failures as {document} in place of crumbkit/failure/v1, which needs an opt-out from `{}` with a reason",
-                command.get_name(),
-                Rule::FailureForm.id()
             ));
         }
     }
