@@ -418,7 +418,7 @@ fn a_failed_write_exits_with_code_1_and_reports_the_cause() {
 
     let code = finish_to(
         &mut sink,
-        &mut Output::default(),
+        &mut parse_against(Tool::command(), &[]),
         Spelling::COLONS,
         PLANETS,
         result,
@@ -439,7 +439,7 @@ fn a_reader_that_closes_the_pipe_early_still_exits_with_code_0_and_no_error() {
 
     let code = finish_to(
         &mut sink,
-        &mut Output::default(),
+        &mut parse_against(Tool::command(), &[]),
         Spelling::COLONS,
         PLANETS,
         result,
@@ -491,4 +491,21 @@ fn is_json_reports_whether_the_caller_typed_json() {
 #[test]
 fn progress_is_never_allowed_with_json() {
     assert!(!parse(&["--json"]).unwrap().progress_allowed());
+}
+
+#[cfg(debug_assertions)]
+#[test]
+fn finish_warns_in_a_debug_build_when_the_tool_never_passed_its_command() {
+    let mut output = Tool::try_parse_from(["tool", "list"]).unwrap().output;
+
+    let finished = finish_output(&mut output, PLANETS, vec![mercury()]);
+
+    assert_eq!(finished.code, ExitCode::SUCCESS);
+    assert_eq!(
+        finished.err,
+        concat!(
+            "warning: crumbkit leaves out every Next: line and every recovery that runs a command, ",
+            "because the tool's main does not pass its command to Output::set_command\n"
+        )
+    );
 }

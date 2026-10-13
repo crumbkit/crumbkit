@@ -72,11 +72,11 @@ pub(super) fn refusal(command: &Command, matches: &ArgMatches, guide: &Guide) ->
         })
     });
     unoffered.or_else(|| {
-        view::pairing(
-            typed("json"),
-            typed(ViewFlag::Fields.id()),
-            typed(ViewFlag::Long.id()),
-            typed(ViewFlag::Full.id()),
-        )
+        view::pairing(view::Typed {
+            json: typed("json"),
+            fields: typed(ViewFlag::Fields.id()),
+            long: typed(ViewFlag::Long.id()),
+            full: typed(ViewFlag::Full.id()),
+        })
     })
 }

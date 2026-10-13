@@ -166,8 +166,9 @@ impl<'a> PreparedFailure<'a> {
     /// that compares standard error shows it. A debug build also writes a
     /// warning to `err` for each `Run` call of the recovery or an
     /// alternative that does not render, with the reason, so a test sees a
-    /// recovery that names a command the tool lacks. A release build writes
-    /// neither.
+    /// recovery that names a command the tool lacks. When no command is set,
+    /// `finish` has already written one warning for the whole run, so a call
+    /// adds none of its own. A release build writes neither.
     pub(super) fn new(
         failure: &'a dyn Failure,
         spelling: Spelling,

@@ -357,15 +357,16 @@ fn each_recovery_call_that_does_not_render_adds_a_warning_line_in_a_debug_build(
 
 #[cfg(debug_assertions)]
 #[test]
-fn a_recovery_call_adds_a_warning_line_in_a_debug_build_when_no_command_is_set() {
+fn a_failure_without_a_command_adds_one_warning_that_names_set_command_in_a_debug_build() {
     let mut output = Tool::try_parse_from(["tool", "list"]).unwrap().output;
 
     let finished = fail_output(&mut output, missing(run_list()));
 
     assert!(
-        finished.err.starts_with(
-            "warning: crumbkit left out a recovery of the failure solar::planets::not_found, because no command is set\nerror: "
-        ),
+        finished.err.starts_with(concat!(
+            "warning: crumbkit leaves out every Next: line and every recovery that runs a command, ",
+            "because the tool's main does not pass its command to Output::set_command\nerror: "
+        )),
         "{}",
         finished.err
     );
@@ -498,11 +499,13 @@ impl Write for Failing {
     }
 }
 
-/// Returns the output flags for `--json` with no command set.
+/// Returns the output flags for `--json` with the tool's command set.
 fn json() -> Output {
-    Tool::try_parse_from(["tool", "list", "--json"])
+    let mut output = Tool::try_parse_from(["tool", "list", "--json"])
         .unwrap()
-        .output
+        .output;
+    output.set_command(Tool::command());
+    output
 }
 
 /// Finishes a failure into `sink` with `output`.

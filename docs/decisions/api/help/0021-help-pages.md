@@ -17,6 +17,6 @@
 - `parse` and `extend` never fail on a guide. crumbkit-test's [`check_guide`](../../../../crates/crumbkit-test/src/guide.rs) catches a guide that does not match the tree.
 - A guided list ends a description with the command's visible aliases as clap's `Commands:` list does, so a tool that opts out of `Rule::OneName` shows them on guided and unguided pages alike (ADR-0027).
 - A command that the guide does not name keeps clap's `Commands:` list. crumbkit's `after_help` lines appear on guided and unguided pages alike.
-- A refusal's message is clap's error on one line. The message depends on clap's wording, and shelf's golden files fail when it changes. The refusals of crumbkit's own view flags are the exception, because crumbkit checks them itself and words them as its other refusals (ADR-0016).
+- A refusal's message is clap's error on one line, except a view-flag refusal (ADR-0016). shelf's golden files fail when clap's wording changes.
 
 Considered: a scan for the literal word `--json`, output flags that the tool names, help templates for crumbkit's own lines, crumbkit rendering whole help pages, plain text always, a second parse with errors ignored, rebuilding the message from clap's error parts, applying the whole guide before every parse, hiding a group's children, the list in `before_help` on every guided command, a check that fails on a brace in a listed description, a runtime builder holding `Vec`s as the only guide, a `Guide` with a lifetime that borrows a runtime guide, a second guide parameter on every function.

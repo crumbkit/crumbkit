@@ -2,7 +2,8 @@
 //! result refuses because it cannot use them.
 
 use super::Output;
-use crate::help::{ViewFlag, view};
+use crate::help::ViewFlag;
+use crate::help::view::{self, Typed};
 use crate::refusal::Refusal;
 use crate::row;
 use crate::{Row, Rows, Shape};
@@ -11,19 +12,12 @@ use crate::{Row, Rows, Shape};
 /// `T` in a document that has crumbkit's envelope when `envelope` is set,
 /// or `None` when the result accepts them, as [`refusal`] describes.
 pub(super) fn flags_refusal<T: Rows>(output: &Output, envelope: bool) -> Option<Refusal> {
-    refusal::<T::Row>(
-        Some(T::SHAPE),
-        envelope,
-        &output.fields,
-        output.long,
-        output.full,
-        output.json,
-    )
+    refusal::<T::Row>(Some(T::SHAPE), envelope, &output.fields, output.typed())
 }
 
-/// Returns the refusal of the view flags that the caller typed, `fields`
-/// and `--long` when `long` is set and `--full` when `full` is set, beside
-/// `--json` when `json` is set, for a result of `shape` whose rows are `R`,
+/// Returns the refusal of the view flags that the caller typed, the names
+/// in `fields` and the flags in `typed`, for a result of `shape` whose rows
+/// are `R`,
 /// or a stream of `R` when `shape` is `None`. It returns `None` when the
 /// result accepts them.
 ///
@@ -36,22 +30,20 @@ pub(super) fn refusal<R: Row>(
     shape: Option<Shape>,
     envelope: bool,
     fields: &[String],
-    long: bool,
-    full: bool,
-    json: bool,
+    typed: Typed,
 ) -> Option<Refusal> {
     let long_columns = !R::LONG_COLUMNS.is_empty();
     for flag in ViewFlag::ALL {
         let typed = match flag {
-            ViewFlag::Fields => !fields.is_empty(),
-            ViewFlag::Long => long,
-            ViewFlag::Full => full,
+            ViewFlag::Fields => typed.fields,
+            ViewFlag::Long => typed.long,
+            ViewFlag::Full => typed.full,
         };
         if typed && let Some(reason) = view::unoffered(shape, long_columns, envelope, flag) {
             return Some(view::refusal(flag, reason));
         }
     }
-    if let Some(refusal) = view::pairing(json, !fields.is_empty(), long, full) {
+    if let Some(refusal) = view::pairing(typed) {
         return Some(refusal);
     }
     if fields.is_empty() {

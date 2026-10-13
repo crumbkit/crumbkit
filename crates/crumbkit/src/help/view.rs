@@ -131,16 +131,34 @@ const fn because(reason: Unoffered) -> &'static str {
     }
 }
 
-/// Returns the refusal of the view flags that the caller typed, `--fields`
-/// when `fields` is set and `--long`, `--full` and `--json` when the flag of
-/// that name is set, when two of them cannot work together, or `None` when
-/// they can.
+/// The view flags that the caller typed, each set when the flag is on the
+/// command line, and `fields` set when `--fields` names at least one field.
+#[derive(Clone, Copy)]
+#[expect(
+    clippy::struct_excessive_bools,
+    reason = "each bool is one independent view flag, and no two of them form a state machine"
+)]
+pub(crate) struct Typed {
+    pub(crate) json: bool,
+    pub(crate) fields: bool,
+    pub(crate) long: bool,
+    pub(crate) full: bool,
+}
+
+/// Returns the refusal of the view flags in `typed` when two of them cannot
+/// work together, or `None` when they can.
 ///
 /// `--fields` prints only the fields it names, so it cannot be used with
 /// `--long` or `--full`, and `--full` prints every field in JSON, so it needs
 /// `--json`. The refusal names the flag to drop or the one that needs
 /// `--json` under `argument`, and it prints as a refused command line does.
-pub(crate) fn pairing(json: bool, fields: bool, long: bool, full: bool) -> Option<Refusal> {
+pub(crate) fn pairing(typed: Typed) -> Option<Refusal> {
+    let Typed {
+        json,
+        fields,
+        long,
+        full,
+    } = typed;
     let (message, hint, flag) = if fields && long {
         (
             "--fields prints only the fields it names, so it cannot be used with --long",

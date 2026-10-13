@@ -700,6 +700,10 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- crumbkit: a debug build of a tool whose `main` never calls
+  `Output::set_command` writes a warning from `finish` and `stream`, and
+  crumbkit-test's `check_examples` and `check_recoveries` fail on it
+  ([ADR-0015]).
 - crumbkit: `--full` without `--json`, and `--fields` with `--long` or
   `--full`, are refused in crumbkit's words with a hint that names the flag
   to add or drop, in place of clap's error ([ADR-0016]).

@@ -42,7 +42,9 @@ impl Step {
     /// `command`. It returns `Err` with a `Step::None` when the recovery
     /// offers no step: a `Recovery::None`, or a `Run` call that cannot be
     /// rendered because no command is set or the call does not resolve. It
-    /// adds the reason that a `Run` call does not render to `unrendered`.
+    /// adds the reason that a `Run` call does not resolve to `unrendered`.
+    /// A missing command adds nothing, because `finish` and `stream` warn
+    /// about it once for the whole run.
     pub(super) fn offered(
         recovery: Recovery,
         command: Option<&mut Command>,
@@ -50,10 +52,10 @@ impl Step {
     ) -> Result<Self, Self> {
         match recovery {
             Recovery::Run(call) => {
-                let rendered = match command {
-                    Some(command) => crate::call::render(&call, command).map_err(|e| e.to_string()),
-                    None => Err("no command is set".to_owned()),
+                let Some(command) = command else {
+                    return Err(Self::None(UNAVAILABLE.to_owned()));
                 };
+                let rendered = crate::call::render(&call, command).map_err(|e| e.to_string());
                 let all = all_field(&call);
                 rendered
                     .map(|call| match all {

@@ -29,9 +29,11 @@ fn printed(parse: impl FnOnce() -> miette::Result<Vec<Setting>>) -> String {
     };
     let mut out = Vec::new();
     let mut err = Vec::new();
+    let mut output = Output::default();
+    output.set_command(clap::Command::new("shelf"));
     finish_to(
         &mut Sink::new(&mut out, &mut err),
-        &mut Output::default(),
+        &mut output,
         Spelling::DOTS,
         SETTINGS,
         handler(),
