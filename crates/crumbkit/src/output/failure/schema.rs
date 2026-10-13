@@ -31,6 +31,15 @@ impl JsonSchema for PreparedFailure<'_> {
                     "description": "The id of this document.",
                     "const": "crumbkit/failure/v1",
                 },
+                "key": {
+                    "description": "The key that the caller gave for the answer that failed, when the failure is one answer of a batch.",
+                    "type": "string",
+                },
+                "index": {
+                    "description": "The position of key among the keys that the caller gave, counted from 0, so two failures of the same key differ. It is present only with key.",
+                    "type": "integer",
+                    "minimum": 0,
+                },
                 "code": {
                     "description": "The failure's stable code in the tool's spelling, such as shelf::books::not_found. It is one or more printable ASCII characters without spaces, from ! to ~.",
                     "type": "string",
@@ -77,11 +86,18 @@ pub(crate) fn document_schema() -> Schema {
     schema
 }
 
+/// Returns the JSON Schema of the `crumbkit/failure/v1` document without
+/// its `title` and `$schema`, as an item of a batch that prints its
+/// failures in input order holds it.
+pub(crate) fn failure_schema() -> Schema {
+    <PreparedFailure<'static>>::json_schema(&mut SchemaGenerator::default())
+}
+
 /// Returns the JSON Schema of one entry of a batch's `failures` array: the
 /// schema of the `crumbkit/failure/v1` document without its `schema`
 /// property, as [`Entry`] writes it.
 pub(crate) fn entry_schema() -> Schema {
-    let mut schema = <PreparedFailure<'static>>::json_schema(&mut SchemaGenerator::default());
+    let mut schema = failure_schema();
     schema.insert(
         "description".to_owned(),
         "A failure of some of the ids: the fields of the crumbkit/failure/v1 document without schema."

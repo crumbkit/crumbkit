@@ -449,6 +449,17 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   with every value of the named field, and accepts the same code again when
   fewer values are left ([ADR-0053]).
 
+- crumbkit: a batch failure holds the `key` it failed on and that key's
+  `index` in JSON, and prints a `key:` line in text. The failure document's
+  schema holds both as optional fields ([ADR-0016]).
+- crumbkit: [`Document`]'s `failures_in_order` makes a batch without the
+  envelope print its rows and failure documents in one array in input order
+  with `--json`, in place of failures on standard error ([ADR-0016]).
+- crumbkit: the over-budget failure that ends a batch holds `left_out_from`,
+  the index of the first key left out ([ADR-0046]).
+- crumbkit: `PreparedFailure::key` and `PreparedFailure::index` give a
+  failure form a batch failure's key and index ([ADR-0045]).
+
 ### Changed
 
 - crumbkit: [`complete_to`] takes the function that builds the command from

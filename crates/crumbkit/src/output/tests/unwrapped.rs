@@ -148,6 +148,7 @@ fn the_failures_of_an_unwrapped_batch_print_as_text_on_standard_error_with_json(
     );
     let expected = "\
 error: the solar system has no planet Vulcan
+  key:   2 (index 1)
   help:  run `tool list`
   code:  solar::planets::not_found
 ";

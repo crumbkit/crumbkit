@@ -41,6 +41,23 @@ impl FailureForm for EntryForm {
 
 const ENTRY_GUIDE: Guide = Guide::new().failure_form(&EntryForm);
 
+/// A form whose document is `{"key": ..., "index": ..., "code": ...}`.
+struct KeyForm;
+
+impl FailureForm for KeyForm {
+    fn document(&self) -> Document<()> {
+        ErrorForm.document()
+    }
+
+    fn schema(&self) -> Schema {
+        ErrorForm.schema()
+    }
+
+    fn json(&self, failure: &PreparedFailure<'_>) -> Value {
+        json!({ "key": failure.key(), "index": failure.index(), "code": failure.code() })
+    }
+}
+
 /// The value of a prose result of the test tool.
 #[derive(Serialize, JsonSchema)]
 struct Count {
@@ -100,4 +117,22 @@ fn the_failure_of_the_ids_that_the_budget_leaves_out_is_written_by_the_form_entr
     assert_eq!(failures.len(), 2);
     assert_eq!(failures[0], missing_entry());
     assert_eq!(failures[1]["error"]["code"], "crumbkit.output.over_budget");
+}
+
+#[test]
+fn a_batch_in_input_order_prints_each_failure_as_the_form_document_which_can_read_its_key() {
+    const KEY_GUIDE: Guide = Guide::new().failure_form(&KeyForm);
+    let batch = answered(vec![Planet { name: "Mars" }], vec![Missing]);
+    let document = PLANETS_SHOW.without_envelope().failures_in_order();
+    let ran = finish(&KEY_GUIDE, &["list", "--json"], document, Ok(batch));
+
+    assert_eq!(ran.code, ExitCode::FAILURE);
+    let array: Value = serde_json::from_str(&ran.out).unwrap();
+    assert_eq!(
+        array,
+        json!([
+            { "name": "Mars" },
+            { "key": "2", "index": 1, "code": "solar.planets.not_found" },
+        ])
+    );
 }
