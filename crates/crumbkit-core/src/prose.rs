@@ -24,8 +24,8 @@ mod tests;
 /// standard error after the text, as a batch prints its failures. A prose
 /// result with at least one failure exits with code 1.
 ///
-/// `--fields` is refused for a prose result, because it has no columns, and
-/// `--long` and `--full` leave its output unchanged.
+/// `--fields`, `--long` and `--full` are refused for a prose result,
+/// because it has no columns.
 ///
 /// ```
 /// use std::fmt;

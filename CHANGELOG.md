@@ -388,6 +388,11 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit-test: [`check_guide`] fails when a row type's problem field is
   not one of its `COLUMNS`, or when its type has no value that means no
   problem ([ADR-0050]).
+- crumbkit: [`help::ViewFlag`] names `--fields`, `--long` and `--full`,
+  and `Leaf::offers` reports whether a leaf's document can use one
+  ([ADR-0016]).
+- crumbkit-test: [`check_guide`] fails on an example that types a view flag
+  that its leaf does not offer ([ADR-0016]).
 
 ### Changed
 
@@ -578,6 +583,12 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   reported a problem ([ADR-0050]).
 - crumbkit-aliases: `aliases list` exits with 1 while an entry of the
   aliases file has a problem ([ADR-0027]).
+- crumbkit: a leaf's help leaves out each view flag that its document
+  cannot use, and [`parse`] refuses such a flag as a refused command line
+  before the handler runs ([ADR-0016]).
+- crumbkit: [`finish`] and [`stream`] refuse `--long` and `--full` for
+  prose, `--long` for rows without long columns, and `--full` for a
+  document without the envelope ([ADR-0016]).
 
 ### Removed
 
@@ -697,6 +708,7 @@ rustdoc, or at its decision record. -->
 [`usage::tolerated`]: crates/crumbkit/src/usage.rs
 [`help`]: crates/crumbkit/src/help.rs
 [`help::quote`]: crates/crumbkit/src/help.rs
+[`help::ViewFlag`]: crates/crumbkit/src/help/view.rs
 [`help::RuntimeLeaf`]: crates/crumbkit/src/help/runtime.rs
 [`help::FileFormat`]: crates/crumbkit/src/help/format.rs
 [`commands`]: crates/crumbkit/src/commands.rs

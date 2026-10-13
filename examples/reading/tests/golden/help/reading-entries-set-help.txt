@@ -28,9 +28,6 @@ Options:
       --yes
           Proceed without asking for confirmation
 
-      --long
-          Add the long columns after the compact ones
-
       --full
           With --json, print every field of every row
 

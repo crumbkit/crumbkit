@@ -31,8 +31,10 @@ mod tests;
 ///
 /// It returns `Err` with the exit code of a refused command line, 2 unless
 /// the guide lists another, after it prints the refusal when `--fields`
-/// names a field that `R` does not have. The tool's `main`
-/// returns that exit code.
+/// names a field that `R` does not have, or when the caller passed a view
+/// flag that the stream cannot use: `--long` when `R` has no long columns,
+/// or `--full` when the document has no envelope. The tool's `main` returns
+/// that exit code.
 pub fn stream<R: Row>(
     output: &mut Output,
     spelling: Spelling,
@@ -126,7 +128,8 @@ pub fn stream<R: Row>(
 ///
 /// It returns `Err` with the exit code of a refused command line, 2 unless
 /// the guide lists another, when `--fields` names a field that `R` does not
-/// have. The refusal prints as [`finish_to`](crate::finish_to)
+/// have, or for a view flag that [`stream`] refuses. The refusal prints as
+/// [`finish_to`](crate::finish_to)
 /// prints it, and nothing of the stream prints.
 pub fn stream_to<'a, R: Row, O: Write, W: Write>(
     sink: &'a mut Sink<O, W>,
@@ -264,7 +267,8 @@ fn open<R: Row, O: Write, W: Write>(
         #[cfg(feature = "tracing")]
         span: crate::trace::spans::finish(),
     };
-    if let Some(refusal) = fields::refusal::<R>(streaming.fields) {
+    let envelope = document.has_envelope();
+    if let Some(refusal) = fields::refusal::<R>(None, envelope, streaming.fields, *long, *full) {
         return Err(streaming.refuse(&refusal));
     }
     if !streaming.json {

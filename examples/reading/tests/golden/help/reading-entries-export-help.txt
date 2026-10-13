@@ -9,15 +9,6 @@ Options:
       --json
           Print the result as a JSON document
 
-      --fields <FIELD>
-          Print only these comma-separated fields, in this order
-
-      --long
-          Add the long columns after the compact ones
-
-      --full
-          With --json, print every field of every row
-
       --no-input
           Fail instead of asking a question
 

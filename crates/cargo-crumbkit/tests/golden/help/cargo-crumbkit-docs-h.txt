@@ -11,4 +11,4 @@ Examples:
   cargo crumbkit docs --bin shelf
 
 Effects: additive, idempotent, closed-world.
-Global flags: --json, --fields <FIELD>, --long, --full. `cargo crumbkit docs --help` describes them.
+Global flags: --json. `cargo crumbkit docs --help` describes them.

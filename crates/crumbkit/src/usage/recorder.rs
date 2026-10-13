@@ -286,8 +286,8 @@ pub(crate) fn picked(count: usize) {
     update(&RECORDER, |recorder| recorder.run.picked = Some(count));
 }
 
-/// Records the exit code that `parse` returned after it printed the
-/// version, or after a picker's source failed.
+/// Records the exit code that `parse` returned after it printed the version,
+/// after a picker's source failed, or after it refused an unoffered view flag.
 pub(crate) fn exited(exit: u8) {
     update(&RECORDER, |recorder| {
         recorder.run.exit = Some(exit);

@@ -9,7 +9,7 @@ use clap::builder::StyledStr;
 use clap::builder::styling::Style;
 
 use crate::expect;
-use crate::help::{self, Effects, Guide, Leaf, leaf, topic};
+use crate::help::{self, Effects, Guide, Leaf, ViewFlag, leaf, topic};
 
 /// Adds crumbkit's help lines to the root and to each command on `path`, and
 /// applies to each of those commands the groups of `guide` that name it. A
@@ -22,7 +22,9 @@ use crate::help::{self, Effects, Guide, Leaf, leaf, topic};
 /// The deepest command on `path` also gets the sections of the leaf of
 /// `guide` whose path is `path`, the first when two leaves share it. Its
 /// `--help` describes the leaf's columns only when `long_help` is set,
-/// because that builds the row type's JSON Schema.
+/// because that builds the row type's JSON Schema. Its help also leaves out
+/// each global view flag that the leaf does not offer, and so does its
+/// `Global flags:` line.
 ///
 /// Each command on the path, the root included, hides its own visible global
 /// flags from `-h` before clap builds it, so the copies that clap gives each
@@ -67,14 +69,20 @@ pub(super) fn add_help_lines(
     let mut node = command;
     let mut depth = 0;
     loop {
+        let at_leaf = leaf.filter(|_| depth == path.len());
+        if let Some(leaf) = at_leaf {
+            hide_unoffered(node, leaf);
+        }
         add_global_flags(node, &mut flags);
-        let flag_list: Vec<&str> = flags.iter().map(|(_, flag)| flag.as_str()).collect();
+        let flag_list: Vec<&str> = flags
+            .iter()
+            .filter(|(id, _)| at_leaf.is_none_or(|leaf| offers(leaf, id)))
+            .map(|(_, flag)| flag.as_str())
+            .collect();
         apply_groups(node, guide, &path[..depth], header, literal);
-        let sections = match leaf {
-            Some(leaf) if depth == path.len() => {
-                leaf_sections(leaf, node, &text, long_help, header, literal)
-            }
-            _ => Sections::default(),
+        let sections = match at_leaf {
+            Some(leaf) => leaf_sections(leaf, node, &text, long_help, header, literal),
+            None => Sections::default(),
         };
         let topics = if path[..depth] == *root {
             topics.as_str()
@@ -123,6 +131,25 @@ fn add_global_flags(node: &mut Command, flags: &mut Vec<(String, String)>) {
             flags.push((id.to_owned(), arg.to_string()));
         }
     }
+}
+
+/// Hides from the help of `node`, the command of `leaf`, each global view
+/// flag that the leaf does not offer (ADR-0016). An argument that is not
+/// global keeps its help, so a tool's own `--long` on the command stays.
+fn hide_unoffered(node: &mut Command, leaf: &Leaf) {
+    *node = std::mem::take(node).mut_args(|arg| {
+        if arg.is_global_set() && !offers(leaf, arg.get_id().as_str()) {
+            arg.hide(true)
+        } else {
+            arg
+        }
+    });
+}
+
+/// Reports whether `leaf` offers the flag whose argument id is `id`. Every
+/// flag that is not a view flag counts as offered.
+fn offers(leaf: &Leaf, id: &str) -> bool {
+    ViewFlag::from_id(id).is_none_or(|flag| leaf.offers(flag))
 }
 
 /// Applies to `node`, the command at `path`, each group of `guide` whose

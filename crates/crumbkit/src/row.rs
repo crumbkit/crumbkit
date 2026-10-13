@@ -42,3 +42,21 @@ pub(crate) fn properties(schema: &Schema) -> Vec<(&str, &Value)> {
     }
     found
 }
+
+/// Reports whether `property`, the JSON Schema of one field, allows a
+/// string, a boolean or null, in its own `type` or in the `type` of a
+/// variant under its `anyOf` or `oneOf`.
+pub(crate) fn can_be_empty(property: &Value) -> bool {
+    let mut schemas = vec![property];
+    for keyword in ["anyOf", "oneOf"] {
+        if let Some(variants) = property.get(keyword).and_then(Value::as_array) {
+            schemas.extend(variants);
+        }
+    }
+    let empty = |kind: &Value| matches!(kind.as_str(), Some("string" | "boolean" | "null"));
+    schemas.iter().any(|schema| match schema.get("type") {
+        Some(Value::Array(kinds)) => kinds.iter().any(empty),
+        Some(kind) => empty(kind),
+        None => false,
+    })
+}

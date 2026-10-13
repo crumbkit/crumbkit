@@ -15,6 +15,7 @@ pub(crate) mod rename;
 mod runtime;
 mod terminal;
 pub(crate) mod topic;
+pub(crate) mod view;
 pub(crate) mod words;
 
 use std::fmt::Write as _;
@@ -29,6 +30,7 @@ pub use self::leaf::{BYTES_LINE, Column, Example, Leaf, STREAM_LINE};
 pub use self::rename::Rename;
 pub use self::runtime::RuntimeLeaf;
 pub use self::topic::Topic;
+pub use self::view::ViewFlag;
 pub use self::words::quote;
 
 use self::list::{list, write_line};
