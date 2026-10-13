@@ -1,0 +1,28 @@
+[package]
+name = "tutorial"
+description = "The code of crumbkit's tutorial, one pantry binary for each step of docs/tutorial.md"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+
+[dependencies]
+# Each step parses its command line with clap's derive API. These are the
+# user-facing features that a binary chooses: help, usage lines and the
+# context of a refusal.
+clap = { workspace = true, features = ["derive", "help", "usage", "error-context"] }
+# Steps 1 to 3 parse, print and fail through crumbkit.
+crumbkit = { workspace = true }
+# Steps 1 to 3 derive `Serialize` and `JsonSchema` for the jars they print.
+serde = { workspace = true, features = ["derive"] }
+schemars = { workspace = true, features = ["derive"] }
+
+[dev-dependencies]
+# Step 4 checks the step 3 tool against crumbkit's conventions with
+# crumbkit-test.
+crumbkit-test = { workspace = true }
+
+[lints]
+workspace = true
