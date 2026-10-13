@@ -484,6 +484,9 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit-test: [`check_recoveries`] fills placeholders and reports
   `recoveries/field-value` from the fields of the failure that a form or a
   reader returns ([ADR-0053]).
+- crumbkit-test: [`check_recoveries`] compares a step's code with the code
+  of every earlier failure of its chain, so a chain that returns to an
+  earlier code through another code fails the check ([ADR-0053]).
 - crumbkit-test: [`check_recoveries`] reads a failed run's last `code:`
   line when the run prints no failure document ([ADR-0045]).
 - crumbkit-test: [`check_twin`], [`check_examples`] and

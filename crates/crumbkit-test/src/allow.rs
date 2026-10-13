@@ -264,8 +264,10 @@ pub enum Rule {
     /// is `recoveries/follow`.
     Recoveries,
     /// [`check_recoveries`](crate::check_recoveries): a recovery of a
-    /// command fails again with the code of the failure it follows. Its id
-    /// is `recoveries/same-code`.
+    /// command fails with the code of the failure it follows or of an
+    /// earlier failure of its chain. Its id is `recoveries/same-code`, and
+    /// its opt-out names the command that the recovery runs, which marks a
+    /// step that a person or an agent must complete by hand first.
     SameCode,
     /// [`check_recoveries`](crate::check_recoveries): a recovery of a
     /// command holds a placeholder that a field of the command's failure
@@ -388,7 +390,7 @@ impl Rule {
                 "No test shows that the command's recoveries lead anywhere, so a recovery can lead back to the same failure or name a command that no longer runs.",
             ],
             Self::SameCode => &[
-                "An agent that follows the recovery sees the same code again and must read the output to learn that the step worked.",
+                "An agent that follows the recovery sees a code that its chain already had and must read the output to learn that the step worked.",
             ],
             Self::FieldValue => &[
                 "An agent that follows the recovery must copy the value from the failure's field into the placeholder itself, where a recovery built with `Call::value` would carry the value.",

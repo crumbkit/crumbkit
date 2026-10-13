@@ -55,8 +55,9 @@ pub(super) struct Walk<'a> {
 
 /// The failure that offers a chain's next steps.
 struct Parent<'p> {
-    /// The failure's code, as the tool spells it.
-    code: &'p str,
+    /// The codes of the failure and of every earlier failure of its chain,
+    /// the start's first, as the tool spells them.
+    codes: &'p [String],
     /// The failure's fields, which fill the steps' placeholders.
     fields: &'p [(String, String)],
     /// The path below the root of the command that failed, which an
@@ -156,7 +157,7 @@ impl Walk<'_> {
                     let _ = writeln!(self.report, "  fails with {code}");
                     let path = path_below(self.command, start.words);
                     let parent = Parent {
-                        code: &code,
+                        codes: std::slice::from_ref(&code),
                         fields: &fields,
                         path: &path,
                     };
@@ -240,35 +241,22 @@ impl Walk<'_> {
                 Some(Outcome::Fails(code, next, next_fields)) => {
                     self.provoked.push(code.clone());
                     if !self.known.contains(&code) {
-                        if let Some((component, _, _)) = self.recoveries.spelling.split(&code)
-                            && self.components.iter().any(|known| known == component)
-                        {
-                            let _ = writeln!(
-                                self.report,
-                                "{indent}  fails with {code}, which no declared code spells"
-                            );
-                            self.problems.push(format!(
-                                "{}: {label} fails with {code}, whose component {component} is a declared component, and no declared code spells it",
-                                chain.start
-                            ));
-                            continue;
-                        }
-                        self.skipped += 1;
-                        let _ = writeln!(
-                            self.report,
-                            "{indent}  fails with {code}, which no declared code spells"
-                        );
+                        self.unknown(chain, &label, &code, &indent);
                         continue;
                     }
-                    if code == parent.code && !self.allowances.excuses(Rule::SameCode, &path) {
+                    if parent.codes.contains(&code)
+                        && !self.allowances.excuses(Rule::SameCode, &path)
+                    {
                         self.problems.push(format!(
                             "{}: {label} fails again with {code}, so an agent that follows the recovery learns nothing new",
                             chain.start
                         ));
                     }
                     let _ = writeln!(self.report, "{indent}  fails with {code}");
+                    let mut codes = parent.codes.to_vec();
+                    codes.push(code);
                     let next_parent = Parent {
-                        code: &code,
+                        codes: &codes,
                         fields: &next_fields,
                         path: &path,
                     };
@@ -276,6 +264,26 @@ impl Walk<'_> {
                 }
                 None => {}
             }
+        }
+    }
+
+    /// Writes `code`, which `label` failed with and which no declared code
+    /// spells, to the report indented by `indent`. It adds a problem when
+    /// the code's component is a declared component, and otherwise counts
+    /// the code as skipped.
+    fn unknown(&mut self, chain: &Chain<'_>, label: &str, code: &str, indent: &str) {
+        let _ = writeln!(
+            self.report,
+            "{indent}  fails with {code}, which no declared code spells"
+        );
+        match self.recoveries.spelling.split(code) {
+            Some((component, _, _)) if self.components.iter().any(|known| known == component) => {
+                self.problems.push(format!(
+                    "{}: {label} fails with {code}, whose component {component} is a declared component, and no declared code spells it",
+                    chain.start
+                ));
+            }
+            _ => self.skipped += 1,
         }
     }
 

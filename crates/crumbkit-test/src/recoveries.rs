@@ -343,8 +343,9 @@ impl<'a> Recoveries<'a> {
 ///   [`Spelling::split`](crumbkit::Spelling::split) reads the code's
 ///   component as the component of a declared code, so a code missing from
 ///   a `CODES` list is found;
-/// - a step that fails again with the code of the failure it follows,
-///   unless an opt-out from [`Rule::SameCode`] covers the step's command;
+/// - a step that fails with the code of the failure it follows or of an
+///   earlier failure of its chain, unless an opt-out from
+///   [`Rule::SameCode`] covers the step's command;
 /// - a placeholder that a field of the failure fills, which the report
 ///   also shows under the step, unless an opt-out from
 ///   [`Rule::FieldValue`] covers the command whose failure printed the

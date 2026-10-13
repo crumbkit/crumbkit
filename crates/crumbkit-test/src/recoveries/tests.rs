@@ -20,6 +20,7 @@ use crate::examples::Examples;
 use crate::temp::TempDir;
 use crate::testing::panic_message;
 
+mod chains;
 mod form;
 mod fresh;
 mod reading;
@@ -293,43 +294,6 @@ fn a_start_that_succeeds_or_fails_with_another_code_fails_the_check() {
          tool books show 8: the start must fail with tool::books::not_found, and it fails with tool::books::unreadable\n\
          tool::books::not_found: no start provokes the declared code, and Recoveries::unprovoked does not list it"
     );
-}
-
-#[test]
-fn a_step_that_fails_again_with_the_same_code_fails_the_check_unless_an_opt_out_covers_it() {
-    let show = failure("tool::books::not_found", &run("tool books show 8"));
-    let again = failure("tool::books::not_found", r#"{"kind":"retry"}"#);
-    let setup = Setup::new(
-        "recoveries-same",
-        &[
-            ("books show 7 --json", 1, show.as_str(), ""),
-            ("books show 8 --json", 1, again.as_str(), ""),
-        ],
-    );
-    let allow = [Allow::new(
-        Rule::SameCode,
-        "books show",
-        "Each id fails on its own.",
-    )];
-
-    let message = problems(&setup, &recoveries(&setup, SHOW_7, OTHERS)).unwrap();
-    let allowed = problems(
-        &setup,
-        &Recoveries::new(
-            Examples::new(&setup.script, "").allow(&allow),
-            Spelling::COLONS,
-            CODES,
-        )
-        .starts(SHOW_7)
-        .unprovoked(OTHERS),
-    );
-
-    assert_eq!(
-        message,
-        "the tool's recoveries break crumbkit's recovery rules:\n\
-         tool books show 7: the step `tool books show 8` fails again with tool::books::not_found, so an agent that follows the recovery learns nothing new"
-    );
-    assert_eq!(allowed, None);
 }
 
 #[test]
