@@ -1,6 +1,7 @@
 //! The check of a tool's twins, which runs every twin and requires one for
 //! each declared code.
 
+use clap::Command;
 use crumbkit::help::Guide;
 use crumbkit::{Code, Spelling};
 
@@ -152,7 +153,7 @@ impl<'a> Twins<'a> {
 }
 
 /// Runs every twin of `twins` as [`check_twin`](crate::check_twin) runs one, for the tool whose
-/// guide is `guide`, and panics, as a failed test assertion does, naming
+/// unbuilt command tree is `command` and whose guide is `guide`, and panics, as a failed test assertion does, naming
 /// every problem it finds (TEST-1).
 ///
 /// It finds:
@@ -193,7 +194,7 @@ impl<'a> Twins<'a> {
 ///
 /// Panics when a rule above is broken. The message lists each problem on
 /// its own line under `the tool's twins break crumbkit's twin rule:`.
-pub fn check_twins(guide: &Guide, twins: &Twins<'_>) {
+pub fn check_twins(command: &Command, guide: &Guide, twins: &Twins<'_>) {
     let spelling = twins.spelling;
     let declared: Vec<&Code> = twins
         .codes
@@ -212,14 +213,7 @@ pub fn check_twins(guide: &Guide, twins: &Twins<'_>) {
             ));
             continue;
         }
-        let (refused_words, admitted) = json_lines(pair.refused.words(), pair.admitted);
-        let refused_words: Vec<&str> = refused_words.iter().map(String::as_str).collect();
-        let admitted: Vec<&str> = admitted.iter().map(String::as_str).collect();
-        let refused = pair.refused.with_words(&refused_words);
-        let admitted = pair
-            .variable
-            .map_or(Admitted::Words(&admitted), Admitted::Without);
-        if let Err(problem) = twin(guide, &twins.examples, spelling, &refused, admitted) {
+        if let Err(problem) = run_pair(command, guide, twins, pair) {
             problems.push(problem);
         }
     }
@@ -292,6 +286,33 @@ pub fn check_twins(guide: &Guide, twins: &Twins<'_>) {
         "the tool's twins break crumbkit's twin rule:\n{}",
         problems.join("\n")
     );
+}
+
+/// Runs `pair`, one twin of `twins`, with `--json` added as
+/// [`json_lines`] adds it, and returns the problem when it breaks a rule of
+/// [`check_twin`](crate::check_twin).
+fn run_pair(
+    command: &Command,
+    guide: &Guide,
+    twins: &Twins<'_>,
+    pair: &Twin<'_>,
+) -> Result<(), String> {
+    let (refused_words, admitted) = json_lines(pair.refused.words(), pair.admitted);
+    let refused_words: Vec<&str> = refused_words.iter().map(String::as_str).collect();
+    let admitted: Vec<&str> = admitted.iter().map(String::as_str).collect();
+    let refused = pair.refused.with_words(&refused_words);
+    let admitted = pair
+        .variable
+        .map_or(Admitted::Words(&admitted), Admitted::Without);
+    twin(
+        command,
+        guide,
+        &twins.examples,
+        twins.spelling,
+        &refused,
+        admitted,
+    )
+    .map(drop)
 }
 
 /// Returns the words of the refused and the admitted line of a twin as

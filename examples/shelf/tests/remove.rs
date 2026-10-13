@@ -6,6 +6,7 @@
 
 use std::path::Path;
 
+use clap::CommandFactory as _;
 use crumbkit::{Spelling, codes};
 use crumbkit_test::{Examples, Failing, check_twin};
 use snapbox::cmd::{Command, OutputAssert};
@@ -73,6 +74,7 @@ fn books_remove_without_yes_or_a_terminal_fails_with_needs_yes_and_removes_nothi
         let mut admitted = refused.to_vec();
         admitted.insert(3, "--yes");
         check_twin(
+            &shelf::Cli::command(),
             &shelf::GUIDE,
             &shelf,
             Spelling::COLONS,

@@ -86,6 +86,7 @@ pub use crate::output::{
     DryRun, JsonLayout, Output, Streaming, Yes, finish, finish_to, stream, stream_to,
 };
 pub use crate::page::Page;
+pub use crate::parse::walk::command_path;
 pub use crate::parse::{Parsed, Stop, parse, parse_from, parse_to};
 pub use crate::pick::NoInput;
 pub use crate::sink::Sink;

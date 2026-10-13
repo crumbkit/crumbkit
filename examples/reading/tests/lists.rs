@@ -5,6 +5,7 @@
 //! golden files.
 
 use std::io;
+use std::path::Path;
 
 use crumbkit::{Spelling, codes};
 use crumbkit_test::{Examples, Failing, check_twin};
@@ -126,8 +127,11 @@ fn a_directory_without_lists_adds_no_command() -> io::Result<()> {
     let examples = Examples::new(env!("CARGO_BIN_EXE_reading"), "").env(&env);
 
     // `commands list` differs by one word and runs in the same directory, so
-    // the missing list is the reason for the refusal (TEST-1).
+    // the missing list is the reason for the refusal (TEST-1). The check
+    // reads each line's command from the tree of the empty directory, where
+    // `to-read` names no command.
     let refused = check_twin(
+        &reading::command(&reading::lists_in(empty.path())),
         &reading::GUIDE,
         &examples,
         Spelling::COLONS,
@@ -212,10 +216,7 @@ fn edit_opens_the_list_in_the_editor_that_visual_names_and_returns_its_exit_code
 fn copy_of_lists() -> io::Result<tempfile::TempDir> {
     let copy = tempfile::tempdir()?;
     for name in ["finished.txt", "to-read.txt"] {
-        std::fs::copy(
-            std::path::Path::new(LISTS).join(name),
-            copy.path().join(name),
-        )?;
+        std::fs::copy(Path::new(LISTS).join(name), copy.path().join(name))?;
     }
     Ok(copy)
 }
@@ -374,6 +375,7 @@ fn entries_set_refuses_an_empty_expect_and_admits_its_twin_with_a_title() {
     // `--expect` alone, and it runs on a dry run, so the empty value is the
     // reason for the refusal (TEST-1).
     let refused = check_twin(
+        &reading::command(&reading::lists_in(Path::new(LISTS))),
         &reading::GUIDE,
         &examples,
         Spelling::COLONS,
@@ -415,6 +417,7 @@ fn entries_set_refuses_a_title_with_a_line_break_and_admits_its_twin_without_one
     // The twin differs from the refused command line in the title alone,
     // so the line break is the reason for the refusal (TEST-1).
     let refused = check_twin(
+        &reading::command(&reading::lists_in(Path::new(LISTS))),
         &reading::GUIDE,
         &examples,
         Spelling::COLONS,

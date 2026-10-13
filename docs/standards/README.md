@@ -21,7 +21,7 @@ rule that cites none states its reason itself.
 
 ## Tests
 
-- **TEST-1.** A test that a command line is refused, in crumbkit or in an example tool, also runs a twin: a command line that differs from the refused one by one word added, removed or replaced, and that the tool accepts (ADR-0005). A test that runs the built binary uses crumbkit-test's `check_twin`, and a test inside crumbkit parses the twin with the same parser. The twin shows that the changed word causes the refusal, so the test cannot pass because the command fails for another reason. Gate: `check_twins` in shelf's and reading's tests, which fails on a declared code without a twin, a reason or an opt-out, and on a twin whose admitted line asks for help or the version or runs another command, and review for a refusal with one of crumbkit's codes and for the refusals inside crumbkit.
+- **TEST-1.** A test that a command line is refused, in crumbkit or in an example tool, also runs a twin: a command line that differs from the refused one by one word added, removed or replaced, and that the tool accepts (ADR-0005). A test that runs the built binary uses crumbkit-test's `check_twin`, and a test inside crumbkit parses the twin with the same parser. The twin shows that the changed word causes the refusal, so the test cannot pass because the command fails for another reason. Gate: `check_twins` in shelf's and reading's tests, which fails on a declared code without a twin, a reason or an opt-out, and on a twin whose admitted line asks for help or the version, runs another command, or runs no command when the refused line runs none, and review for a refusal with one of crumbkit's codes and for the refusals inside crumbkit.
 
 ## Output
 

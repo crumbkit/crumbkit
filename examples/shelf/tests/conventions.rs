@@ -232,5 +232,5 @@ const TWINS: Twins<'_> = Twins::new(EXAMPLES, Spelling::COLONS, &[shelf::CODES])
 
 #[test]
 fn every_declared_code_has_a_twin_that_the_tool_accepts() {
-    crumbkit_test::check_twins(&GUIDE, &TWINS);
+    crumbkit_test::check_twins(&Cli::command(), &GUIDE, &TWINS);
 }

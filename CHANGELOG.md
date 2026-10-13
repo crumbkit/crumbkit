@@ -356,6 +356,9 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit-test: [`Failing::env`] sets or removes environment variables
   for a failing line and its chain, and [`Twin::variable`] makes a twin
   that differs by one variable ([ADR-0005], [ADR-0053]).
+- crumbkit: [`command_path`] returns the path of the command that a tool's
+  words name, reading options as [`parse`] does, without building the
+  tree ([ADR-0021]).
 ### Changed
 
 - crumbkit-test: [`check_twin`] takes the tool's guide as its first
@@ -511,11 +514,17 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   when neither line holds it, as [`check_recoveries`] does, so a tool's
   reader sees the failure an agent reads ([ADR-0005]).
 - crumbkit-test: [`check_twin`] refuses a twin whose admitted line adds a
-  help or version word, or runs another leaf of the guide than the refused
-  line ([ADR-0005]).
+  help or version word, or runs another command than the refused line
+  ([ADR-0005]).
 - crumbkit-test: a check's run whose tool exits while a process it started
   keeps standard output or standard error open ends with a problem at the
   run's timeout, and the check no longer waits for that process ([ADR-0005]).
+- crumbkit-test: [`check_twin`] and [`check_twins`] take the tool's command
+  tree first and read each line's command from it, so a global option
+  before the path and an alias name the same command ([ADR-0005]).
+- crumbkit-test: [`check_twin`] refuses a twin in which neither line runs a
+  command, so a twin of the misspelt `books lst` admits `books list` and
+  not `books` ([ADR-0005]).
 ### Removed
 
 - crumbkit: `help::split` is gone. [`check_recoveries`] reads a recovery's
@@ -624,6 +633,7 @@ rustdoc, or at its decision record. -->
 [`fetch_each`]: crates/crumbkit/src/fetch.rs
 [`report`]: crates/crumbkit-core/src/report.rs
 [`parse`]: crates/crumbkit/src/parse.rs
+[`command_path`]: crates/crumbkit/src/parse/walk.rs
 [`Stop`]: crates/crumbkit/src/parse/stop.rs
 [`usage::ended`]: crates/crumbkit/src/usage.rs
 [`usage::tolerated`]: crates/crumbkit/src/usage.rs
