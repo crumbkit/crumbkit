@@ -10,6 +10,7 @@ use serde_json::Value;
 use super::budget::Cut;
 use super::failure::{Entry, PreparedFailure};
 use super::layout;
+use crate::form::FailureForm;
 use crate::{Document, JsonLayout};
 
 /// The failures of a batch or a prose result: the tool's own, in order, and
@@ -21,6 +22,9 @@ pub(super) struct Failures<'a> {
     pub(super) listed: &'a [PreparedFailure<'a>],
     /// The failure of the rows that did not fit in the output budget.
     pub(super) over: Option<&'a PreparedFailure<'a>>,
+    /// The guide's failure form, which writes each entry, or `None` for
+    /// crumbkit's entries.
+    pub(super) form: Option<&'static dyn FailureForm>,
 }
 
 impl<'a> Failures<'a> {
@@ -144,13 +148,17 @@ impl Serialize for Selected<'_> {
     }
 }
 
-/// The entries of `failures`, each a failure document without `schema`,
-/// written one by one so that nothing is collected first.
+/// The entries of `failures`, written one by one so that nothing is
+/// collected first: each the form's entry when the guide has a failure
+/// form, and otherwise a failure document without `schema`.
 struct Entries<'a>(Failures<'a>);
 
 impl Serialize for Entries<'_> {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        serializer.collect_seq(self.0.iter().map(Entry))
+        match self.0.form {
+            Some(form) => serializer.collect_seq(self.0.iter().map(|failure| form.entry(failure))),
+            None => serializer.collect_seq(self.0.iter().map(Entry)),
+        }
     }
 }
 

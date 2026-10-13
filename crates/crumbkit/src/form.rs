@@ -34,9 +34,9 @@ mod tests;
 /// from [`finish`](crate::finish), each failure line of a `--json` stream,
 /// a refused command line, a refused `--fields` name, and the failures of a
 /// picker's source and of a child process. Its text form also prints each
-/// failure of a batch or a prose result on standard error. Each entry of a
-/// batch's `failures` keeps crumbkit's shape, because the batch's document
-/// is crumbkit's envelope.
+/// failure of a batch or a prose result on standard error, and
+/// [`FailureForm::entry`] writes each entry of their `failures` inside
+/// crumbkit's envelope.
 ///
 /// `schemas list` serves the form's document in place of
 /// `crumbkit/failure/v1`, and crumbkit-test's `check_schema_goldens` pins
@@ -123,6 +123,33 @@ pub trait FailureForm {
     /// layout, and crumbkit handles a reader that closed the pipe.
     fn json(&self, failure: &PreparedFailure<'_>) -> serde_json::Value;
 
+    /// Returns the entry of `failure` in the `failures` array of a batch or
+    /// a prose result, whose document is crumbkit's envelope. crumbkit still
+    /// decides which failures the array holds and their order, and the
+    /// failure of the rows that the output budget leaves out is an entry
+    /// too.
+    ///
+    /// The provided method returns crumbkit's entry, the fields of the
+    /// `crumbkit/failure/v1` document without `schema`. A form that changes
+    /// the entry also returns its schema from
+    /// [`FailureForm::entry_schema`], and reads the entry back in
+    /// [`FailureForm::read`]: crumbkit-test passes each entry to `read` as
+    /// one line of standard output, with an empty standard error.
+    fn entry(&self, failure: &PreparedFailure<'_>) -> serde_json::Value {
+        crate::output::failure::crumbkit_entry(failure)
+    }
+
+    /// Returns the 2020-12 JSON Schema of one entry that
+    /// [`FailureForm::entry`] returns. `schemas show` serves it as the
+    /// `items` of the `failures` array of every batch and prose document
+    /// with crumbkit's envelope. The schema sits inside the document's
+    /// schema, so it holds no `$ref` to the document's `$defs`.
+    ///
+    /// The provided method returns the schema of crumbkit's entry.
+    fn entry_schema(&self) -> Schema {
+        crate::output::failure::entry_schema()
+    }
+
     /// Writes the text form of `failure` to `err`, which is standard error
     /// in a real run. crumbkit flushes `err` afterwards.
     ///
@@ -155,6 +182,10 @@ pub trait FailureForm {
     /// [`PreparedFailure::code`] and writes both the JSON and the text. A
     /// form that does this maps the code back to crumbkit's in `read`, so
     /// the checks still match it.
+    ///
+    /// crumbkit-test also passes it each entry of a batch's or a prose
+    /// result's `failures` as one line of `out`, with an empty `err`, and
+    /// reads an entry in crumbkit's shape when it returns `None`.
     ///
     /// The provided method returns `None`.
     fn read(&self, out: &str, err: &str) -> Option<ReadFailure> {

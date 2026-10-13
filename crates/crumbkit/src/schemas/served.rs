@@ -31,10 +31,14 @@ pub struct Served {
 /// How a served document builds its JSON Schema.
 #[derive(Clone, Copy, Debug)]
 enum Build {
-    /// A function of the document's id and description: the envelope of
-    /// the first leaf in guide order that declares the document, the
-    /// failure document's schema, or a file format's schema.
+    /// A function of the document's id and description: the failure
+    /// document's schema or a file format's schema.
     Function(fn(Document<()>) -> Schema),
+    /// The schema of the first leaf in guide order that declares the
+    /// document, from a function of the document's id and description, with
+    /// the entry schema of the guide's failure form, when it has one, as
+    /// the `items` of `failures`.
+    Leaf(fn(Document<()>) -> Schema, Option<&'static dyn FailureForm>),
     /// The schema of a tool's failure form, with the document's id as its
     /// `title`.
     Form(&'static dyn FailureForm),
@@ -92,6 +96,13 @@ impl Served {
     pub fn schema(&self) -> Schema {
         match self.schema {
             Build::Function(build) => build(self.document),
+            Build::Leaf(build, form) => {
+                let mut schema = build(self.document);
+                if let Some(form) = form {
+                    set_entry_schema(&mut schema, form.entry_schema());
+                }
+                schema
+            }
             Build::Form(form) => {
                 let mut schema = form.schema();
                 schema.insert("title".to_owned(), self.id().into());
@@ -166,7 +177,7 @@ pub fn documents(command: &Command, guide: &Guide) -> Vec<Served> {
                 },
                 commands: vec![line],
                 stream: leaf.is_stream(),
-                schema: Build::Function(schema),
+                schema: Build::Leaf(schema, guide.get_failure_form()),
             }),
         }
     }
@@ -178,6 +189,19 @@ pub fn documents(command: &Command, guide: &Guide) -> Vec<Served> {
         schema: Build::Function(format.schema_fn()),
     }));
     served
+}
+
+/// Puts `entry` as the `items` of the `failures` property of `schema`, a
+/// document's schema. A schema without `failures`, such as that of a
+/// listing or of a document without crumbkit's envelope, stays as it is.
+fn set_entry_schema(schema: &mut Schema, entry: Schema) {
+    let failures = schema
+        .get_mut("properties")
+        .and_then(|properties| properties.get_mut("failures"))
+        .and_then(serde_json::Value::as_object_mut);
+    if let Some(failures) = failures {
+        failures.insert("items".to_owned(), entry.to_value());
+    }
 }
 
 /// What a served document is, which `schemas list` prints as its `kind`.

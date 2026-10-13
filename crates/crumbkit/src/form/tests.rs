@@ -16,6 +16,8 @@ use crate::{
     Spelling, Stream, finish_to, parse_to, stream_to,
 };
 
+mod entries;
+
 const NOT_FOUND: Code = Code::new("solar", "planets", "not_found");
 
 /// A row type for the commands of the test tool.
@@ -313,7 +315,8 @@ fn a_fields_name_that_finish_refuses_prints_in_the_form() {
 }
 
 #[test]
-fn a_batch_prints_its_failures_in_the_form_text_and_keeps_crumbkit_entries_in_its_document() {
+fn a_batch_prints_its_failures_in_the_form_text_and_a_form_without_its_own_entry_keeps_crumbkit_entries()
+ {
     let batch = || Batch::new(vec![Planet { name: "Mars" }], vec![Missing]);
     let text = finish(&LINE_GUIDE, &["list"], PLANETS_SHOW, Ok(batch()));
     let json = finish(&LINE_GUIDE, &["list", "--json"], PLANETS_SHOW, Ok(batch()));

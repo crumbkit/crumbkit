@@ -29,7 +29,8 @@ use crate::{Bytes, Document, Row, Rows, Shape, Stream};
 /// - `failures` holds the failures of the ids that did not work, for
 ///   [`Shape::Batch`], and the failures that a prose result leaves out, for
 ///   [`Shape::Prose`]. Each entry has the fields of `crumbkit/failure/v1`
-///   without `schema`.
+///   without `schema`. `schemas show` serves the entry schema of the
+///   guide's failure form in its place when the guide has one.
 ///
 /// The schemas of the row type, the summary type and a prose result's value
 /// sit under `$defs`.

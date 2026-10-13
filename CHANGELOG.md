@@ -300,6 +300,13 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit: [`FailureForm`] gains the provided method `read`, which reads a
   failed run's code and steps into a [`ReadFailure`] and returns `None` by
   default ([ADR-0045]).
+- crumbkit: [`FailureForm`] gains the provided methods `entry` and
+  `entry_schema`, which write each entry of a batch's or a prose result's
+  `failures` and its schema in `schemas show`. The defaults keep crumbkit's
+  entry ([ADR-0045]).
+- crumbkit-test: the twin, example and recovery checks read each entry of a
+  batch's `failures` through the guide's `FailureForm::read`, and read an
+  entry that the form cannot read in crumbkit's shape ([ADR-0045]).
 - crumbkit: `Guide::json_layout(JsonLayout::Pretty, reason)` prints every
   whole JSON document indented by two spaces, and a stream keeps one
   document per line ([ADR-0052]).

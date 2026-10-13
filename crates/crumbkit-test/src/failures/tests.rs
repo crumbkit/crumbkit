@@ -1,4 +1,7 @@
-use crumbkit::form::{ReadFailure, Step};
+use crumbkit::Document;
+use crumbkit::form::{FailureForm, PreparedFailure, ReadFailure, Step};
+use schemars::{Schema, json_schema};
+use serde_json::{Value, json};
 
 use super::{FailureReader, Reader, read_failures};
 
@@ -92,4 +95,43 @@ fn the_reader_wins_over_crumbkit_s_document_and_the_document_wins_over_the_code_
         Some("line")
     );
     assert_eq!(first(read_failures(None, b"", b"plain\n")), None);
+}
+
+/// A form whose entries and document are `{"error": {"code": ...}}`, which
+/// it reads back from the last line of standard output.
+struct EntryForm;
+
+impl FailureForm for EntryForm {
+    fn document(&self) -> Document<()> {
+        Document::new("tool", "error", 1, "The document of a failed command.")
+    }
+
+    fn schema(&self) -> Schema {
+        json_schema!({ "type": "object" })
+    }
+
+    fn json(&self, failure: &PreparedFailure<'_>) -> Value {
+        json!({ "error": { "code": failure.code() } })
+    }
+
+    fn read(&self, out: &str, _err: &str) -> Option<ReadFailure> {
+        let document: Value = serde_json::from_str(out.lines().last()?).ok()?;
+        let code = document["error"]["code"].as_str()?;
+        Some(ReadFailure::new(code.to_owned(), vec![Step::Retry]))
+    }
+}
+
+#[test]
+fn each_batch_entry_is_read_through_the_form_and_an_entry_it_cannot_read_in_crumbkit_s_shape() {
+    let stdout = br#"{"schema":"tool/books-show/v1","failures":[{"error":{"code":"a"}},{"code":"b","recovery":{"kind":"hint","text":"h"}}]}"#;
+
+    let read = read_failures(Some(Reader::Form(&EntryForm)), stdout, b"");
+
+    assert_eq!(
+        read,
+        [
+            ReadFailure::new("a".to_owned(), vec![Step::Retry]),
+            ReadFailure::new("b".to_owned(), vec![Step::Hint("h".to_owned())]),
+        ]
+    );
 }
