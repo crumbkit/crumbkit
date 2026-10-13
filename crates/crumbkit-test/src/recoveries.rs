@@ -16,6 +16,7 @@ use crate::goldens::compare;
 use crate::runs::Dir;
 
 mod chain;
+mod words;
 // The tests run `/bin/sh` scripts, which Windows cannot run. The two
 // attributes stay apart, because clippy reads only a plain `cfg(test)` as
 // test code.

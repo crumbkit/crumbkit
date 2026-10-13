@@ -6,8 +6,8 @@ use std::time::Instant;
 
 use clap::Command;
 use crumbkit::form::{FailureForm, Step};
-use crumbkit::help::split;
 
+use super::words::split;
 use super::{Failing, Recoveries};
 use crate::allow::{Allowances, Rule};
 use crate::guide::command_line;
@@ -419,7 +419,7 @@ fn with_json(words: &[String]) -> Vec<String> {
 /// at the end of the word is clap's mark of a repeated value, which the
 /// filled word drops. A `<` that starts no placeholder stays as it is.
 //
-// RUST-10: `crumbkit::help::split` returns plain words, so the check cannot
+// RUST-10: `split` returns plain words, so the check cannot
 // tell a quoted value from a placeholder. A call whose real value holds
 // such text, such as `'<ID>'` or `"a<path>b"`, reads as holding a
 // placeholder. A call that kept its placeholders apart from its values

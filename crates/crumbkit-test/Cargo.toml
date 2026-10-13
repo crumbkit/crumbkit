@@ -44,6 +44,12 @@ serde = { workspace = true, features = ["derive"] }
 [dev-dependencies]
 # The guide check's tests give leaves row types, which derive `JsonSchema`.
 schemars = { workspace = true, features = ["derive"] }
+# The tests of the recovery check's command-line reading generate words with
+# proptest and check that the reading returns each word that `help::quote`
+# wrote. `std` gives the strategies that generate strings from a regular
+# expression. The default features add forking, timeouts and bit-set
+# strategies, which the tests do not use.
+proptest = { workspace = true, features = ["std"] }
 
 # docs.rs documents the crate with every feature on. `--cfg docsrs` turns on
 # the `doc_cfg` attribute in `lib.rs`, which labels each item behind a feature.

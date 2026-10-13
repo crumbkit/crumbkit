@@ -27,7 +27,7 @@ pub use self::format::FileFormat;
 pub use self::leaf::{BYTES_LINE, Column, Example, Leaf, STREAM_LINE};
 pub use self::runtime::RuntimeLeaf;
 pub use self::topic::Topic;
-pub use self::words::{quote, split};
+pub use self::words::quote;
 
 use self::list::{list, write_line};
 use crate::JsonLayout;

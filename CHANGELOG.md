@@ -231,8 +231,6 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit: [`codes`] makes crumbkit's own failure codes public constants
   and lists them in `codes::ALL`, so a tool's test can name them
   ([ADR-0001]).
-- crumbkit: [`help::split`] reads back the words of a command line whose
-  words `help::quote` quoted.
 - crumbkit-test: [`check_recoveries`] runs failing command lines, follows
   each recovery they print and pins the chains in a golden report, and
   [`check_twin`] runs a refused command line beside one that succeeds
@@ -470,11 +468,11 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   characters such as CJK text ([ADR-0016]).
 - crumbkit-test: [`check_recoveries`] fills a lowercase placeholder such
   as `<path>` from the value of the same name ([ADR-0053]).
-- crumbkit: `help::split` reads double-quoted words as a POSIX shell does,
-  and refuses a `$` or a backtick between double quotes, so
-  [`check_recoveries`] runs hints that a tool wrote with double quotes.
 ### Removed
 
+- crumbkit: `help::split` is gone. [`check_recoveries`] reads a recovery's
+  words with its own private reading, which also reads double-quoted words
+  and refuses a `$` or a backtick between double quotes ([ADR-0053]).
 - crumbkit-test: `Examples::failure_form` is gone, because [`check_twin`]
   reads the failure form from the tool's guide ([ADR-0045]).
 - crumbkit: `Call::word` is gone, because `Call::value` adds a runtime value
@@ -656,7 +654,6 @@ rustdoc, or at its decision record. -->
 [ADR-0053]: docs/decisions/testing/0053-recovery-chains.md
 [ADR-0050]: docs/decisions/api/output/listings/README.md
 [`codes`]: crates/crumbkit/src/codes.rs
-[`help::split`]: crates/crumbkit/src/help/words.rs
 [`check_recoveries`]: crates/crumbkit-test/src/recoveries.rs
 [`check_twin`]: crates/crumbkit-test/src/twins.rs
 [`complete`]: crates/crumbkit/src/complete.rs
