@@ -1,10 +1,11 @@
 //! The help pages that the help checks read: the `-h` or `--help` page of
-//! each visible command, as crumbkit prints it to a pipe or as the tool's
-//! binary prints it.
+//! each visible command, as clap or crumbkit prints it to a pipe or as the
+//! tool's binary prints it.
 
 use std::process::ExitCode;
 
 use clap::Command;
+use clap::error::ErrorKind;
 use crumbkit::help::Guide;
 use crumbkit::{Sink, Spelling};
 
@@ -18,42 +19,72 @@ mod tests;
 /// Where the help checks read a tool's help pages, and the guide that
 /// they read with them.
 ///
+/// [`Pages::clap`] renders each page in the test with clap alone, as a tool
+/// that parses with clap's own `parse` prints it to a pipe, so the help
+/// checks run on a tool that does not use crumbkit's runtime.
 /// [`Pages::rendered`] renders each page in the test with
-/// `crumbkit::parse_to`, as the tool prints it to a pipe. [`Pages::binary`]
-/// runs the tool's binary for each page and reads what it prints on
-/// standard output, which a tool needs when it builds part of its help at
-/// run time, such as from settings it reads at start. The guide gives
-/// rendered pages their goal headings and examples, and
-/// [`check_path_weights`](crate::check_path_weights) reads its examples in
-/// both modes.
+/// `crumbkit::parse_to`, as a tool built with crumbkit prints it to a pipe.
+/// [`Pages::binary`] runs the tool's binary for each page and reads what it
+/// prints on standard output, which a tool needs when it builds part of its
+/// help at run time, such as from settings it reads at start. The guide
+/// gives rendered pages their goal headings and examples, and
+/// [`check_path_weights`](crate::check_path_weights) reads its examples
+/// with rendered and binary pages.
 ///
 /// ```
-/// use crumbkit::help::Guide;
-/// use crumbkit_test::{Examples, Pages};
+/// use crumbkit_test::{Examples, Guide, Pages};
 ///
 /// const GUIDE: Guide = Guide::new();
 /// // In an integration test, the binary is `env!("CARGO_BIN_EXE_shelf")`.
 /// const EXAMPLES: Examples<'_> = Examples::new("/path/to/shelf", "tests/golden/examples");
 ///
+/// let clap = Pages::clap();
 /// let rendered = Pages::rendered(&GUIDE);
 /// let binary = Pages::binary(&GUIDE, &EXAMPLES);
 /// ```
 #[derive(Clone, Copy, Debug)]
 pub struct Pages<'a> {
-    /// The tool's guide.
-    guide: &'a Guide,
-    /// The binary's settings, when the pages come from the binary.
-    binary: Option<&'a Examples<'a>>,
+    /// Where the pages come from.
+    source: Source<'a>,
+}
+
+/// Where [`Pages`] reads each page.
+#[derive(Clone, Copy, Debug)]
+enum Source<'a> {
+    /// clap renders each page in the test, without a guide.
+    Clap,
+    /// `crumbkit::parse_to` renders each page in the test with the guide.
+    Rendered(&'a Guide),
+    /// The binary of the examples prints each page, and the guide gives
+    /// what a check reads besides the pages.
+    Binary(&'a Guide, &'a Examples<'a>),
 }
 
 impl<'a> Pages<'a> {
+    /// Returns the pages that clap renders in the test for each command's
+    /// path and help flag, as a tool that parses with clap alone prints
+    /// them to a pipe. The pages have none of crumbkit's lines and no
+    /// guide, so [`check_path_weights`](crate::check_path_weights) counts
+    /// no output weight with them.
+    ///
+    /// RUST-10: clap's `wrap_help` feature wraps a page at the width of the
+    /// terminal that runs the test, unless the tool fixes the width with
+    /// `Command::term_width`. clap has no public getter for that width, so
+    /// these pages cannot fix it for the tool. A tool with `wrap_help` and
+    /// no fixed width sets one or reads its pages with [`Pages::binary`].
+    #[must_use]
+    pub const fn clap() -> Self {
+        Self {
+            source: Source::Clap,
+        }
+    }
+
     /// Returns the pages that `crumbkit::parse_to` renders with `guide` in
     /// the test, without the line that names a person's aliases.
     #[must_use]
     pub const fn rendered(guide: &'a Guide) -> Self {
         Self {
-            guide,
-            binary: None,
+            source: Source::Rendered(guide),
         }
     }
 
@@ -72,14 +103,16 @@ impl<'a> Pages<'a> {
     #[must_use]
     pub const fn binary(guide: &'a Guide, examples: &'a Examples<'a>) -> Self {
         Self {
-            guide,
-            binary: Some(examples),
+            source: Source::Binary(guide, examples),
         }
     }
 
-    /// Returns the guide.
-    pub(crate) const fn guide(self) -> &'a Guide {
-        self.guide
+    /// Returns the guide, or `None` for clap's pages.
+    pub(crate) const fn guide(self) -> Option<&'a Guide> {
+        match self.source {
+            Source::Clap => None,
+            Source::Rendered(guide) | Source::Binary(guide, _) => Some(guide),
+        }
     }
 }
 
@@ -88,7 +121,11 @@ impl<'a> Pages<'a> {
 /// command it belongs to. It leaves out each hidden command and everything
 /// below it, as help does.
 ///
-/// With [`Pages::binary`], each page is what the binary prints on standard
+/// With [`Pages::clap`], each page is the help that clap's
+/// `Command::try_get_matches_from` returns for the command's path and
+/// `flag`, such as `shelf books list -h`, as plain text without styles,
+/// which is what clap prints to a pipe. Each page parses a clone of
+/// `command`. With [`Pages::binary`], each page is what the binary prints on standard
 /// output for the command's words and `flag`. With [`Pages::rendered`],
 /// each page is what `crumbkit::parse_to` prints for the command's path and
 /// `flag`, such as `shelf books list -h`, with the guide: the plain text that
@@ -109,10 +146,11 @@ pub(crate) fn pages<'a>(
     flag: &str,
     problems: &mut Vec<String>,
 ) -> Vec<(Visit<'a>, String)> {
-    if let Some(examples) = pages.binary {
-        return binary_pages(command, examples, flag, problems);
-    }
-    let guide = pages.guide.without_personal_aliases();
+    let guide = match pages.source {
+        Source::Clap => return clap_pages(command, flag, problems),
+        Source::Binary(_, examples) => return binary_pages(command, examples, flag, problems),
+        Source::Rendered(guide) => guide.without_personal_aliases(),
+    };
     let mut pages = Vec::new();
     for visit in tree::walk_visible(command) {
         let line = format!("{} {flag}", visit.path());
@@ -131,6 +169,28 @@ pub(crate) fn pages<'a>(
             pages.push((visit, String::from_utf8_lossy(&out).into_owned()));
         } else {
             problems.push(format!("{line}: the command line prints no help page"));
+        }
+    }
+    pages
+}
+
+/// Returns the pages that clap renders, as [`pages`] describes.
+fn clap_pages<'a>(
+    command: &'a Command,
+    flag: &str,
+    problems: &mut Vec<String>,
+) -> Vec<(Visit<'a>, String)> {
+    let mut pages = Vec::new();
+    for visit in tree::walk_visible(command) {
+        let line = format!("{} {flag}", visit.path());
+        // clap answers a help flag with an error of the kind `DisplayHelp`
+        // that holds the page, and `StyledStr`'s `Display` leaves out the
+        // styles, as clap does when it prints to a pipe.
+        match command.clone().try_get_matches_from(line.split(' ')) {
+            Err(error) if error.kind() == ErrorKind::DisplayHelp => {
+                pages.push((visit, error.render().to_string()));
+            }
+            _ => problems.push(format!("{line}: the command line prints no help page")),
         }
     }
     pages

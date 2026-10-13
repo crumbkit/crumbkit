@@ -11,6 +11,7 @@ members = [
     "crates/cargo-crumbkit",
     "examples/shelf",
     "examples/reading",
+    "examples/tutorial",
     "benches",
     "xtask",
 ]

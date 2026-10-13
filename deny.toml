@@ -68,6 +68,7 @@ deny = [
         "crumbkit-test",
         "reading",
         "shelf",
+        "tutorial",
         "xtask",
     ], reason = "ADR-0032 keeps clap out of crumbkit-core" },
     { crate = "clap_builder", wrappers = [

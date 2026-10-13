@@ -128,6 +128,42 @@ fn a_command_s_budget_that_names_no_command_or_a_hidden_one_fails_the_check() {
 }
 
 #[test]
+fn help_only_path_budgets_count_only_the_help_pages() {
+    let shelf = shelf();
+    let clap = pages(&shelf, Pages::clap(), "-h", &mut Vec::new());
+    let pages: u64 = clap
+        .iter()
+        .filter(|(visit, _)| ["shelf", "shelf books", "shelf books list"].contains(&visit.path()))
+        .map(|(_, page)| page.len() as u64)
+        .sum();
+    let budget = pages - 1;
+    let leaves = [Budget::new("books list", budget, "A test.")];
+    let budgets = PathBudgets::help_only().nodes(&leaves);
+
+    assert_eq!(
+        panic_message(|| check_path_weights(&shelf, Pages::clap(), &budgets)).unwrap(),
+        format!(
+            "the command tree breaks crumbkit's path weight rules:\n\
+             shelf books list: the path reads {pages} bytes, {pages} of -h pages and 0 of output, over its budget of {budget} bytes"
+        )
+    );
+}
+
+#[test]
+fn help_only_path_budgets_fail_with_a_guide_that_gives_examples() {
+    assert_eq!(
+        panic_message(|| check_path_weights(
+            &shelf(),
+            Pages::rendered(&GUIDE),
+            &PathBudgets::help_only()
+        ))
+        .unwrap(),
+        "the command tree breaks crumbkit's path weight rules:\n\
+         shelf books list: the guide gives the command examples, and `PathBudgets::help_only` reads no example golden files, so the path counts no output; `PathBudgets::new` names their directory"
+    );
+}
+
+#[test]
 fn a_golden_directory_that_is_a_file_fails_the_check() {
     let dir = goldens();
     let file = dir.path().join("shelf-books-list.txt");
