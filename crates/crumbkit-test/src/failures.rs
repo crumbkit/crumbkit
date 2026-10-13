@@ -206,7 +206,8 @@ fn read_document(document: &Value) -> Option<ReadFailure> {
 /// Returns the `fields` of the failure document `document`, each a name and
 /// its value as text, in the order the JSON object keeps them. A string is
 /// its own text, a number or a boolean is written as JSON writes it, and a
-/// field of another type is left out.
+/// null, list or object field is left out, so it fills no placeholder: an
+/// agent cannot pass JSON as one word of a command line (ADR-0053).
 fn fields(document: &Value) -> Vec<(String, String)> {
     let Some(fields) = document.get("fields").and_then(Value::as_object) else {
         return Vec::new();
