@@ -1,1 +1,1 @@
-{"schema":"shelf/books-show/v1","data":[{"id":2,"title":"Frankenstein","author":"Mary Shelley","year":1818}],"failures":[{"code":"shelf::books::not_found","message":"the catalogue has no books 7, 9","recovery":{"kind":"run","call":"shelf books list"}}]}
+{"schema":"shelf/books-show/v1","data":[{"id":2,"title":"Frankenstein","author":"Mary Shelley","year":1818}],"failures":[{"code":"shelf::books::not_found","message":"the catalogue has no books 7, 9","fields":{"books":[7,9]},"recovery":{"kind":"run","call":"shelf books list"}}]}

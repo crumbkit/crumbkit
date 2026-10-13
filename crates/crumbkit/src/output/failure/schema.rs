@@ -45,10 +45,10 @@ impl JsonSchema for PreparedFailure<'_> {
                     "type": "string",
                 },
                 "fields": {
-                    "description": "The values at fault, in the order the failure gives them, each under a name of one or more lowercase ASCII letters, digits and underscores. It is present only when the failure names at least one.",
+                    "description": "The values at fault, in the order the failure gives them, each under a name of one or more lowercase ASCII letters, digits and underscores. A value is a string, an integer, a boolean, null, or an array or object of such values, and an object holds each key once. It is present only when the failure names at least one.",
                     "type": "object",
                     "propertyNames": { "pattern": "^[a-z0-9_]+$" },
-                    "additionalProperties": { "type": ["string", "integer", "boolean"] },
+                    "additionalProperties": field_value_schema(),
                 },
                 "labels": labels_schema(),
                 "related": related_schema(),
@@ -145,6 +145,21 @@ fn step_schema(description: &str) -> Schema {
                 "required": ["kind", "reason"],
             },
         ],
+    })
+}
+
+/// Describes one value under `fields`: a string, an integer, a boolean,
+/// null, or an array or object whose values have this schema too. The
+/// schema has the `$anchor` `field_value`, and its `items` and
+/// `additionalProperties` refer to it, because a value nests, as
+/// `related_schema` does for related diagnostics. `integer` admits no
+/// float at any depth (ADR-0007).
+fn field_value_schema() -> Schema {
+    json_schema!({
+        "$anchor": "field_value",
+        "type": ["string", "integer", "boolean", "null", "array", "object"],
+        "items": { "$ref": "#field_value" },
+        "additionalProperties": { "$ref": "#field_value" },
     })
 }
 

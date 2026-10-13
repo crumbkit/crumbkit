@@ -392,7 +392,8 @@ impl<'a> Recoveries<'a> {
 ///    with capitals lowered and `-` read as `_`, so the field `book_id`
 ///    fills `<BOOK-ID>`. The fields are those that the form or reader
 ///    returns with the failure, or the `fields` of crumbkit's failure
-///    document, where an integer or a boolean is written as text;
+///    document, where an integer or a boolean is written as text and a
+///    null, list or object field fills no placeholder;
 /// 3. the value of [`Recoveries::values`] whose name matches it exactly.
 ///
 /// A step that exits with code 0 ends its branch, and so do a `retry`, a `hint` and

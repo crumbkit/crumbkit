@@ -45,24 +45,40 @@ fn signed_integers_become_integer_values_and_unsigned_ones_unsigned_values() {
 }
 
 #[test]
-fn each_value_serializes_as_its_json_scalar() {
+fn each_value_serializes_as_its_json_value() {
     let values = [
         FieldValue::from("seven"),
         FieldValue::from(-7_i64),
         FieldValue::from(7_u64),
         FieldValue::from(false),
+        FieldValue::Null,
+        FieldValue::list([FieldValue::from(1_u8), FieldValue::list(["a", "b"])]),
+        FieldValue::object([
+            ("zeta", FieldValue::from(1_u8)),
+            ("alpha", FieldValue::Null),
+        ]),
     ];
 
     assert_eq!(
         serde_json::to_string(&values).unwrap(),
-        r#"["seven",-7,7,false]"#
+        r#"["seven",-7,7,false,null,[1,["a","b"]],{"zeta":1,"alpha":null}]"#
     );
+}
+
+#[test]
+fn a_missing_option_becomes_null_and_a_present_one_becomes_its_value() {
+    assert_eq!(FieldValue::from(None::<u8>), FieldValue::Null);
+    assert_eq!(FieldValue::from(Some("x")), FieldValue::from("x"));
 }
 
 #[test]
 fn an_owned_value_keeps_the_borrowed_value_it_came_from() {
     let title = "Frankenstein".to_owned();
-    let borrowed = FieldValue::from(title.as_str());
+    let key = "title".to_owned();
+    let borrowed = FieldValue::list([FieldValue::object([(
+        key.as_str(),
+        FieldValue::from(title.as_str()),
+    )])]);
 
     let owned: FieldValue<'static> = borrowed.clone().into_owned();
 

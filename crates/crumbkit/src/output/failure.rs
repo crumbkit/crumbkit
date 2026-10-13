@@ -214,8 +214,10 @@ impl<'a> PreparedFailure<'a> {
 }
 
 /// Returns the fields of `failure` whose names follow the rule and come
-/// first, and in a debug build writes a warning to `err` for each other
-/// field, which names `code`.
+/// first, each without the entries of its objects whose keys repeat an
+/// earlier key of their object. In a debug build it writes a warning to
+/// `err` for each field and each key that it leaves out, which names
+/// `code`.
 ///
 /// A failure without fields returns an empty `Vec`, which does not allocate.
 fn read_fields(
@@ -230,7 +232,22 @@ fn read_fields(
         } else if fields.iter().any(|(name, _)| name == field.name()) {
             "an earlier field has that name"
         } else {
-            fields.push((field.name().to_owned(), field.value().clone().into_owned()));
+            let mut value = field.value().clone().into_owned();
+            let mut repeated = Vec::new();
+            drop_repeated_keys(&mut value, &mut repeated);
+            if cfg!(debug_assertions) {
+                for key in repeated {
+                    // Standard error is the last place to report anything, so
+                    // a failure to write there goes unreported.
+                    let _ = writeln!(
+                        err,
+                        "warning: crumbkit left out the key {key:?} of an object in the field {:?} of the failure {}, because an earlier key of that object has that name",
+                        field.name(),
+                        escape_controls(code)
+                    );
+                }
+            }
+            fields.push((field.name().to_owned(), value));
             continue;
         };
         if cfg!(debug_assertions) {
@@ -245,6 +262,38 @@ fn read_fields(
         }
     }
     fields
+}
+
+/// Removes from each object inside `value` every entry whose key an
+/// earlier entry of the same object has, and adds each removed key to
+/// `repeated`, so the JSON object holds each key once (RFC 8259). A value
+/// without objects is left unchanged and allocates nothing.
+fn drop_repeated_keys(value: &mut FieldValue<'static>, repeated: &mut Vec<String>) {
+    match value {
+        FieldValue::List(items) => {
+            for item in items {
+                drop_repeated_keys(item, repeated);
+            }
+        }
+        FieldValue::Object(entries) => {
+            let mut kept: Vec<(Cow<'static, str>, FieldValue<'static>)> =
+                Vec::with_capacity(entries.len());
+            for (key, mut value) in std::mem::take(entries) {
+                if kept.iter().any(|(earlier, _)| *earlier == key) {
+                    repeated.push(key.into_owned());
+                } else {
+                    drop_repeated_keys(&mut value, repeated);
+                    kept.push((key, value));
+                }
+            }
+            *entries = kept;
+        }
+        // A scalar or null holds no object. `FieldValue` is
+        // `#[non_exhaustive]` and lives in crumbkit-core, which releases
+        // with crumbkit (ADR-0012), so a new variant that holds values gets
+        // its own arm in the release that adds it.
+        _ => {}
+    }
 }
 
 impl Step {

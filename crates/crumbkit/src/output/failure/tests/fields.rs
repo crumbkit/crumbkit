@@ -36,6 +36,31 @@ fn json_holds_the_fields_after_the_cause_as_one_object_in_their_order() {
 }
 
 #[test]
+fn json_holds_a_list_an_object_and_null_as_json_values() {
+    let failure = with_fields(vec![
+        ("moons", FieldValue::list(["Phobos", "Deimos"])),
+        (
+            "orbit",
+            FieldValue::object([
+                ("days", FieldValue::from(687_u16)),
+                ("known", FieldValue::Null),
+            ]),
+        ),
+        ("found", FieldValue::Null),
+    ]);
+
+    let finished = fail_with(&["--json"], failure);
+
+    assert_eq!(
+        finished.out,
+        concat!(
+            r#"{"schema":"crumbkit/failure/v1","code":"solar::planets::not_found","message":"the solar system has no planet Vulcan","fields":{"moons":["Phobos","Deimos"],"orbit":{"days":687,"known":null},"found":null},"recovery":{"kind":"run","call":"tool list"}}"#,
+            "\n"
+        )
+    );
+}
+
+#[test]
 fn text_output_prints_no_line_for_the_fields() {
     let finished = fail_with(&[], with_fields(vec![("planet", "Vulcan".into())]));
 
@@ -89,5 +114,27 @@ fn a_field_whose_name_an_earlier_field_has_is_left_out_with_a_warning_in_a_debug
             "  help:  run `tool list`\n",
             "  code:  solar::planets::not_found\n",
         )
+    );
+}
+
+// A release build leaves the entry out without the warning.
+#[cfg(debug_assertions)]
+#[test]
+fn a_key_that_repeats_an_earlier_key_of_its_object_is_left_out_with_a_warning_in_a_debug_build() {
+    let orbit = FieldValue::object([("days", 687_u16), ("moons", 2), ("days", 1)]);
+    let failure = with_fields(vec![("orbit", FieldValue::list([orbit]))]);
+
+    let finished = fail_with(&["--json"], failure);
+
+    assert_eq!(
+        finished.out,
+        concat!(
+            r#"{"schema":"crumbkit/failure/v1","code":"solar::planets::not_found","message":"the solar system has no planet Vulcan","fields":{"orbit":[{"days":687,"moons":2}]},"recovery":{"kind":"run","call":"tool list"}}"#,
+            "\n"
+        )
+    );
+    assert_eq!(
+        finished.err,
+        "warning: crumbkit left out the key \"days\" of an object in the field \"orbit\" of the failure solar::planets::not_found, because an earlier key of that object has that name\n"
     );
 }

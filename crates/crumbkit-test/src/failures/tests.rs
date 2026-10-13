@@ -21,7 +21,7 @@ impl FailureReader for ErrReader {
 
 #[test]
 fn crumbkit_s_document_gives_each_failure_with_its_code_steps_and_fields() {
-    let stdout = br#"{"schema":"crumbkit/failure/v1","code":"a","message":"m","fields":{"path":"/a","id":7,"kept":true,"tags":["x"]},"recovery":{"kind":"run","call":"tool books list"},"alternatives":[{"kind":"retry"}]}"#;
+    let stdout = br#"{"schema":"crumbkit/failure/v1","code":"a","message":"m","fields":{"path":"/a","id":7,"kept":true,"tags":["x"],"found":null,"lines":{"a":1}},"recovery":{"kind":"run","call":"tool books list"},"alternatives":[{"kind":"retry"}]}"#;
 
     let read = read_failures(None, stdout, b"");
 

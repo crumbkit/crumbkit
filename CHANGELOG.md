@@ -371,6 +371,9 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   words, paths, input, values and variables that a test gets at run time,
   reuses its settings across lines with `line`, and gives a `Failing`, a
   `Twin` or an `Allow::untwinned` opt-out ([ADR-0002]).
+- crumbkit: a failure field can hold null, a list or an object, built
+  with `FieldValue::list`, `FieldValue::object` or an `Option`, and the
+  failure document holds it as a JSON value ([ADR-0007]).
 
 ### Changed
 
