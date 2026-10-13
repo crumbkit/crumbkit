@@ -55,8 +55,10 @@ const SCHEMA: &str = "crumbkit/opt-outs/v1";
 /// declarations that change what a run prints and keep crumbkit's
 /// behaviour, so they have no reason and no cost (ADR-0056). They are the
 /// guide's failure form, each code rename, each exit that lists one of
-/// crumbkit's codes or its rename, and each leaf that passes on a
-/// program's exit code. The report spells codes with colons. The section
+/// crumbkit's codes or its rename, each document whose name is not its
+/// command's path, each leaf that passes on a program's exit code, and
+/// each leaf that declares refusal alternatives. The report spells codes
+/// with colons. The section
 /// is left out when the tool declares nothing.
 /// A reviewer reads a change to a tool's opt-outs as a change to these two
 /// files, and an agent reads `opt-outs.json` to learn where the tool

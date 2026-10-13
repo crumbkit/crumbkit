@@ -6,7 +6,7 @@ use crumbkit::codes::CLI_USAGE;
 use crumbkit::form::{FailureForm, PreparedFailure};
 use crumbkit::help::{Exit, Guide, Leaf, Rename};
 use crumbkit::schemas::SCHEMAS_LIST;
-use crumbkit::{Code, Document, Prose};
+use crumbkit::{Call, Code, Document, Prose};
 use schemars::{Schema, json_schema};
 use serde_json::{Value, json};
 use snapbox::assert::Action;
@@ -32,16 +32,22 @@ impl FailureForm for ErrorForm {
     }
 }
 
+/// The call a refused `books show` command line offers instead.
+const VERSION_CALL: &[Call] = &[Call::new(&["version"])];
+
 /// The tool's code for crumbkit's usage code.
 const USAGE: Code = Code::new("shelf", "cli", "usage");
 
 /// A guide that declares a failure form, a rename, an exit for the renamed
-/// usage code and a leaf that passes on its program's exit code.
+/// usage code and a leaf that passes on its program's exit code and offers
+/// its own alternatives when its command line is refused.
 const DECLARING: Guide = Guide::new()
     .failure_form(&ErrorForm)
     .codes(&[Rename::new(&CLI_USAGE, &USAGE)])
     .exits(&[Exit::new(64, "The command line was refused.").failures(&[&USAGE])])
-    .leaves(&[Leaf::new(&["books", "show"]).passes_on_exit("the pager")]);
+    .leaves(&[Leaf::new(&["books", "show"])
+        .passes_on_exit("the pager")
+        .refusal_alternatives(VERSION_CALL)]);
 
 #[test]
 fn the_report_lists_declarations_under_customisations_without_a_reason_or_a_cost() {
@@ -53,7 +59,7 @@ fn the_report_lists_declarations_under_customisations_without_a_reason_or_a_cost
         read(&dir, "opt-outs.txt"),
         "shelf has no opt-outs from crumbkit's conventions.\n\
          \n\
-         shelf declares 4 customisations, which need no reason.\n\
+         shelf declares 5 customisations, which need no reason.\n\
          \n\
          failure-form: every run of shelf\n\
          \x20 Declares: Failures print as shelf/error/v2 in place of crumbkit/failure/v1.\n\
@@ -65,7 +71,10 @@ fn the_report_lists_declarations_under_customisations_without_a_reason_or_a_cost
          \x20 Declares: A failure with shelf::cli::usage exits with 64, where crumbkit's default is 2.\n\
          \n\
          passes-on-exit: shelf books show\n\
-         \x20 Declares: The command exits with the exit code of the pager.\n"
+         \x20 Declares: The command exits with the exit code of the pager.\n\
+         \n\
+         refusal-alternatives: shelf books show\n\
+         \x20 Declares: A refused command line for this command also offers the tool's own alternatives.\n"
     );
     let report: Value = serde_json::from_str(&read(&dir, "opt-outs.json")).unwrap();
     assert_eq!(report["data"], json!([]));
@@ -77,7 +86,7 @@ fn the_report_lists_declarations_under_customisations_without_a_reason_or_a_cost
             "declares": "The command exits with the exit code of the pager.",
         })
     );
-    assert_eq!(report["customisations"].as_array().unwrap().len(), 4);
+    assert_eq!(report["customisations"].as_array().unwrap().len(), 5);
 }
 
 #[test]

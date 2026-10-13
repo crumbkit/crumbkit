@@ -26,11 +26,13 @@ pub(super) struct Customisation {
 /// `command`, in this order: the failure form, each code rename, each exit
 /// that lists one of crumbkit's codes or the tool's rename of it, and then
 /// for each leaf in guide order its document's name when the leaf's path
-/// gives another, and the program whose exit code it passes on. A
-/// declaration that a later change adds, such as a completion variable or
-/// a leaf's refusal alternatives, joins this list beside the declarations
-/// of the same scope: a guide setting before the leaves, and a leaf's
-/// declaration after its passes-on-exit entry.
+/// gives another, the program whose exit code it passes on, and whether it
+/// declares refusal alternatives. A declaration that a later change adds
+/// joins this list beside the declarations of the same scope: a guide
+/// setting before the leaves, and a leaf's declaration after its
+/// refusal-alternatives entry. The completion variable is not listed,
+/// because `complete_with` sets it for the process and the guide does not
+/// hold it.
 pub(super) fn customisations(command: &Command, guide: &Guide) -> Vec<Customisation> {
     let every_run = format!("every run of {}", command.get_name());
     let mut list = Vec::new();
@@ -90,6 +92,17 @@ pub(super) fn customisations(command: &Command, guide: &Guide) -> Vec<Customisat
                 declaration: "passes-on-exit",
                 applies_to: command_line(command, &leaf.path().join(" ")),
                 declares: format!("The command exits with the exit code of {program}."),
+            });
+        }
+        // The report states that the leaf declares refusal alternatives and
+        // leaves out the calls, so this getter is the only line that reads them.
+        if !leaf.get_refusal_alternatives().is_empty() {
+            list.push(Customisation {
+                declaration: "refusal-alternatives",
+                applies_to: command_line(command, &leaf.path().join(" ")),
+                declares: "A refused command line for this command also offers the tool's own \
+                           alternatives."
+                    .to_owned(),
             });
         }
     }

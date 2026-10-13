@@ -420,9 +420,9 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ### Changed
 
 - crumbkit-test: [`check_opt_outs`] lists the failure form, code renames,
-  exits of crumbkit's codes and passes-on-exit leaves under a customisations
-  section without reasons, as a `customisations` array in JSON, and leaves
-  the section out when empty ([ADR-0056]).
+  exits of crumbkit's codes, passes-on-exit leaves and refusal alternatives
+  under a customisations section without reasons, as a `customisations`
+  JSON array, and leaves the section out when empty ([ADR-0056]).
 - crumbkit: [`finish`], batches and [`Streaming`] exit with the code that
   the guide declares for the run's first failure, and the usage log and
   the `crumbkit.finish` span record that number ([ADR-0037]).
