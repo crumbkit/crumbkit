@@ -513,6 +513,9 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit-test: [`check_twin`] refuses a twin whose admitted line adds a
   help or version word, or runs another leaf of the guide than the refused
   line ([ADR-0005]).
+- crumbkit-test: a check's run whose tool exits while a process it started
+  keeps standard output or standard error open ends with a problem at the
+  run's timeout, and the check no longer waits for that process ([ADR-0005]).
 ### Removed
 
 - crumbkit: `help::split` is gone. [`check_recoveries`] reads a recovery's
@@ -591,6 +594,8 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   ([ADR-0021]).
 - crumbkit-test: [`check_recoveries`] adds `--json` before a `--` word, so
   the tool reads it as a flag and not as a positional value ([ADR-0053]).
+- crumbkit-test: a check kills a run whose exit it cannot learn before it
+  reports the error, so the run does not outlive the check ([ADR-0005]).
 
 <!-- Each label below points at the source file that holds the item's
 rustdoc, or at its decision record. -->

@@ -5,7 +5,8 @@ use std::fs;
 use std::io::{self, Read, Write};
 use std::path::{Path, PathBuf};
 use std::process::{Child, Command, ExitStatus, Output, Stdio};
-use std::thread::{self, JoinHandle};
+use std::sync::mpsc::{self, Receiver};
+use std::thread;
 use std::time::{Duration, Instant};
 
 use serde_json::Value;
@@ -219,7 +220,10 @@ pub(crate) fn stopped(timeout: Duration) -> String {
 /// standard input and then closes it, and two threads read standard output
 /// and standard error while the run goes on, so a run that never reads more
 /// input than a pipe holds, or prints more than a pipe holds, does not block
-/// the check.
+/// the check. After the run exits, the check waits for the two readers
+/// until `timeout` ends. A process that the run started and that still
+/// holds standard output or standard error open then makes the run a
+/// problem, so the check does not wait for that process to end.
 pub(crate) fn run(
     binary: &str,
     env: &[(&str, &str)],
@@ -268,10 +272,18 @@ pub(crate) fn run(
     let Some(status) = waited else {
         return Ok(Ran::Stopped);
     };
+    let held = || {
+        format!(
+            "the run exited, and a process that it started still held its standard output or standard error open when its timeout of {} seconds ended",
+            timeout.as_secs_f64()
+        )
+    };
+    let stdout = collect(stdout, started, timeout).ok_or_else(held)?;
+    let stderr = collect(stderr, started, timeout).ok_or_else(held)?;
     Ok(Ran::Exited(Output {
         status,
-        stdout: collect(stdout),
-        stderr: collect(stderr),
+        stdout,
+        stderr,
     }))
 }
 
@@ -281,15 +293,33 @@ const LONGEST_PAUSE: Duration = Duration::from_millis(10);
 /// Waits for `child` to exit and returns its exit status, or kills it and
 /// returns `None` when it has not exited `timeout` after `started`. It checks after
 /// 1 ms and then doubles the pause up to [`LONGEST_PAUSE`], so a short run
-/// waits little and a long run costs few checks.
+/// waits little and a long run costs few checks. When the check cannot
+/// learn whether `child` exited, it kills `child` before it returns the
+/// error, so no run outlives the check.
 fn wait(child: &mut Child, started: Instant, timeout: Duration) -> io::Result<Option<ExitStatus>> {
     let mut pause = Duration::from_millis(1);
     loop {
-        if let Some(status) = child.try_wait()? {
+        let exited = match child.try_wait() {
+            Ok(exited) => exited,
+            Err(error) => {
+                // The run may already have exited, so a failed kill is not
+                // a second error.
+                let _ = child.kill();
+                let _ = child.wait();
+                return Err(error);
+            }
+        };
+        if let Some(status) = exited {
             return Ok(Some(status));
         }
         let left = timeout.saturating_sub(started.elapsed());
         if left.is_zero() {
+            // RUST-10: the kill stops the run's own process only. A process
+            // that the run started survives the kill and can keep running
+            // after the check ends. Ending those processes too needs a
+            // signal sent to the run's process group on Unix, or a job
+            // object on Windows. The standard library offers neither, so a
+            // check that must end them adds a crate that does.
             child.kill()?;
             child.wait()?;
             return Ok(None);
@@ -309,22 +339,37 @@ fn write_all(mut pipe: impl Write + Send + 'static, bytes: Vec<u8>) {
     });
 }
 
-/// Reads everything from `pipe` on a new thread, and returns the thread.
-fn read_all(mut pipe: impl Read + Send + 'static) -> JoinHandle<Vec<u8>> {
+/// Reads everything from `pipe` on a new thread, which sends the bytes on
+/// the returned channel when the pipe closes.
+fn read_all(mut pipe: impl Read + Send + 'static) -> Receiver<Vec<u8>> {
+    let (sender, receiver) = mpsc::channel();
     thread::spawn(move || {
         let mut bytes = Vec::new();
         // A read that fails keeps the bytes read until then.
         let _ = pipe.read_to_end(&mut bytes);
-        bytes
-    })
+        // The check stops listening when the timeout ends, so a failed send
+        // is not a problem.
+        let _ = sender.send(bytes);
+    });
+    receiver
 }
 
-/// Returns the bytes that the thread `reader` read, or none when there is
-/// no thread or it panicked.
-fn collect(reader: Option<JoinHandle<Vec<u8>>>) -> Vec<u8> {
-    reader
-        .and_then(|reader| reader.join().ok())
-        .unwrap_or_default()
+/// Returns the bytes that `reader` read, or none when there is no reader or
+/// its thread panicked. It returns `None` when the pipe is still open
+/// `timeout` after `started`.
+fn collect(
+    reader: Option<Receiver<Vec<u8>>>,
+    started: Instant,
+    timeout: Duration,
+) -> Option<Vec<u8>> {
+    let Some(reader) = reader else {
+        return Some(Vec::new());
+    };
+    match reader.recv_timeout(timeout.saturating_sub(started.elapsed())) {
+        Ok(bytes) => Some(bytes),
+        Err(mpsc::RecvTimeoutError::Disconnected) => Some(Vec::new()),
+        Err(mpsc::RecvTimeoutError::Timeout) => None,
+    }
 }
 
 /// Returns the note that follows a command line whose run sets or removes
