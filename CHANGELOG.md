@@ -419,6 +419,10 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- crumbkit-test: [`check_opt_outs`] lists the failure form, code renames,
+  exits of crumbkit's codes and passes-on-exit leaves under a customisations
+  section without reasons, as a `customisations` array in JSON, and leaves
+  the section out when empty ([ADR-0056]).
 - crumbkit: [`finish`], batches and [`Streaming`] exit with the code that
   the guide declares for the run's first failure, and the usage log and
   the `crumbkit.finish` span record that number ([ADR-0037]).
@@ -617,6 +621,9 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Removed
 
+- crumbkit-test: `Rule::FailureForm` is gone. A failure form is a
+  declaration, and [`check_document_ids`] no longer asks for an opt-out
+  with a reason ([ADR-0056]).
 - crumbkit: `help::split` is gone. [`check_recoveries`] reads a recovery's
   words with its own private reading, which also reads double-quoted words
   and refuses a `$` or a backtick between double quotes ([ADR-0053]).
