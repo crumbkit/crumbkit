@@ -16,8 +16,11 @@ use crate::budget::Departure;
 use crate::goldens::compare;
 use crate::{Budgets, PathBudgets, tree};
 
+mod customisations;
 #[cfg(test)]
 mod tests;
+
+use self::customisations::{Customisation, customisations};
 
 /// The id of the JSON report's schema, which a reader checks before it
 /// reads the entries.
@@ -48,6 +51,15 @@ const SCHEMA: &str = "crumbkit/opt-outs/v1";
 /// When the guide turns terminal detection off with
 /// `Guide::without_terminal_detection`, the report then lists it under the
 /// rule `terminal-detection/off`, with its reason and its costs (ADR-0049).
+/// After the opt-outs, the report lists the tool's customisations: the
+/// declarations that change what a run prints and keep crumbkit's
+/// behaviour, so they have no reason and no cost (ADR-0056). They are the
+/// guide's failure form, each code rename, each exit that lists one of
+/// crumbkit's codes or its rename, each document whose name is not its
+/// command's path, each leaf that passes on a program's exit code, and
+/// each leaf that declares refusal alternatives. The report spells codes
+/// with colons. The section
+/// is left out when the tool declares nothing.
 /// A reviewer reads a change to a tool's opt-outs as a change to these two
 /// files, and an agent reads `opt-outs.json` to learn where the tool
 /// departs from crumbkit's conventions.
@@ -66,7 +78,9 @@ const SCHEMA: &str = "crumbkit/opt-outs/v1";
 /// `crumbkit/opt-outs/v1` under `schema`. Each entry has the fields `rule`,
 /// `applies_to`, `reason`, `costs` and `budget`, which is `null` for an
 /// opt-out and holds `bytes`, `default`, `extra_bytes` and `extra_tokens`
-/// for a budget.
+/// for a budget. When the tool declares a customisation, the JSON file
+/// also holds a `customisations` array, whose entries have the fields
+/// `declaration`, `applies_to` and `declares`.
 ///
 /// The check compares each file with snapbox, as other golden files are
 /// compared (ADR-0004). With the environment variable `SNAPSHOTS=overwrite`,
@@ -181,12 +195,13 @@ fn check(
             budget: None,
         });
     }
+    let declared = customisations(command, guide);
     let line = command.get_name();
     compare(
         assert,
         line,
         "opt-out report",
-        text(line, &entries),
+        text(line, &entries, &declared),
         &dir.join("opt-outs.txt"),
         &mut problems,
     );
@@ -194,7 +209,7 @@ fn check(
         assert,
         line,
         "opt-out report",
-        json(&entries),
+        json(&entries, &declared),
         &dir.join("opt-outs.json"),
         &mut problems,
     );
@@ -277,17 +292,21 @@ struct BudgetEntry {
     extra_tokens: u64,
 }
 
-/// The JSON report: the schema id and the entries.
+/// The JSON report: the schema id, the entries and the declarations.
 #[derive(Serialize)]
 struct Report<'a> {
     /// The id of the report's schema.
     schema: &'static str,
     /// The opt-outs, in the tool's order.
     data: &'a [Entry],
+    /// The declarations, which the report leaves out when there are none.
+    #[serde(skip_serializing_if = "<[Customisation]>::is_empty")]
+    customisations: &'a [Customisation],
 }
 
-/// Returns the text report of `entries` for the tool `tool`.
-fn text(tool: &str, entries: &[Entry]) -> String {
+/// Returns the text report of `entries` and of the declarations `declared`
+/// for the tool `tool`.
+fn text(tool: &str, entries: &[Entry], declared: &[Customisation]) -> String {
     let mut text = match entries.len() {
         0 => format!("{tool} has no opt-outs from crumbkit's conventions.\n"),
         1 => format!("{tool} has 1 opt-out from crumbkit's conventions.\n"),
@@ -308,15 +327,38 @@ fn text(tool: &str, entries: &[Entry]) -> String {
             let _ = writeln!(text, "  Cost: {cost}");
         }
     }
+    match declared.len() {
+        0 => {}
+        1 => {
+            let _ = writeln!(
+                text,
+                "\n{tool} declares 1 customisation, which needs no reason."
+            );
+        }
+        count => {
+            let _ = writeln!(
+                text,
+                "\n{tool} declares {count} customisations, which need no reason."
+            );
+        }
+    }
+    for customisation in declared {
+        let _ = writeln!(
+            text,
+            "\n{}: {}\n  Declares: {}",
+            customisation.declaration, customisation.applies_to, customisation.declares
+        );
+    }
     text
 }
 
-/// Returns the JSON report of `entries`, pretty-printed and ending with a
-/// line break.
-fn json(entries: &[Entry]) -> String {
+/// Returns the JSON report of `entries` and of the declarations
+/// `declared`, pretty-printed and ending with a line break.
+fn json(entries: &[Entry], declared: &[Customisation]) -> String {
     let report = Report {
         schema: SCHEMA,
         data: entries,
+        customisations: declared,
     };
     // Serializing strings and lists of strings cannot fail, and an empty
     // text would show as a differing file.
