@@ -494,7 +494,7 @@ fn check(
     known.extend(
         crumbkit::codes::ALL
             .iter()
-            .map(|&code| spelling.spell(code)),
+            .map(|&code| spelling.spell(guide.printed(code))),
     );
     // crumbkit's add-on crates, such as crumbkit-aliases, own codes in the
     // `crumbkit` component that `crumbkit::codes::ALL` does not list, so
@@ -520,14 +520,14 @@ fn check(
         declared: declared.iter().map(|(text, _)| text.clone()).collect(),
         known,
         components,
-        usage: spelling.spell(&crumbkit::codes::CLI_USAGE),
+        usage: spelling.spell(guide.printed(&crumbkit::codes::CLI_USAGE)),
         allowances,
         problems: Vec::new(),
         report: String::new(),
         provoked: Vec::new(),
         skipped: 0,
         reader,
-        exits: guide.get_exits(),
+        guide,
         stopped: None,
     };
     for start in recoveries.starts {

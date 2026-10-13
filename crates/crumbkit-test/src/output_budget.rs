@@ -35,7 +35,9 @@ const VARIABLE: &str = "CRUMBKIT_OUTPUT_BUDGET";
 ///   at the budget;
 /// - it exits with code 0 and prints one document whose `data` is one
 ///   object, which a document that always prints its first answer does;
-/// - it exits with code 1 and its last JSON document, on one line or
+/// - it exits with the code that the guide gives the over-budget failure,
+///   which is 1 unless an [`Exit`](crumbkit::help::Exit) lists the code,
+///   and its last JSON document, on one line or
 ///   indented, is a failure document, or a document whose last entry of
 ///   `failures` is one, with the field
 ///   `budget` set to the budget, or, for a document without the envelope,
@@ -89,6 +91,7 @@ fn check(
     timeout: Duration,
 ) -> Vec<String> {
     let tool = command.get_name();
+    let failed = guide.failure_exit(&crumbkit::codes::OUTPUT_OVER_BUDGET);
     let mut problems = Vec::new();
     if let Some(problem) = setup_problem(examples) {
         problems.push(problem);
@@ -148,7 +151,7 @@ fn check(
                         stdout: &String::from_utf8_lossy(&output.stdout),
                         stderr: &String::from_utf8_lossy(&output.stderr),
                     };
-                    if let Some(problem) = judge(&ran, budget) {
+                    if let Some(problem) = judge(&ran, budget, failed) {
                         problems.push(format!("{line}: {problem}"));
                     }
                 }
@@ -194,9 +197,9 @@ pub(crate) struct Ran<'a> {
 }
 
 /// Returns the problem of `ran`, a run whose output budget was `budget`
-/// bytes, or `None` when it keeps the contract that
-/// [`check_output_budget`] describes.
-pub(crate) fn judge(ran: &Ran<'_>, budget: usize) -> Option<String> {
+/// bytes and whose over-budget failure exits with `failed`, or `None` when
+/// it keeps the contract that [`check_output_budget`] describes.
+pub(crate) fn judge(ran: &Ran<'_>, budget: usize, failed: u8) -> Option<String> {
     let documents = runs::documents(ran.stdout);
     let printed = ran.stdout.len();
     let names_budget = ran
@@ -211,7 +214,7 @@ pub(crate) fn judge(ran: &Ran<'_>, budget: usize) -> Option<String> {
                 matches!(documents.as_slice(), [document] if document["data"].is_object());
             (!one_row).then(|| {
                 format!(
-                    "with an output budget of {budget} bytes, the run printed {printed} bytes and exited with code 0, and a run past its budget prints a single answer or fails with exit code 1"
+                    "with an output budget of {budget} bytes, the run printed {printed} bytes and exited with code 0, and a run past its budget prints a single answer or fails with exit code {failed}"
                 )
             })
         }
@@ -225,22 +228,22 @@ pub(crate) fn judge(ran: &Ran<'_>, budget: usize) -> Option<String> {
                 )
             })
         }
-        Some(1) => {
-            let failed = documents.last().is_some_and(|last| {
+        Some(code) if code == i32::from(failed) => {
+            let over = documents.last().is_some_and(|last| {
                 last["fields"]["budget"] == budget
                     || last["failures"]
                         .as_array()
                         .and_then(|failures| failures.last())
                         .is_some_and(|failure| failure["fields"]["budget"] == budget)
             });
-            (!failed && !names_budget).then(|| {
+            (!over && !names_budget).then(|| {
                 format!(
-                    "with an output budget of {budget} bytes, the run exited with code 1 without the over-budget failure, whose field `budget` names the budget"
+                    "with an output budget of {budget} bytes, the run exited with code {failed} without the over-budget failure, whose field `budget` names the budget"
                 )
             })
         }
         code => Some(format!(
-            "with an output budget of {budget} bytes, the run ended with {}, and a run past its budget exits with code 0 or 1",
+            "with an output budget of {budget} bytes, the run ended with {}, and a run past its budget exits with code 0 or {failed}",
             code.map_or_else(|| "a signal".to_owned(), |code| format!("exit code {code}"))
         )),
     }

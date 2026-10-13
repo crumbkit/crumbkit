@@ -1,7 +1,7 @@
 //! Tests for the exit codes that the twin checks compare with the exits
 //! that the guide declares for failure codes (ADR-0037).
 
-use crumbkit::help::{Exit, Guide};
+use crumbkit::help::{Exit, Guide, Rename};
 use crumbkit::{Code, Spelling};
 
 use super::tree;
@@ -23,7 +23,8 @@ const GUIDE: Guide =
 /// The script's answers: `books get 1` fails with `TIMED_OUT` and code
 /// 124, `books get 2` fails with `TIMED_OUT` and code 1, `books show 7`
 /// fails with `NOT_FOUND` and code 124, `books show 8` fails with
-/// `NOT_FOUND` and code 1, and `books get 3` and `books show 2` exit with
+/// `NOT_FOUND` and code 1, `books get 9` fails with `tool::cli::usage`
+/// and code 64, and `books get 3` and `books show 2` exit with
 /// code 0, with or without `--json` at the end.
 const SCRIPT: &str = r#"#!/bin/sh
 line="$*"
@@ -32,6 +33,7 @@ case "${line% --json}" in
   'books get 2') printf 'error: slow\n  code:  tool::books::timed_out\n' >&2; exit 1;;
   'books show 7') printf 'error: no book 7\n  code:  tool::books::not_found\n' >&2; exit 124;;
   'books show 8') printf 'error: no book 8\n  code:  tool::books::not_found\n' >&2; exit 1;;
+  'books get 9') printf 'error: refused\n  code:  tool::cli::usage\n' >&2; exit 64;;
   'books get 3'|'books show 2') echo shown; exit 0;;
   *) echo "unexpected: $*" >&2; exit 3;;
 esac
@@ -109,5 +111,36 @@ fn a_failure_code_that_an_exit_lists_and_no_codes_list_holds_fails_check_twins()
         panic_message(|| check_twins(&tree(), &LISTING, &twins)).unwrap(),
         "the tool's twins break crumbkit's twin rule:\n\
          tool::books::gone: the guide's exit code 3 lists the failure code, and no CODES list holds it"
+    );
+}
+
+#[test]
+fn a_twin_that_refuses_a_renamed_crumbkit_code_passes_when_the_tool_prints_its_own_code_and_exit() {
+    const USAGE: Code = Code::new("tool", "cli", "usage");
+    const RENAMING: Guide = Guide::new()
+        .codes(&[Rename::new(&crumbkit::codes::CLI_USAGE, &USAGE)])
+        .exits(&[
+            Exit::new(124, "Slow.").failures(&[&TIMED_OUT]),
+            Exit::new(64, "Refused.").failures(&[&USAGE]),
+        ]);
+    const CODES: &[&[&Code]] = &[&[&TIMED_OUT]];
+    const PAIRS: &[Twin<'_>] = &[
+        Twin::new(
+            Failing::new(&TIMED_OUT, &["books", "get", "1"]),
+            &["books", "get", "3"],
+        ),
+        Twin::new(
+            Failing::new(&crumbkit::codes::CLI_USAGE, &["books", "get", "9"]),
+            &["books", "get", "3"],
+        ),
+    ];
+    let dir = TempDir::new("twins-exits-renamed").unwrap();
+    dir.write_script("tool", SCRIPT);
+    let path = dir.path().join("tool").display().to_string();
+    let twins = Twins::new(Examples::new(&path, ""), Spelling::COLONS, CODES).pairs(PAIRS);
+
+    assert_eq!(
+        panic_message(|| check_twins(&tree(), &RENAMING, &twins)),
+        None
     );
 }

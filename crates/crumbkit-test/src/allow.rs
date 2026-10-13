@@ -333,6 +333,10 @@ pub enum Rule {
     /// an exit code from 126 to 255, which a shell also reports for its own
     /// reasons. Its id is `exit-codes/shell-code`.
     ShellExitCode,
+    /// [`check_exit_codes`](crate::check_exit_codes): the guide declares
+    /// the exit code 1 or 2, which already mean crumbkit's default failure
+    /// and a refused command line. Its id is `exit-codes/shared-exit`.
+    SharedExit,
     /// [`check_recoveries`](crate::check_recoveries): the check runs no
     /// command line below a command and follows no recovery into it. Its id
     /// is `recoveries/follow`.
@@ -391,6 +395,7 @@ impl Rule {
             Self::Envelope => "documents/envelope",
             Self::FailureForm => "documents/failure-form",
             Self::ShellExitCode => "exit-codes/shell-code",
+            Self::SharedExit => "exit-codes/shared-exit",
             Self::Recoveries => "recoveries/follow",
             Self::SameCode => "recoveries/same-code",
             Self::FieldValue => "recoveries/field-value",
@@ -474,6 +479,9 @@ impl Rule {
             ],
             Self::ShellExitCode => &[
                 "An agent cannot tell the code from the one a shell reports, such as 127 when the shell cannot find the tool or 130 when Ctrl-C ends it.",
+            ],
+            Self::SharedExit => &[
+                "The exit code has two meanings, so an agent must read the failure's code to learn which one applies.",
             ],
             Self::Recoveries => &[
                 "No test shows that the command's recoveries lead anywhere, so a recovery can lead back to the same failure or name a command that no longer runs.",
