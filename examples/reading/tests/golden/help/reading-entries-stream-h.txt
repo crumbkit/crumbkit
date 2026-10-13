@@ -12,5 +12,5 @@ Examples:
 
 Effects: read-only, closed-world.
 Output: one row per line as each arrives, and --json prints one JSON document per line.
-Global flags: --json, --fields <FIELD>, --long, --full, --no-input. `reading entries stream --help` describes them.
+Global flags: --json, --fields <FIELD>, --full, --no-input. `reading entries stream --help` describes them.
 Next: reading entries stream --help explains each column.

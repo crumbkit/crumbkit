@@ -12,5 +12,5 @@ Examples:
   shelf self usage --since 1d
 
 Effects: read-only, closed-world.
-Global flags: --json, --fields <FIELD>, --long, --full, --no-input. `shelf self usage --help` describes them.
+Global flags: --json, --fields <FIELD>, --full, --no-input. `shelf self usage --help` describes them.
 Next: shelf self usage --help explains each column.

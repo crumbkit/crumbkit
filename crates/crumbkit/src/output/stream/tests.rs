@@ -18,6 +18,7 @@ use crate::{
 mod empty;
 mod exits;
 mod problems;
+mod views;
 
 /// A row with two compact columns, one long column and one field that only
 /// `--full` shows.

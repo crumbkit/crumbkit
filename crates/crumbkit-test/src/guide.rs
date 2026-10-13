@@ -1,8 +1,9 @@
 //! The guide check, which keeps a tool's goal headings, leaves and help
 //! topics in step with its command tree.
 
-use clap::Command;
-use crumbkit::help::{Column, Guide, quote};
+use clap::parser::ValueSource;
+use clap::{ArgMatches, Command};
+use crumbkit::help::{Column, Guide, Leaf, ViewFlag, quote};
 
 use crate::tree::{self, DASHED_NAME};
 
@@ -41,6 +42,9 @@ mod tests;
 ///   shell would split or expand between single quotes. An
 ///   example with `--help` or `--version` counts as refused, because an
 ///   example shows a real run;
+/// - an example that types `--fields`, `--long` or `--full` when the leaf
+///   does not offer that flag (`Leaf::offers`), because crumbkit refuses
+///   the run;
 /// - a visible command without subcommands, the root included when it has
 ///   none, that no leaf with at least one example names, because its help
 ///   then shows no example;
@@ -228,12 +232,20 @@ fn check_leaves(command: &Command, guide: &Guide, problems: &mut Vec<String>) {
             let args = std::iter::once(tool)
                 .chain(path.iter().copied())
                 .chain(example.words().iter().copied());
-            if let Err(error) = parser.try_get_matches_from_mut(args) {
-                let line = command_line(&text, example.words());
-                problems.push(format!(
+            let line = command_line(&text, example.words());
+            match parser.try_get_matches_from_mut(args) {
+                Ok(matches) => {
+                    for flag in unoffered_flags(leaf, node, &matches) {
+                        let flag = flag.name();
+                        problems.push(format!(
+                            "{text}: the example `{line}` types {flag}, which the command does not offer, so crumbkit refuses it"
+                        ));
+                    }
+                }
+                Err(error) => problems.push(format!(
                     "{text}: clap refuses the example `{line}` with the error kind {:?}",
                     error.kind()
-                ));
+                )),
             }
         }
         for choices in leaf.get_choices() {
@@ -290,6 +302,31 @@ fn check_problem(text: &str, field: &str, columns: &[Column], problems: &mut Vec
         )),
         Some(_) => {}
     }
+}
+
+/// Returns each view flag that the caller typed in `matches`, the matches
+/// of one example of `leaf`, and that the leaf does not offer. The flag's
+/// value sits in the matches of the leaf's command, at the end of the path
+/// of subcommands, also when the example types it before that path. A flag
+/// whose name `node`, the leaf's command, declares as its own argument that
+/// is not global does not count, because it is the tool's own flag.
+fn unoffered_flags(leaf: &Leaf, node: &Command, matches: &ArgMatches) -> Vec<ViewFlag> {
+    let mut level = matches;
+    while let Some((_, next)) = level.subcommand() {
+        level = next;
+    }
+    // crumbkit's `Output` gives each view flag the id of its long name.
+    let typed = |id: &str| {
+        level.ids().any(|known| known == id)
+            && level.value_source(id) == Some(ValueSource::CommandLine)
+            && !node
+                .get_arguments()
+                .any(|arg| arg.get_id() == id && !arg.is_global_set())
+    };
+    [ViewFlag::Fields, ViewFlag::Long, ViewFlag::Full]
+        .into_iter()
+        .filter(|flag| !leaf.offers(*flag) && typed(flag.name().trim_start_matches('-')))
+        .collect()
 }
 
 /// Returns the command line of an example as help prints it: `text`, the

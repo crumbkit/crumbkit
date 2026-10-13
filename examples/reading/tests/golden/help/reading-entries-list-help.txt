@@ -20,9 +20,6 @@ Options:
       --fields <FIELD>
           Print only these comma-separated fields, in this order
 
-      --long
-          Add the long columns after the compact ones
-
       --full
           With --json, print every field of every row
 

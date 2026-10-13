@@ -12,15 +12,6 @@ Options:
       --out <FILE>
           Write the reference to this file [default: docs/commands.md in the binary's package]
 
-      --fields <FIELD>
-          Print only these comma-separated fields, in this order
-
-      --long
-          Add the long columns after the compact ones
-
-      --full
-          With --json, print every field of every row
-
   -h, --help
           Print help (see a summary with '-h')
 

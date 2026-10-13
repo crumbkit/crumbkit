@@ -12,4 +12,4 @@ Examples:
 
 Effects: read-only, closed-world.
 Output: the bytes unchanged, and --json prints them as text or base64.
-Global flags: --json, --fields <FIELD>, --long, --full, --no-input. `reading entries export --help` describes them.
+Global flags: --json, --no-input. `reading entries export --help` describes them.

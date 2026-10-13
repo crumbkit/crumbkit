@@ -129,7 +129,8 @@ impl<T> Document<T> {
     /// `crumbkit::finish` then prints the result alone, as its type
     /// serializes it with every field, without `schema`, `total` or
     /// `failures`, so a command can print an existing document unchanged and
-    /// keep its version while a tool migrates.
+    /// keep its version while a tool migrates. `--full` is refused for such
+    /// a document, because `--json` already prints every field.
     ///
     /// It is an opt-out from crumbkit's conventions. crumbkit-test's
     /// `check_document_ids` fails on a leaf whose document has no envelope

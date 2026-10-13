@@ -8,6 +8,7 @@ use clap::builder::styling::Style;
 use schemars::{JsonSchema, Schema};
 use serde_json::Value;
 
+use super::view::{self, Unoffered, ViewFlag};
 use super::words::quote;
 use super::{Effects, write_line};
 use crate::pick::Choices;
@@ -223,6 +224,31 @@ impl Leaf {
         }
     }
 
+    /// Reports whether the leaf's command offers the view flag `flag`, as
+    /// its declared document decides (ADR-0016). A prose or bytes document
+    /// offers no view flag. Rows offer `--fields`, offer `--long` when the
+    /// row type has long columns, and offer `--full` when the document has
+    /// crumbkit's envelope. A leaf without a document offers every view
+    /// flag, because crumbkit cannot tell what its command prints.
+    #[must_use]
+    pub const fn offers(&self, flag: ViewFlag) -> bool {
+        self.unoffered(flag).is_none()
+    }
+
+    /// Returns why the leaf's command does not offer `flag`, or `None` when
+    /// it offers it, as [`Leaf::offers`] describes.
+    pub(crate) const fn unoffered(&self, flag: ViewFlag) -> Option<Unoffered> {
+        match self.columns {
+            Some(columns) => view::unoffered(
+                columns.shape,
+                !columns.long.is_empty(),
+                columns.document.has_envelope(),
+                flag,
+            ),
+            None => None,
+        }
+    }
+
     /// Returns the document that [`Leaf::document`] set, without its result
     /// type, or `None` when the leaf has no document. The name has clap's
     /// `get_` prefix, because `document` is the builder method.
@@ -343,7 +369,7 @@ impl Leaf {
                     name,
                     long,
                     property: property.is_some(),
-                    empty: property.is_some_and(can_be_empty),
+                    empty: property.is_some_and(row::can_be_empty),
                     description,
                 }
             })
@@ -472,24 +498,6 @@ struct Columns {
     shape: Option<Shape>,
     /// Whether [`Leaf::stream`] set the document.
     stream: bool,
-}
-
-/// Reports whether `property`, the JSON Schema of one field, allows a
-/// string, a boolean or null, in its own `type` or in the `type` of a
-/// variant under its `anyOf` or `oneOf`.
-fn can_be_empty(property: &Value) -> bool {
-    let mut schemas = vec![property];
-    for keyword in ["anyOf", "oneOf"] {
-        if let Some(variants) = property.get(keyword).and_then(Value::as_array) {
-            schemas.extend(variants);
-        }
-    }
-    let empty = |kind: &Value| matches!(kind.as_str(), Some("string" | "boolean" | "null"));
-    schemas.iter().any(|schema| match schema.get("type") {
-        Some(Value::Array(kinds)) => kinds.iter().any(empty),
-        Some(kind) => empty(kind),
-        None => false,
-    })
 }
 
 /// Returns the JSON Schema of `R`.

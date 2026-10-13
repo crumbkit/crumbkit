@@ -195,7 +195,9 @@ fn hand_over_json_to<T: Rows + DeserializeOwned, O: Write, W: Write>(
     if !output.is_json() {
         return terminal(sink, output, spelling, child);
     }
-    if let Some(code) = output.refuse_fields::<T, _, _>(sink, spelling) {
+    if let Some(code) =
+        output.refuse_fields::<T, _, _>(sink, spelling, json.document.has_envelope())
+    {
         return code;
     }
     child

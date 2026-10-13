@@ -13,5 +13,5 @@ Options:
 Examples:
   cargo crumbkit commands list
 
-Global flags: --json, --fields <FIELD>, --long, --full. `cargo crumbkit commands list --help` describes them.
+Global flags: --json, --fields <FIELD>, --full. `cargo crumbkit commands list --help` describes them.
 Next: cargo crumbkit commands list --help explains each column.

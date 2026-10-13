@@ -15,5 +15,5 @@ Examples:
   reading commands list to-read list --json --full
 
 Effects: read-only, closed-world.
-Global flags: --json, --fields <FIELD>, --long, --full, --no-input. `reading commands list --help` describes them.
+Global flags: --json, --fields <FIELD>, --full, --no-input. `reading commands list --help` describes them.
 Next: reading commands list --help explains each column.

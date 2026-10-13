@@ -29,15 +29,17 @@ impl Output {
         );
     }
 
-    /// Prints the refusal of a `--fields` name that a `T` lacks, or of an
-    /// output flag that a `T` refuses, and returns the refusal's exit code,
+    /// Prints the refusal of a `--fields` name that a `T` lacks, or of a
+    /// view flag that a `T` in a document with crumbkit's envelope, when
+    /// `envelope` is set, cannot use, and returns the refusal's exit code,
     /// as `finish` does, or returns `None` when `T` accepts the flags.
     pub(crate) fn refuse_fields<T: Rows, O: Write, W: Write>(
         &mut self,
         sink: &mut Sink<O, W>,
         spelling: Spelling,
+        envelope: bool,
     ) -> Option<ExitCode> {
-        let refusal = fields::flags_refusal::<T>(self)?;
+        let refusal = fields::flags_refusal::<T>(self, envelope)?;
         Some(self.print_refusal(sink, spelling, &refusal))
     }
 
