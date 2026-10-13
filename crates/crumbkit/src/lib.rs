@@ -22,6 +22,7 @@
 //! [`usage`]: crate::usage
 //! [`schemas`]: crate::schemas
 //! [`trace`]: crate::trace
+//! [tutorial]: https://github.com/crumbkit/crumbkit/blob/main/docs/tutorial.md
 //! [golden files]: https://github.com/crumbkit/crumbkit/tree/main/examples/shelf/tests/golden
 //! [schemas]: https://github.com/crumbkit/crumbkit/tree/main/crates/crumbkit/schemas
 //! [crumbkit-test]: https://github.com/crumbkit/crumbkit/blob/main/crates/crumbkit-test/README.md
