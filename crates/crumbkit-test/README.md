@@ -112,7 +112,7 @@ option.
 [`check_mounts`]: src/documents.rs
 [ADR-0025]: ../../docs/decisions/api/help/0025-help-checks.md
 [ADR-0035]: ../../docs/decisions/api/schemas/0035-schema-commands.md
-[ADR-0036]: ../../docs/decisions/api/0036-opt-outs.md
+[ADR-0036]: ../../docs/decisions/api/adoption/0036-opt-outs.md
 [ADR-0004]: ../../docs/decisions/testing/0004-golden-and-snapshot-tests.md
 [ADR-0044]: ../../docs/decisions/api/help/0044-command-reference.md
 [ADR-0046]: ../../docs/decisions/api/output/0046-output-budget.md

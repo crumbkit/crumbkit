@@ -15,7 +15,7 @@
 //! assert_eq!(Spelling::DOTS.spell(&CLI_USAGE), "crumbkit.cli.usage");
 //! ```
 //!
-//! [ADR-0001]: https://github.com/crumbkit/crumbkit/blob/main/docs/decisions/api/0001-error-model.md
+//! [ADR-0001]: https://github.com/crumbkit/crumbkit/blob/main/docs/decisions/api/failures/0001-error-model.md
 
 use crate::Code;
 

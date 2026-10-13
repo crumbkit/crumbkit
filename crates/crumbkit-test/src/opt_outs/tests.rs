@@ -303,6 +303,31 @@ fn the_report_lists_the_json_layout_that_the_guide_sets_with_its_cost() {
 }
 
 #[test]
+fn the_report_lists_a_guide_without_terminal_detection_with_its_reason_and_cost() {
+    const GUIDE: Guide =
+        Guide::new().without_terminal_detection("Our CI runs in a pseudo-terminal.");
+    let dir = TempDir::new("opt-outs-terminal-detection").unwrap();
+
+    run_guided(&GUIDE, &dir, Action::Overwrite);
+
+    let text = read(&dir, "opt-outs.txt");
+    assert_eq!(
+        text,
+        "shelf has 1 opt-out from crumbkit's conventions.\n\
+         \n\
+         terminal-detection/off: every run of shelf\n\
+         \x20 Reason: Our CI runs in a pseudo-terminal.\n\
+         \x20 Cost: A picker never asks for a missing argument and `Output::confirm` never asks, even at a terminal, so a person must type every argument and `--yes` as a script does.\n\
+         \x20 Cost: Progress never prints, and help prints without clap's colours at a terminal.\n"
+    );
+    let json = read(&dir, "opt-outs.json");
+    assert!(
+        json.contains("\"rule\": \"terminal-detection/off\""),
+        "{json}"
+    );
+}
+
+#[test]
 fn the_report_names_an_example_opt_out_by_its_command_line_with_its_own_costs() {
     const EXAMPLE: &[Allow] = &[Allow::example(
         "books show",

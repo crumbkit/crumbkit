@@ -128,6 +128,7 @@ fn a_directory_without_lists_adds_no_command() -> io::Result<()> {
     // `commands list` differs by one word and runs in the same directory, so
     // the missing list is the reason for the refusal (TEST-1).
     let refused = check_twin(
+        &reading::GUIDE,
         &examples,
         Spelling::COLONS,
         &Failing::new(&codes::CLI_USAGE, &["to-read", "list"]),
@@ -373,6 +374,7 @@ fn entries_set_refuses_an_empty_expect_and_admits_its_twin_with_a_title() {
     // `--expect` alone, and it runs on a dry run, so the empty value is the
     // reason for the refusal (TEST-1).
     let refused = check_twin(
+        &reading::GUIDE,
         &examples,
         Spelling::COLONS,
         &Failing::new(
@@ -413,6 +415,7 @@ fn entries_set_refuses_a_title_with_a_line_break_and_admits_its_twin_without_one
     // The twin differs from the refused command line in the title alone,
     // so the line break is the reason for the refusal (TEST-1).
     let refused = check_twin(
+        &reading::GUIDE,
         &examples,
         Spelling::COLONS,
         &Failing::new(

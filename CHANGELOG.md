@@ -231,17 +231,22 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit: [`codes`] makes crumbkit's own failure codes public constants
   and lists them in `codes::ALL`, so a tool's test can name them
   ([ADR-0001]).
-- crumbkit: [`help::split`] reads back the words of a command line whose
-  words `help::quote` quoted.
 - crumbkit-test: [`check_recoveries`] runs failing command lines, follows
   each recovery they print and pins the chains in a golden report, and
   [`check_twin`] runs a refused command line beside one that succeeds
-  ([ADR-0005]).
+  ([ADR-0005], [ADR-0053]).
 - crumbkit-test: `Rule::Recoveries` and `Rule::SameCode` let a tool opt out
   of the recovery check ([ADR-0036]).
-- crumbkit: `Guide::without_terminal_detection` turns terminal detection
-  off, so help has no colour, `Output::progress_allowed` is false, and
-  pickers and `Output::confirm` never ask ([ADR-0049]).
+- crumbkit-test: [`check_recoveries`] fails on a placeholder that a field
+  of the failure fills, and shows the fill in the report, unless an opt-out
+  from `Rule::FieldValue` names the failing command ([ADR-0053]).
+- crumbkit: `Guide::without_terminal_detection(reason)` turns terminal
+  detection off, so help has no colour, `Output::progress_allowed` is false,
+  and pickers and `Output::confirm` never ask. `get_without_terminal_detection`
+  returns the reason ([ADR-0049]).
+- crumbkit-test: [`check_opt_outs`] lists a guide without terminal detection
+  as `terminal-detection/off`, with the tool's reason and its costs
+  ([ADR-0049]).
 - crumbkit-test: [`check_recoveries`] takes the tool's guide and fails
   before it runs anything on a guide with a failure form, unless an opt-out
   from `Rule::Recoveries` names the root ([ADR-0045]).
@@ -296,8 +301,6 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit: [`FailureForm`] gains the provided method `read`, which reads a
   failed run's code and steps into a [`ReadFailure`] and returns `None` by
   default ([ADR-0045]).
-- crumbkit-test: [`Examples`] gains `failure_form`, which names the tool's
-  failure form for [`check_twin`] and [`check_examples`] ([ADR-0045]).
 - crumbkit: `Guide::json_layout(JsonLayout::Pretty, reason)` prints every
   whole JSON document indented by two spaces, and a stream keeps one
   document per line ([ADR-0052]).
@@ -330,19 +333,22 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   into a new working directory for each run, or once for each recovery
   chain, and example outputs show the copy's path as `[ROOT]` ([ADR-0005]).
 - crumbkit-test: `Failing::values` gives one recovery chain its own
-  placeholder values, which win over every other source ([ADR-0005]).
+  placeholder values, which win over every other source ([ADR-0053]).
 - crumbkit-test: [`check_help_sizes`], [`check_help_goldens`] and
   [`check_path_weights`] take `Pages`, whose `Pages::binary` reads each
   page from the tool's binary, for a tool that builds its help at run
-  time ([ADR-0025]).
+  time. A tool passes the same `Pages` to all three ([ADR-0025]).
 ### Changed
 
+- crumbkit-test: [`check_twin`] takes the tool's guide as its first
+  argument and reads a refused run through the guide's failure form
+  ([ADR-0045]).
 - crumbkit-test: [`check_recoveries`] fills a placeholder from the `fields`
   of the failure that offers the step before it reads `Recoveries::values`
-  ([ADR-0005]).
+  ([ADR-0053]).
 - crumbkit-test: [`check_recoveries`] fills each placeholder inside a word,
   such as `<plugin>.<capability>`, and keeps the text between them
-  ([ADR-0005]).
+  ([ADR-0053]).
 - crumbkit: the help text of `--json` reads `Print the result as a JSON
   document` and no longer names a layout.
 - crumbkit-test: when the guide sets `JsonLayout::Pretty`, [`check_examples`]
@@ -468,12 +474,14 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   terminal columns with unicode-width, so they line up after wide
   characters such as CJK text ([ADR-0016]).
 - crumbkit-test: [`check_recoveries`] fills a lowercase placeholder such
-  as `<path>` from the value of the same name ([ADR-0005]).
-- crumbkit: `help::split` reads double-quoted words as a POSIX shell does,
-  and refuses a `$` or a backtick between double quotes, so
-  [`check_recoveries`] runs hints that a tool wrote with double quotes.
+  as `<path>` from the value of the same name ([ADR-0053]).
 ### Removed
 
+- crumbkit: `help::split` is gone. [`check_recoveries`] reads a recovery's
+  words with its own private reading, which also reads double-quoted words
+  and refuses a `$` or a backtick between double quotes ([ADR-0053]).
+- crumbkit-test: `Examples::failure_form` is gone, because [`check_twin`]
+  reads the failure form from the tool's guide ([ADR-0045]).
 - crumbkit: `Call::word` is gone, because `Call::value` adds a runtime value
   and checks it against the tool's command tree ([`Call`]).
 
@@ -589,13 +597,13 @@ rustdoc, or at its decision record. -->
 [crumbkit-aliases]: crates/crumbkit-aliases/README.md
 [crumbkit-core]: crates/crumbkit-core/README.md
 [`RenderCall`]: crates/crumbkit/src/call.rs
-[ADR-0001]: docs/decisions/api/0001-error-model.md
+[ADR-0001]: docs/decisions/api/failures/0001-error-model.md
 [ADR-0002]: docs/decisions/api/0002-public-api-and-semver.md
 [ADR-0003]: docs/decisions/project/0003-dependency-policy.md
 [ADR-0004]: docs/decisions/testing/0004-golden-and-snapshot-tests.md
 [ADR-0005]: docs/decisions/testing/0005-cli-end-to-end-tests.md
 [ADR-0007]: docs/decisions/api/schemas/0007-json-schemas.md
-[ADR-0015]: docs/decisions/api/0015-lightweight-adoption.md
+[ADR-0015]: docs/decisions/api/adoption/0015-lightweight-adoption.md
 [ADR-0016]: docs/decisions/api/output/results/0016-result-formats.md
 [ADR-0021]: docs/decisions/api/help/0021-help-pages.md
 [ADR-0023]: docs/decisions/api/help/0023-help-command-and-topics.md
@@ -623,7 +631,7 @@ rustdoc, or at its decision record. -->
 [`Budget`]: crates/crumbkit-test/src/budget.rs
 [`Budgets`]: crates/crumbkit-test/src/sizes.rs
 [`PathBudgets`]: crates/crumbkit-test/src/weights.rs
-[ADR-0036]: docs/decisions/api/0036-opt-outs.md
+[ADR-0036]: docs/decisions/api/adoption/0036-opt-outs.md
 [ADR-0037]: docs/decisions/api/help/0037-exit-codes.md
 [`Effects`]: crates/crumbkit/src/help/effects.rs
 [`DryRun`]: crates/crumbkit/src/output/dry_run.rs
@@ -646,13 +654,13 @@ rustdoc, or at its decision record. -->
 [`FailureForm`]: crates/crumbkit/src/form.rs
 [`ReadFailure`]: crates/crumbkit/src/form.rs
 [`PreparedFailure`]: crates/crumbkit/src/output/failure/prepared.rs
-[ADR-0045]: docs/decisions/api/output/0045-failure-forms.md
+[ADR-0045]: docs/decisions/api/failures/0045-failure-forms.md
 [ADR-0046]: docs/decisions/api/output/0046-output-budget.md
 [ADR-0049]: docs/decisions/api/output/0049-terminal-detection.md
 [ADR-0052]: docs/decisions/api/output/0052-json-layout.md
+[ADR-0053]: docs/decisions/testing/0053-recovery-chains.md
 [ADR-0050]: docs/decisions/api/output/listings/README.md
 [`codes`]: crates/crumbkit/src/codes.rs
-[`help::split`]: crates/crumbkit/src/help/words.rs
 [`check_recoveries`]: crates/crumbkit-test/src/recoveries.rs
 [`check_twin`]: crates/crumbkit-test/src/twins.rs
 [`complete`]: crates/crumbkit/src/complete.rs

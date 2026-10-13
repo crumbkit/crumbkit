@@ -95,18 +95,13 @@ mod tests;
 /// - a run that exits with a code other than 0, naming the example's command
 ///   line, the exit status, the failure's code and steps when the check can
 ///   read them, and the standard error, because an example shows a run that
-///   works. The check reads the failure through the form of
-///   [`Examples::failure_form`] first, then from a `crumbkit/failure/v1`
-///   document on standard output, and then from the last `code:` line on
-///   standard error. This holds with `SNAPSHOTS=overwrite` too, and the
+///   works. The check reads the failure through the guide's failure form
+///   first, then from a `crumbkit/failure/v1` document on standard output,
+///   and then from the last `code:` line on standard error. This holds with `SNAPSHOTS=overwrite` too, and the
 ///   check then writes no file for the example;
 /// - a run that writes a `warning: crumbkit` line to standard error, which a
 ///   debug build writes for a recovery call that does not render. The check
 ///   then writes no file for the example;
-/// - a guide that sets a failure form with `Guide::failure_form` while
-///   [`Examples::failure_form`] names none, or names a form whose document
-///   has another id, and an `Examples::failure_form` without a form in the
-///   guide;
 /// - a run whose binary cannot start, such as a wrong path, naming the path
 ///   and the error;
 /// - a run that does not end within 10 seconds, which the check stops, so a
@@ -204,7 +199,6 @@ fn check(
     let mut allowances = Allowances::new(examples.opt_outs(), &[Rule::Examples]);
     let visits = tree::walk(command);
     let form = guide.get_failure_form();
-    check_form(form, examples.form(), &mut problems);
     if let Some(problem) = setup_problem(examples) {
         problems.push(problem);
         report(&problems, &failures);
@@ -392,34 +386,6 @@ fn warnings(line: &str, stderr: &str) -> Vec<String> {
         .filter(|text| text.starts_with("warning: crumbkit "))
         .map(|warning| format!("{line}: the run writes a warning to standard error: {warning}"))
         .collect()
-}
-
-/// Adds a problem to `problems` when `set`, the form that the guide sets,
-/// and `named`, the form of [`Examples::failure_form`], differ: when only
-/// one of them is set, or when their documents have different ids.
-fn check_form(
-    set: Option<&dyn FailureForm>,
-    named: Option<&dyn FailureForm>,
-    problems: &mut Vec<String>,
-) {
-    match (set, named) {
-        (Some(set), None) => problems.push(format!(
-            "the guide sets the failure form {}, and Examples names no failure form, so check_twin cannot read the tool's failures. Examples::failure_form names the guide's form",
-            set.document()
-        )),
-        (Some(set), Some(named)) if set.document().to_string() != named.document().to_string() => {
-            problems.push(format!(
-                "the guide sets the failure form {}, and Examples::failure_form names {}",
-                set.document(),
-                named.document()
-            ));
-        }
-        (None, Some(named)) => problems.push(format!(
-            "Examples::failure_form names {}, and the guide sets no failure form",
-            named.document()
-        )),
-        _ => {}
-    }
 }
 
 /// Returns the name of the golden file of an example's standard error: the

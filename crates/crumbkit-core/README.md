@@ -91,5 +91,5 @@ option.
 [`Listing`]: src/listing.rs
 [`Batch`]: src/batch.rs
 [`Prose`]: src/prose.rs
-[ADR-0001]: ../../docs/decisions/api/0001-error-model.md
+[ADR-0001]: ../../docs/decisions/api/failures/0001-error-model.md
 [ADR-0032]: ../../docs/decisions/api/0032-core-crate.md

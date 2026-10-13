@@ -73,6 +73,7 @@ fn books_remove_without_yes_or_a_terminal_fails_with_needs_yes_and_removes_nothi
         let mut admitted = refused.to_vec();
         admitted.insert(3, "--yes");
         check_twin(
+            &shelf::GUIDE,
             &shelf,
             Spelling::COLONS,
             &Failing::new(&codes::CONFIRM_NEEDS_YES, refused),

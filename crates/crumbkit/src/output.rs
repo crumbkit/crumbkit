@@ -277,7 +277,7 @@ impl Output {
             json,
             command: Some(command),
             failure_form: guide.get_failure_form(),
-            no_terminal: !guide.get_terminal_detection(),
+            no_terminal: !guide.terminal_detection(),
             json_layout: guide.layout(),
             ..Self::default()
         }

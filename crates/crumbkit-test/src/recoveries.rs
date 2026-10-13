@@ -16,6 +16,7 @@ use crate::goldens::compare;
 use crate::runs::Dir;
 
 mod chain;
+mod words;
 // The tests run `/bin/sh` scripts, which Windows cannot run. The two
 // attributes stay apart, because clippy reads only a plain `cfg(test)` as
 // test code.
@@ -340,6 +341,12 @@ impl<'a> Recoveries<'a> {
 ///   a `CODES` list is found;
 /// - a step that fails again with the code of the failure it follows,
 ///   unless an opt-out from [`Rule::SameCode`] covers the step's command;
+/// - a placeholder that a field of the failure fills, which the report
+///   also shows under the step, unless an opt-out from
+///   [`Rule::FieldValue`] covers the command whose failure printed the
+///   step. A recovery built with `Call::value` carries the value, so an
+///   agent need not copy it from the field. A value of [`Failing::values`]
+///   that wins over the field is no finding;
 /// - a failed run whose failure the tool's form, set with
 ///   `Guide::failure_form`, does not read through
 ///   [`FailureForm::read`](crumbkit::form::FailureForm::read), and that
@@ -358,8 +365,8 @@ impl<'a> Recoveries<'a> {
 ///   provokes;
 /// - a golden file that differs, or is missing without
 ///   `SNAPSHOTS=overwrite`;
-/// - an opt-out from [`Rule::Recoveries`] or [`Rule::SameCode`] that names
-///   no command or excuses no problem.
+/// - an opt-out from [`Rule::Recoveries`], [`Rule::SameCode`] or
+///   [`Rule::FieldValue`] that names no command or excuses no problem.
 ///
 /// An opt-out from [`Rule::Recoveries`] skips each start below its command.
 ///
@@ -406,7 +413,7 @@ fn check(
             components.push(component.to_owned());
         }
     }
-    let rules = [Rule::Recoveries, Rule::SameCode];
+    let rules = [Rule::Recoveries, Rule::SameCode, Rule::FieldValue];
     let allowances = Allowances::new(recoveries.examples.opt_outs(), &rules);
     let mut walk = chain::Walk {
         recoveries,

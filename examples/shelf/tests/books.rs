@@ -74,7 +74,13 @@ fn refused_beside(dir: Option<&str>, refused: &[&str], admitted: &[&str]) -> Out
     if let Some(dir) = dir {
         failing = failing.dir(dir);
     }
-    OutputAssert::new(check_twin(&SHELF, Spelling::COLONS, &failing, admitted))
+    OutputAssert::new(check_twin(
+        &shelf::GUIDE,
+        &SHELF,
+        Spelling::COLONS,
+        &failing,
+        admitted,
+    ))
 }
 
 #[test]

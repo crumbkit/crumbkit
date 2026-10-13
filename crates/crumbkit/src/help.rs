@@ -27,7 +27,7 @@ pub use self::format::FileFormat;
 pub use self::leaf::{BYTES_LINE, Column, Example, Leaf, STREAM_LINE};
 pub use self::runtime::RuntimeLeaf;
 pub use self::topic::Topic;
-pub use self::words::{quote, split};
+pub use self::words::quote;
 
 use self::list::{list, write_line};
 use crate::JsonLayout;
@@ -106,8 +106,9 @@ pub struct Guide {
     /// The tool's own form of a failure, or `None` when failures print in
     /// crumbkit's form.
     failure_form: Option<&'static dyn FailureForm>,
-    /// Whether crumbkit asks whether a stream is a terminal (ADR-0049).
-    terminal_detection: bool,
+    /// The reason the tool gives for turning terminal detection off, or
+    /// `None` when crumbkit asks whether a stream is a terminal (ADR-0049).
+    without_terminal_detection: Option<&'static str>,
     /// The most bytes that one run prints on standard output, with the
     /// reason the tool gives for it, or `None` for crumbkit's default.
     output_budget: Option<(usize, &'static str)>,
@@ -133,7 +134,7 @@ impl Guide {
             personal_aliases: None,
             picker: None,
             failure_form: None,
-            terminal_detection: true,
+            without_terminal_detection: None,
             output_budget: None,
             json_layout: None,
             root: &[],

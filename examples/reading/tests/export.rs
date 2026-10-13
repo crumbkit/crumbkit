@@ -134,6 +134,7 @@ fn entries_export_refuses_fields_and_admits_its_twin_without_them() {
     // The twin leaves out `--fields=text`, so the flag is the reason for the
     // refusal (TEST-1).
     let refused = check_twin(
+        &reading::GUIDE,
         &examples(),
         Spelling::COLONS,
         &Failing::new(
@@ -152,6 +153,7 @@ fn entries_export_refuses_long_and_admits_its_twin_without_it() {
     // The twin leaves out `--long`, so the flag is the reason for the
     // refusal (TEST-1).
     let refused = check_twin(
+        &reading::GUIDE,
         &examples(),
         Spelling::COLONS,
         &Failing::new(
@@ -168,6 +170,7 @@ fn entries_export_refuses_full_and_admits_its_twin_with_json_alone() {
     // The twin keeps `--json` and leaves out `--full`, so `--full` is the
     // reason for the refusal (TEST-1).
     let refused = check_twin(
+        &reading::GUIDE,
         &examples(),
         Spelling::COLONS,
         &Failing::new(

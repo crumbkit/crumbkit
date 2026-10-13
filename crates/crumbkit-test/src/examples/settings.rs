@@ -1,15 +1,13 @@
 //! The settings of the example check, which the twin, recovery and output
 //! budget checks share.
 
-use crumbkit::form::FailureForm;
-
 use crate::allow::Allow;
 use crate::runs::Dir;
 
 /// The settings of [`check_examples`](crate::check_examples): the tool's built binary, the
 /// directory of the golden files, the environment, XDG fixture, working
-/// directory or fresh fixture and redactions of each run, the tool's opt-outs and its
-/// failure form.
+/// directory or fresh fixture and redactions of each run, and the tool's
+/// opt-outs.
 ///
 /// A tool declares them as a constant in an integration test of the
 /// binary's own package, because cargo sets `CARGO_BIN_EXE_<name>`, the
@@ -58,9 +56,6 @@ pub struct Examples<'a> {
     /// The tool's opt-outs, of which the check reads those from
     /// [`Rule::Examples`](crate::Rule::Examples).
     allow: &'a [Allow],
-    /// The failure form that the tool's guide sets, which reads back the
-    /// failure of a run.
-    failure_form: Option<&'a dyn FailureForm>,
 }
 
 impl<'a> Examples<'a> {
@@ -82,7 +77,6 @@ impl<'a> Examples<'a> {
             dir_of_runs: None,
             redact: &[],
             allow: &[],
-            failure_form: None,
         }
     }
 
@@ -214,17 +208,6 @@ impl<'a> Examples<'a> {
         self
     }
 
-    /// Sets the failure form that the tool's guide sets with
-    /// `Guide::failure_form`, so [`check_twin`](crate::check_twin) reads a
-    /// refused run's code through
-    /// [`FailureForm::read`](crumbkit::form::FailureForm::read).
-    /// [`check_examples`](crate::check_examples) fails when this form and the guide's form differ.
-    #[must_use]
-    pub const fn failure_form(mut self, form: &'a dyn FailureForm) -> Self {
-        self.failure_form = Some(form);
-        self
-    }
-
     /// Returns the path of the tool's built binary.
     pub(crate) const fn binary(&self) -> &'a str {
         self.binary
@@ -259,11 +242,6 @@ impl<'a> Examples<'a> {
     /// Returns the tool's opt-outs.
     pub(crate) const fn opt_outs(&self) -> &'a [Allow] {
         self.allow
-    }
-
-    /// Returns the tool's failure form, or `None`.
-    pub(crate) const fn form(&self) -> Option<&'a dyn FailureForm> {
-        self.failure_form
     }
 }
 

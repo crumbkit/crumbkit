@@ -30,7 +30,7 @@ mod tests;
 /// opt-outs, with their reasons and costs, in golden files.
 ///
 /// [`check_opt_outs`]: crate::check_opt_outs
-/// [ADR-0036]: https://github.com/crumbkit/crumbkit/blob/main/docs/decisions/api/0036-opt-outs.md
+/// [ADR-0036]: https://github.com/crumbkit/crumbkit/blob/main/docs/decisions/api/adoption/0036-opt-outs.md
 #[derive(Clone, Copy, Debug)]
 pub struct Allow {
     /// The rule that the tool skips.
@@ -267,6 +267,12 @@ pub enum Rule {
     /// command fails again with the code of the failure it follows. Its id
     /// is `recoveries/same-code`.
     SameCode,
+    /// [`check_recoveries`](crate::check_recoveries): a recovery of a
+    /// command holds a placeholder that a field of the command's failure
+    /// fills, so an agent must copy the value itself. Its id is
+    /// `recoveries/field-value`, and its opt-out names the command whose
+    /// failure printed the recovery.
+    FieldValue,
 }
 
 impl Rule {
@@ -298,6 +304,7 @@ impl Rule {
             Self::ShellExitCode => "exit-codes/shell-code",
             Self::Recoveries => "recoveries/follow",
             Self::SameCode => "recoveries/same-code",
+            Self::FieldValue => "recoveries/field-value",
         }
     }
 
@@ -382,6 +389,9 @@ impl Rule {
             ],
             Self::SameCode => &[
                 "An agent that follows the recovery sees the same code again and must read the output to learn that the step worked.",
+            ],
+            Self::FieldValue => &[
+                "An agent that follows the recovery must copy the value from the failure's field into the placeholder itself, where a recovery built with `Call::value` would carry the value.",
             ],
         }
     }

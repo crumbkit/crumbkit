@@ -49,7 +49,7 @@ mod tests;
 /// Panics when a code or an opt-out breaks a rule above. Each problem in
 /// the message starts on a new line and names the code.
 ///
-/// [ADR-0036]: https://github.com/crumbkit/crumbkit/blob/main/docs/decisions/api/0036-opt-outs.md
+/// [ADR-0036]: https://github.com/crumbkit/crumbkit/blob/main/docs/decisions/api/adoption/0036-opt-outs.md
 pub fn check_exit_codes(command: &Command, guide: &Guide, allow: &[Allow]) {
     let mut allowances = Allowances::new(allow, &[Rule::ShellExitCode]);
     let mut problems = Vec::new();

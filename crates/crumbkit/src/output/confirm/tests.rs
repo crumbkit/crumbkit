@@ -196,7 +196,8 @@ fn no_input_fails_with_needs_yes_without_asking_at_a_terminal() {
 
 #[test]
 fn with_terminal_detection_off_confirm_fails_with_needs_yes_without_asking_at_a_terminal() {
-    const QUIET: Guide = Guide::new().without_terminal_detection();
+    const QUIET: Guide =
+        Guide::new().without_terminal_detection("Our CI runs in a pseudo-terminal.");
     let refused = ["remove", "pluto"];
     let admitted = ["remove", "pluto", "--yes"];
     assert_one_word_apart(&refused, &admitted);
@@ -210,7 +211,8 @@ fn with_terminal_detection_off_confirm_fails_with_needs_yes_without_asking_at_a_
 
 #[test]
 fn a_tool_that_parses_with_clap_alone_keeps_the_guides_terminal_detection() {
-    const QUIET: Guide = Guide::new().without_terminal_detection();
+    const QUIET: Guide =
+        Guide::new().without_terminal_detection("Our CI runs in a pseudo-terminal.");
     let mut output = Output::default();
     output.set_command(crate::Parsed::guided(Tool::command(), &QUIET));
     let mut err = Vec::new();

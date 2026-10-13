@@ -4,6 +4,7 @@
 //! recovery check's tests do.
 
 use crumbkit::form::{FailureForm, PreparedFailure, ReadFailure};
+use crumbkit::help::Guide;
 use crumbkit::{Code, Document, Spelling};
 use schemars::{Schema, json_schema};
 
@@ -15,6 +16,9 @@ use crate::testing::panic_message;
 
 /// The code of a refused command line.
 const USAGE: Code = crumbkit::codes::CLI_USAGE;
+
+/// The guide of a tool without a failure form.
+const GUIDE: Guide = Guide::new();
 
 /// The script's answers: `books list --limit 0` fails with the usage code in
 /// text and in JSON, `--limit -1` fails with the usage code in the text of
@@ -44,12 +48,14 @@ fn a_twin_passes_when_the_refused_line_fails_with_its_code_and_the_admitted_line
     let examples = Examples::new(&path, "");
 
     let text = check_twin(
+        &GUIDE,
         &examples,
         Spelling::COLONS,
         &Failing::new(&USAGE, &["books", "list", "--limit", "0"]),
         &["books", "list", "--limit", "1"],
     );
     let json = check_twin(
+        &GUIDE,
         &examples,
         Spelling::COLONS,
         &Failing::new(&USAGE, &["books", "list", "--limit", "0", "--json"]),
@@ -68,6 +74,7 @@ fn a_refused_line_that_succeeds_or_fails_with_another_code_fails_the_check() {
 
     let succeeds = panic_message(|| {
         check_twin(
+            &GUIDE,
             &examples,
             Spelling::COLONS,
             &Failing::new(&USAGE, &["books", "list", "--limit", "2"]),
@@ -76,6 +83,7 @@ fn a_refused_line_that_succeeds_or_fails_with_another_code_fails_the_check() {
     });
     let other = panic_message(|| {
         check_twin(
+            &GUIDE,
             &examples,
             Spelling::COLONS,
             &Failing::new(&OTHER, &["books", "list", "--limit", "0"]),
@@ -99,6 +107,7 @@ fn an_admitted_line_that_fails_fails_the_check() {
 
     let message = panic_message(|| {
         check_twin(
+            &GUIDE,
             &Examples::new(&path, ""),
             Spelling::COLONS,
             &Failing::new(&USAGE, &["books", "list", "--limit", "0"]),
@@ -118,6 +127,7 @@ fn twins_that_differ_by_more_than_one_word_fail_the_check() {
 
     let message = panic_message(|| {
         check_twin(
+            &GUIDE,
             &Examples::new(&path, ""),
             Spelling::COLONS,
             &Failing::new(&USAGE, &["books", "list", "--limit", "0"]),
@@ -157,11 +167,13 @@ impl FailureForm for LineForm {
 static FORM: LineForm = LineForm;
 
 #[test]
-fn a_twin_reads_the_refused_lines_code_through_the_failure_form_of_examples() {
+fn a_twin_reads_the_refused_lines_code_through_the_failure_form_of_the_guide() {
+    const FORM_GUIDE: Guide = Guide::new().failure_form(&FORM);
     let (_dir, path) = tool("twins-form");
 
     let output = check_twin(
-        &Examples::new(&path, "").failure_form(&FORM),
+        &FORM_GUIDE,
+        &Examples::new(&path, ""),
         Spelling::COLONS,
         &Failing::new(&USAGE, &["books", "list", "--limit", "-1"]),
         &["books", "list", "--limit", "1"],
@@ -179,6 +191,7 @@ fn a_refused_line_whose_code_the_check_cannot_read_fails_the_check_naming_failur
 
     let message = panic_message(|| {
         check_twin(
+            &GUIDE,
             &Examples::new(&path, ""),
             Spelling::COLONS,
             &Failing::new(&USAGE, &["books", "list", "--limit", "-1"]),
@@ -188,7 +201,7 @@ fn a_refused_line_whose_code_the_check_cannot_read_fails_the_check_naming_failur
 
     assert_eq!(
         message.unwrap(),
-        "the refused line `tool books list --limit -1` must fail with crumbkit::cli::usage, and it ends with exit status: 2 and prints no code that the check can read. A tool that prints failures in a form of its own implements FailureForm::read and passes the form to Examples::failure_form"
+        "the refused line `tool books list --limit -1` must fail with crumbkit::cli::usage, and it ends with exit status: 2 and prints no code that the check can read. A tool that prints failures in a form of its own implements FailureForm::read and sets the form with Guide::failure_form"
     );
 }
 
@@ -205,6 +218,7 @@ fn a_failing_line_without_a_dir_runs_in_the_current_dir_of_examples() {
     let work_path = work.path().display().to_string();
 
     check_twin(
+        &GUIDE,
         &Examples::new(&picky, "").current_dir(&work_path),
         Spelling::COLONS,
         &Failing::new(&USAGE, &["books", "list", "--limit", "0"]),
@@ -226,6 +240,7 @@ fn both_lines_of_a_twin_run_in_a_copy_of_the_refused_line_s_xdg_fixture() {
     let fixture_path = fixture.path().display().to_string();
 
     check_twin(
+        &GUIDE,
         &Examples::new(&plugged, ""),
         Spelling::COLONS,
         &Failing::new(&USAGE, &["books", "list", "--limit", "0"]).xdg(&fixture_path),
@@ -246,6 +261,7 @@ fn both_lines_of_a_twin_start_in_their_own_copy_of_the_fresh_dir_fixture() {
     let fixture_path = fixture.path().display().to_string();
 
     check_twin(
+        &GUIDE,
         &Examples::new(&once, "").fresh_dir(&fixture_path),
         Spelling::COLONS,
         &Failing::new(&USAGE, &["books", "list", "--limit", "0"]),

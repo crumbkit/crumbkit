@@ -45,6 +45,9 @@ const SCHEMA: &str = "crumbkit/opt-outs/v1";
 /// the output budget. When the guide sets a
 /// [`JsonLayout`](crumbkit::JsonLayout), the report then lists it under the
 /// rule `json-layout/pretty`, with its reason and its cost (ADR-0052).
+/// When the guide turns terminal detection off with
+/// `Guide::without_terminal_detection`, the report then lists it under the
+/// rule `terminal-detection/off`, with its reason and its costs (ADR-0049).
 /// A reviewer reads a change to a tool's opt-outs as a change to these two
 /// files, and an agent reads `opt-outs.json` to learn where the tool
 /// departs from crumbkit's conventions.
@@ -95,7 +98,7 @@ const SCHEMA: &str = "crumbkit/opt-outs/v1";
 /// `SNAPSHOTS=overwrite` cannot write a file. Each problem in the
 /// message starts on a new line.
 ///
-/// [ADR-0036]: https://github.com/crumbkit/crumbkit/blob/main/docs/decisions/api/0036-opt-outs.md
+/// [ADR-0036]: https://github.com/crumbkit/crumbkit/blob/main/docs/decisions/api/adoption/0036-opt-outs.md
 pub fn check_opt_outs(
     command: &Command,
     guide: &Guide,
@@ -166,6 +169,18 @@ fn check(
             budget: None,
         });
     }
+    if let Some(reason) = guide.get_without_terminal_detection() {
+        entries.push(Entry {
+            rule: "terminal-detection/off",
+            applies_to: format!("every run of {}", command.get_name()),
+            reason,
+            costs: TERMINAL_DETECTION_COSTS
+                .iter()
+                .map(|&cost| cost.to_owned())
+                .collect(),
+            budget: None,
+        });
+    }
     let line = command.get_name();
     compare(
         assert,
@@ -189,6 +204,13 @@ fn check(
 /// What an indented JSON layout costs an agent, which the report lists
 /// under the rule `json-layout/pretty`.
 const JSON_LAYOUT_COST: &str = "Every JSON document that is not a stream line is indented by two spaces, which made the documents of crumbkit's example tool shelf 20 to 62 percent larger, so an agent reads more tokens for each result and fewer rows fit in the output budget.";
+
+/// What turning terminal detection off costs, which the report lists
+/// under the rule `terminal-detection/off`.
+const TERMINAL_DETECTION_COSTS: &[&str] = &[
+    "A picker never asks for a missing argument and `Output::confirm` never asks, even at a terminal, so a person must type every argument and `--yes` as a script does.",
+    "Progress never prints, and help prints without clap's colours at a terminal.",
+];
 
 /// Returns the output budget that `guide` sets as the report lists it, or
 /// `None` when the tool keeps crumbkit's default.

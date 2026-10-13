@@ -112,13 +112,13 @@ fn every_exit_code_meets_the_exit_code_rules() {
 #[test]
 fn every_help_page_fits_its_size_budget() {
     let (command, guide) = fixture_tool();
-    crumbkit_test::check_help_sizes(&command, Pages::rendered(&guide), &BUDGETS);
+    crumbkit_test::check_help_sizes(&command, Pages::binary(&guide, &EXAMPLES), &BUDGETS);
 }
 
 #[test]
 fn every_path_through_the_help_fits_its_weight_budget() {
     let (command, guide) = fixture_tool();
-    crumbkit_test::check_path_weights(&command, Pages::rendered(&guide), &PATH_BUDGETS);
+    crumbkit_test::check_path_weights(&command, Pages::binary(&guide, &EXAMPLES), &PATH_BUDGETS);
 }
 
 #[test]
