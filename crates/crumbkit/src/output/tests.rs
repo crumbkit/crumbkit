@@ -3,7 +3,6 @@
 use std::io::{self, Write};
 use std::process::ExitCode;
 
-use clap::error::ErrorKind;
 use clap::{CommandFactory as _, FromArgMatches as _, Parser, Subcommand};
 use schemars::JsonSchema;
 use serde::ser::Error as _;
@@ -396,22 +395,6 @@ fn the_flags_parse_before_and_after_the_subcommand() {
 
     assert!(before.output.json);
     assert!(before.output.long);
-}
-
-#[test]
-fn fields_conflicts_with_long_and_with_full() {
-    let with_long = parse(&["--fields", "name", "--long"]).unwrap_err();
-    let with_full = parse(&["--json", "--fields", "name", "--full"]).unwrap_err();
-
-    assert_eq!(with_long.kind(), ErrorKind::ArgumentConflict);
-    assert_eq!(with_full.kind(), ErrorKind::ArgumentConflict);
-}
-
-#[test]
-fn full_requires_json() {
-    let error = parse(&["--full"]).unwrap_err();
-
-    assert_eq!(error.kind(), ErrorKind::MissingRequiredArgument);
 }
 
 /// A writer whose every write fails with an error of `kind`.

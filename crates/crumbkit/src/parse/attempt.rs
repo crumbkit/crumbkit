@@ -27,11 +27,13 @@ pub(super) fn attempt<C: FromArgMatches>(
     C::from_arg_matches_mut(&mut matches).map(|parsed| (parsed, no_input, refusal))
 }
 
-/// Returns the refusal of the first view flag, in the order `--fields`,
-/// `--long`, `--full`, that the caller typed and that the leaf of `guide`
-/// for the deepest command in `matches` does not offer (ADR-0016). It
-/// returns `None` when the command has no leaf or the caller typed no such
-/// flag.
+/// Returns the refusal of the view flags that the caller typed, or `None`
+/// when the typed command accepts them.
+///
+/// It first refuses the first view flag, in the order `--fields`, `--long`,
+/// `--full`, that the leaf of `guide` for the deepest command in `matches`
+/// does not offer (ADR-0016). It then refuses two typed flags that cannot
+/// work together, on every command, as [`view::pairing`] describes.
 ///
 /// clap copies the value of a global flag to every command on the path, so
 /// the deepest command's matches hold a view flag that the caller typed
@@ -49,20 +51,32 @@ pub(super) fn refusal(command: &Command, matches: &ArgMatches, guide: &Guide) ->
         node = subcommand;
         level = next;
     }
-    let leaf = guide
-        .get_leaves()
-        .iter()
-        .find(|leaf| leaf.path() == path.as_slice())?;
-    ViewFlag::ALL.into_iter().find_map(|flag| {
-        let reason = leaf.unoffered(flag)?;
-        let id = flag.id();
+    let typed = |id: &str| {
         let global = node
             .get_arguments()
             .any(|arg| arg.get_id() == id && arg.is_global_set());
         // `value_source` needs an id that the matches know, so the id is
         // looked up among them first.
-        let typed = level.ids().any(|known| known == id)
-            && level.value_source(id) == Some(ValueSource::CommandLine);
-        (global && typed).then(|| view::refusal(flag, reason))
+        global
+            && level.ids().any(|known| known == id)
+            && level.value_source(id) == Some(ValueSource::CommandLine)
+    };
+    let leaf = guide
+        .get_leaves()
+        .iter()
+        .find(|leaf| leaf.path() == path.as_slice());
+    let unoffered = leaf.and_then(|leaf| {
+        ViewFlag::ALL.into_iter().find_map(|flag| {
+            let reason = leaf.unoffered(flag)?;
+            typed(flag.id()).then(|| view::refusal(flag, reason))
+        })
+    });
+    unoffered.or_else(|| {
+        view::pairing(
+            typed("json"),
+            typed(ViewFlag::Fields.id()),
+            typed(ViewFlag::Long.id()),
+            typed(ViewFlag::Full.id()),
+        )
     })
 }

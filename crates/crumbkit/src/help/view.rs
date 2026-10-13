@@ -130,3 +130,42 @@ const fn because(reason: Unoffered) -> &'static str {
         Unoffered::Unwrapped => "this command's JSON already holds every field",
     }
 }
+
+/// Returns the refusal of the view flags that the caller typed, `--fields`
+/// when `fields` is set and `--long`, `--full` and `--json` when the flag of
+/// that name is set, when two of them cannot work together, or `None` when
+/// they can.
+///
+/// `--fields` prints only the fields it names, so it cannot be used with
+/// `--long` or `--full`, and `--full` prints every field in JSON, so it needs
+/// `--json`. The refusal names the flag to drop or the one that needs
+/// `--json` under `argument`, and it prints as a refused command line does.
+pub(crate) fn pairing(json: bool, fields: bool, long: bool, full: bool) -> Option<Refusal> {
+    let (message, hint, flag) = if fields && long {
+        (
+            "--fields prints only the fields it names, so it cannot be used with --long",
+            "drop --long, and name the long columns in --fields",
+            ViewFlag::Long,
+        )
+    } else if fields && full {
+        (
+            "--fields prints only the fields it names, so it cannot be used with --full",
+            "drop --full to print only the named fields, or drop --fields to print every field",
+            ViewFlag::Full,
+        )
+    } else if full && !json {
+        (
+            "--full prints every field of every row in JSON, so it needs --json",
+            "add --json, or drop --full",
+            ViewFlag::Full,
+        )
+    } else {
+        return None;
+    };
+    Some(Refusal::flag_value(
+        message.to_owned(),
+        hint.to_owned(),
+        flag.name(),
+        None,
+    ))
+}

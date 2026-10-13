@@ -218,6 +218,18 @@ fn books_list_all_with_limit_is_refused_with_code_2() {
 }
 
 #[test]
+fn books_list_full_without_json_is_refused_with_code_2() {
+    refused_beside(
+        None,
+        &["books", "list", "--full"],
+        &["books", "list", "--json", "--full"],
+    )
+    .code(2)
+    .stdout_eq("")
+    .stderr_eq(file!["golden/books-list-full.stderr"].raw());
+}
+
+#[test]
 fn books_list_json_all_prints_every_book_and_the_total() {
     shelf(&["books", "list", "--json", "--all"])
         .unwrap()

@@ -17,24 +17,28 @@ pub(super) fn flags_refusal<T: Rows>(output: &Output, envelope: bool) -> Option<
         &output.fields,
         output.long,
         output.full,
+        output.json,
     )
 }
 
 /// Returns the refusal of the view flags that the caller typed, `fields`
-/// and `--long` when `long` is set and `--full` when `full` is set, for a
-/// result of `shape` whose rows are `R`, or a stream of `R` when `shape` is
-/// `None`. It returns `None` when the result accepts them.
+/// and `--long` when `long` is set and `--full` when `full` is set, beside
+/// `--json` when `json` is set, for a result of `shape` whose rows are `R`,
+/// or a stream of `R` when `shape` is `None`. It returns `None` when the
+/// result accepts them.
 ///
 /// It first refuses a typed view flag that the result does not offer, by
 /// the rule of [`view::unoffered`], in the order `--fields`, `--long`,
-/// `--full`. It then refuses the first name in `fields` that is not a field
-/// of `R`, as [`unknown_field`] describes.
+/// `--full`. It then refuses two flags that cannot work together, as
+/// [`view::pairing`] describes, and then the first name in `fields` that is
+/// not a field of `R`, as [`unknown_field`] describes.
 pub(super) fn refusal<R: Row>(
     shape: Option<Shape>,
     envelope: bool,
     fields: &[String],
     long: bool,
     full: bool,
+    json: bool,
 ) -> Option<Refusal> {
     let long_columns = !R::LONG_COLUMNS.is_empty();
     for flag in ViewFlag::ALL {
@@ -46,6 +50,9 @@ pub(super) fn refusal<R: Row>(
         if typed && let Some(reason) = view::unoffered(shape, long_columns, envelope, flag) {
             return Some(view::refusal(flag, reason));
         }
+    }
+    if let Some(refusal) = view::pairing(json, !fields.is_empty(), long, full) {
+        return Some(refusal);
     }
     if fields.is_empty() {
         return None;

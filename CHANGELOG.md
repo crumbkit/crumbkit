@@ -700,6 +700,9 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- crumbkit: `--full` without `--json`, and `--fields` with `--long` or
+  `--full`, are refused in crumbkit's words with a hint that names the flag
+  to add or drop, in place of clap's error ([ADR-0016]).
 - crumbkit: a command without a doc comment that flattens `Output`,
   `Page`, `NoInput`, `DryRun`, `Yes` or `Expect`, or takes one of
   crumbkit's argument types, shows no description instead of crumbkit's

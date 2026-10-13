@@ -58,6 +58,13 @@ mod tests;
 /// that flag out of its help, and `parse` and `finish` refuse it, as
 /// [`help::Leaf::offers`](crate::help::Leaf::offers) describes.
 ///
+/// `parse`, `finish` and `stream` refuse `--full` without `--json`, and
+/// `--fields` with `--long` or `--full`, as a refused command line with the
+/// code `crumbkit::cli::usage`, such as `--full prints every field of every
+/// row in JSON, so it needs --json` with the hint `add --json, or drop
+/// --full`. clap parses each of these lines, so a tool that parses with
+/// clap alone gets the refusal from `finish` or `stream`.
+///
 /// It also holds the command tree that the tool parsed against, which
 /// [`Output::set_command`] sets, so `finish` can render a listing's next step
 /// and a failure's recovery. `finish` builds only the branch of the tree that
@@ -80,13 +87,7 @@ pub struct Output {
     json: bool,
 
     /// Print only these comma-separated fields, in this order
-    #[arg(
-        long,
-        global = true,
-        value_name = "FIELD",
-        value_delimiter = ',',
-        conflicts_with_all = ["long", "full"]
-    )]
+    #[arg(long, global = true, value_name = "FIELD", value_delimiter = ',')]
     fields: Vec<String>,
 
     /// Add the long columns after the compact ones
@@ -94,7 +95,7 @@ pub struct Output {
     long: bool,
 
     /// With --json, print every field of every row
-    #[arg(long, global = true, requires = "json")]
+    #[arg(long, global = true)]
     full: bool,
 
     /// The command tree that the tool parsed against, or `None` until the
