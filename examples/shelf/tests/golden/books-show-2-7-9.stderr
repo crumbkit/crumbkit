@@ -1,6 +1,8 @@
 error: the catalogue has no book 7
+  key:   7 (index 1)
   help:  run `shelf books list`
   code:  shelf::books::not_found
 error: the catalogue has no book 9
+  key:   9 (index 2)
   help:  run `shelf books list`
   code:  shelf::books::not_found

@@ -1,1 +1,1 @@
-{"schema":"shelf/books-show/v1","data":[],"failures":[{"code":"shelf::books::not_found","message":"the catalogue has no book 7","fields":{"books":[7]},"recovery":{"kind":"run","call":"shelf books list"}}]}
+{"schema":"shelf/books-show/v1","data":[],"failures":[{"key":"7","index":0,"code":"shelf::books::not_found","message":"the catalogue has no book 7","fields":{"books":[7]},"recovery":{"kind":"run","call":"shelf books list"}}]}

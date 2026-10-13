@@ -53,6 +53,22 @@ impl<'a> PreparedFailure<'a> {
             .map(|(name, value)| (name.as_str(), value))
     }
 
+    /// Returns the key of the batch that the failure answers, or `None`
+    /// for a failure that does not belong to a key, such as the failure of
+    /// a command or of a prose result.
+    #[must_use]
+    pub fn key(&self) -> Option<&str> {
+        self.key.map(|(_, key)| key)
+    }
+
+    /// Returns the position of the failure's key among the batch's keys,
+    /// counted from 0, so a reader can tell apart two failures of the same
+    /// key. It is `None` whenever [`PreparedFailure::key`] is.
+    #[must_use]
+    pub fn index(&self) -> Option<usize> {
+        self.key.map(|(index, _)| index)
+    }
+
     /// Returns the page that explains the failure, when there is one.
     #[must_use]
     pub fn url(&self) -> Option<&str> {

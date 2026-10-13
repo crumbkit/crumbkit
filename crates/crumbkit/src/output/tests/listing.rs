@@ -244,7 +244,13 @@ fn a_listing_prints_no_next_line_when_no_command_is_set() {
     let finished = finish_output(&mut output, PLANET_LISTING, two_of_with_next(8));
 
     assert_eq!(finished.code, ExitCode::SUCCESS);
-    assert_eq!(finished.err, "Showing 2 of 8. --all shows every one.\n");
+    assert!(
+        finished
+            .err
+            .ends_with("\nShowing 2 of 8. --all shows every one.\n"),
+        "{}",
+        finished.err
+    );
 }
 
 #[test]

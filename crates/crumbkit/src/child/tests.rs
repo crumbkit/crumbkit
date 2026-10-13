@@ -9,7 +9,7 @@ use std::os::unix::process::ExitStatusExt as _;
 use std::os::windows::process::ExitStatusExt as _;
 use std::process::{self, ExitCode, ExitStatus};
 
-use clap::Parser;
+use clap::{CommandFactory as _, Parser};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -43,11 +43,14 @@ struct Tool {
     output: Output,
 }
 
-/// Parses `vault` followed by `flags` into the output flags.
+/// Parses `vault` followed by `flags` into the output flags, with the
+/// tool's command set as its `main` sets it.
 fn output(flags: &[&str]) -> Output {
-    Tool::try_parse_from(["vault"].iter().chain(flags))
+    let mut output = Tool::try_parse_from(["vault"].iter().chain(flags))
         .unwrap()
-        .output
+        .output;
+    output.set_command(Tool::command());
+    output
 }
 
 /// What a response returned and wrote.

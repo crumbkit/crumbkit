@@ -28,6 +28,9 @@ const YES_HELP: &str = "Proceed without asking for confirmation";
 /// crumbkit-test's `check_effects` requires `--yes` on every command whose
 /// [`Effects`](crate::help::Effects) are destructive.
 #[derive(Args, Clone, Copy, Debug, Default, PartialEq, Eq)]
+// The doc comment is rustdoc, and clap would copy it into the help of a
+// command without a description of its own.
+#[command(about = None, long_about = None)]
 // clap builds the arguments of every command on every run, so the type
 // skips the argument group that clap would build for its one flag.
 #[group(skip)]

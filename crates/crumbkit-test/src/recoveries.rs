@@ -415,7 +415,8 @@ impl<'a> Recoveries<'a> {
 ///   the form or reader read it or to add an opt-out from
 ///   [`Rule::Recoveries`] that names the root (ADR-0045);
 /// - a run that writes a `warning: crumbkit` line to standard error, which a
-///   debug build writes for a recovery call that does not render;
+///   debug build writes for a recovery call that does not render and for a
+///   run whose `main` never called `Output::set_command`;
 /// - a step that crumbkit's quoting cannot read, that does not start with
 ///   the tool's name, or that has a placeholder without a value;
 /// - a run that cannot start, that does not end within 10 seconds or that

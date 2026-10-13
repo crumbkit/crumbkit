@@ -38,8 +38,9 @@ const VARIABLE: &str = "CRUMBKIT_OUTPUT_BUDGET";
 /// - it exits with the code that the guide gives the over-budget failure,
 ///   which is 1 unless an [`Exit`](crumbkit::help::Exit) lists the code,
 ///   and its last JSON document, on one line or
-///   indented, is a failure document, or a document whose last entry of
-///   `failures` is one, with the field
+///   indented, is a failure document, a document whose last entry of
+///   `failures` is one, or an array whose last item is one, as a batch that
+///   prints its failures in input order prints it, with the field
 ///   `budget` set to the budget, or, for a document without the envelope,
 ///   standard error names the budget.
 ///
@@ -230,9 +231,9 @@ pub(crate) fn judge(ran: &Ran<'_>, budget: usize, failed: u8) -> Option<String> 
         }
         Some(code) if code == i32::from(failed) => {
             let over = documents.last().is_some_and(|last| {
+                let failures = last["failures"].as_array().or_else(|| last.as_array());
                 last["fields"]["budget"] == budget
-                    || last["failures"]
-                        .as_array()
+                    || failures
                         .and_then(|failures| failures.last())
                         .is_some_and(|failure| failure["fields"]["budget"] == budget)
             });

@@ -34,9 +34,12 @@ impl<T: Rows> Prepared<'_, T> {
     /// beside a failure that names every key left out after the first row.
     /// When even the first row and that failure pass the budget, the failure
     /// names the most first keys that fit and counts the rest under
-    /// `unlisted`, and when no key fits, it names none. In text, and in a
-    /// document without the envelope, the failure goes to standard error,
-    /// which the budget does not count, so it names every key.
+    /// `unlisted`, and when no key fits, it names none. A document without
+    /// the envelope that prints its failures in input order counts the
+    /// failure in the same way, at the end of its array. In text, and in
+    /// any other document without the envelope, the failure goes to
+    /// standard error, which the budget does not count, so it names every
+    /// key.
     pub(super) fn partial(
         &mut self,
         out: &mut impl Write,
@@ -45,7 +48,8 @@ impl<T: Rows> Prepared<'_, T> {
         mut left_out: LeftOut<'_>,
     ) -> io::Result<(Answer, usize)> {
         let rows = self.value.rows().len();
-        let in_document = self.json && self.document.has_envelope();
+        let in_document =
+            self.json && (self.document.has_envelope() || self.document.prints_failures_in_order());
         let (shown, over) = if in_document {
             self.fit_failure(err, listed, &mut left_out)?
         } else {
@@ -174,6 +178,7 @@ impl<T: Rows> Prepared<'_, T> {
             over: Over::Batch {
                 unlisted: keys.len().saturating_sub(listed.len()),
                 left_out: listed,
+                from: self.value.left_out_from(shown),
                 fetch: self.value.fetch(),
             },
         }

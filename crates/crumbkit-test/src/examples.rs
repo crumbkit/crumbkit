@@ -99,7 +99,8 @@ mod tests;
 ///   then from the last `code:` line on standard error. This holds with `SNAPSHOTS=overwrite` too, and the
 ///   check then writes no file for the example;
 /// - a run that writes a `warning: crumbkit` line to standard error, which a
-///   debug build writes for a recovery call that does not render. The check
+///   debug build writes for a recovery call that does not render and for a
+///   run whose `main` never called `Output::set_command`. The check
 ///   then writes no file for the example;
 /// - a run whose binary cannot start, such as a wrong path, naming the path
 ///   and the error;

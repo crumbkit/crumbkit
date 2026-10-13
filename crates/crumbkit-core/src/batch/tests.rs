@@ -155,3 +155,49 @@ fn a_key_given_twice_is_left_out_twice_in_the_order_of_the_keys() {
         [Some("Mars"), Some("Venus"), Some("Mars"), Some("Mars")]
     );
 }
+
+#[test]
+fn a_batch_keeps_the_index_and_key_of_each_failure() {
+    let mut batch = Batch::new(&["show"], "names", &["Vulcan", "Mars", "Vulcan"]);
+    batch.push(Err(Missing("Vulcan")));
+    batch.push(Ok(planet("Mars")));
+    batch.push(Err(Missing("Vulcan")));
+
+    assert_eq!(batch.failure_indexes(), [0, 2]);
+    assert_eq!(batch.row_indexes(), [1]);
+    assert_eq!(
+        (batch.key(0), batch.key(2)),
+        (Some("Vulcan"), Some("Vulcan"))
+    );
+}
+
+#[test]
+fn a_failure_pushed_after_the_last_key_keeps_its_index_and_has_no_key() {
+    let mut batch: Batch<Planet, Missing> = Batch::new(&["show"], "names", &["Mars"]);
+    batch.extend([Ok(planet("Mars")), Err(Missing("Vulcan"))]);
+
+    assert_eq!(batch.failure_indexes(), [1]);
+    assert_eq!(batch.key(1), None);
+}
+
+#[test]
+fn the_answers_left_out_start_at_the_index_of_the_first_row_that_does_not_print() {
+    let mut batch = Batch::new(&["show"], "names", &["Mars", "Vulcan", "Venus", "Earth"]);
+    batch.push(Ok(planet("Mars")));
+    batch.push(Err(Missing("Vulcan")));
+    batch.push(Ok(planet("Venus")));
+    batch.push(Ok(planet("Earth")));
+
+    assert_eq!(batch.left_out_from(1), Some(2));
+    assert_eq!(batch.left_out_from(3), None);
+}
+
+#[test]
+fn the_answers_left_out_start_at_the_first_unfetched_key_when_every_row_prints() {
+    let mut batch: Batch<Planet, Missing> =
+        Batch::new(&["show"], "names", &["Mars", "Vulcan", "Venus"]);
+    batch.push(Ok(planet("Mars")));
+    batch.push(Err(Missing("Vulcan")));
+
+    assert_eq!(batch.left_out_from(1), Some(2));
+}

@@ -25,7 +25,7 @@ mod step;
 #[cfg(test)]
 mod tests;
 
-pub(crate) use self::schema::{document_schema, entry_schema};
+pub(crate) use self::schema::{document_schema, entry_schema, failure_schema};
 pub use self::step::Step;
 
 /// The id of the JSON document that a failure prints with `--json`.
@@ -152,6 +152,9 @@ pub struct PreparedFailure<'a> {
     fields: Vec<(String, FieldValue<'static>)>,
     /// The page that explains the failure, when there is one.
     url: Option<String>,
+    /// The position of the failure's key among a batch's keys, counted from
+    /// 0, and the key, or `None` for a failure that has no key.
+    key: Option<(usize, &'a str)>,
 }
 
 impl<'a> PreparedFailure<'a> {
@@ -166,8 +169,9 @@ impl<'a> PreparedFailure<'a> {
     /// that compares standard error shows it. A debug build also writes a
     /// warning to `err` for each `Run` call of the recovery or an
     /// alternative that does not render, with the reason, so a test sees a
-    /// recovery that names a command the tool lacks. A release build writes
-    /// neither.
+    /// recovery that names a command the tool lacks. When no command is set,
+    /// `finish` has already written one warning for the whole run, so a call
+    /// adds none of its own. A release build writes neither.
     pub(super) fn new(
         failure: &'a dyn Failure,
         spelling: Spelling,
@@ -234,7 +238,15 @@ impl<'a> PreparedFailure<'a> {
             alternatives,
             fields,
             url: failure.url().map(str::to_owned),
+            key: None,
         }
+    }
+
+    /// Returns the failure with the position of its key among a batch's
+    /// keys and the key, which its document and its text print.
+    pub(super) const fn keyed(mut self, key: Option<(usize, &'a str)>) -> Self {
+        self.key = key;
+        self
     }
 }
 
@@ -340,7 +352,9 @@ pub(super) fn write_text(
 /// Writes crumbkit's text form of `document` to `err`, then flushes it, as shelf's
 /// golden file [`books-show-7.stderr`][books-show-7] shows.
 ///
-/// A `cause:` line for each cause follows the `error:` line, a `help:` line
+/// A `key:` line follows the `error:` line when the failure belongs to a
+/// key of a batch, and gives the key and its index. A `cause:` line for
+/// each cause follows, a `help:` line
 /// for each alternative follows the recovery's `help:` line, and a `url:`
 /// line follows the `code:` line when the failure has a url. With the
 /// `miette` feature, an `at:` line for each label of the failure's
@@ -356,6 +370,9 @@ pub(crate) fn write_crumbkit_text(
     document: &PreparedFailure<'_>,
 ) -> io::Result<()> {
     writeln!(err, "error: {}", escape_controls(&document.message))?;
+    if let Some((index, key)) = document.key {
+        write_labelled(err, "key:", &format!("{key} (index {index})"))?;
+    }
     for cause in &document.causes {
         write_labelled(err, "cause:", cause)?;
     }
@@ -396,7 +413,8 @@ pub(super) fn write_json(
 }
 
 impl PreparedFailure<'_> {
-    /// Writes every field of the document after `schema` into `map`: `code`,
+    /// Writes every field of the document after `schema` into `map`: `key`
+    /// and `index` when the failure belongs to a key of a batch, `code`,
     /// `message`, `cause` when the failure has a source, `fields` when the
     /// failure names at least one value, `labels` when the
     /// failure has a diagnostic with at least one label, `related` when that
@@ -409,6 +427,10 @@ impl PreparedFailure<'_> {
     /// `cause` is one string, the causes joined with `: `, as a log line
     /// shows a chain of errors.
     fn serialize_fields<M: SerializeMap>(&self, map: &mut M) -> Result<(), M::Error> {
+        if let Some((index, key)) = self.key {
+            map.serialize_entry("key", key)?;
+            map.serialize_entry("index", &index)?;
+        }
         map.serialize_entry("code", &self.code)?;
         map.serialize_entry("message", &self.message)?;
         if !self.causes.is_empty() {

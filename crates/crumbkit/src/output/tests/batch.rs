@@ -192,9 +192,11 @@ fn a_batch_prints_its_rows_on_standard_output_and_each_failure_on_standard_error
 
     let expected = "\
 error: the solar system has no planet Vulcan
+  key:   3 (index 2)
   help:  run `tool list`
   code:  solar::planets::not_found
 error: the solar system has no planet Nibiru
+  key:   4 (index 3)
   cause: the star chart cannot be read
   help:  run `tool list`
   code:  solar::planets::not_found
@@ -206,7 +208,8 @@ error: the solar system has no planet Nibiru
 }
 
 #[test]
-fn each_failure_in_a_batch_prints_exactly_as_a_failed_command_prints_it() {
+fn each_failure_in_a_batch_prints_as_a_failed_command_prints_it_with_its_key_after_the_error_line()
+{
     let mut err = Vec::new();
     let failed: Result<Batch<Planet, Missing>, Missing> = Err(missing("Vulcan"));
     finish_to(
@@ -219,7 +222,12 @@ fn each_failure_in_a_batch_prints_exactly_as_a_failed_command_prints_it() {
 
     let finished = finish_with(&[], two_with(vec![missing("Vulcan")]));
 
-    assert_eq!(finished.err, String::from_utf8(err).unwrap());
+    let alone = String::from_utf8(err).unwrap();
+    let (error, rest) = alone.split_once('\n').unwrap();
+    assert_eq!(
+        finished.err,
+        format!("{error}\n  key:   3 (index 2)\n{rest}")
+    );
 }
 
 #[test]
@@ -271,7 +279,7 @@ fn a_batch_of_crumbkit_errors_prints_each_as_the_failure_inside() {
     assert!(
         wrapped_json
             .out
-            .contains(r#""failures":[{"code":"solar::planets::not_found","#),
+            .contains(r#""failures":[{"key":"2","index":1,"code":"solar::planets::not_found","#),
         "{}",
         wrapped_json.out
     );
@@ -326,8 +334,8 @@ fn json_of_a_batch_prints_one_document_with_the_failures_and_exits_with_code_1()
         finished.out,
         concat!(
             r#"{"schema":"solar/planets-show/v1","data":[{"name":"Saturn","moons":274}],"failures":["#,
-            r#"{"code":"solar::planets::not_found","message":"the solar system has no planet Vulcan","recovery":{"kind":"run","call":"tool list"}},"#,
-            r#"{"code":"solar::planets::not_found","message":"the solar system has no planet Nibiru","cause":"the star chart cannot be read","recovery":{"kind":"run","call":"tool list"},"url":"https://example.com/planets"}"#,
+            r#"{"key":"2","index":1,"code":"solar::planets::not_found","message":"the solar system has no planet Vulcan","recovery":{"kind":"run","call":"tool list"}},"#,
+            r#"{"key":"3","index":2,"code":"solar::planets::not_found","message":"the solar system has no planet Nibiru","cause":"the star chart cannot be read","recovery":{"kind":"run","call":"tool list"},"url":"https://example.com/planets"}"#,
             "]}\n"
         )
     );
@@ -335,7 +343,8 @@ fn json_of_a_batch_prints_one_document_with_the_failures_and_exits_with_code_1()
 }
 
 #[test]
-fn a_failure_in_a_batch_document_is_the_failure_document_without_its_schema() {
+fn a_failure_in_a_batch_document_is_the_failure_document_with_its_key_and_index_in_place_of_its_schema()
+ {
     let mut out = Vec::new();
     let failed: Result<Batch<Planet, Missing>, Missing> = Err(Missing {
         names: "Nibiru",
@@ -362,7 +371,10 @@ fn a_failure_in_a_batch_document_is_the_failure_document_without_its_schema() {
         ),
     );
 
-    let batch: serde_json::Value = serde_json::from_str(&finished.out).unwrap();
+    let mut batch: serde_json::Value = serde_json::from_str(&finished.out).unwrap();
+    let entry = batch["failures"][0].as_object_mut().unwrap();
+    assert_eq!(entry.remove("key"), Some(serde_json::json!("1")));
+    assert_eq!(entry.remove("index"), Some(serde_json::json!(0)));
     assert_eq!(batch["failures"][0], alone);
     assert_eq!(batch["data"], serde_json::json!([]));
 }
@@ -379,7 +391,7 @@ fn json_full_shapes_the_data_and_leaves_the_failures_unchanged() {
         finished.out,
         concat!(
             r#"{"schema":"solar/planets-show/v1","data":[{"name":"Saturn","moons":274,"ringed":true,"au":9.54}],"failures":["#,
-            r#"{"code":"solar::planets::not_found","message":"the solar system has no planet Vulcan","recovery":{"kind":"run","call":"tool list"}}"#,
+            r#"{"key":"2","index":1,"code":"solar::planets::not_found","message":"the solar system has no planet Vulcan","recovery":{"kind":"run","call":"tool list"}}"#,
             "]}\n"
         )
     );
@@ -396,7 +408,7 @@ fn json_fields_shapes_the_data_and_leaves_the_failures_unchanged() {
         finished.out,
         concat!(
             r#"{"schema":"solar/planets-show/v1","data":[{"au":9.54}],"failures":["#,
-            r#"{"code":"solar::planets::not_found","message":"the solar system has no planet Vulcan","recovery":{"kind":"run","call":"tool list"}}"#,
+            r#"{"key":"2","index":1,"code":"solar::planets::not_found","message":"the solar system has no planet Vulcan","recovery":{"kind":"run","call":"tool list"}}"#,
             "]}\n"
         )
     );
@@ -495,4 +507,20 @@ fn a_failed_write_of_a_batch_exits_with_code_1_and_reports_the_cause_before_the_
         ),
         "{err}"
     );
+}
+
+#[test]
+fn a_failure_pushed_after_the_last_key_prints_without_a_key_or_an_index() {
+    let mut batch = Batch::new(&["show"], "names", &["Saturn"]);
+    batch.extend([Ok(saturn()), Err(missing("Vulcan"))]);
+
+    let text = finish_with(&[], batch);
+    let mut batch = Batch::new(&["show"], "names", &["Saturn"]);
+    batch.extend([Ok(saturn()), Err(missing("Vulcan"))]);
+    let json = finish_with(&["--json"], batch);
+
+    assert!(!text.err.contains("key:"), "{}", text.err);
+    let document: serde_json::Value = serde_json::from_str(&json.out).unwrap();
+    let entry = document["failures"][0].as_object().unwrap();
+    assert!(!entry.contains_key("key") && !entry.contains_key("index"));
 }

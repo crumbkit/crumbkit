@@ -210,6 +210,10 @@ pub(super) enum Over {
         /// The keys of the answers left out that the failure names, in the
         /// order the caller gave them.
         left_out: Vec<String>,
+        /// The index of the first answer left out among the answers in the
+        /// order the batch was given them, counted from 0. Every later
+        /// answer that is not one of the batch's failures was left out too.
+        from: Option<usize>,
         /// The number of answers left out that the failure does not name:
         /// those without a key, and those whose keys did not fit.
         unlisted: usize,
@@ -303,9 +307,15 @@ impl Failure for OverBudget {
         let budget = Field::new("budget", self.budget);
         match &self.over {
             Over::Batch {
-                left_out, unlisted, ..
+                left_out,
+                from,
+                unlisted,
+                ..
             } => {
                 let mut fields = vec![Field::new("left_out", FieldValue::list(left_out))];
+                if let Some(from) = from {
+                    fields.push(Field::new("left_out_from", *from));
+                }
                 if *unlisted > 0 {
                     fields.push(Field::new("unlisted", *unlisted));
                 }

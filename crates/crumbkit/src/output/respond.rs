@@ -25,6 +25,7 @@ pub(super) fn respond<T: Rows, E: AsFailure, O: Write, W: Write, R>(
     document: Document<T>,
     result: Result<T, E>,
 ) -> (u8, bool) {
+    output.warn_without_command(&mut sink.err);
     let printing = output.printing();
     if let Some(refusal) = fields::flags_refusal::<T>(output, document.has_envelope()) {
         let code = refusal.print(
@@ -53,10 +54,16 @@ pub(super) fn respond<T: Rows, E: AsFailure, O: Write, W: Write, R>(
     };
     // A batch's failures are read once, so its JSON document and its text
     // form print the same fields. Every other result has `None` here.
+    // Each failure of a batch carries its key, and every other result has
+    // no indexes, so its failures carry none.
     let failures: Option<Vec<PreparedFailure<'_>>> = value.failures().map(|failures| {
+        let mut indexes = value.failure_indexes().iter();
         failures
             .into_iter()
             .map(|failure| {
+                let key = indexes
+                    .next()
+                    .and_then(|&index| Some((index, value.key(index)?)));
                 PreparedFailure::new(
                     failure,
                     spelling,
@@ -64,6 +71,7 @@ pub(super) fn respond<T: Rows, E: AsFailure, O: Write, W: Write, R>(
                     output.command.as_mut(),
                     &mut sink.err,
                 )
+                .keyed(key)
             })
             .collect()
     });
@@ -120,7 +128,8 @@ pub(super) fn respond<T: Rows, E: AsFailure, O: Write, W: Write, R>(
     (code, cut)
 }
 
-/// Prints the failures of a batch or a prose result in text, and the
+/// Prints the failures of a batch or a prose result in text, unless the
+/// JSON document holds them in its envelope or in its in-order array, and the
 /// failure of the rows that the budget left out, and returns the exit code:
 /// the exit code of the first failure when there is any, which is 1 unless
 /// the guide declares another for its code (ADR-0037), and `code`
@@ -145,8 +154,9 @@ fn print_failures<T: Rows, O: Write, W: Write, R>(
         (None, None) => {}
     }
     // A document without the envelope has no `failures` field, so its
-    // failures print as text even with `--json`.
-    if !output.json || !document.has_envelope() {
+    // failures print as text even with `--json`, unless its array holds
+    // them in input order.
+    if !output.json || !(document.has_envelope() || document.prints_failures_in_order()) {
         for failure in &failures {
             // Standard error is the last place to report anything, so a
             // failure to write there goes unreported.

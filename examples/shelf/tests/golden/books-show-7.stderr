@@ -1,3 +1,4 @@
 error: the catalogue has no book 7
+  key:   7 (index 0)
   help:  run `shelf books list`
   code:  shelf::books::not_found

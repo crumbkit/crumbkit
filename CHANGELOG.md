@@ -464,6 +464,23 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit: [`codes`] gains `REPORT_UNCHECKED`, the code of an unclassified
   error and of a converted `miette::Report`, and `codes::ALL` lists it.
 
+- crumbkit: a batch failure holds the `key` it failed on and that key's
+  `index` in JSON, and prints a `key:` line in text. The failure document's
+  schema holds both as optional fields ([ADR-0016]).
+- crumbkit: [`Document`]'s `failures_in_order` makes a batch without the
+  envelope print its rows and failure documents in one array in input order
+  with `--json`, in place of failures on standard error ([ADR-0016]).
+- crumbkit: the over-budget failure that ends a batch holds `left_out_from`,
+  the index of the first key left out ([ADR-0046]).
+- crumbkit-test: the failure reader and [`check_output_budget`] read a
+  batch's in-order array ([ADR-0016]).
+- crumbkit-test: [`check_guide`] fails a document that prints failures in
+  input order when its row type has a field named `schema` ([ADR-0016]).
+- crumbkit-test: [`check_opt_outs`] lists a document that prints failures
+  in input order under customisations ([ADR-0056]).
+- crumbkit: `PreparedFailure::key` and `PreparedFailure::index` give a
+  failure form a batch failure's key and index ([ADR-0045]).
+
 ### Changed
 
 - crumbkit: [`complete_to`] takes the function that builds the command from
@@ -715,6 +732,17 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- crumbkit: a debug build of a tool whose `main` never calls
+  `Output::set_command` writes a warning from `finish` and `stream`, and
+  crumbkit-test's `check_examples` and `check_recoveries` fail on it
+  ([ADR-0015]).
+- crumbkit: `--full` without `--json`, and `--fields` with `--long` or
+  `--full`, are refused in crumbkit's words with a hint that names the flag
+  to add or drop, in place of clap's error ([ADR-0016]).
+- crumbkit: a command without a doc comment that flattens `Output`,
+  `Page`, `NoInput`, `DryRun`, `Yes` or `Expect`, or takes one of
+  crumbkit's argument types, shows no description instead of crumbkit's
+  rustdoc ([ADR-0015]).
 - crumbkit-test: [`check_twins`] requires no twin for a declared code that
   the guide's `Rename` prints in place of one of crumbkit's codes, as its
   docs said ([ADR-0005]).

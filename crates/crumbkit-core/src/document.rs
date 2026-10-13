@@ -4,6 +4,7 @@ use std::fmt;
 use std::marker::PhantomData;
 
 use crate::segment::{is_component, is_segment};
+use crate::{AsFailure, Batch, Row};
 
 #[cfg(test)]
 mod tests;
@@ -67,6 +68,10 @@ pub struct Document<T> {
     /// The wording of the note that a listing or a stream with no rows
     /// prints, or `None` for crumbkit's default wording.
     empty: Option<&'static str>,
+    /// Whether a batch without the envelope prints its failures among its
+    /// rows in input order with `--json`, which the tool chose with
+    /// `failures_in_order`.
+    in_order: bool,
     /// `PhantomData<fn() -> T>` ties the document to `T` without holding a
     /// `T`. A function pointer is `Send` and `Sync` whatever it returns, so
     /// `Document<T>` is `Send` and `Sync` for every `T`; `PhantomData<T>`
@@ -121,6 +126,7 @@ impl<T> Document<T> {
             envelope: true,
             first_always: false,
             empty: None,
+            in_order: false,
             result: PhantomData,
         }
     }
@@ -130,7 +136,9 @@ impl<T> Document<T> {
     /// serializes it with every field, without `schema`, `total` or
     /// `failures`, so a command can print an existing document unchanged and
     /// keep its version while a tool migrates. `--full` is refused for such
-    /// a document, because `--json` already prints every field.
+    /// a document, because `--json` already prints every field. A batch
+    /// without the envelope prints its rows alone and its failures as text
+    /// on standard error, unless the tool calls `failures_in_order`.
     ///
     /// It is an opt-out from crumbkit's conventions. crumbkit-test's
     /// `check_document_ids` fails on a leaf whose document has no envelope
@@ -185,6 +193,14 @@ impl<T> Document<T> {
         self.empty
     }
 
+    /// Reports whether [`Document::failures_in_order`] was called, so a
+    /// batch without the envelope prints its failures among its rows with
+    /// `--json`.
+    #[must_use]
+    pub const fn prints_failures_in_order(&self) -> bool {
+        self.in_order
+    }
+
     /// Reports whether `crumbkit::finish` prints the result inside
     /// crumbkit's envelope, which is true unless the tool called
     /// [`Document::without_envelope`].
@@ -232,8 +248,41 @@ impl<T> Document<T> {
             envelope: self.envelope,
             first_always: self.first_always,
             empty: self.empty,
+            in_order: self.in_order,
             result: PhantomData,
         }
+    }
+}
+
+impl<R: Row, E: AsFailure> Document<Batch<R, E>> {
+    /// Returns the same batch document with its failures printed in input
+    /// order. With `--json`, `crumbkit::finish` then prints one array that
+    /// holds each row and each failure document in the order of the keys,
+    /// and the failure of the answers that the output budget left out last.
+    /// Each failure document holds `key` and `index`, the failure's key and
+    /// its position among the keys from 0, so a reader tells a failure from
+    /// a row by its `schema` and matches it to its key. Without it, the
+    /// array holds the rows alone and the failures print as text on
+    /// standard error.
+    ///
+    /// It is a declaration that crumbkit-test's `check_opt_outs` lists under
+    /// the customisations, and crumbkit-test's `check_guide` fails on a row
+    /// type with a field named `schema`, because such a row could look like
+    /// a failure (ADR-0016, ADR-0056).
+    ///
+    /// # Panics
+    ///
+    /// Panics unless the document is without its envelope, because a
+    /// document with the envelope holds its failures under `failures`. A
+    /// `const` that calls it on such a document fails to compile.
+    #[must_use]
+    pub const fn failures_in_order(mut self) -> Self {
+        assert!(
+            !self.envelope,
+            "failures in input order need a document without its envelope; call without_envelope first"
+        );
+        self.in_order = true;
+        self
     }
 }
 

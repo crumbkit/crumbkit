@@ -32,6 +32,12 @@ use crate::{Bytes, Document, Row, Rows, Shape, Stream};
 ///   without `schema`. `schemas show` serves the entry schema of the
 ///   guide's failure form in its place when the guide has one.
 ///
+/// A document without the envelope has the schema of its `data` at the
+/// top. Each item of a batch whose document calls
+/// [`Document::failures_in_order`] is a row or a `crumbkit/failure/v1`
+/// document, and `schemas show` serves the schema of the guide's failure
+/// form in place of the failure document when the guide has one.
+///
 /// The schemas of the row type, the summary type and a prose result's value
 /// sit under `$defs`.
 /// `schemas show` serves this schema, and crumbkit's checked-in schema
@@ -86,7 +92,8 @@ pub fn stream_schema<R: Row>(document: Document<Stream<R>>) -> Schema {
 ///
 /// A document without crumbkit's envelope has the schema of its `data` at
 /// the top, with the document's `title` and `description`, because
-/// `finish` prints the result alone (ADR-0007).
+/// `finish` prints the result alone (ADR-0007). Each item of a batch that
+/// prints its failures in input order is a row or a failure document.
 pub(crate) fn envelope<T: Rows>(document: Document<()>) -> Schema {
     let settings = SchemaSettings::draft2020_12();
     let meta_schema = settings.meta_schema.clone();
@@ -95,6 +102,16 @@ pub(crate) fn envelope<T: Rows>(document: Document<()>) -> Schema {
         Some(value) => value,
         None if T::SHAPE == Shape::Row => generator.subschema_for::<T::Row>(),
         None if T::SHAPE == Shape::Bytes => generator.subschema_for::<Bytes>(),
+        None if document.prints_failures_in_order() => json_schema!({
+            "description": "The rows for the ids that worked and the failure document of each id that did not, in the order the caller gave the ids, then the failure of the ids that the output budget left out.",
+            "type": "array",
+            "items": {
+                "anyOf": [
+                    generator.subschema_for::<T::Row>(),
+                    failure::failure_schema(),
+                ],
+            },
+        }),
         None => json_schema!({
             "description": data_description(T::SHAPE),
             "type": "array",

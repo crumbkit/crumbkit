@@ -505,7 +505,7 @@ error: the tool has not kept its command tree, so it cannot list its commands
   code:  crumbkit::commands::unavailable
 ";
     assert_eq!(finished.code, ExitCode::FAILURE);
-    assert_eq!(finished.err, expected);
+    assert!(finished.err.ends_with(expected), "{}", finished.err);
 }
 
 #[test]
