@@ -19,5 +19,5 @@ Examples:
 
 Effects: destructive, not idempotent, closed-world.
 Writes: replaces existing data; --expect <VERSION> fails with a conflict when the data changed.
-Global flags: --json, --fields <FIELD>, --long, --full, --no-input. `reading entries set --help` describes them.
+Global flags: --json, --fields <FIELD>, --full, --no-input. `reading entries set --help` describes them.
 Next: reading entries set --help explains each column.

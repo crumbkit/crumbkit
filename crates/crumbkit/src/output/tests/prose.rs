@@ -228,17 +228,6 @@ fn the_refusal_of_fields_on_prose_names_the_flag_under_fields() {
     );
 }
 
-#[test]
-fn long_and_full_leave_prose_unchanged() {
-    let text = finish_with(&[], Prose::new(eight("Eight planets.")));
-    let long = finish_with(&["--long"], Prose::new(eight("Eight planets.")));
-    let json = finish_with(&["--json"], Prose::new(eight("Eight planets.")));
-    let full = finish_with(&["--json", "--full"], Prose::new(eight("Eight planets.")));
-
-    assert_eq!(long.out, text.out);
-    assert_eq!(full.out, json.out);
-}
-
 /// Returns a prose result whose one failure offers a hint and a retry as
 /// alternatives.
 fn with_alternatives() -> Prose<Count, Missing> {

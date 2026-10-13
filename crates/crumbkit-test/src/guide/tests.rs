@@ -10,6 +10,7 @@ use super::check_guide;
 use crate::testing::panic_message;
 
 mod problems;
+mod views;
 
 /// A tool with two resources, one of which has a hidden verb and one an
 /// alias.

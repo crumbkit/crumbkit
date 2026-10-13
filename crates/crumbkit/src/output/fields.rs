@@ -1,72 +1,56 @@
-//! Which names `--fields` accepts for a result, and which output flags a
-//! result without columns refuses.
+//! Which names `--fields` accepts for a result, and which view flags a
+//! result refuses because it cannot use them.
 
 use super::Output;
+use crate::help::{ViewFlag, view};
 use crate::refusal::Refusal;
 use crate::row;
 use crate::{Row, Rows, Shape};
 
-/// The hint of each output flag that a bytes result refuses.
-const BYTES_HINT: &str = "use --json to read the bytes as text or base64";
-
-/// Returns the refusal of the output flags in `output` for a result of type
-/// `T`, or `None` when `T` accepts them.
-///
-/// A bytes result refuses `--fields`, `--long` and `--full`, because it has
-/// no columns and `--json` already prints all of it. Any other result
-/// refuses only a `--fields` name, as [`refusal`] describes.
-pub(super) fn flags_refusal<T: Rows>(output: &Output) -> Option<Refusal> {
-    if T::SHAPE != Shape::Bytes {
-        return refusal::<T>(&output.fields);
-    }
-    let (message, hint, flag) = if !output.fields.is_empty() {
-        (
-            "--fields selects the columns of a table, and this command prints raw bytes",
-            BYTES_HINT,
-            "--fields",
-        )
-    } else if output.long {
-        (
-            "--long adds the long columns of a table, and this command prints raw bytes",
-            BYTES_HINT,
-            "--long",
-        )
-    } else if output.full {
-        (
-            "--full prints every field of every row, and this command prints raw bytes",
-            "drop --full, because --json already prints the whole result",
-            "--full",
-        )
-    } else {
-        return None;
-    };
-    Some(Refusal::flag_value(
-        message.to_owned(),
-        hint.to_owned(),
-        flag,
-        None,
-    ))
+/// Returns the refusal of the view flags in `output` for a result of type
+/// `T` in a document that has crumbkit's envelope when `envelope` is set,
+/// or `None` when the result accepts them, as [`refusal`] describes.
+pub(super) fn flags_refusal<T: Rows>(output: &Output, envelope: bool) -> Option<Refusal> {
+    refusal::<T::Row>(
+        Some(T::SHAPE),
+        envelope,
+        &output.fields,
+        output.long,
+        output.full,
+    )
 }
 
-/// Returns the refusal of `fields` for a result of type `T`, or `None` when
-/// `T` accepts every name in `fields`.
+/// Returns the refusal of the view flags that the caller typed, `fields`
+/// and `--long` when `long` is set and `--full` when `full` is set, for a
+/// result of `shape` whose rows are `R`, or a stream of `R` when `shape` is
+/// `None`. It returns `None` when the result accepts them.
 ///
-/// A prose result refuses any name, because it has no columns. Any other
-/// result refuses the first name that is not a field of its row type, as
-/// [`unknown_field`] describes.
-pub(super) fn refusal<T: Rows>(fields: &[String]) -> Option<Refusal> {
+/// It first refuses a typed view flag that the result does not offer, by
+/// the rule of [`view::unoffered`], in the order `--fields`, `--long`,
+/// `--full`. It then refuses the first name in `fields` that is not a field
+/// of `R`, as [`unknown_field`] describes.
+pub(super) fn refusal<R: Row>(
+    shape: Option<Shape>,
+    envelope: bool,
+    fields: &[String],
+    long: bool,
+    full: bool,
+) -> Option<Refusal> {
+    let long_columns = !R::LONG_COLUMNS.is_empty();
+    for flag in ViewFlag::ALL {
+        let typed = match flag {
+            ViewFlag::Fields => !fields.is_empty(),
+            ViewFlag::Long => long,
+            ViewFlag::Full => full,
+        };
+        if typed && let Some(reason) = view::unoffered(shape, long_columns, envelope, flag) {
+            return Some(view::refusal(flag, reason));
+        }
+    }
     if fields.is_empty() {
         return None;
     }
-    if T::SHAPE == Shape::Prose {
-        return Some(Refusal::flag_value(
-            "--fields selects the columns of a table, and this command prints prose".to_owned(),
-            "use --json to read every field of the result".to_owned(),
-            "--fields",
-            None,
-        ));
-    }
-    unknown_field::<T::Row>(fields)
+    unknown_field::<R>(fields)
 }
 
 /// Returns the refusal of the first name in `fields` that is not a field of

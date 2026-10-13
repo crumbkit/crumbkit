@@ -26,7 +26,7 @@ pub(super) fn respond<T: Rows, E: AsFailure, O: Write, W: Write, R>(
     result: Result<T, E>,
 ) -> (u8, bool) {
     let printing = output.printing();
-    if let Some(refusal) = fields::flags_refusal::<T>(output) {
+    if let Some(refusal) = fields::flags_refusal::<T>(output, document.has_envelope()) {
         let code = refusal.print(
             sink,
             output.json,

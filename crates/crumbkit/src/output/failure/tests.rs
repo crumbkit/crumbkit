@@ -448,11 +448,9 @@ fn full_and_fields_leave_the_failure_document_unchanged() {
     let plain = fail_with(&["--json"], missing(run_list()));
     let full = fail_with(&["--json", "--full"], missing(run_list()));
     let fields = fail_with(&["--json", "--fields", "name"], missing(run_list()));
-    let long = fail_with(&["--json", "--long"], missing(run_list()));
 
     assert_eq!(full.out, plain.out);
     assert_eq!(fields.out, plain.out);
-    assert_eq!(long.out, plain.out);
 }
 
 #[test]

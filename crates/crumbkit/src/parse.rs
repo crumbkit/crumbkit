@@ -10,6 +10,7 @@ use clap::{Command, FromArgMatches};
 pub use self::parsed::Parsed;
 pub use self::stop::Stop;
 
+use self::attempt::attempt;
 use self::lines::{add_help_lines, has_visible_subcommands};
 use self::page::{print_page, print_text};
 use self::pick::{Picking, Step};
@@ -19,6 +20,7 @@ use crate::output::failure::Printing;
 use crate::refusal::Refusal;
 use crate::{Sink, Spelling};
 
+mod attempt;
 mod lines;
 mod page;
 mod parsed;
@@ -364,7 +366,7 @@ where
 
     // `Output::confirm` repeats the typed words, so they outlive parsing.
     let mut words = args.get(1..).unwrap_or_default().to_vec();
-    let mut parsed = attempt::<C>(&mut command, args);
+    let mut parsed = attempt::<C>(&mut command, args, guide);
     // A command line that leaves out a required argument can have it
     // picked, one argument at a time, and parses again after each pick.
     if let Some(picker) = pick::picker(guide) {
@@ -379,7 +381,7 @@ where
                 Step::Stop(code) => return Err(Stop::new(code, json, command, guide)),
             }
             let args = pick::args(&command, &words);
-            parsed = attempt::<C>(&mut command, args);
+            parsed = attempt::<C>(&mut command, args, guide);
         }
         if picked > 0 && parsed.is_ok() {
             pick::echo(sink, &command, &words);
@@ -388,8 +390,13 @@ where
         }
     }
     let error = match parsed {
-        Ok((parsed, no_input)) => {
+        Ok((parsed, no_input, None)) => {
             return Ok((parsed, Parsed::new(command, words, no_input, guide)));
+        }
+        Ok((_, _, Some(refusal))) => {
+            #[cfg(feature = "usage-log")]
+            crate::usage::exited(Printing::of(guide).exit(&crate::codes::CLI_USAGE));
+            return Err(refuse(sink, &refusal, json, spelling, guide, command));
         }
         Err(error) => error,
     };
@@ -406,32 +413,37 @@ where
         }
         return Err(Stop::new(crate::exit::number(code), json, command, guide));
     }
-    let printing = Printing::of(guide);
     #[cfg(feature = "usage-log")]
     crate::usage::refused(
         &command,
         &path,
         &error,
-        printing.exit(&crate::codes::CLI_USAGE),
+        Printing::of(guide).exit(&crate::codes::CLI_USAGE),
     );
     let message = refusal_message(&command, &path, &error);
     let refusal = Refusal::command_line(message, path, &error, &words);
-    let code = refusal.print(sink, json, spelling, printing, Some(&mut command));
-    Err(Stop::new(code, json, command, guide))
+    Err(refuse(sink, &refusal, json, spelling, guide, command))
 }
 
-/// Parses `args` against `command`, and returns the tool's parsed type and
-/// whether the caller passed `--no-input`, which parsing reads before the
-/// tool's type takes the values out of the matches.
-fn attempt<C: FromArgMatches>(
-    command: &mut Command,
-    args: Vec<OsString>,
-) -> Result<(C, bool), clap::Error> {
-    let mut matches = command.try_get_matches_from_mut(args)?;
-    #[cfg(feature = "usage-log")]
-    crate::usage::parsed(command, &matches);
-    let no_input = pick::no_input(&matches);
-    C::from_arg_matches_mut(&mut matches).map(|parsed| (parsed, no_input))
+/// Prints `refusal` to `sink` in the form, the layout and with the code
+/// that `guide` decides, and returns the `Stop` that ends the run with the
+/// exit code that `guide` gives a refused command line.
+fn refuse<O: Write, E: Write, R>(
+    sink: &mut Sink<O, E, R>,
+    refusal: &Refusal,
+    json: bool,
+    spelling: Spelling,
+    guide: &Guide,
+    mut command: Command,
+) -> Stop {
+    let code = refusal.print(
+        sink,
+        json,
+        spelling,
+        Printing::of(guide),
+        Some(&mut command),
+    );
+    Stop::new(code, json, command, guide)
 }
 
 /// Returns the page that `help` at the guide's root prints without clap,

@@ -1,7 +1,7 @@
 # ADR-0021. Help pages
 
 - [`parse`](../../../../crates/crumbkit/src/parse.rs) keeps clap's help template for each command and adds crumbkit's lines after the command's own `after_help` and `after_long_help`, so a tool keeps clap's layout and its own text. It changes only the commands that the typed words pass through, so crumbkit's extra work on every run grows with the depth of the command typed, and the command tree is never cloned.
-- `-h` names the global flags on one line and `--help` lists them in full.
+- `-h` names the global flags a leaf offers on one line, and `--help` lists them in full.
 - A leaf's help prints its effects on one `Effects:` line, first among crumbkit's lines after the examples (ADR-0039), and its write guards on a `Writes:` line after it (ADR-0047).
 - The help of a command with a visible subcommand ends with a `Next:` line that opens one of them.
 - The clap root's help names a person's aliases on one line when the guide opts in with `Guide::personal_aliases` (ADR-0027).

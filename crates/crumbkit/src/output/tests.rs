@@ -27,6 +27,7 @@ mod prose;
 mod report;
 mod summary;
 mod unwrapped;
+mod views;
 
 /// A row with two compact columns, one long column and one field that only
 /// `--full` shows. The last field is renamed, so its column name is `au`.

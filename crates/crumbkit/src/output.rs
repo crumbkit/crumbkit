@@ -51,6 +51,10 @@ mod tests;
 /// - `--fields a,b` prints exactly the named fields in that order, and
 ///   conflicts with `--long` and `--full`.
 ///
+/// A leaf whose document cannot use `--fields`, `--long` or `--full` leaves
+/// that flag out of its help, and `parse` and `finish` refuse it, as
+/// [`help::Leaf::offers`](crate::help::Leaf::offers) describes.
+///
 /// It also holds the command tree that the tool parsed against, which
 /// [`Output::set_command`] sets, so `finish` can render a listing's next step
 /// and a failure's recovery. `finish` builds only the branch of the tree that
@@ -381,8 +385,8 @@ pub fn finish<T: Rows, E: AsFailure>(
 /// A [`Prose`](crate::Prose) prints its text, with each control character
 /// other than a line feed or a tab escaped and a line feed added when the
 /// text lacks one, and its JSON document holds its value under `data`.
-/// Its failures print as a batch's do. `--long` and `--full` leave it
-/// unchanged, and `--fields` is refused, because it has no columns.
+/// Its failures print as a batch's do. `--fields`, `--long` and `--full`
+/// are refused, because it has no columns.
 ///
 /// A [`Bytes`](crate::Bytes) prints its bytes unchanged, with no escaping
 /// and no added line feed, and its JSON document holds `{"text": "..."}`
@@ -449,8 +453,11 @@ pub fn finish<T: Rows, E: AsFailure>(
 /// result cannot be serialized, and the cause of a failed write goes to the
 /// sink's error writer before a batch's failures. It is the exit code of a
 /// refused command line, 2 unless the guide lists another, when `--fields`
-/// names an unknown field, or when a bytes result gets `--fields`, `--long`
-/// or `--full`, which are checked before the result prints.
+/// names an unknown field, or when the result cannot use a view flag that
+/// the caller passed, which are checked before the result prints. A prose
+/// or bytes result cannot use `--fields`, `--long` or `--full`, rows
+/// without long columns cannot use `--long`, and a document without the
+/// envelope cannot use `--full` (ADR-0016).
 ///
 /// A run without a failure whose rows report a problem through the field
 /// that [`Row::PROBLEM`](crate::Row::PROBLEM) names exits with 1, also

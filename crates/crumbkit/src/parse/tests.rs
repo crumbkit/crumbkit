@@ -16,6 +16,7 @@ mod fields;
 mod hidden;
 mod limit;
 mod root;
+mod views;
 
 /// A tool with two global flags, a version, and a group that holds a visible
 /// leaf with an alias and a hidden leaf.
