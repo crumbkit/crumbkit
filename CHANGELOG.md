@@ -533,6 +533,10 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit-test: [`check_output_budget`], [`check_command_reference`] and
   the help checks that run the binary say when their timeout stopped a run,
   and a run without input reads an empty, closed standard input.
+- crumbkit-test: the checks that run the binary write standard input on
+  their own thread, so a run that never reads an
+  input larger than a pipe holds is stopped at its timeout instead of
+  blocking the check ([ADR-0005]).
 - crumbkit: a trim of the usage log keeps the newest whole lines within a
   size budget, drops a torn line, and replaces the log in one step under a
   separate lock file ([`usage`], [ADR-0029]).

@@ -68,10 +68,8 @@ mod tests;
 /// the example's input file on standard input, a file in the golden
 /// directory named with `.stdin` in place of `.txt`, such as
 /// `shelf-books-import.stdin`. A run without that file reads an empty
-/// standard input. The check writes the whole input before the 10-second
-/// limit starts, so an input file holds at most 64 KiB: a tool that does
-/// not read a larger input blocks the check, because the operating
-/// system's pipe holds about 64 KiB.
+/// standard input. The check writes the input while the run goes on, so a
+/// tool that does not read its input still ends at the 10-second limit.
 ///
 /// The golden file of an example holds the run's standard output, and
 /// [`example_golden_name`] names it after the example's command line, such

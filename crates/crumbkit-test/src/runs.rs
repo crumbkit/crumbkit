@@ -207,14 +207,16 @@ pub(crate) fn stopped(timeout: Duration) -> String {
 /// Runs `binary` once with `args`, a cleared environment, the variables of
 /// `env`, the directories of `xdg` and the working directory and standard
 /// input of `place`, and returns how the run ended, or the problem when the
-/// binary cannot start or the check cannot wait for it. The check writes the
-/// whole standard input and closes it before the run's `timeout` starts. A
-/// run that has not exited when `timeout` ends is killed and returns
-/// [`Ran::Stopped`], so a caller learns of a timeout from the run itself.
+/// binary cannot start or the check cannot wait for it. The run's `timeout`
+/// starts when the binary starts. A run that has not exited when `timeout`
+/// ends is killed and returns [`Ran::Stopped`], so a caller learns of a
+/// timeout from the run itself.
 ///
-/// The checks own the process effects of each run. Threads read standard
-/// output and standard error while the run goes on, so a run that prints
-/// more than a pipe holds does not block.
+/// The checks own the process effects of each run. One thread writes the
+/// standard input and then closes it, and two threads read standard output
+/// and standard error while the run goes on, so a run that never reads more
+/// input than a pipe holds, or prints more than a pipe holds, does not block
+/// the check.
 pub(crate) fn run(
     binary: &str,
     env: &[(&str, &str)],
@@ -246,14 +248,13 @@ pub(crate) fn run(
     let mut child = command
         .spawn()
         .map_err(|error| format!("the binary `{binary}` cannot start: {error}"))?;
+    let started = Instant::now();
+    if let Some(pipe) = child.stdin.take() {
+        write_all(pipe, place.stdin.unwrap_or_default().to_vec());
+    }
     let stdout = child.stdout.take().map(read_all);
     let stderr = child.stderr.take().map(read_all);
-    if let Some(mut input) = child.stdin.take() {
-        // A run may exit without reading its input, so a failed write is
-        // not a problem of the check.
-        let _ = input.write_all(place.stdin.unwrap_or_default());
-    }
-    let waited = wait(&mut child, timeout)
+    let waited = wait(&mut child, started, timeout)
         .map_err(|error| format!("the run of `{binary}` cannot be waited for: {error}"))?;
     let Some(status) = waited else {
         return Ok(Ran::Stopped);
@@ -269,11 +270,10 @@ pub(crate) fn run(
 const LONGEST_PAUSE: Duration = Duration::from_millis(10);
 
 /// Waits for `child` to exit and returns its exit status, or kills it and
-/// returns `None` when it has not exited after `timeout`. It checks after
+/// returns `None` when it has not exited `timeout` after `started`. It checks after
 /// 1 ms and then doubles the pause up to [`LONGEST_PAUSE`], so a short run
 /// waits little and a long run costs few checks.
-fn wait(child: &mut Child, timeout: Duration) -> io::Result<Option<ExitStatus>> {
-    let started = Instant::now();
+fn wait(child: &mut Child, started: Instant, timeout: Duration) -> io::Result<Option<ExitStatus>> {
     let mut pause = Duration::from_millis(1);
     loop {
         if let Some(status) = child.try_wait()? {
@@ -288,6 +288,16 @@ fn wait(child: &mut Child, timeout: Duration) -> io::Result<Option<ExitStatus>> 
         thread::sleep(pause.min(left));
         pause = (pause * 2).min(LONGEST_PAUSE);
     }
+}
+
+/// Writes `bytes` to `pipe` on a new thread and then drops the pipe, which
+/// closes the run's standard input. Nothing waits for the thread: a run may
+/// exit or be killed without reading its input, so a failed write, such as
+/// a broken pipe, is not a problem of the check.
+fn write_all(mut pipe: impl Write + Send + 'static, bytes: Vec<u8>) {
+    thread::spawn(move || {
+        let _ = pipe.write_all(&bytes);
+    });
 }
 
 /// Reads everything from `pipe` on a new thread, and returns the thread.
