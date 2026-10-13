@@ -77,6 +77,15 @@ pub enum CallArg {
         /// The value, as the caller types it before a shell quotes it.
         value: String,
     },
+    /// The argument with every value of a list field of the failure that
+    /// offers the call, which [`Call::all`] adds. It renders as its
+    /// placeholder, such as `<ID>...`.
+    All {
+        /// The clap id of the argument.
+        id: &'static str,
+        /// The name of the failure's field whose values the argument takes.
+        field: &'static str,
+    },
 }
 
 impl Call {
@@ -189,6 +198,37 @@ impl Call {
         self
     }
 
+    /// Adds the argument whose clap id is `id`, to be given every value of
+    /// the list field `field` of the failure that offers the call, after the
+    /// arguments already added.
+    ///
+    /// The argument must take many values, and it renders as its
+    /// placeholder, such as `<ID>...` for a positional or `--id <ID>...` for
+    /// an option. A call that holds it holds no placeholder from
+    /// [`Call::arg`], so the field's values alone fill the call. A failure
+    /// whose recovery holds such a call names the field beside the call in
+    /// its JSON, and its text prints the call with the values in place of the
+    /// placeholder. A batch's over-budget failure uses it to name the command
+    /// that fetches every key it left out in one run.
+    ///
+    /// ```
+    /// use crumbkit_core::{Call, CallArg, CallTarget};
+    ///
+    /// let call = Call::new(&["books", "show"]).all("ids", "left_out");
+    ///
+    /// let CallTarget::Command { args, .. } = call.target() else {
+    ///     unreachable!("Call::new names a command");
+    /// };
+    /// assert_eq!(*args, [CallArg::All { id: "ids", field: "left_out" }]);
+    /// ```
+    #[must_use]
+    pub fn all(mut self, id: &'static str, field: &'static str) -> Self {
+        if let CallTarget::Command { args, .. } = &mut self.target {
+            args.push(CallArg::All { id, field });
+        }
+        self
+    }
+
     /// Returns the command line the call names, which crumbkit reads to
     /// render the call.
     #[must_use]
@@ -244,6 +284,24 @@ pub enum CallError {
         /// The id of the flag.
         id: String,
     },
+    /// The call gives the argument `id` of `command` every value of a field,
+    /// and the argument takes one value.
+    TakesOneValue {
+        /// The final command of the call, such as `shelf books list`.
+        command: String,
+        /// The id of the argument.
+        id: String,
+    },
+    /// The call holds the argument `id` of `command` as a placeholder beside
+    /// an argument that takes every value of a field, or holds two arguments
+    /// that take every value of a field. Only the values of one field fill
+    /// such a call.
+    PlaceholderBesideAll {
+        /// The final command of the call, such as `shelf books list`.
+        command: String,
+        /// The id of the argument that is a placeholder.
+        id: String,
+    },
     /// The call gives the argument `id` of `command` a value that is not one
     /// of the argument's possible values.
     UnknownValue {
@@ -287,6 +345,14 @@ impl fmt::Display for CallError {
             Self::TakesNoValue { command, id } => {
                 write!(f, "'{command}' takes no value for its argument '{id}'")
             }
+            Self::TakesOneValue { command, id } => write!(
+                f,
+                "'{command}' takes one value for its argument '{id}', so a call cannot give it every value of a field"
+            ),
+            Self::PlaceholderBesideAll { command, id } => write!(
+                f,
+                "'{command}' has its argument '{id}' as a placeholder in a call that takes every value of a field, which only those values fill"
+            ),
             Self::UnknownValue { command, id, value } => {
                 write!(
                     f,

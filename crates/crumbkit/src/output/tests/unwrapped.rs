@@ -12,6 +12,7 @@ use clap::CommandFactory as _;
 use super::{
     PLANET, PLANET_LISTING, PLANETS, Planet, Tool, finish_with, mercury, parse_against, saturn,
 };
+use crate::answered::answered;
 use crate::{
     Batch, Call, Code, Document, Error, Failure, Listing, Prose, Recovery, Sink, Spelling,
     finish_to,
@@ -136,7 +137,7 @@ Next: tool show <NAME>... shows each planet.
 fn the_failures_of_an_unwrapped_batch_print_as_text_on_standard_error_with_json() {
     const SHOW: Document<Batch<Planet, Error>> =
         Document::new("solar", "planets-show", 1, "The test rows.").without_envelope();
-    let batch = Batch::new(vec![saturn()], vec![Missing("Vulcan").into()]);
+    let batch = answered(vec![saturn()], vec![Missing("Vulcan").into()]);
 
     let finished = finish_with(&["--json"], SHOW, batch);
 

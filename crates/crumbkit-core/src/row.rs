@@ -139,6 +139,22 @@ pub trait Rows: Serialize + sealed::Sealed {
         None
     }
 
+    /// Returns the keys that a batch leaves out when it shows only its first
+    /// `shown` rows, in the order the caller gave them: the keys of the rows
+    /// after the first `shown`, then the keys the handler never fetched. A
+    /// row whose result was pushed after the last key has no key and is
+    /// `None`. Every other result leaves out nothing.
+    fn left_out(&self, _shown: usize) -> Vec<Option<&str>> {
+        Vec::new()
+    }
+
+    /// Returns the call that fetches the keys a batch leaves out, with every
+    /// value of the over-budget failure's `left_out` field in one run, and
+    /// `None` when the result is not a batch.
+    fn fetch(&self) -> Option<Call> {
+        None
+    }
+
     /// Returns the text that the text output prints in place of a table
     /// when the result is a `Prose`, and `None` otherwise. Only a `Prose`
     /// returns one.

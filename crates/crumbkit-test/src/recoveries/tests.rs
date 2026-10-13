@@ -20,6 +20,7 @@ use crate::examples::Examples;
 use crate::temp::TempDir;
 use crate::testing::panic_message;
 
+mod all;
 mod chains;
 mod env;
 mod exits;

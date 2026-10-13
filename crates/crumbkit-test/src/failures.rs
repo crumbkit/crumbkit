@@ -205,19 +205,26 @@ fn read_document(document: &Value) -> Option<ReadFailure> {
             .unwrap_or_default()
             .to_owned()
     };
-    let steps = std::iter::once(document.get("recovery")?)
+    let steps: Vec<Step> = std::iter::once(document.get("recovery")?)
         .chain(alternatives)
-        .map(|step| match step.get("kind").and_then(Value::as_str) {
-            Some("run") => step.get("call").and_then(Value::as_str).map_or_else(
-                || Step::None(String::new()),
-                |call| Step::Run(call.to_owned()),
-            ),
-            Some("retry") => Step::Retry,
-            Some("hint") => Step::Hint(text(step, "text")),
-            _ => Step::None(text(step, "reason")),
+        .map(|step| {
+            let call = step.get("call").and_then(Value::as_str);
+            let all = step.get("all").and_then(Value::as_str);
+            match (step.get("kind").and_then(Value::as_str), call, all) {
+                (Some("run"), Some(call), Some(field)) => Step::RunAll {
+                    call: call.to_owned(),
+                    field: field.to_owned(),
+                },
+                (Some("run"), Some(call), None) => Step::Run(call.to_owned()),
+                (Some("run"), None, _) => Step::None(String::new()),
+                (Some("retry"), ..) => Step::Retry,
+                (Some("hint"), ..) => Step::Hint(text(step, "text")),
+                _ => Step::None(text(step, "reason")),
+            }
         })
         .collect();
-    Some(ReadFailure::new(code, steps).with_fields(fields(document)))
+    let fields = fields(document);
+    Some(ReadFailure::new(code, steps).with_fields(fields))
 }
 
 /// Returns the `fields` of the failure document `document`, each a name and
@@ -285,6 +292,7 @@ pub(crate) fn describe(failure: &ReadFailure) -> String {
         .iter()
         .map(|step| match step {
             Step::Run(call) => format!("run `{call}`"),
+            Step::RunAll { call, field } => format!("run `{call}` with every value of {field}"),
             Step::Retry => "retry".to_owned(),
             Step::Hint(text) => format!("hint: {text}"),
             Step::None(reason) if reason.is_empty() => "no next step".to_owned(),

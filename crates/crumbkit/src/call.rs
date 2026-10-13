@@ -166,34 +166,88 @@ pub(crate) fn render_built(call: &Call, command: &Command) -> Result<String, Cal
     // Each error names the command without the arguments before it, so the
     // loop reads the text up to `command_end`.
     let command_end = text.len();
+    refuse_placeholder_beside_all(args, &text[..command_end])?;
     for call_arg in args {
-        let (id, value) = match call_arg {
-            CallArg::Placeholder(id) => (*id, None),
-            CallArg::Value { id, value } => (*id, Some(value.as_str())),
-        };
-        let arg = find_arg(current, &text[..command_end], id)?;
-        match value {
+        match call_arg {
             // `Arg`'s `Display` writes the argument as clap's usage line
             // does, without styling. Writing to a `String` cannot fail.
-            None => {
+            CallArg::Placeholder(id) => {
+                let arg = find_arg(current, &text[..command_end], id)?;
                 let _ = write!(text, " {arg}");
             }
-            Some(value) => {
+            CallArg::Value { id, value } => {
+                let arg = find_arg(current, &text[..command_end], id)?;
                 let rendered = render_value(arg, &text[..command_end], value)?;
                 text.push(' ');
                 text.push_str(&rendered);
+            }
+            CallArg::All { id, .. } => {
+                let arg = find_arg(current, &text[..command_end], id)?;
+                refuse_one_value(arg, &text[..command_end])?;
+                let _ = write!(text, " {arg}");
             }
         }
     }
     Ok(text)
 }
 
+/// Returns an error when `args` holds an argument from `Call::all` beside
+/// a placeholder from `Call::arg` or a second one from `Call::all`, because
+/// the values of one field must fill the whole call. The error names the
+/// first placeholder, or the second argument from `Call::all` when there is
+/// no placeholder. `text` is the call's text up to the command.
+fn refuse_placeholder_beside_all(args: &[CallArg], text: &str) -> Result<(), CallError> {
+    let mut all = args.iter().filter_map(|arg| match arg {
+        CallArg::All { id, .. } => Some(*id),
+        CallArg::Placeholder(_) | CallArg::Value { .. } => None,
+    });
+    if all.next().is_none() {
+        return Ok(());
+    }
+    let placeholder = args.iter().find_map(|arg| match arg {
+        CallArg::Placeholder(id) => Some(*id),
+        CallArg::All { .. } | CallArg::Value { .. } => None,
+    });
+    match placeholder.or_else(|| all.next()) {
+        Some(id) => Err(CallError::PlaceholderBesideAll {
+            command: text.to_owned(),
+            id: id.to_owned(),
+        }),
+        None => Ok(()),
+    }
+}
+
+/// Returns an error when `arg` cannot take every value of a field in one
+/// occurrence: a flag, which takes no value, or an argument that takes one
+/// value. `text` is the call's text up to the command, which the error
+/// names.
+fn refuse_one_value(arg: &Arg, text: &str) -> Result<(), CallError> {
+    let id = arg.get_id().as_str();
+    if !arg.get_action().takes_values() {
+        return Err(CallError::TakesNoValue {
+            command: text.to_owned(),
+            id: id.to_owned(),
+        });
+    }
+    let many = arg
+        .get_num_args()
+        .is_some_and(|range| range.max_values() > 1);
+    if !many {
+        return Err(CallError::TakesOneValue {
+            command: text.to_owned(),
+            id: id.to_owned(),
+        });
+    }
+    Ok(())
+}
+
 /// Returns the words of the command line that `call` names, from the
 /// program name on, as a shell passes the line that
 /// [`RenderCall::render`] prints, or `None` when `call` holds a placeholder
-/// from `Call::arg`, which names no value to parse. `command` is the root
-/// of a tree that `call` already rendered against, so each lookup finds what
-/// the rendering found, and `None` also covers a lookup that would fail.
+/// from `Call::arg` or `Call::all`, which names no value to parse.
+/// `command` is the root of a tree that `call` already rendered against, so
+/// each lookup finds what the rendering found, and `None` also covers a
+/// lookup that would fail.
 pub(crate) fn words(call: &Call, command: &Command) -> Option<Vec<String>> {
     let mut words = vec![command.get_name().to_owned()];
     let (path, args) = match call.target() {

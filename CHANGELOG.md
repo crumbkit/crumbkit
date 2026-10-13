@@ -438,6 +438,16 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   own function replaces it ([ADR-0056]).
 - crumbkit-test: [`check_opt_outs`] lists the guide's refusal alternatives
   once under customisations ([ADR-0056]).
+- crumbkit-core: `Batch::has_room` returns whether the rows pushed so far
+  leave room in a number of bytes, so a handler can stop fetching keys
+  whose rows would not print ([ADR-0046]).
+- crumbkit-core: `Call::all` adds an argument that takes every value of a
+  list field of the failure in one run, which the `run` step names in
+  `all`. Rendering refuses an argument that takes one value or a placeholder
+  beside it ([ADR-0007]).
+- crumbkit-test: [`check_recoveries`] follows a `run` step with `all` once,
+  with every value of the named field, and accepts the same code again when
+  fewer values are left ([ADR-0053]).
 
 ### Changed
 
@@ -642,6 +652,16 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   document without the envelope ([ADR-0016]).
 - crumbkit: `complete_to` takes the name of the completion variable, which
   the registration script sets ([ADR-0048]).
+- crumbkit-core: `Batch::new` takes the command, the argument and the keys
+  that the caller gave, and the handler pushes one result for each key, so
+  each failed key has its own failure ([ADR-0016]).
+- crumbkit: a batch past the output budget ends with a failure whose
+  `left_out` lists the keys it left out in input order, and whose recovery
+  runs the command once with those keys. `unlisted` counts the rest
+  ([ADR-0046]).
+- crumbkit: a batch whose handler stopped before its last key ends with the
+  over-budget failure that lists the keys it never fetched, even when its
+  rows fit ([ADR-0046]).
 - crumbkit: [`complete`], [`complete_with`], [`complete_with_words`],
   `complete_to` and [`command_path`] take the tool's guide, so they read its
   `Guide::dashed_forms` declaration as [`parse`] does ([ADR-0015]).

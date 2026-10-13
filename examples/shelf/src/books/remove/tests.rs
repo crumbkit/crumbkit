@@ -67,6 +67,7 @@ fn remove_with_yes_returns_the_books_and_list_and_show_skip_them_afterwards() {
             from: None,
         },
         Some(&file),
+        usize::MAX,
     )
     .unwrap();
     let failures: Vec<String> = crumbkit::Rows::failures(&shown)

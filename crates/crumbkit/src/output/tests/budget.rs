@@ -11,11 +11,13 @@ use serde::Serialize;
 use serde_json::{Value, json};
 
 use super::{Finished, Tool, finish_output};
+
+mod batch;
 use crate::help::{Exit, Guide, Rename};
 use crate::twins::assert_one_word_apart;
 use crate::{
-    Batch, Code, Document, Error, Failure, JsonLayout, Listing, Output, Parsed, Prose, Recovery,
-    Row,
+    AsFailure, Batch, Code, Document, Error, Failure, JsonLayout, Listing, Output, Parsed, Prose,
+    Recovery, Row,
 };
 
 /// The smallest budget that a tool can set, which the tests use so that a
@@ -61,6 +63,18 @@ fn star(number: usize) -> Star {
 /// Returns the first `count` stars.
 fn stars(count: usize) -> Vec<Star> {
     (1..=count).map(star).collect()
+}
+
+/// Returns a batch of `tool show` whose keys are the names of `rows`, then
+/// one key for each failure, with every row and then every failure pushed
+/// in that order.
+fn keyed<E: AsFailure>(rows: Vec<Star>, failures: Vec<E>) -> Batch<Star, E> {
+    let mut keys: Vec<String> = rows.iter().map(|row| row.name.clone()).collect();
+    keys.extend((0..failures.len()).map(|number| format!("missing-{number}")));
+    let mut batch = Batch::new(&["show"], "names", &keys);
+    batch.extend(rows.into_iter().map(Ok));
+    batch.extend(failures.into_iter().map(Err));
+    batch
 }
 
 /// Returns the output flags for `flags` with a guide whose budget is
@@ -223,61 +237,6 @@ fn an_unwrapped_listing_cut_short_prints_its_line_on_standard_error() {
 }
 
 #[test]
-fn a_batch_over_the_budget_answers_its_first_ids_and_fails_the_rest_with_one_failure_and_exits_1() {
-    let batch = Batch::new(stars(20), Vec::new());
-    let finished = finish_small(&["--json"], STAR_BATCH, batch);
-
-    assert_eq!(finished.code, ExitCode::FAILURE);
-    assert!(finished.out.len() <= BUDGET);
-    let document = parsed(&finished.out);
-    let shown = document["data"].as_array().unwrap().len();
-    assert!(shown > 0 && shown < 20, "{shown}");
-    let failures = document["failures"].as_array().unwrap();
-    assert_eq!(failures.len(), 1);
-    assert_eq!(failures[0]["code"], "crumbkit::output::over_budget");
-    assert_eq!(
-        failures[0]["fields"],
-        json!({"left_out": 20 - shown, "budget": 1024})
-    );
-    assert_eq!(
-        failures[0]["recovery"],
-        json!({"kind": "hint", "text": "run the command again with the ids that were not answered"})
-    );
-}
-
-#[test]
-fn a_batch_over_the_budget_in_text_prints_the_failure_of_the_ids_left_out_on_standard_error() {
-    let batch = Batch::new(stars(20), Vec::new());
-    let finished = finish_small(&[], STAR_BATCH, batch);
-
-    assert_eq!(finished.code, ExitCode::FAILURE);
-    assert!(finished.out.len() <= BUDGET);
-    let shown = finished.out.lines().count() - 1;
-    assert!(finished.err.starts_with(&format!(
-        "error: {} more rows did not fit in the output budget of 1024 bytes\n",
-        20 - shown
-    )));
-    assert!(
-        finished.err.contains("crumbkit::output::over_budget"),
-        "{}",
-        finished.err
-    );
-}
-
-#[test]
-fn a_batch_always_answers_its_first_id_even_when_it_passes_the_budget() {
-    let mut first = star(1);
-    first.story = "a".repeat(2000);
-    let batch = Batch::new(vec![first, star(2)], Vec::new());
-    let finished = finish_small(&["--json"], STAR_BATCH, batch);
-
-    assert_eq!(finished.code, ExitCode::FAILURE);
-    let document = parsed(&finished.out);
-    assert_eq!(document["data"].as_array().unwrap().len(), 1);
-    assert_eq!(document["failures"][0]["fields"]["left_out"], 1);
-}
-
-#[test]
 fn a_single_row_over_the_budget_is_refused_with_the_over_budget_code_and_exits_1() {
     let refused = ["--json"];
     let admitted = ["--json", "--fields=name"];
@@ -423,14 +382,14 @@ proptest! {
         let batch = finish_output(
             &mut budgeted(budget, flags),
             DIM_BATCH,
-            Batch::new(rows(), failures),
+            keyed(rows(), failures),
         );
         // The first row always prints, so only a batch whose first row fits
         // stays within the budget.
         let first = finish_output(
             &mut budgeted(budget, flags),
             DIM_BATCH,
-            Batch::new(rows().into_iter().take(1).collect(), (0..dim).map(Dim).collect()),
+            keyed(rows().into_iter().take(1).collect(), (0..dim).map(Dim).collect()),
         );
         if first.out.len() + 300 <= budget {
             prop_assert!(batch.out.len() <= budget);

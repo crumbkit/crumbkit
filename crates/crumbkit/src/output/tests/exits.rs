@@ -7,6 +7,7 @@ use std::process::ExitCode;
 use clap::{CommandFactory as _, Parser, Subcommand};
 
 use super::{PLANETS, Planet, mercury};
+use crate::answered::answered;
 use crate::help::{Exit, Guide, Rename};
 use crate::{Batch, Code, Document, Failure, Output, Parsed, Recovery, Sink, Spelling, finish_to};
 
@@ -104,7 +105,7 @@ fn an_output_set_from_a_bare_command_maps_no_failure_and_exits_with_code_1() {
 
 #[test]
 fn a_batch_whose_first_failure_is_mapped_exits_with_its_declared_code() {
-    let batch = Batch::new(
+    let batch = answered(
         vec![mercury()],
         vec![Failed(&TIMED_OUT), Failed(&NOT_FOUND)],
     );
@@ -114,7 +115,7 @@ fn a_batch_whose_first_failure_is_mapped_exits_with_its_declared_code() {
 
 #[test]
 fn a_batch_whose_first_failure_is_unmapped_exits_with_code_1_though_a_later_one_is_mapped() {
-    let batch = Batch::new(
+    let batch = answered(
         vec![mercury()],
         vec![Failed(&NOT_FOUND), Failed(&TIMED_OUT)],
     );
@@ -132,7 +133,7 @@ fn a_renamed_crumbkit_failure_in_a_batch_prints_the_tool_s_code_and_exits_with_i
         .unwrap()
         .output;
     output.set_command(Parsed::guided(Tool::command(), &RENAMED));
-    let batch = Batch::new(
+    let batch = answered(
         vec![mercury()],
         vec![Failed(&crate::codes::VERSION_CONFLICT)],
     );

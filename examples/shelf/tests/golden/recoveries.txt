@@ -46,6 +46,13 @@ shelf books show
   run shelf books list
     exits 0
 
+shelf books show 1 2 3 4 5 6 (with CRUMBKIT_OUTPUT_BUDGET=400)
+  fails with crumbkit::output::over_budget
+  run shelf books show <ID>... as shelf books show 2 3 4 5 6
+    fails with crumbkit::output::over_budget
+    run shelf books show <ID>... as shelf books show 3 4 5 6
+      exits 0
+
 codes that no start provokes:
   shelf::books::removed_file: Only a file of removed books that shelf cannot read or write provokes it, such as one on a full disk.
   shelf::books::no_state_directory: The check always sets XDG_STATE_HOME, and only a run without it and without HOME provokes the code.

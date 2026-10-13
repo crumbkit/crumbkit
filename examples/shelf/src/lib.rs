@@ -91,12 +91,10 @@ where
                     books::BOOKS_LIST,
                     books::list(&args, removed),
                 ),
-                BooksCommand::Show(args) => crumbkit::finish(
-                    &mut cli.output,
-                    SPELLING,
-                    books::BOOKS_SHOW,
-                    books::show(&args, removed),
-                ),
+                BooksCommand::Show(args) => {
+                    let result = books::show(&args, removed, cli.output.budget());
+                    crumbkit::finish(&mut cli.output, SPELLING, books::BOOKS_SHOW, result)
+                }
                 BooksCommand::Summarize(args) => crumbkit::finish(
                     &mut cli.output,
                     SPELLING,

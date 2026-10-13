@@ -8,6 +8,7 @@ use clap::{CommandFactory as _, Parser, Subcommand};
 use schemars::JsonSchema;
 use serde::Serialize;
 
+use crate::answered::answered;
 use crate::twins::assert_one_word_apart;
 use crate::{
     AsFailure, Batch, Call, Code, Document, Error, Failure, Output, Recovery, Row, Sink, Spelling,
@@ -165,7 +166,7 @@ fn finish_with<E: AsFailure>(flags: &[&str], batch: Batch<Planet, E>) -> Finishe
 
 /// Returns a batch of Mercury and Saturn and the failures `failures`.
 fn two_with(failures: Vec<Missing>) -> Batch<Planet, Missing> {
-    Batch::new(vec![mercury(), saturn()], failures)
+    answered(vec![mercury(), saturn()], failures)
 }
 
 #[test]
@@ -223,7 +224,7 @@ fn each_failure_in_a_batch_prints_exactly_as_a_failed_command_prints_it() {
 
 #[test]
 fn a_batch_without_rows_prints_nothing_on_standard_output_and_only_its_failures() {
-    let batch = Batch::new(Vec::new(), vec![missing("Vulcan")]);
+    let batch = answered(Vec::new(), vec![missing("Vulcan")]);
 
     let finished = finish_with(&[], batch);
 
@@ -240,7 +241,7 @@ fn a_batch_without_rows_prints_nothing_on_standard_output_and_only_its_failures(
 
 #[test]
 fn a_batch_without_rows_or_failures_prints_nothing_and_exits_with_code_0() {
-    let batch: Batch<Planet, Missing> = Batch::new(Vec::new(), Vec::new());
+    let batch: Batch<Planet, Missing> = answered(Vec::new(), Vec::new());
 
     let finished = finish_with(&[], batch);
 
@@ -254,14 +255,14 @@ fn a_batch_of_crumbkit_errors_prints_each_as_the_failure_inside() {
     let direct = finish_with(&[], two_with(vec![missing("Vulcan")]));
     let wrapped = finish_with(
         &[],
-        Batch::new(
+        answered(
             vec![mercury(), saturn()],
             vec![Error::from(missing("Vulcan"))],
         ),
     );
     let wrapped_json = finish_with(
         &["--json"],
-        Batch::new(vec![saturn()], vec![Error::from(missing("Vulcan"))]),
+        answered(vec![saturn()], vec![Error::from(missing("Vulcan"))]),
     );
 
     assert_eq!(wrapped.code, ExitCode::FAILURE);
@@ -318,7 +319,7 @@ fn json_of_a_batch_prints_one_document_with_the_failures_and_exits_with_code_1()
         },
     ];
 
-    let finished = finish_with(&["--json"], Batch::new(vec![saturn()], failures));
+    let finished = finish_with(&["--json"], answered(vec![saturn()], failures));
 
     assert_eq!(finished.code, ExitCode::FAILURE);
     assert_eq!(
@@ -352,7 +353,7 @@ fn a_failure_in_a_batch_document_is_the_failure_document_without_its_schema() {
 
     let finished = finish_with(
         &["--json"],
-        Batch::new(
+        answered(
             Vec::new(),
             vec![Missing {
                 names: "Nibiru",
@@ -370,7 +371,7 @@ fn a_failure_in_a_batch_document_is_the_failure_document_without_its_schema() {
 fn json_full_shapes_the_data_and_leaves_the_failures_unchanged() {
     let finished = finish_with(
         &["--json", "--full"],
-        Batch::new(vec![saturn()], vec![missing("Vulcan")]),
+        answered(vec![saturn()], vec![missing("Vulcan")]),
     );
 
     assert_eq!(finished.code, ExitCode::FAILURE);
@@ -388,7 +389,7 @@ fn json_full_shapes_the_data_and_leaves_the_failures_unchanged() {
 fn json_fields_shapes_the_data_and_leaves_the_failures_unchanged() {
     let finished = finish_with(
         &["--json", "--fields", "au"],
-        Batch::new(vec![saturn()], vec![missing("Vulcan")]),
+        answered(vec![saturn()], vec![missing("Vulcan")]),
     );
 
     assert_eq!(

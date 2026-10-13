@@ -1,3 +1,6 @@
-error: the catalogue has no books 7, 9
+error: the catalogue has no book 7
+  help:  run `shelf books list`
+  code:  shelf::books::not_found
+error: the catalogue has no book 9
   help:  run `shelf books list`
   code:  shelf::books::not_found

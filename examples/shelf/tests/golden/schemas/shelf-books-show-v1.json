@@ -29,9 +29,12 @@
               "description": "A repair the caller can try instead, tagged by kind.",
               "oneOf": [
                 {
-                  "description": "Run this command.",
+                  "description": "Run this command. With `all`, run it once with every value of the failure's field that `all` names in place of the argument's placeholder, such as `<ID>...`.",
                   "type": "object",
                   "properties": {
+                    "all": {
+                      "type": "string"
+                    },
                     "call": {
                       "type": "string"
                     },
@@ -192,9 +195,12 @@
             "description": "What the caller can do next, tagged by kind.",
             "oneOf": [
               {
-                "description": "Run this command.",
+                "description": "Run this command. With `all`, run it once with every value of the failure's field that `all` names in place of the argument's placeholder, such as `<ID>...`.",
                 "type": "object",
                 "properties": {
+                  "all": {
+                    "type": "string"
+                  },
                   "call": {
                     "type": "string"
                   },

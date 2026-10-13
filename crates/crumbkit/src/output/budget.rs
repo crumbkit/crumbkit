@@ -9,7 +9,7 @@ use std::io::{self, Write};
 use serde::Serialize;
 use serde::ser::{SerializeMap, Serializer};
 
-use crate::{Code, Failure, Field, Recovery};
+use crate::{Call, Code, Failure, Field, FieldValue, Recovery};
 
 #[cfg(test)]
 mod tests;
@@ -203,10 +203,19 @@ pub(super) fn write_cut_line(
 
 /// The kind of result that passed the budget, which decides the failure's
 /// message, fields and recovery.
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Debug)]
 pub(super) enum Over {
-    /// A batch whose later rows were left out: this many of them.
-    Batch(usize),
+    /// A batch whose later answers were left out.
+    Batch {
+        /// The keys of the answers left out that the failure names, in the
+        /// order the caller gave them.
+        left_out: Vec<String>,
+        /// The number of answers left out that the failure does not name:
+        /// those without a key, and those whose keys did not fit.
+        unlisted: usize,
+        /// The call that fetches every key left out in one run.
+        fetch: Option<Call>,
+    },
     /// A single row or a list of rows that crumbkit refused whole.
     Row,
     /// A prose or bytes result, which no flag makes smaller.
@@ -229,15 +238,28 @@ pub(super) struct OverBudget {
 impl fmt::Display for OverBudget {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let budget = self.budget;
-        match self.over {
-            Over::Batch(1) => write!(
-                f,
-                "1 more row did not fit in the output budget of {budget} bytes"
-            ),
-            Over::Batch(left_out) => write!(
-                f,
-                "{left_out} more rows did not fit in the output budget of {budget} bytes"
-            ),
+        match &self.over {
+            Over::Batch {
+                left_out, unlisted, ..
+            } => {
+                match left_out.len().saturating_add(*unlisted) {
+                    1 => write!(
+                        f,
+                        "1 more answer did not fit in the output budget of {budget} bytes"
+                    )?,
+                    count => write!(
+                        f,
+                        "{count} more answers did not fit in the output budget of {budget} bytes"
+                    )?,
+                }
+                if *unlisted > 0 && !left_out.is_empty() {
+                    write!(
+                        f,
+                        ". The recovery covers the keys listed in left_out, and a later run covers the other {unlisted}"
+                    )?;
+                }
+                Ok(())
+            }
             Over::Row | Over::Whole => write!(
                 f,
                 "the result is larger than the output budget of {budget} bytes"
@@ -258,9 +280,14 @@ impl Failure for OverBudget {
     }
 
     fn recovery(&self) -> Recovery {
-        match self.over {
-            Over::Batch(_) => Recovery::Hint(
-                "run the command again with the ids that were not answered".to_owned(),
+        match &self.over {
+            Over::Batch {
+                left_out,
+                fetch: Some(call),
+                ..
+            } if !left_out.is_empty() => Recovery::Run(call.clone()),
+            Over::Batch { .. } => Recovery::Hint(
+                "run the command again with the keys that were not answered".to_owned(),
             ),
             Over::Row => Recovery::Hint("ask for fewer fields with --fields".to_owned()),
             Over::Whole => Recovery::None {
@@ -274,8 +301,17 @@ impl Failure for OverBudget {
 
     fn fields(&self) -> Vec<Field<'_>> {
         let budget = Field::new("budget", self.budget);
-        match self.over {
-            Over::Batch(left_out) => vec![Field::new("left_out", left_out), budget],
+        match &self.over {
+            Over::Batch {
+                left_out, unlisted, ..
+            } => {
+                let mut fields = vec![Field::new("left_out", FieldValue::list(left_out))];
+                if *unlisted > 0 {
+                    fields.push(Field::new("unlisted", *unlisted));
+                }
+                fields.push(budget);
+                fields
+            }
             Over::Row | Over::Whole | Over::Stream => vec![budget],
         }
     }

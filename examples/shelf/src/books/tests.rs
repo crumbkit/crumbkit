@@ -27,7 +27,7 @@ fn show_returns_the_books_in_the_order_given_and_repeats_a_repeated_id() {
         from: None,
     };
 
-    let batch = show(&args, None).unwrap();
+    let batch = show(&args, None, usize::MAX).unwrap();
 
     let titles: Vec<&str> = batch.rows().iter().map(|book| book.title).collect();
     assert_eq!(titles, ["Middlemarch", "Frankenstein", "Middlemarch"]);
@@ -41,7 +41,7 @@ fn show_returns_one_failure_naming_one_missing_id_as_a_book_and_no_books() {
         from: None,
     };
 
-    let batch = show(&args, None).unwrap();
+    let batch = show(&args, None, usize::MAX).unwrap();
 
     let failures: Vec<String> = batch
         .failures()
@@ -54,13 +54,13 @@ fn show_returns_one_failure_naming_one_missing_id_as_a_book_and_no_books() {
 }
 
 #[test]
-fn show_returns_the_books_found_and_one_failure_naming_each_missing_id_once_in_the_order_given() {
+fn show_returns_the_books_found_and_one_failure_for_each_missing_id_in_the_order_given() {
     let args = BooksShow {
         ids: vec![2, 9, 7, 9],
         from: None,
     };
 
-    let batch = show(&args, None).unwrap();
+    let batch = show(&args, None, usize::MAX).unwrap();
 
     let titles: Vec<&str> = batch.rows().iter().map(|book| book.title).collect();
     let failures: Vec<String> = batch
@@ -70,7 +70,27 @@ fn show_returns_the_books_found_and_one_failure_naming_each_missing_id_once_in_t
         .map(ToString::to_string)
         .collect();
     assert_eq!(titles, ["Frankenstein"]);
-    assert_eq!(failures, ["the catalogue has no books 9, 7"]);
+    assert_eq!(
+        failures,
+        [
+            "the catalogue has no book 9",
+            "the catalogue has no book 7",
+            "the catalogue has no book 9"
+        ]
+    );
+}
+
+#[test]
+fn show_stops_looking_up_ids_once_its_books_fill_the_budget() {
+    let args = BooksShow {
+        ids: vec![1, 2, 3],
+        from: None,
+    };
+
+    let batch = show(&args, None, 1).unwrap();
+
+    assert_eq!(batch.rows().len(), 1);
+    assert_eq!(batch.left_out(1), [Some("2"), Some("3")]);
 }
 
 #[test]
