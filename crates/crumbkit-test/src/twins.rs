@@ -6,6 +6,7 @@ use std::process::Output;
 use std::time::Instant;
 
 use crumbkit::Spelling;
+use crumbkit::help::Guide;
 
 use crate::examples::Examples;
 use crate::guide::command_line;
@@ -20,7 +21,7 @@ use crate::runs::{self, Dir, Place, TIMEOUT, WorkDir, Xdg};
 mod tests;
 
 /// Runs `refused` and `admitted`, two command lines of the binary of
-/// `examples` that differ by one word, checks that `refused` fails with its
+/// `examples` that differ by one word, for the tool whose guide is `guide`, checks that `refused` fails with its
 /// code and that `admitted` exits with code 0, and returns the output of
 /// `refused`, so the test can compare it with its golden files. It panics,
 /// as a failed test assertion does, when a rule is broken.
@@ -35,8 +36,9 @@ mod tests;
 /// of the fixture of [`Examples::fresh_dir`], and fresh XDG directories of
 /// their own, as [`check_examples`](crate::check_examples) runs an example.
 /// The check reads the refused line's code, spelled with `spelling`. When
-/// [`Examples::failure_form`] names a form, it reads the code through the
-/// form's [`FailureForm::read`](crumbkit::form::FailureForm::read) first.
+/// the guide sets a form with `Guide::failure_form`, it reads the code
+/// through the form's
+/// [`FailureForm::read`](crumbkit::form::FailureForm::read) first.
 /// Otherwise, or when `read` returns `None`, it reads the code from a
 /// `crumbkit/failure/v1` document on standard output, or from the first
 /// entry of a batch's `failures`, and then from the last `code:` line on
@@ -44,12 +46,15 @@ mod tests;
 ///
 /// ```no_run
 /// use crumbkit::Spelling;
+/// use crumbkit::help::Guide;
 /// use crumbkit_test::{Examples, Failing};
 ///
+/// const GUIDE: Guide = Guide::new();
 /// // In an integration test, the binary is `env!("CARGO_BIN_EXE_shelf")`.
 /// const EXAMPLES: Examples<'_> = Examples::new("/path/to/shelf", "tests/golden/examples");
 ///
 /// let output = crumbkit_test::check_twin(
+///     &GUIDE,
 ///     &EXAMPLES,
 ///     Spelling::COLONS,
 ///     &Failing::new(&crumbkit::codes::CLI_USAGE, &["books", "list", "--limit", "0"]),
@@ -70,12 +75,13 @@ mod tests;
     reason = "a test that compares no output with golden files calls the check only for its assertions"
 )]
 pub fn check_twin(
+    guide: &Guide,
     examples: &Examples<'_>,
     spelling: Spelling,
     refused: &Failing<'_>,
     admitted: &[&str],
 ) -> Output {
-    match twin(examples, spelling, refused, admitted) {
+    match twin(guide, examples, spelling, refused, admitted) {
         Ok(output) => output,
         Err(problem) => {
             #[expect(
@@ -92,6 +98,7 @@ pub fn check_twin(
 /// Runs the two lines of [`check_twin`] and returns the output of
 /// `refused`, or the problem when a rule is broken.
 fn twin(
+    guide: &Guide,
     examples: &Examples<'_>,
     spelling: Spelling,
     refused: &Failing<'_>,
@@ -123,7 +130,7 @@ fn twin(
             "the refused line `{refused_line}` must fail with {code}, and it exits with code 0"
         ));
     }
-    let printed = runs::read_failure(examples.form(), &output.stdout, &output.stderr)
+    let printed = runs::read_failure(guide.get_failure_form(), &output.stdout, &output.stderr)
         .map(|failure| failure.code().to_owned())
         .or_else(|| runs::text_code(&output.stderr));
     match printed {
@@ -135,7 +142,7 @@ fn twin(
         }
         None => {
             return Err(format!(
-                "the refused line `{refused_line}` must fail with {code}, and it ends with {} and prints no code that the check can read. A tool that prints failures in a form of its own implements FailureForm::read and passes the form to Examples::failure_form",
+                "the refused line `{refused_line}` must fail with {code}, and it ends with {} and prints no code that the check can read. A tool that prints failures in a form of its own implements FailureForm::read and sets the form with Guide::failure_form",
                 output.status
             ));
         }

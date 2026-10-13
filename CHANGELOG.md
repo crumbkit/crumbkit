@@ -296,8 +296,6 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit: [`FailureForm`] gains the provided method `read`, which reads a
   failed run's code and steps into a [`ReadFailure`] and returns `None` by
   default ([ADR-0045]).
-- crumbkit-test: [`Examples`] gains `failure_form`, which names the tool's
-  failure form for [`check_twin`] and [`check_examples`] ([ADR-0045]).
 - crumbkit: `Guide::json_layout(JsonLayout::Pretty, reason)` prints every
   whole JSON document indented by two spaces, and a stream keeps one
   document per line ([ADR-0052]).
@@ -337,6 +335,9 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   time ([ADR-0025]).
 ### Changed
 
+- crumbkit-test: [`check_twin`] takes the tool's guide as its first
+  argument and reads a refused run through the guide's failure form
+  ([ADR-0045]).
 - crumbkit-test: [`check_recoveries`] fills a placeholder from the `fields`
   of the failure that offers the step before it reads `Recoveries::values`
   ([ADR-0053]).
@@ -474,6 +475,8 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   [`check_recoveries`] runs hints that a tool wrote with double quotes.
 ### Removed
 
+- crumbkit-test: `Examples::failure_form` is gone, because [`check_twin`]
+  reads the failure form from the tool's guide ([ADR-0045]).
 - crumbkit: `Call::word` is gone, because `Call::value` adds a runtime value
   and checks it against the tool's command tree ([`Call`]).
 

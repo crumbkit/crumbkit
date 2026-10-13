@@ -182,25 +182,7 @@ impl FailureForm for LineForm {
     }
 }
 
-/// A form whose document id differs from `LineForm`'s.
-struct OtherForm;
-
-impl FailureForm for OtherForm {
-    fn document(&self) -> Document<()> {
-        Document::new("sh", "fault", 1, "The document of a failed command.")
-    }
-
-    fn schema(&self) -> Schema {
-        LineForm.schema()
-    }
-
-    fn json(&self, failure: &PreparedFailure<'_>) -> serde_json::Value {
-        LineForm.json(failure)
-    }
-}
-
 static FORM: LineForm = LineForm;
-static OTHER: OtherForm = OtherForm;
 
 /// The examples of a tool with `LineForm`, whose one example fails.
 const FAILS_IN_FORM: Guide = Guide::new().failure_form(&FORM).leaves(&[Leaf::new(&["-c"])
@@ -214,11 +196,7 @@ fn an_example_that_fails_names_the_code_that_the_failure_form_reads() {
     let dir = TempDir::new("examples-failure-form").unwrap();
 
     let message = panic_message(|| {
-        run(
-            &FAILS_IN_FORM,
-            &examples(&dir).failure_form(&FORM),
-            Action::Overwrite,
-        );
+        run(&FAILS_IN_FORM, &examples(&dir), Action::Overwrite);
     })
     .unwrap();
 
@@ -228,53 +206,5 @@ fn an_example_that_fails_names_the_code_that_the_failure_form_reads() {
              and fails with sh::books::gone after writing"
         ),
         "{message}"
-    );
-}
-
-#[test]
-fn a_guide_and_examples_that_name_different_failure_forms_fail_the_check() {
-    const QUIET: Guide = Guide::new()
-        .failure_form(&FORM)
-        .leaves(&[Leaf::new(&["-c"]).examples(&[Example::new(&["echo books"], "Print")])]);
-    const NO_FORM: Guide = Guide::new()
-        .leaves(&[Leaf::new(&["-c"]).examples(&[Example::new(&["echo books"], "Print")])]);
-    let dir = TempDir::new("examples-form-mismatch").unwrap();
-
-    let none = panic_message(|| run(&QUIET, &examples(&dir), Action::Overwrite));
-    let other = panic_message(|| {
-        run(
-            &QUIET,
-            &examples(&dir).failure_form(&OTHER),
-            Action::Overwrite,
-        );
-    });
-    let extra = panic_message(|| {
-        run(
-            &NO_FORM,
-            &examples(&dir).failure_form(&FORM),
-            Action::Overwrite,
-        );
-    });
-    run(
-        &QUIET,
-        &examples(&dir).failure_form(&FORM),
-        Action::Overwrite,
-    );
-
-    assert_eq!(
-        none.unwrap(),
-        "the command tree breaks crumbkit's example rules:\n\
-         the guide sets the failure form sh/error/v1, and Examples names no failure form, \
-         so check_twin cannot read the tool's failures. Examples::failure_form names the guide's form"
-    );
-    assert_eq!(
-        other.unwrap(),
-        "the command tree breaks crumbkit's example rules:\n\
-         the guide sets the failure form sh/error/v1, and Examples::failure_form names sh/fault/v1"
-    );
-    assert_eq!(
-        extra.unwrap(),
-        "the command tree breaks crumbkit's example rules:\n\
-         Examples::failure_form names sh/error/v1, and the guide sets no failure form"
     );
 }
