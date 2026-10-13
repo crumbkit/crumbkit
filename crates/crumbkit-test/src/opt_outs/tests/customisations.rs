@@ -1,15 +1,18 @@
 //! Tests for the customisations section of the opt-out report, which lists
 //! the tool's declarations without a reason or a cost.
 
+use clap::Command;
 use crumbkit::codes::CLI_USAGE;
 use crumbkit::form::{FailureForm, PreparedFailure};
 use crumbkit::help::{Exit, Guide, Leaf, Rename};
-use crumbkit::{Code, Document};
+use crumbkit::schemas::SCHEMAS_LIST;
+use crumbkit::{Code, Document, Prose};
 use schemars::{Schema, json_schema};
 use serde_json::{Value, json};
 use snapbox::assert::Action;
 
 use super::{read, run_guided};
+use crate::opt_outs::customisations::customisations;
 use crate::temp::TempDir;
 
 /// A failure form whose document is `shelf/error/v2`.
@@ -102,4 +105,37 @@ fn an_exit_that_lists_the_tool_s_own_code_is_no_customisation() {
         read(&dir, "opt-outs.txt"),
         "shelf has no opt-outs from crumbkit's conventions.\n"
     );
+}
+
+const BOOK_SHOW: Document<Prose<String>> = Document::new("shelf", "book-show", 1, "One book.");
+const VERSION: Document<Prose<String>> = Document::new("shelf", "version", 1, "The version.");
+
+#[test]
+fn a_document_named_other_than_its_command_path_is_a_document_name_customisation() {
+    const GUIDE: Guide = Guide::new().leaves(&[
+        Leaf::new(&["books", "show"]).document(BOOK_SHOW),
+        Leaf::new(&["version"]).document(VERSION),
+        Leaf::new(&["meta", "schemas"]).document(SCHEMAS_LIST),
+    ]);
+    let dir = TempDir::new("opt-outs-document-name").unwrap();
+
+    run_guided(&GUIDE, &dir, Action::Overwrite);
+
+    assert_eq!(
+        read(&dir, "opt-outs.txt"),
+        "shelf has no opt-outs from crumbkit's conventions.\n\
+         \n\
+         shelf declares 1 customisation, which needs no reason.\n\
+         \n\
+         document-name: shelf books show\n\
+         \x20 Declares: The command prints shelf/book-show/v1, where its path gives the name books-show.\n"
+    );
+}
+
+#[test]
+fn a_cargo_subcommand_names_its_documents_after_the_path_below_its_own_name() {
+    const WEIGH: Document<Prose<String>> = Document::new("crumbkit", "weigh", 1, "The weights.");
+    const GUIDE: Guide = Guide::new().leaves(&[Leaf::new(&["crumbkit", "weigh"]).document(WEIGH)]);
+
+    assert!(customisations(&Command::new("cargo"), &GUIDE).is_empty());
 }

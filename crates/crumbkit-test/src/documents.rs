@@ -2,6 +2,7 @@
 //! a leaf prints to the leaf's path.
 
 use clap::Command;
+use crumbkit::Document;
 use crumbkit::help::Guide;
 
 use crate::allow::{Allow, Allowances, Rule};
@@ -24,26 +25,11 @@ pub(crate) const MOUNTS: [(&str, &[&str]); 6] = [
     ("aliases-list", &["aliases", "list"]),
 ];
 
-/// Checks that the name of each document that a leaf of `guide` declares
-/// is the leaf's path below the tool joined with `-`, so `shelf books list`
-/// prints `shelf/books-list/v1`, and panics, as a failed test assertion
-/// does, naming every leaf that breaks the rule (ADR-0007).
+/// Checks the documents that the leaves of `guide` declare and the
+/// document of its failure form, and panics, as a failed test assertion
+/// does, naming every problem it finds.
 ///
-/// An agent then tells a document's id from the command it ran, and the
-/// command from an id that `schemas list` shows. The path of a cargo
-/// subcommand starts below its own name: when `command` is named `cargo`,
-/// the check drops the first word of each path, so `cargo crumbkit weigh`
-/// prints `crumbkit/weigh/v1`. The check reads only the name. A tool chooses
-/// the component and the version, and crumbkit's `Document::new` checks
-/// their form.
-///
-/// A tool can opt out of the rule for a command and every command below it
-/// with an [`Allow`] of [`Rule::DocumentName`] and a stated reason, such as
-/// a document that scripts read under a name from before a rename
-/// ([ADR-0036]). The check fails on such an opt-out that names no command
-/// or excuses no problem.
-///
-/// The check also fails on a leaf whose document has no envelope, because
+/// The check fails on a leaf whose document has no envelope, because
 /// the tool built it with `Document::without_envelope`, unless an [`Allow`]
 /// of [`Rule::Envelope`] with a stated reason covers the command, so
 /// [`check_opt_outs`](crate::check_opt_outs) reports what printing the
@@ -51,17 +37,19 @@ pub(crate) const MOUNTS: [(&str, &[&str]); 6] = [
 /// a document without a leaf that declares it escapes the check, and review
 /// covers it.
 ///
-/// The check also fails on a guide whose failure form, set with
+/// The check fails on a guide whose failure form, set with
 /// `Guide::failure_form`, prints a document in the component `crumbkit`,
 /// because crumbkit owns the documents of that component. A failure form
 /// is a declaration, which needs no opt-out, and
 /// [`check_opt_outs`](crate::check_opt_outs) lists it under the
 /// customisations (ADR-0056).
 ///
-/// The check skips a leaf that declares the document of one of crumbkit's
-/// commands at fixed paths, such as `crumbkit/schemas-list/v1`, because a
-/// tool cannot rename those documents, and [`check_mounts`] checks where
-/// the tool mounts them.
+/// A document's name is the tool's own name, so a document whose name is
+/// not the leaf's path below the tool joined with `-`, as
+/// `shelf/books-list/v1` is for `shelf books list`, is a declaration. The
+/// check accepts it without an opt-out, and
+/// [`check_opt_outs`](crate::check_opt_outs) lists it under the
+/// customisations (ADR-0056).
 ///
 /// ```
 /// use clap::Command;
@@ -72,13 +60,13 @@ pub(crate) const MOUNTS: [(&str, &[&str]); 6] = [
 ///
 /// # Panics
 ///
-/// Panics when a document's name or an opt-out breaks a rule above. Each
+/// Panics when a document or an opt-out breaks a rule above. Each
 /// problem in the message starts on a new line and names the leaf's
 /// command line, the id, and the name the rule gives.
 ///
 /// [ADR-0036]: https://github.com/crumbkit/crumbkit/blob/main/docs/decisions/api/adoption/0036-opt-outs.md
 pub fn check_document_ids(command: &Command, guide: &Guide, allow: &[Allow]) {
-    let mut allowances = Allowances::new(allow, &[Rule::DocumentName, Rule::Envelope]);
+    let mut allowances = Allowances::new(allow, &[Rule::Envelope]);
     let mut problems = Vec::new();
     if let Some(form) = guide.get_failure_form() {
         let document = form.document();
@@ -100,21 +88,31 @@ pub fn check_document_ids(command: &Command, guide: &Guide, allow: &[Allow]) {
                 Rule::Envelope.id()
             ));
         }
-        if fixed_path(document.component(), document.name()).is_some() {
-            continue;
-        }
-        let (_, below) = split(command, leaf.path());
-        let expected = below.join("-");
-        if document.name() != expected
-            && !allowances.excuses(Rule::DocumentName, &leaf.path().join(" "))
-        {
-            problems.push(format!(
-                "{}: the command prints {document}, and the name of the document that a command prints is the command's path below the tool joined with dashes, `{expected}`",
-                command_line(command, leaf.path())
-            ));
-        }
     }
     allowances.report(command, "document id rules", problems);
+}
+
+/// Returns the name that the path of the leaf at `path` gives its document
+/// when the document's name is another, which the tool then declares, or
+/// `None` when the name is the path's or `document` is one of crumbkit's
+/// documents at fixed paths, which [`check_mounts`] checks.
+///
+/// The path's name is the path below the tool joined with `-`, so `shelf
+/// books list` gives `books-list`, and an agent tells a document's id from
+/// the command it ran (ADR-0035). The path of a cargo subcommand starts
+/// below its own name: when `command` is named `cargo`, the first word of
+/// the path is dropped, so `cargo crumbkit weigh` gives `weigh`.
+pub(crate) fn declared_name(
+    command: &Command,
+    path: &[&str],
+    document: Document<()>,
+) -> Option<String> {
+    if fixed_path(document.component(), document.name()).is_some() {
+        return None;
+    }
+    let (_, below) = split(command, path);
+    let expected = below.join("-");
+    (document.name() != expected).then_some(expected)
 }
 
 /// Checks that each leaf of `guide` that declares the document of one of

@@ -8,6 +8,7 @@ use crumbkit::{Code, Spelling};
 use serde::Serialize;
 
 use crate::allow::command_line;
+use crate::documents::declared_name;
 
 /// One declaration as the report shows it.
 #[derive(Serialize)]
@@ -24,11 +25,12 @@ pub(super) struct Customisation {
 /// Returns the declarations of `guide` for the tool whose root command is
 /// `command`, in this order: the failure form, each code rename, each exit
 /// that lists one of crumbkit's codes or the tool's rename of it, and then
-/// each leaf that passes on a program's exit code, in guide order. A
+/// for each leaf in guide order its document's name when the leaf's path
+/// gives another, and the program whose exit code it passes on. A
 /// declaration that a later change adds, such as a completion variable or
 /// a leaf's refusal alternatives, joins this list beside the declarations
 /// of the same scope: a guide setting before the leaves, and a leaf's
-/// declaration beside its passes-on-exit entry.
+/// declaration after its passes-on-exit entry.
 pub(super) fn customisations(command: &Command, guide: &Guide) -> Vec<Customisation> {
     let every_run = format!("every run of {}", command.get_name());
     let mut list = Vec::new();
@@ -71,6 +73,18 @@ pub(super) fn customisations(command: &Command, guide: &Guide) -> Vec<Customisat
         }
     }
     for leaf in guide.get_leaves() {
+        let document = leaf.get_document();
+        if let Some((document, name)) = document
+            .and_then(|document| Some((document, declared_name(command, leaf.path(), document)?)))
+        {
+            list.push(Customisation {
+                declaration: "document-name",
+                applies_to: command_line(command, &leaf.path().join(" ")),
+                declares: format!(
+                    "The command prints {document}, where its path gives the name {name}."
+                ),
+            });
+        }
         if let Some(program) = leaf.get_passes_on_exit() {
             list.push(Customisation {
                 declaration: "passes-on-exit",

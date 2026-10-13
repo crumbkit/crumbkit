@@ -624,6 +624,10 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit-test: `Rule::FailureForm` is gone. A failure form is a
   declaration, and [`check_document_ids`] no longer asks for an opt-out
   with a reason ([ADR-0056]).
+- crumbkit-test: `Rule::DocumentName` is gone. A document named other than
+  its command's path is a declaration, which [`check_document_ids`]
+  accepts and [`check_opt_outs`] lists as a `document-name` customisation
+  ([ADR-0056]).
 - crumbkit: `help::split` is gone. [`check_recoveries`] reads a recovery's
   words with its own private reading, which also reads double-quoted words
   and refuses a `$` or a backtick between double quotes ([ADR-0053]).
