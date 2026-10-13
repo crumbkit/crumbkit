@@ -180,3 +180,56 @@ fn a_failure_form_document_replaces_the_failure_document_as_unwrapped_with_no_co
         json!({ "type": "object", "required": ["error"], "title": "shelf/error/v2" })
     );
 }
+
+/// A failure form whose batch entries are `{"error": ...}` objects.
+struct EntryForm;
+
+impl FailureForm for EntryForm {
+    fn document(&self) -> Document<()> {
+        ErrorForm.document()
+    }
+
+    fn schema(&self) -> Schema {
+        ErrorForm.schema()
+    }
+
+    fn json(&self, failure: &PreparedFailure<'_>) -> serde_json::Value {
+        ErrorForm.json(failure)
+    }
+
+    fn entry_schema(&self) -> Schema {
+        json_schema!({ "type": "object", "required": ["error"] })
+    }
+}
+
+/// Returns the schema that `guide` serves for `shelf/books-show/v1`.
+fn books_show_schema(guide: &Guide) -> serde_json::Value {
+    documents(&tool(), guide)
+        .iter()
+        .find(|served| served.id() == "shelf/books-show/v1")
+        .unwrap()
+        .schema()
+        .to_value()
+}
+
+#[test]
+fn the_batch_schema_names_the_form_entry_schema_for_its_failures() {
+    const GUIDE: Guide = super::GUIDE.failure_form(&EntryForm);
+
+    let schema = books_show_schema(&GUIDE);
+
+    assert_eq!(
+        schema["properties"]["failures"]["items"],
+        json!({ "type": "object", "required": ["error"] })
+    );
+}
+
+#[test]
+fn a_form_without_its_own_entry_serves_the_batch_schema_of_crumbkit_entries() {
+    const GUIDE: Guide = super::GUIDE.failure_form(&ErrorForm);
+
+    assert_eq!(
+        books_show_schema(&GUIDE),
+        document_schema(super::BOOKS_SHOW).to_value()
+    );
+}

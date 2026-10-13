@@ -530,6 +530,15 @@ impl Serialize for Entry<'_> {
     }
 }
 
+/// Returns crumbkit's entry of `failure` in a batch's or a prose result's
+/// `failures`, which [`FailureForm::entry`] returns unless a form changes
+/// it.
+pub(crate) fn crumbkit_entry(failure: &PreparedFailure<'_>) -> serde_json::Value {
+    // An entry's keys are all strings, so the conversion cannot fail, and
+    // `null` stands in rather than a panic if it ever did.
+    serde_json::to_value(Entry(failure)).unwrap_or_default()
+}
+
 /// Serializes the step as an object tagged by `kind`, such as
 /// `{"kind":"run","call":"shelf books list"}` or `{"kind":"retry"}`.
 impl Serialize for Step {

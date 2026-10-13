@@ -12,6 +12,7 @@ use super::envelope::{Extras, Failures, Selected, SelectedRows, write_document};
 use super::failure::PreparedFailure;
 use super::table::Table;
 use super::{Output, layout, listing, problems, prose};
+use crate::form::FailureForm;
 use crate::help::rename;
 use crate::{Code, Document, JsonLayout, Row, Rows, Shape, Spelling, codes};
 
@@ -106,7 +107,11 @@ pub(super) fn write_result<T: Rows>(
         problems
     };
     let mut prepared = Prepared::new(output, document, value, &columns, &values, next, problems)?;
-    let listed = failures.map(|listed| Failures { listed, over: None });
+    let listed = failures.map(|listed| Failures {
+        listed,
+        over: None,
+        form: output.failure_form,
+    });
     let rows = value.rows().len();
     let whole = budget::buffered(budget, |buffer| prepared.write(buffer, rows, None, listed))?;
     if let Some(mut bytes) = whole {
@@ -203,6 +208,8 @@ struct Prepared<'a, T> {
     dry_run: bool,
     /// The layout of the JSON document, or `None` for one line.
     layout: Option<JsonLayout>,
+    /// The guide's failure form, which writes each entry of `failures`.
+    form: Option<&'static dyn FailureForm>,
     /// Whether the JSON document holds every field of each row.
     full: bool,
     /// Whether the caller passed `--fields`.
@@ -245,6 +252,7 @@ impl<'a, T: Rows> Prepared<'a, T> {
             json: output.json,
             dry_run: output.dry_run,
             layout: output.json_layout,
+            form: output.failure_form,
             full: output.full,
             fields: !output.fields.is_empty(),
             columns,
@@ -409,6 +417,7 @@ impl<'a, T: Rows> Prepared<'a, T> {
             let failures = Failures {
                 listed,
                 over: most.as_ref(),
+                form: self.form,
             };
             let bytes =
                 budget::measure(|counter| self.write(counter, shown, None, Some(failures)))?;
@@ -425,6 +434,7 @@ impl<'a, T: Rows> Prepared<'a, T> {
             let failures = Failures {
                 listed,
                 over: prepared.as_ref(),
+                form: self.form,
             };
             self.measured_write(out, shown, None, Some(failures))?
         };
