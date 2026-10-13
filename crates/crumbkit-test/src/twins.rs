@@ -67,10 +67,15 @@ mod tests;
 /// the first entry of a batch's `failures`, and then from the last `code:`
 /// line on standard error.
 ///
-/// The refused line must exit with the code of the guide's
-/// [`Exit`](crumbkit::help::Exit) that lists its code with
-/// [`Exit::failures`](crumbkit::help::Exit::failures). A refused line whose
-/// code no exit lists must not exit with the code of an exit that lists
+/// The refused line must exit with the code that
+/// [`Guide::failure_exit`](crumbkit::help::Guide::failure_exit) gives its
+/// failure: the code of the guide's [`Exit`](crumbkit::help::Exit) that
+/// lists its code with [`Exit::failures`](crumbkit::help::Exit::failures),
+/// the code of a refused command line for `crumbkit::cli::usage`, which is
+/// 2 unless an exit lists it, and 1 for any other code. A command whose
+/// leaf declares [`Leaf::passes_on_exit`](crumbkit::help::Leaf::passes_on_exit)
+/// may end an unlisted failure with any code but 0. A refused line whose
+/// code no exit lists never exits with the code of an exit that lists
 /// failure codes.
 ///
 /// ```no_run
@@ -207,7 +212,7 @@ pub(super) fn twin(
             (refused.words(), rest, line)
         }
     };
-    let output = refuse(guide, examples, spelling, refused)?;
+    let output = refuse(command, guide, examples, spelling, refused)?;
     let other = run(examples, refused, words, &env, &admitted_line)?;
     if !other.status.success() {
         return Err(format!(
@@ -273,6 +278,7 @@ fn one_word(
 /// output, or the problem when it exits with code 0, fails with another
 /// code or prints no code that the check can read.
 pub(super) fn refuse(
+    command: &Command,
     guide: &Guide,
     examples: &Examples<'_>,
     spelling: Spelling,
@@ -299,7 +305,8 @@ pub(super) fn refuse(
         .map(|failure| failure.code().to_owned());
     match printed {
         Some(printed) if printed == code => {
-            match exits::exit_problem(guide, spelling, &printed, output.status) {
+            let path = crumbkit::command_path(command, refused.words());
+            match exits::exit_problem(guide, spelling, &path, &printed, output.status) {
                 Some(problem) => Err(format!("the refused line {refused_line} {problem}")),
                 None => Ok(output),
             }
