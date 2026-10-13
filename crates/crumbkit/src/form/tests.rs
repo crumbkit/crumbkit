@@ -12,8 +12,8 @@ use serde_json::{Value, json};
 use super::{FailureForm, PreparedFailure, ReadFailure, Step};
 use crate::help::Guide;
 use crate::{
-    Batch, Call, Code, Document, Failure, Field, JsonLayout, Output, Parsed, Recovery, Row, Sink,
-    Spelling, Stream, finish_to, parse_to, stream_to,
+    Batch, Call, Code, Document, Failure, Field, FieldValue, JsonLayout, Output, Parsed, Recovery,
+    Row, Sink, Spelling, Stream, finish_to, parse_to, stream_to,
 };
 
 mod entries;
@@ -457,8 +457,12 @@ fn a_form_that_implements_read_reads_back_the_code_and_steps_of_the_failure_it_p
 }
 
 #[test]
-fn a_read_failure_keeps_the_fields_it_is_given_and_has_none_without_them() {
-    let fields = vec![("id".to_owned(), "7".to_owned())];
+fn a_read_failure_keeps_the_fields_it_is_given_with_their_values_and_has_none_without_them() {
+    let fields = vec![
+        ("id".to_owned(), FieldValue::Unsigned(7)),
+        ("found".to_owned(), FieldValue::Null),
+        ("tags".to_owned(), FieldValue::list(["red".to_owned()])),
+    ];
 
     let read = ReadFailure::new("solar.planets.not_found".to_owned(), Vec::new())
         .with_fields(fields.clone());

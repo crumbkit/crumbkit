@@ -2,7 +2,8 @@
 //! its command tree at run time, such as one command for each file that a
 //! person writes.
 
-use super::{Effects, Example, Guide, Leaf};
+use super::{Effects, Example, Guide, Leaf, RefusalContext};
+use crate::Call;
 
 #[cfg(test)]
 mod tests;
@@ -42,7 +43,7 @@ mod tests;
 /// (ADR-0035), and a path chosen at run time names no document that the
 /// tool declares as a constant. A command added at run time prints a
 /// document that a leaf of the `const` guide declares.
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Debug, Default)]
 pub struct RuntimeLeaf {
     /// The names of the subcommands from the root to the command.
     path: Vec<String>,
@@ -53,6 +54,9 @@ pub struct RuntimeLeaf {
     effects: Option<Effects>,
     /// The program whose exit code the command passes on, or `None`.
     passes_on_exit: Option<&'static str>,
+    /// The function that builds the calls that a refusal of the command's
+    /// line offers after crumbkit's own, or `None`.
+    refusal_alternatives: Option<fn(&RefusalContext<'_>) -> Vec<Call>>,
 }
 
 impl RuntimeLeaf {
@@ -66,6 +70,7 @@ impl RuntimeLeaf {
             examples: Vec::new(),
             effects: None,
             passes_on_exit: None,
+            refusal_alternatives: None,
         }
     }
 
@@ -95,12 +100,29 @@ impl RuntimeLeaf {
         self.passes_on_exit = Some(program);
         self
     }
+
+    /// Sets the function that builds the calls that a refusal of a command
+    /// line naming the command offers after crumbkit's own, as
+    /// [`Leaf::refusal_alternatives`] does.
+    #[must_use]
+    pub const fn refusal_alternatives(
+        mut self,
+        alternatives: fn(&RefusalContext<'_>) -> Vec<Call>,
+    ) -> Self {
+        self.refusal_alternatives = Some(alternatives);
+        self
+    }
 }
 
 impl Guide {
-    /// Returns a guide with the groups, topics and exit codes of `self`, and
-    /// the leaves of `self` followed by `leaves`, each with its path,
-    /// examples, effects and the program whose exit code it passes on.
+    /// Returns a guide with every setting of `self`, and the leaves of
+    /// `self` followed by `leaves`, each with its path, examples, effects,
+    /// the program whose exit code it passes on and its refusal
+    /// alternatives. The joined guide keeps the renames that
+    /// [`Guide::codes`] set, so a failure or refusal of a runtime leaf's
+    /// command prints the tool's code in place of crumbkit's, as one of a
+    /// `const` leaf's command does. It also keeps the groups, topics, exit
+    /// codes, failure form and every other setting of `self`.
     ///
     /// Every function that reads a guide reads the joined one as it reads a
     /// `const` guide, and of two leaves with one path only the first
@@ -131,6 +153,9 @@ impl Guide {
             }
             if let Some(program) = leaf.passes_on_exit {
                 joined_leaf = joined_leaf.passes_on_exit(program);
+            }
+            if let Some(alternatives) = leaf.refusal_alternatives {
+                joined_leaf = joined_leaf.refusal_alternatives(alternatives);
             }
             joined.push(joined_leaf);
         }

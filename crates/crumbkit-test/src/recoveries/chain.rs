@@ -64,7 +64,8 @@ struct Parent<'p> {
     /// The codes of the failure and of every earlier failure of its chain,
     /// the start's first, as the tool spells them.
     codes: &'p [String],
-    /// The failure's fields, which fill the steps' placeholders.
+    /// The failure's fields that fill the steps' placeholders, each a name
+    /// and its value's text.
     fields: &'p [(String, String)],
     /// The path below the root of the command that failed, which an
     /// opt-out from `recoveries/field-value` names.
@@ -308,9 +309,14 @@ impl Walk<'_> {
         let _ = writeln!(self.report, "{indent}fails with {code}");
         let mut codes = earlier.to_vec();
         codes.push(code.to_owned());
+        let fields: Vec<(String, String)> = failure
+            .fields()
+            .iter()
+            .filter_map(|(name, value)| Some((name.clone(), failures::placeholder_text(value)?)))
+            .collect();
         let next = Parent {
             codes: &codes,
-            fields: failure.fields(),
+            fields: &fields,
             path,
         };
         self.follow(chain, &next, failure.steps(), depth + 1);

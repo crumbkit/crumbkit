@@ -1,7 +1,7 @@
 //! Tests for `check_twins`, which runs every twin of a tool and requires a
 //! twin for each declared code.
 
-use crumbkit::help::Guide;
+use crumbkit::help::{Guide, Rename};
 use crumbkit::{Code, Spelling};
 
 use super::tree;
@@ -257,6 +257,47 @@ fn an_untwinned_opt_out_whose_line_succeeds_or_fails_with_another_code_fails_the
             "the tool's twins break crumbkit's twin rule:\n\
              the opt-out from `twins/no-twin` for `tool books show 2`: the refused line `tool books show 2 --json` must fail with tool::books::unreadable, and it exits with code 0\n\
              the opt-out from `twins/no-twin` for `tool books show 7`: the refused line `tool books show 7 --json` must fail with tool::books::unreadable, and it fails with tool::books::not_found"
+        )
+    );
+}
+
+#[test]
+fn a_declared_code_that_the_guide_prints_in_place_of_one_of_crumbkits_codes_needs_no_twin() {
+    const BAD_LIMIT: Code = Code::new("tool", "books", "bad_limit");
+    const GUIDE: Guide =
+        Guide::new().codes(&[Rename::new(&crumbkit::codes::CLI_USAGE, &BAD_LIMIT)]);
+    const CODES: &[&[&Code]] = &[&[&NOT_FOUND, &BAD_LIMIT]];
+    let dir = TempDir::new("twins-renamed").unwrap();
+    dir.write_script("tool", SCRIPT);
+    let path = dir.path().join("tool").display().to_string();
+    let twins = Twins::new(Examples::new(&path, ""), Spelling::COLONS, CODES).pairs(&[SHOW_7]);
+
+    let problems = panic_message(|| check_twins(&tree(), &GUIDE, &twins));
+
+    assert_eq!(problems, None);
+}
+
+#[test]
+fn a_twin_check_built_from_owned_codes_requires_a_twin_for_each_code_it_holds() {
+    let dir = TempDir::new("twins-owned-codes").unwrap();
+    dir.write_script("tool", SCRIPT);
+    let path = dir.path().join("tool").display().to_string();
+    let codes: Vec<Code> = vec![NOT_FOUND, UNREADABLE, REMOVED];
+    let unprovoked = [Unprovoked::from_code(
+        codes[2],
+        "Only a book file that disappears provokes it.",
+    )];
+    let twins = Twins::from_codes(Examples::new(&path, ""), Spelling::COLONS, &codes)
+        .pairs(&[SHOW_7])
+        .unprovoked(&unprovoked);
+
+    let problems = panic_message(|| check_twins(&tree(), &Guide::new(), &twins));
+
+    assert_eq!(
+        problems.as_deref(),
+        Some(
+            "the tool's twins break crumbkit's twin rule:\n\
+             tool::books::unreadable: no twin refuses the declared code, Twins::unprovoked does not list it, and no opt-out made with Allow::untwinned names it"
         )
     );
 }
