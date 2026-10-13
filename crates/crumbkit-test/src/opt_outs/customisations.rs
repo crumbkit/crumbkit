@@ -1,0 +1,102 @@
+//! The customisations section of the opt-out report, which lists the
+//! tool's declarations: names and settings that change what a run prints
+//! and keep crumbkit's behaviour, so they need no reason (ADR-0056).
+
+use clap::Command;
+use crumbkit::help::{Guide, Rename};
+use crumbkit::{Code, Spelling};
+use serde::Serialize;
+
+use crate::allow::command_line;
+
+/// One declaration as the report shows it.
+#[derive(Serialize)]
+pub(super) struct Customisation {
+    /// The kind of declaration, such as `code-rename`.
+    pub(super) declaration: &'static str,
+    /// What the declaration applies to, such as `every run of shelf` or a
+    /// command line.
+    pub(super) applies_to: String,
+    /// What the declaration changes, in one sentence.
+    pub(super) declares: String,
+}
+
+/// Returns the declarations of `guide` for the tool whose root command is
+/// `command`, in this order: the failure form, each code rename, each exit
+/// that lists one of crumbkit's codes or the tool's rename of it, and then
+/// each leaf that passes on a program's exit code, in guide order. A
+/// declaration that a later change adds, such as a completion variable or
+/// a leaf's refusal alternatives, joins this list beside the declarations
+/// of the same scope: a guide setting before the leaves, and a leaf's
+/// declaration beside its passes-on-exit entry.
+pub(super) fn customisations(command: &Command, guide: &Guide) -> Vec<Customisation> {
+    let every_run = format!("every run of {}", command.get_name());
+    let mut list = Vec::new();
+    if let Some(form) = guide.get_failure_form() {
+        list.push(Customisation {
+            declaration: "failure-form",
+            applies_to: every_run.clone(),
+            declares: format!(
+                "Failures print as {} in place of crumbkit/failure/v1.",
+                form.document()
+            ),
+        });
+    }
+    for rename in guide.get_codes() {
+        list.push(Customisation {
+            declaration: "code-rename",
+            applies_to: every_run.clone(),
+            declares: format!(
+                "Runs print {} in place of {}.",
+                spell(rename.tool()),
+                spell(rename.crumbkit())
+            ),
+        });
+    }
+    for exit in guide.get_exits() {
+        for &listed in exit.get_failures() {
+            let Some(crumbkit) = crumbkit_code(guide, listed) else {
+                continue;
+            };
+            list.push(Customisation {
+                declaration: "exit-code",
+                applies_to: every_run.clone(),
+                declares: format!(
+                    "A failure with {} exits with {}, where crumbkit's default is {}.",
+                    spell(listed),
+                    exit.code(),
+                    Guide::new().failure_exit(crumbkit)
+                ),
+            });
+        }
+    }
+    for leaf in guide.get_leaves() {
+        if let Some(program) = leaf.get_passes_on_exit() {
+            list.push(Customisation {
+                declaration: "passes-on-exit",
+                applies_to: command_line(command, &leaf.path().join(" ")),
+                declares: format!("The command exits with the exit code of {program}."),
+            });
+        }
+    }
+    list
+}
+
+/// Returns the code of crumbkit's that `listed` is, or that the guide
+/// renames to `listed`, or `None` for one of the tool's own codes.
+fn crumbkit_code(guide: &Guide, listed: &'static Code) -> Option<&'static Code> {
+    if listed.component() == "crumbkit" {
+        return Some(listed);
+    }
+    guide
+        .get_codes()
+        .iter()
+        .find(|rename| rename.tool() == listed)
+        .map(Rename::crumbkit)
+}
+
+/// Returns `code` spelled with colons, as crumbkit's records spell codes.
+/// The report does not know the spelling that the tool passes to `finish`.
+fn spell(code: &Code) -> String {
+    Spelling::COLONS.spell(code)
+}
