@@ -108,3 +108,20 @@ fn a_tracestate_that_is_not_utf_8_counts_as_empty() {
     assert_eq!(state, Some(String::new()));
     assert_eq!(tracestate(None), None);
 }
+
+#[cfg(feature = "complete")]
+#[test]
+fn the_usage_log_skips_a_run_that_carries_the_completion_variable_that_the_tool_declared() {
+    let declared = crate::complete_with("SHELF_COMPLETE", || {
+        panic!("an ordinary run builds no command for completion")
+    });
+    let shell = || Some(std::ffi::OsString::from("fish"));
+
+    assert!(declared.is_none());
+    assert!(super::completing_in(|name| (name == "SHELF_COMPLETE")
+        .then(shell)
+        .flatten()));
+    assert!(!super::completing_in(|name| (name == "COMPLETE")
+        .then(shell)
+        .flatten()));
+}
