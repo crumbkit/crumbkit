@@ -13,6 +13,11 @@
 //! [`check_exit_codes`]: crate::check_exit_codes
 //! [`check_help_sizes`]: crate::check_help_sizes
 //! [`Budgets`]: crate::Budgets
+//! [`Guide`]: crate::Guide
+//! [`Pages::clap`]: crate::Pages::clap
+//! [`Pages::rendered`]: crate::Pages::rendered
+//! [`Pages::binary`]: crate::Pages::binary
+//! [`PathBudgets::help_only`]: crate::PathBudgets::help_only
 //! [`Budget`]: crate::Budget
 //! [`check_path_weights`]: crate::check_path_weights
 //! [`PathBudgets`]: crate::PathBudgets

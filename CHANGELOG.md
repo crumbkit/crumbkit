@@ -448,6 +448,12 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit-test: [`check_recoveries`] follows a `run` step with `all` once,
   with every value of the named field, and accepts the same code again when
   fewer values are left ([ADR-0053]).
+- crumbkit-test: `Pages::clap` reads each help page as clap prints it, so
+  the help checks run on a tool that parses with clap alone ([ADR-0025]).
+- crumbkit-test: `PathBudgets::help_only` budgets each path by its `-h`
+  pages alone, for a tool without example golden files ([ADR-0025]).
+- crumbkit-test: crumbkit-test re-exports `Guide`, so a tool without a
+  crumbkit dependency can run `check_names` and `check_grammar` ([ADR-0015]).
 
 ### Changed
 
