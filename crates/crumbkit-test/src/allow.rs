@@ -258,8 +258,11 @@ pub enum Rule {
     /// `grammar/root-leaf`.
     RootLeaf,
     /// [`check_grammar`](crate::check_grammar): a resource's name is not
-    /// lowercase words joined by single dashes. Its id is
-    /// `grammar/resource-name`.
+    /// lowercase words joined by single dashes, and the resource answers to
+    /// no such dashed form. Its id is `grammar/resource-name`. A resource
+    /// named in another style, such as `reading_lists`, needs no opt-out
+    /// when the guide declares `Guide::dashed_forms` and the name maps to a
+    /// dashed form that no other command beside it takes.
     ResourceName,
     /// [`check_effects`](crate::check_effects): a visible leaf declares no
     /// effects. Its id is `effects/declared`.
@@ -401,9 +404,9 @@ impl Rule {
                 "The leaf's name can collide with a resource that the tool adds later.",
                 "An agent cannot guess the leaf's siblings from the noun and verb pattern.",
             ],
-            Self::ResourceName => {
-                &["An agent that spells resources as lowercase dashed words mistypes this name."]
-            }
+            Self::ResourceName => &[
+                "An agent that spells resources as lowercase dashed words cannot reach this resource by that spelling.",
+            ],
             Self::Effects => &[
                 "An undeclared leaf reads as unknown, and an agent must assume the worst.",
                 "Help prints no `Effects:` line, and `commands list` writes `null` under `effects`.",

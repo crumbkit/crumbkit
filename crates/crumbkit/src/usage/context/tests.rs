@@ -112,9 +112,12 @@ fn a_tracestate_that_is_not_utf_8_counts_as_empty() {
 #[cfg(feature = "complete")]
 #[test]
 fn the_usage_log_skips_a_run_that_carries_the_completion_variable_that_the_tool_declared() {
-    let declared = crate::complete_with("SHELF_COMPLETE", || {
-        panic!("an ordinary run builds no command for completion")
-    });
+    let guide = crate::help::Guide::new();
+    let declared = crate::complete_with(
+        "SHELF_COMPLETE",
+        || panic!("an ordinary run builds no command for completion"),
+        &guide,
+    );
     let shell = || Some(std::ffi::OsString::from("fish"));
 
     assert!(declared.is_none());

@@ -23,6 +23,7 @@ mod answers {
 
     use super::super::{VAR, complete_to};
     use crate::Sink;
+    use crate::help::Guide;
 
     /// A tool named shelf with `books list`, which has the hidden alias
     /// `ls`, `books show` and `books remove`.
@@ -39,13 +40,14 @@ mod answers {
     /// `shelf -- <words>` with `COMPLETE` set, and returns the exit code,
     /// standard output and standard error.
     fn complete(command: Command, shell: &str, words: &[&str]) -> (ExitCode, String, String) {
-        complete_with(command, VAR, shell, words)
+        complete_with(command, &Guide::new(), VAR, shell, words)
     }
 
-    /// Completes `words` as [`complete`] does, for a tool whose completion
-    /// variable is `variable`.
+    /// Completes `words` as [`complete`] does, for a tool that parses with
+    /// `guide` and whose completion variable is `variable`.
     fn complete_with(
         command: Command,
+        guide: &Guide,
         variable: &str,
         shell: &str,
         words: &[&str],
@@ -56,6 +58,7 @@ mod answers {
         let code = complete_to(
             &mut Sink::new(&mut out, &mut err),
             |_| command,
+            guide,
             variable,
             OsStr::new(shell),
             args,
@@ -91,6 +94,26 @@ mod answers {
     }
 
     #[test]
+    fn completion_reads_a_dashed_form_as_its_command_only_when_the_guide_declares_dashed_forms() {
+        let command = Command::new("shelf").subcommand(
+            Command::new("reading_lists")
+                .subcommand(Command::new("list"))
+                .subcommand(Command::new("show")),
+        );
+        let dashed = Guide::new().dashed_forms();
+        let words = ["shelf", "reading-lists", ""];
+
+        let (_, below, _) = complete_with(command.clone(), &dashed, VAR, "fish", &words);
+        let (_, root, _) = complete_with(command.clone(), &dashed, VAR, "fish", &["shelf", "r"]);
+        let (_, undeclared, _) = complete(command, "fish", &words);
+
+        assert_eq!(values(&below), ["list", "show", "--help"], "{below}");
+        assert!(values(&root).contains(&"reading_lists"), "{root}");
+        assert!(!root.contains("reading-lists"), "{root}");
+        assert!(!values(&undeclared).contains(&"list"), "{undeclared}");
+    }
+
+    #[test]
     fn a_registration_request_writes_the_shells_script_with_the_tools_name() {
         let (code, out, err) = complete(tool(), "/usr/bin/fish", &[]);
 
@@ -103,7 +126,7 @@ mod answers {
 
     #[test]
     fn a_registration_request_names_the_completion_variable_that_the_tool_declared() {
-        let (code, out, err) = complete_with(tool(), "SHELF_COMPLETE", "fish", &[]);
+        let (code, out, err) = complete_with(tool(), &Guide::new(), "SHELF_COMPLETE", "fish", &[]);
 
         assert_eq!(code, ExitCode::SUCCESS);
         assert!(out.contains("SHELF_COMPLETE=fish"), "{out}");
@@ -141,6 +164,7 @@ mod answers {
         let code = complete_to(
             &mut Sink::new(Broken, &mut err),
             |_| tool(),
+            &Guide::new(),
             VAR,
             OsStr::new("fish"),
             args,
@@ -161,6 +185,7 @@ mod words {
 
     use super::super::{VAR, complete_to};
     use crate::Sink;
+    use crate::help::Guide;
 
     /// Builds shelf with a global `-C <DIR>` and one subcommand for the
     /// directory that `words` choose with `-C`, such as `archive-books` for
@@ -191,6 +216,7 @@ mod words {
                 received = Some(words.to_vec());
                 for_directory(words)
             },
+            &Guide::new(),
             VAR,
             OsStr::new("fish"),
             args,

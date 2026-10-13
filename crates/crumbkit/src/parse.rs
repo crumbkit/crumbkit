@@ -14,7 +14,7 @@ use self::attempt::attempt;
 use self::lines::{add_help_lines, has_visible_subcommands};
 use self::page::{print_page, print_text};
 use self::pick::{Picking, Step};
-use self::walk::{help_word, program_stem, walk};
+use self::walk::{help_word, own_names, program_stem, walk};
 use crate::help::{Guide, topic};
 use crate::output::failure::Printing;
 use crate::refusal::Refusal;
@@ -121,6 +121,15 @@ where
 /// way, the root included. The walk reads each option's values as clap's
 /// parser does, from the option's `Arg`, so an option's value that equals a
 /// subcommand name, as in `shelf --fields books`, names no command.
+///
+/// When `guide` declares [`Guide::dashed_forms`], a command that the tool
+/// named in another style, such as `reading_lists` or `ReadingLists`, also
+/// answers to its [`dashed_form`](crate::dashed_form), such as
+/// `reading-lists`. Before anything else reads the words, crumbkit replaces each
+/// word that reaches a command by its dashed form with the command's own
+/// name, so help, refusals, the usage log and the words in the returned
+/// [`Parsed`] name the command as the tool does. An option's value that
+/// equals a dashed form stays as typed.
 ///
 /// A command that `guide` gives goals lists its subcommands under their
 /// headings, as [`help::extend`](crate::help::extend) describes, below the
@@ -306,6 +315,7 @@ where
     if cfg!(windows) {
         program_stem(&mut args);
     }
+    own_names(&command, guide.get_dashed_forms(), &mut args);
     #[cfg(feature = "usage-log")]
     crate::usage::typed(&command, &args, spelling);
     // crumbkit answers `help` itself. clap propagates the setting to every
