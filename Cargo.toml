@@ -3,6 +3,7 @@ resolver = "3"
 members = [
     "crates/crumbkit",
     "crates/crumbkit-core",
+    "crates/crumbkit-derive",
     "crates/crumbkit-aliases",
     "crates/crumbkit-picker",
     "crates/crumbkit-markdown",
@@ -26,6 +27,10 @@ repository = "https://github.com/crumbkit/crumbkit"
 # (ADR-0032). The entry gives a version beside the path, because cargo-deny
 # treats a path dependency without a version as a wildcard (ADR-0012).
 crumbkit-core = { version = "0.0.0", path = "crates/crumbkit-core" }
+# crumbkit-core re-exports the `Failure` derive of crumbkit-derive behind its
+# `derive` feature (ADR-0001), and its tests use the derive. The entry gives a
+# version beside the path for the same reason.
+crumbkit-derive = { version = "0.0.0", path = "crates/crumbkit-derive" }
 # shelf depends on the crumbkit library in this workspace. The entry gives a
 # version beside the path, because cargo-deny treats a path dependency without
 # a version as a wildcard (ADR-0012).
@@ -80,6 +85,14 @@ miette = { version = "7.6.0", default-features = false }
 # depends on this version, so it adds no crate to the build. The entry
 # leaves out the `cjk` feature, which only `width_cjk` needs.
 unicode-width = { version = "0.1.14", default-features = false }
+
+# syn, quote and proc-macro2 build crumbkit-derive, the `Failure` derive
+# behind the `derive` feature (ADR-0001, ADR-0003). clap_derive already
+# depends on these versions, so they add no crate to a crumbkit build. The
+# entries enable no feature, and crumbkit-derive enables the ones it uses.
+syn = { version = "3.0.6", default-features = false }
+quote = { version = "1.0.47", default-features = false }
+proc-macro2 = { version = "1.0.107", default-features = false }
 
 # is-ai-agent tells whether a coding agent runs the tool and which one, and
 # gives the agent's session id when the agent sets one. crumbkit's default

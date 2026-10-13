@@ -202,11 +202,22 @@ dependencies = [
 name = "crumbkit-core"
 version = "0.0.0"
 dependencies = [
+ "crumbkit-derive",
  "miette",
  "proptest",
  "schemars",
  "serde",
  "serde_json",
+]
+
+[[package]]
+name = "crumbkit-derive"
+version = "0.0.0"
+dependencies = [
+ "crumbkit-core",
+ "proc-macro2",
+ "quote",
+ "syn 3.0.6",
 ]
 
 [[package]]

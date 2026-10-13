@@ -48,3 +48,8 @@ pub use crate::listing::{Listing, NoSummary};
 pub use crate::prose::Prose;
 pub use crate::row::{NoRow, Row, Rows, Shape};
 pub use crate::stream::Stream;
+/// Writes the [`Failure`] impl and the `CODES` list of an enum or a struct
+/// from `#[failure(...)]` attributes. The `derive` feature adds it, and
+/// crumbkit-derive documents its attributes.
+#[cfg(feature = "derive")]
+pub use crumbkit_derive::Failure;

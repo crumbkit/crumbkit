@@ -18,7 +18,8 @@ crumbkit-core = { git = "https://github.com/crumbkit/crumbkit" }
 
 The `main` branch can change without notice before the first release. The
 `miette` feature adds the `diagnostic` method of [`Failure`] and converts a
-`miette::Report` into [`Error`].
+`miette::Report` into [`Error`]. The `derive` feature adds
+`#[derive(Failure)]`, which writes a [`Failure`] impl from attributes.
 
 ## Example
 
