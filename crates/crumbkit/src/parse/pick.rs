@@ -123,7 +123,7 @@ impl Picking {
         let choices = match choices(&arg, leaf) {
             Ok(choices) => choices,
             Err(error) => {
-                let printing = Printing::of(guide);
+                let printing = Printing::at(guide, leaf);
                 let failure = error.failure();
                 failure::print(sink, json, spelling, printing, failure, Some(command));
                 let exit = printing.exit(failure.code());

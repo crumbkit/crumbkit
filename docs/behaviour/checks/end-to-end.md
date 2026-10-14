@@ -124,8 +124,8 @@ refused one by one word added, removed or replaced, and that the tool accepts
   passes to both `check_twins` and `check_recoveries`.
 - A code in the `crumbkit` component needs no twin and no declaration,
   because crumbkit or one of its add-on crates, such as crumbkit-child,
-  raises that failure. A declared code that the guide's `Rename` prints in
-  place of one of them needs no twin either.
+  raises that failure. A declared code that a `Rename` of the guide or of a
+  leaf prints in place of one of them needs no twin either.
 - Neither check keeps a golden file, because every twin and every listed code
   is in the test's source.
 
@@ -148,4 +148,4 @@ the command of each line with `crumbkit::command_path`, the walk that `parse`
 makes. A test passes the tree that the binary builds for the twin's run, such
 as the tree of an empty directory for a tool that adds commands at run time.
 
-Why: ADR-0005.
+Why: ADR-0005, ADR-0060.

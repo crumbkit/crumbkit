@@ -101,11 +101,13 @@ a code exactly.
 crumbkit's own codes are public constants in `crumbkit::codes`, which
 `codes::ALL` lists, so a tool's tests can name them. A tool may print its own
 code in place of any of crumbkit's, such as its own usage code for
-`crumbkit::cli::usage`, with a `Rename` in `Guide::codes`. crumbkit still
+`crumbkit::cli::usage`, with a `Rename` in `Guide::codes`. One command can
+print its own code for one of crumbkit's failures with a `Rename` in
+`Leaf::codes`, which its runs read before the guide's. crumbkit still
 decides when the failure happens, its message and its recovery
-([declarations](../adoption/declarations.md)).
+([declarations](../adoption/declarations.md#codes-per-command)).
 
-Why: ADR-0001, ADR-0056.
+Why: ADR-0001, ADR-0056, ADR-0060.
 
 ## Codes learned at run time
 

@@ -289,7 +289,11 @@ pub(super) fn refuse(
 ) -> Result<Output, String> {
     let reader = failures::reader(guide, examples)?;
     let refused_line = named(&tool_name(examples), refused.words(), refused.own_env());
-    let code = spelling.spell(guide.printed(refused.code()));
+    // A leaf's renames decide the code that a run of its command prints, so
+    // the code is spelled for the command that the refused line names.
+    let path = crumbkit::command_path(command, guide, refused.words());
+    let leaf_path: Vec<&str> = path.iter().map(String::as_str).collect();
+    let code = spelling.spell(guide.printed(&leaf_path, refused.code()));
     let output = run(
         examples,
         refused,
@@ -308,7 +312,6 @@ pub(super) fn refuse(
         .map(|failure| failure.code().to_owned());
     match printed {
         Some(printed) if printed == code => {
-            let path = crumbkit::command_path(command, guide, refused.words());
             match exits::exit_problem(guide, spelling, &path, &printed, output.status) {
                 Some(problem) => Err(format!("the refused line {refused_line} {problem}")),
                 None => Ok(output),

@@ -485,6 +485,15 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit-core: `FieldValue::from_json` reads a failure field back from a
   `serde_json::Value`, and returns `None` for a number that `FieldValue`
   cannot hold, such as a fraction ([behaviour/adoption]).
+- crumbkit: `Leaf::codes` renames crumbkit's codes for the runs of one
+  command, which read the leaf's renames before the guide's. A leaf cannot
+  rename `crumbkit::cli::usage` ([behaviour/adoption/declarations]).
+- crumbkit-test: [`check_exit_codes`] reports a leaf that renames one code
+  twice, a tool code that renames of two crumbkit codes share across the
+  guide and its leaves, and two exits that a leaf's renames make list one
+  code ([behaviour/adoption/declarations]).
+- crumbkit-test: [`check_opt_outs`] lists each leaf's code renames as
+  customisations of the leaf's command ([behaviour/adoption/declarations]).
 
 ### Changed
 
@@ -745,6 +754,9 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   used as a command line is a compile error ([behaviour/adoption]).
 - crumbkit-test: the failure reader leaves out a field of crumbkit's
   failure document that holds a fraction, which it read as text before.
+- crumbkit: `Guide::printed` and `Guide::failure_exit` take the command
+  path of the run, because a leaf's renames apply to its own command
+  ([behaviour/adoption/declarations]).
 
 ### Removed
 

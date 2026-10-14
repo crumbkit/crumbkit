@@ -245,7 +245,7 @@ pub(crate) fn note(tool: &str, guide: &Guide) -> String {
 /// Returns whether a refused command line exits with crumbkit's 2 under
 /// `guide`, which lists no other code for it.
 fn refuses_with_2(guide: &Guide) -> bool {
-    guide.failure_exit(&crate::codes::CLI_USAGE) == 2
+    guide.failure_exit(&[], &crate::codes::CLI_USAGE) == 2
 }
 
 /// Returns the number of decimal digits of `code`.

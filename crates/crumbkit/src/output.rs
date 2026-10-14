@@ -34,7 +34,8 @@ use self::failure::Printing;
 pub use self::layout::JsonLayout;
 pub use self::stream::{Streaming, stream, stream_to};
 use crate::form::FailureForm;
-use crate::help::{Exit, Guide, Rename, view};
+use crate::help::rename::Renames;
+use crate::help::{Exit, Guide, view};
 use crate::{AsFailure, Document, Parsed, Rows, Sink, Spelling};
 
 #[cfg(test)]
@@ -152,10 +153,11 @@ pub struct Output {
     #[arg(skip)]
     exits: &'static [Exit],
 
-    /// The tool's own codes for crumbkit's failures, which `set_command`
-    /// copies from the `Parsed` (ADR-0056).
+    /// The tool's own codes for crumbkit's failures, of the guide and of
+    /// the leaf of the parsed command, which `set_command` copies from the
+    /// `Parsed` (ADR-0056, ADR-0060).
     #[arg(skip)]
-    renames: &'static [Rename],
+    renames: Renames,
 }
 
 /// The warning that a debug build of `finish` and `stream` writes when the
@@ -314,7 +316,7 @@ impl Output {
             no_terminal: !guide.terminal_detection(),
             json_layout: guide.layout(),
             exits: guide.get_exits(),
-            renames: guide.get_codes(),
+            renames: Renames::of(guide),
             ..Self::default()
         }
     }

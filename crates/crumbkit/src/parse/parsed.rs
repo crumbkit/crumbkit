@@ -7,7 +7,8 @@ use clap::Command;
 
 use crate::JsonLayout;
 use crate::form::FailureForm;
-use crate::help::{Exit, Guide, Rename};
+use crate::help::rename::Renames;
+use crate::help::{Exit, Guide};
 
 /// The command tree that [`parse`](crate::parse) parsed against, with the
 /// words that the caller typed after the program name and the values that
@@ -46,8 +47,9 @@ pub struct Parsed {
     /// The exit codes that the tool's guide declares, whose failure codes
     /// choose a failed run's exit code (ADR-0037).
     pub(crate) exits: &'static [Exit],
-    /// The tool's own codes for crumbkit's failures (ADR-0056).
-    pub(crate) renames: &'static [Rename],
+    /// The tool's own codes for crumbkit's failures, of the guide and of
+    /// the leaf of the parsed command (ADR-0056, ADR-0060).
+    pub(crate) renames: Renames,
 }
 
 impl Parsed {
@@ -55,13 +57,20 @@ impl Parsed {
     /// hold any values that a picker added, whether the caller passed
     /// `--no-input`, and the failure form, terminal detection, output budget
     /// and JSON layout of `guide`, and the exit codes and renames that it
-    /// declares.
-    pub(crate) const fn new(
+    /// declares. The renames of the guide's leaf at `path`, the real names
+    /// of the parsed command's subcommands from the root, come before the
+    /// guide's (ADR-0060).
+    pub(crate) fn new(
         command: Command,
         words: Vec<OsString>,
         no_input: bool,
         guide: &Guide,
+        path: &[String],
     ) -> Self {
+        let leaf = guide
+            .get_leaves()
+            .iter()
+            .find(|leaf| leaf.path().iter().eq(path.iter()));
         Self {
             command,
             words: Some(words),
@@ -71,7 +80,7 @@ impl Parsed {
             output_budget: budget_of(guide),
             json_layout: guide.layout(),
             exits: guide.get_exits(),
-            renames: guide.get_codes(),
+            renames: Renames::with_leaf(guide, leaf),
         }
     }
 
@@ -83,7 +92,11 @@ impl Parsed {
     /// layout (ADR-0052), and exits with the code that the guide declares
     /// for a failure (ADR-0037), and whether `guide` turns
     /// terminal detection off (ADR-0049). A tool whose guide sets none of
-    /// them passes its `Command` to `Output::set_command` directly.
+    /// them passes its `Command` to `Output::set_command` directly. Without
+    /// the typed words, a `Parsed` from this function does not know the
+    /// run's command, so it reads only the renames of
+    /// [`Guide::codes`](crate::help::Guide::codes) and none of
+    /// [`Leaf::codes`](crate::help::Leaf::codes).
     #[must_use]
     pub const fn guided(command: Command, guide: &Guide) -> Self {
         Self {
@@ -95,7 +108,7 @@ impl Parsed {
             output_budget: budget_of(guide),
             json_layout: guide.layout(),
             exits: guide.get_exits(),
-            renames: guide.get_codes(),
+            renames: Renames::of(guide),
         }
     }
 
@@ -132,7 +145,7 @@ impl From<Command> for Parsed {
             output_budget: None,
             json_layout: None,
             exits: &[],
-            renames: &[],
+            renames: Renames::default(),
         }
     }
 }

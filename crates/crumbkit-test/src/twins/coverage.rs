@@ -2,7 +2,7 @@
 //! each declared code.
 
 use clap::Command;
-use crumbkit::help::Guide;
+use crumbkit::help::{Guide, Leaf};
 use crumbkit::{Code, Spelling};
 
 use super::{Admitted, named, refuse, tool_name, twin};
@@ -390,8 +390,13 @@ fn crumbkit_owned(guide: &Guide, code: &Code) -> bool {
 /// The component of crumbkit's codes and of its add-on crates' codes.
 const CRUMBKIT: &str = "crumbkit";
 
-/// Returns whether `guide` prints `code` in place of one of crumbkit's
-/// codes.
+/// Returns whether `guide`, or one of its leaves, prints `code` in place of
+/// one of crumbkit's codes.
 fn renamed_to(guide: &Guide, code: &Code) -> bool {
-    guide.get_codes().iter().any(|rename| rename.tool() == code)
+    let leaves = guide.get_leaves().iter().flat_map(Leaf::get_codes);
+    guide
+        .get_codes()
+        .iter()
+        .chain(leaves)
+        .any(|rename| rename.tool() == code)
 }

@@ -8,7 +8,7 @@ use clap::{CommandFactory as _, Parser, Subcommand};
 
 use super::{PLANETS, Planet, mercury};
 use crate::answered::answered;
-use crate::help::{Exit, Guide, Rename};
+use crate::help::{Exit, Guide, Leaf, Rename};
 use crate::{
     Batch, Code, Document, Failure, Output, Parsed, Prose, Recovery, Sink, Spelling, finish_to,
 };
@@ -152,6 +152,42 @@ fn a_renamed_crumbkit_failure_in_a_batch_prints_the_tool_s_code_and_exits_with_i
     assert_eq!(code, ExitCode::from(5));
     let document: serde_json::Value = serde_json::from_slice(&out).unwrap();
     assert_eq!(document["failures"][0]["code"], "solar::planets::stale");
+}
+
+#[test]
+fn a_failure_of_a_leaf_that_renames_its_code_prints_the_leaf_s_code_and_exits_with_its_listed_code()
+{
+    const STALE: Code = Code::new("solar", "planets", "stale");
+    const MOVED: Code = Code::new("solar", "planets", "moved");
+    const RENAMED: Guide = Guide::new()
+        .codes(&[Rename::new(&crate::codes::VERSION_CONFLICT, &STALE)])
+        .exits(&[Exit::new(5, "A planet moved since it was read.").failures(&[&MOVED])])
+        .leaves(&[
+            Leaf::new(&["list"]).codes(&[Rename::new(&crate::codes::VERSION_CONFLICT, &MOVED)])
+        ]);
+    let mut out = Vec::new();
+    let mut err = Vec::new();
+    let mut sink = Sink::new(&mut out, &mut err);
+    let (mut tool, parsed) = crate::parse_to::<Tool, _, _, _, _>(
+        &mut sink,
+        Tool::command(),
+        &RENAMED,
+        Spelling::COLONS,
+        ["tool", "list", "--json"],
+    )
+    .unwrap();
+    tool.output.set_command(parsed);
+    let code = finish_to(
+        &mut sink,
+        &mut tool.output,
+        Spelling::COLONS,
+        PLANETS,
+        Err(Failed(&crate::codes::VERSION_CONFLICT)),
+    );
+
+    assert_eq!(code, ExitCode::from(5));
+    let document: serde_json::Value = serde_json::from_slice(&out).unwrap();
+    assert_eq!(document["code"], "solar::planets::moved");
 }
 
 #[test]

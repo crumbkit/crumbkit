@@ -13,7 +13,6 @@ use super::dry_run::DRY_RUN_LINE;
 use super::envelope::{Extras, Selected, write_document};
 use super::failure::{self, PreparedFailure, Printing};
 use super::{Output, fields, problems, table, unwrapped};
-use crate::help::rename;
 use crate::{AsFailure, Document, Failure, Row, Sink, Spelling, Stream, codes, exit};
 
 #[cfg(test)]
@@ -308,7 +307,7 @@ impl<R: Row, O: Write, W: Write> Streaming<'_, R, O, W> {
         }
         if self.items > 0 && self.sent.saturating_add(self.line.len()) > self.budget {
             self.line.clear();
-            let code = rename::printed(self.printing.renames, &codes::OUTPUT_OVER_BUDGET);
+            let code = self.printing.renames.printed(&codes::OUTPUT_OVER_BUDGET);
             let over = OverBudget {
                 code,
                 budget: self.budget,
@@ -491,7 +490,7 @@ impl<R: Row, O: Write, W: Write> Streaming<'_, R, O, W> {
         let document = PreparedFailure::new(
             failure,
             self.spelling,
-            self.printing.renames,
+            self.printing,
             self.command.as_deref_mut(),
             &mut self.err,
         );

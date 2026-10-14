@@ -3,7 +3,7 @@
 
 use miette::{LabeledSpan, NamedSource};
 
-use super::super::super::{PreparedFailure, write_crumbkit_text};
+use super::super::super::{PreparedFailure, Printing, write_crumbkit_text};
 use super::super::tests::{SHELF_TOML, UnknownKey, in_shelf_toml, on_colour};
 use crate::{Failure, Spelling};
 
@@ -21,7 +21,13 @@ fn over_long_array() -> LabeledSpan {
 
 /// Returns the text form of `failure`.
 fn text(failure: &dyn Failure) -> String {
-    let document = PreparedFailure::new(failure, Spelling::COLONS, &[], None, &mut std::io::sink());
+    let document = PreparedFailure::new(
+        failure,
+        Spelling::COLONS,
+        Printing::default(),
+        None,
+        &mut std::io::sink(),
+    );
     let mut err = Vec::new();
     write_crumbkit_text(&mut err, &document).unwrap();
     String::from_utf8(err).unwrap()

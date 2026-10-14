@@ -3,7 +3,7 @@
 //! and keep crumbkit's behaviour, so they need no reason (ADR-0056).
 
 use clap::Command;
-use crumbkit::help::{Guide, Rename};
+use crumbkit::help::{Guide, Leaf, Rename};
 use crumbkit::{Code, Spelling};
 use serde::Serialize;
 
@@ -31,8 +31,10 @@ pub(super) struct Customisation {
 /// answers to its dashed form, as [`dashed_names`] lists them, and then for
 /// each leaf in guide order its document's name when the leaf's path gives
 /// another, the program whose exit code it passes on, whether it
-/// declares refusal alternatives, and whether its batch prints its failures
-/// in input order (`Document::failures_in_order`). A declaration that a later change adds
+/// declares refusal alternatives, whether its batch prints its failures
+/// in input order (`Document::failures_in_order`), and each code rename of
+/// [`Leaf::codes`](crumbkit::help::Leaf::codes). An exit that lists a code
+/// that only a leaf renames applies to that leaf's command. A declaration that a later change adds
 /// joins this list beside the declarations of the same scope: a guide
 /// setting before the leaves, and a leaf's declaration after its
 /// refusal-alternatives entry. The completion variable is not listed,
@@ -64,17 +66,21 @@ pub(super) fn customisations(command: &Command, guide: &Guide) -> Vec<Customisat
     }
     for exit in guide.get_exits() {
         for &listed in exit.get_failures() {
-            let Some(crumbkit) = crumbkit_code(guide, listed) else {
+            let Some((crumbkit, leaf)) = crumbkit_code(guide, listed) else {
                 continue;
+            };
+            let applies_to = match leaf {
+                Some(path) => command_line(command, &path.join(" ")),
+                None => every_run.clone(),
             };
             list.push(Customisation {
                 declaration: "exit-code",
-                applies_to: every_run.clone(),
+                applies_to,
                 declares: format!(
                     "A failure with {} exits with {}, where crumbkit's default is {}.",
                     spell(listed),
                     exit.code(),
-                    Guide::new().failure_exit(crumbkit)
+                    Guide::new().failure_exit(&[], crumbkit)
                 ),
             });
         }
@@ -98,46 +104,65 @@ pub(super) fn customisations(command: &Command, guide: &Guide) -> Vec<Customisat
         list.extend(dashed_names(command));
     }
     for leaf in guide.get_leaves() {
-        let document = leaf.get_document();
-        if let Some((document, name)) = document
-            .and_then(|document| Some((document, declared_name(command, leaf.path(), document)?)))
-        {
-            list.push(Customisation {
-                declaration: "document-name",
-                applies_to: command_line(command, &leaf.path().join(" ")),
-                declares: format!(
-                    "The command prints {document}, where its path gives the name {name}."
-                ),
-            });
-        }
-        if let Some(program) = leaf.get_passes_on_exit() {
-            list.push(Customisation {
-                declaration: "passes-on-exit",
-                applies_to: command_line(command, &leaf.path().join(" ")),
-                declares: format!("The command exits with the exit code of {program}."),
-            });
-        }
-        // The report states that the leaf declares refusal alternatives and
-        // leaves out the calls, so this getter and the guide's are the only
-        // lines that read them.
-        if leaf.get_refusal_alternatives().is_some() {
-            list.push(Customisation {
-                declaration: "refusal-alternatives",
-                applies_to: command_line(command, &leaf.path().join(" ")),
-                declares: "A refused command line for this command also offers the tool's own \
-                           alternatives."
-                    .to_owned(),
-            });
-        }
-        if document.is_some_and(|document| document.prints_failures_in_order()) {
-            list.push(Customisation {
-                declaration: "failures-in-order",
-                applies_to: command_line(command, &leaf.path().join(" ")),
-                declares: "With --json, the command prints its failures among its rows in input \
-                           order, in place of text on standard error."
-                    .to_owned(),
-            });
-        }
+        list.extend(leaf_customisations(command, leaf));
+    }
+    list
+}
+
+/// Returns the declarations of `leaf` in the tool whose root command is
+/// `command`, in the order that [`customisations`] lists them.
+fn leaf_customisations(command: &Command, leaf: &Leaf) -> Vec<Customisation> {
+    let mut list = Vec::new();
+    let document = leaf.get_document();
+    if let Some((document, name)) = document
+        .and_then(|document| Some((document, declared_name(command, leaf.path(), document)?)))
+    {
+        list.push(Customisation {
+            declaration: "document-name",
+            applies_to: command_line(command, &leaf.path().join(" ")),
+            declares: format!(
+                "The command prints {document}, where its path gives the name {name}."
+            ),
+        });
+    }
+    if let Some(program) = leaf.get_passes_on_exit() {
+        list.push(Customisation {
+            declaration: "passes-on-exit",
+            applies_to: command_line(command, &leaf.path().join(" ")),
+            declares: format!("The command exits with the exit code of {program}."),
+        });
+    }
+    // The report states that the leaf declares refusal alternatives and
+    // leaves out the calls, so this getter and the guide's are the only
+    // lines that read them.
+    if leaf.get_refusal_alternatives().is_some() {
+        list.push(Customisation {
+            declaration: "refusal-alternatives",
+            applies_to: command_line(command, &leaf.path().join(" ")),
+            declares: "A refused command line for this command also offers the tool's own \
+                       alternatives."
+                .to_owned(),
+        });
+    }
+    if document.is_some_and(|document| document.prints_failures_in_order()) {
+        list.push(Customisation {
+            declaration: "failures-in-order",
+            applies_to: command_line(command, &leaf.path().join(" ")),
+            declares: "With --json, the command prints its failures among its rows in input \
+                       order, in place of text on standard error."
+                .to_owned(),
+        });
+    }
+    for rename in leaf.get_codes() {
+        list.push(Customisation {
+            declaration: "code-rename",
+            applies_to: command_line(command, &leaf.path().join(" ")),
+            declares: format!(
+                "Runs print {} in place of {}.",
+                spell(rename.tool()),
+                spell(rename.crumbkit())
+            ),
+        });
     }
     list
 }
@@ -169,17 +194,25 @@ fn dashed_names(command: &Command) -> Vec<Customisation> {
     list
 }
 
-/// Returns the code of crumbkit's that `listed` is, or that the guide
-/// renames to `listed`, or `None` for one of the tool's own codes.
-fn crumbkit_code(guide: &Guide, listed: &'static Code) -> Option<&'static Code> {
+/// Returns the code of crumbkit's that `listed` is, or that the guide or
+/// one of its leaves renames to `listed`, with the path of the first leaf
+/// that renames it when the guide does not, or `None` for one of the
+/// tool's own codes.
+fn crumbkit_code(
+    guide: &Guide,
+    listed: &'static Code,
+) -> Option<(&'static Code, Option<&'static [&'static str]>)> {
     if listed.component() == "crumbkit" {
-        return Some(listed);
+        return Some((listed, None));
     }
-    guide
-        .get_codes()
-        .iter()
-        .find(|rename| rename.tool() == listed)
-        .map(Rename::crumbkit)
+    let renames_to = |rename: &&Rename| rename.tool() == listed;
+    if let Some(rename) = guide.get_codes().iter().find(renames_to) {
+        return Some((rename.crumbkit(), None));
+    }
+    guide.get_leaves().iter().find_map(|leaf| {
+        let rename = leaf.get_codes().iter().find(renames_to)?;
+        Some((rename.crumbkit(), Some(leaf.path())))
+    })
 }
 
 /// Returns `code` spelled with colons, as crumbkit's records spell codes.
