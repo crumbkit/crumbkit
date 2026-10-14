@@ -50,9 +50,8 @@ signal-hook = { workspace = true, features = ["iterator"] }
 getrandom = { workspace = true }
 
 [dev-dependencies]
-# The process tests hand the terminal to a child with `crumbkit::child`,
-# which needs crumbkit's `hand-over` feature.
-crumbkit = { workspace = true, features = ["hand-over"] }
+# The process tests hand the terminal to a child with crumbkit-child.
+crumbkit-child = { workspace = true }
 # The report's property tests generate runs of the log (ADR-0006).
 proptest = { workspace = true, features = ["std"] }
 

@@ -3,11 +3,11 @@
 //!
 //! crumbkit reports each fact from the place that knows it: `parse` reports
 //! the command line, `finish` reports the exit code and the bytes it wrote,
-//! a child hand-over reports that a child took the terminal, and the tool
-//! and crumbkit-aliases report through [`aliased`], [`tolerated`] and
-//! [`ended`]. Each report goes to the [`Observer`] that [`observe`]
-//! installed. Without one, a report reads one atomic value and does
-//! nothing else.
+//! crumbkit-child reports that a child took the terminal through
+//! [`handed_over`], and the tool and crumbkit-aliases report through
+//! [`aliased`], [`tolerated`] and [`ended`]. Each report goes to the
+//! [`Observer`] that [`observe`] installed. Without one, a report reads one
+//! atomic value and does nothing else.
 //!
 //! A tool does not usually call [`observe`] itself. The usage log's `start`
 //! calls it, and a tool that wants its own observer installs it the same

@@ -4,11 +4,13 @@
 use std::fmt;
 use std::io;
 
-use crate::{Code, Failure, Recovery, codes};
+use crumbkit::{Code, Failure, Recovery};
+
+use crate::codes;
 
 /// A failure of a child process. Each variant holds the name of the program.
 #[derive(Debug)]
-pub(super) enum ChildError {
+pub(crate) enum ChildError {
     /// The caller passed `--json`, and the child has no JSON form.
     NoJson(String),
     /// The program does not exist.
@@ -41,7 +43,7 @@ pub(super) enum ChildError {
 impl ChildError {
     /// Returns the failure of `program`, which did not start or could not
     /// be waited for because of `error`.
-    pub(super) fn start(program: String, error: io::Error) -> Self {
+    pub(crate) fn start(program: String, error: io::Error) -> Self {
         if error.kind() == io::ErrorKind::NotFound {
             Self::NotFound(program)
         } else {
@@ -83,11 +85,11 @@ impl std::error::Error for ChildError {
 impl Failure for ChildError {
     fn code(&self) -> &'static Code {
         match self {
-            Self::NoJson(_) => &codes::CHILD_NO_JSON,
-            Self::NotFound(_) => &codes::CHILD_NOT_FOUND,
-            Self::NotStarted { .. } => &codes::CHILD_NOT_STARTED,
-            Self::BadJson { .. } => &codes::CHILD_BAD_JSON,
-            Self::Failed { .. } => &codes::CHILD_FAILED,
+            Self::NoJson(_) => &codes::NO_JSON,
+            Self::NotFound(_) => &codes::NOT_FOUND,
+            Self::NotStarted { .. } => &codes::NOT_STARTED,
+            Self::BadJson { .. } => &codes::BAD_JSON,
+            Self::Failed { .. } => &codes::FAILED,
         }
     }
 

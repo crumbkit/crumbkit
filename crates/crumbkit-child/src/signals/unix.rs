@@ -22,7 +22,7 @@ pub(super) const RESTORES: bool = false;
 pub(super) fn install() -> Option<Arc<AtomicBool>> {
     let no_child = Arc::new(AtomicBool::new(true));
     register_conditional_default(SIGQUIT, Arc::clone(&no_child)).ok()?;
-    if !crate::events::handles_interrupt() {
+    if !crumbkit::events::handles_interrupt() {
         register_conditional_default(SIGINT, Arc::clone(&no_child)).ok()?;
     }
     Some(no_child)
@@ -30,6 +30,6 @@ pub(super) fn install() -> Option<Arc<AtomicBool>> {
 
 /// Returns the number of the signal that ended a child with `status`, or
 /// `None` when the child exited.
-pub(in crate::child) fn ended_by(status: ExitStatus) -> Option<i32> {
+pub(crate) fn ended_by(status: ExitStatus) -> Option<i32> {
     status.signal()
 }

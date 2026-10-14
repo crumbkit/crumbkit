@@ -16,8 +16,7 @@ const TIMED_OUT: Code = Code::new("tool", "books", "timed_out");
 /// The code of a book that does not exist.
 const NOT_FOUND: Code = Code::new("tool", "books", "not_found");
 
-/// crumbkit's code of a child process that failed under `--json`, which
-/// crumbkit declares only with its `hand-over` feature.
+/// crumbkit-child's code of a child process that failed under `--json`.
 const CHILD_FAILED: Code = Code::new("crumbkit", "child", "failed");
 
 /// The exit code 124, which `TIMED_OUT` ends a run with.

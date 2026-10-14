@@ -1,0 +1,39 @@
+[package]
+name = "crumbkit-child"
+description = "Hands the terminal to another program, such as an editor or a pager, as a crumbkit command's whole response"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+readme = "README.md"
+keywords = ["cli", "clap", "terminal", "process"]
+categories = ["command-line-interface"]
+include = ["src/**/*.rs", "README.md", "LICENSE-APACHE", "LICENSE-MIT"]
+
+[dependencies]
+# The hand-over prints its failures and refusals through crumbkit's `Output`
+# and `Sink`, prints a child's JSON with `finish_to`, and tells crumbkit's run
+# observer that a child took the terminal (ADR-0042, ADR-0057).
+crumbkit = { workspace = true }
+# `DeserializeOwned` reads a child's JSON as the declared document, and needs
+# no serde feature.
+serde = { workspace = true }
+# `from_slice` parses the child's standard output. serde_json needs `std` or
+# `alloc` to build at all.
+serde_json = { workspace = true, features = ["std"] }
+# signal-hook installs the handlers that keep the tool running while a child
+# holds the terminal (ADR-0042). The crate needs only `flag`, which every
+# build of signal-hook has.
+signal-hook = { workspace = true }
+
+[dev-dependencies]
+# The tests parse the output flags into an `Output` with `clap::Parser`.
+clap = { workspace = true, features = ["derive"] }
+# The tests and the `Json` example derive `Serialize`, `Deserialize` and
+# `JsonSchema` for the rows that a child prints, as a tool's rows do.
+serde = { workspace = true, features = ["derive"] }
+schemars = { workspace = true, features = ["derive"] }
+
+[lints]
+workspace = true

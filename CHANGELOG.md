@@ -499,6 +499,11 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit: [`events`]`::handed_over`, `taken_back`, `interrupted` and
   `handles_interrupt` are public and need no feature, so a crate that hands
   the terminal to a child reports it to the observer ([ADR-0057]).
+- crumbkit-child: [`child::hand_over`] and [`child::hand_over_json`] move
+  from crumbkit's `hand-over` feature to the crumbkit-child crate, and a
+  tool calls `crumbkit_child::hand_over`. The codes keep their spelling,
+  `crumbkit::child::*`, and crumbkit-child lists them in its own
+  `codes::ALL` ([crumbkit-child], [ADR-0042]).
 - crumbkit-usage: the usage log, `self usage` and `self figures list` move
   from crumbkit's `usage-log` feature to the crumbkit-usage crate, and a
   tool starts the log with `crumbkit_usage::start()` ([crumbkit-usage],
@@ -739,6 +744,9 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Removed
 
+- crumbkit: the `hand-over` feature, the `crumbkit::child` module and the
+  `codes::CHILD_*` constants are gone, because the crumbkit-child crate
+  holds the hand-over ([crumbkit-child]).
 - crumbkit: the `usage-log` feature and the `crumbkit::usage` module are
   gone, because the crumbkit-usage crate holds the usage log
   ([crumbkit-usage]).
@@ -907,6 +915,7 @@ rustdoc, or at its decision record. -->
 [`FailureReader`]: crates/crumbkit-test/src/failures.rs
 [crumbkit-aliases]: crates/crumbkit-aliases/README.md
 [crumbkit-usage]: crates/crumbkit-usage/README.md
+[crumbkit-child]: crates/crumbkit-child/README.md
 [crumbkit-core]: crates/crumbkit-core/README.md
 [crumbkit-derive]: crates/crumbkit-derive/README.md
 [`Error::unclassified`]: crates/crumbkit-core/src/unclassified.rs
@@ -958,8 +967,8 @@ rustdoc, or at its decision record. -->
 [`check_effects`]: crates/crumbkit-test/src/effects.rs
 [ADR-0039]: docs/decisions/api/effects/0039-effects-dry-runs-and-confirmation.md
 [ADR-0041]: docs/decisions/api/output/0041-streams.md
-[`child::hand_over`]: crates/crumbkit/src/child.rs
-[`child::hand_over_json`]: crates/crumbkit/src/child.rs
+[`child::hand_over`]: crates/crumbkit-child/src/hand_over.rs
+[`child::hand_over_json`]: crates/crumbkit-child/src/hand_over.rs
 [ADR-0042]: docs/decisions/api/output/0042-child-processes.md
 [ADR-0043]: docs/decisions/api/effects/0043-pickers-and-interactive-input.md
 [`Picker`]: crates/crumbkit/src/pick.rs

@@ -1,4 +1,4 @@
-# release-plz opens the release pull request and publishes the nine crates
+# release-plz opens the release pull request and publishes the ten crates
 # through crates.io trusted publishing (ADR-0012). `.github/workflows/release.yml`
 # runs it on each push to main. A setting that is release-plz's default is left
 # out, such as `semver_check = true`, which runs cargo-semver-checks against the
@@ -21,7 +21,7 @@
 # 2. In the repository's settings, create the environment `crates-io` and
 #    limit its deployment branches to main.
 # 3. When 0.1.0 is ready, merge a pull request that sets `version = "0.1.0"`
-#    in `[workspace.package]` and in the eight crumbkit entries of
+#    in `[workspace.package]` and in the nine crumbkit entries of
 #    `[workspace.dependencies]` in the root Cargo.toml, renames
 #    `## [Unreleased]` in CHANGELOG.md to `## [0.1.0] - YYYY-MM-DD`, and adds
 #    an empty `## [Unreleased]` heading above it.
@@ -37,10 +37,10 @@
 #
 #    `cargo login` reads the token from standard input. `cargo publish
 #    --workspace` publishes the crates in dependency order: crumbkit-derive,
-#    crumbkit-core, crumbkit, crumbkit-markdown, crumbkit-test, crumbkit-aliases,
-#    crumbkit-usage, crumbkit-picker, cargo-crumbkit. Revoke the token on crates.io
-#    afterwards.
-# 5. On crates.io, open each of the nine crates' Settings, Trusted
+#    crumbkit-core, crumbkit, crumbkit-child, crumbkit-markdown,
+#    crumbkit-test, crumbkit-aliases, crumbkit-usage, crumbkit-picker,
+#    cargo-crumbkit. Revoke the token on crates.io afterwards.
+# 5. On crates.io, open each of the ten crates' Settings, Trusted
 #    Publishing, and add a GitHub publisher with the owner `crumbkit`, the
 #    repository `crumbkit`, the workflow `release.yml` and the environment
 #    `crates-io`.
@@ -49,7 +49,7 @@
 #    `true`.
 
 [workspace]
-# Only crumbkit updates the changelog and tags the release, because the nine
+# Only crumbkit updates the changelog and tags the release, because the ten
 # crates share one CHANGELOG.md and one tag (ADR-0012).
 changelog_update = false
 git_tag_enable = false
@@ -64,7 +64,7 @@ body = """
 ## [{{ version }}]{%- if release_link -%}({{ release_link }}){% endif %} - {{ timestamp | date(format="%Y-%m-%d") }}
 """
 
-# The nine crates share one version. Each inherits the workspace version, and
+# The ten crates share one version. Each inherits the workspace version, and
 # `version_group` keeps them at one version if a crate stops inheriting it.
 [[package]]
 name = "crumbkit"
@@ -74,6 +74,10 @@ changelog_path = "./CHANGELOG.md"
 git_tag_enable = true
 git_tag_name = "v{{ version }}"
 git_release_enable = true
+
+[[package]]
+name = "crumbkit-child"
+version_group = "crumbkit"
 
 [[package]]
 name = "crumbkit-core"

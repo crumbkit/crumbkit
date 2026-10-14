@@ -48,8 +48,6 @@ mod agent;
 #[cfg(test)]
 mod answered;
 mod call;
-#[cfg(feature = "hand-over")]
-pub mod child;
 pub mod codes;
 pub mod commands;
 mod complete;

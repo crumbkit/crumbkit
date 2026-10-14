@@ -80,7 +80,7 @@ where
         } => {
             output.set_command(command);
             let editor = lists::editor(dir.as_deref(), &name);
-            crumbkit::child::hand_over(&mut output, SPELLING, editor)
+            crumbkit_child::hand_over(&mut output, SPELLING, editor)
         }
         Parsed::Static(mut cli) => {
             cli.output.set_command(command);

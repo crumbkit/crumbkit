@@ -14,8 +14,11 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use super::{Json, hand_over_json_to, hand_over_to, respond_json, respond_text};
-use crate::twins::assert_one_word_apart;
-use crate::{Document, Output, Row, Sink, Spelling};
+use crumbkit::help::{Exit, Guide};
+use crumbkit::{Document, Output, Parsed, Row, Sink, Spelling};
+
+use crate::codes;
+use crate::testing::assert_one_word_apart;
 
 // The process tests run their children through `sh` and send them Unix
 // signals.
@@ -148,7 +151,7 @@ fn a_child_that_a_signal_ended_returns_128_plus_the_signal_number() {
 #[cfg(unix)]
 #[test]
 fn a_child_that_a_signal_ended_reports_that_it_was_interrupted_and_then_its_exit() {
-    let seen = crate::events::testing::watch(|| drop(text(Ok(killed(2)))));
+    let seen = crate::testing::watch(|| drop(text(Ok(killed(2)))));
 
     assert_eq!(seen, ["interrupted", "ended 130 None"]);
 }
@@ -339,4 +342,30 @@ fn an_unknown_field_under_json_is_refused_before_the_child_runs() {
     assert_eq!(responded.code, ExitCode::from(2));
     let document: serde_json::Value = serde_json::from_str(&responded.out).unwrap();
     assert_eq!(document["code"], "crumbkit::cli::usage");
+}
+
+/// A guide that gives a refused command line the exit code 64.
+const USAGE_64: Guide = Guide::new().exits(&[
+    Exit::new(64, "The command line was refused.").failures(&[&crumbkit::codes::CLI_USAGE])
+]);
+
+/// A guide that gives a refused command line 64 and `no_json` 3.
+const NO_JSON_3: Guide = Guide::new().exits(&[
+    Exit::new(64, "The command line was refused.").failures(&[&crumbkit::codes::CLI_USAGE]),
+    Exit::new(3, "The command has no JSON form.").failures(&[&codes::NO_JSON]),
+]);
+
+/// Returns the exit code of `--json` on a child without a JSON form, under
+/// `guide`.
+fn no_json_exit(guide: &'static Guide) -> ExitCode {
+    let mut output = Tool::try_parse_from(["vault", "--json"]).unwrap().output;
+    output.set_command(Parsed::guided(Tool::command(), guide));
+    respond(|sink| hand_over_to(sink, &mut output, Spelling::COLONS, command(MISSING))).code
+}
+
+#[test]
+fn a_child_that_cannot_answer_json_exits_as_the_guide_s_refused_command_line_unless_an_exit_lists_no_json()
+ {
+    assert_eq!(no_json_exit(&USAGE_64), ExitCode::from(64));
+    assert_eq!(no_json_exit(&NO_JSON_3), ExitCode::from(3));
 }

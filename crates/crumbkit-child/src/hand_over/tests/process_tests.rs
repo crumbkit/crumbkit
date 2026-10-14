@@ -10,8 +10,9 @@ use std::os::unix::process::CommandExt as _;
 use std::process::{self, ExitCode, ExitStatus};
 
 use super::{BOOKS_JSON, MISSING, command, output, respond};
-use crate::Spelling;
-use crate::child::{hand_over_json_to, hand_over_to};
+use crumbkit::Spelling;
+
+use crate::hand_over::{hand_over_json_to, hand_over_to};
 
 /// The variable that tells a signal test's process to act as the tool.
 const TOOL: &str = "CRUMBKIT_HAND_OVER_TOOL";
@@ -109,11 +110,11 @@ fn ctrl_c_reaches_only_the_child_and_the_tool_returns_the_childs_code() {
         let child = sh("trap 'exit 7' INT; kill -INT 0; sleep 5; exit 1");
         let mut out = Vec::new();
         let mut err = Vec::new();
-        let sink = &mut crate::Sink::new(&mut out, &mut err);
+        let sink = &mut crumbkit::Sink::new(&mut out, &mut err);
         exit_tool(hand_over_to(sink, &mut output, Spelling::COLONS, child));
     }
     let status = run_tool(
-        "child::tests::process_tests::ctrl_c_reaches_only_the_child_and_the_tool_returns_the_childs_code",
+        "hand_over::tests::process_tests::ctrl_c_reaches_only_the_child_and_the_tool_returns_the_childs_code",
     );
 
     assert_eq!(status.code(), Some(7), "the tool ended with {status:?}");
@@ -125,7 +126,7 @@ fn sigint_and_sigquit_that_arrive_after_the_child_exits_leave_the_tool_running()
         let mut output = output(&[]);
         let mut out = Vec::new();
         let mut err = Vec::new();
-        let sink = &mut crate::Sink::new(&mut out, &mut err);
+        let sink = &mut crumbkit::Sink::new(&mut out, &mut err);
         let _ = hand_over_to(sink, &mut output, Spelling::COLONS, sh("exit 0"));
         // A Ctrl-C sent while the child ran can reach a thread of the tool
         // only after the child has exited, as these signals do.
@@ -134,7 +135,7 @@ fn sigint_and_sigquit_that_arrive_after_the_child_exits_leave_the_tool_running()
         exit_tool(ExitCode::from(7));
     }
     let status = run_tool(
-        "child::tests::process_tests::sigint_and_sigquit_that_arrive_after_the_child_exits_leave_the_tool_running",
+        "hand_over::tests::process_tests::sigint_and_sigquit_that_arrive_after_the_child_exits_leave_the_tool_running",
     );
 
     assert_eq!(status.code(), Some(7), "the tool ended with {status:?}");
@@ -144,7 +145,7 @@ fn sigint_and_sigquit_that_arrive_after_the_child_exits_leave_the_tool_running()
 fn hand_over_reports_that_a_child_took_the_terminal_and_then_reports_its_exit() {
     let mut output = output(&[]);
 
-    let seen = crate::events::testing::watch(|| {
+    let seen = crate::testing::watch(|| {
         let _ = respond(|sink| hand_over_to(sink, &mut output, Spelling::COLONS, sh("exit 3")));
     });
 

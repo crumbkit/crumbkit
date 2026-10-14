@@ -6,6 +6,7 @@ members = [
     "crates/crumbkit-derive",
     "crates/crumbkit-aliases",
     "crates/crumbkit-usage",
+    "crates/crumbkit-child",
     "crates/crumbkit-picker",
     "crates/crumbkit-markdown",
     "crates/crumbkit-test",
@@ -46,6 +47,9 @@ crumbkit-aliases = { version = "0.0.0", path = "crates/crumbkit-aliases" }
 # shelf keeps a usage log with crumbkit-usage, which takes a version beside
 # the path for the same reason.
 crumbkit-usage = { version = "0.0.0", path = "crates/crumbkit-usage" }
+# reading hands the terminal to an editor with crumbkit-child, which takes a
+# version beside the path for the same reason.
+crumbkit-child = { version = "0.0.0", path = "crates/crumbkit-child" }
 # shelf and reading ask a person for a missing argument with crumbkit-picker's
 # menu, which takes a version beside the path for the same reason.
 crumbkit-picker = { version = "0.0.0", path = "crates/crumbkit-picker" }
@@ -127,7 +131,7 @@ humantime = { version = "2.4.0", default-features = false }
 # on SIGINT or SIGTERM, and installs the handlers that ignore SIGINT and
 # SIGQUIT, or SIGINT and SIGBREAK on Windows, while a child holds the
 # terminal. crumbkit-usage enables only `iterator`, which gives `Signals` on
-# Unix, and crumbkit enables no feature.
+# Unix, and crumbkit-child enables no feature.
 signal-hook = { version = "0.4.5", default-features = false }
 
 # getrandom gives the usage log's key and trace ids their random bytes on
