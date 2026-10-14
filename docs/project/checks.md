@@ -33,10 +33,15 @@ calls each one. xtask parses its arguments with clap. Its rustdoc in
   agent can read each `.rs` file whole, and the word limit of DOCS-1 on
   `AGENTS.md`, because an agent reads that file at the start of every
   session. It lists files with `git ls-files`, including untracked files
-  that are not ignored. It also runs the docs checks.
+  that are not ignored. It also runs the docs checks and the docs trailer
+  check of DOCS-7, which reads the commit messages after the merge base
+  with `origin/main`.
 - `cargo xtask check docs` runs only the docs checks: the directory word
   limit of DOCS-2, so each directory of the docs tree can be read in one
-  sitting, and the record checks of DOCS-3. The tree includes `docs/`
+  sitting, the record checks of DOCS-3, and the frozen record check of
+  DOCS-6, which compares each record with its text at the merge base with
+  `origin/main`. Both commands fail with an error that says so when the
+  clone has no `origin/main`, such as a shallow clone. The tree includes `docs/`
   itself and every subdirectory, and each directory's count includes only
   the files directly in it.
 - `cargo xtask ci-time` measures the CI-3 limit from the run times that

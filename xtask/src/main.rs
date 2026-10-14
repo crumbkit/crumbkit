@@ -20,7 +20,7 @@ use std::time::{Duration, Instant};
 
 use clap::{Parser, Subcommand};
 
-use crate::check::{File, Selection};
+use crate::check::{Commit, File, History, Selection};
 
 #[cfg(test)]
 mod tests;
@@ -91,7 +91,8 @@ fn main() -> ExitCode {
 /// `out` as one line. Returns whether the repository passed.
 fn check_repository(selection: Selection, out: &mut impl Write) -> io::Result<bool> {
     let files = read_files()?;
-    let violations = check::run(selection, &files);
+    let history = read_history()?;
+    let violations = check::run(selection, &files, &history);
     for violation in &violations {
         writeln!(out, "{violation}")?;
     }
@@ -297,4 +298,80 @@ fn read_files() -> io::Result<Vec<File>> {
         }
     }
     Ok(files)
+}
+
+/// The branch that the history checks compare with.
+const MAIN: &str = "origin/main";
+
+/// Reads what the branch changed since its merge base with `origin/main`:
+/// the decision records and changelogs at the merge base, and the commits
+/// after it. A clone without `origin/main`, such as a shallow one, cannot
+/// run the history checks, so this returns an error that says so.
+fn read_history() -> io::Result<History> {
+    let base = git(&["merge-base", "HEAD", MAIN])
+        .map_err(|error| {
+            io::Error::other(format!(
+                "cannot find the merge base with {MAIN}, which the frozen record and \
+                 docs trailer checks compare with; fetch {MAIN} with its history ({error})"
+            ))
+        })?
+        .trim()
+        .to_owned();
+
+    let listing = git(&["ls-tree", "-r", "-z", "--name-only", &base])?;
+    let mut files = Vec::new();
+    // The checks read only the records and the changelogs, and they skip
+    // any other file under docs/decisions/.
+    for path in listing
+        .split('\0')
+        .filter(|path| path.starts_with("docs/decisions/") || path.ends_with("CHANGELOG.md"))
+    {
+        files.push(File {
+            path: path.to_owned(),
+            contents: git(&["show", &format!("{base}:{path}")])?,
+        });
+    }
+
+    // With -z, git ends each commit's output with a NUL byte. The format puts
+    // the abbreviated hash on the first line and the message after it.
+    let log = git(&["log", "-z", "--format=%h%n%B", &format!("{base}..HEAD")])?;
+    let commits = log
+        .split('\0')
+        .filter(|entry| !entry.trim().is_empty())
+        .map(|entry| {
+            let (id, message) = entry.split_once('\n').unwrap_or((entry, ""));
+            Commit {
+                id: id.to_owned(),
+                message: message.to_owned(),
+            }
+        })
+        .collect();
+    Ok(History {
+        base: files,
+        commits,
+    })
+}
+
+/// Runs git with `args` in the repository root and returns its standard
+/// output, or an error with git's standard error when git fails.
+fn git(args: &[&str]) -> io::Result<String> {
+    #[expect(
+        clippy::disallowed_methods,
+        reason = "this module owns xtask's process effects and runs git to read the history"
+    )]
+    let mut git = Command::new("git");
+    let output = git
+        .args(args)
+        .current_dir(ROOT)
+        .output()
+        .map_err(|error| io::Error::other(format!("cannot run git: {error}")))?;
+    if !output.status.success() {
+        let message = String::from_utf8_lossy(&output.stderr);
+        return Err(io::Error::other(format!(
+            "git {} failed: {}",
+            args.join(" "),
+            message.trim()
+        )));
+    }
+    String::from_utf8(output.stdout).map_err(io::Error::other)
 }

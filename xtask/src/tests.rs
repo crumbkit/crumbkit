@@ -6,7 +6,7 @@
 use clap::{CommandFactory, Parser};
 
 use super::{Cli, Scope, read_files};
-use crate::check::{self, File, Selection, Violation};
+use crate::check::{self, File, History, Selection, Violation};
 
 fn parse(args: &[&str]) -> Result<Cli, clap::Error> {
     Cli::try_parse_from(std::iter::once("xtask").chain(args.iter().copied()))
@@ -56,7 +56,7 @@ fn any_other_command_line_is_refused() {
 fn the_repository_passes_every_check() {
     let files = read_files().unwrap();
 
-    assert_eq!(check::run(Selection::All, &files), []);
+    assert_eq!(check::run(Selection::All, &files, &History::default()), []);
 }
 
 /// Returns the repository's file at `path` from `files`.
@@ -74,7 +74,7 @@ fn a_stale_citation_in_a_toml_file_is_reported() {
     file_at(&mut files, "Cargo.toml").contents.push_str(&stale);
 
     assert_eq!(
-        check::run(Selection::Docs, &files),
+        check::run(Selection::Docs, &files, &History::default()),
         [Violation::UnknownRecord {
             path: "Cargo.toml".to_owned(),
             number: 9999,
@@ -91,5 +91,5 @@ fn a_node_link_to_a_tracked_json_or_toml_file_is_not_broken() {
         .contents
         .push_str(links);
 
-    assert_eq!(check::run(Selection::Docs, &files), []);
+    assert_eq!(check::run(Selection::Docs, &files, &History::default()), []);
 }
