@@ -10,6 +10,10 @@ use super::Failing;
 use crate::allow::Allow;
 use crate::twins::Twin;
 
+mod place;
+
+pub use place::RuntimePlace;
+
 // The tests run `/bin/sh` scripts, which Windows cannot run. The two
 // attributes stay apart, because clippy reads only a plain `cfg(test)` as
 // test code.
@@ -33,7 +37,7 @@ mod tests;
 /// [`Examples::allow`](crate::Examples::allow) as it passes constants.
 /// [`RuntimeFailing::line`] gives several command lines one directory,
 /// input, fixture, values and variables, and [`RuntimeFailing::at`] makes
-/// a place that holds only those settings:
+/// a [`RuntimePlace`] that holds only those settings:
 ///
 /// ```
 /// use crumbkit::Code;
@@ -60,11 +64,17 @@ mod tests;
 /// owned value, and a `const fn` cannot drop the value it replaces.
 #[derive(Clone, Debug)]
 pub struct RuntimeFailing {
-    /// The code that the command line fails with, or `None` for a place
-    /// made with [`RuntimeFailing::at`].
-    code: Option<Code>,
+    /// The code that the command line fails with.
+    code: Code,
     /// The words after the tool's name.
     words: Vec<String>,
+    /// The directory, input, fixture, values and variables of the chain.
+    settings: Settings,
+}
+
+/// The settings that a [`RuntimeFailing`] and a [`RuntimePlace`] share.
+#[derive(Clone, Debug, Default)]
+struct Settings {
     /// The working directory of every run of the chain.
     dir: Option<PathBuf>,
     /// The standard input of every run of the chain.
@@ -85,35 +95,31 @@ impl RuntimeFailing {
     #[must_use]
     pub fn new(code: Code, words: impl IntoIterator<Item = impl Into<String>>) -> Self {
         Self {
-            code: Some(code),
+            code,
             words: owned(words),
-            dir: None,
-            stdin: None,
-            xdg: None,
-            values: Vec::new(),
-            env: Vec::new(),
+            settings: Settings::default(),
         }
     }
 
     /// Returns a place: the working directory `dir` with no input, fixture,
     /// values or variables, and with no code and no words. A test adds the
-    /// other settings with the builders and builds each command line from
-    /// the place with [`RuntimeFailing::line`].
+    /// other settings with the builders of [`RuntimePlace`] and builds each
+    /// command line from the place with [`RuntimePlace::line`].
     ///
-    /// A place has no command line of its own, so
-    /// [`RuntimeFailing::into_failing`] and the methods that call it panic
-    /// on a place that [`RuntimeFailing::line`] did not give a code.
+    /// A place has no command line of its own, so a test that passes a
+    /// place where a command line belongs does not compile:
+    ///
+    /// ```compile_fail
+    /// use crumbkit_test::RuntimeFailing;
+    ///
+    /// let start = RuntimeFailing::at("tests/fixtures/shelf").into_failing();
+    /// ```
     #[must_use]
-    pub fn at(dir: impl Into<PathBuf>) -> Self {
-        Self {
-            code: None,
-            words: Vec::new(),
+    pub fn at(dir: impl Into<PathBuf>) -> RuntimePlace {
+        RuntimePlace::new(Settings {
             dir: Some(dir.into()),
-            stdin: None,
-            xdg: None,
-            values: Vec::new(),
-            env: Vec::new(),
-        }
+            ..Settings::default()
+        })
     }
 
     /// Returns the command line of `words` that fails with `code`, with the
@@ -121,10 +127,20 @@ impl RuntimeFailing {
     /// set of settings serves several command lines.
     #[must_use]
     pub fn line(&self, code: Code, words: impl IntoIterator<Item = impl Into<String>>) -> Self {
+        Self::with_settings(code, words, self.settings.clone())
+    }
+
+    /// Returns the command line of `words` that fails with `code`, with
+    /// `settings`.
+    fn with_settings(
+        code: Code,
+        words: impl IntoIterator<Item = impl Into<String>>,
+        settings: Settings,
+    ) -> Self {
         Self {
-            code: Some(code),
+            code,
             words: owned(words),
-            ..self.clone()
+            settings,
         }
     }
 
@@ -132,23 +148,24 @@ impl RuntimeFailing {
     /// its chain, as [`Failing::dir`] does.
     #[must_use]
     pub fn dir(mut self, dir: impl Into<PathBuf>) -> Self {
-        self.dir = Some(dir.into());
+        self.settings.dir = Some(dir.into());
         self
     }
 
-    /// Returns the working directory that [`RuntimeFailing::at`] or
-    /// [`RuntimeFailing::dir`] set, or `None` when neither set one. The name
-    /// has clap's `get_` prefix, because `dir` is the builder method.
+    /// Returns the working directory that [`RuntimeFailing::dir`] or the
+    /// place of [`RuntimePlace::line`] set, or `None` when neither set one.
+    /// The name has clap's `get_` prefix, because `dir` is the builder
+    /// method.
     #[must_use]
     pub fn get_dir(&self) -> Option<&Path> {
-        self.dir.as_deref()
+        self.settings.dir.as_deref()
     }
 
     /// Sets the text on standard input of the command line and of every
     /// step of its chain, as [`Failing::stdin`] does.
     #[must_use]
     pub fn stdin(mut self, stdin: impl Into<String>) -> Self {
-        self.stdin = Some(stdin.into());
+        self.settings.stdin = Some(stdin.into());
         self
     }
 
@@ -156,7 +173,7 @@ impl RuntimeFailing {
     /// chain, as [`Failing::xdg`] does.
     #[must_use]
     pub fn xdg(mut self, dir: impl Into<PathBuf>) -> Self {
-        self.xdg = Some(dir.into());
+        self.settings.xdg = Some(dir.into());
         self
     }
 
@@ -166,7 +183,7 @@ impl RuntimeFailing {
     /// [`Examples::xdg`](crate::Examples::xdg) or none.
     #[must_use]
     pub fn xdg_option(mut self, dir: Option<PathBuf>) -> Self {
-        self.xdg = dir;
+        self.settings.xdg = dir;
         self
     }
 
@@ -177,10 +194,7 @@ impl RuntimeFailing {
         mut self,
         values: impl IntoIterator<Item = (impl Into<String>, impl Into<String>)>,
     ) -> Self {
-        self.values = values
-            .into_iter()
-            .map(|(name, value)| (name.into(), value.into()))
-            .collect();
+        self.settings.values = owned_pairs(values);
         self
     }
 
@@ -189,7 +203,7 @@ impl RuntimeFailing {
     /// [`Failing::env`] does. A later entry for the same name wins.
     #[must_use]
     pub fn env(mut self, name: impl Into<String>, value: impl Into<String>) -> Self {
-        self.env.push((name.into(), Some(value.into())));
+        self.settings.env.push((name.into(), Some(value.into())));
         self
     }
 
@@ -198,19 +212,13 @@ impl RuntimeFailing {
     /// `None` does. A later entry for the same name wins.
     #[must_use]
     pub fn env_remove(mut self, name: impl Into<String>) -> Self {
-        self.env.push((name.into(), None));
+        self.settings.env.push((name.into(), None));
         self
     }
 
     /// Returns the [`Failing`] with the same code, words, directory,
     /// input, fixture, values and variables, which the checks run as they
     /// run a constant.
-    ///
-    /// # Panics
-    ///
-    /// Panics on a place made with [`RuntimeFailing::at`] that
-    /// [`RuntimeFailing::line`] did not give a code and words, as a failed
-    /// test assertion does.
     //
     // RUST-10: `Allow` holds a `'static` refused line, and a `'static`
     // line also lets a test keep its starts and twins anywhere, so this
@@ -220,39 +228,32 @@ impl RuntimeFailing {
     // replaces this if a process needs to build many lines.
     #[must_use]
     pub fn into_failing(self) -> Failing<'static> {
-        let values: Vec<(&'static str, &'static str)> = self
-            .values
+        let Settings {
+            dir,
+            stdin,
+            xdg,
+            values,
+            env,
+        } = self.settings;
+        let values: Vec<(&'static str, &'static str)> = values
             .into_iter()
             .map(|(name, value)| (&*name.leak(), &*value.leak()))
             .collect();
-        let env: Vec<(&'static str, Option<&'static str>)> = self
-            .env
+        let env: Vec<(&'static str, Option<&'static str>)> = env
             .into_iter()
             .map(|(name, value)| (&*name.leak(), value.map(|value| &*value.leak())))
             .collect();
-        let Some(code) = self.code else {
-            #[expect(
-                clippy::panic,
-                reason = "a test that runs a place without a command line is wrong, and a test reports that by panicking"
-            )]
-            {
-                panic!(
-                    "the place at `{}`, made with RuntimeFailing::at, has no code and no words, so a test builds each command line from it with RuntimeFailing::line",
-                    self.dir.unwrap_or_default().display()
-                )
-            }
-        };
-        let code: &'static Code = Box::leak(Box::new(code));
+        let code: &'static Code = Box::leak(Box::new(self.code));
         let mut failing = Failing::new(code, leak_words(self.words))
             .values(values.leak())
             .env(env.leak());
-        if let Some(dir) = self.dir {
+        if let Some(dir) = dir {
             failing = failing.dir_path(leak_path(dir));
         }
-        if let Some(stdin) = self.stdin {
+        if let Some(stdin) = stdin {
             failing = failing.stdin(stdin.leak());
         }
-        if let Some(xdg) = self.xdg {
+        if let Some(xdg) = xdg {
             failing = failing.xdg_path(leak_path(xdg));
         }
         failing
@@ -297,6 +298,16 @@ impl RuntimeFailing {
 /// Returns `words` as owned strings.
 fn owned(words: impl IntoIterator<Item = impl Into<String>>) -> Vec<String> {
     words.into_iter().map(Into::into).collect()
+}
+
+/// Returns `pairs` as owned names and values.
+fn owned_pairs(
+    pairs: impl IntoIterator<Item = (impl Into<String>, impl Into<String>)>,
+) -> Vec<(String, String)> {
+    pairs
+        .into_iter()
+        .map(|(name, value)| (name.into(), value.into()))
+        .collect()
 }
 
 /// Returns `words` as a `'static` slice of `'static` words, leaking them.

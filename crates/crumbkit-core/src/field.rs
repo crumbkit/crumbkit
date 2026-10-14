@@ -148,6 +148,65 @@ impl<'a> FieldValue<'a> {
                 .collect(),
         )
     }
+
+    /// Returns the field value that serializes to the JSON value `value`,
+    /// borrowing its text, or `None` when `value` holds a number at any
+    /// depth that `FieldValue` cannot hold, such as a fraction.
+    ///
+    /// A tool or a test that reads a failure's `fields` back from
+    /// JSON uses it. A non-negative integer becomes `Unsigned` and a
+    /// negative one `Integer`, because JSON does not say which Rust type
+    /// wrote it. `serde_json` holds a number with a fraction or an exponent,
+    /// and an integer below `i64::MIN` or above `u64::MAX`, as a float,
+    /// and `FieldValue` has no float, so such a number gives `None`. An
+    /// object's entries keep the order of `serde_json`'s map, which sorts
+    /// the keys unless a crate in the build turns on `serde_json`'s
+    /// `preserve_order` feature.
+    ///
+    /// ```
+    /// use crumbkit_core::FieldValue;
+    ///
+    /// let json = serde_json::json!({"book": 7, "found": null});
+    /// let fraction = serde_json::json!(1.5);
+    ///
+    /// assert_eq!(
+    ///     FieldValue::from_json(&json),
+    ///     Some(FieldValue::object([
+    ///         ("book", FieldValue::from(7_u32)),
+    ///         ("found", FieldValue::Null),
+    ///     ]))
+    /// );
+    /// assert_eq!(FieldValue::from_json(&fraction), None);
+    /// ```
+    #[must_use]
+    pub fn from_json(value: &'a serde_json::Value) -> Option<Self> {
+        use serde_json::Value;
+
+        let value = match value {
+            Value::Null => Self::Null,
+            Value::Bool(value) => Self::Boolean(*value),
+            Value::Number(number) => match number.as_u64() {
+                Some(value) => Self::Unsigned(value),
+                None => Self::Integer(number.as_i64()?),
+            },
+            Value::String(text) => Self::Text(Cow::Borrowed(text)),
+            Value::Array(items) => Self::List(
+                items
+                    .iter()
+                    .map(Self::from_json)
+                    .collect::<Option<Vec<_>>>()?,
+            ),
+            Value::Object(entries) => Self::Object(
+                entries
+                    .iter()
+                    .map(|(key, value)| {
+                        Some((Cow::Borrowed(key.as_str()), Self::from_json(value)?))
+                    })
+                    .collect::<Option<Vec<_>>>()?,
+            ),
+        };
+        Some(value)
+    }
 }
 
 impl FieldValue<'_> {

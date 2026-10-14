@@ -249,45 +249,20 @@ fn read_document(document: &Value) -> Option<ReadFailure> {
 }
 
 /// Returns the `fields` of the failure document `document`, each a name and
-/// its value, in the order the JSON object keeps them.
+/// its value, in the order the JSON object keeps them. A field whose value
+/// [`FieldValue::from_json`] cannot read, such as a fraction, is left out,
+/// because crumbkit never writes one: `FieldValue` has no float.
 fn fields(document: &Value) -> Vec<(String, FieldValue<'static>)> {
     let Some(fields) = document.get("fields").and_then(Value::as_object) else {
         return Vec::new();
     };
     fields
         .iter()
-        .map(|(name, value)| (name.clone(), field_value(value)))
+        .filter_map(|(name, value)| {
+            let value = FieldValue::from_json(value)?.into_owned();
+            Some((name.clone(), value))
+        })
         .collect()
-}
-
-/// Returns the JSON value `value` as a field value. A number that fits a
-/// `u64` is unsigned and any other integer is signed, because JSON does not
-/// say which type the tool wrote.
-//
-// RUST-10: `FieldValue` has no variant for a fraction, which crumbkit never
-// writes in a field, so a fraction becomes its JSON text. A float variant
-// of `FieldValue` replaces this if crumbkit starts writing fractions.
-fn field_value(value: &Value) -> FieldValue<'static> {
-    match value {
-        Value::Null => FieldValue::Null,
-        Value::Bool(value) => FieldValue::Boolean(*value),
-        Value::Number(number) => number.as_u64().map_or_else(
-            || {
-                number
-                    .as_i64()
-                    .map_or_else(|| FieldValue::from(number.to_string()), FieldValue::Integer)
-            },
-            FieldValue::Unsigned,
-        ),
-        Value::String(text) => FieldValue::from(text.clone()),
-        Value::Array(items) => FieldValue::List(items.iter().map(field_value).collect()),
-        Value::Object(entries) => FieldValue::Object(
-            entries
-                .iter()
-                .map(|(key, value)| (key.clone().into(), field_value(value)))
-                .collect(),
-        ),
-    }
 }
 
 /// Returns the text with which `value` fills a recovery's placeholder: a
