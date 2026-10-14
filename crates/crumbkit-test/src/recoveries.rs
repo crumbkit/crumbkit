@@ -378,7 +378,10 @@ impl<'a> Recoveries<'a> {
 /// command line that it ran already, a step that an opt-out from
 /// [`Rule::Recoveries`] covers, or the recovery of a code that the tool
 /// does not declare and crumbkit does not own, such as a run-time code from
-/// a plugin. The check counts such codes in the report.
+/// a plugin. The check counts such codes in the report. crumbkit owns every
+/// code in the `crumbkit` component, including the codes of its add-on
+/// crates, such as crumbkit-child's `crumbkit::child::failed`, and the
+/// codes that the guide prints in place of them.
 ///
 /// It finds:
 ///
@@ -444,6 +447,26 @@ pub fn check_recoveries(command: &Command, guide: &Guide, recoveries: &Recoverie
     check(command, guide, recoveries, dir, &assert);
 }
 
+/// Returns the spelled codes whose recoveries the check follows by name:
+/// the `declared` codes, crumbkit's codes as `guide` prints them, and each
+/// code that `guide` prints in place of a crumbkit code, which may be an
+/// add-on crate's code that `crumbkit::codes::ALL` does not list.
+fn known_codes(declared: &[(String, &Code)], guide: &Guide, spelling: Spelling) -> Vec<String> {
+    let mut known: Vec<String> = declared.iter().map(|(text, _)| text.clone()).collect();
+    known.extend(
+        crumbkit::codes::ALL
+            .iter()
+            .map(|&code| spelling.spell(guide.printed(code))),
+    );
+    known.extend(
+        guide
+            .get_codes()
+            .iter()
+            .map(|rename| spelling.spell(rename.tool())),
+    );
+    known
+}
+
 /// Runs [`check_recoveries`] with `assert`, whose action decides whether
 /// the check compares or overwrites the golden file.
 fn check(
@@ -467,15 +490,11 @@ fn check(
             declared.push((spelling.spell(code), code));
         }
     }
-    let mut known: Vec<String> = declared.iter().map(|(text, _)| text.clone()).collect();
-    known.extend(
-        crumbkit::codes::ALL
-            .iter()
-            .map(|&code| spelling.spell(guide.printed(code))),
-    );
+    let known = known_codes(&declared, guide, spelling);
     // crumbkit's add-on crates, such as crumbkit-aliases, own codes in the
-    // `crumbkit` component that `crumbkit::codes::ALL` does not list, so
-    // only the declared codes give components.
+    // `crumbkit` component that `crumbkit::codes::ALL` does not list. The
+    // walk follows them by their component, so only the declared codes
+    // give components.
     let mut components: Vec<String> = Vec::new();
     for (text, _) in &declared {
         if let Some((component, _, _)) = spelling.split(text)

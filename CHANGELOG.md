@@ -504,6 +504,10 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   tool calls `crumbkit_child::hand_over`. The codes keep their spelling,
   `crumbkit::child::*`, and crumbkit-child lists them in its own
   `codes::ALL` ([crumbkit-child], [ADR-0042]).
+- crumbkit-test: [`check_twins`] needs no twin and no declaration for a
+  code in the `crumbkit` component that `crumbkit::codes::ALL` does not
+  list, such as crumbkit-child's `crumbkit::child::no_json`, and
+  [`check_recoveries`] follows the recovery of such a code.
 - crumbkit-usage: the usage log, `self usage` and `self figures list` move
   from crumbkit's `usage-log` feature to the crumbkit-usage crate, and a
   tool starts the log with `crumbkit_usage::start()` ([crumbkit-usage],

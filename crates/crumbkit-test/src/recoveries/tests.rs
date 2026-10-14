@@ -408,6 +408,40 @@ fn a_code_from_a_component_the_tool_does_not_declare_is_counted_and_its_recovery
 }
 
 #[test]
+fn a_code_in_the_crumbkit_component_that_crumbkit_does_not_list_has_its_recovery_followed() {
+    let show = failure("tool::books::not_found", &run("tool books list"));
+    let failed = failure("crumbkit::child::failed", &run("tool books show 2"));
+    let setup = Setup::new(
+        "recoveries-crumbkit-component",
+        &[
+            ("books show 7 --json", 1, show.as_str(), ""),
+            ("books list --json", 1, failed.as_str(), ""),
+            ("books show 2 --json", 0, "{}\n", ""),
+        ],
+    );
+
+    check_with(
+        &setup,
+        &recoveries(&setup, SHOW_7, OTHERS),
+        Action::Overwrite,
+    );
+
+    let report = setup.report();
+    assert!(
+        report.contains(
+            "\x20   fails with crumbkit::child::failed\n\
+             \x20   run tool books show 2\n\
+             \x20     exits 0\n"
+        ),
+        "{report}"
+    );
+    assert!(
+        report.ends_with("because no declared code spells them: 0\n"),
+        "{report}"
+    );
+}
+
+#[test]
 fn an_undeclared_code_from_a_declared_component_fails_the_check() {
     let show = failure("tool::books::not_found", &run("tool books list"));
     let lost = failure("tool::books::lost", r#"{"kind":"none"}"#);
