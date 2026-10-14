@@ -51,8 +51,8 @@ text and keeps its code spans.
 
 [`render`] returns a [`RenderError`] when the input is not a full
 `crumbkit/commands-list/v1` document, or when two headings would have one
-anchor. [ADR-0044] records why the reference reads the document and what it
-holds.
+anchor. The [command reference docs] describe what the reference holds,
+and [ADR-0044] records why it reads the document.
 
 ## License
 
@@ -60,3 +60,4 @@ Licensed under either of Apache License, Version 2.0 or MIT license at your
 option.
 
 [ADR-0044]: ../../docs/decisions/api/help/0044-command-reference.md
+[command reference docs]: ../../docs/behaviour/help/reference.md

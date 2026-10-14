@@ -15,7 +15,10 @@
 //! [ADR-0029]: https://github.com/crumbkit/crumbkit/blob/main/docs/decisions/api/usage/0029-usage-log.md
 //! [ADR-0030]: https://github.com/crumbkit/crumbkit/blob/main/docs/decisions/api/usage/0030-trace-context.md
 //! [ADR-0034]: https://github.com/crumbkit/crumbkit/blob/main/docs/decisions/api/usage/0034-usage-report.md
-//! [ADR-0057]: https://github.com/crumbkit/crumbkit/blob/main/docs/decisions/api/0057-run-observer.md
+//! [usage log docs]: https://github.com/crumbkit/crumbkit/blob/main/docs/behaviour/usage-log/README.md
+//! [trace context docs]: https://github.com/crumbkit/crumbkit/blob/main/docs/behaviour/usage-log/trace-context.md
+//! [usage report docs]: https://github.com/crumbkit/crumbkit/blob/main/docs/behaviour/usage-log/report.md
+//! [run observer docs]: https://github.com/crumbkit/crumbkit/blob/main/docs/behaviour/run-observer/README.md
 #![doc = include_str!("../README.md")]
 
 mod caller;

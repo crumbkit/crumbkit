@@ -13,8 +13,8 @@
 //! [`Batch`]: crate::Batch
 //! [`Prose`]: crate::Prose
 //! [crumbkit]: https://github.com/crumbkit/crumbkit/blob/main/crates/crumbkit/README.md
-//! [ADR-0001]: https://github.com/crumbkit/crumbkit/blob/main/docs/decisions/api/failures/0001-error-model.md
 //! [ADR-0032]: https://github.com/crumbkit/crumbkit/blob/main/docs/decisions/api/0032-core-crate.md
+//! [failure docs]: https://github.com/crumbkit/crumbkit/blob/main/docs/behaviour/failures/README.md
 #![doc = include_str!("../README.md")]
 // docs.rs builds the docs on nightly with `--cfg docsrs`, and rustdoc's
 // `doc_cfg` feature labels each item behind a cargo feature with its name.

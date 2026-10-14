@@ -24,8 +24,8 @@ const LEAF: u64 = 1_200;
 ///
 /// [`Budgets::new`] holds crumbkit's default budgets for the root, for a
 /// group, which is a command below the root with subcommands, and for a leaf,
-/// which is a command below the root without subcommands. [ADR-0025] records
-/// the default budgets. The root of a tool without subcommands has the
+/// which is a command below the root without subcommands. The
+/// [help checks docs] list the default budgets. The root of a tool without subcommands has the
 /// root's budget. A tool can raise or lower the budget of a whole class, or
 /// of single commands, and gives a reason for each budget it sets, which
 /// [`check_opt_outs`](crate::check_opt_outs) lists:
@@ -38,7 +38,7 @@ const LEAF: u64 = 1_200;
 ///     .nodes(&[Budget::new("books list", 1_500, "The listing has many filters.")]);
 /// ```
 ///
-/// [ADR-0025]: https://github.com/crumbkit/crumbkit/blob/main/docs/decisions/api/help/0025-help-checks.md
+/// [help checks docs]: https://github.com/crumbkit/crumbkit/blob/main/docs/behaviour/help/checks.md
 #[derive(Clone, Copy, Debug)]
 pub struct Budgets {
     /// The budget of the root's page.
@@ -54,8 +54,8 @@ pub struct Budgets {
 
 impl Budgets {
     /// Returns crumbkit's default budgets for the root, each group and each
-    /// leaf, which [ADR-0025](https://github.com/crumbkit/crumbkit/blob/main/docs/decisions/api/help/0025-help-checks.md) records, and no budget for a single
-    /// command.
+    /// leaf, which the [help checks docs](https://github.com/crumbkit/crumbkit/blob/main/docs/behaviour/help/checks.md) list, and no budget for a
+    /// single command.
     #[must_use]
     pub const fn new() -> Self {
         Self {

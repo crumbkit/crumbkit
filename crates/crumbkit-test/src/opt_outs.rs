@@ -33,7 +33,7 @@ const SCHEMA: &str = "crumbkit/opt-outs/v1";
 ///
 /// `command` is the tool's root command, `guide` is the tool's guide, whose
 /// output budget and JSON layout the report lists, `allow` holds every opt-out that
-/// the tool passes to the checks ([ADR-0036]), `budgets` holds the budgets
+/// the tool passes to the checks ([opt-outs docs]), `budgets` holds the budgets
 /// that it passes to [`check_help_sizes`](crate::check_help_sizes), and
 /// `paths` holds the budgets that it passes to
 /// [`check_path_weights`](crate::check_path_weights), or is `None` for a
@@ -114,7 +114,7 @@ const SCHEMA: &str = "crumbkit/opt-outs/v1";
 /// `SNAPSHOTS=overwrite` cannot write a file. Each problem in the
 /// message starts on a new line.
 ///
-/// [ADR-0036]: https://github.com/crumbkit/crumbkit/blob/main/docs/decisions/api/adoption/0036-opt-outs.md
+/// [opt-outs docs]: https://github.com/crumbkit/crumbkit/blob/main/docs/behaviour/adoption/opt-outs.md
 pub fn check_opt_outs(
     command: &Command,
     guide: &Guide,
