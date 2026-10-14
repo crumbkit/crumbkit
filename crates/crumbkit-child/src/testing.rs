@@ -1,11 +1,15 @@
 //! The observer of the crate's unit tests, which keeps each hand-over
 //! report as a line of text in a list of the thread that reported it, so
-//! each test reads only its own reports.
+//! each test reads only its own reports. Only the tests that run a script
+//! watch the reports, so the observer builds on Unix alone.
 
+#[cfg(unix)]
 use std::cell::RefCell;
 
+#[cfg(unix)]
 use crumbkit::events::{Observer, observe};
 
+#[cfg(unix)]
 thread_local! {
     /// The reports that this thread's test watches, or `None` when it
     /// watches none.
@@ -13,11 +17,14 @@ thread_local! {
 }
 
 /// The test observer. It handles no interrupt.
+#[cfg(unix)]
 struct Recording;
 
 /// The one test observer of the process.
+#[cfg(unix)]
 static RECORDING: Recording = Recording;
 
+#[cfg(unix)]
 impl Observer for Recording {
     fn ended(&self, exit: u8, out_bytes: Option<u64>) {
         see(format!("ended {exit} {out_bytes:?}"));
@@ -37,6 +44,7 @@ impl Observer for Recording {
 }
 
 /// Adds `line` to the reports of this thread's test, if it watches them.
+#[cfg(unix)]
 fn see(line: String) {
     SEEN.with_borrow_mut(|seen| {
         if let Some(seen) = seen {
@@ -47,6 +55,7 @@ fn see(line: String) {
 
 /// Runs `run` and returns the reports that it made on this thread. The
 /// first call installs [`RECORDING`] as the observer of the test process.
+#[cfg(unix)]
 pub(crate) fn watch(run: impl FnOnce()) -> Vec<String> {
     let _ = observe(&RECORDING);
     SEEN.set(Some(Vec::new()));
