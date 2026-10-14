@@ -90,5 +90,5 @@ pub(crate) mod spans;
 /// always returns no variables.
 #[must_use]
 pub fn child_env() -> Vec<(&'static str, String)> {
-    crate::events::observer().map_or_else(Vec::new, |observer| observer.child_env())
+    crate::events::observer().map_or_else(Vec::new, crate::events::Observer::child_env)
 }

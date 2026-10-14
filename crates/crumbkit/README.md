@@ -130,10 +130,8 @@ a fuller one.
 - Per-id lookups: [`fetch_each`].
 - The `miette` feature: the `diagnostic` method of [`Failure`] and the
   conversion of a `miette::Report` into [`Error`], with [ADR-0001].
-- What each run did, for an observer that the tool installs: [`events`],
-  with [ADR-0057].
-- The `usage-log` and `tracing` features: [`usage`] and [`trace`], with
-  [ADR-0029] and [ADR-0030].
+- Run reports, usage log and tracing: [`events`], [`usage`], [`trace`]
+  ([ADR-0029], [ADR-0030]).
 - The `complete` feature: shell completion through `crumbkit::complete`,
   which a minor release may change ([ADR-0048]).
 - The JSON Schemas of crumbkit's own documents: [schemas], with [ADR-0007].
@@ -182,4 +180,3 @@ Licensed under Apache-2.0 or MIT, at your option.
 [ADR-0032]: ../../docs/decisions/api/0032-core-crate.md
 [ADR-0035]: ../../docs/decisions/api/schemas/0035-schema-commands.md
 [ADR-0048]: ../../docs/decisions/api/0048-completion.md
-[ADR-0057]: ../../docs/decisions/api/0057-run-observer.md
