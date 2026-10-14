@@ -20,5 +20,6 @@ document.
 - [ADR-0046. Output budget](0046-output-budget.md)
 - [ADR-0049. Terminal detection](0049-terminal-detection.md)
 - [ADR-0052. JSON layout](0052-json-layout.md)
+- [ADR-0058. The child crate](0058-child-crate.md)
 - [ADR-0050. Listings](listings/README.md)
 - [ADR-0051. Result shapes](results/README.md)

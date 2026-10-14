@@ -51,6 +51,9 @@ crumbkit-usage both depend on crumbkit.
 - A tool that keeps the usage log depends on crumbkit-usage and
   calls `crumbkit_usage::start()` first in `main`, and changes nothing else
   ([usage log](../usage-log/README.md)).
+- A command that hands the terminal to another program, such as an editor,
+  depends on crumbkit-child and returns `crumbkit_child::hand_over`
+  ([child processes](../output/child-processes.md)).
 - A tool with shell completion turns on the `complete` feature and calls
   `crumbkit::complete` before `start`
   ([completion](../parsing/completion.md)).

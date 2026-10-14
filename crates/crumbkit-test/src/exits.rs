@@ -183,7 +183,7 @@ fn renamed(renames: &[Rename], problems: &mut Vec<String>) {
     }
 }
 
-/// crumbkit's code of a `--json` that a command whose child has no JSON
+/// crumbkit-child's code of a `--json` that a command whose child has no JSON
 /// form refuses. crumbkit-child declares it, and crumbkit-test does not
 /// depend on crumbkit-child, so the check names it here.
 const CHILD_NO_JSON: Code = Code::new("crumbkit", "child", "no_json");

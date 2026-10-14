@@ -131,6 +131,7 @@ The [behaviour docs] describe each part in full.
 - The `miette` feature: the `diagnostic` method of [`Failure`] and the
   conversion of a `miette::Report` into [`Error`].
 - Run reports, usage log and tracing: [`events`], [crumbkit-usage], [`trace`].
+- Handing the terminal to another program: [crumbkit-child].
 - The `complete` feature: shell completion through `crumbkit::complete`,
   which a minor release may change.
 - The JSON Schemas of crumbkit's own documents: [schemas].
@@ -163,6 +164,7 @@ Licensed under Apache-2.0 or MIT, at your option.
 [`fetch_each`]: src/fetch.rs
 [`events`]: src/events.rs
 [crumbkit-usage]: ../crumbkit-usage/README.md
+[crumbkit-child]: ../crumbkit-child/README.md
 [`trace`]: src/trace.rs
 [schemas]: schemas
 [crumbkit-test]: ../crumbkit-test/README.md

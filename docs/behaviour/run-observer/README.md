@@ -35,9 +35,10 @@ Why: ADR-0057, ADR-0048.
 - `finish`, `finish_to` and a stream report the code of a failure in the
   tool's spelling, then the exit code, the bytes written to standard output
   and whether a listing left rows out or had none.
-- A [child hand-over](../output/child-processes.md) reports that the child
-  took the terminal, on Windows that it gave the terminal back, and that a
-  signal ended the child. The usage log's signal thread needs the hand-over,
+- A [child hand-over](../output/child-processes.md) in the crumbkit-child
+  crate reports through the public `events::handed_over`, `taken_back` and
+  `interrupted` functions that the child took the terminal, on Windows that
+  it gave the terminal back, and that a signal ended the child. The usage log's signal thread needs the hand-over,
   because it lets SIGINT end the process only while no child holds the
   terminal.
 

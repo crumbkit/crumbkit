@@ -6,7 +6,9 @@
 //! [`Json`]: crate::Json
 //! [`codes`]: crate::codes
 //! [ADR-0042]: https://github.com/crumbkit/crumbkit/blob/main/docs/decisions/api/output/0042-child-processes.md
-//! [ADR-0057]: https://github.com/crumbkit/crumbkit/blob/main/docs/decisions/api/0057-run-observer.md
+//! [ADR-0058]: https://github.com/crumbkit/crumbkit/blob/main/docs/decisions/api/output/0058-child-crate.md
+//! [child processes docs]: https://github.com/crumbkit/crumbkit/blob/main/docs/behaviour/output/child-processes.md
+//! [run observer docs]: https://github.com/crumbkit/crumbkit/blob/main/docs/behaviour/run-observer/README.md
 #![doc = include_str!("../README.md")]
 
 pub mod codes;

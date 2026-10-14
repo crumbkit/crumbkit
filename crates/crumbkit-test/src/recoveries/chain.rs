@@ -28,10 +28,8 @@ pub(super) struct Walk<'a> {
     pub(super) command: &'a Command,
     /// The tool's declared codes, spelled.
     pub(super) declared: Vec<String>,
-    /// The spelled codes whose recoveries the check follows: the declared
-    /// codes, crumbkit's own codes and the codes that the guide prints in
-    /// place of crumbkit's codes. The check also follows every code whose
-    /// component is `crumbkit` ([`Walk::is_known`]).
+    /// The spelled codes whose recoveries the check follows by name
+    /// ([`Walk::is_known`]).
     pub(super) known: Vec<String>,
     /// The component of each declared code, which
     /// [`Spelling::split`](crumbkit::Spelling::split) reads back. It is

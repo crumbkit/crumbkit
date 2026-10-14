@@ -47,18 +47,19 @@ Why: ADR-0011.
 ## Feature builds
 
 shelf turns on crumbkit's `miette` and `tracing` features and uses
-crumbkit-usage, and reading turns on `hand-over`, so the workspace runs
-build, test and lint crumbkit with all three features and with the usage
-log.
+crumbkit-usage, and reading uses crumbkit-child, so the workspace runs
+build, test and lint crumbkit with both features, the usage log and
+crumbkit-child.
 
 - `test` runs crumbkit's tests and doctests again in the default build and
-  with `miette`, and its tests with `hand-over` alone.
-- `lint` runs clippy on crumbkit in the default build, with `miette`, with
-  `tracing` alone, which is the only build that compiles the spans without
-  the usage log's ids, and with `hand-over` alone, which is the only build
-  that installs the child's SIGINT handler without the usage log.
+  with `miette`.
+- `lint` runs clippy on crumbkit in the default build, with `miette` and
+  with `tracing` alone, which is the only build that compiles the spans
+  without the usage log's ids.
 
-A separate run for crumbkit-usage would repeat what the workspace runs check. Each
+A separate run for crumbkit-usage or crumbkit-child would repeat what the
+workspace runs check. crumbkit-child's own tests run with no usage log, so
+they cover the child's SIGINT handler without the log's signal thread. Each
 build is one more step in an existing job, because a new job repeats the
 setup time. Clippy runs once per build, because a single `--all-features`
 run misses a warning that only one build shows.
@@ -116,10 +117,10 @@ Why: ADR-0011.
   commit. `.github/scripts/last-passed.sh` holds that lookup for `bench` and
   `windows`.
 - `windows` builds, lints and tests the workspace on `windows-latest`, the
-  gate of CI-4. It runs clippy on the workspace and on crumbkit with
-  `hand-over` alone, the tests with cargo-nextest, the doctests, and
-  crumbkit's tests with `hand-over` alone, which cover the Windows SIGINT
-  and SIGBREAK handlers without the usage log. It turns off debug info and
+  gate of CI-4. It runs clippy on the workspace, the tests with
+  cargo-nextest and the doctests. crumbkit-child's tests in the workspace
+  run cover the Windows SIGINT and SIGBREAK handlers without the usage
+  log. It turns off debug info and
   incremental builds.
 - `report` comments the run's URL on the open issue titled "Scheduled CI
   failed" when `nightly`, `bench`, `changed` or `windows` fails, or opens

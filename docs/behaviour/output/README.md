@@ -63,7 +63,7 @@ command that changes something, an agent may then repeat a write that
 already happened. crumbkit-test's `check_guide` therefore fails a leaf whose
 effects change something and that declares no document, and it takes no
 opt-out from that rule ([help checks](../help/checks.md)). A leaf that passes
-on a program's exit code needs no document, because `child::hand_over`
+on a program's exit code needs no document, because crumbkit-child's `hand_over`
 refuses `--json` and `--fields` before the program starts
 ([child processes](child-processes.md)).
 

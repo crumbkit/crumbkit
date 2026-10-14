@@ -44,8 +44,9 @@ document inside crumbkit's envelope.
 - [`hand_over`], [`hand_over_json`] and [`Json`] describe the hand-over, its
   signals and its failures.
 - [`codes`] lists the failure codes, which a tool's tests can name.
-- [ADR-0042] records the hand-over, and [ADR-0057] crumbkit's run observer,
-  which the hand-over tells that a child took the terminal.
+- The [child processes docs] describe what a hand-over does for a tool,
+  and the [run observer docs] what it reports. [ADR-0042] and [ADR-0058]
+  record why.
 
 Licensed under either of Apache License, Version 2.0 or MIT license at your
 option.
@@ -55,4 +56,6 @@ option.
 [`Json`]: src/hand_over.rs
 [`codes`]: src/codes.rs
 [ADR-0042]: ../../docs/decisions/api/output/0042-child-processes.md
-[ADR-0057]: ../../docs/decisions/api/0057-run-observer.md
+[ADR-0058]: ../../docs/decisions/api/output/0058-child-crate.md
+[child processes docs]: ../../docs/behaviour/output/child-processes.md
+[run observer docs]: ../../docs/behaviour/run-observer/README.md
