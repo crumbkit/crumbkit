@@ -62,9 +62,12 @@ the tool sets a [failure form](../failures/forms.md).
   null, or an array or object of such values. No value holds a float at any
   depth, because JSON has no form for NaN. The schema promises the name rule
   of [fields](../failures/README.md#fields), so `finish` leaves out a field
-  that breaks it, and an object inside a value holds each key once
-  (RFC 8259), so `finish` leaves out an entry whose key repeats an earlier
-  one.
+  that breaks it. When the guide lists names with `Guide::field_names`, the
+  schema that `<tool> schema` serves for the failure document, and for each
+  document with a batch, accepts those names as well, in the `fields` of the
+  document and of each batch failure. The checked-in schema keeps the rule
+  alone. An object inside a value holds each key once (RFC 8259), so
+  `finish` leaves out an entry whose key repeats an earlier one.
 - With the `miette` feature, the document and each batch failure hold the
   diagnostic's labels and its related diagnostics. Each label holds an
   `excerpt` with the lines of its span and one line before and after where
@@ -75,7 +78,7 @@ the tool sets a [failure form](../failures/forms.md).
   line. The checked-in schema lists `labels` and `related` whether or not
   the feature is on, so there is one schema file.
 
-Why: ADR-0007, ADR-0001, ADR-0045, ADR-0046.
+Why: ADR-0007, ADR-0001, ADR-0045, ADR-0046, ADR-0061.
 
 ## Document ids
 

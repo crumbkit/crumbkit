@@ -9,6 +9,7 @@ mod aliases;
 mod dashed;
 pub(crate) mod effects;
 pub(crate) mod exit;
+mod fields;
 mod format;
 pub(crate) mod leaf;
 mod list;
@@ -131,6 +132,9 @@ pub struct Guide {
     root: &'static [&'static str],
     /// Whether a command named in another style answers to its dashed form.
     dashed_forms: bool,
+    /// The names of failure fields that the tool takes from another system
+    /// and that break crumbkit's field name rule (ADR-0061).
+    field_names: &'static [&'static str],
 }
 
 impl Guide {
@@ -154,6 +158,7 @@ impl Guide {
             json_layout: None,
             root: &[],
             dashed_forms: false,
+            field_names: &[],
         }
     }
 

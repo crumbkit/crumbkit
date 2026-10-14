@@ -158,6 +158,12 @@ pub struct Output {
     /// `Parsed` (ADR-0056, ADR-0060).
     #[arg(skip)]
     renames: Renames,
+
+    /// The failure field names that break the rule and that the tool's
+    /// guide lists, which `set_command` copies from the `Parsed`
+    /// (ADR-0061).
+    #[arg(skip)]
+    field_names: &'static [&'static str],
 }
 
 /// The warning that a debug build of `finish` and `stream` writes when the
@@ -250,6 +256,7 @@ impl Output {
         self.json_layout = parsed.json_layout;
         self.exits = parsed.exits;
         self.renames = parsed.renames;
+        self.field_names = parsed.field_names;
         self.budget = Some(budget::from_environment(
             parsed.output_budget.unwrap_or(budget::DEFAULT),
         ));
@@ -317,6 +324,7 @@ impl Output {
             json_layout: guide.layout(),
             exits: guide.get_exits(),
             renames: Renames::of(guide),
+            field_names: guide.get_field_names(),
             ..Self::default()
         }
     }
@@ -345,14 +353,15 @@ impl Output {
     }
 
     /// Returns what the guide that `set_command` copied decides about the
-    /// run's failures: the form, the JSON layout, the exit codes and the
-    /// renames.
+    /// run's failures: the form, the JSON layout, the exit codes, the
+    /// renames and the listed field names.
     pub(crate) const fn printing(&self) -> Printing {
         Printing {
             form: self.failure_form,
             layout: self.json_layout,
             exits: self.exits,
             renames: self.renames,
+            field_names: self.field_names,
         }
     }
 }

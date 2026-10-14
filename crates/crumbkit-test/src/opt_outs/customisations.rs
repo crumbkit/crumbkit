@@ -24,22 +24,23 @@ pub(super) struct Customisation {
 }
 
 /// Returns the declarations of `guide` for the tool whose root command is
-/// `command`, in this order: the failure form, each code rename, each exit
-/// that lists one of crumbkit's codes or the tool's rename of it, whether
-/// the guide declares refusal alternatives for every command, the
-/// [`Guide::dashed_forms`] declaration followed by each command that
-/// answers to its dashed form, as [`dashed_names`] lists them, and then for
-/// each leaf in guide order its document's name when the leaf's path gives
-/// another, the program whose exit code it passes on, whether it
-/// declares refusal alternatives, whether its batch prints its failures
-/// in input order (`Document::failures_in_order`), and each code rename of
+/// `command`, in this order: the failure form, each code rename, the
+/// [`Guide::field_names`] declaration, each exit that lists one of
+/// crumbkit's codes or the tool's rename of it, whether the guide declares
+/// refusal alternatives for every command, the [`Guide::dashed_forms`]
+/// declaration followed by each command that answers to its dashed form, as
+/// [`dashed_names`] lists them, and then for each leaf in guide order its
+/// document's name when the leaf's path gives another, the program whose
+/// exit code it passes on, whether it declares refusal alternatives,
+/// whether its batch prints its failures in input order
+/// (`Document::failures_in_order`), and each code rename of
 /// [`Leaf::codes`](crumbkit::help::Leaf::codes). An exit that lists a code
-/// that only a leaf renames applies to that leaf's command. A declaration that a later change adds
-/// joins this list beside the declarations of the same scope: a guide
-/// setting before the leaves, and a leaf's declaration after its
-/// refusal-alternatives entry. The completion variable is not listed,
-/// because `complete_with` sets it for the process and the guide does not
-/// hold it.
+/// that only a leaf renames applies to that leaf's command. A declaration
+/// that a later change adds joins this list beside the declarations of the
+/// same scope: a guide setting before the leaves, and a leaf's declaration
+/// after its refusal-alternatives entry. The completion variable is not
+/// listed, because `complete_with` sets it for the process and the guide
+/// does not hold it.
 pub(super) fn customisations(command: &Command, guide: &Guide) -> Vec<Customisation> {
     let every_run = format!("every run of {}", command.get_name());
     let mut list = Vec::new();
@@ -61,6 +62,20 @@ pub(super) fn customisations(command: &Command, guide: &Guide) -> Vec<Customisat
                 "Runs print {} in place of {}.",
                 spell(rename.tool()),
                 spell(rename.crumbkit())
+            ),
+        });
+    }
+    if let Some((last, earlier)) = guide.get_field_names().split_last() {
+        let names = if earlier.is_empty() {
+            (*last).to_owned()
+        } else {
+            format!("{} and {last}", earlier.join(", "))
+        };
+        list.push(Customisation {
+            declaration: "field-names",
+            applies_to: every_run.clone(),
+            declares: format!(
+                "Failures may print the fields {names}, whose names come from another system."
             ),
         });
     }

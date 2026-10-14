@@ -256,3 +256,23 @@ fn a_leaf_s_rename_and_an_exit_that_lists_it_are_customisations_of_that_command(
         ]
     );
 }
+
+#[test]
+fn field_names_from_another_system_are_one_field_names_customisation_of_every_run() {
+    const GUIDE: Guide = Guide::new()
+        .codes(&[Rename::new(&CLI_USAGE, &USAGE)])
+        .field_names(&["requestId", "Content-Type"]);
+
+    let list = customisations(&Command::new("shelf"), &GUIDE);
+
+    let list = serde_json::to_value(&list).unwrap();
+    assert_eq!(
+        list[1],
+        json!({
+            "declaration": "field-names",
+            "applies_to": "every run of shelf",
+            "declares": "Failures may print the fields requestId and Content-Type, whose names come from another system.",
+        })
+    );
+    assert_eq!(list.as_array().unwrap().len(), 2);
+}

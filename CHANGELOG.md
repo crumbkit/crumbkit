@@ -494,6 +494,16 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   code ([behaviour/adoption/declarations]).
 - crumbkit-test: [`check_opt_outs`] lists each leaf's code renames as
   customisations of the leaf's command ([behaviour/adoption/declarations]).
+- crumbkit: `Guide::field_names` lists failure field names that come from
+  another system, such as `requestId`. `finish` and `stream` keep a field
+  with a listed name, and the served failure schema accepts the listed
+  names ([behaviour/failures]).
+- crumbkit-test: [`check_guide`] reports a listed field name that is empty,
+  holds whitespace or a control character, is listed twice, or already
+  follows the name rule ([behaviour/failures]).
+- crumbkit-test: [`check_opt_outs`] lists the guide's field names as the
+  `field-names` customisation of every run
+  ([behaviour/adoption/declarations]).
 
 ### Changed
 
@@ -757,6 +767,8 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit: `Guide::printed` and `Guide::failure_exit` take the command
   path of the run, because a leaf's renames apply to its own command
   ([behaviour/adoption/declarations]).
+- crumbkit: the debug-build warning for a field with a bad name says that
+  `Guide::field_names` does not list the name ([behaviour/failures]).
 
 ### Removed
 

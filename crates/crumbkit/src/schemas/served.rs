@@ -26,6 +26,11 @@ pub struct Served {
     stream: bool,
     /// Builds the document's JSON Schema.
     schema: Build,
+    /// The failure field names that the guide lists with
+    /// `Guide::field_names`, which the schema of a failure in crumbkit's
+    /// form accepts beside the name rule (ADR-0061). It is empty for a
+    /// failure form's document and a file format.
+    field_names: &'static [&'static str],
 }
 
 /// How a served document builds its JSON Schema.
@@ -91,9 +96,36 @@ impl Served {
     }
 
     /// Returns the document's 2020-12 JSON Schema. It builds the schema on
-    /// each call.
+    /// each call. When the guide lists field names with
+    /// `Guide::field_names`, each failure in crumbkit's form that the
+    /// schema describes accepts those names beside the name rule.
     #[must_use]
     pub fn schema(&self) -> Schema {
+        let mut schema = self.build();
+        if !self.field_names.is_empty() {
+            let value = schema.as_object_mut();
+            if let Some(value) = value {
+                accept_field_names(value, self.field_names);
+                let entry = pointer(value, &["properties", "failures", "items"]);
+                if let Some(entry) = entry {
+                    accept_field_names(entry, self.field_names);
+                }
+                let in_order = value
+                    .get_mut("items")
+                    .and_then(|items| items.get_mut("anyOf"))
+                    .and_then(|kinds| kinds.get_mut(1))
+                    .and_then(serde_json::Value::as_object_mut);
+                if let Some(in_order) = in_order {
+                    accept_field_names(in_order, self.field_names);
+                }
+            }
+        }
+        schema
+    }
+
+    /// Builds the document's JSON Schema as [`Served::schema`] describes,
+    /// before it accepts the guide's field names.
+    fn build(&self) -> Schema {
         match self.schema {
             Build::Function(build) => build(self.document),
             Build::Leaf(build, form) => {
@@ -148,6 +180,7 @@ pub fn documents(command: &Command, guide: &Guide) -> Vec<Served> {
             commands: Vec::new(),
             stream: false,
             schema: Build::Form(form),
+            field_names: &[],
         },
         None => Served {
             document: failure::DOCUMENT,
@@ -155,6 +188,7 @@ pub fn documents(command: &Command, guide: &Guide) -> Vec<Served> {
             commands: Vec::new(),
             stream: false,
             schema: Build::Function(|_| failure::document_schema()),
+            field_names: guide.get_field_names(),
         },
     }];
     for leaf in guide.get_leaves() {
@@ -181,6 +215,13 @@ pub fn documents(command: &Command, guide: &Guide) -> Vec<Served> {
                 commands: vec![line],
                 stream: leaf.is_stream(),
                 schema: Build::Leaf(schema, guide.get_failure_form()),
+                // A failure form describes its own fields, so only
+                // crumbkit's failures accept the guide's names.
+                field_names: if guide.get_failure_form().is_some() {
+                    &[]
+                } else {
+                    guide.get_field_names()
+                },
             }),
         }
     }
@@ -190,6 +231,7 @@ pub fn documents(command: &Command, guide: &Guide) -> Vec<Served> {
         commands: Vec::new(),
         stream: false,
         schema: Build::Function(format.schema_fn()),
+        field_names: &[],
     }));
     served
 }
@@ -218,6 +260,47 @@ fn set_in_order_failure_schema(schema: &mut Schema, failure: Schema) {
     if let Some(slot) = kinds.and_then(|kinds| kinds.get_mut(1)) {
         *slot = failure.to_value();
     }
+}
+
+/// The names that a failure field has under crumbkit's rule, as the
+/// failure schema states them in `propertyNames`.
+const NAME_RULE: &str = "^[a-z0-9_]+$";
+
+/// Widens `failure`, the schema of one failure in crumbkit's form, so its
+/// `fields` also accept the names in `names`. Its `propertyNames` changes
+/// from the name rule to the rule or one of `names`. A schema whose
+/// `fields` does not hold exactly the rule, such as a failure form's
+/// schema, stays as it is.
+fn accept_field_names(failure: &mut serde_json::Map<String, serde_json::Value>, names: &[&str]) {
+    let Some(fields) = pointer(failure, &["properties", "fields"]) else {
+        return;
+    };
+    let rule = serde_json::json!({ "pattern": NAME_RULE });
+    if fields.get("propertyNames") != Some(&rule) {
+        return;
+    }
+    fields.insert(
+        "propertyNames".to_owned(),
+        serde_json::json!({ "anyOf": [rule, { "enum": names }] }),
+    );
+    if let Some(serde_json::Value::String(description)) = fields.get_mut("description") {
+        description.push_str(
+            " The tool also uses the names that propertyNames lists, which it takes from another system.",
+        );
+    }
+}
+
+/// Returns the object at `path`, a list of keys of nested objects below
+/// `object`, or `None` when one of them is missing or not an object.
+fn pointer<'a>(
+    object: &'a mut serde_json::Map<String, serde_json::Value>,
+    path: &[&str],
+) -> Option<&'a mut serde_json::Map<String, serde_json::Value>> {
+    let mut object = object;
+    for key in path {
+        object = object.get_mut(*key)?.as_object_mut()?;
+    }
+    Some(object)
 }
 
 /// What a served document is, which `schemas list` prints as its `kind`.

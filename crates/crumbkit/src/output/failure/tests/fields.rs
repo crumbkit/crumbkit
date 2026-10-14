@@ -1,7 +1,10 @@
 //! Tests for how `finish_to` prints a failure's named values.
 
-use super::{Missing, fail_with, missing, run_list, two_causes};
-use crate::FieldValue;
+use clap::{CommandFactory as _, Parser as _};
+
+use super::{Missing, Tool, fail_output, fail_with, missing, run_list, two_causes};
+use crate::help::Guide;
+use crate::{FieldValue, Parsed};
 
 /// Returns a failure with `fields`.
 fn with_fields(fields: Vec<(&'static str, FieldValue<'static>)>) -> Missing {
@@ -91,7 +94,31 @@ fn a_field_whose_name_breaks_the_rule_is_left_out_with_a_warning_in_a_debug_buil
     );
     assert_eq!(
         finished.err,
-        "warning: crumbkit left out the field \"Planet\" of the failure solar::planets::not_found, because a field name is one or more lowercase ASCII letters, digits and underscores\n"
+        "warning: crumbkit left out the field \"Planet\" of the failure solar::planets::not_found, because a field name is one or more lowercase ASCII letters, digits and underscores, and Guide::field_names does not list it\n"
+    );
+}
+
+#[test]
+fn a_field_whose_name_the_guide_lists_prints_though_it_breaks_the_rule() {
+    const LISTING: Guide = Guide::new().field_names(&["planetId", "Content-Type"]);
+    let mut output = Tool::try_parse_from(["tool", "list", "--json"])
+        .unwrap()
+        .output;
+    output.set_command(Parsed::guided(Tool::command(), &LISTING));
+    let failure = with_fields(vec![
+        ("planetId", "Vulcan".into()),
+        ("Content-Type", "text/plain".into()),
+        ("Moons", 0_u8.into()),
+    ]);
+
+    let finished = fail_output(&mut output, crate::Error::from(failure));
+
+    assert_eq!(
+        finished.out,
+        concat!(
+            r#"{"schema":"crumbkit/failure/v1","code":"solar::planets::not_found","message":"the solar system has no planet Vulcan","fields":{"planetId":"Vulcan","Content-Type":"text/plain"},"recovery":{"kind":"run","call":"tool list"}}"#,
+            "\n"
+        )
     );
 }
 

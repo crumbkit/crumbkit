@@ -48,6 +48,9 @@ Why: ADR-0056.
   they print ([output](../output/README.md#documents-without-the-envelope)).
 - `Guide::dashed_forms` lets a command keep a name in another style
   ([dashed forms](#dashed-forms)).
+- `Guide::field_names` lists failure field names that come from another
+  system and break crumbkit's name rule, such as `requestId`
+  ([fields](../failures/README.md#fields)).
 
 A tool that declares nothing prints crumbkit's codes and exits with
 crumbkit's defaults.
@@ -60,7 +63,7 @@ the exit code a failure ends the run with, so `check_exit_codes`,
 run prints. A path that no leaf with renames names, such as `&[]`, gives the
 guide's renames alone.
 
-Why: ADR-0056, ADR-0060, ADR-0001, ADR-0016, ADR-0035, ADR-0045.
+Why: ADR-0056, ADR-0060, ADR-0061, ADR-0001, ADR-0016, ADR-0035, ADR-0045.
 
 ## Codes per command
 
@@ -125,14 +128,15 @@ Why: ADR-0015, ADR-0056, ADR-0036.
 crumbkit-test's `check_opt_outs` lists each declaration after the opt-outs,
 under the customisations, with no reason and no cost, so a reviewer sees in
 one place how far a tool has moved from crumbkit's defaults. The section
-lists the failure form, each code rename of the guide and of each leaf, each
-exit that lists one of crumbkit's codes or a rename of one, each document whose name is not its command's path (as a
-`document-name` customisation beside the name that its command's path
-gives), each leaf that passes on an exit code, each leaf that declares
+lists the failure form, each code rename of the guide and of each leaf, the
+guide's field names as one `field-names` customisation of every run, each
+exit that lists one of crumbkit's codes or a rename of one, each document
+whose name is not its command's path (as a `document-name` customisation
+beside the name that its command's path gives), each leaf that passes on an exit code, each leaf that declares
 refusal alternatives, the guide's refusal function once for every run, and
 `failures_in_order`. A leaf's code rename, and an exit that lists a code
-that only a leaf renames, apply to that leaf's command line. The dashed-forms declaration is listed once, followed by
-each command named in another style as a `resource-name` or a `verb-name`
+that only a leaf renames, apply to that leaf's command line. The
+dashed-forms declaration is listed once, followed by each command named in another style as a `resource-name` or a `verb-name`
 with the dashed form it also answers to.
 
 The section is left out when the tool declares nothing, and the JSON holds it
@@ -140,4 +144,4 @@ as a `customisations` array beside `data`. The report does not list the
 completion variable, because `complete_with` sets it for the process and the
 guide does not hold it.
 
-Why: ADR-0056, ADR-0060, ADR-0036, ADR-0035.
+Why: ADR-0056, ADR-0060, ADR-0061, ADR-0036, ADR-0035.
