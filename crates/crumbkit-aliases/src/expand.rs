@@ -34,9 +34,9 @@ mod tests;
 /// must not stop the tool's real commands or add text where an agent reads.
 /// `<tool> aliases list` reports each problem instead.
 ///
-/// When `expand` replaces an alias, it calls `crumbkit::usage::aliased`, so
-/// a tool that keeps crumbkit's usage log records that an alias expanded.
-/// The call does nothing in a tool without the log.
+/// When `expand` replaces an alias, it calls `crumbkit::events::aliased`, so
+/// the tool's run observer, such as crumbkit's usage log, learns that an
+/// alias expanded. The call does nothing in a tool without an observer.
 pub fn expand<I, T>(command: &Command, args: I, file: Option<&Path>) -> Vec<OsString>
 where
     I: IntoIterator<Item = T>,
@@ -75,9 +75,9 @@ fn expand_with(
     else {
         return args;
     };
-    // The usage log records that an alias expanded, and the line holds the
-    // expanded command (ADR-0029).
-    crumbkit::usage::aliased();
+    // The run observer learns that an alias expanded, and the usage log's
+    // line holds the expanded command (ADR-0029, ADR-0057).
+    crumbkit::events::aliased();
     let mut args = args.into_iter();
     args.next()
         .into_iter()

@@ -15,14 +15,14 @@ use signal_hook::flag::register_conditional_default;
 /// the handler would then end the tool.
 pub(super) const RESTORES: bool = false;
 
-/// Installs the handlers of SIGQUIT and, unless the usage log has taken
+/// Installs the handlers of SIGQUIT and, unless the observer has taken
 /// it, SIGINT, which take each signal's default action while the returned
 /// flag is true. It returns `None` when signal-hook cannot install the
 /// handlers, and the tool then keeps both signals' default actions.
 pub(super) fn install() -> Option<Arc<AtomicBool>> {
     let no_child = Arc::new(AtomicBool::new(true));
     register_conditional_default(SIGQUIT, Arc::clone(&no_child)).ok()?;
-    if !crate::usage::listens() {
+    if !crate::events::handles_interrupt() {
         register_conditional_default(SIGINT, Arc::clone(&no_child)).ok()?;
     }
     Some(no_child)

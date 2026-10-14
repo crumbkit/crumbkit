@@ -64,9 +64,6 @@ use crate::{Document, Failure as _, Output, Rows, Sink, Spelling};
 #[cfg(test)]
 mod tests;
 
-#[cfg(feature = "usage-log")]
-pub(crate) use self::signals::held_terminal;
-
 /// How a child asks for JSON, and the document it then prints.
 ///
 /// A tool declares one constant for each child with a JSON form and passes
@@ -131,8 +128,10 @@ impl<T> Copy for Json<T> {}
 /// child's meanings. A child that a signal ended returns 128 plus the
 /// signal's number, such as 130 for SIGINT, as a shell reports it. On
 /// Windows, a child that exited with `STATUS_CONTROL_C_EXIT`, as Ctrl-C
-/// leaves it, returns 130 too. With the usage log, the run's line records
-/// that number, and `"interrupted": true` when a signal ended the child.
+/// leaves it, returns 130 too. crumbkit reports that number to the
+/// observer with [`crate::events::ended`], after
+/// [`Observer::interrupted`](crate::events::Observer::interrupted) when a
+/// signal ended the child, so the usage log's line records both.
 ///
 /// It runs no child and fails with `crumbkit::child::no_json` when the
 /// caller passed `--json`, and with `crumbkit::cli::usage` when the caller
@@ -244,9 +243,9 @@ fn respond_text<O: Write, W: Write>(
     match status {
         Ok(status) => {
             if signals::ended_by(status).is_some() {
-                crate::usage::interrupted();
+                crate::events::interrupted();
             }
-            crate::usage::ended(exit_number(status), None)
+            crate::events::ended(exit_number(status), None)
         }
         Err(error) => fail(sink, output, spelling, &ChildError::start(program, error)),
     }
@@ -271,11 +270,11 @@ fn respond_json<T: Rows + DeserializeOwned, O: Write, W: Write>(
     };
     if !captured.status.success() {
         if signals::ended_by(captured.status).is_some() {
-            crate::usage::interrupted();
+            crate::events::interrupted();
         }
         let exit = exit_number(captured.status);
         output.print_failure(sink, spelling, &ChildError::Failed { program, exit });
-        return crate::usage::ended(exit, None);
+        return crate::events::ended(exit, None);
     }
     match serde_json::from_slice::<T>(&captured.stdout) {
         Ok(value) => {
@@ -293,8 +292,8 @@ fn respond_json<T: Rows + DeserializeOwned, O: Write, W: Write>(
     }
 }
 
-/// Prints `failure` as `finish` prints a failure, records its exit code in
-/// the usage log, and returns it. The exit code is the one that the guide
+/// Prints `failure` as `finish` prints a failure, reports its exit code to
+/// the observer, and returns it. The exit code is the one that the guide
 /// lists for the failure's code, or crumbkit's default: the refusal's code
 /// for `crumbkit::child::no_json`, and 1 for the others (ADR-0042).
 fn fail<O: Write, W: Write>(
@@ -304,7 +303,7 @@ fn fail<O: Write, W: Write>(
     failure: &ChildError,
 ) -> ExitCode {
     output.print_failure(sink, spelling, failure);
-    crate::usage::ended(output.failure_exit(failure.code()), None)
+    crate::events::ended(output.failure_exit(failure.code()), None)
 }
 
 /// Returns the name of the program that `child` runs, for messages.

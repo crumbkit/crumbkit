@@ -1,8 +1,11 @@
-//! Tests for `requested`, the rule that the usage log shares, and for
+//! Tests for `requested` and `completing_in`, the rule that keeps a
+//! completion request from installing an observer, and for
 //! `complete_to` and the words that it passes to the tool's builder.
 
 use std::ffi::OsStr;
 
+#[cfg(feature = "complete")]
+use super::completing_in;
 use super::requested;
 
 #[test]
@@ -11,6 +14,26 @@ fn a_completion_variable_that_is_unset_empty_or_zero_is_no_request() {
     assert!(!requested(Some(OsStr::new(""))));
     assert!(!requested(Some(OsStr::new("0"))));
     assert!(requested(Some(OsStr::new("fish"))));
+}
+
+#[cfg(feature = "complete")]
+#[test]
+fn a_run_that_carries_the_completion_variable_that_the_tool_declared_is_completing() {
+    let guide = crate::help::Guide::new();
+    let declared = crate::complete_with(
+        "SHELF_COMPLETE",
+        || panic!("an ordinary run builds no command for completion"),
+        &guide,
+    );
+    let shell = || Some(std::ffi::OsString::from("fish"));
+
+    assert!(declared.is_none());
+    assert!(completing_in(|name| (name == "SHELF_COMPLETE")
+        .then(shell)
+        .flatten()));
+    assert!(!completing_in(|name| (name == "COMPLETE")
+        .then(shell)
+        .flatten()));
 }
 
 #[cfg(feature = "complete")]

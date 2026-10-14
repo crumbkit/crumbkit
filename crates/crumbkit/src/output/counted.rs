@@ -1,5 +1,5 @@
 //! A writer that counts the bytes it passes on, which `finish` puts in front
-//! of standard output.
+//! of standard output so it can report them to the observer.
 
 use std::io::{self, Write};
 

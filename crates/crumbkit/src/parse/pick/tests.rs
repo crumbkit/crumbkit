@@ -340,3 +340,16 @@ fn a_parsed_command_line_with_no_input_records_it() {
     let run = self::run(&GUIDE, &["show", "--list", "a"], "", true);
     assert!(!run.result.as_ref().unwrap().1.no_input);
 }
+
+#[test]
+fn parse_reports_how_many_arguments_a_picker_filled_and_the_exit_of_a_failed_source() {
+    const FAILING: Guide = Guide::new()
+        .picker(&SCRIPTED)
+        .leaves(&[Leaf::new(&["find"]).choices(&[Choices::new("pattern", offline)])]);
+
+    let picked = crate::events::testing::watch(|| drop(run(&GUIDE, &["show"], "0\n", true)));
+    let failed = crate::events::testing::watch(|| drop(run(&FAILING, &["find"], "0\n", true)));
+
+    assert_eq!(picked[1..], ["parsed tool show", "picked 1"]);
+    assert_eq!(failed[1..], ["failed tool::catalogue::offline", "exited 1"]);
+}

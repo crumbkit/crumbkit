@@ -5,7 +5,8 @@
 //! with tracing on or another crumbkit tool, puts its trace context in the
 //! `TRACEPARENT` and `TRACESTATE` environment variables, as OpenTelemetry's
 //! environment-variable carrier describes. With the `usage-log` feature,
-//! `usage::start` reads both once. A valid
+//! `usage::start` reads both once, and the usage log then gives crumbkit
+//! the run's trace as its observer (ADR-0057). A valid
 //! `TRACEPARENT` gives the run the caller's trace id and names the caller's
 //! span as the run's parent. A missing or invalid one starts a new trace with
 //! a random id and no parent, and the run then discards the caller's
@@ -39,8 +40,9 @@
 //!   result is a failure or a batch with a failure. `error.type` is the
 //!   failure's code in the tool's spelling, such as
 //!   `shelf::books::not_found`, and a batch gives its first failure's code.
-//! - With the `usage-log` feature and a started log, both spans also record
-//!   `trace_id`, the run's trace id, and `crumbkit.run`, the run's own id.
+//! - When the observer gives the run's trace ids, as a started usage log
+//!   does, both spans also record `trace_id`, the run's trace id, and
+//!   `crumbkit.run`, the run's own id.
 //!
 //! No span holds an argument's value, the command line or `TRACESTATE`.
 //!
@@ -67,8 +69,10 @@ pub(crate) mod spans;
 /// run's trace, with this run as the child's parent, for
 /// `std::process::Command::envs`.
 ///
-/// When this run is recorded, which means the usage log started and the run
-/// reached `parse`, it returns `TRACEPARENT` as
+/// It returns the variables that the observer gives through
+/// [`Observer::child_env`](crate::events::Observer::child_env). When the
+/// usage log is the observer and the run reached `parse`, it returns
+/// `TRACEPARENT` as
 /// `00-<trace id>-<run id>-<flags>`. The flags keep the caller's sampled
 /// bit (`01`) and random-trace-id bit (`02`) and clear the others, and a new
 /// trace has the flags `03`. When the caller set `TRACESTATE`, it also
@@ -82,16 +86,9 @@ pub(crate) mod spans;
 /// When nothing records this run, it returns no variables, so a child
 /// inherits the caller's `TRACEPARENT` and `TRACESTATE` unchanged, and never
 /// names a parent that nothing records. It exists in every build, so a tool
-/// calls it without a feature of its own, and without the `usage-log` feature
-/// it always returns no variables.
+/// calls it without a feature of its own, and without an observer it
+/// always returns no variables.
 #[must_use]
 pub fn child_env() -> Vec<(&'static str, String)> {
-    #[cfg(feature = "usage-log")]
-    {
-        crate::usage::child_env()
-    }
-    #[cfg(not(feature = "usage-log"))]
-    {
-        Vec::new()
-    }
+    crate::events::observer().map_or_else(Vec::new, crate::events::Observer::child_env)
 }

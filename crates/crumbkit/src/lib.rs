@@ -19,7 +19,8 @@
 //! [`Call`]: crate::Call
 //! [`commands`]: crate::commands
 //! [`fetch_each`]: crate::fetch_each
-//! [`usage`]: crate::usage
+//! [`events`]: crate::events
+//! [`usage`]: https://github.com/crumbkit/crumbkit/blob/main/crates/crumbkit/src/usage.rs
 //! [`schemas`]: crate::schemas
 //! [`trace`]: crate::trace
 //! [tutorial]: https://github.com/crumbkit/crumbkit/blob/main/docs/tutorial.md
@@ -51,9 +52,9 @@ mod call;
 pub mod child;
 pub mod codes;
 pub mod commands;
-#[cfg(any(feature = "complete", feature = "usage-log"))]
 mod complete;
 mod dashed;
+pub mod events;
 mod exit;
 mod expect;
 mod fetch;
@@ -70,6 +71,7 @@ mod sink;
 pub mod trace;
 #[cfg(test)]
 mod twins;
+#[cfg(feature = "usage-log")]
 pub mod usage;
 
 // crumbkit re-exports every item of crumbkit-core at the path it had in

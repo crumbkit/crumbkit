@@ -190,7 +190,7 @@ pub struct Streaming<'a, R, O, W> {
     /// The most bytes that the stream prints on the output writer.
     budget: usize,
     /// The bytes written to the output writer, which the budget limits and
-    /// the usage log records.
+    /// the observer receives.
     sent: usize,
     /// The number of items printed.
     items: usize,
@@ -576,25 +576,16 @@ impl<R: Row, O: Write, W: Write> Streaming<'_, R, O, W> {
         ControlFlow::Break(())
     }
 
-    /// Records the exit code `exit` on the span, and records `exit` and
-    /// whether the stream was `empty` in the usage log.
-    #[cfg_attr(
-        not(any(feature = "tracing", feature = "usage-log")),
-        expect(
-            clippy::unused_self,
-            reason = "only the tracing and usage-log features record the exit code"
-        )
-    )]
+    /// Records the exit code `exit` on the span, and reports `exit`, the
+    /// bytes sent and whether the stream was `empty` to the observer.
     fn record(&self, exit: u8, empty: bool) {
         #[cfg(feature = "tracing")]
         crate::trace::spans::exited(&self.span, exit);
-        #[cfg(feature = "usage-log")]
-        crate::usage::finished(
+        crate::events::finished(
             exit,
             u64::try_from(self.sent).unwrap_or(u64::MAX),
             self.state == State::Spent,
             empty,
         );
-        let _ = (exit, empty);
     }
 }

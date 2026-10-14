@@ -10,7 +10,8 @@ use clap::Command;
 
 use super::{is_child, log_lines, run_child};
 use crate::Spelling;
-use crate::usage::recorder::{RECORDER, Signals, State, ended, start, start_with, typed};
+use crate::events::typed;
+use crate::usage::recorder::{RECORDER, Signals, State, ended, start, start_with};
 use crate::usage::testing::TempDir;
 
 #[test]

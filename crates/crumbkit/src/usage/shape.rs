@@ -8,7 +8,7 @@ use clap::parser::ValueSource;
 use clap::{ArgMatches, Command};
 
 use super::record::{Name, Run};
-use crate::parse::suggestion::find_flag;
+use crate::events::Refused;
 
 #[cfg(test)]
 mod tests;
@@ -44,30 +44,20 @@ pub(super) fn parsed(run: &mut Run, command: &Command, matches: &ArgMatches) {
     run.ids = ids(node, level);
 }
 
-/// Records in `run` the command path of a refused command line, the number
-/// of `words` that look like flags and name no flag of the command, and
-/// the real flag that clap suggested in `error`.
+/// Records in `run` the command path of the command line that clap
+/// `refused`, the number of `words` that look like flags and name no flag of
+/// the command, and the visible flag that clap suggested.
 ///
-/// `command` is the tool's command after clap refused the line, `path` the
-/// command path that `parse` walked, and `words` the words after the tool's
-/// name. Unlike clap, which stops at the first unknown flag, the count reads
-/// every word before any `--`.
+/// `words` are the words after the tool's name. Unlike clap, which stops at
+/// the first unknown flag, the count reads every word before any `--`.
 //
 // RUST-10: the count reads each word on its own. It counts a value that
 // starts with `-`, such as `-5`, as a flag, and it reads only the first
 // letter of a group of short flags such as `-ab`. A count that reads how many
 // values each option takes, as `parse`'s walk does, replaces it.
-pub(super) fn refused(
-    run: &mut Run,
-    command: &Command,
-    path: &[String],
-    words: &[OsString],
-    error: &clap::Error,
-) {
-    let path = subcommands(command, path);
-    let node = path.last().copied().unwrap_or(command);
-    let mut commands = vec![command];
-    commands.extend(&path);
+pub(super) fn refused(run: &mut Run, refused: &Refused<'_>, words: &[OsString]) {
+    let path = subcommands(refused.command(), refused.path());
+    let node = path.last().copied().unwrap_or(refused.command());
     let unknown = words
         .iter()
         .take_while(|word| *word != "--")
@@ -75,7 +65,7 @@ pub(super) fn refused(
         .count();
     run.command = Name::path(&path);
     run.unknown_flags = (unknown > 0).then_some(unknown);
-    run.nearest = nearest(&commands, error);
+    run.nearest = refused.nearest_flag().and_then(Name::flag);
 }
 
 /// Adds to `flags` the name of each flag of `node` that the command line
@@ -161,28 +151,4 @@ fn names_no_flag(node: &Command, word: Option<&str>) -> bool {
                 .get_all_short_aliases()
                 .is_some_and(|aliases| aliases.contains(&first))
     })
-}
-
-/// Returns the real flag that clap suggested in `error` for a flag it
-/// refused, such as `--all` for `--al`, or `None` when clap suggested none.
-/// `commands` holds the root and each command on the path below it.
-///
-/// clap can suggest a hidden alias, such as `--max` of `--limit`, and the
-/// record then holds the real flag, `--limit`, as `parse`'s refusal does. A
-/// suggestion of a hidden flag, or of a hidden alias of one, is not
-/// recorded.
-//
-// RUST-10: this reads the suggestion from clap's rendered text, as
-// `parse`'s refusal message does. It misses a suggestion when clap changes
-// the wording, and then records no `nearest`. crumbkit enables clap's
-// `error-context` feature (ADR-0003), so reading `ContextKind::SuggestedArg`
-// through `Error::get` can replace it. The suggestion is recorded only when it names a flag of the
-// commands, so the record never holds other text.
-fn nearest(commands: &[&Command], error: &clap::Error) -> Option<Name> {
-    let text = error.render().to_string();
-    let (_, rest) = text.split_once("a similar argument exists: '")?;
-    let (suggestion, _) = rest.split_once('\'')?;
-    find_flag(suggestion, commands)
-        .filter(|arg| !arg.is_hide_set())
-        .and_then(Name::flag)
 }

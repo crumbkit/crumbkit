@@ -139,3 +139,14 @@ fn sigint_and_sigquit_that_arrive_after_the_child_exits_leave_the_tool_running()
 
     assert_eq!(status.code(), Some(7), "the tool ended with {status:?}");
 }
+
+#[test]
+fn hand_over_reports_that_a_child_took_the_terminal_and_then_reports_its_exit() {
+    let mut output = output(&[]);
+
+    let seen = crate::events::testing::watch(|| {
+        let _ = respond(|sink| hand_over_to(sink, &mut output, Spelling::COLONS, sh("exit 3")));
+    });
+
+    assert_eq!(seen, ["handed over", "ended 3 None"]);
+}
