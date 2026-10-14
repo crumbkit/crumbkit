@@ -40,8 +40,8 @@ names, or in `tests/golden/examples` in the binary's package.
 `--usage` adds each command's runs, the help pages that callers read before
 it and the 95th percentile of its real output, from the tool's own usage
 log. `--log <FILE>` reads another copy of a log, and `--since <DURATION>`
-sets how far back to read. The tool needs crumbkit's `usage-log` feature
-and a `self figures list` command, as shelf has. The log stays on the
+sets how far back to read. The tool needs to keep the log with crumbkit-usage
+and to have a `self figures list` command, as shelf has. The log stays on the
 machine, and `weigh` only reads it.
 
 ## Writing the command reference

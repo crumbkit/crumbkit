@@ -31,7 +31,7 @@ pub(crate) const WEIGH: Document<Vec<Weight>> = Document::new(
 const GOLDENS: &str = "tests/golden/examples";
 
 /// The file name of a tool's usage log in its directory under the XDG state
-/// directory, as crumbkit's `usage-log` feature writes it (ADR-0029).
+/// directory, as crumbkit-usage writes it (ADR-0029).
 const LOG: &str = "usage.jsonl";
 
 /// What one visible command of a tool costs an agent to read, in bytes.
@@ -122,7 +122,7 @@ pub(crate) fn join(rows: &mut [Weight], used: &[Used]) {
 
 /// Returns the usage log that `args` names with `--log`, or else the log of
 /// the tool whose commands are `commands`: `usage.jsonl` in the tool's
-/// directory under [`state_home`], where crumbkit's `usage-log` feature
+/// directory under [`state_home`], where crumbkit-usage
 /// writes it.
 fn usage_log(args: &WeighArgs, commands: &[Listed]) -> Result<PathBuf, WeighError> {
     if let Some(log) = &args.log {
@@ -135,7 +135,7 @@ fn usage_log(args: &WeighArgs, commands: &[Listed]) -> Result<PathBuf, WeighErro
 }
 
 /// Returns the directory that holds each tool's log directory, found as
-/// crumbkit's `usage-log` feature finds it (ADR-0029): the XDG state
+/// crumbkit-usage finds it (ADR-0029): the XDG state
 /// directory on Unix, and on Windows `XDG_STATE_HOME` when it is an
 /// absolute path, and otherwise `%LOCALAPPDATA%`.
 #[cfg(not(windows))]

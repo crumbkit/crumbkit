@@ -63,9 +63,9 @@ jobs:
           save-if: ${{ github.ref == 'refs/heads/main' }}
       - run: cargo fmt --check
       - run: cargo clippy --workspace --all-targets
-      # shelf turns on crumbkit's `miette`, `usage-log` and `tracing` features,
-      # and reading turns on `hand-over`, so the workspace run checks crumbkit
-      # with all four. clippy checks crumbkit on its own in the default build,
+      # shelf turns on crumbkit's `miette` and `tracing` features and uses
+      # crumbkit-usage, and reading turns on `hand-over`, so the workspace run
+      # checks crumbkit with all three features and with the usage log. clippy checks crumbkit on its own in the default build,
       # with `miette`, with `tracing` alone and with `hand-over` alone, because
       # a single `--all-features` run would miss a warning that only one build
       # shows, such as an import that only one feature uses. The `tracing`
@@ -125,9 +125,9 @@ jobs:
       - run: cargo nextest run --workspace --profile ci
       # nextest does not run doctests, so cargo test runs them.
       - run: cargo test --workspace --doc
-      # shelf turns on crumbkit's `miette`, `usage-log` and `tracing` features,
-      # and reading turns on `hand-over`, so the workspace runs test crumbkit
-      # with all four. crumbkit's tests and doctests run again on their own in
+      # shelf turns on crumbkit's `miette` and `tracing` features and uses
+      # crumbkit-usage, and reading turns on `hand-over`, so the workspace runs
+      # test crumbkit with all three features and with the usage log. crumbkit's tests and doctests run again on their own in
       # the default build and with `miette`, and its tests run with
       # `hand-over` alone, which hands the terminal to a child without the
       # usage log's signal thread.

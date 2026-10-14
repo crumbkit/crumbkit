@@ -7,10 +7,10 @@ use crumbkit::commands::{COMMANDS_LIST, CommandsList};
 use crumbkit::help::{Effects, Example, Goal, Group, Guide, Leaf, RefusalContext, Topic};
 use crumbkit::pick::Choices;
 use crumbkit::schemas::{SCHEMAS_LIST, SCHEMAS_SHOW, SchemasList, SchemasShow};
-use crumbkit::usage::{SELF_FIGURES_LIST, SELF_USAGE, SelfFigures, SelfUsage};
 use crumbkit::{Call, DryRun, NoInput, Output, Page, Yes};
 use crumbkit_aliases::AliasesList;
 use crumbkit_picker::Menu;
+use crumbkit_usage::{SELF_FIGURES_LIST, SELF_USAGE, SelfFigures, SelfUsage};
 use schemars::JsonSchema;
 use serde::Serialize;
 

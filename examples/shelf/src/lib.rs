@@ -133,23 +133,23 @@ where
         },
         Resource::SelfCommand { command } => match command {
             SelfCommand::Usage(args) => {
-                let result = Ok::<_, crumbkit::Error>(crumbkit::usage::findings(
+                let result = Ok::<_, crumbkit::Error>(crumbkit_usage::findings(
                     &mut cli.output,
                     &GUIDE,
                     &args,
                 ));
-                let document = crumbkit::usage::SELF_USAGE;
+                let document = crumbkit_usage::SELF_USAGE;
                 crumbkit::finish(&mut cli.output, SPELLING, document, result)
             }
             SelfCommand::Figures {
                 command: FiguresCommand::List(args),
             } => {
-                let result = Ok::<_, crumbkit::Error>(crumbkit::usage::figures(
+                let result = Ok::<_, crumbkit::Error>(crumbkit_usage::figures(
                     &mut cli.output,
                     &GUIDE,
                     &args,
                 ));
-                let document = crumbkit::usage::SELF_FIGURES_LIST;
+                let document = crumbkit_usage::SELF_FIGURES_LIST;
                 crumbkit::finish(&mut cli.output, SPELLING, document, result)
             }
         },
