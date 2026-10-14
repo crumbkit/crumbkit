@@ -267,7 +267,7 @@ opt-outs, and [ADR-0025] records why the checks exist.
   [`DryRun`] and [`Yes`] ([ADR-0039]).
 - The `complete` feature answers a shell's completion request
   ([ADR-0048]).
-- The `usage-log` feature keeps a local log of the shape of each run
+- The crumbkit-usage crate keeps a local log of the shape of each run
   ([ADR-0029]).
 - crumbkit-test's [README](../crates/crumbkit-test/README.md) lists the
   other checks, such as help sizes, golden help pages, examples and

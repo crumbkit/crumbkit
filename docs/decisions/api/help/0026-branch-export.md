@@ -9,7 +9,7 @@
 - The rows leave out the help and version flags, which are the same on every command and which `parse` changes, so the rows are the same whether or not the tree went through `parse`. A global argument is listed once, so the listing does not repeat it on every row.
 - Each row's `exits` lists the exit codes that the tool declares for the command, each with its code and meaning, so an agent learns them with the branch (ADR-0037). crumbkit's own 0, 1 and 2 are the same for every command, so the rows leave them out, and the text output ends with a note that names every code and `<tool> help exit-codes`.
 - The text table shows only each command's path and about text, because the nested lists would print as compact JSON in a table cell. `--json --full` prints the arguments, examples, columns and exit codes.
-- The schema of the `crumbkit/commands-list/v1` document is checked in (ADR-0007). crumbkit implements `Serialize` and `JsonSchema` for `CommandsList` and the row types by hand, so a build without the `usage-log` feature needs no serde or schemars derive macros (ADR-0016).
+- The schema of the `crumbkit/commands-list/v1` document is checked in (ADR-0007). crumbkit implements `Serialize` and `JsonSchema` for `CommandsList` and the row types by hand, so crumbkit needs no serde or schemars derive macros (ADR-0016).
 - The two failure codes of `commands list` are fixed by crumbkit, as `crumbkit::cli::usage` is (ADR-0001), and are not listed in a `CODES` list.
 - `commands list` prints only the two formats of ADR-0016. crumbkit-markdown writes a Markdown reference from its JSON document (ADR-0044).
 
