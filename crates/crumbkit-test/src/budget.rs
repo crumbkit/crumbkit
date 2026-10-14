@@ -131,7 +131,7 @@ impl Departure {
     }
 
     /// Returns [`Departure::extra_bytes`] in tokens at 4 bytes a token,
-    /// rounded up, as ADR-0025 counts tokens.
+    /// rounded up, as `docs/behaviour/help/checks.md` counts tokens.
     pub(crate) const fn extra_tokens(&self) -> u64 {
         self.extra_bytes().div_ceil(4)
     }

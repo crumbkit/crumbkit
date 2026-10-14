@@ -1,14 +1,49 @@
 # ADR-0048. Shell completion
 
-- crumbkit's `complete` cargo feature answers a shell's completion request through clap_complete's dynamic completion. A shell asks by running the tool with the completion variable set to the shell's name, once to register and once per Tab press. The variable is `COMPLETE` unless the tool declares its own name with `crumbkit::complete_with`, such as one its users already register, and the registration script then sets that name (ADR-0056). The feature is off by default, so the default build has no completion code and no clap_complete (ADR-0003).
-- A tool's `main` calls `crumbkit::complete` or `complete_with` first, before it installs a run observer such as the usage log, and passes the function that builds the command it parses against. `complete` returns `None` when the completion variable is unset, empty or `0`, and the exit code for `main` when it answered. It calls the function only for a completion request, so an ordinary run builds its command once and no run clones the tree. A tool that hides commands at run time does so inside that function, so completion offers what parsing accepts.
-- A tool whose completers depend on an earlier word on the line, such as path completers under the directory that a global `-C <DIR>` chooses, calls `complete_with_words`, which passes the function the shell's words after the program name. `complete` and `complete_with` keep a function without arguments, because most tools build the same command for every line, and they call `complete_with_words` with a function that ignores the words. `complete_to` takes the same function, so tests pass words without the environment.
-- `complete` never exits the process. It calls clap_complete's public shell adapters itself, in place of `CompleteEnv`, whose `complete` exits and whose `try_complete` writes to standard output directly. The answer goes through crumbkit's `Sink` whole or not at all, and `complete_to` answers in memory for tests, as `parse_to` parses.
-- A completion never prints a failure into the shell, because the shell shows standard error over the person's prompt. An unknown shell, a command line that clap_complete cannot complete and a failed write give exit code 1 and write nothing.
-- The completion variable stays set for the rest of the run, because removing an environment variable needs unsafe code, which RUST-2 forbids. A custom completer that runs another clap_complete tool as a child removes the variable from the child's environment itself. `complete_with` runs before the guide is built, so it records the declared name in a process-wide `OnceLock`, and `crumbkit::events::observe` reads the name from there and falls back to `COMPLETE`.
-- The candidates follow clap_complete's rule for hidden items. A hidden subcommand, flag or alias is left out whenever a visible one matches the typed word, and a word that matches only hidden names completes to them, so `shelf books ls` completes when `ls` is a hidden alias of `list`, and `shelf al` completes to the hidden `aliases`. This is the one place where crumbkit prints a hidden name that the caller typed only in part, which ADR-0015 otherwise rules out. Filtering it out would need the cursor position from clap_complete's undocumented protocol with each shell, and a second completion per Tab press.
-- `crumbkit::events::observe` installs no run observer for a run whose completion variable asks for completion, by the same rule that `complete` reads, so the usage log writes no line for a Tab press even when a tool starts the log first or calls clap_complete directly (ADR-0029, ADR-0057).
-- crumbkit has no help topic for completion. The registration line for each shell is in the rustdoc of `complete`, and a tool tells its users. Completion serves a person at a shell, and a topic would add a name to every root help page that agents read.
-- clap_complete's dynamic completion sits behind its `unstable-dynamic` feature, which clap leaves outside its semver promise. crumbkit requires `~4.6.11`, which allows 4.6 patch releases only, and a crumbkit minor release may change what the `complete` feature offers and how a shell registers it (ADR-0002). crumbkit's tests complete shelf's tree and check that hidden commands and aliases are left out, and crumbkit-test has no completion check for tools.
+- Date: 2026-10-12
+- Status: accepted
+
+## Context
+
+People at a shell expect Tab completion, and completion that offers
+something parsing would refuse misleads them. clap_complete's dynamic
+completion answers from the same command tree a tool parses, but its
+`CompleteEnv` exits the process or writes to standard output directly, and
+it sits outside clap's semver promise.
+
+## Decision
+
+- A `complete` cargo feature, off by default, answered completion requests
+  through clap_complete's dynamic completion, so the default build has no
+  completion code.
+- A tool's `main` calls `crumbkit::complete` first and passes the function
+  that builds its command. The function runs only for a completion
+  request, so an ordinary run builds its command once, and a tool that
+  hides commands at run time hides them there too, so completion offers
+  what parsing accepts. `complete_with_words` passes the shell's words for
+  a tool whose completers depend on an earlier word.
+- `complete` called clap_complete's shell adapters itself and never exits
+  the process, so the answer goes through crumbkit's `Sink` and tests can
+  complete in memory.
+- A completion never prints a failure, because the shell shows standard
+  error over the person's prompt.
+- The completion variable stays set for the rest of the run, because
+  removing an environment variable needs unsafe code.
+- Candidates followed clap_complete's rule for hidden items, so a word
+  that matches only hidden names completes to them. This is the one place
+  where crumbkit prints a hidden name the caller typed only in part.
+  Filtering it out would need the cursor position from an undocumented
+  protocol and a second completion per Tab press.
+- No run observer is installed for a completion request, so the usage log
+  writes no line for a Tab press.
+- crumbkit added no help topic for completion, because a topic would add
+  a name to every root help page that agents read.
+- clap_complete was pinned to `~4.6.11`, and a crumbkit minor release may
+  change what the feature offers.
+
+## Consequences
+
+`docs/behaviour/parsing/completion.md` describes the current behaviour,
+and the rustdoc of `complete` gives each shell's registration line.
 
 Considered: `CompleteEnv::complete` with its process exit, a function that takes the words in `complete` and `complete_with`, which every tool would then write as a closure that ignores them, a `Command` that the tool edits after `complete` parses its words, `CompleteEnv::try_complete` writing to standard output, a `&mut Command` that the tool then passes to `parse`, a command passed by value and returned, the variable's name declared on the guide, which `complete` cannot read without building the guide on every run, a fixed variable name with an opt-out for a tool that keeps its own, filtering every hidden candidate, a `completion` help topic, a caret requirement on clap_complete, a usage log that skips only when the `complete` feature is on.

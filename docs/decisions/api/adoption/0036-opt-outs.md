@@ -1,13 +1,39 @@
 # ADR-0036. Opt-outs
 
-- crumbkit's conventions are the defaults, and a tool can opt out of a rule with a stated reason, so crumbkit meets a tool where it is. An opt-out is an [`Allow`](../../../../crates/crumbkit-test/src/allow.rs) that names one `Rule`, the command it covers with every command below it, and the reason. Each check that takes opt-outs reads only those of its own rules, so a tool keeps one list and passes it to every such check.
-- An opt-out skips one rule, or with `Allow::example` one example, or with `Allow::untwinned` the twin of one code (ADR-0005). The other rules of the same check still apply to the command.
-- A check fails on an opt-out of its rules that names no command or excuses no problem, so the opt-out of a removed or fixed command cannot stay in a tool's list.
-- A command that keeps the shape of an existing document declares its document with `Document::without_envelope`, because `finish` and `schemas show` read only the `Document`, and its `Allow` of `Rule::Envelope` carries the reason.
-- A resource whose name is not lowercase dashed words opts out of `Rule::ResourceName` (`grammar/resource-name`) with a reason, because an agent that types crumbkit's spelling cannot reach it. A tool that declares `Guide::dashed_forms` needs the opt-out only for a resource that answers to no dashed form, such as `2books` (ADR-0015, ADR-0056).
-- The rule that reserves `help` has no opt-out, because crumbkit's `parse` answers `help` itself and an opt-out could not change that. A tool that keeps its own `--dry-run` opts out of `Rule::DryRun` with a reason (ADR-0039). A tool that names a person's aliases on its root's help opts out of `Rule::PersonalAliases` (ADR-0027). A tool that can ask a question and has no `--no-input` from `NoInput` opts out of `Rule::NoInput` at its root (ADR-0043). A tool whose failures no test can provoke, or that prints its failures in a failure form, opts out of `Rule::Recoveries` (`recoveries/follow`), and a command that a recovery runs and that fails on purpose with a code its chain already had opts out of `Rule::SameCode` (`recoveries/same-code`). A recovery that takes a placeholder's value from a field of its failure, in place of carrying it with `Call::value`, needs an opt-out of `Rule::FieldValue` (`recoveries/field-value`) that names the failing command, and so does a failure with a declared code that offers no `run`, `retry` or `hint` step, which opts out of `Rule::NextStep` (`recoveries/next-step`) (ADR-0053). A declared code that no single word of a command line causes, such as a failure that only a broken file provokes, has an opt-out made with `Allow::untwinned` from `Rule::NoTwin` (`twins/no-twin`). The opt-out names the failing line in place of a command path, `check_twins` runs that line, and `check_opt_outs` reports it by that line (ADR-0005).
-- A tool pins its opt-outs in a report with [`check_opt_outs`](../../../../crates/crumbkit-test/src/opt_outs.rs), which compares a text and a JSON golden file. Each entry names the rule, the command line, the reason and what skipping the rule costs an agent, and the report also lists each help or path budget that the tool set (ADR-0025) and each guide setting that departs from the conventions with a reason, such as an output budget, a JSON layout or terminal detection turned off (ADR-0046, ADR-0052, ADR-0049), so a reviewer sees a new opt-out as a change to the golden files and an agent reads the JSON to learn where the tool departs from crumbkit's conventions. After the opt-outs, the report lists the tool's declarations under the customisations, with no reason and no cost: the failure form, each code rename, each exit that lists one of crumbkit's codes, each document whose name is not its command's path, each leaf that passes on an exit code, each leaf that declares refusal alternatives, and the dashed-forms declaration with each command named in another style and the dashed form it also answers to (ADR-0056). The section is left out when the tool declares nothing, and the JSON holds it as a `customisations` array beside `data`. The report is a test check only, because a tool's opt-outs live in its tests. Every other check runs without it, so a tool turns checks on one at a time and adds the report when it wants its opt-outs pinned.
-- The checks without opt-outs keep their reasons: a tool declares its verbs to `check_grammar`, a tool that wants clap's list for a command leaves the command out of its guide (ADR-0021), `check_mounts` exists to keep crumbkit's commands at fixed paths (ADR-0035), `check_codes` keeps failure codes unique, and the name rule of a failure's fields has no opt-out, because the failure document's schema promises every reader that rule (ADR-0007).
-- A tool that declares the exit code 1 or 2 gives it a second meaning beside crumbkit's, and opts out of `Rule::SharedExit` (`exit-codes/shared-exit`) for the commands that return it (ADR-0037). A rename of one of crumbkit's codes and an exit that lists one of crumbkit's codes are declarations, which need no opt-out (ADR-0056).
+- Date: 2026-10-12
+- Status: accepted
+
+## Context
+
+crumbkit's checks enforce conventions that an existing tool may not meet
+on day one, and some tools have a good reason to depart from one rule for
+one command. A blanket exemption would hide every other problem of that
+command, and a forgotten exemption would outlive the reason for it.
+
+## Decision
+
+- A tool opted out of one rule for one command and the commands below
+  it, with a reason, through an `Allow`. The other rules of the check still
+  apply, and a tool keeps one list that it passes to every check.
+- A check failed on an opt-out that names no command or excuses no
+  problem, so the opt-out of a removed or fixed command cannot stay in a
+  tool's list.
+- Some rules got no opt-out, each for its own reason. `help` stays
+  reserved because `parse` answers it itself, crumbkit's commands stay at
+  fixed paths, failure codes stay unique, and the field-name rule stays
+  because the failure document's schema promises it to every reader.
+- `check_opt_outs` pinned the opt-outs, budgets and departing guide
+  settings in a text and a JSON golden file, with what each costs an
+  agent, so a reviewer sees a new opt-out in review and an agent can read
+  where the tool departs from crumbkit's conventions. Declarations are
+  listed after them under the customisations, with no reason and no cost.
+  The report is a test check only, because a tool's opt-outs live in its
+  tests.
+
+## Consequences
+
+A tool can turn the checks on one at a time and add the report when it
+wants its opt-outs pinned. `docs/behaviour/adoption/opt-outs.md` lists
+the current rules that take opt-outs.
 
 Considered: exemptions as bare command paths, an exemption that skips every rule of a check, one constructor per rule in place of a public `Rule` enum, an opt-out that covers its command alone, an opt-out from the reserved word `help`, a `cargo crumbkit` command that prints the report, declarations left out of the report, declarations listed among the opt-outs with a reason.

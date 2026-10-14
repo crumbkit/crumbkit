@@ -1,25 +1,76 @@
 # ADR-0015. Lightweight adoption
 
-- crumbkit is light to adopt in concepts and in dependencies. A tool keeps its own clap derive types and its own `main`, and each part works on its own, so a tool adopts only the parts it wants. The default build depends on few crates, which `Cargo.toml` lists with a reason for each (ADR-0003). It enables clap's `help` feature, so a tool built with crumbkit always has `-h` and `--help`.
-- Each part follows an existing convention: `Failure` extends `std::error::Error`, `Output` is added with clap's `#[command(flatten)]`, results derive `Serialize` and `JsonSchema` and implement `Row` to name their table columns, and each crumbkit-test check is a free function that a tool calls from an ordinary `#[test]`, as it calls clap's `Command::debug_assert`. Each argument type that crumbkit gives a tool to flatten or to take as a command's arguments, such as `Output`, `Page` or `CommandsList`, clears the command's about and long about, because clap otherwise copies the type's rustdoc into the help of a command that has no doc comment of its own. A derived command sets its own doc comment after the types it flattens, so it keeps it, and a command built by hand sets its about after it adds such a type.
-- crumbkit has no `run` one-liner, because a hand-wired `main` is a few lines of glue: `parse`, a `match` on its result, `Output::set_command` and one `finish` per leaf. A `run` would need an accessor that tells it where the tool's `Output` is, and it could not call crumbkit-aliases, which depends on crumbkit. A `run` could not start the usage log either, because crumbkit-usage also depends on crumbkit.
-- A tool's `main` parses with [`parse`](../../../../crates/crumbkit/src/parse.rs) in place of clap's `Cli::parse`. `parse` returns the exit code instead of calling `process::exit`, so every invocation ends by returning from `main`, and tests run in memory through `parse_to`.
-- Help pages and the `Call`s in `Next:` lines and recoveries are rendered from the `clap::Command` a tool builds at runtime, which may hide or remove commands, and so will MCP tool lists, which arrive in a later release. A tool's `main` passes the command that `parse` returned to `Output::set_command` itself, once. A debug build of a tool that forgets the call writes a `warning: crumbkit` line from `finish` and `stream`, and crumbkit-test's `check_examples` and `check_recoveries` fail on it, because without a command every `Next:` line and `Run` recovery is left out. A tool cannot be made unable to forget the call without a trait that finds `Output` or a `finish` that takes `Parsed`, and each changes every handler. `set_command` keeps the tree as parsing left it, with the root and the typed path built. `finish` builds only the branch below the root that a call names, or the whole tree for a call to the root, and the commands that read the whole tree build it through `Output::command`. So `finish` and those commands take `&mut Output`, a handler that reads the tree runs before `finish`, and the work of a run grows with the command typed. A `Call` that does not resolve against that command is left out or printed as `Recovery::None` (ADR-0001), and a refusal leaves out each command and flag that clap suggests and the tool hid, so crumbkit prints a hidden command or flag only where the caller typed it.
-- A command sets its own output defaults on its arguments type, such as the default limit of the `Page` it flattens. `parse` takes no defaults for a branch. A separate function that runs before parsing will set them by command path, with the nearest entry winning, and it arrives in a later release.
-- A command that refuses the caller returns an ordinary `Failure`. crumbkit-test and the golden files check the full tree.
-- crumbkit-test checks a command tree with free functions that each take a `clap::Command` and their settings as plain arguments, and report every problem at once with the path of each command. The rustdoc of each check lists what it fails on.
-- `check_names`, `check_grammar`, `check_listings`, `check_filters` and the help checks with `Pages::clap` run on a tool that parses with clap alone, so a tool can try crumbkit-test before it adopts crumbkit's runtime. crumbkit-test re-exports `Guide`, and such a tool passes `Guide::new()`, which declares nothing, so it needs no crumbkit dependency of its own. [`Pages::clap`](../../../../crates/crumbkit-test/src/pages.rs) renders each help page in memory as clap prints it to a pipe, without crumbkit's lines and without a guide. clap's `wrap_help` wraps such a page at the test's terminal width unless the tool fixes `term_width`, and clap has no public getter for that width, so crumbkit-test cannot fix it for the tool. A tool without examples budgets its paths with `PathBudgets::help_only`, which reads no golden files, and `check_path_weights` fails when the guide of its pages gives a command examples, because their output would go uncounted. crumbkit-test stays one crate that depends on crumbkit, because the dependency reaches only the tool's tests, and a feature that left crumbkit out would need `cfg` attributes across most of the crate's modules to save a few crates.
-- [`check_names`](../../../../crates/crumbkit-test/src/names.rs) fails on every second name that help shows. Help is what agents read and copy, so each visible alias costs help tokens and teaches a second spelling, while a hidden alias costs neither and lets a retired name keep working for a while or a common wrong guess parse. crumbkit's `Next:` lines and recoveries always print the real name, and a refusal replaces each flag or subcommand that clap suggests by a hidden alias with the real name it belongs to, or leaves the suggestion out when that real item is hidden.
-- [`check_grammar`](../../../../crates/crumbkit-test/src/grammar.rs) requires the form `<tool> <resource> <verb>`. It reserves `help` for asking for help (ADR-0023), and `check_effects` checks `--dry-run` (ADR-0039). It checks only a name's form, so review checks that each resource is plural. A leaf directly under the root passes when the tool opts out of `Rule::RootLeaf` for it with a reason (ADR-0036). Such a leaf adds a line to the root help, its name can collide with a resource that the tool adds later, and an agent cannot guess its siblings from the noun and verb pattern.
-- A tool that declares `Guide::dashed_forms` lets each command named in another style, such as `reading_lists` or `ReadingLists`, also answer to its dashed form, such as `reading-lists`, so an agent that types crumbkit's spelling reaches it and the tool keeps the name its users know (ADR-0056). The declaration is opt-in, because a tool that does not want a second spelling of its commands keeps clap's refusal of every unknown word. Help, the guide and completion candidates show only the tool's own name, because a second visible spelling costs help tokens as a visible alias does.
-- The declaration lives on the guide, and `parse`, `complete`, `complete_with`, `complete_with_words`, `complete_to` and `command_path` all take the guide, so every entry point reads the same declaration. clap's `Command` has no stable place for a tool's own setting, and a separate argument to completion could disagree with the guide that `parse` reads.
-- With the declaration, `parse` replaces each typed dashed form with the command's own name before anything else reads the words, so clap, help, refusals, the usage log and the parsed words all name the command as the tool does. Completion and `command_path` find the command through the same lookup. The rewrite costs one walk of the typed words, while a hidden clap alias would have to be added to every command of the tree on every run, so the work would grow with the tree instead of the typed command.
-- Without the declaration, `check_grammar` fails every resource whose name is not lowercase dashed words unless the tool opts out of `Rule::ResourceName` with a reason. With it, `check_grammar` fails only a resource whose name maps to no dashed form, such as `2books`, or whose form is `help` or is taken by another command beside it, because the agent's spelling then reaches nothing, and such a resource still needs the opt-out. Verbs follow the same mapping, and a verb whose form another command takes has no opt-out, because the tool declares its verbs.
-- [`check_listings`](../../../../crates/crumbkit-test/src/listings.rs) requires `Page`'s flags on every `list` command and a positional argument that takes many ids on every `show` command. [`check_filters`](../../../../crates/crumbkit-test/src/filters.rs) requires an option that accepts many values to accept both repeats and commas and to take one value per use, because an option that takes several values per use swallows the positional words after it. Review checks that an option that takes one value refuses a second, because clap has no documented getter for `Command::args_override_self` or for an `Arg::overrides_with` that names the argument itself, and a getter in a later clap release would let `check_filters` cover the rule.
-- `check_guide` takes no opt-outs, because a tool that wants clap's list for a command leaves that command out of its guide (ADR-0021), and neither do the help checks, which take budgets (ADR-0025). Each other tree check takes the tool's opt-outs, each of which names one rule, a command and a reason, and fails on an opt-out of its rules that names no command or excuses no problem (ADR-0036). The tree checks walk the tree as the tool built it, without `Command::build`, so they never see clap's generated `help` subcommand or its `--help` and `--version` flags.
-- Every function that takes a `clap::Command` works on any node of the tree, so a crate or a team can apply crumbkit and crumbkit-test to its own subtree. A tool adds `commands list` at the root, because it lists branches of the tree that `main` passes to `Output::set_command` (ADR-0026). crumbkit's own commands sit at fixed paths below the tool, `commands list`, `schemas list`, `schemas show`, `self usage`, `self figures list` and `aliases list`, so an agent runs them by the same words in every tool, and crumbkit-test's `check_mounts` fails on one of them at another path (ADR-0035). A tool with personal aliases passes its arguments through `crumbkit_aliases::expand` before `parse_from` (ADR-0027).
-- A tool that keeps the usage log depends on crumbkit-usage and calls `crumbkit_usage::start()` first in `main`, and changes nothing else (ADR-0029). A tool with shell completion turns on the `complete` feature and calls `crumbkit::complete` before `start`, with the function that builds the command it parses against (ADR-0048). The trace context and the `tracing` feature need no wiring beyond that and a subscriber the tool installs (ADR-0030). A tool lets a person pick missing values with one `Guide::picker` line, a `Leaf::choices` line for each argument whose values come from a source, and `NoInput` flattened at its root (ADR-0043).
-- The first segment of a code names the component that owns the code, so a crate keeps its codes in whatever binary includes it. In a tool built from one crate, the component and the tool have the same name.
-- `show` accepts many ids and returns a `Batch` (ADR-0016). [`fetch_each`](../../../../crates/crumbkit/src/fetch.rs) runs a per-id lookup on a bounded number of scoped threads for a tool whose backend has no batch lookup. crumbkit has no default worker count, so each tool chooses one. An async tool uses its own bounded stream, because `fetch_each` blocks the calling thread, and a tool that needs rate limits or retries writes its own loop.
+- Date: 2026-10-07
+- Status: accepted
+
+## Context
+
+crumbkit wants tools to take up its conventions, and a tool with an
+existing clap command tree and `main` will not rewrite them to do so. Each
+concept and dependency that crumbkit asks a tool to take is a reason not
+to adopt it. The conventions also had to cover what agents read: help,
+command names, recoveries and refusals.
+
+## Decision
+
+- Each part of crumbkit worked on its own and followed an existing
+  convention, so a tool keeps its clap derive types and its `main` and
+  adopts only the parts it wants. `Failure` extends `std::error::Error`,
+  `Output` is flattened with clap, results derive `Serialize` and
+  `JsonSchema`, and each crumbkit-test check is a free function called
+  from an ordinary `#[test]`.
+- crumbkit's argument types clear the command's about, because clap
+  otherwise copies the type's rustdoc into the help of a command that has
+  no doc comment.
+- crumbkit offered no `run` one-liner, because a hand-wired `main` is a
+  few lines and a `run` could not call crumbkit-aliases. While the usage
+  log was a crumbkit feature, a `run` that started it would have let
+  feature unification start the log in tools that never asked for it.
+  Since the log moved to the crumbkit-usage crate, a `run` cannot start
+  it, because crumbkit-usage depends on crumbkit.
+- `parse` returned the exit code instead of exiting, so every run ends by
+  returning from `main` and tests run in memory.
+- Help, `Next:` lines and recoveries were rendered from the command tree
+  that the tool builds at run time, which may hide commands, and the tool
+  passes that tree to `Output::set_command` itself. A forgotten call
+  shows as a debug-build warning that crumbkit-test's checks fail on,
+  because the alternatives that make the call impossible to forget change
+  every handler. `finish` builds only the branch that a call names, so the
+  work of a run grows with the command typed. A hidden command or flag
+  prints only where the caller typed it.
+- crumbkit-test's tree checks were free functions that take a
+  `clap::Command` and plain settings and report every problem at once.
+  Several run on a tool that parses with clap alone, so a tool can try
+  crumbkit-test before adopting crumbkit's runtime.
+- `check_names` failed on every second name that help shows, because each
+  visible alias costs help tokens and teaches a second spelling. A hidden
+  alias costs neither.
+- `check_grammar` required `<tool> <resource> <verb>`, so an agent can
+  guess a command's siblings. A leaf under the root needs an opt-out with
+  a reason.
+- `Guide::dashed_forms` let a command named in another style also answer
+  to its dashed form, so an agent that types crumbkit's spelling reaches
+  it and the tool keeps the name its users know. It is opt-in, because
+  some tools want clap's refusal of every unknown word. `parse` rewrites
+  the typed word before anything reads it, because adding a hidden alias
+  to every command would make each run's work grow with the tree. The
+  declaration sits on the guide, so every entry point reads the same
+  setting.
+- `check_listings` and `check_filters` pinned the flags of `list` and
+  `show` and the form of multi-value options, because an option that takes
+  several values per use swallows the positional words after it.
+- crumbkit's own commands sat at fixed paths, so an agent runs them by
+  the same words in every tool.
+- The first segment of a code names the component that owns it, so a
+  crate keeps its codes in any binary that includes it.
+- `fetch_each` ran per-id lookups on a bounded number of threads, with no
+  default worker count, for tools whose backend has no batch lookup.
+
+## Consequences
+
+Every function that takes a `clap::Command` works on any node, so a team
+can apply crumbkit to its own subtree. `docs/behaviour/adoption/README.md`
+and `docs/behaviour/checks/README.md` describe the current adoption steps
+and checks.
 
 Considered: a hand-written `clap::Args` implementation for each argument type, crumbkit's rendered pages for a tool that parses with clap alone, a switch on `Pages::rendered` that drops crumbkit's lines, a fixed width of 100 columns for clap's pages, an `Option<Guide>` argument on the checks that read only part of a guide, a crumbkit feature or a separate crate for the checks that need no guide, an `App` runner that owns dispatch, a `crumbkit::run` one-liner, a required derive macro, rendering from the compile-time tree, a trait with a provided `show_many`, an async runtime for concurrent lookups, a default worker count for `fetch_each`, builder-style tree checks, one grammar check with per-rule exemptions, no short flags, only `-h` and `-V` as short flags, a fixed verb list with exemptions, a plural check, a hidden getter for `args_override_self`, a hidden clap alias for each command's dashed form added when the tree is built, an opt-out with a reason for every name in another style, dashed forms on for every tool, the dashed-forms setting carried on the clap `Command`, a separate dashed-forms argument to `complete_with`, a parse probe with the option given twice, no aliases at all, hidden ones included, a trait that finds `Output` inside the tool's type, `finish` taking `Parsed`, a warning about a missing `set_command` in release builds, `parse` taking `&mut Command`, `parse` returning `Output` beside the tool's type, `process::exit` inside `parse`, building the whole tree in `set_command`, a lock inside `Output` that builds the tree on first read.

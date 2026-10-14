@@ -1,6 +1,6 @@
 # Working on crumbkit
 
-Start at [docs/README.md](docs/README.md) to find where something is and why.
+Start at [docs/README.md](docs/README.md) to find anything and why.
 
 A change is ready when these pass:
 
@@ -22,16 +22,16 @@ cargo shear
 zizmor .
 ```
 
-- Follow `docs/standards/`. Before changing a choice that `docs/decisions/`
-  records, edit that record in place.
-- Write the test first, and name it as a sentence.
-- Give each fact one home and link to it (ADR-0013).
-- Give every new dependency a reason in `Cargo.toml` (ADR-0003).
+- Follow `docs/standards/`. `docs/` and rustdoc describe crumbkit now.
+- New Unreleased changelog entries need a trailer: `Docs-Swept: <id>`
+  or `Docs-Owed: <id>; from: <old>; to: <new>; docs: <paths>` (DOCS-7).
+- Dated decision records are frozen except Status and Children (ADR-0017).
+- Write the test first, named as a sentence.
+- Give each new dependency a reason in `Cargo.toml` (ADR-0003).
 
 ## Writing
 
 Docs, comments and commit messages use plain declarative sentences with a
 named subject. Avoid "not X but Y", fragments, metaphors and closing
 flourishes. A stated limit says what it counts and what happens when it is
-hit. Docs describe the project as it is now. Commit messages describe changed
-behaviour.
+hit. Commit messages describe changed behaviour.

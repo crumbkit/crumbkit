@@ -118,3 +118,57 @@ fn files_outside_the_decisions_tree_need_no_record_title() {
 
     assert_eq!(check(&files), []);
 }
+
+fn superseded(path: &str, number: u16, by: u16) -> File {
+    file(
+        path,
+        &format!(
+            "# ADR-{number:04}. A decision\n\n- Date: 2026-10-14\n\
+             - Status: superseded by ADR-{by:04}\n\nThe text.\n"
+        ),
+    )
+}
+
+#[test]
+fn a_citation_of_a_superseded_record_outside_the_records_is_reported() {
+    let files = [
+        superseded("docs/decisions/0001-errors.md", 1, 2),
+        record("docs/decisions/0002-errors.md", 2),
+        file("crates/crumbkit/src/lib.rs", &format!("// {}", cite(1))),
+    ];
+
+    assert_eq!(
+        check(&files),
+        [Violation::SupersededCitation {
+            path: "crates/crumbkit/src/lib.rs".to_owned(),
+            number: 1,
+        }]
+    );
+}
+
+#[test]
+fn a_record_may_cite_a_superseded_record() {
+    let files = [
+        superseded("docs/decisions/0001-errors.md", 1, 2),
+        file(
+            "docs/decisions/0002-errors.md",
+            &format!("# ADR-{:04}. Errors again\n\n{}", 2, cite(1)),
+        ),
+    ];
+
+    assert_eq!(check(&files), []);
+}
+
+#[test]
+fn a_citation_of_an_accepted_record_outside_the_records_passes() {
+    let accepted = format!(
+        "# ADR-{:04}. A decision\n\n- Date: 2026-10-14\n- Status: accepted\n",
+        1
+    );
+    let files = [
+        file("docs/decisions/0001-errors.md", &accepted),
+        file("README.md", &cite(1)),
+    ];
+
+    assert_eq!(check(&files), []);
+}

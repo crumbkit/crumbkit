@@ -57,8 +57,9 @@ matches the tool's help.
 ## Where to read more
 
 - `cargo crumbkit weigh --help` describes each column.
-- [ADR-0033] records the design of `weigh`, and [ADR-0044] records the
-  command reference.
+- The [weigh docs] and the [command reference docs] describe `weigh` and
+  the command reference, and [ADR-0033] and [ADR-0044] record their
+  reasons.
 
 Licensed under either of Apache License, Version 2.0 or MIT license at your
 option.
@@ -68,3 +69,5 @@ option.
 [ADR-0033]: ../../docs/decisions/api/help/0033-weigh.md
 [shelf's reference]: ../../examples/shelf/docs/commands.md
 [ADR-0044]: ../../docs/decisions/api/help/0044-command-reference.md
+[weigh docs]: ../../docs/behaviour/help/weight.md
+[command reference docs]: ../../docs/behaviour/help/reference.md

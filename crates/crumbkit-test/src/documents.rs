@@ -33,7 +33,7 @@ pub(crate) const MOUNTS: [(&str, &[&str]); 6] = [
 /// the tool built it with `Document::without_envelope`, unless an [`Allow`]
 /// of [`Rule::Envelope`] with a stated reason covers the command, so
 /// [`check_opt_outs`](crate::check_opt_outs) reports what printing the
-/// document unwrapped costs an agent (ADR-0036). A command that prints such
+/// document unwrapped costs an agent ([opt-outs docs]). A command that prints such
 /// a document without a leaf that declares it escapes the check, and review
 /// covers it.
 ///
@@ -64,7 +64,7 @@ pub(crate) const MOUNTS: [(&str, &[&str]); 6] = [
 /// problem in the message starts on a new line and names the leaf's
 /// command line, the id, and the name the rule gives.
 ///
-/// [ADR-0036]: https://github.com/crumbkit/crumbkit/blob/main/docs/decisions/api/adoption/0036-opt-outs.md
+/// [opt-outs docs]: https://github.com/crumbkit/crumbkit/blob/main/docs/behaviour/adoption/opt-outs.md
 pub fn check_document_ids(command: &Command, guide: &Guide, allow: &[Allow]) {
     let mut allowances = Allowances::new(allow, &[Rule::Envelope]);
     let mut problems = Vec::new();

@@ -15,7 +15,7 @@ pub(crate) use allowances::Allowances;
 /// command and every command below it, with the tool's reason.
 ///
 /// A tool keeps its opt-outs in one constant and passes it to every check
-/// that takes opt-outs ([ADR-0036]). Each check reads only the opt-outs of
+/// that takes opt-outs ([opt-outs docs]). Each check reads only the opt-outs of
 /// its own rules:
 ///
 /// ```
@@ -33,7 +33,7 @@ pub(crate) use allowances::Allowances;
 /// opt-outs, with their reasons and costs, in golden files.
 ///
 /// [`check_opt_outs`]: crate::check_opt_outs
-/// [ADR-0036]: https://github.com/crumbkit/crumbkit/blob/main/docs/decisions/api/adoption/0036-opt-outs.md
+/// [opt-outs docs]: https://github.com/crumbkit/crumbkit/blob/main/docs/behaviour/adoption/opt-outs.md
 #[derive(Clone, Copy, Debug)]
 pub struct Allow {
     /// The rule that the tool skips.

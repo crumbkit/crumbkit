@@ -61,8 +61,8 @@ These checks read the tool's guide, failure codes or crumbkit's output:
 - Example output: [`check_examples`] with [`Examples`], and
   [`example_golden_name`]. `Examples` sets each run's working directory or
   fixture, and the values replaced with placeholders.
-- The output budget: [`check_output_budget`] ([ADR-0046]).
-- The command reference: [`check_command_reference`] ([ADR-0044]).
+- The output budget: [`check_output_budget`] ([output budget docs]).
+- The command reference: [`check_command_reference`] ([command reference docs]).
 - Recoveries: [`check_recoveries`] with [`Recoveries`], [`check_twin`], and
   [`check_twins`] with [`Twins`]. [`RuntimeFailing`] builds command lines
   read at run time, and a [`FailureReader`] reads failures printed in a
@@ -73,9 +73,10 @@ These checks read the tool's guide, failure codes or crumbkit's output:
   passes to the other checks, with their reasons and costs, in golden
   files.
 
-[ADR-0025] records why these checks exist, [ADR-0036] records opt-outs,
-[ADR-0035] records the document checks, and [ADR-0004] records how golden
-files work.
+The [checks docs] describe the checks, the [opt-outs docs] describe
+opt-outs, the [schema commands docs] describe the document checks, and the
+[golden files docs] describe how golden files work. [ADR-0025] records why
+these checks exist.
 
 Licensed under either of Apache License, Version 2.0 or MIT license at your
 option.
@@ -117,8 +118,9 @@ option.
 [`check_document_ids`]: src/documents.rs
 [`check_mounts`]: src/documents.rs
 [ADR-0025]: ../../docs/decisions/api/help/0025-help-checks.md
-[ADR-0035]: ../../docs/decisions/api/schemas/0035-schema-commands.md
-[ADR-0036]: ../../docs/decisions/api/adoption/0036-opt-outs.md
-[ADR-0004]: ../../docs/decisions/testing/0004-golden-and-snapshot-tests.md
-[ADR-0044]: ../../docs/decisions/api/help/0044-command-reference.md
-[ADR-0046]: ../../docs/decisions/api/output/0046-output-budget.md
+[output budget docs]: ../../docs/behaviour/output/budget/README.md
+[command reference docs]: ../../docs/behaviour/help/reference.md
+[checks docs]: ../../docs/behaviour/checks/README.md
+[opt-outs docs]: ../../docs/behaviour/adoption/opt-outs.md
+[schema commands docs]: ../../docs/behaviour/schemas/commands.md
+[golden files docs]: ../../docs/behaviour/checks/golden-files.md

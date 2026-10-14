@@ -1,14 +1,40 @@
 # ADR-0047. Write guards
 
-- An agent that retries a write, or that writes while another caller writes, needs to know two more things than the effects of ADR-0039 tell it: whether the command replaces data that another caller may have changed, and what a failed write of many items leaves behind. A leaf declares both on its [`Effects`](../../../../crates/crumbkit/src/help/effects.rs), beside the MCP properties.
-- `Effects::replacing` is a constructor for a command that replaces existing data, such as one that sets a field or saves a whole file. It is destructive and not idempotent, because a second run can overwrite a change made between the two runs. `Effects::all_or_none` declares that a write of many items changes every item or none, and `Effects::per_item` declares that it changes each item it can, reports a result for each, and exits with code 1 when any item fails.
-- Help prints a `Writes:` line after the `Effects:` line when a command declares a guard or takes crumbkit's `--expect`, such as `Writes: replaces existing data; --expect <VERSION> fails with a conflict when the data changed.` A replacing command without `--expect` says `without a version check`. `commands list` writes the guards under `writes` as an object with `replaces`, `expect` and `items`, and writes `null` for a read-only command or one without guards, so the row keeps its `v1` id (ADR-0026). The Markdown reference prints the same line (ADR-0044).
-- A command that replaces data flattens [`Expect`](../../../../crates/crumbkit/src/expect.rs), which adds `--expect <VERSION>` with the clap id `crumbkit_expect`. The tool decides what a version is, such as a revision number, and prints it from the command that reads the target. `--expect none` requires that the target does not exist, so the word `none` is reserved. The option is optional, and the option refuses an empty value as a refused command line.
-- The handler passes the target's current version, or `None` when it does not exist, to `Expect::check` before it changes anything. A mismatch fails with `crumbkit::version::conflict`, or the tool's rename of it (ADR-0056), which exits with code 1 unless the guide lists the code for another, names the `expected` and `current` versions as fields, and recovers by running the command that the tool passes as the read call. A tool that compares versions in its own way calls `Expect::conflict` directly. The check runs before `Output::confirm`, so a conflict comes before the question, and a replacing command still takes `--yes` because it is destructive.
-- Help and `commands list` read whether a command takes `--expect` from the clap tree by the id `crumbkit_expect`, so a leaf declares nothing more for it.
-- crumbkit-test's [`check_effects`](../../../../crates/crumbkit-test/src/effects.rs) fails a replacing leaf without crumbkit's `--expect` unless an opt-out from `Rule::Expect` (`effects/expect`) covers it, and a command with its own `--expect` unless an opt-out from `Rule::ExpectFlag` (`effects/expect-flag`) covers it (ADR-0036).
-- `check_effects` fails a leaf that writes, takes many values in a visible positional argument, and declares neither `all_or_none` nor `per_item`, unless an opt-out from `Rule::Items` (`effects/items`) covers it. It reads a positional argument as the items because options with many values more often filter or describe the change.
-- `check_effects` fails a read-only leaf that takes crumbkit's `--expect` or declares how its items end, and a `per_item` leaf whose document is not a `Batch`, a `Prose` or a stream, because those are the documents that report a failure for each item. `Leaf::shape` returns the document's `Shape` for this rule. These rules have no opt-out.
-- shelf's `books remove` declares `all_or_none`. reading's `entries set` takes `--expect` with the entry's current title as its version, and each list's `edit` is replacing and opts out of `Rule::Expect`, because the editor saves the whole file.
+- Date: 2026-10-12
+- Status: accepted
+
+## Context
+
+An agent that retries a write, or that writes while another caller
+writes, needs to know two things that the effects of ADR-0039 do not say:
+whether the command replaces data that another caller may have changed,
+and what a failed write of many items leaves behind.
+
+## Decision
+
+- A leaf declared both on its `Effects`. `Effects::replacing` marks a
+  command that replaces existing data as destructive and not idempotent,
+  because a second run can overwrite a change made between the two runs.
+  `all_or_none` and `per_item` say what a failed write of many items
+  leaves.
+- Help, `commands list` and the Markdown reference printed the guards.
+  `commands list` holds them under `writes`, with `null` when there are
+  none, so the row keeps its `v1` id.
+- An `Expect` argument added `--expect <VERSION>`, with `none` reserved
+  for a target that must not exist. The tool decides what a version is.
+  `Expect::check` runs before `confirm`, so a conflict comes before the
+  question, and a conflict fails with `crumbkit::version::conflict`,
+  whose recovery runs the tool's read command.
+- `check_effects` required `--expect` on a replacing leaf and a declared
+  item guard on a writing leaf that takes many positional values, each
+  with an opt-out. It reads a positional argument as the items, because
+  options with many values more often filter or describe the change. The
+  rules that a read-only leaf takes no guard and a `per_item` leaf prints
+  a document that reports each item have no opt-out.
+
+## Consequences
+
+A replacing command still takes `--yes`, because it is destructive.
+`docs/behaviour/effects/write-guards.md` describes the current behaviour.
 
 Considered: a separate guards type beside `Effects`, guards as MCP annotations of their own, a `takes_expect` declaration on the leaf, a required `--expect`, an `If-Match` style header name for the flag, an `expect` reason under the `confirmation` area, a `writes` field only in a `v2` row, `--yes` skipped when `--expect` is given, no rule for positional arguments with many values.

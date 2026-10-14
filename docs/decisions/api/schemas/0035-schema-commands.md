@@ -1,15 +1,46 @@
 # ADR-0035. Schema commands
 
-- `<tool> schemas list` lists the JSON documents that a tool prints, and `<tool> schemas show <ID>...` prints the JSON Schema of each, so an agent learns the shape of a document from the tool it runs ([`schemas`](../../../../crates/crumbkit/src/schemas.rs)). The tool adds a `schemas` group whose `list` and `show` subcommands take `SchemasList` and `SchemasShow`, and its handlers pass `schemas::list` and `schemas::show` to `finish` with `SCHEMAS_LIST` and `SCHEMAS_SHOW`. shelf shows the wiring.
-- The tool's `Guide` is the source of the documents. Each leaf that declares its document with `Leaf::document` or `Leaf::stream` adds that document, and crumbkit adds `crumbkit/failure/v1` first, because every command prints it when it fails with `--json`. A leaf whose path is hidden in the command tree that `main` passed to `Output::set_command` adds nothing, so the commands list only what help shows (ADR-0015). Two leaves that declare one id give one row that names both command lines.
-- `Document::new` takes a one-line description, which `schemas list` prints beside each id and which becomes the schema's `description`. A required argument means every document has one, and the compiler finds a document without one.
-- `schemas::document_schema` builds the whole JSON Schema of a document from its id and its result type: the `schema` constant, `data`, and `total` and `truncated`, `summary` or `failures` by the result's shape (ADR-0007, ADR-0016). The `data` of a prose result is the schema of its value. `schemas show` and the tests of the checked-in schema files call the same function, so the served schema and the checked-in file cannot drift. A batch's `failures` entries use the failure document's schema without its `schema` property.
-- `schemas show` takes 1 to 100 ids, as every `show` command does, and returns a `Batch` (ADR-0016). An id that names no document adds a failure with the code `crumbkit::schemas::not_found`, whose recovery runs `schemas list`. Text output prints each schema as compact JSON in one table cell, so a caller who wants it pretty-printed uses `--json`.
-- Both commands fail with `crumbkit::schemas::unavailable` and no next step when the tool's `main` has not passed its command to `Output::set_command`, because without the tree they cannot tell which commands are visible. crumbkit fixes both codes, as it fixes those of `commands list` (ADR-0026).
-- The name of the document that a leaf prints is the leaf's path below the tool joined with `-`, so `shelf books list` prints `shelf/books-list/v1` and `schemas list` prints `crumbkit/schemas-list/v1`. An agent can then predict a document's id from the command it ran, and the command from an id. A cargo subcommand's path starts below its own name, so `cargo crumbkit weigh` prints `crumbkit/weigh/v1`. The failure document and the usage record are printed by no single command, so their names are `failure` and `usage`. The name is a default. A document's id is the tool's own name, so a tool that gives a document another name declares it, and needs no opt-out (ADR-0056). crumbkit-test's [`check_opt_outs`](../../../../crates/crumbkit-test/src/opt_outs.rs) lists each such document as a `document-name` customisation beside the name that its command's path gives, and leaves out crumbkit's documents at fixed paths, which `check_mounts` checks.
-- crumbkit's own commands sit at fixed paths below the tool: `commands list`, `schemas list`, `schemas show`, `self usage`, `self figures list` and `aliases list`. An agent that knows one crumbkit tool then runs them in every other by the same words. crumbkit-test's [`check_mounts`](../../../../crates/crumbkit-test/src/documents.rs) fails on a leaf that declares one of their documents at another path and names the path it belongs at. A command tree does not record the Rust type of a command's arguments, so the check knows crumbkit's commands by the document their leaf declares, and review checks a command that takes crumbkit's arguments type without such a leaf. The id check skips these documents, so each failure names one fix.
-- crumbkit-test's [`check_schema_goldens`](../../../../crates/crumbkit-test/src/schemas.rs) compares the schema of each document that `schemas show` serves with a golden file named after its id, such as `shelf-books-list-v1.json`, so a change to a document's shape shows in review, where ADR-0007 decides whether it needs a new version. It skips the documents of the component `crumbkit`, whose schemas crumbkit's own tests pin. It also fails on two leaves that declare one id with different schemas, because `schemas show` serves only the first. It fails on two ids whose golden files have one name, such as `shelf/books-list/v1` and `shelf-books/list/v1`, which a component with dashes allows, so the tool renames one of the ids and the golden file names stay as they are.
-- A tool declares the files that users write for it, such as a settings file, as `FileFormat`s with `Guide::documents`. `schemas list` lists them after the leaves' documents with no commands, and `schemas show` serves the schema of the file's type with the id as its title. Each row's `kind` is `output`, `unwrapped` or `file`, so an agent sees which documents a command prints. `check_schema_goldens` pins file formats too and fails on a file format with the id of another document.
-- When the guide sets a `FailureForm`, `schemas list` serves the form's document in place of `crumbkit/failure/v1`, with the kind `unwrapped` (ADR-0045).
+- Date: 2026-10-11
+- Status: accepted
+
+## Context
+
+An agent that reads a tool's JSON needs the shape of each document, and
+the place it can always reach is the tool it runs. A schema served by the
+tool must not drift from the checked-in schema, and a change to a
+document's shape must show in review.
+
+## Decision
+
+- Each tool got `schemas list` and `schemas show <ID>...`, wired from
+  crumbkit's argument types and handlers, so an agent learns a document's
+  shape from the tool itself.
+- The guide was the source of the documents. A leaf hidden in the
+  run-time tree adds nothing, so the commands list only what help shows.
+  crumbkit's failure document comes first, because every command prints
+  it on failure.
+- `Document::new` required a one-line description, so the compiler finds
+  a document without one.
+- `schemas show` and the schema tests both called
+  `schemas::document_schema`, so the served schema and the checked-in
+  file cannot drift. It takes 1 to 100 ids and returns a `Batch`, as
+  every `show` command does.
+- A document's name defaulted to its command's path joined with `-`, so
+  an agent can predict one from the other. A different name is a
+  declaration.
+- crumbkit's own commands sat at fixed paths, and `check_mounts` fails
+  on one at another path, so an agent runs them by the same words in
+  every tool. The check knows them by the document their leaf declares,
+  because a command tree does not record an argument's Rust type.
+- `check_schema_goldens` pinned each served schema in a golden file named
+  after its id, so a shape change shows in review, where ADR-0007 decides
+  whether it needs a new version.
+- A tool declared the files that users write for it as `FileFormat`s, so
+  an agent can also read their schemas.
+
+## Consequences
+
+`docs/behaviour/schemas/commands.md` describes the current commands and
+checks.
 
 Considered: a `Schemas` trait that each result type implements, a registry of documents separate from the guide, an optional description, the schema pretty-printed in text output, a single-id `schemas show`, schema goldens for crumbkit's documents in every tool, the id check and the mount check as one check, finding crumbkit's commands by their arguments type, golden file names that escape the dashes of a component, a file format as a leaf without a path, `kind` among the `--long` columns, an opt-out with a reason for a document named other than its command's path.

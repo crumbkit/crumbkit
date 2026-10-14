@@ -5,6 +5,7 @@
 //! [`render`]: crate::render
 //! [`Reference`]: crate::Reference
 //! [`RenderError`]: crate::RenderError
+//! [command reference docs]: https://github.com/crumbkit/crumbkit/blob/main/docs/behaviour/help/reference.md
 #![doc = include_str!("../README.md")]
 
 mod document;

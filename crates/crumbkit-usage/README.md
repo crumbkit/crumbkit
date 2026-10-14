@@ -56,8 +56,10 @@ A tool adds `self usage` with [`SelfUsage`] and [`findings`], and
 - [`SelfUsage`] and [`SelfFigures`] describe the two commands.
 - The [schemas] describe the `crumbkit/usage/v1`, `crumbkit/self-usage/v1`
   and `crumbkit/self-figures-list/v1` documents.
-- [ADR-0029] records the log, [ADR-0030] its trace context, [ADR-0034] the
-  two commands and [ADR-0057] crumbkit's run observer.
+- The [usage log docs], [trace context docs] and [usage report docs]
+  describe the log, its trace context and the two commands, and the
+  [run observer docs] describe how crumbkit reports each run to the log.
+  [ADR-0029], [ADR-0030] and [ADR-0034] record why they work this way.
 
 Licensed under either of Apache License, Version 2.0 or MIT license at your
 option.
@@ -76,4 +78,7 @@ option.
 [ADR-0029]: ../../docs/decisions/api/usage/0029-usage-log.md
 [ADR-0030]: ../../docs/decisions/api/usage/0030-trace-context.md
 [ADR-0034]: ../../docs/decisions/api/usage/0034-usage-report.md
-[ADR-0057]: ../../docs/decisions/api/0057-run-observer.md
+[usage log docs]: ../../docs/behaviour/usage-log/README.md
+[trace context docs]: ../../docs/behaviour/usage-log/trace-context.md
+[usage report docs]: ../../docs/behaviour/usage-log/report.md
+[run observer docs]: ../../docs/behaviour/run-observer/README.md

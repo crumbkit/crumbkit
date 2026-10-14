@@ -40,9 +40,10 @@ mod tests;
 ///
 /// `schemas list` serves the form's document in place of
 /// `crumbkit/failure/v1`, and crumbkit-test's `check_schema_goldens` pins
-/// its schema. crumbkit-test's `check_document_ids` asks for an opt-out of
-/// its `FailureForm` rule with a stated reason, and the opt-out report
-/// names what the form costs an agent (ADR-0036).
+/// its schema. A failure form is a declaration, which needs no opt-out.
+/// crumbkit-test's `check_document_ids` fails only on a form whose document
+/// is in the component `crumbkit`, and `check_opt_outs` lists the form under
+/// the customisations (ADR-0056).
 ///
 /// A form that keeps crumbkit's text, prints the document that the tool's
 /// callers already read, and reads that document back for crumbkit-test:

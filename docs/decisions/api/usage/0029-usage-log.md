@@ -1,28 +1,72 @@
 # ADR-0029. Usage log
 
-- The usage log appends one JSON line per run of a tool to a file on the user's machine. The line records the shape of the run, such as the command path, the flags typed and the exit code, and never the values that the caller typed. `self usage` reads the log and reports where callers waste effort, such as refused flags, help requests before a command and listings that were cut short (ADR-0034).
-- The log is the published crumbkit-usage crate, which depends on crumbkit, so a tool that does not depend on crumbkit-usage compiles none of its code and none of its dependencies (ADR-0003). The crate adds siphasher for the hashes, etcetera for the state directory, humantime for the time, signal-hook for the signal thread, and getrandom on Windows for the random bytes. It builds on Unix and Windows. The calls that differ between the two live in [`platform.rs`](../../../../crates/crumbkit-usage/src/platform.rs), which has a Unix half and a Windows half, and the rest of the log has no `cfg` of its own.
-- A tool depends on crumbkit-usage and adds one line to `main`: `let _log = crumbkit_usage::start();`. `start` takes no arguments. It notes the start time, installs the log as the process's run observer with `crumbkit::events::observe` (ADR-0057), installs one recorder for the whole process in a static `Mutex` and starts the signal thread, and returns a `#[must_use]` guard that writes the line when it drops, after `main` has flushed the tool's output. A second `start` in the same process returns a guard that does nothing, and so does a `start` after the tool installed an observer of its own, or in a run whose completion variable, `COMPLETE` or the tool's own name from `complete_with`, asks for shell completion, so a Tab press writes no line (ADR-0048). `start_with` takes a `Signals` value that says whether crumbkit or the tool handles SIGINT and SIGTERM, and `start` is `start_with(Signals::Crumbkit)`.
-- `parse` gives the recorder the tool's name and version from the command it parses against, as it reports the rest of the run, so `start` never builds the command tree. A run that ends before it reaches `parse` writes no line, because the line has no tool name to go under.
-- `parse`, `parse_from` and `parse_to` report the command path, the long name of each flag the caller typed, read from clap's value source and including global flags, and the short name such as `-q` for a flag without a long one. They report a request for help as `short` for `-h` and `long` for `--help` or the `help` command, with the command path that the help names. For a refused command line they report how many flags name no flag of the command, clap's suggested real flag, the exit code of a refused command line and the code `crumbkit::cli::usage` in the tool's spelling, or the tool's rename of it. For a parsed command line they report how many values the command's positional arguments with the value name `ID` received, and, as `picked`, how many arguments a picker filled, without the picked values (ADR-0043).
-- `finish` and `finish_to` report the exit code as the number they return, including a tool's code that the guide declares for the run's first failure (ADR-0037), the code of a failure or refusal in the tool's spelling, the bytes written to standard output and whether a listing showed fewer rows than its total. A batch reports the code of its first failure.
-- `stream` reports a stream's run as `finish` does (ADR-0041). A run that never reaches `finish` or `stream`, such as a child process or the tool's own exit path, calls `crumbkit::events::ended(exit, out_bytes)`. The line records the tool's real exit number, such as 124, because `ExitCode` cannot be read back as a number and only the tool knows it. `ended` returns that number as the `ExitCode` for `main`, so the recorded number and the returned one are the same. It writes the line at once, so a tool that then exits through `std::process::exit` still has its line. Like `aliased`, it lives in `crumbkit::events` and exists in every build.
-- A run that reports a failure and carries on past it, such as a lock it waited out, calls `crumbkit::events::tolerated(&CODE)`. The line's `tolerated` field lists the first 8 distinct codes in the tool's spelling, in the order reported, and later codes are dropped, so the line stays within its size limit. `tolerated` exists in every build.
-- crumbkit-aliases' `expand` calls `crumbkit::events::aliased()` when it replaces an alias, and the line records `"alias": true` and the expanded command. `aliased` exists in every build and does nothing without an installed observer, so crumbkit-aliases has no feature of its own.
-- crumbkit sends each report to the observer, and the log's observer passes it to the recorder. Every report does nothing when no observer or no recorder is installed. A report is a load of the observer, a lock of the static `Mutex` and a check of its state, and only `parse` copies the words of the command line, once.
-- The line is the `crumbkit/usage/v1` record, whose schema is checked in as `crates/crumbkit-usage/schemas/usage-v1.json` (ADR-0007). It has `schema`, `tool`, `version`, `at` in RFC 3339 with milliseconds, `command`, `help`, `flags`, `ids`, `unknown_flags`, `nearest`, `picked`, `alias`, `exit`, `code`, `tolerated`, `ms`, `out_bytes`, `truncated`, `empty`, `caller`, `session`, `args`, `trace`, `run`, `parent`, `interrupted` and `ext`. `trace`, `run` and `parent` place the run in a W3C trace (ADR-0030). A field that does not apply to the run is left out.
-- The record holds no argument values, URLs, ids, paths, error text or messages. Inside crumbkit-usage, its types enforce this. Every name in the record is a `Name`, whose only constructors take a `clap::Command` for its name, its version or a path of its subcommands, a `clap::Arg` for its long or short flag name, or a crumbkit `Code` in the tool's `Spelling`, so no crumbkit code can put a word that the caller typed into a name. The counts are numbers, the trace ids are hex that crumbkit generated or validated, and the command line appears only as a keyed hash. The types do not check the text that the tool itself gives its commands, arguments, version and codes, or the tool's `ext` section. shelf's end-to-end test plants `s3cr3t-<field>-PLANTED` in option values, positionals, a command path, an unknown flag's name and its value, a help topic, an unknown command, `TRACEPARENT` and `TRACESTATE`, and fails when any line of the log holds `PLANTED`.
-- `caller` is the id that is-ai-agent gives for the coding agent that ran the tool, such as `claude-code`, read through the same detection that decides whether a person can answer a question (ADR-0043). Without an agent, it is `person` when standard input is a terminal and `unknown` otherwise. `session` is the keyed hash of the agent's session id, or of the parent process id when the agent gives none, so the runs of one session or one shell share a value. On Windows the fallback is the Windows Terminal tab's `WT_SESSION`, or the text `windows` outside Windows Terminal, because reading the parent process id there needs unsafe code. Outside Windows Terminal, every run without an agent shares one session.
-- `session` and `args` are keyed SipHash-2-4 hashes, written as 16 lowercase hex digits. `args` hashes every word after the tool's name, each with its length, so identical command lines share a hash and different ones almost never do. SipHash-2-4 is a keyed pseudorandom function built for short inputs, so without the key nobody can test a guessed command line against a hash, and it needs no further crate. The key is 16 random bytes from `/dev/urandom`, or from getrandom on Windows, kept in `usage.key` beside the log with mode 0600 on Unix. The first run writes the key to a temporary file in the same directory, syncs it, and links it into place as `usage.key` with `hard_link`, which fails when the name exists, so `usage.key` either holds a whole key or does not exist, and when two first runs race, the loser reads the winner's key. A `usage.key` of the wrong length, such as one left by an older version, is replaced with a new key through `rename`, so the run and later runs write their lines again. On a Windows file system without hard links, such as FAT, `hard_link` fails, and every run drops its line without a word.
-- The log is `<state dir>/<tool>/usage.jsonl`, where the state directory is `$XDG_STATE_HOME`, or `~/.local/state` when that variable is unset, empty or relative, as etcetera gives it. On Windows, etcetera gives no state directory, so the state directory is `XDG_STATE_HOME` when it is absolute and otherwise `%LOCALAPPDATA%`, which is local to the machine and never roams. crumbkit creates the directory with mode 0700, and the log and its lock file `usage.lock` with mode 0600. On Windows the directory and files inherit the access control list of `%LOCALAPPDATA%`, which admits the user, the administrators and the system, because setting one needs unsafe code.
-- A run appends its line while it holds the lock on `usage.lock`, which it takes with `File::try_lock`, retrying for at most 100 ms before it drops the line. The lock has a file of its own, which is never renamed, because a lock belongs to the file that was opened: a run waiting on a log that a trim had replaced would take the lock of the old file and append its line to a file with no name. A line longer than 1 KiB is dropped. When the log is over its size limit, the run keeps its newest whole lines that fit in half of it and then appends its own, while it holds the lock, so at least half the limit of new lines goes in before the next trim ([`file.rs`](../../../../crates/crumbkit/src/usage/file.rs) states the sizes). The trim writes the kept lines to a temporary file in the same directory, syncs it and renames it over `usage.jsonl`, so a run that ends during a trim leaves either the old log or the new one. The trim closes its handle on the old log before the rename, because Windows can refuse to rename over an open file. A last line without a newline is a write that ended early: a trim drops it, and the next append starts on a new line, so the torn line never joins the next record.
-- The signal thread waits for SIGINT and SIGTERM. On a signal, the thread writes the line with `"interrupted": true` and then lets the signal take its default effect, so the process ends as it would have without the log. When the main thread is already writing the line, the signal thread waits a bounded time for that write to finish before the signal takes effect, so the signal never cuts the line in half. When the signal thread is already writing the line as `main` ends, the guard waits for that write in the same way before `main` returns, so the process never exits in the middle of the line. The bound covers the lock wait and a trim on a slow disk, and [`recorder.rs`](../../../../crates/crumbkit/src/usage/recorder.rs) states it. A process that started with one of the two signals ignored now ends on it, such as a background job of a non-interactive shell, which starts with SIGINT ignored. This follows from crumbkit's ban on unsafe code, which rules out the `sigaction` call that reads a signal's disposition.
-- On Windows the signal thread waits for SIGINT alone, which the C runtime raises on Ctrl-C. signal-hook's `Signals` iterator does not exist there, so a signal-hook flag records the signal and the thread checks it every 50 ms. After the line, the thread ends the process with `STATUS_CONTROL_C_EXIT`, the exit code that Ctrl-C gives a process without a handler. Ctrl-Break, closing the console, logging off and shutting down end the process with no line, because the C runtime raises no SIGINT for them, and a console control handler for them needs unsafe code.
-- A tool with its own handler for SIGINT or SIGTERM starts the log with `start_with(Signals::Tool)`. The signal thread then only notes each signal, so the line records `"interrupted": true`, and leaves the process running, and the tool reports its exit through `ended`. crumbkit's listener replaces the default action of both signals, so a tool that chooses `Tool` without a handler of its own keeps running on Ctrl-C and SIGTERM, and only SIGKILL ends it. The rustdoc of `Signals::Tool` says so. A handler that replaces the action directly, as the ctrlc crate does, removes crumbkit's listener, and the line then records the exit without `interrupted`. SIGHUP is left alone, so a run under `nohup` behaves as it would without the log.
-- crumbkit tells the observer when a command hands the terminal to a child and, on Windows, when the child exits (ADR-0057). Once a command has handed the terminal to a child, the signal thread skips SIGINT for the rest of the run on Unix, and while the child runs on Windows, so Ctrl-C ends only the child. A child that a signal ended marks the line `"interrupted": true`, and the command reports its exit through `ended` (ADR-0042).
-- A listing or list that the output budget cut short, and a stream that stopped at the budget, mark the line `"truncated": true` with `code` set to the over-budget code, though the run exits with code 0 for a cut listing (ADR-0046). A listing that left rows out because of `--limit` or a source that the tool did not count also marks the line `"truncated": true`, without a code.
-- A listing or stream that had no rows and printed the empty note marks the line `"empty": true` (ADR-0050). The field is new and optional, so the record keeps its `v1` id.
-- Each run writes at most one line. Recording never changes the tool's output or exit code: every failure to write is silent, and a poisoned lock counts as no recorder.
-- A tool adds its own fields with `crumbkit_usage::section(document, &value)`, which sets `ext` to `{"schema": <document id>, "data": <value>}`. The tool owns the section and keeps values out of it, because crumbkit cannot check it, and the section counts towards the 1 KiB limit.
+- Date: 2026-10-10
+- Status: accepted
+
+## Context
+
+A tool's builder wants to know where callers waste effort, such as
+refused flags, help read before a command and listings cut short. Agents
+run tools many times a session, so these patterns repeat. Recording them
+must never leak what callers typed, never change a tool's output or exit,
+and never cost a tool that does not want it.
+
+## Decision
+
+- The usage log appended one JSON line per run to a file on the user's
+  machine, recording the shape of the run and never the values the caller
+  typed. `self usage` reads it (ADR-0034).
+- The log sat behind the `usage-log` feature, off by default, so a tool
+  without it compiles none of its code or dependencies. Starting the log
+  is one line in `main`, which keeps the opt-in explicit. The
+  platform-specific calls live in one module with a Unix and a Windows
+  half.
+- On 2026-10-14 the log moved from that feature to the published
+  crumbkit-usage crate, which depends on crumbkit. A tool that does not
+  depend on crumbkit-usage compiles none of the log's code or
+  dependencies, and a tool that does starts the log with
+  `crumbkit_usage::start()`.
+- `start` took no arguments, and `parse` gives the recorder the tool's
+  name and version, so `start` never builds the command tree. A run that
+  ends before `parse` writes no line, because it has no tool name.
+- crumbkit's entry points reported the run's shape to the observer
+  (ADR-0057): the command path, the flags typed by name, help requests,
+  refusals and clap's nearest flag, the exit code, the code in the tool's
+  spelling, the bytes written and whether a listing was cut or empty.
+  `ended` records a tool's real exit number, because `ExitCode` cannot be
+  read back as a number, and writes the line at once, so a later
+  `process::exit` keeps it.
+- The record's types enforced the privacy rule inside crumbkit: every
+  name is built from a `clap::Command`, a `clap::Arg` or a `Code`, the
+  command line appears only as a keyed hash, and an end-to-end test plants
+  marker values and fails when any line holds them. The tool's own text
+  and its `ext` section are its responsibility.
+- `session` and `args` were keyed SipHash-2-4 hashes, so nobody without
+  the key can test a guessed command line against a hash, and no further
+  crate was needed. The key file is linked into place with `hard_link`, so
+  it either holds a whole key or does not exist.
+- The log lived in the XDG state directory, or `%LOCALAPPDATA%` on
+  Windows, which never roams, with private modes on Unix.
+- A run appended while holding a lock on a separate `usage.lock` file,
+  because a lock belongs to the opened file and a trim replaces the log.
+  The lock wait is bounded, a line over 1 KiB is dropped, and an oversized
+  log is trimmed to its newest lines through a temporary file and a
+  rename, so a run that ends mid-trim leaves the old log or the new one.
+- A signal thread wrote the line with `"interrupted": true` on SIGINT or
+  SIGTERM and then let the signal take its default effect, so the process
+  ends as it would have without the log. Waits on both sides keep the
+  line whole. SIGHUP is left alone, so a run under `nohup` behaves as it
+  would without the log. A tool with its own handler starts with
+  `Signals::Tool`.
+- Recording never changes the tool's output or exit code, and every
+  failure to write is silent.
+
+## Consequences
+
+crumbkit's ban on unsafe code set several limits: a process that started
+with SIGINT ignored now ends on it, Windows sees only Ctrl-C, Windows
+files inherit the access control list of `%LOCALAPPDATA%`, and a Windows
+run outside Windows Terminal shares one session. `docs/behaviour/usage-log/README.md`
+describes the current record and file handling.
 
 Considered: an `ended` that only records and leaves the line to the guard, no listener when the tool owns the signals, with a separate call that reports the signal, a trim that truncates the log and writes the kept lines in place, a lock on the log itself that a run checks against the file at the path after it takes the lock, a key file created with `create_new` and then written, HMAC-SHA256 with a key from getrandom, a log handle passed to `parse` and `finish`, a `start` that takes the tool's command, a signal thread that also waits for SIGHUP, the parent process id on Windows through `windows-sys`, an access control list set on the Windows log, the roaming `%APPDATA%` for the Windows log, counting every positional value as ids, a session from the agent's id only, a log that ships off the machine, a record per refused flag, the log behind a `usage-log` cargo feature of crumbkit.

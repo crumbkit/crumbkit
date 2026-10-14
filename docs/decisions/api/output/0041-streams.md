@@ -1,19 +1,42 @@
 # ADR-0041. Streams
 
-- Some commands print rows as they arrive, such as a watch or a command that reads a large file. Such a command declares its document as `Document<Stream<R>>`, with [`Stream`](../../../../crates/crumbkit-core/src/stream.rs) from crumbkit-core, so the document constant decides the command's form everywhere. The compiler refuses a stream document passed to `finish` and a document of one result passed to `stream`.
-- The handler opens the stream with [`stream`](../../../../crates/crumbkit/src/output/stream.rs), or `stream_to` in tests, and gets a `Streaming`. `Streaming::item` prints one row and returns `ControlFlow`, which is `Break` when the reader closed the pipe or a write failed, so the tool stops producing rows. `Streaming::failure` prints a failure and lets the stream go on, and `Streaming::end` takes the result of the work and returns the exit code.
-- Opening the stream returns `Result<Streaming, ExitCode>`. It checks the view flags against the row type and the document before anything prints, and a refusal exits as a refused command line does, as in `finish` (ADR-0016).
-- In text, the stream prints the table's header when it opens and flushes it. Each column is as wide as its header, because the stream cannot know the widths of rows still to come. Two spaces separate the cells, the last cell is not padded, and a cell wider than its header pushes the rest of its line to the right.
-- With `--json`, each row prints as a whole envelope document on its own line, with `schema` and the row under `data`, so the output is JSON Lines and a reader can process each line alone. `--fields`, `--long` and `--full` shape each row as they shape a single row in `finish`. A document from `Document::without_envelope` prints each row alone, and its failures print as text on standard error.
-- The stream flushes standard output after every line, so a reader sees each row as soon as it prints. Standard output stays locked while the stream is open.
-- A failure in the middle prints on standard error in text, and as one `crumbkit/failure/v1` line between the rows with `--json`. A stream that printed a failure or ended with an `Err` exits with the code of its first failure, as `finish` does: the tool's code when the guide declares one for that failure's code, and 1 otherwise (ADR-0037). A closed pipe keeps the code, and any other failed write prints once on standard error and exits with code 1 unless a failure chose the code. A stream without a failure whose printed items report a problem exits with 1 and, in text, ends with the note that counts them (ADR-0050).
-- A stream's notes print on standard error after the stream has flushed standard output, in text and with `--json`: the empty note of a stream that printed nothing, then the dry-run line in text or for a document without the envelope (ADR-0050). A dry run marks each JSON line with `"dry_run": true` (ADR-0039).
-- `stream` records the exit code, the first failure's code and the bytes of standard output in the usage log and on the `crumbkit.finish` span, as `finish` does (ADR-0029, ADR-0030).
-- A help leaf declares a stream with `Leaf::stream`. Its `-h` and `--help` print the line `Output: one row per line as each arrives, and --json prints one JSON document per line.` after the effects line (ADR-0021).
-- `commands list` writes `form` in each row: `document` or `stream` for a leaf with a document, and `null` for a leaf without one (ADR-0026). The text table leaves it out. `schemas list` writes a compact `form` column, `document` or `stream`, for each document it serves (ADR-0035). Both are new fields, so both documents keep their `v1` ids (ADR-0007).
-- A stream document's JSON Schema, from `schemas::stream_schema`, describes one line: the envelope of a document of one row.
-- crumbkit-test's `check_examples` stops a run that does not end within 10 seconds, so a stream command's example reads a finite input and never follows one. For each `--json` example of a document with the envelope, the check requires every line to be a JSON object whose `schema` is the leaf's document id, and a leaf of one result to print exactly one line. When the guide sets `JsonLayout::Pretty`, a leaf of one result prints exactly one indented document instead, and a stream keeps one document per line (ADR-0052).
-- A tool with a `FailureForm` prints each failure line of a `--json` stream in that form (ADR-0045).
-- A stream prints at most the output budget. Its first item always prints, a later item whose line would pass the budget does not print, `Streaming::item` returns `Break`, and the stream ends with the over-budget failure, which exits with code 1 when it is the stream's first failure and the guide declares no code for it. `Streaming::budget` returns the bytes left, so a tool can stop producing items early (ADR-0046).
+- Date: 2026-10-12
+- Status: accepted
+
+## Context
+
+Some commands print rows as they arrive, such as a watch or a command
+that reads a large file. `finish` prints a whole result at the end, so
+such a command needed a form that prints each row at once while keeping
+crumbkit's flags, failures, exit codes and budget.
+
+## Decision
+
+- A command declared its document as `Document<Stream<R>>`, so the
+  document constant decides the command's form everywhere and the
+  compiler refuses a stream document passed to `finish`.
+- `stream` returned a `Streaming` whose `item` returns `ControlFlow`, so
+  the tool stops producing rows when the reader closes the pipe. Opening
+  the stream checks the view flags before anything prints.
+- In text, each column is as wide as its header, because the stream
+  cannot know the widths of rows still to come.
+- With `--json`, each row printed as a whole envelope document on its own
+  line, so the output is JSON Lines and a reader can process each line
+  alone.
+- The stream flushed after every line, so a reader sees each row at once.
+- A failure in the middle printed between the rows with `--json`, or on
+  standard error in text, and the stream goes on. A stream exits with its
+  first failure's code, as `finish` does.
+- Help, `commands list` and `schemas list` named the form, with new
+  optional fields that keep the `v1` ids.
+- `check_examples` stops a run after 10 seconds, so a stream example
+  reads a finite input, and checks that each `--json` line is an envelope
+  of the leaf's document.
+- A stream printed at most the output budget, with its first item always
+  printed.
+
+## Consequences
+
+`docs/behaviour/output/streams.md` describes the current behaviour.
 
 Considered: a stream as a fourth `Shape` of `Rows`, a separate `Streaming` type for each format, a header measured from the first rows, no text header, a stream's notes on standard output in text, one JSON array printed as rows arrive, a JSON document per line without the envelope, an `items` count at the end of a stream, a buffered stream that flushes on a timer, failures of a stream always on standard error, a closure that `stream` calls in place of a returned `Streaming`, a `form` column in the text of `commands list`, a new id for `schemas list` and `commands list`, no timeout in `check_examples`, a follow mode in the reading example.

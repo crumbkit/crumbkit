@@ -1,17 +1,50 @@
 # ADR-0045. Failure forms
 
-- A tool that already publishes its own failure document, which its callers read, keeps that document by setting a [`FailureForm`](../../../../crates/crumbkit/src/form.rs) with `Guide::failure_form`. The form is a trait object with three required methods: `document` returns the id and description of the form's document, `schema` returns its JSON Schema, and `json` returns the document of one failure as a `serde_json::Value`. Its provided method `write_text` writes crumbkit's text, so a form that changes only the JSON keeps crumbkit's `error:`, `help:` and `code:` lines.
-- crumbkit re-exports schemars as `crumbkit::schemars`, so a form builds its schema without a schemars dependency of its own. `FailureForm::schema` and the `JsonSchema` bound on results already make schemars' major version part of crumbkit's API, so the re-export couples nothing new.
-- crumbkit prepares each failure before the form sees it. The form receives a `PreparedFailure`, whose getters return the code in the tool's spelling, the message, the causes, the recovery and the alternatives as a `Step` with each `Run` call already rendered against the tool's command tree, or a `RunAll` step that also names the list field whose values the call takes together in one run, the fields, the url and, with the `miette` feature, the labels. `PreparedFailure::failure` returns the failure itself, so a form can read its `Failure` methods and its miette diagnostic. The failure reference is not `'static`, so a form cannot downcast it to the tool's error type.
-- crumbkit writes the form's JSON on one line, or in the guide's JSON layout outside a stream (ADR-0052), and flushes it, so each failure line of a `--json` stream stays one line and a closed pipe keeps the exit code. crumbkit flushes standard error after the form's text. A form that writes its own text escapes the control characters of the values itself.
-- The form writes every failure that prints alone: the failure of a whole command from `finish`, each failure line of a `--json` stream, a command line that `parse` refuses, a `--fields` name that `finish` or `stream` refuses, and the failures of a picker's source and of a child process. Its text form also prints each failure of a batch or a prose result on standard error, including those of a document without the envelope. Exit codes do not change.
-- The provided method `entry` writes each entry of a batch's or a prose result's `failures`, and the provided method `entry_schema` returns the schema that `schemas show` serves as the `items` of `failures`. The defaults return crumbkit's entry and its schema, so a form written before these methods existed prints what it printed before. A form that implements both gives its tool one failure shape in all of its JSON, and crumbkit still decides which failures an envelope holds, their order, their recovery and the exit (ADR-0007). A document that prints its failures in input order holds each failure as the form's `document`, and its schema takes the form's `schema` as the failure item (ADR-0016). `PreparedFailure::key` and `PreparedFailure::index` give a form the key a batch failure failed on and its index.
-- `parse` reads the form from the guide that it receives and passes it on in `Parsed`, so `Output::set_command` gives it to `finish` and `stream`. A tool that parses with clap alone builds its `Parsed` with `Parsed::guided(command, &GUIDE)`. `Parsed::from(command)` keeps working for a tool without a guide and sets no form.
-- `schemas list` serves the form's document first, in place of `crumbkit/failure/v1`, with the kind `unwrapped` and no commands, because every command prints it when it fails (ADR-0035). `schemas show` serves the form's schema with the document's id inserted as `title`. crumbkit-test's `check_schema_goldens` pins the schema, because the form's document is in the tool's component.
-- A failure form is a declaration, because crumbkit still decides when each failure happens, its recovery and its exit, so it needs no opt-out, and `check_opt_outs` lists it under the customisations with no reason and no cost (ADR-0056). crumbkit-test's `check_document_ids` fails on a form whose document is in the component `crumbkit`, because crumbkit owns that component.
-- `FailureForm` has a provided method, `read`, which reads a run's standard output and standard error and returns a [`ReadFailure`](../../../../crates/crumbkit/src/form.rs): the failure's code, the steps of its recovery and alternatives, and its fields, which `ReadFailure::with_fields` sets as `FieldValue`s, so a null, list or object field reads back as the failure held it. The default returns `None`, so a form written before `read` existed keeps compiling and reads nothing. A form that implements `read` gets the same checks as crumbkit's own failure document. A form can write another code in place of one of crumbkit's, such as `crumbkit::cli::usage`, because it receives the code from `PreparedFailure::code` and writes both the JSON and the text. A form that does this maps the code back to crumbkit's in `read`, so the checks still match it.
-- crumbkit-test's `check_twin`, `check_recoveries` and `check_examples` read a failed run through one function, which tries the tool's reader first, then crumbkit's failure document, then its `code:` line, and returns every failure that the first of them reads. The tool's reader is the form's `read`, which each check takes from the guide, so a tool names its form once. The checks pass each entry of a batch's `failures` to the form's `read` as one line of standard output, and read an entry that the form cannot read in crumbkit's shape. A tool that prints failures in a shape of its own without a form implements crumbkit-test's [`FailureReader`](../../../../crates/crumbkit-test/src/failures.rs), whose `read` returns a `Vec<ReadFailure>`, and sets it with `Examples::failure_reader`. Each check fails when the guide sets a form and `Examples` sets a reader, because a tool reads its failures through one of them. A failed example's problem names the code and steps that the check read.
-- `check_recoveries` follows the `Run` recoveries that it reads, and it runs a guide with a form like any other guide. When the form or reader reads no failure from a run that failed, the check stops with one problem, which says that the tool makes it read the failure or names the root in an opt-out of `Rule::Recoveries`, id `recoveries/follow`. The first unreadable run stops the check, because every later run would fail the same way.
-- A tool with a form prints the refusal of a result that passes the output budget in that form, and the over-budget failure that ends a batch is an entry that the form's `entry` writes, as the batch's other entries are (ADR-0046).
+- Date: 2026-10-12
+- Status: accepted
+
+## Context
+
+Some tools already publish a failure document that their callers read. To
+adopt crumbkit they needed to keep that document while crumbkit still
+decides when each failure happens, its recovery and its exit, and
+crumbkit-test's checks needed to read failures in that shape.
+
+## Decision
+
+- A tool set a `FailureForm` on its guide, with methods that return the
+  form's document id, its schema and the JSON of one failure. The text
+  methods default to crumbkit's lines, so a form that changes only the
+  JSON keeps them.
+- crumbkit prepared each failure before the form sees it: the code in the
+  tool's spelling, the recovery and alternatives with each call rendered,
+  and the fields. A form therefore cannot get the rendering or the
+  spelling wrong.
+- crumbkit wrote the form's JSON on one line in a stream and flushed it,
+  so each failure line stays one line and a closed pipe keeps the exit
+  code.
+- The form wrote every failure that prints alone, and with `entry` and
+  `entry_schema` each entry of a batch's or prose result's `failures`, so
+  a tool can have one failure shape in all of its JSON. The defaults keep
+  crumbkit's entry, so an older form prints what it printed before.
+- `schemas list` and `schemas show` served the form's document in place
+  of crumbkit's failure document.
+- A form became a declaration that needs no opt-out (ADR-0056), and
+  `check_document_ids` fails on a form whose document claims the
+  `crumbkit` component, because crumbkit owns it.
+- `FailureForm::read` let a form read its own failures back, so the form
+  gets the same checks as crumbkit's document. crumbkit-test's checks read
+  a failed run through the form, then crumbkit's document, then its
+  `code:` line. A tool with its own shape and no form sets a
+  `FailureReader` instead, and setting both fails, because a tool reads
+  its failures through one of them.
+- `check_recoveries` stopped at the first run whose failure it cannot
+  read, because every later run would fail the same way.
+
+## Consequences
+
+crumbkit re-exports schemars, so a form builds its schema without its own
+schemars dependency. `docs/behaviour/failures/forms.md` describes the
+current form API.
 
 Considered: a re-export of `Schema` and `json_schema!` alone in `crumbkit::form`, a form that receives the failure alone and prepares nothing, a form registered on `Output` in place of the guide, a form that returns a typed `Serialize` value, batch entries that always keep crumbkit's shape, an `entry` whose default returns the form's `json`, a `Related` getter for miette's related diagnostics, a form document kept beside `crumbkit/failure/v1` in `schemas list`, a separate check for failure forms, a form example in shelf or reading with golden files, a required `read` method, a `read` that returns command lines as text, `check_recoveries` failing before it runs anything on a guide with a form, one problem for each run that a form cannot read, a form setting on `Examples` beside the guide's, which `check_examples` compared with the guide's form, removing `FailureForm::read` in favour of `FailureReader`, a reader that wins over the guide's form without a problem, an opt-out from `Rule::FailureForm` with a reason and three costs.

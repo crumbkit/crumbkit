@@ -4,7 +4,9 @@
 mod adr_records;
 mod agents_words;
 mod changelog_entries;
+mod docs_trailers;
 mod docs_words;
+mod frozen_records;
 mod readme_words;
 mod record_listings;
 mod rust_lines;
@@ -31,6 +33,25 @@ pub(crate) struct File {
     /// The file's text, or an empty string when the file is not UTF-8 text,
     /// such as an image.
     pub(crate) contents: String,
+}
+
+/// A commit on the branch, between the merge base and `HEAD`.
+pub(crate) struct Commit {
+    /// The abbreviated commit hash.
+    pub(crate) id: String,
+    /// The full commit message.
+    pub(crate) message: String,
+}
+
+/// What the branch changed: the files at the merge base with `main`, and
+/// the commits after it. The history checks compare these with the files
+/// at `HEAD`. An empty history makes those checks pass.
+#[derive(Default)]
+pub(crate) struct History {
+    /// The decision records and changelogs at the merge base.
+    pub(crate) base: Vec<File>,
+    /// The commits after the merge base.
+    pub(crate) commits: Vec<Commit>,
 }
 
 /// A problem that a check found in one file or directory.
@@ -83,11 +104,46 @@ pub(crate) enum Violation {
         /// The link target as written.
         target: String,
     },
+    /// A file outside `docs/decisions/` cites a superseded record.
+    SupersededCitation {
+        /// The citing file.
+        path: String,
+        /// The cited number.
+        number: u16,
+    },
+    /// The branch changed a frozen record outside its Status line and a
+    /// node's Children list, or removed it.
+    EditedRecord {
+        /// The record, or its path at the merge base when it was removed.
+        path: String,
+        /// The record's number.
+        number: u16,
+    },
+    /// A changelog's Unreleased section gained or changed an entry, and no
+    /// commit on the branch ends with a docs trailer.
+    MissingDocsTrailer {
+        /// The changelog.
+        path: String,
+    },
+    /// A commit message ends with a docs trailer that does not parse.
+    MalformedTrailer {
+        /// The commit's abbreviated hash.
+        commit: String,
+        /// The trailer line as written.
+        trailer: String,
+    },
 }
 
+/// The two docs trailer forms, as the violations print them.
+const TRAILER_FORMS: &str = "`Docs-Owed: <id>; from: <old behaviour>; to: <new behaviour>; \
+                             docs: <path>[, <path>...]` or `Docs-Swept: <id>[, <id>...]`";
+
 /// Runs the selected checks over `files` and returns every violation.
-pub(crate) fn run(selection: Selection, files: &[File]) -> Vec<Violation> {
-    match selection {
+/// The frozen record check compares `files` with `history.base` for both
+/// selections. The docs trailer check also reads `history.commits` and runs
+/// only for [`Selection::All`].
+pub(crate) fn run(selection: Selection, files: &[File], history: &History) -> Vec<Violation> {
+    let mut violations = match selection {
         Selection::All => {
             let mut violations = rust_lines::check(files);
             violations.extend(agents_words::check(files));
@@ -96,6 +152,7 @@ pub(crate) fn run(selection: Selection, files: &[File]) -> Vec<Violation> {
             violations.extend(changelog_entries::check(files));
             violations.extend(adr_records::check(files));
             violations.extend(record_listings::check(files));
+            violations.extend(docs_trailers::check(&history.base, files, &history.commits));
             violations
         }
         Selection::Docs => {
@@ -104,7 +161,9 @@ pub(crate) fn run(selection: Selection, files: &[File]) -> Vec<Violation> {
             violations.extend(record_listings::check(files));
             violations
         }
-    }
+    };
+    violations.extend(frozen_records::check(&history.base, files));
+    violations
 }
 
 /// Prints a violation as one line that starts with its path, such as
@@ -139,6 +198,26 @@ impl fmt::Display for Violation {
             Self::BrokenLink { path, target } => {
                 write!(f, "{path}: links to {target}, which does not exist")
             }
+            Self::SupersededCitation { path, number } => write!(
+                f,
+                "{path}: cites ADR-{number:04}, which is superseded; cite the page in docs/ \
+                 that describes the behaviour, or the record that superseded it"
+            ),
+            Self::EditedRecord { path, number } => write!(
+                f,
+                "{path}: edits ADR-{number:04}, which is frozen; only its Status line and \
+                 a node's Children list may change (DOCS-6)"
+            ),
+            Self::MissingDocsTrailer { path } => write!(
+                f,
+                "{path}: an Unreleased entry changed, so a commit message must end with \
+                 {TRAILER_FORMS} (DOCS-7)"
+            ),
+            Self::MalformedTrailer { commit, trailer } => write!(
+                f,
+                "commit {commit}: `{trailer}` does not parse; write {TRAILER_FORMS}, \
+                 where <id> is a kebab-case slug (DOCS-7)"
+            ),
         }
     }
 }

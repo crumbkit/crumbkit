@@ -119,22 +119,21 @@ a fuller one.
 
 ## Where to read more
 
+The [behaviour docs] describe each part in full.
+
 - Output: [`Output`], [`finish`], [`Row`], [`Document`], [`Listing`],
-  [`Page`], [`Batch`] and [`Prose`], with [ADR-0016].
+  [`Page`], [`Batch`] and [`Prose`].
 - Failures: [`Failure`], [`Recovery`], [`Code`], [`Spelling`] and
-  [`Error`], with [ADR-0001].
-- Parsing and help: [`parse`], [`help`] and [`Call`], with [ADR-0021],
-  [ADR-0023] and [ADR-0024].
-- The listings for agents: [`commands`] and [`schemas`], with [ADR-0026]
-  and [ADR-0035].
+  [`Error`].
+- Parsing and help: [`parse`], [`help`] and [`Call`].
+- The listings for agents: [`commands`] and [`schemas`].
 - Per-id lookups: [`fetch_each`].
 - The `miette` feature: the `diagnostic` method of [`Failure`] and the
-  conversion of a `miette::Report` into [`Error`], with [ADR-0001].
-- Run reports, usage log and tracing: [`events`], [crumbkit-usage], [`trace`]
-  ([ADR-0029], [ADR-0030]).
+  conversion of a `miette::Report` into [`Error`].
+- Run reports, usage log and tracing: [`events`], [crumbkit-usage], [`trace`].
 - The `complete` feature: shell completion through `crumbkit::complete`,
-  which a minor release may change ([ADR-0048]).
-- The JSON Schemas of crumbkit's own documents: [schemas], with [ADR-0007].
+  which a minor release may change.
+- The JSON Schemas of crumbkit's own documents: [schemas].
 - Tests that check a tool against these conventions: [crumbkit-test].
 - Types without clap, which crumbkit re-exports: [crumbkit-core],
   with [ADR-0032].
@@ -168,15 +167,5 @@ Licensed under Apache-2.0 or MIT, at your option.
 [schemas]: schemas
 [crumbkit-test]: ../crumbkit-test/README.md
 [crumbkit-core]: ../crumbkit-core/README.md
-[ADR-0001]: ../../docs/decisions/api/failures/0001-error-model.md
-[ADR-0007]: ../../docs/decisions/api/schemas/0007-json-schemas.md
-[ADR-0016]: ../../docs/decisions/api/output/results/0016-result-formats.md
-[ADR-0021]: ../../docs/decisions/api/help/0021-help-pages.md
-[ADR-0023]: ../../docs/decisions/api/help/0023-help-command-and-topics.md
-[ADR-0024]: ../../docs/decisions/api/help/0024-leaf-examples-and-columns.md
-[ADR-0026]: ../../docs/decisions/api/help/0026-branch-export.md
-[ADR-0029]: ../../docs/decisions/api/usage/0029-usage-log.md
-[ADR-0030]: ../../docs/decisions/api/usage/0030-trace-context.md
 [ADR-0032]: ../../docs/decisions/api/0032-core-crate.md
-[ADR-0035]: ../../docs/decisions/api/schemas/0035-schema-commands.md
-[ADR-0048]: ../../docs/decisions/api/0048-completion.md
+[behaviour docs]: ../../docs/behaviour/README.md

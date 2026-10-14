@@ -1,14 +1,39 @@
 # ADR-0033. Help weight
 
-- The published crate [cargo-crumbkit](../../../../crates/cargo-crumbkit/README.md) holds the binary `cargo-crumbkit`, so `cargo crumbkit weigh --bin <NAME>` measures a tool. cargo-crumbkit is a crumbkit tool itself: it parses with `crumbkit::parse`, prints the `crumbkit/weigh/v1` document through `finish`, mounts `commands list`, has its own failure codes, and runs crumbkit-test's checks on its own help.
-- `weigh` builds the named binary with `cargo build --workspace --bin <NAME> --message-format json` and takes the executable from cargo's messages. cargo's standard error goes to `weigh`'s own, so a person sees cargo's progress lines and compiler errors as with any cargo subcommand. It reads the command tree from `<binary> commands list --all --json --full`, and a tool without `commands list` fails with `crumbkit::tool::no_commands_list`, whose hint says how to mount it. The failures of building and running the binary have `crumbkit::tool::*` codes, which `cargo crumbkit docs` shares (ADR-0044).
-- `weigh` runs `<binary> <path> -h` and `<binary> <path> --help` for each visible command and counts the bytes on standard output. Each run has a cleared environment and fresh XDG directories, as crumbkit-test's `check_examples` gives each example (ADR-0005), so `weigh` never reads a person's aliases or writes to their usage log.
-- A command's output weight is the largest size of one example's golden files, which `weigh` reads from `--goldens <DIR>` or from `tests/golden/examples` in the binary's package. crumbkit-test's `output_weight` reads it and names each file with `example_golden_name`, the function that `check_examples` uses, so the two cannot disagree. An example's size is its `.txt` golden file plus its `.stderr` golden file, because an agent reads the notes on standard error as well as the result (ADR-0050). A command without a golden file has no output weight, shown as `-` in text and `null` in JSON.
-- A command's path total is the sum of every `-h` page from the root down to the command plus the command's output weight. crumbkit-test's `path_totals` computes it, and its `check_path_weights` budgets the same sums (ADR-0025).
-- `--usage` adds the figures of the tool's usage log (ADR-0034) to each row: `runs`, `help_before`, the help pages that sessions read before the command, and `p95_output`, the 95th percentile of its real output. They set each estimate beside what callers did. `weigh` runs `<binary> self figures list --all --json --log <FILE>`, with the temporary XDG directories, so the tool reads the log with its own reader and record checks and its run never writes to the log it reads. A tool without `self figures list` fails with `crumbkit::weight::no_usage_figures`.
-- The log is `--log <FILE>`, which implies `--usage`, or else `usage.jsonl` in the tool's directory under the person's XDG state directory, which `weigh` finds with etcetera's call that the usage log uses. `--since <DURATION>` passes through to the tool and needs `--usage` or `--log`. A command that the log does not name has 0 runs. Without `--usage`, the three fields are `null`.
-- The compact columns are `path`, `short_help`, `output`, `path_total` and the three usage figures. `long_help` is behind `--long`, because an agent reads `--help` only when it needs the details.
-- Every weight is a byte count. The text table prints byte counts and each command's full path, because crumbkit's table prints numbers as JSON does and has no tree drawing. The JSON rows are in depth-first order from the root with their fields in a fixed order, so CI or an agent can compare two runs by diffing the output.
-- cargo-crumbkit's tests that run `weigh` give its cargo a target directory of their own under `CARGO_TARGET_TMPDIR`. `weigh` builds the binary with that package's features alone, while a test build unifies the features of every package and its dev-dependencies, so a build in the shared target directory would replace a binary that other tests run, and Windows cannot replace a running executable. The example test builds shelf in its directory before the examples run, so no example waits for a build.
+- Date: 2026-10-11
+- Status: accepted
+
+## Context
+
+A tool's builder needs to see what each path through the help costs an
+agent, from the root page down to a command's output, and to compare the
+estimate with what callers actually did. The measure has to come from the
+built binary, because a tool may change its tree at run time.
+
+## Decision
+
+- The published cargo-crumbkit crate held `cargo crumbkit weigh`, itself
+  a crumbkit tool that parses with `parse`, prints through `finish` and
+  checks its own help.
+- `weigh` built the named binary through cargo and read its tree from
+  `commands list --all --json --full`, so it measures what the binary
+  serves. Each run has a cleared environment and fresh XDG directories, so
+  `weigh` never reads a person's aliases or writes to their usage log.
+- A command's output weight was the largest example's golden files,
+  standard output and standard error together, because an agent reads
+  both. `weigh` and crumbkit-test share the functions that name and sum
+  them, so the two cannot disagree.
+- `--usage` added the figures from `self figures list`, run by the tool
+  itself, so the log is read with the tool's own reader and record checks.
+- Every weight was a byte count, and the JSON rows come in a fixed
+  depth-first order, so CI or an agent can diff two runs.
+- `weigh`'s tests used a target directory of their own, because a build
+  with other features in the shared directory would replace a binary that
+  other tests run, and Windows cannot replace a running executable.
+
+## Consequences
+
+`docs/behaviour/help/weight.md` describes the current columns and
+options.
 
 Considered: an HTML report, token counts, a `--compare` flag, an in-process library form that reads the clap tree without building the binary, sizes in KB, tree prefixes such as `├─` in the text table, a public usage-log reader in crumbkit that `weigh` calls in-process, passing the person's state directory to the tool's run, an optional value on `--usage`, `long_help` as a compact column, a nextest test group for the tests that run `weigh`, a longer time limit for the examples of `weigh`, a `weigh` option that takes a built binary, an output weight of standard output alone.

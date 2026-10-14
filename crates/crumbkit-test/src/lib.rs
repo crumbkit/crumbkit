@@ -37,10 +37,12 @@
 //! [`Recoveries`]: crate::Recoveries
 //! [`check_twin`]: crate::check_twin
 //! [ADR-0025]: https://github.com/crumbkit/crumbkit/blob/main/docs/decisions/api/help/0025-help-checks.md
-//! [ADR-0036]: https://github.com/crumbkit/crumbkit/blob/main/docs/decisions/api/adoption/0036-opt-outs.md
-//! [ADR-0044]: https://github.com/crumbkit/crumbkit/blob/main/docs/decisions/api/help/0044-command-reference.md
-//! [ADR-0046]: https://github.com/crumbkit/crumbkit/blob/main/docs/decisions/api/output/0046-output-budget.md
-//! [ADR-0004]: https://github.com/crumbkit/crumbkit/blob/main/docs/decisions/testing/0004-golden-and-snapshot-tests.md
+//! [output budget docs]: https://github.com/crumbkit/crumbkit/blob/main/docs/behaviour/output/budget/README.md
+//! [command reference docs]: https://github.com/crumbkit/crumbkit/blob/main/docs/behaviour/help/reference.md
+//! [checks docs]: https://github.com/crumbkit/crumbkit/blob/main/docs/behaviour/checks/README.md
+//! [opt-outs docs]: https://github.com/crumbkit/crumbkit/blob/main/docs/behaviour/adoption/opt-outs.md
+//! [schema commands docs]: https://github.com/crumbkit/crumbkit/blob/main/docs/behaviour/schemas/commands.md
+//! [golden files docs]: https://github.com/crumbkit/crumbkit/blob/main/docs/behaviour/checks/golden-files.md
 #![doc = include_str!("../README.md")]
 // docs.rs builds the docs on nightly with `--cfg docsrs`, and rustdoc's
 // `doc_cfg` feature labels each item behind a cargo feature with its name.

@@ -1,26 +1,59 @@
 # ADR-0046. Output budget
 
-- An agent that runs a tool reads the whole of standard output into its context, so one run that prints a large result can use up the context that the rest of a task needs. Each run therefore has an output budget: the most bytes that `finish` and `stream` print on standard output in one run. The budget counts the bytes of the result as they print, indented when the guide sets `JsonLayout::Pretty` (ADR-0052), and counts the result alone, because the lines that describe it, such as the footer and the cut line, print on standard error (ADR-0050). The budget is 1 MiB (1048576 bytes) unless the tool sets another.
-- A tool sets its budget with `Guide::output_budget(bytes, reason)`. The budget is at least 1024 bytes, and a smaller one panics when the guide is built, as other guide mistakes do (ADR-0021). The reason says why the tool's results need the bytes, and crumbkit-test's `check_opt_outs` pins the budget, its reason and its cost in the opt-out report as `output-budget/run` (ADR-0036). The cost line says how many bytes, and about how many tokens, a run can print beyond crumbkit's default.
-- No opt-out removes the budget. A tool whose results are larger raises its budget and gives the reason.
-- The environment variable `CRUMBKIT_OUTPUT_BUDGET` lowers the budget of one run to a whole number of bytes. A value larger than the tool's budget, 0, or a value that is not a whole number leaves the tool's budget unchanged. The variable never raises the budget, so no one can read more than the tool's budget in one run, even when they need to. A reader who needs more asks for less with `--limit`, `--fields` or a filter and runs the command more than once.
-- `finish` measures a result before it prints anything. It serializes the result once into a buffer that stops at the budget, and it prints the buffer when the result fits. When it does not fit, the result's shape decides what happens:
-  - A listing or a list prints the most rows that fit, found by a binary search over the row count, because a result with more rows is never shorter. The run exits with code 0. In text, a line such as `Showing 812 of 5000 books, because output stops at 1048576 bytes. Ask for less with --limit or --fields.` prints on standard error in place of the footer, and a list, which has no paging flags, names only `--fields`. With `--json`, the document holds `"cut": {"code": "crumbkit::output::over_budget", "budget": 1048576}`. A document from `Document::without_envelope` has no place for `cut`, so the line also prints on standard error with `--json`. A listing that holds `cut` also holds `"truncated": true`, and its `total` still counts every row that matched when the tool counted them (ADR-0050).
-  - A batch prints the rows that fit in input order and always its first row, then ends with one failure, `crumbkit::output::over_budget`, whose field `left_out` lists the keys of the answers it left out as text, in the caller's order. A key that the caller gave twice is listed twice. The field `left_out_from` gives the index of the first answer left out among the answers in the caller's order, counted from 0, and every later answer without its own failure was left out too, so a reader whose keys repeat or whose failed keys sit among the rows matches `left_out` to its keys by position. The run exits with code 1. The failure lists keys because an agent that sees only a count has to work out which keys are missing, and a failed key that sits among the rows makes that hard. A key whose lookup failed is never listed, because its own failure reports it. A batch reports a failed key with one failure per key (ADR-0016), and the budget departs from that rule for the keys it left out, because one failure per key would itself pass the budget.
-  - A batch's handler can stop fetching once `Batch::has_room` returns false, so it does no lookups whose rows would not print. `has_room` measures each new row once as compact JSON, which is an estimate of what prints. The keys that the handler never fetched follow the keys of the cut rows in `left_out`, and a batch with such keys ends with the failure even when its rows fit. An estimate that stops too early or too late therefore still leaves every key either answered or listed.
-  - The failure's recovery is a `run` step built with `Call::all`, such as `{"kind":"run","call":"shelf books show <ID>...","all":"left_out"}`, which runs the command once with every key of `left_out`, each as its own word in place of `<ID>...`. One run takes every key, because a run for each key would start one process for each of hundreds of keys, and a batch's key argument always takes many values. The call text shows `<ID>...`, which is clap's usage form for an argument that takes many values, so a reader that ignores `all` still sees that several keys go in that place, and `check_recoveries` reads it as one placeholder. In text the `help:` line prints the concrete command, such as ``run `shelf books show 4 5 6` ``, with each key quoted for a shell as other call arguments are.
-  - The run with every key may itself be cut. It still makes progress, because a batch always prints its first answer, so each run answers at least one key and the next failure lists fewer keys than the run was given.
-  - When `unlisted` is above 0, the message adds that the recovery covers the keys listed in `left_out` and that a later run covers the rest, so the text and JSON forms both say that the recovery does not finish the work. When `left_out` lists no key, the recovery is a hint to run the command again with the keys that were not answered, because a run with no keys would answer nothing.
-  - In a JSON document with the envelope, the failure prints on standard output and counts against the budget. The rows that print are the most that fit beside a failure that lists every key left out after the first row. When even one row and that full list do not fit, one row prints, `left_out` lists the most first keys that fit, and the field `unlisted` counts the rest and any cut answer that has no key. `unlisted` is present only when it is above 0. The message always counts every answer left out. Rows keep priority over keys down to one row, because a row is the answer and a key only says where to find one. An unwrapped batch that prints its failures in input order ends its array with the failure, which counts against the budget in the same way (ADR-0016). In text, and in any other document without the envelope, the failure prints on standard error, which the budget does not count, so it lists every key.
-  - A single row, or a listing or list whose first row alone does not fit, is refused with `crumbkit::output::over_budget`, whose recovery is a hint to ask for fewer fields with `--fields`. The run exits with code 1. A prose result is refused with the same code and a recovery of `None`, because no flag makes it smaller. A bytes result is refused in the same way and is never cut, because a program that reads part of a file cannot tell that bytes are missing. Its text form is measured as the raw bytes and its JSON form as the document with the base64 text, so `--json` can refuse a result whose text fits.
-  - A result that fits costs one serialization and one buffer, and the search measures each count of rows with a counter that keeps no bytes.
-- A tool sets its own over-budget code with a `Rename` of `crumbkit::output::over_budget` in `Guide::codes`, which `cut` and the failure report in place of crumbkit's for every document, and an `Exit` that lists the code gives the failure its own exit code in place of 1 (ADR-0056). The failure keeps crumbkit's message and recovery.
-- A document marked with `Document::always_print_first` always prints its first answer: a single row, a prose result or a bytes result prints whole even past the budget, and a listing or a list prints at least its first row. A tool uses it when the one answer is the point of the run, such as a file that the caller named.
-- A stream counts the bytes of each line. The first item always prints. A later item whose line would pass the budget does not print. The stream then prints the over-budget failure, which `Streaming::item` reports by returning `Break`, and `Streaming::end` exits with code 1. A stream therefore ends at the budget, and a tool whose stream runs for a long time, such as a watch, raises its budget. The failure line that ends the stream prints after the budget is reached, so the stream's output can pass the budget by that one line.
-- `Output::budget` returns the bytes that the run can still print, so a handler can fetch no more rows than fit.
-- The cut line, the `cut` field and the failure depend only on the result and the budget. None of them depends on whether standard output or standard error is a terminal (OUTPUT-1).
-- The usage log records a cut result as `truncated: true` with the over-budget code, and records a refusal as a failure with the code (ADR-0029). The `crumbkit.finish` span records the code as it records a failure's code (ADR-0030).
-- crumbkit-test's `check_output_budget` runs each `--json` example of the guide once, then again with `CRUMBKIT_OUTPUT_BUDGET` set to half the bytes it printed. The second run must print a result marked with `cut` or the cut line, print one answer from a document that always prints its first answer, or exit with the code that the guide gives the over-budget failure, 1 by default, and end with the over-budget failure that names the budget.
-- The code is in `codes::ALL`, the list of crumbkit's own codes (ADR-0001).
+- Date: 2026-10-12
+- Status: accepted
+
+## Context
+
+An agent that runs a tool reads the whole of standard output into its
+context, so one run that prints a large result can use up the context
+that the rest of a task needs. A cut result must say that it was cut and
+how to get the rest, or the agent works from incomplete data without
+knowing it.
+
+## Decision
+
+- Each run got an output budget: the most bytes that `finish` and
+  `stream` print on standard output in one run, 1 MiB unless the tool
+  sets another with a reason. A tool's budget is at least 1024 bytes, and
+  a smaller one panics when the guide is built.
+- No opt-out removes the budget. `CRUMBKIT_OUTPUT_BUDGET` may lower it
+  for one run and never raises it, so no one reads more than the tool's
+  budget in one run. A reader who needs more asks for less and runs the
+  command more than once.
+- `finish` measured a result before printing anything, and the result's
+  shape decided what happens when it does not fit:
+  - A listing or list prints the most rows that fit and exits 0, with a
+    cut line in text and a `cut` field in JSON, so the reader knows it was
+    cut.
+  - A batch prints the rows that fit, always its first, and ends with one
+    over-budget failure that lists the keys left out. Keys are listed
+    because an agent that sees only a count must work out which keys are
+    missing. One failure per key would itself pass the budget. Its
+    recovery runs the command once with every key left out, because a run
+    for each key would start hundreds of processes. Each such run answers
+    at least one key, so a chain of them always makes progress.
+  - In JSON, rows keep priority over keys down to one row, because a row
+    is the answer and a key only says where to find one.
+  - A single row, a prose result or a bytes result is refused. A bytes
+    result is never cut, because a program that reads part of a file
+    cannot tell that bytes are missing.
+- `Batch::has_room` let a handler stop fetching early, and keys it never
+  fetched are listed too, so every key is answered or listed whatever the
+  estimate.
+- `Document::always_print_first` let a document whose one answer is the
+  point of the run print it whole past the budget.
+- A stream ends at the budget, so a long-running stream raises its
+  budget.
+- The cut and the failure never depend on whether a stream is a
+  terminal (OUTPUT-1).
+- `check_output_budget` reruns each `--json` example with half its bytes
+  as the budget and checks that the run marks the cut or fails with the
+  over-budget code.
+
+## Consequences
+
+A tool can rename the over-budget code and give it its own exit code.
+`docs/behaviour/output/budget/` describes the current behaviour.
 
 Considered: no budget, a budget counted in rows, a budget counted in tokens, a budget that a flag raises, an opt-out that removes the budget, a variable that also raises the budget, a variable that refuses an invalid value, a page of the result with a cursor to the next page, a cut listing that exits with code 1, one failure per id that a batch left out, a count of the rows that a batch left out, keys from a `Row` method, keys that only `fetch_each` records, a fixed share of the budget for a batch's keys, one run for each key left out (`each`), a call text that shows `<ID>` without `...`, a concrete call for the first key left out, a room check on `Output` that measures rows in the chosen format, `fetch_each` that stops at the budget, a cut field that replaces `truncated`, a cut line on standard output in text, a budget that also counts the notes on standard error, a refused stream that prints nothing, a stream that drops items silently past the budget, a counting pass before every write, a new document id for the documents that hold `cut`, an over-budget code set on each `Document`, the keys left out listed one by one in the over-budget failure.

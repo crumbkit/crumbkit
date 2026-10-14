@@ -1,22 +1,46 @@
 # ADR-0021. Help pages
 
-- [`parse`](../../../../crates/crumbkit/src/parse.rs) keeps clap's help template for each command and adds crumbkit's lines after the command's own `after_help` and `after_long_help`, so a tool keeps clap's layout and its own text. It changes only the commands that the typed words pass through, so crumbkit's extra work on every run grows with the depth of the command typed, and the command tree is never cloned.
-- `-h` names the global flags a leaf offers on one line, and `--help` lists them in full.
-- A leaf's help prints its effects on one `Effects:` line, first among crumbkit's lines after the examples (ADR-0039), and its write guards on a `Writes:` line after it (ADR-0047).
-- The help of a command with a visible subcommand ends with a `Next:` line that opens one of them.
-- The clap root's help names a person's aliases on one line when the guide opts in with `Guide::personal_aliases` (ADR-0027).
-- Help and the version keep clap's colours only when standard output is a terminal and the guide keeps terminal detection on (ADR-0049).
-- crumbkit finds the deepest command the caller reached by walking the typed words once before parsing. The walk reads each option's values from clap's `Arg`, so an option's value that equals a subcommand name names no command.
-- [`command_path`](../../../../crates/crumbkit/src/parse/walk.rs) makes the walk public. It returns the path of the command that a tool's words name, including a line that clap refuses, without building or cloning the tree, so a tool can log which command a refused run named or choose work before it parses, and crumbkit-test's twin check reads each line's command with it (ADR-0005). crumbkit-test keeps its own `split` (ADR-0053), because no tool reads a recovery's words back at run time.
-- The same walk finds `--json`, which makes a refusal print as a JSON document. It counts the word only where it reads it as a flag, so a value of an option that allows hyphen values is no request for JSON. A second parse with clap's `ignore_errors` is rejected, because it costs a full parse on every refusal and relies on clap's loosely specified handling of a command line that it cannot parse.
-- A tool cannot name its own output flags for the walk to treat as `--json`. On the parsed path, crumbkit cannot set the `Output` that the tool's own type builds from clap's matches, so `Output::is_json` would answer differently on the two paths.
-- A tool may list a group's subcommands under goal headings that it declares in a `const` [`Guide`](../../../../crates/crumbkit/src/help.rs), in place of clap's single `Commands:` list. `parse` applies the headings to the groups that the typed words pass through, and [`help::extend`](../../../../crates/crumbkit/src/help.rs) applies them to the whole tree for a tool that parses with plain clap and for tests, through the same per-group function.
-- A guided command gets clap's default template with the headed list written into the template in place of clap's argument sections, so the tool's own `before_help` and `before_long_help` still print at the top of the page. A guided page has no `Arguments:` section, and shelf's golden files fail when clap's default layout changes.
-- clap expands each `{tag}` in a template and drops the text after an unmatched `{`, so a list that holds `{` goes in `before_help` instead, and that command loses the tool's own `before_help`.
-- A tool that adds commands to its tree at run time, such as one for each file a person writes, gives them examples with [`RuntimeLeaf`](../../../../crates/crumbkit/src/help/runtime.rs)s, which `Guide::with_runtime_leaves` joins after the `const` leaves into a guide that every reader takes as it takes the `const` one. The join leaks the runtime leaves for the rest of the process, so a tool without runtime commands does no work for them, and no function needs a second guide. Runtime leaves take refusal alternatives, and the join keeps the guide's renames.
-- `parse` and `extend` never fail on a guide. crumbkit-test's [`check_guide`](../../../../crates/crumbkit-test/src/guide.rs) catches a guide that does not match the tree.
-- A guided list ends a description with the command's visible aliases as clap's `Commands:` list does, so a tool that opts out of `Rule::OneName` shows them on guided and unguided pages alike (ADR-0027).
-- A command that the guide does not name keeps clap's `Commands:` list. crumbkit's `after_help` lines appear on guided and unguided pages alike.
-- A refusal's message is clap's error on one line, except a view-flag refusal (ADR-0016). shelf's golden files fail when clap's wording changes.
+- Date: 2026-10-09
+- Status: accepted
+
+## Context
+
+Agents learn a tool from its help, so a help page must show what to run
+next, what a command changes and which commands belong together. Tools
+already have clap help pages with their own text and layout, which
+adoption should not replace, and every run pays for whatever crumbkit
+does to the tree before parsing.
+
+## Decision
+
+- `parse` kept clap's template and added crumbkit's lines after the
+  command's own help text, so a tool keeps clap's layout and its text. It
+  changes only the commands that the typed words pass through, so the
+  extra work grows with the depth of the command typed and the tree is
+  never cloned.
+- crumbkit's lines named the global flags a leaf offers, its effects and
+  write guards, and a `Next:` line that opens a subcommand.
+- One walk of the typed words found the deepest command reached and
+  `--json`, reading each option's values from clap's `Arg`, so an option
+  value that equals a subcommand name or `--json` is not mistaken for
+  one. A second parse with clap's `ignore_errors` was rejected, because it
+  costs a full parse on every refusal and relies on loosely specified
+  behaviour. `command_path` made the walk public for tools and checks.
+- A tool could not name its own output flags for the walk, because
+  `Output::is_json` would then answer differently on the parsed path.
+- A `const` `Guide` could list a group's subcommands under goal headings,
+  written into clap's default template so the tool's own `before_help`
+  still prints. Commands the guide does not name keep clap's list.
+- `RuntimeLeaf`s gave commands added at run time their examples, joined
+  into a guide that every reader takes as it takes the `const` one, so no
+  function needs a second guide parameter.
+- `parse` never fails on a guide, and `check_guide` catches a guide that
+  does not match the tree.
+- A refusal's message is clap's error on one line, and shelf's golden
+  files fail when clap's wording or layout changes.
+
+## Consequences
+
+`docs/behaviour/help/README.md` describes the current help pages.
 
 Considered: a scan for the literal word `--json`, output flags that the tool names, help templates for crumbkit's own lines, crumbkit rendering whole help pages, plain text always, a second parse with errors ignored, rebuilding the message from clap's error parts, applying the whole guide before every parse, hiding a group's children, the list in `before_help` on every guided command, a check that fails on a brace in a listed description, a runtime builder holding `Vec`s as the only guide, a `Guide` with a lifetime that borrows a runtime guide, a second guide parameter on every function.

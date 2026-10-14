@@ -30,7 +30,7 @@ const PATH: u64 = 8_000;
 /// of the root, of each command between the root and the command, and of
 /// the command, and then the largest output of the command's examples.
 /// [`PathBudgets::new`] holds crumbkit's default budget of 8,000 bytes for
-/// every path, which [ADR-0025] records. A tool can raise or lower the
+/// every path, which the [help checks docs] list. A tool can raise or lower the
 /// budget of every path, or of single commands, and gives a reason for each
 /// budget it sets, which [`check_opt_outs`](crate::check_opt_outs) lists:
 ///
@@ -46,7 +46,7 @@ const PATH: u64 = 8_000;
 /// examples, and [`PathBudgets::help_only`] budgets its paths by their
 /// `-h` pages alone.
 ///
-/// [ADR-0025]: https://github.com/crumbkit/crumbkit/blob/main/docs/decisions/api/help/0025-help-checks.md
+/// [help checks docs]: https://github.com/crumbkit/crumbkit/blob/main/docs/behaviour/help/checks.md
 #[derive(Clone, Copy, Debug)]
 pub struct PathBudgets<'a> {
     /// The directory of the example golden files that
