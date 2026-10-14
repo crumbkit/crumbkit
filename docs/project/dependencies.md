@@ -18,8 +18,8 @@ Why: ADR-0003.
 ## The default build
 
 The default build of crumbkit depends on clap, serde, serde_json, schemars
-and is-ai-agent. crumbkit-core depends only on serde and schemars, so a
-crate that uses crumbkit-core alone builds no clap.
+and is-ai-agent. crumbkit-core depends only on serde, serde_json and
+schemars, so a crate that uses crumbkit-core alone builds no clap.
 
 crumbkit enables two clap features:
 
@@ -41,6 +41,7 @@ Why: ADR-0003, ADR-0001, ADR-0032, ADR-0043.
 
 | Feature or crate | Adds |
 | --- | --- |
+| `derive` | crumbkit-derive, a procedural macro built on syn 3, quote and proc-macro2, which clap_derive already brings into the lock file with the same syn features. The feature is off by default, so a tool that writes its `Failure` impls by hand builds no syn. |
 | `usage-log` | The usage log's dependencies. On Windows it also adds getrandom, which proptest already brings into the lock file, because Windows has no `/dev/urandom`. |
 | `miette` | miette with no features, because crumbkit draws the source line and its underline itself, and unicode-width, which miette already depends on, so carets line up after wide characters. The width tables added 16,976 bytes to shelf's stripped release binary on aarch64 macOS. |
 | `hand-over` | signal-hook, which the usage log also uses, so a tool can hand the terminal to a child while it ignores Ctrl-C. |
@@ -50,7 +51,7 @@ Why: ADR-0003, ADR-0001, ADR-0032, ADR-0043.
 | crumbkit-picker | Nothing beyond the standard library, so a tool that wants a picker with a terminal library chooses and builds that library itself. |
 | cargo-crumbkit | etcetera, which the `usage-log` feature already uses, so `weigh --usage` finds a tool's log with the same calls that wrote it. |
 
-Why: ADR-0003, ADR-0016, ADR-0027, ADR-0029, ADR-0030, ADR-0033,
+Why: ADR-0003, ADR-0001, ADR-0016, ADR-0027, ADR-0029, ADR-0030, ADR-0033,
 ADR-0042, ADR-0043, ADR-0048.
 
 ## MSRV and toolchain

@@ -41,15 +41,16 @@ an environment variable needs unsafe code, which RUST-2 forbids. A custom
 completer that runs another clap_complete tool as a child removes the
 variable from the child's environment itself. `complete_with` runs before the
 guide is built, so it records the declared name in a process-wide
-`OnceLock`, and the usage log reads the name from there and falls back to
-`COMPLETE`.
+`OnceLock`, and `crumbkit::events::observe` reads the name from there and
+falls back to `COMPLETE`.
 
-The usage log installs no recorder for a run whose completion variable asks
-for completion, by the same rule that `complete` reads, so a Tab press
-writes no line even when a tool starts the log first or calls clap_complete
-directly ([usage log](../usage-log/README.md)).
+`crumbkit::events::observe` installs no [run observer](../run-observer/README.md)
+for a run whose completion variable asks for completion, by the same rule
+that `complete` reads. The [usage log](../usage-log/README.md) therefore
+writes no line for a Tab press, even when a tool starts the log first or
+calls clap_complete directly.
 
-Why: ADR-0048, ADR-0029.
+Why: ADR-0048, ADR-0029, ADR-0057.
 
 ## Hidden names
 

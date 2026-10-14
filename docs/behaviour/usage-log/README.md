@@ -29,14 +29,17 @@ A tool turns the feature on and adds one line to `main`:
 `let _log = crumbkit::usage::start();`. The rustdoc of
 [`usage::start`](../../../crates/crumbkit/src/usage/recorder.rs) states what
 `start` does, what the guard does when it drops, and when a run installs no
-recorder, such as a second `start` in one process or a run that answers a
-shell's [completion request](../parsing/completion.md).
+recorder, such as a second `start` in one process, a `start` after the tool
+installed an observer of its own, or a run that answers a shell's
+[completion request](../parsing/completion.md). `start` installs the log as
+the process's [run observer](../run-observer/README.md) with
+`crumbkit::events::observe`.
 
 `start` never builds the tool's command tree. `parse` gives the recorder the
 tool's name and version from the command it parses against, so a run that
 ends before it reaches `parse` writes no line.
 
-Why: ADR-0029.
+Why: ADR-0029, ADR-0057.
 
 ## What each part of a run reports
 
@@ -62,28 +65,30 @@ Why: ADR-0029.
 - A [stream](../output/streams.md) reports its run as `finish` does.
 - A run that never reaches `finish` or a stream's end, such as a child
   process or the tool's own exit path, reports its exit with
-  [`usage::ended`](../../../crates/crumbkit/src/usage.rs). The line records
+  [`events::ended`](../../../crates/crumbkit/src/events.rs). The line records
   the tool's real exit number, such as 124, because `ExitCode` cannot be
   read back as a number. `ended` returns that number as the `ExitCode` for
   `main` and writes the line at once, so a tool that then exits through
   `std::process::exit` still has its line.
 - A run that reports a failure and carries on past it reports the code with
-  [`usage::tolerated`](../../../crates/crumbkit/src/usage.rs). The line's
+  [`events::tolerated`](../../../crates/crumbkit/src/events.rs). The line's
   `tolerated` field lists the first 8 distinct codes in the tool's spelling,
   in the order reported, and drops later codes, so the line stays within its
   size limit.
 - crumbkit-aliases' `expand` calls
-  [`usage::aliased`](../../../crates/crumbkit/src/usage.rs) when it replaces
+  [`events::aliased`](../../../crates/crumbkit/src/events.rs) when it replaces
   an [alias](../parsing/aliases.md). The line then records `"alias": true`
   and the expanded command. crumbkit-aliases has no feature of its own.
-- `ended`, `tolerated` and `aliased` exist in every build and do nothing
-  without the feature or a started log.
+- `ended`, `tolerated` and `aliased` live in `crumbkit::events`, exist in
+  every build and do nothing without an installed observer.
 
-Every report does nothing when no recorder is installed. A report is a lock
-of a static `Mutex` and a check of its state, and only `parse` copies the
+crumbkit sends each report to the [run observer](../run-observer/README.md),
+and the log's observer passes it to the recorder. Every report does nothing
+when no observer or no recorder is installed. A report is a load of the
+observer, a lock of a static `Mutex` and a check of its state, and only `parse` copies the
 words of the command line, once.
 
-Why: ADR-0029, ADR-0037, ADR-0041, ADR-0043.
+Why: ADR-0029, ADR-0037, ADR-0041, ADR-0043, ADR-0057.
 
 ## The record
 
@@ -259,14 +264,16 @@ Why: ADR-0029.
 
 ## Child processes
 
-Once a command has handed the terminal to a
+crumbkit tells the observer when a command hands the terminal to a child
+and, on Windows, when the child exits. Once a command has handed the
+terminal to a
 [child process](../output/child-processes.md), the signal thread skips
 SIGINT for the rest of the run on Unix, and while the child runs on
 Windows, so Ctrl-C ends only the child. A child that a signal ended marks
 the line `"interrupted": true`, and the command reports its exit through
 `ended`.
 
-Why: ADR-0029, ADR-0042.
+Why: ADR-0029, ADR-0042, ADR-0057.
 
 ## Cut-short and empty results
 

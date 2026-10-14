@@ -21,6 +21,7 @@ crumbkit is a virtual workspace.
 
 | Path | Holds |
 | --- | --- |
+| `crates/crumbkit-derive` | The published procedural macro crate of `#[derive(Failure)]`, which crumbkit-core re-exports behind its `derive` feature. |
 | `crates/crumbkit-core` | The published crate of the types that need no clap. crumbkit depends on it and re-exports its items. |
 | `crates/crumbkit` | The published runtime crate. |
 | `crates/crumbkit-test` | The published crate of convention checks. |
@@ -39,4 +40,4 @@ crumbkit is a virtual workspace.
 RUST-7, so each file name says which module it holds, and code and tests
 read separately.
 
-Why: ADR-0014, ADR-0032.
+Why: ADR-0014, ADR-0032, ADR-0001.

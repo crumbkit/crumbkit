@@ -59,7 +59,8 @@ dependency adds build time for nothing.
 `deny.toml` allows only the licences the graph uses and only crates.io as a
 source. It bans these:
 
-- duplicate versions and wildcard version requirements;
+- duplicate versions, and wildcard version requirements except a
+  path-only dev-dependency, which `cargo publish` leaves out;
 - the async runtimes and C build tools that
   [Dependencies](dependencies.md#admitting-a-dependency) rules out;
 - clap in any crate that its list of clap users leaves out, which keeps

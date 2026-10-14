@@ -94,7 +94,8 @@ holds `Code` and `Spelling`, `Failure`, `Recovery`, `Error` and `AsFailure`,
 `Document`, `Call` and `CallError`, `Row`, `Rows`, `Shape` and `NoRow`,
 `Listing`, `Batch` and `Prose`. crumbkit keeps parsing, help, `Output`,
 `Page`, `finish`, the failure document, refusals, `commands list`,
-`fetch_each`, the exit-code helper, the usage log and the trace context.
+`fetch_each`, the exit-code helper, the run observer, the usage log and the
+trace context.
 
 - `Rows::SHAPE` names a result's kind, so `schemas::document_schema` builds
   the fields of a document from its result type, and `Document::untyped`
@@ -106,6 +107,14 @@ holds `Code` and `Spelling`, `Failure`, `Recovery`, `Error` and `AsFailure`,
   crumbkit-core.
 - crumbkit-core depends on serde_json, because `Batch::has_room` measures
   each row as the compact JSON that crumbkit prints.
+- `FieldValue::from_json` reads a failure field back from a
+  `serde_json::Value`, so a test or a tool that reads failure fields from
+  JSON does not copy the conversion. It puts serde_json's major version into
+  crumbkit-core's API, which couples nothing new, because crumbkit's
+  `FailureForm::json` already returns a `serde_json::Value`.
+- crumbkit-core's `derive` feature re-exports
+  [`#[derive(Failure)]`](../failures/derive.md), and crumbkit-core holds
+  [`Error::unclassified`](../failures/README.md#unclassified-errors).
 - crumbkit-core's `miette` feature adds `Failure::diagnostic` and the
   conversion of a `miette::Report` into `Error`, and crumbkit's `miette`
   feature turns it on.
@@ -113,7 +122,7 @@ holds `Code` and `Spelling`, `Failure`, `Recovery`, `Error` and `AsFailure`,
   lists as direct users, so `cargo deny check bans` fails when clap enters
   crumbkit-core's dependency tree.
 
-Why: ADR-0032, ADR-0002.
+Why: ADR-0032, ADR-0002, ADR-0001.
 
 ## API promises
 
@@ -124,9 +133,10 @@ published version ([releases](../../project/releases.md)).
   that holds data read at run time, such as `RuntimeLeaf` or crumbkit-test's
   `RuntimeFailing`, has ordinary builders where a `const fn` cannot add to a
   `Vec` or replace an owned value, and leaks into the `'static` type that the
-  `const` builders make. `RuntimeFailing::at` makes a place without a code,
-  from which `RuntimeFailing::line` builds each command line, and turning a
-  place without a code into a `Failing` panics.
+  `const` builders make. `RuntimeFailing::at` makes a `RuntimePlace`, a
+  separate type without a code, from which `RuntimePlace::line` builds each
+  command line, so a place passed where a command line belongs is a compile
+  error. The two types share one private settings struct.
 - A settings type whose `const` constructor borrows a tool's codes, such as
   `Twins`, `Recoveries` and `Unprovoked`, has a second `const` constructor
   that takes codes held by value.
@@ -134,6 +144,11 @@ published version ([releases](../../project/releases.md)).
   traits, such as `Picker`, gain only methods with defaults. `Answer` is
   `#[non_exhaustive]`.
 - Failure codes are never reused.
+- The keys of `#[failure(...)]` and the code the derive writes for them are
+  public API, as [deriving `Failure`](../failures/derive.md) states.
+- The run observer's `Observer` trait gains only methods with defaults, and
+  its `Refused` and `Finished` events are `#[non_exhaustive]` with getters
+  ([run observer](../run-observer/README.md)).
 - `parse` returns a [`Stop`](../../../crates/crumbkit/src/parse/stop.rs) in
   place of a bare `ExitCode` when it ends the run
   ([parsing](../parsing/README.md#the-stop-of-a-run-that-parse-ended)).
@@ -149,4 +164,4 @@ its own reasons, such as 130 when SIGINT ends the process and 143 when
 SIGTERM does, and the usage log's signal handling leaves those codes in
 place.
 
-Why: ADR-0002, ADR-0012.
+Why: ADR-0002, ADR-0012, ADR-0001, ADR-0057.

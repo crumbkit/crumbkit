@@ -2,8 +2,9 @@
 
 This page covers how a tool reports a failure: the `Failure` trait, codes and
 their spelling, recoveries and alternatives, fields, refused command lines,
-codes learned at run time, and the `miette` feature. The other pages in this
-directory cover [failure forms](forms.md), which replace crumbkit's failure
+codes learned at run time, unclassified errors and the `miette` feature. The
+other pages in this directory cover [deriving `Failure`](derive.md),
+[failure forms](forms.md), which replace crumbkit's failure
 document, and [exit codes](exit-codes.md).
 [`Failure`](../../../crates/crumbkit-core/src/failure.rs),
 [`Code`](../../../crates/crumbkit-core/src/code.rs) and
@@ -20,8 +21,8 @@ formatting never reaches the output.
 [`Error`](../../../crates/crumbkit-core/src/failure.rs) holds any failure, so
 `?` works across a tool's error types. It has no context methods. `finish`
 accepts a `Failure` or an `Error` through the sealed `AsFailure` trait,
-because `Error` cannot implement `Failure`. crumbkit has no derive for
-`Failure`, so a tool writes each `impl Failure` by hand.
+because `Error` cannot implement `Failure`. A tool writes each `impl Failure`
+by hand or [derives it](derive.md).
 
 A failure prints as text on standard error, or as one failure document with
 `--json` ([output](../output/README.md#standard-output-and-standard-error)). A
@@ -159,10 +160,26 @@ The optional `miette` feature lets a failure that implements
 diagnostic's related diagnostics and a source excerpt for each label. The
 code, the recovery and the url still come from `Failure`.
 
-With the feature, a `miette::Report` converts into `Error` with one fixed
-code ([`report`](../../../crates/crumbkit-core/src/report.rs)), so `?` works
-on a `miette::Result`. The fixed code tells the caller only that the failure
-was not classified, so a tool that wants its own failure back calls
+With the feature, a `miette::Report` converts into `Error` with the code
+`crumbkit::report::unchecked`
+([`report`](../../../crates/crumbkit-core/src/report.rs)), so `?` works on a
+`miette::Result`. The code tells the caller only that the failure was not
+classified, so a tool that wants its own failure back calls
 `report.downcast` before converting.
 
 Why: ADR-0001, ADR-0016.
+
+## Unclassified errors
+
+[`Error::unclassified`](../../../crates/crumbkit-core/src/unclassified.rs)
+holds any `std::error::Error` or message with the code
+`crumbkit::report::unchecked` and a `Recovery::None`. A tool that uses an
+error library such as anyhow therefore reaches `finish` without a
+dependency of crumbkit on that library. The tool downcasts to its own
+failure types first, because boxing the library's error hides the type
+inside. The code is `codes::REPORT_UNCHECKED` in `codes::ALL`, so
+`check_recoveries` follows a chain through it. crumbkit-core holds the
+method and the code, because neither needs clap, and crumbkit re-exports the
+code in its own `codes` module.
+
+Why: ADR-0001, ADR-0032.

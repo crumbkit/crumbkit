@@ -16,6 +16,7 @@ its reasons.
   [terminal detection](output/terminal.md) and the
   [JSON layout](output/json-layout.md).
 - [Failures](failures/README.md): the failure model, codes and recoveries,
+  [deriving `Failure`](failures/derive.md),
   [failure forms](failures/forms.md) and
   [exit codes](failures/exit-codes.md).
 - [Help](help/README.md): help pages, the `help` command and topics,
@@ -30,6 +31,8 @@ its reasons.
 - [Adoption](adoption/README.md): the guide, the core crate, the public
   API, [opt-outs](adoption/opt-outs.md) and
   [declarations](adoption/declarations.md).
+- [Run observer](run-observer/README.md): the observer that hears what
+  each run did.
 - [Usage log](usage-log/README.md): the local usage log,
   [trace context](usage-log/trace-context.md) and the
   [usage report](usage-log/report.md).

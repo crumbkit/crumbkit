@@ -47,9 +47,11 @@ The child receives the variables of `trace::child_env`, so it joins the run's
 [trace](../usage-log/trace-context.md). The usage log records a child's exit
 code, and `"interrupted": true` when a signal ended the child.
 
-When a [usage log](../usage-log/README.md) runs, its signal thread has
-already taken SIGINT, so crumbkit installs no SIGINT handler of its own for
-the child. With `Signals::Crumbkit`, the log's thread skips SIGINT once a
+When the [run observer](../run-observer/README.md) says that it handles
+SIGINT, as the [usage log](../usage-log/README.md)'s signal thread does,
+crumbkit installs no SIGINT handler of its own for the child. crumbkit tells
+the observer that a child took the terminal before the child starts, and on
+Windows that the child gave it back once it exits. With `Signals::Crumbkit`, the log's thread skips SIGINT once a
 child has held the terminal. With `Signals::Tool`, the tool's own handler
 decides, whether or not a child runs.
 
@@ -58,7 +60,7 @@ tool beside the child, because the C runtime raises no signal for them. A
 Ctrl-C that reaches the handler after the child exits may end the tool, and
 nobody has tested that case on Windows.
 
-Why: ADR-0042, ADR-0029.
+Why: ADR-0042, ADR-0029, ADR-0057.
 
 ## A child with a JSON form
 
