@@ -1,13 +1,12 @@
 //! `complete`, which answers a shell's completion request through
 //! `clap_complete`'s dynamic completion (ADR-0048), and the rule that tells a
-//! completion request from an ordinary run, which the usage log shares.
+//! completion request from an ordinary run, which keeps a completion request
+//! from installing an observer.
 //! [`complete_with`] declares the tool's own name for the completion
 //! variable (ADR-0056), and [`complete_with_words`] builds the command from
 //! the words that the caller typed.
 
-use std::ffi::OsStr;
-#[cfg(feature = "complete")]
-use std::ffi::OsString;
+use std::ffi::{OsStr, OsString};
 #[cfg(feature = "complete")]
 use std::io::{self, Write};
 #[cfg(feature = "complete")]
@@ -43,14 +42,32 @@ static DECLARED: OnceLock<&'static str> = OnceLock::new();
 
 /// Returns the name of the completion variable of this process: the name
 /// that the tool declared with [`complete_with`], or [`VAR`] when it
-/// declared none. The usage log reads it to skip a completion request.
-#[cfg(feature = "usage-log")]
-pub(crate) fn variable() -> &'static str {
+/// declared none.
+fn variable() -> &'static str {
     #[cfg(feature = "complete")]
     if let Some(declared) = DECLARED.get() {
         return declared;
     }
     VAR
+}
+
+/// Reports whether the run answers a shell's completion request, so
+/// [`crate::events::observe`] installs no observer (ADR-0048).
+pub(crate) fn completing() -> bool {
+    #[expect(
+        clippy::disallowed_methods,
+        reason = "the complete module owns the reads of the completion variable"
+    )]
+    completing_in(|name| std::env::var_os(name))
+}
+
+/// Reports whether the run answers a shell's completion request, with `env`
+/// giving the value of an environment variable by its name. It reads the
+/// completion variable that the tool declared with `complete_with`, or
+/// `COMPLETE`.
+fn completing_in(env: impl FnOnce(&str) -> Option<OsString>) -> bool {
+    let value = env(variable());
+    requested(value.as_deref())
 }
 
 /// Reports whether `value`, the value of [`VAR`] in the environment, asks
@@ -65,8 +82,8 @@ pub(crate) fn requested(value: Option<&OsStr>) -> bool {
 /// to return. It returns `None` for an ordinary run, in which `COMPLETE` is
 /// unset, empty or `0`, and then builds nothing.
 ///
-/// A tool's `main` calls it first, before
-/// [`usage::start`](crate::usage), and passes the function that builds the
+/// A tool's `main` calls it first, before it installs a run observer with
+/// [`events::observe`](crate::events::observe), and passes the function that builds the
 /// command the tool parses against and the guide it parses with:
 ///
 /// ```no_run
@@ -159,10 +176,10 @@ pub fn complete(command: impl FnOnce() -> Command, guide: &Guide) -> Option<Exit
 ///
 /// The first call in the process also declares `variable` as the process's
 /// completion variable, and a later call with another name changes nothing.
-/// The usage log reads that declaration and writes no line for a run whose
-/// declared variable asks for completion, so `main` calls `complete_with`
-/// before [`usage::start`](crate::usage). A tool that never calls it keeps
-/// `COMPLETE`.
+/// [`events::observe`](crate::events::observe) reads that declaration and
+/// installs no observer in a run whose declared variable asks for
+/// completion, so `main` calls `complete_with` before it installs one. A
+/// tool that never calls it keeps `COMPLETE`.
 #[cfg(feature = "complete")]
 #[must_use]
 pub fn complete_with(
@@ -224,7 +241,7 @@ pub fn complete_with_words(
     command: impl FnOnce(&[OsString]) -> Command,
     guide: &Guide,
 ) -> Option<ExitCode> {
-    // A second declaration keeps the first, so the usage log and the
+    // A second declaration keeps the first, so `events::observe` and the
     // registration agree within one run.
     let _ = DECLARED.set(variable);
     #[expect(

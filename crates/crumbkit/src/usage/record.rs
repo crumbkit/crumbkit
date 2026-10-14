@@ -108,7 +108,7 @@ pub(super) struct Run {
     #[schemars(with = "usize")]
     pub(super) picked: Option<usize>,
     /// The exit code that `parse` or `finish` returned, or that the tool
-    /// reported with `usage::ended`.
+    /// reported with `events::ended`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     #[schemars(with = "u8")]
     pub(super) exit: Option<u8>,
@@ -119,13 +119,13 @@ pub(super) struct Run {
     #[schemars(with = "Name")]
     pub(super) code: Option<Name>,
     /// The codes of the failures that the run met and recovered from, which
-    /// the tool reported with `usage::tolerated`, in the tool's spelling.
+    /// the tool reported with `events::tolerated`, in the tool's spelling.
     /// Each code appears once, in report order, and the list holds at most
     /// 8 codes. It is present only when the tool reported one.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub(super) tolerated: Vec<Name>,
     /// The bytes that `finish` wrote to standard output, or that the tool
-    /// reported with `usage::ended`.
+    /// reported with `events::ended`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     #[schemars(with = "u64")]
     pub(super) out_bytes: Option<u64>,

@@ -49,6 +49,19 @@ fn crumbkit_s_document_gives_each_failure_with_its_code_steps_and_every_field_va
 }
 
 #[test]
+fn a_field_of_crumbkit_s_document_that_holds_a_fraction_is_left_out() {
+    let stdout = br#"{"schema":"crumbkit/failure/v1","code":"a","fields":{"ratio":0.5,"id":7},"recovery":{"kind":"retry"}}"#;
+
+    let read = read_failures(None, stdout, b"");
+
+    assert_eq!(
+        read,
+        [ReadFailure::new("a".to_owned(), vec![Step::Retry])
+            .with_fields(vec![("id".to_owned(), FieldValue::Unsigned(7))])]
+    );
+}
+
+#[test]
 fn crumbkit_s_document_is_read_indented_and_the_last_one_of_a_stream_wins() {
     let indented = b"{\n  \"schema\": \"crumbkit/failure/v1\",\n  \"code\": \"a\",\n  \"recovery\": {\"kind\": \"retry\"}\n}\n";
     let stream = br#"{"schema":"shelf/books/v1","data":{}}

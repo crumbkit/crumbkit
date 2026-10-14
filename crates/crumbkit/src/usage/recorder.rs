@@ -3,25 +3,25 @@
 
 use std::ffi::OsString;
 use std::path::Path;
-use std::process::ExitCode;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Mutex, mpsc};
 use std::thread;
 use std::time::{Duration, Instant, SystemTime};
 
-use clap::{ArgMatches, Command};
+use clap::Command;
 use serde::Serialize;
-#[cfg(feature = "hand-over")]
 use signal_hook::consts::SIGINT;
 
 use super::caller::{self, Caller};
 use super::context::{self, Context};
 use super::file::{self, LIMITS, Limits};
 use super::key;
+use super::observer::{self, UsageLog};
 use super::platform::{self, Interrupts};
 use super::record::{self, Hash, Help, Name, Record, Run, Section};
 use super::shape;
-use crate::{Code, Document, Spelling, exit};
+use crate::events::TraceIds;
+use crate::{Code, Document, Spelling};
 
 #[cfg(test)]
 mod tests;
@@ -64,7 +64,7 @@ enum State {
 }
 
 /// What the usage log knows about the run so far.
-struct Recorder {
+pub(super) struct Recorder {
     /// The name of the tool's root command, which `parse` gives. A run
     /// without it writes no line.
     tool: Option<Name>,
@@ -76,17 +76,17 @@ struct Recorder {
     context: Context,
     /// The words after the tool's name, which the line holds only as a
     /// keyed hash.
-    words: Vec<OsString>,
+    pub(super) words: Vec<OsString>,
     /// How the tool spells its failure codes, which `parse` gives.
     spelling: Option<Spelling>,
     /// The distinct codes of the failures that the tool recovered from, in
     /// the order it reported them, at most [`MAX_TOLERATED`].
     tolerated: Vec<&'static Code>,
     /// What the run reported.
-    run: Run,
+    pub(super) run: Run,
     /// Whether SIGINT or SIGTERM arrived in a run whose tool owns its
     /// signals. The line then says that the run was interrupted.
-    signalled: bool,
+    pub(super) signalled: bool,
 }
 
 /// Who handles SIGINT and SIGTERM while the usage log runs, which
@@ -103,7 +103,7 @@ pub enum Signals {
     /// The tool handles both signals with its own handler. On either one,
     /// crumbkit only notes that the run was interrupted and leaves the
     /// process running. The tool ends the run itself and reports its exit
-    /// with [`ended`](crate::usage::ended), which writes the line with
+    /// with [`ended`](crate::events::ended), which writes the line with
     /// `"interrupted": true`. A tool that returns from `main` without
     /// calling `ended` gets its line from the guard.
     ///
@@ -153,7 +153,7 @@ impl Drop for Log {
 ///
 /// `start` notes the time, reads the caller's trace context from
 /// TRACEPARENT and TRACESTATE, and installs the process's recorder, which
-/// `parse`, `finish`, [`aliased`](super::aliased) and [`section`] report to.
+/// `parse`, `finish`, [`crate::events::aliased`] and [`section`] report to.
 /// `parse` gives the recorder the tool's name and version from the command
 /// it parses against, so a run that ends before it reaches `parse` writes no
 /// line. `start` also starts the thread that writes the line when the run
@@ -166,9 +166,12 @@ impl Drop for Log {
 /// from the operating system, and a run whose ids cannot be read installs no
 /// recorder, so it writes no line and gives its children no variables.
 ///
-/// A run whose completion variable, `COMPLETE` or the name that the tool
-/// passed to `crumbkit::complete_with` before it called `start`, asks for
-/// shell completion installs no recorder either, so a Tab press writes no line.
+/// `start` installs the usage log as the process's observer with
+/// [`crate::events::observe`], which installs nothing in a run that answers
+/// a shell's completion request, so a Tab press writes no line (ADR-0048). A
+/// run that already has an observer, such as one that the tool installed or
+/// an earlier `start`, installs no recorder either, and its guard writes
+/// nothing.
 ///
 /// The line goes to `usage.jsonl` in the tool's directory under the XDG
 /// state directory, such as `~/.local/state/shelf/usage.jsonl`. On Windows
@@ -186,11 +189,11 @@ pub fn start() -> Log {
 ///
 /// A tool with its own handler for either signal calls
 /// `start_with(Signals::Tool)`, so the log never ends the process, and
-/// reports its exit with [`ended`](crate::usage::ended), as
+/// reports its exit with [`ended`](crate::events::ended), as
 /// [`Signals::Tool`] describes.
 pub fn start_with(signals: Signals) -> Log {
     let started = Instant::now();
-    let active = !context::completing()
+    let active = crate::events::observe(&UsageLog)
         && context::read()
             .is_some_and(|context| install(&RECORDER, Recorder::new(started, context)));
     if active {
@@ -212,127 +215,45 @@ pub fn section<T: Serialize>(document: Document<T>, value: &T) {
     update(&RECORDER, |recorder| recorder.section(document, value));
 }
 
-/// Returns the variables that put a child process in this run's trace, as
-/// [`crate::trace::child_env`] describes.
-pub(crate) fn child_env() -> Vec<(&'static str, String)> {
-    child_env_in(&RECORDER)
-}
-
-/// Returns the trace id and the run's id as hex, or `None` without a
-/// recorder.
-#[cfg(feature = "tracing")]
-pub(crate) fn ids() -> Option<(String, String)> {
-    let state = RECORDER.lock().ok()?;
-    let State::Recording(recorder) = &*state else {
-        return None;
-    };
-    let ids = &recorder.context.ids;
-    Some((ids.trace.as_str().to_owned(), ids.run.as_str().to_owned()))
-}
-
-/// Records that a signal ended the run's child process, so the line says
-/// that the run was interrupted.
-#[cfg(feature = "hand-over")]
-pub(crate) fn interrupted() {
-    update(&RECORDER, |recorder| recorder.signalled = true);
-}
-
-/// Reports whether the signal thread has taken SIGINT.
-#[cfg(feature = "hand-over")]
-pub(crate) fn listens() -> bool {
-    LISTENS.load(Ordering::SeqCst)
-}
-
-/// Records that a personal alias expanded.
-pub(super) fn aliased() {
-    update(&RECORDER, |recorder| recorder.run.alias = true);
-}
-
-/// Records the name and version of `command`, the tool's root command,
-/// `args`, the command line that `parse` received, whose words after the
-/// program name the line holds as a keyed hash, and `spelling`, in which
-/// the line spells tolerated codes.
-pub(crate) fn typed(command: &Command, args: &[OsString], spelling: Spelling) {
-    update(&RECORDER, |recorder| {
-        recorder.typed(command, args, spelling);
-    });
-}
-
-/// Records that the run met the failure `code` and recovered from it, as
-/// [`crate::usage::tolerated`] describes.
-pub(super) fn tolerated(code: &'static Code) {
-    update(&RECORDER, |recorder| recorder.tolerated(code));
-}
-
-/// Records the command path, the flags typed and the ids of a command line
-/// that clap parsed against `command` into `matches`.
-pub(crate) fn parsed(command: &Command, matches: &ArgMatches) {
-    update(&RECORDER, |recorder| {
-        shape::parsed(&mut recorder.run, command, matches);
-    });
-}
-
-/// Records that `parse` printed help for the command at `path` below
-/// `command`, the long page when `long`, and returned `exit`.
-pub(crate) fn helped(command: &Command, path: &[String], long: bool, exit: ExitCode) {
-    update(&RECORDER, |recorder| {
-        recorder.helped(command, path, long, exit);
-    });
-}
-
-/// Records that a picker filled in `count` missing arguments before the
-/// command line parsed.
-pub(crate) fn picked(count: usize) {
-    update(&RECORDER, |recorder| recorder.run.picked = Some(count));
-}
-
-/// Records the exit code that `parse` returned after it printed the version,
-/// after a picker's source failed, or after it refused an unoffered view flag.
-pub(crate) fn exited(exit: u8) {
-    update(&RECORDER, |recorder| {
-        recorder.run.exit = Some(exit);
-    });
-}
-
-/// Records a command line that clap refused with `error`, after `parse`
-/// walked it to the command at `path` of `command`, and the `exit` code
-/// that `parse` returns for it.
-pub(crate) fn refused(command: &Command, path: &[String], error: &clap::Error, exit: u8) {
-    update(&RECORDER, |recorder| {
-        shape::refused(&mut recorder.run, command, path, &recorder.words, error);
-        recorder.run.exit = Some(exit);
-    });
-}
-
-/// Records the code of a failure or refusal that crumbkit printed, in
-/// `spelling`. The first code of a run stays, so a batch records its first
-/// failure.
-pub(crate) fn failed(spelling: Spelling, code: &Code) {
-    update(&RECORDER, |recorder| recorder.failed(spelling, code));
+/// Applies `change` to the process's recorder, and does nothing without
+/// one. The usage log's observer reports through it.
+pub(super) fn report(change: impl FnOnce(&mut Recorder)) {
+    update(&RECORDER, change);
 }
 
 /// Records that the tool ended the run with `exit` after writing
 /// `out_bytes` to standard output, and writes the run's line now, as
-/// [`crate::usage::ended`] describes.
-pub(crate) fn ended(exit: u8, out_bytes: Option<u64>) {
-    update(&RECORDER, |recorder| {
+/// [`crate::events::ended`] describes.
+pub(super) fn ended(exit: u8, out_bytes: Option<u64>) {
+    report(|recorder| {
         recorder.run.exit = Some(exit);
         recorder.run.out_bytes = out_bytes;
     });
     write(&RECORDER, false);
 }
 
-/// Records what `finish` did: the `exit` code it returned, the `out_bytes`
-/// it wrote to standard output, whether a listing was `truncated` or the
-/// output budget cut the result short, and whether a listing or a stream
-/// was `empty`.
-pub(crate) fn finished(exit: u8, out_bytes: u64, truncated: bool, empty: bool) {
-    update(&RECORDER, |recorder| {
-        recorder.run.exit = Some(exit);
-        recorder.run.out_bytes = Some(out_bytes);
-        recorder.run.truncated = truncated;
-        recorder.run.empty = empty;
-    });
+/// Returns the variables that put a child process in this run's trace, as
+/// [`crate::trace::child_env`] describes.
+pub(super) fn child_env() -> Vec<(&'static str, String)> {
+    child_env_in(&RECORDER)
+}
+
+/// Returns the trace id and the run's id, or `None` without a recorder.
+pub(super) fn ids() -> Option<TraceIds> {
+    let state = RECORDER.lock().ok()?;
+    let State::Recording(recorder) = &*state else {
+        return None;
+    };
+    let ids = &recorder.context.ids;
+    Some(TraceIds::new(
+        ids.trace.as_str().to_owned(),
+        ids.run.as_str().to_owned(),
+    ))
+}
+
+/// Reports whether the signal thread has taken SIGINT.
+pub(super) fn listens() -> bool {
+    LISTENS.load(Ordering::SeqCst)
 }
 
 impl Recorder {
@@ -352,33 +273,40 @@ impl Recorder {
         }
     }
 
-    /// Records the tool's command and command line, as [`typed`] describes.
-    fn typed(&mut self, command: &Command, args: &[OsString], spelling: Spelling) {
+    /// Records the name and version of `command`, the tool's root command,
+    /// `args`, the command line that `parse` received, whose words after the
+    /// program name the line holds as a keyed hash, and `spelling`, in which
+    /// the line spells tolerated codes.
+    pub(super) fn typed(&mut self, command: &Command, args: &[OsString], spelling: Spelling) {
         self.tool = Some(Name::command(command));
         self.version = Name::version(command);
         self.words = args.get(1..).unwrap_or_default().to_vec();
         self.spelling = Some(spelling);
     }
 
-    /// Records a tolerated code, as [`tolerated`] describes. A code that the
-    /// run already reported, and every code after the first
-    /// [`MAX_TOLERATED`], is left out.
-    fn tolerated(&mut self, code: &'static Code) {
+    /// Records a code that the run recovered from, as
+    /// [`crate::events::tolerated`] describes. A code that the run already
+    /// reported, and every code after the first [`MAX_TOLERATED`], is left
+    /// out.
+    pub(super) fn tolerated(&mut self, code: &'static Code) {
         if self.tolerated.len() < MAX_TOLERATED && !self.tolerated.contains(&code) {
             self.tolerated.push(code);
         }
     }
 
-    /// Records help for the command at `path`, as [`helped`] describes. A
-    /// word of `path` that names no subcommand of `command` is left out.
-    fn helped(&mut self, command: &Command, path: &[String], long: bool, exit: ExitCode) {
+    /// Records that `parse` printed help for the command at `path` below
+    /// `command`, the long page when `long`, and returned `exit`. A word of
+    /// `path` that names no subcommand of `command` is left out.
+    pub(super) fn helped(&mut self, command: &Command, path: &[String], long: bool, exit: u8) {
         self.run.command = Name::path(&shape::subcommands(command, path));
         self.run.help = Some(if long { Help::Long } else { Help::Short });
-        self.run.exit = Some(exit::number(exit));
+        self.run.exit = Some(exit);
     }
 
-    /// Records a failure's code, as [`failed`] describes.
-    fn failed(&mut self, spelling: Spelling, code: &Code) {
+    /// Records the code of a failure or refusal that crumbkit printed, in
+    /// `spelling`. The first code of a run stays, so a batch records its
+    /// first failure.
+    pub(super) fn failed(&mut self, spelling: Spelling, code: &Code) {
         if self.run.code.is_none() {
             self.run.code = Some(Name::code(spelling, code));
         }
@@ -551,10 +479,10 @@ fn save(
 /// After the line, the thread ends the process as the signal would have
 /// without the log. With
 /// [`Signals::Tool`], the thread notes each signal in the recorder and
-/// leaves the process running. With the `hand-over` feature, the thread
-/// leaves the process running on a SIGINT that arrives once a child has
-/// held the terminal on Unix, or while a child holds it on Windows, because
-/// Ctrl-C then belongs to the child (ADR-0042).
+/// leaves the process running. The thread also leaves the process running
+/// on a SIGINT that arrives once crumbkit reported that a child took the
+/// terminal, and on Windows before it reported that the child gave the
+/// terminal back, because Ctrl-C then belongs to the child (ADR-0042).
 //
 // RUST-10: the thread takes both signals from the start of the run. A
 // process that started with one of them ignored now ends on it, such as a
@@ -583,8 +511,7 @@ fn watch_signals(owner: Signals) {
                     update(&RECORDER, |recorder| recorder.signalled = true);
                     continue;
                 }
-                #[cfg(feature = "hand-over")]
-                if signal == SIGINT && crate::child::held_terminal() {
+                if signal == SIGINT && observer::held_terminal() {
                     continue;
                 }
                 write(&RECORDER, true);

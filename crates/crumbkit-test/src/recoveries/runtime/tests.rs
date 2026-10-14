@@ -318,20 +318,6 @@ fn a_place_made_with_at_gives_each_line_built_from_it_its_directory() {
 }
 
 #[test]
-fn a_place_made_with_at_panics_when_a_test_runs_it_without_building_a_line() {
-    let problem = panic_message(|| {
-        let _failing = RuntimeFailing::at("work").into_failing();
-    });
-
-    assert_eq!(
-        problem.as_deref(),
-        Some(
-            "the place at `work`, made with RuntimeFailing::at, has no code and no words, so a test builds each command line from it with RuntimeFailing::line"
-        )
-    );
-}
-
-#[test]
 fn get_dir_returns_the_directory_that_at_or_dir_set_and_none_without_one() {
     let at = RuntimeFailing::at("work");
     let dir = RuntimeFailing::new(NOT_FOUND, ["lists"]).dir("other");

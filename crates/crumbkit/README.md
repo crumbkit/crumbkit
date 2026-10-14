@@ -130,8 +130,8 @@ a fuller one.
 - Per-id lookups: [`fetch_each`].
 - The `miette` feature: the `diagnostic` method of [`Failure`] and the
   conversion of a `miette::Report` into [`Error`], with [ADR-0001].
-- The `usage-log` and `tracing` features: [`usage`] and [`trace`], with
-  [ADR-0029] and [ADR-0030].
+- Run reports, usage log and tracing: [`events`], [`usage`], [`trace`]
+  ([ADR-0029], [ADR-0030]).
 - The `complete` feature: shell completion through `crumbkit::complete`,
   which a minor release may change ([ADR-0048]).
 - The JSON Schemas of crumbkit's own documents: [schemas], with [ADR-0007].
@@ -162,6 +162,7 @@ Licensed under Apache-2.0 or MIT, at your option.
 [`commands`]: src/commands.rs
 [`schemas`]: src/schemas.rs
 [`fetch_each`]: src/fetch.rs
+[`events`]: src/events.rs
 [`usage`]: src/usage.rs
 [`trace`]: src/trace.rs
 [schemas]: schemas

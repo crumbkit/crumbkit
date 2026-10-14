@@ -33,7 +33,7 @@
       "type": "boolean"
     },
     "exit": {
-      "description": "The exit code that `parse` or `finish` returned, or that the tool\nreported with `usage::ended`.",
+      "description": "The exit code that `parse` or `finish` returned, or that the tool\nreported with `events::ended`.",
       "type": "integer",
       "format": "uint8",
       "maximum": 255,
@@ -75,7 +75,7 @@
       "$ref": "#/$defs/Name"
     },
     "out_bytes": {
-      "description": "The bytes that `finish` wrote to standard output, or that the tool\nreported with `usage::ended`.",
+      "description": "The bytes that `finish` wrote to standard output, or that the tool\nreported with `events::ended`.",
       "type": "integer",
       "format": "uint64",
       "minimum": 0
@@ -104,7 +104,7 @@
       "$ref": "#/$defs/Hash"
     },
     "tolerated": {
-      "description": "The codes of the failures that the run met and recovered from, which\nthe tool reported with `usage::tolerated`, in the tool's spelling.\nEach code appears once, in report order, and the list holds at most\n8 codes. It is present only when the tool reported one.",
+      "description": "The codes of the failures that the run met and recovered from, which\nthe tool reported with `events::tolerated`, in the tool's spelling.\nEach code appears once, in report order, and the list holds at most\n8 codes. It is present only when the tool reported one.",
       "type": "array",
       "items": {
         "$ref": "#/$defs/Name"

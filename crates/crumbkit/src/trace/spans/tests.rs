@@ -15,8 +15,9 @@ use tracing::subscriber::Interest;
 use tracing::{Event, Level, Metadata, Subscriber};
 use tracing_core::span::Current;
 
-use super::record_ids;
 use crate::answered::answered;
+use crate::events::TraceIds;
+use crate::events::testing::give_trace_ids;
 use crate::help::{Exit, Guide};
 use crate::{
     Code, Document, Error, Failure, Output, Recovery, Row, Sink, Spelling, finish_to, parse_to,
@@ -441,14 +442,15 @@ fn a_stream_records_its_first_failure_s_code_and_its_exit_code_on_the_finish_spa
 }
 
 #[test]
-fn a_span_records_the_trace_id_and_the_run_s_id_that_the_usage_log_gives_it() {
-    let ids = Some((
+fn a_span_records_the_trace_id_and_the_run_s_id_that_the_observer_gives() {
+    give_trace_ids(Some(TraceIds::new(
         "4bf92f3577b34da6a3ce929d0e0e4736".to_owned(),
         "2222222222222222".to_owned(),
-    ));
+    )));
 
-    let seen = watch(|| record_ids(&super::finish(), ids));
+    let seen = watch(|| drop(super::finish()));
 
+    give_trace_ids(None);
     assert_eq!(
         seen.fields("crumbkit.finish"),
         [

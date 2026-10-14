@@ -85,7 +85,7 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit: `Output::is_json` says whether the caller asked for JSON, and
   `Output::progress_allowed` says whether a tool may draw progress
   ([`Output`], [ADR-0016]).
-- crumbkit: [`usage::ended`] records a tool's own exit number and output
+- crumbkit: [`events::ended`] records a tool's own exit number and output
   bytes for a run that never reaches `finish` ([ADR-0029]).
 - crumbkit: `usage::start_with(Signals::Tool)` lets a tool handle SIGINT
   and SIGTERM itself while the usage log records the signal ([`usage`],
@@ -127,7 +127,7 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   `crumbkit` under `cargo`, which answers `help` with the topics; cargo
   crumbkit sets it, and [`check_guide`] rejects a root that names no
   command ([ADR-0037]).
-- crumbkit: [`usage::tolerated`] records the code of a failure that a run
+- crumbkit: [`events::tolerated`] records the code of a failure that a run
   carried on past, and the usage record lists up to 8 such codes in
   `tolerated` ([ADR-0029]).
 - crumbkit: the `self usage` summary counts the runs that tolerated each
@@ -454,6 +454,15 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   pages alone, for a tool without example golden files ([ADR-0025]).
 - crumbkit-test: crumbkit-test re-exports `Guide`, so a tool without a
   crumbkit dependency can run `check_names` and `check_grammar` ([ADR-0015]).
+- crumbkit-derive: the new crate's `#[derive(Failure)]` writes a
+  [`Failure`] impl and a `CODES` list from `#[failure(...)]` attributes.
+  The `derive` feature of crumbkit and crumbkit-core re-exports it
+  ([crumbkit-derive], [ADR-0001]).
+- crumbkit-core: [`Error::unclassified`] holds an error that the tool did
+  not classify, such as one from an error library, with the code
+  `crumbkit::report::unchecked` and no next step ([ADR-0001]).
+- crumbkit: [`codes`] gains `REPORT_UNCHECKED`, the code of an unclassified
+  error and of a converted `miette::Report`, and `codes::ALL` lists it.
 
 - crumbkit: a batch failure holds the `key` it failed on and that key's
   `index` in JSON, and prints a `key:` line in text. The failure document's
@@ -471,6 +480,12 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   in input order under customisations ([ADR-0056]).
 - crumbkit: `PreparedFailure::key` and `PreparedFailure::index` give a
   failure form a batch failure's key and index ([ADR-0045]).
+- crumbkit: [`events::observe`] installs one run observer for the process,
+  which `parse`, `finish`, streams and child processes tell what the run
+  did, and the usage log is such an observer ([`events`], [ADR-0057]).
+- crumbkit-core: `FieldValue::from_json` reads a failure field back from a
+  `serde_json::Value`, and returns `None` for a number that `FieldValue`
+  cannot hold, such as a fraction ([ADR-0032]).
 
 ### Changed
 
@@ -700,6 +715,11 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   held it ([ADR-0045]).
 - crumbkit: [`help::RuntimeLeaf`] no longer implements `PartialEq` and
   `Eq`, because it holds the function of its refusal alternatives.
+- crumbkit-test: `RuntimeFailing::at` returns a `RuntimePlace`, which has
+  no code or words and no method that turns it into a `Failing`, so a place
+  used as a command line is a compile error ([ADR-0002]).
+- crumbkit-test: the failure reader leaves out a field of crumbkit's
+  failure document that holds a fraction, which it read as text before.
 
 ### Removed
 
@@ -837,8 +857,10 @@ rustdoc, or at its decision record. -->
 [`dashed_form`]: crates/crumbkit/src/dashed.rs
 [`RuntimeFailing`]: crates/crumbkit-test/src/recoveries/runtime.rs
 [`Stop`]: crates/crumbkit/src/parse/stop.rs
-[`usage::ended`]: crates/crumbkit/src/usage.rs
-[`usage::tolerated`]: crates/crumbkit/src/usage.rs
+[`events::ended`]: crates/crumbkit/src/events.rs
+[`events::tolerated`]: crates/crumbkit/src/events.rs
+[`events`]: crates/crumbkit/src/events.rs
+[`events::observe`]: crates/crumbkit/src/events.rs
 [`help`]: crates/crumbkit/src/help.rs
 [`help::quote`]: crates/crumbkit/src/help.rs
 [`help::ViewFlag`]: crates/crumbkit/src/help/view.rs
@@ -866,6 +888,8 @@ rustdoc, or at its decision record. -->
 [`FailureReader`]: crates/crumbkit-test/src/failures.rs
 [crumbkit-aliases]: crates/crumbkit-aliases/README.md
 [crumbkit-core]: crates/crumbkit-core/README.md
+[crumbkit-derive]: crates/crumbkit-derive/README.md
+[`Error::unclassified`]: crates/crumbkit-core/src/unclassified.rs
 [`RenderCall`]: crates/crumbkit/src/call.rs
 [ADR-0001]: docs/decisions/api/failures/0001-error-model.md
 [ADR-0002]: docs/decisions/api/0002-public-api-and-semver.md
@@ -933,6 +957,7 @@ rustdoc, or at its decision record. -->
 [ADR-0052]: docs/decisions/api/output/0052-json-layout.md
 [ADR-0053]: docs/decisions/testing/0053-recovery-chains.md
 [ADR-0056]: docs/decisions/api/adoption/0056-declarations.md
+[ADR-0057]: docs/decisions/api/0057-run-observer.md
 [ADR-0050]: docs/decisions/api/output/listings/README.md
 [`codes`]: crates/crumbkit/src/codes.rs
 [`check_recoveries`]: crates/crumbkit-test/src/recoveries.rs

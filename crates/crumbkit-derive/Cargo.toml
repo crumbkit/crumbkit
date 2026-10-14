@@ -1,0 +1,45 @@
+[package]
+name = "crumbkit-derive"
+description = "The derive macro for crumbkit's Failure trait"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+readme = "README.md"
+keywords = ["errors", "derive", "cli", "agents"]
+categories = ["rust-patterns"]
+include = ["src/**/*.rs", "README.md", "LICENSE-APACHE", "LICENSE-MIT"]
+
+[lib]
+proc-macro = true
+
+[dependencies]
+# syn reads the type that derives `Failure` and the expressions in its
+# `#[failure(...)]` attributes. `full` parses any expression, `clone-impls`
+# lets the derive copy an expression into the generated code, and the other
+# features are the ones a derive macro needs to parse and print tokens.
+# clap_derive already builds syn 3 with these features (ADR-0003).
+syn = { workspace = true, features = [
+    "full",
+    "parsing",
+    "printing",
+    "derive",
+    "proc-macro",
+    "clone-impls",
+] }
+# quote writes the generated impl as tokens.
+quote = { workspace = true, features = ["proc-macro"] }
+# proc-macro2 gives the token types that syn and quote use, outside a macro
+# call too, so the unit tests can expand a type.
+proc-macro2 = { workspace = true, features = ["proc-macro"] }
+
+[dev-dependencies]
+# The README example derives `Failure` through crumbkit-core's `derive`
+# feature, so it runs as a doctest. The entry has a path and no version, so
+# `cargo publish` leaves it out, and crumbkit-derive publishes before
+# crumbkit-core.
+crumbkit-core = { path = "../crumbkit-core", features = ["derive"] }
+
+[lints]
+workspace = true

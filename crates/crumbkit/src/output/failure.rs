@@ -180,10 +180,9 @@ impl<'a> PreparedFailure<'a> {
         err: &mut impl Write,
     ) -> Self {
         let printed = rename::printed(renames, failure.code());
-        // Every code that crumbkit prints is spelled here, so the usage log
-        // records the run's code here (ADR-0029).
-        #[cfg(feature = "usage-log")]
-        crate::usage::failed(spelling, printed);
+        // Every code that crumbkit prints is spelled here, so crumbkit
+        // reports the run's code to the observer here (ADR-0057).
+        crate::events::failed(spelling, printed);
         let causes = std::iter::successors(failure.source(), |error| error.source())
             .map(ToString::to_string)
             .collect();

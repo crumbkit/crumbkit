@@ -127,8 +127,7 @@ impl Picking {
                 let failure = error.failure();
                 failure::print(sink, json, spelling, printing, failure, Some(command));
                 let exit = printing.exit(failure.code());
-                #[cfg(feature = "usage-log")]
-                crate::usage::exited(exit);
+                crate::events::exited(exit);
                 return Step::Stop(exit);
             }
         };

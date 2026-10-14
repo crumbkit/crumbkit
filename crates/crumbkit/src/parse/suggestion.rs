@@ -116,12 +116,41 @@ fn real_flag_of_subcommand(
     }
 }
 
+/// Returns the visible argument that clap suggested in `error` for a flag
+/// it refused, such as the argument of `--all` for `--al`, or `None` when
+/// clap suggested none, as [`Refused::nearest_flag`] describes. `command`
+/// is the tool's root, and `path` the command path that `parse` walked. A
+/// word of `path` that names no subcommand is left out.
+///
+/// [`Refused::nearest_flag`]: crate::events::Refused::nearest_flag
+//
+// RUST-10: this reads the suggestion from clap's rendered text, as
+// `real_names` does. It misses a suggestion when clap changes the wording,
+// and then returns `None`. Reading `ContextKind::SuggestedArg` through
+// `Error::get` can replace it.
+pub(crate) fn nearest_flag<'a>(
+    command: &'a Command,
+    path: &[String],
+    error: &clap::Error,
+) -> Option<&'a Arg> {
+    let mut commands = vec![command];
+    for name in path {
+        if let Some(subcommand) = commands.last().and_then(|node| node.find_subcommand(name)) {
+            commands.push(subcommand);
+        }
+    }
+    let text = error.render().to_string();
+    let (_, rest) = text.split_once("a similar argument exists: '")?;
+    let (suggestion, _) = rest.split_once('\'')?;
+    find_flag(suggestion, &commands).filter(|arg| !arg.is_hide_set())
+}
+
 /// Returns the argument that the flag `name`, such as `--max`, names by its
 /// long name or an alias: an argument of the last of `commands`, or else a
 /// global argument of a command above it, nearest first, as clap copies
 /// global arguments down. `commands` holds the root and each command on the
 /// path below it. The argument may be hidden.
-pub(crate) fn find_flag<'a>(name: &str, commands: &[&'a Command]) -> Option<&'a Arg> {
+fn find_flag<'a>(name: &str, commands: &[&'a Command]) -> Option<&'a Arg> {
     let long = name.strip_prefix("--")?;
     let (last, above) = commands.split_last()?;
     let names_flag = |arg: &&Arg| {

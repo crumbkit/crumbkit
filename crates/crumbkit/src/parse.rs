@@ -316,8 +316,7 @@ where
         program_stem(&mut args);
     }
     own_names(&command, guide.get_dashed_forms(), &mut args);
-    #[cfg(feature = "usage-log")]
-    crate::usage::typed(&command, &args, spelling);
+    crate::events::typed(&command, &args, spelling);
     // crumbkit answers `help` itself. clap propagates the setting to every
     // subcommand, so no `Commands:` list shows clap's `help` line, and
     // `Command::build` copies no subtree into a generated help tree.
@@ -344,13 +343,10 @@ where
             // page that keeps the styles, written as clap's `Error::print`
             // writes help, replaces this when a tool needs colour there.
             let code = print_text(sink, &page);
-            #[cfg(feature = "usage-log")]
-            crate::usage::helped(
-                &command,
-                &root.iter().map(|&name| name.to_owned()).collect::<Vec<_>>(),
-                true,
-                code,
-            );
+            if crate::events::observer().is_some() {
+                let root: Vec<String> = root.iter().map(|&name| name.to_owned()).collect();
+                crate::events::helped(&command, &root, true, crate::exit::number(code));
+            }
             // Only this path ends before the walk below, so it walks the
             // words for `--json` here.
             let json = walk(&command, &args).json;
@@ -396,8 +392,7 @@ where
         }
         if picked > 0 && parsed.is_ok() {
             pick::echo(sink, &command, &words);
-            #[cfg(feature = "usage-log")]
-            crate::usage::picked(picked);
+            crate::events::picked(picked);
         }
     }
     let error = match parsed {
@@ -405,8 +400,7 @@ where
             return Ok((parsed, Parsed::new(command, words, no_input, guide)));
         }
         Ok((_, _, Some(refusal))) => {
-            #[cfg(feature = "usage-log")]
-            crate::usage::exited(Printing::of(guide).exit(&crate::codes::CLI_USAGE));
+            crate::events::exited(Printing::of(guide).exit(&crate::codes::CLI_USAGE));
             return Err(refuse(sink, &refusal, json, spelling, guide, command));
         }
         Err(error) => error,
@@ -415,17 +409,15 @@ where
         error.kind(),
         ErrorKind::DisplayHelp | ErrorKind::DisplayVersion
     ) {
-        let code = print_page(sink, &error, colour);
-        #[cfg(feature = "usage-log")]
+        let code = crate::exit::number(print_page(sink, &error, colour));
         if error.kind() == ErrorKind::DisplayHelp {
-            crate::usage::helped(&command, &path, long_help, code);
+            crate::events::helped(&command, &path, long_help, code);
         } else {
-            crate::usage::exited(crate::exit::number(code));
+            crate::events::exited(code);
         }
-        return Err(Stop::new(crate::exit::number(code), json, command, guide));
+        return Err(Stop::new(code, json, command, guide));
     }
-    #[cfg(feature = "usage-log")]
-    crate::usage::refused(
+    crate::events::refused(
         &command,
         &path,
         &error,
