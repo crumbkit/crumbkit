@@ -73,8 +73,10 @@ impl<O: Write, E: Write, I: BufRead> Sink<O, E, I> {
 impl Sink<StdoutLock<'static>, Stderr> {
     /// Returns a sink over the process's standard output and standard error.
     /// This is the only place in crumbkit that opens the standard streams
-    /// (RUST-4).
-    pub(crate) fn standard() -> Self {
+    /// (RUST-4). A crate that prints a response without `finish`, such as
+    /// crumbkit-child, prints through it, so it opens no stream itself.
+    #[must_use]
+    pub fn standard() -> Self {
         #[expect(
             clippy::disallowed_methods,
             reason = "the sink owns standard output and locks it once for the whole result"

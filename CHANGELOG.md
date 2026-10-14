@@ -489,6 +489,16 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- crumbkit: `Output::print_failure`, `Output::failure_exit`,
+  `Output::listed_exit`, `Output::refuse_view` and
+  `Output::refuse_fields_for_text` are public, so a crate that prints a
+  response without [`finish`] prints failures, chooses exit codes and
+  refuses view flags as `finish` does ([`Output`]).
+- crumbkit: [`Sink`]`::standard` is public, so such a crate prints to the
+  standard streams without opening them itself.
+- crumbkit: [`events`]`::handed_over`, `taken_back`, `interrupted` and
+  `handles_interrupt` are public and need no feature, so a crate that hands
+  the terminal to a child reports it to the observer ([ADR-0057]).
 - crumbkit-usage: the usage log, `self usage` and `self figures list` move
   from crumbkit's `usage-log` feature to the crumbkit-usage crate, and a
   tool starts the log with `crumbkit_usage::start()` ([crumbkit-usage],

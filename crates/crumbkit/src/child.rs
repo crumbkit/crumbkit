@@ -194,9 +194,7 @@ fn hand_over_json_to<T: Rows + DeserializeOwned, O: Write, W: Write>(
     if !output.is_json() {
         return terminal(sink, output, spelling, child);
     }
-    if let Some(code) =
-        output.refuse_fields::<T, _, _>(sink, spelling, json.document.has_envelope())
-    {
+    if let Some(code) = output.refuse_view(sink, spelling, json.document) {
         return code;
     }
     child
@@ -210,6 +208,10 @@ fn hand_over_json_to<T: Rows + DeserializeOwned, O: Write, W: Write>(
     respond_json(sink, output, spelling, json.document, program, captured)
 }
 
+/// Why `--fields` is refused without `--json`, which ends the refusal's
+/// message.
+const TEXT_ONLY: &str = "this command hands the terminal to another program";
+
 /// Hands the terminal to `child` and returns its exit code, after refusing
 /// `--fields`.
 fn terminal<O: Write, W: Write>(
@@ -218,7 +220,7 @@ fn terminal<O: Write, W: Write>(
     spelling: Spelling,
     mut child: Command,
 ) -> ExitCode {
-    if let Some(code) = output.refuse_fields_for_child(sink, spelling) {
+    if let Some(code) = output.refuse_fields_for_text(sink, spelling, TEXT_ONLY) {
         return code;
     }
     child

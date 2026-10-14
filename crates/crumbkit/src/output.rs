@@ -2,10 +2,9 @@
 //! format they choose.
 
 mod budget;
-#[cfg(feature = "hand-over")]
-mod child;
 mod confirm;
 mod counted;
+mod direct;
 mod dry_run;
 mod envelope;
 pub(crate) mod failure;

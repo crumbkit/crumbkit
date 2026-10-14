@@ -16,6 +16,7 @@ mod about;
 mod batch;
 mod budget;
 mod bytes;
+mod direct;
 mod empty;
 mod exits;
 mod in_order;
