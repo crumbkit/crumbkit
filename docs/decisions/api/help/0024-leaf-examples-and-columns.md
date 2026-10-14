@@ -1,14 +1,35 @@
 # ADR-0024. Leaf examples and columns
 
-- A tool declares its leaves in its `Guide`. Each [`Leaf`](../../../../crates/crumbkit/src/help/leaf.rs) names a command by the real names of its subcommands from the root, as `Group` does, and holds its examples and the `Document` it prints. A command that the tool adds at run time has a `RuntimeLeaf`, which holds examples and no document, because a path chosen at run time names no document that the tool declares as a constant (ADR-0035).
-- `Leaf::document` keeps the document's id and description, the row type's columns, and function pointers that build the row's JSON Schema and the whole document's. `Leaf` therefore has no type parameter, and one guide holds leaves whose rows have different types. `Leaf::get_document` and `Leaf::document_schema` return them, for `schemas list`, `schemas show` and crumbkit-test's document checks (ADR-0035).
-- A leaf's `-h` lists the examples as full command lines, and ends with a `Next:` line that points to `--help` for the columns. A leaf's `--help` describes each example and each column. A prose document has no columns, so its leaf has neither the line nor the column sections, and `schemas show` describes its fields.
-- A column's description is the doc comment of the row type's field, which schemars puts into the JSON Schema, so the doc comment is the only place a column is described. `--help` and crumbkit-test's `check_guide` both read the columns through `Leaf::column_descriptions`, so the check sees what the page prints.
-- `Leaf::effects` declares what the command changes, and help prints it on an `Effects:` line after the examples (ADR-0039).
-- `Leaf::stream` declares a leaf whose document is a stream. It records what `Leaf::document` records, and help prints an `Output:` line after the effects line (ADR-0041).
-- `parse` builds the schema only when the typed words ask for `--help`, so a run that prints no long help never builds it.
-- crumbkit prints each command line with [`help::quote`](../../../../crates/crumbkit/src/help.rs), which quotes a word for a POSIX shell. The quoting suits the POSIX shells of crumbkit's tier-1 platforms. On Windows, which is tier 2, help prints the same POSIX quoting, so a line pasted into PowerShell or `cmd` may need other quoting, and a rendering for each shell replaces it if Windows becomes tier 1 (ADR-0003).
-- `parse` applies a leaf only to the deepest command on the walked path of ADR-0021. `help::extend` adds every leaf's examples and no columns, because it cannot know whether help will print. The runtime never fails on a leaf.
-- crumbkit-test's [`check_guide`](../../../../crates/crumbkit-test/src/guide.rs) checks the leaves. It parses each example with clap and refuses an example that asks for `--help` or `--version`, because an example shows a real run. It requires an example for every visible command without subcommands, so every command that runs shows one, a description for every column, and a document on a changing leaf (ADR-0016).
+- Date: 2026-10-09
+- Status: accepted
+
+## Context
+
+An agent learns how to run a command fastest from an example, and learns
+what a result means from its columns. Both descriptions must come from
+one place, so they cannot drift from the code, and a run that prints no
+long help should not pay to build them.
+
+## Decision
+
+- A tool declared its leaves in the `Guide`, each naming a command by
+  its real path and holding its examples, effects and document. `Leaf`
+  holds function pointers for its schemas and so has no type parameter,
+  which lets one guide hold leaves of different row types.
+- A leaf's `-h` listed its examples as full command lines, and `--help`
+  described each example and column.
+- A column's description was the doc comment of the row's field, read
+  through the JSON Schema, so the doc comment is the only place a column
+  is described. `--help` and `check_guide` read the same descriptions.
+- `parse` built the schema only for `--help`.
+- Command lines printed with `help::quote` for a POSIX shell, the shells
+  of the tier-1 platforms.
+- `check_guide` parsed each example with clap and required an example for
+  every visible command that runs, and a description for every column.
+
+## Consequences
+
+On Windows a pasted example may need other quoting.
+`docs/behaviour/help/examples.md` describes the current behaviour.
 
 Considered: a string path such as `Leaf::new("books list")`, a `#[command(after_help)]` attribute per leaf, a separate column-description list beside `Row::COLUMNS`, building the schema on every run.

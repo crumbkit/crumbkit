@@ -1,35 +1,64 @@
 # ADR-0016. Result formats
 
-- Results come in two formats: compact text for people and agents, and JSON for programs ([`finish`](../../../../../crates/crumbkit/src/output.rs)). The text table already has a header row, one record per line and no repeated keys.
-- No command prints Markdown. `cargo crumbkit docs` writes a Markdown reference of a tool's commands to a file (ADR-0044), and `commands list` exports a branch of the command tree in these two formats (ADR-0026).
-- A type that prints as a table row implements [`Row`](../../../../../crates/crumbkit-core/src/row.rs), which names its compact columns, the columns that `--long` adds and, optionally, the field that marks a problem (ADR-0050). A field in neither list of columns appears only with `--json --full`.
-- The text table pads columns by characters and escapes control characters, so each row stays on one line and no line ends in padding. Cell widths count characters, so a wide character misaligns a column.
-- The [`Output`](../../../../../crates/crumbkit/src/output.rs) flags are global. A leaf with a document offers only the view flags that its document can use. Rows offer `--fields`, offer `--long` when the row type has long columns, and offer `--full` when the document has the envelope. Prose and bytes offer none of the three. A leaf without a document offers all three, because crumbkit cannot tell what its command prints. `parse` leaves an unoffered view flag out of the leaf's help and refuses it as a refused command line before the handler runs, and `finish` and `stream` refuse it by the same rule. An unknown `--fields` name is refused before anything prints (ADR-0001). `--fields` cannot be used with `--long` or `--full`, and `--full` needs `--json`. crumbkit checks these pairs itself in `parse`, `finish` and `stream`, on every command, and refuses them in its own words with a hint that names the flag to add or drop, because clap's `conflicts_with` and `requires` refuse them in clap's words with a recovery that only opens help. A tool that parses with clap alone gets these refusals from `finish` or `stream` after the handler has run, as it gets the refusal of an unoffered view flag.
-- On a leaf without a document, only `finish` or `stream` refuses a view flag that the output cannot use, after the handler has run, so on a command that changes something an agent may repeat a write that already happened or decide that it did not happen. crumbkit-test's `check_guide` therefore fails a leaf whose effects change something and that declares no document (ADR-0024), and it takes no opt-out from that rule, because a handler that changes something passes a document to `finish` or `stream`.
-- A leaf that passes on a program's exit code needs no document, because `child::hand_over` refuses `--json` and `--fields` before the program starts and never calls `finish` (ADR-0042). reading's `edit` commands are such leaves, and their `RuntimeLeaf` cannot hold a document.
-- A command that prints rows as they arrive opens a stream with `stream` (ADR-0041). A tool that prints more than one result through `finish`, such as a child process's output, reads `Output::is_json` to follow the caller's format. The answer exists on every path, because `parse` returns a `Stop` whose `Output` holds the `--json` that the walk found (ADR-0021). A command that hands the terminal to a child process uses the `child` module, which reads a child's JSON as a declared document (ADR-0042).
-- A tool draws progress with a library of its choice, and only when `Output::progress_allowed` is true: `--json` is off, the guide keeps terminal detection on (ADR-0049) and standard error is a terminal. A program, an agent, a pipe, a file and crumbkit-test's `check_examples` therefore never receive progress lines, and crumbkit takes no progress library as a dependency.
-- A command that may show fewer rows than matched flattens [`Page`](../../../../../crates/crumbkit/src/page.rs), so the paging flags belong to that command and its `--help` shows its own default limit. crumbkit implements `Serialize` and `JsonSchema` for `Page` by hand, so crumbkit needs no serde or schemars derive macros. crumbkit-usage enables both derives for the usage record (ADR-0029).
-- Such a command returns a [`Listing`](../../../../../crates/crumbkit-core/src/listing.rs). `Listing::new` takes a total that the tool counted itself, so a handler never loads a row it will not print. A tool that cannot count its source cheaply builds the listing with `Listing::uncounted` or `Page::uncounted`, which take one page and whether more rows exist (ADR-0050).
-- When a listing shows fewer rows than its total, or leaves out rows that the tool did not count, a footer says so and names `--all`. crumbkit owns the wording, and the tool supplies only the description.
-- A listing may carry one next step and a note, which print in text only. The footer, the note and the next step print on standard error, so standard output holds the result alone (ADR-0050). A next step whose `Call` does not resolve is left out, so crumbkit never prints a command the tool hid.
-- A listing may carry a summary of the whole result. Its type is the listing's second type parameter and implements `Serialize` and `Display`, so the text output prints it as one line above the table on standard output, as part of the result, and the JSON document holds it as an object under `summary`. A listing without a summary writes no `summary` field.
-- A failure prints as text on standard error, with nothing on standard output, or with `--json` as one failure document on standard output. In text, each alternative repair prints on its own `help:` line after the recovery's.
-- With the `miette` feature, each label of a failure's diagnostic prints an `at:` line, then the lines its span covers with one line before and after, drawn by crumbkit, so a reader who cannot open the source sees what the label means. Carets mark the span on its first and last line, and the `code:` line stays last, so `| tail` keeps it. The carets measure terminal columns with unicode-width, so they line up after wide characters such as CJK text, and the `at:` column counts characters, as an editor does.
-- A span over more than 7 lines prints its first 3 and last 3 lines and one row that counts the lines left out, because a failure stays short and the end of a span, such as an array that is never closed, is often where the fix goes. A row that would count one line prints that line.
-- Labels that follow each other and whose lines overlap or touch print as one block: their `at:` lines, then each source line once, with one underline row per label that ends with the label's text, so no line prints twice.
-- A command that takes many ids returns a [`Batch`](../../../../../crates/crumbkit-core/src/batch.rs). The rows print on standard output and the failures on standard error, and with `--json` both go into one document (ADR-0007). `Batch::new` takes the command and argument that fetch one key and the keys the caller gave, in order, and the handler pushes one result for each key, so every answer has a key and a key that fails gets its own failure. The keys are kept as the text of their `Display`, which is the word a caller types, because the over-budget failure puts them into a command line (ADR-0046). A key may repeat, and nothing in crumbkit assumes that keys are unique. Each failure of a batch holds its key and the key's index among the keys, counted from 0, so a reader matches a failure to its key even when a key repeats: `key` and `index` sit before `code` in its JSON, and a `key:` line such as `key:   7 (index 1)` follows the `error:` line in its text. They are members of the failure, not of `fields`, because the batch knows them and the failure does not. A failure pushed after the last key has neither. A batch with at least one failure exits with the code of its first failure, which is 1 unless the guide declares another for that failure's code (ADR-0037).
-- A command whose answer is a few sentences returns a [`Prose`](../../../../../crates/crumbkit-core/src/prose.rs), whose value implements `Display`, `Serialize` and `JsonSchema`. The text output prints the `Display`, and the JSON document holds the value under `data`, so a person reads sentences and a program reads fields that a schema describes.
-- A prose result may hold failures, which print and exit as a batch's do and sit under `failures` in its document, so a command can answer for the ids it found and fail for the rest. `failures` is present even when it is empty, as a batch's is.
-- The text of a prose result keeps its line feeds and tabs and escapes every other control character, so a value from the data cannot send a terminal escape sequence. crumbkit adds a final line feed when the text lacks one and prints nothing for an empty text.
-- `--fields`, `--long` and `--full` are refused for a prose result as a refused command line, because it has no columns. The hint of `--fields` and `--long` names `--json`, and the hint of `--full` says that `--json` already prints the whole result.
-- A command whose answer is bytes, such as a file's contents, returns [`Bytes`](../../../../../crates/crumbkit-core/src/bytes.rs). The text output writes the bytes unchanged, with no escaping and no added line feed, as `cat` does, so a caller can pipe a file through the tool. It is the one result whose text crumbkit does not escape. The JSON document holds the bytes under `data` as text or as base64 (ADR-0007). A row field of type `Bytes` serializes in the same form, so a batch can return several files, and a table shows it as compact JSON.
-- `--fields`, `--long` and `--full` are refused for a bytes result as a refused command line, because it has no columns. Each refusal names `--json` or says that `--json` already prints the whole result. A dry run's line follows a bytes result's text on standard error, so standard output holds the bytes alone.
-- `Bytes` holds its bytes in memory, because `--json` must see every byte to choose between text and base64, and the output budget measures the result before anything prints. crumbkit encodes the base64 itself, because a bytes result needs only the standard alphabet with padding and no decoder.
-- A command that keeps the shape of an existing document prints a document from `Document::without_envelope`. With `--json` it prints the result alone with every field: a row as an object, a list, listing or batch as an array, a prose result's value, and a bytes result's `text` or `base64` object. `--fields` selects fields as it does for any other document, `--long` changes nothing in its JSON, and `--full` is refused, because `--json` already prints every field. A listing prints one page without `total`, and its text output keeps the footer and next step. The failures of a batch or prose result print as text on standard error even with `--json`, and the command exits as any batch or prose result with failures does. A batch whose document also calls `Document::failures_in_order` prints with `--json` one array that holds each row and each failure document in the order of the keys, with the over-budget failure last, so a program reads every answer from standard output. It is opt-in, because the readers of an existing document expect rows alone, and a const panic rejects it on a document with the envelope, which holds its failures under `failures`. A reader tells a failure from a row by its `schema`, so crumbkit-test's `check_guide` fails such a document whose row type has a field named `schema`, and its opt-out report lists the choice as a declaration (ADR-0056). A command that fails as a whole still prints the failure document, so every command fails in one shape. crumbkit-test's `check_document_ids` requires an opt-out for each such command (ADR-0036).
-- In text, a dry run prints the line `This was a dry run, so nothing changed.` on standard error after every other line, including a batch's failures (ADR-0050). An unwrapped document's JSON prints unchanged on a dry run, and the line also goes to standard error (ADR-0039).
-- `finish` writes through a [`Sink`](../../../../../crates/crumbkit/src/sink.rs), and `finish_to` writes into a given sink, so tests run in memory. A pipe that the reader closed early keeps the exit code of the result.
-- A tool with a `FailureForm` prints each failure and refusal in that form, in text and with `--json` (ADR-0045).
-- `finish` prints at most the tool's output budget on standard output. A listing or list that does not fit is cut to the rows that fit and marked with `cut`, a batch prints the rows that fit and ends with one over-budget failure in place of one failure per id, and a single row, prose result or bytes result that does not fit is refused (ADR-0046).
+- Date: 2026-10-08
+- Status: accepted
+
+## Context
+
+A tool's result is read by people, by agents and by programs. Agents pay
+for every token they read, programs need a schema, and a pipe needs data
+without decoration. Commands also answer in different shapes: rows, a
+page of a larger set, the answers for many ids, a few sentences, or the
+bytes of a file.
+
+## Decision
+
+- Results came in two formats: compact text for people and agents, and
+  JSON for programs. The text table already has a header, one record per
+  line and no repeated keys, so no command prints Markdown or another
+  format such as TOON.
+- A row type implemented `Row` to name its compact and `--long` columns.
+  The table pads by characters and escapes control characters, so each
+  row stays on one line.
+- The `Output` flags were global, but a leaf with a document offers only
+  the view flags its document can use, and `parse` refuses the others
+  before the handler runs. crumbkit checked the conflicting flag pairs
+  itself, because clap's rules refuse them in clap's words with a recovery
+  that only opens help. A leaf that changes something must declare a
+  document, because otherwise a refusal comes after the write.
+- Progress was the tool's own, drawn only when `Output::progress_allowed`
+  is true, so programs, agents, pipes and checks never receive progress
+  lines and crumbkit takes no progress library.
+- A command that may show fewer rows than matched flattened `Page` and
+  returned a `Listing` with a total it counted itself, so a handler never
+  loads a row it will not print. crumbkit owns the footer's wording.
+- A failure printed as text on standard error, or as one failure document
+  with `--json`. With the `miette` feature, crumbkit drew each label's
+  source lines itself, with long spans shortened to their first and last
+  lines, because a failure stays short and the end of a span is often
+  where the fix goes.
+- A command that takes many ids returned a `Batch`, which keeps each key
+  as the word a caller types and gives each failure its key and index, so
+  a reader matches failures to keys even when keys repeat. One failing id
+  does not fail the whole command.
+- A few sentences returned `Prose`, which prints its `Display` as text and
+  its value as JSON, so a person reads sentences and a program reads
+  fields. Its text escapes control characters except line feeds and tabs,
+  so data cannot send a terminal escape sequence.
+- The bytes of a file returned `Bytes`, written unchanged as `cat` does,
+  so a caller can pipe a file through the tool. JSON holds text or
+  base64. crumbkit encodes base64 itself, because it needs one alphabet
+  and no decoder.
+- `Document::without_envelope` let a command keep an existing document's
+  shape, and `failures_in_order` let an unwrapped batch print each failure
+  among its rows, opt-in because readers of an existing document expect
+  rows alone.
+- `finish` wrote through a `Sink`, so tests run in memory, and a closed
+  pipe keeps the result's exit code.
+
+## Consequences
+
+`docs/behaviour/output/README.md` describes the current formats, flags
+and result shapes.
 
 Considered: clap's `conflicts_with` and `requires` for the pairs of view flags, rewriting clap's error for those pairs, clearing clap's rules for those pairs inside `parse` only, a progress API in crumbkit, progress that also checks `TERM`, a failure on standard output without `--json`, TOON, a Markdown result format, unicode-width for cell widths, serde_json's `preserve_order` feature for column order, global paging flags, the description in the JSON document, the note in the JSON document, a summary as text only, a summary held as a JSON value, deriving `Serialize` and `JsonSchema` for `Page`, failing a whole many-id command when one id fails, a batch built from rows and failures without its keys, keys kept as field values, a grouped failure for several keys in a batch, a summary line after a batch's failures, a batch's failures on standard output in text, a separate exit code for a batch in which some ids worked, carets counted by characters, a width table of crumbkit's own, miette's graphical form for every reader, a span printed as its first line only, a gutter mark on each line of a span, a span cut after its first lines, one block per label with repeated lines, a one-column row for an answer in prose, a listing with a summary and no rows, a plain string result, `--fields` selecting the fields of a prose value, `failures` only in a prose document that can fail, a prose text printed without escaping, a separate `finish` for unwrapped documents, a batch failure's key inside `fields`, a key without its index, the failures of every unwrapped batch among its rows by default, the failures of an unwrapped batch in a second array after its rows, failure documents in input order without `schema`, a wrapper result type for them, every failure of an unwrapped command as text, `--fields` refused for an unwrapped document, a bytes result read from a stream, a bytes result that borrows its bytes, a bytes result refused at a terminal, the base64 crate, a bytes result cut to the budget, a convention check against a `Bytes` column, an unoffered view flag accepted as a no-op, clap's unknown-argument error for an unoffered view flag, `--full` offered only for a row type with fields outside its columns, the offered view flags of each leaf in `commands list`, refusing every view flag on a leaf with effects and no document, a document required on read-only leaves, an opt-out for a changing leaf whose output a tool cannot describe, an opt-out in place of the exemption for a leaf that passes on a program's exit code.

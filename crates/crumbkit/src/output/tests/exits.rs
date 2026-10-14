@@ -9,7 +9,9 @@ use clap::{CommandFactory as _, Parser, Subcommand};
 use super::{PLANETS, Planet, mercury};
 use crate::answered::answered;
 use crate::help::{Exit, Guide, Rename};
-use crate::{Batch, Code, Document, Failure, Output, Parsed, Recovery, Sink, Spelling, finish_to};
+use crate::{
+    Batch, Code, Document, Failure, Output, Parsed, Prose, Recovery, Sink, Spelling, finish_to,
+};
 
 const TIMED_OUT: Code = Code::new("solar", "charts", "timed_out");
 const NOT_FOUND: Code = Code::new("solar", "planets", "not_found");
@@ -150,4 +152,16 @@ fn a_renamed_crumbkit_failure_in_a_batch_prints_the_tool_s_code_and_exits_with_i
     assert_eq!(code, ExitCode::from(5));
     let document: serde_json::Value = serde_json::from_slice(&out).unwrap();
     assert_eq!(document["failures"][0]["code"], "solar::planets::stale");
+}
+
+#[test]
+fn a_prose_result_whose_first_failure_is_mapped_exits_with_its_declared_code() {
+    const SUMMARY: Document<Prose<String, Failed>> =
+        Document::new("solar", "summary", 1, "The test summary.");
+    let prose = Prose::with_failures(
+        String::from("Mercury is the closest planet."),
+        vec![Failed(&TIMED_OUT), Failed(&NOT_FOUND)],
+    );
+    let code = finish(&mut guided(), SUMMARY, Ok(prose));
+    assert_eq!(code, ExitCode::from(124));
 }

@@ -1,6 +1,15 @@
 # ADR-0038. Effects
 
-These records decide how a command tells a caller what it changes: the effects that each leaf declares, dry runs, the confirmation that a destructive command asks for, the questions that pick a missing argument's values, with how crumbkit decides that a person can answer, and the guards of a write that replaces data or writes many items.
+- Date: 2026-10-12
+- Status: accepted
+
+## Decision
+
+These records decided how a command tells a caller what it changes: the
+effects that each leaf declares, dry runs, the confirmation that a
+destructive command asks for, the questions that pick a missing
+argument's values, with how crumbkit decides that a person can answer,
+and the guards of a write that replaces data or writes many items.
 
 ## Children
 

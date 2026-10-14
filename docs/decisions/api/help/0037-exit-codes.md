@@ -1,11 +1,38 @@
 # ADR-0037. Exit codes
 
-- A tool declares the exit codes it returns besides crumbkit's 0, 1 and 2 in its `Guide`, each an [`Exit`](../../../../crates/crumbkit/src/help/exit.rs) with a one-sentence meaning and, optionally, the command paths that return it. A code without paths covers every command, and a path covers its command and every command below it. The declaration lives on the `Guide`, because most codes apply to many commands.
-- An `Exit` lists failure codes with `Exit::failures`, and a run whose first failure has a listed code exits with that code in place of 1, in `finish`, a batch, a prose result and a stream alike. A listed code may be one of crumbkit's, such as the code of a refused command line, or the tool's rename of it (ADR-0056). The first failure decides because the usage log and the `crumbkit.finish` span record its code, so a recorded `code` explains its `exit` (ADR-0029). The guide holds the mapping beside the meaning, so crumbkit-test can predict each run's exit.
-- `Output::set_command` copies the exits from the `Parsed` of `parse` or `Parsed::guided`, so a bare `Command` maps no failure. A code from `Code::runtime` cannot be listed, so its failure exits with 1.
-- `<tool> help exit-codes` lists crumbkit's codes, then the tool's, and says that a shell reports 126 and above for its own reasons (ADR-0023). It leaves out crumbkit's 2 when a refusal exits with another code. `commands list` gives each row the codes that cover its command, and its text table ends with a note that names the codes and the topic (ADR-0026).
-- A tool that another program runs with fixed words sets `Guide::root` to the path of the command that callers run first. cargo runs `cargo crumbkit help` as `cargo-crumbkit crumbkit help`, so cargo-crumbkit's clap root is `cargo` and its guide's root is `crumbkit`. That command answers `help` with the topics and its help has the `Topics:` line. The topic lines and the `commands list` note start with the clap root's name and the root's path, such as `cargo crumbkit help exit-codes`, so every printed command runs. `check_guide` reports a root that names no command, and `parse` then uses the clap root.
-- crumbkit-test's [`check_exit_codes`](../../../../crates/crumbkit-test/src/exits.rs) reports each declaration that would give a code two meanings or leave a caller unable to read it, as its rustdoc lists. `check_twin` and `check_recoveries` fail a run that exits otherwise than `Guide::failure_exit` decides, unless its leaf passes on a program's exit code (ADR-0042). A code from 126 to 255 needs an opt-out of `exit-codes/shell-code`, and 1 or 2 an opt-out of `exit-codes/shared-exit`, that covers every command returning it (ADR-0036). The code 0 has no opt-out, because a caller reads 0 as success. crumbkit never checks the declarations at run time, so a wrong declaration cannot end a run.
-- `self usage` and `self figures list` count each command's runs that exited with each code from 3, with the meaning that the guide declares for that command, or null (ADR-0034).
+- Date: 2026-10-12
+- Status: accepted
+
+## Context
+
+Many tools return exit codes beyond 0, 1 and 2, and scripts already
+depend on them. An agent needs to learn what each code means for each
+command, and the code a run returns must agree with the failure that the
+run recorded.
+
+## Decision
+
+- A tool declared its extra codes in the `Guide` as `Exit`s with a
+  meaning and optional command paths, because most codes apply to many
+  commands.
+- An `Exit` listed failure codes, and a run exits with that code when its
+  first failure has a listed code. The first failure decides, because the
+  usage log and the span record its code, so a recorded code explains its
+  exit. A listed code may be one of crumbkit's.
+- `help exit-codes` and `commands list` printed the codes, so an agent
+  learns them with the help or the branch.
+- `Guide::root` let a tool that another program runs with fixed words,
+  such as a cargo subcommand, print commands that run as written.
+- `check_exit_codes` reported declarations that give a code two meanings
+  or that a caller cannot read, and the run checks fail a run that exits
+  otherwise than the guide decides. Codes from 126 and 1 or 2 need an
+  opt-out, and 0 has none, because a caller reads 0 as success. crumbkit
+  never checks declarations at run time, so a wrong declaration cannot
+  end a run.
+
+## Consequences
+
+A run-time code cannot be listed, so its failure exits with 1.
+`docs/behaviour/failures/exit-codes.md` describes the current behaviour.
 
 Considered: a `Failure::exit` method, an exit code passed to `end` and `finish`, the last failure choosing the exit, listed failure codes in `help exit-codes`, renaming cargo-crumbkit's clap root `cargo crumbkit`, which clap would print as one word, a full invocation string in place of a path, exit codes declared on each leaf, a declared code that must name its commands, a runtime check of the declarations, an opt-out for the code 0.

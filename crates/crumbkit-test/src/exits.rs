@@ -45,7 +45,7 @@ mod tests;
 /// A tool can opt out of the rule for codes from 126 with an [`Allow`] of
 /// [`Rule::ShellExitCode`], and of the rule for 1 and 2 with an [`Allow`] of
 /// [`Rule::SharedExit`], each with a stated reason, such as a tool that
-/// passes on the code of a child process ([ADR-0036]). An opt-out covers a
+/// passes on the code of a child process ([opt-outs docs]). An opt-out covers a
 /// code when it covers every command that returns the code, so a code that
 /// every command returns needs an opt-out with an empty path. The check
 /// fails on such an opt-out that names no command or excuses no problem.
@@ -65,7 +65,7 @@ mod tests;
 /// Panics when a code, a rename or an opt-out breaks a rule above. Each
 /// problem in the message starts on a new line and names the code.
 ///
-/// [ADR-0036]: https://github.com/crumbkit/crumbkit/blob/main/docs/decisions/api/adoption/0036-opt-outs.md
+/// [opt-outs docs]: https://github.com/crumbkit/crumbkit/blob/main/docs/behaviour/adoption/opt-outs.md
 pub fn check_exit_codes(command: &Command, guide: &Guide, allow: &[Allow]) {
     let mut allowances = Allowances::new(allow, &[Rule::ShellExitCode, Rule::SharedExit]);
     let mut problems = Vec::new();

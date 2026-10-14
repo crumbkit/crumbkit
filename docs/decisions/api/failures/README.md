@@ -1,6 +1,13 @@
 # ADR-0055. Failures
 
-These records decide how a tool reports a failure: the error model with its codes, recoveries and fields, and the failure forms that a tool sets in place of crumbkit's failure document.
+- Date: 2026-10-13
+- Status: accepted
+
+## Decision
+
+These records decided how a tool reports a failure: the error model with
+its codes, recoveries and fields, and the failure forms that a tool sets
+in place of crumbkit's failure document.
 
 ## Children
 

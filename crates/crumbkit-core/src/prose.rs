@@ -22,7 +22,9 @@ mod tests;
 /// under `data` and the failures under `failures`, which is present even
 /// when the list is empty, as a batch's is. In text, each failure prints on
 /// standard error after the text, as a batch prints its failures. A prose
-/// result with at least one failure exits with code 1.
+/// result with at least one failure exits with the exit code of its first
+/// failure, which is 1 unless the tool's guide lists that failure's code
+/// under one of its exits (ADR-0037).
 ///
 /// `--fields`, `--long` and `--full` are refused for a prose result,
 /// because it has no columns.

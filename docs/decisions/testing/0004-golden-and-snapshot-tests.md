@@ -1,7 +1,26 @@
 # ADR-0004. Golden files
 
-- snapbox checks golden files, which hold the exact bytes a tool printed, at paths crumbkit chooses under `tests/golden/`.
-- crumbkit-test's `check_help_goldens` keeps each `-h` and `--help` page in its own file, and a tool such as shelf keeps those files in `tests/golden/help/` (ADR-0025). Its `check_examples` keeps the standard output of each example in a leaf's help in its own file (ADR-0005). An example golden file holds the exact bytes except the values that the check replaces with named placeholders, such as `[XDG_CONFIG_HOME]`, and snapbox's wildcards such as `[..]` are plain text in it.
-- Contributors update them with `SNAPSHOTS=overwrite` and review the result with `git diff`. CI never writes them.
+- Date: 2026-10-07
+- Status: accepted
+
+## Context
+
+Much of crumbkit's behaviour is the exact text a tool prints: help pages,
+example output and reports. A test of that text must show any change in
+review and must be cheap to update when a change is intended.
+
+## Decision
+
+- snapbox checked golden files, which hold the exact bytes a tool printed,
+  at paths that crumbkit chooses under `tests/golden/`.
+- Contributors update golden files with `SNAPSHOTS=overwrite` and review
+  the result with `git diff`. CI never writes them, so a change to the
+  output always arrives in a reviewed commit.
+
+## Consequences
+
+A golden file of example output may hold named placeholders for values
+that change between runs, and snapbox's wildcards are plain text in it.
+`docs/project/testing.md` lists the current golden directories.
 
 Considered: insta, expect-test, plain `assert_eq!` files.

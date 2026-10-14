@@ -125,8 +125,8 @@ fn main() -> ExitCode {
 
 `pantry jars list --limit 2` now ends with the footer
 `Showing 2 of 3 jars. --all shows every one.` on standard error.
-[ADR-0015] says why a tool keeps its own `main`, and [ADR-0016] says how a
-result prints.
+[ADR-0015] says why a tool keeps its own `main`, and the [output docs]
+describe how a result prints.
 
 ## 2. A failure with a code and a recovery
 
@@ -208,9 +208,9 @@ const GUIDE: Guide = Guide::new().leaves(&[Leaf::new(&["jars", "list"])
 
 `pantry jars list -h` now lists the examples and the line
 `Effects: read-only, closed-world.`, and `--help` describes each column
-with its field's doc comment. [ADR-0024] covers examples and columns, and
-[ADR-0039] covers effects. A guide also takes goal headings and help topics
-([ADR-0021], [ADR-0023]).
+with its field's doc comment. The [examples docs] cover examples and
+columns, and the [effects docs] cover effects. A guide also takes goal
+headings and help topics ([help docs]).
 
 ## 4. Convention tests
 
@@ -254,21 +254,21 @@ const ALLOW: &[Allow] = &[Allow::new(
 Every check that takes opt-outs reads the same list. A check fails on an
 opt-out that names no command or excuses no problem, so an opt-out goes
 away when its command does. `check_opt_outs` writes each opt-out with its
-reason and its cost to an agent into a golden file. [ADR-0036] records
-opt-outs, and [ADR-0025] records why the checks exist.
+reason and its cost to an agent into a golden file. The [opt-outs docs]
+describe opt-outs, and [ADR-0025] records why the checks exist.
 
 ## 5. Where to go next
 
 - A `show` command that takes many ids returns a [`Batch`], which holds a
   row or a failure for each id, and [`fetch_each`] runs the lookups
-  ([ADR-0016]).
-- The output budget caps the bytes that one run prints ([ADR-0046]).
+  ([output docs]).
+- The output budget caps the bytes that one run prints ([output budget docs]).
 - A command that changes something declares its effects, and takes
-  [`DryRun`] and [`Yes`] ([ADR-0039]).
+  [`DryRun`] and [`Yes`] ([effects docs]).
 - The `complete` feature answers a shell's completion request
-  ([ADR-0048]).
+  ([completion docs]).
 - The crumbkit-usage crate keeps a local log of the shape of each run
-  ([ADR-0029]).
+  ([usage log docs]).
 - crumbkit-test's [README](../crates/crumbkit-test/README.md) lists the
   other checks, such as help sizes, golden help pages, examples and
   recoveries.
@@ -281,13 +281,12 @@ opt-outs, and [ADR-0025] records why the checks exist.
 [`Yes`]: ../crates/crumbkit/src/output/confirm.rs
 [ADR-0001]: decisions/api/failures/0001-error-model.md
 [ADR-0015]: decisions/api/adoption/0015-lightweight-adoption.md
-[ADR-0016]: decisions/api/output/results/0016-result-formats.md
-[ADR-0021]: decisions/api/help/0021-help-pages.md
-[ADR-0023]: decisions/api/help/0023-help-command-and-topics.md
-[ADR-0024]: decisions/api/help/0024-leaf-examples-and-columns.md
 [ADR-0025]: decisions/api/help/0025-help-checks.md
-[ADR-0029]: decisions/api/usage/0029-usage-log.md
-[ADR-0036]: decisions/api/adoption/0036-opt-outs.md
-[ADR-0039]: decisions/api/effects/0039-effects-dry-runs-and-confirmation.md
-[ADR-0046]: decisions/api/output/0046-output-budget.md
-[ADR-0048]: decisions/api/0048-completion.md
+[output docs]: behaviour/output/README.md
+[examples docs]: behaviour/help/examples.md
+[effects docs]: behaviour/effects/README.md
+[help docs]: behaviour/help/README.md
+[opt-outs docs]: behaviour/adoption/opt-outs.md
+[output budget docs]: behaviour/output/budget/README.md
+[completion docs]: behaviour/parsing/completion.md
+[usage log docs]: behaviour/usage-log/README.md

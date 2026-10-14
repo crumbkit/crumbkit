@@ -28,17 +28,8 @@
 //! [schemas]: https://github.com/crumbkit/crumbkit/tree/main/crates/crumbkit/schemas
 //! [crumbkit-test]: https://github.com/crumbkit/crumbkit/blob/main/crates/crumbkit-test/README.md
 //! [crumbkit-core]: https://github.com/crumbkit/crumbkit/blob/main/crates/crumbkit-core/README.md
-//! [ADR-0001]: https://github.com/crumbkit/crumbkit/blob/main/docs/decisions/api/failures/0001-error-model.md
-//! [ADR-0007]: https://github.com/crumbkit/crumbkit/blob/main/docs/decisions/api/schemas/0007-json-schemas.md
-//! [ADR-0016]: https://github.com/crumbkit/crumbkit/blob/main/docs/decisions/api/output/results/0016-result-formats.md
-//! [ADR-0021]: https://github.com/crumbkit/crumbkit/blob/main/docs/decisions/api/help/0021-help-pages.md
-//! [ADR-0023]: https://github.com/crumbkit/crumbkit/blob/main/docs/decisions/api/help/0023-help-command-and-topics.md
-//! [ADR-0024]: https://github.com/crumbkit/crumbkit/blob/main/docs/decisions/api/help/0024-leaf-examples-and-columns.md
-//! [ADR-0026]: https://github.com/crumbkit/crumbkit/blob/main/docs/decisions/api/help/0026-branch-export.md
-//! [ADR-0029]: https://github.com/crumbkit/crumbkit/blob/main/docs/decisions/api/usage/0029-usage-log.md
-//! [ADR-0030]: https://github.com/crumbkit/crumbkit/blob/main/docs/decisions/api/usage/0030-trace-context.md
 //! [ADR-0032]: https://github.com/crumbkit/crumbkit/blob/main/docs/decisions/api/0032-core-crate.md
-//! [ADR-0048]: https://github.com/crumbkit/crumbkit/blob/main/docs/decisions/api/0048-completion.md
+//! [behaviour docs]: https://github.com/crumbkit/crumbkit/blob/main/docs/behaviour/README.md
 #![doc = include_str!("../README.md")]
 // docs.rs builds the docs on nightly with `--cfg docsrs`, and rustdoc's
 // `doc_cfg` feature labels each item behind a cargo feature with its name.

@@ -1,12 +1,41 @@
 # ADR-0027. Aliases
 
-- Aliases are for people. A tool expands them before clap parses, so `commands list`, `Next:` lines, recoveries and JSON print only real commands, and help prints only real commands unless the tool opts in to showing aliases.
-- A built-in alias is a hidden clap alias, such as `ls` for `books list`, which `check_names` accepts. A tool that wants a built-in alias in help makes it a visible clap alias and opts out of `Rule::OneName` with a reason. Help then prints it after the command's description as clap does, as in `[alias: ls]`, on guided pages too. Such an alias is the same on every machine and costs only help bytes and a second spelling.
-- A tool that wants a person's aliases in help sets `Guide::personal_aliases` to [`names`](../../../crates/crumbkit-aliases/src/names.rs) and opts out of `Rule::PersonalAliases`, which `check_names` enforces. The clap root's `-h` and `--help` then name each entry that expands on one line, after the `Topics:` line, and `parse` calls `names` only when it prints that help, so no other run reads the file. Those names differ between machines, so the opt-out report says that help, golden files and what an agent sees then differ, and shelf opts in to show the line.
-- crumbkit-test's help checks print help without a person's aliases, through `Guide::without_personal_aliases`, and `check_examples` and `cargo crumbkit weigh` run the binary with an empty config directory, so golden files and budgets are the same on every machine.
-- A personal alias is an entry of `aliases.toml` in the tool's config directory, which the etcetera crate finds by the XDG base directory rules ([`file`](../../../crates/crumbkit-aliases/src/file.rs)). An absolute `XDG_CONFIG_HOME` is the config directory without asking etcetera, because etcetera first looks up the home directory, which reads the password database when `HOME` is unset, and every run of a tool finds the file. The usage log finds its state directory the same way (ADR-0029).
-- [`expand`](../../../crates/crumbkit-aliases/src/expand.rs) replaces only the first word, once, with no shell, and a real command always wins. It never prints or fails, and it tells the usage log that an alias expanded.
-- The hidden `<tool> aliases list` command ([`list`](../../../crates/crumbkit-aliases/src/list.rs)) shows the built-in aliases and the file's entries, with the problem of each entry that does not expand. It exits with 1 while an entry has a problem (ADR-0050).
-- The published crate crumbkit-aliases holds this, so only a tool with personal aliases builds toml.
+- Date: 2026-10-10
+- Status: accepted
+
+## Context
+
+People like short names for the commands they type often, but an agent
+reads a tool's commands from its help, `commands list` and JSON, and
+those must be the same on every machine. Golden files and help budgets
+must also not depend on one person's configuration.
+
+## Decision
+
+- A tool expanded aliases before clap parses, so every output that an
+  agent reads names only real commands.
+- A built-in alias was a hidden clap alias. A tool that wants one in help
+  makes it visible and opts out of `Rule::OneName` with a reason, because
+  such an alias is the same on every machine and costs only help bytes.
+- A person's aliases lived in `aliases.toml` in the tool's config
+  directory. The root help names them only when the tool opts out of
+  `Rule::PersonalAliases`, because the line differs between machines, and
+  only that help reads the file.
+- crumbkit-test's checks and `weigh` ran without a person's aliases, so
+  golden files and budgets are the same on every machine.
+- `expand` replaced only the first word, once, with no shell, and a real
+  command always wins, so an alias cannot hide or redefine a command. It
+  never prints or fails, so a broken file does not break the tool. The
+  hidden `aliases list` command shows each entry's problem instead.
+- An absolute `XDG_CONFIG_HOME` was used without asking etcetera, because
+  etcetera looks up the home directory first, which reads the password
+  database when `HOME` is unset.
+- The separate crumbkit-aliases crate held this, so only a tool with
+  personal aliases builds toml.
+
+## Consequences
+
+The usage log records that an alias expanded. `docs/behaviour/parsing/aliases.md`
+describes the current behaviour.
 
 Considered: one opt-in for built-in and personal aliases, a crumbkit setting that prints hidden clap aliases, a new rule for visible command aliases, crumbkit-aliases writing the line into the root's `after_help` before parsing, a fixed line that names no alias, a general hook for a line of the root's help, a section that lists each personal alias with its command, the `dirs` crate, reading `XDG_CONFIG_HOME` and `HOME` by hand, a warning on stderr, aliases anywhere in the command line, recursive or shell aliases, built-in alias names without their path.

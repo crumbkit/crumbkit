@@ -101,7 +101,8 @@ because the root's help then differs between machines ([ADR-0027]).
 - [`file`], [`expand`], [`list`], [`names`], [`AliasesList`] and
   [`ALIASES_LIST`] describe each item.
 - The [schema] describes the `crumbkit/aliases-list/v1` document.
-- [ADR-0027] records the design and why it is a separate crate.
+- The [aliases docs] describe the design, and [ADR-0027] records why it is
+  a separate crate.
 
 Licensed under either of Apache License, Version 2.0 or MIT license at your
 option.
@@ -114,3 +115,4 @@ option.
 [`ALIASES_LIST`]: src/list.rs
 [schema]: schemas/aliases-list-v1.json
 [ADR-0027]: ../../docs/decisions/api/0027-aliases.md
+[aliases docs]: ../../docs/behaviour/parsing/aliases.md

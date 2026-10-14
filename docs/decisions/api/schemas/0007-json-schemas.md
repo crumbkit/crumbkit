@@ -1,21 +1,51 @@
 # ADR-0007. JSON schemas
 
-- Every JSON document is an object with a `schema` id and the result under `data` ([`finish`](../../../../crates/crumbkit/src/output.rs)). A document from `Document::without_envelope` prints the result alone, and its schema is the schema of `data` with the id as its title (ADR-0016, ADR-0036).
-- A dry run's document holds `dry_run: true` after `schema`, and a real run's holds no `dry_run` field (ADR-0039).
-- A listing's document always holds `truncated`, with every output flag, so a program can tell whether it has every row. `truncated` is true when `--limit`, the output budget or a source that the tool did not count left rows out. The document holds `total` when the tool counted the matching rows, and leaves it out while an uncounted source holds more rows ([`Listing`](../../../../crates/crumbkit-core/src/listing.rs), ADR-0050).
-- A batch's document always holds `failures`, which is empty when every id worked, as `truncated` is present for every listing ([`Batch`](../../../../crates/crumbkit-core/src/batch.rs)). A prose result's document holds its value under `data` and holds `failures` in the same way ([`Prose`](../../../../crates/crumbkit-core/src/prose.rs)). Each entry has the fields of the failure document except `schema`, and crumbkit writes both from the same code, so the two shapes cannot drift. A batch's entry also holds the `key` it failed on and the `index` of that key among the keys, when the failure has a key; the failure document's schema holds both as optional fields.
-- A bytes result's document holds `{"text": "..."}` under `data` when the bytes are valid UTF-8, and `{"base64": "..."}` in standard base64 with padding (RFC 4648) otherwise ([`Bytes`](../../../../crates/crumbkit-core/src/bytes.rs)). Its schema is a `oneOf` of the two objects under the definition `Bytes`, so a program reads text without decoding it and still receives any byte.
-- A document id is a typed constant, a [`Document`](../../../../crates/crumbkit-core/src/document.rs), so the compiler ties the id to its result type and rejects a malformed id. It holds a one-line description, which becomes the schema's `description`.
-- A document id's component names the document's owner. It is labels joined by single dots, each of lowercase letters, digits, `_` and `-`, so a tool can name its owner as a domain such as `example.dev` does.
-- The name of the document that a command prints is the command's path below the tool joined with `-`, such as `shelf/books-list/v1` for `shelf books list`, so an agent can predict a document's id from the command it ran, and the command from an id. A tool that keeps another name, such as a name that scripts read from before a rename, declares it, and the opt-out report lists it under the customisations (ADR-0035, ADR-0056).
-- Every JSON document type has a 2020-12 `JsonSchema`, and `schemas::document_schema` builds the schema of a whole document from its id and its result type. A test compares each of crumbkit's schemas with its checked-in file in a `schemas` directory, and a tool serves the schemas of the documents it prints through `schemas list` and `schemas show` and pins them with `check_schema_goldens` (ADR-0035). The usage record is one line of a log, so it has its fields at the top level beside `schema`, without `data` (ADR-0029).
-- The failure document and each batch failure hold `alternatives` when the failure offers at least one alternative repair, each in the shape of `recovery`. The optional field keeps the `v1` id because readers ignore unknown fields.
-- A `run` step may hold `all`, the name of a list field of the same failure, such as `left_out`. The step then runs its call once with every value of that field, each as its own word, in place of the argument's placeholder, such as `<ID>...` (ADR-0046). The optional field keeps the `v1` id for the same reason, and a reader that ignores it still sees a command.
-- The failure document and each batch failure hold `fields` after `cause` when the failure names at least one field, as one object of names to values in the order the failure gave them. A value is a string, an integer, a boolean, null, or an array or object of such values, so a tool can name a list of refused lines or `null` for nothing found without flattening it into a string. No value holds a float at any depth, because JSON has no form for NaN. The schema promises the name rule of ADR-0001, so `finish` leaves out a field that breaks it, and an object inside a value holds each key once (RFC 8259), so `finish` leaves out an entry whose key repeats an earlier one. The optional field keeps the `v1` id because readers ignore unknown fields. Allowing arrays, objects and null retyped the field values, and the schema changed in place under the rule for changes before the first release.
-- With the `miette` feature, the failure document and each batch failure hold the diagnostic's labels and its related diagnostics. Each label holds an `excerpt` with the lines of its span and one line before and after where the source has them, and each related diagnostic holds its own labels and related diagnostics, down to 8 levels below the failure. A diagnostic at the ninth level is left out, which stops a diagnostic that lists itself as related from repeating forever. A program that reads the JSON then gets what miette's report shows, including for a source that is not a file it could open. The cost is a larger document, and a label on a long line carries the whole line. The checked-in schema lists `labels` and `related` whether or not the feature is on, so there is one schema file, and the optional fields keep the `v1` id because readers ignore unknown fields.
-- Removing, renaming or retyping a field, making it optional, or adding an enum value needs a new `/vN` id. Readers ignore unknown fields. Until crumbkit's first release, a document's schema changes in place, and the `/vN` rule applies from that release on. The listing schemas made `total` optional in place under this rule.
-- A failure's `cause` is one string that joins the source chain, because those errors usually come from libraries whose wording and depth are not stable, so a program matches on `code` and shows `cause` as one line. The schema accepts any spelling of `code`, because each tool chooses its own spelling (ADR-0001).
-- A tool with a `FailureForm` prints its own failure document in place of `crumbkit/failure/v1`, and its provided `entry` and `entry_schema` methods give each entry of a batch's or a prose result's `failures` the form's shape and schema (ADR-0045).
-- A listing or list document may hold `cut`, an object with the over-budget `code` and the `budget` in bytes, when the output budget cut it short. `cut` is a new optional field, so each document keeps its `v1` id (ADR-0046).
+- Date: 2026-10-07
+- Status: accepted
+
+## Context
+
+Programs and agents read a tool's JSON. They need to know which document
+they hold, whether it is complete, and which changes may break them,
+without guessing from the content. The documents also need schemas that
+cannot drift from the types that print them.
+
+## Decision
+
+- Every JSON document became an object with a `schema` id and the result
+  under `data`, so a reader always knows which document it holds. A
+  document without the envelope exists for a tool that keeps an existing
+  shape.
+- A listing always held `truncated`, and `total` when the tool counted,
+  so a program can tell whether it has every row. A batch and a prose
+  result always held `failures`, written by the same code as the failure
+  document, so the two shapes cannot drift. A bytes result holds text when
+  the bytes are UTF-8 and base64 otherwise, so a program reads text
+  without decoding it and still receives any byte.
+- A document id became a typed `Document` constant tied to its result
+  type, with a component that names the owner as dotted labels, so a tool
+  can use a domain name. The name is the command's path joined with `-`,
+  so an agent can predict a document's id from the command and the
+  command from an id.
+- Every document type got a 2020-12 `JsonSchema` derived from its types,
+  and checked-in schema files pin crumbkit's and each tool's schemas.
+- A failure's `fields` held scalars, null, arrays and objects but no
+  float, because JSON has no form for NaN. Its `cause` is one string that
+  joins the source chain, because library errors have no stable wording
+  or depth, so a program matches on `code`.
+- With the `miette` feature, failures held labels with source excerpts
+  and related diagnostics down to 8 levels, so a program sees what
+  miette's report shows. A ninth level is left out, which stops a
+  diagnostic that lists itself as related from repeating forever.
+- Removing, renaming or retyping a field, making it optional, or adding
+  an enum value needs a new `/vN` id, and readers ignore unknown fields,
+  so an optional new field keeps the `v1` id. Until crumbkit's first
+  release, schemas change in place.
+
+## Consequences
+
+Several later optional fields, such as `dry_run`, `alternatives`, `all`
+and `cut`, kept the `v1` ids under this rule.
+`docs/behaviour/schemas/README.md` describes the current documents.
 
 Considered: hand-written schemas, a hand-written envelope type per document, `cause` as an array of strings, boon, an untyped string id, a `total` only when rows were left out, a `more` field beside an absent `total`, a `next` field holding the same command with `--all`, `failures` only when an id failed, a `schema` in each entry of `failures`, the source line kept out of the JSON, the whole source text in the document, the field names of miette's JSON report handler, one excerpt merged across the labels that share lines, a component of underscores alone, `fields` as an array of name and value pairs, field values limited to strings, integers and booleans, a field value that holds a `serde_json::Value`, a field value built from any `Serialize` type, a limit on how deeply a field value nests.

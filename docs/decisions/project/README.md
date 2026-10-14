@@ -1,6 +1,13 @@
 # ADR-0020. Project
 
-These records decide how the repository is built, checked and released: dependencies and the MSRV, lints, the standards and xtask, CI, the supply chain and releases, documentation, and the repository layout.
+- Date: 2026-10-08
+- Status: accepted
+
+## Decision
+
+These records decided how the repository is built, checked and released:
+dependencies and the MSRV, lints, the standards and xtask, CI, the supply
+chain and releases, documentation, and the repository layout.
 
 ## Children
 
