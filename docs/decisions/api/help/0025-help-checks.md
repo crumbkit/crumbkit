@@ -1,14 +1,42 @@
 # ADR-0025. Help checks
 
-- crumbkit-test's [`check_help_sizes`](../../../../crates/crumbkit-test/src/sizes.rs) and [`check_help_goldens`](../../../../crates/crumbkit-test/src/goldens.rs) read the help pages that crumbkit prints, by running `crumbkit::parse_to` in memory on a clone of the tree. A page is therefore the plain text that a caller reads on a pipe, with every line crumbkit adds except the line that names a person's aliases, which differs between machines (ADR-0027). A tool that builds part of its help at run time, such as from settings it reads at start, passes [`Pages::binary`](../../../../crates/crumbkit-test/src/pages.rs) in place of `Pages::rendered`, and the checks run its binary for each page as `check_examples` runs an example. Each of `check_help_sizes`, `check_help_goldens` and `check_path_weights` takes its own `Pages`, and a tool passes the same source to all three. A tool that mixes sources measures its budgets on pages that no golden file pins, so a difference between the rendered pages and the binary's pages goes unnoticed by both checks. reading reads all three through its binary. `Pages::clap` and `PathBudgets::help_only` serve a tool that parses with clap alone (ADR-0015).
-- The help checks skip hidden commands, because no help page shows them. They take budgets in place of opt-outs, because a tool sets a budget per command and pins every page.
-- A budget counts the bytes of the plain-text `-h` page, which agents read first and most often. `--help` has no budget, because a caller asks for it to read the full descriptions and the columns. The default budgets are 1,500 bytes for the root, 800 for a group, which is a command below the root with subcommands, and 1,200 for a leaf, which is a command below the root without subcommands.
-- A tool can raise or lower any budget with [`Budgets`](../../../../crates/crumbkit-test/src/sizes.rs) and [`PathBudgets`](../../../../crates/crumbkit-test/src/weights.rs), and gives a reason for each budget it sets, so crumbkit's defaults fit most tools and a tool with larger pages can still adopt the checks. `check_opt_outs` lists each budget that a tool set with its reason, crumbkit's default and the extra bytes and tokens of a raised budget (ADR-0036).
-- crumbkit-test's [`check_path_weights`](../../../../crates/crumbkit-test/src/weights.rs) budgets each path, which is every `-h` page from the root down to a command plus the command's output weight, the size of the largest golden file of its examples (ADR-0033). The default budget is 8,000 bytes, about 2,000 tokens at 4 bytes a token. A depth-2 leaf at its default page budgets reads 3,500 bytes of help, so 8,000 bytes leaves 4,500 bytes for output. shelf lowers its paths to 4,300 bytes. A command without an example golden file, such as one whose examples an opt-out skips, counts 0 bytes of output.
-- `check_path_weights` is a check of its own, because it reads golden files, and `check_help_sizes` reads only memory. It sums the paths with the same `path_totals` and `output_weight` functions that `cargo crumbkit weigh` calls, so the check and `weigh` agree whenever the pages that `Pages` chooses equal the pages that `weigh` reads from the binary. A cargo-crumbkit test compares weigh's `short_help` values for shelf with the sizes of shelf's help golden files.
-- `check_help_goldens` compares each page with a golden file through snapbox (ADR-0004). It fails on a stale file, so the directory holds only help golden files.
-- `check_guide` holds the leaf rules (ADR-0024). [`check_exit_codes`](../../../../crates/crumbkit-test/src/exits.rs) checks the declared exit codes (ADR-0037) as a check of its own, because it takes opt-outs and `check_guide` does not.
-- crumbkit-test has no bundled check that runs every check. Each check has its own settings and a tool calls each from its own `#[test]`, so a failure names the rule that broke. By the same rule, `check_mounts` is separate from `check_document_ids`, because a crumbkit command at the wrong path is fixed by moving it (ADR-0035).
-- `check_output_budget` runs each `--json` example with half the bytes it prints and checks that the tool cuts or refuses the result as crumbkit does. It is a check of its own beside `check_examples`, because it runs each example twice (ADR-0046).
+- Date: 2026-10-10
+- Status: accepted
+
+## Context
+
+Agents read `-h` pages first and most often, and every byte of a page is
+context the agent pays for. Help pages grow one line at a time, so a tool
+needs a budget that fails a test when a page or a path through the help
+gets too large, and golden files that show every change to a page.
+
+## Decision
+
+- The help checks read the pages crumbkit prints by running `parse_to` in
+  memory, so a page is the plain text a caller reads on a pipe. A tool
+  that builds help at run time passes `Pages::binary`, and the checks run
+  its binary.
+- A budget counted the bytes of the `-h` page, because agents read it
+  first and most often. `--help` has no budget, because a caller asks for
+  it to read the full descriptions. The defaults are 1,500 bytes for the
+  root, 800 for a group and 1,200 for a leaf.
+- `check_path_weights` budgeted each path: every `-h` page from the root
+  down plus the command's largest example output, 8,000 bytes by default,
+  about 2,000 tokens. A depth-2 leaf at its default page budgets leaves
+  4,500 bytes for output. It shares its sums with `cargo crumbkit weigh`,
+  so the two agree.
+- A tool could raise or lower any budget with a reason, and the opt-out
+  report lists it, so crumbkit's defaults fit most tools and a tool with
+  larger pages can still adopt the checks.
+- `check_help_goldens` pinned each page in a golden file and fails on a
+  stale file.
+- The help checks skip hidden commands, because no page shows them.
+- crumbkit-test had no bundled check that runs every check, so a failure
+  names the rule that broke and each check keeps its own settings.
+
+## Consequences
+
+shelf lowers its path budgets to 4,300 bytes. `docs/behaviour/help/checks.md`
+describes the current checks.
 
 Considered: measuring clap's `render_help` after `extend`, a plain `&[(path, bytes)]` slice of node budgets, a budget on `--help`, leaf rules in a separate `check_leaves`, a bundled `check(command, guide)`, path budgets in `Budgets` and `check_help_sizes`, a budget on output weight alone, a default path budget of 6,000 bytes, a budget that a tool cannot raise, a separate binary function for each help check, a binary setting on `Budgets`.

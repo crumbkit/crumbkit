@@ -1,16 +1,46 @@
 # ADR-0039. Effects, dry runs and confirmation
 
-- An agent cannot tell from a command's name whether the command changes anything, whether a repeat is safe, or whether it destroys data. Each leaf in the guide therefore declares its [`Effects`](../../../../crates/crumbkit/src/help/effects.rs) with `Leaf::effects`, beside its examples and document (ADR-0024).
-- The effects use the vocabulary of the Model Context Protocol's tool annotations: read-only, destructive, idempotent and open-world. An agent that knows those hints reads crumbkit's effects without a second vocabulary. `Effects::read_only`, `Effects::additive` and `Effects::destructive` set what the command changes, and `idempotent` and `open_world` add the other two properties. A read-only command is idempotent.
-- Help prints the effects on one line after the examples, such as `Effects: destructive, idempotent, closed-world.` (ADR-0021). A command that changes something names whether it is idempotent, so a missing word never stands for "no". `commands list` writes the effects as an object under `effects` in each row, with MCP's four properties as booleans, and writes `null` for a command without effects (ADR-0026).
-- A leaf without effects reads as unknown, and an agent must assume that it may destroy data. crumbkit-test's [`check_effects`](../../../../crates/crumbkit-test/src/effects.rs) requires effects on every visible leaf, and a tool opts out of `Rule::Effects` for a command with a reason (ADR-0036).
-- A command that changes something may flatten [`DryRun`](../../../../crates/crumbkit/src/output/dry_run.rs), which adds `--dry-run`, and pass it to `Output::dry_run`. That call records the dry run in `Output` and returns it, so the handler skips its changes and `finish` marks the result. The command still validates its arguments and returns the result that a real run would return.
-- A dry run's JSON document holds `"dry_run": true` after `schema`, and a real run's document holds no `dry_run` field, so the field keeps every `v1` id (ADR-0007). In text, the line `This was a dry run, so nothing changed.` prints on standard error with the other notes, and it prints last, after a batch's failures, so it is the final line a reader sees (ADR-0050). A document from `Document::without_envelope` has no envelope to hold the field, so its JSON prints unchanged and the line also goes to standard error.
-- `check_effects` fails a read-only command that takes crumbkit's `--dry-run`, because it has nothing to skip, and a command with its own `--dry-run`, because `DryRun` gives the flag one meaning in every tool. A tool that keeps its own flag opts out of `Rule::DryRun` with a reason.
-- A command that destroys data flattens [`Yes`](../../../../crates/crumbkit/src/output/confirm.rs), which adds `--yes`, and calls `Output::confirm` with a question before it changes anything. `confirm` proceeds at once with `--yes` or on a dry run. When a person can answer, which means that standard input and standard error are both terminals and no agent is detected (ADR-0043), it writes the question with ` [y/N] ` to standard error and proceeds on `y` or `yes`. Any other answer fails with `crumbkit::confirmation::declined`, which has no next step.
-- When no person can answer, or the caller passed `--no-input` from `NoInput` (ADR-0043), `confirm` fails with `crumbkit::confirmation::needs_yes`. Its recovery runs the words that the caller typed with `--yes` added before any `--`, through `Call::typed`, so an agent can repeat the command exactly. `parse` returns a [`Parsed`](../../../../crates/crumbkit/src/parse/parsed.rs) that holds those words, and `Output::set_command` keeps them (ADR-0002). A bare `Command`, or a typed word that is not UTF-8, leaves the recovery without a next step.
-- `confirm` reads through the [`Sink`](../../../../crates/crumbkit/src/sink.rs), whose third type parameter is the input. `Sink::with_input` takes a reader and whether the sink is interactive, so a test drives the question in memory. Only `Sink::standard_with_input` locks standard input, so `finish` never touches it. That sink decides it is interactive only when a person can answer, and a picker asks through the same sink (ADR-0043).
-- `check_effects` fails a destructive command without `--yes`, because an agent without a terminal could not run it. A tool opts out of `Rule::Yes` with a reason.
-- A command that replaces data or writes many items also declares its write guards on `Effects`, and a replacing command takes `--expect` (ADR-0047).
+- Date: 2026-10-12
+- Status: accepted
+
+## Context
+
+An agent cannot tell from a command's name whether the command changes
+anything, whether a repeat is safe, or whether it destroys data. An agent
+also has no terminal to answer a confirmation question, and a person
+expects a question before data is destroyed.
+
+## Decision
+
+- Each leaf declared its `Effects` in the guide, in the vocabulary of the
+  Model Context Protocol's tool annotations: read-only, destructive,
+  idempotent and open-world. An agent that knows those hints needs no
+  second vocabulary. Help and `commands list` print the effects, and a
+  command that changes something always names whether it is idempotent,
+  so a missing word never stands for "no".
+- A leaf without effects reads as unknown, and `check_effects` requires
+  effects on every visible leaf unless the tool opts out with a reason.
+- A `DryRun` argument added `--dry-run`, so the flag has one meaning in
+  every tool. A dry run still validates its arguments and returns the
+  result a real run would return. The JSON holds `"dry_run": true` only
+  on a dry run, so every `v1` id keeps its schema, and the text note
+  prints last on standard error, so it is the final line a reader sees.
+- A destructive command flattened `Yes` and called `Output::confirm`
+  before changing anything. A person at a terminal answers a `[y/N]`
+  question. When no person can answer, `confirm` fails with
+  `crumbkit::confirmation::needs_yes`, whose recovery repeats the caller's
+  typed words with `--yes` added, so an agent can repeat the command
+  exactly.
+- `confirm` read through the `Sink`, so a test drives the question in
+  memory, and only the standard sink with input locks standard input.
+- `check_effects` failed a read-only command with `--dry-run`, a command
+  with its own `--dry-run` and a destructive command without `--yes`,
+  each with an opt-out for a stated reason.
+
+## Consequences
+
+`parse` keeps the caller's typed words in `Parsed` for the `--yes`
+recovery. `docs/behaviour/effects/README.md` describes the current
+behaviour.
 
 Considered: effects in a new type outside the guide, an undeclared leaf read as read-only, an undeclared leaf read as destructive, crumbkit's own vocabulary for effects, an effects column in the text of `commands list`, the dry-run line on standard output in text, the dry-run line before a batch's failures, the dry-run line on standard error with `--json` for every document, no text marker for a dry run, a `dry_run` field in every document, exit code 2 for a missing `--yes`, a tool-built `Call` for the `--yes` recovery, the typed words kept in a thread-local, a separate prompt type outside the sink, the `--yes` rule in `check_guide`.

@@ -1,11 +1,42 @@
 # ADR-0057. Run observer
 
-- crumbkit tells one run observer what each run did, and the usage log is such an observer (ADR-0029). The [`events`](../../../crates/crumbkit/src/events.rs) module holds the `Observer` trait, the `observe` function that installs an observer, and the reports `aliased`, `tolerated` and `ended`, which a tool or another crate calls. The module has no cargo feature, so a call site in crumbkit has no `cfg` of its own and every build compiles the same reports.
-- An observer is a `&'static dyn Observer`, kept in a process-wide `OnceLock`. `observe` installs the first observer and refuses every later one, and a tool that wants two observers installs one that forwards to both. The reports take no guide, because `ended`, `tolerated`, crumbkit-aliases' `aliased`, the usage log's signal thread and `trace::child_env` have none.
-- `observe` installs nothing in a run whose completion variable asks for completion, by the rule that `complete` reads, so no observer hears a Tab press (ADR-0048). The `complete` module owns that read in every build.
-- `parse` reports the typed words, the parsed command line, a help page with its command path and exit, a refusal, a picker's count and any other exit. `finish`, `finish_to` and a stream report the code of a failure in the tool's spelling, then the exit code, the bytes written to standard output and whether a listing left rows out or had none. A child hand-over reports that the child took the terminal, on Windows that it gave the terminal back, and that a signal ended the child. The usage log's signal thread needs the hand-over, because it lets SIGINT end the process only while no child holds the terminal.
-- The observer answers three questions: whether it handles SIGINT, so a hand-over installs no handler of its own (ADR-0042), the variables that put a child in the run's trace, and the trace id and run id for the `tracing` spans (ADR-0030).
-- Every method of `Observer` has a default body that does nothing or answers that there is nothing, so crumbkit can add an event in a minor release (ADR-0002). A refusal and a finished run arrive as the `#[non_exhaustive]` structs `Refused` and `Finished`, whose getters let them gain a field. `Refused::nearest_flag` reads clap's suggestion only when the observer asks, and returns no hidden flag.
-- A report with no observer installed is one atomic load and a branch. Work that only an observer needs, such as the command path of a help topic, happens after that check. `finish_to` always counts the bytes it writes, which adds one addition per write.
+- Date: 2026-10-14
+- Status: accepted
+
+## Context
+
+The usage log needed to hear what each run did from many places in
+crumbkit, some of which have no guide, such as `finish`, a tolerated
+error, crumbkit-aliases and the usage log's own signal thread. Wiring each
+place to the usage log with its own `cfg` attribute made every build
+compile different code. Other observers, such as a tool's own metrics,
+need the same events.
+
+## Decision
+
+- An `events` module with no cargo feature held an `Observer` trait, an
+  `observe` function and the reports, so every build compiles the same
+  reports and a call site has no `cfg`. The usage log became one
+  observer.
+- One observer was kept in a process-wide `OnceLock`, because the reports
+  take no guide. A tool that wants two observers installs one that
+  forwards to both.
+- `observe` installed nothing for a completion request, so no observer
+  hears a Tab press.
+- The observer also answered whether it handles SIGINT, which variables
+  put a child in the run's trace, and the ids for the `tracing` spans,
+  because a hand-over and the spans need those answers.
+- Every method had a default body, and `Refused` and `Finished` are
+  `#[non_exhaustive]` with getters, so crumbkit can add events and fields
+  in a minor release.
+- A report with no observer costs one atomic load and a branch, and work
+  that only an observer needs happens after that check. `finish_to`
+  always counts its bytes, because counting only with an observer would
+  need two copies of the response path.
+
+## Consequences
+
+The usage log no longer has call sites spread through crumbkit.
+`docs/behaviour/run-observer/README.md` lists the current events.
 
 Considered: an observer on `Guide`, which `ended`, `tolerated`, `aliased`, the signal thread and `child_env` cannot reach; a list of observers; a public `completing` function that each observer checks; an `events` cargo feature that compiles the reports out; counting bytes only when an observer is installed, which needs two copies of the response path.

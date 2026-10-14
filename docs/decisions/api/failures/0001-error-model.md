@@ -1,22 +1,76 @@
 # ADR-0001. Errors
 
-- A tool's error types implement [`Failure`](../../../../crates/crumbkit-core/src/failure.rs) beside `std::error::Error`, which adds a stable code, a recovery and an optional url. The failure's `Display` and its `source()` chain give the message and the causes, and Debug formatting never reaches the output.
-- Every failure states a [`Recovery`](../../../../crates/crumbkit-core/src/failure.rs). A `Run` call that the tool's command tree cannot render prints as `None` with crumbkit's reason, so crumbkit never advertises a command the tool hid. `Recovery::None` with a reason is the exception for a failure that no step can repair, and a tool declares each such failure with one of its declared codes through an opt-out from `check_recoveries`'s `Rule::NextStep` (ADR-0053).
-- A build with debug assertions writes one `warning:` line on standard error before a failure for each field that `finish` leaves out and for each `Run` call of its recovery or alternatives that does not render, with the reason. When the tool's `main` never called `Output::set_command`, `finish` and `stream` write one `warning:` line in its place, which names `set_command`. A tool's own tests then see a field name that breaks the rule and a recovery that names a command the tool lacks, and [`check_recoveries`](../../../../crates/crumbkit-test/src/recoveries.rs) fails on the line. A release build writes no such line. This point lists every output that differs between a debug build and a release build.
-- A failure may offer alternative repairs through `Failure::alternatives`, such as setting a token variable beside logging in, because some failures have more than one reasonable repair and `recovery()` holds only the preferred one. An alternative that offers no step is left out, and when the recovery offers no step, the first alternative that offers one takes its place, so the output never says that there is no next step and then names one.
-- crumbkit's own codes are public constants in [`crumbkit::codes`](../../../../crates/crumbkit/src/codes.rs), which `codes::ALL` lists, so a tool's tests can name them. `crumbkit::confirmation::declined` and `crumbkit::confirmation::needs_yes` are crumbkit's codes for a confirmation that did not proceed (ADR-0039). `crumbkit::child::no_json`, `not_found`, `not_started`, `bad_json` and `failed` are its codes for a child process that did not run or did not succeed (ADR-0042). A tool may print its own code in place of any of crumbkit's codes, such as its own usage code for `crumbkit::cli::usage`, with a `Rename` in `Guide::codes`, and crumbkit still decides when the failure happens, its message and its recovery (ADR-0056).
-- A `Run` call can carry concrete values with `Call::value`, so a failure can suggest the exact command that repairs it. Rendering refuses a value that the tool would refuse before it runs: a value for a flag, a value outside the argument's possible values, and a positional value that clap would read as a flag.
-- A failure names the values at fault through `Failure::fields`, such as the id of a missing book, so a program reads the value without parsing the message. A field name follows the rule of a code segment, so one rule covers both identifiers. `finish` leaves out a field whose name breaks the rule or repeats an earlier name, so a wrong name never fails a run that has already failed. A field's value can be a list, an object or null as well as a scalar (ADR-0007), and a tool's own field shapes are a declaration that needs no opt-out.
-- A command line that clap refuses, an unknown `--fields` name and a view flag that the command or another typed view flag rules out fail with one fixed crumbkit code ([`parse`](../../../../crates/crumbkit/src/parse.rs), [`Output`](../../../../crates/crumbkit/src/output.rs)). Their fields name the refused `argument`, its `value` or the unknown `subcommand`, as clap reports them. A refused command line's recovery runs the `-h` of the deepest typed command, even a hidden one, unless ADR-0050 names another.
-- A leaf may declare a function with `Leaf::refusal_alternatives` that builds calls from a refusal of a command line that reaches the leaf, such as the refused line with the refused value corrected, because a tool may know a better next step for its command (ADR-0056). A guide may declare one such function with `Guide::refusal_alternatives` for every command whose leaf sets none, and a leaf's own function replaces it. The refusal offers each call that renders and whose line parses after crumbkit's own alternatives, and leaves out the others with no warning and no trace event, so a function may return a correction that it has not checked, and a trace never holds the caller's values (ADR-0030).
-- A [`Code`](../../../../crates/crumbkit-core/src/code.rs) has three segments, the owning component, the area and the reason, each one or more lowercase ASCII letters, digits and underscores, and `Code::new` checks them at compile time. The area is a noun from the tool's domain, such as `books`, so moving code does not change a code (OUTPUT-2). Each error type lists its codes in a `CODES` list for crumbkit-test's `check_codes`.
-- A tool that learns a code only at run time, such as from a plugin's answer, gets it from [`Code::runtime`](../../../../crates/crumbkit-core/src/code/runtime.rs), which checks the segments by the same rule and keeps each distinct code until the process exits. A process holds at most 256 run-time codes, so a plugin that puts an id in its reason cannot grow memory without bound, and a new code past that limit is refused, so the tool reports the failure under a code of its own. `Spelling::split` reads a spelled code back into its segments. `check_codes` cannot list a run-time code, so such a failure supplies its own recovery. `check_recoveries` does not follow the recovery of a code from a component that no declared code has, such as a plugin's, and counts such codes in its report. It reports a code from a declared component that no `CODES` list holds.
-- Each tool chooses how its codes are spelled with one [`Spelling`](../../../../crates/crumbkit-core/src/code.rs), and passes the same spelling to `finish` and to `check_codes`. `Code` has no `Display`, so every printed code goes through the tool's spelling. A code is an identifier that callers match exactly, so `check_codes` refuses characters that let two different codes look the same.
-- The optional `miette` feature lets a failure that implements `miette::Diagnostic` show its labels, and crumbkit draws them itself (ADR-0016, ADR-0007). The JSON document also holds the diagnostic's related diagnostics and a source excerpt for each label (ADR-0007). The code, the recovery and the url still come from `Failure`.
-- With the `miette` feature, a `miette::Report` converts into `Error` with the code `crumbkit::report::unchecked` ([`report`](../../../../crates/crumbkit-core/src/report.rs)), so `?` works on a `miette::Result`. The fixed code tells the caller only that the failure was not classified, so a tool that wants its own failure back calls `report.downcast` before converting.
-- [`Error::unclassified`](../../../../crates/crumbkit-core/src/unclassified.rs) holds any `std::error::Error` or message with the same code and a `Recovery::None`, so a tool that uses an error library such as anyhow reaches `finish` without a dependency of crumbkit on that library. The tool downcasts to its own failure types first, because boxing the library's error hides the type inside. The code is `codes::REPORT_UNCHECKED` in `codes::ALL`, so `check_recoveries` follows a chain through it.
-- [`Error`](../../../../crates/crumbkit-core/src/failure.rs) holds any failure, so `?` works across a tool's error types. It has no context methods. It cannot implement `Failure`, because its blanket `From` would overlap with the standard library's `From<T> for T`, so `finish` accepts a `Failure` or an `Error` through the sealed `AsFailure` trait.
-- [`#[derive(Failure)]`](../../../../crates/crumbkit-derive/src/lib.rs), behind the `derive` feature, writes the `Failure` impl and the `CODES` list from a `#[failure(...)]` attribute on each variant, because a hand-written impl repeats one `match` per method and a `CODES` list that drifts from the variants. `code` takes a path to a constant, so `Code::new` still checks the segments at compile time, and the derive checks each field name by the same rule. `hint` with braces goes through `format!`. `forward` returns every answer of a wrapped failure, so the wrapper's `CODES` leaves the wrapped codes to the wrapped type's own list. The derive writes no `Display`, so the message stays with the tool or another derive.
-- A tool that publishes its own failure document prints every failure in that form with a `FailureForm`, which receives each failure already prepared (ADR-0045).
+- Date: 2026-10-13
+- Status: accepted
+
+## Context
+
+An agent that meets a failure needs to know which failure it is, what to
+run next, and which values were at fault, without parsing a message
+written for people. Rust error types carry a message and a cause chain but
+no stable code or next step, and tools use several error libraries.
+
+## Decision
+
+- A tool's error types implemented `Failure` beside `std::error::Error`,
+  which adds a stable code, a recovery and an optional url. The message
+  and causes come from `Display` and `source()`, and Debug formatting
+  never reaches the output.
+- Every failure stated a `Recovery`, so an agent always learns what to do
+  next. `Recovery::None` with a reason is the exception for a failure no
+  step can repair, and a declared failure with no step needs an opt-out.
+  A `Run` call that the tool's tree cannot render prints as `None`, so
+  crumbkit never advertises a command the tool hid.
+- A failure could offer alternative repairs, because some failures have
+  more than one reasonable repair. When the recovery offers no step, the
+  first alternative with one takes its place, so the output never says
+  there is no next step and then names one.
+- A `Run` call carried concrete values with `Call::value`, so a failure
+  can suggest the exact command that repairs it, and rendering refuses a
+  value that the tool would refuse.
+- A failure named the values at fault through `Failure::fields`, so a
+  program reads them without parsing the message. `finish` drops a field
+  with a bad or repeated name, because a wrong name must not fail a run
+  that has already failed.
+- A code got three checked segments: component, area and reason. The area
+  is a noun from the tool's domain, so moving code does not change a code.
+  `Code` has no `Display`, so every printed code goes through the tool's
+  one `Spelling`, and `check_codes` refuses characters that make two codes
+  look the same.
+- `Code::runtime` accepted codes learnt at run time, such as a plugin's,
+  and a process keeps at most 256 of them, so a plugin that puts an id in
+  its reason cannot grow memory without bound. A new code past that limit
+  is refused, and the tool reports the failure under a code of its own.
+- crumbkit's own codes became public constants, so a tool's tests can
+  name them, and a tool may print its own code in place of any of them
+  (ADR-0056).
+- Refusals by clap, an unknown `--fields` name and conflicting view flags
+  failed with fixed crumbkit codes whose fields name what was refused, and
+  a refusal's recovery runs the `-h` of the deepest typed command. A leaf
+  or the guide could add refusal alternatives, because a tool may know a
+  better next step. Alternatives that do not render or parse are left out
+  silently, and a trace never holds the caller's values.
+- A debug build warned on standard error about dropped fields and calls
+  that do not render, so a tool's tests catch them. A release build
+  writes no warning.
+- The optional `miette` feature showed a diagnostic's labels, which
+  crumbkit draws itself, and converted a `miette::Report` into `Error`
+  with the fixed code `crumbkit::report::unchecked`. `Error::unclassified`
+  did the same for any `std::error::Error`, so a tool using another error
+  library reaches `finish` without crumbkit depending on that library.
+- `Error` held any failure, so `?` works across a tool's error types. It
+  cannot implement `Failure`, because its blanket `From` would overlap
+  with `From<T> for T`, so `finish` takes either through the sealed
+  `AsFailure` trait.
+- `#[derive(Failure)]` wrote the `Failure` impl and the `CODES` list,
+  because a hand-written impl repeats one `match` per method and a
+  `CODES` list drifts from the variants. `code` takes a path to a
+  constant, so `Code::new` still checks it at compile time. The derive
+  writes no `Display`.
+
+## Consequences
+
+`docs/behaviour/failures/README.md` and `docs/behaviour/failures/derive.md`
+describe the current failure model.
 
 Considered: private constants for crumbkit's own codes, a `Recovery::Choice` variant holding several recoveries, which needs a new failure document id, alternatives printed as `no next step` when they do not resolve, literal words appended to a call without a check against the tree, the `Display` as the cause line, a required miette dependency, a blanket impl over `miette::Diagnostic`, converting failures into `miette::Report`, reading miette's `#[diagnostic]` attribute, error-stack, a separate `help()` method beside `Hint`, registering codes on an `App` value, context wrapping on `crumbkit::Error`, one fixed `::` spelling for every tool, a global spelling set once at startup, accepting only declared codes from a `miette::Report`, miette's graphical renderer, miette's narratable renderer, printing a report's own code through a second failure path, an adopter-supplied finder, a debug-build warning for a refusal alternative that does not render or parse, a usage code passed to `parse` in place of a guide's rename, a usage code built from the command's name, a `--fields` recovery that runs the root's `-h`, structured fields under `labels`, a field value that holds a float, keys inside a field's objects under the field name rule, an unbounded run-time code table, run-time codes from a list the tool registers at startup, a derive that also writes `Display`, a `code = "a::b::c"` string checked by the derive, a `From<anyhow::Error>` behind an `anyhow` feature, a new code for unclassified errors beside `crumbkit::report::unchecked`.

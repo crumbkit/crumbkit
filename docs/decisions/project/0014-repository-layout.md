@@ -1,7 +1,27 @@
 # ADR-0014. Repository layout
 
-- crumbkit is a virtual workspace with published crates under `crates/`, unpublished example packages, `examples/shelf/` with a `shelf` binary and `examples/reading/` with a `reading` binary that adds a command for each reading list at run time, `examples/tutorial/` with one `pantry` binary for each step of the tutorial (ADR-0013), the unpublished `benches/` package of ADR-0008, and `xtask/`. crumbkit depends on crumbkit-core, the published crate that holds the types that need no clap (ADR-0032). crumbkit-derive is the published procedural macro crate of `#[derive(Failure)]`, which crumbkit-core re-exports behind its `derive` feature (ADR-0001). cargo-crumbkit is the published crate of the `cargo crumbkit` subcommand, which measures a tool's help (ADR-0033) and writes its command reference (ADR-0044). crumbkit-aliases expands a person's aliases (ADR-0027), crumbkit-picker holds the `Menu` picker (ADR-0043), and crumbkit-markdown writes a tool's command reference (ADR-0044).
-- `Cargo.lock` is committed, and published crates list their files in `include`.
-- Modules and unit tests follow the file layout of RUST-6 and RUST-7, so each file name says which module it holds, and code and tests read separately.
+- Date: 2026-10-07
+- Status: accepted
+
+## Context
+
+crumbkit needed a layout for several published crates, example tools
+that exercise them, benchmarks and repository checks, and a rule for
+where modules and tests live.
+
+## Decision
+
+- crumbkit became a virtual workspace, with published crates under
+  `crates/` and unpublished packages for the examples, the benchmarks and
+  `xtask`.
+- `Cargo.lock` was committed, and published crates list their files in
+  `include`.
+- Modules and unit tests followed RUST-6 and RUST-7, so each file name
+  says which module it holds and code and tests read separately.
+
+## Consequences
+
+Each new crate or example is a workspace member. `docs/project/README.md`
+lists the current crates and packages.
 
 Considered: a root package, shelf as a crate example, inline test modules.

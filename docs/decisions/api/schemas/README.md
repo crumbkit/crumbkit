@@ -1,6 +1,14 @@
 # ADR-0040. Schemas
 
-These records decide the shape of the JSON documents that a tool prints and how a caller reads their schemas: the envelope, document ids and their versions, and the `schemas list` and `schemas show` commands with the checks that pin each schema.
+- Date: 2026-10-12
+- Status: accepted
+
+## Decision
+
+These records decided the shape of the JSON documents that a tool prints
+and how a caller reads their schemas: the envelope, document ids and their
+versions, and the `schemas list` and `schemas show` commands with the
+checks that pin each schema.
 
 ## Children
 

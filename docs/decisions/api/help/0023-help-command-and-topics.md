@@ -1,12 +1,35 @@
 # ADR-0023. Help command and topics
 
-- [`parse`](../../../../crates/crumbkit/src/parse.rs) answers the word `help` itself and turns off clap's generated `help` subcommand, so clap's `help` line leaves every `Commands:` list and `Command::build` no longer copies the tree into a generated help command.
-- `parse` answers `help` at every level, as clap's `help` did, because a refused request for help gives the caller nothing. It answers before clap parses, so the tool's own type never sees the word, and a tool's own command named `help` still takes the word.
-- `<tool> help` lists the tool's topics, and `<tool> help <TOPIC>` prints one. Topics belong to the root.
-- crumbkit adds its own topic, `exit-codes`, which lists crumbkit's codes 0, 1 and 2 and then the codes that the tool declares (ADR-0037). It comes last in the topic list and on the root's Topics line. A root has the topic, and answers `help`, when it has subcommands or the tool declares topics, so a root without either still reads `help` as an ordinary word. A tool's topic named `exit-codes` never prints, because crumbkit's topic answers first, so `check_guide` rejects one.
-- Every other `help` command line becomes the same command line with `--help`, and an unknown word gets clap's usual refusal with its suggestions.
-- A tool declares its topics in its `Guide`, each a [`Topic`](../../../../crates/crumbkit/src/help/topic.rs) of a name, a one-line summary and plain text. Topic text is a literal or comes from `include_str!`. `parse` reads the topics from the guide, so the tree holds no topics and no run copies a topic's text.
-- crumbkit-test's [`check_guide`](../../../../crates/crumbkit-test/src/guide.rs) checks the topics, and [`check_grammar`](../../../../crates/crumbkit-test/src/grammar.rs) reserves the word `help` for asking for help.
-- The topic list and a topic's text print as plain text, also on a terminal. The root's help names the topics on one line.
+- Date: 2026-10-09
+- Status: accepted
+
+## Context
+
+clap generates a `help` subcommand that adds a line to every `Commands:`
+list and makes `Command::build` copy the tree into it. Tools also have
+material that belongs to no single command, such as concepts and exit
+codes, and an agent needs one place to find it.
+
+## Decision
+
+- `parse` answered the word `help` itself, at every level, and turned off
+  clap's generated subcommand, so the line leaves every list and the
+  tree is not copied. It answers before clap parses, so a tool's own
+  `help` command still takes the word.
+- `<tool> help` listed the root's topics and `<tool> help <TOPIC>` printed
+  one. Every other `help` line became the same line with `--help`.
+- Topics were declared in the `Guide` as literal text or `include_str!`,
+  so the tree holds no topics and no run copies their text.
+- crumbkit added its own `exit-codes` topic, last in the list, and
+  `check_guide` rejects a tool topic with that name, because crumbkit's
+  answers first. A root without subcommands or topics still reads `help`
+  as an ordinary word.
+- Topics printed as plain text, and the root's help names them on one
+  line, so they cost one line of the root's help.
+
+## Consequences
+
+`check_grammar` reserves `help` for asking for help, with no opt-out.
+`docs/behaviour/help/README.md` describes the current behaviour.
 
 Considered: the hidden `help` command carrying the topics, clap's `unstable-ext` extension slot, a deferred builder per leaf, a `Help` variant in the tool's enum, `help` only at the root, crumbkit writing its own message for an unknown word, topic files read at runtime, a Topics section with summaries on the root page, keeping clap's `help` for tools without topics, a separate `exit-codes` command, exit codes listed on the root's help page.

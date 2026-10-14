@@ -1,6 +1,13 @@
 # ADR-0019. Testing
 
-These records decide how crumbkit proves its behaviour and its performance: golden files, end-to-end tests, recovery chains, property tests and fuzzing, and performance budgets.
+- Date: 2026-10-08
+- Status: accepted
+
+## Decision
+
+These records decided how crumbkit proves its behaviour and its
+performance: golden files, end-to-end tests, recovery chains, property
+tests and fuzzing, and performance budgets.
 
 ## Children
 

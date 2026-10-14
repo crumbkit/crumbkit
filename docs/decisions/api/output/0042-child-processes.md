@@ -1,12 +1,47 @@
 # ADR-0042. Child processes
 
-- A command that runs another program as its whole job, such as opening an editor or a pager, hands the terminal to it through [`child::hand_over`](../../../../crates/crumbkit/src/child.rs). The child inherits standard input, output and error, and receives the variables of `trace::child_env`, so it joins the run's trace (ADR-0030). The module sits behind the `hand-over` cargo feature, which is off by default and adds signal-hook (ADR-0003).
-- The tool returns the child's exit code, so on such a command 1 and 2 carry the child's meanings (ADR-0002). The command's leaf declares this with `Leaf::passes_on_exit`, which names the program, such as `the editor`. Its `-h` and `--help` then print `Exit code: the command passes on the exit code of the editor.` after the `Output:` line, and `help exit-codes` names the command (ADR-0021, ADR-0037). The declaration needs no reason, because help tells a caller where the code comes from (ADR-0056).
-- `check_twin`, `check_twins` and `check_recoveries` let a failure of such a leaf end with any code but 0 when no exit lists the failure. A listed failure and a refused command line still exit as `Guide::failure_exit` decides, and an unlisted failure never exits with a code that an exit gives listed failures, because a caller would read it as one of them. A failure with `crumbkit::child::failed` on a leaf without the declaration must exit with 1, so a test that provokes it shows the missing declaration. A child that a signal ended returns 128 plus the signal's number, as a shell reports it, and the usage log records the code and `"interrupted": true` (ADR-0029).
-- On Unix the tool ignores SIGINT and SIGQUIT from the moment the first child starts until the tool ends, so Ctrl-C reaches only the child. The tool installs a signal-hook handler that takes the default action until then, because a handler resets to the default action when the child starts its program and an ignored disposition would stay ignored in the child. A handler acts when a signal reaches one of the tool's threads, and a Ctrl-C sent while the child ran can reach a thread after the child has exited. A handler that took the default action again at that point would end a tool with more than one thread, so the tool keeps ignoring both signals. A command hands the terminal over as its last step, so only the result, the usage log's line and the exit remain. When the run observer says that it handles SIGINT, as the usage log's signal thread does, crumbkit installs no SIGINT handler. crumbkit tells the observer that a child took the terminal before the child starts, and on Windows that the child gave it back once it exits (ADR-0057). With `Signals::Crumbkit` the log's thread skips SIGINT once a child has held the terminal, and with `Signals::Tool` the tool's own handler decides, whether or not a child runs.
-- On Windows the tool ignores SIGINT and SIGBREAK while the child runs, which the C runtime raises on Ctrl-C and Ctrl-Break, so both reach only the child. The handlers come from signal-hook's `register_conditional_shutdown`, which ends the process with `STATUS_CONTROL_C_EXIT` when no child runs, the exit code that either key gives a process without a handler. The tool takes the default actions again once the child exits. A Ctrl-C that reaches the handler after the child exits may end the tool as it could on Unix, which nobody has tested on Windows. A Windows child inherits no handler of the tool. A child that exited with `STATUS_CONTROL_C_EXIT` counts as ended by SIGINT, so the tool returns 130 and the usage log records `"interrupted": true`. Closing the console, logging off and shutting down still end the tool beside the child, because the C runtime raises no signal for them (ADR-0003).
-- A child with a JSON form goes through `hand_over_json` with a `child::Json` constant, which names the arguments that make the child print JSON and the document that the output is read as. Under `--json`, crumbkit adds those arguments, reads the child's standard output as that document's type and prints it as `finish` prints a result, so `--fields`, `--long` and `--full` work as on any command. Standard input and standard error stay the tool's, so the child can still ask a question or report a problem.
-- `--json` on a command whose child has no JSON form fails with `crumbkit::child::no_json` before the child runs, and `--fields` without `--json` is refused with `crumbkit::cli::usage`, because the child's own text has no columns. Both exit with the code of a refused command line, which is 2 unless the guide lists another (ADR-0037). The refusal happens when the command runs, so help still lists the global `--json`.
-- A program that does not exist fails with `crumbkit::child::not_found` and a hint to install it, and one that the operating system refuses to start fails with `crumbkit::child::not_started`, both with exit code 1 unless the guide lists the code for another. Under `--json`, a child that exits with a code other than 0 fails with `crumbkit::child::failed` and returns the child's code, and output that is not the declared document fails with `crumbkit::child::bad_json` and exits in the same way (ADR-0001). A guide's rename of each code applies as it does to every other failure (ADR-0056).
+- Date: 2026-10-12
+- Status: accepted
+
+## Context
+
+Some commands run another program as their whole job, such as an editor
+or a pager. The child needs the terminal and must receive Ctrl-C itself,
+while the tool must still report its result, join the run's trace and
+record its usage line. The child's exit codes have their own meanings,
+and a caller asking for `--json` expects a document.
+
+## Decision
+
+- `child::hand_over`, behind the off-by-default `hand-over` feature, ran
+  the child with the tool's standard streams and the trace variables, so
+  the child joins the run's trace.
+- The tool returned the child's exit code, and the leaf declares this
+  with `Leaf::passes_on_exit`, which help prints, so a caller knows where
+  the code comes from. The checks let such a leaf's unlisted failures end
+  with any nonzero code, but never with a code that the guide gives a
+  listed failure.
+- On Unix the tool ignored SIGINT and SIGQUIT from the first child's
+  start until it ends, so Ctrl-C reaches only the child. It uses a
+  signal-hook handler, because an ignored disposition would stay ignored
+  in the child and resetting it needs unsafe code. It keeps ignoring the
+  signals after the child exits, because a late Ctrl-C could reach a
+  thread then. A command hands over as its last step, so only the result
+  and the exit remain.
+- On Windows the tool ignored SIGINT and SIGBREAK only while the child
+  runs, through signal-hook's conditional shutdown, and a child ended by
+  Ctrl-C counts as ended by SIGINT.
+- A child with a JSON form went through `hand_over_json`, which adds the
+  child's JSON arguments under `--json` and prints the child's output as
+  a crumbkit document, so `--fields`, `--long` and `--full` work.
+  `--json` on a child without a JSON form fails before the child runs.
+- A missing or refused program, a failed child under `--json` and bad
+  JSON each failed with their own `crumbkit::child` code.
+
+## Consequences
+
+Closing the console, logging off and shutting down still end a Windows
+tool beside its child. `docs/behaviour/output/child-processes.md`
+describes the current behaviour.
 
 Considered: a `--json` refused by clap through a per-command flag, which changes help, a child's JSON passed through without parsing, a fixed exit code for a child that a signal ended, `SIG_IGN` for SIGINT with a reset in the child before it starts its program, which needs unsafe code, restoring the default actions on Unix once the child exits, a handler that forwards SIGINT to the child, the `hand-over` code in the default build, a pager API with its own environment variables, a Windows console control handler through `windows-sys`, Windows exit codes passed through as they are, an opt-out with a reason for a command that passes on its child's code, which no single run check could report as stale.

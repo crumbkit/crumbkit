@@ -1,22 +1,63 @@
 # ADR-0011. CI lanes
 
-- Pull requests run a fast lane whose median wall time stays within the limit of CI-3, because a slow pull-request run delays every change. The fast lane has two work jobs, `lint` and `test`, which run in parallel on `ubuntu-latest`, because GitHub's standard runners are free for a public repository and `ubuntu-latest` has 4 CPUs, so cargo compiles the workspace's crates and runs its tests in parallel, which the single CPU of `ubuntu-slim` cannot. `lint` runs the commit check on a pull request, rustfmt, clippy, the MSRV check that RUST-9 gives, `cargo xtask check`, rustdoc with warnings denied (DOCS-4), cargo-deny, cargo-shear and zizmor, and `test` runs the tests. Every extra job repeats the checkout, the toolchain installation and the cache restore, so a third work job would shorten a run only by the steps it took from the longer job.
-- On a pull request, `lint` first runs `.github/scripts/commit-check.sh`, which fails when the author name, author email, committer name, committer email or message of any commit between the pull request's base and head matches the case-insensitive extended regular expression in the repository secret `COMMIT_PATTERN`. The owner sets `COMMIT_PATTERN`. The check runs in `lint` so that `gate` blocks the merge without a change to the ruleset, and `lint` checks out the full history so that every commit of the pull request is present. On a match the script prints the commit's SHA and the name of the field, and never the field's value, so the log does not reveal what the pattern matched. The workflow passes the secret to the script through `env:`, because an expression written inside `run:` becomes part of the shell script's text, where a pattern that contains shell syntax would run as a command. When the secret is empty the check passes with a notice. A pull request from a fork gets no repository secrets, and a pull request that Dependabot opens gets only Dependabot secrets, so both skip the check unless the owner also sets `COMMIT_PATTERN` as a Dependabot secret.
-- `ci.yml` also runs `lint` and `test` on each push to `main`, so the merged code is tested even when `main` moved after a pull request's last run. This costs one extra run of the pull-request jobs per merge. A newer push to `main` cancels the run of an older one, and the repository has no merge queue, so `ci.yml` has no `merge_group` trigger.
-- The `gate` job needs every fast-lane job, runs even when one of them failed or was cancelled, and fails unless all of them succeeded. The repository ruleset can then require `gate` alone, and a job that joins the fast lane needs no change to the ruleset. `gate` runs on `ubuntu-slim`, because it only reads the results of the other jobs.
-- The repository ruleset `main` requires the `gate` check from GitHub Actions to pass before a pull request merges, requires every change to `main` to come through a pull request, and blocks force pushes to `main` and its deletion. It does not require a branch to be up to date with `main`, because the run on each push to `main` tests the merged code, and requiring it would add one more run of the fast lane to every pull request that merges after another. It requires no approving review, because the owner cannot approve their own pull requests.
-- `test` runs the tests with cargo-nextest, whose `ci` profile reports every failing test in one run, and runs the doctests with `cargo test --doc`, because nextest does not run doctests.
-- shelf turns on crumbkit's `miette`, `usage-log` and `tracing` features, and reading turns on `hand-over`, so the workspace runs build, test and lint crumbkit with all four. `test` runs crumbkit's tests and doctests again on their own in the default build and with `miette`, and its tests with `hand-over` alone. `lint` runs clippy on crumbkit in the default build, with `miette`, with `tracing` alone, which is the only build that compiles the spans without the usage log's ids, and with `hand-over` alone, which is the only build that installs the child's SIGINT handler without the usage log. A separate `usage-log` run would repeat what the workspace runs already check. Each is one more step in an existing job, because a new job repeats the setup time. Clippy runs once per build, because a single `--all-features` run misses a warning that only one build shows.
-- The `scheduled.yml` workflow runs a nightly slow lane. Its `nightly` job runs on `ubuntu-latest` every night and runs `cargo deny check advisories` and `cargo xtask ci-time`, the gate of CI-3. Fuzzing joins the nightly lane once code for it exists.
-- The `bench` job of `scheduled.yml` runs the benchmarks and `cargo xtask run-time` of ADR-0008, the gates of PERF-1 and PERF-2. A scheduled run skips them when the newest of the last ten completed runs on `main` whose `bench` job passed ran at the same commit, because nothing they measure has changed, and a manual run always runs them. The advisories check and the docs.rs build run every night, because a new advisory or a new nightly toolchain needs no change on `main`.
-- The `windows` job of `scheduled.yml` builds, lints and tests the workspace on `windows-latest`, the gate of CI-4. It runs clippy on the workspace and on crumbkit with `hand-over` alone, the tests with cargo-nextest, the doctests, and crumbkit's tests with `hand-over` alone, which cover the Windows SIGINT and SIGBREAK handlers without the usage log. It turns off debug info and incremental builds, which the job would only write. A scheduled run skips it when the `changed` job finds that the newest of the last ten completed runs on `main` whose `windows` job passed ran at the same commit, as `bench` skips its checks, and a manual run always runs it. `.github/scripts/last-passed.sh` holds that lookup for both jobs. `changed` runs on `ubuntu-slim`, because it only calls the GitHub API, and it lets the skipped `windows` job start no Windows runner.
-- No scheduled job uses rust-cache, because rust-cache keys include the job ID, so their caches would not help the pull-request jobs, and a nightly build costs only minutes.
-- The nightly job also builds the published crates' docs as docs.rs does, on the nightly toolchain with every feature and `--cfg docsrs`, and fails on a rustdoc warning. It runs nightly and not in `lint`, because a docs.rs failure matters only at a release and the nightly toolchain would add its installation to every pull request. It writes to a target directory of its own, apart from the stable builds.
-- The `release.yml` workflow is the release lane of ADR-0012. On each push to `main`, its `pull-request` job runs release-plz to open or update the release pull request, and its `publish` job runs release-plz to publish what that pull request set. Only `publish` gets `id-token: write` and the `crates-io` environment, and neither job uses rust-cache, because a poisoned cache would reach the published crates, and zizmor fails a release workflow that restores one.
-- `ci.yml` runs the tests on `macos-latest` on each push to `main`, and leaves them out of pull requests and the gate, because GitHub runs only a few macOS jobs of an account at once, so a pull request would wait for a free macOS runner. A failure there shows on the commit on `main`.
-- The `lint`, `test` and `macos` jobs use rust-cache, and only a run on `main` saves a cache. A pull request restores the cache that `main` saved, because GitHub lets a pull request restore the caches of its base branch. Pull requests therefore skip the time of saving and leave the repository's cache storage to `main`, and GitHub evicts the oldest caches when that storage is full.
-- When the `nightly`, `bench`, `changed` or `windows` job fails, the `report` job comments the run's URL on the open issue titled "Scheduled CI failed", or opens that issue when none is open, so every failure stays on one issue.
-- Every Rust job runs on a GitHub image that includes rustup, and `rustup toolchain install` installs the toolchain that `rust-toolchain.toml` pins.
-- The workflows follow CI-1, because a broad token or a movable tag lets a compromised action change the repository or run code that nobody reviewed.
+- Date: 2026-10-07
+- Status: accepted
+
+## Context
+
+Every change to crumbkit waits for the pull-request run, so the time of
+that run is a cost paid on each change. GitHub's standard runners are free
+for a public repository, but each job repeats the checkout, the toolchain
+installation and the cache restore. Some checks, such as new advisories,
+benchmarks, Windows and the docs.rs build, matter without a change on
+`main` or only at a release. GitHub runs only a few macOS jobs of an
+account at once.
+
+## Decision
+
+- Pull requests ran a fast lane of two parallel work jobs, `lint` and
+  `test`, on `ubuntu-latest`. `ubuntu-latest` has 4 CPUs, so cargo builds
+  and tests in parallel, which the single CPU of `ubuntu-slim` cannot. Two
+  jobs were chosen because a third job would shorten a run only by the
+  steps it took from the longer job, while repeating the setup.
+- A `gate` job needed every fast-lane job and failed unless all of them
+  succeeded, so the ruleset requires `gate` alone and a new fast-lane job
+  needs no ruleset change. The ruleset did not require a branch to be up
+  to date with `main`, because `ci.yml` also runs on each push to `main`
+  and so tests the merged code. It required no approving review, because
+  the owner cannot approve their own pull requests.
+- `lint` ran a commit check against the repository secret
+  `COMMIT_PATTERN` on each pull request. The check sits in `lint` so that
+  `gate` blocks the merge without a ruleset change. It prints only the
+  commit and the field name on a match, so the log does not reveal what
+  matched, and it receives the secret through `env:`, so shell syntax in
+  the pattern cannot run.
+- `test` used cargo-nextest, which reports every failing test in one run,
+  and ran doctests with `cargo test --doc`, because nextest does not run
+  doctests.
+- Each crumbkit feature build that compiles code no other build compiles
+  got its own clippy or test step in an existing job, because a single
+  `--all-features` run misses a warning that only one build shows, and a
+  new job would repeat the setup.
+- A scheduled workflow ran the slow lane: the advisories check, the CI
+  time limit, the docs.rs build on the nightly toolchain, the benchmarks
+  and the Windows build and tests. The benchmarks and Windows skip a night
+  when `main` has not changed since their last pass, because nothing they
+  measure changed. A failure comments on one open issue, so every failure
+  stays in one place.
+- The macOS tests ran on each push to `main` and stayed out of pull
+  requests, so a pull request never waits for a free macOS runner.
+- Only runs on `main` saved a rust-cache, and pull requests restore it.
+  Scheduled and release jobs used no rust-cache, because their cache keys
+  would not help pull requests and a poisoned cache would reach the
+  published crates.
+- The workflows followed CI-1, because a broad token or a movable tag lets
+  a compromised action change the repository or run unreviewed code.
+
+## Consequences
+
+Windows and macOS failures show after a merge, on the commit or the
+scheduled issue, and do not block a pull request. `docs/project/ci.md`
+lists the current jobs and steps.
 
 Considered: two jobs on the single-CPU `ubuntu-slim` runner, one sequential job, a ruleset that requires branches to be up to date, no run on pushes to `main`, one job per check, a separate job for each crumbkit feature, a separate MSRV job, nextest partitions across jobs, the arm64 `ubuntu-24.04-arm` runner, larger runners, `cargo test` for every test, sccache, code coverage, macOS tests on every pull request, weekly or nightly macOS tests, a rust-cache key shared by all jobs, rust-cache saves from pull requests, one issue per failed run, the docs.rs build in `lint`, benchmarks every night whether or not `main` changed, Windows tests in the pull-request lane, Windows tests on each push to `main`, rust-cache on the Windows job, a Windows test step inside the `bench` job, a separate job for the commit check, a commit check that also runs on pushes to `main`.

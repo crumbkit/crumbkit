@@ -1,6 +1,17 @@
 # ADR-0031. Output
 
-These records decide how a tool prints a command's result: the compact text table, the JSON document, the columns that a row type names, the failures, batches and listings that print beside the rows, the streams that print rows as they arrive, the output budget that limits the bytes of one run, the child processes that a command hands the terminal to, the terminal detection that no result depends on, and the layout of a JSON document.
+- Date: 2026-10-11
+- Status: accepted
+
+## Decision
+
+These records decided how a tool prints a command's result: the compact
+text table, the JSON document, the columns that a row type names, the
+failures, batches and listings that print beside the rows, the streams
+that print rows as they arrive, the output budget that limits the bytes
+of one run, the child processes that a command hands the terminal to, the
+terminal detection that no result depends on, and the layout of a JSON
+document.
 
 ## Children
 

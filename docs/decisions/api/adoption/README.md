@@ -1,6 +1,14 @@
 # ADR-0054. Adoption
 
-These records decide how a tool adopts crumbkit: the parts a tool can take one at a time, the declarations with which a tool keeps its own names, and the opt-outs with which a tool departs from crumbkit's conventions for a stated reason.
+- Date: 2026-10-13
+- Status: accepted
+
+## Decision
+
+These records decided how a tool adopts crumbkit: the parts a tool can
+take one at a time, the declarations with which a tool keeps its own
+names, and the opt-outs with which a tool departs from crumbkit's
+conventions for a stated reason.
 
 ## Children
 

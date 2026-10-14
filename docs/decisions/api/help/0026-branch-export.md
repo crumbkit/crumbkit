@@ -1,16 +1,39 @@
 # ADR-0026. Branch export
 
-- `<tool> commands list [PATH]...` lists one branch of a tool's command tree with each command's arguments, examples and columns, so an agent loads a subtree in one call instead of reading its help page by page ([`commands`](../../../../crates/crumbkit/src/commands.rs)). `commands` is a resource and `list` its verb, and `CommandsList` flattens `Page`, so the command passes crumbkit-test's tree checks with no opt-out.
-- The tool owns the wiring and adds the command to its own clap types. `parse` adds no command and answers none, so a tool that does not want the export leaves it out, and the command's help, goal heading, leaf and examples are the tool's like any other command's. The command sits at the root, because the not-found recovery runs `commands list` below the root.
-- `list` reads the command tree that the tool passed to `Output::set_command`, which is the tree that `parse` returns, so the listing shows the commands the tool kept at runtime. It builds that whole tree through `Output::command` before it reads it, so it also sees each command that a `Command::defer` closure adds. It fails with a fixed code when no command is set.
-- A hidden command and everything below it are left out, as help leaves them out. A hidden command fails as an unknown one does, so the failure never reveals a command that the tool hid.
-- Every row has every field, with `null` or an empty list for what a command lacks, so a program reads every row the same way. An argument's environment variable is left out, because crumbkit does not enable clap's `env` feature and so cannot read it.
-- Each row holds the leaf's effects under `effects`, or `null` when it declares none (ADR-0039). Each row holds the write guards under `writes`, or `null` for a read-only command or one without guards (ADR-0047). Each row holds `form`, which is `document` or `stream` for a leaf with a document and `null` for one without (ADR-0041).
-- The rows leave out the help and version flags, which are the same on every command and which `parse` changes, so the rows are the same whether or not the tree went through `parse`. A global argument is listed once, so the listing does not repeat it on every row.
-- Each row's `exits` lists the exit codes that the tool declares for the command, each with its code and meaning, so an agent learns them with the branch (ADR-0037). crumbkit's own 0, 1 and 2 are the same for every command, so the rows leave them out, and the text output ends with a note that names every code and `<tool> help exit-codes`.
-- The text table shows only each command's path and about text, because the nested lists would print as compact JSON in a table cell. `--json --full` prints the arguments, examples, columns and exit codes.
-- The schema of the `crumbkit/commands-list/v1` document is checked in (ADR-0007). crumbkit implements `Serialize` and `JsonSchema` for `CommandsList` and the row types by hand, so a build without the `usage-log` feature needs no serde or schemars derive macros (ADR-0016).
-- The two failure codes of `commands list` are fixed by crumbkit, as `crumbkit::cli::usage` is (ADR-0001), and are not listed in a `CODES` list.
-- `commands list` prints only the two formats of ADR-0016. crumbkit-markdown writes a Markdown reference from its JSON document (ADR-0044).
+- Date: 2026-10-10
+- Status: accepted
+
+## Context
+
+An agent that needs to learn a branch of a tool reads its help page by
+page, one call per command. A single command that exports the branch with
+its arguments, examples, columns and exit codes saves those calls, and
+must not show commands the tool hid.
+
+## Decision
+
+- `<tool> commands list [PATH]...` listed a branch with each command's
+  arguments, examples, columns, effects, write guards, form and exit
+  codes. It is a resource with a `list` verb that flattens `Page`, so it
+  passes the tree checks with no opt-out.
+- The tool owned the wiring, so a tool that does not want the export
+  leaves it out. The command sits at the root, because the not-found
+  recovery runs it there.
+- `list` read the run-time tree from `Output::set_command`, built whole,
+  so it shows the commands the tool kept at run time. A hidden command
+  fails as an unknown one does, so the failure never reveals it.
+- Every row had every field, with `null` or an empty list, so a program
+  reads every row the same way. The help and version flags are left out,
+  because `parse` changes them, and a global argument is listed once.
+- The text table showed only path and about, because nested lists would
+  print as JSON in a cell. `--json --full` prints the rest.
+- crumbkit's exit codes 0, 1 and 2 were left out of each row, because
+  they are the same for every command, and the text ends with a note
+  that names them.
+
+## Consequences
+
+crumbkit-markdown builds its reference from this JSON document.
+`docs/behaviour/help/commands-list.md` describes the current behaviour.
 
 Considered: `schema cli [PATH]` with built-in exemptions in the checks, `parse` adding and answering the command itself, one nested tree document, a `--markdown` flag now.
