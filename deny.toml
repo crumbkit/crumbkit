@@ -5,7 +5,7 @@
 
 [graph]
 # The checks also cover dependencies behind optional cargo features, such as
-# the usage-log feature of ADR-0003, which a default build would leave out.
+# the `complete` feature of ADR-0003, which a default build would leave out.
 all-features = true
 
 [advisories]
@@ -66,6 +66,7 @@ deny = [
         "crumbkit-aliases",
         "crumbkit-picker",
         "crumbkit-test",
+        "crumbkit-usage",
         "reading",
         "shelf",
         "tutorial",

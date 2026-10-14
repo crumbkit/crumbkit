@@ -18,7 +18,7 @@ the registration script then sets that name
 so the default build has no completion code and no clap_complete.
 
 A tool's `main` calls `crumbkit::complete` or `complete_with` first, before
-`usage::start`, and passes the function that builds the command it parses
+`crumbkit_usage::start`, and passes the function that builds the command it parses
 against. crumbkit calls the function only for a completion request, so an
 ordinary run builds its command once and no run clones the tree. A tool that
 hides commands at run time does so inside that function, so completion

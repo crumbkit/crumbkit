@@ -489,6 +489,12 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- crumbkit-usage: the usage log, `self usage` and `self figures list` move
+  from crumbkit's `usage-log` feature to the crumbkit-usage crate, and a
+  tool starts the log with `crumbkit_usage::start()` ([crumbkit-usage],
+  [ADR-0029]).
+- crumbkit: `Exit::covers` is public, so crumbkit-usage can give each exit
+  code in its reports its meaning ([ADR-0037]).
 - crumbkit: [`complete_to`] takes the function that builds the command from
   the typed words in place of a built command ([ADR-0048]).
 - crumbkit-test: [`check_opt_outs`] lists the failure form, code renames,
@@ -723,6 +729,9 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Removed
 
+- crumbkit: the `usage-log` feature and the `crumbkit::usage` module are
+  gone, because the crumbkit-usage crate holds the usage log
+  ([crumbkit-usage]).
 - crumbkit-test: `Rule::FailureForm` is gone. A failure form is a
   declaration, and [`check_document_ids`] no longer asks for an opt-out
   with a reason ([ADR-0056]).
@@ -868,7 +877,7 @@ rustdoc, or at its decision record. -->
 [`help::FileFormat`]: crates/crumbkit/src/help/format.rs
 [`commands`]: crates/crumbkit/src/commands.rs
 [`schemas`]: crates/crumbkit/src/schemas.rs
-[`usage`]: crates/crumbkit/src/usage.rs
+[`usage`]: crates/crumbkit-usage/src/lib.rs
 [`trace`]: crates/crumbkit/src/trace.rs
 [`trace::child_env`]: crates/crumbkit/src/trace.rs
 [schemas]: crates/crumbkit/schemas
@@ -887,6 +896,7 @@ rustdoc, or at its decision record. -->
 [`Examples`]: crates/crumbkit-test/src/examples/settings.rs
 [`FailureReader`]: crates/crumbkit-test/src/failures.rs
 [crumbkit-aliases]: crates/crumbkit-aliases/README.md
+[crumbkit-usage]: crates/crumbkit-usage/README.md
 [crumbkit-core]: crates/crumbkit-core/README.md
 [crumbkit-derive]: crates/crumbkit-derive/README.md
 [`Error::unclassified`]: crates/crumbkit-core/src/unclassified.rs

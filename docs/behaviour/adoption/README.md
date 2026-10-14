@@ -44,11 +44,12 @@ Why: ADR-0015, ADR-0002.
 
 crumbkit has no `run` one-liner. A hand-wired `main` is a few lines of glue:
 `parse`, a `match` on its result, `Output::set_command` and one `finish` per
-leaf ([parsing](../parsing/README.md)). A `run` that started the usage log
-would weaken the log's explicit opt-in, because Cargo unifies features.
+leaf ([parsing](../parsing/README.md)). A `run` could not call
+crumbkit-aliases or start the usage log, because crumbkit-aliases and
+crumbkit-usage both depend on crumbkit.
 
-- A tool that keeps the usage log turns on crumbkit's `usage-log` feature and
-  calls `crumbkit::usage::start()` first in `main`, and changes nothing else
+- A tool that keeps the usage log depends on crumbkit-usage and
+  calls `crumbkit_usage::start()` first in `main`, and changes nothing else
   ([usage log](../usage-log/README.md)).
 - A tool with shell completion turns on the `complete` feature and calls
   `crumbkit::complete` before `start`

@@ -120,15 +120,3 @@ pub(crate) fn stderr_is_terminal() -> bool {
     let err = io::stderr();
     err.is_terminal()
 }
-
-/// Reports whether the process's standard input is a terminal, which the
-/// usage log reads to tell a person from a program.
-#[cfg(feature = "usage-log")]
-pub(crate) fn stdin_is_terminal() -> bool {
-    #[expect(
-        clippy::disallowed_methods,
-        reason = "the sink owns standard input, and the usage log needs to know whether it is a terminal"
-    )]
-    let input = io::stdin();
-    input.is_terminal()
-}

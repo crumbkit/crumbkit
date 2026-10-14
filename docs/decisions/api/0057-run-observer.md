@@ -17,7 +17,8 @@ need the same events.
 - An `events` module with no cargo feature held an `Observer` trait, an
   `observe` function and the reports, so every build compiles the same
   reports and a call site has no `cfg`. The usage log became one
-  observer.
+  observer, and it stayed one when it moved to the crumbkit-usage crate
+  (ADR-0029).
 - One observer was kept in a process-wide `OnceLock`, because the reports
   take no guide. A tool that wants two observers installs one that
   forwards to both.

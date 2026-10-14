@@ -153,8 +153,10 @@ impl Exit {
     /// Returns whether the command at `path`, the real names of its
     /// subcommands from the root, can return the code: every command can
     /// when the code names no commands, and otherwise a command at or below
-    /// one of its paths can.
-    pub(crate) fn covers(&self, path: &[&str]) -> bool {
+    /// one of its paths can. crumbkit-usage reads it to give each exit code
+    /// in its usage reports its meaning.
+    #[must_use]
+    pub fn covers(&self, path: &[&str]) -> bool {
         self.commands.is_empty() || self.commands.iter().any(|scope| path.starts_with(scope))
     }
 }

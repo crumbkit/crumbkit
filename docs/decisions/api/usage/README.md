@@ -6,7 +6,7 @@
 ## Decision
 
 These records decided what a tool built with crumbkit records about its
-own runs: the usage log, which appends one line per run to a file on the
+own runs with the crumbkit-usage crate: the usage log, which appends one line per run to a file on the
 user's machine, the record that each line holds, what a tool adds to it,
 the W3C trace context that joins a run to the trace of its caller and its
 children, and the report that `self usage` reads from the log.

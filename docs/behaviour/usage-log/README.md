@@ -1,23 +1,24 @@
 # Usage log
 
 The usage log appends one JSON line per run of a tool to a file on the
-user's machine. This page covers how a tool turns the log on, what each run
+user's machine. The published crumbkit-usage crate holds it. This page
+covers how a tool turns the log on, what each run
 reports to it, what the line holds and never holds, where the file lives,
 and how the log behaves under concurrent runs and signals. The
 [trace context](trace-context.md) page covers the trace ids in the line, and
 the [usage report](report.md) page covers `self usage` and
 `self figures list`, which read the log.
 
-## The feature and its platforms
+## The crate and its platforms
 
-The log sits behind crumbkit's `usage-log` cargo feature, which is off by
-default. A tool without the feature compiles none of the log's code and none
-of its dependencies. crumbkit's
-[`Cargo.toml`](../../../crates/crumbkit/Cargo.toml) lists the crates that the
-feature adds and the reason for each. The feature builds on Unix and
+The log is the crumbkit-usage crate, which depends on crumbkit. A tool that
+does not depend on crumbkit-usage compiles none of the log's code and none
+of its dependencies. crumbkit-usage's
+[`Cargo.toml`](../../../crates/crumbkit-usage/Cargo.toml) lists the crates
+that it adds and the reason for each. The crate builds on Unix and
 Windows, and a build for any other target fails with a compile error. The
 calls that differ between the two platforms live in
-[`usage/platform.rs`](../../../crates/crumbkit/src/usage/platform.rs), which
+[`platform.rs`](../../../crates/crumbkit-usage/src/platform.rs), which
 has a Unix half and a Windows half, and the rest of the log has no `cfg` of
 its own.
 
@@ -25,9 +26,9 @@ Why: ADR-0029, ADR-0003.
 
 ## Starting the log
 
-A tool turns the feature on and adds one line to `main`:
-`let _log = crumbkit::usage::start();`. The rustdoc of
-[`usage::start`](../../../crates/crumbkit/src/usage/recorder.rs) states what
+A tool depends on crumbkit-usage and adds one line to `main`:
+`let _log = crumbkit_usage::start();`. The rustdoc of
+[`start`](../../../crates/crumbkit-usage/src/recorder.rs) states what
 `start` does, what the guard does when it drops, and when a run installs no
 recorder, such as a second `start` in one process, a `start` after the tool
 installed an observer of its own, or a run that answers a shell's
@@ -93,14 +94,14 @@ Why: ADR-0029, ADR-0037, ADR-0041, ADR-0043, ADR-0057.
 ## The record
 
 The line is the `crumbkit/usage/v1` record, whose schema is checked in as
-[`usage-v1.json`](../../../crates/crumbkit/schemas/usage-v1.json). The schema
+[`usage-v1.json`](../../../crates/crumbkit-usage/schemas/usage-v1.json). The schema
 lists every field and what it holds. A field that does not apply to the run
 is left out. `trace`, `run` and `parent` place the run in a W3C trace, as
 [trace context](trace-context.md) describes. The `empty` field is optional,
 and a record with it keeps the `v1` id.
 
 A tool adds its own fields with
-[`usage::section`](../../../crates/crumbkit/src/usage/recorder.rs), which
+[`section`](../../../crates/crumbkit-usage/src/recorder.rs), which
 sets `ext` to `{"schema": <document id>, "data": <value>}`. The tool owns the
 section and keeps values out of it, because crumbkit cannot check it, and the
 section counts towards the 1 KiB limit of a line.
@@ -196,7 +197,7 @@ Why: ADR-0029.
 - When the log is over its size limit, the run keeps its newest whole lines
   that fit in half of the limit and then appends its own, while it holds the
   lock, so at least half the limit of new lines goes in before the next
-  trim. [`file.rs`](../../../crates/crumbkit/src/usage/file.rs) states the
+  trim. [`file.rs`](../../../crates/crumbkit-usage/src/file.rs) states the
   sizes: a 10 MB limit and 5 MB kept.
 - The trim writes the kept lines to a temporary file in the same directory,
   syncs it, closes its handle on the old log and renames the new file over
@@ -222,7 +223,7 @@ default effect, so the process ends as it would have without the log.
 - When the signal thread is already writing the line as `main` ends, the
   guard waits for that write in the same way before `main` returns.
 - The bound covers the lock wait and a trim on a slow disk.
-  [`recorder.rs`](../../../crates/crumbkit/src/usage/recorder.rs) states it
+  [`recorder.rs`](../../../crates/crumbkit-usage/src/recorder.rs) states it
   as 500 ms, which is also the longest a person who presses Ctrl-C waits for
   the tool to end.
 - A process that started with SIGINT or SIGTERM ignored ends on that signal
@@ -257,7 +258,7 @@ signals, so a tool that chooses `Tool` without a handler of its own keeps
 running on Ctrl-C and SIGTERM, and only SIGKILL ends it. A handler that
 replaces the action directly, as the ctrlc crate does, removes crumbkit's
 listener, and the line then records the exit without `interrupted`. The
-rustdoc of [`Signals`](../../../crates/crumbkit/src/usage/recorder.rs) says
+rustdoc of [`Signals`](../../../crates/crumbkit-usage/src/recorder.rs) says
 so.
 
 Why: ADR-0029.

@@ -1,6 +1,5 @@
 //! Agent detection: whether a coding agent runs the tool, which decides
-//! whether a person can be asked a question (ADR-0043) and which caller the
-//! usage log names (ADR-0029).
+//! whether a person can be asked a question (ADR-0043).
 
 use std::path::Path;
 

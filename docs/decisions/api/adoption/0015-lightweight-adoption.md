@@ -23,9 +23,11 @@ command names, recoveries and refusals.
   otherwise copies the type's rustdoc into the help of a command that has
   no doc comment.
 - crumbkit offered no `run` one-liner, because a hand-wired `main` is a
-  few lines, a `run` could not call crumbkit-aliases, and a `run` that
-  started the usage log would let feature unification start the log in
-  tools that never asked for it.
+  few lines and a `run` could not call crumbkit-aliases. While the usage
+  log was a crumbkit feature, a `run` that started it would have let
+  feature unification start the log in tools that never asked for it.
+  Since the log moved to the crumbkit-usage crate, a `run` cannot start
+  it, because crumbkit-usage depends on crumbkit.
 - `parse` returned the exit code instead of exiting, so every run ends by
   returning from `main` and tests run in memory.
 - Help, `Next:` lines and recoveries were rendered from the command tree

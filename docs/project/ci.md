@@ -46,9 +46,10 @@ Why: ADR-0011.
 
 ## Feature builds
 
-shelf turns on crumbkit's `miette`, `usage-log` and `tracing` features, and
-reading turns on `hand-over`, so the workspace runs build, test and lint
-crumbkit with all four.
+shelf turns on crumbkit's `miette` and `tracing` features and uses
+crumbkit-usage, and reading turns on `hand-over`, so the workspace runs
+build, test and lint crumbkit with all three features and with the usage
+log.
 
 - `test` runs crumbkit's tests and doctests again in the default build and
   with `miette`, and its tests with `hand-over` alone.
@@ -57,7 +58,7 @@ crumbkit with all four.
   the usage log's ids, and with `hand-over` alone, which is the only build
   that installs the child's SIGINT handler without the usage log.
 
-A separate `usage-log` run would repeat what the workspace runs check. Each
+A separate run for crumbkit-usage would repeat what the workspace runs check. Each
 build is one more step in an existing job, because a new job repeats the
 setup time. Clippy runs once per build, because a single `--all-features`
 run misses a warning that only one build shows.

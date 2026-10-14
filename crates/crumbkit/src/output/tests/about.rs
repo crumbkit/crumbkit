@@ -71,16 +71,3 @@ fn a_root_with_a_doc_comment_keeps_it_beside_the_flags_it_flattens() {
         )
     );
 }
-
-#[cfg(feature = "usage-log")]
-#[test]
-fn a_subcommand_without_a_doc_comment_takes_no_description_from_the_usage_reports() {
-    let leaves = [
-        crate::usage::SelfUsage::augment_args(Command::new("usage")),
-        crate::usage::SelfFigures::augment_args(Command::new("figures")),
-    ];
-
-    for leaf in &leaves {
-        assert_eq!(abouts(leaf), (None, None), "{}", leaf.get_name());
-    }
-}

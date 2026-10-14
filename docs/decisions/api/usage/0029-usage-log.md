@@ -21,6 +21,11 @@ and never cost a tool that does not want it.
   is one line in `main`, which keeps the opt-in explicit. The
   platform-specific calls live in one module with a Unix and a Windows
   half.
+- On 2026-10-14 the log moved from that feature to the published
+  crumbkit-usage crate, which depends on crumbkit. A tool that does not
+  depend on crumbkit-usage compiles none of the log's code or
+  dependencies, and a tool that does starts the log with
+  `crumbkit_usage::start()`.
 - `start` took no arguments, and `parse` gives the recorder the tool's
   name and version, so `start` never builds the command tree. A run that
   ends before `parse` writes no line, because it has no tool name.
@@ -64,4 +69,4 @@ files inherit the access control list of `%LOCALAPPDATA%`, and a Windows
 run outside Windows Terminal shares one session. `docs/behaviour/usage-log/README.md`
 describes the current record and file handling.
 
-Considered: an `ended` that only records and leaves the line to the guard, no listener when the tool owns the signals, with a separate call that reports the signal, a trim that truncates the log and writes the kept lines in place, a lock on the log itself that a run checks against the file at the path after it takes the lock, a key file created with `create_new` and then written, HMAC-SHA256 with a key from getrandom, a log handle passed to `parse` and `finish`, a `start` that takes the tool's command, a signal thread that also waits for SIGHUP, the parent process id on Windows through `windows-sys`, an access control list set on the Windows log, the roaming `%APPDATA%` for the Windows log, counting every positional value as ids, a session from the agent's id only, a log that ships off the machine, a record per refused flag.
+Considered: an `ended` that only records and leaves the line to the guard, no listener when the tool owns the signals, with a separate call that reports the signal, a trim that truncates the log and writes the kept lines in place, a lock on the log itself that a run checks against the file at the path after it takes the lock, a key file created with `create_new` and then written, HMAC-SHA256 with a key from getrandom, a log handle passed to `parse` and `finish`, a `start` that takes the tool's command, a signal thread that also waits for SIGHUP, the parent process id on Windows through `windows-sys`, an access control list set on the Windows log, the roaming `%APPDATA%` for the Windows log, counting every positional value as ids, a session from the agent's id only, a log that ships off the machine, a record per refused flag, the log behind a `usage-log` cargo feature of crumbkit.

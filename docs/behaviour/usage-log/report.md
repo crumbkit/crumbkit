@@ -2,16 +2,16 @@
 
 `self usage` reads a tool's [usage log](README.md) and reports the patterns
 where callers waste effort. `self figures list` prints the figures of every
-command in the log. Both sit behind the `usage-log` feature. The rustdoc of
-[`self_usage`](../../../crates/crumbkit/src/usage/self_usage.rs) and
-[`self_figures`](../../../crates/crumbkit/src/usage/self_figures.rs) shows
+command in the log. Both are part of the crumbkit-usage crate. The rustdoc of
+[`self_usage`](../../../crates/crumbkit-usage/src/self_usage.rs) and
+[`self_figures`](../../../crates/crumbkit-usage/src/self_figures.rs) shows
 the wiring and an example of each output, and shelf mounts both commands.
 
 ## Mounting the commands
 
 A tool adds a `self` group with a `usage` subcommand that flattens
-[`SelfUsage`](../../../crates/crumbkit/src/usage/self_usage.rs). Its
-handler passes the result of `usage::findings`, which takes the tool's
+[`SelfUsage`](../../../crates/crumbkit-usage/src/self_usage.rs). Its
+handler passes the result of `crumbkit_usage::findings`, which takes the tool's
 `Guide`, to `finish` with the document `SELF_USAGE`.
 
 A tool mounts `self figures list` as a `figures` resource with the `list`
@@ -101,7 +101,7 @@ The text summary line ends with the codes that the most runs tolerated, when
 there are any.
 
 JSON is the `crumbkit/self-usage/v1` document, checked in as
-`crates/crumbkit/schemas/self-usage-v1.json`. Its `summary` holds the runs,
+`crates/crumbkit-usage/schemas/self-usage-v1.json`. Its `summary` holds the runs,
 sessions, callers, since day, skipped count and the 10 codes that the most
 runs tolerated. With `--json --full`, each row also holds the figures of its
 command, such as its runs, failures and 95th percentiles, and the `Next:`
@@ -126,7 +126,7 @@ each in path order, with the root under the tool's name. It pages with
 `--limit` and `--all`, takes the flags of `self usage`, applies the same
 record checks and prints the same summary. Its document is
 `crumbkit/self-figures-list/v1`, checked in as
-`crates/crumbkit/schemas/self-figures-list-v1.json`.
+`crates/crumbkit-usage/schemas/self-figures-list-v1.json`.
 
 Why: ADR-0034.
 

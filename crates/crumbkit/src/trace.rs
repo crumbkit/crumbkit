@@ -4,9 +4,9 @@
 //! A caller, such as a CI agent, a shell with OpenTelemetry, a coding agent
 //! with tracing on or another crumbkit tool, puts its trace context in the
 //! `TRACEPARENT` and `TRACESTATE` environment variables, as OpenTelemetry's
-//! environment-variable carrier describes. With the `usage-log` feature,
-//! `usage::start` reads both once, and the usage log then gives crumbkit
-//! the run's trace as its observer (ADR-0057). A valid
+//! environment-variable carrier describes. The usage log of the
+//! crumbkit-usage crate reads both once when it starts, and then gives
+//! crumbkit the run's trace as its observer (ADR-0057). A valid
 //! `TRACEPARENT` gives the run the caller's trace id and names the caller's
 //! span as the run's parent. A missing or invalid one starts a new trace with
 //! a random id and no parent, and the run then discards the caller's

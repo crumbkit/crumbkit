@@ -27,7 +27,7 @@ Why: ADR-0030.
 
 ## Reading TRACEPARENT
 
-With the `usage-log` feature, `usage::start` reads `TRACEPARENT` through one
+crumbkit-usage's `start` reads `TRACEPARENT` through one
 strict parser and ignores the `traceparent` that is-ai-agent reports, so
 only hex that the parser validated reaches the record. The parser accepts a
 version of two lowercase hex digits, a trace id of 32, a parent id of 16 and

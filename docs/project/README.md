@@ -27,6 +27,7 @@ crumbkit is a virtual workspace.
 | `crates/crumbkit-test` | The published crate of convention checks. |
 | `crates/cargo-crumbkit` | The published crate of the `cargo crumbkit` subcommand, which measures a tool's help and writes its command reference. |
 | `crates/crumbkit-aliases` | The published crate that expands a person's aliases. |
+| `crates/crumbkit-usage` | The published crate of the usage log and the `self usage` and `self figures list` commands that read it. |
 | `crates/crumbkit-picker` | The published crate of the `Menu` picker. |
 | `crates/crumbkit-markdown` | The published crate that writes a tool's command reference. |
 | `examples/shelf` | An unpublished example package with a `shelf` binary. |

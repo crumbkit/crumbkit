@@ -291,7 +291,7 @@ impl Failure for WeighError {
                 "make the golden directory readable, or pass --goldens another directory".to_owned()
             }
             Self::NoUsageFigures { line } => format!(
-                "run `{line}` to see the failure; a tool needs a `self figures list` command that takes crumbkit::usage::SelfFigures, as shelf's shows"
+                "run `{line}` to see the failure; a tool needs a `self figures list` command that takes crumbkit_usage::SelfFigures, as shelf's shows"
             ),
             Self::NoStateDir => {
                 "set HOME or XDG_STATE_HOME, or pass --log the usage log".to_owned()

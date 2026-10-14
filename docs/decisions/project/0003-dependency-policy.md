@@ -29,7 +29,8 @@ supported Rust version and a statement of the platforms it supports.
   that does not use it builds nothing for it: the usage log, miette,
   `hand-over`, `tracing`, `complete` and `derive` were features, and
   crumbkit-aliases, crumbkit-picker and cargo-crumbkit were separate
-  crates. miette came with no features, because crumbkit draws the source
+  crates. The usage log later moved to the separate crumbkit-usage crate
+  (ADR-0029). miette came with no features, because crumbkit draws the source
   line itself. crumbkit-derive used syn 3, which clap_derive already brings
   into the lock file with the same features. Each binary-size cost was
   measured on shelf's stripped release build when the feature was added.

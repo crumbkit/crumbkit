@@ -38,7 +38,8 @@ account at once.
 - Each crumbkit feature build that compiles code no other build compiles
   got its own clippy or test step in an existing job, because a single
   `--all-features` run misses a warning that only one build shows, and a
-  new job would repeat the setup.
+  new job would repeat the setup. crumbkit-usage got no separate run,
+  because shelf uses it, so the workspace runs already check it.
 - A scheduled workflow ran the slow lane: the advisories check, the CI
   time limit, the docs.rs build on the nightly toolchain, the benchmarks
   and the Windows build and tests. The benchmarks and Windows skip a night
