@@ -155,7 +155,7 @@ fn run(words: &[&str]) -> ExitCode {
 #[library_benchmark]
 #[bench::books_list(args = (state_with_key()), config = config(&BOOKS_LIST_LOGGED))]
 fn logged(_: PathBuf) -> ExitCode {
-    let log = crumbkit::usage::start();
+    let log = crumbkit_usage::start();
     let code = shelf::run_from(["shelf", "books", "list"]);
     drop(log);
     code

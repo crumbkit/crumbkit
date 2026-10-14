@@ -3,15 +3,15 @@
 //!
 //! The tool owns the command. It adds a `self` group with a `usage`
 //! subcommand that takes [`SelfUsage`] to its own clap types, and its
-//! handler passes the result of [`findings`] to [`finish`](crate::finish)
+//! handler passes the result of [`findings`] to [`finish`](crumbkit::finish)
 //! with the document [`SELF_USAGE`]:
 //!
 //! ```ignore
 //! Resource::SelfCommand { command: SelfCommand::Usage(args) } => crumbkit::finish(
 //!     &cli.output,
 //!     SPELLING,
-//!     crumbkit::usage::SELF_USAGE,
-//!     Ok::<_, crumbkit::Error>(crumbkit::usage::findings(&cli.output, &GUIDE, &args)),
+//!     crumbkit_usage::SELF_USAGE,
+//!     Ok::<_, crumbkit::Error>(crumbkit_usage::findings(&cli.output, &GUIDE, &args)),
 //! ),
 //! ```
 //!
@@ -41,16 +41,16 @@ use serde::Serialize;
 
 use super::file::LOG;
 use super::report::{Figures, Finding, Kind, Report, Tally, read};
-use crate::help::Guide;
-use crate::{Call, Document, Listing, Output};
+use crumbkit::help::Guide;
+use crumbkit::{Call, Document, Listing, Output};
 
 #[cfg(test)]
 mod tests;
 
 /// The document that `self usage` prints: one row for each finding, and
 /// the summary of the runs that the report read. Its schema is
-/// `crates/crumbkit/schemas/self-usage-v1.json`, which
-/// [`schemas::document_schema`](crate::schemas::document_schema) builds.
+/// `crates/crumbkit-usage/schemas/self-usage-v1.json`, which
+/// [`schemas::document_schema`](crumbkit::schemas::document_schema) builds.
 pub const SELF_USAGE: Document<Listing<FindingRow, UsageSummary>> = Document::new(
     "crumbkit",
     "self-usage",
@@ -95,7 +95,7 @@ pub struct FindingRow {
     figures: CommandFigures,
 }
 
-impl crate::Row for FindingRow {
+impl crumbkit::Row for FindingRow {
     const COLUMNS: &'static [&'static str] = &["finding", "runs", "command", "suggestion"];
 }
 
@@ -187,7 +187,7 @@ struct CallerRuns {
 /// Returns the findings in the usage log of the tool that the tool passed
 /// to [`Output::set_command`], which it builds in full through
 /// [`Output::command`], for the runs that ended in the `--since`
-/// duration before now, for the tool to pass to [`finish`](crate::finish)
+/// duration before now, for the tool to pass to [`finish`](crumbkit::finish)
 /// with [`SELF_USAGE`]. `guide` is the tool's guide, whose exit codes give
 /// the meaning of each exit from 3 in a command's figures.
 ///
@@ -288,7 +288,7 @@ pub(super) fn summarize(
     let start_ms = start.duration_since(UNIX_EPOCH).map_or(0, |elapsed| {
         u64::try_from(elapsed.as_millis()).unwrap_or(u64::MAX)
     });
-    let mut tally = Tally::new(guide.failure_exit(&crate::codes::CLI_USAGE));
+    let mut tally = Tally::new(guide.failure_exit(&crumbkit::codes::CLI_USAGE));
     if let Some(log) = log {
         read(log, start_ms, tool, &mut tally);
     }
@@ -396,7 +396,7 @@ impl CommandFigures {
                     .get_exits()
                     .iter()
                     .find(|declared| declared.code() == exit && declared.covers(&path))
-                    .map(crate::help::Exit::meaning),
+                    .map(crumbkit::help::Exit::meaning),
                 runs,
             })
             .collect();

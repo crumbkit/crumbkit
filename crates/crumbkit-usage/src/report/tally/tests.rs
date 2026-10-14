@@ -1,6 +1,6 @@
 use super::{HEAVY_OUTPUT, SLOW, Tally, p95};
-use crate::usage::report::entry::Entry;
-use crate::usage::report::{Count, Figures, Finding, Kind, Report};
+use crate::report::entry::Entry;
+use crate::report::{Count, Figures, Finding, Kind, Report};
 
 /// Returns the report of `entries`, added in order.
 fn report(entries: &[Entry]) -> Report {

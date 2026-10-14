@@ -5,9 +5,9 @@ use clap::Parser;
 use serde_json::{Value, json};
 
 use super::{SelfFigures, figures_from};
-use crate::Rows;
-use crate::help::Guide;
-use crate::usage::testing::{line, now, tool};
+use crate::testing::{line, now, tool};
+use crumbkit::Rows;
+use crumbkit::help::Guide;
 
 /// A log of a help page of the root, two runs of `books list` and one of
 /// `books show`, in the last hour.
@@ -96,7 +96,7 @@ fn self_figures_list_takes_the_flags_of_self_usage_and_a_page() {
 
 #[test]
 fn the_checked_in_schema_matches_the_usage_figures_document_schema() {
-    let generated = crate::schemas::document_schema(super::SELF_FIGURES_LIST);
+    let generated = crumbkit::schemas::document_schema(super::SELF_FIGURES_LIST);
     let generated = serde_json::to_string_pretty(&generated).unwrap() + "\n";
     let checked_in = include_str!(concat!(
         env!("CARGO_MANIFEST_DIR"),

@@ -3,15 +3,15 @@
 //!
 //! The tool owns the command. It adds a `figures` resource with a `list`
 //! verb that takes [`SelfFigures`] to its `self` group, and its handler
-//! passes the result of [`figures`] to [`finish`](crate::finish) with the
+//! passes the result of [`figures`] to [`finish`](crumbkit::finish) with the
 //! document [`SELF_FIGURES_LIST`]:
 //!
 //! ```ignore
 //! SelfCommand::Figures { verb: FiguresVerb::List(args) } => crumbkit::finish(
 //!     &cli.output,
 //!     SPELLING,
-//!     crumbkit::usage::SELF_FIGURES_LIST,
-//!     Ok::<_, crumbkit::Error>(crumbkit::usage::figures(&cli.output, &GUIDE, &args)),
+//!     crumbkit_usage::SELF_FIGURES_LIST,
+//!     Ok::<_, crumbkit::Error>(crumbkit_usage::figures(&cli.output, &GUIDE, &args)),
 //! ),
 //! ```
 //!
@@ -39,16 +39,16 @@ use schemars::JsonSchema;
 use serde::Serialize;
 
 use super::self_usage::{CommandFigures, SelfUsage, UsageSummary, open, summarize};
-use crate::help::Guide;
-use crate::{Document, Listing, Output, Page};
+use crumbkit::help::Guide;
+use crumbkit::{Document, Listing, Output, Page};
 
 #[cfg(test)]
 mod tests;
 
 /// The document that `self figures list` prints: one row for each command
 /// in the usage log, and the summary of the runs that it read. Its schema
-/// is `crates/crumbkit/schemas/self-figures-list-v1.json`, which
-/// [`schemas::document_schema`](crate::schemas::document_schema) builds.
+/// is `crates/crumbkit-usage/schemas/self-figures-list-v1.json`, which
+/// [`schemas::document_schema`](crumbkit::schemas::document_schema) builds.
 pub const SELF_FIGURES_LIST: Document<Listing<FiguresRow, UsageSummary>> = Document::new(
     "crumbkit",
     "self-figures-list",
@@ -83,7 +83,7 @@ pub struct FiguresRow {
     figures: CommandFigures,
 }
 
-impl crate::Row for FiguresRow {
+impl crumbkit::Row for FiguresRow {
     const COLUMNS: &'static [&'static str] = &[
         "command",
         "runs",
@@ -99,7 +99,7 @@ impl crate::Row for FiguresRow {
 /// Returns the figures of each command in the usage log of the tool that
 /// the tool passed to [`Output::set_command`], for the runs that ended in
 /// the `--since` duration before now, one page of them as `args` asks, for
-/// the tool to pass to [`finish`](crate::finish) with [`SELF_FIGURES_LIST`].
+/// the tool to pass to [`finish`](crumbkit::finish) with [`SELF_FIGURES_LIST`].
 ///
 /// It reads the log that [`findings`](super::findings) reads, in the same
 /// way, and leaves out and counts the same records. The rows follow the

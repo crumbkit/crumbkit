@@ -25,7 +25,7 @@ const SLOW: u64 = 1_000;
 /// run of a command and what each session keeps of its earlier runs, and
 /// never holds a record's line.
 #[derive(Debug)]
-pub(in crate::usage) struct Tally {
+pub(crate) struct Tally {
     /// The exit code of a refused command line, which the tool's guide
     /// decides and which is 2 unless the guide lists another (ADR-0002).
     refusal: u8,
@@ -80,7 +80,7 @@ struct Command {
 impl Tally {
     /// Returns an empty tally that counts a run that exited with `refusal`
     /// as refused.
-    pub(in crate::usage) fn new(refusal: u8) -> Self {
+    pub(crate) fn new(refusal: u8) -> Self {
         Self {
             refusal,
             runs: 0,
@@ -151,7 +151,7 @@ impl Tally {
     }
 
     /// Returns the report of every record added.
-    pub(in crate::usage) fn report(mut self) -> Report {
+    pub(crate) fn report(mut self) -> Report {
         for session in self.sessions.values() {
             session.end(&mut self.found);
         }

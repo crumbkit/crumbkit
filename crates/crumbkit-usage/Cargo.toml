@@ -1,0 +1,60 @@
+[package]
+name = "crumbkit-usage"
+description = "A local usage log for crumbkit tools, with the self usage and self figures list commands that read it"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+readme = "README.md"
+keywords = ["cli", "clap", "usage", "log"]
+categories = ["command-line-interface"]
+include = ["src/**/*.rs", "schemas/*.json", "README.md", "LICENSE-APACHE", "LICENSE-MIT"]
+
+[dependencies]
+# crumbkit tells the log what each run did through its run observer
+# (ADR-0057), and `self usage` and `self figures list` print crumbkit
+# listings with crumbkit's `Output` and `Page`.
+crumbkit = { workspace = true }
+# The record names commands and flags from the tool's `clap::Command`, and
+# `SelfUsage` and `SelfFigures` derive `clap::Args`.
+clap = { workspace = true, features = ["derive"] }
+# The usage record and the report rows derive `Serialize`, and the report
+# reads each line of the log through `Deserialize`.
+serde = { workspace = true, features = ["derive"] }
+# `std` gives `to_writer` and `from_str`, and serde_json needs `std` or
+# `alloc` to build at all.
+serde_json = { workspace = true, features = ["std"] }
+# The usage record and the report rows derive `JsonSchema`, because
+# crumbkit's `Row` and `Document` need it (ADR-0007).
+schemars = { workspace = true, features = ["derive"] }
+# is-ai-agent names the coding agent that ran the tool, and gives its
+# session id, in the record's `caller` and `session` (ADR-0029).
+is-ai-agent = { workspace = true }
+# siphasher computes the keyed hashes of the record's `session` and `args`
+# (ADR-0029).
+siphasher = { workspace = true }
+# etcetera finds the XDG state directory that holds the log (ADR-0029).
+etcetera = { workspace = true }
+# humantime writes the record's time and parses `self usage --since`
+# (ADR-0029, ADR-0034).
+humantime = { workspace = true }
+# signal-hook runs the thread that writes the line when a run ends on a
+# signal (ADR-0029). `iterator` gives `Signals` on Unix and builds nothing
+# on Windows, where the log uses `flag`.
+signal-hook = { workspace = true, features = ["iterator"] }
+
+# Windows has no `/dev/urandom`, so the log reads its random bytes through
+# getrandom there (ADR-0029).
+[target.'cfg(windows)'.dependencies]
+getrandom = { workspace = true }
+
+[dev-dependencies]
+# The process tests hand the terminal to a child with `crumbkit::child`,
+# which needs crumbkit's `hand-over` feature.
+crumbkit = { workspace = true, features = ["hand-over"] }
+# The report's property tests generate runs of the log (ADR-0006).
+proptest = { workspace = true, features = ["std"] }
+
+[lints]
+workspace = true

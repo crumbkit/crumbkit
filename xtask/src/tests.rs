@@ -85,7 +85,7 @@ fn a_stale_citation_in_a_toml_file_is_reported() {
 #[test]
 fn a_node_link_to_a_tracked_json_or_toml_file_is_not_broken() {
     let mut files = read_files().unwrap();
-    let links = "\n[A schema](../../crates/crumbkit/schemas/usage-v1.json) \
+    let links = "\n[A schema](../../crates/crumbkit-usage/schemas/usage-v1.json) \
                  and [the lint settings](../../clippy.toml).\n";
     file_at(&mut files, "docs/decisions/README.md")
         .contents

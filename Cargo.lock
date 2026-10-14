@@ -160,9 +160,6 @@ dependencies = [
  "clap",
  "clap_complete",
  "crumbkit-core",
- "etcetera",
- "getrandom",
- "humantime",
  "is-ai-agent",
  "miette",
  "proptest",
@@ -170,7 +167,6 @@ dependencies = [
  "serde",
  "serde_json",
  "signal-hook",
- "siphasher",
  "tracing",
  "tracing-core",
  "unicode-width",
@@ -193,7 +189,7 @@ dependencies = [
 name = "crumbkit-benches"
 version = "0.0.0"
 dependencies = [
- "crumbkit",
+ "crumbkit-usage",
  "gungraun",
  "shelf",
 ]
@@ -249,6 +245,24 @@ dependencies = [
  "serde",
  "serde_json",
  "snapbox",
+]
+
+[[package]]
+name = "crumbkit-usage"
+version = "0.0.0"
+dependencies = [
+ "clap",
+ "crumbkit",
+ "etcetera",
+ "getrandom",
+ "humantime",
+ "is-ai-agent",
+ "proptest",
+ "schemars",
+ "serde",
+ "serde_json",
+ "signal-hook",
+ "siphasher",
 ]
 
 [[package]]
@@ -777,6 +791,7 @@ dependencies = [
  "crumbkit-aliases",
  "crumbkit-picker",
  "crumbkit-test",
+ "crumbkit-usage",
  "etcetera",
  "miette",
  "rustix",

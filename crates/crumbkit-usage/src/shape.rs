@@ -5,10 +5,9 @@
 use std::ffi::OsString;
 
 use clap::parser::ValueSource;
-use clap::{ArgMatches, Command};
+use clap::{Arg, ArgMatches, Command};
 
 use super::record::{Name, Run};
-use crate::events::Refused;
 
 #[cfg(test)]
 mod tests;
@@ -44,9 +43,10 @@ pub(super) fn parsed(run: &mut Run, command: &Command, matches: &ArgMatches) {
     run.ids = ids(node, level);
 }
 
-/// Records in `run` the command path of the command line that clap
-/// `refused`, the number of `words` that look like flags and name no flag of
-/// the command, and the visible flag that clap suggested.
+/// Records in `run` the command path that `path` names below `command`, for
+/// a command line that clap refused, the number of `words` that look like
+/// flags and name no flag of the command, and the `nearest` flag, which
+/// crumbkit reads from clap's suggestion (ADR-0057).
 ///
 /// `words` are the words after the tool's name. Unlike clap, which stops at
 /// the first unknown flag, the count reads every word before any `--`.
@@ -55,9 +55,15 @@ pub(super) fn parsed(run: &mut Run, command: &Command, matches: &ArgMatches) {
 // starts with `-`, such as `-5`, as a flag, and it reads only the first
 // letter of a group of short flags such as `-ab`. A count that reads how many
 // values each option takes, as `parse`'s walk does, replaces it.
-pub(super) fn refused(run: &mut Run, refused: &Refused<'_>, words: &[OsString]) {
-    let path = subcommands(refused.command(), refused.path());
-    let node = path.last().copied().unwrap_or(refused.command());
+pub(super) fn refused(
+    run: &mut Run,
+    command: &Command,
+    path: &[String],
+    nearest: Option<&Arg>,
+    words: &[OsString],
+) {
+    let path = subcommands(command, path);
+    let node = path.last().copied().unwrap_or(command);
     let unknown = words
         .iter()
         .take_while(|word| *word != "--")
@@ -65,7 +71,7 @@ pub(super) fn refused(run: &mut Run, refused: &Refused<'_>, words: &[OsString]) 
         .count();
     run.command = Name::path(&path);
     run.unknown_flags = (unknown > 0).then_some(unknown);
-    run.nearest = refused.nearest_flag().and_then(Name::flag);
+    run.nearest = nearest.and_then(Name::flag);
 }
 
 /// Adds to `flags` the name of each flag of `node` that the command line

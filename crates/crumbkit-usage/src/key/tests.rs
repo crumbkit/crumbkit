@@ -3,8 +3,8 @@ use std::fs;
 use std::os::unix::fs::PermissionsExt as _;
 
 use super::{create, key};
-use crate::usage::file::create_dir;
-use crate::usage::testing::TempDir;
+use crate::file::create_dir;
+use crate::testing::TempDir;
 
 /// Returns the names of the files in `dir`, sorted.
 fn files(dir: &TempDir) -> Vec<String> {

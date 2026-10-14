@@ -3,8 +3,7 @@ use std::ffi::OsString;
 use clap::{Arg, ArgAction, Command};
 
 use super::{parsed, refused};
-use crate::events::Refused;
-use crate::usage::record::{Name, Run};
+use crate::record::{Name, Run};
 
 /// Returns a tool with a global flag and a global option, a branch with a
 /// visible alias, a listing with a long flag, a short-only flag and an
@@ -58,14 +57,18 @@ fn accepted(line: &str) -> Run {
 }
 
 /// Returns what the usage log records for `line`, which clap refuses, with
-/// the command path that the walk in `parse` finds.
-fn rejected(line: &str, path: &[&str]) -> Run {
+/// the command path that the walk in `parse` finds and the flag with the id
+/// `nearest` of the command at that path as the nearest flag.
+fn rejected(line: &str, path: &[&str], nearest: Option<&str>) -> Run {
     let mut command = tool();
-    let error = command.try_get_matches_from_mut(words(line)).unwrap_err();
+    let _ = command.try_get_matches_from_mut(words(line)).unwrap_err();
     let path: Vec<String> = path.iter().map(|name| (*name).to_owned()).collect();
+    let node = path
+        .iter()
+        .fold(&command, |node, name| node.find_subcommand(name).unwrap());
+    let nearest = nearest.map(|id| node.get_arguments().find(|arg| arg.get_id() == id).unwrap());
     let mut run = Run::default();
-    let refusal = Refused::new(&command, &path, &error, 2);
-    refused(&mut run, &refusal, &words(line)[1..]);
+    refused(&mut run, &command, &path, nearest, &words(line)[1..]);
     run
 }
 
@@ -117,10 +120,11 @@ fn ids_count_the_values_of_the_command_s_positional_arguments_named_id() {
 }
 
 #[test]
-fn a_refusal_counts_each_flag_that_names_no_flag_of_the_command_and_names_clap_s_suggestion() {
+fn a_refusal_counts_each_flag_that_names_no_flag_of_the_command_and_names_the_nearest_flag() {
     let run = rejected(
         "shelf books list --al --json --nope=s3cr3t -x",
         &["books", "list"],
+        Some("all"),
     );
 
     assert_eq!(run.command.unwrap().as_str(), "books list");
@@ -130,7 +134,7 @@ fn a_refusal_counts_each_flag_that_names_no_flag_of_the_command_and_names_clap_s
 
 #[test]
 fn a_refusal_without_an_unknown_flag_or_a_suggestion_records_neither() {
-    let run = rejected("shelf books show", &["books", "show"]);
+    let run = rejected("shelf books show", &["books", "show"], None);
 
     assert_eq!(run.command.unwrap().as_str(), "books show");
     assert_eq!(run.unknown_flags, None);
@@ -139,7 +143,7 @@ fn a_refusal_without_an_unknown_flag_or_a_suggestion_records_neither() {
 
 #[test]
 fn a_refusal_reads_no_word_after_a_double_dash() {
-    let run = rejected("shelf books list -- --nope", &["books", "list"]);
+    let run = rejected("shelf books list -- --nope", &["books", "list"], None);
 
     assert_eq!(run.unknown_flags, None);
 }

@@ -1,5 +1,8 @@
 //! Who ran the tool, and the session the run belongs to.
 
+use std::io::{self, IsTerminal as _};
+use std::path::Path;
+
 use super::platform;
 
 #[cfg(test)]
@@ -20,15 +23,23 @@ pub(super) struct Caller {
     pub(super) session: String,
 }
 
-/// Returns the caller of this process, from the agent that
-/// [`crate::agent::detect`] finds, its standard input and the platform's
-/// fallback session.
+/// Returns the caller of this process, from the agent that is-ai-agent
+/// finds, whether standard input is a terminal, and the platform's fallback
+/// session. This module owns those environment, file and standard-input
+/// reads (RUST-4).
 pub(super) fn detect() -> Caller {
-    identify(
-        crate::agent::detect(),
-        crate::sink::stdin_is_terminal(),
-        platform::fallback_session,
-    )
+    #[expect(
+        clippy::disallowed_methods,
+        reason = "the caller module owns the environment reads that detect a coding agent"
+    )]
+    let env = |name: &str| std::env::var(name).ok();
+    let agent = is_ai_agent::detect_with(env, |path| Path::new(path).exists());
+    #[expect(
+        clippy::disallowed_methods,
+        reason = "the caller module asks whether standard input is a terminal, to tell a person from a program"
+    )]
+    let input = io::stdin();
+    identify(agent, input.is_terminal(), platform::fallback_session)
 }
 
 /// Returns the caller from the detected `agent`, whether standard input is

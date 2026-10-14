@@ -13,7 +13,7 @@ use schemars::JsonSchema;
 use serde::Serialize;
 use siphasher::sip::SipHasher24;
 
-use crate::{Code, Spelling};
+use crumbkit::{Code, Spelling};
 
 #[cfg(test)]
 mod tests;
@@ -290,7 +290,7 @@ pub(super) enum Help {
 }
 
 /// The tool's own section of the record, which it sets with
-/// `crumbkit::usage::section`.
+/// `crumbkit_usage::section`.
 #[derive(Debug, Serialize, JsonSchema)]
 pub(super) struct Section {
     /// The id of the section's document, such as shelf/usage-ext/v1.

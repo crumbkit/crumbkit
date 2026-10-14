@@ -6,9 +6,9 @@ use clap::Parser;
 use serde_json::json;
 
 use super::{CallerRuns, CodeRuns, FindingRow, SelfUsage, UsageSummary, report_from};
-use crate::Rows;
-use crate::help::{Exit, Guide};
-use crate::usage::testing::{line, now, tool};
+use crate::testing::{line, now, tool};
+use crumbkit::Rows;
+use crumbkit::help::{Exit, Guide};
 
 /// Returns the summary of `runs` runs by people, in `sessions` sessions,
 /// since 30 September 2026, with `skipped` skipped records.
@@ -363,7 +363,7 @@ fn log_names_a_file_to_read_in_place_of_the_tool_s_own_log() {
 
 #[test]
 fn the_checked_in_schema_matches_the_usage_report_document_schema() {
-    let generated = crate::schemas::document_schema(super::SELF_USAGE);
+    let generated = crumbkit::schemas::document_schema(super::SELF_USAGE);
     let generated = serde_json::to_string_pretty(&generated).unwrap() + "\n";
     let checked_in = include_str!(concat!(
         env!("CARGO_MANIFEST_DIR"),
@@ -391,4 +391,19 @@ fn a_since_that_reaches_before_1970_reads_the_whole_log_from_1970() {
     let summary = Rows::summary(&listing).unwrap();
     assert_eq!(summary.runs, 1);
     assert_eq!(summary.since, "1970-01-01");
+}
+
+#[test]
+fn a_subcommand_that_takes_a_usage_report_without_a_doc_comment_has_no_description() {
+    use clap::{Args as _, Command};
+
+    let leaves = [
+        SelfUsage::augment_args(Command::new("usage")),
+        crate::SelfFigures::augment_args(Command::new("figures")),
+    ];
+
+    for leaf in &leaves {
+        assert_eq!(leaf.get_about(), None, "{}", leaf.get_name());
+        assert_eq!(leaf.get_long_about(), None, "{}", leaf.get_name());
+    }
 }

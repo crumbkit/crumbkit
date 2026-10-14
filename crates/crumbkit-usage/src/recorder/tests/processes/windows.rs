@@ -1,17 +1,16 @@
 //! The signal tests on Windows, where a test raises SIGINT, as Ctrl-C does,
 //! and a child that crumbkit hands the terminal to runs through `cmd`.
 
-#[cfg(feature = "hand-over")]
 use std::process::ExitCode;
 use std::time::{Duration, Instant};
 
 use clap::Command;
 
+use super::typed;
 use super::{is_child, log_lines, run_child};
-use crate::Spelling;
-use crate::events::typed;
-use crate::usage::recorder::{RECORDER, Signals, State, ended, start, start_with};
-use crate::usage::testing::TempDir;
+use crate::recorder::{RECORDER, Signals, State, ended, start, start_with};
+use crate::testing::TempDir;
+use crumbkit::Spelling;
 
 /// The exit code of a process that Ctrl-C ended, `STATUS_CONTROL_C_EXIT`.
 #[expect(
@@ -21,7 +20,6 @@ use crate::usage::testing::TempDir;
 const CONTROL_C_EXIT: i32 = 0xC000_013A_u32 as i32;
 
 /// Returns `cmd /C` with `script`, which crumbkit hands the terminal to.
-#[cfg(feature = "hand-over")]
 fn cmd(script: &str) -> std::process::Command {
     #[expect(
         clippy::disallowed_methods,
@@ -33,7 +31,6 @@ fn cmd(script: &str) -> std::process::Command {
 }
 
 /// Ends this child process with `code`, which the parent test reads.
-#[cfg(feature = "hand-over")]
 fn exit(code: i32) -> ! {
     #[expect(
         clippy::disallowed_methods,
@@ -47,7 +44,7 @@ fn ctrl_c_writes_an_interrupted_line_and_ends_the_process_as_ctrl_c_does() {
     let state = TempDir::new("signal");
 
     let status = run_child(
-        "usage::recorder::tests::processes::windows::the_ctrl_c_test_s_child_starts_the_log_and_raises_sigint",
+        "recorder::tests::processes::windows::the_ctrl_c_test_s_child_starts_the_log_and_raises_sigint",
         &state,
     );
 
@@ -86,7 +83,7 @@ fn a_tool_that_owns_its_signals_keeps_running_after_ctrl_c_and_reports_its_own_e
     let state = TempDir::new("owned");
 
     let status = run_child(
-        "usage::recorder::tests::processes::windows::the_owned_ctrl_c_test_s_child_raises_sigint_and_ends_with_124",
+        "recorder::tests::processes::windows::the_owned_ctrl_c_test_s_child_raises_sigint_and_ends_with_124",
         &state,
     );
 
@@ -119,13 +116,12 @@ fn the_owned_ctrl_c_test_s_child_raises_sigint_and_ends_with_124() {
     ended(124, Some(5));
 }
 
-#[cfg(feature = "hand-over")]
 #[test]
 fn ctrl_c_while_a_child_holds_the_terminal_leaves_the_tool_running_and_a_later_one_ends_it() {
     let state = TempDir::new("hand-over");
 
     let status = run_child(
-        "usage::recorder::tests::processes::windows::the_hand_over_test_s_child_raises_sigint_during_and_after_its_child",
+        "recorder::tests::processes::windows::the_hand_over_test_s_child_raises_sigint_during_and_after_its_child",
         &state,
     );
 
@@ -144,7 +140,6 @@ fn ctrl_c_while_a_child_holds_the_terminal_leaves_the_tool_running_and_a_later_o
 /// hands the terminal to a `cmd` that waits about two seconds, while
 /// another thread raises SIGINT. After the child exits, which writes the
 /// line, it raises SIGINT again, which ends the tool.
-#[cfg(feature = "hand-over")]
 #[test]
 fn the_hand_over_test_s_child_raises_sigint_during_and_after_its_child() {
     if !is_child() {
@@ -160,8 +155,8 @@ fn the_hand_over_test_s_child_raises_sigint_during_and_after_its_child() {
         std::thread::sleep(Duration::from_millis(500));
         signal_hook::low_level::raise(signal_hook::consts::SIGINT).unwrap();
     });
-    let code = crate::child::hand_over(
-        &mut crate::Output::default(),
+    let code = crumbkit::child::hand_over(
+        &mut crumbkit::Output::default(),
         Spelling::COLONS,
         cmd("ping -n 3 127.0.0.1 >NUL"),
     );
@@ -174,13 +169,12 @@ fn the_hand_over_test_s_child_raises_sigint_during_and_after_its_child() {
     exit(2);
 }
 
-#[cfg(feature = "hand-over")]
 #[test]
 fn a_child_that_ctrl_c_ended_returns_130_and_the_line_records_an_interrupt() {
     let state = TempDir::new("hand-over-ended");
 
     let status = run_child(
-        "usage::recorder::tests::processes::windows::the_interrupted_child_test_s_child_hands_over_to_a_child_that_ctrl_c_ended",
+        "recorder::tests::processes::windows::the_interrupted_child_test_s_child_hands_over_to_a_child_that_ctrl_c_ended",
         &state,
     );
 
@@ -194,7 +188,6 @@ fn a_child_that_ctrl_c_ended_returns_130_and_the_line_records_an_interrupt() {
 /// Runs only as the child of the interrupted-child test. It starts the log
 /// and hands the terminal to a `cmd` that exits with
 /// `STATUS_CONTROL_C_EXIT`, as a child that Ctrl-C ended does.
-#[cfg(feature = "hand-over")]
 #[test]
 fn the_interrupted_child_test_s_child_hands_over_to_a_child_that_ctrl_c_ended() {
     if !is_child() {
@@ -206,8 +199,8 @@ fn the_interrupted_child_test_s_child_hands_over_to_a_child_that_ctrl_c_ended() 
         &["editing".into()],
         Spelling::COLONS,
     );
-    let code = crate::child::hand_over(
-        &mut crate::Output::default(),
+    let code = crumbkit::child::hand_over(
+        &mut crumbkit::Output::default(),
         Spelling::COLONS,
         cmd(&format!("exit {CONTROL_C_EXIT}")),
     );

@@ -1,5 +1,5 @@
 //! The usage log as the process's observer: each report that crumbkit
-//! sends through `crate::events` updates the process's recorder (ADR-0057).
+//! sends through `crumbkit::events` updates the process's recorder (ADR-0057).
 
 use std::ffi::OsString;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -7,8 +7,8 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use clap::{ArgMatches, Command};
 
 use super::{recorder, shape};
-use crate::events::{Finished, Observer, Refused, TraceIds};
-use crate::{Code, Spelling};
+use crumbkit::events::{Finished, Observer, Refused, TraceIds};
+use crumbkit::{Code, Spelling};
 
 /// Whether crumbkit reported that a child took the terminal, and on
 /// Windows has not reported that the child gave it back.
@@ -42,7 +42,13 @@ impl Observer for UsageLog {
 
     fn refused(&self, refused: &Refused<'_>) {
         recorder::report(|recorder| {
-            shape::refused(&mut recorder.run, refused, &recorder.words);
+            shape::refused(
+                &mut recorder.run,
+                refused.command(),
+                refused.path(),
+                refused.nearest_flag(),
+                &recorder.words,
+            );
             recorder.run.exit = Some(refused.exit());
         });
     }

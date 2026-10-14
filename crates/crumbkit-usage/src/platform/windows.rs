@@ -31,7 +31,7 @@ const POLL: Duration = Duration::from_millis(50);
 
 /// Returns `N` bytes from the operating system's random generator, or
 /// `None` when they cannot be read.
-pub(in crate::usage) fn random_bytes<const N: usize>() -> Option<[u8; N]> {
+pub(crate) fn random_bytes<const N: usize>() -> Option<[u8; N]> {
     let mut bytes = [0; N];
     getrandom::fill(&mut bytes).ok()?;
     Some(bytes)
@@ -40,7 +40,7 @@ pub(in crate::usage) fn random_bytes<const N: usize>() -> Option<[u8; N]> {
 /// Returns the directory that holds each tool's log directory, or `None`
 /// when there is none: `XDG_STATE_HOME` when it is set to an absolute path,
 /// and otherwise the local application data directory, `%LOCALAPPDATA%`.
-pub(in crate::usage) fn state_home() -> Option<PathBuf> {
+pub(crate) fn state_home() -> Option<PathBuf> {
     #[expect(
         clippy::disallowed_methods,
         reason = "the usage log owns its environment reads, which give its state directory"
@@ -73,7 +73,7 @@ fn state_home_from(
 // session `windows`, so `self usage` cannot tell one console from another.
 // The parent process id that Unix uses needs a call that crumbkit's ban on
 // unsafe code rules out today.
-pub(in crate::usage) fn fallback_session() -> String {
+pub(crate) fn fallback_session() -> String {
     #[expect(
         clippy::disallowed_methods,
         reason = "the usage log owns its environment reads, which give the session"
@@ -93,19 +93,19 @@ fn session_from(terminal: Option<String>) -> String {
 /// Returns `builder` as it is. The directory inherits the access control
 /// list of its parent, which under `%LOCALAPPDATA%` admits only the user,
 /// the administrators and the system.
-pub(in crate::usage) fn private_dir(builder: &mut DirBuilder) -> &mut DirBuilder {
+pub(crate) fn private_dir(builder: &mut DirBuilder) -> &mut DirBuilder {
     builder
 }
 
 /// Returns `options` as they are. The file inherits the access control
 /// list of its directory, as [`private_dir`] describes.
-pub(in crate::usage) fn private_file(options: &mut OpenOptions) -> &mut OpenOptions {
+pub(crate) fn private_file(options: &mut OpenOptions) -> &mut OpenOptions {
     options
 }
 
 /// Returns the byte of `file` at `offset`. The read moves the file's
 /// cursor, which an append ignores.
-pub(in crate::usage) fn read_byte_at(file: &File, offset: u64) -> io::Result<u8> {
+pub(crate) fn read_byte_at(file: &File, offset: u64) -> io::Result<u8> {
     let mut byte = [0];
     if file.seek_read(&mut byte, offset)? == 1 {
         Ok(byte[0])
@@ -121,12 +121,12 @@ pub(in crate::usage) fn read_byte_at(file: &File, offset: u64) -> io::Result<u8>
 // closing the console, logging off and shutting down end the process with
 // no line. Handlers for SIGBREAK and the console's close events replace
 // this if a tool needs those lines.
-pub(in crate::usage) struct Interrupts(Arc<AtomicBool>);
+pub(crate) struct Interrupts(Arc<AtomicBool>);
 
 impl Interrupts {
     /// Takes SIGINT from now on, or returns `None` when signal-hook cannot
     /// take it.
-    pub(in crate::usage) fn listen() -> Option<Self> {
+    pub(crate) fn listen() -> Option<Self> {
         let raised = Arc::new(AtomicBool::new(false));
         signal_hook::flag::register(SIGINT, Arc::clone(&raised)).ok()?;
         Some(Self(raised))
@@ -135,7 +135,7 @@ impl Interrupts {
     /// Waits for the next SIGINT and returns its number. The flag is read
     /// every 50 ms, because the handler runs on the console's thread and
     /// can only set it.
-    pub(in crate::usage) fn wait(&mut self) -> Option<i32> {
+    pub(crate) fn wait(&mut self) -> Option<i32> {
         loop {
             if self.0.swap(false, Ordering::SeqCst) {
                 return Some(SIGINT);
@@ -146,7 +146,7 @@ impl Interrupts {
 
     /// Ends the process with the exit code that Ctrl-C gives a process
     /// without a handler, `STATUS_CONTROL_C_EXIT`.
-    pub(in crate::usage) fn end_process(_signal: i32) {
+    pub(crate) fn end_process(_signal: i32) {
         signal_hook::low_level::exit(CONTROL_C_EXIT);
     }
 }

@@ -5,7 +5,7 @@ use std::os::unix::fs::{MetadataExt as _, PermissionsExt as _};
 use std::time::Duration;
 
 use super::{Limits, append, create_dir};
-use crate::usage::testing::TempDir;
+use crate::testing::TempDir;
 
 /// Limits that a test reaches without writing 10 MB or waiting 100 ms: past
 /// 20 bytes, a trim keeps the newest whole lines that fit in 10 bytes.

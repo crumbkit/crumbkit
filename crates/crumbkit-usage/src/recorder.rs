@@ -20,8 +20,8 @@ use super::observer::{self, UsageLog};
 use super::platform::{self, Interrupts};
 use super::record::{self, Hash, Help, Name, Record, Run, Section};
 use super::shape;
-use crate::events::TraceIds;
-use crate::{Code, Document, Spelling};
+use crumbkit::events::TraceIds;
+use crumbkit::{Code, Document, Spelling};
 
 #[cfg(test)]
 mod tests;
@@ -103,7 +103,7 @@ pub enum Signals {
     /// The tool handles both signals with its own handler. On either one,
     /// crumbkit only notes that the run was interrupted and leaves the
     /// process running. The tool ends the run itself and reports its exit
-    /// with [`ended`](crate::events::ended), which writes the line with
+    /// with [`ended`](crumbkit::events::ended), which writes the line with
     /// `"interrupted": true`. A tool that returns from `main` without
     /// calling `ended` gets its line from the guard.
     ///
@@ -146,14 +146,14 @@ impl Drop for Log {
 /// # use std::process::ExitCode;
 /// # fn run() -> ExitCode { ExitCode::SUCCESS }
 /// fn main() -> ExitCode {
-///     let _log = crumbkit::usage::start();
+///     let _log = crumbkit_usage::start();
 ///     run()
 /// }
 /// ```
 ///
 /// `start` notes the time, reads the caller's trace context from
 /// TRACEPARENT and TRACESTATE, and installs the process's recorder, which
-/// `parse`, `finish`, [`crate::events::aliased`] and [`section`] report to.
+/// `parse`, `finish`, [`crumbkit::events::aliased`] and [`section`] report to.
 /// `parse` gives the recorder the tool's name and version from the command
 /// it parses against, so a run that ends before it reaches `parse` writes no
 /// line. `start` also starts the thread that writes the line when the run
@@ -162,12 +162,12 @@ impl Drop for Log {
 /// then ends with the exit code that Ctrl-C gives, `STATUS_CONTROL_C_EXIT`.
 ///
 /// The run joins the caller's trace when TRACEPARENT is valid, and starts a
-/// new trace otherwise, as [`crate::trace`] describes. The random ids come
+/// new trace otherwise, as [`crumbkit::trace`] describes. The random ids come
 /// from the operating system, and a run whose ids cannot be read installs no
 /// recorder, so it writes no line and gives its children no variables.
 ///
 /// `start` installs the usage log as the process's observer with
-/// [`crate::events::observe`], which installs nothing in a run that answers
+/// [`crumbkit::events::observe`], which installs nothing in a run that answers
 /// a shell's completion request, so a Tab press writes no line (ADR-0048). A
 /// run that already has an observer, such as one that the tool installed or
 /// an earlier `start`, installs no recorder either, and its guard writes
@@ -189,11 +189,11 @@ pub fn start() -> Log {
 ///
 /// A tool with its own handler for either signal calls
 /// `start_with(Signals::Tool)`, so the log never ends the process, and
-/// reports its exit with [`ended`](crate::events::ended), as
+/// reports its exit with [`ended`](crumbkit::events::ended), as
 /// [`Signals::Tool`] describes.
 pub fn start_with(signals: Signals) -> Log {
     let started = Instant::now();
-    let active = crate::events::observe(&UsageLog)
+    let active = crumbkit::events::observe(&UsageLog)
         && context::read()
             .is_some_and(|context| install(&RECORDER, Recorder::new(started, context)));
     if active {
@@ -223,7 +223,7 @@ pub(super) fn report(change: impl FnOnce(&mut Recorder)) {
 
 /// Records that the tool ended the run with `exit` after writing
 /// `out_bytes` to standard output, and writes the run's line now, as
-/// [`crate::events::ended`] describes.
+/// [`crumbkit::events::ended`] describes.
 pub(super) fn ended(exit: u8, out_bytes: Option<u64>) {
     report(|recorder| {
         recorder.run.exit = Some(exit);
@@ -233,7 +233,7 @@ pub(super) fn ended(exit: u8, out_bytes: Option<u64>) {
 }
 
 /// Returns the variables that put a child process in this run's trace, as
-/// [`crate::trace::child_env`] describes.
+/// [`crumbkit::trace::child_env`] describes.
 pub(super) fn child_env() -> Vec<(&'static str, String)> {
     child_env_in(&RECORDER)
 }
@@ -285,7 +285,7 @@ impl Recorder {
     }
 
     /// Records a code that the run recovered from, as
-    /// [`crate::events::tolerated`] describes. A code that the run already
+    /// [`crumbkit::events::tolerated`] describes. A code that the run already
     /// reported, and every code after the first [`MAX_TOLERATED`], is left
     /// out.
     pub(super) fn tolerated(&mut self, code: &'static Code) {

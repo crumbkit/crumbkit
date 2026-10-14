@@ -7,7 +7,7 @@ use serde_json::json;
 
 use super::entry::Entry;
 use super::{LONGEST, Report, Tally, read};
-use crate::usage::testing::tool;
+use crate::testing::tool;
 
 /// Returns one line of the log for a run of `command` that ended `at`
 /// seconds after the Unix epoch.

@@ -1,6 +1,6 @@
 use super::known;
-use crate::usage::report::entry::Entry;
-use crate::usage::testing::tool;
+use crate::report::entry::Entry;
+use crate::testing::tool;
 
 /// Returns a person's run of `command` that typed `flags`.
 fn run(command: &str, flags: &[&str]) -> Entry {

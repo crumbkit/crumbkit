@@ -20,7 +20,7 @@
 //! [`commands`]: crate::commands
 //! [`fetch_each`]: crate::fetch_each
 //! [`events`]: crate::events
-//! [`usage`]: https://github.com/crumbkit/crumbkit/blob/main/crates/crumbkit/src/usage.rs
+//! [crumbkit-usage]: https://github.com/crumbkit/crumbkit/blob/main/crates/crumbkit-usage/README.md
 //! [`schemas`]: crate::schemas
 //! [`trace`]: crate::trace
 //! [tutorial]: https://github.com/crumbkit/crumbkit/blob/main/docs/tutorial.md
@@ -71,8 +71,6 @@ mod sink;
 pub mod trace;
 #[cfg(test)]
 mod twins;
-#[cfg(feature = "usage-log")]
-pub mod usage;
 
 // crumbkit re-exports every item of crumbkit-core at the path it had in
 // crumbkit, so a tool depends on crumbkit alone (ADR-0032).

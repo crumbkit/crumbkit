@@ -1,6 +1,6 @@
 use super::{Found, Session};
-use crate::usage::report::entry::Entry;
-use crate::usage::report::{Finding, Kind};
+use crate::report::entry::Entry;
+use crate::report::{Finding, Kind};
 
 /// Returns the findings of one session's `entries`, added in order.
 fn findings(entries: &[Entry]) -> Vec<Finding> {

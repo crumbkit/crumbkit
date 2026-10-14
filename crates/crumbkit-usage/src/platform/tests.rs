@@ -1,8 +1,8 @@
 use std::fs::{self, File};
 
 use super::{random_bytes, read_byte_at};
-use crate::usage::file::create_dir;
-use crate::usage::testing::TempDir;
+use crate::file::create_dir;
+use crate::testing::TempDir;
 
 #[test]
 fn two_reads_of_random_bytes_give_different_bytes() {

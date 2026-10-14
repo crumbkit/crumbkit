@@ -5,6 +5,7 @@ members = [
     "crates/crumbkit-core",
     "crates/crumbkit-derive",
     "crates/crumbkit-aliases",
+    "crates/crumbkit-usage",
     "crates/crumbkit-picker",
     "crates/crumbkit-markdown",
     "crates/crumbkit-test",
@@ -42,6 +43,9 @@ crumbkit-test = { version = "0.0.0", path = "crates/crumbkit-test" }
 # shelf expands and lists personal aliases with crumbkit-aliases, which takes
 # a version beside the path for the same reason.
 crumbkit-aliases = { version = "0.0.0", path = "crates/crumbkit-aliases" }
+# shelf keeps a usage log with crumbkit-usage, which takes a version beside
+# the path for the same reason.
+crumbkit-usage = { version = "0.0.0", path = "crates/crumbkit-usage" }
 # shelf and reading ask a person for a missing argument with crumbkit-picker's
 # menu, which takes a version beside the path for the same reason.
 crumbkit-picker = { version = "0.0.0", path = "crates/crumbkit-picker" }
@@ -101,12 +105,12 @@ proc-macro2 = { version = "1.0.107", default-features = false }
 # has no features.
 is-ai-agent = { version = "0.6.0", default-features = false }
 
-# The next four crates build only with crumbkit's optional `usage-log`
-# feature, which appends one line per run to a local file (ADR-0029).
+# The next four crates build only with crumbkit-usage, which appends one
+# line per run to a local file (ADR-0029).
 #
 # siphasher computes the keyed SipHash-2-4 hashes of the usage log's session
 # and words. Its default `std` feature only adds `std::error::Error` impls,
-# which crumbkit does not use.
+# which crumbkit-usage does not use.
 siphasher = { version = "1.0.4", default-features = false }
 
 # etcetera finds the XDG base directories: the state directory of the usage
@@ -115,14 +119,15 @@ siphasher = { version = "1.0.4", default-features = false }
 etcetera = { version = "0.11.0", default-features = false }
 
 # humantime formats the time a run ended as RFC 3339 with milliseconds. Its
-# one feature, `mu`, prints microseconds with the Greek letter, which crumbkit
-# does not use.
+# one feature, `mu`, prints microseconds with the Greek letter, which
+# crumbkit-usage does not use.
 humantime = { version = "2.4.0", default-features = false }
 
 # signal-hook runs the thread that writes the usage log's line when a run ends
 # on SIGINT or SIGTERM, and installs the handlers that ignore SIGINT and
 # SIGQUIT, or SIGINT and SIGBREAK on Windows, while a child holds the
-# terminal. crumbkit enables only `iterator`, which gives `Signals` on Unix.
+# terminal. crumbkit-usage enables only `iterator`, which gives `Signals` on
+# Unix, and crumbkit enables no feature.
 signal-hook = { version = "0.4.5", default-features = false }
 
 # getrandom gives the usage log's key and trace ids their random bytes on

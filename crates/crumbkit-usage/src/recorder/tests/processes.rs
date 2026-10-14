@@ -6,11 +6,16 @@ use std::fs;
 use clap::Command;
 use serde_json::Value;
 
-use crate::events::typed;
-use crate::help::{Exit, Guide};
-use crate::usage::recorder::start;
-use crate::usage::testing::TempDir;
-use crate::{Code, Document, Output, Parsed, Sink, Spelling, Stream, stream_to};
+use crate::recorder::start;
+use crate::testing::TempDir;
+use crumbkit::help::{Exit, Guide};
+use crumbkit::{Code, Document, Output, Parsed, Sink, Spelling, Stream, stream_to};
+
+/// Tells the usage log that the tool `command` received `args`, as
+/// crumbkit's `parse` does, so the line has a tool name.
+fn typed(command: &Command, args: &[std::ffi::OsString], spelling: Spelling) {
+    super::super::report(|recorder| recorder.typed(command, args, spelling));
+}
 
 // Each platform raises its own signals and runs its children through its
 // own shell, so each has a file of tests.
@@ -63,7 +68,7 @@ fn a_stream_that_ends_with_a_mapped_failure_records_the_declared_exit_and_its_by
     let state = TempDir::new("stream-exit");
 
     let status = run_child(
-        "usage::recorder::tests::processes::the_stream_exit_test_s_child_streams_one_row_and_times_out",
+        "recorder::tests::processes::the_stream_exit_test_s_child_streams_one_row_and_times_out",
         &state,
     );
 
@@ -85,7 +90,7 @@ struct Numbered {
     number: u32,
 }
 
-impl crate::Row for Numbered {
+impl crumbkit::Row for Numbered {
     const COLUMNS: &'static [&'static str] = &["number"];
 }
 
@@ -101,13 +106,13 @@ impl std::fmt::Display for TimedOut {
 
 impl std::error::Error for TimedOut {}
 
-impl crate::Failure for TimedOut {
+impl crumbkit::Failure for TimedOut {
     fn code(&self) -> &'static Code {
         &TIMED_OUT
     }
 
-    fn recovery(&self) -> crate::Recovery {
-        crate::Recovery::Retry
+    fn recovery(&self) -> crumbkit::Recovery {
+        crumbkit::Recovery::Retry
     }
 }
 
@@ -143,4 +148,36 @@ fn the_stream_exit_test_s_child_streams_one_row_and_times_out() {
     } else {
         1
     });
+}
+
+#[test]
+fn a_start_after_the_tool_installed_its_own_observer_writes_no_line() {
+    let state = TempDir::new("own-observer");
+
+    let status = run_child(
+        "recorder::tests::processes::the_own_observer_test_s_child_installs_an_observer_and_then_starts_the_log",
+        &state,
+    );
+
+    assert_eq!(status.code(), Some(0));
+    assert!(!state.path().join("owned").exists());
+}
+
+/// An observer of the tool's own, which hears every report and does nothing.
+struct Quiet;
+
+impl crumbkit::events::Observer for Quiet {}
+
+/// Runs only as the child of the own-observer test. It installs [`Quiet`],
+/// starts the log, and gives the recorder a tool name, which an installed
+/// recorder would write a line for.
+#[test]
+fn the_own_observer_test_s_child_installs_an_observer_and_then_starts_the_log() {
+    if !is_child() {
+        return;
+    }
+    assert!(crumbkit::events::observe(&Quiet));
+    let log = start();
+    typed(&Command::new("owned"), &["owned".into()], Spelling::COLONS);
+    drop(log);
 }

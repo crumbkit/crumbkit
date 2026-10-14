@@ -20,24 +20,25 @@ clap = { workspace = true, features = [
     "suggestions",
     "color",
 ] }
-# shelf keeps crumbkit's usage log, which appends one line per run to
-# `usage.jsonl` in shelf's XDG state directory (ADR-0029), and enables the
-# `tracing` feature, so the workspace build also builds crumbkit's spans
-# (ADR-0030). shelf installs no subscriber, so its spans go nowhere. The
+# shelf enables crumbkit's `tracing` feature, so the workspace build also
+# builds crumbkit's spans (ADR-0030). shelf installs no subscriber, so its spans go nowhere. The
 # `miette` feature lets the failure of a bad line in the file that
 # `shelf books show --from` reads point at that line (ADR-0001). The
 # `complete` feature answers a shell's completion request (ADR-0048). The
 # `derive` feature writes the `Failure` impl of `BooksError` (ADR-0001).
 crumbkit = { workspace = true, features = [
     "miette",
-    "usage-log",
     "tracing",
     "complete",
     "derive",
 ] }
 # `shelf books remove` keeps the ids of the removed books in shelf's XDG
-# state directory, which etcetera finds as crumbkit's usage log finds it.
+# state directory, which etcetera finds as crumbkit-usage finds it.
 etcetera = { workspace = true }
+# shelf keeps a usage log with crumbkit-usage, which appends one line per
+# run to `usage.jsonl` in shelf's XDG state directory (ADR-0029), and adds
+# `self usage` and `self figures list` from it (ADR-0034).
+crumbkit-usage = { workspace = true }
 # shelf expands a person's aliases before parsing, and lists them with the
 # hidden `shelf aliases list`.
 crumbkit-aliases = { workspace = true }

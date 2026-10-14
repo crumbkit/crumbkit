@@ -170,7 +170,7 @@
       "type": "string"
     },
     "Section": {
-      "description": "The tool's own section of the record, which it sets with\n`crumbkit::usage::section`.",
+      "description": "The tool's own section of the record, which it sets with\n`crumbkit_usage::section`.",
       "type": "object",
       "properties": {
         "data": {

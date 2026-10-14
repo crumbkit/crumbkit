@@ -2,24 +2,23 @@
 //! child that crumbkit hands the terminal to runs through `sh`.
 
 use std::os::unix::process::ExitStatusExt as _;
-#[cfg(feature = "hand-over")]
 use std::process::ExitCode;
 use std::time::{Duration, Instant};
 
 use clap::Command;
 
+use super::typed;
 use super::{is_child, log_lines, run_child};
-use crate::Spelling;
-use crate::events::typed;
-use crate::usage::recorder::{RECORDER, Signals, State, ended, start, start_with};
-use crate::usage::testing::TempDir;
+use crate::recorder::{RECORDER, Signals, State, ended, start, start_with};
+use crate::testing::TempDir;
+use crumbkit::Spelling;
 
 #[test]
 fn a_signal_writes_an_interrupted_line_and_then_ends_the_process_as_the_signal_does() {
     let state = TempDir::new("signal");
 
     let status = run_child(
-        "usage::recorder::tests::processes::unix::the_signal_test_s_child_starts_the_log_and_raises_sigterm",
+        "recorder::tests::processes::unix::the_signal_test_s_child_starts_the_log_and_raises_sigterm",
         &state,
     );
 
@@ -55,7 +54,7 @@ fn a_tool_that_owns_its_signals_keeps_running_after_sigterm_and_reports_its_own_
     let state = TempDir::new("owned");
 
     let status = run_child(
-        "usage::recorder::tests::processes::unix::the_owned_signal_test_s_child_raises_sigterm_and_ends_with_124",
+        "recorder::tests::processes::unix::the_owned_signal_test_s_child_raises_sigterm_and_ends_with_124",
         &state,
     );
 
@@ -89,13 +88,12 @@ fn the_owned_signal_test_s_child_raises_sigterm_and_ends_with_124() {
     ended(124, Some(5));
 }
 
-#[cfg(feature = "hand-over")]
 #[test]
 fn ctrl_c_while_a_child_holds_the_terminal_ends_only_the_child_and_the_line_records_it() {
     let state = TempDir::new("hand-over");
 
     let status = run_child(
-        "usage::recorder::tests::processes::unix::the_hand_over_test_s_child_hands_the_terminal_to_a_child_that_ctrl_c_ends",
+        "recorder::tests::processes::unix::the_hand_over_test_s_child_hands_the_terminal_to_a_child_that_ctrl_c_ends",
         &state,
     );
 
@@ -110,7 +108,6 @@ fn ctrl_c_while_a_child_holds_the_terminal_ends_only_the_child_and_the_line_reco
 /// starts the log, which listens for SIGINT, and hands the terminal to a
 /// shell that sends SIGINT to its process group, as Ctrl-C does, and ends
 /// by it.
-#[cfg(feature = "hand-over")]
 #[test]
 fn the_hand_over_test_s_child_hands_the_terminal_to_a_child_that_ctrl_c_ends() {
     if !is_child() {
@@ -128,7 +125,8 @@ fn the_hand_over_test_s_child_hands_the_terminal_to_a_child_that_ctrl_c_ends() {
     )]
     let mut shell = std::process::Command::new("sh");
     shell.args(["-c", "kill -INT 0; sleep 5"]);
-    let code = crate::child::hand_over(&mut crate::Output::default(), Spelling::COLONS, shell);
+    let code =
+        crumbkit::child::hand_over(&mut crumbkit::Output::default(), Spelling::COLONS, shell);
     let number = if code == ExitCode::from(130) { 130 } else { 1 };
     #[expect(
         clippy::disallowed_methods,
@@ -137,13 +135,12 @@ fn the_hand_over_test_s_child_hands_the_terminal_to_a_child_that_ctrl_c_ends() {
     std::process::exit(number);
 }
 
-#[cfg(feature = "hand-over")]
 #[test]
 fn a_tool_that_owns_its_signals_keeps_running_on_ctrl_c_after_a_child_has_held_the_terminal() {
     let state = TempDir::new("owned-hand-over");
 
     let status = run_child(
-        "usage::recorder::tests::processes::unix::the_owned_hand_over_test_s_child_raises_sigint_after_its_child_exits",
+        "recorder::tests::processes::unix::the_owned_hand_over_test_s_child_raises_sigint_after_its_child_exits",
         &state,
     );
 
@@ -158,7 +155,6 @@ fn a_tool_that_owns_its_signals_keeps_running_on_ctrl_c_after_a_child_has_held_t
 /// terminal to a shell that exits at once, which writes the line, then
 /// raises SIGINT, which the tool owns, and ends with exit 0 if it is still
 /// running.
-#[cfg(feature = "hand-over")]
 #[test]
 fn the_owned_hand_over_test_s_child_raises_sigint_after_its_child_exits() {
     if !is_child() {
@@ -172,7 +168,7 @@ fn the_owned_hand_over_test_s_child_raises_sigint_after_its_child_exits() {
     )]
     let mut shell = std::process::Command::new("sh");
     shell.args(["-c", "exit 0"]);
-    let _ = crate::child::hand_over(&mut crate::Output::default(), Spelling::COLONS, shell);
+    let _ = crumbkit::child::hand_over(&mut crumbkit::Output::default(), Spelling::COLONS, shell);
     signal_hook::low_level::raise(signal_hook::consts::SIGINT).unwrap();
     std::thread::sleep(Duration::from_millis(200));
     #[expect(
@@ -182,13 +178,12 @@ fn the_owned_hand_over_test_s_child_raises_sigint_after_its_child_exits() {
     std::process::exit(0);
 }
 
-#[cfg(feature = "hand-over")]
 #[test]
 fn a_sigint_that_arrives_after_a_child_has_held_the_terminal_leaves_the_tool_running() {
     let state = TempDir::new("late-hand-over");
 
     let status = run_child(
-        "usage::recorder::tests::processes::unix::the_late_hand_over_test_s_child_raises_sigint_after_its_child_exits",
+        "recorder::tests::processes::unix::the_late_hand_over_test_s_child_raises_sigint_after_its_child_exits",
         &state,
     );
 
@@ -203,7 +198,6 @@ fn a_sigint_that_arrives_after_a_child_has_held_the_terminal_leaves_the_tool_run
 /// shell that exits at once, which writes the line, then raises SIGINT, as
 /// a Ctrl-C sent while the child ran can arrive after the child exits, and
 /// ends with exit 0 if it is still running.
-#[cfg(feature = "hand-over")]
 #[test]
 fn the_late_hand_over_test_s_child_raises_sigint_after_its_child_exits() {
     if !is_child() {
@@ -217,7 +211,7 @@ fn the_late_hand_over_test_s_child_raises_sigint_after_its_child_exits() {
     )]
     let mut shell = std::process::Command::new("sh");
     shell.args(["-c", "exit 0"]);
-    let _ = crate::child::hand_over(&mut crate::Output::default(), Spelling::COLONS, shell);
+    let _ = crumbkit::child::hand_over(&mut crumbkit::Output::default(), Spelling::COLONS, shell);
     signal_hook::low_level::raise(signal_hook::consts::SIGINT).unwrap();
     std::thread::sleep(Duration::from_millis(200));
     #[expect(

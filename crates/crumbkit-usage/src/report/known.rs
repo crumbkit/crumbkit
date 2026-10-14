@@ -30,7 +30,7 @@ const LONGEST_CODE: usize = 128;
 ///   for an argument without a long name;
 /// - the code and each tolerated code is 1 to 128 ASCII letters, digits, `_`, `-`, `:`, `.` and
 ///   `/`, which covers crumbkit's predefined spellings of a
-///   [`Code`](crate::Code) and a tool's custom spelling, and keeps out
+///   [`Code`](crumbkit::Code) and a tool's custom spelling, and keeps out
 ///   whitespace and any other character;
 /// - the caller is an agent id from is-ai-agent, `person` or `unknown`.
 pub(super) fn known(tool: &Command, entry: &Entry) -> bool {

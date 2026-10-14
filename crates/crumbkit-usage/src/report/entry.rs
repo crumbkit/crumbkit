@@ -4,7 +4,7 @@ use std::time::UNIX_EPOCH;
 
 use serde::{Deserialize, Deserializer};
 
-use crate::usage::record::SCHEMA;
+use crate::record::SCHEMA;
 
 #[cfg(test)]
 mod tests;
