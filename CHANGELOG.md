@@ -480,6 +480,9 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   in input order under customisations ([ADR-0056]).
 - crumbkit: `PreparedFailure::key` and `PreparedFailure::index` give a
   failure form a batch failure's key and index ([ADR-0045]).
+- crumbkit-core: `FieldValue::from_json` reads a failure field back from a
+  `serde_json::Value`, and returns `None` for a number that `FieldValue`
+  cannot hold, such as a fraction ([ADR-0032]).
 
 ### Changed
 
@@ -709,6 +712,11 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   held it ([ADR-0045]).
 - crumbkit: [`help::RuntimeLeaf`] no longer implements `PartialEq` and
   `Eq`, because it holds the function of its refusal alternatives.
+- crumbkit-test: `RuntimeFailing::at` returns a `RuntimePlace`, which has
+  no code or words and no method that turns it into a `Failing`, so a place
+  used as a command line is a compile error ([ADR-0002]).
+- crumbkit-test: the failure reader leaves out a field of crumbkit's
+  failure document that holds a fraction, which it read as text before.
 
 ### Removed
 

@@ -96,3 +96,60 @@ fn an_empty_name_or_one_with_another_character_breaks_the_rule() {
         assert!(!Field::new(name, 1_u8).follows_name_rule(), "{name:?}");
     }
 }
+
+#[test]
+fn from_json_reads_each_json_value_as_the_field_value_that_serializes_to_it() {
+    let json = serde_json::json!({
+        "title": "Frankenstein",
+        "count": 7,
+        "offset": -7,
+        "kept": true,
+        "found": null,
+        "tags": ["a", ["b"]],
+        "lines": {"a": 1},
+    });
+
+    let value = FieldValue::from_json(&json);
+
+    assert_eq!(
+        value.map(|value| serde_json::to_value(value).unwrap()),
+        Some(json)
+    );
+}
+
+#[test]
+fn from_json_reads_a_non_negative_integer_as_unsigned_a_negative_one_as_signed_and_borrows_text() {
+    let read = |json: serde_json::Value| FieldValue::from_json(&json).map(FieldValue::into_owned);
+
+    assert_eq!(read(serde_json::json!(7)), Some(FieldValue::Unsigned(7)));
+    assert_eq!(
+        read(serde_json::json!(u64::MAX)),
+        Some(FieldValue::Unsigned(u64::MAX))
+    );
+    assert_eq!(read(serde_json::json!(-7)), Some(FieldValue::Integer(-7)));
+    assert_eq!(
+        read(serde_json::json!(i64::MIN)),
+        Some(FieldValue::Integer(i64::MIN))
+    );
+    let text = serde_json::json!("seven");
+    assert!(matches!(
+        FieldValue::from_json(&text),
+        Some(FieldValue::Text(Cow::Borrowed("seven")))
+    ));
+}
+
+#[test]
+fn from_json_returns_none_for_a_fraction_or_an_integer_beyond_u64_at_any_depth() {
+    for json in [
+        "1.5",
+        "1e3",
+        "18446744073709551616",
+        "-9223372036854775809",
+        "[1, 2.5]",
+        r#"{"a": {"b": 0.1}}"#,
+    ] {
+        let value: serde_json::Value = serde_json::from_str(json).unwrap();
+
+        assert_eq!(FieldValue::from_json(&value), None, "{json}");
+    }
+}
