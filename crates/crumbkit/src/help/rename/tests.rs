@@ -59,14 +59,6 @@ fn a_failure_that_no_exit_lists_exits_with_1_and_a_refusal_with_2() {
     assert_eq!(Guide::new().failure_exit(&CLI_USAGE), 2);
 }
 
-#[cfg(feature = "hand-over")]
-#[test]
-fn a_child_that_cannot_answer_json_exits_as_a_refused_command_line_does() {
-    use crate::codes::CHILD_NO_JSON;
-    assert_eq!(Guide::new().failure_exit(&CHILD_NO_JSON), 2);
-    assert_eq!(GUIDE.failure_exit(&CHILD_NO_JSON), 64);
-}
-
 #[test]
 fn a_refused_command_line_prints_the_tool_s_usage_code_and_exits_with_the_code_its_guide_lists() {
     let (mut out, mut err) = (Vec::new(), Vec::new());

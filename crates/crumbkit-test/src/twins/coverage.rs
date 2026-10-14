@@ -197,8 +197,10 @@ impl<'a> Twins<'a> {
 /// because its caller compares the output in the form that the test chose.
 ///
 /// A twin may refuse with one of crumbkit's codes, such as
-/// `crumbkit::cli::usage`, and the check requires no twin for crumbkit's
-/// codes, nor for a declared code that the guide's
+/// `crumbkit::cli::usage`. Every code in the `crumbkit` component is one of
+/// crumbkit's codes, including the codes of crumbkit's add-on crates, such
+/// as crumbkit-child's `crumbkit::child::no_json`. The check requires no
+/// twin for crumbkit's codes, nor for a declared code that the guide's
 /// [`Guide::codes`](crumbkit::help::Guide::codes) prints in place of one of
 /// them, because crumbkit raises that failure.
 ///
@@ -378,10 +380,15 @@ fn json_lines(refused: &[&str], admitted: &[&str]) -> (Vec<String>, Vec<String>)
 
 /// Returns whether `code` is one of crumbkit's codes, or the tool's code
 /// that `guide` prints in place of one of them, which crumbkit raises and
-/// which needs no twin.
+/// which needs no twin. Every code in the `crumbkit` component is one of
+/// crumbkit's codes, including the codes of crumbkit's add-on crates, such
+/// as crumbkit-child, which `crumbkit::codes::ALL` does not list.
 fn crumbkit_owned(guide: &Guide, code: &Code) -> bool {
-    crumbkit::codes::ALL.contains(&code) || renamed_to(guide, code)
+    code.component() == CRUMBKIT || renamed_to(guide, code)
 }
+
+/// The component of crumbkit's codes and of its add-on crates' codes.
+const CRUMBKIT: &str = "crumbkit";
 
 /// Returns whether `guide` prints `code` in place of one of crumbkit's
 /// codes.

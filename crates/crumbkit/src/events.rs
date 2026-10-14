@@ -3,11 +3,11 @@
 //!
 //! crumbkit reports each fact from the place that knows it: `parse` reports
 //! the command line, `finish` reports the exit code and the bytes it wrote,
-//! a child hand-over reports that a child took the terminal, and the tool
-//! and crumbkit-aliases report through [`aliased`], [`tolerated`] and
-//! [`ended`]. Each report goes to the [`Observer`] that [`observe`]
-//! installed. Without one, a report reads one atomic value and does
-//! nothing else.
+//! crumbkit-child reports that a child took the terminal through
+//! [`handed_over`], and the tool and crumbkit-aliases report through
+//! [`aliased`], [`tolerated`] and [`ended`]. Each report goes to the
+//! [`Observer`] that [`observe`] installed. Without one, a report reads one
+//! atomic value and does nothing else.
 //!
 //! A tool does not usually call [`observe`] itself. The usage log's `start`
 //! calls it, and a tool that wants its own observer installs it the same
@@ -129,8 +129,8 @@ pub trait Observer: Sync {
     }
 
     /// A child process is about to take the terminal (ADR-0042). From now
-    /// on Ctrl-C belongs to the child, until [`Observer::taken_back`]. Only
-    /// a build with the `hand-over` feature reports it.
+    /// on Ctrl-C belongs to the child, until [`Observer::taken_back`].
+    /// crumbkit-child reports it through [`handed_over`].
     fn handed_over(&self) {}
 
     /// The child that held the terminal exited, and Ctrl-C belongs to the
@@ -475,35 +475,39 @@ pub(crate) fn finished(exit: u8, out_bytes: u64, truncated: bool, empty: bool) {
     }
 }
 
-/// Reports [`Observer::handed_over`].
-#[cfg(feature = "hand-over")]
-pub(crate) fn handed_over() {
+/// Reports that a child process is about to take the terminal, as
+/// [`Observer::handed_over`] describes. crumbkit-child calls it before it
+/// starts the child. Without an observer it does nothing.
+pub fn handed_over() {
     if let Some(observer) = observer() {
         observer.handed_over();
     }
 }
 
-/// Reports [`Observer::taken_back`].
-#[cfg(feature = "hand-over")]
-pub(crate) fn taken_back() {
+/// Reports that the child that held the terminal exited and the tool takes
+/// Ctrl-C back, as [`Observer::taken_back`] describes. crumbkit-child calls
+/// it on Windows only. Without an observer it does nothing.
+pub fn taken_back() {
     if let Some(observer) = observer() {
         observer.taken_back();
     }
 }
 
-/// Reports [`Observer::interrupted`].
-#[cfg(feature = "hand-over")]
-pub(crate) fn interrupted() {
+/// Reports that a signal ended the run's child process, as
+/// [`Observer::interrupted`] describes. Without an observer it does
+/// nothing.
+pub fn interrupted() {
     if let Some(observer) = observer() {
         observer.interrupted();
     }
 }
 
 /// Reports whether the observer has taken SIGINT, as
-/// [`Observer::handles_interrupt`] describes. Without an observer it is
-/// false.
-#[cfg(feature = "hand-over")]
-pub(crate) fn handles_interrupt() -> bool {
+/// [`Observer::handles_interrupt`] describes, so a crate that hands the
+/// terminal to a child installs no SIGINT handler of its own. Without an
+/// observer it is false.
+#[must_use]
+pub fn handles_interrupt() -> bool {
     observer().is_some_and(Observer::handles_interrupt)
 }
 

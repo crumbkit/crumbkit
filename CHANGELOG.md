@@ -488,6 +488,27 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- crumbkit: `Output::print_failure`, `Output::failure_exit`,
+  `Output::listed_exit`, `Output::refuse_view` and
+  `Output::refuse_fields_for_text` are public, so a crate that prints a
+  response without [`finish`] prints failures, chooses exit codes and
+  refuses view flags as `finish` does ([`Output`]).
+- crumbkit: [`Sink`]`::standard` is public, so such a crate prints to the
+  standard streams without opening them itself.
+- crumbkit: [`events`]`::handed_over`, `taken_back`, `interrupted` and
+  `handles_interrupt` are public and need no feature, so a crate that hands
+  the terminal to a child reports it to the observer
+  ([behaviour/run-observer]).
+- crumbkit-child: [`child::hand_over`] and [`child::hand_over_json`] move
+  from crumbkit's `hand-over` feature to the crumbkit-child crate, and a
+  tool calls `crumbkit_child::hand_over`. The codes keep their spelling,
+  `crumbkit::child::*`, and crumbkit-child lists them in its own
+  `codes::ALL` ([crumbkit-child], [behaviour/output/child-processes]).
+- crumbkit-test: [`check_twins`] needs no twin and no declaration for a
+  code in the `crumbkit` component that `crumbkit::codes::ALL` does not
+  list, such as crumbkit-child's `crumbkit::child::no_json`, and
+  [`check_recoveries`] follows the recovery of such a code
+  ([behaviour/checks/end-to-end], [behaviour/checks/recovery-chains]).
 - crumbkit-usage: the usage log, `self usage` and `self figures list` move
   from crumbkit's `usage-log` feature to the crumbkit-usage crate, and a
   tool starts the log with `crumbkit_usage::start()` ([crumbkit-usage], [behaviour/usage-log]).
@@ -727,6 +748,9 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Removed
 
+- crumbkit: the `hand-over` feature, the `crumbkit::child` module and the
+  `codes::CHILD_*` constants are gone, because the crumbkit-child crate
+  holds the hand-over ([crumbkit-child]).
 - crumbkit: the `usage-log` feature and the `crumbkit::usage` module are
   gone, because the crumbkit-usage crate holds the usage log
   ([crumbkit-usage]).
@@ -895,6 +919,7 @@ rustdoc, or at the page in docs/ that describes the behaviour. -->
 [`FailureReader`]: crates/crumbkit-test/src/failures.rs
 [crumbkit-aliases]: crates/crumbkit-aliases/README.md
 [crumbkit-usage]: crates/crumbkit-usage/README.md
+[crumbkit-child]: crates/crumbkit-child/README.md
 [crumbkit-core]: crates/crumbkit-core/README.md
 [crumbkit-derive]: crates/crumbkit-derive/README.md
 [`Error::unclassified`]: crates/crumbkit-core/src/unclassified.rs
@@ -922,8 +947,8 @@ rustdoc, or at the page in docs/ that describes the behaviour. -->
 [`Parsed`]: crates/crumbkit/src/parse/parsed.rs
 [`Sink`]: crates/crumbkit/src/sink.rs
 [`check_effects`]: crates/crumbkit-test/src/effects.rs
-[`child::hand_over`]: crates/crumbkit/src/child.rs
-[`child::hand_over_json`]: crates/crumbkit/src/child.rs
+[`child::hand_over`]: crates/crumbkit-child/src/hand_over.rs
+[`child::hand_over_json`]: crates/crumbkit-child/src/hand_over.rs
 [`Picker`]: crates/crumbkit/src/pick.rs
 [`NoInput`]: crates/crumbkit/src/pick/no_input.rs
 [crumbkit-picker]: crates/crumbkit-picker/README.md

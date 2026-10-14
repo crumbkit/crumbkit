@@ -3,20 +3,36 @@
 This page covers a command that runs another program as its whole job, such
 as an editor or a pager: how it declares that the exit code is the child's,
 what crumbkit-test's checks allow for it, how it shares signals with the
-usage log, and how a child with a JSON form prints. The
-[`child`](../../../crates/crumbkit/src/child.rs) module's rustdoc describes
-`hand_over`, `hand_over_json`, `child::Json`, the failure codes, the signal
-handling on Unix and Windows and the exit code of a child that a signal
-ended.
+usage log, and how a child with a JSON form prints. The rustdoc of
+[`hand_over`](../../../crates/crumbkit-child/src/hand_over.rs) describes
+`hand_over`, `hand_over_json`, `Json`, the signal handling on Unix and
+Windows and the exit code of a child that a signal ended, and
+[`codes`](../../../crates/crumbkit-child/src/codes.rs) lists the failure
+codes.
 
-## The `hand-over` feature
+## The crumbkit-child crate
 
-The `child` module sits behind the `hand-over` cargo feature, which is off by
-default and adds signal-hook. A command hands the terminal over as its last
-step, in place of `finish`, so only the result, the usage log's line and the
-exit remain after the child exits.
+The published crumbkit-child crate holds the hand-over. It depends on
+crumbkit and on signal-hook, so a tool that hands nothing over builds no
+signal-hook unless it keeps the usage log. A command hands the terminal over
+as its last step, in place of `finish`, so only the result, the usage log's
+line and the exit remain after the child exits.
 
-Why: ADR-0042, ADR-0003.
+crumbkit-child prints its failures and refusals through crumbkit's public
+`Output` methods `print_failure`, `refuse_view`, `refuse_fields_for_text`,
+`failure_exit` and `listed_exit`, so they look and exit as `finish` would
+print them. It reports the hand-over to the
+[run observer](../run-observer/README.md) through the public `events`
+functions.
+
+The failure codes keep the `crumbkit` component, as in
+`crumbkit::child::not_found`, and crumbkit-child lists them in its own
+`codes::ALL`, which `crumbkit::codes::ALL` does not include. crumbkit-test
+treats every code in the `crumbkit` component as one of crumbkit's codes,
+so these codes need no twin and no declaration, and `check_recoveries`
+follows their recoveries ([end-to-end checks](../checks/end-to-end.md)).
+
+Why: ADR-0058, ADR-0042, ADR-0003.
 
 ## Declaring the child's exit code
 
@@ -67,8 +83,11 @@ Why: ADR-0042, ADR-0029, ADR-0057.
 Under `--json`, `hand_over_json` prints the child's document as `finish`
 prints a result, so `--fields`, `--long` and `--full` work as on any
 command. The refusal of `--json` for a child without a JSON form happens when the
-command runs, so help still lists the global `--json`. A guide's rename of
-each `crumbkit::child` code applies as it does to every other failure
+command runs, so help still lists the global `--json`. That refusal, with
+`crumbkit::child::no_json`, exits with the code that the guide gives a
+refused command line, which is 2 unless the guide lists another, or with
+the exit that lists `crumbkit::child::no_json`. A guide's rename of each
+`crumbkit::child` code applies as it does to every other failure
 ([failures](../failures/README.md)).
 
-Why: ADR-0042.
+Why: ADR-0042, ADR-0058.

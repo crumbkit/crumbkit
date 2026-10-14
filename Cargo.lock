@@ -166,7 +166,6 @@ dependencies = [
  "schemars",
  "serde",
  "serde_json",
- "signal-hook",
  "tracing",
  "tracing-core",
  "unicode-width",
@@ -192,6 +191,18 @@ dependencies = [
  "crumbkit-usage",
  "gungraun",
  "shelf",
+]
+
+[[package]]
+name = "crumbkit-child"
+version = "0.0.0"
+dependencies = [
+ "clap",
+ "crumbkit",
+ "schemars",
+ "serde",
+ "serde_json",
+ "signal-hook",
 ]
 
 [[package]]
@@ -253,6 +264,7 @@ version = "0.0.0"
 dependencies = [
  "clap",
  "crumbkit",
+ "crumbkit-child",
  "etcetera",
  "getrandom",
  "humantime",
@@ -631,6 +643,7 @@ version = "0.0.0"
 dependencies = [
  "clap",
  "crumbkit",
+ "crumbkit-child",
  "crumbkit-picker",
  "crumbkit-test",
  "etcetera",

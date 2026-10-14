@@ -64,18 +64,16 @@ jobs:
       - run: cargo fmt --check
       - run: cargo clippy --workspace --all-targets
       # shelf turns on crumbkit's `miette` and `tracing` features and uses
-      # crumbkit-usage, and reading turns on `hand-over`, so the workspace run
-      # checks crumbkit with all three features and with the usage log. clippy checks crumbkit on its own in the default build,
-      # with `miette`, with `tracing` alone and with `hand-over` alone, because
-      # a single `--all-features` run would miss a warning that only one build
-      # shows, such as an import that only one feature uses. The `tracing`
-      # build compiles the spans without the usage log's ids, and the
-      # `hand-over` build compiles the SIGINT handler that the usage log
-      # otherwise replaces, which no other build compiles.
+      # crumbkit-usage, so the workspace run checks crumbkit with both
+      # features and with the usage log, and checks crumbkit-child. clippy
+      # checks crumbkit on its own in the default build, with `miette` and
+      # with `tracing` alone, because a single `--all-features` run would
+      # miss a warning that only one build shows, such as an import that
+      # only one feature uses. The `tracing` build compiles the spans without
+      # the usage log's ids.
       - run: cargo clippy -p crumbkit --all-targets
       - run: cargo clippy -p crumbkit --all-targets --features miette
       - run: cargo clippy -p crumbkit --all-targets --features tracing
-      - run: cargo clippy -p crumbkit --all-targets --features hand-over
       # The MSRV check builds with the oldest supported toolchain (RUST-9).
       # It builds with every feature, which compiles every line of code once,
       # because no code is left out when a feature is on.
@@ -126,16 +124,14 @@ jobs:
       # nextest does not run doctests, so cargo test runs them.
       - run: cargo test --workspace --doc
       # shelf turns on crumbkit's `miette` and `tracing` features and uses
-      # crumbkit-usage, and reading turns on `hand-over`, so the workspace runs
-      # test crumbkit with all three features and with the usage log. crumbkit's tests and doctests run again on their own in
-      # the default build and with `miette`, and its tests run with
-      # `hand-over` alone, which hands the terminal to a child without the
-      # usage log's signal thread.
+      # crumbkit-usage, so the workspace runs test crumbkit with both
+      # features and with the usage log, and run crumbkit-child's tests.
+      # crumbkit's tests and doctests run again on their own in the default
+      # build and with `miette`.
       - run: cargo nextest run -p crumbkit --profile ci
       - run: cargo test -p crumbkit --doc
       - run: cargo nextest run -p crumbkit --features miette --profile ci
       - run: cargo test -p crumbkit --features miette --doc
-      - run: cargo nextest run -p crumbkit --features hand-over --profile ci
 
   # The repository ruleset requires this one check, so a job that joins the
   # fast lane joins this job's `needs` and the ruleset stays the same. The job

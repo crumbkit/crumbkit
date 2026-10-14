@@ -122,8 +122,10 @@ refused one by one word added, removed or replaced, and that the tool accepts
   for that variable.
 - A code that no test can provoke goes in the `Unprovoked` list, which a tool
   passes to both `check_twins` and `check_recoveries`.
-- A declared code that the guide's `Rename` prints in place of one of
-  crumbkit's codes needs no twin, because crumbkit raises that failure.
+- A code in the `crumbkit` component needs no twin and no declaration,
+  because crumbkit or one of its add-on crates, such as crumbkit-child,
+  raises that failure. A declared code that the guide's `Rename` prints in
+  place of one of them needs no twin either.
 - Neither check keeps a golden file, because every twin and every listed code
   is in the test's source.
 

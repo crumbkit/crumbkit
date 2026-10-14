@@ -55,8 +55,8 @@ mod tests;
 ///   after the handler has made its change (ADR-0016). A read-only leaf,
 ///   a leaf without effects and a leaf that passes on a program's exit
 ///   code (`Leaf::passes_on_exit`) pass without a document, because
-///   `child::hand_over` refuses `--json` and `--fields` before the program
-///   starts;
+///   `crumbkit_child::hand_over` refuses `--json` and `--fields` before
+///   the program starts;
 /// - a leaf's [`Choices`](crumbkit::pick::Choices) whose argument id names
 ///   no argument of the leaf's command, because a picker then never offers
 ///   them;
@@ -278,8 +278,8 @@ fn check_leaves(command: &Command, guide: &Guide, problems: &mut Vec<String>) {
             }
         }
         // A leaf that passes on a program's exit code hands the terminal
-        // to it, and `child::hand_over` refuses `--json` and `--fields`
-        // before the program starts.
+        // to it, and `crumbkit_child::hand_over` refuses `--json` and
+        // `--fields` before the program starts.
         let changes = leaf
             .get_effects()
             .is_some_and(|effects| !effects.is_read_only());

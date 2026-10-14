@@ -8,12 +8,12 @@ A change is ready when these pass:
 cargo test --workspace
 cargo test -p crumbkit
 cargo test -p crumbkit --features miette
-cargo test -p crumbkit --features hand-over
+cargo test -p crumbkit-child
 CARGO_BUILD_WARNINGS=deny cargo clippy --workspace --all-targets
 CARGO_BUILD_WARNINGS=deny cargo clippy -p crumbkit --all-targets
 CARGO_BUILD_WARNINGS=deny cargo clippy -p crumbkit --all-targets --features miette
 CARGO_BUILD_WARNINGS=deny cargo clippy -p crumbkit --all-targets --features tracing
-CARGO_BUILD_WARNINGS=deny cargo clippy -p crumbkit --all-targets --features hand-over
+CARGO_BUILD_WARNINGS=deny cargo clippy -p crumbkit-child --all-targets
 cargo fmt --check
 cargo xtask check
 cargo +1.89.0 check --workspace --all-targets --all-features

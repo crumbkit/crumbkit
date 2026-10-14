@@ -44,10 +44,6 @@ unicode-width = { workspace = true, optional = true }
 # picker nor `Output::confirm` asks it a question (ADR-0043). It has no
 # dependencies.
 is-ai-agent = { workspace = true }
-# signal-hook gives `child` the handlers that keep the tool running while a
-# child holds the terminal (ADR-0042). `child` needs only `flag`, which
-# every build of signal-hook has.
-signal-hook = { workspace = true, optional = true }
 # The `tracing` feature puts `parse` and `finish` in spans of the tracing
 # crate (ADR-0030). crumbkit needs no tracing feature.
 tracing = { workspace = true, optional = true }
@@ -63,10 +59,6 @@ clap_complete = { workspace = true, optional = true, features = ["unstable-dynam
 # which adds `Failure::diagnostic`, and adds unicode-width for the caret
 # underline.
 miette = ["dep:miette", "dep:unicode-width", "crumbkit-core/miette"]
-# `hand-over` is off by default, so the default build has no `child` module
-# and no signal-hook (ADR-0003, ADR-0042). serde's `DeserializeOwned`, which
-# reads a child's JSON, needs no serde feature.
-hand-over = ["dep:signal-hook"]
 # `tracing` is off by default, so the default build has no span code and no
 # tracing dependency (ADR-0003, ADR-0030).
 tracing = ["dep:tracing"]

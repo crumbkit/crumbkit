@@ -37,8 +37,7 @@ impl Guide {
     /// the code of the first [`Exit`] that lists the failure's printed code
     /// or a crumbkit code that the guide prints as it. A failure that no
     /// exit lists exits with crumbkit's default: 2 for a refused command
-    /// line, the same code as a refused command line for a child that
-    /// cannot answer `--json`, and 1 for every other failure (ADR-0002).
+    /// line and 1 for every other failure (ADR-0002).
     #[must_use]
     pub fn failure_exit(&self, code: &'static Code) -> u8 {
         failure_exit(self.exits, self.codes, code)
@@ -151,25 +150,30 @@ pub(crate) fn printed<'code>(renames: &[Rename], code: &'code Code) -> &'code Co
 /// Returns the exit code of a run whose first failure has `code`: the code
 /// of the first of `exits` that lists the failure's printed code, or one of
 /// crumbkit's codes that `renames` prints as it. A failure that no exit
-/// lists exits with crumbkit's default: 2 for a refused command line, the
-/// refusal's exit for a child that cannot answer `--json`, and 1 for every
-/// other failure (ADR-0002).
+/// lists exits with crumbkit's default: 2 for a refused command line and 1
+/// for every other failure (ADR-0002).
 pub(crate) fn failure_exit(exits: &[Exit], renames: &[Rename], code: &'static Code) -> u8 {
-    let code = printed(renames, code);
-    let listed = exits.iter().find(|exit| {
-        exit.get_failures()
-            .iter()
-            .any(|&listed| printed(renames, listed) == code)
-    });
-    if let Some(exit) = listed {
-        return exit.code();
+    if let Some(exit) = listed_exit(exits, renames, code) {
+        return exit;
     }
+    let code = printed(renames, code);
     if code == printed(renames, &crate::codes::CLI_USAGE) {
         return 2;
     }
-    #[cfg(feature = "hand-over")]
-    if code == printed(renames, &crate::codes::CHILD_NO_JSON) {
-        return failure_exit(exits, renames, &crate::codes::CLI_USAGE);
-    }
     1
+}
+
+/// Returns the code of the first of `exits` that lists the printed code of
+/// a failure with `code`, or one of crumbkit's codes that `renames` prints
+/// as it, and `None` when no exit lists it.
+pub(crate) fn listed_exit(exits: &[Exit], renames: &[Rename], code: &'static Code) -> Option<u8> {
+    let code = printed(renames, code);
+    exits
+        .iter()
+        .find(|exit| {
+            exit.get_failures()
+                .iter()
+                .any(|&listed| printed(renames, listed) == code)
+        })
+        .map(Exit::code)
 }

@@ -175,13 +175,9 @@ jobs:
       # Each later step runs even when an earlier one fails, so one failure
       # does not hide another.
       - if: ${{ !cancelled() }}
-        run: cargo clippy -p crumbkit --all-targets --features hand-over
-      - if: ${{ !cancelled() }}
         run: cargo nextest run --workspace --profile ci
       - if: ${{ !cancelled() }}
         run: cargo test --workspace --doc
-      - if: ${{ !cancelled() }}
-        run: cargo nextest run -p crumbkit --features hand-over --profile ci
 
   # When the nightly, bench, changed or windows job fails, this job comments on the open issue
   # titled "Scheduled CI failed", or opens that issue when none is open, so

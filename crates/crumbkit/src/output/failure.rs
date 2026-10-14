@@ -75,6 +75,12 @@ impl Printing {
     pub(crate) fn exit(self, code: &'static Code) -> u8 {
         rename::failure_exit(self.exits, self.renames, code)
     }
+
+    /// Returns the exit code of the exit that lists `code`, or `None`, as
+    /// [`Output::listed_exit`](crate::Output::listed_exit) describes.
+    pub(crate) fn listed_exit(self, code: &'static Code) -> Option<u8> {
+        rename::listed_exit(self.exits, self.renames, code)
+    }
 }
 
 /// Prints `failure` to `sink`: as text on the error writer, or with `json`

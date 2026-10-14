@@ -39,7 +39,7 @@ pub(super) const RESTORES: bool = true;
 pub(super) fn install() -> Option<Arc<AtomicBool>> {
     let no_child = Arc::new(AtomicBool::new(true));
     register_conditional_shutdown(SIGBREAK, CONTROL_C_EXIT, Arc::clone(&no_child)).ok()?;
-    if !crate::events::handles_interrupt() {
+    if !crumbkit::events::handles_interrupt() {
         register_conditional_shutdown(SIGINT, CONTROL_C_EXIT, Arc::clone(&no_child)).ok()?;
     }
     Some(no_child)
@@ -48,6 +48,6 @@ pub(super) fn install() -> Option<Arc<AtomicBool>> {
 /// Returns SIGINT's number, 2, when a child with `status` ended with
 /// `STATUS_CONTROL_C_EXIT`, the exit code that Ctrl-C and Ctrl-Break give,
 /// and `None` otherwise.
-pub(in crate::child) fn ended_by(status: ExitStatus) -> Option<i32> {
+pub(crate) fn ended_by(status: ExitStatus) -> Option<i32> {
     (status.code() == Some(CONTROL_C_EXIT)).then_some(SIGINT)
 }

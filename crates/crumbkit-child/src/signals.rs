@@ -24,11 +24,11 @@
 //! Windows the tool takes the default actions again once the child exits.
 //!
 //! Before the child starts, this module reports
-//! [`Observer::handed_over`](crate::events::Observer::handed_over), and on
-//! Windows it reports [`Observer::taken_back`](crate::events::Observer::taken_back)
+//! [`Observer::handed_over`](crumbkit::events::Observer::handed_over), and on
+//! Windows it reports [`Observer::taken_back`](crumbkit::events::Observer::taken_back)
 //! after the child exits. An observer that has already taken SIGINT, as the
 //! usage log's signal thread does, says so through
-//! [`Observer::handles_interrupt`](crate::events::Observer::handles_interrupt),
+//! [`Observer::handles_interrupt`](crumbkit::events::Observer::handles_interrupt),
 //! and this module then installs no SIGINT handler. The usage log's thread
 //! leaves the process running on SIGINT once a child took the terminal, and
 //! on Windows until the child gave it back (ADR-0042).
@@ -42,11 +42,11 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, OnceLock};
 
 #[cfg(unix)]
-pub(super) use self::unix::ended_by;
+pub(crate) use self::unix::ended_by;
 #[cfg(unix)]
 use self::unix::{RESTORES, install};
 #[cfg(windows)]
-pub(super) use self::windows::ended_by;
+pub(crate) use self::windows::ended_by;
 #[cfg(windows)]
 use self::windows::{RESTORES, install};
 
@@ -58,15 +58,15 @@ static NO_CHILD: OnceLock<Option<Arc<AtomicBool>>> = OnceLock::new();
 /// Runs `child`, which starts a child process and waits for it, with the
 /// tool's interrupt signals ignored, and returns what `child` returned. On
 /// Unix the signals stay ignored after `child` returns, until the tool ends.
-pub(super) fn while_running<R>(child: impl FnOnce() -> R) -> R {
+pub(crate) fn while_running<R>(child: impl FnOnce() -> R) -> R {
     let no_child = NO_CHILD.get_or_init(install).as_deref();
     if let Some(no_child) = no_child {
         no_child.store(false, Ordering::SeqCst);
     }
-    crate::events::handed_over();
+    crumbkit::events::handed_over();
     let result = child();
     if RESTORES {
-        crate::events::taken_back();
+        crumbkit::events::taken_back();
         if let Some(no_child) = no_child {
             no_child.store(true, Ordering::SeqCst);
         }

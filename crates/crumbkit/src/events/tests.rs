@@ -350,6 +350,21 @@ fn the_public_reports_reach_the_observer_and_ended_returns_its_exit_code() {
 }
 
 #[test]
+fn the_hand_over_reports_reach_the_observer_and_no_test_observer_handles_interrupt() {
+    let mut handles = true;
+
+    let seen = watch(|| {
+        super::handed_over();
+        super::interrupted();
+        super::taken_back();
+        handles = super::handles_interrupt();
+    });
+
+    assert!(!handles);
+    assert_eq!(seen, ["handed over", "interrupted", "taken back"]);
+}
+
+#[test]
 fn child_env_returns_the_variables_that_the_observer_gives() {
     let traceparent = "00-4bf92f3577b34da6a3ce929d0e0e4736-2222222222222222-01";
     give_child_env(vec![("TRACEPARENT", traceparent.to_owned())]);

@@ -28,8 +28,8 @@ pub(super) struct Walk<'a> {
     pub(super) command: &'a Command,
     /// The tool's declared codes, spelled.
     pub(super) declared: Vec<String>,
-    /// The spelled codes whose recoveries the check follows: the declared
-    /// codes and crumbkit's own codes.
+    /// The spelled codes whose recoveries the check follows by name
+    /// ([`Walk::is_known`]).
     pub(super) known: Vec<String>,
     /// The component of each declared code, which
     /// [`Spelling::split`](crumbkit::Spelling::split) reads back. It is
@@ -135,7 +135,7 @@ impl Walk<'_> {
             return;
         }
         let code = self.recoveries.spelling.spell(start.code);
-        if !self.known.contains(&code) {
+        if !self.is_known(&code) {
             self.problems.push(format!(
                 "{line}: the start's code {code} is not a declared code"
             ));
@@ -319,7 +319,7 @@ impl Walk<'_> {
             ));
             return;
         }
-        if !self.known.iter().any(|known| known == code) {
+        if !self.is_known(code) {
             self.unknown(chain, label, code, &indent);
             return;
         }
@@ -383,6 +383,18 @@ impl Walk<'_> {
             Rule::NextStep.id(),
             allow::command_line(self.command, path)
         ));
+    }
+
+    /// Returns whether the check follows the recovery of the spelled
+    /// `code`: a code in `known`, or any code whose component is
+    /// `crumbkit`, which crumbkit or one of its add-on crates raises.
+    fn is_known(&self, code: &str) -> bool {
+        self.known.iter().any(|known| known == code)
+            || self
+                .recoveries
+                .spelling
+                .split(code)
+                .is_some_and(|(component, _, _)| component == "crumbkit")
     }
 
     /// Writes `code`, which `label` failed with and which no declared code

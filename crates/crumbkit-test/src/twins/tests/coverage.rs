@@ -24,7 +24,8 @@ const CODES: &[&[&Code]] = &[&[&NOT_FOUND, &UNREADABLE, &REMOVED]];
 
 /// The script's answers: `books show 7` fails with `NOT_FOUND`, `books
 /// list --limit 0` fails with crumbkit's usage code, `books show 8` fails
-/// with `UNREADABLE`, and `books show 2` and `books list --limit 1` exit with
+/// with `UNREADABLE`, `books show 5` fails with crumbkit-child's code
+/// `crumbkit::child::no_json`, and `books show 2` and `books list --limit 1` exit with
 /// code 0, with or without `--json` at the end. Any other command line
 /// fails with code 3.
 const SCRIPT: &str = r#"#!/bin/sh
@@ -33,6 +34,7 @@ case "${line% --json}" in
   'books show 7') printf 'error: no book 7\n  code:  tool::books::not_found\n' >&2; exit 1;;
   'books show 8') printf 'error: unreadable\n  code:  tool::books::unreadable\n' >&2; exit 1;;
   'books list --limit 0') printf 'error: 0 is not a limit\n  code:  crumbkit::cli::usage\n' >&2; exit 2;;
+  'books show 5') printf 'error: the viewer prints no JSON\n  code:  crumbkit::child::no_json\n' >&2; exit 2;;
   'books show 2'|'books list --limit 1') echo shown; exit 0;;
   *) echo "unexpected: $*" >&2; exit 3;;
 esac
@@ -91,6 +93,21 @@ fn a_declared_code_without_a_twin_or_an_unprovoked_entry_fails_the_twin_check() 
              tool::books::unreadable: no twin refuses the declared code, Twins::unprovoked does not list it, and no opt-out made with Allow::untwinned names it"
         )
     );
+}
+
+#[test]
+fn a_twin_of_a_code_in_the_crumbkit_component_that_crumbkit_does_not_list_needs_no_declaration() {
+    const NO_JSON: Code = Code::new("crumbkit", "child", "no_json");
+    let no_json = Twin::new(
+        Failing::new(&NO_JSON, &["books", "show", "5"]),
+        &["books", "show", "2"],
+    );
+    let unprovoked = [
+        Unprovoked::new(&UNREADABLE, "Only a broken file provokes it."),
+        Unprovoked::new(&REMOVED, "Only a full disk provokes it."),
+    ];
+
+    assert_eq!(checked(&[SHOW_7, no_json], &unprovoked), None);
 }
 
 #[test]

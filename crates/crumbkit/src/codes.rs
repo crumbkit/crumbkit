@@ -69,34 +69,7 @@ pub const OUTPUT_OVER_BUDGET: Code = Code::new("crumbkit", "output", "over_budge
 /// `miette` feature (ADR-0001).
 pub use crumbkit_core::codes::REPORT_UNCHECKED;
 
-/// The code of `--json` passed to a command whose child has no JSON form
-/// (ADR-0042).
-#[cfg(feature = "hand-over")]
-pub const CHILD_NO_JSON: Code = Code::new("crumbkit", "child", "no_json");
-
-/// The code of a child program that does not exist (ADR-0042).
-#[cfg(feature = "hand-over")]
-pub const CHILD_NOT_FOUND: Code = Code::new("crumbkit", "child", "not_found");
-
-/// The code of a child program that the operating system refused to start
-/// or to wait for (ADR-0042).
-#[cfg(feature = "hand-over")]
-pub const CHILD_NOT_STARTED: Code = Code::new("crumbkit", "child", "not_started");
-
-/// The code of a child's output that is not the declared document
-/// (ADR-0042).
-#[cfg(feature = "hand-over")]
-pub const CHILD_BAD_JSON: Code = Code::new("crumbkit", "child", "bad_json");
-
-/// The code of a child that exited with a code other than 0 under `--json`
-/// (ADR-0042).
-#[cfg(feature = "hand-over")]
-pub const CHILD_FAILED: Code = Code::new("crumbkit", "child", "failed");
-
-/// Every code above, in the order this module declares them. The `child`
-/// codes are in the list only in a build with the `hand-over` feature,
-/// which holds the `child` module that returns them.
-#[cfg(not(feature = "hand-over"))]
+/// Every code above, in the order this module declares them.
 pub const ALL: &[&Code] = &[
     &CLI_USAGE,
     &COMMANDS_NOT_FOUND,
@@ -108,26 +81,4 @@ pub const ALL: &[&Code] = &[
     &VERSION_CONFLICT,
     &OUTPUT_OVER_BUDGET,
     &REPORT_UNCHECKED,
-];
-
-/// Every code above, in the order this module declares them. The `child`
-/// codes are in the list only in a build with the `hand-over` feature,
-/// which holds the `child` module that returns them.
-#[cfg(feature = "hand-over")]
-pub const ALL: &[&Code] = &[
-    &CLI_USAGE,
-    &COMMANDS_NOT_FOUND,
-    &COMMANDS_UNAVAILABLE,
-    &SCHEMAS_NOT_FOUND,
-    &SCHEMAS_UNAVAILABLE,
-    &CONFIRM_DECLINED,
-    &CONFIRM_NEEDS_YES,
-    &VERSION_CONFLICT,
-    &OUTPUT_OVER_BUDGET,
-    &REPORT_UNCHECKED,
-    &CHILD_NO_JSON,
-    &CHILD_NOT_FOUND,
-    &CHILD_NOT_STARTED,
-    &CHILD_BAD_JSON,
-    &CHILD_FAILED,
 ];
