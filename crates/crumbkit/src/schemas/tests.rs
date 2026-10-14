@@ -19,6 +19,7 @@ use crate::{
 };
 
 mod bytes;
+mod field_names;
 mod formats;
 mod in_order;
 mod streams;

@@ -288,7 +288,7 @@ pub(super) fn summarize(
     let start_ms = start.duration_since(UNIX_EPOCH).map_or(0, |elapsed| {
         u64::try_from(elapsed.as_millis()).unwrap_or(u64::MAX)
     });
-    let mut tally = Tally::new(guide.failure_exit(&crumbkit::codes::CLI_USAGE));
+    let mut tally = Tally::new(guide.failure_exit(&[], &crumbkit::codes::CLI_USAGE));
     if let Some(log) = log {
         read(log, start_ms, tool, &mut tally);
     }

@@ -14,6 +14,7 @@ use super::{Effects, write_line};
 use crate::pick::Choices;
 use crate::{Call, Document, Row, Rows, Shape, Stream, row};
 
+mod codes;
 mod column;
 mod passes;
 mod refusal;
@@ -79,6 +80,9 @@ pub struct Leaf {
     /// The function that builds the calls that a refusal of a command line
     /// that names the command offers after crumbkit's own alternatives.
     refusal_alternatives: Option<fn(&RefusalContext<'_>) -> Vec<Call>>,
+    /// The tool's own codes for crumbkit's failures in the command's runs
+    /// (ADR-0060).
+    codes: &'static [super::Rename],
 }
 
 impl Leaf {
@@ -95,6 +99,7 @@ impl Leaf {
             choices: &[],
             passes_on_exit: None,
             refusal_alternatives: None,
+            codes: &[],
         }
     }
 

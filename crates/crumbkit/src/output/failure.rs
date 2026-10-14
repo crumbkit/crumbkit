@@ -11,8 +11,8 @@ use serde::ser::{SerializeMap, Serializer};
 use super::layout;
 use super::table::escape_controls;
 use crate::form::FailureForm;
-use crate::help::rename::{self, Rename};
-use crate::help::{Exit, Guide};
+use crate::help::rename::{self, Renames};
+use crate::help::{Exit, Guide, Leaf};
 use crate::{Code, Document, Failure, FieldValue, JsonLayout, Sink, Spelling};
 
 #[cfg(feature = "miette")]
@@ -46,8 +46,10 @@ const UNAVAILABLE: &str = "the suggested command is not available";
 
 /// What the guide decides about each failure that crumbkit prints: the
 /// tool's form, the layout of a JSON document, the exit codes and the
-/// renames of crumbkit's codes.
-#[derive(Clone, Copy, Debug)]
+/// renames of crumbkit's codes and the field names that the tool takes from
+/// another system. Its default is crumbkit's own form, one line, no exits,
+/// no renames and no listed field names.
+#[derive(Clone, Copy, Debug, Default)]
 pub(crate) struct Printing {
     /// The tool's own form of a failure, or `None` for crumbkit's form.
     pub(crate) form: Option<&'static dyn FailureForm>,
@@ -55,18 +57,30 @@ pub(crate) struct Printing {
     pub(crate) layout: Option<JsonLayout>,
     /// The exit codes that the tool's guide declares (ADR-0037).
     pub(crate) exits: &'static [Exit],
-    /// The tool's own codes for crumbkit's failures (ADR-0056).
-    pub(crate) renames: &'static [Rename],
+    /// The tool's own codes for crumbkit's failures, of the guide and of
+    /// the leaf of the run's command (ADR-0056, ADR-0060).
+    pub(crate) renames: Renames,
+    /// The field names that break the rule and that the tool's guide lists
+    /// with `Guide::field_names` (ADR-0061).
+    pub(crate) field_names: &'static [&'static str],
 }
 
 impl Printing {
-    /// Returns what `guide` decides about failures.
+    /// Returns what `guide` decides about failures before the run knows
+    /// its command, which reads the guide's renames alone.
     pub(crate) fn of(guide: &Guide) -> Self {
+        Self::at(guide, None)
+    }
+
+    /// Returns what `guide` decides about the failures of a run of the
+    /// command of `leaf`, which reads the leaf's renames before the guide's.
+    pub(crate) fn at(guide: &Guide, leaf: Option<&Leaf>) -> Self {
         Self {
             form: guide.get_failure_form(),
             layout: guide.layout(),
             exits: guide.get_exits(),
-            renames: guide.get_codes(),
+            renames: Renames::with_leaf(guide, leaf),
+            field_names: guide.get_field_names(),
         }
     }
 
@@ -100,8 +114,7 @@ pub(crate) fn print<O: Write, W: Write, R>(
     failure: &dyn Failure,
     command: Option<&mut Command>,
 ) {
-    let document =
-        PreparedFailure::new(failure, spelling, printing.renames, command, &mut sink.err);
+    let document = PreparedFailure::new(failure, spelling, printing, command, &mut sink.err);
     #[cfg(feature = "tracing")]
     crate::trace::spans::failed(document.code());
     if json {
@@ -153,8 +166,8 @@ pub struct PreparedFailure<'a> {
     step: Step,
     /// The failure's other alternatives that offer a step, in order.
     alternatives: Vec<Step>,
-    /// The failure's fields whose names follow the rule and come first, in
-    /// order.
+    /// The failure's fields whose names follow the rule or are listed with
+    /// `Guide::field_names` and come first, in order.
     fields: Vec<(String, FieldValue<'static>)>,
     /// The page that explains the failure, when there is one.
     url: Option<String>,
@@ -165,11 +178,12 @@ pub struct PreparedFailure<'a> {
 
 impl<'a> PreparedFailure<'a> {
     /// Reads `failure` into the fields that `finish` prints. It spells the
-    /// code that `renames` prints for the failure with `spelling`, and
-    /// renders a `Recovery::Run` call against
-    /// `command`, which builds the branch that the call names.
+    /// code that the renames of `printing` print for the failure with
+    /// `spelling`, and renders a `Recovery::Run` call against `command`,
+    /// which builds the branch that the call names.
     ///
-    /// It leaves out each field of the failure whose name breaks the rule or
+    /// It leaves out each field of the failure whose name breaks the rule
+    /// and is not one of the field names of `printing`, and each field that
     /// repeats an earlier name, and a debug build, such as the one a tool's
     /// tests run, writes a warning that names the field to `err`, so a test
     /// that compares standard error shows it. A debug build also writes a
@@ -181,11 +195,11 @@ impl<'a> PreparedFailure<'a> {
     pub(super) fn new(
         failure: &'a dyn Failure,
         spelling: Spelling,
-        renames: &[Rename],
+        printing: Printing,
         command: Option<&mut Command>,
         err: &mut impl Write,
     ) -> Self {
-        let printed = rename::printed(renames, failure.code());
+        let printed = printing.renames.printed(failure.code());
         // Every code that crumbkit prints is spelled here, so crumbkit
         // reports the run's code to the observer here (ADR-0057).
         crate::events::failed(spelling, printed);
@@ -223,7 +237,7 @@ impl<'a> PreparedFailure<'a> {
                 );
             }
         }
-        let fields = read_fields(failure, &code, err);
+        let fields = read_fields(failure, &code, printing.field_names, err);
         Self {
             failure,
             code,
@@ -255,8 +269,9 @@ impl<'a> PreparedFailure<'a> {
     }
 }
 
-/// Returns the fields of `failure` whose names follow the rule and come
-/// first, each without the entries of its objects whose keys repeat an
+/// Returns the fields of `failure` whose names follow the rule or are
+/// `listed`, the names that `Guide::field_names` lists, and come first,
+/// each without the entries of its objects whose keys repeat an
 /// earlier key of their object. In a debug build it writes a warning to
 /// `err` for each field and each key that it leaves out, which names
 /// `code`.
@@ -265,12 +280,14 @@ impl<'a> PreparedFailure<'a> {
 fn read_fields(
     failure: &dyn Failure,
     code: &str,
+    listed: &[&str],
     err: &mut impl Write,
 ) -> Vec<(String, FieldValue<'static>)> {
     let mut fields: Vec<(String, FieldValue<'static>)> = Vec::new();
     for field in failure.fields() {
-        let reason = if !field.follows_name_rule() {
-            "a field name is one or more lowercase ASCII letters, digits and underscores"
+        let named = field.follows_name_rule() || listed.contains(&field.name());
+        let reason = if !named {
+            "a field name is one or more lowercase ASCII letters, digits and underscores, and Guide::field_names does not list it"
         } else if fields.iter().any(|(name, _)| name == field.name()) {
             "an earlier field has that name"
         } else {

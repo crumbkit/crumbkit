@@ -92,7 +92,6 @@ fn check(
     timeout: Duration,
 ) -> Vec<String> {
     let tool = command.get_name();
-    let failed = guide.failure_exit(&crumbkit::codes::OUTPUT_OVER_BUDGET);
     let mut problems = Vec::new();
     if let Some(problem) = setup_problem(examples) {
         problems.push(problem);
@@ -103,6 +102,7 @@ fn check(
     for leaf in guide.get_leaves() {
         let path = leaf.path();
         let below = path.join(" ");
+        let failed = guide.failure_exit(path, &crumbkit::codes::OUTPUT_OVER_BUDGET);
         if !visits.iter().any(|visit| visit.below() == below)
             || allowances.excuses(Rule::Examples, &below)
         {

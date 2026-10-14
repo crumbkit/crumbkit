@@ -192,3 +192,36 @@ fn a_guide_that_gives_the_over_budget_failure_another_exit_code_makes_that_code_
     let problem = judge(&ran(1, stdout, ""), 100, 9).expect("a problem");
     assert!(problem.contains("exit code 1"), "{problem}");
 }
+
+/// A `--json` example that prints a line, and that fails past its budget
+/// with a document that names the budget and exits with code 9.
+#[cfg(unix)]
+const FAILS_WITH_9: &[&str] = &[
+    r#"test -n "$CRUMBKIT_OUTPUT_BUDGET" && echo "{\"fields\":{\"budget\":$CRUMBKIT_OUTPUT_BUDGET}}" && exit 9; echo printed"#,
+    "--json",
+];
+
+#[cfg(unix)]
+#[test]
+fn a_leaf_whose_rename_of_the_over_budget_failure_an_exit_lists_makes_that_code_the_failed_one() {
+    use clap::Command;
+    use crumbkit::Code;
+    use crumbkit::help::{Example, Exit, Guide, Leaf, Rename};
+
+    use crate::examples::Examples;
+    use crate::temp::TempDir;
+
+    const TOO_LONG: Code = Code::new("sh", "output", "too_long");
+    const GUIDE: Guide = Guide::new()
+        .exits(&[Exit::new(9, "The output was too long.").failures(&[&TOO_LONG])])
+        .leaves(&[Leaf::new(&["-c"])
+            .examples(&[Example::new(FAILS_WITH_9, "Print")])
+            .codes(&[Rename::new(&crumbkit::codes::OUTPUT_OVER_BUDGET, &TOO_LONG)])]);
+    let sh = Command::new("sh").subcommand(Command::new("-c"));
+    let goldens = TempDir::new("output-budget-leaf-exit").unwrap();
+    let dir = goldens.path().display().to_string();
+
+    let problems = super::check(&sh, &GUIDE, &Examples::new("/bin/sh", &dir), super::TIMEOUT);
+
+    assert_eq!(problems, Vec::<String>::new());
+}

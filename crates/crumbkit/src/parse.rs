@@ -397,7 +397,7 @@ where
     }
     let error = match parsed {
         Ok((parsed, no_input, None)) => {
-            return Ok((parsed, Parsed::new(command, words, no_input, guide)));
+            return Ok((parsed, Parsed::new(command, words, no_input, guide, &path)));
         }
         Ok((_, _, Some(refusal))) => {
             crate::events::exited(Printing::of(guide).exit(&crate::codes::CLI_USAGE));

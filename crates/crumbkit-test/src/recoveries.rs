@@ -5,7 +5,7 @@ use std::fmt::Write as _;
 use std::path::Path;
 
 use clap::Command;
-use crumbkit::help::Guide;
+use crumbkit::help::{Guide, Leaf};
 use crumbkit::{Code, Spelling};
 use snapbox::Assert;
 use snapbox::assert::DEFAULT_ACTION_ENV;
@@ -449,19 +449,22 @@ pub fn check_recoveries(command: &Command, guide: &Guide, recoveries: &Recoverie
 
 /// Returns the spelled codes whose recoveries the check follows by name:
 /// the `declared` codes, crumbkit's codes as `guide` prints them, and each
-/// code that `guide` prints in place of a crumbkit code, which may be an
-/// add-on crate's code that `crumbkit::codes::ALL` does not list.
+/// code that `guide` or one of its leaves prints in place of a crumbkit
+/// code, which may be an add-on crate's code that `crumbkit::codes::ALL`
+/// does not list.
 fn known_codes(declared: &[(String, &Code)], guide: &Guide, spelling: Spelling) -> Vec<String> {
     let mut known: Vec<String> = declared.iter().map(|(text, _)| text.clone()).collect();
     known.extend(
         crumbkit::codes::ALL
             .iter()
-            .map(|&code| spelling.spell(guide.printed(code))),
+            .map(|&code| spelling.spell(guide.printed(&[], code))),
     );
+    let leaves = guide.get_leaves().iter().flat_map(Leaf::get_codes);
     known.extend(
         guide
             .get_codes()
             .iter()
+            .chain(leaves)
             .map(|rename| spelling.spell(rename.tool())),
     );
     known
@@ -516,7 +519,9 @@ fn check(
         declared: declared.iter().map(|(text, _)| text.clone()).collect(),
         known,
         components,
-        usage: spelling.spell(guide.printed(&crumbkit::codes::CLI_USAGE)),
+        // A leaf cannot rename the usage code, so every command prints the
+        // guide's.
+        usage: spelling.spell(guide.printed(&[], &crumbkit::codes::CLI_USAGE)),
         allowances,
         problems: Vec::new(),
         report: String::new(),

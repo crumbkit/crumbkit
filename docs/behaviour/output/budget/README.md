@@ -157,7 +157,10 @@ Why: ADR-0046, ADR-0041.
 
 A tool sets its own over-budget code with a `Rename` of
 `crumbkit::output::over_budget` in `Guide::codes`, which `cut` and the
-failure report in place of crumbkit's for every document. An `Exit` that
+failure report in place of crumbkit's for every document. A `Rename` in
+`Leaf::codes` sets the code for the runs of one command, and
+`check_output_budget` expects the exit that the guide gives that command's
+code. An `Exit` that
 lists the code gives the failure its own exit code in place of 1
 ([exit codes](../../failures/exit-codes.md)). The failure keeps crumbkit's
 message and recovery.
@@ -169,7 +172,7 @@ failure with the code. The
 [`crumbkit.finish` span](../../usage-log/trace-context.md) records the code as
 it records a failure's code.
 
-Why: ADR-0046.
+Why: ADR-0046, ADR-0060.
 
 ## The budget check
 

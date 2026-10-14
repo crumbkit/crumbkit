@@ -81,7 +81,11 @@ mod tests;
 /// - a topic whose name an earlier topic already has, because `parse`
 ///   prints only the first;
 /// - a topic name that is not lowercase ASCII letters and digits in words
-///   joined by single dashes, starting with a letter, such as `catalogue`.
+///   joined by single dashes, starting with a letter, such as `catalogue`;
+/// - a name of [`Guide::field_names`](crumbkit::help::Guide::field_names)
+///   that is empty, holds whitespace or a control character, is listed
+///   twice or already follows the field name rule, because it then has no
+///   use beside the rule.
 ///
 /// A hidden subcommand passes whether or not a goal names it, and a hidden
 /// command needs no leaf. A command that no group names keeps clap's list
@@ -203,7 +207,42 @@ pub fn check_guide(command: &Command, guide: &Guide) {
     }
     check_leaves(command, guide, &mut problems);
     check_topics(command, guide, &mut problems);
+    check_field_names(guide, &mut problems);
     tree::report("guide rules", &problems);
+}
+
+/// Adds a problem to `problems` for each name of
+/// [`Guide::field_names`](crumbkit::help::Guide::field_names) that breaks a
+/// field name rule of [`check_guide`].
+fn check_field_names(guide: &Guide, problems: &mut Vec<String>) {
+    let names = guide.get_field_names();
+    for (index, &name) in names.iter().enumerate() {
+        if name.is_empty() {
+            problems.push(format!(
+                "the field name {name:?} is empty, so no failure field can have it"
+            ));
+        } else if name
+            .chars()
+            .any(|character| character.is_whitespace() || character.is_control())
+        {
+            problems.push(format!(
+                "the field name {name:?} holds whitespace or a control character, which a reader cannot tell apart from the text around it"
+            ));
+        } else if crumbkit::Field::new(name, crumbkit::FieldValue::Null).follows_name_rule() {
+            problems.push(format!(
+                "the field name {name:?} follows crumbkit's field name rule already, so it needs no listing"
+            ));
+        }
+        // Only the second listing of a name reports it, so a name listed
+        // three times is one problem.
+        let earlier = names[..index]
+            .iter()
+            .filter(|&&earlier| earlier == name)
+            .count();
+        if earlier == 1 {
+            problems.push(format!("the field name {name:?} is listed more than once"));
+        }
+    }
 }
 
 /// Adds a problem when `leaf` prints a batch's failures among its rows in

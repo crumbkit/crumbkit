@@ -8,7 +8,7 @@ use clap::Command;
 use super::{Answer, Prepared};
 use crate::output::budget::{self, Over, OverBudget};
 use crate::output::envelope::Failures;
-use crate::output::failure::PreparedFailure;
+use crate::output::failure::{PreparedFailure, Printing};
 use crate::{Code, Rows, Spelling};
 
 /// What the failure of a batch's left-out keys needs beside the batch.
@@ -79,7 +79,13 @@ impl<T: Rows> Prepared<'_, T> {
             // `code` is already the code that the run prints, so no rename
             // applies to it.
             let prepared = in_document.then(|| {
-                PreparedFailure::new(&over, left_out.spelling, &[], left_out.command, err)
+                PreparedFailure::new(
+                    &over,
+                    left_out.spelling,
+                    Printing::default(),
+                    left_out.command,
+                    err,
+                )
             });
             self.measured_write(out, shown, None, Some(failures(prepared.as_ref())))?
         };
@@ -114,7 +120,7 @@ impl<T: Rows> Prepared<'_, T> {
         let prepared = PreparedFailure::new(
             &most,
             left_out.spelling,
-            &[],
+            Printing::default(),
             left_out.command.as_deref_mut(),
             err,
         );
@@ -134,7 +140,7 @@ impl<T: Rows> Prepared<'_, T> {
             let prepared = PreparedFailure::new(
                 &failure,
                 left_out.spelling,
-                &[],
+                Printing::default(),
                 left_out.command.as_deref_mut(),
                 err,
             );

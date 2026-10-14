@@ -7,7 +7,8 @@ use clap::Command;
 
 use crate::JsonLayout;
 use crate::form::FailureForm;
-use crate::help::{Exit, Guide, Rename};
+use crate::help::rename::Renames;
+use crate::help::{Exit, Guide};
 
 /// The command tree that [`parse`](crate::parse) parsed against, with the
 /// words that the caller typed after the program name and the values that
@@ -22,7 +23,7 @@ use crate::help::{Exit, Guide, Rename};
 /// clap alone passes its `Command`, which converts into a `Parsed` without
 /// words, so `confirm` has no command line to repeat, or builds it with
 /// [`Parsed::guided`] when its guide sets a failure form, an output budget,
-/// a JSON layout or exit codes.
+/// a JSON layout, exit codes, renames or field names.
 #[derive(Clone, Debug)]
 pub struct Parsed {
     /// The command tree, built as parsing left it.
@@ -46,22 +47,33 @@ pub struct Parsed {
     /// The exit codes that the tool's guide declares, whose failure codes
     /// choose a failed run's exit code (ADR-0037).
     pub(crate) exits: &'static [Exit],
-    /// The tool's own codes for crumbkit's failures (ADR-0056).
-    pub(crate) renames: &'static [Rename],
+    /// The tool's own codes for crumbkit's failures, of the guide and of
+    /// the leaf of the parsed command (ADR-0056, ADR-0060).
+    pub(crate) renames: Renames,
+    /// The failure field names that break the rule and that the tool's
+    /// guide lists (ADR-0061).
+    pub(crate) field_names: &'static [&'static str],
 }
 
 impl Parsed {
     /// Returns the command tree, the words after the program name, which
     /// hold any values that a picker added, whether the caller passed
     /// `--no-input`, and the failure form, terminal detection, output budget
-    /// and JSON layout of `guide`, and the exit codes and renames that it
-    /// declares.
-    pub(crate) const fn new(
+    /// and JSON layout of `guide`, and the exit codes, renames and field
+    /// names that it declares. The renames of the guide's leaf at `path`, the real names
+    /// of the parsed command's subcommands from the root, come before the
+    /// guide's (ADR-0060).
+    pub(crate) fn new(
         command: Command,
         words: Vec<OsString>,
         no_input: bool,
         guide: &Guide,
+        path: &[String],
     ) -> Self {
+        let leaf = guide
+            .get_leaves()
+            .iter()
+            .find(|leaf| leaf.path().iter().eq(path.iter()));
         Self {
             command,
             words: Some(words),
@@ -71,19 +83,24 @@ impl Parsed {
             output_budget: budget_of(guide),
             json_layout: guide.layout(),
             exits: guide.get_exits(),
-            renames: guide.get_codes(),
+            renames: Renames::with_leaf(guide, leaf),
+            field_names: guide.get_field_names(),
         }
     }
 
     /// Returns a `Parsed` without words for a tool that parsed `command`
     /// with clap alone, which keeps the failure form, the output budget, the
-    /// JSON layout, the exit codes and the renames of `guide`, so `finish`
-    /// prints failures in the form (ADR-0045) with the tool's codes
-    /// (ADR-0056), results within the budget (ADR-0046) and documents in the
+    /// JSON layout, the exit codes, the renames and the field names of
+    /// `guide`, so `finish` prints failures in the form (ADR-0045) with the
+    /// tool's codes (ADR-0056) and fields (ADR-0061), results within the budget (ADR-0046) and documents in the
     /// layout (ADR-0052), and exits with the code that the guide declares
     /// for a failure (ADR-0037), and whether `guide` turns
     /// terminal detection off (ADR-0049). A tool whose guide sets none of
-    /// them passes its `Command` to `Output::set_command` directly.
+    /// them passes its `Command` to `Output::set_command` directly. Without
+    /// the typed words, a `Parsed` from this function does not know the
+    /// run's command, so it reads only the renames of
+    /// [`Guide::codes`](crate::help::Guide::codes) and none of
+    /// [`Leaf::codes`](crate::help::Leaf::codes).
     #[must_use]
     pub const fn guided(command: Command, guide: &Guide) -> Self {
         Self {
@@ -95,7 +112,8 @@ impl Parsed {
             output_budget: budget_of(guide),
             json_layout: guide.layout(),
             exits: guide.get_exits(),
-            renames: guide.get_codes(),
+            renames: Renames::of(guide),
+            field_names: guide.get_field_names(),
         }
     }
 
@@ -132,7 +150,8 @@ impl From<Command> for Parsed {
             output_budget: None,
             json_layout: None,
             exits: &[],
-            renames: &[],
+            renames: Renames::default(),
+            field_names: &[],
         }
     }
 }

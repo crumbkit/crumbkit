@@ -2,7 +2,7 @@
 
 use clap::Command;
 use crumbkit::Code;
-use crumbkit::help::{Exit, Guide, Rename};
+use crumbkit::help::{Exit, Guide, Leaf, Rename};
 
 use super::check_exit_codes;
 use crate::testing::panic_message;
@@ -228,6 +228,89 @@ fn two_renames_to_one_code_of_the_tool_fail_the_check() {
         checked(&GUIDE, &[]).unwrap(),
         "the command tree breaks crumbkit's exit code rules:\n\
          the guide renames crumbkit::commands::not_found to shelf::cli::usage, which it gives crumbkit::cli::usage already, so a caller cannot tell the two failures apart"
+    );
+}
+
+#[test]
+fn a_leaf_that_renames_a_crumbkit_code_twice_fails_the_check() {
+    const MOVED: Code = Code::new("shelf", "books", "moved");
+    const GONE: Code = Code::new("shelf", "books", "gone");
+    const GUIDE: Guide = Guide::new().leaves(&[Leaf::new(&["books", "import"]).codes(&[
+        Rename::new(&crumbkit::codes::VERSION_CONFLICT, &MOVED),
+        Rename::new(&crumbkit::codes::VERSION_CONFLICT, &GONE),
+    ])]);
+
+    assert_eq!(
+        checked(&GUIDE, &[]).unwrap(),
+        "the command tree breaks crumbkit's exit code rules:\n\
+         the leaf `shelf books import` renames crumbkit::version::conflict twice, and a run prints only the first rename, shelf::books::moved"
+    );
+}
+
+#[test]
+fn a_leaf_s_rename_to_a_code_that_the_guide_gives_another_crumbkit_code_fails_the_check() {
+    const USAGE: Code = Code::new("shelf", "cli", "usage");
+    const GUIDE: Guide = Guide::new()
+        .codes(&[Rename::new(&crumbkit::codes::CLI_USAGE, &USAGE)])
+        .leaves(&[Leaf::new(&["books", "import"])
+            .codes(&[Rename::new(&crumbkit::codes::VERSION_CONFLICT, &USAGE)])]);
+
+    assert_eq!(
+        checked(&GUIDE, &[]).unwrap(),
+        "the command tree breaks crumbkit's exit code rules:\n\
+         the leaf `shelf books import` renames crumbkit::version::conflict to shelf::cli::usage, which the guide gives crumbkit::cli::usage already, so a caller cannot tell the two failures apart"
+    );
+}
+
+#[test]
+fn two_leaves_that_rename_different_crumbkit_codes_to_one_code_fail_the_check() {
+    const MOVED: Code = Code::new("shelf", "books", "moved");
+    const GUIDE: Guide = Guide::new().leaves(&[
+        Leaf::new(&["books", "list"])
+            .codes(&[Rename::new(&crumbkit::codes::VERSION_CONFLICT, &MOVED)]),
+        Leaf::new(&["books", "import"])
+            .codes(&[Rename::new(&crumbkit::codes::OUTPUT_OVER_BUDGET, &MOVED)]),
+    ]);
+
+    assert_eq!(
+        checked(&GUIDE, &[]).unwrap(),
+        "the command tree breaks crumbkit's exit code rules:\n\
+         the leaf `shelf books import` renames crumbkit::output::over_budget to shelf::books::moved, which the leaf `shelf books list` gives crumbkit::version::conflict already, so a caller cannot tell the two failures apart"
+    );
+}
+
+#[test]
+fn a_leaf_that_gives_a_crumbkit_code_its_own_name_and_exit_passes() {
+    const STALE: Code = Code::new("shelf", "books", "stale");
+    const MOVED: Code = Code::new("shelf", "books", "moved");
+    const GUIDE: Guide = Guide::new()
+        .codes(&[Rename::new(&crumbkit::codes::VERSION_CONFLICT, &STALE)])
+        .exits(&[
+            Exit::new(5, "A book changed since it was read.").failures(&[&STALE]),
+            Exit::new(6, "A book moved during the import.").failures(&[&MOVED]),
+        ])
+        .leaves(&[Leaf::new(&["books", "import"])
+            .codes(&[Rename::new(&crumbkit::codes::VERSION_CONFLICT, &MOVED)])]);
+
+    assert_eq!(checked(&GUIDE, &[]), None);
+}
+
+#[test]
+fn an_exit_that_lists_a_crumbkit_code_and_another_that_lists_a_leaf_s_rename_of_it_fail_the_check()
+{
+    const MOVED: Code = Code::new("shelf", "books", "moved");
+    const GUIDE: Guide = Guide::new()
+        .exits(&[
+            Exit::new(5, "A book changed.").failures(&[&crumbkit::codes::VERSION_CONFLICT]),
+            Exit::new(6, "A book moved.").failures(&[&MOVED]),
+        ])
+        .leaves(&[Leaf::new(&["books", "import"])
+            .codes(&[Rename::new(&crumbkit::codes::VERSION_CONFLICT, &MOVED)])]);
+
+    assert_eq!(
+        checked(&GUIDE, &[]).unwrap(),
+        "the command tree breaks crumbkit's exit code rules:\n\
+         the exit code 6 lists the failure code shelf::books::moved, which the exit code 5 lists already, so a run of `shelf books import` that fails with it cannot exit with both"
     );
 }
 

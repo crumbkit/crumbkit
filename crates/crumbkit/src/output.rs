@@ -34,7 +34,8 @@ use self::failure::Printing;
 pub use self::layout::JsonLayout;
 pub use self::stream::{Streaming, stream, stream_to};
 use crate::form::FailureForm;
-use crate::help::{Exit, Guide, Rename, view};
+use crate::help::rename::Renames;
+use crate::help::{Exit, Guide, view};
 use crate::{AsFailure, Document, Parsed, Rows, Sink, Spelling};
 
 #[cfg(test)]
@@ -152,10 +153,17 @@ pub struct Output {
     #[arg(skip)]
     exits: &'static [Exit],
 
-    /// The tool's own codes for crumbkit's failures, which `set_command`
-    /// copies from the `Parsed` (ADR-0056).
+    /// The tool's own codes for crumbkit's failures, of the guide and of
+    /// the leaf of the parsed command, which `set_command` copies from the
+    /// `Parsed` (ADR-0056, ADR-0060).
     #[arg(skip)]
-    renames: &'static [Rename],
+    renames: Renames,
+
+    /// The failure field names that break the rule and that the tool's
+    /// guide lists, which `set_command` copies from the `Parsed`
+    /// (ADR-0061).
+    #[arg(skip)]
+    field_names: &'static [&'static str],
 }
 
 /// The warning that a debug build of `finish` and `stream` writes when the
@@ -248,6 +256,7 @@ impl Output {
         self.json_layout = parsed.json_layout;
         self.exits = parsed.exits;
         self.renames = parsed.renames;
+        self.field_names = parsed.field_names;
         self.budget = Some(budget::from_environment(
             parsed.output_budget.unwrap_or(budget::DEFAULT),
         ));
@@ -314,7 +323,8 @@ impl Output {
             no_terminal: !guide.terminal_detection(),
             json_layout: guide.layout(),
             exits: guide.get_exits(),
-            renames: guide.get_codes(),
+            renames: Renames::of(guide),
+            field_names: guide.get_field_names(),
             ..Self::default()
         }
     }
@@ -343,14 +353,15 @@ impl Output {
     }
 
     /// Returns what the guide that `set_command` copied decides about the
-    /// run's failures: the form, the JSON layout, the exit codes and the
-    /// renames.
+    /// run's failures: the form, the JSON layout, the exit codes, the
+    /// renames and the listed field names.
     pub(crate) const fn printing(&self) -> Printing {
         Printing {
             form: self.failure_form,
             layout: self.json_layout,
             exits: self.exits,
             renames: self.renames,
+            field_names: self.field_names,
         }
     }
 }

@@ -223,3 +223,56 @@ fn a_batch_that_prints_its_failures_in_input_order_is_a_failures_in_order_custom
         }])
     );
 }
+
+#[test]
+fn a_leaf_s_rename_and_an_exit_that_lists_it_are_customisations_of_that_command() {
+    const MOVED: Code = Code::new("shelf", "books", "moved");
+    const GUIDE: Guide = Guide::new()
+        .exits(&[Exit::new(6, "A book moved during the import.").failures(&[&MOVED])])
+        .leaves(&[Leaf::new(&["books", "import"])
+            .codes(&[Rename::new(&crumbkit::codes::VERSION_CONFLICT, &MOVED)])]);
+    let shelf = Command::new("shelf");
+
+    let listed: Vec<_> = customisations(&shelf, &GUIDE)
+        .into_iter()
+        .map(|entry| (entry.declaration, entry.applies_to, entry.declares))
+        .collect();
+
+    assert_eq!(
+        listed,
+        [
+            (
+                "exit-code",
+                "shelf books import".to_owned(),
+                "A failure with shelf::books::moved exits with 6, where crumbkit's default is 1."
+                    .to_owned()
+            ),
+            (
+                "code-rename",
+                "shelf books import".to_owned(),
+                "Runs print shelf::books::moved in place of crumbkit::version::conflict."
+                    .to_owned()
+            ),
+        ]
+    );
+}
+
+#[test]
+fn field_names_from_another_system_are_one_field_names_customisation_of_every_run() {
+    const GUIDE: Guide = Guide::new()
+        .codes(&[Rename::new(&CLI_USAGE, &USAGE)])
+        .field_names(&["requestId", "Content-Type"]);
+
+    let list = customisations(&Command::new("shelf"), &GUIDE);
+
+    let list = serde_json::to_value(&list).unwrap();
+    assert_eq!(
+        list[1],
+        json!({
+            "declaration": "field-names",
+            "applies_to": "every run of shelf",
+            "declares": "Failures may print the fields requestId and Content-Type, whose names come from another system.",
+        })
+    );
+    assert_eq!(list.as_array().unwrap().len(), 2);
+}

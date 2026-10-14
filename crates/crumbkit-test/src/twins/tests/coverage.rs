@@ -1,7 +1,7 @@
 //! Tests for `check_twins`, which runs every twin of a tool and requires a
 //! twin for each declared code.
 
-use crumbkit::help::{Guide, Rename};
+use crumbkit::help::{Guide, Leaf, Rename};
 use crumbkit::{Code, Spelling};
 
 use super::tree;
@@ -285,6 +285,22 @@ fn a_declared_code_that_the_guide_prints_in_place_of_one_of_crumbkits_codes_need
         Guide::new().codes(&[Rename::new(&crumbkit::codes::CLI_USAGE, &BAD_LIMIT)]);
     const CODES: &[&[&Code]] = &[&[&NOT_FOUND, &BAD_LIMIT]];
     let dir = TempDir::new("twins-renamed").unwrap();
+    dir.write_script("tool", SCRIPT);
+    let path = dir.path().join("tool").display().to_string();
+    let twins = Twins::new(Examples::new(&path, ""), Spelling::COLONS, CODES).pairs(&[SHOW_7]);
+
+    let problems = panic_message(|| check_twins(&tree(), &GUIDE, &twins));
+
+    assert_eq!(problems, None);
+}
+
+#[test]
+fn a_declared_code_that_a_leaf_prints_in_place_of_one_of_crumbkits_codes_needs_no_twin() {
+    const STALE: Code = Code::new("tool", "books", "stale");
+    const GUIDE: Guide = Guide::new().leaves(&[Leaf::new(&["books", "show"])
+        .codes(&[Rename::new(&crumbkit::codes::VERSION_CONFLICT, &STALE)])]);
+    const CODES: &[&[&Code]] = &[&[&NOT_FOUND, &STALE]];
+    let dir = TempDir::new("twins-leaf-renamed").unwrap();
     dir.write_script("tool", SCRIPT);
     let path = dir.path().join("tool").display().to_string();
     let twins = Twins::new(Examples::new(&path, ""), Spelling::COLONS, CODES).pairs(&[SHOW_7]);

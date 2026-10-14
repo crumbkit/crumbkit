@@ -231,3 +231,23 @@ fn a_twin_that_refuses_a_renamed_crumbkit_code_passes_when_the_tool_prints_its_o
         None
     );
 }
+
+#[test]
+fn a_twin_that_refuses_a_crumbkit_code_that_its_leaf_renames_passes_when_the_tool_prints_the_leaf_s_code_and_exit()
+ {
+    const RENAMING: Guide = Guide::new()
+        .exits(EXITS)
+        .leaves(&[Leaf::new(&["books", "get"]).codes(&[Rename::new(
+            &crumbkit::codes::OUTPUT_OVER_BUDGET,
+            &TIMED_OUT,
+        )])]);
+
+    assert_eq!(
+        checked_with(
+            &RENAMING,
+            &crumbkit::codes::OUTPUT_OVER_BUDGET,
+            &["books", "get", "1"]
+        ),
+        None
+    );
+}

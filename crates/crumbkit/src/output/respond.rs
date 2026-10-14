@@ -67,7 +67,7 @@ pub(super) fn respond<T: Rows, E: AsFailure, O: Write, W: Write, R>(
                 PreparedFailure::new(
                     failure,
                     spelling,
-                    printing.renames,
+                    printing,
                     output.command.as_mut(),
                     &mut sink.err,
                 )
@@ -163,9 +163,9 @@ fn print_failures<T: Rows, O: Write, W: Write, R>(
             let _ = failure::write_text(&mut sink.err, output.failure_form, failure);
         }
         if let Some(over) = left_out {
+            let printing = output.printing();
             let command = output.command.as_mut();
-            let renames = output.renames;
-            let over = PreparedFailure::new(over, spelling, renames, command, &mut sink.err);
+            let over = PreparedFailure::new(over, spelling, printing, command, &mut sink.err);
             let _ = failure::write_text(&mut sink.err, output.failure_form, &over);
         }
     }

@@ -62,12 +62,20 @@ A failure names the values at fault through `Failure::fields`, such as the id
 of a missing book, so a program reads the value without parsing the message.
 A field name follows the rule of a code segment. `finish` leaves out a field
 whose name breaks the rule or repeats an earlier name, so a wrong name never
-fails a run that has already failed. A field's value can be a list, an object
+fails a run that has already failed. A tool whose field names come from
+another system, such as `requestId` from an API or `Content-Type` from a
+header, lists those names with `Guide::field_names`. `finish` and `stream`
+then keep a field with a listed name, and the served failure schema accepts
+the listed names beside the rule ([schemas](../schemas/README.md)). The
+checked-in schema keeps the rule alone, because it describes crumbkit's
+document for every tool. `check_guide` reports a listed name that is empty,
+holds whitespace or a control character, is listed twice, or already
+follows the rule. A field's value can be a list, an object
 or null as well as a scalar ([schemas](../schemas/README.md)). A tool's own
 field shapes are a [declaration](../adoption/declarations.md) that needs no
 opt-out.
 
-Why: ADR-0001, ADR-0007.
+Why: ADR-0001, ADR-0007, ADR-0061.
 
 ## Debug-build warnings
 
@@ -101,11 +109,13 @@ a code exactly.
 crumbkit's own codes are public constants in `crumbkit::codes`, which
 `codes::ALL` lists, so a tool's tests can name them. A tool may print its own
 code in place of any of crumbkit's, such as its own usage code for
-`crumbkit::cli::usage`, with a `Rename` in `Guide::codes`. crumbkit still
+`crumbkit::cli::usage`, with a `Rename` in `Guide::codes`. One command can
+print its own code for one of crumbkit's failures with a `Rename` in
+`Leaf::codes`, which its runs read before the guide's. crumbkit still
 decides when the failure happens, its message and its recovery
-([declarations](../adoption/declarations.md)).
+([declarations](../adoption/declarations.md#codes-per-command)).
 
-Why: ADR-0001, ADR-0056.
+Why: ADR-0001, ADR-0056, ADR-0060.
 
 ## Codes learned at run time
 

@@ -14,7 +14,6 @@ use super::failure::PreparedFailure;
 use super::table::Table;
 use super::{Output, layout, listing, problems, prose};
 use crate::form::FailureForm;
-use crate::help::rename;
 use crate::{Code, Document, JsonLayout, Row, Rows, Shape, Spelling, codes};
 
 mod batch;
@@ -83,7 +82,7 @@ pub(super) fn write_result<T: Rows>(
     let budget = output.budget();
     // The code is the tool's rename when the guide has one, so the cut,
     // the failure, the usage log and the trace all carry it.
-    let code = rename::printed(output.renames, &codes::OUTPUT_OVER_BUDGET);
+    let code = output.renames.printed(&codes::OUTPUT_OVER_BUDGET);
     if let Some(bytes) = value.bytes().filter(|_| !output.json) {
         // The text of bytes is their own length, so it is measured without
         // a buffer.
@@ -138,7 +137,7 @@ fn write_rows<T: Rows>(
     problems: usize,
 ) -> io::Result<(Answer, usize)> {
     let budget = output.budget();
-    let code = rename::printed(output.renames, &codes::OUTPUT_OVER_BUDGET);
+    let code = output.renames.printed(&codes::OUTPUT_OVER_BUDGET);
     let next = if output.json {
         None
     } else {

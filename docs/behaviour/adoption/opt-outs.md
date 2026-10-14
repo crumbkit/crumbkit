@@ -72,10 +72,12 @@ Why: ADR-0036, ADR-0015, ADR-0053, ADR-0005.
   ([help checks](../help/checks.md)).
 - `check_mounts` exists to keep crumbkit's commands at fixed paths.
 - `check_codes` keeps failure codes unique.
-- The name rule of a failure's fields has no opt-out, because the failure
-  document's schema promises every reader that rule.
+- The name rule of a failure's fields has no opt-out. A tool whose field
+  names come from another system lists them with `Guide::field_names`, which
+  is a [declaration](declarations.md), and the schema that the tool serves
+  then promises the listed names beside the rule.
 
-Why: ADR-0036, ADR-0015.
+Why: ADR-0036, ADR-0061, ADR-0015.
 
 ## The opt-out report
 
