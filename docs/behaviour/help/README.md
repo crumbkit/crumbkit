@@ -23,8 +23,9 @@ The lines print in this order, each only on the pages named:
    [Leaf examples and columns](examples.md) describes.
 2. `Effects:` on a leaf that declares its effects, then `Writes:` on a leaf
    that declares write guards ([write guards](../effects/write-guards.md)),
-   then `Output:` on a leaf that prints a stream or bytes
-   ([streams](../output/streams.md)), then `Problems:` on a leaf whose row
+   then `Output:` on a leaf that prints a stream, bytes or a headed batch
+   ([streams](../output/streams.md),
+   [headed bytes](../output/README.md#headed-bytes)), then `Problems:` on a leaf whose row
    type names a problem field.
 3. In `-h`, one line that names the visible global flags of the root and of
    each command on the way. `--help` lists those flags in full.

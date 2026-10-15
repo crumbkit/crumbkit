@@ -36,6 +36,10 @@ pub const STREAM_LINE: &str =
 pub const BYTES_LINE: &str =
     "Output: the bytes unchanged, and --json prints them as text or base64.";
 
+/// The line that the `-h` and `--help` of a leaf whose document is headed
+/// print after the effects line, in help's wording (ADR-0062).
+pub const HEADED_LINE: &str = "Output: each answer's bytes unchanged, under a ==> KEY <== header when there are several keys, and --json prints the bytes as text or base64.";
+
 /// A command without subcommands whose help shows examples, and whose
 /// `--help` describes the columns of the result it prints.
 ///
@@ -227,7 +231,7 @@ impl Leaf {
     /// Returns the `Output:` line that the leaf's `-h` and `--help` print
     /// after the effects line: [`STREAM_LINE`] for a stream,
     /// [`BYTES_LINE`] for a document that holds [`Bytes`](crate::Bytes),
-    /// and `None` for any other leaf.
+    /// [`HEADED_LINE`] for a headed document, and `None` for any other leaf.
     #[must_use]
     pub const fn output_line(&self) -> Option<&'static str> {
         match self.columns {
@@ -236,6 +240,7 @@ impl Leaf {
                 shape: Some(Shape::Bytes),
                 ..
             }) => Some(BYTES_LINE),
+            Some(columns) if columns.document.is_headed() => Some(HEADED_LINE),
             _ => None,
         }
     }
@@ -244,7 +249,8 @@ impl Leaf {
     /// its declared document decides (ADR-0016). A prose or bytes document
     /// offers no view flag. Rows offer `--fields`, offer `--long` when the
     /// row type has long columns, and offer `--full` when the document has
-    /// crumbkit's envelope. A leaf without a document offers every view
+    /// crumbkit's envelope. A headed document offers neither `--long` nor
+    /// `--full` (ADR-0062). A leaf without a document offers every view
     /// flag, because crumbkit cannot tell what its command prints.
     #[must_use]
     pub const fn offers(&self, flag: ViewFlag) -> bool {
@@ -259,6 +265,7 @@ impl Leaf {
                 columns.shape,
                 !columns.long.is_empty(),
                 columns.document.has_envelope(),
+                columns.document.is_headed(),
                 flag,
             ),
             None => None,

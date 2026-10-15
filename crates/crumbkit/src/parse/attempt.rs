@@ -7,7 +7,7 @@ use clap::parser::ValueSource;
 use clap::{ArgMatches, Command, FromArgMatches};
 
 use super::pick;
-use crate::help::{Guide, ViewFlag, view};
+use crate::help::{Guide, Leaf, ViewFlag, view};
 use crate::refusal::Refusal;
 
 /// Parses `args` against `command`, and returns the tool's parsed type,
@@ -31,7 +31,9 @@ pub(super) fn attempt<C: FromArgMatches>(
 ///
 /// It first refuses the first view flag, in the order `--fields`, `--long`,
 /// `--full`, that the leaf of `guide` for the deepest command in `matches`
-/// does not offer (ADR-0016). It then refuses two typed flags that cannot
+/// does not offer (ADR-0016). On a leaf whose document is headed, it then
+/// refuses `--fields` without `--json`, as [`view::headed`] describes
+/// (ADR-0062). It then refuses two typed flags that cannot
 /// work together, on every command, as [`view::pairing`] describes.
 ///
 /// clap copies the value of a global flag to every command on the path, so
@@ -70,12 +72,16 @@ pub(super) fn refusal(command: &Command, matches: &ArgMatches, guide: &Guide) ->
             typed(flag.id()).then(|| view::refusal(flag, reason))
         })
     });
-    unoffered.or_else(|| {
-        view::pairing(view::Typed {
-            json: typed("json"),
-            fields: typed(ViewFlag::Fields.id()),
-            long: typed(ViewFlag::Long.id()),
-            full: typed(ViewFlag::Full.id()),
-        })
-    })
+    let typed = view::Typed {
+        json: typed("json"),
+        fields: typed(ViewFlag::Fields.id()),
+        long: typed(ViewFlag::Long.id()),
+        full: typed(ViewFlag::Full.id()),
+    };
+    let headed = leaf
+        .and_then(Leaf::get_document)
+        .is_some_and(|document| document.is_headed());
+    unoffered
+        .or_else(|| headed.then(|| view::headed(typed)).flatten())
+        .or_else(|| view::pairing(typed))
 }

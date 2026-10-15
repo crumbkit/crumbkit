@@ -255,6 +255,49 @@ fn long_help_of_a_bytes_leaf_prints_the_bytes_output_line_after_the_effects() {
     assert!(page.ends_with(&expected), "{page}");
 }
 
+/// A removed planet's file, which a headed document prints under a header.
+#[derive(serde::Serialize, schemars::JsonSchema)]
+struct File {
+    /// The planet's name.
+    name: String,
+    /// The file's bytes.
+    #[serde(flatten)]
+    content: crate::Bytes,
+}
+
+impl crate::Row for File {
+    const COLUMNS: &'static [&'static str] = &["name"];
+}
+
+impl crate::Headed for File {
+    fn bytes(&self) -> Option<&crate::Bytes> {
+        Some(&self.content)
+    }
+}
+
+/// The guide of `tool()`, whose leaf prints each removed planet's file
+/// under a header.
+const HEADED: Guide = Guide::new().leaves(&[Leaf::new(&["planets", "remove"])
+    .examples(&[Example::new(&["ceres"], "Remove Ceres")])
+    .effects(Effects::destructive().idempotent())
+    .document(
+        crate::Document::<crate::Batch<File, crate::Error>>::new(
+            "tool",
+            "planets-remove",
+            1,
+            "The removed planets' files.",
+        )
+        .headed(),
+    )]);
+
+#[test]
+fn help_of_a_headed_leaf_prints_the_headed_output_line_after_the_effects() {
+    let page = help(&HEADED, &["tool", "planets", "remove", "-h"]);
+
+    let expected = "Effects: destructive, idempotent, closed-world.\nOutput: each answer's bytes unchanged, under a ==> KEY <== header when there are several keys, and --json prints the bytes as text or base64.\n";
+    assert!(page.contains(expected), "{page}");
+}
+
 #[test]
 fn a_leaf_that_prints_one_document_prints_no_output_line() {
     let page = help(&GUIDE, &["tool", "planets", "remove", "--help"]);

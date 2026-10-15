@@ -105,7 +105,7 @@ checks](end-to-end.md) describes how each run is isolated and timed.
 | Check | What it enforces |
 | --- | --- |
 | [`check_examples`](../../../crates/crumbkit-test/src/examples.rs) | Every example in the guide's leaves exits with code 0 and prints the output in its golden files. |
-| [`check_output_budget`](../../../crates/crumbkit-test/src/output_budget.rs) | Each `--json` example keeps the output budget's contract when its budget is half the bytes it prints. |
+| [`check_output_budget`](../../../crates/crumbkit-test/src/output_budget.rs) | Each `--json` example, and each text example of a headed leaf, keeps the output budget's contract when its budget is half the bytes it prints. |
 | [`check_command_reference`](../../../crates/crumbkit-test/src/reference.rs) | The checked-in Markdown command reference matches the one written from the binary's `commands list`. |
 | [`check_twin`](../../../crates/crumbkit-test/src/twins.rs) | A refused command line fails with its code, and a line that differs from it by one word succeeds. |
 | [`check_twins`](../../../crates/crumbkit-test/src/twins/coverage.rs) | Every declared code has a twin, an untwinned opt-out or an entry in the unprovoked list. |

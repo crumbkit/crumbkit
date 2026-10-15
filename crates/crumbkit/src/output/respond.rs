@@ -6,7 +6,7 @@ use std::io::{self, Write};
 
 use super::budget::OverBudget;
 use super::dry_run::DRY_RUN_LINE;
-use super::failure::{self, PreparedFailure};
+use super::failure::{self, PreparedFailure, Printing};
 use super::result::{Answer, write_result};
 use super::{Output, fields, problems};
 use crate::{AsFailure, Document, Rows, Sink, Spelling, exit};
@@ -27,7 +27,7 @@ pub(super) fn respond<T: Rows, E: AsFailure, O: Write, W: Write, R>(
 ) -> (u8, bool) {
     output.warn_without_command(&mut sink.err);
     let printing = output.printing();
-    if let Some(refusal) = fields::flags_refusal::<T>(output, document.has_envelope()) {
+    if let Some(refusal) = fields::flags_refusal(output, document) {
         let code = refusal.print(
             sink,
             output.json,
@@ -112,6 +112,13 @@ pub(super) fn respond<T: Rows, E: AsFailure, O: Write, W: Write, R>(
         && code == 0
         && !matches!(answer, Answer::Refused(_));
     let (code, cut, left_out) = answered(sink, output, spelling, &answer, code);
+    let failures = match &answer {
+        Answer::Headed { oversize, .. } => failures.map(|listed| {
+            let command = output.command.as_mut();
+            with_oversize(listed, oversize, value, spelling, command, &mut sink.err)
+        }),
+        _ => failures,
+    };
     let code = print_failures(sink, output, spelling, document, failures, left_out, code);
     // A failure decides the exit before a row that reports a problem, and a
     // reader that closed the pipe early still sees the problem's exit.
@@ -197,6 +204,7 @@ fn answered<'a, O: Write, W: Write, R>(
             (code, true, None)
         }
         Answer::Partial(over) => (1, false, Some(over)),
+        Answer::Headed { left_out, .. } => (code, false, left_out.as_ref()),
         Answer::Refused(over) => {
             let printing = output.printing();
             failure::print(
@@ -210,4 +218,33 @@ fn answered<'a, O: Write, W: Write, R>(
             (printing.exit(over.code), false, None)
         }
     }
+}
+
+/// Returns the failures of a batch with the failure of each row of a headed
+/// batch that was too large for the budget on its own, each keyed by its
+/// row's key, in the order of the keys.
+fn with_oversize<'a, T: Rows>(
+    listed: Vec<PreparedFailure<'a>>,
+    oversize: &'a [(usize, OverBudget)],
+    value: &'a T,
+    spelling: Spelling,
+    mut command: Option<&mut clap::Command>,
+    err: &mut impl Write,
+) -> Vec<PreparedFailure<'a>> {
+    let mut merged = Vec::with_capacity(listed.len() + oversize.len());
+    let mut listed = listed.into_iter().peekable();
+    for (position, over) in oversize {
+        let before = |failure: &PreparedFailure<'_>| failure.index().is_some_and(|i| i < *position);
+        while let Some(failure) = listed.next_if(before) {
+            merged.push(failure);
+        }
+        // `code` is already the code that the run prints, so no rename
+        // applies to it.
+        let key = value.key(*position).map(|key| (*position, key));
+        let printing = Printing::default();
+        let command = command.as_deref_mut();
+        merged.push(PreparedFailure::new(over, spelling, printing, command, err).keyed(key));
+    }
+    merged.extend(listed);
+    merged
 }

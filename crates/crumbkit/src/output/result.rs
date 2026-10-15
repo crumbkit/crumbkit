@@ -17,6 +17,7 @@ use crate::form::FailureForm;
 use crate::{Code, Document, JsonLayout, Row, Rows, Shape, Spelling, codes};
 
 mod batch;
+mod headed;
 mod in_order;
 
 /// What [`write_result`] printed of a result.
@@ -34,6 +35,12 @@ pub(super) enum Answer {
     /// document does not let its first answer print. The failure prints in
     /// its place.
     Refused(OverBudget),
+    /// The whole rows of a headed batch's text that fit, with the failure of
+    /// each row too large alone, by position, and of the rows left out.
+    Headed {
+        oversize: Vec<(usize, OverBudget)>,
+        left_out: Option<OverBudget>,
+    },
 }
 
 /// Writes `value` to `out` in the format that `output` chooses, within the
@@ -60,7 +67,9 @@ pub(super) enum Answer {
 ///
 /// The text of a bytes result is the bytes unchanged. They print when they
 /// fit, or when the document always prints its first answer, and are
-/// refused otherwise, because a file cut short would look whole.
+/// refused otherwise, because a file cut short would look whole. The text
+/// of a batch whose document is headed prints each answer's bytes under a
+/// header, as [`headed::write`] describes.
 ///
 /// A serialization error becomes an `io::Error` of kind `InvalidData`, so it
 /// is reported as a failed write. `finish` writes the line of a dry run to
@@ -97,6 +106,16 @@ pub(super) fn write_result<T: Rows>(
         out.write_all(bytes)?;
         out.flush()?;
         return Ok((Answer::Whole, bytes.len()));
+    }
+    // A failure decides the exit, so the note of the problem rows, which
+    // names the exit, prints only without one.
+    let problems = if failures.is_some_and(|listed| !listed.is_empty()) {
+        0
+    } else {
+        problems
+    };
+    if let Some(bytes_of) = document.headed_bytes().filter(|_| !output.json) {
+        return headed::write(out, err, output, document, value, bytes_of, problems);
     }
     // `Prepared` borrows the output flags for the whole write, and the
     // failure of a batch's left-out keys renders its call against the
@@ -145,13 +164,6 @@ fn write_rows<T: Rows>(
     };
     let columns = columns(output, document, value);
     let values = values(&columns, value)?;
-    // A failure decides the exit, so the note of the problem rows, which
-    // names the exit, prints only without one.
-    let problems = if failures.is_some_and(|listed| !listed.is_empty()) {
-        0
-    } else {
-        problems
-    };
     let mut prepared = Prepared::new(output, document, value, &columns, &values, next, problems)?;
     let listed = failures.map(|listed| Failures {
         listed,
@@ -211,9 +223,10 @@ fn write_rows<T: Rows>(
 
 /// Returns the columns that the table and the compact JSON show, or an
 /// empty list, which does not allocate, when the result prints whole with
-/// every field or is a prose result.
+/// every field or is a prose result. Unwrapped or headed JSON holds every
+/// field unless `--fields` names some (ADR-0062).
 fn columns<'a, T: Rows>(output: &'a Output, document: Document<T>, value: &T) -> Vec<&'a str> {
-    let unwrapped = output.json && !document.has_envelope();
+    let unwrapped = output.json && (!document.has_envelope() || document.is_headed());
     let selects = if unwrapped {
         !output.fields.is_empty()
     } else {
@@ -311,7 +324,7 @@ impl<'a, T: Rows> Prepared<'a, T> {
             dry_run: output.dry_run,
             layout: output.json_layout,
             form: output.failure_form,
-            full: output.full,
+            full: output.full || (document.is_headed() && output.fields.is_empty()),
             fields: !output.fields.is_empty(),
             columns,
             values,
