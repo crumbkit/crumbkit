@@ -55,13 +55,12 @@ pub(super) fn write<T: Rows>(
         } else {
             String::new()
         };
-        let content = match bytes_of(value, index) {
-            Some(bytes) => Cow::Borrowed(bytes),
-            None => {
-                let mut line = serde_json::to_vec(row)?;
-                line.push(b'\n');
-                Cow::Owned(line)
-            }
+        let content = if let Some(bytes) = bytes_of(value, index) {
+            Cow::Borrowed(bytes)
+        } else {
+            let mut line = serde_json::to_vec(row)?;
+            line.push(b'\n');
+            Cow::Owned(line)
         };
         let alone = header.len().saturating_add(content.len());
         let first = index == 0 && document.always_prints_first();

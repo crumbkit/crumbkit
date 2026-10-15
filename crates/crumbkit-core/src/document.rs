@@ -50,6 +50,10 @@ mod tests;
 ///
 /// assert_eq!(BOOKS_LIST.to_string(), "shelf/books-list/v1");
 /// ```
+#[expect(
+    clippy::struct_excessive_bools,
+    reason = "each bool is one independent choice that its own const builder sets, and no two of them form a state machine"
+)]
 pub struct Document<T> {
     /// The component that owns the document, such as `shelf` or
     /// `example.dev`.
@@ -80,7 +84,7 @@ pub struct Document<T> {
     headed: bool,
     /// The function that returns the bytes of the row at a position of a
     /// headed batch, which `headed` sets. An untyped document has none.
-    bytes_of: Option<fn(&T, usize) -> Option<&[u8]>>,
+    bytes_of: Option<RowBytes<T>>,
     /// The value that the type key holds in place of the id, which the tool
     /// set with `with_type`.
     type_value: Option<&'static str>,
@@ -278,7 +282,7 @@ impl<T> Document<T> {
     /// and for every untyped document. `crumbkit::finish` calls it to print
     /// a headed batch.
     #[must_use]
-    pub const fn headed_bytes(&self) -> Option<fn(&T, usize) -> Option<&[u8]>> {
+    pub const fn headed_bytes(&self) -> Option<RowBytes<T>> {
         self.bytes_of
     }
 
@@ -370,6 +374,10 @@ impl<R: Headed, E: AsFailure> Document<Batch<R, E>> {
         self
     }
 }
+
+/// A function that returns the bytes of the row at a position among the
+/// rows of a result, or `None` when that row holds none.
+type RowBytes<T> = fn(&T, usize) -> Option<&[u8]>;
 
 /// Returns the bytes of the row at `index` among the rows of `batch`, or
 /// `None` when that row holds none or `index` is past the last row.
