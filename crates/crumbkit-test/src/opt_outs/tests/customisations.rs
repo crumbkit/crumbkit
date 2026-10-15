@@ -6,7 +6,7 @@ use crumbkit::codes::CLI_USAGE;
 use crumbkit::form::{FailureForm, PreparedFailure};
 use crumbkit::help::{Exit, Guide, Leaf, RefusalContext, Rename};
 use crumbkit::schemas::SCHEMAS_LIST;
-use crumbkit::{Batch, Call, Code, Document, Prose};
+use crumbkit::{Batch, Call, Code, Document, Listing, Prose};
 use schemars::{Schema, json_schema};
 use serde_json::{Value, json};
 use snapbox::assert::Action;
@@ -221,6 +221,51 @@ fn a_batch_that_prints_its_failures_in_input_order_is_a_failures_in_order_custom
             "applies_to": "shelf books show",
             "declares": "With --json, the command prints its failures among its rows in input order, in place of text on standard error.",
         }])
+    );
+}
+
+#[test]
+fn a_document_with_keys_is_an_envelope_keys_customisation_before_its_failures_in_order() {
+    const BOOKS_SHOW: Document<Batch<Book, crumbkit::Error>> =
+        Document::new("shelf", "books-show", 1, "The books.")
+            .with_keys("$type", "answers")
+            .with_type("shelf/get-books/v1")
+            .failures_in_order();
+    const GUIDE: Guide = Guide::new().leaves(&[Leaf::new(&["books", "show"]).document(BOOKS_SHOW)]);
+
+    let list = customisations(&Command::new("shelf"), &GUIDE);
+
+    let list = serde_json::to_value(&list).unwrap();
+    assert_eq!(
+        list,
+        json!([
+            {
+                "declaration": "envelope-keys",
+                "applies_to": "shelf books show",
+                "declares": "With --json, the command prints shelf/get-books/v1 under $type and its result under answers, in place of schema and data.",
+            },
+            {
+                "declaration": "failures-in-order",
+                "applies_to": "shelf books show",
+                "declares": "With --json, the command prints its failures among its rows in input order, in place of text on standard error.",
+            },
+        ])
+    );
+}
+
+#[test]
+fn a_summary_at_the_top_is_named_in_the_envelope_keys_customisation() {
+    const BOOKS_LIST: Document<Listing<Book, u32>> =
+        Document::new("shelf", "books-list", 1, "The books.")
+            .with_keys("kind", "entries")
+            .summary_at_top();
+    const GUIDE: Guide = Guide::new().leaves(&[Leaf::new(&["books", "list"]).document(BOOKS_LIST)]);
+
+    let list = customisations(&Command::new("shelf"), &GUIDE);
+
+    assert_eq!(
+        list[0].declares,
+        "With --json, the command prints shelf/books-list/v1 under kind and its result under entries, in place of schema and data, and the summary's fields at the top in place of summary."
     );
 }
 

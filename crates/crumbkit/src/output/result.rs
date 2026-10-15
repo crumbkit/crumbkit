@@ -67,9 +67,8 @@ pub(super) enum Answer {
 ///
 /// The text of a bytes result is the bytes unchanged. They print when they
 /// fit, or when the document always prints its first answer, and are
-/// refused otherwise, because a file cut short would look whole. The text
-/// of a batch whose document is headed prints each answer's bytes under a
-/// header, as [`headed::write`] describes.
+/// refused otherwise, because a file cut short would look whole. A headed
+/// batch's text prints as [`headed::write`] describes.
 ///
 /// A serialization error becomes an `io::Error` of kind `InvalidData`, so it
 /// is reported as a failed write. `finish` writes the line of a dry run to
@@ -107,8 +106,7 @@ pub(super) fn write_result<T: Rows>(
         out.flush()?;
         return Ok((Answer::Whole, bytes.len()));
     }
-    // A failure decides the exit, so the note of the problem rows, which
-    // names the exit, prints only without one.
+    // The problem note names the exit, so it prints only without a failure.
     let problems = if failures.is_some_and(|listed| !listed.is_empty()) {
         0
     } else {
@@ -495,11 +493,13 @@ impl<'a, T: Rows> Prepared<'a, T> {
         let value = self.value;
         let rows = value.rows();
         let all = shown >= rows.len();
+        if let Some(failures) =
+            failures.filter(|_| self.json && self.document.prints_failures_in_order())
+        {
+            return self.write_in_order(out, shown, failures);
+        }
         if self.json && !self.document.has_envelope() {
-            return match failures.filter(|_| self.document.prints_failures_in_order()) {
-                Some(failures) => self.write_in_order(out, shown, failures),
-                None => self.write_unwrapped(out, shown, all),
-            };
+            return self.write_unwrapped(out, shown, all);
         }
         let extras = Extras {
             total: value.total(),

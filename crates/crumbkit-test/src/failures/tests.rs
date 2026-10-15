@@ -175,3 +175,25 @@ fn each_form_document_of_an_array_in_input_order_is_read_through_the_form() {
 
     assert_eq!(read, [ReadFailure::new("a".to_owned(), vec![Step::Retry])]);
 }
+
+#[test]
+fn each_failure_of_an_array_in_input_order_under_a_declared_data_key_is_read() {
+    let stdout = br#"{"$type":"tool/get-report/v1","answers":[{"id":1},{"schema":"crumbkit/failure/v1","code":"a","recovery":{"kind":"retry"}}]}"#;
+
+    let codes: Vec<String> = read_failures(None, stdout, b"")
+        .iter()
+        .map(|failure| failure.code().to_owned())
+        .collect();
+
+    assert_eq!(codes, ["a"]);
+}
+
+#[test]
+fn each_form_document_of_an_array_in_input_order_under_a_declared_data_key_is_read_through_the_form()
+ {
+    let stdout = br#"{"$type":"tool/get-report/v1","answers":[{"id":1},{"error":{"code":"a"}}]}"#;
+
+    let read = read_failures(Some(Reader::Form(&EntryForm)), stdout, b"");
+
+    assert_eq!(read, [ReadFailure::new("a".to_owned(), vec![Step::Retry])]);
+}

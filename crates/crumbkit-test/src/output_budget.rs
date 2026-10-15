@@ -34,15 +34,17 @@ const VARIABLE: &str = "CRUMBKIT_OUTPUT_BUDGET";
 ///   marks the cut: a document holds `cut` with the budget, or, for a
 ///   document without the envelope, standard error says that output stops
 ///   at the budget;
-/// - it exits with code 0 and prints one document whose `data` is one
-///   object, which a document that always prints its first answer does, or
-///   an array of one row, which a batch of one answer prints;
+/// - it exits with code 0 and prints one document whose `data`, or the
+///   data key that `Document::with_keys` declares, is one object, which a
+///   document that always prints its first answer does, or an array of one
+///   row, which a batch of one answer prints;
 /// - it exits with the code that the guide gives the over-budget failure,
 ///   which is 1 unless an [`Exit`](crumbkit::help::Exit) lists the code,
 ///   and its last JSON document, on one line or
 ///   indented, is a failure document, a document whose last entry of
-///   `failures` is one, or an array whose last item is one, as a batch that
-///   prints its failures in input order prints it, with the field
+///   `failures` is one, or an array whose last item is one, at the top or
+///   under the declared data key, as a batch that prints its failures in
+///   input order prints it, with the field
 ///   `budget` set to the budget, or, for a document without the envelope,
 ///   standard error names the budget.
 ///
@@ -165,6 +167,9 @@ fn check(
                         code: output.status.code(),
                         stdout: &String::from_utf8_lossy(&output.stdout),
                         stderr: &String::from_utf8_lossy(&output.stderr),
+                        data_key: leaf
+                            .get_document()
+                            .map_or("data", |document| document.data_key()),
                     };
                     let printed = output.stdout.len();
                     let problem = if text {
@@ -215,6 +220,9 @@ pub(crate) struct Ran<'a> {
     pub(crate) stdout: &'a str,
     /// The run's standard error.
     pub(crate) stderr: &'a str,
+    /// The key that holds the result in the leaf's document: `data`, or the
+    /// data key that the tool declares with `Document::with_keys`.
+    pub(crate) data_key: &'a str,
 }
 
 /// Returns the problem of `ran`, a run whose output budget was `budget`
@@ -234,8 +242,8 @@ pub(crate) fn judge(ran: &Ran<'_>, budget: usize, failed: u8) -> Option<String> 
             // A batch always prints its first answer, so a batch of one
             // answer prints it whole in an array of one row.
             let one_row = matches!(documents.as_slice(), [document]
-                if document["data"].is_object()
-                    || document["data"].as_array().is_some_and(|rows| rows.len() == 1));
+                if document[ran.data_key].is_object()
+                    || document[ran.data_key].as_array().is_some_and(|rows| rows.len() == 1));
             (!one_row).then(|| {
                 format!(
                     "with an output budget of {budget} bytes, the run printed {printed} bytes and exited with code 0, and a run past its budget prints a single answer or fails with exit code {failed}"
@@ -254,7 +262,10 @@ pub(crate) fn judge(ran: &Ran<'_>, budget: usize, failed: u8) -> Option<String> 
         }
         Some(code) if code == i32::from(failed) => {
             let over = documents.last().is_some_and(|last| {
-                let failures = last["failures"].as_array().or_else(|| last.as_array());
+                let failures = last["failures"]
+                    .as_array()
+                    .or_else(|| last[ran.data_key].as_array())
+                    .or_else(|| last.as_array());
                 last["fields"]["budget"] == budget
                     || failures
                         .and_then(|failures| failures.last())

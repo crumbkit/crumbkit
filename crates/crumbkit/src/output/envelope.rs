@@ -4,7 +4,7 @@
 use std::io::{self, Write};
 
 use serde::Serialize;
-use serde::ser::{SerializeMap, Serializer};
+use serde::ser::{Error as _, SerializeMap, Serializer};
 use serde_json::Value;
 
 use super::budget::Cut;
@@ -62,12 +62,29 @@ impl Extras<'_, ()> {
     }
 }
 
+/// The fields that crumbkit writes beside the result in an envelope, which
+/// no field of a summary at the top of a document can take.
+/// `Document::with_keys` refuses the same names as keys.
+pub(crate) const WRITTEN: [&str; 6] = [
+    "dry_run",
+    "total",
+    "truncated",
+    "summary",
+    "cut",
+    "failures",
+];
+
 /// Writes the JSON document `{"schema": <id>, "data": <data>}` to `out` in
 /// `layout`, or on one line when `layout` is `None`, with `"dry_run": true`
 /// after `schema` when `dry_run` is set, `"total": <total>` after `data`
 /// when the extras hold a total, then `"truncated": <bool>`,
 /// `"summary": <summary>`, `"cut": {...}`
 /// and `"failures": [...]` when the extras hold each of them.
+///
+/// A document with its own keys writes its type key in place of `schema`,
+/// holding its type value or its id, and its data key in place of `data`.
+/// A document whose summary prints at the top writes each field of the
+/// summary in place of `summary` (ADR-0059).
 pub(super) fn write_document<T, D: Serialize, M: Serialize>(
     out: &mut impl Write,
     document: Document<T>,
@@ -85,8 +102,8 @@ pub(super) fn write_document<T, D: Serialize, M: Serialize>(
     layout::write(out, &envelope, layout)
 }
 
-/// A JSON document: the `schema` id, `dry_run` on a dry run, the result
-/// under `data`, and the extras.
+/// A JSON document: the type key, `dry_run` on a dry run, the result under
+/// the data key, and the extras.
 struct Envelope<'a, T, D, M> {
     document: Document<T>,
     dry_run: bool,
@@ -104,21 +121,35 @@ impl<T, D: Serialize, M: Serialize> Serialize for Envelope<'_, T, D, M> {
             + usize::from(extras.summary.is_some())
             + usize::from(extras.cut.is_some())
             + usize::from(extras.failures.is_some());
-        let mut map = serializer.serialize_map(Some(len))?;
-        // `format_args!` serializes as a string without building one.
-        map.serialize_entry("schema", &format_args!("{}", self.document))?;
+        let document = self.document;
+        let at_top = document.prints_summary_at_top();
+        // The fields of a summary at the top are counted only once they are
+        // serialized, so the map's length is then unknown.
+        let len = (!at_top).then_some(len);
+        let mut map = serializer.serialize_map(len)?;
+        match document.type_value() {
+            Some(value) => map.serialize_entry(document.type_key(), value)?,
+            // `format_args!` serializes as a string without building one.
+            None => map.serialize_entry(document.type_key(), &format_args!("{document}"))?,
+        }
         if self.dry_run {
             map.serialize_entry("dry_run", &true)?;
         }
-        map.serialize_entry("data", self.data)?;
+        map.serialize_entry(document.data_key(), self.data)?;
         if let Some(total) = extras.total {
             map.serialize_entry("total", &total)?;
         }
         if let Some(truncated) = extras.truncated {
             map.serialize_entry("truncated", &truncated)?;
         }
-        if let Some(summary) = extras.summary {
-            map.serialize_entry("summary", summary)?;
+        match extras.summary {
+            Some(summary) if at_top => {
+                for (name, value) in top_fields(document, summary).map_err(S::Error::custom)? {
+                    map.serialize_entry(&name, &value)?;
+                }
+            }
+            Some(summary) => map.serialize_entry("summary", summary)?,
+            None => {}
         }
         if let Some(cut) = extras.cut {
             map.serialize_entry("cut", cut)?;
@@ -128,6 +159,31 @@ impl<T, D: Serialize, M: Serialize> Serialize for Envelope<'_, T, D, M> {
         }
         map.end()
     }
+}
+
+/// Returns the fields of `summary`, which prints at the top of `document`,
+/// or the reason it cannot: the summary is not an object, or one of its
+/// fields takes the document's type key, its data key or a field that
+/// crumbkit writes (ADR-0059).
+fn top_fields<T, M: Serialize>(
+    document: Document<T>,
+    summary: &M,
+) -> Result<serde_json::Map<String, Value>, String> {
+    let Value::Object(fields) = serde_json::to_value(summary).map_err(|error| error.to_string())?
+    else {
+        return Err(format!(
+            "the summary of {document} prints at the top of the document, so it must serialize as an object"
+        ));
+    };
+    let taken = |name: &str| {
+        name == document.type_key() || name == document.data_key() || WRITTEN.contains(&name)
+    };
+    if let Some(name) = fields.keys().find(|name| taken(name)) {
+        return Err(format!(
+            "the summary of {document} prints at the top of the document, and its field `{name}` takes a name that the document already holds"
+        ));
+    }
+    Ok(fields)
 }
 
 /// One serialized row, limited to `columns` and written in their order.

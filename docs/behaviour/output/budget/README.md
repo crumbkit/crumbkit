@@ -113,13 +113,14 @@ and counts against the budget. The rows that print are the most that fit
 beside a failure that lists every key left out after the first row. When even
 one row and that full list do not fit, one row prints, `left_out` lists the
 most first keys that fit, and `unlisted` counts the rest and any cut answer
-that has no key. An unwrapped batch that prints its failures in input order
-ends its array with the failure, which counts against the budget in the same
-way. In text, and in any other document without the envelope, the failure
+that has no key. A batch that prints its failures in input order ends its
+array with the failure, at the top of an unwrapped document or under the data
+key of a document from `Document::with_keys`, and the failure counts against
+the budget in the same way. In text, and in any other document without the envelope, the failure
 prints on standard error, which the budget does not count, so it lists every
 key.
 
-Why: ADR-0046.
+Why: ADR-0046, ADR-0059.
 
 ## Headed bytes
 

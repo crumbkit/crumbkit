@@ -132,7 +132,8 @@ pub(crate) fn reader<'a>(
 /// `reader`; then the last `crumbkit/failure/v1` document on `stdout`, or
 /// every entry of the `failures` of the last document that has any, as a
 /// batch prints them, or every failure document of the last array that
-/// holds any, as a batch in input order prints them; then the last `code:`
+/// holds any, at the top or under a key of the document, as a batch in
+/// input order prints them; then the last `code:`
 /// line on `stderr`, which gives a
 /// failure without steps or fields.
 ///
@@ -172,24 +173,29 @@ pub(crate) fn read_failures(
 /// Returns the failures of the last document on `out` that is a
 /// `crumbkit/failure/v1` document, has a non-empty `failures` array, or is
 /// an array that holds at least one failure document, as a batch that
-/// prints its failures in input order prints it. A `form` reads each entry
+/// prints its failures in input order prints it, at the top or under any
+/// key of an object, as a document with keys from `Document::with_keys`
+/// holds it. A `form` reads each entry
 /// of `failures` and each item of such an array first. An item that the
 /// form does not read is a failure only when it is a
 /// `crumbkit/failure/v1` document, so a row is never read as one.
 fn crumbkit_failures(out: &str, form: Option<&dyn FailureForm>) -> Vec<ReadFailure> {
     let through_form = |item: &Value| form.and_then(|form| form.read(&item.to_string(), ""));
+    let in_order = |items: &[Value]| -> Vec<ReadFailure> {
+        items
+            .iter()
+            .filter_map(|item| {
+                through_form(item)
+                    .or_else(|| is_failure_document(item).then(|| read_document(item))?)
+            })
+            .collect()
+    };
     for document in runs::documents(out).iter().rev() {
         if is_failure_document(document) {
             return read_document(document).into_iter().collect();
         }
         if let Some(items) = document.as_array() {
-            let read: Vec<ReadFailure> = items
-                .iter()
-                .filter_map(|item| {
-                    through_form(item)
-                        .or_else(|| is_failure_document(item).then(|| read_document(item))?)
-                })
-                .collect();
+            let read = in_order(items);
             if !read.is_empty() {
                 return read;
             }
@@ -201,6 +207,19 @@ fn crumbkit_failures(out: &str, form: Option<&dyn FailureForm>) -> Vec<ReadFailu
                 .iter()
                 .filter_map(|entry| through_form(entry).or_else(|| read_document(entry)))
                 .collect();
+        }
+        // A document with keys that the tool declares holds a batch in
+        // input order under its data key, which the reader does not know.
+        let arrays = document
+            .as_object()
+            .into_iter()
+            .flat_map(|object| object.values())
+            .filter_map(Value::as_array);
+        for items in arrays {
+            let read = in_order(items);
+            if !read.is_empty() {
+                return read;
+            }
         }
     }
     Vec::new()
