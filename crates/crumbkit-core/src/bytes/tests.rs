@@ -101,17 +101,17 @@ fn a_bytes_result_has_no_rows_and_returns_its_bytes() {
 }
 
 #[test]
-fn the_schema_is_one_of_a_text_object_and_a_base64_object() {
+fn the_schema_is_an_object_that_holds_exactly_one_of_text_and_base64() {
     let schema = schemars::schema_for!(Bytes);
-    let variants = schema.get("oneOf").and_then(|value| value.as_array());
-    let variants = variants.unwrap();
 
-    assert_eq!(variants.len(), 2);
-    assert_eq!(variants[0]["required"], json!(["text"]));
-    assert_eq!(variants[0]["additionalProperties"], json!(false));
-    assert_eq!(variants[1]["required"], json!(["base64"]));
+    assert_eq!(schema.get("type"), Some(&json!("object")));
+    assert_eq!(schema.get("additionalProperties"), Some(&json!(false)));
     assert_eq!(
-        variants[1]["properties"]["base64"]["contentEncoding"],
+        schema.get("oneOf"),
+        Some(&json!([{"required": ["text"]}, {"required": ["base64"]}]))
+    );
+    assert_eq!(
+        schema.get("properties").unwrap()["base64"]["contentEncoding"],
         json!("base64")
     );
 }
@@ -139,4 +139,80 @@ fn a_row_field_of_bytes_serializes_in_the_same_form_and_names_the_bytes_definiti
         json!({"name": "cover.png", "content": {"base64": "iVA="}})
     );
     assert!(generator.definitions().contains_key("Bytes"));
+}
+
+/// A file whose bytes sit at the top level of the row, as `text` or
+/// `base64`.
+#[derive(Serialize, JsonSchema)]
+struct Flat {
+    /// The file's name.
+    name: &'static str,
+    #[serde(flatten)]
+    content: Bytes,
+}
+
+/// A file that may hold a parsed record in place of its bytes.
+#[derive(Serialize, JsonSchema)]
+struct MaybeFlat {
+    /// The file's name.
+    name: &'static str,
+    #[serde(flatten)]
+    content: Option<Bytes>,
+}
+
+#[test]
+fn a_flattened_bytes_field_puts_text_or_base64_at_the_top_level_of_the_row() {
+    let text = Flat {
+        name: "a.txt",
+        content: Bytes::from("one\n".to_owned()),
+    };
+    let binary = Flat {
+        name: "a.png",
+        content: Bytes::new(vec![0x89, 0x50]),
+    };
+
+    assert_eq!(
+        serde_json::to_value(&text).unwrap(),
+        json!({"name": "a.txt", "text": "one\n"})
+    );
+    assert_eq!(
+        serde_json::to_value(&binary).unwrap(),
+        json!({"name": "a.png", "base64": "iVA="})
+    );
+}
+
+#[test]
+fn a_flattened_bytes_field_adds_text_and_base64_to_the_properties_of_the_row_schema() {
+    let schema = schemars::schema_for!(Flat);
+    let properties = schema.get("properties").unwrap();
+
+    assert_eq!(properties["text"]["type"], json!("string"));
+    assert_eq!(properties["base64"]["contentEncoding"], json!("base64"));
+    assert_eq!(
+        schema.get("oneOf"),
+        Some(&json!([{"required": ["text"]}, {"required": ["base64"]}]))
+    );
+    assert_eq!(
+        schema.get("description"),
+        Some(&json!(
+            "A file whose bytes sit at the top level of the row, as `text` or\n`base64`."
+        ))
+    );
+}
+
+#[test]
+fn a_flattened_optional_bytes_field_adds_text_and_base64_to_the_properties_and_may_be_absent() {
+    let schema = schemars::schema_for!(MaybeFlat);
+    let properties = schema.get("properties").unwrap();
+    let row = MaybeFlat {
+        name: "a.json",
+        content: None,
+    };
+
+    assert_eq!(properties["text"]["type"], json!("string"));
+    assert_eq!(properties["base64"]["type"], json!("string"));
+    assert_eq!(
+        serde_json::to_value(&row).unwrap(),
+        json!({"name": "a.json"})
+    );
 }

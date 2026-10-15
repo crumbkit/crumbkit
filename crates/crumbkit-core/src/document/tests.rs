@@ -235,3 +235,54 @@ fn failures_in_order_is_rejected_for_a_document_with_the_envelope() {
 
     let _ = document.failures_in_order();
 }
+
+/// A file of the headed batches in these tests, which holds bytes unless it
+/// holds a record.
+#[derive(serde::Serialize, schemars::JsonSchema)]
+struct Page {
+    /// The page's name.
+    name: &'static str,
+    #[serde(flatten)]
+    content: Option<crate::Bytes>,
+}
+
+impl crate::Row for Page {
+    const COLUMNS: &'static [&'static str] = &["name"];
+}
+
+impl crate::Headed for Page {
+    fn bytes(&self) -> Option<&crate::Bytes> {
+        self.content.as_ref()
+    }
+}
+
+/// The document of the headed batches in these tests.
+const PAGES: Document<crate::Batch<Page, crate::Error>> =
+    Document::new("book", "pages-show", 1, "Pages.");
+
+#[test]
+fn a_batch_prints_as_a_table_until_the_tool_marks_its_document_headed() {
+    assert!(!PAGES.is_headed());
+    assert!(PAGES.headed_bytes().is_none());
+    assert!(PAGES.headed().is_headed());
+    assert!(PAGES.headed().untyped().is_headed());
+    assert!(!PAGES.untyped().is_headed());
+}
+
+#[test]
+fn a_headed_document_reads_the_bytes_of_each_row_by_its_position() {
+    let mut batch = crate::Batch::new(&["pages", "show"], "names", &["one", "two", "three"]);
+    batch.push(Ok(Page {
+        name: "one",
+        content: Some(crate::Bytes::from("first\n".to_owned())),
+    }));
+    batch.push(Ok(Page {
+        name: "two",
+        content: None,
+    }));
+    let bytes_of = PAGES.headed().headed_bytes().unwrap();
+
+    assert_eq!(bytes_of(&batch, 0), Some(&b"first\n"[..]));
+    assert_eq!(bytes_of(&batch, 1), None);
+    assert_eq!(bytes_of(&batch, 2), None);
+}

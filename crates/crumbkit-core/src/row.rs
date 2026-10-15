@@ -63,6 +63,48 @@ pub trait Row: Serialize + JsonSchema {
     const PROBLEM: Option<&'static str> = None;
 }
 
+/// A row type that holds bytes, such as a file's contents, so a batch of
+/// such rows can print in text the way `head` prints several files.
+///
+/// [`Document::headed`](crate::Document::headed) marks a batch's document
+/// for this text form. `crumbkit::finish` then prints each row's bytes
+/// unchanged, after a line `==> KEY <==` that names the row's key when the
+/// caller gave more than one key, in place of a table. The row usually
+/// holds its bytes in a field marked `#[serde(flatten)]`, so its JSON has
+/// `text` or `base64` at the top level ([`Bytes`](crate::Bytes)).
+///
+/// ```
+/// use crumbkit_core::{Bytes, Headed, Row};
+/// use schemars::JsonSchema;
+/// use serde::Serialize;
+///
+/// /// A file and its contents.
+/// #[derive(Serialize, JsonSchema)]
+/// struct File {
+///     /// The file's path.
+///     path: String,
+///     #[serde(flatten)]
+///     content: Bytes,
+/// }
+///
+/// impl Row for File {
+///     const COLUMNS: &'static [&'static str] = &["path"];
+/// }
+///
+/// impl Headed for File {
+///     fn bytes(&self) -> Option<&Bytes> {
+///         Some(&self.content)
+///     }
+/// }
+/// ```
+pub trait Headed: Row {
+    /// Returns the bytes that print under the row's header in text, or
+    /// `None` when the row holds no bytes, such as a row that holds a parsed
+    /// record in their place. A row without bytes prints under its header
+    /// as one line of compact JSON with every field.
+    fn bytes(&self) -> Option<&crate::Bytes>;
+}
+
 /// A result that `crumbkit::finish` prints: one [`Row`], a `Vec` of rows, a
 /// [`Listing`](crate::Listing) or a [`Batch`](crate::Batch), which print as
 /// a table, a [`Prose`](crate::Prose), which prints as text, or
