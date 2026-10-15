@@ -122,6 +122,32 @@ key.
 
 Why: ADR-0046, ADR-0059.
 
+## Headed bytes
+
+The text of a [headed batch](../README.md#headed-bytes) prints each row whole
+or not at all, because a file cut short would look whole. Each row costs its
+header and its bytes, and 1 more byte for the line feed before its header
+when it is not the first row that prints.
+
+- A row whose header and bytes alone pass the budget does not print. It
+  fails under its own key with `crumbkit::output::over_budget`, whose `key:`
+  line names the key and whose `help:` line says that no flag makes the
+  answer smaller. The rows after it still print. A document marked with
+  `Document::always_print_first` prints its first row whole even past the
+  budget.
+- The other rows print in order while they fit. From the first row that does
+  not fit, every later row and every key that the handler never fetched is
+  left out, and one over-budget failure names them, as the failure of a
+  batch in text does, with the recovery that runs the command with every key
+  left out.
+
+Each failure prints on standard error with the batch's other failures, in the
+order of their keys, and the failure that names the rows left out prints
+last. The run exits with the code of the first failure. With `--json` a
+headed batch is budgeted as any other batch.
+
+Why: ADR-0062.
+
 ## Single results
 
 A single row, or a listing or list whose first row alone does not fit, is
@@ -182,8 +208,15 @@ once, then again with `CRUMBKIT_OUTPUT_BUDGET` set to half the bytes it
 printed. The second run must do one of these:
 
 - print a result marked with `cut` or the cut line;
-- print one answer from a document that always prints its first answer;
+- print one answer, either from a document that always prints its first
+  answer or as a batch of one answer;
 - exit with the code that the guide gives the over-budget failure, 1 by
   default, and end with the over-budget failure that names the budget.
 
-Why: ADR-0046.
+The check also runs each text example of a leaf whose document is headed in
+the same way. The second run must print at most the budget, unless its
+document always prints its first answer, and must either exit with code 0 or
+exit with the over-budget failure's code with a message on standard error
+that names the budget.
+
+Why: ADR-0046, ADR-0062.

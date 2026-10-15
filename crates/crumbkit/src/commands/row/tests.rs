@@ -88,3 +88,48 @@ fn a_row_holds_the_form_stream_when_the_leaf_declares_a_stream() {
 fn a_row_holds_a_null_form_when_no_leaf_declares_a_document() {
     assert_eq!(row(&Guide::new())["form"], Value::Null);
 }
+
+/// A removed book's file, which a headed document prints under a header.
+#[derive(serde::Serialize, schemars::JsonSchema)]
+struct BookFile {
+    /// The book's id.
+    id: u32,
+    /// The file's bytes.
+    #[serde(flatten)]
+    content: crate::Bytes,
+}
+
+impl crate::Row for BookFile {
+    const COLUMNS: &'static [&'static str] = &["id"];
+}
+
+impl crate::Headed for BookFile {
+    fn bytes(&self) -> Option<&crate::Bytes> {
+        Some(&self.content)
+    }
+}
+
+#[test]
+fn a_headed_row_has_the_headed_form_and_lists_its_json_fields_with_text_and_base64() {
+    const GUIDE: Guide = Guide::new().leaves(&[Leaf::new(&["books", "remove"]).document(
+        crate::Document::<crate::Batch<BookFile, crate::Error>>::new(
+            "shelf",
+            "books-remove",
+            1,
+            "The removed books' files.",
+        )
+        .headed(),
+    )]);
+
+    let row = row(&GUIDE);
+
+    assert_eq!(row["form"], "headed");
+    assert_eq!(
+        row["columns"],
+        json!([
+            {"name": "id", "long": false, "description": "The book's id."},
+            {"name": "text", "long": false, "description": "The bytes, which are valid UTF-8, as text."},
+            {"name": "base64", "long": false, "description": "The bytes, which are not valid UTF-8, in standard base64 with padding (RFC 4648)."},
+        ])
+    );
+}

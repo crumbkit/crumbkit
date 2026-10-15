@@ -17,7 +17,7 @@ use std::process::ExitCode;
 use crumbkit::Spelling;
 
 pub use crate::cli::{Cli, GUIDE};
-use crate::cli::{CommandsCommand, EntriesCommand, Resource, SchemasCommand};
+use crate::cli::{CommandsCommand, EntriesCommand, ListsCommand, Resource, SchemasCommand};
 use crate::graft::{ListCommand, Parsed};
 pub use crate::graft::{command, guide};
 pub use crate::lists::{List, lists_in};
@@ -107,6 +107,13 @@ where
                 } => {
                     let result = lists::set(&mut cli.output, dir.as_deref(), &args);
                     crumbkit::finish(&mut cli.output, SPELLING, lists::ENTRIES_SET, result)
+                }
+                Resource::Lists {
+                    command: ListsCommand::Show(args),
+                } => {
+                    let result =
+                        Ok::<_, lists::EntriesError>(lists::show(dir.as_deref(), &args.names));
+                    crumbkit::finish(&mut cli.output, SPELLING, lists::LISTS_SHOW, result)
                 }
                 // `commands list` and `schemas` read the command tree
                 // through `&mut cli.output`, so each runs before `finish`

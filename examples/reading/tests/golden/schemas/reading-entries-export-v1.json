@@ -23,30 +23,26 @@
   "$defs": {
     "Bytes": {
       "description": "Bytes, such as a file's contents: text when they are valid UTF-8, and base64 otherwise.",
+      "type": "object",
+      "properties": {
+        "base64": {
+          "description": "The bytes, which are not valid UTF-8, in standard base64 with padding (RFC 4648).",
+          "type": "string",
+          "contentEncoding": "base64"
+        },
+        "text": {
+          "description": "The bytes, which are valid UTF-8, as text.",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
       "oneOf": [
         {
-          "type": "object",
-          "properties": {
-            "text": {
-              "description": "The bytes, which are valid UTF-8, as text.",
-              "type": "string"
-            }
-          },
-          "additionalProperties": false,
           "required": [
             "text"
           ]
         },
         {
-          "type": "object",
-          "properties": {
-            "base64": {
-              "description": "The bytes, which are not valid UTF-8, in standard base64 with padding (RFC 4648).",
-              "type": "string",
-              "contentEncoding": "base64"
-            }
-          },
-          "additionalProperties": false,
           "required": [
             "base64"
           ]

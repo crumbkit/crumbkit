@@ -1,4 +1,4 @@
-use super::{Ran, judge};
+use super::{Ran, judge, judge_text};
 
 /// Returns a run that exited with `code` and printed `stdout` and `stderr`.
 const fn ran<'a>(code: i32, stdout: &'a str, stderr: &'a str) -> Ran<'a> {
@@ -44,6 +44,13 @@ fn a_result_past_the_budget_that_exits_0_breaks_the_contract_unless_it_is_one_ro
         ),
         None
     );
+}
+
+#[test]
+fn a_batch_of_one_answer_past_the_budget_that_exits_0_keeps_the_contract() {
+    let one = "{\"data\":[{\"id\":1,\"name\":\"long\"}],\"failures\":[]}\n";
+
+    assert_eq!(judge(&ran(0, one, ""), 10, 1), None);
 }
 
 #[test]
@@ -247,4 +254,94 @@ fn a_leaf_whose_rename_of_the_over_budget_failure_an_exit_lists_makes_that_code_
     let problems = super::check(&sh, &GUIDE, &Examples::new("/bin/sh", &dir), super::TIMEOUT);
 
     assert_eq!(problems, Vec::<String>::new());
+}
+
+#[test]
+fn a_headed_text_run_that_fails_and_names_the_budget_on_standard_error_keeps_the_contract() {
+    let stderr = "error: 2 more answers did not fit in the output budget of 100 bytes\n";
+    let stdout = "==> a <==\none\n";
+
+    assert_eq!(
+        judge_text(&ran(1, stdout, stderr), stdout.len(), 100, 1, false),
+        None
+    );
+}
+
+#[test]
+fn a_headed_text_run_past_the_budget_keeps_the_contract_only_when_its_document_always_prints_its_first_answer()
+ {
+    let stdout = "x".repeat(150);
+    let run = ran(0, &stdout, "");
+
+    let problem = judge_text(&run, 150, 100, 1, false).expect("a problem");
+    assert!(problem.contains("printed 150 bytes"), "{problem}");
+    assert_eq!(judge_text(&run, 150, 100, 1, true), None);
+}
+
+#[test]
+fn a_headed_text_run_that_exits_0_within_the_budget_breaks_the_contract() {
+    let problem = judge_text(&ran(0, "one\n", ""), 4, 100, 1, false).expect("a problem");
+
+    assert!(
+        problem.contains("without the over-budget failure"),
+        "{problem}"
+    );
+}
+
+/// A text example that prints a line, and that exits with code 3 when the
+/// output budget is set.
+#[cfg(unix)]
+const TEXT_FAILS_WITH_3: &[&str] =
+    &[r#"test -n "$CRUMBKIT_OUTPUT_BUDGET" && exit 3; echo printed"#];
+
+/// A row that holds a file's bytes, which a headed document prints under a
+/// header.
+#[cfg(unix)]
+#[derive(serde::Serialize, schemars::JsonSchema)]
+struct File {
+    /// The file's name.
+    name: String,
+    /// The file's bytes.
+    #[serde(flatten)]
+    content: crumbkit::Bytes,
+}
+
+#[cfg(unix)]
+impl crumbkit::Row for File {
+    const COLUMNS: &'static [&'static str] = &["name"];
+}
+
+#[cfg(unix)]
+impl crumbkit::Headed for File {
+    fn bytes(&self) -> Option<&crumbkit::Bytes> {
+        Some(&self.content)
+    }
+}
+
+#[cfg(unix)]
+#[test]
+fn the_output_budget_check_runs_the_text_examples_of_a_headed_leaf() {
+    use clap::Command;
+    use crumbkit::help::{Example, Guide, Leaf};
+    use crumbkit::{Batch, Document, Error};
+
+    use crate::examples::Examples;
+    use crate::temp::TempDir;
+
+    const FILES: Document<Batch<File, Error>> =
+        Document::new("sh", "files", 1, "The files.").headed();
+    const GUIDE: Guide = Guide::new().leaves(&[Leaf::new(&["-c"])
+        .examples(&[Example::new(TEXT_FAILS_WITH_3, "Print")])
+        .document(FILES)]);
+    let sh = Command::new("sh").subcommand(Command::new("-c"));
+    let goldens = TempDir::new("output-budget-headed").unwrap();
+    let dir = goldens.path().display().to_string();
+
+    let problems = super::check(&sh, &GUIDE, &Examples::new("/bin/sh", &dir), super::TIMEOUT);
+
+    assert_eq!(problems.len(), 1, "{problems:?}");
+    assert!(
+        problems[0].contains("ended with exit code 3"),
+        "{problems:?}"
+    );
 }

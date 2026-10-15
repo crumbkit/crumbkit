@@ -4,7 +4,7 @@ use std::fmt;
 use std::marker::PhantomData;
 
 use crate::segment::{is_component, is_segment};
-use crate::{AsFailure, Batch, Row};
+use crate::{AsFailure, Batch, Headed, Row, Rows};
 
 mod keys;
 #[cfg(test)]
@@ -50,6 +50,10 @@ mod tests;
 ///
 /// assert_eq!(BOOKS_LIST.to_string(), "shelf/books-list/v1");
 /// ```
+#[expect(
+    clippy::struct_excessive_bools,
+    reason = "each bool is one independent choice that its own const builder sets, and no two of them form a state machine"
+)]
 pub struct Document<T> {
     /// The component that owns the document, such as `shelf` or
     /// `example.dev`.
@@ -75,6 +79,12 @@ pub struct Document<T> {
     /// rows in input order with `--json`, which the tool chose with
     /// `failures_in_order`.
     in_order: bool,
+    /// Whether a batch prints each row's bytes in text under a `head`-style
+    /// header, which the tool chose with `headed`.
+    headed: bool,
+    /// The function that returns the bytes of the row at a position of a
+    /// headed batch, which `headed` sets. An untyped document has none.
+    bytes_of: Option<RowBytes<T>>,
     /// The value that the type key holds in place of the id, which the tool
     /// set with `with_type`.
     type_value: Option<&'static str>,
@@ -137,6 +147,8 @@ impl<T> Document<T> {
             first_always: false,
             empty: None,
             in_order: false,
+            headed: false,
+            bytes_of: None,
             type_value: None,
             summary_top: false,
             result: PhantomData,
@@ -256,8 +268,26 @@ impl<T> Document<T> {
         self.description
     }
 
+    /// Reports whether [`Document::headed`] was called, so a batch prints
+    /// each row's bytes in text under a `head`-style header.
+    #[must_use]
+    pub const fn is_headed(&self) -> bool {
+        self.headed
+    }
+
+    /// Returns the function that [`Document::headed`] set, which returns
+    /// the bytes of the row at a position among a batch's rows, or `None`
+    /// for that row's place when the row holds no bytes or the position is
+    /// past the last row. It is `None` for a document that is not headed,
+    /// and for every untyped document. `crumbkit::finish` calls it to print
+    /// a headed batch.
+    #[must_use]
+    pub const fn headed_bytes(&self) -> Option<RowBytes<T>> {
+        self.bytes_of
+    }
+
     /// Returns the same id, description, choice of envelope and its keys,
-    /// budget settings and empty note as a `Document<()>`, which no longer names the result type,
+    /// budget settings, empty note and text form as a `Document<()>`, which no longer names the result type,
     /// so one list can hold the documents of results of different types. crumbkit's
     /// help leaves keep their documents in this form.
     #[must_use]
@@ -271,6 +301,8 @@ impl<T> Document<T> {
             first_always: self.first_always,
             empty: self.empty,
             in_order: self.in_order,
+            headed: self.headed,
+            bytes_of: None,
             type_value: self.type_value,
             summary_top: self.summary_top,
             result: PhantomData,
@@ -312,6 +344,46 @@ impl<R: Row, E: AsFailure> Document<Batch<R, E>> {
         self.in_order = true;
         self
     }
+}
+
+impl<R: Headed, E: AsFailure> Document<Batch<R, E>> {
+    /// Returns the same batch document with each row's bytes printed in text
+    /// the way `head` prints several files, in place of a table.
+    ///
+    /// When the caller gave more than one key, `crumbkit::finish` prints a
+    /// line `==> KEY <==` before each row that prints, with a blank line
+    /// before every such line but the first, and then the row's bytes
+    /// unchanged with no line feed added. With one key it prints the bytes
+    /// alone. A row whose [`Headed::bytes`] returns `None` prints as one
+    /// line of compact JSON with every field. A key whose lookup failed gets
+    /// no header, and its failure prints on standard error.
+    ///
+    /// Each row prints whole or not at all. A row larger than the output
+    /// budget on its own fails for its key with the over-budget failure,
+    /// unless it is the first row of a document that always prints its first
+    /// answer.
+    ///
+    /// With `--json` the batch prints as its ordinary document, with every
+    /// field of each row unless `--fields` names some. The leaf offers
+    /// neither `--long` nor `--full`, and `parse` refuses `--fields` without
+    /// `--json`, because the text has no columns (ADR-0062).
+    #[must_use]
+    pub const fn headed(mut self) -> Self {
+        self.headed = true;
+        self.bytes_of = Some(row_bytes::<R, E>);
+        self
+    }
+}
+
+/// A function that returns the bytes of the row at a position among the
+/// rows of a result, or `None` when that row holds none.
+type RowBytes<T> = fn(&T, usize) -> Option<&[u8]>;
+
+/// Returns the bytes of the row at `index` among the rows of `batch`, or
+/// `None` when that row holds none or `index` is past the last row.
+fn row_bytes<R: Headed, E: AsFailure>(batch: &Batch<R, E>, index: usize) -> Option<&[u8]> {
+    let row = batch.rows().get(index)?;
+    row.bytes().map(crate::Bytes::as_slice)
 }
 
 /// The envelope that a document prints its result in with `--json`.

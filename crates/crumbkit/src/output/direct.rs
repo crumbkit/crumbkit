@@ -51,7 +51,7 @@ impl Output {
         spelling: Spelling,
         document: Document<T>,
     ) -> Option<ExitCode> {
-        let refusal = fields::flags_refusal::<T>(self, document.has_envelope())?;
+        let refusal = fields::flags_refusal(self, document)?;
         Some(self.print_refusal(sink, spelling, &refusal))
     }
 

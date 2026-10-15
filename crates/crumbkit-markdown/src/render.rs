@@ -137,8 +137,14 @@ fn section(text: &mut String, command: &Command, commands: &[Command]) {
             let _ = write!(text, "\n{line}\n");
         }
     }
-    if command.form.as_deref() == Some("stream") {
-        let _ = write!(text, "\n{}\n", help::STREAM_LINE);
+    match command.form.as_deref() {
+        Some("stream") => {
+            let _ = write!(text, "\n{}\n", help::STREAM_LINE);
+        }
+        Some("headed") => {
+            let _ = write!(text, "\n{}\n", help::HEADED_LINE);
+        }
+        _ => {}
     }
     if !command.exits.is_empty() {
         text.push_str("\n### Exit codes\n\n");
@@ -267,10 +273,17 @@ fn examples(text: &mut String, command: &Command) {
 }
 
 /// Appends the columns of `command` to `text`: the columns that every
-/// result has, then the columns that `--long` adds.
+/// result has, then the columns that `--long` adds. A headed command's
+/// text has no columns, so its names are the JSON fields that `--fields`
+/// selects, under a heading that says so, as its help does.
 fn columns(text: &mut String, command: &Command) {
     let (long, short): (Vec<_>, Vec<_>) = command.columns.iter().partition(|column| column.long);
-    for (heading, columns) in [("Columns", short), ("Columns that `--long` adds", long)] {
+    let compact = if command.form.as_deref() == Some("headed") {
+        "JSON fields that `--fields` selects"
+    } else {
+        "Columns"
+    };
+    for (heading, columns) in [(compact, short), ("Columns that `--long` adds", long)] {
         if columns.is_empty() {
             continue;
         }

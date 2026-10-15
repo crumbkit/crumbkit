@@ -65,8 +65,8 @@ mod twins;
 // crumbkit, so a tool depends on crumbkit alone (ADR-0032).
 pub use crumbkit_core::{
     AsFailure, Batch, Bytes, Call, CallArg, CallError, CallTarget, Code, Document, Error, Failure,
-    Field, FieldValue, Listing, NoRow, NoSummary, Prose, Recovery, Row, Rows, RuntimeCodeError,
-    Shape, Spelling, Stream,
+    Field, FieldValue, Headed, Listing, NoRow, NoSummary, Prose, Recovery, Row, Rows,
+    RuntimeCodeError, Shape, Spelling, Stream,
 };
 
 pub use crate::call::RenderCall;

@@ -170,9 +170,11 @@ struct Sections {
     short: Vec<String>,
     /// The sections of `--help`, in order.
     long: Vec<String>,
-    /// Whether the leaf has a document with columns, so `-h` ends with a
-    /// `Next:` line that names the `--help` that lists them.
-    columns: bool,
+    /// What the `--help` of a leaf whose document has columns lists, so
+    /// `-h` ends with a `Next:` line that names it: `column`, or `JSON
+    /// field` for a headed document, whose text has no columns. It is
+    /// `None` when the document has no columns.
+    columns: Option<&'static str>,
     /// The line that names the leaf's effects, which `-h` and `--help`
     /// print first among crumbkit's lines, or `None` when the leaf declares
     /// none.
@@ -217,7 +219,13 @@ fn leaf_sections(
     Sections {
         short: short.into_iter().collect(),
         long,
-        columns: leaf.has_columns(),
+        columns: leaf.has_columns().then(|| {
+            if leaf.get_document().is_some_and(|doc| doc.is_headed()) {
+                "JSON field"
+            } else {
+                "column"
+            }
+        }),
         effects: leaf.get_effects().map(Effects::line),
         writes: leaf
             .get_effects()
@@ -304,8 +312,8 @@ fn set_help_lines(node: &mut Command, text: &str, lines: &Lines<'_>, sections: S
         short.push(next.clone());
         long.push(next);
     }
-    if sections.columns {
-        short.push(format!("Next: {text} --help explains each column."));
+    if let Some(columns) = sections.columns {
+        short.push(format!("Next: {text} --help explains each {columns}."));
     }
     if short.is_empty() && sections.short.is_empty() {
         return;

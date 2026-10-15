@@ -39,10 +39,12 @@ without `data` ([usage log](../usage-log/README.md)).
   The failure document's schema holds both as optional fields.
 - A bytes result's document holds `{"text": "..."}` under `data` when the
   bytes are valid UTF-8, and `{"base64": "..."}` in standard base64 with
-  padding (RFC 4648) otherwise. Its schema is a `oneOf` of the two objects
-  under the definition `Bytes`.
+  padding (RFC 4648) otherwise. Its schema, under the definition `Bytes`,
+  is an object with both properties, a `oneOf` that requires one of them,
+  and no other properties. A row that flattens a `Bytes` field therefore
+  lists `text` and `base64` among its own properties.
 
-Why: ADR-0007, ADR-0016, ADR-0036, ADR-0039, ADR-0046, ADR-0050, ADR-0059.
+Why: ADR-0007, ADR-0016, ADR-0036, ADR-0039, ADR-0046, ADR-0050, ADR-0059, ADR-0062.
 
 ## The failure document
 

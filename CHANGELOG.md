@@ -524,6 +524,25 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   `envelope-keys` customisation, and [`check_examples`],
   [`check_output_budget`] and the failure reader read the declared keys
   ([behaviour/adoption/declarations]).
+- crumbkit-core: `Headed` and `Document::headed` mark a batch whose rows
+  hold bytes, and `finish` prints each row's bytes as `head` prints files,
+  under a `==> KEY <==` header when there are several keys
+  ([behaviour/output]).
+- crumbkit: each answer of a headed batch's text prints whole within the
+  output budget. An answer larger than the budget fails under its own key,
+  and one failure names the answers past the budget
+  ([behaviour/output/budget]).
+- crumbkit: the JSON of a headed batch holds every field of each row unless
+  `--fields` names some. `--fields` needs `--json`, and a headed leaf offers
+  neither `--long` nor `--full` ([behaviour/output]).
+- crumbkit: the help of a headed leaf ends with an `Output:` line and lists
+  its JSON fields, including `text` and `base64`, under a heading naming
+  `--fields`. `commands list` gives it the form `headed`, and
+  crumbkit-markdown's reference prints both ([behaviour/help]).
+- crumbkit-test: [`check_guide`] fails a headed leaf whose row does not
+  flatten its `Bytes` field ([behaviour/help/examples]).
+- crumbkit-test: [`check_output_budget`] also runs the text examples of a
+  headed leaf with half the bytes they print ([behaviour/output/budget]).
 
 ### Changed
 
@@ -789,6 +808,12 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   ([behaviour/adoption/declarations]).
 - crumbkit: the debug-build warning for a field with a bad name says that
   `Guide::field_names` does not list the name ([behaviour/failures]).
+- crumbkit-core: the schema of [`Bytes`] is one object with `text` and
+  `base64` and a `oneOf` that requires one of them, so a flattened `Bytes`
+  field lists both among the row's properties ([behaviour/schemas]).
+- crumbkit-test: [`check_output_budget`] accepts a JSON batch of one answer
+  past the budget that exits with code 0, because a batch always prints its
+  first answer ([behaviour/output/budget]).
 
 ### Removed
 

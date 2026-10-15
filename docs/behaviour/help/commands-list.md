@@ -49,8 +49,11 @@ lacks, so a program reads every row the same way.
   ([effects](../effects/README.md#declaring-effects)).
 - `writes` holds the write guards, or `null` for a read-only command or one
   without guards ([write guards](../effects/write-guards.md)).
-- `form` is `document` or `stream` for a leaf with a document and `null` for
-  one without ([streams](../output/streams.md)).
+- `form` is `document`, `stream` or `headed` for a leaf with a document and
+  `null` for one without ([streams](../output/streams.md),
+  [headed bytes](../output/README.md#headed-bytes)).
+- `columns` lists a headed leaf's JSON fields that `--fields` selects,
+  ending with `text` and `base64`, because its text has no columns.
 - `exits` lists the exit codes that the tool declares for the command, each
   with its code and meaning. crumbkit's own 0, 1 and 2 are the same for every
   command, so the rows leave them out ([exit codes](../failures/exit-codes.md)).

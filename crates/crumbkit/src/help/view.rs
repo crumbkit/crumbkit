@@ -63,23 +63,29 @@ pub(crate) enum Unoffered {
     Bytes,
     /// The command's row type has no long columns, so `--long` adds none.
     NoLongColumns,
-    /// The command's document has no envelope, so `--json` already prints
-    /// every field and `--full` adds nothing.
+    /// The command's document has no envelope, or is headed, so `--json`
+    /// already prints every field and `--full` adds nothing.
     Unwrapped,
+    /// The command's document is headed, so its text prints each answer's
+    /// bytes, which have no columns, and its JSON already holds every field.
+    Headed,
 }
 
 /// Returns why a command does not offer `flag`, or `None` when it offers
 /// it. The command prints a result of `shape`, or a stream of rows when
 /// `shape` is `None`. Its row type has long columns when `long_columns` is
-/// set, and its document has crumbkit's envelope when `envelope` is set.
+/// set, its document has crumbkit's envelope when `envelope` is set, and its
+/// document is headed when `headed` is set.
 ///
 /// A prose or bytes result offers no view flag. Rows offer `--fields`,
-/// offer `--long` when the row type has long columns, and offer `--full`
-/// when the document has the envelope.
+/// offer `--long` when the row type has long columns and the document is
+/// not headed, and offer `--full` when the document has the envelope and is
+/// not headed (ADR-0062).
 pub(crate) const fn unoffered(
     shape: Option<Shape>,
     long_columns: bool,
     envelope: bool,
+    headed: bool,
     flag: ViewFlag,
 ) -> Option<Unoffered> {
     match shape {
@@ -88,8 +94,9 @@ pub(crate) const fn unoffered(
         _ => {}
     }
     match flag {
+        ViewFlag::Long if headed => Some(Unoffered::Headed),
         ViewFlag::Long if !long_columns => Some(Unoffered::NoLongColumns),
-        ViewFlag::Full if !envelope => Some(Unoffered::Unwrapped),
+        ViewFlag::Full if !envelope || headed => Some(Unoffered::Unwrapped),
         _ => None,
     }
 }
@@ -111,6 +118,7 @@ pub(crate) fn refusal(flag: ViewFlag, reason: Unoffered) -> Refusal {
         (Unoffered::Prose, _) => "use --json to read every field of the result",
         (Unoffered::Bytes, _) => "use --json to read the bytes as text or base64",
         (Unoffered::NoLongColumns, _) => "use --fields to name the columns to show",
+        (Unoffered::Headed, _) => "use --json to read every field of each answer",
     };
     Refusal::flag_value(
         format!("{does}, and {}", because(reason)),
@@ -128,6 +136,7 @@ const fn because(reason: Unoffered) -> &'static str {
         Unoffered::Bytes => "this command prints raw bytes",
         Unoffered::NoLongColumns => "this command's rows have none",
         Unoffered::Unwrapped => "this command's JSON already holds every field",
+        Unoffered::Headed => "this command's text prints each answer's bytes",
     }
 }
 
@@ -143,6 +152,25 @@ pub(crate) struct Typed {
     pub(crate) fields: bool,
     pub(crate) long: bool,
     pub(crate) full: bool,
+}
+
+/// Returns the refusal of `--fields` without `--json` on a command whose
+/// document is headed, or `None` when `typed` holds `--json` or no
+/// `--fields` (ADR-0062).
+///
+/// The text of a headed document prints each answer's bytes, which have no
+/// columns, so `--fields` selects only the fields of its JSON. The refusal
+/// names `--fields` under `argument`, and it prints as a refused command
+/// line does.
+pub(crate) fn headed(typed: Typed) -> Option<Refusal> {
+    (typed.fields && !typed.json).then(|| {
+        Refusal::flag_value(
+            "--fields selects the fields of JSON rows, and this command's text prints each answer's bytes".to_owned(),
+            "add --json, or drop --fields".to_owned(),
+            ViewFlag::Fields.name(),
+            None,
+        )
+    })
 }
 
 /// Returns the refusal of the view flags in `typed` when two of them cannot

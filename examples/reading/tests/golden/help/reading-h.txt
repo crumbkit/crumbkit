@@ -4,6 +4,7 @@ Usage: reading [OPTIONS] <COMMAND>
 
 Commands:
   entries   Work with the entries of any reading list
+  lists     Print the files of reading's lists
   commands  Explore reading's commands
   schemas   Explore the JSON documents that reading prints
   finished  Books finished this year

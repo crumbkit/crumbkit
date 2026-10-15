@@ -42,6 +42,8 @@ leaf with a document offers only the view flags that its document can use:
 
 - rows offer `--fields`, offer `--long` when the row type has long columns,
   and offer `--full` when the document has the envelope;
+- a headed batch offers `--fields`, which `parse` refuses without `--json`,
+  and offers neither `--long` nor `--full`;
 - prose and bytes offer none of the three.
 
 A leaf without a document offers all three, because crumbkit cannot tell
@@ -165,6 +167,49 @@ run's line follows a bytes result's text on standard error, so standard
 output holds the bytes alone.
 
 Why: ADR-0016.
+
+## Headed bytes
+
+A command that returns the bytes of several answers, such as `show
+<NAME>...`, returns a batch whose row type implements
+[`Headed`](../../../crates/crumbkit-core/src/row.rs) and whose document
+calls [`Document::headed`](../../../crates/crumbkit-core/src/document.rs).
+The row usually holds its bytes in a `Bytes` field marked
+`#[serde(flatten)]`, so its JSON and its schema hold `text` or `base64` at
+the top level of the row.
+
+The text prints each row's bytes unchanged, as `head` prints several files:
+
+```text
+==> to-read <==
+# Books to read next
+North and South
+
+==> finished <==
+# Books finished this year
+Emma
+```
+
+- A header line `==> KEY <==` precedes each row when the caller gave more
+  than one key, with the key's control characters escaped. With one key the
+  bytes print alone.
+- A line feed precedes every header but the first, and crumbkit adds no
+  line feed after a row's bytes.
+- A row pushed after the last key has the header `==> (index N) <==`.
+- A key whose lookup failed gets no header, and its failure prints on
+  standard error with its `key:` line, as in any batch.
+- A row whose `Headed::bytes` returns `None` prints under its header as one
+  line of compact JSON with every field.
+
+Each row prints whole or not at all within the output budget
+([headed bytes](budget/README.md#headed-bytes)).
+
+With `--json` the batch prints as its ordinary document with every field of
+each row, unless `--fields` names some. `--fields` needs `--json`, because
+the text has no columns, and `--long` and `--full` are not offered. The help
+of the leaf ends with an `Output:` line that describes this text.
+
+Why: ADR-0062.
 
 ## Documents without the envelope
 

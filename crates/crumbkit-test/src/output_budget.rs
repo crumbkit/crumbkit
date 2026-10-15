@@ -1,6 +1,7 @@
 //! The output budget check, which runs each `--json` example of a tool's
-//! guide again with half the bytes it printed, and checks that the tool
-//! keeps crumbkit's contract for a result that does not fit (ADR-0046).
+//! guide, and each text example of a headed leaf, again with half the bytes
+//! it printed, and checks that the tool keeps crumbkit's contract for a
+//! result that does not fit (ADR-0046, ADR-0062).
 
 use std::path::Path;
 use std::time::Duration;
@@ -35,7 +36,8 @@ const VARIABLE: &str = "CRUMBKIT_OUTPUT_BUDGET";
 ///   at the budget;
 /// - it exits with code 0 and prints one document whose `data`, or the
 ///   data key that `Document::with_keys` declares, is one object, which a
-///   document that always prints its first answer does;
+///   document that always prints its first answer does, or an array of one
+///   row, which a batch of one answer prints;
 /// - it exits with the code that the guide gives the over-budget failure,
 ///   which is 1 unless an [`Exit`](crumbkit::help::Exit) lists the code,
 ///   and its last JSON document, on one line or
@@ -45,6 +47,14 @@ const VARIABLE: &str = "CRUMBKIT_OUTPUT_BUDGET";
 ///   input order prints it, with the field
 ///   `budget` set to the budget, or, for a document without the envelope,
 ///   standard error names the budget.
+///
+/// The check also runs each example without `--json` of a leaf whose
+/// document is headed (ADR-0062). Such a run keeps the contract when it
+/// prints at most the budget on standard output, exits with the code that
+/// the guide gives the over-budget failure, and names the budget on standard
+/// error. A run of a document that always prints its first answer may
+/// instead print more than the budget and exit with code 0, because its one
+/// answer prints whole.
 ///
 /// Each run starts in the directory of
 /// [`Examples::current_dir`](crate::Examples::current_dir) and reads the
@@ -110,16 +120,20 @@ fn check(
         {
             continue;
         }
+        let document = leaf.get_document();
+        let headed = document.is_some_and(|document| document.is_headed());
+        let first_always = document.is_some_and(|document| document.always_prints_first());
         for example in leaf.get_examples() {
-            if !example.words().contains(&"--json") {
+            let text = !example.words().contains(&"--json");
+            if text && !headed {
                 continue;
             }
             let args: Vec<&str> = path.iter().chain(example.words()).copied().collect();
-            let text = std::iter::once(tool)
+            let called = std::iter::once(tool)
                 .chain(path.iter().copied())
                 .collect::<Vec<_>>()
                 .join(" ");
-            let line = command_line(&text, example.words());
+            let line = command_line(&called, example.words());
             if allowances.excuses_example(&below, example.words()) {
                 continue;
             }
@@ -157,7 +171,13 @@ fn check(
                             .get_document()
                             .map_or("data", |document| document.data_key()),
                     };
-                    if let Some(problem) = judge(&ran, budget, failed) {
+                    let printed = output.stdout.len();
+                    let problem = if text {
+                        judge_text(&ran, printed, budget, failed, first_always)
+                    } else {
+                        judge(&ran, budget, failed)
+                    };
+                    if let Some(problem) = problem {
                         problems.push(format!("{line}: {problem}"));
                     }
                 }
@@ -219,8 +239,11 @@ pub(crate) fn judge(ran: &Ran<'_>, budget: usize, failed: u8) -> Option<String> 
             .contains(&format!("output budget of {budget} bytes"));
     match ran.code {
         Some(0) if printed > budget => {
-            let one_row =
-                matches!(documents.as_slice(), [document] if document[ran.data_key].is_object());
+            // A batch always prints its first answer, so a batch of one
+            // answer prints it whole in an array of one row.
+            let one_row = matches!(documents.as_slice(), [document]
+                if document[ran.data_key].is_object()
+                    || document[ran.data_key].as_array().is_some_and(|rows| rows.len() == 1));
             (!one_row).then(|| {
                 format!(
                     "with an output budget of {budget} bytes, the run printed {printed} bytes and exited with code 0, and a run past its budget prints a single answer or fails with exit code {failed}"
@@ -254,6 +277,41 @@ pub(crate) fn judge(ran: &Ran<'_>, budget: usize, failed: u8) -> Option<String> 
                 )
             })
         }
+        code => Some(format!(
+            "with an output budget of {budget} bytes, the run ended with {}, and a run past its budget exits with code 0 or {failed}",
+            code.map_or_else(|| "a signal".to_owned(), |code| format!("exit code {code}"))
+        )),
+    }
+}
+
+/// Returns the problem of `ran`, a run of a text example of a headed leaf
+/// that printed `printed` bytes with an output budget of `budget` bytes and
+/// whose over-budget failure exits with `failed`, or `None` when it keeps
+/// the contract that [`check_output_budget`] describes for such a run.
+/// `first_always` is set when the leaf's document always prints its first
+/// answer.
+pub(crate) fn judge_text(
+    ran: &Ran<'_>,
+    printed: usize,
+    budget: usize,
+    failed: u8,
+    first_always: bool,
+) -> Option<String> {
+    let names_budget = ran
+        .stderr
+        .contains(&format!("output budget of {budget} bytes"));
+    match ran.code {
+        _ if printed > budget && !first_always => Some(format!(
+            "with an output budget of {budget} bytes, the run printed {printed} bytes, and a headed document prints more than its budget only for a first answer that its document always prints"
+        )),
+        Some(0) if printed > budget => None,
+        Some(code) if code == i32::from(failed) && names_budget => None,
+        Some(0) => Some(format!(
+            "with an output budget of {budget} bytes, the run exited with code 0 without the over-budget failure, whose message names the budget on standard error"
+        )),
+        Some(code) if code == i32::from(failed) => Some(format!(
+            "with an output budget of {budget} bytes, the run exited with code {failed} without the over-budget failure, whose message names the budget on standard error"
+        )),
         code => Some(format!(
             "with an output budget of {budget} bytes, the run ended with {}, and a run past its budget exits with code 0 or {failed}",
             code.map_or_else(|| "a signal".to_owned(), |code| format!("exit code {code}"))

@@ -36,11 +36,18 @@ Why: ADR-0024, ADR-0035, ADR-0039, ADR-0041.
 - A leaf's `--help` describes each example and each column.
 - A prose document has no columns, so its leaf has neither the `Next:` line
   nor the column sections, and `schemas show` describes its fields.
+- A [headed](../output/README.md#headed-bytes) document's text has no
+  columns. Its `--help` lists the row's columns, then `text` and `base64`,
+  under `JSON fields that --fields selects:`, and its `-h` ends with a
+  `Next:` line that says `--help` explains each JSON field. crumbkit-test's
+  `check_guide` fails a headed leaf whose row has no top-level `text` or
+  `base64` field, because its `Bytes` field is not marked
+  `#[serde(flatten)]`.
 - `parse` applies a leaf only to the deepest command on the walked path.
   `help::extend` adds every leaf's examples and no columns.
 - The runtime never fails on a leaf.
 
-Why: ADR-0024.
+Why: ADR-0024, ADR-0062.
 
 ## Column descriptions
 

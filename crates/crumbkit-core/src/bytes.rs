@@ -29,6 +29,15 @@ mod tests;
 /// usually keeps it out of its columns, and a caller reads it with `--json
 /// --full` or `--fields`.
 ///
+/// A row field marked `#[serde(flatten)]` puts `text` or `base64` at the top
+/// level of the row, and the row's JSON Schema then lists both as
+/// properties, so `--fields text` names them. An `Option<Bytes>` field
+/// flattens in the same way and adds nothing when it is `None`. A row type
+/// that flattens bytes has a doc comment of its own, because without one
+/// its schema takes the description of the bytes. A batch whose rows hold
+/// bytes can print them in text as `head` prints files
+/// ([`Headed`](crate::Headed)).
+///
 /// `--fields`, `--long` and `--full` are refused for a bytes result, with
 /// the exit code of a refused command line, because it has no columns. The result is never cut short:
 /// when it does not fit in the output budget, it is refused, unless its
@@ -103,8 +112,10 @@ impl Serialize for Bytes {
     }
 }
 
-/// Describes the bytes as a `oneOf` of the text object and the base64
-/// object, under the definition name `Bytes`.
+/// Describes the bytes as an object with the properties `text` and
+/// `base64`, of which it holds exactly one, under the definition name
+/// `Bytes`. The two properties sit at the top level of the schema, so a row
+/// that flattens the bytes lists them among its own properties.
 impl JsonSchema for Bytes {
     fn schema_name() -> Cow<'static, str> {
         "Bytes".into()
@@ -117,31 +128,23 @@ impl JsonSchema for Bytes {
     fn json_schema(_: &mut SchemaGenerator) -> Schema {
         json_schema!({
             "description": "Bytes, such as a file's contents: text when they are valid UTF-8, and base64 otherwise.",
+            "type": "object",
+            "properties": {
+                "text": {
+                    "description": "The bytes, which are valid UTF-8, as text.",
+                    "type": "string",
+                },
+                "base64": {
+                    "description": "The bytes, which are not valid UTF-8, in standard base64 with padding (RFC 4648).",
+                    "type": "string",
+                    "contentEncoding": "base64",
+                },
+            },
             "oneOf": [
-                {
-                    "type": "object",
-                    "properties": {
-                        "text": {
-                            "description": "The bytes, which are valid UTF-8, as text.",
-                            "type": "string",
-                        },
-                    },
-                    "required": ["text"],
-                    "additionalProperties": false,
-                },
-                {
-                    "type": "object",
-                    "properties": {
-                        "base64": {
-                            "description": "The bytes, which are not valid UTF-8, in standard base64 with padding (RFC 4648).",
-                            "type": "string",
-                            "contentEncoding": "base64",
-                        },
-                    },
-                    "required": ["base64"],
-                    "additionalProperties": false,
-                },
+                { "required": ["text"] },
+                { "required": ["base64"] },
             ],
+            "additionalProperties": false,
         })
     }
 }

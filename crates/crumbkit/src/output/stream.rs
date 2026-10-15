@@ -267,7 +267,7 @@ fn open<R: Row, O: Write, W: Write>(
         span: crate::trace::spans::finish(),
     };
     let envelope = document.has_envelope();
-    if let Some(refusal) = fields::refusal::<R>(None, envelope, streaming.fields, typed) {
+    if let Some(refusal) = fields::refusal::<R>(None, envelope, false, streaming.fields, typed) {
         return Err(streaming.refuse(&refusal));
     }
     if !streaming.json {

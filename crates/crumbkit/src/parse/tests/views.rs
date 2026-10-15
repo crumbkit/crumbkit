@@ -11,7 +11,7 @@ use serde::Serialize;
 use super::parse_to;
 use crate::help::{Exit, Guide, Leaf, Rename};
 use crate::twins::assert_one_word_apart;
-use crate::{Bytes, Document, Output, Prose, Row, Sink, Spelling, Stream};
+use crate::{Batch, Bytes, Document, Error, Headed, Output, Prose, Row, Sink, Spelling, Stream};
 
 /// A row with a compact and a long column.
 #[derive(Serialize, JsonSchema)]
@@ -38,6 +38,27 @@ impl Row for Id {
     const COLUMNS: &'static [&'static str] = &["id"];
 }
 
+/// A row that holds a book's text, which a headed document prints under a
+/// header.
+#[derive(Serialize, JsonSchema)]
+struct Page {
+    /// The book's id.
+    id: u32,
+    /// The book's text.
+    #[serde(flatten)]
+    content: Bytes,
+}
+
+impl Row for Page {
+    const COLUMNS: &'static [&'static str] = &["id"];
+}
+
+impl Headed for Page {
+    fn bytes(&self) -> Option<&Bytes> {
+        Some(&self.content)
+    }
+}
+
 const BOOKS: Document<Vec<Book>> = Document::new("tool", "books", 1, "The books.");
 const IDS: Document<Vec<Id>> = Document::new("tool", "ids", 1, "The ids.");
 const COUNT: Document<Prose<String>> = Document::new("tool", "count", 1, "The count.");
@@ -45,6 +66,8 @@ const EXPORT: Document<Bytes> = Document::new("tool", "export", 1, "The export."
 const DUMP: Document<Vec<Book>> =
     Document::new("tool", "dump", 1, "The books as another tool reads them.").without_envelope();
 const WATCH: Document<Stream<Id>> = Document::new("tool", "watch", 1, "The ids as they come.");
+const READ: Document<Batch<Page, Error>> =
+    Document::new("tool", "read", 1, "The text of each book.").headed();
 
 const GUIDE: Guide = Guide::new().leaves(&[
     Leaf::new(&["books", "list"]).document(BOOKS),
@@ -53,6 +76,7 @@ const GUIDE: Guide = Guide::new().leaves(&[
     Leaf::new(&["books", "export"]).document(EXPORT),
     Leaf::new(&["books", "dump"]).document(DUMP),
     Leaf::new(&["books", "watch"]).stream(WATCH),
+    Leaf::new(&["books", "read"]).document(READ),
     Leaf::new(&["books", "plain"]),
     Leaf::new(&["books", "own"]).document(COUNT),
 ]);
@@ -60,8 +84,10 @@ const GUIDE: Guide = Guide::new().leaves(&[
 /// A tool with crumbkit's output flags on its root and one group of leaves.
 /// The leaf `own` declares its own `--long`, which is not global.
 fn tool() -> Command {
-    let leaves = ["list", "ids", "count", "export", "dump", "watch", "plain"]
-        .map(|name| Command::new(name).about("A leaf"));
+    let leaves = [
+        "list", "ids", "count", "export", "dump", "watch", "read", "plain",
+    ]
+    .map(|name| Command::new(name).about("A leaf"));
     let own = Command::new("own").about("A leaf with its own --long").arg(
         Arg::new("long")
             .long("long")
@@ -188,6 +214,24 @@ fn the_global_flags_line_of_a_prose_leaf_names_only_json_and_the_tool_s_own_flag
     assert_eq!(
         global_flags_line(&["books", "list"]),
         "Global flags: --json, --fields <FIELD>, --long, --full. `tool books list --help` describes them."
+    );
+}
+
+#[test]
+fn fields_without_json_on_a_headed_leaf_is_refused_before_the_handler_runs() {
+    let refused = ["tool", "books", "read", "--fields", "id"];
+    let admitted = ["tool", "books", "read", "--json", "--fields", "id"];
+    assert_eq!(parse(&admitted).code, None, "{}", parse(&admitted).err);
+
+    let parsed = parse(&refused);
+
+    assert_eq!(parsed.code, Some(ExitCode::from(2)));
+    assert!(
+        parsed.err.starts_with(
+            "error: --fields selects the fields of JSON rows, and this command's text prints each answer's bytes\n  help:  add --json, or drop --fields\n"
+        ),
+        "{}",
+        parsed.err
     );
 }
 

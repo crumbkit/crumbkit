@@ -66,3 +66,47 @@ fn a_changing_leaf_that_passes_on_a_programs_exit_code_passes_without_a_document
 
     check_guide(&shelf(), &GUIDE);
 }
+
+/// A book's file whose bytes sit under `content` in place of the top level
+/// of the row, so its JSON has no `text` or `base64` field.
+#[derive(serde::Serialize, schemars::JsonSchema)]
+struct NestedFile {
+    /// The book's title.
+    title: String,
+    /// The file's bytes.
+    content: crumbkit::Bytes,
+}
+
+impl crumbkit::Row for NestedFile {
+    const COLUMNS: &'static [&'static str] = &["title"];
+}
+
+impl crumbkit::Headed for NestedFile {
+    fn bytes(&self) -> Option<&crumbkit::Bytes> {
+        Some(&self.content)
+    }
+}
+
+#[test]
+fn check_guide_fails_on_a_headed_leaf_whose_row_does_not_flatten_its_bytes() {
+    const GUIDE: Guide = Guide::new().leaves(&[
+        leaf(&["books", "list"]).document(
+            Document::<crumbkit::Batch<NestedFile, crumbkit::Error>>::new(
+                "shelf",
+                "books-files",
+                1,
+                "The books' files.",
+            )
+            .headed(),
+        ),
+        leaf(&["books", "show"]),
+        leaf(&["authors", "list"]),
+    ]);
+
+    assert_eq!(
+        panic_message(|| check_guide(&shelf(), &GUIDE)).unwrap(),
+        "the command tree breaks crumbkit's guide rules:\n\
+         shelf books list: the field `text` is not at the top level of the row type, so the JSON of the headed document does not hold the bytes beside the other fields; mark the `Bytes` field `#[serde(flatten)]`\n\
+         shelf books list: the field `base64` is not at the top level of the row type, so the JSON of the headed document does not hold the bytes beside the other fields; mark the `Bytes` field `#[serde(flatten)]`"
+    );
+}

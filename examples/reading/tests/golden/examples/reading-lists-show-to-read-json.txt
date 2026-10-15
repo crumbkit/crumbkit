@@ -1,0 +1,1 @@
+{"schema":"reading/lists-show/v1","data":[{"name":"to-read","text":"# Books to read next\nNorth and South\nWuthering Heights\nThe Moonstone\nDracula\nLittle Women\n"}],"failures":[]}

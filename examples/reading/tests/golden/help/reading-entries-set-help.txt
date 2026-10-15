@@ -22,11 +22,11 @@ Options:
       --json
           Print the result as a JSON document
 
-      --fields <FIELD>
-          Print only these comma-separated fields, in this order
-
       --yes
           Proceed without asking for confirmation
+
+      --fields <FIELD>
+          Print only these comma-separated fields, in this order
 
       --full
           With --json, print every field of every row
