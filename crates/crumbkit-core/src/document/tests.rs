@@ -5,6 +5,8 @@ use std::rc::Rc;
 
 use super::Document;
 
+mod keys;
+
 #[test]
 fn the_id_prints_as_component_name_and_version() {
     let document: Document<()> = Document::new("shelf", "books-list", 1, "Books.");
@@ -228,8 +230,8 @@ fn a_document_prints_a_batchs_failures_apart_from_its_rows_until_the_tool_asks_f
 }
 
 #[test]
-#[should_panic(expected = "without its envelope")]
-fn failures_in_order_is_rejected_for_a_document_with_the_envelope() {
+#[should_panic(expected = "crumbkit's own envelope")]
+fn failures_in_order_is_rejected_for_a_document_with_crumbkits_own_envelope() {
     let document: Document<crate::Batch<Moon, crate::Error>> =
         Document::new("solar", "moons-show", 1, "Moons.");
 

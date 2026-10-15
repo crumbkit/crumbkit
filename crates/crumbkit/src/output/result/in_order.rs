@@ -1,6 +1,7 @@
 //! How a batch whose document asks for input order prints with `--json`:
 //! one array of its rows and its failure documents in the order of their
-//! keys (ADR-0016).
+//! keys, alone or under the data key of a document with its own envelope
+//! keys (ADR-0016, ADR-0059).
 
 use std::io::{self, Write};
 
@@ -9,7 +10,7 @@ use serde::{Serialize, Serializer};
 
 use super::Prepared;
 use crate::Rows;
-use crate::output::envelope::{Failures, Selected};
+use crate::output::envelope::{Extras, Failures, Selected};
 use crate::output::failure::PreparedFailure;
 use crate::output::layout;
 
@@ -19,10 +20,14 @@ impl<T: Rows> Prepared<'_, T> {
     /// failures at the position of its key, and the failure of the answers
     /// that the output budget left out last.
     ///
-    /// A row prints as [`Prepared::write_unwrapped`] prints it. A failure
-    /// prints as its failure document, which is the form's document when
-    /// the guide has a failure form, so a reader tells a failure from a row
-    /// by its `schema`.
+    /// A document with its own envelope keys holds the array under its data
+    /// key, and a document without the envelope prints the array alone.
+    ///
+    /// A row prints with the columns that the view flags choose, which
+    /// leave every field of a row in a document without the envelope
+    /// unless the caller passed `--fields`. A failure prints as its failure
+    /// document, which is the form's document when the guide has a failure
+    /// form, so a reader tells a failure from a row by its `schema`.
     pub(super) fn write_in_order(
         &self,
         out: &mut impl Write,
@@ -34,7 +39,11 @@ impl<T: Rows> Prepared<'_, T> {
             shown,
             failures,
         };
-        layout::write(out, &in_order, self.layout)
+        if self.document.has_envelope() {
+            self.envelope(out, &in_order, &Extras::none())
+        } else {
+            layout::write(out, &in_order, self.layout)
+        }
     }
 }
 
@@ -66,7 +75,9 @@ impl<T: Rows> Serialize for InOrder<'_, '_, T> {
             while let Some((failure, _)) = listed.next_if(|&(_, &index)| index < at) {
                 seq.serialize_element(&Document(failure, self.failures))?;
             }
-            match prepared.values.get(number).filter(|_| prepared.fields) {
+            // The rows are serialized only when the view flags select
+            // columns, so a row without a serialized value prints whole.
+            match prepared.values.get(number) {
                 Some(selected) => seq.serialize_element(&Selected {
                     row: selected,
                     columns: prepared.columns,
