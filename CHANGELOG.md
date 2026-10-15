@@ -879,6 +879,9 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   cannot start, under their own heading.
 - crumbkit-test: [`check_help_sizes`] reports a page that fails to render as
   one problem ([behaviour/help/checks]).
+- crumbkit: the `-h` of a headed leaf whose row type names no column
+  ends with the `Next:` line that points at the JSON fields that
+  `--help` lists ([behaviour/help/examples]).
 - crumbkit-test: [`check_examples`], [`check_twin`] and [`check_recoveries`]
   report each run that their timeout stopped as stopped, where a stop up to
   1 ms early showed as a failed run that ended with SIGKILL ([behaviour/checks/end-to-end]).

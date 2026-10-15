@@ -323,6 +323,47 @@ fn short_help_of_a_headed_leaf_points_at_the_json_fields_that_long_help_explains
     );
 }
 
+/// A removed planet's file whose row type names no columns, because the
+/// text of a headed document prints the bytes and has no columns.
+#[derive(serde::Serialize, schemars::JsonSchema)]
+struct BareFile {
+    /// The file's bytes.
+    #[serde(flatten)]
+    content: crate::Bytes,
+}
+
+impl crate::Row for BareFile {
+    const COLUMNS: &'static [&'static str] = &[];
+}
+
+impl crate::Headed for BareFile {
+    fn bytes(&self) -> Option<&crate::Bytes> {
+        Some(&self.content)
+    }
+}
+
+#[test]
+fn short_help_of_a_headed_leaf_whose_row_type_has_no_columns_points_at_its_json_fields() {
+    const BARE: Guide = Guide::new().leaves(&[Leaf::new(&["planets", "remove"])
+        .examples(&[Example::new(&["ceres"], "Remove Ceres")])
+        .document(
+            crate::Document::<crate::Batch<BareFile, crate::Error>>::new(
+                "tool",
+                "planets-remove",
+                1,
+                "The removed planets' files.",
+            )
+            .headed(),
+        )]);
+
+    let page = help(&BARE, &["tool", "planets", "remove", "-h"]);
+
+    assert!(
+        page.ends_with("Next: tool planets remove --help explains each JSON field.\n"),
+        "{page}"
+    );
+}
+
 #[test]
 fn a_leaf_that_prints_one_document_prints_no_output_line() {
     let page = help(&GUIDE, &["tool", "planets", "remove", "--help"]);

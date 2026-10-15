@@ -354,10 +354,17 @@ impl Leaf {
     }
 
     /// Reports whether the leaf has a document whose row type has columns,
-    /// which its `--help` lists. A prose document has none.
+    /// which its `--help` lists. A prose document has none. A headed
+    /// document always has some, because its `--help` lists `text` and
+    /// `base64` among the JSON fields also when its row type names no
+    /// column.
     pub(crate) const fn has_columns(&self) -> bool {
         match self.columns {
-            Some(columns) => !columns.compact.is_empty() || !columns.long.is_empty(),
+            Some(columns) => {
+                columns.document.is_headed()
+                    || !columns.compact.is_empty()
+                    || !columns.long.is_empty()
+            }
             None => false,
         }
     }

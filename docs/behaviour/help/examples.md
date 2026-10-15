@@ -39,7 +39,8 @@ Why: ADR-0024, ADR-0035, ADR-0039, ADR-0041.
 - A [headed](../output/README.md#headed-bytes) document's text has no
   columns. Its `--help` lists the row's columns, then `text` and `base64`,
   under `JSON fields that --fields selects:`, and its `-h` ends with a
-  `Next:` line that says `--help` explains each JSON field. crumbkit-test's
+  `Next:` line that says `--help` explains each JSON field, also when its
+  row type names no column. crumbkit-test's
   `check_guide` fails a headed leaf whose row has no top-level `text` or
   `base64` field, because its `Bytes` field is not marked
   `#[serde(flatten)]`.
