@@ -85,6 +85,15 @@ fn a_row_holds_the_form_stream_when_the_leaf_declares_a_stream() {
 }
 
 #[test]
+fn a_row_holds_the_form_bytes_when_the_leaf_declares_a_bytes_document() {
+    const FILE: crate::Document<crate::Bytes> =
+        crate::Document::new("shelf", "books-file", 1, "The removed book's file.");
+    const GUIDE: Guide = Guide::new().leaves(&[Leaf::new(&["books", "remove"]).document(FILE)]);
+
+    assert_eq!(row(&GUIDE)["form"], json!("bytes"));
+}
+
+#[test]
 fn a_row_holds_a_null_form_when_no_leaf_declares_a_document() {
     assert_eq!(row(&Guide::new())["form"], Value::Null);
 }

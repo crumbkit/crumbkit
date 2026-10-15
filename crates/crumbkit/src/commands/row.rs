@@ -8,11 +8,11 @@ use schemars::{JsonSchema, Schema, SchemaGenerator, json_schema};
 use serde::Serialize;
 use serde::ser::{SerializeStruct, Serializer};
 
-use crate::Row;
 use crate::expect::takes_expect;
 use crate::help::effects::Writes;
 use crate::help::words::quote;
 use crate::help::{Effects, Guide, Leaf, effects};
+use crate::{Row, Shape};
 
 #[cfg(test)]
 mod tests;
@@ -165,12 +165,14 @@ impl CommandRow {
 }
 
 /// Returns the form of the document that `leaf` declares, as `commands
-/// list` writes it: `stream`, `headed`, `document`, or `None` when the
-/// leaf declares no document.
+/// list` writes it: `stream`, `bytes`, `headed`, `document`, or `None`
+/// when the leaf declares no document.
 fn form(leaf: &Leaf) -> Option<&'static str> {
     let document = leaf.get_document()?;
     Some(if leaf.is_stream() {
         "stream"
+    } else if leaf.shape() == Some(Shape::Bytes) {
+        "bytes"
     } else if document.is_headed() {
         "headed"
     } else {
@@ -486,8 +488,8 @@ impl JsonSchema for CommandRow {
                     },
                 },
                 "form": {
-                    "description": "stream when the command prints a stream, one row on each line as each arrives, headed when it prints one document whose text prints each answer's bytes under a header, document when it prints any other document, and null when the guide's leaf for the command declares no document.",
-                    "enum": ["document", "headed", "stream", null],
+                    "description": "stream when the command prints a stream, one row on each line as each arrives, bytes when it prints one document that holds bytes, which its text prints unchanged, headed when it prints one document whose text prints each answer's bytes under a header, document when it prints any other document, and null when the guide's leaf for the command declares no document.",
+                    "enum": ["bytes", "document", "headed", "stream", null],
                 },
                 "exits": {
                     "description": "The exit codes that the tool declares for the command besides crumbkit's 0, 1 and 2, in guide order. `<tool> help exit-codes` describes every code.",
