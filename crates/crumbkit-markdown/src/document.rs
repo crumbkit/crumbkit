@@ -51,8 +51,8 @@ pub(crate) struct Command {
     pub(crate) examples: Vec<Example>,
     /// The columns of the result.
     pub(crate) columns: Vec<Column>,
-    /// `stream`, `headed`, `document`, or `None` for a command without a
-    /// document.
+    /// `stream`, `bytes`, `headed`, `document`, or `None` for a command
+    /// without a document.
     pub(crate) form: Option<String>,
     /// The tool's own exit codes for the command.
     pub(crate) exits: Vec<Exit>,
