@@ -12,3 +12,4 @@ prose and bytes.
 ## Children
 
 - [ADR-0016. Result formats](0016-result-formats.md)
+- [ADR-0059. Envelope keys](0059-envelope-keys.md)

@@ -28,10 +28,11 @@ crumbkit-test's `check_examples` stops a run that does not end within 10
 seconds, so a stream command's example reads a finite input and never
 follows one. For each `--json` example of a document with the envelope, the
 check requires every line to be a JSON object whose `schema` is the leaf's
-document id, and a leaf of one result to print exactly one line, or one
+document id, or whose declared type key holds the declared type or the id
+for a document from `Document::with_keys`, and a leaf of one result to print exactly one line, or one
 indented document under the [indented layout](json-layout.md).
 
-Why: ADR-0041.
+Why: ADR-0041, ADR-0059.
 
 ## Text and JSON lines
 
@@ -47,7 +48,9 @@ reader can process each line alone. `--fields`, `--long` and `--full` shape
 each row as they shape a single row in `finish`. A stream prints one document per line in
 every [JSON layout](json-layout.md). A document from
 `Document::without_envelope` prints each row alone, and its failures print as
-text on standard error. A dry run marks each JSON line with
+text on standard error. A document from `Document::with_keys` prints each
+line with the declared keys in place of `schema` and `data`
+([output](README.md#documents-with-the-tools-own-keys)). A dry run marks each JSON line with
 `"dry_run": true`. A stream document's JSON Schema, from
 `schemas::stream_schema`, describes one line: the envelope of a document of
 one row.
@@ -56,7 +59,7 @@ The stream flushes standard output after every line, so a reader sees each
 row as soon as it prints. Standard output stays locked while the stream is
 open.
 
-Why: ADR-0041, ADR-0052.
+Why: ADR-0041, ADR-0052, ADR-0059.
 
 ## Failures and the exit code
 
