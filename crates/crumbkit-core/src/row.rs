@@ -43,6 +43,16 @@ use crate::{Call, Failure};
 /// Here `isbn` is in neither list, so it appears only with `--json --full`.
 pub trait Row: Serialize + JsonSchema {
     /// The columns that the compact output shows, in display order.
+    ///
+    /// The list names at least one field, because the table and the JSON
+    /// without `--full` print only these fields and the long ones.
+    /// `crumbkit::finish` fails to compile for a single row, a `Vec` or a
+    /// `Listing` whose row type has an empty list, and `crumbkit::stream`
+    /// fails to compile for such a row type. A batch compiles, because the
+    /// text of a headed batch prints each row's bytes and its JSON holds
+    /// every field, so a headed row type may name no column. crumbkit-test's
+    /// `check_guide` fails a leaf whose batch is not headed and whose row
+    /// type has an empty list (ADR-0063).
     const COLUMNS: &'static [&'static str];
 
     /// The columns that `--long` adds after `COLUMNS`, in display order. A

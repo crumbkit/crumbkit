@@ -341,3 +341,48 @@ fn json_of_a_headed_batch_with_declared_keys_prints_its_answers_in_input_order_w
     );
     assert_eq!(finished.err, "");
 }
+
+/// A file's answer whose row type names no columns, because the text of a
+/// headed document prints the bytes and has no columns.
+#[derive(Serialize, JsonSchema)]
+struct Blob {
+    /// The file's name.
+    name: String,
+    /// The file's bytes.
+    #[serde(flatten)]
+    content: Bytes,
+}
+
+impl Row for Blob {
+    const COLUMNS: &'static [&'static str] = &[];
+}
+
+impl Headed for Blob {
+    fn bytes(&self) -> Option<&Bytes> {
+        Some(&self.content)
+    }
+}
+
+#[test]
+fn a_headed_batch_whose_row_type_has_no_columns_prints_its_bytes_and_every_field() {
+    const BLOBS: Document<Batch<Blob, Error>> =
+        Document::new("files", "blobs", 1, "The test blobs.").headed();
+    let blobs = || {
+        let mut batch = Batch::new(&["show"], "names", &["a"]);
+        batch.extend([Ok::<_, Error>(Blob {
+            name: "a".to_owned(),
+            content: Bytes::from(b"one\n".to_vec()),
+        })]);
+        batch
+    };
+
+    let text = super::finish_with(&[], BLOBS, blobs());
+    let json = super::finish_with(&["--json"], BLOBS, blobs());
+
+    assert_eq!(text.out, "one\n");
+    assert!(
+        json.out.contains(r#""data":[{"name":"a","text":"one\n"}]"#),
+        "{}",
+        json.out
+    );
+}

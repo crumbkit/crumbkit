@@ -2,6 +2,7 @@
 //! format they choose.
 
 mod budget;
+mod columns;
 mod confirm;
 mod counted;
 mod direct;
@@ -484,6 +485,12 @@ pub fn finish<T: Rows, E: AsFailure>(
 /// `Document::always_print_first` (ADR-0046). A bytes result is measured in
 /// the form it prints, so with `--json` its base64 text counts.
 ///
+/// A single row, a `Vec` or a `Listing` whose row type has an empty
+/// [`Row::COLUMNS`](crate::Row::COLUMNS) fails to compile, because its table
+/// and its JSON without `--full` would print nothing of each row while
+/// `total` counted the rows. A batch whose row type has no columns compiles,
+/// because a headed batch needs none (ADR-0063).
+///
 /// When `--fields` names a field that the row type does not have, nothing of
 /// the result prints. The refusal prints as a failure does, with the message
 /// `--fields names an unknown field 'radius'`, the code `crumbkit::cli::usage`
@@ -525,6 +532,7 @@ pub fn finish_to<T: Rows, E: AsFailure, O: Write, W: Write>(
     document: Document<T>,
     result: Result<T, E>,
 ) -> ExitCode {
+    columns::require::<T>();
     // The sink counts the bytes of standard output, which `finish` reports
     // to the observer with the exit code (ADR-0057).
     let truncated = result.as_ref().is_ok_and(listing::leaves_out);

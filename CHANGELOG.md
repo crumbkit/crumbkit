@@ -546,6 +546,8 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   flatten its `Bytes` field ([behaviour/help/examples]).
 - crumbkit-test: [`check_output_budget`] also runs the text examples of a
   headed leaf with half the bytes they print ([behaviour/output/budget]).
+- crumbkit-test: [`check_guide`] fails a leaf whose batch is not headed and
+  whose row type has no `Row::COLUMNS` ([behaviour/help/examples]).
 
 ### Changed
 
@@ -817,6 +819,9 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit-test: [`check_output_budget`] accepts a JSON batch of one answer
   past the budget that exits with code 0, because a batch always prints its
   first answer ([behaviour/output/budget]).
+- crumbkit: [`finish`] fails to compile for a row, a `Vec` or a `Listing`,
+  and [`stream`] for a row type, whose [`Row`]`::COLUMNS` is empty, because
+  such rows printed none of their fields ([behaviour/output]).
 
 ### Removed
 

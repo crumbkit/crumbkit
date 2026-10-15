@@ -62,6 +62,9 @@ pub fn stream<R: Row>(
 /// [`Document::without_envelope`] prints each item alone, and its failures
 /// print as text on the error writer even with `--json`.
 ///
+/// A row type with an empty [`Row::COLUMNS`] fails to compile here, because
+/// each line would print nothing of its item (ADR-0063).
+///
 /// The stream flushes the output writer after each line, so a reader sees
 /// each item as soon as it is printed.
 ///
@@ -223,6 +226,7 @@ fn open<R: Row, O: Write, W: Write>(
     spelling: Spelling,
     document: Document<Stream<R>>,
 ) -> Result<Streaming<'_, R, O, W>, ExitCode> {
+    super::columns::require_for_stream::<R>();
     output.warn_without_command(&mut err);
     let typed = output.typed();
     let budget = output.budget();

@@ -74,8 +74,8 @@ Why: ADR-0024, ADR-0003.
 crumbkit-test's [`check_guide`](../../../crates/crumbkit-test/src/guide.rs)
 checks the leaves. It parses each example with clap and refuses an example
 that asks for `--help` or `--version`. It requires an example for every
-visible command without subcommands, a description for every column, and a
-document on a leaf whose effects change something. Its rustdoc lists every
-rule.
+visible command without subcommands, a description for every column, a
+compact column on a leaf whose rows are not a headed batch, and a document
+on a leaf whose effects change something. Its rustdoc lists every rule.
 
-Why: ADR-0024, ADR-0016.
+Why: ADR-0024, ADR-0016, ADR-0063.
