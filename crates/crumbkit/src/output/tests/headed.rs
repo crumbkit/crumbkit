@@ -316,3 +316,28 @@ fn json_prints_every_field_of_a_headed_batch_with_the_bytes_at_the_top_level_of_
         ])
     );
 }
+
+#[test]
+fn json_of_a_headed_batch_with_declared_keys_prints_its_answers_in_input_order_with_the_bytes_at_the_top_level()
+ {
+    let answers = [
+        ("a", Some(&b"one\n"[..])),
+        ("gone", None),
+        ("b", Some(b"caf\xe9")),
+    ];
+    let document = PAGES.with_keys("$type", "answers").failures_in_order();
+    let finished = finish(&["--json"], 1 << 20, document, batch(&answers));
+
+    assert_eq!(finished.code, ExitCode::FAILURE);
+    assert_eq!(
+        finished.text(),
+        concat!(
+            r#"{"$type":"files/pages/v1","answers":[{"name":"a","text":"one\n"},"#,
+            r#"{"schema":"crumbkit/failure/v1","key":"gone","index":1,"code":"crumbkit::report::unchecked","#,
+            r#""message":"no page is named gone","recovery":{"kind":"none","reason":"the error gives no advice"}},"#,
+            r#"{"name":"b","base64":"Y2Fm6Q=="}]}"#,
+            "\n"
+        )
+    );
+    assert_eq!(finished.err, "");
+}
