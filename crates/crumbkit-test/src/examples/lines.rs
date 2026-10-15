@@ -8,7 +8,9 @@ use crumbkit::help::Leaf;
 /// Adds to `failures` each problem of `stdout`, the output of the `--json`
 /// example `line` of `leaf` from a tool whose guide sets `layout`, as
 /// [`check_examples`](super::check_examples) describes. A leaf without a document, or whose
-/// document has no envelope, has none.
+/// document has no envelope, has none. Each document must hold its id, or
+/// the type from `Document::with_type`, under its type key, which is
+/// `schema` unless the tool declares keys with `Document::with_keys`.
 pub(super) fn check_lines(
     leaf: &Leaf,
     layout: Option<JsonLayout>,
@@ -22,8 +24,12 @@ pub(super) fn check_lines(
     if !document.has_envelope() {
         return;
     }
+    let key = document.type_key();
+    let id = document
+        .type_value()
+        .map_or_else(|| document.to_string(), str::to_owned);
     if !leaf.is_stream() && layout == Some(JsonLayout::Pretty) {
-        check_indented(&document.to_string(), line, stdout, failures);
+        check_indented(key, &id, line, stdout, failures);
         return;
     }
     let lines: Vec<&str> = stdout.lines().collect();
@@ -34,34 +40,33 @@ pub(super) fn check_lines(
         ));
         return;
     }
-    let id = document.to_string();
     for (number, text) in (1..).zip(&lines) {
         let schema = serde_json::from_str::<serde_json::Value>(text)
             .ok()
-            .and_then(|value| value.get("schema").cloned());
+            .and_then(|value| value.get(key).cloned());
         if schema.as_ref().and_then(serde_json::Value::as_str) != Some(id.as_str()) {
             failures.push(format!(
-                "{line}: line {number} of the --json output must be a JSON object whose schema is {id}"
+                "{line}: line {number} of the --json output must be a JSON object whose {key} is {id}"
             ));
         }
     }
 }
 
 /// Adds to `failures` the problem of `stdout`, the output of the `--json`
-/// example `line` of a leaf that prints one document whose schema is `id`,
+/// example `line` of a leaf that prints one document whose `key` holds `id`,
 /// from a tool whose guide sets `JsonLayout::Pretty`. The output must be one
 /// JSON document indented by two spaces, as crumbkit prints it.
-fn check_indented(id: &str, line: &str, stdout: &str, failures: &mut Vec<String>) {
+fn check_indented(key: &str, id: &str, line: &str, stdout: &str, failures: &mut Vec<String>) {
     let documents: Vec<_> = serde_json::Deserializer::from_str(stdout)
         .into_iter::<serde_json::Value>()
         .collect();
     let schema = match documents.as_slice() {
-        [Ok(document)] => document.get("schema").and_then(serde_json::Value::as_str),
+        [Ok(document)] => document.get(key).and_then(serde_json::Value::as_str),
         _ => None,
     };
     if schema != Some(id) {
         failures.push(format!(
-            "{line}: the command prints one document, so its --json output must be exactly one JSON object whose schema is {id}, and the run printed {} JSON documents",
+            "{line}: the command prints one document, so its --json output must be exactly one JSON object whose {key} is {id}, and the run printed {} JSON documents",
             documents.iter().filter(|document| document.is_ok()).count()
         ));
     } else if !stdout

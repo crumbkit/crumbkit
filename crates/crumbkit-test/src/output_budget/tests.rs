@@ -6,6 +6,7 @@ const fn ran<'a>(code: i32, stdout: &'a str, stderr: &'a str) -> Ran<'a> {
         code: Some(code),
         stdout,
         stderr,
+        data_key: "data",
     }
 }
 
@@ -64,6 +65,27 @@ fn an_array_in_input_order_whose_last_item_holds_the_budget_keeps_the_contract()
 }
 
 #[test]
+fn an_array_in_input_order_under_a_declared_data_key_whose_last_item_holds_the_budget_keeps_the_contract()
+ {
+    let stdout = "{\"$type\":\"shelf/get-books/v1\",\"answers\":[{\"id\":1},{\"code\":\"crumbkit::output::over_budget\",\"fields\":{\"left_out\":[\"2\"],\"budget\":100}}]}\n";
+    let keyed = Ran {
+        data_key: "answers",
+        ..ran(1, stdout, "")
+    };
+    assert_eq!(judge(&keyed, 100, 1), None);
+}
+
+#[test]
+fn one_row_under_a_declared_data_key_past_the_budget_keeps_the_contract() {
+    let stdout = "{\"$type\":\"shelf/get-book/v1\",\"entry\":{\"id\":1,\"name\":\"long\"}}\n";
+    let keyed = Ran {
+        data_key: "entry",
+        ..ran(0, stdout, "")
+    };
+    assert_eq!(judge(&keyed, 10, 1), None);
+}
+
+#[test]
 fn an_exit_1_without_the_over_budget_failure_breaks_the_contract() {
     let stdout = "{\"code\":\"shelf::books::not_found\",\"fields\":{}}\n";
     let problem = judge(&ran(1, stdout, ""), 100, 1).expect("a problem");
@@ -81,6 +103,7 @@ fn a_run_that_ends_with_another_exit_code_breaks_the_contract() {
         code: None,
         stdout: "",
         stderr: "",
+        data_key: "data",
     };
     let problem = judge(&signalled, 100, 1).expect("a problem");
     assert!(problem.contains("a signal"), "{problem}");
