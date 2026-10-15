@@ -22,6 +22,7 @@ mod bytes;
 mod field_names;
 mod formats;
 mod in_order;
+mod keys;
 mod streams;
 
 /// A row type for the test tool's leaves.
