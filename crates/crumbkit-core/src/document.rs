@@ -6,6 +6,7 @@ use std::marker::PhantomData;
 use crate::segment::{is_component, is_segment};
 use crate::{AsFailure, Batch, Row};
 
+mod keys;
 #[cfg(test)]
 mod tests;
 
@@ -34,7 +35,9 @@ mod tests;
 ///
 /// A document has crumbkit's envelope unless the tool calls
 /// [`Document::without_envelope`], which lets a command print an existing
-/// document unchanged while the tool migrates (ADR-0036).
+/// document unchanged while the tool migrates (ADR-0036). A tool whose
+/// readers know another envelope declares its keys with
+/// [`Document::with_keys`] and keeps crumbkit's paging fields (ADR-0059).
 ///
 /// ```
 /// # #[derive(serde::Serialize, schemars::JsonSchema)]
@@ -58,10 +61,10 @@ pub struct Document<T> {
     /// One line that says what the document holds, such as `One page of the
     /// catalogue and the number of books in it.`
     description: &'static str,
-    /// Whether `crumbkit::finish` prints the result inside crumbkit's
-    /// envelope, with `schema` and `data`, which is true unless the tool
-    /// called `without_envelope`.
-    envelope: bool,
+    /// The envelope that `crumbkit::finish` prints the result in with
+    /// `--json`: crumbkit's, one with the keys from `with_keys`, or none
+    /// after `without_envelope`.
+    envelope: Envelope,
     /// Whether the first answer prints even when it alone passes the output
     /// budget.
     first_always: bool,
@@ -72,6 +75,13 @@ pub struct Document<T> {
     /// rows in input order with `--json`, which the tool chose with
     /// `failures_in_order`.
     in_order: bool,
+    /// The value that the type key holds in place of the id, which the tool
+    /// set with `with_type`.
+    type_value: Option<&'static str>,
+    /// Whether a listing's summary prints its fields at the top of the
+    /// document in place of under `summary`, which the tool chose with
+    /// `summary_at_top`.
+    summary_top: bool,
     /// `PhantomData<fn() -> T>` ties the document to `T` without holding a
     /// `T`. A function pointer is `Send` and `Sync` whatever it returns, so
     /// `Document<T>` is `Send` and `Sync` for every `T`; `PhantomData<T>`
@@ -123,10 +133,12 @@ impl<T> Document<T> {
             name,
             version,
             description,
-            envelope: true,
+            envelope: Envelope::Crumbkit,
             first_always: false,
             empty: None,
             in_order: false,
+            type_value: None,
+            summary_top: false,
             result: PhantomData,
         }
     }
@@ -145,9 +157,19 @@ impl<T> Document<T> {
     /// unless the tool opts out of the envelope rule for the command with a
     /// stated reason, and `check_opt_outs` reports what the opt-out costs
     /// (ADR-0036).
+    ///
+    /// # Panics
+    ///
+    /// Panics when the document declares its own keys with
+    /// [`Document::with_keys`], because a document has one envelope or
+    /// none. A `const` that calls it on such a document fails to compile.
     #[must_use]
     pub const fn without_envelope(mut self) -> Self {
-        self.envelope = false;
+        assert!(
+            !matches!(self.envelope, Envelope::Keys { .. }),
+            "a document with keys from with_keys keeps its envelope; call with_keys or without_envelope, not both"
+        );
+        self.envelope = Envelope::Without;
         self
     }
 
@@ -206,7 +228,7 @@ impl<T> Document<T> {
     /// [`Document::without_envelope`].
     #[must_use]
     pub const fn has_envelope(&self) -> bool {
-        self.envelope
+        !matches!(self.envelope, Envelope::Without)
     }
 
     /// Returns the component that owns the document, such as `shelf`.
@@ -234,8 +256,8 @@ impl<T> Document<T> {
         self.description
     }
 
-    /// Returns the same id, description, choice of envelope, budget
-    /// settings and empty note as a `Document<()>`, which no longer names the result type,
+    /// Returns the same id, description, choice of envelope and its keys,
+    /// budget settings and empty note as a `Document<()>`, which no longer names the result type,
     /// so one list can hold the documents of results of different types. crumbkit's
     /// help leaves keep their documents in this form.
     #[must_use]
@@ -249,6 +271,8 @@ impl<T> Document<T> {
             first_always: self.first_always,
             empty: self.empty,
             in_order: self.in_order,
+            type_value: self.type_value,
+            summary_top: self.summary_top,
             result: PhantomData,
         }
     }
@@ -265,6 +289,10 @@ impl<R: Row, E: AsFailure> Document<Batch<R, E>> {
     /// array holds the rows alone and the failures print as text on
     /// standard error.
     ///
+    /// A document with keys from [`Document::with_keys`] holds that array
+    /// under its data key and has no `failures` field, and its rows follow
+    /// the view flags as in any document with an envelope (ADR-0059).
+    ///
     /// It is a declaration that crumbkit-test's `check_opt_outs` lists under
     /// the customisations, and crumbkit-test's `check_guide` fails on a row
     /// type with a field named `schema`, because such a row could look like
@@ -272,18 +300,36 @@ impl<R: Row, E: AsFailure> Document<Batch<R, E>> {
     ///
     /// # Panics
     ///
-    /// Panics unless the document is without its envelope, because a
-    /// document with the envelope holds its failures under `failures`. A
-    /// `const` that calls it on such a document fails to compile.
+    /// Panics when the document has crumbkit's own envelope, which holds its
+    /// failures under `failures`. A `const` that calls it on such a document
+    /// fails to compile.
     #[must_use]
     pub const fn failures_in_order(mut self) -> Self {
         assert!(
-            !self.envelope,
-            "failures in input order need a document without its envelope; call without_envelope first"
+            !matches!(self.envelope, Envelope::Crumbkit),
+            "failures in input order need a document without crumbkit's own envelope; call without_envelope or with_keys first"
         );
         self.in_order = true;
         self
     }
+}
+
+/// The envelope that a document prints its result in with `--json`.
+#[derive(Clone, Copy)]
+enum Envelope {
+    /// crumbkit's envelope, with the id under `schema` and the result under
+    /// `data`.
+    Crumbkit,
+    /// An envelope with the keys that the tool declared with
+    /// [`Document::with_keys`] (ADR-0059).
+    Keys {
+        /// The key that holds the document's type.
+        type_key: &'static str,
+        /// The key that holds the result.
+        data_key: &'static str,
+    },
+    /// No envelope, after [`Document::without_envelope`].
+    Without,
 }
 
 /// Returns whether `text` is non-empty and holds no `\n` or `\r`.

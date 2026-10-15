@@ -22,6 +22,7 @@ use crate::testing::panic_message;
 mod forms;
 mod fresh;
 mod inputs;
+mod keys;
 mod layout;
 mod opt_out;
 mod redact;

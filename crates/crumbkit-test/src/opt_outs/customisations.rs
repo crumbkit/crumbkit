@@ -30,7 +30,8 @@ pub(super) struct Customisation {
 /// refusal alternatives for every command, the [`Guide::dashed_forms`]
 /// declaration followed by each command that answers to its dashed form, as
 /// [`dashed_names`] lists them, and then for each leaf in guide order its
-/// document's name when the leaf's path gives another, the program whose
+/// document's name when the leaf's path gives another, the keys that its
+/// document declares with `Document::with_keys` (ADR-0059), the program whose
 /// exit code it passes on, whether it declares refusal alternatives,
 /// whether its batch prints its failures in input order
 /// (`Document::failures_in_order`), and each code rename of
@@ -137,6 +138,26 @@ fn leaf_customisations(command: &Command, leaf: &Leaf) -> Vec<Customisation> {
             applies_to: command_line(command, &leaf.path().join(" ")),
             declares: format!(
                 "The command prints {document}, where its path gives the name {name}."
+            ),
+        });
+    }
+    if let Some(document) = document.filter(crumbkit::Document::has_own_keys) {
+        let shown = document
+            .type_value()
+            .map_or_else(|| document.to_string(), str::to_owned);
+        let top = if document.prints_summary_at_top() {
+            ", and the summary's fields at the top in place of summary"
+        } else {
+            ""
+        };
+        list.push(Customisation {
+            declaration: "envelope-keys",
+            applies_to: command_line(command, &leaf.path().join(" ")),
+            declares: format!(
+                "With --json, the command prints {shown} under {} and its result under {}, in \
+                 place of schema and data{top}.",
+                document.type_key(),
+                document.data_key()
             ),
         });
     }

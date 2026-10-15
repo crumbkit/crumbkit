@@ -482,11 +482,13 @@ impl<'a, T: Rows> Prepared<'a, T> {
         let value = self.value;
         let rows = value.rows();
         let all = shown >= rows.len();
+        if let Some(failures) =
+            failures.filter(|_| self.json && self.document.prints_failures_in_order())
+        {
+            return self.write_in_order(out, shown, failures);
+        }
         if self.json && !self.document.has_envelope() {
-            return match failures.filter(|_| self.document.prints_failures_in_order()) {
-                Some(failures) => self.write_in_order(out, shown, failures),
-                None => self.write_unwrapped(out, shown, all),
-            };
+            return self.write_unwrapped(out, shown, all);
         }
         let extras = Extras {
             total: value.total(),

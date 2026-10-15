@@ -84,6 +84,7 @@ impl Served {
         match self.kind {
             Kind::Output => "output",
             Kind::Unwrapped => "unwrapped",
+            Kind::OwnEnvelope => "own-envelope",
             Kind::File => "file",
         }
     }
@@ -110,10 +111,7 @@ impl Served {
                 if let Some(entry) = entry {
                     accept_field_names(entry, self.field_names);
                 }
-                let in_order = value
-                    .get_mut("items")
-                    .and_then(|items| items.get_mut("anyOf"))
-                    .and_then(|kinds| kinds.get_mut(1))
+                let in_order = in_order_failure(value, self.document.data_key())
                     .and_then(serde_json::Value::as_object_mut);
                 if let Some(in_order) = in_order {
                     accept_field_names(in_order, self.field_names);
@@ -133,7 +131,11 @@ impl Served {
                 if let Some(form) = form {
                     set_entry_schema(&mut schema, form.entry_schema());
                     if self.document.prints_failures_in_order() {
-                        set_in_order_failure_schema(&mut schema, form.schema());
+                        set_in_order_failure_schema(
+                            &mut schema,
+                            self.document.data_key(),
+                            form.schema(),
+                        );
                     }
                 }
                 schema
@@ -207,7 +209,9 @@ pub fn documents(command: &Command, guide: &Guide) -> Vec<Served> {
             Some(entry) => entry.commands.push(line),
             None => served.push(Served {
                 document,
-                kind: if document.has_envelope() {
+                kind: if document.has_own_keys() {
+                    Kind::OwnEnvelope
+                } else if document.has_envelope() {
                     Kind::Output
                 } else {
                     Kind::Unwrapped
@@ -251,15 +255,30 @@ fn set_entry_schema(schema: &mut Schema, entry: Schema) {
 
 /// Puts `failure` as the second kind of item of `schema`, the schema of a
 /// batch that prints its failures in input order, in place of the
-/// `crumbkit/failure/v1` document.
-fn set_in_order_failure_schema(schema: &mut Schema, failure: Schema) {
-    let kinds = schema
-        .get_mut("items")
-        .and_then(|items| items.get_mut("anyOf"))
-        .and_then(serde_json::Value::as_array_mut);
-    if let Some(slot) = kinds.and_then(|kinds| kinds.get_mut(1)) {
+/// `crumbkit/failure/v1` document. `data_key` is the key that holds the
+/// array in a document with keys that the tool declares.
+fn set_in_order_failure_schema(schema: &mut Schema, data_key: &str, failure: Schema) {
+    let slot = schema
+        .as_object_mut()
+        .and_then(|schema| in_order_failure(schema, data_key));
+    if let Some(slot) = slot {
         *slot = failure.to_value();
     }
+}
+
+/// Returns the second kind of item of the in-order array of `schema`: the
+/// array at the top of a document without an envelope, or the array under
+/// `data_key` in a document with keys that the tool declares (ADR-0059).
+fn in_order_failure<'a>(
+    schema: &'a mut serde_json::Map<String, serde_json::Value>,
+    data_key: &str,
+) -> Option<&'a mut serde_json::Value> {
+    let array = if schema.contains_key("items") {
+        schema
+    } else {
+        pointer(schema, &["properties", data_key])?
+    };
+    array.get_mut("items")?.get_mut("anyOf")?.get_mut(1)
 }
 
 /// The names that a failure field has under crumbkit's rule, as the
@@ -312,6 +331,9 @@ enum Kind {
     /// A command prints the document without crumbkit's envelope, or every
     /// command prints it on failure, as a failure form's document.
     Unwrapped,
+    /// A command prints the document under keys that the tool declares
+    /// with `Document::with_keys` (ADR-0059).
+    OwnEnvelope,
     /// A file format that users write and no command prints.
     File,
 }

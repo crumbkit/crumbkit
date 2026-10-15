@@ -13,7 +13,11 @@ Every JSON document is an object with a `schema` id and the result under
 `data` ([`finish`](../../../crates/crumbkit/src/output.rs)). A document from
 `Document::without_envelope` prints the result alone, and its schema is the
 schema of `data` with the id as its title
-([output](../output/README.md#documents-without-the-envelope)). A dry run's
+([output](../output/README.md#documents-without-the-envelope)). A document
+from `Document::with_keys` holds its id, or the type from
+`Document::with_type`, and its result under the keys that the tool declares,
+and keeps every other field
+([output](../output/README.md#documents-with-the-tools-own-keys)). A dry run's
 document holds `dry_run: true` after `schema`, and a real run's holds no
 `dry_run` field ([effects](../effects/README.md#dry-runs)). The usage record
 is one line of a log, so it has its fields at the top level beside `schema`,
@@ -38,7 +42,7 @@ without `data` ([usage log](../usage-log/README.md)).
   padding (RFC 4648) otherwise. Its schema is a `oneOf` of the two objects
   under the definition `Bytes`.
 
-Why: ADR-0007, ADR-0016, ADR-0036, ADR-0039, ADR-0046, ADR-0050.
+Why: ADR-0007, ADR-0016, ADR-0036, ADR-0039, ADR-0046, ADR-0050, ADR-0059.
 
 ## The failure document
 

@@ -188,8 +188,10 @@ failures does. A batch whose document also calls
 row and each failure document in the order of the keys, with the
 over-budget failure last, so a program reads every answer from standard
 output. `failures_in_order` is opt-in, because the readers of an existing document
-expect rows alone, and a const panic rejects it on a document with the
-envelope, which holds its failures under `failures`. A reader tells a failure
+expect rows alone, and a const panic rejects it on a document with
+crumbkit's own envelope, which holds its failures under `failures`. A
+document with the tool's own keys holds the array under its data key, as
+the next section describes. A reader tells a failure
 from a row by its `schema`, so crumbkit-test's `check_guide` fails such a
 document whose row type has a field named `schema`. A command that
 fails as a whole still prints the failure document, so every command fails in
@@ -201,3 +203,43 @@ without the envelope, and the opt-out report lists `failures_in_order` as a
 [declaration](../adoption/declarations.md).
 
 Why: ADR-0016.
+
+## Documents with the tool's own keys
+
+A tool whose readers expect other names for the two keys of the envelope
+declares them with
+[`Document::with_keys`](../../../crates/crumbkit-core/src/document/keys.rs),
+such as `with_keys("$type", "answers")`. The document prints its id under
+the type key and its result under the data key. `Document::with_type` puts
+a fixed string, such as `tool/get-report/v1`, under the type key in place
+of the id. Every other part of the envelope stays: `total`, `truncated`,
+`summary`, `cut`, `failures` and `dry_run` print as they do in crumbkit's
+envelope, and the view flags, the output budget and streams work as they do
+for any other document. A stream prints both keys on each line.
+
+A const panic rejects a key that is one of the names crumbkit writes beside
+the result (`dry_run`, `total`, `truncated`, `summary`, `cut` and
+`failures`), two keys that are the same, and `with_keys` together with
+`without_envelope`.
+
+A batch that also calls `Document::failures_in_order` prints each row and
+each failure under the data key in the order of the keys, repeats
+included, with the over-budget failure last, and prints no `failures`. Each
+failure prints in the guide's failure form when it has one.
+
+A listing whose document calls `Document::summary_at_top` prints the
+fields of its summary at the top of the document beside the two keys, in
+place of a `summary` object, so a tool can print fields such as a
+location or a degraded flag there. The summary must serialize as an object.
+A summary field whose name is one of the document's keys or one of the
+names crumbkit writes fails the write: the run exits with 1, prints
+nothing on standard output and names the field on standard error. The
+summary line of the text output stays.
+
+`schemas list` shows such a document with the kind `own-envelope`, and its
+schema names the declared keys, with the summary's schema under `allOf`
+when the summary prints at the top. The keys are a
+[declaration](../adoption/declarations.md), so no opt-out is needed, and
+the opt-out report lists them as an `envelope-keys` customisation.
+
+Why: ADR-0059.

@@ -504,6 +504,26 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit-test: [`check_opt_outs`] lists the guide's field names as the
   `field-names` customisation of every run
   ([behaviour/adoption/declarations]).
+- crumbkit: `Document::with_keys` prints a document's id and result under
+  keys that the tool names, such as `$type` and `answers`, and keeps
+  `total`, `truncated`, `cut`, `failures`, `dry_run` and the view flags
+  ([behaviour/output]).
+- crumbkit: `Document::with_type` prints a fixed string, such as
+  `tool/get-report/v1`, under the declared type key in place of the id
+  ([behaviour/output]).
+- crumbkit: a batch with declared keys and `Document::failures_in_order`
+  prints each row and failure under its data key in input order, with no
+  `failures` ([behaviour/output]).
+- crumbkit: `Document::summary_at_top` prints a listing's summary fields at
+  the top of a document with declared keys. A field that takes a reserved
+  or declared name fails the write ([behaviour/output]).
+- crumbkit: `schemas list` shows a document with declared keys as the kind
+  `own-envelope`, and its schema names the declared keys
+  ([behaviour/schemas/commands]).
+- crumbkit-test: [`check_opt_outs`] lists a document's declared keys as an
+  `envelope-keys` customisation, and [`check_examples`],
+  [`check_output_budget`] and the failure reader read the declared keys
+  ([behaviour/adoption/declarations]).
 
 ### Changed
 

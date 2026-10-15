@@ -20,6 +20,7 @@ mod direct;
 mod empty;
 mod exits;
 mod in_order;
+mod keys;
 mod layout;
 mod listing;
 mod notes;
