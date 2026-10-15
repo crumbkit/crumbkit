@@ -1,0 +1,33 @@
+Print the file of each reading list named, each under a header when there are several
+
+Usage: reading lists show [OPTIONS] <NAME>...
+
+Arguments:
+  <NAME>...
+          The names of the reading lists, such as to-read
+
+Options:
+      --json
+          Print the result as a JSON document
+
+      --fields <FIELD>
+          Print only these comma-separated fields, in this order
+
+      --no-input
+          Fail instead of asking a question
+
+  -h, --help
+          Print help (see a summary with '-h')
+
+Examples:
+  reading lists show to-read finished
+          Print the files of the to-read and finished lists, each under a header
+
+  reading lists show to-read --json
+          Print the file of the to-read list as JSON, with its text or base64 beside its name
+
+Columns:
+  name  The list's name.
+
+Effects: read-only, closed-world.
+Output: each answer's bytes unchanged, under a ==> KEY <== header when there are several keys, and --json prints the bytes as text or base64.

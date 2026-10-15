@@ -40,7 +40,7 @@ fn a_tool_without_lists_has_the_guide_and_the_commands_of_its_static_grammar() {
         .get_subcommands()
         .map(clap::Command::get_name)
         .collect();
-    assert_eq!(names, ["entries", "commands", "schemas"]);
+    assert_eq!(names, ["entries", "lists", "commands", "schemas"]);
 }
 
 #[test]

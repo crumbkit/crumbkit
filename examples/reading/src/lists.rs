@@ -22,12 +22,14 @@ use crate::cli::Resource;
 
 mod export;
 mod set;
+mod show;
 mod stream;
 #[cfg(test)]
 mod tests;
 
 pub(crate) use self::export::{ENTRIES_EXPORT, export};
 pub(crate) use self::set::{ENTRIES_SET, set};
+pub(crate) use self::show::{LISTS_SHOW, show};
 pub(crate) use self::stream::{ENTRIES_STREAM, stream_entries};
 
 /// The document that `reading entries list` and the list command of each

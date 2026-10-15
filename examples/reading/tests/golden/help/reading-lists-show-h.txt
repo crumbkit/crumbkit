@@ -1,0 +1,18 @@
+Print the file of each reading list named, each under a header when there are several
+
+Usage: reading lists show [OPTIONS] <NAME>...
+
+Arguments:
+  <NAME>...  The names of the reading lists, such as to-read
+
+Options:
+  -h, --help  Print help (see more with '--help')
+
+Examples:
+  reading lists show to-read finished
+  reading lists show to-read --json
+
+Effects: read-only, closed-world.
+Output: each answer's bytes unchanged, under a ==> KEY <== header when there are several keys, and --json prints the bytes as text or base64.
+Global flags: --json, --fields <FIELD>, --no-input. `reading lists show --help` describes them.
+Next: reading lists show --help explains each column.

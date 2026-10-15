@@ -1,0 +1,12 @@
+Print the files of reading's lists
+
+Usage: reading lists [OPTIONS] <COMMAND>
+
+Commands:
+  show  Print the file of each reading list named, each under a header when there are several
+
+Options:
+  -h, --help  Print help (see more with '--help')
+
+Global flags: --json, --fields <FIELD>, --long, --full, --no-input. `reading lists --help` describes them.
+Next: reading lists <COMMAND> -h

@@ -12,7 +12,9 @@ use crumbkit::schemas::{SCHEMAS_LIST, SCHEMAS_SHOW, SchemasList, SchemasShow};
 use crumbkit::{DryRun, Expect, NoInput, Output, Page, Yes};
 use crumbkit_picker::Menu;
 
-use crate::lists::{ENTRIES_EXPORT, ENTRIES_LIST, ENTRIES_SET, ENTRIES_STREAM, choices};
+use crate::lists::{
+    ENTRIES_EXPORT, ENTRIES_LIST, ENTRIES_SET, ENTRIES_STREAM, LISTS_SHOW, choices,
+};
 
 /// Keep reading lists, and print the entries of each.
 #[derive(Debug, Parser)]
@@ -109,6 +111,19 @@ pub const GUIDE: Guide = Guide::new().picker(&MENU).leaves(&[
         ])
         .effects(Effects::replacing())
         .document(ENTRIES_SET),
+    Leaf::new(&["lists", "show"])
+        .examples(&[
+            Example::new(
+                &["to-read", "finished"],
+                "Print the files of the to-read and finished lists, each under a header",
+            ),
+            Example::new(
+                &["to-read", "--json"],
+                "Print the file of the to-read list as JSON, with its text or base64 beside its name",
+            ),
+        ])
+        .effects(Effects::read_only())
+        .document(LISTS_SHOW),
     Leaf::new(&["commands", "list"])
         .examples(&[
             Example::new(&[], "List every command"),
@@ -141,6 +156,12 @@ pub(crate) enum Resource {
         #[command(subcommand)]
         command: EntriesCommand,
     },
+    /// Print the files of reading's lists.
+    Lists {
+        /// What to do with the lists.
+        #[command(subcommand)]
+        command: ListsCommand,
+    },
     /// Explore reading's commands.
     Commands {
         /// What to do with the commands.
@@ -166,6 +187,13 @@ pub(crate) enum EntriesCommand {
     Set(EntriesSet),
     /// Print the file of the reading list that --list names, as the file holds it.
     Export(EntriesExport),
+}
+
+/// The commands for reading's lists as a whole.
+#[derive(Debug, Subcommand)]
+pub(crate) enum ListsCommand {
+    /// Print the file of each reading list named, each under a header when there are several.
+    Show(ListsShow),
 }
 
 /// The commands for reading's own commands.
@@ -210,6 +238,14 @@ pub(crate) struct EntriesExport {
     /// The name of the reading list, such as to-read
     #[arg(long, value_name = "NAME")]
     pub(crate) list: String,
+}
+
+/// The arguments of `reading lists show`.
+#[derive(Debug, Args)]
+pub(crate) struct ListsShow {
+    /// The names of the reading lists, such as to-read
+    #[arg(required = true, num_args = 1..=100, value_name = "NAME")]
+    pub(crate) names: Vec<String>,
 }
 
 /// The arguments of `reading entries set`.
