@@ -47,7 +47,7 @@ impl Reference {
 /// The reference has a title, then one section for each command in the
 /// order of the document. A section holds the command's description, links
 /// to its subcommands, its arguments, examples and columns, the effects,
-/// writes and stream lines that its help prints, and its exit codes. The
+/// writes and `Output:` lines that its help prints, and its exit codes. The
 /// section's heading is the command line in a code span, and its anchor is
 /// the one that GitHub gives that heading.
 ///
@@ -143,6 +143,9 @@ fn section(text: &mut String, command: &Command, commands: &[Command]) {
         }
         Some("headed") => {
             let _ = write!(text, "\n{}\n", help::HEADED_LINE);
+        }
+        Some("bytes") => {
+            let _ = write!(text, "\n{}\n", help::BYTES_LINE);
         }
         _ => {}
     }

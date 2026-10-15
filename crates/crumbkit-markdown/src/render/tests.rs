@@ -214,6 +214,30 @@ fn a_headed_command_lists_its_json_fields_and_prints_the_headed_output_line_as_h
 }
 
 #[test]
+fn a_bytes_command_prints_the_bytes_output_line_as_help_does() {
+    let input = document(&[command(
+        "tool export",
+        "Export",
+        json!({
+            "form": "bytes",
+            "effects": {"read_only": true, "destructive": false, "idempotent": true, "open_world": false},
+        }),
+    )]);
+
+    let reference = render(&input).unwrap();
+
+    let expected = format!(
+        "\nEffects: read-only, closed-world.\n\n{}\n",
+        crumbkit::help::BYTES_LINE
+    );
+    assert!(
+        reference.text().ends_with(&expected),
+        "{}",
+        reference.text()
+    );
+}
+
+#[test]
 fn the_writes_line_follows_the_effects_line_and_words_the_guards_as_help_does() {
     let input = document(&[command(
         "tool",

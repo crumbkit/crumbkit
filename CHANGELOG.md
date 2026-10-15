@@ -539,6 +539,9 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   its JSON fields, including `text` and `base64`, under a heading naming
   `--fields`. `commands list` gives it the form `headed`, and
   crumbkit-markdown's reference prints both ([behaviour/help]).
+- crumbkit: `commands list` gives a leaf that prints [`Bytes`] the form
+  `bytes`, and crumbkit-markdown's reference prints its `Output:` line as
+  help does ([behaviour/help]).
 - crumbkit-test: [`check_guide`] fails a headed leaf whose row does not
   flatten its `Bytes` field ([behaviour/help/examples]).
 - crumbkit-test: [`check_output_budget`] also runs the text examples of a
