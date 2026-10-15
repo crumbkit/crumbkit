@@ -535,8 +535,12 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit: the JSON of a headed batch holds every field of each row unless
   `--fields` names some. `--fields` needs `--json`, and a headed leaf offers
   neither `--long` nor `--full` ([behaviour/output]).
-- crumbkit: the help of a headed leaf ends with an `Output:` line that
-  describes its text ([behaviour/help]).
+- crumbkit: the help of a headed leaf ends with an `Output:` line and lists
+  its JSON fields, including `text` and `base64`, under a heading naming
+  `--fields`. `commands list` gives it the form `headed`, and
+  crumbkit-markdown's reference prints both ([behaviour/help]).
+- crumbkit-test: [`check_guide`] fails a headed leaf whose row does not
+  flatten its `Bytes` field ([behaviour/help/examples]).
 - crumbkit-test: [`check_output_budget`] also runs the text examples of a
   headed leaf with half the bytes they print ([behaviour/output/budget]).
 

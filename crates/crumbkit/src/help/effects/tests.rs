@@ -299,6 +299,31 @@ fn help_of_a_headed_leaf_prints_the_headed_output_line_after_the_effects() {
 }
 
 #[test]
+fn long_help_of_a_headed_leaf_lists_its_json_fields_with_text_and_base64_under_a_heading_that_names_fields()
+ {
+    let page = help(&HEADED, &["tool", "planets", "remove", "--help"]);
+
+    let expected = "\
+JSON fields that --fields selects:
+  name    The planet's name.
+  text    The bytes, which are valid UTF-8, as text.
+  base64  The bytes, which are not valid UTF-8, in standard base64 with padding (RFC 4648).
+";
+    assert!(page.contains(expected), "{page}");
+    assert!(!page.contains("Columns"), "{page}");
+}
+
+#[test]
+fn short_help_of_a_headed_leaf_points_at_the_json_fields_that_long_help_explains() {
+    let page = help(&HEADED, &["tool", "planets", "remove", "-h"]);
+
+    assert!(
+        page.ends_with("Next: tool planets remove --help explains each JSON field.\n"),
+        "{page}"
+    );
+}
+
+#[test]
 fn a_leaf_that_prints_one_document_prints_no_output_line() {
     let page = help(&GUIDE, &["tool", "planets", "remove", "--help"]);
 

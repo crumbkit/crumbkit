@@ -365,7 +365,9 @@ impl Leaf {
     /// Returns the columns of the leaf's row type as its `--help` describes
     /// them: each name of [`Row::COLUMNS`] and then each name of
     /// [`Row::LONG_COLUMNS`], in declared order, or no column when the leaf
-    /// has no document.
+    /// has no document. A headed document's text has no columns, so its
+    /// names are the JSON fields that `--fields` selects: the same names,
+    /// none of them long, and then `text` and `base64` (ADR-0062).
     ///
     /// It builds the row type's JSON Schema, so it costs a schema build on
     /// each call. A column's description is the first paragraph of the
@@ -390,10 +392,14 @@ impl Leaf {
         };
         let schema = (columns.schema)();
         let properties = row::properties(&schema);
+        let headed = columns.document.is_headed();
+        let bytes: &[&str] = if headed { &["text", "base64"] } else { &[] };
         let compact = columns.compact.iter().map(|name| (name, false));
-        let long = columns.long.iter().map(|name| (name, true));
+        let long = columns.long.iter().map(|name| (name, !headed));
+        let bytes = bytes.iter().filter(|name| !columns.compact.contains(name));
         compact
             .chain(long)
+            .chain(bytes.map(|name| (name, false)))
             .map(|(&name, long)| {
                 let property = properties
                     .iter()
@@ -519,7 +525,8 @@ pub(crate) fn examples(
 /// columns: `Columns:` with the row type's [`Row::COLUMNS`] and
 /// `Columns that --long adds:` with its [`Row::LONG_COLUMNS`], each in
 /// declared order, leaving out a section with no names. It returns no
-/// section when the leaf has no document. `header` styles each heading and
+/// section when the leaf has no document. A headed leaf has one section,
+/// `JSON fields that --fields selects:`. `header` styles each heading and
 /// `literal` each name.
 ///
 /// Each line has the layout of the goal list, and holds the column's name
@@ -529,7 +536,11 @@ pub(crate) fn examples(
 pub(crate) fn columns(leaf: &Leaf, header: Style, literal: Style) -> Vec<String> {
     let columns = leaf.column_descriptions();
     let mut sections = Vec::new();
-    for (heading, long) in [("Columns:", false), ("Columns that --long adds:", true)] {
+    let compact = match leaf.columns {
+        Some(columns) if columns.document.is_headed() => "JSON fields that --fields selects:",
+        _ => "Columns:",
+    };
+    for (heading, long) in [(compact, false), ("Columns that --long adds:", true)] {
         let section_columns: Vec<&Column> = columns
             .iter()
             .filter(|column| column.long == long)

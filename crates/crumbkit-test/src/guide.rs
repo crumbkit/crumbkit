@@ -67,6 +67,10 @@ mod tests;
 /// - a leaf column whose name is not a field of the leaf's row type, such
 ///   as a misspelt name in `Row::COLUMNS` or `Row::LONG_COLUMNS`, because
 ///   the table prints `-` in every row of it;
+/// - a headed leaf (`Document::headed`) whose row type has no top-level
+///   `text` or `base64` field, because its JSON then holds the bytes
+///   under another field; the row marks its `Bytes` field
+///   `#[serde(flatten)]` (ADR-0062);
 /// - a leaf column without a description, naming the field whose doc
 ///   comment is missing, because `--help` lists the column without one;
 /// - a leaf whose row type's `Row::PROBLEM` names a field that is not one
@@ -337,22 +341,7 @@ fn check_leaves(command: &Command, guide: &Guide, problems: &mut Vec<String>) {
                 ));
             }
         }
-        let columns = leaf.column_descriptions();
-        if let Some(field) = leaf.problem() {
-            check_problem(&text, field, &columns, problems);
-        }
-        for column in columns {
-            let name = column.name();
-            if !column.is_property() {
-                problems.push(format!(
-                    "{text}: the column `{name}` is not a field of the row type, so the table prints `-` in every row of it"
-                ));
-            } else if column.description().is_none() {
-                problems.push(format!(
-                    "{text}: the column `{name}` has no description, because the field `{name}` of the row type has no doc comment"
-                ));
-            }
-        }
+        check_columns(&text, leaf, problems);
     }
     for visit in tree::walk_visible(command) {
         let named = leaves
@@ -362,6 +351,36 @@ fn check_leaves(command: &Command, guide: &Guide, problems: &mut Vec<String>) {
             problems.push(format!(
                 "{}: no leaf with an example names the command, so its help shows no example",
                 visit.path()
+            ));
+        }
+    }
+}
+
+/// Adds a problem to `problems` for each column of the leaf at `text` that
+/// is not a field of its row type or has no description, for the problem
+/// field that `check_problem` refuses, and for a headed leaf's `text` or
+/// `base64` that is not at the top level of the row type.
+fn check_columns(text: &str, leaf: &Leaf, problems: &mut Vec<String>) {
+    let columns = leaf.column_descriptions();
+    if let Some(field) = leaf.problem() {
+        check_problem(text, field, &columns, problems);
+    }
+    let headed = leaf
+        .get_document()
+        .is_some_and(|document| document.is_headed());
+    for column in columns {
+        let name = column.name();
+        if headed && !column.is_property() && ["text", "base64"].contains(&name) {
+            problems.push(format!(
+                "{text}: the field `{name}` is not at the top level of the row type, so the JSON of the headed document does not hold the bytes beside the other fields; mark the `Bytes` field `#[serde(flatten)]`"
+            ));
+        } else if !column.is_property() {
+            problems.push(format!(
+                "{text}: the column `{name}` is not a field of the row type, so the table prints `-` in every row of it"
+            ));
+        } else if column.description().is_none() {
+            problems.push(format!(
+                "{text}: the column `{name}` has no description, because the field `{name}` of the row type has no doc comment"
             ));
         }
     }

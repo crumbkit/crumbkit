@@ -26,8 +26,10 @@ Examples:
   reading lists show to-read --json
           Print the file of the to-read list as JSON, with its text or base64 beside its name
 
-Columns:
-  name  The list's name.
+JSON fields that --fields selects:
+  name    The list's name.
+  text    The bytes, which are valid UTF-8, as text.
+  base64  The bytes, which are not valid UTF-8, in standard base64 with padding (RFC 4648).
 
 Effects: read-only, closed-world.
 Output: each answer's bytes unchanged, under a ==> KEY <== header when there are several keys, and --json prints the bytes as text or base64.

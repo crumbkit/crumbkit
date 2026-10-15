@@ -44,6 +44,13 @@ its own properties.
   `--fields` named some, so a reader gets the bytes without a flag. The
   leaf offered neither `--long` nor `--full`, and `parse` refused
   `--fields` without `--json`, because the text has no columns.
+- A headed leaf's `--help` listed the row's columns, then `text` and
+  `base64`, under `JSON fields that --fields selects:`, because those are
+  the names that `--fields` selects and the text has no columns. `commands
+  list` gave the leaf the form `headed` and the same fields as its
+  columns, and crumbkit-markdown's reference printed the same heading and
+  help's `Output:` line from that form. `check_guide` failed a headed leaf
+  whose row had no top-level `text` or `base64` field.
 - `check_output_budget` ran the text examples of a headed leaf as well as
   its JSON examples, and accepted a JSON batch of one answer past the
   budget that exits 0, because a batch always prints its first answer.
@@ -64,4 +71,6 @@ header for a failed key, a row without bytes refused, a row without bytes
 printed as its columns, cutting a row to the budget, stopping at the first
 row larger than the budget, `--fields` selecting the text of a headed
 batch, `--json` printing only the columns of a headed batch, a separate
-`Bytes` schema for flattened fields.
+`Bytes` schema for flattened fields, no columns section for a headed leaf,
+a headed leaf's columns without `text` and `base64`, a `commands list`
+field for the `Output:` line in place of the `headed` form.

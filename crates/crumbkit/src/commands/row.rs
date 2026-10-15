@@ -165,12 +165,14 @@ impl CommandRow {
 }
 
 /// Returns the form of the document that `leaf` declares, as `commands
-/// list` writes it: `stream`, `document`, or `None` when the leaf declares
-/// no document.
+/// list` writes it: `stream`, `headed`, `document`, or `None` when the
+/// leaf declares no document.
 fn form(leaf: &Leaf) -> Option<&'static str> {
-    leaf.get_document()?;
+    let document = leaf.get_document()?;
     Some(if leaf.is_stream() {
         "stream"
+    } else if document.is_headed() {
+        "headed"
     } else {
         "document"
     })
@@ -462,7 +464,7 @@ impl JsonSchema for CommandRow {
                     },
                 },
                 "columns": {
-                    "description": "The columns of the result that the command prints, from the document of the guide's leaf for the command.",
+                    "description": "The columns of the result that the command prints, from the document of the guide's leaf for the command. A headed command's text has no columns, so it lists the JSON fields that `--fields` selects, ending with `text` and `base64`.",
                     "type": "array",
                     "items": {
                         "type": "object",
@@ -484,8 +486,8 @@ impl JsonSchema for CommandRow {
                     },
                 },
                 "form": {
-                    "description": "stream when the command prints a stream, one row on each line as each arrives, document when it prints one document, and null when the guide's leaf for the command declares no document.",
-                    "enum": ["document", "stream", null],
+                    "description": "stream when the command prints a stream, one row on each line as each arrives, headed when it prints one document whose text prints each answer's bytes under a header, document when it prints any other document, and null when the guide's leaf for the command declares no document.",
+                    "enum": ["document", "headed", "stream", null],
                 },
                 "exits": {
                     "description": "The exit codes that the tool declares for the command besides crumbkit's 0, 1 and 2, in guide order. `<tool> help exit-codes` describes every code.",

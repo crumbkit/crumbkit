@@ -15,4 +15,4 @@ Examples:
 Effects: read-only, closed-world.
 Output: each answer's bytes unchanged, under a ==> KEY <== header when there are several keys, and --json prints the bytes as text or base64.
 Global flags: --json, --fields <FIELD>, --no-input. `reading lists show --help` describes them.
-Next: reading lists show --help explains each column.
+Next: reading lists show --help explains each JSON field.

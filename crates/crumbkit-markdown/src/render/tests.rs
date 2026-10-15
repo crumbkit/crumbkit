@@ -181,6 +181,39 @@ fn the_effects_line_words_the_effects_as_help_does() {
 }
 
 #[test]
+fn a_headed_command_lists_its_json_fields_and_prints_the_headed_output_line_as_help_does() {
+    let input = document(&[command(
+        "tool show",
+        "Show",
+        json!({
+            "form": "headed",
+            "columns": [
+                {"name": "name", "long": false, "description": "The name."},
+                {"name": "text", "long": false, "description": "The bytes as text."},
+            ],
+            "effects": {"read_only": true, "destructive": false, "idempotent": true, "open_world": false},
+        }),
+    )]);
+
+    let reference = render(&input).unwrap();
+
+    let expected = format!(
+        "\n### JSON fields that `--fields` selects\n\n- `name`: The name.\n- `text`: The bytes as text.\n\nEffects: read-only, closed-world.\n\n{}\n",
+        crumbkit::help::HEADED_LINE
+    );
+    assert!(
+        reference.text().ends_with(&expected),
+        "{}",
+        reference.text()
+    );
+    assert!(
+        !reference.text().contains("### Columns"),
+        "{}",
+        reference.text()
+    );
+}
+
+#[test]
 fn the_writes_line_follows_the_effects_line_and_words_the_guards_as_help_does() {
     let input = document(&[command(
         "tool",

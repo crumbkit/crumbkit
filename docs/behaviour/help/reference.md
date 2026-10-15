@@ -12,8 +12,8 @@ that `<binary> commands list --all --json --full` prints and returns one
 CommonMark file ([commands list](commands-list.md)). The reference therefore
 needs no access to the tool's code and says what the tool's help says.
 crumbkit-markdown depends on crumbkit only for `Effects::line`,
-`Effects::writes_line` and `help::STREAM_LINE`, so the effects, writes and
-stream lines use help's own wording.
+`Effects::writes_line`, `help::STREAM_LINE` and `help::HEADED_LINE`, so the
+effects, writes, stream and headed lines use help's own wording.
 
 The file opens with the title `Commands of <root>` and a line saying that
 crumbkit-markdown writes it from the tool's help. Each command then has a
@@ -26,8 +26,11 @@ in a code span. The section holds these parts:
   whether it takes several values, its possible values, its defaults, and
   whether it works after every subcommand;
 - the examples as fenced `sh` blocks;
-- the columns and the columns that `--long` adds;
-- the effects line, the writes line and the stream line;
+- the columns and the columns that `--long` adds, or for a command whose
+  `form` is `headed` the JSON fields that `--fields` selects, under a
+  heading that says so;
+- the effects line, the writes line, and the stream line or the headed
+  line;
 - an `Exit codes` list.
 
 The reference escapes the inline markup characters of help text and the

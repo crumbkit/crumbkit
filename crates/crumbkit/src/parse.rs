@@ -172,7 +172,8 @@ where
 /// - `-h` of a leaf whose document has columns ends with a line such as
 ///   `Next: shelf books list --help explains each column.` A prose
 ///   document has no columns, so its leaf has neither the line nor the
-///   column sections.
+///   column sections. A headed document's line says `explains each JSON
+///   field`, and its section lists the JSON fields that `--fields` selects.
 /// - `-h` and `--help` of a leaf that declares its
 ///   [`Effects`](crate::help::Effects) print them on one line before
 ///   crumbkit's lines, such as `Effects: destructive, idempotent,
