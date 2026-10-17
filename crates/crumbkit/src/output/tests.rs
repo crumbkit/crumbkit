@@ -15,6 +15,7 @@ use crate::{Document, Error, Listing, Row, Rows, Sink, Spelling};
 mod about;
 mod batch;
 mod budget;
+mod built;
 mod bytes;
 mod direct;
 mod empty;
@@ -133,7 +134,7 @@ fn finish_output<T: Rows>(output: &mut Output, document: Document<T>, value: T) 
     let result: Result<T, Error> = Ok(value);
     let code = finish_to(&mut sink, output, Spelling::COLONS, document, result);
     Finished {
-        code,
+        code: ExitCode::from(code),
         out: String::from_utf8(out).unwrap(),
         err: String::from_utf8(err).unwrap(),
     }
@@ -429,7 +430,7 @@ fn a_failed_write_exits_with_code_1_and_reports_the_cause() {
         result,
     );
 
-    assert_eq!(code, ExitCode::FAILURE);
+    assert_eq!(code, 1);
     assert_eq!(
         String::from_utf8(err).unwrap(),
         "error: cannot write to standard output: the writer failed\n"
@@ -450,7 +451,7 @@ fn a_reader_that_closes_the_pipe_early_still_exits_with_code_0_and_no_error() {
         result,
     );
 
-    assert_eq!(code, ExitCode::SUCCESS);
+    assert_eq!(code, 0);
     assert_eq!(String::from_utf8(err).unwrap(), "");
 }
 

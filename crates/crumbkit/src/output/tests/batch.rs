@@ -158,7 +158,7 @@ fn finish_with<E: AsFailure>(flags: &[&str], batch: Batch<Planet, E>) -> Finishe
         result,
     );
     Finished {
-        code,
+        code: ExitCode::from(code),
         out: String::from_utf8(out).unwrap(),
         err: String::from_utf8(err).unwrap(),
     }
@@ -463,7 +463,7 @@ fn finish_failing(
         PLANETS,
         result,
     );
-    (code, String::from_utf8(err).unwrap())
+    (ExitCode::from(code), String::from_utf8(err).unwrap())
 }
 
 #[test]

@@ -72,7 +72,7 @@ fn finish_with<T: crate::Rows>(
     );
     Finished {
         dry_run,
-        code,
+        code: ExitCode::from(code),
         out: String::from_utf8(out).unwrap(),
         err: String::from_utf8(err).unwrap(),
     }

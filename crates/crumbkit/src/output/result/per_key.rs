@@ -80,6 +80,7 @@ impl<T: Rows> Prepared<'_, T> {
             return Ok(Some((answer, bytes)));
         }
         let mut each = each_left_out(value, low, code, budget);
+        let several = crate::output::several_keys(value);
         let prepared: Vec<(usize, PreparedFailure<'_>)> = each
             .iter()
             .map(|(position, over)| {
@@ -93,7 +94,7 @@ impl<T: Rows> Prepared<'_, T> {
                     left_out.command.as_deref_mut(),
                     err,
                 );
-                (*position, failure.keyed(key))
+                (*position, failure.keyed(key, several))
             })
             .collect();
         let Some(shown) = self.fit_each(listed, &prepared, low, budget)? else {

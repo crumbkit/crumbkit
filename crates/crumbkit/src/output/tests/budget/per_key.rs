@@ -229,3 +229,50 @@ proptest! {
         }
     }
 }
+
+/// A form whose JSON says whether each failure is among several keys.
+struct SeveralForm;
+
+impl crate::form::FailureForm for SeveralForm {
+    fn document(&self) -> crate::Document<()> {
+        crate::Document::new("sky", "error", 1, "A failed command.")
+    }
+
+    fn schema(&self) -> schemars::Schema {
+        schemars::json_schema!({ "type": "object" })
+    }
+
+    fn json(&self, failure: &crate::form::PreparedFailure<'_>) -> Value {
+        json!({ "code": failure.code(), "several": failure.among_several() })
+    }
+}
+
+#[test]
+fn a_form_learns_that_each_left_out_key_s_failure_is_among_several_keys() {
+    const GUIDE: Guide = Guide::new()
+        .output_budget(BUDGET, "the tests print little")
+        .failure_form(&SeveralForm);
+    let keys: Vec<String> = (1..=4).map(|number| star(number).name).collect();
+    let mut batch: Batch<Star, Error> = Batch::new(&["show"], "names", &keys);
+    batch.extend((1..=2).map(|number| Ok(star(number))));
+
+    let finished = finish_output(
+        &mut guided(&GUIDE, &["--json"]),
+        STAR_BATCH
+            .with_keys("$type", "answers")
+            .failures_in_order()
+            .left_out_per_key(),
+        batch,
+    );
+
+    let document = parsed(&finished.out);
+    let answers = document["answers"].as_array().unwrap();
+    let failures: Vec<&Value> = answers
+        .iter()
+        .filter(|answer| answer["code"].is_string())
+        .collect();
+    assert!(!failures.is_empty(), "{}", finished.out);
+    for failure in failures {
+        assert_eq!(failure["several"], json!(true), "{}", finished.out);
+    }
+}

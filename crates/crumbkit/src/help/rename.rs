@@ -153,6 +153,12 @@ pub(crate) struct Renames {
 }
 
 impl Renames {
+    /// No renames, as a run without a guide reads them.
+    pub(crate) const NONE: Self = Self {
+        leaf: &[],
+        guide: &[],
+    };
+
     /// Returns the renames of `guide` alone, which a run reads before it
     /// knows its command, such as for a refused command line.
     pub(crate) const fn of(guide: &Guide) -> Self {

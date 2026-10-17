@@ -46,7 +46,7 @@ with the kind `unwrapped`.
 - Each row's `kind` is `output`, `unwrapped`, `own-envelope` or `file`, so
   an agent sees which documents a command prints. `own-envelope` marks a
   document with keys from `Document::with_keys`
-  ([output](../output/README.md#documents-with-the-tools-own-keys)). Each row's compact `form` column is
+  ([result shapes](../output/shapes/README.md#documents-with-the-tools-own-keys)). Each row's compact `form` column is
   `document` or `stream` ([streams](../output/streams.md)).
 
 Why: ADR-0035, ADR-0041, ADR-0045, ADR-0059.

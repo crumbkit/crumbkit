@@ -221,13 +221,13 @@ fn finish<T: crate::Rows>(
     ) {
         Ok((mut tool, parsed)) => {
             tool.output.set_command(parsed);
-            finish_to(
+            ExitCode::from(finish_to(
                 &mut sink,
                 &mut tool.output,
                 Spelling::DOTS,
                 document,
                 result,
-            )
+            ))
         }
         Err(stop) => stop.code(),
     };
@@ -434,7 +434,7 @@ fn a_tool_that_parses_with_clap_alone_gets_the_form_through_parsed_guided() {
         result,
     );
 
-    assert_eq!(code, ExitCode::FAILURE);
+    assert_eq!(code, 1);
     assert_eq!(String::from_utf8(out).unwrap(), ERROR_DOCUMENT);
 }
 
