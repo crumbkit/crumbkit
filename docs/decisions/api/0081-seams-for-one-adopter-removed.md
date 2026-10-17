@@ -1,7 +1,7 @@
 # ADR-0081. Seams for one adopter removed
 
 - Date: 2026-10-17
-- Status: accepted
+- Status: amended by ADR-0084
 - Supersedes: ADR-0059, ADR-0061 and ADR-0067, and ADR-0045, ADR-0068, ADR-0069, ADR-0070, ADR-0071 and ADR-0073, which it amends
 - Missed: ADR-0045, ADR-0059, ADR-0061, ADR-0067 and ADR-0068 each added a seam that reproduced the output of one adopting tool, and none of them had a second use (API-1). ADR-0045 gave failure forms to "some tools", but only the one adopting tool needed a form, and no example set one. ADR-0070, ADR-0071 and ADR-0073 reshaped those seams without asking whether that tool still needed them.
 

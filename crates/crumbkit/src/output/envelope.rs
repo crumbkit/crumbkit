@@ -8,18 +8,22 @@ use serde::ser::{SerializeMap, Serializer};
 use serde_json::Value;
 
 use super::budget::Cut;
-use super::failure::{Entry, PreparedFailure};
+use super::failure::{self, Entry, PreparedFailure};
 use super::layout;
 use super::layout::JsonLayout;
 use crate::Document;
 
-/// The failures of a batch or a prose result: the tool's own, in the order
+/// The failures of a batch or a prose result: the tool's own and the
+/// failure of a first answer that the output budget refused, in the order
 /// of their keys, and then the failure that names the answers that the
 /// output budget left out, when there is one.
 #[derive(Clone, Copy)]
 pub(super) struct Failures<'a> {
     /// The failures that the tool returned.
     pub(super) listed: &'a [PreparedFailure<'a>],
+    /// The failure of a batch's first answer, which passed the output budget
+    /// alone and whose document does not always print its first answer.
+    pub(super) first: Option<&'a PreparedFailure<'a>>,
     /// The failure that names the answers that did not fit in the output
     /// budget.
     pub(super) over: Option<&'a PreparedFailure<'a>>,
@@ -29,13 +33,27 @@ impl<'a> Failures<'a> {
     /// Returns the tool's failures `listed`, without a failure of the output
     /// budget.
     pub(super) const fn of(listed: &'a [PreparedFailure<'a>]) -> Self {
-        Self { listed, over: None }
+        Self {
+            listed,
+            first: None,
+            over: None,
+        }
     }
 
-    /// Returns every failure in the order it prints: the tool's failures,
-    /// then the failure that names the answers left out.
+    /// Returns every failure in the order it prints: the tool's failures
+    /// with the failure of the refused first answer among them in the order
+    /// of their keys, then the failure that names the answers left out.
     pub(super) fn iter(self) -> impl Iterator<Item = &'a PreparedFailure<'a>> {
-        self.listed.iter().chain(self.over)
+        let before = self
+            .first
+            .and_then(PreparedFailure::index)
+            .map_or(0, |position| failure::before(self.listed, position));
+        let (earlier, later) = self.listed.split_at(before);
+        earlier
+            .iter()
+            .chain(self.first)
+            .chain(later)
+            .chain(self.over)
     }
 }
 

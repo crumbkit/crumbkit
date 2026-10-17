@@ -12,6 +12,8 @@ use super::Tool;
 use crate::help::Guide;
 use crate::{Batch, Bytes, Document, Error, Headed, Row, Sink, Spelling, finish_to};
 
+mod budget;
+
 /// The smallest budget that a tool can set.
 const BUDGET: usize = 1024;
 
@@ -198,21 +200,53 @@ fn a_header_escapes_the_control_characters_of_its_key() {
 }
 
 #[test]
-fn an_answer_larger_than_the_budget_fails_on_its_own_and_the_later_answers_still_print() {
+fn a_first_answer_larger_than_the_budget_fails_under_its_key_after_an_earlier_failure_and_the_later_answers_are_left_out()
+ {
     let big = vec![b'x'; 2000];
-    let answers = [("a", Some(&big[..])), ("b", Some(b"two\n"))];
-    let finished = finish(&[], BUDGET, PAGES, batch(&answers));
+    let answers = [("gone", None), ("a", Some(&big[..])), ("b", Some(b"two\n"))];
+    let text = finish(&[], BUDGET, PAGES, batch(&answers));
+    let json = finish(&["--json"], BUDGET, PAGES, batch(&answers));
 
-    assert_eq!(finished.code, ExitCode::FAILURE);
-    assert_eq!(finished.text(), "==> b <==\ntwo\n");
+    assert_eq!(text.code, ExitCode::FAILURE);
+    assert_eq!(text.text(), "");
     assert_eq!(
-        finished.err,
+        text.err,
         "\
+error: no page is named gone
+  key:   gone (index 0)
+  help:  no next step: the error gives no advice
+  code:  tool::report::unchecked
 error: the result is larger than the output budget of 1024 bytes
-  key:   a (index 0)
+  key:   a (index 1)
   help:  no next step: no flag makes this answer smaller
   code:  tool::output::over_budget
+error: 1 more answer did not fit in the output budget of 1024 bytes
+  help:  run `tool show b`
+  code:  tool::output::over_budget
 "
+    );
+    assert_eq!(json.code, ExitCode::FAILURE);
+    let document: serde_json::Value = serde_json::from_slice(&json.out).unwrap();
+    assert_eq!(document["data"], serde_json::json!([]));
+    let failures: Vec<_> = document["failures"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|failure| (failure["key"].clone(), failure["message"].clone()))
+        .collect();
+    assert_eq!(
+        failures,
+        [
+            ("gone".into(), "no page is named gone".into()),
+            (
+                "a".into(),
+                "the result is larger than the output budget of 1024 bytes".into()
+            ),
+            (
+                serde_json::Value::Null,
+                "1 more answer did not fit in the output budget of 1024 bytes".into()
+            ),
+        ]
     );
 }
 

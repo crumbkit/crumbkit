@@ -346,15 +346,17 @@ pub fn finish<T: Rows, E: AsFailure>(
 /// above. A listing or a `Vec` that does not fit prints the most rows that
 /// fit and exits 0: in text, a line on the error writer such as `Showing
 /// 812 of 5000 books, because output stops at 1048576 bytes. Ask for less
-/// with --limit or --fields.` says so, and its JSON document holds `cut` with the code
-/// `<tool>::output::over_budget`, or the tool's rename of it, and the
-/// budget. A batch prints the rows
-/// that fit and ends with one over-budget failure whose fields are
-/// `left_out` and `budget`, and exits 1. A single row, a prose result or a
-/// bytes result that does not fit prints nothing but the over-budget
-/// failure, and exits 1, unless its document is marked with
-/// `Document::always_print_first` (ADR-0046). A bytes result is measured in
-/// the form it prints, so with `--json` its base64 text counts.
+/// with --limit or --fields.` says so, and its JSON document holds `cut`
+/// with the code `<tool>::output::over_budget`, or the tool's rename of
+/// it, and the budget. A batch prints the rows that fit, ends with one
+/// over-budget failure whose fields are `left_out` and `budget`, and exits
+/// with code 1. A batch's first row prints even when it passes the budget
+/// alone if its document is marked with `Document::always_print_first`, and
+/// is refused with its own over-budget failure otherwise (ADR-0084). A
+/// single row, a prose result or a bytes result that does not fit prints
+/// nothing but the over-budget failure, and exits 1, unless its document is
+/// marked with `Document::always_print_first` (ADR-0046). A bytes result is
+/// measured in the form it prints, so with `--json` its base64 text counts.
 ///
 /// A single row, a `Vec` or a `Listing` whose row type has an empty
 /// [`Row::COLUMNS`](crate::Row::COLUMNS) fails to compile, because its table

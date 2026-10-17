@@ -9,7 +9,7 @@ use super::rerun::{self, Rerun};
 use crate::output::budget::{Over, OverBudget};
 use crate::output::table::escape_controls;
 use crate::output::{Output, layout, problems};
-use crate::{Code, Document, Rows, codes};
+use crate::{Code, Rows, codes};
 
 /// Writes the rows of `value` to `out` in the text of a headed document,
 /// within the bytes that [`Output::budget`] has left, then flushes `out`.
@@ -24,31 +24,34 @@ use crate::{Code, Document, Rows, codes};
 /// line feed precedes each header after the first, as `head` prints many
 /// files. A key's failure prints no header.
 ///
-/// A row whose header and content alone pass the budget does not print,
-/// and gets its own over-budget failure under its key, unless it is the
-/// first row of a document that always prints its first answer. The other
-/// rows print in order while they fit. From the first row that does not
-/// fit, every later row and every key the batch never fetched is left out,
-/// and one failure names them. After `out` is flushed, the note of the rows
-/// that report a problem, when every answer printed, and the tool's note go
-/// to `err`, as they do for a table.
+/// The first row prints when its header and content fit in the budget, or
+/// when `first_always` is set because the document always prints its first
+/// answer. Otherwise no row prints, the first row gets its own over-budget
+/// failure under its key, and every later row and every key the batch
+/// never fetched is left out. The later rows print in order while they
+/// fit. From the first later row that does not fit, alone or beside the
+/// rows before it, that row, every later row and every key the batch never
+/// fetched are left out. One failure names the keys left out, and the
+/// JSON form follows the same rule (ADR-0084). After `out` is flushed, the
+/// note of the rows that report a problem, when every answer printed, and
+/// the tool's note go to `err`, as they do for a table.
 pub(super) fn write<T: Rows>(
     out: &mut impl Write,
     err: &mut impl Write,
     output: &Output,
-    document: Document<T>,
     value: &T,
     bytes_of: fn(&T, usize) -> Option<&[u8]>,
     problems: usize,
+    first_always: bool,
 ) -> io::Result<(Answer, usize)> {
     let budget = output.budget();
     let code = output.renames.printed(&codes::OUTPUT_OVER_BUDGET);
     let rows = value.rows();
     let headers = crate::output::several_keys(value) || rows.len() > 1;
-    let mut oversize = Vec::new();
     let mut printed: Vec<(String, Cow<'_, [u8]>)> = Vec::new();
     let mut spent = 0_usize;
     let mut stop = rows.len();
+    let mut refused = None;
     for (index, row) in rows.iter().enumerate() {
         let position = value.row_indexes().get(index).copied().unwrap_or(index);
         let header = if headers {
@@ -64,20 +67,17 @@ pub(super) fn write<T: Rows>(
             line.push(b'\n');
             Cow::Owned(line)
         };
-        let alone = header.len().saturating_add(content.len());
-        let first = index == 0 && document.always_prints_first();
-        if alone > budget && !first {
-            let over = OverBudget {
-                code,
-                budget,
-                over: Over::Whole,
-            };
-            oversize.push((position, over));
-            continue;
-        }
         let separator = usize::from(!printed.is_empty());
-        let cost = alone.saturating_add(separator);
-        if spent.saturating_add(cost) > budget && !first {
+        let cost = header
+            .len()
+            .saturating_add(content.len())
+            .saturating_add(separator);
+        if index == 0 && cost > budget && !first_always {
+            refused = Some(position);
+            stop = 1;
+            break;
+        }
+        if index > 0 && spent.saturating_add(cost) > budget {
             stop = index;
             break;
         }
@@ -92,8 +92,6 @@ pub(super) fn write<T: Rows>(
         out.write_all(content)?;
     }
     out.flush()?;
-    // The rows from `stop` on come after every row too large alone, so the
-    // failures stay in key order.
     // The caller's words are parsed again only when an answer is left out.
     let rerun = if value.left_out(stop).is_empty() {
         None
@@ -104,15 +102,23 @@ pub(super) fn write<T: Rows>(
     // A failure for an answer left out decides the exit, so the note of the
     // rows that report a problem, which names the exit, prints only when
     // every answer printed. The tool's note always prints.
-    let problems = if oversize.is_empty() && left_out.is_none() {
+    let problems = if left_out.is_none() && refused.is_none() {
         problems
     } else {
         0
     };
     write_notes(err, value, problems);
-    let answer = Answer::Keyed {
-        each: oversize,
-        left_out,
+    let answer = match refused {
+        Some(position) => Answer::RefusedFirst {
+            position,
+            first: OverBudget {
+                code,
+                budget,
+                over: Over::Whole,
+            },
+            left_out,
+        },
+        None => left_out.map_or(Answer::Whole, Answer::Partial),
     };
     Ok((answer, spent))
 }

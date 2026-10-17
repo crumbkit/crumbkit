@@ -21,7 +21,8 @@ use crate::{AsFailure, Batch, Document, Row, Rows};
 /// last call once, in the format that the run prints: the JSON document in
 /// the guide's layout with the columns that the view flags choose, the text
 /// table with each column as wide as its widest cell, each row's own line
-/// for a row type that declares `Row::LINE`, or the bytes and the `==> KEY <==` headers of a headed batch. The count is the bytes that
+/// for a row type that declares `Row::LINE`, or the bytes and the
+/// `==> KEY <==` headers of a headed batch. The count is the bytes that
 /// `finish` prints for those rows when the batch has no failure, because
 /// each failure only adds bytes. A handler that stops when `has_room`
 /// returns false therefore never stops before the row at which `finish`
@@ -171,15 +172,17 @@ impl Output {
 impl<T: Rows> Room<T> {
     /// Measures each row of `value` that the last call did not measure, and
     /// returns whether the rows measured so far take fewer bytes than the
-    /// run can print, so the handler can fetch the next key.
+    /// run can print, so the handler can fetch the next key. It returns true
+    /// until `value` holds a row, because `finish` decides on the first row
+    /// of a batch by that row's own bytes: it prints the row, or refuses it
+    /// when the row passes the budget alone and the document does not
+    /// always print its first answer.
     ///
     /// A row that fails to serialize counts the bytes written before the
     /// error, and `finish` reports the error when it prints.
     pub fn has_room(&mut self, value: &T) -> bool {
         let rows = value.rows();
         let columns: Vec<&str> = self.columns.iter().map(String::as_str).collect();
-        let budget = self.budget;
-        let first_always = self.document.always_prints_first();
         let bytes_of = self.document.headed_bytes();
         for (index, row) in rows.iter().enumerate().skip(self.measured) {
             match &mut self.form {
@@ -220,11 +223,6 @@ impl<T: Rows> Room<T> {
                         Some(bytes) => bytes.len(),
                         None => serde_json::to_vec(row).map_or(0, |line| line.len() + 1),
                     };
-                    // `finish` leaves out a row too large for the budget on
-                    // its own and prints the rows after it.
-                    if header + bytes > budget && !(index == 0 && first_always) {
-                        continue;
-                    }
                     *header_bytes += header;
                     *content += bytes;
                     *printed += 1;
@@ -232,7 +230,9 @@ impl<T: Rows> Room<T> {
             }
         }
         self.measured = rows.len();
-        self.printed() < budget
+        // `finish` decides on the first row by its own bytes, so the
+        // handler fetches keys until one gives a row, whatever the budget.
+        rows.is_empty() || self.printed() < self.budget
     }
 
     /// Returns the bytes that `finish` prints for the rows that

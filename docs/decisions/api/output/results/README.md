@@ -20,3 +20,4 @@ prose and bytes.
 - [ADR-0066. Listings without a total](0066-listings-without-a-total.md)
 - [ADR-0071. One envelope choice](0071-one-envelope-choice.md)
 - [ADR-0072. Whole rows without columns name their line](0072-whole-rows-name-their-line.md)
+- [ADR-0083. Batch answers over the output budget](budget/README.md)

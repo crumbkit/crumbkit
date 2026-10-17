@@ -12,8 +12,9 @@ impl Guide {
     /// A budget can be any number of bytes, as small as the one that
     /// `<TOOL>_OUTPUT_BUDGET` lowers a run to. A result that the budget
     /// refuses prints its over-budget failure whatever the failure's size,
-    /// and a batch prints its first answer. With a budget of 0 bytes, every
-    /// result but a batch's first answer is refused or cut (ADR-0081).
+    /// and a document marked with `Document::always_print_first` prints its
+    /// first answer. With a budget of 0 bytes, every result is refused or
+    /// cut, except the first answer of such a document (ADR-0081, ADR-0084).
     #[must_use]
     pub const fn output_budget(mut self, bytes: usize, reason: &'static str) -> Self {
         self.output_budget = Some((bytes, reason));

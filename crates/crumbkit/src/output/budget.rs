@@ -196,8 +196,19 @@ pub(super) fn write_cut_line(
     };
     writeln!(
         out,
-        ", because output stops at {budget} bytes. Ask for less with {flags}."
+        ", because output stops at {}. Ask for less with {flags}.",
+        byte_count(budget)
     )
+}
+
+/// Returns `bytes` as a count of bytes, such as `1 byte` or `400 bytes`,
+/// as the cut line and the over-budget failure name the budget.
+pub(super) fn byte_count(bytes: usize) -> String {
+    if bytes == 1 {
+        "1 byte".to_owned()
+    } else {
+        format!("{bytes} bytes")
+    }
 }
 
 /// The kind of result that passed the budget, which decides the failure's
@@ -240,7 +251,7 @@ pub(super) struct OverBudget {
 
 impl fmt::Display for OverBudget {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let budget = self.budget;
+        let budget = byte_count(self.budget);
         match &self.over {
             Over::Batch {
                 left_out, unlisted, ..
@@ -248,11 +259,11 @@ impl fmt::Display for OverBudget {
                 match left_out.len().saturating_add(*unlisted) {
                     1 => write!(
                         f,
-                        "1 more answer did not fit in the output budget of {budget} bytes"
+                        "1 more answer did not fit in the output budget of {budget}"
                     )?,
                     count => write!(
                         f,
-                        "{count} more answers did not fit in the output budget of {budget} bytes"
+                        "{count} more answers did not fit in the output budget of {budget}"
                     )?,
                 }
                 if *unlisted > 0 && !left_out.is_empty() {
@@ -263,14 +274,10 @@ impl fmt::Display for OverBudget {
                 }
                 Ok(())
             }
-            Over::Row | Over::Whole => write!(
-                f,
-                "the result is larger than the output budget of {budget} bytes"
-            ),
-            Over::Stream => write!(
-                f,
-                "the stream stopped at the output budget of {budget} bytes"
-            ),
+            Over::Row | Over::Whole => {
+                write!(f, "the result is larger than the output budget of {budget}")
+            }
+            Over::Stream => write!(f, "the stream stopped at the output budget of {budget}"),
         }
     }
 }

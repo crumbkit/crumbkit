@@ -430,8 +430,9 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit-test: [`check_opt_outs`] lists the guide's refusal alternatives
   once under customisations ([behaviour/adoption/declarations]).
 - crumbkit: `Output::room` returns a `Room` whose `has_room` measures a
-  batch's rows in the format the run prints, so a handler can stop fetching
-  keys whose rows would not print ([behaviour/output/budget]).
+  batch's rows in the format the run prints and returns true until the
+  batch holds a row, so a handler stops fetching keys whose rows would not
+  print ([behaviour/output/budget]).
 - crumbkit-core: `Call::all` adds an argument that takes every value of a
   list field of the failure in one run, which the `run` step names in
   `all`. Rendering refuses an argument that takes one value or a placeholder
@@ -480,8 +481,7 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   under a `==> KEY <==` header when there are several keys
   ([behaviour/output]).
 - crumbkit: each answer of a headed batch's text prints whole within the
-  output budget. An answer larger than the budget fails under its own key,
-  and one failure names the answers past the budget
+  output budget, and one failure names the answers past the budget
   ([behaviour/output/budget]).
 - crumbkit: the JSON of a headed batch holds every field of each row unless
   `--fields` names some. `--fields` needs `--json`, and a headed leaf offers
@@ -532,6 +532,10 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- crumbkit: a batch whose document does not set `always_print_first`
+  refuses a first answer that passes the output budget alone with its own
+  failure, and names every later answer in the one over-budget failure, in
+  text and JSON ([behaviour/output/budget]).
 - crumbkit: a tool's output names the tool where it named crumbkit. A tool
   named `shelf` prints `shelf/failure/v1` and `shelf::cli::usage`, and reads
   `SHELF_OUTPUT_BUDGET` in place of `CRUMBKIT_OUTPUT_BUDGET`
@@ -813,9 +817,10 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit-core: the schema of [`Bytes`] is one object with `text` and
   `base64` and a `oneOf` that requires one of them, so a flattened `Bytes`
   field lists both among the row's properties ([behaviour/schemas]).
-- crumbkit-test: [`check_output_budget`] accepts a JSON batch of one answer
-  past the budget that exits with code 0, because a batch always prints its
-  first answer ([behaviour/output/budget]).
+- crumbkit-test: [`check_output_budget`] accepts a run that prints past
+  the budget only when its document always prints its first answer, and
+  accepts exit code 0 past the budget only for one such answer
+  ([behaviour/output/budget]).
 - crumbkit: [`finish`] fails to compile for a row, a `Vec` or a `Listing`,
   and [`stream`] for a row type, whose [`Row`]`::COLUMNS` is empty, because
   such rows printed none of their fields ([behaviour/output]).
@@ -863,6 +868,9 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- crumbkit: a batch's one over-budget failure names the first later answer
+  that does not fit, every answer after it and every unfetched key, in text
+  and JSON alike. A budget of 1 reads `1 byte` ([behaviour/output/budget]).
 - crumbkit: when the handler returns a failure, [`finish`] refuses only
   conflicting view flags and otherwise prints the failure. [`parse`] refuses
   an unknown `--fields` name before the handler runs on a leaf with a
