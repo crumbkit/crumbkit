@@ -57,7 +57,8 @@ pub(super) fn alternatives<C: FromArgMatches>(
 /// Reports whether the line of `call`, which already rendered against
 /// `command`, parses as `parse` would accept it: clap accepts it or prints
 /// help or the version for it, `C` takes its values, and it types no view
-/// flag that its leaf does not offer. A call that holds a placeholder has
+/// flag that its leaf does not offer and no `--fields` name that its
+/// leaf's document lacks. A call that holds a placeholder has
 /// no line to parse and counts as parsing.
 fn parses<C: FromArgMatches>(command: &mut Command, call: &Call, guide: &Guide) -> bool {
     let Some(words) = crate::call::words(call, command) else {

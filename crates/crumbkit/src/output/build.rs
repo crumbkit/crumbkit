@@ -145,6 +145,12 @@ impl ViewFlags {
             full: flag("full"),
         }
     }
+
+    /// Returns the names that `--fields` holds, in the order given, or no
+    /// names when the caller passed no `--fields`.
+    pub(crate) fn field_names(&self) -> &[String] {
+        &self.fields
+    }
 }
 
 impl Output {

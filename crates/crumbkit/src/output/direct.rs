@@ -38,8 +38,8 @@ impl Output {
 
     /// Prints the refusal of the view flags that a `T` in `document` cannot
     /// use, such as a `--fields` name that `T` lacks, and returns the
-    /// refusal's exit code, as `finish` would refuse them. It returns `None`
-    /// when `T` accepts the flags.
+    /// refusal's exit code. It applies the rule that `finish` applies to a
+    /// successful result. It returns `None` when `T` accepts the flags.
     ///
     /// A command that does slow work before it calls `finish` calls it
     /// first, so the caller learns of a mistyped flag before the work

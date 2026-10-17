@@ -10,7 +10,7 @@ mod direct;
 mod dry_run;
 mod envelope;
 pub(crate) mod failure;
-mod fields;
+pub(crate) mod fields;
 mod layout;
 mod lines;
 mod listing;
@@ -363,7 +363,8 @@ pub fn finish<T: Rows, E: AsFailure>(
 /// because a headed batch needs none (ADR-0063).
 ///
 /// When `--fields` names a field that the row type does not have, nothing of
-/// the result prints. The refusal prints as a failure does, with the message
+/// the result prints. [`parse`](crate::parse()) refuses such a name before
+/// the handler runs on a leaf that declares a document. The refusal prints as a failure does, with the message
 /// `--fields names an unknown field 'radius'`, the code `<tool>::cli::usage`
 /// in `spelling`, and the hint `use the valid fields: a, b`.
 ///
@@ -382,7 +383,11 @@ pub fn finish<T: Rows, E: AsFailure>(
 /// sink's error writer before a batch's failures. It is the exit code of a
 /// refused command line, 2 unless the guide lists another, when `--fields`
 /// names an unknown field, or when the result cannot use a view flag that
-/// the caller passed, which are checked before the result prints. A prose
+/// the caller passed, which are checked before the result prints. When
+/// `result` is a failure, `finish_to` refuses only two view flags that
+/// cannot work together, and otherwise prints the failure, because a tool
+/// may print an early failure in another document than the one its leaf
+/// declares. A prose
 /// or bytes result cannot use `--fields`, `--long` or `--full`, rows
 /// without long columns cannot use `--long`, and a document without the
 /// envelope cannot use `--full` (ADR-0016).

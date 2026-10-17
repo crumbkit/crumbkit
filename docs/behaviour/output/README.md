@@ -61,17 +61,31 @@ leaf with a document offers only the view flags that its document can use:
 - prose and bytes offer none of the three.
 
 A leaf without a document offers all three, because crumbkit cannot tell
-what its command prints. `parse` leaves an unoffered view flag out of the
-leaf's help and refuses it as a refused command line before the handler
-runs, and `finish` and `stream` refuse it by the same rule. An unknown
-`--fields` name is refused before anything prints.
+what its command prints. `--fields` cannot be used with `--long` or
+`--full`, and `--full` needs `--json`, on every command. crumbkit refuses
+each of these as a refused command line, in its own words, with a hint
+that names the flag to add or drop or the valid fields. Three checks apply
+the rules:
 
-`--fields` cannot be used with `--long` or `--full`, and `--full` needs
-`--json`. crumbkit checks these pairs itself in `parse`, `finish` and
-`stream`, on every command, and refuses them in its own words with a hint
-that names the flag to add or drop. A tool that parses with clap alone gets
-these refusals, and the refusal of an unoffered view flag, from `finish` or
-`stream` after the handler has run.
+- `parse` refuses, before the handler runs, a view flag that the leaf's
+  document does not offer, a `--fields` name that the row type of the
+  leaf's document lacks, and two flags that cannot work together. It also
+  leaves an unoffered view flag out of the leaf's help. On a leaf without a
+  document, `parse` refuses only the pairs.
+- When the handler returns a result, `finish` refuses by the document it
+  was given: an unoffered view flag, an unknown `--fields` name and the
+  pairs. `stream` refuses by its document in the same way when it opens.
+- When the handler returns a failure, `finish` refuses only the pairs, and
+  otherwise prints the failure with its own code, as text or as a failure
+  document with `--json`. A tool may finish an early failure, such as a
+  missing config file, in another document than the one its leaf declares,
+  so the document that `finish` was given says nothing about the flags.
+
+A tool that parses with clap alone, a tool that builds its own
+`ViewFlags`, and a leaf without a document get no check from `parse`. For
+them, `finish` or `stream` refuses after the handler has run, and a failed
+run prints its failure even when a view flag or a `--fields` name would
+not suit the command's result.
 
 A tool that defines the view flags in its own parser cannot also flatten
 `ViewFlags`, because clap refuses two arguments with one name. It builds
@@ -82,17 +96,17 @@ by its argument id, so the tool's own arguments get the refusals before
 the handler runs, and an unoffered flag leaves the leaf's help, only when
 their ids are `json`, `fields`, `long` and `full` and they are global.
 
-On a leaf without a document, only `finish` or `stream` refuses a view flag
-that the output cannot use, and that happens after the handler has run. On a
-command that changes something, an agent may then repeat a write that
-already happened. crumbkit-test's `check_guide` therefore fails a leaf whose
-effects change something and that declares no document, and it takes no
-opt-out from that rule ([help checks](../help/checks.md)). A leaf that passes
-on a program's exit code needs no document, because crumbkit-child's `hand_over`
-refuses `--json` and `--fields` before the program starts
+On a command that changes something and whose leaf declares no document,
+an agent may repeat a write that already happened, because the refusal
+comes after the handler has run. crumbkit-test's `check_guide` therefore
+fails a leaf whose effects change something and that declares no
+document, and it takes no opt-out from that rule
+([help checks](../help/checks.md)). A leaf that passes on a program's exit
+code needs no document, because crumbkit-child's `hand_over` refuses
+`--json` and `--fields` before the program starts
 ([child processes](child-processes.md)).
 
-Why: ADR-0016, ADR-0024, ADR-0065.
+Why: ADR-0016, ADR-0024, ADR-0065, ADR-0082.
 
 ## Following the caller's format
 
