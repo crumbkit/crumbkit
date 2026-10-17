@@ -409,7 +409,13 @@ impl<R: Row, O: Write, W: Write> Streaming<'_, R, O, W> {
             // A failure document written to a `Vec` never fails, and a closed
             // stream prints nothing more.
             if self.state == State::Open
-                && failure::write_json(&mut self.line, self.printing.form, None, &document).is_ok()
+                && failure::write_json(
+                    &mut self.line,
+                    self.printing.form,
+                    self.printing.style.one_line(),
+                    &document,
+                )
+                .is_ok()
             {
                 let _ = self.send();
             }
@@ -431,7 +437,7 @@ impl<R: Row, O: Write, W: Write> Streaming<'_, R, O, W> {
         // A stream writes each document on one line, whatever the guide's
         // layout.
         let printing = Printing {
-            layout: None,
+            style: self.printing.style.one_line(),
             ..self.printing
         };
         let code = refusal.print(

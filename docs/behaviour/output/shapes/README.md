@@ -142,7 +142,9 @@ A row type may print each row in its own form. `Row::LINE` names the form
 for help, such as `Some("<NAME>: <ABOUT>")`, and `Row::text_line` builds
 each row's line. Without `--json`, `--long` and `--fields`, the text then
 prints each row's line with control characters escaped and no header, and
-a row whose `text_line` returns `None` prints as one line of compact JSON.
+a row whose `text_line` returns `None` prints as one line of compact JSON,
+with its keys sorted when the guide sets
+[`KeyOrder::Sorted`](../json-layout.md#key-order).
 `--long` and `--fields` print the table, and JSON is unchanged. Streams,
 the [output budget](../budget/README.md) and the listing footer work as for a
 table, and help prints a `Text:` line ([help](../../help/README.md)). A row
@@ -151,7 +153,7 @@ so its `Text:` line names no table. crumbkit-test's `check_guide` fails a
 `LINE` that is not one non-empty line, and a
 [headed](#headed-bytes) leaf whose row type declares one.
 
-Why: ADR-0064.
+Why: ADR-0064, ADR-0067.
 
 ## Documents without the envelope
 

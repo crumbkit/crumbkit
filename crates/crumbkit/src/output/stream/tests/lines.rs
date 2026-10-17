@@ -116,3 +116,54 @@ fn a_stream_of_whole_rows_without_columns_that_declare_a_line_prints_each_line()
     assert_eq!(code, ExitCode::SUCCESS);
     assert_eq!(String::from_utf8(out).unwrap(), "2 robin\n");
 }
+
+/// A sighting that declares a text line but has none, so its text is one
+/// line of JSON. Its fields serialize out of name order.
+#[derive(Serialize, JsonSchema)]
+struct Unplaced {
+    /// Where the bird was heard.
+    place: &'static str,
+    /// The bird that was heard.
+    bird: &'static str,
+}
+
+impl Row for Unplaced {
+    const COLUMNS: &'static [&'static str] = &["bird"];
+    const LINE: Option<&'static str> = Some("a <BIRD> at the <PLACE>");
+
+    fn text_line(&self) -> Option<String> {
+        None
+    }
+}
+
+#[test]
+fn a_stream_item_without_a_text_line_prints_its_json_line_with_sorted_keys_when_the_guide_sorts_them()
+ {
+    use clap::{CommandFactory as _, FromArgMatches as _};
+
+    const GUIDE: crate::help::Guide = crate::help::Guide::new().json_keys(crate::KeyOrder::Sorted);
+    const UNPLACED: Document<Stream<Unplaced>> =
+        Document::new("birds", "unplaced-watch", 1, "Each sighting as it arrives.");
+    let mut command = super::Tool::command();
+    let matches = command
+        .try_get_matches_from_mut(["birds", "watch"])
+        .unwrap();
+    let mut output = super::Tool::from_arg_matches(&matches).unwrap().output;
+    output.set_command(crate::Parsed::guided(command, &GUIDE));
+    let mut out = Vec::new();
+    let mut err = Vec::new();
+    let mut sink = Sink::new(&mut out, &mut err);
+    let mut streaming = stream_to(&mut sink, &mut output, Spelling::COLONS, UNPLACED).unwrap();
+
+    let unplaced = Unplaced {
+        place: "garden",
+        bird: "robin",
+    };
+    assert_eq!(streaming.item(&unplaced), ControlFlow::Continue(()));
+    let _ = streaming.end(Ok::<(), Error>(()));
+
+    assert_eq!(
+        String::from_utf8(out).unwrap(),
+        "{\"bird\":\"robin\",\"place\":\"garden\"}\n"
+    );
+}

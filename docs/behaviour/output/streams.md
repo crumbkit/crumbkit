@@ -49,7 +49,8 @@ With `--json`, each row prints as a whole envelope document on its own line,
 with `schema` and the row under `data`, so the output is JSON Lines and a
 reader can process each line alone. `--fields`, `--long` and `--full` shape
 each row as they shape a single row in `finish`. A stream prints one document per line in
-every [JSON layout](json-layout.md). A document from
+every [JSON layout](json-layout.md), with its keys sorted when the guide
+sets [`KeyOrder::Sorted`](json-layout.md#key-order). A document from
 `Document::without_envelope` prints each row alone, and its failures print as
 text on standard error. A document from `Document::with_keys` prints each
 line with the declared keys in place of `schema` and `data`
@@ -62,7 +63,7 @@ The stream flushes standard output after every line, so a reader sees each
 row as soon as it prints. Standard output stays locked while the stream is
 open.
 
-Why: ADR-0041, ADR-0052, ADR-0059, ADR-0063, ADR-0064.
+Why: ADR-0041, ADR-0052, ADR-0059, ADR-0063, ADR-0064, ADR-0067.
 
 ## Failures and the exit code
 

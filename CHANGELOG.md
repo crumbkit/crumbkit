@@ -595,6 +595,13 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   non-empty line or that belongs to a headed leaf, and [`check_opt_outs`]
   lists a `text-line` customisation ([behaviour/help/examples]).
 
+- crumbkit: `Guide::json_keys(KeyOrder::Sorted)` prints the keys of every
+  JSON object in sorted order, in documents, stream lines, failures and the
+  JSON lines of text output ([behaviour/output/json-layout]).
+- crumbkit-test: [`check_opt_outs`] lists sorted JSON keys as the
+  `json-keys` customisation of every run
+  ([behaviour/adoption/declarations]).
+
 ### Changed
 
 - crumbkit: `Output::print_failure`, `Output::failure_exit`,

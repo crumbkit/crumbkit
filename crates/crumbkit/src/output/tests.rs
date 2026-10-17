@@ -31,6 +31,7 @@ mod problems;
 mod prose;
 #[cfg(feature = "miette")]
 mod report;
+mod sorted;
 mod summary;
 mod unwrapped;
 mod views;

@@ -1,8 +1,10 @@
 //! The guide's settings of what a run prints on standard output: the
-//! output budget (ADR-0046) and the layout of a JSON document (ADR-0052).
+//! output budget (ADR-0046), the layout of a JSON document (ADR-0052) and
+//! the order of its keys (ADR-0067).
 
 use super::Guide;
-use crate::JsonLayout;
+use crate::output::JsonStyle;
+use crate::{JsonLayout, KeyOrder};
 
 impl Guide {
     /// Sets the most bytes that one run prints on standard output, and the
@@ -66,12 +68,50 @@ impl Guide {
         self.json_layout
     }
 
+    /// Sets the order of the keys of each object in every JSON document
+    /// and JSON line that the tool prints on standard output (ADR-0067).
+    ///
+    /// Without it, each object prints its keys in the order that its value
+    /// serializes them. With [`KeyOrder::Sorted`], every object at every
+    /// depth prints its keys sorted: the envelope, each row, a summary, each
+    /// failure, the document of the guide's
+    /// [`FailureForm`](crate::form::FailureForm), each line of a stream, and
+    /// the JSON lines of a text output. The order is a declaration, so it
+    /// takes no reason, and crumbkit-test's opt-out report lists it under
+    /// the customisations. The order changes no byte count, so the output
+    /// budget cuts a document at the same rows.
+    ///
+    /// ```
+    /// use crumbkit::KeyOrder;
+    /// use crumbkit::help::Guide;
+    ///
+    /// const GUIDE: Guide = Guide::new().json_keys(KeyOrder::Sorted);
+    /// assert_eq!(GUIDE.get_json_keys(), Some(KeyOrder::Sorted));
+    /// assert_eq!(Guide::new().get_json_keys(), None);
+    /// ```
+    #[must_use]
+    pub const fn json_keys(mut self, order: KeyOrder) -> Self {
+        self.json_keys = Some(order);
+        self
+    }
+
+    /// Returns the order that [`Guide::json_keys`] set, or `None` for the
+    /// order that each value serializes its keys in. The name has clap's
+    /// `get_` prefix.
+    #[must_use]
+    pub const fn get_json_keys(&self) -> Option<KeyOrder> {
+        self.json_keys
+    }
+
     /// Returns the layout that [`Guide::json_layout`] set without its
-    /// reason, or `None` for one line.
-    pub(crate) const fn layout(&self) -> Option<JsonLayout> {
-        match self.json_layout {
-            Some((layout, _)) => Some(layout),
-            None => None,
+    /// reason, and the order that [`Guide::json_keys`] set.
+    pub(crate) const fn json_style(&self) -> JsonStyle {
+        JsonStyle {
+            layout: match self.json_layout {
+                Some((layout, _)) => Some(layout),
+                None => None,
+            },
+            keys: self.json_keys,
         }
     }
 }

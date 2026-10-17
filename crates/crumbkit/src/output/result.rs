@@ -12,10 +12,11 @@ use super::budget::{self, Cut, Over, OverBudget};
 use super::columns::{columns, json_lines, values, write_json_line};
 use super::envelope::{Extras, Failures, Selected, SelectedRows, write_document};
 use super::failure::PreparedFailure;
+use super::layout::JsonStyle;
 use super::table::Table;
 use super::{Output, layout, lines, listing, problems, prose};
 use crate::form::FailureForm;
-use crate::{Code, Document, JsonLayout, Row, Rows, Shape, Spelling, codes};
+use crate::{Code, Document, Row, Rows, Shape, Spelling, codes};
 
 mod batch;
 mod cut;
@@ -239,8 +240,8 @@ struct Prepared<'a, T> {
     json: bool,
     /// Whether the run is a dry run.
     dry_run: bool,
-    /// The layout of the JSON document, or `None` for one line.
-    layout: Option<JsonLayout>,
+    /// The layout and the key order of the JSON document.
+    style: JsonStyle,
     /// The guide's failure form, which writes each entry of `failures`.
     form: Option<&'static dyn FailureForm>,
     /// Whether the JSON document holds every field of each row.
@@ -282,7 +283,8 @@ impl<'a, T: Rows> Prepared<'a, T> {
             _ => None,
         };
         let lines = if lines::chosen::<T::Row>(output) {
-            let rows = value.rows().iter().map(lines::line);
+            let keys = output.json_style.keys;
+            let rows = value.rows().iter().map(|row| lines::line(row, keys));
             Some(rows.collect::<io::Result<Vec<String>>>()?)
         } else {
             None
@@ -294,7 +296,7 @@ impl<'a, T: Rows> Prepared<'a, T> {
             value,
             json: output.json,
             dry_run: output.dry_run,
-            layout: output.json_layout,
+            style: output.json_style,
             form: output.failure_form,
             // A headed document and a row type that prints whole hold
             // every field in JSON unless `--fields` names some.
@@ -405,7 +407,7 @@ impl<'a, T: Rows> Prepared<'a, T> {
         data: &D,
         extras: &Extras<'_, M>,
     ) -> io::Result<()> {
-        write_document(out, self.document, self.dry_run, self.layout, data, extras)
+        write_document(out, self.document, self.dry_run, self.style, data, extras)
     }
 
     /// Writes the result as [`Prepared::write`] does, without the line of a
@@ -487,7 +489,7 @@ impl<'a, T: Rows> Prepared<'a, T> {
         }
         if json_lines::<T::Row>() {
             for row in rows.get(..shown).unwrap_or(rows) {
-                write_json_line(out, row)?;
+                write_json_line(out, row, self.style.keys)?;
             }
         } else if let Some(table) = &mut self.table {
             table.write(out, shown)?;
@@ -510,8 +512,8 @@ impl<'a, T: Rows> Prepared<'a, T> {
         let rows = self.value.rows();
         if !self.fields {
             return match rows.get(..shown) {
-                Some(first) if !all => layout::write(out, first, self.layout),
-                _ => layout::write(out, self.value, self.layout),
+                Some(first) if !all => layout::write(out, first, self.style),
+                _ => layout::write(out, self.value, self.style),
             };
         }
         match self.values {
@@ -520,14 +522,14 @@ impl<'a, T: Rows> Prepared<'a, T> {
                     row: single,
                     columns: self.columns,
                 };
-                layout::write(out, &selected, self.layout)
+                layout::write(out, &selected, self.style)
             }
             list => {
                 let selected = SelectedRows {
                     rows: list.get(..shown).unwrap_or(list),
                     columns: self.columns,
                 };
-                layout::write(out, &selected, self.layout)
+                layout::write(out, &selected, self.style)
             }
         }
     }
