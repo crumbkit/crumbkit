@@ -3,6 +3,7 @@
 
 use clap::parser::ValueSource;
 use clap::{ArgMatches, Command};
+use crumbkit::Shape;
 use crumbkit::help::{Column, Guide, Leaf, ViewFlag, quote};
 
 use crate::tree::{self, DASHED_NAME};
@@ -71,6 +72,11 @@ mod tests;
 ///   `text` or `base64` field, because its JSON then holds the bytes
 ///   under another field; the row marks its `Bytes` field
 ///   `#[serde(flatten)]` (ADR-0062);
+/// - a leaf whose document holds rows and is not headed, and whose row
+///   type has no `Row::COLUMNS`, because its table and its JSON without
+///   `--full` then print nothing of each row. `finish` and `stream` already
+///   fail to compile for such a row type in every result but a batch
+///   (ADR-0063);
 /// - a leaf column without a description, naming the field whose doc
 ///   comment is missing, because `--help` lists the column without one;
 /// - a leaf whose row type's `Row::PROBLEM` names a field that is not one
@@ -358,8 +364,9 @@ fn check_leaves(command: &Command, guide: &Guide, problems: &mut Vec<String>) {
 
 /// Adds a problem to `problems` for each column of the leaf at `text` that
 /// is not a field of its row type or has no description, for the problem
-/// field that `check_problem` refuses, and for a headed leaf's `text` or
-/// `base64` that is not at the top level of the row type.
+/// field that `check_problem` refuses, for a headed leaf's `text` or
+/// `base64` that is not at the top level of the row type, and for rows
+/// whose row type has no compact column.
 fn check_columns(text: &str, leaf: &Leaf, problems: &mut Vec<String>) {
     let columns = leaf.column_descriptions();
     if let Some(field) = leaf.problem() {
@@ -368,6 +375,16 @@ fn check_columns(text: &str, leaf: &Leaf, problems: &mut Vec<String>) {
     let headed = leaf
         .get_document()
         .is_some_and(|document| document.is_headed());
+    // Prose and bytes have no rows, and a headed batch prints each row's
+    // bytes in text and every field in JSON, so only other rows need a
+    // compact column.
+    let without_rows = matches!(leaf.shape(), Some(Shape::Prose | Shape::Bytes));
+    let rows = leaf.get_document().is_some() && !without_rows && !headed;
+    if rows && columns.iter().all(Column::is_long) {
+        problems.push(format!(
+            "{text}: the row type has no COLUMNS, so the table and the JSON without --full print nothing of each row; name the fields that identify a row in `Row::COLUMNS`"
+        ));
+    }
     for column in columns {
         let name = column.name();
         if headed && !column.is_property() && ["text", "base64"].contains(&name) {

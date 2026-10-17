@@ -546,6 +546,8 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   flatten its `Bytes` field ([behaviour/help/examples]).
 - crumbkit-test: [`check_output_budget`] also runs the text examples of a
   headed leaf with half the bytes they print ([behaviour/output/budget]).
+- crumbkit-test: [`check_guide`] fails a leaf whose batch is not headed and
+  whose row type has no `Row::COLUMNS` ([behaviour/help/examples]).
 
 ### Changed
 
@@ -817,6 +819,9 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit-test: [`check_output_budget`] accepts a JSON batch of one answer
   past the budget that exits with code 0, because a batch always prints its
   first answer ([behaviour/output/budget]).
+- crumbkit: [`finish`] fails to compile for a row, a `Vec` or a `Listing`,
+  and [`stream`] for a row type, whose [`Row`]`::COLUMNS` is empty, because
+  such rows printed none of their fields ([behaviour/output]).
 
 ### Removed
 
@@ -874,6 +879,9 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   cannot start, under their own heading.
 - crumbkit-test: [`check_help_sizes`] reports a page that fails to render as
   one problem ([behaviour/help/checks]).
+- crumbkit: the `-h` of a headed leaf whose row type names no column
+  ends with the `Next:` line that points at the JSON fields that
+  `--help` lists ([behaviour/help/examples]).
 - crumbkit-test: [`check_examples`], [`check_twin`] and [`check_recoveries`]
   report each run that their timeout stopped as stopped, where a stop up to
   1 ms early showed as a failed run that ended with SIGKILL ([behaviour/checks/end-to-end]).

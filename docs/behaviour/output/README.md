@@ -27,12 +27,22 @@ columns, the columns that `--long` adds and, optionally, the field that marks
 a problem ([rows that report a problem](listings/README.md#rows-that-report-a-problem)).
 A field in neither list of columns appears only with `--json --full`.
 
+The compact columns name at least one field, because the table and the
+JSON without `--full` print only the columns. `finish` fails to compile for
+a single row, a `Vec` or a `Listing` whose row type has an empty
+`Row::COLUMNS`, and `stream` fails to compile for such a row type, so the
+rows of such a result cannot vanish while `total` still counts them. A
+batch compiles, because a [headed batch](#headed-bytes) prints each row's
+bytes in text and every field in JSON and may name no column.
+crumbkit-test's `check_guide` fails a leaf whose batch is not headed and
+whose row type has no compact column.
+
 The table pads columns by characters and escapes control characters, so each
 row stays on one line and no line ends in padding. Cell widths count
 characters, so a wide character misaligns a column. A cell shows `null` or a
 missing field as `-`, and an array or an object as compact JSON.
 
-Why: ADR-0016.
+Why: ADR-0016, ADR-0063.
 
 ## View flags
 

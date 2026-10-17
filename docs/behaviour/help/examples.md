@@ -39,7 +39,8 @@ Why: ADR-0024, ADR-0035, ADR-0039, ADR-0041.
 - A [headed](../output/README.md#headed-bytes) document's text has no
   columns. Its `--help` lists the row's columns, then `text` and `base64`,
   under `JSON fields that --fields selects:`, and its `-h` ends with a
-  `Next:` line that says `--help` explains each JSON field. crumbkit-test's
+  `Next:` line that says `--help` explains each JSON field, also when its
+  row type names no column. crumbkit-test's
   `check_guide` fails a headed leaf whose row has no top-level `text` or
   `base64` field, because its `Bytes` field is not marked
   `#[serde(flatten)]`.
@@ -74,8 +75,8 @@ Why: ADR-0024, ADR-0003.
 crumbkit-test's [`check_guide`](../../../crates/crumbkit-test/src/guide.rs)
 checks the leaves. It parses each example with clap and refuses an example
 that asks for `--help` or `--version`. It requires an example for every
-visible command without subcommands, a description for every column, and a
-document on a leaf whose effects change something. Its rustdoc lists every
-rule.
+visible command without subcommands, a description for every column, a
+compact column on a leaf whose rows are not a headed batch, and a document
+on a leaf whose effects change something. Its rustdoc lists every rule.
 
-Why: ADR-0024, ADR-0016.
+Why: ADR-0024, ADR-0016, ADR-0063.

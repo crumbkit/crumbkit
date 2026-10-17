@@ -110,3 +110,55 @@ fn check_guide_fails_on_a_headed_leaf_whose_row_does_not_flatten_its_bytes() {
          shelf books list: the field `base64` is not at the top level of the row type, so the JSON of the headed document does not hold the bytes beside the other fields; mark the `Bytes` field `#[serde(flatten)]`"
     );
 }
+
+/// A book's file whose row type names no columns, because the text of a
+/// headed document prints the bytes and has no columns.
+#[derive(serde::Serialize, schemars::JsonSchema)]
+struct BareFile {
+    /// The book's title.
+    title: String,
+    /// The file's bytes.
+    #[serde(flatten)]
+    content: crumbkit::Bytes,
+}
+
+impl crumbkit::Row for BareFile {
+    const COLUMNS: &'static [&'static str] = &[];
+}
+
+impl crumbkit::Headed for BareFile {
+    fn bytes(&self) -> Option<&crumbkit::Bytes> {
+        Some(&self.content)
+    }
+}
+
+/// The batch document of `shelf books list` in these tests, whose row type
+/// has no columns.
+const BARE_FILES: Document<crumbkit::Batch<BareFile, crumbkit::Error>> =
+    Document::new("shelf", "books-files", 1, "The books' files.");
+
+#[test]
+fn check_guide_fails_on_a_leaf_whose_batch_is_not_headed_and_whose_row_type_has_no_columns() {
+    const GUIDE: Guide = Guide::new().leaves(&[
+        leaf(&["books", "list"]).document(BARE_FILES),
+        leaf(&["books", "show"]),
+        leaf(&["authors", "list"]),
+    ]);
+
+    assert_eq!(
+        panic_message(|| check_guide(&shelf(), &GUIDE)).unwrap(),
+        "the command tree breaks crumbkit's guide rules:\n\
+         shelf books list: the row type has no COLUMNS, so the table and the JSON without --full print nothing of each row; name the fields that identify a row in `Row::COLUMNS`"
+    );
+}
+
+#[test]
+fn a_headed_leaf_whose_row_type_has_no_columns_passes() {
+    const GUIDE: Guide = Guide::new().leaves(&[
+        leaf(&["books", "list"]).document(BARE_FILES.headed()),
+        leaf(&["books", "show"]),
+        leaf(&["authors", "list"]),
+    ]);
+
+    check_guide(&shelf(), &GUIDE);
+}
