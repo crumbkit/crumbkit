@@ -7,7 +7,7 @@ use std::io::{self, Write};
 use super::Answer;
 use crate::output::budget::{Over, OverBudget};
 use crate::output::table::escape_controls;
-use crate::output::{Output, problems};
+use crate::output::{Output, layout, problems};
 use crate::{Code, Document, Rows, codes};
 
 /// Writes the rows of `value` to `out` in the text of a headed document,
@@ -58,7 +58,8 @@ pub(super) fn write<T: Rows>(
         let content = if let Some(bytes) = bytes_of(value, index) {
             Cow::Borrowed(bytes)
         } else {
-            let mut line = serde_json::to_vec(row)?;
+            let mut line = Vec::new();
+            layout::serialize(&mut line, row, output.json_style.keys)?;
             line.push(b'\n');
             Cow::Owned(line)
         };

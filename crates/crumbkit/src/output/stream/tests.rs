@@ -19,6 +19,7 @@ mod empty;
 mod exits;
 mod keys;
 mod problems;
+mod sorted;
 mod views;
 mod whole;
 

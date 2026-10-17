@@ -32,7 +32,8 @@ pub use self::confirm::Yes;
 use self::counted::Counted;
 pub use self::dry_run::DryRun;
 use self::failure::Printing;
-pub use self::layout::JsonLayout;
+pub(crate) use self::layout::JsonStyle;
+pub use self::layout::{JsonLayout, KeyOrder};
 pub use self::stream::{Streaming, stream, stream_to};
 use crate::form::FailureForm;
 use crate::help::rename::Renames;
@@ -51,7 +52,8 @@ mod tests;
 /// comment of its own has none in its help.
 ///
 /// - `--json` prints a JSON document, on one line unless the guide sets a
-///   [`JsonLayout`].
+///   [`JsonLayout`], with the keys of each object sorted when the guide
+///   sets [`KeyOrder::Sorted`].
 /// - `--long` adds the row type's [`Row::LONG_COLUMNS`](crate::Row::LONG_COLUMNS).
 /// - `--full` prints every field of every row in declaration order, and needs `--json`.
 /// - `--fields a,b` prints exactly the named fields in that order, and
@@ -133,10 +135,10 @@ pub struct Output {
     #[arg(skip)]
     no_terminal: bool,
 
-    /// The layout of a whole JSON document, which `set_command` copies from
-    /// the `Parsed`, or `None` for one line (ADR-0052).
+    /// The layout of a whole JSON document and the order of its keys,
+    /// which `set_command` copies from the `Parsed` (ADR-0052, ADR-0067).
     #[arg(skip)]
-    json_layout: Option<JsonLayout>,
+    json_style: JsonStyle,
 
     /// The most bytes that the run prints on standard output, which
     /// `set_command` sets from the `Parsed` and the environment, or `None`
@@ -254,7 +256,7 @@ impl Output {
         self.no_input = parsed.no_input;
         self.failure_form = parsed.failure_form;
         self.no_terminal = parsed.no_terminal;
-        self.json_layout = parsed.json_layout;
+        self.json_style = parsed.json_style;
         self.exits = parsed.exits;
         self.renames = parsed.renames;
         self.field_names = parsed.field_names;
@@ -322,7 +324,7 @@ impl Output {
             command: Some(command),
             failure_form: guide.get_failure_form(),
             no_terminal: !guide.terminal_detection(),
-            json_layout: guide.layout(),
+            json_style: guide.json_style(),
             exits: guide.get_exits(),
             renames: Renames::of(guide),
             field_names: guide.get_field_names(),
@@ -354,12 +356,12 @@ impl Output {
     }
 
     /// Returns what the guide that `set_command` copied decides about the
-    /// run's failures: the form, the JSON layout, the exit codes, the
+    /// run's failures: the form, the JSON style, the exit codes, the
     /// renames and the listed field names.
     pub(crate) const fn printing(&self) -> Printing {
         Printing {
             form: self.failure_form,
-            layout: self.json_layout,
+            style: self.json_style,
             exits: self.exits,
             renames: self.renames,
             field_names: self.field_names,

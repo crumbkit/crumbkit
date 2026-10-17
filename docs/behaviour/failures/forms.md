@@ -64,7 +64,9 @@ standard error, including those of a document without the envelope. Exit
 codes do not change.
 
 crumbkit writes the form's JSON on one line, or in the guide's
-[JSON layout](../output/json-layout.md) outside a stream, and flushes it, so
+[JSON layout](../output/json-layout.md) outside a stream, with its keys
+sorted when the guide sets [`KeyOrder::Sorted`](../output/json-layout.md#key-order),
+and flushes it, so
 each failure line of a `--json` stream stays one line and a closed pipe keeps
 the exit code. crumbkit flushes standard error after the form's text. A form
 that writes its own text escapes the control characters of the values
@@ -80,7 +82,7 @@ recovery and the exit. A document that prints its failures in input order
 holds each failure as the form's `document`, and its schema takes the form's
 `schema` as the failure item.
 
-Why: ADR-0045, ADR-0046, ADR-0052.
+Why: ADR-0045, ADR-0046, ADR-0052, ADR-0067.
 
 ## Schemas and declarations
 

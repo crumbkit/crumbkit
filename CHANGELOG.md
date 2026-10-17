@@ -563,6 +563,10 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   opt-out from `documents/rows-whole` for a leaf whose row type sets
   `Row::WHOLE` ([behaviour/adoption/opt-outs]).
 
+- crumbkit: `Guide::json_keys(KeyOrder::Sorted)` prints the keys of every
+  JSON object in sorted order, in documents, stream lines, failures and the
+  JSON lines of text output ([behaviour/output/json-layout]).
+
 ### Changed
 
 - crumbkit: `Output::print_failure`, `Output::failure_exit`,

@@ -1,5 +1,7 @@
 //! The layout of a whole JSON document: one line by default, or indented
-//! when the tool's guide sets [`JsonLayout::Pretty`] (ADR-0052).
+//! when the tool's guide sets [`JsonLayout::Pretty`] (ADR-0052). The keys
+//! of each object keep the order that the value serializes them in, or
+//! print sorted when the guide sets [`KeyOrder::Sorted`] (ADR-0067).
 
 use std::io::{self, Write};
 
@@ -22,8 +24,49 @@ pub enum JsonLayout {
     Pretty,
 }
 
-/// Writes `value` to `out` as JSON in `layout`, or on one line when
-/// `layout` is `None`, and ends it with a line feed.
+/// The order of the keys of each object in the JSON that a tool prints,
+/// which the tool sets with
+/// [`Guide::json_keys`](crate::help::Guide::json_keys).
+///
+/// Without an order, each object prints its keys in the order that its
+/// value serializes them: crumbkit's envelope prints the type key first,
+/// and a row prints its fields in their declaration order.
+///
+/// The enum is `#[non_exhaustive]`, so crumbkit can add an order without
+/// breaking a tool that matches on it.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum KeyOrder {
+    /// The keys of every object, at every depth, in the order of Rust's
+    /// `str` comparison, which compares the keys' Unicode code points.
+    Sorted,
+}
+
+/// How a run writes JSON on standard output: the layout and the key order
+/// that the guide sets. Its default is one line with the keys in the
+/// order that each value serializes them.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub(crate) struct JsonStyle {
+    /// The layout of a whole document, or `None` for one line.
+    pub(crate) layout: Option<JsonLayout>,
+    /// The order of the keys of each object, or `None` for the order that
+    /// each value serializes them.
+    pub(crate) keys: Option<KeyOrder>,
+}
+
+impl JsonStyle {
+    /// Returns the same style on one line, as a stream and the line of a
+    /// headed answer need it.
+    pub(crate) const fn one_line(self) -> Self {
+        Self {
+            layout: None,
+            keys: self.keys,
+        }
+    }
+}
+
+/// Writes `value` to `out` as JSON in the layout and key order of `style`,
+/// and ends it with a line feed.
 ///
 /// Both layouts serialize `value` on one line through `&mut dyn Write`, so
 /// the compiler generates the serialization code of each document once,
@@ -37,24 +80,45 @@ pub enum JsonLayout {
 pub(super) fn write(
     out: &mut impl Write,
     value: &(impl Serialize + ?Sized),
-    layout: Option<JsonLayout>,
+    style: JsonStyle,
 ) -> io::Result<()> {
-    match layout {
+    match style.layout {
         Some(JsonLayout::Pretty) => {
             let mut compact = Vec::new();
-            serialize(&mut compact, value)?;
+            serialize(&mut compact, value, style.keys)?;
             write_indented(out, &compact)
         }
         None => {
-            serialize(out, value)?;
+            serialize(out, value, style.keys)?;
             out.write_all(b"\n")
         }
     }
 }
 
-/// Writes `value` to `out` on one line.
-fn serialize(out: &mut dyn Write, value: &(impl Serialize + ?Sized)) -> io::Result<()> {
-    Ok(serde_json::to_writer(out, value)?)
+/// Writes `value` to `out` on one line, with the keys of each object in
+/// `keys` order.
+///
+/// With [`KeyOrder::Sorted`], it serializes `value` into a
+/// `serde_json::Value` and sorts every object of it before it writes it.
+// RUST-10: sorting through a `Value` builds one tree for each document
+// written, and a cut that measures a document several times builds one for
+// each measurement. A `Value` holds no integer outside the ranges of `i64`
+// and `u64`, so such a number fails the write as `InvalidData`, and of two
+// equal keys in one object only the last prints. A serializer that sorts
+// while it writes would avoid all three, and no reader has needed it yet.
+pub(super) fn serialize(
+    out: &mut dyn Write,
+    value: &(impl Serialize + ?Sized),
+    keys: Option<KeyOrder>,
+) -> io::Result<()> {
+    match keys {
+        Some(KeyOrder::Sorted) => {
+            let mut sorted = serde_json::to_value(value)?;
+            sorted.sort_all_objects();
+            Ok(serde_json::to_writer(out, &sorted)?)
+        }
+        None => Ok(serde_json::to_writer(out, value)?),
+    }
 }
 
 /// Writes `compact` to `out` re-indented by [`indent`], followed by a line
