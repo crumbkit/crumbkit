@@ -214,7 +214,7 @@ where
 /// early.
 ///
 /// A command line that clap refuses prints as a failure with the code
-/// `crumbkit::cli::usage` in `spelling`, and the exit code is 2. The message
+/// `<tool>::cli::usage` in `spelling`, and the exit code is 2. The message
 /// is clap's error on one line, and the recovery runs the `-h` of the
 /// deepest command. When the tool's refusal function returns a call that
 /// renders and whose line parses, the first such call is the recovery and
@@ -230,7 +230,7 @@ where
 /// A command line that stops at a command with subcommands, such as `shelf
 /// books`, prints the message ``the command `shelf books` needs a
 /// subcommand``. With `--json`, the refusal prints to the output writer as
-/// one `crumbkit/failure/v1` document, as a failure does with `finish`. When
+/// one `<tool>/failure/v1` document, as a failure does with `finish`. When
 /// `guide` sets a [`FailureForm`](crate::form::FailureForm), the refusal
 /// prints in that form in text and with `--json`. The
 /// walk finds `--json` in the words before any `--` where clap reads it as a
@@ -285,6 +285,9 @@ where
     let span = crate::trace::spans::parse();
     #[cfg(feature = "tracing")]
     let _entered = span.enter();
+    // crumbkit's own codes print with the tool's name in place of
+    // `crumbkit` (ADR-0079).
+    let spelling = spelling.for_tool(guide.tool_name(&command));
     let parsed = read(sink, command, guide, spelling, args, colour, stdin);
     #[cfg(feature = "tracing")]
     if let Err(stop) = &parsed {

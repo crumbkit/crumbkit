@@ -203,7 +203,7 @@ fn fields_on_prose_is_a_refusal_that_exits_with_code_2_before_anything_prints() 
     let expected = "\
 error: --fields selects the columns of a table, and this command prints prose
   help:  use --json to read every field of the result
-  code:  crumbkit::cli::usage
+  code:  tool::cli::usage
 ";
     assert_eq!(finished.code, ExitCode::from(2));
     assert_eq!(finished.out, "");

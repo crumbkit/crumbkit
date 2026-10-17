@@ -68,7 +68,7 @@ Why: ADR-0041, ADR-0052, ADR-0059, ADR-0063, ADR-0064, ADR-0067.
 ## Failures and the exit code
 
 A failure in the middle prints on standard error in text, and as one
-`crumbkit/failure/v1` line between the rows with `--json`. A tool with a
+`<tool>/failure/v1` line between the rows with `--json`. A tool with a
 [failure form](../failures/forms.md) prints each failure line of a `--json`
 stream in that form. A stream that printed a failure or ended with an `Err`
 exits with the code of its first failure, as `finish` does

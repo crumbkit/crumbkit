@@ -94,11 +94,7 @@ fn a_real_missing_program_fails_with_not_found() {
     let responded = respond(|sink| hand_over_to(sink, &mut output, Spelling::COLONS, child));
 
     assert_eq!(responded.code, ExitCode::FAILURE);
-    assert!(
-        responded
-            .err
-            .contains("  code:  crumbkit::child::not_found\n")
-    );
+    assert!(responded.err.contains("  code:  vault::child::not_found\n"));
 }
 
 #[test]

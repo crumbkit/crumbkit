@@ -41,7 +41,7 @@ fn a_batch_over_the_budget_answers_its_first_keys_and_names_the_rest_in_one_fail
     assert!(shown > 0 && shown < 20, "{shown}");
     let failures = document["failures"].as_array().unwrap();
     assert_eq!(failures.len(), 1);
-    assert_eq!(failures[0]["code"], "crumbkit::output::over_budget");
+    assert_eq!(failures[0]["code"], "tool::output::over_budget");
     assert_eq!(
         failures[0]["message"],
         format!(
@@ -71,7 +71,7 @@ fn a_batch_over_the_budget_in_text_names_every_key_left_out_in_one_call_on_stand
         format!(
             "error: {} more answers did not fit in the output budget of 1024 bytes\n  \
              help:  run `tool show {}`\n  \
-             code:  crumbkit::output::over_budget\n",
+             code:  tool::output::over_budget\n",
             20 - shown,
             names(shown + 1, 20).join(" ")
         )
@@ -199,8 +199,8 @@ fn a_batch_in_input_order_over_the_budget_ends_its_array_with_the_failure_of_the
     let array = array.as_array().unwrap();
     let (over, rows) = array.split_last().unwrap();
     assert!(!rows.is_empty() && rows.len() < 20, "{}", rows.len());
-    assert_eq!(over["schema"], "crumbkit/failure/v1");
-    assert_eq!(over["code"], "crumbkit::output::over_budget");
+    assert_eq!(over["schema"], "tool/failure/v1");
+    assert_eq!(over["code"], "tool::output::over_budget");
     assert_eq!(
         over["fields"],
         json!({"left_out": names(rows.len() + 1, 20), "left_out_from": rows.len(), "budget": 1024})

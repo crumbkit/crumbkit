@@ -50,9 +50,9 @@ case "${line% --json}" in
   'books show 8') printf 'error: no book 8\n  code:  tool::books::not_found\n' >&2; exit 1;;
   'books show 9') printf 'error: no book 9\n  code:  tool::books::not_found\n' >&2; exit 5;;
   'books get 9') printf 'error: refused\n  code:  tool::cli::usage\n' >&2; exit 64;;
-  'books get --limit x') printf 'error: x is no limit\n  code:  crumbkit::cli::usage\n' >&2; exit 1;;
-  'books get --limit y') printf 'error: y is no limit\n  code:  crumbkit::cli::usage\n' >&2; exit 2;;
-  'books get 4') printf 'error: the downloader failed\n  code:  crumbkit::child::failed\n' >&2; exit 7;;
+  'books get --limit x') printf 'error: x is no limit\n  code:  tool::cli::usage\n' >&2; exit 1;;
+  'books get --limit y') printf 'error: y is no limit\n  code:  tool::cli::usage\n' >&2; exit 2;;
+  'books get 4') printf 'error: the downloader failed\n  code:  tool::child::failed\n' >&2; exit 7;;
   'books get 5') printf 'error: no book 5\n  code:  tool::books::not_found\n' >&2; exit 124;;
   'books get 3'|'books get --limit 3'|'books show 2') echo shown; exit 0;;
   *) echo "unexpected: $*" >&2; exit 3;;
@@ -140,7 +140,7 @@ fn a_usage_refusal_that_exits_with_another_code_than_2_fails_the_check_on_a_comm
             &["books", "get", "--limit", "x"]
         )
         .unwrap(),
-        "the refused line `tool books get --limit x` fails with crumbkit::cli::usage, which refuses the command line, and it ends with exit status: 1, where the guide gives a refused command line the exit code 2"
+        "the refused line `tool books get --limit x` fails with tool::cli::usage, which refuses the command line, and it ends with exit status: 1, where the guide gives a refused command line the exit code 2"
     );
 }
 
@@ -156,7 +156,7 @@ fn a_failure_of_a_command_that_passes_on_a_program_s_exit_code_may_end_with_that
 fn a_failed_child_fails_the_check_when_its_command_does_not_declare_that_it_passes_on_exit_codes() {
     assert_eq!(
         checked(&CHILD_FAILED, &["books", "get", "4"]).unwrap(),
-        "the refused line `tool books get 4` fails with crumbkit::child::failed, which no exit code of the guide lists, and it ends with exit status: 7, where such a failure exits with code 1. A command that passes on the exit code of a program it runs declares it with `Leaf::passes_on_exit`"
+        "the refused line `tool books get 4` fails with tool::child::failed, which no exit code of the guide lists, and it ends with exit status: 7, where such a failure exits with code 1. A command that passes on the exit code of a program it runs declares it with `Leaf::passes_on_exit`"
     );
 }
 

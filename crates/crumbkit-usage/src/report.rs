@@ -5,7 +5,7 @@
 //! [`Tally`], which keeps counts, the durations and output sizes of each
 //! command and what each session's findings need of its earlier runs, and
 //! never a copy of the file. [`Tally::report`] then gives the [`Report`].
-//! A line that is not a whole `crumbkit/usage/v1` record is skipped, so a
+//! A line that is not a whole `<tool>/usage/v1` record is skipped, so a
 //! damaged log reports the lines that can be read.
 
 mod entry;

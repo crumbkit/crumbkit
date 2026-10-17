@@ -19,6 +19,7 @@ pub(super) fn open<R: Row, O: Write, W: Write>(
     document: Document<Stream<R>>,
 ) -> Result<Streaming<'_, R, O, W>, ExitCode> {
     crate::output::columns::require_for_stream::<R>();
+    let (spelling, document) = output.named(spelling, document);
     let typed = output.typed();
     let budget = output.budget();
     let printing = output.printing();

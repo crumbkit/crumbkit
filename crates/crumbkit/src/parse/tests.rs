@@ -17,6 +17,7 @@ mod dashed;
 mod fields;
 mod hidden;
 mod limit;
+mod names;
 mod returned;
 mod root;
 mod views;
@@ -141,7 +142,7 @@ fn a_refused_command_line_prints_the_usage_failure_on_standard_error_and_exits_w
     let expected = "\
 error: unexpected argument '--srot' found; a similar argument exists: '--sort'
   help:  run `tool planets show -h`
-  code:  crumbkit::cli::usage
+  code:  tool::cli::usage
 ";
     assert_eq!(parsed.err, expected);
 }
@@ -163,7 +164,7 @@ fn a_refused_command_line_with_json_prints_the_failure_document_and_its_stop_ask
     assert_eq!(parsed.code, Some(ExitCode::from(2)));
     assert_eq!(parsed.json, Some(true));
     let expected = concat!(
-        r#"{"schema":"crumbkit/failure/v1","code":"crumbkit::cli::usage","#,
+        r#"{"schema":"tool/failure/v1","code":"tool::cli::usage","#,
         r#""message":"unexpected argument '--srot' found; a similar argument exists: '--sort'","#,
         r#""fields":{"argument":"--srot"},"#,
         r#""recovery":{"kind":"run","call":"tool planets show -h"}}"#,
@@ -242,7 +243,7 @@ fn a_command_line_that_stops_at_a_group_says_that_the_group_needs_a_subcommand()
     let expected = "\
 error: the command `tool planets` needs a subcommand
   help:  run `tool planets -h`
-  code:  crumbkit::cli::usage
+  code:  tool::cli::usage
 ";
     assert_eq!(parsed.err, expected);
 }
@@ -485,7 +486,7 @@ fn help_with_an_unknown_word_is_refused_with_the_root_s_short_help_as_the_recove
     let expected = "\
 error: unrecognized subcommand 'plants'; a similar subcommand exists: 'planets'
   help:  run `tool -h`
-  code:  crumbkit::cli::usage
+  code:  tool::cli::usage
 ";
     assert_eq!(parsed.err, expected);
 }

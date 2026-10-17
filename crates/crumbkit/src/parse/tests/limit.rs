@@ -29,7 +29,7 @@ fn a_limit_above_the_bound_is_refused_with_a_recovery_that_runs_all() {
 error: invalid value '11' for '--limit <N>': --limit takes a whole number from 1 to 10
   help:  run `tool planets list --all`
   help:  run `tool planets list --limit 10`
-  code:  crumbkit::cli::usage
+  code:  tool::cli::usage
 ";
     assert_eq!(parsed.err, expected);
     assert_eq!(parsed.out, "");
@@ -83,7 +83,7 @@ fn a_limit_of_0_on_a_bounded_page_states_the_range_and_keeps_the_help_recovery()
     let expected = "\
 error: invalid value '0' for '--limit <N>': --limit takes a whole number from 1 to 10
   help:  run `tool planets list -h`
-  code:  crumbkit::cli::usage
+  code:  tool::cli::usage
 ";
     assert_eq!(parsed.err, expected);
 }
@@ -95,7 +95,7 @@ fn a_limit_that_is_not_a_number_on_a_bounded_page_states_the_range_and_keeps_the
     let expected = "\
 error: invalid value 'abc' for '--limit <N>': --limit takes a whole number from 1 to 10
   help:  run `tool planets list -h`
-  code:  crumbkit::cli::usage
+  code:  tool::cli::usage
 ";
     assert_eq!(parsed.err, expected);
 }
@@ -107,7 +107,7 @@ fn a_negative_limit_on_a_bounded_page_states_the_range_and_keeps_the_help_recove
     let expected = "\
 error: invalid value '-1' for '--limit <N>': --limit takes a whole number from 1 to 10
   help:  run `tool planets list -h`
-  code:  crumbkit::cli::usage
+  code:  tool::cli::usage
 ";
     assert_eq!(parsed.err, expected);
 }

@@ -115,7 +115,7 @@ pub(crate) const fn unoffered(
 
 /// Returns the refusal of `flag` on a command that does not offer it for
 /// `reason`. The refusal names the flag under `fields`, and it prints as a
-/// refused command line does, with the code `crumbkit::cli::usage` and exit
+/// refused command line does, with the code `<tool>::cli::usage` and exit
 /// code 2, or the guide's rename and exit for them.
 pub(crate) fn refusal(flag: ViewFlag, reason: Unoffered) -> Refusal {
     let does = match flag {

@@ -195,7 +195,5 @@ fn a_failed_unwrapped_command_prints_the_failure_document_with_json() {
 
     assert_eq!(code, 1);
     let out = String::from_utf8(out).unwrap();
-    assert!(
-        out.starts_with(r#"{"schema":"crumbkit/failure/v1","code":"solar::planets::not_found""#)
-    );
+    assert!(out.starts_with(r#"{"schema":"tool/failure/v1","code":"solar::planets::not_found""#));
 }

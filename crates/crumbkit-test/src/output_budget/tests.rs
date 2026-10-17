@@ -12,7 +12,7 @@ const fn ran<'a>(code: i32, stdout: &'a str, stderr: &'a str) -> Ran<'a> {
 
 #[test]
 fn a_cut_listing_that_holds_the_budget_keeps_the_contract() {
-    let stdout = "{\"schema\":\"shelf.books.list.v1\",\"data\":[],\"cut\":{\"code\":\"crumbkit::output::over_budget\",\"budget\":200}}\n";
+    let stdout = "{\"schema\":\"shelf.books.list.v1\",\"data\":[],\"cut\":{\"code\":\"sh::output::over_budget\",\"budget\":200}}\n";
     assert_eq!(judge(&ran(0, stdout, ""), 200, 1), None);
 }
 
@@ -55,32 +55,32 @@ fn a_batch_of_one_answer_past_the_budget_that_exits_0_keeps_the_contract() {
 
 #[test]
 fn a_failure_document_with_the_budget_keeps_the_contract() {
-    let stdout = "{\"schema\":\"crumbkit.failure.v1\",\"code\":\"crumbkit::output::over_budget\",\"fields\":{\"budget\":100}}\n";
+    let stdout = "{\"schema\":\"crumbkit.failure.v1\",\"code\":\"sh::output::over_budget\",\"fields\":{\"budget\":100}}\n";
     assert_eq!(judge(&ran(1, stdout, ""), 100, 1), None);
 }
 
 #[test]
 fn a_batch_whose_last_failure_holds_the_budget_keeps_the_contract() {
-    let stdout = "{\"data\":[{\"id\":1}],\"failures\":[{\"code\":\"x\",\"fields\":{}},{\"code\":\"crumbkit::output::over_budget\",\"fields\":{\"left_out\":2,\"budget\":100}}]}\n";
+    let stdout = "{\"data\":[{\"id\":1}],\"failures\":[{\"code\":\"x\",\"fields\":{}},{\"code\":\"sh::output::over_budget\",\"fields\":{\"left_out\":2,\"budget\":100}}]}\n";
     assert_eq!(judge(&ran(1, stdout, ""), 100, 1), None);
 }
 
 #[test]
 fn check_output_budget_accepts_an_over_budget_failure_before_another_failure() {
-    let stdout = "{\"data\":[{\"id\":1}],\"failures\":[{\"code\":\"crumbkit::output::over_budget\",\"index\":1,\"fields\":{\"budget\":100}},{\"code\":\"x\",\"index\":2,\"fields\":{}}]}\n";
+    let stdout = "{\"data\":[{\"id\":1}],\"failures\":[{\"code\":\"sh::output::over_budget\",\"index\":1,\"fields\":{\"budget\":100}},{\"code\":\"x\",\"index\":2,\"fields\":{}}]}\n";
     assert_eq!(judge(&ran(1, stdout, ""), 100, 1), None);
 }
 
 #[test]
 fn an_array_in_input_order_whose_last_item_holds_the_budget_keeps_the_contract() {
-    let stdout = "[{\"id\":1},{\"schema\":\"crumbkit/failure/v1\",\"code\":\"crumbkit::output::over_budget\",\"fields\":{\"left_out\":[\"2\"],\"budget\":100}}]\n";
+    let stdout = "[{\"id\":1},{\"schema\":\"sh/failure/v1\",\"code\":\"sh::output::over_budget\",\"fields\":{\"left_out\":[\"2\"],\"budget\":100}}]\n";
     assert_eq!(judge(&ran(1, stdout, ""), 100, 1), None);
 }
 
 #[test]
 fn an_array_in_input_order_under_a_declared_data_key_whose_last_item_holds_the_budget_keeps_the_contract()
  {
-    let stdout = "{\"$type\":\"shelf/get-books/v1\",\"answers\":[{\"id\":1},{\"code\":\"crumbkit::output::over_budget\",\"fields\":{\"left_out\":[\"2\"],\"budget\":100}}]}\n";
+    let stdout = "{\"$type\":\"shelf/get-books/v1\",\"answers\":[{\"id\":1},{\"code\":\"sh::output::over_budget\",\"fields\":{\"left_out\":[\"2\"],\"budget\":100}}]}\n";
     let keyed = Ran {
         data_key: "answers",
         ..ran(1, stdout, "")
@@ -124,7 +124,7 @@ fn a_run_that_ends_with_another_exit_code_breaks_the_contract() {
 
 #[test]
 fn an_indented_failure_document_with_the_budget_keeps_the_contract() {
-    let stdout = "{\n  \"schema\": \"crumbkit/failure/v1\",\n  \"code\": \"crumbkit::output::over_budget\",\n  \"fields\": {\n    \"budget\": 100\n  }\n}\n";
+    let stdout = "{\n  \"schema\": \"sh/failure/v1\",\n  \"code\": \"sh::output::over_budget\",\n  \"fields\": {\n    \"budget\": 100\n  }\n}\n";
     assert_eq!(judge(&ran(1, stdout, ""), 100, 1), None);
 }
 
@@ -139,7 +139,7 @@ fn an_indented_cut_listing_that_holds_the_budget_keeps_the_contract() {
 /// code 4 when the check lowers its budget.
 #[cfg(unix)]
 const PICKY: &[&str] = &[
-    r#"test -f marker && test "$(cat)" = input || exit 2; test -n "$CRUMBKIT_OUTPUT_BUDGET" && exit 4; echo printed"#,
+    r#"test -f marker && test "$(cat)" = input || exit 2; test -n "$SH_OUTPUT_BUDGET" && exit 4; echo printed"#,
     "--json",
 ];
 
@@ -184,7 +184,7 @@ fn the_output_budget_check_uses_current_dir_and_stdin_and_skips_an_opted_out_exa
 /// output budget is set.
 #[cfg(unix)]
 const STALLS: &[&str] = &[
-    r#"test -n "$CRUMBKIT_OUTPUT_BUDGET" && exec sleep 5; echo printed"#,
+    r#"test -n "$SH_OUTPUT_BUDGET" && exec sleep 5; echo printed"#,
     "--json",
 ];
 
@@ -223,7 +223,7 @@ fn a_run_with_the_budget_that_does_not_end_within_the_timeout_is_stopped_and_bre
 
 #[test]
 fn a_guide_that_gives_the_over_budget_failure_another_exit_code_makes_that_code_the_failed_one() {
-    let stdout = "{\"code\":\"crumbkit::output::over_budget\",\"fields\":{\"budget\":100}}\n";
+    let stdout = "{\"code\":\"sh::output::over_budget\",\"fields\":{\"budget\":100}}\n";
     assert_eq!(judge(&ran(9, stdout, ""), 100, 9), None);
     let problem = judge(&ran(1, stdout, ""), 100, 9).expect("a problem");
     assert!(problem.contains("exit code 1"), "{problem}");
@@ -233,7 +233,7 @@ fn a_guide_that_gives_the_over_budget_failure_another_exit_code_makes_that_code_
 /// with a document that names the budget and exits with code 9.
 #[cfg(unix)]
 const FAILS_WITH_9: &[&str] = &[
-    r#"test -n "$CRUMBKIT_OUTPUT_BUDGET" && echo "{\"fields\":{\"budget\":$CRUMBKIT_OUTPUT_BUDGET}}" && exit 9; echo printed"#,
+    r#"test -n "$SH_OUTPUT_BUDGET" && echo "{\"fields\":{\"budget\":$SH_OUTPUT_BUDGET}}" && exit 9; echo printed"#,
     "--json",
 ];
 
@@ -297,8 +297,7 @@ fn a_headed_text_run_that_exits_0_within_the_budget_breaks_the_contract() {
 /// A text example that prints a line, and that exits with code 3 when the
 /// output budget is set.
 #[cfg(unix)]
-const TEXT_FAILS_WITH_3: &[&str] =
-    &[r#"test -n "$CRUMBKIT_OUTPUT_BUDGET" && exit 3; echo printed"#];
+const TEXT_FAILS_WITH_3: &[&str] = &[r#"test -n "$SH_OUTPUT_BUDGET" && exit 3; echo printed"#];
 
 /// A row that holds a file's bytes, which a headed document prints under a
 /// header.
@@ -358,7 +357,7 @@ fn the_output_budget_check_runs_the_text_examples_of_a_headed_leaf() {
 /// of `sh::files::missing`.
 #[cfg(unix)]
 const MISSING_EXITS_5: &[&str] = &[
-    r#"test -n "$CRUMBKIT_OUTPUT_BUDGET" && echo "{\"data\":[],\"failures\":[{\"index\":0,\"code\":\"sh::files::missing\",\"fields\":{}},{\"index\":1,\"code\":\"crumbkit::output::over_budget\",\"fields\":{\"budget\":$CRUMBKIT_OUTPUT_BUDGET}}]}" && exit 5; echo printed"#,
+    r#"test -n "$SH_OUTPUT_BUDGET" && echo "{\"data\":[],\"failures\":[{\"index\":0,\"code\":\"sh::files::missing\",\"fields\":{}},{\"index\":1,\"code\":\"sh::output::over_budget\",\"fields\":{\"budget\":$SH_OUTPUT_BUDGET}}]}" && exit 5; echo printed"#,
     "--json",
 ];
 
@@ -366,7 +365,7 @@ const MISSING_EXITS_5: &[&str] = &[
 /// over-budget failure, in place of 5.
 #[cfg(unix)]
 const MISSING_EXITS_1: &[&str] = &[
-    r#"test -n "$CRUMBKIT_OUTPUT_BUDGET" && echo "{\"data\":[],\"failures\":[{\"index\":0,\"code\":\"sh::files::missing\",\"fields\":{}},{\"index\":1,\"code\":\"crumbkit::output::over_budget\",\"fields\":{\"budget\":$CRUMBKIT_OUTPUT_BUDGET}}]}" && exit 1; echo printed"#,
+    r#"test -n "$SH_OUTPUT_BUDGET" && echo "{\"data\":[],\"failures\":[{\"index\":0,\"code\":\"sh::files::missing\",\"fields\":{}},{\"index\":1,\"code\":\"sh::output::over_budget\",\"fields\":{\"budget\":$SH_OUTPUT_BUDGET}}]}" && exit 1; echo printed"#,
     "--json",
 ];
 

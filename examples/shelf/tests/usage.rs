@@ -84,7 +84,7 @@ fn a_run_appends_one_line_with_its_command_flags_exit_code_and_output_size() {
     assert_eq!(
         stable(lines[0].clone()),
         json!({
-            "schema": "crumbkit/usage/v1",
+            "schema": "shelf/usage/v1",
             "tool": "shelf",
             "version": Cli::command().get_version(),
             "at": "<checked>",
@@ -115,7 +115,7 @@ fn a_refused_run_records_how_many_flags_were_unknown_and_the_nearest_real_one() 
     assert_eq!(line["unknown_flags"], 1);
     assert_eq!(line["nearest"], "--all");
     assert_eq!(line["exit"], 2);
-    assert_eq!(line["code"], "crumbkit::cli::usage");
+    assert_eq!(line["code"], "shelf::cli::usage");
     assert_eq!(line.get("flags"), None);
 }
 
@@ -245,14 +245,14 @@ fn a_listing_cut_short_by_the_output_budget_records_truncated_with_the_over_budg
     let dir = tempfile::tempdir().unwrap();
     let home = dir.path();
 
-    let budget = [("CRUMBKIT_OUTPUT_BUDGET", "300")];
+    let budget = [("SHELF_OUTPUT_BUDGET", "300")];
     let run = shelf_with(home, &["books", "list", "--all"], &budget).success();
 
     assert!(run.get_output().stdout.len() <= 300);
     let line = stable(lines(home).unwrap().remove(0));
     assert_eq!(line["exit"], 0);
     assert_eq!(line["truncated"], true);
-    assert_eq!(line["code"], "crumbkit::output::over_budget");
+    assert_eq!(line["code"], "shelf::output::over_budget");
 }
 
 #[test]

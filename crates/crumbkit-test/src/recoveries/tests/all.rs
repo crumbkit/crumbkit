@@ -11,7 +11,7 @@ use crate::recoveries::Failing;
 /// with every value of its field `left_out`.
 fn with_all(fields: &str) -> String {
     format!(
-        r#"{{"schema":"crumbkit/failure/v1","code":"tool::books::not_found","message":"m","fields":{fields},"recovery":{{"kind":"run","call":"tool books show <ID>...","all":"left_out"}}}}"#
+        r#"{{"schema":"tool/failure/v1","code":"tool::books::not_found","message":"m","fields":{fields},"recovery":{{"kind":"run","call":"tool books show <ID>...","all":"left_out"}}}}"#
     )
 }
 

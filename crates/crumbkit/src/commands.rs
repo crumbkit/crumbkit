@@ -193,7 +193,7 @@ impl JsonSchema for CommandsList {
 ///
 /// # Errors
 ///
-/// Returns a failure with the code `crumbkit::commands::not_found` when a
+/// Returns a failure with the code `<tool>::commands::not_found` when a
 /// word of `args` names no visible command. Its recovery runs
 /// `commands list` with the longest start of the words that names a
 /// visible command, such as `shelf commands list books`, rendered against

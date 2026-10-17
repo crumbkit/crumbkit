@@ -66,7 +66,7 @@ mod twins;
 pub use crumbkit_core::{
     AsFailure, Batch, Bytes, Call, CallArg, CallError, CallTarget, Code, Document, Envelope, Error,
     Failure, Field, FieldValue, Headed, Listing, NoRow, NoSummary, Prose, Recovery, Row, Rows,
-    RuntimeCodeError, Shape, Spelling, Stream,
+    RuntimeCodeError, Shape, Spelling, Stream, ToolName,
 };
 
 pub use crate::call::RenderCall;

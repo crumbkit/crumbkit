@@ -54,6 +54,9 @@ getrandom = { workspace = true }
 crumbkit-child = { workspace = true }
 # The report's property tests generate runs of the log (ADR-0006).
 proptest = { workspace = true, features = ["std"] }
+# The schema tests check a record's id against the pattern of the checked-in
+# schema, which names any tool's `<tool>/usage/v1` (ADR-0079).
+regex-lite = { workspace = true }
 
 [lints]
 workspace = true

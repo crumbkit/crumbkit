@@ -71,7 +71,7 @@ fn a_declared_code_whose_failure_offers_no_run_retry_or_hint_is_a_dead_end_unles
 fn a_crumbkit_code_without_a_next_step_is_no_dead_end_so_an_opt_out_for_it_is_stale() {
     let setup = tool(
         "recoveries-crumbkit-none",
-        "crumbkit::confirmation::declined",
+        "tool::confirmation::declined",
         r#"{"kind":"none","reason":"The person said no."}"#,
         "",
     );
@@ -96,7 +96,7 @@ fn a_failure_whose_run_warns_that_a_recovery_did_not_render_is_reported_only_by_
         "recoveries-unrendered",
         "tool::books::unreadable",
         r#"{"kind":"none","reason":"The call names no command."}"#,
-        "warning: crumbkit left out a recovery\n",
+        "warning: tool left out a recovery\n",
     );
 
     assert_eq!(
@@ -104,7 +104,7 @@ fn a_failure_whose_run_warns_that_a_recovery_did_not_render_is_reported_only_by_
         Some(
             "the tool's recoveries break crumbkit's recovery rules:\n\
              tool books show 7: the step `tool books list` writes a warning to standard error: \
-             warning: crumbkit left out a recovery"
+             warning: tool left out a recovery"
         )
     );
 }

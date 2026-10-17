@@ -94,9 +94,9 @@ Why: ADR-0015, ADR-0056.
 ## Refused command lines
 
 A command line that clap refuses prints as a failure with the code
-`crumbkit::cli::usage` and exits with 2, unless the tool's guide lists
+`<tool>::cli::usage` and exits with 2, unless the tool's guide lists
 another [exit code](../failures/exit-codes.md) for it. With `--json`, the
-refusal prints as a `crumbkit/failure/v1` document on standard output. The
+refusal prints as a `<tool>/failure/v1` document on standard output. The
 rustdoc of `parse_to` states the message and the recovery.
 
 - The refusal's message is clap's error on one line, except a view-flag

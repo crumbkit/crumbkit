@@ -4,9 +4,9 @@
 
 use std::fmt;
 
-use crumbkit::FieldValue;
 use crumbkit::form::{FailureForm, ReadFailure, Step};
 use crumbkit::help::Guide;
+use crumbkit::{FieldValue, ToolName};
 use serde_json::Value;
 
 use crate::examples::Examples;
@@ -129,7 +129,8 @@ pub(crate) fn reader<'a>(
 
 /// Returns each failure that a failed run printed on `stdout` and `stderr`.
 /// The first of these sources that reads a failure gives them all:
-/// `reader`; then the last `crumbkit/failure/v1` document on `stdout`, or
+/// `reader`; then the last failure document of `tool`, such as
+/// `shelf/failure/v1`, on `stdout`, or
 /// every entry of the `failures` of the last document that has any, as a
 /// batch prints them, or every failure document of the last array that
 /// holds any, at the top or under a key of the document, as a batch in
@@ -142,6 +143,7 @@ pub(crate) fn reader<'a>(
 /// empty standard error, and an entry that the form cannot read is read in
 /// crumbkit's shape.
 pub(crate) fn read_failures(
+    tool: ToolName,
     reader: Option<Reader<'_>>,
     stdout: &[u8],
     stderr: &[u8],
@@ -158,7 +160,7 @@ pub(crate) fn read_failures(
         Some(Reader::Form(form)) => Some(form),
         _ => None,
     };
-    let read = crumbkit_failures(&out, form);
+    let read = crumbkit_failures(tool, &out, form);
     if !read.is_empty() {
         return read;
     }
@@ -170,28 +172,32 @@ pub(crate) fn read_failures(
         .collect()
 }
 
-/// Returns the failures of the last document on `out` that is a
-/// `crumbkit/failure/v1` document, has a non-empty `failures` array, or is
+/// Returns the failures of the last document on `out` that is `tool`'s
+/// failure document, such as `shelf/failure/v1`, has a non-empty `failures` array, or is
 /// an array that holds at least one failure document, as a batch that
 /// prints its failures in input order prints it, at the top or under any
 /// key of an object, as a document with `Envelope::KeysInOrder`
 /// holds it. A `form` reads each entry
 /// of `failures` and each item of such an array first. An item that the
-/// form does not read is a failure only when it is a
-/// `crumbkit/failure/v1` document, so a row is never read as one.
-fn crumbkit_failures(out: &str, form: Option<&dyn FailureForm>) -> Vec<ReadFailure> {
+/// form does not read is a failure only when it is the tool's failure
+/// document, so a row is never read as one.
+fn crumbkit_failures(
+    tool: ToolName,
+    out: &str,
+    form: Option<&dyn FailureForm>,
+) -> Vec<ReadFailure> {
     let through_form = |item: &Value| form.and_then(|form| form.read(&item.to_string(), ""));
     let in_order = |items: &[Value]| -> Vec<ReadFailure> {
         items
             .iter()
             .filter_map(|item| {
                 through_form(item)
-                    .or_else(|| is_failure_document(item).then(|| read_document(item))?)
+                    .or_else(|| is_failure_document(tool, item).then(|| read_document(item))?)
             })
             .collect()
     };
     for document in runs::documents(out).iter().rev() {
-        if is_failure_document(document) {
+        if is_failure_document(tool, document) {
             return read_document(document).into_iter().collect();
         }
         if let Some(items) = document.as_array() {
@@ -225,9 +231,11 @@ fn crumbkit_failures(out: &str, form: Option<&dyn FailureForm>) -> Vec<ReadFailu
     Vec::new()
 }
 
-/// Reports whether `document` is a `crumbkit/failure/v1` document.
-fn is_failure_document(document: &Value) -> bool {
-    document.get("schema").and_then(Value::as_str) == Some("crumbkit/failure/v1")
+/// Reports whether `document` is `tool`'s failure document, such as
+/// `shelf/failure/v1` (ADR-0079).
+fn is_failure_document(tool: ToolName, document: &Value) -> bool {
+    document.get("schema").and_then(Value::as_str)
+        == Some(tool.schema_id("crumbkit/failure/v1").as_str())
 }
 
 /// Returns the failure of the failure document `document`: its code, its

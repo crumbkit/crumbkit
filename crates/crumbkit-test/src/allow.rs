@@ -417,7 +417,7 @@ impl Rule {
                 "Help prints no `Effects:` line, and `commands list` writes `null` under `effects`.",
             ],
             Self::DryRun => &[
-                "The flag means what the tool makes it mean, which can differ from crumbkit's `--dry-run` in other tools.",
+                "The flag means what the tool makes it mean, which can differ from what `--dry-run` means in other tools.",
                 "The run's JSON document has no `dry_run` field, so an agent cannot tell a dry run from a real one.",
             ],
             Self::Yes => &[
@@ -425,14 +425,14 @@ impl Rule {
             ],
             Self::NoInput => &[
                 "A script or an agent cannot tell the tool that nobody can answer, so the tool relies on detecting it.",
-                "The flag is missing from this tool while other crumbkit tools take it, so a caller that passes it gets a refusal.",
+                "The flag is missing from this tool while other tools take it, so a caller that passes it gets a refusal.",
             ],
             Self::Expect => &[
                 "Two concurrent writers can lose each other's changes, because the command replaces data without checking that it is the version the caller read.",
             ],
             Self::ExpectFlag => &[
-                "The flag means what the tool makes it mean, which can differ from crumbkit's `--expect` in other tools.",
-                "A failed check does not fail with `crumbkit::version::conflict`, so an agent cannot tell a conflict from another failure by its code.",
+                "The flag means what the tool makes it mean, which can differ from what `--expect` means in other tools.",
+                "A failed check does not fail with the tool's `version::conflict` code, so an agent cannot tell a conflict from another failure by its code.",
             ],
             Self::Items => &[
                 "An agent that retries after a failure cannot tell which items the first run changed.",
@@ -462,7 +462,7 @@ impl Rule {
                 "The command's output weight counts 0 bytes, so its path weight is too low.",
             ],
             Self::Envelope => &[
-                "An agent cannot predict the document's shape from crumbkit's conventions and must read its schema with `schemas show`.",
+                "An agent cannot predict the document's shape from the conventions and must read its schema with `schemas show`.",
                 "The document has no `schema` id, `truncated` or `failures`, so a program cannot tell which document it read, whether it holds every row, or which ids failed.",
             ],
             Self::RowsWhole => &[

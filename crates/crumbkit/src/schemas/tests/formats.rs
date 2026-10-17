@@ -87,9 +87,9 @@ fn file_formats_come_after_the_leaf_documents_and_name_no_command() {
     assert_eq!(
         ids,
         [
-            "crumbkit/failure/v1",
+            "shelf/failure/v1",
             "shelf/books-list/v3",
-            "crumbkit/schemas-list/v1",
+            "shelf/schemas-list/v1",
             "shelf/settings/v1",
         ]
     );

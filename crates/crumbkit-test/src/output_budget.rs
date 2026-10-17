@@ -7,8 +7,8 @@ use std::path::Path;
 use std::time::Duration;
 
 use clap::Command;
-use crumbkit::Spelling;
 use crumbkit::help::Guide;
+use crumbkit::{Spelling, ToolName};
 
 use crate::allow::{Allowances, Rule};
 use crate::examples::{Examples, example_golden_name, read_stdin, setup_problem};
@@ -19,8 +19,10 @@ use crate::tree;
 #[cfg(test)]
 mod tests;
 
-/// The environment variable that lowers the output budget of one run.
-const VARIABLE: &str = "CRUMBKIT_OUTPUT_BUDGET";
+/// The end of the name of the environment variable that lowers the output
+/// budget of one run, whose name starts with the tool's name, such as
+/// `SHELF_OUTPUT_BUDGET` (ADR-0079).
+const VARIABLE: &str = "OUTPUT_BUDGET";
 
 /// Checks that each `--json` example in `guide` keeps the output budget's
 /// contract when its budget is half the bytes it prints, and panics, as a
@@ -28,8 +30,8 @@ const VARIABLE: &str = "CRUMBKIT_OUTPUT_BUDGET";
 ///
 /// The check runs each example as [`check_examples`](crate::check_examples)
 /// does, skips an example that fails or prints fewer than 2 bytes, and runs
-/// it again with the variable `CRUMBKIT_OUTPUT_BUDGET` set to half the bytes
-/// it printed. The second run keeps the contract when one of these holds:
+/// it again with the tool's variable `<TOOL>_OUTPUT_BUDGET`, such as
+/// `SHELF_OUTPUT_BUDGET`, set to half the bytes it printed. The second run keeps the contract when one of these holds:
 ///
 /// - it exits with code 0, prints at most the budget on standard output, and
 ///   marks the cut: a document holds `cut` with the budget, or, for a
@@ -110,6 +112,8 @@ fn check(
     timeout: Duration,
 ) -> Vec<String> {
     let tool = command.get_name();
+    let names = guide.tool_name(command);
+    let variable = names.variable(VARIABLE);
     let mut problems = Vec::new();
     if let Some(problem) = setup_problem(examples) {
         problems.push(problem);
@@ -166,7 +170,7 @@ fn check(
             let budget = whole / 2;
             let value = budget.to_string();
             let mut env = examples.variables().to_vec();
-            env.push((VARIABLE, &value));
+            env.push((&variable, &value));
             match run(examples, &env, &args, stdin, timeout) {
                 Ok(runs::Ran::Exited(output)) => {
                     let ran = Ran {
@@ -180,7 +184,7 @@ fn check(
                     let printed = output.stdout.len();
                     let failed =
                         if document.is_some_and(|document| document.answers_left_out_per_key()) {
-                            first_exit(&ran, guide, path, budget, text).unwrap_or(failed)
+                            first_exit(&ran, guide, names, path, budget, text).unwrap_or(failed)
                         } else {
                             failed
                         };
@@ -247,6 +251,7 @@ pub(crate) struct Ran<'a> {
 fn first_exit(
     ran: &Ran<'_>,
     guide: &Guide,
+    tool: ToolName,
     path: &[&str],
     budget: usize,
     text: bool,
@@ -264,7 +269,7 @@ fn first_exit(
             let printed = guide.printed(path, listed);
             [Spelling::COLONS, Spelling::DOTS, Spelling::SLASHES]
                 .iter()
-                .any(|spelling| spelling.spell(printed) == code)
+                .any(|spelling| spelling.for_tool(tool).spell(printed) == code)
         })
         .map_or(1, |listed| guide.failure_exit(path, listed));
     Some(exit)

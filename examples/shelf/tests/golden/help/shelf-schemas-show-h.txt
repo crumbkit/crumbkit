@@ -3,7 +3,7 @@ Print the JSON Schema of each document
 Usage: shelf schemas show [OPTIONS] <ID>...
 
 Arguments:
-  <ID>...  The ids of the documents, such as `crumbkit/failure/v1`, separated by spaces
+  <ID>...  The ids of the documents that `schemas list` lists, separated by spaces
 
 Options:
   -h, --help  Print help (see more with '--help')

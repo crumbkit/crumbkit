@@ -20,6 +20,7 @@ use crate::examples::Examples;
 use crate::temp::TempDir;
 use crate::testing::panic_message;
 
+mod add_ons;
 mod all;
 mod chains;
 mod env;
@@ -73,7 +74,7 @@ type Answer<'a> = (&'a str, u8, &'a str, &'a str);
 /// step in JSON, such as `{"kind":"retry"}`.
 fn failure(code: &str, recovery: &str) -> String {
     format!(
-        r#"{{"schema":"crumbkit/failure/v1","code":"{code}","message":"it failed","recovery":{recovery}}}"#
+        r#"{{"schema":"tool/failure/v1","code":"{code}","message":"it failed","recovery":{recovery}}}"#
     )
 }
 
@@ -183,7 +184,7 @@ fn the_report_names_each_start_its_code_and_each_step_with_its_outcome() {
 #[test]
 fn a_placeholder_takes_its_value_and_an_alternative_starts_its_own_branch() {
     let show = format!(
-        r#"{{"schema":"crumbkit/failure/v1","code":"tool::books::unreadable","message":"m","recovery":{{"kind":"hint","text":"Fix the file."}},"alternatives":[{}]}}"#,
+        r#"{{"schema":"tool/failure/v1","code":"tool::books::unreadable","message":"m","recovery":{{"kind":"hint","text":"Fix the file."}},"alternatives":[{}]}}"#,
         run("tool books show <ID>...")
     );
     let not_found = failure("tool::books::not_found", r#"{"kind":"retry"}"#);
@@ -303,11 +304,11 @@ fn a_start_that_succeeds_or_fails_with_another_code_fails_the_check() {
 #[test]
 fn a_step_that_the_parser_refuses_or_that_warns_fails_the_check() {
     let show = format!(
-        r#"{{"schema":"crumbkit/failure/v1","code":"tool::books::not_found","message":"m","recovery":{},"alternatives":[{}]}}"#,
+        r#"{{"schema":"tool/failure/v1","code":"tool::books::not_found","message":"m","recovery":{},"alternatives":[{}]}}"#,
         run("tool books lst"),
         run("tool books list")
     );
-    let usage = failure("crumbkit::cli::usage", r#"{"kind":"retry"}"#);
+    let usage = failure("tool::cli::usage", r#"{"kind":"retry"}"#);
     let setup = Setup::new(
         "recoveries-refused",
         &[
@@ -317,7 +318,7 @@ fn a_step_that_the_parser_refuses_or_that_warns_fails_the_check() {
                 "books list --json",
                 0,
                 "{}\n",
-                "warning: crumbkit left out a recovery\n",
+                "warning: tool left out a recovery\n",
             ),
         ],
     );
@@ -325,8 +326,8 @@ fn a_step_that_the_parser_refuses_or_that_warns_fails_the_check() {
     assert_eq!(
         problems(&setup, &recoveries(&setup, SHOW_7, OTHERS)).unwrap(),
         "the tool's recoveries break crumbkit's recovery rules:\n\
-         tool books show 7: the parser refuses the step `tool books lst` with crumbkit::cli::usage\n\
-         tool books show 7: the step `tool books list` writes a warning to standard error: warning: crumbkit left out a recovery"
+         tool books show 7: the parser refuses the step `tool books lst` with tool::cli::usage\n\
+         tool books show 7: the step `tool books list` writes a warning to standard error: warning: tool left out a recovery"
     );
 }
 
@@ -403,40 +404,6 @@ fn a_code_from_a_component_the_tool_does_not_declare_is_counted_and_its_recovery
     );
     assert!(
         report.ends_with("because no declared code spells them: 1\n"),
-        "{report}"
-    );
-}
-
-#[test]
-fn a_code_in_the_crumbkit_component_that_crumbkit_does_not_list_has_its_recovery_followed() {
-    let show = failure("tool::books::not_found", &run("tool books list"));
-    let failed = failure("crumbkit::child::failed", &run("tool books show 2"));
-    let setup = Setup::new(
-        "recoveries-crumbkit-component",
-        &[
-            ("books show 7 --json", 1, show.as_str(), ""),
-            ("books list --json", 1, failed.as_str(), ""),
-            ("books show 2 --json", 0, "{}\n", ""),
-        ],
-    );
-
-    check_with(
-        &setup,
-        &recoveries(&setup, SHOW_7, OTHERS),
-        Action::Overwrite,
-    );
-
-    let report = setup.report();
-    assert!(
-        report.contains(
-            "\x20   fails with crumbkit::child::failed\n\
-             \x20   run tool books show 2\n\
-             \x20     exits 0\n"
-        ),
-        "{report}"
-    );
-    assert!(
-        report.ends_with("because no declared code spells them: 0\n"),
         "{report}"
     );
 }

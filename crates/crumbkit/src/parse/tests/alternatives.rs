@@ -129,7 +129,7 @@ error: invalid value '11' for '--limit <N>': --limit takes a whole number from 1
   help:  run `tool planets list --all`
   help:  run `tool planets list --limit 10`
   help:  run `tool planets show Mars`
-  code:  crumbkit::cli::usage
+  code:  tool::cli::usage
 ";
     assert_eq!(parsed.err, expected);
     assert_eq!(parsed.code, Some(ExitCode::from(2)));
@@ -150,7 +150,7 @@ fn a_refusal_recovers_with_the_corrected_line_of_the_leafs_function_and_offers_h
 error: invalid value 'mars.json' for '<NAME>': no planet is named mars.json
   help:  run `tool planets orbit mars`
   help:  run `tool planets orbit -h`
-  code:  crumbkit::cli::usage
+  code:  tool::cli::usage
 ";
     assert_eq!(parsed.err, expected);
     admits(bounded(), &refused, &["tool", "planets", "orbit", "mars"]);
@@ -188,7 +188,7 @@ fn a_function_that_returns_no_call_leaves_help_as_the_recovery() {
     let expected = "\
 error: unexpected argument '--srot' found; a similar argument exists: '--sort'
   help:  run `tool planets show -h`
-  code:  crumbkit::cli::usage
+  code:  tool::cli::usage
 ";
     assert_eq!(parsed.err, expected);
     admits(
@@ -207,7 +207,7 @@ fn a_function_whose_calls_do_not_render_or_parse_leaves_help_as_the_recovery_wit
     let expected = "\
 error: invalid value 'pluto.json' for '<NAME>': no planet is named pluto.json
   help:  run `tool planets orbit -h`
-  code:  crumbkit::cli::usage
+  code:  tool::cli::usage
 ";
     assert_eq!(parsed.err, expected);
     admits(bounded(), &refused, &["tool", "planets", "orbit", "venus"]);
@@ -222,7 +222,7 @@ fn a_refusal_of_a_line_that_names_another_command_offers_none_of_the_leafs_alter
     let expected = "\
 error: unexpected argument '--srot' found; a similar argument exists: '--sort'
   help:  run `tool planets show -h`
-  code:  crumbkit::cli::usage
+  code:  tool::cli::usage
 ";
     assert_eq!(parsed.err, expected);
     admits(
@@ -243,7 +243,7 @@ error: invalid value 'mars.json' for '<NAME>': no planet is named mars.json
   help:  run `tool planets orbit mars`
   help:  run `tool planets orbit -h`
   help:  run `tool planets list`
-  code:  crumbkit::cli::usage
+  code:  tool::cli::usage
 ";
     assert_eq!(parsed.err, expected);
     admits(bounded(), &refused, &["tool", "planets", "orbit", "mars"]);
@@ -260,7 +260,7 @@ error: invalid value '11' for '--limit <N>': --limit takes a whole number from 1
   help:  run `tool planets list --all`
   help:  run `tool planets list --limit 10`
   help:  run `tool planets show Mars`
-  code:  crumbkit::cli::usage
+  code:  tool::cli::usage
 ";
     assert_eq!(parsed.err, expected);
     admits(

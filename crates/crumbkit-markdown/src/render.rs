@@ -41,7 +41,7 @@ impl Reference {
 }
 
 /// Returns the Markdown reference of the commands in `document`, the bytes
-/// of the `crumbkit/commands-list/v1` document that a tool's
+/// of the `<tool>/commands-list/v1` document that a tool's
 /// `commands list --all --json --full` prints.
 ///
 /// The reference has a title, then one section for each command in the
@@ -54,7 +54,7 @@ impl Reference {
 ///
 /// # Errors
 ///
-/// Returns an error when `document` is not a `crumbkit/commands-list/v1`
+/// Returns an error when `document` is not a `<tool>/commands-list/v1`
 /// document, when it holds one page of a longer listing or no command, or
 /// when two headings have one anchor, so that a link would reach the wrong
 /// section.
@@ -63,7 +63,7 @@ pub fn render(document: &[u8]) -> Result<Reference, RenderError> {
     let root = commands.first().map_or("", |command| command.path.as_str());
     check_anchors(root, &commands)?;
     let mut text = format!(
-        "# Commands of {}\n\ncrumbkit-markdown writes this reference from the help of {}. \
+        "# Commands of {}\n\nThis reference is generated from the help of {}. \
          Edit the help in the tool's code, and not this file.\n",
         code(root),
         code(root),

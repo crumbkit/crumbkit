@@ -4,12 +4,14 @@
 use std::fmt::Write as _;
 
 use clap::Command;
+use crumbkit::Spelling;
 use crumbkit::form::{ReadFailure, Step};
 use crumbkit::help::Guide;
 
 use super::words::split;
 use super::{Failing, Recoveries};
 use crate::allow::{self, Allowances, Rule};
+use crate::examples::is_crumbkit_warning;
 use crate::exits;
 use crate::failures::{self, Reader};
 use crate::guide::command_line;
@@ -18,12 +20,16 @@ use fill::{fill_word, path_below, value};
 
 mod all;
 pub(super) mod fill;
+pub(super) mod known;
 
 /// What the check has found so far: its settings, the problems, the report
 /// and the codes that the chains provoked.
 pub(super) struct Walk<'a> {
     /// The check's settings.
     pub(super) recoveries: &'a Recoveries<'a>,
+    /// The check's spelling, which spells crumbkit's own codes with the
+    /// tool's name (ADR-0079).
+    pub(super) spelling: Spelling,
     /// The tool's command tree.
     pub(super) command: &'a Command,
     /// The tool's declared codes, spelled.
@@ -91,7 +97,7 @@ enum Outcome {
     Succeeds,
     /// The run failed and printed `failures`, the first failure first, each
     /// with its code, its steps and its fields. `warned` says whether it
-    /// wrote a `warning: crumbkit` line, which a debug build writes for a
+    /// wrote a `warning: <tool> left out` line, which a debug build writes for a
     /// recovery call that does not render.
     Fails {
         failures: Vec<ReadFailure>,
@@ -133,8 +139,11 @@ impl Walk<'_> {
         {
             return;
         }
-        let code = self.recoveries.spelling.spell(start.code);
-        if !self.is_known(&code) {
+        let code = self.spelling.spell(start.code);
+        // A start names its code in Rust, so crumbkit's own codes are those
+        // whose component is `crumbkit`.
+        let owned = start.code.component() == "crumbkit";
+        if !owned && !self.known.contains(&code) {
             self.problems.push(format!(
                 "{line}: the start's code {code} is not a declared code"
             ));
@@ -384,38 +393,6 @@ impl Walk<'_> {
         ));
     }
 
-    /// Returns whether the check follows the recovery of the spelled
-    /// `code`: a code in `known`, or any code whose component is
-    /// `crumbkit`, which crumbkit or one of its add-on crates raises.
-    fn is_known(&self, code: &str) -> bool {
-        self.known.iter().any(|known| known == code)
-            || self
-                .recoveries
-                .spelling
-                .split(code)
-                .is_some_and(|(component, _, _)| component == "crumbkit")
-    }
-
-    /// Writes `code`, which `label` failed with and which no declared code
-    /// spells, to the report indented by `indent`. It adds a problem when
-    /// the code's component is a declared component, and otherwise counts
-    /// the code as skipped.
-    fn unknown(&mut self, chain: &Chain<'_>, label: &str, code: &str, indent: &str) {
-        let _ = writeln!(
-            self.report,
-            "{indent}fails with {code}, which no declared code spells"
-        );
-        match self.recoveries.spelling.split(code) {
-            Some((component, _, _)) if self.components.iter().any(|known| known == component) => {
-                self.problems.push(format!(
-                    "{}: {label} fails with {code}, whose component {component} is a declared component, and no declared code spells it",
-                    chain.start
-                ));
-            }
-            _ => self.skipped += 1,
-        }
-    }
-
     /// Writes each placeholder of `call` that a field of `parent` filled,
     /// as `used` names them, to the report indented by `indent`, and adds
     /// a problem for each unless an opt-out from `recoveries/field-value`
@@ -552,10 +529,11 @@ impl Walk<'_> {
             }
         };
         let stderr = String::from_utf8_lossy(&output.stderr);
+        let tool = self.guide.tool_name(self.command);
         let mut warned = false;
         for warning in stderr
             .lines()
-            .filter(|line| line.starts_with("warning: crumbkit "))
+            .filter(|line| is_crumbkit_warning(line, tool))
         {
             warned = true;
             self.problems.push(format!(
@@ -566,7 +544,7 @@ impl Walk<'_> {
         if output.status.success() {
             return Some(Outcome::Succeeds);
         }
-        let failures = failures::read_failures(self.reader, &output.stdout, &output.stderr);
+        let failures = failures::read_failures(tool, self.reader, &output.stdout, &output.stderr);
         if failures.is_empty() {
             match self.reader {
                 Some(reader) => {
@@ -588,7 +566,7 @@ impl Walk<'_> {
         // The first failure of a run decides its exit code (ADR-0037).
         let first = failures.first().map(ReadFailure::code);
         if let Some(problem) = first.and_then(|first| {
-            let spelling = self.recoveries.spelling;
+            let spelling = self.spelling;
             exits::exit_problem(self.guide, spelling, &path, first, output.status)
         }) {
             self.problems

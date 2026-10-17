@@ -13,7 +13,7 @@ use crate::context::Context;
 use crate::file::LIMITS;
 use crate::record::Help;
 use crate::testing::TempDir;
-use crumbkit::{Code, Document, Spelling};
+use crumbkit::{Code, Document, Spelling, ToolName};
 
 mod processes;
 
@@ -36,7 +36,9 @@ fn started(traceparent: Option<&str>) -> Recorder {
 /// words after the tool's name.
 fn parsed() -> Recorder {
     let mut recorder = started(None);
-    recorder.typed(&tool(), &["shelf".into()], Spelling::DOTS);
+    // crumbkit passes the spelling that names the tool (ADR-0079).
+    let spelling = Spelling::DOTS.for_tool(ToolName::new("shelf"));
+    recorder.typed(&tool(), &["shelf".into()], spelling);
     recorder
 }
 
@@ -143,7 +145,7 @@ fn a_saved_line_holds_the_tool_its_version_the_end_time_the_caller_and_the_hashe
 
     assert_eq!(lines.len(), 1);
     let line = &lines[0];
-    assert_eq!(line["schema"], "crumbkit/usage/v1");
+    assert_eq!(line["schema"], "shelf/usage/v1");
     assert_eq!(line["tool"], "shelf");
     assert_eq!(line["version"], "1.2.3");
     assert_eq!(line["at"], "2026-10-07T12:01:07.120Z");

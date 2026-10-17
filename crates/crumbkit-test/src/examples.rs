@@ -7,6 +7,7 @@ use std::process::Output;
 use std::time::Duration;
 
 use clap::Command;
+use crumbkit::ToolName;
 use crumbkit::help::Guide;
 use snapbox::assert::{Action, DEFAULT_ACTION_ENV};
 use snapbox::{Assert, Redactions};
@@ -95,10 +96,10 @@ mod tests;
 ///   read them, and the standard error, because an example shows a run that
 ///   works. The check reads the failure through the guide's failure form
 ///   or the [`FailureReader`](crate::FailureReader) of `examples` first,
-///   then from a `crumbkit/failure/v1` document on standard output, and
+///   then from a `<tool>/failure/v1` document on standard output, and
 ///   then from the last `code:` line on standard error. This holds with `SNAPSHOTS=overwrite` too, and the
 ///   check then writes no file for the example;
-/// - a run that writes a `warning: crumbkit` line to standard error, which a
+/// - a run that writes a `warning: <tool> left out` line to standard error, which a
 ///   debug build writes for a recovery call that does not render. The
 ///   check then writes no file for the example;
 /// - a run whose binary cannot start, such as a wrong path, naming the path
@@ -193,6 +194,7 @@ fn check(
     let dir = Path::new(examples.goldens());
     let tool = command.get_name();
     let layout = guide.get_json().layout;
+    let tool_name = guide.tool_name(command);
     let mut problems = Vec::new();
     // The problems of runs that fail, which the message lists under a
     // heading of their own, because the tool's binary breaks them and the
@@ -257,10 +259,10 @@ fn check(
             };
             let stderr = String::from_utf8_lossy(&output.stderr).into_owned();
             if !output.status.success() {
-                failures.push(failed_run(&line, &output, reader, &stderr));
+                failures.push(failed_run(&line, &output, tool_name, reader, &stderr));
                 continue;
             }
-            let warnings = warnings(&line, &stderr);
+            let warnings = warnings(&line, tool_name, &stderr);
             if !warnings.is_empty() {
                 failures.extend(warnings);
                 continue;
@@ -272,7 +274,7 @@ fn check(
             // a tool's examples print bytes.
             let stdout = String::from_utf8_lossy(&output.stdout).into_owned();
             if example.words().contains(&"--json") {
-                lines::check_lines(leaf, layout, &line, &stdout, &mut failures);
+                lines::check_lines(leaf, tool_name, layout, &line, &stdout, &mut failures);
             }
             let outputs = [redactions.redact(&stdout), redactions.redact(&stderr)];
             let stderr_name = compare_run(assert, dir, &line, &name, outputs, &mut problems);
@@ -368,15 +370,23 @@ fn setup<'a>(guide: &Guide, examples: &Examples<'a>) -> Result<Option<Reader<'a>
 
 /// Returns the problem of the example `line`, whose run exited with a code
 /// other than 0. The problem names the exit status, the first failure's
-/// code and steps when `reader`, crumbkit's failure document or its
+/// code and steps when `reader`, the failure document of `tool` or its
 /// `code:` line gives them, and the run's standard error `stderr` when it
 /// is not empty.
-fn failed_run(line: &str, output: &Output, reader: Option<Reader<'_>>, stderr: &str) -> String {
+fn failed_run(
+    line: &str,
+    output: &Output,
+    tool: ToolName,
+    reader: Option<Reader<'_>>,
+    stderr: &str,
+) -> String {
     let mut problem = format!(
         "{line}: an example must exit with code 0, and the run ends with {}",
         output.status
     );
-    if let Some(failure) = failures::read_failures(reader, &output.stdout, &output.stderr).first() {
+    if let Some(failure) =
+        failures::read_failures(tool, reader, &output.stdout, &output.stderr).first()
+    {
         let _ = write!(problem, " and fails with {}", failures::describe(failure));
     }
     if !stderr.is_empty() {
@@ -389,12 +399,22 @@ fn failed_run(line: &str, output: &Output, reader: Option<Reader<'_>>, stderr: &
 /// Returns one problem for each line of `stderr` that is a debug build's
 /// warning from crumbkit, which marks a mistake in the tool even when the
 /// example `line` succeeds.
-fn warnings(line: &str, stderr: &str) -> Vec<String> {
+fn warnings(line: &str, tool: ToolName, stderr: &str) -> Vec<String> {
     stderr
         .lines()
-        .filter(|text| text.starts_with("warning: crumbkit "))
+        .filter(|text| is_crumbkit_warning(text, tool))
         .map(|warning| format!("{line}: the run writes a warning to standard error: {warning}"))
         .collect()
+}
+
+/// Reports whether `text` is a warning that crumbkit prints in a debug
+/// build, such as `warning: shelf left out the field "path" of the failure
+/// shelf::books::not_found, because ...`. A tool's own warning, such as
+/// `warning: shelf cache is stale`, is not one.
+pub(crate) fn is_crumbkit_warning(text: &str, tool: ToolName) -> bool {
+    text.strip_prefix("warning: ")
+        .and_then(|rest| rest.strip_prefix(tool.name()))
+        .is_some_and(|rest| rest.starts_with(" left out "))
 }
 
 /// Returns the name of the golden file of an example's standard error: the

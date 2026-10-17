@@ -212,7 +212,7 @@ fn an_answer_larger_than_the_budget_fails_on_its_own_and_the_later_answers_still
 error: the result is larger than the output budget of 1024 bytes
   key:   a (index 0)
   help:  no next step: no flag makes this answer smaller
-  code:  crumbkit::output::over_budget
+  code:  tool::output::over_budget
 "
     );
 }
@@ -255,7 +255,7 @@ fn the_answers_past_the_budget_are_left_out_whole_and_named_in_one_failure() {
         "\
 error: 2 more answers did not fit in the output budget of 1024 bytes
   help:  run `tool show c d`
-  code:  crumbkit::output::over_budget
+  code:  tool::output::over_budget
 "
     );
 }
@@ -277,11 +277,11 @@ fn a_headed_batch_answers_each_key_after_the_first_row_that_does_not_fit() {
 error: the answer did not fit in the output budget of 1024 bytes
   key:   c (index 2)
   help:  run `tool show c`
-  code:  crumbkit::output::over_budget
+  code:  tool::output::over_budget
 error: the answer did not fit in the output budget of 1024 bytes
   key:   d (index 3)
   help:  run `tool show d`
-  code:  crumbkit::output::over_budget
+  code:  tool::output::over_budget
 "
     );
 }
@@ -393,7 +393,7 @@ fn json_of_a_headed_batch_with_declared_keys_prints_its_answers_in_input_order_w
         finished.text(),
         concat!(
             r#"{"$type":"files/pages/v1","answers":[{"name":"a","text":"one\n"},"#,
-            r#"{"schema":"crumbkit/failure/v1","key":"gone","index":1,"code":"crumbkit::report::unchecked","#,
+            r#"{"schema":"tool/failure/v1","key":"gone","index":1,"code":"tool::report::unchecked","#,
             r#""message":"no page is named gone","recovery":{"kind":"none","reason":"the error gives no advice"}},"#,
             r#"{"name":"b","base64":"Y2Fm6Q=="}]}"#,
             "\n"

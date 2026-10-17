@@ -47,7 +47,7 @@ value as a refused command line.
 
 The handler passes the target's current version, or `None` when it does not
 exist, to `Expect::check` before it changes anything. A mismatch fails with
-`crumbkit::version::conflict`, or the tool's rename of it. The failure exits
+`<tool>::version::conflict`, or the tool's rename of it. The failure exits
 with code 1 unless the guide lists the code for another, names the `expected`
 and `current` versions as fields, and recovers by running the command that
 the tool passes as the read call. A tool that compares versions in its own

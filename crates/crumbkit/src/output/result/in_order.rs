@@ -91,7 +91,7 @@ impl<T: Rows> Serialize for InOrder<'_, '_, T> {
 }
 
 /// A failure document in the array: the document of the guide's failure
-/// form when it has one, and crumbkit's `crumbkit/failure/v1` document
+/// form when it has one, and crumbkit's `<tool>/failure/v1` document
 /// otherwise.
 pub(super) struct InOrderFailure<'a>(
     pub(super) &'a PreparedFailure<'a>,

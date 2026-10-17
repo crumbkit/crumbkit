@@ -9,7 +9,7 @@ reading entries set --list to-read --position 7 --dry-run Emma
     exits 0
 
 reading entries set --list to-read --position 2 --expect Emma --dry-run 'Mary Barton'
-  fails with crumbkit::version::conflict
+  fails with reading::version::conflict
   run reading entries list --list to-read --all
     exits 0
 

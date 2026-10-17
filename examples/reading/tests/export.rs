@@ -146,7 +146,7 @@ fn entries_export_refuses_fields_and_admits_its_twin_without_them() {
         &["entries", "export", "--list", "to-read"],
     );
     OutputAssert::new(refused).code(2).stdout_eq("").stderr_eq(
-        "error: --fields selects the columns of a table, and this command prints raw bytes\n  help:  use --json to read the bytes as text or base64\n  code:  crumbkit::cli::usage\n",
+        "error: --fields selects the columns of a table, and this command prints raw bytes\n  help:  use --json to read the bytes as text or base64\n  code:  reading::cli::usage\n",
     );
 }
 
@@ -184,7 +184,7 @@ fn entries_export_refuses_full_and_admits_its_twin_with_json_alone() {
         &["entries", "export", "--list", "to-read", "--json"],
     );
     OutputAssert::new(refused).code(2).stderr_eq("").stdout_eq(concat!(
-        r#"{"schema":"crumbkit/failure/v1","code":"crumbkit::cli::usage","#,
+        r#"{"schema":"reading/failure/v1","code":"reading::cli::usage","#,
         r#""message":"--full prints every field of every row, and this command prints raw bytes","#,
         r#""fields":{"argument":"--full"},"recovery":{"kind":"hint","#,
         r#""text":"drop --full, because --json already prints the whole result"}}"#,

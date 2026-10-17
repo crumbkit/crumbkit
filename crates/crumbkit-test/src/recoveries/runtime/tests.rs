@@ -47,13 +47,13 @@ const SCRIPT: &str = r#"#!/bin/sh
 line="$*"
 line="${line% --json}"
 input=$(cat)
-not_found='{"schema":"crumbkit/failure/v1","code":"tool::lists::not_found","message":"m","recovery":{"kind":"run","call":"tool lists show <NAME>"}}'
+not_found='{"schema":"tool/failure/v1","code":"tool::lists::not_found","message":"m","recovery":{"kind":"run","call":"tool lists show <NAME>"}}'
 case "$line" in
   'lists show '*)
     name="${line#lists show }"
     if [ ! -f "$name" ]; then printf '%s\n' "$not_found"; exit 1; fi
     if [ "$(cat "$name")" = broken ]; then
-      printf '%s\n' '{"schema":"crumbkit/failure/v1","code":"tool::lists::unreadable","message":"m","recovery":{"kind":"hint","text":"Fix the list."}}'
+      printf '%s\n' '{"schema":"tool/failure/v1","code":"tool::lists::unreadable","message":"m","recovery":{"kind":"hint","text":"Fix the list."}}'
       exit 1
     fi
     echo shown; exit 0;;
@@ -335,7 +335,7 @@ line="$*"
 case "${line% --json}" in
   'lists check')
     if [ "$DEPTH" = 1 ]; then
-      printf '%s\n' '{"schema":"crumbkit/failure/v1","code":"tool::lists::not_found","message":"m","recovery":{"kind":"retry"}}'
+      printf '%s\n' '{"schema":"tool/failure/v1","code":"tool::lists::not_found","message":"m","recovery":{"kind":"retry"}}'
       exit 1
     fi
     exit 0;;

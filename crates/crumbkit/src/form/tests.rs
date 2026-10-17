@@ -285,12 +285,12 @@ fn a_command_line_that_clap_refuses_prints_in_the_form_and_exits_with_code_2() {
 
     assert_eq!(ran.code, ExitCode::from(2));
     let document: Value = serde_json::from_str(&ran.out).unwrap();
-    assert_eq!(document["error"]["code"], "crumbkit.cli.usage");
+    assert_eq!(document["error"]["code"], "tool.cli.usage");
     assert_eq!(document["error"]["fields"], json!({ "subcommand": "lst" }));
     assert_eq!(text.code, ExitCode::from(2));
     assert!(
         text.err
-            .starts_with("crumbkit.cli.usage: unrecognized subcommand"),
+            .starts_with("tool.cli.usage: unrecognized subcommand"),
         "{}",
         text.err
     );
@@ -307,7 +307,7 @@ fn a_fields_name_that_finish_refuses_prints_in_the_form() {
 
     assert_eq!(ran.code, ExitCode::from(2));
     let document: Value = serde_json::from_str(&ran.out).unwrap();
-    assert_eq!(document["error"]["code"], "crumbkit.cli.usage");
+    assert_eq!(document["error"]["code"], "tool.cli.usage");
     assert_eq!(
         document["error"]["fields"],
         json!({ "argument": "--fields", "value": "radius" })
@@ -379,7 +379,7 @@ fn a_command_line_that_clap_refuses_prints_indented_with_a_pretty_layout() {
     assert_eq!(ran.code, ExitCode::from(2));
     assert!(ran.out.starts_with("{\n  \"error\": {\n"), "{}", ran.out);
     let document: Value = serde_json::from_str(&ran.out).unwrap();
-    assert_eq!(document["error"]["code"], "crumbkit.cli.usage");
+    assert_eq!(document["error"]["code"], "tool.cli.usage");
 }
 
 #[test]
@@ -479,7 +479,7 @@ fn a_read_failure_keeps_the_fields_it_is_given_with_their_values_and_has_none_wi
 const TOOL_USAGE: &str = "solar.cli.usage";
 
 /// crumbkit's usage code in the dotted spelling of the tests.
-const CRUMBKIT_USAGE: &str = "crumbkit.cli.usage";
+const CRUMBKIT_USAGE: &str = "tool.cli.usage";
 
 /// A form that writes the tool's code in place of crumbkit's usage code, in
 /// the JSON and in the text, and maps it back when it reads a run.

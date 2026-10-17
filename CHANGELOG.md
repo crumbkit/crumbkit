@@ -34,7 +34,7 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   ([behaviour/help/commands-list]).
 - crumbkit: [`help::quote`] quotes one word for a POSIX shell.
 - crumbkit: the [schemas] directory holds the JSON Schemas of the
-  `crumbkit/failure/v1` and `crumbkit/commands-list/v1` documents
+  `<tool>/failure/v1` and `<tool>/commands-list/v1` documents
   ([behaviour/schemas]).
 - crumbkit-usage: the new crate appends one line per run to a local usage
   log, which a tool starts with `crumbkit_usage::start()`, and holds the
@@ -591,6 +591,30 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- crumbkit: a tool's output names the tool where it named crumbkit. A tool
+  named `shelf` prints `shelf/failure/v1` and `shelf::cli::usage`, and reads
+  `SHELF_OUTPUT_BUDGET` in place of `CRUMBKIT_OUTPUT_BUDGET`
+  ([behaviour/failures]).
+- crumbkit-core: `ToolName` spells crumbkit's codes, document ids and
+  variables with a tool's name, and `Spelling::for_tool` prints codes with
+  it. A hyphen stays in an id and becomes `_` in a code. A variable
+  starts with `_` before a leading digit.
+- crumbkit-test: the checks expect the tool's names in place of
+  `crumbkit/...` ids and `crumbkit::` codes. The recovery check follows
+  crumbkit's and its add-on crates' codes in the tool's component, and
+  the checks fail only on crumbkit's own warnings.
+- crumbkit-usage: the usage log records `<tool>/usage/v1`, self-usage serves
+  `<tool>/self-usage/v1`, and the report reads records under any component.
+  The checked-in record schema accepts any tool's id.
+- crumbkit-child: the hand-over failure codes print with the tool's
+  component, such as `shelf::child::failed`.
+- crumbkit-aliases: the aliases failure code prints with the tool's
+  component, such as `shelf::aliases::unreadable`, and the new `codes`
+  module lists it.
+- crumbkit-markdown: the reference reads a `commands-list/v1` document under
+  any component, and its header no longer names crumbkit.
+- cargo-crumbkit: `weigh --usage` and `docs` read the `self-figures-list/v1`
+  and `commands-list/v1` documents that a tool prints under its own name.
 - crumbkit: [`parse`] returns the tool's type and an [`Output`] that holds
   the command tree, the typed words and the leaf's code renames. A tool
   flattens [`ViewFlags`] in place of `Output` ([behaviour/parsing]).

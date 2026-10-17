@@ -39,9 +39,9 @@ pub use self::view::ViewFlag;
 pub use self::words::quote;
 
 use self::list::{list, write_line};
-use crate::JsonStyle;
 use crate::form::FailureForm;
 use crate::pick::Picker;
+use crate::{JsonStyle, ToolName};
 
 #[cfg(test)]
 mod tests;
@@ -279,6 +279,31 @@ impl Guide {
             .join(" ")
     }
 
+    /// Returns the name that the output of `command`, the tool's clap root,
+    /// gives crumbkit's own codes, documents and variables (ADR-0079). It
+    /// is the root command's name, or the last word of the path that
+    /// [`Guide::root`] sets when that path names a command, so a cargo
+    /// subcommand that sets `&["crumbkit"]` is named `crumbkit`.
+    ///
+    /// crumbkit-test's checks read the tool's names through it.
+    ///
+    /// ```
+    /// use clap::Command;
+    /// use crumbkit::help::Guide;
+    ///
+    /// let tool = Guide::new().tool_name(&Command::new("my-tool"));
+    /// assert_eq!(tool.schema_id("crumbkit/failure/v1"), "my-tool/failure/v1");
+    /// ```
+    #[must_use]
+    pub fn tool_name(&self, command: &Command) -> ToolName {
+        ToolName::new(
+            self.root_in(command)
+                .last()
+                .copied()
+                .unwrap_or_else(|| command.get_name()),
+        )
+    }
+
     /// Sets the picker that asks a person for the value of a missing
     /// required argument, such as crumbkit-picker's `Menu` (ADR-0043).
     ///
@@ -314,7 +339,7 @@ impl Guide {
     /// `stream` print in it. A tool that parses with clap alone passes its
     /// guide to [`Output::new`](crate::Output::new). The schema
     /// commands serve the form's document in place of
-    /// `crumbkit/failure/v1`. [`FailureForm`] says which outputs the form
+    /// `<tool>/failure/v1`. [`FailureForm`] says which outputs the form
     /// covers.
     #[must_use]
     pub const fn failure_form(mut self, form: &'static dyn FailureForm) -> Self {

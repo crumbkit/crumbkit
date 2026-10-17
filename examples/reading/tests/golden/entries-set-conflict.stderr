@@ -1,3 +1,3 @@
 error: the target is at version Wuthering Heights, and --expect named version Emma, so the command changed nothing
   help:  run `reading entries list --list to-read --all`
-  code:  crumbkit::version::conflict
+  code:  reading::version::conflict

@@ -28,7 +28,7 @@ use crate::{Bytes, Document, Row, Rows, Shape, Stream};
 ///   leaves the property out.
 /// - `failures` holds the failures of the ids that did not work, for
 ///   [`Shape::Batch`], and the failures that a prose result leaves out, for
-///   [`Shape::Prose`]. Each entry has the fields of `crumbkit/failure/v1`
+///   [`Shape::Prose`]. Each entry has the fields of `<tool>/failure/v1`
 ///   without `schema`. `schemas show` serves the entry schema of the
 ///   guide's failure form in its place when the guide has one.
 ///
@@ -39,7 +39,7 @@ use crate::{Bytes, Document, Row, Rows, Shape, Stream};
 ///
 /// A document without the envelope has the schema of its `data` at the
 /// top. Each item of a batch whose envelope prints its failures in input
-/// order is a row or a `crumbkit/failure/v1` document, and `schemas show` serves the schema of the guide's failure
+/// order is a row or a `<tool>/failure/v1` document, and `schemas show` serves the schema of the guide's failure
 /// form in place of the failure document when the guide has one.
 ///
 /// The schemas of the row type, the summary type and a prose result's value

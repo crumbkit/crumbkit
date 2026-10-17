@@ -246,7 +246,7 @@ fn fields_on_a_leaf_whose_whole_rows_have_no_columns_is_refused_before_the_handl
         "\
 error: --fields selects the columns of a table, and this command's rows have no columns
   help:  use --json to read every field of each row
-  code:  crumbkit::cli::usage
+  code:  tool::cli::usage
 "
     );
 }
@@ -313,7 +313,7 @@ fn long_on_a_prose_leaf_is_refused_before_the_handler_runs() {
         "\
 error: --long adds the long columns of a table, and this command prints prose
   help:  use --json to read every field of the result
-  code:  crumbkit::cli::usage
+  code:  tool::cli::usage
 "
     );
 }
@@ -328,7 +328,7 @@ fn long_typed_before_the_command_path_is_refused_for_a_leaf_that_does_not_offer_
         "\
 error: --long adds the long columns of a table, and this command's rows have none
   help:  use --fields to name the columns to show
-  code:  crumbkit::cli::usage
+  code:  tool::cli::usage
 "
     );
 }
@@ -417,7 +417,7 @@ fn full_without_json_is_refused_in_crumbkit_s_words_before_the_handler_runs() {
         "\
 error: --full prints every field of every row in JSON, so it needs --json
   help:  add --json, or drop --full
-  code:  crumbkit::cli::usage
+  code:  tool::cli::usage
 "
     );
 }
@@ -451,7 +451,7 @@ fn fields_with_long_is_refused_in_crumbkit_s_words_on_a_command_that_the_guide_d
         "\
 error: --fields prints only the fields it names, so it cannot be used with --long
   help:  drop --long, and name the long columns in --fields
-  code:  crumbkit::cli::usage
+  code:  tool::cli::usage
 "
     );
 }

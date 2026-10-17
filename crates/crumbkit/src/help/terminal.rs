@@ -26,7 +26,7 @@ impl Guide {
     ///   does without a picker.
     /// - [`Output::confirm`](crate::Output::confirm) and
     ///   [`Output::confirm_to`](crate::Output::confirm_to) never ask, and
-    ///   fail with `crumbkit::confirmation::needs_yes` as they do with
+    ///   fail with `<tool>::confirmation::needs_yes` as they do with
     ///   `--no-input`.
     ///
     /// The [`Output`](crate::Output) that `parse` returns copies the setting

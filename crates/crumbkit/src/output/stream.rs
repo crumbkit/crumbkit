@@ -80,7 +80,7 @@ pub fn stream<R: Row>(
 /// The stream prints within the bytes that [`Output::budget`] has left when
 /// it opens. Its first item always prints. A later item whose line would
 /// pass the budget does not print: the stream prints the failure
-/// `crumbkit::output::over_budget`, or the guide's rename of it, in its
+/// `<tool>::output::over_budget`, or the guide's rename of it, in its
 /// place, stops, and ends with exit code 1 unless the guide lists another
 /// for the code (ADR-0046). A tool whose
 /// stream runs for a long time sets a larger budget with
@@ -294,7 +294,7 @@ impl<R: Row, O: Write, W: Write> Streaming<'_, R, O, W> {
     ///
     /// In text, the failure prints on the error writer in the form that a
     /// failed command prints. With `--json`, it prints on the output writer
-    /// as one `crumbkit/failure/v1` document on its own line, between the
+    /// as one `<tool>/failure/v1` document on its own line, between the
     /// items. A document without the envelope prints it as text. When the
     /// tool's guide sets a [`FailureForm`](crate::form::FailureForm), the
     /// form writes the line and the text in place of crumbkit's.

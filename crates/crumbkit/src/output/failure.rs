@@ -1,5 +1,6 @@
 //! How `finish` and a refusal print a failure: as text on standard error, or
-//! as the `crumbkit/failure/v1` JSON document on standard output.
+//! as the `<tool>/failure/v1` JSON document on standard output, whose id
+//! takes the tool's name (ADR-0079).
 
 use std::borrow::Cow;
 use std::io::{self, Write};
@@ -14,7 +15,7 @@ use super::table::escape_controls;
 use crate::form::FailureForm;
 use crate::help::rename::{self, Renames};
 use crate::help::{Exit, Guide, Leaf};
-use crate::{Code, Document, Failure, FieldValue, Sink, Spelling};
+use crate::{Code, Document, Failure, FieldValue, Sink, Spelling, ToolName};
 
 #[cfg(feature = "miette")]
 pub(crate) mod label;
@@ -29,7 +30,8 @@ mod tests;
 pub(crate) use self::schema::{document_schema, entry_schema, failure_schema};
 pub use self::step::Step;
 
-/// The id of the JSON document that a failure prints with `--json`.
+/// The id of the JSON document that a failure prints with `--json`, which
+/// a tool's output prints with the tool's name in place of `crumbkit`.
 const FAILURE: Document<()> = Document::new(
     "crumbkit",
     "failure",
@@ -142,11 +144,13 @@ pub(crate) fn print<O: Write, W: Write, R>(
 /// crumbkit prepares every failure that it prints once, and a
 /// [`FailureForm`](crate::form::FailureForm) writes its document and its
 /// text from this value, so a tool's form never spells a code or renders a
-/// call itself. crumbkit's own form writes the `crumbkit/failure/v1`
+/// call itself. crumbkit's own form writes the `<tool>/failure/v1`
 /// document and its text form from the same fields.
 pub struct PreparedFailure<'a> {
     /// The failure that crumbkit prepared.
     failure: &'a dyn Failure,
+    /// The tool whose name the failure document's id takes (ADR-0079).
+    tool: ToolName,
     /// The failure's code in the tool's spelling.
     code: String,
     /// The failure's `Display`.
@@ -229,14 +233,16 @@ impl<'a> PreparedFailure<'a> {
                 // failure to write there goes unreported.
                 let _ = writeln!(
                     err,
-                    "warning: crumbkit left out a recovery of the failure {}, because {reason}",
+                    "warning: {} left out a recovery of the failure {}, because {reason}",
+                    spelling.tool().name(),
                     escape_controls(&code)
                 );
             }
         }
-        let fields = read_fields(failure, &code, printing.field_names, err);
+        let fields = read_fields(failure, &code, spelling.tool(), printing.field_names, err);
         Self {
             failure,
+            tool: spelling.tool(),
             code,
             message: failure.to_string(),
             causes,
@@ -271,12 +277,13 @@ impl<'a> PreparedFailure<'a> {
 /// each without the entries of its objects whose keys repeat an
 /// earlier key of their object. In a debug build it writes a warning to
 /// `err` for each field and each key that it leaves out, which names
-/// `code`.
+/// `code` and `tool`.
 ///
 /// A failure without fields returns an empty `Vec`, which does not allocate.
 fn read_fields(
     failure: &dyn Failure,
     code: &str,
+    tool: ToolName,
     listed: &[&str],
     err: &mut impl Write,
 ) -> Vec<(String, FieldValue<'static>)> {
@@ -297,7 +304,8 @@ fn read_fields(
                     // a failure to write there goes unreported.
                     let _ = writeln!(
                         err,
-                        "warning: crumbkit left out the key {key:?} of an object in the field {:?} of the failure {}, because an earlier key of that object has that name",
+                        "warning: {} left out the key {key:?} of an object in the field {:?} of the failure {}, because an earlier key of that object has that name",
+                        tool.name(),
                         field.name(),
                         escape_controls(code)
                     );
@@ -311,7 +319,8 @@ fn read_fields(
             // failure to write there goes unreported.
             let _ = writeln!(
                 err,
-                "warning: crumbkit left out the field {:?} of the failure {}, because {reason}",
+                "warning: {} left out the field {:?} of the failure {}, because {reason}",
+                tool.name(),
                 field.name(),
                 escape_controls(code)
             );
@@ -415,7 +424,7 @@ fn write_labelled(err: &mut impl Write, label: &str, value: &str) -> io::Result<
 }
 
 /// Writes `document` to `out` as JSON in the layout and key order of
-/// `style`, in `form`, or as the `crumbkit/failure/v1` document when `form`
+/// `style`, in `form`, or as the `<tool>/failure/v1` document when `form`
 /// is `None`, then flushes `out`. A stream passes a style without a layout,
 /// so each of its failures stays one line.
 pub(super) fn write_json(
@@ -477,12 +486,12 @@ impl PreparedFailure<'_> {
     }
 }
 
-/// Serializes the `crumbkit/failure/v1` document: `schema`, then the fields
+/// Serializes the `<tool>/failure/v1` document: `schema`, then the fields
 /// that `PreparedFailure::serialize_fields` writes.
 impl Serialize for PreparedFailure<'_> {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         let mut map = serializer.serialize_map(None)?;
-        map.serialize_entry("schema", &format_args!("{FAILURE}"))?;
+        map.serialize_entry("schema", &format_args!("{}", self.tool.document(FAILURE)))?;
         self.serialize_fields(&mut map)?;
         map.end()
     }
@@ -502,7 +511,7 @@ impl Serialize for Fields<'_> {
 }
 
 /// One entry of a batch's `failures` array: the fields of the
-/// `crumbkit/failure/v1` document without `schema`.
+/// `<tool>/failure/v1` document without `schema`.
 pub(super) struct Entry<'a>(pub(super) &'a PreparedFailure<'a>);
 
 impl Serialize for Entry<'_> {

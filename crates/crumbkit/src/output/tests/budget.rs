@@ -158,7 +158,7 @@ fn a_cut_listing_json_document_holds_cut_with_the_code_and_the_budget_beside_tot
     assert_eq!(document["truncated"], true);
     assert_eq!(
         document["cut"],
-        json!({"code": "crumbkit::output::over_budget", "budget": 1024})
+        json!({"code": "tool::output::over_budget", "budget": 1024})
     );
     let shown = document["data"].as_array().unwrap().len();
     assert!(shown > 0 && shown < 20, "{shown}");
@@ -248,8 +248,8 @@ fn a_single_row_over_the_budget_is_refused_with_the_over_budget_code_and_exits_1
 
     assert_eq!(finished.code, ExitCode::FAILURE);
     let document = parsed(&finished.out);
-    assert_eq!(document["schema"], "crumbkit/failure/v1");
-    assert_eq!(document["code"], "crumbkit::output::over_budget");
+    assert_eq!(document["schema"], "tool/failure/v1");
+    assert_eq!(document["code"], "tool::output::over_budget");
     assert_eq!(
         document["message"],
         "the result is larger than the output budget of 1024 bytes"

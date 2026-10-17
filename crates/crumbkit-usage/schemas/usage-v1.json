@@ -95,9 +95,9 @@
       "$ref": "#/$defs/SpanId"
     },
     "schema": {
-      "description": "The id of this record.",
+      "description": "The id of this record, `<tool>/usage/v1`, with the tool's name as\nits component, such as shelf/usage/v1.",
       "type": "string",
-      "const": "crumbkit/usage/v1"
+      "pattern": "^[a-z0-9_-]+(\\.[a-z0-9_-]+)*/usage/v1$"
     },
     "session": {
       "description": "The keyed hash of the agent's session id, or, when the agent gives no\nsession id, of the parent process id on Unix and of the Windows\nTerminal session or the text `windows` on Windows.",

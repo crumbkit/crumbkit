@@ -34,7 +34,7 @@ The report reads the log once, a line at a time. It holds at most 1,025
 bytes of a line, which is the longest record and its newline, and skips a
 longer line as damaged. It keeps counts per command and what each session's
 findings need of its earlier runs, and never a copy of the file. A line that
-is not a whole `crumbkit/usage/v1` record is skipped. On a 10 MB log of
+is not a whole `<tool>/usage/v1` record is skipped. On a 10 MB log of
 about 29,000 records, the release build of shelf runs `self usage` in about
 45 ms, which includes the trim that the run's own log line causes.
 
@@ -100,7 +100,7 @@ as `1,284 runs in 23 sessions since 30 Sep: claude-code 1,201, person 83.`
 The text summary line ends with the codes that the most runs tolerated, when
 there are any.
 
-JSON is the `crumbkit/self-usage/v1` document, checked in as
+JSON is the `<tool>/self-usage/v1` document, checked in as
 `crates/crumbkit-usage/schemas/self-usage-v1.json`. Its `summary` holds the runs,
 sessions, callers, since day, skipped count and the 10 codes that the most
 runs tolerated. With `--json --full`, each row also holds the figures of its
@@ -125,7 +125,7 @@ Why: ADR-0034, ADR-0016, ADR-0037.
 each in path order, with the root under the tool's name. It pages with
 `--limit` and `--all`, takes the flags of `self usage`, applies the same
 record checks and prints the same summary. Its document is
-`crumbkit/self-figures-list/v1`, checked in as
+`<tool>/self-figures-list/v1`, checked in as
 `crates/crumbkit-usage/schemas/self-figures-list-v1.json`.
 
 Why: ADR-0034.

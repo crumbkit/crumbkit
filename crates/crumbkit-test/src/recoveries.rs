@@ -343,7 +343,7 @@ impl<'a> Recoveries<'a> {
 /// [`Examples`] sets a [`FailureReader`](crate::FailureReader), through
 /// that reader first. Otherwise, or when neither reads a failure, it reads
 /// the failure of the last document on standard output that is a
-/// `crumbkit/failure/v1` document or that has `failures`, as a batch prints
+/// `<tool>/failure/v1` document or that has `failures`, as a batch prints
 /// them, and then the last `code:` line on standard error, which gives a
 /// failure without steps or fields. It follows every failure that it
 /// reads, such as each entry of a batch's `failures`, and each failure
@@ -378,10 +378,11 @@ impl<'a> Recoveries<'a> {
 /// command line that it ran already, a step that an opt-out from
 /// [`Rule::Recoveries`] covers, or the recovery of a code that the tool
 /// does not declare and crumbkit does not own, such as a run-time code from
-/// a plugin. The check counts such codes in the report. crumbkit owns every
-/// code in the `crumbkit` component, including the codes of its add-on
-/// crates, such as crumbkit-child's `crumbkit::child::failed`, and the
-/// codes that the guide prints in place of them.
+/// a plugin. The check counts such codes in the report. crumbkit owns its
+/// own codes and the codes of its add-on crates, such as crumbkit-child's
+/// `<tool>::child::failed`, which print with the tool's component
+/// (ADR-0079), and the codes that the guide prints in place of them. Any
+/// other undeclared code in the tool's component is a problem.
 ///
 /// It finds:
 ///
@@ -400,7 +401,7 @@ impl<'a> Recoveries<'a> {
 ///   `retry` or `hint` step, such as a failure whose recovery is
 ///   `Recovery::None` with a reason, unless an opt-out from
 ///   [`Rule::NextStep`] covers the command that failed. A failure from a
-///   run that writes a `warning: crumbkit` line is not also reported here;
+///   run that writes a `warning: <tool> left out` line is not also reported here;
 /// - a placeholder that a field of the failure fills, which the report
 ///   also shows under the step, unless an opt-out from
 ///   [`Rule::FieldValue`] covers the command whose failure printed the
@@ -413,11 +414,11 @@ impl<'a> Recoveries<'a> {
 /// - a failed run whose failure neither the tool's form, set with
 ///   `Guide::failure_form`, nor its reader, set with
 ///   [`Examples::failure_reader`], reads, and that prints no
-///   `crumbkit/failure/v1` document and no `code:` line. The first such run
+///   `<tool>/failure/v1` document and no `code:` line. The first such run
 ///   stops the check, which reports this problem alone and says to make
 ///   the form or reader read it or to add an opt-out from
 ///   [`Rule::Recoveries`] that names the root (ADR-0045);
-/// - a run that writes a `warning: crumbkit` line to standard error, which a
+/// - a run that writes a `warning: <tool> left out` line to standard error, which a
 ///   debug build writes for a recovery call that does not render;
 /// - a step that crumbkit's quoting cannot read, that does not start with
 ///   the tool's name, or that has a placeholder without a value;
@@ -485,7 +486,8 @@ fn check(
             return;
         }
     };
-    let spelling = recoveries.spelling;
+    // crumbkit's own codes print with the tool's name (ADR-0079).
+    let spelling = recoveries.spelling.for_tool(guide.tool_name(command));
     let mut declared: Vec<(String, &Code)> = Vec::new();
     for code in recoveries.codes.to_vec() {
         if !declared.iter().any(|&(_, seen)| seen == code) {
@@ -514,6 +516,7 @@ fn check(
     let allowances = Allowances::new(recoveries.examples.opt_outs(), &rules);
     let mut walk = chain::Walk {
         recoveries,
+        spelling,
         command,
         declared: declared.iter().map(|(text, _)| text.clone()).collect(),
         known,

@@ -39,6 +39,7 @@ mod report;
 mod row;
 mod segment;
 mod stream;
+mod tool_name;
 mod unclassified;
 
 pub use crate::batch::Batch;
@@ -52,6 +53,7 @@ pub use crate::listing::{Listing, NoSummary};
 pub use crate::prose::Prose;
 pub use crate::row::{Headed, NoRow, Row, Rows, Shape};
 pub use crate::stream::Stream;
+pub use crate::tool_name::ToolName;
 /// Writes the [`Failure`] impl and the `CODES` list of an enum or a struct
 /// from `#[failure(...)]` attributes. The `derive` feature adds it, and
 /// crumbkit-derive documents its attributes.

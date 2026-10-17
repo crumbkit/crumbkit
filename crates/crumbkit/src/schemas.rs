@@ -5,7 +5,7 @@
 //!
 //! The documents come from the tool's [`Guide`]: each leaf that declares
 //! the document it prints with [`Leaf::document`](crate::help::Leaf::document)
-//! adds that document, and crumbkit adds `crumbkit/failure/v1`, which every
+//! adds that document, and crumbkit adds `<tool>/failure/v1`, which every
 //! command prints when it fails with `--json`, or the document of the
 //! guide's [`FailureForm`](crate::form::FailureForm) when it sets one. Each
 //! [`FileFormat`](crate::help::FileFormat) that the guide declares with
@@ -84,7 +84,7 @@
 //!
 //! assert_eq!(run(&["shelf", "schemas", "list"]), ExitCode::SUCCESS);
 //! assert_eq!(
-//!     run(&["shelf", "schemas", "show", "crumbkit/failure/v1"]),
+//!     run(&["shelf", "schemas", "show", "shelf/failure/v1"]),
 //!     ExitCode::SUCCESS
 //! );
 //! ```
@@ -160,8 +160,8 @@ pub struct SchemasList {
 // command without a description of its own.
 #[command(about = None, long_about = None)]
 pub struct SchemasShow {
-    /// The ids of the documents, such as `crumbkit/failure/v1`, separated
-    /// by spaces
+    /// The ids of the documents that `schemas list` lists, separated by
+    /// spaces
     #[arg(required = true, value_name = "ID", num_args = 1..=100)]
     ids: Vec<String>,
 }
@@ -196,7 +196,7 @@ pub fn list(
 /// [`SCHEMAS_SHOW`].
 ///
 /// An id that names no document of [`documents`] adds a failure with the
-/// code `crumbkit::schemas::not_found` to the batch. Its recovery runs
+/// code `<tool>::schemas::not_found` to the batch. Its recovery runs
 /// `schemas list`. It builds the whole command tree through
 /// [`Output::command`], and the JSON Schema of each id given once.
 ///

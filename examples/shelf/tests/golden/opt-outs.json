@@ -1,5 +1,5 @@
 {
-  "schema": "crumbkit/opt-outs/v1",
+  "schema": "shelf/opt-outs/v1",
   "data": [
     {
       "rule": "examples/run",
@@ -37,7 +37,7 @@
       "applies_to": "every path through shelf",
       "reason": "shelf's longest path reads about 3,950 bytes, so 4,300 bytes leaves room for small changes and catches a page or an output that grows by much.",
       "costs": [
-        "None, because the budget is at or below crumbkit's default."
+        "None, because the budget is at or below the default."
       ],
       "budget": {
         "bytes": 4300,

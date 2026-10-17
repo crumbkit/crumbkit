@@ -25,7 +25,7 @@ const CODES: &[&[&Code]] = &[&[&NOT_FOUND, &UNREADABLE, &REMOVED]];
 /// The script's answers: `books show 7` fails with `NOT_FOUND`, `books
 /// list --limit 0` fails with crumbkit's usage code, `books show 8` fails
 /// with `UNREADABLE`, `books show 5` fails with crumbkit-child's code
-/// `crumbkit::child::no_json`, and `books show 2` and `books list --limit 1` exit with
+/// `tool::child::no_json`, and `books show 2` and `books list --limit 1` exit with
 /// code 0, with or without `--json` at the end. Any other command line
 /// fails with code 3.
 const SCRIPT: &str = r#"#!/bin/sh
@@ -33,8 +33,8 @@ line="$*"
 case "${line% --json}" in
   'books show 7') printf 'error: no book 7\n  code:  tool::books::not_found\n' >&2; exit 1;;
   'books show 8') printf 'error: unreadable\n  code:  tool::books::unreadable\n' >&2; exit 1;;
-  'books list --limit 0') printf 'error: 0 is not a limit\n  code:  crumbkit::cli::usage\n' >&2; exit 2;;
-  'books show 5') printf 'error: the viewer prints no JSON\n  code:  crumbkit::child::no_json\n' >&2; exit 2;;
+  'books list --limit 0') printf 'error: 0 is not a limit\n  code:  tool::cli::usage\n' >&2; exit 2;;
+  'books show 5') printf 'error: the viewer prints no JSON\n  code:  tool::child::no_json\n' >&2; exit 2;;
   'books show 2'|'books list --limit 1') echo shown; exit 0;;
   *) echo "unexpected: $*" >&2; exit 3;;
 esac
@@ -177,7 +177,7 @@ fn check_twins_adds_json_to_both_lines_of_a_twin_that_lacks_it() {
     // The tool answers only command lines that end with `--json`.
     const JSON_ONLY: &str = r#"#!/bin/sh
 case "$*" in
-  'books show 7 --json') printf '%s\n' '{"schema":"crumbkit/failure/v1","code":"tool::books::not_found","message":"m","recovery":{"kind":"retry"}}'; exit 1;;
+  'books show 7 --json') printf '%s\n' '{"schema":"tool/failure/v1","code":"tool::books::not_found","message":"m","recovery":{"kind":"retry"}}'; exit 1;;
   'books show 2 --json') echo '{}'; exit 0;;
   *) echo "unexpected: $*" >&2; exit 3;;
 esac
@@ -250,7 +250,7 @@ fn an_untwinned_opt_out_whose_code_a_twin_refuses_or_twins_unprovoked_lists_or_c
             "the tool's twins break crumbkit's twin rule:\n\
              the opt-out from `twins/no-twin` for `tool books show 7` names tool::books::not_found, which a twin refuses, so it is stale\n\
              the opt-out from `twins/no-twin` for `tool books show 8` names tool::books::removed_file, which Twins::unprovoked lists, so it is stale\n\
-             the opt-out from `twins/no-twin` for `tool books list --limit 0` names crumbkit::cli::usage, one of crumbkit's codes, which need no twin, so it is stale"
+             the opt-out from `twins/no-twin` for `tool books list --limit 0` names tool::cli::usage, one of crumbkit's codes, which need no twin, so it is stale"
         )
     );
 }

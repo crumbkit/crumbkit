@@ -107,7 +107,7 @@ fn a_stderr_golden_file_of_an_example_that_writes_nothing_to_standard_error_is_s
 #[test]
 fn an_example_that_writes_a_crumbkit_warning_fails_the_check_and_overwrite_writes_no_file() {
     const WARNS: Guide = Guide::new().leaves(&[Leaf::new(&["-c"]).examples(&[Example::new(
-        &["echo books; echo 'warning: crumbkit left out a recovery' >&2"],
+        &["echo books; echo 'warning: sh left out a recovery' >&2"],
         "Warn",
     )])]);
     let dir = TempDir::new("examples-stderr-warning").unwrap();
@@ -115,16 +115,30 @@ fn an_example_that_writes_a_crumbkit_warning_fails_the_check_and_overwrite_write
     assert_eq!(
         panic_message(|| run(&WARNS, &examples(&dir), Action::Overwrite)).unwrap(),
         "these runs of the tool's examples fail:\n\
-         sh -c 'echo books; echo '\\''warning: crumbkit left out a recovery'\\'' >&2': \
-         the run writes a warning to standard error: warning: crumbkit left out a recovery"
+         sh -c 'echo books; echo '\\''warning: sh left out a recovery'\\'' >&2': \
+         the run writes a warning to standard error: warning: sh left out a recovery"
     );
     assert!(dir.names().is_empty(), "{:?}", dir.names());
 }
 
 #[test]
+fn an_example_that_writes_the_tools_own_warning_passes_the_check() {
+    const WARNS: Guide = Guide::new().leaves(&[Leaf::new(&["-c"]).examples(&[Example::new(
+        &["echo books; echo 'warning: sh cache is stale' >&2"],
+        "Warn",
+    )])]);
+    let dir = TempDir::new("examples-stderr-own-warning").unwrap();
+
+    assert_eq!(
+        panic_message(|| run(&WARNS, &examples(&dir), Action::Overwrite)),
+        None
+    );
+}
+
+#[test]
 fn an_example_that_fails_names_the_code_and_steps_of_the_failure_document_it_prints() {
     const FAILS: Guide = Guide::new().leaves(&[Leaf::new(&["-c"]).examples(&[Example::new(
-        &[r#"echo '{"schema":"crumbkit/failure/v1","code":"sh::books::gone","message":"m","recovery":{"kind":"run","call":"sh -c ls"},"alternatives":[{"kind":"retry"}]}'; exit 1"#],
+        &[r#"echo '{"schema":"sh/failure/v1","code":"sh::books::gone","message":"m","recovery":{"kind":"run","call":"sh -c ls"},"alternatives":[{"kind":"retry"}]}'; exit 1"#],
         "Fail",
     )])]);
     let dir = TempDir::new("examples-failure-document").unwrap();

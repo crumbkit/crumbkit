@@ -119,9 +119,9 @@ fn sorted_keys_order_the_failure_document_and_its_recovery() {
     assert_eq!(
         String::from_utf8(out).unwrap(),
         concat!(
-            r#"{"code":"crumbkit::report::unchecked","message":"the catalogue is missing","#,
+            r#"{"code":"tool::report::unchecked","message":"the catalogue is missing","#,
             r#""recovery":{"kind":"none","reason":"the error gives no advice"},"#,
-            r#""schema":"crumbkit/failure/v1"}"#,
+            r#""schema":"tool/failure/v1"}"#,
             "\n"
         )
     );

@@ -164,7 +164,7 @@ fn a_missing_program_fails_with_not_found_and_a_hint_to_install_it() {
     let expected = "\
 error: cannot run `vi`: no such program
   help:  install `vi`, or put it on PATH
-  code:  crumbkit::child::not_found
+  code:  vault::child::not_found
 ";
     assert_eq!(responded.err, expected);
 }
@@ -179,7 +179,7 @@ fn a_program_that_cannot_start_fails_with_not_started_and_its_cause() {
 error: cannot run `vi`
   cause: permission denied
   help:  check that `vi` is an executable file
-  code:  crumbkit::child::not_started
+  code:  vault::child::not_started
 ";
     assert_eq!(responded.err, expected);
 }
@@ -211,7 +211,7 @@ fn a_childs_output_that_is_not_the_document_fails_with_bad_json() {
 
     assert_eq!(responded.code, ExitCode::FAILURE);
     let document: serde_json::Value = serde_json::from_str(&responded.out).unwrap();
-    assert_eq!(document["code"], "crumbkit::child::bad_json");
+    assert_eq!(document["code"], "vault::child::bad_json");
     assert_eq!(
         document["message"],
         "`vault-log` printed output that is not a vault/books-list/v1 document"
@@ -225,7 +225,7 @@ fn a_child_that_fails_under_json_prints_failed_and_returns_its_own_code() {
 
     assert_eq!(responded.code, ExitCode::from(3));
     let document: serde_json::Value = serde_json::from_str(&responded.out).unwrap();
-    assert_eq!(document["code"], "crumbkit::child::failed");
+    assert_eq!(document["code"], "vault::child::failed");
     assert_eq!(document["message"], "`vault-log` exited with code 3");
 }
 
@@ -259,12 +259,12 @@ fn command(program: &str) -> process::Command {
 }
 
 /// A program that no test machine has, so a test that ran it would fail
-/// with `crumbkit::child::not_found`.
+/// with `vault::child::not_found`.
 const MISSING: &str = "crumbkit-test-no-such-program";
 
 /// Checks the twin of a refusal that comes before the child runs: `flags`
 /// differ from `refused` by one word, and with them the child runs, so the
-/// missing program fails with `crumbkit::child::not_found` (TEST-1).
+/// missing program fails with `vault::child::not_found` (TEST-1).
 #[track_caller]
 fn admits(refused: &[&str], flags: &[&str], json: bool) {
     assert_one_word_apart(refused, flags);
@@ -278,7 +278,7 @@ fn admits(refused: &[&str], flags: &[&str], json: bool) {
         }
     });
     let printed = format!("{}{}", responded.out, responded.err);
-    assert!(printed.contains("crumbkit::child::not_found"), "{printed}");
+    assert!(printed.contains("vault::child::not_found"), "{printed}");
 }
 
 /// The JSON form of a child that prints [`BOOKS`].
@@ -295,7 +295,7 @@ fn json_for_a_child_without_a_json_form_is_refused_with_no_json_before_it_runs()
 
     assert_eq!(responded.code, ExitCode::from(2));
     let document: serde_json::Value = serde_json::from_str(&responded.out).unwrap();
-    assert_eq!(document["code"], "crumbkit::child::no_json");
+    assert_eq!(document["code"], "vault::child::no_json");
     assert_eq!(
         document["recovery"]["text"],
         format!("run the command without --json to read the output of `{MISSING}`")
@@ -319,7 +319,7 @@ fn fields_without_json_are_refused_with_exit_code_2_before_the_child_runs() {
     let expected = "\
 error: --fields selects the columns of a table, and this command hands the terminal to another program
   help:  run the command without --fields
-  code:  crumbkit::cli::usage
+  code:  vault::cli::usage
 ";
     assert_eq!(responded.err, expected);
 }
@@ -339,7 +339,7 @@ fn an_unknown_field_under_json_is_refused_before_the_child_runs() {
 
     assert_eq!(responded.code, ExitCode::from(2));
     let document: serde_json::Value = serde_json::from_str(&responded.out).unwrap();
-    assert_eq!(document["code"], "crumbkit::cli::usage");
+    assert_eq!(document["code"], "vault::cli::usage");
 }
 
 /// A guide that gives a refused command line the exit code 64.

@@ -28,7 +28,7 @@ pub use envelope::Envelope;
 /// command and the command from the id (ADR-0007). A cargo subcommand's
 /// path starts below `cargo <name>`, so `cargo crumbkit weigh` prints
 /// `crumbkit/weigh/v1`. A document that no command prints on its own, such
-/// as `crumbkit/failure/v1`, names what it holds. crumbkit-test's
+/// as `<tool>/failure/v1`, names what it holds. crumbkit-test's
 /// `check_document_ids` checks the rule for every leaf of a tool's guide,
 /// and a tool can opt out of it for a command with a stated reason.
 ///
@@ -191,6 +191,12 @@ impl<T> Document<T> {
     #[must_use]
     pub const fn component(&self) -> &'static str {
         self.component
+    }
+
+    /// Returns the document with `component` in place of its own, which
+    /// [`ToolName`](crate::ToolName) checked is a document component.
+    pub(crate) const fn with_component(self, component: &'static str) -> Self {
+        Self { component, ..self }
     }
 
     /// Returns the document's name within its component, such as

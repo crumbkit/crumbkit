@@ -1,7 +1,7 @@
 //! The codes of the failures of a child hand-over (ADR-0042).
 //!
-//! Each code is in crumbkit's `crumbkit` component and its `child` area,
-//! such as `crumbkit::child::not_found`, as crumbkit's own codes are. A tool
+//! Each code is in the `child` area and prints with the tool's component,
+//! such as `<tool>::child::not_found`, as crumbkit's own codes are. A tool
 //! prints its own code in place of any of them with a `Rename` in
 //! `Guide::codes`, as it does for crumbkit's codes. [`ALL`] lists them.
 

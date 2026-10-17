@@ -25,14 +25,15 @@ print them. It reports the hand-over to the
 [run observer](../run-observer/README.md) through the public `events`
 functions.
 
-The failure codes keep the `crumbkit` component, as in
-`crumbkit::child::not_found`, and crumbkit-child lists them in its own
+The failure codes print with the tool's name, as crumbkit's own codes do
+([failures](../failures/README.md#the-tools-name)), as in
+`<tool>::child::not_found`. crumbkit-child lists them in its own
 `codes::ALL`, which `crumbkit::codes::ALL` does not include. crumbkit-test
-treats every code in the `crumbkit` component as one of crumbkit's codes,
-so these codes need no twin and no declaration, and `check_recoveries`
-follows their recoveries ([end-to-end checks](../checks/end-to-end.md)).
+treats them as crumbkit's codes, so they need no twin and no declaration,
+and `check_recoveries` follows their recoveries
+([end-to-end checks](../checks/end-to-end.md)).
 
-Why: ADR-0058, ADR-0042, ADR-0003.
+Why: ADR-0058, ADR-0042, ADR-0003, ADR-0079.
 
 ## Declaring the child's exit code
 
@@ -52,7 +53,7 @@ leaf end with any code but 0 when no exit lists the failure. A listed
 failure and a refused command line still exit as `Guide::failure_exit`
 decides. An unlisted failure never exits with a code that an exit gives
 listed failures, because a caller would read it as one of them. A failure
-with `crumbkit::child::failed` on a leaf without the declaration must exit
+with `<tool>::child::failed` on a leaf without the declaration must exit
 with 1, so a test that provokes it shows the missing declaration.
 
 Why: ADR-0042, ADR-0056.
@@ -84,9 +85,9 @@ Under `--json`, `hand_over_json` prints the child's document as `finish`
 prints a result, so `--fields`, `--long` and `--full` work as on any
 command. The refusal of `--json` for a child without a JSON form happens when the
 command runs, so help still lists the global `--json`. That refusal, with
-`crumbkit::child::no_json`, exits with the code that the guide gives a
+`<tool>::child::no_json`, exits with the code that the guide gives a
 refused command line, which is 2 unless the guide lists another, or with
-the exit that lists `crumbkit::child::no_json`. A guide's rename of each
+the exit that lists `<tool>::child::no_json`. A guide's rename of each
 `crumbkit::child` code applies as it does to every other failure
 ([failures](../failures/README.md)).
 

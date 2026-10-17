@@ -31,7 +31,7 @@ Why: ADR-0035, ADR-0015.
 
 The tool's `Guide` is the source of the documents. Each leaf that declares
 its document with `Leaf::document` or `Leaf::stream` adds that document, and
-crumbkit adds `crumbkit/failure/v1` first, because every command prints it
+crumbkit adds `<tool>/failure/v1` first, because every command prints it
 when it fails with `--json`. When the guide sets a
 [failure form](../failures/forms.md), the form's document takes that place
 with the kind `unwrapped`.
@@ -65,11 +65,11 @@ its title.
 
 `schemas show` takes 1 to 100 ids, as every `show` command does, and returns
 a `Batch`. An id that names no document adds a failure with the code
-`crumbkit::schemas::not_found`, whose recovery runs `schemas list`. Text
+`<tool>::schemas::not_found`, whose recovery runs `schemas list`. Text
 output prints each schema as compact JSON in one table cell, so a caller who
 wants it pretty-printed uses `--json`.
 
-crumbkit fixes the code `crumbkit::schemas::not_found`, as it fixes the
+crumbkit fixes the code `<tool>::schemas::not_found`, as it fixes the
 codes of [`commands list`](../help/commands-list.md).
 
 Why: ADR-0035, ADR-0016, ADR-0007, ADR-0076.

@@ -75,10 +75,10 @@ impl Output {
     ///
     /// Returns a failure with exit code 1 from `finish`:
     ///
-    /// - `crumbkit::confirmation::declined`, when the answer is anything else or
+    /// - `<tool>::confirmation::declined`, when the answer is anything else or
     ///   standard input ends first. It has no next step, because a person
     ///   chose not to proceed.
-    /// - `crumbkit::confirmation::needs_yes`, when the sink is not interactive,
+    /// - `<tool>::confirmation::needs_yes`, when the sink is not interactive,
     ///   the caller passed `--no-input`, or the tool's guide turned terminal
     ///   detection off, so no person can answer. Its recovery runs the
     ///   words that the caller typed with `--yes` added before any `--`,
@@ -151,7 +151,7 @@ impl Failure for ConfirmError {
             Self::NeedsYes(words) => match with_yes(words) {
                 Some(words) => Recovery::Run(Call::typed(words)),
                 None => Recovery::None {
-                    reason: "a word of the command line is not UTF-8, so crumbkit cannot repeat it"
+                    reason: "a word of the command line is not UTF-8, so the command line cannot be repeated with --yes"
                         .to_owned(),
                 },
             },

@@ -1,7 +1,7 @@
 # ADR-0058. The child crate
 
 - Date: 2026-10-14
-- Status: accepted
+- Status: amended by ADR-0079
 - Supersedes: ADR-0042, which it amends
 
 ## Context

@@ -28,28 +28,28 @@ shelf books show --from tests/fixtures/ids/empty.txt
     exits 0
 
 shelf books remove 2
-  fails with crumbkit::confirmation::needs_yes
+  fails with shelf::confirmation::needs_yes
   run shelf books remove 2 --json --yes
     exits 0
 
 shelf books list --limit 101
-  fails with crumbkit::cli::usage
+  fails with shelf::cli::usage
   run shelf books list --all --json
     exits 0
   run shelf books list --limit 100 --json
     exits 0
 
 shelf books show
-  fails with crumbkit::cli::usage
+  fails with shelf::cli::usage
   run shelf books list
     exits 0
   run shelf books show -h
     exits 0
 
-shelf books show 1 2 3 4 5 6 (with CRUMBKIT_OUTPUT_BUDGET=400)
-  fails with crumbkit::output::over_budget
+shelf books show 1 2 3 4 5 6 (with SHELF_OUTPUT_BUDGET=400)
+  fails with shelf::output::over_budget
   run shelf books show <ID>... --json as shelf books show 2 3 4 5 6 --json
-    fails with crumbkit::output::over_budget
+    fails with shelf::output::over_budget
     run shelf books show <ID>... --json as shelf books show 3 4 5 6 --json
       exits 0
 

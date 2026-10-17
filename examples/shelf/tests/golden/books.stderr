@@ -1,3 +1,3 @@
 error: the command `shelf books` needs a subcommand
   help:  run `shelf books -h`
-  code:  crumbkit::cli::usage
+  code:  shelf::cli::usage

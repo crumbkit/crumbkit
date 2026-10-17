@@ -60,7 +60,7 @@ fn json_of_a_batch_in_input_order_prints_its_rows_and_failure_documents_in_the_o
         finished.out,
         concat!(
             r#"[{"name":"Mercury","moons":0,"ringed":false,"au":0.39},"#,
-            r#"{"schema":"crumbkit/failure/v1","key":"Vulcan","index":1,"code":"solar::planets::not_found","message":"the solar system has no planet Vulcan","recovery":{"kind":"run","call":"tool list"}},"#,
+            r#"{"schema":"tool/failure/v1","key":"Vulcan","index":1,"code":"solar::planets::not_found","message":"the solar system has no planet Vulcan","recovery":{"kind":"run","call":"tool list"}},"#,
             r#"{"name":"Saturn","moons":274,"ringed":true,"au":9.54}]"#,
             "\n"
         )
@@ -78,7 +78,7 @@ fn fields_select_the_fields_of_the_rows_and_leave_each_failure_document_whole() 
 
     let array: Value = serde_json::from_str(&finished.out).unwrap();
     assert_eq!(array[0], json!({"name": "Mercury"}));
-    assert_eq!(array[1]["schema"], "crumbkit/failure/v1");
+    assert_eq!(array[1]["schema"], "tool/failure/v1");
     assert_eq!(array[1]["message"], "the solar system has no planet Vulcan");
     assert_eq!(array[2], json!({"name": "Saturn"}));
 }

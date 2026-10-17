@@ -18,7 +18,9 @@ use crumbkit::{Code, Spelling};
 #[cfg(test)]
 mod tests;
 
-/// The id of the record, which every line holds under `schema`.
+/// The id of the record, which every line holds under `schema` with the
+/// tool's name in place of `crumbkit`, such as `shelf/usage/v1`
+/// (ADR-0079).
 pub(super) const SCHEMA: &str = "crumbkit/usage/v1";
 
 /// The longest line, in bytes without its newline, that the usage log
@@ -32,9 +34,10 @@ pub(super) const MAX_LINE: usize = 1024;
     description = "One line of a tool's usage log, which records the shape of one run and never the values of its arguments."
 )]
 pub(super) struct Record {
-    /// The id of this record.
-    #[schemars(extend("const" = "crumbkit/usage/v1"))]
-    pub(super) schema: &'static str,
+    /// The id of this record, `<tool>/usage/v1`, with the tool's name as
+    /// its component, such as shelf/usage/v1.
+    #[schemars(extend("pattern" = r"^[a-z0-9_-]+(\.[a-z0-9_-]+)*/usage/v1$"))]
+    pub(super) schema: String,
     /// The name of the tool's root command, such as shelf.
     pub(super) tool: Name,
     /// The tool's version, when its command has one.

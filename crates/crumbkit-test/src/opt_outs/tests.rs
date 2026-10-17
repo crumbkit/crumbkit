@@ -89,7 +89,7 @@ fn overwrite_writes_each_opt_out_with_its_reason_and_costs_as_text() {
 
     assert_eq!(
         read(&dir, "opt-outs.txt"),
-        "shelf has 2 opt-outs from crumbkit's conventions.\n\
+        "shelf has 2 opt-outs from the conventions.\n\
          \n\
          grammar/root-leaf: shelf version\n\
          \x20 Reason: People type `shelf version` from habit.\n\
@@ -112,7 +112,7 @@ fn overwrite_writes_each_opt_out_as_json() {
     assert_eq!(
         read(&dir, "opt-outs.json"),
         r#"{
-  "schema": "crumbkit/opt-outs/v1",
+  "schema": "shelf/opt-outs/v1",
   "data": [
     {
       "rule": "listings/show-ids",
@@ -137,11 +137,11 @@ fn a_tool_without_opt_outs_reports_that_it_has_none() {
 
     assert_eq!(
         read(&dir, "opt-outs.txt"),
-        "shelf has no opt-outs from crumbkit's conventions.\n"
+        "shelf has no opt-outs from the conventions.\n"
     );
     assert_eq!(
         read(&dir, "opt-outs.json"),
-        "{\n  \"schema\": \"crumbkit/opt-outs/v1\",\n  \"data\": []\n}\n"
+        "{\n  \"schema\": \"shelf/opt-outs/v1\",\n  \"data\": []\n}\n"
     );
 }
 
@@ -161,7 +161,7 @@ fn a_missing_and_a_differing_report_each_fail() {
     let dir = TempDir::new("opt-outs-fail").unwrap();
     dir.write(
         "opt-outs.txt",
-        "shelf has no opt-outs from crumbkit's conventions.\n",
+        "shelf has no opt-outs from the conventions.\n",
     );
 
     let message = panic_message(|| run(ALLOW, &dir, Action::Verify)).unwrap();
@@ -191,22 +191,22 @@ fn the_report_lists_each_budget_that_differs_from_crumbkit_s_default() {
 
     assert_eq!(
         read(&dir, "opt-outs.txt"),
-        "shelf has 3 opt-outs from crumbkit's conventions.\n\
+        "shelf has 3 opt-outs from the conventions.\n\
          \n\
          help-budget/leaf: every leaf of shelf\n\
-         \x20 Budget: 1500 bytes, where crumbkit's default is 1200 bytes.\n\
+         \x20 Budget: 1500 bytes, where the default is 1200 bytes.\n\
          \x20 Reason: Leaves show long examples.\n\
-         \x20 Cost: Each read of the page can cost 300 bytes more than crumbkit's default, about 75 tokens.\n\
+         \x20 Cost: Each read of the page can cost 300 bytes more than the default, about 75 tokens.\n\
          \n\
          help-budget/command: shelf books\n\
-         \x20 Budget: 600 bytes, where crumbkit's default is 800 bytes.\n\
+         \x20 Budget: 600 bytes, where the default is 800 bytes.\n\
          \x20 Reason: The group has two verbs.\n\
-         \x20 Cost: None, because the budget is at or below crumbkit's default.\n\
+         \x20 Cost: None, because the budget is at or below the default.\n\
          \n\
          path-budget/path: every path through shelf\n\
-         \x20 Budget: 4000 bytes, where crumbkit's default is 8000 bytes.\n\
+         \x20 Budget: 4000 bytes, where the default is 8000 bytes.\n\
          \x20 Reason: Paths are short.\n\
-         \x20 Cost: None, because the budget is at or below crumbkit's default.\n"
+         \x20 Cost: None, because the budget is at or below the default.\n"
     );
 }
 
@@ -226,14 +226,14 @@ fn the_json_report_gives_a_raised_budget_its_extra_bytes_and_tokens() {
     assert_eq!(
         read(&dir, "opt-outs.json"),
         r#"{
-  "schema": "crumbkit/opt-outs/v1",
+  "schema": "shelf/opt-outs/v1",
   "data": [
     {
       "rule": "path-budget/command",
       "applies_to": "shelf books show",
       "reason": "The page lists every field.",
       "costs": [
-        "An agent that finds and runs the command can read 1001 bytes more than crumbkit's default, about 251 tokens."
+        "An agent that finds and runs the command can read 1001 bytes more than the default, about 251 tokens."
       ],
       "budget": {
         "bytes": 9001,
@@ -257,12 +257,12 @@ fn the_report_lists_the_output_budget_that_the_guide_sets_beside_crumbkit_s_defa
 
     assert_eq!(
         read(&dir, "opt-outs.txt"),
-        "shelf has 1 opt-out from crumbkit's conventions.\n\
+        "shelf has 1 opt-out from the conventions.\n\
          \n\
          output-budget/run: every run of shelf\n\
-         \x20 Budget: 2097152 bytes, where crumbkit's default is 1048576 bytes.\n\
+         \x20 Budget: 2097152 bytes, where the default is 1048576 bytes.\n\
          \x20 Reason: Exports print every book.\n\
-         \x20 Cost: A run can print 1048576 bytes more than crumbkit's default, about 262144 tokens.\n"
+         \x20 Cost: A run can print 1048576 bytes more than the default, about 262144 tokens.\n"
     );
 }
 
@@ -274,7 +274,7 @@ fn a_guide_that_keeps_the_default_output_budget_adds_no_entry() {
 
     assert_eq!(
         read(&dir, "opt-outs.txt"),
-        "shelf has no opt-outs from crumbkit's conventions.\n"
+        "shelf has no opt-outs from the conventions.\n"
     );
 }
 
@@ -289,14 +289,14 @@ fn the_report_lists_the_json_layout_that_the_guide_sets_with_its_cost() {
 
     let text = read(&dir, "opt-outs.txt");
     assert!(
-        text.starts_with("shelf has 2 opt-outs from crumbkit's conventions.\n"),
+        text.starts_with("shelf has 2 opt-outs from the conventions.\n"),
         "{text}"
     );
     assert!(
         text.ends_with(
             "\njson-layout/pretty: every run of shelf\n\
              \x20 Reason: Our scripts read indented JSON.\n\
-             \x20 Cost: Every JSON document that is not a stream line is indented by two spaces, which made the documents of crumbkit's example tool shelf 20 to 62 percent larger, so an agent reads more tokens for each result and fewer rows fit in the output budget.\n"
+             \x20 Cost: Every JSON document that is not a stream line is indented by two spaces, which made the documents of the example tool shelf 20 to 62 percent larger, so an agent reads more tokens for each result and fewer rows fit in the output budget.\n"
         ),
         "{text}"
     );
@@ -315,7 +315,7 @@ fn the_report_lists_a_guide_without_terminal_detection_with_its_reason_and_cost(
     let text = read(&dir, "opt-outs.txt");
     assert_eq!(
         text,
-        "shelf has 1 opt-out from crumbkit's conventions.\n\
+        "shelf has 1 opt-out from the conventions.\n\
          \n\
          terminal-detection/off: every run of shelf\n\
          \x20 Reason: Our CI runs in a pseudo-terminal.\n\
@@ -342,7 +342,7 @@ fn the_report_names_an_example_opt_out_by_its_command_line_with_its_own_costs() 
 
     assert_eq!(
         read(&dir, "opt-outs.txt"),
-        "shelf has 1 opt-out from crumbkit's conventions.\n\
+        "shelf has 1 opt-out from the conventions.\n\
          \n\
          examples/run: shelf books show 2 'Jane Austen'\n\
          \x20 Reason: The output names the day.\n\
@@ -364,7 +364,7 @@ fn the_report_names_an_untwinned_opt_out_by_its_refused_command_line_and_its_cos
 
     assert_eq!(
         read(&dir, "opt-outs.txt"),
-        "shelf has 1 opt-out from crumbkit's conventions.\n\
+        "shelf has 1 opt-out from the conventions.\n\
          \n\
          twins/no-twin: shelf books show --from 'broken file.txt'\n\
          \x20 Reason: A broken file causes it, and no single word does.\n\

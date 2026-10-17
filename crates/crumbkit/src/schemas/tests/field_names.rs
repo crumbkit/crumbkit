@@ -37,8 +37,8 @@ fn served(guide: &Guide, id: &str) -> Value {
 fn the_failure_document_accepts_the_field_names_that_the_guide_lists() {
     const LISTING: Guide = Guide::new().field_names(NAMES);
 
-    let schema = served(&LISTING, "crumbkit/failure/v1");
-    let plain = served(&Guide::new(), "crumbkit/failure/v1");
+    let schema = served(&LISTING, "shelf/failure/v1");
+    let plain = served(&Guide::new(), "shelf/failure/v1");
 
     assert_eq!(schema["properties"]["fields"]["propertyNames"], widened());
     assert_eq!(

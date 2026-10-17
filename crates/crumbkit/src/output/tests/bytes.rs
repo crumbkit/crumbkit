@@ -124,7 +124,7 @@ fn fields_on_bytes_is_a_refusal_that_exits_with_code_2_before_anything_prints() 
     let expected = "\
 error: --fields selects the columns of a table, and this command prints raw bytes
   help:  use --json to read the bytes as text or base64
-  code:  crumbkit::cli::usage
+  code:  tool::cli::usage
 ";
     assert_eq!(finished.code, ExitCode::from(2));
     assert_eq!(finished.out, b"");
@@ -141,7 +141,7 @@ fn long_on_bytes_is_a_refusal_that_exits_with_code_2() {
     let expected = "\
 error: --long adds the long columns of a table, and this command prints raw bytes
   help:  use --json to read the bytes as text or base64
-  code:  crumbkit::cli::usage
+  code:  tool::cli::usage
 ";
     assert_eq!(finished.code, ExitCode::from(2));
     assert_eq!(finished.out, b"");
@@ -211,7 +211,7 @@ fn json_measures_the_base64_form_so_bytes_that_fit_as_text_can_be_refused() {
     assert_eq!(refused.code, ExitCode::FAILURE);
     let out = String::from_utf8(refused.out).unwrap();
     assert!(
-        out.contains(r#""code":"crumbkit::output::over_budget""#),
+        out.contains(r#""code":"tool::output::over_budget""#),
         "{out}"
     );
 }

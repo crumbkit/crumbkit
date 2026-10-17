@@ -31,7 +31,7 @@ fn json_holds_the_fields_after_the_cause_as_one_object_in_their_order() {
     assert_eq!(
         finished.out,
         concat!(
-            r#"{"schema":"crumbkit/failure/v1","code":"solar::planets::not_found","message":"the solar system has no planet Vulcan","cause":"the catalogue cannot be read: permission denied","fields":{"planet":"Vulcan","moons":0,"offset":-3,"named":true},"recovery":{"kind":"run","call":"tool list"}}"#,
+            r#"{"schema":"tool/failure/v1","code":"solar::planets::not_found","message":"the solar system has no planet Vulcan","cause":"the catalogue cannot be read: permission denied","fields":{"planet":"Vulcan","moons":0,"offset":-3,"named":true},"recovery":{"kind":"run","call":"tool list"}}"#,
             "\n"
         )
     );
@@ -57,7 +57,7 @@ fn json_holds_a_list_an_object_and_null_as_json_values() {
     assert_eq!(
         finished.out,
         concat!(
-            r#"{"schema":"crumbkit/failure/v1","code":"solar::planets::not_found","message":"the solar system has no planet Vulcan","fields":{"moons":["Phobos","Deimos"],"orbit":{"days":687,"known":null},"found":null},"recovery":{"kind":"run","call":"tool list"}}"#,
+            r#"{"schema":"tool/failure/v1","code":"solar::planets::not_found","message":"the solar system has no planet Vulcan","fields":{"moons":["Phobos","Deimos"],"orbit":{"days":687,"known":null},"found":null},"recovery":{"kind":"run","call":"tool list"}}"#,
             "\n"
         )
     );
@@ -88,13 +88,13 @@ fn a_field_whose_name_breaks_the_rule_is_left_out_with_a_warning_in_a_debug_buil
     assert_eq!(
         finished.out,
         concat!(
-            r#"{"schema":"crumbkit/failure/v1","code":"solar::planets::not_found","message":"the solar system has no planet Vulcan","fields":{"moons":0},"recovery":{"kind":"run","call":"tool list"}}"#,
+            r#"{"schema":"tool/failure/v1","code":"solar::planets::not_found","message":"the solar system has no planet Vulcan","fields":{"moons":0},"recovery":{"kind":"run","call":"tool list"}}"#,
             "\n"
         )
     );
     assert_eq!(
         finished.err,
-        "warning: crumbkit left out the field \"Planet\" of the failure solar::planets::not_found, because a field name is one or more lowercase ASCII letters, digits and underscores, and Guide::field_names does not list it\n"
+        "warning: tool left out the field \"Planet\" of the failure solar::planets::not_found, because a field name is one or more lowercase ASCII letters, digits and underscores, and Guide::field_names does not list it\n"
     );
 }
 
@@ -117,7 +117,7 @@ fn a_field_whose_name_the_guide_lists_prints_though_it_breaks_the_rule() {
     assert_eq!(
         finished.out,
         concat!(
-            r#"{"schema":"crumbkit/failure/v1","code":"solar::planets::not_found","message":"the solar system has no planet Vulcan","fields":{"planetId":"Vulcan","Content-Type":"text/plain"},"recovery":{"kind":"run","call":"tool list"}}"#,
+            r#"{"schema":"tool/failure/v1","code":"solar::planets::not_found","message":"the solar system has no planet Vulcan","fields":{"planetId":"Vulcan","Content-Type":"text/plain"},"recovery":{"kind":"run","call":"tool list"}}"#,
             "\n"
         )
     );
@@ -137,7 +137,7 @@ fn a_field_whose_name_an_earlier_field_has_is_left_out_with_a_warning_in_a_debug
     assert_eq!(
         finished.err,
         concat!(
-            "warning: crumbkit left out the field \"planet\" of the failure solar::planets::not_found, because an earlier field has that name\n",
+            "warning: tool left out the field \"planet\" of the failure solar::planets::not_found, because an earlier field has that name\n",
             "error: the solar system has no planet Vulcan\n",
             "  help:  run `tool list`\n",
             "  code:  solar::planets::not_found\n",
@@ -157,12 +157,12 @@ fn a_key_that_repeats_an_earlier_key_of_its_object_is_left_out_with_a_warning_in
     assert_eq!(
         finished.out,
         concat!(
-            r#"{"schema":"crumbkit/failure/v1","code":"solar::planets::not_found","message":"the solar system has no planet Vulcan","fields":{"orbit":[{"days":687,"moons":2}]},"recovery":{"kind":"run","call":"tool list"}}"#,
+            r#"{"schema":"tool/failure/v1","code":"solar::planets::not_found","message":"the solar system has no planet Vulcan","fields":{"orbit":[{"days":687,"moons":2}]},"recovery":{"kind":"run","call":"tool list"}}"#,
             "\n"
         )
     );
     assert_eq!(
         finished.err,
-        "warning: crumbkit left out the key \"days\" of an object in the field \"orbit\" of the failure solar::planets::not_found, because an earlier key of that object has that name\n"
+        "warning: tool left out the key \"days\" of an object in the field \"orbit\" of the failure solar::planets::not_found, because an earlier key of that object has that name\n"
     );
 }

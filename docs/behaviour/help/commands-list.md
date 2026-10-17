@@ -35,7 +35,7 @@ it, so it also sees each command that a `Command::defer` closure adds.
   enable clap's `env` feature and so cannot read it.
 
 The two failure codes of `commands list` are fixed by crumbkit, as
-`crumbkit::cli::usage` is, and are not listed in a `CODES` list.
+`<tool>::cli::usage` is, and are not listed in a `CODES` list.
 
 Why: ADR-0026, ADR-0001.
 
@@ -66,7 +66,7 @@ The text table shows only each command's path and about text, because the
 nested lists would print as compact JSON in a table cell, and it ends with a
 note that names every code and `<tool> help exit-codes`. `--json --full`
 prints the arguments, examples, columns and exit codes. The schema of the
-`crumbkit/commands-list/v1` document is checked in
+`<tool>/commands-list/v1` document is checked in
 ([schemas](../schemas/README.md)). `commands list` prints only crumbkit's two
 formats, and crumbkit-markdown writes a Markdown [reference](reference.md)
 from its JSON document.

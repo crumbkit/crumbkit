@@ -1,4 +1,4 @@
-//! The `crumbkit/commands-list/v1` document that a tool's
+//! The `<tool>/commands-list/v1` document that a tool's
 //! `commands list --all --json --full` prints, with the fields that the
 //! reference reads. The schema of the document is crumbkit's
 //! `crates/crumbkit/schemas/commands-list-v1.json`, which describes each
@@ -11,8 +11,9 @@ use crate::error::{Kind, RenderError};
 #[cfg(test)]
 mod tests;
 
-/// The id of the document that the reference reads.
-pub(crate) const COMMANDS_LIST: &str = "crumbkit/commands-list/v1";
+/// The id of the document that the reference reads, after its component,
+/// which is the tool's name, such as `shelf/commands-list/v1` (ADR-0079).
+pub(crate) const COMMANDS_LIST: &str = "commands-list/v1";
 
 /// The start of any crumbkit document, which names its schema id.
 #[derive(Deserialize)]
@@ -21,7 +22,7 @@ struct Head {
     schema: String,
 }
 
-/// The `crumbkit/commands-list/v1` document. serde ignores the fields that
+/// The `<tool>/commands-list/v1` document. serde ignores the fields that
 /// the reference does not read.
 #[derive(Deserialize)]
 struct Document {
@@ -155,7 +156,7 @@ pub(crate) struct Writes {
 }
 
 /// Returns the commands of `input`, the bytes of a
-/// `crumbkit/commands-list/v1` document that holds every command of its
+/// `<tool>/commands-list/v1` document that holds every command of its
 /// branch.
 ///
 /// # Errors
@@ -166,7 +167,11 @@ pub(crate) struct Writes {
 pub(crate) fn read(input: &[u8]) -> Result<Vec<Command>, RenderError> {
     let not_a_document = |error| RenderError::new(Kind::NotADocument(error));
     let head: Head = serde_json::from_slice(input).map_err(not_a_document)?;
-    if head.schema != COMMANDS_LIST {
+    if head
+        .schema
+        .split_once('/')
+        .is_none_or(|(_, rest)| rest != COMMANDS_LIST)
+    {
         return Err(RenderError::new(Kind::OtherSchema { found: head.schema }));
     }
     let document: Document = serde_json::from_slice(input).map_err(not_a_document)?;

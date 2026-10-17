@@ -54,7 +54,7 @@ fn a_report_with_a_code_help_and_url_prints_its_code_in_the_message_and_its_help
     let expected = "\
 error: unknown key (shelf::config::unknown_key)
   help:  use `color`
-  code:  crumbkit.report.unchecked
+  code:  shelf.report.unchecked
   url:   https://example.com/keys
 ";
     assert_eq!(text, expected);
@@ -69,7 +69,7 @@ fn a_report_without_a_code_or_help_prints_its_causes_and_no_next_step() {
 error: the settings cannot be read
   cause: permission denied
   help:  no next step: the error gives no advice
-  code:  crumbkit.report.unchecked
+  code:  shelf.report.unchecked
 ";
     assert_eq!(text, expected);
 }
@@ -114,7 +114,7 @@ error: unknown key `colour`
      2 | colour = \"red\"
        | ^^^^^^
   help:  no next step: the error gives no advice
-  code:  crumbkit.report.unchecked
+  code:  shelf.report.unchecked
 ";
     assert_eq!(text, expected);
 }

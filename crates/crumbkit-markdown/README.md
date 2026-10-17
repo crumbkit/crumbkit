@@ -27,7 +27,7 @@ The `main` branch can change without notice before the first release.
 
 ```rust
 let document = br#"{
-  "schema": "crumbkit/commands-list/v1",
+  "schema": "shelf/commands-list/v1",
   "data": [{
     "path": "shelf", "about": "Browse a small catalogue", "long_about": null,
     "arguments": [], "examples": [], "columns": [], "form": null,
@@ -50,7 +50,7 @@ one GitHub gives it. The reference escapes the markup characters in help
 text and keeps its code spans.
 
 [`render`] returns a [`RenderError`] when the input is not a full
-`crumbkit/commands-list/v1` document, or when two headings would have one
+`<tool>/commands-list/v1` document, or when two headings would have one
 anchor. The [command reference docs] describe what the reference holds,
 and [ADR-0044] records why it reads the document.
 

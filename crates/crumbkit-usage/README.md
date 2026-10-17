@@ -54,8 +54,8 @@ A tool adds `self usage` with [`SelfUsage`] and [`findings`], and
 
 - [`start`], [`start_with`], [`Signals`] and [`section`] describe the log.
 - [`SelfUsage`] and [`SelfFigures`] describe the two commands.
-- The [schemas] describe the `crumbkit/usage/v1`, `crumbkit/self-usage/v1`
-  and `crumbkit/self-figures-list/v1` documents.
+- The [schemas] describe the `<tool>/usage/v1`, `<tool>/self-usage/v1`
+  and `<tool>/self-figures-list/v1` documents.
 - The [usage log docs], [trace context docs] and [usage report docs]
   describe the log, its trace context and the two commands, and the
   [run observer docs] describe how crumbkit reports each run to the log.

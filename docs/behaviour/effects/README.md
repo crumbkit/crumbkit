@@ -72,10 +72,10 @@ proceeds at once with `--yes` or on a dry run.
 
 - When a person can answer ([pickers](pickers.md#who-can-answer)), `confirm`
   writes the question with ` [y/N] ` to standard error and proceeds on `y`
-  or `yes`. Any other answer fails with `crumbkit::confirmation::declined`,
+  or `yes`. Any other answer fails with `<tool>::confirmation::declined`,
   which has no next step.
 - When no person can answer, or the caller passed `--no-input`, `confirm`
-  fails with `crumbkit::confirmation::needs_yes`. Its recovery runs the words
+  fails with `<tool>::confirmation::needs_yes`. Its recovery runs the words
   that the caller typed with `--yes` added before any `--`, through
   `Call::typed`, so an agent can repeat the command exactly. The
   [`Output`](../../../crates/crumbkit/src/output.rs) that `parse` returns

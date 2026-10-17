@@ -41,6 +41,6 @@ fn a_batch_in_input_order_with_its_own_keys_ends_its_answers_with_the_failure_of
     let answers = printed["answers"].as_array().unwrap();
     let (over, rows) = answers.split_last().unwrap();
     assert!(!rows.is_empty() && rows.len() < 20, "{}", rows.len());
-    assert_eq!(over["code"], "crumbkit::output::over_budget");
+    assert_eq!(over["code"], "tool::output::over_budget");
     assert_eq!(over["fields"]["left_out_from"], rows.len());
 }

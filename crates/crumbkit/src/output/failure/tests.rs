@@ -332,9 +332,9 @@ fn each_recovery_call_that_does_not_render_adds_a_warning_line_in_a_debug_build(
     assert_eq!(
         finished.err,
         concat!(
-            "warning: crumbkit left out a recovery of the failure solar::planets::not_found, ",
+            "warning: tool left out a recovery of the failure solar::planets::not_found, ",
             "because 'tool' has no subcommand 'remove'\n",
-            "warning: crumbkit left out a recovery of the failure solar::planets::not_found, ",
+            "warning: tool left out a recovery of the failure solar::planets::not_found, ",
             "because 'tool' has no subcommand 'add'\n",
         )
     );
@@ -348,7 +348,7 @@ fn json_prints_one_failure_document_on_standard_output_and_exits_with_code_1() {
     assert_eq!(
         finished.out,
         concat!(
-            r#"{"schema":"crumbkit/failure/v1","code":"solar::planets::not_found","message":"the solar system has no planet Vulcan","recovery":{"kind":"run","call":"tool list"}}"#,
+            r#"{"schema":"tool/failure/v1","code":"solar::planets::not_found","message":"the solar system has no planet Vulcan","recovery":{"kind":"run","call":"tool list"}}"#,
             "\n"
         )
     );
@@ -398,7 +398,7 @@ fn json_holds_the_causes_joined_with_a_colon_and_the_url_last() {
     assert_eq!(
         finished.out,
         concat!(
-            r#"{"schema":"crumbkit/failure/v1","code":"solar::planets::not_found","message":"the solar system has no planet Vulcan","cause":"the catalogue cannot be read: permission denied","recovery":{"kind":"retry"},"url":"https://example.com/vulcan"}"#,
+            r#"{"schema":"tool/failure/v1","code":"solar::planets::not_found","message":"the solar system has no planet Vulcan","cause":"the catalogue cannot be read: permission denied","recovery":{"kind":"retry"},"url":"https://example.com/vulcan"}"#,
             "\n"
         )
     );

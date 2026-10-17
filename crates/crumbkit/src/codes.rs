@@ -5,7 +5,7 @@
 //! failures, and [`ALL`] lists them, so crumbkit-test's recovery check
 //! follows a chain through a crumbkit failure without asking the tool to
 //! declare its codes ([ADR-0001]). A tool still spells each code with its own
-//! [`Spelling`](crate::Spelling), such as `crumbkit::cli::usage` in the colon
+//! [`Spelling`](crate::Spelling), such as `<tool>::cli::usage` in the colon
 //! spelling.
 //!
 //! ```

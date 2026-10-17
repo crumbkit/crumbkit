@@ -1,6 +1,6 @@
 # Commands of `shelf`
 
-crumbkit-markdown writes this reference from the help of `shelf`. Edit the help in the tool's code, and not this file.
+This reference is generated from the help of `shelf`. Edit the help in the tool's code, and not this file.
 
 ## `shelf`
 
@@ -235,7 +235,7 @@ shelf schemas list
 ### Columns
 
 - `id`: The document's id, such as `shelf/books-list/v1`, which `schemas show` takes.
-- `kind`: output when a command prints the document with its schema id, unwrapped when a command prints it without crumbkit's envelope, own-envelope when a command prints it under keys that the tool declares, and file when it is a file format that users write and no command prints.
+- `kind`: output when a command prints the document with its schema id, unwrapped when a command prints it without the envelope that holds its schema id, own-envelope when a command prints it under keys that the tool declares, and file when it is a file format that users write and no command prints.
 - `form`: stream when a command prints the document as a stream, one document on each line as each row arrives, and document when a command prints it once or it is a file format.
 - `description`: What the document holds, in one line.
 
@@ -251,7 +251,7 @@ Print the JSON Schema of each document
 
 ### Arguments
 
-- `<ID>`: The ids of the documents, such as `crumbkit/failure/v1`, separated by spaces. Required. Takes more than one value.
+- `<ID>`: The ids of the documents that `schemas list` lists, separated by spaces. Required. Takes more than one value.
 
 ### Examples
 

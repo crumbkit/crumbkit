@@ -30,7 +30,7 @@ impl Leaf {
     ///
     /// # Panics
     ///
-    /// Panics when a rename names `crumbkit::cli::usage`, because crumbkit
+    /// Panics when a rename names `<tool>::cli::usage`, because crumbkit
     /// refuses a command line before it knows the command, so only
     /// [`Guide::codes`](crate::help::Guide::codes) renames that code. A
     /// `const` that calls it with such a rename fails to compile:

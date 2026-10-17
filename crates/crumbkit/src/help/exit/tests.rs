@@ -57,10 +57,10 @@ A shell reports 126 and above for its own reasons, such as 127 when it cannot fi
 }
 
 #[test]
-fn the_note_names_crumbkit_s_codes_and_the_topic_when_the_tool_declares_none() {
+fn the_note_names_the_codes_of_every_command_and_the_topic_when_the_tool_declares_none() {
     assert_eq!(
         note("shelf", &Guide::new()),
-        "Exit codes: 0, 1 and 2 are crumbkit's. `shelf help exit-codes` describes them."
+        "Exit codes: 0, 1 and 2 apply to every command. `shelf help exit-codes` describes them."
     );
 }
 
@@ -71,11 +71,11 @@ fn the_note_names_each_of_the_tool_s_codes() {
 
     assert_eq!(
         note("shelf", &ONE),
-        "Exit codes: 0, 1 and 2 are crumbkit's, and shelf adds 124. `shelf help exit-codes` describes them."
+        "Exit codes: 0, 1 and 2 apply to every command, and shelf adds 124. `shelf help exit-codes` describes them."
     );
     assert_eq!(
         note("shelf", &THREE),
-        "Exit codes: 0, 1 and 2 are crumbkit's, and shelf adds 3, 4 and 124. `shelf help exit-codes` describes them."
+        "Exit codes: 0, 1 and 2 apply to every command, and shelf adds 3, 4 and 124. `shelf help exit-codes` describes them."
     );
 }
 
@@ -100,10 +100,11 @@ A shell reports 126 and above for its own reasons, such as 127 when it cannot fi
 }
 
 #[test]
-fn the_note_names_0_and_1_as_crumbkit_s_when_the_guide_gives_a_refusal_another_code() {
+fn the_note_names_0_and_1_as_applying_to_every_command_when_the_guide_gives_a_refusal_another_code()
+{
     assert_eq!(
         note("shelf", &USAGE_64),
-        "Exit codes: 0 and 1 are crumbkit's, and shelf adds 64. `shelf help exit-codes` describes them."
+        "Exit codes: 0 and 1 apply to every command, and shelf adds 64. `shelf help exit-codes` describes them."
     );
 }
 

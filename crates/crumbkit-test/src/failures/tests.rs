@@ -1,5 +1,5 @@
 use crumbkit::form::{FailureForm, PreparedFailure, ReadFailure, Step};
-use crumbkit::{Document, FieldValue};
+use crumbkit::{Document, FieldValue, ToolName};
 use schemars::{Schema, json_schema};
 use serde_json::{Value, json};
 
@@ -26,7 +26,7 @@ impl FailureReader for ErrReader {
 fn crumbkit_s_document_gives_each_failure_with_its_code_steps_and_every_field_value() {
     let stdout = br#"{"schema":"crumbkit/failure/v1","code":"a","message":"m","fields":{"path":"/a","id":7,"kept":true,"tags":["x"],"found":null,"lines":{"a":1}},"recovery":{"kind":"run","call":"tool books list"},"alternatives":[{"kind":"retry"}]}"#;
 
-    let read = read_failures(None, stdout, b"");
+    let read = read_failures(ToolName::CRUMBKIT, None, stdout, b"");
 
     assert_eq!(
         read,
@@ -52,7 +52,7 @@ fn crumbkit_s_document_gives_each_failure_with_its_code_steps_and_every_field_va
 fn a_field_of_crumbkit_s_document_that_holds_a_fraction_is_left_out() {
     let stdout = br#"{"schema":"crumbkit/failure/v1","code":"a","fields":{"ratio":0.5,"id":7},"recovery":{"kind":"retry"}}"#;
 
-    let read = read_failures(None, stdout, b"");
+    let read = read_failures(ToolName::CRUMBKIT, None, stdout, b"");
 
     assert_eq!(
         read,
@@ -70,7 +70,7 @@ fn crumbkit_s_document_is_read_indented_and_the_last_one_of_a_stream_wins() {
 "#;
 
     let codes = |stdout: &[u8]| -> Vec<String> {
-        read_failures(None, stdout, b"")
+        read_failures(ToolName::CRUMBKIT, None, stdout, b"")
             .iter()
             .map(|failure| failure.code().to_owned())
             .collect()
@@ -84,7 +84,7 @@ fn crumbkit_s_document_is_read_indented_and_the_last_one_of_a_stream_wins() {
 fn every_entry_of_a_batch_is_read_and_the_first_entry_comes_first() {
     let stdout = br#"{"schema":"crumbkit/batch/v1","failures":[{"code":"a","recovery":{"kind":"retry"}},{"code":"b","recovery":{"kind":"retry"}}]}"#;
 
-    let codes: Vec<String> = read_failures(None, stdout, b"")
+    let codes: Vec<String> = read_failures(ToolName::CRUMBKIT, None, stdout, b"")
         .iter()
         .map(|failure| failure.code().to_owned())
         .collect();
@@ -102,18 +102,33 @@ fn the_reader_wins_over_crumbkit_s_document_and_the_document_wins_over_the_code_
     let first = |read: Vec<ReadFailure>| read.first().map(|failure| failure.code().to_owned());
 
     assert_eq!(
-        first(read_failures(Some(reader), document, stderr)).as_deref(),
+        first(read_failures(
+            ToolName::CRUMBKIT,
+            Some(reader),
+            document,
+            stderr
+        ))
+        .as_deref(),
         Some("reader")
     );
     assert_eq!(
-        first(read_failures(Some(reader), document, b"  code:  line\n")).as_deref(),
+        first(read_failures(
+            ToolName::CRUMBKIT,
+            Some(reader),
+            document,
+            b"  code:  line\n"
+        ))
+        .as_deref(),
         Some("document")
     );
     assert_eq!(
-        first(read_failures(None, b"", stderr)).as_deref(),
+        first(read_failures(ToolName::CRUMBKIT, None, b"", stderr)).as_deref(),
         Some("line")
     );
-    assert_eq!(first(read_failures(None, b"", b"plain\n")), None);
+    assert_eq!(
+        first(read_failures(ToolName::CRUMBKIT, None, b"", b"plain\n")),
+        None
+    );
 }
 
 /// A form whose entries and document are `{"error": {"code": ...}}`, which
@@ -144,7 +159,12 @@ impl FailureForm for EntryForm {
 fn each_batch_entry_is_read_through_the_form_and_an_entry_it_cannot_read_in_crumbkit_s_shape() {
     let stdout = br#"{"schema":"tool/books-show/v1","failures":[{"error":{"code":"a"}},{"code":"b","recovery":{"kind":"hint","text":"h"}}]}"#;
 
-    let read = read_failures(Some(Reader::Form(&EntryForm)), stdout, b"");
+    let read = read_failures(
+        ToolName::CRUMBKIT,
+        Some(Reader::Form(&EntryForm)),
+        stdout,
+        b"",
+    );
 
     assert_eq!(
         read,
@@ -159,7 +179,7 @@ fn each_batch_entry_is_read_through_the_form_and_an_entry_it_cannot_read_in_crum
 fn each_failure_document_of_an_array_in_input_order_is_read_and_its_rows_are_skipped() {
     let stdout = br#"[{"id":1,"code":"row","recovery":{"kind":"retry"}},{"schema":"crumbkit/failure/v1","key":"7","index":1,"code":"a","recovery":{"kind":"retry"}},{"id":3},{"schema":"crumbkit/failure/v1","code":"b","recovery":{"kind":"retry"}}]"#;
 
-    let codes: Vec<String> = read_failures(None, stdout, b"")
+    let codes: Vec<String> = read_failures(ToolName::CRUMBKIT, None, stdout, b"")
         .iter()
         .map(|failure| failure.code().to_owned())
         .collect();
@@ -171,7 +191,12 @@ fn each_failure_document_of_an_array_in_input_order_is_read_and_its_rows_are_ski
 fn each_form_document_of_an_array_in_input_order_is_read_through_the_form() {
     let stdout = br#"[{"id":1},{"error":{"code":"a"}}]"#;
 
-    let read = read_failures(Some(Reader::Form(&EntryForm)), stdout, b"");
+    let read = read_failures(
+        ToolName::CRUMBKIT,
+        Some(Reader::Form(&EntryForm)),
+        stdout,
+        b"",
+    );
 
     assert_eq!(read, [ReadFailure::new("a".to_owned(), vec![Step::Retry])]);
 }
@@ -180,7 +205,7 @@ fn each_form_document_of_an_array_in_input_order_is_read_through_the_form() {
 fn each_failure_of_an_array_in_input_order_under_a_declared_data_key_is_read() {
     let stdout = br#"{"$type":"tool/get-report/v1","answers":[{"id":1},{"schema":"crumbkit/failure/v1","code":"a","recovery":{"kind":"retry"}}]}"#;
 
-    let codes: Vec<String> = read_failures(None, stdout, b"")
+    let codes: Vec<String> = read_failures(ToolName::CRUMBKIT, None, stdout, b"")
         .iter()
         .map(|failure| failure.code().to_owned())
         .collect();
@@ -193,7 +218,35 @@ fn each_form_document_of_an_array_in_input_order_under_a_declared_data_key_is_re
  {
     let stdout = br#"{"$type":"tool/get-report/v1","answers":[{"id":1},{"error":{"code":"a"}}]}"#;
 
-    let read = read_failures(Some(Reader::Form(&EntryForm)), stdout, b"");
+    let read = read_failures(
+        ToolName::CRUMBKIT,
+        Some(Reader::Form(&EntryForm)),
+        stdout,
+        b"",
+    );
 
     assert_eq!(read, [ReadFailure::new("a".to_owned(), vec![Step::Retry])]);
+}
+
+#[test]
+fn a_failure_document_with_the_tools_own_schema_id_gives_its_failure() {
+    let stdout =
+        br#"{"schema":"shelf/failure/v1","code":"shelf::cli::usage","recovery":{"kind":"retry"}}"#;
+
+    let read = read_failures(ToolName::new("shelf"), None, stdout, b"");
+
+    assert_eq!(
+        read,
+        [ReadFailure::new(
+            "shelf::cli::usage".to_owned(),
+            vec![Step::Retry]
+        )]
+    );
+}
+
+#[test]
+fn a_failure_document_with_another_tools_schema_id_is_no_failure() {
+    let stdout = br#"{"schema":"crumbkit/failure/v1","code":"shelf::cli::usage","recovery":{"kind":"retry"}}"#;
+
+    assert_eq!(read_failures(ToolName::new("shelf"), None, stdout, b""), []);
 }
