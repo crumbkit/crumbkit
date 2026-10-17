@@ -4,10 +4,11 @@
 use std::process::ExitCode;
 
 use super::{SIGHTINGS, robin, run};
+use crate::Envelope;
 
 #[test]
 fn full_on_a_stream_without_the_envelope_is_refused_before_the_first_line() {
-    let unwrapped = SIGHTINGS.without_envelope();
+    let unwrapped = SIGHTINGS.envelope(Envelope::Without);
 
     let streamed = run(&["--json", "--full"], unwrapped, &[robin()], None, Ok(()));
 

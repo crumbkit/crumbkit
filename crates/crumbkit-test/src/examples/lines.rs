@@ -8,9 +8,9 @@ use crumbkit::help::Leaf;
 /// Adds to `failures` each problem of `stdout`, the output of the `--json`
 /// example `line` of `leaf` from a tool whose guide sets `layout`, as
 /// [`check_examples`](super::check_examples) describes. A leaf without a document, or whose
-/// document has no envelope, has none. Each document must hold its id, or
-/// the type from `Document::with_type`, under its type key, which is
-/// `schema` unless the tool declares keys with `Document::with_keys`.
+/// document has no envelope, has none. Each document must hold its id
+/// under its type key, which is `schema` unless the document's envelope
+/// declares its own keys.
 pub(super) fn check_lines(
     leaf: &Leaf,
     layout: Option<JsonLayout>,
@@ -21,13 +21,11 @@ pub(super) fn check_lines(
     let Some(document) = leaf.get_document() else {
         return;
     };
-    if !document.has_envelope() {
+    if !document.get_envelope().wraps() {
         return;
     }
-    let key = document.type_key();
-    let id = document
-        .type_value()
-        .map_or_else(|| document.to_string(), str::to_owned);
+    let key = document.get_envelope().type_key();
+    let id = document.to_string();
     if !leaf.is_stream() && layout == Some(JsonLayout::Pretty) {
         check_indented(key, &id, line, stdout, failures);
         return;

@@ -358,7 +358,7 @@ impl<'a, T: Rows> Prepared<'a, T> {
     fn write_notes(&self, out: &mut impl Write, shown: usize, cut: Option<&Cut>) -> io::Result<()> {
         let value = self.value;
         if self.json {
-            if let Some(cut) = cut.filter(|_| !self.document.has_envelope()) {
+            if let Some(cut) = cut.filter(|_| !self.document.get_envelope().wraps()) {
                 self.write_cut_line(out, shown, cut)?;
             }
             return Ok(());
@@ -423,15 +423,15 @@ impl<'a, T: Rows> Prepared<'a, T> {
         let rows = value.rows();
         let all = shown >= rows.len();
         if let Some(failures) =
-            failures.filter(|_| self.json && self.document.prints_failures_in_order())
+            failures.filter(|_| self.json && self.document.get_envelope().failures_in_order())
         {
             return self.write_in_order(out, shown, failures);
         }
-        if self.json && !self.document.has_envelope() {
+        if self.json && !self.document.get_envelope().wraps() {
             return self.write_unwrapped(out, shown, all);
         }
         let extras = Extras {
-            total: value.total().filter(|_| self.document.prints_total()),
+            total: value.total(),
             truncated: (T::SHAPE == Shape::Listing)
                 .then(|| cut.is_some() || listing::leaves_out(value)),
             summary: value.summary(),

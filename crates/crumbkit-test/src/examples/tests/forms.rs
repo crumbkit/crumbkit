@@ -12,6 +12,7 @@ use super::{examples, sh};
 use crate::examples::check;
 use crate::temp::TempDir;
 use crate::testing::panic_message;
+use crumbkit::Envelope;
 
 /// A row type for the documents of the tests' leaves.
 #[derive(serde::Serialize, schemars::JsonSchema)]
@@ -132,7 +133,7 @@ fn a_json_example_of_a_document_without_the_envelope_is_not_checked_for_lines() 
             &["echo a; echo b", "--json"],
             "Print two lines",
         )])
-        .document(WORD.without_envelope())]);
+        .document(WORD.envelope(Envelope::Without))]);
     let dir = TempDir::new("examples-unwrapped-lines").unwrap();
 
     run(&UNWRAPPED, &dir, Action::Overwrite, Duration::from_secs(10));

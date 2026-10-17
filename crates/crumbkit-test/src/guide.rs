@@ -62,9 +62,12 @@ mod tests;
 ///   no argument of the leaf's command, because a picker then never offers
 ///   them;
 /// - a leaf whose document prints a batch's failures among its rows in
-///   input order (`Document::failures_in_order`) and whose row type has a
-///   field named `schema`, because a reader tells a failure document from
-///   a row by its `schema`;
+///   input order (`Envelope::KeysInOrder` or `Envelope::WithoutInOrder`)
+///   and whose row type has a field named `schema`, because a reader tells
+///   a failure document from a row by its `schema`;
+/// - a leaf whose document has one of those two envelopes and is not a
+///   batch, because only a batch has failures to print in input order
+///   (ADR-0071);
 /// - a leaf column whose name is not a field of the leaf's row type, such
 ///   as a misspelt name in `Row::COLUMNS` or `Row::LONG_COLUMNS`, because
 ///   the table prints `-` in every row of it;
@@ -267,12 +270,17 @@ fn check_field_names(guide: &Guide, problems: &mut Vec<String>) {
 /// Adds a problem when `leaf` prints a batch's failures among its rows in
 /// input order and its row type has a field named `schema`. A reader tells
 /// a failure document from a row by its `schema`, so such a row could pass
-/// for a failure.
+/// for a failure. Adds a problem as well when the document's envelope
+/// prints failures in input order and the document is not a batch.
 fn check_in_order(text: &str, leaf: &Leaf, problems: &mut Vec<String>) {
     let in_order = leaf
         .get_document()
-        .is_some_and(|document| document.prints_failures_in_order());
-    if in_order && leaf.row_has_field("schema") {
+        .is_some_and(|document| document.get_envelope().failures_in_order());
+    if in_order && leaf.shape() != Some(Shape::Batch) {
+        problems.push(format!(
+            "{text}: the document's envelope prints a batch's failures in input order, and the document is not a batch; choose Envelope::Keys or Envelope::Without"
+        ));
+    } else if in_order && leaf.row_has_field("schema") {
         problems.push(format!(
             "{text}: the row type has a field named `schema`, and the document prints its failures among its rows in input order, so a reader could take a row for a failure document; rename the field"
         ));

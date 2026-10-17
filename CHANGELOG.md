@@ -103,9 +103,12 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit: `Guide::documents` declares [`help::FileFormat`]s, the formats
   of files that users write for a tool, and `schemas list` and
   `schemas show` serve their schemas ([behaviour/schemas/commands]).
-- crumbkit: `Document::without_envelope` marks a document that keeps an
-  existing shape. With `--json`, [`finish`] prints its result alone and its
-  partial failures as text on standard error ([behaviour/output]).
+- crumbkit: `Document::envelope` chooses a document's envelope: crumbkit's,
+  the tool's own keys, or none, which prints the result alone. Each of the
+  last two has a variant that prints a batch's rows and failures in input
+  order ([behaviour/output]).
+- crumbkit-test: [`check_guide`] fails a leaf whose document is not a batch
+  and whose envelope prints failures in input order ([behaviour/output]).
 
 - crumbkit-test: [`check_opt_outs`] pins a tool's opt-outs and budgets,
   with each reason and what it costs an agent, in a text and a JSON golden
@@ -466,9 +469,6 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit: a batch failure holds the `key` it failed on and that key's
   `index` in JSON, and prints a `key:` line in text. The failure document's
   schema holds both as optional fields ([behaviour/output]).
-- crumbkit: [`Document`]'s `failures_in_order` makes a batch without the
-  envelope print its rows and failure documents in one array in input order
-  with `--json`, in place of failures on standard error ([behaviour/output]).
 - crumbkit: the over-budget failure that ends a batch holds `left_out_from`,
   the index of the first key left out ([behaviour/output/budget]).
 - crumbkit-test: the failure reader and [`check_output_budget`] read a
@@ -504,19 +504,6 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit-test: [`check_opt_outs`] lists the guide's field names as the
   `field-names` customisation of every run
   ([behaviour/adoption/declarations]).
-- crumbkit: `Document::with_keys` prints a document's id and result under
-  keys that the tool names, such as `$type` and `answers`, and keeps
-  `total`, `truncated`, `cut`, `failures`, `dry_run` and the view flags
-  ([behaviour/output]).
-- crumbkit: `Document::with_type` prints a fixed string, such as
-  `tool/get-report/v1`, under the declared type key in place of the id
-  ([behaviour/output]).
-- crumbkit: a batch with declared keys and `Document::failures_in_order`
-  prints each row and failure under its data key in input order, with no
-  `failures` ([behaviour/output]).
-- crumbkit: `Document::summary_at_top` prints a listing's summary fields at
-  the top of a document with declared keys. A field that takes a reserved
-  or declared name fails the write ([behaviour/output]).
 - crumbkit: `schemas list` shows a document with declared keys as the kind
   `own-envelope`, and its schema names the declared keys
   ([behaviour/schemas/commands]).
@@ -548,9 +535,6 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   headed leaf with half the bytes they print ([behaviour/output/budget]).
 - crumbkit-test: [`check_guide`] fails a leaf whose batch is not headed and
   whose row type has no `Row::COLUMNS` ([behaviour/help/examples]).
-- crumbkit: `PreparedFailure::among_several` tells a failure form whether a
-  batch failure's caller gave more than one key, the rule that headed
-  headers use ([behaviour/failures/forms]).
 - crumbkit: `Output::new` and the builders `json`, `fields`, `long` and
   `full` build the output flags for a tool that defines them in its own
   parser, and `finish` checks them as parsed flags ([behaviour/output]).
@@ -576,12 +560,6 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   `left-out-per-key` customisation. [`check_output_budget`] accepts an
   over-budget failure that other failures follow, and expects the exit of
   the first failure in key order ([behaviour/output/budget]).
-- crumbkit: `Document::without_total` leaves `total` out of the JSON and the
-  schema of a listing with declared keys. The JSON keeps `truncated`, and
-  the text footer keeps the count ([behaviour/output]).
-- crumbkit-test: [`check_document_ids`] fails a leaf whose listing leaves
-  out `total` unless an opt-out from `documents/total` with a reason covers
-  it ([behaviour/adoption/opt-outs]).
 - crumbkit: a [`Row`] that declares `LINE` and `text_line` prints each row
   as its own line in text, with no header. `--long` and `--fields` print the
   table, and help prints a `Text:` line ([behaviour/output]).

@@ -5,6 +5,7 @@ use schemars::{Schema, json_schema};
 use serde_json::json;
 
 use super::{Book, tool};
+use crate::Envelope;
 use crate::form::{FailureForm, PreparedFailure};
 use crate::help::{Guide, Leaf};
 use crate::schemas::{document_schema, documents};
@@ -12,8 +13,7 @@ use crate::{Batch, Document, Error};
 
 const IN_ORDER: Document<Batch<Book, Error>> =
     Document::new("shelf", "books-show", 2, "The books for the ids given.")
-        .without_envelope()
-        .failures_in_order();
+        .envelope(Envelope::WithoutInOrder);
 
 #[test]
 fn each_item_of_a_batch_in_input_order_is_a_row_or_a_failure_document_with_its_schema() {

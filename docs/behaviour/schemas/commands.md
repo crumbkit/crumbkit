@@ -45,7 +45,7 @@ with the kind `unwrapped`.
   after the leaves' documents with no commands.
 - Each row's `kind` is `output`, `unwrapped`, `own-envelope` or `file`, so
   an agent sees which documents a command prints. `own-envelope` marks a
-  document with keys from `Document::with_keys`
+  document whose envelope declares its own keys
   ([result shapes](../output/shapes/README.md#documents-with-the-tools-own-keys)). Each row's compact `form` column is
   `document` or `stream` ([streams](../output/streams.md)).
 

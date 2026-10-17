@@ -69,15 +69,6 @@ impl<'a> PreparedFailure<'a> {
         self.key.map(|(index, _)| index)
     }
 
-    /// Reports whether the failure answers one key of a batch whose caller
-    /// gave more than one key. It is false for a failure without a key.
-    /// A headed batch prints its `==> KEY <==` headers by the same rule, so
-    /// a form that names the key only among several keys matches them.
-    #[must_use]
-    pub const fn among_several(&self) -> bool {
-        self.several
-    }
-
     /// Returns the page that explains the failure, when there is one.
     #[must_use]
     pub fn url(&self) -> Option<&str> {

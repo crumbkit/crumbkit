@@ -53,7 +53,7 @@ result that a real run would return.
   standard error with the other notes. It prints last, after a batch's
   failures, so it is the final line a reader sees
   ([output](../output/README.md#standard-output-and-standard-error)).
-- A document from `Document::without_envelope` has no envelope to hold the
+- A document with `Envelope::Without` has no envelope to hold the
   field, so its JSON prints unchanged and the line also goes to standard
   error.
 

@@ -8,6 +8,7 @@ use schemars::JsonSchema;
 use serde::Serialize;
 
 use super::{Finished, PLANET, PLANETS, Planet, Tool, finish_output, mercury, saturn};
+use crate::Envelope;
 use crate::help::Guide;
 use crate::{
     Batch, Bytes, Document, Error, Headed, JsonLayout, KeyOrder, Listing, Output, Parsed, Row,
@@ -51,7 +52,10 @@ fn sorted_keys_order_the_envelope_and_every_field_of_each_row_by_name() {
 #[test]
 fn sorted_keys_order_the_declared_keys_among_crumbkits_own_names() {
     let document: Document<Listing<Planet>> =
-        Document::new("solar", "planet-listing", 1, "The test rows.").with_keys("type", "entries");
+        Document::new("solar", "planet-listing", 1, "The test rows.").envelope(Envelope::Keys {
+            type_key: "type",
+            data_key: "entries",
+        });
 
     let finished = finish_sorted(
         &["--json"],
@@ -71,7 +75,7 @@ fn sorted_keys_order_the_declared_keys_among_crumbkits_own_names() {
 
 #[test]
 fn sorted_keys_order_a_document_without_the_envelope() {
-    let finished = finish_sorted(&["--json"], PLANET.without_envelope(), saturn());
+    let finished = finish_sorted(&["--json"], PLANET.envelope(Envelope::Without), saturn());
 
     assert_eq!(
         finished.out,
@@ -85,7 +89,7 @@ fn sorted_keys_with_a_pretty_layout_indent_the_sorted_document() {
 
     let finished = finish_output(
         &mut guided(&["--json"], &PRETTY_SORTED),
-        PLANET.without_envelope(),
+        PLANET.envelope(Envelope::Without),
         saturn(),
     );
 

@@ -7,6 +7,7 @@ use serde::Serialize;
 use serde_json::json;
 
 use super::{Book, Shelved, args, output, tool};
+use crate::Envelope;
 use crate::form::{FailureForm, PreparedFailure};
 use crate::help::{FileFormat, Guide, Leaf};
 use crate::schemas::{SchemasList, SchemasShow, document_schema, documents, list, show};
@@ -26,7 +27,8 @@ const SETTINGS: Document<Settings> = Document::new(
     "The settings file that users write.",
 );
 const LEGACY: Document<Listing<Book>> =
-    Document::new("shelf", "books-list", 3, "The books as scripts read them.").without_envelope();
+    Document::new("shelf", "books-list", 3, "The books as scripts read them.")
+        .envelope(Envelope::Without);
 
 /// The test guide's leaves, with `books list` printing [`LEGACY`], and the
 /// settings file registered as a file format.
@@ -55,7 +57,8 @@ fn an_unwrapped_document_schema_is_the_schema_of_data_at_the_top() {
 #[test]
 fn an_unwrapped_prose_document_schema_is_the_schema_of_its_value() {
     const SUMMARY: Document<Prose<Shelved>> =
-        Document::new("shelf", "shelf-summary", 1, "What the shelf holds.").without_envelope();
+        Document::new("shelf", "shelf-summary", 1, "What the shelf holds.")
+            .envelope(Envelope::Without);
 
     let schema = document_schema(SUMMARY).to_value();
 

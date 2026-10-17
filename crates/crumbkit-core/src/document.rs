@@ -6,9 +6,11 @@ use std::marker::PhantomData;
 use crate::segment::{is_component, is_segment};
 use crate::{AsFailure, Batch, Headed, Row, Rows};
 
-mod keys;
+mod envelope;
 #[cfg(test)]
 mod tests;
+
+pub use envelope::Envelope;
 
 /// The id of a JSON document whose `data` holds a `T`, such as
 /// `shelf/books-list/v1`, with a one-line description of the document.
@@ -33,11 +35,11 @@ mod tests;
 /// The description is what `schemas list` shows for the document and the
 /// `description` of its JSON Schema.
 ///
-/// A document has crumbkit's envelope unless the tool calls
-/// [`Document::without_envelope`], which lets a command print an existing
-/// document unchanged while the tool migrates (ADR-0036). A tool whose
-/// readers know another envelope declares its keys with
-/// [`Document::with_keys`] and keeps crumbkit's paging fields (ADR-0059).
+/// A document has crumbkit's envelope unless the tool chooses another with
+/// [`Document::envelope`]. A tool whose readers know another envelope
+/// declares its keys and keeps crumbkit's paging fields (ADR-0059), and a
+/// command can print an existing document unchanged without an envelope
+/// while the tool migrates (ADR-0036).
 ///
 /// ```
 /// # #[derive(serde::Serialize, schemars::JsonSchema)]
@@ -50,10 +52,6 @@ mod tests;
 ///
 /// assert_eq!(BOOKS_LIST.to_string(), "shelf/books-list/v1");
 /// ```
-#[expect(
-    clippy::struct_excessive_bools,
-    reason = "each bool is one independent choice that its own const builder sets, and no two of them form a state machine"
-)]
 pub struct Document<T> {
     /// The component that owns the document, such as `shelf` or
     /// `example.dev`.
@@ -66,8 +64,7 @@ pub struct Document<T> {
     /// catalogue and the number of books in it.`
     description: &'static str,
     /// The envelope that `crumbkit::finish` prints the result in with
-    /// `--json`: crumbkit's, one with the keys from `with_keys`, or none
-    /// after `without_envelope`.
+    /// `--json`, which the tool chose with `envelope`.
     envelope: Envelope,
     /// Whether the first answer prints even when it alone passes the output
     /// budget.
@@ -75,10 +72,6 @@ pub struct Document<T> {
     /// The wording of the note that a listing or a stream with no rows
     /// prints, or `None` for crumbkit's default wording.
     empty: Option<&'static str>,
-    /// Whether a batch without the envelope prints its failures among its
-    /// rows in input order with `--json`, which the tool chose with
-    /// `failures_in_order`.
-    in_order: bool,
     /// Whether a batch prints each row's bytes in text under a `head`-style
     /// header, which the tool chose with `headed`.
     headed: bool,
@@ -89,16 +82,6 @@ pub struct Document<T> {
     /// The function that returns the bytes of the row at a position of a
     /// headed batch, which `headed` sets. An untyped document has none.
     bytes_of: Option<RowBytes<T>>,
-    /// The value that the type key holds in place of the id, which the tool
-    /// set with `with_type`.
-    type_value: Option<&'static str>,
-    /// Whether a listing's summary prints its fields at the top of the
-    /// document in place of under `summary`, which the tool chose with
-    /// `summary_at_top`.
-    summary_top: bool,
-    /// Whether a listing's JSON leaves out `total`, which the tool chose
-    /// with `without_total`.
-    no_total: bool,
     /// `PhantomData<fn() -> T>` ties the document to `T` without holding a
     /// `T`. A function pointer is `Send` and `Sync` whatever it returns, so
     /// `Document<T>` is `Send` and `Sync` for every `T`; `PhantomData<T>`
@@ -153,45 +136,11 @@ impl<T> Document<T> {
             envelope: Envelope::Crumbkit,
             first_always: false,
             empty: None,
-            in_order: false,
             headed: false,
             per_key: false,
             bytes_of: None,
-            type_value: None,
-            summary_top: false,
-            no_total: false,
             result: PhantomData,
         }
-    }
-
-    /// Returns the same document without crumbkit's envelope. With `--json`,
-    /// `crumbkit::finish` then prints the result alone, as its type
-    /// serializes it with every field, without `schema`, `total` or
-    /// `failures`, so a command can print an existing document unchanged and
-    /// keep its version while a tool migrates. `--full` is refused for such
-    /// a document, because `--json` already prints every field. A batch
-    /// without the envelope prints its rows alone and its failures as text
-    /// on standard error, unless the tool calls `failures_in_order`.
-    ///
-    /// It is an opt-out from crumbkit's conventions. crumbkit-test's
-    /// `check_document_ids` fails on a leaf whose document has no envelope
-    /// unless the tool opts out of the envelope rule for the command with a
-    /// stated reason, and `check_opt_outs` reports what the opt-out costs
-    /// (ADR-0036).
-    ///
-    /// # Panics
-    ///
-    /// Panics when the document declares its own keys with
-    /// [`Document::with_keys`], because a document has one envelope or
-    /// none. A `const` that calls it on such a document fails to compile.
-    #[must_use]
-    pub const fn without_envelope(mut self) -> Self {
-        assert!(
-            !matches!(self.envelope, Envelope::Keys { .. }),
-            "a document with keys from with_keys keeps its envelope; call with_keys or without_envelope, not both"
-        );
-        self.envelope = Envelope::Without;
-        self
     }
 
     /// Returns the same document with its first answer always printed: a
@@ -206,6 +155,7 @@ impl<T> Document<T> {
     }
 
     /// Reports whether [`Document::always_print_first`] was called.
+    #[doc(hidden)]
     #[must_use]
     pub const fn always_prints_first(&self) -> bool {
         self.first_always
@@ -231,25 +181,10 @@ impl<T> Document<T> {
 
     /// Returns the wording that [`Document::when_empty`] set, or `None` when
     /// the document uses crumbkit's default wording.
+    #[doc(hidden)]
     #[must_use]
     pub const fn empty_note(&self) -> Option<&'static str> {
         self.empty
-    }
-
-    /// Reports whether [`Document::failures_in_order`] was called, so a
-    /// batch without the envelope prints its failures among its rows with
-    /// `--json`.
-    #[must_use]
-    pub const fn prints_failures_in_order(&self) -> bool {
-        self.in_order
-    }
-
-    /// Reports whether `crumbkit::finish` prints the result inside
-    /// crumbkit's envelope, which is true unless the tool called
-    /// [`Document::without_envelope`].
-    #[must_use]
-    pub const fn has_envelope(&self) -> bool {
-        !matches!(self.envelope, Envelope::Without)
     }
 
     /// Returns the component that owns the document, such as `shelf`.
@@ -279,6 +214,7 @@ impl<T> Document<T> {
 
     /// Reports whether [`Document::headed`] was called, so a batch prints
     /// each row's bytes in text under a `head`-style header.
+    #[doc(hidden)]
     #[must_use]
     pub const fn is_headed(&self) -> bool {
         self.headed
@@ -287,6 +223,7 @@ impl<T> Document<T> {
     /// Reports whether [`Document::left_out_per_key`] was called, so a batch
     /// answers each key that the output budget leaves out with a failure of
     /// its own.
+    #[doc(hidden)]
     #[must_use]
     pub const fn answers_left_out_per_key(&self) -> bool {
         self.per_key
@@ -298,6 +235,7 @@ impl<T> Document<T> {
     /// past the last row. It is `None` for a document that is not headed,
     /// and for every untyped document. `crumbkit::finish` calls it to print
     /// a headed batch.
+    #[doc(hidden)]
     #[must_use]
     pub const fn headed_bytes(&self) -> Option<RowBytes<T>> {
         self.bytes_of
@@ -317,53 +255,15 @@ impl<T> Document<T> {
             envelope: self.envelope,
             first_always: self.first_always,
             empty: self.empty,
-            in_order: self.in_order,
             headed: self.headed,
             per_key: self.per_key,
             bytes_of: None,
-            type_value: self.type_value,
-            summary_top: self.summary_top,
-            no_total: self.no_total,
             result: PhantomData,
         }
     }
 }
 
 impl<R: Row, E: AsFailure> Document<Batch<R, E>> {
-    /// Returns the same batch document with its failures printed in input
-    /// order. With `--json`, `crumbkit::finish` then prints one array that
-    /// holds each row and each failure document in the order of the keys,
-    /// and the failure of the answers that the output budget left out last.
-    /// Each failure document holds `key` and `index`, the failure's key and
-    /// its position among the keys from 0, so a reader tells a failure from
-    /// a row by its `schema` and matches it to its key. Without it, the
-    /// array holds the rows alone and the failures print as text on
-    /// standard error.
-    ///
-    /// A document with keys from [`Document::with_keys`] holds that array
-    /// under its data key and has no `failures` field, and its rows follow
-    /// the view flags as in any document with an envelope (ADR-0059).
-    ///
-    /// It is a declaration that crumbkit-test's `check_opt_outs` lists under
-    /// the customisations, and crumbkit-test's `check_guide` fails on a row
-    /// type with a field named `schema`, because such a row could look like
-    /// a failure (ADR-0016, ADR-0056).
-    ///
-    /// # Panics
-    ///
-    /// Panics when the document has crumbkit's own envelope, which holds its
-    /// failures under `failures`. A `const` that calls it on such a document
-    /// fails to compile.
-    #[must_use]
-    pub const fn failures_in_order(mut self) -> Self {
-        assert!(
-            !matches!(self.envelope, Envelope::Crumbkit),
-            "failures in input order need a document without crumbkit's own envelope; call without_envelope or with_keys first"
-        );
-        self.in_order = true;
-        self
-    }
-
     /// Returns the same batch document with each answer that the output
     /// budget leaves out answered by a failure of its own, in place of one
     /// failure that names every key left out.
@@ -430,24 +330,6 @@ type RowBytes<T> = fn(&T, usize) -> Option<&[u8]>;
 fn row_bytes<R: Headed, E: AsFailure>(batch: &Batch<R, E>, index: usize) -> Option<&[u8]> {
     let row = batch.rows().get(index)?;
     row.bytes().map(crate::Bytes::as_slice)
-}
-
-/// The envelope that a document prints its result in with `--json`.
-#[derive(Clone, Copy)]
-enum Envelope {
-    /// crumbkit's envelope, with the id under `schema` and the result under
-    /// `data`.
-    Crumbkit,
-    /// An envelope with the keys that the tool declared with
-    /// [`Document::with_keys`] (ADR-0059).
-    Keys {
-        /// The key that holds the document's type.
-        type_key: &'static str,
-        /// The key that holds the result.
-        data_key: &'static str,
-    },
-    /// No envelope, after [`Document::without_envelope`].
-    Without,
 }
 
 /// Returns whether `text` is non-empty and holds no `\n` or `\r`.

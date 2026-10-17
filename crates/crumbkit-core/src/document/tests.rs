@@ -5,7 +5,7 @@ use std::rc::Rc;
 
 use super::Document;
 
-mod keys;
+mod envelope;
 
 #[test]
 fn the_id_prints_as_component_name_and_version() {
@@ -138,30 +138,6 @@ fn an_untyped_document_keeps_the_id_and_the_description() {
 }
 
 #[test]
-fn a_new_document_has_crumbkits_envelope() {
-    let document: Document<()> = Document::new("shelf", "books-list", 1, "Books.");
-
-    assert!(document.has_envelope());
-}
-
-#[test]
-fn a_document_without_its_envelope_keeps_its_id_and_reports_no_envelope() {
-    let document: Document<()> =
-        Document::new("shelf", "books-list", 3, "Books.").without_envelope();
-
-    assert!(!document.has_envelope());
-    assert_eq!(document.to_string(), "shelf/books-list/v3");
-}
-
-#[test]
-fn an_untyped_document_keeps_the_choice_of_envelope() {
-    let document: Document<Vec<u32>> =
-        Document::new("shelf", "books-list", 1, "Books.").without_envelope();
-
-    assert!(!document.untyped().has_envelope());
-}
-
-#[test]
 fn a_new_document_may_refuse_its_first_answer() {
     let document: Document<()> = Document::new("shelf", "books-list", 1, "Books.");
 
@@ -215,21 +191,6 @@ impl crate::Row for Moon {
 }
 
 #[test]
-fn a_document_prints_a_batchs_failures_apart_from_its_rows_until_the_tool_asks_for_input_order() {
-    const MOONS: Document<crate::Batch<Moon, crate::Error>> =
-        Document::new("solar", "moons-show", 1, "Moons.").without_envelope();
-
-    assert!(!MOONS.prints_failures_in_order());
-    assert!(MOONS.failures_in_order().prints_failures_in_order());
-    assert!(
-        MOONS
-            .failures_in_order()
-            .untyped()
-            .prints_failures_in_order()
-    );
-}
-
-#[test]
 fn a_batch_answers_its_left_out_keys_in_one_failure_until_the_tool_asks_for_one_per_key() {
     const MOONS: Document<crate::Batch<Moon, crate::Error>> =
         Document::new("solar", "moons-show", 1, "Moons.");
@@ -242,15 +203,6 @@ fn a_batch_answers_its_left_out_keys_in_one_failure_until_the_tool_asks_for_one_
             .untyped()
             .answers_left_out_per_key()
     );
-}
-
-#[test]
-#[should_panic(expected = "crumbkit's own envelope")]
-fn failures_in_order_is_rejected_for_a_document_with_crumbkits_own_envelope() {
-    let document: Document<crate::Batch<Moon, crate::Error>> =
-        Document::new("solar", "moons-show", 1, "Moons.");
-
-    let _ = document.failures_in_order();
 }
 
 /// A file of the headed batches in these tests, which holds bytes unless it

@@ -64,7 +64,7 @@ counts the bytes of those lines, which `finish` builds once.
   `--fields`.
 - With `--json`, the document holds
   `"cut": {"code": "crumbkit::output::over_budget", "budget": 1048576}`.
-- A document from `Document::without_envelope` has no place for `cut`, so the
+- A document with `Envelope::Without` has no place for `cut`, so the
   line also prints on standard error with `--json`.
 - A listing that holds `cut` also holds `"truncated": true`, and its `total`
   still counts every row that matched when the tool counted them.
@@ -127,7 +127,7 @@ that has no key. When one row and a failure that lists no key already pass
 the budget, the document passes it whatever the failure lists, so `left_out`
 lists every key left out and the recovery runs the command with them. A batch that prints its failures in input order ends its
 array with the failure, at the top of an unwrapped document or under the data
-key of a document from `Document::with_keys`, and the failure counts against
+key of a document with `Envelope::KeysInOrder`, and the failure counts against
 the budget in the same way. In text, and in any other document without the envelope, the failure
 prints on standard error, which the budget does not count, so it lists every
 key.

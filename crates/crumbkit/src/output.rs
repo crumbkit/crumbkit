@@ -373,9 +373,7 @@ impl Output {
 }
 
 /// Reports whether the caller gave `value`, a batch, more than one key.
-/// A headed batch prints its `==> KEY <==` headers by this rule, and a
-/// failure of such a batch reports it through
-/// [`PreparedFailure::among_several`](crate::form::PreparedFailure::among_several).
+/// A headed batch prints its `==> KEY <==` headers by this rule.
 fn several_keys<T: Rows>(value: &T) -> bool {
     value.key(1).is_some()
 }
@@ -417,8 +415,9 @@ pub fn finish<T: Rows, E: AsFailure>(
 /// spaces when the guide sets [`JsonLayout::Pretty`] (ADR-0052),
 /// with the `schema` id of `document` and the result under `data`; a single
 /// row's `data` is an object, and a `Vec`'s is an array.
-/// A document from [`Document::without_envelope`] prints the result alone,
-/// and its failures print as text on the error writer even with `--json`.
+/// A document with [`Envelope::Without`](crate::Envelope::Without) prints
+/// the result alone, and its failures print as text on the error writer
+/// even with `--json`.
 ///
 /// A [`Listing`](crate::Listing)'s `data` is an array, and its JSON document
 /// also holds the number of matching rows under `total` when the tool

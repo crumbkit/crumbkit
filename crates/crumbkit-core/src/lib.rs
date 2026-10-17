@@ -41,7 +41,7 @@ pub use crate::batch::Batch;
 pub use crate::bytes::Bytes;
 pub use crate::call::{Call, CallArg, CallError, CallTarget};
 pub use crate::code::{Code, RuntimeCodeError, Spelling};
-pub use crate::document::Document;
+pub use crate::document::{Document, Envelope};
 pub use crate::failure::{AsFailure, Error, Failure, Recovery};
 pub use crate::field::{Field, FieldValue};
 pub use crate::listing::{Listing, NoSummary};

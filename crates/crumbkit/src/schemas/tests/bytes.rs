@@ -3,6 +3,7 @@
 use serde_json::json;
 
 use super::properties;
+use crate::Envelope;
 use crate::schemas::document_schema;
 use crate::{Bytes, Document};
 
@@ -24,7 +25,7 @@ fn a_bytes_document_holds_the_bytes_definition_under_data_and_no_failures() {
 
 #[test]
 fn an_unwrapped_bytes_document_schema_is_the_bytes_definition() {
-    let schema = document_schema(FILE.without_envelope()).to_value();
+    let schema = document_schema(FILE.envelope(Envelope::Without)).to_value();
 
     assert_eq!(schema["$ref"], "#/$defs/Bytes");
     assert_eq!(schema["title"], "files/file/v1");

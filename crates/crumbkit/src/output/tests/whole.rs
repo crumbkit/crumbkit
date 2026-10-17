@@ -9,6 +9,7 @@ use serde::Serialize;
 use serde_json::{Value, json};
 
 use super::finish_with;
+use crate::Envelope;
 use crate::twins::assert_one_word_apart;
 use crate::{Document, Listing, Row};
 
@@ -30,8 +31,11 @@ impl Row for Moon {
     const WHOLE: bool = true;
 }
 
-const MOONS: Document<Listing<Moon>> =
-    Document::new("solar", "moons", 1, "The test moons.").with_keys("$type", "moons");
+const MOONS: Document<Listing<Moon>> = Document::new("solar", "moons", 1, "The test moons.")
+    .envelope(Envelope::Keys {
+        type_key: "$type",
+        data_key: "moons",
+    });
 
 /// Returns a listing of Io, whose discoverer is known, and the Moon, whose
 /// discoverer is not.
@@ -113,7 +117,10 @@ impl Row for Answer {
 }
 
 const ANSWERS: Document<Listing<Answer>> =
-    Document::new("solar", "answers", 1, "The test answers.").with_keys("$type", "rows");
+    Document::new("solar", "answers", 1, "The test answers.").envelope(Envelope::Keys {
+        type_key: "$type",
+        data_key: "rows",
+    });
 
 /// Returns a page of two answers from a source that holds more.
 fn answers() -> Listing<Answer> {

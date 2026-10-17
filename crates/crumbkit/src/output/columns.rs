@@ -82,7 +82,7 @@ pub(super) fn columns<T: Rows>(output: &Output, document: Document<T>, prose: bo
         return Vec::new();
     }
     let unwrapped =
-        output.json && (!document.has_envelope() || document.is_headed() || T::Row::WHOLE);
+        output.json && (!document.get_envelope().wraps() || document.is_headed() || T::Row::WHOLE);
     let selects = if unwrapped {
         !output.fields.is_empty()
     } else {

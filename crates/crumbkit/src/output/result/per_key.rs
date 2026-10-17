@@ -80,7 +80,6 @@ impl<T: Rows> Prepared<'_, T> {
             return Ok((answer, bytes));
         }
         let mut each = each_left_out(value, low, code, budget);
-        let several = crate::output::several_keys(value);
         let prepared: Vec<(usize, PreparedFailure<'_>)> = each
             .iter()
             .map(|(position, over)| {
@@ -94,7 +93,7 @@ impl<T: Rows> Prepared<'_, T> {
                     left_out.command.as_deref_mut(),
                     err,
                 );
-                (*position, failure.keyed(key, several))
+                (*position, failure.keyed(key))
             })
             .collect();
         let shown = self.fit_each(listed, &prepared, low, budget)?;
@@ -130,8 +129,12 @@ impl<T: Rows> Prepared<'_, T> {
     ) -> io::Result<usize> {
         let empty = Failures::of(&[], &[], self.form);
         let empty = budget::measure(|counter| self.write(counter, 0, None, Some(empty)))?;
-        let in_order = self.document.prints_failures_in_order();
-        let depth = if self.document.has_envelope() { 2 } else { 1 };
+        let in_order = self.document.get_envelope().failures_in_order();
+        let depth = if self.document.get_envelope().wraps() {
+            2
+        } else {
+            1
+        };
         // `rows[k]` is the bytes of the first `k` rows.
         let mut rows = vec![0_usize];
         for (number, row) in self.value.rows().iter().enumerate() {
@@ -193,7 +196,7 @@ impl<T: Rows> Prepared<'_, T> {
     /// of failures, `depth` levels deep: the entry of `failures`, or the
     /// failure document of an array in input order.
     fn failure_len(&self, failure: &PreparedFailure<'_>, depth: usize) -> io::Result<usize> {
-        if self.document.prints_failures_in_order() {
+        if self.document.get_envelope().failures_in_order() {
             return self.element(&InOrderFailure(failure, self.form), depth);
         }
         match self.form {

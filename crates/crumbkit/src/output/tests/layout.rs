@@ -7,6 +7,7 @@ use std::process::ExitCode;
 use clap::{CommandFactory as _, FromArgMatches as _};
 
 use super::{Finished, PLANET, PLANETS, Tool, finish_output, saturn};
+use crate::Envelope;
 use crate::help::Guide;
 use crate::{
     Call, Code, Document, Error, Failure, JsonLayout, Output, Parsed, Recovery, Rows, Sink,
@@ -76,7 +77,7 @@ fn a_pretty_layout_indents_the_envelope_by_two_spaces() {
 
 #[test]
 fn a_pretty_layout_indents_a_document_without_the_envelope() {
-    let finished = finish_pretty(&["--json"], PLANET.without_envelope(), saturn());
+    let finished = finish_pretty(&["--json"], PLANET.envelope(Envelope::Without), saturn());
 
     let expected = r#"{
   "name": "Saturn",

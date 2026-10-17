@@ -9,6 +9,7 @@ use serde::Serialize;
 use serde_json::{Value, json};
 
 use super::{ErrorForm, Missing, PLANETS_SHOW, Planet, finish};
+use crate::Envelope;
 use crate::answered::answered;
 use crate::form::{FailureForm, PreparedFailure};
 use crate::help::Guide;
@@ -123,7 +124,7 @@ fn the_failure_of_the_ids_that_the_budget_leaves_out_is_written_by_the_form_entr
 fn a_batch_in_input_order_prints_each_failure_as_the_form_document_which_can_read_its_key() {
     const KEY_GUIDE: Guide = Guide::new().failure_form(&KeyForm);
     let batch = answered(vec![Planet { name: "Mars" }], vec![Missing]);
-    let document = PLANETS_SHOW.without_envelope().failures_in_order();
+    let document = PLANETS_SHOW.envelope(Envelope::WithoutInOrder);
     let ran = finish(&KEY_GUIDE, &["list", "--json"], document, Ok(batch));
 
     assert_eq!(ran.code, ExitCode::FAILURE);

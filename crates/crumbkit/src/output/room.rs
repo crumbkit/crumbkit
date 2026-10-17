@@ -121,7 +121,11 @@ impl Output {
             .map(str::to_owned)
             .collect();
         let form = if self.json {
-            let depth = if document.has_envelope() { 2 } else { 1 };
+            let depth = if document.get_envelope().wraps() {
+                2
+            } else {
+                1
+            };
             let empty = empty_document(document, self.dry_run, self.json_style.layout);
             Form::Json {
                 layout: self.json_style.layout,
@@ -313,10 +317,10 @@ fn empty_document<T>(
     layout: Option<JsonLayout>,
 ) -> io::Result<usize> {
     let rows: [(); 0] = [];
-    let in_order = document.prints_failures_in_order();
+    let in_order = document.get_envelope().failures_in_order();
     let style = JsonStyle { layout, keys: None };
     budget::measure(|counter: &mut Counter| {
-        if !document.has_envelope() {
+        if !document.get_envelope().wraps() {
             return layout::write(counter, &rows, style);
         }
         let extras = Extras {

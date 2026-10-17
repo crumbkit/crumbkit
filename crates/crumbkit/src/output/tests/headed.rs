@@ -9,6 +9,7 @@ use schemars::JsonSchema;
 use serde::Serialize;
 
 use super::Tool;
+use crate::Envelope;
 use crate::help::Guide;
 use crate::{
     Batch, Bytes, Document, Error, Headed, Output, Parsed, Row, Sink, Spelling, finish_to,
@@ -351,7 +352,10 @@ fn json_of_a_headed_batch_with_declared_keys_prints_its_answers_in_input_order_w
         ("gone", None),
         ("b", Some(b"caf\xe9")),
     ];
-    let document = PAGES.with_keys("$type", "answers").failures_in_order();
+    let document = PAGES.envelope(Envelope::KeysInOrder {
+        type_key: "$type",
+        data_key: "answers",
+    });
     let finished = finish(&["--json"], 1 << 20, document, batch(&answers));
 
     assert_eq!(finished.code, ExitCode::FAILURE);

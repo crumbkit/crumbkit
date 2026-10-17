@@ -40,7 +40,7 @@ impl Guide {
     ///
     /// Without it, a JSON document prints on one line. With
     /// [`JsonLayout::Pretty`], the envelope, a document from
-    /// [`Document::without_envelope`](crate::Document::without_envelope),
+    /// [`Envelope::Without`](crate::Envelope::Without),
     /// the failure document and the document of the guide's
     /// [`FailureForm`](crate::form::FailureForm) print indented by two
     /// spaces, on standard output whether or not it is a terminal. A stream

@@ -1,7 +1,7 @@
 # ADR-0059. Envelope keys
 
 - Date: 2026-10-15
-- Status: amended by ADR-0066
+- Status: amended by ADR-0066 and ADR-0071
 - Supersedes: ADR-0016, which it amends
 
 ## Context

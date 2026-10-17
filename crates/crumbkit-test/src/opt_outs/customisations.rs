@@ -32,10 +32,10 @@ pub(super) struct Customisation {
 /// declaration followed by each command that answers to its dashed form, as
 /// [`dashed_names`] lists them, and then for each leaf in guide order its
 /// document's name when the leaf's path gives another, the keys that its
-/// document declares with `Document::with_keys` (ADR-0059), the program whose
-/// exit code it passes on, whether it declares refusal alternatives,
+/// document's envelope declares (`Envelope::Keys`, ADR-0059), the program
+/// whose exit code it passes on, whether it declares refusal alternatives,
 /// whether its batch prints its failures in input order
-/// (`Document::failures_in_order`), whether its batch answers each key that
+/// (`Envelope::KeysInOrder` or `Envelope::WithoutInOrder`), whether its batch answers each key that
 /// the output budget leaves out (`Document::left_out_per_key`), the form of
 /// its rows' own text line (`Row::LINE`, ADR-0064), and each code rename of
 /// [`Leaf::codes`](crumbkit::help::Leaf::codes). An exit that lists a code
@@ -152,23 +152,16 @@ fn leaf_customisations(command: &Command, leaf: &Leaf) -> Vec<Customisation> {
             ),
         });
     }
-    if let Some(document) = document.filter(crumbkit::Document::has_own_keys) {
-        let shown = document
-            .type_value()
-            .map_or_else(|| document.to_string(), str::to_owned);
-        let top = if document.prints_summary_at_top() {
-            ", and the summary's fields at the top in place of summary"
-        } else {
-            ""
-        };
+    if let Some(document) = document.filter(|document| document.get_envelope().has_own_keys()) {
+        let envelope = document.get_envelope();
         list.push(Customisation {
             declaration: "envelope-keys",
             applies_to: command_line(command, &leaf.path().join(" ")),
             declares: format!(
-                "With --json, the command prints {shown} under {} and its result under {}, in \
-                 place of schema and data{top}.",
-                document.type_key(),
-                document.data_key()
+                "With --json, the command prints {document} under {} and its result under {}, in \
+                 place of schema and data.",
+                envelope.type_key(),
+                envelope.data_key()
             ),
         });
     }
@@ -191,7 +184,7 @@ fn leaf_customisations(command: &Command, leaf: &Leaf) -> Vec<Customisation> {
                 .to_owned(),
         });
     }
-    if document.is_some_and(|document| document.prints_failures_in_order()) {
+    if document.is_some_and(|document| document.get_envelope().failures_in_order()) {
         list.push(Customisation {
             declaration: "failures-in-order",
             applies_to: command_line(command, &leaf.path().join(" ")),

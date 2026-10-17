@@ -174,7 +174,7 @@ pub(crate) fn read_failures(
 /// `crumbkit/failure/v1` document, has a non-empty `failures` array, or is
 /// an array that holds at least one failure document, as a batch that
 /// prints its failures in input order prints it, at the top or under any
-/// key of an object, as a document with keys from `Document::with_keys`
+/// key of an object, as a document with `Envelope::KeysInOrder`
 /// holds it. A `form` reads each entry
 /// of `failures` and each item of such an array first. An item that the
 /// form does not read is a failure only when it is a
