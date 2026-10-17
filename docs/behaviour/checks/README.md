@@ -87,7 +87,10 @@ Such a tool needs no crumbkit dependency of its own. `check_names` and
 help page in memory as clap prints it to a pipe, without crumbkit's lines
 and without a guide. clap's `wrap_help` wraps such a page at the test's
 terminal width unless the tool fixes `term_width`, and clap has no public
-getter for that width, so crumbkit-test cannot fix it for the tool. A tool
+getter for that width, so crumbkit-test cannot fix it for the tool.
+`Pages::rendered` also renders in memory and shares this limit.
+`Pages::binary` runs the binary with a cleared environment and its output
+on a pipe, so clap wraps its pages at its fixed width of 100 columns. A tool
 without examples budgets its paths with `PathBudgets::help_only`, which
 reads no golden files, and `check_path_weights` fails when the guide of its
 pages gives a command examples, because their output would go uncounted.

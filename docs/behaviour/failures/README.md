@@ -175,6 +175,14 @@ With the feature, a `miette::Report` converts into `Error` with the code
 classified, so a tool that wants its own failure back calls
 `report.downcast` before converting.
 
+A diagnostic's own `code()` does not become the failure code. miette's
+code is text that the diagnostic decides at run time, and a code that
+`Failure::code` returns is a declared `&'static Code` that `check_codes`
+can see. The failure's message ends with the diagnostic's code in
+parentheses. A tool that wants its own code on a miette failure downcasts
+the report to its own diagnostic type and returns a typed failure that
+declares the code.
+
 Why: ADR-0001, ADR-0016.
 
 ## Unclassified errors
