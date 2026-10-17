@@ -86,10 +86,6 @@ pub struct Document<T> {
     /// with a failure of its own, which the tool chose with
     /// `left_out_per_key`.
     per_key: bool,
-    /// The name of the failure field under which each over-budget failure
-    /// of an answer left out holds its key, which the tool set with
-    /// `key_field`.
-    key_field: Option<&'static str>,
     /// The function that returns the bytes of the row at a position of a
     /// headed batch, which `headed` sets. An untyped document has none.
     bytes_of: Option<RowBytes<T>>,
@@ -160,7 +156,6 @@ impl<T> Document<T> {
             in_order: false,
             headed: false,
             per_key: false,
-            key_field: None,
             bytes_of: None,
             type_value: None,
             summary_top: false,
@@ -297,14 +292,6 @@ impl<T> Document<T> {
         self.per_key
     }
 
-    /// Returns the name that [`Document::key_field`] set, under which each
-    /// over-budget failure of an answer left out holds its key, or `None`
-    /// when the tool named none.
-    #[must_use]
-    pub const fn key_field_name(&self) -> Option<&'static str> {
-        self.key_field
-    }
-
     /// Returns the function that [`Document::headed`] set, which returns
     /// the bytes of the row at a position among a batch's rows, or `None`
     /// for that row's place when the row holds no bytes or the position is
@@ -333,7 +320,6 @@ impl<T> Document<T> {
             in_order: self.in_order,
             headed: self.headed,
             per_key: self.per_key,
-            key_field: self.key_field,
             bytes_of: None,
             type_value: self.type_value,
             summary_top: self.summary_top,
@@ -402,32 +388,6 @@ impl<R: Row, E: AsFailure> Document<Batch<R, E>> {
     #[must_use]
     pub const fn left_out_per_key(mut self) -> Self {
         self.per_key = true;
-        self
-    }
-
-    /// Returns the same batch document with each over-budget failure of an
-    /// answer left out holding its key as text under the failure field
-    /// `name`, beside `budget`, so a reader that reads a failure's fields
-    /// finds the key where it reads the key of the tool's other failures.
-    ///
-    /// crumbkit-test's `check_guide` fails a name that breaks the field
-    /// name rule unless the guide's `field_names` lists it, and fails the
-    /// name `budget`. `check_opt_outs` names the field in the
-    /// `left-out-per-key` customisation (ADR-0070).
-    ///
-    /// # Panics
-    ///
-    /// Panics unless [`Document::left_out_per_key`] was called first,
-    /// because only that declaration gives each answer left out a failure
-    /// of its own. A `const` that calls it on such a document fails to
-    /// compile.
-    #[must_use]
-    pub const fn key_field(mut self, name: &'static str) -> Self {
-        assert!(
-            self.per_key,
-            "a key field needs left_out_per_key, which gives each answer left out its own failure"
-        );
-        self.key_field = Some(name);
         self
     }
 }

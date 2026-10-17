@@ -159,17 +159,9 @@ failure. The document then passes the budget by the size of those failures,
 about 200 bytes each: a batch of 10,000 keys from a flag such as `--all`
 prints about 2 MB of failures after its first row.
 
-`Document::key_field(name)` puts each such failure's key under the field
-`name` beside `budget`, such as `"fields":{"budget":1048576,"path":"/hub"}`,
-for readers that read a failure's key from its fields. It needs
-`left_out_per_key` first. crumbkit-test's `check_guide` fails a name that
-breaks the field name rule unless the guide's `field_names` lists it, and
-fails the name `budget`.
-
 The mark is a declaration that crumbkit-test's `check_opt_outs` lists as the
 `left-out-per-key` customisation, which says that the document can pass the
-budget and names the key field
-([declarations](../../adoption/declarations.md)).
+budget ([declarations](../../adoption/declarations.md)).
 
 Why: ADR-0068, ADR-0070.
 

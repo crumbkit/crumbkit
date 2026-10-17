@@ -19,23 +19,19 @@ use crate::{Code, Rows};
 /// Returns the failure of each answer that `value` leaves out when its first
 /// `shown` rows print, with the answer's position among the keys, in key
 /// order. Each failure has `code` and `budget`, and its recovery fetches the
-/// answer's key alone. When the document names a key field, each failure
-/// with a key holds it under that field.
+/// answer's key alone.
 pub(super) fn each_left_out<T: Rows>(
     value: &T,
     shown: usize,
     code: &'static Code,
     budget: usize,
-    key_field: Option<&'static str>,
 ) -> Vec<(usize, OverBudget)> {
     value
         .left_out_indexes(shown)
         .into_iter()
         .map(|position| {
-            let key = value.key(position);
-            let fetch = key.and_then(|key| value.fetch_key(key));
-            let key = key_field.zip(key.map(ToString::to_string));
-            let over = Over::Key { fetch, key };
+            let fetch = value.key(position).and_then(|key| value.fetch_key(key));
+            let over = Over::Key { fetch };
             (position, OverBudget { code, budget, over })
         })
         .collect()
@@ -68,12 +64,11 @@ impl<T: Rows> Prepared<'_, T> {
         let low = rows.min(1);
         let (code, budget) = (left_out.code, left_out.budget);
         let indexes = value.failure_indexes();
-        let key_field = self.document.key_field_name();
         if !in_document {
             let shown = budget::largest(low, rows, |shown| self.fits(shown, listed, None, budget))?;
             let failures = Failures::of(listed, indexes, self.form);
             let bytes = self.measured_write(out, shown, None, Some(failures))?;
-            let each = each_left_out(value, shown, code, budget, key_field);
+            let each = each_left_out(value, shown, code, budget);
             if each.is_empty() {
                 self.send_notes(err, &mut Vec::new(), rows, None);
                 return Ok((Answer::Whole, bytes));
@@ -84,7 +79,7 @@ impl<T: Rows> Prepared<'_, T> {
             };
             return Ok((answer, bytes));
         }
-        let mut each = each_left_out(value, low, code, budget, key_field);
+        let mut each = each_left_out(value, low, code, budget);
         let several = crate::output::several_keys(value);
         let prepared: Vec<(usize, PreparedFailure<'_>)> = each
             .iter()

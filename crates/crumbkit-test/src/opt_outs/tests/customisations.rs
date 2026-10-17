@@ -302,23 +302,6 @@ fn a_batch_that_answers_each_left_out_key_is_a_left_out_per_key_customisation_af
 }
 
 #[test]
-fn a_batch_that_names_a_key_field_says_so_in_its_left_out_per_key_customisation() {
-    const BOOKS_SHOW: Document<Batch<Book, crumbkit::Error>> =
-        Document::new("shelf", "books-show", 1, "The books.")
-            .left_out_per_key()
-            .key_field("book_id");
-    const GUIDE: Guide = Guide::new().leaves(&[Leaf::new(&["books", "show"]).document(BOOKS_SHOW)]);
-
-    let list = customisations(&Command::new("shelf"), &GUIDE);
-
-    let declarations = serde_json::to_value(&list).unwrap();
-    assert_eq!(
-        declarations[0]["declares"],
-        "When the output budget leaves out answers, the command prints one failure for each answer left out, at its key's position, in place of one failure that names them all. The JSON document can pass the budget by the size of those failures. Each such failure holds its key under the field book_id."
-    );
-}
-
-#[test]
 fn a_summary_at_the_top_is_named_in_the_envelope_keys_customisation() {
     const BOOKS_LIST: Document<Listing<Book, u32>> =
         Document::new("shelf", "books-list", 1, "The books.")

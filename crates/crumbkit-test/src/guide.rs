@@ -65,11 +65,6 @@ mod tests;
 ///   input order (`Document::failures_in_order`) and whose row type has a
 ///   field named `schema`, because a reader tells a failure document from
 ///   a row by its `schema`;
-/// - a leaf whose batch document names a key field (`Document::key_field`)
-///   that breaks crumbkit's field name rule and that the guide's
-///   `field_names` do not list, because `finish` leaves such a field out,
-///   or that is named `budget`, which the over-budget failure already holds
-///   (ADR-0070);
 /// - a leaf column whose name is not a field of the leaf's row type, such
 ///   as a misspelt name in `Row::COLUMNS` or `Row::LONG_COLUMNS`, because
 ///   the table prints `-` in every row of it;
@@ -284,30 +279,6 @@ fn check_in_order(text: &str, leaf: &Leaf, problems: &mut Vec<String>) {
     }
 }
 
-/// Adds a problem when `leaf`'s document names a key field that a failure
-/// cannot hold: a name that breaks the field name rule and that the guide's
-/// `field_names` do not list, or `budget`, which the over-budget failure
-/// already holds.
-fn check_key_field(text: &str, leaf: &Leaf, guide: &Guide, problems: &mut Vec<String>) {
-    let Some(name) = leaf
-        .get_document()
-        .and_then(|document| document.key_field_name())
-    else {
-        return;
-    };
-    if name == "budget" {
-        problems.push(format!(
-            "{text}: the key field is named \"budget\", which the over-budget failure already uses for the bytes of the output budget; choose another name"
-        ));
-    } else if !crumbkit::Field::new(name, crumbkit::FieldValue::Null).follows_name_rule()
-        && !guide.get_field_names().contains(&name)
-    {
-        problems.push(format!(
-            "{text}: the key field {name:?} breaks crumbkit's field name rule and the guide's field_names do not list it, so each over-budget failure would leave it out"
-        ));
-    }
-}
-
 /// Adds a problem to `problems` for each leaf of `guide` that breaks a leaf
 /// rule of [`check_guide`], and for each visible command without
 /// subcommands that no leaf with an example names.
@@ -377,7 +348,6 @@ fn check_leaves(command: &Command, guide: &Guide, problems: &mut Vec<String>) {
             ));
         }
         check_in_order(&text, leaf, problems);
-        check_key_field(&text, leaf, guide, problems);
         for choices in leaf.get_choices() {
             let id = choices.arg();
             if !node.get_arguments().any(|arg| arg.get_id() == id) {

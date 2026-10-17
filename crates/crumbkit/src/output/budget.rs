@@ -226,10 +226,6 @@ pub(super) enum Over {
         /// The call that fetches the answer's key alone, or `None` for an
         /// answer without a key.
         fetch: Option<Call>,
-        /// The name of the field that holds the answer's key and the key,
-        /// when the document names a key field and the answer has a key
-        /// (ADR-0070).
-        key: Option<(&'static str, String)>,
     },
     /// A single row or a list of rows that crumbkit refused whole.
     Row,
@@ -308,7 +304,7 @@ impl Failure for OverBudget {
             Over::Key {
                 fetch: Some(call), ..
             } => Recovery::Run(call.clone()),
-            Over::Batch { .. } | Over::Key { fetch: None, .. } => Recovery::Hint(
+            Over::Batch { .. } | Over::Key { fetch: None } => Recovery::Hint(
                 "run the command again with the keys that were not answered".to_owned(),
             ),
             Over::Row => Recovery::Hint("ask for fewer fields with --fields".to_owned()),
@@ -340,11 +336,7 @@ impl Failure for OverBudget {
                 fields.push(budget);
                 fields
             }
-            Over::Key {
-                key: Some((name, key)),
-                ..
-            } => vec![budget, Field::new(name, key.as_str())],
-            Over::Key { key: None, .. } | Over::Row | Over::Whole | Over::Stream => vec![budget],
+            Over::Key { .. } | Over::Row | Over::Whole | Over::Stream => vec![budget],
         }
     }
 }

@@ -95,13 +95,7 @@ pub(super) fn write<T: Rows>(
     // The rows from `stop` on come after every row too large alone, so the
     // failures stay in key order.
     let left_out = if document.answers_left_out_per_key() {
-        oversize.extend(per_key::each_left_out(
-            value,
-            stop,
-            code,
-            budget,
-            document.key_field_name(),
-        ));
+        oversize.extend(per_key::each_left_out(value, stop, code, budget));
         None
     } else {
         left_out(value, stop, code, budget)

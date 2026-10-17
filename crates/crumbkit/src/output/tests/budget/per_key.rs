@@ -219,31 +219,6 @@ fn a_batch_of_three_large_rows_answers_its_second_and_third_keys_with_their_own_
     );
 }
 
-#[test]
-fn a_left_out_key_s_failure_holds_its_key_under_the_field_that_the_document_names() {
-    let keys: Vec<String> = (1..=4).map(|number| star(number).name).collect();
-    let mut batch: Batch<Star, Error> = Batch::new(&["show"], "names", &keys);
-    batch.extend((1..=2).map(|number| Ok(star(number))));
-
-    let finished = finish_small(
-        &["--json"],
-        STAR_BATCH.left_out_per_key().key_field("path"),
-        batch,
-    );
-
-    let document = parsed(&finished.out);
-    let failures = document["failures"].as_array().unwrap();
-    assert!(!failures.is_empty(), "{}", finished.out);
-    for failure in failures {
-        assert_eq!(
-            failure["fields"],
-            json!({"budget": BUDGET, "path": failure["key"]}),
-            "{}",
-            finished.out
-        );
-    }
-}
-
 /// Returns the number of rows and the number of failures in the JSON of a
 /// batch, whose rows and failures print in one array under `answers` when
 /// `in_order` is true.

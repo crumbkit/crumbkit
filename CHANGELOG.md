@@ -601,12 +601,6 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit-test: [`check_opt_outs`] lists sorted JSON keys as the
   `json-keys` customisation of every run
   ([behaviour/adoption/declarations]).
-- crumbkit: `Document::key_field(name)` puts the key of each per-key
-  over-budget failure under the failure field `name`, beside `budget`
-  ([behaviour/output/budget]).
-- crumbkit-test: [`check_guide`] fails a key field that breaks the field name
-  rule and that `Guide::field_names` does not list, and a key field named
-  `budget`. [`check_opt_outs`] names the key field ([behaviour/adoption/declarations]).
 
 ### Changed
 

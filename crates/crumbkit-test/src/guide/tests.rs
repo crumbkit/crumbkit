@@ -11,7 +11,6 @@ use crate::testing::panic_message;
 
 mod field_names;
 mod in_order;
-mod key_field;
 mod lines;
 mod problems;
 mod views;
