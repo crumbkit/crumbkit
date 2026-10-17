@@ -84,12 +84,18 @@ with code 1. The failure has these fields:
 - `unlisted` counts the answers left out that `left_out` does not name. It is
   present only when it is above 0.
 
-A batch's handler can stop fetching once `Batch::has_room` returns false.
-`has_room` measures each new row once as compact JSON, which is an estimate
-of what prints. The keys that the handler never fetched follow the keys of the cut rows in
-`left_out`, and a batch with such keys ends with the failure even when its
-rows fit. An estimate that stops too early or too late therefore still leaves
-every key either answered or listed.
+A batch's handler can stop fetching once its rows fill the budget.
+`Output::room(document)` returns a `Room` before the first fetch, and
+`Room::has_room(&batch)` measures each row pushed since the last call once,
+in the format that the run prints: the JSON document in the guide's layout,
+the text table with each column as wide as its widest cell, or the headers
+and bytes of a headed batch. `has_room` returns false once the rows take the
+bytes that the run can print. The count leaves out the batch's failures,
+which only add bytes, so a handler that stops when `has_room` returns false
+never stops before the row at which `finish` cuts the batch. The keys that
+the handler never fetched follow the keys of the cut rows in `left_out`, and
+a batch with such keys ends with the failure even when its rows fit, so
+every key is either answered or listed.
 
 The failure's recovery is a `run` step built with `Call::all`, such as
 `{"kind":"run","call":"shelf books show <ID>...","all":"left_out"}`, which
@@ -122,6 +128,35 @@ key.
 
 Why: ADR-0046, ADR-0059.
 
+### One failure for each answer left out
+
+A batch whose document is marked with `Document::left_out_per_key` answers
+each answer left out with its own `crumbkit::output::over_budget` failure,
+in place of the one failure that names them all. Each failure has the key and
+index of its answer, the message `the answer did not fit in the output budget
+of 1048576 bytes`, the field `budget`, and a `run` recovery that runs the
+command with that key alone, such as `shelf books show 4`. An answer without
+a key gets a hint to run the command again with the keys that were not
+answered. The failures print among the batch's other failures in the order of
+their keys, and the run exits with the code of the first failure in key
+order.
+
+In text, and in a document without the envelope that does not print its
+failures in input order, the rows print as a batch's rows do and the
+failures print on standard error. In a JSON document that holds its
+failures, each failure counts against the budget, and a row that prints
+takes the place of its failure. A row can be shorter than its failure, so
+`finish` measures each row and each failure once and prints the most rows
+that fit with the failures of every answer after them. When even the first
+row and the failure of every later answer pass the budget, the batch ends
+with the one failure that names the answers left out, as a batch without the
+mark does.
+
+The mark is a declaration that crumbkit-test's `check_opt_outs` lists as the
+`left-out-per-key` customisation ([declarations](../../adoption/declarations.md)).
+
+Why: ADR-0068.
+
 ## Headed bytes
 
 The text of a [headed batch](../README.md#headed-bytes) prints each row whole
@@ -139,14 +174,15 @@ when it is not the first row that prints.
   not fit, every later row and every key that the handler never fetched is
   left out, and one over-budget failure names them, as the failure of a
   batch in text does, with the recovery that runs the command with every key
-  left out.
+  left out. A document marked with `Document::left_out_per_key` gives each
+  of them its own failure in place of that one.
 
 Each failure prints on standard error with the batch's other failures, in the
 order of their keys, and the failure that names the rows left out prints
 last. The run exits with the code of the first failure. With `--json` a
 headed batch is budgeted as any other batch.
 
-Why: ADR-0062.
+Why: ADR-0062, ADR-0068.
 
 ## Single results
 
@@ -211,7 +247,13 @@ printed. The second run must do one of these:
 - print one answer, either from a document that always prints its first
   answer or as a batch of one answer;
 - exit with the code that the guide gives the over-budget failure, 1 by
-  default, and end with the over-budget failure that names the budget.
+  default, and print an over-budget failure that names the budget, last or,
+  for a batch whose document answers each answer left out, among its other
+  failures. Such a batch exits with the code of its first failure in key
+  order, so when that failure is one of the tool's own, the check expects
+  the code that the guide gives that failure. The check matches the
+  failure's code to the guide's exits in the `::`, `.` and `/` spellings,
+  and expects 1 for a code in a custom spelling.
 
 The check also runs each text example of a leaf whose document is headed in
 the same way. The second run must print at most the budget, unless its
@@ -219,4 +261,4 @@ document always prints its first answer, and must either exit with code 0 or
 exit with the over-budget failure's code with a message on standard error
 that names the budget.
 
-Why: ADR-0046, ADR-0062.
+Why: ADR-0046, ADR-0062, ADR-0068.

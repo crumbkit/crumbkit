@@ -13,14 +13,23 @@ use super::layout;
 use crate::form::FailureForm;
 use crate::{Document, JsonLayout};
 
-/// The failures of a batch or a prose result: the tool's own, in order, and
-/// then the failure of the rows that the output budget left out, when there
-/// is one.
+/// The failures of a batch or a prose result: the tool's own and the
+/// failure of each key that the output budget left out, in the order of
+/// their keys, and then the failure that names the answers that the output
+/// budget left out, when there is one.
 #[derive(Clone, Copy)]
 pub(super) struct Failures<'a> {
     /// The failures that the tool returned.
     pub(super) listed: &'a [PreparedFailure<'a>],
-    /// The failure of the rows that did not fit in the output budget.
+    /// The position of each failure of `listed` among a batch's answers. A
+    /// failure without a position sorts after every other.
+    pub(super) indexes: &'a [usize],
+    /// The failure of each answer that the output budget left out, with its
+    /// position, in order, when the document answers each key left out
+    /// (ADR-0068).
+    pub(super) each: &'a [(usize, PreparedFailure<'a>)],
+    /// The failure that names the answers that did not fit in the output
+    /// budget.
     pub(super) over: Option<&'a PreparedFailure<'a>>,
     /// The guide's failure form, which writes each entry, or `None` for
     /// crumbkit's entries.
@@ -28,9 +37,54 @@ pub(super) struct Failures<'a> {
 }
 
 impl<'a> Failures<'a> {
+    /// Returns the tool's failures `listed` at the positions `indexes`,
+    /// which the guide's `form` writes, without a failure of the output
+    /// budget.
+    pub(super) const fn of(
+        listed: &'a [PreparedFailure<'a>],
+        indexes: &'a [usize],
+        form: Option<&'static dyn FailureForm>,
+    ) -> Self {
+        Self {
+            listed,
+            indexes,
+            each: &[],
+            over: None,
+            form,
+        }
+    }
+
     /// Returns every failure in the order it prints.
     pub(super) fn iter(self) -> impl Iterator<Item = &'a PreparedFailure<'a>> {
-        self.listed.iter().chain(self.over)
+        self.positioned().map(|(_, failure)| failure)
+    }
+
+    /// Returns every failure in the order it prints with its position among
+    /// the batch's answers: the tool's failures and the failure of each key
+    /// left out merged by position, then the failure that names the answers
+    /// left out at `usize::MAX`.
+    pub(super) fn positioned(self) -> impl Iterator<Item = (usize, &'a PreparedFailure<'a>)> {
+        let indexes = self.indexes;
+        let mut listed = self
+            .listed
+            .iter()
+            .enumerate()
+            .map(move |(number, failure)| {
+                let position = indexes.get(number).copied().unwrap_or(usize::MAX);
+                (position, failure)
+            })
+            .peekable();
+        let mut each = self
+            .each
+            .iter()
+            .map(|(position, failure)| (*position, failure))
+            .peekable();
+        let merged = std::iter::from_fn(move || match (listed.peek(), each.peek()) {
+            (Some((tool, _)), Some((budget, _))) if budget < tool => each.next(),
+            (Some(_), _) => listed.next(),
+            (None, _) => each.next(),
+        });
+        merged.chain(self.over.map(|over| (usize::MAX, over)))
     }
 }
 

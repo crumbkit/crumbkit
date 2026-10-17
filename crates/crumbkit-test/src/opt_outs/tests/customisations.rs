@@ -254,6 +254,34 @@ fn a_document_with_keys_is_an_envelope_keys_customisation_before_its_failures_in
 }
 
 #[test]
+fn a_batch_that_answers_each_left_out_key_is_a_left_out_per_key_customisation_after_its_failures_in_order()
+ {
+    const BOOKS_SHOW: Document<Batch<Book, crumbkit::Error>> =
+        Document::new("shelf", "books-show", 1, "The books.")
+            .without_envelope()
+            .failures_in_order()
+            .left_out_per_key();
+    const GUIDE: Guide = Guide::new().leaves(&[Leaf::new(&["books", "show"]).document(BOOKS_SHOW)]);
+
+    let list = customisations(&Command::new("shelf"), &GUIDE);
+
+    let declarations: Vec<Value> = serde_json::to_value(&list)
+        .unwrap()
+        .as_array()
+        .unwrap()
+        .clone();
+    assert_eq!(declarations.len(), 2);
+    assert_eq!(
+        declarations[1],
+        json!({
+            "declaration": "left-out-per-key",
+            "applies_to": "shelf books show",
+            "declares": "When the output budget leaves out answers, the command prints one failure for each answer left out, at its key's position, in place of one failure that names them all.",
+        })
+    );
+}
+
+#[test]
 fn a_summary_at_the_top_is_named_in_the_envelope_keys_customisation() {
     const BOOKS_LIST: Document<Listing<Book, u32>> =
         Document::new("shelf", "books-list", 1, "The books.")

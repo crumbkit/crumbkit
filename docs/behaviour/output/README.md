@@ -152,9 +152,14 @@ follows the `error:` line in its text. They are members of the failure and
 sit outside `fields`. A failure pushed after the last key has neither. A
 batch with at least one failure exits with the code of its first failure,
 which is 1 unless the guide declares another for that failure's code
-([exit codes](../failures/exit-codes.md)).
+([exit codes](../failures/exit-codes.md)). The over-budget failure that names
+the answers left out prints after the batch's own failures. A batch whose
+document is marked with `Document::left_out_per_key` gives each answer left
+out its own over-budget failure at its key's position instead, so its first
+failure is the first in key order
+([one failure for each answer left out](budget/README.md#one-failure-for-each-answer-left-out)).
 
-Why: ADR-0016.
+Why: ADR-0016, ADR-0068.
 
 ## Prose
 

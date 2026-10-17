@@ -17,7 +17,7 @@ mod tests;
 /// id is looked up again, so the ids need no `Hash` or `Eq`. A command that
 /// stops once its rows fill the output budget calls `fetch_each` on one
 /// chunk of `workers` ids at a time and asks
-/// [`Batch::has_room`](crate::Batch::has_room) before each chunk.
+/// [`Room::has_room`](crate::Room::has_room) before each chunk.
 ///
 /// Who should use it, and who should not:
 ///

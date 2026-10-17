@@ -230,6 +230,21 @@ fn a_document_prints_a_batchs_failures_apart_from_its_rows_until_the_tool_asks_f
 }
 
 #[test]
+fn a_batch_answers_its_left_out_keys_in_one_failure_until_the_tool_asks_for_one_per_key() {
+    const MOONS: Document<crate::Batch<Moon, crate::Error>> =
+        Document::new("solar", "moons-show", 1, "Moons.");
+
+    assert!(!MOONS.answers_left_out_per_key());
+    assert!(MOONS.left_out_per_key().answers_left_out_per_key());
+    assert!(
+        MOONS
+            .left_out_per_key()
+            .untyped()
+            .answers_left_out_per_key()
+    );
+}
+
+#[test]
 #[should_panic(expected = "crumbkit's own envelope")]
 fn failures_in_order_is_rejected_for_a_document_with_crumbkits_own_envelope() {
     let document: Document<crate::Batch<Moon, crate::Error>> =

@@ -132,15 +132,31 @@ fn a_batch_fetches_its_left_out_keys_with_its_command_in_one_call() {
 }
 
 #[test]
-fn a_batch_has_room_until_the_json_of_its_rows_reaches_the_budget() {
-    // Each row is `{"name":"Mars"}`, which is 15 bytes of compact JSON.
-    let mut batch: Batch<Planet, Missing> = Batch::new(&["show"], "names", &["Mars", "Mars"]);
-    assert!(batch.has_room(30));
+fn the_positions_left_out_are_the_cut_rows_then_the_keys_never_fetched() {
+    let mut batch = Batch::new(
+        &["show"],
+        "names",
+        &["Mars", "Vulcan", "Venus", "Earth", "Io"],
+    );
     batch.push(Ok(planet("Mars")));
-    assert!(batch.has_room(30));
-    batch.push(Ok(planet("Mars")));
-    assert!(!batch.has_room(30));
-    assert!(batch.has_room(31));
+    batch.push(Err(Missing("Vulcan")));
+    batch.push(Ok(planet("Venus")));
+    batch.push(Ok(planet("Earth")));
+
+    assert_eq!(batch.left_out_indexes(1), [2, 3, 4]);
+    assert_eq!(batch.left_out_indexes(3), [4]);
+    assert_eq!(saturn().left_out_indexes(0), Vec::<usize>::new());
+}
+
+#[test]
+fn a_batch_fetches_one_left_out_key_with_its_command_and_that_key_alone() {
+    let batch: Batch<Planet, Missing> = Batch::new(&["planets", "show"], "names", &["Mars"]);
+
+    assert_eq!(
+        batch.fetch_key("Mars"),
+        Some(Call::new(&["planets", "show"]).value("names", "Mars"))
+    );
+    assert_eq!(saturn().fetch_key("Mars"), None);
 }
 
 #[test]

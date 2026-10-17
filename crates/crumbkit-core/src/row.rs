@@ -257,6 +257,20 @@ pub trait Rows: Serialize + sealed::Sealed {
         None
     }
 
+    /// Returns the positions among a batch's keys of the answers that it
+    /// leaves out when it shows only its first `shown` rows, in order: the
+    /// positions of the rows after the first `shown`, then those of the keys
+    /// the handler never fetched. Every other result leaves out nothing.
+    fn left_out_indexes(&self, _shown: usize) -> Vec<usize> {
+        Vec::new()
+    }
+
+    /// Returns the call that fetches `key` alone with a batch's command, and
+    /// `None` when the result is not a batch.
+    fn fetch_key(&self, _key: &str) -> Option<Call> {
+        None
+    }
+
     /// Returns the text that the text output prints in place of a table
     /// when the result is a `Prose`, and `None` otherwise. Only a `Prose`
     /// returns one.

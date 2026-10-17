@@ -14,6 +14,8 @@ use super::{Finished, Tool, finish_output};
 
 mod batch;
 mod keys;
+mod per_key;
+mod room;
 use crate::help::{Exit, Guide, Rename};
 use crate::twins::assert_one_word_apart;
 use crate::{

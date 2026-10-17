@@ -10,15 +10,17 @@ use serde::{Serialize, Serializer};
 
 use super::Prepared;
 use crate::Rows;
+use crate::form::FailureForm;
 use crate::output::envelope::{Extras, Failures, Selected};
 use crate::output::failure::PreparedFailure;
 use crate::output::layout;
 
 impl<T: Rows> Prepared<'_, T> {
     /// Writes the batch's first `shown` rows and every failure of
-    /// `failures` as one array, each row and each of the batch's own
-    /// failures at the position of its key, and the failure of the answers
-    /// that the output budget left out last.
+    /// `failures` as one array, each row, each of the batch's own failures
+    /// and the failure of each key left out at the position of its key, and
+    /// the failure that names the answers that the output budget left out
+    /// last.
     ///
     /// A document with its own envelope keys holds the array under its data
     /// key, and a document without the envelope prints the array alone.
@@ -61,19 +63,14 @@ impl<T: Rows> Serialize for InOrder<'_, '_, T> {
         let value = prepared.value;
         let rows = value.rows();
         let row_indexes = value.row_indexes();
-        let mut listed = self
-            .failures
-            .listed
-            .iter()
-            .zip(value.failure_indexes())
-            .peekable();
+        let mut failures = self.failures.positioned().peekable();
         let mut seq = serializer.serialize_seq(None)?;
         for (number, row) in rows.iter().take(self.shown).enumerate() {
             // A row without an index, which only a result that is not a
-            // batch has, prints after every failure.
+            // batch has, prints after every failure with an index.
             let at = row_indexes.get(number).copied().unwrap_or(usize::MAX);
-            while let Some((failure, _)) = listed.next_if(|&(_, &index)| index < at) {
-                seq.serialize_element(&Document(failure, self.failures))?;
+            while let Some((_, failure)) = failures.next_if(|&(index, _)| index < at) {
+                seq.serialize_element(&InOrderFailure(failure, self.failures.form))?;
             }
             // The rows are serialized only when the view flags select
             // columns, so a row without a serialized value prints whole.
@@ -85,23 +82,25 @@ impl<T: Rows> Serialize for InOrder<'_, '_, T> {
                 None => seq.serialize_element(row)?,
             }
         }
-        for (failure, _) in listed {
-            seq.serialize_element(&Document(failure, self.failures))?;
-        }
-        if let Some(over) = self.failures.over {
-            seq.serialize_element(&Document(over, self.failures))?;
+        // The failure that names the answers left out sorts last.
+        for (_, failure) in failures {
+            seq.serialize_element(&InOrderFailure(failure, self.failures.form))?;
         }
         seq.end()
     }
 }
 
-/// A failure document in the array: the form's document when the guide has
-/// a failure form, and crumbkit's `crumbkit/failure/v1` document otherwise.
-struct Document<'a>(&'a PreparedFailure<'a>, Failures<'a>);
+/// A failure document in the array: the document of the guide's failure
+/// form when it has one, and crumbkit's `crumbkit/failure/v1` document
+/// otherwise.
+pub(super) struct InOrderFailure<'a>(
+    pub(super) &'a PreparedFailure<'a>,
+    pub(super) Option<&'static dyn FailureForm>,
+);
 
-impl Serialize for Document<'_> {
+impl Serialize for InOrderFailure<'_> {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        match self.1.form {
+        match self.1 {
             Some(form) => form.json(self.0).serialize(serializer),
             None => self.0.serialize(serializer),
         }

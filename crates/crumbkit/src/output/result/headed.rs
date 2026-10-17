@@ -4,7 +4,7 @@
 use std::borrow::Cow;
 use std::io::{self, Write};
 
-use super::Answer;
+use super::{Answer, per_key};
 use crate::output::budget::{Over, OverBudget};
 use crate::output::table::escape_controls;
 use crate::output::{Output, problems};
@@ -28,7 +28,8 @@ use crate::{Code, Document, Rows, codes};
 /// first row of a document that always prints its first answer. The other
 /// rows print in order while they fit. From the first row that does not
 /// fit, every later row and every key the batch never fetched is left out,
-/// and one failure names them. After `out` is flushed, the note of the rows
+/// and one failure names them, or each gets a failure of its own when the
+/// document answers each key left out (ADR-0068). After `out` is flushed, the note of the rows
 /// that report a problem and the tool's note go to `err`, as they do for a
 /// table.
 pub(super) fn write<T: Rows>(
@@ -90,17 +91,28 @@ pub(super) fn write<T: Rows>(
         out.write_all(content)?;
     }
     out.flush()?;
-    let left_out = left_out(value, stop, code, budget);
+    // The rows from `stop` on come after every row too large alone, so the
+    // failures stay in key order.
+    let left_out = if document.answers_left_out_per_key() {
+        oversize.extend(per_key::each_left_out(value, stop, code, budget));
+        None
+    } else {
+        left_out(value, stop, code, budget)
+    };
     if oversize.is_empty() && left_out.is_none() {
         write_notes(err, value, problems);
     }
-    Ok((Answer::Headed { oversize, left_out }, spent))
+    let answer = Answer::Keyed {
+        each: oversize,
+        left_out,
+    };
+    Ok((answer, spent))
 }
 
 /// Returns the header line of the row at `position`, whose key is `key`:
 /// `==> KEY <==` with the key's control characters escaped, or the
 /// position in parentheses for a row pushed after the last key.
-fn header(key: Option<&str>, position: usize) -> String {
+pub(in crate::output) fn header(key: Option<&str>, position: usize) -> String {
     match key {
         Some(key) => format!("==> {} <==\n", escape_controls(key)),
         None => format!("==> (index {position}) <==\n"),
