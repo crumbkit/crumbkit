@@ -192,7 +192,9 @@ pub(crate) fn show_call() -> Call {
 /// or from the file that `--from` names, as [`read_ids`] reads it.
 ///
 /// The batch holds one `BooksError::NotFound` for each id that the
-/// catalogue lacks, in the order given. `show` looks up one chunk of
+/// catalogue lacks, in the order given. When some of those ids name books
+/// that `shelf books remove` took off the shelf, the batch's note names
+/// them, so the reader learns why the shelf has no such book. `show` looks up one chunk of
 /// [`WORKERS`] ids at a time, and stops once `room` says the books it found
 /// fill the bytes that the run has left, so crumbkit names the ids it did
 /// not look up in the over-budget failure.
@@ -221,7 +223,36 @@ pub(crate) fn show(
             find(id, &removed).map_err(|id| BooksError::NotFound { ids: vec![id] })
         }));
     }
-    Ok(batch)
+    let mut asked_removed: Vec<u32> = Vec::new();
+    for &id in &ids {
+        if removed.contains(&id) && in_catalogue(id) && !asked_removed.contains(&id) {
+            asked_removed.push(id);
+        }
+    }
+    Ok(match asked_removed.as_slice() {
+        [] => batch,
+        [id] => batch.note(format!(
+            "note: book {id} is in the catalogue but was removed from the shelf."
+        )),
+        ids => batch.note(format!(
+            "note: books {} are in the catalogue but were removed from the shelf.",
+            joined(ids)
+        )),
+    })
+}
+
+/// Returns whether the catalogue holds a book with `id`, whether or not it
+/// was removed from the shelf.
+fn in_catalogue(id: u32) -> bool {
+    CATALOGUE.iter().any(|book| book.id == id)
+}
+
+/// Returns `ids` separated by commas, such as `2, 5`.
+fn joined(ids: &[u32]) -> String {
+    ids.iter()
+        .map(ToString::to_string)
+        .collect::<Vec<_>>()
+        .join(", ")
 }
 
 /// Returns the ids in the file at `path`, in file order. Each line holds one

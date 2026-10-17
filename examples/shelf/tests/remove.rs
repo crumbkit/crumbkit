@@ -134,3 +134,35 @@ fn books_list_after_every_book_is_removed_prints_the_header_and_the_empty_note_o
         .stdout_eq(file!["golden/books-list-json-after-remove-all.json"].raw())
         .stderr_eq("");
 }
+
+#[test]
+fn books_show_after_remove_notes_the_removed_books_before_their_failures_and_json_leaves_the_note_out()
+ {
+    let dir = tempfile::tempdir().unwrap();
+    run(dir.path(), &["books", "remove", "2", "5", "--yes"]).success();
+
+    run(dir.path(), &["books", "show", "1", "2", "5"])
+        .code(1)
+        .stdout_eq(file!["golden/books-show-1-2-5-after-remove-2-5.txt"].raw())
+        .stderr_eq(file!["golden/books-show-1-2-5-after-remove-2-5.stderr"].raw());
+    run(dir.path(), &["books", "show", "1", "2", "5", "--json"])
+        .code(1)
+        .stdout_eq(file!["golden/books-show-1-2-5-after-remove-2-5-json.json"].raw())
+        .stderr_eq("");
+}
+
+#[test]
+fn books_summarize_after_remove_notes_the_removed_books_it_leaves_out_and_json_leaves_the_note_out()
+{
+    let dir = tempfile::tempdir().unwrap();
+    run(dir.path(), &["books", "remove", "2", "5", "--yes"]).success();
+
+    run(dir.path(), &["books", "summarize"])
+        .success()
+        .stdout_eq(file!["golden/books-summarize-after-remove-2-5.txt"].raw())
+        .stderr_eq(file!["golden/books-summarize-after-remove-2-5.stderr"].raw());
+    run(dir.path(), &["books", "summarize", "--json"])
+        .success()
+        .stdout_eq(file!["golden/books-summarize-after-remove-2-5-json.json"].raw())
+        .stderr_eq("");
+}

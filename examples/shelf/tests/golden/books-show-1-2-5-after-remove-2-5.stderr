@@ -1,0 +1,9 @@
+note: books 2, 5 are in the catalogue but were removed from the shelf.
+error: the catalogue has no book 2
+  key:   2 (index 1)
+  help:  run `shelf books list`
+  code:  shelf::books::not_found
+error: the catalogue has no book 5
+  key:   5 (index 2)
+  help:  run `shelf books list`
+  code:  shelf::books::not_found

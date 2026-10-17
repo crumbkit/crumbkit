@@ -24,7 +24,9 @@ mod tests;
 /// standard error after the text, as a batch prints its failures. A prose
 /// result with at least one failure exits with the exit code of its first
 /// failure, which is 1 unless the tool's guide lists that failure's code
-/// under one of its exits (ADR-0037).
+/// under one of its exits (ADR-0037). [`Prose::note`] adds a line that the
+/// text prints on standard error before the failures, as a listing's note
+/// prints.
 ///
 /// `--fields`, `--long` and `--full` are refused for a prose result,
 /// because it has no columns.
@@ -61,6 +63,9 @@ pub struct Prose<T, E = Error> {
     value: T,
     /// The failures that the answer leaves out, in the order they print.
     failures: Vec<E>,
+    /// The line that the text output prints on standard error after the
+    /// text, such as the path of the file that the answer comes from.
+    note: Option<String>,
 }
 
 impl<T, E> Prose<T, E> {
@@ -70,6 +75,7 @@ impl<T, E> Prose<T, E> {
         Self {
             value,
             failures: Vec::new(),
+            note: None,
         }
     }
 
@@ -77,7 +83,22 @@ impl<T, E> Prose<T, E> {
     /// leaves out, which print in the order given.
     #[must_use]
     pub const fn with_failures(value: T, failures: Vec<E>) -> Self {
-        Self { value, failures }
+        Self {
+            value,
+            failures,
+            note: None,
+        }
+    }
+
+    /// Sets the note: a line that the text output prints on standard error
+    /// after the text and before any failure, such as `Read from
+    /// /home/ada/books.toml`. The text carries its
+    /// own full stop when it needs one. The JSON document leaves it out, as
+    /// it leaves out a listing's note ([`Listing::note`](crate::Listing::note)).
+    #[must_use]
+    pub fn note(mut self, text: impl Into<String>) -> Self {
+        self.note = Some(text.into());
+        self
     }
 }
 
@@ -100,6 +121,10 @@ impl<T: Serialize + JsonSchema + fmt::Display, E: AsFailure> Rows for Prose<T, E
 
     fn failures(&self) -> Option<Vec<&dyn Failure>> {
         Some(self.failures.iter().map(AsFailure::as_failure).collect())
+    }
+
+    fn note(&self) -> Option<&str> {
+        self.note.as_deref()
     }
 
     fn prose(&self) -> Option<&dyn fmt::Display> {

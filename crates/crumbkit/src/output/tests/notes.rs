@@ -1,7 +1,8 @@
 //! Tests for where `finish_to` prints the lines that describe a result: a
-//! listing's footer, its empty note, the tool's note, the `Next:` line, the
-//! cut line and the dry-run line all go to the error writer, after the
-//! output writer is flushed (ADR-0050).
+//! listing's footer, its empty note, the note of a listing, a batch or a
+//! prose result, the `Next:` line, the cut line and the dry-run line all go
+//! to the error writer, after the output writer is flushed (ADR-0050,
+//! ADR-0077).
 
 use std::cell::RefCell;
 use std::fmt;
@@ -12,12 +13,14 @@ use std::rc::Rc;
 use clap::CommandFactory as _;
 
 use super::{
-    PLANET_LISTING, PLANETS, Planet, Tool, finish_output, finish_with, mercury, parse_against,
-    saturn,
+    PLANET_LISTING, PLANETS, Planet, Tool, built_with, finish_output, finish_with, mercury,
+    parse_against, saturn,
 };
 use crate::answered::answered;
+use crate::help::Guide;
 use crate::{
-    Batch, Call, Code, Document, Error, Failure, Listing, Recovery, Sink, Spelling, finish_to,
+    Batch, Call, Code, Document, Error, Failure, Listing, Prose, Recovery, Sink, Spelling,
+    finish_to,
 };
 
 /// Returns a listing of Mercury and Saturn out of 8 planets, with a note and
@@ -169,8 +172,6 @@ impl Failure for Gone {
 
 #[test]
 fn a_dry_runs_line_prints_on_standard_error_after_a_batchs_failures() {
-    const SHOWN: Document<Batch<Planet, Gone>> =
-        Document::new("solar", "planets-show", 1, "The test rows.");
     let mut output = parse_against(Tool::command(), &[]);
     output.dry_run = true;
     let finished = finish_output(&mut output, SHOWN, answered(vec![saturn()], vec![Gone]));
@@ -199,4 +200,128 @@ fn a_dry_runs_line_prints_on_standard_error_after_a_list() {
 
     assert_eq!(finished.out, "NAME    MOONS\nSaturn  274\n");
     assert_eq!(finished.err, "This was a dry run, so nothing changed.\n");
+}
+
+/// The answer of a command that counts planets, which prints as one sentence.
+#[derive(serde::Serialize, schemars::JsonSchema)]
+struct Count {
+    /// The number of planets.
+    planets: u32,
+}
+
+impl fmt::Display for Count {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "The solar system has {} planets.", self.planets)
+    }
+}
+
+const COUNT: Document<Prose<Count, Gone>> =
+    Document::new("solar", "count", 1, "The number of planets.");
+
+const SHOWN: Document<Batch<Planet, Gone>> =
+    Document::new("solar", "planets-show", 1, "The test rows.");
+
+#[test]
+fn a_prose_results_note_prints_on_standard_error_after_its_text_is_flushed() {
+    let prose = Prose::new(Count { planets: 8 }).note("Catalogue: solar.toml");
+    let finished = finish_with(&[], COUNT, prose);
+
+    assert_eq!(finished.code, ExitCode::SUCCESS);
+    assert_eq!(finished.out, "The solar system has 8 planets.\n");
+    assert_eq!(finished.err, "Catalogue: solar.toml\n");
+}
+
+#[test]
+fn a_prose_results_json_leaves_its_note_out() {
+    let prose = Prose::new(Count { planets: 8 }).note("Catalogue: solar.toml");
+    let finished = finish_with(&["--json"], COUNT, prose);
+
+    assert!(!finished.out.contains("solar.toml"), "{}", finished.out);
+    assert_eq!(finished.err, "");
+}
+
+#[test]
+fn a_prose_results_note_prints_before_its_failures() {
+    let prose =
+        Prose::with_failures(Count { planets: 8 }, vec![Gone]).note("Catalogue: solar.toml");
+    let finished = finish_with(&[], COUNT, prose);
+
+    assert_eq!(finished.code, ExitCode::FAILURE);
+    assert!(
+        finished
+            .err
+            .starts_with("Catalogue: solar.toml\nerror: Vulcan is gone\n"),
+        "{}",
+        finished.err
+    );
+}
+
+#[test]
+fn a_batchs_note_prints_on_standard_error_before_its_failures_and_the_dry_runs_line() {
+    let mut output = parse_against(Tool::command(), &[]);
+    output.dry_run = true;
+    let batch = answered(vec![saturn()], vec![Gone]).note("Pluto is not a planet.");
+    let finished = finish_output(&mut output, SHOWN, batch);
+
+    assert_eq!(finished.code, ExitCode::FAILURE);
+    assert_eq!(finished.out, "NAME    MOONS\nSaturn  274\n");
+    assert!(
+        finished
+            .err
+            .starts_with("Pluto is not a planet.\nerror: Vulcan is gone\n"),
+        "{}",
+        finished.err
+    );
+    assert!(
+        finished
+            .err
+            .ends_with("\nThis was a dry run, so nothing changed.\n"),
+        "{}",
+        finished.err
+    );
+}
+
+#[test]
+fn a_batchs_json_leaves_its_note_out() {
+    let batch = answered(vec![saturn()], vec![Gone]).note("Pluto is not a planet.");
+    let finished = finish_with(&["--json"], SHOWN, batch);
+
+    assert!(!finished.out.contains("Pluto"), "{}", finished.out);
+    assert_eq!(finished.err, "");
+}
+
+#[test]
+fn a_batch_that_the_output_budget_cuts_prints_its_note_before_the_failure_that_names_the_keys_left_out()
+ {
+    let guide = Guide::new().output_budget(1024, "the tests print little");
+    let mut output = built_with(Tool::command(), &guide, &["tool", "list"]);
+    let rows: Vec<Planet> = (0..100).map(|_| mercury()).collect();
+    let batch = answered::<Planet, Gone>(rows, Vec::new()).note("Pluto is not a planet.");
+    let finished = finish_output(&mut output, SHOWN, batch);
+
+    assert_eq!(finished.code, ExitCode::FAILURE);
+    assert!(
+        finished.err.starts_with("Pluto is not a planet.\nerror: ")
+            && finished
+                .err
+                .contains("more answers did not fit in the output budget"),
+        "{}",
+        finished.err
+    );
+}
+
+#[test]
+fn a_batch_that_answers_each_key_left_out_prints_its_note_before_those_failures() {
+    let guide = Guide::new().output_budget(1024, "the tests print little");
+    let mut output = built_with(Tool::command(), &guide, &["tool", "list"]);
+    let rows: Vec<Planet> = (0..100).map(|_| mercury()).collect();
+    let batch = answered::<Planet, Gone>(rows, Vec::new()).note("Pluto is not a planet.");
+    let finished = finish_output(&mut output, SHOWN.left_out_per_key(), batch);
+
+    assert_eq!(finished.code, ExitCode::FAILURE);
+    assert!(
+        finished.err.starts_with("Pluto is not a planet.\nerror: "),
+        "{}",
+        finished.err
+    );
 }

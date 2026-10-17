@@ -446,3 +446,21 @@ fn a_headed_batch_whose_row_type_has_no_columns_prints_its_bytes_and_every_field
         json.out
     );
 }
+
+#[test]
+fn a_headed_batchs_note_prints_on_standard_error_whether_or_not_every_answer_fits() {
+    let whole = finish_pages(&[], batch(&[("a", Some(b"x\n"))]).note("Pages: ./pages"));
+    assert_eq!(whole.err, "Pages: ./pages\n");
+
+    let half = vec![b'x'; 400];
+    let names = ["a", "b", "c", "d"];
+    let answers: Vec<(&str, Option<&[u8]>)> =
+        names.iter().map(|name| (*name, Some(&half[..]))).collect();
+    let cut = finish(&[], BUDGET, PAGES, batch(&answers).note("Pages: ./pages"));
+    assert!(
+        cut.err
+            .starts_with("Pages: ./pages\nerror: 2 more answers did not fit"),
+        "{}",
+        cut.err
+    );
+}

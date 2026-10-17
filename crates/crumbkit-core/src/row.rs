@@ -216,8 +216,9 @@ pub trait Rows: Serialize + sealed::Sealed {
         None
     }
 
-    /// Returns the line that the text output prints after the table and any
-    /// footer. Only a `Listing` returns one.
+    /// Returns the line that the text output prints on standard error after
+    /// the result and any footer, and before any failure. A `Listing`, a
+    /// `Batch` and a `Prose` return one when the tool set it.
     fn note(&self) -> Option<&str> {
         None
     }

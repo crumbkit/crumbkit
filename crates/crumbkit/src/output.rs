@@ -402,7 +402,7 @@ pub fn finish<T: Rows, E: AsFailure>(
 /// cut. In
 /// text, a note such as `note: 2 of the aliases report a problem, so the
 /// command exits with 1.` goes to the error writer after the footer and
-/// before the tool's note (ADR-0050).
+/// before the note of a listing, a batch or a prose result (ADR-0050).
 ///
 /// [books-show-7]: https://github.com/crumbkit/crumbkit/blob/main/examples/shelf/tests/golden/books-show-7.stderr
 pub fn finish_to<T: Rows, E: AsFailure, O: Write, W: Write>(

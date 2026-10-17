@@ -75,7 +75,9 @@ Why: ADR-0046, ADR-0064.
 
 A batch prints the rows that fit in input order and always its first row,
 then ends with one failure, `crumbkit::output::over_budget`. The run exits
-with code 1. The failure has these fields:
+with code 1. In text, the batch's note prints on standard error before its
+failures, and the note of the rows that report a problem does not print,
+because the failure decides the exit. The failure has these fields:
 
 - `left_out` lists the keys of the answers it left out as text, in the
   caller's order. A key that the caller gave twice is listed twice. A key
@@ -144,7 +146,7 @@ the budget in the same way. In text, and in any other document without the envel
 prints on standard error, which the budget does not count, so it lists every
 key.
 
-Why: ADR-0046, ADR-0059, ADR-0070.
+Why: ADR-0046, ADR-0059, ADR-0070, ADR-0077.
 
 ### One failure for each answer left out
 
@@ -202,7 +204,7 @@ when it is not the first row that prints.
 
 Each failure prints on standard error with the batch's other failures, in the
 order of their keys, and the failure that names the rows left out prints
-last. The run exits with the code of the first failure. With `--json` a
+last. The batch's note, when it has one, prints before these failures. The run exits with the code of the first failure. With `--json` a
 headed batch is budgeted as any other batch.
 
 Why: ADR-0062, ADR-0068.

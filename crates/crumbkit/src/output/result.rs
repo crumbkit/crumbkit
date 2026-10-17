@@ -354,6 +354,16 @@ impl<'a, T: Rows> Prepared<'a, T> {
         }
     }
 
+    /// Sends the lines that describe a batch whose first `shown` rows print
+    /// and whose later answers the output budget leaves out, as
+    /// [`Prepared::send_notes`] does. The failure of the answers left out
+    /// decides the exit, so the note of the rows that report a problem,
+    /// which names the exit, does not print, and the tool's note does.
+    fn send_notes_before_left_out(&mut self, err: &mut impl Write, shown: usize) {
+        self.problems = 0;
+        self.send_notes(err, &mut Vec::new(), shown, None);
+    }
+
     /// Writes the lines that describe the result to `out`: in text, the cut
     /// line, or else the footer and the empty note, then the note of the
     /// rows that report a problem, the tool's note and the `Next:` line; with `--json`, only the cut line of a document

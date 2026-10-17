@@ -1,7 +1,7 @@
 # ADR-0050. Listings
 
 - Date: 2026-10-12
-- Status: accepted
+- Status: amended by ADR-0077
 
 ## Context
 

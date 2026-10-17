@@ -9,7 +9,7 @@ use crumbkit::{Document, Prose};
 use schemars::JsonSchema;
 use serde::Serialize;
 
-use super::{BooksError, CATALOGUE, Form, find, read_removed};
+use super::{BooksError, CATALOGUE, Form, find, joined, read_removed};
 use crate::cli::BooksSummarize;
 
 /// The document that `shelf books summarize` prints: the counts and years of
@@ -89,7 +89,8 @@ fn counted(count: u32, one: &str, many: &str) -> String {
 ///
 /// The result holds one `BooksError::NotFound` naming every id that the
 /// shelf lacks, each once and in the order given, and no failure when
-/// every id names a book.
+/// every id names a book. A summary of the whole shelf notes the books of
+/// the catalogue that it leaves out because they were removed.
 ///
 /// # Errors
 ///
@@ -140,5 +141,23 @@ pub(crate) fn summarize(
     } else {
         vec![BooksError::NotFound { ids: missing }]
     };
-    Ok(Prose::with_failures(summary, failures))
+    let prose = Prose::with_failures(summary, failures);
+    if !args.ids.is_empty() {
+        return Ok(prose);
+    }
+    let left_out: Vec<u32> = CATALOGUE
+        .iter()
+        .map(|book| book.id)
+        .filter(|id| removed.contains(id))
+        .collect();
+    Ok(match left_out.as_slice() {
+        [] => prose,
+        [id] => prose.note(format!(
+            "note: the summary leaves out book {id}, which was removed from the shelf."
+        )),
+        ids => prose.note(format!(
+            "note: the summary leaves out books {}, which were removed from the shelf.",
+            joined(ids)
+        )),
+    })
 }

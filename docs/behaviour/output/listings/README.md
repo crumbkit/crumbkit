@@ -32,7 +32,11 @@ that report a problem, the tool's note, the `Next:` line and the dry-run line.
 [Output](../README.md#standard-output-and-standard-error) describes how these
 lines reach standard error.
 
-Why: ADR-0016, ADR-0050.
+A [batch and a prose result](../shapes/README.md) carry the tool's note in
+the same way, through `Batch::note` and `Prose::note`, and it prints in the
+same place in this order. A list of rows, such as a `Vec`, has no note.
+
+Why: ADR-0016, ADR-0050, ADR-0077.
 
 ## A listing with no rows
 

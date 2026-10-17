@@ -78,6 +78,7 @@ impl<T: Rows> Prepared<'_, T> {
                 self.send_notes(err, &mut Vec::new(), rows, None);
                 return Ok((Answer::Whole, bytes));
             }
+            self.send_notes_before_left_out(err, shown);
             let answer = Answer::Keyed {
                 each,
                 left_out: None,
@@ -109,6 +110,7 @@ impl<T: Rows> Prepared<'_, T> {
         };
         let bytes = self.measured_write(out, shown, None, Some(failures))?;
         let each = each.split_off(from.min(each.len()));
+        self.send_notes_before_left_out(err, shown);
         let answer = Answer::Keyed {
             each,
             left_out: None,

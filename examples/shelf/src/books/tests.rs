@@ -208,3 +208,71 @@ fn summarize_serializes_its_counts_and_the_years_of_the_books_it_found() {
         })
     );
 }
+
+/// Returns a file of removed books that holds `ids`, kept in a temporary
+/// directory that the caller holds.
+fn removed_books(ids: &str) -> (tempfile::TempDir, std::path::PathBuf) {
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("removed.txt");
+    #[expect(
+        clippy::disallowed_methods,
+        reason = "this helper owns the tests' file writes, which set up the file of removed books"
+    )]
+    std::fs::write(&path, ids).unwrap();
+    (dir, path)
+}
+
+#[test]
+fn show_notes_which_of_the_missing_ids_name_books_removed_from_the_shelf() {
+    let (_dir, removed) = removed_books("2\n5\n");
+    let args = BooksShow {
+        ids: vec![1, 2, 7, 5],
+        from: None,
+    };
+
+    let batch = show(&args, Some(&removed), roomy()).unwrap();
+
+    assert_eq!(
+        crumbkit::Rows::note(&batch),
+        Some("note: books 2, 5 are in the catalogue but were removed from the shelf.")
+    );
+}
+
+#[test]
+fn show_has_no_note_when_no_id_names_a_removed_book() {
+    let (_dir, removed) = removed_books("2\n");
+    let args = BooksShow {
+        ids: vec![1, 7],
+        from: None,
+    };
+
+    let batch = show(&args, Some(&removed), roomy()).unwrap();
+
+    assert_eq!(crumbkit::Rows::note(&batch), None);
+}
+
+#[test]
+fn summarize_without_ids_notes_the_removed_books_it_leaves_out() {
+    let (_dir, removed) = removed_books("2\n");
+    let args = BooksSummarize { ids: Vec::new() };
+
+    let prose = summarize(&args, Some(&removed)).unwrap();
+
+    assert_eq!(
+        prose.prose().unwrap().to_string(),
+        "5 books by 5 authors, first published from 1813 to 1892: 4 novels and 1 collection of short stories."
+    );
+    assert_eq!(
+        crumbkit::Rows::note(&prose),
+        Some("note: the summary leaves out book 2, which was removed from the shelf.")
+    );
+}
+
+#[test]
+fn summarize_has_no_note_when_no_book_was_removed() {
+    let args = BooksSummarize { ids: Vec::new() };
+
+    let prose = summarize(&args, None).unwrap();
+
+    assert_eq!(crumbkit::Rows::note(&prose), None);
+}

@@ -585,6 +585,9 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit-test: [`check_opt_outs`] lists sorted JSON keys as the
   `json-keys` customisation of every run
   ([behaviour/adoption/declarations]).
+- crumbkit: [`Prose`] and [`Batch`] take a `note`, which text prints on
+  standard error where a listing's note prints, before any failures, and
+  which the JSON document leaves out ([behaviour/output/listings]).
 
 ### Changed
 

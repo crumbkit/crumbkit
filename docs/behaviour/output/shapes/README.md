@@ -32,7 +32,14 @@ out its own over-budget failure at its key's position instead, so its first
 failure is the first in key order
 ([one failure for each answer left out](../budget/README.md#one-failure-for-each-answer-left-out)).
 
-Why: ADR-0016, ADR-0068.
+`Batch::note` sets a line that the text prints on standard error after the
+rows and before the failures, in the place of a
+[listing's note](../listings/README.md#the-lines-that-describe-a-listing). It
+prints also when the output budget leaves out some answers, and the JSON
+document leaves it out. shelf's `books show` notes which of the ids it
+cannot find name books that were removed from the shelf.
+
+Why: ADR-0016, ADR-0068, ADR-0077.
 
 ## Prose
 
@@ -45,7 +52,13 @@ and `--full` are refused for a prose result as a refused command line. The
 hint of `--fields` and `--long` names `--json`, and the hint of `--full` says
 that `--json` already prints the whole result.
 
-Why: ADR-0016.
+`Prose::note` sets a line that the text prints on standard error after the
+text and before the failures, as a batch's note prints, and the JSON
+document leaves it out. A prose result that the output budget refuses
+prints no note. shelf's `books summarize` notes the removed books that a
+summary of the whole shelf leaves out.
+
+Why: ADR-0016, ADR-0077.
 
 ## Bytes
 

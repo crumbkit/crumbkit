@@ -101,6 +101,7 @@ impl<T: Rows> Prepared<'_, T> {
             });
             self.measured_write(out, shown, None, Some(failures(prepared.as_ref())))?
         };
+        self.send_notes_before_left_out(err, shown);
         Ok((Answer::Partial(over), bytes))
     }
 
