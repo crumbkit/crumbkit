@@ -149,5 +149,6 @@ Why: ADR-0050, ADR-0016.
 ## Result shapes
 
 The [result shapes](shapes/README.md) page covers batches, prose, bytes,
-headed bytes, rows printed whole, documents without the envelope, and
-documents with the tool's own keys, including listings without a total.
+headed bytes, rows printed whole, rows with their own text line, documents
+without the envelope, and documents with the tool's own keys, including
+listings without a total.

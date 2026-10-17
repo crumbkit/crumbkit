@@ -82,6 +82,10 @@ mod tests;
 /// - a leaf whose row type sets `Row::WHOLE`, names no columns in either
 ///   list and has fields in its JSON Schema, because those fields could be
 ///   the columns of a table (ADR-0065);
+/// - a leaf whose row type's `Row::LINE` is not one non-empty line,
+///   because help shows the form on one line, and a headed leaf whose row
+///   type sets `Row::LINE`, because a headed batch's text prints each row's
+///   bytes and never the line (ADR-0064);
 /// - a leaf column without a description, naming the field whose doc
 ///   comment is missing, because `--help` lists the column without one;
 /// - a leaf whose row type's `Row::PROBLEM` names a field that is not one
@@ -353,6 +357,7 @@ fn check_leaves(command: &Command, guide: &Guide, problems: &mut Vec<String>) {
             }
         }
         check_columns(&text, leaf, problems);
+        check_line(&text, leaf, problems);
     }
     for visit in tree::walk_visible(command) {
         let named = leaves
@@ -411,6 +416,28 @@ fn check_columns(text: &str, leaf: &Leaf, problems: &mut Vec<String>) {
                 "{text}: the column `{name}` has no description, because the field `{name}` of the row type has no doc comment"
             ));
         }
+    }
+}
+
+/// Adds a problem to `problems` when the leaf at `text` declares a text
+/// line form, `Row::LINE`, that is not one non-empty line, or declares one
+/// for a headed document, whose text never prints it (ADR-0064).
+fn check_line(text: &str, leaf: &Leaf, problems: &mut Vec<String>) {
+    let Some(line) = leaf.line() else {
+        return;
+    };
+    if line.trim().is_empty() || line.contains(['\n', '\r']) {
+        problems.push(format!(
+            "{text}: the row type's LINE is not one non-empty line, so help cannot show the form of each row's line on one line; write the form as one line, such as `<ID> <TITLE>`"
+        ));
+    }
+    if leaf
+        .get_document()
+        .is_some_and(|document| document.is_headed())
+    {
+        problems.push(format!(
+            "{text}: the row type declares LINE and the document is headed, so its text prints each row's bytes and never the line; remove LINE or the headed form"
+        ));
     }
 }
 

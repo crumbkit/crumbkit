@@ -369,3 +369,81 @@ fn field_names_from_another_system_are_one_field_names_customisation_of_every_ru
     );
     assert_eq!(list.as_array().unwrap().len(), 2);
 }
+
+/// A removed book whose text is its own line.
+#[derive(serde::Serialize, schemars::JsonSchema)]
+struct Removed {
+    /// The book's id.
+    id: u32,
+}
+
+impl crumbkit::Row for Removed {
+    const COLUMNS: &'static [&'static str] = &["id"];
+    const LINE: Option<&'static str> = Some("removed <ID>");
+}
+
+#[test]
+fn rows_that_print_their_own_text_line_are_a_text_line_customisation() {
+    const BOOKS_REMOVE: Document<Vec<Removed>> =
+        Document::new("shelf", "books-remove", 1, "The removed books.");
+    const GUIDE: Guide =
+        Guide::new().leaves(&[Leaf::new(&["books", "remove"]).document(BOOKS_REMOVE)]);
+
+    let list = customisations(&Command::new("shelf"), &GUIDE);
+
+    let list = serde_json::to_value(&list).unwrap();
+    assert_eq!(
+        list,
+        json!([{
+            "declaration": "text-line",
+            "applies_to": "shelf books remove",
+            "declares": "The text prints each row as the line removed <ID> in place of a table row.",
+        }])
+    );
+}
+
+/// A book that prints whole in JSON and as its own line in text.
+#[derive(serde::Serialize, schemars::JsonSchema)]
+struct WholeLined {
+    /// The book's id.
+    id: u32,
+}
+
+impl crumbkit::Row for WholeLined {
+    const COLUMNS: &'static [&'static str] = &["id"];
+    const WHOLE: bool = true;
+    const LINE: Option<&'static str> = Some("book <ID>");
+}
+
+#[test]
+fn the_report_lists_the_rows_whole_opt_out_and_the_text_line_customisation_of_one_leaf() {
+    const BOOKS_SHOW: Document<Vec<WholeLined>> =
+        Document::new("shelf", "books-show", 1, "The books.");
+    const GUIDE: Guide = Guide::new().leaves(&[Leaf::new(&["books", "show"]).document(BOOKS_SHOW)]);
+    const ALLOW: &[crate::Allow] = &[crate::Allow::new(
+        crate::Rule::RowsWhole,
+        "books show",
+        "Scripts read every field of each book.",
+    )];
+    let dir = TempDir::new("opt-outs-whole-lined").unwrap();
+
+    super::super::check(
+        &super::shelf(),
+        &GUIDE,
+        ALLOW,
+        &crate::Budgets::new(),
+        None,
+        dir.path(),
+        &snapbox::Assert::new().action(Action::Overwrite),
+    );
+
+    let text = read(&dir, "opt-outs.txt");
+    assert!(
+        text.contains("documents/rows-whole: shelf books show\n"),
+        "{text}"
+    );
+    assert!(text.contains("text-line: shelf books show\n"), "{text}");
+    let json: Value = serde_json::from_str(&read(&dir, "opt-outs.json")).unwrap();
+    assert_eq!(json["data"][0]["rule"], json!("documents/rows-whole"));
+    assert_eq!(json["customisations"][0]["declaration"], json!("text-line"));
+}

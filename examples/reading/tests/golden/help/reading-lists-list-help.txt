@@ -1,0 +1,41 @@
+List reading's lists, each as one line with its about text
+
+Usage: reading lists list [OPTIONS]
+
+Options:
+      --limit <N>
+          Print at most this many rows
+          
+          [default: 10]
+
+      --all
+          Print every row
+
+      --json
+          Print the result as a JSON document
+
+      --fields <FIELD>
+          Print only these comma-separated fields, in this order
+
+      --full
+          With --json, print every field of every row
+
+      --no-input
+          Fail instead of asking a question
+
+  -h, --help
+          Print help (see a summary with '-h')
+
+Examples:
+  reading lists list
+          Print each reading list as one line with its about text
+
+  reading lists list --fields name
+          Print the name of each reading list as a table
+
+Columns:
+  name   The list's name, which is also the name of its command.
+  about  The list's about text, from the first line of its file.
+
+Effects: read-only, closed-world.
+Text: one line per row, <NAME>: <ABOUT>; --fields prints a table.

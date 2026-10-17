@@ -24,6 +24,7 @@ mod export;
 mod set;
 mod show;
 mod stream;
+mod summary;
 #[cfg(test)]
 mod tests;
 
@@ -31,6 +32,7 @@ pub(crate) use self::export::{ENTRIES_EXPORT, export};
 pub(crate) use self::set::{ENTRIES_SET, set};
 pub(crate) use self::show::{LISTS_SHOW, show};
 pub(crate) use self::stream::{ENTRIES_STREAM, stream_entries};
+pub(crate) use self::summary::{LISTS_LIST, summaries};
 
 /// The document that `reading entries list` and the list command of each
 /// list print: one page of a list's entries, with the number of entries

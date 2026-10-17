@@ -268,6 +268,13 @@
             null
           ]
         },
+        "line": {
+          "description": "The form of the text line that each row prints in place of a table row, such as `<POINTER> -> <TARGET>`, or null when the rows print a table or the command declares no document.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
         "long_about": {
           "description": "The full description that the command's `--help` shows, when the command has one.",
           "type": [
@@ -318,6 +325,7 @@
         "examples",
         "columns",
         "form",
+        "line",
         "exits",
         "effects",
         "writes"

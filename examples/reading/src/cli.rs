@@ -13,7 +13,7 @@ use crumbkit::{DryRun, Expect, NoInput, Output, Page, Yes};
 use crumbkit_picker::Menu;
 
 use crate::lists::{
-    ENTRIES_EXPORT, ENTRIES_LIST, ENTRIES_SET, ENTRIES_STREAM, LISTS_SHOW, choices,
+    ENTRIES_EXPORT, ENTRIES_LIST, ENTRIES_SET, ENTRIES_STREAM, LISTS_LIST, LISTS_SHOW, choices,
 };
 
 /// Keep reading lists, and print the entries of each.
@@ -111,6 +111,13 @@ pub const GUIDE: Guide = Guide::new().picker(&MENU).leaves(&[
         ])
         .effects(Effects::replacing())
         .document(ENTRIES_SET),
+    Leaf::new(&["lists", "list"])
+        .examples(&[
+            Example::new(&[], "Print each reading list as one line with its about text"),
+            Example::new(&["--fields", "name"], "Print the name of each reading list as a table"),
+        ])
+        .effects(Effects::read_only())
+        .document(LISTS_LIST),
     Leaf::new(&["lists", "show"])
         .examples(&[
             Example::new(
@@ -192,6 +199,8 @@ pub(crate) enum EntriesCommand {
 /// The commands for reading's lists as a whole.
 #[derive(Debug, Subcommand)]
 pub(crate) enum ListsCommand {
+    /// List reading's lists, each as one line with its about text.
+    List(ListsList),
     /// Print the file of each reading list named, each under a header when there are several.
     Show(ListsShow),
 }
@@ -238,6 +247,14 @@ pub(crate) struct EntriesExport {
     /// The name of the reading list, such as to-read
     #[arg(long, value_name = "NAME")]
     pub(crate) list: String,
+}
+
+/// The arguments of `reading lists list`.
+#[derive(Debug, Args)]
+pub(crate) struct ListsList {
+    /// How many lists to print.
+    #[command(flatten)]
+    pub(crate) page: Page<10>,
 }
 
 /// The arguments of `reading lists show`.

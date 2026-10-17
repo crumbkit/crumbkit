@@ -73,10 +73,14 @@ pub(super) const fn require_for_stream<R: Row>() {
 
 /// Returns the columns that the table and the compact JSON show, or an
 /// empty list, which does not allocate, when the result prints whole with
-/// every field or is a prose result, which `prose` marks. Unwrapped or
-/// headed JSON, and the JSON of a row type that prints whole, hold every
-/// field unless `--fields` names some (ADR-0062, ADR-0065).
+/// every field, is a prose result, which `prose` marks, or prints each
+/// row's own text line. Unwrapped or headed JSON, and the JSON of a row type
+/// that prints whole, hold every field unless `--fields` names some
+/// (ADR-0062, ADR-0065).
 pub(super) fn columns<T: Rows>(output: &Output, document: Document<T>, prose: bool) -> Vec<&str> {
+    if super::lines::chosen::<T::Row>(output) {
+        return Vec::new();
+    }
     let unwrapped =
         output.json && (!document.has_envelope() || document.is_headed() || T::Row::WHOLE);
     let selects = if unwrapped {
@@ -114,10 +118,12 @@ pub(super) fn values<T: Rows>(columns: &[&str], value: &T) -> io::Result<Vec<Val
 }
 
 /// Returns whether the text of rows of type `R` prints each row as one line
-/// of compact JSON in place of a table, because `R` sets `Row::WHOLE` and
-/// names no columns (ADR-0065).
+/// of compact JSON in place of a table, because `R` sets `Row::WHOLE`,
+/// names no columns and declares no `Row::LINE` (ADR-0065). A row type with
+/// a `LINE` prints each row's own line in text, and only a row whose
+/// `text_line` returns `None` prints as JSON (ADR-0064).
 pub(super) const fn json_lines<R: Row>() -> bool {
-    R::WHOLE && R::COLUMNS.is_empty() && R::LONG_COLUMNS.is_empty()
+    R::WHOLE && R::LINE.is_none() && R::COLUMNS.is_empty() && R::LONG_COLUMNS.is_empty()
 }
 
 /// Writes `row` to `out` as one line of compact JSON, with the keys of each

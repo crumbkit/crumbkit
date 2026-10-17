@@ -150,7 +150,9 @@ the keys, the type and whether the summary prints at the top), each leaf
 that passes on an exit code, each leaf that declares
 refusal alternatives, the guide's refusal function once for every run, the
 guide's key order as one `json-keys` customisation of every run,
-`failures_in_order`, and `left_out_per_key`. A leaf's code rename, and an exit that lists a code
+`failures_in_order`, `left_out_per_key`, and each leaf whose row type
+declares `Row::LINE` (as a `text-line` customisation that names the form of
+the line). A leaf's code rename, and an exit that lists a code
 that only a leaf renames, apply to that leaf's command line. The
 dashed-forms declaration is listed once, followed by each command named in another style as a `resource-name` or a `verb-name`
 with the dashed form it also answers to.
@@ -160,4 +162,4 @@ as a `customisations` array beside `data`. The report does not list the
 completion variable, because `complete_with` sets it for the process and the
 guide does not hold it.
 
-Why: ADR-0056, ADR-0060, ADR-0061, ADR-0036, ADR-0035, ADR-0059, ADR-0067.
+Why: ADR-0056, ADR-0060, ADR-0061, ADR-0036, ADR-0035, ADR-0059, ADR-0064, ADR-0067.

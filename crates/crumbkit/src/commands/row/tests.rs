@@ -143,6 +143,37 @@ fn a_headed_row_has_the_headed_form_and_lists_its_json_fields_with_text_and_base
     );
 }
 
+/// A removed book whose text is its own line.
+#[derive(serde::Serialize, schemars::JsonSchema)]
+struct Removed {
+    /// The book's id.
+    id: u32,
+}
+
+impl crate::Row for Removed {
+    const COLUMNS: &'static [&'static str] = &["id"];
+    const LINE: Option<&'static str> = Some("removed <ID>");
+}
+
+#[test]
+fn a_row_holds_the_text_line_form_of_its_leaf_s_rows() {
+    const GUIDE: Guide = Guide::new().leaves(&[Leaf::new(&["books", "remove"]).document(
+        crate::Document::<Vec<Removed>>::new("shelf", "books-remove", 1, "The removed books."),
+    )]);
+
+    assert_eq!(row(&GUIDE)["line"], json!("removed <ID>"));
+}
+
+#[test]
+fn a_row_holds_a_null_line_when_its_leaf_s_rows_print_a_table() {
+    const BOOKS: crate::Document<Vec<Book>> =
+        crate::Document::new("shelf", "books-remove", 1, "The removed books.");
+    const GUIDE: Guide = Guide::new().leaves(&[Leaf::new(&["books", "remove"]).document(BOOKS)]);
+
+    assert_eq!(row(&GUIDE)["line"], Value::Null);
+    assert!(row(&Guide::new()).as_object().unwrap().contains_key("line"));
+}
+
 /// A row that serializes as an array of its values, so it has no columns.
 #[derive(serde::Serialize, schemars::JsonSchema)]
 struct Answer(u32, u32);
@@ -183,4 +214,27 @@ fn a_row_holds_the_form_document_when_the_leaf_s_whole_rows_have_columns() {
     const GUIDE: Guide = Guide::new().leaves(&[Leaf::new(&["books", "remove"]).document(BOOKS)]);
 
     assert_eq!(row(&GUIDE)["form"], json!("document"));
+}
+
+/// A row that serializes as an array, prints whole, and has its own text
+/// line.
+#[derive(serde::Serialize, schemars::JsonSchema)]
+struct Setting(u32, u32);
+
+impl crate::Row for Setting {
+    const COLUMNS: &'static [&'static str] = &[];
+    const WHOLE: bool = true;
+    const LINE: Option<&'static str> = Some("<KEY> = <VALUE>");
+}
+
+#[test]
+fn a_row_holds_the_form_document_and_the_line_when_whole_rows_without_columns_declare_a_line() {
+    const SETTINGS: crate::Document<Vec<Setting>> =
+        crate::Document::new("shelf", "books-remove", 1, "The settings.");
+    const GUIDE: Guide = Guide::new().leaves(&[Leaf::new(&["books", "remove"]).document(SETTINGS)]);
+
+    let row = row(&GUIDE);
+
+    assert_eq!(row["form"], json!("document"));
+    assert_eq!(row["line"], json!("<KEY> = <VALUE>"));
 }

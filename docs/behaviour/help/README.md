@@ -27,8 +27,11 @@ The lines print in this order, each only on the pages named:
    rows whose text is one line of JSON for each row
    ([streams](../output/streams.md),
    [headed bytes](../output/shapes/README.md#headed-bytes),
-   [rows printed whole](../output/shapes/README.md#rows-printed-whole)), then `Problems:` on a leaf whose row
-   type names a problem field.
+   [rows printed whole](../output/shapes/README.md#rows-printed-whole)), then
+   `Text:` on a leaf whose rows print their own text line, such as `Text:
+   one line per row, <NAME>: <ABOUT>; --fields prints a table.`
+   ([rows with their own text line](../output/shapes/README.md#rows-with-their-own-text-line)),
+   then `Problems:` on a leaf whose row type names a problem field.
 3. In `-h`, one line that names the visible global flags of the root and of
    each command on the way. `--help` lists those flags in full.
 4. On the root, a `Topics:` line that names the tool's topics and
@@ -44,7 +47,8 @@ version keep clap's colours only when standard output is a terminal and the
 guide keeps [terminal detection](../output/terminal.md) on. Help, the
 version, a topic and the topic list print to standard output with exit code 0.
 
-Why: ADR-0021, ADR-0024, ADR-0039, ADR-0041, ADR-0047, ADR-0049, ADR-0065.
+Why: ADR-0021, ADR-0024, ADR-0039, ADR-0041, ADR-0047, ADR-0049, ADR-0064,
+ADR-0065.
 
 ## The walk before parsing
 

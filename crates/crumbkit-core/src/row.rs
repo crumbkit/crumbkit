@@ -73,6 +73,30 @@ pub trait Row: Serialize + JsonSchema {
     /// its type is not a string, a boolean or a value that can be null.
     const PROBLEM: Option<&'static str> = None;
 
+    /// The form of the row's own text line as help shows it, such as
+    /// `<POINTER> -> <TARGET>`, or `None` when the row prints as a table
+    /// row (ADR-0064).
+    ///
+    /// When it is set, the default text prints each row's
+    /// [`Row::text_line`] in place of the table, without a header. `--long`
+    /// and `--fields` still print the table, because they name columns, and
+    /// `--json` is unchanged. The leaf's help prints the form on a `Text:`
+    /// line. crumbkit-test's `check_guide` fails a form that is not one
+    /// non-empty line, and a headed leaf whose row type sets it, because a
+    /// headed batch's text prints each row's bytes.
+    const LINE: Option<&'static str> = None;
+
+    /// Returns the row's own text line, without a line feed, or `None` when
+    /// the row has none. crumbkit reads it only when [`Row::LINE`] is set.
+    ///
+    /// crumbkit escapes each control character of the line, such as a line
+    /// feed as `\n`, and ends the line with a line feed, so each row stays
+    /// one line. A row that returns `None` prints as one line of compact
+    /// JSON with every field.
+    fn text_line(&self) -> Option<String> {
+        None
+    }
+
     /// Whether `--json` prints every field of each row as the type
     /// serializes it, without `--full`. The default is `false`, which
     /// prints only the columns without `--full` (ADR-0065).
@@ -86,7 +110,10 @@ pub trait Row: Serialize + JsonSchema {
     ///
     /// When `COLUMNS` and `LONG_COLUMNS` are both empty, as for a row that
     /// serializes as an array, the text prints each row as one line of
-    /// compact JSON with no header, and crumbkit refuses `--fields`.
+    /// compact JSON with no header, and crumbkit refuses `--fields`. A row
+    /// type that also declares [`Row::LINE`] prints each row's own line in
+    /// text instead, and prints a row as JSON only when its
+    /// [`Row::text_line`] returns `None` (ADR-0064).
     /// crumbkit-test's `check_guide` fails such a row type when its schema
     /// has properties, which could be columns, and `check_document_ids`
     /// fails a leaf whose row type sets it unless an opt-out from

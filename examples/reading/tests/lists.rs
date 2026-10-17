@@ -111,6 +111,22 @@ fn entries_list_names_the_list_to_print() -> io::Result<()> {
 }
 
 #[test]
+fn lists_list_prints_each_list_as_its_own_line_with_its_about_text() -> io::Result<()> {
+    reading(LISTS, &["lists", "list"])?
+        .success()
+        .stdout_eq("finished: Books finished this year\nto-read: Books to read next\n");
+    Ok(())
+}
+
+#[test]
+fn lists_list_with_fields_prints_crumbkit_s_table() -> io::Result<()> {
+    reading(LISTS, &["lists", "list", "--fields", "name"])?
+        .success()
+        .stdout_eq("NAME\nfinished\nto-read\n");
+    Ok(())
+}
+
+#[test]
 fn entries_list_of_a_list_that_does_not_exist_fails_with_a_next_step() -> io::Result<()> {
     reading(LISTS, &["entries", "list", "--list", "unread"])?
         .code(1)

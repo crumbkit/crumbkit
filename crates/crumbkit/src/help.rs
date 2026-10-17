@@ -31,6 +31,7 @@ pub use self::exit::Exit;
 pub use self::format::FileFormat;
 pub use self::leaf::{
     BYTES_LINE, Column, Example, HEADED_LINE, Leaf, RefusalContext, STREAM_LINE, WHOLE_LINE,
+    text_line,
 };
 pub use self::rename::Rename;
 pub use self::runtime::RuntimeLeaf;

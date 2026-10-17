@@ -36,8 +36,8 @@ pub(super) struct Customisation {
 /// exit code it passes on, whether it declares refusal alternatives,
 /// whether its batch prints its failures in input order
 /// (`Document::failures_in_order`), whether its batch answers each key that
-/// the output budget leaves out (`Document::left_out_per_key`), and each
-/// code rename of
+/// the output budget leaves out (`Document::left_out_per_key`), the form of
+/// its rows' own text line (`Row::LINE`, ADR-0064), and each code rename of
 /// [`Leaf::codes`](crumbkit::help::Leaf::codes). An exit that lists a code
 /// that only a leaf renames applies to that leaf's command. A declaration
 /// that a later change adds joins this list beside the declarations of the
@@ -208,6 +208,15 @@ fn leaf_customisations(command: &Command, leaf: &Leaf) -> Vec<Customisation> {
                        for each answer left out, at its key's position, in place of one failure \
                        that names them all."
                 .to_owned(),
+        });
+    }
+    if let Some(line) = leaf.line() {
+        list.push(Customisation {
+            declaration: "text-line",
+            applies_to: command_line(command, &leaf.path().join(" ")),
+            declares: format!(
+                "The text prints each row as the line {line} in place of a table row."
+            ),
         });
     }
     for rename in leaf.get_codes() {

@@ -31,7 +31,10 @@ path-budget/path: every path through reading
   Reason: reading's longest path, commands list, reads about 3,600 bytes, so 3,900 bytes leaves room for small changes and catches a page or an output that grows by much.
   Cost: None, because the budget is at or below crumbkit's default.
 
-reading declares 3 customisations, which need no reason.
+reading declares 4 customisations, which need no reason.
+
+text-line: reading lists list
+  Declares: The text prints each row as the line <NAME>: <ABOUT> in place of a table row.
 
 left-out-per-key: reading lists show
   Declares: When the output budget leaves out answers, the command prints one failure for each answer left out, at its key's position, in place of one failure that names them all.

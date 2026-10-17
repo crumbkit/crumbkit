@@ -7,7 +7,7 @@ use super::Streaming;
 use crate::Row;
 use crate::output::columns::{json_lines, write_json_line};
 use crate::output::envelope::{Extras, Selected, write_document};
-use crate::output::{table, unwrapped};
+use crate::output::{lines, table, unwrapped};
 
 impl<R: Row, O: Write, W: Write> Streaming<'_, R, O, W> {
     /// Writes `item` to the line, in the format that the flags choose.
@@ -27,6 +27,10 @@ impl<R: Row, O: Write, W: Write> Streaming<'_, R, O, W> {
                 item,
                 &Extras::none(),
             );
+        }
+        if self.lined {
+            line.extend_from_slice(lines::line(item, self.printing.style.keys)?.as_bytes());
+            return Ok(());
         }
         if !self.json && json_lines::<R>() {
             return write_json_line(line, item, self.printing.style.keys);

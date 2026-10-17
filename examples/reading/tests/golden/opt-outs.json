@@ -74,6 +74,11 @@
   ],
   "customisations": [
     {
+      "declaration": "text-line",
+      "applies_to": "reading lists list",
+      "declares": "The text prints each row as the line <NAME>: <ABOUT> in place of a table row."
+    },
+    {
       "declaration": "left-out-per-key",
       "applies_to": "reading lists show",
       "declares": "When the output budget leaves out answers, the command prints one failure for each answer left out, at its key's position, in place of one failure that names them all."

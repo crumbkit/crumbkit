@@ -582,6 +582,18 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit-test: [`check_document_ids`] fails a leaf whose listing leaves
   out `total` unless an opt-out from `documents/total` with a reason covers
   it ([behaviour/adoption/opt-outs]).
+- crumbkit: a [`Row`] that declares `LINE` and `text_line` prints each row
+  as its own line in text, with no header. `--long` and `--fields` print the
+  table, and help prints a `Text:` line ([behaviour/output]).
+- crumbkit: `commands list` gives each command a `line` field, and
+  crumbkit-markdown's reference prints the `Text:` line as help does
+  ([behaviour/help/commands-list]).
+- crumbkit: a row type that sets `Row::WHOLE`, names no columns and
+  declares `Row::LINE` prints each row's own line in text, and prints a row
+  as JSON only when its `text_line` returns `None` ([behaviour/output]).
+- crumbkit-test: [`check_guide`] fails a `Row::LINE` that is not one
+  non-empty line or that belongs to a headed leaf, and [`check_opt_outs`]
+  lists a `text-line` customisation ([behaviour/help/examples]).
 
 - crumbkit: `Guide::json_keys(KeyOrder::Sorted)` prints the keys of every
   JSON object in sorted order, in documents, stream lines, failures and the

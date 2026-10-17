@@ -31,7 +31,7 @@ let document = br#"{
   "data": [{
     "path": "shelf", "about": "Browse a small catalogue", "long_about": null,
     "arguments": [], "examples": [], "columns": [], "form": null,
-    "exits": [], "effects": null
+    "line": null, "exits": [], "effects": null
   }],
   "total": 1
 }"#;
@@ -44,8 +44,8 @@ assert!(reference.text().contains("\n## `shelf`\n\nBrowse a small catalogue\n"))
 
 The reference has one section for each command, in the order of the
 document. A section holds the command's description, links to its
-subcommands, its arguments, examples and columns, the effects and stream
-lines that its help prints, and its exit codes. Each heading's anchor is the
+subcommands, its arguments, examples and columns, the effects, stream and
+text lines that its help prints, and its exit codes. Each heading's anchor is the
 one GitHub gives it. The reference escapes the markup characters in help
 text and keeps its code spans.
 
