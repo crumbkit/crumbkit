@@ -1,7 +1,7 @@
 # ADR-0045. Failure forms
 
 - Date: 2026-10-12
-- Status: amended by ADR-0081
+- Status: amended by ADR-0081 and ADR-0085
 
 ## Context
 

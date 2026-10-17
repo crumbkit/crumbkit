@@ -115,8 +115,7 @@ impl Exit {
     /// first failure has one of `codes` exits with this code in place of
     /// crumbkit's default (ADR-0037). A code may be one of crumbkit's, such
     /// as `crumbkit::codes::CLI_USAGE`, or the tool's rename of it from
-    /// [`Guide::codes`](super::Guide::codes), and either covers both. A code that crumbkit learns only at run time, from
-    /// `Code::runtime`, cannot be listed, so its failure exits with 1.
+    /// [`Guide::codes`](super::Guide::codes), and either covers both.
     #[must_use]
     pub const fn failures(mut self, codes: &'static [&'static Code]) -> Self {
         self.failures = codes;

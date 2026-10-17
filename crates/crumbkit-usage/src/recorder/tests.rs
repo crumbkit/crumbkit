@@ -15,6 +15,12 @@ use crate::record::Help;
 use crate::testing::TempDir;
 use crumbkit::{Code, Document, Spelling, ToolName};
 
+/// Joins the segments of a code with `.`, so a test shows that the code
+/// prints in the spelling that the tool passes and not in the colon
+/// spelling.
+const DOTS: Spelling =
+    Spelling::custom(|code, f| write!(f, "{}.{}.{}", code.component(), code.area(), code.reason()));
+
 mod processes;
 
 /// Returns a tool's command with a version.
@@ -37,7 +43,7 @@ fn started(traceparent: Option<&str>) -> Recorder {
 fn parsed() -> Recorder {
     let mut recorder = started(None);
     // crumbkit passes the spelling that names the tool (ADR-0079).
-    let spelling = Spelling::DOTS.for_tool(ToolName::new("shelf"));
+    let spelling = DOTS.for_tool(ToolName::new("shelf"));
     recorder.typed(&tool(), &["shelf".into()], spelling);
     recorder
 }
@@ -165,7 +171,7 @@ fn a_saved_line_holds_the_tool_its_version_the_end_time_the_caller_and_the_hashe
 fn a_saved_line_holds_the_caller_s_trace_the_run_s_id_and_the_caller_s_span_as_parent() {
     let state = TempDir::new("traced");
     let mut recorder = started(Some(CALLER));
-    recorder.typed(&tool(), &["shelf".into()], Spelling::DOTS);
+    recorder.typed(&tool(), &["shelf".into()], DOTS);
 
     let lines = saved(&state, recorder, false);
 
@@ -183,7 +189,7 @@ fn a_child_gets_trace_variables_only_from_a_run_that_reached_parse() {
     assert_eq!(child_env_in(&slot), Vec::new());
 
     update(&slot, |recorder| {
-        recorder.typed(&tool(), &["shelf".into()], Spelling::DOTS);
+        recorder.typed(&tool(), &["shelf".into()], DOTS);
     });
     assert_eq!(
         child_env_in(&slot),
@@ -215,7 +221,7 @@ fn parse_gives_the_recorder_the_tool_s_name_its_version_and_the_words_after_the_
     recorder.typed(
         &tool(),
         &["shelf".into(), "books".into(), "list".into()],
-        Spelling::DOTS,
+        DOTS,
     );
 
     assert_eq!(recorder.tool.unwrap().as_str(), "shelf");
@@ -261,8 +267,8 @@ fn help_records_the_commands_of_its_path_that_the_tool_defines_and_short_or_long
 fn the_first_failure_code_of_a_run_stays_in_the_tool_s_spelling() {
     let mut recorder = parsed();
 
-    recorder.failed(Spelling::DOTS, &Code::new("shelf", "books", "not_found"));
-    recorder.failed(Spelling::DOTS, &Code::new("shelf", "books", "gone"));
+    recorder.failed(DOTS, &Code::new("shelf", "books", "not_found"));
+    recorder.failed(DOTS, &Code::new("shelf", "books", "gone"));
 
     assert_eq!(recorder.run.code.unwrap().as_str(), "shelf.books.not_found");
 }

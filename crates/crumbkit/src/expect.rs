@@ -84,27 +84,7 @@ pub struct Expect {
     expect: Option<String>,
 }
 
-/// What the caller expects of a write's target, as `--expect` says it.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Expected<'a> {
-    /// The target must not exist, which `--expect none` says.
-    Nothing,
-    /// The target must be at this version.
-    Version(&'a str),
-}
-
 impl Expect {
-    /// Returns what the caller expects of the target, or `None` when the
-    /// caller left `--expect` out.
-    #[must_use]
-    pub fn get(&self) -> Option<Expected<'_>> {
-        match self.expect.as_deref() {
-            None => None,
-            Some(NONE) => Some(Expected::Nothing),
-            Some(version) => Some(Expected::Version(version)),
-        }
-    }
-
     /// Returns `Ok` when the target's `current` version, or `None` when the
     /// target does not exist, is what the caller expects, and the conflict
     /// of [`Expect::conflict`] otherwise. Without `--expect` every target
@@ -118,10 +98,10 @@ impl Expect {
     /// target that exists, or when a version is expected and no target
     /// exists.
     pub fn check(&self, current: Option<&str>, read: Call) -> Result<(), Error> {
-        let passes = match (self.get(), current) {
-            (None, _) | (Some(Expected::Nothing), None) => true,
-            (Some(Expected::Version(expected)), Some(current)) => expected == current,
-            (Some(Expected::Nothing), Some(_)) | (Some(Expected::Version(_)), None) => false,
+        let passes = match (self.expect.as_deref(), current) {
+            (None, _) | (Some(NONE), None) => true,
+            (Some(NONE), Some(_)) | (Some(_), None) => false,
+            (Some(expected), Some(current)) => expected == current,
         };
         if passes {
             Ok(())

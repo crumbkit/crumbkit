@@ -27,7 +27,7 @@ mod step;
 mod tests;
 
 pub(crate) use self::schema::{document_schema, entry_schema};
-pub use self::step::Step;
+pub(crate) use self::step::Step;
 
 /// The id of the JSON document that a failure prints with `--json`, which
 /// a tool's output prints with the tool's name in place of `crumbkit`.

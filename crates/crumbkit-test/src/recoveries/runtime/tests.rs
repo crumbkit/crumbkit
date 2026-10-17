@@ -18,7 +18,6 @@ use snapbox::assert::Action;
 use super::RuntimeFailing;
 use crate::examples::Examples;
 use crate::recoveries::{Failing, Recoveries, Unprovoked, check};
-use crate::runs::Dir;
 use crate::temp::TempDir;
 use crate::testing::panic_message;
 use crate::twins::{Twins, check_twins};
@@ -215,10 +214,7 @@ fn a_line_keeps_the_directory_input_fixture_values_and_variables_and_replaces_th
 
     assert_eq!(*failing.code(), UNREADABLE);
     assert_eq!(failing.words(), ["lists", "show", "broken"]);
-    let Some(Dir::Fixed(dir)) = failing.work_dir(None) else {
-        panic!("the line has no directory of its own");
-    };
-    assert_eq!(dir.path(), Path::new("work"));
+    assert_eq!(failing.work_dir(None), Some(Path::new("work")));
     assert_eq!(failing.stdin_bytes(), Some("everything".as_bytes()));
     assert_eq!(failing.fixture(None), Some(Path::new("fixture")));
     assert_eq!(failing.own_values(), [("NAME", "present")]);
@@ -295,10 +291,7 @@ fn a_runtime_failing_keeps_a_directory_and_a_fixture_whose_paths_are_not_utf_8()
         .xdg(path.clone())
         .into_failing();
 
-    let Some(Dir::Fixed(dir)) = failing.work_dir(None) else {
-        panic!("the failing has no directory of its own");
-    };
-    assert_eq!(dir.path(), path);
+    assert_eq!(failing.work_dir(None), Some(path.as_path()));
     assert_eq!(failing.fixture(None), Some(path.as_path()));
 }
 
@@ -308,10 +301,7 @@ fn a_place_made_with_at_gives_each_line_built_from_it_its_directory() {
 
     let failing = place.line(NOT_FOUND, ["lists", "check"]).into_failing();
 
-    let Some(Dir::Fixed(dir)) = failing.work_dir(None) else {
-        panic!("the line has no directory of its own");
-    };
-    assert_eq!(dir.path(), Path::new("work"));
+    assert_eq!(failing.work_dir(None), Some(Path::new("work")));
     assert_eq!(*failing.code(), NOT_FOUND);
     assert_eq!(failing.words(), ["lists", "check"]);
     assert_eq!(failing.own_env(), [("DEPTH", Some("1"))]);
@@ -363,34 +353,4 @@ fn a_variable_twin_takes_a_variable_name_that_the_test_builds_at_run_time() {
     let problems = panic_message(|| check_twins(&tree(), &Guide::new(), &twins));
 
     assert_eq!(problems, None);
-}
-
-#[test]
-fn recoveries_built_from_owned_codes_report_as_recoveries_built_from_code_lists_do() {
-    let (_tool, script) = tool("runtime-owned-codes");
-    let work = lists("runtime-owned-codes-work");
-    let work_text = work.path().display().to_string();
-    let examples = Examples::new(&script, "");
-    let starts = [Failing::new(&NOT_FOUND, &["lists", "show", "gone"])
-        .dir(&work_text)
-        .values(&[("NAME", "present")])];
-    let reason = "Only a broken list provokes it.";
-    let listed = [Unprovoked::new(&UNREADABLE, reason)];
-    let codes: Vec<Code> = vec![NOT_FOUND, UNREADABLE];
-    let owned = [Unprovoked::from_code(codes[1], reason)];
-    let from_lists = Recoveries::new(examples, Spelling::COLONS, CODES)
-        .starts(&starts)
-        .unprovoked(&listed);
-    let from_codes = Recoveries::from_codes(examples, Spelling::COLONS, &codes)
-        .starts(&starts)
-        .unprovoked(&owned);
-
-    let lists_report = report(&from_lists, "runtime-owned-codes-lists");
-    let codes_report = report(&from_codes, "runtime-owned-codes-codes");
-
-    assert!(
-        codes_report.contains("tool::lists::unreadable: Only a broken list provokes it."),
-        "{codes_report}"
-    );
-    assert_eq!(codes_report, lists_report);
 }

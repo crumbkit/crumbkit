@@ -4,7 +4,7 @@ use std::process::ExitCode;
 
 use clap::{CommandFactory as _, Parser};
 
-use super::{Expect, Expected};
+use super::Expect;
 use crate::help::Guide;
 use crate::twins::assert_one_word_apart;
 use crate::{Call, Error, Field, Recovery, Sink, Spelling};
@@ -50,7 +50,6 @@ fn code(result: &Result<(), Error>) -> String {
 fn an_expect_that_is_left_out_reads_as_no_precondition() {
     let flag = expect(&["pluto"]).unwrap();
 
-    assert_eq!(flag.get(), None);
     assert!(flag.check(Some("7"), read()).is_ok());
     assert!(flag.check(None, read()).is_ok());
 }
@@ -59,7 +58,6 @@ fn an_expect_that_is_left_out_reads_as_no_precondition() {
 fn expect_none_reads_as_a_target_that_must_not_exist() {
     let flag = expect(&["pluto", "--expect", "none"]).unwrap();
 
-    assert_eq!(flag.get(), Some(Expected::Nothing));
     assert!(flag.check(None, read()).is_ok());
 }
 
@@ -69,10 +67,7 @@ fn an_empty_expect_is_refused_and_its_twin_with_a_version_is_admitted() {
     let admitted = ["pluto", "--expect", "7"];
     assert_one_word_apart(&refused, &admitted);
 
-    assert_eq!(
-        expect(&admitted).unwrap().get(),
-        Some(Expected::Version("7"))
-    );
+    assert!(expect(&admitted).unwrap().check(Some("7"), read()).is_ok());
     assert_eq!(expect(&refused).err(), Some(ExitCode::from(2)));
 }
 

@@ -187,7 +187,7 @@ impl<const N: usize, const MOST: usize> Page<N, MOST> {
     /// It reads at most one row past the limit, and that row tells it
     /// whether more rows exist, so an iterator over a log or a remote API
     /// stops there. With `--all` it reads every row and counts them. A
-    /// handler that fetches a `Vec` fetches [`Page::fetch_limit`] rows,
+    /// handler that fetches a `Vec` fetches one row past [`Page::limit`],
     /// because a `Vec` of exactly the limit reads as a source with no more
     /// rows.
     #[must_use]
@@ -201,17 +201,6 @@ impl<const N: usize, const MOST: usize> Page<N, MOST> {
         let more = rows.len() > limit;
         rows.truncate(limit);
         Self::carry(Listing::uncounted(rows, more))
-    }
-
-    /// Returns the number of rows that a handler fetches for
-    /// [`Page::uncounted`]: one past the limit, so the extra row says whether
-    /// more rows exist, or `None` when `--all` asks for every row.
-    #[must_use]
-    pub const fn fetch_limit(&self) -> Option<usize> {
-        match self.limit() {
-            Some(limit) => Some(limit.saturating_add(1)),
-            None => None,
-        }
     }
 
     /// Returns `listing` with the page's bound, when it has one.

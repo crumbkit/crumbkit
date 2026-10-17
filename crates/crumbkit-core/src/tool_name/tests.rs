@@ -90,10 +90,10 @@ fn the_same_name_gives_equal_tool_names() {
 
 #[test]
 fn a_spelling_for_a_tool_spells_crumbkits_codes_with_the_tools_component() {
-    let spelling = Spelling::DOTS.for_tool(ToolName::new("shelf"));
+    let spelling = Spelling::COLONS.for_tool(ToolName::new("shelf"));
 
-    assert_eq!(spelling.spell(&USAGE), "shelf.cli.usage");
-    assert_eq!(spelling.spell(&NOT_FOUND), "shelf.books.not_found");
+    assert_eq!(spelling.spell(&USAGE), "shelf::cli::usage");
+    assert_eq!(spelling.spell(&NOT_FOUND), "shelf::books::not_found");
     assert_eq!(spelling.tool(), ToolName::new("shelf"));
 }
 

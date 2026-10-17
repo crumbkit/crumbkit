@@ -78,12 +78,6 @@ impl Bytes {
     pub fn as_slice(&self) -> &[u8] {
         &self.bytes
     }
-
-    /// Returns the bytes as a `Vec`, without copying them.
-    #[must_use]
-    pub fn into_vec(self) -> Vec<u8> {
-        self.bytes
-    }
 }
 
 impl From<Vec<u8>> for Bytes {

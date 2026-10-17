@@ -59,14 +59,13 @@ These checks read the tool's guide, failure codes or crumbkit's output:
   [`path_totals`] and [`output_weight`], which `cargo crumbkit weigh` also
   calls.
 - Example output: [`check_examples`] with [`Examples`], and
-  [`example_golden_name`]. `Examples` sets each run's working directory or
-  fixture, and the values replaced with placeholders.
+  [`example_golden_name`]. `Examples` sets each run's working directory and
+  XDG fixture.
 - The output budget: [`check_output_budget`] ([output budget docs]).
 - The command reference: [`check_command_reference`] ([command reference docs]).
 - Recoveries: [`check_recoveries`] with [`Recoveries`], [`check_twin`], and
   [`check_twins`] with [`Twins`]. [`RuntimeFailing`] builds command lines
-  read at run time, and a [`FailureReader`] reads failures printed in a
-  tool's own shape.
+  read at run time.
 - JSON documents: [`check_schema_goldens`], [`check_document_ids`] and
   [`check_mounts`].
 - Opt-outs: [`check_opt_outs`] pins the opt-outs and budgets that a tool

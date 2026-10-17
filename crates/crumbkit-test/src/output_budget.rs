@@ -12,7 +12,7 @@ use crumbkit::help::Guide;
 use crate::allow::{Allowances, Rule};
 use crate::examples::{Examples, example_golden_name, read_stdin, setup_problem};
 use crate::guide::command_line;
-use crate::runs::{self, Place, TIMEOUT, WorkDir, Xdg};
+use crate::runs::{self, Place, TIMEOUT, Xdg};
 use crate::tree;
 
 #[cfg(test)]
@@ -192,8 +192,7 @@ fn check(
 }
 
 /// Runs the binary of `examples` once with `env`, `args` and `stdin` in
-/// fresh XDG directories, in the working directory of `examples` or a new
-/// copy of its fresh fixture.
+/// fresh XDG directories, in the working directory of `examples`.
 fn run(
     examples: &Examples<'_>,
     env: &[(&str, &str)],
@@ -202,9 +201,8 @@ fn run(
     timeout: Duration,
 ) -> Result<runs::Ran, String> {
     let xdg = Xdg::new("output-budget", examples.xdg_fixture())?;
-    let work = WorkDir::new("output-budget-dir", examples.working_dir())?;
     let place = Place {
-        dir: work.path(),
+        dir: examples.working_dir(),
         stdin,
         env: &[],
     };

@@ -8,6 +8,12 @@ use serde::Serialize;
 
 use crate::{Document, Error, Output, Row, Sink, Spelling, finish_to};
 
+/// Joins the segments of a code with `.`, so a test shows that the code
+/// prints in the spelling that the tool passes and not in the colon
+/// spelling.
+const DOTS: Spelling =
+    Spelling::custom(|code, f| write!(f, "{}.{}.{}", code.component(), code.area(), code.reason()));
+
 /// A row type for the result that the failing command would have printed.
 #[derive(Serialize, JsonSchema)]
 struct Setting {
@@ -33,7 +39,7 @@ fn printed(parse: impl FnOnce() -> miette::Result<Vec<Setting>>) -> String {
     finish_to(
         &mut Sink::new(&mut out, &mut err),
         &mut output,
-        Spelling::DOTS,
+        DOTS,
         SETTINGS,
         handler(),
     );

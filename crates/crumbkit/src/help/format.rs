@@ -25,9 +25,10 @@ use crate::Document;
 /// const CONFIG: Document<Config> =
 ///     Document::new("shelf", "config", 1, "The settings file that users write.");
 ///
-/// const GUIDE: Guide = Guide::new().documents(&[FileFormat::new(CONFIG)]);
+/// const FORMAT: FileFormat = FileFormat::new(CONFIG);
+/// const GUIDE: Guide = Guide::new().documents(&[FORMAT]);
 ///
-/// assert_eq!(GUIDE.get_documents()[0].document().to_string(), "shelf/config/v1");
+/// assert_eq!(FORMAT.document().to_string(), "shelf/config/v1");
 /// ```
 #[derive(Clone, Copy, Debug)]
 pub struct FileFormat {

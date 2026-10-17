@@ -9,7 +9,7 @@ use snapbox::Redactions;
 
 use super::example_golden_name;
 use crate::guide::command_line;
-use crate::runs::{WorkDir, Xdg};
+use crate::runs::Xdg;
 
 /// Returns the name of the file whose bytes are an example's standard
 /// input: the name `name` of its output's golden file with `.stdin` in
@@ -71,41 +71,13 @@ pub(super) fn stale_stdin(tool: &str, guide: &Guide, dir: &Path, problems: &mut 
     }
 }
 
-/// Returns the redactions of `redact`, each a placeholder and its value,
-/// and adds a problem to `problems` for each placeholder that snapbox
-/// rejects or that holds no letter, and for each empty value.
-pub(super) fn redactions(
-    redact: &[(&'static str, &str)],
-    problems: &mut Vec<String>,
-) -> Redactions {
-    let mut redactions = Redactions::new();
-    for &(placeholder, value) in redact {
-        // snapbox accepts `[]`, which names nothing, so the check refuses a
-        // placeholder shorter than `[A]` itself.
-        if placeholder.len() < 3 || redactions.insert(placeholder, value.to_owned()).is_err() {
-            problems.push(format!(
-                "Examples::redact names the placeholder `{placeholder}`, and a placeholder is `[` and `]` around one or more capital letters A to Z and underscores"
-            ));
-        } else if value.is_empty() {
-            problems.push(format!(
-                "Examples::redact gives the placeholder `{placeholder}` an empty value, which redacts nothing"
-            ));
-        }
-    }
-    redactions
-}
-
-/// Returns `redactions` with the path of each of the run's XDG directories
-/// in `xdg` added under its placeholder, such as `[XDG_CONFIG_HOME]`, and
-/// each path of the fresh directory `work` under `[ROOT]`.
-pub(super) fn with_run(redactions: &Redactions, xdg: &Xdg, work: &WorkDir) -> Redactions {
-    let mut run = redactions.clone();
+/// Returns the redactions of a run: the path of each of the run's XDG
+/// directories in `xdg` under its placeholder, such as `[XDG_CONFIG_HOME]`.
+pub(super) fn redactions(xdg: &Xdg) -> Redactions {
+    let mut run = Redactions::new();
     // The placeholders are fixed and valid, so `insert` cannot fail.
     for (placeholder, path) in xdg.placeholders() {
         let _ = run.insert(placeholder, path.display().to_string());
-    }
-    for path in work.fresh_paths() {
-        let _ = run.insert("[ROOT]", path.display().to_string());
     }
     run
 }

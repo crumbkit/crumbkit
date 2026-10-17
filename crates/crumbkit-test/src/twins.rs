@@ -13,7 +13,7 @@ use crate::exits;
 use crate::failures;
 use crate::guide::command_line;
 use crate::recoveries::Failing;
-use crate::runs::{self, Place, Ran, TIMEOUT, WorkDir, Xdg, env_note};
+use crate::runs::{self, Place, Ran, TIMEOUT, Xdg, env_note};
 
 mod coverage;
 mod words;
@@ -54,14 +54,10 @@ mod tests;
 ///
 /// Both runs use the environment of [`Examples::env`], the working
 /// directory and standard input of `refused`, or the directory of
-/// [`Examples::current_dir`] when `refused` sets none, or a new copy each
-/// of the fixture of [`Examples::fresh_dir`], and fresh XDG directories of
-/// their own, as [`check_examples`](crate::check_examples) runs an example.
-/// The check reads the refused line's code, spelled with `spelling`. When
-/// `examples` sets a [`FailureReader`](crate::FailureReader), it reads the
-/// code through that reader first. Otherwise, or when the reader reads no
-/// failure, it reads the
-/// code from a `<tool>/failure/v1` document on standard output, or from
+/// [`Examples::current_dir`] when `refused` sets none, and fresh XDG
+/// directories of their own, as [`check_examples`](crate::check_examples)
+/// runs an example. The check reads the refused line's code, spelled with
+/// `spelling`, from a `<tool>/failure/v1` document on standard output, or from
 /// the first entry of a batch's `failures`, and then from the last `code:`
 /// line on standard error.
 ///
@@ -284,7 +280,6 @@ pub(super) fn refuse(
     spelling: Spelling,
     refused: &Failing<'_>,
 ) -> Result<Output, String> {
-    let reader = failures::reader(examples);
     // crumbkit's own codes print with the tool's name (ADR-0079).
     let tool = guide.tool_name(command);
     let spelling = spelling.for_tool(tool);
@@ -307,7 +302,7 @@ pub(super) fn refuse(
         ));
     }
     // The first failure is the one the refused line fails with.
-    let printed = failures::read_failures(tool, reader, &output.stdout, &output.stderr)
+    let printed = failures::read_failures(tool, &output.stdout, &output.stderr)
         .first()
         .map(|failure| failure.code().to_owned());
     match printed {
@@ -321,7 +316,7 @@ pub(super) fn refuse(
             "the refused line {refused_line} must fail with {code}, and it fails with {printed}"
         )),
         None => Err(format!(
-            "the refused line {refused_line} must fail with {code}, and it ends with {} and prints no code that the check can read. A tool that prints failures in a form of its own implements FailureReader and sets it with Examples::failure_reader",
+            "the refused line {refused_line} must fail with {code}, and it ends with {} and prints no code that the check can read. The check reads a code from crumbkit's failure document on standard output or from a `code:` line on standard error",
             output.status
         )),
     }
@@ -343,9 +338,8 @@ fn run(
     let dir = refused.work_dir(examples.working_dir());
     let ran = Xdg::new("twin", fixture)
         .and_then(|xdg| {
-            let work = WorkDir::new("twin-dir", dir)?;
             let place = Place {
-                dir: work.path(),
+                dir,
                 stdin: refused.stdin_bytes(),
                 env,
             };

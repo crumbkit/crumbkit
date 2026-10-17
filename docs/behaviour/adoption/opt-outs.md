@@ -49,7 +49,7 @@ rule's page gives its reason.
 | `Items` | `effects/items` | a leaf that writes many items declares neither `all_or_none` nor `per_item` |
 | `ShellExitCode` | `exit-codes/shell-code` | a tool declares an exit code from 126 to 255 ([exit codes](../failures/exit-codes.md#checks)) |
 | `SharedExit` | `exit-codes/shared-exit` | a tool declares the exit code 1 or 2 |
-| `Recoveries` | `recoveries/follow` | the check cannot read a failure that a run printed ([failure readers](../failures/excerpts-and-readers.md#reading-failures-back)) |
+| `Recoveries` | `recoveries/follow` | the check cannot read a failure that a run printed ([reading failures back](../failures/excerpts-and-readers.md#reading-failures-back)) |
 | `SameCode` | `recoveries/same-code` | a command that a recovery runs fails on purpose with a code its chain already had |
 | `FieldValue` | `recoveries/field-value` | a recovery takes a placeholder's value from a field of its failure |
 | `NextStep` | `recoveries/next-step` | a failure with a declared code offers no `run`, `retry` or `hint` step |

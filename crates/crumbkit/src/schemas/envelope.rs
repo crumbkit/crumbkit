@@ -6,7 +6,7 @@ use schemars::{JsonSchema, Schema, SchemaGenerator, json_schema};
 use serde_json::{Value, json};
 
 use crate::output::failure;
-use crate::{Bytes, Document, Row, Rows, Shape, Stream};
+use crate::{Bytes, Document, Rows, Shape};
 
 /// Returns the 2020-12 JSON Schema of the document that
 /// [`finish`](crate::finish) prints for `document` with `--json`.
@@ -63,22 +63,12 @@ pub fn document_schema<T: Rows>(document: Document<T>) -> Schema {
 /// [`document_schema`] returns for a document of one row of type `R`:
 /// `schema` holds the id, `dry_run` is `true` on a dry run, and `data` holds
 /// one item. A document without crumbkit's envelope has the schema of one
-/// item at the top (ADR-0041).
-///
-/// ```
-/// # #[derive(serde::Serialize, schemars::JsonSchema)]
-/// # struct Entry { position: u32 }
-/// # impl crumbkit::Row for Entry { const COLUMNS: &'static [&'static str] = &["position"]; }
-/// use crumbkit::{Document, Stream};
-///
-/// const ENTRIES_STREAM: Document<Stream<Entry>> =
-///     Document::new("reading", "entries-stream", 1, "Each entry of a reading list.");
-///
-/// let schema = crumbkit::schemas::stream_schema(ENTRIES_STREAM);
-/// assert_eq!(schema.get("title").unwrap(), "reading/entries-stream/v1");
-/// ```
+/// item at the top (ADR-0041). `schemas show` serves it through the leaf,
+/// which holds the document without its row type, so only the tests call
+/// this function.
+#[cfg(test)]
 #[must_use]
-pub fn stream_schema<R: Row>(document: Document<Stream<R>>) -> Schema {
+pub(crate) fn stream_schema<R: crate::Row>(document: Document<crate::Stream<R>>) -> Schema {
     envelope::<R>(document.untyped())
 }
 

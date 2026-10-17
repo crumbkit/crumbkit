@@ -140,9 +140,6 @@ published version ([releases](../../project/releases.md)).
   separate type without a code, from which `RuntimePlace::line` builds each
   command line, so a place passed where a command line belongs is a compile
   error. The two types share one private settings struct.
-- A settings type whose `const` constructor borrows a tool's codes, such as
-  `Twins`, `Recoveries` and `Unprovoked`, has a second `const` constructor
-  that takes codes held by value.
 - Enums that may grow are `#[non_exhaustive]`, and adopter-implemented
   traits, such as `Picker`, gain only methods with defaults. `Answer` is
   `#[non_exhaustive]`.

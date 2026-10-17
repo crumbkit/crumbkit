@@ -248,8 +248,7 @@ impl Leaf {
     /// [`BYTES_LINE`] for a document that holds [`Bytes`](crate::Bytes),
     /// [`HEADED_LINE`] for a headed document, and `None` for any other
     /// leaf.
-    #[must_use]
-    pub const fn output_line(&self) -> Option<&'static str> {
+    pub(crate) const fn output_line(&self) -> Option<&'static str> {
         match self.columns {
             Some(columns) if columns.stream => Some(STREAM_LINE),
             Some(Columns {

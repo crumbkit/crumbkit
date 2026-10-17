@@ -309,28 +309,3 @@ fn a_declared_code_that_a_leaf_prints_in_place_of_one_of_crumbkits_codes_needs_n
 
     assert_eq!(problems, None);
 }
-
-#[test]
-fn a_twin_check_built_from_owned_codes_requires_a_twin_for_each_code_it_holds() {
-    let dir = TempDir::new("twins-owned-codes").unwrap();
-    dir.write_script("tool", SCRIPT);
-    let path = dir.path().join("tool").display().to_string();
-    let codes: Vec<Code> = vec![NOT_FOUND, UNREADABLE, REMOVED];
-    let unprovoked = [Unprovoked::from_code(
-        codes[2],
-        "Only a book file that disappears provokes it.",
-    )];
-    let twins = Twins::from_codes(Examples::new(&path, ""), Spelling::COLONS, &codes)
-        .pairs(&[SHOW_7])
-        .unprovoked(&unprovoked);
-
-    let problems = panic_message(|| check_twins(&tree(), &Guide::new(), &twins));
-
-    assert_eq!(
-        problems.as_deref(),
-        Some(
-            "the tool's twins break crumbkit's twin rule:\n\
-             tool::books::unreadable: no twin refuses the declared code, Twins::unprovoked does not list it, and no opt-out made with Allow::untwinned names it"
-        )
-    );
-}

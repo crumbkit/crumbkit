@@ -3,7 +3,7 @@
 
 use std::fmt::Write as _;
 
-use crumbkit::Code;
+use crumbkit::{Code, Spelling};
 
 use super::{Chain, Walk};
 
@@ -42,14 +42,52 @@ impl Walk<'_> {
             self.report,
             "{indent}fails with {code}, which no declared code spells"
         );
-        match self.spelling.split(code) {
-            Some((component, _, _)) if self.components.iter().any(|known| known == component) => {
+        let declared = self
+            .components
+            .iter()
+            .find(|(_, prefix)| code.len() > prefix.len() && code.starts_with(prefix.as_str()));
+        match declared {
+            Some((component, _)) => {
                 self.problems.push(format!(
                     "{}: {label} fails with {code}, whose component {component} is a declared component, and no declared code spells it",
                     chain.start
                 ));
             }
-            _ => self.skipped += 1,
+            None => self.skipped += 1,
         }
     }
 }
+
+/// The area of the probe code that [`spelled_prefix`] spells.
+const PROBE_AREA: &str = "area_probe";
+/// The reason of the probe code that [`spelled_prefix`] spells.
+const PROBE_REASON: &str = "reason_probe";
+
+/// Returns the text that `spelling` writes before the area of every code in
+/// `component`, such as `shelf::` or `shelf.`, which it finds by spelling a
+/// probe code in that component.
+///
+/// It returns `None` when the check cannot tell from that text which
+/// component a code belongs to: the spelling writes the area first, writes
+/// the reason before the area, changes the area's letters, leaves out the
+/// component's name, or ends the text with a letter, a digit or `_`. A
+/// segment may hold those characters, so `shelf_` would also begin a code
+/// of the component `shelf_cache`.
+pub(in crate::recoveries) fn spelled_prefix(
+    spelling: Spelling,
+    component: &'static str,
+) -> Option<String> {
+    let code = Code::new(component, PROBE_AREA, PROBE_REASON);
+    let probe = spelling.spell(&code);
+    let prefix = &probe[..probe.find(PROBE_AREA)?];
+    let name = spelling.tool().code(&code).component();
+    let ends_in_segment = prefix
+        .chars()
+        .next_back()
+        .is_none_or(|last| matches!(last, 'a'..='z' | '0'..='9' | '_'));
+    (!ends_in_segment && prefix.contains(name) && !prefix.contains(PROBE_REASON))
+        .then(|| prefix.to_owned())
+}
+
+#[cfg(test)]
+mod tests;

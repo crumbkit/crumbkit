@@ -206,10 +206,10 @@ impl Guide {
         self
     }
 
-    /// Returns the file formats that [`Guide::documents`] set. The name has
-    /// clap's `get_` prefix, because `documents` is the builder method.
-    #[must_use]
-    pub const fn get_documents(&self) -> &'static [FileFormat] {
+    /// Returns the file formats that [`Guide::documents`] set, which the
+    /// schema commands serve. The name has clap's `get_` prefix, because
+    /// `documents` is the builder method.
+    pub(crate) const fn get_documents(&self) -> &'static [FileFormat] {
         self.documents
     }
 

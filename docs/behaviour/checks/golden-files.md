@@ -17,14 +17,14 @@ Why: ADR-0004.
 
 ## Placeholders in example golden files
 
-An example golden file holds the exact bytes of the run except the values
-that the check replaces with named placeholders, such as `[ROOT]` or
-`[XDG_CONFIG_HOME]`. snapbox's wildcards, such as `[..]`, are plain text in an
-example golden file, so they match only themselves.
-[`Examples::redact`](../../../crates/crumbkit-test/src/examples/settings.rs)
-states the placeholder rules.
+An example golden file holds the exact bytes of the run except the path of
+each of the run's XDG directories, which the check replaces with a named
+placeholder, such as `[XDG_CONFIG_HOME]`. snapbox's wildcards, such as
+`[..]`, are plain text in an example golden file, so they match only
+themselves. A tool whose output holds a value that changes on every run
+opts that example out with `Allow::example`.
 
-Why: ADR-0004, ADR-0005.
+Why: ADR-0004, ADR-0005, ADR-0085.
 
 ## The golden files a tool keeps
 

@@ -1,112 +1,93 @@
 //! The failures that a failed run printed, as the twin, example and recovery
-//! checks read them: through the tool's failure reader, then from
-//! crumbkit's failure document, then from crumbkit's `code:` line.
+//! checks read them: from crumbkit's failure document, then from
+//! crumbkit's `code:` line.
 
-use std::fmt;
-
-use crumbkit::form::{ReadFailure, Step};
 use crumbkit::{FieldValue, ToolName};
 use serde_json::Value;
 
-use crate::examples::Examples;
 use crate::runs;
 
-/// Reads the failures that one failed run of a tool printed, for a tool
-/// that prints its failures in a shape of its own. A tool sets its reader with
-/// [`Examples::failure_reader`], and [`check_twin`](crate::check_twin),
-/// [`check_examples`](crate::check_examples) and
-/// [`check_recoveries`](crate::check_recoveries) then read each failed run
-/// through it (ADR-0045).
-///
-/// `read` receives the run's standard output `out` and standard error
-/// `err`, and returns each failure it finds, the first failure first, or
-/// no failure when it finds none. Each failure holds its code in the tool's
-/// spelling, its steps, the recovery first and then each alternative, and
-/// its fields, which fill the placeholders of a recovery's call. A reader
-/// maps a code that the tool writes in place of one of crumbkit's, such as
-/// its own usage code in place of `crumbkit::cli::usage`, back to
-/// crumbkit's code, so the checks match it.
-///
-/// When the reader returns no failure, the checks read crumbkit's failure
-/// document on standard output and then the last `code:` line on standard
-/// error.
-///
-/// [`check_recoveries`](crate::check_recoveries) adds `--json` to every
-/// run, so a tool whose failures a reader reads still accepts `--json` on
-/// every command that a chain runs.
-///
-/// ```
-/// use crumbkit::form::{ReadFailure, Step};
-/// use crumbkit_test::{Examples, FailureReader};
-///
-/// /// Reads a last line such as `ERR shelf::books::not_found`.
-/// struct ErrLine;
-///
-/// impl FailureReader for ErrLine {
-///     fn read(&self, _out: &str, err: &str) -> Vec<ReadFailure> {
-///         err.lines()
-///             .last()
-///             .and_then(|line| line.strip_prefix("ERR "))
-///             .map(|code| ReadFailure::new(code.to_owned(), vec![Step::Retry]))
-///             .into_iter()
-///             .collect()
-///     }
-/// }
-///
-/// const EXAMPLES: Examples<'_> =
-///     Examples::new("/path/to/shelf", "tests/golden/examples").failure_reader(&ErrLine);
-/// ```
-pub trait FailureReader {
-    /// Returns each failure that the run printed on standard output `out`
-    /// and standard error `err`, the first failure first, or no failure
-    /// when it finds none.
-    fn read(&self, out: &str, err: &str) -> Vec<ReadFailure>;
+/// The failure that one run printed, as the checks read it back from the
+/// run's output: the code in the tool's spelling, the steps, the recovery
+/// first and then each alternative, and the fields.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub(crate) struct ReadFailure {
+    /// The code in the tool's spelling, such as `shelf::books::not_found`.
+    code: String,
+    /// The recovery first, then each alternative.
+    steps: Vec<Step>,
+    /// Each field of the failure as a name and its value.
+    fields: Vec<(String, FieldValue<'static>)>,
 }
 
-/// Prints `FailureReader`, so [`Examples`], which can hold a reader, can
-/// derive `Debug`.
-impl fmt::Debug for dyn FailureReader + '_ {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str("FailureReader")
+impl ReadFailure {
+    /// Returns the failure with `code`, in the tool's spelling, and `steps`,
+    /// the recovery first and then each alternative. It has no fields until
+    /// [`ReadFailure::with_fields`] gives it some.
+    pub(crate) const fn new(code: String, steps: Vec<Step>) -> Self {
+        Self {
+            code,
+            steps,
+            fields: Vec::new(),
+        }
+    }
+
+    /// Returns the failure with `fields`, each a field's name and its value,
+    /// such as `("id", FieldValue::Unsigned(7))`. A null, list or object
+    /// field keeps the value the failure held, and `check_recoveries` fills
+    /// a recovery's placeholders from the text, integer and boolean fields.
+    pub(crate) fn with_fields(mut self, fields: Vec<(String, FieldValue<'static>)>) -> Self {
+        self.fields = fields;
+        self
+    }
+
+    /// Returns the code in the tool's spelling.
+    pub(crate) fn code(&self) -> &str {
+        &self.code
+    }
+
+    /// Returns the steps, the recovery first and then each alternative.
+    pub(crate) fn steps(&self) -> &[Step] {
+        &self.steps
+    }
+
+    /// Returns each field as a name and its value.
+    pub(crate) fn fields(&self) -> &[(String, FieldValue<'static>)] {
+        &self.fields
     }
 }
 
-/// The tool's own way to read a failed run: the examples' failure reader.
-#[derive(Clone, Copy)]
-pub(crate) struct Reader<'a>(pub(crate) &'a dyn FailureReader);
-
-impl Reader<'_> {
-    /// Returns each failure that this reader reads from `out` and `err`.
-    fn read(self, out: &str, err: &str) -> Vec<ReadFailure> {
-        self.0.read(out, err)
-    }
-}
-
-/// Returns the examples' failure reader, or `None` when they set none.
-pub(crate) fn reader<'a>(examples: &Examples<'a>) -> Option<Reader<'a>> {
-    examples.reader().map(Reader)
+/// A step that a failure document offers, as the checks read it back.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub(crate) enum Step {
+    /// Run this command line, such as `shelf books list`.
+    Run(String),
+    /// Run this command line once with every value of the failure's list
+    /// field `field` in place of the argument's placeholder.
+    RunAll {
+        /// The command line, with the argument's placeholder in place of the
+        /// values.
+        call: String,
+        /// The name of the failure's field whose values the call takes.
+        field: String,
+    },
+    /// Run the same command again later.
+    Retry,
+    /// Follow this advice.
+    Hint(String),
+    /// There is no next step, for this reason.
+    None(String),
 }
 
 /// Returns each failure that a failed run printed on `stdout` and `stderr`.
-/// The first of these sources that reads a failure gives them all:
-/// `reader`; then the last failure document of `tool`, such as
+/// The first of these sources that reads a failure gives them all: the
+/// last failure document of `tool`, such as
 /// `shelf/failure/v1`, on `stdout`, or every entry of the `failures` of the
 /// last document that has any, as a batch prints them; then the last
 /// `code:` line on `stderr`, which gives a failure without steps or fields.
-pub(crate) fn read_failures(
-    tool: ToolName,
-    reader: Option<Reader<'_>>,
-    stdout: &[u8],
-    stderr: &[u8],
-) -> Vec<ReadFailure> {
+pub(crate) fn read_failures(tool: ToolName, stdout: &[u8], stderr: &[u8]) -> Vec<ReadFailure> {
     let out = String::from_utf8_lossy(stdout);
     let err = String::from_utf8_lossy(stderr);
-    if let Some(reader) = reader {
-        let read = reader.read(&out, &err);
-        if !read.is_empty() {
-            return read;
-        }
-    }
     let read = crumbkit_failures(tool, &out);
     if !read.is_empty() {
         return read;
@@ -225,7 +206,6 @@ pub(crate) fn describe(failure: &ReadFailure) -> String {
             Step::Hint(text) => format!("hint: {text}"),
             Step::None(reason) if reason.is_empty() => "no next step".to_owned(),
             Step::None(reason) => format!("no next step: {reason}"),
-            _ => "a step that crumbkit-test cannot name".to_owned(),
         })
         .collect();
     if steps.is_empty() {
