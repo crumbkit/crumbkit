@@ -6,7 +6,10 @@ use std::process::ExitCode;
 
 use serde_json::json;
 
-use super::{BUDGET, DIM_BATCH, Dim, STAR_BATCH, Star, finish_small, keyed, parsed, star, stars};
+use super::{
+    BUDGET, DIM_BATCH, Dim, STAR_BATCH, Star, budgeted, finish_small, keyed, parsed, star, stars,
+};
+use crate::output::tests::finish_output;
 use crate::{Batch, Error};
 
 /// Returns a batch of `tool show` that takes `keys` and holds `rows`, one
@@ -144,9 +147,9 @@ fn a_failure_too_long_for_the_budget_names_its_first_keys_and_counts_the_rest_as
 fn a_batch_always_answers_its_first_key_and_names_every_key_left_out_when_that_answer_passes_the_budget()
  {
     let mut first = star(1);
-    first.story = "a".repeat(2000);
-    let finished = finish_small(
-        &["--json"],
+    first.story = "a".repeat(400);
+    let finished = finish_output(
+        &mut budgeted(300, &["--json"]),
         STAR_BATCH,
         keyed(vec![first, star(2), star(3)], Vec::<Error>::new()),
     );
@@ -156,7 +159,7 @@ fn a_batch_always_answers_its_first_key_and_names_every_key_left_out_when_that_a
     assert_eq!(document["data"].as_array().unwrap().len(), 1);
     assert_eq!(
         document["failures"][0]["fields"],
-        json!({"left_out": ["star-02", "star-03"], "left_out_from": 1, "budget": 1024})
+        json!({"left_out": ["star-02", "star-03"], "left_out_from": 1, "budget": 300})
     );
     assert_eq!(
         document["failures"][0]["recovery"],

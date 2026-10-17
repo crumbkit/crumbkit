@@ -195,11 +195,11 @@ fn a_batch_that_answers_each_left_out_key_prints_each_failure_even_when_they_pas
 fn a_batch_of_three_large_rows_answers_its_second_and_third_keys_with_their_own_failures_in_a_pretty_document()
  {
     const GUIDE: Guide = Guide::new()
-        .output_budget(BUDGET, "the tests print little")
+        .output_budget(300, "the tests print little")
         .json_layout(JsonLayout::Pretty, "the readers expect it");
     let keys: Vec<String> = (1..=3).map(|number| star(number).name).collect();
     let mut batch: Batch<Star, Error> = Batch::new(&["show"], "names", &keys);
-    batch.extend((1..=3).map(|number| Ok(long_star(number, 500))));
+    batch.extend((1..=3).map(|number| Ok(long_star(number, 120))));
 
     let finished = finish_output(
         &mut guided(&GUIDE, &["--json"]),
@@ -239,9 +239,9 @@ fn answers(document: &Value, in_order: bool) -> (usize, usize) {
 proptest! {
     #[test]
     fn a_batch_that_answers_each_left_out_key_answers_every_key_once_and_passes_the_budget_only_with_its_first_row(
-        lengths in proptest::collection::vec(0_usize..600, 1..12),
+        lengths in proptest::collection::vec(0_usize..150, 1..12),
         unfetched in 0_usize..4,
-        budget in 1024_usize..4096,
+        budget in 1_usize..1024,
         pretty in any::<bool>(),
         in_order in any::<bool>(),
         dim in 0_usize..3,
