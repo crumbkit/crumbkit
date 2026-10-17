@@ -1,0 +1,78 @@
+     Running unittests src/lib.rs (/private/tmp/claude-501/-Users-luke-Code-crumbkit/3ca13248-6bce-4d4c-910a-e070854b67a0/scratchpad/rereview/target/ws/debug/deps/cargo_crumbkit-8bca372d55379904)
+test result: ok. 43 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+     Running unittests src/main.rs (/private/tmp/claude-501/-Users-luke-Code-crumbkit/3ca13248-6bce-4d4c-910a-e070854b67a0/scratchpad/rereview/target/ws/debug/deps/cargo_crumbkit-57509bcf9aca71ff)
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+     Running tests/docs.rs (/private/tmp/claude-501/-Users-luke-Code-crumbkit/3ca13248-6bce-4d4c-910a-e070854b67a0/scratchpad/rereview/target/ws/debug/deps/docs-56ba385936b80332)
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 10.51s
+     Running tests/examples.rs (/private/tmp/claude-501/-Users-luke-Code-crumbkit/3ca13248-6bce-4d4c-910a-e070854b67a0/scratchpad/rereview/target/ws/debug/deps/examples-ed3a0c1aa2c55ef2)
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 12.46s
+     Running tests/topics.rs (/private/tmp/claude-501/-Users-luke-Code-crumbkit/3ca13248-6bce-4d4c-910a-e070854b67a0/scratchpad/rereview/target/ws/debug/deps/topics-b4d5c6ac4075c699)
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+     Running tests/weigh.rs (/private/tmp/claude-501/-Users-luke-Code-crumbkit/3ca13248-6bce-4d4c-910a-e070854b67a0/scratchpad/rereview/target/ws/debug/deps/weigh-0771569ebecaa8e7)
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.43s
+     Running unittests src/lib.rs (/private/tmp/claude-501/-Users-luke-Code-crumbkit/3ca13248-6bce-4d4c-910a-e070854b67a0/scratchpad/rereview/target/ws/debug/deps/crumbkit-e8a9bca812113fa8)
+test result: ok. 800 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.19s
+     Running unittests src/lib.rs (/private/tmp/claude-501/-Users-luke-Code-crumbkit/3ca13248-6bce-4d4c-910a-e070854b67a0/scratchpad/rereview/target/ws/debug/deps/crumbkit_aliases-01828337ce60a936)
+test result: ok. 30 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+     Running unittests src/lib.rs (/private/tmp/claude-501/-Users-luke-Code-crumbkit/3ca13248-6bce-4d4c-910a-e070854b67a0/scratchpad/rereview/target/ws/debug/deps/crumbkit_child-57fc4b6be19d9847)
+test result: ok. 22 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+     Running unittests src/lib.rs (/private/tmp/claude-501/-Users-luke-Code-crumbkit/3ca13248-6bce-4d4c-910a-e070854b67a0/scratchpad/rereview/target/ws/debug/deps/crumbkit_core-29502fe78e17919c)
+test result: ok. 148 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.44s
+     Running tests/derive.rs (/private/tmp/claude-501/-Users-luke-Code-crumbkit/3ca13248-6bce-4d4c-910a-e070854b67a0/scratchpad/rereview/target/ws/debug/deps/derive-3ce906e1f9300321)
+test result: ok. 14 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+     Running unittests src/lib.rs (/private/tmp/claude-501/-Users-luke-Code-crumbkit/3ca13248-6bce-4d4c-910a-e070854b67a0/scratchpad/rereview/target/ws/debug/deps/crumbkit_derive-267a83a57df7fa33)
+test result: ok. 22 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+     Running unittests src/lib.rs (/private/tmp/claude-501/-Users-luke-Code-crumbkit/3ca13248-6bce-4d4c-910a-e070854b67a0/scratchpad/rereview/target/ws/debug/deps/crumbkit_markdown-3fef59e177e340e0)
+test result: ok. 26 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+     Running unittests src/lib.rs (/private/tmp/claude-501/-Users-luke-Code-crumbkit/3ca13248-6bce-4d4c-910a-e070854b67a0/scratchpad/rereview/target/ws/debug/deps/crumbkit_picker-7085e1f9a1f28eaf)
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+     Running unittests src/lib.rs (/private/tmp/claude-501/-Users-luke-Code-crumbkit/3ca13248-6bce-4d4c-910a-e070854b67a0/scratchpad/rereview/target/ws/debug/deps/crumbkit_test-b9ff883c6d38c0cd)
+test result: ok. 431 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.84s
+     Running unittests src/lib.rs (/private/tmp/claude-501/-Users-luke-Code-crumbkit/3ca13248-6bce-4d4c-910a-e070854b67a0/scratchpad/rereview/target/ws/debug/deps/crumbkit_usage-6a94f71e3f135209)
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 156 filtered outok; finished in 0.02s
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 156 filtered out; finished in 0.05s
+test result: ok. 157 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.56s
+     Running unittests src/lib.rs (/private/tmp/claude-501/-Users-luke-Code-crumbkit/3ca13248-6bce-4d4c-910a-e070854b67a0/scratchpad/rereview/target/ws/debug/deps/reading-28d9f01ed3f8b147)
+test result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+     Running unittests src/main.rs (/private/tmp/claude-501/-Users-luke-Code-crumbkit/3ca13248-6bce-4d4c-910a-e070854b67a0/scratchpad/rereview/target/ws/debug/deps/reading-5d05fda927a47d70)
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+     Running tests/conventions.rs (/private/tmp/claude-501/-Users-luke-Code-crumbkit/3ca13248-6bce-4d4c-910a-e070854b67a0/scratchpad/rereview/target/ws/debug/deps/conventions-d0bd582befa44268)
+test result: ok. 18 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.48s
+     Running tests/export.rs (/private/tmp/claude-501/-Users-luke-Code-crumbkit/3ca13248-6bce-4d4c-910a-e070854b67a0/scratchpad/rereview/target/ws/debug/deps/export-0fc218fa11f717f6)
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+     Running tests/lists.rs (/private/tmp/claude-501/-Users-luke-Code-crumbkit/3ca13248-6bce-4d4c-910a-e070854b67a0/scratchpad/rereview/target/ws/debug/deps/lists-fb1d2f77beee258a)
+test result: ok. 22 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.22s
+     Running tests/show.rs (/private/tmp/claude-501/-Users-luke-Code-crumbkit/3ca13248-6bce-4d4c-910a-e070854b67a0/scratchpad/rereview/target/ws/debug/deps/show-3a94ee7b39b1a456)
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+     Running unittests src/lib.rs (/private/tmp/claude-501/-Users-luke-Code-crumbkit/3ca13248-6bce-4d4c-910a-e070854b67a0/scratchpad/rereview/target/ws/debug/deps/shelf-853e4b4f8c2af2b2)
+test result: ok. 24 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+     Running unittests src/main.rs (/private/tmp/claude-501/-Users-luke-Code-crumbkit/3ca13248-6bce-4d4c-910a-e070854b67a0/scratchpad/rereview/target/ws/debug/deps/shelf-d203b449661c8964)
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+     Running tests/aliases.rs (/private/tmp/claude-501/-Users-luke-Code-crumbkit/3ca13248-6bce-4d4c-910a-e070854b67a0/scratchpad/rereview/target/ws/debug/deps/aliases-250823805c89fba0)
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.33s
+     Running tests/books.rs (/private/tmp/claude-501/-Users-luke-Code-crumbkit/3ca13248-6bce-4d4c-910a-e070854b67a0/scratchpad/rereview/target/ws/debug/deps/books-639c0bbe257c4f71)
+test result: ok. 43 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.26s
+     Running tests/complete.rs (/private/tmp/claude-501/-Users-luke-Code-crumbkit/3ca13248-6bce-4d4c-910a-e070854b67a0/scratchpad/rereview/target/ws/debug/deps/complete-31527e37fa14b193)
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+     Running tests/conventions.rs (/private/tmp/claude-501/-Users-luke-Code-crumbkit/3ca13248-6bce-4d4c-910a-e070854b67a0/scratchpad/rereview/target/ws/debug/deps/conventions-e295815d01ca5ca4)
+test result: ok. 19 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.28s
+     Running tests/remove.rs (/private/tmp/claude-501/-Users-luke-Code-crumbkit/3ca13248-6bce-4d4c-910a-e070854b67a0/scratchpad/rereview/target/ws/debug/deps/remove-7d98ba8c54a6fbc9)
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.12s
+     Running tests/self_usage.rs (/private/tmp/claude-501/-Users-luke-Code-crumbkit/3ca13248-6bce-4d4c-910a-e070854b67a0/scratchpad/rereview/target/ws/debug/deps/self_usage-252b1ce3ea8cb804)
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.09s
+     Running tests/terminal.rs (/private/tmp/claude-501/-Users-luke-Code-crumbkit/3ca13248-6bce-4d4c-910a-e070854b67a0/scratchpad/rereview/target/ws/debug/deps/terminal-8245109fe943290d)
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.16s
+     Running tests/usage.rs (/private/tmp/claude-501/-Users-luke-Code-crumbkit/3ca13248-6bce-4d4c-910a-e070854b67a0/scratchpad/rereview/target/ws/debug/deps/usage-fe98ae378123c3ef)
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.09s
+     Running unittests src/bin/start.rs (/private/tmp/claude-501/-Users-luke-Code-crumbkit/3ca13248-6bce-4d4c-910a-e070854b67a0/scratchpad/rereview/target/ws/debug/deps/start-f82ba6e30288c989)
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+     Running unittests src/bin/step_1.rs (/private/tmp/claude-501/-Users-luke-Code-crumbkit/3ca13248-6bce-4d4c-910a-e070854b67a0/scratchpad/rereview/target/ws/debug/deps/step_1-ac5294d232cc87f3)
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+     Running unittests src/bin/step_2.rs (/private/tmp/claude-501/-Users-luke-Code-crumbkit/3ca13248-6bce-4d4c-910a-e070854b67a0/scratchpad/rereview/target/ws/debug/deps/step_2-8947032c5571e17f)
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+     Running unittests src/bin/step_3/main.rs (/private/tmp/claude-501/-Users-luke-Code-crumbkit/3ca13248-6bce-4d4c-910a-e070854b67a0/scratchpad/rereview/target/ws/debug/deps/step_3-09bbbf8299f5b741)
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+     Running tests/page.rs (/private/tmp/claude-501/-Users-luke-Code-crumbkit/3ca13248-6bce-4d4c-910a-e070854b67a0/scratchpad/rereview/target/ws/debug/deps/page-ea8dd2f65e2ce9d7)
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+     Running unittests src/main.rs (/private/tmp/claude-501/-Users-luke-Code-crumbkit/3ca13248-6bce-4d4c-910a-e070854b67a0/scratchpad/rereview/target/ws/debug/deps/xtask-de2220a507b8d985)
+test result: FAILED. 95 passed; 3 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s

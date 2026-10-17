@@ -1,0 +1,20 @@
+== ex-old tree-unique: 41
+== ex-old compiling-lines: 34  time: 9.188363000s
+== ex-old binary: 1718688 bytes
+== ex-old warm rebuild after touch:
+   .613606000s
+== ex-new tree-unique: 41
+== ex-new compiling-lines: 34  time: 8.645735000s
+== ex-new binary: 1767632 bytes
+== ex-new warm rebuild after touch:
+   .673131000s
+== ex-clap tree-unique: 28
+== ex-clap compiling-lines: 25  time: 5.485473000s
+== ex-clap binary: 1005376 bytes
+== ex-clap warm rebuild after touch:
+   .366790000s
+== new crumbkit all-features tree-unique: 41
+== new crumbkit default tree-unique: 29
+== old crumbkit all-features tree-unique: 50
+== old crumbkit default tree-unique: 29
+DONE

@@ -1,0 +1,248 @@
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.07s
+   Doc-tests cargo_crumbkit
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests crumbkit
+
+running 50 tests
+test crates/crumbkit/src/complete.rs - complete::complete (line 89) - compile ... ok
+test crates/crumbkit/src/complete.rs - complete::complete_with (line 148) - compile ... ok
+test crates/crumbkit/src/complete.rs - complete::complete_with_words (line 201) - compile ... ok
+test crates/crumbkit/src/events.rs - events::ended (line 399) - compile ... ok
+test crates/crumbkit/src/help/dashed.rs - help::dashed::Guide::dashed_forms (line 20) ... ok
+test crates/crumbkit/src/help/effects.rs - help::effects::Effects (line 21) ... ok
+test crates/crumbkit/src/codes.rs - codes (line 11) ... ok
+test crates/crumbkit/src/events.rs - events (line 16) ... ok
+test crates/crumbkit/src/help/effects.rs - help::effects::Effects (line 42) ... ok
+test crates/crumbkit/src/events.rs - events::tolerated (line 368) ... ok
+test crates/crumbkit/src/fetch.rs - fetch::fetch_each (line 43) ... ok
+test crates/crumbkit/src/dashed.rs - dashed::dashed_form (line 70) ... ok
+test crates/crumbkit/src/call.rs - call::RenderCall (line 21) ... ok
+test crates/crumbkit/src/dashed.rs - dashed::dashed_name (line 25) ... ok
+test crates/crumbkit/src/form.rs - form::FailureForm (line 51) ... ok
+test crates/crumbkit/src/help.rs - help::Guide (line 60) ... ok
+test crates/crumbkit/src/expect.rs - expect::Expect (line 39) ... ok
+test crates/crumbkit/src/commands.rs - commands (line 12) ... ok
+test crates/crumbkit/src/help/effects.rs - help::effects::Effects::writes_line (line 290) ... ok
+test crates/crumbkit/src/help/effects.rs - help::effects::Effects::line (line 252) ... ok
+test crates/crumbkit/src/help/exit.rs - help::exit::Exit (line 58) ... ok
+test crates/crumbkit/src/help/fields.rs - help::fields::Guide::field_names (line 20) ... ok
+test crates/crumbkit/src/help/leaf.rs - help::leaf::Leaf (line 48) ... ok
+test crates/crumbkit/src/help/format.rs - help::format::FileFormat (line 19) ... ok
+test crates/crumbkit/src/help/exit.rs - help::exit::Exit (line 42) ... ok
+test crates/crumbkit/src/help/leaf/codes.rs - help::leaf::codes::Leaf::codes (line 17) ... ok
+test crates/crumbkit/src/help/leaf/refusal.rs - help::leaf::refusal::Guide::refusal_alternatives (line 169) ... ok
+test crates/crumbkit/src/parse.rs - parse::parse (line 43) - compile ... ok
+test crates/crumbkit/src/help/rename.rs - help::rename::Rename (line 62) ... ok
+test crates/crumbkit/src/help/output.rs - help::output::Guide::json_layout (line 45) ... ok
+test crates/crumbkit/src/help/leaf/refusal.rs - help::leaf::refusal::Leaf::refusal_alternatives (line 109) ... ok
+test crates/crumbkit/src/help/runtime.rs - help::runtime::RuntimeLeaf (line 20) ... ok
+test crates/crumbkit/src/help/terminal.rs - help::terminal::Guide::without_terminal_detection (line 37) ... ok
+test crates/crumbkit/src/help/topic.rs - help::topic::Topic (line 20) ... ok
+test crates/crumbkit/src/output.rs - output::Output::set_command (line 223) ... ok
+test crates/crumbkit/src/trace.rs - trace (line 18) - compile ... ok
+test crates/crumbkit/src/help/words.rs - help::words::quote (line 16) ... ok
+test crates/crumbkit/src/trace.rs - trace (line 53) - compile ... ok
+test crates/crumbkit/src/output/dry_run.rs - output::dry_run::DryRun (line 30) ... ok
+test crates/crumbkit/src/output.rs - output::Output::set_command (line 202) ... ok
+test crates/crumbkit/src/output/stream.rs - output::stream::stream_to (line 96) ... ok
+test crates/crumbkit/src/page.rs - page::Page (line 42) ... ok
+test crates/crumbkit/src/lib.rs - (line 56) ... ok
+test crates/crumbkit/src/schemas/envelope.rs - schemas::envelope::document_schema (line 53) ... ok
+test crates/crumbkit/src/parse/walk.rs - parse::walk::command_path (line 116) ... ok
+test crates/crumbkit/src/pick/no_input.rs - pick::no_input::NoInput (line 27) ... ok
+test crates/crumbkit/src/sink.rs - sink::Sink (line 14) ... ok
+test crates/crumbkit/src/schemas/envelope.rs - schemas::envelope::stream_schema (line 79) ... ok
+test crates/crumbkit/src/sink.rs - sink::Sink<O,E,I>::with_input (line 57) ... ok
+test crates/crumbkit/src/schemas.rs - schemas (line 22) ... ok
+
+test result: ok. 50 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+
+running 5 tests
+test crates/crumbkit/src/help/rename.rs - help::rename::Rename::new (line 93) - compile fail ... ok
+test crates/crumbkit/src/help/leaf/codes.rs - help::leaf::codes::Leaf::codes (line 38) - compile fail ... ok
+test crates/crumbkit/src/output/stream.rs - output::stream::stream_to (line 80) - compile fail ... ok
+test crates/crumbkit/src/page.rs - page::Page (line 75) - compile fail ... ok
+test crates/crumbkit/src/page.rs - page::Page (line 63) - compile fail ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.06s
+
+all doctests ran in 1.21s; merged doctests compilation took 0.93s
+   Doc-tests crumbkit_aliases
+
+running 2 tests
+test crates/crumbkit-aliases/src/names.rs - names::names (line 16) ... ok
+test crates/crumbkit-aliases/src/lib.rs - (line 44) ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+all doctests ran in 0.62s; merged doctests compilation took 0.38s
+   Doc-tests crumbkit_child
+
+running 3 tests
+test crates/crumbkit-child/src/hand_over.rs - hand_over (line 13) - compile ... ok
+test crates/crumbkit-child/src/lib.rs - (line 37) - compile ... ok
+test crates/crumbkit-child/src/hand_over.rs - hand_over::Json (line 72) ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+all doctests ran in 0.34s; merged doctests compilation took 0.15s
+   Doc-tests crumbkit_core
+
+running 31 tests
+test crates/crumbkit-core/src/code.rs - code::Spelling::split (line 187) ... ok
+test crates/crumbkit-core/src/call.rs - call::Call::value (line 180) ... ok
+test crates/crumbkit-core/src/call.rs - call::Call::typed (line 142) ... ok
+test crates/crumbkit-core/src/code/runtime.rs - code::runtime::Code::runtime (line 44) ... ok
+test crates/crumbkit-core/src/call.rs - call::Call::help (line 115) ... ok
+test crates/crumbkit-core/src/failure.rs - failure::Error (line 323) ... ok
+test crates/crumbkit-core/src/call.rs - call::Call (line 19) ... ok
+test crates/crumbkit-core/src/batch.rs - batch::Batch (line 43) ... ok
+test crates/crumbkit-core/src/bytes.rs - bytes::Bytes (line 50) ... ok
+test crates/crumbkit-core/src/call.rs - call::Call::all (line 214) ... ok
+test crates/crumbkit-core/src/document/keys.rs - document::keys::Document<T>::with_keys (line 37) ... ok
+test crates/crumbkit-core/src/document.rs - document::Document (line 42) ... ok
+test crates/crumbkit-core/src/code.rs - code::Code (line 23) ... ok
+test crates/crumbkit-core/src/code.rs - code::Spelling::custom (line 132) ... ok
+test crates/crumbkit-core/src/failure.rs - failure::Failure::alternatives (line 141) ... ok
+test crates/crumbkit-core/src/failure.rs - failure::Failure::fields (line 185) ... ok
+test crates/crumbkit-core/src/lib.rs - (line 46) ... ok
+test crates/crumbkit-core/src/unclassified.rs - unclassified::Error::unclassified (line 26) ... ignored
+test crates/crumbkit-core/src/prose.rs - prose::Prose (line 32) ... ok
+test crates/crumbkit-core/src/failure.rs - failure::Failure (line 55) ... ok
+test crates/crumbkit-core/src/failure.rs - failure::Failure (line 20) ... ok
+test crates/crumbkit-core/src/row.rs - row::Headed (line 76) ... ok
+test crates/crumbkit-core/src/field.rs - field::FieldValue (line 90) ... ok
+test crates/crumbkit-core/src/report.rs - report::Error (line 29) ... ok
+test crates/crumbkit-core/src/listing.rs - listing::Listing (line 30) ... ok
+test crates/crumbkit-core/src/field.rs - field::Field (line 25) ... ok
+test crates/crumbkit-core/src/failure.rs - failure::Failure::diagnostic (line 237) ... ok
+test crates/crumbkit-core/src/row.rs - row::Row (line 24) ... ok
+test crates/crumbkit-core/src/field.rs - field::FieldValue<'a>::from_json (line 166) ... ok
+test crates/crumbkit-core/src/unclassified.rs - unclassified::Error::unclassified (line 37) ... ok
+test crates/crumbkit-core/src/stream.rs - stream::Stream (line 20) ... ok
+
+test result: ok. 30 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+
+running 2 tests
+test crates/crumbkit-core/src/document.rs - document::Document<T>::new (line 117) - compile fail ... ok
+test crates/crumbkit-core/src/code.rs - code::Code::new (line 49) - compile fail ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+
+all doctests ran in 0.55s; merged doctests compilation took 0.27s
+   Doc-tests crumbkit_derive
+
+running 3 tests
+test crates/crumbkit-derive/src/lib.rs - derive_failure (line 47) ... ignored
+test crates/crumbkit-derive/src/lib.rs - derive_failure (line 74) ... ignored
+test crates/crumbkit-derive/src/../README.md - (line 24) ... ok
+
+test result: ok. 1 passed; 0 failed; 2 ignored; 0 measured; 0 filtered out; finished in 0.12s
+
+all doctests ran in 0.17s; merged doctests compilation took 0.05s
+   Doc-tests crumbkit_markdown
+
+running 1 test
+test crates/crumbkit-markdown/src/lib.rs - (line 36) ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+all doctests ran in 0.36s; merged doctests compilation took 0.15s
+   Doc-tests crumbkit_picker
+
+running 2 tests
+test crates/crumbkit-picker/src/lib.rs - (line 111) ... ok
+test crates/crumbkit-picker/src/lib.rs - (line 30) ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+all doctests ran in 0.51s; merged doctests compilation took 0.28s
+   Doc-tests crumbkit_test
+
+running 37 tests
+test crates/crumbkit-test/src/examples.rs - examples::check_examples (line 145) - compile ... ok
+test crates/crumbkit-test/src/goldens.rs - goldens::check_help_goldens (line 52) - compile ... ok
+test crates/crumbkit-test/src/examples/settings.rs - examples::settings::Examples (line 22) ... ok
+test crates/crumbkit-test/src/allow.rs - allow::Allow::untwinned (line 153) ... ok
+test crates/crumbkit-test/src/allow.rs - allow::Allow (line 21) ... ok
+test crates/crumbkit-test/src/budget.rs - budget::Budget (line 19) ... ok
+test crates/crumbkit-test/src/failures.rs - failures::FailureReader (line 42) ... ok
+test crates/crumbkit-test/src/documents.rs - documents::check_mounts (line 132) ... ok
+test crates/crumbkit-test/src/filters.rs - filters::check_filters (line 47) ... ok
+test crates/crumbkit-test/src/output_budget.rs - output_budget::check_output_budget (line 67) - compile ... ok
+test crates/crumbkit-test/src/documents.rs - documents::check_document_ids (line 54) ... ok
+test crates/crumbkit-test/src/opt_outs.rs - opt_outs::check_opt_outs (line 94) - compile ... ok
+test crates/crumbkit-test/src/effects.rs - effects::check_effects (line 89) ... ok
+test crates/crumbkit-test/src/reference.rs - reference::check_command_reference (line 36) - compile ... ok
+test crates/crumbkit-test/src/schemas.rs - schemas::check_schema_goldens (line 57) - compile ... ok
+test crates/crumbkit-test/src/grammar.rs - grammar::check_grammar (line 64) ... ok
+test crates/crumbkit-test/src/examples.rs - examples::example_golden_name (line 445) ... ok
+test crates/crumbkit-test/src/exits.rs - exits::check_exit_codes (line 57) ... ok
+test crates/crumbkit-test/src/allow.rs - allow::Allow::example (line 114) ... ok
+test crates/crumbkit-test/src/codes.rs - codes::check_codes (line 30) ... ok
+test crates/crumbkit-test/src/twins.rs - twins::check_twin (line 81) - compile ... ok
+test crates/crumbkit-test/src/pages.rs - pages::Pages (line 34) ... ok
+test crates/crumbkit-test/src/listings.rs - listings::check_listings (line 43) ... ok
+test crates/crumbkit-test/src/recoveries/runtime.rs - recoveries::runtime::RuntimeFailing (line 42) ... ok
+test crates/crumbkit-test/src/recoveries.rs - recoveries::Failing (line 40) ... ok
+test crates/crumbkit-test/src/names.rs - names::check_names (line 58) ... ok
+test crates/crumbkit-test/src/guide.rs - guide::check_guide (line 104) ... ok
+test crates/crumbkit-test/src/lib.rs - (line 70) ... ok
+test crates/crumbkit-test/src/twins/coverage.rs - twins::coverage::Twins (line 88) ... ok
+test crates/crumbkit-test/src/sizes.rs - sizes::Budgets (line 33) ... ok
+test crates/crumbkit-test/src/recoveries.rs - recoveries::Recoveries (line 223) ... ok
+test crates/crumbkit-test/src/weights.rs - weights::PathBudgets (line 37) ... ok
+test crates/crumbkit-test/src/twins/coverage.rs - twins::coverage::Twin (line 20) ... ok
+test crates/crumbkit-test/src/sizes.rs - sizes::check_help_sizes (line 254) ... ok
+test crates/crumbkit-test/src/weights.rs - weights::path_totals (line 271) ... ok
+test crates/crumbkit-test/src/twins/coverage.rs - twins::coverage::Twin<'a>::variable (line 63) ... ok
+test crates/crumbkit-test/src/weights.rs - weights::check_path_weights (line 169) ... ok
+
+test result: ok. 37 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+
+running 5 tests
+test crates/crumbkit-test/src/allow.rs - allow::Allow::new (line 80) - compile fail ... ok
+test crates/crumbkit-test/src/allow.rs - allow::Allow::new (line 70) - compile fail ... ok
+test crates/crumbkit-test/src/recoveries/unprovoked.rs - recoveries::unprovoked::Unprovoked<'a>::new (line 27) - compile fail ... ok
+test crates/crumbkit-test/src/budget.rs - budget::Budget::new (line 46) - compile fail ... ok
+test crates/crumbkit-test/src/recoveries/runtime.rs - recoveries::runtime::RuntimeFailing::at (line 112) - compile fail ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.06s
+
+all doctests ran in 0.54s; merged doctests compilation took 0.22s
+   Doc-tests crumbkit_usage
+
+running 2 tests
+test crates/crumbkit-usage/src/lib.rs - (line 49) - compile ... ok
+test crates/crumbkit-usage/src/recorder.rs - recorder::start (line 145) - compile ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 2 tests
+test crates/crumbkit-usage/src/self_figures.rs - self_figures (line 9) ... ignored
+test crates/crumbkit-usage/src/self_usage.rs - self_usage (line 9) ... ignored
+
+test result: ok. 0 passed; 0 failed; 2 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+all doctests ran in 0.34s; merged doctests compilation took 0.14s
+   Doc-tests reading
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests shelf
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+EXIT=0

@@ -1,0 +1,71 @@
+   Compiling proc-macro2 v1.0.107
+   Compiling unicode-ident v1.0.27
+   Compiling quote v1.0.47
+   Compiling serde_core v1.0.229
+   Compiling zmij v1.0.23
+   Compiling syn v3.0.9
+   Compiling serde_json v1.0.154
+   Compiling serde v1.0.229
+   Compiling ref-cast v1.0.27
+   Compiling utf8parse v0.2.2
+   Compiling anstyle-parse v1.0.0
+   Compiling ref-cast-impl v1.0.27
+   Compiling serde_derive v1.0.229
+   Compiling serde_derive_internals v0.30.0
+   Compiling anstyle-query v1.1.5
+   Compiling colorchoice v1.0.5
+   Compiling memchr v2.8.3
+   Compiling itoa v1.0.18
+   Compiling is_terminal_polyfill v1.70.2
+   Compiling anstyle v1.0.14
+   Compiling anstream v1.0.0
+   Compiling schemars_derive v1.2.3
+   Compiling strsim v0.11.1
+   Compiling heck v0.5.0
+   Compiling clap_lex v1.1.1
+   Compiling dyn-clone v1.0.20
+   Compiling clap_builder v4.6.7
+   Compiling schemars v1.2.3
+   Compiling clap_derive v4.6.7
+   Compiling crumbkit-core v0.0.0 (/private/tmp/claude-501/-Users-luke-Code-crumbkit/3ca13248-6bce-4d4c-910a-e070854b67a0/scratchpad/rereview/new/crates/crumbkit-core)
+   Compiling clap v4.6.7
+   Compiling is-ai-agent v0.6.0
+   Compiling crumbkit v0.0.0 (/private/tmp/claude-501/-Users-luke-Code-crumbkit/3ca13248-6bce-4d4c-910a-e070854b67a0/scratchpad/rereview/new/crates/crumbkit)
+   Compiling edge v0.0.0 (/private/tmp/claude-501/-Users-luke-Code-crumbkit/3ca13248-6bce-4d4c-910a-e070854b67a0/scratchpad/rereview/ex-edge)
+    Finished `release` profile [optimized] target(s) in 9.79s
+   Compiling proc-macro2 v1.0.107
+   Compiling unicode-ident v1.0.27
+   Compiling quote v1.0.47
+   Compiling serde_core v1.0.229
+   Compiling zmij v1.0.23
+   Compiling syn v3.0.9
+   Compiling utf8parse v0.2.2
+   Compiling ref-cast v1.0.27
+   Compiling serde_json v1.0.154
+   Compiling serde v1.0.229
+   Compiling ref-cast-impl v1.0.27
+   Compiling serde_derive v1.0.229
+   Compiling serde_derive_internals v0.30.0
+   Compiling anstyle-parse v1.0.0
+   Compiling itoa v1.0.18
+   Compiling memchr v2.8.3
+   Compiling colorchoice v1.0.5
+   Compiling is_terminal_polyfill v1.70.2
+   Compiling anstyle v1.0.14
+   Compiling anstyle-query v1.1.5
+   Compiling anstream v1.0.0
+   Compiling schemars_derive v1.2.3
+   Compiling clap_lex v1.1.1
+   Compiling dyn-clone v1.0.20
+   Compiling strsim v0.11.1
+   Compiling heck v0.5.0
+   Compiling clap_derive v4.6.7
+   Compiling clap_builder v4.6.7
+   Compiling schemars v1.2.3
+   Compiling crumbkit-core v0.0.0 (/private/tmp/claude-501/-Users-luke-Code-crumbkit/3ca13248-6bce-4d4c-910a-e070854b67a0/scratchpad/rereview/new/crates/crumbkit-core)
+   Compiling clap v4.6.7
+   Compiling is-ai-agent v0.6.0
+   Compiling crumbkit v0.0.0 (/private/tmp/claude-501/-Users-luke-Code-crumbkit/3ca13248-6bce-4d4c-910a-e070854b67a0/scratchpad/rereview/new/crates/crumbkit)
+   Compiling edge v0.0.0 (/private/tmp/claude-501/-Users-luke-Code-crumbkit/3ca13248-6bce-4d4c-910a-e070854b67a0/scratchpad/rereview/ex-edge)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 7.73s
+EXIT=0

@@ -1,0 +1,113 @@
+{
+  "$type": "evals/run/v1",
+  "by": "Fable agent (claude-fable-5-1), delegated by a Claude Code session for Luke Randall",
+  "eval": "/evals/crumbkit-vs-clap",
+  "finished": "2026-10-13T22:14:00+01:00",
+  "measures": {
+    "all_features_tree_crates": 50,
+    "binary_bytes": 1700000,
+    "check_functions": 21,
+    "clap_only_binary_bytes": 1000000,
+    "clap_only_cold_release_build_s": 3.7,
+    "cold_release_build_s": 9.3,
+    "default_tree_crates": 29
+  },
+  "results": [
+    {
+      "case": "root-about-leak",
+      "evidence": [
+        "/evals/crumbkit-vs-clap/evidence/2026-10-13/report.md"
+      ],
+      "note": "The root command picked up Page's rustdoc as its about and long_about.",
+      "outcome": "fail"
+    },
+    {
+      "case": "forgotten-set-command",
+      "evidence": [
+        "/evals/crumbkit-vs-clap/evidence/2026-10-13/report.md"
+      ],
+      "note": "Release builds drop Next: lines and recoveries silently.",
+      "outcome": "fail"
+    },
+    {
+      "case": "failure-forwarding",
+      "evidence": [
+        "/evals/crumbkit-vs-clap/evidence/2026-10-13/report.md"
+      ],
+      "note": "Each wrapping type forwards five methods by hand, and no derive exists.",
+      "outcome": "fail"
+    },
+    {
+      "case": "anyhow-and-miette",
+      "evidence": [
+        "/evals/crumbkit-vs-clap/evidence/2026-10-13/report.md"
+      ],
+      "note": "miette::Report maps to one code, and anyhow has no integration.",
+      "outcome": "fail"
+    },
+    {
+      "case": "flag-conflict-wording",
+      "evidence": [
+        "/evals/crumbkit-vs-clap/evidence/2026-10-13/report.md"
+      ],
+      "note": "The refusals print with clap's wording.",
+      "outcome": "fail"
+    },
+    {
+      "case": "clap-wording-in-goldens",
+      "evidence": [
+        "/evals/crumbkit-vs-clap/evidence/2026-10-13/report.md"
+      ],
+      "note": "ADR-0021 states that the goldens fail when clap's wording changes.",
+      "outcome": "fail"
+    },
+    {
+      "case": "short-tutorial",
+      "evidence": [
+        "/evals/crumbkit-vs-clap/evidence/2026-10-13/report.md"
+      ],
+      "note": "The ADR tree was the only in-depth documentation.",
+      "outcome": "fail"
+    },
+    {
+      "case": "clap-only-test-tier",
+      "evidence": [
+        "/evals/crumbkit-vs-clap/evidence/2026-10-13/report.md"
+      ],
+      "note": "Every check except check_filters needs a crumbkit Guide.",
+      "outcome": "fail"
+    },
+    {
+      "case": "optional-schemars",
+      "evidence": [
+        "/evals/crumbkit-vs-clap/evidence/2026-10-13/report.md"
+      ],
+      "note": "schemars and serde_json are mandatory dependencies.",
+      "outcome": "fail"
+    },
+    {
+      "case": "usage-log-crate",
+      "note": "The usage log is a 3,790-line module inside crumbkit behind the usage-log feature.",
+      "outcome": "fail"
+    },
+    {
+      "case": "child-crate",
+      "note": "Hand-over is a module inside crumbkit behind the hand-over feature.",
+      "outcome": "fail"
+    },
+    {
+      "case": "budget-stays",
+      "note": "The budget and batches are in crumbkit.",
+      "outcome": "pass"
+    }
+  ],
+  "setup": "The agent read the repository at commit 1013fe2 and built the README example and a clap-only equivalent in a scratch directory. The two structural cases came from a dependency map made after this run, and this run records them as not yet in place. The start and finish times are taken from the scratch files' timestamps. The first run's measurements did not reproduce exactly when the second run rebuilt the same commit, so compare the second run's paired figures.",
+  "started": "2026-10-13T22:07:00+01:00",
+  "summary": "crumbkit's real value lies in failures whose recovery commands are checked against the live command tree, the output budget with batch cut-off, and the convention tests that run every suggested recovery. The rest is convenient but thin. A developer should build on clap directly unless the tool is agent-first with a resource/verb shape and can accept an unpublished dependency.",
+  "versions": {
+    "agent": "claude-fable-5-1",
+    "clap": "4.6.7",
+    "crumbkit": "1013fe2",
+    "rustc": "1.97.1"
+  }
+}

@@ -1,0 +1,129 @@
+{
+  "$type": "evals/run/v1",
+  "by": "Fable agent (claude-fable-5-1), delegated by a Claude Code session for Luke Randall",
+  "eval": "/evals/crumbkit-vs-clap",
+  "finished": "2026-10-17T01:18:00+01:00",
+  "measures": {
+    "all_features_tree_crates": 41,
+    "baseline_all_features_tree_crates": 50,
+    "baseline_binary_bytes": 1718688,
+    "baseline_cold_release_build_s": 9.19,
+    "binary_bytes": 1767632,
+    "check_functions": 21,
+    "clap_only_binary_bytes": 1005376,
+    "clap_only_cold_release_build_s": 5.49,
+    "cold_release_build_s": 8.65,
+    "default_tree_crates": 29
+  },
+  "results": [
+    {
+      "case": "root-about-leak",
+      "evidence": [
+        "/evals/crumbkit-vs-clap/evidence/2026-10-17/report.md",
+        "/evals/crumbkit-vs-clap/evidence/2026-10-17/ex-edge/src/bin/nodoc.rs"
+      ],
+      "note": "Fixed. Flattened types set about = None, and the nodoc program shows no stray text.",
+      "outcome": "pass"
+    },
+    {
+      "case": "forgotten-set-command",
+      "evidence": [
+        "/evals/crumbkit-vs-clap/evidence/2026-10-17/report.md",
+        "/evals/crumbkit-vs-clap/evidence/2026-10-17/ex-edge/src/bin/forgot.rs",
+        "/evals/crumbkit-vs-clap/evidence/2026-10-17/edge-build.out"
+      ],
+      "note": "Partly fixed. Debug builds warn, and check_examples and check_recoveries fail in CI. Release builds still drop Next: lines silently.",
+      "outcome": "fail"
+    },
+    {
+      "case": "failure-forwarding",
+      "evidence": [
+        "/evals/crumbkit-vs-clap/evidence/2026-10-17/report.md"
+      ],
+      "note": "Fixed. #[derive(Failure)] with forward keys replaces the hand-written methods. Failure is still not found through source(), and the docs now state that as a rule.",
+      "outcome": "pass"
+    },
+    {
+      "case": "anyhow-and-miette",
+      "evidence": [
+        "/evals/crumbkit-vs-clap/evidence/2026-10-17/report.md"
+      ],
+      "note": "Partly fixed. Error::unclassified wraps any error and documents a downcast pattern for anyhow. Every miette::Report still maps to one code.",
+      "outcome": "fail"
+    },
+    {
+      "case": "flag-conflict-wording",
+      "evidence": [
+        "/evals/crumbkit-vs-clap/evidence/2026-10-17/report.md"
+      ],
+      "note": "Fixed. The refusals print in crumbkit's wording with a help line and the code crumbkit::cli::usage.",
+      "outcome": "pass"
+    },
+    {
+      "case": "clap-wording-in-goldens",
+      "evidence": [
+        "/evals/crumbkit-vs-clap/evidence/2026-10-17/report.md"
+      ],
+      "note": "Unchanged. Six shelf goldens hold clap sentences, and clap_complete is pinned to ~4.6.11.",
+      "outcome": "fail"
+    },
+    {
+      "case": "short-tutorial",
+      "evidence": [
+        "/evals/crumbkit-vs-clap/evidence/2026-10-17/report.md"
+      ],
+      "note": "Fixed. docs/tutorial.md has five steps, and a test fails when its code drifts from the example files.",
+      "outcome": "pass"
+    },
+    {
+      "case": "clap-only-test-tier",
+      "evidence": [
+        "/evals/crumbkit-vs-clap/evidence/2026-10-17/report.md"
+      ],
+      "note": "Partly fixed. Pages::clap() lets seven checks run without crumbkit's runtime, but check_names and check_grammar still take &Guide, and crumbkit-test still builds all of crumbkit.",
+      "outcome": "fail"
+    },
+    {
+      "case": "optional-schemars",
+      "evidence": [
+        "/evals/crumbkit-vs-clap/evidence/2026-10-17/report.md"
+      ],
+      "note": "Unchanged. Both are still non-optional dependencies.",
+      "outcome": "fail"
+    },
+    {
+      "case": "usage-log-crate",
+      "evidence": [
+        "/evals/crumbkit-vs-clap/evidence/2026-10-17/report.md"
+      ],
+      "note": "Fixed. crumbkit-usage holds the log behind crumbkit::events::Observer. The seam is one global slot, and the first observer installed wins.",
+      "outcome": "pass"
+    },
+    {
+      "case": "child-crate",
+      "evidence": [
+        "/evals/crumbkit-vs-clap/evidence/2026-10-17/report.md"
+      ],
+      "note": "Fixed. crumbkit-child holds hand_over, and crumbkit has no child module.",
+      "outcome": "pass"
+    },
+    {
+      "case": "budget-stays",
+      "evidence": [
+        "/evals/crumbkit-vs-clap/evidence/2026-10-17/report.md"
+      ],
+      "note": "The budget and batches are still in crumbkit.",
+      "outcome": "pass"
+    }
+  ],
+  "setup": "The agent extracted commits 1013fe2 and 514e3d0 with git archive into a scratch directory. It rebuilt the README example on both trees, plus a clap-only equivalent, with one measurement script. It ran the workspace tests and doctests on 514e3d0, and built two small programs (nodoc, forgot) to exercise the rough-edge cases. The start and finish times are taken from the scratch files' timestamps.",
+  "started": "2026-10-17T01:05:00+01:00",
+  "summary": "Seven of the twelve cases pass, against one in the first run. Three of the failing cases are partly fixed. The workspace tests pass. The build cost did not fall: the cold build is about 1.6 times the clap-only build, and the binary is 0.76 MB larger. The public function count rose from 272 to 311. CHANGELOG.md still lists the removed usage-log and hand-over features under Added. crumbkit is worth adopting for agent-first resource/verb tools that run crumbkit-test in CI, and a plain clap tool can now use crumbkit-test's clap-only checks as a dev-dependency.",
+  "versions": {
+    "agent": "claude-fable-5-1",
+    "clap": "4.6.7",
+    "crumbkit": "514e3d0",
+    "crumbkit_baseline": "1013fe2",
+    "rustc": "1.97.1"
+  }
+}

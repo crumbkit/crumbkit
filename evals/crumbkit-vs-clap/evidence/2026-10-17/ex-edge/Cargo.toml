@@ -1,0 +1,10 @@
+[package]
+name = "edge"
+version = "0.0.0"
+edition = "2024"
+[dependencies]
+clap = { version = "4", features = ["derive"] }
+crumbkit = { path = "/private/tmp/claude-501/-Users-luke-Code-crumbkit/3ca13248-6bce-4d4c-910a-e070854b67a0/scratchpad/rereview/new/crates/crumbkit" }
+serde = { version = "1", features = ["derive"] }
+schemars = { version = "1", features = ["derive"] }
+[workspace]

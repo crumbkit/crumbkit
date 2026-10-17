@@ -1,0 +1,10 @@
+[package]
+name = "withck"
+version = "0.1.0"
+edition = "2024"
+[dependencies]
+crumbkit = { path = "/Users/luke/Code/crumbkit/crates/crumbkit" }
+clap = { version = "4", features = ["derive"] }
+serde = { version = "1", features = ["derive"] }
+schemars = { version = "1", features = ["derive"] }
+[workspace]

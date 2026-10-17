@@ -1,0 +1,6 @@
+{
+  "$type": "board/config/v1",
+  "plugins": [
+    "evals"
+  ]
+}

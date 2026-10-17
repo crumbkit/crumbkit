@@ -1,0 +1,112 @@
+{
+  "$type": "evals/eval/v1",
+  "cases": [
+    {
+      "expected": "Its --help shows no text from the flattened type's rustdoc.",
+      "id": "root-about-leak",
+      "input": "A root command with no doc comment that flattens Page or Output."
+    },
+    {
+      "expected": "The omission is reported or cannot compile, and Next: lines and recoveries are not dropped silently.",
+      "id": "forgotten-set-command",
+      "input": "A tool that never calls Output::set_command, built in release."
+    },
+    {
+      "expected": "It gets the Failure behaviour without five hand-written forwarding methods.",
+      "id": "failure-forwarding",
+      "input": "An error type that wraps a Failure."
+    },
+    {
+      "expected": "Its errors can carry stable failure codes without rewriting the error layer.",
+      "id": "anyhow-and-miette",
+      "input": "A codebase built on anyhow or miette::Report."
+    },
+    {
+      "expected": "The refusal is in crumbkit's own wording, with a help line and a code.",
+      "id": "flag-conflict-wording",
+      "input": "--full without --json, and --fields with --long."
+    },
+    {
+      "expected": "The goldens do not depend on clap's exact wording.",
+      "id": "clap-wording-in-goldens",
+      "input": "An adopter's golden files after a clap minor release that rewords an error."
+    },
+    {
+      "expected": "A short tutorial exists that covers the move.",
+      "id": "short-tutorial",
+      "input": "A new user moving a clap tool from Cli::parse() to crumbkit."
+    },
+    {
+      "expected": "It can run some crumbkit-test checks one at a time without a Guide.",
+      "id": "clap-only-test-tier",
+      "input": "A plain clap tool with no crumbkit runtime."
+    },
+    {
+      "expected": "It can build without schemars and serde_json.",
+      "id": "optional-schemars",
+      "input": "A tool that skips --fields validation and schemas."
+    },
+    {
+      "expected": "The usage log lives in its own crate behind a seam, and crumbkit no longer depends on siphasher, etcetera, humantime or getrandom.",
+      "id": "usage-log-crate",
+      "input": "crumbkit's dependency list."
+    },
+    {
+      "expected": "Hand-over to a child process lives in its own crate.",
+      "id": "child-crate",
+      "input": "crumbkit's module list."
+    },
+    {
+      "expected": "The output budget and batches stay in crumbkit.",
+      "id": "budget-stays",
+      "input": "crumbkit's output layer."
+    }
+  ],
+  "conclusion": "crumbkit is worth adopting for an agent-first CLI with a resource/verb command shape, provided the tool runs crumbkit-test in CI and can take a git dependency on an unpublished 0.0.0 crate. The value lies in failures whose recovery commands are checked against the live command tree, the output budget, and the convention tests that run every suggested recovery. Seven of the twelve cases pass in the second run, against one in the first. The build cost did not fall: the cold release build is about 1.6 times a clap-only build, and the binary is about 0.76 MB larger. A plain clap tool can now use crumbkit-test's clap-only checks as a dev-dependency. A tool that needs schemars-free builds, a binary near 1 MB, or goldens that survive clap rewording should still build on clap directly. The remaining changes with most effect are making a forgotten set_command impossible to compile, putting schemars and serde_json behind features, and letting several observers be installed while the clap-only checks depend only on crumbkit-core and clap.",
+  "decision": "Whether to recommend crumbkit to CLI authors, and which changes would most lower its cost of adoption.",
+  "measures": [
+    {
+      "description": "Cold release build of the README example.",
+      "name": "cold_release_build_s",
+      "unit": "s"
+    },
+    {
+      "description": "Cold release build of the clap-only equivalent.",
+      "name": "clap_only_cold_release_build_s",
+      "unit": "s"
+    },
+    {
+      "description": "Release binary of the README example.",
+      "name": "binary_bytes",
+      "unit": "bytes"
+    },
+    {
+      "description": "Release binary of the clap-only equivalent.",
+      "name": "clap_only_binary_bytes",
+      "unit": "bytes"
+    },
+    {
+      "description": "Unique crates in crumbkit's default feature tree.",
+      "name": "default_tree_crates",
+      "unit": "crates"
+    },
+    {
+      "description": "Unique crates in crumbkit's tree with every feature on.",
+      "name": "all_features_tree_crates",
+      "unit": "crates"
+    },
+    {
+      "description": "check_* functions in crumbkit-test.",
+      "name": "check_functions",
+      "unit": "functions"
+    }
+  ],
+  "method": "A Fable agent reviews the repository read-only. It reads the docs, the ADRs, the public API and the tests, and treats the project's own claims as claims to check. It builds the README example and a clap-only program with the same behaviour, runs both, and measures build time, binary size and dependency count. Each case is a problem or suggestion found by an earlier run; a later run checks it again in the code or by running a program. A case passes when the problem is gone or the suggestion is in place, and fails when it is still present or only partly fixed. The note on each result says which.",
+  "question": "Is crumbkit worth adopting, compared with building the same conventions directly on clap, for a Rust CLI whose main callers are agents or other programs and whose commands take the form <tool> <resource> <verb>?",
+  "status": "concluded",
+  "subjects": [
+    "crumbkit",
+    "clap"
+  ],
+  "verdict": "supported"
+}
