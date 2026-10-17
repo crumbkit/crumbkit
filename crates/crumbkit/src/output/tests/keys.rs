@@ -216,3 +216,29 @@ fn with_keys_rejects_each_name_that_crumbkit_writes_beside_the_result() {
         assert!(declared.is_err(), "with_keys accepted {name}");
     }
 }
+
+#[test]
+fn json_of_a_listing_without_a_total_leaves_out_total_and_keeps_truncated() {
+    let finished = finish_with(&["--json"], ENTRIES.without_total(), two_of_eight());
+
+    assert_eq!(finished.code, ExitCode::SUCCESS);
+    assert_eq!(
+        finished.out,
+        concat!(
+            r#"{"$type":"solar/planet-listing/v1","entries":[{"name":"Mercury","moons":0},{"name":"Saturn","moons":274}],"#,
+            r#""truncated":true}"#,
+            "\n"
+        )
+    );
+}
+
+#[test]
+fn text_of_a_listing_without_a_total_keeps_the_count_in_its_footer() {
+    let with_total = finish_with(&[], ENTRIES, two_of_eight());
+
+    let finished = finish_with(&[], ENTRIES.without_total(), two_of_eight());
+
+    assert_eq!(finished.out, with_total.out);
+    assert_eq!(finished.err, with_total.err);
+    assert!(finished.err.contains('8'), "{}", finished.err);
+}

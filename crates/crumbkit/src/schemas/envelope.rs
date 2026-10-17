@@ -141,7 +141,8 @@ pub(crate) fn envelope<T: Rows>(document: Document<()>) -> Schema {
         .to_value(),
     );
     properties.insert(document.data_key().to_owned(), data.to_value());
-    if T::SHAPE == Shape::Listing {
+    // A listing from `Document::without_total` never holds `total`.
+    if T::SHAPE == Shape::Listing && document.prints_total() {
         properties.insert(
             "total".to_owned(),
             json!({
@@ -150,6 +151,8 @@ pub(crate) fn envelope<T: Rows>(document: Document<()>) -> Schema {
                 "minimum": 0,
             }),
         );
+    }
+    if T::SHAPE == Shape::Listing {
         properties.insert(
             "truncated".to_owned(),
             json!({
