@@ -1,6 +1,8 @@
 //! Which names `--fields` accepts for a result, and which view flags a
 //! result refuses because it cannot use them.
 
+use schemars::Schema;
+
 use super::Output;
 use crate::help::ViewFlag;
 use crate::help::view::{self, Typed};
@@ -18,23 +20,16 @@ pub(super) fn flags_refusal<T: Rows>(output: &Output, document: Document<T>) -> 
 }
 
 /// Returns the refusal of the view flags in `output` for a run whose
-/// handler returned a failure that `finish` prints in a document whose
-/// result type is `T`, or `None` when the failure prints.
+/// handler returned a failure, or `None` when the failure prints.
 ///
-/// It refuses two flags that cannot work together, as [`view::pairing`]
-/// describes, and then, when `T` holds rows, the first name in `fields`
-/// that is not a field of its row type, as [`unknown_field`] describes. It
-/// never refuses a flag because `T` cannot use it, because a tool may
-/// finish an early failure in a prose document although its leaf declares
-/// rows, and the caller then needs to read the failure.
-pub(super) fn failure_refusal<T: Rows>(output: &Output) -> Option<Refusal> {
-    if let Some(refusal) = view::pairing(output.typed()) {
-        return Some(refusal);
-    }
-    if output.fields.is_empty() || matches!(T::SHAPE, Shape::Prose | Shape::Bytes) {
-        return None;
-    }
-    unknown_field::<T::Row>(&output.fields)
+/// It refuses only two flags that cannot work together, as
+/// [`view::pairing`] describes, so the outcome never depends on the
+/// document that `finish` was given. A tool may finish an early failure in
+/// another document than its leaf declares, and `parse` has already
+/// refused what the leaf's document cannot use and an unknown `--fields`
+/// name.
+pub(super) fn failure_refusal(output: &Output) -> Option<Refusal> {
+    view::pairing(output.typed())
 }
 
 /// Returns the refusal of the view flags that the caller typed, the names
@@ -91,8 +86,15 @@ pub(super) fn refusal<R: Row>(
 /// its JSON Schema, so a mistyped name fails even when the result has no
 /// rows.
 fn unknown_field<R: Row>(fields: &[String]) -> Option<Refusal> {
-    let schema = schemars::schema_for!(R);
-    let properties = row::properties(&schema);
+    unknown_field_in(&schemars::schema_for!(R), fields)
+}
+
+/// Returns the refusal of the first name in `fields` that is not a
+/// property of the row type whose JSON Schema is `schema`, as
+/// [`unknown_field`] describes. `parse` calls it with the row schema of the
+/// leaf's document.
+pub(crate) fn unknown_field_in(schema: &Schema, fields: &[String]) -> Option<Refusal> {
+    let properties = row::properties(schema);
     let is_field = |name: &str| properties.iter().any(|(field, _)| *field == name);
     let unknown = fields.iter().find(|name| !is_field(name))?;
 

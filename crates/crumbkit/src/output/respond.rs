@@ -27,12 +27,11 @@ pub(super) fn respond<T: Rows, E: AsFailure, O: Write, W: Write, R>(
 ) -> (u8, bool) {
     let printing = output.printing();
     // A tool may finish an early failure in another document than its leaf
-    // declares, so a failure is checked only for flag pairs and unknown
-    // `--fields` names, as `failure_refusal` describes. `parse` has already
-    // refused a flag that the declared document cannot use.
+    // declares, so a failure is checked only for flag pairs, as
+    // `failure_refusal` describes.
     let refusal = match &result {
         Ok(_) => fields::flags_refusal(output, document),
-        Err(_) => fields::failure_refusal::<T>(output),
+        Err(_) => fields::failure_refusal(output),
     };
     if let Some(refusal) = refusal {
         let code = refusal.print(sink, output.json, spelling, printing, &mut output.command);

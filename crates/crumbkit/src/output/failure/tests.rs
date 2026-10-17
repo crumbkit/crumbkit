@@ -8,7 +8,6 @@ use clap::{CommandFactory as _, Parser, Subcommand};
 use schemars::JsonSchema;
 use serde::Serialize;
 
-use crate::twins::assert_one_word_apart;
 use crate::{
     Call, Code, Document, Error, Failure, Field, FieldValue, Output, Recovery, Row, Sink, Spelling,
     finish_to,
@@ -423,22 +422,14 @@ fn full_and_fields_leave_the_failure_document_unchanged() {
 }
 
 #[test]
-fn an_unknown_field_exits_with_code_2_before_the_failure_prints() {
-    // The twin fails with the same failure and code 1, which shows that the
-    // field passed (TEST-1).
-    assert_one_word_apart(&["--fields", "radius"], &["--fields", "name"]);
-    let twin = fail_with(&["--fields", "name"], missing(run_list()));
-    assert_eq!(twin.code, ExitCode::FAILURE);
-    assert!(twin.err.contains("Vulcan"), "{}", twin.err);
+fn an_unknown_field_on_a_failed_run_of_a_tool_that_parses_with_clap_alone_prints_the_failure() {
+    // `finish` cannot tell the leaf's document from the document that the
+    // tool finishes a failure in, so it leaves an unknown name to `parse`.
     let finished = fail_with(&["--fields", "radius"], missing(run_list()));
 
-    assert_eq!(finished.code, ExitCode::from(2));
-    assert!(
-        finished
-            .err
-            .starts_with("error: --fields names an unknown field 'radius'")
-    );
-    assert!(!finished.err.contains("Vulcan"));
+    assert_eq!(finished.code, ExitCode::FAILURE);
+    assert!(finished.err.contains("Vulcan"), "{}", finished.err);
+    assert!(!finished.err.contains("unknown field"), "{}", finished.err);
 }
 
 #[test]

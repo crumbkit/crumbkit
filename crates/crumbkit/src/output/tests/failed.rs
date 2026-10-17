@@ -1,15 +1,18 @@
-//! Tests for the view flags of a run whose handler fails: the handler's
-//! failure prints with its own code, and `finish` never refuses a view flag
-//! because the run ended in a failure.
+//! Tests for the view flags of a run whose handler fails: `parse` refuses
+//! what the leaf's document cannot use and unknown `--fields` names, and
+//! `finish` then prints the handler's failure with its own code whatever
+//! document the tool finishes it in.
 
 use std::fmt;
 use std::process::ExitCode;
 
 use clap::{CommandFactory as _, Parser, Subcommand};
+use schemars::JsonSchema;
+use serde::Serialize;
 
 use super::{Finished, PLANETS};
 use crate::help::{Guide, Leaf};
-use crate::{Code, Document, Failure, Prose, Recovery, Sink, Spelling, ViewFlags};
+use crate::{Code, Document, Failure, Prose, Recovery, Row, Rows, Sink, Spelling, ViewFlags};
 use crate::{finish_to, parse_to};
 
 const NO_CONFIG: Code = Code::new("solar", "config", "not_found");
@@ -17,6 +20,20 @@ const NO_CONFIG: Code = Code::new("solar", "config", "not_found");
 /// The document that the tool's early failures finish with, before the
 /// command knows which result it prints.
 const EARLY: Document<Prose<String>> = Document::new("solar", "early", 1, "The early answer.");
+
+/// A setting, a row whose only field is `key`.
+#[derive(Serialize, JsonSchema)]
+struct Setting {
+    key: &'static str,
+}
+
+impl Row for Setting {
+    const COLUMNS: &'static [&'static str] = &["key"];
+}
+
+/// A document of rows that the tool's early failures may finish with, whose
+/// row type lacks the fields of the leaf's declared document.
+const SETTINGS: Document<Vec<Setting>> = Document::new("solar", "settings", 1, "The settings.");
 
 /// A failure that the handler returns when it finds no config file.
 #[derive(Debug)]
@@ -63,6 +80,12 @@ const GUIDE: Guide = Guide::new().leaves(&[Leaf::new(&["list"]).document(PLANETS
 /// Parses `args` with `GUIDE`, and finishes the handler's `NoConfig` as
 /// the tool's early failure, in the `EARLY` document.
 fn fail_early(args: &[&str]) -> Finished {
+    fail_in(args, EARLY)
+}
+
+/// Parses `args` with `GUIDE`, and finishes the handler's `NoConfig` as
+/// the tool's early failure, in `document`.
+fn fail_in<T: Rows>(args: &[&str], document: Document<T>) -> Finished {
     let mut out = Vec::new();
     let mut err = Vec::new();
     let mut sink = Sink::new(&mut out, &mut err);
@@ -70,8 +93,8 @@ fn fail_early(args: &[&str]) -> Finished {
         parse_to::<Tool, _, _, _, _>(&mut sink, Tool::command(), &GUIDE, Spelling::COLONS, args);
     let code = match parsed {
         Ok((_, mut output)) => {
-            let result: Result<Prose<String>, NoConfig> = Err(NoConfig);
-            finish_to(&mut sink, &mut output, Spelling::COLONS, EARLY, result)
+            let result: Result<T, NoConfig> = Err(NoConfig);
+            finish_to(&mut sink, &mut output, Spelling::COLONS, document, result)
         }
         Err(stop) => stop.number(),
     };
@@ -151,4 +174,43 @@ error: --long adds the long columns of a table, and this command prints prose
   code:  tool::cli::usage
 "
     );
+}
+
+#[test]
+fn an_unknown_fields_name_on_a_leaf_with_a_document_is_refused_before_the_handler_runs() {
+    let finished = fail_early(&["tool", "list", "--fields", "radius"]);
+
+    assert_eq!(finished.code, ExitCode::from(2));
+    assert_eq!(finished.out, "");
+    assert!(
+        finished.err.starts_with(
+            "error: --fields names an unknown field 'radius'\n  help:  use the valid fields: "
+        ),
+        "{}",
+        finished.err
+    );
+    assert!(finished.err.contains("name"), "{}", finished.err);
+    assert!(
+        finished.err.ends_with("  code:  tool::cli::usage\n"),
+        "{}",
+        finished.err
+    );
+    assert!(!finished.err.contains("config file not found"));
+}
+
+#[test]
+fn an_unknown_fields_name_on_a_leaf_without_a_document_prints_the_failure() {
+    let finished = fail_early(&["tool", "show", "--fields", "radius"]);
+
+    assert_eq!(finished.code, ExitCode::from(1));
+    assert_eq!(finished.err, NO_CONFIG_TEXT);
+}
+
+#[test]
+fn a_failed_run_finished_in_a_document_of_other_rows_prints_its_own_failure_for_fields() {
+    let finished = fail_in(&["tool", "list", "--fields", "name"], SETTINGS);
+
+    assert_eq!(finished.code, ExitCode::from(1));
+    assert_eq!(finished.out, "");
+    assert_eq!(finished.err, NO_CONFIG_TEXT);
 }

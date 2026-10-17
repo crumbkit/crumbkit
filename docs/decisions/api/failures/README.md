@@ -15,3 +15,4 @@ in place of crumbkit's failure document.
 - [ADR-0045. Failure forms](0045-failure-forms.md)
 - [ADR-0061. Field names from another system](0061-field-names-from-another-system.md)
 - [ADR-0078. A refusal recovers with the tool's call](0078-refusal-recovery-from-the-tool.md)
+- [ADR-0082. View flags on a failed run](0082-view-flags-on-a-failed-run.md)

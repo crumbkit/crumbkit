@@ -375,6 +375,13 @@ impl Leaf {
             .is_some_and(|columns| !row::properties(&(columns.schema)()).is_empty())
     }
 
+    /// Returns the JSON Schema of the row type of the leaf's document, or
+    /// `None` when the leaf has no document. It builds the schema on each
+    /// call.
+    pub(crate) fn row_schema(&self) -> Option<Schema> {
+        self.columns.map(|columns| (columns.schema)())
+    }
+
     /// Returns the function that builds the JSON Schema of the whole
     /// document that the leaf prints, as
     /// [`schemas::document_schema`](crate::schemas::document_schema)

@@ -1,5 +1,6 @@
 //! One parse of the command line: the tool's parsed type, `--no-input`,
-//! and the refusal of a view flag that the typed command does not offer.
+//! and the refusal of a view flag that the typed command does not offer or
+//! a `--fields` name that its document lacks.
 
 use std::ffi::OsString;
 
@@ -9,6 +10,7 @@ use clap::{ArgMatches, Command, FromArgMatches};
 use super::pick;
 use crate::ViewFlags;
 use crate::help::{Guide, Leaf, ViewFlag, view};
+use crate::output::fields;
 use crate::refusal::Refusal;
 
 /// What one parse of the command line found.
@@ -74,7 +76,9 @@ pub(super) fn deepest<'a>(
 /// `level` holds its matches. On a leaf whose document is headed, it then
 /// refuses `--fields` without `--json`, as [`view::headed`] describes
 /// (ADR-0062). It then refuses two typed flags that cannot
-/// work together, on every command, as [`view::pairing`] describes.
+/// work together, on every command, as [`view::pairing`] describes. On a
+/// leaf with a document, it last refuses a `--fields` name that the row
+/// type of the document lacks, as [`unknown_field`] describes.
 ///
 /// clap copies the value of a global flag to every command on the path, so
 /// the deepest command's matches hold a view flag that the caller typed
@@ -116,4 +120,20 @@ pub(super) fn refusal(
     unoffered
         .or_else(|| headed.then(|| view::headed(typed)).flatten())
         .or_else(|| view::pairing(typed))
+        .or_else(|| unknown_field(node, level, leaf?))
+}
+
+/// Returns the refusal of the first `--fields` name that the caller typed
+/// and that is not a field of the row type of `leaf`'s document, or `None`
+/// when every name is a field or the leaf has no document. The refusal is
+/// the one that `finish` prints for an unknown name in a result, so a
+/// mistyped name fails before the handler runs, also on a run whose
+/// handler would fail.
+fn unknown_field(node: &Command, level: &ArgMatches, leaf: &Leaf) -> Option<Refusal> {
+    let view = ViewFlags::read(node, level);
+    let names = view.field_names();
+    if names.is_empty() {
+        return None;
+    }
+    fields::unknown_field_in(&leaf.row_schema()?, names)
 }

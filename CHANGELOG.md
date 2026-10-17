@@ -863,9 +863,10 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
-- crumbkit: when the handler returns a failure, [`finish`] prints that
-  failure whatever view flags the caller typed, so a valid `--long` or
-  `--fields` is never refused because the run failed ([behaviour/output]).
+- crumbkit: when the handler returns a failure, [`finish`] refuses only
+  conflicting view flags and otherwise prints the failure. [`parse`] refuses
+  an unknown `--fields` name before the handler runs on a leaf with a
+  document ([behaviour/output]).
 - crumbkit: the over-budget recovery of a batch, and each per-key recovery,
   reruns the caller's words with the keys left out, keeping `--json`,
   `--fields`, filters and global options ([behaviour/output/budget]).
