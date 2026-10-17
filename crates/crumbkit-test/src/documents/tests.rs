@@ -115,6 +115,49 @@ fn a_document_without_the_envelope_that_an_opt_out_names_passes() {
     check_document_ids(&shelf(), &GUIDE, ALLOW);
 }
 
+/// A book that the tool's readers expect whole, so `--json` prints every
+/// field of it.
+#[derive(Serialize, JsonSchema)]
+struct WholeBook {
+    /// The book's id.
+    id: u32,
+}
+
+impl Row for WholeBook {
+    const COLUMNS: &'static [&'static str] = &["id"];
+    const WHOLE: bool = true;
+}
+
+const WHOLE_BOOKS: Document<Vec<WholeBook>> =
+    Document::new("shelf", "books-list", 1, "One page of the books.");
+
+#[test]
+fn a_document_whose_rows_print_whole_without_an_opt_out_fails() {
+    const GUIDE: Guide =
+        Guide::new().leaves(&[Leaf::new(&["books", "list"]).document(WHOLE_BOOKS)]);
+
+    let message = panic_message(|| check_document_ids(&shelf(), &GUIDE, &[])).unwrap();
+
+    assert_eq!(
+        message,
+        "the command tree breaks crumbkit's document id rules:\n\
+         shelf books list: the command prints the rows of shelf/books-list/v1 whole, because its row type sets `Row::WHOLE`, which needs an opt-out from `documents/rows-whole` with a reason"
+    );
+}
+
+#[test]
+fn a_document_whose_rows_print_whole_that_an_opt_out_names_passes() {
+    const GUIDE: Guide =
+        Guide::new().leaves(&[Leaf::new(&["books", "list"]).document(WHOLE_BOOKS)]);
+    const ALLOW: &[Allow] = &[Allow::new(
+        Rule::RowsWhole,
+        "books list",
+        "Scripts read every field of each book, as shelf printed it before it adopted crumbkit.",
+    )];
+
+    check_document_ids(&shelf(), &GUIDE, ALLOW);
+}
+
 /// A failure form whose document has the id that `document` returns.
 struct ErrorForm(fn() -> Document<()>);
 

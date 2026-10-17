@@ -20,6 +20,7 @@ mod exits;
 mod keys;
 mod problems;
 mod views;
+mod whole;
 
 /// A row with two compact columns, one long column and one field that only
 /// `--full` shows.
