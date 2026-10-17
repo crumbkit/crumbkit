@@ -238,6 +238,30 @@ fn a_bytes_command_prints_the_bytes_output_line_as_help_does() {
 }
 
 #[test]
+fn a_json_rows_command_prints_the_json_rows_output_line_as_help_does() {
+    let input = document(&[command(
+        "tool query",
+        "Query",
+        json!({
+            "form": "json-rows",
+            "effects": {"read_only": true, "destructive": false, "idempotent": true, "open_world": false},
+        }),
+    )]);
+
+    let reference = render(&input).unwrap();
+
+    let expected = format!(
+        "\nEffects: read-only, closed-world.\n\n{}\n",
+        crumbkit::help::WHOLE_LINE
+    );
+    assert!(
+        reference.text().ends_with(&expected),
+        "{}",
+        reference.text()
+    );
+}
+
+#[test]
 fn the_writes_line_follows_the_effects_line_and_words_the_guards_as_help_does() {
     let input = document(&[command(
         "tool",

@@ -147,6 +147,9 @@ fn section(text: &mut String, command: &Command, commands: &[Command]) {
         Some("bytes") => {
             let _ = write!(text, "\n{}\n", help::BYTES_LINE);
         }
+        Some("json-rows") => {
+            let _ = write!(text, "\n{}\n", help::WHOLE_LINE);
+        }
         _ => {}
     }
     if !command.exits.is_empty() {

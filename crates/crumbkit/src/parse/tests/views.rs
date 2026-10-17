@@ -69,6 +69,34 @@ const WATCH: Document<Stream<Id>> = Document::new("tool", "watch", 1, "The ids a
 const READ: Document<Batch<Page, Error>> =
     Document::new("tool", "read", 1, "The text of each book.").headed();
 
+/// A row that a tool's readers expect whole, with a compact and a long
+/// column.
+#[derive(Serialize, JsonSchema)]
+struct Shelf {
+    /// The shelf's id.
+    id: u32,
+    /// The number of books on the shelf.
+    books: u32,
+}
+
+impl Row for Shelf {
+    const COLUMNS: &'static [&'static str] = &["id"];
+    const LONG_COLUMNS: &'static [&'static str] = &["books"];
+    const WHOLE: bool = true;
+}
+
+/// A row that serializes as an array of its values, so it has no columns.
+#[derive(Serialize, JsonSchema)]
+struct Answer(u32, u32);
+
+impl Row for Answer {
+    const COLUMNS: &'static [&'static str] = &[];
+    const WHOLE: bool = true;
+}
+
+const SHELVES: Document<Vec<Shelf>> = Document::new("tool", "shelves", 1, "The shelves.");
+const QUERY: Document<Vec<Answer>> = Document::new("tool", "query", 1, "The answers.");
+
 const GUIDE: Guide = Guide::new().leaves(&[
     Leaf::new(&["books", "list"]).document(BOOKS),
     Leaf::new(&["books", "ids"]).document(IDS),
@@ -79,13 +107,15 @@ const GUIDE: Guide = Guide::new().leaves(&[
     Leaf::new(&["books", "read"]).document(READ),
     Leaf::new(&["books", "plain"]),
     Leaf::new(&["books", "own"]).document(COUNT),
+    Leaf::new(&["books", "shelves"]).document(SHELVES),
+    Leaf::new(&["books", "query"]).document(QUERY),
 ]);
 
 /// A tool with crumbkit's output flags on its root and one group of leaves.
 /// The leaf `own` declares its own `--long`, which is not global.
 fn tool() -> Command {
     let leaves = [
-        "list", "ids", "count", "export", "dump", "watch", "read", "plain",
+        "list", "ids", "count", "export", "dump", "watch", "read", "plain", "shelves", "query",
     ]
     .map(|name| Command::new(name).about("A leaf"));
     let own = Command::new("own").about("A leaf with its own --long").arg(
@@ -187,6 +217,48 @@ fn the_help_of_a_leaf_whose_rows_have_no_long_columns_lists_no_long_flag() {
 #[test]
 fn the_help_of_an_unwrapped_leaf_lists_no_full_flag() {
     assert_eq!(listed(&["books", "dump"]), [true, true, false]);
+}
+
+#[test]
+fn the_help_of_a_leaf_whose_rows_print_whole_lists_no_full_flag() {
+    assert_eq!(listed(&["books", "shelves"]), [true, true, false]);
+}
+
+#[test]
+fn the_help_of_a_leaf_whose_whole_rows_have_no_columns_lists_no_fields_long_or_full_flag() {
+    assert_eq!(listed(&["books", "query"]), [false, false, false]);
+}
+
+#[test]
+fn the_help_of_a_leaf_whose_whole_rows_have_no_columns_says_that_text_prints_a_json_line_for_each_row()
+ {
+    let page = long_help(&["books", "query"]);
+
+    assert!(
+        page.contains(
+            "Output: one line of JSON for each row, and --json prints the rows in one document.\n"
+        ),
+        "{page}"
+    );
+}
+
+#[test]
+fn fields_on_a_leaf_whose_whole_rows_have_no_columns_is_refused_before_the_handler_runs() {
+    let refused = ["tool", "books", "query", "--fields", "id"];
+    let admitted = ["tool", "books", "query"];
+    assert_eq!(parse(&admitted).code, None, "{}", parse(&admitted).err);
+
+    let parsed = parse(&refused);
+
+    assert_eq!(parsed.code, Some(ExitCode::from(2)));
+    assert_eq!(
+        parsed.err,
+        "\
+error: --fields selects the columns of a table, and this command's rows have no columns
+  help:  use --json to read every field of each row
+  code:  crumbkit::cli::usage
+"
+    );
 }
 
 #[test]
