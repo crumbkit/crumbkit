@@ -326,6 +326,9 @@ pub enum Rule {
     /// every field of each row in JSON without `--full`, because its row
     /// type sets `Row::WHOLE`. Its id is `documents/rows-whole`.
     RowsWhole,
+    /// a listing whose JSON leaves out `total`, because its document comes
+    /// from `Document::without_total`. Its id is `documents/total`.
+    Total,
     /// [`check_exit_codes`](crate::check_exit_codes): the guide declares
     /// an exit code from 126 to 255, which a shell also reports for its own
     /// reasons. Its id is `exit-codes/shell-code`.
@@ -390,6 +393,7 @@ impl Rule {
             Self::Examples => "examples/run",
             Self::Envelope => "documents/envelope",
             Self::RowsWhole => "documents/rows-whole",
+            Self::Total => "documents/total",
             Self::ShellExitCode => "exit-codes/shell-code",
             Self::SharedExit => "exit-codes/shared-exit",
             Self::Recoveries => "recoveries/follow",
@@ -467,6 +471,9 @@ impl Rule {
             ],
             Self::RowsWhole => &[
                 "--json prints every field of each row, so the document costs more tokens than the compact columns.",
+            ],
+            Self::Total => &[
+                "A program cannot learn from the JSON how many rows matched, and only `truncated` tells it whether rows were left out.",
             ],
             Self::ShellExitCode => &[
                 "An agent cannot tell the code from the one a shell reports, such as 127 when the shell cannot find the tool or 130 when Ctrl-C ends it.",
