@@ -378,12 +378,13 @@ impl<R: Row, E: AsFailure> Document<Batch<R, E>> {
     ///
     /// Each failure costs about 200 bytes of the budget where a key in the
     /// one failure's `left_out` costs a few, so `crumbkit::finish` prints the
-    /// most rows that fit beside them. When even the first row and every
-    /// such failure pass the budget, the batch ends with the one failure
-    /// that names the keys left out, as it does without this declaration.
+    /// most rows that fit beside them, and always the first row. Every answer
+    /// left out keeps its own failure, so the JSON document can pass the
+    /// budget by the size of those failures: a batch of 10,000 keys whose
+    /// first row fills the budget prints about 2 MB of failures after it.
     ///
     /// It is a declaration that crumbkit-test's `check_opt_outs` lists under
-    /// the customisations (ADR-0068).
+    /// the customisations (ADR-0068, ADR-0070).
     #[must_use]
     pub const fn left_out_per_key(mut self) -> Self {
         self.per_key = true;

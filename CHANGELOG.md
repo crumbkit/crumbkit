@@ -881,6 +881,16 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit: `Guide::output_budget` takes any budget of at least 1 byte and
   panics only on 0, so a tool's tests can show a cut result with a few short
   rows ([behaviour/output/budget]).
+- crumbkit: a batch marked with `Document::left_out_per_key` always gives
+  each answer left out its own failure, and its JSON can pass the output
+  budget by their size. The fallback to one failure is removed
+  ([behaviour/output/budget]).
+- crumbkit: the one over-budget failure of a batch names every key left out
+  when the first row and a failure that names no key already pass the budget
+  ([behaviour/output/budget]).
+- crumbkit-test: the `left-out-per-key` customisation of [`check_opt_outs`]
+  says that the document can pass the budget by the size of its failures
+  ([behaviour/adoption/declarations]).
 
 ### Removed
 

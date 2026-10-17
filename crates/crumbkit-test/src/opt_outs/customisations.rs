@@ -206,7 +206,8 @@ fn leaf_customisations(command: &Command, leaf: &Leaf) -> Vec<Customisation> {
             applies_to: command_line(command, &leaf.path().join(" ")),
             declares: "When the output budget leaves out answers, the command prints one failure \
                        for each answer left out, at its key's position, in place of one failure \
-                       that names them all."
+                       that names them all. The JSON document can pass the budget by the size \
+                       of those failures."
                 .to_owned(),
         });
     }
