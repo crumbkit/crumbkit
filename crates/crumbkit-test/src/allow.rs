@@ -322,6 +322,10 @@ pub enum Rule {
     /// comes from `Document::without_envelope`. Its id is
     /// `documents/envelope`.
     Envelope,
+    /// [`check_document_ids`](crate::check_document_ids): a command prints
+    /// a listing whose JSON leaves out `total`, because its document comes
+    /// from `Document::without_total`. Its id is `documents/total`.
+    Total,
     /// [`check_exit_codes`](crate::check_exit_codes): the guide declares
     /// an exit code from 126 to 255, which a shell also reports for its own
     /// reasons. Its id is `exit-codes/shell-code`.
@@ -385,6 +389,7 @@ impl Rule {
             Self::OneValuePerUse => "filters/one-value-per-use",
             Self::Examples => "examples/run",
             Self::Envelope => "documents/envelope",
+            Self::Total => "documents/total",
             Self::ShellExitCode => "exit-codes/shell-code",
             Self::SharedExit => "exit-codes/shared-exit",
             Self::Recoveries => "recoveries/follow",
@@ -459,6 +464,9 @@ impl Rule {
             Self::Envelope => &[
                 "An agent cannot predict the document's shape from crumbkit's conventions and must read its schema with `schemas show`.",
                 "The document has no `schema` id, `truncated` or `failures`, so a program cannot tell which document it read, whether it holds every row, or which ids failed.",
+            ],
+            Self::Total => &[
+                "A program cannot learn from the JSON how many rows matched, and only `truncated` tells it whether rows were left out.",
             ],
             Self::ShellExitCode => &[
                 "An agent cannot tell the code from the one a shell reports, such as 127 when the shell cannot find the tool or 130 when Ctrl-C ends it.",
