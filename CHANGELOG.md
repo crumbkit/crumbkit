@@ -591,6 +591,9 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit: [`parse`] returns the tool's type and an [`Output`] that holds
   the command tree, the typed words and the leaf's code renames. A tool
   flattens [`ViewFlags`] in place of `Output` ([behaviour/parsing]).
+- crumbkit: [`Page`] refuses 0, a word or a negative `--limit` with a
+  sentence that states the range, such as `--limit takes a whole number
+  from 1 to 100` ([behaviour/output/listings]).
 - crumbkit: a tool that parses with clap alone builds its [`Output`] with
   `Output::new(view, command, guide, args)`, which finds the leaf that the
   argv names, so the run prints that leaf's code renames

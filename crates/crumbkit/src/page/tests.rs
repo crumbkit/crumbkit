@@ -122,11 +122,71 @@ fn all_returns_no_limit() {
     assert_eq!(books(&["--all"]).unwrap().limit(), None);
 }
 
+/// Returns the reason that clap's `error` gives for a refused value, the
+/// text after the value and the flag.
+fn reason(error: &clap::Error) -> String {
+    assert_eq!(error.kind(), ErrorKind::ValueValidation, "{error}");
+    std::error::Error::source(error).unwrap().to_string()
+}
+
 #[test]
-fn a_limit_of_0_is_refused() {
+fn a_limit_of_0_is_refused_with_the_range_of_an_unbounded_page() {
     let error = books(&["--limit", "0"]).unwrap_err();
 
-    assert_eq!(error.kind(), ErrorKind::ValueValidation);
+    assert_eq!(reason(&error), "--limit takes a whole number of at least 1");
+}
+
+#[test]
+fn a_limit_that_is_not_a_number_is_refused_with_the_range_of_an_unbounded_page() {
+    let error = books(&["--limit", "abc"]).unwrap_err();
+
+    assert_eq!(reason(&error), "--limit takes a whole number of at least 1");
+}
+
+#[test]
+fn a_negative_limit_is_refused_with_the_range_of_an_unbounded_page() {
+    let error = books(&["--limit=-1"]).unwrap_err();
+
+    assert_eq!(reason(&error), "--limit takes a whole number of at least 1");
+}
+
+#[test]
+fn a_limit_of_0_is_refused_with_the_range_of_a_bounded_page() {
+    let error = shelves(&["--limit", "0"]).unwrap_err();
+
+    assert_eq!(reason(&error), "--limit takes a whole number from 1 to 10");
+}
+
+#[test]
+fn a_limit_that_is_not_a_number_is_refused_with_the_range_of_a_bounded_page() {
+    let error = shelves(&["--limit", "abc"]).unwrap_err();
+
+    assert_eq!(reason(&error), "--limit takes a whole number from 1 to 10");
+}
+
+#[test]
+fn a_negative_limit_is_refused_with_the_range_of_a_bounded_page() {
+    let error = shelves(&["--limit=-1"]).unwrap_err();
+
+    assert_eq!(reason(&error), "--limit takes a whole number from 1 to 10");
+}
+
+#[test]
+fn an_unbounded_limit_too_large_for_usize_is_refused_with_the_largest_value() {
+    let error = books(&["--limit", "99999999999999999999999"]).unwrap_err();
+
+    assert_eq!(
+        reason(&error),
+        format!("--limit takes a whole number from 1 to {}", usize::MAX)
+    );
+}
+
+#[test]
+fn a_bounded_limit_too_large_for_usize_is_refused_as_above_its_bound() {
+    let error = shelves(&["--limit", "99999999999999999999999"]).unwrap_err();
+
+    let source = std::error::Error::source(&error).unwrap();
+    assert_eq!(source.downcast_ref::<LimitAbove>().unwrap().most, 10);
 }
 
 #[test]
@@ -206,14 +266,17 @@ fn a_bounded_limit_takes_a_value_up_to_its_bound() {
 }
 
 #[test]
-fn a_bounded_limit_refuses_a_value_above_its_bound_and_says_the_bound() {
+fn a_bounded_limit_refuses_a_value_above_its_bound_and_says_the_range() {
     let error = shelves(&["--limit", "11"]).unwrap_err();
 
     assert_eq!(error.kind(), ErrorKind::ValueValidation);
     let source = std::error::Error::source(&error).unwrap();
     let above = source.downcast_ref::<LimitAbove>().unwrap();
     assert_eq!(above.most, 10);
-    assert_eq!(above.to_string(), "--limit takes at most 10");
+    assert_eq!(
+        above.to_string(),
+        "--limit takes a whole number from 1 to 10"
+    );
 }
 
 #[test]
