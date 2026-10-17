@@ -890,9 +890,11 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit: `Output::set_command`, `Parsed` and `Parsed::guided` are gone,
   and [`Output`] no longer derives `clap::Args` or `Default`, because every
   `Output` that a tool gets already holds the command ([behaviour/parsing]).
-- crumbkit, crumbkit-aliases: the codes `crumbkit::commands::unavailable`,
-  `crumbkit::schemas::unavailable` and `crumbkit::aliases::unavailable` are
-  gone, because every `Output` holds a command.
+- crumbkit: the codes `crumbkit::commands::unavailable` and
+  `crumbkit::schemas::unavailable` are gone, because every `Output` holds a
+  command.
+- crumbkit-aliases: the code `crumbkit::aliases::unavailable` is gone,
+  because every `Output` holds a command ([crumbkit-aliases]).
 - crumbkit: `events::observer` is gone, because a process can hold several
   observers ([behaviour/run-observer]).
 - crumbkit-test: `Rule::FailureForm` is gone. A failure form is a
