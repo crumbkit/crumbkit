@@ -102,7 +102,7 @@ fn a_tool_without_self_figures_list_fails_with_no_usage_figures() {
     assert_eq!(code(&error), "crumbkit::weight::no_usage_figures");
     assert_eq!(
         error.to_string(),
-        "`sh self figures list --all --json --log /work/usage.jsonl --since 1d` prints no crumbkit/self-figures-list/v1 document, so the usage figures cannot be read"
+        "`sh self figures list --all --json --log /work/usage.jsonl --since 1d` prints no self-figures-list/v1 document, so the usage figures cannot be read"
     );
 }
 
@@ -177,7 +177,7 @@ fn a_tool_without_commands_list_fails_with_no_commands_list() {
     assert_eq!(code(&error), "crumbkit::tool::no_commands_list");
     assert_eq!(
         error.to_string(),
-        "`sh commands list --all --json --full` prints no crumbkit/commands-list/v1 document, so the tool's commands cannot be read"
+        "`sh commands list --all --json --full` prints no commands-list/v1 document, so the tool's commands cannot be read"
     );
 }
 

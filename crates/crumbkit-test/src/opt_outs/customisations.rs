@@ -4,7 +4,7 @@
 
 use clap::Command;
 use crumbkit::help::{Guide, Leaf, Rename};
-use crumbkit::{Code, Spelling};
+use crumbkit::{Code, Spelling, ToolName};
 use serde::Serialize;
 
 use crate::allow::command_line;
@@ -47,14 +47,17 @@ pub(super) struct Customisation {
 /// does not hold it.
 pub(super) fn customisations(command: &Command, guide: &Guide) -> Vec<Customisation> {
     let every_run = format!("every run of {}", command.get_name());
+    let tool = guide.tool_name(command);
+    let spell = |code: &Code| spell(tool, code);
     let mut list = Vec::new();
     if let Some(form) = guide.get_failure_form() {
         list.push(Customisation {
             declaration: "failure-form",
             applies_to: every_run.clone(),
             declares: format!(
-                "Failures print as {} in place of crumbkit/failure/v1.",
-                form.document()
+                "Failures print as {} in place of {}.",
+                form.document(),
+                tool.schema_id("crumbkit/failure/v1")
             ),
         });
     }
@@ -96,7 +99,7 @@ pub(super) fn customisations(command: &Command, guide: &Guide) -> Vec<Customisat
                 declaration: "exit-code",
                 applies_to,
                 declares: format!(
-                    "A failure with {} exits with {}, where crumbkit's default is {}.",
+                    "A failure with {} exits with {}, where the default is {}.",
                     spell(listed),
                     exit.code(),
                     Guide::new().failure_exit(&[], crumbkit)
@@ -131,14 +134,15 @@ pub(super) fn customisations(command: &Command, guide: &Guide) -> Vec<Customisat
         list.extend(dashed_names(command));
     }
     for leaf in guide.get_leaves() {
-        list.extend(leaf_customisations(command, leaf));
+        list.extend(leaf_customisations(command, tool, leaf));
     }
     list
 }
 
 /// Returns the declarations of `leaf` in the tool whose root command is
 /// `command`, in the order that [`customisations`] lists them.
-fn leaf_customisations(command: &Command, leaf: &Leaf) -> Vec<Customisation> {
+fn leaf_customisations(command: &Command, tool: ToolName, leaf: &Leaf) -> Vec<Customisation> {
+    let spell = |code: &Code| spell(tool, code);
     let mut list = Vec::new();
     let document = leaf.get_document();
     if let Some((document, name)) = document
@@ -275,8 +279,9 @@ fn crumbkit_code(
     })
 }
 
-/// Returns `code` spelled with colons, as crumbkit's records spell codes.
-/// The report does not know the spelling that the tool passes to `finish`.
-fn spell(code: &Code) -> String {
-    Spelling::COLONS.spell(code)
+/// Returns `code` spelled with colons, as crumbkit's records spell codes,
+/// with `tool`'s name in place of `crumbkit`. The report does not know the
+/// spelling that the tool passes to `finish`.
+fn spell(tool: ToolName, code: &Code) -> String {
+    Spelling::COLONS.for_tool(tool).spell(code)
 }

@@ -33,19 +33,19 @@
 //! Each exit code below is crumbkit's default, which an
 //! [`Exit`](crumbkit::help::Exit) of the guide that lists the code replaces:
 //!
-//! - `crumbkit::child::no_json`, the exit code of a refused command line,
+//! - `<tool>::child::no_json`, the exit code of a refused command line,
 //!   which is 2 by default, when the caller passed
 //!   `--json` to a command whose child has no JSON form.
-//! - `crumbkit::child::not_found`, exit code 1, when the program does not
+//! - `<tool>::child::not_found`, exit code 1, when the program does not
 //!   exist.
-//! - `crumbkit::child::not_started`, exit code 1, when the operating system
+//! - `<tool>::child::not_started`, exit code 1, when the operating system
 //!   refused to start the program or to wait for it.
-//! - `crumbkit::child::bad_json`, exit code 1, when the child's output under
+//! - `<tool>::child::bad_json`, exit code 1, when the child's output under
 //!   `--json` is not the declared document.
-//! - `crumbkit::child::failed`, with the child's exit code, when the child
+//! - `<tool>::child::failed`, with the child's exit code, when the child
 //!   failed under `--json`.
 //!
-//! `--fields` without `--json` is refused with `crumbkit::cli::usage` and
+//! `--fields` without `--json` is refused with `<tool>::cli::usage` and
 //! the exit code of a refused command line, because the child's own text has no columns to select, and
 //! `--long` changes nothing.
 
@@ -133,8 +133,8 @@ impl<T> Copy for Json<T> {}
 /// [`Observer::interrupted`](crumbkit::events::Observer::interrupted) when a
 /// signal ended the child, so the usage log's line records both.
 ///
-/// It runs no child and fails with `crumbkit::child::no_json` when the
-/// caller passed `--json`, and with `crumbkit::cli::usage` when the caller
+/// It runs no child and fails with `<tool>::child::no_json` when the
+/// caller passed `--json`, and with `<tool>::cli::usage` when the caller
 /// passed `--fields`. Both exit with the code of a refused command line,
 /// which is 2 unless the guide lists another. The module
 /// documentation lists the failures of a child that cannot start.
@@ -171,9 +171,9 @@ fn hand_over_to<O: Write, W: Write>(
 /// child runs.
 ///
 /// Under `--json`, a child that exits with a code other than 0 fails with
-/// `crumbkit::child::failed` and returns the child's code, and its standard
+/// `<tool>::child::failed` and returns the child's code, and its standard
 /// output is not read as the document. A child whose standard output is not
-/// a `T` fails with `crumbkit::child::bad_json` and exit code 1.
+/// a `T` fails with `<tool>::child::bad_json` and exit code 1.
 pub fn hand_over_json<T: Rows + DeserializeOwned>(
     output: &mut Output,
     spelling: Spelling,
@@ -311,7 +311,7 @@ fn fail<O: Write, W: Write>(
 }
 
 /// Returns the exit code of `--json` on a command whose child has no JSON
-/// form: the exit that the guide lists for `crumbkit::child::no_json`, and
+/// form: the exit that the guide lists for `<tool>::child::no_json`, and
 /// otherwise the exit of a refused command line, which is 2 unless the
 /// guide lists another (ADR-0042).
 fn no_json_exit(output: &Output) -> u8 {

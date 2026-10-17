@@ -249,6 +249,7 @@ impl Output {
             long,
             full,
         } = view;
+        let tool = guide.tool_name(&command);
         let budget = match guide.get_output_budget() {
             Some((bytes, _)) => bytes,
             None => budget::DEFAULT,
@@ -265,7 +266,8 @@ impl Output {
             failure_form: guide.get_failure_form(),
             no_terminal: !guide.terminal_detection(),
             json_style: guide.get_json(),
-            budget: budget::from_environment(budget),
+            budget: budget::from_environment(budget, tool),
+            tool,
             spent: 0,
             exits: guide.get_exits(),
             renames: Renames::of(guide),

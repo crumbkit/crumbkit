@@ -16,7 +16,7 @@ include = ["src/**/*.rs", "README.md", "LICENSE-APACHE", "LICENSE-MIT"]
 # crumbkit's own `Effects::line` and `help::STREAM_LINE`, so it words them
 # as the tool's help does (ADR-0044).
 crumbkit = { workspace = true }
-# The reference reads the `crumbkit/commands-list/v1` document into structs
+# The reference reads the `<tool>/commands-list/v1` document into structs
 # that derive `Deserialize`, which is the plainest code to read.
 serde = { workspace = true, features = ["derive"] }
 # serde_json parses the document. serde_json needs `std` or `alloc` to build

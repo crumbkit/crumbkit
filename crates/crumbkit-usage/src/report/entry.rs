@@ -9,7 +9,7 @@ use crate::record::SCHEMA;
 #[cfg(test)]
 mod tests;
 
-/// The fields of one `crumbkit/usage/v1` record that the report reads.
+/// The fields of one `<tool>/usage/v1` record that the report reads.
 ///
 /// The reader ignores the fields that it does not name here, as every
 /// reader of a crumbkit document ignores fields it does not know (ADR-0007).
@@ -17,7 +17,7 @@ mod tests;
 /// are never read, so the report cannot print them.
 #[derive(Clone, Debug, Deserialize)]
 pub(super) struct Entry {
-    /// The record's schema id, which must be `crumbkit/usage/v1`.
+    /// The record's schema id, which must be `<tool>/usage/v1`.
     schema: String,
     /// When the run ended, in milliseconds since the Unix epoch.
     #[serde(deserialize_with = "millis")]
@@ -69,11 +69,14 @@ pub(super) struct Entry {
 
 impl Entry {
     /// Returns the record that `line` holds, or `None` when the line is not
-    /// a `crumbkit/usage/v1` record with every field that each record has,
-    /// such as a line that a run cut short.
+    /// a usage record, such as `shelf/usage/v1`, with every field that each
+    /// record has, such as a line that a run cut short. The id's component
+    /// is the name of the tool that wrote the log, so any component counts.
     pub(super) fn parse(line: &[u8]) -> Option<Self> {
         let entry: Self = serde_json::from_slice(line).ok()?;
-        (entry.schema == SCHEMA).then_some(entry)
+        let suffix = SCHEMA.split_once('/').map(|(_, suffix)| suffix);
+        let read = entry.schema.split_once('/').map(|(_, suffix)| suffix);
+        (read.is_some() && read == suffix).then_some(entry)
     }
 
     /// Returns whether the run did what the caller asked: it exited with 0,

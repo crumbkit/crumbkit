@@ -139,7 +139,7 @@ pub(crate) fn declared_name(
 /// crumbkit's commands are `commands list`, `schemas list`, `schemas show`,
 /// `self usage`, `self figures list` and `aliases list`. The check knows a
 /// leaf as one of them by the document it declares, such as
-/// `crumbkit/schemas-list/v1`. It misses a command that takes crumbkit's
+/// `<tool>/schemas-list/v1`. It misses a command that takes crumbkit's
 /// arguments type without a leaf that declares the document, because a
 /// command tree does not record the Rust type of a command's arguments, so
 /// review covers that case. As in [`check_document_ids`], the path of a

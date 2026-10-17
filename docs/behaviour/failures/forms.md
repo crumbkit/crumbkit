@@ -89,7 +89,7 @@ Why: ADR-0045, ADR-0046, ADR-0052, ADR-0067.
 ## Schemas and declarations
 
 `schemas list` serves the form's document first, in place of
-`crumbkit/failure/v1`, with the kind `unwrapped` and no commands, because
+`<tool>/failure/v1`, with the kind `unwrapped` and no commands, because
 every command prints it when it fails. `schemas show` serves the form's
 schema with the document's id inserted as `title`. crumbkit-test's
 `check_schema_goldens` pins the schema, because the form's document is in the

@@ -1,5 +1,5 @@
 {
-  "schema": "crumbkit/opt-outs/v1",
+  "schema": "reading/opt-outs/v1",
   "data": [
     {
       "rule": "examples/run",
@@ -62,7 +62,7 @@
       "applies_to": "every path through reading",
       "reason": "reading's longest path, commands list, reads about 3,600 bytes, so 3,900 bytes leaves room for small changes and catches a page or an output that grows by much.",
       "costs": [
-        "None, because the budget is at or below crumbkit's default."
+        "None, because the budget is at or below the default."
       ],
       "budget": {
         "bytes": 3900,

@@ -301,7 +301,7 @@ fn a_file_that_cannot_be_read_fails_with_its_path_and_the_reason() {
     assert!(
         finished
             .err
-            .ends_with("code:  crumbkit::aliases::unreadable\n"),
+            .ends_with("code:  shelf::aliases::unreadable\n"),
         "{}",
         finished.err
     );

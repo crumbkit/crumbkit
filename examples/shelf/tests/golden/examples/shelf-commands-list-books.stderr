@@ -1,1 +1,1 @@
-Exit codes: 0, 1 and 2 are crumbkit's. `shelf help exit-codes` describes them.
+Exit codes: 0, 1 and 2 apply to every command. `shelf help exit-codes` describes them.

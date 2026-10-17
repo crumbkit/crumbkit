@@ -186,7 +186,7 @@ fn a_root_with_its_own_help_command_gets_no_topics_and_clap_parses_that_command(
     assert_eq!(printed.code, Some(ExitCode::from(2)));
     assert_eq!(
         printed.err,
-        "error: unexpected argument 'orbits' found\n  help:  run `tool assist -h`\n  code:  crumbkit::cli::usage\n"
+        "error: unexpected argument 'orbits' found\n  help:  run `tool assist -h`\n  code:  tool::cli::usage\n"
     );
 }
 

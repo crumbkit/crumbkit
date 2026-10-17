@@ -120,7 +120,7 @@ fn refuse_view_refuses_a_field_that_the_document_lacks_with_the_refusal_s_exit()
     let refused = printed(|sink| refused.refuse_view(sink, Spelling::COLONS, PLANETS));
     assert_eq!(refused.returned, Some(ExitCode::from(2)));
     let document: serde_json::Value = serde_json::from_str(&refused.out).unwrap();
-    assert_eq!(document["code"], "crumbkit::cli::usage");
+    assert_eq!(document["code"], "tool::cli::usage");
 }
 
 #[test]
@@ -138,7 +138,7 @@ fn refuse_fields_for_text_refuses_fields_with_the_caller_s_reason() {
     let expected = "\
 error: --fields selects the columns of a table, and it prints prose
   help:  run the command without --fields
-  code:  crumbkit::cli::usage
+  code:  tool::cli::usage
 ";
     assert_eq!(refused.err, expected);
 }

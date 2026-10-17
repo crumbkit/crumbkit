@@ -221,13 +221,13 @@ pub(crate) fn text(tool: &str, guide: &Guide) -> String {
 
 /// Returns the note that `commands list` prints after its table, which
 /// names the exit codes and the topic that describes them, such as
-/// ``Exit codes: 0, 1 and 2 are crumbkit's, and shelf adds 124. `shelf
-/// help exit-codes` describes them.``
+/// ``Exit codes: 0, 1 and 2 apply to every command, and shelf adds 124.
+/// `shelf help exit-codes` describes them.``
 pub(crate) fn note(tool: &str, guide: &Guide) -> String {
     let mut note = String::from(if refuses_with_2(guide) {
-        "Exit codes: 0, 1 and 2 are crumbkit's"
+        "Exit codes: 0, 1 and 2 apply to every command"
     } else {
-        "Exit codes: 0 and 1 are crumbkit's"
+        "Exit codes: 0 and 1 apply to every command"
     });
     let exits = guide.get_exits();
     for (index, exit) in exits.iter().enumerate() {

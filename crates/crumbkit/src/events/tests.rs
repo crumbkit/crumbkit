@@ -311,7 +311,7 @@ fn a_refusal_reports_the_guide_s_exit_code_and_the_visible_flag_that_clap_sugges
         seen[1..],
         [
             "refused shelf: books list 64 nearest all",
-            "failed crumbkit.cli.usage"
+            "failed shelf.cli.usage"
         ]
     );
 }
@@ -434,7 +434,7 @@ fn a_listing_that_the_budget_cut_reports_the_budget_s_code_and_exits_with_0() {
     assert_eq!(
         seen,
         [
-            "failed crumbkit.output.over_budget".to_owned(),
+            "failed shelf.output.over_budget".to_owned(),
             format!("finished 0 {bytes} bytes truncated true empty false"),
         ]
     );

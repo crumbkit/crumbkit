@@ -502,7 +502,7 @@ impl JsonSchema for CommandRow {
                     "type": ["string", "null"],
                 },
                 "exits": {
-                    "description": "The exit codes that the tool declares for the command besides crumbkit's 0, 1 and 2, in guide order. `<tool> help exit-codes` describes every code.",
+                    "description": "The exit codes that the tool declares for the command besides 0, 1 and 2, which apply to every command, in guide order. `<tool> help exit-codes` describes every code.",
                     "type": "array",
                     "items": {
                         "type": "object",

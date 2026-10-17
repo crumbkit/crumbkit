@@ -28,7 +28,7 @@ pub const ALIASES_LIST: Document<Listing<AliasRow>> = Document::new(
 );
 
 /// The code of an aliases file that exists but cannot be read or parsed, in
-/// the tool's spelling, such as `crumbkit::aliases::unreadable` (ADR-0027).
+/// the tool's spelling, such as `<tool>::aliases::unreadable` (ADR-0027).
 const UNREADABLE: Code = Code::new("crumbkit", "aliases", "unreadable");
 
 /// The problem of an entry whose name a real command takes.
@@ -107,7 +107,7 @@ impl Row for AliasRow {
 ///
 /// # Errors
 ///
-/// Returns a failure with the code `crumbkit::aliases::unreadable` when a
+/// Returns a failure with the code `<tool>::aliases::unreadable` when a
 /// file is at `file` but cannot be read or parsed. The message names the
 /// path and the reason, and the recovery asks the person to fix or remove
 /// the file.

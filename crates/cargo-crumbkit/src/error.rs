@@ -85,7 +85,7 @@ pub(crate) enum ToolError {
         error: io::Error,
     },
     /// The tool's `commands list --all --json --full` prints no
-    /// `crumbkit/commands-list/v1` document.
+    /// `<tool>/commands-list/v1` document.
     NoCommandsList {
         /// The command line that cargo crumbkit ran, such as
         /// `shelf commands list --all --json --full`.
@@ -128,7 +128,7 @@ impl fmt::Display for ToolError {
             }
             Self::NoCommandsList { line } => write!(
                 f,
-                "`{line}` prints no crumbkit/commands-list/v1 document, so the tool's commands cannot be read"
+                "`{line}` prints no commands-list/v1 document, so the tool's commands cannot be read"
             ),
         }
     }
@@ -205,7 +205,7 @@ pub(crate) enum WeighError {
         error: io::Error,
     },
     /// The tool's `self figures list --all --json --log <FILE>` prints no
-    /// `crumbkit/self-figures-list/v1` document.
+    /// `<tool>/self-figures-list/v1` document.
     NoUsageFigures {
         /// The command line that `weigh` ran, such as
         /// `shelf self figures list --all --json --log usage.jsonl`.
@@ -249,7 +249,7 @@ impl fmt::Display for WeighError {
             }
             Self::NoUsageFigures { line } => write!(
                 f,
-                "`{line}` prints no crumbkit/self-figures-list/v1 document, so the usage figures cannot be read"
+                "`{line}` prints no self-figures-list/v1 document, so the usage figures cannot be read"
             ),
             Self::NoStateDir => f.write_str(
                 "the usage log cannot be found, because the XDG state directory cannot be found",

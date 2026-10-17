@@ -49,9 +49,9 @@ pub(super) fn tree() -> Command {
 /// well. Any other command line fails with code 3.
 const SCRIPT: &str = r#"#!/bin/sh
 case "$*" in
-  'books list --limit 0') printf 'error: 0 is not a limit\n  help:  run `tool books list -h`\n  code:  crumbkit::cli::usage\n' >&2; exit 2;;
-  'books list --limit 0 --json') printf '%s\n' '{"schema":"crumbkit/failure/v1","code":"crumbkit::cli::usage","message":"m","recovery":{"kind":"retry"}}'; exit 2;;
-  'books list --limit -1') printf 'ERR crumbkit::cli::usage\n' >&2; exit 2;;
+  'books list --limit 0') printf 'error: 0 is not a limit\n  help:  run `tool books list -h`\n  code:  tool::cli::usage\n' >&2; exit 2;;
+  'books list --limit 0 --json') printf '%s\n' '{"schema":"tool/failure/v1","code":"tool::cli::usage","message":"m","recovery":{"kind":"retry"}}'; exit 2;;
+  'books list --limit -1') printf 'ERR tool::cli::usage\n' >&2; exit 2;;
   'books list --limit 1'|'books list --limit 1 --json'|'books list --limit 2') echo listed; exit 0;;
   *) echo "unexpected: $*" >&2; exit 3;;
 esac
@@ -88,7 +88,7 @@ fn a_twin_passes_when_the_refused_line_fails_with_its_code_and_the_admitted_line
     );
 
     assert!(String::from_utf8_lossy(&text.stderr).starts_with("error: 0 is not a limit\n"));
-    assert!(String::from_utf8_lossy(&json.stdout).contains("\"code\":\"crumbkit::cli::usage\""));
+    assert!(String::from_utf8_lossy(&json.stdout).contains("\"code\":\"tool::cli::usage\""));
 }
 
 #[test]
@@ -120,11 +120,11 @@ fn a_refused_line_that_succeeds_or_fails_with_another_code_fails_the_check() {
 
     assert_eq!(
         succeeds.unwrap(),
-        "the refused line `tool books list --limit 2` must fail with crumbkit::cli::usage, and it exits with code 0"
+        "the refused line `tool books list --limit 2` must fail with tool::cli::usage, and it exits with code 0"
     );
     assert_eq!(
         other.unwrap(),
-        "the refused line `tool books list --limit 0` must fail with tool::books::not_found, and it fails with crumbkit::cli::usage"
+        "the refused line `tool books list --limit 0` must fail with tool::books::not_found, and it fails with tool::cli::usage"
     );
 }
 
@@ -211,7 +211,7 @@ fn a_twin_reads_the_refused_lines_code_through_the_failure_form_of_the_guide() {
 
     assert_eq!(
         String::from_utf8_lossy(&output.stderr),
-        "ERR crumbkit::cli::usage\n"
+        "ERR tool::cli::usage\n"
     );
 }
 
@@ -240,7 +240,7 @@ fn a_failure_reader_in_examples_reads_the_code_of_a_refused_twin() {
 
     assert_eq!(
         String::from_utf8_lossy(&output.stderr),
-        "ERR crumbkit::cli::usage\n"
+        "ERR tool::cli::usage\n"
     );
 }
 
@@ -261,7 +261,7 @@ fn a_refused_line_whose_code_the_check_cannot_read_fails_the_check_naming_both_w
 
     assert_eq!(
         message.unwrap(),
-        "the refused line `tool books list --limit -1` must fail with crumbkit::cli::usage, and it ends with exit status: 2 and prints no code that the check can read. A tool that prints failures in a form of its own implements FailureForm::read and sets the form with Guide::failure_form, or implements FailureReader and sets it with Examples::failure_reader"
+        "the refused line `tool books list --limit -1` must fail with tool::cli::usage, and it ends with exit status: 2 and prints no code that the check can read. A tool that prints failures in a form of its own implements FailureForm::read and sets the form with Guide::failure_form, or implements FailureReader and sets it with Examples::failure_reader"
     );
 }
 
@@ -403,7 +403,7 @@ fn a_twin_whose_admitted_line_runs_another_command_fails_the_check_whatever_leav
     assert!(
         checked(&["books", "pt", "7"], &["books", "put", "7"])
             .unwrap()
-            .starts_with("the refused line `tool books pt 7` must fail with crumbkit::cli::usage")
+            .starts_with("the refused line `tool books pt 7` must fail with tool::cli::usage")
     );
 }
 
@@ -433,7 +433,7 @@ fn a_twin_whose_refused_line_runs_no_command_fails_when_its_admitted_line_runs_n
     assert!(
         checked(&["books", "lst"], &["books", "list"])
             .unwrap()
-            .starts_with("the refused line `tool books lst` must fail with crumbkit::cli::usage")
+            .starts_with("the refused line `tool books lst` must fail with tool::cli::usage")
     );
 }
 
@@ -468,7 +468,7 @@ fn a_twin_with_a_global_option_before_the_path_runs_the_command_after_the_option
         )
         .unwrap()
         .starts_with(
-            "the refused line `tool -C empty books put 7` must fail with crumbkit::cli::usage"
+            "the refused line `tool -C empty books put 7` must fail with tool::cli::usage"
         )
     );
 }

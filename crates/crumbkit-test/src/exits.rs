@@ -262,8 +262,8 @@ const CHILD_NO_JSON: Code = Code::new("crumbkit", "child", "no_json");
 /// - with the code of the exit of `guide` that lists the failure's code,
 ///   or one of crumbkit's codes that such a run prints as it;
 /// - with the code that the guide gives a refused command line, 2 unless an
-///   exit lists `crumbkit::cli::usage`, for `crumbkit::cli::usage` and
-///   `crumbkit::child::no_json`;
+///   exit lists `<tool>::cli::usage`, for `<tool>::cli::usage` and
+///   `<tool>::child::no_json`;
 /// - with 1 for any other failure, unless the guide's leaf at `path`
 ///   declares with [`Leaf::passes_on_exit`](crumbkit::help::Leaf::passes_on_exit)
 ///   that the command passes on a program's exit code, which may be any

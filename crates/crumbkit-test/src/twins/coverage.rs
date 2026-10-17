@@ -217,7 +217,7 @@ impl<'a> Twins<'a> {
 /// Panics when a rule above is broken. The message lists each problem on
 /// its own line under `the tool's twins break crumbkit's twin rule:`.
 pub fn check_twins(command: &Command, guide: &Guide, twins: &Twins<'_>) {
-    let spelling = twins.spelling;
+    let spelling = twins.spelling.for_tool(guide.tool_name(command));
     let declared: Vec<&Code> = twins.codes.to_vec();
     let mut problems = Vec::new();
     for pair in twins.pairs {

@@ -361,7 +361,7 @@ fn a_run_that_parse_ends_records_its_exit_code_and_a_refusal_s_code_on_the_parse
     assert_eq!(
         refusal.fields("crumbkit.parse"),
         [
-            ("error.type", "crumbkit::cli::usage".to_owned()),
+            ("error.type", "solar::cli::usage".to_owned()),
             ("process.exit.code", "2".to_owned())
         ]
     );

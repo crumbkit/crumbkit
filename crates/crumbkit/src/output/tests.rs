@@ -304,7 +304,7 @@ fn an_unknown_field_is_a_refusal_whose_hint_names_the_valid_fields_and_exits_wit
     let expected = "\
 error: --fields names an unknown field 'radius'
   help:  use the valid fields: au, moons, name, ringed
-  code:  crumbkit::cli::usage
+  code:  tool::cli::usage
 ";
     assert_eq!(finished.err, expected);
 }

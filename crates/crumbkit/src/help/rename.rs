@@ -49,7 +49,7 @@ impl Guide {
 
 /// One of crumbkit's failure codes and the tool's own code that crumbkit
 /// prints in its place, such as `ledger::cli::usage` for
-/// `crumbkit::cli::usage`.
+/// `<tool>::cli::usage`.
 ///
 /// A tool lists its renames in its [`Guide`] with [`Guide::codes`], and
 /// the renames of one command in its leaf with [`Leaf::codes`], which a run

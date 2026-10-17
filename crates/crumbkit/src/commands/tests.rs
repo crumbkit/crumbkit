@@ -442,7 +442,7 @@ shelf books  Work with the books
     assert_eq!(
         finished.err,
         "Showing 2 of 6 commands. --all shows every one.\n\
-         Exit codes: 0, 1 and 2 are crumbkit's. `shelf help exit-codes` describes them.\n"
+         Exit codes: 0, 1 and 2 apply to every command. `shelf help exit-codes` describes them.\n"
     );
 }
 
@@ -453,7 +453,7 @@ fn a_path_that_names_no_command_fails_and_its_recovery_lists_the_longest_visible
     let expected = "\
 error: `shelf books shw` names no visible command
   help:  run `shelf commands list books`
-  code:  crumbkit::commands::not_found
+  code:  shelf::commands::not_found
 ";
     assert_eq!(finished.code, ExitCode::FAILURE);
     assert_eq!(finished.err, expected);
@@ -466,7 +466,7 @@ fn a_path_that_names_a_hidden_command_fails_as_one_that_names_no_command() {
     let expected = "\
 error: `shelf books purge` names no visible command
   help:  run `shelf commands list books`
-  code:  crumbkit::commands::not_found
+  code:  shelf::commands::not_found
 ";
     assert_eq!(finished.err, expected);
 }

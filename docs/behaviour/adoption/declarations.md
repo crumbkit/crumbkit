@@ -89,7 +89,7 @@ code. The leaf's renames come first, and the guide's renames cover every
 code that the leaf does not rename. An exit that lists a leaf's code covers
 that failure only in runs of that command.
 
-A leaf cannot rename `crumbkit::cli::usage`. crumbkit refuses a command line
+A leaf cannot rename `<tool>::cli::usage`. crumbkit refuses a command line
 before it knows which command the line names, so the refusal prints the
 guide's usage code for every command. `Leaf::codes` is a `const fn` that
 panics on such a rename, so a `const` guide with one fails to compile.

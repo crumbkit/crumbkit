@@ -26,7 +26,7 @@ fn a_refusal_suggests_the_real_name_of_a_flag_whose_hidden_alias_clap_suggested(
     let expected = "\
 error: unexpected argument '--maxx' found; a similar argument exists: '--limit'
   help:  run `shelf books list -h`
-  code:  crumbkit::cli::usage
+  code:  shelf::cli::usage
 ";
     assert_eq!(parsed.err, expected);
 }
@@ -43,7 +43,7 @@ fn a_refusal_suggests_the_real_name_of_a_command_whose_hidden_alias_clap_suggest
     let expected = "\
 error: unrecognized subcommand 'bok'; a similar subcommand exists: 'books'
   help:  run `shelf -h`
-  code:  crumbkit::cli::usage
+  code:  shelf::cli::usage
 ";
     assert_eq!(parsed.err, expected);
 }

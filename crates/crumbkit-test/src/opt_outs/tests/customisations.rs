@@ -61,18 +61,18 @@ fn the_report_lists_declarations_under_customisations_without_a_reason_or_a_cost
 
     assert_eq!(
         read(&dir, "opt-outs.txt"),
-        "shelf has no opt-outs from crumbkit's conventions.\n\
+        "shelf has no opt-outs from the conventions.\n\
          \n\
          shelf declares 6 customisations, which need no reason.\n\
          \n\
          failure-form: every run of shelf\n\
-         \x20 Declares: Failures print as shelf/error/v2 in place of crumbkit/failure/v1.\n\
+         \x20 Declares: Failures print as shelf/error/v2 in place of shelf/failure/v1.\n\
          \n\
          code-rename: every run of shelf\n\
-         \x20 Declares: Runs print shelf::cli::usage in place of crumbkit::cli::usage.\n\
+         \x20 Declares: Runs print shelf::cli::usage in place of shelf::cli::usage.\n\
          \n\
          exit-code: every run of shelf\n\
-         \x20 Declares: A failure with shelf::cli::usage exits with 64, where crumbkit's default is 2.\n\
+         \x20 Declares: A failure with shelf::cli::usage exits with 64, where the default is 2.\n\
          \n\
          refusal-alternatives: every run of shelf\n\
          \x20 Declares: A refused command line for a command without its own function also offers the tool's own alternatives.\n\
@@ -103,10 +103,7 @@ fn a_report_without_declarations_leaves_out_customisations() {
     run_guided(&Guide::new(), &dir, Action::Overwrite);
 
     let report: Value = serde_json::from_str(&read(&dir, "opt-outs.json")).unwrap();
-    assert_eq!(
-        report,
-        json!({ "schema": "crumbkit/opt-outs/v1", "data": [] })
-    );
+    assert_eq!(report, json!({ "schema": "shelf/opt-outs/v1", "data": [] }));
 }
 
 #[test]
@@ -119,7 +116,7 @@ fn an_exit_that_lists_the_tool_s_own_code_is_no_customisation() {
 
     assert_eq!(
         read(&dir, "opt-outs.txt"),
-        "shelf has no opt-outs from crumbkit's conventions.\n"
+        "shelf has no opt-outs from the conventions.\n"
     );
 }
 
@@ -139,7 +136,7 @@ fn a_document_named_other_than_its_command_path_is_a_document_name_customisation
 
     assert_eq!(
         read(&dir, "opt-outs.txt"),
-        "shelf has no opt-outs from crumbkit's conventions.\n\
+        "shelf has no opt-outs from the conventions.\n\
          \n\
          shelf declares 1 customisation, which needs no reason.\n\
          \n\
@@ -319,14 +316,13 @@ fn a_leaf_s_rename_and_an_exit_that_lists_it_are_customisations_of_that_command(
             (
                 "exit-code",
                 "shelf books import".to_owned(),
-                "A failure with shelf::books::moved exits with 6, where crumbkit's default is 1."
+                "A failure with shelf::books::moved exits with 6, where the default is 1."
                     .to_owned()
             ),
             (
                 "code-rename",
                 "shelf books import".to_owned(),
-                "Runs print shelf::books::moved in place of crumbkit::version::conflict."
-                    .to_owned()
+                "Runs print shelf::books::moved in place of shelf::version::conflict.".to_owned()
             ),
         ]
     );

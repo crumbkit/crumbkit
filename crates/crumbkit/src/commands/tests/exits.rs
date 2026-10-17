@@ -104,7 +104,7 @@ fn the_text_tables_last_note_on_standard_error_names_the_exit_codes_and_the_topi
 
     assert!(
         printed.ends_with(
-            "Exit codes: 0, 1 and 2 are crumbkit's, and shelf adds 3 and 124. `shelf help exit-codes` describes them.\n"
+            "Exit codes: 0, 1 and 2 apply to every command, and shelf adds 3 and 124. `shelf help exit-codes` describes them.\n"
         ),
         "{printed}"
     );
@@ -120,7 +120,7 @@ fn the_note_names_the_topic_with_the_command_line_of_the_guide_s_root() {
 
     assert!(
         printed.ends_with(
-            "Exit codes: 0, 1 and 2 are crumbkit's, and shelf books adds 3. `shelf books help exit-codes` describes them.\n"
+            "Exit codes: 0, 1 and 2 apply to every command, and shelf books adds 3. `shelf books help exit-codes` describes them.\n"
         ),
         "{printed}"
     );

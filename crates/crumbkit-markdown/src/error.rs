@@ -16,7 +16,7 @@ pub struct RenderError {
 /// The reasons that a reference cannot be written.
 #[derive(Debug)]
 pub(crate) enum Kind {
-    /// The input is not JSON in the shape of a `crumbkit/commands-list/v1`
+    /// The input is not JSON in the shape of a `<tool>/commands-list/v1`
     /// document.
     NotADocument(serde_json::Error),
     /// The input is a JSON document with another schema id.
@@ -54,12 +54,12 @@ impl RenderError {
 impl fmt::Display for RenderError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match &self.kind {
-            Kind::NotADocument(_) => {
-                f.write_str("the input is not a crumbkit/commands-list/v1 document")
-            }
+            Kind::NotADocument(_) => f.write_str(
+                "the input is not the document that `commands list --all --json --full` prints",
+            ),
             Kind::OtherSchema { found } => write!(
                 f,
-                "the input is a {found} document, and the reference needs a crumbkit/commands-list/v1 document"
+                "the input is a {found} document, and the reference needs the commands-list/v1 document that `commands list --all --json --full` prints"
             ),
             Kind::Page {
                 shown,

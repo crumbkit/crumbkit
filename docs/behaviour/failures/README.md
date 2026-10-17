@@ -107,13 +107,50 @@ a code exactly.
 crumbkit's own codes are public constants in `crumbkit::codes`, which
 `codes::ALL` lists, so a tool's tests can name them. A tool may print its own
 code in place of any of crumbkit's, such as its own usage code for
-`crumbkit::cli::usage`, with a `Rename` in `Guide::codes`. One command can
+`<tool>::cli::usage`, with a `Rename` in `Guide::codes`. One command can
 print its own code for one of crumbkit's failures with a `Rename` in
 `Leaf::codes`, which its runs read before the guide's. crumbkit still
 decides when the failure happens, its message and its recovery
 ([declarations](../adoption/declarations.md#codes-per-command)).
 
 Why: ADR-0001, ADR-0056, ADR-0060.
+
+## The tool's name
+
+A tool's output names the tool wherever crumbkit's own names would appear.
+crumbkit's codes print with the tool's name as their component, so a tool
+named `shelf` prints `shelf::cli::usage`. Its documents print the tool's
+name in their ids, such as `shelf/failure/v1`, and the output budget
+variable is `SHELF_OUTPUT_BUDGET`. The pages of this tree write the name as
+`<tool>` and the variable as `<TOOL>_OUTPUT_BUDGET`. Help, notes and the
+command reference name neither crumbkit nor its crates.
+
+The name is the clap name of the root command, or the last word of the
+guide's `root` when the tool runs below another program, so
+`cargo crumbkit` keeps the name `crumbkit`.
+[`Guide::tool_name`](../../../crates/crumbkit/src/help.rs) derives it, and
+[`ToolName`](../../../crates/crumbkit-core/src/tool_name.rs) spells it:
+
+- A document id lowercases the name and has `-` in place of each character
+  that a document component does not allow, so `my-tool` prints
+  `my-tool/failure/v1`.
+- A code component lowercases the name and has `_` in place of `-` and of
+  each other character that a code segment does not allow, so `my-tool`
+  prints `my_tool::cli::usage`.
+- A variable starts with the code component in capitals, such as
+  `MY_TOOL_OUTPUT_BUDGET`.
+- A name without an ASCII letter or digit is spelled `tool` in each place.
+
+Only crumbkit's own codes and documents change. A tool's own codes, its
+renames in `Guide::codes` and `Leaf::codes`, and the document of its failure
+form print as the tool declared them. The Rust constants, such as
+`crumbkit::codes::CLI_USAGE`, and the checked-in schema files keep the
+`crumbkit` component, and the tool's output spells them with the tool's
+name. A tool's own code that equals one of crumbkit's codes spelled with
+the tool's name, such as a declared `shelf::cli::usage`, is not detected
+by `check_codes`.
+
+Why: ADR-0079.
 
 ## Codes learned at run time
 
@@ -138,7 +175,7 @@ Why: ADR-0001, ADR-0037.
 
 A command line that clap refuses, an unknown `--fields` name, and a view flag
 that the command or another typed view flag rules out fail with the one
-fixed code `crumbkit::cli::usage`. Their fields name the refused `argument`,
+fixed code `<tool>::cli::usage`. Their fields name the refused `argument`,
 its `value` or the unknown `subcommand`, as clap reports them. A refused
 command line's recovery runs the `-h` of the deepest typed command, even a
 hidden one, unless the tool's function below returns a call that it keeps or
@@ -174,7 +211,7 @@ diagnostic's related diagnostics and a source excerpt for each label. The
 code, the recovery and the url still come from `Failure`.
 
 With the feature, a `miette::Report` converts into `Error` with the code
-`crumbkit::report::unchecked`
+`<tool>::report::unchecked`
 ([`report`](../../../crates/crumbkit-core/src/report.rs)), so `?` works on a
 `miette::Result`. The code tells the caller only that the failure was not
 classified, so a tool that wants its own failure back calls
@@ -194,7 +231,7 @@ Why: ADR-0001, ADR-0016.
 
 [`Error::unclassified`](../../../crates/crumbkit-core/src/unclassified.rs)
 holds any `std::error::Error` or message with the code
-`crumbkit::report::unchecked` and a `Recovery::None`. A tool that uses an
+`<tool>::report::unchecked` and a `Recovery::None`. A tool that uses an
 error library such as anyhow therefore reaches `finish` without a
 dependency of crumbkit on that library. The tool downcasts to its own
 failure types first, because boxing the library's error hides the type

@@ -113,7 +113,7 @@ impl Expect {
     ///
     /// # Errors
     ///
-    /// Returns the failure `crumbkit::version::conflict`, whose recovery
+    /// Returns the failure `<tool>::version::conflict`, whose recovery
     /// runs `read`, when the versions differ, when `--expect none` meets a
     /// target that exists, or when a version is expected and no target
     /// exists.
@@ -130,7 +130,7 @@ impl Expect {
         }
     }
 
-    /// Returns the failure `crumbkit::version::conflict` for a target whose
+    /// Returns the failure `<tool>::version::conflict` for a target whose
     /// `current` version, or `None` when it does not exist, is not what the
     /// caller expects. A tool that compares versions in its own way, such
     /// as numerically, calls it in place of [`Expect::check`].

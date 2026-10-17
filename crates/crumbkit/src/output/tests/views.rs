@@ -39,7 +39,7 @@ fn finish_refuses_long_for_a_row_type_without_long_columns() {
         "\
 error: --long adds the long columns of a table, and this command's rows have none
   help:  use --fields to name the columns to show
-  code:  crumbkit::cli::usage
+  code:  tool::cli::usage
 "
     );
 }
@@ -84,7 +84,7 @@ fn finish_refuses_fields_with_long_in_crumbkit_s_words() {
         "\
 error: --fields prints only the fields it names, so it cannot be used with --long
   help:  drop --long, and name the long columns in --fields
-  code:  crumbkit::cli::usage
+  code:  tool::cli::usage
 "
     );
 }
@@ -116,7 +116,7 @@ fn finish_refuses_fields_with_full_and_full_without_json_in_crumbkit_s_words() {
         "\
 error: --full prints every field of every row in JSON, so it needs --json
   help:  add --json, or drop --full
-  code:  crumbkit::cli::usage
+  code:  tool::cli::usage
 "
     );
 }

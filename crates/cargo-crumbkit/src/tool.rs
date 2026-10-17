@@ -22,15 +22,17 @@ const XDG: [(&str, &str); 4] = [
     ("XDG_CACHE_HOME", "cache"),
 ];
 
-/// The id of the document that `commands list --json` prints.
-const COMMANDS_LIST: &str = "crumbkit/commands-list/v1";
+/// The id of the document that `commands list --json` prints, after its
+/// component, which is the tool's name, such as `shelf/commands-list/v1`.
+const COMMANDS_LIST: &str = "commands-list/v1";
 
 /// The words after the binary that list every visible command with its
 /// examples as JSON.
 const COMMANDS_LIST_ARGS: [&str; 5] = ["commands", "list", "--all", "--json", "--full"];
 
-/// The id of the document that `self figures list --json` prints.
-const SELF_FIGURES_LIST: &str = "crumbkit/self-figures-list/v1";
+/// The id of the document that `self figures list --json` prints, after its
+/// component, which is the tool's name.
+const SELF_FIGURES_LIST: &str = "self-figures-list/v1";
 
 /// The words after the binary that list the figures of every command in a
 /// usage log as JSON, which `--log <FILE>` follows.
@@ -46,7 +48,7 @@ pub(crate) struct Listed {
     pub(crate) examples: Vec<String>,
 }
 
-/// The `crumbkit/commands-list/v1` document, with only the fields that `weigh`
+/// The `<tool>/commands-list/v1` document, with only the fields that `weigh`
 /// reads. serde ignores the other fields.
 #[derive(Deserialize)]
 struct CommandsDocument {
@@ -56,7 +58,7 @@ struct CommandsDocument {
     data: Vec<CommandRow>,
 }
 
-/// One row of the `crumbkit/commands-list/v1` document.
+/// One row of the `<tool>/commands-list/v1` document.
 #[derive(Deserialize)]
 struct CommandRow {
     /// The command line that runs the command.
@@ -65,7 +67,7 @@ struct CommandRow {
     examples: Vec<CommandExample>,
 }
 
-/// One example of a row of the `crumbkit/commands-list/v1` document.
+/// One example of a row of the `<tool>/commands-list/v1` document.
 #[derive(Deserialize)]
 struct CommandExample {
     /// The example's command line, with words quoted for a POSIX shell.
@@ -90,7 +92,7 @@ pub(crate) struct Used {
     pub(crate) p95_out_bytes: Option<u64>,
 }
 
-/// The `crumbkit/self-figures-list/v1` document, with only the fields that
+/// The `<tool>/self-figures-list/v1` document, with only the fields that
 /// `weigh` reads.
 #[derive(Deserialize)]
 struct FiguresDocument {
@@ -143,7 +145,7 @@ impl Tool {
     ///
     /// Returns [`ToolError::ToolUnavailable`] when the binary cannot start,
     /// and [`ToolError::NoCommandsList`] when the run fails or prints no
-    /// `crumbkit/commands-list/v1` document, such as for a tool that does not
+    /// `<tool>/commands-list/v1` document, such as for a tool that does not
     /// mount `commands list`.
     pub(crate) fn commands(&self) -> Result<Vec<Listed>, ToolError> {
         let document = self.document()?;
@@ -194,7 +196,7 @@ impl Tool {
     ///
     /// Returns [`ToolError::ToolUnavailable`] when the binary cannot start,
     /// and [`WeighError::NoUsageFigures`] when the run fails or prints no
-    /// `crumbkit/self-figures-list/v1` document, such as for a tool that does
+    /// `<tool>/self-figures-list/v1` document, such as for a tool that does
     /// not mount `self figures list` or a `since` that the tool refuses.
     pub(crate) fn figures(&self, log: &Path, since: Option<&str>) -> Result<Vec<Used>, WeighError> {
         let log = log.to_string_lossy();
@@ -273,11 +275,11 @@ impl Tool {
 }
 
 /// Returns the commands that `stdout`, the output of `commands list --json
-/// --full`, lists, or `None` when it is not a `crumbkit/commands-list/v1`
+/// --full`, lists, or `None` when it is not a `<tool>/commands-list/v1`
 /// document.
 fn listed(stdout: &[u8]) -> Option<Vec<Listed>> {
     let document: CommandsDocument = serde_json::from_slice(stdout).ok()?;
-    if document.schema != COMMANDS_LIST {
+    if !names(&document.schema, COMMANDS_LIST) {
         return None;
     }
     let commands = document
@@ -296,9 +298,16 @@ fn listed(stdout: &[u8]) -> Option<Vec<Listed>> {
 }
 
 /// Returns the figures that `stdout`, the output of `self figures list
-/// --json`, lists, or `None` when it is not a `crumbkit/self-figures-list/v1`
+/// --json`, lists, or `None` when it is not a `<tool>/self-figures-list/v1`
 /// document.
 fn used(stdout: &[u8]) -> Option<Vec<Used>> {
     let document: FiguresDocument = serde_json::from_slice(stdout).ok()?;
-    (document.schema == SELF_FIGURES_LIST).then_some(document.data)
+    names(&document.schema, SELF_FIGURES_LIST).then_some(document.data)
+}
+
+/// Returns whether `id` is the document `name`, such as `commands-list/v1`,
+/// of any component. A tool's output gives crumbkit's documents the tool's
+/// name as their component (ADR-0079).
+fn names(id: &str, name: &str) -> bool {
+    id.split_once('/').is_some_and(|(_, rest)| rest == name)
 }

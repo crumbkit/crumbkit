@@ -203,7 +203,7 @@ const STARTS: &[Failing<'_>] = &[
         &crumbkit::codes::OUTPUT_OVER_BUDGET,
         &["books", "show", "1", "2", "3", "4", "5", "6"],
     )
-    .env(&[("CRUMBKIT_OUTPUT_BUDGET", Some("400"))]),
+    .env(&[("SHELF_OUTPUT_BUDGET", Some("400"))]),
 ];
 
 /// shelf's declared codes that no command line in a test provokes, which

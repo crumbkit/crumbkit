@@ -2,17 +2,19 @@
 //! document per line, or one indented document when the guide sets
 //! `JsonLayout::Pretty` (ADR-0052).
 
-use crumbkit::JsonLayout;
 use crumbkit::help::Leaf;
+use crumbkit::{JsonLayout, ToolName};
 
 /// Adds to `failures` each problem of `stdout`, the output of the `--json`
 /// example `line` of `leaf` from a tool whose guide sets `layout`, as
 /// [`check_examples`](super::check_examples) describes. A leaf without a document, or whose
 /// document has no envelope, has none. Each document must hold its id
 /// under its type key, which is `schema` unless the document's envelope
-/// declares its own keys.
+/// declares its own keys. The id of one of crumbkit's own documents names
+/// `tool` (ADR-0079).
 pub(super) fn check_lines(
     leaf: &Leaf,
+    tool: ToolName,
     layout: JsonLayout,
     line: &str,
     stdout: &str,
@@ -25,7 +27,7 @@ pub(super) fn check_lines(
         return;
     }
     let key = document.get_envelope().type_key();
-    let id = document.to_string();
+    let id = tool.schema_id(&document.to_string());
     if !leaf.is_stream() && matches!(layout, JsonLayout::Pretty { .. }) {
         check_indented(key, &id, line, stdout, failures);
         return;

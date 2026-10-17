@@ -3,10 +3,10 @@
 use clap::Command;
 use schemars::Schema;
 
-use crate::Document;
 use crate::form::FailureForm;
 use crate::help::Guide;
 use crate::output::failure;
+use crate::{Document, ToolName};
 
 /// One document that the schema commands serve: its id, its description,
 /// its kind, the command lines that print it, and how to build its JSON
@@ -31,6 +31,9 @@ pub struct Served {
     /// form accepts beside the name rule (ADR-0061). It is empty for a
     /// failure form's document and a file format.
     field_names: &'static [&'static str],
+    /// The tool whose name the ids in the document's schema take in place
+    /// of `crumbkit` (ADR-0079).
+    tool: ToolName,
 }
 
 /// How a served document builds its JSON Schema.
@@ -50,13 +53,18 @@ enum Build {
 }
 
 impl Served {
-    /// Returns the document's id, such as `shelf/books-list/v1`.
+    /// Returns the document's id, such as `shelf/books-list/v1`, with the
+    /// tool's name in place of `crumbkit` in a document that crumbkit
+    /// declares, such as `shelf/failure/v1` (ADR-0079).
     #[must_use]
     pub fn id(&self) -> String {
-        self.document.to_string()
+        self.tool.document(self.document).to_string()
     }
 
-    /// Returns the document's id and description.
+    /// Returns the document's id and description as the tool or crumbkit
+    /// declares it, so the id of a document that crumbkit declares has the
+    /// component `crumbkit`. [`Served::id`] gives the id that the tool
+    /// prints.
     #[must_use]
     pub const fn document(&self) -> Document<()> {
         self.document
@@ -103,6 +111,11 @@ impl Served {
     #[must_use]
     pub fn schema(&self) -> Schema {
         let mut schema = self.build();
+        if self.tool != ToolName::CRUMBKIT
+            && let Some(value) = schema.as_object_mut()
+        {
+            name_ids(value, self.tool);
+        }
         if !self.field_names.is_empty() {
             let value = schema.as_object_mut();
             if let Some(value) = value {
@@ -125,9 +138,9 @@ impl Served {
     /// before it accepts the guide's field names.
     fn build(&self) -> Schema {
         match self.schema {
-            Build::Function(build) => build(self.document),
+            Build::Function(build) => build(self.tool.document(self.document)),
             Build::Leaf(build, form) => {
-                let mut schema = build(self.document);
+                let mut schema = build(self.tool.document(self.document));
                 if let Some(form) = form {
                     set_entry_schema(&mut schema, form.entry_schema());
                     if self.document.get_envelope().failures_in_order() {
@@ -154,7 +167,7 @@ impl Served {
 /// each leaf of `guide` in guide order, and then each file format of
 /// `guide` in the order that `Guide::documents` set (ADR-0035).
 ///
-/// The failure document is `crumbkit/failure/v1`, or the document of the
+/// The failure document is `<tool>/failure/v1`, or the document of the
 /// guide's failure form when it has one. A failure form's document is
 /// `unwrapped`, because crumbkit's envelope does not hold it, and it names
 /// no command, because every command prints it when it fails (ADR-0045).
@@ -175,6 +188,7 @@ impl Served {
 /// and file formats in `guide` and the depth of the leaves' paths.
 #[must_use]
 pub fn documents(command: &Command, guide: &Guide) -> Vec<Served> {
+    let tool = guide.tool_name(command);
     let mut served = vec![match guide.get_failure_form() {
         Some(form) => Served {
             document: form.document(),
@@ -183,6 +197,7 @@ pub fn documents(command: &Command, guide: &Guide) -> Vec<Served> {
             stream: false,
             schema: Build::Form(form),
             field_names: &[],
+            tool,
         },
         None => Served {
             document: failure::DOCUMENT,
@@ -191,6 +206,7 @@ pub fn documents(command: &Command, guide: &Guide) -> Vec<Served> {
             stream: false,
             schema: Build::Function(|_| failure::document_schema()),
             field_names: guide.get_field_names(),
+            tool,
         },
     }];
     for leaf in guide.get_leaves() {
@@ -204,7 +220,7 @@ pub fn documents(command: &Command, guide: &Guide) -> Vec<Served> {
             .chain(leaf.path().iter().copied())
             .collect::<Vec<_>>()
             .join(" ");
-        let id = document.to_string();
+        let id = tool.document(document).to_string();
         match served.iter_mut().find(|entry| entry.id() == id) {
             Some(entry) => entry.commands.push(line),
             None => served.push(Served {
@@ -226,6 +242,7 @@ pub fn documents(command: &Command, guide: &Guide) -> Vec<Served> {
                 } else {
                     guide.get_field_names()
                 },
+                tool,
             }),
         }
     }
@@ -236,6 +253,7 @@ pub fn documents(command: &Command, guide: &Guide) -> Vec<Served> {
         stream: false,
         schema: Build::Function(format.schema_fn()),
         field_names: &[],
+        tool,
     }));
     served
 }
@@ -306,6 +324,29 @@ fn accept_field_names(failure: &mut serde_json::Map<String, serde_json::Value>, 
         description.push_str(
             " The tool also uses the names that propertyNames lists, which it takes from another system.",
         );
+    }
+}
+
+/// Gives `tool`'s name to each document id that `schema` names as a
+/// `title` or a `const`, such as `crumbkit/failure/v1`, at any depth. An id
+/// that does not start with `crumbkit/` stays as it is.
+fn name_ids(schema: &mut serde_json::Map<String, serde_json::Value>, tool: ToolName) {
+    for (key, value) in schema.iter_mut() {
+        match value {
+            serde_json::Value::String(id) if key == "title" || key == "const" => {
+                *id = tool.schema_id(id);
+            }
+            serde_json::Value::Object(object) => name_ids(object, tool),
+            serde_json::Value::Array(items) => {
+                for item in items
+                    .iter_mut()
+                    .filter_map(serde_json::Value::as_object_mut)
+                {
+                    name_ids(item, tool);
+                }
+            }
+            _ => {}
+        }
     }
 }
 

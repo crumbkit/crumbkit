@@ -184,7 +184,7 @@ fn entries_stream_with_json_prints_a_failure_of_a_missing_list_as_its_only_line(
     assert_eq!(stdout.lines().count(), 1);
     assert!(
         stdout
-            .starts_with(r#"{"schema":"crumbkit/failure/v1","code":"reading::entries::not_found""#),
+            .starts_with(r#"{"schema":"reading/failure/v1","code":"reading::entries::not_found""#),
         "{stdout}"
     );
     Ok(())

@@ -1,4 +1,4 @@
-cargo has 2 opt-outs from crumbkit's conventions.
+cargo has 2 opt-outs from the conventions.
 
 examples/run: cargo crumbkit docs
   Reason: Each run of the example writes shelf's reference into the workspace, so tests/docs.rs runs docs with a file in a temporary directory instead.

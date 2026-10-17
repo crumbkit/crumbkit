@@ -21,7 +21,7 @@ use super::platform::{self, Interrupts};
 use super::record::{self, Hash, Help, Name, Record, Run, Section};
 use super::shape;
 use crumbkit::events::TraceIds;
-use crumbkit::{Code, Document, Spelling};
+use crumbkit::{Code, Document, Spelling, ToolName};
 
 #[cfg(test)]
 mod tests;
@@ -349,7 +349,10 @@ impl Recorder {
                 .collect();
         }
         Some(Record {
-            schema: record::SCHEMA,
+            schema: self
+                .spelling
+                .map_or(ToolName::CRUMBKIT, Spelling::tool)
+                .schema_id(record::SCHEMA),
             tool: self.tool?,
             version: self.version,
             at: humantime::format_rfc3339_millis(now).to_string(),

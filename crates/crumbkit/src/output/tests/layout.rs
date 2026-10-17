@@ -105,7 +105,7 @@ fn a_pretty_layout_indents_the_failure_document() {
     assert_eq!(code, 1);
     let out = String::from_utf8(out).unwrap();
     let expected = r#"{
-  "schema": "crumbkit/failure/v1",
+  "schema": "tool/failure/v1",
   "code": "solar::planets::not_found",
   "message": "the solar system has no planet Vulcan",
   "recovery": {

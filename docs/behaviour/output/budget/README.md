@@ -24,7 +24,7 @@ beyond crumbkit's default. No opt-out removes the
 budget. A tool whose results are larger raises its budget and gives the
 reason.
 
-The environment variable `CRUMBKIT_OUTPUT_BUDGET` lowers the budget of one
+The environment variable `<TOOL>_OUTPUT_BUDGET` lowers the budget of one
 run to a whole number of bytes. A value larger than the tool's budget, 0, or
 a value that is not a whole number leaves the tool's budget unchanged. The
 variable never raises the budget, so no one can read more than the tool's
@@ -63,7 +63,7 @@ counts the bytes of those lines, which `finish` builds once.
   error in place of the footer. A list, which has no paging flags, names only
   `--fields`.
 - With `--json`, the document holds
-  `"cut": {"code": "crumbkit::output::over_budget", "budget": 1048576}`.
+  `"cut": {"code": "shelf::output::over_budget", "budget": 1048576}`.
 - A document with `Envelope::Without` has no place for `cut`, so the
   line also prints on standard error with `--json`.
 - A listing that holds `cut` also holds `"truncated": true`, and its `total`
@@ -74,7 +74,7 @@ Why: ADR-0046, ADR-0064.
 ## Batches
 
 A batch prints the rows that fit in input order and always its first row,
-then ends with one failure, `crumbkit::output::over_budget`. The run exits
+then ends with one failure, `<tool>::output::over_budget`. The run exits
 with code 1. In text, the batch's note prints on standard error before its
 failures, and the note of the rows that report a problem does not print,
 because the failure decides the exit. The failure has these fields:
@@ -151,7 +151,7 @@ Why: ADR-0046, ADR-0059, ADR-0070, ADR-0077.
 ### One failure for each answer left out
 
 A batch whose document is marked with `Document::left_out_per_key` answers
-each answer left out with its own `crumbkit::output::over_budget` failure,
+each answer left out with its own `<tool>::output::over_budget` failure,
 in place of the one failure that names them all. Each failure has the key and
 index of its answer, the message `the answer did not fit in the output budget
 of 1048576 bytes`, the field `budget`, and a `run` recovery that runs the
@@ -190,7 +190,7 @@ header and its bytes, and 1 more byte for the line feed before its header
 when it is not the first row that prints.
 
 - A row whose header and bytes alone pass the budget does not print. It
-  fails under its own key with `crumbkit::output::over_budget`, whose `key:`
+  fails under its own key with `<tool>::output::over_budget`, whose `key:`
   line names the key and whose `help:` line says that no flag makes the
   answer smaller. The rows after it still print. A document marked with
   `Document::always_print_first` prints its first row whole even past the
@@ -212,7 +212,7 @@ Why: ADR-0062, ADR-0068.
 ## Single results
 
 A single row, or a listing or list whose first row alone does not fit, is
-refused with `crumbkit::output::over_budget`, whose recovery is a hint to ask
+refused with `<tool>::output::over_budget`, whose recovery is a hint to ask
 for fewer fields with `--fields`. A prose result is refused with the same
 code and no recovery. A bytes result is refused in the same way and is never
 cut. Its text form is measured as the raw bytes and its JSON form as the
@@ -244,7 +244,7 @@ Why: ADR-0046, ADR-0041.
 ## The over-budget code
 
 A tool sets its own over-budget code with a `Rename` of
-`crumbkit::output::over_budget` in `Guide::codes`, which `cut` and the
+`<tool>::output::over_budget` in `Guide::codes`, which `cut` and the
 failure report in place of crumbkit's for every document. A `Rename` in
 `Leaf::codes` sets the code for the runs of one command, and
 `check_output_budget` expects the exit that the guide gives that command's
@@ -265,7 +265,7 @@ Why: ADR-0046, ADR-0060.
 ## The budget check
 
 crumbkit-test's `check_output_budget` runs each `--json` example of the guide
-once, then again with `CRUMBKIT_OUTPUT_BUDGET` set to half the bytes it
+once, then again with `<TOOL>_OUTPUT_BUDGET` set to half the bytes it
 printed. The second run must do one of these:
 
 - print a result marked with `cut` or the cut line;

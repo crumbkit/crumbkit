@@ -15,7 +15,7 @@
       "description": "The failures that the answer leaves out. It is empty when nothing failed.",
       "type": "array",
       "items": {
-        "description": "A failure of some of the ids: the fields of the crumbkit/failure/v1 document without schema.",
+        "description": "A failure of some of the ids: the fields of the failure document without schema.",
         "type": "object",
         "properties": {
           "alternatives": {

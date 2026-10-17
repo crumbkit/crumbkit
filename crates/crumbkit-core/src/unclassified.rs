@@ -10,7 +10,7 @@ impl Error {
     /// Returns an `Error` that holds an error the tool did not classify, such
     /// as an `io::Error`, an error from another library or a message string.
     ///
-    /// The failure's code is `crumbkit::report::unchecked` in the tool's
+    /// The failure's code is `<tool>::report::unchecked` in the tool's
     /// spelling, and its recovery is [`Recovery::None`], because crumbkit
     /// cannot know what the caller should do next. The message is the
     /// error's `Display`, and each error in its `source()` chain prints as a

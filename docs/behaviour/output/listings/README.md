@@ -98,7 +98,7 @@ Why: ADR-0050.
 `books list` uses `Page<4, 100>`.
 
 clap refuses a larger value as it parses the command line. The refusal has
-the code `crumbkit::cli::usage` and the exit code of a refused command line,
+the code `<tool>::cli::usage` and the exit code of a refused command line,
 2 unless the guide renames the code or lists another exit for it
 ([refused command lines](../../parsing/README.md)). Its fields are `argument`,
 `value` and `most`, the bound as an integer. The refusal's recovery runs the

@@ -117,7 +117,7 @@ fn the_failure_of_the_ids_that_the_budget_leaves_out_is_written_by_the_form_entr
     let failures = document["failures"].as_array().unwrap();
     assert_eq!(failures.len(), 2);
     assert_eq!(failures[0], missing_entry());
-    assert_eq!(failures[1]["error"]["code"], "crumbkit.output.over_budget");
+    assert_eq!(failures[1]["error"]["code"], "tool.output.over_budget");
 }
 
 #[test]

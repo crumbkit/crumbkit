@@ -41,7 +41,7 @@ pub use self::stream::{Streaming, stream, stream_to};
 use crate::form::FailureForm;
 use crate::help::rename::Renames;
 use crate::help::{Exit, view};
-use crate::{AsFailure, Document, Rows, Sink, Spelling};
+use crate::{AsFailure, Document, Rows, Sink, Spelling, ToolName};
 
 #[cfg(test)]
 mod tests;
@@ -62,7 +62,7 @@ mod tests;
 ///
 /// `parse`, `finish` and `stream` refuse `--full` without `--json`, and
 /// `--fields` with `--long` or `--full`, as a refused command line with the
-/// code `crumbkit::cli::usage`, such as `--full prints every field of every
+/// code `<tool>::cli::usage`, such as `--full prints every field of every
 /// row in JSON, so it needs --json` with the hint `add --json, or drop
 /// --full`. clap parses each of these lines, so a tool that parses with
 /// clap alone gets the refusal from `finish` or `stream`.
@@ -136,6 +136,10 @@ pub struct Output {
     /// The failure field names that break the rule and that the tool's
     /// guide lists (ADR-0061).
     field_names: &'static [&'static str],
+
+    /// The name that the run's output gives crumbkit's own codes, documents
+    /// and variables (ADR-0079).
+    tool: ToolName,
 }
 
 impl Output {
@@ -149,7 +153,7 @@ impl Output {
     /// The budget is the one that the tool's
     /// [`Guide::output_budget`](crate::help::Guide::output_budget) sets, or
     /// [`Output::DEFAULT_BUDGET`], lowered by the variable
-    /// `CRUMBKIT_OUTPUT_BUDGET` when it holds a smaller whole number of
+    /// `<TOOL>_OUTPUT_BUDGET` when it holds a smaller whole number of
     /// bytes. A handler reads it before `finish` to fetch no more rows than
     /// can print. `finish` prints a result within it, as [`finish_to`]
     /// describes (ADR-0046).
@@ -213,6 +217,16 @@ impl Output {
             long: self.long,
             full: self.full,
         }
+    }
+
+    /// Returns `spelling` and `document` with the tool's name in place of
+    /// `crumbkit` in crumbkit's own codes and documents (ADR-0079).
+    pub(crate) const fn named<T>(
+        &self,
+        spelling: Spelling,
+        document: Document<T>,
+    ) -> (Spelling, Document<T>) {
+        (spelling.for_tool(self.tool), self.tool.document(document))
     }
 
     /// Returns what the tool's guide decides about the run's failures: the form, the JSON style, the exit codes, the
@@ -302,7 +316,7 @@ pub fn finish<T: Rows, E: AsFailure>(
 /// A [`Batch`](crate::Batch)'s rows print as a `Vec`'s do, and its JSON
 /// document also holds its failures under `failures`, which is present even
 /// when the list is empty. Each entry of `failures` has the fields of the
-/// `crumbkit/failure/v1` document described below, without `schema`. In
+/// `<tool>/failure/v1` document described below, without `schema`. In
 /// text, the rows go to the output writer, which is flushed, and then each
 /// failure goes to the error writer in the form a failed command prints, in
 /// order. A batch with no rows writes nothing to the output writer in text,
@@ -336,7 +350,7 @@ pub fn finish<T: Rows, E: AsFailure>(
 /// against the command tree that `output` holds, and prints as `no next
 /// step: the suggested command is not available` when the call does not
 /// resolve. With `--json`, the failure prints to the
-/// output writer as one `crumbkit/failure/v1` document, on one line or in
+/// output writer as one `<tool>/failure/v1` document, on one line or in
 /// the guide's layout, which `--full` and `--fields` do not change.
 ///
 /// When the tool's guide sets a
@@ -352,7 +366,7 @@ pub fn finish<T: Rows, E: AsFailure>(
 /// fit and exits 0: in text, a line on the error writer such as `Showing
 /// 812 of 5000 books, because output stops at 1048576 bytes. Ask for less
 /// with --limit or --fields.` says so, and its JSON document holds `cut` with the code
-/// `crumbkit::output::over_budget`, or the tool's rename of it, and the
+/// `<tool>::output::over_budget`, or the tool's rename of it, and the
 /// budget. A batch prints the rows
 /// that fit and ends with one over-budget failure whose fields are
 /// `left_out` and `budget`, and exits 1. A batch whose document is marked
@@ -371,7 +385,7 @@ pub fn finish<T: Rows, E: AsFailure>(
 ///
 /// When `--fields` names a field that the row type does not have, nothing of
 /// the result prints. The refusal prints as a failure does, with the message
-/// `--fields names an unknown field 'radius'`, the code `crumbkit::cli::usage`
+/// `--fields names an unknown field 'radius'`, the code `<tool>::cli::usage`
 /// in `spelling`, and the hint `use the valid fields: a, b`.
 ///
 /// The exit code is 0 when the result is written, and also when the reader
@@ -413,6 +427,9 @@ pub fn finish_to<T: Rows, E: AsFailure, O: Write, W: Write>(
     result: Result<T, E>,
 ) -> u8 {
     columns::require::<T>();
+    // crumbkit's own codes and documents print with the tool's name in
+    // place of `crumbkit` (ADR-0079).
+    let (spelling, document) = output.named(spelling, document);
     // The sink counts the bytes of standard output, which `finish` reports
     // to the observer with the exit code (ADR-0057).
     let truncated = result.as_ref().is_ok_and(listing::leaves_out);

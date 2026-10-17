@@ -1,1 +1,1 @@
-{"schema":"crumbkit/failure/v1","code":"crumbkit::cli::usage","message":"the following required arguments were not provided: <ID>...","fields":{"argument":"<ID>..."},"recovery":{"kind":"run","call":"shelf books list"},"alternatives":[{"kind":"run","call":"shelf books show -h"}]}
+{"schema":"shelf/failure/v1","code":"shelf::cli::usage","message":"the following required arguments were not provided: <ID>...","fields":{"argument":"<ID>..."},"recovery":{"kind":"run","call":"shelf books list"},"alternatives":[{"kind":"run","call":"shelf books show -h"}]}

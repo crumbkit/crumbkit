@@ -94,7 +94,7 @@ Why: ADR-0043, ADR-0049.
 [`NoInput`](../../../crates/crumbkit/src/pick/no_input.rs) adds a global
 `--no-input` flag that a tool flattens at its root, as it flattens `Yes`.
 With `--no-input`, crumbkit refuses a missing argument without asking, and
-`confirm` fails with `crumbkit::confirmation::needs_yes` without asking.
+`confirm` fails with `<tool>::confirmation::needs_yes` without asking.
 crumbkit finds the flag by its argument id, so a tool can rename it with
 `Command::mut_arg` and then opts out of `Rule::NoInput`, because that rule
 gives `--no-input` one name in every tool.

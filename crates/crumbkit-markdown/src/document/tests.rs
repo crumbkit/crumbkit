@@ -1,9 +1,9 @@
-//! Tests for reading the `crumbkit/commands-list/v1` document.
+//! Tests for reading the `<tool>/commands-list/v1` document.
 
 use super::read;
 
 /// A document of one command with every field.
-const ONE: &str = r#"{"schema":"crumbkit/commands-list/v1","data":[
+const ONE: &str = r#"{"schema":"shelf/commands-list/v1","data":[
 {"path":"shelf","about":"Browse","long_about":null,"arguments":[
 {"name":"--json","short":null,"value_names":[],"required":false,"many":false,"defaults":[],"possible_values":[],"help":"Print JSON","long_help":null,"global":true,"one_of":[]}],
 "examples":[],"columns":[],"form":null,"exits":[],"effects":null}],"total":1}"#;
@@ -19,13 +19,13 @@ fn a_commands_list_document_gives_its_commands_in_order() {
 
 #[test]
 fn a_document_with_another_schema_id_is_refused_with_that_id() {
-    let other = ONE.replace("crumbkit/commands-list/v1", "shelf/books-list/v1");
+    let other = ONE.replace("shelf/commands-list/v1", "shelf/books-list/v1");
 
     let error = read(other.as_bytes()).unwrap_err();
 
     assert_eq!(
         error.to_string(),
-        "the input is a shelf/books-list/v1 document, and the reference needs a crumbkit/commands-list/v1 document"
+        "the input is a shelf/books-list/v1 document, and the reference needs the commands-list/v1 document that `commands list --all --json --full` prints"
     );
 }
 
@@ -39,7 +39,7 @@ fn input_that_is_not_json_of_the_document_s_shape_is_refused_with_serde_s_error_
 
         assert_eq!(
             error.to_string(),
-            "the input is not a crumbkit/commands-list/v1 document"
+            "the input is not the document that `commands list --all --json --full` prints"
         );
         assert!(std::error::Error::source(&error).is_some());
     }

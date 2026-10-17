@@ -56,7 +56,7 @@ fn a_batch_that_answers_each_left_out_key_prints_one_over_budget_failure_at_each
     let document = parsed(&finished.out);
     let shown = document["data"].as_array().unwrap().len();
     assert_eq!(shown, 3, "{}", finished.out);
-    let over = "crumbkit::output::over_budget".to_owned();
+    let over = "tool::output::over_budget".to_owned();
     assert_eq!(
         indexed_codes(&document),
         [
@@ -70,7 +70,7 @@ fn a_batch_that_answers_each_left_out_key_prints_one_over_budget_failure_at_each
         json!({
             "key": "star-05",
             "index": 4,
-            "code": "crumbkit::output::over_budget",
+            "code": "tool::output::over_budget",
             "message": "the answer did not fit in the output budget of 1600 bytes",
             "fields": {"budget": 1600},
             "recovery": {"kind": "run", "call": "tool show star-05"}
@@ -116,11 +116,11 @@ fn each_left_out_key_s_failure_runs_the_command_with_that_key_alone() {
 error: the answer did not fit in the output budget of 1024 bytes
   key:   star-03 (index 2)
   help:  run `tool show star-03`
-  code:  crumbkit::output::over_budget
+  code:  tool::output::over_budget
 error: the answer did not fit in the output budget of 1024 bytes
   key:   star-04 (index 3)
   help:  run `tool show star-04`
-  code:  crumbkit::output::over_budget
+  code:  tool::output::over_budget
 "
     );
 }
@@ -186,7 +186,7 @@ fn a_batch_that_answers_each_left_out_key_prints_each_failure_even_when_they_pas
     assert!(finished.out.len() > BUDGET, "{}", finished.out.len());
     let document = parsed(&finished.out);
     assert_eq!(document["data"].as_array().unwrap().len(), 1);
-    let over = "crumbkit::output::over_budget".to_owned();
+    let over = "tool::output::over_budget".to_owned();
     let expected: Vec<(u64, String)> = (1..20).map(|index| (index, over.clone())).collect();
     assert_eq!(indexed_codes(&document), expected);
 }
@@ -210,7 +210,7 @@ fn a_batch_of_three_large_rows_answers_its_second_and_third_keys_with_their_own_
     assert_eq!(finished.code, ExitCode::FAILURE);
     let document = parsed(&finished.out);
     assert_eq!(document["data"].as_array().unwrap().len(), 1);
-    let over = "crumbkit::output::over_budget".to_owned();
+    let over = "tool::output::over_budget".to_owned();
     assert_eq!(
         indexed_codes(&document),
         [(1, over.clone()), (2, over)],

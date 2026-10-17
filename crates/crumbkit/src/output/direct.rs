@@ -29,7 +29,7 @@ impl Output {
         failure::print(
             sink,
             self.json,
-            spelling,
+            spelling.for_tool(self.tool),
             printing,
             failure,
             &mut self.command,
@@ -44,7 +44,7 @@ impl Output {
     /// A command that does slow work before it calls `finish` calls it
     /// first, so the caller learns of a mistyped flag before the work
     /// starts. The exit code is 2 unless the guide lists another for
-    /// `crumbkit::cli::usage`, and it is reported to the observer.
+    /// `<tool>::cli::usage`, and it is reported to the observer.
     pub fn refuse_view<T: Rows, O: Write, W: Write>(
         &mut self,
         sink: &mut Sink<O, W>,
@@ -62,7 +62,7 @@ impl Output {
     /// The message is `--fields selects the columns of a table, and`
     /// followed by `reason`, such as `this command hands the terminal to
     /// another program`. The exit code is 2 unless the guide lists another
-    /// for `crumbkit::cli::usage`, and it is reported to the observer.
+    /// for `<tool>::cli::usage`, and it is reported to the observer.
     pub fn refuse_fields_for_text<O: Write, W: Write>(
         &mut self,
         sink: &mut Sink<O, W>,
@@ -91,6 +91,7 @@ impl Output {
         refusal: &Refusal,
     ) -> ExitCode {
         let printing = self.printing();
+        let spelling = spelling.for_tool(self.tool);
         let exit = refusal.print(sink, self.json, spelling, printing, &mut self.command);
         crate::events::ended(exit, None)
     }

@@ -16,12 +16,12 @@ use crate::temp::TempDir;
 use crate::testing::panic_message;
 
 /// A `commands list --all --json --full` document with one command.
-const DOCUMENT: &str = r#"{"schema":"crumbkit/commands-list/v1","data":[{"path":"tool","about":"Browse a catalogue","long_about":null,"arguments":[],"examples":[],"columns":[],"form":null,"exits":[],"effects":null}],"total":1}"#;
+const DOCUMENT: &str = r#"{"schema":"tool/commands-list/v1","data":[{"path":"tool","about":"Browse a catalogue","long_about":null,"arguments":[],"examples":[],"columns":[],"form":null,"exits":[],"effects":null}],"total":1}"#;
 
 /// The reference of [`DOCUMENT`].
 const REFERENCE: &str = "# Commands of `tool`
 
-crumbkit-markdown writes this reference from the help of `tool`. Edit the help in the tool's code, and not this file.
+This reference is generated from the help of `tool`. Edit the help in the tool's code, and not this file.
 
 ## `tool`
 
@@ -126,7 +126,7 @@ fn a_tool_whose_commands_list_prints_another_document_fails_with_the_reason() {
         message,
         "the command tree breaks crumbkit's command reference rules:\n\
          tool commands list --all --json --full: the reference cannot be written: \
-         the input is a tool/books/v1 document, and the reference needs a crumbkit/commands-list/v1 document"
+         the input is a tool/books/v1 document, and the reference needs the commands-list/v1 document that `commands list --all --json --full` prints"
     );
 }
 

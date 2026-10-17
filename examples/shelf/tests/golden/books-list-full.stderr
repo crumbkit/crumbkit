@@ -1,3 +1,3 @@
 error: --full prints every field of every row in JSON, so it needs --json
   help:  add --json, or drop --full
-  code:  crumbkit::cli::usage
+  code:  shelf::cli::usage

@@ -35,10 +35,14 @@ exception that the [failure model](../failures/README.md) allows.
 A failure from a run that writes crumbkit's warning about a recovery that
 does not render is not reported again as a dead end. A code that the tool
 does not declare and crumbkit does not own ends its chain, and the report
-counts such codes. crumbkit owns every code in the `crumbkit` component,
-including the codes of its add-on crates, such as
-`crumbkit::child::failed`, and the codes that the guide prints in place of
-them.
+counts such codes. crumbkit owns its own codes, the codes that the guide
+prints in place of them, and the codes of its add-on crates, such as
+`<tool>::child::failed`. The tool's output names the tool in each of
+crumbkit's codes, so the check takes an undeclared code in the tool's
+component for an add-on crate's code when no declared code of the tool has
+the code's area. An undeclared code in an area that the tool declares,
+such as `shelf::books::lost` beside `shelf::books::not_found`, fails the
+check.
 
 Every declared code is provoked by a chain or listed in `Unprovoked` with
 the reason no test can provoke it. A tool passes the same list to

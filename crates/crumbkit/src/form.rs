@@ -2,7 +2,7 @@
 //! text form of its own (ADR-0045).
 //!
 //! crumbkit prints every failure in its own form by default: the
-//! `crumbkit/failure/v1` document with `--json`, and the `error:`, `help:`
+//! `<tool>/failure/v1` document with `--json`, and the `error:`, `help:`
 //! and `code:` lines in text. A tool that already publishes its own failure
 //! document, which its callers read, sets a [`FailureForm`] with
 //! [`Guide::failure_form`](crate::help::Guide::failure_form) and keeps that
@@ -39,7 +39,7 @@ mod tests;
 /// crumbkit's envelope.
 ///
 /// `schemas list` serves the form's document in place of
-/// `crumbkit/failure/v1`, and crumbkit-test's `check_schema_goldens` pins
+/// `<tool>/failure/v1`, and crumbkit-test's `check_schema_goldens` pins
 /// its schema. A failure form is a declaration, which needs no opt-out.
 /// crumbkit-test's `check_document_ids` fails only on a form whose document
 /// is in the component `crumbkit`, and `check_opt_outs` lists the form under
@@ -108,7 +108,7 @@ mod tests;
 /// ```
 pub trait FailureForm {
     /// Returns the id and description of the form's document, which
-    /// `schemas list` serves in place of `crumbkit/failure/v1`. The id names
+    /// `schemas list` serves in place of `<tool>/failure/v1`. The id names
     /// the document in `schemas list` and `schemas show`, and the document
     /// itself need not hold it.
     fn document(&self) -> Document<()>;
@@ -130,7 +130,7 @@ pub trait FailureForm {
     /// too.
     ///
     /// The provided method returns crumbkit's entry, the fields of the
-    /// `crumbkit/failure/v1` document without `schema`. A form that changes
+    /// `<tool>/failure/v1` document without `schema`. A form that changes
     /// the entry also returns its schema from
     /// [`FailureForm::entry_schema`], and reads the entry back in
     /// [`FailureForm::read`]: crumbkit-test passes each entry to `read` as
@@ -178,7 +178,7 @@ pub trait FailureForm {
     /// recoveries (ADR-0045).
     ///
     /// A form can write another code in place of one of crumbkit's, such as
-    /// `crumbkit::cli::usage`, because it receives the code from
+    /// `<tool>::cli::usage`, because it receives the code from
     /// [`PreparedFailure::code`] and writes both the JSON and the text. A
     /// form that does this maps the code back to crumbkit's in `read`, so
     /// the checks still match it.

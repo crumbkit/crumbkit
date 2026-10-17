@@ -63,7 +63,7 @@ mod tests;
 /// [`FailureForm::read`](crumbkit::form::FailureForm::read) first, and when
 /// `examples` sets a [`FailureReader`](crate::FailureReader), through that
 /// reader first. Otherwise, or when neither reads a failure, it reads the
-/// code from a `crumbkit/failure/v1` document on standard output, or from
+/// code from a `<tool>/failure/v1` document on standard output, or from
 /// the first entry of a batch's `failures`, and then from the last `code:`
 /// line on standard error.
 ///
@@ -71,7 +71,7 @@ mod tests;
 /// [`Guide::failure_exit`](crumbkit::help::Guide::failure_exit) gives its
 /// failure: the code of the guide's [`Exit`](crumbkit::help::Exit) that
 /// lists its code with [`Exit::failures`](crumbkit::help::Exit::failures),
-/// the code of a refused command line for `crumbkit::cli::usage`, which is
+/// the code of a refused command line for `<tool>::cli::usage`, which is
 /// 2 unless an exit lists it, and 1 for any other code. A command whose
 /// leaf declares [`Leaf::passes_on_exit`](crumbkit::help::Leaf::passes_on_exit)
 /// may end an unlisted failure with any code but 0. A refused line whose
@@ -288,6 +288,9 @@ pub(super) fn refuse(
     refused: &Failing<'_>,
 ) -> Result<Output, String> {
     let reader = failures::reader(guide, examples)?;
+    // crumbkit's own codes print with the tool's name (ADR-0079).
+    let tool = guide.tool_name(command);
+    let spelling = spelling.for_tool(tool);
     let refused_line = named(&tool_name(examples), refused.words(), refused.own_env());
     // A leaf's renames decide the code that a run of its command prints, so
     // the code is spelled for the command that the refused line names.
@@ -307,7 +310,7 @@ pub(super) fn refuse(
         ));
     }
     // The first failure is the one the refused line fails with.
-    let printed = failures::read_failures(reader, &output.stdout, &output.stderr)
+    let printed = failures::read_failures(tool, reader, &output.stdout, &output.stderr)
         .first()
         .map(|failure| failure.code().to_owned());
     match printed {

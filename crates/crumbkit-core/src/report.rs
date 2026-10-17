@@ -11,7 +11,7 @@ use crate::{Code, Error, Failure, Recovery};
 /// conversion exists only with the `miette` feature, which crumbkit's own
 /// `miette` feature turns on.
 ///
-/// The failure's code is `crumbkit::report::unchecked` in the tool's
+/// The failure's code is `<tool>::report::unchecked` in the tool's
 /// spelling for every report, because a report's own code is free text that
 /// no codes check has seen. The message is the report's `Display`, followed
 /// by the report's own code in parentheses when it has one, such as

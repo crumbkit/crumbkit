@@ -14,7 +14,7 @@ use crate::page::LimitAbove;
 use crate::{Call, Code, Failure, Field, Recovery, Sink, Spelling, codes};
 
 /// A refused command line or flag value, as a [`Failure`] with the code
-/// `crumbkit::cli::usage`.
+/// `<tool>::cli::usage`.
 #[derive(Debug)]
 pub(crate) struct Refusal {
     /// What the caller got wrong, on one line.

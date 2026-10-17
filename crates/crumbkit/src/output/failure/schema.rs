@@ -100,8 +100,7 @@ pub(crate) fn entry_schema() -> Schema {
     let mut schema = failure_schema();
     schema.insert(
         "description".to_owned(),
-        "A failure of some of the ids: the fields of the crumbkit/failure/v1 document without schema."
-            .into(),
+        "A failure of some of the ids: the fields of the failure document without schema.".into(),
     );
     if let Some(properties) = schema
         .get_mut("properties")

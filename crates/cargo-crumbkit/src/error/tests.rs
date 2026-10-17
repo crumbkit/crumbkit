@@ -65,7 +65,7 @@ fn every_failure_of_building_and_running_the_tool_names_what_failed_and_hints_at
             ToolError::NoCommandsList {
                 line: "shelf commands list --all --json --full".to_owned(),
             },
-            "`shelf commands list --all --json --full` prints no crumbkit/commands-list/v1 document, so the tool's commands cannot be read",
+            "`shelf commands list --all --json --full` prints no commands-list/v1 document, so the tool's commands cannot be read",
             "add a `commands list` command at the tool's root that takes crumbkit::commands::CommandsList, as the crumbkit::commands module shows",
         ),
     ];
@@ -98,7 +98,7 @@ fn every_failure_of_weigh_names_what_failed_and_hints_at_what_to_change() {
             WeighError::NoUsageFigures {
                 line: "shelf self figures list --all --json --log usage.jsonl".to_owned(),
             },
-            "`shelf self figures list --all --json --log usage.jsonl` prints no crumbkit/self-figures-list/v1 document, so the usage figures cannot be read",
+            "`shelf self figures list --all --json --log usage.jsonl` prints no self-figures-list/v1 document, so the usage figures cannot be read",
             "run `shelf self figures list --all --json --log usage.jsonl` to see the failure; a tool needs a `self figures list` command that takes crumbkit_usage::SelfFigures, as shelf's shows",
         ),
         (

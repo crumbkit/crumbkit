@@ -19,7 +19,7 @@
       "description": "The failures of the ids that did not work. It is empty when every id worked.",
       "type": "array",
       "items": {
-        "description": "A failure of some of the ids: the fields of the crumbkit/failure/v1 document without schema.",
+        "description": "A failure of some of the ids: the fields of the failure document without schema.",
         "type": "object",
         "properties": {
           "alternatives": {

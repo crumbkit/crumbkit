@@ -311,9 +311,8 @@ fn with_json_a_failure_in_the_middle_prints_a_failure_document_between_the_items
     let lines: Vec<&str> = streamed.out.lines().collect();
     assert_eq!(lines.len(), 3);
     assert!(
-        lines[1].starts_with(
-            r#"{"schema":"crumbkit/failure/v1","code":"birds::sightings::unreadable""#
-        ),
+        lines[1]
+            .starts_with(r#"{"schema":"birds/failure/v1","code":"birds::sightings::unreadable""#),
         "{}",
         lines[1]
     );
@@ -335,7 +334,7 @@ fn a_failure_at_the_end_prints_last_and_the_stream_exits_with_1() {
     assert_eq!(json.code, ExitCode::FAILURE);
     let last = json.out.lines().last().unwrap();
     assert!(
-        last.starts_with(r#"{"schema":"crumbkit/failure/v1""#),
+        last.starts_with(r#"{"schema":"birds/failure/v1""#),
         "{last}"
     );
 }
@@ -540,7 +539,7 @@ fn a_json_stream_ends_with_the_over_budget_failure_document() {
     assert_eq!(streamed.code, ExitCode::FAILURE);
     let last = streamed.out.lines().last().unwrap();
     assert!(
-        last.contains(r#""code":"crumbkit::output::over_budget""#),
+        last.contains(r#""code":"birds::output::over_budget""#),
         "{last}"
     );
 }

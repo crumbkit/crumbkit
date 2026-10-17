@@ -47,7 +47,7 @@ Why: ADR-0007, ADR-0016, ADR-0036, ADR-0039, ADR-0046, ADR-0050, ADR-0059, ADR-0
 
 ## The failure document
 
-A failure prints with `--json` as the `crumbkit/failure/v1` document, unless
+A failure prints with `--json` as the `<tool>/failure/v1` document, unless
 the tool sets a [failure form](../failures/forms.md).
 
 - A failure's `cause` is one string that joins the source chain, because
@@ -99,7 +99,7 @@ can name its owner as a domain such as `example.dev` does.
 
 The name of the document that a command prints is the command's path below
 the tool joined with `-`, such as `shelf/books-list/v1` for
-`shelf books list`, and `crumbkit/schemas-list/v1` for `schemas list`. An
+`shelf books list`, and `<tool>/schemas-list/v1` for `schemas list`. An
 agent can then predict a document's id from the command it ran, and the
 command from an id. A cargo subcommand's path starts below its own name, so
 `cargo crumbkit weigh` prints `crumbkit/weigh/v1`. The failure document and

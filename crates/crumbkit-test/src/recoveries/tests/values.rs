@@ -34,7 +34,7 @@ fn allowing<'a>(setup: &'a Setup, starts: &'a [Failing<'a>], allow: &'a [Allow])
 /// `fields`, a JSON object, whose recovery runs `call`.
 fn with_fields(fields: &str, call: &str) -> String {
     format!(
-        r#"{{"schema":"crumbkit/failure/v1","code":"tool::books::not_found","message":"m","fields":{fields},"recovery":{}}}"#,
+        r#"{{"schema":"tool/failure/v1","code":"tool::books::not_found","message":"m","fields":{fields},"recovery":{}}}"#,
         run(call)
     )
 }

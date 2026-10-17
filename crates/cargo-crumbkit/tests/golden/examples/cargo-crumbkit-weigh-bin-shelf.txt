@@ -6,10 +6,10 @@ shelf books show         534         111     1852        -     -            -
 shelf books summarize    477         101     1785        -     -            -
 shelf books remove       716         114     2037        -     -            -
 shelf commands           367         -       980         -     -            -
-shelf commands list      702         2307    3989        -     -            -
+shelf commands list      702         2304    3986        -     -            -
 shelf schemas            424         -       1037        -     -            -
-shelf schemas list       502         1409    2948        -     -            -
-shelf schemas show       489         2246    3772        -     -            -
+shelf schemas list       502         1376    2915        -     -            -
+shelf schemas show       484         2246    3767        -     -            -
 shelf self               417         -       1030        -     -            -
 shelf self usage         594         -       1624        -     -            -
 shelf self figures       390         -       1420        -     -            -

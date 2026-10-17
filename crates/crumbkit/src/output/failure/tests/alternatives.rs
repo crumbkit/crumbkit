@@ -56,7 +56,7 @@ fn json_holds_the_alternatives_after_the_recovery_tagged_by_kind() {
     assert_eq!(
         finished.out,
         concat!(
-            r#"{"schema":"crumbkit/failure/v1","code":"solar::planets::not_found","message":"the solar system has no planet Vulcan","recovery":{"kind":"run","call":"tool list"},"alternatives":[{"kind":"hint","text":"set SOLAR_TOKEN"},{"kind":"retry"}]}"#,
+            r#"{"schema":"tool/failure/v1","code":"solar::planets::not_found","message":"the solar system has no planet Vulcan","recovery":{"kind":"run","call":"tool list"},"alternatives":[{"kind":"hint","text":"set SOLAR_TOKEN"},{"kind":"retry"}]}"#,
             "\n"
         )
     );

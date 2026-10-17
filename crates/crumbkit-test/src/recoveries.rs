@@ -343,7 +343,7 @@ impl<'a> Recoveries<'a> {
 /// [`Examples`] sets a [`FailureReader`](crate::FailureReader), through
 /// that reader first. Otherwise, or when neither reads a failure, it reads
 /// the failure of the last document on standard output that is a
-/// `crumbkit/failure/v1` document or that has `failures`, as a batch prints
+/// `<tool>/failure/v1` document or that has `failures`, as a batch prints
 /// them, and then the last `code:` line on standard error, which gives a
 /// failure without steps or fields. It follows every failure that it
 /// reads, such as each entry of a batch's `failures`, and each failure
@@ -380,7 +380,7 @@ impl<'a> Recoveries<'a> {
 /// does not declare and crumbkit does not own, such as a run-time code from
 /// a plugin. The check counts such codes in the report. crumbkit owns every
 /// code in the `crumbkit` component, including the codes of its add-on
-/// crates, such as crumbkit-child's `crumbkit::child::failed`, and the
+/// crates, such as crumbkit-child's `<tool>::child::failed`, and the
 /// codes that the guide prints in place of them.
 ///
 /// It finds:
@@ -413,7 +413,7 @@ impl<'a> Recoveries<'a> {
 /// - a failed run whose failure neither the tool's form, set with
 ///   `Guide::failure_form`, nor its reader, set with
 ///   [`Examples::failure_reader`], reads, and that prints no
-///   `crumbkit/failure/v1` document and no `code:` line. The first such run
+///   `<tool>/failure/v1` document and no `code:` line. The first such run
 ///   stops the check, which reports this problem alone and says to make
 ///   the form or reader read it or to add an opt-out from
 ///   [`Rule::Recoveries`] that names the root (ADR-0045);
@@ -485,7 +485,8 @@ fn check(
             return;
         }
     };
-    let spelling = recoveries.spelling;
+    // crumbkit's own codes print with the tool's name (ADR-0079).
+    let spelling = recoveries.spelling.for_tool(guide.tool_name(command));
     let mut declared: Vec<(String, &Code)> = Vec::new();
     for code in recoveries.codes.to_vec() {
         if !declared.iter().any(|&(_, seen)| seen == code) {
@@ -514,6 +515,7 @@ fn check(
     let allowances = Allowances::new(recoveries.examples.opt_outs(), &rules);
     let mut walk = chain::Walk {
         recoveries,
+        spelling,
         command,
         declared: declared.iter().map(|(text, _)| text.clone()).collect(),
         known,

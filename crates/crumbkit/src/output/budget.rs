@@ -9,7 +9,7 @@ use std::io::{self, Write};
 use serde::Serialize;
 use serde::ser::{SerializeMap, Serializer};
 
-use crate::{Call, Code, Failure, Field, FieldValue, Recovery};
+use crate::{Call, Code, Failure, Field, FieldValue, Recovery, ToolName};
 
 #[cfg(test)]
 mod tests;
@@ -17,18 +17,20 @@ mod tests;
 /// The output budget of a tool that sets none: 1 MiB.
 pub(crate) const DEFAULT: usize = 1_048_576;
 
-/// The environment variable that lowers the budget of one run, which
-/// crumbkit-test's `check_output_budget` sets.
-pub(crate) const VARIABLE: &str = "CRUMBKIT_OUTPUT_BUDGET";
+/// The end of the name of the environment variable that lowers the budget
+/// of one run, which crumbkit-test's `check_output_budget` sets. The name
+/// starts with the tool's name, such as `SHELF_OUTPUT_BUDGET` (ADR-0079).
+pub(crate) const VARIABLE: &str = "OUTPUT_BUDGET";
 
-/// Returns the budget of a run of a tool whose budget is `budget`, after the
-/// value of [`VARIABLE`], which lowers it and never raises it.
-pub(crate) fn from_environment(budget: usize) -> usize {
+/// Returns the budget of a run of `tool`, whose budget is `budget`, after
+/// the value of the tool's [`VARIABLE`], which lowers it and never raises
+/// it.
+pub(crate) fn from_environment(budget: usize, tool: ToolName) -> usize {
     #[expect(
         clippy::disallowed_methods,
         reason = "the output budget owns the variable that lowers it"
     )]
-    let value = std::env::var_os(VARIABLE);
+    let value = std::env::var_os(tool.variable(VARIABLE));
     lowered(budget, value.as_deref())
 }
 

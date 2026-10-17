@@ -2,6 +2,7 @@
 
 use std::fmt;
 
+use crate::ToolName;
 use crate::segment::is_segment;
 
 mod runtime;
@@ -88,6 +89,12 @@ impl Code {
     pub const fn reason(&self) -> &'static str {
         self.reason
     }
+
+    /// Returns the code with `component` in place of its own, which
+    /// [`ToolName`] checked is a code component.
+    pub(crate) const fn with_component(self, component: &'static str) -> Self {
+        Self { component, ..self }
+    }
 }
 
 /// How a tool spells its failure codes as text.
@@ -103,6 +110,9 @@ pub struct Spelling {
     /// The text between the segments of a built-in spelling, which
     /// [`Spelling::split`] splits at, or `None` for a custom spelling.
     separator: Option<&'static str>,
+    /// The tool whose name the spelling writes in place of `crumbkit` in
+    /// crumbkit's own codes.
+    tool: ToolName,
 }
 
 impl Spelling {
@@ -148,6 +158,7 @@ impl Spelling {
         Self {
             write,
             separator: None,
+            tool: ToolName::CRUMBKIT,
         }
     }
 
@@ -160,7 +171,37 @@ impl Spelling {
         Self {
             write,
             separator: Some(separator),
+            tool: ToolName::CRUMBKIT,
         }
+    }
+
+    /// Returns the same spelling, writing `tool`'s name in place of
+    /// `crumbkit` in each of crumbkit's own codes, such as
+    /// `shelf::cli::usage` for `crumbkit::cli::usage`.
+    ///
+    /// crumbkit names the spelling for the tool it runs, so a tool passes
+    /// one of the plain spellings. A code whose component is not `crumbkit`
+    /// keeps it.
+    ///
+    /// ```
+    /// use crumbkit_core::{Code, Spelling, ToolName};
+    ///
+    /// const USAGE: Code = Code::new("crumbkit", "cli", "usage");
+    ///
+    /// let spelling = Spelling::DOTS.for_tool(ToolName::new("shelf"));
+    /// assert_eq!(spelling.spell(&USAGE), "shelf.cli.usage");
+    /// ```
+    #[must_use]
+    pub const fn for_tool(self, tool: ToolName) -> Self {
+        Self { tool, ..self }
+    }
+
+    /// Returns the tool whose name the spelling writes in crumbkit's own
+    /// codes, which is [`ToolName::CRUMBKIT`] until
+    /// [`Spelling::for_tool`] names one.
+    #[must_use]
+    pub const fn tool(self) -> ToolName {
+        self.tool
     }
 
     /// Returns `code` as text in this spelling.
@@ -214,6 +255,6 @@ struct Spelled<'a> {
 
 impl fmt::Display for Spelled<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        (self.spelling.write)(self.code, f)
+        (self.spelling.write)(&self.spelling.tool.code(self.code), f)
     }
 }

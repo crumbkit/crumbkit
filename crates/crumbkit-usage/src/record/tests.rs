@@ -14,7 +14,7 @@ fn name(text: &str) -> Name {
 /// writes it for a tool whose `main` returned before `parse`.
 fn bare() -> Record {
     Record {
-        schema: super::SCHEMA,
+        schema: super::SCHEMA.to_owned(),
         tool: name("shelf"),
         version: Some(name("0.0.0")),
         at: "2026-10-07T12:01:07.120Z".to_owned(),

@@ -319,11 +319,11 @@ fn the_failure_document_comes_first_and_then_each_leaf_document_in_guide_order()
     assert_eq!(
         ids,
         [
-            "crumbkit/failure/v1",
+            "shelf/failure/v1",
             "shelf/books-list/v1",
             "shelf/books-show/v1",
-            "crumbkit/schemas-list/v1",
-            "crumbkit/schemas-show/v1",
+            "shelf/schemas-list/v1",
+            "shelf/schemas-show/v1",
         ]
     );
 }
@@ -359,10 +359,13 @@ fn the_failure_document_names_no_command_and_has_the_checked_in_schema() {
     let served = documents(&tool(), &GUIDE);
 
     assert_eq!(served[0].commands(), [] as [String; 0]);
-    assert_eq!(
-        served[0].schema(),
-        crate::output::failure::document_schema()
-    );
+    // The served schema names the tool where the failure document's own
+    // schema names crumbkit (ADR-0079).
+    let named = crate::output::failure::document_schema()
+        .to_value()
+        .to_string()
+        .replace("\"crumbkit/failure/v1\"", "\"shelf/failure/v1\"");
+    assert_eq!(served[0].schema().to_value().to_string(), named);
 }
 
 #[test]
@@ -403,14 +406,14 @@ fn show_returns_the_schema_of_each_id_in_the_order_given() {
     let batch = show(
         &mut output(),
         &GUIDE,
-        &args::<SchemasShow>("show", &["shelf/books-show/v1", "crumbkit/failure/v1"]),
+        &args::<SchemasShow>("show", &["shelf/books-show/v1", "shelf/failure/v1"]),
     )
     .unwrap();
 
     let value = serde_json::to_value(&batch).unwrap();
     assert_eq!(value[0]["id"], "shelf/books-show/v1");
     assert_eq!(value[0]["schema"], document_schema(BOOKS_SHOW).to_value());
-    assert_eq!(value[1]["id"], "crumbkit/failure/v1");
+    assert_eq!(value[1]["id"], "shelf/failure/v1");
 }
 
 #[test]
@@ -428,7 +431,7 @@ fn show_fails_an_unknown_id_and_still_prints_the_ids_it_knows() {
         json!([{
             "key": "shelf/books-lst/v1",
             "index": 0,
-            "code": "crumbkit::schemas::not_found",
+            "code": "shelf::schemas::not_found",
             "message": "shelf has no document shelf/books-lst/v1",
             "recovery": {"kind": "run", "call": "shelf schemas list"},
         }])

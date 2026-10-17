@@ -86,7 +86,7 @@ fn catalogue() -> Vec<u8> {
 /// The reference of [`catalogue`].
 const CATALOGUE: &str = "# Commands of `tool`
 
-crumbkit-markdown writes this reference from the help of `tool`. Edit the help in the tool's code, and not this file.
+This reference is generated from the help of `tool`. Edit the help in the tool's code, and not this file.
 
 ## `tool`
 

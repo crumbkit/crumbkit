@@ -7,7 +7,7 @@ crumbkit-markdown renders and `cargo crumbkit docs` writes.
 
 ## The reference
 
-crumbkit-markdown's `render` reads the `crumbkit/commands-list/v1` document
+crumbkit-markdown's `render` reads the `<tool>/commands-list/v1` document
 that `<binary> commands list --all --json --full` prints and returns one
 CommonMark file ([commands list](commands-list.md)). The reference therefore
 needs no access to the tool's code and says what the tool's help says.
@@ -17,7 +17,7 @@ crumbkit-markdown depends on crumbkit only for `Effects::line`,
 and `Text:` lines use help's own wording.
 
 The file opens with the title `Commands of <root>` and a line saying that
-crumbkit-markdown writes it from the tool's help. Each command then has a
+the reference is generated from the tool's help. Each command then has a
 section in the document's depth-first order. The heading is the command line
 in a code span. The section holds these parts:
 

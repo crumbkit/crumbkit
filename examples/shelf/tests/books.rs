@@ -79,7 +79,7 @@ fn command(dir: &Path, args: &[&str]) -> Command {
 fn shelf_with_budget(bytes: &str, args: &[&str]) -> io::Result<OutputAssert> {
     let dir = tempfile::tempdir()?;
     Ok(command(dir.path(), args)
-        .env("CRUMBKIT_OUTPUT_BUDGET", bytes)
+        .env("SHELF_OUTPUT_BUDGET", bytes)
         .assert())
 }
 

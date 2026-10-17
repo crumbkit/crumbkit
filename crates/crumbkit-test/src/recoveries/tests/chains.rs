@@ -94,7 +94,7 @@ fn a_start_passes_when_any_of_its_failures_carries_its_code() {
 fn a_step_that_fails_with_the_code_of_any_earlier_failure_in_its_chain_fails_the_check_unless_an_opt_out_covers_it()
  {
     let show = format!(
-        r#"{{"schema":"crumbkit/failure/v1","code":"tool::books::not_found","message":"m","recovery":{},"alternatives":[{}]}}"#,
+        r#"{{"schema":"tool/failure/v1","code":"tool::books::not_found","message":"m","recovery":{},"alternatives":[{}]}}"#,
         run("tool books show 9"),
         run("tool books list")
     );

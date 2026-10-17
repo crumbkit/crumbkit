@@ -52,7 +52,7 @@ Why: ADR-0029, ADR-0057.
   `--help` or the `help` command, with the command path that the help names.
 - For a refused command line they report how many flags name no flag of the
   command, clap's suggested real flag, the exit code of a refused command
-  line, and the code `crumbkit::cli::usage` in the tool's spelling or the
+  line, and the code `<tool>::cli::usage` in the tool's spelling or the
   tool's rename of it.
 - For a parsed command line they report how many values the command's
   positional arguments with the value name `ID` received, and, as `picked`,
@@ -93,7 +93,7 @@ Why: ADR-0029, ADR-0037, ADR-0041, ADR-0043, ADR-0057.
 
 ## The record
 
-The line is the `crumbkit/usage/v1` record, whose schema is checked in as
+The line is the `<tool>/usage/v1` record, whose schema is checked in as
 [`usage-v1.json`](../../../crates/crumbkit-usage/schemas/usage-v1.json). The schema
 lists every field and what it holds. A field that does not apply to the run
 is left out. `trace`, `run` and `parent` place the run in a W3C trace, as

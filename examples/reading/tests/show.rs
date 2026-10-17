@@ -140,6 +140,6 @@ fn lists_show_refuses_fields_without_json_and_admits_its_twin_with_json() {
         &["lists", "show", "to-read", "--fields=name", "--json"],
     );
     OutputAssert::new(refused).code(2).stdout_eq("").stderr_eq(
-        "error: --fields selects the fields of JSON rows, and this command's text prints each answer's bytes\n  help:  add --json, or drop --fields\n  code:  crumbkit::cli::usage\n",
+        "error: --fields selects the fields of JSON rows, and this command's text prints each answer's bytes\n  help:  add --json, or drop --fields\n  code:  reading::cli::usage\n",
     );
 }

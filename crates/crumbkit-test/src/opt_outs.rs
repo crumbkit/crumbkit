@@ -23,7 +23,8 @@ mod tests;
 use self::customisations::{Customisation, customisations};
 
 /// The id of the JSON report's schema, which a reader checks before it
-/// reads the entries.
+/// reads the entries. The report names the tool in place of `crumbkit`,
+/// such as `shelf/opt-outs/v1` (ADR-0079).
 const SCHEMA: &str = "crumbkit/opt-outs/v1";
 
 /// Checks that the report of the tool's opt-outs from crumbkit's
@@ -77,7 +78,7 @@ const SCHEMA: &str = "crumbkit/opt-outs/v1";
 /// ```
 ///
 /// The JSON file holds the same entries under `data`, with the schema id
-/// `crumbkit/opt-outs/v1` under `schema`. Each entry has the fields `rule`,
+/// `<tool>/opt-outs/v1` under `schema`. Each entry has the fields `rule`,
 /// `applies_to`, `reason`, `costs` and `budget`, which is `null` for an
 /// opt-out and holds `bytes`, `default`, `extra_bytes` and `extra_tokens`
 /// for a budget. When the tool declares a customisation, the JSON file
@@ -153,7 +154,7 @@ fn check(
     let help = budgets.departures(command, &mut problems);
     entries.extend(help.into_iter().map(|departure| {
         let cost = format!(
-            "Each read of the page can cost {} bytes more than crumbkit's default, about {} tokens.",
+            "Each read of the page can cost {} bytes more than the default, about {} tokens.",
             departure.extra_bytes(),
             departure.extra_tokens()
         );
@@ -162,7 +163,7 @@ fn check(
     let path = paths.map(|paths| paths.departures(command, &mut problems));
     entries.extend(path.into_iter().flatten().map(|departure| {
         let cost = format!(
-            "An agent that finds and runs the command can read {} bytes more than crumbkit's default, about {} tokens.",
+            "An agent that finds and runs the command can read {} bytes more than the default, about {} tokens.",
             departure.extra_bytes(),
             departure.extra_tokens()
         );
@@ -170,7 +171,7 @@ fn check(
     }));
     if let Some(departure) = output_budget(command, guide) {
         let cost = format!(
-            "A run can print {} bytes more than crumbkit's default, about {} tokens.",
+            "A run can print {} bytes more than the default, about {} tokens.",
             departure.extra_bytes(),
             departure.extra_tokens()
         );
@@ -211,7 +212,11 @@ fn check(
         assert,
         line,
         "opt-out report",
-        json(&entries, &declared),
+        json(
+            &guide.tool_name(command).schema_id(SCHEMA),
+            &entries,
+            &declared,
+        ),
         &dir.join("opt-outs.json"),
         &mut problems,
     );
@@ -220,7 +225,7 @@ fn check(
 
 /// What an indented JSON layout costs an agent, which the report lists
 /// under the rule `json-layout/pretty`.
-const JSON_LAYOUT_COST: &str = "Every JSON document that is not a stream line is indented by two spaces, which made the documents of crumbkit's example tool shelf 20 to 62 percent larger, so an agent reads more tokens for each result and fewer rows fit in the output budget.";
+const JSON_LAYOUT_COST: &str = "Every JSON document that is not a stream line is indented by two spaces, which made the documents of the example tool shelf 20 to 62 percent larger, so an agent reads more tokens for each result and fewer rows fit in the output budget.";
 
 /// What turning terminal detection off costs, which the report lists
 /// under the rule `terminal-detection/off`.
@@ -264,7 +269,7 @@ impl Entry {
         let cost = if departure.extra_bytes() > 0 {
             raised
         } else {
-            "None, because the budget is at or below crumbkit's default.".to_owned()
+            "None, because the budget is at or below the default.".to_owned()
         };
         Self {
             rule: departure.rule,
@@ -297,8 +302,8 @@ struct BudgetEntry {
 /// The JSON report: the schema id, the entries and the declarations.
 #[derive(Serialize)]
 struct Report<'a> {
-    /// The id of the report's schema.
-    schema: &'static str,
+    /// The id of the report's schema, such as `shelf/opt-outs/v1`.
+    schema: &'a str,
     /// The opt-outs, in the tool's order.
     data: &'a [Entry],
     /// The declarations, which the report leaves out when there are none.
@@ -310,9 +315,9 @@ struct Report<'a> {
 /// for the tool `tool`.
 fn text(tool: &str, entries: &[Entry], declared: &[Customisation]) -> String {
     let mut text = match entries.len() {
-        0 => format!("{tool} has no opt-outs from crumbkit's conventions.\n"),
-        1 => format!("{tool} has 1 opt-out from crumbkit's conventions.\n"),
-        count => format!("{tool} has {count} opt-outs from crumbkit's conventions.\n"),
+        0 => format!("{tool} has no opt-outs from the conventions.\n"),
+        1 => format!("{tool} has 1 opt-out from the conventions.\n"),
+        count => format!("{tool} has {count} opt-outs from the conventions.\n"),
     };
     for entry in entries {
         // Writing to a `String` cannot fail.
@@ -320,7 +325,7 @@ fn text(tool: &str, entries: &[Entry], declared: &[Customisation]) -> String {
         if let Some(budget) = &entry.budget {
             let _ = writeln!(
                 text,
-                "  Budget: {} bytes, where crumbkit's default is {} bytes.",
+                "  Budget: {} bytes, where the default is {} bytes.",
                 budget.bytes, budget.default
             );
         }
@@ -354,11 +359,11 @@ fn text(tool: &str, entries: &[Entry], declared: &[Customisation]) -> String {
     text
 }
 
-/// Returns the JSON report of `entries` and of the declarations
-/// `declared`, pretty-printed and ending with a line break.
-fn json(entries: &[Entry], declared: &[Customisation]) -> String {
+/// Returns the JSON report with the id `schema` of `entries` and of the
+/// declarations `declared`, pretty-printed and ending with a line break.
+fn json(schema: &str, entries: &[Entry], declared: &[Customisation]) -> String {
     let report = Report {
-        schema: SCHEMA,
+        schema,
         data: entries,
         customisations: declared,
     };
