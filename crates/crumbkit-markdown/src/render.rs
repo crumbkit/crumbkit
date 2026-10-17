@@ -148,6 +148,9 @@ fn section(text: &mut String, command: &Command, commands: &[Command]) {
         Some("bytes") => {
             let _ = write!(text, "\n{}\n", help::BYTES_LINE);
         }
+        Some("json-rows") => {
+            let _ = write!(text, "\n{}\n", help::WHOLE_LINE);
+        }
         _ => {}
     }
     if let Some(line) = command
@@ -155,8 +158,11 @@ fn section(text: &mut String, command: &Command, commands: &[Command]) {
         .as_deref()
         .filter(|_| command.form.as_deref() != Some("headed"))
     {
+        // A command whose rows name no column offers neither `--fields`
+        // nor `--long`, so its line names no table.
+        let fields = !command.columns.is_empty();
         let long = command.columns.iter().any(|column| column.long);
-        let _ = write!(text, "\n{}\n", help::text_line(&code(line), long));
+        let _ = write!(text, "\n{}\n", help::text_line(&code(line), fields, long));
     }
     if !command.exits.is_empty() {
         text.push_str("\n### Exit codes\n\n");

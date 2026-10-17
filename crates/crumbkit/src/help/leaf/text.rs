@@ -9,17 +9,20 @@ mod tests;
 
 /// Returns the `Text:` line that help prints for rows whose own text line
 /// has the form `form`, such as `Text: one line per row, <POINTER> ->
-/// <TARGET>; --fields and --long print a table.`. `long` says whether the
-/// command offers `--long`, and the line names `--fields` alone when it
-/// does not. crumbkit-markdown prints the same line in a reference.
+/// <TARGET>; --fields and --long print a table.`. `fields` and `long` say
+/// whether the command offers `--fields` and `--long`, and the line names
+/// only the flags that it offers. A command that offers neither, such as
+/// one whose rows print whole and name no columns, gets a line that names
+/// no table. crumbkit-markdown prints the same line in a reference.
 #[must_use]
-pub fn text_line(form: &str, long: bool) -> String {
-    let flags = if long {
-        "--fields and --long print a table"
-    } else {
-        "--fields prints a table"
+pub fn text_line(form: &str, fields: bool, long: bool) -> String {
+    let flags = match (fields, long) {
+        (true, true) => "; --fields and --long print a table",
+        (true, false) => "; --fields prints a table",
+        (false, true) => "; --long prints a table",
+        (false, false) => "",
     };
-    format!("Text: one line per row, {form}; {flags}.")
+    format!("Text: one line per row, {form}{flags}.")
 }
 
 impl Leaf {
@@ -43,6 +46,10 @@ impl Leaf {
         if self.get_document()?.is_headed() {
             return None;
         }
-        Some(text_line(form, self.offers(ViewFlag::Long)))
+        Some(text_line(
+            form,
+            self.offers(ViewFlag::Fields),
+            self.offers(ViewFlag::Long),
+        ))
     }
 }

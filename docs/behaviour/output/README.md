@@ -35,33 +35,30 @@ rows of such a result cannot vanish while `total` still counts them. A
 batch compiles, because a [headed batch](#headed-bytes) prints each row's
 bytes in text and every field in JSON and may name no column.
 crumbkit-test's `check_guide` fails a leaf whose batch is not headed and
-whose row type has no compact column.
+whose row type has no compact column. A row type that sets `Row::WHOLE` may
+also name no column, as [rows printed whole](#rows-printed-whole) describes.
 
 The table pads columns by characters and escapes control characters, so each
 row stays on one line and no line ends in padding. Cell widths count
 characters, so a wide character misaligns a column. A cell shows `null` or a
 missing field as `-`, and an array or an object as compact JSON.
 
-Why: ADR-0016, ADR-0063.
+Why: ADR-0016, ADR-0063, ADR-0065.
 
 ## Rows with their own text line
 
-A row type may print each row in its own form in place of a table row. It
-declares the form for help in `Row::LINE`, such as `Some("<NAME>: <ABOUT>")`,
-and builds each row's line in `Row::text_line`. When `LINE` is `Some` and the
-run passes none of `--json`, `--long` and `--fields`, the text prints each
-row's line with control characters escaped, followed by a line feed, and
-prints no header. A row whose `text_line` returns `None` prints as one line
-of compact JSON with every field.
-
-`--long` and `--fields` print the table, and JSON is unchanged. A stream of
-such rows prints each row's line as it arrives, with no header. The
-[output budget](budget/README.md) counts the bytes of the lines, and a
-listing keeps its footer on standard error. Help prints a `Text:` line that
-shows the form ([help](../help/README.md)). A [headed batch](#headed-bytes)
-prints each row's bytes, so crumbkit-test's `check_guide` fails a headed
-leaf whose row type declares `LINE`, and it fails a `LINE` that is not one
-non-empty line.
+A row type may print each row in its own form. `Row::LINE` names the form
+for help, such as `Some("<NAME>: <ABOUT>")`, and `Row::text_line` builds
+each row's line. Without `--json`, `--long` and `--fields`, the text then
+prints each row's line with control characters escaped and no header, and
+a row whose `text_line` returns `None` prints as one line of compact JSON.
+`--long` and `--fields` print the table, and JSON is unchanged. Streams,
+the [output budget](budget/README.md) and the listing footer work as for a
+table, and help prints a `Text:` line ([help](../help/README.md)). A row
+type that also sets `Row::WHOLE` and names no columns offers neither flag,
+so its `Text:` line names no table. crumbkit-test's `check_guide` fails a
+`LINE` that is not one non-empty line, and a
+[headed](#headed-bytes) leaf whose row type declares one.
 
 Why: ADR-0064.
 
@@ -75,6 +72,8 @@ leaf with a document offers only the view flags that its document can use:
   and offer `--full` when the document has the envelope;
 - a headed batch offers `--fields`, which `parse` refuses without `--json`,
   and offers neither `--long` nor `--full`;
+- rows whose type sets `Row::WHOLE` offer no `--full`, and offer neither
+  `--fields` nor `--long` when the row type has no columns;
 - prose and bytes offer none of the three.
 
 A leaf without a document offers all three, because crumbkit cannot tell
@@ -100,7 +99,7 @@ on a program's exit code needs no document, because crumbkit-child's `hand_over`
 refuses `--json` and `--fields` before the program starts
 ([child processes](child-processes.md)).
 
-Why: ADR-0016, ADR-0024.
+Why: ADR-0016, ADR-0024, ADR-0065.
 
 ## Following the caller's format
 
@@ -241,6 +240,40 @@ the text has no columns, and `--long` and `--full` are not offered. The help
 of the leaf ends with an `Output:` line that describes this text.
 
 Why: ADR-0062.
+
+## Rows printed whole
+
+A row type whose JSON readers expect every field of each row sets
+`Row::WHOLE` ([`Row`](../../../crates/crumbkit-core/src/row.rs)). With
+`--json`, each row then prints as the type serializes it, without `--full`,
+so a field that the type leaves out when it holds nothing stays out. This
+holds for a single row, a list, a listing, a batch and each line of a
+stream.
+
+- `--full` is refused, because the JSON already holds every field.
+- `--fields` selects fields in text and in JSON, and prints `null` for a
+  field that a row leaves out.
+- `--long` adds the long columns to the text table.
+
+A row type that sets `Row::WHOLE` may leave both `Row::COLUMNS` and
+`Row::LONG_COLUMNS` empty, as a row that serializes as an array must. Its
+text then prints each row as one line of compact JSON with no header, and
+the footer and notes print on standard error as for a table. A stream
+prints each item that way. `--fields` and `--long` are refused, because
+there is no table to shape. The help of the leaf ends with an `Output:`
+line that describes this text, and `commands list` writes the form
+`json-rows` ([commands list](../help/commands-list.md)). A row type that
+also declares `Row::LINE` prints its own lines instead
+([rows with their own text line](#rows-with-their-own-text-line)).
+
+crumbkit-test's `check_guide` fails a row type that sets `Row::WHOLE`,
+names no columns and has fields in its JSON Schema, because those fields
+could be the columns of a table. Its `check_document_ids` requires an
+[opt-out](../adoption/opt-outs.md) from `documents/rows-whole` for each
+command whose row type sets `Row::WHOLE`, because the document costs more
+tokens than the compact columns.
+
+Why: ADR-0065, ADR-0064.
 
 ## Documents without the envelope
 

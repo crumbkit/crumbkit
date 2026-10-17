@@ -1,21 +1,19 @@
 //! Leaves, which give a command without subcommands examples in its help
 //! and let its `--help` describe each output column.
 
-use std::fmt::Write as _;
-
 use clap::builder::StyledStr;
 use clap::builder::styling::Style;
 use schemars::{JsonSchema, Schema};
 use serde_json::Value;
 
 use super::view::{self, Unoffered, ViewFlag};
-use super::words::quote;
 use super::{Effects, write_line};
 use crate::pick::Choices;
 use crate::{Call, Document, Row, Rows, Shape, Stream, row};
 
 mod codes;
 mod column;
+mod example;
 mod passes;
 mod refusal;
 #[cfg(test)]
@@ -23,6 +21,8 @@ mod tests;
 mod text;
 
 pub use column::Column;
+pub use example::Example;
+pub(crate) use example::examples;
 pub use refusal::RefusalContext;
 pub use text::text_line;
 
@@ -41,6 +41,12 @@ pub const BYTES_LINE: &str =
 /// The line that the `-h` and `--help` of a leaf whose document is headed
 /// print after the effects line, in help's wording (ADR-0062).
 pub const HEADED_LINE: &str = "Output: each answer's bytes unchanged, under a ==> KEY <== header when there are several keys, and --json prints the bytes as text or base64.";
+
+/// The line that the `-h` and `--help` of a leaf whose row type sets
+/// [`Row::WHOLE`] and names no columns print after the effects line, in
+/// help's wording (ADR-0065).
+pub const WHOLE_LINE: &str =
+    "Output: one line of JSON for each row, and --json prints the rows in one document.";
 
 /// A command without subcommands whose help shows examples, and whose
 /// `--help` describes the columns of the result it prints.
@@ -196,6 +202,7 @@ impl Leaf {
             envelope: crate::schemas::envelope::<T>,
             shape: Some(T::SHAPE),
             stream: false,
+            whole: <T::Row as Row>::WHOLE,
         });
         self
     }
@@ -218,6 +225,7 @@ impl Leaf {
             envelope: crate::schemas::envelope::<R>,
             shape: None,
             stream: true,
+            whole: R::WHOLE,
         });
         self
     }
@@ -235,7 +243,9 @@ impl Leaf {
     /// Returns the `Output:` line that the leaf's `-h` and `--help` print
     /// after the effects line: [`STREAM_LINE`] for a stream,
     /// [`BYTES_LINE`] for a document that holds [`Bytes`](crate::Bytes),
-    /// [`HEADED_LINE`] for a headed document, and `None` for any other leaf.
+    /// [`HEADED_LINE`] for a headed document, [`WHOLE_LINE`] for a document
+    /// whose text prints each row as one line of JSON, and `None` for any
+    /// other leaf.
     #[must_use]
     pub const fn output_line(&self) -> Option<&'static str> {
         match self.columns {
@@ -245,7 +255,36 @@ impl Leaf {
                 ..
             }) => Some(BYTES_LINE),
             Some(columns) if columns.document.is_headed() => Some(HEADED_LINE),
+            _ if self.prints_json_lines() => Some(WHOLE_LINE),
             _ => None,
+        }
+    }
+
+    /// Reports whether the row type of the leaf's document sets
+    /// [`Row::WHOLE`], so `--json` prints every field of each row without
+    /// `--full`, or `false` when the leaf has no document (ADR-0065).
+    /// crumbkit-test's `check_document_ids` reads it to require an opt-out
+    /// for such a leaf.
+    #[must_use]
+    pub const fn rows_whole(&self) -> bool {
+        match self.columns {
+            Some(columns) => columns.whole,
+            None => false,
+        }
+    }
+
+    /// Reports whether the text of the leaf's document prints each row as
+    /// one line of JSON, because its row type sets [`Row::WHOLE`], names
+    /// no columns and declares no [`Row::LINE`] (ADR-0064).
+    pub(crate) const fn prints_json_lines(&self) -> bool {
+        match self.columns {
+            Some(columns) => {
+                columns.whole
+                    && columns.line.is_none()
+                    && columns.compact.is_empty()
+                    && columns.long.is_empty()
+            }
+            None => false,
         }
     }
 
@@ -254,7 +293,9 @@ impl Leaf {
     /// offers no view flag. Rows offer `--fields`, offer `--long` when the
     /// row type has long columns, and offer `--full` when the document has
     /// crumbkit's envelope. A headed document offers neither `--long` nor
-    /// `--full` (ADR-0062). A leaf without a document offers every view
+    /// `--full` (ADR-0062). Rows that print whole offer no `--full`, and
+    /// offer neither `--fields` nor `--long` when they have no columns
+    /// (ADR-0065). A leaf without a document offers every view
     /// flag, because crumbkit cannot tell what its command prints.
     #[must_use]
     pub const fn offers(&self, flag: ViewFlag) -> bool {
@@ -267,9 +308,11 @@ impl Leaf {
         match self.columns {
             Some(columns) => view::unoffered(
                 columns.shape,
-                !columns.long.is_empty(),
+                columns.compact,
+                columns.long,
                 columns.document.has_envelope(),
                 columns.document.is_headed(),
+                columns.whole,
                 flag,
             ),
             None => None,
@@ -347,6 +390,18 @@ impl Leaf {
                 .iter()
                 .any(|(field, _)| *field == name)
         })
+    }
+
+    /// Reports whether the row type of the leaf's document has any field, as
+    /// [`Row`] describes the fields of a row type, or `false` when the leaf
+    /// has no document. It builds the row type's JSON Schema on each call.
+    /// crumbkit-test's `check_guide` reads it to fail on a row type that
+    /// sets [`Row::WHOLE`], names no columns and has fields that could be
+    /// columns.
+    #[must_use]
+    pub fn row_has_fields(&self) -> bool {
+        self.columns
+            .is_some_and(|columns| !row::properties(&(columns.schema)()).is_empty())
     }
 
     /// Returns the function that builds the JSON Schema of the whole
@@ -432,39 +487,6 @@ impl Leaf {
     }
 }
 
-/// One example of a leaf: the words after the leaf's path and a one-line
-/// description, such as `--all` and `Print every book`.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct Example {
-    /// The words after the leaf's path, one argument each.
-    words: &'static [&'static str],
-    /// The one-line description that `--help` prints below the command line.
-    about: &'static str,
-}
-
-impl Example {
-    /// Returns the example that runs the leaf with `words`, the arguments
-    /// after its path, described by `about`. An empty `words` runs the leaf
-    /// without arguments, and an empty `about` prints the command line
-    /// alone.
-    #[must_use]
-    pub const fn new(words: &'static [&'static str], about: &'static str) -> Self {
-        Self { words, about }
-    }
-
-    /// Returns the words after the leaf's path.
-    #[must_use]
-    pub const fn words(&self) -> &'static [&'static str] {
-        self.words
-    }
-
-    /// Returns the one-line description.
-    #[must_use]
-    pub const fn about(&self) -> &'static str {
-        self.about
-    }
-}
-
 /// The document of a leaf and the columns of its row type, as
 /// [`Leaf::document`] records them.
 #[derive(Clone, Copy, Debug)]
@@ -489,49 +511,13 @@ struct Columns {
     shape: Option<Shape>,
     /// Whether [`Leaf::stream`] set the document.
     stream: bool,
+    /// The row type's [`Row::WHOLE`].
+    whole: bool,
 }
 
 /// Returns the JSON Schema of `R`.
 fn schema<R: JsonSchema>() -> Schema {
     schemars::schema_for!(R)
-}
-
-/// Returns the `Examples:` section of the help of `leaf`, whose command
-/// line starts with `text`, the tool's name and the leaf's path, or `None`
-/// when the leaf has no examples. `header` styles the heading and `literal`
-/// each command line.
-///
-/// `-h` lists one command line on each line. `--help`, when `long` is set,
-/// follows clap's layout of long options: each command line, its
-/// description on the next line at clap's indent of 10 spaces, and a blank
-/// line between examples.
-pub(crate) fn examples(
-    leaf: &Leaf,
-    text: &str,
-    long: bool,
-    header: Style,
-    literal: Style,
-) -> Option<String> {
-    if leaf.examples.is_empty() {
-        return None;
-    }
-    let mut section = format!("{header}Examples:{header:#}");
-    for (index, example) in leaf.examples.iter().enumerate() {
-        if long && index > 0 {
-            section.push('\n');
-        }
-        // Writing to a `String` cannot fail.
-        let _ = write!(section, "\n  {literal}{text}");
-        for word in example.words {
-            section.push(' ');
-            section.push_str(&quote(word));
-        }
-        let _ = write!(section, "{literal:#}");
-        if long && !example.about.is_empty() {
-            let _ = write!(section, "\n          {}", example.about);
-        }
-    }
-    Some(section)
 }
 
 /// Returns the sections of the `--help` of `leaf` that describe its

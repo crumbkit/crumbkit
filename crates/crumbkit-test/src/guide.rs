@@ -76,7 +76,12 @@ mod tests;
 ///   type has no `Row::COLUMNS`, because its table and its JSON without
 ///   `--full` then print nothing of each row. `finish` and `stream` already
 ///   fail to compile for such a row type in every result but a batch
-///   (ADR-0063);
+///   (ADR-0063). A row type that sets `Row::WHOLE` and names no columns in
+///   either list is exempt, because its text prints each row as one line
+///   of JSON and its JSON holds every field;
+/// - a leaf whose row type sets `Row::WHOLE`, names no columns in either
+///   list and has fields in its JSON Schema, because those fields could be
+///   the columns of a table (ADR-0065);
 /// - a leaf whose row type's `Row::LINE` is not one non-empty line,
 ///   because help shows the form on one line, and a headed leaf whose row
 ///   type sets `Row::LINE`, because a headed batch's text prints each row's
@@ -380,12 +385,18 @@ fn check_columns(text: &str, leaf: &Leaf, problems: &mut Vec<String>) {
     let headed = leaf
         .get_document()
         .is_some_and(|document| document.is_headed());
-    // Prose and bytes have no rows, and a headed batch prints each row's
-    // bytes in text and every field in JSON, so only other rows need a
-    // compact column.
+    // Prose and bytes have no rows, a headed batch prints each row's bytes
+    // in text and every field in JSON, and rows that print whole without
+    // columns print each row as a line of JSON in text and every field in
+    // JSON, so only other rows need a compact column.
     let without_rows = matches!(leaf.shape(), Some(Shape::Prose | Shape::Bytes));
     let rows = leaf.get_document().is_some() && !without_rows && !headed;
-    if rows && columns.iter().all(Column::is_long) {
+    let json_lines = leaf.rows_whole() && columns.is_empty();
+    if rows && json_lines && leaf.row_has_fields() {
+        problems.push(format!(
+            "{text}: the row type has fields and no COLUMNS, so its text prints each row as a line of JSON where a table could show it; name the fields that identify a row in `Row::COLUMNS`"
+        ));
+    } else if rows && !json_lines && columns.iter().all(Column::is_long) {
         problems.push(format!(
             "{text}: the row type has no COLUMNS, so the table and the JSON without --full print nothing of each row; name the fields that identify a row in `Row::COLUMNS`"
         ));

@@ -77,3 +77,42 @@ fn a_stream_of_rows_with_their_own_text_line_prints_the_table_with_fields() {
 
     assert_eq!(streamed.out, "PLACE\ngarden\npond\n");
 }
+
+/// A count that serializes as an array, prints whole, and has its own
+/// text line.
+#[derive(Serialize, JsonSchema)]
+struct Count(&'static str, u32);
+
+impl Row for Count {
+    const COLUMNS: &'static [&'static str] = &[];
+    const WHOLE: bool = true;
+    const LINE: Option<&'static str> = Some("<COUNT> <BIRD>");
+
+    fn text_line(&self) -> Option<String> {
+        Some(format!("{} {}", self.1, self.0))
+    }
+}
+
+const COUNTS: Document<Stream<Count>> =
+    Document::new("birds", "counts-watch", 1, "Each count as it arrives.");
+
+#[test]
+fn a_stream_of_whole_rows_without_columns_that_declare_a_line_prints_each_line() {
+    let mut output = parse(&[]);
+    let mut out = Vec::new();
+    let mut err = Vec::new();
+    let mut sink = Sink::new(&mut out, &mut err);
+    let code = match stream_to(&mut sink, &mut output, Spelling::COLONS, COUNTS) {
+        Ok(mut streaming) => {
+            assert_eq!(
+                streaming.item(&Count("robin", 2)),
+                ControlFlow::Continue(())
+            );
+            streaming.end(Ok::<(), Error>(()))
+        }
+        Err(code) => code,
+    };
+
+    assert_eq!(code, ExitCode::SUCCESS);
+    assert_eq!(String::from_utf8(out).unwrap(), "2 robin\n");
+}

@@ -238,6 +238,30 @@ fn a_bytes_command_prints_the_bytes_output_line_as_help_does() {
 }
 
 #[test]
+fn a_json_rows_command_prints_the_json_rows_output_line_as_help_does() {
+    let input = document(&[command(
+        "tool query",
+        "Query",
+        json!({
+            "form": "json-rows",
+            "effects": {"read_only": true, "destructive": false, "idempotent": true, "open_world": false},
+        }),
+    )]);
+
+    let reference = render(&input).unwrap();
+
+    let expected = format!(
+        "\nEffects: read-only, closed-world.\n\n{}\n",
+        crumbkit::help::WHOLE_LINE
+    );
+    assert!(
+        reference.text().ends_with(&expected),
+        "{}",
+        reference.text()
+    );
+}
+
+#[test]
 fn the_writes_line_follows_the_effects_line_and_words_the_guards_as_help_does() {
     let input = document(&[command(
         "tool",
@@ -364,7 +388,7 @@ fn a_command_whose_rows_print_their_own_line_prints_the_text_line_as_help_does()
 
     let expected = format!(
         "\n{}\n",
-        crumbkit::help::text_line("`<POINTER> -> <TARGET>`", true)
+        crumbkit::help::text_line("`<POINTER> -> <TARGET>`", true, true)
     );
     assert!(
         reference.text().ends_with(&expected),
@@ -384,4 +408,23 @@ fn a_document_from_before_the_line_field_existed_prints_no_text_line() {
     let reference = render(&input).unwrap();
 
     assert!(!reference.text().contains("Text:"), "{}", reference.text());
+}
+
+#[test]
+fn a_command_whose_lined_rows_have_no_columns_prints_a_text_line_that_names_no_table() {
+    let input = document(&[command(
+        "tool settings list",
+        "List",
+        json!({"form": "document", "line": "<KEY> = <VALUE>", "columns": []}),
+    )]);
+
+    let reference = render(&input).unwrap();
+
+    assert!(
+        reference
+            .text()
+            .ends_with("\nText: one line per row, `<KEY> = <VALUE>`.\n"),
+        "{}",
+        reference.text()
+    );
 }

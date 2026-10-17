@@ -30,9 +30,14 @@ and the listing footer.
 - The output budget measures the lines, and a listing keeps its footer on
   standard error.
 - Help prints the line `Text: one line per row, <LINE>; --fields and
-  --long print a table.` after the output line. It names only `--fields`
-  when the command does not offer `--long`. A headed leaf prints no such
-  line.
+  --long print a table.` after the output line. It names only the flags
+  that the command offers. A headed leaf prints no such line.
+- A row type that also sets `Row::WHOLE` (ADR-0065) and names no columns
+  prints each row's line in text, and prints a row as one line of compact
+  JSON only when its `text_line` returns `None`. Such a row type offers
+  neither `--fields` nor `--long`, so its `Text:` line names no table, its
+  help prints no JSON-rows `Output:` line, and `commands list` gives it the
+  form `document`.
 - `commands list` gained the nullable field `line`, and crumbkit-markdown
   prints the text line in each command's section.
 - crumbkit-test's `check_guide` fails a `LINE` that is not one non-empty

@@ -9,6 +9,7 @@ use serde::Serialize;
 use serde_json::Value;
 
 use super::budget::{self, Cut, Over, OverBudget};
+use super::columns::{columns, json_lines, values, write_json_line};
 use super::envelope::{Extras, Failures, Selected, SelectedRows, write_document};
 use super::failure::PreparedFailure;
 use super::table::Table;
@@ -220,50 +221,6 @@ fn write_rows<T: Rows>(
     }
 }
 
-/// Returns the columns that the table and the compact JSON show, or an
-/// empty list, which does not allocate, when the result prints whole with
-/// every field, is a prose result, or prints each row's own text line.
-/// Unwrapped or headed JSON holds every field unless `--fields` names some
-/// (ADR-0062).
-fn columns<'a, T: Rows>(output: &'a Output, document: Document<T>, value: &T) -> Vec<&'a str> {
-    if lines::chosen::<T::Row>(output) {
-        return Vec::new();
-    }
-    let unwrapped = output.json && (!document.has_envelope() || document.is_headed());
-    let selects = if unwrapped {
-        !output.fields.is_empty()
-    } else {
-        !output.full
-    };
-    if !selects || value.prose().is_some() {
-        Vec::new()
-    } else if output.fields.is_empty() {
-        let long = if output.long {
-            T::Row::LONG_COLUMNS
-        } else {
-            &[]
-        };
-        T::Row::COLUMNS.iter().chain(long).copied().collect()
-    } else {
-        output.fields.iter().map(String::as_str).collect()
-    }
-}
-
-/// Returns each row of `value` serialized once, so its fields can be looked
-/// up by their serialized names, or an empty list when there are no
-/// `columns` to look up.
-fn values<T: Rows>(columns: &[&str], value: &T) -> io::Result<Vec<Value>> {
-    if columns.is_empty() {
-        return Ok(Vec::new());
-    }
-    let values = value
-        .rows()
-        .iter()
-        .map(serde_json::to_value)
-        .collect::<Result<Vec<Value>, _>>()?;
-    Ok(values)
-}
-
 /// A result ready to write with any number of its first rows: each part
 /// that would allocate is built once, so measuring the result with each row
 /// count allocates nothing more.
@@ -337,7 +294,10 @@ impl<'a, T: Rows> Prepared<'a, T> {
             dry_run: output.dry_run,
             layout: output.json_layout,
             form: output.failure_form,
-            full: output.full || (document.is_headed() && output.fields.is_empty()),
+            // A headed document and a row type that prints whole hold
+            // every field in JSON unless `--fields` names some.
+            full: output.full
+                || ((document.is_headed() || T::Row::WHOLE) && output.fields.is_empty()),
             fields: !output.fields.is_empty(),
             columns,
             values,
@@ -523,7 +483,11 @@ impl<'a, T: Rows> Prepared<'a, T> {
         if let Some(summary) = value.summary() {
             writeln!(out, "{summary}")?;
         }
-        if let Some(table) = &mut self.table {
+        if json_lines::<T::Row>() {
+            for row in rows.get(..shown).unwrap_or(rows) {
+                write_json_line(out, row)?;
+            }
+        } else if let Some(table) = &mut self.table {
             table.write(out, shown)?;
         }
         for line in self.lines.iter().flatten().take(shown) {

@@ -548,12 +548,29 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   headed leaf with half the bytes they print ([behaviour/output/budget]).
 - crumbkit-test: [`check_guide`] fails a leaf whose batch is not headed and
   whose row type has no `Row::COLUMNS` ([behaviour/help/examples]).
+- crumbkit-core: a row type that sets [`Row`]`::WHOLE` prints every field
+  of each row with `--json`, without `--full`. `--full` is refused for it,
+  and `--fields` prints `null` for a field that a row leaves out
+  ([behaviour/output]).
+- crumbkit: a row type that sets `Row::WHOLE` and names no columns prints
+  each row as one line of JSON in text, and `--fields` and `--long` are
+  refused for it ([behaviour/output]).
+- crumbkit: the help of a leaf whose rows print as JSON lines ends with an
+  `Output:` line, `commands list` gives it the form `json-rows`, and
+  crumbkit-markdown's reference prints the line ([behaviour/help/commands-list]).
+- crumbkit-test: [`check_guide`] fails a row type that sets `Row::WHOLE`,
+  names no columns and has fields, and [`check_document_ids`] requires an
+  opt-out from `documents/rows-whole` for a leaf whose row type sets
+  `Row::WHOLE` ([behaviour/adoption/opt-outs]).
 - crumbkit: a [`Row`] that declares `LINE` and `text_line` prints each row
   as its own line in text, with no header. `--long` and `--fields` print the
   table, and help prints a `Text:` line ([behaviour/output]).
 - crumbkit: `commands list` gives each command a `line` field, and
   crumbkit-markdown's reference prints the `Text:` line as help does
   ([behaviour/help/commands-list]).
+- crumbkit: a row type that sets `Row::WHOLE`, names no columns and
+  declares `Row::LINE` prints each row's own line in text, and prints a row
+  as JSON only when its `text_line` returns `None` ([behaviour/output]).
 - crumbkit-test: [`check_guide`] fails a `Row::LINE` that is not one
   non-empty line or that belongs to a headed leaf, and [`check_opt_outs`]
   lists a `text-line` customisation ([behaviour/help/examples]).

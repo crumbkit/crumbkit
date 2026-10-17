@@ -173,3 +173,68 @@ fn a_row_holds_a_null_line_when_its_leaf_s_rows_print_a_table() {
     assert_eq!(row(&GUIDE)["line"], Value::Null);
     assert!(row(&Guide::new()).as_object().unwrap().contains_key("line"));
 }
+
+/// A row that serializes as an array of its values, so it has no columns.
+#[derive(serde::Serialize, schemars::JsonSchema)]
+struct Answer(u32, u32);
+
+impl crate::Row for Answer {
+    const COLUMNS: &'static [&'static str] = &[];
+    const WHOLE: bool = true;
+}
+
+#[test]
+fn a_row_holds_the_form_json_rows_when_the_leaf_s_whole_rows_have_no_columns() {
+    const ANSWERS: crate::Document<Vec<Answer>> =
+        crate::Document::new("shelf", "books-query", 1, "The answers.");
+    const GUIDE: Guide = Guide::new().leaves(&[Leaf::new(&["books", "remove"]).document(ANSWERS)]);
+
+    let row = row(&GUIDE);
+
+    assert_eq!(row["form"], json!("json-rows"));
+    assert_eq!(row["columns"], json!([]));
+}
+
+/// A row that a tool's readers expect whole, which still names a column.
+#[derive(serde::Serialize, schemars::JsonSchema)]
+struct WholeBook {
+    /// The book's id.
+    id: u32,
+}
+
+impl crate::Row for WholeBook {
+    const COLUMNS: &'static [&'static str] = &["id"];
+    const WHOLE: bool = true;
+}
+
+#[test]
+fn a_row_holds_the_form_document_when_the_leaf_s_whole_rows_have_columns() {
+    const BOOKS: crate::Document<Vec<WholeBook>> =
+        crate::Document::new("shelf", "books-remove", 1, "The removed books.");
+    const GUIDE: Guide = Guide::new().leaves(&[Leaf::new(&["books", "remove"]).document(BOOKS)]);
+
+    assert_eq!(row(&GUIDE)["form"], json!("document"));
+}
+
+/// A row that serializes as an array, prints whole, and has its own text
+/// line.
+#[derive(serde::Serialize, schemars::JsonSchema)]
+struct Setting(u32, u32);
+
+impl crate::Row for Setting {
+    const COLUMNS: &'static [&'static str] = &[];
+    const WHOLE: bool = true;
+    const LINE: Option<&'static str> = Some("<KEY> = <VALUE>");
+}
+
+#[test]
+fn a_row_holds_the_form_document_and_the_line_when_whole_rows_without_columns_declare_a_line() {
+    const SETTINGS: crate::Document<Vec<Setting>> =
+        crate::Document::new("shelf", "books-remove", 1, "The settings.");
+    const GUIDE: Guide = Guide::new().leaves(&[Leaf::new(&["books", "remove"]).document(SETTINGS)]);
+
+    let row = row(&GUIDE);
+
+    assert_eq!(row["form"], json!("document"));
+    assert_eq!(row["line"], json!("<KEY> = <VALUE>"));
+}

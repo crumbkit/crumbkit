@@ -7,7 +7,7 @@ use clap::{Arg, ArgAction, Command};
 use schemars::JsonSchema;
 use serde::Serialize;
 
-use crate::help::{Effects, Example, Guide, Leaf, STREAM_LINE};
+use crate::help::{Effects, Example, Guide, Leaf, STREAM_LINE, WHOLE_LINE};
 use crate::{Document, Row, Sink, Spelling, Stream, parse_to};
 
 /// A tool with a global `--json` and one leaf, `tool links check`.
@@ -140,4 +140,34 @@ fn the_help_of_a_leaf_whose_rows_print_a_table_has_no_text_line() {
     let page = help(&guide(PLAIN), &["tool", "links", "check", "--help"]);
 
     assert!(!page.contains("Text:"), "{page}");
+}
+
+/// A setting that serializes as an array of its key and value, so it has
+/// no columns, prints whole, and has its own text line.
+#[derive(Serialize, JsonSchema)]
+struct Setting(String, String);
+
+impl Row for Setting {
+    const COLUMNS: &'static [&'static str] = &[];
+    const WHOLE: bool = true;
+    const LINE: Option<&'static str> = Some("<KEY> = <VALUE>");
+}
+
+#[test]
+fn the_text_line_of_whole_rows_without_columns_names_no_table_and_replaces_the_json_output_line() {
+    const SETTINGS: Document<Vec<Setting>> =
+        Document::new("tool", "links-check", 1, "The settings.");
+    const SETTINGS_LEAF: &[Leaf] = &[Leaf::new(&["links", "check"])
+        .examples(&[Example::new(&[], "Check every link")])
+        .effects(Effects::read_only())
+        .document(SETTINGS)];
+    let page = help(&guide(SETTINGS_LEAF), &["tool", "links", "check", "-h"]);
+
+    assert!(
+        page.contains(
+            "Effects: read-only, closed-world.\nText: one line per row, <KEY> = <VALUE>.\n"
+        ),
+        "{page}"
+    );
+    assert!(!page.contains(WHOLE_LINE), "{page}");
 }

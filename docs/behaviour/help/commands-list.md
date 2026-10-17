@@ -49,10 +49,12 @@ lacks, so a program reads every row the same way.
   ([effects](../effects/README.md#declaring-effects)).
 - `writes` holds the write guards, or `null` for a read-only command or one
   without guards ([write guards](../effects/write-guards.md)).
-- `form` is `document`, `stream`, `bytes` or `headed` for a leaf with a
-  document and `null` for one without ([streams](../output/streams.md),
-  [bytes](../output/README.md#bytes),
-  [headed bytes](../output/README.md#headed-bytes)).
+- `form` is `document`, `stream`, `bytes`, `headed` or `json-rows` for a
+  leaf with a document and `null` for one without
+  ([streams](../output/streams.md), [bytes](../output/README.md#bytes),
+  [headed bytes](../output/README.md#headed-bytes),
+  [rows printed whole](../output/README.md#rows-printed-whole)). A leaf has
+  the form `json-rows` when its text prints each row as one line of JSON.
 - `line` holds the form of each row's own text line, such as
   `<NAME>: <ABOUT>`, or `null` when the leaf's rows print a table or the
   leaf has no document
@@ -72,4 +74,5 @@ prints the arguments, examples, columns and exit codes. The schema of the
 formats, and crumbkit-markdown writes a Markdown [reference](reference.md)
 from its JSON document.
 
-Why: ADR-0026, ADR-0016, ADR-0037, ADR-0039, ADR-0041, ADR-0047, ADR-0064.
+Why: ADR-0026, ADR-0016, ADR-0037, ADR-0039, ADR-0041, ADR-0047, ADR-0064,
+ADR-0065.

@@ -138,3 +138,43 @@ fn a_listing_of_rows_with_their_own_text_line_over_the_budget_prints_the_lines_t
     assert_eq!(finished.out, format!("{pointer} -> b\n"));
     assert!(finished.err.contains("1 of 2"), "{}", finished.err);
 }
+
+/// A setting that serializes as an array of its key and value, so it has
+/// no columns, prints whole, and has its own text line when it has a value.
+#[derive(Serialize, JsonSchema)]
+struct Setting(String, Option<String>);
+
+impl Row for Setting {
+    const COLUMNS: &'static [&'static str] = &[];
+    const WHOLE: bool = true;
+    const LINE: Option<&'static str> = Some("<KEY> = <VALUE>");
+
+    fn text_line(&self) -> Option<String> {
+        let value = self.1.as_ref()?;
+        Some(format!("{} = {value}", self.0))
+    }
+}
+
+const SETTINGS: Document<Vec<Setting>> =
+    Document::new("links", "settings", 1, "The test settings.");
+
+fn setting(key: &str, value: Option<&str>) -> Setting {
+    Setting(key.to_owned(), value.map(str::to_owned))
+}
+
+#[test]
+fn a_whole_row_without_columns_that_declares_a_line_prints_its_line_and_json_only_without_one() {
+    let rows = vec![setting("a", Some("b")), setting("c", None)];
+    let finished = finish_with(&[], SETTINGS, rows);
+
+    assert_eq!(finished.code, ExitCode::SUCCESS, "{}", finished.err);
+    assert_eq!(finished.out, "a = b\n[\"c\",null]\n");
+}
+
+#[test]
+fn json_prints_every_field_of_a_whole_row_that_declares_a_line() {
+    let finished = finish_with(&["--json"], SETTINGS, vec![setting("a", Some("b"))]);
+
+    let document: Value = serde_json::from_str(&finished.out).unwrap();
+    assert_eq!(document["data"], serde_json::json!([["a", "b"]]));
+}
