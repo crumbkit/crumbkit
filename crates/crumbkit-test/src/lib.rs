@@ -104,6 +104,6 @@ pub use crate::twins::{Twin, Twins, check_twin, check_twins};
 pub use crate::weights::{
     PathBudgets, UnreadableGolden, check_path_weights, output_weight, path_totals,
 };
-/// crumbkit's guide, which several checks take, so a tool that does not
-/// depend on crumbkit can pass `&Guide::new()` with crumbkit-test alone.
+/// crumbkit's guide, which several checks and `Pages::rendered` and
+/// `Pages::binary` take, so a test can name it with crumbkit-test alone.
 pub use crumbkit::help::Guide;

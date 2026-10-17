@@ -4,6 +4,7 @@ use clap::{Arg, ArgAction, Command};
 use crumbkit::help::Guide;
 
 use super::check_names;
+use crate::Pages;
 use crate::allow::{Allow, Rule};
 use crate::testing::panic_message;
 
@@ -20,7 +21,7 @@ fn commands_and_arguments_with_one_name_and_one_short_form_pass() {
         ),
     );
 
-    check_names(&shelf, &Guide::new(), &[]);
+    check_names(&shelf, Pages::clap(), &[]);
 }
 
 #[test]
@@ -41,7 +42,7 @@ fn hidden_aliases_of_a_command_and_of_an_argument_pass() {
             ),
     );
 
-    check_names(&shelf, &Guide::new(), &[]);
+    check_names(&shelf, Pages::clap(), &[]);
 }
 
 #[test]
@@ -53,7 +54,7 @@ fn a_command_with_a_visible_alias_fails() {
     );
 
     assert_eq!(
-        panic_message(|| check_names(&shelf, &Guide::new(), &[])).unwrap(),
+        panic_message(|| check_names(&shelf, Pages::clap(), &[])).unwrap(),
         "the command tree breaks crumbkit's naming rules:\n\
          shelf books: the command has the visible alias `book`, and help shows one name for each command\n\
          shelf books: the command has the visible alias `b`, and help shows one name for each command"
@@ -70,7 +71,7 @@ fn a_command_with_a_short_or_a_long_flag_name_fails() {
     );
 
     assert_eq!(
-        panic_message(|| check_names(&shelf, &Guide::new(), &[])).unwrap(),
+        panic_message(|| check_names(&shelf, Pages::clap(), &[])).unwrap(),
         "the command tree breaks crumbkit's naming rules:\n\
          shelf books: the command has the short flag name `-B`, and help shows one name for each command\n\
          shelf books: the command has the long flag name `--books`, and help shows one name for each command"
@@ -86,7 +87,7 @@ fn a_command_with_a_visible_short_or_long_flag_alias_fails() {
     );
 
     assert_eq!(
-        panic_message(|| check_names(&shelf, &Guide::new(), &[])).unwrap(),
+        panic_message(|| check_names(&shelf, Pages::clap(), &[])).unwrap(),
         "the command tree breaks crumbkit's naming rules:\n\
          shelf books: the command has the visible short flag alias `-k`, and help shows one name for each command\n\
          shelf books: the command has the visible long flag alias `--book`, and help shows one name for each command"
@@ -105,7 +106,7 @@ fn an_argument_with_a_visible_long_or_short_alias_fails() {
     );
 
     assert_eq!(
-        panic_message(|| check_names(&list, &Guide::new(), &[])).unwrap(),
+        panic_message(|| check_names(&list, Pages::clap(), &[])).unwrap(),
         "the command tree breaks crumbkit's naming rules:\n\
          list: the argument `--limit` has the visible alias `--max`, and help shows one name for each argument\n\
          list: the argument `--limit` has the visible short alias `-n`, and help shows one name for each argument"
@@ -125,7 +126,7 @@ fn a_global_argument_with_a_visible_alias_fails_once_on_the_command_that_defines
         .subcommand(Command::new("books").subcommand(Command::new("list")));
 
     assert_eq!(
-        panic_message(|| check_names(&shelf, &Guide::new(), &[])).unwrap(),
+        panic_message(|| check_names(&shelf, Pages::clap(), &[])).unwrap(),
         "the command tree breaks crumbkit's naming rules:\n\
          shelf: the argument `--json` has the visible alias `--as-json`, and help shows one name for each argument"
     );
@@ -137,7 +138,7 @@ fn a_hidden_command_with_a_visible_alias_passes_because_no_help_page_shows_it() 
         Command::new("books").subcommand(Command::new("purge").hide(true).visible_alias("wipe")),
     );
 
-    check_names(&shelf, &Guide::new(), &[]);
+    check_names(&shelf, Pages::clap(), &[]);
 }
 
 #[test]
@@ -151,7 +152,7 @@ fn a_hidden_argument_with_a_visible_alias_passes_because_no_help_page_shows_it()
             .action(ArgAction::SetTrue),
     );
 
-    check_names(&list, &Guide::new(), &[]);
+    check_names(&list, Pages::clap(), &[]);
 }
 
 #[test]
@@ -166,7 +167,7 @@ fn a_visible_alias_passes_when_an_opt_out_names_its_command() {
             Command::new("list").arg(Arg::new("limit").long("limit").visible_alias("max")),
         ));
 
-    check_names(&shelf, &Guide::new(), ALLOW);
+    check_names(&shelf, Pages::clap(), ALLOW);
 }
 
 /// Names one alias, for a guide that shows a person's aliases on the root's
@@ -181,7 +182,7 @@ fn a_guide_that_names_personal_aliases_on_the_root_s_help_fails_without_an_opt_o
     let shelf = Command::new("shelf").subcommand(Command::new("books"));
 
     assert_eq!(
-        panic_message(|| check_names(&shelf, &GUIDE, &[])).unwrap(),
+        panic_message(|| check_names(&shelf, Pages::rendered(&GUIDE), &[])).unwrap(),
         "the command tree breaks crumbkit's naming rules:\n\
          shelf: the guide names a person's aliases on the root's help, and help shows one name for each command"
     );
@@ -197,5 +198,5 @@ fn a_guide_that_names_personal_aliases_passes_with_an_opt_out_for_the_root() {
     )];
     let shelf = Command::new("shelf").subcommand(Command::new("books"));
 
-    check_names(&shelf, &GUIDE, ALLOW);
+    check_names(&shelf, Pages::rendered(&GUIDE), ALLOW);
 }

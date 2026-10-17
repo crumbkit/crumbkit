@@ -70,7 +70,7 @@ fn fixture_tool() -> (Command, Guide) {
 #[test]
 fn every_command_and_argument_has_one_name() {
     let (command, guide) = fixture_tool();
-    crumbkit_test::check_names(&command, &guide, ALLOW);
+    crumbkit_test::check_names(&command, Pages::rendered(&guide), ALLOW);
 }
 
 #[test]
@@ -78,7 +78,7 @@ fn every_command_is_a_resource_followed_by_list_show_stream_edit_set_or_export()
     let (command, guide) = fixture_tool();
     crumbkit_test::check_grammar(
         &command,
-        &guide,
+        Pages::rendered(&guide),
         &["stream", "edit", "set", "export"],
         ALLOW,
     );
