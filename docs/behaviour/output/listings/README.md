@@ -103,6 +103,18 @@ filters stay. Its alternative runs the same words with `--limit MOST`. A
 `--limit` spelled through an alias that the tool adds falls back to the `-h`
 recovery.
 
+Every refused `--limit` value states the range that `--limit` takes, in the
+same sentence for a value above the bound, 0, a word and a negative number.
+On shelf's `books list` the refusal of `--limit 0` reads `invalid value '0'
+for '--limit <N>': --limit takes a whole number from 1 to 100`. A page
+without a bound says `--limit takes a whole number of at least 1`, or names
+`usize::MAX` as the top of the range for a number too large for `usize`. On
+a page with a bound, a number too large for `usize` counts as above the
+bound and gets the `--all` recovery. Any other value below the range or
+that is not a whole number keeps the `-h` recovery of a refused command
+line. clap reads `--limit -1` as the flag `-1` and refuses it as an
+unexpected argument, so only `--limit=-1` reaches the range sentence.
+
 The help of a bounded `--limit` reads `Print at most this many rows, up to
 100`, and the page's JSON Schema gives the limit a `maximum`. A listing built
 with `Page::first_of` or `Page::listing` carries the bound, and its footer

@@ -114,7 +114,7 @@ fn a_refusal_of_a_line_that_names_a_leaf_offers_the_leafs_alternatives_after_cru
     let parsed = parse(&refused);
 
     let expected = "\
-error: invalid value '11' for '--limit <N>': --limit takes at most 10
+error: invalid value '11' for '--limit <N>': --limit takes a whole number from 1 to 10
   help:  run `tool planets list --all`
   help:  run `tool planets list --limit 10`
   help:  run `tool planets show Mars`
@@ -204,7 +204,7 @@ fn a_leafs_own_function_replaces_the_guides_function_for_its_command_line() {
     let parsed = parse_guided(&GUIDE_WIDE, &refused);
 
     let expected = "\
-error: invalid value '11' for '--limit <N>': --limit takes at most 10
+error: invalid value '11' for '--limit <N>': --limit takes a whole number from 1 to 10
   help:  run `tool planets list --all`
   help:  run `tool planets list --limit 10`
   help:  run `tool planets show Mars`

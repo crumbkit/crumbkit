@@ -26,7 +26,7 @@ fn a_limit_above_the_bound_is_refused_with_a_recovery_that_runs_all() {
     let parsed = parse_tree(bounded(), &refused);
 
     let expected = "\
-error: invalid value '11' for '--limit <N>': --limit takes at most 10
+error: invalid value '11' for '--limit <N>': --limit takes a whole number from 1 to 10
   help:  run `tool planets list --all`
   help:  run `tool planets list --limit 10`
   code:  crumbkit::cli::usage
@@ -77,12 +77,37 @@ fn a_limit_written_with_an_equals_sign_is_replaced_by_all() {
 }
 
 #[test]
-fn a_limit_of_0_on_a_bounded_page_keeps_the_help_recovery() {
+fn a_limit_of_0_on_a_bounded_page_states_the_range_and_keeps_the_help_recovery() {
     let parsed = parse_tree(bounded(), &["tool", "planets", "list", "--limit", "0"]);
 
-    assert!(
-        parsed.err.contains("  help:  run `tool planets list -h`\n"),
-        "{}",
-        parsed.err
-    );
+    let expected = "\
+error: invalid value '0' for '--limit <N>': --limit takes a whole number from 1 to 10
+  help:  run `tool planets list -h`
+  code:  crumbkit::cli::usage
+";
+    assert_eq!(parsed.err, expected);
+}
+
+#[test]
+fn a_limit_that_is_not_a_number_on_a_bounded_page_states_the_range_and_keeps_the_help_recovery() {
+    let parsed = parse_tree(bounded(), &["tool", "planets", "list", "--limit", "abc"]);
+
+    let expected = "\
+error: invalid value 'abc' for '--limit <N>': --limit takes a whole number from 1 to 10
+  help:  run `tool planets list -h`
+  code:  crumbkit::cli::usage
+";
+    assert_eq!(parsed.err, expected);
+}
+
+#[test]
+fn a_negative_limit_on_a_bounded_page_states_the_range_and_keeps_the_help_recovery() {
+    let parsed = parse_tree(bounded(), &["tool", "planets", "list", "--limit=-1"]);
+
+    let expected = "\
+error: invalid value '-1' for '--limit <N>': --limit takes a whole number from 1 to 10
+  help:  run `tool planets list -h`
+  code:  crumbkit::cli::usage
+";
+    assert_eq!(parsed.err, expected);
 }

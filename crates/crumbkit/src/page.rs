@@ -3,7 +3,7 @@
 use std::borrow::Cow;
 use std::error::Error;
 use std::fmt;
-use std::num::NonZeroUsize;
+use std::num::{IntErrorKind, NonZeroUsize};
 
 use clap::Args;
 use schemars::{JsonSchema, Schema, SchemaGenerator, json_schema};
@@ -29,7 +29,8 @@ const ALL_HELP: &str = "Print every row";
 ///
 /// - `--limit <N>` prints at most `N` rows. Its default is the const
 ///   parameter `N`, which is 25 unless the command names another size, as in
-///   `Page<10>`, and the command's `--help` shows it. clap refuses 0.
+///   `Page<10>`, and the command's `--help` shows it. clap refuses 0, and
+///   the refusal states the range that `--limit` takes.
 /// - `--all` prints every row, and conflicts with `--limit`.
 ///
 /// The second const parameter `MOST` is the most rows that `--limit` takes.
@@ -131,14 +132,20 @@ impl<const N: usize, const MOST: usize> Page<N, MOST> {
     }
 
     /// Reads the value of `--limit`: a whole number from 1 up to `MOST`. A
-    /// larger number fails with [`LimitAbove`], which `parse` reads to
-    /// offer `--all` in its recovery.
+    /// larger number on a page with a bound, also one too large for
+    /// `usize`, fails with [`LimitAbove`], which `parse` reads to offer
+    /// `--all` in its recovery. Every other refused value fails with the
+    /// same sentence, which states the range that `--limit` takes.
     fn parse_limit(text: &str) -> Result<NonZeroUsize, Box<dyn Error + Send + Sync>> {
-        let limit: NonZeroUsize = text.parse()?;
-        if limit.get() > MOST {
-            return Err(Box::new(LimitAbove { most: MOST }));
+        match text.parse::<NonZeroUsize>() {
+            Ok(limit) if limit.get() <= MOST => Ok(limit),
+            Ok(_) => Err(Box::new(LimitAbove { most: MOST })),
+            Err(error) if *error.kind() == IntErrorKind::PosOverflow => match Self::bound() {
+                Some(most) => Err(Box::new(LimitAbove { most })),
+                None => Err(limit_range(Some(MOST)).into()),
+            },
+            Err(_) => Err(limit_range(Self::bound()).into()),
         }
-        Ok(limit)
     }
 
     /// Returns `MOST`, or `None` when `--limit` has no bound.
@@ -308,7 +315,16 @@ pub(crate) struct LimitAbove {
 
 impl fmt::Display for LimitAbove {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "--limit takes at most {}", self.most)
+        f.write_str(&limit_range(Some(self.most)))
+    }
+}
+
+/// Returns the sentence that refuses a value of `--limit`, which states the
+/// range it takes: from 1 to `most`, or at least 1 when `most` is `None`.
+fn limit_range(most: Option<usize>) -> String {
+    match most {
+        Some(most) => format!("--limit takes a whole number from 1 to {most}"),
+        None => "--limit takes a whole number of at least 1".to_owned(),
     }
 }
 
