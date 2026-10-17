@@ -23,8 +23,6 @@ mod direct;
 mod empty;
 mod exits;
 mod headed;
-mod in_order;
-mod keys;
 mod layout;
 mod lines;
 mod listing;
@@ -33,7 +31,6 @@ mod problems;
 mod prose;
 #[cfg(feature = "miette")]
 mod report;
-mod sorted;
 mod summary;
 mod unwrapped;
 mod views;

@@ -319,8 +319,7 @@ pub enum Rule {
     Examples,
     /// [`check_document_ids`](crate::check_document_ids): a command prints
     /// its document without crumbkit's envelope, because its document has
-    /// `Envelope::Without` or `Envelope::WithoutInOrder`. Its id is
-    /// `documents/envelope`.
+    /// `Envelope::Without`. Its id is `documents/envelope`.
     Envelope,
     /// [`check_document_ids`](crate::check_document_ids): a command prints
     /// every field of each row in JSON without `--full`, because its row

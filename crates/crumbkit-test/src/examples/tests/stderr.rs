@@ -1,13 +1,10 @@
 //! Tests for the example check's golden files of standard error, its
-//! report of a failed run's failure, and the failure form and failure
-//! reader that read it.
+//! report of a failed run's failure, and the failure reader that reads it.
 
 use std::fs;
 
-use crumbkit::Document;
-use crumbkit::form::{FailureForm, PreparedFailure, ReadFailure};
+use crumbkit::form::ReadFailure;
 use crumbkit::help::{Example, Guide, Leaf};
-use schemars::{Schema, json_schema};
 use snapbox::assert::Action;
 
 use super::{examples, run};
@@ -174,63 +171,18 @@ fn an_example_that_fails_in_text_names_the_code_of_its_last_code_line() {
     );
 }
 
-/// A failure form whose text is one line, `ERR` and the code, and which
-/// reads that line back.
-struct LineForm;
-
-impl FailureForm for LineForm {
-    fn document(&self) -> Document<()> {
-        Document::new("sh", "error", 1, "The document of a failed command.")
-    }
-
-    fn schema(&self) -> Schema {
-        json_schema!({ "type": "object" })
-    }
-
-    fn json(&self, failure: &PreparedFailure<'_>) -> serde_json::Value {
-        serde_json::json!({ "error": failure.code() })
-    }
-
-    fn read(&self, _out: &str, err: &str) -> Option<ReadFailure> {
-        let code = err.lines().last()?.strip_prefix("ERR ")?;
-        Some(ReadFailure::new(code.to_owned(), Vec::new()))
-    }
-}
-
-static FORM: LineForm = LineForm;
-
-/// The examples of a tool with `LineForm`, whose one example fails.
-const FAILS_IN_FORM: Guide = Guide::new().failure_form(&FORM).leaves(&[Leaf::new(&["-c"])
-    .examples(&[Example::new(
-        &["echo 'ERR sh::books::gone' >&2; exit 1"],
-        "Fail",
-    )])]);
-
-#[test]
-fn an_example_that_fails_names_the_code_that_the_failure_form_reads() {
-    let dir = TempDir::new("examples-failure-form").unwrap();
-
-    let message = panic_message(|| {
-        run(&FAILS_IN_FORM, &examples(&dir), Action::Overwrite);
-    })
-    .unwrap();
-
-    assert!(
-        message.contains(
-            ": an example must exit with code 0, and the run ends with exit status: 1 \
-             and fails with sh::books::gone after writing"
-        ),
-        "{message}"
-    );
-}
-
-/// A failure reader that reads the line `ERR` and a code that `LineForm`
-/// prints.
+/// A failure reader that reads a last line on standard error of `ERR` and
+/// a code.
 struct LineReader;
 
 impl FailureReader for LineReader {
-    fn read(&self, out: &str, err: &str) -> Vec<ReadFailure> {
-        LineForm.read(out, err).into_iter().collect()
+    fn read(&self, _out: &str, err: &str) -> Vec<ReadFailure> {
+        err.lines()
+            .last()
+            .and_then(|line| line.strip_prefix("ERR "))
+            .map(|code| ReadFailure::new(code.to_owned(), Vec::new()))
+            .into_iter()
+            .collect()
     }
 }
 
@@ -258,26 +210,4 @@ fn an_example_that_fails_names_the_code_that_the_failure_reader_reads() {
         ),
         "{message}"
     );
-}
-
-#[test]
-fn a_guide_with_a_failure_form_and_examples_with_a_failure_reader_fail_the_check() {
-    let dir = TempDir::new("examples-form-and-reader").unwrap();
-
-    let message = panic_message(|| {
-        run(
-            &FAILS_IN_FORM,
-            &examples(&dir).failure_reader(&LineReader),
-            Action::Overwrite,
-        );
-    });
-
-    assert_eq!(
-        message.unwrap(),
-        "the command tree breaks crumbkit's example rules:\n\
-         the guide sets a failure form with Guide::failure_form and the examples set a \
-         failure reader with Examples::failure_reader, and a tool reads its failures \
-         through only one of them"
-    );
-    assert!(dir.names().is_empty(), "{:?}", dir.names());
 }

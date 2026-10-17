@@ -3,35 +3,15 @@
 
 use clap::Command;
 use crumbkit::codes::CLI_USAGE;
-use crumbkit::form::{FailureForm, PreparedFailure};
 use crumbkit::help::{Exit, Guide, Leaf, RefusalContext, Rename};
 use crumbkit::schemas::SCHEMAS_LIST;
-use crumbkit::{Batch, Call, Code, Document, JsonStyle, Prose};
-use schemars::{Schema, json_schema};
+use crumbkit::{Call, Code, Document, Prose};
 use serde_json::{Value, json};
 use snapbox::assert::Action;
 
 use super::{read, run_guided};
 use crate::opt_outs::customisations::customisations;
 use crate::temp::TempDir;
-use crumbkit::Envelope;
-
-/// A failure form whose document is `shelf/error/v2`.
-struct ErrorForm;
-
-impl FailureForm for ErrorForm {
-    fn document(&self) -> Document<()> {
-        Document::new("shelf", "error", 2, "The document of a failed command.")
-    }
-
-    fn schema(&self) -> Schema {
-        json_schema!({ "type": "object" })
-    }
-
-    fn json(&self, failure: &PreparedFailure<'_>) -> Value {
-        json!({ "error": failure.message() })
-    }
-}
 
 /// Returns the call that a refused `books show` command line offers instead.
 fn version_call(_: &RefusalContext<'_>) -> Vec<Call> {
@@ -41,11 +21,10 @@ fn version_call(_: &RefusalContext<'_>) -> Vec<Call> {
 /// The tool's code for crumbkit's usage code.
 const USAGE: Code = Code::new("shelf", "cli", "usage");
 
-/// A guide that declares a failure form, a rename, an exit for the renamed
+/// A guide that declares a rename, an exit for the renamed
 /// usage code, refusal alternatives for every command line and a leaf that passes on its program's exit code and offers
 /// its own alternatives when its command line is refused.
 const DECLARING: Guide = Guide::new()
-    .failure_form(&ErrorForm)
     .codes(&[Rename::new(&CLI_USAGE, &USAGE)])
     .exits(&[Exit::new(64, "The command line was refused.").failures(&[&USAGE])])
     .refusal_alternatives(version_call)
@@ -63,10 +42,7 @@ fn the_report_lists_declarations_under_customisations_without_a_reason_or_a_cost
         read(&dir, "opt-outs.txt"),
         "shelf has no opt-outs from the conventions.\n\
          \n\
-         shelf declares 6 customisations, which need no reason.\n\
-         \n\
-         failure-form: every run of shelf\n\
-         \x20 Declares: Failures print as shelf/error/v2 in place of shelf/failure/v1.\n\
+         shelf declares 5 customisations, which need no reason.\n\
          \n\
          code-rename: every run of shelf\n\
          \x20 Declares: Runs print shelf::cli::usage in place of shelf::cli::usage.\n\
@@ -86,14 +62,14 @@ fn the_report_lists_declarations_under_customisations_without_a_reason_or_a_cost
     let report: Value = serde_json::from_str(&read(&dir, "opt-outs.json")).unwrap();
     assert_eq!(report["data"], json!([]));
     assert_eq!(
-        report["customisations"][4],
+        report["customisations"][3],
         json!({
             "declaration": "passes-on-exit",
             "applies_to": "shelf books show",
             "declares": "The command exits with the exit code of the pager.",
         })
     );
-    assert_eq!(report["customisations"].as_array().unwrap().len(), 6);
+    assert_eq!(report["customisations"].as_array().unwrap().len(), 5);
 }
 
 #[test]
@@ -191,112 +167,6 @@ fn the_dashed_forms_declaration_and_each_command_named_in_another_style_are_cust
 }
 
 #[test]
-fn sorted_json_keys_are_a_customisation_of_every_run() {
-    let listed = |guide: &Guide| -> Vec<_> {
-        customisations(&Command::new("shelf"), guide)
-            .into_iter()
-            .map(|entry| (entry.declaration, entry.applies_to, entry.declares))
-            .collect()
-    };
-
-    assert_eq!(
-        listed(&Guide::new().json(JsonStyle::new().sorted())),
-        [(
-            "json-keys",
-            "every run of shelf".to_owned(),
-            "Every JSON document prints the keys of each object in sorted order.".to_owned()
-        )]
-    );
-    assert_eq!(listed(&Guide::new()), Vec::new());
-}
-
-/// A book of the batch of `books show`.
-#[derive(serde::Serialize, schemars::JsonSchema)]
-struct Book {
-    /// The book's id.
-    id: u32,
-}
-
-impl crumbkit::Row for Book {
-    const COLUMNS: &'static [&'static str] = &["id"];
-}
-
-#[test]
-fn a_batch_that_prints_its_failures_in_input_order_is_a_failures_in_order_customisation() {
-    const BOOKS_SHOW: Document<Batch<Book, crumbkit::Error>> =
-        Document::new("shelf", "books-show", 1, "The books.").envelope(Envelope::WithoutInOrder);
-    const GUIDE: Guide = Guide::new().leaves(&[Leaf::new(&["books", "show"]).document(BOOKS_SHOW)]);
-
-    let list = customisations(&Command::new("shelf"), &GUIDE);
-
-    let list = serde_json::to_value(&list).unwrap();
-    assert_eq!(
-        list,
-        json!([{
-            "declaration": "failures-in-order",
-            "applies_to": "shelf books show",
-            "declares": "With --json, the command prints its failures among its rows in input order, in place of text on standard error.",
-        }])
-    );
-}
-
-#[test]
-fn a_document_with_keys_is_an_envelope_keys_customisation_before_its_failures_in_order() {
-    const BOOKS_SHOW: Document<Batch<Book, crumbkit::Error>> =
-        Document::new("shelf", "books-show", 1, "The books.").envelope(Envelope::KeysInOrder {
-            type_key: "$type",
-            data_key: "answers",
-        });
-    const GUIDE: Guide = Guide::new().leaves(&[Leaf::new(&["books", "show"]).document(BOOKS_SHOW)]);
-
-    let list = customisations(&Command::new("shelf"), &GUIDE);
-
-    let list = serde_json::to_value(&list).unwrap();
-    assert_eq!(
-        list,
-        json!([
-            {
-                "declaration": "envelope-keys",
-                "applies_to": "shelf books show",
-                "declares": "With --json, the command prints shelf/books-show/v1 under $type and its result under answers, in place of schema and data.",
-            },
-            {
-                "declaration": "failures-in-order",
-                "applies_to": "shelf books show",
-                "declares": "With --json, the command prints its failures among its rows in input order, in place of text on standard error.",
-            },
-        ])
-    );
-}
-
-#[test]
-fn a_batch_that_answers_each_left_out_key_is_a_left_out_per_key_customisation_after_its_failures_in_order()
- {
-    const BOOKS_SHOW: Document<Batch<Book, crumbkit::Error>> =
-        Document::new("shelf", "books-show", 1, "The books.")
-            .envelope(Envelope::WithoutInOrder)
-            .left_out_per_key();
-    const GUIDE: Guide = Guide::new().leaves(&[Leaf::new(&["books", "show"]).document(BOOKS_SHOW)]);
-
-    let list = customisations(&Command::new("shelf"), &GUIDE);
-
-    let declarations: Vec<Value> = serde_json::to_value(&list)
-        .unwrap()
-        .as_array()
-        .unwrap()
-        .clone();
-    assert_eq!(declarations.len(), 2);
-    assert_eq!(
-        declarations[1],
-        json!({
-            "declaration": "left-out-per-key",
-            "applies_to": "shelf books show",
-            "declares": "When the output budget leaves out answers, the command prints one failure for each answer left out, at its key's position, in place of one failure that names them all. The JSON document can pass the budget by the size of those failures.",
-        })
-    );
-}
-
-#[test]
 fn a_leaf_s_rename_and_an_exit_that_lists_it_are_customisations_of_that_command() {
     const MOVED: Code = Code::new("shelf", "books", "moved");
     const GUIDE: Guide = Guide::new()
@@ -326,26 +196,6 @@ fn a_leaf_s_rename_and_an_exit_that_lists_it_are_customisations_of_that_command(
             ),
         ]
     );
-}
-
-#[test]
-fn field_names_from_another_system_are_one_field_names_customisation_of_every_run() {
-    const GUIDE: Guide = Guide::new()
-        .codes(&[Rename::new(&CLI_USAGE, &USAGE)])
-        .field_names(&["requestId", "Content-Type"]);
-
-    let list = customisations(&Command::new("shelf"), &GUIDE);
-
-    let list = serde_json::to_value(&list).unwrap();
-    assert_eq!(
-        list[1],
-        json!({
-            "declaration": "field-names",
-            "applies_to": "every run of shelf",
-            "declares": "Failures may print the fields requestId and Content-Type, whose names come from another system.",
-        })
-    );
-    assert_eq!(list.as_array().unwrap().len(), 2);
 }
 
 /// A removed book whose text is its own line.

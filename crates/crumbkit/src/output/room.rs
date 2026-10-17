@@ -11,7 +11,7 @@ use serde_json::Value;
 use super::budget::{self, Counter};
 use super::envelope::{Extras, Failures, Selected, write_document};
 use super::table::cell;
-use super::{JsonLayout, JsonStyle, Output, columns, layout, lines, result};
+use super::{JsonLayout, Output, columns, layout, lines, result};
 use crate::{AsFailure, Batch, Document, Row, Rows};
 
 /// The bytes that `finish` prints for the rows of a batch, which
@@ -127,9 +127,9 @@ impl Output {
             } else {
                 1
             };
-            let empty = empty_document(document, self.dry_run, self.json_style.layout);
+            let empty = empty_document(document, self.dry_run, self.json_layout);
             Form::Json {
-                layout: self.json_style.layout,
+                layout: self.json_layout,
                 depth,
                 // A document that fails to serialize prints nothing, and
                 // `finish` reports the error.
@@ -193,10 +193,8 @@ impl<T: Rows> Room<T> {
                     *rows = rows.saturating_add(bytes.unwrap_or(0));
                 }
                 Form::Lines(bytes) => {
-                    // The order of the keys changes no byte count, so a
-                    // line measured with the keys as serialized has the
-                    // bytes of the same line with the keys sorted.
-                    let line = lines::line(row, false).map_or(0, |line| line.len());
+                    // A row's line counts the bytes that text prints for it.
+                    let line = lines::line(row).map_or(0, |line| line.len());
                     *bytes = bytes.saturating_add(line);
                 }
                 Form::Table { .. } => {
@@ -312,29 +310,22 @@ impl Form {
 }
 
 /// Returns the bytes of the JSON document of `document` without rows, as
-/// `finish` prints it for a batch without rows or failures. The key order
-/// moves keys and changes no byte count, so the measure leaves the keys
-/// unsorted.
+/// `finish` prints it for a batch without rows or failures.
 fn empty_document<T>(
     document: Document<T>,
     dry_run: bool,
     layout: JsonLayout,
 ) -> io::Result<usize> {
     let rows: [(); 0] = [];
-    let in_order = document.get_envelope().failures_in_order();
-    let style = JsonStyle {
-        layout,
-        sorted_keys: false,
-    };
     budget::measure(|counter: &mut Counter| {
         if !document.get_envelope().wraps() {
-            return layout::write(counter, &rows, style);
+            return layout::write(counter, &rows, layout);
         }
         let extras = Extras {
-            failures: (!in_order).then_some(Failures::of(&[], &[], None)),
+            failures: Some(Failures::of(&[])),
             ..Extras::none()
         };
-        write_document(counter, document, dry_run, style, &rows, &extras)
+        write_document(counter, document, dry_run, layout, &rows, &extras)
     })
 }
 

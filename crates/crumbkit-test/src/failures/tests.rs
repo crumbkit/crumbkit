@@ -1,7 +1,5 @@
-use crumbkit::form::{FailureForm, PreparedFailure, ReadFailure, Step};
-use crumbkit::{Document, FieldValue, ToolName};
-use schemars::{Schema, json_schema};
-use serde_json::{Value, json};
+use crumbkit::form::{ReadFailure, Step};
+use crumbkit::{FieldValue, ToolName};
 
 use super::{FailureReader, Reader, read_failures};
 
@@ -97,7 +95,7 @@ fn the_reader_wins_over_crumbkit_s_document_and_the_document_wins_over_the_code_
     let document =
         br#"{"schema":"crumbkit/failure/v1","code":"document","recovery":{"kind":"retry"}}"#;
     let stderr = b"ERR reader\n  code:  line\n";
-    let reader = Reader::Own(&ErrReader);
+    let reader = Reader(&ErrReader);
 
     let first = |read: Vec<ReadFailure>| read.first().map(|failure| failure.code().to_owned());
 
@@ -129,103 +127,6 @@ fn the_reader_wins_over_crumbkit_s_document_and_the_document_wins_over_the_code_
         first(read_failures(ToolName::CRUMBKIT, None, b"", b"plain\n")),
         None
     );
-}
-
-/// A form whose entries and document are `{"error": {"code": ...}}`, which
-/// it reads back from the last line of standard output.
-struct EntryForm;
-
-impl FailureForm for EntryForm {
-    fn document(&self) -> Document<()> {
-        Document::new("tool", "error", 1, "The document of a failed command.")
-    }
-
-    fn schema(&self) -> Schema {
-        json_schema!({ "type": "object" })
-    }
-
-    fn json(&self, failure: &PreparedFailure<'_>) -> Value {
-        json!({ "error": { "code": failure.code() } })
-    }
-
-    fn read(&self, out: &str, _err: &str) -> Option<ReadFailure> {
-        let document: Value = serde_json::from_str(out.lines().last()?).ok()?;
-        let code = document["error"]["code"].as_str()?;
-        Some(ReadFailure::new(code.to_owned(), vec![Step::Retry]))
-    }
-}
-
-#[test]
-fn each_batch_entry_is_read_through_the_form_and_an_entry_it_cannot_read_in_crumbkit_s_shape() {
-    let stdout = br#"{"schema":"tool/books-show/v1","failures":[{"error":{"code":"a"}},{"code":"b","recovery":{"kind":"hint","text":"h"}}]}"#;
-
-    let read = read_failures(
-        ToolName::CRUMBKIT,
-        Some(Reader::Form(&EntryForm)),
-        stdout,
-        b"",
-    );
-
-    assert_eq!(
-        read,
-        [
-            ReadFailure::new("a".to_owned(), vec![Step::Retry]),
-            ReadFailure::new("b".to_owned(), vec![Step::Hint("h".to_owned())]),
-        ]
-    );
-}
-
-#[test]
-fn each_failure_document_of_an_array_in_input_order_is_read_and_its_rows_are_skipped() {
-    let stdout = br#"[{"id":1,"code":"row","recovery":{"kind":"retry"}},{"schema":"crumbkit/failure/v1","key":"7","index":1,"code":"a","recovery":{"kind":"retry"}},{"id":3},{"schema":"crumbkit/failure/v1","code":"b","recovery":{"kind":"retry"}}]"#;
-
-    let codes: Vec<String> = read_failures(ToolName::CRUMBKIT, None, stdout, b"")
-        .iter()
-        .map(|failure| failure.code().to_owned())
-        .collect();
-
-    assert_eq!(codes, ["a", "b"]);
-}
-
-#[test]
-fn each_form_document_of_an_array_in_input_order_is_read_through_the_form() {
-    let stdout = br#"[{"id":1},{"error":{"code":"a"}}]"#;
-
-    let read = read_failures(
-        ToolName::CRUMBKIT,
-        Some(Reader::Form(&EntryForm)),
-        stdout,
-        b"",
-    );
-
-    assert_eq!(read, [ReadFailure::new("a".to_owned(), vec![Step::Retry])]);
-}
-
-#[test]
-fn each_failure_of_an_array_in_input_order_under_a_declared_data_key_is_read() {
-    let stdout = br#"{"$type":"tool/get-report/v1","answers":[{"id":1},{"schema":"crumbkit/failure/v1","code":"a","recovery":{"kind":"retry"}}]}"#;
-
-    let codes: Vec<String> = read_failures(ToolName::CRUMBKIT, None, stdout, b"")
-        .iter()
-        .map(|failure| failure.code().to_owned())
-        .collect();
-
-    assert_eq!(codes, ["a"]);
-}
-
-#[test]
-fn each_form_document_of_an_array_in_input_order_under_a_declared_data_key_is_read_through_the_form()
- {
-    let stdout = br#"{"$type":"tool/get-report/v1","answers":[{"id":1},{"error":{"code":"a"}}]}"#;
-
-    let read = read_failures(
-        ToolName::CRUMBKIT,
-        Some(Reader::Form(&EntryForm)),
-        stdout,
-        b"",
-    );
-
-    assert_eq!(read, [ReadFailure::new("a".to_owned(), vec![Step::Retry])]);
 }
 
 #[test]

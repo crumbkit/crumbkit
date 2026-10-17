@@ -17,15 +17,14 @@ pub(super) fn chosen<R: Row>(output: &Output) -> bool {
 
 /// Returns the line of `row` with its line feed: the row's own text line
 /// with each control character escaped, or one line of compact JSON with
-/// every field, its keys sorted when `sorted_keys` is set, when the row has no
-/// text line. A JSON line holds no control character, because JSON escapes
-/// them inside strings.
-pub(super) fn line<R: Row>(row: &R, sorted_keys: bool) -> io::Result<String> {
+/// every field when the row has no text line. A JSON line holds no control
+/// character, because JSON escapes them inside strings.
+pub(super) fn line<R: Row>(row: &R) -> io::Result<String> {
     let mut line = if let Some(text) = row.text_line() {
         escape_controls(&text).into_owned()
     } else {
         let mut json = Vec::new();
-        layout::serialize(&mut json, row, sorted_keys)?;
+        layout::serialize(&mut json, row)?;
         String::from_utf8(json).map_err(io::Error::other)?
     };
     line.push('\n');

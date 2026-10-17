@@ -179,24 +179,3 @@ fn json_prints_every_field_of_a_whole_row_that_declares_a_line() {
     let document: Value = serde_json::from_str(&finished.out).unwrap();
     assert_eq!(document["data"], serde_json::json!([["a", "b"]]));
 }
-
-#[test]
-fn a_row_without_a_text_line_prints_its_json_line_with_sorted_keys_when_the_guide_sorts_them() {
-    let guide = Guide::new().json(crate::JsonStyle::new().sorted());
-    let mut output = super::built_with(
-        <super::Tool as clap::CommandFactory>::command(),
-        &guide,
-        &["tool", "list"],
-    );
-    let unlinked = Link {
-        pointer: "e".to_owned(),
-        target: None,
-        status: "broken",
-    };
-    let finished = finish_output(&mut output, LINKS, vec![unlinked]);
-
-    assert_eq!(
-        finished.out,
-        "{\"pointer\":\"e\",\"status\":\"broken\",\"target\":null}\n"
-    );
-}

@@ -180,31 +180,6 @@ fn an_empty_note_with_a_line_break_is_rejected() {
         Document::new("shelf", "books-list", 1, "Books.").when_empty("no books\nat all");
 }
 
-/// A row of the batches in these tests.
-#[derive(serde::Serialize, schemars::JsonSchema)]
-struct Moon {
-    name: &'static str,
-}
-
-impl crate::Row for Moon {
-    const COLUMNS: &'static [&'static str] = &["name"];
-}
-
-#[test]
-fn a_batch_answers_its_left_out_keys_in_one_failure_until_the_tool_asks_for_one_per_key() {
-    const MOONS: Document<crate::Batch<Moon, crate::Error>> =
-        Document::new("solar", "moons-show", 1, "Moons.");
-
-    assert!(!MOONS.answers_left_out_per_key());
-    assert!(MOONS.left_out_per_key().answers_left_out_per_key());
-    assert!(
-        MOONS
-            .left_out_per_key()
-            .untyped()
-            .answers_left_out_per_key()
-    );
-}
-
 /// A file of the headed batches in these tests, which holds bytes unless it
 /// holds a record.
 #[derive(serde::Serialize, schemars::JsonSchema)]

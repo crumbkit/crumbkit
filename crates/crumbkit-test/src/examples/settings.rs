@@ -215,10 +215,9 @@ impl<'a> Examples<'a> {
         self
     }
 
-    /// Sets the reader of the failures that the tool prints without a
-    /// failure form, which the twin, example and recovery checks read each
-    /// failed run through. A check fails when the guide also sets a failure
-    /// form with `Guide::failure_form`.
+    /// Sets the reader of the failures that the tool prints in a form of
+    /// its own, which the twin, example and recovery checks read each
+    /// failed run through.
     #[must_use]
     pub const fn failure_reader(mut self, reader: &'a dyn FailureReader) -> Self {
         self.reader = Some(reader);

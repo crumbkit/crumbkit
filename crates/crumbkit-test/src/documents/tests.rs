@@ -2,11 +2,10 @@
 
 use clap::Command;
 use crumbkit::commands::COMMANDS_LIST;
-use crumbkit::form::{FailureForm, PreparedFailure};
 use crumbkit::help::{Guide, Leaf};
 use crumbkit::schemas::{SCHEMAS_LIST, SCHEMAS_SHOW};
 use crumbkit::{Document, Row};
-use schemars::{JsonSchema, Schema, json_schema};
+use schemars::JsonSchema;
 use serde::Serialize;
 
 use super::{MOUNTS, check_document_ids, check_mounts};
@@ -157,47 +156,4 @@ fn a_document_whose_rows_print_whole_that_an_opt_out_names_passes() {
     )];
 
     check_document_ids(&shelf(), &GUIDE, ALLOW);
-}
-
-/// A failure form whose document has the id that `document` returns.
-struct ErrorForm(fn() -> Document<()>);
-
-impl FailureForm for ErrorForm {
-    fn document(&self) -> Document<()> {
-        (self.0)()
-    }
-
-    fn schema(&self) -> Schema {
-        json_schema!({ "type": "object" })
-    }
-
-    fn json(&self, failure: &PreparedFailure<'_>) -> serde_json::Value {
-        serde_json::json!({ "error": failure.message() })
-    }
-}
-
-/// The failure form of a tool whose callers read `shelf/error/v2`.
-static SHELF_FORM: ErrorForm =
-    ErrorForm(|| Document::new("shelf", "error", 2, "The document of a failed command."));
-
-#[test]
-fn a_guide_with_a_failure_form_passes_without_an_opt_out() {
-    const GUIDE: Guide = Guide::new().failure_form(&SHELF_FORM);
-
-    check_document_ids(&shelf(), &GUIDE, &[]);
-}
-
-#[test]
-fn a_failure_form_document_in_the_component_crumbkit_fails() {
-    static FORM: ErrorForm =
-        ErrorForm(|| Document::new("crumbkit", "failure", 2, "A failure document."));
-    const GUIDE: Guide = Guide::new().failure_form(&FORM);
-
-    let message = panic_message(|| check_document_ids(&shelf(), &GUIDE, &[])).unwrap();
-
-    assert_eq!(
-        message,
-        "the command tree breaks crumbkit's document id rules:\n\
-         shelf: the tool's failure form prints crumbkit/failure/v2, and only crumbkit names documents in the component `crumbkit`, so the form's document needs the tool's own component"
-    );
 }

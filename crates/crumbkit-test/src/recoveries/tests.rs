@@ -25,7 +25,6 @@ mod all;
 mod chains;
 mod env;
 mod exits;
-mod form;
 mod fresh;
 mod next_step;
 mod reading;

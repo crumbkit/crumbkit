@@ -10,7 +10,7 @@ use clap::Command;
 use super::budget::{Over, OverBudget};
 use super::dry_run::DRY_RUN_LINE;
 use super::failure::{self, PreparedFailure, Printing};
-use super::{Output, problems};
+use super::{JsonLayout, Output, problems};
 use crate::{AsFailure, Document, Failure, Row, Sink, Spelling, Stream, codes, exit};
 
 mod open;
@@ -202,7 +202,7 @@ pub struct Streaming<'a, R, O, W> {
     document: Document<Stream<R>>,
     /// Whether the stream printed a failure.
     failed: bool,
-    /// What the tool's guide decides about failures: the form, the exit
+    /// What the tool's guide decides about failures: the layout, the exit
     /// codes (ADR-0037) and the renames of crumbkit's codes (ADR-0056).
     printing: Printing,
     /// The exit code of the stream's first failure, which is 1 until a
@@ -295,9 +295,7 @@ impl<R: Row, O: Write, W: Write> Streaming<'_, R, O, W> {
     /// In text, the failure prints on the error writer in the form that a
     /// failed command prints. With `--json`, it prints on the output writer
     /// as one `<tool>/failure/v1` document on its own line, between the
-    /// items. A document without the envelope prints it as text. When the
-    /// tool's guide sets a [`FailureForm`](crate::form::FailureForm), the
-    /// form writes the line and the text in place of crumbkit's.
+    /// items. A document without the envelope prints it as text.
     ///
     /// It returns `ControlFlow::Break` when the stream can print nothing
     /// more, as [`Streaming::item`] does.
@@ -420,13 +418,7 @@ impl<R: Row, O: Write, W: Write> Streaming<'_, R, O, W> {
             // A failure document written to a `Vec` never fails, and a closed
             // stream prints nothing more.
             if self.state == State::Open
-                && failure::write_json(
-                    &mut self.line,
-                    self.printing.form,
-                    self.printing.style.one_line(),
-                    &document,
-                )
-                .is_ok()
+                && failure::write_json(&mut self.line, JsonLayout::OneLine, &document).is_ok()
             {
                 let _ = self.send();
             }
@@ -434,7 +426,7 @@ impl<R: Row, O: Write, W: Write> Streaming<'_, R, O, W> {
         } else {
             // Standard error is the last place to report anything, so a
             // failure to write there goes unreported.
-            let _ = failure::write_text(&mut self.err, self.printing.form, &document);
+            let _ = failure::write_crumbkit_text(&mut self.err, &document);
         }
     }
 
@@ -448,7 +440,7 @@ impl<R: Row, O: Write, W: Write> Streaming<'_, R, O, W> {
         // A stream writes each document on one line, whatever the guide's
         // layout.
         let printing = Printing {
-            style: self.printing.style.one_line(),
+            layout: JsonLayout::OneLine,
             ..self.printing
         };
         let code = refusal.print(

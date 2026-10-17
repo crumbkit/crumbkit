@@ -61,13 +61,6 @@ mod tests;
 /// - a leaf's [`Choices`](crumbkit::pick::Choices) whose argument id names
 ///   no argument of the leaf's command, because a picker then never offers
 ///   them;
-/// - a leaf whose document prints a batch's failures among its rows in
-///   input order (`Envelope::KeysInOrder` or `Envelope::WithoutInOrder`)
-///   and whose row type has a field named `schema`, because a reader tells
-///   a failure document from a row by its `schema`;
-/// - a leaf whose document has one of those two envelopes and is not a
-///   batch, because only a batch has failures to print in input order
-///   (ADR-0071);
 /// - a leaf column whose name is not a field of the leaf's row type, such
 ///   as a misspelt name in `Row::COLUMNS` or `Row::LONG_COLUMNS`, because
 ///   the table prints `-` in every row of it;
@@ -103,11 +96,7 @@ mod tests;
 /// - a topic whose name an earlier topic already has, because `parse`
 ///   prints only the first;
 /// - a topic name that is not lowercase ASCII letters and digits in words
-///   joined by single dashes, starting with a letter, such as `catalogue`;
-/// - a name of [`Guide::field_names`](crumbkit::help::Guide::field_names)
-///   that is empty, holds whitespace or a control character, is listed
-///   twice or already follows the field name rule, because it then has no
-///   use beside the rule.
+///   joined by single dashes, starting with a letter, such as `catalogue`.
 ///
 /// A hidden subcommand passes whether or not a goal names it, and a hidden
 /// command needs no leaf. A command that no group names keeps clap's list
@@ -229,62 +218,7 @@ pub fn check_guide(command: &Command, guide: &Guide) {
     }
     check_leaves(command, guide, &mut problems);
     check_topics(command, guide, &mut problems);
-    check_field_names(guide, &mut problems);
     tree::report("guide rules", &problems);
-}
-
-/// Adds a problem to `problems` for each name of
-/// [`Guide::field_names`](crumbkit::help::Guide::field_names) that breaks a
-/// field name rule of [`check_guide`].
-fn check_field_names(guide: &Guide, problems: &mut Vec<String>) {
-    let names = guide.get_field_names();
-    for (index, &name) in names.iter().enumerate() {
-        if name.is_empty() {
-            problems.push(format!(
-                "the field name {name:?} is empty, so no failure field can have it"
-            ));
-        } else if name
-            .chars()
-            .any(|character| character.is_whitespace() || character.is_control())
-        {
-            problems.push(format!(
-                "the field name {name:?} holds whitespace or a control character, which a reader cannot tell apart from the text around it"
-            ));
-        } else if crumbkit::Field::new(name, crumbkit::FieldValue::Null).follows_name_rule() {
-            problems.push(format!(
-                "the field name {name:?} follows crumbkit's field name rule already, so it needs no listing"
-            ));
-        }
-        // Only the second listing of a name reports it, so a name listed
-        // three times is one problem.
-        let earlier = names[..index]
-            .iter()
-            .filter(|&&earlier| earlier == name)
-            .count();
-        if earlier == 1 {
-            problems.push(format!("the field name {name:?} is listed more than once"));
-        }
-    }
-}
-
-/// Adds a problem when `leaf` prints a batch's failures among its rows in
-/// input order and its row type has a field named `schema`. A reader tells
-/// a failure document from a row by its `schema`, so such a row could pass
-/// for a failure. Adds a problem as well when the document's envelope
-/// prints failures in input order and the document is not a batch.
-fn check_in_order(text: &str, leaf: &Leaf, problems: &mut Vec<String>) {
-    let in_order = leaf
-        .get_document()
-        .is_some_and(|document| document.get_envelope().failures_in_order());
-    if in_order && leaf.shape() != Some(Shape::Batch) {
-        problems.push(format!(
-            "{text}: the document's envelope prints a batch's failures in input order, and the document is not a batch; choose Envelope::Keys or Envelope::Without"
-        ));
-    } else if in_order && leaf.row_has_field("schema") {
-        problems.push(format!(
-            "{text}: the row type has a field named `schema`, and the document prints its failures among its rows in input order, so a reader could take a row for a failure document; rename the field"
-        ));
-    }
 }
 
 /// Adds a problem to `problems` for each leaf of `guide` that breaks a leaf
@@ -355,7 +289,6 @@ fn check_leaves(command: &Command, guide: &Guide, problems: &mut Vec<String>) {
                 "{text}: the leaf declares effects that change something and no document, so crumbkit refuses a view flag that the output cannot use only after the change; declare the document with `Leaf::document`, or with `Leaf::stream` for a stream"
             ));
         }
-        check_in_order(&text, leaf, problems);
         for choices in leaf.get_choices() {
             let id = choices.arg();
             if !node.get_arguments().any(|arg| arg.get_id() == id) {

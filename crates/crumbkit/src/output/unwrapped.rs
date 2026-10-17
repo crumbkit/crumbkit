@@ -17,17 +17,15 @@ use crate::{Rows, Shape};
 /// as an object, a prose result as its value, and every other result as an
 /// array of its rows. With `fields`, it writes only those fields of each
 /// row, in that order, as an object for a single row and as an array
-/// otherwise. The keys of each object print sorted when `sorted_keys` is set. A
-/// serialization error becomes an `io::Error` of kind `InvalidData`, as in
+/// otherwise. A serialization error becomes an `io::Error` of kind `InvalidData`, as in
 /// the envelope.
 pub(super) fn write_json<T: Rows>(
     out: &mut impl Write,
     fields: &[String],
     value: &T,
-    sorted_keys: bool,
 ) -> io::Result<()> {
     if fields.is_empty() {
-        layout::serialize(&mut *out, value, sorted_keys)?;
+        layout::serialize(&mut *out, value)?;
     } else {
         let columns: Vec<&str> = fields.iter().map(String::as_str).collect();
         let rows = value
@@ -44,9 +42,9 @@ pub(super) fn write_json<T: Rows>(
             .collect();
         match selected.as_slice() {
             [single] if T::SHAPE == Shape::Row => {
-                layout::serialize(&mut *out, single, sorted_keys)?;
+                layout::serialize(&mut *out, single)?;
             }
-            list => layout::serialize(&mut *out, list, sorted_keys)?,
+            list => layout::serialize(&mut *out, list)?,
         }
     }
     out.write_all(b"\n")?;

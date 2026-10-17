@@ -130,7 +130,7 @@ pub(super) fn respond<T: Rows, E: AsFailure, O: Write, W: Write, R>(
 }
 
 /// Prints the failures of a batch or a prose result in text, unless the
-/// JSON document holds them in its envelope or in its in-order array, and the
+/// JSON document holds them in its envelope, and the
 /// failure of the rows that the budget left out, and returns the exit code:
 /// the exit code of the first failure when there is any, which is 1 unless
 /// the guide declares another for its code (ADR-0037), and `code`
@@ -155,21 +155,18 @@ fn print_failures<T: Rows, O: Write, W: Write, R>(
         (None, None) => {}
     }
     // A document without the envelope has no `failures` field, so its
-    // failures print as text even with `--json`, unless its array holds
-    // them in input order.
-    if !output.json
-        || !(document.get_envelope().wraps() || document.get_envelope().failures_in_order())
-    {
+    // failures print as text even with `--json`.
+    if !output.json || !document.get_envelope().wraps() {
         for failure in &failures {
             // Standard error is the last place to report anything, so a
             // failure to write there goes unreported.
-            let _ = failure::write_text(&mut sink.err, output.failure_form, failure);
+            let _ = failure::write_crumbkit_text(&mut sink.err, failure);
         }
         if let Some(over) = left_out {
             let printing = output.printing();
             let command = &mut output.command;
             let over = PreparedFailure::new(over, spelling, printing, command, &mut sink.err);
-            let _ = failure::write_text(&mut sink.err, output.failure_form, &over);
+            let _ = failure::write_crumbkit_text(&mut sink.err, &over);
         }
     }
     match (failures.first(), left_out) {
@@ -219,8 +216,7 @@ fn answered<'a, O: Write, W: Write, R>(
 /// Returns the failures of a batch with the failure of each answer in
 /// `each`, keyed by its answer's key, in the order of the keys. Each of
 /// `each` is a row of a headed batch that was too large for the budget on
-/// its own, or an answer that the budget left out of a batch whose document
-/// answers each key left out (ADR-0068).
+/// its own.
 fn with_each<'a, T: Rows>(
     listed: Vec<PreparedFailure<'a>>,
     each: &'a [(usize, OverBudget)],

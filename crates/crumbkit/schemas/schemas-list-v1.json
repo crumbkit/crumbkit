@@ -82,11 +82,10 @@
           "type": "string"
         },
         "kind": {
-          "description": "output when a command prints the document with its schema id, unwrapped when a command prints it without the envelope that holds its schema id, own-envelope when a command prints it under keys that the tool declares, and file when it is a file format that users write and no command prints.",
+          "description": "output when a command prints the document with its schema id, unwrapped when a command prints it without the envelope that holds its schema id, and file when it is a file format that users write and no command prints.",
           "enum": [
             "output",
             "unwrapped",
-            "own-envelope",
             "file"
           ]
         }

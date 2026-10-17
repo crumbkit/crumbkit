@@ -4,7 +4,7 @@ use std::fmt;
 use std::marker::PhantomData;
 
 use crate::segment::{is_component, is_segment};
-use crate::{AsFailure, Batch, Headed, Row, Rows};
+use crate::{AsFailure, Batch, Headed, Rows};
 
 mod envelope;
 #[cfg(test)]
@@ -36,10 +36,8 @@ pub use envelope::Envelope;
 /// `description` of its JSON Schema.
 ///
 /// A document has crumbkit's envelope unless the tool chooses another with
-/// [`Document::envelope`]. A tool whose readers know another envelope
-/// declares its keys and keeps crumbkit's paging fields (ADR-0059), and a
-/// command can print an existing document unchanged without an envelope
-/// while the tool migrates (ADR-0036).
+/// [`Document::envelope`]. A command can print an existing document
+/// unchanged without an envelope while the tool migrates (ADR-0036).
 ///
 /// ```
 /// # #[derive(serde::Serialize, schemars::JsonSchema)]
@@ -75,10 +73,6 @@ pub struct Document<T> {
     /// Whether a batch prints each row's bytes in text under a `head`-style
     /// header, which the tool chose with `headed`.
     headed: bool,
-    /// Whether a batch answers each key that the output budget leaves out
-    /// with a failure of its own, which the tool chose with
-    /// `left_out_per_key`.
-    per_key: bool,
     /// The function that returns the bytes of the row at a position of a
     /// headed batch, which `headed` sets. An untyped document has none.
     bytes_of: Option<RowBytes<T>>,
@@ -137,7 +131,6 @@ impl<T> Document<T> {
             first_always: false,
             empty: None,
             headed: false,
-            per_key: false,
             bytes_of: None,
             result: PhantomData,
         }
@@ -226,15 +219,6 @@ impl<T> Document<T> {
         self.headed
     }
 
-    /// Reports whether [`Document::left_out_per_key`] was called, so a batch
-    /// answers each key that the output budget leaves out with a failure of
-    /// its own.
-    #[doc(hidden)]
-    #[must_use]
-    pub const fn answers_left_out_per_key(&self) -> bool {
-        self.per_key
-    }
-
     /// Returns the function that [`Document::headed`] set, which returns
     /// the bytes of the row at a position among a batch's rows, or `None`
     /// for that row's place when the row holds no bytes or the position is
@@ -247,9 +231,10 @@ impl<T> Document<T> {
         self.bytes_of
     }
 
-    /// Returns the same id, description, choice of envelope and its keys,
-    /// budget settings, empty note, text form and answer of each key left out as a `Document<()>`, which no longer names the result type,
-    /// so one list can hold the documents of results of different types. crumbkit's
+    /// Returns the same id, description, choice of envelope, budget
+    /// settings, empty note and text form as a `Document<()>`, which no
+    /// longer names the result type, so one list can hold the documents of
+    /// results of different types. crumbkit's
     /// help leaves keep their documents in this form.
     #[must_use]
     pub const fn untyped(self) -> Document<()> {
@@ -262,39 +247,9 @@ impl<T> Document<T> {
             first_always: self.first_always,
             empty: self.empty,
             headed: self.headed,
-            per_key: self.per_key,
             bytes_of: None,
             result: PhantomData,
         }
-    }
-}
-
-impl<R: Row, E: AsFailure> Document<Batch<R, E>> {
-    /// Returns the same batch document with each answer that the output
-    /// budget leaves out answered by a failure of its own, in place of one
-    /// failure that names every key left out.
-    ///
-    /// Each row cut short and each key that the handler never fetched gets
-    /// the over-budget failure under its own key and index, at the key's
-    /// position among the batch's other failures. Its message is `the answer
-    /// did not fit in the output budget of N bytes`, its only field is
-    /// `budget`, and its recovery runs the command with that key alone. A
-    /// reader that reads each answer by its key then finds every key
-    /// answered once. The first failure in key order decides the exit.
-    ///
-    /// Each failure costs about 200 bytes of the budget where a key in the
-    /// one failure's `left_out` costs a few, so `crumbkit::finish` prints the
-    /// most rows that fit beside them, and always the first row. Every answer
-    /// left out keeps its own failure, so the JSON document can pass the
-    /// budget by the size of those failures: a batch of 10,000 keys whose
-    /// first row fills the budget prints about 2 MB of failures after it.
-    ///
-    /// It is a declaration that crumbkit-test's `check_opt_outs` lists under
-    /// the customisations (ADR-0068, ADR-0070).
-    #[must_use]
-    pub const fn left_out_per_key(mut self) -> Self {
-        self.per_key = true;
-        self
     }
 }
 

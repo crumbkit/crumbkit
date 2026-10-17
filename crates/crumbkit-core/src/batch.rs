@@ -29,9 +29,7 @@ mod tests;
 /// returns false. The keys after the last push were never fetched, and
 /// `crumbkit::finish` ends the run with an over-budget failure that names
 /// them in its `left_out` field beside the keys of any rows that did not
-/// fit, or with one such failure for each of those keys when the document
-/// declares `Document::left_out_per_key`. A result pushed after the last key
-/// has no key.
+/// fit. A result pushed after the last key has no key.
 ///
 /// `crumbkit::finish` prints the rows as a `Vec` of rows prints, and
 /// then each failure on standard error as it prints a failed command, with
@@ -222,17 +220,5 @@ impl<R: Row, E: AsFailure> Rows for Batch<R, E> {
 
     fn fetch(&self) -> Option<Call> {
         Some(Call::new(self.command).all(self.arg, "left_out"))
-    }
-
-    fn left_out_indexes(&self, shown: usize) -> Vec<usize> {
-        let cut = self.positions.get(shown..).unwrap_or_default();
-        cut.iter()
-            .copied()
-            .chain(self.pushed..self.keys.len())
-            .collect()
-    }
-
-    fn fetch_key(&self, key: &str) -> Option<Call> {
-        Some(Call::new(self.command).value(self.arg, key))
     }
 }

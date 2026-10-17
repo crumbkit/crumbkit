@@ -35,10 +35,9 @@ pub use self::confirm::Yes;
 use self::counted::Counted;
 pub use self::dry_run::DryRun;
 use self::failure::Printing;
-pub use self::layout::{JsonLayout, JsonStyle};
+pub use self::layout::JsonLayout;
 pub use self::room::Room;
 pub use self::stream::{Streaming, stream, stream_to};
-use crate::form::FailureForm;
 use crate::help::rename::Renames;
 use crate::help::{Exit, view};
 use crate::{AsFailure, Document, Rows, Sink, Spelling, ToolName};
@@ -107,16 +106,11 @@ pub struct Output {
     /// Whether the caller passed `--no-input`.
     no_input: bool,
 
-    /// The tool's own form of a failure, or `None` for crumbkit's form
-    /// (ADR-0045).
-    failure_form: Option<&'static dyn FailureForm>,
-
     /// Whether the tool's guide turned terminal detection off (ADR-0049).
     no_terminal: bool,
 
-    /// The layout of a whole JSON document and the order of its keys
-    /// (ADR-0052, ADR-0067).
-    json_style: JsonStyle,
+    /// The layout of a whole JSON document (ADR-0052).
+    json_layout: JsonLayout,
 
     /// The most bytes that the run prints on standard output: the guide's
     /// budget or crumbkit's default, lowered by the environment (ADR-0046).
@@ -132,10 +126,6 @@ pub struct Output {
     /// The tool's own codes for crumbkit's failures, of the guide and of
     /// the leaf of the parsed command (ADR-0056, ADR-0060).
     renames: Renames,
-
-    /// The failure field names that break the rule and that the tool's
-    /// guide lists (ADR-0061).
-    field_names: &'static [&'static str],
 
     /// The name that the run's output gives crumbkit's own codes, documents
     /// and variables (ADR-0079).
@@ -229,15 +219,13 @@ impl Output {
         (spelling.for_tool(self.tool), self.tool.document(document))
     }
 
-    /// Returns what the tool's guide decides about the run's failures: the form, the JSON style, the exit codes, the
-    /// renames and the listed field names.
+    /// Returns what the tool's guide decides about the run's failures: the
+    /// JSON layout, the exit codes and the renames.
     pub(crate) const fn printing(&self) -> Printing {
         Printing {
-            form: self.failure_form,
-            style: self.json_style,
+            layout: self.json_layout,
             exits: self.exits,
             renames: self.renames,
-            field_names: self.field_names,
         }
     }
 }
@@ -353,13 +341,6 @@ pub fn finish<T: Rows, E: AsFailure>(
 /// output writer as one `<tool>/failure/v1` document, on one line or in
 /// the guide's layout, which `--full` and `--fields` do not change.
 ///
-/// When the tool's guide sets a
-/// [`FailureForm`](crate::form::FailureForm), the form writes the JSON
-/// document and the text of the failure and of a refusal in place of
-/// crumbkit's, and the text of each failure of a batch or a prose result.
-/// Each entry of a batch's `failures` keeps the shape described above
-/// (ADR-0045).
-///
 /// The result prints within [`Output::budget`] bytes on the output writer.
 /// `finish` measures it first, and prints a result that fits as described
 /// above. A listing or a `Vec` that does not fit prints the most rows that
@@ -369,9 +350,7 @@ pub fn finish<T: Rows, E: AsFailure>(
 /// `<tool>::output::over_budget`, or the tool's rename of it, and the
 /// budget. A batch prints the rows
 /// that fit and ends with one over-budget failure whose fields are
-/// `left_out` and `budget`, and exits 1. A batch whose document is marked
-/// with `Document::left_out_per_key` instead gives each answer left out its
-/// own over-budget failure at its key's position (ADR-0068). A single row, a prose result or a
+/// `left_out` and `budget`, and exits 1. A single row, a prose result or a
 /// bytes result that does not fit prints nothing but the over-budget
 /// failure, and exits 1, unless its document is marked with
 /// `Document::always_print_first` (ADR-0046). A bytes result is measured in

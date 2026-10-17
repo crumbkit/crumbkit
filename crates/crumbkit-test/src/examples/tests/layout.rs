@@ -4,7 +4,7 @@
 use std::time::Duration;
 
 use crumbkit::help::{Example, Guide, Leaf};
-use crumbkit::{Document, JsonStyle, Row, Stream};
+use crumbkit::{Document, JsonLayout, Row, Stream};
 use snapbox::Assert;
 use snapbox::assert::Action;
 
@@ -40,7 +40,9 @@ const TWO_WORDS: &str = r#"echo '{"schema":"sh/words/v1","data":{"word":"a"}}'; 
 /// Runs the check of `guide`, with the layout `JsonLayout::Pretty`, on
 /// `sh()` with the golden files in `dir` and the action `Overwrite`.
 fn run(guide: Guide, dir: &TempDir) {
-    let guide = guide.json(JsonStyle::new().pretty("the readers expect it"));
+    let guide = guide.json_layout(JsonLayout::Pretty {
+        reason: "the readers expect it",
+    });
     check(
         &sh(),
         &guide,

@@ -9,7 +9,6 @@ use serde_json::json;
 use super::{
     BUDGET, DIM_BATCH, Dim, STAR_BATCH, Star, budgeted, finish_small, keyed, parsed, star, stars,
 };
-use crate::Envelope;
 use crate::output::tests::finish_output;
 use crate::{Batch, Error};
 
@@ -148,9 +147,9 @@ fn a_failure_too_long_for_the_budget_names_its_first_keys_and_counts_the_rest_as
 fn a_batch_always_answers_its_first_key_and_names_every_key_left_out_when_that_answer_passes_the_budget()
  {
     let mut first = star(1);
-    first.story = "a".repeat(400);
+    first.story = "a".repeat(1100);
     let finished = finish_output(
-        &mut budgeted(300, &["--json"]),
+        &mut budgeted(1024, &["--json"]),
         STAR_BATCH,
         keyed(vec![first, star(2), star(3)], Vec::<Error>::new()),
     );
@@ -160,7 +159,7 @@ fn a_batch_always_answers_its_first_key_and_names_every_key_left_out_when_that_a
     assert_eq!(document["data"].as_array().unwrap().len(), 1);
     assert_eq!(
         document["failures"][0]["fields"],
-        json!({"left_out": ["star-02", "star-03"], "left_out_from": 1, "budget": 300})
+        json!({"left_out": ["star-02", "star-03"], "left_out_from": 1, "budget": 1024})
     );
     assert_eq!(
         document["failures"][0]["recovery"],
@@ -184,25 +183,4 @@ fn the_failure_of_the_answers_left_out_gives_the_index_of_the_first_one_past_a_f
     let fields = &document["failures"][1]["fields"];
     assert_eq!(fields["left_out_from"], shown + 1);
     assert_eq!(fields["left_out"][0], keys[shown + 1]);
-}
-
-#[test]
-fn a_batch_in_input_order_over_the_budget_ends_its_array_with_the_failure_of_the_answers_left_out()
-{
-    let document = STAR_BATCH.envelope(Envelope::WithoutInOrder);
-    let finished = finish_small(&["--json"], document, keyed(stars(20), Vec::<Error>::new()));
-
-    assert_eq!(finished.code, ExitCode::FAILURE);
-    assert!(finished.out.len() <= BUDGET, "{}", finished.out.len());
-    assert_eq!(finished.err, "");
-    let array = parsed(&finished.out);
-    let array = array.as_array().unwrap();
-    let (over, rows) = array.split_last().unwrap();
-    assert!(!rows.is_empty() && rows.len() < 20, "{}", rows.len());
-    assert_eq!(over["schema"], "tool/failure/v1");
-    assert_eq!(over["code"], "tool::output::over_budget");
-    assert_eq!(
-        over["fields"],
-        json!({"left_out": names(rows.len() + 1, 20), "left_out_from": rows.len(), "budget": 1024})
-    );
 }

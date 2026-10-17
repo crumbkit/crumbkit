@@ -1,11 +1,10 @@
 //! The failures that a failed run printed, as the twin, example and recovery
-//! checks read them: through the tool's failure form or failure reader,
-//! then from crumbkit's failure document, then from crumbkit's `code:` line.
+//! checks read them: through the tool's failure reader, then from
+//! crumbkit's failure document, then from crumbkit's `code:` line.
 
 use std::fmt;
 
-use crumbkit::form::{FailureForm, ReadFailure, Step};
-use crumbkit::help::Guide;
+use crumbkit::form::{ReadFailure, Step};
 use crumbkit::{FieldValue, ToolName};
 use serde_json::Value;
 
@@ -13,8 +12,7 @@ use crate::examples::Examples;
 use crate::runs;
 
 /// Reads the failures that one failed run of a tool printed, for a tool
-/// that prints its failures in a shape of its own without a
-/// [`FailureForm`]. A tool sets its reader with
+/// that prints its failures in a shape of its own. A tool sets its reader with
 /// [`Examples::failure_reader`], and [`check_twin`](crate::check_twin),
 /// [`check_examples`](crate::check_examples) and
 /// [`check_recoveries`](crate::check_recoveries) then read each failed run
@@ -31,9 +29,7 @@ use crate::runs;
 ///
 /// When the reader returns no failure, the checks read crumbkit's failure
 /// document on standard output and then the last `code:` line on standard
-/// error. A guide that sets a failure form with `Guide::failure_form` reads
-/// its failures through [`FailureForm::read`], and a check fails when the
-/// guide sets a form and the examples also set a reader.
+/// error.
 ///
 /// [`check_recoveries`](crate::check_recoveries) adds `--json` to every
 /// run, so a tool whose failures a reader reads still accepts `--json` on
@@ -75,73 +71,28 @@ impl fmt::Debug for dyn FailureReader + '_ {
     }
 }
 
-/// The tool's own way to read a failed run: the guide's failure form or
-/// the examples' failure reader.
+/// The tool's own way to read a failed run: the examples' failure reader.
 #[derive(Clone, Copy)]
-pub(crate) enum Reader<'a> {
-    /// The failure form that the guide sets.
-    Form(&'a dyn FailureForm),
-    /// The failure reader that the examples set.
-    Own(&'a dyn FailureReader),
-}
+pub(crate) struct Reader<'a>(pub(crate) &'a dyn FailureReader);
 
 impl Reader<'_> {
     /// Returns each failure that this reader reads from `out` and `err`.
     fn read(self, out: &str, err: &str) -> Vec<ReadFailure> {
-        match self {
-            Self::Form(form) => form.read(out, err).into_iter().collect(),
-            Self::Own(reader) => reader.read(out, err),
-        }
-    }
-
-    /// Returns the reader's name and the way a tool makes it read a
-    /// failure, which a check's problem names.
-    pub(crate) fn name_and_remedy(self) -> (String, &'static str) {
-        match self {
-            Self::Form(form) => (
-                format!("the failure form {}", form.document()),
-                "The tool implements FailureForm::read",
-            ),
-            Self::Own(_) => (
-                "the tool's FailureReader".to_owned(),
-                "The tool's FailureReader reads the failure",
-            ),
-        }
+        self.0.read(out, err)
     }
 }
 
-/// Returns the guide's failure form or the examples' failure reader, or
-/// `None` when neither is set, or the problem when both are set.
-pub(crate) fn reader<'a>(
-    guide: &Guide,
-    examples: &Examples<'a>,
-) -> Result<Option<Reader<'a>>, String> {
-    match (guide.get_failure_form(), examples.reader()) {
-        (Some(_), Some(_)) => Err(
-            "the guide sets a failure form with Guide::failure_form and the examples set a failure reader with Examples::failure_reader, and a tool reads its failures through only one of them"
-                .to_owned(),
-        ),
-        (Some(form), None) => Ok(Some(Reader::Form(form))),
-        (None, Some(reader)) => Ok(Some(Reader::Own(reader))),
-        (None, None) => Ok(None),
-    }
+/// Returns the examples' failure reader, or `None` when they set none.
+pub(crate) fn reader<'a>(examples: &Examples<'a>) -> Option<Reader<'a>> {
+    examples.reader().map(Reader)
 }
 
 /// Returns each failure that a failed run printed on `stdout` and `stderr`.
 /// The first of these sources that reads a failure gives them all:
 /// `reader`; then the last failure document of `tool`, such as
-/// `shelf/failure/v1`, on `stdout`, or
-/// every entry of the `failures` of the last document that has any, as a
-/// batch prints them, or every failure document of the last array that
-/// holds any, at the top or under a key of the document, as a batch in
-/// input order prints them; then the last `code:`
-/// line on `stderr`, which gives a
-/// failure without steps or fields.
-///
-/// When `reader` is a failure form, each entry of `failures` is read
-/// through [`FailureForm::read`] as one line of standard output with an
-/// empty standard error, and an entry that the form cannot read is read in
-/// crumbkit's shape.
+/// `shelf/failure/v1`, on `stdout`, or every entry of the `failures` of the
+/// last document that has any, as a batch prints them; then the last
+/// `code:` line on `stderr`, which gives a failure without steps or fields.
 pub(crate) fn read_failures(
     tool: ToolName,
     reader: Option<Reader<'_>>,
@@ -156,11 +107,7 @@ pub(crate) fn read_failures(
             return read;
         }
     }
-    let form = match reader {
-        Some(Reader::Form(form)) => Some(form),
-        _ => None,
-    };
-    let read = crumbkit_failures(tool, &out, form);
+    let read = crumbkit_failures(tool, &out);
     if !read.is_empty() {
         return read;
     }
@@ -173,59 +120,17 @@ pub(crate) fn read_failures(
 }
 
 /// Returns the failures of the last document on `out` that is `tool`'s
-/// failure document, such as `shelf/failure/v1`, has a non-empty `failures` array, or is
-/// an array that holds at least one failure document, as a batch that
-/// prints its failures in input order prints it, at the top or under any
-/// key of an object, as a document with `Envelope::KeysInOrder`
-/// holds it. A `form` reads each entry
-/// of `failures` and each item of such an array first. An item that the
-/// form does not read is a failure only when it is the tool's failure
-/// document, so a row is never read as one.
-fn crumbkit_failures(
-    tool: ToolName,
-    out: &str,
-    form: Option<&dyn FailureForm>,
-) -> Vec<ReadFailure> {
-    let through_form = |item: &Value| form.and_then(|form| form.read(&item.to_string(), ""));
-    let in_order = |items: &[Value]| -> Vec<ReadFailure> {
-        items
-            .iter()
-            .filter_map(|item| {
-                through_form(item)
-                    .or_else(|| is_failure_document(tool, item).then(|| read_document(item))?)
-            })
-            .collect()
-    };
+/// failure document, such as `shelf/failure/v1`, or has a non-empty
+/// `failures` array.
+fn crumbkit_failures(tool: ToolName, out: &str) -> Vec<ReadFailure> {
     for document in runs::documents(out).iter().rev() {
         if is_failure_document(tool, document) {
             return read_document(document).into_iter().collect();
         }
-        if let Some(items) = document.as_array() {
-            let read = in_order(items);
-            if !read.is_empty() {
-                return read;
-            }
-        }
         if let Some(failures) = document.get("failures").and_then(Value::as_array)
             && !failures.is_empty()
         {
-            return failures
-                .iter()
-                .filter_map(|entry| through_form(entry).or_else(|| read_document(entry)))
-                .collect();
-        }
-        // A document with keys that the tool declares holds a batch in
-        // input order under its data key, which the reader does not know.
-        let arrays = document
-            .as_object()
-            .into_iter()
-            .flat_map(|object| object.values())
-            .filter_map(Value::as_array);
-        for items in arrays {
-            let read = in_order(items);
-            if !read.is_empty() {
-                return read;
-            }
+            return failures.iter().filter_map(read_document).collect();
         }
     }
     Vec::new()

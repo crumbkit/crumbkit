@@ -79,8 +79,8 @@ impl JsonSchema for SchemaRow {
                     "type": "string",
                 },
                 "kind": {
-                    "description": "output when a command prints the document with its schema id, unwrapped when a command prints it without the envelope that holds its schema id, own-envelope when a command prints it under keys that the tool declares, and file when it is a file format that users write and no command prints.",
-                    "enum": ["output", "unwrapped", "own-envelope", "file"],
+                    "description": "output when a command prints the document with its schema id, unwrapped when a command prints it without the envelope that holds its schema id, and file when it is a file format that users write and no command prints.",
+                    "enum": ["output", "unwrapped", "file"],
                 },
                 "form": {
                     "description": "stream when a command prints the document as a stream, one document on each line as each row arrives, and document when a command prints it once or it is a file format.",

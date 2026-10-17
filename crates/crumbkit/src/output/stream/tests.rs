@@ -18,10 +18,8 @@ use crate::{
 
 mod empty;
 mod exits;
-mod keys;
 mod lines;
 mod problems;
-mod sorted;
 mod views;
 mod whole;
 

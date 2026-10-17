@@ -9,7 +9,6 @@ use schemars::JsonSchema;
 use serde::Serialize;
 
 use super::Tool;
-use crate::Envelope;
 use crate::help::Guide;
 use crate::{Batch, Bytes, Document, Error, Headed, Row, Sink, Spelling, finish_to};
 
@@ -261,32 +260,6 @@ error: 2 more answers did not fit in the output budget of 1024 bytes
 }
 
 #[test]
-fn a_headed_batch_answers_each_key_after_the_first_row_that_does_not_fit() {
-    let half = vec![b'x'; 400];
-    let answers: Vec<(&str, Option<&[u8]>)> = ["a", "b", "c", "d"]
-        .iter()
-        .map(|name| (*name, Some(&half[..])))
-        .collect();
-    let finished = finish(&[], BUDGET, PAGES.left_out_per_key(), batch(&answers));
-
-    assert_eq!(finished.code, ExitCode::FAILURE);
-    assert_eq!(finished.out.len(), 2 * (10 + 400) + 1);
-    assert_eq!(
-        finished.err,
-        "\
-error: the answer did not fit in the output budget of 1024 bytes
-  key:   c (index 2)
-  help:  run `tool show c`
-  code:  tool::output::over_budget
-error: the answer did not fit in the output budget of 1024 bytes
-  key:   d (index 3)
-  help:  run `tool show d`
-  code:  tool::output::over_budget
-"
-    );
-}
-
-#[test]
 fn the_recoveries_of_a_headed_batch_rerun_the_caller_s_words_with_the_keys_left_out() {
     let half = vec![b'x'; 400];
     let names = ["a", "b", "c", "d"];
@@ -295,18 +268,11 @@ fn the_recoveries_of_a_headed_batch_rerun_the_caller_s_words_with_the_keys_left_
     let args = ["tool", "show", "--", "a", "b", "c", "d"];
 
     let whole = finish_line(&args, BUDGET, PAGES, batch(&answers));
-    let each = finish_line(&args, BUDGET, PAGES.left_out_per_key(), batch(&answers));
 
     assert!(
         whole.err.contains("help:  run `tool show -- c d`\n"),
         "{}",
         whole.err
-    );
-    assert!(
-        each.err.contains("help:  run `tool show -- c`\n")
-            && each.err.contains("help:  run `tool show -- d`\n"),
-        "{}",
-        each.err
     );
 }
 
@@ -372,34 +338,6 @@ fn json_prints_every_field_of_a_headed_batch_with_the_bytes_at_the_top_level_of_
             {"name": "b", "text": null},
         ])
     );
-}
-
-#[test]
-fn json_of_a_headed_batch_with_declared_keys_prints_its_answers_in_input_order_with_the_bytes_at_the_top_level()
- {
-    let answers = [
-        ("a", Some(&b"one\n"[..])),
-        ("gone", None),
-        ("b", Some(b"caf\xe9")),
-    ];
-    let document = PAGES.envelope(Envelope::KeysInOrder {
-        type_key: "$type",
-        data_key: "answers",
-    });
-    let finished = finish(&["--json"], 1 << 20, document, batch(&answers));
-
-    assert_eq!(finished.code, ExitCode::FAILURE);
-    assert_eq!(
-        finished.text(),
-        concat!(
-            r#"{"$type":"files/pages/v1","answers":[{"name":"a","text":"one\n"},"#,
-            r#"{"schema":"tool/failure/v1","key":"gone","index":1,"code":"tool::report::unchecked","#,
-            r#""message":"no page is named gone","recovery":{"kind":"none","reason":"the error gives no advice"}},"#,
-            r#"{"name":"b","base64":"Y2Fm6Q=="}]}"#,
-            "\n"
-        )
-    );
-    assert_eq!(finished.err, "");
 }
 
 /// A file's answer whose row type names no columns, because the text of a

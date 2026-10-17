@@ -4,8 +4,8 @@
 use std::borrow::Cow;
 use std::io::{self, Write};
 
+use super::Answer;
 use super::rerun::{self, Rerun};
-use super::{Answer, per_key};
 use crate::output::budget::{Over, OverBudget};
 use crate::output::table::escape_controls;
 use crate::output::{Output, layout, problems};
@@ -29,8 +29,7 @@ use crate::{Code, Document, Rows, codes};
 /// first row of a document that always prints its first answer. The other
 /// rows print in order while they fit. From the first row that does not
 /// fit, every later row and every key the batch never fetched is left out,
-/// and one failure names them, or each gets a failure of its own when the
-/// document answers each key left out (ADR-0068). After `out` is flushed, the note of the rows
+/// and one failure names them. After `out` is flushed, the note of the rows
 /// that report a problem, when every answer printed, and the tool's note go
 /// to `err`, as they do for a table.
 pub(super) fn write<T: Rows>(
@@ -61,7 +60,7 @@ pub(super) fn write<T: Rows>(
             Cow::Borrowed(bytes)
         } else {
             let mut line = Vec::new();
-            layout::serialize(&mut line, row, output.json_style.sorted_keys)?;
+            layout::serialize(&mut line, row)?;
             line.push(b'\n');
             Cow::Owned(line)
         };
@@ -101,18 +100,7 @@ pub(super) fn write<T: Rows>(
     } else {
         Rerun::find(&output.command, &output.words, value)
     };
-    let left_out = if document.answers_left_out_per_key() {
-        oversize.extend(per_key::each_left_out(
-            value,
-            stop,
-            code,
-            budget,
-            rerun.as_ref(),
-        ));
-        None
-    } else {
-        left_out(value, stop, code, budget, rerun.as_ref())
-    };
+    let left_out = left_out(value, stop, code, budget, rerun.as_ref());
     // A failure for an answer left out decides the exit, so the note of the
     // rows that report a problem, which names the exit, prints only when
     // every answer printed. The tool's note always prints.

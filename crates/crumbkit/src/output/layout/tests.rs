@@ -1,6 +1,6 @@
 use serde_json::{Value, json};
 
-use super::{JsonLayout, JsonStyle, indent};
+use super::{JsonLayout, indent};
 
 /// Returns `value` as `indent` lays out its compact bytes.
 fn indented(value: &Value) -> String {
@@ -59,18 +59,6 @@ fn indent_matches_the_pretty_formatter_for_bare_values() {
 }
 
 #[test]
-fn a_new_style_prints_one_line_with_keys_as_serialized_and_each_constructor_changes_one_setting() {
-    let style = JsonStyle::new().pretty("the readers expect it").sorted();
-
-    assert_eq!(JsonStyle::new(), JsonStyle::default());
-    assert_eq!(JsonStyle::new().layout, JsonLayout::OneLine);
-    assert!(!JsonStyle::new().sorted_keys);
-    assert_eq!(
-        style.layout,
-        JsonLayout::Pretty {
-            reason: "the readers expect it"
-        }
-    );
-    assert!(style.sorted_keys);
-    assert_eq!(JsonStyle::new().sorted().layout, JsonLayout::OneLine);
+fn the_default_layout_is_one_line() {
+    assert_eq!(JsonLayout::default(), JsonLayout::OneLine);
 }

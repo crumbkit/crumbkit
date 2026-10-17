@@ -101,5 +101,10 @@ tracing-core = { workspace = true }
 all-features = true
 rustdoc-args = ["--cfg", "docsrs"]
 
+# `src/removed.rs` holds only compile_fail doctests and no item, which
+# cargo-shear reports as an empty file.
+[package.metadata.cargo-shear]
+ignored-paths = ["src/removed.rs"]
+
 [lints]
 workspace = true

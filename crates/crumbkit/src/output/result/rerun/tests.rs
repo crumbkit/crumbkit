@@ -57,15 +57,6 @@ fn all(rerun: &Rerun) -> String {
     rerun.all().unwrap().render(&mut Tool::command()).unwrap()
 }
 
-/// Returns `rerun`'s call of `key` alone as text.
-fn one(rerun: &Rerun, key: &str) -> String {
-    rerun
-        .one(key)
-        .unwrap()
-        .render(&mut Tool::command())
-        .unwrap()
-}
-
 #[test]
 fn flags_joined_to_their_keys_by_an_equals_sign_rerun_as_one_flag_before_the_keys() {
     let rerun = find(
@@ -76,7 +67,6 @@ fn flags_joined_to_their_keys_by_an_equals_sign_rerun_as_one_flag_before_the_key
     .unwrap();
 
     assert_eq!(all(&rerun), "tool find --name <NAME>... --json");
-    assert_eq!(one(&rerun, "b"), "tool find --name b --json");
 }
 
 #[test]
@@ -87,10 +77,10 @@ fn short_flags_with_their_keys_attached_rerun_as_the_long_flag() {
 }
 
 #[test]
-fn a_key_that_starts_with_a_hyphen_follows_its_flag_after_an_equals_sign() {
-    let rerun = find(&["find"], &["a", "-b"], &["find", "--name", "a", "--json"]).unwrap();
+fn a_key_that_starts_with_a_hyphen_after_a_flag_leaves_no_call_that_fetches_every_key() {
+    let rerun = find(&["find"], &["a", "-b"], &["find", "--name", "a", "--json"]);
 
-    assert_eq!(one(&rerun, "-b"), "tool find --name=-b --json");
+    assert!(rerun.is_none(), "{rerun:?}");
 }
 
 #[test]
@@ -103,7 +93,6 @@ fn keys_after_a_double_dash_rerun_after_it_so_a_key_with_a_hyphen_stays_a_value(
     .unwrap();
 
     assert_eq!(all(&rerun), "tool show --json -- <NAME>...");
-    assert_eq!(one(&rerun, "-b"), "tool show --json -- -b");
 }
 
 #[test]

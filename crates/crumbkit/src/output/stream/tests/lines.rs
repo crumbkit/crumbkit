@@ -118,7 +118,7 @@ fn a_stream_of_whole_rows_without_columns_that_declare_a_line_prints_each_line()
 }
 
 /// A sighting that declares a text line but has none, so its text is one
-/// line of JSON. Its fields serialize out of name order.
+/// line of JSON.
 #[derive(Serialize, JsonSchema)]
 struct Unplaced {
     /// Where the bird was heard.
@@ -137,12 +137,9 @@ impl Row for Unplaced {
 }
 
 #[test]
-fn a_stream_item_without_a_text_line_prints_its_json_line_with_sorted_keys_when_the_guide_sorts_them()
- {
+fn a_stream_item_without_a_text_line_prints_its_json_line_in_the_order_its_fields_serialize() {
     use clap::{CommandFactory as _, FromArgMatches as _};
 
-    const GUIDE: crate::help::Guide =
-        crate::help::Guide::new().json(crate::JsonStyle::new().sorted());
     const UNPLACED: Document<Stream<Unplaced>> =
         Document::new("birds", "unplaced-watch", 1, "Each sighting as it arrives.");
     let mut command = super::Tool::command();
@@ -150,7 +147,8 @@ fn a_stream_item_without_a_text_line_prints_its_json_line_with_sorted_keys_when_
         .try_get_matches_from_mut(["birds", "watch"])
         .unwrap();
     let view = super::Tool::from_arg_matches(&matches).unwrap().view;
-    let mut output = crate::Output::new(view, command, &GUIDE, ["birds", "watch"]);
+    let guide = crate::help::Guide::new();
+    let mut output = crate::Output::new(view, command, &guide, ["birds", "watch"]);
     let mut out = Vec::new();
     let mut err = Vec::new();
     let mut sink = Sink::new(&mut out, &mut err);
@@ -165,6 +163,6 @@ fn a_stream_item_without_a_text_line_prints_its_json_line_with_sorted_keys_when_
 
     assert_eq!(
         String::from_utf8(out).unwrap(),
-        "{\"bird\":\"robin\",\"place\":\"garden\"}\n"
+        "{\"place\":\"garden\",\"bird\":\"robin\"}\n"
     );
 }
