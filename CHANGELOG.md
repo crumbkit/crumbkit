@@ -558,6 +558,10 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit: the help of a leaf whose rows print as JSON lines ends with an
   `Output:` line, `commands list` gives it the form `json-rows`, and
   crumbkit-markdown's reference prints the line ([behaviour/help/commands-list]).
+- crumbkit-test: [`check_guide`] fails a row type that sets `Row::WHOLE`,
+  names no columns and has fields, and [`check_document_ids`] requires an
+  opt-out from `documents/rows-whole` for a leaf whose row type sets
+  `Row::WHOLE` ([behaviour/adoption/opt-outs]).
 
 ### Changed
 

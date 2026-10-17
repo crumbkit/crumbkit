@@ -37,6 +37,12 @@ pub(crate) const MOUNTS: [(&str, &[&str]); 6] = [
 /// a document without a leaf that declares it escapes the check, and review
 /// covers it.
 ///
+/// The check fails on a leaf whose row type sets `Row::WHOLE`, so `--json`
+/// prints every field of each row without `--full`, unless an [`Allow`] of
+/// [`Rule::RowsWhole`] with a stated reason covers the command, so
+/// [`check_opt_outs`](crate::check_opt_outs) reports that the JSON costs
+/// more tokens than the compact columns (ADR-0065).
+///
 /// The check fails on a guide whose failure form, set with
 /// `Guide::failure_form`, prints a document in the component `crumbkit`,
 /// because crumbkit owns the documents of that component. A failure form
@@ -66,7 +72,7 @@ pub(crate) const MOUNTS: [(&str, &[&str]); 6] = [
 ///
 /// [opt-outs docs]: https://github.com/crumbkit/crumbkit/blob/main/docs/behaviour/adoption/opt-outs.md
 pub fn check_document_ids(command: &Command, guide: &Guide, allow: &[Allow]) {
-    let mut allowances = Allowances::new(allow, &[Rule::Envelope]);
+    let mut allowances = Allowances::new(allow, &[Rule::Envelope, Rule::RowsWhole]);
     let mut problems = Vec::new();
     if let Some(form) = guide.get_failure_form() {
         let document = form.document();
@@ -86,6 +92,13 @@ pub fn check_document_ids(command: &Command, guide: &Guide, allow: &[Allow]) {
                 "{}: the command prints {document} without crumbkit's envelope, which needs an opt-out from `{}` with a reason",
                 command_line(command, leaf.path()),
                 Rule::Envelope.id()
+            ));
+        }
+        if leaf.rows_whole() && !allowances.excuses(Rule::RowsWhole, &leaf.path().join(" ")) {
+            problems.push(format!(
+                "{}: the command prints the rows of {document} whole, because its row type sets `Row::WHOLE`, which needs an opt-out from `{}` with a reason",
+                command_line(command, leaf.path()),
+                Rule::RowsWhole.id()
             ));
         }
     }
