@@ -238,6 +238,29 @@ fn a_note_on_standard_error_names_a_file_that_exists_even_when_it_is_empty() {
 }
 
 #[test]
+fn a_page_cut_by_a_limit_counts_every_alias_with_a_problem_in_its_note() {
+    let text = "bad = 3\nbooks = [\"books\", \"show\", \"1\"]\n";
+    let listing = listing(
+        &tool(),
+        Some(Path::new(FILE)),
+        Some(text),
+        &args(&["--limit", "1"]),
+    );
+
+    let finished = finish(&mut output(), listing.map_err(Error::from));
+
+    assert_eq!(finished.code, ExitCode::FAILURE);
+    assert_eq!(
+        finished.err,
+        format!(
+            "Showing 1 of 4 aliases. --all shows every one.\n\
+             note: 2 of the aliases report a problem, so the command exits with 1.\n\
+             Aliases file: {FILE}\n"
+        )
+    );
+}
+
+#[test]
 fn a_note_says_why_a_tool_without_a_config_directory_has_no_aliases_file() {
     let listing = listing(&tool(), None, None, &args(&[]));
 

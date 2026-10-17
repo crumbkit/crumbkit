@@ -8,7 +8,7 @@ use super::budget::OverBudget;
 use super::dry_run::DRY_RUN_LINE;
 use super::failure::{self, PreparedFailure, Printing};
 use super::result::{Answer, write_result};
-use super::{Output, fields, problems};
+use super::{Output, fields};
 use crate::{AsFailure, Document, Rows, Sink, Spelling, exit};
 
 /// Prints the result to `sink` and returns the exit code as a number, as
@@ -69,8 +69,9 @@ pub(super) fn respond<T: Rows, E: AsFailure, O: Write, W: Write, R>(
             .collect()
     });
     // The exit reads every row that the result holds, including rows that
-    // the output budget leaves unprinted.
-    let problems = problems::count(value.rows());
+    // the output budget leaves unprinted, and a listing that
+    // `Listing::from_all` cut to its limit also counts the rows it cut.
+    let problems = value.problems();
     let written = write_result(
         &mut sink.out,
         &mut sink.err,

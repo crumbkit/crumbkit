@@ -397,7 +397,9 @@ pub fn finish<T: Rows, E: AsFailure>(
 /// A run without a failure whose rows report a problem through the field
 /// that [`Row::PROBLEM`](crate::Row::PROBLEM) names exits with 1, also
 /// after the reader closed the pipe early. The exit reads every row that
-/// the result holds, including rows that the budget left unprinted. In
+/// the result holds, including rows that the budget left unprinted, and a
+/// listing from `Listing::from_all` also counts the rows that its limit
+/// cut. In
 /// text, a note such as `note: 2 of the aliases report a problem, so the
 /// command exits with 1.` goes to the error writer after the footer and
 /// before the tool's note (ADR-0050).

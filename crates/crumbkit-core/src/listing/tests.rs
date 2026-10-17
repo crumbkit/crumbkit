@@ -184,3 +184,54 @@ fn a_summary_keeps_the_limit_bound() {
 
     assert_eq!(listing.limit_bound(), Some(100));
 }
+
+/// A row whose `problem` field marks a problem when it holds text.
+#[derive(Serialize, JsonSchema)]
+struct Check {
+    problem: String,
+}
+
+impl Row for Check {
+    const COLUMNS: &'static [&'static str] = &["problem"];
+    const PROBLEM: Option<&'static str> = Some("problem");
+}
+
+/// Returns a check for each of `problems`, which reports a problem when its
+/// text is not empty.
+fn checks(problems: &[&str]) -> Vec<Check> {
+    problems
+        .iter()
+        .map(|problem| Check {
+            problem: (*problem).to_owned(),
+        })
+        .collect()
+}
+
+#[test]
+fn from_all_counts_the_problem_rows_that_its_limit_cuts() {
+    let listing = Listing::from_all(checks(&["", "missing", "broken"]), Some(1));
+
+    assert_eq!(listing.rows().len(), 1);
+    assert_eq!(listing.problems(), 2);
+}
+
+#[test]
+fn from_all_without_a_limit_counts_the_problem_rows_it_holds() {
+    let listing = Listing::from_all(checks(&["", "missing"]), None);
+
+    assert_eq!(listing.problems(), 1);
+}
+
+#[test]
+fn new_counts_only_the_problem_rows_it_holds() {
+    let listing = Listing::new(checks(&["missing", ""]), 10);
+
+    assert_eq!(listing.problems(), 1);
+}
+
+#[test]
+fn a_summary_keeps_the_problem_count_of_the_rows_that_the_limit_cut() {
+    let listing = Listing::from_all(checks(&["", "missing"]), Some(1)).summary(1);
+
+    assert_eq!(listing.problems(), 1);
+}
