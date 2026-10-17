@@ -73,15 +73,11 @@ pub(super) const fn require_for_stream<R: Row>() {
 
 /// Returns the columns that the table and the compact JSON show, or an
 /// empty list, which does not allocate, when the result prints whole with
-/// every field, is a prose result, or prints each row's own text line.
-/// Unwrapped or headed JSON, and the
-/// JSON of a row type that prints whole, hold every field unless
-/// `--fields` names some (ADR-0062, ADR-0065).
-pub(super) fn columns<'a, T: Rows>(
-    output: &'a Output,
-    document: Document<T>,
-    value: &T,
-) -> Vec<&'a str> {
+/// every field, is a prose result, which `prose` marks, or prints each
+/// row's own text line. Unwrapped or headed JSON, and the JSON of a row type
+/// that prints whole, hold every field unless `--fields` names some
+/// (ADR-0062, ADR-0065).
+pub(super) fn columns<T: Rows>(output: &Output, document: Document<T>, prose: bool) -> Vec<&str> {
     if super::lines::chosen::<T::Row>(output) {
         return Vec::new();
     }
@@ -92,7 +88,7 @@ pub(super) fn columns<'a, T: Rows>(
     } else {
         !output.full
     };
-    if !selects || value.prose().is_some() {
+    if !selects || prose {
         Vec::new()
     } else if output.fields.is_empty() {
         let long = if output.long {

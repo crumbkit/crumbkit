@@ -18,6 +18,7 @@ mod problems;
 mod prose;
 mod respond;
 mod result;
+mod room;
 mod stream;
 pub(crate) mod table;
 mod terminal;
@@ -35,6 +36,7 @@ use self::counted::Counted;
 pub use self::dry_run::DryRun;
 use self::failure::Printing;
 pub use self::layout::JsonLayout;
+pub use self::room::Room;
 pub use self::stream::{Streaming, stream, stream_to};
 use crate::form::FailureForm;
 use crate::help::rename::Renames;
@@ -499,7 +501,9 @@ pub fn finish<T: Rows, E: AsFailure>(
 /// `crumbkit::output::over_budget`, or the tool's rename of it, and the
 /// budget. A batch prints the rows
 /// that fit and ends with one over-budget failure whose fields are
-/// `left_out` and `budget`, and exits 1. A single row, a prose result or a
+/// `left_out` and `budget`, and exits 1. A batch whose document is marked
+/// with `Document::left_out_per_key` instead gives each answer left out its
+/// own over-budget failure at its key's position (ADR-0068). A single row, a prose result or a
 /// bytes result that does not fit prints nothing but the over-budget
 /// failure, and exits 1, unless its document is marked with
 /// `Document::always_print_first` (ADR-0046). A bytes result is measured in

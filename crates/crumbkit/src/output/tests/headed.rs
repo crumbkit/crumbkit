@@ -254,6 +254,32 @@ error: 2 more answers did not fit in the output budget of 1024 bytes
 }
 
 #[test]
+fn a_headed_batch_answers_each_key_after_the_first_row_that_does_not_fit() {
+    let half = vec![b'x'; 400];
+    let answers: Vec<(&str, Option<&[u8]>)> = ["a", "b", "c", "d"]
+        .iter()
+        .map(|name| (*name, Some(&half[..])))
+        .collect();
+    let finished = finish(&[], BUDGET, PAGES.left_out_per_key(), batch(&answers));
+
+    assert_eq!(finished.code, ExitCode::FAILURE);
+    assert_eq!(finished.out.len(), 2 * (10 + 400) + 1);
+    assert_eq!(
+        finished.err,
+        "\
+error: the answer did not fit in the output budget of 1024 bytes
+  key:   c (index 2)
+  help:  run `tool show c`
+  code:  crumbkit::output::over_budget
+error: the answer did not fit in the output budget of 1024 bytes
+  key:   d (index 3)
+  help:  run `tool show d`
+  code:  crumbkit::output::over_budget
+"
+    );
+}
+
+#[test]
 fn fields_without_json_is_refused_on_a_headed_document() {
     let fields = finish_pages(&["--fields", "name"], batch(&[("a", Some(b"one\n"))]));
     let json = finish_pages(
