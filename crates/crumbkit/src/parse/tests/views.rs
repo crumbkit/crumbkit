@@ -9,6 +9,7 @@ use schemars::JsonSchema;
 use serde::Serialize;
 
 use super::parse_to;
+use crate::Envelope;
 use crate::help::{Exit, Guide, Leaf, Rename};
 use crate::twins::assert_one_word_apart;
 use crate::{Batch, Bytes, Document, Error, Headed, Output, Prose, Row, Sink, Spelling, Stream};
@@ -64,7 +65,8 @@ const IDS: Document<Vec<Id>> = Document::new("tool", "ids", 1, "The ids.");
 const COUNT: Document<Prose<String>> = Document::new("tool", "count", 1, "The count.");
 const EXPORT: Document<Bytes> = Document::new("tool", "export", 1, "The export.");
 const DUMP: Document<Vec<Book>> =
-    Document::new("tool", "dump", 1, "The books as another tool reads them.").without_envelope();
+    Document::new("tool", "dump", 1, "The books as another tool reads them.")
+        .envelope(Envelope::Without);
 const WATCH: Document<Stream<Id>> = Document::new("tool", "watch", 1, "The ids as they come.");
 const READ: Document<Batch<Page, Error>> =
     Document::new("tool", "read", 1, "The text of each book.").headed();

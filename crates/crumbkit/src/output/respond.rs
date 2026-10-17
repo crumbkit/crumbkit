@@ -56,7 +56,6 @@ pub(super) fn respond<T: Rows, E: AsFailure, O: Write, W: Write, R>(
     // form print the same fields. Every other result has `None` here.
     // Each failure of a batch carries its key, and every other result has
     // no indexes, so its failures carry none.
-    let several = super::several_keys(value);
     let failures: Option<Vec<PreparedFailure<'_>>> = value.failures().map(|failures| {
         let mut indexes = value.failure_indexes().iter();
         failures
@@ -72,7 +71,7 @@ pub(super) fn respond<T: Rows, E: AsFailure, O: Write, W: Write, R>(
                     output.command.as_mut(),
                     &mut sink.err,
                 )
-                .keyed(key, several)
+                .keyed(key)
             })
             .collect()
     });
@@ -109,7 +108,7 @@ pub(super) fn respond<T: Rows, E: AsFailure, O: Write, W: Write, R>(
     // so a line on standard error marks a dry run, after any failures. A
     // result that was refused or failed to print gets no line.
     let dry_run_line = output.dry_run
-        && (!output.json || !document.has_envelope())
+        && (!output.json || !document.get_envelope().wraps())
         && code == 0
         && !matches!(answer, Answer::Refused(_));
     let (code, cut, left_out) = answered(sink, output, spelling, &answer, code);
@@ -164,7 +163,9 @@ fn print_failures<T: Rows, O: Write, W: Write, R>(
     // A document without the envelope has no `failures` field, so its
     // failures print as text even with `--json`, unless its array holds
     // them in input order.
-    if !output.json || !(document.has_envelope() || document.prints_failures_in_order()) {
+    if !output.json
+        || !(document.get_envelope().wraps() || document.get_envelope().failures_in_order())
+    {
         for failure in &failures {
             // Standard error is the last place to report anything, so a
             // failure to write there goes unreported.
@@ -251,9 +252,7 @@ fn with_each<'a, T: Rows>(
         let key = value.key(*position).map(|key| (*position, key));
         let printing = Printing::default();
         let command = command.as_deref_mut();
-        let several = super::several_keys(value);
-        merged
-            .push(PreparedFailure::new(over, spelling, printing, command, err).keyed(key, several));
+        merged.push(PreparedFailure::new(over, spelling, printing, command, err).keyed(key));
     }
     merged.extend(listed.map(|(_, failure)| failure));
     merged

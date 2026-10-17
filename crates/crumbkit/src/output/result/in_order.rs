@@ -41,7 +41,7 @@ impl<T: Rows> Prepared<'_, T> {
             shown,
             failures,
         };
-        if self.document.has_envelope() {
+        if self.document.get_envelope().wraps() {
             self.envelope(out, &in_order, &Extras::none())
         } else {
             layout::write(out, &in_order, self.style)

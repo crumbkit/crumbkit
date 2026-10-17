@@ -10,6 +10,7 @@ use schemars::JsonSchema;
 use serde::Serialize;
 
 use super::stream_to;
+use crate::Envelope;
 use crate::twins::assert_one_word_apart;
 use crate::{
     Call, Code, Document, DryRun, Error, Failure, Output, Recovery, Row, Sink, Spelling, Stream,
@@ -361,7 +362,7 @@ fn a_dry_run_marks_each_json_line_and_prints_the_dry_run_line_on_standard_error_
 fn an_unwrapped_stream_prints_bare_items_and_its_failures_as_text() {
     let streamed = run(
         &["--json"],
-        SIGHTINGS.without_envelope(),
+        SIGHTINGS.envelope(Envelope::Without),
         &[robin()],
         Some(&Unreadable(3)),
         Ok(()),

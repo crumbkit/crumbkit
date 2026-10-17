@@ -157,9 +157,12 @@ Why: ADR-0064, ADR-0067.
 
 ## Documents without the envelope
 
-A command that keeps the shape of an existing document prints a document
-from [`Document::without_envelope`](../../../../crates/crumbkit-core/src/document.rs).
-With `--json` it prints the result alone with every field:
+A tool chooses a document's envelope with
+[`Document::envelope`](../../../../crates/crumbkit-core/src/document/envelope.rs),
+which takes one `Envelope` variant. A new document has `Envelope::Crumbkit`.
+A command that keeps the shape of an existing document chooses
+`Envelope::Without`. With `--json` it prints the result alone with every
+field:
 
 - a row as an object;
 - a list, listing or batch as an array;
@@ -172,82 +175,51 @@ without `total`, and its text output keeps the footer and the next step.
 
 The failures of a batch or prose result print as text on standard error even
 with `--json`, and the command exits as any batch or prose result with
-failures does. A batch whose document also calls
-`Document::failures_in_order` prints with `--json` one array that holds each
-row and each failure document in the order of the keys, with the
-over-budget failure last, so a program reads every answer from standard
-output. `failures_in_order` is opt-in, because the readers of an existing document
-expect rows alone, and a const panic rejects it on a document with
-crumbkit's own envelope, which holds its failures under `failures`. A
+failures does. A batch whose document chooses `Envelope::WithoutInOrder`
+prints with `--json` one array that holds each row and each failure document
+in the order of the keys, with the over-budget failure last, so a program
+reads every answer from standard output. Input order is opt-in, because the
+readers of an existing document expect rows alone. crumbkit's own envelope
+holds a batch's failures under `failures`, so it has no in-order variant. A
 document with the tool's own keys holds the array under its data key, as
-the next section describes. A reader tells a failure
-from a row by its `schema`, so crumbkit-test's `check_guide` fails such a
-document whose row type has a field named `schema`. A command that
-fails as a whole still prints the failure document, so every command fails in
-one shape.
+the next section describes. A reader tells a failure from a row by its
+`schema`, so crumbkit-test's `check_guide` fails such a document whose row
+type has a field named `schema`. `check_guide` also fails a leaf whose
+document has an in-order envelope and is not a batch. A command that fails
+as a whole still prints the failure document, so every command fails in one
+shape.
 
 crumbkit-test's `check_document_ids` requires an
 [opt-out](../../adoption/opt-outs.md) for each command that prints a document
-without the envelope, and the opt-out report lists `failures_in_order` as a
-[declaration](../../adoption/declarations.md).
+without the envelope, and the opt-out report lists failures in input order
+as a [declaration](../../adoption/declarations.md).
 
-Why: ADR-0016.
+Why: ADR-0016, ADR-0071.
 
 ## Documents with the tool's own keys
 
 A tool whose readers expect other names for the two keys of the envelope
-declares them with
-[`Document::with_keys`](../../../../crates/crumbkit-core/src/document/keys.rs),
-such as `with_keys("$type", "answers")`. The document prints its id under
-the type key and its result under the data key. `Document::with_type` puts
-a fixed string, such as `tool/get-report/v1`, under the type key in place
-of the id. Every other part of the envelope stays: `total`, `truncated`,
-`summary`, `cut`, `failures` and `dry_run` print as they do in crumbkit's
-envelope, and the view flags, the output budget and streams work as they do
-for any other document. A stream prints both keys on each line.
+declares them with `Envelope::Keys`, such as
+`Envelope::Keys { type_key: "$type", data_key: "answers" }`. The document
+prints its id under the type key and its result under the data key. Every
+other part of the envelope stays: `total`, `truncated`, `summary`, `cut`,
+`failures` and `dry_run` print as they do in crumbkit's envelope, and the
+view flags, the output budget and streams work as they do for any other
+document. A stream prints both keys on each line.
 
 A const panic rejects a key that is one of the names crumbkit writes beside
 the result (`dry_run`, `total`, `truncated`, `summary`, `cut` and
-`failures`), two keys that are the same, and `with_keys` together with
-`without_envelope`.
+`failures`), two keys that are the same, and a key that is empty or holds a
+line break.
 
-A batch that also calls `Document::failures_in_order` prints each row and
+A batch whose document chooses `Envelope::KeysInOrder` prints each row and
 each failure under the data key in the order of the keys, repeats
 included, with the over-budget failure last, and prints no `failures`. Each
 failure prints in the guide's failure form when it has one.
 
-A listing whose document calls `Document::summary_at_top` prints the
-fields of its summary at the top of the document beside the two keys, in
-place of a `summary` object, so a tool can print fields such as a
-location or a degraded flag there. The summary must serialize as an object.
-A summary field whose name is one of the document's keys or one of the
-names crumbkit writes fails the write: the run exits with 1, prints
-nothing on standard output and names the field on standard error. The
-summary line of the text output stays.
-
 `schemas list` shows such a document with the kind `own-envelope`, and its
-schema names the declared keys, with the summary's schema under `allOf`
-when the summary prints at the top. The keys are a
+schema names the declared keys. The keys are a
 [declaration](../../adoption/declarations.md), so no opt-out is needed, and
 the opt-out report lists them as an `envelope-keys` customisation.
 
-Why: ADR-0059.
-
-### Listings without a total
-
-A listing whose document declares its keys and calls
-[`Document::without_total`](../../../../crates/crumbkit-core/src/document/keys.rs)
-leaves `total` out of its JSON, for readers that know a listing without a
-count. The JSON keeps `truncated`, so a reader still learns whether rows
-were left out. The text footer, the output budget's cut line and the
-[usage log](../../usage-log/README.md) still count the rows. The document's
-schema has no `total` property. A const panic rejects `without_total` on a
-document without `with_keys`, because crumbkit's own envelope holds `total`
-whenever the tool counted the rows.
-
-crumbkit-test's `check_document_ids` requires an
-[opt-out](../../adoption/opt-outs.md) from `documents/total` for each command
-that prints such a listing, so the opt-out report states what the missing
-count costs a reader.
-
-Why: ADR-0066.
+Why: ADR-0059, ADR-0071.

@@ -36,7 +36,7 @@ const VARIABLE: &str = "CRUMBKIT_OUTPUT_BUDGET";
 ///   document without the envelope, standard error says that output stops
 ///   at the budget;
 /// - it exits with code 0 and prints one document whose `data`, or the
-///   data key that `Document::with_keys` declares, is one object, which a
+///   data key that the document's envelope declares, is one object, which a
 ///   document that always prints its first answer does, or an array of one
 ///   row, which a batch of one answer prints;
 /// - it exits with the code that the guide gives the over-budget failure,
@@ -175,7 +175,7 @@ fn check(
                         stderr: &String::from_utf8_lossy(&output.stderr),
                         data_key: leaf
                             .get_document()
-                            .map_or("data", |document| document.data_key()),
+                            .map_or("data", |document| document.get_envelope().data_key()),
                     };
                     let printed = output.stdout.len();
                     let failed =
@@ -233,7 +233,7 @@ pub(crate) struct Ran<'a> {
     /// The run's standard error.
     pub(crate) stderr: &'a str,
     /// The key that holds the result in the leaf's document: `data`, or the
-    /// data key that the tool declares with `Document::with_keys`.
+    /// data key that the document's envelope declares.
     pub(crate) data_key: &'a str,
 }
 

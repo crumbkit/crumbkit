@@ -310,7 +310,7 @@ impl Leaf {
                 columns.shape,
                 columns.compact,
                 columns.long,
-                columns.document.has_envelope(),
+                columns.document.get_envelope().wraps(),
                 columns.document.is_headed(),
                 columns.whole,
                 flag,

@@ -7,6 +7,7 @@ use schemars::JsonSchema;
 use serde::Serialize;
 
 use super::DryRun;
+use crate::Envelope;
 use crate::{Document, Error, Output, Prose, Row, Sink, Spelling, finish_to};
 
 /// A removed planet.
@@ -161,7 +162,7 @@ fn a_dry_run_of_a_document_without_the_envelope_prints_it_unchanged_and_says_so_
         &mut Sink::new(&mut out, &mut err),
         &mut output,
         Spelling::COLONS,
-        REMOVED.without_envelope(),
+        REMOVED.envelope(Envelope::Without),
         result,
     );
 

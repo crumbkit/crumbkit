@@ -9,6 +9,7 @@ use serde_json::json;
 use super::{
     BUDGET, DIM_BATCH, Dim, STAR_BATCH, Star, budgeted, finish_small, keyed, parsed, star, stars,
 };
+use crate::Envelope;
 use crate::output::tests::finish_output;
 use crate::{Batch, Error};
 
@@ -188,7 +189,7 @@ fn the_failure_of_the_answers_left_out_gives_the_index_of_the_first_one_past_a_f
 #[test]
 fn a_batch_in_input_order_over_the_budget_ends_its_array_with_the_failure_of_the_answers_left_out()
 {
-    let document = STAR_BATCH.without_envelope().failures_in_order();
+    let document = STAR_BATCH.envelope(Envelope::WithoutInOrder);
     let finished = finish_small(&["--json"], document, keyed(stars(20), Vec::<Error>::new()));
 
     assert_eq!(finished.code, ExitCode::FAILURE);

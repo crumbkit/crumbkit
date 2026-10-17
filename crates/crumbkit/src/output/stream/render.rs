@@ -13,7 +13,7 @@ impl<R: Row, O: Write, W: Write> Streaming<'_, R, O, W> {
     /// Writes `item` to the line, in the format that the flags choose.
     pub(super) fn render(&mut self, item: &R) -> io::Result<()> {
         let line = &mut self.line;
-        if self.json && !self.document.has_envelope() {
+        if self.json && !self.document.get_envelope().wraps() {
             return unwrapped::write_json(line, self.fields, item, self.printing.style.keys);
         }
         if self.json && self.full {

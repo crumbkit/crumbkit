@@ -11,6 +11,7 @@ use serde::Serialize;
 use serde_json::{Value, json};
 
 use super::{Finished, Tool, finish_output};
+use crate::Envelope;
 
 mod batch;
 mod keys;
@@ -223,7 +224,7 @@ fn a_row_refused_with_a_renamed_over_budget_code_exits_with_the_code_the_guide_l
 
 #[test]
 fn an_unwrapped_listing_cut_short_prints_its_line_on_standard_error() {
-    let document = STAR_LISTING.without_envelope();
+    let document = STAR_LISTING.envelope(Envelope::Without);
     let finished = finish_small(&["--json"], document, Listing::new(stars(20), 20));
 
     assert_eq!(finished.code, ExitCode::SUCCESS);

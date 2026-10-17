@@ -4,6 +4,7 @@
 use serde_json::{Value, json};
 
 use super::{BOOKS_SHOW, tool};
+use crate::Envelope;
 use crate::help::{Guide, Leaf};
 use crate::schemas::documents;
 use crate::{Batch, Document, Error};
@@ -64,8 +65,7 @@ fn a_batch_s_failure_entries_accept_the_field_names_that_the_guide_lists() {
 fn a_batch_in_input_order_accepts_the_field_names_that_the_guide_lists_in_its_failures() {
     const IN_ORDER: Document<Batch<super::Book, Error>> =
         Document::new("shelf", "books-show", 2, "The books for the ids given.")
-            .without_envelope()
-            .failures_in_order();
+            .envelope(Envelope::WithoutInOrder);
     const LISTING: Guide = Guide::new()
         .field_names(NAMES)
         .leaves(&[Leaf::new(&["books", "show"]).document(IN_ORDER)]);

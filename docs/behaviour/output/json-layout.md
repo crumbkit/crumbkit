@@ -30,8 +30,8 @@ two spaces for each level, byte for byte as serde_json's pretty formatter
 writes it. The setting applies at a terminal and through a pipe alike, so
 OUTPUT-1 holds.
 
-The setting covers the envelope, a document from
-`Document::without_envelope`, the failure document, a refusal's failure
+The setting covers the envelope, a document with
+`Envelope::Without`, the failure document, a refusal's failure
 document and the document of a [failure form](../failures/forms.md). A
 [stream](streams.md) prints one document per line in every layout, including
 a failure that ends the stream, because a reader of JSON Lines reads one line

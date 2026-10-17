@@ -32,17 +32,14 @@ use crate::{Bytes, Document, Row, Rows, Shape, Stream};
 ///   without `schema`. `schemas show` serves the entry schema of the
 ///   guide's failure form in its place when the guide has one.
 ///
-/// A document with keys from [`Document::with_keys`] has its type key in
-/// place of `schema`, holding the value from [`Document::with_type`] or the
-/// id, and its data key in place of `data`. A batch of such a document that
-/// prints its failures in input order has no `failures`. A summary that
-/// [`Document::summary_at_top`] prints at the top has its schema under
-/// `allOf` in place of the `summary` property (ADR-0059).
+/// A document whose [`Envelope`](crate::Envelope) declares keys has its
+/// type key in place of `schema`, holding the id, and its data key in
+/// place of `data`. A batch of such a document that prints its failures in
+/// input order has no `failures` (ADR-0059).
 ///
 /// A document without the envelope has the schema of its `data` at the
-/// top. Each item of a batch whose document calls
-/// [`Document::failures_in_order`] is a row or a `crumbkit/failure/v1`
-/// document, and `schemas show` serves the schema of the guide's failure
+/// top. Each item of a batch whose envelope prints its failures in input
+/// order is a row or a `crumbkit/failure/v1` document, and `schemas show` serves the schema of the guide's failure
 /// form in place of the failure document when the guide has one.
 ///
 /// The schemas of the row type, the summary type and a prose result's value
@@ -109,7 +106,7 @@ pub(crate) fn envelope<T: Rows>(document: Document<()>) -> Schema {
         Some(value) => value,
         None if T::SHAPE == Shape::Row => generator.subschema_for::<T::Row>(),
         None if T::SHAPE == Shape::Bytes => generator.subschema_for::<Bytes>(),
-        None if document.prints_failures_in_order() => json_schema!({
+        None if document.get_envelope().failures_in_order() => json_schema!({
             "description": "The rows for the ids that worked and the failure document of each id that did not, in the order the caller gave the ids, then the failure of the ids that the output budget left out.",
             "type": "array",
             "items": {
@@ -125,13 +122,19 @@ pub(crate) fn envelope<T: Rows>(document: Document<()>) -> Schema {
             "items": generator.subschema_for::<T::Row>(),
         }),
     };
-    if !document.has_envelope() {
+    let envelope = document.get_envelope();
+    if !envelope.wraps() {
         return top(document, data, meta_schema.as_deref(), &mut generator);
     }
     let mut properties = serde_json::Map::new();
-    let mut required = vec![document.type_key(), document.data_key()];
-    let mut all_of = Vec::new();
-    properties.insert(document.type_key().to_owned(), type_schema(document));
+    let mut required = vec![envelope.type_key(), envelope.data_key()];
+    properties.insert(
+        envelope.type_key().to_owned(),
+        json!({
+            "description": "The id of this document.",
+            "const": document.to_string(),
+        }),
+    );
     properties.insert(
         "dry_run".to_owned(),
         json_schema!({
@@ -140,9 +143,8 @@ pub(crate) fn envelope<T: Rows>(document: Document<()>) -> Schema {
         })
         .to_value(),
     );
-    properties.insert(document.data_key().to_owned(), data.to_value());
-    // A listing from `Document::without_total` never holds `total`.
-    if T::SHAPE == Shape::Listing && document.prints_total() {
+    properties.insert(envelope.data_key().to_owned(), data.to_value());
+    if T::SHAPE == Shape::Listing {
         properties.insert(
             "total".to_owned(),
             json!({
@@ -162,13 +164,8 @@ pub(crate) fn envelope<T: Rows>(document: Document<()>) -> Schema {
         );
         required.push("truncated");
         let summary = generator.subschema_for::<T::Summary>();
-        // A summary at the top holds its fields beside the document's
-        // keys, so the schema holds the summary's schema under `allOf`.
-        if summary.as_bool() == Some(false) {
-            // A listing without a summary has no summary property.
-        } else if document.prints_summary_at_top() {
-            all_of.push(summary.to_value());
-        } else {
+        // A listing without a summary has no summary property.
+        if summary.as_bool() != Some(false) {
             properties.insert("summary".to_owned(), summary.to_value());
             required.push("summary");
         }
@@ -176,7 +173,7 @@ pub(crate) fn envelope<T: Rows>(document: Document<()>) -> Schema {
     if T::SHAPE == Shape::Listing || T::SHAPE == Shape::List {
         properties.insert("cut".to_owned(), cut_schema());
     }
-    let in_order = document.prints_failures_in_order();
+    let in_order = envelope.failures_in_order();
     if (T::SHAPE == Shape::Batch || T::SHAPE == Shape::Prose) && !in_order {
         properties.insert(
             "failures".to_owned(),
@@ -188,30 +185,12 @@ pub(crate) fn envelope<T: Rows>(document: Document<()>) -> Schema {
         );
         required.push("failures");
     }
-    let mut body = json_schema!({
+    let body = json_schema!({
         "type": "object",
         "properties": properties,
         "required": required,
     });
-    if !all_of.is_empty() {
-        body.insert("allOf".to_owned(), Value::Array(all_of));
-    }
     top(document, body, meta_schema.as_deref(), &mut generator)
-}
-
-/// Returns the schema of the type key of `document`, whose constant is the
-/// value from [`Document::with_type`] or the document's id.
-fn type_schema(document: Document<()>) -> Value {
-    match document.type_value() {
-        Some(value) => json!({
-            "description": "The type of this document.",
-            "const": value,
-        }),
-        None => json!({
-            "description": "The id of this document.",
-            "const": document.to_string(),
-        }),
-    }
 }
 
 /// Returns the schema of `cut`, which a listing's or a list's document holds

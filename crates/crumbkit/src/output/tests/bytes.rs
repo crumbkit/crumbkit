@@ -9,6 +9,7 @@ use schemars::JsonSchema;
 use serde::Serialize;
 
 use super::Tool;
+use crate::Envelope;
 use crate::answered::answered;
 use crate::help::Guide;
 use crate::twins::assert_one_word_apart;
@@ -111,7 +112,7 @@ fn json_holds_bytes_that_are_not_utf8_as_base64_under_data() {
 #[test]
 fn json_of_a_document_without_the_envelope_is_the_object_alone() {
     let mut output = output_with(Output::DEFAULT_BUDGET, &["--json"]);
-    let finished = finish_output(&mut output, FILE.without_envelope(), raw());
+    let finished = finish_output(&mut output, FILE.envelope(Envelope::Without), raw());
 
     assert_eq!(
         String::from_utf8(finished.out).unwrap(),

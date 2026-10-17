@@ -12,6 +12,7 @@ use clap::CommandFactory as _;
 use super::{
     PLANET, PLANET_LISTING, PLANETS, Planet, Tool, finish_with, mercury, parse_against, saturn,
 };
+use crate::Envelope;
 use crate::answered::answered;
 use crate::{
     Batch, Call, Code, Document, Error, Failure, Listing, Prose, Recovery, Sink, Spelling,
@@ -60,7 +61,7 @@ impl fmt::Display for Count {
 fn json_prints_a_list_without_the_envelope_and_with_every_field() {
     let finished = finish_with(
         &["--json"],
-        PLANETS.without_envelope(),
+        PLANETS.envelope(Envelope::Without),
         vec![mercury(), saturn()],
     );
 
@@ -77,7 +78,7 @@ fn json_prints_a_list_without_the_envelope_and_with_every_field() {
 
 #[test]
 fn json_prints_a_single_row_without_the_envelope_as_an_object() {
-    let finished = finish_with(&["--json"], PLANET.without_envelope(), saturn());
+    let finished = finish_with(&["--json"], PLANET.envelope(Envelope::Without), saturn());
 
     assert_eq!(
         finished.out,
@@ -92,12 +93,12 @@ fn json_prints_a_single_row_without_the_envelope_as_an_object() {
 fn fields_select_the_fields_of_an_unwrapped_document() {
     let list = finish_with(
         &["--json", "--fields", "au,name"],
-        PLANETS.without_envelope(),
+        PLANETS.envelope(Envelope::Without),
         vec![saturn()],
     );
     let single = finish_with(
         &["--json", "--fields", "moons"],
-        PLANET.without_envelope(),
+        PLANET.envelope(Envelope::Without),
         saturn(),
     );
 
@@ -109,7 +110,11 @@ fn fields_select_the_fields_of_an_unwrapped_document() {
 fn json_prints_one_page_of_an_unwrapped_listing_without_its_total() {
     let listing = Listing::from_all(vec![mercury(), saturn()], Some(1)).described("planets");
 
-    let finished = finish_with(&["--json"], PLANET_LISTING.without_envelope(), listing);
+    let finished = finish_with(
+        &["--json"],
+        PLANET_LISTING.envelope(Envelope::Without),
+        listing,
+    );
 
     assert_eq!(
         finished.out,
@@ -123,7 +128,7 @@ fn text_output_of_an_unwrapped_listing_prints_its_footer_and_next_step_on_standa
         .described("planets")
         .next(Call::new(&["show"]).arg("names"), "shows each planet.");
 
-    let finished = finish_with(&[], PLANET_LISTING.without_envelope(), listing);
+    let finished = finish_with(&[], PLANET_LISTING.envelope(Envelope::Without), listing);
 
     let expected = "\
 Showing 1 of 2 planets. --all shows every one.
@@ -136,7 +141,7 @@ Next: tool show <NAME>... shows each planet.
 #[test]
 fn the_failures_of_an_unwrapped_batch_print_as_text_on_standard_error_with_json() {
     const SHOW: Document<Batch<Planet, Error>> =
-        Document::new("solar", "planets-show", 1, "The test rows.").without_envelope();
+        Document::new("solar", "planets-show", 1, "The test rows.").envelope(Envelope::Without);
     let batch = answered(vec![saturn()], vec![Missing("Vulcan").into()]);
 
     let finished = finish_with(&["--json"], SHOW, batch);
@@ -158,7 +163,8 @@ error: the solar system has no planet Vulcan
 #[test]
 fn json_prints_the_value_of_an_unwrapped_prose_result_and_its_failures_on_standard_error() {
     const COUNT: Document<Prose<Count>> =
-        Document::new("solar", "planets-count", 2, "The number of planets.").without_envelope();
+        Document::new("solar", "planets-count", 2, "The number of planets.")
+            .envelope(Envelope::Without);
     let prose = Prose::with_failures(Count { planets: 8 }, vec![Missing("Vulcan").into()]);
 
     let finished = finish_with(&["--json"], COUNT, prose);
@@ -183,7 +189,7 @@ fn a_failed_unwrapped_command_prints_the_failure_document_with_json() {
         &mut Sink::new(&mut out, &mut err),
         &mut output,
         Spelling::COLONS,
-        PLANETS.without_envelope(),
+        PLANETS.envelope(Envelope::Without),
         result,
     );
 

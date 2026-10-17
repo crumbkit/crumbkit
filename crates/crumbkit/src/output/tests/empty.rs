@@ -4,6 +4,7 @@
 use std::process::ExitCode;
 
 use super::{PLANET_LISTING, Planet, finish_with, mercury, saturn};
+use crate::Envelope;
 use crate::{Call, Document, Listing};
 
 /// Returns a listing with no rows out of no matching rows.
@@ -80,7 +81,7 @@ fn a_listing_without_a_total_whose_page_is_empty_but_has_more_rows_prints_the_fo
 
 #[test]
 fn the_json_of_an_unwrapped_listing_with_no_rows_is_an_empty_array_and_nothing_else() {
-    let document: Document<Listing<Planet>> = PLANET_LISTING.without_envelope();
+    let document: Document<Listing<Planet>> = PLANET_LISTING.envelope(Envelope::Without);
 
     let finished = finish_with(&["--json"], document, none().described("planets"));
 

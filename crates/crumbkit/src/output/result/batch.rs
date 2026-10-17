@@ -51,8 +51,9 @@ impl<T: Rows> Prepared<'_, T> {
         mut left_out: LeftOut<'_>,
     ) -> io::Result<(Answer, usize)> {
         let rows = self.value.rows().len();
-        let in_document =
-            self.json && (self.document.has_envelope() || self.document.prints_failures_in_order());
+        let in_document = self.json
+            && (self.document.get_envelope().wraps()
+                || self.document.get_envelope().failures_in_order());
         if self.document.answers_left_out_per_key() {
             return self.answer_each(out, err, listed, &mut left_out, in_document);
         }

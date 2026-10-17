@@ -111,7 +111,7 @@ impl Served {
                 if let Some(entry) = entry {
                     accept_field_names(entry, self.field_names);
                 }
-                let in_order = in_order_failure(value, self.document.data_key())
+                let in_order = in_order_failure(value, self.document.get_envelope().data_key())
                     .and_then(serde_json::Value::as_object_mut);
                 if let Some(in_order) = in_order {
                     accept_field_names(in_order, self.field_names);
@@ -130,10 +130,10 @@ impl Served {
                 let mut schema = build(self.document);
                 if let Some(form) = form {
                     set_entry_schema(&mut schema, form.entry_schema());
-                    if self.document.prints_failures_in_order() {
+                    if self.document.get_envelope().failures_in_order() {
                         set_in_order_failure_schema(
                             &mut schema,
-                            self.document.data_key(),
+                            self.document.get_envelope().data_key(),
                             form.schema(),
                         );
                     }
@@ -209,9 +209,9 @@ pub fn documents(command: &Command, guide: &Guide) -> Vec<Served> {
             Some(entry) => entry.commands.push(line),
             None => served.push(Served {
                 document,
-                kind: if document.has_own_keys() {
+                kind: if document.get_envelope().has_own_keys() {
                     Kind::OwnEnvelope
-                } else if document.has_envelope() {
+                } else if document.get_envelope().wraps() {
                     Kind::Output
                 } else {
                     Kind::Unwrapped
@@ -332,7 +332,7 @@ enum Kind {
     /// command prints it on failure, as a failure form's document.
     Unwrapped,
     /// A command prints the document under keys that the tool declares
-    /// with `Document::with_keys` (ADR-0059).
+    /// with [`Envelope::Keys`](crate::Envelope::Keys) (ADR-0059).
     OwnEnvelope,
     /// A file format that users write and no command prints.
     File,

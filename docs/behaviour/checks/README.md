@@ -33,7 +33,7 @@ no arguments on a command that the tool gives to `Command::defer`.
 | [`check_guide`](../../../crates/crumbkit-test/src/guide.rs) | The guide's goal headings, leaves, columns and topics match the command tree, and each visible leaf has an example that clap accepts. Each name of `Guide::field_names` is non-empty, printable, listed once and breaks the field name rule. |
 | [`check_exit_codes`](../../../crates/crumbkit-test/src/exits.rs) | The guide's declared exit codes avoid 0, 1, 2 and 126 to 255, and each code and rename is declared once. |
 | [`check_codes`](../../../crates/crumbkit-test/src/codes.rs) | No two failure codes spell the same text, and each code is printable ASCII without spaces. |
-| [`check_document_ids`](../../../crates/crumbkit-test/src/documents.rs) | Every leaf's document has an envelope, crumbkit's or one with keys from `Document::with_keys`, and the guide's failure form prints no document in the component `crumbkit`. |
+| [`check_document_ids`](../../../crates/crumbkit-test/src/documents.rs) | Every leaf's document has an envelope, crumbkit's or one with the tool's own keys, and the guide's failure form prints no document in the component `crumbkit`. |
 | [`check_mounts`](../../../crates/crumbkit-test/src/documents.rs) | Each of crumbkit's own commands that a tool mounts sits at its fixed path. |
 | [`check_schema_goldens`](../../../crates/crumbkit-test/src/schemas.rs) | The JSON Schema of each document the tool prints matches its golden file. |
 | [`check_opt_outs`](../../../crates/crumbkit-test/src/opt_outs.rs) | The report of the tool's opt-outs, budgets and customisations matches `opt-outs.txt` and `opt-outs.json`. |

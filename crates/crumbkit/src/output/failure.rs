@@ -175,9 +175,6 @@ pub struct PreparedFailure<'a> {
     /// The position of the failure's key among a batch's keys, counted from
     /// 0, and the key, or `None` for a failure that has no key.
     key: Option<(usize, &'a str)>,
-    /// Whether the failure has a key and the batch has more than one key,
-    /// the rule that decides whether a headed batch prints headers.
-    several: bool,
 }
 
 impl<'a> PreparedFailure<'a> {
@@ -262,15 +259,12 @@ impl<'a> PreparedFailure<'a> {
             fields,
             url: failure.url().map(str::to_owned),
             key: None,
-            several: false,
         }
     }
 
     /// Returns the failure with the position of its key among a batch's
-    /// keys and the key, which its document and its text print, and with
-    /// `several` set when the batch has more than one key.
-    pub(super) const fn keyed(mut self, key: Option<(usize, &'a str)>, several: bool) -> Self {
-        self.several = several && key.is_some();
+    /// keys and the key, which its document and its text print.
+    pub(super) const fn keyed(mut self, key: Option<(usize, &'a str)>) -> Self {
         self.key = key;
         self
     }

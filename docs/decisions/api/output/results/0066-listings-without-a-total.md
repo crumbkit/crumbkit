@@ -1,7 +1,7 @@
 # ADR-0066. Listings without a total
 
 - Date: 2026-10-17
-- Status: accepted
+- Status: superseded by ADR-0071
 - Supersedes: ADR-0059, which it amends
 
 ## Context

@@ -63,9 +63,9 @@ pub fn stream<R: Row>(
 /// With `--json`, each item prints as one JSON document on its own line,
 /// with the `schema` id of `document` and the item under `data`, which makes
 /// the output JSON Lines. `--fields` and `--full` shape each item as they
-/// shape a single row in [`finish_to`](crate::finish_to). A document from
-/// [`Document::without_envelope`] prints each item alone, and its failures
-/// print as text on the error writer even with `--json`.
+/// shape a single row in [`finish_to`](crate::finish_to). A document with
+/// [`Envelope::Without`](crate::Envelope::Without) prints each item alone,
+/// and its failures print as text on the error writer even with `--json`.
 ///
 /// A row type with an empty [`Row::COLUMNS`] fails to compile here, because
 /// each line would print nothing of its item (ADR-0063). A row type that
@@ -342,7 +342,7 @@ impl<R: Row, O: Write, W: Write> Streaming<'_, R, O, W> {
         }
         if self.dry_run
             && self.state == State::Open
-            && (!self.json || !self.document.has_envelope())
+            && (!self.json || !self.document.get_envelope().wraps())
         {
             self.note(DRY_RUN_LINE);
         }
@@ -405,7 +405,7 @@ impl<R: Row, O: Write, W: Write> Streaming<'_, R, O, W> {
             self.exit = self.printing.exit(failure.code());
         }
         self.failed = true;
-        if self.json && self.document.has_envelope() {
+        if self.json && self.document.get_envelope().wraps() {
             // A failure document written to a `Vec` never fails, and a closed
             // stream prints nothing more.
             if self.state == State::Open

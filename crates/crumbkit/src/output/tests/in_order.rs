@@ -7,6 +7,7 @@ use std::process::ExitCode;
 use serde_json::{Value, json};
 
 use super::{Planet, finish_with, mercury, saturn};
+use crate::Envelope;
 use crate::{Batch, Call, Code, Document, Error, Failure, Recovery};
 
 const NOT_FOUND: Code = Code::new("solar", "planets", "not_found");
@@ -34,7 +35,7 @@ impl Failure for Missing {
 }
 
 const SHOW: Document<Batch<Planet, Error>> =
-    Document::new("solar", "planets-show", 1, "The test rows.").without_envelope();
+    Document::new("solar", "planets-show", 1, "The test rows.").envelope(Envelope::Without);
 
 /// Returns the batch of `Mercury Vulcan Saturn`, whose second key failed.
 fn mercury_vulcan_saturn() -> Batch<Planet, Error> {
@@ -50,7 +51,7 @@ fn json_of_a_batch_in_input_order_prints_its_rows_and_failure_documents_in_the_o
 {
     let finished = finish_with(
         &["--json"],
-        SHOW.failures_in_order(),
+        SHOW.envelope(Envelope::WithoutInOrder),
         mercury_vulcan_saturn(),
     );
 
@@ -71,7 +72,7 @@ fn json_of_a_batch_in_input_order_prints_its_rows_and_failure_documents_in_the_o
 fn fields_select_the_fields_of_the_rows_and_leave_each_failure_document_whole() {
     let finished = finish_with(
         &["--json", "--fields", "name"],
-        SHOW.failures_in_order(),
+        SHOW.envelope(Envelope::WithoutInOrder),
         mercury_vulcan_saturn(),
     );
 
@@ -84,7 +85,11 @@ fn fields_select_the_fields_of_the_rows_and_leave_each_failure_document_whole() 
 
 #[test]
 fn the_text_of_a_batch_in_input_order_is_the_text_of_the_same_batch_without_it() {
-    let ordered = finish_with(&[], SHOW.failures_in_order(), mercury_vulcan_saturn());
+    let ordered = finish_with(
+        &[],
+        SHOW.envelope(Envelope::WithoutInOrder),
+        mercury_vulcan_saturn(),
+    );
     let apart = finish_with(&[], SHOW, mercury_vulcan_saturn());
 
     assert_eq!(

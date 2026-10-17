@@ -12,6 +12,7 @@ use serde::Serialize;
 use super::{MOUNTS, check_document_ids, check_mounts};
 use crate::testing::panic_message;
 use crate::{Allow, Rule};
+use crumbkit::Envelope;
 
 /// A row of the test tools.
 #[derive(Serialize, JsonSchema)]
@@ -88,7 +89,7 @@ fn shelf() -> Command {
 /// The document of `books list` without crumbkit's envelope, as scripts
 /// read it before the tool adopted crumbkit.
 const UNWRAPPED: Document<Vec<Book>> =
-    Document::new("shelf", "books-list", 2, "One page of the books.").without_envelope();
+    Document::new("shelf", "books-list", 2, "One page of the books.").envelope(Envelope::Without);
 
 #[test]
 fn a_document_without_the_envelope_and_without_an_opt_out_fails() {
@@ -153,38 +154,6 @@ fn a_document_whose_rows_print_whole_that_an_opt_out_names_passes() {
         Rule::RowsWhole,
         "books list",
         "Scripts read every field of each book, as shelf printed it before it adopted crumbkit.",
-    )];
-
-    check_document_ids(&shelf(), &GUIDE, ALLOW);
-}
-
-/// The listing of `books list` with the tool's own keys and without
-/// `total`, as scripts read it before the tool adopted crumbkit.
-const UNCOUNTED: Document<crumbkit::Listing<Book>> =
-    Document::new("shelf", "books-list", 1, "One page of the books.")
-        .with_keys("$type", "books")
-        .without_total();
-
-#[test]
-fn a_listing_without_a_total_and_without_an_opt_out_fails() {
-    const GUIDE: Guide = Guide::new().leaves(&[Leaf::new(&["books", "list"]).document(UNCOUNTED)]);
-
-    let message = panic_message(|| check_document_ids(&shelf(), &GUIDE, &[])).unwrap();
-
-    assert_eq!(
-        message,
-        "the command tree breaks crumbkit's document id rules:\n\
-         shelf books list: the command prints shelf/books-list/v1 without `total`, which needs an opt-out from `documents/total` with a reason"
-    );
-}
-
-#[test]
-fn a_listing_without_a_total_that_an_opt_out_names_passes() {
-    const GUIDE: Guide = Guide::new().leaves(&[Leaf::new(&["books", "list"]).document(UNCOUNTED)]);
-    const ALLOW: &[Allow] = &[Allow::new(
-        Rule::Total,
-        "books list",
-        "The source cannot count the books without reading every page.",
     )];
 
     check_document_ids(&shelf(), &GUIDE, ALLOW);

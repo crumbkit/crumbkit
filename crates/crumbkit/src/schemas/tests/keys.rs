@@ -1,57 +1,42 @@
-//! Tests for the schema of a document whose keys the tool declares with
-//! `Document::with_keys` (ADR-0059).
+//! Tests for the schema of a document whose envelope declares its own keys
+//! (ADR-0059).
 
 use schemars::{Schema, json_schema};
 use serde_json::json;
 
-use super::{Book, Shelved, args, output, tool};
+use super::{Book, args, output, tool};
+use crate::Envelope;
 use crate::form::{FailureForm, PreparedFailure};
 use crate::help::{Guide, Leaf};
 use crate::schemas::{SchemasList, document_schema, documents, list};
 use crate::{Batch, Document, Error, Listing};
 
 const KEYED: Document<Listing<Book>> =
-    Document::new("shelf", "books-list", 4, "One page of the books.")
-        .with_keys("$type", "entries")
-        .with_type("shelf/get-books/v1");
-const KEYED_SUMMARY: Document<Listing<Book, Shelved>> =
-    Document::new("shelf", "books-list", 5, "One page of the books.")
-        .with_keys("$type", "entries")
-        .summary_at_top();
+    Document::new("shelf", "books-list", 4, "One page of the books.").envelope(Envelope::Keys {
+        type_key: "$type",
+        data_key: "entries",
+    });
 const KEYED_IN_ORDER: Document<Batch<Book, Error>> =
-    Document::new("shelf", "books-show", 3, "The books for the ids given.")
-        .with_keys("$type", "answers")
-        .failures_in_order();
+    Document::new("shelf", "books-show", 3, "The books for the ids given.").envelope(
+        Envelope::KeysInOrder {
+            type_key: "$type",
+            data_key: "answers",
+        },
+    );
 
 #[test]
-fn a_document_with_keys_names_its_type_and_data_under_the_declared_keys() {
+fn a_document_with_keys_holds_its_id_and_data_under_the_declared_keys() {
     let schema = document_schema(KEYED).to_value();
 
-    assert_eq!(schema["properties"]["$type"]["const"], "shelf/get-books/v1");
+    assert_eq!(
+        schema["properties"]["$type"]["const"],
+        "shelf/books-list/v4"
+    );
     assert_eq!(schema["properties"]["entries"]["type"], "array");
     assert!(schema["properties"].get("schema").is_none());
     assert!(schema["properties"].get("data").is_none());
     assert!(schema["properties"].get("total").is_some());
     assert_eq!(schema["required"], json!(["$type", "entries", "truncated"]));
-}
-
-#[test]
-fn the_schema_of_a_listing_without_a_total_has_no_total_property() {
-    let schema = document_schema(KEYED.without_total()).to_value();
-
-    assert!(schema["properties"].get("total").is_none());
-    assert!(schema["properties"].get("truncated").is_some());
-    assert_eq!(schema["required"], json!(["$type", "entries", "truncated"]));
-}
-
-#[test]
-fn a_document_with_keys_and_no_type_value_holds_its_id_under_the_type_key() {
-    let schema = document_schema(KEYED_IN_ORDER).to_value();
-
-    assert_eq!(
-        schema["properties"]["$type"]["const"],
-        "shelf/books-show/v3"
-    );
 }
 
 #[test]
@@ -68,15 +53,6 @@ fn a_batch_in_input_order_with_keys_holds_rows_and_failures_under_its_data_key()
     );
     assert!(schema["properties"].get("failures").is_none());
     assert_eq!(schema["required"], json!(["$type", "answers"]));
-}
-
-#[test]
-fn a_summary_at_the_top_puts_the_summary_schema_under_all_of() {
-    let schema = document_schema(KEYED_SUMMARY).to_value();
-
-    assert!(schema["properties"].get("summary").is_none());
-    assert_eq!(schema["allOf"], json!([{ "$ref": "#/$defs/Shelved" }]));
-    assert_eq!(schema["required"], json!(["$type", "entries", "truncated"]));
 }
 
 /// A failure form whose document is `{"error": ...}`.

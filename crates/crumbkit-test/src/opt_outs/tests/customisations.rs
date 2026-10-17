@@ -6,7 +6,7 @@ use crumbkit::codes::CLI_USAGE;
 use crumbkit::form::{FailureForm, PreparedFailure};
 use crumbkit::help::{Exit, Guide, Leaf, RefusalContext, Rename};
 use crumbkit::schemas::SCHEMAS_LIST;
-use crumbkit::{Batch, Call, Code, Document, KeyOrder, Listing, Prose};
+use crumbkit::{Batch, Call, Code, Document, KeyOrder, Prose};
 use schemars::{Schema, json_schema};
 use serde_json::{Value, json};
 use snapbox::assert::Action;
@@ -14,6 +14,7 @@ use snapbox::assert::Action;
 use super::{read, run_guided};
 use crate::opt_outs::customisations::customisations;
 use crate::temp::TempDir;
+use crumbkit::Envelope;
 
 /// A failure form whose document is `shelf/error/v2`.
 struct ErrorForm;
@@ -226,9 +227,7 @@ impl crumbkit::Row for Book {
 #[test]
 fn a_batch_that_prints_its_failures_in_input_order_is_a_failures_in_order_customisation() {
     const BOOKS_SHOW: Document<Batch<Book, crumbkit::Error>> =
-        Document::new("shelf", "books-show", 1, "The books.")
-            .without_envelope()
-            .failures_in_order();
+        Document::new("shelf", "books-show", 1, "The books.").envelope(Envelope::WithoutInOrder);
     const GUIDE: Guide = Guide::new().leaves(&[Leaf::new(&["books", "show"]).document(BOOKS_SHOW)]);
 
     let list = customisations(&Command::new("shelf"), &GUIDE);
@@ -247,10 +246,10 @@ fn a_batch_that_prints_its_failures_in_input_order_is_a_failures_in_order_custom
 #[test]
 fn a_document_with_keys_is_an_envelope_keys_customisation_before_its_failures_in_order() {
     const BOOKS_SHOW: Document<Batch<Book, crumbkit::Error>> =
-        Document::new("shelf", "books-show", 1, "The books.")
-            .with_keys("$type", "answers")
-            .with_type("shelf/get-books/v1")
-            .failures_in_order();
+        Document::new("shelf", "books-show", 1, "The books.").envelope(Envelope::KeysInOrder {
+            type_key: "$type",
+            data_key: "answers",
+        });
     const GUIDE: Guide = Guide::new().leaves(&[Leaf::new(&["books", "show"]).document(BOOKS_SHOW)]);
 
     let list = customisations(&Command::new("shelf"), &GUIDE);
@@ -262,7 +261,7 @@ fn a_document_with_keys_is_an_envelope_keys_customisation_before_its_failures_in
             {
                 "declaration": "envelope-keys",
                 "applies_to": "shelf books show",
-                "declares": "With --json, the command prints shelf/get-books/v1 under $type and its result under answers, in place of schema and data.",
+                "declares": "With --json, the command prints shelf/books-show/v1 under $type and its result under answers, in place of schema and data.",
             },
             {
                 "declaration": "failures-in-order",
@@ -278,8 +277,7 @@ fn a_batch_that_answers_each_left_out_key_is_a_left_out_per_key_customisation_af
  {
     const BOOKS_SHOW: Document<Batch<Book, crumbkit::Error>> =
         Document::new("shelf", "books-show", 1, "The books.")
-            .without_envelope()
-            .failures_in_order()
+            .envelope(Envelope::WithoutInOrder)
             .left_out_per_key();
     const GUIDE: Guide = Guide::new().leaves(&[Leaf::new(&["books", "show"]).document(BOOKS_SHOW)]);
 
@@ -298,22 +296,6 @@ fn a_batch_that_answers_each_left_out_key_is_a_left_out_per_key_customisation_af
             "applies_to": "shelf books show",
             "declares": "When the output budget leaves out answers, the command prints one failure for each answer left out, at its key's position, in place of one failure that names them all. The JSON document can pass the budget by the size of those failures.",
         })
-    );
-}
-
-#[test]
-fn a_summary_at_the_top_is_named_in_the_envelope_keys_customisation() {
-    const BOOKS_LIST: Document<Listing<Book, u32>> =
-        Document::new("shelf", "books-list", 1, "The books.")
-            .with_keys("kind", "entries")
-            .summary_at_top();
-    const GUIDE: Guide = Guide::new().leaves(&[Leaf::new(&["books", "list"]).document(BOOKS_LIST)]);
-
-    let list = customisations(&Command::new("shelf"), &GUIDE);
-
-    assert_eq!(
-        list[0].declares,
-        "With --json, the command prints shelf/books-list/v1 under kind and its result under entries, in place of schema and data, and the summary's fields at the top in place of summary."
     );
 }
 

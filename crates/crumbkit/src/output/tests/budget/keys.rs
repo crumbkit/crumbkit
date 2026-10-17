@@ -4,11 +4,15 @@
 use std::process::ExitCode;
 
 use super::{BUDGET, STAR_BATCH, STAR_LISTING, finish_small, keyed, parsed, stars};
+use crate::Envelope;
 use crate::{Error, Listing};
 
 #[test]
 fn a_listing_with_its_own_keys_holds_cut_and_prints_no_cut_line() {
-    let document = STAR_LISTING.with_keys("$type", "entries");
+    let document = STAR_LISTING.envelope(Envelope::Keys {
+        type_key: "$type",
+        data_key: "entries",
+    });
     let finished = finish_small(&["--json"], document, Listing::new(stars(20), 20));
 
     assert_eq!(finished.code, ExitCode::SUCCESS);
@@ -23,7 +27,10 @@ fn a_listing_with_its_own_keys_holds_cut_and_prints_no_cut_line() {
 #[test]
 fn a_batch_in_input_order_with_its_own_keys_ends_its_answers_with_the_failure_of_the_answers_left_out()
  {
-    let document = STAR_BATCH.with_keys("$type", "answers").failures_in_order();
+    let document = STAR_BATCH.envelope(Envelope::KeysInOrder {
+        type_key: "$type",
+        data_key: "answers",
+    });
     let finished = finish_small(&["--json"], document, keyed(stars(20), Vec::<Error>::new()));
 
     assert_eq!(finished.code, ExitCode::FAILURE);

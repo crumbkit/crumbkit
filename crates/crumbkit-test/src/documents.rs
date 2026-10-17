@@ -30,15 +30,13 @@ pub(crate) const MOUNTS: [(&str, &[&str]); 6] = [
 /// does, naming every problem it finds.
 ///
 /// The check fails on a leaf whose document has no envelope, because
-/// the tool built it with `Document::without_envelope`, unless an [`Allow`]
-/// of [`Rule::Envelope`] with a stated reason covers the command, so
-/// [`check_opt_outs`](crate::check_opt_outs) reports what printing the
-/// document unwrapped costs an agent ([opt-outs docs]). The check fails in
-/// the same way on a leaf whose listing leaves `total` out of its JSON,
-/// because the tool built its document with `Document::without_total`,
-/// unless an [`Allow`] of [`Rule::Total`] covers the command. A command
-/// that prints such a document without a leaf that declares it escapes the
-/// check, and review covers it.
+/// the tool chose [`Envelope::Without`](crumbkit::Envelope::Without) or
+/// [`Envelope::WithoutInOrder`](crumbkit::Envelope::WithoutInOrder), unless
+/// an [`Allow`] of [`Rule::Envelope`] with a stated reason covers the
+/// command, so [`check_opt_outs`](crate::check_opt_outs) reports what
+/// printing the document unwrapped costs an agent ([opt-outs docs]). A
+/// command that prints such a document without a leaf that declares it
+/// escapes the check, and review covers it.
 ///
 /// The check fails on a leaf whose row type sets `Row::WHOLE`, so `--json`
 /// prints every field of each row without `--full`, unless an [`Allow`] of
@@ -75,7 +73,7 @@ pub(crate) const MOUNTS: [(&str, &[&str]); 6] = [
 ///
 /// [opt-outs docs]: https://github.com/crumbkit/crumbkit/blob/main/docs/behaviour/adoption/opt-outs.md
 pub fn check_document_ids(command: &Command, guide: &Guide, allow: &[Allow]) {
-    let mut allowances = Allowances::new(allow, &[Rule::Envelope, Rule::RowsWhole, Rule::Total]);
+    let mut allowances = Allowances::new(allow, &[Rule::Envelope, Rule::RowsWhole]);
     let mut problems = Vec::new();
     if let Some(form) = guide.get_failure_form() {
         let document = form.document();
@@ -90,7 +88,9 @@ pub fn check_document_ids(command: &Command, guide: &Guide, allow: &[Allow]) {
         let Some(document) = leaf.get_document() else {
             continue;
         };
-        if !document.has_envelope() && !allowances.excuses(Rule::Envelope, &leaf.path().join(" ")) {
+        if !document.get_envelope().wraps()
+            && !allowances.excuses(Rule::Envelope, &leaf.path().join(" "))
+        {
             problems.push(format!(
                 "{}: the command prints {document} without crumbkit's envelope, which needs an opt-out from `{}` with a reason",
                 command_line(command, leaf.path()),
@@ -102,13 +102,6 @@ pub fn check_document_ids(command: &Command, guide: &Guide, allow: &[Allow]) {
                 "{}: the command prints the rows of {document} whole, because its row type sets `Row::WHOLE`, which needs an opt-out from `{}` with a reason",
                 command_line(command, leaf.path()),
                 Rule::RowsWhole.id()
-            ));
-        }
-        if !document.prints_total() && !allowances.excuses(Rule::Total, &leaf.path().join(" ")) {
-            problems.push(format!(
-                "{}: the command prints {document} without `total`, which needs an opt-out from `{}` with a reason",
-                command_line(command, leaf.path()),
-                Rule::Total.id()
             ));
         }
     }

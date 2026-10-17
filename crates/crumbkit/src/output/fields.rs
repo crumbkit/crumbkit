@@ -13,7 +13,7 @@ use crate::{Document, Row, Rows, Shape};
 /// [`refusal`] describes.
 pub(super) fn flags_refusal<T: Rows>(output: &Output, document: Document<T>) -> Option<Refusal> {
     let shape = Some(T::SHAPE);
-    let (envelope, headed) = (document.has_envelope(), document.is_headed());
+    let (envelope, headed) = (document.get_envelope().wraps(), document.is_headed());
     refusal::<T::Row>(shape, envelope, headed, &output.fields, output.typed())
 }
 
