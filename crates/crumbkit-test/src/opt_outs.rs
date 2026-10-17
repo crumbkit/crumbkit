@@ -5,8 +5,8 @@ use std::fmt::Write as _;
 use std::path::Path;
 
 use clap::Command;
-use crumbkit::Output;
 use crumbkit::help::Guide;
+use crumbkit::{JsonLayout, Output};
 use serde::Serialize;
 use snapbox::Assert;
 use snapbox::assert::DEFAULT_ACTION_ENV;
@@ -176,7 +176,7 @@ fn check(
         );
         entries.push(Entry::of(departure, cost));
     }
-    if let Some((_, reason)) = guide.get_json_layout() {
+    if let JsonLayout::Pretty { reason } = guide.get_json().layout {
         entries.push(Entry {
             rule: "json-layout/pretty",
             applies_to: format!("every run of {}", command.get_name()),

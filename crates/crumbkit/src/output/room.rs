@@ -11,7 +11,7 @@ use serde_json::Value;
 use super::budget::{self, Counter};
 use super::envelope::{Extras, Failures, Selected, write_document};
 use super::table::cell;
-use super::{JsonLayout, JsonStyle, Output, columns, layout, result};
+use super::{JsonLayout, JsonStyle, Output, columns, layout, lines, result};
 use crate::{AsFailure, Batch, Document, Row, Rows};
 
 /// The bytes that `finish` prints for the rows of a batch, which
@@ -20,9 +20,8 @@ use crate::{AsFailure, Batch, Document, Row, Rows};
 /// [`Room::has_room`] measures each row that the handler pushed since the
 /// last call once, in the format that the run prints: the JSON document in
 /// the guide's layout with the columns that the view flags choose, the text
-/// table with each column as wide as its widest cell, one line of compact
-/// JSON for each row of a row type that sets `Row::WHOLE` and names no
-/// columns, or the bytes and the `==> KEY <==` headers of a headed batch. The count is the bytes that
+/// table with each column as wide as its widest cell, each row's own line
+/// for a row type that declares `Row::LINE`, or the bytes and the `==> KEY <==` headers of a headed batch. The count is the bytes that
 /// `finish` prints for those rows when the batch has no failure, because
 /// each failure only adds bytes. A handler that stops when `has_room`
 /// returns false therefore never stops before the row at which `finish`
@@ -76,7 +75,7 @@ enum Form {
     /// The JSON document, whose rows sit `depth` levels deep.
     Json {
         /// The guide's layout, or `None` for one line.
-        layout: Option<JsonLayout>,
+        layout: JsonLayout,
         /// How deep each row sits in the document.
         depth: usize,
         /// The bytes of the document without rows.
@@ -95,8 +94,8 @@ enum Form {
         /// column: the text of their cells and their line feeds.
         text: usize,
     },
-    /// The text of a row type that prints each row as one line of compact
-    /// JSON, with the bytes of the lines measured.
+    /// The text of a row type that prints each row's own line (ADR-0064),
+    /// with the bytes of the lines measured.
     Lines(usize),
     /// The text of a headed batch.
     Headed {
@@ -142,7 +141,7 @@ impl Output {
                 content: 0,
                 printed: 0,
             }
-        } else if columns::json_lines::<R>() {
+        } else if lines::chosen::<R>(self) {
             Form::Lines(0)
         } else {
             let header: Vec<Cow<'_, str>> = columns
@@ -192,7 +191,10 @@ impl<T: Rows> Room<T> {
                     *rows = rows.saturating_add(bytes.unwrap_or(0));
                 }
                 Form::Lines(bytes) => {
-                    let line = serde_json::to_vec(row).map_or(0, |line| line.len() + 1);
+                    // The order of the keys changes no byte count, so a
+                    // line measured with the keys as serialized has the
+                    // bytes of the same line with the keys sorted.
+                    let line = lines::line(row, false).map_or(0, |line| line.len());
                     *bytes = bytes.saturating_add(line);
                 }
                 Form::Table { .. } => {
@@ -314,11 +316,14 @@ impl Form {
 fn empty_document<T>(
     document: Document<T>,
     dry_run: bool,
-    layout: Option<JsonLayout>,
+    layout: JsonLayout,
 ) -> io::Result<usize> {
     let rows: [(); 0] = [];
     let in_order = document.get_envelope().failures_in_order();
-    let style = JsonStyle { layout, keys: None };
+    let style = JsonStyle {
+        layout,
+        sorted_keys: false,
+    };
     budget::measure(|counter: &mut Counter| {
         if !document.get_envelope().wraps() {
             return layout::write(counter, &rows, style);
@@ -337,7 +342,7 @@ fn empty_document<T>(
 fn element<R: Serialize>(
     row: &R,
     columns: &[&str],
-    layout: Option<JsonLayout>,
+    layout: JsonLayout,
     depth: usize,
 ) -> io::Result<usize> {
     if columns.is_empty() {

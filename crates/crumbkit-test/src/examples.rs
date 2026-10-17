@@ -193,7 +193,7 @@ fn check(
     let overwrite = assert.selected_action() == Action::Overwrite;
     let dir = Path::new(examples.goldens());
     let tool = command.get_name();
-    let layout = guide.get_json_layout().map(|(layout, _)| layout);
+    let layout = guide.get_json().layout;
     let mut problems = Vec::new();
     // The problems of runs that fail, which the message lists under a
     // heading of their own, because the tool's binary breaks them and the

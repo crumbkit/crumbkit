@@ -4,7 +4,7 @@
 
 use clap::Args as _;
 use crumbkit::help::{Effects, Example, Guide};
-use crumbkit::{Document, Output, Prose};
+use crumbkit::{Batch, Document, Output, Prose};
 
 use super::{check_guide, leaf, panic_message, shelf};
 
@@ -91,7 +91,7 @@ impl crumbkit::Headed for NestedFile {
 fn check_guide_fails_on_a_headed_leaf_whose_row_does_not_flatten_its_bytes() {
     const GUIDE: Guide = Guide::new().leaves(&[
         leaf(&["books", "list"]).document(
-            Document::<crumbkit::Batch<NestedFile, crumbkit::Error>>::new(
+            Document::<Batch<NestedFile, crumbkit::Error>>::new(
                 "shelf",
                 "books-files",
                 1,
@@ -134,7 +134,7 @@ impl crumbkit::Headed for BareFile {
 
 /// The batch document of `shelf books list` in these tests, whose row type
 /// has no columns.
-const BARE_FILES: Document<crumbkit::Batch<BareFile, crumbkit::Error>> =
+const BARE_FILES: Document<Batch<BareFile, crumbkit::Error>> =
     Document::new("shelf", "books-files", 1, "The books' files.");
 
 #[test]
@@ -170,7 +170,34 @@ struct Answer(u32, String);
 
 impl crumbkit::Row for Answer {
     const COLUMNS: &'static [&'static str] = &[];
+    const LINE: Option<&'static str> = Some("<COUNT> <NAME>");
     const WHOLE: bool = true;
+}
+
+/// A query answer like [`Answer`] that declares no text line of its own.
+#[derive(serde::Serialize, schemars::JsonSchema)]
+struct UnlinedAnswer(u32, String);
+
+impl crumbkit::Row for UnlinedAnswer {
+    const COLUMNS: &'static [&'static str] = &[];
+    const WHOLE: bool = true;
+}
+
+#[test]
+fn check_guide_fails_on_a_batch_whose_whole_row_type_has_no_columns_and_no_line() {
+    const ANSWERS: Document<Batch<UnlinedAnswer, crumbkit::Error>> =
+        Document::new("shelf", "answers", 1, "The answers.");
+    const GUIDE: Guide = Guide::new().leaves(&[
+        leaf(&["books", "list"]).document(ANSWERS),
+        leaf(&["books", "show"]),
+        leaf(&["authors", "list"]),
+    ]);
+
+    assert_eq!(
+        panic_message(|| check_guide(&shelf(), &GUIDE)).unwrap(),
+        "the command tree breaks crumbkit's guide rules:\n\
+         shelf books list: the row type sets Row::WHOLE and has no COLUMNS and no LINE, so its text has no form for a row; declare the row's own text line in `Row::LINE`"
+    );
 }
 
 #[test]
@@ -195,6 +222,7 @@ struct WholeBook {
 
 impl crumbkit::Row for WholeBook {
     const COLUMNS: &'static [&'static str] = &[];
+    const LINE: Option<&'static str> = Some("<TITLE>");
     const WHOLE: bool = true;
 }
 
@@ -210,6 +238,6 @@ fn check_guide_fails_on_a_leaf_whose_whole_row_type_has_fields_and_no_columns() 
     assert_eq!(
         panic_message(|| check_guide(&shelf(), &GUIDE)).unwrap(),
         "the command tree breaks crumbkit's guide rules:\n\
-         shelf books list: the row type has fields and no COLUMNS, so its text prints each row as a line of JSON where a table could show it; name the fields that identify a row in `Row::COLUMNS`"
+         shelf books list: the row type has fields and no COLUMNS, so its text prints each row's own line where a table could show its fields; name the fields that identify a row in `Row::COLUMNS`"
     );
 }

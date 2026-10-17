@@ -309,9 +309,12 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit-test: the twin, example and recovery checks read each entry of a
   batch's `failures` through the guide's `FailureForm::read`, and read an
   entry that the form cannot read in crumbkit's shape ([behaviour/failures/forms]).
-- crumbkit: `Guide::json_layout(JsonLayout::Pretty, reason)` prints every
+- crumbkit: `Guide::json(JsonStyle::new().pretty(reason))` prints every
   whole JSON document indented by two spaces, and a stream keeps one
   document per line ([behaviour/output/json-layout]).
+- crumbkit: `Guide::json(JsonStyle::new().sorted())` prints the keys of
+  every JSON object in sorted order, in documents, stream lines, failures
+  and the JSON lines of text output ([behaviour/output/json-layout]).
 - crumbkit-test: [`check_opt_outs`] lists a guide's JSON layout as
   `json-layout/pretty`, with its reason and cost ([behaviour/output/json-layout]).
 - crumbkit: [`Listing::uncounted`] and [`Page::uncounted`] build a listing
@@ -542,12 +545,6 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   of each row with `--json`, without `--full`. `--full` is refused for it,
   and `--fields` prints `null` for a field that a row leaves out
   ([behaviour/output]).
-- crumbkit: a row type that sets `Row::WHOLE` and names no columns prints
-  each row as one line of JSON in text, and `--fields` and `--long` are
-  refused for it ([behaviour/output]).
-- crumbkit: the help of a leaf whose rows print as JSON lines ends with an
-  `Output:` line, `commands list` gives it the form `json-rows`, and
-  crumbkit-markdown's reference prints the line ([behaviour/help/commands-list]).
 - crumbkit-test: [`check_guide`] fails a row type that sets `Row::WHOLE`,
   names no columns and has fields, and [`check_document_ids`] requires an
   opt-out from `documents/rows-whole` for a leaf whose row type sets
@@ -566,16 +563,16 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit: `commands list` gives each command a `line` field, and
   crumbkit-markdown's reference prints the `Text:` line as help does
   ([behaviour/help/commands-list]).
-- crumbkit: a row type that sets `Row::WHOLE`, names no columns and
-  declares `Row::LINE` prints each row's own line in text, and prints a row
-  as JSON only when its `text_line` returns `None` ([behaviour/output]).
+- crumbkit: a row type that sets `Row::WHOLE` and declares `Row::LINE` may
+  name no columns. Its text prints each row's own line, and `--fields` and
+  `--long` are refused for it ([behaviour/output]).
+- crumbkit: `finish` and `stream` fail to compile for a whole row type
+  without columns and without a `LINE`, and [`check_guide`] fails a batch
+  of it ([behaviour/output]).
 - crumbkit-test: [`check_guide`] fails a `Row::LINE` that is not one
   non-empty line or that belongs to a headed leaf, and [`check_opt_outs`]
   lists a `text-line` customisation ([behaviour/help/examples]).
 
-- crumbkit: `Guide::json_keys(KeyOrder::Sorted)` prints the keys of every
-  JSON object in sorted order, in documents, stream lines, failures and the
-  JSON lines of text output ([behaviour/output/json-layout]).
 - crumbkit-test: [`check_opt_outs`] lists sorted JSON keys as the
   `json-keys` customisation of every run
   ([behaviour/adoption/declarations]).

@@ -42,12 +42,6 @@ pub const BYTES_LINE: &str =
 /// print after the effects line, in help's wording (ADR-0062).
 pub const HEADED_LINE: &str = "Output: each answer's bytes unchanged, under a ==> KEY <== header when there are several keys, and --json prints the bytes as text or base64.";
 
-/// The line that the `-h` and `--help` of a leaf whose row type sets
-/// [`Row::WHOLE`] and names no columns print after the effects line, in
-/// help's wording (ADR-0065).
-pub const WHOLE_LINE: &str =
-    "Output: one line of JSON for each row, and --json prints the rows in one document.";
-
 /// A command without subcommands whose help shows examples, and whose
 /// `--help` describes the columns of the result it prints.
 ///
@@ -243,9 +237,8 @@ impl Leaf {
     /// Returns the `Output:` line that the leaf's `-h` and `--help` print
     /// after the effects line: [`STREAM_LINE`] for a stream,
     /// [`BYTES_LINE`] for a document that holds [`Bytes`](crate::Bytes),
-    /// [`HEADED_LINE`] for a headed document, [`WHOLE_LINE`] for a document
-    /// whose text prints each row as one line of JSON, and `None` for any
-    /// other leaf.
+    /// [`HEADED_LINE`] for a headed document, and `None` for any other
+    /// leaf.
     #[must_use]
     pub const fn output_line(&self) -> Option<&'static str> {
         match self.columns {
@@ -255,7 +248,6 @@ impl Leaf {
                 ..
             }) => Some(BYTES_LINE),
             Some(columns) if columns.document.is_headed() => Some(HEADED_LINE),
-            _ if self.prints_json_lines() => Some(WHOLE_LINE),
             _ => None,
         }
     }
@@ -269,21 +261,6 @@ impl Leaf {
     pub const fn rows_whole(&self) -> bool {
         match self.columns {
             Some(columns) => columns.whole,
-            None => false,
-        }
-    }
-
-    /// Reports whether the text of the leaf's document prints each row as
-    /// one line of JSON, because its row type sets [`Row::WHOLE`], names
-    /// no columns and declares no [`Row::LINE`] (ADR-0064).
-    pub(crate) const fn prints_json_lines(&self) -> bool {
-        match self.columns {
-            Some(columns) => {
-                columns.whole
-                    && columns.line.is_none()
-                    && columns.compact.is_empty()
-                    && columns.long.is_empty()
-            }
             None => false,
         }
     }

@@ -58,7 +58,7 @@ Why: ADR-0056.
 - `Guide::field_names` lists failure field names that come from another
   system and break crumbkit's name rule, such as `requestId`
   ([fields](../failures/README.md#fields)).
-- `Guide::json_keys(KeyOrder::Sorted)` prints the keys of every JSON object
+- `Guide::json(JsonStyle::new().sorted())` prints the keys of every JSON object
   in sorted order ([JSON layout](../output/json-layout.md#key-order)).
 
 A tool that declares nothing prints crumbkit's codes and exits with
@@ -160,4 +160,4 @@ as a `customisations` array beside `data`. The report does not list the
 completion variable, because `complete_with` sets it for the process and the
 guide does not hold it.
 
-Why: ADR-0056, ADR-0060, ADR-0061, ADR-0036, ADR-0035, ADR-0059, ADR-0064, ADR-0067, ADR-0071.
+Why: ADR-0056, ADR-0060, ADR-0061, ADR-0036, ADR-0035, ADR-0059, ADR-0064, ADR-0067, ADR-0071, ADR-0073.

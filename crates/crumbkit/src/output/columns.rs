@@ -9,16 +9,16 @@
 //! every field. The compiler cannot tell a headed batch from any other
 //! batch, so a batch passes here and crumbkit-test's `check_guide` fails a
 //! leaf whose batch is not headed and whose row type has no columns. A row
-//! type that sets `Row::WHOLE` is also exempt, because its JSON holds every
-//! field and its text prints each row as one line of JSON when it has no
-//! columns (ADR-0065).
+//! type that sets `Row::WHOLE` and declares `Row::LINE` is also exempt,
+//! because its JSON holds every field and its text prints each row's own
+//! line (ADR-0065, ADR-0072).
 
-use std::io::{self, Write};
+use std::io;
 
 use serde_json::Value;
 
-use super::{Output, layout};
-use crate::{Document, KeyOrder, Row, Rows, Shape};
+use super::Output;
+use crate::{Document, Row, Rows, Shape};
 
 /// Fails to compile when `T` is a single row, a `Vec` or a `Listing` whose
 /// row type's [`Row::COLUMNS`] is empty. `finish_to` calls it, so a tool
@@ -36,13 +36,33 @@ use crate::{Document, KeyOrder, Row, Rows, Shape};
 /// let result: Result<Listing<Entry>, Error> = Ok(Listing::new(vec![Entry { position: 1 }], 1));
 /// crumbkit::finish(&mut Output::default(), Spelling::COLONS, ENTRIES, result);
 /// ```
+///
+/// A row type that sets [`Row::WHOLE`] may name no column only when it
+/// also declares [`Row::LINE`], so its text prints each row's own line
+/// (ADR-0072). Without a `LINE`, it does not build either:
+///
+/// ```compile_fail
+/// #[derive(serde::Serialize, schemars::JsonSchema)]
+/// struct Answer(u32, u32);
+/// impl crumbkit::Row for Answer {
+///     const COLUMNS: &'static [&'static str] = &[];
+///     const WHOLE: bool = true;
+/// }
+/// use crumbkit::{Document, Error, Output, Spelling};
+///
+/// const ANSWERS: Document<Vec<Answer>> =
+///     Document::new("reading", "answers", 1, "The answers of a query.");
+///
+/// let result: Result<Vec<Answer>, Error> = Ok(vec![Answer(1, 2)]);
+/// crumbkit::finish(&mut Output::default(), Spelling::COLONS, ANSWERS, result);
+/// ```
 pub(super) const fn require<T: Rows>() {
     const {
         assert!(
             !<T::Row as Row>::COLUMNS.is_empty()
-                || <T::Row as Row>::WHOLE
+                || (<T::Row as Row>::WHOLE && <T::Row as Row>::LINE.is_some())
                 || !matches!(T::SHAPE, Shape::Row | Shape::List | Shape::Listing),
-            "a row type that finish prints needs at least one name in Row::COLUMNS, because the table and the JSON without --full print only those fields"
+            "a row type that finish prints needs at least one name in Row::COLUMNS, because the table and the JSON without --full print only those fields, or needs Row::WHOLE with a Row::LINE"
         );
     }
 }
@@ -62,11 +82,29 @@ pub(super) const fn require<T: Rows>() {
 ///
 /// let _ = crumbkit::stream(&mut Output::default(), Spelling::COLONS, ENTRIES_STREAM);
 /// ```
+///
+/// A stream of a row type that sets [`Row::WHOLE`], names no column and
+/// declares no [`Row::LINE`] does not build either (ADR-0072):
+///
+/// ```compile_fail
+/// #[derive(serde::Serialize, schemars::JsonSchema)]
+/// struct Answer(u32, u32);
+/// impl crumbkit::Row for Answer {
+///     const COLUMNS: &'static [&'static str] = &[];
+///     const WHOLE: bool = true;
+/// }
+/// use crumbkit::{Document, Output, Spelling, Stream};
+///
+/// const ANSWERS: Document<Stream<Answer>> =
+///     Document::new("reading", "answers-stream", 1, "Each answer of a query.");
+///
+/// let _ = crumbkit::stream(&mut Output::default(), Spelling::COLONS, ANSWERS);
+/// ```
 pub(super) const fn require_for_stream<R: Row>() {
     const {
         assert!(
-            !R::COLUMNS.is_empty() || R::WHOLE,
-            "a row type that a stream prints needs at least one name in Row::COLUMNS, because each line without --full prints only those fields"
+            !R::COLUMNS.is_empty() || (R::WHOLE && R::LINE.is_some()),
+            "a row type that a stream prints needs at least one name in Row::COLUMNS, because each line without --full prints only those fields, or needs Row::WHOLE with a Row::LINE"
         );
     }
 }
@@ -115,24 +153,4 @@ pub(super) fn values<T: Rows>(columns: &[&str], value: &T) -> io::Result<Vec<Val
         .map(serde_json::to_value)
         .collect::<Result<Vec<Value>, _>>()?;
     Ok(values)
-}
-
-/// Returns whether the text of rows of type `R` prints each row as one line
-/// of compact JSON in place of a table, because `R` sets `Row::WHOLE`,
-/// names no columns and declares no `Row::LINE` (ADR-0065). A row type with
-/// a `LINE` prints each row's own line in text, and only a row whose
-/// `text_line` returns `None` prints as JSON (ADR-0064).
-pub(super) const fn json_lines<R: Row>() -> bool {
-    R::WHOLE && R::LINE.is_none() && R::COLUMNS.is_empty() && R::LONG_COLUMNS.is_empty()
-}
-
-/// Writes `row` to `out` as one line of compact JSON, with the keys of each
-/// object in `keys` order.
-pub(super) fn write_json_line<R: Row>(
-    out: &mut impl Write,
-    row: &R,
-    keys: Option<KeyOrder>,
-) -> io::Result<()> {
-    layout::serialize(&mut *out, row, keys)?;
-    out.write_all(b"\n")
 }

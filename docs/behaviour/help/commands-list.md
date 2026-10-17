@@ -49,12 +49,10 @@ lacks, so a program reads every row the same way.
   ([effects](../effects/README.md#declaring-effects)).
 - `writes` holds the write guards, or `null` for a read-only command or one
   without guards ([write guards](../effects/write-guards.md)).
-- `form` is `document`, `stream`, `bytes`, `headed` or `json-rows` for a
-  leaf with a document and `null` for one without
-  ([streams](../output/streams.md), [bytes](../output/shapes/README.md#bytes),
-  [headed bytes](../output/shapes/README.md#headed-bytes),
-  [rows printed whole](../output/shapes/README.md#rows-printed-whole)). A leaf has
-  the form `json-rows` when its text prints each row as one line of JSON.
+- `form` is `document`, `stream`, `bytes` or `headed` for a leaf with a
+  document and `null` for one without ([streams](../output/streams.md),
+  [bytes](../output/shapes/README.md#bytes),
+  [headed bytes](../output/shapes/README.md#headed-bytes)).
 - `line` holds the form of each row's own text line, such as
   `<NAME>: <ABOUT>`, or `null` when the leaf's rows print a table or the
   leaf has no document

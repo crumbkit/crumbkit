@@ -1,6 +1,6 @@
 //! Tests for how `finish_to` prints the rows of a row type that sets
-//! `Row::WHOLE`: every field with `--json`, its table in text when it has
-//! columns, and one line of JSON for each row when it has none (ADR-0065).
+//! `Row::WHOLE`: every field with `--json`, and its table in text when it
+//! has columns (ADR-0065).
 
 use std::process::ExitCode;
 
@@ -113,6 +113,7 @@ struct Answer(&'static str, u32);
 
 impl Row for Answer {
     const COLUMNS: &'static [&'static str] = &[];
+    const LINE: Option<&'static str> = Some("<NAME> <YEAR>");
     const WHOLE: bool = true;
 }
 
@@ -125,18 +126,6 @@ const ANSWERS: Document<Listing<Answer>> =
 /// Returns a page of two answers from a source that holds more.
 fn answers() -> Listing<Answer> {
     Listing::uncounted(vec![Answer("Io", 1610), Answer("Titan", 1655)], true)
-}
-
-#[test]
-fn text_of_a_whole_row_type_without_columns_prints_each_row_as_one_line_of_json() {
-    let finished = finish_with(&[], ANSWERS, answers());
-
-    assert_eq!(finished.code, ExitCode::SUCCESS);
-    assert_eq!(finished.out, "[\"Io\",1610]\n[\"Titan\",1655]\n");
-    assert_eq!(
-        finished.err,
-        "Showing 2 rows, and more match. --all shows every one.\n"
-    );
 }
 
 #[test]

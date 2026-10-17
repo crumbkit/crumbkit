@@ -10,12 +10,12 @@ use super::{Finished, PLANET, PLANETS, Tool, finish_output, saturn};
 use crate::Envelope;
 use crate::help::Guide;
 use crate::{
-    Call, Code, Document, Error, Failure, JsonLayout, Output, Parsed, Recovery, Rows, Sink,
+    Call, Code, Document, Error, Failure, JsonStyle, Output, Parsed, Recovery, Rows, Sink,
     Spelling, finish_to,
 };
 
 /// The guide of a tool whose readers expect indented JSON.
-const PRETTY: Guide = Guide::new().json_layout(JsonLayout::Pretty, "the readers expect it");
+const PRETTY: Guide = Guide::new().json(JsonStyle::new().pretty("the readers expect it"));
 
 /// Returns the output flags for `tool list` followed by `flags`, with the
 /// guide [`PRETTY`], as a tool's `main` sets them.

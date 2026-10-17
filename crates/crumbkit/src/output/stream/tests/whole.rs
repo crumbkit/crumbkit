@@ -22,15 +22,6 @@ impl Row for Sighting {
     const WHOLE: bool = true;
 }
 
-/// A sighting that serializes as an array, so it has no columns.
-#[derive(Serialize, JsonSchema)]
-struct Pair(&'static str, u32);
-
-impl Row for Pair {
-    const COLUMNS: &'static [&'static str] = &[];
-    const WHOLE: bool = true;
-}
-
 /// Streams `items` as `document` with `flags`, and returns standard output.
 fn streamed<R: Row>(flags: &[&str], document: Document<Stream<R>>, items: &[R]) -> String {
     let mut output = parse(flags);
@@ -62,13 +53,4 @@ fn each_json_line_of_a_whole_row_type_holds_every_field_without_full() {
         out,
         "{\"schema\":\"birds/sightings-watch/v1\",\"data\":{\"bird\":\"robin\",\"place\":\"garden\"}}\n"
     );
-}
-
-#[test]
-fn text_of_a_stream_without_columns_prints_each_item_as_one_line_of_json_and_no_header() {
-    const PAIRS: Document<Stream<Pair>> = Document::new("birds", "pairs-watch", 1, "Each pair.");
-
-    let out = streamed(&[], PAIRS, &[Pair("robin", 1), Pair("wren", 2)]);
-
-    assert_eq!(out, "[\"robin\",1]\n[\"wren\",2]\n");
 }

@@ -7,7 +7,7 @@ use clap::{Arg, ArgAction, Command};
 use schemars::JsonSchema;
 use serde::Serialize;
 
-use crate::help::{Effects, Example, Guide, Leaf, STREAM_LINE, WHOLE_LINE};
+use crate::help::{Effects, Example, Guide, Leaf, STREAM_LINE};
 use crate::{Document, Row, Sink, Spelling, Stream, parse_to};
 
 /// A tool with a global `--json` and one leaf, `tool links check`.
@@ -154,7 +154,7 @@ impl Row for Setting {
 }
 
 #[test]
-fn the_text_line_of_whole_rows_without_columns_names_no_table_and_replaces_the_json_output_line() {
+fn the_text_line_of_whole_rows_without_columns_names_no_table() {
     const SETTINGS: Document<Vec<Setting>> =
         Document::new("tool", "links-check", 1, "The settings.");
     const SETTINGS_LEAF: &[Leaf] = &[Leaf::new(&["links", "check"])
@@ -169,5 +169,4 @@ fn the_text_line_of_whole_rows_without_columns_names_no_table_and_replaces_the_j
         ),
         "{page}"
     );
-    assert!(!page.contains(WHOLE_LINE), "{page}");
 }

@@ -36,8 +36,8 @@ rows of such a result cannot vanish while `total` still counts them. A
 batch compiles, because a [headed batch](shapes/README.md#headed-bytes) prints each row's
 bytes in text and every field in JSON and may name no column.
 crumbkit-test's `check_guide` fails a leaf whose batch is not headed and
-whose row type has no compact column. A row type that sets `Row::WHOLE` may
-also name no column, as [rows printed whole](shapes/README.md#rows-printed-whole) describes.
+whose row type has no compact column. A row type that sets `Row::WHOLE` and
+declares `Row::LINE` may also name no column, as [rows printed whole](shapes/README.md#rows-printed-whole) describes.
 
 The table pads columns by characters and escapes control characters, so each
 row stays on one line and no line ends in padding. Cell widths count

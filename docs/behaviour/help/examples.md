@@ -79,8 +79,9 @@ visible command without subcommands, a description for every column, a
 compact column on a leaf whose rows are not a headed batch, a `Row::LINE`
 that is one non-empty line and belongs to a leaf that is not headed, and a
 document on a leaf whose effects change something. A row type that sets
-`Row::WHOLE` may name no column only when its schema has no fields
+`Row::WHOLE` may name no column only when it declares a `Row::LINE` and its
+schema has no fields
 ([rows printed whole](../output/shapes/README.md#rows-printed-whole)). Its rustdoc
 lists every rule.
 
-Why: ADR-0024, ADR-0016, ADR-0063, ADR-0064, ADR-0065.
+Why: ADR-0024, ADR-0016, ADR-0063, ADR-0064, ADR-0065, ADR-0072.

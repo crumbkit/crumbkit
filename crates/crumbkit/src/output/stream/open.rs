@@ -6,7 +6,6 @@ use std::io::Write;
 use std::process::ExitCode;
 
 use super::{State, Streaming};
-use crate::output::columns::json_lines;
 use crate::output::{Output, fields, lines, table};
 use crate::{Document, Row, Spelling, Stream};
 
@@ -71,7 +70,7 @@ pub(super) fn open<R: Row, O: Write, W: Write>(
     if let Some(refusal) = fields::refusal::<R>(None, envelope, false, streaming.fields, typed) {
         return Err(streaming.refuse(&refusal));
     }
-    if !streaming.json && !lined && !json_lines::<R>() {
+    if !streaming.json && !lined {
         let header: Vec<Cow<'_, str>> = streaming
             .columns
             .iter()

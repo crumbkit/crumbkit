@@ -13,7 +13,7 @@ use super::{FailureForm, PreparedFailure, ReadFailure, Step};
 use crate::answered::answered;
 use crate::help::Guide;
 use crate::{
-    Batch, Call, Code, Document, Failure, Field, FieldValue, JsonLayout, Output, Parsed, Recovery,
+    Batch, Call, Code, Document, Failure, Field, FieldValue, JsonStyle, Output, Parsed, Recovery,
     Row, Sink, Spelling, Stream, finish_to, parse_to, stream_to,
 };
 
@@ -185,7 +185,7 @@ const LINE_GUIDE: Guide = Guide::new().failure_form(&LineForm);
 
 const PRETTY_GUIDE: Guide = Guide::new()
     .failure_form(&ErrorForm)
-    .json_layout(JsonLayout::Pretty, "the readers expect it");
+    .json(JsonStyle::new().pretty("the readers expect it"));
 
 /// The document that `ErrorForm` prints for a `Missing` spelled with dots.
 const ERROR_DOCUMENT: &str = concat!(

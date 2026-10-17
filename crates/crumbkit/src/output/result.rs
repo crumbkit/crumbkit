@@ -9,7 +9,7 @@ use serde::Serialize;
 use serde_json::Value;
 
 use super::budget::{self, Cut, Over, OverBudget};
-use super::columns::{columns, json_lines, values, write_json_line};
+use super::columns::{columns, values};
 use super::envelope::{Extras, Failures, Selected, SelectedRows, write_document};
 use super::failure::PreparedFailure;
 use super::layout::JsonStyle;
@@ -283,7 +283,7 @@ impl<'a, T: Rows> Prepared<'a, T> {
             _ => None,
         };
         let lines = if lines::chosen::<T::Row>(output) {
-            let keys = output.json_style.keys;
+            let keys = output.json_style.sorted_keys;
             let rows = value.rows().iter().map(|row| lines::line(row, keys));
             Some(rows.collect::<io::Result<Vec<String>>>()?)
         } else {
@@ -487,11 +487,7 @@ impl<'a, T: Rows> Prepared<'a, T> {
         if let Some(summary) = value.summary() {
             writeln!(out, "{summary}")?;
         }
-        if json_lines::<T::Row>() {
-            for row in rows.get(..shown).unwrap_or(rows) {
-                write_json_line(out, row, self.style.keys)?;
-            }
-        } else if let Some(table) = &mut self.table {
+        if let Some(table) = &mut self.table {
             table.write(out, shown)?;
         }
         for line in self.lines.iter().flatten().take(shown) {

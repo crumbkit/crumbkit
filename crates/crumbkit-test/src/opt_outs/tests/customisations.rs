@@ -6,7 +6,7 @@ use crumbkit::codes::CLI_USAGE;
 use crumbkit::form::{FailureForm, PreparedFailure};
 use crumbkit::help::{Exit, Guide, Leaf, RefusalContext, Rename};
 use crumbkit::schemas::SCHEMAS_LIST;
-use crumbkit::{Batch, Call, Code, Document, KeyOrder, Prose};
+use crumbkit::{Batch, Call, Code, Document, JsonStyle, Prose};
 use schemars::{Schema, json_schema};
 use serde_json::{Value, json};
 use snapbox::assert::Action;
@@ -203,7 +203,7 @@ fn sorted_json_keys_are_a_customisation_of_every_run() {
     };
 
     assert_eq!(
-        listed(&Guide::new().json_keys(KeyOrder::Sorted)),
+        listed(&Guide::new().json(JsonStyle::new().sorted())),
         [(
             "json-keys",
             "every run of shelf".to_owned(),

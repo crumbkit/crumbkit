@@ -44,10 +44,7 @@ impl Output {
             no_input: false,
             failure_form: None,
             no_terminal: false,
-            json_style: JsonStyle {
-                layout: None,
-                keys: None,
-            },
+            json_style: JsonStyle::new(),
             budget: None,
             spent: 0,
             exits: &[],

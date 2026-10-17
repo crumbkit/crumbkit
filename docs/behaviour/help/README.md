@@ -23,11 +23,9 @@ The lines print in this order, each only on the pages named:
    [Leaf examples and columns](examples.md) describes.
 2. `Effects:` on a leaf that declares its effects, then `Writes:` on a leaf
    that declares write guards ([write guards](../effects/write-guards.md)),
-   then `Output:` on a leaf that prints a stream, bytes, a headed batch or
-   rows whose text is one line of JSON for each row
+   then `Output:` on a leaf that prints a stream, bytes or a headed batch
    ([streams](../output/streams.md),
-   [headed bytes](../output/shapes/README.md#headed-bytes),
-   [rows printed whole](../output/shapes/README.md#rows-printed-whole)), then
+   [headed bytes](../output/shapes/README.md#headed-bytes)), then
    `Text:` on a leaf whose rows print their own text line, such as `Text:
    one line per row, <NAME>: <ABOUT>; --fields prints a table.`
    ([rows with their own text line](../output/shapes/README.md#rows-with-their-own-text-line)),

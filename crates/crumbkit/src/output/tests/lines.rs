@@ -181,7 +181,7 @@ fn json_prints_every_field_of_a_whole_row_that_declares_a_line() {
 
 #[test]
 fn a_row_without_a_text_line_prints_its_json_line_with_sorted_keys_when_the_guide_sorts_them() {
-    let guide = Guide::new().json_keys(crate::KeyOrder::Sorted);
+    let guide = Guide::new().json(crate::JsonStyle::new().sorted());
     let mut command = <super::Tool as clap::CommandFactory>::command();
     let matches = command.try_get_matches_from_mut(["tool", "list"]).unwrap();
     let mut output = <crate::Output as clap::FromArgMatches>::from_arg_matches(&matches).unwrap();

@@ -20,7 +20,7 @@ mod room;
 use crate::help::{Exit, Guide, Rename};
 use crate::twins::assert_one_word_apart;
 use crate::{
-    AsFailure, Batch, Code, Document, Error, Failure, JsonLayout, Listing, Output, Parsed, Prose,
+    AsFailure, Batch, Code, Document, Error, Failure, JsonStyle, Listing, Output, Parsed, Prose,
     Recovery, Row,
 };
 
@@ -114,7 +114,7 @@ fn a_pretty_layout_cuts_a_listing_where_its_indented_bytes_stop_fitting() {
     let listing = || Listing::new(stars(20), 20).described("stars");
     let guide = Guide::new()
         .output_budget(BUDGET, "the tests print little")
-        .json_layout(JsonLayout::Pretty, "the readers expect it");
+        .json(JsonStyle::new().pretty("the readers expect it"));
     let compact = finish_small(&["--json"], STAR_LISTING, listing());
     let indented = finish_output(&mut guided(&guide, &["--json"]), STAR_LISTING, listing());
 

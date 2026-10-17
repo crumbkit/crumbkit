@@ -5,7 +5,6 @@ use std::io::{self, Write};
 
 use super::Streaming;
 use crate::Row;
-use crate::output::columns::{json_lines, write_json_line};
 use crate::output::envelope::{Extras, Selected, write_document};
 use crate::output::{lines, table, unwrapped};
 
@@ -14,7 +13,7 @@ impl<R: Row, O: Write, W: Write> Streaming<'_, R, O, W> {
     pub(super) fn render(&mut self, item: &R) -> io::Result<()> {
         let line = &mut self.line;
         if self.json && !self.document.get_envelope().wraps() {
-            return unwrapped::write_json(line, self.fields, item, self.printing.style.keys);
+            return unwrapped::write_json(line, self.fields, item, self.printing.style.sorted_keys);
         }
         if self.json && self.full {
             // Serializing the item directly keeps every field in its
@@ -29,11 +28,8 @@ impl<R: Row, O: Write, W: Write> Streaming<'_, R, O, W> {
             );
         }
         if self.lined {
-            line.extend_from_slice(lines::line(item, self.printing.style.keys)?.as_bytes());
+            line.extend_from_slice(lines::line(item, self.printing.style.sorted_keys)?.as_bytes());
             return Ok(());
-        }
-        if !self.json && json_lines::<R>() {
-            return write_json_line(line, item, self.printing.style.keys);
         }
         let row = serde_json::to_value(item)?;
         if self.json {

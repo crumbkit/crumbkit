@@ -27,8 +27,8 @@ pub(super) struct Customisation {
 /// `command`, in this order: the failure form, each code rename, the
 /// [`Guide::field_names`] declaration, each exit that lists one of
 /// crumbkit's codes or the tool's rename of it, whether the guide declares
-/// refusal alternatives for every command, the [`Guide::json_keys`]
-/// declaration (ADR-0067), the [`Guide::dashed_forms`]
+/// refusal alternatives for every command, the sorted keys that [`Guide::json`] sets
+/// (ADR-0067), the [`Guide::dashed_forms`]
 /// declaration followed by each command that answers to its dashed form, as
 /// [`dashed_names`] lists them, and then for each leaf in guide order its
 /// document's name when the leaf's path gives another, the keys that its
@@ -113,7 +113,7 @@ pub(super) fn customisations(command: &Command, guide: &Guide) -> Vec<Customisat
                 .to_owned(),
         });
     }
-    if guide.get_json_keys().is_some() {
+    if guide.get_json().sorted_keys {
         list.push(Customisation {
             declaration: "json-keys",
             applies_to: every_run.clone(),
