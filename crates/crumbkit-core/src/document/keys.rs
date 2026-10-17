@@ -135,6 +135,13 @@ impl<T> Document<T> {
     pub const fn prints_summary_at_top(&self) -> bool {
         self.summary_top
     }
+
+    /// Reports whether a listing's JSON holds `total`, which it does unless
+    /// the tool called [`Document::without_total`].
+    #[must_use]
+    pub const fn prints_total(&self) -> bool {
+        !self.no_total
+    }
 }
 
 impl<R: Row, S> Document<Listing<R, S>> {
@@ -165,6 +172,34 @@ impl<R: Row, S> Document<Listing<R, S>> {
             "a summary at the top needs a document without crumbkit's own envelope; call with_keys first"
         );
         self.summary_top = true;
+        self
+    }
+
+    /// Returns the same listing document whose JSON leaves out `total`, for
+    /// a tool whose readers know a listing without a count. The JSON keeps
+    /// `truncated`, so a reader still learns whether rows were left out,
+    /// and the text's footer, the output budget's cut line and the usage
+    /// log still count the rows. The document's schema has no `total`
+    /// property (ADR-0066).
+    ///
+    /// crumbkit-test's `check_document_ids` fails a leaf whose document
+    /// calls it, unless an opt-out from `documents/total` with a reason
+    /// covers the leaf, so `check_opt_outs` reports what the missing count
+    /// costs a reader.
+    ///
+    /// # Panics
+    ///
+    /// Panics unless the document declares its keys with
+    /// [`Document::with_keys`], because crumbkit's own envelope always
+    /// holds `total` when the tool counted the rows. A `const` that calls
+    /// it on such a document fails to compile.
+    #[must_use]
+    pub const fn without_total(mut self) -> Self {
+        assert!(
+            self.has_own_keys(),
+            "a listing without a total needs a document without crumbkit's own envelope; call with_keys first"
+        );
+        self.no_total = true;
         self
     }
 }

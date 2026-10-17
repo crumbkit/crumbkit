@@ -352,3 +352,22 @@ when the summary prints at the top. The keys are a
 the opt-out report lists them as an `envelope-keys` customisation.
 
 Why: ADR-0059.
+
+### Listings without a total
+
+A listing whose document declares its keys and calls
+[`Document::without_total`](../../../crates/crumbkit-core/src/document/keys.rs)
+leaves `total` out of its JSON, for readers that know a listing without a
+count. The JSON keeps `truncated`, so a reader still learns whether rows
+were left out. The text footer, the output budget's cut line and the
+[usage log](../usage-log/README.md) still count the rows. The document's
+schema has no `total` property. A const panic rejects `without_total` on a
+document without `with_keys`, because crumbkit's own envelope holds `total`
+whenever the tool counted the rows.
+
+crumbkit-test's `check_document_ids` requires an
+[opt-out](../adoption/opt-outs.md) from `documents/total` for each command
+that prints such a listing, so the opt-out report states what the missing
+count costs a reader.
+
+Why: ADR-0066.
