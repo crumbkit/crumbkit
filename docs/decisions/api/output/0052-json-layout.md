@@ -1,7 +1,7 @@
 # ADR-0052. JSON layout
 
 - Date: 2026-10-12
-- Status: accepted
+- Status: amended by ADR-0073
 
 ## Context
 

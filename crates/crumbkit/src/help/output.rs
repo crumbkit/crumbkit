@@ -1,10 +1,8 @@
 //! The guide's settings of what a run prints on standard output: the
-//! output budget (ADR-0046), the layout of a JSON document (ADR-0052) and
-//! the order of its keys (ADR-0067).
+//! output budget (ADR-0046) and the style of its JSON (ADR-0073).
 
 use super::Guide;
-use crate::output::JsonStyle;
-use crate::{JsonLayout, KeyOrder};
+use crate::JsonStyle;
 
 impl Guide {
     /// Sets the most bytes that one run prints on standard output, and the
@@ -34,88 +32,51 @@ impl Guide {
         self.output_budget
     }
 
-    /// Sets the layout of every whole JSON document that the tool prints,
-    /// and the reason the tool needs it, which crumbkit-test's opt-out report
-    /// shows with its cost (ADR-0052).
+    /// Sets how the tool writes JSON on standard output: the layout of a
+    /// whole document and the order of the keys of each object (ADR-0073).
     ///
-    /// Without it, a JSON document prints on one line. With
-    /// [`JsonLayout::Pretty`], the envelope, a document from
-    /// [`Envelope::Without`](crate::Envelope::Without),
-    /// the failure document and the document of the guide's
+    /// Without it, a JSON document prints on one line, and each object
+    /// prints its keys in the order that its value serializes them.
+    ///
+    /// With [`JsonLayout::Pretty`](crate::JsonLayout::Pretty), the
+    /// envelope, a document from
+    /// [`Envelope::Without`](crate::Envelope::Without), the failure
+    /// document and the document of the guide's
     /// [`FailureForm`](crate::form::FailureForm) print indented by two
     /// spaces, on standard output whether or not it is a terminal. A stream
     /// keeps one document per line, including a failure inside it, because
     /// JSON Lines needs it. The output budget counts the indented bytes, so
-    /// an indented result fits fewer rows.
+    /// an indented result fits fewer rows. crumbkit-test's opt-out report
+    /// shows the layout's reason with its cost (ADR-0052).
+    ///
+    /// With `sorted_keys`, every object at every depth prints its keys
+    /// sorted: the envelope, each row, a summary, each failure, the
+    /// document of the guide's [`FailureForm`](crate::form::FailureForm),
+    /// each line of a stream, and each JSON line of a text output. The
+    /// order is a declaration, so it takes no reason, and crumbkit-test's
+    /// opt-out report lists it under the customisations. The order changes
+    /// no byte count, so the output budget cuts a document at the same
+    /// rows (ADR-0067).
     ///
     /// ```
-    /// use crumbkit::JsonLayout;
+    /// use crumbkit::JsonStyle;
     /// use crumbkit::help::Guide;
     ///
-    /// const GUIDE: Guide =
-    ///     Guide::new().json_layout(JsonLayout::Pretty, "Our scripts read indented JSON.");
-    /// assert_eq!(
-    ///     GUIDE.get_json_layout(),
-    ///     Some((JsonLayout::Pretty, "Our scripts read indented JSON."))
-    /// );
+    /// const STYLE: JsonStyle = JsonStyle::new().pretty("Our scripts read indented JSON.");
+    /// const GUIDE: Guide = Guide::new().json(STYLE);
+    /// assert_eq!(GUIDE.get_json(), STYLE);
+    /// assert_eq!(Guide::new().get_json(), JsonStyle::new());
     /// ```
     #[must_use]
-    pub const fn json_layout(mut self, layout: JsonLayout, reason: &'static str) -> Self {
-        self.json_layout = Some((layout, reason));
+    pub const fn json(mut self, style: JsonStyle) -> Self {
+        self.json = style;
         self
     }
 
-    /// Returns the layout and the reason that [`Guide::json_layout`] set,
-    /// or `None` for one line. The name has clap's `get_` prefix.
+    /// Returns the style that [`Guide::json`] set, or [`JsonStyle::new`]
+    /// when the guide sets none. The name has clap's `get_` prefix.
     #[must_use]
-    pub const fn get_json_layout(&self) -> Option<(JsonLayout, &'static str)> {
-        self.json_layout
-    }
-
-    /// Sets the order of the keys of each object in every JSON document
-    /// and JSON line that the tool prints on standard output (ADR-0067).
-    ///
-    /// Without it, each object prints its keys in the order that its value
-    /// serializes them. With [`KeyOrder::Sorted`], every object at every
-    /// depth prints its keys sorted: the envelope, each row, a summary, each
-    /// failure, the document of the guide's
-    /// [`FailureForm`](crate::form::FailureForm), each line of a stream, and
-    /// the JSON lines of a text output. The order is a declaration, so it
-    /// takes no reason, and crumbkit-test's opt-out report lists it under
-    /// the customisations. The order changes no byte count, so the output
-    /// budget cuts a document at the same rows.
-    ///
-    /// ```
-    /// use crumbkit::KeyOrder;
-    /// use crumbkit::help::Guide;
-    ///
-    /// const GUIDE: Guide = Guide::new().json_keys(KeyOrder::Sorted);
-    /// assert_eq!(GUIDE.get_json_keys(), Some(KeyOrder::Sorted));
-    /// assert_eq!(Guide::new().get_json_keys(), None);
-    /// ```
-    #[must_use]
-    pub const fn json_keys(mut self, order: KeyOrder) -> Self {
-        self.json_keys = Some(order);
-        self
-    }
-
-    /// Returns the order that [`Guide::json_keys`] set, or `None` for the
-    /// order that each value serializes its keys in. The name has clap's
-    /// `get_` prefix.
-    #[must_use]
-    pub const fn get_json_keys(&self) -> Option<KeyOrder> {
-        self.json_keys
-    }
-
-    /// Returns the layout that [`Guide::json_layout`] set without its
-    /// reason, and the order that [`Guide::json_keys`] set.
-    pub(crate) const fn json_style(&self) -> JsonStyle {
-        JsonStyle {
-            layout: match self.json_layout {
-                Some((layout, _)) => Some(layout),
-                None => None,
-            },
-            keys: self.json_keys,
-        }
+    pub const fn get_json(&self) -> JsonStyle {
+        self.json
     }
 }

@@ -78,7 +78,7 @@ impl Printing {
     pub(crate) fn at(guide: &Guide, leaf: Option<&Leaf>) -> Self {
         Self {
             form: guide.get_failure_form(),
-            style: guide.json_style(),
+            style: guide.get_json(),
             exits: guide.get_exits(),
             renames: Renames::with_leaf(guide, leaf),
             field_names: guide.get_field_names(),

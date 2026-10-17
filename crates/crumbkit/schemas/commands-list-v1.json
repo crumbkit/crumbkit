@@ -258,12 +258,11 @@
           }
         },
         "form": {
-          "description": "stream when the command prints a stream, one row on each line as each arrives, bytes when it prints one document that holds bytes, which its text prints unchanged, headed when it prints one document whose text prints each answer's bytes under a header, json-rows when it prints one document whose text prints each row as one line of JSON, document when it prints any other document, and null when the guide's leaf for the command declares no document.",
+          "description": "stream when the command prints a stream, one row on each line as each arrives, bytes when it prints one document that holds bytes, which its text prints unchanged, headed when it prints one document whose text prints each answer's bytes under a header, document when it prints any other document, and null when the guide's leaf for the command declares no document.",
           "enum": [
             "bytes",
             "document",
             "headed",
-            "json-rows",
             "stream",
             null
           ]

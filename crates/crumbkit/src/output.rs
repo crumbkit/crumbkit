@@ -34,8 +34,7 @@ pub use self::confirm::Yes;
 use self::counted::Counted;
 pub use self::dry_run::DryRun;
 use self::failure::Printing;
-pub(crate) use self::layout::JsonStyle;
-pub use self::layout::{JsonLayout, KeyOrder};
+pub use self::layout::{JsonLayout, JsonStyle};
 pub use self::room::Room;
 pub use self::stream::{Streaming, stream, stream_to};
 use crate::form::FailureForm;
@@ -55,8 +54,8 @@ mod tests;
 /// comment of its own has none in its help.
 ///
 /// - `--json` prints a JSON document, on one line unless the guide sets a
-///   [`JsonLayout`], with the keys of each object sorted when the guide
-///   sets [`KeyOrder::Sorted`].
+///   [`JsonStyle`] sets [`JsonLayout::Pretty`], with the keys of each
+///   object sorted when the style sorts them.
 /// - `--long` adds the row type's [`Row::LONG_COLUMNS`](crate::Row::LONG_COLUMNS).
 /// - `--full` prints every field of every row in declaration order, and needs `--json`.
 /// - `--fields a,b` prints exactly the named fields in that order, and
@@ -327,7 +326,7 @@ impl Output {
             command: Some(command),
             failure_form: guide.get_failure_form(),
             no_terminal: !guide.terminal_detection(),
-            json_style: guide.json_style(),
+            json_style: guide.get_json(),
             exits: guide.get_exits(),
             renames: Renames::of(guide),
             field_names: guide.get_field_names(),

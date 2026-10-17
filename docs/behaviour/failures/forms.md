@@ -68,7 +68,7 @@ codes do not change.
 
 crumbkit writes the form's JSON on one line, or in the guide's
 [JSON layout](../output/json-layout.md) outside a stream, with its keys
-sorted when the guide sets [`KeyOrder::Sorted`](../output/json-layout.md#key-order),
+sorted when the guide's [JSON style sorts them](../output/json-layout.md#key-order),
 and flushes it, so
 each failure line of a `--json` stream stays one line and a closed pipe keeps
 the exit code. crumbkit flushes standard error after the form's text. A form

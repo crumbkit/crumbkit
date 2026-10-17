@@ -49,8 +49,8 @@ With `--json`, each row prints as a whole envelope document on its own line,
 with `schema` and the row under `data`, so the output is JSON Lines and a
 reader can process each line alone. `--fields`, `--long` and `--full` shape
 each row as they shape a single row in `finish`. A stream prints one document per line in
-every [JSON layout](json-layout.md), with its keys sorted when the guide
-sets [`KeyOrder::Sorted`](json-layout.md#key-order). A document with
+every [JSON layout](json-layout.md), with its keys sorted when the guide's
+[JSON style sorts them](json-layout.md#key-order). A document with
 `Envelope::Without` prints each row alone, and its failures print as
 text on standard error. A document with `Envelope::Keys` prints each
 line with the declared keys in place of `schema` and `data`

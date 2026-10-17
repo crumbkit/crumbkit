@@ -30,8 +30,7 @@ pub use self::effects::{Effects, Items};
 pub use self::exit::Exit;
 pub use self::format::FileFormat;
 pub use self::leaf::{
-    BYTES_LINE, Column, Example, HEADED_LINE, Leaf, RefusalContext, STREAM_LINE, WHOLE_LINE,
-    text_line,
+    BYTES_LINE, Column, Example, HEADED_LINE, Leaf, RefusalContext, STREAM_LINE, text_line,
 };
 pub use self::rename::Rename;
 pub use self::runtime::RuntimeLeaf;
@@ -40,9 +39,9 @@ pub use self::view::ViewFlag;
 pub use self::words::quote;
 
 use self::list::{list, write_line};
+use crate::JsonStyle;
 use crate::form::FailureForm;
 use crate::pick::Picker;
-use crate::{JsonLayout, KeyOrder};
 
 #[cfg(test)]
 mod tests;
@@ -127,12 +126,9 @@ pub struct Guide {
     /// The most bytes that one run prints on standard output, with the
     /// reason the tool gives for it, or `None` for crumbkit's default.
     output_budget: Option<(usize, &'static str)>,
-    /// The layout of a whole JSON document, with the reason the tool gives
-    /// for it, or `None` for one line (ADR-0052).
-    json_layout: Option<(JsonLayout, &'static str)>,
-    /// The order of the keys of each JSON object, which
-    /// [`Guide::json_keys`] sets (ADR-0067).
-    json_keys: Option<KeyOrder>,
+    /// The layout and the key order of the JSON the tool prints, which
+    /// [`Guide::json`] sets (ADR-0073).
+    json: JsonStyle,
     /// The path from the clap root to the command that callers run first,
     /// which answers `help` with the topics.
     root: &'static [&'static str],
@@ -161,8 +157,7 @@ impl Guide {
             failure_form: None,
             without_terminal_detection: None,
             output_budget: None,
-            json_layout: None,
-            json_keys: None,
+            json: JsonStyle::new(),
             root: &[],
             dashed_forms: false,
             field_names: &[],

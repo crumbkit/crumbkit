@@ -5,7 +5,7 @@ use schemars::JsonSchema;
 use serde::Serialize;
 
 use crate::help::Guide;
-use crate::{Batch, Document, Error, JsonLayout, Row};
+use crate::{Batch, Document, Error, JsonStyle, Row};
 
 use super::{STAR_BATCH, Star, budgeted, finish_output, guided, star};
 
@@ -21,7 +21,7 @@ fn answered(rows: Vec<Star>) -> Batch<Star, Error> {
 fn room_counts_a_pretty_document_s_rows_as_the_document_prints_them() {
     let guide = Guide::new()
         .output_budget(1 << 20, "the tests print little")
-        .json_layout(JsonLayout::Pretty, "the readers expect it");
+        .json(JsonStyle::new().pretty("the readers expect it"));
     let mut output = guided(&guide, &["--json", "--fields", "story"]);
     let mut room = output.room(STAR_BATCH);
     let mut batch = answered(Vec::new());
@@ -70,29 +70,35 @@ fn room_counts_a_text_table_with_its_widest_cells() {
 }
 
 /// A query answer, which serializes as an array of its values and so has no
-/// fields to name as columns.
+/// fields to name as columns. An answer with a year prints its own line, and
+/// one without prints as one line of JSON.
 #[derive(Serialize, JsonSchema)]
-struct Answer(String, u32);
+struct Answer(String, Option<u32>);
 
 impl Row for Answer {
     const COLUMNS: &'static [&'static str] = &[];
+    const LINE: Option<&'static str> = Some("<NAME> <YEAR>");
     const WHOLE: bool = true;
+
+    fn text_line(&self) -> Option<String> {
+        self.1.map(|year| format!("{} {year}", self.0))
+    }
 }
 
 #[test]
-fn room_counts_each_row_of_a_whole_row_type_without_columns_as_one_line_of_json() {
+fn room_counts_each_row_of_a_row_type_with_its_own_line_as_the_line_it_prints() {
     const ANSWERS: Document<Batch<Answer, Error>> =
         Document::new("tool", "answers", 1, "The test answers.");
     let keys = ["io", "titan"];
     let mut batch = Batch::new(&["show"], "names", &keys);
-    batch.push(Ok(Answer("Io".to_owned(), 1610)));
-    batch.push(Ok(Answer("Titan".to_owned(), 1655)));
+    batch.push(Ok(Answer("Io".to_owned(), Some(1610))));
+    batch.push(Ok(Answer("Titan".to_owned(), None)));
     let mut output = budgeted(1 << 20, &[]);
     let mut room = output.room(ANSWERS);
     assert!(room.has_room(&batch));
 
     let finished = finish_output(&mut output, ANSWERS, batch);
 
-    assert_eq!(finished.out, "[\"Io\",1610]\n[\"Titan\",1655]\n");
+    assert_eq!(finished.out, "Io 1610\n[\"Titan\",null]\n");
     assert_eq!(room.printed(), finished.out.len());
 }

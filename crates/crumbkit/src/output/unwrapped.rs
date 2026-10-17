@@ -7,7 +7,7 @@ use serde_json::Value;
 
 use super::envelope::Selected;
 use super::layout;
-use crate::{KeyOrder, Rows, Shape};
+use crate::{Rows, Shape};
 
 /// Writes `value` to `out` as JSON on one line, without `schema`, `total`,
 /// `summary` or `failures`, then flushes `out`.
@@ -17,17 +17,17 @@ use crate::{KeyOrder, Rows, Shape};
 /// as an object, a prose result as its value, and every other result as an
 /// array of its rows. With `fields`, it writes only those fields of each
 /// row, in that order, as an object for a single row and as an array
-/// otherwise. The keys of each object print in `keys` order. A
+/// otherwise. The keys of each object print sorted when `sorted_keys` is set. A
 /// serialization error becomes an `io::Error` of kind `InvalidData`, as in
 /// the envelope.
 pub(super) fn write_json<T: Rows>(
     out: &mut impl Write,
     fields: &[String],
     value: &T,
-    keys: Option<KeyOrder>,
+    sorted_keys: bool,
 ) -> io::Result<()> {
     if fields.is_empty() {
-        layout::serialize(&mut *out, value, keys)?;
+        layout::serialize(&mut *out, value, sorted_keys)?;
     } else {
         let columns: Vec<&str> = fields.iter().map(String::as_str).collect();
         let rows = value
@@ -43,8 +43,10 @@ pub(super) fn write_json<T: Rows>(
             })
             .collect();
         match selected.as_slice() {
-            [single] if T::SHAPE == Shape::Row => layout::serialize(&mut *out, single, keys)?,
-            list => layout::serialize(&mut *out, list, keys)?,
+            [single] if T::SHAPE == Shape::Row => {
+                layout::serialize(&mut *out, single, sorted_keys)?;
+            }
+            list => layout::serialize(&mut *out, list, sorted_keys)?,
         }
     }
     out.write_all(b"\n")?;

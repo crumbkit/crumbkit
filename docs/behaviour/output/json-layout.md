@@ -2,11 +2,11 @@
 
 This page covers how a JSON document is laid out: one line by default, or
 indented when the tool sets a layout, and the order of the keys of each
-object. [`JsonLayout`](../../../crates/crumbkit/src/output/layout.rs),
-[`KeyOrder`](../../../crates/crumbkit/src/output/layout.rs),
-[`Guide::json_layout`](../../../crates/crumbkit/src/help/output.rs) and
-[`Guide::json_keys`](../../../crates/crumbkit/src/help/output.rs) describe
-the settings themselves.
+object. A tool sets both with one
+[`JsonStyle`](../../../crates/crumbkit/src/output/layout.rs), which
+[`Guide::json`](../../../crates/crumbkit/src/help/output.rs) takes, such as
+`Guide::new().json(JsonStyle::new().pretty(reason).sorted())`. Their
+rustdoc describes the settings themselves.
 
 ## One line by default
 
@@ -19,12 +19,13 @@ line read.
 The `--json` help text says `Print the result as a JSON document` and names
 no layout, because the layout belongs to the tool.
 
-Why: ADR-0052.
+Why: ADR-0052, ADR-0073.
 
 ## The indented layout
 
 A tool whose readers need indented JSON sets
-`Guide::json_layout(JsonLayout::Pretty, reason)`. crumbkit then puts each
+`Guide::json(JsonStyle::new().pretty(reason))`, whose layout is
+`JsonLayout::Pretty { reason }`. crumbkit then puts each
 field and each item of a whole document on a line of its own, indented by
 two spaces for each level, byte for byte as serde_json's pretty formatter
 writes it. The setting applies at a terminal and through a pipe alike, so
@@ -66,7 +67,7 @@ Why: ADR-0052, ADR-0036.
 
 By default, each JSON object prints its keys in the order that its value
 serializes them, so the envelope's type key comes first. A tool whose
-readers expect sorted keys sets `Guide::json_keys(KeyOrder::Sorted)`, and
+readers expect sorted keys sets `Guide::json(JsonStyle::new().sorted())`, and
 crumbkit sorts the keys of every object at every depth by Rust's `str`
 comparison, so `base64` prints before `blob`. The order covers every JSON
 document and JSON line on standard output, including failures, failure
@@ -81,4 +82,4 @@ exits with 1.
 The order is a [declaration](../adoption/declarations.md) with no reason,
 and `check_opt_outs` lists it as the `json-keys` customisation.
 
-Why: ADR-0067.
+Why: ADR-0067, ADR-0073.

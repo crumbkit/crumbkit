@@ -60,7 +60,7 @@ pub(super) fn write<T: Rows>(
             Cow::Borrowed(bytes)
         } else {
             let mut line = Vec::new();
-            layout::serialize(&mut line, row, output.json_style.keys)?;
+            layout::serialize(&mut line, row, output.json_style.sorted_keys)?;
             line.push(b'\n');
             Cow::Owned(line)
         };

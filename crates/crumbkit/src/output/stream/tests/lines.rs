@@ -141,7 +141,8 @@ fn a_stream_item_without_a_text_line_prints_its_json_line_with_sorted_keys_when_
  {
     use clap::{CommandFactory as _, FromArgMatches as _};
 
-    const GUIDE: crate::help::Guide = crate::help::Guide::new().json_keys(crate::KeyOrder::Sorted);
+    const GUIDE: crate::help::Guide =
+        crate::help::Guide::new().json(crate::JsonStyle::new().sorted());
     const UNPLACED: Document<Stream<Unplaced>> =
         Document::new("birds", "unplaced-watch", 1, "Each sighting as it arrives.");
     let mut command = super::Tool::command();

@@ -93,6 +93,7 @@ struct Answer(u32, u32);
 
 impl Row for Answer {
     const COLUMNS: &'static [&'static str] = &[];
+    const LINE: Option<&'static str> = Some("<LEFT> <RIGHT>");
     const WHOLE: bool = true;
 }
 
@@ -229,19 +230,6 @@ fn the_help_of_a_leaf_whose_rows_print_whole_lists_no_full_flag() {
 #[test]
 fn the_help_of_a_leaf_whose_whole_rows_have_no_columns_lists_no_fields_long_or_full_flag() {
     assert_eq!(listed(&["books", "query"]), [false, false, false]);
-}
-
-#[test]
-fn the_help_of_a_leaf_whose_whole_rows_have_no_columns_says_that_text_prints_a_json_line_for_each_row()
- {
-    let page = long_help(&["books", "query"]);
-
-    assert!(
-        page.contains(
-            "Output: one line of JSON for each row, and --json prints the rows in one document.\n"
-        ),
-        "{page}"
-    );
 }
 
 #[test]

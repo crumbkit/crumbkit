@@ -13,7 +13,7 @@ use crumbkit::help::Leaf;
 /// declares its own keys.
 pub(super) fn check_lines(
     leaf: &Leaf,
-    layout: Option<JsonLayout>,
+    layout: JsonLayout,
     line: &str,
     stdout: &str,
     failures: &mut Vec<String>,
@@ -26,7 +26,7 @@ pub(super) fn check_lines(
     }
     let key = document.get_envelope().type_key();
     let id = document.to_string();
-    if !leaf.is_stream() && layout == Some(JsonLayout::Pretty) {
+    if !leaf.is_stream() && matches!(layout, JsonLayout::Pretty { .. }) {
         check_indented(key, &id, line, stdout, failures);
         return;
     }

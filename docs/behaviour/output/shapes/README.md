@@ -116,25 +116,23 @@ stream.
   field that a row leaves out.
 - `--long` adds the long columns to the text table.
 
-A row type that sets `Row::WHOLE` may leave both `Row::COLUMNS` and
-`Row::LONG_COLUMNS` empty, as a row that serializes as an array must. Its
-text then prints each row as one line of compact JSON with no header, and
-the footer and notes print on standard error as for a table. A stream
-prints each item that way. `--fields` and `--long` are refused, because
-there is no table to shape. The help of the leaf ends with an `Output:`
-line that describes this text, and `commands list` writes the form
-`json-rows` ([commands list](../../help/commands-list.md)). A row type that
-also declares `Row::LINE` prints its own lines instead
-([rows with their own text line](#rows-with-their-own-text-line)).
+A row type that sets `Row::WHOLE` may leave `Row::COLUMNS` empty, as a row
+that serializes as an array must, only when it also declares `Row::LINE`.
+Its text then prints each row's own line
+([rows with their own text line](#rows-with-their-own-text-line)), and
+`--fields` and `--long` are refused, because there is no table to shape.
+`finish` and `stream` fail to compile for a whole row type without columns
+and without a `LINE`, and crumbkit-test's `check_guide` fails a batch of
+such a row type, which the compiler cannot check.
 
-crumbkit-test's `check_guide` fails a row type that sets `Row::WHOLE`,
-names no columns and has fields in its JSON Schema, because those fields
-could be the columns of a table. Its `check_document_ids` requires an
+`check_guide` also fails a row type that sets `Row::WHOLE`, names no
+columns and has fields in its JSON Schema, because those fields could be
+the columns of a table. Its `check_document_ids` requires an
 [opt-out](../../adoption/opt-outs.md) from `documents/rows-whole` for each
 command whose row type sets `Row::WHOLE`, because the document costs more
 tokens than the compact columns.
 
-Why: ADR-0065, ADR-0064.
+Why: ADR-0065, ADR-0064, ADR-0072.
 
 ## Rows with their own text line
 
@@ -143,8 +141,8 @@ for help, such as `Some("<NAME>: <ABOUT>")`, and `Row::text_line` builds
 each row's line. Without `--json`, `--long` and `--fields`, the text then
 prints each row's line with control characters escaped and no header, and
 a row whose `text_line` returns `None` prints as one line of compact JSON,
-with its keys sorted when the guide sets
-[`KeyOrder::Sorted`](../json-layout.md#key-order).
+with its keys sorted when the guide's
+[JSON style sorts them](../json-layout.md#key-order).
 `--long` and `--fields` print the table, and JSON is unchanged. Streams,
 the [output budget](../budget/README.md) and the listing footer work as for a
 table, and help prints a `Text:` line ([help](../../help/README.md)). A row

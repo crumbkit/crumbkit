@@ -174,27 +174,6 @@ fn a_row_holds_a_null_line_when_its_leaf_s_rows_print_a_table() {
     assert!(row(&Guide::new()).as_object().unwrap().contains_key("line"));
 }
 
-/// A row that serializes as an array of its values, so it has no columns.
-#[derive(serde::Serialize, schemars::JsonSchema)]
-struct Answer(u32, u32);
-
-impl crate::Row for Answer {
-    const COLUMNS: &'static [&'static str] = &[];
-    const WHOLE: bool = true;
-}
-
-#[test]
-fn a_row_holds_the_form_json_rows_when_the_leaf_s_whole_rows_have_no_columns() {
-    const ANSWERS: crate::Document<Vec<Answer>> =
-        crate::Document::new("shelf", "books-query", 1, "The answers.");
-    const GUIDE: Guide = Guide::new().leaves(&[Leaf::new(&["books", "remove"]).document(ANSWERS)]);
-
-    let row = row(&GUIDE);
-
-    assert_eq!(row["form"], json!("json-rows"));
-    assert_eq!(row["columns"], json!([]));
-}
-
 /// A row that a tool's readers expect whole, which still names a column.
 #[derive(serde::Serialize, schemars::JsonSchema)]
 struct WholeBook {

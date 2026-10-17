@@ -1,66 +1,104 @@
-//! The layout of a whole JSON document: one line by default, or indented
-//! when the tool's guide sets [`JsonLayout::Pretty`] (ADR-0052). The keys
-//! of each object keep the order that the value serializes them in, or
-//! print sorted when the guide sets [`KeyOrder::Sorted`] (ADR-0067).
+//! The style of the JSON that a tool prints: one line by default, or
+//! indented when the tool's guide sets [`JsonLayout::Pretty`] (ADR-0052).
+//! The keys of each object keep the order that the value serializes them
+//! in, or print sorted when the style sets `sorted_keys` (ADR-0067). The
+//! guide sets both with one [`JsonStyle`] (ADR-0073).
 
 use std::io::{self, Write};
 
 use serde::Serialize;
 
-/// The layout of a whole JSON document that a tool sets with
-/// [`Guide::json_layout`](crate::help::Guide::json_layout).
+/// The layout of a whole JSON document, which a tool sets in its
+/// [`JsonStyle`].
 ///
-/// Without a layout, every JSON document prints on one line, whether or not
-/// standard output is a terminal. A stream prints one document per line
-/// with any layout, because JSON Lines needs it.
+/// A stream prints one document per line with any layout, because JSON
+/// Lines needs it.
 ///
 /// The enum is `#[non_exhaustive]`, so crumbkit can add a layout without
 /// breaking a tool that matches on it.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum JsonLayout {
+    /// The whole document on one line, whether or not standard output is a
+    /// terminal. It is the default.
+    #[default]
+    OneLine,
     /// Each field and each item on a line of its own, indented by two
     /// spaces for each level, as `serde_json::to_writer_pretty` writes it.
-    Pretty,
+    /// `reason` is why the tool's readers need it, which crumbkit-test's
+    /// opt-out report shows with its cost.
+    Pretty {
+        /// Why the tool's readers need indented JSON.
+        reason: &'static str,
+    },
 }
 
-/// The order of the keys of each object in the JSON that a tool prints,
-/// which the tool sets with
-/// [`Guide::json_keys`](crate::help::Guide::json_keys).
+/// How a tool writes JSON on standard output, which it sets with
+/// [`Guide::json`](crate::help::Guide::json) (ADR-0073).
 ///
-/// Without an order, each object prints its keys in the order that its
-/// value serializes them: crumbkit's envelope prints the type key first,
-/// and a row prints its fields in their declaration order.
+/// The default, which [`JsonStyle::new`] returns, prints each document on
+/// one line with the keys of each object in the order that its value
+/// serializes them: crumbkit's envelope prints the type key first, and a
+/// row prints its fields in their declaration order.
 ///
-/// The enum is `#[non_exhaustive]`, so crumbkit can add an order without
-/// breaking a tool that matches on it.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-#[non_exhaustive]
-pub enum KeyOrder {
-    /// The keys of every object, at every depth, in the order of Rust's
-    /// `str` comparison, which compares the keys' Unicode code points.
-    Sorted,
-}
-
-/// How a run writes JSON on standard output: the layout and the key order
-/// that the guide sets. Its default is one line with the keys in the
-/// order that each value serializes them.
+/// ```
+/// use crumbkit::{JsonLayout, JsonStyle};
+///
+/// const STYLE: JsonStyle = JsonStyle::new().pretty("Our scripts read indented JSON.").sorted();
+/// assert!(matches!(STYLE.layout, JsonLayout::Pretty { .. }));
+/// assert!(STYLE.sorted_keys);
+/// ```
+///
+/// The fields are public so a tool and crumbkit-test can read them. The
+/// struct is `#[non_exhaustive]`, so a tool builds it with its constructors
+/// and crumbkit can add a field without breaking the tool.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
-pub(crate) struct JsonStyle {
-    /// The layout of a whole document, or `None` for one line.
-    pub(crate) layout: Option<JsonLayout>,
-    /// The order of the keys of each object, or `None` for the order that
-    /// each value serializes them.
-    pub(crate) keys: Option<KeyOrder>,
+#[non_exhaustive]
+pub struct JsonStyle {
+    /// The layout of a whole document.
+    pub layout: JsonLayout,
+    /// Whether every object at every depth prints its keys in the order of
+    /// Rust's `str` comparison, which compares the keys' Unicode code
+    /// points. It is a declaration, so it takes no reason.
+    pub sorted_keys: bool,
 }
 
 impl JsonStyle {
+    /// Returns the default style: one line, with the keys of each object
+    /// in the order that its value serializes them.
+    #[must_use]
+    pub const fn new() -> Self {
+        Self {
+            layout: JsonLayout::OneLine,
+            sorted_keys: false,
+        }
+    }
+
+    /// Returns the style with [`JsonLayout::Pretty`] and the reason that
+    /// the tool's readers need it.
+    #[must_use]
+    pub const fn pretty(self, reason: &'static str) -> Self {
+        Self {
+            layout: JsonLayout::Pretty { reason },
+            sorted_keys: self.sorted_keys,
+        }
+    }
+
+    /// Returns the style with the keys of every object sorted.
+    #[must_use]
+    pub const fn sorted(self) -> Self {
+        Self {
+            layout: self.layout,
+            sorted_keys: true,
+        }
+    }
+
     /// Returns the same style on one line, as a stream and the line of a
     /// headed answer need it.
     pub(crate) const fn one_line(self) -> Self {
         Self {
-            layout: None,
-            keys: self.keys,
+            layout: JsonLayout::OneLine,
+            sorted_keys: self.sorted_keys,
         }
     }
 }
@@ -83,22 +121,22 @@ pub(super) fn write(
     style: JsonStyle,
 ) -> io::Result<()> {
     match style.layout {
-        Some(JsonLayout::Pretty) => {
+        JsonLayout::Pretty { .. } => {
             let mut compact = Vec::new();
-            serialize(&mut compact, value, style.keys)?;
+            serialize(&mut compact, value, style.sorted_keys)?;
             write_indented(out, &compact)
         }
-        None => {
-            serialize(out, value, style.keys)?;
+        JsonLayout::OneLine => {
+            serialize(out, value, style.sorted_keys)?;
             out.write_all(b"\n")
         }
     }
 }
 
-/// Writes `value` to `out` on one line, with the keys of each object in
-/// `keys` order.
+/// Writes `value` to `out` on one line, with the keys of each object
+/// sorted when `sorted_keys` is set.
 ///
-/// With [`KeyOrder::Sorted`], it serializes `value` into a
+/// With `sorted_keys`, it serializes `value` into a
 /// `serde_json::Value` and sorts every object of it before it writes it.
 // RUST-10: sorting through a `Value` builds one tree for each document
 // written, and a cut that measures a document several times builds one for
@@ -109,15 +147,14 @@ pub(super) fn write(
 pub(super) fn serialize(
     out: &mut dyn Write,
     value: &(impl Serialize + ?Sized),
-    keys: Option<KeyOrder>,
+    sorted_keys: bool,
 ) -> io::Result<()> {
-    match keys {
-        Some(KeyOrder::Sorted) => {
-            let mut sorted = serde_json::to_value(value)?;
-            sorted.sort_all_objects();
-            Ok(serde_json::to_writer(out, &sorted)?)
-        }
-        None => Ok(serde_json::to_writer(out, value)?),
+    if sorted_keys {
+        let mut sorted = serde_json::to_value(value)?;
+        sorted.sort_all_objects();
+        Ok(serde_json::to_writer(out, &sorted)?)
+    } else {
+        Ok(serde_json::to_writer(out, value)?)
     }
 }
 
@@ -198,17 +235,17 @@ pub(super) fn indent_at(compact: &[u8], depth: usize, out: &mut Vec<u8>) {
 /// around it.
 pub(super) fn element_len(
     value: &(impl Serialize + ?Sized),
-    layout: Option<JsonLayout>,
+    layout: JsonLayout,
     depth: usize,
 ) -> io::Result<usize> {
     let compact = serde_json::to_vec(value)?;
     Ok(match layout {
-        Some(JsonLayout::Pretty) => {
+        JsonLayout::Pretty { .. } => {
             let mut indented = Vec::with_capacity(compact.len() * 2);
             indent_at(&compact, depth, &mut indented);
             indented.len()
         }
-        None => compact.len(),
+        JsonLayout::OneLine => compact.len(),
     })
 }
 
@@ -221,15 +258,15 @@ pub(super) fn element_len(
 pub(super) const fn array_len(
     count: usize,
     elements: usize,
-    layout: Option<JsonLayout>,
+    layout: JsonLayout,
     depth: usize,
 ) -> usize {
     if count == 0 {
         return 0;
     }
     let (first, later) = match layout {
-        Some(JsonLayout::Pretty) => (4 * depth, 2 + 2 * depth),
-        None => (0, 1),
+        JsonLayout::Pretty { .. } => (4 * depth, 2 + 2 * depth),
+        JsonLayout::OneLine => (0, 1),
     };
     elements
         .saturating_add(first)

@@ -1,5 +1,5 @@
 //! Tests for how `finish_to` orders the keys of a JSON document when the
-//! guide sets `KeyOrder::Sorted` (ADR-0067).
+//! guide sets `JsonStyle::sorted` (ADR-0067).
 
 use std::process::ExitCode;
 
@@ -11,12 +11,12 @@ use super::{Finished, PLANET, PLANETS, Planet, Tool, finish_output, mercury, sat
 use crate::Envelope;
 use crate::help::Guide;
 use crate::{
-    Batch, Bytes, Document, Error, Headed, JsonLayout, KeyOrder, Listing, Output, Parsed, Row,
-    Sink, Spelling, finish_to,
+    Batch, Bytes, Document, Error, Headed, JsonStyle, Listing, Output, Parsed, Row, Sink, Spelling,
+    finish_to,
 };
 
 /// The guide of a tool whose readers expect sorted keys.
-const SORTED: Guide = Guide::new().json_keys(KeyOrder::Sorted);
+const SORTED: Guide = Guide::new().json(JsonStyle::new().sorted());
 
 /// Returns the output flags for `tool list` followed by `flags`, with
 /// `guide`, as a tool's `main` sets them.
@@ -85,7 +85,8 @@ fn sorted_keys_order_a_document_without_the_envelope() {
 
 #[test]
 fn sorted_keys_with_a_pretty_layout_indent_the_sorted_document() {
-    const PRETTY_SORTED: Guide = SORTED.json_layout(JsonLayout::Pretty, "the readers expect it");
+    const PRETTY_SORTED: Guide =
+        Guide::new().json(JsonStyle::new().sorted().pretty("the readers expect it"));
 
     let finished = finish_output(
         &mut guided(&["--json"], &PRETTY_SORTED),
@@ -128,37 +129,6 @@ fn sorted_keys_order_the_failure_document_and_its_recovery() {
             "\n"
         )
     );
-}
-
-/// A reading whose row type names no columns, so its text prints each row
-/// as one line of JSON.
-#[derive(Serialize, JsonSchema)]
-struct Reading {
-    /// The zone that was read.
-    zone: &'static str,
-    /// The hour of the reading.
-    at: u32,
-}
-
-impl Row for Reading {
-    const COLUMNS: &'static [&'static str] = &[];
-    const WHOLE: bool = true;
-}
-
-#[test]
-fn sorted_keys_order_each_line_of_json_in_the_text_of_rows_without_columns() {
-    let document: Document<Vec<Reading>> = Document::new("solar", "readings", 1, "The readings.");
-
-    let finished = finish_sorted(
-        &[],
-        document,
-        vec![Reading {
-            zone: "north",
-            at: 9,
-        }],
-    );
-
-    assert_eq!(finished.out, "{\"at\":9,\"zone\":\"north\"}\n");
 }
 
 /// A record that a headed batch prints as one line of JSON, because it

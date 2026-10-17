@@ -70,9 +70,9 @@ pub fn stream<R: Row>(
 /// A row type with an empty [`Row::COLUMNS`] fails to compile here, because
 /// each line would print nothing of its item (ADR-0063). A row type that
 /// sets [`Row::WHOLE`] compiles: each JSON line holds every field of its
-/// item, `--full` is refused, and when the row type has no columns, the
-/// text prints no header and each item as one line of compact JSON
-/// (ADR-0065).
+/// item and `--full` is refused (ADR-0065). Such a row type may name no
+/// columns only when it declares [`Row::LINE`], and its text then prints
+/// each item's own line with no header (ADR-0072).
 ///
 /// The stream flushes the output writer after each line, so a reader sees
 /// each item as soon as it is printed.

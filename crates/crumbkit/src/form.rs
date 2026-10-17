@@ -118,11 +118,8 @@ pub trait FailureForm {
     fn schema(&self) -> Schema;
 
     /// Returns the JSON document of `failure`. crumbkit writes it on one
-    /// line, or in the layout that the guide sets with
-    /// [`Guide::json_layout`](crate::help::Guide::json_layout), with its
-    /// keys in the order that the guide sets with
-    /// [`Guide::json_keys`](crate::help::Guide::json_keys), and flushes
-    /// it. A failure line of a `--json` stream stays one line in every
+    /// line, or in the layout and key order that the guide sets with
+    /// [`Guide::json`](crate::help::Guide::json), and flushes it. A failure line of a `--json` stream stays one line in every
     /// layout, and crumbkit handles a reader that closed the pipe.
     fn json(&self, failure: &PreparedFailure<'_>) -> serde_json::Value;
 

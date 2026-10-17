@@ -25,5 +25,6 @@ document.
 - [ADR-0068. One failure for each answer left out](0068-left-out-per-key.md)
 - [ADR-0069. Output budget floor](0069-output-budget-floor.md)
 - [ADR-0070. Every answer left out keeps its failure](0070-left-out-keys-always-answered.md)
+- [ADR-0073. One JSON style](0073-one-json-style.md)
 - [ADR-0050. Listings](listings/README.md)
 - [ADR-0051. Result shapes](results/README.md)

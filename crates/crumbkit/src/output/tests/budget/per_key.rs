@@ -12,7 +12,7 @@ use super::{
 use crate::Envelope;
 use crate::help::Guide;
 use crate::output::tests::finish_output;
-use crate::{Batch, Error, JsonLayout};
+use crate::{Batch, Error, JsonStyle};
 
 /// Returns a star whose story is `length` bytes long.
 fn long_star(number: usize, length: usize) -> Star {
@@ -196,7 +196,7 @@ fn a_batch_of_three_large_rows_answers_its_second_and_third_keys_with_their_own_
  {
     const GUIDE: Guide = Guide::new()
         .output_budget(300, "the tests print little")
-        .json_layout(JsonLayout::Pretty, "the readers expect it");
+        .json(JsonStyle::new().pretty("the readers expect it"));
     let keys: Vec<String> = (1..=3).map(|number| star(number).name).collect();
     let mut batch: Batch<Star, Error> = Batch::new(&["show"], "names", &keys);
     batch.extend((1..=3).map(|number| Ok(long_star(number, 120))));
@@ -255,7 +255,7 @@ proptest! {
         batch.extend((0..dim).map(|number| Err(Dim(number))));
         let mut guide = Guide::new().output_budget(budget, "the tests print little");
         if pretty {
-            guide = guide.json_layout(JsonLayout::Pretty, "the readers expect it");
+            guide = guide.json(JsonStyle::new().pretty("the readers expect it"));
         }
         let document = if in_order {
             DIM_BATCH.envelope(Envelope::KeysInOrder { type_key: "$type", data_key: "answers" })

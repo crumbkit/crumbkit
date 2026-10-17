@@ -1,4 +1,4 @@
-//! Tests for a stream of a tool whose guide sets `KeyOrder::Sorted`
+//! Tests for a stream of a tool whose guide sets `JsonStyle::sorted`
 //! (ADR-0067).
 
 use std::ops::ControlFlow;
@@ -7,13 +7,12 @@ use clap::{CommandFactory as _, FromArgMatches as _};
 
 use super::{SIGHTINGS, Tool, Unreadable, robin, stream_to};
 use crate::help::Guide;
-use crate::{JsonLayout, KeyOrder, Parsed, Sink, Spelling};
+use crate::{JsonStyle, Parsed, Sink, Spelling};
 
 #[test]
 fn each_line_of_a_sorted_stream_and_its_failure_prints_sorted_keys_on_one_line() {
-    const GUIDE: Guide = Guide::new()
-        .json_keys(KeyOrder::Sorted)
-        .json_layout(JsonLayout::Pretty, "the readers expect it");
+    const GUIDE: Guide =
+        Guide::new().json(JsonStyle::new().sorted().pretty("the readers expect it"));
     let mut command = Tool::command();
     let matches = command
         .try_get_matches_from_mut(["birds", "watch", "--json", "--full"])

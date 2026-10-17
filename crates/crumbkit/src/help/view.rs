@@ -71,8 +71,8 @@ pub(crate) enum Unoffered {
     /// bytes, which have no columns, and its JSON already holds every field.
     Headed,
     /// The command's row type sets `Row::WHOLE` and names no columns, so its
-    /// text prints each row as one line of JSON and has no table to shape
-    /// (ADR-0065).
+    /// text prints each row's own line and has no table to shape
+    /// (ADR-0065, ADR-0072).
     NoColumns,
 }
 

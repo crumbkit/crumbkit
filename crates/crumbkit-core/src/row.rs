@@ -53,7 +53,8 @@ pub trait Row: Serialize + JsonSchema {
     /// every field, so a headed row type may name no column. crumbkit-test's
     /// `check_guide` fails a leaf whose batch is not headed and whose row
     /// type has an empty list (ADR-0063). A row type that sets
-    /// [`WHOLE`](Row::WHOLE) may also name no column (ADR-0065).
+    /// [`WHOLE`](Row::WHOLE) and declares [`LINE`](Row::LINE) may also name
+    /// no column (ADR-0072).
     const COLUMNS: &'static [&'static str];
 
     /// The columns that `--long` adds after `COLUMNS`, in display order. A
@@ -108,16 +109,19 @@ pub trait Row: Serialize + JsonSchema {
     /// printing `null` for a field that a row leaves out. crumbkit refuses
     /// `--full`, because the JSON already holds every field.
     ///
-    /// When `COLUMNS` and `LONG_COLUMNS` are both empty, as for a row that
-    /// serializes as an array, the text prints each row as one line of
-    /// compact JSON with no header, and crumbkit refuses `--fields`. A row
-    /// type that also declares [`Row::LINE`] prints each row's own line in
-    /// text instead, and prints a row as JSON only when its
-    /// [`Row::text_line`] returns `None` (ADR-0064).
-    /// crumbkit-test's `check_guide` fails such a row type when its schema
-    /// has properties, which could be columns, and `check_document_ids`
-    /// fails a leaf whose row type sets it unless an opt-out from
-    /// `documents/rows-whole` with a reason covers the leaf.
+    /// A row type that sets it may name no columns, as for a row that
+    /// serializes as an array, only when it also declares [`Row::LINE`]
+    /// (ADR-0072). Its text then prints each row's own line with no header,
+    /// or one line of compact JSON for a row whose [`Row::text_line`]
+    /// returns `None`, and crumbkit refuses `--fields` and `--long`.
+    /// `crumbkit::finish` and `crumbkit::stream` fail to compile for such a
+    /// row type without a `LINE`, and crumbkit-test's `check_guide` fails a
+    /// batch of it. `check_guide` also fails a row type without columns
+    /// whose schema has properties, which could be columns.
+    ///
+    /// crumbkit-test's `check_document_ids` fails a leaf whose row type sets
+    /// `WHOLE` unless an opt-out from `documents/rows-whole` with a reason
+    /// covers the leaf.
     const WHOLE: bool = false;
 }
 
