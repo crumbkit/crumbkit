@@ -7,41 +7,51 @@ use clap::parser::ValueSource;
 use clap::{ArgMatches, Command, FromArgMatches};
 
 use super::pick;
+use crate::ViewFlags;
 use crate::help::{Guide, Leaf, ViewFlag, view};
 use crate::refusal::Refusal;
 
-/// Parses `args` against `command`, and returns the tool's parsed type,
-/// whether the caller passed `--no-input`, which parsing reads before the
-/// tool's type takes the values out of the matches, and the refusal of a
-/// view flag that [`refusal`] finds.
+/// What one parse of the command line found.
+pub(super) struct Attempt<C> {
+    /// The tool's parsed type.
+    pub(super) parsed: C,
+    /// The view flags that the caller typed.
+    pub(super) view: ViewFlags,
+    /// Whether the caller passed `--no-input`.
+    pub(super) no_input: bool,
+    /// The refusal of a view flag that [`refusal`] finds.
+    pub(super) refusal: Option<Refusal>,
+}
+
+/// Parses `args` against `command`, and returns the tool's parsed type, the
+/// view flags and whether the caller passed `--no-input`, which parsing
+/// reads before the tool's type takes the values out of the matches, and
+/// the refusal of a view flag that [`refusal`] finds.
 pub(super) fn attempt<C: FromArgMatches>(
     command: &mut Command,
     args: Vec<OsString>,
     guide: &Guide,
-) -> Result<(C, bool, Option<Refusal>), clap::Error> {
+) -> Result<Attempt<C>, clap::Error> {
     let mut matches = command.try_get_matches_from_mut(args)?;
     crate::events::parsed(command, &matches);
     let no_input = pick::no_input(&matches);
-    let refusal = refusal(command, &matches, guide);
-    C::from_arg_matches_mut(&mut matches).map(|parsed| (parsed, no_input, refusal))
+    let (path, node, level) = deepest(command, &matches);
+    let view = ViewFlags::read(node, level);
+    let refusal = refusal(node, level, &path, guide);
+    C::from_arg_matches_mut(&mut matches).map(|parsed| Attempt {
+        parsed,
+        view,
+        no_input,
+        refusal,
+    })
 }
 
-/// Returns the refusal of the view flags that the caller typed, or `None`
-/// when the typed command accepts them.
-///
-/// It first refuses the first view flag, in the order `--fields`, `--long`,
-/// `--full`, that the leaf of `guide` for the deepest command in `matches`
-/// does not offer (ADR-0016). On a leaf whose document is headed, it then
-/// refuses `--fields` without `--json`, as [`view::headed`] describes
-/// (ADR-0062). It then refuses two typed flags that cannot
-/// work together, on every command, as [`view::pairing`] describes.
-///
-/// clap copies the value of a global flag to every command on the path, so
-/// the deepest command's matches hold a view flag that the caller typed
-/// before the command path too. A flag counts only when the command's
-/// argument with the flag's id is global, so a tool's own argument with
-/// that id is never refused.
-pub(super) fn refusal(command: &Command, matches: &ArgMatches, guide: &Guide) -> Option<Refusal> {
+/// Returns the path of the deepest command in `matches`, that command in
+/// `command`, and its matches.
+pub(super) fn deepest<'a>(
+    command: &'a Command,
+    matches: &'a ArgMatches,
+) -> (Vec<&'a str>, &'a Command, &'a ArgMatches) {
     let mut path: Vec<&str> = Vec::new();
     let mut node = command;
     let mut level = matches;
@@ -52,6 +62,31 @@ pub(super) fn refusal(command: &Command, matches: &ArgMatches, guide: &Guide) ->
         node = subcommand;
         level = next;
     }
+    (path, node, level)
+}
+
+/// Returns the refusal of the view flags that the caller typed, or `None`
+/// when the typed command accepts them.
+///
+/// It first refuses the first view flag, in the order `--fields`, `--long`,
+/// `--full`, that the leaf of `guide` at `path` does not offer (ADR-0016).
+/// `path` names `node`, the deepest command that the caller typed, and
+/// `level` holds its matches. On a leaf whose document is headed, it then
+/// refuses `--fields` without `--json`, as [`view::headed`] describes
+/// (ADR-0062). It then refuses two typed flags that cannot
+/// work together, on every command, as [`view::pairing`] describes.
+///
+/// clap copies the value of a global flag to every command on the path, so
+/// the deepest command's matches hold a view flag that the caller typed
+/// before the command path too. A flag counts only when the command's
+/// argument with the flag's id is global, so a tool's own argument with
+/// that id is never refused.
+pub(super) fn refusal(
+    node: &Command,
+    level: &ArgMatches,
+    path: &[&str],
+    guide: &Guide,
+) -> Option<Refusal> {
     let typed = |id: &str| {
         let global = node
             .get_arguments()
@@ -62,10 +97,7 @@ pub(super) fn refusal(command: &Command, matches: &ArgMatches, guide: &Guide) ->
             && level.ids().any(|known| known == id)
             && level.value_source(id) == Some(ValueSource::CommandLine)
     };
-    let leaf = guide
-        .get_leaves()
-        .iter()
-        .find(|leaf| leaf.path() == path.as_slice());
+    let leaf = guide.get_leaves().iter().find(|leaf| leaf.path() == path);
     let unoffered = leaf.and_then(|leaf| {
         ViewFlag::ALL.into_iter().find_map(|flag| {
             let reason = leaf.unoffered(flag)?;

@@ -34,7 +34,8 @@ use crate::{Document, Row, Rows, Shape};
 ///     Document::new("reading", "entries", 1, "The entries of a reading list.");
 ///
 /// let result: Result<Listing<Entry>, Error> = Ok(Listing::new(vec![Entry { position: 1 }], 1));
-/// crumbkit::finish(&mut Output::default(), Spelling::COLONS, ENTRIES, result);
+/// # let mut output = Output::new(crumbkit::ViewFlags::new(), clap::Command::new("reading"), &crumbkit::help::Guide::new(), ["reading"]);
+/// crumbkit::finish(&mut output, Spelling::COLONS, ENTRIES, result);
 /// ```
 ///
 /// A row type that sets [`Row::WHOLE`] may name no column only when it
@@ -54,7 +55,8 @@ use crate::{Document, Row, Rows, Shape};
 ///     Document::new("reading", "answers", 1, "The answers of a query.");
 ///
 /// let result: Result<Vec<Answer>, Error> = Ok(vec![Answer(1, 2)]);
-/// crumbkit::finish(&mut Output::default(), Spelling::COLONS, ANSWERS, result);
+/// # let mut output = Output::new(crumbkit::ViewFlags::new(), clap::Command::new("reading"), &crumbkit::help::Guide::new(), ["reading"]);
+/// crumbkit::finish(&mut output, Spelling::COLONS, ANSWERS, result);
 /// ```
 pub(super) const fn require<T: Rows>() {
     const {
@@ -80,7 +82,8 @@ pub(super) const fn require<T: Rows>() {
 /// const ENTRIES_STREAM: Document<Stream<Entry>> =
 ///     Document::new("reading", "entries-stream", 1, "Each entry of a reading list.");
 ///
-/// let _ = crumbkit::stream(&mut Output::default(), Spelling::COLONS, ENTRIES_STREAM);
+/// # let mut output = Output::new(crumbkit::ViewFlags::new(), clap::Command::new("reading"), &crumbkit::help::Guide::new(), ["reading"]);
+/// let _ = crumbkit::stream(&mut output, Spelling::COLONS, ENTRIES_STREAM);
 /// ```
 ///
 /// A stream of a row type that sets [`Row::WHOLE`], names no column and
@@ -98,7 +101,8 @@ pub(super) const fn require<T: Rows>() {
 /// const ANSWERS: Document<Stream<Answer>> =
 ///     Document::new("reading", "answers-stream", 1, "Each answer of a query.");
 ///
-/// let _ = crumbkit::stream(&mut Output::default(), Spelling::COLONS, ANSWERS);
+/// # let mut output = Output::new(crumbkit::ViewFlags::new(), clap::Command::new("reading"), &crumbkit::help::Guide::new(), ["reading"]);
+/// let _ = crumbkit::stream(&mut output, Spelling::COLONS, ANSWERS);
 /// ```
 pub(super) const fn require_for_stream<R: Row>() {
     const {

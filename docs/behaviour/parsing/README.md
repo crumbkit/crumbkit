@@ -15,18 +15,31 @@ Tests run the same parse in memory through `parse_to`, which writes to a
 sink of in-memory writers. The rustdoc of `parse`, `parse_from` and
 `parse_to` states what each prints and the help lines that crumbkit adds.
 
-On success, `parse` returns the tool's parsed type and a
-[`Parsed`](../../../crates/crumbkit/src/parse/parsed.rs). `Parsed` keeps the
-command tree, the words the caller typed with any values that a
-[picker](../effects/pickers.md) added, and whether the caller passed
-`--no-input`. `Output::confirm` repeats those words with `--yes` in its
+On success, `parse` returns the tool's parsed type and an
+[`Output`](../../../crates/crumbkit/src/output.rs). The `Output` holds the
+view flags, the command tree, the guide's settings, the words the caller
+typed with any values that a [picker](../effects/pickers.md) added, whether
+the caller passed `--no-input`, and the code renames of the leaf that the
+words name. `Output::confirm` repeats those words with `--yes` in its
 recovery.
+
+A tool flattens [`ViewFlags`](../../../crates/crumbkit/src/output/build.rs)
+into its clap types to accept `--json`, `--fields`, `--long` and `--full`.
+`parse` reads them before the tool's type takes its values, so a handler
+reads them through the `Output`. A tool that does not flatten `ViewFlags`
+parses with every view flag off.
+
+A tool that parses with clap alone builds its `Output` with
+`Output::new(view, command, &GUIDE, args)`, where `args` is the argv with
+the program name first. `Output::new` finds the leaf that the words name,
+so the run gets that leaf's code renames, and it keeps the words for the
+`--yes` recovery. It reads no `--no-input`.
 
 A tool with personal aliases passes its arguments through
 `crumbkit_aliases::expand` before `parse_from`, as the
 [aliases page](aliases.md) describes.
 
-Why: ADR-0015, ADR-0002.
+Why: ADR-0015, ADR-0076, ADR-0002.
 
 ## The Stop of a run that parse ended
 
@@ -45,10 +58,10 @@ Why: ADR-0002.
 
 Help pages, the `Next:` lines of listings and the calls in recoveries are
 rendered from the `clap::Command` that the tool builds at run time, which
-may hide or remove commands. A tool's `main` passes the `Parsed` that
-`parse` returned to `Output::set_command` once.
+may hide or remove commands. The `Output` that `parse` returns holds that
+tree.
 
-- `set_command` keeps the tree as parsing left it, with the root and each
+- The `Output` keeps the tree as parsing left it, with the root and each
   command on the typed path built.
 - `finish` builds only the branch below the root that a call names, or the
   whole tree for a call to the root.
@@ -61,10 +74,10 @@ reads the tree runs before `finish`, and the work of a run grows with the
 command typed. A `Call` that does not resolve against the tree is left out,
 or prints as `Recovery::None`. crumbkit prints a hidden command or flag only
 where the caller typed it. The rustdoc of
-[`Output::set_command`](../../../crates/crumbkit/src/output.rs) and
-`Output::command` states what each builds.
+[`Output::command`](../../../crates/crumbkit/src/output.rs) states what it
+builds.
 
-Why: ADR-0015.
+Why: ADR-0015, ADR-0076.
 
 ## Dashed forms of command names
 

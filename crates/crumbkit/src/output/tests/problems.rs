@@ -5,7 +5,7 @@ use std::fmt;
 use std::io;
 use std::process::ExitCode;
 
-use clap::{CommandFactory as _, FromArgMatches as _};
+use clap::CommandFactory as _;
 use schemars::JsonSchema;
 use serde::Serialize;
 use serde_json::{Value, json};
@@ -14,7 +14,7 @@ use super::{Failing, Tool, finish_output, finish_with};
 use crate::answered::answered;
 use crate::help::Guide;
 use crate::{
-    Batch, Code, Document, Error, Failure, Listing, Output, Parsed, Recovery, Row, Sink, Spelling,
+    Batch, Code, Document, Error, Failure, Listing, Output, Recovery, Row, Sink, Spelling,
     finish_to,
 };
 
@@ -165,7 +165,7 @@ fn a_listing_with_problem_rows_exits_with_1_after_the_reader_closed_the_pipe() {
 
     let code = finish_to(
         &mut sink,
-        &mut Output::default(),
+        &mut Output::of(clap::Command::new("tool")),
         Spelling::COLONS,
         CHECKS,
         result,
@@ -241,13 +241,9 @@ fn fields_that_leave_out_the_problem_column_keep_the_exit_at_1() {
     assert_eq!(finished.code, ExitCode::FAILURE);
 }
 
-/// Returns the output flags for `flags` with `guide`, as a tool's `main`
-/// sets them.
+/// Returns the output flags for `flags` with `guide`, as `Output::new`
+/// builds them.
 fn guided(guide: &Guide, flags: &[&str]) -> Output {
-    let mut command = Tool::command();
-    let args = ["tool", "list"].iter().chain(flags);
-    let matches = command.try_get_matches_from_mut(args).unwrap();
-    let mut output = Output::from_arg_matches(&matches).unwrap();
-    output.set_command(Parsed::guided(command, guide));
-    output
+    let args: Vec<&str> = ["tool", "list"].iter().chain(flags).copied().collect();
+    super::built_with(Tool::command(), guide, &args)
 }

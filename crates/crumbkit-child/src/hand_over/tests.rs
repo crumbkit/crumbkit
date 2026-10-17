@@ -15,7 +15,7 @@ use serde::{Deserialize, Serialize};
 
 use super::{Json, hand_over_json_to, hand_over_to, respond_json, respond_text};
 use crumbkit::help::{Exit, Guide};
-use crumbkit::{Document, Output, Parsed, Row, Sink, Spelling};
+use crumbkit::{Document, Output, Row, Sink, Spelling, ViewFlags};
 
 use crate::codes;
 use crate::testing::assert_one_word_apart;
@@ -43,17 +43,15 @@ const BOOKS: Document<Vec<Book>> = Document::new("vault", "books-list", 1, "The 
 #[command(name = "vault")]
 struct Tool {
     #[command(flatten)]
-    output: Output,
+    view: ViewFlags,
 }
 
-/// Parses `vault` followed by `flags` into the output flags, with the
-/// tool's command set as its `main` sets it.
+/// Parses `vault` followed by `flags` into the output of the run, as a
+/// tool that parses with clap alone builds it.
 fn output(flags: &[&str]) -> Output {
-    let mut output = Tool::try_parse_from(["vault"].iter().chain(flags))
-        .unwrap()
-        .output;
-    output.set_command(Tool::command());
-    output
+    let words: Vec<&str> = ["vault"].iter().chain(flags).copied().collect();
+    let view = Tool::try_parse_from(&words).unwrap().view;
+    Output::new(view, Tool::command(), &Guide::new(), words)
 }
 
 /// What a response returned and wrote.
@@ -358,8 +356,9 @@ const NO_JSON_3: Guide = Guide::new().exits(&[
 /// Returns the exit code of `--json` on a child without a JSON form, under
 /// `guide`.
 fn no_json_exit(guide: &'static Guide) -> ExitCode {
-    let mut output = Tool::try_parse_from(["vault", "--json"]).unwrap().output;
-    output.set_command(Parsed::guided(Tool::command(), guide));
+    let words = ["vault", "--json"];
+    let view = Tool::try_parse_from(words).unwrap().view;
+    let mut output = Output::new(view, Tool::command(), guide, words);
     respond(|sink| hand_over_to(sink, &mut output, Spelling::COLONS, command(MISSING))).code
 }
 

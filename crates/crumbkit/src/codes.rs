@@ -33,17 +33,9 @@ pub const CLI_USAGE: Code = Code::new("crumbkit", "cli", "usage");
 /// (ADR-0026).
 pub const COMMANDS_NOT_FOUND: Code = Code::new("crumbkit", "commands", "not_found");
 
-/// The code of a `commands list` run in a tool that never passed its
-/// command to `Output::set_command` (ADR-0026).
-pub const COMMANDS_UNAVAILABLE: Code = Code::new("crumbkit", "commands", "unavailable");
-
 /// The code of a `schemas show` id that names no document the tool prints
 /// (ADR-0035).
 pub const SCHEMAS_NOT_FOUND: Code = Code::new("crumbkit", "schemas", "not_found");
-
-/// The code of a schema command run in a tool that never passed its command
-/// to `Output::set_command` (ADR-0035).
-pub const SCHEMAS_UNAVAILABLE: Code = Code::new("crumbkit", "schemas", "unavailable");
 
 /// The code of a question that the person at the terminal did not answer
 /// with yes (ADR-0039).
@@ -73,9 +65,7 @@ pub use crumbkit_core::codes::REPORT_UNCHECKED;
 pub const ALL: &[&Code] = &[
     &CLI_USAGE,
     &COMMANDS_NOT_FOUND,
-    &COMMANDS_UNAVAILABLE,
     &SCHEMAS_NOT_FOUND,
-    &SCHEMAS_UNAVAILABLE,
     &CONFIRM_DECLINED,
     &CONFIRM_NEEDS_YES,
     &VERSION_CONFLICT,

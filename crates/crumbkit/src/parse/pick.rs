@@ -125,7 +125,7 @@ impl Picking {
             Err(error) => {
                 let printing = Printing::at(guide, leaf);
                 let failure = error.failure();
-                failure::print(sink, json, spelling, printing, failure, Some(command));
+                failure::print(sink, json, spelling, printing, failure, command);
                 let exit = printing.exit(failure.code());
                 crate::events::exited(exit);
                 return Step::Stop(exit);

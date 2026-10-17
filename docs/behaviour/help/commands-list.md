@@ -20,11 +20,10 @@ Why: ADR-0026.
 
 ## What it lists
 
-`list` reads the command tree that the tool passed to `Output::set_command`,
-which is the tree that `parse` returns, so the listing shows the commands the
-tool kept at run time. It builds that whole tree through `Output::command`
-before it reads it, so it also sees each command that a `Command::defer`
-closure adds. It fails with a fixed code when no command is set.
+`list` reads the command tree that the run's `Output` holds, which is the
+tree that `parse` returns, so the listing shows the commands the tool kept at
+run time. It builds that whole tree through `Output::command` before it reads
+it, so it also sees each command that a `Command::defer` closure adds.
 
 - A hidden command and everything below it are left out, as help leaves them
   out. A hidden command fails as an unknown one does, so the failure never

@@ -100,7 +100,7 @@ struct Tool {
     #[command(subcommand)]
     command: Command,
     #[command(flatten)]
-    output: Output,
+    view: crate::ViewFlags,
 }
 
 #[derive(Subcommand)]
@@ -111,18 +111,17 @@ enum Command {
     },
 }
 
-/// Parses `birds watch` followed by `flags`, and returns the output flags
-/// with the tool's command set, as a tool's `main` sets it. A `--dry-run`
+/// Parses `birds watch` followed by `flags`, and returns the output as a
+/// tool that parses with clap alone builds it. A `--dry-run`
 /// in `flags` is recorded in the output, as a handler records it.
 fn parse(flags: &[&str]) -> Output {
     let mut command = Tool::command();
     let args = ["birds", "watch"].iter().chain(flags);
-    let matches = command.try_get_matches_from_mut(args).unwrap();
+    let matches = command.try_get_matches_from_mut(args.clone()).unwrap();
     let tool = Tool::from_arg_matches(&matches).unwrap();
-    let mut output = tool.output;
+    let mut output = Output::new(tool.view, command, &crate::help::Guide::new(), args);
     let Command::Watch { dry_run } = tool.command;
     let _ = output.dry_run(dry_run);
-    output.set_command(command);
     output
 }
 
@@ -479,10 +478,10 @@ fn another_write_error_is_reported_once_and_the_stream_exits_with_1() {
 fn run_budgeted(flags: &[&str], count: usize) -> (Streamed, usize) {
     let mut command = Tool::command();
     let args = ["birds", "watch"].iter().chain(flags);
-    let matches = command.try_get_matches_from_mut(args).unwrap();
-    let mut output = Tool::from_arg_matches(&matches).unwrap().output;
+    let matches = command.try_get_matches_from_mut(args.clone()).unwrap();
+    let view = Tool::from_arg_matches(&matches).unwrap().view;
     let guide = crate::help::Guide::new().output_budget(1024, "a short watch");
-    output.set_command(crate::Parsed::guided(command, &guide));
+    let mut output = Output::new(view, command, &guide, args);
     let mut out = Vec::new();
     let mut err = Vec::new();
     let mut sink = Sink::new(&mut out, &mut err);
@@ -552,9 +551,9 @@ fn a_stream_always_prints_its_first_item_even_past_the_budget() {
     let matches = command
         .try_get_matches_from_mut(["birds", "watch"])
         .unwrap();
-    let mut output = Tool::from_arg_matches(&matches).unwrap().output;
+    let view = Tool::from_arg_matches(&matches).unwrap().view;
     let guide = crate::help::Guide::new().output_budget(1024, "a short watch");
-    output.set_command(crate::Parsed::guided(command, &guide));
+    let mut output = Output::new(view, command, &guide, ["birds", "watch"]);
     let long: &'static str = Box::leak("w".repeat(2000).into_boxed_str());
     let wren = Sighting {
         bird: long,

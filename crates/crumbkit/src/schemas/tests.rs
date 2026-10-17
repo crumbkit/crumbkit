@@ -14,8 +14,7 @@ use super::{
 };
 use crate::help::{Guide, Leaf};
 use crate::{
-    AsFailure as _, Batch, Document, Error, Listing, NoSummary, Output, Prose, Row, Sink, Spelling,
-    finish_to,
+    Batch, Document, Error, Listing, NoSummary, Output, Prose, Row, Sink, Spelling, finish_to,
 };
 
 mod bytes;
@@ -95,18 +94,17 @@ fn tool() -> Command {
         )
 }
 
-/// Returns the output flags that `flags` set, with the tool's command set
-/// as `main` sets it.
+/// Returns the output of a run of the tool with `flags`, as `Output::new`
+/// builds it.
 fn output_with(flags: &[&str]) -> Output {
-    let matches = Output::augment_args(Command::new("shelf"))
+    let matches = crate::ViewFlags::augment_args(Command::new("shelf"))
         .try_get_matches_from(std::iter::once(&"shelf").chain(flags))
         .unwrap();
-    let mut output = <Output as clap::FromArgMatches>::from_arg_matches(&matches).unwrap();
-    output.set_command(tool());
-    output
+    let view = <crate::ViewFlags as clap::FromArgMatches>::from_arg_matches(&matches).unwrap();
+    Output::new(view, tool(), &Guide::new(), ["shelf"])
 }
 
-/// Returns the default output flags with the tool's command set.
+/// Returns the output of a run of the tool with every view flag off.
 fn output() -> Output {
     output_with(&[])
 }
@@ -398,19 +396,6 @@ fn list_prints_one_page_and_counts_every_document_in_its_total() {
 
     assert_eq!(listing.rows().len(), 2);
     assert_eq!(listing.total(), Some(5));
-}
-
-#[test]
-fn list_fails_with_unavailable_when_the_tool_kept_no_command() {
-    let error = list(
-        &mut Output::default(),
-        &GUIDE,
-        &args::<SchemasList>("list", &[]),
-    )
-    .unwrap_err();
-
-    let code = error.as_failure().code();
-    assert_eq!((code.area(), code.reason()), ("schemas", "unavailable"));
 }
 
 #[test]

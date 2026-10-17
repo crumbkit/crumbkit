@@ -4,7 +4,7 @@
 
 use std::process::ExitCode;
 
-use clap::{CommandFactory as _, FromArgMatches as _, Parser};
+use clap::{CommandFactory as _, Parser};
 use schemars::JsonSchema;
 use serde::Serialize;
 
@@ -13,9 +13,7 @@ use crate::Envelope;
 use crate::answered::answered;
 use crate::help::Guide;
 use crate::twins::assert_one_word_apart;
-use crate::{
-    Batch, Bytes, Document, DryRun, Error, Output, Parsed, Row, Sink, Spelling, finish_to,
-};
+use crate::{Batch, Bytes, Document, DryRun, Error, Output, Row, Sink, Spelling, finish_to};
 
 const FILE: Document<Bytes> = Document::new("files", "file", 1, "The bytes of one file.");
 
@@ -31,15 +29,11 @@ struct Finished {
 }
 
 /// Parses `tool list` followed by `flags` with a guide whose budget is
-/// `budget`, as a tool's `main` sets the output flags.
+/// `budget`, as `Output::new` builds the output.
 fn output_with(budget: usize, flags: &[&str]) -> Output {
-    let mut command = Tool::command();
-    let args = ["tool", "list"].iter().chain(flags);
-    let matches = command.try_get_matches_from_mut(args).unwrap();
-    let mut output = Output::from_arg_matches(&matches).unwrap();
     let guide = Guide::new().output_budget(budget, "the tests print little");
-    output.set_command(Parsed::guided(command, &guide));
-    output
+    let args: Vec<&str> = ["tool", "list"].iter().chain(flags).copied().collect();
+    super::built_with(Tool::command(), &guide, &args)
 }
 
 /// Finishes `bytes` as `document` with the flags and budget in `output`.
@@ -239,15 +233,16 @@ struct Write {
     #[command(flatten)]
     dry_run: DryRun,
     #[command(flatten)]
-    output: Output,
+    view: crate::ViewFlags,
 }
 
 #[test]
 fn the_dry_run_line_of_bytes_goes_to_standard_error_so_the_bytes_stay_unchanged() {
-    let mut write = Write::parse_from(["tool", "--dry-run"]);
-    write.output.set_command(Write::command());
-    assert!(write.output.dry_run(write.dry_run));
-    let finished = finish_output(&mut write.output, FILE, Bytes::from("Emma".to_owned()));
+    let words = ["tool", "--dry-run"];
+    let write = Write::parse_from(words);
+    let mut output = Output::new(write.view, Write::command(), &Guide::new(), words);
+    assert!(output.dry_run(write.dry_run));
+    let finished = finish_output(&mut output, FILE, Bytes::from("Emma".to_owned()));
 
     assert_eq!(finished.code, ExitCode::SUCCESS);
     assert_eq!(finished.out, b"Emma");

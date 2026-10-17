@@ -13,8 +13,8 @@ use super::{FailureForm, PreparedFailure, ReadFailure, Step};
 use crate::answered::answered;
 use crate::help::Guide;
 use crate::{
-    Batch, Call, Code, Document, Failure, Field, FieldValue, JsonStyle, Output, Parsed, Recovery,
-    Row, Sink, Spelling, Stream, finish_to, parse_to, stream_to,
+    Batch, Call, Code, Document, Failure, Field, FieldValue, JsonStyle, Recovery, Row, Sink,
+    Spelling, Stream, finish_to, parse_to, stream_to,
 };
 
 mod entries;
@@ -47,7 +47,7 @@ struct Tool {
     #[command(subcommand)]
     command: Command,
     #[command(flatten)]
-    output: Output,
+    view: crate::ViewFlags,
 }
 
 #[derive(Subcommand)]
@@ -219,16 +219,13 @@ fn finish<T: crate::Rows>(
         Spelling::DOTS,
         words,
     ) {
-        Ok((mut tool, parsed)) => {
-            tool.output.set_command(parsed);
-            ExitCode::from(finish_to(
-                &mut sink,
-                &mut tool.output,
-                Spelling::DOTS,
-                document,
-                result,
-            ))
-        }
+        Ok((_, mut output)) => ExitCode::from(finish_to(
+            &mut sink,
+            &mut output,
+            Spelling::DOTS,
+            document,
+            result,
+        )),
         Err(stop) => stop.code(),
     };
     Ran {
@@ -343,7 +340,7 @@ fn a_failure_in_a_json_stream_prints_one_line_of_the_form_document_between_the_r
     let mut out = Vec::new();
     let mut err = Vec::new();
     let mut sink = Sink::new(&mut out, &mut err);
-    let (mut tool, parsed) = parse_to::<Tool, _, _, _, _>(
+    let (_, mut output) = parse_to::<Tool, _, _, _, _>(
         &mut sink,
         Tool::command(),
         &ERROR_GUIDE,
@@ -351,9 +348,7 @@ fn a_failure_in_a_json_stream_prints_one_line_of_the_form_document_between_the_r
         ["tool", "list", "--json"],
     )
     .unwrap();
-    tool.output.set_command(parsed);
-    let mut streaming =
-        stream_to(&mut sink, &mut tool.output, Spelling::DOTS, PLANETS_STREAM).unwrap();
+    let mut streaming = stream_to(&mut sink, &mut output, Spelling::DOTS, PLANETS_STREAM).unwrap();
     let _ = streaming.item(&Planet { name: "Mars" });
     let _ = streaming.failure(&Missing);
     let _ = streaming.item(&Planet { name: "Venus" });
@@ -392,7 +387,7 @@ fn a_json_stream_keeps_one_line_for_each_row_and_failure_with_a_pretty_layout() 
     let mut out = Vec::new();
     let mut err = Vec::new();
     let mut sink = Sink::new(&mut out, &mut err);
-    let (mut tool, parsed) = parse_to::<Tool, _, _, _, _>(
+    let (_, mut output) = parse_to::<Tool, _, _, _, _>(
         &mut sink,
         Tool::command(),
         &PRETTY_GUIDE,
@@ -400,9 +395,7 @@ fn a_json_stream_keeps_one_line_for_each_row_and_failure_with_a_pretty_layout() 
         ["tool", "list", "--json"],
     )
     .unwrap();
-    tool.output.set_command(parsed);
-    let mut streaming =
-        stream_to(&mut sink, &mut tool.output, Spelling::DOTS, PLANETS_STREAM).unwrap();
+    let mut streaming = stream_to(&mut sink, &mut output, Spelling::DOTS, PLANETS_STREAM).unwrap();
     let _ = streaming.item(&Planet { name: "Mars" });
     let _ = streaming.failure(&Missing);
     let code = streaming.end(Ok::<(), Missing>(()));
@@ -417,11 +410,16 @@ fn a_json_stream_keeps_one_line_for_each_row_and_failure_with_a_pretty_layout() 
 }
 
 #[test]
-fn a_tool_that_parses_with_clap_alone_gets_the_form_through_parsed_guided() {
-    let mut output = Tool::try_parse_from(["tool", "list", "--json"])
+fn a_tool_that_parses_with_clap_alone_gets_the_form_through_output_new() {
+    let view = Tool::try_parse_from(["tool", "list", "--json"])
         .unwrap()
-        .output;
-    output.set_command(Parsed::guided(Tool::command(), &ERROR_GUIDE));
+        .view;
+    let mut output = crate::Output::new(
+        view,
+        Tool::command(),
+        &ERROR_GUIDE,
+        ["tool", "list", "--json"],
+    );
     let mut out = Vec::new();
     let mut err = Vec::new();
     let result: Result<Vec<Planet>, Missing> = Err(Missing);

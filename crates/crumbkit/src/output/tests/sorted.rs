@@ -3,7 +3,7 @@
 
 use std::process::ExitCode;
 
-use clap::{CommandFactory as _, FromArgMatches as _};
+use clap::CommandFactory as _;
 use schemars::JsonSchema;
 use serde::Serialize;
 
@@ -11,7 +11,7 @@ use super::{Finished, PLANET, PLANETS, Planet, Tool, finish_output, mercury, sat
 use crate::Envelope;
 use crate::help::Guide;
 use crate::{
-    Batch, Bytes, Document, Error, Headed, JsonStyle, Listing, Output, Parsed, Row, Sink, Spelling,
+    Batch, Bytes, Document, Error, Headed, JsonStyle, Listing, Output, Row, Sink, Spelling,
     finish_to,
 };
 
@@ -19,14 +19,10 @@ use crate::{
 const SORTED: Guide = Guide::new().json(JsonStyle::new().sorted());
 
 /// Returns the output flags for `tool list` followed by `flags`, with
-/// `guide`, as a tool's `main` sets them.
+/// `guide`, as `Output::new` builds them.
 fn guided(flags: &[&str], guide: &'static Guide) -> Output {
-    let mut command = Tool::command();
-    let args = ["tool", "list"].iter().chain(flags);
-    let matches = command.try_get_matches_from_mut(args).unwrap();
-    let mut output = Output::from_arg_matches(&matches).unwrap();
-    output.set_command(Parsed::guided(command, guide));
-    output
+    let args: Vec<&str> = ["tool", "list"].iter().chain(flags).copied().collect();
+    super::built_with(Tool::command(), guide, &args)
 }
 
 /// Finishes `value` with `flags` and the guide [`SORTED`].

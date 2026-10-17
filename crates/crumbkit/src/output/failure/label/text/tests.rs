@@ -25,7 +25,7 @@ fn text(failure: &dyn Failure) -> String {
         failure,
         Spelling::COLONS,
         Printing::default(),
-        None,
+        &mut clap::Command::new("tool"),
         &mut std::io::sink(),
     );
     let mut err = Vec::new();

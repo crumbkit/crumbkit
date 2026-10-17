@@ -76,7 +76,7 @@ fn json_holds_each_label_with_its_place_when_the_span_could_be_read() {
         &failure,
         Spelling::COLONS,
         Printing::default(),
-        None,
+        &mut clap::Command::new("tool"),
         &mut std::io::sink(),
     );
 
@@ -102,7 +102,7 @@ fn a_batch_entry_holds_the_labels_as_the_failure_document_does() {
         &failure,
         Spelling::COLONS,
         Printing::default(),
-        None,
+        &mut clap::Command::new("tool"),
         &mut std::io::sink(),
     );
 
@@ -125,7 +125,7 @@ fn json_leaves_out_labels_when_the_diagnostic_has_none() {
         &failure,
         Spelling::COLONS,
         Printing::default(),
-        None,
+        &mut clap::Command::new("tool"),
         &mut std::io::sink(),
     );
 
@@ -142,7 +142,7 @@ fn a_label_excerpt_holds_every_line_of_its_span_and_one_line_before_and_after() 
         &failure,
         Spelling::COLONS,
         Printing::default(),
-        None,
+        &mut clap::Command::new("tool"),
         &mut std::io::sink(),
     );
 

@@ -28,12 +28,9 @@ use crate::{AsFailure, Batch, Document, Row, Rows};
 /// would cut the batch.
 ///
 /// ```
-/// # use clap::Parser;
 /// # #[derive(serde::Serialize, schemars::JsonSchema)]
 /// # struct Book { id: u32 }
 /// # impl crumbkit::Row for Book { const COLUMNS: &'static [&'static str] = &["id"]; }
-/// # #[derive(Parser)]
-/// # struct Cli { #[command(flatten)] output: crumbkit::Output }
 /// use crumbkit::{Batch, Document, Error, Output};
 ///
 /// const BOOKS_SHOW: Document<Batch<Book, Error>> =
@@ -50,8 +47,13 @@ use crate::{AsFailure, Batch, Document, Row, Rows};
 ///     }
 ///     batch
 /// }
-/// # let cli = Cli::parse_from(["shelf"]);
-/// # let _ = show(&cli.output, &[2, 7, 9]);
+/// # let output = Output::new(
+/// #     crumbkit::ViewFlags::new(),
+/// #     clap::Command::new("shelf"),
+/// #     &crumbkit::help::Guide::new(),
+/// #     ["shelf"],
+/// # );
+/// # let _ = show(&output, &[2, 7, 9]);
 /// ```
 #[derive(Debug)]
 pub struct Room<T> {

@@ -9,7 +9,7 @@ use clap::{Arg, ArgAction, ArgMatches, Command, FromArgMatches};
 use crate::help::{Guide, Leaf};
 use crate::pick::{Answer, Choice, Choices, Picker, Question};
 use crate::twins::assert_one_word_apart;
-use crate::{Error, Parsed, Sink, Spelling, Stop, parse_to};
+use crate::{Error, Sink, Spelling, Stop, parse_to};
 
 /// A tool whose `show` takes a required `--list` and an optional `--sort`,
 /// whose `get` takes a required positional `NAME` with possible values,
@@ -169,7 +169,7 @@ impl FromArgMatches for Matches {
 
 /// What `parse_to` returned and printed.
 struct Run {
-    result: Result<(Matches, Parsed), Stop>,
+    result: Result<(Matches, crate::Output), Stop>,
     out: String,
     err: String,
 }
@@ -202,9 +202,7 @@ fn admits(words: &[&str], answer: &str, interactive: bool) {
 fn words(run: &Run) -> Vec<String> {
     let (_, parsed) = run.result.as_ref().unwrap();
     parsed
-        .words
-        .as_ref()
-        .unwrap()
+        .words()
         .iter()
         .map(|word| word.to_string_lossy().into_owned())
         .collect()
@@ -336,9 +334,9 @@ fn a_failed_source_prints_its_failure_and_exits_with_1() {
 fn a_parsed_command_line_with_no_input_records_it() {
     let run = run(&GUIDE, &["show", "--list", "a", "--no-input"], "", true);
     let (_, parsed) = run.result.as_ref().unwrap();
-    assert!(parsed.no_input);
+    assert!(parsed.no_input());
     let run = self::run(&GUIDE, &["show", "--list", "a"], "", true);
-    assert!(!run.result.as_ref().unwrap().1.no_input);
+    assert!(!run.result.as_ref().unwrap().1.no_input());
 }
 
 #[test]

@@ -31,11 +31,6 @@ pub const ALIASES_LIST: Document<Listing<AliasRow>> = Document::new(
 /// the tool's spelling, such as `crumbkit::aliases::unreadable` (ADR-0027).
 const UNREADABLE: Code = Code::new("crumbkit", "aliases", "unreadable");
 
-/// The code of an `aliases list` run in a tool that never passed its
-/// command to `Output::set_command`, in the tool's spelling, such as
-/// `crumbkit::aliases::unavailable` (ADR-0027).
-const UNAVAILABLE: Code = Code::new("crumbkit", "aliases", "unavailable");
-
 /// The problem of an entry whose name a real command takes.
 const SHADOWED: &str = "the tool has a command or built-in alias of this name, which wins";
 
@@ -85,8 +80,8 @@ impl Row for AliasRow {
     const PROBLEM: Option<&'static str> = Some("problem");
 }
 
-/// Returns the built-in aliases of the command tree that the tool passed to
-/// [`Output::set_command`] and the entries of the aliases file at `file`,
+/// Returns the built-in aliases of the command tree that `output` holds and
+/// the entries of the aliases file at `file`,
 /// one page of them as `args` asks, for the tool to pass to
 /// [`finish`](crumbkit::finish) with [`ALIASES_LIST`].
 ///
@@ -116,18 +111,12 @@ impl Row for AliasRow {
 /// file is at `file` but cannot be read or parsed. The message names the
 /// path and the reason, and the recovery asks the person to fix or remove
 /// the file.
-///
-/// Returns a failure with the code `crumbkit::aliases::unavailable` and no
-/// next step when the tool has not passed its command to
-/// [`Output::set_command`].
 pub fn list(
     output: &mut Output,
     file: Option<&Path>,
     args: &AliasesList,
 ) -> Result<Listing<AliasRow>, Error> {
-    let Some(command) = output.command() else {
-        return Err(AliasesError::Unavailable.into());
-    };
+    let command = output.command();
     let text = match file {
         Some(path) => crate::file::read(path).map_err(|error| AliasesError::Unreadable {
             path: path.display().to_string(),
@@ -273,8 +262,6 @@ enum AliasesError {
         /// The I/O error or the parser's message.
         reason: String,
     },
-    /// The tool has not passed its command to `Output::set_command`.
-    Unavailable,
 }
 
 /// Prints the message, such as `cannot read the aliases file
@@ -284,9 +271,6 @@ impl fmt::Display for AliasesError {
         match self {
             Self::Unreadable { path, reason } => {
                 write!(f, "cannot read the aliases file {path}: {reason}")
-            }
-            Self::Unavailable => {
-                f.write_str("the tool has not kept its command tree, so it cannot list its aliases")
             }
         }
     }
@@ -298,17 +282,12 @@ impl Failure for AliasesError {
     fn code(&self) -> &'static Code {
         match self {
             Self::Unreadable { .. } => &UNREADABLE,
-            Self::Unavailable => &UNAVAILABLE,
         }
     }
 
     fn recovery(&self) -> Recovery {
         match self {
             Self::Unreadable { path, .. } => Recovery::Hint(format!("fix or remove {path}")),
-            Self::Unavailable => Recovery::None {
-                reason: "the tool's main does not pass its command to Output::set_command"
-                    .to_owned(),
-            },
         }
     }
 }

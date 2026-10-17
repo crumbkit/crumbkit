@@ -2,7 +2,9 @@
 
 use clap::CommandFactory as _;
 use crumbkit::help::Guide;
-use crumbkit::{Batch, Failure as _, Output, Recovery, RenderCall as _, Room, Rows as _};
+use crumbkit::{
+    Batch, Failure as _, Output, Recovery, RenderCall as _, Room, Rows as _, ViewFlags,
+};
 
 use super::{
     BOOKS_SHOW, Book, BooksError, IdsFileProblem, MOST_IDS, parse_ids, show, show_call, summarize,
@@ -12,7 +14,7 @@ use crate::cli::{BooksShow, BooksSummarize, Cli};
 
 /// Returns the room of `books show` with crumbkit's default output budget.
 fn roomy() -> Room<Batch<Book, BooksError>> {
-    Output::default().room(BOOKS_SHOW)
+    Output::new(ViewFlags::new(), Cli::command(), &Guide::new(), ["shelf"]).room(BOOKS_SHOW)
 }
 
 #[test]
@@ -97,11 +99,10 @@ fn show_stops_looking_up_ids_once_its_books_fill_the_budget() {
     };
     let guide = Guide::new().output_budget(1024, "the test fills it");
     let words = ["shelf", "books", "show", "1"];
-    let (mut cli, parsed) =
+    let (_, output) =
         crumbkit::parse_from::<Cli, _, _>(Cli::command(), &guide, SPELLING, words).unwrap();
-    cli.output.set_command(parsed);
 
-    let batch = show(&args, None, cli.output.room(BOOKS_SHOW)).unwrap();
+    let batch = show(&args, None, output.room(BOOKS_SHOW)).unwrap();
 
     let shown = batch.rows().len();
     assert!((1..MOST_IDS).contains(&shown), "{shown}");

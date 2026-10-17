@@ -7,7 +7,7 @@ use clap::{CommandFactory as _, FromArgMatches as _};
 
 use super::{SIGHTINGS, Tool, Unreadable, robin, stream_to};
 use crate::help::Guide;
-use crate::{JsonStyle, Parsed, Sink, Spelling};
+use crate::{JsonStyle, Sink, Spelling};
 
 #[test]
 fn each_line_of_a_sorted_stream_and_its_failure_prints_sorted_keys_on_one_line() {
@@ -17,8 +17,13 @@ fn each_line_of_a_sorted_stream_and_its_failure_prints_sorted_keys_on_one_line()
     let matches = command
         .try_get_matches_from_mut(["birds", "watch", "--json", "--full"])
         .unwrap();
-    let mut output = Tool::from_arg_matches(&matches).unwrap().output;
-    output.set_command(Parsed::guided(command, &GUIDE));
+    let view = Tool::from_arg_matches(&matches).unwrap().view;
+    let mut output = crate::Output::new(
+        view,
+        command,
+        &GUIDE,
+        ["birds", "watch", "--json", "--full"],
+    );
     let mut out = Vec::new();
     let mut err = Vec::new();
     let mut sink = Sink::new(&mut out, &mut err);

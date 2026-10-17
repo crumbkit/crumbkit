@@ -253,9 +253,8 @@ impl ReadFailure {
     }
 }
 
-/// Prints `FailureForm`, so a [`Guide`](crate::help::Guide), a
-/// [`Parsed`](crate::Parsed) and an [`Output`](crate::Output) that hold a
-/// form can derive `Debug`.
+/// Prints `FailureForm`, so a [`Guide`](crate::help::Guide) and an
+/// [`Output`](crate::Output) that hold a form can derive `Debug`.
 impl fmt::Debug for dyn FailureForm + '_ {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str("FailureForm")

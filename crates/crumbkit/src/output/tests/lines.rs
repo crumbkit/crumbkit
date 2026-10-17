@@ -9,7 +9,7 @@ use serde_json::Value;
 
 use super::{finish_output, finish_with};
 use crate::help::Guide;
-use crate::{Document, Listing, Parsed, Row};
+use crate::{Document, Listing, Row};
 
 /// A link from a pointer to its target. A link without a target has no
 /// text line of its own.
@@ -125,10 +125,11 @@ fn a_listing_of_rows_with_their_own_text_line_keeps_its_footer_on_standard_error
 #[test]
 fn a_listing_of_rows_with_their_own_text_line_over_the_budget_prints_the_lines_that_fit() {
     let guide = Guide::new().output_budget(1024, "the tests print little");
-    let mut command = <super::Tool as clap::CommandFactory>::command();
-    let matches = command.try_get_matches_from_mut(["tool", "list"]).unwrap();
-    let mut output = <crate::Output as clap::FromArgMatches>::from_arg_matches(&matches).unwrap();
-    output.set_command(Parsed::guided(command, &guide));
+    let mut output = super::built_with(
+        <super::Tool as clap::CommandFactory>::command(),
+        &guide,
+        &["tool", "list"],
+    );
     // Each line is 1,000 bytes, so only the first fits in 1,024 bytes.
     let pointer = "x".repeat(990);
     let rows = vec![link(&pointer, "b"), link(&pointer, "c")];
@@ -182,10 +183,11 @@ fn json_prints_every_field_of_a_whole_row_that_declares_a_line() {
 #[test]
 fn a_row_without_a_text_line_prints_its_json_line_with_sorted_keys_when_the_guide_sorts_them() {
     let guide = Guide::new().json(crate::JsonStyle::new().sorted());
-    let mut command = <super::Tool as clap::CommandFactory>::command();
-    let matches = command.try_get_matches_from_mut(["tool", "list"]).unwrap();
-    let mut output = <crate::Output as clap::FromArgMatches>::from_arg_matches(&matches).unwrap();
-    output.set_command(Parsed::guided(command, &guide));
+    let mut output = super::built_with(
+        <super::Tool as clap::CommandFactory>::command(),
+        &guide,
+        &["tool", "list"],
+    );
     let unlinked = Link {
         pointer: "e".to_owned(),
         target: None,

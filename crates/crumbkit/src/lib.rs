@@ -76,12 +76,12 @@ pub use crate::dashed::{dashed_form, dashed_name};
 pub use crate::expect::{Expect, Expected};
 pub use crate::fetch::fetch_each;
 pub use crate::output::{
-    DryRun, JsonLayout, JsonStyle, Output, Room, Streaming, Yes, finish, finish_to, stream,
-    stream_to,
+    DryRun, JsonLayout, JsonStyle, Output, Room, Streaming, ViewFlags, Yes, finish, finish_to,
+    stream, stream_to,
 };
 pub use crate::page::Page;
 pub use crate::parse::walk::command_path;
-pub use crate::parse::{Parsed, Stop, parse, parse_from, parse_to};
+pub use crate::parse::{Stop, parse, parse_from, parse_to};
 pub use crate::pick::NoInput;
 pub use crate::sink::Sink;
 

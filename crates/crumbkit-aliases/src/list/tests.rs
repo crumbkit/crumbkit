@@ -12,12 +12,14 @@ use crate::testing::tool;
 /// The path that the personal rows name as their source.
 const FILE: &str = "/home/ada/.config/shelf/aliases.toml";
 
-/// Returns the output flags with the test tool's command set, as `main`
-/// sets it.
+/// Returns the output of a run of the test tool with every view flag off.
 fn output() -> Output {
-    let mut output = Output::default();
-    output.set_command(tool());
-    output
+    Output::new(
+        crumbkit::ViewFlags::new(),
+        tool(),
+        &crumbkit::help::Guide::new(),
+        ["shelf"],
+    )
 }
 
 /// Parses `words` after `shelf aliases list` into the command's arguments.
@@ -297,23 +299,6 @@ fn a_file_that_cannot_be_parsed_fails_with_the_line_and_the_parser_s_message() {
             .to_string()
             .starts_with(&format!("cannot read the aliases file {FILE}: line 2: ")),
         "{error}"
-    );
-}
-
-#[test]
-fn a_tool_that_has_not_kept_its_command_tree_cannot_list_its_aliases() {
-    let finished = finish(
-        &mut Output::default(),
-        list(&mut Output::default(), None, &args(&[])),
-    );
-
-    assert_eq!(finished.code, ExitCode::FAILURE);
-    assert!(
-        finished
-            .err
-            .ends_with("code:  crumbkit::aliases::unavailable\n"),
-        "{}",
-        finished.err
     );
 }
 

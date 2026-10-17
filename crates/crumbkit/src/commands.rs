@@ -15,7 +15,7 @@
 //! use clap::{CommandFactory, Parser, Subcommand};
 //! use crumbkit::commands::{self, CommandsList};
 //! use crumbkit::help::Guide;
-//! use crumbkit::{Output, Spelling};
+//! use crumbkit::{Spelling, ViewFlags};
 //!
 //! /// Browse a small catalogue.
 //! #[derive(Parser)]
@@ -24,7 +24,7 @@
 //!     #[command(subcommand)]
 //!     resource: Resource,
 //!     #[command(flatten)]
-//!     output: Output,
+//!     view: ViewFlags,
 //! }
 //!
 //! #[derive(Subcommand)]
@@ -46,18 +46,17 @@
 //! const SPELLING: Spelling = Spelling::COLONS;
 //!
 //! fn run(args: &[&str]) -> ExitCode {
-//!     let (mut cli, command) =
+//!     let (cli, mut output) =
 //!         match crumbkit::parse_from::<Cli, _, _>(Cli::command(), &GUIDE, SPELLING, args) {
 //!             Ok(parsed) => parsed,
 //!             Err(stop) => return stop.code(),
 //!         };
-//!     cli.output.set_command(command);
 //!     match cli.resource {
 //!         Resource::Commands { command: CommandsCommand::List(args) } => {
-//!             // `list` builds the command tree in `cli.output`, so it runs
+//!             // `list` builds the command tree in `output`, so it runs
 //!             // before `finish`.
-//!             let result = commands::list(&mut cli.output, &GUIDE, &args);
-//!             crumbkit::finish(&mut cli.output, SPELLING, commands::COMMANDS_LIST, result)
+//!             let result = commands::list(&mut output, &GUIDE, &args);
+//!             crumbkit::finish(&mut output, SPELLING, commands::COMMANDS_LIST, result)
 //!         }
 //!     }
 //! }
@@ -166,7 +165,7 @@ impl JsonSchema for CommandsList {
 }
 
 /// Returns the rows of the branch that `args` names in the command tree
-/// that the tool passed to [`Output::set_command`], one page of them as
+/// that `output` holds, one page of them as
 /// `args` asks, for the tool to pass to [`finish`](crate::finish) with
 /// [`COMMANDS_LIST`].
 ///
@@ -200,18 +199,12 @@ impl JsonSchema for CommandsList {
 /// visible command, such as `shelf commands list books`, rendered against
 /// the tool's command, so it has no next step when the tool hides or lacks
 /// `commands list`.
-///
-/// Returns a failure with the code `crumbkit::commands::unavailable` and no
-/// next step when the tool has not passed its command to
-/// [`Output::set_command`].
 pub fn list(
     output: &mut Output,
     guide: &Guide,
     args: &CommandsList,
 ) -> Result<Listing<CommandRow>, Error> {
-    let Some(root) = output.command() else {
-        return Err(CommandsError::Unavailable.into());
-    };
+    let root = output.command();
     let mut node = root;
     let mut path = Vec::new();
     for word in &args.path {
@@ -302,8 +295,6 @@ enum CommandsError {
         /// name.
         prefix: Vec<String>,
     },
-    /// The tool has not passed its command to `Output::set_command`.
-    Unavailable,
 }
 
 /// Prints the message, such as ``` `shelf books shw` names no visible
@@ -313,9 +304,6 @@ impl fmt::Display for CommandsError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::NotFound { line, .. } => write!(f, "`{line}` names no visible command"),
-            Self::Unavailable => f.write_str(
-                "the tool has not kept its command tree, so it cannot list its commands",
-            ),
         }
     }
 }
@@ -326,7 +314,6 @@ impl Failure for CommandsError {
     fn code(&self) -> &'static Code {
         match self {
             Self::NotFound { .. } => &codes::COMMANDS_NOT_FOUND,
-            Self::Unavailable => &codes::COMMANDS_UNAVAILABLE,
         }
     }
 
@@ -337,10 +324,6 @@ impl Failure for CommandsError {
                     call.value("path", name.clone())
                 }))
             }
-            Self::Unavailable => Recovery::None {
-                reason: "the tool's main does not pass its command to Output::set_command"
-                    .to_owned(),
-            },
         }
     }
 }

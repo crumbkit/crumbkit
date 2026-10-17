@@ -176,7 +176,7 @@ fn a_guided_group_off_the_typed_path_keeps_its_default_help() {
         ["tool", "moons", "list"],
     );
 
-    let Ok(((), command)) = result else {
+    let Ok(((), mut command)) = result else {
         panic!("the command line did not parse");
     };
     let mut planets = command

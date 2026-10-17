@@ -10,7 +10,7 @@ use clap::{CommandFactory as _, Parser};
 use super::PLANETS;
 use crate::help::{Exit, Guide};
 use crate::twins::assert_one_word_apart;
-use crate::{Code, Failure, Output, Parsed, Recovery, Sink, Spelling};
+use crate::{Code, Failure, Output, Recovery, Sink, Spelling};
 
 const TIMED_OUT: Code = Code::new("solar", "charts", "timed_out");
 const NOT_FOUND: Code = Code::new("solar", "planets", "not_found");
@@ -46,17 +46,16 @@ impl Failure for Failed {
 #[command(name = "tool")]
 struct Tool {
     #[command(flatten)]
-    output: Output,
+    view: crate::ViewFlags,
 }
 
-/// Parses `tool` followed by `flags`, and sets the tool's command with
-/// `GUIDE`, as a tool's `main` does after `parse`.
+/// Parses `tool` followed by `flags`, and builds the output with `GUIDE`,
+/// as a tool that parses with clap alone builds it.
 fn guided(flags: &[&str]) -> Output {
-    let mut output = Tool::try_parse_from(["tool"].iter().chain(flags))
+    let view = Tool::try_parse_from(["tool"].iter().chain(flags))
         .unwrap()
-        .output;
-    output.set_command(Parsed::guided(Tool::command(), &GUIDE));
-    output
+        .view;
+    Output::new(view, Tool::command(), &GUIDE, ["tool"].iter().chain(flags))
 }
 
 /// What a method returned and wrote.

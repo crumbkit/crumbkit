@@ -7,12 +7,11 @@
 //! document [`SELF_FIGURES_LIST`]:
 //!
 //! ```ignore
-//! SelfCommand::Figures { verb: FiguresVerb::List(args) } => crumbkit::finish(
-//!     &cli.output,
-//!     SPELLING,
-//!     crumbkit_usage::SELF_FIGURES_LIST,
-//!     Ok::<_, crumbkit::Error>(crumbkit_usage::figures(&cli.output, &GUIDE, &args)),
-//! ),
+//! SelfCommand::Figures { verb: FiguresVerb::List(args) } => {
+//!     let result = crumbkit_usage::figures(&mut output, &GUIDE, &args);
+//!     let result = Ok::<_, crumbkit::Error>(result);
+//!     crumbkit::finish(&mut output, SPELLING, crumbkit_usage::SELF_FIGURES_LIST, result)
+//! }
 //! ```
 //!
 //! The listing prints one row for each command that the log names, in the
@@ -96,8 +95,8 @@ impl crumbkit::Row for FiguresRow {
         &["refused", "p95_ms", "typed_full", "typed_all", "typed_long"];
 }
 
-/// Returns the figures of each command in the usage log of the tool that
-/// the tool passed to [`Output::set_command`], for the runs that ended in
+/// Returns the figures of each command in the usage log of the tool whose
+/// command `output` holds, for the runs that ended in
 /// the `--since` duration before now, one page of them as `args` asks, for
 /// the tool to pass to [`finish`](crumbkit::finish) with [`SELF_FIGURES_LIST`].
 ///
@@ -112,8 +111,7 @@ pub fn figures(
     guide: &Guide,
     args: &SelfFigures,
 ) -> Listing<FiguresRow, UsageSummary> {
-    let empty = Command::new("");
-    let tool = output.command().unwrap_or(&empty);
+    let tool = output.command();
     figures_from(
         tool,
         guide,

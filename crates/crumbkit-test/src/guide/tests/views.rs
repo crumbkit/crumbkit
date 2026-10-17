@@ -4,7 +4,7 @@
 
 use clap::Args as _;
 use crumbkit::help::{Effects, Example, Guide};
-use crumbkit::{Batch, Document, Output, Prose};
+use crumbkit::{Batch, Document, Prose, ViewFlags};
 
 use super::{check_guide, leaf, panic_message, shelf};
 
@@ -22,7 +22,7 @@ fn check_guide_fails_on_an_example_that_types_a_view_flag_its_leaf_does_not_offe
     ]);
 
     assert_eq!(
-        panic_message(|| check_guide(&Output::augment_args(shelf()), &GUIDE)).unwrap(),
+        panic_message(|| check_guide(&ViewFlags::augment_args(shelf()), &GUIDE)).unwrap(),
         "the command tree breaks crumbkit's guide rules:\n\
          shelf books list: the example `shelf books list --long` types --long, which the command does not offer, so crumbkit refuses it"
     );

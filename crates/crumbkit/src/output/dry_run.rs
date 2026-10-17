@@ -28,8 +28,9 @@ pub(super) const DRY_RUN_LINE: &str = "This was a dry run, so nothing changed.";
 /// records it and returns whether the run is a dry run:
 ///
 /// ```
-/// use clap::Parser;
-/// use crumbkit::{DryRun, Output};
+/// use clap::{CommandFactory as _, Parser};
+/// use crumbkit::help::Guide;
+/// use crumbkit::{DryRun, Output, ViewFlags};
 ///
 /// /// Remove books from the catalogue.
 /// #[derive(Parser)]
@@ -37,11 +38,13 @@ pub(super) const DRY_RUN_LINE: &str = "This was a dry run, so nothing changed.";
 ///     #[command(flatten)]
 ///     dry_run: DryRun,
 ///     #[command(flatten)]
-///     output: Output,
+///     view: ViewFlags,
 /// }
 ///
-/// let mut args = BooksRemove::parse_from(["books-remove", "--dry-run"]);
-/// assert!(args.output.dry_run(args.dry_run));
+/// let words = ["books-remove", "--dry-run"];
+/// let args = BooksRemove::parse_from(words);
+/// let mut output = Output::new(args.view, BooksRemove::command(), &Guide::new(), words);
+/// assert!(output.dry_run(args.dry_run));
 /// ```
 ///
 /// The flag's clap id is `crumbkit_dry_run`, so crumbkit-test's

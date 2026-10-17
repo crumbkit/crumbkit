@@ -8,6 +8,7 @@ use serde::Serialize;
 
 use super::DryRun;
 use crate::Envelope;
+use crate::help::Guide;
 use crate::{Document, Error, Output, Prose, Row, Sink, Spelling, finish_to};
 
 /// A removed planet.
@@ -30,7 +31,7 @@ struct Tool {
     #[command(subcommand)]
     command: Commands,
     #[command(flatten)]
-    output: Output,
+    view: crate::ViewFlags,
 }
 
 #[derive(Subcommand)]
@@ -57,11 +58,10 @@ fn finish_with<T: crate::Rows>(
     result: Result<T, Error>,
 ) -> Finished {
     let args = ["tool", "remove"].iter().chain(flags);
-    let tool = Tool::try_parse_from(args).unwrap();
-    let mut output = tool.output;
+    let tool = Tool::try_parse_from(args.clone()).unwrap();
+    let mut output = Output::new(tool.view, Tool::command(), &Guide::new(), args);
     let Commands::Remove { dry_run } = tool.command;
     let dry_run = output.dry_run(dry_run);
-    output.set_command(Tool::command());
     let mut out = Vec::new();
     let mut err = Vec::new();
     let code = finish_to(
@@ -151,8 +151,7 @@ fn a_dry_run_of_a_document_without_the_envelope_prints_it_unchanged_and_says_so_
 {
     let args = ["tool", "remove", "--dry-run", "--json"];
     let tool = Tool::try_parse_from(args).unwrap();
-    let mut output = tool.output;
-    output.set_command(Tool::command());
+    let mut output = Output::new(tool.view, Tool::command(), &Guide::new(), args);
     let Commands::Remove { dry_run } = tool.command;
     output.dry_run(dry_run);
     let mut out = Vec::new();

@@ -37,8 +37,8 @@ failure only there. The first failure decides, because the usage log and the
 `exit`. The guide holds the mapping beside the meaning, so crumbkit-test can
 predict each run's exit.
 
-`Output::set_command` copies the exits from the `Parsed` of `parse` or
-`Parsed::guided`, so a bare `Command` maps no failure. A code from
+The `Output` that `parse` returns, and the one that `Output::new` builds,
+copy the exits from the guide. A code from
 `Code::runtime` cannot be listed, so its failure exits with 1.
 
 Why: ADR-0037, ADR-0056, ADR-0060.

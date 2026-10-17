@@ -42,7 +42,7 @@ const FAILURE: Document<()> = Document::new(
 pub(crate) const DOCUMENT: Document<()> = FAILURE;
 
 /// The reason a failure prints when its `Recovery::Run` call cannot be
-/// rendered, because no command is set or the call does not resolve.
+/// rendered, because the call does not resolve.
 const UNAVAILABLE: &str = "the suggested command is not available";
 
 /// What the guide decides about each failure that crumbkit prints: the
@@ -113,7 +113,7 @@ pub(crate) fn print<O: Write, W: Write, R>(
     spelling: Spelling,
     printing: Printing,
     failure: &dyn Failure,
-    command: Option<&mut Command>,
+    command: &mut Command,
 ) {
     let document = PreparedFailure::new(failure, spelling, printing, command, &mut sink.err);
     #[cfg(feature = "tracing")]
@@ -190,14 +190,13 @@ impl<'a> PreparedFailure<'a> {
     /// that compares standard error shows it. A debug build also writes a
     /// warning to `err` for each `Run` call of the recovery or an
     /// alternative that does not render, with the reason, so a test sees a
-    /// recovery that names a command the tool lacks. When no command is set,
-    /// `finish` has already written one warning for the whole run, so a call
-    /// adds none of its own. A release build writes neither.
+    /// recovery that names a command the tool lacks. A release build writes
+    /// neither.
     pub(super) fn new(
         failure: &'a dyn Failure,
         spelling: Spelling,
         printing: Printing,
-        command: Option<&mut Command>,
+        command: &mut Command,
         err: &mut impl Write,
     ) -> Self {
         let printed = printing.renames.printed(failure.code());
@@ -207,17 +206,14 @@ impl<'a> PreparedFailure<'a> {
         let causes = std::iter::successors(failure.source(), |error| error.source())
             .map(ToString::to_string)
             .collect();
-        let mut command = command;
         let mut unrendered = Vec::new();
-        let preferred = Step::offered(failure.recovery(), command.as_deref_mut(), &mut unrendered);
+        let preferred = Step::offered(failure.recovery(), &mut *command, &mut unrendered);
         // A failure without alternatives returns an empty `Vec`, and
         // collecting an empty iterator does not allocate.
         let mut alternatives: Vec<Step> = failure
             .alternatives()
             .into_iter()
-            .filter_map(|recovery| {
-                Step::offered(recovery, command.as_deref_mut(), &mut unrendered).ok()
-            })
+            .filter_map(|recovery| Step::offered(recovery, &mut *command, &mut unrendered).ok())
             .collect();
         let step = match preferred {
             Ok(step) => step,

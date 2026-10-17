@@ -43,11 +43,10 @@ A failure of a batch also carries its key and the key's index. A form
 that names the key only when the caller gave more than one key counts the
 keys from its own arguments.
 
-`parse` reads the form from the guide and passes it on in `Parsed`, so
-`Output::set_command` gives it to `finish` and `stream`. A tool that parses
-with clap alone builds its `Parsed` with `Parsed::guided(command, &GUIDE)`.
-`Parsed::from(command)` keeps working for a tool without a guide and sets no
-form.
+`parse` reads the form from the guide and keeps it in the `Output` that it
+returns, so `finish` and `stream` print in it. A tool that parses with clap
+alone passes its guide to `Output::new(view, command, &GUIDE, args)`. A
+tool without a form passes `&Guide::new()`.
 
 Why: ADR-0045, ADR-0071.
 

@@ -9,14 +9,14 @@ use clap::{Args, Command, Parser};
 
 use crate::commands::CommandsList;
 use crate::schemas::{SchemasList, SchemasShow};
-use crate::{DryRun, Expect, NoInput, Output, Page, Yes};
+use crate::{DryRun, Expect, NoInput, Page, ViewFlags, Yes};
 
 /// The root that `Described` describes with a doc comment.
 #[derive(Parser)]
 #[command(name = "tool")]
 struct Described {
     #[command(flatten)]
-    output: Output,
+    view: ViewFlags,
 }
 
 /// Returns the about and the long about of `command`, as text.
@@ -32,7 +32,7 @@ fn a_root_without_a_doc_comment_takes_no_description_from_the_flags_it_flattens(
     // Each type sets the about last in its `augment_args`, so the root of
     // each type is separate, and a later type cannot clear an earlier one.
     let roots = [
-        ("Output", Output::augment_args(Command::new("tool"))),
+        ("ViewFlags", ViewFlags::augment_args(Command::new("tool"))),
         ("Page", <Page>::augment_args(Command::new("tool"))),
         ("NoInput", NoInput::augment_args(Command::new("tool"))),
         ("DryRun", DryRun::augment_args(Command::new("tool"))),
@@ -62,7 +62,14 @@ fn a_subcommand_without_a_doc_comment_takes_no_description_from_crumbkits_argume
 fn a_root_with_a_doc_comment_keeps_it_beside_the_flags_it_flattens() {
     let described = Described::try_parse_from(["tool", "--json"]);
 
-    assert!(described.is_ok_and(|described| described.output.json));
+    let described = described.unwrap();
+    let output = crate::Output::new(
+        described.view,
+        <Described as clap::CommandFactory>::command(),
+        &crate::help::Guide::new(),
+        ["tool", "--json"],
+    );
+    assert!(output.is_json());
     assert_eq!(
         abouts(&<Described as clap::CommandFactory>::command()),
         (
