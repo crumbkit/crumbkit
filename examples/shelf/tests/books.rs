@@ -415,7 +415,7 @@ fn books_show_from_a_file_with_only_blank_lines_fails_with_code_1() {
 }
 
 #[test]
-fn books_show_with_ids_and_from_is_refused_with_code_2() {
+fn books_show_with_ids_and_from_is_refused_with_code_2_and_recovers_with_its_help() {
     let dir = tempfile::tempdir().unwrap();
     #[expect(
         clippy::disallowed_methods,

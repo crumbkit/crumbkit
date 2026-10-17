@@ -216,7 +216,9 @@ where
 /// A command line that clap refuses prints as a failure with the code
 /// `crumbkit::cli::usage` in `spelling`, and the exit code is 2. The message
 /// is clap's error on one line, and the recovery runs the `-h` of the
-/// deepest command, as shelf's golden file
+/// deepest command. When the tool's refusal function returns a call that
+/// renders and whose line parses, the first such call is the recovery and
+/// the `-h` call is the first alternative, as shelf's golden file
 /// [`books-show-2-comma-5.stderr`][books-show-2-comma-5] shows.
 ///
 /// clap suggests from every name that a flag or a subcommand accepts. When

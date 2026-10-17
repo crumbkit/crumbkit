@@ -34,7 +34,10 @@ Why: ADR-0056.
   which the registration script and the usage log then use
   ([completion](../parsing/completion.md)).
 - `Leaf::refusal_alternatives` and `Guide::refusal_alternatives` declare a
-  function that builds calls from a refusal of a command line
+  function that builds calls from a refusal of a command line. The first
+  call that renders and parses becomes the refusal's recovery in place of
+  `-h`, and the rest follow `-h` among the alternatives, except for a
+  `--limit` above its bound
   ([refused command lines](../failures/README.md#refused-command-lines)). No
   check reaches these calls before a run, because the function needs a
   refusal, so a tool provokes the refusal in a `check_recoveries` start to

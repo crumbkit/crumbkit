@@ -55,7 +55,7 @@ pub struct RuntimeLeaf {
     /// The program whose exit code the command passes on, or `None`.
     passes_on_exit: Option<&'static str>,
     /// The function that builds the calls that a refusal of the command's
-    /// line offers after crumbkit's own, or `None`.
+    /// line offers as its recovery and alternatives, or `None`.
     refusal_alternatives: Option<fn(&RefusalContext<'_>) -> Vec<Call>>,
 }
 
@@ -102,7 +102,7 @@ impl RuntimeLeaf {
     }
 
     /// Sets the function that builds the calls that a refusal of a command
-    /// line naming the command offers after crumbkit's own, as
+    /// line naming the command offers as its recovery and alternatives, as
     /// [`Leaf::refusal_alternatives`] does.
     #[must_use]
     pub const fn refusal_alternatives(

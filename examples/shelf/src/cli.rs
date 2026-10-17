@@ -2,6 +2,7 @@
 
 use std::path::PathBuf;
 
+use clap::error::ErrorKind;
 use clap::{Args, Parser, Subcommand};
 use crumbkit::commands::{COMMANDS_LIST, CommandsList};
 use crumbkit::help::{Effects, Example, Goal, Group, Guide, Leaf, RefusalContext, Topic};
@@ -44,9 +45,15 @@ static MENU: Menu = Menu::new();
 /// of `shelf books show`.
 const BOOK_IDS: &[Choices] = &[Choices::new("ids", books::choices)];
 
-/// Returns the alternative that a refused `shelf books show` offers after
-/// crumbkit's own: `shelf books list`, which prints the ids it takes.
-fn list_books(_: &RefusalContext<'_>) -> Vec<Call> {
+/// Returns the recovery of a refused `shelf books show`: `shelf books list`,
+/// which prints the ids it takes. The refusal offers `shelf books show -h`
+/// as its first alternative. A line that types ids beside `--from` returns
+/// no call, because listing the books does not repair the conflict, so its
+/// recovery stays `shelf books show -h`.
+fn list_books(context: &RefusalContext<'_>) -> Vec<Call> {
+    if context.kind() == ErrorKind::ArgumentConflict {
+        return Vec::new();
+    }
     vec![Call::new(&["books", "list"])]
 }
 
@@ -60,7 +67,8 @@ fn list_books(_: &RefusalContext<'_>) -> Vec<Call> {
 /// person's aliases that expand, which differ between machines, so shelf's
 /// tests opt out of crumbkit's rule against that. A person at a terminal who
 /// leaves out the ids of `shelf books show` picks books from the menu, and a
-/// refused `shelf books show` also offers `shelf books list`.
+/// refused `shelf books show` recovers with `shelf books list`, except when
+/// it types ids beside `--from`.
 pub const GUIDE: Guide = Guide::new()
     .picker(&MENU)
     .groups(&[Group::new(
