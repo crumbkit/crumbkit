@@ -11,14 +11,18 @@ impl Guide {
     /// reason the tool needs that budget, which crumbkit-test's opt-out
     /// report shows beside crumbkit's default of 1 MiB (ADR-0046).
     ///
+    /// A budget can be as small as 1 byte, so a tool's tests can show a cut
+    /// result with a few short rows. A result that the budget refuses
+    /// prints its over-budget failure whatever the failure's size.
+    ///
     /// # Panics
     ///
-    /// It panics when `bytes` is below 1024, which leaves no room for a
-    /// failure document. A `const` guide reports it when the tool builds.
+    /// It panics when `bytes` is 0, because a run with a budget of 0 bytes
+    /// could print no answer. A `const` guide reports it when the tool
+    /// builds.
     #[must_use]
     pub const fn output_budget(mut self, bytes: usize, reason: &'static str) -> Self {
-        let smallest = crate::output::SMALLEST_BUDGET;
-        assert!(bytes >= smallest, "an output budget is at least 1024 bytes");
+        assert!(bytes >= 1, "an output budget is at least 1 byte");
         self.output_budget = Some((bytes, reason));
         self
     }

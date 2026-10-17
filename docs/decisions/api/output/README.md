@@ -23,5 +23,6 @@ document.
 - [ADR-0058. The child crate](0058-child-crate.md)
 - [ADR-0067. JSON key order](0067-json-key-order.md)
 - [ADR-0068. One failure for each answer left out](0068-left-out-per-key.md)
+- [ADR-0069. Output budget floor](0069-output-budget-floor.md)
 - [ADR-0050. Listings](listings/README.md)
 - [ADR-0051. Result shapes](results/README.md)

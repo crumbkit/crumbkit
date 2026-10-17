@@ -30,7 +30,6 @@ use std::process::ExitCode;
 
 use clap::{Args, Command};
 
-pub(crate) use self::budget::SMALLEST as SMALLEST_BUDGET;
 pub use self::confirm::Yes;
 use self::counted::Counted;
 pub use self::dry_run::DryRun;

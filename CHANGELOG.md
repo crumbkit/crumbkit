@@ -878,6 +878,9 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit: [`finish_to`] returns the exit code as a `u8`, and `Stop::number`
   gives the exit code of a run that `parse` ended as a `u8`, so a tool can
   record the code before it exits ([behaviour/output]).
+- crumbkit: `Guide::output_budget` takes any budget of at least 1 byte and
+  panics only on 0, so a tool's tests can show a cut result with a few short
+  rows ([behaviour/output/budget]).
 
 ### Removed
 
