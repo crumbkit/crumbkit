@@ -29,6 +29,10 @@ mod document;
 mod failure;
 mod field;
 mod listing;
+// crumbkit counts the rows that report a problem through this module, which
+// is public only so that crumbkit can reach it.
+#[doc(hidden)]
+pub mod problems;
 mod prose;
 #[cfg(feature = "miette")]
 mod report;

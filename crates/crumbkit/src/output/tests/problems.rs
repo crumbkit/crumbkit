@@ -241,6 +241,81 @@ fn fields_that_leave_out_the_problem_column_keep_the_exit_at_1() {
     assert_eq!(finished.code, ExitCode::FAILURE);
 }
 
+#[test]
+fn the_note_of_a_listing_cut_by_a_limit_counts_the_problem_rows_that_the_cut_left_out() {
+    let rows = vec![broken("one"), broken("two"), passing("three")];
+    let listing = Listing::from_all(rows, Some(1)).described("checks");
+
+    let finished = finish_with(&[], CHECKS, listing);
+
+    assert_eq!(finished.code, ExitCode::FAILURE);
+    assert_eq!(
+        finished.err,
+        "Showing 1 of 3 checks. --all shows every one.\n\
+         note: 2 of the checks report a problem, so the command exits with 1.\n"
+    );
+}
+
+#[test]
+fn a_listing_whose_limit_cuts_every_problem_row_exits_with_1_and_its_note_counts_them() {
+    let rows = vec![passing("one"), broken("two"), broken("three")];
+    let listing = Listing::from_all(rows, Some(1)).described("checks");
+
+    let finished = finish_with(&[], CHECKS, listing);
+
+    assert!(!finished.out.contains("two"), "{}", finished.out);
+    assert_eq!(finished.code, ExitCode::FAILURE);
+    assert!(
+        finished
+            .err
+            .contains("note: 2 of the checks report a problem, so the command exits with 1.\n"),
+        "{}",
+        finished.err
+    );
+}
+
+#[test]
+fn the_json_document_of_a_listing_whose_limit_cut_its_problem_rows_exits_with_1_and_has_no_new_field()
+ {
+    let rows = vec![passing("one"), broken("two")];
+
+    let finished = finish_with(&["--json"], CHECKS, Listing::from_all(rows, Some(1)));
+
+    assert_eq!(finished.code, ExitCode::FAILURE);
+    assert_eq!(
+        finished.out,
+        concat!(
+            r#"{"schema":"lint/checks/v1","data":[{"name":"one","problem":""}],"#,
+            r#""total":2,"truncated":true}"#,
+            "\n"
+        )
+    );
+}
+
+#[test]
+fn a_listing_from_new_counts_only_the_problem_rows_that_it_holds() {
+    let listing = Listing::new(vec![passing("one")], 5).described("checks");
+
+    let finished = finish_with(&[], CHECKS, listing);
+
+    assert_eq!(finished.code, ExitCode::SUCCESS);
+    assert!(!finished.err.contains("problem"), "{}", finished.err);
+}
+
+#[test]
+fn a_listing_from_all_rows_without_a_limit_counts_its_problem_rows_as_before() {
+    let rows = vec![passing("one"), broken("two"), broken("three")];
+    let listing = Listing::from_all(rows, None).described("checks");
+
+    let finished = finish_with(&[], CHECKS, listing);
+
+    assert_eq!(finished.code, ExitCode::FAILURE);
+    assert_eq!(
+        finished.err,
+        "note: 2 of the checks report a problem, so the command exits with 1.\n"
+    );
+}
+
 /// Returns the output flags for `flags` with `guide`, as `Output::new`
 /// builds them.
 fn guided(guide: &Guide, flags: &[&str]) -> Output {

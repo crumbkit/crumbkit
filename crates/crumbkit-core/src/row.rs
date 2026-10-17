@@ -68,8 +68,10 @@ pub trait Row: Serialize + JsonSchema {
     /// than `null`, `false` or an empty string, and a missing field reports
     /// none. A run whose rows report a problem, and that has no failure,
     /// exits with 1, and its text ends with a note that counts those rows.
-    /// The exit reads only the rows that the result holds, so a listing puts
-    /// the rows that report a problem first (OUTPUT-3). crumbkit-test's
+    /// The exit reads every row that the result holds. A listing from
+    /// `Listing::from_all` also counts the rows that its limit cut. A
+    /// listing of one page that the tool fetched counts only that page, so
+    /// it puts the rows that report a problem first (OUTPUT-3). crumbkit-test's
     /// `check_guide` fails when the field is not one of `COLUMNS`, or when
     /// its type is not a string, a boolean or a value that can be null.
     const PROBLEM: Option<&'static str> = None;
@@ -231,6 +233,16 @@ pub trait Rows: Serialize + sealed::Sealed {
     /// returns one.
     fn limit_bound(&self) -> Option<usize> {
         None
+    }
+
+    /// Returns the number of rows that report a problem through the field
+    /// that [`Row::PROBLEM`] names, which `crumbkit::finish` reads for the
+    /// exit code and the note. Every result counts the rows it holds, and a
+    /// listing that [`Listing::from_all`](crate::Listing::from_all) cut to
+    /// its limit also counts the rows it cut.
+    #[doc(hidden)]
+    fn problems(&self) -> usize {
+        crate::problems::count(self.rows())
     }
 
     /// Returns the failures of the ids that did not work when the result is

@@ -920,6 +920,10 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- crumbkit: a [`Listing`] that `Listing::from_all` or [`Page`]'s
+  `first_of` cut to its limit counts the rows that report a problem among
+  every row, so the exit and the note include the cut rows
+  ([behaviour/output/listings]).
 - crumbkit: the `Output` inside a [`Stop`] uses the guide's output budget
   in place of crumbkit's default.
 - crumbkit: a debug build of a tool whose `main` never calls

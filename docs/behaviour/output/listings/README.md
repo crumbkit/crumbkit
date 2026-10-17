@@ -138,9 +138,13 @@ aliases file does not work.
   ([exit codes](../../failures/exit-codes.md)).
 - A reader that closed the pipe early does not change the exit.
 - The exit reads every row that the result holds, including rows that the
-  output budget left unprinted. A listing holds one page, and OUTPUT-3 puts
-  the rows that report a problem first, so a page from a source with a
-  problem holds at least one of them.
+  output budget left unprinted. A listing from `Listing::from_all` or
+  `Page::first_of` also counts the rows that its limit cut, so the exit and
+  the note include a problem row that the page does not show. A listing
+  from `Listing::new`, `Page::listing` or `Listing::uncounted` holds one
+  page that the tool fetched, so crumbkit counts only that page's rows.
+  OUTPUT-3 puts the rows that report a problem first, so such a page from a
+  source with a problem holds at least one of them.
 - In text, a note on standard error counts the rows after the footer or empty
   note and before the tool's note:
   `note: 2 of the aliases report a problem, so the command exits with 1.` A

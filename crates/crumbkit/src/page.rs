@@ -163,7 +163,8 @@ impl<const N: usize, const MOST: usize> Page<N, MOST> {
     /// Returns a listing of the first rows of `rows` that the flags ask
     /// for, with the length of `rows` as the total, as
     /// [`Listing::from_all`] does. The listing carries the page's bound, so
-    /// its footer names it.
+    /// its footer names it, and it counts the rows that report a problem
+    /// among every row of `rows`, so a limit never hides one from the exit.
     #[must_use]
     pub fn first_of<R: Row>(&self, rows: Vec<R>) -> Listing<R> {
         Self::carry(Listing::from_all(rows, self.limit()))

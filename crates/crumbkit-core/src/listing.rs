@@ -64,6 +64,11 @@ pub struct Listing<R: Row, S = NoSummary> {
     /// The most rows that the command's `--limit` takes, which the footer
     /// names, or `None` when `--limit` has no upper bound.
     bound: Option<usize>,
+    /// The number of rows that report a problem among every row that
+    /// [`Listing::from_all`] was given, when its limit cut some of them and
+    /// the row type names a problem field, or `None` when the listing counts
+    /// the rows it holds.
+    problems: Option<usize>,
 }
 
 impl<R: Row> Listing<R> {
@@ -92,6 +97,7 @@ impl<R: Row> Listing<R> {
             note: None,
             next: None,
             bound: None,
+            problems: None,
         }
     }
 
@@ -127,13 +133,29 @@ impl<R: Row> Listing<R> {
     /// It suits a source that already holds every row in memory. It shortens
     /// `rows` in place, so it allocates nothing. A tool with a database or a
     /// remote backend fetches one page and calls [`Listing::new`] instead.
+    ///
+    /// When the limit cuts rows and the row type names a problem field
+    /// ([`Row::PROBLEM`]), it counts the rows that report a problem among
+    /// every row before it cuts them, so `crumbkit::finish` exits with the
+    /// problem exit and its note counts every such row although the page
+    /// holds fewer. A listing from [`Listing::new`] or
+    /// [`Listing::uncounted`] holds one page that the tool fetched, so
+    /// crumbkit counts only the rows of that page.
     #[must_use]
     pub fn from_all(mut rows: Vec<R>, limit: Option<usize>) -> Self {
         let total = rows.len();
+        let problems = match limit {
+            Some(limit) if limit < total && R::PROBLEM.is_some() => {
+                Some(crate::problems::count(&rows))
+            }
+            _ => None,
+        };
         if let Some(limit) = limit {
             rows.truncate(limit);
         }
-        Self::new(rows, total)
+        let mut listing = Self::new(rows, total);
+        listing.problems = problems;
+        listing
     }
 }
 
@@ -167,6 +189,7 @@ impl<R: Row, S> Listing<R, S> {
             note: self.note,
             next: self.next,
             bound: self.bound,
+            problems: self.problems,
         }
     }
 
@@ -253,6 +276,11 @@ impl<R: Row, S: Serialize + fmt::Display + JsonSchema> Rows for Listing<R, S> {
 
     fn limit_bound(&self) -> Option<usize> {
         self.bound
+    }
+
+    fn problems(&self) -> usize {
+        self.problems
+            .unwrap_or_else(|| crate::problems::count(&self.rows))
     }
 }
 
