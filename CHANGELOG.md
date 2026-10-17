@@ -875,6 +875,10 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit-usage: `start` after a tool installed its own observer records
   the run, and a second `start` installs the log's observer no second time
   ([behaviour/usage-log]).
+- crumbkit-test: [`check_names`] and [`check_grammar`] take [`Pages`] in
+  place of a guide. A tool that parses with clap alone passes
+  `Pages::clap()`, and a guided tool passes `Pages::rendered` or
+  `Pages::binary` with its guide ([behaviour/checks]).
 
 ### Removed
 
@@ -1076,6 +1080,7 @@ rustdoc, or at the page in docs/ that describes the behaviour. -->
 [`check_output_budget`]: crates/crumbkit-test/src/output_budget.rs
 [`Budget`]: crates/crumbkit-test/src/budget.rs
 [`Budgets`]: crates/crumbkit-test/src/sizes.rs
+[`Pages`]: crates/crumbkit-test/src/pages.rs
 [`PathBudgets`]: crates/crumbkit-test/src/weights.rs
 [`Effects`]: crates/crumbkit/src/help/effects.rs
 [`DryRun`]: crates/crumbkit/src/output/dry_run.rs
@@ -1105,6 +1110,7 @@ rustdoc, or at the page in docs/ that describes the behaviour. -->
 [behaviour/adoption]: docs/behaviour/adoption/README.md
 [behaviour/adoption/declarations]: docs/behaviour/adoption/declarations.md
 [behaviour/adoption/opt-outs]: docs/behaviour/adoption/opt-outs.md
+[behaviour/checks]: docs/behaviour/checks/README.md
 [behaviour/checks/end-to-end]: docs/behaviour/checks/end-to-end.md
 [behaviour/checks/recovery-chains]: docs/behaviour/checks/recovery-chains.md
 [behaviour/effects]: docs/behaviour/effects/README.md

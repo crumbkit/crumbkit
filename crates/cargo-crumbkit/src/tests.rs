@@ -22,12 +22,17 @@ fn every_failure_code_spells_uniquely_as_printable_ascii() {
 
 #[test]
 fn every_command_and_argument_has_one_name() {
-    crumbkit_test::check_names(&Cli::command(), &GUIDE, ALLOW);
+    crumbkit_test::check_names(&Cli::command(), Pages::rendered(&GUIDE), ALLOW);
 }
 
 #[test]
 fn every_command_is_a_resource_followed_by_list_weigh_or_docs() {
-    crumbkit_test::check_grammar(&Cli::command(), &GUIDE, &["weigh", "docs"], ALLOW);
+    crumbkit_test::check_grammar(
+        &Cli::command(),
+        Pages::rendered(&GUIDE),
+        &["weigh", "docs"],
+        ALLOW,
+    );
 }
 
 #[test]

@@ -3,7 +3,7 @@
 
 use clap::CommandFactory;
 use crumbkit::Code;
-use crumbkit_test::{Allow, Rule};
+use crumbkit_test::{Allow, Pages, Rule};
 
 use super::{Cli, GUIDE, SHELF_NOT_FOUND, SPELLING};
 
@@ -20,12 +20,12 @@ const CODES: &[&Code] = &[&SHELF_NOT_FOUND];
 
 #[test]
 fn every_command_and_argument_has_one_name() {
-    crumbkit_test::check_names(&Cli::command(), &GUIDE, ALLOW);
+    crumbkit_test::check_names(&Cli::command(), Pages::rendered(&GUIDE), ALLOW);
 }
 
 #[test]
 fn every_command_is_a_resource_followed_by_a_verb() {
-    crumbkit_test::check_grammar(&Cli::command(), &GUIDE, &[], ALLOW);
+    crumbkit_test::check_grammar(&Cli::command(), Pages::rendered(&GUIDE), &[], ALLOW);
 }
 
 #[test]
