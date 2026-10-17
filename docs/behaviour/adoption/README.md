@@ -18,7 +18,9 @@ for each ([dependencies](../../project/dependencies.md)). It enables clap's
 Each part follows an existing convention:
 
 - `Failure` extends `std::error::Error` ([failures](../failures/README.md)).
-- `Output` is added with clap's `#[command(flatten)]`.
+- `Output` is added with clap's `#[command(flatten)]`, or built with
+  `Output::new()` by a tool that defines the view flags itself
+  ([output](../output/README.md#view-flags)).
 - Results derive `Serialize` and `JsonSchema` and implement `Row` to name
   their table columns ([output](../output/README.md)).
 - Each crumbkit-test check is a free function that a tool calls from an
@@ -109,13 +111,12 @@ trace context.
   reads a `clap::Command`. `Call::help` and `Call::target` are public and
   documented, because crumbkit builds and renders calls from outside
   crumbkit-core.
-- crumbkit-core depends on serde_json, because `Batch::has_room` measures
-  each row as the compact JSON that crumbkit prints.
-- `FieldValue::from_json` reads a failure field back from a
-  `serde_json::Value`, so a test or a tool that reads failure fields from
-  JSON does not copy the conversion. It puts serde_json's major version into
-  crumbkit-core's API, which couples nothing new, because crumbkit's
-  `FailureForm::json` already returns a `serde_json::Value`.
+- crumbkit-core depends on serde_json, because `FieldValue::from_json` reads
+  a failure field back from a `serde_json::Value`, so a test or a tool that
+  reads failure fields from JSON does not copy the conversion. It puts
+  serde_json's major version into crumbkit-core's API, which couples nothing
+  new, because crumbkit's `FailureForm::json` already returns a
+  `serde_json::Value`.
 - crumbkit-core's `derive` feature re-exports
   [`#[derive(Failure)]`](../failures/derive.md), and crumbkit-core holds
   [`Error::unclassified`](../failures/README.md#unclassified-errors).

@@ -105,7 +105,7 @@ fn a_pretty_layout_indents_the_failure_document() {
 
     let code = finish_to(&mut sink, &mut output, Spelling::COLONS, PLANETS, result);
 
-    assert_eq!(code, ExitCode::FAILURE);
+    assert_eq!(code, 1);
     let out = String::from_utf8(out).unwrap();
     let expected = r#"{
   "schema": "crumbkit/failure/v1",

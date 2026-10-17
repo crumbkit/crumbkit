@@ -1,10 +1,19 @@
 //! Tests for the catalogue, its failures and the calls that shelf prints.
 
 use clap::CommandFactory as _;
-use crumbkit::{Failure as _, Recovery, RenderCall as _, Rows as _};
+use crumbkit::help::Guide;
+use crumbkit::{Batch, Failure as _, Output, Recovery, RenderCall as _, Room, Rows as _};
 
-use super::{BooksError, IdsFileProblem, parse_ids, show, show_call, summarize};
+use super::{
+    BOOKS_SHOW, Book, BooksError, IdsFileProblem, MOST_IDS, parse_ids, show, show_call, summarize,
+};
+use crate::SPELLING;
 use crate::cli::{BooksShow, BooksSummarize, Cli};
+
+/// Returns the room of `books show` with crumbkit's default output budget.
+fn roomy() -> Room<Batch<Book, BooksError>> {
+    Output::default().room(BOOKS_SHOW)
+}
 
 #[test]
 fn every_call_that_shelf_prints_resolves_in_its_command_tree() {
@@ -27,7 +36,7 @@ fn show_returns_the_books_in_the_order_given_and_repeats_a_repeated_id() {
         from: None,
     };
 
-    let batch = show(&args, None, usize::MAX).unwrap();
+    let batch = show(&args, None, roomy()).unwrap();
 
     let titles: Vec<&str> = batch.rows().iter().map(|book| book.title).collect();
     assert_eq!(titles, ["Middlemarch", "Frankenstein", "Middlemarch"]);
@@ -41,7 +50,7 @@ fn show_returns_one_failure_naming_one_missing_id_as_a_book_and_no_books() {
         from: None,
     };
 
-    let batch = show(&args, None, usize::MAX).unwrap();
+    let batch = show(&args, None, roomy()).unwrap();
 
     let failures: Vec<String> = batch
         .failures()
@@ -60,7 +69,7 @@ fn show_returns_the_books_found_and_one_failure_for_each_missing_id_in_the_order
         from: None,
     };
 
-    let batch = show(&args, None, usize::MAX).unwrap();
+    let batch = show(&args, None, roomy()).unwrap();
 
     let titles: Vec<&str> = batch.rows().iter().map(|book| book.title).collect();
     let failures: Vec<String> = batch
@@ -83,14 +92,20 @@ fn show_returns_the_books_found_and_one_failure_for_each_missing_id_in_the_order
 #[test]
 fn show_stops_looking_up_ids_once_its_books_fill_the_budget() {
     let args = BooksShow {
-        ids: vec![1, 2, 3],
+        ids: vec![1; MOST_IDS],
         from: None,
     };
+    let guide = Guide::new().output_budget(1024, "the test fills it");
+    let words = ["shelf", "books", "show", "1"];
+    let (mut cli, parsed) =
+        crumbkit::parse_from::<Cli, _, _>(Cli::command(), &guide, SPELLING, words).unwrap();
+    cli.output.set_command(parsed);
 
-    let batch = show(&args, None, 1).unwrap();
+    let batch = show(&args, None, cli.output.room(BOOKS_SHOW)).unwrap();
 
-    assert_eq!(batch.rows().len(), 1);
-    assert_eq!(batch.left_out(1), [Some("2"), Some("3")]);
+    let shown = batch.rows().len();
+    assert!((1..MOST_IDS).contains(&shown), "{shown}");
+    assert_eq!(batch.left_out(shown).len(), MOST_IDS - shown);
 }
 
 #[test]

@@ -1,7 +1,7 @@
 # ADR-0046. Output budget
 
 - Date: 2026-10-12
-- Status: accepted
+- Status: amended by ADR-0068
 
 ## Context
 

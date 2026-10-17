@@ -54,7 +54,7 @@ fn finish_output(output: &mut Output, document: Document<Bytes>, bytes: Bytes) -
         result,
     );
     Finished {
-        code,
+        code: ExitCode::from(code),
         out,
         err: String::from_utf8(err).unwrap(),
     }
@@ -289,7 +289,7 @@ fn a_batch_prints_a_bytes_field_in_its_json_form_with_full() {
         result,
     );
 
-    assert_eq!(code, ExitCode::SUCCESS);
+    assert_eq!(code, 0);
     assert_eq!(
         String::from_utf8(out).unwrap(),
         concat!(

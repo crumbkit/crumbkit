@@ -39,6 +39,11 @@ crumbkit prepares each failure before the form sees it. The form receives a
 `PreparedFailure`, with the code in the tool's spelling and each `Run` call
 already rendered against the tool's command tree. The failure reference is
 not `'static`, so a form cannot downcast it to the tool's error type.
+A failure of a batch also carries its key and the key's index, and
+`PreparedFailure::among_several` reports whether the caller gave the batch
+more than one key. A headed batch prints its `==> KEY <==` headers by the
+same rule, so a form that names the key only among several keys matches
+them.
 
 `parse` reads the form from the guide and passes it on in `Parsed`, so
 `Output::set_command` gives it to `finish` and `stream`. A tool that parses

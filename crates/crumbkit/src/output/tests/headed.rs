@@ -103,7 +103,7 @@ fn finish(
         result,
     );
     Finished {
-        code,
+        code: ExitCode::from(code),
         out,
         err: String::from_utf8(err).unwrap(),
     }
@@ -248,6 +248,32 @@ fn the_answers_past_the_budget_are_left_out_whole_and_named_in_one_failure() {
         "\
 error: 2 more answers did not fit in the output budget of 1024 bytes
   help:  run `tool show c d`
+  code:  crumbkit::output::over_budget
+"
+    );
+}
+
+#[test]
+fn a_headed_batch_answers_each_key_after_the_first_row_that_does_not_fit() {
+    let half = vec![b'x'; 400];
+    let answers: Vec<(&str, Option<&[u8]>)> = ["a", "b", "c", "d"]
+        .iter()
+        .map(|name| (*name, Some(&half[..])))
+        .collect();
+    let finished = finish(&[], BUDGET, PAGES.left_out_per_key(), batch(&answers));
+
+    assert_eq!(finished.code, ExitCode::FAILURE);
+    assert_eq!(finished.out.len(), 2 * (10 + 400) + 1);
+    assert_eq!(
+        finished.err,
+        "\
+error: the answer did not fit in the output budget of 1024 bytes
+  key:   c (index 2)
+  help:  run `tool show c`
+  code:  crumbkit::output::over_budget
+error: the answer did not fit in the output budget of 1024 bytes
+  key:   d (index 3)
+  help:  run `tool show d`
   code:  crumbkit::output::over_budget
 "
     );

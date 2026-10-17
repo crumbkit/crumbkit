@@ -437,9 +437,9 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   own function replaces it ([behaviour/adoption/declarations]).
 - crumbkit-test: [`check_opt_outs`] lists the guide's refusal alternatives
   once under customisations ([behaviour/adoption/declarations]).
-- crumbkit-core: `Batch::has_room` returns whether the rows pushed so far
-  leave room in a number of bytes, so a handler can stop fetching keys
-  whose rows would not print ([behaviour/output/budget]).
+- crumbkit: `Output::room` returns a `Room` whose `has_room` measures a
+  batch's rows in the format the run prints, so a handler can stop fetching
+  keys whose rows would not print ([behaviour/output/budget]).
 - crumbkit-core: `Call::all` adds an argument that takes every value of a
   list field of the failure in one run, which the `run` step names in
   `all`. Rendering refuses an argument that takes one value or a placeholder
@@ -548,6 +548,12 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   headed leaf with half the bytes they print ([behaviour/output/budget]).
 - crumbkit-test: [`check_guide`] fails a leaf whose batch is not headed and
   whose row type has no `Row::COLUMNS` ([behaviour/help/examples]).
+- crumbkit: `PreparedFailure::among_several` tells a failure form whether a
+  batch failure's caller gave more than one key, the rule that headed
+  headers use ([behaviour/failures/forms]).
+- crumbkit: `Output::new` and the builders `json`, `fields`, `long` and
+  `full` build the output flags for a tool that defines them in its own
+  parser, and `finish` checks them as parsed flags ([behaviour/output]).
 - crumbkit-core: a row type that sets [`Row`]`::WHOLE` prints every field
   of each row with `--json`, without `--full`. `--full` is refused for it,
   and `--fields` prints `null` for a field that a row leaves out
@@ -562,6 +568,20 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   names no columns and has fields, and [`check_document_ids`] requires an
   opt-out from `documents/rows-whole` for a leaf whose row type sets
   `Row::WHOLE` ([behaviour/adoption/opt-outs]).
+- crumbkit: `Document::left_out_per_key` gives each answer that the output
+  budget leaves out of a batch its own over-budget failure at its key's
+  position, whose recovery runs the command with that key
+  ([behaviour/output/budget]).
+- crumbkit-test: [`check_opt_outs`] lists `Document::left_out_per_key` as a
+  `left-out-per-key` customisation. [`check_output_budget`] accepts an
+  over-budget failure that other failures follow, and expects the exit of
+  the first failure in key order ([behaviour/output/budget]).
+- crumbkit: `Document::without_total` leaves `total` out of the JSON and the
+  schema of a listing with declared keys. The JSON keeps `truncated`, and
+  the text footer keeps the count ([behaviour/output]).
+- crumbkit-test: [`check_document_ids`] fails a leaf whose listing leaves
+  out `total` unless an opt-out from `documents/total` with a reason covers
+  it ([behaviour/adoption/opt-outs]).
 
 - crumbkit: `Guide::json_keys(KeyOrder::Sorted)` prints the keys of every
   JSON object in sorted order, in documents, stream lines, failures and the
@@ -843,6 +863,9 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit: [`finish`] fails to compile for a row, a `Vec` or a `Listing`,
   and [`stream`] for a row type, whose [`Row`]`::COLUMNS` is empty, because
   such rows printed none of their fields ([behaviour/output]).
+- crumbkit: [`finish_to`] returns the exit code as a `u8`, and `Stop::number`
+  gives the exit code of a run that `parse` ended as a `u8`, so a tool can
+  record the code before it exits ([behaviour/output]).
 
 ### Removed
 
@@ -965,6 +988,7 @@ rustdoc, or at the page in docs/ that describes the behaviour. -->
 [`Document`]: crates/crumbkit-core/src/document.rs
 [`Output`]: crates/crumbkit/src/output.rs
 [`finish`]: crates/crumbkit/src/output.rs
+[`finish_to`]: crates/crumbkit/src/output.rs
 [`stream`]: crates/crumbkit/src/output/stream.rs
 [`Stream`]: crates/crumbkit-core/src/stream.rs
 [`Streaming`]: crates/crumbkit/src/output/stream.rs

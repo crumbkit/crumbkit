@@ -19,8 +19,9 @@ use crate::form::FailureForm;
 use crate::{Code, Document, Row, Rows, Shape, Spelling, codes};
 
 mod batch;
-mod headed;
+pub(super) mod headed;
 mod in_order;
+mod per_key;
 
 /// What [`write_result`] printed of a result.
 #[derive(Debug)]
@@ -37,10 +38,13 @@ pub(super) enum Answer {
     /// document does not let its first answer print. The failure prints in
     /// its place.
     Refused(OverBudget),
-    /// The whole rows of a headed batch's text that fit, with the failure of
-    /// each row too large alone, by position, and of the rows left out.
-    Headed {
-        oversize: Vec<(usize, OverBudget)>,
+    /// The rows that fit, with the failure of each answer that does not,
+    /// by position: a row of a headed batch too large alone, and each
+    /// answer left out of a batch whose document answers each key left
+    /// out. A headed batch whose document does not ends with the failure
+    /// that names the rows left out.
+    Keyed {
+        each: Vec<(usize, OverBudget)>,
         left_out: Option<OverBudget>,
     },
 }
@@ -57,8 +61,9 @@ pub(super) enum Answer {
 /// A result that fits prints whole. Otherwise a listing or a list prints the
 /// most rows that fit, marked as cut short. A batch prints the most rows
 /// that fit and always its first, followed by one failure that names the
-/// keys left out. A batch that has keys it never fetched prints that
-/// failure even when its rows fit. A single row or a prose
+/// keys left out, or by one failure for each answer left out when its
+/// document answers each key left out. A batch that has keys it never
+/// fetched prints those failures even when its rows fit. A single row or a prose
 /// result prints nothing, unless its document always prints its first
 /// answer, in which case it prints whole. After `out` is flushed, the lines
 /// that describe the result go to `err`: in text, a listing's footer or
@@ -162,14 +167,11 @@ fn write_rows<T: Rows>(
     } else {
         listing::next_line(command.as_deref_mut(), value)
     };
-    let columns = columns(output, document, value);
+    let columns = columns(output, document, value.prose().is_some());
     let values = values(&columns, value)?;
     let mut prepared = Prepared::new(output, document, value, &columns, &values, next, problems)?;
-    let listed = failures.map(|listed| Failures {
-        listed,
-        over: None,
-        form: output.failure_form,
-    });
+    let indexes = value.failure_indexes();
+    let listed = failures.map(|listed| Failures::of(listed, indexes, output.failure_form));
     let rows = value.rows().len();
     // A batch that never fetched some of its keys ends with their failure
     // even when its rows fit.
@@ -467,7 +469,7 @@ impl<'a, T: Rows> Prepared<'a, T> {
             return self.write_unwrapped(out, shown, all);
         }
         let extras = Extras {
-            total: value.total(),
+            total: value.total().filter(|_| self.document.prints_total()),
             truncated: (T::SHAPE == Shape::Listing)
                 .then(|| cut.is_some() || listing::leaves_out(value)),
             summary: value.summary(),

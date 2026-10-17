@@ -114,7 +114,7 @@ fn sorted_keys_order_the_failure_document_and_its_recovery() {
         result,
     );
 
-    assert_eq!(code, ExitCode::FAILURE);
+    assert_eq!(code, 1);
     assert_eq!(
         String::from_utf8(out).unwrap(),
         concat!(

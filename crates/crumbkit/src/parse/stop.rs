@@ -45,9 +45,12 @@ impl Stop {
         ExitCode::from(self.code)
     }
 
-    /// Returns the exit code as a number, which the trace records.
-    #[cfg(feature = "tracing")]
-    pub(crate) const fn number(&self) -> u8 {
+    /// Returns the exit code that [`Stop::code`] returns, as a number, such
+    /// as the code that the guide lists for a refused command line.
+    /// `ExitCode` cannot be read back as a number, so a tool that records
+    /// or passes on the number reads it here.
+    #[must_use]
+    pub const fn number(&self) -> u8 {
         self.code
     }
 

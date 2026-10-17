@@ -9,7 +9,8 @@ its reasons.
 - [Parsing](parsing/README.md): `parse`, its stops and refused command
   lines, [aliases](parsing/aliases.md) and
   [shell completion](parsing/completion.md).
-- [Output](output/README.md): the result formats and shapes,
+- [Output](output/README.md): the result formats, the
+  [result shapes](output/shapes/README.md),
   [listings](output/listings/README.md), [streams](output/streams.md), the
   [output budget](output/budget/README.md),
   [child processes](output/child-processes.md),

@@ -2,6 +2,7 @@
 //! format they choose.
 
 mod budget;
+mod build;
 mod columns;
 mod confirm;
 mod counted;
@@ -16,6 +17,7 @@ mod problems;
 mod prose;
 mod respond;
 mod result;
+mod room;
 mod stream;
 pub(crate) mod table;
 mod terminal;
@@ -34,6 +36,7 @@ pub use self::dry_run::DryRun;
 use self::failure::Printing;
 pub(crate) use self::layout::JsonStyle;
 pub use self::layout::{JsonLayout, KeyOrder};
+pub use self::room::Room;
 pub use self::stream::{Streaming, stream, stream_to};
 use crate::form::FailureForm;
 use crate::help::rename::Renames;
@@ -369,6 +372,14 @@ impl Output {
     }
 }
 
+/// Reports whether the caller gave `value`, a batch, more than one key.
+/// A headed batch prints its `==> KEY <==` headers by this rule, and a
+/// failure of such a batch reports it through
+/// [`PreparedFailure::among_several`](crate::form::PreparedFailure::among_several).
+fn several_keys<T: Rows>(value: &T) -> bool {
+    value.key(1).is_some()
+}
+
 /// Prints a command's result in the format that `output` chooses, and
 /// returns the process's exit code.
 ///
@@ -381,14 +392,24 @@ pub fn finish<T: Rows, E: AsFailure>(
     document: Document<T>,
     result: Result<T, E>,
 ) -> ExitCode {
-    finish_to(&mut Sink::standard(), output, spelling, document, result)
+    ExitCode::from(finish_to(
+        &mut Sink::standard(),
+        output,
+        spelling,
+        document,
+        result,
+    ))
 }
 
 /// Prints a command's result to `sink` in the format that `output` chooses,
-/// and returns the exit code that [`finish`] would return.
+/// and returns the exit code that [`finish`] would return, as a number.
 ///
 /// Tests and golden files call it with a sink over in-memory writers, so they
 /// check a command's exact output and exit code without starting a process.
+/// A tool that needs the exit code as a number, such as one that does more
+/// work after it prints, calls it with [`Sink::standard`]. `ExitCode` cannot
+/// be read back as a number, and a guide can give a failure any code from 3
+/// to 125, so the number comes from here.
 ///
 /// An `Ok` value prints to the sink's output writer. The text format is a
 /// table with a header row, and an empty result prints the header alone. The
@@ -481,7 +502,9 @@ pub fn finish<T: Rows, E: AsFailure>(
 /// `crumbkit::output::over_budget`, or the tool's rename of it, and the
 /// budget. A batch prints the rows
 /// that fit and ends with one over-budget failure whose fields are
-/// `left_out` and `budget`, and exits 1. A single row, a prose result or a
+/// `left_out` and `budget`, and exits 1. A batch whose document is marked
+/// with `Document::left_out_per_key` instead gives each answer left out its
+/// own over-budget failure at its key's position (ADR-0068). A single row, a prose result or a
 /// bytes result that does not fit prints nothing but the over-budget
 /// failure, and exits 1, unless its document is marked with
 /// `Document::always_print_first` (ADR-0046). A bytes result is measured in
@@ -533,7 +556,7 @@ pub fn finish_to<T: Rows, E: AsFailure, O: Write, W: Write>(
     spelling: Spelling,
     document: Document<T>,
     result: Result<T, E>,
-) -> ExitCode {
+) -> u8 {
     columns::require::<T>();
     // The sink counts the bytes of standard output, which `finish` reports
     // to the observer with the exit code (ADR-0057).
@@ -550,5 +573,5 @@ pub fn finish_to<T: Rows, E: AsFailure, O: Write, W: Write>(
     #[cfg(feature = "tracing")]
     crate::trace::spans::exited(&span, exit);
     crate::events::finished(exit, sink.out.bytes(), truncated || cut, empty);
-    ExitCode::from(exit)
+    exit
 }

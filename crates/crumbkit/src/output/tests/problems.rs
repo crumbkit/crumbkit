@@ -171,7 +171,7 @@ fn a_listing_with_problem_rows_exits_with_1_after_the_reader_closed_the_pipe() {
         result,
     );
 
-    assert_eq!(code, ExitCode::FAILURE);
+    assert_eq!(code, 1);
 }
 
 #[test]

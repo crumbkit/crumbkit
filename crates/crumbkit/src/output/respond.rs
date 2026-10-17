@@ -56,6 +56,7 @@ pub(super) fn respond<T: Rows, E: AsFailure, O: Write, W: Write, R>(
     // form print the same fields. Every other result has `None` here.
     // Each failure of a batch carries its key, and every other result has
     // no indexes, so its failures carry none.
+    let several = super::several_keys(value);
     let failures: Option<Vec<PreparedFailure<'_>>> = value.failures().map(|failures| {
         let mut indexes = value.failure_indexes().iter();
         failures
@@ -71,7 +72,7 @@ pub(super) fn respond<T: Rows, E: AsFailure, O: Write, W: Write, R>(
                     output.command.as_mut(),
                     &mut sink.err,
                 )
-                .keyed(key)
+                .keyed(key, several)
             })
             .collect()
     });
@@ -113,9 +114,9 @@ pub(super) fn respond<T: Rows, E: AsFailure, O: Write, W: Write, R>(
         && !matches!(answer, Answer::Refused(_));
     let (code, cut, left_out) = answered(sink, output, spelling, &answer, code);
     let failures = match &answer {
-        Answer::Headed { oversize, .. } => failures.map(|listed| {
+        Answer::Keyed { each, .. } => failures.map(|listed| {
             let command = output.command.as_mut();
-            with_oversize(listed, oversize, value, spelling, command, &mut sink.err)
+            with_each(listed, each, value, spelling, command, &mut sink.err)
         }),
         _ => failures,
     };
@@ -204,7 +205,7 @@ fn answered<'a, O: Write, W: Write, R>(
             (code, true, None)
         }
         Answer::Partial(over) => (1, false, Some(over)),
-        Answer::Headed { left_out, .. } => (code, false, left_out.as_ref()),
+        Answer::Keyed { left_out, .. } => (code, false, left_out.as_ref()),
         Answer::Refused(over) => {
             let printing = output.printing();
             failure::print(
@@ -220,22 +221,29 @@ fn answered<'a, O: Write, W: Write, R>(
     }
 }
 
-/// Returns the failures of a batch with the failure of each row of a headed
-/// batch that was too large for the budget on its own, each keyed by its
-/// row's key, in the order of the keys.
-fn with_oversize<'a, T: Rows>(
+/// Returns the failures of a batch with the failure of each answer in
+/// `each`, keyed by its answer's key, in the order of the keys. Each of
+/// `each` is a row of a headed batch that was too large for the budget on
+/// its own, or an answer that the budget left out of a batch whose document
+/// answers each key left out (ADR-0068).
+fn with_each<'a, T: Rows>(
     listed: Vec<PreparedFailure<'a>>,
-    oversize: &'a [(usize, OverBudget)],
+    each: &'a [(usize, OverBudget)],
     value: &'a T,
     spelling: Spelling,
     mut command: Option<&mut clap::Command>,
     err: &mut impl Write,
 ) -> Vec<PreparedFailure<'a>> {
-    let mut merged = Vec::with_capacity(listed.len() + oversize.len());
-    let mut listed = listed.into_iter().peekable();
-    for (position, over) in oversize {
-        let before = |failure: &PreparedFailure<'_>| failure.index().is_some_and(|i| i < *position);
-        while let Some(failure) = listed.next_if(before) {
+    let mut merged = Vec::with_capacity(listed.len() + each.len());
+    let indexes = value.failure_indexes();
+    // A failure without a position sorts after every other.
+    let mut listed = listed
+        .into_iter()
+        .enumerate()
+        .map(|(number, failure)| (indexes.get(number).copied().unwrap_or(usize::MAX), failure))
+        .peekable();
+    for (position, over) in each {
+        while let Some((_, failure)) = listed.next_if(|(index, _)| index < position) {
             merged.push(failure);
         }
         // `code` is already the code that the run prints, so no rename
@@ -243,8 +251,10 @@ fn with_oversize<'a, T: Rows>(
         let key = value.key(*position).map(|key| (*position, key));
         let printing = Printing::default();
         let command = command.as_deref_mut();
-        merged.push(PreparedFailure::new(over, spelling, printing, command, err).keyed(key));
+        let several = super::several_keys(value);
+        merged
+            .push(PreparedFailure::new(over, spelling, printing, command, err).keyed(key, several));
     }
-    merged.extend(listed);
+    merged.extend(listed.map(|(_, failure)| failure));
     merged
 }

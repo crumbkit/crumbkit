@@ -52,7 +52,7 @@ sets [`KeyOrder::Sorted`](json-layout.md#key-order). A document from
 `Document::without_envelope` prints each row alone, and its failures print as
 text on standard error. A document from `Document::with_keys` prints each
 line with the declared keys in place of `schema` and `data`
-([output](README.md#documents-with-the-tools-own-keys)). A dry run marks each JSON line with
+([result shapes](shapes/README.md#documents-with-the-tools-own-keys)). A dry run marks each JSON line with
 `"dry_run": true`. A stream document's JSON Schema, from
 `schemas::stream_schema`, describes one line: the envelope of a document of
 one row.
