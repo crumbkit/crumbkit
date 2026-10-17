@@ -71,3 +71,13 @@ fn an_all_argument_names_the_field_whose_values_it_takes_together() {
         }
     );
 }
+
+#[test]
+fn a_typed_call_that_takes_every_value_of_a_field_keeps_its_words_and_the_place_of_the_values() {
+    let words = vec!["books".to_owned(), "show".to_owned(), "--json".to_owned()];
+    let call = Call::typed_all(words.clone(), 2, "<ID>...".to_owned(), "left_out");
+
+    assert_eq!(call.target(), &CallTarget::Typed(words.clone()));
+    assert_eq!(call.typed_slot(), Some((2, "<ID>...", "left_out")));
+    assert_eq!(Call::typed(words).typed_slot(), None);
+}

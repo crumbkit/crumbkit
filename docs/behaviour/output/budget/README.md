@@ -100,16 +100,28 @@ the handler never fetched follow the keys of the cut rows in `left_out`, and
 a batch with such keys ends with the failure even when its rows fit, so
 every key is either answered or listed.
 
-The failure's recovery is a `run` step built with `Call::all`, such as
-`{"kind":"run","call":"shelf books show <ID>...","all":"left_out"}`, which
-runs the command once with every key of `left_out`, each as its own word in
-place of `<ID>...`. The call text shows `<ID>...`, clap's usage form for an
+The failure's recovery is a `run` step, such as
+`{"kind":"run","call":"shelf books show <ID>... --json","all":"left_out"}`,
+which runs the command once with every key of `left_out`, each as its own
+word in place of `<ID>...`. The call keeps every other word the caller typed
+in its place, including `--json`, `--fields` and global options before the
+subcommand, and puts the placeholder where the caller's first key was. A
+key argument that is an option keeps its flag in front of the placeholder. The call text shows `<ID>...`, clap's usage form for an
 argument that takes many values, so a reader that ignores `all` still sees
 that several keys go in that place, and `check_recoveries` reads it as one
 placeholder. In text the `help:` line prints the concrete command,
 such as ``run `shelf books show 4 5 6` ``, with each key quoted for a shell
 as other call arguments are. The run with every key may itself be cut, and
 each run answers at least one key, so the next failure lists fewer keys.
+
+crumbkit finds the keys among the caller's words from clap's parse of those
+words. The recovery falls back to the batch's command with only the keys,
+such as `shelf books show <ID>...`, when `Output` holds no words, when the
+words run another command than the batch, when the keys are not among the
+words (such as ids read from a file), or when the words with the keys
+replaced parse with any other argument changed. The fallback also applies to
+keys typed in a cluster of short flags and to keys split from one word by a
+value delimiter.
 
 When `unlisted` is above 0, the message adds that the recovery covers the
 keys listed in `left_out` and that a later run covers the rest. When
@@ -141,7 +153,9 @@ each answer left out with its own `crumbkit::output::over_budget` failure,
 in place of the one failure that names them all. Each failure has the key and
 index of its answer, the message `the answer did not fit in the output budget
 of 1048576 bytes`, the field `budget`, and a `run` recovery that runs the
-command with that key alone, such as `shelf books show 4`. An answer without
+command with that key alone in place of the caller's keys, such as
+`shelf books show 4`, keeping the caller's other words as the whole-batch
+recovery does. An answer without
 a key gets a hint to run the command again with the keys that were not
 answered. The failures print among the batch's other failures in the order of
 their keys, and the run exits with the code of the first failure in key

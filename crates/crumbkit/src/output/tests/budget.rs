@@ -16,6 +16,7 @@ use crate::Envelope;
 mod batch;
 mod keys;
 mod per_key;
+mod rerun;
 mod room;
 use crate::help::{Exit, Guide, Rename};
 use crate::twins::assert_one_word_apart;

@@ -9,6 +9,7 @@ use serde::Serialize;
 
 use super::batch::LeftOut;
 use super::in_order::InOrderFailure;
+use super::rerun::{self, Rerun};
 use super::{Answer, Prepared};
 use crate::output::budget::{self, Over, OverBudget};
 use crate::output::envelope::{Failures, Selected};
@@ -19,18 +20,22 @@ use crate::{Code, Rows};
 /// Returns the failure of each answer that `value` leaves out when its first
 /// `shown` rows print, with the answer's position among the keys, in key
 /// order. Each failure has `code` and `budget`, and its recovery fetches the
-/// answer's key alone.
+/// answer's key alone: the caller's words from `rerun` with that key in
+/// place of the caller's keys, or the batch's command with the key.
 pub(super) fn each_left_out<T: Rows>(
     value: &T,
     shown: usize,
     code: &'static Code,
     budget: usize,
+    rerun: Option<&Rerun>,
 ) -> Vec<(usize, OverBudget)> {
     value
         .left_out_indexes(shown)
         .into_iter()
         .map(|position| {
-            let fetch = value.key(position).and_then(|key| value.fetch_key(key));
+            let fetch = value
+                .key(position)
+                .and_then(|key| rerun::fetch_key(value, key, rerun));
             let over = Over::Key { fetch };
             (position, OverBudget { code, budget, over })
         })
@@ -68,7 +73,7 @@ impl<T: Rows> Prepared<'_, T> {
             let shown = budget::largest(low, rows, |shown| self.fits(shown, listed, None, budget))?;
             let failures = Failures::of(listed, indexes, self.form);
             let bytes = self.measured_write(out, shown, None, Some(failures))?;
-            let each = each_left_out(value, shown, code, budget);
+            let each = each_left_out(value, shown, code, budget, left_out.rerun.as_ref());
             if each.is_empty() {
                 self.send_notes(err, &mut Vec::new(), rows, None);
                 return Ok((Answer::Whole, bytes));
@@ -79,7 +84,7 @@ impl<T: Rows> Prepared<'_, T> {
             };
             return Ok((answer, bytes));
         }
-        let mut each = each_left_out(value, low, code, budget);
+        let mut each = each_left_out(value, low, code, budget, left_out.rerun.as_ref());
         let prepared: Vec<(usize, PreparedFailure<'_>)> = each
             .iter()
             .map(|(position, over)| {

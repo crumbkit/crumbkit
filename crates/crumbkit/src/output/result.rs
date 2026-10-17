@@ -23,6 +23,7 @@ mod cut;
 pub(super) mod headed;
 mod in_order;
 mod per_key;
+mod rerun;
 
 /// What [`write_result`] printed of a result.
 #[derive(Debug)]
@@ -195,11 +196,13 @@ fn write_rows<T: Rows>(
         }
         Shape::Batch => {
             let listed = failures.unwrap_or_default();
+            let rerun = rerun::Rerun::find(command, &output.words, value);
             let left_out = batch::LeftOut {
                 spelling,
                 command,
                 code,
                 budget,
+                rerun,
             };
             prepared.partial(out, err, listed, left_out)
         }

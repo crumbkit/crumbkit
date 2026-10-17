@@ -85,9 +85,20 @@ fn finish(
     document: Document<Batch<Page, Error>>,
     batch: Batch<Page, Error>,
 ) -> Finished {
-    let guide = Guide::new().output_budget(budget, "the tests print little");
     let args: Vec<&str> = ["tool", "list"].iter().chain(flags).copied().collect();
-    let mut output = super::built_with(Tool::command(), &guide, &args);
+    finish_line(&args, budget, document, batch)
+}
+
+/// Finishes `batch` as `document` with the command line `args`, from the
+/// program name on, and a budget of `budget`.
+fn finish_line(
+    args: &[&str],
+    budget: usize,
+    document: Document<Batch<Page, Error>>,
+    batch: Batch<Page, Error>,
+) -> Finished {
+    let guide = Guide::new().output_budget(budget, "the tests print little");
+    let mut output = super::built_with(Tool::command(), &guide, args);
     let mut out = Vec::new();
     let mut err = Vec::new();
     let result: Result<_, Error> = Ok(batch);
@@ -272,6 +283,30 @@ error: the answer did not fit in the output budget of 1024 bytes
   help:  run `tool show d`
   code:  crumbkit::output::over_budget
 "
+    );
+}
+
+#[test]
+fn the_recoveries_of_a_headed_batch_rerun_the_caller_s_words_with_the_keys_left_out() {
+    let half = vec![b'x'; 400];
+    let names = ["a", "b", "c", "d"];
+    let answers: Vec<(&str, Option<&[u8]>)> =
+        names.iter().map(|name| (*name, Some(&half[..]))).collect();
+    let args = ["tool", "show", "--", "a", "b", "c", "d"];
+
+    let whole = finish_line(&args, BUDGET, PAGES, batch(&answers));
+    let each = finish_line(&args, BUDGET, PAGES.left_out_per_key(), batch(&answers));
+
+    assert!(
+        whole.err.contains("help:  run `tool show -- c d`\n"),
+        "{}",
+        whole.err
+    );
+    assert!(
+        each.err.contains("help:  run `tool show -- c`\n")
+            && each.err.contains("help:  run `tool show -- d`\n"),
+        "{}",
+        each.err
     );
 }
 
