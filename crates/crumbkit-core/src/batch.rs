@@ -39,7 +39,9 @@ mod tests;
 /// batch with no rows prints nothing on standard output in text. With
 /// `--json`, the document holds the rows under `data` and the failures under
 /// `failures`, each with its `key` and `index`. A batch with at least one
-/// failure exits with code 1.
+/// failure exits with code 1. [`Batch::note`] adds a line that the text
+/// prints on standard error before the failures, as a listing's note
+/// prints.
 ///
 /// ```
 /// # use std::fmt;
@@ -93,6 +95,9 @@ pub struct Batch<R: Row, E: AsFailure> {
     failure_positions: Vec<usize>,
     /// The number of results pushed so far.
     pushed: usize,
+    /// The line that the text output prints on standard error after the
+    /// rows and before the failures.
+    note: Option<String>,
 }
 
 impl<R: Row, E: AsFailure> Batch<R, E> {
@@ -119,7 +124,20 @@ impl<R: Row, E: AsFailure> Batch<R, E> {
             failures: Vec::new(),
             failure_positions: Vec::new(),
             pushed: 0,
+            note: None,
         }
+    }
+
+    /// Sets the note: a line that the text output prints on standard error
+    /// after the rows and before the failures, such as `Books 2 and 5 were
+    /// removed from the shelf.` The text carries its own full stop when it
+    /// needs one. The note prints also when the output budget leaves out
+    /// some of the rows. The JSON document leaves it out, as it leaves out a
+    /// listing's note ([`Listing::note`](crate::Listing::note)).
+    #[must_use]
+    pub fn note(mut self, text: impl Into<String>) -> Self {
+        self.note = Some(text.into());
+        self
     }
 
     /// Adds the result of the next key: a row for a key that worked, or a
@@ -177,6 +195,10 @@ impl<R: Row, E: AsFailure> Rows for Batch<R, E> {
             .map(|&position| self.keys.get(position).map(String::as_str))
             .chain(unfetched.iter().map(|key| Some(key.as_str())))
             .collect()
+    }
+
+    fn note(&self) -> Option<&str> {
+        self.note.as_deref()
     }
 
     fn failure_indexes(&self) -> &[usize] {

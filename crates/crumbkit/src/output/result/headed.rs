@@ -31,8 +31,8 @@ use crate::{Code, Document, Rows, codes};
 /// fit, every later row and every key the batch never fetched is left out,
 /// and one failure names them, or each gets a failure of its own when the
 /// document answers each key left out (ADR-0068). After `out` is flushed, the note of the rows
-/// that report a problem and the tool's note go to `err`, as they do for a
-/// table.
+/// that report a problem, when every answer printed, and the tool's note go
+/// to `err`, as they do for a table.
 pub(super) fn write<T: Rows>(
     out: &mut impl Write,
     err: &mut impl Write,
@@ -113,9 +113,15 @@ pub(super) fn write<T: Rows>(
     } else {
         left_out(value, stop, code, budget, rerun.as_ref())
     };
-    if oversize.is_empty() && left_out.is_none() {
-        write_notes(err, value, problems);
-    }
+    // A failure for an answer left out decides the exit, so the note of the
+    // rows that report a problem, which names the exit, prints only when
+    // every answer printed. The tool's note always prints.
+    let problems = if oversize.is_empty() && left_out.is_none() {
+        problems
+    } else {
+        0
+    };
+    write_notes(err, value, problems);
     let answer = Answer::Keyed {
         each: oversize,
         left_out,

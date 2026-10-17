@@ -1,3 +1,4 @@
+note: book 2 is in the catalogue but was removed from the shelf.
 error: the catalogue has no book 2
   key:   2 (index 0)
   help:  run `shelf books list`
