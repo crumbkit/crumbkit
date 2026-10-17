@@ -1,7 +1,6 @@
 //! The result of a command that takes many ids.
 
 use std::fmt;
-use std::io;
 
 use serde::{Serialize, Serializer};
 
@@ -26,11 +25,13 @@ mod tests;
 /// of the whole command, such as an unreachable server, and each failure
 /// inside the batch belongs to one key.
 ///
-/// The handler may stop before the last key, when [`Batch::has_room`]
+/// The handler may stop before the last key, when `crumbkit::Room::has_room`
 /// returns false. The keys after the last push were never fetched, and
 /// `crumbkit::finish` ends the run with an over-budget failure that names
 /// them in its `left_out` field beside the keys of any rows that did not
-/// fit. A result pushed after the last key has no key.
+/// fit, or with one such failure for each of those keys when the document
+/// declares `Document::left_out_per_key`. A result pushed after the last key
+/// has no key.
 ///
 /// `crumbkit::finish` prints the rows as a `Vec` of rows prints, and
 /// then each failure on standard error as it prints a failed command, with
@@ -64,19 +65,12 @@ mod tests;
 /// # }
 /// use crumbkit_core::Batch;
 ///
-/// // `budget` is the number of bytes the run has left, which
-/// // `crumbkit::Output::budget` returns.
-/// fn show(ids: &[u32], budget: usize) -> Batch<Book, NoSuchBook> {
+/// fn show(ids: &[u32]) -> Batch<Book, NoSuchBook> {
 ///     let mut batch = Batch::new(&["books", "show"], "ids", ids);
-///     for &id in ids {
-///         if !batch.has_room(budget) {
-///             break;
-///         }
-///         batch.push(find(id));
-///     }
+///     batch.extend(ids.iter().map(|&id| find(id)));
 ///     batch
 /// }
-/// # let _ = show(&[2, 7, 9], usize::MAX);
+/// # let _ = show(&[2, 7, 9]);
 /// ```
 #[derive(Debug)]
 pub struct Batch<R: Row, E: AsFailure> {
@@ -99,10 +93,6 @@ pub struct Batch<R: Row, E: AsFailure> {
     failure_positions: Vec<usize>,
     /// The number of results pushed so far.
     pushed: usize,
-    /// The number of rows that `has_room` has measured.
-    measured: usize,
-    /// The bytes of compact JSON of the measured rows.
-    bytes: usize,
 }
 
 impl<R: Row, E: AsFailure> Batch<R, E> {
@@ -129,8 +119,6 @@ impl<R: Row, E: AsFailure> Batch<R, E> {
             failures: Vec::new(),
             failure_positions: Vec::new(),
             pushed: 0,
-            measured: 0,
-            bytes: 0,
         }
     }
 
@@ -149,27 +137,6 @@ impl<R: Row, E: AsFailure> Batch<R, E> {
         }
         self.pushed += 1;
     }
-
-    /// Returns whether the rows pushed so far take fewer than `budget`
-    /// bytes, so the handler can fetch the next key.
-    ///
-    /// The method measures each row once, the first time it runs after the
-    /// row was pushed, as compact JSON with every field. A row that fails to
-    /// serialize counts the bytes written before the error. The measure
-    /// leaves out the document around the rows, the commas between them and
-    /// the failures, so a batch that stops when this returns false may still
-    /// end over the budget, and `crumbkit::finish` then cuts it.
-    pub fn has_room(&mut self, budget: usize) -> bool {
-        for row in &self.rows[self.measured..] {
-            let mut counter = Counter(0);
-            // A row that fails to serialize counts what it wrote, and
-            // `finish` reports the serialization error when it prints.
-            let _ = serde_json::to_writer(&mut counter, row);
-            self.bytes = self.bytes.saturating_add(counter.0);
-        }
-        self.measured = self.rows.len();
-        self.bytes < budget
-    }
 }
 
 /// Adds each result in turn, as [`Batch::push`] does.
@@ -178,20 +145,6 @@ impl<R: Row, E: AsFailure> Extend<Result<R, E>> for Batch<R, E> {
         for result in results {
             self.push(result);
         }
-    }
-}
-
-/// An `io::Write` that counts the bytes written to it and keeps none.
-struct Counter(usize);
-
-impl io::Write for Counter {
-    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        self.0 = self.0.saturating_add(buf.len());
-        Ok(buf.len())
-    }
-
-    fn flush(&mut self) -> io::Result<()> {
-        Ok(())
     }
 }
 
@@ -247,5 +200,17 @@ impl<R: Row, E: AsFailure> Rows for Batch<R, E> {
 
     fn fetch(&self) -> Option<Call> {
         Some(Call::new(self.command).all(self.arg, "left_out"))
+    }
+
+    fn left_out_indexes(&self, shown: usize) -> Vec<usize> {
+        let cut = self.positions.get(shown..).unwrap_or_default();
+        cut.iter()
+            .copied()
+            .chain(self.pushed..self.keys.len())
+            .collect()
+    }
+
+    fn fetch_key(&self, key: &str) -> Option<Call> {
+        Some(Call::new(self.command).value(self.arg, key))
     }
 }

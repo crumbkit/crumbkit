@@ -34,7 +34,9 @@ pub(super) struct Customisation {
 /// document declares with `Document::with_keys` (ADR-0059), the program whose
 /// exit code it passes on, whether it declares refusal alternatives,
 /// whether its batch prints its failures in input order
-/// (`Document::failures_in_order`), and each code rename of
+/// (`Document::failures_in_order`), whether its batch answers each key that
+/// the output budget leaves out (`Document::left_out_per_key`), and each
+/// code rename of
 /// [`Leaf::codes`](crumbkit::help::Leaf::codes). An exit that lists a code
 /// that only a leaf renames applies to that leaf's command. A declaration
 /// that a later change adds joins this list beside the declarations of the
@@ -186,6 +188,16 @@ fn leaf_customisations(command: &Command, leaf: &Leaf) -> Vec<Customisation> {
             applies_to: command_line(command, &leaf.path().join(" ")),
             declares: "With --json, the command prints its failures among its rows in input \
                        order, in place of text on standard error."
+                .to_owned(),
+        });
+    }
+    if document.is_some_and(|document| document.answers_left_out_per_key()) {
+        list.push(Customisation {
+            declaration: "left-out-per-key",
+            applies_to: command_line(command, &leaf.path().join(" ")),
+            declares: "When the output budget leaves out answers, the command prints one failure \
+                       for each answer left out, at its key's position, in place of one failure \
+                       that names them all."
                 .to_owned(),
         });
     }

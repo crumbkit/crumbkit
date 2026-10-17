@@ -46,6 +46,10 @@ Why: ADR-0056.
 - `Document::failures_in_order` prints an unwrapped batch's failures among
   its rows, which keeps every failure and its recovery and changes only where
   they print ([result shapes](../output/shapes/README.md#documents-without-the-envelope)).
+- `Document::left_out_per_key` gives each answer that the output budget
+  leaves out of a batch its own over-budget failure, which keeps every
+  answer either printed or failed and changes only how the failures name
+  them ([output budget](../output/budget/README.md#one-failure-for-each-answer-left-out)).
 - `Document::with_keys`, `Document::with_type` and `Document::summary_at_top`
   name the keys, the type and the top-level fields of a document whose
   readers expect names other than crumbkit's, and keep every other part of
@@ -142,8 +146,8 @@ beside the name that its command's path gives), each document with keys
 from `Document::with_keys` (as an `envelope-keys` customisation that names
 the keys, the type and whether the summary prints at the top), each leaf
 that passes on an exit code, each leaf that declares
-refusal alternatives, the guide's refusal function once for every run, and
-`failures_in_order`. A leaf's code rename, and an exit that lists a code
+refusal alternatives, the guide's refusal function once for every run,
+`failures_in_order`, and `left_out_per_key`. A leaf's code rename, and an exit that lists a code
 that only a leaf renames, apply to that leaf's command line. The
 dashed-forms declaration is listed once, followed by each command named in another style as a `resource-name` or a `verb-name`
 with the dashed form it also answers to.

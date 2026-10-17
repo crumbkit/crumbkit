@@ -92,7 +92,8 @@ where
                     books::list(&args, removed),
                 ),
                 BooksCommand::Show(args) => {
-                    let result = books::show(&args, removed, cli.output.budget());
+                    let room = cli.output.room(books::BOOKS_SHOW);
+                    let result = books::show(&args, removed, room);
                     crumbkit::finish(&mut cli.output, SPELLING, books::BOOKS_SHOW, result)
                 }
                 BooksCommand::Summarize(args) => crumbkit::finish(
