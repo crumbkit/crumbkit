@@ -24,7 +24,7 @@ mod tests;
 /// const LIST: Effects = Effects::read_only();
 /// const REMOVE: Effects = Effects::destructive().idempotent();
 ///
-/// assert!(LIST.is_idempotent());
+/// assert!(LIST.is_read_only());
 /// assert!(REMOVE.is_destructive());
 /// ```
 ///
@@ -230,15 +230,17 @@ impl Effects {
     }
 
     /// Reports whether a second run with the same arguments changes nothing
-    /// more than the first.
-    #[must_use]
-    pub const fn is_idempotent(&self) -> bool {
+    /// more than the first. Only the tests read it, because help and
+    /// `commands list` read the field.
+    #[cfg(test)]
+    pub(crate) const fn is_idempotent(self) -> bool {
         self.idempotent
     }
 
-    /// Reports whether the command reaches systems outside the tool.
-    #[must_use]
-    pub const fn is_open_world(&self) -> bool {
+    /// Reports whether the command reaches systems outside the tool. Only
+    /// the tests read it, because help and `commands list` read the field.
+    #[cfg(test)]
+    pub(crate) const fn is_open_world(self) -> bool {
         self.open_world
     }
 

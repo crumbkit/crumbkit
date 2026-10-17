@@ -66,7 +66,7 @@ fn show(id: u32) -> Result<String, Error> {
 
 let error = show(7).unwrap_err();
 assert_eq!(error.to_string(), "the catalogue has no book 7");
-assert_eq!(Spelling::DOTS.spell(error.failure().code()), "shelf.books.not_found");
+assert_eq!(Spelling::COLONS.spell(error.failure().code()), "shelf::books::not_found");
 ```
 
 ## Where to read more

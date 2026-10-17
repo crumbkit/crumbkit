@@ -11,11 +11,10 @@ use snapbox::Assert;
 use snapbox::assert::DEFAULT_ACTION_ENV;
 
 use crate::allow::{Allowances, Rule};
-use crate::codes::Declared;
+use crate::codes;
 use crate::examples::Examples;
-use crate::failures;
 use crate::goldens::compare;
-use crate::runs::{Dir, Location};
+use crate::runs::Location;
 
 mod chain;
 mod runtime;
@@ -85,9 +84,8 @@ impl<'a> Failing<'a> {
 
     /// Sets the working directory of the command line and of every step of
     /// its chain, relative to the test's directory or absolute. Without it,
-    /// the runs start in the directory of [`Examples::current_dir`], in one
-    /// copy of the fixture of [`Examples::fresh_dir`] for the whole chain,
-    /// or in the test's directory when neither is set.
+    /// the runs start in the directory of [`Examples::current_dir`], or in
+    /// the test's directory when it is not set.
     #[must_use]
     pub const fn dir(mut self, dir: &'a str) -> Self {
         self.dir = Some(Location::Text(dir));
@@ -199,14 +197,13 @@ impl<'a> Failing<'a> {
     }
 
     /// Returns the working directory of its runs. A command line without a
-    /// directory of its own runs in `fallback`, the directory or fresh
-    /// fixture of [`Examples`], or in the test's directory when that is
-    /// `None` too.
-    pub(crate) fn work_dir<'p>(&self, fallback: Option<Dir<'p>>) -> Option<Dir<'p>>
+    /// directory of its own runs in `fallback`, the directory of
+    /// [`Examples`], or in the test's directory when that is `None` too.
+    pub(crate) fn work_dir<'p>(&self, fallback: Option<&'p Path>) -> Option<&'p Path>
     where
         'a: 'p,
     {
-        self.dir.map(Dir::Fixed).or(fallback)
+        self.dir.map(Location::path).or(fallback)
     }
 
     /// Returns the bytes on standard input of its runs, or `None`.
@@ -242,8 +239,8 @@ pub struct Recoveries<'a> {
     examples: Examples<'a>,
     /// How the tool spells its codes.
     spelling: Spelling,
-    /// The tool's declared codes.
-    codes: Declared<'a>,
+    /// The `CODES` list of each of the tool's error types.
+    codes: &'a [&'a [&'a Code]],
     /// The command lines that start the chains.
     starts: &'a [Failing<'a>],
     /// The declared codes that no command line provokes.
@@ -270,22 +267,11 @@ impl<'a> Recoveries<'a> {
         Self {
             examples,
             spelling,
-            codes: Declared::Lists(codes),
+            codes,
             starts: &[],
             unprovoked: &[],
             values: &[],
             steps: 3,
-        }
-    }
-
-    /// Returns the settings that [`Recoveries::new`] returns, for `codes`,
-    /// one list of the tool's declared codes held by value, such as codes
-    /// that the tool builds at run time.
-    #[must_use]
-    pub const fn from_codes(examples: Examples<'a>, spelling: Spelling, codes: &'a [Code]) -> Self {
-        Self {
-            codes: Declared::Codes(codes),
-            ..Self::new(examples, spelling, &[])
         }
     }
 
@@ -337,11 +323,7 @@ impl<'a> Recoveries<'a> {
 /// package, as it calls [`check_examples`](crate::check_examples).
 ///
 /// Every run adds `--json` when its words lack it, before a `--` word or at
-/// the end, so the tool reads it as a flag. When [`Examples`] sets a
-/// [`FailureReader`](crate::FailureReader), the check reads each failed
-/// run through that reader first. Otherwise, or when the reader reads no
-/// failure, it reads
-/// the failure of the last document on standard output that is a
+/// the end, so the tool reads it as a flag. The check reads the failure of the last document on standard output that is a
 /// `<tool>/failure/v1` document or that has `failures`, as a batch prints
 /// them, and then the last `code:` line on standard error, which gives a
 /// failure without steps or fields. It follows every failure that it
@@ -352,8 +334,7 @@ impl<'a> Recoveries<'a> {
 /// one chain share one set of fresh XDG directories, which start as copies
 /// of the fixture of [`Failing::xdg`] or [`Examples::xdg`], the working directory
 /// and the standard input of its start, so a step sees what the earlier
-/// runs wrote. A chain whose working directory comes from
-/// [`Examples::fresh_dir`] runs in one new copy of that fixture.
+/// runs wrote.
 ///
 /// A chain follows the recovery and then each alternative of a failure. A
 /// `run` step fills each placeholder, such as `<ID>...` or each of the two
@@ -364,9 +345,8 @@ impl<'a> Recoveries<'a> {
 /// 1. the value of [`Failing::values`] whose name matches it exactly;
 /// 2. the field of the failure that offers the step whose name matches it
 ///    with capitals lowered and `-` read as `_`, so the field `book_id`
-///    fills `<BOOK-ID>`. The fields are those that the reader
-///    returns with the failure, or the `fields` of crumbkit's failure
-///    document. A text field fills as it is, an integer or a boolean as
+///    fills `<BOOK-ID>`. The fields are the `fields` of
+///    crumbkit's failure document. A text field fills as it is, an integer or a boolean as
 ///    JSON writes it, and a null, list or object field fills no
 ///    placeholder;
 /// 3. the value of [`Recoveries::values`] whose name matches it exactly.
@@ -376,8 +356,8 @@ impl<'a> Recoveries<'a> {
 /// [`Recoveries::steps`] steps after the start. A chain does not run a
 /// command line that it ran already, a step that an opt-out from
 /// [`Rule::Recoveries`] covers, or the recovery of a code that the tool
-/// does not declare and crumbkit does not own, such as a run-time code from
-/// a plugin. The check counts such codes in the report. crumbkit owns its
+/// does not declare and crumbkit does not own, such as a code from a
+/// plugin. The check counts such codes in the report. crumbkit owns its
 /// own codes and the codes of its add-on crates, such as crumbkit-child's
 /// `<tool>::child::failed`, which print with the tool's component
 /// (ADR-0079), and the codes that the guide prints in place of them. Any
@@ -389,9 +369,9 @@ impl<'a> Recoveries<'a> {
 /// - a start that exits with code 0, or none of whose failures carries its
 ///   code;
 /// - a step that the parser refuses with crumbkit's usage code;
-/// - a step that fails with a code that no declared code spells, when
-///   [`Spelling::split`](crumbkit::Spelling::split) reads the code's
-///   component as the component of a declared code, so a code missing from
+/// - a step that fails with a code that no declared code spells and that
+///   begins with the text the spelling writes before the area of a
+///   declared component's codes, such as `shelf::`, so a code missing from
 ///   a `CODES` list is found;
 /// - a step that fails with the code of the failure it follows or of an
 ///   earlier failure of its chain, unless an opt-out from
@@ -407,12 +387,6 @@ impl<'a> Recoveries<'a> {
 ///   step. A recovery built with `Call::value` carries the value, so an
 ///   agent need not copy it from the field. A value of [`Failing::values`]
 ///   that wins over the field is no finding;
-/// - a failed run whose failure the tool's reader, set with
-///   [`Examples::failure_reader`], does not read, and that prints no
-///   `<tool>/failure/v1` document and no `code:` line. The first such run
-///   stops the check, which reports this problem alone and says to make
-///   the reader read it or to add an opt-out from
-///   [`Rule::Recoveries`] that names the root (ADR-0045);
 /// - a run that writes a `warning: <tool> left out` line to standard error, which a
 ///   debug build writes for a recovery call that does not render;
 /// - a step that crumbkit's quoting cannot read, that does not start with
@@ -474,11 +448,10 @@ fn check(
     dir: &str,
     assert: &Assert,
 ) {
-    let reader = failures::reader(&recoveries.examples);
     // crumbkit's own codes print with the tool's name (ADR-0079).
     let spelling = recoveries.spelling.for_tool(guide.tool_name(command));
     let mut declared: Vec<(String, &Code)> = Vec::new();
-    for code in recoveries.codes.to_vec() {
+    for code in codes::declared(recoveries.codes) {
         if !declared.iter().any(|&(_, seen)| seen == code) {
             declared.push((spelling.spell(code), code));
         }
@@ -488,12 +461,14 @@ fn check(
     // `crumbkit` component that `crumbkit::codes::ALL` does not list. The
     // walk follows them by their component, so only the declared codes
     // give components.
-    let mut components: Vec<String> = Vec::new();
-    for (text, _) in &declared {
-        if let Some((component, _, _)) = spelling.split(text)
-            && !components.iter().any(|seen| seen == component)
-        {
-            components.push(component.to_owned());
+    let mut components: Vec<(String, String)> = Vec::new();
+    for (_, code) in &declared {
+        let component = code.component();
+        if components.iter().any(|(seen, _)| seen == component) {
+            continue;
+        }
+        if let Some(prefix) = chain::known::spelled_prefix(spelling, component) {
+            components.push((component.to_owned(), prefix));
         }
     }
     let rules = [
@@ -518,16 +493,10 @@ fn check(
         report: String::new(),
         provoked: Vec::new(),
         skipped: 0,
-        reader,
         guide,
-        stopped: None,
     };
     for start in recoveries.starts {
         walk.start(start);
-    }
-    if let Some(problem) = walk.stopped {
-        fail(&[problem]);
-        return;
     }
     let chain::Walk {
         allowances,

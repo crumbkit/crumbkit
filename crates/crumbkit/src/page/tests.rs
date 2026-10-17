@@ -390,9 +390,3 @@ fn uncounted_with_all_reads_every_row_and_counts_them() {
 
     assert_eq!(listing, Listing::new(rows(30), 30).bounded(10));
 }
-
-#[test]
-fn fetch_limit_is_one_past_the_limit_and_none_with_all() {
-    assert_eq!(shelves(&["--limit", "2"]).unwrap().fetch_limit(), Some(3));
-    assert_eq!(shelves(&["--all"]).unwrap().fetch_limit(), None);
-}

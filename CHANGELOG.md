@@ -210,9 +210,6 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   document holds the named values under `fields` ([behaviour/schemas]).
 - crumbkit: a refused command line or `--fields` name holds the refused
   argument, value or subcommand under `fields` ([behaviour/failures]).
-- crumbkit: [`Code::runtime`] builds a code known only at run time, and
-  `Spelling::split` reads a spelled code back into its segments
-  ([behaviour/failures]).
 - crumbkit-markdown: the new crate's `render` writes a Markdown reference
   of every command of a tool from its `commands list --all --json --full`
   document ([crumbkit-markdown], [behaviour/help/reference]).
@@ -303,17 +300,14 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   from a source that the tool does not count. While more rows exist, its
   JSON document leaves out `total` and its footer reads `Showing 4 books,
   and more match.` ([behaviour/output/listings]).
-- crumbkit: `Page::fetch_limit` gives the number of rows to fetch for
-  [`Page::uncounted`], one past the limit.
 - crumbkit-test: `Examples::current_dir` sets the directory that each
   example run starts in, for [`check_examples`], [`check_output_budget`],
   [`check_twin`] and [`check_recoveries`] ([behaviour/checks/end-to-end]).
 - crumbkit-test: [`check_examples`] gives an example the bytes of its
   `.stdin` file, such as `shelf-books-import.stdin`, on standard input, and
   fails on a `.stdin` file that names no example ([behaviour/checks/end-to-end]).
-- crumbkit-test: `Examples::redact` replaces each named value with its
-  placeholder before [`check_examples`] compares an output, and the check
-  replaces its own XDG paths with `[XDG_CONFIG_HOME]` and the like
+- crumbkit-test: [`check_examples`] replaces its own XDG paths with
+  `[XDG_CONFIG_HOME]` and the like before it compares an output
   ([behaviour/checks/end-to-end]).
 - crumbkit-test: `Allow::example` opts one example out of
   [`check_examples`] and [`check_output_budget`] by its words ([behaviour/adoption/opt-outs]).
@@ -322,27 +316,18 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit-test: `Examples::xdg` and `Failing::xdg` name a fixture that
   the checks copy into each run's fresh XDG directories, so a failing
   command can find a plugin or cache there ([behaviour/checks/end-to-end]).
-- crumbkit-test: `Examples::fresh_dir` names a fixture that the checks copy
-  into a new working directory for each run, or once for each recovery
-  chain, and example outputs show the copy's path as `[ROOT]` ([behaviour/checks/end-to-end]).
 - crumbkit-test: `Failing::values` gives one recovery chain its own
   placeholder values, which win over every other source ([behaviour/checks/recovery-chains]).
 - crumbkit-test: [`check_help_sizes`], [`check_help_goldens`] and
   [`check_path_weights`] take `Pages`, whose `Pages::binary` reads each
   page from the tool's binary, for a tool that builds its help at run
   time. A tool passes the same `Pages` to all three ([behaviour/help/checks]).
-- crumbkit: [`ReadFailure`] carries the failure's fields, so a
-  [`FailureReader`] gives crumbkit-test the values that fill a recovery's
-  placeholders ([behaviour/checks/recovery-chains]).
 - crumbkit-test: [`check_twins`] runs every twin of a tool and fails on a
   declared code that no twin refuses and `Twins::unprovoked` does not list
   ([behaviour/checks/end-to-end]).
 - crumbkit-test: [`check_recoveries`] fails on a failure with a declared
   code that offers no `run`, `retry` or `hint` step, unless an opt-out from
   `Rule::NextStep` names the failing command ([behaviour/checks/recovery-chains]).
-- crumbkit-test: [`FailureReader`] and `Examples::failure_reader` let a
-  tool that prints its own failures give the twin, example and recovery
-  checks its failures ([behaviour/failures/excerpts-and-readers]).
 - crumbkit-test: [`Allow::untwinned`] opts a declared code out of its twin
   with the `Failing` that provokes it, and [`check_twins`] runs that line
   ([behaviour/checks/end-to-end], [behaviour/adoption/opt-outs]).
@@ -418,9 +403,6 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   directory ([behaviour/adoption]).
 - crumbkit-test: `RuntimeFailing::variable_twin` makes a variable twin
   from a variable name that the test builds at run time ([behaviour/checks/end-to-end]).
-- crumbkit-test: `Twins::from_codes`, `Recoveries::from_codes` and
-  `Unprovoked::from_code` take codes held by value, such as codes that a
-  tool builds at run time ([behaviour/adoption]).
 - crumbkit: [`complete_with_words`] passes the words of the shell's command
   line after the program name to the function that builds the command, so
   completers can depend on an earlier flag such as `-C <DIR>` ([behaviour/parsing/completion]).
@@ -801,9 +783,6 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit-test: [`check_opt_outs`] lists the `Guide::dashed_forms`
   declaration and each command that answers to its dashed form as
   customisations ([behaviour/adoption/declarations]).
-- crumbkit: [`ReadFailure`] holds each field as a `FieldValue`, so a
-  [`FailureReader`] gives back a null, list or object field as the failure
-  held it ([behaviour/failures/excerpts-and-readers]).
 - crumbkit: [`help::RuntimeLeaf`] no longer implements `PartialEq` and
   `Eq`, because it holds the function of its refusal alternatives.
 - crumbkit-test: `RuntimeFailing::at` returns a `RuntimePlace`, which has
@@ -824,8 +803,7 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit: [`finish`] fails to compile for a row, a `Vec` or a `Listing`,
   and [`stream`] for a row type, whose [`Row`]`::COLUMNS` is empty, because
   such rows printed none of their fields ([behaviour/output]).
-- crumbkit: [`finish_to`] returns the exit code as a `u8`, and `Stop::number`
-  gives the exit code of a run that `parse` ended as a `u8`, so a tool can
+- crumbkit: [`finish_to`] returns the exit code as a `u8`, so a tool can
   record the code before it exits ([behaviour/output]).
 - crumbkit: the one over-budget failure of a batch names every key left out
   when the first row and a failure that names no key already pass the budget
@@ -987,7 +965,6 @@ rustdoc, or at the page in docs/ that describes the behaviour. -->
 [`Recovery`]: crates/crumbkit-core/src/failure.rs
 [`Code`]: crates/crumbkit-core/src/code.rs
 [`Spelling`]: crates/crumbkit-core/src/code.rs
-[`Code::runtime`]: crates/crumbkit-core/src/code/runtime.rs
 [`Error`]: crates/crumbkit-core/src/failure.rs
 [`Batch`]: crates/crumbkit-core/src/batch.rs
 [`Prose`]: crates/crumbkit-core/src/prose.rs
@@ -1027,7 +1004,6 @@ rustdoc, or at the page in docs/ that describes the behaviour. -->
 [`check_help_goldens`]: crates/crumbkit-test/src/goldens.rs
 [`check_examples`]: crates/crumbkit-test/src/examples.rs
 [`Examples`]: crates/crumbkit-test/src/examples/settings.rs
-[`FailureReader`]: crates/crumbkit-test/src/failures.rs
 [crumbkit-aliases]: crates/crumbkit-aliases/README.md
 [crumbkit-usage]: crates/crumbkit-usage/README.md
 [crumbkit-child]: crates/crumbkit-child/README.md
@@ -1066,7 +1042,6 @@ rustdoc, or at the page in docs/ that describes the behaviour. -->
 [crumbkit-picker]: crates/crumbkit-picker/README.md
 [crumbkit-markdown]: crates/crumbkit-markdown/README.md
 [`check_command_reference`]: crates/crumbkit-test/src/reference.rs
-[`ReadFailure`]: crates/crumbkit/src/form.rs
 [`codes`]: crates/crumbkit/src/codes.rs
 [`check_recoveries`]: crates/crumbkit-test/src/recoveries.rs
 [`check_twin`]: crates/crumbkit-test/src/twins.rs

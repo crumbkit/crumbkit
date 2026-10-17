@@ -9,12 +9,12 @@ use clap::{CommandFactory as _, Parser, Subcommand};
 use schemars::JsonSchema;
 use serde::Serialize;
 
-use super::testing::{give_child_env, watch};
+use super::testing::{DOTS, give_child_env, watch};
 use super::{Observer, SLOTS, Slots, child_env_in, handles_interrupt_in, installed, observe_in};
 use crate::help::{Exit, Guide};
 use crate::{
-    Code, Document, Error, Failure, Listing, Output, Recovery, Row, Sink, Spelling, Stream,
-    finish_to, parse_to, stream_to,
+    Code, Document, Error, Failure, Listing, Output, Recovery, Row, Sink, Stream, finish_to,
+    parse_to, stream_to,
 };
 
 /// An observer that names itself when it hears `aliased` and gives fixed
@@ -241,7 +241,7 @@ enum Books {
     },
 }
 
-/// Parses `args` into memory with [`GUIDE`] in the dots spelling, and
+/// Parses `args` into memory with [`GUIDE`] in the spelling [`DOTS`], and
 /// returns the output flags with the tool's command, or the exit code of a
 /// run that parsing ended.
 fn parse(args: &[&str]) -> Result<Output, ExitCode> {
@@ -249,7 +249,7 @@ fn parse(args: &[&str]) -> Result<Output, ExitCode> {
         &mut Sink::new(Vec::new(), Vec::new()),
         Tool::command(),
         &GUIDE,
-        Spelling::DOTS,
+        DOTS,
         args,
     )?;
     Ok(output)
@@ -371,7 +371,7 @@ fn finished<T: crate::Rows, E: crate::AsFailure>(
     let mut out = Vec::new();
     let seen = watch(|| {
         let sink = &mut Sink::new(&mut out, Vec::new());
-        let _ = finish_to(sink, &mut output, Spelling::DOTS, document, result);
+        let _ = finish_to(sink, &mut output, DOTS, document, result);
     });
     (seen, out.len())
 }
@@ -449,7 +449,7 @@ fn a_stream_reports_its_exit_its_bytes_and_whether_the_budget_stopped_it() {
 
     let seen = watch(|| {
         let sink = &mut Sink::new(&mut out, Vec::new());
-        let mut streaming = stream_to(sink, &mut output, Spelling::DOTS, STREAMED).unwrap();
+        let mut streaming = stream_to(sink, &mut output, DOTS, STREAMED).unwrap();
         let _ = streaming.item(&Book {
             title: "Dune".to_owned(),
         });

@@ -33,20 +33,11 @@ impl<'a> Unprovoked<'a> {
     /// ```
     #[must_use]
     pub const fn new(code: &'a Code, reason: &'a str) -> Self {
-        Self::from_code(*code, reason)
-    }
-
-    /// Returns the entry that lists `code`, held by value, as unprovoked
-    /// for `reason`, as [`Unprovoked::new`] does, for a code that the tool
-    /// builds at run time.
-    ///
-    /// # Panics
-    ///
-    /// Panics unless `reason` is non-empty and holds no line break.
-    #[must_use]
-    pub const fn from_code(code: Code, reason: &'a str) -> Self {
         assert!(is_reason(reason), "a reason is one non-empty line");
-        Self { code, reason }
+        Self {
+            code: *code,
+            reason,
+        }
     }
 
     /// Returns the declared code.

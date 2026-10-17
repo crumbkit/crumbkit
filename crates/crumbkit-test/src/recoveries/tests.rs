@@ -25,7 +25,6 @@ mod all;
 mod chains;
 mod env;
 mod exits;
-mod fresh;
 mod next_step;
 mod reading;
 mod values;
@@ -432,6 +431,40 @@ fn an_undeclared_code_from_a_declared_component_fails_the_check() {
     assert!(
         report.ends_with("because no declared code spells them: 0\n"),
         "{report}"
+    );
+}
+
+#[test]
+fn an_undeclared_code_from_a_declared_component_fails_the_check_in_a_custom_spelling() {
+    /// Joins the segments of a code with `.`, a custom spelling that is not
+    /// built into crumbkit.
+    const DOTS: Spelling = Spelling::custom(|code, f| {
+        write!(f, "{}.{}.{}", code.component(), code.area(), code.reason())
+    });
+    let show = failure("tool.books.not_found", &run("tool books list"));
+    let lost = failure("tool.books.lost", r#"{"kind":"none"}"#);
+    let setup = Setup::new(
+        "recoveries-undeclared-custom",
+        &[
+            ("books show 7 --json", 1, show.as_str(), ""),
+            ("books list --json", 1, lost.as_str(), ""),
+        ],
+    );
+
+    let problems = problems(
+        &setup,
+        &Recoveries::new(Examples::new(&setup.script, ""), DOTS, CODES)
+            .starts(SHOW_7)
+            .unprovoked(OTHERS),
+    )
+    .unwrap();
+
+    assert!(
+        problems.contains(
+            "tool books show 7: the step `tool books list` fails with tool.books.lost, \
+             whose component tool is a declared component, and no declared code spells it"
+        ),
+        "{problems}"
     );
 }
 

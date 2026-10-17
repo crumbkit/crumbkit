@@ -53,7 +53,10 @@ fn distinct_codes_in_a_built_in_spelling_pass() {
 
 #[test]
 fn the_same_code_listed_by_two_error_types_passes() {
-    check_codes(Spelling::DOTS, &[&[&NOT_FOUND], &[&NOT_FOUND, &TIMED_OUT]]);
+    check_codes(
+        Spelling::COLONS,
+        &[&[&NOT_FOUND], &[&NOT_FOUND, &TIMED_OUT]],
+    );
 }
 
 #[test]

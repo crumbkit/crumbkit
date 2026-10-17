@@ -4,13 +4,11 @@
 //! recovery check's tests do.
 
 use clap::{Arg, Command};
-use crumbkit::form::ReadFailure;
 use crumbkit::help::Guide;
 use crumbkit::{Code, Spelling};
 
 use super::check_twin;
 use crate::examples::Examples;
-use crate::failures::FailureReader;
 use crate::recoveries::Failing;
 use crate::temp::TempDir;
 use crate::testing::panic_message;
@@ -169,42 +167,8 @@ fn twins_that_differ_by_more_than_one_word_fail_the_check() {
     );
 }
 
-/// A failure reader that reads a last line on standard error of `ERR` and
-/// a code.
-struct LineReader;
-
-impl FailureReader for LineReader {
-    fn read(&self, _out: &str, err: &str) -> Vec<ReadFailure> {
-        err.lines()
-            .last()
-            .and_then(|line| line.strip_prefix("ERR "))
-            .map(|code| ReadFailure::new(code.to_owned(), Vec::new()))
-            .into_iter()
-            .collect()
-    }
-}
-
 #[test]
-fn a_failure_reader_in_examples_reads_the_code_of_a_refused_twin() {
-    let (_dir, path) = tool("twins-reader");
-
-    let output = check_twin(
-        &tree(),
-        &GUIDE,
-        &Examples::new(&path, "").failure_reader(&LineReader),
-        Spelling::COLONS,
-        &Failing::new(&USAGE, &["books", "list", "--limit", "-1"]),
-        &["books", "list", "--limit", "1"],
-    );
-
-    assert_eq!(
-        String::from_utf8_lossy(&output.stderr),
-        "ERR tool::cli::usage\n"
-    );
-}
-
-#[test]
-fn a_refused_line_whose_code_the_check_cannot_read_fails_the_check_naming_the_failure_reader() {
+fn a_refused_line_whose_code_the_check_cannot_read_fails_the_check_naming_the_sources_it_reads() {
     let (_dir, path) = tool("twins-unread");
 
     let message = panic_message(|| {
@@ -220,7 +184,7 @@ fn a_refused_line_whose_code_the_check_cannot_read_fails_the_check_naming_the_fa
 
     assert_eq!(
         message.unwrap(),
-        "the refused line `tool books list --limit -1` must fail with tool::cli::usage, and it ends with exit status: 2 and prints no code that the check can read. A tool that prints failures in a form of its own implements FailureReader and sets it with Examples::failure_reader"
+        "the refused line `tool books list --limit -1` must fail with tool::cli::usage, and it ends with exit status: 2 and prints no code that the check can read. The check reads a code from crumbkit's failure document on standard output or from a `code:` line on standard error"
     );
 }
 
@@ -267,30 +231,6 @@ fn both_lines_of_a_twin_run_in_a_copy_of_the_refused_line_s_xdg_fixture() {
         &Failing::new(&USAGE, &["books", "list", "--limit", "0"]).xdg(&fixture_path),
         &["books", "list", "--limit", "1"],
     );
-}
-
-#[test]
-fn both_lines_of_a_twin_start_in_their_own_copy_of_the_fresh_dir_fixture() {
-    let (dir, path) = tool("twins-fresh");
-    dir.write_script(
-        "once",
-        "#!/bin/sh\ntest -f marker || exit 3\ntest -f made && exit 4\ntouch made\nexec \"$(dirname \"$0\")/tool\" \"$@\"\n",
-    );
-    let fixture = TempDir::new("twins-fresh-fixture").unwrap();
-    fixture.write("marker", "");
-    let once = path.replace("/tool", "/once");
-    let fixture_path = fixture.path().display().to_string();
-
-    check_twin(
-        &tree(),
-        &GUIDE,
-        &Examples::new(&once, "").fresh_dir(&fixture_path),
-        Spelling::COLONS,
-        &Failing::new(&USAGE, &["books", "list", "--limit", "0"]),
-        &["books", "list", "--limit", "1"],
-    );
-
-    assert_eq!(fixture.names(), ["marker"]);
 }
 
 #[test]

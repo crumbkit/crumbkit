@@ -10,7 +10,7 @@ use crumbkit::help::Guide;
 use crumbkit::{Sink, Spelling};
 
 use crate::examples::{Examples, setup_problem};
-use crate::runs::{self, Place, Ran, TIMEOUT, WorkDir, Xdg};
+use crate::runs::{self, Place, Ran, TIMEOUT, Xdg};
 use crate::tree::{self, Visit};
 
 #[cfg(test)]
@@ -214,9 +214,8 @@ fn binary_pages<'a>(
         let below = visit.below();
         let args: Vec<&str> = below.split_whitespace().chain([flag]).collect();
         let output = Xdg::new("help", examples.xdg_fixture()).and_then(|xdg| {
-            let work = WorkDir::new("help-dir", examples.working_dir())?;
             let place = Place {
-                dir: work.path(),
+                dir: examples.working_dir(),
                 stdin: None,
                 env: &[],
             };

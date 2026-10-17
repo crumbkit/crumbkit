@@ -47,6 +47,20 @@ check, such as `shelf::books::lost` beside `shelf::books::not_found`, or
 compares its list of the add-on crates' codes with the codes that
 crumbkit-child and crumbkit-aliases declare.
 
+The check finds the component of a printed code from the text the
+spelling writes before a code's area. For each component of a declared
+code, it spells a code of that component and takes the text before the
+area, such as `shelf::` in `Spelling::COLONS` or `shelf.` in a custom
+spelling that joins the segments with `.`. A printed code that begins with
+that text, and has more text after it, is in that component. The check
+takes no such text from a custom spelling that writes the area first,
+writes the reason before the area, changes the area's letters, or leaves
+out the component's name, such as `E:books:not_found`. It also takes none
+when the text ends in a lowercase letter, a digit or `_`, as in
+`shelf_books_not_found` or `shelfbooksnot_found`, because `shelf_` would
+also begin a code of a component `shelf_cache`. The check then counts every
+undeclared code of that component as one it does not follow.
+
 Every declared code is provoked by a chain or listed in `Unprovoked` with
 the reason no test can provoke it. A tool passes the same list to
 [`check_twins`](end-to-end.md#twins).
@@ -88,8 +102,7 @@ Each chain can therefore fill `<path>` with the path its own failure named.
 - A placeholder can sit anywhere in a word, so `<plugin>.<capability>`
   fills two placeholders and keeps the `.`. A `<` that starts no
   placeholder stays literal text.
-- The fields come with the failure that the check reads: those that the
-  tool's form or reader returns in its `ReadFailure`, or the `fields` of
+- The fields come with the failure that the check reads: the `fields` of
   crumbkit's failure document. The code, steps and fields therefore always
   belong to one failure.
 

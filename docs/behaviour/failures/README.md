@@ -2,9 +2,9 @@
 
 This page covers how a tool reports a failure: the `Failure` trait, codes and
 their spelling, recoveries and alternatives, fields, refused command lines,
-codes learned at run time, unclassified errors and the `miette` feature. The
+codes from other components, unclassified errors and the `miette` feature. The
 other pages in this directory cover [deriving `Failure`](derive.md),
-[source excerpts and failure readers](excerpts-and-readers.md) and
+[source excerpts and reading failures back](excerpts-and-readers.md) and
 [exit codes](exit-codes.md).
 [`Failure`](../../../crates/crumbkit-core/src/failure.rs),
 [`Code`](../../../crates/crumbkit-core/src/code.rs) and
@@ -145,24 +145,19 @@ by `check_codes`.
 
 Why: ADR-0079.
 
-## Codes learned at run time
+## Codes from other components
 
-A tool that learns a code only at run time, such as from a plugin's answer,
-gets it from [`Code::runtime`](../../../crates/crumbkit-core/src/code/runtime.rs),
-which checks the segments by the same rule and keeps each distinct code until
-the process exits. A process holds at most 256 run-time codes. A new code
-past that limit is refused, and the tool reports the failure under a code of
-its own, so a plugin that puts an id in its reason cannot grow memory without
-bound. `Spelling::split` reads a spelled code back into its segments.
+`Code::new` takes `&'static str` segments, and crumbkit offers no other
+constructor of a code. A tool whose plugins bring codes therefore declares
+a `Code::new` for each plugin code it knows when it is built.
 
-`check_codes` cannot list a run-time code, so such a failure supplies its own
-recovery. `check_recoveries` does not follow the recovery of a code from a
-component that no declared code has, such as a plugin's, and counts such
-codes in its report. It reports a code from a declared component that no
-`CODES` list holds. A run-time code cannot be listed by an
-[exit](exit-codes.md), so its failure exits with 1.
+`check_recoveries` does not follow the recovery of a code from a component
+that no declared code has, and counts such codes in its report. It reports a
+code from a declared component that no `CODES` list holds. It finds a
+printed code's component from the text that the spelling writes before the
+area, as [recovery chains](../checks/recovery-chains.md) describes.
 
-Why: ADR-0001, ADR-0037.
+Why: ADR-0001, ADR-0037, ADR-0085.
 
 ## Refused command lines
 

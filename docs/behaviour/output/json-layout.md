@@ -57,8 +57,9 @@ larger.
   example of a leaf of one result must print exactly one document whose
   second line is indented by two spaces, and a stream keeps one document per
   line.
-- The failure reader of the recovery and twin checks, and
-  `check_output_budget`, read a document on one line or indented.
+- The recovery and twin checks, when they read a failed run's failure
+  document, and `check_output_budget` read a document on one line or
+  indented.
 
 Why: ADR-0052, ADR-0036.
 

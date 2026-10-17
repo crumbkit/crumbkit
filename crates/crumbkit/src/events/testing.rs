@@ -10,6 +10,12 @@ use clap::{ArgMatches, Command};
 use super::{Finished, OBSERVERS, Observer, Refused, TraceIds};
 use crate::{Code, Spelling};
 
+/// Joins the segments of a code with `.`, so a test shows that the code
+/// prints in the spelling that the tool passes and not in the colon
+/// spelling.
+pub(super) const DOTS: Spelling =
+    Spelling::custom(|code, f| write!(f, "{}.{}.{}", code.component(), code.area(), code.reason()));
+
 thread_local! {
     /// The events that this thread's test watches, or `None` when it
     /// watches none.
@@ -147,7 +153,7 @@ impl Observer for Recording {
     }
 
     fn tolerated(&self, code: &'static Code) {
-        see(format!("tolerated {}", Spelling::DOTS.spell(code)));
+        see(format!("tolerated {}", DOTS.spell(code)));
     }
 
     fn handed_over(&self) {

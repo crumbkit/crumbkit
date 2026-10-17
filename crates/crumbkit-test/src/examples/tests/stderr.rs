@@ -3,12 +3,10 @@
 
 use std::fs;
 
-use crumbkit::form::ReadFailure;
 use crumbkit::help::{Example, Guide, Leaf};
 use snapbox::assert::Action;
 
 use super::{examples, run};
-use crate::failures::FailureReader;
 use crate::temp::TempDir;
 use crate::testing::panic_message;
 
@@ -166,47 +164,6 @@ fn an_example_that_fails_in_text_names_the_code_of_its_last_code_line() {
             ": an example must exit with code 0, and the run ends with exit status: 1 \
              and fails with sh::books::gone after writing this to standard error:\n\
              error: gone\n  code:  sh::books::gone\n"
-        ),
-        "{message}"
-    );
-}
-
-/// A failure reader that reads a last line on standard error of `ERR` and
-/// a code.
-struct LineReader;
-
-impl FailureReader for LineReader {
-    fn read(&self, _out: &str, err: &str) -> Vec<ReadFailure> {
-        err.lines()
-            .last()
-            .and_then(|line| line.strip_prefix("ERR "))
-            .map(|code| ReadFailure::new(code.to_owned(), Vec::new()))
-            .into_iter()
-            .collect()
-    }
-}
-
-#[test]
-fn an_example_that_fails_names_the_code_that_the_failure_reader_reads() {
-    const FAILS: Guide = Guide::new().leaves(&[Leaf::new(&["-c"]).examples(&[Example::new(
-        &["echo 'ERR sh::books::gone' >&2; exit 1"],
-        "Fail",
-    )])]);
-    let dir = TempDir::new("examples-failure-reader").unwrap();
-
-    let message = panic_message(|| {
-        run(
-            &FAILS,
-            &examples(&dir).failure_reader(&LineReader),
-            Action::Overwrite,
-        );
-    })
-    .unwrap();
-
-    assert!(
-        message.contains(
-            ": an example must exit with code 0, and the run ends with exit status: 1 \
-             and fails with sh::books::gone after writing"
         ),
         "{message}"
     );

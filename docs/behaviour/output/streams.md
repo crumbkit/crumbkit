@@ -51,9 +51,8 @@ each row as they shape a single row in `finish`. A stream prints one document pe
 every [JSON layout](json-layout.md). A document with
 `Envelope::Without` prints each row alone, and its failures print as
 text on standard error. A dry run marks each JSON line with
-`"dry_run": true`. A stream document's JSON Schema, from
-`schemas::stream_schema`, describes one line: the envelope of a document of
-one row.
+`"dry_run": true`. A stream document's JSON Schema, which `schemas show`
+serves, describes one line: the envelope of a document of one row.
 
 The stream flushes standard output after every line, so a reader sees each
 row as soon as it prints. Standard output stays locked while the stream is

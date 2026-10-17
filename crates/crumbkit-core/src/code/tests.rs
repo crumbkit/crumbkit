@@ -77,16 +77,6 @@ fn colons_spells_the_segments_joined_by_two_colons() {
     );
 }
 
-#[test]
-fn dots_spells_the_segments_joined_by_dots() {
-    assert_eq!(Spelling::DOTS.spell(&NOT_FOUND), "shelf.books.not_found");
-}
-
-#[test]
-fn slashes_spells_the_segments_joined_by_slashes() {
-    assert_eq!(Spelling::SLASHES.spell(&NOT_FOUND), "shelf/books/not_found");
-}
-
 /// Spells a code as its area and reason in upper case, joined by a dash.
 fn upper_area_and_reason(code: &Code, f: &mut fmt::Formatter<'_>) -> fmt::Result {
     write!(
@@ -144,60 +134,27 @@ proptest! {
         prop_assert!(message.starts_with(&expected), "{message}");
     }
 
-    /// Splitting the text at the separator gives the segments back, so the
-    /// text is the segments joined by the separator, and two different codes
-    /// never spell the same: equal texts split into equal segments. The test
-    /// builds every code from three generated segments, so it also shows that
-    /// `Code::new` accepts any three segments that follow the rule.
+    /// Splitting the text at `::` gives the segments back, so the text is
+    /// the segments joined by `::`, and two different codes never spell the
+    /// same: equal texts split into equal segments. The test builds every
+    /// code from three generated segments, so it also shows that `Code::new`
+    /// accepts any three segments that follow the rule.
     #[test]
-    fn each_predefined_spelling_is_printable_ascii_that_splits_back_into_the_segments(
+    fn the_colon_spelling_is_printable_ascii_that_splits_back_into_the_segments(
         segments in prop::array::uniform3(SEGMENT),
     ) {
         let [component, area, reason] = segments.map(leak);
         let code = Code::new(component, area, reason);
 
-        for (spelling, separator) in [
-            (Spelling::COLONS, "::"),
-            (Spelling::DOTS, "."),
-            (Spelling::SLASHES, "/"),
-        ] {
-            let text = spelling.spell(&code);
+        let text = Spelling::COLONS.spell(&code);
 
-            prop_assert!(
-                text.chars().all(|character| matches!(character, '!'..='~')),
-                "{text}"
-            );
-            prop_assert_eq!(
-                text.split(separator).collect::<Vec<_>>(),
-                [component, area, reason]
-            );
-        }
-    }
-}
-
-#[test]
-fn each_built_in_spelling_splits_a_spelled_code_into_its_segments() {
-    for spelling in [Spelling::COLONS, Spelling::DOTS, Spelling::SLASHES] {
-        let text = spelling.spell(&NOT_FOUND);
-
-        assert_eq!(
-            spelling.split(&text),
-            Some(("shelf", "books", "not_found")),
+        prop_assert!(
+            text.chars().all(|character| matches!(character, '!'..='~')),
             "{text}"
         );
+        prop_assert_eq!(
+            text.split("::").collect::<Vec<_>>(),
+            [component, area, reason]
+        );
     }
-}
-
-#[test]
-fn split_returns_none_for_text_that_is_not_three_parts() {
-    assert_eq!(Spelling::COLONS.split("shelf::books"), None);
-    assert_eq!(Spelling::COLONS.split("shelf::books::not::found"), None);
-    assert_eq!(Spelling::DOTS.split("shelf::books::not_found"), None);
-}
-
-#[test]
-fn a_custom_spelling_splits_nothing() {
-    const UPPER: Spelling = Spelling::custom(upper_area_and_reason);
-
-    assert_eq!(UPPER.split("BOOKS-NOT_FOUND"), None);
 }

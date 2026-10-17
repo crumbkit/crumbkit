@@ -38,8 +38,7 @@ failure only there. The first failure decides, because the usage log and the
 predict each run's exit.
 
 The `Output` that `parse` returns, and the one that `Output::new` builds,
-copy the exits from the guide. A code from
-`Code::runtime` cannot be listed, so its failure exits with 1.
+copy the exits from the guide.
 
 Why: ADR-0037, ADR-0056, ADR-0060.
 

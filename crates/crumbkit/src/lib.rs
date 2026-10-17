@@ -47,7 +47,6 @@ pub mod events;
 mod exit;
 mod expect;
 mod fetch;
-pub mod form;
 pub mod help;
 mod output;
 mod page;
@@ -68,14 +67,14 @@ mod twins;
 pub use crumbkit_core::{
     AsFailure, Batch, Bytes, Call, CallArg, CallError, CallTarget, Code, Document, Envelope, Error,
     Failure, Field, FieldValue, Headed, Listing, NoRow, NoSummary, Prose, Recovery, Row, Rows,
-    RuntimeCodeError, Shape, Spelling, Stream, ToolName,
+    Shape, Spelling, Stream, ToolName,
 };
 
 pub use crate::call::RenderCall;
 #[cfg(feature = "complete")]
 pub use crate::complete::{complete, complete_to, complete_with, complete_with_words};
 pub use crate::dashed::{dashed_form, dashed_name};
-pub use crate::expect::{Expect, Expected};
+pub use crate::expect::Expect;
 pub use crate::fetch::fetch_each;
 pub use crate::output::{
     DryRun, JsonLayout, Output, Room, Streaming, ViewFlags, Yes, finish, finish_to, stream,

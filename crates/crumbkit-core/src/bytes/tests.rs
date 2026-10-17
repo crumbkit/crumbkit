@@ -95,7 +95,6 @@ fn a_bytes_result_has_no_rows_and_returns_its_bytes() {
     assert_eq!(bytes.rows().len(), 0);
     assert_eq!(Rows::bytes(&bytes), Some(&[1_u8, 2, 3][..]));
     assert_eq!(bytes.as_slice(), &[1, 2, 3]);
-    assert_eq!(bytes.into_vec(), vec![1, 2, 3]);
     assert_eq!(<Bytes as Rows>::SHAPE, Shape::Bytes);
     assert_eq!(<<Bytes as Rows>::Row as Row>::COLUMNS, NoRow::COLUMNS);
 }

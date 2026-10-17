@@ -13,10 +13,10 @@ use snapbox::assert::{Action, DEFAULT_ACTION_ENV};
 use snapbox::{Assert, Redactions};
 
 use crate::allow::{Allowances, Rule};
-use crate::failures::{self, Reader};
+use crate::failures;
 use crate::goldens::{compare, remove_stale};
 use crate::guide::command_line;
-use crate::runs::{self, Place, Ran, TIMEOUT, WorkDir, Xdg};
+use crate::runs::{self, Place, Ran, TIMEOUT, Xdg};
 use crate::tree;
 
 pub(crate) use self::inputs::read_stdin;
@@ -62,10 +62,9 @@ mod tests;
 /// them passes them through [`Examples::env`], such as
 /// `("PATH", "/usr/bin:/bin")` or `("HOME", "tests/fixtures/home")`.
 ///
-/// Each run starts in the directory of [`Examples::current_dir`], or in a
-/// new copy of the fixture of [`Examples::fresh_dir`], or in the test's
-/// directory without either. The check fails without running any example
-/// when that directory or fixture does not exist. Each run reads the bytes of
+/// Each run starts in the directory of [`Examples::current_dir`], or in the
+/// test's directory without it. The check fails without running any example
+/// when that directory does not exist. Each run reads the bytes of
 /// the example's input file on standard input, a file in the golden
 /// directory named with `.stdin` in place of `.txt`, such as
 /// `shelf-books-import.stdin`. A run without that file reads an empty
@@ -82,11 +81,10 @@ mod tests;
 /// file (ADR-0005).
 ///
 /// The check compares each output and standard error with its golden file
-/// byte for byte through snapbox (ADR-0004), after it replaces each value of
-/// [`Examples::redact`] and the path of each of the run's XDG directories,
-/// such as the directory of `XDG_CONFIG_HOME`, with its placeholder, such
-/// as `[XDG_CONFIG_HOME]`, and the path of the copy of
-/// [`Examples::fresh_dir`] with `[ROOT]`. snapbox's wildcards, such as `[..]`, are plain
+/// byte for byte through snapbox (ADR-0004), after it replaces the path of
+/// each of the run's XDG directories, such as the directory of
+/// `XDG_CONFIG_HOME`, with its placeholder, such as `[XDG_CONFIG_HOME]`.
+/// snapbox's wildcards, such as `[..]`, are plain
 /// text in an example golden file. With the environment variable `SNAPSHOTS=overwrite`,
 /// it writes each missing file, rewrites each file whose content differs
 /// and deletes each stale file. It finds:
@@ -94,10 +92,8 @@ mod tests;
 /// - a run that exits with a code other than 0, naming the example's command
 ///   line, the exit status, the failure's code and steps when the check can
 ///   read them, and the standard error, because an example shows a run that
-///   works. The check reads the failure through the
-///   [`FailureReader`](crate::FailureReader) of `examples` first,
-///   then from a `<tool>/failure/v1` document on standard output, and
-///   then from the last `code:` line on standard error. This holds with `SNAPSHOTS=overwrite` too, and the
+///   works. The check reads the failure from a `<tool>/failure/v1`
+///   document on standard output, and then from the last `code:` line on standard error. This holds with `SNAPSHOTS=overwrite` too, and the
 ///   check then writes no file for the example;
 /// - a run that writes a `warning: <tool> left out` line to standard error, which a
 ///   debug build writes for a recovery call that does not render. The
@@ -120,10 +116,7 @@ mod tests;
 /// - an opt-out from [`Rule::Examples`] that names no command or skips no
 ///   example, and an [`Allow::example`](crate::Allow::example) that names no
 ///   example that the check runs;
-/// - a directory of [`Examples::current_dir`] or a fixture of
-///   [`Examples::fresh_dir`] that does not exist;
-/// - a placeholder of [`Examples::redact`] that is not `[` and `]` around
-///   capital letters and underscores, and an empty value;
+/// - a directory of [`Examples::current_dir`] that does not exist;
 /// - an input file that cannot be read, and an input file that names no
 ///   example of the guide, which the check never deletes, even with
 ///   `SNAPSHOTS=overwrite`, because only its author can write it again. An
@@ -199,14 +192,10 @@ fn check(
     let mut failures = Vec::new();
     let mut allowances = Allowances::new(examples.opt_outs(), &[Rule::Examples]);
     let visits = tree::walk(command);
-    let reader = match setup(examples) {
-        Ok(reader) => reader,
-        Err(problem) => {
-            report(&[problem], &[]);
-            return;
-        }
-    };
-    let redactions = inputs::redactions(examples.redactions(), &mut problems);
+    if let Some(problem) = setup_problem(examples) {
+        report(&[problem], &[]);
+        return;
+    }
     // Each golden file name with the command line of the example that has
     // it.
     let mut names: Vec<(String, String)> = Vec::new();
@@ -246,7 +235,7 @@ fn check(
                     continue;
                 }
             };
-            let run = run_example(examples, &args, stdin.as_deref(), &redactions, timeout);
+            let run = run_example(examples, &args, stdin.as_deref(), timeout);
             let (output, redactions) = match run {
                 Ok(run) => run,
                 Err(problem) => {
@@ -256,7 +245,7 @@ fn check(
             };
             let stderr = String::from_utf8_lossy(&output.stderr).into_owned();
             if !output.status.success() {
-                failures.push(failed_run(&line, &output, tool_name, reader, &stderr));
+                failures.push(failed_run(&line, &output, tool_name, &stderr));
                 continue;
             }
             let warnings = warnings(&line, tool_name, &stderr);
@@ -323,21 +312,19 @@ fn compare_run(
 }
 
 /// Runs the example `args` of `examples.binary` in fresh XDG directories,
-/// in the working directory of `examples` or a new copy of its fresh
-/// fixture, and with `stdin` on standard input, and returns its output with
-/// `redactions` and the run's XDG directories and fresh directory, or a problem when the run cannot start or does not end
+/// in the working directory of `examples`, and with `stdin` on standard
+/// input, and returns its output with the redactions of the run's XDG
+/// directories, or a problem when the run cannot start or does not end
 /// within `timeout`.
 fn run_example(
     examples: &Examples<'_>,
     args: &[&str],
     stdin: Option<&[u8]>,
-    redactions: &Redactions,
     timeout: Duration,
 ) -> Result<(Output, Redactions), String> {
     let xdg = Xdg::new("example", examples.xdg_fixture())?;
-    let work = WorkDir::new("example-dir", examples.working_dir())?;
     let place = Place {
-        dir: work.path(),
+        dir: examples.working_dir(),
         stdin,
         env: &[],
     };
@@ -355,35 +342,20 @@ fn run_example(
             runs::stopped(timeout)
         ));
     };
-    Ok((output, inputs::with_run(redactions, &xdg, &work)))
-}
-
-/// Returns the tool's failure reader, or the problem of a setting that
-/// stops the check before any run.
-fn setup<'a>(examples: &Examples<'a>) -> Result<Option<Reader<'a>>, String> {
-    let reader = failures::reader(examples);
-    setup_problem(examples).map_or(Ok(reader), Err)
+    Ok((output, inputs::redactions(&xdg)))
 }
 
 /// Returns the problem of the example `line`, whose run exited with a code
 /// other than 0. The problem names the exit status, the first failure's
-/// code and steps when `reader`, the failure document of `tool` or its
-/// `code:` line gives them, and the run's standard error `stderr` when it
+/// code and steps when the failure document of `tool` or its `code:` line
+/// gives them, and the run's standard error `stderr` when it
 /// is not empty.
-fn failed_run(
-    line: &str,
-    output: &Output,
-    tool: ToolName,
-    reader: Option<Reader<'_>>,
-    stderr: &str,
-) -> String {
+fn failed_run(line: &str, output: &Output, tool: ToolName, stderr: &str) -> String {
     let mut problem = format!(
         "{line}: an example must exit with code 0, and the run ends with {}",
         output.status
     );
-    if let Some(failure) =
-        failures::read_failures(tool, reader, &output.stdout, &output.stderr).first()
-    {
+    if let Some(failure) = failures::read_failures(tool, &output.stdout, &output.stderr).first() {
         let _ = write!(problem, " and fails with {}", failures::describe(failure));
     }
     if !stderr.is_empty() {
