@@ -388,14 +388,24 @@ pub fn finish<T: Rows, E: AsFailure>(
     document: Document<T>,
     result: Result<T, E>,
 ) -> ExitCode {
-    finish_to(&mut Sink::standard(), output, spelling, document, result)
+    ExitCode::from(finish_to(
+        &mut Sink::standard(),
+        output,
+        spelling,
+        document,
+        result,
+    ))
 }
 
 /// Prints a command's result to `sink` in the format that `output` chooses,
-/// and returns the exit code that [`finish`] would return.
+/// and returns the exit code that [`finish`] would return, as a number.
 ///
 /// Tests and golden files call it with a sink over in-memory writers, so they
 /// check a command's exact output and exit code without starting a process.
+/// A tool that needs the exit code as a number, such as one that does more
+/// work after it prints, calls it with [`Sink::standard`]. `ExitCode` cannot
+/// be read back as a number, and a guide can give a failure any code from 3
+/// to 125, so the number comes from here.
 ///
 /// An `Ok` value prints to the sink's output writer. The text format is a
 /// table with a header row, and an empty result prints the header alone. The
@@ -540,7 +550,7 @@ pub fn finish_to<T: Rows, E: AsFailure, O: Write, W: Write>(
     spelling: Spelling,
     document: Document<T>,
     result: Result<T, E>,
-) -> ExitCode {
+) -> u8 {
     columns::require::<T>();
     // The sink counts the bytes of standard output, which `finish` reports
     // to the observer with the exit code (ADR-0057).
@@ -557,5 +567,5 @@ pub fn finish_to<T: Rows, E: AsFailure, O: Write, W: Write>(
     #[cfg(feature = "tracing")]
     crate::trace::spans::exited(&span, exit);
     crate::events::finished(exit, sink.out.bytes(), truncated || cut, empty);
-    ExitCode::from(exit)
+    exit
 }

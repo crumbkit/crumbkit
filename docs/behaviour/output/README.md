@@ -135,7 +135,9 @@ tool with a failure form prints each failure and refusal in that form
 ([failure forms](../failures/forms.md)).
 
 `finish` writes through a [`Sink`](../../../crates/crumbkit/src/sink.rs), and
-`finish_to` writes into a given sink, so tests run in memory. A pipe that the
+`finish_to` writes into a given sink, so tests run in memory. `finish_to`
+returns the exit code as a `u8`, which a test can compare and a tool can
+record, and `finish` returns the same code as an `ExitCode`. A pipe that the
 reader closed early keeps the exit code of the result.
 
 Why: ADR-0050, ADR-0016.

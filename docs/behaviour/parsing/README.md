@@ -36,6 +36,8 @@ bare `ExitCode`. A tool's `main` returns `stop.code()`. A tool that prints
 more before it exits reads `Stop::output`, whose `Output::is_json` says
 whether the caller asked for JSON. The `Output` inside a `Stop` sits in a
 `Box`, which costs one allocation only on a run that `parse` ends.
+`Stop::number` gives the same exit code as a `u8`, for a tool that records
+or passes on the code before it exits.
 
 Why: ADR-0002.
 

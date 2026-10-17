@@ -282,7 +282,9 @@ fn respond_json<T: Rows + DeserializeOwned, O: Write, W: Write>(
     match serde_json::from_slice::<T>(&captured.stdout) {
         Ok(value) => {
             let result: Result<T, ChildError> = Ok(value);
-            crumbkit::finish_to(sink, output, spelling, document, result)
+            ExitCode::from(crumbkit::finish_to(
+                sink, output, spelling, document, result,
+            ))
         }
         Err(error) => {
             let failure = ChildError::BadJson {

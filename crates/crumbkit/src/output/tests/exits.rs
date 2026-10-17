@@ -2,7 +2,6 @@
 //! code to one of the tool's exit codes (ADR-0037).
 
 use std::fmt;
-use std::process::ExitCode;
 
 use clap::{CommandFactory as _, Parser, Subcommand};
 
@@ -65,12 +64,13 @@ fn guided() -> Output {
     output
 }
 
-/// Finishes `result` into memory with `output`, and returns the exit code.
+/// Finishes `result` into memory with `output`, and returns the exit code
+/// as a number.
 fn finish<T: crate::Rows>(
     output: &mut Output,
     document: Document<T>,
     result: Result<T, Failed>,
-) -> ExitCode {
+) -> u8 {
     let mut out = Vec::new();
     let mut err = Vec::new();
     finish_to(
@@ -86,15 +86,42 @@ const PLANETS_SHOW: Document<Batch<Planet, Failed>> =
     Document::new("solar", "planets-show", 1, "The test rows.");
 
 #[test]
+fn a_refusal_that_an_exit_lists_gives_its_stop_that_exit_as_a_number() {
+    const REFUSALS: Guide =
+        Guide::new()
+            .exits(&[Exit::new(64, "The command line was refused.")
+                .failures(&[&crate::codes::CLI_USAGE])]);
+    let mut out = Vec::new();
+    let mut err = Vec::new();
+    let refused = crate::parse_to::<Tool, _, _, _, _>(
+        &mut Sink::new(&mut out, &mut err),
+        Tool::command(),
+        &REFUSALS,
+        Spelling::COLONS,
+        ["tool", "lst"],
+    );
+    let admitted = crate::parse_to::<Tool, _, _, _, _>(
+        &mut Sink::new(&mut out, &mut err),
+        Tool::command(),
+        &REFUSALS,
+        Spelling::COLONS,
+        ["tool", "list"],
+    );
+
+    assert_eq!(refused.err().map(|stop| stop.number()), Some(64));
+    assert!(admitted.is_ok());
+}
+
+#[test]
 fn a_failure_whose_code_an_exit_lists_ends_finish_with_that_exit() {
     let code = finish(&mut guided(), PLANETS, Err(Failed(&TIMED_OUT)));
-    assert_eq!(code, ExitCode::from(124));
+    assert_eq!(code, 124);
 }
 
 #[test]
 fn a_failure_whose_code_no_exit_lists_ends_finish_with_code_1() {
     let code = finish(&mut guided(), PLANETS, Err(Failed(&NOT_FOUND)));
-    assert_eq!(code, ExitCode::FAILURE);
+    assert_eq!(code, 1);
 }
 
 #[test]
@@ -102,7 +129,7 @@ fn an_output_set_from_a_bare_command_maps_no_failure_and_exits_with_code_1() {
     let mut output = Tool::try_parse_from(["tool", "list"]).unwrap().output;
     output.set_command(Tool::command());
     let code = finish(&mut output, PLANETS, Err(Failed(&TIMED_OUT)));
-    assert_eq!(code, ExitCode::FAILURE);
+    assert_eq!(code, 1);
 }
 
 #[test]
@@ -112,7 +139,7 @@ fn a_batch_whose_first_failure_is_mapped_exits_with_its_declared_code() {
         vec![Failed(&TIMED_OUT), Failed(&NOT_FOUND)],
     );
     let code = finish(&mut guided(), PLANETS_SHOW, Ok(batch));
-    assert_eq!(code, ExitCode::from(124));
+    assert_eq!(code, 124);
 }
 
 #[test]
@@ -122,7 +149,7 @@ fn a_batch_whose_first_failure_is_unmapped_exits_with_code_1_though_a_later_one_
         vec![Failed(&NOT_FOUND), Failed(&TIMED_OUT)],
     );
     let code = finish(&mut guided(), PLANETS_SHOW, Ok(batch));
-    assert_eq!(code, ExitCode::FAILURE);
+    assert_eq!(code, 1);
 }
 
 #[test]
@@ -149,7 +176,7 @@ fn a_renamed_crumbkit_failure_in_a_batch_prints_the_tool_s_code_and_exits_with_i
         Ok::<_, Failed>(batch),
     );
 
-    assert_eq!(code, ExitCode::from(5));
+    assert_eq!(code, 5);
     let document: serde_json::Value = serde_json::from_slice(&out).unwrap();
     assert_eq!(document["failures"][0]["code"], "solar::planets::stale");
 }
@@ -185,7 +212,7 @@ fn a_failure_of_a_leaf_that_renames_its_code_prints_the_leaf_s_code_and_exits_wi
         Err(Failed(&crate::codes::VERSION_CONFLICT)),
     );
 
-    assert_eq!(code, ExitCode::from(5));
+    assert_eq!(code, 5);
     let document: serde_json::Value = serde_json::from_slice(&out).unwrap();
     assert_eq!(document["code"], "solar::planets::moved");
 }
@@ -199,5 +226,5 @@ fn a_prose_result_whose_first_failure_is_mapped_exits_with_its_declared_code() {
         vec![Failed(&TIMED_OUT), Failed(&NOT_FOUND)],
     );
     let code = finish(&mut guided(), SUMMARY, Ok(prose));
-    assert_eq!(code, ExitCode::from(124));
+    assert_eq!(code, 124);
 }

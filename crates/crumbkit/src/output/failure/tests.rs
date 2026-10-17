@@ -175,7 +175,7 @@ fn fail_output<E: crate::AsFailure>(output: &mut Output, error: E) -> Finished {
         result,
     );
     Finished {
-        code,
+        code: ExitCode::from(code),
         out: String::from_utf8(out).unwrap(),
         err: String::from_utf8(err).unwrap(),
     }
@@ -509,7 +509,7 @@ fn json() -> Output {
 }
 
 /// Finishes a failure into `sink` with `output`.
-fn fail_into<O: Write, W: Write>(sink: &mut Sink<O, W>, output: &mut Output) -> ExitCode {
+fn fail_into<O: Write, W: Write>(sink: &mut Sink<O, W>, output: &mut Output) -> u8 {
     let result: Result<Vec<Planet>, Missing> = Err(missing(Recovery::Retry));
     finish_to(sink, output, Spelling::COLONS, PLANETS, result)
 }
@@ -521,7 +521,7 @@ fn a_failed_write_of_the_failure_document_exits_with_code_1_and_reports_the_caus
 
     let code = fail_into(&mut sink, &mut json());
 
-    assert_eq!(code, ExitCode::FAILURE);
+    assert_eq!(code, 1);
     assert_eq!(
         String::from_utf8(err).unwrap(),
         "error: cannot write to standard output: the writer failed\n"
@@ -535,7 +535,7 @@ fn a_reader_that_closes_the_pipe_early_on_a_failure_document_leaves_code_1_and_n
 
     let code = fail_into(&mut sink, &mut json());
 
-    assert_eq!(code, ExitCode::FAILURE);
+    assert_eq!(code, 1);
     assert_eq!(String::from_utf8(err).unwrap(), "");
 }
 
@@ -546,7 +546,7 @@ fn a_failed_write_of_the_text_failure_still_exits_with_code_1() {
 
     let code = fail_into(&mut sink, &mut Output::default());
 
-    assert_eq!(code, ExitCode::FAILURE);
+    assert_eq!(code, 1);
     assert_eq!(String::from_utf8(out).unwrap(), "");
 }
 

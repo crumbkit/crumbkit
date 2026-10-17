@@ -103,7 +103,7 @@ fn finish(
         result,
     );
     Finished {
-        code,
+        code: ExitCode::from(code),
         out,
         err: String::from_utf8(err).unwrap(),
     }

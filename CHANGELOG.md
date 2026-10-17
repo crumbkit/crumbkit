@@ -828,6 +828,9 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit: [`finish`] fails to compile for a row, a `Vec` or a `Listing`,
   and [`stream`] for a row type, whose [`Row`]`::COLUMNS` is empty, because
   such rows printed none of their fields ([behaviour/output]).
+- crumbkit: [`finish_to`] returns the exit code as a `u8`, and `Stop::number`
+  gives the exit code of a run that `parse` ended as a `u8`, so a tool can
+  record the code before it exits ([behaviour/output]).
 
 ### Removed
 
@@ -950,6 +953,7 @@ rustdoc, or at the page in docs/ that describes the behaviour. -->
 [`Document`]: crates/crumbkit-core/src/document.rs
 [`Output`]: crates/crumbkit/src/output.rs
 [`finish`]: crates/crumbkit/src/output.rs
+[`finish_to`]: crates/crumbkit/src/output.rs
 [`stream`]: crates/crumbkit/src/output/stream.rs
 [`Stream`]: crates/crumbkit-core/src/stream.rs
 [`Streaming`]: crates/crumbkit/src/output/stream.rs
