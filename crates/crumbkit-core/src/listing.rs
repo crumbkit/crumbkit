@@ -187,10 +187,9 @@ impl<R: Row, S> Listing<R, S> {
     /// `Next: shelf books show <ID>... takes up to 100 ids in one call.` The
     /// JSON document leaves it out.
     ///
-    /// `crumbkit::finish` renders `call` against the command that
-    /// `crumbkit::Output::set_command` received, and
-    /// leaves the line out when no command is set or `call` does not
-    /// resolve. The phrase prints unchanged, so it carries its own full stop.
+    /// `crumbkit::finish` renders `call` against the command that the run's
+    /// `crumbkit::Output` holds, and leaves the line out when `call` does
+    /// not resolve. The phrase prints unchanged, so it carries its own full stop.
     #[must_use]
     pub fn next(mut self, call: Call, phrase: impl Into<String>) -> Self {
         self.next = Some((call, phrase.into()));

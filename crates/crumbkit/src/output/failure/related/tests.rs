@@ -147,7 +147,7 @@ fn json(related: Vec<Note>) -> serde_json::Value {
         &failure,
         Spelling::COLONS,
         Printing::default(),
-        None,
+        &mut clap::Command::new("tool"),
         &mut std::io::sink(),
     ))
     .unwrap()
@@ -174,7 +174,7 @@ fn json_holds_each_related_diagnostic_with_every_part_it_has_after_the_labels() 
         &failure,
         Spelling::COLONS,
         Printing::default(),
-        None,
+        &mut clap::Command::new("tool"),
         &mut std::io::sink(),
     );
 
@@ -277,7 +277,7 @@ fn related_diagnostics_nest_at_most_eight_levels_deep() {
         &Loop,
         Spelling::COLONS,
         Printing::default(),
-        None,
+        &mut clap::Command::new("tool"),
         &mut std::io::sink(),
     );
 

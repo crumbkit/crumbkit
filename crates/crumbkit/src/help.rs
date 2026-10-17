@@ -310,10 +310,9 @@ impl Guide {
     /// and the text of each failure in place of crumbkit's (ADR-0045).
     ///
     /// [`parse`](crate::parse) prints its refusals in the form and passes it
-    /// on in the [`Parsed`](crate::Parsed) that it returns, so
-    /// [`Output::set_command`](crate::Output::set_command) gives it to
-    /// `finish` and `stream`. A tool that parses with clap alone builds its
-    /// `Parsed` with [`Parsed::guided`](crate::Parsed::guided). The schema
+    /// on in the [`Output`](crate::Output) that it returns, so `finish` and
+    /// `stream` print in it. A tool that parses with clap alone passes its
+    /// guide to [`Output::new`](crate::Output::new). The schema
     /// commands serve the form's document in place of
     /// `crumbkit/failure/v1`. [`FailureForm`] says which outputs the form
     /// covers.

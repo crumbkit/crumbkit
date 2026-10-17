@@ -8,8 +8,8 @@
 //! the tree.
 
 use clap::{ArgMatches, Args, Command, CommandFactory as _, FromArgMatches, Subcommand};
+use crumbkit::Page;
 use crumbkit::help::{Effects, Guide, RuntimeLeaf};
-use crumbkit::{Output, Page};
 
 use crate::cli::{Cli, GUIDE, Resource};
 use crate::lists::List;
@@ -35,15 +35,13 @@ pub(crate) struct ListEntries {
 }
 
 /// A parsed command line: a command of reading's static grammar, or the
-/// command of a list with the output flags and the list's name.
+/// command of a list with the list's name.
 #[derive(Debug)]
 pub(crate) enum Parsed {
     /// A command of the static grammar.
     Static(Cli),
     /// A command of the list named `name`.
     Grafted {
-        /// The flags that choose how the result prints.
-        output: Output,
         /// The name of the list.
         name: String,
         /// What to do with the list.
@@ -57,7 +55,6 @@ impl FromArgMatches for Parsed {
     fn from_arg_matches(matches: &ArgMatches) -> Result<Self, clap::Error> {
         match matches.subcommand() {
             Some((name, list)) if !Resource::has_subcommand(name) => Ok(Self::Grafted {
-                output: Output::from_arg_matches(matches)?,
                 name: name.to_owned(),
                 command: ListCommand::from_arg_matches(list)?,
             }),

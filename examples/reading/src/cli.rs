@@ -9,7 +9,7 @@ use crumbkit::commands::{COMMANDS_LIST, CommandsList};
 use crumbkit::help::{Effects, Example, Guide, Leaf};
 use crumbkit::pick::Choices;
 use crumbkit::schemas::{SCHEMAS_LIST, SCHEMAS_SHOW, SchemasList, SchemasShow};
-use crumbkit::{DryRun, Expect, NoInput, Output, Page, Yes};
+use crumbkit::{DryRun, Expect, NoInput, Page, ViewFlags, Yes};
 use crumbkit_picker::Menu;
 
 use crate::lists::{
@@ -26,7 +26,7 @@ pub struct Cli {
 
     /// The flags that choose how the result prints.
     #[command(flatten)]
-    pub(crate) output: Output,
+    pub(crate) view: ViewFlags,
 
     /// The flag that tells reading that nobody can answer a question.
     #[command(flatten)]

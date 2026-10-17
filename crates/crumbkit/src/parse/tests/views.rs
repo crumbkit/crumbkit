@@ -12,7 +12,7 @@ use super::parse_to;
 use crate::Envelope;
 use crate::help::{Exit, Guide, Leaf, Rename};
 use crate::twins::assert_one_word_apart;
-use crate::{Batch, Bytes, Document, Error, Headed, Output, Prose, Row, Sink, Spelling, Stream};
+use crate::{Batch, Bytes, Document, Error, Headed, Prose, Row, Sink, Spelling, Stream};
 
 /// A row with a compact and a long column.
 #[derive(Serialize, JsonSchema)]
@@ -127,7 +127,7 @@ fn tool() -> Command {
             .action(ArgAction::SetTrue)
             .help("Count the long books"),
     );
-    Output::augment_args(Command::new("tool"))
+    crate::ViewFlags::augment_args(Command::new("tool"))
         .subcommand_required(true)
         .subcommand(
             Command::new("books")

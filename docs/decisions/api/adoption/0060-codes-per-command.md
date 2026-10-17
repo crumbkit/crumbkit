@@ -1,7 +1,7 @@
 # ADR-0060. Codes per command
 
 - Date: 2026-10-14
-- Status: accepted
+- Status: amended by ADR-0076
 - Supersedes: ADR-0056, which it amends
 
 ## Context

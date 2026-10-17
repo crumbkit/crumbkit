@@ -90,7 +90,7 @@ impl<T: Rows> Prepared<'_, T> {
                     over,
                     left_out.spelling,
                     Printing::default(),
-                    left_out.command.as_deref_mut(),
+                    left_out.command,
                     err,
                 );
                 (*position, failure.keyed(key))

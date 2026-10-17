@@ -7,10 +7,9 @@ use std::io::{BufRead, IsTerminal as _, Write};
 use clap::error::ErrorKind;
 use clap::{Command, FromArgMatches};
 
-pub use self::parsed::Parsed;
 pub use self::stop::Stop;
 
-use self::attempt::attempt;
+use self::attempt::{Attempt, attempt};
 use self::lines::{add_help_lines, has_visible_subcommands};
 use self::page::{print_page, print_text};
 use self::pick::{Picking, Step};
@@ -18,13 +17,12 @@ use self::walk::{help_word, own_names, program_stem, walk};
 use crate::help::{Guide, topic};
 use crate::output::failure::Printing;
 use crate::refusal::Refusal;
-use crate::{Sink, Spelling};
+use crate::{Output, Sink, Spelling};
 
 mod attempt;
 mod declared;
 mod lines;
 mod page;
-mod parsed;
 mod pick;
 mod stop;
 pub(crate) mod suggestion;
@@ -33,36 +31,39 @@ mod tests;
 pub(crate) mod walk;
 
 /// Parses the process's command line against `command` with the tool's
-/// `guide`, and returns the tool's parsed type and a [`Parsed`], which holds
-/// the command that it parsed against and the words that the caller typed.
+/// `guide`, and returns the tool's parsed type and an [`Output`], which
+/// holds the view flags, the command that it parsed against, the words
+/// that the caller typed and what `guide` decides about printing.
 ///
 /// A tool's `main` calls it in place of clap's `Cli::parse`, and passes the
-/// returned `Parsed` to [`Output::set_command`](crate::Output::set_command).
-/// A tool without goal headings or topics passes `&Guide::new()`:
+/// returned `Output` to [`finish`](crate::finish()) with the handler's
+/// result. `parse` reads the view flags that the tool's type flattens as
+/// [`ViewFlags`](crate::ViewFlags) by their ids, before the tool's type
+/// takes them. A tool without goal headings or topics passes
+/// `&Guide::new()`:
 ///
 /// ```no_run
 /// use std::process::ExitCode;
 ///
 /// use clap::{CommandFactory, Parser};
 /// use crumbkit::help::Guide;
-/// use crumbkit::{Output, Spelling};
+/// use crumbkit::{Spelling, ViewFlags};
 ///
 /// /// List the books in a small catalogue.
 /// #[derive(Parser)]
 /// #[command(name = "shelf")]
 /// struct Cli {
 ///     #[command(flatten)]
-///     output: Output,
+///     view: ViewFlags,
 /// }
 ///
 /// fn main() -> ExitCode {
 ///     let parsed = crumbkit::parse::<Cli>(Cli::command(), &Guide::new(), Spelling::COLONS);
-///     let (mut cli, parsed) = match parsed {
+///     let (_cli, _output) = match parsed {
 ///         Ok(parsed) => parsed,
 ///         Err(stop) => return stop.code(),
 ///     };
-///     cli.output.set_command(parsed);
-///     // Run the command, then return `crumbkit::finish(...)`.
+///     // Run the command, then return `crumbkit::finish(&mut output, ...)`.
 ///     ExitCode::SUCCESS
 /// }
 /// ```
@@ -81,7 +82,7 @@ pub fn parse<C: FromArgMatches>(
     command: Command,
     guide: &Guide,
     spelling: Spelling,
-) -> Result<(C, Parsed), Stop> {
+) -> Result<(C, Output), Stop> {
     parse_from(command, guide, spelling, std::env::args_os())
 }
 
@@ -98,7 +99,7 @@ pub fn parse_from<C, I, T>(
     guide: &Guide,
     spelling: Spelling,
     args: I,
-) -> Result<(C, Parsed), Stop>
+) -> Result<(C, Output), Stop>
 where
     C: FromArgMatches,
     I: IntoIterator<Item = T>,
@@ -128,7 +129,7 @@ where
 /// `reading-lists`. Before anything else reads the words, crumbkit replaces each
 /// word that reaches a command by its dashed form with the command's own
 /// name, so help, refusals, the usage log and the words in the returned
-/// [`Parsed`] name the command as the tool does. An option's value that
+/// [`Output`] name the command as the tool does. An option's value that
 /// equals a dashed form stays as typed.
 ///
 /// A command that `guide` gives goals lists its subcommands under their
@@ -247,7 +248,7 @@ pub fn parse_to<C, I, T, O, E>(
     guide: &Guide,
     spelling: Spelling,
     args: I,
-) -> Result<(C, Parsed), Stop>
+) -> Result<(C, Output), Stop>
 where
     C: FromArgMatches,
     I: IntoIterator<Item = T>,
@@ -269,7 +270,7 @@ fn run<C, I, T, O, E, R>(
     args: I,
     colour: bool,
     stdin: bool,
-) -> Result<(C, Parsed), Stop>
+) -> Result<(C, Output), Stop>
 where
     C: FromArgMatches,
     I: IntoIterator<Item = T>,
@@ -303,7 +304,7 @@ fn read<C, I, T, O, E, R>(
     args: I,
     colour: bool,
     stdin: bool,
-) -> Result<(C, Parsed), Stop>
+) -> Result<(C, Output), Stop>
 where
     C: FromArgMatches,
     I: IntoIterator<Item = T>,
@@ -328,13 +329,7 @@ where
     // `exit-codes` topic. A command named or aliased `help` below the root
     // takes the word, so no topic can print.
     let root = guide.root_in(&command);
-    let has_topics = {
-        let node = root.iter().fold(&command, |node, name| {
-            node.find_subcommand(name).unwrap_or(node)
-        });
-        node.find_subcommand("help").is_none()
-            && (node.has_subcommands() || !guide.get_topics().is_empty())
-    };
+    let has_topics = has_topics(&command, root, guide);
     if let Some(help) = help_word(&command, root, has_topics, &args) {
         if help.at_root
             && let Some(page) = help_page(&command, guide, &args[help.position + 1..])
@@ -397,10 +392,21 @@ where
         }
     }
     let error = match parsed {
-        Ok((parsed, no_input, None)) => {
-            return Ok((parsed, Parsed::new(command, words, no_input, guide, &path)));
+        Ok(Attempt {
+            parsed,
+            view,
+            no_input,
+            refusal: None,
+        }) => {
+            return Ok((
+                parsed,
+                Output::parsed(view, command, words, no_input, guide, &path),
+            ));
         }
-        Ok((_, _, Some(refusal))) => {
+        Ok(Attempt {
+            refusal: Some(refusal),
+            ..
+        }) => {
             crate::events::exited(Printing::of(guide).exit(&crate::codes::CLI_USAGE));
             return Err(refuse(sink, &refusal, json, spelling, guide, command));
         }
@@ -430,6 +436,17 @@ where
     Err(refuse(sink, &refusal, json, spelling, guide, command))
 }
 
+/// Reports whether the guide's root `root` in `command` answers the word
+/// `help` with topics: it has no command named or aliased `help`, and it has
+/// subcommands or the tool declares topics.
+fn has_topics(command: &Command, root: &[&str], guide: &Guide) -> bool {
+    let node = root.iter().fold(command, |node, name| {
+        node.find_subcommand(name).unwrap_or(node)
+    });
+    node.find_subcommand("help").is_none()
+        && (node.has_subcommands() || !guide.get_topics().is_empty())
+}
+
 /// Prints `refusal` to `sink` in the form, the layout and with the code
 /// that `guide` decides, and returns the `Stop` that ends the run with the
 /// exit code that `guide` gives a refused command line.
@@ -441,13 +458,7 @@ fn refuse<O: Write, E: Write, R>(
     guide: &Guide,
     mut command: Command,
 ) -> Stop {
-    let code = refusal.print(
-        sink,
-        json,
-        spelling,
-        Printing::of(guide),
-        Some(&mut command),
-    );
+    let code = refusal.print(sink, json, spelling, Printing::of(guide), &mut command);
     Stop::new(code, json, command, guide)
 }
 

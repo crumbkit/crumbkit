@@ -116,7 +116,7 @@ struct Tool {
     #[command(subcommand)]
     command: Command,
     #[command(flatten)]
-    output: Output,
+    view: crate::ViewFlags,
 }
 
 #[derive(Subcommand)]
@@ -135,13 +135,12 @@ struct Finished {
     err: String,
 }
 
-/// Parses `tool show Saturn` followed by `flags` and sets the tool's command
-/// as its `main` would.
+/// Parses `tool show Saturn` followed by `flags` and builds the output as a
+/// tool that parses with clap alone builds it.
 fn output(flags: &[&str]) -> Output {
     let args = ["tool", "show", "Saturn"].iter().chain(flags);
-    let mut output = Tool::try_parse_from(args).unwrap().output;
-    output.set_command(Tool::command());
-    output
+    let view = Tool::try_parse_from(args.clone()).unwrap().view;
+    Output::new(view, Tool::command(), &crate::help::Guide::new(), args)
 }
 
 /// Finishes `batch` into memory with `flags`.

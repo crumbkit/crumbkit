@@ -7,7 +7,7 @@ use crumbkit::commands::{COMMANDS_LIST, CommandsList};
 use crumbkit::help::{Effects, Example, Goal, Group, Guide, Leaf, RefusalContext, Topic};
 use crumbkit::pick::Choices;
 use crumbkit::schemas::{SCHEMAS_LIST, SCHEMAS_SHOW, SchemasList, SchemasShow};
-use crumbkit::{Call, DryRun, NoInput, Output, Page, Yes};
+use crumbkit::{Call, DryRun, NoInput, Page, ViewFlags, Yes};
 use crumbkit_aliases::AliasesList;
 use crumbkit_picker::Menu;
 use crumbkit_usage::{SELF_FIGURES_LIST, SELF_USAGE, SelfFigures, SelfUsage};
@@ -29,7 +29,7 @@ pub struct Cli {
 
     /// The flags that choose how the result prints.
     #[command(flatten)]
-    pub(crate) output: Output,
+    pub(crate) view: ViewFlags,
 
     /// The flag that tells shelf that nobody can answer a question.
     #[command(flatten)]

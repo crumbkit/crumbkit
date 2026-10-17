@@ -17,6 +17,7 @@ mod dashed;
 mod fields;
 mod hidden;
 mod limit;
+mod returned;
 mod root;
 mod views;
 
@@ -123,29 +124,6 @@ fn admits(command: Command, refused: &[&str], admitted: &[&str]) {
         "the admitted words {admitted:?} are refused:\n{}",
         parsed.err
     );
-}
-
-#[test]
-fn a_command_line_that_parses_returns_the_parsed_type_and_the_command() {
-    let mut out = Vec::new();
-    let mut err = Vec::new();
-    let result = parse_to::<Flags, _, _, _, _>(
-        &mut Sink::new(&mut out, &mut err),
-        tool(),
-        &Guide::new(),
-        Spelling::COLONS,
-        ["tool", "--json", "planets", "show", "Mars"],
-    );
-
-    let Ok((flags, command)) = result else {
-        panic!("the command line did not parse");
-    };
-    assert!(flags.json);
-    assert_eq!(command.command().get_name(), "tool");
-    let words = ["--json", "planets", "show", "Mars"].map(std::ffi::OsString::from);
-    assert_eq!(command.words, Some(words.to_vec()));
-    assert_eq!(out, b"");
-    assert_eq!(err, b"");
 }
 
 #[test]

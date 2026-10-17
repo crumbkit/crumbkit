@@ -5,7 +5,7 @@ use clap::{Args as _, Command, CommandFactory as _, Parser, Subcommand};
 use super::Yes;
 use crate::help::Guide;
 use crate::twins::assert_one_word_apart;
-use crate::{Call, DryRun, Error, NoInput, Output, Recovery, Sink, Spelling};
+use crate::{Call, DryRun, Error, NoInput, Output, Recovery, Sink, Spelling, ViewFlags};
 
 /// A tool whose `remove` command takes `--dry-run` and `--yes`.
 #[derive(Parser)]
@@ -14,7 +14,7 @@ struct Tool {
     #[command(subcommand)]
     command: Commands,
     #[command(flatten)]
-    output: Output,
+    view: ViewFlags,
     #[command(flatten)]
     no_input: NoInput,
 }
@@ -47,7 +47,7 @@ fn confirm(words: &[&str], input: &str, interactive: bool) -> Confirmed {
 fn confirm_with(guide: &Guide, words: &[&str], input: &str, interactive: bool) -> Confirmed {
     let args = std::iter::once("tool").chain(words.iter().copied());
     let mut sink = Sink::new(Vec::new(), Vec::new());
-    let (tool, parsed) = crate::parse_to::<Tool, _, _, _, _>(
+    let (tool, mut output) = crate::parse_to::<Tool, _, _, _, _>(
         &mut sink,
         Tool::command(),
         guide,
@@ -55,8 +55,6 @@ fn confirm_with(guide: &Guide, words: &[&str], input: &str, interactive: bool) -
         args,
     )
     .unwrap();
-    let mut output = tool.output;
-    output.set_command(parsed);
     let Commands::Remove { dry_run, yes, .. } = tool.command;
     output.dry_run(dry_run);
     let mut err = Vec::new();
@@ -134,19 +132,20 @@ fn without_a_terminal_the_run_fails_with_the_same_command_and_yes_as_its_recover
 }
 
 #[test]
-fn without_the_typed_words_the_needs_yes_failure_has_no_next_step() {
-    let tool = Tool::try_parse_from(["tool", "remove", "pluto"]).unwrap();
-    let mut output = tool.output;
-    output.set_command(Tool::command());
+fn a_tool_that_parses_with_clap_alone_gets_the_same_command_and_yes_as_its_recovery() {
+    let words = ["tool", "remove", "pluto"];
+    let tool = Tool::try_parse_from(words).unwrap();
+    let mut output = Output::new(tool.view, Tool::command(), &Guide::new(), words);
     let mut sink = Sink::new(Vec::new(), Vec::new());
 
     let result = output.confirm_to(&mut sink, Yes::default(), "Remove Pluto?");
 
     assert_eq!(code(&result), "crumbkit::confirmation::needs_yes");
-    assert!(matches!(
+    let words = ["remove", "pluto", "--yes"].map(str::to_owned);
+    assert_eq!(
         result.unwrap_err().failure().recovery(),
-        Recovery::None { .. }
-    ));
+        Recovery::Run(Call::typed(words.to_vec()))
+    );
 }
 
 #[test]
@@ -213,8 +212,12 @@ fn with_terminal_detection_off_confirm_fails_with_needs_yes_without_asking_at_a_
 fn a_tool_that_parses_with_clap_alone_keeps_the_guides_terminal_detection() {
     const QUIET: Guide =
         Guide::new().without_terminal_detection("Our CI runs in a pseudo-terminal.");
-    let mut output = Output::default();
-    output.set_command(crate::Parsed::guided(Tool::command(), &QUIET));
+    let mut output = Output::new(
+        ViewFlags::new(),
+        Tool::command(),
+        &QUIET,
+        ["tool", "remove"],
+    );
     let mut err = Vec::new();
     let mut sink = Sink::with_input(Vec::new(), &mut err, &b"y\n"[..], true);
 

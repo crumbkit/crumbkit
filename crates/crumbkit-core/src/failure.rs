@@ -287,9 +287,9 @@ pub trait Failure: std::error::Error {
 #[non_exhaustive]
 pub enum Recovery {
     /// Run this command, such as `shelf books list`. `crumbkit::finish`
-    /// renders the call against the command that
-    /// `crumbkit::Output::set_command` received. When no
-    /// command is set or the call does not resolve, the failure prints as
+    /// renders the call against the command that the run's
+    /// `crumbkit::Output` holds. When the call does not resolve, the
+    /// failure prints as
     /// `None` with the reason `the suggested command is not available`.
     Run(Call),
     /// Run the same command again later, because the failure may pass.

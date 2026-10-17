@@ -82,9 +82,7 @@ Why: ADR-0001, ADR-0007, ADR-0061.
 A build with debug assertions writes one `warning:` line on standard error
 before a failure for each field that `finish` leaves out, and for each `Run`
 call of its recovery or alternatives that does not render, with the reason.
-When the tool's `main` never called `Output::set_command`, `finish` and
-`stream` write one `warning:` line in its place, which names `set_command`. A
-tool's own tests then see the mistake, and `check_recoveries` fails on the
+A tool's own tests then see the mistake, and `check_recoveries` fails on the
 line. A release build writes no such line. These lines are every output that
 differs between a debug build and a release build.
 

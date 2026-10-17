@@ -7,7 +7,7 @@ use std::process::ExitCode;
 
 use clap::{Args, CommandFactory, Parser, Subcommand};
 use crumbkit::help::{Effects, Example, Guide, Leaf};
-use crumbkit::{Call, Code, Document, Failure, Listing, Output, Page, Recovery, Row, Spelling};
+use crumbkit::{Call, Code, Document, Failure, Listing, Page, Recovery, Row, Spelling, ViewFlags};
 use schemars::JsonSchema;
 use serde::Serialize;
 
@@ -24,7 +24,7 @@ struct Cli {
 
     /// The flags that choose how the result prints.
     #[command(flatten)]
-    output: Output,
+    view: ViewFlags,
 }
 
 /// The resources that pantry serves.
@@ -153,14 +153,13 @@ fn list(args: &JarsList) -> Result<Listing<Jar>, ShelfNotFound> {
 
 fn main() -> ExitCode {
     let parsed = crumbkit::parse::<Cli>(Cli::command(), &GUIDE, SPELLING);
-    let (mut cli, command) = match parsed {
+    let (cli, mut output) = match parsed {
         Ok(parsed) => parsed,
         Err(stop) => return stop.code(),
     };
-    cli.output.set_command(command);
     match cli.resource {
         Resource::Jars {
             command: JarsCommand::List(args),
-        } => crumbkit::finish(&mut cli.output, SPELLING, JARS_LIST, list(&args)),
+        } => crumbkit::finish(&mut output, SPELLING, JARS_LIST, list(&args)),
     }
 }

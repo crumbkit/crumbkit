@@ -29,10 +29,10 @@ impl Guide {
     ///   fail with `crumbkit::confirmation::needs_yes` as they do with
     ///   `--no-input`.
     ///
-    /// [`Output::set_command`](crate::Output::set_command) takes the setting
-    /// from the [`Parsed`](crate::Parsed) that `parse` returns, or that
-    /// [`Parsed::guided`](crate::Parsed::guided) builds for a tool that
-    /// parses with clap alone.
+    /// The [`Output`](crate::Output) that `parse` returns copies the setting
+    /// from the guide, and so does the one that
+    /// [`Output::new`](crate::Output::new) builds for a tool that parses
+    /// with clap alone.
     ///
     /// ```
     /// use crumbkit::help::Guide;

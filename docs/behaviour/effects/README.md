@@ -77,10 +77,11 @@ proceeds at once with `--yes` or on a dry run.
 - When no person can answer, or the caller passed `--no-input`, `confirm`
   fails with `crumbkit::confirmation::needs_yes`. Its recovery runs the words
   that the caller typed with `--yes` added before any `--`, through
-  `Call::typed`, so an agent can repeat the command exactly. `parse` returns
-  a [`Parsed`](../../../crates/crumbkit/src/parse/parsed.rs) that holds those
-  words, and `Output::set_command` keeps them. A bare `Command`, or a typed
-  word that is not UTF-8, leaves the recovery without a next step.
+  `Call::typed`, so an agent can repeat the command exactly. The
+  [`Output`](../../../crates/crumbkit/src/output.rs) that `parse` returns
+  holds those words, and so does the one that `Output::new` builds from the
+  argv. A typed word that is not UTF-8 leaves the recovery without a next
+  step.
 
 `confirm` reads through the [`Sink`](../../../crates/crumbkit/src/sink.rs),
 whose third type parameter is the input. `Sink::with_input` takes a reader

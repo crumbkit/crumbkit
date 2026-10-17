@@ -8,9 +8,7 @@ use clap::{CommandFactory as _, Parser, Subcommand};
 use super::{PLANETS, Planet, mercury};
 use crate::answered::answered;
 use crate::help::{Exit, Guide, Leaf, Rename};
-use crate::{
-    Batch, Code, Document, Failure, Output, Parsed, Prose, Recovery, Sink, Spelling, finish_to,
-};
+use crate::{Batch, Code, Document, Failure, Output, Prose, Recovery, Sink, Spelling, finish_to};
 
 const TIMED_OUT: Code = Code::new("solar", "charts", "timed_out");
 const NOT_FOUND: Code = Code::new("solar", "planets", "not_found");
@@ -48,7 +46,7 @@ struct Tool {
     #[command(subcommand)]
     command: Command,
     #[command(flatten)]
-    output: Output,
+    view: crate::ViewFlags,
 }
 
 #[derive(Subcommand)]
@@ -56,12 +54,11 @@ enum Command {
     List,
 }
 
-/// Parses `tool list` and sets the tool's command with `GUIDE`, as a tool's
-/// `main` does after `parse`.
+/// Parses `tool list` and builds the output with `GUIDE`, as a tool that
+/// parses with clap alone builds it.
 fn guided() -> Output {
-    let mut output = Tool::try_parse_from(["tool", "list"]).unwrap().output;
-    output.set_command(Parsed::guided(Tool::command(), &GUIDE));
-    output
+    let view = Tool::try_parse_from(["tool", "list"]).unwrap().view;
+    Output::new(view, Tool::command(), &GUIDE, ["tool", "list"])
 }
 
 /// Finishes `result` into memory with `output`, and returns the exit code
@@ -126,8 +123,8 @@ fn a_failure_whose_code_no_exit_lists_ends_finish_with_code_1() {
 
 #[test]
 fn an_output_set_from_a_bare_command_maps_no_failure_and_exits_with_code_1() {
-    let mut output = Tool::try_parse_from(["tool", "list"]).unwrap().output;
-    output.set_command(Tool::command());
+    let view = Tool::try_parse_from(["tool", "list"]).unwrap().view;
+    let mut output = Output::new(view, Tool::command(), &Guide::new(), ["tool", "list"]);
     let code = finish(&mut output, PLANETS, Err(Failed(&TIMED_OUT)));
     assert_eq!(code, 1);
 }
@@ -158,10 +155,10 @@ fn a_renamed_crumbkit_failure_in_a_batch_prints_the_tool_s_code_and_exits_with_i
     const RENAMED: Guide = Guide::new()
         .codes(&[Rename::new(&crate::codes::VERSION_CONFLICT, &STALE)])
         .exits(&[Exit::new(5, "The planet changed since it was read.").failures(&[&STALE])]);
-    let mut output = Tool::try_parse_from(["tool", "list", "--json"])
+    let view = Tool::try_parse_from(["tool", "list", "--json"])
         .unwrap()
-        .output;
-    output.set_command(Parsed::guided(Tool::command(), &RENAMED));
+        .view;
+    let mut output = Output::new(view, Tool::command(), &RENAMED, ["tool", "list", "--json"]);
     let batch = answered(
         vec![mercury()],
         vec![Failed(&crate::codes::VERSION_CONFLICT)],
@@ -195,7 +192,7 @@ fn a_failure_of_a_leaf_that_renames_its_code_prints_the_leaf_s_code_and_exits_wi
     let mut out = Vec::new();
     let mut err = Vec::new();
     let mut sink = Sink::new(&mut out, &mut err);
-    let (mut tool, parsed) = crate::parse_to::<Tool, _, _, _, _>(
+    let (_tool, mut output) = crate::parse_to::<Tool, _, _, _, _>(
         &mut sink,
         Tool::command(),
         &RENAMED,
@@ -203,10 +200,35 @@ fn a_failure_of_a_leaf_that_renames_its_code_prints_the_leaf_s_code_and_exits_wi
         ["tool", "list", "--json"],
     )
     .unwrap();
-    tool.output.set_command(parsed);
     let code = finish_to(
         &mut sink,
-        &mut tool.output,
+        &mut output,
+        Spelling::COLONS,
+        PLANETS,
+        Err(Failed(&crate::codes::VERSION_CONFLICT)),
+    );
+
+    assert_eq!(code, 5);
+    let document: serde_json::Value = serde_json::from_slice(&out).unwrap();
+    assert_eq!(document["code"], "solar::planets::moved");
+}
+
+#[test]
+fn a_tool_that_parses_with_clap_alone_gets_the_renames_of_the_leaf_that_its_words_name() {
+    const MOVED: Code = Code::new("solar", "planets", "moved");
+    const RENAMED: Guide = Guide::new()
+        .exits(&[Exit::new(5, "A planet moved since it was read.").failures(&[&MOVED])])
+        .leaves(&[
+            Leaf::new(&["list"]).codes(&[Rename::new(&crate::codes::VERSION_CONFLICT, &MOVED)])
+        ]);
+    let words = ["tool", "list", "--json"];
+    let tool = Tool::try_parse_from(words).unwrap();
+    let mut output = Output::new(tool.view, Tool::command(), &RENAMED, words);
+    let mut out = Vec::new();
+    let mut err = Vec::new();
+    let code = finish_to(
+        &mut Sink::new(&mut out, &mut err),
+        &mut output,
         Spelling::COLONS,
         PLANETS,
         Err(Failed(&crate::codes::VERSION_CONFLICT)),

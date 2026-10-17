@@ -3,8 +3,8 @@
 use clap::{CommandFactory as _, Parser as _};
 
 use super::{Missing, Tool, fail_output, fail_with, missing, run_list, two_causes};
+use crate::FieldValue;
 use crate::help::Guide;
-use crate::{FieldValue, Parsed};
 
 /// Returns a failure with `fields`.
 fn with_fields(fields: Vec<(&'static str, FieldValue<'static>)>) -> Missing {
@@ -101,10 +101,11 @@ fn a_field_whose_name_breaks_the_rule_is_left_out_with_a_warning_in_a_debug_buil
 #[test]
 fn a_field_whose_name_the_guide_lists_prints_though_it_breaks_the_rule() {
     const LISTING: Guide = Guide::new().field_names(&["planetId", "Content-Type"]);
-    let mut output = Tool::try_parse_from(["tool", "list", "--json"])
+    let view = Tool::try_parse_from(["tool", "list", "--json"])
         .unwrap()
-        .output;
-    output.set_command(Parsed::guided(Tool::command(), &LISTING));
+        .view;
+    let mut output =
+        crate::Output::new(view, Tool::command(), &LISTING, ["tool", "list", "--json"]);
     let failure = with_fields(vec![
         ("planetId", "Vulcan".into()),
         ("Content-Type", "text/plain".into()),

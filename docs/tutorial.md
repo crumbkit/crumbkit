@@ -70,7 +70,7 @@ const JARS_LIST: Document<Listing<Jar>> = Document::new(
 const SPELLING: Spelling = Spelling::COLONS;
 ```
 
-The root flattens `Output`, which adds `--json`, `--fields`, `--long` and
+The root flattens `ViewFlags`, which adds `--json`, `--fields`, `--long` and
 `--full`. The list command flattens `Page`, which adds `--limit` and
 `--all`:
 
@@ -101,23 +101,23 @@ fn list(args: &JarsList) -> Listing<Jar> {
 
 `main` calls `crumbkit::parse` in place of `Cli::parse`. `parse` prints help
 and refusals itself and returns a `Stop` with the exit code, so `main`
-returns that code. `Output::set_command` keeps the command tree that
-`parse` built, and `finish` prints the result and returns the exit code:
+returns that code. On success `parse` returns the parsed `Cli` and an
+`Output` that holds the command tree that `parse` built, and `finish` prints
+the result through that `Output` and returns the exit code:
 
 ```rust
 fn main() -> ExitCode {
     let parsed = crumbkit::parse::<Cli>(Cli::command(), &Guide::new(), SPELLING);
-    let (mut cli, command) = match parsed {
+    let (cli, mut output) = match parsed {
         Ok(parsed) => parsed,
         Err(stop) => return stop.code(),
     };
-    cli.output.set_command(command);
     match cli.resource {
         Resource::Jars {
             command: JarsCommand::List(args),
         } => {
             let result: Result<_, crumbkit::Error> = Ok(list(&args));
-            crumbkit::finish(&mut cli.output, SPELLING, JARS_LIST, result)
+            crumbkit::finish(&mut output, SPELLING, JARS_LIST, result)
         }
     }
 }

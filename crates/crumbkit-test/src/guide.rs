@@ -484,7 +484,7 @@ fn unoffered_flags(leaf: &Leaf, node: &Command, matches: &ArgMatches) -> Vec<Vie
     while let Some((_, next)) = level.subcommand() {
         level = next;
     }
-    // crumbkit's `Output` gives each view flag the id of its long name.
+    // crumbkit's `ViewFlags` gives each view flag the id of its long name.
     let typed = |id: &str| {
         level.ids().any(|known| known == id)
             && level.value_source(id) == Some(ValueSource::CommandLine)

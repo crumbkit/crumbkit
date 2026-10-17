@@ -9,7 +9,7 @@ use serde_json::Value;
 use crate::recorder::start;
 use crate::testing::TempDir;
 use crumbkit::help::{Exit, Guide};
-use crumbkit::{Code, Document, Output, Parsed, Sink, Spelling, Stream, stream_to};
+use crumbkit::{Code, Document, Output, Sink, Spelling, Stream, ViewFlags, stream_to};
 
 /// Tells the usage log that the tool `command` received `args`, as
 /// crumbkit's `parse` does, so the line has a tool name.
@@ -23,6 +23,17 @@ fn typed(command: &Command, args: &[std::ffi::OsString], spelling: Spelling) {
 mod unix;
 #[cfg(windows)]
 mod windows;
+
+/// Returns the output of a run of a tool named `tool` with every view flag
+/// off, for a test that hands the terminal to a child.
+fn bare_output() -> Output {
+    Output::new(
+        ViewFlags::new(),
+        Command::new("tool"),
+        &Guide::new(),
+        ["tool"],
+    )
+}
 
 /// The variable that tells a signal test's child process to run.
 const CHILD: &str = "CRUMBKIT_USAGE_SIGNAL_CHILD";
@@ -132,8 +143,7 @@ fn the_stream_exit_test_s_child_streams_one_row_and_times_out() {
     let log = start();
     let command = Command::new("watching");
     typed(&command, &["watching".into()], Spelling::COLONS);
-    let mut output = Output::default();
-    output.set_command(Parsed::guided(command, &GUIDE));
+    let mut output = Output::new(ViewFlags::new(), command, &GUIDE, ["watching"]);
     let mut sink = Sink::new(Vec::new(), Vec::new());
     let mut streaming = stream_to(&mut sink, &mut output, Spelling::COLONS, NUMBERS).unwrap();
     let _ = streaming.item(&Numbered { number: 1 });

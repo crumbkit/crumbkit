@@ -149,8 +149,8 @@ fn a_stream_item_without_a_text_line_prints_its_json_line_with_sorted_keys_when_
     let matches = command
         .try_get_matches_from_mut(["birds", "watch"])
         .unwrap();
-    let mut output = super::Tool::from_arg_matches(&matches).unwrap().output;
-    output.set_command(crate::Parsed::guided(command, &GUIDE));
+    let view = super::Tool::from_arg_matches(&matches).unwrap().view;
+    let mut output = crate::Output::new(view, command, &GUIDE, ["birds", "watch"]);
     let mut out = Vec::new();
     let mut err = Vec::new();
     let mut sink = Sink::new(&mut out, &mut err);

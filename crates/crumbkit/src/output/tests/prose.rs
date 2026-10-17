@@ -9,9 +9,7 @@ use schemars::JsonSchema;
 use serde::Serialize;
 
 use crate::twins::assert_one_word_apart;
-use crate::{
-    Call, Code, Document, Error, Failure, Output, Prose, Recovery, Sink, Spelling, finish_to,
-};
+use crate::{Call, Code, Document, Error, Failure, Prose, Recovery, Sink, Spelling, finish_to};
 
 const NOT_FOUND: Code = Code::new("solar", "planets", "not_found");
 
@@ -70,7 +68,7 @@ struct Tool {
     #[command(subcommand)]
     command: Command,
     #[command(flatten)]
-    output: Output,
+    view: crate::ViewFlags,
 }
 
 #[derive(Subcommand)]
@@ -86,14 +84,14 @@ struct Finished {
     err: String,
 }
 
-/// Parses `tool count` followed by `flags`, sets the tool's command as its
-/// `main` would, and finishes `prose` into memory.
+/// Parses `tool count` followed by `flags`, builds the output as a tool
+/// that parses with clap alone builds it, and finishes `prose` into memory.
 fn finish_with(flags: &[&str], prose: Prose<Count, Missing>) -> Finished {
     let document: Document<Prose<Count, Missing>> =
         Document::new("solar", "count", 1, "The number of planets.");
     let args = ["tool", "count"].iter().chain(flags);
-    let mut output = Tool::try_parse_from(args).unwrap().output;
-    output.set_command(Tool::command());
+    let view = Tool::try_parse_from(args.clone()).unwrap().view;
+    let mut output = crate::Output::new(view, Tool::command(), &crate::help::Guide::new(), args);
     let mut out = Vec::new();
     let mut err = Vec::new();
     let result: Result<_, Error> = Ok(prose);

@@ -81,18 +81,16 @@ pub(super) fn write_empty_note<T: Rows>(
 
 /// Returns the rendered call and the phrase of the line `Next: {call}
 /// {phrase}` when `value` is a listing with a next step whose call resolves in `command`.
-/// Otherwise it returns `None`: without a command, or when the call names a
+/// Otherwise it returns `None`: when the call names a
 /// missing or hidden command or argument, the tool still prints its result
 /// and crumbkit advertises nothing the tool hid. `finish` renders the line
 /// once, before it writes the result, so each note it writes later uses the
 /// same text.
 pub(super) fn next_line<'a, T: Rows>(
-    command: Option<&mut Command>,
+    command: &mut Command,
     value: &'a T,
 ) -> Option<(String, &'a str)> {
-    let (Some(command), Some((call, phrase))) = (command, value.next_step()) else {
-        return None;
-    };
+    let (call, phrase) = value.next_step()?;
     let rendered = crate::call::render(call, command).ok()?;
     Some((rendered, phrase))
 }

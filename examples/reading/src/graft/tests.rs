@@ -20,16 +20,32 @@ fn parse(args: &[&str]) -> Parsed {
 fn a_command_added_for_a_list_parses_as_the_list_name_and_its_command() {
     match parse(&["reading", "to-read", "list", "--limit", "2", "--json"]) {
         Parsed::Grafted {
-            output,
             name,
             command: ListCommand::List(args),
         } => {
             assert_eq!(name, "to-read");
             assert_eq!(args.page.limit(), Some(2));
-            assert!(output.is_json());
         }
         other => panic!("the command parsed as another command: {other:?}"),
     }
+}
+
+#[test]
+fn the_output_of_a_command_added_for_a_list_reads_the_view_flags_after_it() {
+    let lists = [List::new(
+        "to-read".to_owned(),
+        "Books to read next".to_owned(),
+    )];
+    let (out, err) = (&mut Vec::new(), &mut Vec::new());
+    let parsed = crumbkit::parse_to::<Parsed, _, _, _, _>(
+        &mut crumbkit::Sink::new(out, err),
+        crate::command(&lists),
+        &crate::guide(&lists),
+        crumbkit::Spelling::COLONS,
+        ["reading", "to-read", "list", "--json"],
+    );
+
+    assert!(parsed.is_ok_and(|(_, output)| output.is_json()));
 }
 
 #[test]

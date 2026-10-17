@@ -4,7 +4,7 @@
 use std::fmt;
 use std::process::ExitCode;
 
-use clap::{CommandFactory as _, FromArgMatches as _};
+use clap::CommandFactory as _;
 use proptest::prelude::*;
 use schemars::JsonSchema;
 use serde::Serialize;
@@ -20,8 +20,8 @@ mod room;
 use crate::help::{Exit, Guide, Rename};
 use crate::twins::assert_one_word_apart;
 use crate::{
-    AsFailure, Batch, Code, Document, Error, Failure, JsonStyle, Listing, Output, Parsed, Prose,
-    Recovery, Row,
+    AsFailure, Batch, Code, Document, Error, Failure, JsonStyle, Listing, Output, Prose, Recovery,
+    Row,
 };
 
 /// A budget that a few rows pass.
@@ -81,7 +81,7 @@ fn keyed<E: AsFailure>(rows: Vec<Star>, failures: Vec<E>) -> Batch<Star, E> {
 }
 
 /// Returns the output flags for `flags` with a guide whose budget is
-/// `budget`, as a tool's `main` sets them.
+/// `budget`, as `Output::new` builds them.
 fn budgeted(budget: usize, flags: &[&str]) -> Output {
     guided(
         &Guide::new().output_budget(budget, "the tests print little"),
@@ -89,15 +89,11 @@ fn budgeted(budget: usize, flags: &[&str]) -> Output {
     )
 }
 
-/// Returns the output flags for `flags` with `guide`, as a tool's `main`
-/// sets them.
+/// Returns the output flags for `flags` with `guide`, as `Output::new`
+/// builds them.
 fn guided(guide: &Guide, flags: &[&str]) -> Output {
-    let mut command = Tool::command();
-    let args = ["tool", "list"].iter().chain(flags);
-    let matches = command.try_get_matches_from_mut(args).unwrap();
-    let mut output = Output::from_arg_matches(&matches).unwrap();
-    output.set_command(Parsed::guided(command, guide));
-    output
+    let args: Vec<&str> = ["tool", "list"].iter().chain(flags).copied().collect();
+    super::built_with(Tool::command(), guide, &args)
 }
 
 /// Finishes `value` with `flags` and a budget of [`BUDGET`].
@@ -315,8 +311,12 @@ fn budget_reports_the_bytes_left_after_finish_prints_a_result() {
 
 #[test]
 fn an_output_from_a_guide_without_a_budget_has_crumbkit_s_default_of_one_mebibyte() {
-    let mut output = Output::default();
-    output.set_command(Parsed::guided(Tool::command(), &Guide::new()));
+    let output = Output::new(
+        crate::ViewFlags::new(),
+        Tool::command(),
+        &Guide::new(),
+        ["tool"],
+    );
 
     assert_eq!(output.budget(), Output::DEFAULT_BUDGET);
     assert_eq!(Output::DEFAULT_BUDGET, 1_048_576);

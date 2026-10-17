@@ -247,7 +247,7 @@ struct Tool {
     #[command(subcommand)]
     command: Command,
     #[command(flatten)]
-    output: Output,
+    view: crate::ViewFlags,
 }
 
 #[derive(Subcommand)]
@@ -269,15 +269,13 @@ enum Planets {
 /// Parses `args` into memory, and returns the parsed tool's output flags
 /// with the tool's command, or the exit code of a run that parsing ended.
 fn parse(args: &[&str]) -> Result<Output, ExitCode> {
-    let (tool, command) = parse_to::<Tool, _, _, _, _>(
+    let (_, output) = parse_to::<Tool, _, _, _, _>(
         &mut Sink::new(Vec::new(), Vec::new()),
         Tool::command(),
         &GUIDE,
         Spelling::COLONS,
         args,
     )?;
-    let mut output = tool.output;
-    output.set_command(command);
     Ok(output)
 }
 

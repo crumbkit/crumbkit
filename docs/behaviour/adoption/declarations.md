@@ -80,7 +80,7 @@ ADR-0059, ADR-0067.
 `Leaf::codes` gives one command its own codes for crumbkit's failures, such
 as a command that prints `ledger::rows::moved` for a version conflict while
 the rest of the tool prints `ledger::rows::stale`. `parse` finds the leaf of
-the parsed command and passes its renames to `Output` through `Parsed`, so
+the parsed command and keeps its renames in the `Output` that it returns, so
 `finish`, `stream`, the usage log and the trace print and record the leaf's
 code. The leaf's renames come first, and the guide's renames cover every
 code that the leaf does not rename. An exit that lists a leaf's code covers
@@ -91,8 +91,8 @@ before it knows which command the line names, so the refusal prints the
 guide's usage code for every command. `Leaf::codes` is a `const fn` that
 panics on such a rename, so a `const` guide with one fails to compile.
 
-`Parsed::guided` has no typed words and does not know the run's command, so
-a tool that parses with clap alone prints only the guide's renames.
+`Output::new` takes the argv and finds the leaf in the same way, so a tool
+that parses with clap alone prints the leaf's renames too.
 `RuntimeLeaf` has no `codes` setting, and a runtime leaf prints the guide's
 renames.
 
@@ -103,7 +103,7 @@ failure. It also checks the exits once for each leaf with renames, and
 reports two exits that list codes that a run of that command prints as one
 code.
 
-Why: ADR-0060.
+Why: ADR-0060, ADR-0076.
 
 ## Dashed forms
 

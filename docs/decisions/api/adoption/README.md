@@ -16,3 +16,4 @@ conventions for a stated reason.
 - [ADR-0036. Opt-outs](0036-opt-outs.md)
 - [ADR-0056. Declarations](0056-declarations.md)
 - [ADR-0060. Codes per command](0060-codes-per-command.md)
+- [ADR-0076. parse returns Output](0076-parse-returns-output.md)

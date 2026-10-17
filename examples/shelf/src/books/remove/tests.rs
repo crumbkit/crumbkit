@@ -2,8 +2,9 @@
 
 use std::path::Path;
 
-use clap::Parser as _;
+use clap::{CommandFactory as _, Parser as _};
 use crumbkit::Output;
+use crumbkit::help::Guide;
 
 use super::{read_removed, remove, removed_file_in};
 use crate::books::{BooksError, list, show};
@@ -12,15 +13,20 @@ use crate::cli::{BooksCommand, BooksList, BooksRemove, BooksShow, Cli, Resource}
 /// Parses `shelf books remove` with `words` after `remove`, and returns its
 /// output flags and arguments.
 fn parse(words: &[&str]) -> (Output, BooksRemove) {
-    let args = ["shelf", "books", "remove"].iter().chain(words);
-    let cli = Cli::try_parse_from(args).unwrap();
+    let args: Vec<&str> = ["shelf", "books", "remove"]
+        .iter()
+        .chain(words)
+        .copied()
+        .collect();
+    let cli = Cli::try_parse_from(&args).unwrap();
     let Resource::Books {
         command: BooksCommand::Remove(remove),
     } = cli.resource
     else {
         panic!("the words parse as books remove");
     };
-    (cli.output, remove)
+    let output = Output::new(cli.view, Cli::command(), &Guide::new(), args);
+    (output, remove)
 }
 
 /// Returns the titles of the books that `shelf books list --all` prints with
@@ -67,7 +73,13 @@ fn remove_with_yes_returns_the_books_and_list_and_show_skip_them_afterwards() {
             from: None,
         },
         Some(&file),
-        Output::default().room(crate::books::BOOKS_SHOW),
+        Output::new(
+            crumbkit::ViewFlags::new(),
+            Cli::command(),
+            &Guide::new(),
+            ["shelf"],
+        )
+        .room(crate::books::BOOKS_SHOW),
     )
     .unwrap();
     let failures: Vec<String> = crumbkit::Rows::failures(&shown)

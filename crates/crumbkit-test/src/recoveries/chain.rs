@@ -92,8 +92,7 @@ enum Outcome {
     /// The run failed and printed `failures`, the first failure first, each
     /// with its code, its steps and its fields. `warned` says whether it
     /// wrote a `warning: crumbkit` line, which a debug build writes for a
-    /// recovery call that does not render and for a run whose `main` never
-    /// called `Output::set_command`.
+    /// recovery call that does not render.
     Fails {
         failures: Vec<ReadFailure>,
         warned: bool,

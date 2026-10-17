@@ -109,11 +109,9 @@ fn tool() -> Command {
         )
 }
 
-/// Returns the output flags with the tool's command set, as `main` sets it.
+/// Returns the output of a run of the tool with every view flag off.
 fn output() -> Output {
-    let mut output = Output::default();
-    output.set_command(tool());
-    output
+    Output::of(tool())
 }
 
 /// Parses `words` after `shelf commands list` into the command's arguments.
@@ -216,8 +214,7 @@ fn no_path_lists_the_whole_tree_and_leaves_out_a_hidden_command_and_everything_b
 
 #[test]
 fn a_path_resolves_an_alias_to_the_command_s_real_name() {
-    let mut output = Output::default();
-    output.set_command(tool().mut_subcommand("books", |books| books.alias("book")));
+    let mut output = Output::of(tool().mut_subcommand("books", |books| books.alias("book")));
     let listing = list(&mut output, &GUIDE, &args(&["book", "show"])).unwrap();
     let rows = serde_json::to_value(listing).unwrap();
 
@@ -421,11 +418,10 @@ fn a_command_without_a_leaf_has_no_examples_and_no_columns() {
 #[test]
 fn the_rows_are_the_same_from_the_command_that_parse_returns_after_it_added_help_lines() {
     let words = ["shelf", "books", "list"];
-    let ((), parsed) = crate::parse_from::<(), _, _>(tool(), &GUIDE, Spelling::COLONS, words)
-        .ok()
-        .unwrap();
-    let mut from_parse = Output::default();
-    from_parse.set_command(parsed);
+    let ((), mut from_parse) =
+        crate::parse_from::<(), _, _>(tool(), &GUIDE, Spelling::COLONS, words)
+            .ok()
+            .unwrap();
 
     let rows = list(&mut from_parse, &GUIDE, &args(&[])).unwrap();
 
@@ -484,8 +480,7 @@ fn a_path_whose_first_word_names_no_command_recovers_with_the_whole_tree() {
 
 #[test]
 fn the_recovery_has_no_next_step_when_the_runtime_tree_hides_commands_list() {
-    let mut output = Output::default();
-    output.set_command(tool().mut_subcommand("commands", |commands| commands.hide(true)));
+    let mut output = Output::of(tool().mut_subcommand("commands", |commands| commands.hide(true)));
 
     let finished = finish(&mut output, &["comets"]);
 
@@ -494,19 +489,6 @@ fn the_recovery_has_no_next_step_when_the_runtime_tree_hides_commands_list() {
             .err
             .contains("help:  no next step: the suggested command is not available\n")
     );
-}
-
-#[test]
-fn without_a_command_set_the_export_fails_with_no_next_step() {
-    let finished = finish(&mut Output::default(), &[]);
-
-    let expected = "\
-error: the tool has not kept its command tree, so it cannot list its commands
-  help:  no next step: the tool's main does not pass its command to Output::set_command
-  code:  crumbkit::commands::unavailable
-";
-    assert_eq!(finished.code, ExitCode::FAILURE);
-    assert!(finished.err.ends_with(expected), "{}", finished.err);
 }
 
 #[test]

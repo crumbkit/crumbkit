@@ -17,7 +17,7 @@ pub(super) struct LeftOut<'c> {
     /// The spelling of the failure's code.
     pub(super) spelling: Spelling,
     /// The tool's command, which the failure's call renders against.
-    pub(super) command: Option<&'c mut Command>,
+    pub(super) command: &'c mut Command,
     /// The over-budget code that the run prints.
     pub(super) code: &'static Code,
     /// The bytes that the result had to fit in.
@@ -128,7 +128,7 @@ impl<T: Rows> Prepared<'_, T> {
             &most,
             left_out.spelling,
             Printing::default(),
-            left_out.command.as_deref_mut(),
+            &mut *left_out.command,
             err,
         );
         if self.fits(low, listed, Some(&prepared), budget)? {
@@ -147,7 +147,7 @@ impl<T: Rows> Prepared<'_, T> {
                 &failure,
                 left_out.spelling,
                 Printing::default(),
-                left_out.command.as_deref_mut(),
+                &mut *left_out.command,
                 err,
             );
             self.fits(low, listed, Some(&prepared), budget)
