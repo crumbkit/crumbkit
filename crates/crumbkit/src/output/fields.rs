@@ -17,6 +17,26 @@ pub(super) fn flags_refusal<T: Rows>(output: &Output, document: Document<T>) -> 
     refusal::<T::Row>(shape, envelope, headed, &output.fields, output.typed())
 }
 
+/// Returns the refusal of the view flags in `output` for a run whose
+/// handler returned a failure that `finish` prints in a document whose
+/// result type is `T`, or `None` when the failure prints.
+///
+/// It refuses two flags that cannot work together, as [`view::pairing`]
+/// describes, and then, when `T` holds rows, the first name in `fields`
+/// that is not a field of its row type, as [`unknown_field`] describes. It
+/// never refuses a flag because `T` cannot use it, because a tool may
+/// finish an early failure in a prose document although its leaf declares
+/// rows, and the caller then needs to read the failure.
+pub(super) fn failure_refusal<T: Rows>(output: &Output) -> Option<Refusal> {
+    if let Some(refusal) = view::pairing(output.typed()) {
+        return Some(refusal);
+    }
+    if output.fields.is_empty() || matches!(T::SHAPE, Shape::Prose | Shape::Bytes) {
+        return None;
+    }
+    unknown_field::<T::Row>(&output.fields)
+}
+
 /// Returns the refusal of the view flags that the caller typed, the names
 /// in `fields` and the flags in `typed`, for a result of `shape` whose rows
 /// are `R`,

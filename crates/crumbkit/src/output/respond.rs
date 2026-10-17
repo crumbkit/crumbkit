@@ -1,6 +1,6 @@
 //! The steps of [`finish_to`](super::finish_to) after a tool's handler
-//! returns: the refusal of bad flags, the result, the failures, and the
-//! dry-run line.
+//! returns: the refusal of bad flags, the handler's failure or the result,
+//! the result's failures, and the dry-run line.
 
 use std::io::{self, Write};
 
@@ -26,7 +26,15 @@ pub(super) fn respond<T: Rows, E: AsFailure, O: Write, W: Write, R>(
     result: Result<T, E>,
 ) -> (u8, bool) {
     let printing = output.printing();
-    if let Some(refusal) = fields::flags_refusal(output, document) {
+    // A tool may finish an early failure in another document than its leaf
+    // declares, so a failure is checked only for flag pairs and unknown
+    // `--fields` names, as `failure_refusal` describes. `parse` has already
+    // refused a flag that the declared document cannot use.
+    let refusal = match &result {
+        Ok(_) => fields::flags_refusal(output, document),
+        Err(_) => fields::failure_refusal::<T>(output),
+    };
+    if let Some(refusal) = refusal {
         let code = refusal.print(sink, output.json, spelling, printing, &mut output.command);
         return (code, false);
     }

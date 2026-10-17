@@ -73,6 +73,16 @@ that names the flag to add or drop. A tool that parses with clap alone gets
 these refusals, and the refusal of an unoffered view flag, from `finish` or
 `stream` after the handler has run.
 
+When the handler returns a failure, `finish` refuses only two view flags
+that cannot work together and an unknown `--fields` name of a document
+with rows. Otherwise it prints the failure with its own code, as text or as
+a failure document with `--json`, whatever view flags the caller typed. A
+tool may finish an early failure, such as a missing config file, in a prose
+document although its leaf declares rows, and that failure still prints. A
+view flag that the leaf's document offers is therefore never refused
+because the run failed, and `parse` has already refused a flag that the
+leaf's document cannot use.
+
 A tool that defines the view flags in its own parser cannot also flatten
 `ViewFlags`, because clap refuses two arguments with one name. It builds
 `ViewFlags` with `ViewFlags::new().json(..).fields(..)`, `.long(..)` and

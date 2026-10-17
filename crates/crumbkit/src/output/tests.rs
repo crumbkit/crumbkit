@@ -22,6 +22,7 @@ mod bytes;
 mod direct;
 mod empty;
 mod exits;
+mod failed;
 mod headed;
 mod layout;
 mod lines;

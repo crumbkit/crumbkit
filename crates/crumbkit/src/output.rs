@@ -382,7 +382,12 @@ pub fn finish<T: Rows, E: AsFailure>(
 /// sink's error writer before a batch's failures. It is the exit code of a
 /// refused command line, 2 unless the guide lists another, when `--fields`
 /// names an unknown field, or when the result cannot use a view flag that
-/// the caller passed, which are checked before the result prints. A prose
+/// the caller passed, which are checked before the result prints. When
+/// `result` is a failure, `finish_to` refuses only two view flags that
+/// cannot work together and an unknown `--fields` name of a document with
+/// rows, and otherwise prints the failure whatever view flags the caller
+/// passed, because a tool may print an early failure in another document
+/// than the one its leaf declares. A prose
 /// or bytes result cannot use `--fields`, `--long` or `--full`, rows
 /// without long columns cannot use `--long`, and a document without the
 /// envelope cannot use `--full` (ADR-0016).
