@@ -12,6 +12,7 @@ use schemars::JsonSchema;
 use serde::Serialize;
 use toml::de::{DeTable, DeValue};
 
+use crate::codes::UNREADABLE;
 use crate::entry::{wins, words};
 
 #[cfg(test)]
@@ -26,10 +27,6 @@ pub const ALIASES_LIST: Document<Listing<AliasRow>> = Document::new(
     1,
     "The built-in aliases and the entries of the aliases file, with the problem of each entry that does not work.",
 );
-
-/// The code of an aliases file that exists but cannot be read or parsed, in
-/// the tool's spelling, such as `<tool>::aliases::unreadable` (ADR-0027).
-const UNREADABLE: Code = Code::new("crumbkit", "aliases", "unreadable");
 
 /// The problem of an entry whose name a real command takes.
 const SHADOWED: &str = "the tool has a command or built-in alias of this name, which wins";

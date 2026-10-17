@@ -49,6 +49,11 @@ schemars = { workspace = true, features = ["derive"] }
 # expression. The default features add forking, timeouts and bit-set
 # strategies, which the tests do not use.
 proptest = { workspace = true, features = ["std"] }
+# The recovery check's tests compare its list of the add-on crates' codes with
+# the codes that crumbkit-child and crumbkit-aliases declare, so the list
+# follows them (ADR-0079).
+crumbkit-child = { workspace = true }
+crumbkit-aliases = { workspace = true }
 
 # docs.rs documents the crate with every feature on. `--cfg docsrs` turns on
 # the `doc_cfg` attribute in `lib.rs`, which labels each item behind a feature.

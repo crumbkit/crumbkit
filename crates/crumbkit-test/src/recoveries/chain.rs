@@ -11,6 +11,7 @@ use crumbkit::help::Guide;
 use super::words::split;
 use super::{Failing, Recoveries};
 use crate::allow::{self, Allowances, Rule};
+use crate::examples::is_crumbkit_warning;
 use crate::exits;
 use crate::failures::{self, Reader};
 use crate::guide::command_line;
@@ -19,7 +20,7 @@ use fill::{fill_word, path_below, value};
 
 mod all;
 pub(super) mod fill;
-mod known;
+pub(super) mod known;
 
 /// What the check has found so far: its settings, the problems, the report
 /// and the codes that the chains provoked.
@@ -96,7 +97,7 @@ enum Outcome {
     Succeeds,
     /// The run failed and printed `failures`, the first failure first, each
     /// with its code, its steps and its fields. `warned` says whether it
-    /// wrote a `warning: crumbkit` line, which a debug build writes for a
+    /// wrote a `warning: <tool> left out` line, which a debug build writes for a
     /// recovery call that does not render.
     Fails {
         failures: Vec<ReadFailure>,
@@ -529,9 +530,11 @@ impl Walk<'_> {
         };
         let stderr = String::from_utf8_lossy(&output.stderr);
         let tool = self.guide.tool_name(self.command);
-        let start = format!("warning: {} ", tool.name());
         let mut warned = false;
-        for warning in stderr.lines().filter(|line| line.starts_with(&start)) {
+        for warning in stderr
+            .lines()
+            .filter(|line| is_crumbkit_warning(line, tool))
+        {
             warned = true;
             self.problems.push(format!(
                 "{}: {label} writes a warning to standard error: {warning}",

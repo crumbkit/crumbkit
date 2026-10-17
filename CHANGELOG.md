@@ -597,16 +597,20 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   ([behaviour/failures]).
 - crumbkit-core: `ToolName` spells crumbkit's codes, document ids and
   variables with a tool's name, and `Spelling::for_tool` prints codes with
-  it. A hyphen stays in an id and becomes `_` in a code.
+  it. A hyphen stays in an id and becomes `_` in a code. A variable
+  starts with `_` before a leading digit.
 - crumbkit-test: the checks expect the tool's names in place of
-  `crumbkit/...` ids and `crumbkit::` codes, and the recovery check accepts
-  an add-on crate's code in the tool's component.
+  `crumbkit/...` ids and `crumbkit::` codes. The recovery check follows
+  crumbkit's and its add-on crates' codes in the tool's component, and
+  the checks fail only on crumbkit's own warnings.
 - crumbkit-usage: the usage log records `<tool>/usage/v1`, self-usage serves
   `<tool>/self-usage/v1`, and the report reads records under any component.
+  The checked-in record schema accepts any tool's id.
 - crumbkit-child: the hand-over failure codes print with the tool's
   component, such as `shelf::child::failed`.
 - crumbkit-aliases: the aliases failure code prints with the tool's
-  component, such as `shelf::aliases::unreadable`.
+  component, such as `shelf::aliases::unreadable`, and the new `codes`
+  module lists it.
 - crumbkit-markdown: the reference reads a `commands-list/v1` document under
   any component, and its header no longer names crumbkit.
 - cargo-crumbkit: `weigh --usage` and `docs` read the `self-figures-list/v1`

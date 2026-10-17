@@ -50,6 +50,18 @@ fn a_name_with_capitals_or_other_characters_is_lowercased_and_each_other_charact
 }
 
 #[test]
+fn a_name_that_starts_with_a_digit_starts_its_variables_with_an_underscore() {
+    let tool = ToolName::new("2fa");
+
+    assert_eq!(tool.variable("OUTPUT_BUDGET"), "_2FA_OUTPUT_BUDGET");
+    assert_eq!(
+        Spelling::COLONS.for_tool(tool).spell(&USAGE),
+        "2fa::cli::usage"
+    );
+    assert_eq!(tool.schema_id("crumbkit/failure/v1"), "2fa/failure/v1");
+}
+
+#[test]
 fn a_name_with_no_letter_or_digit_falls_back_to_tool() {
     let tool = ToolName::new("");
 

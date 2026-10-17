@@ -34,8 +34,9 @@ pub(super) const MAX_LINE: usize = 1024;
     description = "One line of a tool's usage log, which records the shape of one run and never the values of its arguments."
 )]
 pub(super) struct Record {
-    /// The id of this record.
-    #[schemars(extend("const" = "crumbkit/usage/v1"))]
+    /// The id of this record, `<tool>/usage/v1`, with the tool's name as
+    /// its component, such as shelf/usage/v1.
+    #[schemars(extend("pattern" = r"^[a-z0-9_-]+(\.[a-z0-9_-]+)*/usage/v1$"))]
     pub(super) schema: String,
     /// The name of the tool's root command, such as shelf.
     pub(super) tool: Name,

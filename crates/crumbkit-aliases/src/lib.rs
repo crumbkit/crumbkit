@@ -5,6 +5,7 @@
 //! [`expand`]: crate::expand()
 //! [`list`]: crate::list()
 //! [`names`]: crate::names()
+//! [`codes`]: crate::codes
 //! [`AliasesList`]: crate::AliasesList
 //! [`ALIASES_LIST`]: crate::ALIASES_LIST
 //! [schema]: https://github.com/crumbkit/crumbkit/blob/main/crates/crumbkit-aliases/schemas/aliases-list-v1.json
@@ -15,6 +16,7 @@
 // `doc_cfg` feature labels each item behind a cargo feature with its name.
 #![cfg_attr(docsrs, feature(doc_cfg))]
 
+pub mod codes;
 mod entry;
 mod expand;
 mod file;

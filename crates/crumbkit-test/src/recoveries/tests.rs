@@ -20,6 +20,7 @@ use crate::examples::Examples;
 use crate::temp::TempDir;
 use crate::testing::panic_message;
 
+mod add_ons;
 mod all;
 mod chains;
 mod env;
@@ -403,41 +404,6 @@ fn a_code_from_a_component_the_tool_does_not_declare_is_counted_and_its_recovery
     );
     assert!(
         report.ends_with("because no declared code spells them: 1\n"),
-        "{report}"
-    );
-}
-
-#[test]
-fn an_add_on_code_in_the_tools_component_and_an_area_the_tool_does_not_declare_has_its_recovery_followed()
- {
-    let show = failure("tool::books::not_found", &run("tool books list"));
-    let failed = failure("tool::child::failed", &run("tool books show 2"));
-    let setup = Setup::new(
-        "recoveries-crumbkit-component",
-        &[
-            ("books show 7 --json", 1, show.as_str(), ""),
-            ("books list --json", 1, failed.as_str(), ""),
-            ("books show 2 --json", 0, "{}\n", ""),
-        ],
-    );
-
-    check_with(
-        &setup,
-        &recoveries(&setup, SHOW_7, OTHERS),
-        Action::Overwrite,
-    );
-
-    let report = setup.report();
-    assert!(
-        report.contains(
-            "\x20   fails with tool::child::failed\n\
-             \x20   run tool books show 2\n\
-             \x20     exits 0\n"
-        ),
-        "{report}"
-    );
-    assert!(
-        report.ends_with("because no declared code spells them: 0\n"),
         "{report}"
     );
 }

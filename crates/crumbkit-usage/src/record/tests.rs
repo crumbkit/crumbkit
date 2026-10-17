@@ -170,3 +170,56 @@ fn the_checked_in_schema_matches_the_usage_record_schema() {
         "schemas/usage-v1.json differs from the generated schema; replace the file with the generated schema"
     );
 }
+
+/// Returns the problem of `value` under the checked-in schema's rule for
+/// the record's `schema` field, or `None` when the field follows it.
+fn schema_field_problem(value: &Value) -> Option<String> {
+    let schema: Value = serde_json::from_str(include_str!(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/schemas/usage-v1.json"
+    )))
+    .unwrap();
+    let rule = &schema["properties"]["schema"];
+    let Some(id) = value.as_str() else {
+        return Some(format!("{value} is not a string"));
+    };
+    if let Some(fixed) = rule.get("const")
+        && fixed != value
+    {
+        return Some(format!("{id} is not the const {fixed}"));
+    }
+    if let Some(pattern) = rule.get("pattern").and_then(Value::as_str)
+        && !regex_lite::Regex::new(pattern).unwrap().is_match(id)
+    {
+        return Some(format!("{id} does not match the pattern {pattern}"));
+    }
+    None
+}
+
+#[test]
+fn a_record_with_a_tools_own_schema_id_is_valid_under_the_checked_in_schema() {
+    for id in ["shelf/usage/v1", "my-tool/usage/v1", "example.dev/usage/v1"] {
+        let mut record = bare();
+        record.schema = id.to_owned();
+
+        assert_eq!(schema_field_problem(&parsed(&record)["schema"]), None);
+    }
+}
+
+#[test]
+fn a_record_with_another_documents_id_is_invalid_under_the_checked_in_schema() {
+    for id in [
+        "shelf/failure/v1",
+        "shelf/usage/v2",
+        "Shelf/usage/v1",
+        "/usage/v1",
+    ] {
+        let mut record = bare();
+        record.schema = id.to_owned();
+
+        assert!(
+            schema_field_problem(&parsed(&record)["schema"]).is_some(),
+            "{id}"
+        );
+    }
+}

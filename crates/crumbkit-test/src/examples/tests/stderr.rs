@@ -122,6 +122,20 @@ fn an_example_that_writes_a_crumbkit_warning_fails_the_check_and_overwrite_write
 }
 
 #[test]
+fn an_example_that_writes_the_tools_own_warning_passes_the_check() {
+    const WARNS: Guide = Guide::new().leaves(&[Leaf::new(&["-c"]).examples(&[Example::new(
+        &["echo books; echo 'warning: sh cache is stale' >&2"],
+        "Warn",
+    )])]);
+    let dir = TempDir::new("examples-stderr-own-warning").unwrap();
+
+    assert_eq!(
+        panic_message(|| run(&WARNS, &examples(&dir), Action::Overwrite)),
+        None
+    );
+}
+
+#[test]
 fn an_example_that_fails_names_the_code_and_steps_of_the_failure_document_it_prints() {
     const FAILS: Guide = Guide::new().leaves(&[Leaf::new(&["-c"]).examples(&[Example::new(
         &[r#"echo '{"schema":"sh/failure/v1","code":"sh::books::gone","message":"m","recovery":{"kind":"run","call":"sh -c ls"},"alternatives":[{"kind":"retry"}]}'; exit 1"#],

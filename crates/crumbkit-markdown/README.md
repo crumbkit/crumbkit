@@ -27,7 +27,7 @@ The `main` branch can change without notice before the first release.
 
 ```rust
 let document = br#"{
-  "schema": "crumbkit/commands-list/v1",
+  "schema": "shelf/commands-list/v1",
   "data": [{
     "path": "shelf", "about": "Browse a small catalogue", "long_about": null,
     "arguments": [], "examples": [], "columns": [], "form": null,

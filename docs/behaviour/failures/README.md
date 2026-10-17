@@ -138,7 +138,10 @@ guide's `root` when the tool runs below another program, so
   each other character that a code segment does not allow, so `my-tool`
   prints `my_tool::cli::usage`.
 - A variable starts with the code component in capitals, such as
-  `MY_TOOL_OUTPUT_BUDGET`.
+  `MY_TOOL_OUTPUT_BUDGET`. When the component starts with a digit, the
+  variable starts with `_`, because a POSIX shell cannot set a variable
+  whose name starts with a digit. A tool named `2fa` reads
+  `_2FA_OUTPUT_BUDGET`.
 - A name without an ASCII letter or digit is spelled `tool` in each place.
 
 Only crumbkit's own codes and documents change. A tool's own codes, its

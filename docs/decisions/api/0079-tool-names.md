@@ -35,8 +35,9 @@ a failure form.
   has `_` in place of `-` and of each other character that a code segment
   does not allow, so `my-tool` prints `my-tool/failure/v1` and
   `my_tool::cli::usage`. A variable starts with the code component in
-  capitals, `MY_TOOL_OUTPUT_BUDGET`. A name without an ASCII letter or
-  digit is spelled `tool`.
+  capitals, `MY_TOOL_OUTPUT_BUDGET`, with `_` before a leading digit,
+  `_2FA_OUTPUT_BUDGET`, because a shell variable cannot start with a
+  digit. A name without an ASCII letter or digit is spelled `tool`.
 - Only codes and documents whose component is `crumbkit` change. A tool's
   own codes, its renames of crumbkit's codes and the documents of its
   failure forms print as the tool declared them, so a per-code rename
@@ -45,14 +46,23 @@ a failure form.
   checked-in schema files keep the `crumbkit` component, because only
   Rust code and crumbkit's own tests read them. `ToolName` spells them at
   the moment they reach a tool's output.
+  The checked-in schema of the usage log's record is the exception: a
+  reader of the log validates its lines against that file, so the file
+  gives the record's id the pattern `<component>/usage/v1` in place of
+  the const `crumbkit/usage/v1`.
 - crumbkit-markdown, cargo-crumbkit and crumbkit-usage's report read the
   `commands-list/v1`, `self-figures-list/v1` and `usage/v1` documents
   under any component, because each tool now prints its own.
-- crumbkit-test's checks expect the tool's names. Its recovery check
-  takes an undeclared code in the tool's component for an add-on crate's
-  code, such as crumbkit-child's `shelf::child::failed`, when no declared
-  code of the tool has the code's area. A code in an area that the tool
-  declares stays a problem.
+- crumbkit-test's checks expect the tool's names. The recovery check
+  follows an undeclared code in the tool's component only when it is one
+  of crumbkit's own codes or of its add-on crates' codes, crumbkit-child's
+  and crumbkit-aliases's, spelled with the tool's name, such as
+  `shelf::child::failed`. Any other undeclared code in the tool's
+  component, such as `shelf::cache::stale`, stays a problem. crumbkit-test
+  keeps its own list of the add-on crates' codes, and a test compares it
+  with the codes that those crates declare. The example and recovery
+  checks fail a run on the warnings that crumbkit prints, which start with
+  `warning: <tool> left out `, and leave a tool's own warnings alone.
 - crumbkit adds no option. A tool that wants other names already renames
   codes with `Guide::codes` and replaces the failure document with a
   failure form (API-1).
@@ -77,4 +87,5 @@ Considered: an option that keeps crumbkit's names, a prefix that the
 guide sets in place of the root command's name, reading both the old and
 the new variable, serving each document under both ids, changing the
 component of the Rust constants, keeping the first word of a guide's root
-as the name.
+as the name, accepting every undeclared code in the tool's component whose
+area the tool does not declare.

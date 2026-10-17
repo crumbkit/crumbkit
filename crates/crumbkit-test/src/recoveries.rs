@@ -378,10 +378,11 @@ impl<'a> Recoveries<'a> {
 /// command line that it ran already, a step that an opt-out from
 /// [`Rule::Recoveries`] covers, or the recovery of a code that the tool
 /// does not declare and crumbkit does not own, such as a run-time code from
-/// a plugin. The check counts such codes in the report. crumbkit owns every
-/// code in the `crumbkit` component, including the codes of its add-on
-/// crates, such as crumbkit-child's `<tool>::child::failed`, and the
-/// codes that the guide prints in place of them.
+/// a plugin. The check counts such codes in the report. crumbkit owns its
+/// own codes and the codes of its add-on crates, such as crumbkit-child's
+/// `<tool>::child::failed`, which print with the tool's component
+/// (ADR-0079), and the codes that the guide prints in place of them. Any
+/// other undeclared code in the tool's component is a problem.
 ///
 /// It finds:
 ///
@@ -400,7 +401,7 @@ impl<'a> Recoveries<'a> {
 ///   `retry` or `hint` step, such as a failure whose recovery is
 ///   `Recovery::None` with a reason, unless an opt-out from
 ///   [`Rule::NextStep`] covers the command that failed. A failure from a
-///   run that writes a `warning: crumbkit` line is not also reported here;
+///   run that writes a `warning: <tool> left out` line is not also reported here;
 /// - a placeholder that a field of the failure fills, which the report
 ///   also shows under the step, unless an opt-out from
 ///   [`Rule::FieldValue`] covers the command whose failure printed the
@@ -417,7 +418,7 @@ impl<'a> Recoveries<'a> {
 ///   stops the check, which reports this problem alone and says to make
 ///   the form or reader read it or to add an opt-out from
 ///   [`Rule::Recoveries`] that names the root (ADR-0045);
-/// - a run that writes a `warning: crumbkit` line to standard error, which a
+/// - a run that writes a `warning: <tool> left out` line to standard error, which a
 ///   debug build writes for a recovery call that does not render;
 /// - a step that crumbkit's quoting cannot read, that does not start with
 ///   the tool's name, or that has a placeholder without a value;

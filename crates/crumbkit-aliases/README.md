@@ -99,7 +99,9 @@ because the root's help then differs between machines ([ADR-0027]).
 
 - [`file`], [`expand`], [`list`], [`names`], [`AliasesList`] and
   [`ALIASES_LIST`] describe each item.
-- The [schema] describes the `crumbkit/aliases-list/v1` document.
+- The [schema] describes the `<tool>/aliases-list/v1` document, which a
+  tool prints with its own name in place of `<tool>`. [`codes`] lists the
+  failure codes.
 - The [aliases docs] describe the design, and [ADR-0027] records why it is
   a separate crate.
 
@@ -110,6 +112,7 @@ option.
 [`expand`]: src/expand.rs
 [`list`]: src/list.rs
 [`names`]: src/names.rs
+[`codes`]: src/codes.rs
 [`AliasesList`]: src/list.rs
 [`ALIASES_LIST`]: src/list.rs
 [schema]: schemas/aliases-list-v1.json

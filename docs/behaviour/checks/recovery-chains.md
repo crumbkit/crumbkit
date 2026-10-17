@@ -36,19 +36,22 @@ A failure from a run that writes crumbkit's warning about a recovery that
 does not render is not reported again as a dead end. A code that the tool
 does not declare and crumbkit does not own ends its chain, and the report
 counts such codes. crumbkit owns its own codes, the codes that the guide
-prints in place of them, and the codes of its add-on crates, such as
-`<tool>::child::failed`. The tool's output names the tool in each of
-crumbkit's codes, so the check takes an undeclared code in the tool's
-component for an add-on crate's code when no declared code of the tool has
-the code's area. An undeclared code in an area that the tool declares,
-such as `shelf::books::lost` beside `shelf::books::not_found`, fails the
-check.
+prints in place of them, and the codes of its add-on crates, such as crumbkit-child's
+`<tool>::child::failed` and crumbkit-aliases's
+`<tool>::aliases::unreadable`. The tool's output names the tool in each of
+these codes, so the check follows a code in the tool's component that the
+tool does not declare only when it is one of these codes spelled with the
+tool's name. Any other undeclared code in the tool's component fails the
+check, such as `shelf::books::lost` beside `shelf::books::not_found`, or
+`shelf::cache::stale` and `shelf::cli::bogus`. A test of crumbkit-test
+compares its list of the add-on crates' codes with the codes that
+crumbkit-child and crumbkit-aliases declare.
 
 Every declared code is provoked by a chain or listed in `Unprovoked` with
 the reason no test can provoke it. A tool passes the same list to
 [`check_twins`](end-to-end.md#twins).
 
-Why: ADR-0053, ADR-0001.
+Why: ADR-0053, ADR-0001, ADR-0079.
 
 ## Runs of a chain
 

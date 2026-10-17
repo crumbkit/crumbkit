@@ -26,7 +26,9 @@ const CRUMBKIT: &str = "crumbkit";
 ///   other character that a code segment does not allow, such as
 ///   `my_tool::cli::usage`;
 /// - an environment variable starts with the code's component in capitals,
-///   such as `MY_TOOL_OUTPUT_BUDGET`.
+///   such as `MY_TOOL_OUTPUT_BUDGET`, and with `_` before a leading digit,
+///   such as `_2FA_OUTPUT_BUDGET`, because a shell variable cannot start
+///   with a digit.
 ///
 /// An id and a code lowercase capitals. A document id has `-` in place of
 /// each character other than a letter, a digit, `_`, `-` and `.`, and in
@@ -112,10 +114,16 @@ impl ToolName {
         if !is_component(&schema) {
             schema = schema.replace('.', "-");
         }
+        // A shell variable cannot start with a digit, so such a name's
+        // variables start with `_`, such as `_2FA_OUTPUT_BUDGET`.
+        let mut variable = code.to_ascii_uppercase();
+        if variable.starts_with(|first: char| first.is_ascii_digit()) {
+            variable.insert(0, '_');
+        }
         Self {
             name: leak(name.to_owned()),
             schema: leak(schema),
-            variable: leak(code.to_ascii_uppercase()),
+            variable: leak(variable),
             code: leak(code),
         }
     }

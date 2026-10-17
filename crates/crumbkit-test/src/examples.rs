@@ -99,7 +99,7 @@ mod tests;
 ///   then from a `<tool>/failure/v1` document on standard output, and
 ///   then from the last `code:` line on standard error. This holds with `SNAPSHOTS=overwrite` too, and the
 ///   check then writes no file for the example;
-/// - a run that writes a `warning: crumbkit` line to standard error, which a
+/// - a run that writes a `warning: <tool> left out` line to standard error, which a
 ///   debug build writes for a recovery call that does not render. The
 ///   check then writes no file for the example;
 /// - a run whose binary cannot start, such as a wrong path, naming the path
@@ -397,15 +397,24 @@ fn failed_run(
 }
 
 /// Returns one problem for each line of `stderr` that is a debug build's
-/// warning from crumbkit, which names `tool` and marks a mistake in the
-/// tool even when the example `line` succeeds.
+/// warning from crumbkit, which marks a mistake in the tool even when the
+/// example `line` succeeds.
 fn warnings(line: &str, tool: ToolName, stderr: &str) -> Vec<String> {
-    let start = format!("warning: {} ", tool.name());
     stderr
         .lines()
-        .filter(|text| text.starts_with(&start))
+        .filter(|text| is_crumbkit_warning(text, tool))
         .map(|warning| format!("{line}: the run writes a warning to standard error: {warning}"))
         .collect()
+}
+
+/// Reports whether `text` is a warning that crumbkit prints in a debug
+/// build, such as `warning: shelf left out the field "path" of the failure
+/// shelf::books::not_found, because ...`. A tool's own warning, such as
+/// `warning: shelf cache is stale`, is not one.
+pub(crate) fn is_crumbkit_warning(text: &str, tool: ToolName) -> bool {
+    text.strip_prefix("warning: ")
+        .and_then(|rest| rest.strip_prefix(tool.name()))
+        .is_some_and(|rest| rest.starts_with(" left out "))
 }
 
 /// Returns the name of the golden file of an example's standard error: the
