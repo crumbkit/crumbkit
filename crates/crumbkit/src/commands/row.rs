@@ -165,8 +165,8 @@ impl CommandRow {
 }
 
 /// Returns the form of the document that `leaf` declares, as `commands
-/// list` writes it: `stream`, `bytes`, `headed`, `document`, or `None`
-/// when the leaf declares no document.
+/// list` writes it: `stream`, `bytes`, `headed`, `json-rows`, `document`,
+/// or `None` when the leaf declares no document.
 fn form(leaf: &Leaf) -> Option<&'static str> {
     let document = leaf.get_document()?;
     Some(if leaf.is_stream() {
@@ -175,6 +175,8 @@ fn form(leaf: &Leaf) -> Option<&'static str> {
         "bytes"
     } else if document.is_headed() {
         "headed"
+    } else if leaf.prints_json_lines() {
+        "json-rows"
     } else {
         "document"
     })
@@ -488,8 +490,8 @@ impl JsonSchema for CommandRow {
                     },
                 },
                 "form": {
-                    "description": "stream when the command prints a stream, one row on each line as each arrives, bytes when it prints one document that holds bytes, which its text prints unchanged, headed when it prints one document whose text prints each answer's bytes under a header, document when it prints any other document, and null when the guide's leaf for the command declares no document.",
-                    "enum": ["bytes", "document", "headed", "stream", null],
+                    "description": "stream when the command prints a stream, one row on each line as each arrives, bytes when it prints one document that holds bytes, which its text prints unchanged, headed when it prints one document whose text prints each answer's bytes under a header, json-rows when it prints one document whose text prints each row as one line of JSON, document when it prints any other document, and null when the guide's leaf for the command declares no document.",
+                    "enum": ["bytes", "document", "headed", "json-rows", "stream", null],
                 },
                 "exits": {
                     "description": "The exit codes that the tool declares for the command besides crumbkit's 0, 1 and 2, in guide order. `<tool> help exit-codes` describes every code.",

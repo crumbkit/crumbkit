@@ -37,14 +37,16 @@ pub(super) fn refusal<R: Row>(
     fields: &[String],
     typed: Typed,
 ) -> Option<Refusal> {
-    let long_columns = !R::LONG_COLUMNS.is_empty();
     for flag in ViewFlag::ALL {
         let typed = match flag {
             ViewFlag::Fields => typed.fields,
             ViewFlag::Long => typed.long,
             ViewFlag::Full => typed.full,
         };
-        if typed && let Some(reason) = view::unoffered(shape, long_columns, envelope, headed, flag)
+        let (columns, long) = (R::COLUMNS, R::LONG_COLUMNS);
+        if typed
+            && let Some(reason) =
+                view::unoffered(shape, columns, long, envelope, headed, R::WHOLE, flag)
         {
             return Some(view::refusal(flag, reason));
         }

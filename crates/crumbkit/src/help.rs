@@ -29,7 +29,9 @@ use clap::builder::styling::Style;
 pub use self::effects::{Effects, Items};
 pub use self::exit::Exit;
 pub use self::format::FileFormat;
-pub use self::leaf::{BYTES_LINE, Column, Example, HEADED_LINE, Leaf, RefusalContext, STREAM_LINE};
+pub use self::leaf::{
+    BYTES_LINE, Column, Example, HEADED_LINE, Leaf, RefusalContext, STREAM_LINE, WHOLE_LINE,
+};
 pub use self::rename::Rename;
 pub use self::runtime::RuntimeLeaf;
 pub use self::topic::Topic;

@@ -548,6 +548,16 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   headed leaf with half the bytes they print ([behaviour/output/budget]).
 - crumbkit-test: [`check_guide`] fails a leaf whose batch is not headed and
   whose row type has no `Row::COLUMNS` ([behaviour/help/examples]).
+- crumbkit-core: a row type that sets [`Row`]`::WHOLE` prints every field
+  of each row with `--json`, without `--full`. `--full` is refused for it,
+  and `--fields` prints `null` for a field that a row leaves out
+  ([behaviour/output]).
+- crumbkit: a row type that sets `Row::WHOLE` and names no columns prints
+  each row as one line of JSON in text, and `--fields` and `--long` are
+  refused for it ([behaviour/output]).
+- crumbkit: the help of a leaf whose rows print as JSON lines ends with an
+  `Output:` line, `commands list` gives it the form `json-rows`, and
+  crumbkit-markdown's reference prints the line ([behaviour/help/commands-list]).
 
 ### Changed
 
