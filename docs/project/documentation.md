@@ -63,9 +63,11 @@ commit updated. A branch that updates its docs in the same change uses
 
 A decision record never changes to match new behaviour. A changed decision
 gets a new record whose `Supersedes` line names the old one, and the old
-record's Status line says it was superseded (ADR-0017).
+record's Status line says it was superseded (ADR-0017). A new record that
+amends a record dated less than 7 days before it also has a `- Missed:`
+line that says what the earlier record missed (DOCS-8).
 
-Why: ADR-0013, ADR-0017.
+Why: ADR-0013, ADR-0017, ADR-0074.
 
 ## The tutorial
 
