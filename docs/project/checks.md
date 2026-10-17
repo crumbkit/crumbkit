@@ -40,7 +40,9 @@ calls each one. xtask parses its arguments with clap. Its rustdoc in
   limit of DOCS-2, so each directory of the docs tree can be read in one
   sitting, the record checks of DOCS-3, and the frozen record check of
   DOCS-6, which compares each record with its text at the merge base with
-  `origin/main`. Both commands fail with an error that says so when the
+  `origin/main`. They also run the missed line check of DOCS-8, which reads
+  each record that is new since the merge base and fails when it amends a
+  record dated less than 7 days before it without a `- Missed:` line. Both commands fail with an error that says so when the
   clone has no `origin/main`, such as a shallow clone. The tree includes `docs/`
   itself and every subdirectory, and each directory's count includes only
   the files directly in it.
@@ -51,7 +53,7 @@ calls each one. xtask parses its arguments with clap. Its rustdoc in
   directories under `target/run-time/`. [Testing](testing.md) states the
   limits.
 
-Why: ADR-0010, ADR-0017.
+Why: ADR-0010, ADR-0017, ADR-0074.
 
 ## Supply-chain checks
 

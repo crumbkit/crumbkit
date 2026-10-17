@@ -18,3 +18,4 @@ chain and releases, documentation, and the repository layout.
 - [ADR-0012. Supply chain and releases](0012-supply-chain-and-releases.md)
 - [ADR-0013. Documentation](0013-documentation.md)
 - [ADR-0014. Repository layout](0014-repository-layout.md)
+- [ADR-0074. Options with a second use](0074-options-with-a-second-use.md)

@@ -86,7 +86,7 @@ pub(super) fn title_number(contents: &str) -> Option<u16> {
 }
 
 /// Returns every record number that `contents` cites.
-fn citations(contents: &str) -> impl Iterator<Item = u16> {
+pub(super) fn citations(contents: &str) -> impl Iterator<Item = u16> {
     contents
         .match_indices(PREFIX)
         .filter_map(|(start, _)| number_after_prefix(&contents[start..]))

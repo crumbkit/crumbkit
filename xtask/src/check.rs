@@ -7,6 +7,7 @@ mod changelog_entries;
 mod docs_trailers;
 mod docs_words;
 mod frozen_records;
+mod missed_lines;
 mod readme_words;
 mod record_listings;
 mod rust_lines;
@@ -119,6 +120,16 @@ pub(crate) enum Violation {
         /// The record's number.
         number: u16,
     },
+    /// A record new on the branch amends a record dated less than 7 days
+    /// before it and has no `- Missed:` line with text.
+    MissingMissedLine {
+        /// The new record.
+        path: String,
+        /// The new record's number.
+        number: u16,
+        /// The number of the record it amends.
+        earlier: u16,
+    },
     /// A changelog's Unreleased section gained or changed an entry, and no
     /// commit on the branch ends with a docs trailer.
     MissingDocsTrailer {
@@ -139,8 +150,8 @@ const TRAILER_FORMS: &str = "`Docs-Owed: <id>; from: <old behaviour>; to: <new b
                              docs: <path>[, <path>...]` or `Docs-Swept: <id>[, <id>...]`";
 
 /// Runs the selected checks over `files` and returns every violation.
-/// The frozen record check compares `files` with `history.base` for both
-/// selections. The docs trailer check also reads `history.commits` and runs
+/// The frozen record check and the missed line check compare `files` with
+/// `history.base` for both selections. The docs trailer check also reads `history.commits` and runs
 /// only for [`Selection::All`].
 pub(crate) fn run(selection: Selection, files: &[File], history: &History) -> Vec<Violation> {
     let mut violations = match selection {
@@ -163,6 +174,7 @@ pub(crate) fn run(selection: Selection, files: &[File], history: &History) -> Ve
         }
     };
     violations.extend(frozen_records::check(&history.base, files));
+    violations.extend(missed_lines::check(&history.base, files));
     violations
 }
 
@@ -207,6 +219,16 @@ impl fmt::Display for Violation {
                 f,
                 "{path}: edits ADR-{number:04}, which is frozen; only its Status line and \
                  a node's Children list may change (DOCS-6)"
+            ),
+            Self::MissingMissedLine {
+                path,
+                number,
+                earlier,
+            } => write!(
+                f,
+                "{path}: ADR-{number:04} amends ADR-{earlier:04}, which is dated less than 7 \
+                 days before it, so it needs a `- Missed:` line that says what ADR-{earlier:04} \
+                 missed (DOCS-8)"
             ),
             Self::MissingDocsTrailer { path } => write!(
                 f,

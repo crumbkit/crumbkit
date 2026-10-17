@@ -1,7 +1,7 @@
 # ADR-0017. Decision records
 
 - Date: 2026-10-14
-- Status: accepted
+- Status: amended by ADR-0074
 
 ## Context
 
