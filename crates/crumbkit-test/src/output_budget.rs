@@ -259,7 +259,7 @@ fn first_exit(
     let exit = guide
         .get_exits()
         .iter()
-        .flat_map(|exit| exit.get_failures())
+        .flat_map(crumbkit::help::Exit::get_failures)
         .find(|listed| {
             let printed = guide.printed(path, listed);
             [Spelling::COLONS, Spelling::DOTS, Spelling::SLASHES]

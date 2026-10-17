@@ -399,5 +399,8 @@ fn a_per_key_batch_expects_the_exit_of_its_first_failure_in_key_order() {
 
     assert_eq!(problems.len(), 1, "{problems:?}");
     assert!(problems[0].contains("exit 1;"), "{problems:?}");
-    assert!(problems[0].contains("exits with code 0 or 5"), "{problems:?}");
+    assert!(
+        problems[0].contains("exits with code 0 or 5"),
+        "{problems:?}"
+    );
 }
