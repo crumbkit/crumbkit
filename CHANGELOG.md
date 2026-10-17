@@ -567,9 +567,9 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   position, whose recovery runs the command with that key
   ([behaviour/output/budget]).
 - crumbkit-test: [`check_opt_outs`] lists `Document::left_out_per_key` as a
-  `left-out-per-key` customisation, and [`check_output_budget`] accepts an
-  over-budget failure that other failures follow
-  ([behaviour/adoption/declarations]).
+  `left-out-per-key` customisation. [`check_output_budget`] accepts an
+  over-budget failure that other failures follow, and expects the exit of
+  the first failure in key order ([behaviour/output/budget]).
 
 ### Changed
 

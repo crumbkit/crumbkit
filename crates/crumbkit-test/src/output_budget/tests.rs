@@ -351,3 +351,53 @@ fn the_output_budget_check_runs_the_text_examples_of_a_headed_leaf() {
         "{problems:?}"
     );
 }
+
+/// A `--json` example that prints a line, and that past its budget prints a
+/// batch whose first failure in key order is `sh::files::missing`, before an
+/// over-budget failure that names the budget, and exits with 5, the exit
+/// of `sh::files::missing`.
+#[cfg(unix)]
+const MISSING_EXITS_5: &[&str] = &[
+    r#"test -n "$CRUMBKIT_OUTPUT_BUDGET" && echo "{\"data\":[],\"failures\":[{\"index\":0,\"code\":\"sh::files::missing\",\"fields\":{}},{\"index\":1,\"code\":\"crumbkit::output::over_budget\",\"fields\":{\"budget\":$CRUMBKIT_OUTPUT_BUDGET}}]}" && exit 5; echo printed"#,
+    "--json",
+];
+
+/// The run of [`MISSING_EXITS_5`], which exits with 1, the exit of the
+/// over-budget failure, in place of 5.
+#[cfg(unix)]
+const MISSING_EXITS_1: &[&str] = &[
+    r#"test -n "$CRUMBKIT_OUTPUT_BUDGET" && echo "{\"data\":[],\"failures\":[{\"index\":0,\"code\":\"sh::files::missing\",\"fields\":{}},{\"index\":1,\"code\":\"crumbkit::output::over_budget\",\"fields\":{\"budget\":$CRUMBKIT_OUTPUT_BUDGET}}]}" && exit 1; echo printed"#,
+    "--json",
+];
+
+#[cfg(unix)]
+#[test]
+fn a_per_key_batch_expects_the_exit_of_its_first_failure_in_key_order() {
+    use clap::Command;
+    use crumbkit::help::{Example, Exit, Guide, Leaf};
+    use crumbkit::{Batch, Code, Document, Error};
+
+    use crate::examples::Examples;
+    use crate::temp::TempDir;
+
+    const MISSING: Code = Code::new("sh", "files", "missing");
+    const FILES: Document<Batch<File, Error>> =
+        Document::new("sh", "files", 1, "The files.").left_out_per_key();
+    const GUIDE: Guide = Guide::new()
+        .exits(&[Exit::new(5, "A file was missing.").failures(&[&MISSING])])
+        .leaves(&[Leaf::new(&["-c"])
+            .examples(&[
+                Example::new(MISSING_EXITS_5, "Print"),
+                Example::new(MISSING_EXITS_1, "Print"),
+            ])
+            .document(FILES)]);
+    let sh = Command::new("sh").subcommand(Command::new("-c"));
+    let goldens = TempDir::new("output-budget-per-key").unwrap();
+    let dir = goldens.path().display().to_string();
+
+    let problems = super::check(&sh, &GUIDE, &Examples::new("/bin/sh", &dir), super::TIMEOUT);
+
+    assert_eq!(problems.len(), 1, "{problems:?}");
+    assert!(problems[0].contains("exit 1;"), "{problems:?}");
+    assert!(problems[0].contains("exits with code 0 or 5"), "{problems:?}");
+}

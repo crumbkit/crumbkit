@@ -249,7 +249,11 @@ printed. The second run must do one of these:
 - exit with the code that the guide gives the over-budget failure, 1 by
   default, and print an over-budget failure that names the budget, last or,
   for a batch whose document answers each answer left out, among its other
-  failures.
+  failures. Such a batch exits with the code of its first failure in key
+  order, so when that failure is one of the tool's own, the check expects
+  the code that the guide gives that failure. The check matches the
+  failure's code to the guide's exits in the `::`, `.` and `/` spellings,
+  and expects 1 for a code in a custom spelling.
 
 The check also runs each text example of a leaf whose document is headed in
 the same way. The second run must print at most the budget, unless its
