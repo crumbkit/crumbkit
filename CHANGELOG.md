@@ -34,17 +34,22 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   ([behaviour/help/commands-list]).
 - crumbkit: [`help::quote`] quotes one word for a POSIX shell.
 - crumbkit: the [schemas] directory holds the JSON Schemas of the
-  `crumbkit/failure/v1`, `crumbkit/commands-list/v1` and `crumbkit/usage/v1`
-  documents ([behaviour/schemas]).
-- crumbkit: the `usage-log` feature appends one line per run to a local
-  usage log ([`usage`], [behaviour/usage-log]). A run joins its caller's W3C trace,
-  and [`trace::child_env`] passes the trace to a child process
+  `crumbkit/failure/v1` and `crumbkit/commands-list/v1` documents
+  ([behaviour/schemas]).
+- crumbkit-usage: the new crate appends one line per run to a local usage
+  log, which a tool starts with `crumbkit_usage::start()`, and holds the
+  JSON Schema of the `crumbkit/usage/v1` document ([crumbkit-usage],
+  [`usage`], [behaviour/usage-log]).
+- crumbkit-usage: a run joins its caller's W3C trace
   ([behaviour/usage-log/trace-context]).
+- crumbkit: [`trace::child_env`] passes a run's W3C trace to a child
+  process ([behaviour/usage-log/trace-context]).
 - crumbkit: the `tracing` feature runs `parse` and `finish` inside spans
   ([`trace`]).
-- crumbkit: with the `usage-log` feature, `self usage` reports where
-  callers waste effort from the usage log, and a [`Listing`] can carry a
-  summary that prints above its table ([behaviour/output], [behaviour/usage-log/report]).
+- crumbkit-usage: `self usage` reports where callers waste effort from the
+  usage log ([behaviour/usage-log/report]).
+- crumbkit: a [`Listing`] can carry a summary that prints above its table
+  ([behaviour/output]).
 - crumbkit-test: the checks [`check_codes`], [`check_names`],
   [`check_grammar`], [`check_listings`], [`check_filters`],
   [`check_guide`] and [`check_help_sizes`] fail a test on a tool that
@@ -71,10 +76,10 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   document a tool prints, [`check_document_ids`] checks each document's
   name, and [`check_mounts`] checks the paths of crumbkit's commands
   ([behaviour/schemas/commands]).
-- crumbkit: with the `usage-log` feature, `self figures list` prints the
-  figures of every command in the usage log, and `self usage --full` adds
-  `help_before` to each command's figures ([`usage`], [behaviour/usage-log/report]).
-- crumbkit: `self usage` and `self figures list` take `--log <FILE>` to
+- crumbkit-usage: `self figures list` prints the figures of every command
+  in the usage log, and `self usage --full` adds `help_before` to each
+  command's figures ([`usage`], [behaviour/usage-log/report]).
+- crumbkit-usage: `self usage` and `self figures list` take `--log <FILE>` to
   read a copy of a usage log ([behaviour/usage-log/report]).
 - crumbkit-test: [`check_path_weights`] budgets the bytes of each path
   through a tool's help, 8,000 by default, and [`path_totals`] and
@@ -87,8 +92,9 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   ([`Output`], [behaviour/output]).
 - crumbkit: [`events::ended`] records a tool's own exit number and output
   bytes for a run that never reaches `finish` ([behaviour/usage-log]).
-- crumbkit: `usage::start_with(Signals::Tool)` lets a tool handle SIGINT
-  and SIGTERM itself while the usage log records the signal ([`usage`], [behaviour/usage-log]).
+- crumbkit-usage: `crumbkit_usage::start_with(Signals::Tool)` lets a tool
+  handle SIGINT and SIGTERM itself while the usage log records the signal
+  ([`usage`], [behaviour/usage-log]).
 - crumbkit: [`Failure`] has `alternatives`, other repairs that print as
   extra `help:` lines and under `alternatives` in the failure document
   ([behaviour/failures]).
@@ -130,9 +136,10 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   crumbkit sets it, and [`check_guide`] rejects a root that names no
   command ([behaviour/failures/exit-codes]).
 - crumbkit: [`events::tolerated`] records the code of a failure that a run
-  carried on past, and the usage record lists up to 8 such codes in
-  `tolerated` ([behaviour/usage-log]).
-- crumbkit: the `self usage` summary counts the runs that tolerated each
+  carried on past ([behaviour/usage-log]).
+- crumbkit-usage: the usage record lists up to 8 codes that the run
+  tolerated in `tolerated` ([behaviour/usage-log]).
+- crumbkit-usage: the `self usage` summary counts the runs that tolerated each
   code, and each command's figures count the runs of each exit code from 3
   with its declared meaning ([behaviour/usage-log/report]).
 - crumbkit: [`Effects`] declares a leaf's effects in the terms of MCP's
@@ -159,16 +166,18 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit-test: [`check_examples`] stops an example after 10 seconds and
   checks that each line of a `--json` example is a document with the
   leaf's id ([behaviour/output/streams]).
-- crumbkit: the `hand-over` feature adds [`child::hand_over`], which hands
-  the terminal to a child process and returns its exit code. On Unix the
-  tool ignores SIGINT and SIGQUIT from the moment the child starts until
-  the tool ends ([behaviour/output/child-processes]).
-- crumbkit: [`child::hand_over_json`] runs a child that prints JSON under
+- crumbkit-child: the new crate's [`child::hand_over`] hands the terminal
+  to a child process and returns its exit code. On Unix the tool ignores
+  SIGINT and SIGQUIT from the moment the child starts until the tool ends
+  ([crumbkit-child], [behaviour/output/child-processes]).
+- crumbkit-child: the crate's codes are spelled `crumbkit::child::*`, and
+  its own `codes::ALL` lists them ([crumbkit-child]).
+- crumbkit-child: [`child::hand_over_json`] runs a child that prints JSON under
   `--json` and prints its output as the declared document, so `--fields`,
   `--long` and `--full` apply ([behaviour/output/child-processes]).
-- crumbkit: with the `usage-log` feature, Ctrl-C while a child holds the
-  terminal ends only the child, and the run's line records the child's exit
-  code ([behaviour/output/child-processes]).
+- crumbkit-child: Ctrl-C while a child holds the terminal ends only the
+  child, and crumbkit-usage records the child's exit code in the run's line
+  ([behaviour/output/child-processes]).
 - crumbkit: `Guide::personal_aliases` makes the root's help name each
   personal alias that expands, and only a run that prints that help reads
   the aliases file ([behaviour/parsing/aliases]).
@@ -181,8 +190,8 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   `pick::from_rows` turns a command's rows into choices ([behaviour/effects/pickers]).
 - crumbkit: [`NoInput`] adds the global `--no-input`, which stops pickers
   and makes `Output::confirm` fail without asking ([behaviour/effects/pickers]).
-- crumbkit: with the `usage-log` feature, a run's line records `picked`, the
-  number of arguments that a picker filled ([behaviour/usage-log]).
+- crumbkit-usage: a run's line records `picked`, the number of arguments
+  that a picker filled ([behaviour/usage-log]).
 - crumbkit-test: [`check_effects`] requires `--no-input` from `NoInput` on a
   tool that can ask a question, unless the tool opts out of
   `Rule::NoInput` ([behaviour/effects/pickers]).
@@ -192,10 +201,10 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   that text narrows, using only the standard library ([crumbkit-picker]).
 - crumbkit: Windows is a tier-2 platform, which the scheduled lane builds
   and tests ([project/dependencies]).
-- crumbkit: the `usage-log` feature builds on Windows, where the log lives
+- crumbkit-usage: the crate builds on Windows, where the log lives
   in `%LOCALAPPDATA%\<tool>`, or under `XDG_STATE_HOME` when it is an
   absolute path ([behaviour/usage-log]).
-- crumbkit: on Windows, [`child::hand_over`] keeps the tool running on
+- crumbkit-child: on Windows, [`child::hand_over`] keeps the tool running on
   Ctrl-C or Ctrl-Break, and a child that Ctrl-C ended returns 130 and marks
   the line interrupted ([behaviour/output/child-processes]).
 - crumbkit: help on Windows names the tool without `.exe`.
@@ -287,8 +296,8 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit: `Page<N, MOST>` refuses a `--limit` above `MOST` with a
   recovery that runs `--all`, and the help and the footer name the bound
   ([behaviour/output/listings]).
-- crumbkit: with the `usage-log` feature, the line of a run whose listing
-  or stream had no rows holds `"empty": true` ([behaviour/usage-log]).
+- crumbkit-usage: the line of a run whose listing or stream had no rows
+  holds `"empty": true` ([behaviour/usage-log]).
 - crumbkit-core: [`Bytes`] is a result that `finish` prints unchanged as
   text, and with `--json` as `text` when it is UTF-8 or `base64` otherwise.
   A `Bytes` row field serializes the same way. `Shape::Bytes` and
@@ -590,19 +599,11 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   `handles_interrupt` are public and need no feature, so a crate that hands
   the terminal to a child reports it to the observer
   ([behaviour/run-observer]).
-- crumbkit-child: [`child::hand_over`] and [`child::hand_over_json`] move
-  from crumbkit's `hand-over` feature to the crumbkit-child crate, and a
-  tool calls `crumbkit_child::hand_over`. The codes keep their spelling,
-  `crumbkit::child::*`, and crumbkit-child lists them in its own
-  `codes::ALL` ([crumbkit-child], [behaviour/output/child-processes]).
 - crumbkit-test: [`check_twins`] needs no twin and no declaration for a
   code in the `crumbkit` component that `crumbkit::codes::ALL` does not
   list, such as crumbkit-child's `crumbkit::child::no_json`, and
   [`check_recoveries`] follows the recovery of such a code
   ([behaviour/checks/end-to-end], [behaviour/checks/recovery-chains]).
-- crumbkit-usage: the usage log, `self usage` and `self figures list` move
-  from crumbkit's `usage-log` feature to the crumbkit-usage crate, and a
-  tool starts the log with `crumbkit_usage::start()` ([crumbkit-usage], [behaviour/usage-log]).
 - crumbkit: `Exit::covers` is public, so crumbkit-usage can give each exit
   code in its reports its meaning ([behaviour/failures/exit-codes]).
 - crumbkit: [`complete_to`] takes the function that builds the command from
@@ -631,8 +632,8 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit-test: [`check_output_budget`], [`check_twin`],
   [`check_recoveries`] and [`check_examples`] read an indented JSON document
   as well as a document on one line.
-- crumbkit: with the `usage-log` feature, a run whose `COMPLETE` variable
-  asks for shell completion writes no line ([behaviour/parsing/completion]).
+- crumbkit-usage: a run whose `COMPLETE` variable asks for shell
+  completion writes no line ([behaviour/parsing/completion]).
 - crumbkit: a build with debug assertions writes a `warning:` line on
   standard error for each recovery call of a failure that does not render,
   with the reason ([behaviour/failures]).
@@ -654,9 +655,9 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - cargo-crumbkit: `weigh` prints `long_help` only with `--long`
   ([behaviour/help/weight]).
 - crumbkit: [`finish`], `finish_to`, `Output::command`, `commands::list`,
-  `schemas::list`, `schemas::show`, `usage::findings` and `usage::figures`
-  take `&mut Output`, and `Output::set_command` no longer builds the command
-  tree, so a run builds only the commands it reads ([behaviour/adoption]).
+  `schemas::list` and `schemas::show` take `&mut Output`, and
+  `Output::set_command` no longer builds the command tree, so a run builds
+  only the commands it reads ([behaviour/adoption]).
 - crumbkit-aliases: `list` takes `&mut Output`, because it builds the
   tool's command tree when it runs.
 - crumbkit: [`parse`] returns a [`Stop`] after help, the version or a
@@ -683,7 +684,7 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   command ([behaviour/adoption/opt-outs]).
 - crumbkit-test: [`check_schema_goldens`] pins the schemas of file formats
   and fails on a file format with the id of another document ([behaviour/schemas/commands]).
-- crumbkit: `usage::findings` and `usage::figures` take the tool's
+- crumbkit-usage: `findings` and `figures` take the tool's
   `Guide`, which gives the meaning of each exit code ([behaviour/usage-log/report]).
 - crumbkit: [`parse`] returns a [`Parsed`] in place of the `Command`. It
   holds the command and the typed words, and `Output::set_command` takes
@@ -783,7 +784,7 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   code ([behaviour/adoption/declarations]).
 - crumbkit: `help exit-codes` and the `commands list` note leave out
   crumbkit's 2 when a refusal exits with another code ([behaviour/failures/exit-codes]).
-- crumbkit: `self usage` and `self figures list` count a run as refused
+- crumbkit-usage: `self usage` and `self figures list` count a run as refused
   when it exited with the code that the guide gives a refused command line
   ([behaviour/usage-log/report]).
 - crumbkit-test: [`check_exit_codes`] accepts an exit that lists one of
@@ -881,12 +882,6 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 - crumbkit: `events::observer` is gone, because a process can hold several
   observers ([behaviour/run-observer]).
-- crumbkit: the `hand-over` feature, the `crumbkit::child` module and the
-  `codes::CHILD_*` constants are gone, because the crumbkit-child crate
-  holds the hand-over ([crumbkit-child]).
-- crumbkit: the `usage-log` feature and the `crumbkit::usage` module are
-  gone, because the crumbkit-usage crate holds the usage log
-  ([crumbkit-usage]).
 - crumbkit-test: `Rule::FailureForm` is gone. A failure form is a
   declaration, and [`check_document_ids`] no longer asks for an opt-out
   with a reason ([behaviour/adoption/declarations]).
@@ -948,12 +943,12 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   their own thread, so a run that never reads an
   input larger than a pipe holds is stopped at its timeout instead of
   blocking the check ([behaviour/checks/end-to-end]).
-- crumbkit: a trim of the usage log keeps the newest whole lines within a
+- crumbkit-usage: a trim of the usage log keeps the newest whole lines within a
   size budget, drops a torn line, and replaces the log in one step under a
   separate lock file ([`usage`], [behaviour/usage-log]).
-- crumbkit: a usage-log key file goes into place only when complete, and a
+- crumbkit-usage: a usage-log key file goes into place only when complete, and a
   key of the wrong length is replaced ([behaviour/usage-log]).
-- crumbkit: a signal or the end of `main` during the usage log's write
+- crumbkit-usage: a signal or the end of `main` during the usage log's write
   waits a bounded time for the line to finish ([behaviour/usage-log]).
 - crumbkit: `--fields` and a leaf's columns accept the fields of each
   variant of an enum row type ([`Row`]).
@@ -965,10 +960,10 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   before they take another id.
 - crumbkit-aliases: `aliases list` says that an entry named `help` loses to
   the tool's own help ([crumbkit-aliases]).
-- crumbkit: a tool that starts the usage log with `Signals::Tool` keeps
+- crumbkit-child: a tool that starts the usage log with `Signals::Tool` keeps
   handling Ctrl-C itself after [`child::hand_over`] has run a child
   ([behaviour/output/child-processes]).
-- crumbkit: on Unix, a Ctrl-C sent while [`child::hand_over`] runs a child
+- crumbkit-child: on Unix, a Ctrl-C sent while [`child::hand_over`] runs a child
   no longer ends a tool with more than one thread, such as one with the
   usage log, when the signal reaches the tool after the child has exited
   ([behaviour/output/child-processes]).
@@ -977,12 +972,9 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit: a refusal from [`parse`] leaves out each command or flag that
   clap suggests and the tool hid, and leaves out clap's tip when nothing
   else remains.
-- crumbkit: the usage log's `nearest` records the real flag when clap
+- crumbkit-usage: the usage log's `nearest` records the real flag when clap
   suggests a hidden alias, and records nothing when clap suggests a hidden
   flag ([`usage`]).
-- crumbkit: the rustdoc builds without warnings when the `usage-log`
-  feature is off, because it no longer links to `usage::start`, which only
-  that feature defines.
 - crumbkit-test: [`check_names`] skips hidden commands, everything below
   them and hidden arguments, because no help page shows them.
 - crumbkit: a refusal from [`parse`] prints as JSON only when the walk reads
