@@ -49,7 +49,8 @@ Why: ADR-0056.
 - `Document::left_out_per_key` gives each answer that the output budget
   leaves out of a batch its own over-budget failure, which keeps every
   answer either printed or failed and changes only how the failures name
-  them ([output budget](../output/budget/README.md#one-failure-for-each-answer-left-out)).
+  them. `Document::key_field` names the failure field that holds each such
+  failure's key ([output budget](../output/budget/README.md#one-failure-for-each-answer-left-out)).
 - `Document::with_keys`, `Document::with_type` and `Document::summary_at_top`
   name the keys, the type and the top-level fields of a document whose
   readers expect names other than crumbkit's, and keep every other part of
@@ -150,7 +151,8 @@ the keys, the type and whether the summary prints at the top), each leaf
 that passes on an exit code, each leaf that declares
 refusal alternatives, the guide's refusal function once for every run, the
 guide's key order as one `json-keys` customisation of every run,
-`failures_in_order`, `left_out_per_key`, and each leaf whose row type
+`failures_in_order`, `left_out_per_key` (as a `left-out-per-key`
+customisation that names the key field of `Document::key_field`), and each leaf whose row type
 declares `Row::LINE` (as a `text-line` customisation that names the form of
 the line). A leaf's code rename, and an exit that lists a code
 that only a leaf renames, apply to that leaf's command line. The

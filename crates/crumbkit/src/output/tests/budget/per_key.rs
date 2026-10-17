@@ -175,7 +175,7 @@ fn a_batch_in_input_order_answers_each_left_out_key_among_its_rows() {
 }
 
 #[test]
-fn a_batch_falls_back_to_one_failure_when_its_first_row_and_each_key_s_failure_pass_the_budget() {
+fn a_batch_that_answers_each_left_out_key_prints_each_failure_even_when_they_pass_the_budget() {
     let keys: Vec<String> = (1..=20).map(|number| star(number).name).collect();
     let mut batch: Batch<Star, Error> = Batch::new(&["show"], "names", &keys);
     batch.push(Ok(star(1)));
@@ -183,15 +183,87 @@ fn a_batch_falls_back_to_one_failure_when_its_first_row_and_each_key_s_failure_p
     let finished = finish_small(&["--json"], STAR_BATCH.left_out_per_key(), batch);
 
     assert_eq!(finished.code, ExitCode::FAILURE);
-    assert!(finished.out.len() <= BUDGET, "{}", finished.out.len());
-    let failures = parsed(&finished.out)["failures"].clone();
-    assert_eq!(failures.as_array().unwrap().len(), 1);
-    assert_eq!(failures[0]["fields"]["left_out_from"], 1);
+    assert!(finished.out.len() > BUDGET, "{}", finished.out.len());
+    let document = parsed(&finished.out);
+    assert_eq!(document["data"].as_array().unwrap().len(), 1);
+    let over = "crumbkit::output::over_budget".to_owned();
+    let expected: Vec<(u64, String)> = (1..20).map(|index| (index, over.clone())).collect();
+    assert_eq!(indexed_codes(&document), expected);
+}
+
+#[test]
+fn a_batch_of_three_large_rows_answers_its_second_and_third_keys_with_their_own_failures_in_a_pretty_document()
+ {
+    const GUIDE: Guide = Guide::new()
+        .output_budget(BUDGET, "the tests print little")
+        .json_layout(JsonLayout::Pretty, "the readers expect it");
+    let keys: Vec<String> = (1..=3).map(|number| star(number).name).collect();
+    let mut batch: Batch<Star, Error> = Batch::new(&["show"], "names", &keys);
+    batch.extend((1..=3).map(|number| Ok(long_star(number, 500))));
+
+    let finished = finish_output(
+        &mut guided(&GUIDE, &["--json"]),
+        STAR_BATCH.left_out_per_key(),
+        batch,
+    );
+
+    assert_eq!(finished.code, ExitCode::FAILURE);
+    let document = parsed(&finished.out);
+    assert_eq!(document["data"].as_array().unwrap().len(), 1);
+    let over = "crumbkit::output::over_budget".to_owned();
+    assert_eq!(
+        indexed_codes(&document),
+        [(1, over.clone()), (2, over)],
+        "{}",
+        finished.out
+    );
+}
+
+#[test]
+fn a_left_out_key_s_failure_holds_its_key_under_the_field_that_the_document_names() {
+    let keys: Vec<String> = (1..=4).map(|number| star(number).name).collect();
+    let mut batch: Batch<Star, Error> = Batch::new(&["show"], "names", &keys);
+    batch.extend((1..=2).map(|number| Ok(star(number))));
+
+    let finished = finish_small(
+        &["--json"],
+        STAR_BATCH.left_out_per_key().key_field("path"),
+        batch,
+    );
+
+    let document = parsed(&finished.out);
+    let failures = document["failures"].as_array().unwrap();
+    assert!(!failures.is_empty(), "{}", finished.out);
+    for failure in failures {
+        assert_eq!(
+            failure["fields"],
+            json!({"budget": BUDGET, "path": failure["key"]}),
+            "{}",
+            finished.out
+        );
+    }
+}
+
+/// Returns the number of rows and the number of failures in the JSON of a
+/// batch, whose rows and failures print in one array under `answers` when
+/// `in_order` is true.
+fn answers(document: &Value, in_order: bool) -> (usize, usize) {
+    if in_order {
+        let answers = document["answers"].as_array().unwrap();
+        let failures = answers
+            .iter()
+            .filter(|answer| answer["code"].is_string())
+            .count();
+        (answers.len() - failures, failures)
+    } else {
+        let rows = document["data"].as_array().unwrap().len();
+        (rows, document["failures"].as_array().unwrap().len())
+    }
 }
 
 proptest! {
     #[test]
-    fn a_batch_that_answers_each_left_out_key_never_passes_the_budget_in_any_layout(
+    fn a_batch_that_answers_each_left_out_key_answers_every_key_once_and_passes_the_budget_only_with_its_first_row(
         lengths in proptest::collection::vec(0_usize..600, 1..12),
         unfetched in 0_usize..4,
         budget in 1024_usize..4096,
@@ -222,10 +294,10 @@ proptest! {
             batch,
         );
 
-        // The first row always prints, so only a short first row keeps the
-        // batch within the budget.
-        if lengths[0] < 300 {
-            prop_assert!(finished.out.len() <= budget, "{}", finished.out);
+        let (rows, failures) = answers(&parsed(&finished.out), in_order);
+        prop_assert_eq!(rows + failures, keys.len(), "{}", finished.out);
+        if finished.out.len() > budget {
+            prop_assert_eq!(rows, 1, "{}", finished.out);
         }
     }
 }

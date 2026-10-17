@@ -35,7 +35,9 @@ impl<T: Rows> Prepared<'_, T> {
     /// beside a failure that names every key left out after the first row.
     /// When even the first row and that failure pass the budget, the failure
     /// names the most first keys that fit and counts the rest under
-    /// `unlisted`, and when no key fits, it names none. A document without
+    /// `unlisted`. When the first row and a failure that names no key pass
+    /// the budget, the failure names every key, because the document passes
+    /// the budget whichever keys it names (ADR-0070). A document without
     /// the envelope that prints its failures in input order counts the
     /// failure in the same way, at the end of its array. In text, and in
     /// any other document without the envelope, the failure goes to
@@ -51,11 +53,8 @@ impl<T: Rows> Prepared<'_, T> {
         let rows = self.value.rows().len();
         let in_document =
             self.json && (self.document.has_envelope() || self.document.prints_failures_in_order());
-        if self.document.answers_left_out_per_key()
-            && let Some(answered) =
-                self.answer_each(out, err, listed, &mut left_out, in_document)?
-        {
-            return Ok(answered);
+        if self.document.answers_left_out_per_key() {
+            return self.answer_each(out, err, listed, &mut left_out, in_document);
         }
         let (shown, over) = if in_document {
             self.fit_failure(err, listed, &mut left_out)?
@@ -108,7 +107,7 @@ impl<T: Rows> Prepared<'_, T> {
     /// failure that prints is never longer than the one measured and a
     /// binary search finds the count. When the first row does not fit
     /// beside that failure, the first row prints, and the failure names the
-    /// most first keys that fit. Naming one more key adds at least the key's
+    /// most first keys that fit, or every key when none fits. Naming one more key adds at least the key's
     /// quotes and comma, which outweigh the two digits that the count of
     /// the rest can lose in `unlisted` and in the message, so a binary
     /// search finds that number too. The search stops one key short of every
@@ -141,8 +140,7 @@ impl<T: Rows> Prepared<'_, T> {
             Over::Batch { left_out, .. } => left_out.len(),
             Over::Key { .. } | Over::Row | Over::Whole | Over::Stream => 0,
         };
-        // Every key was measured above, so the search stops one short of it.
-        let named = budget::largest(0, keys.saturating_sub(1), |named| {
+        let mut fits_naming = |named: usize| {
             let failure = self.left_out_failure(left_out, low, named);
             let prepared = PreparedFailure::new(
                 &failure,
@@ -152,7 +150,14 @@ impl<T: Rows> Prepared<'_, T> {
                 err,
             );
             self.fits(low, listed, Some(&prepared), budget)
-        })?;
+        };
+        // The document passes the budget whichever keys the failure names,
+        // so it names every key and keeps the recovery that fetches them.
+        if !fits_naming(0)? {
+            return Ok((low, most));
+        }
+        // Every key was measured above, so the search stops one short of it.
+        let named = budget::largest(0, keys.saturating_sub(1), fits_naming)?;
         Ok((low, self.left_out_failure(left_out, low, named)))
     }
 

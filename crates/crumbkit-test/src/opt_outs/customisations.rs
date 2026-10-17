@@ -36,7 +36,8 @@ pub(super) struct Customisation {
 /// exit code it passes on, whether it declares refusal alternatives,
 /// whether its batch prints its failures in input order
 /// (`Document::failures_in_order`), whether its batch answers each key that
-/// the output budget leaves out (`Document::left_out_per_key`), the form of
+/// the output budget leaves out (`Document::left_out_per_key`) and the field
+/// that holds each such failure's key (`Document::key_field`), the form of
 /// its rows' own text line (`Row::LINE`, ADR-0064), and each code rename of
 /// [`Leaf::codes`](crumbkit::help::Leaf::codes). An exit that lists a code
 /// that only a leaf renames applies to that leaf's command. A declaration
@@ -200,14 +201,19 @@ fn leaf_customisations(command: &Command, leaf: &Leaf) -> Vec<Customisation> {
                 .to_owned(),
         });
     }
-    if document.is_some_and(|document| document.answers_left_out_per_key()) {
+    if let Some(document) = document.filter(crumbkit::Document::answers_left_out_per_key) {
+        let key = document.key_field_name().map_or_else(String::new, |name| {
+            format!(" Each such failure holds its key under the field {name}.")
+        });
         list.push(Customisation {
             declaration: "left-out-per-key",
             applies_to: command_line(command, &leaf.path().join(" ")),
-            declares: "When the output budget leaves out answers, the command prints one failure \
-                       for each answer left out, at its key's position, in place of one failure \
-                       that names them all."
-                .to_owned(),
+            declares: format!(
+                "When the output budget leaves out answers, the command prints one failure for \
+                 each answer left out, at its key's position, in place of one failure that names \
+                 them all. The JSON document can pass the budget by the size of those \
+                 failures.{key}"
+            ),
         });
     }
     if let Some(line) = leaf.line() {

@@ -86,6 +86,10 @@ pub struct Document<T> {
     /// with a failure of its own, which the tool chose with
     /// `left_out_per_key`.
     per_key: bool,
+    /// The name of the failure field under which each over-budget failure
+    /// of an answer left out holds its key, which the tool set with
+    /// `key_field`.
+    key_field: Option<&'static str>,
     /// The function that returns the bytes of the row at a position of a
     /// headed batch, which `headed` sets. An untyped document has none.
     bytes_of: Option<RowBytes<T>>,
@@ -156,6 +160,7 @@ impl<T> Document<T> {
             in_order: false,
             headed: false,
             per_key: false,
+            key_field: None,
             bytes_of: None,
             type_value: None,
             summary_top: false,
@@ -292,6 +297,14 @@ impl<T> Document<T> {
         self.per_key
     }
 
+    /// Returns the name that [`Document::key_field`] set, under which each
+    /// over-budget failure of an answer left out holds its key, or `None`
+    /// when the tool named none.
+    #[must_use]
+    pub const fn key_field_name(&self) -> Option<&'static str> {
+        self.key_field
+    }
+
     /// Returns the function that [`Document::headed`] set, which returns
     /// the bytes of the row at a position among a batch's rows, or `None`
     /// for that row's place when the row holds no bytes or the position is
@@ -320,6 +333,7 @@ impl<T> Document<T> {
             in_order: self.in_order,
             headed: self.headed,
             per_key: self.per_key,
+            key_field: self.key_field,
             bytes_of: None,
             type_value: self.type_value,
             summary_top: self.summary_top,
@@ -378,15 +392,42 @@ impl<R: Row, E: AsFailure> Document<Batch<R, E>> {
     ///
     /// Each failure costs about 200 bytes of the budget where a key in the
     /// one failure's `left_out` costs a few, so `crumbkit::finish` prints the
-    /// most rows that fit beside them. When even the first row and every
-    /// such failure pass the budget, the batch ends with the one failure
-    /// that names the keys left out, as it does without this declaration.
+    /// most rows that fit beside them, and always the first row. Every answer
+    /// left out keeps its own failure, so the JSON document can pass the
+    /// budget by the size of those failures: a batch of 10,000 keys whose
+    /// first row fills the budget prints about 2 MB of failures after it.
     ///
     /// It is a declaration that crumbkit-test's `check_opt_outs` lists under
-    /// the customisations (ADR-0068).
+    /// the customisations (ADR-0068, ADR-0070).
     #[must_use]
     pub const fn left_out_per_key(mut self) -> Self {
         self.per_key = true;
+        self
+    }
+
+    /// Returns the same batch document with each over-budget failure of an
+    /// answer left out holding its key as text under the failure field
+    /// `name`, beside `budget`, so a reader that reads a failure's fields
+    /// finds the key where it reads the key of the tool's other failures.
+    ///
+    /// crumbkit-test's `check_guide` fails a name that breaks the field
+    /// name rule unless the guide's `field_names` lists it, and fails the
+    /// name `budget`. `check_opt_outs` names the field in the
+    /// `left-out-per-key` customisation (ADR-0070).
+    ///
+    /// # Panics
+    ///
+    /// Panics unless [`Document::left_out_per_key`] was called first,
+    /// because only that declaration gives each answer left out a failure
+    /// of its own. A `const` that calls it on such a document fails to
+    /// compile.
+    #[must_use]
+    pub const fn key_field(mut self, name: &'static str) -> Self {
+        assert!(
+            self.per_key,
+            "a key field needs left_out_per_key, which gives each answer left out its own failure"
+        );
+        self.key_field = Some(name);
         self
     }
 }

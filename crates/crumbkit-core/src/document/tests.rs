@@ -245,6 +245,31 @@ fn a_batch_answers_its_left_out_keys_in_one_failure_until_the_tool_asks_for_one_
 }
 
 #[test]
+fn a_batch_that_answers_each_left_out_key_names_no_key_field_until_the_tool_names_one() {
+    const MOONS: Document<crate::Batch<Moon, crate::Error>> =
+        Document::new("solar", "moons-show", 1, "Moons.");
+
+    assert_eq!(MOONS.left_out_per_key().key_field_name(), None);
+    assert_eq!(
+        MOONS
+            .left_out_per_key()
+            .key_field("moon")
+            .untyped()
+            .key_field_name(),
+        Some("moon")
+    );
+}
+
+#[test]
+#[should_panic(expected = "a key field needs left_out_per_key")]
+fn a_key_field_is_rejected_for_a_batch_that_answers_its_left_out_keys_in_one_failure() {
+    let document: Document<crate::Batch<Moon, crate::Error>> =
+        Document::new("solar", "moons-show", 1, "Moons.");
+
+    let _ = document.key_field("moon");
+}
+
+#[test]
 #[should_panic(expected = "crumbkit's own envelope")]
 fn failures_in_order_is_rejected_for_a_document_with_crumbkits_own_envelope() {
     let document: Document<crate::Batch<Moon, crate::Error>> =

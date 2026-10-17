@@ -601,6 +601,12 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit-test: [`check_opt_outs`] lists sorted JSON keys as the
   `json-keys` customisation of every run
   ([behaviour/adoption/declarations]).
+- crumbkit: `Document::key_field(name)` puts the key of each per-key
+  over-budget failure under the failure field `name`, beside `budget`
+  ([behaviour/output/budget]).
+- crumbkit-test: [`check_guide`] fails a key field that breaks the field name
+  rule and that `Guide::field_names` does not list, and a key field named
+  `budget`. [`check_opt_outs`] names the key field ([behaviour/adoption/declarations]).
 
 ### Changed
 
@@ -878,6 +884,16 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit: [`finish_to`] returns the exit code as a `u8`, and `Stop::number`
   gives the exit code of a run that `parse` ended as a `u8`, so a tool can
   record the code before it exits ([behaviour/output]).
+- crumbkit: a batch marked with `Document::left_out_per_key` always gives
+  each answer left out its own failure, and its JSON can pass the output
+  budget by their size. The fallback to one failure is removed
+  ([behaviour/output/budget]).
+- crumbkit: the one over-budget failure of a batch names every key left out
+  when the first row and a failure that names no key already pass the budget
+  ([behaviour/output/budget]).
+- crumbkit-test: the `left-out-per-key` customisation of [`check_opt_outs`]
+  says that the document can pass the budget by the size of its failures
+  ([behaviour/adoption/declarations]).
 
 ### Removed
 

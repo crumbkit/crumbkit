@@ -141,13 +141,14 @@ fn a_failure_too_long_for_the_budget_names_its_first_keys_and_counts_the_rest_as
 }
 
 #[test]
-fn a_batch_always_answers_its_first_key_and_lists_no_key_when_that_answer_passes_the_budget() {
+fn a_batch_always_answers_its_first_key_and_names_every_key_left_out_when_that_answer_passes_the_budget()
+ {
     let mut first = star(1);
     first.story = "a".repeat(2000);
     let finished = finish_small(
         &["--json"],
         STAR_BATCH,
-        keyed(vec![first, star(2)], Vec::<Error>::new()),
+        keyed(vec![first, star(2), star(3)], Vec::<Error>::new()),
     );
 
     assert_eq!(finished.code, ExitCode::FAILURE);
@@ -155,11 +156,11 @@ fn a_batch_always_answers_its_first_key_and_lists_no_key_when_that_answer_passes
     assert_eq!(document["data"].as_array().unwrap().len(), 1);
     assert_eq!(
         document["failures"][0]["fields"],
-        json!({"left_out": [], "left_out_from": 1, "unlisted": 1, "budget": 1024})
+        json!({"left_out": ["star-02", "star-03"], "left_out_from": 1, "budget": 1024})
     );
     assert_eq!(
         document["failures"][0]["recovery"],
-        json!({"kind": "hint", "text": "run the command again with the keys that were not answered"})
+        json!({"kind": "run", "call": "tool show <NAME>...", "all": "left_out"})
     );
 }
 

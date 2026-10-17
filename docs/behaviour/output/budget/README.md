@@ -112,7 +112,8 @@ each run answers at least one key, so the next failure lists fewer keys.
 
 When `unlisted` is above 0, the message adds that the recovery covers the
 keys listed in `left_out` and that a later run covers the rest. When
-`left_out` lists no key, the recovery is a hint to run the command again with
+`left_out` lists no key, because every answer left out has no key, the
+recovery is a hint to run the command again with
 the keys that were not answered. The message always counts every answer left
 out.
 
@@ -121,14 +122,16 @@ and counts against the budget. The rows that print are the most that fit
 beside a failure that lists every key left out after the first row. When even
 one row and that full list do not fit, one row prints, `left_out` lists the
 most first keys that fit, and `unlisted` counts the rest and any cut answer
-that has no key. A batch that prints its failures in input order ends its
+that has no key. When one row and a failure that lists no key already pass
+the budget, the document passes it whatever the failure lists, so `left_out`
+lists every key left out and the recovery runs the command with them. A batch that prints its failures in input order ends its
 array with the failure, at the top of an unwrapped document or under the data
 key of a document from `Document::with_keys`, and the failure counts against
 the budget in the same way. In text, and in any other document without the envelope, the failure
 prints on standard error, which the budget does not count, so it lists every
 key.
 
-Why: ADR-0046, ADR-0059.
+Why: ADR-0046, ADR-0059, ADR-0070.
 
 ### One failure for each answer left out
 
@@ -150,14 +153,25 @@ failures, each failure counts against the budget, and a row that prints
 takes the place of its failure. A row can be shorter than its failure, so
 `finish` measures each row and each failure once and prints the most rows
 that fit with the failures of every answer after them. When even the first
-row and the failure of every later answer pass the budget, the batch ends
-with the one failure that names the answers left out, as a batch without the
-mark does.
+row and the failure of every later answer pass the budget, the first row
+prints with every failure after it, so every answer still has its own
+failure. The document then passes the budget by the size of those failures,
+about 200 bytes each: a batch of 10,000 keys from a flag such as `--all`
+prints about 2 MB of failures after its first row.
+
+`Document::key_field(name)` puts each such failure's key under the field
+`name` beside `budget`, such as `"fields":{"budget":1048576,"path":"/hub"}`,
+for readers that read a failure's key from its fields. It needs
+`left_out_per_key` first. crumbkit-test's `check_guide` fails a name that
+breaks the field name rule unless the guide's `field_names` lists it, and
+fails the name `budget`.
 
 The mark is a declaration that crumbkit-test's `check_opt_outs` lists as the
-`left-out-per-key` customisation ([declarations](../../adoption/declarations.md)).
+`left-out-per-key` customisation, which says that the document can pass the
+budget and names the key field
+([declarations](../../adoption/declarations.md)).
 
-Why: ADR-0068.
+Why: ADR-0068, ADR-0070.
 
 ## Headed bytes
 
