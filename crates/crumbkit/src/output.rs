@@ -367,6 +367,14 @@ impl Output {
     }
 }
 
+/// Reports whether the caller gave `value`, a batch, more than one key.
+/// A headed batch prints its `==> KEY <==` headers by this rule, and a
+/// failure of such a batch reports it through
+/// [`PreparedFailure::among_several`](crate::form::PreparedFailure::among_several).
+fn several_keys<T: Rows>(value: &T) -> bool {
+    value.key(1).is_some()
+}
+
 /// Prints a command's result in the format that `output` chooses, and
 /// returns the process's exit code.
 ///

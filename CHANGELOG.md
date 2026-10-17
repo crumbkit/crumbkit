@@ -548,6 +548,9 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   headed leaf with half the bytes they print ([behaviour/output/budget]).
 - crumbkit-test: [`check_guide`] fails a leaf whose batch is not headed and
   whose row type has no `Row::COLUMNS` ([behaviour/help/examples]).
+- crumbkit: `PreparedFailure::among_several` tells a failure form whether a
+  batch failure's caller gave more than one key, the rule that headed
+  headers use ([behaviour/failures/forms]).
 
 ### Changed
 
