@@ -17,9 +17,6 @@ mod tests;
 /// The output budget of a tool that sets none: 1 MiB.
 pub(crate) const DEFAULT: usize = 1_048_576;
 
-/// The smallest budget that a tool can set with `Guide::output_budget`.
-pub(crate) const SMALLEST: usize = 1_024;
-
 /// The environment variable that lowers the budget of one run, which
 /// crumbkit-test's `check_output_budget` sets.
 pub(crate) const VARIABLE: &str = "CRUMBKIT_OUTPUT_BUDGET";

@@ -23,8 +23,7 @@ use crate::{
     Recovery, Row,
 };
 
-/// The smallest budget that a tool can set, which the tests use so that a
-/// few rows pass it.
+/// A budget that a few rows pass.
 const BUDGET: usize = 1024;
 
 const STARS: Document<Vec<Star>> = Document::new("sky", "stars", 1, "The test rows.");
@@ -323,9 +322,22 @@ fn an_output_from_a_guide_without_a_budget_has_crumbkit_s_default_of_one_mebibyt
 }
 
 #[test]
-#[should_panic(expected = "an output budget is at least 1024 bytes")]
-fn a_guide_refuses_an_output_budget_below_1024_bytes() {
-    let _ = Guide::new().output_budget(1023, "too small");
+fn a_guide_can_set_an_output_budget_below_one_kibibyte_and_a_listing_fits_in_it() {
+    let finished = finish_output(
+        &mut budgeted(300, &["--json"]),
+        STAR_LISTING,
+        Listing::new(stars(5), 5).described("stars"),
+    );
+
+    assert_eq!(finished.code, ExitCode::SUCCESS);
+    assert!(finished.out.len() <= 300, "{}", finished.out.len());
+    assert_eq!(parsed(&finished.out)["cut"]["budget"], 300);
+}
+
+#[test]
+#[should_panic(expected = "an output budget is at least 1 byte")]
+fn a_guide_refuses_an_output_budget_of_0_bytes() {
+    let _ = Guide::new().output_budget(0, "nothing");
 }
 
 /// A failure of a batch, so the property covers the batch's own failures.
