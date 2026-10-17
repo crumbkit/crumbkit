@@ -53,11 +53,18 @@ fn see(line: String) {
     });
 }
 
+/// Installs [`RECORDING`] as an observer of the test process once, so it
+/// hears each report once however many tests watch.
+#[cfg(unix)]
+static INSTALL: std::sync::Once = std::sync::Once::new();
+
 /// Runs `run` and returns the reports that it made on this thread. The
-/// first call installs [`RECORDING`] as the observer of the test process.
+/// first call installs [`RECORDING`] as an observer of the test process.
 #[cfg(unix)]
 pub(crate) fn watch(run: impl FnOnce()) -> Vec<String> {
-    let _ = observe(&RECORDING);
+    INSTALL.call_once(|| {
+        let _ = observe(&RECORDING);
+    });
     SEEN.set(Some(Vec::new()));
     run();
     SEEN.take().unwrap_or_default()

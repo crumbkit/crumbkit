@@ -21,6 +21,7 @@ its trace context.
 - [ADR-0032. The clap-free core crate](0032-core-crate.md)
 - [ADR-0048. Shell completion](0048-completion.md)
 - [ADR-0057. Run observer](0057-run-observer.md)
+- [ADR-0075. Several run observers](0075-several-observers.md)
 - [ADR-0054. Adoption](adoption/README.md)
 - [ADR-0055. Failures](failures/README.md)
 - [ADR-0022. Help](help/README.md)

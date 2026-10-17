@@ -344,7 +344,7 @@ where
             // page that keeps the styles, written as clap's `Error::print`
             // writes help, replaces this when a tool needs colour there.
             let code = print_text(sink, &page);
-            if crate::events::observer().is_some() {
+            if crate::events::observed() {
                 let root: Vec<String> = root.iter().map(|&name| name.to_owned()).collect();
                 crate::events::helped(&command, &root, true, crate::exit::number(code));
             }

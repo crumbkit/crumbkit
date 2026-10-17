@@ -15,7 +15,7 @@ use signal_hook::flag::register_conditional_default;
 /// the handler would then end the tool.
 pub(super) const RESTORES: bool = false;
 
-/// Installs the handlers of SIGQUIT and, unless the observer has taken
+/// Installs the handlers of SIGQUIT and, unless an observer has taken
 /// it, SIGINT, which take each signal's default action while the returned
 /// flag is true. It returns `None` when signal-hook cannot install the
 /// handlers, and the tool then keeps both signals' default actions.

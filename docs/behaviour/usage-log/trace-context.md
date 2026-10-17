@@ -52,9 +52,9 @@ hash groups an agent's runs, as the
 
 A run that cannot read random bytes installs no recorder, so it writes no
 line and gives its children no variables. `trace::child_env` returns
-variables only when the usage log is the
-[run observer](../run-observer/README.md) and the run writes a line, because
-it asks the observer for them, so a child never names a parent span that
+variables only when the usage log is a
+[run observer](../run-observer/README.md) and the run writes a line, or
+another observer gives them, because it asks the observers for them, so a child never names a parent span that
 nothing records.
 
 Why: ADR-0030, ADR-0057.
@@ -78,7 +78,7 @@ Why: ADR-0030.
 
 The `tracing` cargo feature, off by default, runs `parse` and `finish`
 inside spans of the `tracing` crate. The spans record the trace id and run
-id that the run observer gives. crumbkit installs no subscriber. A tool
+id of the first run observer that gives them. crumbkit installs no subscriber. A tool
 that wants one span per run opens its own span in `main`, and crumbkit's
 spans nest inside it.
 

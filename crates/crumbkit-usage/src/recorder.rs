@@ -29,6 +29,11 @@ mod tests;
 /// The recorder of this process. A poisoned lock counts as no recorder.
 static RECORDER: Mutex<State> = Mutex::new(State::Idle);
 
+/// Whether a `start` in this process has already tried to install the usage
+/// log's observer, so a later `start` installs it no second time and the
+/// recorder hears each report once.
+static OBSERVING: AtomicBool = AtomicBool::new(false);
+
 /// Whether the signal thread has taken SIGINT, which it does with either
 /// [`Signals`] value.
 static LISTENS: AtomicBool = AtomicBool::new(false);
@@ -166,12 +171,14 @@ impl Drop for Log {
 /// from the operating system, and a run whose ids cannot be read installs no
 /// recorder, so it writes no line and gives its children no variables.
 ///
-/// `start` installs the usage log as the process's observer with
-/// [`crumbkit::events::observe`], which installs nothing in a run that answers
-/// a shell's completion request, so a Tab press writes no line (ADR-0048). A
-/// run that already has an observer, such as one that the tool installed or
-/// an earlier `start`, installs no recorder either, and its guard writes
-/// nothing.
+/// `start` installs the usage log as one of the process's observers with
+/// [`crumbkit::events::observe`], beside any observer that the tool installed
+/// before it. `observe` installs nothing in a run that answers a shell's
+/// completion request, so a Tab press writes no line (ADR-0048), and
+/// nothing when the process already holds four observers. A run that then
+/// installs no observer installs no recorder either, and its guard writes
+/// nothing. Only the first `start` in a process installs the observer, so
+/// a second `start` installs nothing and its guard writes nothing.
 ///
 /// The line goes to `usage.jsonl` in the tool's directory under the XDG
 /// state directory, such as `~/.local/state/shelf/usage.jsonl`. On Windows
@@ -193,7 +200,9 @@ pub fn start() -> Log {
 /// [`Signals::Tool`] describes.
 pub fn start_with(signals: Signals) -> Log {
     let started = Instant::now();
-    let active = crumbkit::events::observe(&UsageLog)
+    let first = !OBSERVING.swap(true, Ordering::SeqCst);
+    let active = first
+        && crumbkit::events::observe(&UsageLog)
         && context::read()
             .is_some_and(|context| install(&RECORDER, Recorder::new(started, context)));
     if active {

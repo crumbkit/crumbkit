@@ -151,7 +151,7 @@ fn the_stream_exit_test_s_child_streams_one_row_and_times_out() {
 }
 
 #[test]
-fn a_start_after_the_tool_installed_its_own_observer_writes_no_line() {
+fn a_start_after_the_tool_installed_its_own_observer_writes_the_line_and_both_hear_each_report() {
     let state = TempDir::new("own-observer");
 
     let status = run_child(
@@ -160,24 +160,83 @@ fn a_start_after_the_tool_installed_its_own_observer_writes_no_line() {
     );
 
     assert_eq!(status.code(), Some(0));
-    assert!(!state.path().join("owned").exists());
+    let lines = log_lines(&state, "owned");
+    assert_eq!(lines.len(), 1);
+    assert_eq!(
+        lines[0]["tolerated"],
+        serde_json::json!(["owned::cache::stale"])
+    );
 }
 
-/// An observer of the tool's own, which hears every report and does nothing.
-struct Quiet;
+/// The code that the own-observer test's child tolerates.
+const STALE: Code = Code::new("owned", "cache", "stale");
 
-impl crumbkit::events::Observer for Quiet {}
+/// An observer of the tool's own, which notes that it heard a tolerated
+/// code.
+struct Quiet(std::sync::atomic::AtomicBool);
 
-/// Runs only as the child of the own-observer test. It installs [`Quiet`],
-/// starts the log, and gives the recorder a tool name, which an installed
-/// recorder would write a line for.
+impl crumbkit::events::Observer for Quiet {
+    fn tolerated(&self, _code: &'static Code) {
+        self.0.store(true, std::sync::atomic::Ordering::SeqCst);
+    }
+}
+
+/// The own-observer test's observer.
+static QUIET: Quiet = Quiet(std::sync::atomic::AtomicBool::new(false));
+
+/// Runs only as the child of the own-observer test. It installs [`QUIET`],
+/// starts the log, gives the recorder a tool name and reports a tolerated
+/// code. It exits with 3 when [`QUIET`] did not hear the code.
 #[test]
 fn the_own_observer_test_s_child_installs_an_observer_and_then_starts_the_log() {
     if !is_child() {
         return;
     }
-    assert!(crumbkit::events::observe(&Quiet));
+    assert!(crumbkit::events::observe(&QUIET));
     let log = start();
     typed(&Command::new("owned"), &["owned".into()], Spelling::COLONS);
+    crumbkit::events::tolerated(&STALE);
     drop(log);
+    if !QUIET.0.load(std::sync::atomic::Ordering::SeqCst) {
+        #[expect(
+            clippy::disallowed_methods,
+            reason = "the child tells the test that its own observer missed the report through its exit code"
+        )]
+        std::process::exit(3);
+    }
+}
+
+#[test]
+fn starting_the_log_again_installs_its_observer_once() {
+    let state = TempDir::new("starts");
+
+    let status = run_child(
+        "recorder::tests::processes::the_starts_test_s_child_starts_the_log_four_times_and_installs_three_observers",
+        &state,
+    );
+
+    assert_eq!(status.code(), Some(0));
+}
+
+/// An observer that hears nothing, which the starts test's child installs
+/// three times.
+struct Silent;
+
+impl crumbkit::events::Observer for Silent {}
+
+static SILENT: Silent = Silent;
+
+/// Runs only as the child of the starts test. It starts the log four times,
+/// and then installs three more observers, which fit only when the log took
+/// one of crumbkit's four observer slots.
+#[test]
+fn the_starts_test_s_child_starts_the_log_four_times_and_installs_three_observers() {
+    if !is_child() {
+        return;
+    }
+    let logs = [start(), start(), start(), start()];
+    for _ in 0..3 {
+        assert!(crumbkit::events::observe(&SILENT));
+    }
+    drop(logs);
 }

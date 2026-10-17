@@ -69,9 +69,11 @@ pub(crate) mod spans;
 /// run's trace, with this run as the child's parent, for
 /// `std::process::Command::envs`.
 ///
-/// It returns the variables that the observer gives through
-/// [`Observer::child_env`](crate::events::Observer::child_env). When the
-/// usage log is the observer and the run reached `parse`, it returns
+/// It returns the variables that the installed observers give through
+/// [`Observer::child_env`](crate::events::Observer::child_env), in the order
+/// the observers were installed, and leaves out a variable whose name an
+/// earlier observer already gave. When the usage log is an observer and the
+/// run reached `parse`, it returns
 /// `TRACEPARENT` as
 /// `00-<trace id>-<run id>-<flags>`. The flags keep the caller's sampled
 /// bit (`01`) and random-trace-id bit (`02`) and clear the others, and a new
@@ -90,5 +92,5 @@ pub(crate) mod spans;
 /// always returns no variables.
 #[must_use]
 pub fn child_env() -> Vec<(&'static str, String)> {
-    crate::events::observer().map_or_else(Vec::new, crate::events::Observer::child_env)
+    crate::events::child_env()
 }

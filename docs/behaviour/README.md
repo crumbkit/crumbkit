@@ -32,7 +32,7 @@ its reasons.
 - [Adoption](adoption/README.md): the guide, the core crate, the public
   API, [opt-outs](adoption/opt-outs.md) and
   [declarations](adoption/declarations.md).
-- [Run observer](run-observer/README.md): the observer that hears what
+- [Run observer](run-observer/README.md): the observers that hear what
   each run did.
 - [Usage log](usage-log/README.md): the local usage log,
   [trace context](usage-log/trace-context.md) and the
