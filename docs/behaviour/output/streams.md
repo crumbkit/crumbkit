@@ -41,7 +41,10 @@ Each column is as wide as its header, because the stream cannot know the
 widths of rows still to come. Two spaces separate the cells, the last cell
 is not padded, and a cell wider than its header pushes the rest of its line
 to the right. `stream` fails to compile for a row type with an empty
-`Row::COLUMNS`, because each line would print nothing of its row.
+`Row::COLUMNS`, because each line would print nothing of its row. A stream
+whose row type declares `Row::LINE` prints no header and prints each row's
+own line when the run passes none of `--json`, `--long` and `--fields`
+([rows with their own text line](README.md#rows-with-their-own-text-line)).
 
 With `--json`, each row prints as a whole envelope document on its own line,
 with `schema` and the row under `data`, so the output is JSON Lines and a
@@ -60,7 +63,7 @@ The stream flushes standard output after every line, so a reader sees each
 row as soon as it prints. Standard output stays locked while the stream is
 open.
 
-Why: ADR-0041, ADR-0052, ADR-0059, ADR-0063.
+Why: ADR-0041, ADR-0052, ADR-0059, ADR-0063, ADR-0064.
 
 ## Failures and the exit code
 

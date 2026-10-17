@@ -74,6 +74,11 @@
   ],
   "customisations": [
     {
+      "declaration": "text-line",
+      "applies_to": "reading lists list",
+      "declares": "The text prints each row as the line <NAME>: <ABOUT> in place of a table row."
+    },
+    {
       "declaration": "passes-on-exit",
       "applies_to": "reading finished edit",
       "declares": "The command exits with the exit code of the editor."

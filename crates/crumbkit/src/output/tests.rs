@@ -23,6 +23,7 @@ mod headed;
 mod in_order;
 mod keys;
 mod layout;
+mod lines;
 mod listing;
 mod notes;
 mod problems;

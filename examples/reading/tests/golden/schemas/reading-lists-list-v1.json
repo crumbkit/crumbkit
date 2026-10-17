@@ -1,0 +1,77 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "reading/lists-list/v1",
+  "description": "One page of reading's lists, each with its about text.",
+  "type": "object",
+  "properties": {
+    "cut": {
+      "description": "Present when the output budget cut the result short, so data holds only its first rows.",
+      "type": "object",
+      "properties": {
+        "budget": {
+          "description": "The most bytes that the run printed on standard output.",
+          "type": "integer",
+          "minimum": 0
+        },
+        "code": {
+          "description": "The over-budget code, in the tool's spelling.",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "code",
+        "budget"
+      ]
+    },
+    "data": {
+      "description": "The rows of the page, up to the limit.",
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/ListSummary"
+      }
+    },
+    "dry_run": {
+      "description": "Present, and true, when the run was a dry run that changed nothing.",
+      "const": true
+    },
+    "schema": {
+      "description": "The id of this document.",
+      "const": "reading/lists-list/v1"
+    },
+    "total": {
+      "description": "The number of rows that matched, of which data holds one page. It is absent when the tool did not count a source that holds more rows.",
+      "type": "integer",
+      "minimum": 0
+    },
+    "truncated": {
+      "description": "True when the document leaves out rows that matched, because of the limit or the output budget, and false when data holds every row.",
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "schema",
+    "data",
+    "truncated"
+  ],
+  "$defs": {
+    "ListSummary": {
+      "description": "One reading list and its about text.",
+      "type": "object",
+      "properties": {
+        "about": {
+          "description": "The list's about text, from the first line of its file.",
+          "type": "string"
+        },
+        "name": {
+          "description": "The list's name, which is also the name of its command.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "about"
+      ]
+    }
+  }
+}

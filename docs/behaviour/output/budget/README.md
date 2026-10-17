@@ -53,7 +53,9 @@ Why: ADR-0046.
 
 A listing or a list prints the most rows that fit, found by a binary search
 over the row count, and the run exits with code 0. The search measures each
-count of rows with a counter that keeps no bytes.
+count of rows with a counter that keeps no bytes. When the rows print
+[their own text line](../README.md#rows-with-their-own-text-line), the search
+counts the bytes of those lines, which `finish` builds once.
 
 - In text, a line such as `Showing 812 of 5000 books, because output stops at
   1048576 bytes. Ask for less with --limit or --fields.` prints on standard
@@ -66,7 +68,7 @@ count of rows with a counter that keeps no bytes.
 - A listing that holds `cut` also holds `"truncated": true`, and its `total`
   still counts every row that matched when the tool counted them.
 
-Why: ADR-0046.
+Why: ADR-0046, ADR-0064.
 
 ## Batches
 

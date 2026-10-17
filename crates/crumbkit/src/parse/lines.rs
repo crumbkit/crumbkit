@@ -187,6 +187,10 @@ struct Sections {
     /// line, which [`Leaf::output_line`] returns, or `None` when the leaf
     /// has none.
     output: Option<&'static str>,
+    /// The `Text:` line that `-h` and `--help` print after the `Output:`
+    /// line, which [`Leaf::text_help_line`] returns, or `None` when the
+    /// leaf's rows print a table (ADR-0064).
+    text: Option<String>,
     /// The `Exit code:` line that `-h` and `--help` print after the
     /// `Output:` line for a leaf that passes on a program's exit code, or
     /// `None` when the leaf passes on none.
@@ -231,6 +235,7 @@ fn leaf_sections(
             .get_effects()
             .and_then(|effects| effects.writes_line(expect::takes_expect(node))),
         output: leaf.output_line(),
+        text: leaf.text_help_line(),
         exit: leaf
             .get_passes_on_exit()
             .map(|program| format!("Exit code: the command passes on the exit code of {program}.")),
@@ -255,7 +260,8 @@ struct Lines<'a> {
 /// and then crumbkit's `lines`. The lines are the leaf's effects line in
 /// `-h` and `--help` when it declares effects, its `Writes:` line in `-h`
 /// and `--help` when it guards what it writes, the `Output:` line in `-h`
-/// and `--help` when the leaf prints a stream or bytes, the `Exit code:`
+/// and `--help` when the leaf prints a stream or bytes, the `Text:` line in
+/// `-h` and `--help` when its rows print their own text line, the `Exit code:`
 /// line in `-h` and `--help` when the leaf passes on a program's exit code,
 /// the `Problems:` line in `-h` and `--help` when its rows name a problem
 /// field, the global flags
@@ -283,6 +289,10 @@ fn set_help_lines(node: &mut Command, text: &str, lines: &Lines<'_>, sections: S
     if let Some(output) = sections.output {
         short.push(output.to_owned());
         long.push(output.to_owned());
+    }
+    if let Some(text) = sections.text {
+        short.push(text.clone());
+        long.push(text);
     }
     if let Some(exit) = sections.exit {
         short.push(exit.clone());

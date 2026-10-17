@@ -6,7 +6,7 @@ shelf books show         534         111     1852        -     -            -
 shelf books summarize    477         101     1785        -     -            -
 shelf books remove       716         114     2037        -     -            -
 shelf commands           367         -       980         -     -            -
-shelf commands list      702         2295    3977        -     -            -
+shelf commands list      702         2307    3989        -     -            -
 shelf schemas            424         -       1037        -     -            -
 shelf schemas list       502         1409    2948        -     -            -
 shelf schemas show       489         2246    3772        -     -            -

@@ -6,6 +6,7 @@ reading entries stream  Print each entry of the reading list that --list names a
 reading entries set     Replace or append an entry of the reading list that --list names
 reading entries export  Print the file of the reading list that --list names, as the file holds it
 reading lists           Print the files of reading's lists
+reading lists list      List reading's lists, each as one line with its about text
 reading lists show      Print the file of each reading list named, each under a header when there are several
 reading commands        Explore reading's commands
 reading commands list   List a branch of reading's commands with their arguments and examples

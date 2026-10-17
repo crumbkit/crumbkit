@@ -344,3 +344,44 @@ fn a_command_whose_anchor_is_the_title_s_is_refused() {
         "`Commands of commands` and `commands of commands` both have the anchor #commands-of-commands, so a link to the second would reach the first"
     );
 }
+
+#[test]
+fn a_command_whose_rows_print_their_own_line_prints_the_text_line_as_help_does() {
+    let input = document(&[command(
+        "tool links check",
+        "Check",
+        json!({
+            "form": "document",
+            "line": "<POINTER> -> <TARGET>",
+            "columns": [
+                {"name": "pointer", "long": false, "description": "The pointer."},
+                {"name": "status", "long": true, "description": "The status."},
+            ],
+        }),
+    )]);
+
+    let reference = render(&input).unwrap();
+
+    let expected = format!(
+        "\n{}\n",
+        crumbkit::help::text_line("`<POINTER> -> <TARGET>`", true)
+    );
+    assert!(
+        reference.text().ends_with(&expected),
+        "{}",
+        reference.text()
+    );
+}
+
+#[test]
+fn a_document_from_before_the_line_field_existed_prints_no_text_line() {
+    let input = document(&[command(
+        "tool links check",
+        "Check",
+        json!({"form": "document"}),
+    )]);
+
+    let reference = render(&input).unwrap();
+
+    assert!(!reference.text().contains("Text:"), "{}", reference.text());
+}

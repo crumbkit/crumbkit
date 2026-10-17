@@ -1,0 +1,17 @@
+List reading's lists, each as one line with its about text
+
+Usage: reading lists list [OPTIONS]
+
+Options:
+      --limit <N>  Print at most this many rows [default: 10]
+      --all        Print every row
+  -h, --help       Print help (see more with '--help')
+
+Examples:
+  reading lists list
+  reading lists list --fields name
+
+Effects: read-only, closed-world.
+Text: one line per row, <NAME>: <ABOUT>; --fields prints a table.
+Global flags: --json, --fields <FIELD>, --full, --no-input. `reading lists list --help` describes them.
+Next: reading lists list --help explains each column.

@@ -53,6 +53,10 @@ lacks, so a program reads every row the same way.
   document and `null` for one without ([streams](../output/streams.md),
   [bytes](../output/README.md#bytes),
   [headed bytes](../output/README.md#headed-bytes)).
+- `line` holds the form of each row's own text line, such as
+  `<NAME>: <ABOUT>`, or `null` when the leaf's rows print a table or the
+  leaf has no document
+  ([rows with their own text line](../output/README.md#rows-with-their-own-text-line)).
 - `columns` lists a headed leaf's JSON fields that `--fields` selects,
   ending with `text` and `base64`, because its text has no columns.
 - `exits` lists the exit codes that the tool declares for the command, each
@@ -68,4 +72,4 @@ prints the arguments, examples, columns and exit codes. The schema of the
 formats, and crumbkit-markdown writes a Markdown [reference](reference.md)
 from its JSON document.
 
-Why: ADR-0026, ADR-0016, ADR-0037, ADR-0039, ADR-0041, ADR-0047.
+Why: ADR-0026, ADR-0016, ADR-0037, ADR-0039, ADR-0041, ADR-0047, ADR-0064.

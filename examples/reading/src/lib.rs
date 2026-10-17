@@ -109,6 +109,13 @@ where
                     crumbkit::finish(&mut cli.output, SPELLING, lists::ENTRIES_SET, result)
                 }
                 Resource::Lists {
+                    command: ListsCommand::List(args),
+                } => {
+                    let result =
+                        Ok::<_, lists::EntriesError>(lists::summaries(dir.as_deref(), &args.page));
+                    crumbkit::finish(&mut cli.output, SPELLING, lists::LISTS_LIST, result)
+                }
+                Resource::Lists {
                     command: ListsCommand::Show(args),
                 } => {
                     let result =

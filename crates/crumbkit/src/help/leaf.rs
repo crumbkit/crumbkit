@@ -20,9 +20,11 @@ mod passes;
 mod refusal;
 #[cfg(test)]
 mod tests;
+mod text;
 
 pub use column::Column;
 pub use refusal::RefusalContext;
+pub use text::text_line;
 
 /// The line that the `-h` and `--help` of a leaf set with
 /// [`Leaf::stream`] print after the effects line, in help's wording
@@ -189,6 +191,7 @@ impl Leaf {
             compact: <T::Row as Row>::COLUMNS,
             long: <T::Row as Row>::LONG_COLUMNS,
             problem: <T::Row as Row>::PROBLEM,
+            line: <T::Row as Row>::LINE,
             schema: schema::<T::Row>,
             envelope: crate::schemas::envelope::<T>,
             shape: Some(T::SHAPE),
@@ -210,6 +213,7 @@ impl Leaf {
             compact: R::COLUMNS,
             long: R::LONG_COLUMNS,
             problem: R::PROBLEM,
+            line: R::LINE,
             schema: schema::<R>,
             envelope: crate::schemas::envelope::<R>,
             shape: None,
@@ -473,6 +477,8 @@ struct Columns {
     long: &'static [&'static str],
     /// The row type's [`Row::PROBLEM`].
     problem: Option<&'static str>,
+    /// The row type's [`Row::LINE`].
+    line: Option<&'static str>,
     /// Builds the row type's JSON Schema, whose properties hold the
     /// columns' descriptions.
     schema: fn() -> Schema,

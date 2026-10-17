@@ -402,6 +402,7 @@ fn a_row_holds_its_leaf_s_examples_as_quoted_command_lines_and_its_columns() {
                 },
             ],
             "form": "document",
+            "line": null,
             "exits": [],
             "effects": null,
             "writes": null,

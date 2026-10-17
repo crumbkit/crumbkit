@@ -12,11 +12,14 @@ use super::budget::{Over, OverBudget};
 use super::dry_run::DRY_RUN_LINE;
 use super::envelope::{Extras, Selected, write_document};
 use super::failure::{self, PreparedFailure, Printing};
-use super::{Output, fields, problems, table, unwrapped};
+use super::{Output, lines, problems, table, unwrapped};
 use crate::{AsFailure, Document, Failure, Row, Sink, Spelling, Stream, codes, exit};
 
+mod open;
 #[cfg(test)]
 mod tests;
+
+use self::open::open;
 
 /// Opens the stream of `document` on the process's standard output and
 /// standard error, in the format that `output` chooses.
@@ -49,7 +52,9 @@ pub fn stream<R: Row>(
 /// they call [`finish_to`](crate::finish_to).
 ///
 /// In text, the stream prints the table's header when it opens, then one
-/// line for each item. Each column is as wide as its header, two spaces
+/// line for each item. A row type that sets [`Row::LINE`] prints no header
+/// and prints each item's own text line, unless `--long` or `--fields`
+/// names columns (ADR-0064). Each column is as wide as its header, two spaces
 /// separate the columns, and the last cell is not padded. A cell wider than
 /// its header pushes the rest of its line to the right, because the stream
 /// cannot know the widths of the items still to come. `--long` adds the long
@@ -165,6 +170,9 @@ pub struct Streaming<'a, R, O, W> {
     full: bool,
     /// Whether the run is a dry run.
     dry_run: bool,
+    /// Whether each item prints its own text line in place of a table row
+    /// (ADR-0064).
+    lined: bool,
     /// The names that `--fields` gave, which an unwrapped document selects.
     fields: &'a [String],
     /// The columns of each item, in order.
@@ -216,77 +224,6 @@ enum State {
     /// The next item would have passed the output budget, which the stream
     /// reported once, so the stream stops and exits with 1.
     Spent,
-}
-
-/// Opens the stream on `out` and `err`, as [`stream_to`] describes.
-fn open<R: Row, O: Write, W: Write>(
-    out: O,
-    mut err: W,
-    output: &mut Output,
-    spelling: Spelling,
-    document: Document<Stream<R>>,
-) -> Result<Streaming<'_, R, O, W>, ExitCode> {
-    super::columns::require_for_stream::<R>();
-    output.warn_without_command(&mut err);
-    let typed = output.typed();
-    let budget = output.budget();
-    let printing = output.printing();
-    let Output {
-        json,
-        fields,
-        long,
-        full,
-        command,
-        dry_run,
-        ..
-    } = output;
-    let columns: Vec<&str> = if fields.is_empty() {
-        let long = if *long { R::LONG_COLUMNS } else { &[] };
-        R::COLUMNS.iter().chain(long).copied().collect()
-    } else {
-        fields.iter().map(String::as_str).collect()
-    };
-    let mut streaming = Streaming {
-        out,
-        err,
-        json: *json,
-        full: *full,
-        dry_run: *dry_run,
-        fields: fields.as_slice(),
-        widths: columns.iter().map(|name| name.chars().count()).collect(),
-        columns,
-        command: command.as_mut(),
-        spelling,
-        printing,
-        document,
-        failed: false,
-        exit: 1,
-        state: State::Open,
-        line: Vec::new(),
-        budget,
-        sent: 0,
-        items: 0,
-        problems: 0,
-        #[cfg(feature = "tracing")]
-        span: crate::trace::spans::finish(),
-    };
-    let envelope = document.has_envelope();
-    if let Some(refusal) = fields::refusal::<R>(None, envelope, false, streaming.fields, typed) {
-        return Err(streaming.refuse(&refusal));
-    }
-    if !streaming.json {
-        let header: Vec<Cow<'_, str>> = streaming
-            .columns
-            .iter()
-            .map(|name| Cow::Owned(name.to_uppercase()))
-            .collect();
-        let written = table::write_line(&mut streaming.line, &header, &streaming.widths);
-        // The header is written to a `Vec`, which never fails.
-        if written.is_ok() {
-            let _ = streaming.send();
-        }
-    }
-    Ok(streaming)
 }
 
 impl<R: Row, O: Write, W: Write> Streaming<'_, R, O, W> {
@@ -459,6 +396,10 @@ impl<R: Row, O: Write, W: Write> Streaming<'_, R, O, W> {
                 item,
                 &Extras::none(),
             );
+        }
+        if self.lined {
+            line.extend_from_slice(lines::line(item)?.as_bytes());
+            return Ok(());
         }
         let row = serde_json::to_value(item)?;
         if self.json {

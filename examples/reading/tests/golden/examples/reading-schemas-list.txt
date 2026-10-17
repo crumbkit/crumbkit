@@ -4,6 +4,7 @@ reading/entries-list/v1    output  document  One page of a reading list's entrie
 reading/entries-stream/v1  output  stream    Each entry of a reading list, printed as reading reads it.
 reading/entries-export/v1  output  document  The bytes of a reading list's file, as the file holds them.
 reading/entries-set/v1     output  document  The entry that the run writes to a reading list, or would write on a dry run.
+reading/lists-list/v1      output  document  One page of reading's lists, each with its about text.
 reading/lists-show/v1      output  document  The file of each reading list named, in the order the names were given.
 crumbkit/commands-list/v1  output  document  One branch of the tool's commands with their arguments, examples and columns.
 crumbkit/schemas-list/v1   output  document  The JSON documents that the tool prints, with a description of each.

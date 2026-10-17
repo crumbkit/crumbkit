@@ -548,6 +548,15 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   headed leaf with half the bytes they print ([behaviour/output/budget]).
 - crumbkit-test: [`check_guide`] fails a leaf whose batch is not headed and
   whose row type has no `Row::COLUMNS` ([behaviour/help/examples]).
+- crumbkit: a [`Row`] that declares `LINE` and `text_line` prints each row
+  as its own line in text, with no header. `--long` and `--fields` print the
+  table, and help prints a `Text:` line ([behaviour/output]).
+- crumbkit: `commands list` gives each command a `line` field, and
+  crumbkit-markdown's reference prints the `Text:` line as help does
+  ([behaviour/help/commands-list]).
+- crumbkit-test: [`check_guide`] fails a `Row::LINE` that is not one
+  non-empty line or that belongs to a headed leaf, and [`check_opt_outs`]
+  lists a `text-line` customisation ([behaviour/help/examples]).
 
 ### Changed
 

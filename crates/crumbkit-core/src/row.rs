@@ -71,6 +71,30 @@ pub trait Row: Serialize + JsonSchema {
     /// `check_guide` fails when the field is not one of `COLUMNS`, or when
     /// its type is not a string, a boolean or a value that can be null.
     const PROBLEM: Option<&'static str> = None;
+
+    /// The form of the row's own text line as help shows it, such as
+    /// `<POINTER> -> <TARGET>`, or `None` when the row prints as a table
+    /// row (ADR-0064).
+    ///
+    /// When it is set, the default text prints each row's
+    /// [`Row::text_line`] in place of the table, without a header. `--long`
+    /// and `--fields` still print the table, because they name columns, and
+    /// `--json` is unchanged. The leaf's help prints the form on a `Text:`
+    /// line. crumbkit-test's `check_guide` fails a form that is not one
+    /// non-empty line, and a headed leaf whose row type sets it, because a
+    /// headed batch's text prints each row's bytes.
+    const LINE: Option<&'static str> = None;
+
+    /// Returns the row's own text line, without a line feed, or `None` when
+    /// the row has none. crumbkit reads it only when [`Row::LINE`] is set.
+    ///
+    /// crumbkit escapes each control character of the line, such as a line
+    /// feed as `\n`, and ends the line with a line feed, so each row stays
+    /// one line. A row that returns `None` prints as one line of compact
+    /// JSON with every field.
+    fn text_line(&self) -> Option<String> {
+        None
+    }
 }
 
 /// A row type that holds bytes, such as a file's contents, so a batch of

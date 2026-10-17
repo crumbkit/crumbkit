@@ -142,3 +142,34 @@ fn a_headed_row_has_the_headed_form_and_lists_its_json_fields_with_text_and_base
         ])
     );
 }
+
+/// A removed book whose text is its own line.
+#[derive(serde::Serialize, schemars::JsonSchema)]
+struct Removed {
+    /// The book's id.
+    id: u32,
+}
+
+impl crate::Row for Removed {
+    const COLUMNS: &'static [&'static str] = &["id"];
+    const LINE: Option<&'static str> = Some("removed <ID>");
+}
+
+#[test]
+fn a_row_holds_the_text_line_form_of_its_leaf_s_rows() {
+    const GUIDE: Guide = Guide::new().leaves(&[Leaf::new(&["books", "remove"]).document(
+        crate::Document::<Vec<Removed>>::new("shelf", "books-remove", 1, "The removed books."),
+    )]);
+
+    assert_eq!(row(&GUIDE)["line"], json!("removed <ID>"));
+}
+
+#[test]
+fn a_row_holds_a_null_line_when_its_leaf_s_rows_print_a_table() {
+    const BOOKS: crate::Document<Vec<Book>> =
+        crate::Document::new("shelf", "books-remove", 1, "The removed books.");
+    const GUIDE: Guide = Guide::new().leaves(&[Leaf::new(&["books", "remove"]).document(BOOKS)]);
+
+    assert_eq!(row(&GUIDE)["line"], Value::Null);
+    assert!(row(&Guide::new()).as_object().unwrap().contains_key("line"));
+}

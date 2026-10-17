@@ -11,6 +11,7 @@ mod envelope;
 pub(crate) mod failure;
 mod fields;
 mod layout;
+mod lines;
 mod listing;
 mod problems;
 mod prose;

@@ -44,6 +44,27 @@ missing field as `-`, and an array or an object as compact JSON.
 
 Why: ADR-0016, ADR-0063.
 
+## Rows with their own text line
+
+A row type may print each row in its own form in place of a table row. It
+declares the form for help in `Row::LINE`, such as `Some("<NAME>: <ABOUT>")`,
+and builds each row's line in `Row::text_line`. When `LINE` is `Some` and the
+run passes none of `--json`, `--long` and `--fields`, the text prints each
+row's line with control characters escaped, followed by a line feed, and
+prints no header. A row whose `text_line` returns `None` prints as one line
+of compact JSON with every field.
+
+`--long` and `--fields` print the table, and JSON is unchanged. A stream of
+such rows prints each row's line as it arrives, with no header. The
+[output budget](budget/README.md) counts the bytes of the lines, and a
+listing keeps its footer on standard error. Help prints a `Text:` line that
+shows the form ([help](../help/README.md)). A [headed batch](#headed-bytes)
+prints each row's bytes, so crumbkit-test's `check_guide` fails a headed
+leaf whose row type declares `LINE`, and it fails a `LINE` that is not one
+non-empty line.
+
+Why: ADR-0064.
+
 ## View flags
 
 The view flags are `--fields`, `--long` and `--full`, and like every

@@ -14,8 +14,11 @@ use crate::help::words::quote;
 use crate::help::{Effects, Guide, Leaf, effects};
 use crate::{Row, Shape};
 
+mod schema;
 #[cfg(test)]
 mod tests;
+
+use self::schema::argument_schema;
 
 /// One visible command of a branch, as `commands list` prints it: what the
 /// command's `-h` and `--help` show, apart from layout.
@@ -35,6 +38,7 @@ pub struct CommandRow {
     examples: Vec<CommandExample>,
     columns: Vec<CommandColumn>,
     form: Option<&'static str>,
+    line: Option<&'static str>,
     exits: Vec<CommandExit>,
     effects: Option<Effects>,
     writes: Option<Writes>,
@@ -157,6 +161,7 @@ impl CommandRow {
             examples,
             columns,
             form: leaf.and_then(form),
+            line: leaf.and_then(Leaf::line),
             exits,
             effects: leaf.and_then(Leaf::get_effects),
             writes: effects::writes(leaf.and_then(Leaf::get_effects), takes_expect(command)),
@@ -348,7 +353,7 @@ impl Row for CommandRow {
 /// needs no `serde_derive`.
 impl Serialize for CommandRow {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        let mut row = serializer.serialize_struct("CommandRow", 10)?;
+        let mut row = serializer.serialize_struct("CommandRow", 11)?;
         row.serialize_field("path", &self.path)?;
         row.serialize_field("about", &self.about)?;
         row.serialize_field("long_about", &self.long_about)?;
@@ -356,6 +361,7 @@ impl Serialize for CommandRow {
         row.serialize_field("examples", &self.examples)?;
         row.serialize_field("columns", &self.columns)?;
         row.serialize_field("form", &self.form)?;
+        row.serialize_field("line", &self.line)?;
         row.serialize_field("exits", &self.exits)?;
         row.serialize_field("effects", &self.effects)?;
         row.serialize_field("writes", &self.writes)?;
@@ -491,6 +497,10 @@ impl JsonSchema for CommandRow {
                     "description": "stream when the command prints a stream, one row on each line as each arrives, bytes when it prints one document that holds bytes, which its text prints unchanged, headed when it prints one document whose text prints each answer's bytes under a header, document when it prints any other document, and null when the guide's leaf for the command declares no document.",
                     "enum": ["bytes", "document", "headed", "stream", null],
                 },
+                "line": {
+                    "description": "The form of the text line that each row prints in place of a table row, such as `<POINTER> -> <TARGET>`, or null when the rows print a table or the command declares no document.",
+                    "type": ["string", "null"],
+                },
                 "exits": {
                     "description": "The exit codes that the tool declares for the command besides crumbkit's 0, 1 and 2, in guide order. `<tool> help exit-codes` describes every code.",
                     "type": "array",
@@ -514,78 +524,7 @@ impl JsonSchema for CommandRow {
                 "effects": effects::schema(),
                 "writes": effects::writes_schema(),
             },
-            "required": ["path", "about", "long_about", "arguments", "examples", "columns", "form", "exits", "effects", "writes"],
+            "required": ["path", "about", "long_about", "arguments", "examples", "columns", "form", "line", "exits", "effects", "writes"],
         })
     }
-}
-
-/// Returns the schema of one argument, which `CommandRow`'s schema lists
-/// under `arguments`.
-fn argument_schema() -> Schema {
-    json_schema!({
-        "type": "object",
-        "properties": {
-            "name": {
-                "description": "The name as help writes it: `--all` for an argument with a long name, `-a` for one with only a short name, and `<ID>` for a positional argument.",
-                "type": "string",
-            },
-            "short": {
-                "description": "The short form, such as `-n`, when the argument has one.",
-                "type": ["string", "null"],
-            },
-            "value_names": {
-                "description": "The names of the values that the argument takes, such as `N`, and none for a flag.",
-                "type": "array",
-                "items": { "type": "string" },
-            },
-            "required": {
-                "description": "Whether the command refuses a command line without the argument.",
-                "type": "boolean",
-            },
-            "many": {
-                "description": "Whether the argument takes more than one value, through repeats, commas or several words.",
-                "type": "boolean",
-            },
-            "defaults": {
-                "description": "The values that the argument takes when the caller leaves it out, as help shows them.",
-                "type": "array",
-                "items": { "type": "string" },
-            },
-            "possible_values": {
-                "description": "The values that the argument accepts, as help shows them, and none when it accepts any value.",
-                "type": "array",
-                "items": { "type": "string" },
-            },
-            "help": {
-                "description": "The one-line help: the argument's `help`, or its `long_help` when it has no `help`.",
-                "type": ["string", "null"],
-            },
-            "long_help": {
-                "description": "The full help that `--help` shows, when the argument has one.",
-                "type": ["string", "null"],
-            },
-            "global": {
-                "description": "Whether the argument also works after every subcommand below the command that defines it.",
-                "type": "boolean",
-            },
-            "one_of": {
-                "description": "The visible arguments that can be given in place of this one. These are the other arguments of each required group that holds it and, when the argument is required, the arguments it conflicts with. The list is empty when no argument can be given in its place.",
-                "type": "array",
-                "items": { "type": "string" },
-            },
-        },
-        "required": [
-            "name",
-            "short",
-            "value_names",
-            "required",
-            "many",
-            "defaults",
-            "possible_values",
-            "help",
-            "long_help",
-            "global",
-            "one_of",
-        ],
-    })
 }

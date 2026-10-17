@@ -12,11 +12,12 @@ use super::budget::{self, Cut, Over, OverBudget};
 use super::envelope::{Extras, Failures, Selected, SelectedRows, write_document};
 use super::failure::PreparedFailure;
 use super::table::Table;
-use super::{Output, layout, listing, problems, prose};
+use super::{Output, layout, lines, listing, problems, prose};
 use crate::form::FailureForm;
 use crate::{Code, Document, JsonLayout, Row, Rows, Shape, Spelling, codes};
 
 mod batch;
+mod cut;
 mod headed;
 mod in_order;
 
@@ -221,9 +222,13 @@ fn write_rows<T: Rows>(
 
 /// Returns the columns that the table and the compact JSON show, or an
 /// empty list, which does not allocate, when the result prints whole with
-/// every field or is a prose result. Unwrapped or headed JSON holds every
-/// field unless `--fields` names some (ADR-0062).
+/// every field, is a prose result, or prints each row's own text line.
+/// Unwrapped or headed JSON holds every field unless `--fields` names some
+/// (ADR-0062).
 fn columns<'a, T: Rows>(output: &'a Output, document: Document<T>, value: &T) -> Vec<&'a str> {
+    if lines::chosen::<T::Row>(output) {
+        return Vec::new();
+    }
     let unwrapped = output.json && (!document.has_envelope() || document.is_headed());
     let selects = if unwrapped {
         !output.fields.is_empty()
@@ -289,6 +294,9 @@ struct Prepared<'a, T> {
     values: &'a [Value],
     /// The text table, when the result prints one.
     table: Option<Table<'a>>,
+    /// The text line of each row with its line feed, when the rows print
+    /// their own lines in place of the table (ADR-0064).
+    lines: Option<Vec<String>>,
     /// The escaped text of a prose result in text.
     prose: Option<String>,
     /// The rendered call and the phrase of the `Next:` line.
@@ -314,7 +322,14 @@ impl<'a, T: Rows> Prepared<'a, T> {
             Some(prose) if text => Some(prose::text(prose)?),
             _ => None,
         };
-        let table = (text && value.prose().is_none()).then(|| Table::new(columns, values));
+        let lines = if lines::chosen::<T::Row>(output) {
+            let rows = value.rows().iter().map(lines::line);
+            Some(rows.collect::<io::Result<Vec<String>>>()?)
+        } else {
+            None
+        };
+        let table = (text && value.prose().is_none() && lines.is_none())
+            .then(|| Table::new(columns, values));
         Ok(Self {
             document,
             value,
@@ -327,6 +342,7 @@ impl<'a, T: Rows> Prepared<'a, T> {
             columns,
             values,
             table,
+            lines,
             prose,
             next,
             problems,
@@ -419,57 +435,6 @@ impl<'a, T: Rows> Prepared<'a, T> {
         Ok(bytes)
     }
 
-    /// Writes the most first rows of a listing or a list that fit in
-    /// `budget`, marked as cut short with `code`, which `spelled` spells.
-    /// A document that always prints its first answer prints at least one
-    /// row.
-    fn cut(
-        &mut self,
-        out: &mut impl Write,
-        err: &mut impl Write,
-        spelled: String,
-        code: &'static Code,
-        budget: usize,
-    ) -> io::Result<(Answer, usize)> {
-        let rows = self.value.rows().len();
-        let cut = Cut {
-            code: spelled,
-            budget,
-        };
-        let low = usize::from(self.document.always_prints_first());
-        let mut fits = |shown| {
-            let bytes = budget::measure(|counter| self.write(counter, shown, Some(&cut), None))?;
-            Ok(bytes <= budget)
-        };
-        let shown = budget::largest(low, rows - 1, &mut fits)?;
-        if shown == 0 && !fits(0)? {
-            // Even the result without rows passes the budget, as a long
-            // summary can, so the result is refused as a single row is.
-            let over = OverBudget {
-                code,
-                budget,
-                over: Over::Row,
-            };
-            return Ok((Answer::Refused(over), 0));
-        }
-        let bytes = self.measured_write(out, shown, Some(&cut), None)?;
-        self.send_notes(err, &mut Vec::new(), shown, Some(&cut));
-        Ok((Answer::Cut(code), bytes))
-    }
-
-    /// Writes the line that says the budget cut the result short to `out`.
-    fn write_cut_line(&self, out: &mut impl Write, shown: usize, cut: &Cut) -> io::Result<()> {
-        let listing = T::SHAPE == Shape::Listing;
-        // A list holds every row it has, and a listing without a total has
-        // no count to give.
-        let total = match self.value.total() {
-            None if !listing => Some(self.value.rows().len()),
-            total => total,
-        };
-        let description = self.value.description();
-        budget::write_cut_line(out, shown, total, description, cut.budget, listing)
-    }
-
     /// Writes `data` with `extras` in the document's envelope, with the
     /// run's dry-run mark and the guide's JSON layout.
     fn envelope<D: Serialize, M: Serialize>(
@@ -560,6 +525,9 @@ impl<'a, T: Rows> Prepared<'a, T> {
         }
         if let Some(table) = &mut self.table {
             table.write(out, shown)?;
+        }
+        for line in self.lines.iter().flatten().take(shown) {
+            out.write_all(line.as_bytes())?;
         }
         Ok(())
     }
