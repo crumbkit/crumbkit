@@ -23,9 +23,11 @@ The lines print in this order, each only on the pages named:
    [Leaf examples and columns](examples.md) describes.
 2. `Effects:` on a leaf that declares its effects, then `Writes:` on a leaf
    that declares write guards ([write guards](../effects/write-guards.md)),
-   then `Output:` on a leaf that prints a stream, bytes or a headed batch
+   then `Output:` on a leaf that prints a stream, bytes, a headed batch or
+   rows whose text is one line of JSON for each row
    ([streams](../output/streams.md),
-   [headed bytes](../output/README.md#headed-bytes)), then `Problems:` on a leaf whose row
+   [headed bytes](../output/README.md#headed-bytes),
+   [rows printed whole](../output/README.md#rows-printed-whole)), then `Problems:` on a leaf whose row
    type names a problem field.
 3. In `-h`, one line that names the visible global flags of the root and of
    each command on the way. `--help` lists those flags in full.
@@ -42,7 +44,7 @@ version keep clap's colours only when standard output is a terminal and the
 guide keeps [terminal detection](../output/terminal.md) on. Help, the
 version, a topic and the topic list print to standard output with exit code 0.
 
-Why: ADR-0021, ADR-0024, ADR-0039, ADR-0041, ADR-0047, ADR-0049.
+Why: ADR-0021, ADR-0024, ADR-0039, ADR-0041, ADR-0047, ADR-0049, ADR-0065.
 
 ## The walk before parsing
 

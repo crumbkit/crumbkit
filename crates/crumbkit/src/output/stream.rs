@@ -9,12 +9,13 @@ use std::process::ExitCode;
 use clap::Command;
 
 use super::budget::{Over, OverBudget};
+use super::columns::json_lines;
 use super::dry_run::DRY_RUN_LINE;
-use super::envelope::{Extras, Selected, write_document};
 use super::failure::{self, PreparedFailure, Printing};
-use super::{Output, fields, problems, table, unwrapped};
+use super::{Output, fields, problems, table};
 use crate::{AsFailure, Document, Failure, Row, Sink, Spelling, Stream, codes, exit};
 
+mod render;
 #[cfg(test)]
 mod tests;
 
@@ -31,7 +32,8 @@ mod tests;
 /// It returns `Err` with the exit code of a refused command line, 2 unless
 /// the guide lists another, after it prints the refusal of a view flag that
 /// the stream cannot use. `--fields` names only fields of `R`, `--long`
-/// needs long columns in `R`, `--full` needs `--json` and an envelope, and
+/// needs long columns in `R`, `--full` needs `--json`, an envelope and a
+/// row type that does not set `Row::WHOLE`, and
 /// `--fields` rules out `--long` and `--full`. `main` returns that code.
 pub fn stream<R: Row>(
     output: &mut Output,
@@ -63,7 +65,11 @@ pub fn stream<R: Row>(
 /// print as text on the error writer even with `--json`.
 ///
 /// A row type with an empty [`Row::COLUMNS`] fails to compile here, because
-/// each line would print nothing of its item (ADR-0063).
+/// each line would print nothing of its item (ADR-0063). A row type that
+/// sets [`Row::WHOLE`] compiles: each JSON line holds every field of its
+/// item, `--full` is refused, and when the row type has no columns, the
+/// text prints no header and each item as one line of compact JSON
+/// (ADR-0065).
 ///
 /// The stream flushes the output writer after each line, so a reader sees
 /// each item as soon as it is printed.
@@ -250,7 +256,9 @@ fn open<R: Row, O: Write, W: Write>(
         out,
         err,
         json: *json,
-        full: *full,
+        // A row type that prints whole holds every field in JSON unless
+        // `--fields` names some.
+        full: *full || (R::WHOLE && fields.is_empty()),
         dry_run: *dry_run,
         fields: fields.as_slice(),
         widths: columns.iter().map(|name| name.chars().count()).collect(),
@@ -274,7 +282,7 @@ fn open<R: Row, O: Write, W: Write>(
     if let Some(refusal) = fields::refusal::<R>(None, envelope, false, streaming.fields, typed) {
         return Err(streaming.refuse(&refusal));
     }
-    if !streaming.json {
+    if !streaming.json && !json_lines::<R>() {
         let header: Vec<Cow<'_, str>> = streaming
             .columns
             .iter()
@@ -440,48 +448,6 @@ impl<R: Row, O: Write, W: Write> Streaming<'_, R, O, W> {
             .write_all(&self.line)
             .and_then(|()| self.err.flush());
         self.line.clear();
-    }
-
-    /// Writes `item` to the line, in the format that the flags choose.
-    fn render(&mut self, item: &R) -> io::Result<()> {
-        let line = &mut self.line;
-        if self.json && !self.document.has_envelope() {
-            return unwrapped::write_json(line, self.fields, item);
-        }
-        if self.json && self.full {
-            // Serializing the item directly keeps every field in its
-            // declaration order.
-            return write_document(
-                line,
-                self.document,
-                self.dry_run,
-                None,
-                item,
-                &Extras::none(),
-            );
-        }
-        let row = serde_json::to_value(item)?;
-        if self.json {
-            let selected = Selected {
-                row: &row,
-                columns: &self.columns,
-            };
-            write_document(
-                line,
-                self.document,
-                self.dry_run,
-                None,
-                &selected,
-                &Extras::none(),
-            )
-        } else {
-            let cells: Vec<Cow<'_, str>> = self
-                .columns
-                .iter()
-                .map(|name| table::cell(row.get(name)))
-                .collect();
-            table::write_line(line, &cells, &self.widths)
-        }
     }
 
     /// Prints `failure`, as [`Streaming::failure`] describes, and marks the

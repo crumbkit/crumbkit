@@ -52,7 +52,8 @@ pub trait Row: Serialize + JsonSchema {
     /// text of a headed batch prints each row's bytes and its JSON holds
     /// every field, so a headed row type may name no column. crumbkit-test's
     /// `check_guide` fails a leaf whose batch is not headed and whose row
-    /// type has an empty list (ADR-0063).
+    /// type has an empty list (ADR-0063). A row type that sets
+    /// [`WHOLE`](Row::WHOLE) may also name no column (ADR-0065).
     const COLUMNS: &'static [&'static str];
 
     /// The columns that `--long` adds after `COLUMNS`, in display order. A
@@ -71,6 +72,26 @@ pub trait Row: Serialize + JsonSchema {
     /// `check_guide` fails when the field is not one of `COLUMNS`, or when
     /// its type is not a string, a boolean or a value that can be null.
     const PROBLEM: Option<&'static str> = None;
+
+    /// Whether `--json` prints every field of each row as the type
+    /// serializes it, without `--full`. The default is `false`, which
+    /// prints only the columns without `--full` (ADR-0065).
+    ///
+    /// A tool sets it when the readers of its JSON expect each row whole,
+    /// such as a field that the type leaves out when it holds nothing. The
+    /// text still prints the table of `COLUMNS`, `--long` still adds
+    /// `LONG_COLUMNS` to the table, and `--fields` still selects fields,
+    /// printing `null` for a field that a row leaves out. crumbkit refuses
+    /// `--full`, because the JSON already holds every field.
+    ///
+    /// When `COLUMNS` and `LONG_COLUMNS` are both empty, as for a row that
+    /// serializes as an array, the text prints each row as one line of
+    /// compact JSON with no header, and crumbkit refuses `--fields`.
+    /// crumbkit-test's `check_guide` fails such a row type when its schema
+    /// has properties, which could be columns, and `check_document_ids`
+    /// fails a leaf whose row type sets it unless an opt-out from
+    /// `documents/rows-whole` with a reason covers the leaf.
+    const WHOLE: bool = false;
 }
 
 /// A row type that holds bytes, such as a file's contents, so a batch of

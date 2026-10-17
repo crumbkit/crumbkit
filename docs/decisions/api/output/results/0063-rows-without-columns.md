@@ -1,7 +1,7 @@
 # ADR-0063. Rows without columns
 
 - Date: 2026-10-15
-- Status: accepted
+- Status: amended by ADR-0065
 
 ## Context
 

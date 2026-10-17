@@ -323,6 +323,9 @@ pub enum Rule {
     /// `documents/envelope`.
     Envelope,
     /// [`check_document_ids`](crate::check_document_ids): a command prints
+    /// every field of each row in JSON without `--full`, because its row
+    /// type sets `Row::WHOLE`. Its id is `documents/rows-whole`.
+    RowsWhole,
     /// a listing whose JSON leaves out `total`, because its document comes
     /// from `Document::without_total`. Its id is `documents/total`.
     Total,
@@ -389,6 +392,7 @@ impl Rule {
             Self::OneValuePerUse => "filters/one-value-per-use",
             Self::Examples => "examples/run",
             Self::Envelope => "documents/envelope",
+            Self::RowsWhole => "documents/rows-whole",
             Self::Total => "documents/total",
             Self::ShellExitCode => "exit-codes/shell-code",
             Self::SharedExit => "exit-codes/shared-exit",
@@ -464,6 +468,9 @@ impl Rule {
             Self::Envelope => &[
                 "An agent cannot predict the document's shape from crumbkit's conventions and must read its schema with `schemas show`.",
                 "The document has no `schema` id, `truncated` or `failures`, so a program cannot tell which document it read, whether it holds every row, or which ids failed.",
+            ],
+            Self::RowsWhole => &[
+                "--json prints every field of each row, so the document costs more tokens than the compact columns.",
             ],
             Self::Total => &[
                 "A program cannot learn from the JSON how many rows matched, and only `truncated` tells it whether rows were left out.",

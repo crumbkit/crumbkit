@@ -39,6 +39,7 @@ rule's page gives its reason.
 | `OneValuePerUse` | `filters/one-value-per-use` | an option takes several values per use |
 | `Examples` | `examples/run` | an example is skipped ([end-to-end checks](../checks/end-to-end.md)) |
 | `Envelope` | `documents/envelope` | a command keeps the shape of an existing document with `Document::without_envelope` ([output](../output/README.md#documents-without-the-envelope)) |
+| `RowsWhole` | `documents/rows-whole` | a command's row type sets `Row::WHOLE`, so `--json` prints every field of each row ([output](../output/README.md#rows-printed-whole)) |
 | `Total` | `documents/total` | a listing's JSON leaves out `total` with `Document::without_total` ([output](../output/README.md#listings-without-a-total)) |
 | `Effects` | `effects/declared` | a visible leaf declares no effects ([effects](../effects/README.md)) |
 | `DryRun` | `effects/dry-run` | a tool keeps its own `--dry-run` |
@@ -60,7 +61,7 @@ line in place of a command path, `check_twins` runs that line, and
 `check_opt_outs` reports it by that line. The [recovery
 chains](../checks/recovery-chains.md) page covers the `recoveries/*` rules.
 
-Why: ADR-0036, ADR-0015, ADR-0053, ADR-0005, ADR-0066.
+Why: ADR-0036, ADR-0015, ADR-0053, ADR-0005, ADR-0065, ADR-0066.
 
 ## Checks without opt-outs
 

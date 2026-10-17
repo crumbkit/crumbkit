@@ -162,3 +162,54 @@ fn a_headed_leaf_whose_row_type_has_no_columns_passes() {
 
     check_guide(&shelf(), &GUIDE);
 }
+
+/// A query answer that a tool's readers expect whole and that serializes
+/// as an array of its values, so it has no fields to name as columns.
+#[derive(serde::Serialize, schemars::JsonSchema)]
+struct Answer(u32, String);
+
+impl crumbkit::Row for Answer {
+    const COLUMNS: &'static [&'static str] = &[];
+    const WHOLE: bool = true;
+}
+
+#[test]
+fn a_leaf_whose_whole_rows_have_no_fields_passes_without_columns() {
+    const ANSWERS: Document<Vec<Answer>> = Document::new("shelf", "answers", 1, "The answers.");
+    const GUIDE: Guide = Guide::new().leaves(&[
+        leaf(&["books", "list"]).document(ANSWERS),
+        leaf(&["books", "show"]),
+        leaf(&["authors", "list"]),
+    ]);
+
+    check_guide(&shelf(), &GUIDE);
+}
+
+/// A book that a tool's readers expect whole and whose row type names no
+/// columns, although it has fields that could be columns.
+#[derive(serde::Serialize, schemars::JsonSchema)]
+struct WholeBook {
+    /// The book's title.
+    title: String,
+}
+
+impl crumbkit::Row for WholeBook {
+    const COLUMNS: &'static [&'static str] = &[];
+    const WHOLE: bool = true;
+}
+
+#[test]
+fn check_guide_fails_on_a_leaf_whose_whole_row_type_has_fields_and_no_columns() {
+    const BOOKS: Document<Vec<WholeBook>> = Document::new("shelf", "books", 1, "The books.");
+    const GUIDE: Guide = Guide::new().leaves(&[
+        leaf(&["books", "list"]).document(BOOKS),
+        leaf(&["books", "show"]),
+        leaf(&["authors", "list"]),
+    ]);
+
+    assert_eq!(
+        panic_message(|| check_guide(&shelf(), &GUIDE)).unwrap(),
+        "the command tree breaks crumbkit's guide rules:\n\
+         shelf books list: the row type has fields and no COLUMNS, so its text prints each row as a line of JSON where a table could show it; name the fields that identify a row in `Row::COLUMNS`"
+    );
+}
