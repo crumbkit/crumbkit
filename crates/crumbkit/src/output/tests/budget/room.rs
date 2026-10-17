@@ -5,7 +5,7 @@ use schemars::JsonSchema;
 use serde::Serialize;
 
 use crate::help::Guide;
-use crate::{Batch, Document, Error, JsonLayout, Row};
+use crate::{Batch, Document, Error, JsonLayout, Row, Rows as _};
 
 use super::{STAR_BATCH, Star, budgeted, finish_output, guided, star};
 
@@ -42,6 +42,61 @@ fn room_counts_a_pretty_document_s_rows_as_the_document_prints_them() {
         answered(Vec::new()),
     );
     assert_eq!(empty, nothing.out.len());
+}
+
+#[test]
+fn room_has_room_for_a_batch_without_rows_at_a_budget_of_0() {
+    for flags in [&[][..], &["--json"]] {
+        let mut room = budgeted(0, flags).room(STAR_BATCH);
+
+        assert!(room.has_room(&answered(Vec::new())), "{flags:?}");
+    }
+}
+
+#[test]
+fn a_table_batch_fetched_through_room_prints_its_rows_that_fit_and_names_the_rest_in_text_and_json()
+{
+    let keys: Vec<String> = (1..=20).map(|number| star(number).name).collect();
+    for flags in [&[][..], &["--json"]] {
+        let mut output = budgeted(1024, flags);
+        let mut room = output.room(STAR_BATCH);
+        let mut batch = Batch::new(&["show"], "names", &keys);
+        for number in 1..=20 {
+            if !room.has_room(&batch) {
+                break;
+            }
+            batch.push(Ok(star(number)));
+        }
+        let fetched = batch.rows().len();
+
+        let finished = finish_output(&mut output, STAR_BATCH, batch);
+
+        assert!(fetched > 1 && fetched < 20, "{flags:?}: {fetched}");
+        assert!(finished.out.len() <= 1024, "{flags:?}: {}", finished.out);
+        let shown = if flags.is_empty() {
+            finished.out.lines().count() - 1
+        } else {
+            let document: serde_json::Value = serde_json::from_str(&finished.out).unwrap();
+            document["data"].as_array().unwrap().len()
+        };
+        let named = keys[shown..].join(" ");
+        assert!(shown > 0, "{flags:?}: {}", finished.out);
+        if flags.is_empty() {
+            assert!(
+                finished
+                    .err
+                    .contains(&format!("help:  run `tool show {named}`")),
+                "{}",
+                finished.err
+            );
+        } else {
+            let document: serde_json::Value = serde_json::from_str(&finished.out).unwrap();
+            assert_eq!(
+                document["failures"][0]["fields"]["left_out"],
+                serde_json::json!(keys[shown..])
+            );
+        }
+    }
 }
 
 #[test]

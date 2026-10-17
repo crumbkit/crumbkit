@@ -143,27 +143,109 @@ fn a_failure_too_long_for_the_budget_names_its_first_keys_and_counts_the_rest_as
     );
 }
 
-#[test]
-fn a_batch_always_answers_its_first_key_and_names_every_key_left_out_when_that_answer_passes_the_budget()
- {
+/// Returns a batch of three stars whose first row alone passes a budget of
+/// 1024 bytes in text and with `--json`.
+fn large_first() -> Batch<Star, Error> {
     let mut first = star(1);
     first.story = "a".repeat(1100);
-    let finished = finish_output(
-        &mut budgeted(1024, &["--json"]),
-        STAR_BATCH,
-        keyed(vec![first, star(2), star(3)], Vec::<Error>::new()),
-    );
+    keyed(vec![first, star(2), star(3)], Vec::<Error>::new())
+}
 
-    assert_eq!(finished.code, ExitCode::FAILURE);
-    let document = parsed(&finished.out);
-    assert_eq!(document["data"].as_array().unwrap().len(), 1);
+#[test]
+fn a_batch_without_the_mark_refuses_a_first_answer_alone_past_the_budget_and_names_every_later_key()
+{
+    let json = finish_output(&mut budgeted(1024, &["--json"]), STAR_BATCH, large_first());
+    let text = finish_output(&mut budgeted(1024, &[]), STAR_BATCH, large_first());
+
+    assert_eq!(json.code, ExitCode::FAILURE);
+    let document = parsed(&json.out);
+    assert_eq!(document["data"], json!([]));
+    let failures = document["failures"].as_array().unwrap();
+    assert_eq!(failures.len(), 2, "{failures:?}");
+    assert_eq!(failures[0]["key"], "star-01");
+    assert_eq!(failures[0]["index"], 0);
+    assert_eq!(failures[0]["fields"], json!({"budget": 1024}));
     assert_eq!(
-        document["failures"][0]["fields"],
+        failures[0]["recovery"],
+        json!({"kind": "hint", "text": "ask for fewer fields with --fields"})
+    );
+    assert_eq!(
+        failures[1]["fields"],
         json!({"left_out": ["star-02", "star-03"], "left_out_from": 1, "budget": 1024})
     );
     assert_eq!(
-        document["failures"][0]["recovery"],
+        failures[1]["recovery"],
         json!({"kind": "run", "call": "tool show <NAME>...", "all": "left_out"})
+    );
+    assert_eq!(text.code, ExitCode::FAILURE);
+    assert_eq!(text.out, "");
+    assert_eq!(
+        text.err,
+        "\
+error: the result is larger than the output budget of 1024 bytes
+  key:   star-01 (index 0)
+  help:  ask for fewer fields with --fields
+  code:  tool::output::over_budget
+error: 2 more answers did not fit in the output budget of 1024 bytes
+  help:  run `tool show star-02 star-03`
+  code:  tool::output::over_budget
+"
+    );
+}
+
+#[test]
+fn a_table_batch_whose_first_answer_is_refused_prints_every_row_when_asked_for_fewer_fields() {
+    let json = finish_output(
+        &mut budgeted(1024, &["--json", "--fields", "name"]),
+        STAR_BATCH,
+        large_first(),
+    );
+    let text = finish_output(
+        &mut budgeted(1024, &["--fields", "name"]),
+        STAR_BATCH,
+        large_first(),
+    );
+
+    assert_eq!(json.code, ExitCode::SUCCESS, "{}", json.out);
+    let document = parsed(&json.out);
+    assert_eq!(
+        document["data"].as_array().unwrap().len(),
+        3,
+        "{}",
+        json.out
+    );
+    assert_eq!(text.code, ExitCode::SUCCESS, "{}", text.err);
+    assert_eq!(text.out.lines().count(), 4, "{}", text.out);
+    assert_eq!(text.err, "");
+}
+
+#[test]
+fn a_batch_that_always_prints_its_first_answer_prints_it_past_the_budget_and_names_every_later_key()
+{
+    let marked = STAR_BATCH.always_print_first();
+    let json = finish_output(&mut budgeted(1024, &["--json"]), marked, large_first());
+    let text = finish_output(&mut budgeted(1024, &[]), marked, large_first());
+
+    assert_eq!(json.code, ExitCode::FAILURE);
+    let document = parsed(&json.out);
+    assert_eq!(document["data"].as_array().unwrap().len(), 1);
+    assert_eq!(
+        document["failures"],
+        json!([{
+            "code": "tool::output::over_budget",
+            "message": "2 more answers did not fit in the output budget of 1024 bytes",
+            "fields": {"left_out": ["star-02", "star-03"], "left_out_from": 1, "budget": 1024},
+            "recovery": {"kind": "run", "call": "tool show <NAME>...", "all": "left_out"},
+        }])
+    );
+    assert_eq!(text.code, ExitCode::FAILURE);
+    assert!(text.out.starts_with("NAME"), "{}", text.out);
+    assert_eq!(text.out.lines().count(), 2, "{}", text.out);
+    assert!(
+        text.err
+            .starts_with("error: 2 more answers did not fit in the output budget of 1024 bytes\n"),
+        "{}",
+        text.err
     );
 }
 

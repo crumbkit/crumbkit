@@ -30,18 +30,22 @@ pub(super) enum Answer {
     /// The first rows of a listing or a list, marked as cut short with this
     /// code.
     Cut(&'static Code),
-    /// The first rows of a batch. The failure of the keys left out follows
-    /// the batch's own failures.
+    /// The first rows of a batch, in a table, a JSON document or the text of
+    /// a headed batch. The failure of the keys left out follows the batch's
+    /// own failures.
     Partial(OverBudget),
     /// Nothing, because the result does not fit in the output budget and its
     /// document does not let its first answer print. The failure prints in
     /// its place.
     Refused(OverBudget),
-    /// The rows of a headed batch that fit, with the failure of each row
-    /// too large alone, by position, and the failure that names the rows
-    /// left out, when there is one.
-    Keyed {
-        each: Vec<(usize, OverBudget)>,
+    /// No rows of a batch, because its first answer passes the output budget
+    /// alone and its document does not let its first answer print.
+    /// `first` is that answer's failure, which prints among the batch's own
+    /// failures under the key at `position`, and `left_out` is the failure
+    /// that names the keys after it, when there are any.
+    RefusedFirst {
+        position: usize,
+        first: OverBudget,
         left_out: Option<OverBudget>,
     },
 }
@@ -57,8 +61,10 @@ pub(super) enum Answer {
 ///
 /// A result that fits prints whole. Otherwise a listing or a list prints the
 /// most rows that fit, marked as cut short. A batch prints the most rows
-/// that fit and always its first, followed by one failure that names the
-/// keys left out. A batch that has keys it never
+/// that fit, followed by one failure that names the keys left out. Its
+/// first row prints even past the budget when its document always prints
+/// its first answer, and is refused with its own failure when it passes
+/// the budget alone otherwise. A batch that has keys it never
 /// fetched prints those failures even when its rows fit. A single row or a prose
 /// result prints nothing, unless its document always prints its first
 /// answer, in which case it prints whole. After `out` is flushed, the lines
@@ -116,7 +122,8 @@ pub(super) fn write_result<T: Rows>(
         problems
     };
     if let Some(bytes_of) = document.headed_bytes().filter(|_| !output.json) {
-        return headed::write(out, err, output, document, value, bytes_of, problems);
+        let first_always = document.always_prints_first();
+        return headed::write(out, err, output, value, bytes_of, problems, first_always);
     }
     // `Prepared` borrows the output flags for the whole write, and the
     // failure of a batch's left-out keys renders its call against the

@@ -257,6 +257,22 @@ impl<'a> PreparedFailure<'a> {
         self.key = key;
         self
     }
+
+    /// Returns the position of the failure's key among a batch's keys, or
+    /// `None` for a failure that has no key.
+    pub(super) fn index(&self) -> Option<usize> {
+        self.key.map(|(index, _)| index)
+    }
+}
+
+/// Returns how many of `listed`, a batch's failures in the order of their
+/// keys, come before the key at `position`. A failure without a key comes
+/// after every key.
+pub(super) fn before(listed: &[PreparedFailure<'_>], position: usize) -> usize {
+    listed
+        .iter()
+        .take_while(|failure| failure.index().is_some_and(|index| index < position))
+        .count()
 }
 
 /// Returns the fields of `failure` whose names follow the rule and come

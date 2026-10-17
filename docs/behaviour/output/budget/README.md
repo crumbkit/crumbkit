@@ -17,8 +17,8 @@ A tool sets its budget with
 The budget can be any number of bytes, as small as the one that
 `<TOOL>_OUTPUT_BUDGET` lowers a run to, so a tool's tests can show a cut
 result with a few short rows. A result that the budget refuses prints its
-over-budget failure whatever the failure's size, and a batch prints its
-first answer. The reason says why the tool's results need the bytes.
+over-budget failure whatever the failure's size, and a document marked
+with `Document::always_print_first` prints its first answer. The reason says why the tool's results need the bytes.
 crumbkit-test's `check_opt_outs` pins the budget, its reason and its cost in
 the [opt-out report](../../adoption/opt-outs.md) as `output-budget/run`. The
 cost line says how many bytes, and about how many tokens, a run can print
@@ -36,7 +36,7 @@ budget in one run. A reader who needs more asks for less with `--limit`,
 `Output::budget` returns the bytes that the run can still print, so a handler
 can fetch no more rows than fit.
 
-Why: ADR-0046, ADR-0081.
+Why: ADR-0046, ADR-0081, ADR-0084.
 
 ## Measuring a result
 
@@ -45,6 +45,9 @@ result once into a buffer that stops at the budget, and it prints the buffer
 when the result fits. A result that fits costs one serialization and one
 buffer. When it does not fit, the result's shape decides what happens, as
 the sections below describe.
+
+The cut line and the over-budget message name a budget of 1 as `1 byte` and
+any other budget in bytes, such as `400 bytes`.
 
 The cut line, the `cut` field and the over-budget failure depend only on the
 result and the budget. None of them depends on whether standard output or
@@ -75,11 +78,11 @@ Why: ADR-0046, ADR-0064.
 
 ## Batches
 
-A batch prints the rows that fit in input order and always its first row,
-then ends with one failure, `<tool>::output::over_budget`. The run exits
-with code 1. In text, the batch's note prints on standard error before its
-failures, and the note of the rows that report a problem does not print,
-because the failure decides the exit. The failure has these fields:
+A batch prints the rows that fit in input order, then ends with one
+failure, `<tool>::output::over_budget`. The run exits with code 1. In
+text, the batch's note prints on standard error before its failures, and
+the note of the rows that report a problem does not print, because the
+failure decides the exit. The failure has these fields:
 
 - `left_out` lists the keys of the answers it left out as text, in the
   caller's order. A key that the caller gave twice is listed twice. A key
@@ -91,13 +94,28 @@ because the failure decides the exit. The failure has these fields:
 - `unlisted` counts the answers left out that `left_out` does not name. It is
   present only when it is above 0.
 
+A batch's first answer prints whole at any budget when its document is
+marked with `Document::always_print_first`. Without the mark, a first answer
+that passes the budget alone is refused. It passes the budget alone when the
+bytes that the run prints for that one row are more than the budget: in
+text, the table or the line of that row, or its header and bytes in a
+headed batch, and with `--json`, the document that holds that row and no
+failures. A refused first answer gets its own over-budget failure under its
+key, among the batch's own failures in the order of the keys. The failure
+of a table row asks for fewer fields with `--fields`, because a row with
+fewer fields is smaller. The failure of a headed answer has no next step,
+because a headed answer prints whole whatever the fields. No row prints,
+and every later answer goes into the one failure above. A one-key command that shows a file therefore refuses a file larger
+than the budget, as a single bytes result does.
+
 A batch's handler can stop fetching once its rows fill the budget.
 `Output::room(document)` returns a `Room` before the first fetch, and
 `Room::has_room(&batch)` measures each row pushed since the last call once,
 in the format that the run prints: the JSON document in the guide's layout,
 the text table with each column as wide as its widest cell, or the headers
 and bytes of a headed batch. `has_room` returns false once the rows take the
-bytes that the run can print. The count leaves out the batch's failures,
+bytes that the run can print, and returns true until the batch holds a row,
+because `finish` decides on the first row by that row's own bytes. The count leaves out the batch's failures,
 which only add bytes, so a handler that stops when `has_room` returns false
 never stops before the row at which `finish` cuts the batch. The keys that
 the handler never fetched follow the keys of the cut rows in `left_out`, and
@@ -145,7 +163,7 @@ lists every key left out and the recovery runs the command with them. In text, a
 prints on standard error, which the budget does not count, so it lists every
 key.
 
-Why: ADR-0046, ADR-0068, ADR-0070, ADR-0077.
+Why: ADR-0046, ADR-0068, ADR-0070, ADR-0077, ADR-0084.
 
 ## Headed bytes
 
@@ -154,24 +172,27 @@ or not at all, because a file cut short would look whole. Each row costs its
 header and its bytes, and 1 more byte for the line feed before its header
 when it is not the first row that prints.
 
-- A row whose header and bytes alone pass the budget does not print. It
-  fails under its own key with `<tool>::output::over_budget`, whose `key:`
-  line names the key and whose `help:` line says that no flag makes the
-  answer smaller. The rows after it still print. A document marked with
-  `Document::always_print_first` prints its first row whole even past the
-  budget.
-- The other rows print in order while they fit. From the first row that does
-  not fit, every later row and every key that the handler never fetched is
-  left out, and one over-budget failure names them, as the failure of a
-  batch in text does, with the recovery that runs the command with every key
-  left out.
+- The first row prints when its header and bytes fit in the budget. When
+  they pass it, the first row prints anyway if the document is marked with
+  `Document::always_print_first`, and is refused with its own failure
+  otherwise, as the first row of every batch is.
+- The later rows print in order while they fit. From the first later row
+  that does not fit, alone or beside the rows before it, that row, every
+  later row and every key that the handler never fetched are left out, and
+  one over-budget failure names them, as the failure of a batch in text
+  does, with the recovery that runs the command with every key left out.
+  That run starts with the first of those rows as its first answer.
 
-Each failure prints on standard error with the batch's other failures, in the
-order of their keys, and the failure that names the rows left out prints
-last. The batch's note, when it has one, prints before these failures. The run exits with the code of the first failure. With `--json` a
-headed batch is budgeted as any other batch.
+The batch's own failures print on standard error in the order of their
+keys, and the failure that names the rows left out prints last. The batch's
+note, when it has one, prints before these failures. The run exits with the
+code of the first failure. With `--json` a headed batch is budgeted by the
+same rule as any other batch. The JSON form is larger, because each row
+carries its field names and the failure counts against the budget, so at
+the same budget the JSON form can refuse a first answer that the text
+prints, or leave out answers that the text prints.
 
-Why: ADR-0062.
+Why: ADR-0062, ADR-0084.
 
 ## Single results
 
@@ -185,11 +206,12 @@ fits. Each refusal exits with code 1.
 
 A document marked with `Document::always_print_first` always prints its first
 answer: a single row, a prose result or a bytes result prints whole even past
-the budget, and a listing or a list prints at least its first row. A tool
+the budget, a listing or a list prints at least its first row, and a batch
+prints its first answer, as [Batches](#batches) describes. A tool
 uses it when the one answer is the point of the run, such as a file that the
 caller named.
 
-Why: ADR-0046.
+Why: ADR-0046, ADR-0084.
 
 ## Streams
 
@@ -233,15 +255,20 @@ once, then again with `<TOOL>_OUTPUT_BUDGET` set to half the bytes it
 printed. The second run must do one of these:
 
 - print a result marked with `cut` or the cut line;
-- print one answer, either from a document that always prints its first
-  answer or as a batch of one answer;
+- exit with code 0 and print one answer past the budget from a document that
+  always prints its first answer, as one object or as a batch of one row;
 - exit with the code that the guide gives the over-budget failure, 1 by
   default, and print an over-budget failure that names the budget last.
 
 The check also runs each text example of a leaf whose document is headed in
-the same way. The second run must print at most the budget, unless its
-document always prints its first answer, and must either exit with code 0 or
-exit with the over-budget failure's code with a message on standard error
-that names the budget.
+the same way. The second run must either exit with the over-budget
+failure's code with a message on standard error that names the budget, or
+exit with code 0 and print one answer past the budget from a document that
+always prints its first answer. A run that exits with code 0 and prints two
+or more answers past the budget breaks the contract. A run whose document
+does not always print its first answer must print within the budget,
+whatever its exit code. The check counts each line of the form
+`==> … <==` as one answer's header, because it does not know which words
+of the example are keys.
 
-Why: ADR-0046, ADR-0062.
+Why: ADR-0046, ADR-0062, ADR-0084.

@@ -4,7 +4,7 @@
 use std::ffi::OsStr;
 use std::io::Write;
 
-use super::{buffered, largest, lowered, write_cut_line};
+use super::{Over, OverBudget, buffered, largest, lowered, write_cut_line};
 
 #[test]
 fn the_budget_variable_lowers_the_budget_and_never_raises_it() {
@@ -78,5 +78,43 @@ fn the_cut_line_of_a_listing_names_limit_and_of_a_list_only_fields() {
     assert_eq!(
         String::from_utf8(list).unwrap(),
         "Showing 3 of 7, because output stops at 400 bytes. Ask for less with --fields.\n"
+    );
+}
+
+#[test]
+fn a_budget_of_1_is_named_as_1_byte_in_the_cut_line_and_in_each_over_budget_message() {
+    let mut line = Vec::new();
+    write_cut_line(&mut line, 0, Some(5), Some("books"), 1, true).unwrap();
+    let message = |over: Over| {
+        let code = &crate::codes::OUTPUT_OVER_BUDGET;
+        OverBudget {
+            code,
+            budget: 1,
+            over,
+        }
+        .to_string()
+    };
+    let batch = Over::Batch {
+        left_out: vec!["b".to_owned()],
+        from: Some(1),
+        unlisted: 0,
+        fetch: None,
+    };
+
+    assert_eq!(
+        String::from_utf8(line).unwrap(),
+        "Showing 0 of 5 books, because output stops at 1 byte. Ask for less with --limit or --fields.\n"
+    );
+    assert_eq!(
+        message(batch),
+        "1 more answer did not fit in the output budget of 1 byte"
+    );
+    assert_eq!(
+        message(Over::Whole),
+        "the result is larger than the output budget of 1 byte"
+    );
+    assert_eq!(
+        message(Over::Stream),
+        "the stream stopped at the output budget of 1 byte"
     );
 }

@@ -138,9 +138,12 @@ impl<T> Document<T> {
 
     /// Returns the same document with its first answer always printed: a
     /// single row or a prose result prints whole even when it passes the
-    /// tool's output budget, and a listing or a list prints at least its
-    /// first row. Without it, `crumbkit::finish` refuses a single result
-    /// that passes the budget (ADR-0046).
+    /// tool's output budget, a listing or a list prints at least its first
+    /// row, and a batch prints its first answer. Without it,
+    /// `crumbkit::finish` refuses a single result that passes the budget
+    /// (ADR-0046), and refuses a batch's first answer that passes the
+    /// budget alone with that answer's own failure, in text and with
+    /// `--json` (ADR-0084).
     #[must_use]
     pub const fn always_print_first(mut self) -> Self {
         self.first_always = true;
@@ -265,10 +268,14 @@ impl<R: Headed, E: AsFailure> Document<Batch<R, E>> {
     /// line of compact JSON with every field. A key whose lookup failed gets
     /// no header, and its failure prints on standard error.
     ///
-    /// Each row prints whole or not at all. A row larger than the output
-    /// budget on its own fails for its key with the over-budget failure,
-    /// unless it is the first row of a document that always prints its first
-    /// answer.
+    /// Each row prints whole or not at all. The first row prints past the
+    /// output budget when the document is marked with
+    /// [`Document::always_print_first`]. Otherwise a first row that passes
+    /// the budget alone is refused with its own failure, as the first row
+    /// of every batch is, and every later row and every unfetched key are
+    /// left out. From the first later row that does not fit, that row,
+    /// every later row and every unfetched key are left out. One
+    /// over-budget failure names the keys left out.
     ///
     /// With `--json` the batch prints as its ordinary document, with every
     /// field of each row unless `--fields` names some. The leaf offers

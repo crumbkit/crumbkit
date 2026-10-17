@@ -358,16 +358,18 @@ fn a_run_with_a_guide_budget_of_0_bytes_refuses_a_listing_with_the_over_budget_f
 }
 
 #[test]
-fn a_batch_with_a_guide_budget_of_0_bytes_prints_its_first_answer_and_the_over_budget_failure() {
+fn a_batch_with_a_guide_budget_of_0_bytes_refuses_its_first_answer_and_names_the_rest_in_the_over_budget_failure()
+ {
     let batch = keyed::<Error>(stars(3), vec![]);
     let finished = finish_output(&mut budgeted(0, &["--json"]), STAR_BATCH, batch);
 
     assert_eq!(finished.code, ExitCode::FAILURE);
     let document = parsed(&finished.out);
-    assert_eq!(document["data"][0]["name"], "star-01");
-    assert_eq!(document["failures"][0]["code"], "tool::output::over_budget");
+    assert_eq!(document["data"], json!([]));
+    assert_eq!(document["failures"][0]["key"], "star-01");
+    assert_eq!(document["failures"][1]["code"], "tool::output::over_budget");
     assert_eq!(
-        document["failures"][0]["fields"]["left_out"],
+        document["failures"][1]["fields"]["left_out"],
         json!(["star-02", "star-03"])
     );
 }
@@ -431,8 +433,9 @@ proptest! {
             DIM_BATCH,
             keyed(rows(), failures),
         );
-        // The first row always prints, so only a batch whose first row fits
-        // stays within the budget.
+        // A first row that fits alone prints even when the failure beside it
+        // passes the budget, so only a batch whose first row fits with room
+        // for that failure stays within the budget.
         let first = finish_output(
             &mut budgeted(budget, flags),
             DIM_BATCH,

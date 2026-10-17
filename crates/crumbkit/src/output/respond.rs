@@ -114,9 +114,17 @@ pub(super) fn respond<T: Rows, E: AsFailure, O: Write, W: Write, R>(
         && !matches!(answer, Answer::Refused(_));
     let (code, cut, left_out) = answered(sink, output, spelling, &answer, code);
     let failures = match &answer {
-        Answer::Keyed { each, .. } => failures.map(|listed| {
+        Answer::RefusedFirst {
+            position, first, ..
+        } => failures.map(|mut listed| {
+            // `code` is already the code that the run prints, so no rename
+            // applies to it.
+            let key = value.key(*position).map(|key| (*position, key));
             let command = &mut output.command;
-            with_each(listed, each, value, spelling, command, &mut sink.err)
+            let printing = Printing::default();
+            let refused = PreparedFailure::new(first, spelling, printing, command, &mut sink.err);
+            listed.insert(failure::before(&listed, *position), refused.keyed(key));
+            listed
         }),
         _ => failures,
     };
@@ -204,7 +212,8 @@ fn answered<'a, O: Write, W: Write, R>(
             (code, true, None)
         }
         Answer::Partial(over) => (1, false, Some(over)),
-        Answer::Keyed { left_out, .. } => (code, false, left_out.as_ref()),
+        // The failure of the refused answer decides the exit.
+        Answer::RefusedFirst { left_out, .. } => (code, false, left_out.as_ref()),
         Answer::Refused(over) => {
             let printing = output.printing();
             failure::print(
@@ -218,38 +227,4 @@ fn answered<'a, O: Write, W: Write, R>(
             (printing.exit(over.code), false, None)
         }
     }
-}
-
-/// Returns the failures of a batch with the failure of each answer in
-/// `each`, keyed by its answer's key, in the order of the keys. Each of
-/// `each` is a row of a headed batch that was too large for the budget on
-/// its own.
-fn with_each<'a, T: Rows>(
-    listed: Vec<PreparedFailure<'a>>,
-    each: &'a [(usize, OverBudget)],
-    value: &'a T,
-    spelling: Spelling,
-    command: &mut clap::Command,
-    err: &mut impl Write,
-) -> Vec<PreparedFailure<'a>> {
-    let mut merged = Vec::with_capacity(listed.len() + each.len());
-    let indexes = value.failure_indexes();
-    // A failure without a position sorts after every other.
-    let mut listed = listed
-        .into_iter()
-        .enumerate()
-        .map(|(number, failure)| (indexes.get(number).copied().unwrap_or(usize::MAX), failure))
-        .peekable();
-    for (position, over) in each {
-        while let Some((_, failure)) = listed.next_if(|(index, _)| index < position) {
-            merged.push(failure);
-        }
-        // `code` is already the code that the run prints, so no rename
-        // applies to it.
-        let key = value.key(*position).map(|key| (*position, key));
-        let printing = Printing::default();
-        merged.push(PreparedFailure::new(over, spelling, printing, command, err).keyed(key));
-    }
-    merged.extend(listed.map(|(_, failure)| failure));
-    merged
 }
