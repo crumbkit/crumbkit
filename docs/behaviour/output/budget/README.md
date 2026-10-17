@@ -124,7 +124,7 @@ Why: ADR-0046, ADR-0059.
 
 ## Headed bytes
 
-The text of a [headed batch](../README.md#headed-bytes) prints each row whole
+The text of a [headed batch](../shapes/README.md#headed-bytes) prints each row whole
 or not at all, because a file cut short would look whole. Each row costs its
 header and its bytes, and 1 more byte for the line feed before its header
 when it is not the first row that prints.

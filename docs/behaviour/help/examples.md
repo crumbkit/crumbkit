@@ -36,7 +36,7 @@ Why: ADR-0024, ADR-0035, ADR-0039, ADR-0041.
 - A leaf's `--help` describes each example and each column.
 - A prose document has no columns, so its leaf has neither the `Next:` line
   nor the column sections, and `schemas show` describes its fields.
-- A [headed](../output/README.md#headed-bytes) document's text has no
+- A [headed](../output/shapes/README.md#headed-bytes) document's text has no
   columns. Its `--help` lists the row's columns, then `text` and `base64`,
   under `JSON fields that --fields selects:`, and its `-h` ends with a
   `Next:` line that says `--help` explains each JSON field, also when its
@@ -79,7 +79,7 @@ visible command without subcommands, a description for every column, a
 compact column on a leaf whose rows are not a headed batch, and a document
 on a leaf whose effects change something. A row type that sets `Row::WHOLE`
 may name no column only when its schema has no fields
-([rows printed whole](../output/README.md#rows-printed-whole)). Its rustdoc
+([rows printed whole](../output/shapes/README.md#rows-printed-whole)). Its rustdoc
 lists every rule.
 
 Why: ADR-0024, ADR-0016, ADR-0063, ADR-0065.

@@ -51,9 +51,9 @@ lacks, so a program reads every row the same way.
   without guards ([write guards](../effects/write-guards.md)).
 - `form` is `document`, `stream`, `bytes`, `headed` or `json-rows` for a
   leaf with a document and `null` for one without
-  ([streams](../output/streams.md), [bytes](../output/README.md#bytes),
-  [headed bytes](../output/README.md#headed-bytes),
-  [rows printed whole](../output/README.md#rows-printed-whole)). A leaf has
+  ([streams](../output/streams.md), [bytes](../output/shapes/README.md#bytes),
+  [headed bytes](../output/shapes/README.md#headed-bytes),
+  [rows printed whole](../output/shapes/README.md#rows-printed-whole)). A leaf has
   the form `json-rows` when its text prints each row as one line of JSON.
 - `columns` lists a headed leaf's JSON fields that `--fields` selects,
   ending with `text` and `base64`, because its text has no columns.

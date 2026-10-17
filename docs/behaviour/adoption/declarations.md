@@ -45,12 +45,12 @@ Why: ADR-0056.
   already read ([schemas](../schemas/README.md#document-ids)).
 - `Document::failures_in_order` prints an unwrapped batch's failures among
   its rows, which keeps every failure and its recovery and changes only where
-  they print ([output](../output/README.md#documents-without-the-envelope)).
+  they print ([result shapes](../output/shapes/README.md#documents-without-the-envelope)).
 - `Document::with_keys`, `Document::with_type` and `Document::summary_at_top`
   name the keys, the type and the top-level fields of a document whose
   readers expect names other than crumbkit's, and keep every other part of
   the envelope
-  ([output](../output/README.md#documents-with-the-tools-own-keys)).
+  ([result shapes](../output/shapes/README.md#documents-with-the-tools-own-keys)).
 - `Guide::dashed_forms` lets a command keep a name in another style
   ([dashed forms](#dashed-forms)).
 - `Guide::field_names` lists failure field names that come from another
