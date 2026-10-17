@@ -75,11 +75,13 @@ Why: ADR-0015.
 
 ## Trying the checks with clap alone
 
-`check_names`, `check_grammar`, `check_listings`, `check_filters` and the
-help checks with `Pages::clap` run on a tool that parses with clap alone, so
-a tool can try crumbkit-test before it adopts crumbkit's runtime.
-crumbkit-test re-exports `Guide`, and such a tool passes `Guide::new()`,
-which declares nothing, so it needs no crumbkit dependency of its own.
+`check_listings`, `check_filters`, and `check_names`, `check_grammar` and
+the help checks with `Pages::clap` run on a tool that parses with clap
+alone, so a tool can try crumbkit-test before it adopts crumbkit's runtime.
+Such a tool needs no crumbkit dependency of its own. `check_names` and
+`check_grammar` read the tool's guide from the `Pages` they take, and
+`Pages::clap` carries no guide, so a guided tool passes `Pages::rendered` or
+`Pages::binary` with its guide.
 
 [`Pages::clap`](../../../crates/crumbkit-test/src/pages.rs) renders each
 help page in memory as clap prints it to a pipe, without crumbkit's lines

@@ -4,6 +4,7 @@ use clap::Command;
 use crumbkit::help::Guide;
 
 use super::check_grammar;
+use crate::Pages;
 use crate::allow::{Allow, Rule};
 use crate::testing::panic_message;
 
@@ -21,7 +22,7 @@ fn resources_that_nest_and_end_in_list_show_or_a_passed_verb_pass() {
             ),
     );
 
-    check_grammar(&shelf, &Guide::new(), &["export"], &[]);
+    check_grammar(&shelf, Pages::clap(), &["export"], &[]);
 }
 
 #[test]
@@ -33,7 +34,7 @@ fn a_command_without_subcommands_that_is_not_list_show_or_a_passed_verb_fails() 
     );
 
     assert_eq!(
-        panic_message(|| check_grammar(&shelf, &Guide::new(), &["export"], &[])).unwrap(),
+        panic_message(|| check_grammar(&shelf, Pages::clap(), &["export"], &[])).unwrap(),
         "the command tree breaks crumbkit's grammar:\n\
          shelf books remove: the command has no subcommands, so it is a verb, but `remove` is not `list`, `show` or a verb the tool passes"
     );
@@ -46,7 +47,7 @@ fn a_command_without_subcommands_directly_under_the_tool_fails() {
         .subcommand(Command::new("schema"));
 
     assert_eq!(
-        panic_message(|| check_grammar(&shelf, &Guide::new(), &[], &[])).unwrap(),
+        panic_message(|| check_grammar(&shelf, Pages::clap(), &[], &[])).unwrap(),
         "the command tree breaks crumbkit's grammar:\n\
          shelf schema: the command has no subcommands and sits directly under `shelf`, and a command has the form `shelf <resource> <verb>`"
     );
@@ -70,7 +71,7 @@ fn a_resource_name_that_is_not_lowercase_words_joined_by_single_dashes_fails_wit
     }
 
     assert_eq!(
-        panic_message(|| check_grammar(&shelf, &Guide::new(), &[], &[])).unwrap(),
+        panic_message(|| check_grammar(&shelf, Pages::clap(), &[], &[])).unwrap(),
         "the command tree breaks crumbkit's grammar:\n\
          shelf Books: the resource name `Books` is not lowercase letters and digits in words joined by single dashes, starting with a letter\n\
          shelf reading_lists: the resource name `reading_lists` is not lowercase letters and digits in words joined by single dashes, starting with a letter\n\
@@ -85,7 +86,7 @@ fn a_passed_verb_that_is_built_in_or_badly_formed_fails() {
     let shelf = Command::new("shelf");
 
     assert_eq!(
-        panic_message(|| check_grammar(&shelf, &Guide::new(), &["show", "Export", ""], &[]))
+        panic_message(|| check_grammar(&shelf, Pages::clap(), &["show", "Export", ""], &[]))
             .unwrap(),
         "the command tree breaks crumbkit's grammar:\n\
          the tool passes the verb `show`, which is built in, and a tool passes only its other verbs\n\
@@ -101,7 +102,7 @@ fn a_resource_or_verb_named_in_another_style_passes_when_the_guide_declares_dash
         .subcommand(Command::new("reading_lists").subcommand(Command::new("list")))
         .subcommand(Command::new("AuthorNotes").subcommand(Command::new("list")));
 
-    check_grammar(&shelf, &DASHED, &["export_all"], &[]);
+    check_grammar(&shelf, Pages::rendered(&DASHED), &["export_all"], &[]);
 }
 
 #[test]
@@ -119,7 +120,7 @@ fn with_dashed_forms_a_name_with_no_dashed_form_or_whose_dashed_form_another_com
     let verbs = ["export_all", "export-all", "2export"];
 
     assert_eq!(
-        panic_message(|| check_grammar(&shelf, &DASHED, &verbs, &[])).unwrap(),
+        panic_message(|| check_grammar(&shelf, Pages::rendered(&DASHED), &verbs, &[])).unwrap(),
         "the command tree breaks crumbkit's grammar:\n\
          the verb `2export` is not lowercase letters and digits in words joined by single dashes, starting with a letter, and maps to no such name\n\
          shelf 2books: the resource name `2books` is not lowercase letters and digits in words joined by single dashes, starting with a letter, and maps to no such name\n\
@@ -141,7 +142,7 @@ fn a_command_below_the_one_passed_in_named_or_aliased_help_fails_the_check() {
         );
 
     assert_eq!(
-        panic_message(|| check_grammar(&shelf, &Guide::new(), &[], &[])).unwrap(),
+        panic_message(|| check_grammar(&shelf, Pages::clap(), &[], &[])).unwrap(),
         "the command tree breaks crumbkit's grammar:\n\
          shelf help: the command answers to `help`, and crumbkit reserves that word for asking for help\n\
          shelf books guides: the command answers to `help`, and crumbkit reserves that word for asking for help"
@@ -154,7 +155,7 @@ fn the_command_passed_in_may_be_named_or_aliased_help() {
         .alias("help")
         .subcommand(Command::new("books").subcommand(Command::new("list")));
 
-    check_grammar(&help, &Guide::new(), &[], &[]);
+    check_grammar(&help, Pages::clap(), &[], &[]);
 }
 
 #[test]
@@ -170,7 +171,7 @@ fn a_leaf_directly_under_the_tool_passes_when_an_opt_out_names_it_and_its_other_
         .subcommand(Command::new("version").alias("help"));
 
     assert_eq!(
-        panic_message(|| check_grammar(&shelf, &Guide::new(), &[], ALLOW)).unwrap(),
+        panic_message(|| check_grammar(&shelf, Pages::clap(), &[], ALLOW)).unwrap(),
         "the command tree breaks crumbkit's grammar:\n\
          shelf version: the command answers to `help`, and crumbkit reserves that word for asking for help"
     );
@@ -186,7 +187,7 @@ fn a_resource_keeps_its_name_when_an_opt_out_names_it() {
     let shelf = Command::new("shelf")
         .subcommand(Command::new("reading_lists").subcommand(Command::new("list")));
 
-    check_grammar(&shelf, &Guide::new(), &[], ALLOW);
+    check_grammar(&shelf, Pages::clap(), &[], ALLOW);
 }
 
 #[test]
@@ -196,7 +197,7 @@ fn an_opt_out_from_a_grammar_rule_that_excuses_nothing_fails_the_check() {
         Command::new("shelf").subcommand(Command::new("books").subcommand(Command::new("list")));
 
     assert_eq!(
-        panic_message(|| check_grammar(&shelf, &Guide::new(), &[], ALLOW)).unwrap(),
+        panic_message(|| check_grammar(&shelf, Pages::clap(), &[], ALLOW)).unwrap(),
         "the command tree breaks crumbkit's grammar:\n\
          the opt-out from `grammar/root-leaf` for `shelf books` excuses no problem, so it is stale"
     );

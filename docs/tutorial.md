@@ -223,17 +223,18 @@ mod tests;
 
 [`step_3/tests.rs`](../examples/tutorial/src/bin/step_3/tests.rs) calls
 crumbkit-test's checks from ordinary tests. Each check walks the command
-tree and fails with every problem it finds:
+tree and fails with every problem it finds. `Pages::rendered(&GUIDE)` gives
+the names and grammar checks pantry's guide:
 
 ```rust
 #[test]
 fn every_command_and_argument_has_one_name() {
-    crumbkit_test::check_names(&Cli::command(), &GUIDE, ALLOW);
+    crumbkit_test::check_names(&Cli::command(), Pages::rendered(&GUIDE), ALLOW);
 }
 
 #[test]
 fn every_command_is_a_resource_followed_by_a_verb() {
-    crumbkit_test::check_grammar(&Cli::command(), &GUIDE, &[], ALLOW);
+    crumbkit_test::check_grammar(&Cli::command(), Pages::rendered(&GUIDE), &[], ALLOW);
 }
 ```
 
