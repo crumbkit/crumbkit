@@ -37,7 +37,7 @@ text-line: reading lists list
   Declares: The text prints each row as the line <NAME>: <ABOUT> in place of a table row.
 
 left-out-per-key: reading lists show
-  Declares: When the output budget leaves out answers, the command prints one failure for each answer left out, at its key's position, in place of one failure that names them all.
+  Declares: When the output budget leaves out answers, the command prints one failure for each answer left out, at its key's position, in place of one failure that names them all. The JSON document can pass the budget by the size of those failures.
 
 passes-on-exit: reading finished edit
   Declares: The command exits with the exit code of the editor.

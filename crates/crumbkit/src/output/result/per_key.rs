@@ -1,6 +1,7 @@
 //! How a batch whose document answers each key left out prints when it does
 //! not fit in the output budget: its first rows, then one over-budget
-//! failure for each answer left out, at the position of its key (ADR-0068).
+//! failure for each answer left out, at the position of its key (ADR-0068,
+//! ADR-0070).
 
 use std::io::{self, Write};
 
@@ -46,11 +47,10 @@ impl<T: Rows> Prepared<'_, T> {
     /// the budget does not count. In a JSON document that holds them, each
     /// failure counts against the budget, and a row that prints takes the
     /// place of its failure, so the document with more rows can be the
-    /// shorter one. [`Prepared::fit_each`] then finds the count.
-    ///
-    /// It returns `None` when even the first row and the failure of every
-    /// later answer pass the budget, so the batch ends with the one failure
-    /// that names the answers left out.
+    /// shorter one. [`Prepared::fit_each`] then finds the count. When even
+    /// the first row and the failure of every later answer pass the budget,
+    /// the first row prints with every failure, so the document passes the
+    /// budget by the size of those failures (ADR-0070).
     pub(super) fn answer_each(
         &mut self,
         out: &mut impl Write,
@@ -58,7 +58,7 @@ impl<T: Rows> Prepared<'_, T> {
         listed: &[PreparedFailure<'_>],
         left_out: &mut LeftOut<'_>,
         in_document: bool,
-    ) -> io::Result<Option<(Answer, usize)>> {
+    ) -> io::Result<(Answer, usize)> {
         let value = self.value;
         let rows = value.rows().len();
         let low = rows.min(1);
@@ -71,13 +71,13 @@ impl<T: Rows> Prepared<'_, T> {
             let each = each_left_out(value, shown, code, budget);
             if each.is_empty() {
                 self.send_notes(err, &mut Vec::new(), rows, None);
-                return Ok(Some((Answer::Whole, bytes)));
+                return Ok((Answer::Whole, bytes));
             }
             let answer = Answer::Keyed {
                 each,
                 left_out: None,
             };
-            return Ok(Some((answer, bytes)));
+            return Ok((answer, bytes));
         }
         let mut each = each_left_out(value, low, code, budget);
         let several = crate::output::several_keys(value);
@@ -97,9 +97,7 @@ impl<T: Rows> Prepared<'_, T> {
                 (*position, failure.keyed(key, several))
             })
             .collect();
-        let Some(shown) = self.fit_each(listed, &prepared, low, budget)? else {
-            return Ok(None);
-        };
+        let shown = self.fit_each(listed, &prepared, low, budget)?;
         let from = shown - low;
         let failures = Failures {
             each: prepared.get(from..).unwrap_or_default(),
@@ -111,13 +109,13 @@ impl<T: Rows> Prepared<'_, T> {
             each,
             left_out: None,
         };
-        Ok(Some((answer, bytes)))
+        Ok((answer, bytes))
     }
 
     /// Returns the most rows from `low` up that fit in `budget` in the JSON
     /// document beside the batch's own failures `listed` and the failures
-    /// in `each` of the answers that the rows after them leave out, or
-    /// `None` when no count fits.
+    /// in `each` of the answers that the rows after them leave out, or `low`
+    /// when no count fits.
     ///
     /// It measures the document without rows or failures once, and each
     /// row and each failure once as an element of its array in the
@@ -129,7 +127,7 @@ impl<T: Rows> Prepared<'_, T> {
         each: &[(usize, PreparedFailure<'_>)],
         low: usize,
         budget: usize,
-    ) -> io::Result<Option<usize>> {
+    ) -> io::Result<usize> {
         let empty = Failures::of(&[], &[], self.form);
         let empty = budget::measure(|counter| self.write(counter, 0, None, Some(empty)))?;
         let in_order = self.document.prints_failures_in_order();
@@ -167,7 +165,7 @@ impl<T: Rows> Prepared<'_, T> {
             .collect();
         left.reverse();
         left.push(0);
-        let shown = (low..rows.len()).rev().find(|&shown| {
+        let fits = (low..rows.len()).rev().find(|&shown| {
             let from = shown - low;
             let failures = listed.len() + each.len().saturating_sub(from);
             let row_bytes = rows.get(shown).copied().unwrap_or(0);
@@ -182,7 +180,7 @@ impl<T: Rows> Prepared<'_, T> {
             };
             empty.saturating_add(arrays) <= budget
         });
-        Ok(shown)
+        Ok(fits.unwrap_or(low))
     }
 
     /// Returns the bytes of `value` as an element of an array `depth` levels

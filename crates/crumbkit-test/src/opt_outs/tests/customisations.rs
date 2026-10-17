@@ -296,7 +296,7 @@ fn a_batch_that_answers_each_left_out_key_is_a_left_out_per_key_customisation_af
         json!({
             "declaration": "left-out-per-key",
             "applies_to": "shelf books show",
-            "declares": "When the output budget leaves out answers, the command prints one failure for each answer left out, at its key's position, in place of one failure that names them all.",
+            "declares": "When the output budget leaves out answers, the command prints one failure for each answer left out, at its key's position, in place of one failure that names them all. The JSON document can pass the budget by the size of those failures.",
         })
     );
 }
