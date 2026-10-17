@@ -51,14 +51,14 @@ lacks, so a program reads every row the same way.
   without guards ([write guards](../effects/write-guards.md)).
 - `form` is `document`, `stream`, `bytes`, `headed` or `json-rows` for a
   leaf with a document and `null` for one without
-  ([streams](../output/streams.md), [bytes](../output/README.md#bytes),
-  [headed bytes](../output/README.md#headed-bytes),
-  [rows printed whole](../output/README.md#rows-printed-whole)). A leaf has
+  ([streams](../output/streams.md), [bytes](../output/shapes/README.md#bytes),
+  [headed bytes](../output/shapes/README.md#headed-bytes),
+  [rows printed whole](../output/shapes/README.md#rows-printed-whole)). A leaf has
   the form `json-rows` when its text prints each row as one line of JSON.
 - `line` holds the form of each row's own text line, such as
   `<NAME>: <ABOUT>`, or `null` when the leaf's rows print a table or the
   leaf has no document
-  ([rows with their own text line](../output/README.md#rows-with-their-own-text-line)).
+  ([rows with their own text line](../output/shapes/README.md#rows-with-their-own-text-line)).
 - `columns` lists a headed leaf's JSON fields that `--fields` selects,
   ending with `text` and `base64`, because its text has no columns.
 - `exits` lists the exit codes that the tool declares for the command, each

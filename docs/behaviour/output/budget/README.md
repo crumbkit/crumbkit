@@ -54,7 +54,7 @@ Why: ADR-0046.
 A listing or a list prints the most rows that fit, found by a binary search
 over the row count, and the run exits with code 0. The search measures each
 count of rows with a counter that keeps no bytes. When the rows print
-[their own text line](../README.md#rows-with-their-own-text-line), the search
+[their own text line](../shapes/README.md#rows-with-their-own-text-line), the search
 counts the bytes of those lines, which `finish` builds once.
 
 - In text, a line such as `Showing 812 of 5000 books, because output stops at
@@ -126,7 +126,7 @@ Why: ADR-0046, ADR-0059.
 
 ## Headed bytes
 
-The text of a [headed batch](../README.md#headed-bytes) prints each row whole
+The text of a [headed batch](../shapes/README.md#headed-bytes) prints each row whole
 or not at all, because a file cut short would look whole. Each row costs its
 header and its bytes, and 1 more byte for the line feed before its header
 when it is not the first row that prints.

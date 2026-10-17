@@ -143,7 +143,7 @@ fn finish_show(output: &mut Output, words: &[&str]) -> Finished {
         result,
     );
     Finished {
-        code,
+        code: ExitCode::from(code),
         out: String::from_utf8(out).unwrap(),
         err: String::from_utf8(err).unwrap(),
     }

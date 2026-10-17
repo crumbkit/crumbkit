@@ -42,7 +42,7 @@ widths of rows still to come. Two spaces separate the cells, the last cell
 is not padded, and a cell wider than its header pushes the rest of its line
 to the right. `stream` fails to compile for a row type with an empty
 `Row::COLUMNS`, because each line would print nothing of its row. A stream of
-rows with [their own text line](README.md#rows-with-their-own-text-line)
+rows with [their own text line](shapes/README.md#rows-with-their-own-text-line)
 prints those lines and no header.
 
 With `--json`, each row prints as a whole envelope document on its own line,
@@ -53,7 +53,7 @@ every [JSON layout](json-layout.md). A document from
 `Document::without_envelope` prints each row alone, and its failures print as
 text on standard error. A document from `Document::with_keys` prints each
 line with the declared keys in place of `schema` and `data`
-([output](README.md#documents-with-the-tools-own-keys)). A dry run marks each JSON line with
+([result shapes](shapes/README.md#documents-with-the-tools-own-keys)). A dry run marks each JSON line with
 `"dry_run": true`. A stream document's JSON Schema, from
 `schemas::stream_schema`, describes one line: the envelope of a document of
 one row.

@@ -26,11 +26,11 @@ The lines print in this order, each only on the pages named:
    then `Output:` on a leaf that prints a stream, bytes, a headed batch or
    rows whose text is one line of JSON for each row
    ([streams](../output/streams.md),
-   [headed bytes](../output/README.md#headed-bytes),
-   [rows printed whole](../output/README.md#rows-printed-whole)), then
+   [headed bytes](../output/shapes/README.md#headed-bytes),
+   [rows printed whole](../output/shapes/README.md#rows-printed-whole)), then
    `Text:` on a leaf whose rows print their own text line, such as `Text:
    one line per row, <NAME>: <ABOUT>; --fields prints a table.`
-   ([rows with their own text line](../output/README.md#rows-with-their-own-text-line)),
+   ([rows with their own text line](../output/shapes/README.md#rows-with-their-own-text-line)),
    then `Problems:` on a leaf whose row type names a problem field.
 3. In `-h`, one line that names the visible global flags of the root and of
    each command on the way. `--help` lists those flags in full.

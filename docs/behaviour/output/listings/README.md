@@ -79,7 +79,7 @@ with `Listing::uncounted` or `Page::uncounted`. The reading example's
 
 A counted listing whose document calls `Document::without_total` also leaves
 `total` out of its JSON, while its footer keeps the count
-([output](../README.md#listings-without-a-total)).
+([result shapes](../shapes/README.md#listings-without-a-total)).
 
 Every listing's document holds `truncated`, which is true when `--limit`, the
 output budget or an uncounted source left rows out, and false when `data`

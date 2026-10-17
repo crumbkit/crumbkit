@@ -56,6 +56,7 @@ pub(super) fn respond<T: Rows, E: AsFailure, O: Write, W: Write, R>(
     // form print the same fields. Every other result has `None` here.
     // Each failure of a batch carries its key, and every other result has
     // no indexes, so its failures carry none.
+    let several = super::several_keys(value);
     let failures: Option<Vec<PreparedFailure<'_>>> = value.failures().map(|failures| {
         let mut indexes = value.failure_indexes().iter();
         failures
@@ -71,7 +72,7 @@ pub(super) fn respond<T: Rows, E: AsFailure, O: Write, W: Write, R>(
                     output.command.as_mut(),
                     &mut sink.err,
                 )
-                .keyed(key)
+                .keyed(key, several)
             })
             .collect()
     });
@@ -243,7 +244,9 @@ fn with_oversize<'a, T: Rows>(
         let key = value.key(*position).map(|key| (*position, key));
         let printing = Printing::default();
         let command = command.as_deref_mut();
-        merged.push(PreparedFailure::new(over, spelling, printing, command, err).keyed(key));
+        let several = super::several_keys(value);
+        merged
+            .push(PreparedFailure::new(over, spelling, printing, command, err).keyed(key, several));
     }
     merged.extend(listed);
     merged

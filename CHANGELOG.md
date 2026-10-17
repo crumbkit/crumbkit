@@ -548,6 +548,12 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   headed leaf with half the bytes they print ([behaviour/output/budget]).
 - crumbkit-test: [`check_guide`] fails a leaf whose batch is not headed and
   whose row type has no `Row::COLUMNS` ([behaviour/help/examples]).
+- crumbkit: `PreparedFailure::among_several` tells a failure form whether a
+  batch failure's caller gave more than one key, the rule that headed
+  headers use ([behaviour/failures/forms]).
+- crumbkit: `Output::new` and the builders `json`, `fields`, `long` and
+  `full` build the output flags for a tool that defines them in its own
+  parser, and `finish` checks them as parsed flags ([behaviour/output]).
 - crumbkit-core: a row type that sets [`Row`]`::WHOLE` prints every field
   of each row with `--json`, without `--full`. `--full` is refused for it,
   and `--fields` prints `null` for a field that a row leaves out
@@ -854,6 +860,9 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit: [`finish`] fails to compile for a row, a `Vec` or a `Listing`,
   and [`stream`] for a row type, whose [`Row`]`::COLUMNS` is empty, because
   such rows printed none of their fields ([behaviour/output]).
+- crumbkit: [`finish_to`] returns the exit code as a `u8`, and `Stop::number`
+  gives the exit code of a run that `parse` ended as a `u8`, so a tool can
+  record the code before it exits ([behaviour/output]).
 
 ### Removed
 
@@ -976,6 +985,7 @@ rustdoc, or at the page in docs/ that describes the behaviour. -->
 [`Document`]: crates/crumbkit-core/src/document.rs
 [`Output`]: crates/crumbkit/src/output.rs
 [`finish`]: crates/crumbkit/src/output.rs
+[`finish_to`]: crates/crumbkit/src/output.rs
 [`stream`]: crates/crumbkit/src/output/stream.rs
 [`Stream`]: crates/crumbkit-core/src/stream.rs
 [`Streaming`]: crates/crumbkit/src/output/stream.rs
