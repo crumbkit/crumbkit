@@ -34,6 +34,21 @@ mod tests;
 pub struct Call {
     /// The command line the call names.
     target: CallTarget,
+    /// Where a typed call from [`Call::typed_all`] takes every value of a
+    /// failure's list field, or `None` for every other call.
+    slot: Option<Slot>,
+}
+
+/// The place in the words of a typed call where every value of a failure's
+/// list field goes, which [`Call::typed_all`] sets.
+#[derive(Clone, Debug, PartialEq, Eq)]
+struct Slot {
+    /// The number of words before the place.
+    at: usize,
+    /// The argument as clap's usage line shows it, such as `<ID>...`.
+    placeholder: String,
+    /// The name of the failure's field whose values the call takes.
+    field: &'static str,
 }
 
 /// The three forms of a [`Call`]: a command with arguments that a tool
@@ -98,6 +113,7 @@ impl Call {
                 path,
                 args: Vec::new(),
             },
+            slot: None,
         }
     }
 
@@ -126,6 +142,7 @@ impl Call {
     pub const fn help(path: Vec<String>) -> Self {
         Self {
             target: CallTarget::Help(path),
+            slot: None,
         }
     }
 
@@ -151,7 +168,49 @@ impl Call {
     pub const fn typed(words: Vec<String>) -> Self {
         Self {
             target: CallTarget::Typed(words),
+            slot: None,
         }
+    }
+
+    /// Returns a typed call whose words after the program name are `words`,
+    /// with the argument `placeholder`, such as `<ID>...` or `--id <ID>...`,
+    /// after the first `at` of them, which takes every value of the list
+    /// field `field` of the failure that offers the call.
+    ///
+    /// crumbkit uses it for the recovery of a batch over the output budget,
+    /// which reruns the caller's own words with the keys left out in place
+    /// of the keys the caller typed. The call renders as [`Call::typed`]
+    /// does, with `placeholder` unquoted at its place, and its target is
+    /// [`CallTarget::Typed`] with `words` alone. It is hidden because only
+    /// crumbkit builds it from the words it parsed, and a tool names its
+    /// own calls with [`Call::new`].
+    #[doc(hidden)]
+    #[must_use]
+    pub fn typed_all(
+        words: Vec<String>,
+        at: usize,
+        placeholder: String,
+        field: &'static str,
+    ) -> Self {
+        Self {
+            target: CallTarget::Typed(words),
+            slot: Some(Slot {
+                at,
+                placeholder,
+                field,
+            }),
+        }
+    }
+
+    /// Returns the place of a typed call from [`Call::typed_all`]: the
+    /// number of words before it, the argument's placeholder and the name of
+    /// the field whose values it takes, or `None` for every other call.
+    #[doc(hidden)]
+    #[must_use]
+    pub fn typed_slot(&self) -> Option<(usize, &str, &'static str)> {
+        self.slot
+            .as_ref()
+            .map(|slot| (slot.at, slot.placeholder.as_str(), slot.field))
     }
 
     /// Adds the argument whose clap id is `id`, such as `ids` for a field

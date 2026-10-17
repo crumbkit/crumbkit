@@ -312,6 +312,24 @@ fn books_show_json_over_the_budget_names_the_ids_left_out_in_its_last_failure_wi
 }
 
 #[test]
+fn books_show_over_the_budget_reruns_the_fields_typed_before_books_with_the_ids_left_out() {
+    let ids = [
+        "--fields", "id,title", "books", "show", "1", "2", "3", "4", "5", "6",
+    ];
+    let output = shelf_with_budget("100", &ids)
+        .unwrap()
+        .code(1)
+        .get_output()
+        .clone();
+
+    let stderr = String::from_utf8(output.stderr).unwrap();
+    assert!(
+        stderr.contains("help:  run `shelf --fields id,title books show 5 6`\n"),
+        "{stderr}"
+    );
+}
+
+#[test]
 fn books_show_with_101_ids_is_refused_with_code_2() {
     let mut args = vec!["books", "show"];
     args.extend(["1"; 101]);

@@ -21,7 +21,7 @@ pub enum Step {
     /// Run this command line once with every value of the failure's list
     /// field `field` in place of the argument's placeholder, such as
     /// `shelf books show <ID>...` with every value of `left_out`. A call
-    /// built with `Call::all` renders as this step.
+    /// built with `Call::all` or `Call::typed_all` renders as this step.
     RunAll {
         /// The command line, with the argument's placeholder in place of the
         /// values.
@@ -107,9 +107,13 @@ impl Step {
     }
 }
 
-/// Returns the field that a `Call::all` argument of `call` takes its values
-/// from, or `None` when the call has no such argument.
+/// Returns the field that a `Call::all` argument of `call`, or the place of
+/// a call from `Call::typed_all`, takes its values from, or `None` when the
+/// call has neither.
 fn all_field(call: &crate::Call) -> Option<&'static str> {
+    if let Some((_, _, field)) = call.typed_slot() {
+        return Some(field);
+    }
     let CallTarget::Command { args, .. } = call.target() else {
         return None;
     };
@@ -126,8 +130,8 @@ fn all_field(call: &crate::Call) -> Option<&'static str> {
 /// holds a space or a `<` sits between single quotes, so the scan skips the
 /// text between quotes and the `\'` that `quote` writes for a quote inside a
 /// value. A call from `Call::all` holds no other placeholder, which
-/// rendering enforces, so the first placeholder is the one the values
-/// replace.
+/// rendering enforces, and a call from `Call::typed_all` quotes each of its
+/// words, so the first placeholder is the one the values replace.
 fn placeholder(call: &str) -> Option<(usize, usize)> {
     let mut quoted = false;
     let mut escaped = false;

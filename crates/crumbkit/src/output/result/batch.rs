@@ -6,6 +6,7 @@ use std::io::{self, Write};
 
 use clap::Command;
 
+use super::rerun::{self, Rerun};
 use super::{Answer, Prepared};
 use crate::output::budget::{self, Over, OverBudget};
 use crate::output::envelope::Failures;
@@ -22,6 +23,10 @@ pub(super) struct LeftOut<'c> {
     pub(super) code: &'static Code,
     /// The bytes that the result had to fit in.
     pub(super) budget: usize,
+    /// The caller's words split at the place of the keys, which the
+    /// recoveries rerun with the keys left out, or `None` when the
+    /// recoveries name the batch's command alone.
+    pub(super) rerun: Option<Rerun>,
 }
 
 impl<T: Rows> Prepared<'_, T> {
@@ -197,7 +202,7 @@ impl<T: Rows> Prepared<'_, T> {
                 unlisted: keys.len().saturating_sub(listed.len()),
                 left_out: listed,
                 from: self.value.left_out_from(shown),
-                fetch: self.value.fetch(),
+                fetch: rerun::fetch_all(self.value, left_out.rerun.as_ref()),
             },
         }
     }

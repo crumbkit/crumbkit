@@ -381,3 +381,15 @@ fn a_placeholder_beside_an_all_argument_is_refused_because_only_the_field_fills_
         })
     );
 }
+
+#[test]
+fn a_typed_call_that_takes_every_value_of_a_field_renders_its_placeholder_unquoted_at_its_place() {
+    let words = ["--fields", "id,title", "books", "show", "--json"].map(str::to_owned);
+    let call = Call::typed_all(words.to_vec(), 4, "<ID>...".to_owned(), "left_out");
+
+    assert_eq!(
+        render(&call),
+        Ok("shelf --fields id,title books show <ID>... --json".to_owned())
+    );
+    assert_eq!(super::words(&call, &Tool::command()), None);
+}

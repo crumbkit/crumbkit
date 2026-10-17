@@ -4,6 +4,7 @@
 use std::borrow::Cow;
 use std::io::{self, Write};
 
+use super::rerun::{self, Rerun};
 use super::{Answer, per_key};
 use crate::output::budget::{Over, OverBudget};
 use crate::output::table::escape_controls;
@@ -94,11 +95,23 @@ pub(super) fn write<T: Rows>(
     out.flush()?;
     // The rows from `stop` on come after every row too large alone, so the
     // failures stay in key order.
-    let left_out = if document.answers_left_out_per_key() {
-        oversize.extend(per_key::each_left_out(value, stop, code, budget));
+    // The caller's words are parsed again only when an answer is left out.
+    let rerun = if value.left_out(stop).is_empty() {
         None
     } else {
-        left_out(value, stop, code, budget)
+        Rerun::find(&output.command, &output.words, value)
+    };
+    let left_out = if document.answers_left_out_per_key() {
+        oversize.extend(per_key::each_left_out(
+            value,
+            stop,
+            code,
+            budget,
+            rerun.as_ref(),
+        ));
+        None
+    } else {
+        left_out(value, stop, code, budget, rerun.as_ref())
     };
     if oversize.is_empty() && left_out.is_none() {
         write_notes(err, value, problems);
@@ -122,12 +135,14 @@ pub(in crate::output) fn header(key: Option<&str>, position: usize) -> String {
 
 /// Returns the failure of the rows from the row numbered `stop` on and the
 /// keys the batch never fetched, which names every key, or `None` when no
-/// row or key is left out.
+/// row or key is left out. Its recovery reruns the caller's words from
+/// `rerun` with the keys left out, or names the batch's command alone.
 fn left_out<T: Rows>(
     value: &T,
     stop: usize,
     code: &'static Code,
     budget: usize,
+    rerun: Option<&Rerun>,
 ) -> Option<OverBudget> {
     let keys = value.left_out(stop);
     if keys.is_empty() {
@@ -141,7 +156,7 @@ fn left_out<T: Rows>(
             unlisted: keys.len().saturating_sub(named.len()),
             left_out: named,
             from: value.left_out_from(stop),
-            fetch: value.fetch(),
+            fetch: rerun::fetch_all(value, rerun),
         },
     })
 }

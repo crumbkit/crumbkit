@@ -123,7 +123,9 @@ fn build_branch(call: &Call, command: &mut Command) {
 /// crumbkit points the caller back at a hidden command that the caller
 /// named.
 /// A call from `Call::typed` renders the caller's words in the same way,
-/// each quoted when a POSIX shell would split or expand it.
+/// each quoted when a POSIX shell would split or expand it. A call from
+/// `Call::typed_all` also prints its placeholder, unquoted, at its place
+/// among the words.
 pub(crate) fn render_built(call: &Call, command: &Command) -> Result<String, CallError> {
     let mut text = command.get_name().to_owned();
     let (path, args) = match call.target() {
@@ -136,9 +138,22 @@ pub(crate) fn render_built(call: &Call, command: &Command) -> Result<String, Cal
             return Ok(text);
         }
         CallTarget::Typed(words) => {
-            for word in words {
+            let slot = call.typed_slot();
+            for (index, word) in words.iter().enumerate() {
+                if let Some((at, placeholder, _)) = slot
+                    && at == index
+                {
+                    text.push(' ');
+                    text.push_str(placeholder);
+                }
                 text.push(' ');
                 text.push_str(&quote(word));
+            }
+            if let Some((at, placeholder, _)) = slot
+                && at >= words.len()
+            {
+                text.push(' ');
+                text.push_str(placeholder);
             }
             return Ok(text);
         }
@@ -244,7 +259,8 @@ fn refuse_one_value(arg: &Arg, text: &str) -> Result<(), CallError> {
 /// Returns the words of the command line that `call` names, from the
 /// program name on, as a shell passes the line that
 /// [`RenderCall::render`] prints, or `None` when `call` holds a placeholder
-/// from `Call::arg` or `Call::all`, which names no value to parse.
+/// from `Call::arg`, `Call::all` or `Call::typed_all`, which names no value
+/// to parse.
 /// `command` is the root of a tree that `call` already rendered against, so
 /// each lookup finds what the rendering found, and `None` also covers a
 /// lookup that would fail.
@@ -256,6 +272,7 @@ pub(crate) fn words(call: &Call, command: &Command) -> Option<Vec<String>> {
             words.push("-h".to_owned());
             return Some(words);
         }
+        CallTarget::Typed(_) if call.typed_slot().is_some() => return None,
         CallTarget::Typed(typed) => {
             words.extend(typed.iter().cloned());
             return Some(words);

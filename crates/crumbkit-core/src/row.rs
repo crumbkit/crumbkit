@@ -295,7 +295,9 @@ pub trait Rows: Serialize + sealed::Sealed {
 
     /// Returns the call that fetches the keys a batch leaves out, with every
     /// value of the over-budget failure's `left_out` field in one run, and
-    /// `None` when the result is not a batch.
+    /// `None` when the result is not a batch. The recovery uses this call
+    /// only when it cannot find the keys among the caller's words, and
+    /// otherwise reruns those words with the keys left out.
     fn fetch(&self) -> Option<Call> {
         None
     }
@@ -309,7 +311,9 @@ pub trait Rows: Serialize + sealed::Sealed {
     }
 
     /// Returns the call that fetches `key` alone with a batch's command, and
-    /// `None` when the result is not a batch.
+    /// `None` when the result is not a batch. The recovery uses this call
+    /// only when it cannot find the keys among the caller's words, and
+    /// otherwise reruns those words with `key` alone.
     fn fetch_key(&self, _key: &str) -> Option<Call> {
         None
     }
