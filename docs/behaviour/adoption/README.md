@@ -18,7 +18,9 @@ for each ([dependencies](../../project/dependencies.md)). It enables clap's
 Each part follows an existing convention:
 
 - `Failure` extends `std::error::Error` ([failures](../failures/README.md)).
-- `Output` is added with clap's `#[command(flatten)]`.
+- `Output` is added with clap's `#[command(flatten)]`, or built with
+  `Output::new()` by a tool that defines the view flags itself
+  ([output](../output/README.md#view-flags)).
 - Results derive `Serialize` and `JsonSchema` and implement `Row` to name
   their table columns ([output](../output/README.md)).
 - Each crumbkit-test check is a free function that a tool calls from an

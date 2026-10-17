@@ -15,6 +15,7 @@ use crate::{Document, Error, Listing, Row, Rows, Sink, Spelling};
 mod about;
 mod batch;
 mod budget;
+mod built;
 mod bytes;
 mod direct;
 mod empty;

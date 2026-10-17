@@ -2,6 +2,7 @@
 //! format they choose.
 
 mod budget;
+mod build;
 mod columns;
 mod confirm;
 mod counted;

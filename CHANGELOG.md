@@ -551,6 +551,9 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit: `PreparedFailure::among_several` tells a failure form whether a
   batch failure's caller gave more than one key, the rule that headed
   headers use ([behaviour/failures/forms]).
+- crumbkit: `Output::new` and the builders `json`, `fields`, `long` and
+  `full` build the output flags for a tool that defines them in its own
+  parser, and `finish` checks them as parsed flags ([behaviour/output]).
 
 ### Changed
 

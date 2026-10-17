@@ -69,6 +69,15 @@ that names the flag to add or drop. A tool that parses with clap alone gets
 these refusals, and the refusal of an unoffered view flag, from `finish` or
 `stream` after the handler has run.
 
+A tool that defines the view flags in its own parser cannot also flatten
+`Output`, because clap refuses two arguments with one name. It builds
+`Output` with `Output::new().json(..).fields(..)`, `.long(..)` and
+`.full(..)`, then calls `Output::set_command`, and `finish` and `stream`
+check the built flags as they check parsed ones. `parse` reads a view flag
+by its argument id, so the tool's own arguments get the refusals before
+the handler runs, and an unoffered flag leaves the leaf's help, only when
+their ids are `json`, `fields`, `long` and `full` and they are global.
+
 On a leaf without a document, only `finish` or `stream` refuses a view flag
 that the output cannot use, and that happens after the handler has run. On a
 command that changes something, an agent may then repeat a write that
