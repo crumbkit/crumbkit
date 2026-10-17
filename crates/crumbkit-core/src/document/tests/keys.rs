@@ -53,6 +53,21 @@ fn a_listing_with_its_own_keys_may_print_its_summary_at_the_top() {
 }
 
 #[test]
+fn a_listing_with_its_own_keys_may_print_without_a_total() {
+    assert!(ENTRIES.prints_total());
+    assert!(!ENTRIES.without_total().prints_total());
+    assert!(!ENTRIES.without_total().untyped().prints_total());
+}
+
+#[test]
+#[should_panic(expected = "crumbkit's own envelope")]
+fn a_listing_without_a_total_is_rejected_for_a_document_with_crumbkits_own_envelope() {
+    let document: Document<Listing<Moon>> = Document::new("solar", "moons-list", 1, "Moons.");
+
+    let _ = document.without_total();
+}
+
+#[test]
 #[should_panic(expected = "crumbkit's own envelope")]
 fn a_summary_at_the_top_is_rejected_for_a_document_with_crumbkits_own_envelope() {
     let document: Document<Listing<Moon>> = Document::new("solar", "moons-list", 1, "Moons.");

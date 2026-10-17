@@ -570,6 +570,12 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   `left-out-per-key` customisation. [`check_output_budget`] accepts an
   over-budget failure that other failures follow, and expects the exit of
   the first failure in key order ([behaviour/output/budget]).
+- crumbkit: `Document::without_total` leaves `total` out of the JSON and the
+  schema of a listing with declared keys. The JSON keeps `truncated`, and
+  the text footer keeps the count ([behaviour/output]).
+- crumbkit-test: [`check_document_ids`] fails a leaf whose listing leaves
+  out `total` unless an opt-out from `documents/total` with a reason covers
+  it ([behaviour/adoption/opt-outs]).
 
 ### Changed
 

@@ -96,6 +96,9 @@ pub struct Document<T> {
     /// document in place of under `summary`, which the tool chose with
     /// `summary_at_top`.
     summary_top: bool,
+    /// Whether a listing's JSON leaves out `total`, which the tool chose
+    /// with `without_total`.
+    no_total: bool,
     /// `PhantomData<fn() -> T>` ties the document to `T` without holding a
     /// `T`. A function pointer is `Send` and `Sync` whatever it returns, so
     /// `Document<T>` is `Send` and `Sync` for every `T`; `PhantomData<T>`
@@ -156,6 +159,7 @@ impl<T> Document<T> {
             bytes_of: None,
             type_value: None,
             summary_top: false,
+            no_total: false,
             result: PhantomData,
         }
     }
@@ -319,6 +323,7 @@ impl<T> Document<T> {
             bytes_of: None,
             type_value: self.type_value,
             summary_top: self.summary_top,
+            no_total: self.no_total,
             result: PhantomData,
         }
     }

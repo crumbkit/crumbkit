@@ -26,7 +26,10 @@ without `data` ([usage log](../usage-log/README.md)).
 - A listing's document always holds `truncated`, with every output flag, so
   a program can tell whether it has every row. It holds `total` when the tool
   counted the matching rows, and leaves it out while an uncounted source
-  holds more rows ([listings](../output/listings/README.md)).
+  holds more rows ([listings](../output/listings/README.md)). A listing
+  whose document calls `Document::without_total` never holds `total`, and
+  its schema has no `total` property
+  ([output](../output/README.md#listings-without-a-total)).
 - A listing or list document may hold `cut`, an object with the over-budget
   `code` and the `budget` in bytes, when the
   [output budget](../output/budget/README.md) cut it short.
@@ -44,7 +47,7 @@ without `data` ([usage log](../usage-log/README.md)).
   and no other properties. A row that flattens a `Bytes` field therefore
   lists `text` and `base64` among its own properties.
 
-Why: ADR-0007, ADR-0016, ADR-0036, ADR-0039, ADR-0046, ADR-0050, ADR-0059, ADR-0062.
+Why: ADR-0007, ADR-0016, ADR-0036, ADR-0039, ADR-0046, ADR-0050, ADR-0059, ADR-0062, ADR-0066.
 
 ## The failure document
 
