@@ -4,28 +4,24 @@
 use std::fmt;
 use std::process::ExitCode;
 
-use clap::{CommandFactory as _, FromArgMatches as _};
+use clap::CommandFactory as _;
 
 use super::{Finished, PLANET, PLANETS, Tool, finish_output, saturn};
 use crate::Envelope;
 use crate::help::Guide;
 use crate::{
-    Call, Code, Document, Error, Failure, JsonStyle, Output, Parsed, Recovery, Rows, Sink,
-    Spelling, finish_to,
+    Call, Code, Document, Error, Failure, JsonStyle, Output, Recovery, Rows, Sink, Spelling,
+    finish_to,
 };
 
 /// The guide of a tool whose readers expect indented JSON.
 const PRETTY: Guide = Guide::new().json(JsonStyle::new().pretty("the readers expect it"));
 
 /// Returns the output flags for `tool list` followed by `flags`, with the
-/// guide [`PRETTY`], as a tool's `main` sets them.
+/// guide [`PRETTY`], as `Output::new` builds them.
 fn pretty(flags: &[&str]) -> Output {
-    let mut command = Tool::command();
-    let args = ["tool", "list"].iter().chain(flags);
-    let matches = command.try_get_matches_from_mut(args).unwrap();
-    let mut output = Output::from_arg_matches(&matches).unwrap();
-    output.set_command(Parsed::guided(command, &PRETTY));
-    output
+    let args: Vec<&str> = ["tool", "list"].iter().chain(flags).copied().collect();
+    super::built_with(Tool::command(), &PRETTY, &args)
 }
 
 /// Finishes `value` with `flags` and the guide [`PRETTY`].

@@ -4,16 +4,14 @@
 
 use std::process::ExitCode;
 
-use clap::{CommandFactory as _, FromArgMatches as _};
+use clap::CommandFactory as _;
 use schemars::JsonSchema;
 use serde::Serialize;
 
 use super::Tool;
 use crate::Envelope;
 use crate::help::Guide;
-use crate::{
-    Batch, Bytes, Document, Error, Headed, Output, Parsed, Row, Sink, Spelling, finish_to,
-};
+use crate::{Batch, Bytes, Document, Error, Headed, Row, Sink, Spelling, finish_to};
 
 /// The smallest budget that a tool can set.
 const BUDGET: usize = 1024;
@@ -87,12 +85,9 @@ fn finish(
     document: Document<Batch<Page, Error>>,
     batch: Batch<Page, Error>,
 ) -> Finished {
-    let mut command = Tool::command();
-    let args = ["tool", "list"].iter().chain(flags);
-    let matches = command.try_get_matches_from_mut(args).unwrap();
-    let mut output = Output::from_arg_matches(&matches).unwrap();
     let guide = Guide::new().output_budget(budget, "the tests print little");
-    output.set_command(Parsed::guided(command, &guide));
+    let args: Vec<&str> = ["tool", "list"].iter().chain(flags).copied().collect();
+    let mut output = super::built_with(Tool::command(), &guide, &args);
     let mut out = Vec::new();
     let mut err = Vec::new();
     let result: Result<_, Error> = Ok(batch);

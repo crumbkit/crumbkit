@@ -36,8 +36,8 @@ when it fails with `--json`. When the guide sets a
 [failure form](../failures/forms.md), the form's document takes that place
 with the kind `unwrapped`.
 
-- A leaf whose path is hidden in the command tree that `main` passed to
-  `Output::set_command` adds nothing, so the commands list only what help
+- A leaf whose path is hidden in the command tree that the run's `Output`
+  holds adds nothing, so the commands list only what help
   shows.
 - Two leaves that declare one id give one row that names both command lines.
 - A tool declares the files that users write for it, such as a settings
@@ -69,13 +69,10 @@ a `Batch`. An id that names no document adds a failure with the code
 output prints each schema as compact JSON in one table cell, so a caller who
 wants it pretty-printed uses `--json`.
 
-Both commands fail with `crumbkit::schemas::unavailable` and no next step
-when the tool's `main` has not passed its command to `Output::set_command`,
-because without the tree they cannot tell which commands are visible.
-crumbkit fixes both codes, as it fixes those of
-[`commands list`](../help/commands-list.md).
+crumbkit fixes the code `crumbkit::schemas::not_found`, as it fixes the
+codes of [`commands list`](../help/commands-list.md).
 
-Why: ADR-0035, ADR-0016, ADR-0007.
+Why: ADR-0035, ADR-0016, ADR-0007, ADR-0076.
 
 ## Schema golden files
 

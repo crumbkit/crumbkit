@@ -4,8 +4,8 @@ use std::process::ExitCode;
 
 use clap::Command;
 
-use crate::Output;
 use crate::help::Guide;
+use crate::{Output, ViewFlags};
 
 /// What [`parse`](crate::parse) returns after it printed help, the version
 /// or a refusal, so the run ends without a parsed command.
@@ -33,7 +33,7 @@ impl Stop {
     pub(crate) fn new(code: u8, json: bool, command: Command, guide: &Guide) -> Self {
         Self {
             code,
-            output: Box::new(Output::stopped(json, command, guide)),
+            output: Box::new(Output::stopped(ViewFlags::new().json(json), command, guide)),
         }
     }
 

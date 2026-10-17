@@ -74,9 +74,9 @@ these refusals, and the refusal of an unoffered view flag, from `finish` or
 `stream` after the handler has run.
 
 A tool that defines the view flags in its own parser cannot also flatten
-`Output`, because clap refuses two arguments with one name. It builds
-`Output` with `Output::new().json(..).fields(..)`, `.long(..)` and
-`.full(..)`, then calls `Output::set_command`, and `finish` and `stream`
+`ViewFlags`, because clap refuses two arguments with one name. It builds
+`ViewFlags` with `ViewFlags::new().json(..).fields(..)`, `.long(..)` and
+`.full(..)`, passes them to `Output::new`, and `finish` and `stream`
 check the built flags as they check parsed ones. `parse` reads a view flag
 by its argument id, so the tool's own arguments get the refusals before
 the handler runs, and an unoffered flag leaves the leaf's help, only when

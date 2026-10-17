@@ -9,6 +9,8 @@ use serde::ser::Error as _;
 use serde::{Serialize, Serializer};
 
 use super::{Output, finish_to};
+use crate::ViewFlags;
+use crate::help::Guide;
 use crate::twins::assert_one_word_apart;
 use crate::{Document, Error, Listing, Row, Rows, Sink, Spelling};
 
@@ -84,7 +86,7 @@ struct Tool {
     #[command(subcommand)]
     command: Command,
     #[command(flatten)]
-    output: Output,
+    view: ViewFlags,
 }
 
 #[derive(Subcommand)]
@@ -96,10 +98,12 @@ enum Command {
     },
 }
 
-/// Parses `tool list` followed by `flags`.
+/// Parses `tool list` followed by `flags` with clap alone, and returns the
+/// output that a tool's `main` builds from the parsed view flags.
 fn parse(flags: &[&str]) -> Result<Output, clap::Error> {
-    let args = ["tool", "list"].iter().chain(flags);
-    Tool::try_parse_from(args).map(|tool| tool.output)
+    let args: Vec<&str> = ["tool", "list"].iter().chain(flags).copied().collect();
+    let tool = Tool::try_parse_from(&args)?;
+    Ok(Output::new(tool.view, Tool::command(), &Guide::new(), args))
 }
 
 /// What `finish_to` returned and wrote.
@@ -109,19 +113,25 @@ struct Finished {
     err: String,
 }
 
-/// Parses `tool list` followed by `flags` against `command`, and returns the
-/// output flags with that command set, as a tool's `main` sets the command
-/// it parsed against.
-fn parse_against(mut command: clap::Command, flags: &[&str]) -> Output {
-    let args = ["tool", "list"].iter().chain(flags);
-    let matches = command.try_get_matches_from_mut(args).unwrap();
-    let mut output = Output::from_arg_matches(&matches).unwrap();
-    output.set_command(command);
-    output
+/// Parses `tool list` followed by `flags` against `command` with clap
+/// alone, and returns the output that holds that command, as a tool's
+/// `main` builds it.
+fn parse_against(command: clap::Command, flags: &[&str]) -> Output {
+    let args: Vec<&str> = ["tool", "list"].iter().chain(flags).copied().collect();
+    built_with(command, &Guide::new(), &args)
 }
 
-/// Parses `flags`, sets the tool's command as its `main` would, and finishes
-/// `value` into memory.
+/// Parses `args` against `command` with clap alone, and returns the output
+/// that a tool's `main` builds from the parsed view flags, `command` and
+/// `guide`.
+fn built_with(mut command: clap::Command, guide: &Guide, args: &[&str]) -> Output {
+    let matches = command.try_get_matches_from_mut(args).unwrap();
+    let view = ViewFlags::from_arg_matches(&matches).unwrap();
+    Output::new(view, command, guide, args)
+}
+
+/// Parses `flags`, builds the output as a tool that parses with clap alone
+/// builds it, and finishes `value` into memory.
 fn finish_with<T: Rows>(flags: &[&str], document: Document<T>, value: T) -> Finished {
     let mut output = parse_against(Tool::command(), flags);
     finish_output(&mut output, document, value)
@@ -399,10 +409,12 @@ fn the_valid_fields_of_a_row_type_with_variants_are_each_variants_fields_once_in
 
 #[test]
 fn the_flags_parse_before_and_after_the_subcommand() {
-    let before = Tool::try_parse_from(["tool", "--json", "list", "--long"]).unwrap();
+    let words = ["tool", "--json", "list", "--long"];
+    let view = Tool::try_parse_from(words).unwrap().view;
+    let before = Output::new(view, Tool::command(), &Guide::new(), words);
 
-    assert!(before.output.json);
-    assert!(before.output.long);
+    assert!(before.json);
+    assert!(before.long);
 }
 
 /// A writer whose every write fails with an error of `kind`.
@@ -499,21 +511,4 @@ fn is_json_reports_whether_the_caller_typed_json() {
 #[test]
 fn progress_is_never_allowed_with_json() {
     assert!(!parse(&["--json"]).unwrap().progress_allowed());
-}
-
-#[cfg(debug_assertions)]
-#[test]
-fn finish_warns_in_a_debug_build_when_the_tool_never_passed_its_command() {
-    let mut output = Tool::try_parse_from(["tool", "list"]).unwrap().output;
-
-    let finished = finish_output(&mut output, PLANETS, vec![mercury()]);
-
-    assert_eq!(finished.code, ExitCode::SUCCESS);
-    assert_eq!(
-        finished.err,
-        concat!(
-            "warning: crumbkit leaves out every Next: line and every recovery that runs a command, ",
-            "because the tool's main does not pass its command to Output::set_command\n"
-        )
-    );
 }

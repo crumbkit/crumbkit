@@ -7,12 +7,11 @@
 //! with the document [`SELF_USAGE`]:
 //!
 //! ```ignore
-//! Resource::SelfCommand { command: SelfCommand::Usage(args) } => crumbkit::finish(
-//!     &cli.output,
-//!     SPELLING,
-//!     crumbkit_usage::SELF_USAGE,
-//!     Ok::<_, crumbkit::Error>(crumbkit_usage::findings(&cli.output, &GUIDE, &args)),
-//! ),
+//! Resource::SelfCommand { command: SelfCommand::Usage(args) } => {
+//!     let result = crumbkit_usage::findings(&mut output, &GUIDE, &args);
+//!     let result = Ok::<_, crumbkit::Error>(result);
+//!     crumbkit::finish(&mut output, SPELLING, crumbkit_usage::SELF_USAGE, result)
+//! }
 //! ```
 //!
 //! The report prints one row for each finding, with a summary line above
@@ -184,9 +183,8 @@ struct CallerRuns {
     runs: u64,
 }
 
-/// Returns the findings in the usage log of the tool that the tool passed
-/// to [`Output::set_command`], which it builds in full through
-/// [`Output::command`], for the runs that ended in the `--since`
+/// Returns the findings in the usage log of the tool whose command `output`
+/// holds, which it builds in full through [`Output::command`], for the runs that ended in the `--since`
 /// duration before now, for the tool to pass to [`finish`](crumbkit::finish)
 /// with [`SELF_USAGE`]. `guide` is the tool's guide, whose exit codes give
 /// the meaning of each exit from 3 in a command's figures.
@@ -201,17 +199,16 @@ struct CallerRuns {
 /// predefined spellings and a custom one.
 ///
 /// A failure to find or read the log stays silent, as every usage-log
-/// failure does, and the report holds the runs read before it. A tool that
-/// never called [`Output::set_command`] has no name to find its log by, so
-/// its report has no runs.
+/// failure does, and the report holds the runs read before it. A tool whose
+/// root command has an empty name has no name to find its log by, so its
+/// report has no runs.
 #[must_use]
 pub fn findings(
     output: &mut Output,
     guide: &Guide,
     args: &SelfUsage,
 ) -> Listing<FindingRow, UsageSummary> {
-    let empty = Command::new("");
-    let tool = output.command().unwrap_or(&empty);
+    let tool = output.command();
     report_from(tool, guide, open(tool, args), args.since, SystemTime::now())
 }
 

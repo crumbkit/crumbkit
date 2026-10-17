@@ -25,7 +25,7 @@
 //! use clap::{CommandFactory, Parser, Subcommand};
 //! use crumbkit::help::{Guide, Leaf};
 //! use crumbkit::schemas::{self, SCHEMAS_LIST, SCHEMAS_SHOW, SchemasList, SchemasShow};
-//! use crumbkit::{Output, Spelling};
+//! use crumbkit::{Spelling, ViewFlags};
 //!
 //! /// Browse a small catalogue.
 //! #[derive(Parser)]
@@ -34,7 +34,7 @@
 //!     #[command(subcommand)]
 //!     resource: Resource,
 //!     #[command(flatten)]
-//!     output: Output,
+//!     view: ViewFlags,
 //! }
 //!
 //! #[derive(Subcommand)]
@@ -61,23 +61,22 @@
 //! const SPELLING: Spelling = Spelling::COLONS;
 //!
 //! fn run(args: &[&str]) -> ExitCode {
-//!     let (mut cli, parsed) =
+//!     let (cli, mut output) =
 //!         match crumbkit::parse_from::<Cli, _, _>(Cli::command(), &GUIDE, SPELLING, args) {
 //!             Ok(parsed) => parsed,
 //!             Err(stop) => return stop.code(),
 //!         };
-//!     cli.output.set_command(parsed);
 //!     match cli.resource {
 //!         Resource::Schemas { command } => match command {
-//!             // `list` and `show` build the command tree in `cli.output`,
+//!             // `list` and `show` build the command tree in `output`,
 //!             // so each runs before `finish`.
 //!             SchemasCommand::List(args) => {
-//!                 let result = schemas::list(&mut cli.output, &GUIDE, &args);
-//!                 crumbkit::finish(&mut cli.output, SPELLING, SCHEMAS_LIST, result)
+//!                 let result = schemas::list(&mut output, &GUIDE, &args);
+//!                 crumbkit::finish(&mut output, SPELLING, SCHEMAS_LIST, result)
 //!             }
 //!             SchemasCommand::Show(args) => {
-//!                 let result = schemas::show(&mut cli.output, &GUIDE, &args);
-//!                 crumbkit::finish(&mut cli.output, SPELLING, SCHEMAS_SHOW, result)
+//!                 let result = schemas::show(&mut output, &GUIDE, &args);
+//!                 crumbkit::finish(&mut output, SPELLING, SCHEMAS_SHOW, result)
 //!             }
 //!         },
 //!     }
@@ -177,17 +176,14 @@ pub struct SchemasShow {
 ///
 /// # Errors
 ///
-/// Returns a failure with the code `crumbkit::schemas::unavailable` and no
-/// next step when the tool has not passed its command to
-/// [`Output::set_command`].
+/// It returns no failure. It returns a `Result` so that a tool passes it to
+/// `finish` as it passes any handler's result.
 pub fn list(
     output: &mut Output,
     guide: &Guide,
     args: &SchemasList,
 ) -> Result<Listing<SchemaRow>, Error> {
-    let Some(root) = output.command() else {
-        return Err(SchemasError::Unavailable.into());
-    };
+    let root = output.command();
     let rows = documents(root, guide).iter().map(SchemaRow::new).collect();
     Ok(args.page.first_of(rows).described("documents").next(
         Call::new(SHOW_PATH).arg("ids"),
@@ -206,17 +202,14 @@ pub fn list(
 ///
 /// # Errors
 ///
-/// Returns a failure with the code `crumbkit::schemas::unavailable` and no
-/// next step when the tool has not passed its command to
-/// [`Output::set_command`].
+/// It returns no failure of its own. It returns a `Result` so that a tool
+/// passes it to `finish` as it passes any handler's result.
 pub fn show(
     output: &mut Output,
     guide: &Guide,
     args: &SchemasShow,
 ) -> Result<Batch<SchemaShowRow, Error>, Error> {
-    let Some(root) = output.command() else {
-        return Err(SchemasError::Unavailable.into());
-    };
+    let root = output.command();
     let served = documents(root, guide);
     let mut batch = Batch::new(SHOW_PATH, "ids", &args.ids);
     for id in &args.ids {
@@ -243,8 +236,6 @@ enum SchemasError {
         /// The id as the caller gave it.
         id: String,
     },
-    /// The tool has not passed its command to `Output::set_command`.
-    Unavailable,
 }
 
 /// Prints the message, such as `shelf has no document shelf/books-lst/v1`.
@@ -252,9 +243,6 @@ impl fmt::Display for SchemasError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::NotFound { tool, id } => write!(f, "{tool} has no document {id}"),
-            Self::Unavailable => f.write_str(
-                "the tool has not kept its command tree, so it cannot list its documents",
-            ),
         }
     }
 }
@@ -265,17 +253,12 @@ impl Failure for SchemasError {
     fn code(&self) -> &'static Code {
         match self {
             Self::NotFound { .. } => &codes::SCHEMAS_NOT_FOUND,
-            Self::Unavailable => &codes::SCHEMAS_UNAVAILABLE,
         }
     }
 
     fn recovery(&self) -> Recovery {
         match self {
             Self::NotFound { .. } => Recovery::Run(Call::new(LIST_PATH)),
-            Self::Unavailable => Recovery::None {
-                reason: "the tool's main does not pass its command to Output::set_command"
-                    .to_owned(),
-            },
         }
     }
 }

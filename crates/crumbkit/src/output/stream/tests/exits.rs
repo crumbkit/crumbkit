@@ -10,7 +10,7 @@ use clap::{CommandFactory as _, FromArgMatches as _};
 
 use super::{SIGHTINGS, Tool, Writer, kingfisher, robin};
 use crate::help::{Exit, Guide};
-use crate::{Code, Failure, Output, Parsed, Recovery, Sink, Spelling, stream_to};
+use crate::{Code, Failure, Output, Recovery, Sink, Spelling, stream_to};
 
 const TIMED_OUT: Code = Code::new("birds", "watch", "timed_out");
 const UNREADABLE: Code = Code::new("birds", "sightings", "unreadable");
@@ -41,16 +41,15 @@ impl Failure for Failed {
     }
 }
 
-/// Parses `birds watch` and sets the tool's command with `GUIDE`, as a
-/// tool's `main` does after `parse`.
+/// Parses `birds watch` and builds the output with `GUIDE`, as a tool that
+/// parses with clap alone builds it.
 fn guided() -> Output {
     let mut command = Tool::command();
     let matches = command
         .try_get_matches_from_mut(["birds", "watch"])
         .unwrap();
-    let mut output = Tool::from_arg_matches(&matches).unwrap().output;
-    output.set_command(Parsed::guided(command, &GUIDE));
-    output
+    let view = Tool::from_arg_matches(&matches).unwrap().view;
+    Output::new(view, command, &GUIDE, ["birds", "watch"])
 }
 
 /// Streams one item, prints each of `failures` after it, and ends the

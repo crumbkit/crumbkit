@@ -156,7 +156,7 @@ fn the_hand_over_test_s_child_raises_sigint_during_and_after_its_child() {
         signal_hook::low_level::raise(signal_hook::consts::SIGINT).unwrap();
     });
     let code = crumbkit_child::hand_over(
-        &mut crumbkit::Output::default(),
+        &mut super::bare_output(),
         Spelling::COLONS,
         cmd("ping -n 3 127.0.0.1 >NUL"),
     );
@@ -200,7 +200,7 @@ fn the_interrupted_child_test_s_child_hands_over_to_a_child_that_ctrl_c_ended() 
         Spelling::COLONS,
     );
     let code = crumbkit_child::hand_over(
-        &mut crumbkit::Output::default(),
+        &mut super::bare_output(),
         Spelling::COLONS,
         cmd(&format!("exit {CONTROL_C_EXIT}")),
     );

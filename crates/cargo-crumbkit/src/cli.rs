@@ -3,7 +3,7 @@
 use std::path::PathBuf;
 
 use clap::{ArgGroup, Args, Parser, Subcommand};
-use crumbkit::Output;
+use crumbkit::ViewFlags;
 use crumbkit::commands::{COMMANDS_LIST, CommandsList};
 use crumbkit::help::{Effects, Example, Goal, Group, Guide, Leaf};
 use crumbkit_test::{Allow, Rule};
@@ -28,7 +28,7 @@ pub struct Cli {
 
     /// The flags that choose how the result prints.
     #[command(flatten)]
-    pub(crate) output: Output,
+    pub(crate) view: ViewFlags,
 }
 
 /// cargo-crumbkit's goal headings and leaves. It guides the `crumbkit`

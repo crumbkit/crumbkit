@@ -27,7 +27,7 @@ use std::process::ExitCode;
 
 use clap::{CommandFactory, Parser};
 use crumbkit::help::Guide;
-use crumbkit::{Call, Code, Document, Failure, Listing, Output, Page, Recovery, Row, Spelling};
+use crumbkit::{Call, Code, Document, Failure, Listing, Page, Recovery, Row, Spelling, ViewFlags};
 use schemars::JsonSchema;
 use serde::Serialize;
 
@@ -79,7 +79,7 @@ struct Cli {
     #[arg(long)]
     author: Option<String>,
     #[command(flatten)]
-    output: Output,
+    view: ViewFlags,
     #[command(flatten)]
     page: Page<2>,
 }
@@ -104,13 +104,12 @@ fn list(cli: &Cli) -> Result<Listing<Book>, UnknownAuthor> {
 
 fn main() -> ExitCode {
     let parsed = crumbkit::parse::<Cli>(Cli::command(), &Guide::new(), SPELLING);
-    let (mut cli, command) = match parsed {
+    let (cli, mut output) = match parsed {
         Ok(parsed) => parsed,
         Err(stop) => return stop.code(),
     };
-    cli.output.set_command(command);
     let result = list(&cli);
-    crumbkit::finish(&mut cli.output, SPELLING, BOOKS_LIST, result)
+    crumbkit::finish(&mut output, SPELLING, BOOKS_LIST, result)
 }
 ```
 

@@ -54,7 +54,7 @@ words or nothing more can be picked.
   at the end, after a `--` that crumbkit adds when a value starts with `-`.
 - A run whose values were picked prints `Running:` and the whole command line
   on standard error before the command runs, so the person learns the
-  command to type next time. `Parsed` holds the words with the picked values,
+  command to type next time. The `Output` that `parse` returns holds the words with the picked values,
   so the `--yes` recovery of `confirm` repeats them
   ([confirmation](README.md#confirmation)).
 - A cancelled question, or an answer that names no valid choice, prints the

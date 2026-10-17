@@ -1,7 +1,7 @@
 //! Tests for the filters check.
 
 use clap::{Arg, ArgAction, Args as _, Command};
-use crumbkit::Output;
+use crumbkit::ViewFlags;
 
 use super::check_filters;
 use crate::allow::{Allow, Rule};
@@ -9,7 +9,7 @@ use crate::testing::panic_message;
 
 #[test]
 fn crumbkits_output_flags_and_a_filter_that_takes_repeats_and_commas_pass() {
-    let shelf = Output::augment_args(Command::new("shelf")).subcommand(
+    let shelf = ViewFlags::augment_args(Command::new("shelf")).subcommand(
         Command::new("books").subcommand(
             Command::new("list")
                 .arg(

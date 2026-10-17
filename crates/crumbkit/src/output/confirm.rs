@@ -83,8 +83,7 @@ impl Output {
     ///   detection off, so no person can answer. Its recovery runs the
     ///   words that the caller typed with `--yes` added before any `--`,
     ///   such as
-    ///   `shelf books remove 2 --yes`. The recovery has no next step when
-    ///   the tool passed a bare `Command` to [`Output::set_command`], or a
+    ///   `shelf books remove 2 --yes`. The recovery has no next step when a
     ///   typed word is not UTF-8.
     pub fn confirm_to<O: Write, E: Write, I: BufRead>(
         &mut self,
@@ -119,8 +118,8 @@ enum ConfirmError {
     /// The person at the terminal did not answer yes.
     Declined,
     /// No person can answer. It holds the words that the caller typed after
-    /// the program name, or `None` when the tool kept none.
-    NeedsYes(Option<Vec<OsString>>),
+    /// the program name.
+    NeedsYes(Vec<OsString>),
 }
 
 impl fmt::Display for ConfirmError {
@@ -149,13 +148,11 @@ impl Failure for ConfirmError {
             Self::Declined => Recovery::None {
                 reason: "the person at the terminal chose not to proceed".to_owned(),
             },
-            Self::NeedsYes(None) => Recovery::None {
-                reason: "the tool's main does not pass the Parsed from crumbkit::parse to Output::set_command".to_owned(),
-            },
-            Self::NeedsYes(Some(words)) => match with_yes(words) {
+            Self::NeedsYes(words) => match with_yes(words) {
                 Some(words) => Recovery::Run(Call::typed(words)),
                 None => Recovery::None {
-                    reason: "a word of the command line is not UTF-8, so crumbkit cannot repeat it".to_owned(),
+                    reason: "a word of the command line is not UTF-8, so crumbkit cannot repeat it"
+                        .to_owned(),
                 },
             },
         }

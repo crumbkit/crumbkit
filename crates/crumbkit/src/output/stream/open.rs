@@ -13,13 +13,12 @@ use crate::{Document, Row, Spelling, Stream};
 /// describes.
 pub(super) fn open<R: Row, O: Write, W: Write>(
     out: O,
-    mut err: W,
+    err: W,
     output: &mut Output,
     spelling: Spelling,
     document: Document<Stream<R>>,
 ) -> Result<Streaming<'_, R, O, W>, ExitCode> {
     crate::output::columns::require_for_stream::<R>();
-    output.warn_without_command(&mut err);
     let typed = output.typed();
     let budget = output.budget();
     let printing = output.printing();
@@ -51,7 +50,7 @@ pub(super) fn open<R: Row, O: Write, W: Write>(
         fields: fields.as_slice(),
         widths: columns.iter().map(|name| name.chars().count()).collect(),
         columns,
-        command: command.as_mut(),
+        command,
         spelling,
         printing,
         document,

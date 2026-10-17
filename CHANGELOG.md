@@ -579,6 +579,13 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- crumbkit: [`parse`] returns the tool's type and an [`Output`] that holds
+  the command tree, the typed words and the leaf's code renames. A tool
+  flattens [`ViewFlags`] in place of `Output` ([behaviour/parsing]).
+- crumbkit: a tool that parses with clap alone builds its [`Output`] with
+  `Output::new(view, command, guide, args)`, which finds the leaf that the
+  argv names, so the run prints that leaf's code renames
+  ([behaviour/adoption/declarations]).
 - crumbkit: `Output::print_failure`, `Output::failure_exit`,
   `Output::listed_exit`, `Output::refuse_view` and
   `Output::refuse_fields_for_text` are public, so a crate that prints a
@@ -685,7 +692,7 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   and fails on a file format with the id of another document ([behaviour/schemas/commands]).
 - crumbkit: `usage::findings` and `usage::figures` take the tool's
   `Guide`, which gives the meaning of each exit code ([behaviour/usage-log/report]).
-- crumbkit: [`parse`] returns a [`Parsed`] in place of the `Command`. It
+- crumbkit: [`parse`] returns a `Parsed` in place of the `Command`. It
   holds the command and the typed words, and `Output::set_command` takes
   either ([behaviour/adoption]).
 - crumbkit: [`Sink`] has a third type parameter for standard input, and
@@ -879,6 +886,12 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Removed
 
+- crumbkit: `Output::set_command`, `Parsed` and `Parsed::guided` are gone,
+  and [`Output`] no longer derives `clap::Args` or `Default`, because every
+  `Output` that a tool gets already holds the command ([behaviour/parsing]).
+- crumbkit, crumbkit-aliases: the codes `crumbkit::commands::unavailable`,
+  `crumbkit::schemas::unavailable` and `crumbkit::aliases::unavailable` are
+  gone, because every `Output` holds a command.
 - crumbkit: `events::observer` is gone, because a process can hold several
   observers ([behaviour/run-observer]).
 - crumbkit: the `hand-over` feature, the `crumbkit::child` module and the
@@ -907,6 +920,8 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- crumbkit: the `Output` inside a [`Stop`] uses the guide's output budget
+  in place of crumbkit's default.
 - crumbkit: a debug build of a tool whose `main` never calls
   `Output::set_command` writes a warning from `finish` and `stream`, and
   crumbkit-test's `check_examples` and `check_recoveries` fail on it
@@ -1082,7 +1097,7 @@ rustdoc, or at the page in docs/ that describes the behaviour. -->
 [`Effects`]: crates/crumbkit/src/help/effects.rs
 [`DryRun`]: crates/crumbkit/src/output/dry_run.rs
 [`Yes`]: crates/crumbkit/src/output/confirm.rs
-[`Parsed`]: crates/crumbkit/src/parse/parsed.rs
+[`ViewFlags`]: crates/crumbkit/src/output/build.rs
 [`Sink`]: crates/crumbkit/src/sink.rs
 [`check_effects`]: crates/crumbkit-test/src/effects.rs
 [`child::hand_over`]: crates/crumbkit-child/src/hand_over.rs
@@ -1129,6 +1144,7 @@ rustdoc, or at the page in docs/ that describes the behaviour. -->
 [behaviour/output/listings]: docs/behaviour/output/listings/README.md
 [behaviour/output/streams]: docs/behaviour/output/streams.md
 [behaviour/output/terminal]: docs/behaviour/output/terminal.md
+[behaviour/parsing]: docs/behaviour/parsing/README.md
 [behaviour/parsing/aliases]: docs/behaviour/parsing/aliases.md
 [behaviour/parsing/completion]: docs/behaviour/parsing/completion.md
 [behaviour/run-observer]: docs/behaviour/run-observer/README.md

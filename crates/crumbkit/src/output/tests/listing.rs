@@ -6,7 +6,7 @@ use std::process::ExitCode;
 use clap::{Arg, Command, CommandFactory as _};
 
 use super::{
-    PLANET_LISTING, Planet, Tool, finish_output, finish_with, mercury, parse, parse_against, saturn,
+    PLANET_LISTING, Planet, Tool, finish_output, finish_with, mercury, parse_against, saturn,
 };
 use crate::{Call, Listing};
 
@@ -235,22 +235,6 @@ fn json_output_has_no_note() {
 
     assert!(!compact.out.contains("2006"), "{}", compact.out);
     assert!(!full.out.contains("2006"), "{}", full.out);
-}
-
-#[test]
-fn a_listing_prints_no_next_line_when_no_command_is_set() {
-    let mut output = parse(&[]).unwrap();
-
-    let finished = finish_output(&mut output, PLANET_LISTING, two_of_with_next(8));
-
-    assert_eq!(finished.code, ExitCode::SUCCESS);
-    assert!(
-        finished
-            .err
-            .ends_with("\nShowing 2 of 8. --all shows every one.\n"),
-        "{}",
-        finished.err
-    );
 }
 
 #[test]

@@ -25,22 +25,15 @@ pub(super) fn respond<T: Rows, E: AsFailure, O: Write, W: Write, R>(
     document: Document<T>,
     result: Result<T, E>,
 ) -> (u8, bool) {
-    output.warn_without_command(&mut sink.err);
     let printing = output.printing();
     if let Some(refusal) = fields::flags_refusal(output, document) {
-        let code = refusal.print(
-            sink,
-            output.json,
-            spelling,
-            printing,
-            output.command.as_mut(),
-        );
+        let code = refusal.print(sink, output.json, spelling, printing, &mut output.command);
         return (code, false);
     }
     let value = match &result {
         Ok(value) => value,
         Err(error) => {
-            let command = output.command.as_mut();
+            let command = &mut output.command;
             failure::print(
                 sink,
                 output.json,
@@ -68,7 +61,7 @@ pub(super) fn respond<T: Rows, E: AsFailure, O: Write, W: Write, R>(
                     failure,
                     spelling,
                     printing,
-                    output.command.as_mut(),
+                    &mut output.command,
                     &mut sink.err,
                 )
                 .keyed(key)
@@ -114,7 +107,7 @@ pub(super) fn respond<T: Rows, E: AsFailure, O: Write, W: Write, R>(
     let (code, cut, left_out) = answered(sink, output, spelling, &answer, code);
     let failures = match &answer {
         Answer::Keyed { each, .. } => failures.map(|listed| {
-            let command = output.command.as_mut();
+            let command = &mut output.command;
             with_each(listed, each, value, spelling, command, &mut sink.err)
         }),
         _ => failures,
@@ -173,7 +166,7 @@ fn print_failures<T: Rows, O: Write, W: Write, R>(
         }
         if let Some(over) = left_out {
             let printing = output.printing();
-            let command = output.command.as_mut();
+            let command = &mut output.command;
             let over = PreparedFailure::new(over, spelling, printing, command, &mut sink.err);
             let _ = failure::write_text(&mut sink.err, output.failure_form, &over);
         }
@@ -215,7 +208,7 @@ fn answered<'a, O: Write, W: Write, R>(
                 spelling,
                 printing,
                 over,
-                output.command.as_mut(),
+                &mut output.command,
             );
             (printing.exit(over.code), false, None)
         }
@@ -232,7 +225,7 @@ fn with_each<'a, T: Rows>(
     each: &'a [(usize, OverBudget)],
     value: &'a T,
     spelling: Spelling,
-    mut command: Option<&mut clap::Command>,
+    command: &mut clap::Command,
     err: &mut impl Write,
 ) -> Vec<PreparedFailure<'a>> {
     let mut merged = Vec::with_capacity(listed.len() + each.len());
@@ -251,7 +244,6 @@ fn with_each<'a, T: Rows>(
         // applies to it.
         let key = value.key(*position).map(|key| (*position, key));
         let printing = Printing::default();
-        let command = command.as_deref_mut();
         merged.push(PreparedFailure::new(over, spelling, printing, command, err).keyed(key));
     }
     merged.extend(listed.map(|(_, failure)| failure));

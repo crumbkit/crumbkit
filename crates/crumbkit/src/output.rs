@@ -28,8 +28,9 @@ use std::ffi::OsString;
 use std::io::Write;
 use std::process::ExitCode;
 
-use clap::{Args, Command};
+use clap::Command;
 
+pub use self::build::ViewFlags;
 pub use self::confirm::Yes;
 use self::counted::Counted;
 pub use self::dry_run::DryRun;
@@ -39,30 +40,24 @@ pub use self::room::Room;
 pub use self::stream::{Streaming, stream, stream_to};
 use crate::form::FailureForm;
 use crate::help::rename::Renames;
-use crate::help::{Exit, Guide, view};
-use crate::{AsFailure, Document, Parsed, Rows, Sink, Spelling};
+use crate::help::{Exit, view};
+use crate::{AsFailure, Document, Rows, Sink, Spelling};
 
 #[cfg(test)]
 mod tests;
 
-/// The flags that choose how a command prints its result.
+/// The output of one run: the view flags that the caller typed, the command
+/// tree that the tool parsed against, the words that the caller typed and
+/// what the tool's guide decides about printing.
 ///
-/// A tool adds them to its own clap parser with `#[command(flatten)]`. Every
-/// flag is global, so it also works after a subcommand: `shelf books list --json`.
-/// `Output` adds no description to the command that flattens it, and nor
-/// does any other argument type of crumbkit, so a command without a doc
-/// comment of its own has none in its help.
+/// [`parse`](crate::parse()) returns it beside the tool's parsed type, and
+/// a tool that parses with clap alone builds it with [`Output::new`]. A
+/// tool's `main` passes it to [`finish`] or [`stream`] with the handler's
+/// result.
 ///
-/// - `--json` prints a JSON document, on one line unless the guide sets a
-///   [`JsonStyle`] sets [`JsonLayout::Pretty`], with the keys of each
-///   object sorted when the style sorts them.
-/// - `--long` adds the row type's [`Row::LONG_COLUMNS`](crate::Row::LONG_COLUMNS).
-/// - `--full` prints every field of every row in declaration order, and needs `--json`.
-/// - `--fields a,b` prints exactly the named fields in that order, and
-///   conflicts with `--long` and `--full`.
-///
-/// A leaf whose document cannot use `--fields`, `--long` or `--full` leaves
-/// that flag out of its help, and `parse` and `finish` refuse it, as
+/// [`ViewFlags`] describes the view flags. A leaf whose document cannot use
+/// `--fields`, `--long` or `--full` leaves that flag out of its help, and
+/// `parse` and `finish` refuse it, as
 /// [`help::Leaf::offers`](crate::help::Leaf::offers) describes.
 ///
 /// `parse`, `finish` and `stream` refuse `--full` without `--json`, and
@@ -72,201 +67,81 @@ mod tests;
 /// --full`. clap parses each of these lines, so a tool that parses with
 /// clap alone gets the refusal from `finish` or `stream`.
 ///
-/// It also holds the command tree that the tool parsed against, which
-/// [`Output::set_command`] sets, so `finish` can render a listing's next step
-/// and a failure's recovery. `finish` builds only the branch of the tree that
-/// such a call names.
+/// `finish` renders a listing's next step and a failure's recovery against
+/// the command tree, and builds only the branch of the tree that such a
+/// call names.
 ///
-/// `Output` derives `Clone`, `Debug` and `Default`. It does not derive
-/// `PartialEq` or `Eq`, because `clap::Command` implements neither and nothing
-/// compares two `Output` values.
-#[derive(Args, Clone, Debug, Default)]
-// The doc comment is rustdoc, and clap would copy it into the help of a
-// command without a description of its own.
-#[command(about = None, long_about = None)]
+/// `Output` derives `Clone` and `Debug`. It does not derive `PartialEq` or
+/// `Eq`, because `clap::Command` implements neither and nothing compares
+/// two `Output` values.
+#[derive(Clone, Debug)]
 #[expect(
     clippy::struct_excessive_bools,
     reason = "each bool is one independent flag or mark of the run, and no two of them form a state machine"
 )]
 pub struct Output {
-    /// Print the result as a JSON document
-    #[arg(long, global = true)]
+    /// Whether the caller passed `--json`.
     json: bool,
 
-    /// Print only these comma-separated fields, in this order
-    #[arg(long, global = true, value_name = "FIELD", value_delimiter = ',')]
+    /// The fields that `--fields` names, or an empty list without it.
     fields: Vec<String>,
 
-    /// Add the long columns after the compact ones
-    #[arg(long, global = true)]
+    /// Whether the caller passed `--long`.
     long: bool,
 
-    /// With --json, print every field of every row
-    #[arg(long, global = true)]
+    /// Whether the caller passed `--full`.
     full: bool,
 
-    /// The command tree that the tool parsed against, or `None` until the
-    /// tool calls `set_command`. Its root and the commands on the typed path
-    /// are built, and the rest is built when a reader needs it. clap skips
-    /// the field when it parses.
-    #[arg(skip)]
-    command: Option<Command>,
+    /// The command tree that the tool parsed against. Its root and the
+    /// commands on the typed path are built, and the rest is built when a
+    /// reader needs it.
+    command: Command,
 
     /// The words that the caller typed after the program name, which
-    /// `confirm` repeats with `--yes`, or `None` when the tool passed a bare
-    /// command to `set_command`.
-    #[arg(skip)]
-    words: Option<Vec<OsString>>,
+    /// `confirm` repeats with `--yes`.
+    words: Vec<OsString>,
 
     /// Whether the run is a dry run, which [`Output::dry_run`] records.
-    #[arg(skip)]
     dry_run: bool,
 
-    /// Whether the caller passed `--no-input`, which `set_command` copies
-    /// from the `Parsed`.
-    #[arg(skip)]
+    /// Whether the caller passed `--no-input`.
     no_input: bool,
 
-    /// The tool's own form of a failure, which `set_command` copies from the
-    /// `Parsed`, or `None` for crumbkit's form (ADR-0045).
-    #[arg(skip)]
+    /// The tool's own form of a failure, or `None` for crumbkit's form
+    /// (ADR-0045).
     failure_form: Option<&'static dyn FailureForm>,
 
-    /// Whether the tool's guide turned terminal detection off, which
-    /// `set_command` copies from the `Parsed` (ADR-0049).
-    #[arg(skip)]
+    /// Whether the tool's guide turned terminal detection off (ADR-0049).
     no_terminal: bool,
 
-    /// The layout of a whole JSON document and the order of its keys,
-    /// which `set_command` copies from the `Parsed` (ADR-0052, ADR-0067).
-    #[arg(skip)]
+    /// The layout of a whole JSON document and the order of its keys
+    /// (ADR-0052, ADR-0067).
     json_style: JsonStyle,
 
-    /// The most bytes that the run prints on standard output, which
-    /// `set_command` sets from the `Parsed` and the environment, or `None`
-    /// for crumbkit's default lowered by the environment (ADR-0046).
-    #[arg(skip)]
-    budget: Option<usize>,
+    /// The most bytes that the run prints on standard output: the guide's
+    /// budget or crumbkit's default, lowered by the environment (ADR-0046).
+    budget: usize,
 
     /// The bytes that the run has printed on standard output so far.
-    #[arg(skip)]
     spent: usize,
 
-    /// The exit codes that the tool's guide declares, which `set_command`
-    /// copies from the `Parsed`. A failure whose code one of them lists
-    /// ends the run with that exit code (ADR-0037).
-    #[arg(skip)]
+    /// The exit codes that the tool's guide declares. A failure whose code
+    /// one of them lists ends the run with that exit code (ADR-0037).
     exits: &'static [Exit],
 
     /// The tool's own codes for crumbkit's failures, of the guide and of
-    /// the leaf of the parsed command, which `set_command` copies from the
-    /// `Parsed` (ADR-0056, ADR-0060).
-    #[arg(skip)]
+    /// the leaf of the parsed command (ADR-0056, ADR-0060).
     renames: Renames,
 
     /// The failure field names that break the rule and that the tool's
-    /// guide lists, which `set_command` copies from the `Parsed`
-    /// (ADR-0061).
-    #[arg(skip)]
+    /// guide lists (ADR-0061).
     field_names: &'static [&'static str],
 }
-
-/// The warning that a debug build of `finish` and `stream` writes when the
-/// tool never passed its command to [`Output::set_command`].
-pub(crate) const NO_COMMAND: &str = "warning: crumbkit leaves out every Next: line and every recovery that runs a command, because the tool's main does not pass its command to Output::set_command";
 
 impl Output {
     /// The output budget of a tool whose guide sets none: 1 MiB, the most
     /// bytes that one run prints on standard output (ADR-0046).
     pub const DEFAULT_BUDGET: usize = budget::DEFAULT;
-
-    /// Keeps `command` so that [`finish`] can render a listing's next step
-    /// and a failure's [`Recovery::Run`](crate::Recovery::Run) call against
-    /// it. A tool's `main` calls it once after parsing, with the command
-    /// tree that it parsed against, which [`parse`](crate::parse) returns.
-    ///
-    /// It does not build the tree. Parsing has already built the root and
-    /// each command on the typed path, `finish` builds only the branch that
-    /// a call names, and [`Output::command`] builds the whole tree for the
-    /// commands that read it, so a run builds only what it reads. Without a
-    /// command, `finish` leaves out the `Next:` line and prints a failure's
-    /// `Run` recovery as having no next step. A debug build of a tool that
-    /// never calls `set_command` then writes one `warning: crumbkit` line to
-    /// standard error from `finish` and `stream`, and crumbkit-test's
-    /// `check_examples` and `check_recoveries` fail on that line.
-    ///
-    /// A call into a branch below the root resolves the root's global
-    /// arguments, such as `--json`, only when the root was built by parsing.
-    /// A tree that never went through parsing, such as a fresh
-    /// `Cli::command()` beside clap's `Cli::parse`, leaves out a `Next:` line
-    /// or a recovery whose call names one.
-    ///
-    /// A tool that parses with crumbkit passes the command that
-    /// [`parse`](crate::parse) returns:
-    ///
-    /// ```
-    /// use clap::{CommandFactory, Parser};
-    /// use crumbkit::help::Guide;
-    /// use crumbkit::{Output, Spelling};
-    ///
-    /// /// List the books in a small catalogue.
-    /// #[derive(Parser)]
-    /// struct Cli {
-    ///     #[command(flatten)]
-    ///     output: Output,
-    /// }
-    ///
-    /// let parsed =
-    ///     crumbkit::parse_from::<Cli, _, _>(Cli::command(), &Guide::new(), Spelling::COLONS, ["shelf"]);
-    /// let (mut cli, parsed) = parsed.unwrap();
-    /// cli.output.set_command(parsed);
-    /// ```
-    ///
-    /// A tool that hides commands at runtime parses against its changed
-    /// command and passes that same command:
-    ///
-    /// ```
-    /// use clap::{CommandFactory, FromArgMatches, Parser, Subcommand};
-    /// use crumbkit::Output;
-    ///
-    /// /// Browse a small catalogue.
-    /// #[derive(Parser)]
-    /// struct Cli {
-    ///     #[command(subcommand)]
-    ///     command: Commands,
-    ///     #[command(flatten)]
-    ///     output: Output,
-    /// }
-    ///
-    /// #[derive(Subcommand)]
-    /// enum Commands {
-    ///     /// List the books.
-    ///     List,
-    ///     /// Remove a book.
-    ///     Remove,
-    /// }
-    ///
-    /// let mut command =
-    ///     Cli::command().mut_subcommand("remove", |remove| remove.hide(true));
-    /// let matches = command.try_get_matches_from_mut(["shelf", "list"]).unwrap();
-    /// let mut cli = Cli::from_arg_matches(&matches).unwrap();
-    /// cli.output.set_command(command);
-    /// ```
-    pub fn set_command(&mut self, parsed: impl Into<Parsed>) {
-        let parsed = parsed.into();
-        self.words = parsed.words;
-        self.no_input = parsed.no_input;
-        self.failure_form = parsed.failure_form;
-        self.no_terminal = parsed.no_terminal;
-        self.json_style = parsed.json_style;
-        self.exits = parsed.exits;
-        self.renames = parsed.renames;
-        self.field_names = parsed.field_names;
-        self.budget = Some(budget::from_environment(
-            parsed.output_budget.unwrap_or(budget::DEFAULT),
-        ));
-        self.command = Some(parsed.command);
-    }
 
     /// Returns the bytes that the run can still print on standard output:
     /// the output budget less what `finish` or a stream has printed.
@@ -280,14 +155,11 @@ impl Output {
     /// describes (ADR-0046).
     #[must_use]
     pub fn budget(&self) -> usize {
-        let budget = self
-            .budget
-            .unwrap_or_else(|| budget::from_environment(budget::DEFAULT));
-        budget.saturating_sub(self.spent)
+        self.budget.saturating_sub(self.spent)
     }
 
-    /// Builds the whole command tree that [`Output::set_command`] kept and
-    /// returns it, or returns `None` before the tool calls `set_command`.
+    /// Builds the whole command tree that the run parsed against and
+    /// returns it.
     ///
     /// `commands::list`, `schemas::list`, `schemas::show`, the usage reports
     /// and crumbkit-aliases' `list` read the tree through it. It calls
@@ -296,10 +168,9 @@ impl Output {
     /// tree holds each command's global arguments from above, its help and
     /// version flags and its argument groups. It takes `&mut self` because
     /// it builds the tree in place, which is never cloned at runtime.
-    pub fn command(&mut self) -> Option<&Command> {
-        let command = self.command.as_mut()?;
-        command.build();
-        Some(command)
+    pub fn command(&mut self) -> &Command {
+        self.command.build();
+        &self.command
     }
 
     /// Reports whether the caller asked for JSON with `--json`.
@@ -316,35 +187,22 @@ impl Output {
         self.json
     }
 
-    /// Returns the output of a run that `parse` ended after it printed help,
-    /// the version or a refusal: `--json` as the walk found it, the command
-    /// tree that `parse` built, and the guide's failure form and terminal
-    /// detection.
-    pub(crate) fn stopped(json: bool, command: Command, guide: &Guide) -> Self {
-        Self {
-            json,
-            command: Some(command),
-            failure_form: guide.get_failure_form(),
-            no_terminal: !guide.terminal_detection(),
-            json_style: guide.get_json(),
-            exits: guide.get_exits(),
-            renames: Renames::of(guide),
-            field_names: guide.get_field_names(),
-            ..Self::default()
-        }
+    /// Returns the words that the caller typed after the program name.
+    #[cfg(test)]
+    pub(crate) fn words(&self) -> &[OsString] {
+        &self.words
     }
 
-    /// Writes a warning to `err` in a debug build when the tool never passed
-    /// its command to [`Output::set_command`], because `finish` and `stream`
-    /// then leave out every `Next:` line and every recovery that runs a
-    /// command. crumbkit-test's `check_examples` and `check_recoveries` fail
-    /// on the warning, so a tool's tests catch a `main` that forgot the call.
-    pub(crate) fn warn_without_command(&self, err: &mut impl Write) {
-        if cfg!(debug_assertions) && self.command.is_none() {
-            // Standard error is the last place to report anything, so a
-            // failure to write there goes unreported.
-            let _ = writeln!(err, "{NO_COMMAND}");
-        }
+    /// Reports whether the caller passed `--no-input`.
+    #[cfg(test)]
+    pub(crate) const fn no_input(&self) -> bool {
+        self.no_input
+    }
+
+    /// Returns the fields that `--fields` named.
+    #[cfg(test)]
+    pub(crate) fn field_list(&self) -> &[String] {
+        &self.fields
     }
 
     /// Returns the view flags that the caller typed.
@@ -357,8 +215,7 @@ impl Output {
         }
     }
 
-    /// Returns what the guide that `set_command` copied decides about the
-    /// run's failures: the form, the JSON style, the exit codes, the
+    /// Returns what the tool's guide decides about the run's failures: the form, the JSON style, the exit codes, the
     /// renames and the listed field names.
     pub(crate) const fn printing(&self) -> Printing {
         Printing {
@@ -433,10 +290,8 @@ pub fn finish<T: Rows, E: AsFailure>(
 /// books match`. A listing's note follows on its own line. When a listing
 /// has a next step, a `Next:` line follows, such as
 /// `Next: shelf books show <ID>... takes up to 100 ids in one call.` The line
-/// is left out when [`Output::set_command`] was not called or the step's
-/// [`Call`](crate::Call) does not resolve in that command, and the exit code
-/// stays 0. A debug build writes a warning first when `set_command` was not
-/// called, as [`Output::set_command`] describes.
+/// is left out when the step's [`Call`](crate::Call) does not resolve in
+/// the command tree that `output` holds, and the exit code stays 0.
 ///
 /// `finish` takes `output` by `&mut` because it builds, in place, the branch
 /// of the command tree that a next step's call or a failure's `Run` call
@@ -478,9 +333,9 @@ pub fn finish<T: Rows, E: AsFailure>(
 /// for each error in the failure's `source()` chain, and a `url:` line
 /// follows the `code:` line when the failure has a url. The code prints in
 /// `spelling`. A [`Recovery::Run`](crate::Recovery::Run) call is rendered
-/// against the command that [`Output::set_command`] received, and prints as
-/// `no next step: the suggested command is not available` when no command is
-/// set or the call does not resolve. With `--json`, the failure prints to the
+/// against the command tree that `output` holds, and prints as `no next
+/// step: the suggested command is not available` when the call does not
+/// resolve. With `--json`, the failure prints to the
 /// output writer as one `crumbkit/failure/v1` document, on one line or in
 /// the guide's layout, which `--full` and `--fields` do not change.
 ///
@@ -527,8 +382,8 @@ pub fn finish<T: Rows, E: AsFailure>(
 /// does, also after the reader closed the pipe early (ADR-0037). The
 /// printed code is the tool's own code when the guide renames one of
 /// crumbkit's with [`Guide::codes`](crate::help::Guide::codes). The guide reaches
-/// `finish` through [`Output::set_command`] with the `Parsed` that
-/// [`parse`](crate::parse) or [`Parsed::guided`] returns. The exit code is
+/// `finish` through the `Output` that [`parse`](crate::parse()) or
+/// [`Output::new`] returns. The exit code is
 /// 1 as well when a write fails for any other reason, or when the
 /// result cannot be serialized, and the cause of a failed write goes to the
 /// sink's error writer before a batch's failures. It is the exit code of a

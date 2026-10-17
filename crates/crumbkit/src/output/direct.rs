@@ -13,7 +13,7 @@ impl Output {
     /// Prints `failure` to `sink` as `finish` prints a failure, in the
     /// format that the flags choose and with the code that the guide
     /// prints for it, with a `Run` recovery rendered against the command
-    /// that [`Output::set_command`] kept.
+    /// that the output holds.
     ///
     /// It returns no exit code. The caller returns
     /// [`Output::failure_exit`] of the failure's code, or another code that
@@ -32,7 +32,7 @@ impl Output {
             spelling,
             printing,
             failure,
-            self.command.as_mut(),
+            &mut self.command,
         );
     }
 
@@ -91,13 +91,13 @@ impl Output {
         refusal: &Refusal,
     ) -> ExitCode {
         let printing = self.printing();
-        let exit = refusal.print(sink, self.json, spelling, printing, self.command.as_mut());
+        let exit = refusal.print(sink, self.json, spelling, printing, &mut self.command);
         crate::events::ended(exit, None)
     }
 
     /// Returns the exit code of a run whose first failure has `code`, as
     /// [`Guide::failure_exit`](crate::help::Guide::failure_exit) decides
-    /// for the guide that [`Output::set_command`] copied: the exit that
+    /// for the guide that the output copied: the exit that
     /// lists the code, or crumbkit's default of 2 for a refused command
     /// line and 1 for every other failure.
     #[must_use]

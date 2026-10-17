@@ -38,7 +38,7 @@ is not a whole `crumbkit/usage/v1` record is skipped. On a 10 MB log of
 about 29,000 records, the release build of shelf runs `self usage` in about
 45 ms, which includes the trim that the run's own log line causes.
 
-A tool that never called `Output::set_command` has no name to find its log
+A tool whose root command has an empty name has no name to find its log
 by, and a missing or unreadable log reads as empty. Either way the report
 has no runs and exits 0, because every usage-log failure stays silent.
 

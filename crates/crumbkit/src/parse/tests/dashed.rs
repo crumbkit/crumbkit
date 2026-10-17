@@ -83,7 +83,7 @@ fn a_dashed_form_reaches_the_command_and_the_parsed_words_hold_the_tool_s_own_na
     };
     assert_eq!(matches.0, ["reading_lists", "list"]);
     let own = ["--fields", "reading-lists", "reading_lists", "list"].map(OsString::from);
-    assert_eq!(parsed.words, Some(own.to_vec()));
+    assert_eq!(parsed.words(), own);
 }
 
 #[test]

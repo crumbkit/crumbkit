@@ -99,7 +99,13 @@ pub fn stream<R: Row>(
 ///     Document::new("reading", "entries-stream", 1, "Each entry of a reading list.");
 ///
 /// let result: Result<Vec<Entry>, Error> = Ok(Vec::new());
-/// crumbkit::finish(&mut Output::default(), Spelling::COLONS, ENTRIES_STREAM, result);
+/// let mut output = Output::new(
+///     crumbkit::ViewFlags::new(),
+///     clap::Command::new("reading"),
+///     &crumbkit::help::Guide::new(),
+///     ["reading"],
+/// );
+/// crumbkit::finish(&mut output, Spelling::COLONS, ENTRIES_STREAM, result);
 /// ```
 ///
 /// A tool that streams entries opens the stream, prints each item until the
@@ -116,7 +122,12 @@ pub fn stream<R: Row>(
 /// const ENTRIES_STREAM: Document<Stream<Entry>> =
 ///     Document::new("reading", "entries-stream", 1, "Each entry of a reading list.");
 ///
-/// let mut output = Output::default();
+/// let mut output = Output::new(
+///     crumbkit::ViewFlags::new(),
+///     clap::Command::new("reading"),
+///     &crumbkit::help::Guide::new(),
+///     ["reading"],
+/// );
 /// let mut out = Vec::new();
 /// let mut err = Vec::new();
 /// let mut sink = Sink::new(&mut out, &mut err);
@@ -184,7 +195,7 @@ pub struct Streaming<'a, R, O, W> {
     /// The width of each column, which is the width of its header.
     widths: Vec<usize>,
     /// The command tree that a failure's `Run` recovery renders against.
-    command: Option<&'a mut Command>,
+    command: &'a mut Command,
     /// The spelling of the failures' codes.
     spelling: Spelling,
     /// The stream's document.
@@ -394,7 +405,7 @@ impl<R: Row, O: Write, W: Write> Streaming<'_, R, O, W> {
             failure,
             self.spelling,
             self.printing,
-            self.command.as_deref_mut(),
+            self.command,
             &mut self.err,
         );
         // The stream's first failure chooses the exit code, and the span
@@ -445,7 +456,7 @@ impl<R: Row, O: Write, W: Write> Streaming<'_, R, O, W> {
             self.json,
             self.spelling,
             printing,
-            self.command.as_deref_mut(),
+            self.command,
         );
         let _ = self.send();
         self.record(code, false);

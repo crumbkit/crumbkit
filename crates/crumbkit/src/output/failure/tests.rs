@@ -38,7 +38,7 @@ struct Tool {
     #[command(subcommand)]
     command: Command,
     #[command(flatten)]
-    output: Output,
+    view: crate::ViewFlags,
 }
 
 #[derive(Subcommand)]
@@ -153,12 +153,12 @@ struct Finished {
     err: String,
 }
 
-/// Parses `tool list` followed by `flags`, sets the tool's command as its
-/// `main` would, and finishes `failure` into memory.
+/// Parses `tool list` followed by `flags`, builds the output as a tool that
+/// parses with clap alone builds it, and finishes `failure` into memory.
 fn fail_with(flags: &[&str], failure: impl Into<Error>) -> Finished {
     let args = ["tool", "list"].iter().chain(flags);
-    let mut output = Tool::try_parse_from(args).unwrap().output;
-    output.set_command(Tool::command());
+    let view = Tool::try_parse_from(args.clone()).unwrap().view;
+    let mut output = Output::new(view, Tool::command(), &crate::help::Guide::new(), args);
     fail_output(&mut output, failure.into())
 }
 
@@ -321,21 +321,6 @@ fn a_run_whose_call_does_not_resolve_prints_as_no_next_step() {
     );
 }
 
-#[test]
-fn a_run_prints_as_no_next_step_when_no_command_is_set() {
-    let mut output = Tool::try_parse_from(["tool", "list"]).unwrap().output;
-
-    let finished = fail_output(&mut output, missing(run_list()));
-
-    assert!(
-        finished
-            .err
-            .contains("\n  help:  no next step: the suggested command is not available\n"),
-        "{}",
-        finished.err
-    );
-}
-
 #[cfg(debug_assertions)]
 #[test]
 fn each_recovery_call_that_does_not_render_adds_a_warning_line_in_a_debug_build() {
@@ -352,23 +337,6 @@ fn each_recovery_call_that_does_not_render_adds_a_warning_line_in_a_debug_build(
             "warning: crumbkit left out a recovery of the failure solar::planets::not_found, ",
             "because 'tool' has no subcommand 'add'\n",
         )
-    );
-}
-
-#[cfg(debug_assertions)]
-#[test]
-fn a_failure_without_a_command_adds_one_warning_that_names_set_command_in_a_debug_build() {
-    let mut output = Tool::try_parse_from(["tool", "list"]).unwrap().output;
-
-    let finished = fail_output(&mut output, missing(run_list()));
-
-    assert!(
-        finished.err.starts_with(concat!(
-            "warning: crumbkit leaves out every Next: line and every recovery that runs a command, ",
-            "because the tool's main does not pass its command to Output::set_command\nerror: "
-        )),
-        "{}",
-        finished.err
     );
 }
 
@@ -475,8 +443,13 @@ fn an_unknown_field_exits_with_code_2_before_the_failure_prints() {
 
 #[test]
 fn finish_prints_a_crumbkit_error_as_it_prints_the_failure_inside() {
-    let mut output = Tool::try_parse_from(["tool", "list"]).unwrap().output;
-    output.set_command(Tool::command());
+    let view = Tool::try_parse_from(["tool", "list"]).unwrap().view;
+    let mut output = Output::new(
+        view,
+        Tool::command(),
+        &crate::help::Guide::new(),
+        ["tool", "list"],
+    );
 
     let direct = fail_output(&mut output, missing(run_list()));
     let wrapped = fail_output(&mut output, Error::from(missing(run_list())));
@@ -499,13 +472,17 @@ impl Write for Failing {
     }
 }
 
-/// Returns the output flags for `--json` with the tool's command set.
+/// Returns the output of `tool list --json`.
 fn json() -> Output {
-    let mut output = Tool::try_parse_from(["tool", "list", "--json"])
+    let view = Tool::try_parse_from(["tool", "list", "--json"])
         .unwrap()
-        .output;
-    output.set_command(Tool::command());
-    output
+        .view;
+    Output::new(
+        view,
+        Tool::command(),
+        &crate::help::Guide::new(),
+        ["tool", "list", "--json"],
+    )
 }
 
 /// Finishes a failure into `sink` with `output`.
@@ -544,7 +521,7 @@ fn a_failed_write_of_the_text_failure_still_exits_with_code_1() {
     let mut out = Vec::new();
     let mut sink = Sink::new(&mut out, Failing(io::ErrorKind::Other));
 
-    let code = fail_into(&mut sink, &mut Output::default());
+    let code = fail_into(&mut sink, &mut Output::of(clap::Command::new("tool")));
 
     assert_eq!(code, 1);
     assert_eq!(String::from_utf8(out).unwrap(), "");

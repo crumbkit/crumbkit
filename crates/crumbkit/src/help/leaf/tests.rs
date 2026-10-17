@@ -331,7 +331,7 @@ fn a_leaf_off_the_typed_path_keeps_its_help() {
         ["tool", "planets", "show", "Mars"],
     );
 
-    let Ok(((), command)) = result else {
+    let Ok(((), mut command)) = result else {
         panic!("the command line did not parse");
     };
     let list = command

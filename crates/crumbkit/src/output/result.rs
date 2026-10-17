@@ -127,12 +127,12 @@ pub(super) fn write_result<T: Rows>(
     // failure of a batch's left-out keys renders its call against the
     // command, so the write takes the command out of `output` and puts it
     // back after.
-    let mut command = output.command.take();
+    let mut command = std::mem::take(&mut output.command);
     let written = write_rows(
         out,
         err,
         output,
-        command.as_mut(),
+        &mut command,
         spelling,
         document,
         value,
@@ -154,7 +154,7 @@ fn write_rows<T: Rows>(
     out: &mut impl Write,
     err: &mut impl Write,
     output: &Output,
-    mut command: Option<&mut Command>,
+    command: &mut Command,
     spelling: Spelling,
     document: Document<T>,
     value: &T,
@@ -166,7 +166,7 @@ fn write_rows<T: Rows>(
     let next = if output.json {
         None
     } else {
-        listing::next_line(command.as_deref_mut(), value)
+        listing::next_line(&mut *command, value)
     };
     let columns = columns(output, document, value.prose().is_some());
     let values = values(&columns, value)?;

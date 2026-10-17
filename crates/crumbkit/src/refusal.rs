@@ -103,15 +103,14 @@ impl Refusal {
     /// with `json` as one JSON document, as `printing` decides, and returns
     /// the exit code that `printing` gives the usage code: 2 unless the
     /// guide lists another (ADR-0002). The recovery renders against
-    /// `command`, so it prints as having no next step when there is no
-    /// command.
+    /// `command`.
     pub(crate) fn print<O: Write, E: Write, R>(
         &self,
         sink: &mut Sink<O, E, R>,
         json: bool,
         spelling: Spelling,
         printing: Printing,
-        command: Option<&mut Command>,
+        command: &mut Command,
     ) -> u8 {
         failure::print(sink, json, spelling, printing, self, command);
         printing.exit(&codes::CLI_USAGE)
