@@ -11,7 +11,7 @@ use serde_json::Value;
 use super::budget::{self, Counter};
 use super::envelope::{Extras, Failures, Selected, write_document};
 use super::table::cell;
-use super::{JsonLayout, Output, columns, layout, result};
+use super::{JsonLayout, JsonStyle, Output, columns, layout, result};
 use crate::{AsFailure, Batch, Document, Row, Rows};
 
 /// The bytes that `finish` prints for the rows of a batch, which
@@ -122,9 +122,9 @@ impl Output {
             .collect();
         let form = if self.json {
             let depth = if document.has_envelope() { 2 } else { 1 };
-            let empty = empty_document(document, self.dry_run, self.json_layout);
+            let empty = empty_document(document, self.dry_run, self.json_style.layout);
             Form::Json {
-                layout: self.json_layout,
+                layout: self.json_style.layout,
                 depth,
                 // A document that fails to serialize prints nothing, and
                 // `finish` reports the error.
@@ -304,7 +304,9 @@ impl Form {
 }
 
 /// Returns the bytes of the JSON document of `document` without rows, as
-/// `finish` prints it for a batch without rows or failures.
+/// `finish` prints it for a batch without rows or failures. The key order
+/// moves keys and changes no byte count, so the measure leaves the keys
+/// unsorted.
 fn empty_document<T>(
     document: Document<T>,
     dry_run: bool,
@@ -312,15 +314,16 @@ fn empty_document<T>(
 ) -> io::Result<usize> {
     let rows: [(); 0] = [];
     let in_order = document.prints_failures_in_order();
+    let style = JsonStyle { layout, keys: None };
     budget::measure(|counter: &mut Counter| {
         if !document.has_envelope() {
-            return layout::write(counter, &rows, layout);
+            return layout::write(counter, &rows, style);
         }
         let extras = Extras {
             failures: (!in_order).then_some(Failures::of(&[], &[], None)),
             ..Extras::none()
         };
-        write_document(counter, document, dry_run, layout, &rows, &extras)
+        write_document(counter, document, dry_run, style, &rows, &extras)
     })
 }
 

@@ -44,7 +44,7 @@ impl<T: Rows> Prepared<'_, T> {
         if self.document.has_envelope() {
             self.envelope(out, &in_order, &Extras::none())
         } else {
-            layout::write(out, &in_order, self.layout)
+            layout::write(out, &in_order, self.style)
         }
     }
 }

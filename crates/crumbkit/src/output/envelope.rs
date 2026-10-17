@@ -10,8 +10,9 @@ use serde_json::Value;
 use super::budget::Cut;
 use super::failure::{Entry, PreparedFailure};
 use super::layout;
+use super::layout::JsonStyle;
+use crate::Document;
 use crate::form::FailureForm;
-use crate::{Document, JsonLayout};
 
 /// The failures of a batch or a prose result: the tool's own and the
 /// failure of each key that the output budget left out, in the order of
@@ -143,7 +144,7 @@ pub(super) fn write_document<T, D: Serialize, M: Serialize>(
     out: &mut impl Write,
     document: Document<T>,
     dry_run: bool,
-    layout: Option<JsonLayout>,
+    style: JsonStyle,
     data: &D,
     extras: &Extras<'_, M>,
 ) -> io::Result<()> {
@@ -153,7 +154,7 @@ pub(super) fn write_document<T, D: Serialize, M: Serialize>(
         data,
         extras,
     };
-    layout::write(out, &envelope, layout)
+    layout::write(out, &envelope, style)
 }
 
 /// A JSON document: the type key, `dry_run` on a dry run, the result under

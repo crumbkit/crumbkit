@@ -39,9 +39,9 @@ pub use self::view::ViewFlag;
 pub use self::words::quote;
 
 use self::list::{list, write_line};
-use crate::JsonLayout;
 use crate::form::FailureForm;
 use crate::pick::Picker;
+use crate::{JsonLayout, KeyOrder};
 
 #[cfg(test)]
 mod tests;
@@ -129,6 +129,9 @@ pub struct Guide {
     /// The layout of a whole JSON document, with the reason the tool gives
     /// for it, or `None` for one line (ADR-0052).
     json_layout: Option<(JsonLayout, &'static str)>,
+    /// The order of the keys of each JSON object, which
+    /// [`Guide::json_keys`] sets (ADR-0067).
+    json_keys: Option<KeyOrder>,
     /// The path from the clap root to the command that callers run first,
     /// which answers `help` with the topics.
     root: &'static [&'static str],
@@ -158,6 +161,7 @@ impl Guide {
             without_terminal_detection: None,
             output_budget: None,
             json_layout: None,
+            json_keys: None,
             root: &[],
             dashed_forms: false,
             field_names: &[],

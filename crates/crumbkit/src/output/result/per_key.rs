@@ -174,10 +174,10 @@ impl<T: Rows> Prepared<'_, T> {
             let failure_bytes = own.saturating_add(left.get(from).copied().unwrap_or(0));
             let arrays = if in_order {
                 let bytes = row_bytes.saturating_add(failure_bytes);
-                layout::array_len(shown + failures, bytes, self.layout, depth)
+                layout::array_len(shown + failures, bytes, self.style.layout, depth)
             } else {
-                layout::array_len(shown, row_bytes, self.layout, depth).saturating_add(
-                    layout::array_len(failures, failure_bytes, self.layout, depth),
+                layout::array_len(shown, row_bytes, self.style.layout, depth).saturating_add(
+                    layout::array_len(failures, failure_bytes, self.style.layout, depth),
                 )
             };
             empty.saturating_add(arrays) <= budget
@@ -188,7 +188,7 @@ impl<T: Rows> Prepared<'_, T> {
     /// Returns the bytes of `value` as an element of an array `depth` levels
     /// deep in the document's layout.
     fn element(&self, value: &impl Serialize, depth: usize) -> io::Result<usize> {
-        layout::element_len(value, self.layout, depth)
+        layout::element_len(value, self.style.layout, depth)
     }
 
     /// Returns the bytes of `failure` as an element of the document's array

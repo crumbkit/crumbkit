@@ -1,7 +1,7 @@
 //! The builder of `Output`, for a tool that defines the view flags in its
 //! own parser in place of flattening `Output`.
 
-use super::Output;
+use super::{JsonStyle, Output};
 use crate::help::rename::Renames;
 
 impl Output {
@@ -44,7 +44,10 @@ impl Output {
             no_input: false,
             failure_form: None,
             no_terminal: false,
-            json_layout: None,
+            json_style: JsonStyle {
+                layout: None,
+                keys: None,
+            },
             budget: None,
             spent: 0,
             exits: &[],

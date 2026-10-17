@@ -5,10 +5,10 @@ use std::ffi::OsString;
 
 use clap::Command;
 
-use crate::JsonLayout;
 use crate::form::FailureForm;
 use crate::help::rename::Renames;
 use crate::help::{Exit, Guide};
+use crate::output::JsonStyle;
 
 /// The command tree that [`parse`](crate::parse) parsed against, with the
 /// words that the caller typed after the program name and the values that
@@ -41,9 +41,9 @@ pub struct Parsed {
     /// The output budget of the tool's guide, or `None` for crumbkit's
     /// default.
     pub(crate) output_budget: Option<usize>,
-    /// The layout of a whole JSON document that the tool's guide sets, or
-    /// `None` for one line (ADR-0052).
-    pub(crate) json_layout: Option<JsonLayout>,
+    /// The layout of a whole JSON document and the order of its keys that
+    /// the tool's guide sets (ADR-0052, ADR-0067).
+    pub(crate) json_style: JsonStyle,
     /// The exit codes that the tool's guide declares, whose failure codes
     /// choose a failed run's exit code (ADR-0037).
     pub(crate) exits: &'static [Exit],
@@ -81,7 +81,7 @@ impl Parsed {
             failure_form: guide.get_failure_form(),
             no_terminal: !guide.terminal_detection(),
             output_budget: budget_of(guide),
-            json_layout: guide.layout(),
+            json_style: guide.json_style(),
             exits: guide.get_exits(),
             renames: Renames::with_leaf(guide, leaf),
             field_names: guide.get_field_names(),
@@ -110,7 +110,7 @@ impl Parsed {
             failure_form: guide.get_failure_form(),
             no_terminal: !guide.terminal_detection(),
             output_budget: budget_of(guide),
-            json_layout: guide.layout(),
+            json_style: guide.json_style(),
             exits: guide.get_exits(),
             renames: Renames::of(guide),
             field_names: guide.get_field_names(),
@@ -148,7 +148,7 @@ impl From<Command> for Parsed {
             failure_form: None,
             no_terminal: false,
             output_budget: None,
-            json_layout: None,
+            json_style: JsonStyle::default(),
             exits: &[],
             renames: Renames::default(),
             field_names: &[],

@@ -9,11 +9,12 @@ use serde::Serialize;
 use serde::ser::{SerializeMap, Serializer};
 
 use super::layout;
+use super::layout::JsonStyle;
 use super::table::escape_controls;
 use crate::form::FailureForm;
 use crate::help::rename::{self, Renames};
 use crate::help::{Exit, Guide, Leaf};
-use crate::{Code, Document, Failure, FieldValue, JsonLayout, Sink, Spelling};
+use crate::{Code, Document, Failure, FieldValue, Sink, Spelling};
 
 #[cfg(feature = "miette")]
 pub(crate) mod label;
@@ -53,8 +54,8 @@ const UNAVAILABLE: &str = "the suggested command is not available";
 pub(crate) struct Printing {
     /// The tool's own form of a failure, or `None` for crumbkit's form.
     pub(crate) form: Option<&'static dyn FailureForm>,
-    /// The layout of a JSON document, or `None` for one line.
-    pub(crate) layout: Option<JsonLayout>,
+    /// The layout of a JSON document and the order of its keys.
+    pub(crate) style: JsonStyle,
     /// The exit codes that the tool's guide declares (ADR-0037).
     pub(crate) exits: &'static [Exit],
     /// The tool's own codes for crumbkit's failures, of the guide and of
@@ -77,7 +78,7 @@ impl Printing {
     pub(crate) fn at(guide: &Guide, leaf: Option<&Leaf>) -> Self {
         Self {
             form: guide.get_failure_form(),
-            layout: guide.layout(),
+            style: guide.json_style(),
             exits: guide.get_exits(),
             renames: Renames::with_leaf(guide, leaf),
             field_names: guide.get_field_names(),
@@ -118,7 +119,7 @@ pub(crate) fn print<O: Write, W: Write, R>(
     #[cfg(feature = "tracing")]
     crate::trace::spans::failed(document.code());
     if json {
-        if let Err(error) = write_json(&mut sink.out, printing.form, printing.layout, &document) {
+        if let Err(error) = write_json(&mut sink.out, printing.form, printing.style, &document) {
             // A reader that closed the pipe early has stopped reading, so
             // only another write error is reported. The process is already
             // failing, and a failed report has nowhere else to go.
@@ -423,19 +424,19 @@ fn write_labelled(err: &mut impl Write, label: &str, value: &str) -> io::Result<
     writeln!(err, "  {label:<6} {}", escape_controls(value))
 }
 
-/// Writes `document` to `out` as JSON in `layout`, or on one line when
-/// `layout` is `None`, in `form`, or as the `crumbkit/failure/v1` document
-/// when `form` is `None`, then flushes `out`. A stream passes `None`, so
-/// each of its failures stays one line.
+/// Writes `document` to `out` as JSON in the layout and key order of
+/// `style`, in `form`, or as the `crumbkit/failure/v1` document when `form`
+/// is `None`, then flushes `out`. A stream passes a style without a layout,
+/// so each of its failures stays one line.
 pub(super) fn write_json(
     out: &mut impl Write,
     form: Option<&dyn FailureForm>,
-    layout: Option<JsonLayout>,
+    style: JsonStyle,
     document: &PreparedFailure<'_>,
 ) -> io::Result<()> {
     match form {
-        Some(form) => layout::write(out, &form.json(document), layout)?,
-        None => layout::write(out, document, layout)?,
+        Some(form) => layout::write(out, &form.json(document), style)?,
+        None => layout::write(out, document, style)?,
     }
     out.flush()
 }

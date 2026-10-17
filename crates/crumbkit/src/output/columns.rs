@@ -17,8 +17,8 @@ use std::io::{self, Write};
 
 use serde_json::Value;
 
-use super::Output;
-use crate::{Document, Row, Rows, Shape};
+use super::{Output, layout};
+use crate::{Document, KeyOrder, Row, Rows, Shape};
 
 /// Fails to compile when `T` is a single row, a `Vec` or a `Listing` whose
 /// row type's [`Row::COLUMNS`] is empty. `finish_to` calls it, so a tool
@@ -120,8 +120,13 @@ pub(super) const fn json_lines<R: Row>() -> bool {
     R::WHOLE && R::COLUMNS.is_empty() && R::LONG_COLUMNS.is_empty()
 }
 
-/// Writes `row` to `out` as one line of compact JSON.
-pub(super) fn write_json_line<R: Row>(out: &mut impl Write, row: &R) -> io::Result<()> {
-    serde_json::to_writer(&mut *out, row)?;
+/// Writes `row` to `out` as one line of compact JSON, with the keys of each
+/// object in `keys` order.
+pub(super) fn write_json_line<R: Row>(
+    out: &mut impl Write,
+    row: &R,
+    keys: Option<KeyOrder>,
+) -> io::Result<()> {
+    layout::serialize(&mut *out, row, keys)?;
     out.write_all(b"\n")
 }
