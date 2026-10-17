@@ -19,10 +19,8 @@ use crate::help::rename::Renames;
 /// it, and nor does any other argument type of crumbkit, so a command
 /// without a doc comment of its own has none in its help.
 ///
-/// - `--json` prints a JSON document, on one line unless the guide sets a
-///   [`JsonStyle`](crate::JsonStyle) whose layout is
-///   [`JsonLayout::Pretty`](crate::JsonLayout::Pretty), with the keys of
-///   each object sorted when the style sorts them.
+/// - `--json` prints a JSON document, on one line unless the guide sets
+///   [`JsonLayout::Pretty`](crate::JsonLayout::Pretty).
 /// - `--long` adds the row type's [`Row::LONG_COLUMNS`](crate::Row::LONG_COLUMNS).
 /// - `--full` prints every field of every row in declaration order, and needs `--json`.
 /// - `--fields a,b` prints exactly the named fields in that order, and
@@ -179,9 +177,9 @@ impl Output {
     /// The `Output` keeps `command`, which `finish` renders a listing's next
     /// step and a failure's [`Recovery::Run`](crate::Recovery::Run) call
     /// against, and the words of `args` after the program name, which
-    /// [`Output::confirm`] repeats with `--yes`. It reads the failure form,
-    /// terminal detection, output budget, JSON style, exit codes, failure
-    /// field names and code renames of `guide`. The renames of the leaf
+    /// [`Output::confirm`] repeats with `--yes`. It reads the terminal
+    /// detection, output budget, JSON layout, exit codes and code renames of
+    /// `guide`. The renames of the leaf
     /// that the words name, as [`command_path`](crate::command_path) finds
     /// it, come before the guide's (ADR-0060), so a tool that parses with
     /// clap alone prints a leaf's own codes as one that parses with
@@ -214,11 +212,10 @@ impl Output {
 
     /// Returns the output of a run that parsed `words`, the words after the
     /// program name, against `command`, with the view flags `view`, whether
-    /// the caller passed `--no-input`, and the failure form, terminal
-    /// detection, output budget, JSON style, exit codes, renames and field
-    /// names of `guide`. The renames of the guide's leaf at `path`, the
-    /// real names of the parsed command's subcommands from the root, come
-    /// before the guide's (ADR-0060).
+    /// the caller passed `--no-input`, and the terminal detection, output
+    /// budget, JSON layout, exit codes and renames of `guide`. The renames of
+    /// the guide's leaf at `path`, the real names of the parsed command's
+    /// subcommands from the root, come before the guide's (ADR-0060).
     pub(crate) fn parsed(
         view: ViewFlags,
         command: Command,
@@ -263,15 +260,13 @@ impl Output {
             words: Vec::new(),
             dry_run: false,
             no_input: false,
-            failure_form: guide.get_failure_form(),
             no_terminal: !guide.terminal_detection(),
-            json_style: guide.get_json(),
+            json_layout: guide.get_json_layout(),
             budget: budget::from_environment(budget, tool),
             tool,
             spent: 0,
             exits: guide.get_exits(),
             renames: Renames::of(guide),
-            field_names: guide.get_field_names(),
         }
     }
 

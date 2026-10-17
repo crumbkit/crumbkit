@@ -4,8 +4,8 @@ This page covers how a tool reports a failure: the `Failure` trait, codes and
 their spelling, recoveries and alternatives, fields, refused command lines,
 codes learned at run time, unclassified errors and the `miette` feature. The
 other pages in this directory cover [deriving `Failure`](derive.md),
-[failure forms](forms.md), which replace crumbkit's failure
-document, and [exit codes](exit-codes.md).
+[source excerpts and failure readers](excerpts-and-readers.md) and
+[exit codes](exit-codes.md).
 [`Failure`](../../../crates/crumbkit-core/src/failure.rs),
 [`Code`](../../../crates/crumbkit-core/src/code.rs) and
 [`crumbkit::codes`](../../../crates/crumbkit/src/codes.rs) describe the items
@@ -25,9 +25,7 @@ because `Error` cannot implement `Failure`. A tool writes each `impl Failure`
 by hand or [derives it](derive.md).
 
 A failure prints as text on standard error, or as one failure document with
-`--json` ([output](../output/README.md#standard-output-and-standard-error)). A
-tool that publishes its own failure document prints every failure in that
-form ([failure forms](forms.md)).
+`--json` ([output](../output/README.md#standard-output-and-standard-error)).
 
 Why: ADR-0001.
 
@@ -62,20 +60,12 @@ A failure names the values at fault through `Failure::fields`, such as the id
 of a missing book, so a program reads the value without parsing the message.
 A field name follows the rule of a code segment. `finish` leaves out a field
 whose name breaks the rule or repeats an earlier name, so a wrong name never
-fails a run that has already failed. A tool whose field names come from
-another system, such as `requestId` from an API or `Content-Type` from a
-header, lists those names with `Guide::field_names`. `finish` and `stream`
-then keep a field with a listed name, and the served failure schema accepts
-the listed names beside the rule ([schemas](../schemas/README.md)). The
-checked-in schema keeps the rule alone, because it describes crumbkit's
-document for every tool. `check_guide` reports a listed name that is empty,
-holds whitespace or a control character, is listed twice, or already
-follows the rule. A field's value can be a list, an object
+fails a run that has already failed. A field's value can be a list, an object
 or null as well as a scalar ([schemas](../schemas/README.md)). A tool's own
 field shapes are a [declaration](../adoption/declarations.md) that needs no
 opt-out.
 
-Why: ADR-0001, ADR-0007, ADR-0061.
+Why: ADR-0001, ADR-0007, ADR-0081.
 
 ## Debug-build warnings
 
@@ -209,7 +199,7 @@ Why: ADR-0001, ADR-0056, ADR-0030, ADR-0078.
 
 The optional `miette` feature lets a failure that implements
 `miette::Diagnostic` show its labels, and crumbkit draws them itself
-([failure forms](forms.md#source-excerpts)). The JSON document also holds the
+([source excerpts](excerpts-and-readers.md#source-excerpts)). The JSON document also holds the
 diagnostic's related diagnostics and a source excerpt for each label. The
 code, the recovery and the url still come from `Failure`.
 

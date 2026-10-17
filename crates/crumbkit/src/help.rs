@@ -9,7 +9,6 @@ mod aliases;
 mod dashed;
 pub(crate) mod effects;
 pub(crate) mod exit;
-mod fields;
 mod format;
 pub(crate) mod leaf;
 mod list;
@@ -39,9 +38,8 @@ pub use self::view::ViewFlag;
 pub use self::words::quote;
 
 use self::list::{list, write_line};
-use crate::form::FailureForm;
 use crate::pick::Picker;
-use crate::{JsonStyle, ToolName};
+use crate::{JsonLayout, ToolName};
 
 #[cfg(test)]
 mod tests;
@@ -117,26 +115,20 @@ pub struct Guide {
     /// The picker that asks a person for a missing argument, or `None` when
     /// `parse` refuses every command line that leaves one out.
     picker: Option<&'static dyn Picker>,
-    /// The tool's own form of a failure, or `None` when failures print in
-    /// crumbkit's form.
-    failure_form: Option<&'static dyn FailureForm>,
     /// The reason the tool gives for turning terminal detection off, or
     /// `None` when crumbkit asks whether a stream is a terminal (ADR-0049).
     without_terminal_detection: Option<&'static str>,
     /// The most bytes that one run prints on standard output, with the
     /// reason the tool gives for it, or `None` for crumbkit's default.
     output_budget: Option<(usize, &'static str)>,
-    /// The layout and the key order of the JSON the tool prints, which
-    /// [`Guide::json`] sets (ADR-0073).
-    json: JsonStyle,
+    /// The layout of a whole JSON document, which
+    /// [`Guide::json_layout`] sets (ADR-0052).
+    json_layout: JsonLayout,
     /// The path from the clap root to the command that callers run first,
     /// which answers `help` with the topics.
     root: &'static [&'static str],
     /// Whether a command named in another style answers to its dashed form.
     dashed_forms: bool,
-    /// The names of failure fields that the tool takes from another system
-    /// and that break crumbkit's field name rule (ADR-0061).
-    field_names: &'static [&'static str],
 }
 
 impl Guide {
@@ -154,13 +146,11 @@ impl Guide {
             refusal_alternatives: None,
             personal_aliases: None,
             picker: None,
-            failure_form: None,
             without_terminal_detection: None,
             output_budget: None,
-            json: JsonStyle::new(),
+            json_layout: JsonLayout::OneLine,
             root: &[],
             dashed_forms: false,
-            field_names: &[],
         }
     }
 
@@ -329,30 +319,6 @@ impl Guide {
     #[must_use]
     pub const fn get_picker(&self) -> Option<&'static dyn Picker> {
         self.picker
-    }
-
-    /// Sets the tool's own form of a failure, which writes the JSON document
-    /// and the text of each failure in place of crumbkit's (ADR-0045).
-    ///
-    /// [`parse`](crate::parse) prints its refusals in the form and passes it
-    /// on in the [`Output`](crate::Output) that it returns, so `finish` and
-    /// `stream` print in it. A tool that parses with clap alone passes its
-    /// guide to [`Output::new`](crate::Output::new). The schema
-    /// commands serve the form's document in place of
-    /// `<tool>/failure/v1`. [`FailureForm`] says which outputs the form
-    /// covers.
-    #[must_use]
-    pub const fn failure_form(mut self, form: &'static dyn FailureForm) -> Self {
-        self.failure_form = Some(form);
-        self
-    }
-
-    /// Returns the form that [`Guide::failure_form`] set, or `None`. The name
-    /// has clap's `get_` prefix, because `failure_form` is the builder
-    /// method.
-    #[must_use]
-    pub const fn get_failure_form(&self) -> Option<&'static dyn FailureForm> {
-        self.failure_form
     }
 
     /// Returns the exit codes that [`Guide::exits`] set. The name has

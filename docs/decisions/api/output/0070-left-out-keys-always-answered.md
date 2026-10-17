@@ -1,7 +1,7 @@
 # ADR-0070. Every answer left out keeps its failure
 
 - Date: 2026-10-17
-- Status: accepted
+- Status: amended by ADR-0081
 - Supersedes: ADR-0068 and ADR-0046, which it amends
 
 ## Context

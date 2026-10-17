@@ -219,13 +219,6 @@ pub(super) enum Over {
         /// The call that fetches every key left out in one run.
         fetch: Option<Call>,
     },
-    /// One answer of a batch that was left out, whose document answers
-    /// each key left out (ADR-0068).
-    Key {
-        /// The call that fetches the answer's key alone, or `None` for an
-        /// answer without a key.
-        fetch: Option<Call>,
-    },
     /// A single row or a list of rows that crumbkit refused whole.
     Row,
     /// A prose or bytes result, which no flag makes smaller.
@@ -270,10 +263,6 @@ impl fmt::Display for OverBudget {
                 }
                 Ok(())
             }
-            Over::Key { .. } => write!(
-                f,
-                "the answer did not fit in the output budget of {budget} bytes"
-            ),
             Over::Row | Over::Whole => write!(
                 f,
                 "the result is larger than the output budget of {budget} bytes"
@@ -300,10 +289,7 @@ impl Failure for OverBudget {
                 fetch: Some(call),
                 ..
             } if !left_out.is_empty() => Recovery::Run(call.clone()),
-            Over::Key {
-                fetch: Some(call), ..
-            } => Recovery::Run(call.clone()),
-            Over::Batch { .. } | Over::Key { fetch: None } => Recovery::Hint(
+            Over::Batch { .. } => Recovery::Hint(
                 "run the command again with the keys that were not answered".to_owned(),
             ),
             Over::Row => Recovery::Hint("ask for fewer fields with --fields".to_owned()),
@@ -335,7 +321,7 @@ impl Failure for OverBudget {
                 fields.push(budget);
                 fields
             }
-            Over::Key { .. } | Over::Row | Over::Whole | Over::Stream => vec![budget],
+            Over::Row | Over::Whole | Over::Stream => vec![budget],
         }
     }
 }

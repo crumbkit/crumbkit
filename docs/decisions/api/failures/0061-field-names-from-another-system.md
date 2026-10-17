@@ -1,7 +1,7 @@
 # ADR-0061. Field names from another system
 
 - Date: 2026-10-14
-- Status: accepted
+- Status: superseded by ADR-0081
 - Supersedes: ADR-0001 and ADR-0036, which it amends
 
 ## Context

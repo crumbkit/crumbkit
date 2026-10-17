@@ -14,14 +14,12 @@ use super::{Finished, Tool, finish_output};
 use crate::Envelope;
 
 mod batch;
-mod keys;
-mod per_key;
 mod rerun;
 mod room;
 use crate::help::{Exit, Guide, Rename};
 use crate::twins::assert_one_word_apart;
 use crate::{
-    AsFailure, Batch, Code, Document, Error, Failure, JsonStyle, Listing, Output, Prose, Recovery,
+    AsFailure, Batch, Code, Document, Error, Failure, JsonLayout, Listing, Output, Prose, Recovery,
     Row,
 };
 
@@ -111,7 +109,9 @@ fn a_pretty_layout_cuts_a_listing_where_its_indented_bytes_stop_fitting() {
     let listing = || Listing::new(stars(20), 20).described("stars");
     let guide = Guide::new()
         .output_budget(BUDGET, "the tests print little")
-        .json(JsonStyle::new().pretty("the readers expect it"));
+        .json_layout(JsonLayout::Pretty {
+            reason: "the readers expect it",
+        });
     let compact = finish_small(&["--json"], STAR_LISTING, listing());
     let indented = finish_output(&mut guided(&guide, &["--json"]), STAR_LISTING, listing());
 
@@ -337,9 +337,39 @@ fn a_guide_can_set_an_output_budget_below_one_kibibyte_and_a_listing_fits_in_it(
 }
 
 #[test]
-#[should_panic(expected = "an output budget is at least 1 byte")]
-fn a_guide_refuses_an_output_budget_of_0_bytes() {
-    let _ = Guide::new().output_budget(0, "nothing");
+fn a_run_with_a_guide_budget_of_1_byte_prints_the_over_budget_failure() {
+    let finished = finish_output(&mut budgeted(1, &["--json"]), STAR, star(1));
+
+    assert_eq!(finished.code, ExitCode::FAILURE);
+    let document = parsed(&finished.out);
+    assert_eq!(document["code"], "tool::output::over_budget");
+    assert_eq!(document["fields"], json!({"budget": 1}));
+}
+
+#[test]
+fn a_run_with_a_guide_budget_of_0_bytes_refuses_a_listing_with_the_over_budget_failure() {
+    let listing = Listing::new(stars(5), 5).described("stars");
+    let finished = finish_output(&mut budgeted(0, &["--json"]), STAR_LISTING, listing);
+
+    assert_eq!(finished.code, ExitCode::FAILURE);
+    let document = parsed(&finished.out);
+    assert_eq!(document["code"], "tool::output::over_budget");
+    assert_eq!(document["fields"], json!({"budget": 0}));
+}
+
+#[test]
+fn a_batch_with_a_guide_budget_of_0_bytes_prints_its_first_answer_and_the_over_budget_failure() {
+    let batch = keyed::<Error>(stars(3), vec![]);
+    let finished = finish_output(&mut budgeted(0, &["--json"]), STAR_BATCH, batch);
+
+    assert_eq!(finished.code, ExitCode::FAILURE);
+    let document = parsed(&finished.out);
+    assert_eq!(document["data"][0]["name"], "star-01");
+    assert_eq!(document["failures"][0]["code"], "tool::output::over_budget");
+    assert_eq!(
+        document["failures"][0]["fields"]["left_out"],
+        json!(["star-02", "star-03"])
+    );
 }
 
 /// A failure of a batch, so the property covers the batch's own failures.

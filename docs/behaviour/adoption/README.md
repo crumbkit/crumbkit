@@ -114,9 +114,7 @@ trace context.
 - crumbkit-core depends on serde_json, because `FieldValue::from_json` reads
   a failure field back from a `serde_json::Value`, so a test or a tool that
   reads failure fields from JSON does not copy the conversion. It puts
-  serde_json's major version into crumbkit-core's API, which couples nothing
-  new, because crumbkit's `FailureForm::json` already returns a
-  `serde_json::Value`.
+  serde_json's major version into crumbkit-core's API.
 - crumbkit-core's `derive` feature re-exports
   [`#[derive(Failure)]`](../failures/derive.md), and crumbkit-core holds
   [`Error::unclassified`](../failures/README.md#unclassified-errors).

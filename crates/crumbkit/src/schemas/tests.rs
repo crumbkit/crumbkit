@@ -18,10 +18,7 @@ use crate::{
 };
 
 mod bytes;
-mod field_names;
 mod formats;
-mod in_order;
-mod keys;
 mod streams;
 
 /// A row type for the test tool's leaves.
@@ -484,5 +481,15 @@ fn every_document_with_the_envelope_may_hold_dry_run_true_and_never_requires_it(
             .as_array()
             .unwrap()
             .contains(&json!("dry_run"))
+    );
+}
+
+#[test]
+fn schemas_list_names_the_kinds_output_unwrapped_and_file_and_no_other() {
+    let schema = super::SchemaRow::json_schema(&mut schemars::SchemaGenerator::default());
+
+    assert_eq!(
+        schema.as_value()["properties"]["kind"]["enum"],
+        json!(["output", "unwrapped", "file"])
     );
 }

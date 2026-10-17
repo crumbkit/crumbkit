@@ -36,7 +36,7 @@ terminal is never asked and must type every argument and `--yes`, and
 progress and help colour never show ([opt-outs](../adoption/opt-outs.md)).
 The `Output` that `parse` returns, the `Output` inside a `Stop` and the
 `Output` that `Output::new` builds copy the setting from the guide, as they
-copy the failure form.
+copy the guide's JSON layout and code renames.
 
 The setting belongs to the tool and has no environment variable. A caller
 already turns colour off with `NO_COLOR` or `TERM=dumb`, which clap reads,

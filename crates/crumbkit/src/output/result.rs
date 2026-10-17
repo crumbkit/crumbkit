@@ -12,17 +12,14 @@ use super::budget::{self, Cut, Over, OverBudget};
 use super::columns::{columns, values};
 use super::envelope::{Extras, Failures, Selected, SelectedRows, write_document};
 use super::failure::PreparedFailure;
-use super::layout::JsonStyle;
+use super::layout::JsonLayout;
 use super::table::Table;
 use super::{Output, layout, lines, listing, problems, prose};
-use crate::form::FailureForm;
 use crate::{Code, Document, Row, Rows, Shape, Spelling, codes};
 
 mod batch;
 mod cut;
 pub(super) mod headed;
-mod in_order;
-mod per_key;
 mod rerun;
 
 /// What [`write_result`] printed of a result.
@@ -40,11 +37,9 @@ pub(super) enum Answer {
     /// document does not let its first answer print. The failure prints in
     /// its place.
     Refused(OverBudget),
-    /// The rows that fit, with the failure of each answer that does not,
-    /// by position: a row of a headed batch too large alone, and each
-    /// answer left out of a batch whose document answers each key left
-    /// out. A headed batch whose document does not ends with the failure
-    /// that names the rows left out.
+    /// The rows of a headed batch that fit, with the failure of each row
+    /// too large alone, by position, and the failure that names the rows
+    /// left out, when there is one.
     Keyed {
         each: Vec<(usize, OverBudget)>,
         left_out: Option<OverBudget>,
@@ -63,8 +58,7 @@ pub(super) enum Answer {
 /// A result that fits prints whole. Otherwise a listing or a list prints the
 /// most rows that fit, marked as cut short. A batch prints the most rows
 /// that fit and always its first, followed by one failure that names the
-/// keys left out, or by one failure for each answer left out when its
-/// document answers each key left out. A batch that has keys it never
+/// keys left out. A batch that has keys it never
 /// fetched prints those failures even when its rows fit. A single row or a prose
 /// result prints nothing, unless its document always prints its first
 /// answer, in which case it prints whole. After `out` is flushed, the lines
@@ -172,8 +166,7 @@ fn write_rows<T: Rows>(
     let columns = columns(output, document, value.prose().is_some());
     let values = values(&columns, value)?;
     let mut prepared = Prepared::new(output, document, value, &columns, &values, next, problems)?;
-    let indexes = value.failure_indexes();
-    let listed = failures.map(|listed| Failures::of(listed, indexes, output.failure_form));
+    let listed = failures.map(Failures::of);
     let rows = value.rows().len();
     // A batch that never fetched some of its keys ends with their failure
     // even when its rows fit.
@@ -243,10 +236,8 @@ struct Prepared<'a, T> {
     json: bool,
     /// Whether the run is a dry run.
     dry_run: bool,
-    /// The layout and the key order of the JSON document.
-    style: JsonStyle,
-    /// The guide's failure form, which writes each entry of `failures`.
-    form: Option<&'static dyn FailureForm>,
+    /// The layout of the JSON document.
+    layout: JsonLayout,
     /// Whether the JSON document holds every field of each row.
     full: bool,
     /// Whether the caller passed `--fields`.
@@ -286,8 +277,7 @@ impl<'a, T: Rows> Prepared<'a, T> {
             _ => None,
         };
         let lines = if lines::chosen::<T::Row>(output) {
-            let keys = output.json_style.sorted_keys;
-            let rows = value.rows().iter().map(|row| lines::line(row, keys));
+            let rows = value.rows().iter().map(lines::line);
             Some(rows.collect::<io::Result<Vec<String>>>()?)
         } else {
             None
@@ -299,8 +289,7 @@ impl<'a, T: Rows> Prepared<'a, T> {
             value,
             json: output.json,
             dry_run: output.dry_run,
-            style: output.json_style,
-            form: output.failure_form,
+            layout: output.json_layout,
             // A headed document and a row type that prints whole hold
             // every field in JSON unless `--fields` names some.
             full: output.full
@@ -420,7 +409,7 @@ impl<'a, T: Rows> Prepared<'a, T> {
         data: &D,
         extras: &Extras<'_, M>,
     ) -> io::Result<()> {
-        write_document(out, self.document, self.dry_run, self.style, data, extras)
+        write_document(out, self.document, self.dry_run, self.layout, data, extras)
     }
 
     /// Writes the result as [`Prepared::write`] does, without the line of a
@@ -435,11 +424,6 @@ impl<'a, T: Rows> Prepared<'a, T> {
         let value = self.value;
         let rows = value.rows();
         let all = shown >= rows.len();
-        if let Some(failures) =
-            failures.filter(|_| self.json && self.document.get_envelope().failures_in_order())
-        {
-            return self.write_in_order(out, shown, failures);
-        }
         if self.json && !self.document.get_envelope().wraps() {
             return self.write_unwrapped(out, shown, all);
         }
@@ -521,8 +505,8 @@ impl<'a, T: Rows> Prepared<'a, T> {
         let rows = self.value.rows();
         if !self.fields {
             return match rows.get(..shown) {
-                Some(first) if !all => layout::write(out, first, self.style),
-                _ => layout::write(out, self.value, self.style),
+                Some(first) if !all => layout::write(out, first, self.layout),
+                _ => layout::write(out, self.value, self.layout),
             };
         }
         match self.values {
@@ -531,14 +515,14 @@ impl<'a, T: Rows> Prepared<'a, T> {
                     row: single,
                     columns: self.columns,
                 };
-                layout::write(out, &selected, self.style)
+                layout::write(out, &selected, self.layout)
             }
             list => {
                 let selected = SelectedRows {
                     rows: list.get(..shown).unwrap_or(list),
                     columns: self.columns,
                 };
-                layout::write(out, &selected, self.style)
+                layout::write(out, &selected, self.layout)
             }
         }
     }

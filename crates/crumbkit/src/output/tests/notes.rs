@@ -309,19 +309,3 @@ fn a_batch_that_the_output_budget_cuts_prints_its_note_before_the_failure_that_n
         finished.err
     );
 }
-
-#[test]
-fn a_batch_that_answers_each_key_left_out_prints_its_note_before_those_failures() {
-    let guide = Guide::new().output_budget(1024, "the tests print little");
-    let mut output = built_with(Tool::command(), &guide, &["tool", "list"]);
-    let rows: Vec<Planet> = (0..100).map(|_| mercury()).collect();
-    let batch = answered::<Planet, Gone>(rows, Vec::new()).note("Pluto is not a planet.");
-    let finished = finish_output(&mut output, SHOWN.left_out_per_key(), batch);
-
-    assert_eq!(finished.code, ExitCode::FAILURE);
-    assert!(
-        finished.err.starts_with("Pluto is not a planet.\nerror: "),
-        "{}",
-        finished.err
-    );
-}

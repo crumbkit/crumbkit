@@ -145,7 +145,7 @@ impl Guide {
     /// [`Guide::codes`] set, so a failure or refusal of a runtime leaf's
     /// command prints the tool's code in place of crumbkit's, as one of a
     /// `const` leaf's command does. It also keeps the groups, topics, exit
-    /// codes, failure form and every other setting of `self`.
+    /// codes and every other setting of `self`.
     ///
     /// Every function that reads a guide reads the joined one as it reads a
     /// `const` guide, and of two leaves with one path only the first

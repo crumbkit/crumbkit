@@ -94,8 +94,8 @@ mod tests;
 /// - a run that exits with a code other than 0, naming the example's command
 ///   line, the exit status, the failure's code and steps when the check can
 ///   read them, and the standard error, because an example shows a run that
-///   works. The check reads the failure through the guide's failure form
-///   or the [`FailureReader`](crate::FailureReader) of `examples` first,
+///   works. The check reads the failure through the
+///   [`FailureReader`](crate::FailureReader) of `examples` first,
 ///   then from a `<tool>/failure/v1` document on standard output, and
 ///   then from the last `code:` line on standard error. This holds with `SNAPSHOTS=overwrite` too, and the
 ///   check then writes no file for the example;
@@ -120,9 +120,6 @@ mod tests;
 /// - an opt-out from [`Rule::Examples`] that names no command or skips no
 ///   example, and an [`Allow::example`](crate::Allow::example) that names no
 ///   example that the check runs;
-/// - a guide that sets a failure form and examples that set a failure
-///   reader with [`Examples::failure_reader`], which stops the check before
-///   any run;
 /// - a directory of [`Examples::current_dir`] or a fixture of
 ///   [`Examples::fresh_dir`] that does not exist;
 /// - a placeholder of [`Examples::redact`] that is not `[` and `]` around
@@ -193,7 +190,7 @@ fn check(
     let overwrite = assert.selected_action() == Action::Overwrite;
     let dir = Path::new(examples.goldens());
     let tool = command.get_name();
-    let layout = guide.get_json().layout;
+    let layout = guide.get_json_layout();
     let tool_name = guide.tool_name(command);
     let mut problems = Vec::new();
     // The problems of runs that fail, which the message lists under a
@@ -202,7 +199,7 @@ fn check(
     let mut failures = Vec::new();
     let mut allowances = Allowances::new(examples.opt_outs(), &[Rule::Examples]);
     let visits = tree::walk(command);
-    let reader = match setup(guide, examples) {
+    let reader = match setup(examples) {
         Ok(reader) => reader,
         Err(problem) => {
             report(&[problem], &[]);
@@ -361,10 +358,10 @@ fn run_example(
     Ok((output, inputs::with_run(redactions, &xdg, &work)))
 }
 
-/// Returns the tool's failure form or failure reader, or the problem of a
-/// setting that stops the check before any run.
-fn setup<'a>(guide: &Guide, examples: &Examples<'a>) -> Result<Option<Reader<'a>>, String> {
-    let reader = failures::reader(guide, examples)?;
+/// Returns the tool's failure reader, or the problem of a setting that
+/// stops the check before any run.
+fn setup<'a>(examples: &Examples<'a>) -> Result<Option<Reader<'a>>, String> {
+    let reader = failures::reader(examples);
     setup_problem(examples).map_or(Ok(reader), Err)
 }
 

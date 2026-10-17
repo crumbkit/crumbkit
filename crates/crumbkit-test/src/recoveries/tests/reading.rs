@@ -120,6 +120,28 @@ fn a_failure_reader_that_reads_nothing_from_a_failed_run_stops_the_check_with_on
 }
 
 #[test]
+fn an_opt_out_that_names_the_root_skips_every_start_of_a_tool_whose_reader_reads_no_failure() {
+    const ROOT: &[Allow] = &[Allow::new(
+        Rule::Recoveries,
+        "",
+        "The tool prints its failures in a line that the reader cannot read.",
+    )];
+    let answers: &[Answer<'_>] = &[("books show 7 --json", 1, "", "it broke")];
+
+    let (message, setup) = checked(answers, Some(&LineReader), ROOT);
+
+    // The opt-out skips the start, so the start's code goes unprovoked.
+    assert_eq!(
+        message.as_deref(),
+        Some(
+            "the tool's recoveries break crumbkit's recovery rules:\n\
+             tool::books::not_found: no start provokes the declared code, and Recoveries::unprovoked does not list it"
+        )
+    );
+    assert!(!setup.report().contains("tool books show 7"));
+}
+
+#[test]
 fn the_recovery_check_reads_the_code_line_of_a_failed_run_that_prints_no_document() {
     let answers: &[Answer<'_>] = &[(
         "books show 7 --json",

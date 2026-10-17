@@ -5,7 +5,7 @@ use schemars::JsonSchema;
 use serde::Serialize;
 
 use crate::help::Guide;
-use crate::{Batch, Document, Error, JsonStyle, Row};
+use crate::{Batch, Document, Error, JsonLayout, Row};
 
 use super::{STAR_BATCH, Star, budgeted, finish_output, guided, star};
 
@@ -21,7 +21,9 @@ fn answered(rows: Vec<Star>) -> Batch<Star, Error> {
 fn room_counts_a_pretty_document_s_rows_as_the_document_prints_them() {
     let guide = Guide::new()
         .output_budget(1 << 20, "the tests print little")
-        .json(JsonStyle::new().pretty("the readers expect it"));
+        .json_layout(JsonLayout::Pretty {
+            reason: "the readers expect it",
+        });
     let mut output = guided(&guide, &["--json", "--fields", "story"]);
     let mut room = output.room(STAR_BATCH);
     let mut batch = answered(Vec::new());

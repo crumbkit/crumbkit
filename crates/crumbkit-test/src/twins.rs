@@ -58,11 +58,9 @@ mod tests;
 /// of the fixture of [`Examples::fresh_dir`], and fresh XDG directories of
 /// their own, as [`check_examples`](crate::check_examples) runs an example.
 /// The check reads the refused line's code, spelled with `spelling`. When
-/// the guide sets a form with `Guide::failure_form`, it reads the code
-/// through the form's
-/// [`FailureForm::read`](crumbkit::form::FailureForm::read) first, and when
-/// `examples` sets a [`FailureReader`](crate::FailureReader), through that
-/// reader first. Otherwise, or when neither reads a failure, it reads the
+/// `examples` sets a [`FailureReader`](crate::FailureReader), it reads the
+/// code through that reader first. Otherwise, or when the reader reads no
+/// failure, it reads the
 /// code from a `<tool>/failure/v1` document on standard output, or from
 /// the first entry of a batch's `failures`, and then from the last `code:`
 /// line on standard error.
@@ -103,8 +101,7 @@ mod tests;
 ///
 /// # Panics
 ///
-/// Panics when the guide sets a failure form and `examples` sets a failure
-/// reader, when the two lines differ by more or less than one word added,
+/// Panics when the two lines differ by more or less than one word added,
 /// removed or replaced, when `admitted` adds a help or version word or
 /// runs another command than `refused`, when neither line runs a command, when `refused` exits with code 0, fails with
 /// another code, exits with a code that breaks the rule of the guide's exits
@@ -287,7 +284,7 @@ pub(super) fn refuse(
     spelling: Spelling,
     refused: &Failing<'_>,
 ) -> Result<Output, String> {
-    let reader = failures::reader(guide, examples)?;
+    let reader = failures::reader(examples);
     // crumbkit's own codes print with the tool's name (ADR-0079).
     let tool = guide.tool_name(command);
     let spelling = spelling.for_tool(tool);
@@ -324,7 +321,7 @@ pub(super) fn refuse(
             "the refused line {refused_line} must fail with {code}, and it fails with {printed}"
         )),
         None => Err(format!(
-            "the refused line {refused_line} must fail with {code}, and it ends with {} and prints no code that the check can read. A tool that prints failures in a form of its own implements FailureForm::read and sets the form with Guide::failure_form, or implements FailureReader and sets it with Examples::failure_reader",
+            "the refused line {refused_line} must fail with {code}, and it ends with {} and prints no code that the check can read. A tool that prints failures in a form of its own implements FailureReader and sets it with Examples::failure_reader",
             output.status
         )),
     }

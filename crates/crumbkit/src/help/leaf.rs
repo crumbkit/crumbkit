@@ -363,21 +363,6 @@ impl Leaf {
             .map(|columns| (columns.envelope)(columns.document))
     }
 
-    /// Reports whether the row type of the leaf's document has a field
-    /// named `name`, as [`Row`] describes the fields of a row type, or
-    /// `false` when the leaf has no document. It builds the row type's JSON
-    /// Schema on each call. crumbkit-test's `check_guide` reads it to fail
-    /// on a row type with a field named `schema` in a document that prints
-    /// its failures in input order.
-    #[must_use]
-    pub fn row_has_field(&self, name: &str) -> bool {
-        self.columns.is_some_and(|columns| {
-            row::properties(&(columns.schema)())
-                .iter()
-                .any(|(field, _)| *field == name)
-        })
-    }
-
     /// Reports whether the row type of the leaf's document has any field, as
     /// [`Row`] describes the fields of a row type, or `false` when the leaf
     /// has no document. It builds the row type's JSON Schema on each call.

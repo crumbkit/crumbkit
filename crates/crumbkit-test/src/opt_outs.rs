@@ -54,8 +54,8 @@ const SCHEMA: &str = "crumbkit/opt-outs/v1";
 /// rule `terminal-detection/off`, with its reason and its costs (ADR-0049).
 /// After the opt-outs, the report lists the tool's customisations: the
 /// declarations that change what a run prints and keep crumbkit's
-/// behaviour, so they have no reason and no cost (ADR-0056). They are the
-/// guide's failure form, each code rename, each exit that lists one of
+/// behaviour, so they have no reason and no cost (ADR-0056). They are each
+/// code rename, each exit that lists one of
 /// crumbkit's codes or its rename, each document whose name is not its
 /// command's path, each leaf that passes on a program's exit code, each
 /// leaf that declares refusal alternatives, the guide's
@@ -177,7 +177,7 @@ fn check(
         );
         entries.push(Entry::of(departure, cost));
     }
-    if let JsonLayout::Pretty { reason } = guide.get_json().layout {
+    if let JsonLayout::Pretty { reason } = guide.get_json_layout() {
         entries.push(Entry {
             rule: "json-layout/pretty",
             applies_to: format!("every run of {}", command.get_name()),

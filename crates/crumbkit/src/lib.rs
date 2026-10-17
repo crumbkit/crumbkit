@@ -54,6 +54,8 @@ mod page;
 mod parse;
 pub mod pick;
 mod refusal;
+#[cfg(doctest)]
+mod removed;
 mod row;
 pub mod schemas;
 mod sink;
@@ -76,8 +78,8 @@ pub use crate::dashed::{dashed_form, dashed_name};
 pub use crate::expect::{Expect, Expected};
 pub use crate::fetch::fetch_each;
 pub use crate::output::{
-    DryRun, JsonLayout, JsonStyle, Output, Room, Streaming, ViewFlags, Yes, finish, finish_to,
-    stream, stream_to,
+    DryRun, JsonLayout, Output, Room, Streaming, ViewFlags, Yes, finish, finish_to, stream,
+    stream_to,
 };
 pub use crate::page::Page;
 pub use crate::parse::walk::command_path;
@@ -85,15 +87,13 @@ pub use crate::parse::{Stop, parse, parse_from, parse_to};
 pub use crate::pick::NoInput;
 pub use crate::sink::Sink;
 
-/// The schemars crate that crumbkit builds against, so a tool can write a
-/// [`FailureForm`](crate::form::FailureForm)'s schema with
-/// `crumbkit::schemars::{Schema, json_schema}` and needs no schemars
-/// dependency of its own (ADR-0045).
+/// The schemars crate that crumbkit builds against, so a tool can name
+/// `crumbkit::schemars::{Schema, json_schema}` without a schemars
+/// dependency of its own.
 ///
-/// `FailureForm::schema` and the `JsonSchema` bound on a result already
-/// make schemars' major version part of crumbkit's API, so a new major
-/// version of schemars is a breaking release of crumbkit with or without
-/// this re-export.
+/// The `JsonSchema` bound on a result already makes schemars' major version
+/// part of crumbkit's API, so a new major version of schemars is a breaking
+/// release of crumbkit with or without this re-export.
 ///
 /// crumbkit turns on no schemars feature in its default build, so
 /// `#[derive(JsonSchema)]` through this path works only when some crate in

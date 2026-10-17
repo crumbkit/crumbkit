@@ -29,18 +29,10 @@ use crate::{Bytes, Document, Row, Rows, Shape, Stream};
 /// - `failures` holds the failures of the ids that did not work, for
 ///   [`Shape::Batch`], and the failures that a prose result leaves out, for
 ///   [`Shape::Prose`]. Each entry has the fields of `<tool>/failure/v1`
-///   without `schema`. `schemas show` serves the entry schema of the
-///   guide's failure form in its place when the guide has one.
-///
-/// A document whose [`Envelope`](crate::Envelope) declares keys has its
-/// type key in place of `schema`, holding the id, and its data key in
-/// place of `data`. A batch of such a document that prints its failures in
-/// input order has no `failures` (ADR-0059).
+///   without `schema`.
 ///
 /// A document without the envelope has the schema of its `data` at the
-/// top. Each item of a batch whose envelope prints its failures in input
-/// order is a row or a `<tool>/failure/v1` document, and `schemas show` serves the schema of the guide's failure
-/// form in place of the failure document when the guide has one.
+/// top.
 ///
 /// The schemas of the row type, the summary type and a prose result's value
 /// sit under `$defs`.
@@ -96,8 +88,7 @@ pub fn stream_schema<R: Row>(document: Document<Stream<R>>) -> Schema {
 ///
 /// A document without crumbkit's envelope has the schema of its `data` at
 /// the top, with the document's `title` and `description`, because
-/// `finish` prints the result alone (ADR-0007). Each item of a batch that
-/// prints its failures in input order is a row or a failure document.
+/// `finish` prints the result alone (ADR-0007).
 pub(crate) fn envelope<T: Rows>(document: Document<()>) -> Schema {
     let settings = SchemaSettings::draft2020_12();
     let meta_schema = settings.meta_schema.clone();
@@ -106,30 +97,19 @@ pub(crate) fn envelope<T: Rows>(document: Document<()>) -> Schema {
         Some(value) => value,
         None if T::SHAPE == Shape::Row => generator.subschema_for::<T::Row>(),
         None if T::SHAPE == Shape::Bytes => generator.subschema_for::<Bytes>(),
-        None if document.get_envelope().failures_in_order() => json_schema!({
-            "description": "The rows for the ids that worked and the failure document of each id that did not, in the order the caller gave the ids, then the failure of the ids that the output budget left out.",
-            "type": "array",
-            "items": {
-                "anyOf": [
-                    generator.subschema_for::<T::Row>(),
-                    failure::failure_schema(),
-                ],
-            },
-        }),
         None => json_schema!({
             "description": data_description(T::SHAPE),
             "type": "array",
             "items": generator.subschema_for::<T::Row>(),
         }),
     };
-    let envelope = document.get_envelope();
-    if !envelope.wraps() {
+    if !document.get_envelope().wraps() {
         return top(document, data, meta_schema.as_deref(), &mut generator);
     }
     let mut properties = serde_json::Map::new();
-    let mut required = vec![envelope.type_key(), envelope.data_key()];
+    let mut required = vec!["schema", "data"];
     properties.insert(
-        envelope.type_key().to_owned(),
+        "schema".to_owned(),
         json!({
             "description": "The id of this document.",
             "const": document.to_string(),
@@ -143,7 +123,7 @@ pub(crate) fn envelope<T: Rows>(document: Document<()>) -> Schema {
         })
         .to_value(),
     );
-    properties.insert(envelope.data_key().to_owned(), data.to_value());
+    properties.insert("data".to_owned(), data.to_value());
     if T::SHAPE == Shape::Listing {
         properties.insert(
             "total".to_owned(),
@@ -173,8 +153,7 @@ pub(crate) fn envelope<T: Rows>(document: Document<()>) -> Schema {
     if T::SHAPE == Shape::Listing || T::SHAPE == Shape::List {
         properties.insert("cut".to_owned(), cut_schema());
     }
-    let in_order = envelope.failures_in_order();
-    if (T::SHAPE == Shape::Batch || T::SHAPE == Shape::Prose) && !in_order {
+    if T::SHAPE == Shape::Batch || T::SHAPE == Shape::Prose {
         properties.insert(
             "failures".to_owned(),
             json!({

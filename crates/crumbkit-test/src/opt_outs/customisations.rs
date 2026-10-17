@@ -24,43 +24,26 @@ pub(super) struct Customisation {
 }
 
 /// Returns the declarations of `guide` for the tool whose root command is
-/// `command`, in this order: the failure form, each code rename, the
-/// [`Guide::field_names`] declaration, each exit that lists one of
+/// `command`, in this order: each code rename, each exit that lists one of
 /// crumbkit's codes or the tool's rename of it, whether the guide declares
-/// refusal alternatives for every command, the sorted keys that [`Guide::json`] sets
-/// (ADR-0067), the [`Guide::dashed_forms`]
+/// refusal alternatives for every command, the [`Guide::dashed_forms`]
 /// declaration followed by each command that answers to its dashed form, as
 /// [`dashed_names`] lists them, and then for each leaf in guide order its
-/// document's name when the leaf's path gives another, the keys that its
-/// document's envelope declares (`Envelope::Keys`, ADR-0059), the program
-/// whose exit code it passes on, whether it declares refusal alternatives,
-/// whether its batch prints its failures in input order
-/// (`Envelope::KeysInOrder` or `Envelope::WithoutInOrder`), whether its batch answers each key that
-/// the output budget leaves out (`Document::left_out_per_key`), the form of
-/// its rows' own text line (`Row::LINE`, ADR-0064), and each code rename of
-/// [`Leaf::codes`](crumbkit::help::Leaf::codes). An exit that lists a code
-/// that only a leaf renames applies to that leaf's command. A declaration
-/// that a later change adds joins this list beside the declarations of the
-/// same scope: a guide setting before the leaves, and a leaf's declaration
-/// after its refusal-alternatives entry. The completion variable is not
-/// listed, because `complete_with` sets it for the process and the guide
-/// does not hold it.
+/// document's name when the leaf's path gives another, the program whose
+/// exit code it passes on, whether it declares refusal alternatives, the
+/// form of its rows' own text line (`Row::LINE`, ADR-0064), and each code
+/// rename of [`Leaf::codes`](crumbkit::help::Leaf::codes). An exit that
+/// lists a code that only a leaf renames applies to that leaf's command. A
+/// declaration that a later change adds joins this list beside the
+/// declarations of the same scope: a guide setting before the leaves, and a
+/// leaf's declaration after its refusal-alternatives entry. The completion
+/// variable is not listed, because `complete_with` sets it for the process
+/// and the guide does not hold it.
 pub(super) fn customisations(command: &Command, guide: &Guide) -> Vec<Customisation> {
     let every_run = format!("every run of {}", command.get_name());
     let tool = guide.tool_name(command);
     let spell = |code: &Code| spell(tool, code);
     let mut list = Vec::new();
-    if let Some(form) = guide.get_failure_form() {
-        list.push(Customisation {
-            declaration: "failure-form",
-            applies_to: every_run.clone(),
-            declares: format!(
-                "Failures print as {} in place of {}.",
-                form.document(),
-                tool.schema_id("crumbkit/failure/v1")
-            ),
-        });
-    }
     for rename in guide.get_codes() {
         list.push(Customisation {
             declaration: "code-rename",
@@ -69,20 +52,6 @@ pub(super) fn customisations(command: &Command, guide: &Guide) -> Vec<Customisat
                 "Runs print {} in place of {}.",
                 spell(rename.tool()),
                 spell(rename.crumbkit())
-            ),
-        });
-    }
-    if let Some((last, earlier)) = guide.get_field_names().split_last() {
-        let names = if earlier.is_empty() {
-            (*last).to_owned()
-        } else {
-            format!("{} and {last}", earlier.join(", "))
-        };
-        list.push(Customisation {
-            declaration: "field-names",
-            applies_to: every_run.clone(),
-            declares: format!(
-                "Failures may print the fields {names}, whose names come from another system."
             ),
         });
     }
@@ -113,14 +82,6 @@ pub(super) fn customisations(command: &Command, guide: &Guide) -> Vec<Customisat
             applies_to: every_run.clone(),
             declares: "A refused command line for a command without its own function also offers \
                        the tool's own alternatives."
-                .to_owned(),
-        });
-    }
-    if guide.get_json().sorted_keys {
-        list.push(Customisation {
-            declaration: "json-keys",
-            applies_to: every_run.clone(),
-            declares: "Every JSON document prints the keys of each object in sorted order."
                 .to_owned(),
         });
     }
@@ -156,19 +117,6 @@ fn leaf_customisations(command: &Command, tool: ToolName, leaf: &Leaf) -> Vec<Cu
             ),
         });
     }
-    if let Some(document) = document.filter(|document| document.get_envelope().has_own_keys()) {
-        let envelope = document.get_envelope();
-        list.push(Customisation {
-            declaration: "envelope-keys",
-            applies_to: command_line(command, &leaf.path().join(" ")),
-            declares: format!(
-                "With --json, the command prints {document} under {} and its result under {}, in \
-                 place of schema and data.",
-                envelope.type_key(),
-                envelope.data_key()
-            ),
-        });
-    }
     if let Some(program) = leaf.get_passes_on_exit() {
         list.push(Customisation {
             declaration: "passes-on-exit",
@@ -185,26 +133,6 @@ fn leaf_customisations(command: &Command, tool: ToolName, leaf: &Leaf) -> Vec<Cu
             applies_to: command_line(command, &leaf.path().join(" ")),
             declares: "A refused command line for this command also offers the tool's own \
                        alternatives."
-                .to_owned(),
-        });
-    }
-    if document.is_some_and(|document| document.get_envelope().failures_in_order()) {
-        list.push(Customisation {
-            declaration: "failures-in-order",
-            applies_to: command_line(command, &leaf.path().join(" ")),
-            declares: "With --json, the command prints its failures among its rows in input \
-                       order, in place of text on standard error."
-                .to_owned(),
-        });
-    }
-    if document.is_some_and(|document| document.answers_left_out_per_key()) {
-        list.push(Customisation {
-            declaration: "left-out-per-key",
-            applies_to: command_line(command, &leaf.path().join(" ")),
-            declares: "When the output budget leaves out answers, the command prints one failure \
-                       for each answer left out, at its key's position, in place of one failure \
-                       that names them all. The JSON document can pass the budget by the size \
-                       of those failures."
                 .to_owned(),
         });
     }

@@ -10,9 +10,8 @@ use serde::Serialize;
 use serde::ser::{SerializeMap, Serializer};
 
 use super::layout;
-use super::layout::JsonStyle;
+use super::layout::JsonLayout;
 use super::table::escape_controls;
-use crate::form::FailureForm;
 use crate::help::rename::{self, Renames};
 use crate::help::{Exit, Guide, Leaf};
 use crate::{Code, Document, Failure, FieldValue, Sink, Spelling, ToolName};
@@ -27,7 +26,7 @@ mod step;
 #[cfg(test)]
 mod tests;
 
-pub(crate) use self::schema::{document_schema, entry_schema, failure_schema};
+pub(crate) use self::schema::{document_schema, entry_schema};
 pub use self::step::Step;
 
 /// The id of the JSON document that a failure prints with `--json`, which
@@ -48,24 +47,17 @@ pub(crate) const DOCUMENT: Document<()> = FAILURE;
 const UNAVAILABLE: &str = "the suggested command is not available";
 
 /// What the guide decides about each failure that crumbkit prints: the
-/// tool's form, the layout of a JSON document, the exit codes and the
-/// renames of crumbkit's codes and the field names that the tool takes from
-/// another system. Its default is crumbkit's own form, one line, no exits,
-/// no renames and no listed field names.
+/// layout of a JSON document, the exit codes and the renames of crumbkit's
+/// codes. Its default is one line, no exits and no renames.
 #[derive(Clone, Copy, Debug, Default)]
 pub(crate) struct Printing {
-    /// The tool's own form of a failure, or `None` for crumbkit's form.
-    pub(crate) form: Option<&'static dyn FailureForm>,
-    /// The layout of a JSON document and the order of its keys.
-    pub(crate) style: JsonStyle,
+    /// The layout of a JSON document.
+    pub(crate) layout: JsonLayout,
     /// The exit codes that the tool's guide declares (ADR-0037).
     pub(crate) exits: &'static [Exit],
     /// The tool's own codes for crumbkit's failures, of the guide and of
     /// the leaf of the run's command (ADR-0056, ADR-0060).
     pub(crate) renames: Renames,
-    /// The field names that break the rule and that the tool's guide lists
-    /// with `Guide::field_names` (ADR-0061).
-    pub(crate) field_names: &'static [&'static str],
 }
 
 impl Printing {
@@ -79,11 +71,9 @@ impl Printing {
     /// command of `leaf`, which reads the leaf's renames before the guide's.
     pub(crate) fn at(guide: &Guide, leaf: Option<&Leaf>) -> Self {
         Self {
-            form: guide.get_failure_form(),
-            style: guide.get_json(),
+            layout: guide.get_json_layout(),
             exits: guide.get_exits(),
             renames: Renames::with_leaf(guide, leaf),
-            field_names: guide.get_field_names(),
         }
     }
 
@@ -101,8 +91,8 @@ impl Printing {
 }
 
 /// Prints `failure` to `sink`: as text on the error writer, or with `json`
-/// as one document on the output writer, in the form and the layout that
-/// `printing` names, with the code that `printing` prints for it. A
+/// as one document on the output writer, in the layout that `printing`
+/// names, with the code that `printing` prints for it. A
 /// `Recovery::Run` call renders against `command`, which builds the branch
 /// that the call names.
 ///
@@ -121,7 +111,7 @@ pub(crate) fn print<O: Write, W: Write, R>(
     #[cfg(feature = "tracing")]
     crate::trace::spans::failed(document.code());
     if json {
-        if let Err(error) = write_json(&mut sink.out, printing.form, printing.style, &document) {
+        if let Err(error) = write_json(&mut sink.out, printing.layout, &document) {
             // A reader that closed the pipe early has stopped reading, so
             // only another write error is reported. The process is already
             // failing, and a failed report has nowhere else to go.
@@ -132,7 +122,7 @@ pub(crate) fn print<O: Write, W: Write, R>(
     } else {
         // Standard error is the last place to report anything, so a failure
         // to write there goes unreported.
-        let _ = write_text(&mut sink.err, printing.form, &document);
+        let _ = write_crumbkit_text(&mut sink.err, &document);
     }
 }
 
@@ -141,12 +131,9 @@ pub(crate) fn print<O: Write, W: Write, R>(
 /// tool's command tree, its fields and, with the `miette` feature, its
 /// labels.
 ///
-/// crumbkit prepares every failure that it prints once, and a
-/// [`FailureForm`](crate::form::FailureForm) writes its document and its
-/// text from this value, so a tool's form never spells a code or renders a
-/// call itself. crumbkit's own form writes the `<tool>/failure/v1`
-/// document and its text form from the same fields.
-pub struct PreparedFailure<'a> {
+/// crumbkit prepares every failure that it prints once, and writes the
+/// `<tool>/failure/v1` document and its text form from the same fields.
+pub(crate) struct PreparedFailure<'a> {
     /// The failure that crumbkit prepared.
     failure: &'a dyn Failure,
     /// The tool whose name the failure document's id takes (ADR-0079).
@@ -171,8 +158,8 @@ pub struct PreparedFailure<'a> {
     step: Step,
     /// The failure's other alternatives that offer a step, in order.
     alternatives: Vec<Step>,
-    /// The failure's fields whose names follow the rule or are listed with
-    /// `Guide::field_names` and come first, in order.
+    /// The failure's fields whose names follow the rule and come first, in
+    /// order.
     fields: Vec<(String, FieldValue<'static>)>,
     /// The page that explains the failure, when there is one.
     url: Option<String>,
@@ -187,8 +174,8 @@ impl<'a> PreparedFailure<'a> {
     /// `spelling`, and renders a `Recovery::Run` call against `command`,
     /// which builds the branch that the call names.
     ///
-    /// It leaves out each field of the failure whose name breaks the rule
-    /// and is not one of the field names of `printing`, and each field that
+    /// It leaves out each field of the failure whose name breaks the rule,
+    /// and each field that
     /// repeats an earlier name, and a debug build, such as the one a tool's
     /// tests run, writes a warning that names the field to `err`, so a test
     /// that compares standard error shows it. A debug build also writes a
@@ -239,7 +226,7 @@ impl<'a> PreparedFailure<'a> {
                 );
             }
         }
-        let fields = read_fields(failure, &code, spelling.tool(), printing.field_names, err);
+        let fields = read_fields(failure, &code, spelling.tool(), err);
         Self {
             failure,
             tool: spelling.tool(),
@@ -272,9 +259,8 @@ impl<'a> PreparedFailure<'a> {
     }
 }
 
-/// Returns the fields of `failure` whose names follow the rule or are
-/// `listed`, the names that `Guide::field_names` lists, and come first,
-/// each without the entries of its objects whose keys repeat an
+/// Returns the fields of `failure` whose names follow the rule and come
+/// first, each without the entries of its objects whose keys repeat an
 /// earlier key of their object. In a debug build it writes a warning to
 /// `err` for each field and each key that it leaves out, which names
 /// `code` and `tool`.
@@ -284,14 +270,12 @@ fn read_fields(
     failure: &dyn Failure,
     code: &str,
     tool: ToolName,
-    listed: &[&str],
     err: &mut impl Write,
 ) -> Vec<(String, FieldValue<'static>)> {
     let mut fields: Vec<(String, FieldValue<'static>)> = Vec::new();
     for field in failure.fields() {
-        let named = field.follows_name_rule() || listed.contains(&field.name());
-        let reason = if !named {
-            "a field name is one or more lowercase ASCII letters, digits and underscores, and Guide::field_names does not list it"
+        let reason = if !field.follows_name_rule() {
+            "a field name is one or more lowercase ASCII letters, digits and underscores"
         } else if fields.iter().any(|(name, _)| name == field.name()) {
             "an earlier field has that name"
         } else {
@@ -361,22 +345,6 @@ fn drop_repeated_keys(value: &mut FieldValue<'static>, repeated: &mut Vec<String
     }
 }
 
-/// Writes the text form of `document` to `err` in `form`, or in crumbkit's
-/// form when `form` is `None`, then flushes `err`.
-pub(super) fn write_text(
-    err: &mut impl Write,
-    form: Option<&dyn FailureForm>,
-    document: &PreparedFailure<'_>,
-) -> io::Result<()> {
-    match form {
-        Some(form) => {
-            form.write_text(err, document)?;
-            err.flush()
-        }
-        None => write_crumbkit_text(err, document),
-    }
-}
-
 /// Writes crumbkit's text form of `document` to `err`, then flushes it, as shelf's
 /// golden file [`books-show-7.stderr`][books-show-7] shows.
 ///
@@ -423,20 +391,15 @@ fn write_labelled(err: &mut impl Write, label: &str, value: &str) -> io::Result<
     writeln!(err, "  {label:<6} {}", escape_controls(value))
 }
 
-/// Writes `document` to `out` as JSON in the layout and key order of
-/// `style`, in `form`, or as the `<tool>/failure/v1` document when `form`
-/// is `None`, then flushes `out`. A stream passes a style without a layout,
-/// so each of its failures stays one line.
+/// Writes `document` to `out` as the `<tool>/failure/v1` JSON document in
+/// `layout`, then flushes `out`. A stream passes `JsonLayout::OneLine`, so
+/// each of its failures stays one line.
 pub(super) fn write_json(
     out: &mut impl Write,
-    form: Option<&dyn FailureForm>,
-    style: JsonStyle,
+    layout: JsonLayout,
     document: &PreparedFailure<'_>,
 ) -> io::Result<()> {
-    match form {
-        Some(form) => layout::write(out, &form.json(document), style)?,
-        None => layout::write(out, document, style)?,
-    }
+    layout::write(out, document, layout)?;
     out.flush()
 }
 
@@ -520,13 +483,4 @@ impl Serialize for Entry<'_> {
         self.0.serialize_fields(&mut map)?;
         map.end()
     }
-}
-
-/// Returns crumbkit's entry of `failure` in a batch's or a prose result's
-/// `failures`, which [`FailureForm::entry`] returns unless a form changes
-/// it.
-pub(crate) fn crumbkit_entry(failure: &PreparedFailure<'_>) -> serde_json::Value {
-    // An entry's keys are all strings, so the conversion cannot fail, and
-    // `null` stands in rather than a panic if it ever did.
-    serde_json::to_value(Entry(failure)).unwrap_or_default()
 }

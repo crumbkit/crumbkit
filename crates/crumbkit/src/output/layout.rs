@@ -1,21 +1,32 @@
-//! The style of the JSON that a tool prints: one line by default, or
+//! The layout of the JSON that a tool prints: one line by default, or
 //! indented when the tool's guide sets [`JsonLayout::Pretty`] (ADR-0052).
 //! The keys of each object keep the order that the value serializes them
-//! in, or print sorted when the style sets `sorted_keys` (ADR-0067). The
-//! guide sets both with one [`JsonStyle`] (ADR-0073).
+//! in.
 
 use std::io::{self, Write};
 
 use serde::Serialize;
 
-/// The layout of a whole JSON document, which a tool sets in its
-/// [`JsonStyle`].
+/// The layout of a whole JSON document, which a tool sets with
+/// [`Guide::json_layout`](crate::help::Guide::json_layout) (ADR-0052).
 ///
 /// A stream prints one document per line with any layout, because JSON
 /// Lines needs it.
 ///
 /// The enum is `#[non_exhaustive]`, so crumbkit can add a layout without
 /// breaking a tool that matches on it.
+///
+/// ```
+/// use crumbkit::JsonLayout;
+/// use crumbkit::help::Guide;
+///
+/// const PRETTY: JsonLayout = JsonLayout::Pretty {
+///     reason: "Our scripts read indented JSON.",
+/// };
+/// const GUIDE: Guide = Guide::new().json_layout(PRETTY);
+/// assert_eq!(GUIDE.get_json_layout(), PRETTY);
+/// assert_eq!(Guide::new().get_json_layout(), JsonLayout::OneLine);
+/// ```
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum JsonLayout {
@@ -33,78 +44,8 @@ pub enum JsonLayout {
     },
 }
 
-/// How a tool writes JSON on standard output, which it sets with
-/// [`Guide::json`](crate::help::Guide::json) (ADR-0073).
-///
-/// The default, which [`JsonStyle::new`] returns, prints each document on
-/// one line with the keys of each object in the order that its value
-/// serializes them: crumbkit's envelope prints the type key first, and a
-/// row prints its fields in their declaration order.
-///
-/// ```
-/// use crumbkit::{JsonLayout, JsonStyle};
-///
-/// const STYLE: JsonStyle = JsonStyle::new().pretty("Our scripts read indented JSON.").sorted();
-/// assert!(matches!(STYLE.layout, JsonLayout::Pretty { .. }));
-/// assert!(STYLE.sorted_keys);
-/// ```
-///
-/// The fields are public so a tool and crumbkit-test can read them. The
-/// struct is `#[non_exhaustive]`, so a tool builds it with its constructors
-/// and crumbkit can add a field without breaking the tool.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
-#[non_exhaustive]
-pub struct JsonStyle {
-    /// The layout of a whole document.
-    pub layout: JsonLayout,
-    /// Whether every object at every depth prints its keys in the order of
-    /// Rust's `str` comparison, which compares the keys' Unicode code
-    /// points. It is a declaration, so it takes no reason.
-    pub sorted_keys: bool,
-}
-
-impl JsonStyle {
-    /// Returns the default style: one line, with the keys of each object
-    /// in the order that its value serializes them.
-    #[must_use]
-    pub const fn new() -> Self {
-        Self {
-            layout: JsonLayout::OneLine,
-            sorted_keys: false,
-        }
-    }
-
-    /// Returns the style with [`JsonLayout::Pretty`] and the reason that
-    /// the tool's readers need it.
-    #[must_use]
-    pub const fn pretty(self, reason: &'static str) -> Self {
-        Self {
-            layout: JsonLayout::Pretty { reason },
-            sorted_keys: self.sorted_keys,
-        }
-    }
-
-    /// Returns the style with the keys of every object sorted.
-    #[must_use]
-    pub const fn sorted(self) -> Self {
-        Self {
-            layout: self.layout,
-            sorted_keys: true,
-        }
-    }
-
-    /// Returns the same style on one line, as a stream and the line of a
-    /// headed answer need it.
-    pub(crate) const fn one_line(self) -> Self {
-        Self {
-            layout: JsonLayout::OneLine,
-            sorted_keys: self.sorted_keys,
-        }
-    }
-}
-
-/// Writes `value` to `out` as JSON in the layout and key order of `style`,
-/// and ends it with a line feed.
+/// Writes `value` to `out` as JSON in `layout`, and ends it with a line
+/// feed.
 ///
 /// Both layouts serialize `value` on one line through `&mut dyn Write`, so
 /// the compiler generates the serialization code of each document once,
@@ -118,44 +59,24 @@ impl JsonStyle {
 pub(super) fn write(
     out: &mut impl Write,
     value: &(impl Serialize + ?Sized),
-    style: JsonStyle,
+    layout: JsonLayout,
 ) -> io::Result<()> {
-    match style.layout {
+    match layout {
         JsonLayout::Pretty { .. } => {
             let mut compact = Vec::new();
-            serialize(&mut compact, value, style.sorted_keys)?;
+            serialize(&mut compact, value)?;
             write_indented(out, &compact)
         }
         JsonLayout::OneLine => {
-            serialize(out, value, style.sorted_keys)?;
+            serialize(out, value)?;
             out.write_all(b"\n")
         }
     }
 }
 
-/// Writes `value` to `out` on one line, with the keys of each object
-/// sorted when `sorted_keys` is set.
-///
-/// With `sorted_keys`, it serializes `value` into a
-/// `serde_json::Value` and sorts every object of it before it writes it.
-// RUST-10: sorting through a `Value` builds one tree for each document
-// written, and a cut that measures a document several times builds one for
-// each measurement. A `Value` holds no integer outside the ranges of `i64`
-// and `u64`, so such a number fails the write as `InvalidData`, and of two
-// equal keys in one object only the last prints. A serializer that sorts
-// while it writes would avoid all three, and no reader has needed it yet.
-pub(super) fn serialize(
-    out: &mut dyn Write,
-    value: &(impl Serialize + ?Sized),
-    sorted_keys: bool,
-) -> io::Result<()> {
-    if sorted_keys {
-        let mut sorted = serde_json::to_value(value)?;
-        sorted.sort_all_objects();
-        Ok(serde_json::to_writer(out, &sorted)?)
-    } else {
-        Ok(serde_json::to_writer(out, value)?)
-    }
+/// Writes `value` to `out` on one line.
+pub(super) fn serialize(out: &mut dyn Write, value: &(impl Serialize + ?Sized)) -> io::Result<()> {
+    Ok(serde_json::to_writer(out, value)?)
 }
 
 /// Writes `compact` to `out` re-indented by [`indent`], followed by a line

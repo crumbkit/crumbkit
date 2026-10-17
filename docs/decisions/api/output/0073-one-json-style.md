@@ -1,7 +1,7 @@
 # ADR-0073. One JSON style
 
 - Date: 2026-10-17
-- Status: accepted
+- Status: amended by ADR-0081
 - Supersedes: ADR-0052 and ADR-0067, which it amends
 - Missed: ADR-0067 added a second guide setting for the JSON that a tool prints beside ADR-0052's, with a one-variant enum that no second order was planned for. ADR-0052 also used a one-variant enum for the layout.
 

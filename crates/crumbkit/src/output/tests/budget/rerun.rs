@@ -168,25 +168,6 @@ fn a_batch_whose_keys_follow_a_flag_keeps_the_flag_in_front_of_the_keys_left_out
 }
 
 #[test]
-fn each_recovery_of_a_batch_that_answers_each_key_keeps_the_caller_s_flags_and_names_only_its_key()
-{
-    let args = line(&["-C", "/srv/sky", "show"], &["--json"]);
-
-    let finished = finish(&args, STAR_BATCH.left_out_per_key(), &["show"]);
-
-    let document = parsed(&finished.out);
-    let failures = document["failures"].as_array().unwrap();
-    assert!(!failures.is_empty(), "{}", finished.out);
-    for failure in failures {
-        let key = failure["key"].as_str().unwrap();
-        assert_eq!(
-            failure["recovery"],
-            json!({"kind": "run", "call": format!("tool -C /srv/sky show {key} --json")})
-        );
-    }
-}
-
-#[test]
 fn a_batch_s_recovery_without_the_caller_s_words_runs_the_batch_s_command_alone() {
     let args = line(&["-C", "/srv/sky", "show"], &["--json"]);
     let mut command = Sky::command();

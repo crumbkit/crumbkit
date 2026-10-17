@@ -10,82 +10,32 @@ use serde_json::Value;
 use super::budget::Cut;
 use super::failure::{Entry, PreparedFailure};
 use super::layout;
-use super::layout::JsonStyle;
+use super::layout::JsonLayout;
 use crate::Document;
-use crate::form::FailureForm;
 
-/// The failures of a batch or a prose result: the tool's own and the
-/// failure of each key that the output budget left out, in the order of
-/// their keys, and then the failure that names the answers that the output
-/// budget left out, when there is one.
+/// The failures of a batch or a prose result: the tool's own, in the order
+/// of their keys, and then the failure that names the answers that the
+/// output budget left out, when there is one.
 #[derive(Clone, Copy)]
 pub(super) struct Failures<'a> {
     /// The failures that the tool returned.
     pub(super) listed: &'a [PreparedFailure<'a>],
-    /// The position of each failure of `listed` among a batch's answers. A
-    /// failure without a position sorts after every other.
-    pub(super) indexes: &'a [usize],
-    /// The failure of each answer that the output budget left out, with its
-    /// position, in order, when the document answers each key left out
-    /// (ADR-0068).
-    pub(super) each: &'a [(usize, PreparedFailure<'a>)],
     /// The failure that names the answers that did not fit in the output
     /// budget.
     pub(super) over: Option<&'a PreparedFailure<'a>>,
-    /// The guide's failure form, which writes each entry, or `None` for
-    /// crumbkit's entries.
-    pub(super) form: Option<&'static dyn FailureForm>,
 }
 
 impl<'a> Failures<'a> {
-    /// Returns the tool's failures `listed` at the positions `indexes`,
-    /// which the guide's `form` writes, without a failure of the output
+    /// Returns the tool's failures `listed`, without a failure of the output
     /// budget.
-    pub(super) const fn of(
-        listed: &'a [PreparedFailure<'a>],
-        indexes: &'a [usize],
-        form: Option<&'static dyn FailureForm>,
-    ) -> Self {
-        Self {
-            listed,
-            indexes,
-            each: &[],
-            over: None,
-            form,
-        }
+    pub(super) const fn of(listed: &'a [PreparedFailure<'a>]) -> Self {
+        Self { listed, over: None }
     }
 
-    /// Returns every failure in the order it prints.
+    /// Returns every failure in the order it prints: the tool's failures,
+    /// then the failure that names the answers left out.
     pub(super) fn iter(self) -> impl Iterator<Item = &'a PreparedFailure<'a>> {
-        self.positioned().map(|(_, failure)| failure)
-    }
-
-    /// Returns every failure in the order it prints with its position among
-    /// the batch's answers: the tool's failures and the failure of each key
-    /// left out merged by position, then the failure that names the answers
-    /// left out at `usize::MAX`.
-    pub(super) fn positioned(self) -> impl Iterator<Item = (usize, &'a PreparedFailure<'a>)> {
-        let indexes = self.indexes;
-        let mut listed = self
-            .listed
-            .iter()
-            .enumerate()
-            .map(move |(number, failure)| {
-                let position = indexes.get(number).copied().unwrap_or(usize::MAX);
-                (position, failure)
-            })
-            .peekable();
-        let mut each = self
-            .each
-            .iter()
-            .map(|(position, failure)| (*position, failure))
-            .peekable();
-        let merged = std::iter::from_fn(move || match (listed.peek(), each.peek()) {
-            (Some((tool, _)), Some((budget, _))) if budget < tool => each.next(),
-            (Some(_), _) => listed.next(),
-            (None, _) => each.next(),
-        });
-        merged.chain(self.over.map(|over| (usize::MAX, over)))
+        self.listed.iter().chain(self.over)
     }
 }
 
@@ -118,19 +68,16 @@ impl Extras<'_, ()> {
 }
 
 /// Writes the JSON document `{"schema": <id>, "data": <data>}` to `out` in
-/// `layout`, or on one line when `layout` is `None`, with `"dry_run": true`
+/// `layout`, with `"dry_run": true`
 /// after `schema` when `dry_run` is set, `"total": <total>` after `data`
 /// when the extras hold a total, then `"truncated": <bool>`,
 /// `"summary": <summary>`, `"cut": {...}`
 /// and `"failures": [...]` when the extras hold each of them.
-///
-/// A document with its own keys writes its type key in place of `schema`
-/// and its data key in place of `data` (ADR-0059).
 pub(super) fn write_document<T, D: Serialize, M: Serialize>(
     out: &mut impl Write,
     document: Document<T>,
     dry_run: bool,
-    style: JsonStyle,
+    layout: JsonLayout,
     data: &D,
     extras: &Extras<'_, M>,
 ) -> io::Result<()> {
@@ -140,11 +87,11 @@ pub(super) fn write_document<T, D: Serialize, M: Serialize>(
         data,
         extras,
     };
-    layout::write(out, &wrapped, style)
+    layout::write(out, &wrapped, layout)
 }
 
-/// A JSON document: the type key, `dry_run` on a dry run, the result under
-/// the data key, and the extras.
+/// A JSON document: `schema`, `dry_run` on a dry run, the result under
+/// `data`, and the extras.
 struct Wrapped<'a, T, D, M> {
     document: Document<T>,
     dry_run: bool,
@@ -163,14 +110,13 @@ impl<T, D: Serialize, M: Serialize> Serialize for Wrapped<'_, T, D, M> {
             + usize::from(extras.cut.is_some())
             + usize::from(extras.failures.is_some());
         let document = self.document;
-        let envelope = document.get_envelope();
         let mut map = serializer.serialize_map(Some(len))?;
         // `format_args!` serializes as a string without building one.
-        map.serialize_entry(envelope.type_key(), &format_args!("{document}"))?;
+        map.serialize_entry("schema", &format_args!("{document}"))?;
         if self.dry_run {
             map.serialize_entry("dry_run", &true)?;
         }
-        map.serialize_entry(envelope.data_key(), self.data)?;
+        map.serialize_entry("data", self.data)?;
         if let Some(total) = extras.total {
             map.serialize_entry("total", &total)?;
         }
@@ -209,16 +155,12 @@ impl Serialize for Selected<'_> {
 }
 
 /// The entries of `failures`, written one by one so that nothing is
-/// collected first: each the form's entry when the guide has a failure
-/// form, and otherwise a failure document without `schema`.
+/// collected first: each a failure document without `schema`.
 struct Entries<'a>(Failures<'a>);
 
 impl Serialize for Entries<'_> {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        match self.0.form {
-            Some(form) => serializer.collect_seq(self.0.iter().map(|failure| form.entry(failure))),
-            None => serializer.collect_seq(self.0.iter().map(Entry)),
-        }
+        serializer.collect_seq(self.0.iter().map(Entry))
     }
 }
 

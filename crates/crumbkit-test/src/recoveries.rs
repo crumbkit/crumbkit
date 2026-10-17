@@ -337,11 +337,10 @@ impl<'a> Recoveries<'a> {
 /// package, as it calls [`check_examples`](crate::check_examples).
 ///
 /// Every run adds `--json` when its words lack it, before a `--` word or at
-/// the end, so the tool reads it as a flag. When the guide sets a
-/// failure form, the check reads each failed run through the form's
-/// [`FailureForm::read`](crumbkit::form::FailureForm::read) first, and when
-/// [`Examples`] sets a [`FailureReader`](crate::FailureReader), through
-/// that reader first. Otherwise, or when neither reads a failure, it reads
+/// the end, so the tool reads it as a flag. When [`Examples`] sets a
+/// [`FailureReader`](crate::FailureReader), the check reads each failed
+/// run through that reader first. Otherwise, or when the reader reads no
+/// failure, it reads
 /// the failure of the last document on standard output that is a
 /// `<tool>/failure/v1` document or that has `failures`, as a batch prints
 /// them, and then the last `code:` line on standard error, which gives a
@@ -365,7 +364,7 @@ impl<'a> Recoveries<'a> {
 /// 1. the value of [`Failing::values`] whose name matches it exactly;
 /// 2. the field of the failure that offers the step whose name matches it
 ///    with capitals lowered and `-` read as `_`, so the field `book_id`
-///    fills `<BOOK-ID>`. The fields are those that the form or reader
+///    fills `<BOOK-ID>`. The fields are those that the reader
 ///    returns with the failure, or the `fields` of crumbkit's failure
 ///    document. A text field fills as it is, an integer or a boolean as
 ///    JSON writes it, and a null, list or object field fills no
@@ -408,15 +407,11 @@ impl<'a> Recoveries<'a> {
 ///   step. A recovery built with `Call::value` carries the value, so an
 ///   agent need not copy it from the field. A value of [`Failing::values`]
 ///   that wins over the field is no finding;
-/// - a guide that sets a failure form and examples that set a failure
-///   reader with [`Examples::failure_reader`], which stops the check before
-///   any run;
-/// - a failed run whose failure neither the tool's form, set with
-///   `Guide::failure_form`, nor its reader, set with
-///   [`Examples::failure_reader`], reads, and that prints no
+/// - a failed run whose failure the tool's reader, set with
+///   [`Examples::failure_reader`], does not read, and that prints no
 ///   `<tool>/failure/v1` document and no `code:` line. The first such run
 ///   stops the check, which reports this problem alone and says to make
-///   the form or reader read it or to add an opt-out from
+///   the reader read it or to add an opt-out from
 ///   [`Rule::Recoveries`] that names the root (ADR-0045);
 /// - a run that writes a `warning: <tool> left out` line to standard error, which a
 ///   debug build writes for a recovery call that does not render;
@@ -479,13 +474,7 @@ fn check(
     dir: &str,
     assert: &Assert,
 ) {
-    let reader = match failures::reader(guide, &recoveries.examples) {
-        Ok(reader) => reader,
-        Err(problem) => {
-            fail(&[problem]);
-            return;
-        }
-    };
+    let reader = failures::reader(&recoveries.examples);
     // crumbkit's own codes print with the tool's name (ADR-0079).
     let spelling = recoveries.spelling.for_tool(guide.tool_name(command));
     let mut declared: Vec<(String, &Code)> = Vec::new();

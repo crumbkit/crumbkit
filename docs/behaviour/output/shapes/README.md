@@ -26,11 +26,7 @@ sit outside `fields`. A failure pushed after the last key has neither. A
 batch with at least one failure exits with the code of its first failure,
 which is 1 unless the guide declares another for that failure's code
 ([exit codes](../../failures/exit-codes.md)). The over-budget failure that names
-the answers left out prints after the batch's own failures. A batch whose
-document is marked with `Document::left_out_per_key` gives each answer left
-out its own over-budget failure at its key's position instead, so its first
-failure is the first in key order
-([one failure for each answer left out](../budget/README.md#one-failure-for-each-answer-left-out)).
+the answers left out prints after the batch's own failures.
 
 `Batch::note` sets a line that the text prints on standard error after the
 rows and before the failures, in the place of a
@@ -39,7 +35,7 @@ prints also when the output budget leaves out some answers, and the JSON
 document leaves it out. shelf's `books show` notes which of the ids it
 cannot find name books that were removed from the shelf.
 
-Why: ADR-0016, ADR-0068, ADR-0077.
+Why: ADR-0016, ADR-0077, ADR-0081.
 
 ## Prose
 
@@ -153,9 +149,7 @@ A row type may print each row in its own form. `Row::LINE` names the form
 for help, such as `Some("<NAME>: <ABOUT>")`, and `Row::text_line` builds
 each row's line. Without `--json`, `--long` and `--fields`, the text then
 prints each row's line with control characters escaped and no header, and
-a row whose `text_line` returns `None` prints as one line of compact JSON,
-with its keys sorted when the guide's
-[JSON style sorts them](../json-layout.md#key-order).
+a row whose `text_line` returns `None` prints as one line of compact JSON.
 `--long` and `--fields` print the table, and JSON is unchanged. Streams,
 the [output budget](../budget/README.md) and the listing footer work as for a
 table, and help prints a `Text:` line ([help](../../help/README.md)). A row
@@ -164,7 +158,7 @@ so its `Text:` line names no table. crumbkit-test's `check_guide` fails a
 `LINE` that is not one non-empty line, and a
 [headed](#headed-bytes) leaf whose row type declares one.
 
-Why: ADR-0064, ADR-0067.
+Why: ADR-0064.
 
 ## Documents without the envelope
 
@@ -186,51 +180,11 @@ without `total`, and its text output keeps the footer and the next step.
 
 The failures of a batch or prose result print as text on standard error even
 with `--json`, and the command exits as any batch or prose result with
-failures does. A batch whose document chooses `Envelope::WithoutInOrder`
-prints with `--json` one array that holds each row and each failure document
-in the order of the keys, with the over-budget failure last, so a program
-reads every answer from standard output. Input order is opt-in, because the
-readers of an existing document expect rows alone. crumbkit's own envelope
-holds a batch's failures under `failures`, so it has no in-order variant. A
-document with the tool's own keys holds the array under its data key, as
-the next section describes. A reader tells a failure from a row by its
-`schema`, so crumbkit-test's `check_guide` fails such a document whose row
-type has a field named `schema`. `check_guide` also fails a leaf whose
-document has an in-order envelope and is not a batch. A command that fails
-as a whole still prints the failure document, so every command fails in one
+failures does. A command that fails as a whole still prints the failure document, so every command fails in one
 shape.
 
 crumbkit-test's `check_document_ids` requires an
 [opt-out](../../adoption/opt-outs.md) for each command that prints a document
-without the envelope, and the opt-out report lists failures in input order
-as a [declaration](../../adoption/declarations.md).
+without the envelope.
 
-Why: ADR-0016, ADR-0071.
-
-## Documents with the tool's own keys
-
-A tool whose readers expect other names for the two keys of the envelope
-declares them with `Envelope::Keys`, such as
-`Envelope::Keys { type_key: "$type", data_key: "answers" }`. The document
-prints its id under the type key and its result under the data key. Every
-other part of the envelope stays: `total`, `truncated`, `summary`, `cut`,
-`failures` and `dry_run` print as they do in crumbkit's envelope, and the
-view flags, the output budget and streams work as they do for any other
-document. A stream prints both keys on each line.
-
-A const panic rejects a key that is one of the names crumbkit writes beside
-the result (`dry_run`, `total`, `truncated`, `summary`, `cut` and
-`failures`), two keys that are the same, and a key that is empty or holds a
-line break.
-
-A batch whose document chooses `Envelope::KeysInOrder` prints each row and
-each failure under the data key in the order of the keys, repeats
-included, with the over-budget failure last, and prints no `failures`. Each
-failure prints in the guide's failure form when it has one.
-
-`schemas list` shows such a document with the kind `own-envelope`, and its
-schema names the declared keys. The keys are a
-[declaration](../../adoption/declarations.md), so no opt-out is needed, and
-the opt-out report lists them as an `envelope-keys` customisation.
-
-Why: ADR-0059, ADR-0071.
+Why: ADR-0016, ADR-0071, ADR-0081.

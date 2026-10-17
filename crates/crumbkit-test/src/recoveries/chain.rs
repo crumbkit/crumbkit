@@ -54,14 +54,13 @@ pub(super) struct Walk<'a> {
     pub(super) provoked: Vec<String>,
     /// The number of failures whose codes the check did not know.
     pub(super) skipped: usize,
-    /// The tool's failure form or failure reader, which reads each failed
-    /// run first.
+    /// The tool's failure reader, which reads each failed run first.
     pub(super) reader: Option<Reader<'a>>,
     /// The tool's guide, whose exits and renames give the exit code of a
     /// failed run.
     pub(super) guide: &'a Guide,
     /// The problem that stopped the walk: a failed run whose failure the
-    /// tool's form or reader does not read, so no later run can be
+    /// tool's reader does not read, so no later run can be
     /// followed.
     pub(super) stopped: Option<String>,
 }
@@ -547,10 +546,9 @@ impl Walk<'_> {
         let failures = failures::read_failures(tool, self.reader, &output.stdout, &output.stderr);
         if failures.is_empty() {
             match self.reader {
-                Some(reader) => {
-                    let (name, remedy) = reader.name_and_remedy();
+                Some(_) => {
                     self.stopped = Some(format!(
-                        "{}: {label} ends with {}, and {name} reads no failure from it, so the check cannot follow the tool's recoveries. {remedy}, or the tool adds an opt-out from `{}` that names the root, with a reason",
+                        "{}: {label} ends with {}, and the tool's FailureReader reads no failure from it, so the check cannot follow the tool's recoveries. The tool's FailureReader reads the failure, or the tool adds an opt-out from `{}` that names the root, with a reason",
                         chain.start,
                         output.status,
                         Rule::Recoveries.id()

@@ -9,7 +9,6 @@ use serde::Serialize;
 use serde_json::{Value, json};
 
 use super::finish_with;
-use crate::Envelope;
 use crate::twins::assert_one_word_apart;
 use crate::{Document, Listing, Row};
 
@@ -31,11 +30,7 @@ impl Row for Moon {
     const WHOLE: bool = true;
 }
 
-const MOONS: Document<Listing<Moon>> = Document::new("solar", "moons", 1, "The test moons.")
-    .envelope(Envelope::Keys {
-        type_key: "$type",
-        data_key: "moons",
-    });
+const MOONS: Document<Listing<Moon>> = Document::new("solar", "moons", 1, "The test moons.");
 
 /// Returns a listing of Io, whose discoverer is known, and the Moon, whose
 /// discoverer is not.
@@ -63,7 +58,7 @@ fn json_of_a_whole_row_type_prints_each_row_as_it_serializes_without_full() {
     assert_eq!(
         finished.out,
         concat!(
-            r#"{"$type":"solar/moons/v1","moons":[{"name":"Io","discoverer":"Galileo","planet":"Jupiter"},"#,
+            r#"{"schema":"solar/moons/v1","data":[{"name":"Io","discoverer":"Galileo","planet":"Jupiter"},"#,
             r#"{"name":"Moon","planet":"Earth"}],"total":2,"truncated":false}"#,
             "\n"
         )
@@ -83,7 +78,7 @@ fn fields_selects_named_fields_of_a_whole_row_and_prints_null_for_a_field_the_ro
 
     let printed: Value = serde_json::from_str(&finished.out).unwrap();
     assert_eq!(
-        printed["moons"],
+        printed["data"],
         json!([{"discoverer": "Galileo"}, {"discoverer": null}])
     );
 }
@@ -118,10 +113,7 @@ impl Row for Answer {
 }
 
 const ANSWERS: Document<Listing<Answer>> =
-    Document::new("solar", "answers", 1, "The test answers.").envelope(Envelope::Keys {
-        type_key: "$type",
-        data_key: "rows",
-    });
+    Document::new("solar", "answers", 1, "The test answers.");
 
 /// Returns a page of two answers from a source that holds more.
 fn answers() -> Listing<Answer> {
@@ -134,7 +126,7 @@ fn json_of_a_whole_row_type_without_columns_prints_each_row_as_it_serializes() {
 
     assert_eq!(
         finished.out,
-        "{\"$type\":\"solar/answers/v1\",\"rows\":[[\"Io\",1610],[\"Titan\",1655]],\"truncated\":true}\n"
+        "{\"schema\":\"solar/answers/v1\",\"data\":[[\"Io\",1610],[\"Titan\",1655]],\"truncated\":true}\n"
     );
 }
 

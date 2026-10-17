@@ -6,14 +6,14 @@ use std::io::{self, Write};
 use super::Streaming;
 use crate::Row;
 use crate::output::envelope::{Extras, Selected, write_document};
-use crate::output::{lines, table, unwrapped};
+use crate::output::{JsonLayout, lines, table, unwrapped};
 
 impl<R: Row, O: Write, W: Write> Streaming<'_, R, O, W> {
     /// Writes `item` to the line, in the format that the flags choose.
     pub(super) fn render(&mut self, item: &R) -> io::Result<()> {
         let line = &mut self.line;
         if self.json && !self.document.get_envelope().wraps() {
-            return unwrapped::write_json(line, self.fields, item, self.printing.style.sorted_keys);
+            return unwrapped::write_json(line, self.fields, item);
         }
         if self.json && self.full {
             // Serializing the item directly keeps every field in its
@@ -22,13 +22,13 @@ impl<R: Row, O: Write, W: Write> Streaming<'_, R, O, W> {
                 line,
                 self.document,
                 self.dry_run,
-                self.printing.style.one_line(),
+                JsonLayout::OneLine,
                 item,
                 &Extras::none(),
             );
         }
         if self.lined {
-            line.extend_from_slice(lines::line(item, self.printing.style.sorted_keys)?.as_bytes());
+            line.extend_from_slice(lines::line(item)?.as_bytes());
             return Ok(());
         }
         let row = serde_json::to_value(item)?;
@@ -41,7 +41,7 @@ impl<R: Row, O: Write, W: Write> Streaming<'_, R, O, W> {
                 line,
                 self.document,
                 self.dry_run,
-                self.printing.style.one_line(),
+                JsonLayout::OneLine,
                 &selected,
                 &Extras::none(),
             )

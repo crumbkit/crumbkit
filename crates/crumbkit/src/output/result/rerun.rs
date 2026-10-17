@@ -34,9 +34,6 @@ pub(super) struct Rerun {
     /// every key left out takes, when clap read the words of that call as
     /// the caller's with other keys.
     all: Option<(String, &'static str)>,
-    /// Whether clap read the words of a call that fetches one key as the
-    /// caller's with that key.
-    one: bool,
 }
 
 impl Rerun {
@@ -59,11 +56,11 @@ impl Rerun {
     /// with other keys: every other argument has the values it had in the
     /// caller's parse, from the same source, and the argument of the keys
     /// has the new keys. The form that fetches every key left out is read
-    /// with every key of the batch that the run can leave out, and the form
-    /// that fetches one key with the first of them. It returns `None` when
-    /// no form holds, and the batch's recoveries name its command alone.
+    /// with every key of the batch that the run can leave out. It returns
+    /// `None` when that form does not hold, and the batch's recoveries name
+    /// its command alone.
     ///
-    /// The parses run on a clone of `command`, at most four of them, and
+    /// The parses run on a clone of `command`, at most three of them, and
     /// only for a batch that leaves out an answer.
     pub(super) fn find<T: Rows>(command: &Command, words: &[OsString], value: &T) -> Option<Self> {
         let fetch = value.fetch()?;
@@ -74,7 +71,9 @@ impl Rerun {
             return None;
         };
         let keys: Vec<&str> = value.left_out(0).into_iter().flatten().collect();
-        let first = *keys.first()?;
+        if keys.is_empty() {
+            return None;
+        }
         let words: Vec<String> = words
             .iter()
             .map(|word| word.to_str().map(str::to_owned))
@@ -113,7 +112,6 @@ impl Rerun {
             many,
             escaped,
             all: None,
-            one: false,
         };
         let mut reads = |words: Option<Vec<String>>, keys: &[&str]| {
             words.is_some_and(|words| {
@@ -134,8 +132,7 @@ impl Rerun {
         if many && one_flag && reads(rerun.with(&keys), &keys) {
             rerun.all = Some((placeholder, *field));
         }
-        rerun.one = reads(rerun.with(&[first]), &[first]);
-        (rerun.all.is_some() || rerun.one).then_some(rerun)
+        rerun.all.is_some().then_some(rerun)
     }
 
     /// Returns the call that fetches every key left out, with the
@@ -150,16 +147,6 @@ impl Rerun {
             placeholder.clone(),
             field,
         ))
-    }
-
-    /// Returns the call that fetches `key` alone, or `None` when clap did
-    /// not read such a call as the caller's words or would read `key` as a
-    /// flag.
-    pub(super) fn one(&self, key: &str) -> Option<Call> {
-        if !self.one {
-            return None;
-        }
-        self.with(&[key]).map(Call::typed)
     }
 
     /// Returns the words with `keys` at the place of the keys, or `None`
@@ -199,14 +186,6 @@ impl Rerun {
 /// caller's words from `rerun`, or the batch's own call without them.
 pub(super) fn fetch_all<T: Rows>(value: &T, rerun: Option<&Rerun>) -> Option<Call> {
     rerun.and_then(Rerun::all).or_else(|| value.fetch())
-}
-
-/// Returns the call that fetches `key` of `value` alone: the caller's
-/// words from `rerun`, or the batch's own call without them.
-pub(super) fn fetch_key<T: Rows>(value: &T, key: &str, rerun: Option<&Rerun>) -> Option<Call> {
-    rerun
-        .and_then(|rerun| rerun.one(key))
-        .or_else(|| value.fetch_key(key))
 }
 
 /// Reports whether clap reads `key` as a flag when it stands alone: it

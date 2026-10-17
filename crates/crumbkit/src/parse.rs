@@ -230,9 +230,7 @@ where
 /// A command line that stops at a command with subcommands, such as `shelf
 /// books`, prints the message ``the command `shelf books` needs a
 /// subcommand``. With `--json`, the refusal prints to the output writer as
-/// one `<tool>/failure/v1` document, as a failure does with `finish`. When
-/// `guide` sets a [`FailureForm`](crate::form::FailureForm), the refusal
-/// prints in that form in text and with `--json`. The
+/// one `<tool>/failure/v1` document, as a failure does with `finish`. The
 /// walk finds `--json` in the words before any `--` where clap reads it as a
 /// flag, so a value of an option that allows hyphen values, as in
 /// `--pattern --json`, is no request for JSON.

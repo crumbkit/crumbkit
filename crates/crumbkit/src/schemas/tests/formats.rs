@@ -2,13 +2,12 @@
 //! that commands print in crumbkit's envelope: documents without the
 //! envelope and file formats that no command prints.
 
-use schemars::{JsonSchema, Schema, json_schema};
+use schemars::JsonSchema;
 use serde::Serialize;
 use serde_json::json;
 
 use super::{Book, Shelved, args, output, tool};
 use crate::Envelope;
-use crate::form::{FailureForm, PreparedFailure};
 use crate::help::{FileFormat, Guide, Leaf};
 use crate::schemas::{SchemasList, SchemasShow, document_schema, documents, list, show};
 use crate::{Document, Listing, Prose};
@@ -133,106 +132,5 @@ fn show_serves_the_schema_of_a_file_format() {
     assert_eq!(
         value[0]["schema"],
         FileFormat::new(SETTINGS).schema().to_value()
-    );
-}
-
-/// A tool's own failure form, whose document is `shelf/error/v2`.
-struct ErrorForm;
-
-impl FailureForm for ErrorForm {
-    fn document(&self) -> Document<()> {
-        Document::new("shelf", "error", 2, "The document of a failed command.")
-    }
-
-    fn schema(&self) -> Schema {
-        json_schema!({ "type": "object", "required": ["error"] })
-    }
-
-    fn json(&self, failure: &PreparedFailure<'_>) -> serde_json::Value {
-        json!({ "error": failure.message() })
-    }
-}
-
-#[test]
-fn a_failure_form_document_replaces_the_failure_document_as_unwrapped_with_no_command() {
-    const GUIDE: Guide = FORMATS.failure_form(&ErrorForm);
-
-    let listing = list(&mut output(), &GUIDE, &args::<SchemasList>("list", &[])).unwrap();
-    let batch = show(
-        &mut output(),
-        &GUIDE,
-        &args::<SchemasShow>("show", &["shelf/error/v2"]),
-    )
-    .unwrap();
-
-    let value = serde_json::to_value(&listing).unwrap();
-    assert_eq!(value.as_array().unwrap().len(), 4);
-    assert_eq!(
-        value[0],
-        json!({
-            "id": "shelf/error/v2",
-            "kind": "unwrapped",
-            "form": "document",
-            "description": "The document of a failed command.",
-            "commands": [],
-        })
-    );
-    let shown = serde_json::to_value(&batch).unwrap();
-    assert_eq!(
-        shown[0]["schema"],
-        json!({ "type": "object", "required": ["error"], "title": "shelf/error/v2" })
-    );
-}
-
-/// A failure form whose batch entries are `{"error": ...}` objects.
-struct EntryForm;
-
-impl FailureForm for EntryForm {
-    fn document(&self) -> Document<()> {
-        ErrorForm.document()
-    }
-
-    fn schema(&self) -> Schema {
-        ErrorForm.schema()
-    }
-
-    fn json(&self, failure: &PreparedFailure<'_>) -> serde_json::Value {
-        ErrorForm.json(failure)
-    }
-
-    fn entry_schema(&self) -> Schema {
-        json_schema!({ "type": "object", "required": ["error"] })
-    }
-}
-
-/// Returns the schema that `guide` serves for `shelf/books-show/v1`.
-fn books_show_schema(guide: &Guide) -> serde_json::Value {
-    documents(&tool(), guide)
-        .iter()
-        .find(|served| served.id() == "shelf/books-show/v1")
-        .unwrap()
-        .schema()
-        .to_value()
-}
-
-#[test]
-fn the_batch_schema_names_the_form_entry_schema_for_its_failures() {
-    const GUIDE: Guide = super::GUIDE.failure_form(&EntryForm);
-
-    let schema = books_show_schema(&GUIDE);
-
-    assert_eq!(
-        schema["properties"]["failures"]["items"],
-        json!({ "type": "object", "required": ["error"] })
-    );
-}
-
-#[test]
-fn a_form_without_its_own_entry_serves_the_batch_schema_of_crumbkit_entries() {
-    const GUIDE: Guide = super::GUIDE.failure_form(&ErrorForm);
-
-    assert_eq!(
-        books_show_schema(&GUIDE),
-        document_schema(super::BOOKS_SHOW).to_value()
     );
 }

@@ -3,7 +3,7 @@
 use std::fs;
 
 use clap::Command;
-use crumbkit::JsonStyle;
+use crumbkit::JsonLayout;
 use crumbkit::help::Guide;
 use snapbox::Assert;
 use snapbox::assert::Action;
@@ -282,7 +282,9 @@ fn a_guide_that_keeps_the_default_output_budget_adds_no_entry() {
 fn the_report_lists_the_json_layout_that_the_guide_sets_with_its_cost() {
     const GUIDE: Guide = Guide::new()
         .output_budget(2_097_152, "Exports print every book.")
-        .json(JsonStyle::new().pretty("Our scripts read indented JSON."));
+        .json_layout(JsonLayout::Pretty {
+            reason: "Our scripts read indented JSON.",
+        });
     let dir = TempDir::new("opt-outs-json-layout").unwrap();
 
     run_guided(&GUIDE, &dir, Action::Overwrite);

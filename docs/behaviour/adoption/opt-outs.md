@@ -38,7 +38,7 @@ rule's page gives its reason.
 | `RepeatsAndCommas` | `filters/repeats-and-commas` | an option with many values does not take both repeats and commas |
 | `OneValuePerUse` | `filters/one-value-per-use` | an option takes several values per use |
 | `Examples` | `examples/run` | an example is skipped ([end-to-end checks](../checks/end-to-end.md)) |
-| `Envelope` | `documents/envelope` | a command keeps the shape of an existing document with `Envelope::Without` or `Envelope::WithoutInOrder` ([result shapes](../output/shapes/README.md#documents-without-the-envelope)) |
+| `Envelope` | `documents/envelope` | a command keeps the shape of an existing document with `Envelope::Without` ([result shapes](../output/shapes/README.md#documents-without-the-envelope)) |
 | `RowsWhole` | `documents/rows-whole` | a command's row type sets `Row::WHOLE`, so `--json` prints every field of each row ([result shapes](../output/shapes/README.md#rows-printed-whole)) |
 | `Effects` | `effects/declared` | a visible leaf declares no effects ([effects](../effects/README.md)) |
 | `DryRun` | `effects/dry-run` | a tool keeps its own `--dry-run` |
@@ -49,7 +49,7 @@ rule's page gives its reason.
 | `Items` | `effects/items` | a leaf that writes many items declares neither `all_or_none` nor `per_item` |
 | `ShellExitCode` | `exit-codes/shell-code` | a tool declares an exit code from 126 to 255 ([exit codes](../failures/exit-codes.md#checks)) |
 | `SharedExit` | `exit-codes/shared-exit` | a tool declares the exit code 1 or 2 |
-| `Recoveries` | `recoveries/follow` | the check cannot read a failure that a run printed ([failure forms](../failures/forms.md#reading-failures-back)) |
+| `Recoveries` | `recoveries/follow` | the check cannot read a failure that a run printed ([failure readers](../failures/excerpts-and-readers.md#reading-failures-back)) |
 | `SameCode` | `recoveries/same-code` | a command that a recovery runs fails on purpose with a code its chain already had |
 | `FieldValue` | `recoveries/field-value` | a recovery takes a placeholder's value from a field of its failure |
 | `NextStep` | `recoveries/next-step` | a failure with a declared code offers no `run`, `retry` or `hint` step |
@@ -73,12 +73,10 @@ Why: ADR-0036, ADR-0015, ADR-0053, ADR-0005, ADR-0065, ADR-0071.
   ([help checks](../help/checks.md)).
 - `check_mounts` exists to keep crumbkit's commands at fixed paths.
 - `check_codes` keeps failure codes unique.
-- The name rule of a failure's fields has no opt-out. A tool whose field
-  names come from another system lists them with `Guide::field_names`, which
-  is a [declaration](declarations.md), and the schema that the tool serves
-  then promises the listed names beside the rule.
+- The name rule of a failure's fields has no opt-out, because the failure
+  document's schema promises it to every reader.
 
-Why: ADR-0036, ADR-0061, ADR-0015.
+Why: ADR-0036, ADR-0015, ADR-0081.
 
 ## The opt-out report
 

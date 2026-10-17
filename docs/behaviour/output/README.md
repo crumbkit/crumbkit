@@ -135,9 +135,7 @@ error.
 
 A failure prints as text on standard error with nothing on standard output,
 or with `--json` as one failure document on standard output. In text, each
-alternative repair prints on its own `help:` line after the recovery's. A
-tool with a failure form prints each failure and refusal in that form
-([failure forms](../failures/forms.md)).
+alternative repair prints on its own `help:` line after the recovery's.
 
 `finish` writes through a [`Sink`](../../../crates/crumbkit/src/sink.rs), and
 `finish_to` writes into a given sink, so tests run in memory. `finish_to`
@@ -150,6 +148,6 @@ Why: ADR-0050, ADR-0016, ADR-0077.
 ## Result shapes
 
 The [result shapes](shapes/README.md) page covers batches, prose, bytes,
-headed bytes, rows printed whole, rows with their own text line, documents
-without the envelope, and documents with the tool's own keys, including
-listings without a total.
+headed bytes, rows printed whole, rows with their own text line and
+documents without the envelope. The listings page covers
+[a listing without a total](listings/README.md#a-listing-without-a-total).

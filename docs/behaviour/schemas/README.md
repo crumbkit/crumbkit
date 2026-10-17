@@ -13,10 +13,7 @@ Every JSON document is an object with a `schema` id and the result under
 `data` ([`finish`](../../../crates/crumbkit/src/output.rs)). A document with
 `Envelope::Without` prints the result alone, and its schema is the
 schema of `data` with the id as its title
-([result shapes](../output/shapes/README.md#documents-without-the-envelope)). A document
-with `Envelope::Keys` holds its id and its result under the keys that the
-tool declares, and keeps every other field
-([result shapes](../output/shapes/README.md#documents-with-the-tools-own-keys)). A dry run's
+([result shapes](../output/shapes/README.md#documents-without-the-envelope)). A dry run's
 document holds `dry_run: true` after `schema`, and a real run's holds no
 `dry_run` field ([effects](../effects/README.md#dry-runs)). The usage record
 is one line of a log, so it has its fields at the top level beside `schema`,
@@ -43,12 +40,11 @@ without `data` ([usage log](../usage-log/README.md)).
   and no other properties. A row that flattens a `Bytes` field therefore
   lists `text` and `base64` among its own properties.
 
-Why: ADR-0007, ADR-0016, ADR-0036, ADR-0039, ADR-0046, ADR-0050, ADR-0059, ADR-0062, ADR-0071.
+Why: ADR-0007, ADR-0016, ADR-0036, ADR-0039, ADR-0046, ADR-0050, ADR-0062, ADR-0071.
 
 ## The failure document
 
-A failure prints with `--json` as the `<tool>/failure/v1` document, unless
-the tool sets a [failure form](../failures/forms.md).
+A failure prints with `--json` as the `<tool>/failure/v1` document.
 
 - A failure's `cause` is one string that joins the source chain, because
   those errors usually come from libraries whose wording and depth are not
@@ -67,11 +63,7 @@ the tool sets a [failure form](../failures/forms.md).
   null, or an array or object of such values. No value holds a float at any
   depth, because JSON has no form for NaN. The schema promises the name rule
   of [fields](../failures/README.md#fields), so `finish` leaves out a field
-  that breaks it. When the guide lists names with `Guide::field_names`, the
-  schema that `<tool> schema` serves for the failure document, and for each
-  document with a batch, accepts those names as well, in the `fields` of the
-  document and of each batch failure. The checked-in schema keeps the rule
-  alone. An object inside a value holds each key once (RFC 8259), so
+  that breaks it. An object inside a value holds each key once (RFC 8259), so
   `finish` leaves out an entry whose key repeats an earlier one.
 - With the `miette` feature, the document and each batch failure hold the
   diagnostic's labels and its related diagnostics. Each label holds an
@@ -83,7 +75,7 @@ the tool sets a [failure form](../failures/forms.md).
   line. The checked-in schema lists `labels` and `related` whether or not
   the feature is on, so there is one schema file.
 
-Why: ADR-0007, ADR-0001, ADR-0045, ADR-0046, ADR-0061.
+Why: ADR-0007, ADR-0001, ADR-0046, ADR-0081.
 
 ## Document ids
 

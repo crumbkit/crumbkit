@@ -8,7 +8,6 @@ use std::time::Duration;
 
 use clap::Command;
 use crumbkit::help::Guide;
-use crumbkit::{Spelling, ToolName};
 
 use crate::allow::{Allowances, Rule};
 use crate::examples::{Examples, example_golden_name, read_stdin, setup_problem};
@@ -37,24 +36,16 @@ const VARIABLE: &str = "OUTPUT_BUDGET";
 ///   marks the cut: a document holds `cut` with the budget, or, for a
 ///   document without the envelope, standard error says that output stops
 ///   at the budget;
-/// - it exits with code 0 and prints one document whose `data`, or the
-///   data key that the document's envelope declares, is one object, which a
+/// - it exits with code 0 and prints one document whose `data` is one
+///   object, which a
 ///   document that always prints its first answer does, or an array of one
 ///   row, which a batch of one answer prints;
 /// - it exits with the code that the guide gives the over-budget failure,
 ///   which is 1 unless an [`Exit`](crumbkit::help::Exit) lists the code,
 ///   and its last JSON document, on one line or
-///   indented, is a failure document, a document with one in `failures`,
-///   or an array that holds one, at the top or under the declared data key,
-///   as a batch that prints its failures in input order prints it, with the
-///   field `budget` set to the budget, or, for a document without the
-///   envelope, standard error names the budget. A batch whose document
-///   answers each key left out (`Document::left_out_per_key`) can print
-///   another failure after its over-budget failures, and exits with the
-///   code of its first failure in key order. When that failure is one of
-///   the tool's own, the run must exit with the code that the guide gives
-///   it. The check reads the failure's code in the `::`, `.` and `/`
-///   spellings, and expects 1 for a code that it cannot match to an exit.
+///   indented, is a failure document, or a document whose last entry of
+///   `failures` is one, with the field `budget` set to the budget, or, for
+///   a document without the envelope, standard error names the budget.
 ///
 /// The check also runs each example without `--json` of a leaf whose
 /// document is headed (ADR-0062). Such a run keeps the contract when it
@@ -177,17 +168,8 @@ fn check(
                         code: output.status.code(),
                         stdout: &String::from_utf8_lossy(&output.stdout),
                         stderr: &String::from_utf8_lossy(&output.stderr),
-                        data_key: leaf
-                            .get_document()
-                            .map_or("data", |document| document.get_envelope().data_key()),
                     };
                     let printed = output.stdout.len();
-                    let failed =
-                        if document.is_some_and(|document| document.answers_left_out_per_key()) {
-                            first_exit(&ran, guide, names, path, budget, text).unwrap_or(failed)
-                        } else {
-                            failed
-                        };
                     let problem = if text {
                         judge_text(&ran, printed, budget, failed, first_always)
                     } else {
@@ -236,86 +218,6 @@ pub(crate) struct Ran<'a> {
     pub(crate) stdout: &'a str,
     /// The run's standard error.
     pub(crate) stderr: &'a str,
-    /// The key that holds the result in the leaf's document: `data`, or the
-    /// data key that the document's envelope declares.
-    pub(crate) data_key: &'a str,
-}
-
-/// Returns the exit code of the first failure in key order of `ran`, a run
-/// of the command at `path` whose output budget was `budget`, when that
-/// failure is one of the tool's own, or `None` when it is an over-budget
-/// failure or the run printed no failure. A text run, which `text` marks,
-/// prints its failures on standard error, and a JSON run prints them in its
-/// last document. A code that no exit of `guide` lists in a built-in
-/// spelling exits with 1.
-fn first_exit(
-    ran: &Ran<'_>,
-    guide: &Guide,
-    tool: ToolName,
-    path: &[&str],
-    budget: usize,
-    text: bool,
-) -> Option<u8> {
-    let code = if text {
-        first_text_code(ran.stderr, budget)?
-    } else {
-        first_json_code(ran, budget)?
-    };
-    let exit = guide
-        .get_exits()
-        .iter()
-        .flat_map(crumbkit::help::Exit::get_failures)
-        .find(|listed| {
-            let printed = guide.printed(path, listed);
-            [Spelling::COLONS, Spelling::DOTS, Spelling::SLASHES]
-                .iter()
-                .any(|spelling| spelling.for_tool(tool).spell(printed) == code)
-        })
-        .map_or(1, |listed| guide.failure_exit(path, listed));
-    Some(exit)
-}
-
-/// Returns the code of the first failure on standard error `stderr`, or
-/// `None` when it is the over-budget failure of `budget` bytes or there is
-/// none. Each failure starts with an `error:` line and names its code on a
-/// `code:` line.
-fn first_text_code(stderr: &str, budget: usize) -> Option<String> {
-    let mut lines = stderr
-        .lines()
-        .skip_while(|line| !line.starts_with("error:"));
-    let error = lines.next()?;
-    if error.contains(&format!("output budget of {budget} bytes")) {
-        return None;
-    }
-    lines
-        .take_while(|line| !line.starts_with("error:"))
-        .find_map(|line| line.trim_start().strip_prefix("code:"))
-        .map(|code| code.trim().to_owned())
-}
-
-/// Returns the code of the failure with the lowest index in the last JSON
-/// document of `ran`, or `None` when it is the over-budget failure of
-/// `budget` bytes or there is none. The failures are a failure document,
-/// the document's `failures`, or the failures among the rows of an array in
-/// input order, at the top or under the data key.
-fn first_json_code(ran: &Ran<'_>, budget: usize) -> Option<String> {
-    let documents = runs::documents(ran.stdout);
-    let last = documents.last()?;
-    let first = if last.get("code").is_some() {
-        last
-    } else {
-        last["failures"]
-            .as_array()
-            .or_else(|| last[ran.data_key].as_array())
-            .or_else(|| last.as_array())?
-            .iter()
-            .filter(|failure| failure.get("code").is_some())
-            .min_by_key(|failure| failure["index"].as_u64().unwrap_or(u64::MAX))?
-    };
-    if first["fields"]["budget"] == budget {
-        return None;
-    }
-    first["code"].as_str().map(str::to_owned)
 }
 
 /// Returns the problem of `ran`, a run whose output budget was `budget`
@@ -335,8 +237,8 @@ pub(crate) fn judge(ran: &Ran<'_>, budget: usize, failed: u8) -> Option<String> 
             // A batch always prints its first answer, so a batch of one
             // answer prints it whole in an array of one row.
             let one_row = matches!(documents.as_slice(), [document]
-                if document[ran.data_key].is_object()
-                    || document[ran.data_key].as_array().is_some_and(|rows| rows.len() == 1));
+                if document["data"].is_object()
+                    || document["data"].as_array().is_some_and(|rows| rows.len() == 1));
             (!one_row).then(|| {
                 format!(
                     "with an output budget of {budget} bytes, the run printed {printed} bytes and exited with code 0, and a run past its budget prints a single answer or fails with exit code {failed}"
@@ -355,18 +257,11 @@ pub(crate) fn judge(ran: &Ran<'_>, budget: usize, failed: u8) -> Option<String> 
         }
         Some(code) if code == i32::from(failed) => {
             let over = documents.last().is_some_and(|last| {
-                let failures = last["failures"]
-                    .as_array()
-                    .or_else(|| last[ran.data_key].as_array())
-                    .or_else(|| last.as_array());
-                // A batch that answers each key left out prints its
-                // over-budget failures among its other failures.
                 last["fields"]["budget"] == budget
-                    || failures.is_some_and(|failures| {
-                        failures
-                            .iter()
-                            .any(|failure| failure["fields"]["budget"] == budget)
-                    })
+                    || last["failures"]
+                        .as_array()
+                        .and_then(|failures| failures.last())
+                        .is_some_and(|failure| failure["fields"]["budget"] == budget)
             });
             (!over && !names_budget).then(|| {
                 format!(

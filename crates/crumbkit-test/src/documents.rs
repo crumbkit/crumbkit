@@ -25,14 +25,12 @@ pub(crate) const MOUNTS: [(&str, &[&str]); 6] = [
     ("aliases-list", &["aliases", "list"]),
 ];
 
-/// Checks the documents that the leaves of `guide` declare and the
-/// document of its failure form, and panics, as a failed test assertion
+/// Checks the documents that the leaves of `guide` declare, and panics, as a failed test assertion
 /// does, naming every problem it finds.
 ///
 /// The check fails on a leaf whose document has no envelope, because
-/// the tool chose [`Envelope::Without`](crumbkit::Envelope::Without) or
-/// [`Envelope::WithoutInOrder`](crumbkit::Envelope::WithoutInOrder), unless
-/// an [`Allow`] of [`Rule::Envelope`] with a stated reason covers the
+/// the tool chose [`Envelope::Without`](crumbkit::Envelope::Without),
+/// unless an [`Allow`] of [`Rule::Envelope`] with a stated reason covers the
 /// command, so [`check_opt_outs`](crate::check_opt_outs) reports what
 /// printing the document unwrapped costs an agent ([opt-outs docs]). A
 /// command that prints such a document without a leaf that declares it
@@ -43,13 +41,6 @@ pub(crate) const MOUNTS: [(&str, &[&str]); 6] = [
 /// [`Rule::RowsWhole`] with a stated reason covers the command, so
 /// [`check_opt_outs`](crate::check_opt_outs) reports that the JSON costs
 /// more tokens than the compact columns (ADR-0065).
-///
-/// The check fails on a guide whose failure form, set with
-/// `Guide::failure_form`, prints a document in the component `crumbkit`,
-/// because crumbkit owns the documents of that component. A failure form
-/// is a declaration, which needs no opt-out, and
-/// [`check_opt_outs`](crate::check_opt_outs) lists it under the
-/// customisations (ADR-0056).
 ///
 /// A document's name is the tool's own name, so a document whose name is
 /// not the leaf's path below the tool joined with `-`, as
@@ -75,15 +66,6 @@ pub(crate) const MOUNTS: [(&str, &[&str]); 6] = [
 pub fn check_document_ids(command: &Command, guide: &Guide, allow: &[Allow]) {
     let mut allowances = Allowances::new(allow, &[Rule::Envelope, Rule::RowsWhole]);
     let mut problems = Vec::new();
-    if let Some(form) = guide.get_failure_form() {
-        let document = form.document();
-        if document.component() == "crumbkit" {
-            problems.push(format!(
-                "{}: the tool's failure form prints {document}, and only crumbkit names documents in the component `crumbkit`, so the form's document needs the tool's own component",
-                command.get_name()
-            ));
-        }
-    }
     for leaf in guide.get_leaves() {
         let Some(document) = leaf.get_document() else {
             continue;

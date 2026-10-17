@@ -4,10 +4,9 @@
 //! recovery check's tests do.
 
 use clap::{Arg, Command};
-use crumbkit::form::{FailureForm, PreparedFailure, ReadFailure};
+use crumbkit::form::ReadFailure;
 use crumbkit::help::Guide;
-use crumbkit::{Code, Document, Spelling};
-use schemars::{Schema, json_schema};
+use crumbkit::{Code, Spelling};
 
 use super::check_twin;
 use crate::examples::Examples;
@@ -23,7 +22,7 @@ mod variable;
 /// The code of a refused command line.
 const USAGE: Code = crumbkit::codes::CLI_USAGE;
 
-/// The guide of a tool without a failure form.
+/// The guide of a tool that declares nothing.
 const GUIDE: Guide = Guide::new();
 
 /// Returns the command tree of the scripts: a global `-C` option that
@@ -170,58 +169,18 @@ fn twins_that_differ_by_more_than_one_word_fail_the_check() {
     );
 }
 
-/// A failure form whose text is one line, `ERR` and the code, and which
-/// reads that line back.
-struct LineForm;
-
-impl FailureForm for LineForm {
-    fn document(&self) -> Document<()> {
-        Document::new("tool", "error", 1, "The document of a failed command.")
-    }
-
-    fn schema(&self) -> Schema {
-        json_schema!({ "type": "object" })
-    }
-
-    fn json(&self, failure: &PreparedFailure<'_>) -> serde_json::Value {
-        serde_json::json!({ "error": failure.code() })
-    }
-
-    fn read(&self, _out: &str, err: &str) -> Option<ReadFailure> {
-        let code = err.lines().last()?.strip_prefix("ERR ")?;
-        Some(ReadFailure::new(code.to_owned(), Vec::new()))
-    }
-}
-
-static FORM: LineForm = LineForm;
-
-#[test]
-fn a_twin_reads_the_refused_lines_code_through_the_failure_form_of_the_guide() {
-    const FORM_GUIDE: Guide = Guide::new().failure_form(&FORM);
-    let (_dir, path) = tool("twins-form");
-
-    let output = check_twin(
-        &tree(),
-        &FORM_GUIDE,
-        &Examples::new(&path, ""),
-        Spelling::COLONS,
-        &Failing::new(&USAGE, &["books", "list", "--limit", "-1"]),
-        &["books", "list", "--limit", "1"],
-    );
-
-    assert_eq!(
-        String::from_utf8_lossy(&output.stderr),
-        "ERR tool::cli::usage\n"
-    );
-}
-
-/// A failure reader that reads the line `ERR` and a code that `LineForm`
-/// prints.
+/// A failure reader that reads a last line on standard error of `ERR` and
+/// a code.
 struct LineReader;
 
 impl FailureReader for LineReader {
-    fn read(&self, out: &str, err: &str) -> Vec<ReadFailure> {
-        LineForm.read(out, err).into_iter().collect()
+    fn read(&self, _out: &str, err: &str) -> Vec<ReadFailure> {
+        err.lines()
+            .last()
+            .and_then(|line| line.strip_prefix("ERR "))
+            .map(|code| ReadFailure::new(code.to_owned(), Vec::new()))
+            .into_iter()
+            .collect()
     }
 }
 
@@ -245,7 +204,7 @@ fn a_failure_reader_in_examples_reads_the_code_of_a_refused_twin() {
 }
 
 #[test]
-fn a_refused_line_whose_code_the_check_cannot_read_fails_the_check_naming_both_ways_to_read_it() {
+fn a_refused_line_whose_code_the_check_cannot_read_fails_the_check_naming_the_failure_reader() {
     let (_dir, path) = tool("twins-unread");
 
     let message = panic_message(|| {
@@ -261,7 +220,7 @@ fn a_refused_line_whose_code_the_check_cannot_read_fails_the_check_naming_both_w
 
     assert_eq!(
         message.unwrap(),
-        "the refused line `tool books list --limit -1` must fail with tool::cli::usage, and it ends with exit status: 2 and prints no code that the check can read. A tool that prints failures in a form of its own implements FailureForm::read and sets the form with Guide::failure_form, or implements FailureReader and sets it with Examples::failure_reader"
+        "the refused line `tool books list --limit -1` must fail with tool::cli::usage, and it ends with exit status: 2 and prints no code that the check can read. A tool that prints failures in a form of its own implements FailureReader and sets it with Examples::failure_reader"
     );
 }
 

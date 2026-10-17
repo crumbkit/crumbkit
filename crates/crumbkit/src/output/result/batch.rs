@@ -1,6 +1,5 @@
 //! How a batch that does not fit in the output budget prints: its first
-//! rows, then one failure that names the keys left out (ADR-0046), or the
-//! failure of each answer left out that [`super::per_key`] writes.
+//! rows, then one failure that names the keys left out (ADR-0046).
 
 use std::io::{self, Write};
 
@@ -42,10 +41,8 @@ impl<T: Rows> Prepared<'_, T> {
     /// names the most first keys that fit and counts the rest under
     /// `unlisted`. When the first row and a failure that names no key pass
     /// the budget, the failure names every key, because the document passes
-    /// the budget whichever keys it names (ADR-0070). A document without
-    /// the envelope that prints its failures in input order counts the
-    /// failure in the same way, at the end of its array. In text, and in
-    /// any other document without the envelope, the failure goes to
+    /// the budget whichever keys it names (ADR-0070). In text, and in a
+    /// document without the envelope, the failure goes to
     /// standard error, which the budget does not count, so it names every
     /// key.
     pub(super) fn partial(
@@ -56,12 +53,7 @@ impl<T: Rows> Prepared<'_, T> {
         mut left_out: LeftOut<'_>,
     ) -> io::Result<(Answer, usize)> {
         let rows = self.value.rows().len();
-        let in_document = self.json
-            && (self.document.get_envelope().wraps()
-                || self.document.get_envelope().failures_in_order());
-        if self.document.answers_left_out_per_key() {
-            return self.answer_each(out, err, listed, &mut left_out, in_document);
-        }
+        let in_document = self.json && self.document.get_envelope().wraps();
         let (shown, over) = if in_document {
             self.fit_failure(err, listed, &mut left_out)?
         } else {
@@ -71,11 +63,7 @@ impl<T: Rows> Prepared<'_, T> {
             })?;
             (shown, self.left_out_failure(&left_out, shown, usize::MAX))
         };
-        let indexes = self.value.failure_indexes();
-        let failures = |over| Failures {
-            over,
-            ..Failures::of(listed, indexes, self.form)
-        };
+        let failures = |over| Failures { listed, over };
         if let Over::Batch {
             left_out: keys,
             unlisted: 0,
@@ -145,7 +133,7 @@ impl<T: Rows> Prepared<'_, T> {
         }
         let keys = match &most.over {
             Over::Batch { left_out, .. } => left_out.len(),
-            Over::Key { .. } | Over::Row | Over::Whole | Over::Stream => 0,
+            Over::Row | Over::Whole | Over::Stream => 0,
         };
         let mut fits_naming = |named: usize| {
             let failure = self.left_out_failure(left_out, low, named);
@@ -177,10 +165,7 @@ impl<T: Rows> Prepared<'_, T> {
         over: Option<&PreparedFailure<'_>>,
         budget: usize,
     ) -> io::Result<bool> {
-        let failures = Failures {
-            over,
-            ..Failures::of(listed, self.value.failure_indexes(), self.form)
-        };
+        let failures = Failures { listed, over };
         let bytes = budget::measure(|counter| self.write(counter, shown, None, Some(failures)))?;
         Ok(bytes <= budget)
     }

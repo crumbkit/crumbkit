@@ -87,9 +87,8 @@ pub(crate) fn document_schema() -> Schema {
 }
 
 /// Returns the JSON Schema of the `crumbkit/failure/v1` document without
-/// its `title` and `$schema`, as an item of a batch that prints its
-/// failures in input order holds it.
-pub(crate) fn failure_schema() -> Schema {
+/// its `title` and `$schema`, which [`entry_schema`] builds on.
+pub(super) fn failure_schema() -> Schema {
     <PreparedFailure<'static>>::json_schema(&mut SchemaGenerator::default())
 }
 

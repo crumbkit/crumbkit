@@ -32,9 +32,7 @@ Why: ADR-0035, ADR-0015.
 The tool's `Guide` is the source of the documents. Each leaf that declares
 its document with `Leaf::document` or `Leaf::stream` adds that document, and
 crumbkit adds `<tool>/failure/v1` first, because every command prints it
-when it fails with `--json`. When the guide sets a
-[failure form](../failures/forms.md), the form's document takes that place
-with the kind `unwrapped`.
+when it fails with `--json`.
 
 - A leaf whose path is hidden in the command tree that the run's `Output`
   holds adds nothing, so the commands list only what help
@@ -43,13 +41,11 @@ with the kind `unwrapped`.
 - A tool declares the files that users write for it, such as a settings
   file, as `FileFormat`s with `Guide::documents`. `schemas list` lists them
   after the leaves' documents with no commands.
-- Each row's `kind` is `output`, `unwrapped`, `own-envelope` or `file`, so
-  an agent sees which documents a command prints. `own-envelope` marks a
-  document whose envelope declares its own keys
-  ([result shapes](../output/shapes/README.md#documents-with-the-tools-own-keys)). Each row's compact `form` column is
+- Each row's `kind` is `output`, `unwrapped` or `file`, so an agent sees
+  which documents a command prints. Each row's compact `form` column is
   `document` or `stream` ([streams](../output/streams.md)).
 
-Why: ADR-0035, ADR-0041, ADR-0045, ADR-0059.
+Why: ADR-0035, ADR-0041, ADR-0081.
 
 ## `schemas show`
 

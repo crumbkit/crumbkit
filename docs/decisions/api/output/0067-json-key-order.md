@@ -1,7 +1,7 @@
 # ADR-0067. JSON key order
 
 - Date: 2026-10-17
-- Status: amended by ADR-0073
+- Status: superseded by ADR-0081
 
 ## Context
 
