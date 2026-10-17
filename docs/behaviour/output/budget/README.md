@@ -14,8 +14,9 @@ the tool sets another.
 
 A tool sets its budget with
 [`Guide::output_budget(bytes, reason)`](../../../../crates/crumbkit/src/help/output.rs).
-The budget is at least 1024 bytes, and a smaller one panics when the guide is
-built. The reason says why the tool's results need the bytes.
+The budget is at least 1 byte, so a tool's tests can show a cut result with
+a few short rows. A budget of 0 bytes panics when the guide is built,
+because a run with it could print no answer. The reason says why the tool's results need the bytes.
 crumbkit-test's `check_opt_outs` pins the budget, its reason and its cost in
 the [opt-out report](../../adoption/opt-outs.md) as `output-budget/run`. The
 cost line says how many bytes, and about how many tokens, a run can print
@@ -33,7 +34,7 @@ budget in one run. A reader who needs more asks for less with `--limit`,
 `Output::budget` returns the bytes that the run can still print, so a handler
 can fetch no more rows than fit.
 
-Why: ADR-0046.
+Why: ADR-0046, ADR-0069.
 
 ## Measuring a result
 
