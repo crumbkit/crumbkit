@@ -3,10 +3,12 @@
 use std::process::ExitCode;
 
 use clap::Command;
+use schemars::JsonSchema;
+use serde::Serialize;
 
 use super::RuntimeLeaf;
-use crate::help::{Example, Exit, Goal, Group, Guide, Leaf, RefusalContext, Rename, Topic};
-use crate::{Call, Code, Sink, Spelling, parse_to};
+use crate::help::{Column, Example, Exit, Goal, Group, Guide, Leaf, RefusalContext, Rename, Topic};
+use crate::{Call, Code, Document, Row, Sink, Spelling, parse_to};
 
 const GUIDE: Guide = Guide::new()
     .groups(&[Group::new(&[], &[Goal::new("Read", &["planets"])])])
@@ -150,4 +152,85 @@ fn a_refusal_of_a_runtime_leafs_command_recovers_with_its_functions_call_and_pri
         ),
         "{text}"
     );
+}
+
+/// A row of the test document that a runtime leaf declares.
+#[derive(Serialize, JsonSchema)]
+struct Moon {
+    /// The moon's name.
+    name: String,
+    /// The planet the moon orbits.
+    planet: String,
+}
+
+impl Row for Moon {
+    const COLUMNS: &'static [&'static str] = &["name", "planet"];
+}
+
+/// The document that the command of each planet's moons prints.
+const MOONS: Document<Vec<Moon>> = Document::new("tool", "moons-list", 1, "The test rows.");
+
+#[test]
+fn a_runtime_leaf_with_a_document_passes_the_document_to_its_leaf_in_the_joined_guide() {
+    let guide = Guide::new().with_runtime_leaves(vec![
+        RuntimeLeaf::new(vec!["jupiter".to_owned(), "list".to_owned()]).document(MOONS),
+    ]);
+
+    let leaf = &guide.get_leaves()[0];
+    assert_eq!(
+        leaf.get_document().map(|document| document.to_string()),
+        Some(MOONS.to_string())
+    );
+    let names: Vec<&str> = leaf
+        .column_descriptions()
+        .iter()
+        .map(Column::name)
+        .collect();
+    assert_eq!(names, ["name", "planet"]);
+}
+
+#[test]
+fn the_long_help_of_a_runtime_leafs_command_lists_the_columns_of_its_document() {
+    // clap prints the long help only when the command has some, so the
+    // command has a long about text.
+    let tool = Command::new("tool").subcommand(
+        Command::new("jupiter").subcommand(
+            Command::new("list")
+                .about("List Jupiter's moons")
+                .long_about("List Jupiter's moons, one row for each."),
+        ),
+    );
+    let guide = Guide::new().with_runtime_leaves(vec![
+        RuntimeLeaf::new(vec!["jupiter".to_owned(), "list".to_owned()]).document(MOONS),
+    ]);
+
+    let mut out = Vec::new();
+    let result = parse_to::<(), _, _, _, _>(
+        &mut Sink::new(&mut out, Vec::new()),
+        tool,
+        &guide,
+        Spelling::COLONS,
+        ["tool", "jupiter", "list", "--help"],
+    );
+
+    assert_eq!(result.err().map(ExitCode::from), Some(ExitCode::SUCCESS));
+    let page = String::from_utf8(out).unwrap();
+    assert!(
+        page.contains(
+            "Columns:\n  name    The moon's name.\n  planet  The planet the moon orbits.\n"
+        ),
+        "{page}"
+    );
+}
+
+#[test]
+fn a_runtime_leaf_without_a_document_has_no_document_in_the_joined_guide() {
+    let guide = Guide::new().with_runtime_leaves(vec![
+        RuntimeLeaf::new(vec!["jupiter".to_owned(), "list".to_owned()])
+            .example(Vec::new(), "List Jupiter's moons".to_owned()),
+    ]);
+
+    let leaf = &guide.get_leaves()[0];
+    assert!(leaf.get_document().is_none());
+    assert_eq!(leaf.column_descriptions(), Vec::<Column>::new());
 }

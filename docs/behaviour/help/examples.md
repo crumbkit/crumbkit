@@ -12,7 +12,7 @@ A tool declares its leaves in its `Guide`. Each `Leaf` names a command by the
 real names of its subcommands from the root, as `Group` does, and holds its
 examples and the `Document` it prints. A command that the tool adds at run
 time has a [`RuntimeLeaf`](README.md#runtime-leaves), which holds examples
-and no document.
+and the document the command prints, as `Leaf` does.
 
 `Leaf::document` keeps the document's id and description, the row type's
 columns, and function pointers that build the row's JSON Schema and the
@@ -27,7 +27,7 @@ declares a leaf whose document is a stream. Help prints them on the
 `Effects:` and `Output:` lines that the [help page](README.md#lines-crumbkit-adds-to-a-help-page)
 order places after the examples.
 
-Why: ADR-0024, ADR-0035, ADR-0039, ADR-0041.
+Why: ADR-0024, ADR-0035, ADR-0039, ADR-0041, ADR-0080.
 
 ## What a leaf's help shows
 

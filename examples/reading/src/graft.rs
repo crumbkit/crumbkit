@@ -12,7 +12,7 @@ use crumbkit::Page;
 use crumbkit::help::{Effects, Guide, RuntimeLeaf};
 
 use crate::cli::{Cli, GUIDE, Resource};
-use crate::lists::List;
+use crate::lists::{ENTRIES_LIST, List};
 
 #[cfg(test)]
 mod tests;
@@ -85,7 +85,8 @@ pub fn command(lists: &[List]) -> Command {
 }
 
 /// Returns reading's guide: [`GUIDE`], with a leaf that lists two examples
-/// for the `list` command of each of `lists`, and a leaf with one example
+/// for the `list` command of each of `lists` and declares the document it
+/// prints, the one that `entries list` prints, and a leaf with one example
 /// for its `edit` command, which passes on the editor's exit code. With no
 /// lists it returns [`GUIDE`] itself and allocates nothing.
 #[must_use]
@@ -106,7 +107,8 @@ pub fn guide(lists: &[List]) -> Guide {
                     vec!["--all".to_owned()],
                     format!("Print every entry of the {name} list"),
                 )
-                .effects(Effects::read_only());
+                .effects(Effects::read_only())
+                .document(ENTRIES_LIST);
             // The editor can delete or overwrite any line of the list, and
             // it saves the whole file over the one it opened.
             let edit_leaf = RuntimeLeaf::new(vec![name.to_owned(), "edit".to_owned()])

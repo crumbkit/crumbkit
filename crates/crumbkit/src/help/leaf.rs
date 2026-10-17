@@ -201,6 +201,15 @@ impl Leaf {
         self
     }
 
+    /// Returns the leaf with the document and columns of `other`, which
+    /// [`Leaf::document`] or [`Leaf::stream`] set, or without a document
+    /// when `other` has none. A runtime leaf's document reaches its leaf in
+    /// the joined guide this way.
+    pub(crate) const fn with_document_of(mut self, other: &Self) -> Self {
+        self.columns = other.columns;
+        self
+    }
+
     /// Sets the stream document that the command prints, the same constant
     /// that the tool passes to [`stream`](crate::stream). The leaf then
     /// holds the document as [`Leaf::document`] does, and also marks the

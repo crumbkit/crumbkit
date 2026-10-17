@@ -100,11 +100,15 @@ a person writes, gives them examples with
 [`RuntimeLeaf`](../../../crates/crumbkit/src/help/runtime.rs)s.
 `Guide::with_runtime_leaves` joins them after the `const` leaves into a
 guide that every reader takes as it takes a `const` guide. The join leaks
-the runtime leaves for the rest of the process. A runtime leaf has examples
-and no document, and it takes effects and refusal alternatives. The joined
-guide keeps the guide's renames and every other setting.
+the runtime leaves for the rest of the process. A runtime leaf takes
+examples, effects, refusal alternatives and the document its command prints.
+`RuntimeLeaf::document` takes a document that the tool declares as a
+constant, such as the one a static command that does the same work prints,
+so the command's help, `commands list` and `schemas list` describe it as
+they describe a `const` leaf with that document. The joined guide keeps the
+guide's renames and every other setting.
 
-Why: ADR-0021, ADR-0024.
+Why: ADR-0021, ADR-0024, ADR-0080.
 
 ## The help command
 

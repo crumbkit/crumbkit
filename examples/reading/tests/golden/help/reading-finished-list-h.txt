@@ -12,4 +12,5 @@ Examples:
   reading finished list --all
 
 Effects: read-only, closed-world.
-Global flags: --json, --fields <FIELD>, --long, --full, --no-input. `reading finished list --help` describes them.
+Global flags: --json, --fields <FIELD>, --full, --no-input. `reading finished list --help` describes them.
+Next: reading finished list --help explains each column.

@@ -17,9 +17,6 @@ Options:
       --fields <FIELD>
           Print only these comma-separated fields, in this order
 
-      --long
-          Add the long columns after the compact ones
-
       --full
           With --json, print every field of every row
 
@@ -35,5 +32,9 @@ Examples:
 
   reading finished list --all
           Print every entry of the finished list
+
+Columns:
+  position  The entry's position in the list, counting from 1.
+  title     The title of the book.
 
 Effects: read-only, closed-world.

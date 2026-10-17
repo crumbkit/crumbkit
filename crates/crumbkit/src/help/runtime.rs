@@ -3,7 +3,7 @@
 //! person writes.
 
 use super::{Effects, Example, Guide, Leaf, RefusalContext};
-use crate::Call;
+use crate::{Call, Document, Rows};
 
 #[cfg(test)]
 mod tests;
@@ -38,11 +38,13 @@ mod tests;
 ///
 /// [`examples/reading`]: https://github.com/crumbkit/crumbkit/tree/main/examples/reading
 ///
-/// A runtime leaf has examples and no document, so its `--help` lists no
-/// columns. A document's name is the path of the command that prints it
-/// (ADR-0035), and a path chosen at run time names no document that the
-/// tool declares as a constant. A command added at run time prints a
-/// document that a leaf of the `const` guide declares.
+/// A command added at run time prints a document that the tool declares as
+/// a constant, such as the document of a static command that does the same
+/// work. [`RuntimeLeaf::document`] declares it, as [`Leaf::document`] does,
+/// so the command's `--help` lists the columns, `commands list` gives it
+/// the document's columns and form, and `schemas list` names it among the
+/// commands that print the document (ADR-0080). A runtime leaf without a
+/// document lists no columns.
 #[derive(Clone, Debug, Default)]
 pub struct RuntimeLeaf {
     /// The names of the subcommands from the root to the command.
@@ -50,6 +52,10 @@ pub struct RuntimeLeaf {
     /// The examples, each the words after the path and a description, in
     /// the order the help page lists them.
     examples: Vec<(Vec<String>, String)>,
+    /// A leaf without a path that holds the document the command prints,
+    /// as [`Leaf::document`] set it, or `None` when the leaf has no
+    /// document.
+    document: Option<Leaf>,
     /// The command's effects, or `None` when the tool declares none.
     effects: Option<Effects>,
     /// The program whose exit code the command passes on, or `None`.
@@ -68,6 +74,7 @@ impl RuntimeLeaf {
         Self {
             path,
             examples: Vec::new(),
+            document: None,
             effects: None,
             passes_on_exit: None,
             refusal_alternatives: None,
@@ -83,6 +90,22 @@ impl RuntimeLeaf {
     #[must_use]
     pub fn example(mut self, words: Vec<String>, about: String) -> Self {
         self.examples.push((words, about));
+        self
+    }
+
+    /// Sets the document that the command prints, the same constant that
+    /// the tool passes to [`finish`](crate::finish), as [`Leaf::document`]
+    /// does. The command's `--help` then lists the columns of the
+    /// document's row type, and [`schemas`](crate::schemas) serves the
+    /// document with the command among those that print it.
+    ///
+    /// The document's name usually follows the path of a static command,
+    /// so it differs from the path of the command added at run time.
+    /// crumbkit-test's `check_opt_outs` then lists the name among the
+    /// tool's customisations, as it lists a `const` leaf's.
+    #[must_use]
+    pub const fn document<T: Rows>(mut self, document: Document<T>) -> Self {
+        self.document = Some(Leaf::new(&[]).document(document));
         self
     }
 
@@ -116,8 +139,8 @@ impl RuntimeLeaf {
 
 impl Guide {
     /// Returns a guide with every setting of `self`, and the leaves of
-    /// `self` followed by `leaves`, each with its path, examples, effects,
-    /// the program whose exit code it passes on and its refusal
+    /// `self` followed by `leaves`, each with its path, examples, document,
+    /// effects, the program whose exit code it passes on and its refusal
     /// alternatives. The joined guide keeps the renames that
     /// [`Guide::codes`] set, so a failure or refusal of a runtime leaf's
     /// command prints the tool's code in place of crumbkit's, as one of a
@@ -148,6 +171,9 @@ impl Guide {
                 .map(|(words, about)| Example::new(leak_words(words), about.leak()))
                 .collect();
             let mut joined_leaf = Leaf::new(leak_words(leaf.path)).examples(examples.leak());
+            if let Some(documented) = leaf.document {
+                joined_leaf = joined_leaf.with_document_of(&documented);
+            }
             if let Some(effects) = leaf.effects {
                 joined_leaf = joined_leaf.effects(effects);
             }

@@ -436,6 +436,10 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit: `RuntimeLeaf::refusal_alternatives` gives a command that a
   tool adds at run time the alternatives that a refusal of its line offers
   ([behaviour/help]).
+- crumbkit: `RuntimeLeaf::document` declares the document that a command
+  added at run time prints, so its help lists the columns and `commands
+  list` and `schemas list` describe it as a `const` leaf with that document
+  ([behaviour/help]).
 - crumbkit-test: `RuntimeFailing::at` makes a place that holds a working
   directory and no command line, and `RuntimeFailing::get_dir` returns its
   directory ([behaviour/adoption]).
