@@ -1,5 +1,6 @@
 //! How a batch that does not fit in the output budget prints: its first
-//! rows, then one failure that names the keys left out (ADR-0046).
+//! rows, then one failure that names the keys left out (ADR-0046), or the
+//! failure of each answer left out that [`super::per_key`] writes.
 
 use std::io::{self, Write};
 
@@ -50,6 +51,12 @@ impl<T: Rows> Prepared<'_, T> {
         let rows = self.value.rows().len();
         let in_document =
             self.json && (self.document.has_envelope() || self.document.prints_failures_in_order());
+        if self.document.answers_left_out_per_key()
+            && let Some(answered) =
+                self.answer_each(out, err, listed, &mut left_out, in_document)?
+        {
+            return Ok(answered);
+        }
         let (shown, over) = if in_document {
             self.fit_failure(err, listed, &mut left_out)?
         } else {
@@ -59,10 +66,10 @@ impl<T: Rows> Prepared<'_, T> {
             })?;
             (shown, self.left_out_failure(&left_out, shown, usize::MAX))
         };
+        let indexes = self.value.failure_indexes();
         let failures = |over| Failures {
-            listed,
             over,
-            form: self.form,
+            ..Failures::of(listed, indexes, self.form)
         };
         if let Over::Batch {
             left_out: keys,
@@ -132,7 +139,7 @@ impl<T: Rows> Prepared<'_, T> {
         }
         let keys = match &most.over {
             Over::Batch { left_out, .. } => left_out.len(),
-            Over::Row | Over::Whole | Over::Stream => 0,
+            Over::Key { .. } | Over::Row | Over::Whole | Over::Stream => 0,
         };
         // Every key was measured above, so the search stops one short of it.
         let named = budget::largest(0, keys.saturating_sub(1), |named| {
@@ -151,7 +158,7 @@ impl<T: Rows> Prepared<'_, T> {
 
     /// Returns whether the result with its first `shown` rows, the batch's
     /// own failures and `over` fits in `budget`.
-    fn fits(
+    pub(super) fn fits(
         &mut self,
         shown: usize,
         listed: &[PreparedFailure<'_>],
@@ -159,9 +166,8 @@ impl<T: Rows> Prepared<'_, T> {
         budget: usize,
     ) -> io::Result<bool> {
         let failures = Failures {
-            listed,
             over,
-            form: self.form,
+            ..Failures::of(listed, self.value.failure_indexes(), self.form)
         };
         let bytes = budget::measure(|counter| self.write(counter, shown, None, Some(failures)))?;
         Ok(bytes <= budget)

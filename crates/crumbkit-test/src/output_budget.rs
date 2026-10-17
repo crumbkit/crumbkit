@@ -41,12 +41,13 @@ const VARIABLE: &str = "CRUMBKIT_OUTPUT_BUDGET";
 /// - it exits with the code that the guide gives the over-budget failure,
 ///   which is 1 unless an [`Exit`](crumbkit::help::Exit) lists the code,
 ///   and its last JSON document, on one line or
-///   indented, is a failure document, a document whose last entry of
-///   `failures` is one, or an array whose last item is one, at the top or
-///   under the declared data key, as a batch that prints its failures in
-///   input order prints it, with the field
-///   `budget` set to the budget, or, for a document without the envelope,
-///   standard error names the budget.
+///   indented, is a failure document, a document with one in `failures`,
+///   or an array that holds one, at the top or under the declared data key,
+///   as a batch that prints its failures in input order prints it, with the
+///   field `budget` set to the budget, or, for a document without the
+///   envelope, standard error names the budget. A batch whose document
+///   answers each key left out (`Document::left_out_per_key`) can print
+///   another failure after its over-budget failures.
 ///
 /// The check also runs each example without `--json` of a leaf whose
 /// document is headed (ADR-0062). Such a run keeps the contract when it
@@ -266,10 +267,14 @@ pub(crate) fn judge(ran: &Ran<'_>, budget: usize, failed: u8) -> Option<String> 
                     .as_array()
                     .or_else(|| last[ran.data_key].as_array())
                     .or_else(|| last.as_array());
+                // A batch that answers each key left out prints its
+                // over-budget failures among its other failures.
                 last["fields"]["budget"] == budget
-                    || failures
-                        .and_then(|failures| failures.last())
-                        .is_some_and(|failure| failure["fields"]["budget"] == budget)
+                    || failures.is_some_and(|failures| {
+                        failures
+                            .iter()
+                            .any(|failure| failure["fields"]["budget"] == budget)
+                    })
             });
             (!over && !names_budget).then(|| {
                 format!(

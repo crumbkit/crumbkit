@@ -11,14 +11,17 @@ use super::{EntriesError, export};
 
 /// The document that `reading lists show` prints: the file of each list it
 /// names, in the order the names were given. Its text prints each file
-/// unchanged under a `==> NAME <==` header.
+/// unchanged under a `==> NAME <==` header. Each list that the output
+/// budget leaves out gets its own over-budget failure, whose recovery shows
+/// that list alone.
 pub(crate) const LISTS_SHOW: Document<Batch<ListFile, EntriesError>> = Document::new(
     "reading",
     "lists-show",
     1,
     "The file of each reading list named, in the order the names were given.",
 )
-.headed();
+.headed()
+.left_out_per_key();
 
 /// The file of one reading list.
 #[derive(Debug, Serialize, JsonSchema)]

@@ -7,7 +7,7 @@ use std::num::NonZeroUsize;
 use std::path::Path;
 
 use crumbkit::pick::Choice;
-use crumbkit::{Batch, Call, Code, Document, Failure, FieldValue, Listing, Recovery, Row};
+use crumbkit::{Batch, Call, Code, Document, Failure, FieldValue, Listing, Recovery, Room, Row};
 use miette::{Diagnostic, LabeledSpan, NamedSource, SourceCode, SourceSpan};
 use schemars::JsonSchema;
 use serde::Serialize;
@@ -193,9 +193,9 @@ pub(crate) fn show_call() -> Call {
 ///
 /// The batch holds one `BooksError::NotFound` for each id that the
 /// catalogue lacks, in the order given. `show` looks up one chunk of
-/// [`WORKERS`] ids at a time, and stops once the books it found take
-/// `budget` bytes, the bytes that the run has left, so crumbkit names the
-/// ids it did not look up in the over-budget failure.
+/// [`WORKERS`] ids at a time, and stops once `room` says the books it found
+/// fill the bytes that the run has left, so crumbkit names the ids it did
+/// not look up in the over-budget failure.
 ///
 /// # Errors
 ///
@@ -205,7 +205,7 @@ pub(crate) fn show_call() -> Call {
 pub(crate) fn show(
     args: &BooksShow,
     removed: Option<&Path>,
-    budget: usize,
+    mut room: Room<Batch<Book, BooksError>>,
 ) -> Result<Batch<Book, BooksError>, BooksError> {
     let ids = match &args.from {
         Some(path) => read_ids(path)?,
@@ -214,7 +214,7 @@ pub(crate) fn show(
     let removed = read_removed(removed)?;
     let mut batch = Batch::new(&["books", "show"], "ids", &ids);
     for chunk in ids.chunks(WORKERS.get()) {
-        if !batch.has_room(budget) {
+        if !room.has_room(&batch) {
             break;
         }
         batch.extend(crumbkit::fetch_each(chunk, WORKERS, |&id| {

@@ -76,7 +76,14 @@ fn write_indented(out: &mut dyn Write, compact: &[u8]) -> io::Result<()> {
 /// form has no whitespace outside strings, so the result matches `serde_json`'s
 /// pretty form byte for byte.
 pub(super) fn indent(compact: &[u8], out: &mut Vec<u8>) {
-    let mut depth = 0_usize;
+    indent_at(compact, 0, out);
+}
+
+/// Appends `compact` to `out` as [`indent`] does for a value that sits
+/// `depth` levels deep in a document, so each of its lines is indented as
+/// it is inside that document.
+pub(super) fn indent_at(compact: &[u8], depth: usize, out: &mut Vec<u8>) {
+    let mut depth = depth;
     let mut in_string = false;
     let mut escaped = false;
     let mut bytes = compact.iter().copied().peekable();
@@ -120,6 +127,49 @@ pub(super) fn indent(compact: &[u8], out: &mut Vec<u8>) {
             _ => out.push(byte),
         }
     }
+}
+
+/// Returns the bytes of `value` as an element of an array that sits
+/// `depth` levels deep in a document in `layout`, without the separators
+/// around it.
+pub(super) fn element_len(
+    value: &(impl Serialize + ?Sized),
+    layout: Option<JsonLayout>,
+    depth: usize,
+) -> io::Result<usize> {
+    let compact = serde_json::to_vec(value)?;
+    Ok(match layout {
+        Some(JsonLayout::Pretty) => {
+            let mut indented = Vec::with_capacity(compact.len() * 2);
+            indent_at(&compact, depth, &mut indented);
+            indented.len()
+        }
+        None => compact.len(),
+    })
+}
+
+/// Returns the bytes that `count` elements, whose own bytes add up to
+/// `elements`, add to an empty array whose elements sit `depth` levels deep
+/// in a document in `layout`. One line holds the first element alone, and
+/// each later element adds a comma. In `JsonLayout::Pretty`, the first
+/// element also opens a line at its depth and one before the closing
+/// bracket, and each later element opens a line of its own.
+pub(super) const fn array_len(
+    count: usize,
+    elements: usize,
+    layout: Option<JsonLayout>,
+    depth: usize,
+) -> usize {
+    if count == 0 {
+        return 0;
+    }
+    let (first, later) = match layout {
+        Some(JsonLayout::Pretty) => (4 * depth, 2 + 2 * depth),
+        None => (0, 1),
+    };
+    elements
+        .saturating_add(first)
+        .saturating_add(later.saturating_mul(count - 1))
 }
 
 /// Appends a line feed and two spaces for each level of `depth` to `out`.
