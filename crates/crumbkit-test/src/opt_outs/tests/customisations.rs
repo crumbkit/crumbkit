@@ -6,7 +6,7 @@ use crumbkit::codes::CLI_USAGE;
 use crumbkit::form::{FailureForm, PreparedFailure};
 use crumbkit::help::{Exit, Guide, Leaf, RefusalContext, Rename};
 use crumbkit::schemas::SCHEMAS_LIST;
-use crumbkit::{Batch, Call, Code, Document, Listing, Prose};
+use crumbkit::{Batch, Call, Code, Document, KeyOrder, Listing, Prose};
 use schemars::{Schema, json_schema};
 use serde_json::{Value, json};
 use snapbox::assert::Action;
@@ -188,6 +188,26 @@ fn the_dashed_forms_declaration_and_each_command_named_in_another_style_are_cust
                 "The command also answers to export-all.".to_owned()
             ),
         ]
+    );
+    assert_eq!(listed(&Guide::new()), Vec::new());
+}
+
+#[test]
+fn sorted_json_keys_are_a_customisation_of_every_run() {
+    let listed = |guide: &Guide| -> Vec<_> {
+        customisations(&Command::new("shelf"), guide)
+            .into_iter()
+            .map(|entry| (entry.declaration, entry.applies_to, entry.declares))
+            .collect()
+    };
+
+    assert_eq!(
+        listed(&Guide::new().json_keys(KeyOrder::Sorted)),
+        [(
+            "json-keys",
+            "every run of shelf".to_owned(),
+            "Every JSON document prints the keys of each object in sorted order.".to_owned()
+        )]
     );
     assert_eq!(listed(&Guide::new()), Vec::new());
 }

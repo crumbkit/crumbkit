@@ -56,6 +56,8 @@ Why: ADR-0056.
 - `Guide::field_names` lists failure field names that come from another
   system and break crumbkit's name rule, such as `requestId`
   ([fields](../failures/README.md#fields)).
+- `Guide::json_keys(KeyOrder::Sorted)` prints the keys of every JSON object
+  in sorted order ([JSON layout](../output/json-layout.md#key-order)).
 
 A tool that declares nothing prints crumbkit's codes and exits with
 crumbkit's defaults.
@@ -69,7 +71,7 @@ run prints. A path that no leaf with renames names, such as `&[]`, gives the
 guide's renames alone.
 
 Why: ADR-0056, ADR-0060, ADR-0061, ADR-0001, ADR-0016, ADR-0035, ADR-0045,
-ADR-0059.
+ADR-0059, ADR-0067.
 
 ## Codes per command
 
@@ -142,7 +144,8 @@ beside the name that its command's path gives), each document with keys
 from `Document::with_keys` (as an `envelope-keys` customisation that names
 the keys, the type and whether the summary prints at the top), each leaf
 that passes on an exit code, each leaf that declares
-refusal alternatives, the guide's refusal function once for every run, and
+refusal alternatives, the guide's refusal function once for every run, the
+guide's key order as one `json-keys` customisation of every run, and
 `failures_in_order`. A leaf's code rename, and an exit that lists a code
 that only a leaf renames, apply to that leaf's command line. The
 dashed-forms declaration is listed once, followed by each command named in another style as a `resource-name` or a `verb-name`
@@ -153,4 +156,4 @@ as a `customisations` array beside `data`. The report does not list the
 completion variable, because `complete_with` sets it for the process and the
 guide does not hold it.
 
-Why: ADR-0056, ADR-0060, ADR-0061, ADR-0036, ADR-0035, ADR-0059.
+Why: ADR-0056, ADR-0060, ADR-0061, ADR-0036, ADR-0035, ADR-0059, ADR-0067.
