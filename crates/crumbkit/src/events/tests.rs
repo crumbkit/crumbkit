@@ -10,45 +10,189 @@ use schemars::JsonSchema;
 use serde::Serialize;
 
 use super::testing::{give_child_env, watch};
-use super::{Observer, observe_in};
+use super::{Observer, SLOTS, Slots, child_env_in, handles_interrupt_in, installed, observe_in};
 use crate::help::{Exit, Guide};
 use crate::{
     Code, Document, Error, Failure, Listing, Output, Recovery, Row, Sink, Spelling, Stream,
     finish_to, parse_to, stream_to,
 };
 
-/// An observer that reports nothing.
-struct Silent;
+/// An observer that names itself when it hears `aliased` and gives fixed
+/// answers to the three questions.
+struct Named {
+    /// The name that `aliased` adds to this thread's list.
+    name: &'static str,
+    /// Whether it handles SIGINT.
+    interrupt: bool,
+    /// The child variables that it gives.
+    env: &'static [(&'static str, &'static str)],
+    /// The trace id and run id that it gives, if any.
+    ids: Option<(&'static str, &'static str)>,
+}
 
-impl Observer for Silent {}
+thread_local! {
+    /// The names of the observers that heard `aliased` on this thread.
+    static HEARD: std::cell::RefCell<Vec<&'static str>> = const { std::cell::RefCell::new(Vec::new()) };
+}
 
-static FIRST: Silent = Silent;
-static SECOND: Silent = Silent;
+impl Observer for Named {
+    fn aliased(&self) {
+        HEARD.with_borrow_mut(|heard| heard.push(self.name));
+    }
 
-/// Returns whether `slot` holds `observer`.
-fn holds(slot: &OnceLock<&'static dyn Observer>, observer: &'static Silent) -> bool {
-    slot.get().is_some_and(|held| {
-        std::ptr::addr_eq(std::ptr::from_ref(*held), std::ptr::from_ref(observer))
-    })
+    fn handles_interrupt(&self) -> bool {
+        self.interrupt
+    }
+
+    fn child_env(&self) -> Vec<(&'static str, String)> {
+        self.env
+            .iter()
+            .map(|&(name, value)| (name, value.to_owned()))
+            .collect()
+    }
+
+    fn trace_ids(&self) -> Option<super::TraceIds> {
+        self.ids
+            .map(|(trace, run)| super::TraceIds::new(trace.to_owned(), run.to_owned()))
+    }
+}
+
+/// Returns an observer named `name` that handles no interrupt and gives no
+/// variables and no ids.
+const fn plain(name: &'static str) -> Named {
+    Named {
+        name,
+        interrupt: false,
+        env: &[],
+        ids: None,
+    }
+}
+
+static FIRST: Named = plain("first");
+static SECOND: Named = plain("second");
+static THIRD: Named = plain("third");
+static FOURTH: Named = plain("fourth");
+static FIFTH: Named = plain("fifth");
+
+/// Returns empty observer slots, as a process starts with.
+fn empty_slots() -> Slots {
+    [const { OnceLock::new() }; SLOTS]
+}
+
+/// Returns the names of the observers in `slots` that hear `aliased`, in
+/// the order they hear it.
+fn heard(slots: &Slots) -> Vec<&'static str> {
+    HEARD.with_borrow_mut(Vec::clear);
+    for observer in installed(slots) {
+        observer.aliased();
+    }
+    HEARD.with_borrow_mut(std::mem::take)
 }
 
 #[test]
-fn an_observer_installed_once_stays_and_a_second_install_is_refused() {
-    let slot = OnceLock::new();
+fn four_observers_install_and_hear_each_report_in_install_order() {
+    let slots = empty_slots();
 
-    assert!(observe_in(&slot, &FIRST, false));
-    assert!(!observe_in(&slot, &SECOND, false));
+    for observer in [&FIRST, &SECOND, &THIRD, &FOURTH] {
+        assert!(observe_in(&slots, observer, false));
+    }
 
-    assert!(holds(&slot, &FIRST));
+    assert_eq!(heard(&slots), ["first", "second", "third", "fourth"]);
+}
+
+#[test]
+fn a_fifth_observer_is_refused_and_the_four_installed_stay() {
+    let slots = empty_slots();
+    for observer in [&FIRST, &SECOND, &THIRD, &FOURTH] {
+        observe_in(&slots, observer, false);
+    }
+
+    assert!(!observe_in(&slots, &FIFTH, false));
+
+    assert_eq!(heard(&slots), ["first", "second", "third", "fourth"]);
 }
 
 #[test]
 fn a_run_that_answers_a_completion_request_installs_no_observer() {
-    let slot = OnceLock::new();
+    let slots = empty_slots();
 
-    assert!(!observe_in(&slot, &FIRST, true));
+    assert!(!observe_in(&slots, &FIRST, true));
 
-    assert!(slot.get().is_none());
+    assert_eq!(heard(&slots), Vec::<&str>::new());
+}
+
+#[test]
+fn an_observer_installed_after_a_report_hears_only_the_later_reports() {
+    let slots = empty_slots();
+    observe_in(&slots, &FIRST, false);
+    let before = heard(&slots);
+
+    observe_in(&slots, &SECOND, false);
+
+    assert_eq!(before, ["first"]);
+    assert_eq!(heard(&slots), ["first", "second"]);
+}
+
+#[test]
+fn the_interrupt_is_handled_when_any_installed_observer_handles_it() {
+    static HANDLES: Named = Named {
+        interrupt: true,
+        ..plain("handles")
+    };
+    let slots = empty_slots();
+    observe_in(&slots, &FIRST, false);
+    assert!(!handles_interrupt_in(&slots));
+
+    observe_in(&slots, &HANDLES, false);
+
+    assert!(handles_interrupt_in(&slots));
+}
+
+#[test]
+fn child_variables_come_in_install_order_and_the_first_observer_to_give_a_name_keeps_it() {
+    static TRACING: Named = Named {
+        env: &[("TRACEPARENT", "00-first"), ("TRACESTATE", "")],
+        ..plain("tracing")
+    };
+    static OTHER: Named = Named {
+        env: &[("TRACEPARENT", "00-second"), ("OTHER", "1")],
+        ..plain("other")
+    };
+    let slots = empty_slots();
+    observe_in(&slots, &TRACING, false);
+    observe_in(&slots, &OTHER, false);
+
+    let env = child_env_in(&slots);
+
+    assert_eq!(
+        env,
+        [
+            ("TRACEPARENT", "00-first".to_owned()),
+            ("TRACESTATE", String::new()),
+            ("OTHER", "1".to_owned()),
+        ]
+    );
+}
+
+#[cfg(feature = "tracing")]
+#[test]
+fn the_trace_ids_come_from_the_first_installed_observer_that_gives_them() {
+    static FIRST_IDS: Named = Named {
+        ids: Some(("trace-a", "run-a")),
+        ..plain("first-ids")
+    };
+    static SECOND_IDS: Named = Named {
+        ids: Some(("trace-b", "run-b")),
+        ..plain("second-ids")
+    };
+    let slots = empty_slots();
+    observe_in(&slots, &FIRST, false);
+    observe_in(&slots, &FIRST_IDS, false);
+    observe_in(&slots, &SECOND_IDS, false);
+
+    let ids = super::trace_ids_in(&slots).unwrap();
+
+    assert_eq!((ids.trace(), ids.run()), ("trace-a", "run-a"));
 }
 
 const TIMED_OUT: Code = Code::new("shelf", "network", "timed_out");

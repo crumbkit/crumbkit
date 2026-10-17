@@ -1,17 +1,17 @@
-//! What a run reports to the one observer that the process installed, such
-//! as the usage log (ADR-0057).
+//! What a run reports to the observers that the process installed, such as
+//! the usage log (ADR-0057, ADR-0075).
 //!
 //! crumbkit reports each fact from the place that knows it: `parse` reports
 //! the command line, `finish` reports the exit code and the bytes it wrote,
 //! crumbkit-child reports that a child took the terminal through
 //! [`handed_over`], and the tool and crumbkit-aliases report through
-//! [`aliased`], [`tolerated`] and [`ended`]. Each report goes to the
-//! [`Observer`] that [`observe`] installed. Without one, a report reads one
-//! atomic value and does nothing else.
+//! [`aliased`], [`tolerated`] and [`ended`]. Each report goes to every
+//! [`Observer`] that [`observe`] installed, in the order they were installed.
+//! Without one, a report reads one atomic value and does nothing else.
 //!
 //! A tool does not usually call [`observe`] itself. The usage log's `start`
 //! calls it, and a tool that wants its own observer installs it the same
-//! way, first in `main`:
+//! way, first in `main`, beside the usage log or without it:
 //!
 //! ```
 //! use std::sync::atomic::{AtomicU8, Ordering};
@@ -46,11 +46,19 @@ pub(crate) mod testing;
 #[cfg(test)]
 mod tests;
 
-/// The observer of this process, which the first successful [`observe`]
-/// sets.
-static OBSERVER: OnceLock<&'static dyn Observer> = OnceLock::new();
+/// The most observers that one process installs. [`observe`] refuses an
+/// observer once this many are installed, and a tool that needs more
+/// installs one observer that forwards to several.
+pub(crate) const SLOTS: usize = 4;
 
-/// What a run reports to the observer that [`observe`] installed.
+/// The slots that hold a process's observers. [`observe`] fills them in
+/// order, so every slot before a filled one is filled too.
+pub(crate) type Slots = [OnceLock<&'static dyn Observer>; SLOTS];
+
+/// The observers of this process, which [`observe`] installs.
+static OBSERVERS: Slots = [const { OnceLock::new() }; SLOTS];
+
+/// What a run reports to each observer that [`observe`] installed.
 ///
 /// crumbkit calls each method from the place that knows the fact, on the
 /// thread that reports it. Every method has a default body that does
@@ -324,40 +332,55 @@ impl TraceIds {
     }
 }
 
-/// Installs `observer` for the rest of the process, and returns whether it
-/// did.
+/// Installs `observer` for the rest of the process, after the observers
+/// already installed, and returns whether it did.
 ///
-/// It installs nothing and returns false when an observer is already
-/// installed, so the first call wins, as with `complete_with`. It also
-/// installs nothing when the run answers a shell's completion request,
-/// because a Tab press is no run of the tool (ADR-0048). The completion
-/// variable is `COMPLETE`, or the name that the tool passed to
+/// A process holds up to four observers. Each report goes to every
+/// installed observer in the order they were installed, and an observer
+/// installed after a report hears only the reports that follow. When four
+/// observers are installed, `observe` installs nothing and returns false.
+/// It also installs nothing when the run answers a shell's completion
+/// request, because a Tab press is no run of the tool (ADR-0048). The
+/// completion variable is `COMPLETE`, or the name that the tool passed to
 /// `complete_with` before it called `observe`.
+///
+/// `observe` installs an observer again when it is called with it again,
+/// and that observer then hears each report twice. A crate whose start
+/// function a tool may call more than once installs its observer only on
+/// the first call, as the usage log's `start` does.
 pub fn observe(observer: &'static dyn Observer) -> bool {
-    observe_in(&OBSERVER, observer, crate::complete::completing())
+    observe_in(&OBSERVERS, observer, crate::complete::completing())
 }
 
-/// Installs `observer` in `slot` unless the run is `completing`, as
-/// [`observe`] describes.
-fn observe_in(
-    slot: &OnceLock<&'static dyn Observer>,
-    observer: &'static dyn Observer,
-    completing: bool,
-) -> bool {
-    !completing && slot.set(observer).is_ok()
+/// Installs `observer` in the first free slot of `slots` unless the run is
+/// `completing`, as [`observe`] describes.
+pub(crate) fn observe_in(slots: &Slots, observer: &'static dyn Observer, completing: bool) -> bool {
+    !completing && slots.iter().any(|slot| slot.set(observer).is_ok())
 }
 
-/// Returns the observer that [`observe`] installed, or `None`.
-#[must_use]
-pub fn observer() -> Option<&'static dyn Observer> {
-    OBSERVER.get().copied()
+/// Returns the observers in `slots` in the order they were installed. The
+/// first empty slot ends them, because [`observe_in`] fills the slots in
+/// order.
+pub(crate) fn installed(slots: &Slots) -> impl Iterator<Item = &'static dyn Observer> + '_ {
+    slots.iter().map_while(|slot| slot.get().copied())
+}
+
+/// Returns the observers of this process in the order they were installed.
+fn observers() -> impl Iterator<Item = &'static dyn Observer> {
+    installed(&OBSERVERS)
+}
+
+/// Reports whether the process has an observer, so a report can skip work
+/// that only an observer needs.
+pub(crate) fn observed() -> bool {
+    observers().next().is_some()
 }
 
 /// Reports that a personal alias expanded the run's command line.
 /// crumbkit-aliases' `expand` calls it, so the usage log's line holds
 /// `"alias": true`. Without an observer it does nothing.
 pub fn aliased() {
-    if let Some(observer) = observer() {
+    for observer in observers() {
         observer.aliased();
     }
 }
@@ -380,7 +403,7 @@ pub fn aliased() {
 /// run then fails with belongs to [`finish`](crate::finish), which reports
 /// it as the run's failure. Without an observer it does nothing.
 pub fn tolerated(code: &'static Code) {
-    if let Some(observer) = observer() {
+    for observer in observers() {
         observer.tolerated(code);
     }
 }
@@ -391,10 +414,10 @@ pub fn tolerated(code: &'static Code) {
 ///
 /// A run that never reaches [`finish`](crate::finish), such as a stream
 /// that the tool ends itself, a child process or the tool's own exit path,
-/// calls it last, so the observer receives the real exit number, such as
+/// calls it last, so each observer receives the real exit number, such as
 /// 124, and the byte count. `out_bytes` is `None` when the tool did not
 /// count them. Because it returns the code, the number that the tool
-/// returns and the number that the observer receives are the same:
+/// returns and the number that each observer receives are the same:
 ///
 /// ```no_run
 /// # use std::process::ExitCode;
@@ -405,14 +428,14 @@ pub fn tolerated(code: &'static Code) {
 /// ```
 ///
 /// crumbkit gives 0, 1 and 2 their meanings unless the tool's guide moves a
-/// failure to another code (ADR-0002), and the observer receives the number
+/// failure to another code (ADR-0002), and each observer receives the number
 /// as given. The usage log writes the run's line at once, so a tool that
 /// then exits through its own path, such as `std::process::exit` on another
 /// thread, still has its line. Without an observer it only returns the
 /// code.
 #[must_use]
 pub fn ended(exit: u8, out_bytes: Option<u64>) -> ExitCode {
-    if let Some(observer) = observer() {
+    for observer in observers() {
         observer.ended(exit, out_bytes);
     }
     ExitCode::from(exit)
@@ -420,28 +443,28 @@ pub fn ended(exit: u8, out_bytes: Option<u64>) -> ExitCode {
 
 /// Reports [`Observer::typed`].
 pub(crate) fn typed(command: &Command, args: &[OsString], spelling: Spelling) {
-    if let Some(observer) = observer() {
+    for observer in observers() {
         observer.typed(command, args, spelling);
     }
 }
 
 /// Reports [`Observer::parsed`].
 pub(crate) fn parsed(command: &Command, matches: &ArgMatches) {
-    if let Some(observer) = observer() {
+    for observer in observers() {
         observer.parsed(command, matches);
     }
 }
 
 /// Reports [`Observer::picked`].
 pub(crate) fn picked(count: usize) {
-    if let Some(observer) = observer() {
+    for observer in observers() {
         observer.picked(count);
     }
 }
 
 /// Reports [`Observer::helped`].
 pub(crate) fn helped(command: &Command, path: &[String], long: bool, exit: u8) {
-    if let Some(observer) = observer() {
+    for observer in observers() {
         observer.helped(command, path, long, exit);
     }
 }
@@ -449,29 +472,33 @@ pub(crate) fn helped(command: &Command, path: &[String], long: bool, exit: u8) {
 /// Reports [`Observer::refused`] for `error` at `path` below `command`, with
 /// the exit code `exit`.
 pub(crate) fn refused(command: &Command, path: &[String], error: &clap::Error, exit: u8) {
-    if let Some(observer) = observer() {
-        observer.refused(&Refused::new(command, path, error, exit));
+    if observed() {
+        let refused = Refused::new(command, path, error, exit);
+        for observer in observers() {
+            observer.refused(&refused);
+        }
     }
 }
 
 /// Reports [`Observer::exited`].
 pub(crate) fn exited(exit: u8) {
-    if let Some(observer) = observer() {
+    for observer in observers() {
         observer.exited(exit);
     }
 }
 
 /// Reports [`Observer::failed`].
 pub(crate) fn failed(spelling: Spelling, code: &Code) {
-    if let Some(observer) = observer() {
+    for observer in observers() {
         observer.failed(spelling, code);
     }
 }
 
 /// Reports [`Observer::finished`] with the fields of [`Finished`].
 pub(crate) fn finished(exit: u8, out_bytes: u64, truncated: bool, empty: bool) {
-    if let Some(observer) = observer() {
-        observer.finished(&Finished::new(exit, out_bytes, truncated, empty));
+    let finished = Finished::new(exit, out_bytes, truncated, empty);
+    for observer in observers() {
+        observer.finished(&finished);
     }
 }
 
@@ -479,7 +506,7 @@ pub(crate) fn finished(exit: u8, out_bytes: u64, truncated: bool, empty: bool) {
 /// [`Observer::handed_over`] describes. crumbkit-child calls it before it
 /// starts the child. Without an observer it does nothing.
 pub fn handed_over() {
-    if let Some(observer) = observer() {
+    for observer in observers() {
         observer.handed_over();
     }
 }
@@ -488,7 +515,7 @@ pub fn handed_over() {
 /// Ctrl-C back, as [`Observer::taken_back`] describes. crumbkit-child calls
 /// it on Windows only. Without an observer it does nothing.
 pub fn taken_back() {
-    if let Some(observer) = observer() {
+    for observer in observers() {
         observer.taken_back();
     }
 }
@@ -497,22 +524,57 @@ pub fn taken_back() {
 /// [`Observer::interrupted`] describes. Without an observer it does
 /// nothing.
 pub fn interrupted() {
-    if let Some(observer) = observer() {
+    for observer in observers() {
         observer.interrupted();
     }
 }
 
-/// Reports whether the observer has taken SIGINT, as
+/// Reports whether an installed observer has taken SIGINT, as
 /// [`Observer::handles_interrupt`] describes, so a crate that hands the
-/// terminal to a child installs no SIGINT handler of its own. Without an
-/// observer it is false.
+/// terminal to a child installs no SIGINT handler of its own. It is true
+/// when any observer answers true, and false without an observer.
 #[must_use]
 pub fn handles_interrupt() -> bool {
-    observer().is_some_and(Observer::handles_interrupt)
+    handles_interrupt_in(&OBSERVERS)
 }
 
-/// Returns the observer's trace ids, or `None` without an observer.
+/// Reports whether an observer in `slots` has taken SIGINT, as
+/// [`handles_interrupt`] describes.
+pub(crate) fn handles_interrupt_in(slots: &Slots) -> bool {
+    installed(slots).any(Observer::handles_interrupt)
+}
+
+/// Returns the variables that put a child process in this run's trace, as
+/// [`crate::trace::child_env`] describes.
+pub(crate) fn child_env() -> Vec<(&'static str, String)> {
+    child_env_in(&OBSERVERS)
+}
+
+/// Returns the variables that the observers in `slots` give, in the order
+/// the observers were installed. A variable whose name an earlier observer
+/// already gave is left out, so each name appears once.
+pub(crate) fn child_env_in(slots: &Slots) -> Vec<(&'static str, String)> {
+    let mut env: Vec<(&'static str, String)> = Vec::new();
+    for observer in installed(slots) {
+        for (name, value) in observer.child_env() {
+            if !env.iter().any(|&(given, _)| given == name) {
+                env.push((name, value));
+            }
+        }
+    }
+    env
+}
+
+/// Returns the trace ids of the first installed observer that gives them,
+/// or `None`.
 #[cfg(feature = "tracing")]
 pub(crate) fn trace_ids() -> Option<TraceIds> {
-    observer().and_then(Observer::trace_ids)
+    trace_ids_in(&OBSERVERS)
+}
+
+/// Returns the trace ids of the first observer in `slots` that gives them,
+/// or `None`.
+#[cfg(feature = "tracing")]
+pub(crate) fn trace_ids_in(slots: &Slots) -> Option<TraceIds> {
+    installed(slots).find_map(Observer::trace_ids)
 }

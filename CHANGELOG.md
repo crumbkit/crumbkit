@@ -869,9 +869,17 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit-test: the `left-out-per-key` customisation of [`check_opt_outs`]
   says that the document can pass the budget by the size of its failures
   ([behaviour/adoption/declarations]).
+- crumbkit: [`events::observe`] installs up to four observers, and each
+  report reaches every installed observer in install order. A tool's own
+  observer and the usage log both hear each run ([behaviour/run-observer]).
+- crumbkit-usage: `start` after a tool installed its own observer records
+  the run, and a second `start` installs the log's observer no second time
+  ([behaviour/usage-log]).
 
 ### Removed
 
+- crumbkit: `events::observer` is gone, because a process can hold several
+  observers ([behaviour/run-observer]).
 - crumbkit: the `hand-over` feature, the `crumbkit::child` module and the
   `codes::CHILD_*` constants are gone, because the crumbkit-child crate
   holds the hand-over ([crumbkit-child]).

@@ -41,8 +41,8 @@ fn main() -> ExitCode {
 
 `start` installs the log as crumbkit's run observer, so crumbkit's `parse`,
 `finish`, streams and child hand-overs tell the log what the run did, and
-the guard writes the line when it drops. A tool that installs another
-observer first keeps that one, and the log then writes nothing. The line
+the guard writes the line when it drops. A tool that installs its own
+observer keeps it, and both observers hear each report. The line
 goes to `usage.jsonl` in the tool's directory under the XDG state directory,
 such as `~/.local/state/shelf/usage.jsonl`.
 

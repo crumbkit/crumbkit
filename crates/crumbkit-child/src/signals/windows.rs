@@ -25,7 +25,7 @@ const CONTROL_C_EXIT: i32 = 0xC000_013A_u32 as i32;
 // ends, as Unix does, replaces this if it happens.
 pub(super) const RESTORES: bool = true;
 
-/// Installs the handlers of SIGBREAK and, unless the observer has taken
+/// Installs the handlers of SIGBREAK and, unless an observer has taken
 /// it, SIGINT, which end the process with `STATUS_CONTROL_C_EXIT` while the
 /// returned flag is true, as Ctrl-C and Ctrl-Break do without a handler.
 /// It returns `None` when signal-hook cannot install the handlers, and the

@@ -7,7 +7,7 @@ use std::ffi::OsString;
 
 use clap::{ArgMatches, Command};
 
-use super::{Finished, OBSERVER, Observer, Refused, TraceIds};
+use super::{Finished, OBSERVERS, Observer, Refused, TraceIds};
 use crate::{Code, Spelling};
 
 thread_local! {
@@ -33,7 +33,7 @@ static RECORDING: Recording = Recording;
 
 /// Installs [`RECORDING`] as the observer of the test process, once.
 pub(crate) fn install() {
-    let _ = OBSERVER.get_or_init(|| &RECORDING);
+    let _ = OBSERVERS[0].get_or_init(|| &RECORDING);
 }
 
 /// Runs `run` and returns the events that it reported on this thread.

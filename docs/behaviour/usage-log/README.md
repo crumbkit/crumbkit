@@ -30,11 +30,11 @@ A tool depends on crumbkit-usage and adds one line to `main`:
 `let _log = crumbkit_usage::start();`. The rustdoc of
 [`start`](../../../crates/crumbkit-usage/src/recorder.rs) states what
 `start` does, what the guard does when it drops, and when a run installs no
-recorder, such as a second `start` in one process, a `start` after the tool
-installed an observer of its own, or a run that answers a shell's
-[completion request](../parsing/completion.md). `start` installs the log as
-the process's [run observer](../run-observer/README.md) with
-`crumbkit::events::observe`.
+recorder, such as a second `start` in one process or a run that answers a
+shell's [completion request](../parsing/completion.md). `start` installs the
+log as one of the process's [run observers](../run-observer/README.md) with
+`crumbkit::events::observe`, beside any observer that the tool installed
+before it.
 
 `start` never builds the tool's command tree. `parse` gives the recorder the
 tool's name and version from the command it parses against, so a run that
@@ -265,7 +265,7 @@ Why: ADR-0029.
 
 ## Child processes
 
-crumbkit tells the observer when a command hands the terminal to a child
+crumbkit tells the observers when a command hands the terminal to a child
 and, on Windows, when the child exits. Once a command has handed the
 terminal to a
 [child process](../output/child-processes.md), the signal thread skips
