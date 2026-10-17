@@ -36,6 +36,15 @@ fn a_document_with_keys_names_its_type_and_data_under_the_declared_keys() {
 }
 
 #[test]
+fn the_schema_of_a_listing_without_a_total_has_no_total_property() {
+    let schema = document_schema(KEYED.without_total()).to_value();
+
+    assert!(schema["properties"].get("total").is_none());
+    assert!(schema["properties"].get("truncated").is_some());
+    assert_eq!(schema["required"], json!(["$type", "entries", "truncated"]));
+}
+
+#[test]
 fn a_document_with_keys_and_no_type_value_holds_its_id_under_the_type_key() {
     let schema = document_schema(KEYED_IN_ORDER).to_value();
 

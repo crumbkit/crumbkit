@@ -77,6 +77,10 @@ with `Listing::uncounted` or `Page::uncounted`. The reading example's
 - A page with no rows and more rows after it prints the footer and no empty
   note, as a counted page with no rows from a total above 0 does.
 
+A counted listing whose document calls `Document::without_total` also leaves
+`total` out of its JSON, while its footer keeps the count
+([output](../README.md#listings-without-a-total)).
+
 Every listing's document holds `truncated`, which is true when `--limit`, the
 output budget or an uncounted source left rows out, and false when `data`
 holds every row. `cut` says that the budget was the cause and names the
@@ -85,7 +89,7 @@ budget, so a listing with `cut` also holds `"truncated": true`. A list has no
 The [usage log](../../usage-log/README.md) marks a run whose listing left rows
 out.
 
-Why: ADR-0050.
+Why: ADR-0050, ADR-0066.
 
 ## An upper bound on `--limit`
 

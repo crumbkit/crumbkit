@@ -548,6 +548,9 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   headed leaf with half the bytes they print ([behaviour/output/budget]).
 - crumbkit-test: [`check_guide`] fails a leaf whose batch is not headed and
   whose row type has no `Row::COLUMNS` ([behaviour/help/examples]).
+- crumbkit: `Document::without_total` leaves `total` out of the JSON and the
+  schema of a listing with declared keys. The JSON keeps `truncated`, and
+  the text footer keeps the count ([behaviour/output]).
 
 ### Changed
 

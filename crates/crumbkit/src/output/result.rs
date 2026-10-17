@@ -502,7 +502,7 @@ impl<'a, T: Rows> Prepared<'a, T> {
             return self.write_unwrapped(out, shown, all);
         }
         let extras = Extras {
-            total: value.total(),
+            total: value.total().filter(|_| self.document.prints_total()),
             truncated: (T::SHAPE == Shape::Listing)
                 .then(|| cut.is_some() || listing::leaves_out(value)),
             summary: value.summary(),
