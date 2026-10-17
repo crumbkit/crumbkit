@@ -28,11 +28,10 @@ crumbkit-test's `check_examples` stops a run that does not end within 10
 seconds, so a stream command's example reads a finite input and never
 follows one. For each `--json` example of a document with the envelope, the
 check requires every line to be a JSON object whose `schema` is the leaf's
-document id, or whose declared type key holds the id for a document with
-`Envelope::Keys`, and a leaf of one result to print exactly one line, or one
+document id, and a leaf of one result to print exactly one line, or one
 indented document under the [indented layout](json-layout.md).
 
-Why: ADR-0041, ADR-0059.
+Why: ADR-0041.
 
 ## Text and JSON lines
 
@@ -49,12 +48,9 @@ With `--json`, each row prints as a whole envelope document on its own line,
 with `schema` and the row under `data`, so the output is JSON Lines and a
 reader can process each line alone. `--fields`, `--long` and `--full` shape
 each row as they shape a single row in `finish`. A stream prints one document per line in
-every [JSON layout](json-layout.md), with its keys sorted when the guide's
-[JSON style sorts them](json-layout.md#key-order). A document with
+every [JSON layout](json-layout.md). A document with
 `Envelope::Without` prints each row alone, and its failures print as
-text on standard error. A document with `Envelope::Keys` prints each
-line with the declared keys in place of `schema` and `data`
-([result shapes](shapes/README.md#documents-with-the-tools-own-keys)). A dry run marks each JSON line with
+text on standard error. A dry run marks each JSON line with
 `"dry_run": true`. A stream document's JSON Schema, from
 `schemas::stream_schema`, describes one line: the envelope of a document of
 one row.
@@ -63,14 +59,12 @@ The stream flushes standard output after every line, so a reader sees each
 row as soon as it prints. Standard output stays locked while the stream is
 open.
 
-Why: ADR-0041, ADR-0052, ADR-0059, ADR-0063, ADR-0064, ADR-0067.
+Why: ADR-0041, ADR-0052, ADR-0063, ADR-0064.
 
 ## Failures and the exit code
 
 A failure in the middle prints on standard error in text, and as one
-`<tool>/failure/v1` line between the rows with `--json`. A tool with a
-[failure form](../failures/forms.md) prints each failure line of a `--json`
-stream in that form. A stream that printed a failure or ended with an `Err`
+`<tool>/failure/v1` line between the rows with `--json`. A stream that printed a failure or ended with an `Err`
 exits with the code of its first failure, as `finish` does
 ([exit codes](../failures/exit-codes.md)). A closed pipe keeps the code. Any
 other failed write prints once on standard error and exits with code 1 unless

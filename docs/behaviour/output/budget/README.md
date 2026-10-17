@@ -14,9 +14,11 @@ the tool sets another.
 
 A tool sets its budget with
 [`Guide::output_budget(bytes, reason)`](../../../../crates/crumbkit/src/help/output.rs).
-The budget is at least 1 byte, so a tool's tests can show a cut result with
-a few short rows. A budget of 0 bytes panics when the guide is built,
-because a run with it could print no answer. The reason says why the tool's results need the bytes.
+The budget can be any number of bytes, as small as the one that
+`<TOOL>_OUTPUT_BUDGET` lowers a run to, so a tool's tests can show a cut
+result with a few short rows. A result that the budget refuses prints its
+over-budget failure whatever the failure's size, and a batch prints its
+first answer. The reason says why the tool's results need the bytes.
 crumbkit-test's `check_opt_outs` pins the budget, its reason and its cost in
 the [opt-out report](../../adoption/opt-outs.md) as `output-budget/run`. The
 cost line says how many bytes, and about how many tokens, a run can print
@@ -34,7 +36,7 @@ budget in one run. A reader who needs more asks for less with `--limit`,
 `Output::budget` returns the bytes that the run can still print, so a handler
 can fetch no more rows than fit.
 
-Why: ADR-0046, ADR-0069.
+Why: ADR-0046, ADR-0081.
 
 ## Measuring a result
 
@@ -139,48 +141,11 @@ one row and that full list do not fit, one row prints, `left_out` lists the
 most first keys that fit, and `unlisted` counts the rest and any cut answer
 that has no key. When one row and a failure that lists no key already pass
 the budget, the document passes it whatever the failure lists, so `left_out`
-lists every key left out and the recovery runs the command with them. A batch that prints its failures in input order ends its
-array with the failure, at the top of an unwrapped document or under the data
-key of a document with `Envelope::KeysInOrder`, and the failure counts against
-the budget in the same way. In text, and in any other document without the envelope, the failure
+lists every key left out and the recovery runs the command with them. In text, and in any other document without the envelope, the failure
 prints on standard error, which the budget does not count, so it lists every
 key.
 
-Why: ADR-0046, ADR-0059, ADR-0070, ADR-0077.
-
-### One failure for each answer left out
-
-A batch whose document is marked with `Document::left_out_per_key` answers
-each answer left out with its own `<tool>::output::over_budget` failure,
-in place of the one failure that names them all. Each failure has the key and
-index of its answer, the message `the answer did not fit in the output budget
-of 1048576 bytes`, the field `budget`, and a `run` recovery that runs the
-command with that key alone in place of the caller's keys, such as
-`shelf books show 4`, keeping the caller's other words as the whole-batch
-recovery does. An answer without
-a key gets a hint to run the command again with the keys that were not
-answered. The failures print among the batch's other failures in the order of
-their keys, and the run exits with the code of the first failure in key
-order.
-
-In text, and in a document without the envelope that does not print its
-failures in input order, the rows print as a batch's rows do and the
-failures print on standard error. In a JSON document that holds its
-failures, each failure counts against the budget, and a row that prints
-takes the place of its failure. A row can be shorter than its failure, so
-`finish` measures each row and each failure once and prints the most rows
-that fit with the failures of every answer after them. When even the first
-row and the failure of every later answer pass the budget, the first row
-prints with every failure after it, so every answer still has its own
-failure. The document then passes the budget by the size of those failures,
-about 200 bytes each: a batch of 10,000 keys from a flag such as `--all`
-prints about 2 MB of failures after its first row.
-
-The mark is a declaration that crumbkit-test's `check_opt_outs` lists as the
-`left-out-per-key` customisation, which says that the document can pass the
-budget ([declarations](../../adoption/declarations.md)).
-
-Why: ADR-0068, ADR-0070.
+Why: ADR-0046, ADR-0068, ADR-0070, ADR-0077.
 
 ## Headed bytes
 
@@ -199,15 +164,14 @@ when it is not the first row that prints.
   not fit, every later row and every key that the handler never fetched is
   left out, and one over-budget failure names them, as the failure of a
   batch in text does, with the recovery that runs the command with every key
-  left out. A document marked with `Document::left_out_per_key` gives each
-  of them its own failure in place of that one.
+  left out.
 
 Each failure prints on standard error with the batch's other failures, in the
 order of their keys, and the failure that names the rows left out prints
 last. The batch's note, when it has one, prints before these failures. The run exits with the code of the first failure. With `--json` a
 headed batch is budgeted as any other batch.
 
-Why: ADR-0062, ADR-0068.
+Why: ADR-0062.
 
 ## Single results
 
@@ -272,13 +236,7 @@ printed. The second run must do one of these:
 - print one answer, either from a document that always prints its first
   answer or as a batch of one answer;
 - exit with the code that the guide gives the over-budget failure, 1 by
-  default, and print an over-budget failure that names the budget, last or,
-  for a batch whose document answers each answer left out, among its other
-  failures. Such a batch exits with the code of its first failure in key
-  order, so when that failure is one of the tool's own, the check expects
-  the code that the guide gives that failure. The check matches the
-  failure's code to the guide's exits in the `::`, `.` and `/` spellings,
-  and expects 1 for a code in a custom spelling.
+  default, and print an over-budget failure that names the budget last.
 
 The check also runs each text example of a leaf whose document is headed in
 the same way. The second run must print at most the budget, unless its
@@ -286,4 +244,4 @@ document always prints its first answer, and must either exit with code 0 or
 exit with the over-budget failure's code with a message on standard error
 that names the budget.
 
-Why: ADR-0046, ADR-0062, ADR-0068.
+Why: ADR-0046, ADR-0062.

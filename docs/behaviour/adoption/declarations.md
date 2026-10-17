@@ -42,27 +42,10 @@ Why: ADR-0056.
   check reaches these calls before a run, because the function needs a
   refusal, so a tool provokes the refusal in a `check_recoveries` start to
   see them.
-- A [failure form](../failures/forms.md) replaces crumbkit's failure
-  document.
 - A document whose name is not its command's path keeps a name that scripts
   already read ([schemas](../schemas/README.md#document-ids)).
-- `Envelope::KeysInOrder` and `Envelope::WithoutInOrder` print a batch's
-  failures among its rows, which keeps every failure and its recovery and changes only where
-  they print ([result shapes](../output/shapes/README.md#documents-without-the-envelope)).
-- `Document::left_out_per_key` gives each answer that the output budget
-  leaves out of a batch its own over-budget failure, which keeps every
-  answer either printed or failed and changes only how the failures name
-  them ([output budget](../output/budget/README.md#one-failure-for-each-answer-left-out)).
-- `Envelope::Keys` names the two keys of a document whose readers expect
-  names other than crumbkit's, and keeps every other part of the envelope
-  ([result shapes](../output/shapes/README.md#documents-with-the-tools-own-keys)).
 - `Guide::dashed_forms` lets a command keep a name in another style
   ([dashed forms](#dashed-forms)).
-- `Guide::field_names` lists failure field names that come from another
-  system and break crumbkit's name rule, such as `requestId`
-  ([fields](../failures/README.md#fields)).
-- `Guide::json(JsonStyle::new().sorted())` prints the keys of every JSON object
-  in sorted order ([JSON layout](../output/json-layout.md#key-order)).
 
 A tool that declares nothing prints crumbkit's codes and exits with
 crumbkit's defaults.
@@ -75,8 +58,7 @@ the exit code a failure ends the run with, so `check_exit_codes`,
 run prints. A path that no leaf with renames names, such as `&[]`, gives the
 guide's renames alone.
 
-Why: ADR-0056, ADR-0060, ADR-0061, ADR-0001, ADR-0016, ADR-0035, ADR-0045,
-ADR-0059, ADR-0067.
+Why: ADR-0056, ADR-0060, ADR-0001, ADR-0016, ADR-0035, ADR-0081.
 
 ## Codes per command
 
@@ -141,17 +123,12 @@ Why: ADR-0015, ADR-0056, ADR-0036.
 crumbkit-test's `check_opt_outs` lists each declaration after the opt-outs,
 under the customisations, with no reason and no cost, so a reviewer sees in
 one place how far a tool has moved from crumbkit's defaults. The section
-lists the failure form, each code rename of the guide and of each leaf, the
-guide's field names as one `field-names` customisation of every run, each
-exit that lists one of crumbkit's codes or a rename of one, each document
-whose name is not its command's path (as a `document-name` customisation
-beside the name that its command's path gives), each document whose
-envelope declares its own keys (as an `envelope-keys` customisation that
-names the keys), each leaf
-that passes on an exit code, each leaf that declares
-refusal alternatives, the guide's refusal function once for every run, the
-guide's key order as one `json-keys` customisation of every run,
-failures in input order, `left_out_per_key`, and each leaf whose row type
+lists each code rename of the guide and of each leaf, each exit that lists
+one of crumbkit's codes or a rename of one, each document whose name is not
+its command's path (as a `document-name` customisation beside the name that
+its command's path gives), each leaf that passes on an exit code, each leaf
+that declares refusal alternatives, the guide's refusal function once for
+every run, and each leaf whose row type
 declares `Row::LINE` (as a `text-line` customisation that names the form of
 the line). A leaf's code rename, and an exit that lists a code
 that only a leaf renames, apply to that leaf's command line. The
@@ -163,4 +140,4 @@ as a `customisations` array beside `data`. The report does not list the
 completion variable, because `complete_with` sets it for the process and the
 guide does not hold it.
 
-Why: ADR-0056, ADR-0060, ADR-0061, ADR-0036, ADR-0035, ADR-0059, ADR-0064, ADR-0067, ADR-0071, ADR-0073.
+Why: ADR-0056, ADR-0060, ADR-0036, ADR-0035, ADR-0064, ADR-0081.

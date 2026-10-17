@@ -1,7 +1,7 @@
 # ADR-0068. One failure for each answer left out
 
 - Date: 2026-10-17
-- Status: amended by ADR-0070
+- Status: amended by ADR-0070 and ADR-0081
 - Supersedes: ADR-0046, which it amends
 
 ## Context

@@ -110,11 +110,7 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   of files that users write for a tool, and `schemas list` and
   `schemas show` serve their schemas ([behaviour/schemas/commands]).
 - crumbkit: `Document::envelope` chooses a document's envelope: crumbkit's,
-  the tool's own keys, or none, which prints the result alone. Each of the
-  last two has a variant that prints a batch's rows and failures in input
-  order ([behaviour/output]).
-- crumbkit-test: [`check_guide`] fails a leaf whose document is not a batch
-  and whose envelope prints failures in input order ([behaviour/output]).
+  or none, which prints the result alone ([behaviour/output]).
 
 - crumbkit-test: [`check_opt_outs`] pins a tool's opt-outs and budgets,
   with each reason and what it costs an agent, in a text and a JSON golden
@@ -230,15 +226,6 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - cargo-crumbkit: `cargo crumbkit docs --bin <NAME>` writes the binary's
   Markdown command reference to `docs/commands.md` in its package, or to
   `--out <FILE>` ([cargo-crumbkit], [behaviour/help/reference]).
-- crumbkit: [`FailureForm`] and `Guide::failure_form` let a tool print
-  every failure in its own JSON document and text, from a
-  [`PreparedFailure`] with the code spelled and the recoveries rendered
-  ([behaviour/failures/forms]).
-- crumbkit: `schemas list` serves a failure form's document in place of
-  `crumbkit/failure/v1`, as an `unwrapped` document ([behaviour/failures/forms]).
-- crumbkit-test: [`check_document_ids`] fails on a guide with a failure
-  form unless an opt-out from `Rule::FailureForm` names the root
-  ([behaviour/failures/forms]).
 - crumbkit: [`codes`] makes crumbkit's own failure codes public constants
   and lists them in `codes::ALL`, so a tool's test can name them
   ([behaviour/failures]).
@@ -258,9 +245,8 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit-test: [`check_opt_outs`] lists a guide without terminal detection
   as `terminal-detection/off`, with the tool's reason and its costs
   ([behaviour/output/terminal]).
-- crumbkit-test: [`check_recoveries`] takes the tool's guide and fails
-  before it runs anything on a guide with a failure form, unless an opt-out
-  from `Rule::Recoveries` names the root ([behaviour/failures/forms]).
+- crumbkit-test: [`check_recoveries`] takes the tool's guide
+  ([behaviour/checks/recovery-chains]).
 - crumbkit: the `complete` feature adds [`complete`], which answers a
   shell's completion request when `COMPLETE` names the shell, and
   `complete_to`. It follows clap_complete's unstable API, so a minor release
@@ -281,7 +267,7 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 - crumbkit: [`finish`] and [`stream`] print at most an output budget of
   1 MiB on standard output in one run. `Guide::output_budget` sets another
-  budget, and `CRUMBKIT_OUTPUT_BUDGET` only lowers it ([behaviour/output/budget]).
+  budget of any size, and `CRUMBKIT_OUTPUT_BUDGET` only lowers it ([behaviour/output/budget]).
 - crumbkit: a listing or list past the output budget prints the rows that
   fit and is marked with `cut`. Other results past it fail with
   `crumbkit::output::over_budget` ([behaviour/output/budget]).
@@ -308,22 +294,9 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   cut, and `--json` measures it with its base64 text ([behaviour/output/budget]).
 - crumbkit: the help of a leaf that prints [`Bytes`] says how its output
   prints, and `help::BYTES_LINE` holds that line ([behaviour/output]).
-- crumbkit: [`FailureForm`] gains the provided method `read`, which reads a
-  failed run's code and steps into a [`ReadFailure`] and returns `None` by
-  default ([behaviour/failures/forms]).
-- crumbkit: [`FailureForm`] gains the provided methods `entry` and
-  `entry_schema`, which write each entry of a batch's or a prose result's
-  `failures` and its schema in `schemas show`. The defaults keep crumbkit's
-  entry ([behaviour/failures/forms]).
-- crumbkit-test: the twin, example and recovery checks read each entry of a
-  batch's `failures` through the guide's `FailureForm::read`, and read an
-  entry that the form cannot read in crumbkit's shape ([behaviour/failures/forms]).
-- crumbkit: `Guide::json(JsonStyle::new().pretty(reason))` prints every
+- crumbkit: `Guide::json_layout(JsonLayout::Pretty { reason })` prints every
   whole JSON document indented by two spaces, and a stream keeps one
   document per line ([behaviour/output/json-layout]).
-- crumbkit: `Guide::json(JsonStyle::new().sorted())` prints the keys of
-  every JSON object in sorted order, in documents, stream lines, failures
-  and the JSON lines of text output ([behaviour/output/json-layout]).
 - crumbkit-test: [`check_opt_outs`] lists a guide's JSON layout as
   `json-layout/pretty`, with its reason and cost ([behaviour/output/json-layout]).
 - crumbkit: [`Listing::uncounted`] and [`Page::uncounted`] build a listing
@@ -344,8 +317,8 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   ([behaviour/checks/end-to-end]).
 - crumbkit-test: `Allow::example` opts one example out of
   [`check_examples`] and [`check_output_budget`] by its words ([behaviour/adoption/opt-outs]).
-- crumbkit: re-exports schemars as `crumbkit::schemars`, so a
-  `FailureForm` needs no schemars dependency of its own ([behaviour/failures/forms]).
+- crumbkit: re-exports schemars as `crumbkit::schemars`, the version whose
+  `Schema` crumbkit's API takes ([behaviour/schemas]).
 - crumbkit-test: `Examples::xdg` and `Failing::xdg` name a fixture that
   the checks copy into each run's fresh XDG directories, so a failing
   command can find a plugin or cache there ([behaviour/checks/end-to-end]).
@@ -358,8 +331,8 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   [`check_path_weights`] take `Pages`, whose `Pages::binary` reads each
   page from the tool's binary, for a tool that builds its help at run
   time. A tool passes the same `Pages` to all three ([behaviour/help/checks]).
-- crumbkit: [`ReadFailure`] carries the failure's fields, so a form's
-  `read` gives crumbkit-test the values that fill a recovery's
+- crumbkit: [`ReadFailure`] carries the failure's fields, so a
+  [`FailureReader`] gives crumbkit-test the values that fill a recovery's
   placeholders ([behaviour/checks/recovery-chains]).
 - crumbkit-test: [`check_twins`] runs every twin of a tool and fails on a
   declared code that no twin refuses and `Twins::unprovoked` does not list
@@ -368,8 +341,8 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   code that offers no `run`, `retry` or `hint` step, unless an opt-out from
   `Rule::NextStep` names the failing command ([behaviour/checks/recovery-chains]).
 - crumbkit-test: [`FailureReader`] and `Examples::failure_reader` let a
-  tool that prints its own failures without a failure form give the twin,
-  example and recovery checks its failures ([behaviour/failures/forms]).
+  tool that prints its own failures give the twin, example and recovery
+  checks its failures ([behaviour/failures/excerpts-and-readers]).
 - crumbkit-test: [`Allow::untwinned`] opts a declared code out of its twin
   with the `Failing` that provokes it, and [`check_twins`] runs that line
   ([behaviour/checks/end-to-end], [behaviour/adoption/opt-outs]).
@@ -487,14 +460,6 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   schema holds both as optional fields ([behaviour/output]).
 - crumbkit: the over-budget failure that ends a batch holds `left_out_from`,
   the index of the first key left out ([behaviour/output/budget]).
-- crumbkit-test: the failure reader and [`check_output_budget`] read a
-  batch's in-order array ([behaviour/output]).
-- crumbkit-test: [`check_guide`] fails a document that prints failures in
-  input order when its row type has a field named `schema` ([behaviour/output]).
-- crumbkit-test: [`check_opt_outs`] lists a document that prints failures
-  in input order under customisations ([behaviour/adoption/declarations]).
-- crumbkit: `PreparedFailure::key` and `PreparedFailure::index` give a
-  failure form a batch failure's key and index ([behaviour/failures/forms]).
 - crumbkit: [`events::observe`] installs one run observer for the process,
   which `parse`, `finish`, streams and child processes tell what the run
   did, and the usage log is such an observer ([`events`], [behaviour/run-observer]).
@@ -510,23 +475,6 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   code ([behaviour/adoption/declarations]).
 - crumbkit-test: [`check_opt_outs`] lists each leaf's code renames as
   customisations of the leaf's command ([behaviour/adoption/declarations]).
-- crumbkit: `Guide::field_names` lists failure field names that come from
-  another system, such as `requestId`. `finish` and `stream` keep a field
-  with a listed name, and the served failure schema accepts the listed
-  names ([behaviour/failures]).
-- crumbkit-test: [`check_guide`] reports a listed field name that is empty,
-  holds whitespace or a control character, is listed twice, or already
-  follows the name rule ([behaviour/failures]).
-- crumbkit-test: [`check_opt_outs`] lists the guide's field names as the
-  `field-names` customisation of every run
-  ([behaviour/adoption/declarations]).
-- crumbkit: `schemas list` shows a document with declared keys as the kind
-  `own-envelope`, and its schema names the declared keys
-  ([behaviour/schemas/commands]).
-- crumbkit-test: [`check_opt_outs`] lists a document's declared keys as an
-  `envelope-keys` customisation, and [`check_examples`],
-  [`check_output_budget`] and the failure reader read the declared keys
-  ([behaviour/adoption/declarations]).
 - crumbkit-core: `Headed` and `Document::headed` mark a batch whose rows
   hold bytes, and `finish` prints each row's bytes as `head` prints files,
   under a `==> KEY <==` header when there are several keys
@@ -562,14 +510,6 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   names no columns and has fields, and [`check_document_ids`] requires an
   opt-out from `documents/rows-whole` for a leaf whose row type sets
   `Row::WHOLE` ([behaviour/adoption/opt-outs]).
-- crumbkit: `Document::left_out_per_key` gives each answer that the output
-  budget leaves out of a batch its own over-budget failure at its key's
-  position, whose recovery runs the command with that key
-  ([behaviour/output/budget]).
-- crumbkit-test: [`check_opt_outs`] lists `Document::left_out_per_key` as a
-  `left-out-per-key` customisation. [`check_output_budget`] accepts an
-  over-budget failure that other failures follow, and expects the exit of
-  the first failure in key order ([behaviour/output/budget]).
 - crumbkit: a [`Row`] that declares `LINE` and `text_line` prints each row
   as its own line in text, with no header. `--long` and `--fields` print the
   table, and help prints a `Text:` line ([behaviour/output]).
@@ -586,9 +526,6 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   non-empty line or that belongs to a headed leaf, and [`check_opt_outs`]
   lists a `text-line` customisation ([behaviour/help/examples]).
 
-- crumbkit-test: [`check_opt_outs`] lists sorted JSON keys as the
-  `json-keys` customisation of every run
-  ([behaviour/adoption/declarations]).
 - crumbkit: [`Prose`] and [`Batch`] take a `note`, which text prints on
   standard error where a listing's note prints, before any failures, and
   which the JSON document leaves out ([behaviour/output/listings]).
@@ -649,7 +586,7 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   code in its reports its meaning ([behaviour/failures/exit-codes]).
 - crumbkit: [`complete_to`] takes the function that builds the command from
   the typed words in place of a built command ([behaviour/parsing/completion]).
-- crumbkit-test: [`check_opt_outs`] lists the failure form, code renames,
+- crumbkit-test: [`check_opt_outs`] lists code renames,
   exits of crumbkit's codes, passes-on-exit leaves and refusal alternatives
   under a customisations section without reasons, as a `customisations`
   JSON array, and leaves the section out when empty ([behaviour/adoption/declarations]).
@@ -657,8 +594,7 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   the guide declares for the run's first failure, and the usage log and
   the `crumbkit.finish` span record that number ([behaviour/failures/exit-codes]).
 - crumbkit-test: [`check_twin`] takes the tool's guide as its first
-  argument and reads a refused run through the guide's failure form
-  ([behaviour/failures/forms]).
+  argument ([behaviour/checks/end-to-end]).
 - crumbkit-test: [`check_recoveries`] fills a placeholder from the `fields`
   of the failure that offers the step before it reads `Recoveries::values`
   ([behaviour/checks/recovery-chains]).
@@ -759,10 +695,6 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit-test: [`check_examples`] compares an example's standard error
   with its `.stderr` golden file, and fails on standard error only for a
   `warning: crumbkit ` line ([behaviour/checks/end-to-end]).
-- crumbkit-test: [`check_twin`], [`check_recoveries`] and [`check_examples`]
-  read a failed run through `FailureForm::read`, and [`check_recoveries`]
-  runs a guide with a failure form instead of failing before any run
-  ([behaviour/failures/forms]).
 - cargo-crumbkit: `weigh` adds the size of an example's `.stderr` golden
   file to the command's output weight ([behaviour/help/weight]).
 - crumbkit: every listing's JSON document holds `truncated`, which is true
@@ -792,8 +724,8 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit-test: [`check_recoveries`] fills a lowercase placeholder such
   as `<path>` from the value of the same name ([behaviour/checks/recovery-chains]).
 - crumbkit-test: [`check_recoveries`] fills placeholders and reports
-  `recoveries/field-value` from the fields of the failure that a form or a
-  reader returns ([behaviour/checks/recovery-chains]).
+  `recoveries/field-value` from the fields of the failure that a reader
+  returns ([behaviour/checks/recovery-chains]).
 - crumbkit-test: [`check_recoveries`] follows every failure that a run
   prints, such as each entry of a batch, and a start passes when any of
   its failures carries its code ([behaviour/checks/recovery-chains]).
@@ -801,10 +733,7 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   of every earlier failure of its chain, so a chain that returns to an
   earlier code through another code fails the check ([behaviour/checks/recovery-chains]).
 - crumbkit-test: [`check_recoveries`] reads a failed run's last `code:`
-  line when the run prints no failure document ([behaviour/failures/forms]).
-- crumbkit-test: [`check_twin`], [`check_examples`] and
-  [`check_recoveries`] fail when the guide sets a failure form and
-  `Examples` sets a failure reader ([behaviour/failures/forms]).
+  line when the run prints no failure document ([behaviour/failures/excerpts-and-readers]).
 - crumbkit-test: [`check_twins`] adds `--json` to both lines of each twin
   when neither line holds it, as [`check_recoveries`] does, so a tool's
   reader sees the failure an agent reads ([behaviour/checks/end-to-end]).
@@ -869,8 +798,8 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   declaration and each command that answers to its dashed form as
   customisations ([behaviour/adoption/declarations]).
 - crumbkit: [`ReadFailure`] holds each field as a `FieldValue`, so a
-  form's `read` gives back a null, list or object field as the failure
-  held it ([behaviour/failures/forms]).
+  [`FailureReader`] gives back a null, list or object field as the failure
+  held it ([behaviour/failures/excerpts-and-readers]).
 - crumbkit: [`help::RuntimeLeaf`] no longer implements `PartialEq` and
   `Eq`, because it holds the function of its refusal alternatives.
 - crumbkit-test: `RuntimeFailing::at` returns a `RuntimePlace`, which has
@@ -881,8 +810,6 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit: `Guide::printed` and `Guide::failure_exit` take the command
   path of the run, because a leaf's renames apply to its own command
   ([behaviour/adoption/declarations]).
-- crumbkit: the debug-build warning for a field with a bad name says that
-  `Guide::field_names` does not list the name ([behaviour/failures]).
 - crumbkit-core: the schema of [`Bytes`] is one object with `text` and
   `base64` and a `oneOf` that requires one of them, so a flattened `Bytes`
   field lists both among the row's properties ([behaviour/schemas]).
@@ -895,19 +822,9 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit: [`finish_to`] returns the exit code as a `u8`, and `Stop::number`
   gives the exit code of a run that `parse` ended as a `u8`, so a tool can
   record the code before it exits ([behaviour/output]).
-- crumbkit: `Guide::output_budget` takes any budget of at least 1 byte and
-  panics only on 0, so a tool's tests can show a cut result with a few short
-  rows ([behaviour/output/budget]).
-- crumbkit: a batch marked with `Document::left_out_per_key` always gives
-  each answer left out its own failure, and its JSON can pass the output
-  budget by their size. The fallback to one failure is removed
-  ([behaviour/output/budget]).
 - crumbkit: the one over-budget failure of a batch names every key left out
   when the first row and a failure that names no key already pass the budget
   ([behaviour/output/budget]).
-- crumbkit-test: the `left-out-per-key` customisation of [`check_opt_outs`]
-  says that the document can pass the budget by the size of its failures
-  ([behaviour/adoption/declarations]).
 - crumbkit: [`events::observe`] installs up to four observers, and each
   report reaches every installed observer in install order. A tool's own
   observer and the usage log both hear each run ([behaviour/run-observer]).
@@ -931,9 +848,6 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   because every `Output` holds a command ([crumbkit-aliases]).
 - crumbkit: `events::observer` is gone, because a process can hold several
   observers ([behaviour/run-observer]).
-- crumbkit-test: `Rule::FailureForm` is gone. A failure form is a
-  declaration, and [`check_document_ids`] no longer asks for an opt-out
-  with a reason ([behaviour/adoption/declarations]).
 - crumbkit-test: `Rule::DocumentName` is gone. A document named other than
   its command's path is a declaration, which [`check_document_ids`]
   accepts and [`check_opt_outs`] lists as a `document-name` customisation
@@ -941,8 +855,6 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit: `help::split` is gone. [`check_recoveries`] reads a recovery's
   words with its own private reading, which also reads double-quoted words
   and refuses a `$` or a backtick between double quotes ([behaviour/checks/recovery-chains]).
-- crumbkit-test: `Examples::failure_form` is gone, because [`check_twin`]
-  reads the failure form from the tool's guide ([behaviour/failures/forms]).
 - crumbkit-core: `Document::over_budget` and `Document::over_budget_code`
   are gone, because a rename of `crumbkit::output::over_budget` in
   `Guide::codes` sets the code for every document ([behaviour/output/budget]).
@@ -1142,9 +1054,7 @@ rustdoc, or at the page in docs/ that describes the behaviour. -->
 [crumbkit-picker]: crates/crumbkit-picker/README.md
 [crumbkit-markdown]: crates/crumbkit-markdown/README.md
 [`check_command_reference`]: crates/crumbkit-test/src/reference.rs
-[`FailureForm`]: crates/crumbkit/src/form.rs
 [`ReadFailure`]: crates/crumbkit/src/form.rs
-[`PreparedFailure`]: crates/crumbkit/src/output/failure/prepared.rs
 [`codes`]: crates/crumbkit/src/codes.rs
 [`check_recoveries`]: crates/crumbkit-test/src/recoveries.rs
 [`check_twin`]: crates/crumbkit-test/src/twins.rs
@@ -1165,7 +1075,7 @@ rustdoc, or at the page in docs/ that describes the behaviour. -->
 [behaviour/effects/write-guards]: docs/behaviour/effects/write-guards.md
 [behaviour/failures]: docs/behaviour/failures/README.md
 [behaviour/failures/exit-codes]: docs/behaviour/failures/exit-codes.md
-[behaviour/failures/forms]: docs/behaviour/failures/forms.md
+[behaviour/failures/excerpts-and-readers]: docs/behaviour/failures/excerpts-and-readers.md
 [behaviour/help]: docs/behaviour/help/README.md
 [behaviour/help/checks]: docs/behaviour/help/checks.md
 [behaviour/help/commands-list]: docs/behaviour/help/commands-list.md

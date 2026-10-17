@@ -2,10 +2,10 @@
 
 This page covers how a JSON document is laid out: one line by default, or
 indented when the tool sets a layout, and the order of the keys of each
-object. A tool sets both with one
-[`JsonStyle`](../../../crates/crumbkit/src/output/layout.rs), which
-[`Guide::json`](../../../crates/crumbkit/src/help/output.rs) takes, such as
-`Guide::new().json(JsonStyle::new().pretty(reason).sorted())`. Their
+object. A tool sets the layout with a
+[`JsonLayout`](../../../crates/crumbkit/src/output/layout.rs), which
+[`Guide::json_layout`](../../../crates/crumbkit/src/help/output.rs) takes,
+such as `Guide::new().json_layout(JsonLayout::Pretty { reason })`. Their
 rustdoc describes the settings themselves.
 
 ## One line by default
@@ -19,21 +19,20 @@ line read.
 The `--json` help text says `Print the result as a JSON document` and names
 no layout, because the layout belongs to the tool.
 
-Why: ADR-0052, ADR-0073.
+Why: ADR-0052, ADR-0081.
 
 ## The indented layout
 
 A tool whose readers need indented JSON sets
-`Guide::json(JsonStyle::new().pretty(reason))`, whose layout is
-`JsonLayout::Pretty { reason }`. crumbkit then puts each
+`Guide::json_layout(JsonLayout::Pretty { reason })`. crumbkit then puts each
 field and each item of a whole document on a line of its own, indented by
 two spaces for each level, byte for byte as serde_json's pretty formatter
 writes it. The setting applies at a terminal and through a pipe alike, so
 OUTPUT-1 holds.
 
 The setting covers the envelope, a document with
-`Envelope::Without`, the failure document, a refusal's failure
-document and the document of a [failure form](../failures/forms.md). A
+`Envelope::Without`, the failure document and a refusal's failure
+document. A
 [stream](streams.md) prints one document per line in every layout, including
 a failure that ends the stream, because a reader of JSON Lines reads one line
 at a time.
@@ -65,21 +64,8 @@ Why: ADR-0052, ADR-0036.
 
 ## Key order
 
-By default, each JSON object prints its keys in the order that its value
-serializes them, so the envelope's type key comes first. A tool whose
-readers expect sorted keys sets `Guide::json(JsonStyle::new().sorted())`, and
-crumbkit sorts the keys of every object at every depth by Rust's `str`
-comparison, so `base64` prints before `blob`. The order covers every JSON
-document and JSON line on standard output, including failures, failure
-forms, stream lines and the JSON lines of text output, in either layout. It
-changes no byte count, so the [output budget](budget/README.md) cuts at the
-same rows.
+Each JSON object prints its keys in the order that its value serializes
+them, so the envelope's `schema` comes first and a row's fields follow their
+declaration order. crumbkit offers no other order.
 
-crumbkit sorts through a `serde_json::Value`, so a document that holds an
-integer outside the ranges of `i64` and `u64` fails as a failed write that
-exits with 1.
-
-The order is a [declaration](../adoption/declarations.md) with no reason,
-and `check_opt_outs` lists it as the `json-keys` customisation.
-
-Why: ADR-0067, ADR-0073.
+Why: ADR-0081.
