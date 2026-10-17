@@ -41,9 +41,9 @@ shelf books list --limit 101
 
 shelf books show
   fails with crumbkit::cli::usage
-  run shelf books show -h
-    exits 0
   run shelf books list
+    exits 0
+  run shelf books show -h
     exits 0
 
 shelf books show 1 2 3 4 5 6 (with CRUMBKIT_OUTPUT_BUDGET=400)

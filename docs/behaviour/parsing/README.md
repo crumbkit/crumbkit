@@ -106,7 +106,9 @@ rustdoc of `parse_to` states the message and the recovery.
   argument; `value`, its refused value; and `subcommand`, an unknown
   subcommand, in that order. A refused `--limit` above its bound adds
   `most` ([listings](../output/listings/README.md#an-upper-bound-on---limit)).
-- The recovery runs the `-h` of the deepest typed command, even a hidden one.
+- The recovery runs the `-h` of the deepest typed command, even a hidden
+  one, unless the tool's refusal function returns a call that renders and
+  parses ([refused command lines](../failures/README.md#refused-command-lines)).
 
 The walk that finds the deepest command also finds `--json`, which makes a
 refusal print as a JSON document. It counts the word only where it reads it

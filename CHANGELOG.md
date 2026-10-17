@@ -426,9 +426,9 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   variable that the tool names, and the registration script and the usage
   log use that name ([behaviour/parsing/completion], [behaviour/adoption/declarations]).
 - crumbkit: `Leaf::refusal_alternatives` takes a function that builds
-  calls from a refused command line naming the leaf, such as the line with
-  the refused value corrected, and the refusal offers each call whose line
-  parses after crumbkit's own alternatives ([behaviour/adoption/declarations]).
+  calls from a refused command line naming the leaf, such as the corrected
+  line. The first call whose line parses becomes the recovery, before `-h`
+  ([behaviour/adoption/declarations]).
 - crumbkit: with `Guide::dashed_forms`, a command named in another style,
   such as `reading_lists`, also answers to its dashed form, such as
   `reading-lists`, in [`parse`], completion and [`command_path`], and

@@ -141,7 +141,8 @@ that the command or another typed view flag rules out fail with the one
 fixed code `crumbkit::cli::usage`. Their fields name the refused `argument`,
 its `value` or the unknown `subcommand`, as clap reports them. A refused
 command line's recovery runs the `-h` of the deepest typed command, even a
-hidden one, except for a `--limit` above its
+hidden one, unless the tool's function below returns a call that it keeps or
+the line sets a `--limit` above its
 [bound](../output/listings/README.md#an-upper-bound-on---limit). A refused
 command line exits with 2 unless the guide lists another code
 ([exit codes](exit-codes.md)).
@@ -150,15 +151,19 @@ A leaf may declare a function with `Leaf::refusal_alternatives` that builds
 calls from a refusal of a command line that reaches the leaf, such as the
 refused line with the refused value corrected. A guide may declare one such
 function with `Guide::refusal_alternatives` for every command whose leaf sets
-none, and a leaf's own function replaces it. The refusal offers each call
-that renders and whose line parses, after crumbkit's own alternatives. It
-leaves out the others with no warning and no trace event, so a function may
-return a correction that it has not checked, and a trace never holds the
-caller's values.
+none, and a leaf's own function replaces it. The refusal keeps each call
+that renders and whose line parses, in the order that the function returned
+them. The first kept call becomes the recovery, and the `-h` call becomes
+the first alternative, followed by the other kept calls. With no kept call,
+the `-h` call stays the recovery. A `--limit` above its bound keeps its
+`--all` recovery and offers the kept calls after crumbkit's own
+alternatives. The refusal leaves out the calls that it does not keep with no
+warning and no trace event, so a function may return a correction that it
+has not checked, and a trace never holds the caller's values.
 
 [Parsing](../parsing/README.md) covers when `parse` refuses a command line.
 
-Why: ADR-0001, ADR-0056, ADR-0030.
+Why: ADR-0001, ADR-0056, ADR-0030, ADR-0078.
 
 ## The `miette` feature
 

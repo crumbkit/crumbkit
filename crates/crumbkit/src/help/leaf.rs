@@ -84,7 +84,7 @@ pub struct Leaf {
     /// the command exits as the guide's exits declare.
     passes_on_exit: Option<&'static str>,
     /// The function that builds the calls that a refusal of a command line
-    /// that names the command offers after crumbkit's own alternatives.
+    /// that names the command offers as its recovery and alternatives.
     refusal_alternatives: Option<fn(&RefusalContext<'_>) -> Vec<Call>>,
     /// The tool's own codes for crumbkit's failures in the command's runs
     /// (ADR-0060).

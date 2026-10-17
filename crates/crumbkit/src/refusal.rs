@@ -33,7 +33,8 @@ pub(crate) struct Refusal {
 impl Refusal {
     /// Returns the refusal of a command line that clap refused with
     /// `error`, which says `message` and whose recovery runs the `-h` of the
-    /// command at `path`, the names of the subcommands from the root. Its
+    /// command at `path`, the names of the subcommands from the root, unless
+    /// `declared` below holds a call. Its
     /// fields name what `error` names, as [`clap_fields`] reads them.
     ///
     /// When `error` refuses a `--limit` above the bound of a page, and
@@ -42,9 +43,12 @@ impl Refusal {
     /// alternative runs them with `--limit` set to the bound, and the field
     /// `most` names the bound (ADR-0050).
     ///
-    /// `declared`, the calls that the function of the leaf at `path`
-    /// returned and that render and parse, follow crumbkit's own
-    /// alternatives (ADR-0056).
+    /// `declared` holds the calls that the function of the leaf at `path`
+    /// returned and that render and parse, in the function's order. For a
+    /// `--limit` above its bound they follow crumbkit's own alternatives
+    /// (ADR-0056). Otherwise the first of them becomes the recovery, and the
+    /// `-h` call becomes the first alternative, followed by the rest of
+    /// them (ADR-0078). With no such call, the `-h` call stays the recovery.
     pub(crate) fn command_line(
         message: String,
         path: Vec<String>,
@@ -53,7 +57,7 @@ impl Refusal {
         declared: Vec<Call>,
     ) -> Self {
         let fields = clap_fields(error);
-        let declared = declared.into_iter().map(Recovery::Run);
+        let mut declared = declared.into_iter().map(Recovery::Run);
         let above =
             std::error::Error::source(error).and_then(|source| source.downcast_ref::<LimitAbove>());
         if let Some(above) = above
@@ -69,10 +73,15 @@ impl Refusal {
                 most: Some(above.most),
             };
         }
+        let help = Recovery::Run(Call::help(path));
+        let (recovery, alternatives) = match declared.next() {
+            Some(first) => (first, std::iter::once(help).chain(declared).collect()),
+            None => (help, Vec::new()),
+        };
         Self {
             message,
-            recovery: Recovery::Run(Call::help(path)),
-            alternatives: declared.collect(),
+            recovery,
+            alternatives,
             fields,
             most: None,
         }

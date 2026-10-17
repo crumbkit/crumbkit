@@ -1,4 +1,4 @@
 error: unexpected value '1' for '<ID>...' found; no more were expected
-  help:  run `shelf books show -h`
   help:  run `shelf books list`
+  help:  run `shelf books show -h`
   code:  crumbkit::cli::usage

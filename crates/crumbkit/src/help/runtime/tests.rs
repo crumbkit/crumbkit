@@ -122,7 +122,7 @@ fn list_moons(_: &RefusalContext<'_>) -> Vec<Call> {
 }
 
 #[test]
-fn a_refusal_of_a_runtime_leafs_command_offers_its_alternatives_and_prints_the_guides_rename() {
+fn a_refusal_of_a_runtime_leafs_command_recovers_with_its_functions_call_and_prints_the_rename() {
     let name = String::from("moons");
     let tool = Command::new("tool").subcommand(
         Command::new(name.clone())
@@ -145,7 +145,9 @@ fn a_refusal_of_a_runtime_leafs_command_offers_its_alternatives_and_prints_the_g
     assert_eq!(result.err().map(ExitCode::from), Some(ExitCode::from(2)));
     let text = String::from_utf8(err).unwrap();
     assert!(
-        text.contains("  help:  run `tool moons list`\n  code:  tool::cli::bad_line\n"),
+        text.contains(
+            "  help:  run `tool moons list`\n  help:  run `tool moons show -h`\n  code:  tool::cli::bad_line\n"
+        ),
         "{text}"
     );
 }

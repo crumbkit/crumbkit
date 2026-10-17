@@ -1,7 +1,7 @@
-//! The alternatives that a refusal of a leaf's command line offers after
-//! crumbkit's own, which a function of the tool builds from the refusal,
-//! set on the leaf or on the guide for every leaf that sets none
-//! (ADR-0056).
+//! The calls that a refusal of a leaf's command line offers as its
+//! recovery and alternatives, which a function of the tool builds from the
+//! refusal, set on the leaf or on the guide for every leaf that sets none
+//! (ADR-0056, ADR-0078).
 
 use std::ffi::OsString;
 
@@ -99,8 +99,8 @@ impl<'a> RefusalContext<'a> {
 
 impl Leaf {
     /// Sets the function that builds the calls that a refusal of a command
-    /// line that names the command offers as alternatives, after the
-    /// alternatives that crumbkit works out itself (ADR-0056).
+    /// line that names the command offers as its recovery and alternatives
+    /// (ADR-0056, ADR-0078).
     ///
     /// A tool that knows a better next step than crumbkit's declares it
     /// here, such as listing the ids that `books show` takes, or the
@@ -125,12 +125,20 @@ impl Leaf {
     ///
     /// A command line names the command when its words reach it, so a
     /// misspelt subcommand below its parent names the parent and calls no
-    /// function. The refusal keeps its recovery, its code and its exit code.
-    /// crumbkit renders each returned call against the command tree, and
-    /// parses the line of each call that holds no placeholder from
+    /// function. crumbkit renders each returned call against the command
+    /// tree, and parses the line of each call that holds no placeholder from
     /// [`Call::arg`] as the run would. It leaves out a call that does not
     /// render or whose line does not parse, without a warning, so a
     /// function can return a correction that it has not checked.
+    ///
+    /// The first call that crumbkit keeps becomes the refusal's recovery in
+    /// place of the command's `-h`, and the `-h` call becomes the first
+    /// alternative, followed by the other kept calls in the order that the
+    /// function returned them. When crumbkit keeps no call, the `-h` call
+    /// stays the recovery. A `--limit` above its bound keeps its recovery,
+    /// which replaces `--limit` with `--all`, and offers the kept calls
+    /// after crumbkit's own alternatives. The refusal keeps its code and its
+    /// exit code.
     ///
     /// The leaf's function replaces the function of
     /// [`Guide::refusal_alternatives`] for this command line, and one that
@@ -163,8 +171,10 @@ impl Guide {
     /// A tool whose correction is one rule for every command, such as
     /// rewriting a refused value and keeping the corrected line when it
     /// parses, declares it here once. crumbkit treats the calls that it
-    /// returns as it treats a leaf's calls, and a leaf's own function
-    /// replaces this one for the leaf's command line:
+    /// returns as it treats a leaf's calls: the first call that renders and
+    /// whose line parses becomes the refusal's recovery in place of `-h`,
+    /// and the `-h` call becomes the first alternative. A leaf's own
+    /// function replaces this one for the leaf's command line:
     ///
     /// ```
     /// use crumbkit::Call;
