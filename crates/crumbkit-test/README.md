@@ -24,7 +24,7 @@ can run them without crumbkit's runtime:
 
 ```rust
 use clap::{Arg, ArgAction, Command};
-use crumbkit_test::{Budgets, Guide, Pages};
+use crumbkit_test::{Budgets, Pages};
 
 let tool = Command::new("shelf").subcommand(Command::new("books").subcommand(
     Command::new("list").arg(
@@ -33,12 +33,12 @@ let tool = Command::new("shelf").subcommand(Command::new("books").subcommand(
 ));
 
 crumbkit_test::check_filters(&tool, &[]);
-crumbkit_test::check_names(&tool, &Guide::new(), &[]);
+crumbkit_test::check_names(&tool, Pages::clap(), &[]);
 crumbkit_test::check_help_sizes(&tool, Pages::clap(), &Budgets::new());
 ```
 
-- Names: [`check_names`] and [`check_grammar`], which take an empty
-  [`Guide`].
+- Names: [`check_names`] and [`check_grammar`], which take
+  [`Pages::clap`] in place of a guide.
 - Arguments: [`check_listings`] and [`check_filters`].
 - Help pages: [`check_help_sizes`] with [`Budgets`], [`check_help_goldens`],
   and [`check_path_weights`] with [`PathBudgets::help_only`], each reading
@@ -95,7 +95,6 @@ option.
 [`check_help_sizes`]: src/sizes.rs
 [`Budgets`]: src/sizes.rs
 [`check_help_goldens`]: src/goldens.rs
-[`Guide`]: ../crumbkit/src/help.rs
 [`Pages::clap`]: src/pages.rs
 [`Pages::rendered`]: src/pages.rs
 [`Pages::binary`]: src/pages.rs

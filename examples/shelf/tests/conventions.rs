@@ -49,14 +49,14 @@ const EXAMPLES: Examples<'_> =
 
 #[test]
 fn every_command_and_argument_has_one_name() {
-    crumbkit_test::check_names(&Cli::command(), &GUIDE, ALLOW);
+    crumbkit_test::check_names(&Cli::command(), Pages::rendered(&GUIDE), ALLOW);
 }
 
 #[test]
 fn every_command_is_a_resource_followed_by_list_show_summarize_usage_or_remove() {
     crumbkit_test::check_grammar(
         &Cli::command(),
-        &GUIDE,
+        Pages::rendered(&GUIDE),
         &["summarize", "usage", "remove"],
         ALLOW,
     );
