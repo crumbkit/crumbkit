@@ -18,3 +18,4 @@ in place of crumbkit's failure document.
 - [ADR-0082. View flags on a failed run](0082-view-flags-on-a-failed-run.md)
 - [ADR-0086. A tool sets its spelling on its guide](0086-spelling-on-the-guide.md)
 - [ADR-0088. Public items that a tool calls restored](0088-public-items-that-a-tool-calls-restored.md)
+- [ADR-0089. Exit numbers and owned codes restored](0089-exit-numbers-and-owned-codes-restored.md)

@@ -342,3 +342,28 @@ fn check_twins_passes_a_refused_line_in_the_guides_custom_spelling_and_fails_one
     assert!(message.contains("books show 8"), "{message}");
     assert!(message.contains("tool.books.unreadable"), "{message}");
 }
+
+#[test]
+fn a_twin_check_built_from_owned_codes_requires_a_twin_for_each_code_it_holds() {
+    let dir = TempDir::new("twins-owned-codes").unwrap();
+    dir.write_script("tool", SCRIPT);
+    let path = dir.path().join("tool").display().to_string();
+    let codes: Vec<Code> = vec![NOT_FOUND, UNREADABLE, REMOVED];
+    let unprovoked = [Unprovoked::from_code(
+        codes[2],
+        "Only a book file that disappears provokes it.",
+    )];
+    let twins = Twins::from_codes(Examples::new(&path, ""), &codes)
+        .pairs(&[SHOW_7])
+        .unprovoked(&unprovoked);
+
+    let problems = panic_message(|| check_twins(&tree(), &Guide::new(), &twins));
+
+    assert_eq!(
+        problems.as_deref(),
+        Some(
+            "the tool's twins break crumbkit's twin rule:\n\
+             tool::books::unreadable: no twin refuses the declared code, Twins::unprovoked does not list it, and no opt-out made with Allow::untwinned names it"
+        )
+    );
+}

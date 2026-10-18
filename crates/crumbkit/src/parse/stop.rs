@@ -46,11 +46,11 @@ impl Stop {
     }
 
     /// Returns the exit code that [`Stop::code`] returns, as a number, such
-    /// as the code that the guide lists for a refused command line. The
-    /// run's trace span and crumbkit's tests read it, because `ExitCode`
-    /// cannot be read back as a number.
-    #[cfg(any(test, feature = "tracing"))]
-    pub(crate) const fn number(&self) -> u8 {
+    /// as the code that the guide lists for a refused command line. A tool
+    /// that records the exit of a stopped run, or passes it on, reads it
+    /// here, because `ExitCode` cannot be read back as a number.
+    #[must_use]
+    pub const fn number(&self) -> u8 {
         self.code
     }
 

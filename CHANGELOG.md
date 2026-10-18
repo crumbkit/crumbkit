@@ -213,6 +213,11 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit: [`Code::runtime`] builds a code known only at run time, and
   `Spelling::split` reads a code in `Spelling::COLONS` back into its
   segments ([behaviour/failures]).
+- crumbkit: `Stop::number` returns a stopped run's exit code as a number
+  ([behaviour/parsing]).
+- crumbkit-test: `Recoveries::from_codes`, `Twins::from_codes` and
+  `Unprovoked::from_code` take codes held by value, such as run-time codes
+  ([behaviour/failures]).
 - crumbkit-markdown: the new crate's `render` writes a Markdown reference
   of every command of a tool from its `commands list --all --json --full`
   document ([crumbkit-markdown], [behaviour/help/reference]).

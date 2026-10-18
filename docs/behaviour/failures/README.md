@@ -166,13 +166,21 @@ from that call, so it splits the text itself before it calls
 `check_codes` cannot list a run-time code, so such a failure supplies its own
 recovery. `check_recoveries` does not follow the recovery of a code from a
 component that no declared code has, such as a plugin's, and counts such
-codes in its report. It reports a code from a declared component that no
-`CODES` list holds. It finds a printed code's component from the text that
+codes in its report. It reports a code from a declared component that is
+not declared. It finds a printed code's component from the text that
 the spelling writes before the area, as
 [recovery chains](../checks/recovery-chains.md) describes. A run-time code
 cannot be listed by an [exit](exit-codes.md), so its failure exits with 1.
 
-Why: ADR-0001, ADR-0037, ADR-0085, ADR-0088.
+A tool whose tests hold its declared codes by value, such as a `Vec<Code>`
+built from `Code::runtime`, passes them to `Recoveries::from_codes` and
+`Twins::from_codes`, and lists a code that no test provokes with
+`Unprovoked::from_code`. These constructors take the owned codes directly.
+`Recoveries::new` and `Twins::new` take a slice of lists of references, so
+with them the tool first collects a `Vec<&Code>` from its codes and wraps
+it in an outer slice.
+
+Why: ADR-0001, ADR-0037, ADR-0085, ADR-0088, ADR-0089.
 
 ## Refused command lines
 
