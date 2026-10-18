@@ -39,7 +39,6 @@ impl TempDir {
     }
 
     /// Returns the directory's path.
-    #[cfg(test)]
     pub(crate) fn path(&self) -> &Path {
         &self.path
     }

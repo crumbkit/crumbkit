@@ -129,6 +129,84 @@ impl<'a> Location<'a> {
     }
 }
 
+/// The directory that a run starts in, as a tool's settings name it.
+#[derive(Clone, Copy, Debug)]
+pub(crate) enum Dir<'a> {
+    /// A directory that every run starts in, which
+    /// [`Examples::current_dir`](crate::Examples::current_dir),
+    /// [`Failing::dir`](crate::Failing::dir) or
+    /// [`RuntimeFailing::dir`](crate::RuntimeFailing::dir) names.
+    Fixed(Location<'a>),
+    /// A fixture that each run, or each recovery chain, starts in a new
+    /// copy of, which [`Examples::fresh_dir`](crate::Examples::fresh_dir)
+    /// names.
+    Fresh(&'a str),
+}
+
+/// The working directory of one run, or of every run of one recovery chain:
+/// none, a fixed directory, or a new copy of a fixture, which is deleted
+/// when the value drops.
+pub(crate) struct WorkDir {
+    /// The directory's path, or `None` for the test's directory.
+    path: Option<PathBuf>,
+    /// The new copy of a fixture, which owns the directory of `path`.
+    fresh: Option<TempDir>,
+}
+
+impl WorkDir {
+    /// Returns the working directory that `dir` names. For a fixture, it
+    /// creates a new temporary directory whose name ends with `label` and
+    /// copies the fixture into it, or returns the problem when the directory
+    /// cannot be created or a file cannot be copied.
+    pub(crate) fn new(label: &str, dir: Option<Dir<'_>>) -> Result<Self, String> {
+        match dir {
+            None => Ok(Self {
+                path: None,
+                fresh: None,
+            }),
+            Some(Dir::Fixed(path)) => Ok(Self {
+                path: Some(path.path().to_path_buf()),
+                fresh: None,
+            }),
+            Some(Dir::Fresh(fixture)) => {
+                let problem = |error| {
+                    format!(
+                        "the fixture `{fixture}` of Examples::fresh_dir cannot be copied: {error}"
+                    )
+                };
+                let temp = TempDir::new(label).map_err(problem)?;
+                copy_tree(Path::new(fixture), temp.path()).map_err(problem)?;
+                Ok(Self {
+                    path: Some(temp.path().to_path_buf()),
+                    fresh: Some(temp),
+                })
+            }
+        }
+    }
+
+    /// Returns the directory's path, or `None` for the test's directory.
+    pub(crate) fn path(&self) -> Option<&Path> {
+        self.path.as_deref()
+    }
+
+    /// Returns the paths that the example check replaces with `[ROOT]`: the
+    /// path of a new copy and its canonical path, which differs where a
+    /// symbolic link leads to the temporary directory, as `/var` does on
+    /// macOS. A fixed directory and the test's directory have none.
+    pub(crate) fn fresh_paths(&self) -> Vec<PathBuf> {
+        let Some(temp) = &self.fresh else {
+            return Vec::new();
+        };
+        let mut paths = vec![temp.path().to_path_buf()];
+        if let Ok(canonical) = fs::canonicalize(temp.path())
+            && canonical != temp.path()
+        {
+            paths.push(canonical);
+        }
+        paths
+    }
+}
+
 /// The working directory and the standard input of a run. A run without a
 /// working directory starts in the directory of the test that runs it, and
 /// a run without standard input reads an empty one.

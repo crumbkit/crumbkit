@@ -28,6 +28,7 @@ mod layout;
 mod lines;
 mod listing;
 mod notes;
+mod plugin;
 mod problems;
 mod prose;
 #[cfg(feature = "miette")]

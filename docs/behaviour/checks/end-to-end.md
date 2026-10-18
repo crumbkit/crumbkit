@@ -14,8 +14,8 @@ guide, and its binary calls the library, as shelf's does.
 
 One [`Examples`](../../../crates/crumbkit-test/src/examples/settings.rs) value
 holds the settings that every such check shares: the binary, the golden
-directory, the environment, the working directory, the XDG fixture and the
-opt-outs.
+directory, the environment, the working directory or fresh fixture, the XDG
+fixture, the opt-outs and the failure reader.
 `check_examples`, `check_output_budget`, `check_twin`, `check_twins`,
 `check_recoveries` and `Pages::binary` all read it.
 
@@ -30,22 +30,25 @@ often each check makes a fresh copy of the directories that the settings name.
 | Setting | `check_examples`, `check_output_budget`, `Pages::binary` | `check_twin` | `check_recoveries` |
 | --- | --- | --- | --- |
 | Fresh XDG directories, from `Examples::xdg` or `Failing::xdg` | Each run | Each line | Once for each chain |
+| Copy of `Examples::fresh_dir` | Each run | Each line | Once for each chain |
 | `Examples::current_dir` | Every run starts there | A `Failing` without its own directory starts there | A `Failing` without its own directory starts there |
 
 A step of a recovery chain therefore sees what the earlier runs of its chain
 wrote. The checks do not copy the directory of `Examples::current_dir`, so
-an example or a recovery chain that writes a file writes it into that
-directory itself, and the next run, including the next run of the test,
-sees the file. A check fails without running anything when the directory of
-`Examples::current_dir` does not exist, and a run fails when an XDG fixture
-holds a symbolic link.
+an example or a recovery chain that writes a file there writes it into that
+directory itself, and the next run sees the file. A tool whose examples
+write files sets `Examples::fresh_dir` instead. `current_dir` and
+`fresh_dir` are one setting, and the later call wins. A check fails without
+running anything when the directory or fixture does not exist, and a run
+fails when a fixture holds a symbolic link.
 
 Each example reads the bytes of `<name>.stdin` in the golden directory on
 standard input, and a run without that file reads an empty standard input.
 `check_recoveries` runs each start and step with the working directory,
 standard input and XDG fixture described here.
 
-The check replaces the path of each fresh XDG directory with `[XDG_CONFIG_HOME]`,
+The check replaces the path of a fresh copy and its canonical path with
+`[ROOT]`, and the path of each fresh XDG directory with `[XDG_CONFIG_HOME]`,
 `[XDG_DATA_HOME]`, `[XDG_STATE_HOME]` or `[XDG_CACHE_HOME]`. An XDG fixture
 holds any of `config`, `data`, `state` and `cache`, and a fixture with any
 other entry fails the check before it runs anything. `Failing::xdg` names
@@ -53,7 +56,7 @@ the fixture of one chain and wins over the fixture of `Examples`. The
 variables of a `Failing` win over `Examples::env` and the check's XDG
 directories.
 
-Why: ADR-0005, ADR-0053, ADR-0085.
+Why: ADR-0005, ADR-0053, ADR-0088.
 
 ## Example runs
 
@@ -64,8 +67,8 @@ their own help lists them. The rustdoc of `check_examples` lists every
 problem it reports. These rules matter most to a tool's author:
 
 - A run that exits with a code other than 0 fails, and the problem names
-  the failure's code and steps, read from crumbkit's failure document or
-  its `code:` line.
+  the failure's code and steps, read through the `FailureReader` of
+  `Examples`, from crumbkit's failure document or from its `code:` line.
 - A run whose standard error holds a warning that crumbkit prints in a
   debug build fails, because such a warning marks a mistake in the tool.
   crumbkit's warnings start with `warning: <tool> left out `, such as

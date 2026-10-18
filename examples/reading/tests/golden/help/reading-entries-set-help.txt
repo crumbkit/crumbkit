@@ -41,8 +41,8 @@ Examples:
   reading entries set --list to-read --position 2 --expect 'Wuthering Heights' --dry-run 'Mary Barton'
           Print the entry that replacing entry 2 of the to-read list would write
 
-  reading entries set --list to-read --position 6 --expect none --dry-run Emma
-          Print the entry that appending Emma to the to-read list would write
+  reading entries set --list to-read --position 6 --expect none --yes Emma
+          Append Emma to the to-read list without asking
 
 Columns:
   position  The entry's position in the list, counting from 1.

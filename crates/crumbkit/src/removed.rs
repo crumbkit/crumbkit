@@ -2,7 +2,8 @@
 //! removed is absent. Each option that ADR-0081 removed reproduced the
 //! output shape of one adopting tool, and API-1 asks for a second use before
 //! such an option returns. ADR-0085 removed items that no tool or sibling
-//! crate called. rustdoc compiles each block below and passes only when the
+//! crate called, and ADR-0088 restored the ones that a tool outside this
+//! repository calls. rustdoc compiles each block below and passes only when the
 //! block fails to compile.
 //!
 //! A document cannot print its id and result under keys that the tool
@@ -37,8 +38,7 @@
 //! const GUIDE: Guide = Guide::new().field_names(&["requestId"]);
 //! ```
 //!
-//! A tool cannot implement a failure form of its own. ADR-0085 also removed
-//! the whole `form` module, so the path below no longer resolves at all:
+//! A tool cannot implement a failure form of its own:
 //!
 //! ```compile_fail
 //! use crumbkit::form::FailureForm;
@@ -79,18 +79,6 @@
 //!
 //! const BOOKS_SHOW: Document<Batch<Book, Error>> =
 //!     Document::new("shelf", "books-show", 1, "The books.").left_out_per_key();
-//! ```
-//!
-//! A tool cannot make a failure code from segments it learns at run time:
-//!
-//! ```compile_fail
-//! let _ = crumbkit::Code::runtime("plugin", "sync", "timed_out");
-//! ```
-//!
-//! crumbkit has no error type for a run-time code:
-//!
-//! ```compile_fail
-//! let _: Option<crumbkit::RuntimeCodeError> = None;
 //! ```
 //!
 //! A page does not compute the number of rows to fetch:
@@ -172,23 +160,6 @@
 //!
 //! ```compile_fail
 //! let _ = crumbkit::Spelling::SLASHES;
-//! ```
-//!
-//! A spelling does not read a spelled code back into its segments:
-//!
-//! ```compile_fail
-//! let _ = crumbkit::Spelling::COLONS.split("shelf::books::not_found");
-//! ```
-//!
-//! The failure that crumbkit-test reads back from a run is private to
-//! crumbkit-test:
-//!
-//! ```compile_fail
-//! let _ = crumbkit::form::ReadFailure::new(String::new(), Vec::new());
-//! ```
-//!
-//! ```compile_fail
-//! let _ = crumbkit::form::Step::Retry;
 //! ```
 //!
 //! A tool reads the bytes of a result through `Bytes::as_slice`:
