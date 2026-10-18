@@ -10,8 +10,7 @@ use super::{Finished, PLANET, PLANETS, Tool, finish_output, saturn};
 use crate::Envelope;
 use crate::help::Guide;
 use crate::{
-    Call, Code, Document, Error, Failure, JsonLayout, Output, Recovery, Rows, Sink, Spelling,
-    finish_to,
+    Call, Code, Document, Error, Failure, JsonLayout, Output, Recovery, Rows, Sink, finish_to,
 };
 
 /// The guide of a tool whose readers expect indented JSON.
@@ -102,7 +101,7 @@ fn a_pretty_layout_indents_the_failure_document() {
     let mut sink = Sink::new(&mut out, &mut err);
     let result: Result<Vec<super::Planet>, Error> = Err(Error::from(Missing));
 
-    let code = finish_to(&mut sink, &mut output, Spelling::COLONS, PLANETS, result);
+    let code = finish_to(&mut sink, &mut output, PLANETS, result);
 
     assert_eq!(code, 1);
     let out = String::from_utf8(out).unwrap();

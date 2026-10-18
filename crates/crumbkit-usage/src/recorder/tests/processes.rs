@@ -145,7 +145,7 @@ fn the_stream_exit_test_s_child_streams_one_row_and_times_out() {
     typed(&command, &["watching".into()], Spelling::COLONS);
     let mut output = Output::new(ViewFlags::new(), command, &GUIDE, ["watching"]);
     let mut sink = Sink::new(Vec::new(), Vec::new());
-    let mut streaming = stream_to(&mut sink, &mut output, Spelling::COLONS, NUMBERS).unwrap();
+    let mut streaming = stream_to(&mut sink, &mut output, NUMBERS).unwrap();
     let _ = streaming.item(&Numbered { number: 1 });
     let code = streaming.end(Err(TimedOut));
     drop(log);

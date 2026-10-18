@@ -8,7 +8,7 @@ use clap::{CommandFactory as _, Parser, Subcommand};
 use super::{PLANETS, Planet, mercury};
 use crate::answered::answered;
 use crate::help::{Exit, Guide, Leaf, Rename};
-use crate::{Batch, Code, Document, Failure, Output, Prose, Recovery, Sink, Spelling, finish_to};
+use crate::{Batch, Code, Document, Failure, Output, Prose, Recovery, Sink, finish_to};
 
 const TIMED_OUT: Code = Code::new("solar", "charts", "timed_out");
 const NOT_FOUND: Code = Code::new("solar", "planets", "not_found");
@@ -70,13 +70,7 @@ fn finish<T: crate::Rows>(
 ) -> u8 {
     let mut out = Vec::new();
     let mut err = Vec::new();
-    finish_to(
-        &mut Sink::new(&mut out, &mut err),
-        output,
-        Spelling::COLONS,
-        document,
-        result,
-    )
+    finish_to(&mut Sink::new(&mut out, &mut err), output, document, result)
 }
 
 const PLANETS_SHOW: Document<Batch<Planet, Failed>> =
@@ -94,14 +88,12 @@ fn a_refusal_that_an_exit_lists_gives_its_stop_that_exit_as_a_number() {
         &mut Sink::new(&mut out, &mut err),
         Tool::command(),
         &REFUSALS,
-        Spelling::COLONS,
         ["tool", "lst"],
     );
     let admitted = crate::parse_to::<Tool, _, _, _, _>(
         &mut Sink::new(&mut out, &mut err),
         Tool::command(),
         &REFUSALS,
-        Spelling::COLONS,
         ["tool", "list"],
     );
 
@@ -168,7 +160,6 @@ fn a_renamed_crumbkit_failure_in_a_batch_prints_the_tool_s_code_and_exits_with_i
     let code = finish_to(
         &mut Sink::new(&mut out, &mut err),
         &mut output,
-        Spelling::COLONS,
         PLANETS_SHOW,
         Ok::<_, Failed>(batch),
     );
@@ -196,14 +187,12 @@ fn a_failure_of_a_leaf_that_renames_its_code_prints_the_leaf_s_code_and_exits_wi
         &mut sink,
         Tool::command(),
         &RENAMED,
-        Spelling::COLONS,
         ["tool", "list", "--json"],
     )
     .unwrap();
     let code = finish_to(
         &mut sink,
         &mut output,
-        Spelling::COLONS,
         PLANETS,
         Err(Failed(&crate::codes::VERSION_CONFLICT)),
     );
@@ -229,7 +218,6 @@ fn a_tool_that_parses_with_clap_alone_gets_the_renames_of_the_leaf_that_its_word
     let code = finish_to(
         &mut Sink::new(&mut out, &mut err),
         &mut output,
-        Spelling::COLONS,
         PLANETS,
         Err(Failed(&crate::codes::VERSION_CONFLICT)),
     );

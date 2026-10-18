@@ -3,8 +3,9 @@
 //! and keep crumbkit's behaviour, so they need no reason (ADR-0056).
 
 use clap::Command;
+use crumbkit::codes::CLI_USAGE;
 use crumbkit::help::{Guide, Leaf, Rename};
-use crumbkit::{Code, Spelling, ToolName};
+use crumbkit::{Code, Spelling};
 use serde::Serialize;
 
 use crate::allow::command_line;
@@ -24,7 +25,9 @@ pub(super) struct Customisation {
 }
 
 /// Returns the declarations of `guide` for the tool whose root command is
-/// `command`, in this order: each code rename, each exit that lists one of
+/// `command`, in this order: the guide's spelling when it spells crumbkit's
+/// usage code other than [`Spelling::COLONS`] does, each code rename, each
+/// exit that lists one of
 /// crumbkit's codes or the tool's rename of it, whether the guide declares
 /// refusal alternatives for every command, the [`Guide::dashed_forms`]
 /// declaration followed by each command that answers to its dashed form, as
@@ -42,8 +45,18 @@ pub(super) struct Customisation {
 pub(super) fn customisations(command: &Command, guide: &Guide) -> Vec<Customisation> {
     let every_run = format!("every run of {}", command.get_name());
     let tool = guide.tool_name(command);
-    let spell = |code: &Code| spell(tool, code);
+    let spelling = guide.get_spelling().for_tool(tool);
+    let spell = |code: &Code| spelling.spell(code);
     let mut list = Vec::new();
+    let colons = Spelling::COLONS.for_tool(tool).spell(&CLI_USAGE);
+    let usage = spell(&CLI_USAGE);
+    if usage != colons {
+        list.push(Customisation {
+            declaration: "code-spelling",
+            applies_to: every_run.clone(),
+            declares: format!("Runs print codes such as {usage} in place of {colons}."),
+        });
+    }
     for rename in guide.get_codes() {
         list.push(Customisation {
             declaration: "code-rename",
@@ -95,15 +108,16 @@ pub(super) fn customisations(command: &Command, guide: &Guide) -> Vec<Customisat
         list.extend(dashed_names(command));
     }
     for leaf in guide.get_leaves() {
-        list.extend(leaf_customisations(command, tool, leaf));
+        list.extend(leaf_customisations(command, spelling, leaf));
     }
     list
 }
 
 /// Returns the declarations of `leaf` in the tool whose root command is
-/// `command`, in the order that [`customisations`] lists them.
-fn leaf_customisations(command: &Command, tool: ToolName, leaf: &Leaf) -> Vec<Customisation> {
-    let spell = |code: &Code| spell(tool, code);
+/// `command`, in the order that [`customisations`] lists them, with each
+/// code in `spelling`.
+fn leaf_customisations(command: &Command, spelling: Spelling, leaf: &Leaf) -> Vec<Customisation> {
+    let spell = |code: &Code| spelling.spell(code);
     let mut list = Vec::new();
     let document = leaf.get_document();
     if let Some((document, name)) = document
@@ -205,11 +219,4 @@ fn crumbkit_code(
         let rename = leaf.get_codes().iter().find(renames_to)?;
         Some((rename.crumbkit(), Some(leaf.path())))
     })
-}
-
-/// Returns `code` spelled with colons, as crumbkit's records spell codes,
-/// with `tool`'s name in place of `crumbkit`. The report does not know the
-/// spelling that the tool passes to `finish`.
-fn spell(tool: ToolName, code: &Code) -> String {
-    Spelling::COLONS.for_tool(tool).spell(code)
 }

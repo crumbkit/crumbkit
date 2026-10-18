@@ -8,7 +8,7 @@ use clap::{Arg, ArgAction, Command};
 use super::Topic;
 use crate::help::{Exit, Guide, exit};
 use crate::twins::assert_one_word_apart;
-use crate::{Sink, Spelling, parse_to};
+use crate::{Sink, parse_to};
 
 /// A tool with a global flag and one group.
 fn tool() -> Command {
@@ -55,13 +55,8 @@ struct Printed {
 fn run(command: Command, guide: &Guide, args: &[&str]) -> Printed {
     let mut out = Vec::new();
     let mut err = Vec::new();
-    let result = parse_to::<(), _, _, _, _>(
-        &mut Sink::new(&mut out, &mut err),
-        command,
-        guide,
-        Spelling::COLONS,
-        args,
-    );
+    let result =
+        parse_to::<(), _, _, _, _>(&mut Sink::new(&mut out, &mut err), command, guide, args);
     Printed {
         code: result.err().map(ExitCode::from),
         out: String::from_utf8(out).unwrap(),

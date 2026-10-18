@@ -103,7 +103,7 @@ fn interrupted() -> ExitStatus {
 /// Returns what `respond_text` does for a child that ended with `status`.
 fn text(status: io::Result<ExitStatus>) -> Responded {
     let mut output = output(&[]);
-    respond(|sink| respond_text(sink, &mut output, Spelling::COLONS, "vi".to_owned(), status))
+    respond(|sink| respond_text(sink, &mut output, "vi".to_owned(), status))
 }
 
 /// Returns what `respond_json` does under `--json` and `flags` for a child
@@ -119,7 +119,6 @@ fn json(flags: &[&str], status: ExitStatus, stdout: &str) -> Responded {
         respond_json(
             sink,
             &mut output,
-            Spelling::COLONS,
             BOOKS,
             "vault-log".to_owned(),
             Ok(captured),
@@ -272,9 +271,9 @@ fn admits(refused: &[&str], flags: &[&str], json: bool) {
     let responded = respond(|sink| {
         let child = command(MISSING);
         if json {
-            hand_over_json_to(sink, &mut output, Spelling::COLONS, child, BOOKS_JSON)
+            hand_over_json_to(sink, &mut output, child, BOOKS_JSON)
         } else {
-            hand_over_to(sink, &mut output, Spelling::COLONS, child)
+            hand_over_to(sink, &mut output, child)
         }
     });
     let printed = format!("{}{}", responded.out, responded.err);
@@ -290,7 +289,7 @@ fn json_for_a_child_without_a_json_form_is_refused_with_no_json_before_it_runs()
     let mut output = output(&["--json"]);
     let responded = respond(|sink| {
         let child = command(MISSING);
-        hand_over_to(sink, &mut output, Spelling::COLONS, child)
+        hand_over_to(sink, &mut output, child)
     });
 
     assert_eq!(responded.code, ExitCode::from(2));
@@ -312,7 +311,7 @@ fn fields_without_json_are_refused_with_exit_code_2_before_the_child_runs() {
     let mut output = output(&["--fields", "title"]);
     let responded = respond(|sink| {
         let child = command(MISSING);
-        hand_over_json_to(sink, &mut output, Spelling::COLONS, child, BOOKS_JSON)
+        hand_over_json_to(sink, &mut output, child, BOOKS_JSON)
     });
 
     assert_eq!(responded.code, ExitCode::from(2));
@@ -334,7 +333,7 @@ fn an_unknown_field_under_json_is_refused_before_the_child_runs() {
     let mut output = output(&["--json", "--fields", "author"]);
     let responded = respond(|sink| {
         let child = command(MISSING);
-        hand_over_json_to(sink, &mut output, Spelling::COLONS, child, BOOKS_JSON)
+        hand_over_json_to(sink, &mut output, child, BOOKS_JSON)
     });
 
     assert_eq!(responded.code, ExitCode::from(2));
@@ -359,7 +358,7 @@ fn no_json_exit(guide: &'static Guide) -> ExitCode {
     let words = ["vault", "--json"];
     let view = Tool::try_parse_from(words).unwrap().view;
     let mut output = Output::new(view, Tool::command(), guide, words);
-    respond(|sink| hand_over_to(sink, &mut output, Spelling::COLONS, command(MISSING))).code
+    respond(|sink| hand_over_to(sink, &mut output, command(MISSING))).code
 }
 
 #[test]
@@ -367,4 +366,46 @@ fn a_child_that_cannot_answer_json_exits_as_the_guide_s_refused_command_line_unl
  {
     assert_eq!(no_json_exit(&USAGE_64), ExitCode::from(64));
     assert_eq!(no_json_exit(&NO_JSON_3), ExitCode::from(3));
+}
+
+/// A spelling that joins the segments of a code with `.`.
+const DOTS: Spelling =
+    Spelling::custom(|code, f| write!(f, "{}.{}.{}", code.component(), code.area(), code.reason()));
+
+/// Parses `vault` followed by `flags` into the output of the run, as a tool
+/// that parses with clap alone and sets the dotted spelling on its guide
+/// builds it.
+fn dotted(flags: &[&str]) -> Output {
+    const GUIDE: Guide = Guide::new().spelling(DOTS);
+    let words: Vec<&str> = ["vault"].iter().chain(flags).copied().collect();
+    let view = Tool::try_parse_from(&words).unwrap().view;
+    Output::new(view, Tool::command(), &GUIDE, words)
+}
+
+#[test]
+fn a_guide_with_a_custom_spelling_prints_it_through_hand_over_without_a_further_argument() {
+    let mut output = dotted(&["--json"]);
+
+    let responded = respond(|sink| hand_over_to(sink, &mut output, command("vi")));
+
+    assert!(
+        responded.out.contains(r#""code":"vault.child.no_json""#),
+        "{}",
+        responded.out
+    );
+}
+
+#[test]
+fn a_guide_with_a_custom_spelling_prints_it_through_hand_over_json_without_a_further_argument() {
+    let mut output = dotted(&["--json", "--fields", "author"]);
+    let json = Json::new(&["--json"], BOOKS);
+
+    let responded =
+        respond(|sink| hand_over_json_to(sink, &mut output, command("vault-log"), json));
+
+    assert!(
+        responded.out.contains(r#""code":"vault.cli.usage""#),
+        "{}",
+        responded.out
+    );
 }

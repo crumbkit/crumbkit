@@ -6,7 +6,7 @@ use schemars::JsonSchema;
 use serde::Serialize;
 
 use super::{Unreadable, parse, stream_to};
-use crate::{Document, Row, Sink, Spelling, Stream};
+use crate::{Document, Row, Sink, Stream};
 
 /// A sighting whose JSON holds every field.
 #[derive(Serialize, JsonSchema)]
@@ -28,7 +28,7 @@ fn streamed<R: Row>(flags: &[&str], document: Document<Stream<R>>, items: &[R]) 
     let mut out = Vec::new();
     let mut err = Vec::new();
     let mut sink = Sink::new(&mut out, &mut err);
-    let Ok(mut streaming) = stream_to(&mut sink, &mut output, Spelling::COLONS, document) else {
+    let Ok(mut streaming) = stream_to(&mut sink, &mut output, document) else {
         panic!("the stream was refused");
     };
     for item in items {

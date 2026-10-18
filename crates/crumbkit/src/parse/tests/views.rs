@@ -12,7 +12,7 @@ use super::parse_to;
 use crate::Envelope;
 use crate::help::{Exit, Guide, Leaf, Rename};
 use crate::twins::assert_one_word_apart;
-use crate::{Batch, Bytes, Document, Error, Headed, Prose, Row, Sink, Spelling, Stream};
+use crate::{Batch, Bytes, Document, Error, Headed, Prose, Row, Sink, Stream};
 
 /// A row with a compact and a long column.
 #[derive(Serialize, JsonSchema)]
@@ -150,13 +150,8 @@ struct Parsed {
 fn parse(args: &[&str]) -> Parsed {
     let mut out = Vec::new();
     let mut err = Vec::new();
-    let result = parse_to::<(), _, _, _, _>(
-        &mut Sink::new(&mut out, &mut err),
-        tool(),
-        &GUIDE,
-        Spelling::COLONS,
-        args,
-    );
+    let result =
+        parse_to::<(), _, _, _, _>(&mut Sink::new(&mut out, &mut err), tool(), &GUIDE, args);
     Parsed {
         code: result.err().map(ExitCode::from),
         out: String::from_utf8(out).unwrap(),
@@ -390,7 +385,6 @@ fn an_unoffered_view_flag_prints_the_tool_s_usage_code_and_exits_with_the_code_i
         &mut Sink::new(&mut out, &mut err),
         tool(),
         &RENAMED,
-        Spelling::COLONS,
         ["tool", "books", "count", "--long"],
     )
     .err()
@@ -430,7 +424,6 @@ fn fields_with_long_is_refused_in_crumbkit_s_words_on_a_command_that_the_guide_d
             &mut Sink::new(Vec::new(), &mut err),
             tool(),
             &Guide::new(),
-            Spelling::COLONS,
             args,
         );
         (

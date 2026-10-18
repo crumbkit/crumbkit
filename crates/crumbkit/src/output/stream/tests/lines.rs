@@ -7,7 +7,7 @@ use schemars::JsonSchema;
 use serde::Serialize;
 
 use super::{Streamed, parse};
-use crate::{Document, Error, Row, Sink, Spelling, Stream, stream_to};
+use crate::{Document, Error, Row, Sink, Stream, stream_to};
 
 /// A sighting whose text is one sentence.
 #[derive(Serialize, JsonSchema)]
@@ -37,7 +37,7 @@ fn run(flags: &[&str]) -> Streamed {
     let mut out = Vec::new();
     let mut err = Vec::new();
     let mut sink = Sink::new(&mut out, &mut err);
-    let code = match stream_to(&mut sink, &mut output, Spelling::COLONS, SEEN) {
+    let code = match stream_to(&mut sink, &mut output, SEEN) {
         Ok(mut streaming) => {
             for (bird, place) in [("robin", "garden"), ("heron", "pond")] {
                 assert_eq!(
@@ -102,7 +102,7 @@ fn a_stream_of_whole_rows_without_columns_that_declare_a_line_prints_each_line()
     let mut out = Vec::new();
     let mut err = Vec::new();
     let mut sink = Sink::new(&mut out, &mut err);
-    let code = match stream_to(&mut sink, &mut output, Spelling::COLONS, COUNTS) {
+    let code = match stream_to(&mut sink, &mut output, COUNTS) {
         Ok(mut streaming) => {
             assert_eq!(
                 streaming.item(&Count("robin", 2)),
@@ -152,7 +152,7 @@ fn a_stream_item_without_a_text_line_prints_its_json_line_in_the_order_its_field
     let mut out = Vec::new();
     let mut err = Vec::new();
     let mut sink = Sink::new(&mut out, &mut err);
-    let mut streaming = stream_to(&mut sink, &mut output, Spelling::COLONS, UNPLACED).unwrap();
+    let mut streaming = stream_to(&mut sink, &mut output, UNPLACED).unwrap();
 
     let unplaced = Unplaced {
         place: "garden",

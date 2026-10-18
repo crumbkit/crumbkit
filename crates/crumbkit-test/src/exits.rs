@@ -40,7 +40,8 @@ mod tests;
 ///   a code of the tool that renames of two different crumbkit codes print,
 ///   in the guide or in any of its leaves.
 ///
-/// The problems spell failure codes with [`Spelling::COLONS`]. An exit may
+/// The problems spell failure codes in the guide's spelling with the tool's
+/// name in crumbkit's own codes, as the tool prints them. An exit may
 /// list one of crumbkit's failure codes, such as
 /// [`CLI_USAGE`](crumbkit::codes::CLI_USAGE), to give that failure the
 /// tool's own exit code.
@@ -72,6 +73,7 @@ mod tests;
 pub fn check_exit_codes(command: &Command, guide: &Guide, allow: &[Allow]) {
     let mut allowances = Allowances::new(allow, &[Rule::ShellExitCode, Rule::SharedExit]);
     let mut problems = Vec::new();
+    let spelling = guide.get_spelling().for_tool(guide.tool_name(command));
     let exits = guide.get_exits();
     for (index, exit) in exits.iter().enumerate() {
         let code = exit.code();
@@ -118,7 +120,7 @@ pub fn check_exit_codes(command: &Command, guide: &Guide, allow: &[Allow]) {
             ));
         }
         for &failure in exit.get_failures() {
-            listed(command, guide, index, failure, &mut problems);
+            listed(command, guide, spelling, index, failure, &mut problems);
         }
         for path in exit.get_commands() {
             if tree::find(command, path.iter().copied()).is_none() {
@@ -129,7 +131,7 @@ pub fn check_exit_codes(command: &Command, guide: &Guide, allow: &[Allow]) {
             }
         }
     }
-    renamed(command, guide, &mut problems);
+    renamed(command, guide, spelling, &mut problems);
     allowances.report(command, "exit code rules", problems);
 }
 
@@ -139,16 +141,17 @@ pub fn check_exit_codes(command: &Command, guide: &Guide, allow: &[Allow]) {
 /// that sets [`Leaf::codes`](crumbkit::help::Leaf::codes), and it reports
 /// the first collision that it finds, so one pair of exits is one problem.
 /// Only the second exit that lists a code reports it, so a code that three
-/// exits list is one problem.
+/// exits list is one problem. The problem spells the code with `spelling`.
 fn listed(
     command: &Command,
     guide: &Guide,
+    spelling: Spelling,
     index: usize,
     failure: &'static Code,
     problems: &mut Vec<String>,
 ) {
     let code = guide.get_exits()[index].code();
-    if let Some((first, printed)) = earlier_listing(guide, &[], index, failure) {
+    if let Some((first, printed)) = earlier_listing(guide, spelling, &[], index, failure) {
         problems.push(format!(
             "the exit code {code} lists the failure code {printed}, which the exit code {first} lists already, so a run that fails with it cannot exit with both"
         ));
@@ -158,7 +161,9 @@ fn listed(
         if leaf.get_codes().is_empty() {
             continue;
         }
-        if let Some((first, printed)) = earlier_listing(guide, leaf.path(), index, failure) {
+        if let Some((first, printed)) =
+            earlier_listing(guide, spelling, leaf.path(), index, failure)
+        {
             problems.push(format!(
                 "the exit code {code} lists the failure code {printed}, which the exit code {first} lists already, so a run of `{}` that fails with it cannot exit with both",
                 command_line(command, &leaf.path().join(" "))
@@ -170,11 +175,12 @@ fn listed(
 
 /// Returns the code of the one exit of `guide` before the exit at `index`
 /// that lists a code that a run of the command at `path` prints as it
-/// prints `failure`, and that printed code spelled with
-/// [`Spelling::COLONS`]. It returns `None` when no earlier exit lists it,
+/// prints `failure`, and that printed code spelled with `spelling`. It
+/// returns `None` when no earlier exit lists it,
 /// and when two or more do, because the second of them reported it.
 fn earlier_listing(
     guide: &Guide,
+    spelling: Spelling,
     path: &[&str],
     index: usize,
     failure: &'static Code,
@@ -190,7 +196,7 @@ fn earlier_listing(
     earlier
         .next()
         .is_none()
-        .then(|| (first.code(), Spelling::COLONS.spell(printed)))
+        .then(|| (first.code(), spelling.spell(printed)))
 }
 
 /// Pushes a problem for each rename of `guide` or of one of its leaves
@@ -198,8 +204,9 @@ fn earlier_listing(
 /// run prints only the first. It also pushes one for each rename that
 /// prints the code of an earlier rename of another crumbkit code, in the
 /// guide or any leaf, because a caller cannot tell the two failures apart.
-/// The guide's renames come first, and then each leaf's in order.
-fn renamed(command: &Command, guide: &Guide, problems: &mut Vec<String>) {
+/// The guide's renames come first, and then each leaf's in order. The
+/// problems spell codes with `spelling`.
+fn renamed(command: &Command, guide: &Guide, spelling: Spelling, problems: &mut Vec<String>) {
     // Each list of renames with the words that name its owner in a problem.
     let mut lists = vec![("the guide".to_owned(), guide.get_codes())];
     for leaf in guide.get_leaves() {
@@ -210,8 +217,10 @@ fn renamed(command: &Command, guide: &Guide, problems: &mut Vec<String>) {
     }
     for (position, (owner, renames)) in lists.iter().enumerate() {
         for (index, rename) in renames.iter().enumerate() {
-            let crumbkit = Spelling::COLONS.spell(rename.crumbkit());
-            let tool = Spelling::COLONS.spell(rename.tool());
+            // crumbkit's own codes carry the tool's name, so the problem
+            // names them as crumbkit's to tell them from the tool's codes.
+            let crumbkit = format!("crumbkit's {}", spelling.spell(rename.crumbkit()));
+            let tool = spelling.spell(rename.tool());
             let earlier = &renames[..index];
             if let Some(first) = earlier
                 .iter()
@@ -219,7 +228,7 @@ fn renamed(command: &Command, guide: &Guide, problems: &mut Vec<String>) {
             {
                 problems.push(format!(
                     "{owner} renames {crumbkit} twice, and a run prints only the first rename, {}",
-                    Spelling::COLONS.spell(first.tool())
+                    spelling.spell(first.tool())
                 ));
                 continue;
             }
@@ -228,8 +237,8 @@ fn renamed(command: &Command, guide: &Guide, problems: &mut Vec<String>) {
             };
             if let Some(first) = earlier.iter().find(clash) {
                 problems.push(format!(
-                    "{owner} renames {crumbkit} to {tool}, which it gives {} already, so a caller cannot tell the two failures apart",
-                    Spelling::COLONS.spell(first.crumbkit())
+                    "{owner} renames {crumbkit} to {tool}, which it gives crumbkit's {} already, so a caller cannot tell the two failures apart",
+                    spelling.spell(first.crumbkit())
                 ));
                 continue;
             }
@@ -238,8 +247,8 @@ fn renamed(command: &Command, guide: &Guide, problems: &mut Vec<String>) {
                 .find_map(|(other, renames)| Some((other, renames.iter().find(clash)?)));
             if let Some((other, first)) = other {
                 problems.push(format!(
-                    "{owner} renames {crumbkit} to {tool}, which {other} gives {} already, so a caller cannot tell the two failures apart",
-                    Spelling::COLONS.spell(first.crumbkit())
+                    "{owner} renames {crumbkit} to {tool}, which {other} gives crumbkit's {} already, so a caller cannot tell the two failures apart",
+                    spelling.spell(first.crumbkit())
                 ));
             }
         }

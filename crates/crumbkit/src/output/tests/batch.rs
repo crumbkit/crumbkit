@@ -11,8 +11,7 @@ use serde::Serialize;
 use crate::answered::answered;
 use crate::twins::assert_one_word_apart;
 use crate::{
-    AsFailure, Batch, Call, Code, Document, Error, Failure, Output, Recovery, Row, Sink, Spelling,
-    finish_to,
+    AsFailure, Batch, Call, Code, Document, Error, Failure, Output, Recovery, Row, Sink, finish_to,
 };
 
 const NOT_FOUND: Code = Code::new("solar", "planets", "not_found");
@@ -152,7 +151,6 @@ fn finish_with<E: AsFailure>(flags: &[&str], batch: Batch<Planet, E>) -> Finishe
     let code = finish_to(
         &mut Sink::new(&mut out, &mut err),
         &mut output(flags),
-        Spelling::COLONS,
         document,
         result,
     );
@@ -214,7 +212,6 @@ fn each_failure_in_a_batch_prints_as_a_failed_command_prints_it_with_its_key_aft
     finish_to(
         &mut Sink::new(Vec::new(), &mut err),
         &mut output(&[]),
-        Spelling::COLONS,
         PLANETS,
         failed,
     );
@@ -352,7 +349,6 @@ fn a_failure_in_a_batch_document_is_the_failure_document_with_its_key_and_index_
     finish_to(
         &mut Sink::new(&mut out, Vec::new()),
         &mut output(&["--json"]),
-        Spelling::COLONS,
         PLANETS,
         failed,
     );
@@ -458,7 +454,6 @@ fn finish_failing(
     let code = finish_to(
         &mut Sink::new(Failing(kind), &mut err),
         &mut output(flags),
-        Spelling::COLONS,
         PLANETS,
         result,
     );

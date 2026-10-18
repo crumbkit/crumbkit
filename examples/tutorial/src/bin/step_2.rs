@@ -6,7 +6,7 @@ use std::process::ExitCode;
 
 use clap::{Args, CommandFactory, Parser, Subcommand};
 use crumbkit::help::Guide;
-use crumbkit::{Call, Code, Document, Failure, Listing, Page, Recovery, Row, Spelling, ViewFlags};
+use crumbkit::{Call, Code, Document, Failure, Listing, Page, Recovery, Row, ViewFlags};
 use schemars::JsonSchema;
 use serde::Serialize;
 
@@ -77,9 +77,6 @@ const JARS_LIST: Document<Listing<Jar>> = Document::new(
     "One page of the jars in the pantry.",
 );
 
-/// How pantry spells a failure code.
-const SPELLING: Spelling = Spelling::COLONS;
-
 /// The code of a shelf that holds no jar.
 const SHELF_NOT_FOUND: Code = Code::new("pantry", "shelves", "not_found");
 
@@ -139,7 +136,7 @@ fn list(args: &JarsList) -> Result<Listing<Jar>, ShelfNotFound> {
 }
 
 fn main() -> ExitCode {
-    let parsed = crumbkit::parse::<Cli>(Cli::command(), &Guide::new(), SPELLING);
+    let parsed = crumbkit::parse::<Cli>(Cli::command(), &Guide::new());
     let (cli, mut output) = match parsed {
         Ok(parsed) => parsed,
         Err(stop) => return stop.code(),
@@ -147,6 +144,6 @@ fn main() -> ExitCode {
     match cli.resource {
         Resource::Jars {
             command: JarsCommand::List(args),
-        } => crumbkit::finish(&mut output, SPELLING, JARS_LIST, list(&args)),
+        } => crumbkit::finish(&mut output, JARS_LIST, list(&args)),
     }
 }

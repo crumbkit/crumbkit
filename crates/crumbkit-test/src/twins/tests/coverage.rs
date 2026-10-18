@@ -1,8 +1,8 @@
 //! Tests for `check_twins`, which runs every twin of a tool and requires a
 //! twin for each declared code.
 
+use crumbkit::Code;
 use crumbkit::help::{Guide, Leaf, Rename};
-use crumbkit::{Code, Spelling};
 
 use super::tree;
 use crate::allow::Allow;
@@ -72,13 +72,9 @@ fn checked_allowing(
     let dir = TempDir::new("twins-coverage").unwrap();
     dir.write_script("tool", SCRIPT);
     let path = dir.path().join("tool").display().to_string();
-    let twins = Twins::new(
-        Examples::new(&path, "").allow(allow),
-        Spelling::COLONS,
-        CODES,
-    )
-    .pairs(pairs)
-    .unprovoked(unprovoked);
+    let twins = Twins::new(Examples::new(&path, "").allow(allow), CODES)
+        .pairs(pairs)
+        .unprovoked(unprovoked);
     panic_message(|| check_twins(&tree(), &Guide::new(), &twins))
 }
 
@@ -167,8 +163,7 @@ fn checked_with(script: &str, pairs: &[Twin<'_>]) -> Option<String> {
     let dir = TempDir::new("twins-json").unwrap();
     dir.write_script("tool", script);
     let path = dir.path().join("tool").display().to_string();
-    let twins =
-        Twins::new(Examples::new(&path, ""), Spelling::COLONS, &[&[&NOT_FOUND]]).pairs(pairs);
+    let twins = Twins::new(Examples::new(&path, ""), &[&[&NOT_FOUND]]).pairs(pairs);
     panic_message(|| check_twins(&tree(), &Guide::new(), &twins))
 }
 
@@ -287,7 +282,7 @@ fn a_declared_code_that_the_guide_prints_in_place_of_one_of_crumbkits_codes_need
     let dir = TempDir::new("twins-renamed").unwrap();
     dir.write_script("tool", SCRIPT);
     let path = dir.path().join("tool").display().to_string();
-    let twins = Twins::new(Examples::new(&path, ""), Spelling::COLONS, CODES).pairs(&[SHOW_7]);
+    let twins = Twins::new(Examples::new(&path, ""), CODES).pairs(&[SHOW_7]);
 
     let problems = panic_message(|| check_twins(&tree(), &GUIDE, &twins));
 
@@ -303,9 +298,47 @@ fn a_declared_code_that_a_leaf_prints_in_place_of_one_of_crumbkits_codes_needs_n
     let dir = TempDir::new("twins-leaf-renamed").unwrap();
     dir.write_script("tool", SCRIPT);
     let path = dir.path().join("tool").display().to_string();
-    let twins = Twins::new(Examples::new(&path, ""), Spelling::COLONS, CODES).pairs(&[SHOW_7]);
+    let twins = Twins::new(Examples::new(&path, ""), CODES).pairs(&[SHOW_7]);
 
     let problems = panic_message(|| check_twins(&tree(), &GUIDE, &twins));
 
     assert_eq!(problems, None);
+}
+
+/// A guide that spells codes with their segments joined by `.`.
+const DOTTED: Guide = Guide::new().spelling(crumbkit::Spelling::custom(|code, f| {
+    write!(f, "{}.{}.{}", code.component(), code.area(), code.reason())
+}));
+
+/// The answers of a tool whose guide sets the dotted spelling: `books show
+/// 7` fails with `NOT_FOUND` in that spelling, `books show 8` fails with
+/// `UNREADABLE` in the colon spelling, and `books show 2` succeeds. Any
+/// other command line fails with code 3.
+const DOTTED_SCRIPT: &str = r#"#!/bin/sh
+line="$*"
+case "${line% --json}" in
+  'books show 7') printf 'error: no book 7\n  code:  tool.books.not_found\n' >&2; exit 1;;
+  'books show 8') printf 'error: unreadable\n  code:  tool::books::unreadable\n' >&2; exit 1;;
+  'books show 2') echo shown; exit 0;;
+  *) echo "unexpected: $*" >&2; exit 3;;
+esac
+"#;
+
+#[test]
+fn check_twins_passes_a_refused_line_in_the_guides_custom_spelling_and_fails_one_in_colons() {
+    const SHOW_8: Twin<'_> = Twin::new(
+        Failing::new(&UNREADABLE, &["books", "show", "8"]),
+        &["books", "show", "2"],
+    );
+    const CODES: &[&[&Code]] = &[&[&NOT_FOUND, &UNREADABLE]];
+    let dir = TempDir::new("twins-coverage-dotted").unwrap();
+    dir.write_script("tool", DOTTED_SCRIPT);
+    let path = dir.path().join("tool").display().to_string();
+    let twins = Twins::new(Examples::new(&path, ""), CODES).pairs(&[SHOW_7, SHOW_8]);
+
+    let message = panic_message(|| check_twins(&tree(), &DOTTED, &twins)).unwrap();
+
+    assert!(!message.contains("books show 7"), "{message}");
+    assert!(message.contains("books show 8"), "{message}");
+    assert!(message.contains("tool.books.unreadable"), "{message}");
 }

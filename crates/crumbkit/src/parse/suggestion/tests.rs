@@ -3,7 +3,7 @@
 use clap::{Arg, ArgAction, Command};
 
 use crate::help::Guide;
-use crate::{Sink, Spelling, parse_to};
+use crate::{Sink, parse_to};
 
 /// Returns what `parse_to` prints on standard error for `args`, which
 /// `command` refuses.
@@ -13,7 +13,6 @@ fn refusal(command: Command, args: &[&str]) -> String {
         &mut Sink::new(Vec::new(), &mut err),
         command,
         &Guide::new(),
-        Spelling::COLONS,
         args,
     );
     String::from_utf8(err).unwrap()

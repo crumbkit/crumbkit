@@ -2,12 +2,12 @@
 //! tests, which need only shelf's public command tree and guide, live in
 //! `tests/conventions.rs`.
 
-use crate::SPELLING;
 use crate::books::BooksError;
+use crate::cli::GUIDE;
 
 #[test]
 fn every_failure_code_spells_uniquely_as_printable_ascii() {
-    crumbkit_test::check_codes(SPELLING, &[BooksError::CODES]);
+    crumbkit_test::check_codes(&GUIDE, &[BooksError::CODES]);
 }
 
 /// The choices of the whole catalogue, as `books::choices` offers them when
@@ -33,7 +33,6 @@ fn books_show_without_ids_asks_the_menu_and_shows_the_picked_books() {
         &mut sink,
         crate::Cli::command(),
         &GUIDE,
-        SPELLING,
         ["shelf", "books", "show"],
     );
 

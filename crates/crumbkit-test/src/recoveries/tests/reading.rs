@@ -1,7 +1,6 @@
 //! Tests for the recovery check on a tool that prints its failures without
 //! a crumbkit document, as a `code:` line.
 
-use crumbkit::Spelling;
 use crumbkit::help::Guide;
 use snapbox::Assert;
 use snapbox::assert::Action;
@@ -18,7 +17,7 @@ use crate::testing::panic_message;
 fn checked(answers: &[Answer<'_>], allow: &[Allow]) -> (Option<String>, Setup) {
     let setup = Setup::new("recoveries-reading", answers);
     let examples = Examples::new(&setup.script, "").allow(allow);
-    let recoveries = Recoveries::new(examples, Spelling::COLONS, CODES)
+    let recoveries = Recoveries::new(examples, CODES)
         .starts(SHOW_7)
         .unprovoked(OTHERS);
     let message = panic_message(|| {

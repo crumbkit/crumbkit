@@ -1,7 +1,6 @@
 //! Tests for the environment variables of a start, which every run of its
 //! chain sets.
 
-use crumbkit::Spelling;
 use snapbox::assert::Action;
 
 use super::{CODES, NOT_FOUND, OTHERS, Setup, check_with, failure, run};
@@ -32,7 +31,7 @@ esac
     let starts = [Failing::new(&NOT_FOUND, &["books", "show", "7"])
         .env(&[("DEPTH", Some("1")), ("HOME", None)])];
     let examples = Examples::new(&setup.script, "").env(&[("HOME", "/home")]);
-    let recoveries = Recoveries::new(examples, Spelling::COLONS, CODES)
+    let recoveries = Recoveries::new(examples, CODES)
         .starts(&starts)
         .unprovoked(OTHERS);
 

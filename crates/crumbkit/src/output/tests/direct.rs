@@ -10,7 +10,7 @@ use clap::{CommandFactory as _, Parser};
 use super::PLANETS;
 use crate::help::{Exit, Guide};
 use crate::twins::assert_one_word_apart;
-use crate::{Code, Failure, Output, Recovery, Sink, Spelling};
+use crate::{Code, Failure, Output, Recovery, Sink};
 
 const TIMED_OUT: Code = Code::new("solar", "charts", "timed_out");
 const NOT_FOUND: Code = Code::new("solar", "planets", "not_found");
@@ -96,7 +96,7 @@ fn failure_exit_gives_the_listed_exit_or_crumbkit_s_default() {
 fn print_failure_prints_a_failure_as_finish_prints_it() {
     let mut output = guided(&[]);
     let printed = printed(|sink| {
-        output.print_failure(sink, Spelling::COLONS, &Failed(&NOT_FOUND));
+        output.print_failure(sink, &Failed(&NOT_FOUND));
     });
     assert_eq!(printed.out, "");
     assert_eq!(
@@ -112,12 +112,12 @@ fn refuse_view_refuses_a_field_that_the_document_lacks_with_the_refusal_s_exit()
         &["--json", "--fields", "name"],
     );
     let mut admitted = guided(&["--json", "--fields", "name"]);
-    let admitted = printed(|sink| admitted.refuse_view(sink, Spelling::COLONS, PLANETS));
+    let admitted = printed(|sink| admitted.refuse_view(sink, PLANETS));
     assert_eq!(admitted.returned, None);
     assert_eq!(format!("{}{}", admitted.out, admitted.err), "");
 
     let mut refused = guided(&["--json", "--fields", "rings"]);
-    let refused = printed(|sink| refused.refuse_view(sink, Spelling::COLONS, PLANETS));
+    let refused = printed(|sink| refused.refuse_view(sink, PLANETS));
     assert_eq!(refused.returned, Some(ExitCode::from(2)));
     let document: serde_json::Value = serde_json::from_str(&refused.out).unwrap();
     assert_eq!(document["code"], "tool::cli::usage");
@@ -127,13 +127,11 @@ fn refuse_view_refuses_a_field_that_the_document_lacks_with_the_refusal_s_exit()
 fn refuse_fields_for_text_refuses_fields_with_the_caller_s_reason() {
     assert_one_word_apart(&["--fields=name"], &["--long"]);
     let mut admitted = guided(&["--long"]);
-    let admitted =
-        printed(|sink| admitted.refuse_fields_for_text(sink, Spelling::COLONS, "it prints prose"));
+    let admitted = printed(|sink| admitted.refuse_fields_for_text(sink, "it prints prose"));
     assert_eq!(admitted.returned, None);
 
     let mut refused = guided(&["--fields=name"]);
-    let refused =
-        printed(|sink| refused.refuse_fields_for_text(sink, Spelling::COLONS, "it prints prose"));
+    let refused = printed(|sink| refused.refuse_fields_for_text(sink, "it prints prose"));
     assert_eq!(refused.returned, Some(ExitCode::from(2)));
     let expected = "\
 error: --fields selects the columns of a table, and it prints prose

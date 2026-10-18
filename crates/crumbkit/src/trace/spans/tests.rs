@@ -19,9 +19,7 @@ use crate::answered::answered;
 use crate::events::TraceIds;
 use crate::events::testing::give_trace_ids;
 use crate::help::{Exit, Guide};
-use crate::{
-    Code, Document, Error, Failure, Output, Recovery, Row, Sink, Spelling, finish_to, parse_to,
-};
+use crate::{Code, Document, Error, Failure, Output, Recovery, Row, Sink, finish_to, parse_to};
 
 const NOT_FOUND: Code = Code::new("solar", "planets", "not_found");
 const TIMED_OUT: Code = Code::new("solar", "charts", "timed_out");
@@ -273,7 +271,6 @@ fn parse(args: &[&str]) -> Result<Output, ExitCode> {
         &mut Sink::new(Vec::new(), Vec::new()),
         Tool::command(),
         &GUIDE,
-        Spelling::COLONS,
         args,
     )?;
     Ok(output)
@@ -288,7 +285,7 @@ fn run<T: crate::Rows, E: crate::AsFailure>(
 ) {
     if let Ok(mut output) = parse(args) {
         let sink = &mut Sink::new(Vec::new(), Vec::new());
-        finish_to(sink, &mut output, Spelling::COLONS, document, result);
+        finish_to(sink, &mut output, document, result);
     }
 }
 
@@ -419,9 +416,7 @@ fn a_stream_records_its_first_failure_s_code_and_its_exit_code_on_the_finish_spa
     let seen = watch(|| {
         if let Ok(mut output) = parse(&["solar", "planets", "show", "Saturn"]) {
             let sink = &mut Sink::new(Vec::new(), Vec::new());
-            if let Ok(mut streaming) =
-                crate::stream_to(sink, &mut output, Spelling::COLONS, document)
-            {
+            if let Ok(mut streaming) = crate::stream_to(sink, &mut output, document) {
                 let _ = streaming.item(&Planet { name: "Saturn" });
                 let _ = streaming.failure(&Missing);
                 let _ = streaming.failure(&Error::from(Missing));
@@ -515,7 +510,7 @@ fn a_failure_that_the_guide_maps_records_its_declared_exit_code_on_the_finish_sp
     let streamed = watch(|| {
         if let Ok(mut output) = parse(&["solar", "planets", "show", "Saturn"]) {
             let sink = &mut Sink::new(Vec::new(), Vec::new());
-            if let Ok(streaming) = crate::stream_to(sink, &mut output, Spelling::COLONS, document) {
+            if let Ok(streaming) = crate::stream_to(sink, &mut output, document) {
                 let _ = streaming.end(Err(TimedOut));
             }
         }

@@ -14,7 +14,6 @@
 use std::path::Path;
 
 use clap::Command;
-use crumbkit::Spelling;
 use crumbkit::help::Guide;
 use crumbkit_test::{
     Allow, Budgets, Examples, Failing, Pages, PathBudgets, Recoveries, Rule, Twin, Twins,
@@ -208,7 +207,7 @@ const UNPROVOKED: &[Unprovoked<'_>] = &[Unprovoked::new(
 /// The settings of reading's recovery check. A missing list, a position
 /// past the end of a list and a version conflict each start a chain. The
 /// last two run on a dry run, so the check writes no fixture list.
-const RECOVERIES: Recoveries<'_> = Recoveries::new(EXAMPLES, Spelling::COLONS, &[reading::CODES])
+const RECOVERIES: Recoveries<'_> = Recoveries::new(EXAMPLES, &[reading::CODES])
     .starts(&[
         UNREAD,
         POSITION_7,
@@ -239,7 +238,7 @@ fn every_recovery_leads_to_a_command_that_runs() {
 /// The settings of reading's twin check: one twin for each declared code
 /// that a command line can provoke. Each twin differs from its refused line
 /// in one word, so that word is the reason for the refusal (TEST-1).
-const TWINS: Twins<'_> = Twins::new(EXAMPLES, Spelling::COLONS, &[reading::CODES])
+const TWINS: Twins<'_> = Twins::new(EXAMPLES, &[reading::CODES])
     .pairs(&[
         Twin::new(UNREAD, &["entries", "list", "--list", "to-read"]),
         Twin::new(

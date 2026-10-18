@@ -2,6 +2,7 @@
 
 use std::fmt;
 
+use crumbkit::help::Guide;
 use crumbkit::{Code, Spelling};
 
 use super::check_codes;
@@ -44,26 +45,23 @@ fn arrows(code: &Code, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 }
 
 #[test]
-fn distinct_codes_in_a_built_in_spelling_pass() {
+fn distinct_codes_in_the_colon_spelling_of_a_guide_without_a_spelling_pass() {
     check_codes(
-        Spelling::COLONS,
+        &Guide::new(),
         &[&[&NOT_FOUND, &TIMED_OUT], &[&AUTHOR_NOT_FOUND]],
     );
 }
 
 #[test]
 fn the_same_code_listed_by_two_error_types_passes() {
-    check_codes(
-        Spelling::COLONS,
-        &[&[&NOT_FOUND], &[&NOT_FOUND, &TIMED_OUT]],
-    );
+    check_codes(&Guide::new(), &[&[&NOT_FOUND], &[&NOT_FOUND, &TIMED_OUT]]);
 }
 
 #[test]
 fn two_codes_that_spell_the_same_fail_and_both_are_named() {
     let message = panic_message(|| {
         check_codes(
-            Spelling::custom(without_area),
+            &Guide::new().spelling(Spelling::custom(without_area)),
             &[&[&NOT_FOUND], &[&AUTHOR_NOT_FOUND]],
         );
     })
@@ -79,7 +77,13 @@ fn two_codes_that_spell_the_same_fail_and_both_are_named() {
 
 #[test]
 fn a_code_that_spells_as_an_empty_string_fails() {
-    let message = panic_message(|| check_codes(Spelling::custom(empty), &[&[&NOT_FOUND]])).unwrap();
+    let message = panic_message(|| {
+        check_codes(
+            &Guide::new().spelling(Spelling::custom(empty)),
+            &[&[&NOT_FOUND]],
+        );
+    })
+    .unwrap();
 
     assert!(
         message.contains(r#"Code::new("shelf", "books", "not_found") spells as an empty string"#),
@@ -89,8 +93,13 @@ fn a_code_that_spells_as_an_empty_string_fails() {
 
 #[test]
 fn a_code_that_spells_with_a_space_fails() {
-    let message =
-        panic_message(|| check_codes(Spelling::custom(spaced), &[&[&NOT_FOUND]])).unwrap();
+    let message = panic_message(|| {
+        check_codes(
+            &Guide::new().spelling(Spelling::custom(spaced)),
+            &[&[&NOT_FOUND]],
+        );
+    })
+    .unwrap();
 
     assert!(
         message.contains(
@@ -102,8 +111,13 @@ fn a_code_that_spells_with_a_space_fails() {
 
 #[test]
 fn a_code_that_spells_with_a_control_character_fails() {
-    let message =
-        panic_message(|| check_codes(Spelling::custom(with_delete), &[&[&NOT_FOUND]])).unwrap();
+    let message = panic_message(|| {
+        check_codes(
+            &Guide::new().spelling(Spelling::custom(with_delete)),
+            &[&[&NOT_FOUND]],
+        );
+    })
+    .unwrap();
 
     assert!(
         message.contains(
@@ -115,8 +129,13 @@ fn a_code_that_spells_with_a_control_character_fails() {
 
 #[test]
 fn a_code_that_spells_with_a_character_outside_ascii_fails() {
-    let message =
-        panic_message(|| check_codes(Spelling::custom(arrows), &[&[&NOT_FOUND]])).unwrap();
+    let message = panic_message(|| {
+        check_codes(
+            &Guide::new().spelling(Spelling::custom(arrows)),
+            &[&[&NOT_FOUND]],
+        );
+    })
+    .unwrap();
 
     assert!(
         message.contains(
@@ -128,9 +147,13 @@ fn a_code_that_spells_with_a_character_outside_ascii_fails() {
 
 #[test]
 fn one_failed_check_names_every_problem() {
-    let message =
-        panic_message(|| check_codes(Spelling::custom(empty), &[&[&NOT_FOUND, &TIMED_OUT]]))
-            .unwrap();
+    let message = panic_message(|| {
+        check_codes(
+            &Guide::new().spelling(Spelling::custom(empty)),
+            &[&[&NOT_FOUND, &TIMED_OUT]],
+        );
+    })
+    .unwrap();
 
     assert!(
         message.contains(r#"Code::new("shelf", "books", "not_found") spells as an empty string"#),

@@ -15,6 +15,7 @@ mod list;
 mod output;
 pub(crate) mod rename;
 mod runtime;
+mod spelling;
 mod terminal;
 pub(crate) mod topic;
 pub(crate) mod view;
@@ -39,7 +40,7 @@ pub use self::words::quote;
 
 use self::list::{list, write_line};
 use crate::pick::Picker;
-use crate::{JsonLayout, ToolName};
+use crate::{JsonLayout, Spelling, ToolName};
 
 #[cfg(test)]
 mod tests;
@@ -49,8 +50,8 @@ mod tests;
 /// whose help shows examples and describes its columns, the tool's
 /// [`Topic`]s, the [`FileFormat`]s of the files that users write for the
 /// tool, the [`Exit`] codes that the tool returns besides crumbkit's 0, 1
-/// and 2, and the function that names a person's aliases on the root's
-/// help.
+/// and 2, the [`Spelling`] of its failure codes, and the function that
+/// names a person's aliases on the root's help.
 ///
 /// A tool declares its guide once as a `const` and passes it to
 /// [`parse`](crate::parse), which applies its goal headings to the help of
@@ -59,7 +60,6 @@ mod tests;
 ///
 /// ```
 /// use clap::{CommandFactory, Parser, Subcommand};
-/// use crumbkit::Spelling;
 /// use crumbkit::help::{Example, Goal, Group, Guide, Leaf, Topic};
 ///
 /// /// Browse a small catalogue.
@@ -89,10 +89,10 @@ mod tests;
 ///     )]);
 ///
 /// let args = ["shelf", "books"];
-/// let parsed = crumbkit::parse_from::<Cli, _, _>(Cli::command(), &GUIDE, Spelling::COLONS, args);
+/// let parsed = crumbkit::parse_from::<Cli, _, _>(Cli::command(), &GUIDE, args);
 /// assert!(parsed.is_ok());
 /// ```
-#[derive(Clone, Copy, Debug, Default)]
+#[derive(Clone, Copy, Debug)]
 pub struct Guide {
     /// The commands whose help lists their subcommands under goals.
     groups: &'static [Group],
@@ -104,6 +104,9 @@ pub struct Guide {
     documents: &'static [FileFormat],
     /// The tool's own exit codes, which `<tool> help exit-codes` lists.
     exits: &'static [Exit],
+    /// How the tool spells its failure codes, which [`Guide::spelling`]
+    /// sets.
+    spelling: Spelling,
     /// The tool's own codes for crumbkit's failures.
     codes: &'static [Rename],
     /// The function that builds refusal alternatives for a command whose
@@ -142,6 +145,7 @@ impl Guide {
             topics: &[],
             documents: &[],
             exits: &[],
+            spelling: Spelling::COLONS,
             codes: &[],
             refusal_alternatives: None,
             personal_aliases: None,
@@ -326,6 +330,14 @@ impl Guide {
     #[must_use]
     pub const fn get_exits(&self) -> &'static [Exit] {
         self.exits
+    }
+}
+
+impl Default for Guide {
+    /// Returns [`Guide::new`]. `Spelling` has no `Default`, so the guide
+    /// cannot derive it.
+    fn default() -> Self {
+        Self::new()
     }
 }
 

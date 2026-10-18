@@ -184,8 +184,10 @@ impl Output {
     /// step and a failure's [`Recovery::Run`](crate::Recovery::Run) call
     /// against, and the words of `args` after the program name, which
     /// [`Output::confirm`] repeats with `--yes`. It reads the terminal
-    /// detection, output budget, JSON layout, exit codes and code renames of
-    /// `guide`. The renames of the leaf
+    /// detection, output budget, JSON layout, exit codes, code renames and
+    /// [spelling](Guide::spelling) of `guide`, so `finish` and `stream` print
+    /// every code in the guide's spelling with the tool's name in crumbkit's
+    /// own codes (ADR-0086). The renames of the leaf
     /// that the words name, as [`command_path`](crate::command_path) finds
     /// it, come before the guide's (ADR-0060), so a tool that parses with
     /// clap alone prints a leaf's own codes as one that parses with
@@ -269,7 +271,7 @@ impl Output {
             no_terminal: !guide.terminal_detection(),
             json_layout: guide.get_json_layout(),
             budget: budget::from_environment(budget, tool),
-            tool,
+            spelling: guide.get_spelling().for_tool(tool),
             spent: 0,
             exits: guide.get_exits(),
             renames: Renames::of(guide),

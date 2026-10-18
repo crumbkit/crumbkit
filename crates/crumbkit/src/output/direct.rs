@@ -7,13 +7,13 @@ use std::process::ExitCode;
 
 use super::{Output, failure, fields};
 use crate::refusal::Refusal;
-use crate::{Code, Document, Failure, Rows, Sink, Spelling};
+use crate::{Code, Document, Failure, Rows, Sink};
 
 impl Output {
     /// Prints `failure` to `sink` as `finish` prints a failure, in the
-    /// format that the flags choose and with the code that the guide
-    /// prints for it, with a `Run` recovery rendered against the command
-    /// that the output holds.
+    /// format that the flags choose and with the code that the guide prints
+    /// for it, in the guide's spelling, with a `Run` recovery rendered
+    /// against the command that the output holds.
     ///
     /// It returns no exit code. The caller returns
     /// [`Output::failure_exit`] of the failure's code, or another code that
@@ -22,14 +22,13 @@ impl Output {
     pub fn print_failure<O: Write, W: Write>(
         &mut self,
         sink: &mut Sink<O, W>,
-        spelling: Spelling,
         failure: &dyn Failure,
     ) {
         let printing = self.printing();
         failure::print(
             sink,
             self.json,
-            spelling.for_tool(self.tool),
+            self.spelling,
             printing,
             failure,
             &mut self.command,
@@ -48,11 +47,10 @@ impl Output {
     pub fn refuse_view<T: Rows, O: Write, W: Write>(
         &mut self,
         sink: &mut Sink<O, W>,
-        spelling: Spelling,
         document: Document<T>,
     ) -> Option<ExitCode> {
         let refusal = fields::flags_refusal(self, document)?;
-        Some(self.print_refusal(sink, spelling, &refusal))
+        Some(self.print_refusal(sink, &refusal))
     }
 
     /// Prints the refusal of `--fields` for a command whose response has
@@ -66,7 +64,6 @@ impl Output {
     pub fn refuse_fields_for_text<O: Write, W: Write>(
         &mut self,
         sink: &mut Sink<O, W>,
-        spelling: Spelling,
         reason: &str,
     ) -> Option<ExitCode> {
         if self.fields.is_empty() {
@@ -78,7 +75,7 @@ impl Output {
             "--fields",
             None,
         );
-        Some(self.print_refusal(sink, spelling, &refusal))
+        Some(self.print_refusal(sink, &refusal))
     }
 
     /// Prints `refusal`, reports its exit code to the observer, and
@@ -87,12 +84,10 @@ impl Output {
     fn print_refusal<O: Write, W: Write>(
         &mut self,
         sink: &mut Sink<O, W>,
-        spelling: Spelling,
         refusal: &Refusal,
     ) -> ExitCode {
         let printing = self.printing();
-        let spelling = spelling.for_tool(self.tool);
-        let exit = refusal.print(sink, self.json, spelling, printing, &mut self.command);
+        let exit = refusal.print(sink, self.json, self.spelling, printing, &mut self.command);
         crate::events::ended(exit, None)
     }
 

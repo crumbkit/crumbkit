@@ -27,7 +27,7 @@ use std::process::ExitCode;
 
 use clap::{CommandFactory, Parser};
 use crumbkit::help::Guide;
-use crumbkit::{Call, Code, Document, Failure, Listing, Page, Recovery, Row, Spelling, ViewFlags};
+use crumbkit::{Call, Code, Document, Failure, Listing, Page, Recovery, Row, ViewFlags};
 use schemars::JsonSchema;
 use serde::Serialize;
 
@@ -46,7 +46,6 @@ impl Row for Book {
 
 const BOOKS_LIST: Document<Listing<Book>> =
     Document::new("shelf", "books-list", 1, "One page of the books.");
-const SPELLING: Spelling = Spelling::COLONS;
 const UNKNOWN_AUTHOR: Code = Code::new("shelf", "books", "unknown_author");
 
 /// The catalogue has no book by the author the caller named.
@@ -103,13 +102,13 @@ fn list(cli: &Cli) -> Result<Listing<Book>, UnknownAuthor> {
 }
 
 fn main() -> ExitCode {
-    let parsed = crumbkit::parse::<Cli>(Cli::command(), &Guide::new(), SPELLING);
+    let parsed = crumbkit::parse::<Cli>(Cli::command(), &Guide::new());
     let (cli, mut output) = match parsed {
         Ok(parsed) => parsed,
         Err(stop) => return stop.code(),
     };
     let result = list(&cli);
-    crumbkit::finish(&mut output, SPELLING, BOOKS_LIST, result)
+    crumbkit::finish(&mut output, BOOKS_LIST, result)
 }
 ```
 

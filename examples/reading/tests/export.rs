@@ -5,7 +5,7 @@
 use std::io;
 use std::path::Path;
 
-use crumbkit::{Spelling, codes};
+use crumbkit::codes;
 use crumbkit_test::{Examples, Failing, check_twin};
 use snapbox::cmd::{Command, OutputAssert};
 
@@ -138,7 +138,6 @@ fn entries_export_refuses_fields_and_admits_its_twin_without_them() {
         &reading::command(&reading::lists_in(Path::new(LISTS))),
         &reading::GUIDE,
         &examples(),
-        Spelling::COLONS,
         &Failing::new(
             &codes::CLI_USAGE,
             &["entries", "export", "--list", "to-read", "--fields=text"],
@@ -158,7 +157,6 @@ fn entries_export_refuses_long_and_admits_its_twin_without_it() {
         &reading::command(&reading::lists_in(Path::new(LISTS))),
         &reading::GUIDE,
         &examples(),
-        Spelling::COLONS,
         &Failing::new(
             &codes::CLI_USAGE,
             &["entries", "export", "--list", "to-read", "--long"],
@@ -176,7 +174,6 @@ fn entries_export_refuses_full_and_admits_its_twin_with_json_alone() {
         &reading::command(&reading::lists_in(Path::new(LISTS))),
         &reading::GUIDE,
         &examples(),
-        Spelling::COLONS,
         &Failing::new(
             &codes::CLI_USAGE,
             &["entries", "export", "--list", "to-read", "--json", "--full"],

@@ -10,7 +10,7 @@ use serde::Serialize;
 
 use super::Tool;
 use crate::help::Guide;
-use crate::{Batch, Bytes, Document, Error, Headed, Row, Sink, Spelling, finish_to};
+use crate::{Batch, Bytes, Document, Error, Headed, Row, Sink, finish_to};
 
 mod budget;
 
@@ -106,7 +106,6 @@ fn finish_line(
     let code = finish_to(
         &mut Sink::new(&mut out, &mut err),
         &mut output,
-        Spelling::COLONS,
         document,
         result,
     );

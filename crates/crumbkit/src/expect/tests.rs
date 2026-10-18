@@ -23,15 +23,9 @@ struct Rename {
 fn expect(words: &[&str]) -> Result<Expect, ExitCode> {
     let args = std::iter::once("rename").chain(words.iter().copied());
     let mut sink = Sink::new(Vec::new(), Vec::new());
-    crate::parse_to::<Rename, _, _, _, _>(
-        &mut sink,
-        Rename::command(),
-        &Guide::new(),
-        Spelling::COLONS,
-        args,
-    )
-    .map(|(rename, _)| rename.expect)
-    .map_err(ExitCode::from)
+    crate::parse_to::<Rename, _, _, _, _>(&mut sink, Rename::command(), &Guide::new(), args)
+        .map(|(rename, _)| rename.expect)
+        .map_err(ExitCode::from)
 }
 
 /// The command that prints a planet's current name, which a conflict's

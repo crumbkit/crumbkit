@@ -5,9 +5,9 @@ use std::process::ExitCode;
 use clap::Command;
 
 use super::tool;
+use crate::Sink;
 use crate::help::Guide;
 use crate::parse::parse_to;
-use crate::{Sink, Spelling};
 
 /// Returns two alias names, the second built from the name of `tool`, so a
 /// test sees which command the function received.
@@ -33,13 +33,8 @@ const LINE: &str =
 /// exit code and what it printed to the output writer.
 fn run(guide: &Guide, args: &[&str]) -> (Option<ExitCode>, String) {
     let mut out = Vec::new();
-    let result = parse_to::<(), _, _, _, _>(
-        &mut Sink::new(&mut out, Vec::new()),
-        tool(),
-        guide,
-        Spelling::COLONS,
-        args,
-    );
+    let result =
+        parse_to::<(), _, _, _, _>(&mut Sink::new(&mut out, Vec::new()), tool(), guide, args);
     (
         result.err().map(ExitCode::from),
         String::from_utf8(out).unwrap(),

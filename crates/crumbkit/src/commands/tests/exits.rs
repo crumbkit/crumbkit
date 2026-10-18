@@ -4,7 +4,7 @@
 use super::{args, output, paths};
 use crate::commands::{COMMANDS_LIST, list};
 use crate::help::{Exit, Guide};
-use crate::{Sink, Spelling, finish_to};
+use crate::{Sink, finish_to};
 
 /// A guide with a code that every command returns and a code that only
 /// `books list` returns.
@@ -42,7 +42,6 @@ fn notes(guide: &Guide, words: &[&str]) -> String {
     let _ = finish_to(
         &mut Sink::new(&mut out, &mut err),
         &mut output,
-        Spelling::COLONS,
         COMMANDS_LIST,
         result,
     );

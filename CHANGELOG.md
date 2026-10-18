@@ -514,6 +514,10 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- crumbkit: a tool sets its code spelling once with `Guide::spelling`,
+  which defaults to `Spelling::COLONS`. [`parse`], [`finish`], [`stream`],
+  `hand_over` and crumbkit-test's checks no longer take a `Spelling`, and
+  [`check_codes`] takes the guide ([behaviour/failures]).
 - crumbkit: a batch whose document does not set `always_print_first`
   refuses a first answer that passes the output budget alone with its own
   failure, and names every later answer in the one over-budget failure, in

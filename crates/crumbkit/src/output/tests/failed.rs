@@ -12,7 +12,7 @@ use serde::Serialize;
 
 use super::{Finished, PLANETS};
 use crate::help::{Guide, Leaf};
-use crate::{Code, Document, Failure, Prose, Recovery, Row, Rows, Sink, Spelling, ViewFlags};
+use crate::{Code, Document, Failure, Prose, Recovery, Row, Rows, Sink, ViewFlags};
 use crate::{finish_to, parse_to};
 
 const NO_CONFIG: Code = Code::new("solar", "config", "not_found");
@@ -89,12 +89,11 @@ fn fail_in<T: Rows>(args: &[&str], document: Document<T>) -> Finished {
     let mut out = Vec::new();
     let mut err = Vec::new();
     let mut sink = Sink::new(&mut out, &mut err);
-    let parsed =
-        parse_to::<Tool, _, _, _, _>(&mut sink, Tool::command(), &GUIDE, Spelling::COLONS, args);
+    let parsed = parse_to::<Tool, _, _, _, _>(&mut sink, Tool::command(), &GUIDE, args);
     let code = match parsed {
         Ok((_, mut output)) => {
             let result: Result<T, NoConfig> = Err(NoConfig);
-            finish_to(&mut sink, &mut output, Spelling::COLONS, document, result)
+            finish_to(&mut sink, &mut output, document, result)
         }
         Err(stop) => stop.number(),
     };
@@ -161,7 +160,6 @@ fn a_view_flag_that_the_leaf_s_document_cannot_use_is_still_refused_before_the_h
         &mut sink,
         Tool::command(),
         &PROSE_GUIDE,
-        Spelling::COLONS,
         ["tool", "list", "--long"],
     );
 

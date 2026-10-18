@@ -9,7 +9,7 @@ use serde_json::{Value, json};
 
 use super::{COMMANDS_LIST, CommandRow, CommandsList, list};
 use crate::help::{Example, Guide, Leaf};
-use crate::{Document, Error, Listing, Output, Row, Sink, Spelling, finish_to};
+use crate::{Document, Error, Listing, Output, Row, Sink, finish_to};
 
 mod arguments;
 mod exits;
@@ -174,7 +174,6 @@ fn finish(output: &mut Output, words: &[&str]) -> Finished {
     let code = finish_to(
         &mut Sink::new(&mut out, &mut err),
         output,
-        Spelling::COLONS,
         COMMANDS_LIST,
         result,
     );
@@ -418,10 +417,9 @@ fn a_command_without_a_leaf_has_no_examples_and_no_columns() {
 #[test]
 fn the_rows_are_the_same_from_the_command_that_parse_returns_after_it_added_help_lines() {
     let words = ["shelf", "books", "list"];
-    let ((), mut from_parse) =
-        crate::parse_from::<(), _, _>(tool(), &GUIDE, Spelling::COLONS, words)
-            .ok()
-            .unwrap();
+    let ((), mut from_parse) = crate::parse_from::<(), _, _>(tool(), &GUIDE, words)
+        .ok()
+        .unwrap();
 
     let rows = list(&mut from_parse, &GUIDE, &args(&[])).unwrap();
 

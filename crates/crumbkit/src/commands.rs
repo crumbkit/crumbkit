@@ -15,7 +15,7 @@
 //! use clap::{CommandFactory, Parser, Subcommand};
 //! use crumbkit::commands::{self, CommandsList};
 //! use crumbkit::help::Guide;
-//! use crumbkit::{Spelling, ViewFlags};
+//! use crumbkit::ViewFlags;
 //!
 //! /// Browse a small catalogue.
 //! #[derive(Parser)]
@@ -43,20 +43,19 @@
 //! }
 //!
 //! const GUIDE: Guide = Guide::new();
-//! const SPELLING: Spelling = Spelling::COLONS;
 //!
 //! fn run(args: &[&str]) -> ExitCode {
-//!     let (cli, mut output) =
-//!         match crumbkit::parse_from::<Cli, _, _>(Cli::command(), &GUIDE, SPELLING, args) {
-//!             Ok(parsed) => parsed,
-//!             Err(stop) => return stop.code(),
-//!         };
+//!     let parsed = crumbkit::parse_from::<Cli, _, _>(Cli::command(), &GUIDE, args);
+//!     let (cli, mut output) = match parsed {
+//!         Ok(parsed) => parsed,
+//!         Err(stop) => return stop.code(),
+//!     };
 //!     match cli.resource {
 //!         Resource::Commands { command: CommandsCommand::List(args) } => {
 //!             // `list` builds the command tree in `output`, so it runs
 //!             // before `finish`.
 //!             let result = commands::list(&mut output, &GUIDE, &args);
-//!             crumbkit::finish(&mut output, SPELLING, commands::COMMANDS_LIST, result)
+//!             crumbkit::finish(&mut output, commands::COMMANDS_LIST, result)
 //!         }
 //!     }
 //! }

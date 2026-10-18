@@ -12,7 +12,7 @@ use serde_json::{Value, json};
 use super::{Finished, PAGES, Page, batch, finish, page};
 use crate::help::Guide;
 use crate::output::tests::{Tool, built_with};
-use crate::{Batch, Document, Error, Sink, Spelling, finish_to};
+use crate::{Batch, Document, Error, Sink, finish_to};
 
 /// The keys of the batch, in the order the caller gave them.
 const KEYS: [&str; 3] = ["A", "B", "C"];
@@ -66,7 +66,6 @@ fn fetched(
     let code = finish_to(
         &mut Sink::new(&mut out, &mut err),
         &mut output,
-        Spelling::COLONS,
         document,
         result,
     );

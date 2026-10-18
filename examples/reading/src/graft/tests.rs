@@ -41,7 +41,6 @@ fn the_output_of_a_command_added_for_a_list_reads_the_view_flags_after_it() {
         &mut crumbkit::Sink::new(out, err),
         crate::command(&lists),
         &crate::guide(&lists),
-        crumbkit::Spelling::COLONS,
         ["reading", "to-read", "list", "--json"],
     );
 

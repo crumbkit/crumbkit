@@ -2,7 +2,6 @@
 //! the fields of the failure that offers the step, and the values that
 //! every chain shares.
 
-use crumbkit::Spelling;
 use snapbox::assert::Action;
 
 use super::{CODES, NOT_FOUND, OTHERS, Setup, check_with, problems, recoveries, run};
@@ -21,13 +20,9 @@ const FIELD_VALUE: &[Allow] = &[Allow::new(
 /// Returns the settings that run `setup`'s script with the opt-outs
 /// `allow` and check the tool's codes with `starts`.
 fn allowing<'a>(setup: &'a Setup, starts: &'a [Failing<'a>], allow: &'a [Allow]) -> Recoveries<'a> {
-    Recoveries::new(
-        Examples::new(&setup.script, "").allow(allow),
-        Spelling::COLONS,
-        CODES,
-    )
-    .starts(starts)
-    .unprovoked(OTHERS)
+    Recoveries::new(Examples::new(&setup.script, "").allow(allow), CODES)
+        .starts(starts)
+        .unprovoked(OTHERS)
 }
 
 /// Returns the line of a `tool::books::not_found` failure document with

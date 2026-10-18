@@ -96,11 +96,13 @@ impl Code {
 
 /// How a tool spells its failure codes as text.
 ///
-/// A tool passes one spelling to `crumbkit::finish`, and its test
-/// passes the same spelling to crumbkit-test's codes check. The built-in
-/// spelling, [`Spelling::COLONS`], joins the three segments of a code with
-/// `::`. A tool that needs another form, such as segments joined with `.`,
-/// gives its own function to [`Spelling::custom`].
+/// A tool sets one spelling on its guide with `Guide::spelling`, and
+/// crumbkit prints every code in it. crumbkit-test's codes check reads the
+/// same spelling from the guide. The built-in spelling,
+/// [`Spelling::COLONS`], joins the three segments of a code with `::`, and
+/// a guide that sets no spelling uses it. A tool that needs another form,
+/// such as segments joined with `.`, gives its own function to
+/// [`Spelling::custom`].
 #[derive(Clone, Copy, Debug)]
 pub struct Spelling {
     /// Writes a code's text to the formatter.
@@ -149,9 +151,9 @@ impl Spelling {
     /// `crumbkit` in each of crumbkit's own codes, such as
     /// `shelf::cli::usage` for `crumbkit::cli::usage`.
     ///
-    /// crumbkit names the spelling for the tool it runs, so a tool passes
-    /// its spelling without a tool name. A code whose component is not
-    /// `crumbkit` keeps it.
+    /// crumbkit names the spelling for the tool it runs, so a tool sets its
+    /// spelling on its guide without a tool name. A code whose component is
+    /// not `crumbkit` keeps it.
     ///
     /// ```
     /// use crumbkit_core::{Code, Spelling, ToolName};

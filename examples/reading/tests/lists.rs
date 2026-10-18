@@ -7,7 +7,7 @@
 use std::io;
 use std::path::Path;
 
-use crumbkit::{Spelling, codes};
+use crumbkit::codes;
 use crumbkit_test::{Examples, Failing, check_twin};
 use snapbox::cmd::{Command, OutputAssert};
 use snapbox::file;
@@ -150,7 +150,6 @@ fn a_directory_without_lists_adds_no_command() -> io::Result<()> {
         &reading::command(&reading::lists_in(empty.path())),
         &reading::GUIDE,
         &examples,
-        Spelling::COLONS,
         &Failing::new(&codes::CLI_USAGE, &["to-read", "list"]),
         &["commands", "list"],
     );
@@ -394,7 +393,6 @@ fn entries_set_refuses_an_empty_expect_and_admits_its_twin_with_a_title() {
         &reading::command(&reading::lists_in(Path::new(LISTS))),
         &reading::GUIDE,
         &examples,
-        Spelling::COLONS,
         &Failing::new(
             &codes::CLI_USAGE,
             &[
@@ -436,7 +434,6 @@ fn entries_set_refuses_a_title_with_a_line_break_and_admits_its_twin_without_one
         &reading::command(&reading::lists_in(Path::new(LISTS))),
         &reading::GUIDE,
         &examples,
-        Spelling::COLONS,
         &Failing::new(
             &codes::CLI_USAGE,
             &[

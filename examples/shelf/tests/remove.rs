@@ -7,7 +7,7 @@
 use std::path::Path;
 
 use clap::CommandFactory as _;
-use crumbkit::{Spelling, codes};
+use crumbkit::codes;
 use crumbkit_test::{Examples, Failing, check_twin};
 use snapbox::cmd::{Command, OutputAssert};
 use snapbox::file;
@@ -77,7 +77,6 @@ fn books_remove_without_yes_or_a_terminal_fails_with_needs_yes_and_removes_nothi
             &shelf::Cli::command(),
             &shelf::GUIDE,
             &shelf,
-            Spelling::COLONS,
             &Failing::new(&codes::CONFIRM_NEEDS_YES, refused),
             &admitted,
         );

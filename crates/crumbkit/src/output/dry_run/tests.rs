@@ -9,7 +9,7 @@ use serde::Serialize;
 use super::DryRun;
 use crate::Envelope;
 use crate::help::Guide;
-use crate::{Document, Error, Output, Prose, Row, Sink, Spelling, finish_to};
+use crate::{Document, Error, Output, Prose, Row, Sink, finish_to};
 
 /// A removed planet.
 #[derive(Serialize, JsonSchema)]
@@ -67,7 +67,6 @@ fn finish_with<T: crate::Rows>(
     let code = finish_to(
         &mut Sink::new(&mut out, &mut err),
         &mut output,
-        Spelling::COLONS,
         document,
         result,
     );
@@ -160,7 +159,6 @@ fn a_dry_run_of_a_document_without_the_envelope_prints_it_unchanged_and_says_so_
     finish_to(
         &mut Sink::new(&mut out, &mut err),
         &mut output,
-        Spelling::COLONS,
         REMOVED.envelope(Envelope::Without),
         result,
     );

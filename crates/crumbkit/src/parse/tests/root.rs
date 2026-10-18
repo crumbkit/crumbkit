@@ -4,10 +4,10 @@
 use std::process::ExitCode;
 
 use super::{Parsed, tool};
+use crate::Sink;
 use crate::help::Guide;
 use crate::parse::{Stop, parse_to};
 use crate::twins::assert_one_word_apart;
-use crate::{Sink, Spelling};
 
 /// A guide that roots the tool at its `planets` group, as cargo roots a
 /// cargo subcommand at the word after `cargo`.
@@ -18,13 +18,8 @@ const GUIDE: Guide = Guide::new().root(&["planets"]);
 fn parse(args: &[&str]) -> Parsed {
     let mut out = Vec::new();
     let mut err = Vec::new();
-    let result = parse_to::<(), _, _, _, _>(
-        &mut Sink::new(&mut out, &mut err),
-        tool(),
-        &GUIDE,
-        Spelling::COLONS,
-        args,
-    );
+    let result =
+        parse_to::<(), _, _, _, _>(&mut Sink::new(&mut out, &mut err), tool(), &GUIDE, args);
     let stop = result.err();
     Parsed {
         code: stop.as_ref().map(Stop::code),

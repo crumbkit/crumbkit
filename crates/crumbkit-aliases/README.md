@@ -35,7 +35,7 @@ use std::process::ExitCode;
 
 use clap::{CommandFactory, Parser, Subcommand};
 use crumbkit::help::Guide;
-use crumbkit::{Spelling, ViewFlags};
+use crumbkit::ViewFlags;
 use crumbkit_aliases::AliasesList;
 
 /// Browse a small catalogue.
@@ -65,7 +65,6 @@ enum AliasesCommand {
 }
 
 const GUIDE: Guide = Guide::new();
-const SPELLING: Spelling = Spelling::COLONS;
 
 /// Runs shelf with `args` and the aliases file at `file`. shelf's `main`
 /// passes `std::env::args_os()` and
@@ -73,17 +72,16 @@ const SPELLING: Spelling = Spelling::COLONS;
 fn run(args: &[&str], file: Option<&Path>) -> ExitCode {
     let command = Cli::command();
     let args = crumbkit_aliases::expand(&command, args, file);
-    let (cli, mut output) =
-        match crumbkit::parse_from::<Cli, _, _>(command, &GUIDE, SPELLING, args) {
-            Ok(parsed) => parsed,
-            Err(stop) => return stop.code(),
-        };
+    let (cli, mut output) = match crumbkit::parse_from::<Cli, _, _>(command, &GUIDE, args) {
+        Ok(parsed) => parsed,
+        Err(stop) => return stop.code(),
+    };
     match cli.resource {
         Resource::Aliases { command: AliasesCommand::List(args) } => {
             // `list` builds the command tree in `output`, so it runs
             // before `finish`.
             let result = crumbkit_aliases::list(&mut output, file, &args);
-            crumbkit::finish(&mut output, SPELLING, crumbkit_aliases::ALIASES_LIST, result)
+            crumbkit::finish(&mut output, crumbkit_aliases::ALIASES_LIST, result)
         }
     }
 }

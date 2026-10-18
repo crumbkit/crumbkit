@@ -13,12 +13,12 @@
 //! ```no_run
 //! use std::process::{Command, ExitCode};
 //!
-//! use crumbkit::{Output, Spelling};
+//! use crumbkit::Output;
 //!
 //! fn edit(output: &mut Output, path: &str) -> ExitCode {
 //!     let mut editor = Command::new("vi");
 //!     editor.arg(path);
-//!     crumbkit_child::hand_over(output, Spelling::COLONS, editor)
+//!     crumbkit_child::hand_over(output, editor)
 //! }
 //! ```
 //!
@@ -29,8 +29,8 @@
 //! inside the usual envelope. A child without a JSON form refuses `--json`.
 //!
 //! Every failure prints as `finish` prints one, with one of these codes in
-//! the tool's spelling, or the tool's own code when its guide renames it.
-//! Each exit code below is crumbkit's default, which an
+//! the spelling that the tool's guide sets, or the tool's own code when its
+//! guide renames it. Each exit code below is crumbkit's default, which an
 //! [`Exit`](crumbkit::help::Exit) of the guide that lists the code replaces:
 //!
 //! - `<tool>::child::no_json`, the exit code of a refused command line,
@@ -55,7 +55,7 @@ use std::process::{self, Command, ExitCode, ExitStatus, Stdio};
 
 use serde::de::DeserializeOwned;
 
-use crumbkit::{Document, Failure as _, Output, Rows, Sink, Spelling};
+use crumbkit::{Document, Failure as _, Output, Rows, Sink};
 
 use crate::codes;
 use crate::error::ChildError;
@@ -138,8 +138,8 @@ impl<T> Copy for Json<T> {}
 /// passed `--fields`. Both exit with the code of a refused command line,
 /// which is 2 unless the guide lists another. The module
 /// documentation lists the failures of a child that cannot start.
-pub fn hand_over(output: &mut Output, spelling: Spelling, child: Command) -> ExitCode {
-    hand_over_to(&mut Sink::standard(), output, spelling, child)
+pub fn hand_over(output: &mut Output, child: Command) -> ExitCode {
+    hand_over_to(&mut Sink::standard(), output, child)
 }
 
 /// Runs `child` as [`hand_over`] describes, with its failures printed to
@@ -147,15 +147,14 @@ pub fn hand_over(output: &mut Output, spelling: Spelling, child: Command) -> Exi
 fn hand_over_to<O: Write, W: Write>(
     sink: &mut Sink<O, W>,
     output: &mut Output,
-    spelling: Spelling,
     child: Command,
 ) -> ExitCode {
     if output.is_json() {
         let failure = ChildError::NoJson(program(&child));
-        output.print_failure(sink, spelling, &failure);
+        output.print_failure(sink, &failure);
         return crumbkit::events::ended(no_json_exit(output), None);
     }
-    terminal(sink, output, spelling, child)
+    terminal(sink, output, child)
 }
 
 /// Runs `child` as [`hand_over`] does without `--json`, and as `finish` does
@@ -176,11 +175,10 @@ fn hand_over_to<O: Write, W: Write>(
 /// a `T` fails with `<tool>::child::bad_json` and exit code 1.
 pub fn hand_over_json<T: Rows + DeserializeOwned>(
     output: &mut Output,
-    spelling: Spelling,
     child: Command,
     json: Json<T>,
 ) -> ExitCode {
-    hand_over_json_to(&mut Sink::standard(), output, spelling, child, json)
+    hand_over_json_to(&mut Sink::standard(), output, child, json)
 }
 
 /// Runs `child` as [`hand_over_json`] describes, with its result and
@@ -188,14 +186,13 @@ pub fn hand_over_json<T: Rows + DeserializeOwned>(
 fn hand_over_json_to<T: Rows + DeserializeOwned, O: Write, W: Write>(
     sink: &mut Sink<O, W>,
     output: &mut Output,
-    spelling: Spelling,
     mut child: Command,
     json: Json<T>,
 ) -> ExitCode {
     if !output.is_json() {
-        return terminal(sink, output, spelling, child);
+        return terminal(sink, output, child);
     }
-    if let Some(code) = output.refuse_view(sink, spelling, json.document) {
+    if let Some(code) = output.refuse_view(sink, json.document) {
         return code;
     }
     child
@@ -206,7 +203,7 @@ fn hand_over_json_to<T: Rows + DeserializeOwned, O: Write, W: Write>(
         .stderr(Stdio::inherit());
     let program = program(&child);
     let captured = signals::while_running(|| child.output());
-    respond_json(sink, output, spelling, json.document, program, captured)
+    respond_json(sink, output, json.document, program, captured)
 }
 
 /// Why `--fields` is refused without `--json`, which ends the refusal's
@@ -218,10 +215,9 @@ const TEXT_ONLY: &str = "this command hands the terminal to another program";
 fn terminal<O: Write, W: Write>(
     sink: &mut Sink<O, W>,
     output: &mut Output,
-    spelling: Spelling,
     mut child: Command,
 ) -> ExitCode {
-    if let Some(code) = output.refuse_fields_for_text(sink, spelling, TEXT_ONLY) {
+    if let Some(code) = output.refuse_fields_for_text(sink, TEXT_ONLY) {
         return code;
     }
     child
@@ -231,7 +227,7 @@ fn terminal<O: Write, W: Write>(
         .stderr(Stdio::inherit());
     let program = program(&child);
     let status = signals::while_running(|| child.status());
-    respond_text(sink, output, spelling, program, status)
+    respond_text(sink, output, program, status)
 }
 
 /// Returns the exit code of a child that held the terminal and ended with
@@ -239,7 +235,6 @@ fn terminal<O: Write, W: Write>(
 fn respond_text<O: Write, W: Write>(
     sink: &mut Sink<O, W>,
     output: &mut Output,
-    spelling: Spelling,
     program: String,
     status: io::Result<ExitStatus>,
 ) -> ExitCode {
@@ -250,7 +245,7 @@ fn respond_text<O: Write, W: Write>(
             }
             crumbkit::events::ended(exit_number(status), None)
         }
-        Err(error) => fail(sink, output, spelling, &ChildError::start(program, error)),
+        Err(error) => fail(sink, output, &ChildError::start(program, error)),
     }
 }
 
@@ -260,7 +255,6 @@ fn respond_text<O: Write, W: Write>(
 fn respond_json<T: Rows + DeserializeOwned, O: Write, W: Write>(
     sink: &mut Sink<O, W>,
     output: &mut Output,
-    spelling: Spelling,
     document: Document<T>,
     program: String,
     captured: io::Result<process::Output>,
@@ -268,7 +262,7 @@ fn respond_json<T: Rows + DeserializeOwned, O: Write, W: Write>(
     let captured = match captured {
         Ok(captured) => captured,
         Err(error) => {
-            return fail(sink, output, spelling, &ChildError::start(program, error));
+            return fail(sink, output, &ChildError::start(program, error));
         }
     };
     if !captured.status.success() {
@@ -276,15 +270,13 @@ fn respond_json<T: Rows + DeserializeOwned, O: Write, W: Write>(
             crumbkit::events::interrupted();
         }
         let exit = exit_number(captured.status);
-        output.print_failure(sink, spelling, &ChildError::Failed { program, exit });
+        output.print_failure(sink, &ChildError::Failed { program, exit });
         return crumbkit::events::ended(exit, None);
     }
     match serde_json::from_slice::<T>(&captured.stdout) {
         Ok(value) => {
             let result: Result<T, ChildError> = Ok(value);
-            ExitCode::from(crumbkit::finish_to(
-                sink, output, spelling, document, result,
-            ))
+            ExitCode::from(crumbkit::finish_to(sink, output, document, result))
         }
         Err(error) => {
             let failure = ChildError::BadJson {
@@ -292,7 +284,7 @@ fn respond_json<T: Rows + DeserializeOwned, O: Write, W: Write>(
                 document: document.to_string(),
                 error,
             };
-            fail(sink, output, spelling, &failure)
+            fail(sink, output, &failure)
         }
     }
 }
@@ -303,10 +295,9 @@ fn respond_json<T: Rows + DeserializeOwned, O: Write, W: Write>(
 fn fail<O: Write, W: Write>(
     sink: &mut Sink<O, W>,
     output: &mut Output,
-    spelling: Spelling,
     failure: &ChildError,
 ) -> ExitCode {
-    output.print_failure(sink, spelling, failure);
+    output.print_failure(sink, failure);
     crumbkit::events::ended(output.failure_exit(failure.code()), None)
 }
 

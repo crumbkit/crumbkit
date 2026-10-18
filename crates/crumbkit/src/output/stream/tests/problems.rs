@@ -9,7 +9,7 @@ use schemars::JsonSchema;
 use serde::Serialize;
 
 use super::{Unreadable, parse};
-use crate::{Document, Row, Sink, Spelling, Stream, stream_to};
+use crate::{Document, Row, Sink, Stream, stream_to};
 
 /// A nest whose `problem` field marks a problem when it holds a value.
 #[derive(Serialize, JsonSchema)]
@@ -34,7 +34,7 @@ fn stream(nests: &[Nest], failure: Option<&Unreadable>) -> (ExitCode, String) {
     let mut out = Vec::new();
     let mut err = Vec::new();
     let mut sink = Sink::new(&mut out, &mut err);
-    let mut streaming = stream_to(&mut sink, &mut output, Spelling::COLONS, NESTS).unwrap();
+    let mut streaming = stream_to(&mut sink, &mut output, NESTS).unwrap();
     for nest in nests {
         assert_eq!(streaming.item(nest), ControlFlow::Continue(()));
     }

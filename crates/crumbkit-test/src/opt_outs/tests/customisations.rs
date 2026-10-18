@@ -275,3 +275,45 @@ fn the_report_lists_the_rows_whole_opt_out_and_the_text_line_customisation_of_on
     assert_eq!(json["data"][0]["rule"], json!("documents/rows-whole"));
     assert_eq!(json["customisations"][0]["declaration"], json!("text-line"));
 }
+
+/// Joins the segments of a code with `.`, a custom spelling.
+const DOTS: crumbkit::Spelling = crumbkit::Spelling::custom(|code, f| {
+    write!(f, "{}.{}.{}", code.component(), code.area(), code.reason())
+});
+
+#[test]
+fn a_custom_spelling_is_a_customisation_and_spells_every_listed_code() {
+    const GUIDE: Guide = Guide::new()
+        .spelling(DOTS)
+        .codes(&[Rename::new(&CLI_USAGE, &USAGE)]);
+    let shelf = Command::new("shelf");
+
+    let listed: Vec<_> = customisations(&shelf, &GUIDE)
+        .into_iter()
+        .map(|entry| (entry.declaration, entry.applies_to, entry.declares))
+        .collect();
+
+    assert_eq!(
+        listed,
+        [
+            (
+                "code-spelling",
+                "every run of shelf".to_owned(),
+                "Runs print codes such as shelf.cli.usage in place of shelf::cli::usage."
+                    .to_owned()
+            ),
+            (
+                "code-rename",
+                "every run of shelf".to_owned(),
+                "Runs print shelf.cli.usage in place of shelf.cli.usage.".to_owned()
+            ),
+        ]
+    );
+}
+
+#[test]
+fn a_guide_that_sets_the_colon_spelling_lists_no_spelling() {
+    const GUIDE: Guide = Guide::new().spelling(crumbkit::Spelling::COLONS);
+
+    assert!(customisations(&Command::new("shelf"), &GUIDE).is_empty());
+}

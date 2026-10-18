@@ -1,8 +1,6 @@
 //! Tests for `recoveries/next-step`, which finds a failure with one of the
 //! tool's declared codes that offers an agent no next step.
 
-use crumbkit::Spelling;
-
 use super::{CODES, OTHERS, SHOW_7, Setup, UNPROVOKED, failure, problems, run};
 use crate::allow::{Allow, Rule};
 use crate::examples::Examples;
@@ -14,13 +12,9 @@ use crate::recoveries::{Recoveries, Unprovoked};
 fn checked(setup: &Setup, allow: &[Allow], unprovoked: &[Unprovoked<'_>]) -> Option<String> {
     problems(
         setup,
-        &Recoveries::new(
-            Examples::new(&setup.script, "").allow(allow),
-            Spelling::COLONS,
-            CODES,
-        )
-        .starts(SHOW_7)
-        .unprovoked(unprovoked),
+        &Recoveries::new(Examples::new(&setup.script, "").allow(allow), CODES)
+            .starts(SHOW_7)
+            .unprovoked(unprovoked),
     )
 }
 

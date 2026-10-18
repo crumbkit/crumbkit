@@ -10,8 +10,8 @@ use std::os::unix::ffi::OsStrExt as _;
 use std::path::{Path, PathBuf};
 
 use clap::{Arg, Command};
+use crumbkit::Code;
 use crumbkit::help::Guide;
-use crumbkit::{Code, Spelling};
 use snapbox::Assert;
 use snapbox::assert::Action;
 
@@ -144,7 +144,7 @@ fn a_runtime_failing_built_from_owned_strings_runs_as_a_borrowed_failing_does() 
         .env("DEPTH", "1")
         .into_failing()];
     let recoveries = |starts| {
-        Recoveries::new(examples, Spelling::COLONS, CODES)
+        Recoveries::new(examples, CODES)
             .starts(starts)
             .unprovoked(&unprovoked)
     };
@@ -264,8 +264,8 @@ fn a_test_builds_a_twin_a_recovery_start_and_an_untwinned_opt_out_from_a_directo
         place.line(UNREADABLE, show(&broken)).into_failing(),
     ];
     let examples = Examples::new(&script, "").allow(&allow);
-    let twins = Twins::new(examples, Spelling::COLONS, CODES).pairs(&pairs);
-    let recoveries = Recoveries::new(examples, Spelling::COLONS, CODES).starts(&starts);
+    let twins = Twins::new(examples, CODES).pairs(&pairs);
+    let recoveries = Recoveries::new(examples, CODES).starts(&starts);
 
     let twin_problems = panic_message(|| check_twins(&tree(), &Guide::new(), &twins));
     let report = report(&recoveries, "runtime-scan-golden");
@@ -346,7 +346,7 @@ fn a_variable_twin_takes_a_variable_name_that_the_test_builds_at_run_time() {
         &UNREADABLE,
         "Only a broken list provokes it.",
     )];
-    let twins = Twins::new(Examples::new(&script, ""), Spelling::COLONS, CODES)
+    let twins = Twins::new(Examples::new(&script, ""), CODES)
         .pairs(&pairs)
         .unprovoked(&unprovoked);
 

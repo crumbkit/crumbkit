@@ -8,7 +8,7 @@ use serde::Serialize;
 
 use super::RuntimeLeaf;
 use crate::help::{Column, Example, Exit, Goal, Group, Guide, Leaf, RefusalContext, Rename, Topic};
-use crate::{Call, Code, Document, Row, Sink, Spelling, parse_to};
+use crate::{Call, Code, Document, Row, Sink, parse_to};
 
 const GUIDE: Guide = Guide::new()
     .groups(&[Group::new(&[], &[Goal::new("Read", &["planets"])])])
@@ -85,7 +85,6 @@ fn a_command_added_at_run_time_lists_the_examples_of_its_runtime_leaf_in_its_hel
         &mut Sink::new(&mut out, Vec::new()),
         tool,
         &guide,
-        Spelling::COLONS,
         ["tool", "moons", "list", "-h"],
     );
 
@@ -140,7 +139,6 @@ fn a_refusal_of_a_runtime_leafs_command_recovers_with_its_functions_call_and_pri
         &mut Sink::new(Vec::new(), &mut err),
         tool,
         &guide,
-        Spelling::COLONS,
         ["tool", "moons", "show", "--bogus"],
     );
 
@@ -209,7 +207,6 @@ fn the_long_help_of_a_runtime_leafs_command_lists_the_columns_of_its_document() 
         &mut Sink::new(&mut out, Vec::new()),
         tool,
         &guide,
-        Spelling::COLONS,
         ["tool", "jupiter", "list", "--help"],
     );
 

@@ -70,7 +70,6 @@ fn a_refused_command_line_prints_the_tool_s_usage_code_and_exits_with_the_code_i
         &mut crate::Sink::new(&mut out, &mut err),
         command,
         &GUIDE,
-        crate::Spelling::COLONS,
         ["ledger", "--srot"],
     )
     .err()

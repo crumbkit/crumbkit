@@ -14,8 +14,7 @@ use super::{Failing, Tool, finish_output, finish_with};
 use crate::answered::answered;
 use crate::help::Guide;
 use crate::{
-    Batch, Code, Document, Error, Failure, Listing, Output, Recovery, Row, Sink, Spelling,
-    finish_to,
+    Batch, Code, Document, Error, Failure, Listing, Output, Recovery, Row, Sink, finish_to,
 };
 
 const CHECKS: Document<Listing<Check>> = Document::new("lint", "checks", 1, "The test rows.");
@@ -166,7 +165,6 @@ fn a_listing_with_problem_rows_exits_with_1_after_the_reader_closed_the_pipe() {
     let code = finish_to(
         &mut sink,
         &mut Output::of(clap::Command::new("tool")),
-        Spelling::COLONS,
         CHECKS,
         result,
     );

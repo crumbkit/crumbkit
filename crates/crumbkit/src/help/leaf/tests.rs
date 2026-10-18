@@ -11,7 +11,7 @@ use serde::Serialize;
 
 use super::{Column, Example, Leaf};
 use crate::help::{Guide, extend};
-use crate::{Document, Prose, Row, Sink, Spelling, parse_to};
+use crate::{Document, Prose, Row, Sink, parse_to};
 
 /// A tool with a global flag and one group of two leaves.
 fn tool() -> Command {
@@ -75,13 +75,8 @@ const EXAMPLES: &[Example] = &[
 fn help(guide: &Guide, args: &[&str]) -> String {
     let mut out = Vec::new();
     let mut err = Vec::new();
-    let result = parse_to::<(), _, _, _, _>(
-        &mut Sink::new(&mut out, &mut err),
-        tool(),
-        guide,
-        Spelling::COLONS,
-        args,
-    );
+    let result =
+        parse_to::<(), _, _, _, _>(&mut Sink::new(&mut out, &mut err), tool(), guide, args);
     assert_eq!(result.err().map(ExitCode::from), Some(ExitCode::SUCCESS));
     assert_eq!(err, b"");
     String::from_utf8(out).unwrap()
@@ -303,7 +298,6 @@ fn the_schema_is_built_only_when_the_words_ask_for_long_help() {
             &mut Sink::new(Vec::new(), Vec::new()),
             tool(),
             &GUIDE,
-            Spelling::COLONS,
             args,
         );
         SCHEMAS.get()
@@ -327,7 +321,6 @@ fn a_leaf_off_the_typed_path_keeps_its_help() {
         &mut Sink::new(Vec::new(), Vec::new()),
         tool(),
         &GUIDE,
-        Spelling::COLONS,
         ["tool", "planets", "show", "Mars"],
     );
 
@@ -380,7 +373,6 @@ fn a_leaf_that_extend_already_gave_its_examples_prints_them_once_through_parse()
             &mut Sink::new(&mut out, &mut err),
             extend(tool(), &GUIDE),
             &GUIDE,
-            Spelling::COLONS,
             ["tool", "planets", "list", flag],
         );
 

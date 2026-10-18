@@ -17,7 +17,8 @@ sink of in-memory writers. The rustdoc of `parse`, `parse_from` and
 
 On success, `parse` returns the tool's parsed type and an
 [`Output`](../../../crates/crumbkit/src/output.rs). The `Output` holds the
-view flags, the command tree, the guide's settings, the words the caller
+view flags, the command tree, the guide's settings with the spelling of its
+codes, the words the caller
 typed with any values that a [picker](../effects/pickers.md) added, whether
 the caller passed `--no-input`, and the code renames of the leaf that the
 words name. `Output::confirm` repeats those words with `--yes` in its
@@ -33,13 +34,14 @@ A tool that parses with clap alone builds its `Output` with
 `Output::new(view, command, &GUIDE, args)`, where `args` is the argv with
 the program name first. `Output::new` finds the leaf that the words name,
 so the run gets that leaf's code renames, and it keeps the words for the
-`--yes` recovery. It reads no `--no-input`.
+`--yes` recovery. It takes the spelling of codes from the guide, as `parse`
+does. It reads no `--no-input`.
 
 A tool with personal aliases passes its arguments through
 `crumbkit_aliases::expand` before `parse_from`, as the
 [aliases page](aliases.md) describes.
 
-Why: ADR-0015, ADR-0076, ADR-0002.
+Why: ADR-0015, ADR-0076, ADR-0086, ADR-0002.
 
 ## The Stop of a run that parse ended
 

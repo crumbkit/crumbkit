@@ -5,7 +5,7 @@ use clap::CommandFactory;
 use crumbkit::Code;
 use crumbkit_test::{Allow, Pages, Rule};
 
-use super::{Cli, GUIDE, SHELF_NOT_FOUND, SPELLING};
+use super::{Cli, GUIDE, SHELF_NOT_FOUND};
 
 /// pantry's opt-outs from crumbkit's conventions, which each check that
 /// takes opt-outs reads.
@@ -45,5 +45,5 @@ fn every_command_and_leaf_meets_the_guide_rules() {
 
 #[test]
 fn every_failure_code_is_distinct_and_printable() {
-    crumbkit_test::check_codes(SPELLING, &[CODES]);
+    crumbkit_test::check_codes(&GUIDE, &[CODES]);
 }

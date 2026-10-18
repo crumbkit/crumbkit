@@ -40,7 +40,7 @@ pub use self::room::Room;
 pub use self::stream::{Streaming, stream, stream_to};
 use crate::help::rename::Renames;
 use crate::help::{Exit, view};
-use crate::{AsFailure, Document, Rows, Sink, Spelling, ToolName};
+use crate::{AsFailure, Document, Rows, Sink, Spelling};
 
 #[cfg(test)]
 mod tests;
@@ -127,9 +127,10 @@ pub struct Output {
     /// the leaf of the parsed command (ADR-0056, ADR-0060).
     renames: Renames,
 
-    /// The name that the run's output gives crumbkit's own codes, documents
-    /// and variables (ADR-0079).
-    tool: ToolName,
+    /// The guide's spelling of the run's codes, which writes the tool's
+    /// name in crumbkit's own codes. The tool's name also names crumbkit's
+    /// documents and variables (ADR-0079).
+    spelling: Spelling,
 }
 
 impl Output {
@@ -209,14 +210,10 @@ impl Output {
         }
     }
 
-    /// Returns `spelling` and `document` with the tool's name in place of
-    /// `crumbkit` in crumbkit's own codes and documents (ADR-0079).
-    pub(crate) const fn named<T>(
-        &self,
-        spelling: Spelling,
-        document: Document<T>,
-    ) -> (Spelling, Document<T>) {
-        (spelling.for_tool(self.tool), self.tool.document(document))
+    /// Returns the guide's spelling and `document`, with the tool's name in
+    /// place of `crumbkit` in crumbkit's own codes and documents (ADR-0079).
+    pub(crate) const fn named<T>(&self, document: Document<T>) -> (Spelling, Document<T>) {
+        (self.spelling, self.spelling.tool().document(document))
     }
 
     /// Returns what the tool's guide decides about the run's failures: the
@@ -244,17 +241,10 @@ fn several_keys<T: Rows>(value: &T) -> bool {
 /// standard output and standard error.
 pub fn finish<T: Rows, E: AsFailure>(
     output: &mut Output,
-    spelling: Spelling,
     document: Document<T>,
     result: Result<T, E>,
 ) -> ExitCode {
-    ExitCode::from(finish_to(
-        &mut Sink::standard(),
-        output,
-        spelling,
-        document,
-        result,
-    ))
+    ExitCode::from(finish_to(&mut Sink::standard(), output, document, result))
 }
 
 /// Prints a command's result to `sink` in the format that `output` chooses,
@@ -334,12 +324,13 @@ pub fn finish<T: Rows, E: AsFailure>(
 /// The `error:` line is the failure's `Display`. A `cause:` line follows it
 /// for each error in the failure's `source()` chain, and a `url:` line
 /// follows the `code:` line when the failure has a url. The code prints in
-/// `spelling`. A [`Recovery::Run`](crate::Recovery::Run) call is rendered
-/// against the command tree that `output` holds, and prints as `no next
-/// step: the suggested command is not available` when the call does not
-/// resolve. With `--json`, the failure prints to the
-/// output writer as one `<tool>/failure/v1` document, on one line or in
-/// the guide's layout, which `--full` and `--fields` do not change.
+/// the spelling that `output` took from the guide. A
+/// [`Recovery::Run`](crate::Recovery::Run) call is rendered against the
+/// command tree that `output` holds, and prints as `no next step: the
+/// suggested command is not available` when the call does not resolve. With
+/// `--json`, the failure prints to the output writer as one
+/// `<tool>/failure/v1` document, on one line or in the guide's layout,
+/// which `--full` and `--fields` do not change.
 ///
 /// The result prints within [`Output::budget`] bytes on the output writer.
 /// `finish` measures it first, and prints a result that fits as described
@@ -368,7 +359,7 @@ pub fn finish<T: Rows, E: AsFailure>(
 /// the result prints. [`parse`](crate::parse()) refuses such a name before
 /// the handler runs on a leaf that declares a document. The refusal prints as a failure does, with the message
 /// `--fields names an unknown field 'radius'`, the code `<tool>::cli::usage`
-/// in `spelling`, and the hint `use the valid fields: a, b`.
+/// in the guide's spelling, and the hint `use the valid fields: a, b`.
 ///
 /// The exit code is 0 when the result is written, and also when the reader
 /// closed the pipe early. When the result is a failure, or a batch or prose
@@ -408,14 +399,13 @@ pub fn finish<T: Rows, E: AsFailure>(
 pub fn finish_to<T: Rows, E: AsFailure, O: Write, W: Write>(
     sink: &mut Sink<O, W>,
     output: &mut Output,
-    spelling: Spelling,
     document: Document<T>,
     result: Result<T, E>,
 ) -> u8 {
     columns::require::<T>();
     // crumbkit's own codes and documents print with the tool's name in
     // place of `crumbkit` (ADR-0079).
-    let (spelling, document) = output.named(spelling, document);
+    let (spelling, document) = output.named(document);
     // The sink counts the bytes of standard output, which `finish` reports
     // to the observer with the exit code (ADR-0057).
     let truncated = result.as_ref().is_ok_and(listing::leaves_out);

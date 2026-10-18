@@ -24,7 +24,7 @@
 //! use clap::{CommandFactory, Parser, Subcommand};
 //! use crumbkit::help::{Guide, Leaf};
 //! use crumbkit::schemas::{self, SCHEMAS_LIST, SCHEMAS_SHOW, SchemasList, SchemasShow};
-//! use crumbkit::{Spelling, ViewFlags};
+//! use crumbkit::ViewFlags;
 //!
 //! /// Browse a small catalogue.
 //! #[derive(Parser)]
@@ -57,25 +57,24 @@
 //!     Leaf::new(&["schemas", "list"]).document(SCHEMAS_LIST),
 //!     Leaf::new(&["schemas", "show"]).document(SCHEMAS_SHOW),
 //! ]);
-//! const SPELLING: Spelling = Spelling::COLONS;
 //!
 //! fn run(args: &[&str]) -> ExitCode {
-//!     let (cli, mut output) =
-//!         match crumbkit::parse_from::<Cli, _, _>(Cli::command(), &GUIDE, SPELLING, args) {
-//!             Ok(parsed) => parsed,
-//!             Err(stop) => return stop.code(),
-//!         };
+//!     let parsed = crumbkit::parse_from::<Cli, _, _>(Cli::command(), &GUIDE, args);
+//!     let (cli, mut output) = match parsed {
+//!         Ok(parsed) => parsed,
+//!         Err(stop) => return stop.code(),
+//!     };
 //!     match cli.resource {
 //!         Resource::Schemas { command } => match command {
 //!             // `list` and `show` build the command tree in `output`,
 //!             // so each runs before `finish`.
 //!             SchemasCommand::List(args) => {
 //!                 let result = schemas::list(&mut output, &GUIDE, &args);
-//!                 crumbkit::finish(&mut output, SPELLING, SCHEMAS_LIST, result)
+//!                 crumbkit::finish(&mut output, SCHEMAS_LIST, result)
 //!             }
 //!             SchemasCommand::Show(args) => {
 //!                 let result = schemas::show(&mut output, &GUIDE, &args);
-//!                 crumbkit::finish(&mut output, SPELLING, SCHEMAS_SHOW, result)
+//!                 crumbkit::finish(&mut output, SCHEMAS_SHOW, result)
 //!             }
 //!         },
 //!     }

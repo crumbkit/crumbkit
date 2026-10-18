@@ -6,10 +6,10 @@ use std::process::ExitCode;
 
 use clap::{Arg, ArgMatches, Command, FromArgMatches};
 
+use crate::Sink;
 use crate::help::Guide;
 use crate::parse::parse_to;
 use crate::twins::assert_one_word_apart;
-use crate::{Sink, Spelling};
 
 /// A guide that declares dashed forms.
 const DASHED: Guide = Guide::new().dashed_forms();
@@ -53,13 +53,8 @@ struct Run {
 fn run(guide: &Guide, args: &[&str]) -> Run {
     let mut out = Vec::new();
     let mut err = Vec::new();
-    let result = parse_to::<Matched, _, _, _, _>(
-        &mut Sink::new(&mut out, &mut err),
-        tool(),
-        guide,
-        Spelling::COLONS,
-        args,
-    );
+    let result =
+        parse_to::<Matched, _, _, _, _>(&mut Sink::new(&mut out, &mut err), tool(), guide, args);
     Run {
         code: result.err().map(|stop| stop.code()),
         out: String::from_utf8(out).unwrap(),
@@ -74,7 +69,6 @@ fn a_dashed_form_reaches_the_command_and_the_parsed_words_hold_the_tool_s_own_na
         &mut Sink::new(Vec::new(), Vec::new()),
         tool(),
         &DASHED,
-        Spelling::COLONS,
         ["tool"].iter().chain(&words),
     );
 

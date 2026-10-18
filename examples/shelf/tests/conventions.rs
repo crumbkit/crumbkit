@@ -9,7 +9,6 @@
 //! writes, rewrites and deletes the golden files.
 
 use clap::CommandFactory as _;
-use crumbkit::Spelling;
 use crumbkit_test::{
     Allow, Budgets, Examples, Failing, Pages, PathBudgets, Recoveries, Rule, Twin, Twins,
     Unprovoked,
@@ -220,7 +219,7 @@ const UNPROVOKED: &[Unprovoked<'_>] = &[
 ];
 
 /// The settings of shelf's recovery check.
-const RECOVERIES: Recoveries<'_> = Recoveries::new(EXAMPLES, Spelling::COLONS, &[shelf::CODES])
+const RECOVERIES: Recoveries<'_> = Recoveries::new(EXAMPLES, &[shelf::CODES])
     .starts(STARTS)
     .unprovoked(UNPROVOKED)
     .values(&[("ID", "2")]);
@@ -233,7 +232,7 @@ fn every_recovery_leads_to_a_command_that_runs() {
 /// The settings of shelf's twin check: one twin for each declared code that
 /// a command line can provoke. Each twin differs from its refused line in
 /// one word, so that word is the reason for the refusal (TEST-1).
-const TWINS: Twins<'_> = Twins::new(EXAMPLES, Spelling::COLONS, &[shelf::CODES])
+const TWINS: Twins<'_> = Twins::new(EXAMPLES, &[shelf::CODES])
     .pairs(&[
         Twin::new(SHOW_7, &["books", "show", "2"]),
         Twin::new(MISSING_FILE, ONE_ID),

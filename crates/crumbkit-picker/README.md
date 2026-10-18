@@ -27,7 +27,7 @@ arguments, so a script or an agent can say that nobody can answer:
 use clap::{CommandFactory, Parser, Subcommand};
 use crumbkit::help::{Guide, Leaf};
 use crumbkit::pick::{Choice, Choices};
-use crumbkit::{Error, NoInput, Spelling};
+use crumbkit::{Error, NoInput};
 use crumbkit_picker::Menu;
 
 /// Browse a small catalogue.
@@ -63,12 +63,8 @@ const GUIDE: Guide = Guide::new()
     .picker(&MENU)
     .leaves(&[Leaf::new(&["show"]).choices(&[Choices::new("id", books)])]);
 
-let parsed = crumbkit::parse_from::<Cli, _, _>(
-    Cli::command(),
-    &GUIDE,
-    Spelling::COLONS,
-    ["shelf", "show", "--id", "2"],
-);
+let parsed =
+    crumbkit::parse_from::<Cli, _, _>(Cli::command(), &GUIDE, ["shelf", "show", "--id", "2"]);
 assert!(parsed.is_ok());
 ```
 

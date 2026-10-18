@@ -47,7 +47,7 @@ pub(crate) mod walk;
 ///
 /// use clap::{CommandFactory, Parser};
 /// use crumbkit::help::Guide;
-/// use crumbkit::{Spelling, ViewFlags};
+/// use crumbkit::ViewFlags;
 ///
 /// /// List the books in a small catalogue.
 /// #[derive(Parser)]
@@ -58,7 +58,7 @@ pub(crate) mod walk;
 /// }
 ///
 /// fn main() -> ExitCode {
-///     let parsed = crumbkit::parse::<Cli>(Cli::command(), &Guide::new(), Spelling::COLONS);
+///     let parsed = crumbkit::parse::<Cli>(Cli::command(), &Guide::new());
 ///     let (_cli, _output) = match parsed {
 ///         Ok(parsed) => parsed,
 ///         Err(stop) => return stop.code(),
@@ -78,12 +78,8 @@ pub(crate) mod walk;
 /// Returns a [`Stop`] after crumbkit has printed help, the version or a
 /// refusal. It holds the exit code for `main` to return, and whether the
 /// caller asked for JSON.
-pub fn parse<C: FromArgMatches>(
-    command: Command,
-    guide: &Guide,
-    spelling: Spelling,
-) -> Result<(C, Output), Stop> {
-    parse_from(command, guide, spelling, std::env::args_os())
+pub fn parse<C: FromArgMatches>(command: Command, guide: &Guide) -> Result<(C, Output), Stop> {
+    parse_from(command, guide, std::env::args_os())
 }
 
 /// Parses `args` against `command` as [`parse`] parses the process's command
@@ -94,12 +90,7 @@ pub fn parse<C: FromArgMatches>(
 /// Returns a [`Stop`] after crumbkit has printed help, the version or a
 /// refusal. It holds the exit code for `main` to return, and whether the
 /// caller asked for JSON.
-pub fn parse_from<C, I, T>(
-    command: Command,
-    guide: &Guide,
-    spelling: Spelling,
-    args: I,
-) -> Result<(C, Output), Stop>
+pub fn parse_from<C, I, T>(command: Command, guide: &Guide, args: I) -> Result<(C, Output), Stop>
 where
     C: FromArgMatches,
     I: IntoIterator<Item = T>,
@@ -107,7 +98,7 @@ where
 {
     let mut sink = Sink::standard();
     let colour = guide.detects(|| sink.out.is_terminal());
-    run(&mut sink, command, guide, spelling, args, colour, true)
+    run(&mut sink, command, guide, args, colour, true)
 }
 
 /// Parses `args` against `command` and prints help, the version or a
@@ -214,11 +205,11 @@ where
 /// early.
 ///
 /// A command line that clap refuses prints as a failure with the code
-/// `<tool>::cli::usage` in `spelling`, and the exit code is 2. The message
-/// is clap's error on one line, and the recovery runs the `-h` of the
-/// deepest command. When the tool's refusal function returns a call that
-/// renders and whose line parses, the first such call is the recovery and
-/// the `-h` call is the first alternative, as shelf's golden file
+/// `<tool>::cli::usage` in the guide's spelling, and the exit code is 2.
+/// The message is clap's error on one line, and the recovery runs the `-h`
+/// of the deepest command. When the tool's refusal function returns a call
+/// that renders and whose line parses, the first such call is the recovery
+/// and the `-h` call is the first alternative, as shelf's golden file
 /// [`books-show-2-comma-5.stderr`][books-show-2-comma-5] shows.
 ///
 /// clap suggests from every name that a flag or a subcommand accepts. When
@@ -246,7 +237,6 @@ pub fn parse_to<C, I, T, O, E>(
     sink: &mut Sink<O, E, impl BufRead>,
     command: Command,
     guide: &Guide,
-    spelling: Spelling,
     args: I,
 ) -> Result<(C, Output), Stop>
 where
@@ -256,7 +246,7 @@ where
     O: Write,
     E: Write,
 {
-    run(sink, command, guide, spelling, args, false, false)
+    run(sink, command, guide, args, false, false)
 }
 
 /// Parses `args` against `command` as [`parse_to`] describes. With the
@@ -266,7 +256,6 @@ fn run<C, I, T, O, E, R>(
     sink: &mut Sink<O, E, R>,
     command: Command,
     guide: &Guide,
-    spelling: Spelling,
     args: I,
     colour: bool,
     stdin: bool,
@@ -283,9 +272,9 @@ where
     let span = crate::trace::spans::parse();
     #[cfg(feature = "tracing")]
     let _entered = span.enter();
-    // crumbkit's own codes print with the tool's name in place of
-    // `crumbkit` (ADR-0079).
-    let spelling = spelling.for_tool(guide.tool_name(&command));
+    // Codes print in the guide's spelling, and crumbkit's own codes print
+    // with the tool's name in place of `crumbkit` (ADR-0079).
+    let spelling = guide.get_spelling().for_tool(guide.tool_name(&command));
     let parsed = read(sink, command, guide, spelling, args, colour, stdin);
     #[cfg(feature = "tracing")]
     if let Err(stop) = &parsed {
