@@ -191,7 +191,7 @@ fn the_report_lists_each_budget_that_differs_from_crumbkit_s_default() {
 
     assert_eq!(
         read(&dir, "opt-outs.txt"),
-        "shelf has 3 opt-outs from the conventions.\n\
+        "shelf has no opt-outs from the conventions and sets 3 budgets.\n\
          \n\
          help-budget/leaf: every leaf of shelf\n\
          \x20 Budget: 1500 bytes, where the default is 1200 bytes.\n\
@@ -207,6 +207,45 @@ fn the_report_lists_each_budget_that_differs_from_crumbkit_s_default() {
          \x20 Budget: 4000 bytes, where the default is 8000 bytes.\n\
          \x20 Reason: Paths are short.\n\
          \x20 Cost: None, because the budget is at or below the default.\n"
+    );
+}
+
+#[test]
+fn the_first_line_counts_the_opt_outs_and_the_budgets_of_a_guide_with_both_separately() {
+    const BUDGETS: Budgets = Budgets::new().leaf(1_500, "Leaves show long examples.");
+    const GUIDE: Guide = Guide::new().output_budget(2_097_152, "Exports print every book.");
+    let dir = TempDir::new("opt-outs-first-line").unwrap();
+
+    check(
+        &shelf(),
+        &GUIDE,
+        ALLOW,
+        &BUDGETS,
+        None,
+        dir.path(),
+        &Assert::new().action(Action::Overwrite),
+    );
+
+    assert!(
+        read(&dir, "opt-outs.txt")
+            .starts_with("shelf has 2 opt-outs from the conventions and sets 2 budgets.\n\n"),
+        "{}",
+        read(&dir, "opt-outs.txt")
+    );
+}
+
+#[test]
+fn the_first_line_of_a_report_with_only_budgets_says_the_tool_has_no_opt_outs() {
+    const BUDGETS: Budgets = Budgets::new().leaf(1_500, "Leaves show long examples.");
+    let dir = TempDir::new("opt-outs-only-budgets").unwrap();
+
+    run_with(&[], &BUDGETS, None, &dir, Action::Overwrite);
+
+    assert!(
+        read(&dir, "opt-outs.txt")
+            .starts_with("shelf has no opt-outs from the conventions and sets 1 budget.\n\n"),
+        "{}",
+        read(&dir, "opt-outs.txt")
     );
 }
 
@@ -257,7 +296,7 @@ fn the_report_lists_the_output_budget_that_the_guide_sets_beside_crumbkit_s_defa
 
     assert_eq!(
         read(&dir, "opt-outs.txt"),
-        "shelf has 1 opt-out from the conventions.\n\
+        "shelf has no opt-outs from the conventions and sets 1 budget.\n\
          \n\
          output-budget/run: every run of shelf\n\
          \x20 Budget: 2097152 bytes, where the default is 1048576 bytes.\n\
@@ -291,7 +330,7 @@ fn the_report_lists_the_json_layout_that_the_guide_sets_with_its_cost() {
 
     let text = read(&dir, "opt-outs.txt");
     assert!(
-        text.starts_with("shelf has 2 opt-outs from the conventions.\n"),
+        text.starts_with("shelf has 1 opt-out from the conventions and sets 1 budget.\n"),
         "{text}"
     );
     assert!(

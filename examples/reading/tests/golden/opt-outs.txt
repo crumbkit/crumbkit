@@ -1,4 +1,4 @@
-reading has 7 opt-outs from the conventions.
+reading has 6 opt-outs from the conventions and sets 1 budget.
 
 examples/run: reading finished edit
   Reason: edit hands the terminal to the caller's editor, which waits for a person and prints no output to compare

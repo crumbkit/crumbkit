@@ -12,6 +12,7 @@ pub(crate) struct Visit<'a> {
     parent: Option<&'a Command>,
     path: String,
     depth: usize,
+    visible: bool,
 }
 
 impl<'a> Visit<'a> {
@@ -37,6 +38,12 @@ impl<'a> Visit<'a> {
     /// the walk, which is at depth 0.
     pub(crate) fn depth(&self) -> usize {
         self.depth
+    }
+
+    /// Reports whether help shows the command: neither the command nor any
+    /// command above it, up to the command passed to the walk, is hidden.
+    pub(crate) fn is_visible(&self) -> bool {
+        self.visible
     }
 
     /// Returns the command's names below the command passed to the walk,
@@ -77,33 +84,46 @@ pub(crate) fn walk_visible(root: &Command) -> Vec<Visit<'_>> {
 /// [`walk_visible`] returns when `hidden` is unset.
 fn walk_tree(root: &Command, hidden: bool) -> Vec<Visit<'_>> {
     let mut visits = Vec::new();
-    visit(root, None, root.get_name(), 0, hidden, &mut visits);
+    visit(root, None, root.get_name(), 0, hidden, true, &mut visits);
     visits
 }
 
 /// Adds `command`, which `parent` holds, and every command below it to
 /// `visits`. A hidden command and everything below it are left out unless
-/// `hidden` is set.
+/// `hidden` is set. `visible` says whether every command above `command`
+/// is visible.
 fn visit<'a>(
     command: &'a Command,
     parent: Option<&'a Command>,
     path: &str,
     depth: usize,
     hidden: bool,
+    visible: bool,
     visits: &mut Vec<Visit<'a>>,
 ) {
     if depth > 0 && !hidden && command.is_hide_set() {
         return;
     }
+    let visible = visible && (depth == 0 || !command.is_hide_set());
     visits.push(Visit {
         command,
         parent,
         path: path.to_owned(),
         depth,
+        visible,
     });
     for subcommand in command.get_subcommands() {
         let path = format!("{path} {}", subcommand.get_name());
-        visit(subcommand, Some(command), &path, depth + 1, hidden, visits);
+        let depth = depth + 1;
+        visit(
+            subcommand,
+            Some(command),
+            &path,
+            depth,
+            hidden,
+            visible,
+            visits,
+        );
     }
 }
 

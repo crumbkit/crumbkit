@@ -83,13 +83,18 @@ Why: ADR-0036, ADR-0015, ADR-0081.
 A tool pins its opt-outs in a report with `check_opt_outs`, which compares a
 text and a JSON golden file. Each entry names the rule, the command line, the
 reason and what skipping the rule costs an agent. The report also lists each
-help or path budget that the tool set, and each guide setting that departs
-from the conventions with a reason:
+help or path budget that the tool set and the guide's
+[output budget](../output/budget/README.md), as `output-budget/run`, and
+each guide setting that departs from the conventions with a reason:
 
-- an [output budget](../output/budget/README.md), as `output-budget/run`;
 - a [JSON layout](../output/json-layout.md), as `json-layout/pretty`;
 - [terminal detection](../output/terminal.md) turned off, as
   `terminal-detection/off`.
+
+The text report's first line counts the opt-outs, and counts the budgets
+apart from them when the tool sets any, such as `shelf has 3 opt-outs from
+the conventions and sets 1 budget.` A budget is an entry with a `Budget:`
+line: a help, path or output budget.
 
 A reviewer then sees a new opt-out as a change to the golden files, and an
 agent reads the JSON to learn where the tool departs from crumbkit's
