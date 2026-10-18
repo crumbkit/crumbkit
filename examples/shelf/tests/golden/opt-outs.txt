@@ -1,4 +1,4 @@
-shelf has 4 opt-outs from the conventions.
+shelf has 3 opt-outs from the conventions and sets 1 budget.
 
 examples/run: shelf self usage
   Reason: The output names the day the report starts, which changes every day, and tests/self_usage.rs checks the output without the day.

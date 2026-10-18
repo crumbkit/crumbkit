@@ -67,10 +67,12 @@ const SCHEMA: &str = "crumbkit/opt-outs/v1";
 /// files, and an agent reads `opt-outs.json` to learn where the tool
 /// departs from crumbkit's conventions.
 ///
-/// The text file starts with a line that counts the opt-outs:
+/// The text file starts with a line that counts the opt-outs and, when the
+/// tool sets any, the budgets apart from them, such as
+/// `shelf has 1 opt-out from the conventions and sets 2 budgets.`:
 ///
 /// ```text
-/// shelf has 1 opt-out from crumbkit's conventions.
+/// shelf has 1 opt-out from the conventions.
 ///
 /// grammar/root-leaf: shelf version
 ///   Reason: People type `shelf version` from habit.
@@ -247,7 +249,8 @@ fn output_budget(command: &Command, guide: &Guide) -> Option<Departure> {
     })
 }
 
-/// One opt-out as the report shows it.
+/// One entry of the report as it shows it: an opt-out, or a budget that the
+/// tool set.
 #[derive(Serialize)]
 struct Entry {
     /// The rule's id, such as `grammar/root-leaf`.
@@ -304,7 +307,7 @@ struct BudgetEntry {
 struct Report<'a> {
     /// The id of the report's schema, such as `shelf/opt-outs/v1`.
     schema: &'a str,
-    /// The opt-outs, in the tool's order.
+    /// The opt-outs and the budgets, in the order the report lists them.
     data: &'a [Entry],
     /// The declarations, which the report leaves out when there are none.
     #[serde(skip_serializing_if = "<[Customisation]>::is_empty")]
@@ -314,10 +317,21 @@ struct Report<'a> {
 /// Returns the text report of `entries` and of the declarations `declared`
 /// for the tool `tool`.
 fn text(tool: &str, entries: &[Entry], declared: &[Customisation]) -> String {
-    let mut text = match entries.len() {
-        0 => format!("{tool} has no opt-outs from the conventions.\n"),
-        1 => format!("{tool} has 1 opt-out from the conventions.\n"),
-        count => format!("{tool} has {count} opt-outs from the conventions.\n"),
+    let budgets = entries
+        .iter()
+        .filter(|entry| entry.budget.is_some())
+        .count();
+    let opt_outs = match entries.len() - budgets {
+        0 => "no opt-outs".to_owned(),
+        1 => "1 opt-out".to_owned(),
+        count => format!("{count} opt-outs"),
+    };
+    let mut text = match budgets {
+        0 => format!("{tool} has {opt_outs} from the conventions.\n"),
+        1 => format!("{tool} has {opt_outs} from the conventions and sets 1 budget.\n"),
+        count => {
+            format!("{tool} has {opt_outs} from the conventions and sets {count} budgets.\n")
+        }
     };
     for entry in entries {
         // Writing to a `String` cannot fail.

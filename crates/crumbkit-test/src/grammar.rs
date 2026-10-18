@@ -24,8 +24,13 @@ const BUILT_IN_VERBS: [&str; 2] = ["list", "show"];
 ///
 /// `command` is the tool, or the root of a subtree, and is checked as neither
 /// a resource nor a verb. `verbs` holds the tool's verbs beside `list` and
-/// `show`. The check walks `command` and every subcommand below it, including
-/// hidden ones. It finds:
+/// `show`. The check walks `command` and every visible subcommand below it,
+/// because the grammar is what help, `commands list` and the command
+/// reference show an agent, and they all leave out each hidden command and
+/// everything below it. A hidden command, such as an internal `__query`,
+/// is therefore no resource and no verb. Only the rule that reserves `help`
+/// also covers hidden commands, because a hidden command named `help` still
+/// takes that word from crumbkit's `parse`. It finds:
 ///
 /// - a command without subcommands, which is a verb, whose name is not
 ///   `list`, `show` or one of `verbs`;
@@ -50,10 +55,11 @@ const BUILT_IN_VERBS: [&str; 2] = ["list", "show"];
 ///   `command` whose name maps to a dashed form that it does not answer to,
 ///   for the reasons above. This rule has no opt-out, because a tool
 ///   declares its verbs;
-/// - a command below `command` named `help` or with the alias `help`,
-///   because crumbkit reserves that word for asking for help. crumbkit's
-///   `parse` answers it below every command with subcommands, unless such a
-///   command takes it, so this rule has no opt-out;
+/// - a command below `command`, hidden or visible, named `help` or with the
+///   alias `help`, because crumbkit reserves that word for asking for
+///   help. crumbkit's `parse` answers it below every command with
+///   subcommands, unless such a command takes it, so this rule has no
+///   opt-out;
 /// - an opt-out from [`Rule::RootLeaf`] or [`Rule::ResourceName`] that
 ///   names no command or excuses no problem.
 ///
@@ -116,10 +122,13 @@ pub fn check_grammar(command: &Command, pages: Pages<'_>, verbs: &[&str], allow:
         let below = visit.below();
         let command = visit.command();
         let name = command.get_name();
+        let in_grammar = visit.is_visible();
         match (visit.depth(), command.has_subcommands()) {
             // The command passed in is the tool or a subtree's root, which
-            // is neither a resource nor a verb.
+            // is neither a resource nor a verb, and a hidden command and
+            // everything below it are outside the grammar.
             (0, _) => {}
+            _ if !in_grammar => {}
             (_, true) => {
                 if let Some(problem) = name_problem(visit.parent(), dashed_forms, name, "resource")
                     && !allowances.excuses(Rule::ResourceName, below)
@@ -145,6 +154,7 @@ pub fn check_grammar(command: &Command, pages: Pages<'_>, verbs: &[&str], allow:
         // The verb rules above check the form of each verb's name, so this
         // check reports only a leaf whose dashed form another command takes.
         if dashed_forms
+            && in_grammar
             && visit.depth() > 0
             && !command.has_subcommands()
             && crumbkit::dashed_name(name).is_some()

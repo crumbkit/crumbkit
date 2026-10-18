@@ -842,6 +842,13 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   place of a guide. A tool that parses with clap alone passes
   `Pages::clap()`, and a guided tool passes `Pages::rendered` or
   `Pages::binary` with its guide ([behaviour/checks]).
+- crumbkit-test: [`check_grammar`] skips hidden commands, as help does, so
+  a hidden leaf such as `__query` needs no verb. A grammar opt-out naming a
+  hidden command now fails as stale; remove it. A hidden `help` still fails
+  ([behaviour/checks]).
+- crumbkit-test: the first line of the opt-out report counts budgets apart
+  from opt-outs, such as `shelf has 3 opt-outs from the conventions and sets
+  1 budget.` ([behaviour/adoption/opt-outs]).
 
 ### Removed
 

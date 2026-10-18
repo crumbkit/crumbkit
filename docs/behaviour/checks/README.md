@@ -26,7 +26,7 @@ no arguments on a command that the tool gives to `Command::defer`.
 | Check | What it enforces |
 | --- | --- |
 | [`check_names`](../../../crates/crumbkit-test/src/names.rs) | Help shows one name for every visible command and argument: no visible alias and no flag name on a command. |
-| [`check_grammar`](../../../crates/crumbkit-test/src/grammar.rs) | Every command is a resource or a verb in the form `<tool> <resource> <verb>`, resources are dashed lowercase words, and no command below the root is named `help`. |
+| [`check_grammar`](../../../crates/crumbkit-test/src/grammar.rs) | Every visible command is a resource or a verb in the form `<tool> <resource> <verb>`, resources are dashed lowercase words, and no command below the root, hidden or visible, is named `help`. |
 | [`check_effects`](../../../crates/crumbkit-test/src/effects.rs) | Every visible leaf declares its effects, and `--dry-run`, `--yes`, `--no-input` and `--expect` sit where crumbkit puts them. |
 | [`check_listings`](../../../crates/crumbkit-test/src/listings.rs) | Every `list` command has `--limit` and `--all`, and every `show` command takes 1 to 100 ids. |
 | [`check_filters`](../../../crates/crumbkit-test/src/filters.rs) | An option that takes many values accepts them both repeated and separated by commas, with one value per use. |
@@ -65,6 +65,14 @@ Why: ADR-0015, ADR-0021, ADR-0025, ADR-0036.
   opt-out of `Rule::RootLeaf`, because such a leaf adds a line to the root
   help, its name can collide with a resource that the tool adds later, and
   an agent cannot guess its siblings from the noun and verb pattern.
+- `check_grammar` skips each hidden command and everything below it, as
+  `check_names`, the help checks, `commands list` and the command reference
+  do, because an agent learns the grammar from what they show. A hidden
+  internal leaf such as `__query` therefore needs no verb and no opt-out.
+  The rule that reserves `help` still covers hidden commands, because a
+  hidden command named `help` takes that word from `parse`.
+  `check_listings` and `check_filters` still walk hidden commands, because
+  their rules are about how a command parses its arguments.
 - `check_filters` requires one value per use, because an option that takes
   several values per use swallows the positional words after it. Review
   checks that an option that takes one value refuses a second, because clap

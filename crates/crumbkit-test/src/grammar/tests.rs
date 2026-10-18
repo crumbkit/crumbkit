@@ -202,3 +202,63 @@ fn an_opt_out_from_a_grammar_rule_that_excuses_nothing_fails_the_check() {
          the opt-out from `grammar/root-leaf` for `shelf books` excuses no problem, so it is stale"
     );
 }
+
+#[test]
+fn a_hidden_leaf_named_query_with_leading_underscores_passes_the_grammar_check() {
+    let shelf = Command::new("shelf").subcommand(
+        Command::new("books")
+            .subcommand(Command::new("list"))
+            .subcommand(Command::new("__query").hide(true)),
+    );
+
+    check_grammar(&shelf, Pages::clap(), &[], &[]);
+}
+
+#[test]
+fn a_hidden_command_and_everything_below_it_are_outside_the_grammar() {
+    let shelf = Command::new("shelf")
+        .subcommand(Command::new("books").subcommand(Command::new("list")))
+        .subcommand(Command::new("__complete").hide(true))
+        .subcommand(
+            Command::new("Internal")
+                .hide(true)
+                .subcommand(Command::new("rebuild_index")),
+        );
+
+    check_grammar(&shelf, Pages::clap(), &[], &[]);
+}
+
+#[test]
+fn a_hidden_command_named_or_aliased_help_still_fails_the_check() {
+    let shelf = Command::new("shelf").subcommand(
+        Command::new("books")
+            .subcommand(Command::new("list"))
+            .subcommand(Command::new("help").hide(true))
+            .subcommand(Command::new("__guides").alias("help").hide(true)),
+    );
+
+    assert_eq!(
+        panic_message(|| check_grammar(&shelf, Pages::clap(), &[], &[])).unwrap(),
+        "the command tree breaks crumbkit's grammar:\n\
+         shelf books help: the command answers to `help`, and crumbkit reserves that word for asking for help\n\
+         shelf books __guides: the command answers to `help`, and crumbkit reserves that word for asking for help"
+    );
+}
+
+#[test]
+fn an_opt_out_from_a_grammar_rule_for_a_hidden_command_is_stale() {
+    const ALLOW: &[Allow] = &[Allow::new(
+        Rule::RootLeaf,
+        "__complete",
+        "Shells call it for completions.",
+    )];
+    let shelf = Command::new("shelf")
+        .subcommand(Command::new("books").subcommand(Command::new("list")))
+        .subcommand(Command::new("__complete").hide(true));
+
+    assert_eq!(
+        panic_message(|| check_grammar(&shelf, Pages::clap(), &[], ALLOW)).unwrap(),
+        "the command tree breaks crumbkit's grammar:\n\
+         the opt-out from `grammar/root-leaf` for `shelf __complete` excuses no problem, so it is stale"
+    );
+}
