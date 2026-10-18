@@ -40,7 +40,7 @@
       "const": "crumbkit/schemas-list/v1"
     },
     "total": {
-      "description": "The number of rows that matched, of which data holds one page. It is absent when the tool did not count a source that holds more rows.",
+      "description": "The number of rows that matched, of which data holds one page. It is absent when the tool did not count the rows.",
       "type": "integer",
       "minimum": 0
     },

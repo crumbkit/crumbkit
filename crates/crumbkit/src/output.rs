@@ -278,7 +278,8 @@ pub fn finish<T: Rows, E: AsFailure>(
 /// result alone (ADR-0050). When a listing shows fewer rows than its total,
 /// a footer line says so, such as `Showing 4 of 6 books. --all shows every
 /// one.`, and a listing without a total that leaves out rows prints
-/// `Showing 4 books, and more match. --all shows every one.` A listing whose total is 0 prints an empty note, such as `note: no
+/// `Showing 4 books, and more match. --all shows every one.` A listing
+/// with no rows and no more rows prints an empty note, such as `note: no
 /// books match`. A listing's note follows on its own line. When a listing
 /// has a next step, a `Next:` line follows, such as
 /// `Next: shelf books show <ID>... takes up to 100 ids in one call.` The line
@@ -409,7 +410,7 @@ pub fn finish_to<T: Rows, E: AsFailure, O: Write, W: Write>(
     // The sink counts the bytes of standard output, which `finish` reports
     // to the observer with the exit code (ADR-0057).
     let truncated = result.as_ref().is_ok_and(listing::leaves_out);
-    let empty = result.as_ref().is_ok_and(|value| value.total() == Some(0));
+    let empty = result.as_ref().is_ok_and(listing::matches_none);
     let sink = &mut Sink::new(Counted::new(&mut sink.out), &mut sink.err);
     // With the `tracing` feature, the response runs inside the
     // `crumbkit.finish` span, which records the exit code (ADR-0030).

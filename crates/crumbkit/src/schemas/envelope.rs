@@ -20,7 +20,7 @@ use crate::{Bytes, Document, Rows, Shape};
 ///   [`Shape::Prose`], the text or base64 object of [`Bytes`] for
 ///   [`Shape::Bytes`], and an array of rows for every other shape.
 /// - `total` holds the number of rows that matched, for [`Shape::Listing`],
-///   and is absent when the tool did not count a source with more rows.
+///   and is absent when the tool did not count the rows.
 /// - `truncated` is true when the document leaves out rows that matched,
 ///   for [`Shape::Listing`].
 /// - `summary` holds the summary, for a listing that has one. A listing
@@ -118,7 +118,7 @@ pub(crate) fn envelope<T: Rows>(document: Document<()>) -> Schema {
         properties.insert(
             "total".to_owned(),
             json!({
-                "description": "The number of rows that matched, of which data holds one page. It is absent when the tool did not count a source that holds more rows.",
+                "description": "The number of rows that matched, of which data holds one page. It is absent when the tool did not count the rows.",
                 "type": "integer",
                 "minimum": 0,
             }),

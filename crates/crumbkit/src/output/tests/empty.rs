@@ -80,6 +80,23 @@ fn a_listing_without_a_total_whose_page_is_empty_but_has_more_rows_prints_the_fo
 }
 
 #[test]
+fn an_uncounted_listing_with_no_rows_and_no_more_prints_the_note_and_no_total() {
+    let listing = || Listing::uncounted(Vec::new(), false).described("planets");
+
+    let text = finish_with(&[], PLANET_LISTING, listing());
+    let json = finish_with(&["--json"], PLANET_LISTING, listing());
+
+    assert_eq!(text.err, "note: no planets match\n");
+    assert_eq!(
+        json.out,
+        concat!(
+            r#"{"schema":"solar/planet-listing/v1","data":[],"truncated":false}"#,
+            "\n"
+        )
+    );
+}
+
+#[test]
 fn the_json_of_an_unwrapped_listing_with_no_rows_is_an_empty_array_and_nothing_else() {
     let document: Document<Listing<Planet>> = PLANET_LISTING.envelope(Envelope::Without);
 

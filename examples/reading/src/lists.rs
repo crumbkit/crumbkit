@@ -235,9 +235,8 @@ fn about(path: &Path) -> io::Result<Option<String>> {
 
 /// Returns the page of the entries of the list named `name` in `dir` that
 /// `page` asks for. The list's file is read line by line, and reading stops
-/// one entry past the page, so a page that leaves entries out has no total.
-/// A page that reaches the end of the list has the number of entries as its
-/// total.
+/// one entry past the page. The listing never has a total, and it says
+/// whether entries remain after the page.
 ///
 /// # Errors
 ///

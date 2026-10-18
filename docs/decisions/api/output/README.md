@@ -28,4 +28,5 @@ document.
 - [ADR-0073. One JSON style](0073-one-json-style.md)
 - [ADR-0077. Notes on prose and batch results](0077-notes-on-prose-and-batches.md)
 - [ADR-0050. Listings](listings/README.md)
+- [ADR-0087. Uncounted listings omit totals](uncounted/README.md)
 - [ADR-0051. Result shapes](results/README.md)

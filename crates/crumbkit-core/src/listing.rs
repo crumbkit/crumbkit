@@ -47,9 +47,11 @@ pub struct Listing<R: Row, S = NoSummary> {
     /// The rows to print, in order.
     rows: Vec<R>,
     /// The number of rows that matched, which `new` keeps at least
-    /// `rows.len()`, or `None` when the source holds more rows than these
-    /// and the tool did not count them.
+    /// `rows.len()`, or `None` when the tool did not count them.
     total: Option<usize>,
+    /// Whether the source of a listing without a total holds rows after
+    /// these. A listing with a total reads this from the total instead.
+    more: bool,
     /// The phrase that names the rows in the footer, such as `books`.
     description: Option<String>,
     /// The summary that the text output prints above the table and the
@@ -92,6 +94,7 @@ impl<R: Row> Listing<R> {
         Self {
             rows,
             total: Some(total),
+            more: false,
             description: None,
             summary: None,
             note: None,
@@ -106,25 +109,21 @@ impl<R: Row> Listing<R> {
     /// grows while it is read. `more` says whether the source holds rows
     /// after these.
     ///
-    /// A listing with more rows has no total: its JSON document leaves out
-    /// `total`, and its footer reads `Showing 4 books, and more match.
-    /// --all shows every one.` A listing without more rows holds every row,
-    /// so its total is the number of rows, and it is the listing that
-    /// [`Listing::new`] returns for that total.
+    /// The listing never has a total, whether or not more rows exist, so
+    /// its JSON document leaves out `total`. With more rows, its footer
+    /// reads `Showing 4 books, and more match. --all shows every one.` and
+    /// its document holds `"truncated": true`. Without more rows, it holds
+    /// every row of the source and prints no footer.
     ///
     /// A handler learns `more` by fetching one row past the page, which
     /// `crumbkit::Page::uncounted` does, or from a source that says whether
     /// another page exists.
     #[must_use]
     pub const fn uncounted(rows: Vec<R>, more: bool) -> Self {
-        if more {
-            let mut listing = Self::new(rows, 0);
-            listing.total = None;
-            listing
-        } else {
-            let total = rows.len();
-            Self::new(rows, total)
-        }
+        let mut listing = Self::new(rows, 0);
+        listing.total = None;
+        listing.more = more;
+        listing
     }
 
     /// Returns a listing of the first `limit` of `rows`, with the length of
@@ -184,6 +183,7 @@ impl<R: Row, S> Listing<R, S> {
         Listing {
             rows: self.rows,
             total: self.total,
+            more: self.more,
             description: self.description,
             summary: Some(summary),
             note: self.note,
@@ -254,6 +254,11 @@ impl<R: Row, S: Serialize + fmt::Display + JsonSchema> Rows for Listing<R, S> {
 
     fn total(&self) -> Option<usize> {
         self.total
+    }
+
+    fn more(&self) -> bool {
+        self.total
+            .map_or(self.more, |total| self.rows.len() < total)
     }
 
     fn description(&self) -> Option<&str> {

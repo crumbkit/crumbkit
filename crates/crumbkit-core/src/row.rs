@@ -204,11 +204,19 @@ pub trait Rows: Serialize + sealed::Sealed {
 
     /// Returns the number of rows that matched when the result is one page
     /// of them, and `None` otherwise. Only a `Listing` returns a total, and
-    /// a listing whose source holds more rows that the tool did not count
-    /// returns `None` (`Listing::uncounted`).
+    /// a listing whose source the tool did not count returns `None`
+    /// (`Listing::uncounted`).
     #[doc(hidden)]
     fn total(&self) -> Option<usize> {
         None
+    }
+
+    /// Returns whether the source holds rows that the result leaves out:
+    /// fewer rows than the total, or more rows that the tool did not count.
+    /// Only a `Listing` returns true.
+    #[doc(hidden)]
+    fn more(&self) -> bool {
+        false
     }
 
     /// Returns the phrase that names the rows in the text footer, such as

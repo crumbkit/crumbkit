@@ -21,8 +21,8 @@ without `data` ([usage log](../usage-log/README.md)).
 
 - A listing's document always holds `truncated`, with every output flag, so
   a program can tell whether it has every row. It holds `total` when the tool
-  counted the matching rows, and leaves it out while an uncounted source
-  holds more rows ([listings](../output/listings/README.md)).
+  counted the matching rows, and leaves it out for every listing from an
+  uncounted source ([listings](../output/listings/README.md)).
 - A listing or list document may hold `cut`, an object with the over-budget
   `code` and the `budget` in bytes, when the
   [output budget](../output/budget/README.md) cut it short.

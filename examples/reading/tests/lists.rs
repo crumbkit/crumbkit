@@ -85,7 +85,7 @@ fn entries_list_with_json_and_a_limit_leaves_out_the_total_and_marks_the_page_tr
 }
 
 #[test]
-fn entries_list_with_json_and_all_holds_the_total_of_every_entry() -> io::Result<()> {
+fn entries_list_with_json_and_all_holds_every_entry_and_no_total() -> io::Result<()> {
     let output = reading(
         LISTS,
         &["entries", "list", "--list", "to-read", "--all", "--json"],
@@ -95,10 +95,9 @@ fn entries_list_with_json_and_all_holds_the_total_of_every_entry() -> io::Result
     .stdout
     .clone();
     let stdout = String::from_utf8_lossy(&output);
-    assert!(
-        stdout.contains(r#""total":5,"truncated":false"#),
-        "{stdout}"
-    );
+    assert!(stdout.contains(r#"{"position":5,"#), "{stdout}");
+    assert!(stdout.contains(r#"}],"truncated":false}"#), "{stdout}");
+    assert!(!stdout.contains(r#""total""#), "{stdout}");
     Ok(())
 }
 
@@ -512,8 +511,8 @@ fn entries_list_of_a_list_with_no_entries_prints_the_header_and_the_list_s_empty
 }
 
 #[test]
-fn entries_list_with_json_of_a_list_with_no_entries_prints_no_rows_and_a_total_of_0()
--> io::Result<()> {
+fn entries_list_with_json_of_a_list_with_no_entries_prints_no_rows_and_no_total() -> io::Result<()>
+{
     let dir = empty_list()?;
     let dir = dir.path().to_string_lossy();
 
@@ -525,7 +524,7 @@ fn entries_list_with_json_of_a_list_with_no_entries_prints_no_rows_and_a_total_o
         .clone();
     let stdout = String::from_utf8_lossy(&output);
     assert!(stdout.contains(r#""data":[]"#), "{stdout}");
-    assert!(stdout.contains(r#""total":0"#), "{stdout}");
+    assert!(!stdout.contains(r#""total""#), "{stdout}");
     Ok(())
 }
 

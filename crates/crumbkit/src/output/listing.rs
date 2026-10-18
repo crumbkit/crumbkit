@@ -13,7 +13,13 @@ use crate::{Rows, Shape};
 /// count. Its JSON document then holds `"truncated": true`, as does a
 /// document that the output budget cut short.
 pub(super) fn leaves_out<T: Rows>(value: &T) -> bool {
-    T::SHAPE == Shape::Listing && value.total().is_none_or(|total| value.rows().len() < total)
+    T::SHAPE == Shape::Listing && value.more()
+}
+
+/// Returns whether `value` is a listing with no matching rows: it holds no
+/// rows, and its source holds none that it leaves out.
+pub(super) fn matches_none<T: Rows>(value: &T) -> bool {
+    T::SHAPE == Shape::Listing && value.rows().is_empty() && !value.more()
 }
 
 /// Writes the footer line that describes the table when `value` is a listing
@@ -69,7 +75,7 @@ pub(super) fn write_empty_note<T: Rows>(
     value: &T,
     wording: Option<&str>,
 ) -> io::Result<()> {
-    if value.total() != Some(0) {
+    if !matches_none(value) {
         return Ok(());
     }
     match (wording, value.description()) {

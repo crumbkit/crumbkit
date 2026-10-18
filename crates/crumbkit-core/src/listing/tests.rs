@@ -45,10 +45,11 @@ fn an_uncounted_listing_with_more_rows_has_no_total() {
 }
 
 #[test]
-fn an_uncounted_listing_without_more_rows_counts_the_rows_it_holds() {
+fn an_uncounted_listing_without_more_rows_has_no_total() {
     let listing = Listing::uncounted(books(3), false);
 
-    assert_eq!(listing, Listing::new(books(3), 3));
+    assert_eq!(listing.rows(), books(3));
+    assert_eq!(listing.total(), None);
 }
 
 #[test]
