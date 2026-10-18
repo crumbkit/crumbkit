@@ -49,10 +49,16 @@ When `parse` prints help, the version or a refusal, it ends the run and
 returns a [`Stop`](../../../crates/crumbkit/src/parse/stop.rs) in place of a
 bare `ExitCode`. A tool's `main` returns `stop.code()`. A tool that prints
 more before it exits reads `Stop::output`, whose `Output::is_json` says
-whether the caller asked for JSON. The `Output` inside a `Stop` sits in a
-`Box`, which costs one allocation only on a run that `parse` ends.
+whether the caller asked for JSON. `Stop::number` returns the same exit code
+as a `u8`: 0 after help or the version, the code that the guide lists for a
+refused command line, which is 2 unless an exit lists the refusal, and 1
+when the page could not be written. A tool that records the exit of a
+stopped run, such as in a log of its own, or passes it on reads that
+number, because an `ExitCode` cannot be read back. The `Output` inside a
+`Stop` sits in a `Box`, which costs one allocation only on a run that
+`parse` ends.
 
-Why: ADR-0002.
+Why: ADR-0002, ADR-0089.
 
 ## The command tree after parsing
 

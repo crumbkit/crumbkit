@@ -2,9 +2,9 @@
 //! removed is absent. Each option that ADR-0081 removed reproduced the
 //! output shape of one adopting tool, and API-1 asks for a second use before
 //! such an option returns. ADR-0085 removed items that no tool or sibling
-//! crate called, and ADR-0088 restored the ones that a tool outside this
-//! repository calls. rustdoc compiles each block below and passes only when the
-//! block fails to compile.
+//! crate called, and ADR-0088 and ADR-0089 restored the ones that a tool
+//! outside this repository calls. rustdoc compiles each block below and
+//! passes only when the block fails to compile.
 //!
 //! A document cannot print its id and result under keys that the tool
 //! declares:
@@ -86,14 +86,6 @@
 //! ```compile_fail
 //! fn rows(page: &crumbkit::Page) -> Option<usize> {
 //!     page.fetch_limit()
-//! }
-//! ```
-//!
-//! A stopped run gives its exit code as an `ExitCode` only:
-//!
-//! ```compile_fail
-//! fn number(stop: &crumbkit::Stop) -> u8 {
-//!     stop.number()
 //! }
 //! ```
 //!

@@ -7,7 +7,7 @@ use crumbkit::{Code, Spelling};
 
 use super::{Admitted, named, refuse, tool_name, twin};
 use crate::allow::{Allow, Rule};
-use crate::codes::declared;
+use crate::codes::Declared;
 use crate::examples::Examples;
 use crate::guide::command_line;
 use crate::recoveries::{Failing, Unprovoked};
@@ -106,8 +106,8 @@ impl<'a> Twin<'a> {
 pub struct Twins<'a> {
     /// The binary and its environment.
     examples: Examples<'a>,
-    /// The `CODES` list of each of the tool's error types.
-    codes: &'a [&'a [&'a Code]],
+    /// The tool's declared codes.
+    codes: Declared<'a>,
     /// The twins.
     pairs: &'a [Twin<'a>],
     /// The declared codes that no command line provokes.
@@ -124,7 +124,20 @@ impl<'a> Twins<'a> {
     pub const fn new(examples: Examples<'a>, codes: &'a [&'a [&'a Code]]) -> Self {
         Self {
             examples,
-            codes,
+            codes: Declared::Lists(codes),
+            pairs: &[],
+            unprovoked: &[],
+        }
+    }
+
+    /// Returns the settings that [`Twins::new`] returns, for `codes`, one
+    /// list of the tool's declared codes held by value, such as codes that
+    /// the tool builds at run time with `Code::runtime`.
+    #[must_use]
+    pub const fn from_codes(examples: Examples<'a>, codes: &'a [Code]) -> Self {
+        Self {
+            examples,
+            codes: Declared::Codes(codes),
             pairs: &[],
             unprovoked: &[],
         }
@@ -198,7 +211,7 @@ impl<'a> Twins<'a> {
 /// its own line under `the tool's twins break crumbkit's twin rule:`.
 pub fn check_twins(command: &Command, guide: &Guide, twins: &Twins<'_>) {
     let spelling = guide.get_spelling().for_tool(guide.tool_name(command));
-    let declared: Vec<&Code> = declared(twins.codes);
+    let declared: Vec<&Code> = twins.codes.to_vec();
     let mut problems = Vec::new();
     for pair in twins.pairs {
         let code = pair.refused.code();

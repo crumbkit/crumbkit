@@ -511,6 +511,36 @@ fn every_declared_code_is_provoked_or_listed_and_each_listed_code_is_declared_an
 }
 
 #[test]
+fn recoveries_built_from_owned_codes_report_as_recoveries_built_from_code_lists_do() {
+    let show = failure("tool::books::not_found", r#"{"kind":"retry"}"#);
+    let answers = [("books show 7 --json", 1, show.as_str(), "")];
+    let from_lists = Setup::new("recoveries-owned-codes-lists", &answers);
+    let from_codes = Setup::new("recoveries-owned-codes-codes", &answers);
+    let codes: Vec<Code> = vec![NOT_FOUND, UNREADABLE, REMOVED];
+    let owned = [
+        Unprovoked::from_code(codes[1], "Only a broken file provokes it."),
+        Unprovoked::from_code(codes[2], "Only a full disk provokes it."),
+    ];
+
+    let lists_problems = problems(&from_lists, &recoveries(&from_lists, SHOW_7, OTHERS));
+    let codes_problems = problems(
+        &from_codes,
+        &Recoveries::from_codes(Examples::new(&from_codes.script, ""), &codes)
+            .starts(SHOW_7)
+            .unprovoked(&owned),
+    );
+
+    assert_eq!(lists_problems, None);
+    assert_eq!(codes_problems, None);
+    let report = from_codes.report();
+    assert!(
+        report.contains("tool::books::removed_file: Only a full disk provokes it."),
+        "{report}"
+    );
+    assert_eq!(report, from_lists.report());
+}
+
+#[test]
 fn an_opt_out_skips_the_starts_below_its_path_and_a_stale_one_fails_the_check() {
     let setup = Setup::new("recoveries-opt-out", &[]);
     let allow = [

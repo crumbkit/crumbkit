@@ -11,7 +11,7 @@ use snapbox::Assert;
 use snapbox::assert::DEFAULT_ACTION_ENV;
 
 use crate::allow::{Allowances, Rule};
-use crate::codes;
+use crate::codes::Declared;
 use crate::examples::Examples;
 use crate::failures;
 use crate::goldens::compare;
@@ -240,8 +240,8 @@ impl<'a> Failing<'a> {
 pub struct Recoveries<'a> {
     /// The binary, its environment and the tool's opt-outs.
     examples: Examples<'a>,
-    /// The `CODES` list of each of the tool's error types.
-    codes: &'a [&'a [&'a Code]],
+    /// The tool's declared codes.
+    codes: Declared<'a>,
     /// The command lines that start the chains.
     starts: &'a [Failing<'a>],
     /// The declared codes that no command line provokes.
@@ -263,11 +263,22 @@ impl<'a> Recoveries<'a> {
     pub const fn new(examples: Examples<'a>, codes: &'a [&'a [&'a Code]]) -> Self {
         Self {
             examples,
-            codes,
+            codes: Declared::Lists(codes),
             starts: &[],
             unprovoked: &[],
             values: &[],
             steps: 3,
+        }
+    }
+
+    /// Returns the settings that [`Recoveries::new`] returns, for `codes`,
+    /// one list of the tool's declared codes held by value, such as codes
+    /// that the tool builds at run time with `Code::runtime`.
+    #[must_use]
+    pub const fn from_codes(examples: Examples<'a>, codes: &'a [Code]) -> Self {
+        Self {
+            codes: Declared::Codes(codes),
+            ..Self::new(examples, &[])
         }
     }
 
@@ -461,7 +472,7 @@ fn check(
     // with the tool's name (ADR-0079).
     let spelling = guide.get_spelling().for_tool(guide.tool_name(command));
     let mut declared: Vec<(String, &Code)> = Vec::new();
-    for code in codes::declared(recoveries.codes) {
+    for code in recoveries.codes.to_vec() {
         if !declared.iter().any(|&(_, seen)| seen == code) {
             declared.push((spelling.spell(code), code));
         }
