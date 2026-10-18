@@ -186,7 +186,8 @@ impl<const N: usize, const MOST: usize> Page<N, MOST> {
     ///
     /// It reads at most one row past the limit, and that row tells it
     /// whether more rows exist, so an iterator over a log or a remote API
-    /// stops there. With `--all` it reads every row and counts them. A
+    /// stops there. With `--all` it reads every row. The listing has no
+    /// total, even when it holds every row of the source. A
     /// handler that fetches a `Vec` fetches one row past [`Page::limit`],
     /// because a `Vec` of exactly the limit reads as a source with no more
     /// rows.

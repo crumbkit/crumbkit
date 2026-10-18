@@ -359,12 +359,13 @@ fn uncounted_keeps_the_first_page_and_says_more_rows_exist_when_the_source_has_o
 }
 
 #[test]
-fn uncounted_counts_the_rows_when_the_source_ends_within_the_page() {
+fn uncounted_keeps_every_row_without_a_total_when_the_source_ends_within_the_page() {
     let page = shelves(&["--limit", "2"]).unwrap();
 
     let listing = page.uncounted(rows(2));
 
-    assert_eq!(listing, Listing::new(rows(2), 2).bounded(10));
+    assert_eq!(listing, Listing::uncounted(rows(2), false).bounded(10));
+    assert_eq!(listing.total(), None);
 }
 
 #[test]
@@ -383,10 +384,11 @@ fn uncounted_stops_reading_the_source_one_row_past_the_page() {
 }
 
 #[test]
-fn uncounted_with_all_reads_every_row_and_counts_them() {
+fn uncounted_with_all_reads_every_row_and_gives_no_total() {
     let page = shelves(&["--all"]).unwrap();
 
     let listing = page.uncounted(rows(30));
 
-    assert_eq!(listing, Listing::new(rows(30), 30).bounded(10));
+    assert_eq!(listing, Listing::uncounted(rows(30), false).bounded(10));
+    assert_eq!(listing.total(), None);
 }

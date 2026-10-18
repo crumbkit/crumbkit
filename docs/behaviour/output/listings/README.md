@@ -40,10 +40,12 @@ Why: ADR-0016, ADR-0050, ADR-0077.
 
 ## A listing with no rows
 
-A listing whose total is 0 prints its header on standard output and a note
-on standard error in text, such as `note: no books match`. The default
-wording is `no {description} match`, from `Listing::described`, or
-`no rows match` for a listing without a description.
+A listing with no rows and no more rows prints its header on standard output
+and a note on standard error in text, such as `note: no books match`. This
+holds for a counted listing whose total is 0 and for an uncounted listing,
+which has no total. The default wording is `no {description} match`, from
+`Listing::described`, or `no rows match` for a listing without a
+description.
 [`Document::when_empty`](../../../../crates/crumbkit-core/src/document.rs) sets
 the document's own wording in one line. `self usage` prints
 `note: the usage log holds no findings`.
@@ -53,7 +55,8 @@ the document's own wording in one line. `self usage` prints
 - A listing that the output budget cut to no rows prints the cut line and no
   note ([budget](../budget/README.md#listings-and-lists)).
 - With `--json`, the listing's document is unchanged: `data` is `[]`,
-  `total` is 0 and `truncated` is false. A listing printed without the
+  `total` is 0 and `truncated` is false. An uncounted listing's document
+  leaves out `total`. A listing printed without the
   envelope prints `[]`.
 - A list of rows, such as a `Vec`, prints no note.
 - A stream prints its own empty note ([streams](../streams.md#notes)).
@@ -61,7 +64,7 @@ the document's own wording in one line. `self usage` prints
 The [usage log](../../usage-log/README.md) marks a run whose listing or stream
 printed the note.
 
-Why: ADR-0050.
+Why: ADR-0050, ADR-0087.
 
 ## A listing without a total
 
@@ -70,16 +73,23 @@ pages its answers or a log that grows while it is read, builds its listing
 with `Listing::uncounted` or `Page::uncounted`. The reading example's
 `entries list` reads its file line by line this way.
 
-- While more rows exist, the JSON document leaves out `total`, and every
-  listing's JSON Schema marks `total` as optional.
-- The footer gives no count and keeps `--all` as the next step:
+- The JSON document never holds `total`, whether or not more rows exist and
+  whatever left rows out: the output budget, the page's limit or the tool.
+  Every listing's JSON Schema marks `total` as optional.
+- A page that holds every row of its source, as with `--all`, has
+  `"truncated": false` and prints no footer, unless the output budget cut
+  it. A cut page has `"truncated": true` and prints the cut line.
+- While more rows exist, the footer gives no count and keeps `--all` as the
+  next step:
   `Showing 4 books, and more match. --all shows every one.` It names the
   bound when the page has one, and says `rows` when the listing has no
   description.
 - The output budget's cut line of such a listing also gives no count, as in
   `Showing 812 books, because output stops at 1048576 bytes.`
 - A page with no rows and more rows after it prints the footer and no empty
-  note, as a counted page with no rows from a total above 0 does.
+  note, as a counted page with no rows from a total above 0 does. A page
+  with no rows and none after it prints the empty note, and its JSON
+  document leaves out `total`.
 
 Every listing's document holds `truncated`, which is true when `--limit`, the
 output budget or an uncounted source left rows out, and false when `data`
@@ -89,7 +99,7 @@ budget, so a listing with `cut` also holds `"truncated": true`. A list has no
 The [usage log](../../usage-log/README.md) marks a run whose listing left rows
 out.
 
-Why: ADR-0050.
+Why: ADR-0050, ADR-0087.
 
 ## An upper bound on `--limit`
 

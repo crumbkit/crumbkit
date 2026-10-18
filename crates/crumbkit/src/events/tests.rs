@@ -411,6 +411,39 @@ fn finish_reports_its_exit_code_its_bytes_and_whether_the_listing_left_rows_out_
     );
 }
 
+/// Returns an uncounted listing of `count` books whose source holds no
+/// rows after them, as `Page::uncounted` returns with `--all`.
+fn every_uncounted_book(count: usize) -> Listing<Book> {
+    let rows = (0..count)
+        .map(|n| Book {
+            title: format!("Book number {n}"),
+        })
+        .collect();
+    Listing::uncounted(rows, false)
+}
+
+#[test]
+fn finish_reports_an_uncounted_listing_with_no_rows_and_no_more_rows_as_empty() {
+    let (seen, _) = finished(
+        &["shelf", "books", "list"],
+        BOOKS,
+        Ok::<_, Error>(every_uncounted_book(0)),
+    );
+
+    assert!(seen[0].ends_with("truncated false empty true"), "{seen:?}");
+}
+
+#[test]
+fn finish_reports_an_uncounted_listing_that_holds_every_row_as_not_truncated() {
+    let (seen, _) = finished(
+        &["shelf", "books", "list"],
+        BOOKS,
+        Ok::<_, Error>(every_uncounted_book(3)),
+    );
+
+    assert!(seen[0].ends_with("truncated false empty false"), "{seen:?}");
+}
+
 #[test]
 fn finish_reports_the_failure_s_code_in_the_tool_s_spelling_and_the_guide_s_exit_code() {
     let (seen, _) = finished(&["shelf", "books", "list"], BOOKS, Err(TimedOut));

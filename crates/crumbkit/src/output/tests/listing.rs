@@ -3,12 +3,12 @@
 
 use std::process::ExitCode;
 
-use clap::{Arg, Command, CommandFactory as _};
+use clap::{Arg, Command, CommandFactory as _, Parser};
 
 use super::{
     PLANET_LISTING, Planet, Tool, finish_output, finish_with, mercury, parse_against, saturn,
 };
-use crate::{Call, Listing};
+use crate::{Call, Listing, Page};
 
 /// Returns a listing of Mercury and Saturn out of `total` planets.
 fn two_of(total: usize) -> Listing<Planet> {
@@ -103,6 +103,80 @@ fn a_listings_json_without_a_total_has_truncated_and_no_total() {
             "\n"
         )
     );
+}
+
+/// A command line that holds only the paging flags of a page of 2 rows.
+#[derive(Parser)]
+struct Paged {
+    #[command(flatten)]
+    page: Page<2>,
+}
+
+/// Returns the page of 2 rows that `flags` ask for.
+fn page_of_two(flags: &[&str]) -> Page<2> {
+    let args = std::iter::once("tool").chain(flags.iter().copied());
+    Paged::try_parse_from(args).unwrap().page
+}
+
+/// Returns Mercury, Saturn and Mercury again, one row more than a page of 2.
+fn three_planets() -> Vec<Planet> {
+    vec![mercury(), saturn(), mercury()]
+}
+
+#[test]
+fn the_json_of_an_uncounted_page_that_its_limit_cut_has_truncated_and_no_total() {
+    let listing = page_of_two(&[]).uncounted(three_planets());
+
+    let finished = finish_with(&["--json"], PLANET_LISTING, listing);
+
+    assert_eq!(
+        finished.out,
+        concat!(
+            r#"{"schema":"solar/planet-listing/v1","data":[{"name":"Mercury","moons":0},{"name":"Saturn","moons":274}],"truncated":true}"#,
+            "\n"
+        )
+    );
+}
+
+#[test]
+fn the_footer_of_an_uncounted_page_that_its_limit_cut_gives_no_count() {
+    let listing = page_of_two(&[])
+        .uncounted(three_planets())
+        .described("planets");
+
+    let finished = finish_with(&[], PLANET_LISTING, listing);
+
+    assert_eq!(
+        finished.err,
+        "Showing 2 planets, and more match. --all shows every one.\n"
+    );
+}
+
+#[test]
+fn the_json_of_an_uncounted_page_that_holds_every_row_has_truncated_false_and_no_total() {
+    let listing = page_of_two(&["--all"]).uncounted(three_planets());
+
+    let finished = finish_with(&["--json"], PLANET_LISTING, listing);
+
+    assert_eq!(
+        finished.out,
+        concat!(
+            r#"{"schema":"solar/planet-listing/v1","data":[{"name":"Mercury","moons":0},{"name":"Saturn","moons":274},{"name":"Mercury","moons":0}],"truncated":false}"#,
+            "\n"
+        )
+    );
+}
+
+#[test]
+fn the_text_of_an_uncounted_page_that_holds_every_row_has_no_footer() {
+    let listing = page_of_two(&["--all"])
+        .uncounted(three_planets())
+        .described("planets");
+
+    let finished = finish_with(&[], PLANET_LISTING, listing);
+
+    assert_eq!(finished.out.lines().count(), 4);
+    assert_eq!(finished.err, "");
 }
 
 #[test]

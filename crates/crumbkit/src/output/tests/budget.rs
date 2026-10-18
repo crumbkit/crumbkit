@@ -466,6 +466,36 @@ fn a_listing_cut_to_no_rows_prints_the_cut_line_and_no_empty_note() {
 }
 
 #[test]
+fn the_json_of_an_uncounted_listing_that_the_budget_cut_has_truncated_and_cut_and_no_total() {
+    for more in [false, true] {
+        let listing = Listing::uncounted(stars(20), more).described("stars");
+
+        let finished = finish_small(&["--json"], STAR_LISTING, listing);
+
+        let document = parsed(&finished.out);
+        assert_eq!(document.get("total"), None, "more: {more}");
+        assert_eq!(document["truncated"], true, "more: {more}");
+        assert_eq!(document["cut"]["budget"], BUDGET, "more: {more}");
+    }
+}
+
+#[test]
+fn the_cut_line_of_an_uncounted_listing_that_holds_every_row_gives_no_count() {
+    let listing = Listing::uncounted(stars(20), false).described("stars");
+
+    let finished = finish_small(&[], STAR_LISTING, listing);
+
+    let shown = finished.out.lines().count() - 1;
+    assert_eq!(
+        finished.err,
+        format!(
+            "Showing {shown} stars, because output stops at 1024 bytes. \
+             Ask for less with --limit or --fields.\n"
+        )
+    );
+}
+
+#[test]
 fn the_cut_line_of_a_listing_without_a_total_gives_no_count() {
     let listing = Listing::uncounted(stars(20), true).described("stars");
 

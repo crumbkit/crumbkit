@@ -850,6 +850,9 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- crumbkit: a [`Listing`] from `Listing::uncounted` or [`Page::uncounted`]
+  never states a total in JSON or text, even when it holds every row or the
+  output budget cut it ([behaviour/output/listings]).
 - crumbkit: a batch's one over-budget failure names the first later answer
   that does not fit, every answer after it and every unfetched key, in text
   and JSON alike. A budget of 1 reads `1 byte` ([behaviour/output/budget]).
