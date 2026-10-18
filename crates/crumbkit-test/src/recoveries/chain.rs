@@ -2,11 +2,10 @@
 //! each start prints.
 
 use std::fmt::Write as _;
-use std::path::Path;
 
-use crate::failures::{ReadFailure, Step};
 use clap::Command;
 use crumbkit::Spelling;
+use crumbkit::form::{ReadFailure, Step};
 use crumbkit::help::Guide;
 
 use super::words::split;
@@ -14,9 +13,9 @@ use super::{Failing, Recoveries};
 use crate::allow::{self, Allowances, Rule};
 use crate::examples::is_crumbkit_warning;
 use crate::exits;
-use crate::failures;
+use crate::failures::{self, Reader};
 use crate::guide::command_line;
-use crate::runs::{self, Place, Ran, TIMEOUT, Xdg, env_note, with_json};
+use crate::runs::{self, Place, Ran, TIMEOUT, WorkDir, Xdg, env_note, with_json};
 use fill::{fill_word, path_below, value};
 
 mod all;
@@ -55,9 +54,15 @@ pub(super) struct Walk<'a> {
     pub(super) provoked: Vec<String>,
     /// The number of failures whose codes the check did not know.
     pub(super) skipped: usize,
+    /// The tool's failure reader, which reads each failed run first.
+    pub(super) reader: Option<Reader<'a>>,
     /// The tool's guide, whose exits and renames give the exit code of a
     /// failed run.
     pub(super) guide: &'a Guide,
+    /// The problem that stopped the walk: a failed run whose failure the
+    /// tool's reader does not read, so no later run can be
+    /// followed.
+    pub(super) stopped: Option<String>,
 }
 
 /// The failure that offers a chain's next steps.
@@ -105,9 +110,9 @@ struct Chain<'c> {
     start: String,
     /// The XDG directories of every run of the chain.
     xdg: Xdg,
-    /// The working directory of every run, or `None` for the test's
-    /// directory.
-    dir: Option<&'c Path>,
+    /// The working directory of every run, which is one copy of a fresh
+    /// fixture for the whole chain.
+    dir: WorkDir,
     /// The standard input of every run.
     stdin: Option<&'c [u8]>,
     /// The start's own value of each placeholder.
@@ -124,6 +129,9 @@ impl Walk<'_> {
     pub(super) fn start(&mut self, start: &Failing<'_>) {
         let tool = self.command.get_name();
         let line = command_line(tool, start.words) + &env_note(start.own_env());
+        if self.stopped.is_some() {
+            return;
+        }
         if self
             .allowances
             .excuses(Rule::Recoveries, &path_below(self.command, start.words))
@@ -148,7 +156,16 @@ impl Walk<'_> {
                 return;
             }
         };
-        let dir = start.work_dir(self.recoveries.examples.working_dir());
+        let dir = match WorkDir::new(
+            "recoveries-dir",
+            start.work_dir(self.recoveries.examples.working_dir()),
+        ) {
+            Ok(dir) => dir,
+            Err(problem) => {
+                self.problems.push(format!("{line}: {problem}"));
+                return;
+            }
+        };
         let _ = writeln!(self.report, "{line}");
         let mut chain = Chain {
             start: line,
@@ -198,6 +215,9 @@ impl Walk<'_> {
     fn follow(&mut self, chain: &mut Chain<'_>, parent: &Parent<'_>, steps: &[Step], depth: u8) {
         let indent = "  ".repeat(usize::from(depth));
         for step in steps {
+            if self.stopped.is_some() {
+                return;
+            }
             let (call, values) = match step {
                 Step::Run(call) => (call, None),
                 Step::RunAll { call, field } => {
@@ -219,7 +239,7 @@ impl Walk<'_> {
                     let _ = writeln!(self.report, "{indent}hint");
                     continue;
                 }
-                Step::None(_) => {
+                _ => {
                     let _ = writeln!(self.report, "{indent}no next step");
                     continue;
                 }
@@ -485,7 +505,7 @@ impl Walk<'_> {
             &chain.xdg,
             &refs,
             Place {
-                dir: chain.dir,
+                dir: chain.dir.path(),
                 stdin: chain.stdin,
                 env: chain.env,
             },
@@ -523,12 +543,22 @@ impl Walk<'_> {
         if output.status.success() {
             return Some(Outcome::Succeeds);
         }
-        let failures = failures::read_failures(tool, &output.stdout, &output.stderr);
+        let failures = failures::read_failures(tool, self.reader, &output.stdout, &output.stderr);
         if failures.is_empty() {
-            self.problems.push(format!(
-                "{}: {label} ends with {} and prints no failure that the check can read",
-                chain.start, output.status
-            ));
+            match self.reader {
+                Some(_) => {
+                    self.stopped = Some(format!(
+                        "{}: {label} ends with {}, and the tool's FailureReader reads no failure from it, so the check cannot follow the tool's recoveries. The tool's FailureReader reads the failure, or the tool adds an opt-out from `{}` that names the root, with a reason",
+                        chain.start,
+                        output.status,
+                        Rule::Recoveries.id()
+                    ));
+                }
+                None => self.problems.push(format!(
+                    "{}: {label} ends with {} and prints no failure that the check can read",
+                    chain.start, output.status
+                )),
+            }
             return None;
         }
         // The first failure of a run decides its exit code (ADR-0037).

@@ -210,6 +210,9 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   document holds the named values under `fields` ([behaviour/schemas]).
 - crumbkit: a refused command line or `--fields` name holds the refused
   argument, value or subcommand under `fields` ([behaviour/failures]).
+- crumbkit: [`Code::runtime`] builds a code known only at run time, and
+  `Spelling::split` reads a code in `Spelling::COLONS` back into its
+  segments ([behaviour/failures]).
 - crumbkit-markdown: the new crate's `render` writes a Markdown reference
   of every command of a tool from its `commands list --all --json --full`
   document ([crumbkit-markdown], [behaviour/help/reference]).
@@ -316,18 +319,27 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit-test: `Examples::xdg` and `Failing::xdg` name a fixture that
   the checks copy into each run's fresh XDG directories, so a failing
   command can find a plugin or cache there ([behaviour/checks/end-to-end]).
+- crumbkit-test: `Examples::fresh_dir` names a fixture that the checks copy
+  into a new working directory for each run, or once for each recovery
+  chain, and example outputs show the copy's path as `[ROOT]` ([behaviour/checks/end-to-end]).
 - crumbkit-test: `Failing::values` gives one recovery chain its own
   placeholder values, which win over every other source ([behaviour/checks/recovery-chains]).
 - crumbkit-test: [`check_help_sizes`], [`check_help_goldens`] and
   [`check_path_weights`] take `Pages`, whose `Pages::binary` reads each
   page from the tool's binary, for a tool that builds its help at run
   time. A tool passes the same `Pages` to all three ([behaviour/help/checks]).
+- crumbkit: [`ReadFailure`] carries the failure's fields, so a
+  [`FailureReader`] gives crumbkit-test the values that fill a recovery's
+  placeholders ([behaviour/checks/recovery-chains]).
 - crumbkit-test: [`check_twins`] runs every twin of a tool and fails on a
   declared code that no twin refuses and `Twins::unprovoked` does not list
   ([behaviour/checks/end-to-end]).
 - crumbkit-test: [`check_recoveries`] fails on a failure with a declared
   code that offers no `run`, `retry` or `hint` step, unless an opt-out from
   `Rule::NextStep` names the failing command ([behaviour/checks/recovery-chains]).
+- crumbkit-test: [`FailureReader`] and `Examples::failure_reader` let a
+  tool that prints its own failures give the twin, example and recovery
+  checks its failures ([behaviour/failures/excerpts-and-readers]).
 - crumbkit-test: [`Allow::untwinned`] opts a declared code out of its twin
   with the `Failing` that provokes it, and [`check_twins`] runs that line
   ([behaviour/checks/end-to-end], [behaviour/adoption/opt-outs]).
@@ -787,6 +799,9 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit-test: [`check_opt_outs`] lists the `Guide::dashed_forms`
   declaration and each command that answers to its dashed form as
   customisations ([behaviour/adoption/declarations]).
+- crumbkit: [`ReadFailure`] holds each field as a `FieldValue`, so a
+  [`FailureReader`] gives back a null, list or object field as the failure
+  held it ([behaviour/failures/excerpts-and-readers]).
 - crumbkit: [`help::RuntimeLeaf`] no longer implements `PartialEq` and
   `Eq`, because it holds the function of its refusal alternatives.
 - crumbkit-test: `RuntimeFailing::at` returns a `RuntimePlace`, which has
@@ -969,6 +984,7 @@ rustdoc, or at the page in docs/ that describes the behaviour. -->
 [`Recovery`]: crates/crumbkit-core/src/failure.rs
 [`Code`]: crates/crumbkit-core/src/code.rs
 [`Spelling`]: crates/crumbkit-core/src/code.rs
+[`Code::runtime`]: crates/crumbkit-core/src/code/runtime.rs
 [`Error`]: crates/crumbkit-core/src/failure.rs
 [`Batch`]: crates/crumbkit-core/src/batch.rs
 [`Prose`]: crates/crumbkit-core/src/prose.rs
@@ -1008,6 +1024,7 @@ rustdoc, or at the page in docs/ that describes the behaviour. -->
 [`check_help_goldens`]: crates/crumbkit-test/src/goldens.rs
 [`check_examples`]: crates/crumbkit-test/src/examples.rs
 [`Examples`]: crates/crumbkit-test/src/examples/settings.rs
+[`FailureReader`]: crates/crumbkit-test/src/failures.rs
 [crumbkit-aliases]: crates/crumbkit-aliases/README.md
 [crumbkit-usage]: crates/crumbkit-usage/README.md
 [crumbkit-child]: crates/crumbkit-child/README.md
@@ -1046,6 +1063,7 @@ rustdoc, or at the page in docs/ that describes the behaviour. -->
 [crumbkit-picker]: crates/crumbkit-picker/README.md
 [crumbkit-markdown]: crates/crumbkit-markdown/README.md
 [`check_command_reference`]: crates/crumbkit-test/src/reference.rs
+[`ReadFailure`]: crates/crumbkit/src/form.rs
 [`codes`]: crates/crumbkit/src/codes.rs
 [`check_recoveries`]: crates/crumbkit-test/src/recoveries.rs
 [`check_twin`]: crates/crumbkit-test/src/twins.rs

@@ -120,7 +120,8 @@ mod tests;
 pub trait Failure: std::error::Error {
     /// Returns the failure's code. Each error type lists the codes it
     /// returns in a `CODES` constant, which the tool's test passes to
-    /// crumbkit-test's codes check.
+    /// crumbkit-test's codes check. A code from [`Code::runtime`], which the
+    /// tool learns only at run time, is in no such list.
     fn code(&self) -> &'static Code;
 
     /// Returns what the caller can do next, the preferred repair.

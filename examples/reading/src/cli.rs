@@ -103,10 +103,10 @@ pub const GUIDE: Guide = Guide::new().picker(&MENU).leaves(&[
                     "6",
                     "--expect",
                     "none",
-                    "--dry-run",
+                    "--yes",
                     "Emma",
                 ],
-                "Print the entry that appending Emma to the to-read list would write",
+                "Append Emma to the to-read list without asking",
             ),
         ])
         .effects(Effects::replacing())

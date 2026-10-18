@@ -13,8 +13,9 @@ use snapbox::assert::DEFAULT_ACTION_ENV;
 use crate::allow::{Allowances, Rule};
 use crate::codes;
 use crate::examples::Examples;
+use crate::failures;
 use crate::goldens::compare;
-use crate::runs::Location;
+use crate::runs::{Dir, Location};
 
 mod chain;
 mod runtime;
@@ -84,8 +85,9 @@ impl<'a> Failing<'a> {
 
     /// Sets the working directory of the command line and of every step of
     /// its chain, relative to the test's directory or absolute. Without it,
-    /// the runs start in the directory of [`Examples::current_dir`], or in
-    /// the test's directory when it is not set.
+    /// the runs start in the directory of [`Examples::current_dir`], in one
+    /// copy of the fixture of [`Examples::fresh_dir`] for the whole chain,
+    /// or in the test's directory when neither is set.
     #[must_use]
     pub const fn dir(mut self, dir: &'a str) -> Self {
         self.dir = Some(Location::Text(dir));
@@ -197,13 +199,14 @@ impl<'a> Failing<'a> {
     }
 
     /// Returns the working directory of its runs. A command line without a
-    /// directory of its own runs in `fallback`, the directory of
-    /// [`Examples`], or in the test's directory when that is `None` too.
-    pub(crate) fn work_dir<'p>(&self, fallback: Option<&'p Path>) -> Option<&'p Path>
+    /// directory of its own runs in `fallback`, the directory or fresh
+    /// fixture of [`Examples`], or in the test's directory when that is
+    /// `None` too.
+    pub(crate) fn work_dir<'p>(&self, fallback: Option<Dir<'p>>) -> Option<Dir<'p>>
     where
         'a: 'p,
     {
-        self.dir.map(Location::path).or(fallback)
+        self.dir.map(Dir::Fixed).or(fallback)
     }
 
     /// Returns the bytes on standard input of its runs, or `None`.
@@ -316,7 +319,11 @@ impl<'a> Recoveries<'a> {
 /// package, as it calls [`check_examples`](crate::check_examples).
 ///
 /// Every run adds `--json` when its words lack it, before a `--` word or at
-/// the end, so the tool reads it as a flag. The check reads the failure of the last document on standard output that is a
+/// the end, so the tool reads it as a flag. When [`Examples`] sets a
+/// [`FailureReader`](crate::FailureReader), the check reads each failed
+/// run through that reader first. Otherwise, or when the reader reads no
+/// failure, it reads
+/// the failure of the last document on standard output that is a
 /// `<tool>/failure/v1` document or that has `failures`, as a batch prints
 /// them, and then the last `code:` line on standard error, which gives a
 /// failure without steps or fields. It follows every failure that it
@@ -327,7 +334,8 @@ impl<'a> Recoveries<'a> {
 /// one chain share one set of fresh XDG directories, which start as copies
 /// of the fixture of [`Failing::xdg`] or [`Examples::xdg`], the working directory
 /// and the standard input of its start, so a step sees what the earlier
-/// runs wrote.
+/// runs wrote. A chain whose working directory comes from
+/// [`Examples::fresh_dir`] runs in one new copy of that fixture.
 ///
 /// A chain follows the recovery and then each alternative of a failure. A
 /// `run` step fills each placeholder, such as `<ID>...` or each of the two
@@ -338,8 +346,9 @@ impl<'a> Recoveries<'a> {
 /// 1. the value of [`Failing::values`] whose name matches it exactly;
 /// 2. the field of the failure that offers the step whose name matches it
 ///    with capitals lowered and `-` read as `_`, so the field `book_id`
-///    fills `<BOOK-ID>`. The fields are the `fields` of
-///    crumbkit's failure document. A text field fills as it is, an integer or a boolean as
+///    fills `<BOOK-ID>`. The fields are those that the reader
+///    returns with the failure, or the `fields` of crumbkit's failure
+///    document. A text field fills as it is, an integer or a boolean as
 ///    JSON writes it, and a null, list or object field fills no
 ///    placeholder;
 /// 3. the value of [`Recoveries::values`] whose name matches it exactly.
@@ -349,8 +358,8 @@ impl<'a> Recoveries<'a> {
 /// [`Recoveries::steps`] steps after the start. A chain does not run a
 /// command line that it ran already, a step that an opt-out from
 /// [`Rule::Recoveries`] covers, or the recovery of a code that the tool
-/// does not declare and crumbkit does not own, such as a code from a
-/// plugin. The check counts such codes in the report. crumbkit owns its
+/// does not declare and crumbkit does not own, such as a run-time code from
+/// a plugin. The check counts such codes in the report. crumbkit owns its
 /// own codes and the codes of its add-on crates, such as crumbkit-child's
 /// `<tool>::child::failed`, which print with the tool's component
 /// (ADR-0079), and the codes that the guide prints in place of them. Any
@@ -380,6 +389,12 @@ impl<'a> Recoveries<'a> {
 ///   step. A recovery built with `Call::value` carries the value, so an
 ///   agent need not copy it from the field. A value of [`Failing::values`]
 ///   that wins over the field is no finding;
+/// - a failed run whose failure the tool's reader, set with
+///   [`Examples::failure_reader`], does not read, and that prints no
+///   `<tool>/failure/v1` document and no `code:` line. The first such run
+///   stops the check, which reports this problem alone and says to make
+///   the reader read it or to add an opt-out from
+///   [`Rule::Recoveries`] that names the root (ADR-0045);
 /// - a run that writes a `warning: <tool> left out` line to standard error, which a
 ///   debug build writes for a recovery call that does not render;
 /// - a step that crumbkit's quoting cannot read, that does not start with
@@ -441,6 +456,7 @@ fn check(
     dir: &str,
     assert: &Assert,
 ) {
+    let reader = failures::reader(&recoveries.examples);
     // Codes print in the guide's spelling, and crumbkit's own codes print
     // with the tool's name (ADR-0079).
     let spelling = guide.get_spelling().for_tool(guide.tool_name(command));
@@ -487,10 +503,16 @@ fn check(
         report: String::new(),
         provoked: Vec::new(),
         skipped: 0,
+        reader,
         guide,
+        stopped: None,
     };
     for start in recoveries.starts {
         walk.start(start);
+    }
+    if let Some(problem) = walk.stopped {
+        fail(&[problem]);
+        return;
     }
     let chain::Walk {
         allowances,

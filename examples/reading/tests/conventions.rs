@@ -5,10 +5,10 @@
 //! the lists in `tests/fixtures/lists/`, so the checks cover the commands
 //! that reading adds at run time. They live in an integration test so that
 //! the example check can run the built binary, whose path cargo sets only
-//! for integration tests. The example check runs each example with
-//! `READING_DIR` set to the fixture directory, and compares each run's
-//! standard output with its golden file under `tests/golden/examples/`
-//! (ADR-0005). `SNAPSHOTS=overwrite cargo test` writes, rewrites and
+//! for integration tests. The example check runs each example in a new copy
+//! of the fixture directory, with `READING_DIR` naming the copy, and
+//! compares each run's standard output with its golden file under
+//! `tests/golden/examples/` (ADR-0005). `SNAPSHOTS=overwrite cargo test` writes, rewrites and
 //! deletes the golden files.
 
 use std::path::Path;
@@ -53,10 +53,14 @@ const PATH_BUDGETS: PathBudgets<'_> = PathBudgets::new("tests/golden/examples").
 );
 
 /// reading's built binary, the directory that holds its example golden
-/// files, and the fixture lists that each run reads.
+/// files, and the fixture lists that each run reads. Each run starts in a
+/// new copy of the fixture lists, and `READING_DIR` names that copy, so an
+/// example of `entries set` that writes to a list leaves the fixture as it
+/// is and the next run sees the list unchanged.
 const EXAMPLES: Examples<'_> =
     Examples::new(env!("CARGO_BIN_EXE_reading"), "tests/golden/examples")
-        .env(&[("READING_DIR", LISTS)])
+        .fresh_dir(LISTS)
+        .env(&[("READING_DIR", ".")])
         .allow(ALLOW);
 
 /// Returns the command tree and the guide that reading builds from the lists
@@ -205,8 +209,9 @@ const UNPROVOKED: &[Unprovoked<'_>] = &[Unprovoked::new(
 )];
 
 /// The settings of reading's recovery check. A missing list, a position
-/// past the end of a list and a version conflict each start a chain. The
-/// last two run on a dry run, so the check writes no fixture list.
+/// past the end of a list and a version conflict each start a chain. Each
+/// chain runs in its own copy of the fixture lists, and the last two run on
+/// a dry run, so they write nothing to that copy either.
 const RECOVERIES: Recoveries<'_> = Recoveries::new(EXAMPLES, &[reading::CODES])
     .starts(&[
         UNREAD,

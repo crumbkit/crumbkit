@@ -5,8 +5,11 @@ use std::fmt;
 use crate::ToolName;
 use crate::segment::is_segment;
 
+mod runtime;
 #[cfg(test)]
 mod tests;
+
+pub use runtime::RuntimeCodeError;
 
 /// The stable code of a failure, such as `shelf::books::not_found` in the
 /// colon spelling.
@@ -107,6 +110,9 @@ impl Code {
 pub struct Spelling {
     /// Writes a code's text to the formatter.
     write: fn(&Code, &mut fmt::Formatter<'_>) -> fmt::Result,
+    /// The text between the segments of the built-in spelling, which
+    /// [`Spelling::split`] splits at, or `None` for a custom spelling.
+    separator: Option<&'static str>,
     /// The tool whose name the spelling writes in place of `crumbkit` in
     /// crumbkit's own codes.
     tool: ToolName,
@@ -114,8 +120,9 @@ pub struct Spelling {
 
 impl Spelling {
     /// Joins the segments with `::`, as in `shelf::books::not_found`.
-    pub const COLONS: Self =
-        Self::custom(|code, f| write!(f, "{}::{}::{}", code.component, code.area, code.reason));
+    pub const COLONS: Self = Self::built_in("::", |code, f| {
+        write!(f, "{}::{}::{}", code.component, code.area, code.reason)
+    });
 
     /// Returns a spelling that writes each code with `write`, which reads the
     /// segments through [`Code::component`], [`Code::area`] and
@@ -143,6 +150,20 @@ impl Spelling {
     pub const fn custom(write: fn(&Code, &mut fmt::Formatter<'_>) -> fmt::Result) -> Self {
         Self {
             write,
+            separator: None,
+            tool: ToolName::CRUMBKIT,
+        }
+    }
+
+    /// Returns a built-in spelling that writes each code with `write`, which
+    /// joins the segments with `separator`.
+    const fn built_in(
+        separator: &'static str,
+        write: fn(&Code, &mut fmt::Formatter<'_>) -> fmt::Result,
+    ) -> Self {
+        Self {
+            write,
+            separator: Some(separator),
             tool: ToolName::CRUMBKIT,
         }
     }
@@ -187,6 +208,34 @@ impl Spelling {
             code,
         }
         .to_string()
+    }
+
+    /// Returns the component, the area and the reason of `text`, a code in
+    /// this spelling, or `None` when this is a custom spelling or `text`
+    /// does not split into exactly three parts at the spelling's separator.
+    ///
+    /// It does not check the segments, so a tool passes them to
+    /// [`Code::runtime`], which does. A custom spelling may drop a segment or
+    /// change its letters, so it cannot be read back. A tool with a custom
+    /// spelling therefore splits the text itself before it calls
+    /// [`Code::runtime`], because this method returns `None` for every code.
+    ///
+    /// ```
+    /// use crumbkit_core::Spelling;
+    ///
+    /// assert_eq!(
+    ///     Spelling::COLONS.split("lending::loans::overdue"),
+    ///     Some(("lending", "loans", "overdue"))
+    /// );
+    /// assert_eq!(Spelling::COLONS.split("lending::overdue"), None);
+    /// ```
+    #[must_use]
+    pub fn split(self, text: &str) -> Option<(&str, &str, &str)> {
+        let mut parts = text.split(self.separator?);
+        match (parts.next(), parts.next(), parts.next(), parts.next()) {
+            (Some(component), Some(area), Some(reason), None) => Some((component, area, reason)),
+            _ => None,
+        }
     }
 }
 

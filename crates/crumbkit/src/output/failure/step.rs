@@ -14,7 +14,8 @@ use crate::{CallArg, CallTarget, FieldValue, Recovery};
 /// command, and a call that cannot be rendered becomes `None` with
 /// crumbkit's reason.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub(crate) enum Step {
+#[non_exhaustive]
+pub enum Step {
     /// Run this command line, such as `shelf books list`.
     Run(String),
     /// Run this command line once with every value of the failure's list

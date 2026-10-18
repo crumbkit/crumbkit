@@ -18,7 +18,7 @@ its reasons.
   [JSON layout](output/json-layout.md).
 - [Failures](failures/README.md): the failure model, codes and recoveries,
   [deriving `Failure`](failures/derive.md),
-  [source excerpts and reading failures back](failures/excerpts-and-readers.md) and
+  [source excerpts and failure readers](failures/excerpts-and-readers.md) and
   [exit codes](failures/exit-codes.md).
 - [Help](help/README.md): help pages, the `help` command and topics,
   [leaf examples and columns](help/examples.md),

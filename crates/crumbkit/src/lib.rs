@@ -47,6 +47,7 @@ pub mod events;
 mod exit;
 mod expect;
 mod fetch;
+pub mod form;
 pub mod help;
 mod output;
 mod page;
@@ -67,7 +68,7 @@ mod twins;
 pub use crumbkit_core::{
     AsFailure, Batch, Bytes, Call, CallArg, CallError, CallTarget, Code, Document, Envelope, Error,
     Failure, Field, FieldValue, Headed, Listing, NoRow, NoSummary, Prose, Recovery, Row, Rows,
-    Shape, Spelling, Stream, ToolName,
+    RuntimeCodeError, Shape, Spelling, Stream, ToolName,
 };
 
 pub use crate::call::RenderCall;

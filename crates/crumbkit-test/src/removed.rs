@@ -2,22 +2,6 @@
 //! absent. No tool and no example called these items. rustdoc compiles each
 //! block below and passes only when the block fails to compile.
 //!
-//! A tool cannot read its failed runs through a failure reader of its own:
-//!
-//! ```compile_fail
-//! use crumbkit_test::FailureReader;
-//! ```
-//!
-//! ```compile_fail
-//! let _ = crumbkit_test::Examples::new("shelf", "golden").failure_reader(&());
-//! ```
-//!
-//! The examples do not start in a fresh copy of a fixture:
-//!
-//! ```compile_fail
-//! let _ = crumbkit_test::Examples::new("shelf", "golden").fresh_dir("fixture");
-//! ```
-//!
 //! The examples redact no value that the tool names:
 //!
 //! ```compile_fail

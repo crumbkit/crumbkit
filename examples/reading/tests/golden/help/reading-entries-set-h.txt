@@ -15,7 +15,7 @@ Options:
 
 Examples:
   reading entries set --list to-read --position 2 --expect 'Wuthering Heights' --dry-run 'Mary Barton'
-  reading entries set --list to-read --position 6 --expect none --dry-run Emma
+  reading entries set --list to-read --position 6 --expect none --yes Emma
 
 Effects: destructive, not idempotent, closed-world.
 Writes: replaces existing data; --expect <VERSION> fails with a conflict when the data changed.

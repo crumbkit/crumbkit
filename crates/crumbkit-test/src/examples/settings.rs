@@ -4,11 +4,13 @@
 use std::path::Path;
 
 use crate::allow::Allow;
-use crate::runs::Location;
+use crate::failures::FailureReader;
+use crate::runs::{Dir, Location};
 
 /// The settings of [`check_examples`](crate::check_examples): the tool's built binary, the
 /// directory of the golden files, the environment, XDG fixture, working
-/// directory of each run, and the tool's opt-outs.
+/// directory or fresh fixture of each run, the tool's opt-outs, and the
+/// reader of its failures.
 ///
 /// A tool declares them as a constant in an integration test of the
 /// binary's own package, because cargo sets `CARGO_BIN_EXE_<name>`, the
@@ -49,18 +51,21 @@ pub struct Examples<'a> {
     /// directories each run's fresh XDG directories start as copies of, or
     /// `None` for empty XDG directories.
     xdg: Option<&'a str>,
-    /// The directory that each run starts in, or `None` for the test's
-    /// directory.
-    dir_of_runs: Option<Location<'a>>,
+    /// The directory that each run starts in, or the fixture that each run
+    /// starts in a new copy of, or `None` for the test's directory.
+    dir_of_runs: Option<Dir<'a>>,
     /// The tool's opt-outs, of which the check reads those from
     /// [`Rule::Examples`](crate::Rule::Examples).
     allow: &'a [Allow],
+    /// The reader of the tool's failed runs, or `None` for crumbkit's own
+    /// failure document and text.
+    reader: Option<&'a dyn FailureReader>,
 }
 
 impl<'a> Examples<'a> {
     /// Returns the settings that run the binary at `binary` and keep the
     /// golden files in `dir`, with no environment variables of the tool's
-    /// own, no working directory and no opt-out.
+    /// own, no working directory, no opt-out and no failure reader.
     ///
     /// `dir` holds only example golden files and `.stdin` files, because
     /// the check counts every `.txt` and `.stderr` file in it that no
@@ -75,6 +80,7 @@ impl<'a> Examples<'a> {
             xdg: None,
             dir_of_runs: None,
             allow: &[],
+            reader: None,
         }
     }
 
@@ -131,9 +137,43 @@ impl<'a> Examples<'a> {
     /// [`check_recoveries`](crate::check_recoveries) run a
     /// [`Failing`](crate::Failing) without a directory of its own in `dir`.
     /// Without this setting, each run starts in the test's directory.
+    /// `current_dir` and [`Examples::fresh_dir`] are one setting, so the
+    /// later call replaces the earlier one.
     #[must_use]
     pub const fn current_dir(mut self, dir: &'a str) -> Self {
-        self.dir_of_runs = Some(Location::Text(dir));
+        self.dir_of_runs = Some(Dir::Fixed(Location::Text(dir)));
+        self
+    }
+
+    /// Sets a fixture directory, such as `"tests/fixtures/tasks"`, that
+    /// each run starts in a new copy of, so a file that one example writes
+    /// is gone when the next example runs, and the fixture never changes.
+    ///
+    /// Before each run, the check creates a new temporary directory, copies
+    /// every file and directory of `dir` into it, starts the run there and
+    /// deletes it after the run. A relative value of [`Examples::env`]
+    /// therefore resolves inside the copy.
+    /// [`check_examples`](crate::check_examples),
+    /// [`check_output_budget`](crate::check_output_budget) and
+    /// [`Pages::binary`](crate::Pages::binary) copy the fixture for every
+    /// run, and [`check_twin`](crate::check_twin) copies it for each of its
+    /// two lines. [`check_recoveries`](crate::check_recoveries) copies it
+    /// once for each chain, before the start, so a step sees what the
+    /// earlier runs of its chain wrote, and a [`Failing::dir`](crate::Failing::dir)
+    /// wins over it.
+    ///
+    /// [`check_examples`](crate::check_examples) replaces the path of the
+    /// copy, and its canonical path where a symbolic link leads to the
+    /// temporary directory, with the placeholder `[ROOT]`.
+    ///
+    /// A relative `dir` resolves from the test's directory. A check fails
+    /// before it runs anything when `dir` is not a directory, and a run fails
+    /// when the fixture holds a symbolic link, which the check does not copy.
+    /// `fresh_dir` and [`Examples::current_dir`] are one setting, so the
+    /// later call replaces the earlier one.
+    #[must_use]
+    pub const fn fresh_dir(mut self, dir: &'a str) -> Self {
+        self.dir_of_runs = Some(Dir::Fresh(dir));
         self
     }
 
@@ -145,6 +185,15 @@ impl<'a> Examples<'a> {
     #[must_use]
     pub const fn allow(mut self, allow: &'a [Allow]) -> Self {
         self.allow = allow;
+        self
+    }
+
+    /// Sets the reader of the failures that the tool prints in a form of
+    /// its own, which the twin, example and recovery checks read each
+    /// failed run through.
+    #[must_use]
+    pub const fn failure_reader(mut self, reader: &'a dyn FailureReader) -> Self {
+        self.reader = Some(reader);
         self
     }
 
@@ -168,26 +217,37 @@ impl<'a> Examples<'a> {
         self.xdg.map(Path::new)
     }
 
-    /// Returns the directory that each run starts in, or `None`.
-    pub(crate) fn working_dir(&self) -> Option<&'a Path> {
-        self.dir_of_runs.map(Location::path)
+    /// Returns the directory or the fixture that each run starts in, or
+    /// `None`.
+    pub(crate) const fn working_dir(&self) -> Option<Dir<'a>> {
+        self.dir_of_runs
     }
 
     /// Returns the tool's opt-outs.
     pub(crate) const fn opt_outs(&self) -> &'a [Allow] {
         self.allow
     }
+
+    /// Returns the reader of the tool's failures, or `None`.
+    pub(crate) const fn reader(&self) -> Option<&'a dyn FailureReader> {
+        self.reader
+    }
 }
 
-/// Returns the problem of a working directory that is
+/// Returns the problem of a working directory or a fresh fixture that is
 /// not a directory, or of an XDG fixture that breaks its rule, or `None`
 /// when `examples` sets none of them or each is sound.
 pub(crate) fn setup_problem(examples: &Examples<'_>) -> Option<String> {
-    if let Some(dir) = examples.working_dir()
+    let named = match examples.dir_of_runs {
+        Some(Dir::Fixed(dir)) => Some(("current_dir", dir.path())),
+        Some(Dir::Fresh(dir)) => Some(("fresh_dir", Path::new(dir))),
+        None => None,
+    };
+    if let Some((setting, dir)) = named
         && !dir.is_dir()
     {
         return Some(format!(
-            "Examples::current_dir names `{}`, which is not a directory, so the check runs no example",
+            "Examples::{setting} names `{}`, which is not a directory, so the check runs no example",
             dir.display()
         ));
     }

@@ -102,7 +102,8 @@ Each chain can therefore fill `<path>` with the path its own failure named.
 - A placeholder can sit anywhere in a word, so `<plugin>.<capability>`
   fills two placeholders and keeps the `.`. A `<` that starts no
   placeholder stays literal text.
-- The fields come with the failure that the check reads: the `fields` of
+- The fields come with the failure that the check reads: those that the
+  tool's reader returns in its `ReadFailure`, or the `fields` of
   crumbkit's failure document. The code, steps and fields therefore always
   belong to one failure.
 
