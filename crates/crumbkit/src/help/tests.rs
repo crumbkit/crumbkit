@@ -6,7 +6,7 @@ use std::process::ExitCode;
 use clap::{Arg, ArgAction, Command};
 
 use super::{Goal, Group, Guide, extend};
-use crate::{Sink, Spelling, parse_to};
+use crate::{Sink, parse_to};
 
 /// A tool with a global flag and three groups. The names have different
 /// lengths, `planets` has a hidden command, and `moons` has a command
@@ -51,13 +51,8 @@ fn tool() -> Command {
 fn help(guide: &Guide, args: &[&str]) -> String {
     let mut out = Vec::new();
     let mut err = Vec::new();
-    let result = parse_to::<(), _, _, _, _>(
-        &mut Sink::new(&mut out, &mut err),
-        tool(),
-        guide,
-        Spelling::COLONS,
-        args,
-    );
+    let result =
+        parse_to::<(), _, _, _, _>(&mut Sink::new(&mut out, &mut err), tool(), guide, args);
     assert_eq!(result.err().map(ExitCode::from), Some(ExitCode::SUCCESS));
     assert_eq!(err, b"");
     String::from_utf8(out).unwrap()
@@ -172,7 +167,6 @@ fn a_guided_group_off_the_typed_path_keeps_its_default_help() {
         &mut Sink::new(Vec::new(), Vec::new()),
         tool(),
         &GUIDE,
-        Spelling::COLONS,
         ["tool", "moons", "list"],
     );
 
@@ -418,7 +412,6 @@ fn a_guided_list_prints_each_visible_alias_after_the_description_as_clap_s_list_
             &mut Sink::new(&mut out, Vec::new()),
             tool.clone(),
             guide,
-            Spelling::COLONS,
             ["tool", "moons", "-h"],
         );
         String::from_utf8(out).unwrap()

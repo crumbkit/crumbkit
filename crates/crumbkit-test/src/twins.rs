@@ -5,7 +5,6 @@ use std::path::Path;
 use std::process::Output;
 
 use clap::Command;
-use crumbkit::Spelling;
 use crumbkit::help::Guide;
 
 use crate::examples::Examples;
@@ -56,10 +55,10 @@ mod tests;
 /// directory and standard input of `refused`, or the directory of
 /// [`Examples::current_dir`] when `refused` sets none, and fresh XDG
 /// directories of their own, as [`check_examples`](crate::check_examples)
-/// runs an example. The check reads the refused line's code, spelled with
-/// `spelling`, from a `<tool>/failure/v1` document on standard output, or from
-/// the first entry of a batch's `failures`, and then from the last `code:`
-/// line on standard error.
+/// runs an example. The check reads the refused line's code, spelled as
+/// `guide` spells it, from a `<tool>/failure/v1` document on standard
+/// output, or from the first entry of a batch's `failures`, and then from the
+/// last `code:` line on standard error.
 ///
 /// The refused line must exit with the code that
 /// [`Guide::failure_exit`](crumbkit::help::Guide::failure_exit) gives its
@@ -74,7 +73,6 @@ mod tests;
 ///
 /// ```no_run
 /// use clap::Command;
-/// use crumbkit::Spelling;
 /// use crumbkit::help::Guide;
 /// use crumbkit_test::{Examples, Failing};
 ///
@@ -88,7 +86,6 @@ mod tests;
 ///     &command,
 ///     &GUIDE,
 ///     &EXAMPLES,
-///     Spelling::COLONS,
 ///     &Failing::new(&crumbkit::codes::CLI_USAGE, &["books", "list", "--limit", "0"]),
 ///     &["books", "list", "--limit", "1"],
 /// );
@@ -112,18 +109,10 @@ pub fn check_twin(
     command: &Command,
     guide: &Guide,
     examples: &Examples<'_>,
-    spelling: Spelling,
     refused: &Failing<'_>,
     admitted: &[&str],
 ) -> Output {
-    match twin(
-        command,
-        guide,
-        examples,
-        spelling,
-        refused,
-        Admitted::Words(admitted),
-    ) {
+    match twin(command, guide, examples, refused, Admitted::Words(admitted)) {
         Ok(output) => output,
         Err(problem) => {
             #[expect(
@@ -162,7 +151,6 @@ pub(super) fn twin(
     command: &Command,
     guide: &Guide,
     examples: &Examples<'_>,
-    spelling: Spelling,
     refused: &Failing<'_>,
     admitted: Admitted<'_>,
 ) -> Result<Output, String> {
@@ -206,7 +194,7 @@ pub(super) fn twin(
             (refused.words(), rest, line)
         }
     };
-    let output = refuse(command, guide, examples, spelling, refused)?;
+    let output = refuse(command, guide, examples, refused)?;
     let other = run(examples, refused, words, &env, &admitted_line)?;
     if !other.status.success() {
         return Err(format!(
@@ -277,12 +265,12 @@ pub(super) fn refuse(
     command: &Command,
     guide: &Guide,
     examples: &Examples<'_>,
-    spelling: Spelling,
     refused: &Failing<'_>,
 ) -> Result<Output, String> {
-    // crumbkit's own codes print with the tool's name (ADR-0079).
+    // Codes print in the guide's spelling, and crumbkit's own codes print
+    // with the tool's name (ADR-0079).
     let tool = guide.tool_name(command);
-    let spelling = spelling.for_tool(tool);
+    let spelling = guide.get_spelling().for_tool(tool);
     let refused_line = named(&tool_name(examples), refused.words(), refused.own_env());
     // A leaf's renames decide the code that a run of its command prints, so
     // the code is spelled for the command that the refused line names.

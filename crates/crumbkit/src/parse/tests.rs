@@ -7,9 +7,9 @@ use std::process::ExitCode;
 use clap::{Arg, ArgAction, Command};
 
 use super::{Stop, message, parse_to};
+use crate::Sink;
 use crate::help::Guide;
 use crate::twins::assert_one_word_apart;
-use crate::{Sink, Spelling};
 
 mod aliases;
 mod alternatives;
@@ -101,7 +101,6 @@ fn parse_tree(command: Command, args: &[&str]) -> Parsed {
         &mut Sink::new(&mut out, &mut err),
         command,
         &Guide::new(),
-        Spelling::COLONS,
         args,
     );
     let stop = result.err();
@@ -506,7 +505,6 @@ fn a_root_without_subcommands_reads_help_as_an_ordinary_word() {
         &mut Sink::new(&mut out, &mut err),
         Command::new("tool").arg(Arg::new("word").required(true)),
         &Guide::new(),
-        Spelling::COLONS,
         ["tool", "help"],
     );
 
@@ -545,7 +543,6 @@ fn help_exits_with_code_0_when_the_reader_closed_the_pipe() {
         &mut Sink::new(Failing(io::ErrorKind::BrokenPipe), &mut err),
         tool(),
         &Guide::new(),
-        Spelling::COLONS,
         ["tool", "-h"],
     );
 

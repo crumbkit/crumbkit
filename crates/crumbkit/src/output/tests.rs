@@ -12,7 +12,7 @@ use super::{Output, finish_to};
 use crate::ViewFlags;
 use crate::help::Guide;
 use crate::twins::assert_one_word_apart;
-use crate::{Document, Error, Listing, Row, Rows, Sink, Spelling};
+use crate::{Document, Error, Listing, Row, Rows, Sink};
 
 mod about;
 mod batch;
@@ -32,6 +32,7 @@ mod problems;
 mod prose;
 #[cfg(feature = "miette")]
 mod report;
+mod spelled;
 mod summary;
 mod unwrapped;
 mod views;
@@ -142,7 +143,7 @@ fn finish_output<T: Rows>(output: &mut Output, document: Document<T>, value: T) 
     let mut err = Vec::new();
     let mut sink = Sink::new(&mut out, &mut err);
     let result: Result<T, Error> = Ok(value);
-    let code = finish_to(&mut sink, output, Spelling::COLONS, document, result);
+    let code = finish_to(&mut sink, output, document, result);
     Finished {
         code: ExitCode::from(code),
         out: String::from_utf8(out).unwrap(),
@@ -437,7 +438,6 @@ fn a_failed_write_exits_with_code_1_and_reports_the_cause() {
     let code = finish_to(
         &mut sink,
         &mut parse_against(Tool::command(), &[]),
-        Spelling::COLONS,
         PLANETS,
         result,
     );
@@ -458,7 +458,6 @@ fn a_reader_that_closes_the_pipe_early_still_exits_with_code_0_and_no_error() {
     let code = finish_to(
         &mut sink,
         &mut parse_against(Tool::command(), &[]),
-        Spelling::COLONS,
         PLANETS,
         result,
     );

@@ -19,8 +19,7 @@ use super::{
 use crate::answered::answered;
 use crate::help::Guide;
 use crate::{
-    Batch, Call, Code, Document, Error, Failure, Listing, Prose, Recovery, Sink, Spelling,
-    finish_to,
+    Batch, Call, Code, Document, Error, Failure, Listing, Prose, Recovery, Sink, finish_to,
 };
 
 /// Returns a listing of Mercury and Saturn out of 8 planets, with a note and
@@ -96,7 +95,6 @@ fn a_reader_that_merges_the_two_streams_sees_the_notes_after_the_rows_because_st
     finish_to(
         &mut Sink::new(&mut out, &mut err),
         &mut output,
-        Spelling::COLONS,
         PLANET_LISTING,
         result,
     );
@@ -137,7 +135,6 @@ fn the_notes_reach_standard_error_in_one_write_so_no_note_is_split_between_other
     finish_to(
         &mut Sink::new(&mut out, &mut err),
         &mut output,
-        Spelling::COLONS,
         PLANET_LISTING,
         result,
     );

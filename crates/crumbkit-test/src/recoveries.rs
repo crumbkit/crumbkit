@@ -212,13 +212,13 @@ impl<'a> Failing<'a> {
     }
 }
 
-/// The settings of [`check_recoveries`]: how to run the tool's binary, how
-/// the tool spells its codes, its declared codes, the command lines that
+/// The settings of [`check_recoveries`]: how to run the tool's binary, its
+/// declared codes, the command lines that
 /// start the chains, the declared codes that no command line provokes, the
 /// values of placeholders and the most steps of a chain.
 ///
 /// ```
-/// use crumbkit::{Code, Spelling};
+/// use crumbkit::Code;
 /// use crumbkit_test::{Examples, Failing, Recoveries, Unprovoked};
 ///
 /// const NOT_FOUND: Code = Code::new("shelf", "books", "not_found");
@@ -228,7 +228,7 @@ impl<'a> Failing<'a> {
 /// const EXAMPLES: Examples<'_> = Examples::new("/path/to/shelf", "tests/golden/examples");
 ///
 /// const RECOVERIES: Recoveries<'_> =
-///     Recoveries::new(EXAMPLES, Spelling::COLONS, &[&[&NOT_FOUND, &GONE]])
+///     Recoveries::new(EXAMPLES, &[&[&NOT_FOUND, &GONE]])
 ///         .starts(&[Failing::new(&NOT_FOUND, &["books", "show", "7"])])
 ///         .unprovoked(&[Unprovoked::new(&GONE, "Only a book file that disappears provokes it.")])
 ///         .values(&[("ID", "2")]);
@@ -237,8 +237,6 @@ impl<'a> Failing<'a> {
 pub struct Recoveries<'a> {
     /// The binary, its environment and the tool's opt-outs.
     examples: Examples<'a>,
-    /// How the tool spells its codes.
-    spelling: Spelling,
     /// The `CODES` list of each of the tool's error types.
     codes: &'a [&'a [&'a Code]],
     /// The command lines that start the chains.
@@ -254,19 +252,14 @@ pub struct Recoveries<'a> {
 
 impl<'a> Recoveries<'a> {
     /// Returns the settings that run the binary of `examples` with its
-    /// environment and opt-outs, spell codes with `spelling` and check the
-    /// codes of `codes`, the `CODES` list of each of the tool's error types,
-    /// with no start, no unprovoked code, no value and at most 3 steps in a
-    /// chain.
+    /// environment and opt-outs and check the codes of `codes`, the `CODES`
+    /// list of each of the tool's error types, with no start, no unprovoked
+    /// code, no value and at most 3 steps in a chain. [`check_recoveries`]
+    /// spells the codes as the tool's guide does.
     #[must_use]
-    pub const fn new(
-        examples: Examples<'a>,
-        spelling: Spelling,
-        codes: &'a [&'a [&'a Code]],
-    ) -> Self {
+    pub const fn new(examples: Examples<'a>, codes: &'a [&'a [&'a Code]]) -> Self {
         Self {
             examples,
-            spelling,
             codes,
             starts: &[],
             unprovoked: &[],
@@ -448,8 +441,9 @@ fn check(
     dir: &str,
     assert: &Assert,
 ) {
-    // crumbkit's own codes print with the tool's name (ADR-0079).
-    let spelling = recoveries.spelling.for_tool(guide.tool_name(command));
+    // Codes print in the guide's spelling, and crumbkit's own codes print
+    // with the tool's name (ADR-0079).
+    let spelling = guide.get_spelling().for_tool(guide.tool_name(command));
     let mut declared: Vec<(String, &Code)> = Vec::new();
     for code in codes::declared(recoveries.codes) {
         if !declared.iter().any(|&(_, seen)| seen == code) {

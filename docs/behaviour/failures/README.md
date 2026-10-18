@@ -88,8 +88,11 @@ tool's domain, such as `books`, so moving code does not change a code
 crumbkit-test's `check_codes`.
 
 Each tool chooses how its codes are spelled with one
-[`Spelling`](../../../crates/crumbkit-core/src/code.rs), and passes the same
-spelling to `finish` and to `check_codes`. `Code` has no `Display`, so every
+[`Spelling`](../../../crates/crumbkit-core/src/code.rs), which it sets with
+`Guide::spelling`. A guide that sets none spells codes with
+`Spelling::COLONS`. `parse` and `Output::new` carry the guide's spelling in
+the `Output`, so `finish`, `stream` and `hand_over` print in it, and
+`check_codes` reads it from the same guide. `Code` has no `Display`, so every
 printed code goes through the tool's spelling. `check_codes` refuses
 characters that let two different codes look the same, because callers match
 a code exactly.
@@ -103,7 +106,7 @@ print its own code for one of crumbkit's failures with a `Rename` in
 decides when the failure happens, its message and its recovery
 ([declarations](../adoption/declarations.md#codes-per-command)).
 
-Why: ADR-0001, ADR-0056, ADR-0060.
+Why: ADR-0001, ADR-0086, ADR-0056, ADR-0060.
 
 ## The tool's name
 

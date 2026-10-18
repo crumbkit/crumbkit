@@ -12,7 +12,6 @@ use std::ffi::OsString;
 use std::process::ExitCode;
 
 use clap::CommandFactory as _;
-use crumbkit::Spelling;
 
 pub use crate::books::{
     BAD_IDS_FILE, EMPTY_IDS_FILE, NO_STATE_DIRECTORY, NOT_FOUND, REMOVED_FILE, TOO_MANY_IDS,
@@ -30,10 +29,6 @@ mod tests;
 /// Every failure code that shelf declares, which shelf's tests pass to
 /// crumbkit-test's codes and recovery checks.
 pub const CODES: &[&crumbkit::Code] = books::BooksError::CODES;
-
-/// How shelf spells its failure codes, such as `shelf::books::not_found`.
-/// shelf's test passes the same spelling to crumbkit-test's codes check.
-const SPELLING: Spelling = Spelling::COLONS;
 
 /// Parses the process's command line, runs the command and returns the
 /// process's exit code. `crumbkit::parse_from` takes shelf's guide, which gives
@@ -74,8 +69,7 @@ where
     let command = Cli::command();
     let file = crumbkit_aliases::file(command.get_name());
     let args = crumbkit_aliases::expand(&command, args, file.as_deref());
-    let (cli, mut output) = match crumbkit::parse_from::<Cli, _, _>(command, &GUIDE, SPELLING, args)
-    {
+    let (cli, mut output) = match crumbkit::parse_from::<Cli, _, _>(command, &GUIDE, args) {
         Ok(parsed) => parsed,
         Err(stop) => return stop.code(),
     };
@@ -84,20 +78,16 @@ where
             let removed = books::removed_file();
             let removed = removed.as_deref();
             match command {
-                BooksCommand::List(args) => crumbkit::finish(
-                    &mut output,
-                    SPELLING,
-                    books::BOOKS_LIST,
-                    books::list(&args, removed),
-                ),
+                BooksCommand::List(args) => {
+                    crumbkit::finish(&mut output, books::BOOKS_LIST, books::list(&args, removed))
+                }
                 BooksCommand::Show(args) => {
                     let room = output.room(books::BOOKS_SHOW);
                     let result = books::show(&args, removed, room);
-                    crumbkit::finish(&mut output, SPELLING, books::BOOKS_SHOW, result)
+                    crumbkit::finish(&mut output, books::BOOKS_SHOW, result)
                 }
                 BooksCommand::Summarize(args) => crumbkit::finish(
                     &mut output,
-                    SPELLING,
                     books::BOOKS_SUMMARIZE,
                     books::summarize(&args, removed),
                 ),
@@ -105,7 +95,7 @@ where
                 // through `&mut output`, so it runs before `finish`.
                 BooksCommand::Remove(args) => {
                     let result = books::remove(&mut output, &args, removed);
-                    crumbkit::finish(&mut output, SPELLING, books::BOOKS_REMOVE, result)
+                    crumbkit::finish(&mut output, books::BOOKS_REMOVE, result)
                 }
             }
         }
@@ -116,19 +106,19 @@ where
             CommandsCommand::List(args) => {
                 let result = crumbkit::commands::list(&mut output, &GUIDE, &args);
                 let document = crumbkit::commands::COMMANDS_LIST;
-                crumbkit::finish(&mut output, SPELLING, document, result)
+                crumbkit::finish(&mut output, document, result)
             }
         },
         Resource::Schemas { command } => match command {
             SchemasCommand::List(args) => {
                 let result = crumbkit::schemas::list(&mut output, &GUIDE, &args);
                 let document = crumbkit::schemas::SCHEMAS_LIST;
-                crumbkit::finish(&mut output, SPELLING, document, result)
+                crumbkit::finish(&mut output, document, result)
             }
             SchemasCommand::Show(args) => {
                 let result = crumbkit::schemas::show(&mut output, &GUIDE, &args);
                 let document = crumbkit::schemas::SCHEMAS_SHOW;
-                crumbkit::finish(&mut output, SPELLING, document, result)
+                crumbkit::finish(&mut output, document, result)
             }
         },
         Resource::SelfCommand { command } => match command {
@@ -136,7 +126,7 @@ where
                 let result =
                     Ok::<_, crumbkit::Error>(crumbkit_usage::findings(&mut output, &GUIDE, &args));
                 let document = crumbkit_usage::SELF_USAGE;
-                crumbkit::finish(&mut output, SPELLING, document, result)
+                crumbkit::finish(&mut output, document, result)
             }
             SelfCommand::Figures {
                 command: FiguresCommand::List(args),
@@ -144,14 +134,14 @@ where
                 let result =
                     Ok::<_, crumbkit::Error>(crumbkit_usage::figures(&mut output, &GUIDE, &args));
                 let document = crumbkit_usage::SELF_FIGURES_LIST;
-                crumbkit::finish(&mut output, SPELLING, document, result)
+                crumbkit::finish(&mut output, document, result)
             }
         },
         Resource::Aliases { command } => match command {
             AliasesCommand::List(args) => {
                 let result = crumbkit_aliases::list(&mut output, file.as_deref(), &args);
                 let document = crumbkit_aliases::ALIASES_LIST;
-                crumbkit::finish(&mut output, SPELLING, document, result)
+                crumbkit::finish(&mut output, document, result)
             }
         },
     }

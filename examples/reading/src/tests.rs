@@ -7,7 +7,6 @@ use std::path::Path;
 
 use clap::Command;
 
-use crate::SPELLING;
 use crate::lists::EntriesError;
 
 /// Returns the command tree that reading builds from the lists in its
@@ -18,7 +17,7 @@ fn fixture_command() -> Command {
 
 #[test]
 fn every_failure_code_spells_uniquely_as_printable_ascii() {
-    crumbkit_test::check_codes(SPELLING, &[EntriesError::CODES]);
+    crumbkit_test::check_codes(&crate::cli::GUIDE, &[EntriesError::CODES]);
 }
 
 #[test]
@@ -65,7 +64,6 @@ fn entries_list_without_list_asks_the_menu_and_runs_with_the_picked_list() {
         &mut sink,
         fixture_command(),
         &GUIDE,
-        SPELLING,
         ["reading", "entries", "list"],
     );
 

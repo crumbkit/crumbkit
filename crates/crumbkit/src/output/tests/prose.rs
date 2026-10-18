@@ -9,7 +9,7 @@ use schemars::JsonSchema;
 use serde::Serialize;
 
 use crate::twins::assert_one_word_apart;
-use crate::{Call, Code, Document, Error, Failure, Prose, Recovery, Sink, Spelling, finish_to};
+use crate::{Call, Code, Document, Error, Failure, Prose, Recovery, Sink, finish_to};
 
 const NOT_FOUND: Code = Code::new("solar", "planets", "not_found");
 
@@ -98,7 +98,6 @@ fn finish_with(flags: &[&str], prose: Prose<Count, Missing>) -> Finished {
     let code = finish_to(
         &mut Sink::new(&mut out, &mut err),
         &mut output,
-        Spelling::COLONS,
         document,
         result,
     );

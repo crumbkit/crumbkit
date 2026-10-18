@@ -7,7 +7,7 @@ use std::process::ExitCode;
 
 use super::{State, Streaming};
 use crate::output::{Output, fields, lines, table};
-use crate::{Document, Row, Spelling, Stream};
+use crate::{Document, Row, Stream};
 
 /// Opens the stream on `out` and `err`, as [`stream_to`](super::stream_to)
 /// describes.
@@ -15,11 +15,10 @@ pub(super) fn open<R: Row, O: Write, W: Write>(
     out: O,
     err: W,
     output: &mut Output,
-    spelling: Spelling,
     document: Document<Stream<R>>,
 ) -> Result<Streaming<'_, R, O, W>, ExitCode> {
     crate::output::columns::require_for_stream::<R>();
-    let (spelling, document) = output.named(spelling, document);
+    let (spelling, document) = output.named(document);
     let typed = output.typed();
     let budget = output.budget();
     let printing = output.printing();

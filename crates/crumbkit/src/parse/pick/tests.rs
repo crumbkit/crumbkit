@@ -9,7 +9,7 @@ use clap::{Arg, ArgAction, ArgMatches, Command, FromArgMatches};
 use crate::help::{Guide, Leaf};
 use crate::pick::{Answer, Choice, Choices, Picker, Question};
 use crate::twins::assert_one_word_apart;
-use crate::{Error, Sink, Spelling, Stop, parse_to};
+use crate::{Error, Sink, Stop, parse_to};
 
 /// A tool whose `show` takes a required `--list` and an optional `--sort`,
 /// whose `get` takes a required positional `NAME` with possible values,
@@ -181,7 +181,7 @@ fn run(guide: &Guide, words: &[&str], answer: &str, interactive: bool) -> Run {
     let mut err = Vec::new();
     let mut sink = Sink::with_input(&mut out, &mut err, answer.as_bytes(), interactive);
     let args = std::iter::once("tool").chain(words.iter().copied());
-    let result = parse_to::<Matches, _, _, _, _>(&mut sink, tool(), guide, Spelling::COLONS, args);
+    let result = parse_to::<Matches, _, _, _, _>(&mut sink, tool(), guide, args);
     Run {
         result,
         out: String::from_utf8(out).unwrap(),

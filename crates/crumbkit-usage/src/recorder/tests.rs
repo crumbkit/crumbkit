@@ -16,8 +16,8 @@ use crate::testing::TempDir;
 use crumbkit::{Code, Document, Spelling, ToolName};
 
 /// Joins the segments of a code with `.`, so a test shows that the code
-/// prints in the spelling that the tool passes and not in the colon
-/// spelling.
+/// prints in the spelling that the tool's guide sets, where the colon
+/// spelling would join them with `::`.
 const DOTS: Spelling =
     Spelling::custom(|code, f| write!(f, "{}.{}.{}", code.component(), code.area(), code.reason()));
 

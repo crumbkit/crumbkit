@@ -9,8 +9,7 @@ use schemars::JsonSchema;
 use serde::Serialize;
 
 use crate::{
-    Call, Code, Document, Error, Failure, Field, FieldValue, Output, Recovery, Row, Sink, Spelling,
-    finish_to,
+    Call, Code, Document, Error, Failure, Field, FieldValue, Output, Recovery, Row, Sink, finish_to,
 };
 
 mod alternatives;
@@ -166,13 +165,7 @@ fn fail_output<E: crate::AsFailure>(output: &mut Output, error: E) -> Finished {
     let mut out = Vec::new();
     let mut err = Vec::new();
     let result: Result<Vec<Planet>, E> = Err(error);
-    let code = finish_to(
-        &mut Sink::new(&mut out, &mut err),
-        output,
-        Spelling::COLONS,
-        PLANETS,
-        result,
-    );
+    let code = finish_to(&mut Sink::new(&mut out, &mut err), output, PLANETS, result);
     Finished {
         code: ExitCode::from(code),
         out: String::from_utf8(out).unwrap(),
@@ -479,7 +472,7 @@ fn json() -> Output {
 /// Finishes a failure into `sink` with `output`.
 fn fail_into<O: Write, W: Write>(sink: &mut Sink<O, W>, output: &mut Output) -> u8 {
     let result: Result<Vec<Planet>, Missing> = Err(missing(Recovery::Retry));
-    finish_to(sink, output, Spelling::COLONS, PLANETS, result)
+    finish_to(sink, output, PLANETS, result)
 }
 
 #[test]

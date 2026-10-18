@@ -5,9 +5,9 @@
 use clap::{Arg, ArgAction, Command};
 
 use super::{Flags, tool};
+use crate::Sink;
 use crate::help::Guide;
 use crate::parse::parse_to;
-use crate::{Sink, Spelling};
 
 #[test]
 fn a_command_line_that_parses_returns_the_parsed_type_and_an_output_that_holds_the_command() {
@@ -17,7 +17,6 @@ fn a_command_line_that_parses_returns_the_parsed_type_and_an_output_that_holds_t
         &mut Sink::new(&mut out, &mut err),
         tool(),
         &Guide::new(),
-        Spelling::COLONS,
         ["tool", "--json", "planets", "show", "Mars"],
     );
 
@@ -54,7 +53,6 @@ fn parse_reads_the_view_flags_that_a_tool_flattens_before_the_tool_s_type_takes_
         &mut Sink::new(&mut out, &mut err),
         <Viewed as clap::CommandFactory>::command(),
         &Guide::new(),
-        Spelling::COLONS,
         ["tool", "list", "--json", "--fields", "name,moons"],
     );
 
@@ -77,7 +75,6 @@ fn a_tool_without_view_flags_parses_with_every_view_flag_off() {
         &mut Sink::new(&mut out, &mut err),
         Command::new("tool").arg(Arg::new("json").long("json").action(ArgAction::SetTrue)),
         &Guide::new(),
-        Spelling::COLONS,
         ["tool", "--json"],
     );
 
@@ -98,7 +95,6 @@ fn the_output_of_a_stopped_run_has_the_guide_s_output_budget() {
         &mut Sink::new(&mut out, &mut err),
         tool(),
         &GUIDE,
-        Spelling::COLONS,
         ["tool", "--help"],
     );
 

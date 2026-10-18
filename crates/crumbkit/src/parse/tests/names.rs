@@ -8,20 +8,15 @@ use clap::{Arg, ArgAction, Command};
 use super::{Parsed, tool};
 use crate::help::{Guide, Rename};
 use crate::parse::{Stop, parse_to};
-use crate::{Code, Sink, Spelling, codes};
+use crate::{Code, Sink, codes};
 
 /// Runs `parse_to` over `command` with `guide` and `args` into memory, for
 /// a command line that does not parse.
 fn parse(command: Command, guide: &Guide, args: &[&str]) -> Parsed {
     let mut out = Vec::new();
     let mut err = Vec::new();
-    let result = parse_to::<(), _, _, _, _>(
-        &mut Sink::new(&mut out, &mut err),
-        command,
-        guide,
-        Spelling::COLONS,
-        args,
-    );
+    let result =
+        parse_to::<(), _, _, _, _>(&mut Sink::new(&mut out, &mut err), command, guide, args);
     let stop = result.err();
     Parsed {
         code: stop.as_ref().map(Stop::code),

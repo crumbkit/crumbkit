@@ -6,8 +6,8 @@ use std::process::ExitCode;
 
 use clap::Command;
 use clap::error::ErrorKind;
+use crumbkit::Sink;
 use crumbkit::help::Guide;
-use crumbkit::{Sink, Spelling};
 
 use crate::examples::{Examples, setup_problem};
 use crate::runs::{self, Place, Ran, TIMEOUT, Xdg};
@@ -156,13 +156,10 @@ pub(crate) fn pages<'a>(
         let line = format!("{} {flag}", visit.path());
         let mut out = Vec::new();
         // `()` takes no values from the matches, and help never reaches it.
-        // The spelling only spells the code of a refusal, which the problem
-        // below leaves out.
         let result = crumbkit::parse_to::<(), _, _, _, _>(
             &mut Sink::new(&mut out, Vec::new()),
             command.clone(),
             &guide,
-            Spelling::COLONS,
             line.split(' '),
         );
         if result.err().map(ExitCode::from) == Some(ExitCode::SUCCESS) {

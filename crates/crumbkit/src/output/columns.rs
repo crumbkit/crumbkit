@@ -28,14 +28,14 @@ use crate::{Document, Row, Rows, Shape};
 /// #[derive(serde::Serialize, schemars::JsonSchema)]
 /// struct Entry { position: u32 }
 /// impl crumbkit::Row for Entry { const COLUMNS: &'static [&'static str] = &[]; }
-/// use crumbkit::{Document, Error, Listing, Output, Spelling};
+/// use crumbkit::{Document, Error, Listing, Output};
 ///
 /// const ENTRIES: Document<Listing<Entry>> =
 ///     Document::new("reading", "entries", 1, "The entries of a reading list.");
 ///
 /// let result: Result<Listing<Entry>, Error> = Ok(Listing::new(vec![Entry { position: 1 }], 1));
 /// # let mut output = Output::new(crumbkit::ViewFlags::new(), clap::Command::new("reading"), &crumbkit::help::Guide::new(), ["reading"]);
-/// crumbkit::finish(&mut output, Spelling::COLONS, ENTRIES, result);
+/// crumbkit::finish(&mut output, ENTRIES, result);
 /// ```
 ///
 /// A row type that sets [`Row::WHOLE`] may name no column only when it
@@ -49,14 +49,14 @@ use crate::{Document, Row, Rows, Shape};
 ///     const COLUMNS: &'static [&'static str] = &[];
 ///     const WHOLE: bool = true;
 /// }
-/// use crumbkit::{Document, Error, Output, Spelling};
+/// use crumbkit::{Document, Error, Output};
 ///
 /// const ANSWERS: Document<Vec<Answer>> =
 ///     Document::new("reading", "answers", 1, "The answers of a query.");
 ///
 /// let result: Result<Vec<Answer>, Error> = Ok(vec![Answer(1, 2)]);
 /// # let mut output = Output::new(crumbkit::ViewFlags::new(), clap::Command::new("reading"), &crumbkit::help::Guide::new(), ["reading"]);
-/// crumbkit::finish(&mut output, Spelling::COLONS, ANSWERS, result);
+/// crumbkit::finish(&mut output, ANSWERS, result);
 /// ```
 pub(super) const fn require<T: Rows>() {
     const {
@@ -77,13 +77,13 @@ pub(super) const fn require<T: Rows>() {
 /// #[derive(serde::Serialize, schemars::JsonSchema)]
 /// struct Entry { position: u32 }
 /// impl crumbkit::Row for Entry { const COLUMNS: &'static [&'static str] = &[]; }
-/// use crumbkit::{Document, Output, Spelling, Stream};
+/// use crumbkit::{Document, Output, Stream};
 ///
 /// const ENTRIES_STREAM: Document<Stream<Entry>> =
 ///     Document::new("reading", "entries-stream", 1, "Each entry of a reading list.");
 ///
 /// # let mut output = Output::new(crumbkit::ViewFlags::new(), clap::Command::new("reading"), &crumbkit::help::Guide::new(), ["reading"]);
-/// let _ = crumbkit::stream(&mut output, Spelling::COLONS, ENTRIES_STREAM);
+/// let _ = crumbkit::stream(&mut output, ENTRIES_STREAM);
 /// ```
 ///
 /// A stream of a row type that sets [`Row::WHOLE`], names no column and
@@ -96,13 +96,13 @@ pub(super) const fn require<T: Rows>() {
 ///     const COLUMNS: &'static [&'static str] = &[];
 ///     const WHOLE: bool = true;
 /// }
-/// use crumbkit::{Document, Output, Spelling, Stream};
+/// use crumbkit::{Document, Output, Stream};
 ///
 /// const ANSWERS: Document<Stream<Answer>> =
 ///     Document::new("reading", "answers-stream", 1, "Each answer of a query.");
 ///
 /// # let mut output = Output::new(crumbkit::ViewFlags::new(), clap::Command::new("reading"), &crumbkit::help::Guide::new(), ["reading"]);
-/// let _ = crumbkit::stream(&mut output, Spelling::COLONS, ANSWERS);
+/// let _ = crumbkit::stream(&mut output, ANSWERS);
 /// ```
 pub(super) const fn require_for_stream<R: Row>() {
     const {

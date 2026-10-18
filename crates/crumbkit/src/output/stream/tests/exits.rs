@@ -10,7 +10,7 @@ use clap::{CommandFactory as _, FromArgMatches as _};
 
 use super::{SIGHTINGS, Tool, Writer, kingfisher, robin};
 use crate::help::{Exit, Guide};
-use crate::{Code, Failure, Output, Recovery, Sink, Spelling, stream_to};
+use crate::{Code, Failure, Output, Recovery, Sink, stream_to};
 
 const TIMED_OUT: Code = Code::new("birds", "watch", "timed_out");
 const UNREADABLE: Code = Code::new("birds", "sightings", "unreadable");
@@ -59,7 +59,7 @@ fn stream(failures: &[Failed], end: Result<(), Failed>) -> ExitCode {
     let mut out = Vec::new();
     let mut err = Vec::new();
     let mut sink = Sink::new(&mut out, &mut err);
-    let mut streaming = stream_to(&mut sink, &mut output, Spelling::COLONS, SIGHTINGS).unwrap();
+    let mut streaming = stream_to(&mut sink, &mut output, SIGHTINGS).unwrap();
     assert_eq!(streaming.item(&robin()), ControlFlow::Continue(()));
     for failure in failures {
         assert_eq!(streaming.failure(failure), ControlFlow::Continue(()));
@@ -94,7 +94,7 @@ fn a_stream_whose_reader_closed_the_pipe_keeps_the_declared_code_of_its_failure(
     let mut out = Writer::new(2, io::ErrorKind::BrokenPipe);
     let mut err = Vec::new();
     let mut sink = Sink::new(&mut out, &mut err);
-    let mut streaming = stream_to(&mut sink, &mut output, Spelling::COLONS, SIGHTINGS).unwrap();
+    let mut streaming = stream_to(&mut sink, &mut output, SIGHTINGS).unwrap();
 
     assert_eq!(streaming.item(&robin()), ControlFlow::Continue(()));
     assert_eq!(streaming.item(&kingfisher()), ControlFlow::Break(()));

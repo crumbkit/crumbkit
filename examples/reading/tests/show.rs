@@ -5,7 +5,7 @@
 use std::io;
 use std::path::Path;
 
-use crumbkit::{Spelling, codes};
+use crumbkit::codes;
 use crumbkit_test::{Examples, Failing, check_twin};
 use snapbox::cmd::{Command, OutputAssert};
 
@@ -132,7 +132,6 @@ fn lists_show_refuses_fields_without_json_and_admits_its_twin_with_json() {
         &reading::command(&reading::lists_in(Path::new(LISTS))),
         &reading::GUIDE,
         &examples,
-        Spelling::COLONS,
         &Failing::new(
             &codes::CLI_USAGE,
             &["lists", "show", "to-read", "--fields=name"],

@@ -38,11 +38,10 @@ use self::open::open;
 /// `--fields` rules out `--long` and `--full`. `main` returns that code.
 pub fn stream<R: Row>(
     output: &mut Output,
-    spelling: Spelling,
     document: Document<Stream<R>>,
 ) -> Result<Streaming<'_, R, StdoutLock<'static>, Stderr>, ExitCode> {
     let Sink { out, err, .. } = Sink::standard();
-    open(out, err, output, spelling, document)
+    open(out, err, output, document)
 }
 
 /// Opens the stream of `document` on `sink`, in the format that `output`
@@ -93,7 +92,7 @@ pub fn stream<R: Row>(
 /// # #[derive(serde::Serialize, schemars::JsonSchema)]
 /// # struct Entry { position: u32 }
 /// # impl crumbkit::Row for Entry { const COLUMNS: &'static [&'static str] = &["position"]; }
-/// use crumbkit::{Document, Error, Output, Spelling, Stream};
+/// use crumbkit::{Document, Error, Output, Stream};
 ///
 /// const ENTRIES_STREAM: Document<Stream<Entry>> =
 ///     Document::new("reading", "entries-stream", 1, "Each entry of a reading list.");
@@ -105,7 +104,7 @@ pub fn stream<R: Row>(
 ///     &crumbkit::help::Guide::new(),
 ///     ["reading"],
 /// );
-/// crumbkit::finish(&mut output, Spelling::COLONS, ENTRIES_STREAM, result);
+/// crumbkit::finish(&mut output, ENTRIES_STREAM, result);
 /// ```
 ///
 /// A tool that streams entries opens the stream, prints each item until the
@@ -117,7 +116,7 @@ pub fn stream<R: Row>(
 /// # impl crumbkit::Row for Entry { const COLUMNS: &'static [&'static str] = &["position"]; }
 /// use std::ops::ControlFlow;
 ///
-/// use crumbkit::{Document, Error, Output, Sink, Spelling, Stream};
+/// use crumbkit::{Document, Error, Output, Sink, Stream};
 ///
 /// const ENTRIES_STREAM: Document<Stream<Entry>> =
 ///     Document::new("reading", "entries-stream", 1, "Each entry of a reading list.");
@@ -131,7 +130,7 @@ pub fn stream<R: Row>(
 /// let mut out = Vec::new();
 /// let mut err = Vec::new();
 /// let mut sink = Sink::new(&mut out, &mut err);
-/// let code = match crumbkit::stream_to(&mut sink, &mut output, Spelling::COLONS, ENTRIES_STREAM) {
+/// let code = match crumbkit::stream_to(&mut sink, &mut output, ENTRIES_STREAM) {
 ///     Ok(mut streaming) => {
 ///         for position in 1..=3 {
 ///             if streaming.item(&Entry { position }).is_break() {
@@ -154,10 +153,9 @@ pub fn stream<R: Row>(
 pub fn stream_to<'a, R: Row, O: Write, W: Write>(
     sink: &'a mut Sink<O, W>,
     output: &'a mut Output,
-    spelling: Spelling,
     document: Document<Stream<R>>,
 ) -> Result<Streaming<'a, R, &'a mut O, &'a mut W>, ExitCode> {
-    open(&mut sink.out, &mut sink.err, output, spelling, document)
+    open(&mut sink.out, &mut sink.err, output, document)
 }
 
 /// An open stream, which prints each item that the tool passes to

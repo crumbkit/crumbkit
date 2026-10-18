@@ -1,8 +1,6 @@
 //! Tests for how a chain follows the failures that one run prints and
 //! judges a code that an earlier failure of the chain had already.
 
-use crumbkit::Spelling;
-
 use super::{CODES, SHOW_7, Setup, UNPROVOKED, failure, problems, recoveries, run};
 use crate::allow::{Allow, Rule};
 use crate::examples::Examples;
@@ -118,13 +116,9 @@ fn a_step_that_fails_with_the_code_of_any_earlier_failure_in_its_chain_fails_the
     let message = problems(&setup, &recoveries(&setup, SHOW_7, UNPROVOKED));
     let allowed = problems(
         &setup,
-        &Recoveries::new(
-            Examples::new(&setup.script, "").allow(&allow),
-            Spelling::COLONS,
-            CODES,
-        )
-        .starts(SHOW_7)
-        .unprovoked(UNPROVOKED),
+        &Recoveries::new(Examples::new(&setup.script, "").allow(&allow), CODES)
+            .starts(SHOW_7)
+            .unprovoked(UNPROVOKED),
     );
 
     assert_eq!(

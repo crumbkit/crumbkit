@@ -12,7 +12,7 @@ use std::io;
 use std::path::Path;
 
 use clap::CommandFactory as _;
-use crumbkit::{Spelling, codes};
+use crumbkit::codes;
 use crumbkit_test::{Examples, Failing, check_twin};
 use snapbox::cmd::{Command, OutputAssert};
 use snapbox::file;
@@ -97,7 +97,6 @@ fn refused_beside(dir: Option<&str>, refused: &[&str], admitted: &[&str]) -> Out
         &shelf::Cli::command(),
         &shelf::GUIDE,
         &SHELF,
-        Spelling::COLONS,
         &failing,
         admitted,
     ))

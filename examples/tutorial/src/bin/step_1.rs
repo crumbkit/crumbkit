@@ -5,7 +5,7 @@ use std::process::ExitCode;
 
 use clap::{Args, CommandFactory, Parser, Subcommand};
 use crumbkit::help::Guide;
-use crumbkit::{Document, Listing, Page, Row, Spelling, ViewFlags};
+use crumbkit::{Document, Listing, Page, Row, ViewFlags};
 use schemars::JsonSchema;
 use serde::Serialize;
 
@@ -76,9 +76,6 @@ const JARS_LIST: Document<Listing<Jar>> = Document::new(
     "One page of the jars in the pantry.",
 );
 
-/// How pantry spells a failure code.
-const SPELLING: Spelling = Spelling::COLONS;
-
 /// The jars in the pantry, in id order.
 fn jars() -> Vec<Jar> {
     vec![
@@ -110,7 +107,7 @@ fn list(args: &JarsList) -> Listing<Jar> {
 }
 
 fn main() -> ExitCode {
-    let parsed = crumbkit::parse::<Cli>(Cli::command(), &Guide::new(), SPELLING);
+    let parsed = crumbkit::parse::<Cli>(Cli::command(), &Guide::new());
     let (cli, mut output) = match parsed {
         Ok(parsed) => parsed,
         Err(stop) => return stop.code(),
@@ -120,7 +117,7 @@ fn main() -> ExitCode {
             command: JarsCommand::List(args),
         } => {
             let result: Result<_, crumbkit::Error> = Ok(list(&args));
-            crumbkit::finish(&mut output, SPELLING, JARS_LIST, result)
+            crumbkit::finish(&mut output, JARS_LIST, result)
         }
     }
 }

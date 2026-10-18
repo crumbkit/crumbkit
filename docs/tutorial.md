@@ -40,8 +40,7 @@ In [`step_1.rs`](../examples/tutorial/src/bin/step_1.rs), the handler
 returns its rows, and crumbkit prints them as a table or as JSON. A row
 type derives `Serialize` and `JsonSchema`, and implements `Row` to name the
 columns that the table shows. A `Document` names the JSON document that
-the command prints, and a `Spelling` says how the tool prints a failure
-code:
+the command prints:
 
 ```rust
 #[derive(Serialize, JsonSchema)]
@@ -65,9 +64,6 @@ const JARS_LIST: Document<Listing<Jar>> = Document::new(
     1,
     "One page of the jars in the pantry.",
 );
-
-/// How pantry spells a failure code.
-const SPELLING: Spelling = Spelling::COLONS;
 ```
 
 The root flattens `ViewFlags`, which adds `--json`, `--fields`, `--long` and
@@ -107,7 +103,7 @@ the result through that `Output` and returns the exit code:
 
 ```rust
 fn main() -> ExitCode {
-    let parsed = crumbkit::parse::<Cli>(Cli::command(), &Guide::new(), SPELLING);
+    let parsed = crumbkit::parse::<Cli>(Cli::command(), &Guide::new());
     let (cli, mut output) = match parsed {
         Ok(parsed) => parsed,
         Err(stop) => return stop.code(),
@@ -117,7 +113,7 @@ fn main() -> ExitCode {
             command: JarsCommand::List(args),
         } => {
             let result: Result<_, crumbkit::Error> = Ok(list(&args));
-            crumbkit::finish(&mut output, SPELLING, JARS_LIST, result)
+            crumbkit::finish(&mut output, JARS_LIST, result)
         }
     }
 }
@@ -180,7 +176,8 @@ fn list(args: &JarsList) -> Result<Listing<Jar>, ShelfNotFound> {
 
 `pantry jars list --shelf middle` exits with 1 and prints the error, a
 `help:` line that tells the caller to run `pantry jars list`, and the code
-`pantry::shelves::not_found`. With `--json`, it prints the failure as a
+`pantry::shelves::not_found`. The code joins its segments with `::` because
+the guide sets no other spelling. With `--json`, it prints the failure as a
 JSON document. [ADR-0001] says why every failure carries a code and a next
 step.
 
@@ -203,7 +200,7 @@ const GUIDE: Guide = Guide::new().leaves(&[Leaf::new(&["jars", "list"])
 `main` passes the guide to `parse` in place of `Guide::new()`:
 
 ```rust
-    let parsed = crumbkit::parse::<Cli>(Cli::command(), &GUIDE, SPELLING);
+    let parsed = crumbkit::parse::<Cli>(Cli::command(), &GUIDE);
 ```
 
 `pantry jars list -h` now lists the examples and the line

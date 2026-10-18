@@ -25,6 +25,12 @@ Why: ADR-0056.
 - `Leaf::codes` lists renames for the runs of one command. A run of that
   command reads the leaf's renames first and the guide's for every other
   code ([codes per command](#codes-per-command)).
+- `Guide::spelling` sets the
+  [`Spelling`](../../../crates/crumbkit-core/src/code.rs) that every code
+  prints in, such as segments joined with `.`. A guide that sets none
+  prints codes with `Spelling::COLONS`, so a tool with colon codes declares
+  nothing
+  ([codes and their spelling](../failures/README.md#codes-and-their-spelling)).
 - `Guide::exits` may list one of crumbkit's codes or the tool's rename of it,
   so a refused command line, an over-budget failure or a version conflict
   exits with the tool's own code ([exit codes](../failures/exit-codes.md)).
@@ -58,7 +64,7 @@ the exit code a failure ends the run with, so `check_exit_codes`,
 run prints. A path that no leaf with renames names, such as `&[]`, gives the
 guide's renames alone.
 
-Why: ADR-0056, ADR-0060, ADR-0001, ADR-0016, ADR-0035, ADR-0081.
+Why: ADR-0056, ADR-0060, ADR-0001, ADR-0086, ADR-0016, ADR-0035, ADR-0081.
 
 ## Codes per command
 
@@ -123,21 +129,23 @@ Why: ADR-0015, ADR-0056, ADR-0036.
 crumbkit-test's `check_opt_outs` lists each declaration after the opt-outs,
 under the customisations, with no reason and no cost, so a reviewer sees in
 one place how far a tool has moved from crumbkit's defaults. The section
-lists each code rename of the guide and of each leaf, each exit that lists
-one of crumbkit's codes or a rename of one, each document whose name is not
-its command's path (as a `document-name` customisation beside the name that
-its command's path gives), each leaf that passes on an exit code, each leaf
-that declares refusal alternatives, the guide's refusal function once for
-every run, and each leaf whose row type
-declares `Row::LINE` (as a `text-line` customisation that names the form of
-the line). A leaf's code rename, and an exit that lists a code
-that only a leaf renames, apply to that leaf's command line. The
-dashed-forms declaration is listed once, followed by each command named in another style as a `resource-name` or a `verb-name`
-with the dashed form it also answers to.
+lists the guide's spelling when it prints crumbkit's usage code other than
+`Spelling::COLONS` does (as a `code-spelling` customisation), each code
+rename of the guide and of each leaf, each exit that lists one of crumbkit's
+codes or a rename of one, each document whose name is not its command's path
+(as a `document-name` customisation beside the name that its command's path
+gives), each leaf that passes on an exit code, each leaf that declares
+refusal alternatives, the guide's refusal function once for every run, and
+each leaf whose row type declares `Row::LINE` (as a `text-line`
+customisation that names the form of the line). A leaf's code rename, and an
+exit that lists a code that only a leaf renames, apply to that leaf's
+command line. The dashed-forms declaration is listed once, followed by each
+command named in another style as a `resource-name` or a `verb-name` with
+the dashed form it also answers to.
 
 The section is left out when the tool declares nothing, and the JSON holds it
 as a `customisations` array beside `data`. The report does not list the
 completion variable, because `complete_with` sets it for the process and the
 guide does not hold it.
 
-Why: ADR-0056, ADR-0060, ADR-0036, ADR-0035, ADR-0064, ADR-0081.
+Why: ADR-0056, ADR-0060, ADR-0036, ADR-0035, ADR-0064, ADR-0081, ADR-0086.

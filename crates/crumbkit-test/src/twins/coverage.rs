@@ -81,12 +81,12 @@ impl<'a> Twin<'a> {
     }
 }
 
-/// The settings of [`check_twins`]: how to run the tool's binary, how the
-/// tool spells its codes, its declared codes, its twins and the declared
+/// The settings of [`check_twins`]: how to run the tool's binary, its
+/// declared codes, its twins and the declared
 /// codes that no command line in a test can provoke.
 ///
 /// ```
-/// use crumbkit::{Code, Spelling};
+/// use crumbkit::Code;
 /// use crumbkit_test::{Examples, Failing, Twin, Twins, Unprovoked};
 ///
 /// const NOT_FOUND: Code = Code::new("shelf", "books", "not_found");
@@ -95,7 +95,7 @@ impl<'a> Twin<'a> {
 /// // In an integration test, the binary is `env!("CARGO_BIN_EXE_shelf")`.
 /// const EXAMPLES: Examples<'_> = Examples::new("/path/to/shelf", "tests/golden/examples");
 ///
-/// const TWINS: Twins<'_> = Twins::new(EXAMPLES, Spelling::COLONS, &[&[&NOT_FOUND, &GONE]])
+/// const TWINS: Twins<'_> = Twins::new(EXAMPLES, &[&[&NOT_FOUND, &GONE]])
 ///     .pairs(&[Twin::new(
 ///         Failing::new(&NOT_FOUND, &["books", "show", "7"]),
 ///         &["books", "show", "2"],
@@ -106,8 +106,6 @@ impl<'a> Twin<'a> {
 pub struct Twins<'a> {
     /// The binary and its environment.
     examples: Examples<'a>,
-    /// How the tool spells its codes.
-    spelling: Spelling,
     /// The `CODES` list of each of the tool's error types.
     codes: &'a [&'a [&'a Code]],
     /// The twins.
@@ -118,18 +116,14 @@ pub struct Twins<'a> {
 
 impl<'a> Twins<'a> {
     /// Returns the settings that run the binary of `examples` with its
-    /// environment, spell codes with `spelling` and require a twin for each
-    /// code of `codes`, the `CODES` list of each of the tool's error types,
-    /// with no twin and no unprovoked code.
+    /// environment and require a twin for each code of `codes`, the `CODES`
+    /// list of each of the tool's error types, with no twin and no
+    /// unprovoked code. [`check_twins`] spells the codes as the tool's
+    /// guide does.
     #[must_use]
-    pub const fn new(
-        examples: Examples<'a>,
-        spelling: Spelling,
-        codes: &'a [&'a [&'a Code]],
-    ) -> Self {
+    pub const fn new(examples: Examples<'a>, codes: &'a [&'a [&'a Code]]) -> Self {
         Self {
             examples,
-            spelling,
             codes,
             pairs: &[],
             unprovoked: &[],
@@ -203,7 +197,7 @@ impl<'a> Twins<'a> {
 /// Panics when a rule above is broken. The message lists each problem on
 /// its own line under `the tool's twins break crumbkit's twin rule:`.
 pub fn check_twins(command: &Command, guide: &Guide, twins: &Twins<'_>) {
-    let spelling = twins.spelling.for_tool(guide.tool_name(command));
+    let spelling = guide.get_spelling().for_tool(guide.tool_name(command));
     let declared: Vec<&Code> = declared(twins.codes);
     let mut problems = Vec::new();
     for pair in twins.pairs {
@@ -260,7 +254,7 @@ pub fn check_twins(command: &Command, guide: &Guide, twins: &Twins<'_>) {
             let words = json_lines(failing.words(), &[]).0;
             let words: Vec<&str> = words.iter().map(String::as_str).collect();
             let run = failing.with_words(&words);
-            if let Err(problem) = refuse(command, guide, &twins.examples, spelling, &run) {
+            if let Err(problem) = refuse(command, guide, &twins.examples, &run) {
                 problems.push(format!("{opt_out}: {problem}"));
             }
         }
@@ -334,15 +328,7 @@ fn run_pair(
     let admitted = pair
         .variable
         .map_or(Admitted::Words(&admitted), Admitted::Without);
-    twin(
-        command,
-        guide,
-        &twins.examples,
-        twins.spelling,
-        &refused,
-        admitted,
-    )
-    .map(drop)
+    twin(command, guide, &twins.examples, &refused, admitted).map(drop)
 }
 
 /// Returns the words of the refused and the admitted line of a twin as

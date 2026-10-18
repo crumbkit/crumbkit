@@ -13,9 +13,7 @@ use super::{
     SCHEMAS_LIST, SCHEMAS_SHOW, SchemasList, SchemasShow, document_schema, documents, list, show,
 };
 use crate::help::{Guide, Leaf};
-use crate::{
-    Batch, Document, Error, Listing, NoSummary, Output, Prose, Row, Sink, Spelling, finish_to,
-};
+use crate::{Batch, Document, Error, Listing, NoSummary, Output, Prose, Row, Sink, finish_to};
 
 mod bytes;
 mod formats;
@@ -133,7 +131,6 @@ fn finish_show(output: &mut Output, words: &[&str]) -> Finished {
     let code = finish_to(
         &mut Sink::new(&mut out, &mut err),
         output,
-        Spelling::COLONS,
         SCHEMAS_SHOW,
         result,
     );

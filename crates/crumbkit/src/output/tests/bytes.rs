@@ -13,7 +13,7 @@ use crate::Envelope;
 use crate::answered::answered;
 use crate::help::Guide;
 use crate::twins::assert_one_word_apart;
-use crate::{Batch, Bytes, Document, DryRun, Error, Output, Row, Sink, Spelling, finish_to};
+use crate::{Batch, Bytes, Document, DryRun, Error, Output, Row, Sink, finish_to};
 
 const FILE: Document<Bytes> = Document::new("files", "file", 1, "The bytes of one file.");
 
@@ -41,13 +41,7 @@ fn finish_output(output: &mut Output, document: Document<Bytes>, bytes: Bytes) -
     let mut out = Vec::new();
     let mut err = Vec::new();
     let result: Result<Bytes, Error> = Ok(bytes);
-    let code = finish_to(
-        &mut Sink::new(&mut out, &mut err),
-        output,
-        Spelling::COLONS,
-        document,
-        result,
-    );
+    let code = finish_to(&mut Sink::new(&mut out, &mut err), output, document, result);
     Finished {
         code: ExitCode::from(code),
         out,
@@ -280,7 +274,6 @@ fn a_batch_prints_a_bytes_field_in_its_json_form_with_full() {
     let code = finish_to(
         &mut Sink::new(&mut out, &mut err),
         &mut output,
-        Spelling::COLONS,
         files,
         result,
     );

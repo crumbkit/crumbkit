@@ -7,7 +7,7 @@ use clap::{Arg, ArgAction, Command};
 
 use super::{Effects, Items};
 use crate::help::{Example, Guide, Leaf};
-use crate::{Sink, Spelling, parse_to};
+use crate::{Sink, parse_to};
 
 /// A tool with a global flag and one leaf, `tool planets remove`.
 fn tool() -> Command {
@@ -34,13 +34,8 @@ fn tool() -> Command {
 fn help(guide: &Guide, args: &[&str]) -> String {
     let mut out = Vec::new();
     let mut err = Vec::new();
-    let result = parse_to::<(), _, _, _, _>(
-        &mut Sink::new(&mut out, &mut err),
-        tool(),
-        guide,
-        Spelling::COLONS,
-        args,
-    );
+    let result =
+        parse_to::<(), _, _, _, _>(&mut Sink::new(&mut out, &mut err), tool(), guide, args);
     assert_eq!(result.err().map(ExitCode::from), Some(ExitCode::SUCCESS));
     String::from_utf8(out).unwrap()
 }

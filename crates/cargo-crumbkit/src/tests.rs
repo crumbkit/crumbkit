@@ -4,7 +4,6 @@
 use clap::CommandFactory as _;
 use crumbkit_test::{Budgets, Pages};
 
-use crate::SPELLING;
 use crate::cli::{ALLOW, Cli, GUIDE};
 use crate::error::{DocsError, ToolError, WeighError};
 
@@ -15,7 +14,7 @@ const BUDGETS: Budgets = Budgets::new();
 #[test]
 fn every_failure_code_spells_uniquely_as_printable_ascii() {
     crumbkit_test::check_codes(
-        SPELLING,
+        &GUIDE,
         &[ToolError::CODES, WeighError::CODES, DocsError::CODES],
     );
 }

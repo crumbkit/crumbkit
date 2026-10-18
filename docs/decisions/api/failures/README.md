@@ -16,3 +16,4 @@ in place of crumbkit's failure document.
 - [ADR-0061. Field names from another system](0061-field-names-from-another-system.md)
 - [ADR-0078. A refusal recovers with the tool's call](0078-refusal-recovery-from-the-tool.md)
 - [ADR-0082. View flags on a failed run](0082-view-flags-on-a-failed-run.md)
+- [ADR-0086. A tool sets its spelling on its guide](0086-spelling-on-the-guide.md)

@@ -47,14 +47,8 @@ fn confirm(words: &[&str], input: &str, interactive: bool) -> Confirmed {
 fn confirm_with(guide: &Guide, words: &[&str], input: &str, interactive: bool) -> Confirmed {
     let args = std::iter::once("tool").chain(words.iter().copied());
     let mut sink = Sink::new(Vec::new(), Vec::new());
-    let (tool, mut output) = crate::parse_to::<Tool, _, _, _, _>(
-        &mut sink,
-        Tool::command(),
-        guide,
-        Spelling::COLONS,
-        args,
-    )
-    .unwrap();
+    let (tool, mut output) =
+        crate::parse_to::<Tool, _, _, _, _>(&mut sink, Tool::command(), guide, args).unwrap();
     let Commands::Remove { dry_run, yes, .. } = tool.command;
     output.dry_run(dry_run);
     let mut err = Vec::new();

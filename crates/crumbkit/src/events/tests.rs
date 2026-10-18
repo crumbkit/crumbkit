@@ -200,6 +200,7 @@ const TIMED_OUT: Code = Code::new("shelf", "network", "timed_out");
 /// A guide that maps `TIMED_OUT` to 124 and refused command lines to 64
 /// (ADR-0037), with the smallest output budget.
 const GUIDE: Guide = Guide::new()
+    .spelling(DOTS)
     .output_budget(1024, "the tests print little")
     .exits(&[
         Exit::new(124, "The catalogue ran out of time.").failures(&[&TIMED_OUT]),
@@ -241,7 +242,8 @@ enum Books {
     },
 }
 
-/// Parses `args` into memory with [`GUIDE`] in the spelling [`DOTS`], and
+/// Parses `args` into memory with [`GUIDE`], which sets the spelling
+/// [`DOTS`], and
 /// returns the output flags with the tool's command, or the exit code of a
 /// run that parsing ended.
 fn parse(args: &[&str]) -> Result<Output, ExitCode> {
@@ -249,7 +251,6 @@ fn parse(args: &[&str]) -> Result<Output, ExitCode> {
         &mut Sink::new(Vec::new(), Vec::new()),
         Tool::command(),
         &GUIDE,
-        DOTS,
         args,
     )?;
     Ok(output)
@@ -371,7 +372,7 @@ fn finished<T: crate::Rows, E: crate::AsFailure>(
     let mut out = Vec::new();
     let seen = watch(|| {
         let sink = &mut Sink::new(&mut out, Vec::new());
-        let _ = finish_to(sink, &mut output, DOTS, document, result);
+        let _ = finish_to(sink, &mut output, document, result);
     });
     (seen, out.len())
 }
@@ -449,7 +450,7 @@ fn a_stream_reports_its_exit_its_bytes_and_whether_the_budget_stopped_it() {
 
     let seen = watch(|| {
         let sink = &mut Sink::new(&mut out, Vec::new());
-        let mut streaming = stream_to(sink, &mut output, DOTS, STREAMED).unwrap();
+        let mut streaming = stream_to(sink, &mut output, STREAMED).unwrap();
         let _ = streaming.item(&Book {
             title: "Dune".to_owned(),
         });

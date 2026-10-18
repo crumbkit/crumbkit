@@ -23,18 +23,12 @@ mod weigh;
 use std::process::ExitCode;
 
 use clap::CommandFactory as _;
-use crumbkit::Spelling;
 
 pub use crate::cli::{ALLOW, Cli, GUIDE};
 use crate::cli::{CargoCommand, CommandsCommand, CrumbkitCommand};
 
 #[cfg(test)]
 mod tests;
-
-/// How cargo-crumbkit spells its failure codes, such as
-/// `crumbkit::tool::build_failed`. The tests pass the same spelling to
-/// crumbkit-test's codes check.
-const SPELLING: Spelling = Spelling::COLONS;
 
 /// Parses the process's command line, runs the command and returns the
 /// process's exit code.
@@ -44,17 +38,17 @@ const SPELLING: Spelling = Spelling::COLONS;
 /// `Next:` lines and recoveries print starts with `cargo crumbkit`.
 #[must_use]
 pub fn run() -> ExitCode {
-    let (cli, mut output) = match crumbkit::parse::<Cli>(Cli::command(), &GUIDE, SPELLING) {
+    let (cli, mut output) = match crumbkit::parse::<Cli>(Cli::command(), &GUIDE) {
         Ok(parsed) => parsed,
         Err(stop) => return stop.code(),
     };
     match cli.cargo {
         CargoCommand::Crumbkit { command } => match command {
             CrumbkitCommand::Weigh(args) => {
-                crumbkit::finish(&mut output, SPELLING, weigh::WEIGH, weigh::weigh(&args))
+                crumbkit::finish(&mut output, weigh::WEIGH, weigh::weigh(&args))
             }
             CrumbkitCommand::Docs(args) => {
-                crumbkit::finish(&mut output, SPELLING, docs::DOCS, docs::docs(&args))
+                crumbkit::finish(&mut output, docs::DOCS, docs::docs(&args))
             }
             CrumbkitCommand::Commands { command } => match command {
                 // `commands list` reads the command tree through
@@ -62,7 +56,7 @@ pub fn run() -> ExitCode {
                 CommandsCommand::List(args) => {
                     let result = crumbkit::commands::list(&mut output, &GUIDE, &args);
                     let document = crumbkit::commands::COMMANDS_LIST;
-                    crumbkit::finish(&mut output, SPELLING, document, result)
+                    crumbkit::finish(&mut output, document, result)
                 }
             },
         },

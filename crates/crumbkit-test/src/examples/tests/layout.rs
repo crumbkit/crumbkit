@@ -39,8 +39,8 @@ const TWO_WORDS: &str = r#"echo '{"schema":"sh/words/v1","data":{"word":"a"}}'; 
 
 /// Runs the check of `guide`, with the layout `JsonLayout::Pretty`, on
 /// `sh()` with the golden files in `dir` and the action `Overwrite`.
-fn run(guide: Guide, dir: &TempDir) {
-    let guide = guide.json_layout(JsonLayout::Pretty {
+fn run(guide: &Guide, dir: &TempDir) {
+    let guide = (*guide).json_layout(JsonLayout::Pretty {
         reason: "the readers expect it",
     });
     check(
@@ -59,7 +59,7 @@ fn a_pretty_layout_lets_a_json_example_of_a_document_print_it_indented() {
         .document(WORD)]);
     let dir = TempDir::new("examples-pretty-indented").unwrap();
 
-    run(GUIDE, &dir);
+    run(&GUIDE, &dir);
 }
 
 #[test]
@@ -69,7 +69,7 @@ fn a_pretty_layout_fails_a_json_example_that_prints_its_document_on_one_line() {
         .document(WORD)]);
     let dir = TempDir::new("examples-pretty-one-line").unwrap();
 
-    let message = panic_message(|| run(GUIDE, &dir)).unwrap();
+    let message = panic_message(|| run(&GUIDE, &dir)).unwrap();
 
     assert!(
         message.ends_with(
@@ -86,7 +86,7 @@ fn a_pretty_layout_fails_a_json_example_that_prints_two_documents() {
         .document(WORD)]);
     let dir = TempDir::new("examples-pretty-two").unwrap();
 
-    let message = panic_message(|| run(GUIDE, &dir)).unwrap();
+    let message = panic_message(|| run(&GUIDE, &dir)).unwrap();
 
     assert!(
         message.ends_with(
@@ -103,5 +103,5 @@ fn a_pretty_layout_keeps_one_line_for_each_document_of_a_stream() {
         .stream(WORDS)]);
     let dir = TempDir::new("examples-pretty-stream").unwrap();
 
-    run(GUIDE, &dir);
+    run(&GUIDE, &dir);
 }

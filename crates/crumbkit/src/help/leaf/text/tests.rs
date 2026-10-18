@@ -8,7 +8,7 @@ use schemars::JsonSchema;
 use serde::Serialize;
 
 use crate::help::{Effects, Example, Guide, Leaf, STREAM_LINE};
-use crate::{Document, Row, Sink, Spelling, Stream, parse_to};
+use crate::{Document, Row, Sink, Stream, parse_to};
 
 /// A tool with a global `--json` and one leaf, `tool links check`.
 fn tool() -> Command {
@@ -31,13 +31,8 @@ fn tool() -> Command {
 fn help(guide: &Guide, args: &[&str]) -> String {
     let mut out = Vec::new();
     let mut err = Vec::new();
-    let result = parse_to::<(), _, _, _, _>(
-        &mut Sink::new(&mut out, &mut err),
-        tool(),
-        guide,
-        Spelling::COLONS,
-        args,
-    );
+    let result =
+        parse_to::<(), _, _, _, _>(&mut Sink::new(&mut out, &mut err), tool(), guide, args);
     assert_eq!(result.err().map(ExitCode::from), Some(ExitCode::SUCCESS));
     String::from_utf8(out).unwrap()
 }

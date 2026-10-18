@@ -12,9 +12,7 @@ use serde::Serialize;
 use super::stream_to;
 use crate::Envelope;
 use crate::twins::assert_one_word_apart;
-use crate::{
-    Call, Code, Document, DryRun, Error, Failure, Output, Recovery, Row, Sink, Spelling, Stream,
-};
+use crate::{Call, Code, Document, DryRun, Error, Failure, Output, Recovery, Row, Sink, Stream};
 
 mod empty;
 mod exits;
@@ -144,7 +142,7 @@ fn run(
     let mut out = Vec::new();
     let mut err = Vec::new();
     let mut sink = Sink::new(&mut out, &mut err);
-    let code = match stream_to(&mut sink, &mut output, Spelling::COLONS, document) {
+    let code = match stream_to(&mut sink, &mut output, document) {
         Ok(mut streaming) => {
             for (index, item) in items.iter().enumerate() {
                 assert_eq!(streaming.item(item), ControlFlow::Continue(()));
@@ -202,7 +200,7 @@ fn text_prints_the_header_when_the_stream_opens() {
     let mut err = Vec::new();
     let mut sink = Sink::new(&mut out, &mut err);
 
-    let streaming = stream_to(&mut sink, &mut output, Spelling::COLONS, SIGHTINGS).unwrap();
+    let streaming = stream_to(&mut sink, &mut output, SIGHTINGS).unwrap();
     drop(streaming);
 
     assert_eq!(String::from_utf8(out).unwrap(), "NUMBER  BIRD\n");
@@ -261,7 +259,7 @@ fn an_unknown_field_is_refused_with_exit_code_2_before_anything_prints() {
     let mut err = Vec::new();
     let mut sink = Sink::new(&mut out, &mut err);
 
-    let refused = stream_to(&mut sink, &mut output, Spelling::COLONS, SIGHTINGS);
+    let refused = stream_to(&mut sink, &mut output, SIGHTINGS);
 
     assert_eq!(refused.err(), Some(ExitCode::from(2)));
     assert_eq!(String::from_utf8(out).unwrap(), "");
@@ -421,7 +419,7 @@ fn the_stream_writes_and_flushes_each_line_at_once() {
     let mut out = Writer::new(usize::MAX, io::ErrorKind::Other);
     let mut err = Vec::new();
     let mut sink = Sink::new(&mut out, &mut err);
-    let mut streaming = stream_to(&mut sink, &mut output, Spelling::COLONS, SIGHTINGS).unwrap();
+    let mut streaming = stream_to(&mut sink, &mut output, SIGHTINGS).unwrap();
 
     let _ = streaming.item(&robin());
     let _ = streaming.item(&kingfisher());
@@ -437,7 +435,7 @@ fn a_reader_that_closes_the_pipe_stops_the_stream_and_the_exit_code_stays_0() {
     let mut out = Writer::new(2, io::ErrorKind::BrokenPipe);
     let mut err = Vec::new();
     let mut sink = Sink::new(&mut out, &mut err);
-    let mut streaming = stream_to(&mut sink, &mut output, Spelling::COLONS, SIGHTINGS).unwrap();
+    let mut streaming = stream_to(&mut sink, &mut output, SIGHTINGS).unwrap();
 
     assert_eq!(streaming.item(&robin()), ControlFlow::Continue(()));
     assert_eq!(streaming.item(&kingfisher()), ControlFlow::Break(()));
@@ -454,7 +452,7 @@ fn another_write_error_is_reported_once_and_the_stream_exits_with_1() {
     let mut out = Writer::new(0, io::ErrorKind::PermissionDenied);
     let mut err = Vec::new();
     let mut sink = Sink::new(&mut out, &mut err);
-    let mut streaming = stream_to(&mut sink, &mut output, Spelling::COLONS, SIGHTINGS).unwrap();
+    let mut streaming = stream_to(&mut sink, &mut output, SIGHTINGS).unwrap();
 
     assert_eq!(streaming.item(&robin()), ControlFlow::Break(()));
     assert_eq!(streaming.item(&robin()), ControlFlow::Break(()));
@@ -483,7 +481,7 @@ fn run_budgeted(flags: &[&str], count: usize) -> (Streamed, usize) {
     let mut err = Vec::new();
     let mut sink = Sink::new(&mut out, &mut err);
     let mut accepted = 0;
-    let code = match stream_to(&mut sink, &mut output, Spelling::COLONS, SIGHTINGS) {
+    let code = match stream_to(&mut sink, &mut output, SIGHTINGS) {
         Ok(mut streaming) => {
             for _ in 0..count {
                 if streaming.item(&robin()).is_break() {
@@ -559,7 +557,7 @@ fn a_stream_always_prints_its_first_item_even_past_the_budget() {
     let mut out = Vec::new();
     let mut err = Vec::new();
     let mut sink = Sink::new(&mut out, &mut err);
-    let mut streaming = stream_to(&mut sink, &mut output, Spelling::COLONS, SIGHTINGS).unwrap();
+    let mut streaming = stream_to(&mut sink, &mut output, SIGHTINGS).unwrap();
 
     assert_eq!(streaming.item(&wren), ControlFlow::Continue(()));
     assert_eq!(streaming.budget(), 0);

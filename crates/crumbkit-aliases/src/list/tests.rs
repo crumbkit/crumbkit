@@ -3,7 +3,7 @@
 use std::path::Path;
 use std::process::ExitCode;
 
-use crumbkit::{Error, Listing, Output, Sink, Spelling, finish_to};
+use crumbkit::{Error, Listing, Output, Sink, finish_to};
 use serde_json::{Value, json};
 
 use super::{ALIASES_LIST, AliasRow, AliasesList, list, listing};
@@ -63,7 +63,6 @@ fn finish(output: &mut Output, result: Result<Listing<AliasRow>, Error>) -> Fini
     let code = finish_to(
         &mut Sink::new(&mut out, &mut err),
         output,
-        Spelling::COLONS,
         ALIASES_LIST,
         result,
     );

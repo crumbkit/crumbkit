@@ -9,7 +9,6 @@ use crumbkit::{
 use super::{
     BOOKS_SHOW, Book, BooksError, IdsFileProblem, MOST_IDS, parse_ids, show, show_call, summarize,
 };
-use crate::SPELLING;
 use crate::cli::{BooksShow, BooksSummarize, Cli};
 
 /// Returns the room of `books show` with crumbkit's default output budget.
@@ -99,8 +98,7 @@ fn show_stops_looking_up_ids_once_its_books_fill_the_budget() {
     };
     let guide = Guide::new().output_budget(1024, "the test fills it");
     let words = ["shelf", "books", "show", "1"];
-    let (_, output) =
-        crumbkit::parse_from::<Cli, _, _>(Cli::command(), &guide, SPELLING, words).unwrap();
+    let (_, output) = crumbkit::parse_from::<Cli, _, _>(Cli::command(), &guide, words).unwrap();
 
     let batch = show(&args, None, output.room(BOOKS_SHOW)).unwrap();
 

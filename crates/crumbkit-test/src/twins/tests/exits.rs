@@ -1,8 +1,8 @@
 //! Tests for the exit codes that the twin checks compare with the exits
 //! that the guide declares for failure codes (ADR-0037).
 
+use crumbkit::Code;
 use crumbkit::help::{Exit, Guide, Leaf, Rename};
-use crumbkit::{Code, Spelling};
 
 use super::tree;
 use crate::examples::Examples;
@@ -86,7 +86,6 @@ fn checked_with(
             &tree(),
             guide,
             &examples,
-            Spelling::COLONS,
             &Failing::new(code, refused),
             &admitted,
         );
@@ -192,7 +191,7 @@ fn a_failure_code_that_an_exit_lists_and_no_codes_list_holds_fails_check_twins()
     let dir = TempDir::new("twins-exits-codes").unwrap();
     dir.write_script("tool", SCRIPT);
     let path = dir.path().join("tool").display().to_string();
-    let twins = Twins::new(Examples::new(&path, ""), Spelling::COLONS, CODES).pairs(PAIRS);
+    let twins = Twins::new(Examples::new(&path, ""), CODES).pairs(PAIRS);
 
     assert_eq!(
         panic_message(|| check_twins(&tree(), &LISTING, &twins)).unwrap(),
@@ -224,7 +223,7 @@ fn a_twin_that_refuses_a_renamed_crumbkit_code_passes_when_the_tool_prints_its_o
     let dir = TempDir::new("twins-exits-renamed").unwrap();
     dir.write_script("tool", SCRIPT);
     let path = dir.path().join("tool").display().to_string();
-    let twins = Twins::new(Examples::new(&path, ""), Spelling::COLONS, CODES).pairs(PAIRS);
+    let twins = Twins::new(Examples::new(&path, ""), CODES).pairs(PAIRS);
 
     assert_eq!(
         panic_message(|| check_twins(&tree(), &RENAMING, &twins)),

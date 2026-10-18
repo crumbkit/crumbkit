@@ -118,9 +118,15 @@ impl Setup {
 
 /// Runs the check of `recoveries` on `tool()` with `action`.
 fn check_with(setup: &Setup, recoveries: &Recoveries<'_>, action: Action) {
+    check_in(setup, &Guide::new(), recoveries, action);
+}
+
+/// Checks `recoveries` against `setup`'s tool with `guide`, as `check_with`
+/// does with a guide that sets no spelling.
+fn check_in(setup: &Setup, guide: &Guide, recoveries: &Recoveries<'_>, action: Action) {
     check(
         &tool(),
-        &Guide::new(),
+        guide,
         recoveries,
         &setup.golden(),
         &Assert::new().action(action),
@@ -140,7 +146,7 @@ fn recoveries<'a>(
     starts: &'a [Failing<'a>],
     unprovoked: &'a [Unprovoked<'a>],
 ) -> Recoveries<'a> {
-    Recoveries::new(Examples::new(&setup.script, ""), Spelling::COLONS, CODES)
+    Recoveries::new(Examples::new(&setup.script, ""), CODES)
         .starts(starts)
         .unprovoked(unprovoked)
 }
@@ -451,13 +457,12 @@ fn an_undeclared_code_from_a_declared_component_fails_the_check_in_a_custom_spel
         ],
     );
 
-    let problems = problems(
-        &setup,
-        &Recoveries::new(Examples::new(&setup.script, ""), DOTS, CODES)
-            .starts(SHOW_7)
-            .unprovoked(OTHERS),
-    )
-    .unwrap();
+    let guide = Guide::new().spelling(DOTS);
+    let recoveries = Recoveries::new(Examples::new(&setup.script, ""), CODES)
+        .starts(SHOW_7)
+        .unprovoked(OTHERS);
+    let problems =
+        panic_message(|| check_in(&setup, &guide, &recoveries, Action::Overwrite)).unwrap();
 
     assert!(
         problems.contains(
@@ -487,7 +492,7 @@ fn every_declared_code_is_provoked_or_listed_and_each_listed_code_is_declared_an
 
     let message = problems(
         &setup,
-        &Recoveries::new(Examples::new(&setup.script, ""), Spelling::COLONS, CODES)
+        &Recoveries::new(Examples::new(&setup.script, ""), CODES)
             .starts(&starts)
             .unprovoked(&unprovoked),
     )
@@ -519,13 +524,9 @@ fn an_opt_out_skips_the_starts_below_its_path_and_a_stale_one_fails_the_check() 
 
     let message = problems(
         &setup,
-        &Recoveries::new(
-            Examples::new(&setup.script, "").allow(&allow),
-            Spelling::COLONS,
-            CODES,
-        )
-        .starts(SHOW_7)
-        .unprovoked(&unprovoked),
+        &Recoveries::new(Examples::new(&setup.script, "").allow(&allow), CODES)
+            .starts(SHOW_7)
+            .unprovoked(&unprovoked),
     )
     .unwrap();
 

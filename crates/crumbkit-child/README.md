@@ -26,12 +26,12 @@ A command that opens an editor calls [`hand_over`] last, in place of
 ```rust,no_run
 use std::process::{Command, ExitCode};
 
-use crumbkit::{Output, Spelling};
+use crumbkit::Output;
 
 fn edit(output: &mut Output, path: &str) -> ExitCode {
     let mut editor = Command::new("vi");
     editor.arg(path);
-    crumbkit_child::hand_over(output, Spelling::COLONS, editor)
+    crumbkit_child::hand_over(output, editor)
 }
 ```
 

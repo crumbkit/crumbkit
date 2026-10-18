@@ -9,7 +9,7 @@ use serde_json::{Value, json};
 
 use super::{Parsed, Stop, admits, tool};
 use crate::help::{Guide, Leaf, RefusalContext};
-use crate::{Call, Page, Sink, Spelling, parse_to};
+use crate::{Call, Page, Sink, parse_to};
 
 /// The planets that `tool planets orbit` knows.
 const KNOWN: &[&str] = &["mars", "venus"];
@@ -101,13 +101,8 @@ fn parse(args: &[&str]) -> Parsed {
 fn parse_guided(guide: &Guide, args: &[&str]) -> Parsed {
     let mut out = Vec::new();
     let mut err = Vec::new();
-    let result = parse_to::<(), _, _, _, _>(
-        &mut Sink::new(&mut out, &mut err),
-        bounded(),
-        guide,
-        Spelling::COLONS,
-        args,
-    );
+    let result =
+        parse_to::<(), _, _, _, _>(&mut Sink::new(&mut out, &mut err), bounded(), guide, args);
     let stop = result.err();
     Parsed {
         code: stop.as_ref().map(Stop::code),

@@ -15,8 +15,7 @@ use super::{
 use crate::Envelope;
 use crate::answered::answered;
 use crate::{
-    Batch, Call, Code, Document, Error, Failure, Listing, Prose, Recovery, Sink, Spelling,
-    finish_to,
+    Batch, Call, Code, Document, Error, Failure, Listing, Prose, Recovery, Sink, finish_to,
 };
 
 const NOT_FOUND: Code = Code::new("solar", "planets", "not_found");
@@ -188,7 +187,6 @@ fn a_failed_unwrapped_command_prints_the_failure_document_with_json() {
     let code = finish_to(
         &mut Sink::new(&mut out, &mut err),
         &mut output,
-        Spelling::COLONS,
         PLANETS.envelope(Envelope::Without),
         result,
     );
