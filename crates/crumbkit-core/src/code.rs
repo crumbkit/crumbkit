@@ -108,21 +108,29 @@ impl Code {
 /// [`Spelling::custom`].
 #[derive(Clone, Copy, Debug)]
 pub struct Spelling {
-    /// Writes a code's text to the formatter.
-    write: fn(&Code, &mut fmt::Formatter<'_>) -> fmt::Result,
-    /// The text between the segments of the built-in spelling, which
-    /// [`Spelling::split`] splits at, or `None` for a custom spelling.
-    separator: Option<&'static str>,
+    /// How the spelling writes a code.
+    form: Form,
     /// The tool whose name the spelling writes in place of `crumbkit` in
     /// crumbkit's own codes.
     tool: ToolName,
 }
 
+/// The two forms of a [`Spelling`]. A joined form holds its separator once,
+/// so [`Spelling::spell`] and [`Spelling::split`] cannot disagree on it.
+#[derive(Clone, Copy, Debug)]
+enum Form {
+    /// The segments joined by the separator, which `split` splits at.
+    Joined(&'static str),
+    /// A tool's own function, which `split` cannot read back.
+    Custom(fn(&Code, &mut fmt::Formatter<'_>) -> fmt::Result),
+}
+
 impl Spelling {
     /// Joins the segments with `::`, as in `shelf::books::not_found`.
-    pub const COLONS: Self = Self::built_in("::", |code, f| {
-        write!(f, "{}::{}::{}", code.component, code.area, code.reason)
-    });
+    pub const COLONS: Self = Self {
+        form: Form::Joined("::"),
+        tool: ToolName::CRUMBKIT,
+    };
 
     /// Returns a spelling that writes each code with `write`, which reads the
     /// segments through [`Code::component`], [`Code::area`] and
@@ -149,21 +157,7 @@ impl Spelling {
     #[must_use]
     pub const fn custom(write: fn(&Code, &mut fmt::Formatter<'_>) -> fmt::Result) -> Self {
         Self {
-            write,
-            separator: None,
-            tool: ToolName::CRUMBKIT,
-        }
-    }
-
-    /// Returns a built-in spelling that writes each code with `write`, which
-    /// joins the segments with `separator`.
-    const fn built_in(
-        separator: &'static str,
-        write: fn(&Code, &mut fmt::Formatter<'_>) -> fmt::Result,
-    ) -> Self {
-        Self {
-            write,
-            separator: Some(separator),
+            form: Form::Custom(write),
             tool: ToolName::CRUMBKIT,
         }
     }
@@ -231,7 +225,10 @@ impl Spelling {
     /// ```
     #[must_use]
     pub fn split(self, text: &str) -> Option<(&str, &str, &str)> {
-        let mut parts = text.split(self.separator?);
+        let Form::Joined(separator) = self.form else {
+            return None;
+        };
+        let mut parts = text.split(separator);
         match (parts.next(), parts.next(), parts.next(), parts.next()) {
             (Some(component), Some(area), Some(reason), None) => Some((component, area, reason)),
             _ => None,
@@ -250,6 +247,14 @@ struct Spelled<'a> {
 
 impl fmt::Display for Spelled<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        (self.spelling.write)(&self.spelling.tool.code(self.code), f)
+        let code = self.spelling.tool.code(self.code);
+        match self.spelling.form {
+            Form::Joined(separator) => write!(
+                f,
+                "{}{separator}{}{separator}{}",
+                code.component, code.area, code.reason
+            ),
+            Form::Custom(write) => write(&code, f),
+        }
     }
 }
