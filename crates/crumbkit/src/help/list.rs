@@ -1,5 +1,6 @@
-//! The headed list of a guided group's subcommands, and the line of a list
-//! that the goal list, the topic list and the column list share.
+//! The headed list of a guided group's subcommands, its compact form of
+//! names only, and the line of a list that the goal list, the topic list
+//! and the column list share.
 
 use std::borrow::Cow;
 use std::fmt::Write as _;
@@ -32,6 +33,75 @@ pub(super) fn list(
     header: Style,
     literal: Style,
 ) -> Option<String> {
+    let sections = sections(node, goals);
+    let width = sections
+        .iter()
+        .flat_map(|(_, commands)| commands)
+        .map(|command| command.get_name().chars().count())
+        .max()?;
+    let mut text = String::new();
+    for (heading, commands) in sections {
+        if !text.is_empty() {
+            text.push_str("\n\n");
+        }
+        // Writing to a `String` cannot fail.
+        let _ = write!(text, "{header}{heading}{header:#}");
+        for command in commands {
+            let about = description(command);
+            write_line(
+                &mut text,
+                command.get_name(),
+                about.as_deref(),
+                width,
+                literal,
+            );
+        }
+    }
+    Some(text)
+}
+
+/// Returns the compact list of the visible subcommands of `node` under
+/// `goals`, which a compact group's `-h` prints, or `None` when it lists no
+/// subcommand. Each heading that lists a subcommand has one line: the
+/// heading and a colon in the `header` style, padding to the longest
+/// heading's colon plus two spaces, and the names in the `literal` style,
+/// separated by `, `, as in `Read:    list, show`. The headings are the
+/// ones that [`list`] prints, in its order, and the line leaves out the
+/// descriptions and the aliases.
+pub(super) fn names(
+    node: &Command,
+    goals: &[Goal],
+    header: Style,
+    literal: Style,
+) -> Option<String> {
+    let sections = sections(node, goals);
+    let width = sections
+        .iter()
+        .map(|(heading, _)| heading.chars().count())
+        .max()?;
+    let mut text = String::new();
+    for (heading, commands) in sections {
+        if !text.is_empty() {
+            text.push('\n');
+        }
+        let padding = width - heading.chars().count() + 2;
+        // Writing to a `String` cannot fail.
+        let _ = write!(text, "{header}{heading}:{header:#}{:padding$}", "");
+        for (index, command) in commands.iter().enumerate() {
+            if index > 0 {
+                text.push_str(", ");
+            }
+            let _ = write!(text, "{literal}{}{literal:#}", command.get_name());
+        }
+    }
+    Some(text)
+}
+
+/// Returns each heading of `goals` that names a visible subcommand of
+/// `node`, with those subcommands in the goal's order, and then the
+/// `Commands` heading with the visible subcommands that no goal names, when
+/// there are any.
+fn sections<'a>(node: &'a Command, goals: &[Goal]) -> Vec<(&'static str, Vec<&'a Command>)> {
     let mut sections: Vec<(&str, Vec<&Command>)> = Vec::new();
     for goal in goals {
         let commands: Vec<&Command> = goal
@@ -59,31 +129,7 @@ pub(super) fn list(
     if !unnamed.is_empty() {
         sections.push(("Commands", unnamed));
     }
-
-    let width = sections
-        .iter()
-        .flat_map(|(_, commands)| commands)
-        .map(|command| command.get_name().chars().count())
-        .max()?;
-    let mut text = String::new();
-    for (heading, commands) in sections {
-        if !text.is_empty() {
-            text.push_str("\n\n");
-        }
-        // Writing to a `String` cannot fail.
-        let _ = write!(text, "{header}{heading}{header:#}");
-        for command in commands {
-            let about = description(command);
-            write_line(
-                &mut text,
-                command.get_name(),
-                about.as_deref(),
-                width,
-                literal,
-            );
-        }
-    }
-    Some(text)
+    sections
 }
 
 /// Returns the description of `command` in a goal list: its `about`, or its

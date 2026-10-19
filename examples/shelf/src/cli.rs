@@ -57,11 +57,13 @@ fn list_books(context: &RefusalContext<'_>) -> Vec<Call> {
 }
 
 /// shelf's goal headings, leaves and help topics. shelf guides only its
-/// root, so `shelf -h` lists `books` under `Browse the catalogue`,
-/// `commands` and `schemas` under `Explore the commands` and `self` under
-/// `Review how shelf is used`, and `shelf books -h` keeps clap's
-/// `Commands:` list. The help of each leaf lists its examples, and the
-/// `--help` of a leaf that prints rows describes their columns.
+/// root, and the group is compact, so `shelf -h` names `books` after
+/// `Browse the catalogue:`, `commands` and `schemas` after `Explore the
+/// commands:` and `self` after `Review how shelf is used:`, one line each,
+/// and `shelf --help` lists each command with its description under those
+/// headings. `shelf books -h` keeps clap's `Commands:` list. The help of
+/// each leaf lists its examples, and the `--help` of a leaf that prints
+/// rows describes their columns.
 /// `shelf help catalogue` prints `cli/catalogue.txt`. `shelf -h` names the
 /// person's aliases that expand, which differ between machines, so shelf's
 /// tests opt out of crumbkit's rule against that. A person at a terminal who
@@ -77,7 +79,8 @@ pub const GUIDE: Guide = Guide::new()
             Goal::new("Explore the commands", &["commands", "schemas"]),
             Goal::new("Review how shelf is used", &["self"]),
         ],
-    )])
+    )
+    .compact()])
     .leaves(&[
         Leaf::new(&["books", "list"])
             .examples(&[

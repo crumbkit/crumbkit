@@ -40,13 +40,22 @@ The lines print in this order, each only on the pages named:
    a `Next:` line that opens one of them. A leaf's `-h` ends with a `Next:`
    line that points to `--help` for its columns.
 
-crumbkit's lines appear on guided and unguided pages alike. Help and the
-version keep clap's colours only when standard output is a terminal and the
-guide keeps [terminal detection](../output/terminal.md) on. Help, the
+crumbkit's lines appear on guided and unguided pages alike. Help, the
 version, a topic and the topic list print to standard output with exit code 0.
 
+Help keeps clap's colours only when the [`Sink`](../../../crates/crumbkit/src/sink.rs)
+asks for styles. `parse` asks when standard output is a terminal and the
+guide keeps [terminal detection](../output/terminal.md) on, and then prints
+through clap, which honours `NO_COLOR` and the command's `ColorChoice`.
+`parse_to` writes clap's styles to a sink that `Sink::styled(true)` built,
+whatever its writer is, so a tool that passes its own sink honours
+`NO_COLOR` itself. The styles need crumbkit's `color` feature, which turns on
+clap's `color`. Without it, a styled sink receives plain help. clap renders
+the version without styles, and crumbkit builds topics and the topic list
+without styles, so those print as plain text to every sink.
+
 Why: ADR-0021, ADR-0024, ADR-0039, ADR-0041, ADR-0047, ADR-0049, ADR-0064,
-ADR-0065.
+ADR-0065, ADR-0102.
 
 ## The walk before parsing
 
@@ -84,6 +93,16 @@ states the layout of the list.
 - A list that holds `{` goes in `before_help` instead, because clap expands
   each `{tag}` in a template, and that command loses the tool's own
   `before_help`.
+- A group built with `Group::compact` lists only names in `-h`: one line for
+  each goal, with the heading and a colon, then the subcommand names
+  separated by commas, such as `Read:    list, show`. The names start in one
+  column, two spaces after the longest heading. Commands that no goal names
+  follow on a final `Commands:` line. Its `--help` keeps the full list. The
+  two lists go in `before_help` and `before_long_help`, which are the only
+  parts of clap's template that differ between `-h` and `--help`, so a
+  compact group's command loses the tool's own `before_help` and
+  `before_long_help`. Its `-h` ends its help line with
+  `(see more with '--help')`.
 - A guided list ends a description with the command's visible aliases, as
   clap's `Commands:` list does, such as `[alias: ls]`.
 - A command that the guide does not name keeps clap's `Commands:` list.
@@ -91,7 +110,7 @@ states the layout of the list.
   [`check_guide`](../../../crates/crumbkit-test/src/guide.rs) catches a guide
   that does not match the tree.
 
-Why: ADR-0021, ADR-0027.
+Why: ADR-0021, ADR-0027, ADR-0102.
 
 ## Runtime leaves
 

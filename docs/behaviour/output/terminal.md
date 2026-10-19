@@ -15,8 +15,9 @@ golden file of a piped run also pins what a person sees at a terminal.
 
 Detection changes only these:
 
-- Help and the version keep clap's colours when standard output is a
-  terminal ([help](../help/README.md)).
+- Help keeps clap's colours when standard output is a terminal. `parse`
+  marks its `Sink` as styled then, and a tool that passes its own sink to
+  `parse_to` marks it with `Sink::styled` ([help](../help/README.md)).
 - `Output::progress_allowed` is true only when `--json` is off and standard
   error is a terminal ([output](README.md#following-the-callers-format)).
 - A picker and `Output::confirm` ask only when standard input and standard
@@ -25,7 +26,7 @@ Detection changes only these:
 - The usage log's `caller` field reads detection. The usage log is not
   output that a caller reads ([usage log](../usage-log/README.md)).
 
-Why: ADR-0049.
+Why: ADR-0049, ADR-0102.
 
 ## Turning detection off
 

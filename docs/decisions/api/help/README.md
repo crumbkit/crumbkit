@@ -24,3 +24,4 @@ that each path through a tool's help costs.
 - [ADR-0033. Help weight](0033-weigh.md)
 - [ADR-0037. Exit codes](0037-exit-codes.md)
 - [ADR-0044. Command reference](0044-command-reference.md)
+- [ADR-0102. Styled sinks and compact groups](0102-styled-sinks-and-compact-groups.md)
