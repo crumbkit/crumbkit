@@ -7,10 +7,9 @@ use std::num::NonZeroUsize;
 use clap::{Args, Parser, Subcommand};
 use crumbkit::commands::{COMMANDS_LIST, CommandsList};
 use crumbkit::help::{Effects, Example, Guide, Leaf};
-use crumbkit::pick::Choices;
+use crumbkit::pick::{Choices, Menu};
 use crumbkit::schemas::{SCHEMAS_LIST, SCHEMAS_SHOW, SchemasList, SchemasShow};
 use crumbkit::{DryRun, Expect, NoInput, Page, ViewFlags, Yes};
-use crumbkit_picker::Menu;
 
 use crate::lists::{
     ENTRIES_EXPORT, ENTRIES_LIST, ENTRIES_SET, ENTRIES_STREAM, LISTS_LIST, LISTS_SHOW, choices,

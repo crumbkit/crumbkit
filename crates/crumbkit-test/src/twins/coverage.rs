@@ -192,7 +192,7 @@ impl<'a> Twins<'a> {
 /// A twin may refuse with one of crumbkit's codes, such as
 /// `crumbkit::cli::usage`. Every code in the `crumbkit` component is one of
 /// crumbkit's codes, including the codes of crumbkit's add-on crates, such
-/// as crumbkit-child's `crumbkit::child::no_json`. The check requires no
+/// as crumbkit-child's `crumbkit::child::not_found`. The check requires no
 /// twin for crumbkit's codes, nor for a declared code that the guide's
 /// [`Guide::codes`](crumbkit::help::Guide::codes) prints in place of one of
 /// them, because crumbkit raises that failure.

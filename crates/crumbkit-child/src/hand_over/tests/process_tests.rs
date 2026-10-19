@@ -9,9 +9,9 @@
 use std::os::unix::process::CommandExt as _;
 use std::process::{self, ExitCode, ExitStatus};
 
-use super::{BOOKS_JSON, MISSING, command, output, respond};
+use super::{MISSING, command, output, respond};
 
-use crate::hand_over::{hand_over_json_to, hand_over_to};
+use crate::hand_over::hand_over_to;
 
 /// The variable that tells a signal test's process to act as the tool.
 const TOOL: &str = "CRUMBKIT_HAND_OVER_TOOL";
@@ -69,20 +69,6 @@ fn a_real_child_that_sigterm_ends_returns_143() {
     let responded = respond(|sink| hand_over_to(sink, output, child));
 
     assert_eq!(responded.code, ExitCode::from(143));
-}
-
-#[test]
-fn a_real_child_asked_for_json_with_its_declared_arguments_prints_inside_the_envelope() {
-    let output = output(&["--json"]);
-    // The script prints a book only when its last argument is `--json`,
-    // which `BOOKS_JSON` adds.
-    let child = sh(r#"test "$0" = --json && printf '[{"title":"Dune","pages":412}]'"#);
-    let responded = respond(|sink| hand_over_json_to(sink, output, child, BOOKS_JSON));
-
-    assert_eq!(responded.code, ExitCode::SUCCESS);
-    let expected =
-        "{\"schema\":\"vault/books-list/v1\",\"data\":[{\"title\":\"Dune\",\"pages\":412}]}\n";
-    assert_eq!(responded.out, expected);
 }
 
 #[test]

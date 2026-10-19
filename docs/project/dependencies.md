@@ -18,8 +18,9 @@ Why: ADR-0003.
 ## The default build
 
 The default build of crumbkit depends on clap, serde, serde_json, schemars
-and is-ai-agent. crumbkit-core depends only on serde, serde_json and
-schemars, so a crate that uses crumbkit-core alone builds no clap.
+and is-ai-agent. The failure, document, call and row types need only serde,
+serde_json and schemars, and crumbkit holds them beside the parsing and
+output that need clap (ADR-0097).
 
 crumbkit enables two clap features:
 
@@ -35,7 +36,7 @@ is-ai-agent has no dependencies of its own. crumbkit reads it only when a
 question is about to be asked, so a tool does not ask an agent a question
 it cannot answer.
 
-Why: ADR-0003, ADR-0001, ADR-0032, ADR-0043.
+Why: ADR-0003, ADR-0001, ADR-0097, ADR-0043.
 
 ## Features and separate crates
 
@@ -48,7 +49,6 @@ Why: ADR-0003, ADR-0001, ADR-0032, ADR-0043.
 | crumbkit-aliases | toml. The crate is separate, so only a tool with personal aliases builds toml. |
 | crumbkit-child | signal-hook with no features, which crumbkit-usage also uses, so a tool can hand the terminal to a child while it ignores Ctrl-C. The crate is separate, so only a tool that hands the terminal over builds it. |
 | crumbkit-usage | The usage log's dependencies: siphasher, etcetera, humantime and signal-hook, and getrandom on Windows, which proptest already brings into the lock file, because Windows has no `/dev/urandom`. The crate is separate, so only a tool that keeps the log builds them. |
-| crumbkit-picker | Nothing beyond the standard library, so a tool that wants a picker with a terminal library chooses and builds that library itself. |
 | cargo-crumbkit | etcetera, which crumbkit-usage already uses, so `weigh --usage` finds a tool's log with the same calls that wrote it. |
 
 Why: ADR-0003, ADR-0001, ADR-0016, ADR-0027, ADR-0029, ADR-0030, ADR-0033,

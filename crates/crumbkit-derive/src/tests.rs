@@ -149,11 +149,11 @@ fn a_type_without_alternatives_fields_urls_or_diagnostics_gets_only_code_and_rec
 #[test]
 fn the_crate_key_changes_the_path_of_every_crumbkit_item() {
     let output = expanded(quote! {
-        #[failure(crate = ::crumbkit_core, code = TIMED_OUT, recovery = Recovery::Retry)]
+        #[failure(crate = ::my_crate, code = TIMED_OUT, recovery = Recovery::Retry)]
         struct Timeout;
     });
     assert!(
-        output.contains(":: crumbkit_core :: Failure for Timeout"),
+        output.contains(":: my_crate :: Failure for Timeout"),
         "{output}"
     );
     assert!(!output.contains(":: crumbkit ::"), "{output}");
@@ -410,7 +410,7 @@ fn a_variant_key_on_an_enum_type_is_refused() {
 fn the_crate_key_on_a_variant_is_refused() {
     let message = refusal(quote! {
         enum BooksError {
-            #[failure(crate = ::crumbkit_core, code = NOT_FOUND, hint = "list them")]
+            #[failure(crate = ::my_crate, code = NOT_FOUND, hint = "list them")]
             NotFound,
         }
     });

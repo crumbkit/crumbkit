@@ -281,7 +281,7 @@ impl<R: Row, O: Write, W: Write> Streaming<R, O, W> {
             return ControlFlow::Break(());
         }
         self.items += 1;
-        self.problems += usize::from(crumbkit_core::problems::reports(item));
+        self.problems += usize::from(crate::row::problems::reports(item));
         self.send()
     }
 

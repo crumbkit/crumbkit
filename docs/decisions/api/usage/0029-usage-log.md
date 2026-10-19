@@ -1,7 +1,7 @@
 # ADR-0029. Usage log
 
 - Date: 2026-10-10
-- Status: accepted
+- Status: amended by ADR-0095
 
 ## Context
 

@@ -354,9 +354,8 @@ fn drop_repeated_keys(value: &mut FieldValue<'static>, repeated: &mut Vec<String
             *entries = kept;
         }
         // A scalar or null holds no object. `FieldValue` is
-        // `#[non_exhaustive]` and lives in crumbkit-core, which releases
-        // with crumbkit (ADR-0012), so a new variant that holds values gets
-        // its own arm in the release that adds it.
+        // `#[non_exhaustive]`, so a new variant that holds values gets its
+        // own arm in the release that adds it.
         _ => {}
     }
 }

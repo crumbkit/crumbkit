@@ -10,7 +10,7 @@ rows report a problem.
 A command that may show fewer rows than matched flattens
 [`Page`](../../../../crates/crumbkit/src/page.rs), so the paging flags belong to
 that command and its `--help` shows its own default limit. The command
-returns a [`Listing`](../../../../crates/crumbkit-core/src/listing.rs). The
+returns a [`Listing`](../../../../crates/crumbkit/src/listing.rs). The
 rustdoc of both types describes how a handler builds a counted page, an
 uncounted page, or a listing from rows already in memory.
 
@@ -46,7 +46,7 @@ holds for a counted listing whose total is 0 and for an uncounted listing,
 which has no total. The default wording is `no {description} match`, from
 `Listing::described`, or `no rows match` for a listing without a
 description.
-[`Document::when_empty`](../../../../crates/crumbkit-core/src/document.rs) sets
+[`Document::when_empty`](../../../../crates/crumbkit/src/document.rs) sets
 the document's own wording in one line. `self usage` prints
 `note: the usage log holds no findings`.
 
@@ -146,7 +146,7 @@ Why: ADR-0050.
 ## Rows that report a problem
 
 A row type names the field that marks a problem with
-[`Row::PROBLEM`](../../../../crates/crumbkit-core/src/row.rs), whose rustdoc
+[`Row::PROBLEM`](../../../../crates/crumbkit/src/row.rs), whose rustdoc
 says which values report a problem. crumbkit-aliases' `AliasRow` names its
 `problem` column, so `aliases list` exits with 1 while an entry of the
 aliases file does not work.

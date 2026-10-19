@@ -1,4 +1,4 @@
-use crumbkit_core::{Failure, Recovery};
+use crate::{Failure, Recovery};
 
 use super::{Selection, Table, View};
 use crate::ViewFlags;
