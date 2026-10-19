@@ -16,3 +16,4 @@ children, and the report that `self usage` reads from the log.
 - [ADR-0029. Usage log](0029-usage-log.md)
 - [ADR-0030. Trace context](0030-trace-context.md)
 - [ADR-0034. Usage report](0034-usage-report.md)
+- [ADR-0095. crumbkit-child hands over text and the usage log records its own signals](0095-text-hand-over-and-own-signals.md)

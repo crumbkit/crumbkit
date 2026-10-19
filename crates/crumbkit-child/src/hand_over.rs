@@ -1,14 +1,13 @@
 //! Running another program that owns the terminal, such as an editor, a
 //! pager or a wrapped tool, as a command's whole response (ADR-0042).
 //!
-//! A command that runs such a program calls [`hand_over`] or
-//! [`hand_over_json`] last, in place of [`finish`](crumbkit::finish), and
-//! returns the exit code it gives. Without `--json`, the child gets the
-//! terminal: it reads standard input and writes standard output and
-//! standard error directly. The tool ignores SIGINT and SIGQUIT from the
-//! moment the child starts until the tool ends, or SIGINT and SIGBREAK
-//! while the child runs on Windows, so Ctrl-C reaches only the child, and
-//! the tool returns the child's exit code.
+//! A command that runs such a program calls [`hand_over`] last, in place of
+//! [`finish`](crumbkit::finish), and returns the exit code it gives. The
+//! child gets the terminal: it reads standard input and writes standard
+//! output and standard error directly. The tool ignores SIGINT and SIGQUIT
+//! from the moment the child starts until the tool ends, or SIGINT and
+//! SIGBREAK while the child runs on Windows, so Ctrl-C reaches only the
+//! child, and the tool returns the child's exit code.
 //!
 //! ```no_run
 //! use std::process::{Command, ExitCode};
@@ -22,96 +21,34 @@
 //! }
 //! ```
 //!
-//! A child that prints a typed JSON document when asked declares how it is
-//! asked and which document it prints with [`Json`]. Under `--json`,
-//! [`hand_over_json`] adds the declared arguments, reads the child's standard
-//! output as the document's type, and prints it as `finish` prints a result,
-//! inside the usual envelope. A child without a JSON form refuses `--json`.
+//! The child's output is text that the terminal shows, so `--json` and
+//! `--fields` are refused with `<tool>::cli::usage` and the exit code of a
+//! refused command line, which is 2 unless the guide lists another, before
+//! the program starts. `--long` changes nothing. A tool that wants a
+//! child's JSON runs the child itself and reads its output.
 //!
-//! Every failure prints as `finish` prints one, with one of these codes in
-//! the spelling that the tool's guide sets, or the tool's own code when its
-//! guide renames it. Each exit code below is crumbkit's default, which an
-//! [`Exit`](crumbkit::help::Exit) of the guide that lists the code replaces:
+//! A child that cannot run fails as `finish` prints a failure, with one of
+//! these codes in the spelling that the tool's guide sets, or the tool's
+//! own code when its guide renames it. Each exits with 1 unless an
+//! [`Exit`](crumbkit::help::Exit) of the guide lists the code:
 //!
-//! - `<tool>::child::no_json`, the exit code of a refused command line,
-//!   which is 2 by default, when the caller passed
-//!   `--json` to a command whose child has no JSON form.
-//! - `<tool>::child::not_found`, exit code 1, when the program does not
-//!   exist.
-//! - `<tool>::child::not_started`, exit code 1, when the operating system
-//!   refused to start the program or to wait for it.
-//! - `<tool>::child::bad_json`, exit code 1, when the child's output under
-//!   `--json` is not the declared document.
-//! - `<tool>::child::failed`, with the child's exit code, when the child
-//!   failed under `--json`.
-//!
-//! `--fields` without `--json` is refused with `<tool>::cli::usage` and
-//! the exit code of a refused command line, because the child's own text has no columns to select, and
-//! `--long` changes nothing.
+//! - `<tool>::child::not_found`, when the program does not exist.
+//! - `<tool>::child::not_started`, when the operating system refused to
+//!   start the program or to wait for it.
 
 use std::ffi::OsStr;
 use std::io::{self, Write};
-use std::process::{self, Command, ExitCode, ExitStatus, Stdio};
+use std::process::{Command, ExitCode, ExitStatus, Stdio};
 
-use serde::de::DeserializeOwned;
+use crumbkit::{Failure as _, Output, Sink};
 
-use crumbkit::{Document, Failure as _, Output, Rows, Sink};
-
-use crate::codes;
 use crate::error::ChildError;
 use crate::signals;
 
 #[cfg(test)]
 mod tests;
 
-/// How a child asks for JSON, and the document it then prints.
-///
-/// A tool declares one constant for each child with a JSON form and passes
-/// it to [`hand_over_json`]:
-///
-/// ```
-/// # #[derive(serde::Serialize, serde::Deserialize, schemars::JsonSchema)]
-/// # struct Commit { id: String }
-/// # impl crumbkit::Row for Commit { const COLUMNS: &'static [&'static str] = &["id"]; }
-/// use crumbkit::Document;
-/// use crumbkit_child::Json;
-///
-/// const LOG_LIST: Document<Vec<Commit>> =
-///     Document::new("vault", "log-list", 1, "The commits of the vault.");
-/// const LOG_JSON: Json<Vec<Commit>> = Json::new(&["--format", "json"], LOG_LIST);
-/// ```
-#[derive(Debug)]
-pub struct Json<T> {
-    /// The arguments that make the child print JSON, which go after the
-    /// arguments the tool gave the child.
-    args: &'static [&'static str],
-    /// The document whose type the child's output is read as, and under
-    /// whose id it prints.
-    document: Document<T>,
-}
-
-impl<T> Json<T> {
-    /// Returns the JSON form of a child that prints a `T` when it receives
-    /// `args` after its other arguments. `crumbkit::finish` prints the value
-    /// under the id of `document`.
-    #[must_use]
-    pub const fn new(args: &'static [&'static str], document: Document<T>) -> Self {
-        Self { args, document }
-    }
-}
-
-// `Json<T>` is `Copy` for every `T`, as `Document<T>` is, because it holds
-// no `T`. A derive would require `T: Copy`.
-impl<T> Clone for Json<T> {
-    fn clone(&self) -> Self {
-        *self
-    }
-}
-
-impl<T> Copy for Json<T> {}
-
-/// Hands the terminal to `child`, waits for it, and returns its exit code,
-/// for a child with no JSON form.
+/// Hands the terminal to `child`, waits for it, and returns its exit code.
 ///
 /// crumbkit sets the child's standard input, output and error to the
 /// tool's own, and adds the variables of
@@ -133,92 +70,32 @@ impl<T> Copy for Json<T> {}
 /// [`Observer::interrupted`](crumbkit::events::Observer::interrupted) when a
 /// signal ended the child, so the usage log's line records both.
 ///
-/// It runs no child and fails with `<tool>::child::no_json` when the
-/// caller passed `--json`, and with `<tool>::cli::usage` when the caller
-/// passed `--fields`. Both exit with the code of a refused command line,
-/// which is 2 unless the guide lists another. The module
+/// It runs no child and refuses with `<tool>::cli::usage` when the caller
+/// passed `--json` or `--fields`, because the child's output is text that
+/// the terminal shows. The refusal exits with the code of a refused command
+/// line, which is 2 unless the guide lists another. The module
 /// documentation lists the failures of a child that cannot start.
 pub fn hand_over(output: &mut Output, child: Command) -> ExitCode {
     hand_over_to(&mut Sink::standard(), output, child)
 }
 
-/// Runs `child` as [`hand_over`] describes, with its failures printed to
-/// `sink`.
-fn hand_over_to<O: Write, W: Write>(
-    sink: &mut Sink<O, W>,
-    output: &mut Output,
-    child: Command,
-) -> ExitCode {
-    if output.is_json() {
-        let failure = ChildError::NoJson {
-            program: program(&child),
-        };
-        output.print_failure(sink, &failure);
-        return crumbkit::events::ended(no_json_exit(output), None);
-    }
-    terminal(sink, output, child)
-}
-
-/// Runs `child` as [`hand_over`] does without `--json`, and as `finish` does
-/// with `--json`: crumbkit adds the arguments of `json`, reads the child's
-/// standard output as a `T` and prints it in the format that `output`
-/// chooses, under the id of `json`'s document.
-///
-/// Under `--json`, the child's standard output is a pipe that crumbkit reads
-/// to its end and holds in memory. Its standard input and standard error
-/// stay the tool's, so the child can still ask a question or report a
-/// problem. `--fields`, `--long` and `--full` shape the value as they shape
-/// any result, and a `--fields` name that `T` lacks is refused before the
-/// child runs.
-///
-/// Under `--json`, a child that exits with a code other than 0 fails with
-/// `<tool>::child::failed` and returns the child's code, and its standard
-/// output is not read as the document. A child whose standard output is not
-/// a `T` fails with `<tool>::child::bad_json` and exit code 1.
-pub fn hand_over_json<T: Rows + DeserializeOwned>(
-    output: &mut Output,
-    child: Command,
-    json: Json<T>,
-) -> ExitCode {
-    hand_over_json_to(&mut Sink::standard(), output, child, json)
-}
-
-/// Runs `child` as [`hand_over_json`] describes, with its result and
-/// failures printed to `sink`.
-fn hand_over_json_to<T: Rows + DeserializeOwned, O: Write, W: Write>(
-    sink: &mut Sink<O, W>,
-    output: &mut Output,
-    mut child: Command,
-    json: Json<T>,
-) -> ExitCode {
-    if !output.is_json() {
-        return terminal(sink, output, child);
-    }
-    if let Some(code) = output.refuse_view(sink, json.document) {
-        return code;
-    }
-    child
-        .args(json.args)
-        .envs(crumbkit::trace::child_env())
-        .stdin(Stdio::inherit())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::inherit());
-    let program = program(&child);
-    let captured = signals::while_running(|| child.output());
-    respond_json(sink, output, json.document, program, captured)
-}
-
-/// Why `--fields` is refused without `--json`, which ends the refusal's
+/// Why `--json` and `--fields` are refused, which ends each refusal's
 /// message.
 const TEXT_ONLY: &str = "this command hands the terminal to another program";
 
-/// Hands the terminal to `child` and returns its exit code, after refusing
-/// `--fields`.
-fn terminal<O: Write, W: Write>(
+/// Runs `child` as [`hand_over`] describes, with its refusals and failures
+/// printed to `sink`.
+fn hand_over_to<O: Write, W: Write>(
     sink: &mut Sink<O, W>,
     output: &mut Output,
     mut child: Command,
 ) -> ExitCode {
+    if output.is_json() {
+        let refused = ChildError::JsonRefused {
+            program: program(&child),
+        };
+        return fail(sink, output, &refused);
+    }
     if let Some(code) = output.refuse_fields_for_text(sink, TEXT_ONLY) {
         return code;
     }
@@ -251,49 +128,10 @@ fn respond_text<O: Write, W: Write>(
     }
 }
 
-/// Prints the document that a child printed under `--json`, or the failure
-/// of a child that could not run, failed or printed something else, and
-/// returns the exit code.
-fn respond_json<T: Rows + DeserializeOwned, O: Write, W: Write>(
-    sink: &mut Sink<O, W>,
-    output: &mut Output,
-    document: Document<T>,
-    program: String,
-    captured: io::Result<process::Output>,
-) -> ExitCode {
-    let captured = match captured {
-        Ok(captured) => captured,
-        Err(error) => {
-            return fail(sink, output, &ChildError::start(program, error));
-        }
-    };
-    if !captured.status.success() {
-        if signals::ended_by(captured.status).is_some() {
-            crumbkit::events::interrupted();
-        }
-        let exit = exit_number(captured.status);
-        output.print_failure(sink, &ChildError::Failed { program, exit });
-        return crumbkit::events::ended(exit, None);
-    }
-    match serde_json::from_slice::<T>(&captured.stdout) {
-        Ok(value) => {
-            let result: Result<T, ChildError> = Ok(value);
-            ExitCode::from(crumbkit::finish_to(sink, output, document, result))
-        }
-        Err(error) => {
-            let failure = ChildError::BadJson {
-                program,
-                document: document.to_string(),
-                error,
-            };
-            fail(sink, output, &failure)
-        }
-    }
-}
-
 /// Prints `failure` as `finish` prints a failure, reports its exit code to
 /// the observer, and returns it. The exit code is the one that the guide
-/// lists for the failure's code, or 1 (ADR-0042).
+/// gives the failure's code: the exit that lists it, 2 for a refused
+/// command line, and otherwise 1 (ADR-0042).
 fn fail<O: Write, W: Write>(
     sink: &mut Sink<O, W>,
     output: &mut Output,
@@ -301,16 +139,6 @@ fn fail<O: Write, W: Write>(
 ) -> ExitCode {
     output.print_failure(sink, failure);
     crumbkit::events::ended(output.failure_exit(failure.code()), None)
-}
-
-/// Returns the exit code of `--json` on a command whose child has no JSON
-/// form: the exit that the guide lists for `<tool>::child::no_json`, and
-/// otherwise the exit of a refused command line, which is 2 unless the
-/// guide lists another (ADR-0042).
-fn no_json_exit(output: &Output) -> u8 {
-    output
-        .listed_exit(&codes::NO_JSON)
-        .unwrap_or_else(|| output.failure_exit(&crumbkit::codes::CLI_USAGE))
 }
 
 /// Returns the name of the program that `child` runs, for messages.

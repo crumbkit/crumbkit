@@ -10,33 +10,17 @@ use std::os::windows::process::ExitStatusExt as _;
 use std::process::{self, ExitCode, ExitStatus};
 
 use clap::{CommandFactory as _, Parser};
-use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
 
-use super::{Json, hand_over_json_to, hand_over_to, respond_json, respond_text};
+use super::{hand_over_to, respond_text};
 use crumbkit::help::{Exit, Guide};
-use crumbkit::{Document, Output, Row, Sink, Spelling, ViewFlags};
+use crumbkit::{Output, Sink, Spelling, ViewFlags};
 
-use crate::codes;
 use crate::testing::assert_one_word_apart;
 
 // The process tests run their children through `sh` and send them Unix
 // signals.
 #[cfg(unix)]
 mod process_tests;
-
-/// A row that a child prints as JSON.
-#[derive(Serialize, Deserialize, JsonSchema)]
-struct Book {
-    title: String,
-    pages: u32,
-}
-
-impl Row for Book {
-    const COLUMNS: &'static [&'static str] = &["title", "pages"];
-}
-
-const BOOKS: Document<Vec<Book>> = Document::new("vault", "books-list", 1, "The test books.");
 
 /// A tool with the output flags and nothing else.
 #[derive(Parser)]
@@ -106,26 +90,6 @@ fn text(status: io::Result<ExitStatus>) -> Responded {
     respond(|sink| respond_text(sink, &mut output, "vi".to_owned(), status))
 }
 
-/// Returns what `respond_json` does under `--json` and `flags` for a child
-/// that printed `stdout` and ended with `status`.
-fn json(flags: &[&str], status: ExitStatus, stdout: &str) -> Responded {
-    let mut output = output(&[&["--json"], flags].concat());
-    let captured = process::Output {
-        status,
-        stdout: stdout.as_bytes().to_vec(),
-        stderr: Vec::new(),
-    };
-    respond(|sink| {
-        respond_json(
-            sink,
-            &mut output,
-            BOOKS,
-            "vault-log".to_owned(),
-            Ok(captured),
-        )
-    })
-}
-
 #[test]
 fn a_child_that_holds_the_terminal_returns_its_own_exit_code_and_prints_nothing() {
     for code in [0, 1, 2, 3, 255] {
@@ -183,63 +147,10 @@ error: cannot run `vi`
     assert_eq!(responded.err, expected);
 }
 
-#[test]
-fn a_childs_json_prints_inside_the_envelope_of_the_declared_document() {
-    let stdout = r#"[{"title":"Dune","pages":412}]"#;
-    let responded = json(&[], exited(0), stdout);
-
-    assert_eq!(responded.code, ExitCode::SUCCESS);
-    let expected =
-        "{\"schema\":\"vault/books-list/v1\",\"data\":[{\"title\":\"Dune\",\"pages\":412}]}\n";
-    assert_eq!(responded.out, expected);
-    assert_eq!(responded.err, "");
-}
-
-#[test]
-fn fields_select_the_fields_of_a_childs_json() {
-    let stdout = r#"[{"title":"Dune","pages":412}]"#;
-    let responded = json(&["--fields", "pages"], exited(0), stdout);
-
-    let expected = "{\"schema\":\"vault/books-list/v1\",\"data\":[{\"pages\":412}]}\n";
-    assert_eq!(responded.out, expected);
-}
-
-#[test]
-fn a_childs_output_that_is_not_the_document_fails_with_bad_json() {
-    let responded = json(&[], exited(0), "Dune, 412 pages\n");
-
-    assert_eq!(responded.code, ExitCode::FAILURE);
-    let document: serde_json::Value = serde_json::from_str(&responded.out).unwrap();
-    assert_eq!(document["code"], "vault::child::bad_json");
-    assert_eq!(
-        document["message"],
-        "`vault-log` printed output that is not a vault/books-list/v1 document"
-    );
-    assert_eq!(document["recovery"]["kind"], "none");
-}
-
-#[test]
-fn a_child_that_fails_under_json_prints_failed_and_returns_its_own_code() {
-    let responded = json(&[], exited(3), r#"[{"title":"Dune","pages":412}]"#);
-
-    assert_eq!(responded.code, ExitCode::from(3));
-    let document: serde_json::Value = serde_json::from_str(&responded.out).unwrap();
-    assert_eq!(document["code"], "vault::child::failed");
-    assert_eq!(document["message"], "`vault-log` exited with code 3");
-}
-
-// Only Unix ends a process with a signal number.
-#[cfg(unix)]
-#[test]
-fn a_child_that_a_signal_ended_under_json_returns_128_plus_the_signal_number() {
-    assert_eq!(json(&[], killed(2), "").code, ExitCode::from(130));
-}
-
 #[cfg(windows)]
 #[test]
 fn a_child_that_ctrl_c_ended_returns_130_as_a_child_that_sigint_ended_does() {
     assert_eq!(text(Ok(interrupted())).code, ExitCode::from(130));
-    assert_eq!(json(&[], interrupted(), "").code, ExitCode::from(130));
 }
 
 #[cfg(windows)]
@@ -265,54 +176,38 @@ const MISSING: &str = "crumbkit-test-no-such-program";
 /// differ from `refused` by one word, and with them the child runs, so the
 /// missing program fails with `vault::child::not_found` (TEST-1).
 #[track_caller]
-fn admits(refused: &[&str], flags: &[&str], json: bool) {
+fn admits(refused: &[&str], flags: &[&str]) {
     assert_one_word_apart(refused, flags);
     let mut output = output(flags);
-    let responded = respond(|sink| {
-        let child = command(MISSING);
-        if json {
-            hand_over_json_to(sink, &mut output, child, BOOKS_JSON)
-        } else {
-            hand_over_to(sink, &mut output, child)
-        }
-    });
+    let responded = respond(|sink| hand_over_to(sink, &mut output, command(MISSING)));
     let printed = format!("{}{}", responded.out, responded.err);
     assert!(printed.contains("vault::child::not_found"), "{printed}");
 }
 
-/// The JSON form of a child that prints [`BOOKS`].
-const BOOKS_JSON: Json<Vec<Book>> = Json::new(&["--json"], BOOKS);
-
 #[test]
-fn json_for_a_child_without_a_json_form_is_refused_with_no_json_before_it_runs() {
-    admits(&["--json"], &[], false);
+fn json_is_refused_with_the_usage_code_before_the_child_runs() {
+    admits(&["--json"], &[]);
     let mut output = output(&["--json"]);
-    let responded = respond(|sink| {
-        let child = command(MISSING);
-        hand_over_to(sink, &mut output, child)
-    });
+    let responded = respond(|sink| hand_over_to(sink, &mut output, command(MISSING)));
 
     assert_eq!(responded.code, ExitCode::from(2));
     let document: serde_json::Value = serde_json::from_str(&responded.out).unwrap();
-    assert_eq!(document["code"], "vault::child::no_json");
+    assert_eq!(document["code"], "vault::cli::usage");
+    assert_eq!(
+        document["message"],
+        format!("--json is not available, because this command hands the terminal to `{MISSING}`")
+    );
     assert_eq!(
         document["recovery"]["text"],
         format!("run the command without --json to read the output of `{MISSING}`")
     );
+    assert_eq!(document["fields"]["argument"], "--json");
 }
 
 #[test]
-fn fields_without_json_are_refused_with_exit_code_2_before_the_child_runs() {
-    admits(
-        &["--fields", "title"],
-        &["--json", "--fields", "title"],
-        true,
-    );
+fn fields_are_refused_with_the_usage_code_before_the_child_runs() {
     let mut output = output(&["--fields", "title"]);
-    let responded = respond(|sink| {
-        let child = command(MISSING);
-        hand_over_json_to(sink, &mut output, child, BOOKS_JSON)
-    });
+    let responded = respond(|sink| hand_over_to(sink, &mut output, command(MISSING)));
 
     assert_eq!(responded.code, ExitCode::from(2));
     let expected = "\
@@ -323,49 +218,20 @@ error: --fields selects the columns of a table, and this command hands the termi
     assert_eq!(responded.err, expected);
 }
 
-#[test]
-fn an_unknown_field_under_json_is_refused_before_the_child_runs() {
-    admits(
-        &["--json", "--fields", "author"],
-        &["--json", "--fields", "title"],
-        true,
-    );
-    let mut output = output(&["--json", "--fields", "author"]);
-    let responded = respond(|sink| {
-        let child = command(MISSING);
-        hand_over_json_to(sink, &mut output, child, BOOKS_JSON)
-    });
-
-    assert_eq!(responded.code, ExitCode::from(2));
-    let document: serde_json::Value = serde_json::from_str(&responded.out).unwrap();
-    assert_eq!(document["code"], "vault::cli::usage");
-}
-
 /// A guide that gives a refused command line the exit code 64.
 const USAGE_64: Guide = Guide::new().exits(&[
     Exit::new(64, "The command line was refused.").failures(&[&crumbkit::codes::CLI_USAGE])
 ]);
 
-/// A guide that gives a refused command line 64 and `no_json` 3.
-const NO_JSON_3: Guide = Guide::new().exits(&[
-    Exit::new(64, "The command line was refused.").failures(&[&crumbkit::codes::CLI_USAGE]),
-    Exit::new(3, "The command has no JSON form.").failures(&[&codes::NO_JSON]),
-]);
-
-/// Returns the exit code of `--json` on a child without a JSON form, under
-/// `guide`.
-fn no_json_exit(guide: &'static Guide) -> ExitCode {
+#[test]
+fn a_refused_json_exits_with_the_code_that_the_guide_gives_a_refused_command_line() {
     let words = ["vault", "--json"];
     let view = Tool::try_parse_from(words).unwrap().view;
-    let mut output = Output::new(view, Tool::command(), guide, words);
-    respond(|sink| hand_over_to(sink, &mut output, command(MISSING))).code
-}
+    let mut output = Output::new(view, Tool::command(), &USAGE_64, words);
 
-#[test]
-fn a_child_that_cannot_answer_json_exits_as_the_guide_s_refused_command_line_unless_an_exit_lists_no_json()
- {
-    assert_eq!(no_json_exit(&USAGE_64), ExitCode::from(64));
-    assert_eq!(no_json_exit(&NO_JSON_3), ExitCode::from(3));
+    let code = respond(|sink| hand_over_to(sink, &mut output, command(MISSING))).code;
+
+    assert_eq!(code, ExitCode::from(64));
 }
 
 /// A spelling that joins the segments of a code with `.`.
@@ -387,21 +253,6 @@ fn a_guide_with_a_custom_spelling_prints_it_through_hand_over_without_a_further_
     let mut output = dotted(&["--json"]);
 
     let responded = respond(|sink| hand_over_to(sink, &mut output, command("vi")));
-
-    assert!(
-        responded.out.contains(r#""code":"vault.child.no_json""#),
-        "{}",
-        responded.out
-    );
-}
-
-#[test]
-fn a_guide_with_a_custom_spelling_prints_it_through_hand_over_json_without_a_further_argument() {
-    let mut output = dotted(&["--json", "--fields", "author"]);
-    let json = Json::new(&["--json"], BOOKS);
-
-    let responded =
-        respond(|sink| hand_over_json_to(sink, &mut output, command("vault-log"), json));
 
     assert!(
         responded.out.contains(r#""code":"vault.cli.usage""#),

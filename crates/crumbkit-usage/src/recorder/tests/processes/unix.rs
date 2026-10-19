@@ -3,13 +3,13 @@
 
 use std::os::unix::process::ExitStatusExt as _;
 use std::process::ExitCode;
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
 use clap::Command;
 
 use super::typed;
 use super::{is_child, log_lines, run_child};
-use crate::recorder::{RECORDER, Signals, State, ended, start, start_with};
+use crate::recorder::start;
 use crate::testing::TempDir;
 use crumbkit::Spelling;
 
@@ -47,45 +47,6 @@ fn the_signal_test_s_child_starts_the_log_and_raises_sigterm() {
     // The signal ends the process, so the test never gets past the wait.
     std::thread::sleep(Duration::from_secs(10));
     panic!("SIGTERM did not end the process");
-}
-
-#[test]
-fn a_tool_that_owns_its_signals_keeps_running_after_sigterm_and_reports_its_own_exit() {
-    let state = TempDir::new("owned");
-
-    let status = run_child(
-        "recorder::tests::processes::unix::the_owned_signal_test_s_child_raises_sigterm_and_ends_with_124",
-        &state,
-    );
-
-    assert!(status.success());
-    let lines = log_lines(&state, "owner");
-    assert_eq!(lines.len(), 1);
-    assert_eq!(lines[0]["interrupted"], true);
-    assert_eq!(lines[0]["exit"], 124);
-    assert_eq!(lines[0]["out_bytes"], 5);
-}
-
-/// Runs only as the child of the owned-signal test, which sets [`CHILD`].
-/// It starts the log for a tool that owns its signals, raises SIGTERM,
-/// waits until the log's thread has recorded it, and reports exit 124.
-#[test]
-fn the_owned_signal_test_s_child_raises_sigterm_and_ends_with_124() {
-    if !is_child() {
-        return;
-    }
-    let _log = start_with(Signals::Tool);
-    typed(&Command::new("owner"), &["owner".into()], Spelling::COLONS);
-    signal_hook::low_level::raise(signal_hook::consts::SIGTERM).unwrap();
-    let waited = Instant::now();
-    while !matches!(&*RECORDER.lock().unwrap(), State::Recording(recorder) if recorder.signalled) {
-        assert!(
-            waited.elapsed() < Duration::from_secs(10),
-            "the signal was not recorded"
-        );
-        std::thread::sleep(Duration::from_millis(5));
-    }
-    ended(124, Some(5));
 }
 
 #[test]
@@ -132,49 +93,6 @@ fn the_hand_over_test_s_child_hands_the_terminal_to_a_child_that_ctrl_c_ends() {
         reason = "the child of the hand-over test reports the tool's exit code through its own"
     )]
     std::process::exit(number);
-}
-
-#[test]
-fn a_tool_that_owns_its_signals_keeps_running_on_ctrl_c_after_a_child_has_held_the_terminal() {
-    let state = TempDir::new("owned-hand-over");
-
-    let status = run_child(
-        "recorder::tests::processes::unix::the_owned_hand_over_test_s_child_raises_sigint_after_its_child_exits",
-        &state,
-    );
-
-    assert_eq!(status.code(), Some(0), "the tool ended with {status:?}");
-    let lines = log_lines(&state, "owner");
-    assert_eq!(lines.len(), 1);
-    assert_eq!(lines[0]["exit"], 0);
-}
-
-/// Runs only as the child of the owned hand-over test, which sets
-/// [`CHILD`]. It starts the log for a tool that owns its signals, hands the
-/// terminal to a shell that exits at once, which writes the line, then
-/// raises SIGINT, which the tool owns, and ends with exit 0 if it is still
-/// running.
-#[test]
-fn the_owned_hand_over_test_s_child_raises_sigint_after_its_child_exits() {
-    if !is_child() {
-        return;
-    }
-    let _log = start_with(Signals::Tool);
-    typed(&Command::new("owner"), &["owner".into()], Spelling::COLONS);
-    #[expect(
-        clippy::disallowed_methods,
-        reason = "the test builds the command that crumbkit hands the terminal to"
-    )]
-    let mut shell = std::process::Command::new("sh");
-    shell.args(["-c", "exit 0"]);
-    let _ = crumbkit_child::hand_over(&mut super::bare_output(), shell);
-    signal_hook::low_level::raise(signal_hook::consts::SIGINT).unwrap();
-    std::thread::sleep(Duration::from_millis(200));
-    #[expect(
-        clippy::disallowed_methods,
-        reason = "the child of the owned hand-over test shows that it outlived SIGINT through its exit code"
-    )]
-    std::process::exit(0);
 }
 
 #[test]

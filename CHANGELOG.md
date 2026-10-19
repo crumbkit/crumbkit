@@ -589,7 +589,7 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   ([behaviour/run-observer]).
 - crumbkit-test: [`check_twins`] needs no twin and no declaration for a
   code in the `crumbkit` component that `crumbkit::codes::ALL` does not
-  list, such as crumbkit-child's `crumbkit::child::no_json`, and
+  list, such as crumbkit-child's `crumbkit::child::not_found`, and
   [`check_recoveries`] follows the recovery of such a code
   ([behaviour/checks/end-to-end], [behaviour/checks/recovery-chains]).
 - crumbkit: `Exit::covers` is public, so crumbkit-usage can give each exit
@@ -877,6 +877,15 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   `Guide::codes` sets the code for every document ([behaviour/output/budget]).
 - crumbkit: `Call::word` is gone, because `Call::value` adds a runtime value
   and checks it against the tool's command tree ([`Call`]).
+- crumbkit-child: `child::hand_over_json`, `Json` and the codes
+  `crumbkit::child::no_json`, `crumbkit::child::bad_json` and
+  `crumbkit::child::failed` are gone. [`child::hand_over`] refuses `--json`
+  with `<tool>::cli::usage`, and a tool reads a child's JSON itself
+  ([behaviour/output/child-processes]).
+- crumbkit-usage: `start_with`, `Signals` and `section` are gone, with the
+  record's `ext` field. `start` writes the line when SIGINT or SIGTERM ends
+  the run, and a tool that handles either signal itself runs without the
+  log ([`usage`], [behaviour/usage-log]).
 
 ### Fixed
 

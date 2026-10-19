@@ -39,10 +39,6 @@
       "maximum": 255,
       "minimum": 0
     },
-    "ext": {
-      "description": "The tool's own section, when the tool sets one.",
-      "$ref": "#/$defs/Section"
-    },
     "flags": {
       "description": "The flags typed on the command line, each by its long name, or by its\nshort name when it has no long one, sorted.",
       "type": "array",
@@ -168,23 +164,6 @@
     "Name": {
       "description": "A name from the tool's own vocabulary: a command path, a flag, a version\nor a failure code.\n\ncrumbkit reads every name from the tool's clap command tree or its codes,\nand never from a word that the caller typed: each constructor takes a\n`clap::Command`, a `clap::Arg` or a crumbkit `Code`.",
       "type": "string"
-    },
-    "Section": {
-      "description": "The tool's own section of the record, which it sets with\n`crumbkit_usage::section`.",
-      "type": "object",
-      "properties": {
-        "data": {
-          "description": "The section's fields. The tool owns them and keeps argument values out\nof them, because crumbkit cannot check them."
-        },
-        "schema": {
-          "description": "The id of the section's document, such as shelf/usage-ext/v1.",
-          "type": "string"
-        }
-      },
-      "required": [
-        "schema",
-        "data"
-      ]
     },
     "SpanId": {
       "description": "A W3C span id, as 16 lowercase hex digits.",

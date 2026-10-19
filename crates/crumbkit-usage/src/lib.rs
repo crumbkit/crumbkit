@@ -2,9 +2,6 @@
 // links to files in the repository, which work on GitHub. The definitions below
 // come first, so rustdoc uses them for the same labels (ADR-0013).
 //! [`start`]: crate::start()
-//! [`start_with`]: crate::start_with()
-//! [`Signals`]: crate::Signals
-//! [`section`]: crate::section()
 //! [`SelfUsage`]: crate::SelfUsage
 //! [`findings`]: crate::findings()
 //! [`SelfFigures`]: crate::SelfFigures
@@ -15,6 +12,7 @@
 //! [ADR-0029]: https://github.com/crumbkit/crumbkit/blob/main/docs/decisions/api/usage/0029-usage-log.md
 //! [ADR-0030]: https://github.com/crumbkit/crumbkit/blob/main/docs/decisions/api/usage/0030-trace-context.md
 //! [ADR-0034]: https://github.com/crumbkit/crumbkit/blob/main/docs/decisions/api/usage/0034-usage-report.md
+//! [ADR-0095]: https://github.com/crumbkit/crumbkit/blob/main/docs/decisions/api/usage/0095-text-hand-over-and-own-signals.md
 //! [usage log docs]: https://github.com/crumbkit/crumbkit/blob/main/docs/behaviour/usage-log/README.md
 //! [trace context docs]: https://github.com/crumbkit/crumbkit/blob/main/docs/behaviour/usage-log/trace-context.md
 //! [usage report docs]: https://github.com/crumbkit/crumbkit/blob/main/docs/behaviour/usage-log/report.md
@@ -29,6 +27,8 @@ mod observer;
 mod platform;
 mod record;
 mod recorder;
+#[cfg(doctest)]
+mod removed;
 mod report;
 mod self_figures;
 mod self_usage;
@@ -36,7 +36,7 @@ mod shape;
 #[cfg(test)]
 mod testing;
 
-pub use self::recorder::{Log, Signals, section, start, start_with};
+pub use self::recorder::{Log, start};
 pub use self::self_figures::{FiguresRow, SELF_FIGURES_LIST, SelfFigures, figures};
 pub use self::self_usage::{FindingRow, SELF_USAGE, SelfUsage, UsageSummary, findings};
 
