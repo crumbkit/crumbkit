@@ -155,3 +155,13 @@ fn the_source_of_an_error_is_the_source_of_the_failure_inside() {
 fn a_failure_has_no_fields_unless_it_names_some() {
     assert_eq!(NoSuchBook(7).fields(), Vec::new());
 }
+
+#[test]
+fn the_no_advice_recovery_carries_the_shared_reason() {
+    assert_eq!(
+        Recovery::no_advice(),
+        Recovery::None {
+            reason: "the error gives no advice".to_owned()
+        }
+    );
+}
