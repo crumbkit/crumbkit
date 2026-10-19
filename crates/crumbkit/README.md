@@ -130,6 +130,8 @@ The [behaviour docs] describe each part in full.
   conversion of a `miette::Report` into [`Error`].
 - Run reports, usage log and tracing: [`events`], [crumbkit-usage], [`trace`].
 - Handing the terminal to another program: [crumbkit-child].
+- The `color` feature: help with clap's styles in a [`Sink`] that asks for
+  them.
 - The `complete` feature: shell completion through `crumbkit::complete`,
   which a minor release may change.
 - The JSON Schemas of crumbkit's own documents: [schemas].
@@ -155,6 +157,7 @@ Licensed under Apache-2.0 or MIT, at your option.
 [`Spelling`]: src/code.rs
 [`Error`]: src/failure.rs
 [`parse`]: src/parse.rs
+[`Sink`]: src/sink.rs
 [`help`]: src/help.rs
 [`Call`]: src/call.rs
 [`commands`]: src/commands.rs

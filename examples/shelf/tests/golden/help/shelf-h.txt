@@ -2,15 +2,9 @@ Browse a small catalogue of public-domain books
 
 Usage: shelf [OPTIONS] <COMMAND>
 
-Browse the catalogue
-  books     Work with the books in the catalogue
-
-Explore the commands
-  commands  Explore shelf's commands
-  schemas   Explore the JSON documents that shelf prints
-
-Review how shelf is used
-  self      Review shelf's own use
+Browse the catalogue:      books
+Explore the commands:      commands, schemas
+Review how shelf is used:  self
 
 Options:
   -h, --help     Print help (see more with '--help')

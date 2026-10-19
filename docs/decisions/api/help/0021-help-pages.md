@@ -1,7 +1,7 @@
 # ADR-0021. Help pages
 
 - Date: 2026-10-09
-- Status: accepted
+- Status: amended by ADR-0102
 
 ## Context
 
