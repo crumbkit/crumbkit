@@ -77,6 +77,46 @@ fn the_footer_of_a_listing_without_a_total_or_a_description_names_rows() {
 }
 
 #[test]
+fn the_footer_of_a_listing_without_a_total_names_one_row_with_the_listings_singular() {
+    let listing = Listing::uncounted(vec![mercury()], true)
+        .described("planets")
+        .singular("planet");
+
+    let finished = finish_with(&[], PLANET_LISTING, listing);
+
+    assert_eq!(
+        finished.err,
+        "Showing 1 planet, and more match. --all shows every one.\n"
+    );
+}
+
+#[test]
+fn the_footer_of_a_listing_without_a_total_or_a_description_names_one_row_as_row() {
+    let listing = Listing::uncounted(vec![mercury()], true);
+
+    let finished = finish_with(&[], PLANET_LISTING, listing);
+
+    assert_eq!(
+        finished.err,
+        "Showing 1 row, and more match. --all shows every one.\n"
+    );
+}
+
+#[test]
+fn the_footer_of_a_listing_with_a_total_keeps_the_plural_for_one_row() {
+    let listing = Listing::new(vec![mercury()], 8)
+        .described("planets")
+        .singular("planet");
+
+    let finished = finish_with(&[], PLANET_LISTING, listing);
+
+    assert_eq!(
+        finished.err,
+        "Showing 1 of 8 planets. --all shows every one.\n"
+    );
+}
+
+#[test]
 fn the_footer_of_a_bounded_listing_without_a_total_names_the_bound() {
     let listing = Listing::uncounted(vec![mercury(), saturn()], true)
         .described("planets")

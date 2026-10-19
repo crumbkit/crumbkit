@@ -26,7 +26,9 @@ pub(super) fn matches_none<T: Rows>(value: &T) -> bool {
 /// that leaves out rows. A listing with a total gives the count, such as
 /// `Showing 4 of 6 books. --all shows every one.`, and a listing without one
 /// says that more match, such as `Showing 4 books, and more match. --all
-/// shows every one.`, with `rows` when it has no description. A listing
+/// shows every one.`, with `rows` when it has no description. Such a
+/// listing names one shown row with its singular, as in `Showing 1 book,
+/// and more match.`, or as `row` when it has no description. A listing
 /// whose `--limit` has a bound names it, as in `Showing 4 of 6 books.
 /// --limit takes up to 100, and --all shows every one.` Otherwise it writes
 /// nothing.
@@ -35,7 +37,13 @@ pub(super) fn write_footer<T: Rows>(out: &mut impl Write, value: &T) -> io::Resu
         return Ok(());
     }
     let total = value.total();
-    write_shown(out, value.rows().len(), total, value.description())?;
+    write_shown(
+        out,
+        value.rows().len(),
+        total,
+        value.description(),
+        value.singular(),
+    )?;
     if total.is_none() {
         write!(out, ", and more match")?;
     }
@@ -51,17 +59,27 @@ pub(super) fn write_footer<T: Rows>(out: &mut impl Write, value: &T) -> io::Resu
 /// Writes the start of the footer and of the cut line: `Showing {shown} of
 /// {total} {description}`, with no description when there is none, or
 /// `Showing {shown} {description}` without a total, with `rows` when there
-/// is no description.
+/// is no description. Without a total, one shown row takes `singular`, or
+/// `row` when there is no description, so the line reads `Showing 1 book`.
 pub(super) fn write_shown(
     out: &mut impl Write,
     shown: usize,
     total: Option<usize>,
     description: Option<&str>,
+    singular: Option<&str>,
 ) -> io::Result<()> {
-    match (total, description) {
-        (Some(total), Some(description)) => write!(out, "Showing {shown} of {total} {description}"),
-        (Some(total), None) => write!(out, "Showing {shown} of {total}"),
-        (None, description) => write!(out, "Showing {shown} {}", description.unwrap_or("rows")),
+    let Some(total) = total else {
+        let noun = match (shown, singular, description) {
+            (1, Some(one), _) => one,
+            (1, None, None) => "row",
+            (_, _, Some(many)) => many,
+            (_, _, None) => "rows",
+        };
+        return write!(out, "Showing {shown} {noun}");
+    };
+    match description {
+        Some(description) => write!(out, "Showing {shown} of {total} {description}"),
+        None => write!(out, "Showing {shown} of {total}"),
     }
 }
 

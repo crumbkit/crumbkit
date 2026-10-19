@@ -54,6 +54,9 @@ pub struct Listing<R: Row, S = NoSummary> {
     more: bool,
     /// The phrase that names the rows in the footer, such as `books`.
     description: Option<String>,
+    /// The phrase that names one row in the footer and the cut line of a
+    /// listing without a total, such as `book`.
+    singular: Option<String>,
     /// The summary that the text output prints above the table and the
     /// JSON document holds under `summary`.
     summary: Option<S>,
@@ -96,6 +99,7 @@ impl<R: Row> Listing<R> {
             total: Some(total),
             more: false,
             description: None,
+            singular: None,
             summary: None,
             note: None,
             next: None,
@@ -171,6 +175,19 @@ impl<R: Row, S> Listing<R, S> {
         self
     }
 
+    /// Sets the phrase that names one row, such as `book` beside the
+    /// description `books`. A listing without a total uses it when it shows
+    /// one row, so its footer reads `Showing 1 book, and more match. --all
+    /// shows every one.` and its cut line `Showing 1 book, because ...`.
+    /// Without it, such a listing names one row with its description, or as
+    /// `row` when it has none. A listing with a total never uses it, because
+    /// its footer counts against the total, as in `Showing 1 of 6 books.`
+    #[must_use]
+    pub fn singular(mut self, phrase: impl Into<String>) -> Self {
+        self.singular = Some(phrase.into());
+        self
+    }
+
     /// Sets the summary: a value that the text output prints with its
     /// `Display` as one line above the table, and that the JSON document
     /// holds under `summary`, serialized with its `Serialize` and described
@@ -185,6 +202,7 @@ impl<R: Row, S> Listing<R, S> {
             total: self.total,
             more: self.more,
             description: self.description,
+            singular: self.singular,
             summary: Some(summary),
             note: self.note,
             next: self.next,
@@ -263,6 +281,10 @@ impl<R: Row, S: Serialize + fmt::Display + JsonSchema> Rows for Listing<R, S> {
 
     fn description(&self) -> Option<&str> {
         self.description.as_deref()
+    }
+
+    fn singular(&self) -> Option<&str> {
+        self.singular.as_deref()
     }
 
     fn summary(&self) -> Option<&S> {

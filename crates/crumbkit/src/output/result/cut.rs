@@ -60,7 +60,14 @@ impl<T: Rows> Prepared<'_, T> {
             None if !listing => Some(self.value.rows().len()),
             total => total,
         };
-        let description = self.value.description();
-        budget::write_cut_line(out, shown, total, description, cut.budget, listing)
+        budget::write_cut_line(
+            out,
+            shown,
+            total,
+            self.value.description(),
+            self.value.singular(),
+            cut.budget,
+            listing,
+        )
     }
 }

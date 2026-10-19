@@ -265,7 +265,10 @@ pub(crate) fn entries<const N: usize>(
             position: index + 1,
             title: line.trim().to_owned(),
         });
-    let listing = page.uncounted(entries).described("entries");
+    let listing = page
+        .uncounted(entries)
+        .described("entries")
+        .singular("entry");
     match failure {
         Some(error) => Err(unreadable(error)),
         None => Ok(listing),

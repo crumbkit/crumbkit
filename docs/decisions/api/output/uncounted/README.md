@@ -1,7 +1,7 @@
 # ADR-0087. Uncounted listings omit totals
 
 - Date: 2026-10-18
-- Status: accepted
+- Status: amended by ADR-0091
 - Supersedes: ADR-0050, which it amends
 - Missed: ADR-0050 gave the last page of an uncounted listing the number of rows it held as its total, and did not check that total against the output budget, which cuts rows after the tool has handed them over.
 
