@@ -38,8 +38,9 @@ use self::failure::Printing;
 pub use self::layout::JsonLayout;
 pub use self::room::Room;
 pub use self::stream::{Streaming, stream, stream_to};
+use crate::help::Exit;
 use crate::help::rename::Renames;
-use crate::help::{Exit, view};
+use crate::view::View;
 use crate::{AsFailure, Document, Rows, Sink, Spelling};
 
 #[cfg(test)]
@@ -59,12 +60,14 @@ mod tests;
 /// `parse` and `finish` refuse it, as
 /// [`help::Leaf::offers`](crate::help::Leaf::offers) describes.
 ///
-/// `parse`, `finish` and `stream` refuse `--full` without `--json`, and
+/// `parse` and [`Output::new`] refuse `--full` without `--json`, and
 /// `--fields` with `--long` or `--full`, as a refused command line with the
 /// code `<tool>::cli::usage`, such as `--full prints every field of every
 /// row in JSON, so it needs --json` with the hint `add --json, or drop
 /// --full`. clap parses each of these lines, so a tool that parses with
-/// clap alone gets the refusal from `finish` or `stream`.
+/// clap alone gets the refusal from `Output::new`, before its handler
+/// runs. An `Output` holds only a view that every printer accepts
+/// (ADR-0093).
 ///
 /// `finish` renders a listing's next step and a failure's recovery against
 /// the command tree, and builds only the branch of the tree that such a
@@ -74,22 +77,10 @@ mod tests;
 /// `Eq`, because `clap::Command` implements neither and nothing compares
 /// two `Output` values.
 #[derive(Clone, Debug)]
-#[expect(
-    clippy::struct_excessive_bools,
-    reason = "each bool is one independent flag or mark of the run, and no two of them form a state machine"
-)]
 pub struct Output {
-    /// Whether the caller passed `--json`.
-    json: bool,
-
-    /// The fields that `--fields` names, or an empty list without it.
-    fields: Vec<String>,
-
-    /// Whether the caller passed `--long`.
-    long: bool,
-
-    /// Whether the caller passed `--full`.
-    full: bool,
+    /// The view that the four view flags selected, which `View::try_from`
+    /// built after it refused the pairs that cannot work together.
+    view: View,
 
     /// The command tree that the tool parsed against. Its root and the
     /// commands on the typed path are built, and the rest is built when a
@@ -179,7 +170,12 @@ impl Output {
     /// when this is true.
     #[must_use]
     pub const fn is_json(&self) -> bool {
-        self.json
+        self.view.is_json()
+    }
+
+    /// Returns the view that the view flags selected.
+    pub(crate) const fn view(&self) -> &View {
+        &self.view
     }
 
     /// Returns the words that the caller typed after the program name.
@@ -194,20 +190,11 @@ impl Output {
         self.no_input
     }
 
-    /// Returns the fields that `--fields` named.
+    /// Returns the fields that `--fields` named, or an empty slice without
+    /// the flag.
     #[cfg(test)]
     pub(crate) fn field_list(&self) -> &[String] {
-        &self.fields
-    }
-
-    /// Returns the view flags that the caller typed.
-    pub(crate) const fn typed(&self) -> view::Typed {
-        view::Typed {
-            json: self.json,
-            fields: !self.fields.is_empty(),
-            long: self.long,
-            full: self.full,
-        }
+        self.view.fields()
     }
 
     /// Returns the guide's spelling and `document`, with the tool's name in
@@ -378,10 +365,10 @@ pub fn finish<T: Rows, E: AsFailure>(
 /// refused command line, 2 unless the guide lists another, when `--fields`
 /// names an unknown field, or when the result cannot use a view flag that
 /// the caller passed, which are checked before the result prints. When
-/// `result` is a failure, `finish_to` refuses only two view flags that
-/// cannot work together, and otherwise prints the failure, because a tool
-/// may print an early failure in another document than the one its leaf
-/// declares. A prose
+/// `result` is a failure, `finish_to` checks no view flag and prints the
+/// failure, because a tool may print an early failure in another document
+/// than the one its leaf declares, and the `Output` already holds only a
+/// view that every printer accepts (ADR-0093). A prose
 /// or bytes result cannot use `--fields`, `--long` or `--full`, rows
 /// without long columns cannot use `--long`, and a document without the
 /// envelope cannot use `--full` (ADR-0016).

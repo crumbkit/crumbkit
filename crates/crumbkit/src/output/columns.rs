@@ -17,7 +17,7 @@ use std::io;
 
 use serde_json::Value;
 
-use super::Output;
+use crate::view::View;
 use crate::{Document, Row, Rows, Shape};
 
 /// Fails to compile when `T` is a single row, a `Vec` or a `Listing` whose
@@ -34,7 +34,7 @@ use crate::{Document, Row, Rows, Shape};
 ///     Document::new("reading", "entries", 1, "The entries of a reading list.");
 ///
 /// let result: Result<Listing<Entry>, Error> = Ok(Listing::new(vec![Entry { position: 1 }], 1));
-/// # let mut output = Output::new(crumbkit::ViewFlags::new(), clap::Command::new("reading"), &crumbkit::help::Guide::new(), ["reading"]);
+/// # let mut output = Output::new(crumbkit::ViewFlags::new(), clap::Command::new("reading"), &crumbkit::help::Guide::new(), ["reading"]).unwrap();
 /// crumbkit::finish(&mut output, ENTRIES, result);
 /// ```
 ///
@@ -55,7 +55,7 @@ use crate::{Document, Row, Rows, Shape};
 ///     Document::new("reading", "answers", 1, "The answers of a query.");
 ///
 /// let result: Result<Vec<Answer>, Error> = Ok(vec![Answer(1, 2)]);
-/// # let mut output = Output::new(crumbkit::ViewFlags::new(), clap::Command::new("reading"), &crumbkit::help::Guide::new(), ["reading"]);
+/// # let mut output = Output::new(crumbkit::ViewFlags::new(), clap::Command::new("reading"), &crumbkit::help::Guide::new(), ["reading"]).unwrap();
 /// crumbkit::finish(&mut output, ANSWERS, result);
 /// ```
 pub(super) const fn require<T: Rows>() {
@@ -82,7 +82,7 @@ pub(super) const fn require<T: Rows>() {
 /// const ENTRIES_STREAM: Document<Stream<Entry>> =
 ///     Document::new("reading", "entries-stream", 1, "Each entry of a reading list.");
 ///
-/// # let mut output = Output::new(crumbkit::ViewFlags::new(), clap::Command::new("reading"), &crumbkit::help::Guide::new(), ["reading"]);
+/// # let mut output = Output::new(crumbkit::ViewFlags::new(), clap::Command::new("reading"), &crumbkit::help::Guide::new(), ["reading"]).unwrap();
 /// let _ = crumbkit::stream(&mut output, ENTRIES_STREAM);
 /// ```
 ///
@@ -101,7 +101,7 @@ pub(super) const fn require<T: Rows>() {
 /// const ANSWERS: Document<Stream<Answer>> =
 ///     Document::new("reading", "answers-stream", 1, "Each answer of a query.");
 ///
-/// # let mut output = Output::new(crumbkit::ViewFlags::new(), clap::Command::new("reading"), &crumbkit::help::Guide::new(), ["reading"]);
+/// # let mut output = Output::new(crumbkit::ViewFlags::new(), clap::Command::new("reading"), &crumbkit::help::Guide::new(), ["reading"]).unwrap();
 /// let _ = crumbkit::stream(&mut output, ANSWERS);
 /// ```
 pub(super) const fn require_for_stream<R: Row>() {
@@ -119,28 +119,28 @@ pub(super) const fn require_for_stream<R: Row>() {
 /// row's own text line. Unwrapped or headed JSON, and the JSON of a row type
 /// that prints whole, hold every field unless `--fields` names some
 /// (ADR-0062, ADR-0065).
-pub(super) fn columns<T: Rows>(output: &Output, document: Document<T>, prose: bool) -> Vec<&str> {
-    if super::lines::chosen::<T::Row>(output) {
+pub(super) fn columns<T: Rows>(view: &View, document: Document<T>, prose: bool) -> Vec<&str> {
+    if super::lines::chosen::<T::Row>(view) {
         return Vec::new();
     }
-    let unwrapped =
-        output.json && (!document.get_envelope().wraps() || document.is_headed() || T::Row::WHOLE);
+    let unwrapped = view.is_json()
+        && (!document.get_envelope().wraps() || document.is_headed() || T::Row::WHOLE);
     let selects = if unwrapped {
-        !output.fields.is_empty()
+        view.names().is_some()
     } else {
-        !output.full
+        !view.is_full()
     };
     if !selects || prose {
         Vec::new()
-    } else if output.fields.is_empty() {
-        let long = if output.long {
+    } else if let Some(names) = view.names() {
+        names.iter().map(String::as_str).collect()
+    } else {
+        let long = if view.is_long() {
             T::Row::LONG_COLUMNS
         } else {
             &[]
         };
         T::Row::COLUMNS.iter().chain(long).copied().collect()
-    } else {
-        output.fields.iter().map(String::as_str).collect()
     }
 }
 

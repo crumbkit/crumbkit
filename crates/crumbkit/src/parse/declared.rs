@@ -67,7 +67,7 @@ fn parses<C: FromArgMatches>(command: &mut Command, call: &Call, guide: &Guide) 
     match command.try_get_matches_from_mut(words) {
         Ok(mut matches) => {
             let (path, node, level) = attempt::deepest(command, &matches);
-            attempt::refusal(node, level, &path, guide).is_none()
+            attempt::refusal(node, level, &path, guide).is_ok()
                 && C::from_arg_matches_mut(&mut matches).is_ok()
         }
         Err(error) => matches!(

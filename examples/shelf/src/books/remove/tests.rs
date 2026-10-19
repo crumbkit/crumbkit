@@ -25,7 +25,7 @@ fn parse(words: &[&str]) -> (Output, BooksRemove) {
     else {
         panic!("the words parse as books remove");
     };
-    let output = Output::new(cli.view, Cli::command(), &Guide::new(), args);
+    let output = Output::new(cli.view, Cli::command(), &Guide::new(), args).unwrap();
     (output, remove)
 }
 
@@ -79,6 +79,7 @@ fn remove_with_yes_returns_the_books_and_list_and_show_skip_them_afterwards() {
             &Guide::new(),
             ["shelf"],
         )
+        .unwrap()
         .room(crate::books::BOOKS_SHOW),
     )
     .unwrap();

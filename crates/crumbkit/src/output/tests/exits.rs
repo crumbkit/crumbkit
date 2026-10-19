@@ -58,7 +58,7 @@ enum Command {
 /// parses with clap alone builds it.
 fn guided() -> Output {
     let view = Tool::try_parse_from(["tool", "list"]).unwrap().view;
-    Output::new(view, Tool::command(), &GUIDE, ["tool", "list"])
+    Output::new(view, Tool::command(), &GUIDE, ["tool", "list"]).unwrap()
 }
 
 /// Finishes `result` into memory with `output`, and returns the exit code
@@ -116,7 +116,7 @@ fn a_failure_whose_code_no_exit_lists_ends_finish_with_code_1() {
 #[test]
 fn an_output_set_from_a_bare_command_maps_no_failure_and_exits_with_code_1() {
     let view = Tool::try_parse_from(["tool", "list"]).unwrap().view;
-    let mut output = Output::new(view, Tool::command(), &Guide::new(), ["tool", "list"]);
+    let mut output = Output::new(view, Tool::command(), &Guide::new(), ["tool", "list"]).unwrap();
     let code = finish(&mut output, PLANETS, Err(Failed(&TIMED_OUT)));
     assert_eq!(code, 1);
 }
@@ -150,7 +150,8 @@ fn a_renamed_crumbkit_failure_in_a_batch_prints_the_tool_s_code_and_exits_with_i
     let view = Tool::try_parse_from(["tool", "list", "--json"])
         .unwrap()
         .view;
-    let mut output = Output::new(view, Tool::command(), &RENAMED, ["tool", "list", "--json"]);
+    let mut output =
+        Output::new(view, Tool::command(), &RENAMED, ["tool", "list", "--json"]).unwrap();
     let batch = answered(
         vec![mercury()],
         vec![Failed(&crate::codes::VERSION_CONFLICT)],
@@ -212,7 +213,7 @@ fn a_tool_that_parses_with_clap_alone_gets_the_renames_of_the_leaf_that_its_word
         ]);
     let words = ["tool", "list", "--json"];
     let tool = Tool::try_parse_from(words).unwrap();
-    let mut output = Output::new(tool.view, Tool::command(), &RENAMED, words);
+    let mut output = Output::new(tool.view, Tool::command(), &RENAMED, words).unwrap();
     let mut out = Vec::new();
     let mut err = Vec::new();
     let code = finish_to(

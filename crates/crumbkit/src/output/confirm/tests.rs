@@ -129,7 +129,7 @@ fn without_a_terminal_the_run_fails_with_the_same_command_and_yes_as_its_recover
 fn a_tool_that_parses_with_clap_alone_gets_the_same_command_and_yes_as_its_recovery() {
     let words = ["tool", "remove", "pluto"];
     let tool = Tool::try_parse_from(words).unwrap();
-    let mut output = Output::new(tool.view, Tool::command(), &Guide::new(), words);
+    let mut output = Output::new(tool.view, Tool::command(), &Guide::new(), words).unwrap();
     let mut sink = Sink::new(Vec::new(), Vec::new());
 
     let result = output.confirm_to(&mut sink, Yes::default(), "Remove Pluto?");
@@ -211,7 +211,8 @@ fn a_tool_that_parses_with_clap_alone_keeps_the_guides_terminal_detection() {
         Tool::command(),
         &QUIET,
         ["tool", "remove"],
-    );
+    )
+    .unwrap();
     let mut err = Vec::new();
     let mut sink = Sink::with_input(Vec::new(), &mut err, &b"y\n"[..], true);
 

@@ -156,7 +156,7 @@ struct Finished {
 fn fail_with(flags: &[&str], failure: impl Into<Error>) -> Finished {
     let args = ["tool", "list"].iter().chain(flags);
     let view = Tool::try_parse_from(args.clone()).unwrap().view;
-    let mut output = Output::new(view, Tool::command(), &crate::help::Guide::new(), args);
+    let mut output = Output::new(view, Tool::command(), &crate::help::Guide::new(), args).unwrap();
     fail_output(&mut output, failure.into())
 }
 
@@ -433,7 +433,8 @@ fn finish_prints_a_crumbkit_error_as_it_prints_the_failure_inside() {
         Tool::command(),
         &crate::help::Guide::new(),
         ["tool", "list"],
-    );
+    )
+    .unwrap();
 
     let direct = fail_output(&mut output, missing(run_list()));
     let wrapped = fail_output(&mut output, Error::from(missing(run_list())));
@@ -467,6 +468,7 @@ fn json() -> Output {
         &crate::help::Guide::new(),
         ["tool", "list", "--json"],
     )
+    .unwrap()
 }
 
 /// Finishes a failure into `sink` with `output`.

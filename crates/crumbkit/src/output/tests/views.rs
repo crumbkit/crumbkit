@@ -1,12 +1,13 @@
 //! Tests for the view flags that `finish_to` refuses because the result
-//! cannot use them, for a tool that parses without crumbkit's `parse`.
+//! cannot use them, and for the pairs that `Output::new_to` refuses, for a
+//! tool that parses without crumbkit's `parse`.
 
 use std::process::ExitCode;
 
 use schemars::JsonSchema;
 use serde::Serialize;
 
-use super::{PLANETS, finish_with, mercury};
+use super::{build_to, finish_with};
 use crate::twins::assert_one_word_apart;
 use crate::{Document, Prose, Row};
 
@@ -70,17 +71,19 @@ fn finish_refuses_long_and_full_for_a_prose_result() {
 }
 
 #[test]
-fn finish_refuses_fields_with_long_in_crumbkit_s_words() {
+fn output_new_refuses_fields_with_long_in_crumbkit_s_words() {
     assert_one_word_apart(&["--fields", "name", "--long"], &["--fields", "name"]);
-    let twin = finish_with(&["--fields", "name"], PLANETS, vec![mercury()]);
-    assert_eq!(twin.code, ExitCode::SUCCESS, "{}", twin.err);
+    let twin = build_to(&["--fields", "name"]);
+    assert!(twin.result.is_ok(), "{}", twin.err);
 
-    let finished = finish_with(&["--fields", "name", "--long"], PLANETS, vec![mercury()]);
+    let built = build_to(&["--fields", "name", "--long"]);
 
-    assert_eq!(finished.code, ExitCode::from(2));
-    assert_eq!(finished.out, "");
+    let stop = built.result.unwrap_err();
+    assert_eq!(stop.number(), 2);
+    assert!(!stop.output().is_json());
+    assert_eq!(built.out, "");
     assert_eq!(
-        finished.err,
+        built.err,
         "\
 error: --fields prints only the fields it names, so it cannot be used with --long
   help:  drop --long, and name the long columns in --fields
@@ -90,13 +93,13 @@ error: --fields prints only the fields it names, so it cannot be used with --lon
 }
 
 #[test]
-fn finish_refuses_fields_with_full_and_full_without_json_in_crumbkit_s_words() {
-    let io = || vec![Moon { name: "Io" }];
+fn output_new_refuses_fields_with_full_and_full_without_json_in_crumbkit_s_words() {
+    let with_fields = build_to(&["--json", "--fields", "name", "--full"]);
+    let without_json = build_to(&["--full"]);
 
-    let with_fields = finish_with(&["--json", "--fields", "name", "--full"], MOONS, io());
-    let without_json = finish_with(&["--full"], MOONS, io());
-
-    assert_eq!(with_fields.code, ExitCode::from(2));
+    let stop = with_fields.result.unwrap_err();
+    assert_eq!(stop.number(), 2);
+    assert!(stop.output().is_json());
     let document: serde_json::Value = serde_json::from_str(&with_fields.out).unwrap();
     assert_eq!(
         document["message"],
@@ -110,7 +113,8 @@ fn finish_refuses_fields_with_full_and_full_without_json_in_crumbkit_s_words() {
         document["fields"],
         serde_json::json!({"argument": "--full"})
     );
-    assert_eq!(without_json.code, ExitCode::from(2));
+    assert_eq!(without_json.result.unwrap_err().number(), 2);
+    assert_eq!(without_json.out, "");
     assert_eq!(
         without_json.err,
         "\
