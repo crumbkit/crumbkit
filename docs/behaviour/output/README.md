@@ -23,7 +23,7 @@ Why: ADR-0016.
 ## The text table
 
 A type that prints as a table row implements
-[`Row`](../../../crates/crumbkit-core/src/row.rs), which names its compact
+[`Row`](../../../crates/crumbkit/src/row.rs), which names its compact
 columns, the columns that `--long` adds and, optionally, the field that marks
 a problem ([rows that report a problem](listings/README.md#rows-that-report-a-problem)).
 A field in neither list of columns appears only with `--json --full`.

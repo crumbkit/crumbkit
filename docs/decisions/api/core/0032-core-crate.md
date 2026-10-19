@@ -1,7 +1,7 @@
 # ADR-0032. The clap-free core crate
 
 - Date: 2026-10-11
-- Status: accepted
+- Status: superseded by ADR-0097
 
 ## Context
 

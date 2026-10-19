@@ -59,7 +59,11 @@ pub const OUTPUT_OVER_BUDGET: Code = Code::new("crumbkit", "output", "over_budge
 /// [`Error::unclassified`](crate::Error::unclassified), and a
 /// `miette::Report` converted into an [`Error`](crate::Error) under the
 /// `miette` feature (ADR-0001).
-pub use crumbkit_core::codes::REPORT_UNCHECKED;
+pub const REPORT_UNCHECKED: Code = Code::new("crumbkit", "report", "unchecked");
+
+/// The reason of the `Recovery::None` of an unclassified failure that gives
+/// no advice of its own.
+pub(crate) const NO_ADVICE: &str = "the error gives no advice";
 
 /// Every code above, in the order this module declares them.
 pub const ALL: &[&Code] = &[

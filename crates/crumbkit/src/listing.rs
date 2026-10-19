@@ -30,8 +30,8 @@ mod tests;
 /// ```
 /// # #[derive(serde::Serialize, schemars::JsonSchema)]
 /// # struct Book { id: u32 }
-/// # impl crumbkit_core::Row for Book { const COLUMNS: &'static [&'static str] = &["id"]; }
-/// use crumbkit_core::{Call, Listing};
+/// # impl crumbkit::Row for Book { const COLUMNS: &'static [&'static str] = &["id"]; }
+/// use crumbkit::{Call, Listing};
 ///
 /// let books: Vec<Book> = (1..=6).map(|id| Book { id }).collect();
 /// let listing = Listing::from_all(books, Some(4))
@@ -145,7 +145,7 @@ impl<R: Row> Listing<R> {
         let total = rows.len();
         let problems = match limit {
             Some(limit) if limit < total && R::PROBLEM.is_some() => {
-                Some(crate::problems::count(&rows))
+                Some(crate::row::problems::count(&rows))
             }
             _ => None,
         };
@@ -285,7 +285,7 @@ impl<R: Row, S: Serialize + fmt::Display + JsonSchema> Rows for Listing<R, S> {
 
     fn problems(&self) -> usize {
         self.problems
-            .unwrap_or_else(|| crate::problems::count(&self.rows))
+            .unwrap_or_else(|| crate::row::problems::count(&self.rows))
     }
 }
 

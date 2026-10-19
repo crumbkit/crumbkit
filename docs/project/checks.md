@@ -70,8 +70,6 @@ source. It bans these:
   path-only dev-dependency, which `cargo publish` leaves out;
 - the async runtimes and C build tools that
   [Dependencies](dependencies.md#admitting-a-dependency) rules out;
-- clap in any crate that its list of clap users leaves out, which keeps
-  clap out of crumbkit-core;
 - an executable or a script inside a crate that runs at compile time,
   except the helper scripts that `deny.toml` names with the reason no build
   runs them.
@@ -84,4 +82,4 @@ each ecosystem's version updates in one pull request. It proposes a release
 only after a 7-day cooldown, so the ecosystem has time to find and yank a
 compromised release.
 
-Why: ADR-0012, ADR-0003, ADR-0032.
+Why: ADR-0012, ADR-0003, ADR-0097.

@@ -36,7 +36,7 @@ impl Error {
     ///
     /// ```
     /// # use std::fmt;
-    /// # use crumbkit_core::{Code, Failure, Recovery};
+    /// # use crumbkit::{Code, Failure, Recovery};
     /// # const NOT_FOUND: Code = Code::new("shelf", "books", "not_found");
     /// # #[derive(Debug)]
     /// # struct NoSuchBook(u32);
@@ -50,8 +50,8 @@ impl Error {
     /// #     fn code(&self) -> &'static Code { &NOT_FOUND }
     /// #     fn recovery(&self) -> Recovery { Recovery::Retry }
     /// # }
-    /// use crumbkit_core::codes::REPORT_UNCHECKED;
-    /// use crumbkit_core::Error;
+    /// use crumbkit::codes::REPORT_UNCHECKED;
+    /// use crumbkit::Error;
     ///
     /// type AnyError = Box<dyn std::error::Error + Send + Sync>;
     ///

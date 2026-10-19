@@ -35,11 +35,11 @@ quote = { workspace = true, features = ["proc-macro"] }
 proc-macro2 = { workspace = true, features = ["proc-macro"] }
 
 [dev-dependencies]
-# The README example derives `Failure` through crumbkit-core's `derive`
-# feature, so it runs as a doctest. The entry has a path and no version, so
+# The README example derives `Failure` through crumbkit's `derive` feature,
+# so it runs as a doctest. The entry has a path and no version, so
 # `cargo publish` leaves it out, and crumbkit-derive publishes before
-# crumbkit-core.
-crumbkit-core = { path = "../crumbkit-core", features = ["derive"] }
+# crumbkit.
+crumbkit = { path = "../crumbkit", features = ["derive"] }
 
 [lints]
 workspace = true

@@ -41,8 +41,8 @@ impl<T> Document<T> {
     /// ```
     /// # #[derive(serde::Serialize, schemars::JsonSchema)]
     /// # struct Entry { id: u32 }
-    /// # impl crumbkit_core::Row for Entry { const COLUMNS: &'static [&'static str] = &["id"]; }
-    /// use crumbkit_core::{Document, Envelope, Listing};
+    /// # impl crumbkit::Row for Entry { const COLUMNS: &'static [&'static str] = &["id"]; }
+    /// use crumbkit::{Document, Envelope, Listing};
     ///
     /// const ENTRIES: Document<Listing<Entry>> =
     ///     Document::new("tool", "get-entries", 1, "The entries.").envelope(Envelope::Without);
@@ -54,7 +54,8 @@ impl<T> Document<T> {
     }
 
     /// Returns the envelope that [`Document::envelope`] chose, which is
-    /// [`Envelope::Crumbkit`] unless the tool chose another.
+    /// [`Envelope::Crumbkit`] unless the tool chose another. It is hidden
+    /// because only crumbkit and crumbkit-test read it.
     #[doc(hidden)]
     #[must_use]
     pub const fn get_envelope(&self) -> Envelope {

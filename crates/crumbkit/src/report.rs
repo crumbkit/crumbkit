@@ -28,7 +28,7 @@ use crate::{Code, Error, Failure, Recovery};
 ///
 /// ```
 /// # use std::fmt;
-/// # use crumbkit_core::{Code, Failure, Recovery};
+/// # use crumbkit::{Code, Failure, Recovery};
 /// # const NOT_FOUND: Code = Code::new("shelf", "books", "not_found");
 /// # #[derive(Debug)]
 /// # struct NoSuchBook(u32);
@@ -43,7 +43,7 @@ use crate::{Code, Error, Failure, Recovery};
 /// #     fn code(&self) -> &'static Code { &NOT_FOUND }
 /// #     fn recovery(&self) -> Recovery { Recovery::Retry }
 /// # }
-/// fn classify(report: miette::Report) -> crumbkit_core::Error {
+/// fn classify(report: miette::Report) -> crumbkit::Error {
 ///     match report.downcast::<NoSuchBook>() {
 ///         Ok(failure) => failure.into(),
 ///         Err(report) => report.into(),

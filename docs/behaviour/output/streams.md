@@ -7,8 +7,7 @@ in text and JSON, its failures and exit code, and its notes.
 ## Declaring a stream
 
 A stream command declares its document as `Document<Stream<R>>`, with
-[`Stream`](../../../crates/crumbkit-core/src/stream.rs) from crumbkit-core,
-and that constant decides the command's form everywhere. The compiler
+[`Stream`](../../../crates/crumbkit/src/stream.rs), and that constant decides the command's form everywhere. The compiler
 refuses a stream document passed to `finish` and a document of one result
 passed to `stream`. The handler opens
 the stream with [`stream`](../../../crates/crumbkit/src/output/stream.rs), or

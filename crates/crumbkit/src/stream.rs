@@ -20,8 +20,8 @@ use std::marker::PhantomData;
 /// ```
 /// # #[derive(serde::Serialize, schemars::JsonSchema)]
 /// # struct Entry { position: u32 }
-/// # impl crumbkit_core::Row for Entry { const COLUMNS: &'static [&'static str] = &["position"]; }
-/// use crumbkit_core::{Document, Stream};
+/// # impl crumbkit::Row for Entry { const COLUMNS: &'static [&'static str] = &["position"]; }
+/// use crumbkit::{Document, Stream};
 ///
 /// const ENTRIES_STREAM: Document<Stream<Entry>> =
 ///     Document::new("reading", "entries-stream", 1, "Each entry of a reading list.");
@@ -33,7 +33,7 @@ pub struct Stream<R> {
     /// `PhantomData<fn() -> R>` ties the type to `R` without holding an
     /// `R`, as [`Document`](crate::Document) does, so the type is `Send`
     /// and `Sync` for every `R`.
-    /// The field is private and crumbkit-core never builds the type, so no
+    /// The field is private and crumbkit never builds the type, so no
     /// value of it exists.
     row: PhantomData<fn() -> R>,
 }

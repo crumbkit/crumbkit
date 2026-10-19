@@ -2,7 +2,6 @@
 resolver = "3"
 members = [
     "crates/crumbkit",
-    "crates/crumbkit-core",
     "crates/crumbkit-derive",
     "crates/crumbkit-aliases",
     "crates/crumbkit-usage",
@@ -26,17 +25,13 @@ license = "MIT OR Apache-2.0"
 repository = "https://github.com/crumbkit/crumbkit"
 
 [workspace.dependencies]
-# crumbkit depends on crumbkit-core, which holds the types that need no clap
-# (ADR-0032). The entry gives a version beside the path, because cargo-deny
-# treats a path dependency without a version as a wildcard (ADR-0012).
-crumbkit-core = { version = "0.0.0", path = "crates/crumbkit-core" }
-# crumbkit-core re-exports the `Failure` derive of crumbkit-derive behind its
+# crumbkit re-exports the `Failure` derive of crumbkit-derive behind its
 # `derive` feature (ADR-0001), and its tests use the derive. The entry gives a
-# version beside the path for the same reason.
-crumbkit-derive = { version = "0.0.0", path = "crates/crumbkit-derive" }
-# shelf depends on the crumbkit library in this workspace. The entry gives a
 # version beside the path, because cargo-deny treats a path dependency without
 # a version as a wildcard (ADR-0012).
+crumbkit-derive = { version = "0.0.0", path = "crates/crumbkit-derive" }
+# shelf depends on the crumbkit library in this workspace, which takes a
+# version beside the path for the same reason.
 crumbkit = { version = "0.0.0", path = "crates/crumbkit" }
 # shelf's tests check its failure codes and its command tree with
 # crumbkit-test, which takes a version beside the path for the same reason.

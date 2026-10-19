@@ -134,8 +134,8 @@ The [behaviour docs] describe each part in full.
   which a minor release may change.
 - The JSON Schemas of crumbkit's own documents: [schemas].
 - Tests that check a tool against these conventions: [crumbkit-test].
-- Types without clap, which crumbkit re-exports: [crumbkit-core],
-  with [ADR-0032].
+- The `derive` feature: `#[derive(Failure)]`, which writes a [`Failure`]
+  impl from attributes ([crumbkit-derive]).
 
 Licensed under Apache-2.0 or MIT, at your option.
 
@@ -143,20 +143,20 @@ Licensed under Apache-2.0 or MIT, at your option.
 [golden files]: ../../examples/shelf/tests/golden
 [`Output`]: src/output.rs
 [`finish`]: src/output.rs
-[`Row`]: ../crumbkit-core/src/row.rs
-[`Document`]: ../crumbkit-core/src/document.rs
-[`Listing`]: ../crumbkit-core/src/listing.rs
+[`Row`]: src/row.rs
+[`Document`]: src/document.rs
+[`Listing`]: src/listing.rs
 [`Page`]: src/page.rs
-[`Batch`]: ../crumbkit-core/src/batch.rs
-[`Prose`]: ../crumbkit-core/src/prose.rs
-[`Failure`]: ../crumbkit-core/src/failure.rs
-[`Recovery`]: ../crumbkit-core/src/failure.rs
-[`Code`]: ../crumbkit-core/src/code.rs
-[`Spelling`]: ../crumbkit-core/src/code.rs
-[`Error`]: ../crumbkit-core/src/failure.rs
+[`Batch`]: src/batch.rs
+[`Prose`]: src/prose.rs
+[`Failure`]: src/failure.rs
+[`Recovery`]: src/failure.rs
+[`Code`]: src/code.rs
+[`Spelling`]: src/code.rs
+[`Error`]: src/failure.rs
 [`parse`]: src/parse.rs
 [`help`]: src/help.rs
-[`Call`]: ../crumbkit-core/src/call.rs
+[`Call`]: src/call.rs
 [`commands`]: src/commands.rs
 [`schemas`]: src/schemas.rs
 [`fetch_each`]: src/fetch.rs
@@ -166,6 +166,5 @@ Licensed under Apache-2.0 or MIT, at your option.
 [`trace`]: src/trace.rs
 [schemas]: schemas
 [crumbkit-test]: ../crumbkit-test/README.md
-[crumbkit-core]: ../crumbkit-core/README.md
-[ADR-0032]: ../../docs/decisions/api/0032-core-crate.md
+[crumbkit-derive]: ../crumbkit-derive/README.md
 [behaviour docs]: ../../docs/behaviour/README.md

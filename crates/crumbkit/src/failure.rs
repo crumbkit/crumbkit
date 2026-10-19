@@ -20,7 +20,7 @@ mod tests;
 /// ```
 /// use std::fmt;
 ///
-/// use crumbkit_core::{Call, Code, Failure, Recovery};
+/// use crumbkit::{Call, Code, Failure, Recovery};
 ///
 /// const NOT_FOUND: Code = Code::new("shelf", "books", "not_found");
 ///
@@ -54,7 +54,7 @@ mod tests;
 ///
 /// ```
 /// # use std::fmt;
-/// # use crumbkit_core::{Call, Code, Failure, Field, Recovery};
+/// # use crumbkit::{Call, Code, Failure, Field, Recovery};
 /// # const NOT_FOUND: Code = Code::new("shelf", "books", "not_found");
 /// # #[derive(Debug)]
 /// # struct NoSuchBook(u32);
@@ -140,7 +140,7 @@ pub trait Failure: std::error::Error {
     ///
     /// ```
     /// # use std::fmt;
-    /// # use crumbkit_core::{Call, Code, Failure, Recovery};
+    /// # use crumbkit::{Call, Code, Failure, Recovery};
     /// # const NO_LOGIN: Code = Code::new("shelf", "auth", "no_login");
     /// # #[derive(Debug)]
     /// # struct NoLogin;
@@ -184,7 +184,7 @@ pub trait Failure: std::error::Error {
     ///
     /// ```
     /// # use std::fmt;
-    /// # use crumbkit_core::{Call, Code, Failure, Field, Recovery};
+    /// # use crumbkit::{Call, Code, Failure, Field, Recovery};
     /// # const NOT_FOUND: Code = Code::new("shelf", "books", "not_found");
     /// # #[derive(Debug)]
     /// # struct NoSuchBook(u32);
@@ -236,7 +236,7 @@ pub trait Failure: std::error::Error {
     ///
     /// ```
     /// # use std::fmt;
-    /// # use crumbkit_core::{Code, Failure, Recovery};
+    /// # use crumbkit::{Code, Failure, Recovery};
     /// # const UNKNOWN_KEY: Code = Code::new("shelf", "config", "unknown_key");
     /// # #[derive(Debug)]
     /// # struct UnknownKey { source: String, at: usize }
@@ -322,7 +322,7 @@ pub enum Recovery {
 ///
 /// ```
 /// # use std::fmt;
-/// # use crumbkit_core::{Code, Failure, Recovery};
+/// # use crumbkit::{Code, Failure, Recovery, Spelling};
 /// # const TIMED_OUT: Code = Code::new("shelf", "network", "timed_out");
 /// # #[derive(Debug)]
 /// # struct Timeout;
@@ -338,7 +338,7 @@ pub enum Recovery {
 ///     Err(Timeout)
 /// }
 ///
-/// fn handler() -> Result<String, crumbkit_core::Error> {
+/// fn handler() -> Result<String, crumbkit::Error> {
 ///     let text = fetch()?;
 ///     Ok(text)
 /// }
@@ -346,6 +346,7 @@ pub enum Recovery {
 /// let error = handler().unwrap_err();
 /// assert_eq!(error.to_string(), "timed out");
 /// assert_eq!(error.failure().recovery(), Recovery::Retry);
+/// assert_eq!(Spelling::COLONS.spell(error.failure().code()), "shelf::network::timed_out");
 /// ```
 pub struct Error(Box<dyn Failure + Send + Sync>);
 

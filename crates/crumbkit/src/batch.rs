@@ -43,10 +43,10 @@ mod tests;
 ///
 /// ```
 /// # use std::fmt;
-/// # use crumbkit_core::{Call, Code, Failure, Recovery};
+/// # use crumbkit::{Call, Code, Failure, Recovery};
 /// # #[derive(serde::Serialize, schemars::JsonSchema)]
 /// # struct Book { id: u32 }
-/// # impl crumbkit_core::Row for Book { const COLUMNS: &'static [&'static str] = &["id"]; }
+/// # impl crumbkit::Row for Book { const COLUMNS: &'static [&'static str] = &["id"]; }
 /// # const NOT_FOUND: Code = Code::new("shelf", "books", "not_found");
 /// # #[derive(Debug)]
 /// # struct NoSuchBook(u32);
@@ -63,7 +63,7 @@ mod tests;
 /// # fn find(id: u32) -> Result<Book, NoSuchBook> {
 /// #     if id == 2 { Ok(Book { id }) } else { Err(NoSuchBook(id)) }
 /// # }
-/// use crumbkit_core::Batch;
+/// use crumbkit::Batch;
 ///
 /// fn show(ids: &[u32]) -> Batch<Book, NoSuchBook> {
 ///     let mut batch = Batch::new(&["books", "show"], "ids", ids);

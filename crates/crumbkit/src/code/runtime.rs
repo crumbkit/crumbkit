@@ -42,7 +42,7 @@ impl Code {
     /// reason when the plugin gives no next step.
     ///
     /// ```
-    /// use crumbkit_core::{Code, Spelling};
+    /// use crumbkit::{Code, Spelling};
     ///
     /// const PLUGIN_FAILED: Code = Code::new("shelf", "plugin", "failed");
     ///
