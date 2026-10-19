@@ -31,7 +31,7 @@ no arguments on a command that the tool gives to `Command::defer`.
 | [`check_listings`](../../../crates/crumbkit-test/src/listings.rs) | Every `list` command has `--limit` and `--all`, and every `show` command takes 1 to 100 ids. |
 | [`check_filters`](../../../crates/crumbkit-test/src/filters.rs) | An option that takes many values accepts them both repeated and separated by commas, with one value per use. |
 | [`check_guide`](../../../crates/crumbkit-test/src/guide.rs) | The guide's goal headings, leaves, columns and topics match the command tree, and each visible leaf has an example that clap accepts. |
-| [`check_exit_codes`](../../../crates/crumbkit-test/src/exits.rs) | The guide's declared exit codes avoid 0, 1, 2 and 126 to 255, and each code and rename is declared once. |
+| [`check_exit_codes`](../../../crates/crumbkit-test/src/exits.rs) | The guide's declared exit codes avoid 0, 1 and 2, keep single codes to 3 to 125 or 129 to 159, never overlap, and declare each code and rename once. |
 | [`check_codes`](../../../crates/crumbkit-test/src/codes.rs) | No two failure codes spell the same text, and each code is printable ASCII without spaces. |
 | [`check_document_ids`](../../../crates/crumbkit-test/src/documents.rs) | Every leaf's document has crumbkit's envelope. |
 | [`check_mounts`](../../../crates/crumbkit-test/src/documents.rs) | Each of crumbkit's own commands that a tool mounts sits at its fixed path. |

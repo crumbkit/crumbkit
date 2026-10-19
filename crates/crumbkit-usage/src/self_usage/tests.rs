@@ -282,6 +282,35 @@ fn a_finding_row_counts_each_exit_from_3_with_the_meaning_that_the_guide_declare
 }
 
 #[test]
+fn a_finding_row_gives_an_exit_inside_a_declared_range_the_meaning_of_the_range() {
+    const GUIDE: Guide =
+        Guide::new().exits(&[Exit::range(64, 78, "The importer ended with its own code.")]);
+    let log = [
+        line(30, "books list", &json!({"exit": 2})),
+        line(20, "books list", &json!({"exit": 70})),
+        line(10, "books list", &json!({"exit": 79})),
+    ]
+    .concat();
+    let listing = report_from(
+        &tool(),
+        &GUIDE,
+        Some(Cursor::new(log)),
+        Duration::from_secs(60),
+        now(),
+    );
+
+    let row = serde_json::to_value(&listing.rows()[0]).unwrap();
+
+    assert_eq!(
+        row["figures"]["exits"],
+        json!([
+            {"exit": 70, "meaning": "The importer ended with its own code.", "runs": 1},
+            {"exit": 79, "meaning": null, "runs": 1},
+        ])
+    );
+}
+
+#[test]
 fn the_report_reads_the_runs_since_the_duration_before_now_and_names_that_day() {
     let log = [
         line(3 * 86_400, "books list", &json!({})),

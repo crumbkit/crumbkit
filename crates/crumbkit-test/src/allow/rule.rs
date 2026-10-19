@@ -88,8 +88,8 @@ pub enum Rule {
     /// type sets `Row::WHOLE`. Its id is `documents/rows-whole`.
     RowsWhole,
     /// [`check_exit_codes`](crate::check_exit_codes): the guide declares
-    /// an exit code from 126 to 255, which a shell also reports for its own
-    /// reasons. Its id is `exit-codes/shell-code`.
+    /// a single exit code from 126 to 128 or from 160 to 255, which a shell
+    /// also reports for its own reasons. Its id is `exit-codes/shell-code`.
     ShellExitCode,
     /// [`check_exit_codes`](crate::check_exit_codes): the guide declares
     /// the exit code 1 or 2, which already mean crumbkit's default failure
@@ -235,7 +235,7 @@ impl Rule {
                 "--json prints every field of each row, so the document costs more tokens than the compact columns.",
             ],
             Self::ShellExitCode => &[
-                "An agent cannot tell the code from the one a shell reports, such as 127 when the shell cannot find the tool or 130 when Ctrl-C ends it.",
+                "An agent cannot tell the code from the one a shell reports, such as 126 when the shell cannot run the tool or 127 when it cannot find it.",
             ],
             Self::SharedExit => &[
                 "The exit code has two meanings, so an agent must read the failure's code to learn which one applies.",

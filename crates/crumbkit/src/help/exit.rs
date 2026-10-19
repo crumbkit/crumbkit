@@ -2,6 +2,7 @@
 //! exit-codes` and `commands list` describe.
 
 use std::fmt::Write as _;
+use std::ops::RangeInclusive;
 
 use super::Guide;
 use crate::Code;
@@ -34,7 +35,8 @@ const CRUMBKIT: [(u8, &str); 3] = [
 ];
 
 /// An exit code that the tool declares, with what it means, such as 124 for
-/// a download that ran out of time.
+/// a download that ran out of time, or a range of codes with one meaning,
+/// such as the codes that a command passes on from a test suite it runs.
 ///
 /// A tool declares its codes in its [`Guide`], which `<tool> help
 /// exit-codes` and `commands list` read:
@@ -68,16 +70,38 @@ const CRUMBKIT: [(u8, &str); 3] = [
 /// assert_eq!(GUIDE.get_exits()[0].get_failures(), [&TIMED_OUT]);
 /// ```
 ///
+/// A command that passes on the exit code of another program declares the
+/// range of codes it passes on with [`Exit::range`], and the guide's leaf
+/// for it declares [`Leaf::passes_on_exit`](super::Leaf::passes_on_exit):
+///
+/// ```
+/// use crumbkit::help::{Exit, Guide};
+///
+/// const GUIDE: Guide = Guide::new().exits(&[
+///     Exit::range(3, 125, "The test suite failed with this code.").commands(&[&["suite", "run"]]),
+///     Exit::new(130, "Ctrl-C ended the run."),
+/// ]);
+///
+/// assert_eq!(GUIDE.get_exits()[0].codes(), 3..=125);
+/// ```
+///
 /// 0 means success, 1 and 2 keep crumbkit's meanings, and a shell reports
-/// 126 and above for its own reasons, so a tool's codes run from 3 to 125
-/// (ADR-0002). A tool that gives 1 or 2 a second meaning states its reason
-/// with crumbkit-test's `Rule::SharedExit`. crumbkit-test's
-/// `check_exit_codes` checks the declarations, and crumbkit never fails on
-/// them at runtime.
+/// 126 to 128 for its own reasons, such as 127 when it cannot find the
+/// tool. A single code therefore runs from 3 to 125, or from 129 to 159
+/// for a run that a signal ended, which a shell reports as 128 plus the
+/// signal's number, such as 130 after Ctrl-C. A range runs from 3 to 255,
+/// because its codes come from another program (ADR-0002, ADR-0103). A
+/// tool that gives 1 or 2 a second meaning states its reason with
+/// crumbkit-test's `Rule::SharedExit`, and a tool that declares another
+/// single code from 126 states it with `Rule::ShellExitCode`.
+/// crumbkit-test's `check_exit_codes` checks the declarations, and crumbkit
+/// never fails on them at runtime.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Exit {
-    /// The exit code.
-    code: u8,
+    /// The exit code, or the first code of a range.
+    first: u8,
+    /// The last code of a range, which equals `first` for a single code.
+    last: u8,
     /// What the code means, as one sentence.
     meaning: &'static str,
     /// The paths of the commands that return the code, each covering the
@@ -93,8 +117,25 @@ impl Exit {
     /// until [`Exit::commands`] names the ones that do.
     #[must_use]
     pub const fn new(code: u8, meaning: &'static str) -> Self {
+        Self::range(code, code, meaning)
+    }
+
+    /// Returns the range of exit codes from `first` to `last`, both
+    /// included, which all mean `meaning`, a sentence that carries its own
+    /// full stop. A range declares the codes that a command passes on from
+    /// another program, such as a child process or a test suite, whose
+    /// codes the tool cannot name one by one. Every command of the tool
+    /// can return them until [`Exit::commands`] names the ones that do.
+    ///
+    /// A range of one code is a single code. crumbkit-test's
+    /// `check_exit_codes` fails on a range that starts below 3, ends
+    /// before it starts, overlaps another declared code or lists failure
+    /// codes.
+    #[must_use]
+    pub const fn range(first: u8, last: u8, meaning: &'static str) -> Self {
         Self {
-            code,
+            first,
+            last,
             meaning,
             commands: &[],
             failures: &[],
@@ -113,7 +154,10 @@ impl Exit {
 
     /// Sets the failure codes that end a run with the code. A run whose
     /// first failure has one of `codes` exits with this code in place of
-    /// crumbkit's default (ADR-0037). A code may be one of crumbkit's, such
+    /// crumbkit's default (ADR-0037). A range names no single code to exit
+    /// with, so the failures of a range never decide a run's exit, and
+    /// crumbkit-test's `check_exit_codes` fails on a range that lists
+    /// any. A code may be one of crumbkit's, such
     /// as `crumbkit::codes::CLI_USAGE`, or the tool's rename of it from
     /// [`Guide::codes`](super::Guide::codes), and either covers both.
     #[must_use]
@@ -129,10 +173,36 @@ impl Exit {
         self.failures
     }
 
-    /// Returns the exit code.
+    /// Returns the exit code, or the first code of a range.
     #[must_use]
     pub const fn code(&self) -> u8 {
-        self.code
+        self.first
+    }
+
+    /// Returns the codes that the exit declares, from its first code to its
+    /// last, both included. A single code returns a range of that one
+    /// code, such as `124..=124`, and a range that ends before it starts
+    /// returns an empty range.
+    #[must_use]
+    pub const fn codes(&self) -> RangeInclusive<u8> {
+        RangeInclusive::new(self.first, self.last)
+    }
+
+    /// Returns whether the exit declares one code: a code from
+    /// [`Exit::new`], or a range whose first and last codes are the same.
+    pub(crate) const fn is_single(&self) -> bool {
+        self.first == self.last
+    }
+
+    /// Returns the code as `help exit-codes` and `commands list` print
+    /// it: the code, such as `124`, or the first and last codes of a range
+    /// joined by a dash, such as `124-125`.
+    fn label(&self) -> String {
+        if self.is_single() {
+            self.first.to_string()
+        } else {
+            format!("{}-{}", self.first, self.last)
+        }
     }
 
     /// Returns what the code means.
@@ -161,16 +231,17 @@ impl Exit {
 }
 
 /// Returns the text that `<tool> help exit-codes` prints, where `tool` is
-/// the tool's name: crumbkit's codes that `guide` keeps, then each code of
-/// `guide` in order,
+/// the tool's name: crumbkit's codes that `guide` keeps, then each code or
+/// range of `guide` in order,
 /// each with its meaning and, for a code that only some commands return,
 /// those commands, a line for each leaf that passes on a program's exit
 /// code, and a closing line about the codes that a shell reports.
 pub(crate) fn text(tool: &str, guide: &Guide) -> String {
     let exits = guide.get_exits();
-    let width = exits
+    let labels: Vec<String> = exits.iter().map(Exit::label).collect();
+    let width = labels
         .iter()
-        .map(|exit| digits(exit.code))
+        .map(String::len)
         .chain(std::iter::once(1))
         .max()
         .unwrap_or(1);
@@ -182,8 +253,8 @@ pub(crate) fn text(tool: &str, guide: &Guide) -> String {
         }
         let _ = writeln!(text, "  {code:<width$}  {meaning}");
     }
-    for exit in exits {
-        let _ = write!(text, "  {:<width$}  {}", exit.code, exit.meaning);
+    for (exit, label) in exits.iter().zip(&labels) {
+        let _ = write!(text, "  {label:<width$}  {}", exit.meaning);
         for (index, path) in exit.commands.iter().enumerate() {
             let lead = if index == 0 { " Commands: " } else { ", " };
             let _ = write!(text, "{lead}`{tool}");
@@ -220,8 +291,8 @@ pub(crate) fn text(tool: &str, guide: &Guide) -> String {
 
 /// Returns the note that `commands list` prints after its table, which
 /// names the exit codes and the topic that describes them, such as
-/// ``Exit codes: 0, 1 and 2 apply to every command, and shelf adds 124.
-/// `shelf help exit-codes` describes them.``
+/// ``Exit codes: 0, 1 and 2 apply to every command, and shelf adds 3 and
+/// 124-125. `shelf help exit-codes` describes them.``
 pub(crate) fn note(tool: &str, guide: &Guide) -> String {
     let mut note = String::from(if refuses_with_2(guide) {
         "Exit codes: 0, 1 and 2 apply to every command"
@@ -235,7 +306,7 @@ pub(crate) fn note(tool: &str, guide: &Guide) -> String {
             _ if index + 1 == exits.len() => " and ".to_owned(),
             _ => ", ".to_owned(),
         };
-        let _ = write!(note, "{lead}{}", exit.code);
+        let _ = write!(note, "{lead}{}", exit.label());
     }
     let _ = write!(note, ". `{tool} help {TOPIC}` describes them.");
     note
@@ -245,15 +316,4 @@ pub(crate) fn note(tool: &str, guide: &Guide) -> String {
 /// `guide`, which lists no other code for it.
 fn refuses_with_2(guide: &Guide) -> bool {
     guide.failure_exit(&[], &crate::codes::CLI_USAGE) == 2
-}
-
-/// Returns the number of decimal digits of `code`.
-const fn digits(code: u8) -> usize {
-    if code >= 100 {
-        3
-    } else if code >= 10 {
-        2
-    } else {
-        1
-    }
 }

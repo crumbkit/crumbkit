@@ -241,7 +241,13 @@
             "type": "object",
             "properties": {
               "exit": {
-                "description": "The exit code.",
+                "description": "The exit code, or the first code of a range of codes that the command passes on from another program.",
+                "type": "integer",
+                "maximum": 255,
+                "minimum": 0
+              },
+              "last": {
+                "description": "The last code of the range, which equals exit for a single code.",
                 "type": "integer",
                 "maximum": 255,
                 "minimum": 0
@@ -253,6 +259,7 @@
             },
             "required": [
               "exit",
+              "last",
               "meaning"
             ]
           }

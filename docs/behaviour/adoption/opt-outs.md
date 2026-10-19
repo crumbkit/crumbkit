@@ -51,7 +51,7 @@ rule's page gives its reason.
 | `Expect` | `effects/expect` | a replacing leaf has no `--expect` ([write guards](../effects/write-guards.md)) |
 | `ExpectFlag` | `effects/expect-flag` | a command has its own `--expect` |
 | `Items` | `effects/items` | a leaf that writes many items declares neither `all_or_none` nor `per_item` |
-| `ShellExitCode` | `exit-codes/shell-code` | a tool declares an exit code from 126 to 255 ([exit codes](../failures/exit-codes.md#checks)) |
+| `ShellExitCode` | `exit-codes/shell-code` | a tool declares a single exit code from 126 to 128 or from 160 to 255 ([exit codes](../failures/exit-codes.md#checks)) |
 | `SharedExit` | `exit-codes/shared-exit` | a tool declares the exit code 1 or 2 |
 | `Recoveries` | `recoveries/follow` | the check cannot read a failure that a run printed ([failure readers](../failures/excerpts-and-readers.md#reading-failures-back)) |
 | `SameCode` | `recoveries/same-code` | a command that a recovery runs fails on purpose with a code its chain already had |

@@ -1,5 +1,6 @@
-//! Tests for declared exit codes: which commands a code covers, the text
-//! of `help exit-codes` and the note of `commands list`.
+//! Tests for declared exit codes: which commands a code covers, which
+//! codes a range holds, the text of `help exit-codes` and the note of
+//! `commands list`.
 
 use super::{Exit, note, text};
 use crate::help::{Guide, Leaf};
@@ -10,6 +11,54 @@ const BUSY: Exit = Exit::new(3, "The catalogue was locked by another run.");
 /// A code that two branches return.
 const TIMED_OUT: Exit =
     Exit::new(124, "The download ran out of time.").commands(&[&["books", "import"], &["sync"]]);
+
+/// A range of codes that the downloader passes on.
+const PASSED_ON: Exit = Exit::range(124, 125, "The downloader ended with its own code.");
+
+#[test]
+fn a_range_holds_each_code_from_its_first_to_its_last_and_nothing_outside() {
+    assert_eq!(PASSED_ON.codes(), 124..=125);
+    assert!(PASSED_ON.codes().contains(&124));
+    assert!(PASSED_ON.codes().contains(&125));
+    assert!(!PASSED_ON.codes().contains(&123));
+    assert!(!PASSED_ON.codes().contains(&126));
+    assert_eq!(PASSED_ON.code(), 124);
+}
+
+#[test]
+fn a_single_code_holds_only_itself() {
+    assert_eq!(BUSY.codes(), 3..=3);
+    assert_eq!(BUSY.code(), 3);
+}
+
+#[test]
+fn the_topic_prints_a_range_as_its_first_and_last_code_joined_by_a_dash_beside_a_single_code() {
+    const GUIDE: Guide =
+        Guide::new().exits(&[BUSY, PASSED_ON, Exit::new(130, "Ctrl-C ended the run.")]);
+
+    let expected = "\
+Exit codes
+  0        The command did what it was asked.
+  1        The command failed, or a row of its result reports a problem. A failure names its code and the next step.
+  2        The command line was refused. The refusal names the help to read.
+  3        The catalogue was locked by another run.
+  124-125  The downloader ended with its own code.
+  130      Ctrl-C ended the run.
+
+A shell reports 126 and above for its own reasons, such as 127 when it cannot find shelf and 130 when Ctrl-C ends it.
+";
+    assert_eq!(text("shelf", &GUIDE), expected);
+}
+
+#[test]
+fn the_note_names_a_range_by_its_first_and_last_code() {
+    const GUIDE: Guide = Guide::new().exits(&[BUSY, PASSED_ON]);
+
+    assert_eq!(
+        note("shelf", &GUIDE),
+        "Exit codes: 0, 1 and 2 apply to every command, and shelf adds 3 and 124-125. `shelf help exit-codes` describes them."
+    );
+}
 
 #[test]
 fn a_code_without_commands_covers_every_command_and_the_root() {

@@ -76,7 +76,25 @@ fn an_exit_code_holds_its_number_and_its_meaning() {
 
     assert_eq!(
         rows[0]["exits"][1],
-        serde_json::json!({ "exit": 124, "meaning": "The download ran out of time." })
+        serde_json::json!({ "exit": 124, "last": 124, "meaning": "The download ran out of time." })
+    );
+}
+
+#[test]
+fn a_range_of_exit_codes_holds_its_first_code_and_its_last_code() {
+    const RANGE: Guide = Guide::new().exits(&[Exit::range(
+        3,
+        125,
+        "The test suite ended with its own code.",
+    )]);
+
+    let rows =
+        serde_json::to_value(list(&mut output(), &RANGE, &args(&["books", "list"])).unwrap())
+            .unwrap();
+
+    assert_eq!(
+        rows[0]["exits"][0],
+        serde_json::json!({ "exit": 3, "last": 125, "meaning": "The test suite ended with its own code." })
     );
 }
 
