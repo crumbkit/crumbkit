@@ -15,6 +15,13 @@ Tests run the same parse in memory through `parse_to`, which writes to a
 sink of in-memory writers. The rustdoc of `parse`, `parse_from` and
 `parse_to` states what each prints and the help lines that crumbkit adds.
 
+A sink asks for no styles by default, so `parse_to` writes plain help. A
+sink built with `Sink::styled(true)` receives help with clap's styles when
+crumbkit's `color` feature is on, so a tool or a test can render help for a
+terminal through its own writer ([help](../help/README.md)). `parse` and
+`parse_from` mark their standard sink as styled when standard output is a
+terminal and terminal detection is on.
+
 On success, `parse` returns the tool's parsed type and an
 [`Output`](../../../crates/crumbkit/src/output.rs). The `Output` holds the
 view flags, the command tree, the guide's settings with the spelling of its
@@ -47,7 +54,7 @@ A tool with personal aliases passes its arguments through
 `crumbkit_aliases::expand` before `parse_from`, as the
 [aliases page](aliases.md) describes.
 
-Why: ADR-0015, ADR-0076, ADR-0086, ADR-0002.
+Why: ADR-0015, ADR-0076, ADR-0086, ADR-0002, ADR-0102.
 
 ## The Stop of a run that parse ended
 

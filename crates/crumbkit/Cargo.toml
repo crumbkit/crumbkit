@@ -73,6 +73,10 @@ complete = ["dep:clap_complete"]
 # hand builds no syn (ADR-0003). It re-exports `#[derive(Failure)]` beside
 # the trait of the same name, at `crumbkit::Failure`.
 derive = ["dep:crumbkit-derive"]
+# `color` is off by default, so a binary chooses clap's colour (ADR-0003).
+# It turns on clap's `color` feature, whose `StyledStr::ansi` lets `parse_to`
+# write help with clap's styles to a sink that asks for them (ADR-0102).
+color = ["clap/color"]
 
 [dev-dependencies]
 # The tests compare the exact help pages and refusal messages that a tool

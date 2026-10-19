@@ -20,6 +20,7 @@ mod limit;
 mod names;
 mod returned;
 mod root;
+mod styled;
 mod views;
 
 /// A tool with two global flags, a version, and a group that holds a visible

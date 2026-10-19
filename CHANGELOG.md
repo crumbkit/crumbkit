@@ -541,6 +541,13 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit: [`Prose`] and [`Batch`] take a `note`, which text prints on
   standard error where a listing's note prints, before any failures, and
   which the JSON document leaves out ([behaviour/output/listings]).
+- crumbkit: `Sink::styled` makes a [`Sink`] ask for styles, and with the
+  new `color` feature `parse_to` writes help to it with clap's styles.
+  `parse` styles its sink when standard output is a terminal
+  ([behaviour/parsing], [behaviour/output/terminal]).
+- crumbkit: [`help::Group`]`::compact` makes a group's `-h` list each goal's
+  subcommand names on one line, such as `Read:  list, show`, while `--help`
+  keeps the full list ([behaviour/help]).
 - crumbkit: `Exit::range` declares a range of exit codes with one meaning
   for a command that passes on another program's code, and `help
   exit-codes`, the `commands list` note and the reference print it as
@@ -1089,6 +1096,7 @@ rustdoc, or at the page in docs/ that describes the behaviour. -->
 [`help::quote`]: crates/crumbkit/src/help.rs
 [`help::ViewFlag`]: crates/crumbkit/src/help/view.rs
 [`help::RuntimeLeaf`]: crates/crumbkit/src/help/runtime.rs
+[`help::Group`]: crates/crumbkit/src/help/group.rs
 [`help::FileFormat`]: crates/crumbkit/src/help/format.rs
 [`commands`]: crates/crumbkit/src/commands.rs
 [`schemas`]: crates/crumbkit/src/schemas.rs
