@@ -165,3 +165,19 @@ fn one_failed_check_names_every_problem() {
     );
     assert!(message.contains(r#"both spell """#), "{message}");
 }
+
+#[test]
+fn the_codes_check_reports_its_problems_as_the_tree_checks_do() {
+    let message = panic_message(|| {
+        check_codes(
+            &Guide::new().spelling(Spelling::custom(empty)),
+            &[&[&NOT_FOUND]],
+        );
+    })
+    .unwrap();
+
+    assert!(
+        message.starts_with("the command tree breaks crumbkit's failure code rules:\n"),
+        "{message}"
+    );
+}

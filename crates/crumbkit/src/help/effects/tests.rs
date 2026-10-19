@@ -436,6 +436,29 @@ fn a_write_of_many_items_declares_all_or_none_or_a_result_for_each_item() {
 }
 
 #[test]
+fn a_read_only_effect_has_no_writes() {
+    assert_eq!(Effects::read_only().writes(), None);
+    assert!(Effects::additive().writes().is_some());
+    assert!(Effects::destructive().writes().is_some());
+}
+
+/// The `compile_fail` doctest on `Effects::per_item` shows that a `const`
+/// fails to compile; this test shows the message of the panic behind it.
+#[test]
+fn a_read_only_effect_refuses_a_write_guard() {
+    for guard in [Effects::per_item, Effects::all_or_none] {
+        let payload = std::panic::catch_unwind(|| guard(Effects::read_only()))
+            .expect_err("a read-only effect accepted a write guard");
+        let message = payload.downcast_ref::<&str>().copied().unwrap_or_default();
+
+        assert_eq!(
+            message,
+            "a read-only command writes nothing, so it declares no write guard"
+        );
+    }
+}
+
+#[test]
 fn the_writes_line_names_each_guard_and_says_when_a_replacing_write_has_no_version_check() {
     let lines = [
         Effects::replacing().writes_line(true),
@@ -482,15 +505,15 @@ fn both_help_pages_print_the_writes_line_after_the_effects_line() {
 
 #[test]
 fn the_writes_object_holds_replaces_expect_and_items() {
-    let writes = super::writes(Some(Effects::replacing().per_item()), true);
+    let writes = super::guards(Some(Effects::replacing().per_item()), true);
     let json = serde_json::to_string(&writes).unwrap();
 
     assert_eq!(
         json,
         r#"{"replaces":true,"expect":true,"items":"per_item"}"#
     );
-    assert_eq!(super::writes(Some(Effects::read_only()), false), None);
-    assert_eq!(super::writes(None, false), None);
+    assert_eq!(super::guards(Some(Effects::read_only()), false), None);
+    assert_eq!(super::guards(None, false), None);
 }
 
 /// The guide of `tool()`, whose leaf passes on the exit code of the

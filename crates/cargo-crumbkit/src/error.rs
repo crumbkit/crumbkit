@@ -5,7 +5,7 @@ use std::fmt;
 use std::io;
 use std::path::PathBuf;
 
-use crumbkit::{Code, Failure, Recovery};
+use crumbkit::{Code, Failure};
 use crumbkit_markdown::RenderError;
 
 #[cfg(test)]
@@ -50,10 +50,17 @@ const UNRENDERABLE: Code = Code::new("crumbkit", "docs", "unrenderable");
 const WRITE_FAILED: Code = Code::new("crumbkit", "docs", "write_failed");
 
 /// A failure to build a tool's binary or to run it for its command tree,
-/// which `weigh` and `docs` share.
-#[derive(Debug)]
+/// which `weigh` and `docs` share. Each failure's next step is advice,
+/// because each one needs a change outside cargo crumbkit: to cargo, to
+/// the workspace or to the tool. `#[derive(Failure)]` also writes
+/// `ToolError::CODES`, which the tests pass to crumbkit-test's codes check.
+#[derive(Debug, Failure)]
 pub(crate) enum ToolError {
     /// cargo cannot start.
+    #[failure(
+        code = CARGO_UNAVAILABLE,
+        hint = "run cargo crumbkit through cargo, which sets CARGO to its own path",
+    )]
     CargoUnavailable {
         /// The cargo program that cargo crumbkit ran.
         cargo: String,
@@ -61,6 +68,10 @@ pub(crate) enum ToolError {
         error: io::Error,
     },
     /// `cargo build` exits with a failure.
+    #[failure(
+        code = BUILD_FAILED,
+        hint = "run `cargo build --workspace --bin {bin}` to see cargo's errors",
+    )]
     BuildFailed {
         /// The name of the binary that cargo crumbkit builds.
         bin: String,
@@ -68,16 +79,28 @@ pub(crate) enum ToolError {
         status: String,
     },
     /// cargo's build messages name no executable for the binary.
+    #[failure(
+        code = NO_BINARY,
+        hint = "run `cargo build --workspace --bin {bin} --message-format json` to see the artifacts that cargo built",
+    )]
     NoBinary {
         /// The name of the binary that cargo crumbkit builds.
         bin: String,
     },
     /// The temporary XDG directories cannot be created.
+    #[failure(
+        code = NO_TEMP_DIR,
+        hint = "make the system's temporary directory writable, or set TMPDIR to one that is",
+    )]
     NoTempDir {
         /// Why they cannot be created.
         error: io::Error,
     },
     /// The tool's binary cannot start.
+    #[failure(
+        code = TOOL_UNAVAILABLE,
+        hint = "check that the binary runs on this machine",
+    )]
     ToolUnavailable {
         /// The path of the binary.
         binary: PathBuf,
@@ -86,25 +109,15 @@ pub(crate) enum ToolError {
     },
     /// The tool's `commands list --all --json --full` prints no
     /// `<tool>/commands-list/v1` document.
+    #[failure(
+        code = NO_COMMANDS_LIST,
+        hint = "add a `commands list` command at the tool's root that takes crumbkit::commands::CommandsList, as the crumbkit::commands module shows",
+    )]
     NoCommandsList {
         /// The command line that cargo crumbkit ran, such as
         /// `shelf commands list --all --json --full`.
         line: String,
     },
-}
-
-impl ToolError {
-    /// Every code that a `ToolError` returns. Only the tests read the list,
-    /// which they pass to crumbkit-test's codes check.
-    #[cfg(test)]
-    pub(crate) const CODES: &'static [&'static Code] = &[
-        &CARGO_UNAVAILABLE,
-        &BUILD_FAILED,
-        &NO_BINARY,
-        &NO_TEMP_DIR,
-        &TOOL_UNAVAILABLE,
-        &NO_COMMANDS_LIST,
-    ];
 }
 
 /// Prints what failed, such as ``` `cargo build --workspace --bin shelf`
@@ -147,50 +160,18 @@ impl std::error::Error for ToolError {
     }
 }
 
-/// Each failure's next step is advice, because each one needs a change
-/// outside cargo crumbkit: to cargo, to the workspace or to the tool.
-impl Failure for ToolError {
-    fn code(&self) -> &'static Code {
-        match self {
-            Self::CargoUnavailable { .. } => &CARGO_UNAVAILABLE,
-            Self::BuildFailed { .. } => &BUILD_FAILED,
-            Self::NoBinary { .. } => &NO_BINARY,
-            Self::NoTempDir { .. } => &NO_TEMP_DIR,
-            Self::ToolUnavailable { .. } => &TOOL_UNAVAILABLE,
-            Self::NoCommandsList { .. } => &NO_COMMANDS_LIST,
-        }
-    }
-
-    fn recovery(&self) -> Recovery {
-        let hint = match self {
-            Self::CargoUnavailable { .. } => {
-                "run cargo crumbkit through cargo, which sets CARGO to its own path".to_owned()
-            }
-            Self::BuildFailed { bin, .. } => {
-                format!("run `cargo build --workspace --bin {bin}` to see cargo's errors")
-            }
-            Self::NoBinary { bin } => format!(
-                "run `cargo build --workspace --bin {bin} --message-format json` to see the artifacts that cargo built"
-            ),
-            Self::NoTempDir { .. } => {
-                "make the system's temporary directory writable, or set TMPDIR to one that is"
-                    .to_owned()
-            }
-            Self::ToolUnavailable { .. } => {
-                "check that the binary runs on this machine".to_owned()
-            }
-            Self::NoCommandsList { .. } => "add a `commands list` command at the tool's root that takes crumbkit::commands::CommandsList, as the crumbkit::commands module shows".to_owned(),
-        };
-        Recovery::Hint(hint)
-    }
-}
-
-/// A failure of `cargo crumbkit weigh`.
-#[derive(Debug)]
+/// A failure of `cargo crumbkit weigh`. Each failure's next step is
+/// advice, because each one needs a change outside cargo crumbkit: to the
+/// workspace or to the tool. `#[derive(Failure)]` also writes
+/// `WeighError::CODES`, which lists its codes besides those of
+/// [`ToolError`], and the tests pass it to crumbkit-test's codes check.
+#[derive(Debug, Failure)]
 pub(crate) enum WeighError {
     /// The binary cannot be built or run for its command tree.
+    #[failure(forward)]
     Tool(ToolError),
     /// The tool's run for a help page exits with a failure.
+    #[failure(code = HELP_FAILED, hint = "run `{line}` to see the failure")]
     HelpFailed {
         /// The command line that `weigh` ran, such as `shelf books -h`.
         line: String,
@@ -198,6 +179,10 @@ pub(crate) enum WeighError {
         status: String,
     },
     /// A golden file exists but cannot be read.
+    #[failure(
+        code = GOLDEN_UNREADABLE,
+        hint = "make the golden directory readable, or pass --goldens another directory",
+    )]
     GoldenUnreadable {
         /// The path of the golden file.
         path: PathBuf,
@@ -206,6 +191,10 @@ pub(crate) enum WeighError {
     },
     /// The tool's `self figures list --all --json --log <FILE>` prints no
     /// `<tool>/self-figures-list/v1` document.
+    #[failure(
+        code = NO_USAGE_FIGURES,
+        hint = "run `{line}` to see the failure; a tool needs a `self figures list` command that takes crumbkit_usage::SelfFigures, as shelf's shows",
+    )]
     NoUsageFigures {
         /// The command line that `weigh` ran, such as
         /// `shelf self figures list --all --json --log usage.jsonl`.
@@ -214,20 +203,11 @@ pub(crate) enum WeighError {
     /// `--usage` names no log, and neither `XDG_STATE_HOME` nor `HOME`
     /// gives the state directory that holds the tool's own log. Windows
     /// always has `%LOCALAPPDATA%`, so this happens only on Unix.
+    #[failure(
+        code = NO_STATE_DIR,
+        hint = "set HOME or XDG_STATE_HOME, or pass --log the usage log",
+    )]
     NoStateDir,
-}
-
-impl WeighError {
-    /// Every code that a `WeighError` returns besides those of
-    /// [`ToolError`]. Only the tests read the list, which they pass to
-    /// crumbkit-test's codes check.
-    #[cfg(test)]
-    pub(crate) const CODES: &'static [&'static Code] = &[
-        &HELP_FAILED,
-        &GOLDEN_UNREADABLE,
-        &NO_USAGE_FIGURES,
-        &NO_STATE_DIR,
-    ];
 }
 
 /// `weigh` returns a failure to build or run the tool as its own.
@@ -270,43 +250,21 @@ impl std::error::Error for WeighError {
     }
 }
 
-/// Each failure's next step is advice, because each one needs a change
-/// outside cargo crumbkit: to the workspace or to the tool.
-impl Failure for WeighError {
-    fn code(&self) -> &'static Code {
-        match self {
-            Self::Tool(error) => error.code(),
-            Self::HelpFailed { .. } => &HELP_FAILED,
-            Self::GoldenUnreadable { .. } => &GOLDEN_UNREADABLE,
-            Self::NoUsageFigures { .. } => &NO_USAGE_FIGURES,
-            Self::NoStateDir => &NO_STATE_DIR,
-        }
-    }
-
-    fn recovery(&self) -> Recovery {
-        let hint = match self {
-            Self::Tool(error) => return error.recovery(),
-            Self::HelpFailed { line, .. } => format!("run `{line}` to see the failure"),
-            Self::GoldenUnreadable { .. } => {
-                "make the golden directory readable, or pass --goldens another directory".to_owned()
-            }
-            Self::NoUsageFigures { line } => format!(
-                "run `{line}` to see the failure; a tool needs a `self figures list` command that takes crumbkit_usage::SelfFigures, as shelf's shows"
-            ),
-            Self::NoStateDir => {
-                "set HOME or XDG_STATE_HOME, or pass --log the usage log".to_owned()
-            }
-        };
-        Recovery::Hint(hint)
-    }
-}
-
-/// A failure of `cargo crumbkit docs`.
-#[derive(Debug)]
+/// A failure of `cargo crumbkit docs`. Each failure's next step is advice,
+/// because each one needs a change outside cargo crumbkit: to the tool or
+/// to the file system. `#[derive(Failure)]` also writes `DocsError::CODES`,
+/// which lists its codes besides those of [`ToolError`], and the tests pass
+/// it to crumbkit-test's codes check.
+#[derive(Debug, Failure)]
 pub(crate) enum DocsError {
     /// The binary cannot be built or run for its command tree.
+    #[failure(forward)]
     Tool(ToolError),
     /// The tool's `commands list` document cannot become a reference.
+    #[failure(
+        code = UNRENDERABLE,
+        hint = "run `{line}` to see the document, and change the tool's help as the cause says",
+    )]
     Unrenderable {
         /// The command line that `docs` ran, such as
         /// `shelf commands list --all --json --full`.
@@ -315,20 +273,16 @@ pub(crate) enum DocsError {
         error: RenderError,
     },
     /// The reference file cannot be written.
+    #[failure(
+        code = WRITE_FAILED,
+        hint = "make the file's directory writable, or pass --out another file",
+    )]
     WriteFailed {
         /// The path of the file.
         path: PathBuf,
         /// Why it cannot be written.
         error: io::Error,
     },
-}
-
-impl DocsError {
-    /// Every code that a `DocsError` returns besides those of
-    /// [`ToolError`]. Only the tests read the list, which they pass to
-    /// crumbkit-test's codes check.
-    #[cfg(test)]
-    pub(crate) const CODES: &'static [&'static Code] = &[&UNRENDERABLE, &WRITE_FAILED];
 }
 
 /// `docs` returns a failure to build or run the tool as its own.
@@ -364,30 +318,5 @@ impl std::error::Error for DocsError {
             Self::Unrenderable { error, .. } => Some(error),
             Self::WriteFailed { error, .. } => Some(error),
         }
-    }
-}
-
-/// Each failure's next step is advice, because each one needs a change
-/// outside cargo crumbkit: to the tool or to the file system.
-impl Failure for DocsError {
-    fn code(&self) -> &'static Code {
-        match self {
-            Self::Tool(error) => error.code(),
-            Self::Unrenderable { .. } => &UNRENDERABLE,
-            Self::WriteFailed { .. } => &WRITE_FAILED,
-        }
-    }
-
-    fn recovery(&self) -> Recovery {
-        let hint = match self {
-            Self::Tool(error) => return error.recovery(),
-            Self::Unrenderable { line, .. } => format!(
-                "run `{line}` to see the document, and change the tool's help as the cause says"
-            ),
-            Self::WriteFailed { .. } => {
-                "make the file's directory writable, or pass --out another file".to_owned()
-            }
-        };
-        Recovery::Hint(hint)
     }
 }

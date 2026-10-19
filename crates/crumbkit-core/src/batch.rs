@@ -91,8 +91,6 @@ pub struct Batch<R: Row, E: AsFailure> {
     /// For each failure, the position of its result among the pushed
     /// results, which is the position of its key in `keys`.
     failure_positions: Vec<usize>,
-    /// The number of results pushed so far.
-    pushed: usize,
     /// The line that the text output prints on standard error after the
     /// rows and before the failures.
     note: Option<String>,
@@ -121,7 +119,6 @@ impl<R: Row, E: AsFailure> Batch<R, E> {
             positions: Vec::new(),
             failures: Vec::new(),
             failure_positions: Vec::new(),
-            pushed: 0,
             note: None,
         }
     }
@@ -141,17 +138,23 @@ impl<R: Row, E: AsFailure> Batch<R, E> {
     /// Adds the result of the next key: a row for a key that worked, or a
     /// failure for a key that did not.
     pub fn push(&mut self, result: Result<R, E>) {
+        let position = self.pushed();
         match result {
             Ok(row) => {
                 self.rows.push(row);
-                self.positions.push(self.pushed);
+                self.positions.push(position);
             }
             Err(failure) => {
                 self.failures.push(failure);
-                self.failure_positions.push(self.pushed);
+                self.failure_positions.push(position);
             }
         }
-        self.pushed += 1;
+    }
+
+    /// Returns the number of results pushed so far, which is every row and
+    /// every failure.
+    fn pushed(&self) -> usize {
+        self.rows.len() + self.failures.len()
     }
 }
 
@@ -188,7 +191,7 @@ impl<R: Row, E: AsFailure> Rows for Batch<R, E> {
 
     fn left_out(&self, shown: usize) -> Vec<Option<&str>> {
         let cut = self.positions.get(shown..).unwrap_or_default();
-        let unfetched = self.keys.get(self.pushed..).unwrap_or_default();
+        let unfetched = self.keys.get(self.pushed()..).unwrap_or_default();
         cut.iter()
             .map(|&position| self.keys.get(position).map(String::as_str))
             .chain(unfetched.iter().map(|key| Some(key.as_str())))
@@ -214,7 +217,7 @@ impl<R: Row, E: AsFailure> Rows for Batch<R, E> {
     fn left_out_from(&self, shown: usize) -> Option<usize> {
         match self.positions.get(shown) {
             Some(&position) => Some(position),
-            None => (self.pushed < self.keys.len()).then_some(self.pushed),
+            None => (self.pushed() < self.keys.len()).then_some(self.pushed()),
         }
     }
 

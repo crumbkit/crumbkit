@@ -14,8 +14,10 @@ include = ["src/**/*.rs", "README.md", "LICENSE-APACHE", "LICENSE-MIT"]
 [dependencies]
 # The hand-over prints its failures and refusals through crumbkit's `Output`
 # and `Sink`, prints a child's JSON with `finish_to`, and tells crumbkit's run
-# observer that a child took the terminal (ADR-0042, ADR-0057).
-crumbkit = { workspace = true }
+# observer that a child took the terminal (ADR-0042, ADR-0057). `derive`
+# writes the `Failure` impl of the child's error from its `#[failure(...)]`
+# attributes.
+crumbkit = { workspace = true, features = ["derive"] }
 # `DeserializeOwned` reads a child's JSON as the declared document, and needs
 # no serde feature.
 serde = { workspace = true }

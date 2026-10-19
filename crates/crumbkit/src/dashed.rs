@@ -114,7 +114,20 @@ pub(crate) fn by_form<'a>(parent: &'a Command, word: &OsStr) -> Option<&'a Comma
 
 /// Reports whether `name` is lowercase ASCII letters and digits in words
 /// joined by single dashes, starting with a letter, such as `reading-lists`.
-fn is_dashed(name: &str) -> bool {
+/// That is the form of a command's name in crumbkit's grammar, and
+/// [`dashed_name`] maps a name in another style to it. crumbkit-test's
+/// grammar and guide checks call this on each resource, verb and topic
+/// name.
+///
+/// ```
+/// assert!(crumbkit::is_dashed("reading-lists"));
+/// assert!(crumbkit::is_dashed("books2"));
+/// assert!(!crumbkit::is_dashed("reading_lists"));
+/// assert!(!crumbkit::is_dashed("2books"));
+/// assert!(!crumbkit::is_dashed("reading--lists"));
+/// ```
+#[must_use]
+pub fn is_dashed(name: &str) -> bool {
     name.starts_with(|c: char| c.is_ascii_lowercase())
         && name.split('-').all(|word| {
             !word.is_empty()
