@@ -73,8 +73,6 @@ const CRUMBKIT_EXPECT: &str = "crumbkit_expect";
 ///   argument, and declares neither [`Effects::all_or_none`] nor
 ///   [`Effects::per_item`], unless an opt-out from [`Rule::Items`] covers
 ///   it, because an agent cannot tell what a failed run changed;
-/// - a read-only leaf that declares [`Effects::all_or_none`] or
-///   [`Effects::per_item`]. This rule has no opt-out;
 /// - a leaf that declares [`Effects::per_item`] and whose document is not a
 ///   `Batch`, a `Prose` or a stream, which are the documents that report a
 ///   failure for each item. This rule has no opt-out;
@@ -246,21 +244,22 @@ fn check_items(
     let Some(effects) = leaf.get_effects() else {
         return;
     };
-    match (effects.is_read_only(), effects.items()) {
-        (true, Some(_)) => problems.push(format!(
-            "{path}: the command is read-only and declares how a write of many items ends, which it never writes"
-        )),
-        (false, Some(Items::PerItem)) => {
-            let reports = leaf.is_stream()
-                || matches!(leaf.shape(), Some(Shape::Batch | Shape::Prose));
+    match effects.items() {
+        Some(Items::PerItem) => {
+            let reports =
+                leaf.is_stream() || matches!(leaf.shape(), Some(Shape::Batch | Shape::Prose));
             if !reports {
                 problems.push(format!(
                     "{path}: the command declares `per_item` and its document is not a `Batch`, a `Prose` or a stream, so it cannot report a failure for each item"
                 ));
             }
         }
-        (true, None) | (false, Some(_)) => {}
-        (false, None) => {
+        Some(_) => {}
+        // A read-only leaf writes no items, and a `const` that calls
+        // `Effects::all_or_none` or `Effects::per_item` on
+        // `Effects::read_only` fails to compile.
+        None if effects.is_read_only() => {}
+        None => {
             // The check reads a visible positional argument that takes many
             // values as the items that a write changes, such as the ids of
             // `books remove`. An option with many values more often filters

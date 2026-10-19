@@ -36,8 +36,8 @@ struct Confirmed {
     err: String,
 }
 
-/// Parses `tool` followed by `words` with crumbkit's `parse_to`, keeps the
-/// parsed command, and asks "Remove Pluto?" with `input` as the caller's
+/// Parses `tool` followed by `words` with crumbkit's `parse_to`, which
+/// records a `--dry-run` among them, and asks "Remove Pluto?" with `input` as the caller's
 /// answer, through a sink that is `interactive` or not.
 fn confirm(words: &[&str], input: &str, interactive: bool) -> Confirmed {
     confirm_with(&Guide::new(), words, input, interactive)
@@ -49,8 +49,7 @@ fn confirm_with(guide: &Guide, words: &[&str], input: &str, interactive: bool) -
     let mut sink = Sink::new(Vec::new(), Vec::new());
     let (tool, mut output) =
         crate::parse_to::<Tool, _, _, _, _>(&mut sink, Tool::command(), guide, args).unwrap();
-    let Commands::Remove { dry_run, yes, .. } = tool.command;
-    output.dry_run(dry_run);
+    let Commands::Remove { yes, .. } = tool.command;
     let mut err = Vec::new();
     let mut sink = Sink::with_input(Vec::new(), &mut err, input.as_bytes(), interactive);
     let result = output.confirm_to(&mut sink, yes, "Remove Pluto?");
@@ -129,7 +128,14 @@ fn without_a_terminal_the_run_fails_with_the_same_command_and_yes_as_its_recover
 fn a_tool_that_parses_with_clap_alone_gets_the_same_command_and_yes_as_its_recovery() {
     let words = ["tool", "remove", "pluto"];
     let tool = Tool::try_parse_from(words).unwrap();
-    let mut output = Output::new(tool.view, Tool::command(), &Guide::new(), words);
+    let mut output = Output::new(
+        tool.view,
+        DryRun::default(),
+        Tool::command(),
+        &Guide::new(),
+        words,
+    )
+    .unwrap();
     let mut sink = Sink::new(Vec::new(), Vec::new());
 
     let result = output.confirm_to(&mut sink, Yes::default(), "Remove Pluto?");
@@ -208,10 +214,12 @@ fn a_tool_that_parses_with_clap_alone_keeps_the_guides_terminal_detection() {
         Guide::new().without_terminal_detection("Our CI runs in a pseudo-terminal.");
     let mut output = Output::new(
         ViewFlags::new(),
+        DryRun::default(),
         Tool::command(),
         &QUIET,
         ["tool", "remove"],
-    );
+    )
+    .unwrap();
     let mut err = Vec::new();
     let mut sink = Sink::with_input(Vec::new(), &mut err, &b"y\n"[..], true);
 

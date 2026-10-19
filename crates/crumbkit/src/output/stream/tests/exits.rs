@@ -49,17 +49,24 @@ fn guided() -> Output {
         .try_get_matches_from_mut(["birds", "watch"])
         .unwrap();
     let view = Tool::from_arg_matches(&matches).unwrap().view;
-    Output::new(view, command, &GUIDE, ["birds", "watch"])
+    Output::new(
+        view,
+        crate::DryRun::default(),
+        command,
+        &GUIDE,
+        ["birds", "watch"],
+    )
+    .unwrap()
 }
 
 /// Streams one item, prints each of `failures` after it, and ends the
 /// stream with `end`, and returns the exit code.
 fn stream(failures: &[Failed], end: Result<(), Failed>) -> ExitCode {
-    let mut output = guided();
+    let output = guided();
     let mut out = Vec::new();
     let mut err = Vec::new();
     let mut sink = Sink::new(&mut out, &mut err);
-    let mut streaming = stream_to(&mut sink, &mut output, SIGHTINGS).unwrap();
+    let mut streaming = stream_to(&mut sink, output, SIGHTINGS).unwrap();
     assert_eq!(streaming.item(&robin()), ControlFlow::Continue(()));
     for failure in failures {
         assert_eq!(streaming.failure(failure), ControlFlow::Continue(()));
@@ -90,11 +97,11 @@ fn a_stream_whose_first_failure_is_unmapped_exits_with_code_1_though_a_later_one
 
 #[test]
 fn a_stream_whose_reader_closed_the_pipe_keeps_the_declared_code_of_its_failure() {
-    let mut output = guided();
+    let output = guided();
     let mut out = Writer::new(2, io::ErrorKind::BrokenPipe);
     let mut err = Vec::new();
     let mut sink = Sink::new(&mut out, &mut err);
-    let mut streaming = stream_to(&mut sink, &mut output, SIGHTINGS).unwrap();
+    let mut streaming = stream_to(&mut sink, output, SIGHTINGS).unwrap();
 
     assert_eq!(streaming.item(&robin()), ControlFlow::Continue(()));
     assert_eq!(streaming.item(&kingfisher()), ControlFlow::Break(()));

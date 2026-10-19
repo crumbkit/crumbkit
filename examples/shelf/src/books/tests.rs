@@ -13,7 +13,15 @@ use crate::cli::{BooksShow, BooksSummarize, Cli};
 
 /// Returns the room of `books show` with crumbkit's default output budget.
 fn roomy() -> Room<Batch<Book, BooksError>> {
-    Output::new(ViewFlags::new(), Cli::command(), &Guide::new(), ["shelf"]).room(BOOKS_SHOW)
+    Output::new(
+        ViewFlags::new(),
+        crumbkit::DryRun::default(),
+        Cli::command(),
+        &Guide::new(),
+        ["shelf"],
+    )
+    .unwrap()
+    .room(BOOKS_SHOW)
 }
 
 #[test]

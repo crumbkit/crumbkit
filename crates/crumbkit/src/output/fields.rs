@@ -5,77 +5,49 @@ use schemars::Schema;
 
 use super::Output;
 use crate::help::ViewFlag;
-use crate::help::view::{self, Typed};
+use crate::help::view::{self, Kind, Printed};
 use crate::refusal::Refusal;
 use crate::row;
-use crate::{Document, Row, Rows, Shape};
+use crate::view::View;
+use crate::{Document, Row, Rows};
 
-/// Returns the refusal of the view flags in `output` for a result of type
-/// `T` printed as `document`, or `None` when the result accepts them, as
+/// Returns the refusal of the view in `output` for a result of type `T`
+/// printed as `document`, or `None` when the result accepts it, as
 /// [`refusal`] describes.
 pub(super) fn flags_refusal<T: Rows>(output: &Output, document: Document<T>) -> Option<Refusal> {
-    let shape = Some(T::SHAPE);
-    let (envelope, headed) = (document.get_envelope().wraps(), document.is_headed());
-    refusal::<T::Row>(shape, envelope, headed, &output.fields, output.typed())
+    let printed = Printed::of::<T::Row, T>(Kind::Document(T::SHAPE), &document);
+    refusal::<T::Row>(&printed, output.view())
 }
 
-/// Returns the refusal of the view flags in `output` for a run whose
-/// handler returned a failure, or `None` when the failure prints.
+/// Returns the refusal of the view flags that selected `view`, for a
+/// command that prints `printed` with rows of type `R`. It returns `None`
+/// when the result accepts them.
 ///
-/// It refuses only two flags that cannot work together, as
-/// [`view::pairing`] describes, so the outcome never depends on the
-/// document that `finish` was given. A tool may finish an early failure in
-/// another document than its leaf declares, and `parse` has already
-/// refused what the leaf's document cannot use and an unknown `--fields`
-/// name.
-pub(super) fn failure_refusal(output: &Output) -> Option<Refusal> {
-    view::pairing(output.typed())
-}
-
-/// Returns the refusal of the view flags that the caller typed, the names
-/// in `fields` and the flags in `typed`, for a result of `shape` whose rows
-/// are `R`,
-/// or a stream of `R` when `shape` is `None`. It returns `None` when the
-/// result accepts them.
-///
-/// It first refuses a typed view flag that the result does not offer, by
-/// the rule of [`view::unoffered`], in the order `--fields`, `--long`,
-/// `--full`, for a document that is headed when `headed` is set. For such a
-/// document it then refuses `--fields` without `--json`, as
-/// [`view::headed`] describes. It then refuses two flags that cannot work
-/// together, as [`view::pairing`] describes, and then the first name in
-/// `fields` that is not a field of `R`, as [`unknown_field`] describes.
-pub(super) fn refusal<R: Row>(
-    shape: Option<Shape>,
-    envelope: bool,
-    headed: bool,
-    fields: &[String],
-    typed: Typed,
-) -> Option<Refusal> {
+/// It first refuses a view flag that the result does not offer, by the
+/// rule of [`view::unoffered`], in the order `--fields`, `--long`,
+/// `--full`. For a headed document it then refuses `--fields` without
+/// `--json`, as [`view::headed`] describes. It then refuses the first name
+/// in `view` that is not a field of `R`, as [`unknown_field`] describes.
+/// The pairs that cannot work together were refused when `view` was built
+/// (ADR-0093).
+pub(super) fn refusal<R: Row>(printed: &Printed, view: &View) -> Option<Refusal> {
+    let names = view.names();
     for flag in ViewFlag::ALL {
         let typed = match flag {
-            ViewFlag::Fields => typed.fields,
-            ViewFlag::Long => typed.long,
-            ViewFlag::Full => typed.full,
+            ViewFlag::Fields => names.is_some(),
+            ViewFlag::Long => view.is_long(),
+            ViewFlag::Full => view.is_full(),
         };
-        let (columns, long) = (R::COLUMNS, R::LONG_COLUMNS);
-        if typed
-            && let Some(reason) =
-                view::unoffered(shape, columns, long, envelope, headed, R::WHOLE, flag)
-        {
+        if typed && let Some(reason) = view::unoffered(printed, flag) {
             return Some(view::refusal(flag, reason));
         }
     }
-    if headed && let Some(refusal) = view::headed(typed) {
+    if printed.headed
+        && let Some(refusal) = view::headed(names.is_some(), view.is_json())
+    {
         return Some(refusal);
     }
-    if let Some(refusal) = view::pairing(typed) {
-        return Some(refusal);
-    }
-    if fields.is_empty() {
-        return None;
-    }
-    unknown_field::<R>(fields)
+    unknown_field::<R>(names?)
 }
 
 /// Returns the refusal of the first name in `fields` that is not a field of

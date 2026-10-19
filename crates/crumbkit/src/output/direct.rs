@@ -27,7 +27,7 @@ impl Output {
         let printing = self.printing();
         failure::print(
             sink,
-            self.json,
+            self.is_json(),
             self.spelling,
             printing,
             failure,
@@ -66,9 +66,7 @@ impl Output {
         sink: &mut Sink<O, W>,
         reason: &str,
     ) -> Option<ExitCode> {
-        if self.fields.is_empty() {
-            return None;
-        }
+        self.view.names()?;
         let refusal = Refusal::flag_value(
             format!("--fields selects the columns of a table, and {reason}"),
             "run the command without --fields".to_owned(),
@@ -87,7 +85,13 @@ impl Output {
         refusal: &Refusal,
     ) -> ExitCode {
         let printing = self.printing();
-        let exit = refusal.print(sink, self.json, self.spelling, printing, &mut self.command);
+        let exit = refusal.print(
+            sink,
+            self.is_json(),
+            self.spelling,
+            printing,
+            &mut self.command,
+        );
         crate::events::ended(exit, None)
     }
 

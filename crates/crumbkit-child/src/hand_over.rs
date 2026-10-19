@@ -14,7 +14,7 @@
 //!
 //! use crumbkit::Output;
 //!
-//! fn edit(output: &mut Output, path: &str) -> ExitCode {
+//! fn edit(output: Output, path: &str) -> ExitCode {
 //!     let mut editor = Command::new("vi");
 //!     editor.arg(path);
 //!     crumbkit_child::hand_over(output, editor)
@@ -75,7 +75,11 @@ mod tests;
 /// the terminal shows. The refusal exits with the code of a refused command
 /// line, which is 2 unless the guide lists another. The module
 /// documentation lists the failures of a child that cannot start.
-pub fn hand_over(output: &mut Output, child: Command) -> ExitCode {
+///
+/// It takes `output` by value, as [`finish`](crumbkit::finish) does,
+/// because the child's run is the last thing the tool prints (ADR-0094).
+#[must_use]
+pub fn hand_over(output: Output, child: Command) -> ExitCode {
     hand_over_to(&mut Sink::standard(), output, child)
 }
 
@@ -87,14 +91,14 @@ const TEXT_ONLY: &str = "this command hands the terminal to another program";
 /// printed to `sink`.
 fn hand_over_to<O: Write, W: Write>(
     sink: &mut Sink<O, W>,
-    output: &mut Output,
+    mut output: Output,
     mut child: Command,
 ) -> ExitCode {
     if output.is_json() {
         let refused = ChildError::JsonRefused {
             program: program(&child),
         };
-        return fail(sink, output, &refused);
+        return fail(sink, &mut output, &refused);
     }
     if let Some(code) = output.refuse_fields_for_text(sink, TEXT_ONLY) {
         return code;
@@ -106,7 +110,7 @@ fn hand_over_to<O: Write, W: Write>(
         .stderr(Stdio::inherit());
     let program = program(&child);
     let status = signals::while_running(|| child.status());
-    respond_text(sink, output, program, status)
+    respond_text(sink, &mut output, program, status)
 }
 
 /// Returns the exit code of a child that held the terminal and ended with

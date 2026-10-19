@@ -65,10 +65,12 @@ fn a_root_with_a_doc_comment_keeps_it_beside_the_flags_it_flattens() {
     let described = described.unwrap();
     let output = crate::Output::new(
         described.view,
+        DryRun::default(),
         <Described as clap::CommandFactory>::command(),
         &crate::help::Guide::new(),
         ["tool", "--json"],
-    );
+    )
+    .unwrap();
     assert!(output.is_json());
     assert_eq!(
         abouts(&<Described as clap::CommandFactory>::command()),

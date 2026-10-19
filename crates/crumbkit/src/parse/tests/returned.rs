@@ -8,6 +8,7 @@ use super::{Flags, tool};
 use crate::Sink;
 use crate::help::Guide;
 use crate::parse::parse_to;
+use crate::view::{Table, View};
 
 #[test]
 fn a_command_line_that_parses_returns_the_parsed_type_and_an_output_that_holds_the_command() {
@@ -82,8 +83,7 @@ fn a_tool_without_view_flags_parses_with_every_view_flag_off() {
         panic!("the command line did not parse");
     };
     assert!(!output.is_json());
-    let typed = output.typed();
-    assert!(!typed.json && !typed.fields && !typed.long && !typed.full);
+    assert_eq!(output.view(), &View::Text(Table::Compact));
 }
 
 #[test]
@@ -102,4 +102,49 @@ fn the_output_of_a_stopped_run_has_the_guide_s_output_budget() {
         panic!("help did not stop the run");
     };
     assert_eq!(stop.output().budget(), 1024);
+}
+
+/// A tool whose `remove` command takes `--dry-run` and `--yes`.
+#[derive(clap::Parser)]
+#[command(name = "tool")]
+struct Removing {
+    #[command(subcommand)]
+    command: Removes,
+}
+
+#[derive(clap::Subcommand)]
+enum Removes {
+    Remove {
+        #[command(flatten)]
+        dry_run: crate::DryRun,
+        #[command(flatten)]
+        yes: crate::Yes,
+    },
+}
+
+/// Parses `args` as the removing tool, and returns its `Output`.
+fn removing(args: &[&str]) -> crate::Output {
+    let mut sink = Sink::new(Vec::new(), Vec::new());
+    let command = <Removing as clap::CommandFactory>::command();
+    let (_, output) = parse_to::<Removing, _, _, _, _>(&mut sink, command, &Guide::new(), args)
+        .unwrap_or_else(|_| panic!("the command line did not parse"));
+    output
+}
+
+#[test]
+fn parse_records_dry_run_on_the_deepest_command() {
+    assert!(removing(&["tool", "remove", "--dry-run"]).is_dry_run());
+    assert!(!removing(&["tool", "remove"]).is_dry_run());
+}
+
+#[test]
+fn a_dry_run_confirms_without_asking() {
+    let mut output = removing(&["tool", "remove", "--dry-run"]);
+    let mut err = Vec::new();
+    let mut sink = Sink::with_input(Vec::new(), &mut err, &b""[..], false);
+
+    let confirmed = output.confirm_to(&mut sink, crate::Yes::default(), "Remove Pluto?");
+
+    assert!(confirmed.is_ok());
+    assert_eq!(err, b"");
 }

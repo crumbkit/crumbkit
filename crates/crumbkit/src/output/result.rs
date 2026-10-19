@@ -2,6 +2,7 @@
 //! format that the output flags choose, within the output budget
 //! (ADR-0046).
 
+use std::ffi::OsString;
 use std::io::{self, Write};
 
 use clap::Command;
@@ -15,6 +16,8 @@ use super::failure::PreparedFailure;
 use super::layout::JsonLayout;
 use super::table::Table;
 use super::{Output, layout, lines, listing, problems, prose};
+use crate::help::rename::Renames;
+use crate::view::View;
 use crate::{Code, Document, Row, Rows, Shape, Spelling, codes};
 
 mod batch;
@@ -100,7 +103,7 @@ pub(super) fn write_result<T: Rows>(
     // The code is the tool's rename when the guide has one, so the cut,
     // the failure, the usage log and the trace all carry it.
     let code = output.renames.printed(&codes::OUTPUT_OVER_BUDGET);
-    if let Some(bytes) = value.bytes().filter(|_| !output.json) {
+    if let Some(bytes) = value.bytes().filter(|_| !output.is_json()) {
         // The text of bytes is their own length, so it is measured without
         // a buffer.
         if bytes.len() > budget && !document.always_prints_first() {
@@ -121,28 +124,56 @@ pub(super) fn write_result<T: Rows>(
     } else {
         problems
     };
-    if let Some(bytes_of) = document.headed_bytes().filter(|_| !output.json) {
+    if let Some(bytes_of) = document.headed_bytes().filter(|_| !output.is_json()) {
         let first_always = document.always_prints_first();
         return headed::write(out, err, output, value, bytes_of, problems, first_always);
     }
-    // `Prepared` borrows the output flags for the whole write, and the
-    // failure of a batch's left-out keys renders its call against the
-    // command, so the write takes the command out of `output` and puts it
-    // back after.
-    let mut command = std::mem::take(&mut output.command);
-    let written = write_rows(
-        out,
-        err,
-        output,
-        &mut command,
-        spelling,
-        document,
-        value,
-        failures,
-        problems,
-    );
-    output.command = command;
-    written
+    // `Prepared` borrows the settings for the whole write, and the `Next:`
+    // line and the failure of a batch's left-out keys render their calls
+    // against the command, so the write borrows the two apart.
+    let (settings, command) = Settings::split(output);
+    write_rows(
+        out, err, &settings, command, spelling, document, value, failures, problems,
+    )
+}
+
+/// The settings of a run that a result prints with, borrowed apart from the
+/// command tree, so that a write reads them while it renders a call against
+/// the tree.
+struct Settings<'a> {
+    /// The view that the view flags selected.
+    view: &'a View,
+    /// The words that the caller typed after the program name.
+    words: &'a [OsString],
+    /// Whether the run is a dry run.
+    dry_run: bool,
+    /// The layout of a whole JSON document.
+    layout: JsonLayout,
+    /// The most bytes that the run prints on standard output.
+    budget: usize,
+    /// The tool's own codes for crumbkit's failures.
+    renames: Renames,
+}
+
+impl<'a> Settings<'a> {
+    /// Borrows the settings of `output` and, apart from them, its command
+    /// tree.
+    fn split(output: &'a mut Output) -> (Self, &'a mut Command) {
+        let settings = Self {
+            view: &output.view,
+            words: &output.words,
+            dry_run: output.dry_run,
+            layout: output.json_layout,
+            budget: output.budget,
+            renames: output.renames,
+        };
+        (settings, &mut output.command)
+    }
+
+    /// Reports whether the caller asked for JSON with `--json`.
+    const fn is_json(&self) -> bool {
+        self.view.is_json()
+    }
 }
 
 /// Writes a result that is not bytes in text, as [`write_result`] does.
@@ -150,12 +181,12 @@ pub(super) fn write_result<T: Rows>(
 /// of a batch's left-out keys render their calls against.
 #[expect(
     clippy::too_many_arguments,
-    reason = "write_result passes its own arguments on, with the command taken out of the output flags"
+    reason = "write_result passes its own arguments on, with the command borrowed apart from the settings"
 )]
 fn write_rows<T: Rows>(
     out: &mut impl Write,
     err: &mut impl Write,
-    output: &Output,
+    settings: &Settings<'_>,
     command: &mut Command,
     spelling: Spelling,
     document: Document<T>,
@@ -163,16 +194,16 @@ fn write_rows<T: Rows>(
     failures: Option<&[PreparedFailure<'_>]>,
     problems: usize,
 ) -> io::Result<(Answer, usize)> {
-    let budget = output.budget();
-    let code = output.renames.printed(&codes::OUTPUT_OVER_BUDGET);
-    let next = if output.json {
+    let budget = settings.budget;
+    let code = settings.renames.printed(&codes::OUTPUT_OVER_BUDGET);
+    let next = if settings.is_json() {
         None
     } else {
         listing::next_line(&mut *command, value)
     };
-    let columns = columns(output, document, value.prose().is_some());
+    let columns = columns(settings.view, document, value.prose().is_some());
     let values = values(&columns, value)?;
-    let mut prepared = Prepared::new(output, document, value, &columns, &values, next, problems)?;
+    let mut prepared = Prepared::new(settings, document, value, &columns, &values, next, problems)?;
     let listed = failures.map(Failures::of);
     let rows = value.rows().len();
     // A batch that never fetched some of its keys ends with their failure
@@ -196,7 +227,7 @@ fn write_rows<T: Rows>(
         }
         Shape::Batch => {
             let listed = failures.unwrap_or_default();
-            let rerun = rerun::Rerun::find(command, &output.words, value);
+            let rerun = rerun::Rerun::find(command, settings.words, value);
             let left_out = batch::LeftOut {
                 spelling,
                 command,
@@ -230,25 +261,19 @@ fn write_rows<T: Rows>(
 /// A result ready to write with any number of its first rows: each part
 /// that would allocate is built once, so measuring the result with each row
 /// count allocates nothing more.
-#[expect(
-    clippy::struct_excessive_bools,
-    reason = "each flag is a separate choice of the caller's command line, which the writers read"
-)]
 struct Prepared<'a, T> {
     /// The document that the result prints as with `--json`.
     document: Document<T>,
     /// The result.
     value: &'a T,
-    /// Whether the caller passed `--json`.
-    json: bool,
+    /// The view that the view flags selected.
+    view: &'a View,
     /// Whether the run is a dry run.
     dry_run: bool,
     /// The layout of the JSON document.
     layout: JsonLayout,
     /// Whether the JSON document holds every field of each row.
     full: bool,
-    /// Whether the caller passed `--fields`.
-    fields: bool,
     /// The columns that the compact JSON shows.
     columns: &'a [&'a str],
     /// Each row serialized once, or nothing when there are no columns.
@@ -270,7 +295,7 @@ struct Prepared<'a, T> {
 impl<'a, T: Rows> Prepared<'a, T> {
     /// Builds the parts of `value` that its format writes.
     fn new(
-        output: &Output,
+        settings: &Settings<'a>,
         document: Document<T>,
         value: &'a T,
         columns: &'a [&'a str],
@@ -278,12 +303,12 @@ impl<'a, T: Rows> Prepared<'a, T> {
         next: Option<(String, &'a str)>,
         problems: usize,
     ) -> io::Result<Self> {
-        let text = !output.json;
+        let text = !settings.is_json();
         let prose = match value.prose() {
             Some(prose) if text => Some(prose::text(prose)?),
             _ => None,
         };
-        let lines = if lines::chosen::<T::Row>(output) {
+        let lines = if lines::chosen::<T::Row>(settings.view) {
             let rows = value.rows().iter().map(lines::line);
             Some(rows.collect::<io::Result<Vec<String>>>()?)
         } else {
@@ -294,14 +319,13 @@ impl<'a, T: Rows> Prepared<'a, T> {
         Ok(Self {
             document,
             value,
-            json: output.json,
-            dry_run: output.dry_run,
-            layout: output.json_layout,
+            view: settings.view,
+            dry_run: settings.dry_run,
+            layout: settings.layout,
             // A headed document and a row type that prints whole hold
             // every field in JSON unless `--fields` names some.
-            full: output.full
-                || ((document.is_headed() || T::Row::WHOLE) && output.fields.is_empty()),
-            fields: !output.fields.is_empty(),
+            full: settings.view.is_full()
+                || ((document.is_headed() || T::Row::WHOLE) && settings.view.names().is_none()),
             columns,
             values,
             table,
@@ -366,7 +390,7 @@ impl<'a, T: Rows> Prepared<'a, T> {
     /// without the envelope, which has no `cut` field.
     fn write_notes(&self, out: &mut impl Write, shown: usize, cut: Option<&Cut>) -> io::Result<()> {
         let value = self.value;
-        if self.json {
+        if self.view.is_json() {
             if let Some(cut) = cut.filter(|_| !self.document.get_envelope().wraps()) {
                 self.write_cut_line(out, shown, cut)?;
             }
@@ -431,7 +455,7 @@ impl<'a, T: Rows> Prepared<'a, T> {
         let value = self.value;
         let rows = value.rows();
         let all = shown >= rows.len();
-        if self.json && !self.document.get_envelope().wraps() {
+        if self.view.is_json() && !self.document.get_envelope().wraps() {
             return self.write_unwrapped(out, shown, all);
         }
         let extras = Extras {
@@ -443,7 +467,7 @@ impl<'a, T: Rows> Prepared<'a, T> {
             failures,
         };
         if let Some(bytes) = value.bytes() {
-            return if self.json {
+            return if self.view.is_json() {
                 self.envelope(out, value, &extras)
             } else {
                 out.write_all(bytes)
@@ -455,7 +479,7 @@ impl<'a, T: Rows> Prepared<'a, T> {
                 None => self.envelope(out, value, &extras),
             };
         }
-        if self.json && self.full {
+        if self.view.is_json() && self.full {
             // Serializing the rows directly keeps every field in its
             // declaration order.
             return match rows.get(..shown) {
@@ -463,7 +487,7 @@ impl<'a, T: Rows> Prepared<'a, T> {
                 _ => self.envelope(out, value, &extras),
             };
         }
-        if self.json {
+        if self.view.is_json() {
             // A single row's `data` is an object, and a list's is an array
             // even when it holds one row.
             return match self.values {
@@ -510,7 +534,7 @@ impl<'a, T: Rows> Prepared<'a, T> {
     /// otherwise.
     fn write_unwrapped(&self, out: &mut impl Write, shown: usize, all: bool) -> io::Result<()> {
         let rows = self.value.rows();
-        if !self.fields {
+        if self.view.names().is_none() {
             return match rows.get(..shown) {
                 Some(first) if !all => layout::write(out, first, self.layout),
                 _ => layout::write(out, self.value, self.layout),

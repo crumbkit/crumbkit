@@ -108,7 +108,7 @@ fn list(args: &JarsList) -> Listing<Jar> {
 
 fn main() -> ExitCode {
     let parsed = crumbkit::parse::<Cli>(Cli::command(), &Guide::new());
-    let (cli, mut output) = match parsed {
+    let (cli, output) = match parsed {
         Ok(parsed) => parsed,
         Err(stop) => return stop.code(),
     };
@@ -117,7 +117,7 @@ fn main() -> ExitCode {
             command: JarsCommand::List(args),
         } => {
             let result: Result<_, crumbkit::Error> = Ok(list(&args));
-            crumbkit::finish(&mut output, JARS_LIST, result)
+            crumbkit::finish(output, JARS_LIST, result)
         }
     }
 }

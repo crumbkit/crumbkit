@@ -21,7 +21,7 @@ pub(crate) const ENTRIES_SET: Document<Entry> = Document::new(
 /// Writes the title that `args` names at its position in the list that it
 /// names in `dir`, and returns the entry. A position one past the last
 /// entry appends the entry after the last line of the file. On a dry run,
-/// which [`Output::dry_run`] records, it returns the same entry and writes
+/// which [`Output::is_dry_run`] reports, it returns the same entry and writes
 /// nothing.
 ///
 /// The version that `--expect` names is the title that the entry has now,
@@ -47,7 +47,7 @@ pub(crate) fn set(
     dir: Option<&Path>,
     args: &EntriesSet,
 ) -> Result<Entry, Error> {
-    let dry_run = output.dry_run(args.dry_run);
+    let dry_run = output.is_dry_run();
     let name = args.list.as_str();
     let path = file(dir, name)?;
     let unreadable = |error| EntriesError::Unreadable {

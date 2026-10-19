@@ -35,7 +35,14 @@ struct Tool {
 fn output(flags: &[&str]) -> Output {
     let words: Vec<&str> = ["vault"].iter().chain(flags).copied().collect();
     let view = Tool::try_parse_from(&words).unwrap().view;
-    Output::new(view, Tool::command(), &Guide::new(), words)
+    Output::new(
+        view,
+        crumbkit::DryRun::default(),
+        Tool::command(),
+        &Guide::new(),
+        words,
+    )
+    .unwrap()
 }
 
 /// What a response returned and wrote.
@@ -178,8 +185,8 @@ const MISSING: &str = "crumbkit-test-no-such-program";
 #[track_caller]
 fn admits(refused: &[&str], flags: &[&str]) {
     assert_one_word_apart(refused, flags);
-    let mut output = output(flags);
-    let responded = respond(|sink| hand_over_to(sink, &mut output, command(MISSING)));
+    let output = output(flags);
+    let responded = respond(|sink| hand_over_to(sink, output, command(MISSING)));
     let printed = format!("{}{}", responded.out, responded.err);
     assert!(printed.contains("vault::child::not_found"), "{printed}");
 }
@@ -187,8 +194,8 @@ fn admits(refused: &[&str], flags: &[&str]) {
 #[test]
 fn json_is_refused_with_the_usage_code_before_the_child_runs() {
     admits(&["--json"], &[]);
-    let mut output = output(&["--json"]);
-    let responded = respond(|sink| hand_over_to(sink, &mut output, command(MISSING)));
+    let output = output(&["--json"]);
+    let responded = respond(|sink| hand_over_to(sink, output, command(MISSING)));
 
     assert_eq!(responded.code, ExitCode::from(2));
     let document: serde_json::Value = serde_json::from_str(&responded.out).unwrap();
@@ -206,8 +213,8 @@ fn json_is_refused_with_the_usage_code_before_the_child_runs() {
 
 #[test]
 fn fields_are_refused_with_the_usage_code_before_the_child_runs() {
-    let mut output = output(&["--fields", "title"]);
-    let responded = respond(|sink| hand_over_to(sink, &mut output, command(MISSING)));
+    let output = output(&["--fields", "title"]);
+    let responded = respond(|sink| hand_over_to(sink, output, command(MISSING)));
 
     assert_eq!(responded.code, ExitCode::from(2));
     let expected = "\
@@ -227,9 +234,16 @@ const USAGE_64: Guide = Guide::new().exits(&[
 fn a_refused_json_exits_with_the_code_that_the_guide_gives_a_refused_command_line() {
     let words = ["vault", "--json"];
     let view = Tool::try_parse_from(words).unwrap().view;
-    let mut output = Output::new(view, Tool::command(), &USAGE_64, words);
+    let output = Output::new(
+        view,
+        crumbkit::DryRun::default(),
+        Tool::command(),
+        &USAGE_64,
+        words,
+    )
+    .unwrap();
 
-    let code = respond(|sink| hand_over_to(sink, &mut output, command(MISSING))).code;
+    let code = respond(|sink| hand_over_to(sink, output, command(MISSING))).code;
 
     assert_eq!(code, ExitCode::from(64));
 }
@@ -245,14 +259,21 @@ fn dotted(flags: &[&str]) -> Output {
     const GUIDE: Guide = Guide::new().spelling(DOTS);
     let words: Vec<&str> = ["vault"].iter().chain(flags).copied().collect();
     let view = Tool::try_parse_from(&words).unwrap().view;
-    Output::new(view, Tool::command(), &GUIDE, words)
+    Output::new(
+        view,
+        crumbkit::DryRun::default(),
+        Tool::command(),
+        &GUIDE,
+        words,
+    )
+    .unwrap()
 }
 
 #[test]
 fn a_guide_with_a_custom_spelling_prints_it_through_hand_over_without_a_further_argument() {
-    let mut output = dotted(&["--json"]);
+    let output = dotted(&["--json"]);
 
-    let responded = respond(|sink| hand_over_to(sink, &mut output, command("vi")));
+    let responded = respond(|sink| hand_over_to(sink, output, command("vi")));
 
     assert!(
         responded.out.contains(r#""code":"vault.cli.usage""#),

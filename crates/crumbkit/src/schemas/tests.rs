@@ -96,7 +96,14 @@ fn output_with(flags: &[&str]) -> Output {
         .try_get_matches_from(std::iter::once(&"shelf").chain(flags))
         .unwrap();
     let view = <crate::ViewFlags as clap::FromArgMatches>::from_arg_matches(&matches).unwrap();
-    Output::new(view, tool(), &Guide::new(), ["shelf"])
+    Output::new(
+        view,
+        crate::DryRun::default(),
+        tool(),
+        &Guide::new(),
+        ["shelf"],
+    )
+    .unwrap()
 }
 
 /// Returns the output of a run of the tool with every view flag off.
@@ -124,10 +131,10 @@ struct Finished {
 
 /// Runs `shelf schemas show` with `words` and the output flags `output`,
 /// and finishes the result into memory as a tool's handler does.
-fn finish_show(output: &mut Output, words: &[&str]) -> Finished {
+fn finish_show(mut output: Output, words: &[&str]) -> Finished {
     let mut out = Vec::new();
     let mut err = Vec::new();
-    let result = show(output, &GUIDE, &args::<SchemasShow>("show", words));
+    let result = show(&mut output, &GUIDE, &args::<SchemasShow>("show", words));
     let code = finish_to(
         &mut Sink::new(&mut out, &mut err),
         output,
@@ -413,7 +420,7 @@ fn show_returns_the_schema_of_each_id_in_the_order_given() {
 #[test]
 fn show_fails_an_unknown_id_and_still_prints_the_ids_it_knows() {
     let finished = finish_show(
-        &mut output_with(&["--json"]),
+        output_with(&["--json"]),
         &["shelf/books-lst/v1", "shelf/books-list/v1"],
     );
 
@@ -434,7 +441,7 @@ fn show_fails_an_unknown_id_and_still_prints_the_ids_it_knows() {
 
 #[test]
 fn show_in_text_prints_the_schema_as_one_line_of_json() {
-    let finished = finish_show(&mut output(), &["shelf/books-list/v1"]);
+    let finished = finish_show(output(), &["shelf/books-list/v1"]);
 
     assert_eq!(finished.code, ExitCode::SUCCESS);
     let line = finished.out.lines().nth(1).unwrap();

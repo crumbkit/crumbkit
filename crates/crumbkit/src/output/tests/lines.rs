@@ -125,7 +125,7 @@ fn a_listing_of_rows_with_their_own_text_line_keeps_its_footer_on_standard_error
 #[test]
 fn a_listing_of_rows_with_their_own_text_line_over_the_budget_prints_the_lines_that_fit() {
     let guide = Guide::new().output_budget(1024, "the tests print little");
-    let mut output = super::built_with(
+    let output = super::built_with(
         <super::Tool as clap::CommandFactory>::command(),
         &guide,
         &["tool", "list"],
@@ -133,7 +133,7 @@ fn a_listing_of_rows_with_their_own_text_line_over_the_budget_prints_the_lines_t
     // Each line is 1,000 bytes, so only the first fits in 1,024 bytes.
     let pointer = "x".repeat(990);
     let rows = vec![link(&pointer, "b"), link(&pointer, "c")];
-    let finished = finish_output(&mut output, LINK_LISTING, Listing::new(rows, 2));
+    let finished = finish_output(output, LINK_LISTING, Listing::new(rows, 2));
 
     assert_eq!(finished.code, ExitCode::SUCCESS, "{}", finished.err);
     assert_eq!(finished.out, format!("{pointer} -> b\n"));

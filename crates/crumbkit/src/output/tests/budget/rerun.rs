@@ -73,7 +73,7 @@ fn output(args: &[String]) -> Output {
     let mut command = Sky::command();
     let matches = command.try_get_matches_from_mut(args).unwrap();
     let view = ViewFlags::from_arg_matches(&matches).unwrap();
-    Output::new(view, command, &guide(), args)
+    Output::new(view, crate::DryRun::default(), command, &guide(), args).unwrap()
 }
 
 /// Returns a guide with the budget of [`BUDGET`].
@@ -88,7 +88,7 @@ fn finish(
     document: Document<Batch<Star, Error>>,
     path: &'static [&'static str],
 ) -> Finished {
-    finish_output(&mut output(args), document, batch(path))
+    finish_output(output(args), document, batch(path))
 }
 
 /// Returns the recovery of the last failure of a batch's JSON document.
@@ -173,9 +173,9 @@ fn a_batch_s_recovery_without_the_caller_s_words_runs_the_batch_s_command_alone(
     let mut command = Sky::command();
     let matches = command.try_get_matches_from_mut(&args).unwrap();
     let view = ViewFlags::from_arg_matches(&matches).unwrap();
-    let mut output = Output::new(view, command, &guide(), ["tool"]);
+    let output = Output::new(view, crate::DryRun::default(), command, &guide(), ["tool"]).unwrap();
 
-    let finished = finish_output(&mut output, STAR_BATCH, batch(&["show"]));
+    let finished = finish_output(output, STAR_BATCH, batch(&["show"]));
 
     assert_eq!(
         last_recovery(&finished),

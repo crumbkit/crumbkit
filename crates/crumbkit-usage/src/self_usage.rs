@@ -10,7 +10,7 @@
 //! Resource::SelfCommand { command: SelfCommand::Usage(args) } => {
 //!     let result = crumbkit_usage::findings(&mut output, &GUIDE, &args);
 //!     let result = Ok::<_, crumbkit::Error>(result);
-//!     crumbkit::finish(&mut output, crumbkit_usage::SELF_USAGE, result)
+//!     crumbkit::finish(output, crumbkit_usage::SELF_USAGE, result)
 //! }
 //! ```
 //!

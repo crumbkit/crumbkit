@@ -97,7 +97,7 @@ fn guided(guide: &Guide, flags: &[&str]) -> Output {
 
 /// Finishes `value` with `flags` and a budget of [`BUDGET`].
 fn finish_small<T: crate::Rows>(flags: &[&str], document: Document<T>, value: T) -> Finished {
-    finish_output(&mut budgeted(BUDGET, flags), document, value)
+    finish_output(budgeted(BUDGET, flags), document, value)
 }
 
 fn parsed(out: &str) -> Value {
@@ -113,7 +113,7 @@ fn a_pretty_layout_cuts_a_listing_where_its_indented_bytes_stop_fitting() {
             reason: "the readers expect it",
         });
     let compact = finish_small(&["--json"], STAR_LISTING, listing());
-    let indented = finish_output(&mut guided(&guide, &["--json"]), STAR_LISTING, listing());
+    let indented = finish_output(guided(&guide, &["--json"]), STAR_LISTING, listing());
 
     assert_eq!(indented.code, ExitCode::SUCCESS);
     assert!(indented.out.len() <= BUDGET, "{}", indented.out.len());
@@ -200,8 +200,8 @@ fn a_full_json_listing_over_the_budget_is_cut_too() {
 
 #[test]
 fn a_guide_that_renames_the_over_budget_code_marks_a_cut_with_the_tool_s_code() {
-    let mut output = guided(&RENAMED, &["--json"]);
-    let finished = finish_output(&mut output, STAR_LISTING, Listing::new(stars(20), 20));
+    let output = guided(&RENAMED, &["--json"]);
+    let finished = finish_output(output, STAR_LISTING, Listing::new(stars(20), 20));
 
     assert_eq!(parsed(&finished.out)["cut"]["code"], "sky::stars::too_much");
 }
@@ -212,8 +212,8 @@ fn a_row_refused_with_a_renamed_over_budget_code_exits_with_the_code_the_guide_l
         name: "vega".to_owned(),
         story: "a".repeat(2 * BUDGET),
     };
-    let mut output = guided(&RENAMED, &["--json"]);
-    let finished = finish_output(&mut output, STAR, star);
+    let output = guided(&RENAMED, &["--json"]);
+    let finished = finish_output(output, STAR, star);
 
     assert_eq!(parsed(&finished.out)["code"], "sky::stars::too_much");
     assert_eq!(finished.code, ExitCode::from(9));
@@ -301,23 +301,25 @@ fn a_prose_result_over_the_budget_is_refused_and_no_flag_makes_it_smaller() {
 }
 
 #[test]
-fn budget_reports_the_bytes_left_after_finish_prints_a_result() {
-    let mut output = budgeted(BUDGET, &[]);
+fn budget_reports_the_guide_s_budget_that_finish_prints_within() {
+    let output = budgeted(BUDGET, &[]);
     assert_eq!(output.budget(), BUDGET);
 
-    let finished = finish_output(&mut output, STARS, stars(1));
+    let finished = finish_output(output, STARS, stars(1));
 
-    assert_eq!(output.budget(), BUDGET - finished.out.len());
+    assert!(finished.out.len() <= BUDGET);
 }
 
 #[test]
 fn an_output_from_a_guide_without_a_budget_has_crumbkit_s_default_of_one_mebibyte() {
     let output = Output::new(
         crate::ViewFlags::new(),
+        crate::DryRun::default(),
         Tool::command(),
         &Guide::new(),
         ["tool"],
-    );
+    )
+    .unwrap();
 
     assert_eq!(output.budget(), Output::DEFAULT_BUDGET);
     assert_eq!(Output::DEFAULT_BUDGET, 1_048_576);
@@ -326,7 +328,7 @@ fn an_output_from_a_guide_without_a_budget_has_crumbkit_s_default_of_one_mebibyt
 #[test]
 fn a_guide_can_set_an_output_budget_below_one_kibibyte_and_a_listing_fits_in_it() {
     let finished = finish_output(
-        &mut budgeted(300, &["--json"]),
+        budgeted(300, &["--json"]),
         STAR_LISTING,
         Listing::new(stars(5), 5).described("stars"),
     );
@@ -338,7 +340,7 @@ fn a_guide_can_set_an_output_budget_below_one_kibibyte_and_a_listing_fits_in_it(
 
 #[test]
 fn a_run_with_a_guide_budget_of_1_byte_prints_the_over_budget_failure() {
-    let finished = finish_output(&mut budgeted(1, &["--json"]), STAR, star(1));
+    let finished = finish_output(budgeted(1, &["--json"]), STAR, star(1));
 
     assert_eq!(finished.code, ExitCode::FAILURE);
     let document = parsed(&finished.out);
@@ -349,7 +351,7 @@ fn a_run_with_a_guide_budget_of_1_byte_prints_the_over_budget_failure() {
 #[test]
 fn a_run_with_a_guide_budget_of_0_bytes_refuses_a_listing_with_the_over_budget_failure() {
     let listing = Listing::new(stars(5), 5).described("stars");
-    let finished = finish_output(&mut budgeted(0, &["--json"]), STAR_LISTING, listing);
+    let finished = finish_output(budgeted(0, &["--json"]), STAR_LISTING, listing);
 
     assert_eq!(finished.code, ExitCode::FAILURE);
     let document = parsed(&finished.out);
@@ -361,7 +363,7 @@ fn a_run_with_a_guide_budget_of_0_bytes_refuses_a_listing_with_the_over_budget_f
 fn a_batch_with_a_guide_budget_of_0_bytes_refuses_its_first_answer_and_names_the_rest_in_the_over_budget_failure()
  {
     let batch = keyed::<Error>(stars(3), vec![]);
-    let finished = finish_output(&mut budgeted(0, &["--json"]), STAR_BATCH, batch);
+    let finished = finish_output(budgeted(0, &["--json"]), STAR_BATCH, batch);
 
     assert_eq!(finished.code, ExitCode::FAILURE);
     let document = parsed(&finished.out);
@@ -421,7 +423,7 @@ proptest! {
         let total = lengths.len();
 
         let listing = finish_output(
-            &mut budgeted(budget, flags),
+            budgeted(budget, flags),
             STAR_LISTING,
             Listing::new(rows(), total).described("stars"),
         );
@@ -429,7 +431,7 @@ proptest! {
 
         let failures = (0..dim).map(Dim).collect();
         let batch = finish_output(
-            &mut budgeted(budget, flags),
+            budgeted(budget, flags),
             DIM_BATCH,
             keyed(rows(), failures),
         );
@@ -437,7 +439,7 @@ proptest! {
         // passes the budget, so only a batch whose first row fits with room
         // for that failure stays within the budget.
         let first = finish_output(
-            &mut budgeted(budget, flags),
+            budgeted(budget, flags),
             DIM_BATCH,
             keyed(rows().into_iter().take(1).collect(), (0..dim).map(Dim).collect()),
         );

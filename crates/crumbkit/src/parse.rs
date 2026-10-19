@@ -39,8 +39,10 @@ pub(crate) mod walk;
 /// returned `Output` to [`finish`](crate::finish()) with the handler's
 /// result. `parse` reads the view flags that the tool's type flattens as
 /// [`ViewFlags`](crate::ViewFlags) by their ids, before the tool's type
-/// takes them. A tool without goal headings or topics passes
-/// `&Guide::new()`:
+/// takes them, and reads [`DryRun`](crate::DryRun)'s `--dry-run` from the
+/// deepest command in the same way, which
+/// [`Output::is_dry_run`](crate::Output::is_dry_run) reports. A tool
+/// without goal headings or topics passes `&Guide::new()`:
 ///
 /// ```no_run
 /// use std::process::ExitCode;
@@ -63,7 +65,7 @@ pub(crate) mod walk;
 ///         Ok(parsed) => parsed,
 ///         Err(stop) => return stop.code(),
 ///     };
-///     // Run the command, then return `crumbkit::finish(&mut output, ...)`.
+///     // Run the command, then return `crumbkit::finish(output, ...)`.
 ///     ExitCode::SUCCESS
 /// }
 /// ```
@@ -333,12 +335,12 @@ where
             let code = print_text(sink, &page);
             if crate::events::observed() {
                 let root: Vec<String> = root.iter().map(|&name| name.to_owned()).collect();
-                crate::events::helped(&command, &root, true, crate::exit::number(code));
+                crate::events::helped(&command, &root, true, code);
             }
             // Only this path ends before the walk below, so it walks the
             // words for `--json` here.
             let json = walk(&command, &args).json;
-            return Err(Stop::new(crate::exit::number(code), json, command, guide));
+            return Err(Stop::new(code, json, command, guide));
         }
         ask_for_help(&mut args, help.position);
     }
@@ -386,18 +388,17 @@ where
     let error = match parsed {
         Ok(Attempt {
             parsed,
-            view,
+            view: Ok(view),
             no_input,
-            refusal: None,
+            dry_run,
         }) => {
             return Ok((
                 parsed,
-                Output::parsed(view, command, words, no_input, guide, &path),
+                Output::parsed(view, command, words, dry_run, no_input, guide, &path),
             ));
         }
         Ok(Attempt {
-            refusal: Some(refusal),
-            ..
+            view: Err(refusal), ..
         }) => {
             crate::events::exited(Printing::of(guide).exit(&crate::codes::CLI_USAGE));
             return Err(refuse(sink, &refusal, json, spelling, guide, command));
@@ -408,7 +409,7 @@ where
         error.kind(),
         ErrorKind::DisplayHelp | ErrorKind::DisplayVersion
     ) {
-        let code = crate::exit::number(print_page(sink, &error, colour));
+        let code = print_page(sink, &error, colour);
         if error.kind() == ErrorKind::DisplayHelp {
             crate::events::helped(&command, &path, long_help, code);
         } else {

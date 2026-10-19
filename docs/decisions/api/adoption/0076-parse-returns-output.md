@@ -1,7 +1,7 @@
 # ADR-0076. parse returns Output
 
 - Date: 2026-10-17
-- Status: amended by ADR-0086
+- Status: amended by ADR-0086, ADR-0093 and ADR-0094
 - Supersedes: ADR-0015 and ADR-0060, which it amends
 - Missed: ADR-0060 gave a tool that parses with clap alone only the guide's renames, because `Parsed::guided` had no typed words with which to find the leaf.
 

@@ -11,7 +11,7 @@ use crate::books::{BooksError, list, show};
 use crate::cli::{BooksCommand, BooksList, BooksRemove, BooksShow, Cli, Resource};
 
 /// Parses `shelf books remove` with `words` after `remove`, and returns its
-/// output flags and arguments.
+/// output, which holds the `--dry-run` among the words, and its arguments.
 fn parse(words: &[&str]) -> (Output, BooksRemove) {
     let args: Vec<&str> = ["shelf", "books", "remove"]
         .iter()
@@ -25,8 +25,14 @@ fn parse(words: &[&str]) -> (Output, BooksRemove) {
     else {
         panic!("the words parse as books remove");
     };
-    let output = Output::new(cli.view, Cli::command(), &Guide::new(), args);
-    (output, remove)
+    let output = Output::new(
+        cli.view,
+        remove.dry_run,
+        Cli::command(),
+        &Guide::new(),
+        args,
+    );
+    (output.unwrap(), remove)
 }
 
 /// Returns the titles of the books that `shelf books list --all` prints with
@@ -75,10 +81,12 @@ fn remove_with_yes_returns_the_books_and_list_and_show_skip_them_afterwards() {
         Some(&file),
         Output::new(
             crumbkit::ViewFlags::new(),
+            crumbkit::DryRun::default(),
             Cli::command(),
             &Guide::new(),
             ["shelf"],
         )
+        .unwrap()
         .room(crate::books::BOOKS_SHOW),
     )
     .unwrap();

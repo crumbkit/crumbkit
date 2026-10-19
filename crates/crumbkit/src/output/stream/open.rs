@@ -6,6 +6,7 @@ use std::io::Write;
 use std::process::ExitCode;
 
 use super::{State, Streaming};
+use crate::help::view::{Kind, Printed};
 use crate::output::{Output, fields, lines, table};
 use crate::{Document, Row, Stream};
 
@@ -14,40 +15,37 @@ use crate::{Document, Row, Stream};
 pub(super) fn open<R: Row, O: Write, W: Write>(
     out: O,
     err: W,
-    output: &mut Output,
+    output: Output,
     document: Document<Stream<R>>,
-) -> Result<Streaming<'_, R, O, W>, ExitCode> {
+) -> Result<Streaming<R, O, W>, ExitCode> {
     crate::output::columns::require_for_stream::<R>();
     let (spelling, document) = output.named(document);
-    let typed = output.typed();
     let budget = output.budget();
     let printing = output.printing();
-    let lined = lines::chosen::<R>(output);
     let Output {
-        json,
-        fields,
-        long,
-        full,
+        view,
         command,
         dry_run,
         ..
     } = output;
-    let columns: Vec<&str> = if fields.is_empty() {
-        let long = if *long { R::LONG_COLUMNS } else { &[] };
-        R::COLUMNS.iter().chain(long).copied().collect()
+    let columns: Vec<Cow<'static, str>> = if let Some(names) = view.names() {
+        names.iter().cloned().map(Cow::Owned).collect()
     } else {
-        fields.iter().map(String::as_str).collect()
+        let long = if view.is_long() { R::LONG_COLUMNS } else { &[] };
+        R::COLUMNS
+            .iter()
+            .chain(long)
+            .map(|&name| Cow::Borrowed(name))
+            .collect()
     };
     let mut streaming = Streaming {
         out,
         err,
-        json: *json,
         // A row type that prints whole holds every field in JSON unless
         // `--fields` names some.
-        full: *full || (R::WHOLE && fields.is_empty()),
-        dry_run: *dry_run,
-        lined,
-        fields: fields.as_slice(),
+        full: view.is_full() || (R::WHOLE && view.names().is_none()),
+        view,
+        dry_run,
         widths: columns.iter().map(|name| name.chars().count()).collect(),
         columns,
         command,
@@ -65,11 +63,11 @@ pub(super) fn open<R: Row, O: Write, W: Write>(
         #[cfg(feature = "tracing")]
         span: crate::trace::spans::finish(),
     };
-    let envelope = document.get_envelope().wraps();
-    if let Some(refusal) = fields::refusal::<R>(None, envelope, false, streaming.fields, typed) {
+    let printed = Printed::of::<R, _>(Kind::Stream, &document);
+    if let Some(refusal) = fields::refusal::<R>(&printed, &streaming.view) {
         return Err(streaming.refuse(&refusal));
     }
-    if !streaming.json && !lined {
+    if !streaming.view.is_json() && !lines::chosen::<R>(&streaming.view) {
         let header: Vec<Cow<'_, str>> = streaming
             .columns
             .iter()

@@ -60,7 +60,7 @@ impl Output {
     /// and returns `Ok` when the command may proceed.
     ///
     /// It returns `Ok` without asking when the caller passed `--yes`, or
-    /// when [`Output::dry_run`] recorded a dry run, which changes nothing.
+    /// when the run is a dry run ([`Output::is_dry_run`]), which changes nothing.
     /// Otherwise, when the sink is interactive, it writes the question and
     /// ` [y/N] ` to the sink's error writer and reads one line. The answer
     /// `y` or `yes`, in any case and with any surrounding spaces, proceeds.

@@ -50,10 +50,12 @@ use crate::{AsFailure, Batch, Document, Row, Rows};
 /// }
 /// # let output = Output::new(
 /// #     crumbkit::ViewFlags::new(),
+/// #     crumbkit::DryRun::default(),
 /// #     clap::Command::new("shelf"),
 /// #     &crumbkit::help::Guide::new(),
 /// #     ["shelf"],
-/// # );
+/// # )
+/// # .unwrap();
 /// # let _ = show(&output, &[2, 7, 9]);
 /// ```
 #[derive(Debug)]
@@ -116,13 +118,13 @@ enum Form {
 impl Output {
     /// Returns the [`Room`] of a batch that prints as `document`, which
     /// counts the bytes that `finish` prints for the batch's rows within the
-    /// bytes that [`Output::budget`] has left now (ADR-0068).
+    /// bytes of [`Output::budget`] (ADR-0068).
     pub fn room<R: Row, E: AsFailure>(&self, document: Document<Batch<R, E>>) -> Room<Batch<R, E>> {
-        let columns: Vec<String> = columns::columns(self, document, false)
+        let columns: Vec<String> = columns::columns(&self.view, document, false)
             .into_iter()
             .map(str::to_owned)
             .collect();
-        let form = if self.json {
+        let form = if self.is_json() {
             let depth = if document.get_envelope().wraps() {
                 2
             } else {
@@ -144,7 +146,7 @@ impl Output {
                 content: 0,
                 printed: 0,
             }
-        } else if lines::chosen::<R>(self) {
+        } else if lines::chosen::<R>(&self.view) {
             Form::Lines(0)
         } else {
             let header: Vec<Cow<'_, str>> = columns

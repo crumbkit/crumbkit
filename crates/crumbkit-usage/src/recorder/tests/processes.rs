@@ -29,10 +29,12 @@ mod windows;
 fn bare_output() -> Output {
     Output::new(
         ViewFlags::new(),
+        crumbkit::DryRun::default(),
         Command::new("tool"),
         &Guide::new(),
         ["tool"],
     )
+    .unwrap()
 }
 
 /// The variable that tells a signal test's child process to run.
@@ -143,9 +145,16 @@ fn the_stream_exit_test_s_child_streams_one_row_and_times_out() {
     let log = start();
     let command = Command::new("watching");
     typed(&command, &["watching".into()], Spelling::COLONS);
-    let mut output = Output::new(ViewFlags::new(), command, &GUIDE, ["watching"]);
+    let output = Output::new(
+        ViewFlags::new(),
+        crumbkit::DryRun::default(),
+        command,
+        &GUIDE,
+        ["watching"],
+    )
+    .unwrap();
     let mut sink = Sink::new(Vec::new(), Vec::new());
-    let mut streaming = stream_to(&mut sink, &mut output, NUMBERS).unwrap();
+    let mut streaming = stream_to(&mut sink, output, NUMBERS).unwrap();
     let _ = streaming.item(&Numbered { number: 1 });
     let code = streaming.end(Err(TimedOut));
     drop(log);

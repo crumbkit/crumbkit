@@ -81,7 +81,7 @@ fn parse(guide: &Guide, args: &[&str]) -> Result<Output, String> {
 
 /// Finishes the handler's `Missing` failure with `output` into memory, and
 /// returns the error writer's text.
-fn fail(output: &mut Output) -> String {
+fn fail(output: Output) -> String {
     let mut out = Vec::new();
     let mut err = Vec::new();
     let result: Result<Vec<Planet>, Missing> = Err(Missing);
@@ -92,13 +92,13 @@ fn fail(output: &mut Output) -> String {
 #[test]
 fn a_guide_without_a_spelling_prints_colon_spelled_codes_with_the_tools_name() {
     let refused = parse(&Guide::new(), &["tool", "lisst"]).unwrap_err();
-    let mut output = parse(&Guide::new(), &["tool", "list"]).unwrap();
+    let output = parse(&Guide::new(), &["tool", "list"]).unwrap();
 
     assert!(
         refused.ends_with("  code:  tool::cli::usage\n"),
         "{refused}"
     );
-    let failed = fail(&mut output);
+    let failed = fail(output);
     assert!(
         failed.ends_with("  code:  tool::planets::missing\n"),
         "{failed}"
@@ -114,9 +114,9 @@ fn a_guide_with_a_custom_spelling_prints_it_when_parse_refuses_a_command_line() 
 
 #[test]
 fn a_guide_with_a_custom_spelling_prints_it_through_finish_without_a_further_argument() {
-    let mut output = parse(&DOTTED, &["tool", "list"]).unwrap();
+    let output = parse(&DOTTED, &["tool", "list"]).unwrap();
 
-    let failed = fail(&mut output);
+    let failed = fail(output);
 
     assert!(
         failed.ends_with("  code:  tool.planets.missing\n"),
@@ -126,12 +126,12 @@ fn a_guide_with_a_custom_spelling_prints_it_through_finish_without_a_further_arg
 
 #[test]
 fn a_guide_with_a_custom_spelling_prints_it_through_stream_without_a_further_argument() {
-    let mut output = parse(&DOTTED, &["tool", "list"]).unwrap();
+    let output = parse(&DOTTED, &["tool", "list"]).unwrap();
     let mut out = Vec::new();
     let mut err = Vec::new();
 
     let mut sink = Sink::new(&mut out, &mut err);
-    let streaming = stream_to(&mut sink, &mut output, PLANETS_WATCH).unwrap();
+    let streaming = stream_to(&mut sink, output, PLANETS_WATCH).unwrap();
     let _ = streaming.end(Err::<(), Missing>(Missing));
 
     let err = String::from_utf8(err).unwrap();
@@ -142,12 +142,23 @@ fn a_guide_with_a_custom_spelling_prints_it_through_stream_without_a_further_arg
 fn a_clap_only_tools_output_new_carries_the_guides_spelling() {
     let args = ["tool", "list", "--full"];
     let view = Tool::try_parse_from(args).unwrap().view;
-    let mut output = Output::new(view, Tool::command(), &DOTTED, args);
+    let mut out = Vec::new();
+    let mut err = Vec::new();
 
     // `--full` without `--json` is refused with crumbkit's usage code, which
     // prints with the tool's name.
-    let refused = fail(&mut output);
+    let stop = Output::new_to(
+        &mut Sink::new(&mut out, &mut err),
+        view,
+        crate::DryRun::default(),
+        Tool::command(),
+        &DOTTED,
+        args,
+    )
+    .unwrap_err();
 
+    assert_eq!(stop.number(), 2);
+    let refused = String::from_utf8(err).unwrap();
     assert!(refused.ends_with("  code:  tool.cli.usage\n"), "{refused}");
 }
 
@@ -155,9 +166,16 @@ fn a_clap_only_tools_output_new_carries_the_guides_spelling() {
 fn a_clap_only_tools_output_new_prints_the_handlers_code_in_the_guides_spelling() {
     let args = ["tool", "list"];
     let view = Tool::try_parse_from(args).unwrap().view;
-    let mut output = Output::new(view, Tool::command(), &DOTTED, args);
+    let output = Output::new(
+        view,
+        crate::DryRun::default(),
+        Tool::command(),
+        &DOTTED,
+        args,
+    )
+    .unwrap();
 
-    let failed = fail(&mut output);
+    let failed = fail(output);
 
     assert!(
         failed.ends_with("  code:  tool.planets.missing\n"),

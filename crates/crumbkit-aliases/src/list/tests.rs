@@ -16,10 +16,12 @@ const FILE: &str = "/home/ada/.config/shelf/aliases.toml";
 fn output() -> Output {
     Output::new(
         crumbkit::ViewFlags::new(),
+        crumbkit::DryRun::default(),
         tool(),
         &crumbkit::help::Guide::new(),
         ["shelf"],
     )
+    .unwrap()
 }
 
 /// Parses `words` after `shelf aliases list` into the command's arguments.
@@ -57,7 +59,7 @@ struct Finished {
 }
 
 /// Finishes `result` into memory as a tool's handler does.
-fn finish(output: &mut Output, result: Result<Listing<AliasRow>, Error>) -> Finished {
+fn finish(output: Output, result: Result<Listing<AliasRow>, Error>) -> Finished {
     let mut out = Vec::new();
     let mut err = Vec::new();
     let code = finish_to(
@@ -204,7 +206,7 @@ fn a_missing_file_lists_the_built_in_aliases_and_a_note_says_it_does_not_exist_y
     let missing = Path::new(env!("CARGO_MANIFEST_DIR")).join("no-such-aliases.toml");
 
     let listing = list(&mut output(), Some(&missing), &args(&["--limit", "1"])).unwrap();
-    let finished = finish(&mut output(), Ok(listing));
+    let finished = finish(output(), Ok(listing));
 
     assert_eq!(
         finished.out,
@@ -224,7 +226,7 @@ fn a_missing_file_lists_the_built_in_aliases_and_a_note_says_it_does_not_exist_y
 fn a_note_on_standard_error_names_a_file_that_exists_even_when_it_is_empty() {
     let listing = listing(&tool(), Some(Path::new(FILE)), Some(""), &args(&[]));
 
-    let finished = finish(&mut output(), listing.map_err(Error::from));
+    let finished = finish(output(), listing.map_err(Error::from));
 
     assert!(
         finished
@@ -246,7 +248,7 @@ fn a_page_cut_by_a_limit_counts_every_alias_with_a_problem_in_its_note() {
         &args(&["--limit", "1"]),
     );
 
-    let finished = finish(&mut output(), listing.map_err(Error::from));
+    let finished = finish(output(), listing.map_err(Error::from));
 
     assert_eq!(finished.code, ExitCode::FAILURE);
     assert_eq!(
@@ -263,7 +265,7 @@ fn a_page_cut_by_a_limit_counts_every_alias_with_a_problem_in_its_note() {
 fn a_note_says_why_a_tool_without_a_config_directory_has_no_aliases_file() {
     let listing = listing(&tool(), None, None, &args(&[]));
 
-    let finished = finish(&mut output(), listing.map_err(Error::from));
+    let finished = finish(output(), listing.map_err(Error::from));
 
     assert_eq!(
         finished.err,
@@ -275,10 +277,7 @@ fn a_note_says_why_a_tool_without_a_config_directory_has_no_aliases_file() {
 fn a_file_that_cannot_be_read_fails_with_its_path_and_the_reason() {
     let directory = Path::new(env!("CARGO_MANIFEST_DIR"));
 
-    let finished = finish(
-        &mut output(),
-        list(&mut output(), Some(directory), &args(&[])),
-    );
+    let finished = finish(output(), list(&mut output(), Some(directory), &args(&[])));
 
     assert_eq!(finished.code, ExitCode::FAILURE);
     assert_eq!(finished.out, "");

@@ -33,11 +33,11 @@ const SEEN: Document<Stream<Seen>> =
 
 /// Streams a robin and a heron with `flags` and ends without a failure.
 fn run(flags: &[&str]) -> Streamed {
-    let mut output = parse(flags);
+    let output = parse(flags);
     let mut out = Vec::new();
     let mut err = Vec::new();
     let mut sink = Sink::new(&mut out, &mut err);
-    let code = match stream_to(&mut sink, &mut output, SEEN) {
+    let code = match stream_to(&mut sink, output, SEEN) {
         Ok(mut streaming) => {
             for (bird, place) in [("robin", "garden"), ("heron", "pond")] {
                 assert_eq!(
@@ -98,11 +98,11 @@ const COUNTS: Document<Stream<Count>> =
 
 #[test]
 fn a_stream_of_whole_rows_without_columns_that_declare_a_line_prints_each_line() {
-    let mut output = parse(&[]);
+    let output = parse(&[]);
     let mut out = Vec::new();
     let mut err = Vec::new();
     let mut sink = Sink::new(&mut out, &mut err);
-    let code = match stream_to(&mut sink, &mut output, COUNTS) {
+    let code = match stream_to(&mut sink, output, COUNTS) {
         Ok(mut streaming) => {
             assert_eq!(
                 streaming.item(&Count("robin", 2)),
@@ -148,11 +148,18 @@ fn a_stream_item_without_a_text_line_prints_its_json_line_in_the_order_its_field
         .unwrap();
     let view = super::Tool::from_arg_matches(&matches).unwrap().view;
     let guide = crate::help::Guide::new();
-    let mut output = crate::Output::new(view, command, &guide, ["birds", "watch"]);
+    let output = crate::Output::new(
+        view,
+        crate::DryRun::default(),
+        command,
+        &guide,
+        ["birds", "watch"],
+    )
+    .unwrap();
     let mut out = Vec::new();
     let mut err = Vec::new();
     let mut sink = Sink::new(&mut out, &mut err);
-    let mut streaming = stream_to(&mut sink, &mut output, UNPLACED).unwrap();
+    let mut streaming = stream_to(&mut sink, output, UNPLACED).unwrap();
 
     let unplaced = Unplaced {
         place: "garden",

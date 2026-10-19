@@ -37,15 +37,17 @@ fn printed(parse: impl FnOnce() -> miette::Result<Vec<Setting>>) -> String {
     let mut out = Vec::new();
     let mut err = Vec::new();
     let guide = Guide::new().spelling(DOTS);
-    let mut output = Output::new(
+    let output = Output::new(
         ViewFlags::new(),
+        crate::DryRun::default(),
         clap::Command::new("shelf"),
         &guide,
         ["shelf"],
-    );
+    )
+    .unwrap();
     finish_to(
         &mut Sink::new(&mut out, &mut err),
-        &mut output,
+        output,
         SETTINGS,
         handler(),
     );

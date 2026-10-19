@@ -27,28 +27,26 @@ pub(super) fn respond<T: Rows, E: AsFailure, O: Write, W: Write, R>(
 ) -> (u8, bool) {
     let printing = output.printing();
     // A tool may finish an early failure in another document than its leaf
-    // declares, so a failure is checked only for flag pairs, as
-    // `failure_refusal` describes.
-    let refusal = match &result {
-        Ok(_) => fields::flags_refusal(output, document),
-        Err(_) => fields::failure_refusal(output),
-    };
-    if let Some(refusal) = refusal {
-        let code = refusal.print(sink, output.json, spelling, printing, &mut output.command);
+    // declares, so a failure is not checked against the document. The
+    // `Output` holds only a view that every printer accepts (ADR-0093).
+    if result.is_ok()
+        && let Some(refusal) = fields::flags_refusal(output, document)
+    {
+        let code = refusal.print(
+            sink,
+            output.is_json(),
+            spelling,
+            printing,
+            &mut output.command,
+        );
         return (code, false);
     }
     let value = match &result {
         Ok(value) => value,
         Err(error) => {
+            let json = output.is_json();
             let command = &mut output.command;
-            failure::print(
-                sink,
-                output.json,
-                spelling,
-                printing,
-                error.as_failure(),
-                command,
-            );
+            failure::print(sink, json, spelling, printing, error.as_failure(), command);
             return (printing.exit(error.as_failure().code()), false);
         }
     };
@@ -90,10 +88,7 @@ pub(super) fn respond<T: Rows, E: AsFailure, O: Write, W: Write, R>(
         problems,
     );
     let (code, answer) = match written {
-        Ok((answer, bytes)) => {
-            output.spent = output.spent.saturating_add(bytes);
-            (0, answer)
-        }
+        Ok((answer, _bytes)) => (0, answer),
         // A reader that stops early, as `shelf books list | head -1` does,
         // closes the pipe after it has read every line it wanted, so the
         // command did its job.
@@ -109,7 +104,7 @@ pub(super) fn respond<T: Rows, E: AsFailure, O: Write, W: Write, R>(
     // so a line on standard error marks a dry run, after any failures. A
     // result that was refused or failed to print gets no line.
     let dry_run_line = output.dry_run
-        && (!output.json || !document.get_envelope().wraps())
+        && (!output.is_json() || !document.get_envelope().wraps())
         && code == 0
         && !matches!(answer, Answer::Refused(_));
     let (code, cut, left_out) = answered(sink, output, spelling, &answer, code);
@@ -171,7 +166,7 @@ fn print_failures<T: Rows, O: Write, W: Write, R>(
     }
     // A document without the envelope has no `failures` field, so its
     // failures print as text even with `--json`.
-    if !output.json || !document.get_envelope().wraps() {
+    if !output.is_json() || !document.get_envelope().wraps() {
         for failure in &failures {
             // Standard error is the last place to report anything, so a
             // failure to write there goes unreported.
@@ -218,7 +213,7 @@ fn answered<'a, O: Write, W: Write, R>(
             let printing = output.printing();
             failure::print(
                 sink,
-                output.json,
+                output.is_json(),
                 spelling,
                 printing,
                 over,

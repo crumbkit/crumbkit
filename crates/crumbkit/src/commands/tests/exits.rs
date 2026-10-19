@@ -41,7 +41,7 @@ fn notes(guide: &Guide, words: &[&str]) -> String {
     let mut err = Vec::new();
     let _ = finish_to(
         &mut Sink::new(&mut out, &mut err),
-        &mut output,
+        output,
         COMMANDS_LIST,
         result,
     );

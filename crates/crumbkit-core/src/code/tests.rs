@@ -5,7 +5,7 @@ use std::panic;
 
 use proptest::prelude::*;
 
-use super::{Code, Spelling};
+use super::{Code, Form, Spelling};
 use crate::segment::is_segment;
 
 const NOT_FOUND: Code = Code::new("shelf", "books", "not_found");
@@ -191,4 +191,19 @@ fn a_custom_spelling_splits_nothing() {
     const UPPER: Spelling = Spelling::custom(upper_area_and_reason);
 
     assert_eq!(UPPER.split("BOOKS-NOT_FOUND"), None);
+}
+
+/// A joined spelling holds its separator once, so the text it writes and
+/// the text it splits agree for any separator.
+#[test]
+fn a_joined_spelling_splits_at_the_separator_it_writes() {
+    let dots = Spelling {
+        form: Form::Joined("."),
+        tool: crate::ToolName::CRUMBKIT,
+    };
+
+    let text = dots.spell(&NOT_FOUND);
+
+    assert_eq!(text, "shelf.books.not_found");
+    assert_eq!(dots.split(&text), Some(("shelf", "books", "not_found")));
 }

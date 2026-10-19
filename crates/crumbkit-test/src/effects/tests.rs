@@ -355,20 +355,6 @@ fn a_write_that_takes_many_ids_passes_when_it_declares_all_or_none() {
     check_effects(&editable([ids()]), &GUIDE, &[]);
 }
 
-#[test]
-fn a_read_only_leaf_that_declares_how_its_items_end_fails() {
-    const GUIDE: Guide = Guide::new().leaves(&[
-        Leaf::new(&["books", "list"]).effects(Effects::read_only().per_item()),
-        Leaf::new(&["books", "edit"]).effects(Effects::additive()),
-    ]);
-
-    assert_eq!(
-        panic_message(|| check_effects(&editable([]), &GUIDE, &[])).unwrap(),
-        "the command tree breaks crumbkit's effects rules:\n\
-         shelf books list: the command is read-only and declares how a write of many items ends, which it never writes"
-    );
-}
-
 /// A row type for the leaves of the per-item tests.
 #[derive(serde::Serialize, schemars::JsonSchema)]
 struct Book {

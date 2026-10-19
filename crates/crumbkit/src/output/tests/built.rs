@@ -3,7 +3,7 @@
 
 use clap::CommandFactory as _;
 
-use super::{PLANETS, Tool, finish_output, finish_with, mercury, saturn};
+use super::{PLANETS, Tool, build_output, finish_output, finish_with, mercury, saturn};
 use crate::help::Guide;
 use crate::{Output, ViewFlags};
 
@@ -11,14 +11,21 @@ use crate::{Output, ViewFlags};
 /// tool's `main` builds it after it parsed with clap alone or built the
 /// flags itself.
 fn built(view: ViewFlags) -> Output {
-    Output::new(view, Tool::command(), &Guide::new(), ["tool", "list"])
+    Output::new(
+        view,
+        crate::DryRun::default(),
+        Tool::command(),
+        &Guide::new(),
+        ["tool", "list"],
+    )
+    .unwrap()
 }
 
 #[test]
 fn an_output_built_with_json_and_fields_prints_what_the_same_parsed_flags_print() {
-    let mut built = built(ViewFlags::new().json(true).fields(vec!["name".to_owned()]));
+    let built = built(ViewFlags::new().json(true).fields(vec!["name".to_owned()]));
 
-    let finished = finish_output(&mut built, PLANETS, vec![mercury(), saturn()]);
+    let finished = finish_output(built, PLANETS, vec![mercury(), saturn()]);
     let parsed = finish_with(
         &["--json", "--fields", "name"],
         PLANETS,
@@ -32,9 +39,9 @@ fn an_output_built_with_json_and_fields_prints_what_the_same_parsed_flags_print(
 
 #[test]
 fn an_output_built_with_long_prints_the_long_columns_as_the_parsed_flag_does() {
-    let mut built = built(ViewFlags::new().long(true));
+    let built = built(ViewFlags::new().long(true));
 
-    let finished = finish_output(&mut built, PLANETS, vec![mercury()]);
+    let finished = finish_output(built, PLANETS, vec![mercury()]);
     let parsed = finish_with(&["--long"], PLANETS, vec![mercury()]);
 
     assert_eq!(finished.out, parsed.out);
@@ -46,19 +53,19 @@ fn an_output_built_with_long_prints_the_long_columns_as_the_parsed_flag_does() {
 
 #[test]
 fn an_output_built_with_full_and_without_json_is_refused_as_the_parsed_flags_are() {
-    let mut refused = built(ViewFlags::new().full(true));
-    let mut admitted = built(ViewFlags::new().full(true).json(true));
+    let refused = build_output(ViewFlags::new().full(true), &["tool", "list"]);
+    let admitted = build_output(ViewFlags::new().full(true).json(true), &["tool", "list"]);
 
-    let finished = finish_output(&mut refused, PLANETS, vec![mercury()]);
-    let twin = finish_output(&mut admitted, PLANETS, vec![mercury()]);
-
-    assert_eq!(finished.code, std::process::ExitCode::from(2));
-    assert_eq!(finished.out, "");
+    let stop = refused.result.unwrap_err();
+    assert_eq!(stop.number(), 2);
+    assert_eq!(refused.out, "");
     assert!(
-        finished
+        refused
             .err
             .contains("--full prints every field of every row in JSON")
     );
+    let admitted = admitted.result.unwrap();
+    let twin = finish_output(admitted, PLANETS, vec![mercury()]);
     assert_eq!(twin.code, std::process::ExitCode::SUCCESS);
 }
 
@@ -66,10 +73,12 @@ fn an_output_built_with_full_and_without_json_is_refused_as_the_parsed_flags_are
 fn output_new_keeps_the_words_after_the_program_name() {
     let output = Output::new(
         ViewFlags::new(),
+        crate::DryRun::default(),
         Tool::command(),
         &Guide::new(),
         ["tool", "show", "Mars"],
-    );
+    )
+    .unwrap();
 
     assert_eq!(
         output.words(),

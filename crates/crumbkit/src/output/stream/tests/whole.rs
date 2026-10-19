@@ -24,11 +24,11 @@ impl Row for Sighting {
 
 /// Streams `items` as `document` with `flags`, and returns standard output.
 fn streamed<R: Row>(flags: &[&str], document: Document<Stream<R>>, items: &[R]) -> String {
-    let mut output = parse(flags);
+    let output = parse(flags);
     let mut out = Vec::new();
     let mut err = Vec::new();
     let mut sink = Sink::new(&mut out, &mut err);
-    let Ok(mut streaming) = stream_to(&mut sink, &mut output, document) else {
+    let Ok(mut streaming) = stream_to(&mut sink, output, document) else {
         panic!("the stream was refused");
     };
     for item in items {
