@@ -1,7 +1,7 @@
 # ADR-0015. Lightweight adoption
 
 - Date: 2026-10-07
-- Status: amended by ADR-0076
+- Status: amended by ADR-0076 and ADR-0094
 
 ## Context
 

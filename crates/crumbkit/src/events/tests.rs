@@ -368,11 +368,11 @@ fn finished<T: crate::Rows, E: crate::AsFailure>(
     document: Document<T>,
     result: Result<T, E>,
 ) -> (Vec<String>, usize) {
-    let mut output = parse(args).unwrap();
+    let output = parse(args).unwrap();
     let mut out = Vec::new();
     let seen = watch(|| {
         let sink = &mut Sink::new(&mut out, Vec::new());
-        let _ = finish_to(sink, &mut output, document, result);
+        let _ = finish_to(sink, output, document, result);
     });
     (seen, out.len())
 }
@@ -478,12 +478,12 @@ const STREAMED: Document<Stream<Book>> = Document::new("shelf", "books-watch", 1
 
 #[test]
 fn a_stream_reports_its_exit_its_bytes_and_whether_the_budget_stopped_it() {
-    let mut output = parse(&["shelf", "books", "list"]).unwrap();
+    let output = parse(&["shelf", "books", "list"]).unwrap();
     let mut out = Vec::new();
 
     let seen = watch(|| {
         let sink = &mut Sink::new(&mut out, Vec::new());
-        let mut streaming = stream_to(sink, &mut output, STREAMED).unwrap();
+        let mut streaming = stream_to(sink, output, STREAMED).unwrap();
         let _ = streaming.item(&Book {
             title: "Dune".to_owned(),
         });

@@ -90,11 +90,11 @@ fn a_reader_that_merges_the_two_streams_sees_the_notes_after_the_rows_because_st
     // process's standard output does on a pipe.
     let mut out = BufWriter::new(merged.clone());
     let mut err = merged.clone();
-    let mut output = parse_against(Tool::command(), &[]);
+    let output = parse_against(Tool::command(), &[]);
     let result: Result<_, Error> = Ok(two_of_eight());
     finish_to(
         &mut Sink::new(&mut out, &mut err),
-        &mut output,
+        output,
         PLANET_LISTING,
         result,
     );
@@ -130,11 +130,11 @@ impl Write for Calls {
 fn the_notes_reach_standard_error_in_one_write_so_no_note_is_split_between_other_lines() {
     let mut out = Vec::new();
     let mut err = Calls::default();
-    let mut output = parse_against(Tool::command(), &[]);
+    let output = parse_against(Tool::command(), &[]);
     let result: Result<_, Error> = Ok(two_of_eight());
     finish_to(
         &mut Sink::new(&mut out, &mut err),
-        &mut output,
+        output,
         PLANET_LISTING,
         result,
     );
@@ -171,7 +171,7 @@ impl Failure for Gone {
 fn a_dry_runs_line_prints_on_standard_error_after_a_batchs_failures() {
     let mut output = parse_against(Tool::command(), &[]);
     output.dry_run = true;
-    let finished = finish_output(&mut output, SHOWN, answered(vec![saturn()], vec![Gone]));
+    let finished = finish_output(output, SHOWN, answered(vec![saturn()], vec![Gone]));
 
     assert_eq!(finished.code, ExitCode::FAILURE);
     assert_eq!(finished.out, "NAME    MOONS\nSaturn  274\n");
@@ -193,7 +193,7 @@ fn a_dry_runs_line_prints_on_standard_error_after_a_batchs_failures() {
 fn a_dry_runs_line_prints_on_standard_error_after_a_list() {
     let mut output = parse_against(Tool::command(), &[]);
     output.dry_run = true;
-    let finished = finish_output(&mut output, PLANETS, vec![saturn()]);
+    let finished = finish_output(output, PLANETS, vec![saturn()]);
 
     assert_eq!(finished.out, "NAME    MOONS\nSaturn  274\n");
     assert_eq!(finished.err, "This was a dry run, so nothing changed.\n");
@@ -258,7 +258,7 @@ fn a_batchs_note_prints_on_standard_error_before_its_failures_and_the_dry_runs_l
     let mut output = parse_against(Tool::command(), &[]);
     output.dry_run = true;
     let batch = answered(vec![saturn()], vec![Gone]).note("Pluto is not a planet.");
-    let finished = finish_output(&mut output, SHOWN, batch);
+    let finished = finish_output(output, SHOWN, batch);
 
     assert_eq!(finished.code, ExitCode::FAILURE);
     assert_eq!(finished.out, "NAME    MOONS\nSaturn  274\n");
@@ -291,10 +291,10 @@ fn a_batchs_json_leaves_its_note_out() {
 fn a_batch_that_the_output_budget_cuts_prints_its_note_before_the_failure_that_names_the_keys_left_out()
  {
     let guide = Guide::new().output_budget(1024, "the tests print little");
-    let mut output = built_with(Tool::command(), &guide, &["tool", "list"]);
+    let output = built_with(Tool::command(), &guide, &["tool", "list"]);
     let rows: Vec<Planet> = (0..100).map(|_| mercury()).collect();
     let batch = answered::<Planet, Gone>(rows, Vec::new()).note("Pluto is not a planet.");
-    let finished = finish_output(&mut output, SHOWN, batch);
+    let finished = finish_output(output, SHOWN, batch);
 
     assert_eq!(finished.code, ExitCode::FAILURE);
     assert!(

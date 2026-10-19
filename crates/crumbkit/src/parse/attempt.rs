@@ -1,5 +1,5 @@
 //! One parse of the command line: the tool's parsed type, `--no-input`,
-//! and the view that the view flags select, or the refusal of a view flag
+//! `--dry-run`, and the view that the view flags select, or the refusal of a view flag
 //! that the typed command does not offer, of two view flags that cannot
 //! work together, or of a `--fields` name that its document lacks.
 
@@ -11,7 +11,7 @@ use clap::{ArgMatches, Command, FromArgMatches};
 use super::pick;
 use crate::ViewFlags;
 use crate::help::{Guide, Leaf, ViewFlag, view};
-use crate::output::fields;
+use crate::output::{dry_run, fields};
 use crate::refusal::Refusal;
 use crate::view::View;
 
@@ -25,12 +25,16 @@ pub(super) struct Attempt<C> {
     pub(super) view: Result<View, Box<Refusal>>,
     /// Whether the caller passed `--no-input`.
     pub(super) no_input: bool,
+    /// Whether the caller passed crumbkit's `--dry-run` on the deepest
+    /// command.
+    pub(super) dry_run: bool,
 }
 
 /// Parses `args` against `command`, and returns the tool's parsed type,
-/// whether the caller passed `--no-input`, which parsing reads before the
-/// tool's type takes the values out of the matches, and the view that the
-/// view flags select or the refusal of a view flag that [`refusal`] finds.
+/// whether the caller passed `--no-input` and `--dry-run`, which parsing
+/// reads before the tool's type takes the values out of the matches, and
+/// the view that the view flags select or the refusal of a view flag that
+/// [`refusal`] finds.
 pub(super) fn attempt<C: FromArgMatches>(
     command: &mut Command,
     args: Vec<OsString>,
@@ -40,11 +44,13 @@ pub(super) fn attempt<C: FromArgMatches>(
     crate::events::parsed(command, &matches);
     let no_input = pick::no_input(&matches);
     let (path, node, level) = deepest(command, &matches);
+    let dry_run = dry_run::typed(level);
     let view = refusal(node, level, &path, guide);
     C::from_arg_matches_mut(&mut matches).map(|parsed| Attempt {
         parsed,
         view,
         no_input,
+        dry_run,
     })
 }
 

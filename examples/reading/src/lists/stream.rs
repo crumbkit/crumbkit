@@ -29,7 +29,7 @@ pub(crate) const ENTRIES_STREAM: Document<Stream<Entry>> = Document::new(
 /// read. It stops reading when the reader of standard output closes the
 /// pipe. A list that does not exist or cannot be read ends the stream with
 /// its failure.
-pub(crate) fn stream_entries(output: &mut Output, dir: Option<&Path>, name: &str) -> ExitCode {
+pub(crate) fn stream_entries(output: Output, dir: Option<&Path>, name: &str) -> ExitCode {
     let mut streaming = match crumbkit::stream(output, ENTRIES_STREAM) {
         Ok(streaming) => streaming,
         Err(code) => return code,

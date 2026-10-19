@@ -109,7 +109,7 @@ fn write_removed(path: &Path, ids: &[u32]) -> Result<(), BooksError> {
 ///
 /// Removing a book that is already removed changes nothing and succeeds,
 /// so a repeat of the command is safe. On a dry run, which
-/// [`Output::dry_run`] records, it returns the same books and writes
+/// [`Output::is_dry_run`] reports, it returns the same books and writes
 /// nothing. It asks for confirmation with [`Output::confirm`] after it
 /// checks the ids, so a failure for an unknown id comes before the
 /// question.
@@ -125,7 +125,7 @@ pub(crate) fn remove(
     args: &BooksRemove,
     removed: Option<&Path>,
 ) -> Result<Vec<Book>, Error> {
-    let dry_run = output.dry_run(args.dry_run);
+    let dry_run = output.is_dry_run();
     let Some(path) = removed else {
         return Err(BooksError::NoStateDirectory.into());
     };

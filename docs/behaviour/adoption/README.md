@@ -46,7 +46,8 @@ Why: ADR-0015, ADR-0002.
 
 crumbkit has no `run` one-liner. A hand-wired `main` is a few lines of glue:
 `parse`, a `match` on its result that keeps the returned `Output`, and one
-`finish` per leaf ([parsing](../parsing/README.md)). A `run` could not call
+`finish` per leaf, which takes the `Output` by value as the last call of the
+run ([parsing](../parsing/README.md)). A `run` could not call
 crumbkit-aliases or start the usage log, because crumbkit-aliases and
 crumbkit-usage both depend on crumbkit.
 

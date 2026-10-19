@@ -103,12 +103,12 @@ fn list(cli: &Cli) -> Result<Listing<Book>, UnknownAuthor> {
 
 fn main() -> ExitCode {
     let parsed = crumbkit::parse::<Cli>(Cli::command(), &Guide::new());
-    let (cli, mut output) = match parsed {
+    let (cli, output) = match parsed {
         Ok(parsed) => parsed,
         Err(stop) => return stop.code(),
     };
     let result = list(&cli);
-    crumbkit::finish(&mut output, BOOKS_LIST, result)
+    crumbkit::finish(output, BOOKS_LIST, result)
 }
 ```
 

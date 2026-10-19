@@ -37,7 +37,7 @@ fn output_with(budget: usize, flags: &[&str]) -> Output {
 }
 
 /// Finishes `bytes` as `document` with the flags and budget in `output`.
-fn finish_output(output: &mut Output, document: Document<Bytes>, bytes: Bytes) -> Finished {
+fn finish_output(output: Output, document: Document<Bytes>, bytes: Bytes) -> Finished {
     let mut out = Vec::new();
     let mut err = Vec::new();
     let result: Result<Bytes, Error> = Ok(bytes);
@@ -51,7 +51,7 @@ fn finish_output(output: &mut Output, document: Document<Bytes>, bytes: Bytes) -
 
 /// Finishes `bytes` as [`FILE`] with `flags` and crumbkit's default budget.
 fn finish_with(flags: &[&str], bytes: Bytes) -> Finished {
-    finish_output(&mut output_with(Output::DEFAULT_BUDGET, flags), FILE, bytes)
+    finish_output(output_with(Output::DEFAULT_BUDGET, flags), FILE, bytes)
 }
 
 /// Returns bytes that hold a tab, an escape sequence and a byte that is not
@@ -99,8 +99,8 @@ fn json_holds_bytes_that_are_not_utf8_as_base64_under_data() {
 
 #[test]
 fn json_of_a_document_without_the_envelope_is_the_object_alone() {
-    let mut output = output_with(Output::DEFAULT_BUDGET, &["--json"]);
-    let finished = finish_output(&mut output, FILE.envelope(Envelope::Without), raw());
+    let output = output_with(Output::DEFAULT_BUDGET, &["--json"]);
+    let finished = finish_output(output, FILE.envelope(Envelope::Without), raw());
 
     assert_eq!(
         String::from_utf8(finished.out).unwrap(),
@@ -161,18 +161,17 @@ fn full_on_bytes_is_a_refusal_that_names_the_flag_under_fields() {
 
 #[test]
 fn bytes_exactly_as_long_as_the_budget_print_whole() {
-    let mut output = output_with(BUDGET, &[]);
-    let finished = finish_output(&mut output, FILE, Bytes::new(vec![b'a'; BUDGET]));
+    let output = output_with(BUDGET, &[]);
+    let finished = finish_output(output, FILE, Bytes::new(vec![b'a'; BUDGET]));
 
     assert_eq!(finished.code, ExitCode::SUCCESS);
     assert_eq!(finished.out.len(), BUDGET);
-    assert_eq!(output.budget(), 0);
 }
 
 #[test]
 fn bytes_over_the_budget_are_refused_whole_and_no_flag_makes_them_smaller() {
-    let mut output = output_with(BUDGET, &[]);
-    let finished = finish_output(&mut output, FILE, Bytes::new(vec![b'a'; BUDGET + 1]));
+    let output = output_with(BUDGET, &[]);
+    let finished = finish_output(output, FILE, Bytes::new(vec![b'a'; BUDGET + 1]));
 
     assert_eq!(finished.code, ExitCode::FAILURE);
     assert_eq!(finished.out, b"");
@@ -195,11 +194,11 @@ fn json_measures_the_base64_form_so_bytes_that_fit_as_text_can_be_refused() {
     // 900 bytes fit in the budget, and their base64 form of 1200 characters
     // does not.
     let binary = Bytes::new(vec![0xff; 900]);
-    let mut text = output_with(BUDGET, &[]);
-    let mut json = output_with(BUDGET, &["--json"]);
+    let text = output_with(BUDGET, &[]);
+    let json = output_with(BUDGET, &["--json"]);
 
-    let printed = finish_output(&mut text, FILE, binary.clone());
-    let refused = finish_output(&mut json, FILE, binary);
+    let printed = finish_output(text, FILE, binary.clone());
+    let refused = finish_output(json, FILE, binary);
 
     assert_eq!(printed.code, ExitCode::SUCCESS);
     assert_eq!(refused.code, ExitCode::FAILURE);
@@ -212,9 +211,9 @@ fn json_measures_the_base64_form_so_bytes_that_fit_as_text_can_be_refused() {
 
 #[test]
 fn a_document_that_always_prints_its_first_answer_prints_bytes_past_the_budget() {
-    let mut output = output_with(BUDGET, &[]);
+    let output = output_with(BUDGET, &[]);
     let big = Bytes::new(vec![b'a'; 2 * BUDGET]);
-    let finished = finish_output(&mut output, FILE.always_print_first(), big);
+    let finished = finish_output(output, FILE.always_print_first(), big);
 
     assert_eq!(finished.code, ExitCode::SUCCESS);
     assert_eq!(finished.out.len(), 2 * BUDGET);
@@ -234,9 +233,16 @@ struct Write {
 fn the_dry_run_line_of_bytes_goes_to_standard_error_so_the_bytes_stay_unchanged() {
     let words = ["tool", "--dry-run"];
     let write = Write::parse_from(words);
-    let mut output = Output::new(write.view, Write::command(), &Guide::new(), words).unwrap();
-    assert!(output.dry_run(write.dry_run));
-    let finished = finish_output(&mut output, FILE, Bytes::from("Emma".to_owned()));
+    let output = Output::new(
+        write.view,
+        write.dry_run,
+        Write::command(),
+        &Guide::new(),
+        words,
+    );
+    let output = output.unwrap();
+    assert!(output.is_dry_run());
+    let finished = finish_output(output, FILE, Bytes::from("Emma".to_owned()));
 
     assert_eq!(finished.code, ExitCode::SUCCESS);
     assert_eq!(finished.out, b"Emma");
@@ -260,7 +266,7 @@ impl Row for File {
 fn a_batch_prints_a_bytes_field_in_its_json_form_with_full() {
     let files: Document<Batch<File, Error>> =
         Document::new("files", "files", 1, "The bytes of each file.");
-    let mut output = output_with(Output::DEFAULT_BUDGET, &["--json", "--full"]);
+    let output = output_with(Output::DEFAULT_BUDGET, &["--json", "--full"]);
     let batch = answered(
         vec![File {
             name: "cover.png",
@@ -271,12 +277,7 @@ fn a_batch_prints_a_bytes_field_in_its_json_form_with_full() {
     let mut out = Vec::new();
     let mut err = Vec::new();
     let result: Result<_, Error> = Ok(batch);
-    let code = finish_to(
-        &mut Sink::new(&mut out, &mut err),
-        &mut output,
-        files,
-        result,
-    );
+    let code = finish_to(&mut Sink::new(&mut out, &mut err), output, files, result);
 
     assert_eq!(code, 0);
     assert_eq!(

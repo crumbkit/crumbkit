@@ -108,17 +108,22 @@ enum Command {
 }
 
 /// Parses `birds watch` followed by `flags`, and returns the output as a
-/// tool that parses with clap alone builds it. A `--dry-run`
-/// in `flags` is recorded in the output, as a handler records it.
+/// tool that parses with clap alone builds it, with the `--dry-run` that
+/// `flags` hold.
 fn parse(flags: &[&str]) -> Output {
     let mut command = Tool::command();
     let args = ["birds", "watch"].iter().chain(flags);
     let matches = command.try_get_matches_from_mut(args.clone()).unwrap();
     let tool = Tool::from_arg_matches(&matches).unwrap();
-    let mut output = Output::new(tool.view, command, &crate::help::Guide::new(), args).unwrap();
     let Command::Watch { dry_run } = tool.command;
-    let _ = output.dry_run(dry_run);
-    output
+    Output::new(
+        tool.view,
+        dry_run,
+        command,
+        &crate::help::Guide::new(),
+        args,
+    )
+    .unwrap()
 }
 
 /// What a stream wrote and the exit code it ended with.
@@ -138,11 +143,11 @@ fn run(
     failure: Option<&Unreadable>,
     end: Result<(), Unreadable>,
 ) -> Streamed {
-    let mut output = parse(flags);
+    let output = parse(flags);
     let mut out = Vec::new();
     let mut err = Vec::new();
     let mut sink = Sink::new(&mut out, &mut err);
-    let code = match stream_to(&mut sink, &mut output, document) {
+    let code = match stream_to(&mut sink, output, document) {
         Ok(mut streaming) => {
             for (index, item) in items.iter().enumerate() {
                 assert_eq!(streaming.item(item), ControlFlow::Continue(()));
@@ -195,12 +200,12 @@ NUMBER  BIRD  PLACE
 
 #[test]
 fn text_prints_the_header_when_the_stream_opens() {
-    let mut output = parse(&[]);
+    let output = parse(&[]);
     let mut out = Vec::new();
     let mut err = Vec::new();
     let mut sink = Sink::new(&mut out, &mut err);
 
-    let streaming = stream_to(&mut sink, &mut output, SIGHTINGS).unwrap();
+    let streaming = stream_to(&mut sink, output, SIGHTINGS).unwrap();
     drop(streaming);
 
     assert_eq!(String::from_utf8(out).unwrap(), "NUMBER  BIRD\n");
@@ -254,12 +259,12 @@ fn an_unknown_field_is_refused_with_exit_code_2_before_anything_prints() {
     assert_one_word_apart(&["--fields", "wingspan"], &["--fields", "bird"]);
     let twin = run_ok(&["--fields", "bird"], &[robin()]);
     assert_eq!(twin.code, ExitCode::SUCCESS, "{}", twin.err);
-    let mut output = parse(&["--fields", "wingspan"]);
+    let output = parse(&["--fields", "wingspan"]);
     let mut out = Vec::new();
     let mut err = Vec::new();
     let mut sink = Sink::new(&mut out, &mut err);
 
-    let refused = stream_to(&mut sink, &mut output, SIGHTINGS);
+    let refused = stream_to(&mut sink, output, SIGHTINGS);
 
     assert_eq!(refused.err(), Some(ExitCode::from(2)));
     assert_eq!(String::from_utf8(out).unwrap(), "");
@@ -415,11 +420,11 @@ impl Write for Writer {
 
 #[test]
 fn the_stream_writes_and_flushes_each_line_at_once() {
-    let mut output = parse(&["--json"]);
+    let output = parse(&["--json"]);
     let mut out = Writer::new(usize::MAX, io::ErrorKind::Other);
     let mut err = Vec::new();
     let mut sink = Sink::new(&mut out, &mut err);
-    let mut streaming = stream_to(&mut sink, &mut output, SIGHTINGS).unwrap();
+    let mut streaming = stream_to(&mut sink, output, SIGHTINGS).unwrap();
 
     let _ = streaming.item(&robin());
     let _ = streaming.item(&kingfisher());
@@ -431,11 +436,11 @@ fn the_stream_writes_and_flushes_each_line_at_once() {
 
 #[test]
 fn a_reader_that_closes_the_pipe_stops_the_stream_and_the_exit_code_stays_0() {
-    let mut output = parse(&[]);
+    let output = parse(&[]);
     let mut out = Writer::new(2, io::ErrorKind::BrokenPipe);
     let mut err = Vec::new();
     let mut sink = Sink::new(&mut out, &mut err);
-    let mut streaming = stream_to(&mut sink, &mut output, SIGHTINGS).unwrap();
+    let mut streaming = stream_to(&mut sink, output, SIGHTINGS).unwrap();
 
     assert_eq!(streaming.item(&robin()), ControlFlow::Continue(()));
     assert_eq!(streaming.item(&kingfisher()), ControlFlow::Break(()));
@@ -448,11 +453,11 @@ fn a_reader_that_closes_the_pipe_stops_the_stream_and_the_exit_code_stays_0() {
 
 #[test]
 fn another_write_error_is_reported_once_and_the_stream_exits_with_1() {
-    let mut output = parse(&["--json"]);
+    let output = parse(&["--json"]);
     let mut out = Writer::new(0, io::ErrorKind::PermissionDenied);
     let mut err = Vec::new();
     let mut sink = Sink::new(&mut out, &mut err);
-    let mut streaming = stream_to(&mut sink, &mut output, SIGHTINGS).unwrap();
+    let mut streaming = stream_to(&mut sink, output, SIGHTINGS).unwrap();
 
     assert_eq!(streaming.item(&robin()), ControlFlow::Break(()));
     assert_eq!(streaming.item(&robin()), ControlFlow::Break(()));
@@ -476,12 +481,12 @@ fn run_budgeted(flags: &[&str], count: usize) -> (Streamed, usize) {
     let matches = command.try_get_matches_from_mut(args.clone()).unwrap();
     let view = Tool::from_arg_matches(&matches).unwrap().view;
     let guide = crate::help::Guide::new().output_budget(1024, "a short watch");
-    let mut output = Output::new(view, command, &guide, args).unwrap();
+    let output = Output::new(view, DryRun::default(), command, &guide, args).unwrap();
     let mut out = Vec::new();
     let mut err = Vec::new();
     let mut sink = Sink::new(&mut out, &mut err);
     let mut accepted = 0;
-    let code = match stream_to(&mut sink, &mut output, SIGHTINGS) {
+    let code = match stream_to(&mut sink, output, SIGHTINGS) {
         Ok(mut streaming) => {
             for _ in 0..count {
                 if streaming.item(&robin()).is_break() {
@@ -548,7 +553,7 @@ fn a_stream_always_prints_its_first_item_even_past_the_budget() {
         .unwrap();
     let view = Tool::from_arg_matches(&matches).unwrap().view;
     let guide = crate::help::Guide::new().output_budget(1024, "a short watch");
-    let mut output = Output::new(view, command, &guide, ["birds", "watch"]).unwrap();
+    let output = Output::new(view, DryRun::default(), command, &guide, ["birds", "watch"]).unwrap();
     let long: &'static str = Box::leak("w".repeat(2000).into_boxed_str());
     let wren = Sighting {
         bird: long,
@@ -557,7 +562,7 @@ fn a_stream_always_prints_its_first_item_even_past_the_budget() {
     let mut out = Vec::new();
     let mut err = Vec::new();
     let mut sink = Sink::new(&mut out, &mut err);
-    let mut streaming = stream_to(&mut sink, &mut output, SIGHTINGS).unwrap();
+    let mut streaming = stream_to(&mut sink, output, SIGHTINGS).unwrap();
 
     assert_eq!(streaming.item(&wren), ControlFlow::Continue(()));
     assert_eq!(streaming.budget(), 0);

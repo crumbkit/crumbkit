@@ -55,7 +55,7 @@
 //!             // `list` builds the command tree in `output`, so it runs
 //!             // before `finish`.
 //!             let result = commands::list(&mut output, &GUIDE, &args);
-//!             crumbkit::finish(&mut output, commands::COMMANDS_LIST, result)
+//!             crumbkit::finish(output, commands::COMMANDS_LIST, result)
 //!         }
 //!     }
 //! }

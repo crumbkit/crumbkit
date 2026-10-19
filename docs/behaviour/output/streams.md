@@ -12,7 +12,9 @@ refuses a stream document passed to `finish` and a document of one result
 passed to `stream`. The handler opens
 the stream with [`stream`](../../../crates/crumbkit/src/output/stream.rs), or
 `stream_to` in tests, and gets a `Streaming`, whose rustdoc describes
-`item`, `failure`, `end` and `budget`. Opening the stream checks the view
+`item`, `failure`, `end` and `budget`. `stream` takes the `Output` by value,
+and the `Streaming` owns its view and command tree until `end`, as `finish`
+takes the `Output` (ADR-0094). Opening the stream checks the view
 flags against the row type and the document before anything prints, and a
 refusal exits as a refused command line does, as in `finish`.
 

@@ -91,9 +91,9 @@ fn fail_in<T: Rows>(args: &[&str], document: Document<T>) -> Finished {
     let mut sink = Sink::new(&mut out, &mut err);
     let parsed = parse_to::<Tool, _, _, _, _>(&mut sink, Tool::command(), &GUIDE, args);
     let code = match parsed {
-        Ok((_, mut output)) => {
+        Ok((_, output)) => {
             let result: Result<T, NoConfig> = Err(NoConfig);
-            finish_to(&mut sink, &mut output, document, result)
+            finish_to(&mut sink, output, document, result)
         }
         Err(stop) => stop.number(),
     };

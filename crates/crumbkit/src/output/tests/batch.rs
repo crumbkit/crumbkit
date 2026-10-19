@@ -139,7 +139,14 @@ struct Finished {
 fn output(flags: &[&str]) -> Output {
     let args = ["tool", "show", "Saturn"].iter().chain(flags);
     let view = Tool::try_parse_from(args.clone()).unwrap().view;
-    Output::new(view, Tool::command(), &crate::help::Guide::new(), args).unwrap()
+    Output::new(
+        view,
+        crate::DryRun::default(),
+        Tool::command(),
+        &crate::help::Guide::new(),
+        args,
+    )
+    .unwrap()
 }
 
 /// Finishes `batch` into memory with `flags`.
@@ -150,7 +157,7 @@ fn finish_with<E: AsFailure>(flags: &[&str], batch: Batch<Planet, E>) -> Finishe
     let result: Result<_, Error> = Ok(batch);
     let code = finish_to(
         &mut Sink::new(&mut out, &mut err),
-        &mut output(flags),
+        output(flags),
         document,
         result,
     );
@@ -211,7 +218,7 @@ fn each_failure_in_a_batch_prints_as_a_failed_command_prints_it_with_its_key_aft
     let failed: Result<Batch<Planet, Missing>, Missing> = Err(missing("Vulcan"));
     finish_to(
         &mut Sink::new(Vec::new(), &mut err),
-        &mut output(&[]),
+        output(&[]),
         PLANETS,
         failed,
     );
@@ -348,7 +355,7 @@ fn a_failure_in_a_batch_document_is_the_failure_document_with_its_key_and_index_
     });
     finish_to(
         &mut Sink::new(&mut out, Vec::new()),
-        &mut output(&["--json"]),
+        output(&["--json"]),
         PLANETS,
         failed,
     );
@@ -453,7 +460,7 @@ fn finish_failing(
     let result: Result<_, Missing> = Ok(batch);
     let code = finish_to(
         &mut Sink::new(Failing(kind), &mut err),
-        &mut output(flags),
+        output(flags),
         PLANETS,
         result,
     );

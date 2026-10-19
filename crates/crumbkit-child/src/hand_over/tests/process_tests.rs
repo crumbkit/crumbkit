@@ -55,8 +55,8 @@ fn run_tool(test: &str) -> ExitStatus {
 
 #[test]
 fn a_real_child_gets_the_terminal_and_its_exit_code_passes_through() {
-    let mut output = output(&[]);
-    let responded = respond(|sink| hand_over_to(sink, &mut output, sh("exit 3")));
+    let output = output(&[]);
+    let responded = respond(|sink| hand_over_to(sink, output, sh("exit 3")));
 
     assert_eq!(responded.code, ExitCode::from(3));
     assert_eq!((responded.out.as_str(), responded.err.as_str()), ("", ""));
@@ -64,20 +64,20 @@ fn a_real_child_gets_the_terminal_and_its_exit_code_passes_through() {
 
 #[test]
 fn a_real_child_that_sigterm_ends_returns_143() {
-    let mut output = output(&[]);
+    let output = output(&[]);
     let child = sh("kill -TERM $$");
-    let responded = respond(|sink| hand_over_to(sink, &mut output, child));
+    let responded = respond(|sink| hand_over_to(sink, output, child));
 
     assert_eq!(responded.code, ExitCode::from(143));
 }
 
 #[test]
 fn a_real_child_asked_for_json_with_its_declared_arguments_prints_inside_the_envelope() {
-    let mut output = output(&["--json"]);
+    let output = output(&["--json"]);
     // The script prints a book only when its last argument is `--json`,
     // which `BOOKS_JSON` adds.
     let child = sh(r#"test "$0" = --json && printf '[{"title":"Dune","pages":412}]'"#);
-    let responded = respond(|sink| hand_over_json_to(sink, &mut output, child, BOOKS_JSON));
+    let responded = respond(|sink| hand_over_json_to(sink, output, child, BOOKS_JSON));
 
     assert_eq!(responded.code, ExitCode::SUCCESS);
     let expected =
@@ -87,9 +87,9 @@ fn a_real_child_asked_for_json_with_its_declared_arguments_prints_inside_the_env
 
 #[test]
 fn a_real_missing_program_fails_with_not_found() {
-    let mut output = output(&[]);
+    let output = output(&[]);
     let child = command(MISSING);
-    let responded = respond(|sink| hand_over_to(sink, &mut output, child));
+    let responded = respond(|sink| hand_over_to(sink, output, child));
 
     assert_eq!(responded.code, ExitCode::FAILURE);
     assert!(responded.err.contains("  code:  vault::child::not_found\n"));
@@ -98,14 +98,14 @@ fn a_real_missing_program_fails_with_not_found() {
 #[test]
 fn ctrl_c_reaches_only_the_child_and_the_tool_returns_the_childs_code() {
     if is_tool() {
-        let mut output = output(&[]);
+        let output = output(&[]);
         // `kill -INT 0` sends SIGINT to the whole process group, as Ctrl-C
         // does: to this tool and to the child, which exits with 7.
         let child = sh("trap 'exit 7' INT; kill -INT 0; sleep 5; exit 1");
         let mut out = Vec::new();
         let mut err = Vec::new();
         let sink = &mut crumbkit::Sink::new(&mut out, &mut err);
-        exit_tool(hand_over_to(sink, &mut output, child));
+        exit_tool(hand_over_to(sink, output, child));
     }
     let status = run_tool(
         "hand_over::tests::process_tests::ctrl_c_reaches_only_the_child_and_the_tool_returns_the_childs_code",
@@ -117,11 +117,11 @@ fn ctrl_c_reaches_only_the_child_and_the_tool_returns_the_childs_code() {
 #[test]
 fn sigint_and_sigquit_that_arrive_after_the_child_exits_leave_the_tool_running() {
     if is_tool() {
-        let mut output = output(&[]);
+        let output = output(&[]);
         let mut out = Vec::new();
         let mut err = Vec::new();
         let sink = &mut crumbkit::Sink::new(&mut out, &mut err);
-        let _ = hand_over_to(sink, &mut output, sh("exit 0"));
+        let _ = hand_over_to(sink, output, sh("exit 0"));
         // A Ctrl-C sent while the child ran can reach a thread of the tool
         // only after the child has exited, as these signals do.
         let _ = signal_hook::low_level::raise(signal_hook::consts::SIGINT);
@@ -137,10 +137,10 @@ fn sigint_and_sigquit_that_arrive_after_the_child_exits_leave_the_tool_running()
 
 #[test]
 fn hand_over_reports_that_a_child_took_the_terminal_and_then_reports_its_exit() {
-    let mut output = output(&[]);
+    let output = output(&[]);
 
     let seen = crate::testing::watch(|| {
-        let _ = respond(|sink| hand_over_to(sink, &mut output, sh("exit 3")));
+        let _ = respond(|sink| hand_over_to(sink, output, sh("exit 3")));
     });
 
     assert_eq!(seen, ["handed over", "ended 3 None"]);
