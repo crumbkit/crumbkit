@@ -43,7 +43,7 @@ The lines print in this order, each only on the pages named:
 crumbkit's lines appear on guided and unguided pages alike. Help and the
 version keep clap's colours only when standard output is a terminal and the
 guide keeps [terminal detection](../output/terminal.md) on. Help, the
-version, a topic and the topic list print to standard output with exit code 0.
+version and a topic print to standard output with exit code 0.
 
 Why: ADR-0021, ADR-0024, ADR-0039, ADR-0041, ADR-0047, ADR-0049, ADR-0064,
 ADR-0065.
@@ -119,16 +119,20 @@ tool's own type never sees the word. A tool's own command named `help`
 still takes the word, and a command without subcommands reads `help` as an
 ordinary word.
 
-- `<tool> help` lists the tool's topics and then `exit-codes`.
+- `<tool> help` prints what `<tool> --help` prints. Its `Topics:` line
+  names each topic.
 - `<tool> help <TOPIC>` prints one topic.
 - Every other `help` command line becomes the same command line with
   `--help`, so `shelf help books show` prints what `shelf books show --help`
   prints. An unknown word gets clap's usual refusal with its suggestions.
+  A tool that calls `try_parse` gets the refusal unprinted, with the words
+  as typed, the words with `--help`, and the unknown word
+  ([parsing](../parsing/README.md#refused-command-lines)).
 
 crumbkit-test's [`check_grammar`](../../../crates/crumbkit-test/src/grammar.rs)
 reserves the word `help` for asking for help.
 
-Why: ADR-0023.
+Why: ADR-0023, ADR-0100, ADR-0101.
 
 ## Topics
 
@@ -142,13 +146,15 @@ that another program runs with fixed words.
 
 crumbkit adds its own topic, `exit-codes`, which lists crumbkit's codes 0, 1
 and 2 and then the codes that the tool declares
-([exit codes](../failures/exit-codes.md)). It comes last in the topic list
-and on the root's `Topics:` line. A root has the topic, and answers `help`,
+([exit codes](../failures/exit-codes.md)). It comes last on the root's
+`Topics:` line. A root has the topic, and answers `help`,
 when it has subcommands or the tool declares topics, so a root without
 either reads `help` as an ordinary word. A tool's topic named `exit-codes`
 never prints, and `check_guide` rejects one.
 
-The topic list and a topic's text print as plain text, also on a terminal.
-The root's help names the topics on one line and gives no summaries.
+A topic's text prints as plain text, also on a terminal. The root's help
+names the topics on one line and gives no summaries, so crumbkit prints a
+topic's summary nowhere. `Topic::about` returns it to a tool that lists its
+topics itself.
 
-Why: ADR-0023, ADR-0037.
+Why: ADR-0023, ADR-0037, ADR-0101.

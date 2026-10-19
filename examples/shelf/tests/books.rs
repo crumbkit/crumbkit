@@ -504,11 +504,11 @@ fn books_show_json_without_ids_prints_the_refusal_as_a_failure_document_with_cod
 }
 
 #[test]
-fn help_lists_the_catalogue_and_exit_codes_topics_and_the_next_line() {
+fn help_prints_the_root_s_long_help_whose_topics_line_names_the_catalogue() {
     shelf(&["help"])
         .unwrap()
         .success()
-        .stdout_eq(file!["golden/help.txt"].raw())
+        .stdout_eq(file!["golden/help/shelf-help.txt"].raw())
         .stderr_eq("");
 }
 

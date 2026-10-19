@@ -146,14 +146,23 @@ pub fn command_path<T: AsRef<OsStr>>(command: &Command, guide: &Guide, words: &[
 /// value. A run that types only the tool's own names changes no word, and
 /// without `dashed_forms`, the guide's [`Guide::dashed_forms`] declaration,
 /// no word changes.
-pub(crate) fn own_names(command: &Command, dashed_forms: bool, args: &mut [OsString]) {
+///
+/// It returns the position in `args` and the typed text of each word that
+/// it replaced, so a refusal can report the words as the caller typed them.
+/// A run that changes no word allocates nothing.
+pub(crate) fn own_names(
+    command: &Command,
+    dashed_forms: bool,
+    args: &mut [OsString],
+) -> Vec<(usize, OsString)> {
+    let mut replaced = Vec::new();
     if !dashed_forms {
-        return;
+        return replaced;
     }
     let mut reader = Words::new(command);
-    for word in args.iter_mut().skip(1) {
+    for (position, word) in args.iter_mut().enumerate().skip(1) {
         match reader.read(word) {
-            Kind::End => return,
+            Kind::End => break,
             Kind::Flag | Kind::Value => continue,
             Kind::Name => {}
         }
@@ -161,12 +170,14 @@ pub(crate) fn own_names(command: &Command, dashed_forms: bool, args: &mut [OsStr
         if let Some(subcommand) = current.find_subcommand(&*word) {
             reader.enter(subcommand);
         } else if let Some(subcommand) = dashed::by_form(current, word) {
-            *word = OsString::from(subcommand.get_name());
+            let typed = std::mem::replace(word, OsString::from(subcommand.get_name()));
+            replaced.push((position, typed));
             reader.enter(subcommand);
         } else if word != "help" {
-            return;
+            break;
         }
     }
+    replaced
 }
 
 /// Returns the word `help` that crumbkit answers in `args`, or `None` when

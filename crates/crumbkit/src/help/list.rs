@@ -1,5 +1,5 @@
 //! The headed list of a guided group's subcommands, and the line of a list
-//! that the goal list, the topic list and the column list share.
+//! that the goal list and the column list share.
 
 use std::borrow::Cow;
 use std::fmt::Write as _;

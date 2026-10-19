@@ -7,23 +7,28 @@ use std::io::{BufRead, IsTerminal as _, Write};
 use clap::error::ErrorKind;
 use clap::{Command, FromArgMatches};
 
+pub use self::refused::{Refused, Unparsed};
 pub use self::stop::Stop;
 
 use self::attempt::{Attempt, attempt};
-use self::lines::{add_help_lines, has_visible_subcommands};
+use self::help_word::{ask_for_help, has_topics, topic_page};
+use self::lines::add_help_lines;
+use self::message::refusal_message;
 use self::page::{print_page, print_text};
 use self::pick::{Picking, Step};
 use self::walk::{help_word, own_names, program_stem, walk};
-use crate::help::{Guide, topic};
-use crate::output::failure::Printing;
+use crate::help::Guide;
 use crate::refusal::Refusal;
 use crate::{Output, Sink, Spelling};
 
 mod attempt;
 mod declared;
+mod help_word;
 mod lines;
+mod message;
 mod page;
 mod pick;
+mod refused;
 mod stop;
 pub(crate) mod suggestion;
 #[cfg(test)]
@@ -75,6 +80,11 @@ pub(crate) mod walk;
 /// colours when standard output is a terminal and the guide detects terminals.
 /// clap prints those colours only when the tool enables clap's `color` feature.
 ///
+/// `parse` is [`try_parse`] followed by printing the refusal. A tool that
+/// reads a refused command line before anything prints, such as a tool
+/// that resolves its own aliases or prints its own failure document, calls
+/// `try_parse`.
+///
 /// # Errors
 ///
 /// Returns a [`Stop`] after crumbkit has printed help, the version or a
@@ -82,6 +92,55 @@ pub(crate) mod walk;
 /// caller asked for JSON.
 pub fn parse<C: FromArgMatches>(command: Command, guide: &Guide) -> Result<(C, Output), Stop> {
     parse_from(command, guide, std::env::args_os())
+}
+
+/// Parses the process's command line as [`parse`] does, and returns a
+/// refused command line unprinted, as a [`Refused`] inside
+/// [`Unparsed::Refused`].
+///
+/// A tool calls it when it needs the refusal before anything prints:
+///
+/// ```no_run
+/// use std::process::ExitCode;
+///
+/// use clap::{CommandFactory, Parser};
+/// use crumbkit::help::Guide;
+/// use crumbkit::{Unparsed, ViewFlags};
+///
+/// /// List the books in a small catalogue.
+/// #[derive(Parser)]
+/// #[command(name = "shelf")]
+/// struct Cli {
+///     #[command(flatten)]
+///     view: ViewFlags,
+/// }
+///
+/// fn main() -> ExitCode {
+///     let parsed = crumbkit::try_parse::<Cli>(Cli::command(), &Guide::new());
+///     let (_cli, _output) = match parsed {
+///         Ok(parsed) => parsed,
+///         Err(Unparsed::Refused(refused)) => {
+///             // The tool reads `refused.typed()` and `refused.culprit()`
+///             // here, and prints the refusal when it has no other answer.
+///             return refused.print().code();
+///         }
+///         Err(unparsed) => return unparsed.print().code(),
+///     };
+///     // Run the command, then return `crumbkit::finish(output, ...)`.
+///     ExitCode::SUCCESS
+/// }
+/// ```
+///
+/// # Errors
+///
+/// Returns [`Unparsed::Stopped`] after crumbkit has printed help, the
+/// version or a topic, and [`Unparsed::Refused`] for a refused command line,
+/// which nothing has printed.
+pub fn try_parse<C: FromArgMatches>(
+    command: Command,
+    guide: &Guide,
+) -> Result<(C, Output), Unparsed> {
+    try_parse_from(command, guide, std::env::args_os())
 }
 
 /// Parses `args` against `command` as [`parse`] parses the process's command
@@ -98,13 +157,35 @@ where
     I: IntoIterator<Item = T>,
     T: Into<OsString>,
 {
+    try_parse_from(command, guide, args).map_err(Unparsed::print)
+}
+
+/// Parses `args` against `command` as [`try_parse`] parses the process's
+/// command line. The first argument is the program name.
+///
+/// # Errors
+///
+/// Returns [`Unparsed::Stopped`] after crumbkit has printed help, the
+/// version or a topic, and [`Unparsed::Refused`] for a refused command line,
+/// which nothing has printed.
+pub fn try_parse_from<C, I, T>(
+    command: Command,
+    guide: &Guide,
+    args: I,
+) -> Result<(C, Output), Unparsed>
+where
+    C: FromArgMatches,
+    I: IntoIterator<Item = T>,
+    T: Into<OsString>,
+{
     let mut sink = Sink::standard();
     let colour = guide.detects(|| sink.out.is_terminal());
     run(&mut sink, command, guide, args, colour, true)
 }
 
 /// Parses `args` against `command` and prints help, the version or a
-/// refusal to `sink`, and returns what [`parse_from`] would return.
+/// refusal to `sink`, and returns what [`parse_from`] would return. It is
+/// [`try_parse_to`] followed by [`Unparsed::print_to`] on `sink`.
 ///
 /// Tests and golden files call it with a sink over in-memory writers, as
 /// they call [`finish_to`](crate::finish_to). Help and the version print as
@@ -181,8 +262,8 @@ where
 /// any command with subcommands, and directly after the program name when
 /// the root has subcommands or the guide has topics:
 ///
-/// - `shelf help` lists the tool's topics and then `exit-codes` under the
-///   heading `Topics`, and ends with `Next: shelf help <TOPIC>`.
+/// - `shelf help` prints what `shelf --help` prints, whose `Topics:` line
+///   names each topic.
 /// - `shelf help catalogue` prints the text of the topic `catalogue`. A root
 ///   command or alias with that name wins over the topic. Topics belong to
 ///   the root, so `shelf books help catalogue` names no command. A root with
@@ -202,9 +283,11 @@ where
 /// the value of a positional argument. A command with its own subcommand
 /// named or aliased `help` lets clap parse that subcommand.
 ///
-/// Help, the version, a topic and the topic list print to the sink's output
-/// writer, and the exit code is 0, also when the reader closed the pipe
-/// early.
+/// Help, the version and a topic print to the sink's output writer, and the
+/// exit code is 0, also when the reader closed the pipe early.
+///
+/// [`try_parse_to`] returns a refused command line unprinted, and
+/// [`Refused::print_to`] prints it as the paragraphs below describe.
 ///
 /// A command line that clap refuses prints as a failure with the code
 /// `<tool>::cli::usage` in the guide's spelling, and the exit code is 2.
@@ -248,12 +331,45 @@ where
     O: Write,
     E: Write,
 {
+    try_parse_to(sink, command, guide, args).map_err(|unparsed| unparsed.print_to(sink))
+}
+
+/// Parses `args` against `command` as [`parse_to`] does, and prints help,
+/// the version or a topic to `sink`. It returns a refused command line
+/// unprinted, as a [`Refused`] inside [`Unparsed::Refused`], which
+/// [`Refused::print_to`] prints as `parse_to` prints it.
+///
+/// A refused `help` command line keeps both of its forms. `shelf help
+/// comets` is refused as `shelf comets --help`, so [`Refused::typed`]
+/// returns `help` and `comets`, [`Refused::parsed`] returns `comets` and
+/// `--help`, and [`Refused::culprit`] returns `comets`.
+///
+/// # Errors
+///
+/// Returns [`Unparsed::Stopped`] after crumbkit has printed help, the
+/// version or a topic, and [`Unparsed::Refused`] for a refused command line,
+/// which nothing has printed.
+pub fn try_parse_to<C, I, T, O, E>(
+    sink: &mut Sink<O, E, impl BufRead>,
+    command: Command,
+    guide: &Guide,
+    args: I,
+) -> Result<(C, Output), Unparsed>
+where
+    C: FromArgMatches,
+    I: IntoIterator<Item = T>,
+    T: Into<OsString>,
+    O: Write,
+    E: Write,
+{
     run(sink, command, guide, args, false, false)
 }
 
-/// Parses `args` against `command` as [`parse_to`] describes. With the
-/// `tracing` feature, parsing runs inside the `crumbkit.parse` span, which
-/// records the exit code when parsing ends the run (ADR-0030).
+/// Parses `args` against `command` as [`parse_to`] describes, without
+/// printing a refusal. With the `tracing` feature, parsing runs inside the
+/// `crumbkit.parse` span, which records the exit code when parsing ends the
+/// run (ADR-0030). A refusal keeps the span, and records its exit code there
+/// when it prints.
 fn run<C, I, T, O, E, R>(
     sink: &mut Sink<O, E, R>,
     command: Command,
@@ -261,7 +377,7 @@ fn run<C, I, T, O, E, R>(
     args: I,
     colour: bool,
     stdin: bool,
-) -> Result<(C, Output), Stop>
+) -> Result<(C, Output), Unparsed>
 where
     C: FromArgMatches,
     I: IntoIterator<Item = T>,
@@ -279,16 +395,17 @@ where
     let spelling = guide.get_spelling().for_tool(guide.tool_name(&command));
     let parsed = read(sink, command, guide, spelling, args, colour, stdin);
     #[cfg(feature = "tracing")]
-    if let Err(stop) = &parsed {
+    if let Err(Unparsed::Stopped(stop)) = &parsed {
         crate::trace::spans::exited(&span, stop.number());
     }
     parsed
 }
 
-/// Parses `args` against `command` as [`parse_to`] describes. With `colour`, help and the version print
-/// through clap, which writes them to standard output with the colours that
-/// the tool's clap features allow. With `stdin`, the guide's picker reads
-/// the process's standard input and writes to its standard error, and
+/// Parses `args` against `command` as [`parse_to`] describes, and returns a
+/// refusal unprinted. With `colour`, help and the version print through
+/// clap, which writes them to standard output with the colours that the
+/// tool's clap features allow. With `stdin`, the guide's picker reads the
+/// process's standard input and writes to its standard error, and
 /// otherwise it uses the sink's input and error writer.
 fn read<C, I, T, O, E, R>(
     sink: &mut Sink<O, E, R>,
@@ -298,7 +415,7 @@ fn read<C, I, T, O, E, R>(
     args: I,
     colour: bool,
     stdin: bool,
-) -> Result<(C, Output), Stop>
+) -> Result<(C, Output), Unparsed>
 where
     C: FromArgMatches,
     I: IntoIterator<Item = T>,
@@ -311,7 +428,11 @@ where
     if cfg!(windows) {
         program_stem(&mut args);
     }
-    own_names(&command, guide.get_dashed_forms(), &mut args);
+    let replaced = own_names(&command, guide.get_dashed_forms(), &mut args);
+    // A refusal reports the words as the caller typed them. Only a run
+    // that changes a word keeps a copy, so a run that types the tool's own
+    // names and no `help` allocates no copy.
+    let mut typed = (!replaced.is_empty()).then(|| typed_words(&args, replaced));
     crate::events::typed(&command, &args, spelling);
     // crumbkit answers `help` itself. clap propagates the setting to every
     // subcommand, so no `Commands:` list shows clap's `help` line, and
@@ -326,12 +447,12 @@ where
     let has_topics = has_topics(&command, root, guide);
     if let Some(help) = help_word(&command, root, has_topics, &args) {
         if help.at_root
-            && let Some(page) = help_page(&command, guide, &args[help.position + 1..])
+            && let Some(page) = topic_page(&command, guide, &args[help.position + 1..])
         {
-            // RUST-10: a topic and the topic list print as plain text, also
-            // on a terminal, because `StyledStr`'s `Display` drops styles. A
-            // page that keeps the styles, written as clap's `Error::print`
-            // writes help, replaces this when a tool needs colour there.
+            // RUST-10: a topic prints as plain text, also on a terminal,
+            // because `StyledStr`'s `Display` drops styles. A page that
+            // keeps the styles, written as clap's `Error::print` writes
+            // help, replaces this when a tool needs colour there.
             let code = print_text(sink, &page);
             if crate::events::observed() {
                 let root: Vec<String> = root.iter().map(|&name| name.to_owned()).collect();
@@ -340,8 +461,9 @@ where
             // Only this path ends before the walk below, so it walks the
             // words for `--json` here.
             let json = walk(&command, &args).json;
-            return Err(Stop::new(code, json, command, guide));
+            return Err(Unparsed::Stopped(Stop::new(code, json, command, guide)));
         }
+        typed.get_or_insert_with(|| args.get(1..).unwrap_or_default().to_vec());
         ask_for_help(&mut args, help.position);
     }
     // A leaf's `--help` describes its columns from the row type's JSON
@@ -372,10 +494,13 @@ where
         while let Err(error) = &parsed
             && pick::wanted(error)
         {
+            typed.get_or_insert_with(|| words.clone());
             match picking.pick(sink, &mut command, guide, &mut words, json, spelling) {
                 Step::Picked => picked += 1,
                 Step::Refuse => break,
-                Step::Stop(code) => return Err(Stop::new(code, json, command, guide)),
+                Step::Stop(code) => {
+                    return Err(Unparsed::Stopped(Stop::new(code, json, command, guide)));
+                }
             }
             let args = pick::args(&command, &words);
             parsed = attempt::<C>(&mut command, args, guide);
@@ -400,8 +525,10 @@ where
         Ok(Attempt {
             view: Err(refusal), ..
         }) => {
-            crate::events::exited(Printing::of(guide).exit(&crate::codes::CLI_USAGE));
-            return Err(refuse(sink, &refusal, json, spelling, guide, command));
+            let output = stop::stopped(json, command, guide);
+            let typed = typed.unwrap_or_else(|| words.clone());
+            let refused = Refused::new(*refusal, None, path, output, typed, words);
+            return Err(Unparsed::Refused(refused));
         }
         Err(error) => error,
     };
@@ -415,172 +542,27 @@ where
         } else {
             crate::events::exited(code);
         }
-        return Err(Stop::new(code, json, command, guide));
+        return Err(Unparsed::Stopped(Stop::new(code, json, command, guide)));
     }
-    crate::events::refused(
-        &command,
-        &path,
-        &error,
-        Printing::of(guide).exit(&crate::codes::CLI_USAGE),
-    );
     let message = refusal_message(&command, &path, &error);
     let declared = declared::alternatives::<C>(&mut command, guide, &path, &error, &words);
-    let refusal = Refusal::command_line(message, path, &error, &words, declared);
-    Err(refuse(sink, &refusal, json, spelling, guide, command))
+    let refusal = Refusal::command_line(message, path.clone(), &error, &words, declared);
+    let output = stop::stopped(json, command, guide);
+    let typed = typed.unwrap_or_else(|| words.clone());
+    let refused = Refused::new(refusal, Some(error), path, output, typed, words);
+    Err(Unparsed::Refused(refused))
 }
 
-/// Reports whether the guide's root `root` in `command` answers the word
-/// `help` with topics: it has no command named or aliased `help`, and it has
-/// subcommands or the tool declares topics.
-fn has_topics(command: &Command, root: &[&str], guide: &Guide) -> bool {
-    let node = root.iter().fold(command, |node, name| {
-        node.find_subcommand(name).unwrap_or(node)
-    });
-    node.find_subcommand("help").is_none()
-        && (node.has_subcommands() || !guide.get_topics().is_empty())
-}
-
-/// Prints `refusal` to `sink` in the form, the layout and with the code
-/// that `guide` decides, and returns the `Stop` that ends the run with the
-/// exit code that `guide` gives a refused command line.
-fn refuse<O: Write, E: Write, R>(
-    sink: &mut Sink<O, E, R>,
-    refusal: &Refusal,
-    json: bool,
-    spelling: Spelling,
-    guide: &Guide,
-    mut command: Command,
-) -> Stop {
-    let code = refusal.print(sink, json, spelling, Printing::of(guide), &mut command);
-    Stop::new(code, json, command, guide)
-}
-
-/// Returns the page that `help` at the guide's root prints without clap,
-/// for `rest`, the words after `help`: the list of the topics of `guide`
-/// and `exit-codes` when `rest` holds no word that names something, and a
-/// topic's text when its one such word names a topic and no command or
-/// alias directly below the root has that name. It returns `None` otherwise, and the caller asks
-/// clap for help instead.
-///
-/// The words that name something are the words before any `--` that do not
-/// start with `-`.
-//
-// RUST-10: the page ignores flags, so `shelf help catalogue --json` prints
-// the topic as text. A topic in JSON replaces this when a caller needs it.
-fn help_page(command: &Command, guide: &Guide, rest: &[OsString]) -> Option<String> {
-    let mut words = rest
-        .iter()
-        .take_while(|word| *word != "--")
-        .filter(|word| !word.as_encoded_bytes().starts_with(b"-"));
-    let root = guide.root_in(command).iter().fold(command, |node, name| {
-        node.find_subcommand(name).unwrap_or(node)
-    });
-    match (words.next(), words.next()) {
-        (None, _) => Some(topic::list(&guide.invocation(command), guide.get_topics())),
-        (Some(word), None) if root.find_subcommand(word).is_none() => {
-            topic::text(command.get_name(), guide, word.to_str()?)
-        }
-        _ => None,
-    }
-}
-
-/// Turns `help` at `position` into a request for clap's long help: it
-/// removes the word and adds `--help` before the first `--`, or at the end
-/// when there is none. `shelf help books show` and `shelf books help show`
-/// then print what `shelf books show --help` prints, and clap refuses a
-/// word that names no command, as in `shelf help comets`.
-//
-// RUST-10: the request needs the tool's `--help` flag. A tool that disables
-// it gets clap's refusal of `--help`. crumbkit's own help flag replaces the
-// request if a tool needs that.
-fn ask_for_help(args: &mut Vec<OsString>, position: usize) {
-    args.remove(position);
-    let end = args
-        .iter()
-        .position(|word| word == "--")
-        .unwrap_or(args.len());
-    args.insert(end, OsString::from("--help"));
-}
-
-/// Returns the message of a refusal of a command line that ends at the
-/// command at `path`.
-///
-/// A command line that stops at a command that needs more, which clap
-/// answers with that command's help page or a list of its subcommands, says
-/// what the command needs. Every other refusal is clap's own message, from
-/// [`message`], with the real name in place of each name that clap
-/// suggests and without the names of hidden items, from
-/// [`suggestion::real_names`].
-fn refusal_message(command: &Command, path: &[String], error: &clap::Error) -> String {
-    let mut text = command.get_name().to_owned();
-    let mut commands = vec![command];
-    for name in path {
-        text.push(' ');
-        text.push_str(name);
-        if let Some(subcommand) = commands.last().and_then(|node| node.find_subcommand(name)) {
-            commands.push(subcommand);
+/// Returns the words after the program name in `args` as the caller typed
+/// them, with each word of `replaced`, the positions in `args` and the
+/// typed text that [`own_names`] replaced, put back.
+fn typed_words(args: &[OsString], replaced: Vec<(usize, OsString)>) -> Vec<OsString> {
+    let mut typed = args.to_vec();
+    for (position, word) in replaced {
+        if let Some(slot) = typed.get_mut(position) {
+            *slot = word;
         }
     }
-    if !matches!(
-        error.kind(),
-        ErrorKind::DisplayHelpOnMissingArgumentOrSubcommand | ErrorKind::MissingSubcommand
-    ) {
-        // `message` joins the parts with `; `, and `real_names` changes or
-        // drops only a part that starts with clap's suggestion, so splitting
-        // on `; ` and joining again keeps every other part as it was.
-        return message(&error.render().to_string())
-            .split("; ")
-            .filter_map(|part| suggestion::real_names(part, &commands))
-            .collect::<Vec<_>>()
-            .join("; ");
-    }
-    let node = commands.last().copied().unwrap_or(command);
-    if has_visible_subcommands(node) {
-        format!("the command `{text}` needs a subcommand")
-    } else {
-        format!("the command `{text}` needs arguments")
-    }
-}
-
-/// Returns clap's rendered error text on one line.
-///
-/// It keeps the text above the `Usage:` line and the `For more information`
-/// line, and drops the `error:` and `tip:` labels. The lines of a paragraph
-/// join with spaces, and paragraphs and tips join with `; `, as in
-/// `unexpected argument '--id' found; a similar argument exists: '--ids'`.
-//
-// RUST-10: this reads clap's wording and layout, which clap does not
-// promise to keep. It misses any part that clap adds below the usage line.
-// shelf's golden files fail when the wording changes. A message built from
-// the error's kind and its context values, through `Error::context`,
-// replaces it once a change makes the text unreadable.
-fn message(rendered: &str) -> String {
-    let mut parts: Vec<String> = Vec::new();
-    let mut new_part = true;
-    for line in rendered.lines() {
-        let line = line.trim();
-        if line.starts_with("Usage:") || line.starts_with("For more information") {
-            break;
-        }
-        if line.is_empty() {
-            new_part = true;
-            continue;
-        }
-        let (line, labelled) = match line
-            .strip_prefix("error:")
-            .or_else(|| line.strip_prefix("tip:"))
-        {
-            Some(rest) => (rest.trim_start(), true),
-            None => (line, false),
-        };
-        match parts.last_mut() {
-            Some(part) if !new_part && !labelled => {
-                part.push(' ');
-                part.push_str(line);
-            }
-            _ => parts.push(line.to_owned()),
-        }
-        new_part = false;
-    }
-    parts.join("; ")
+    typed.remove(0);
+    typed
 }

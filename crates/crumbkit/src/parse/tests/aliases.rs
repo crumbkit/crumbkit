@@ -56,6 +56,16 @@ fn the_root_s_help_names_the_personal_aliases_between_the_topics_line_and_the_ne
 }
 
 #[test]
+fn help_without_words_names_the_personal_aliases_as_the_root_s_help_does() {
+    const GUIDE: Guide = Guide::new().personal_aliases(names);
+
+    let (code, page) = run(&GUIDE, &["tool", "help"]);
+
+    assert_eq!(code, Some(ExitCode::SUCCESS));
+    assert!(page.contains(LINE), "{page}");
+}
+
+#[test]
 fn a_run_that_prints_no_root_help_never_reads_the_personal_aliases() {
     const GUIDE: Guide = Guide::new().personal_aliases(unread);
 
@@ -64,7 +74,7 @@ fn a_run_that_prints_no_root_help_never_reads_the_personal_aliases() {
         &["tool", "planets", "-h"],
         &["tool", "--version"],
         &["tool"],
-        &["tool", "help"],
+        &["tool", "help", "exit-codes"],
     ] {
         let _ = run(&GUIDE, args);
     }

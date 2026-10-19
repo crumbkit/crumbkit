@@ -1,11 +1,8 @@
 //! Help topics, which [`parse`](crate::parse) reads from the guide it takes
-//! through [`text`], [`list`] and [`names`]. Each of them adds crumbkit's
-//! own `exit-codes` topic after the tool's topics.
+//! through [`text`] and [`names`]. Each of them adds crumbkit's own
+//! `exit-codes` topic after the tool's topics.
 
-use clap::builder::StyledStr;
-use clap::builder::styling::Style;
-
-use super::{Guide, exit, write_line};
+use super::{Guide, exit};
 
 #[cfg(test)]
 mod tests;
@@ -32,16 +29,18 @@ mod tests;
 pub struct Topic {
     /// The word after `help` that prints the topic.
     name: &'static str,
-    /// The summary that `<tool> help` prints beside the name.
+    /// The summary of the topic, which the tool reads through
+    /// [`Topic::about`].
     about: &'static str,
     /// The text that `<tool> help <TOPIC>` prints.
     text: &'static str,
 }
 
 impl Topic {
-    /// Returns the topic called `name`, which `<tool> help` lists with the
-    /// summary `about`, and which `<tool> help <name>` prints as `text`. A
-    /// topic with an empty `about` is listed by its name alone.
+    /// Returns the topic called `name` with the summary `about`, which
+    /// `<tool> help <name>` prints as `text`. crumbkit prints `about`
+    /// nowhere, because `<tool> help` prints the root's help, whose
+    /// `Topics:` line names each topic (ADR-0101).
     #[must_use]
     pub const fn new(name: &'static str, about: &'static str, text: &'static str) -> Self {
         Self { name, about, text }
@@ -53,7 +52,9 @@ impl Topic {
         self.name
     }
 
-    /// Returns the summary that `<tool> help` prints beside the name.
+    /// Returns the summary that the topic was declared with. crumbkit
+    /// prints it nowhere, and a tool that lists its topics itself reads it
+    /// here.
     #[must_use]
     pub const fn about(&self) -> &'static str {
         self.about
@@ -92,29 +93,6 @@ pub(crate) fn text(tool: &str, guide: &Guide, name: &str) -> Option<String> {
         text.push('\n');
     }
     Some(text)
-}
-
-/// Returns the page that `<tool> help` prints, where `tool` is the tool's
-/// name: the topics in guide order and then `exit-codes` under the heading
-/// `Topics`, in the layout of the goal list, and a `Next:` line that prints
-/// one.
-pub(crate) fn list(tool: &str, topics: &[Topic]) -> String {
-    let width = distinct(topics)
-        .map(|topic| topic.name.chars().count())
-        .chain(std::iter::once(exit::TOPIC.len()))
-        .max()
-        .unwrap_or_default();
-    let mut text = String::from("Topics");
-    for topic in distinct(topics) {
-        let about = (!topic.about.is_empty()).then(|| StyledStr::from(topic.about));
-        write_line(&mut text, topic.name, about.as_ref(), width, Style::new());
-    }
-    let about = StyledStr::from(exit::ABOUT);
-    write_line(&mut text, exit::TOPIC, Some(&about), width, Style::new());
-    text.push_str("\n\nNext: ");
-    text.push_str(tool);
-    text.push_str(" help <TOPIC>\n");
-    text
 }
 
 /// Returns the names of `topics` in guide order, each once, and then

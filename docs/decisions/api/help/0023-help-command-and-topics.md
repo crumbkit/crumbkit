@@ -1,7 +1,7 @@
 # ADR-0023. Help command and topics
 
 - Date: 2026-10-09
-- Status: accepted
+- Status: amended by ADR-0101
 
 ## Context
 

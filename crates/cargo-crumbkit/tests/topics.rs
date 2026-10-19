@@ -62,20 +62,12 @@ fn the_exit_code_note_of_commands_list_names_a_command_that_prints_the_topic() {
 }
 
 #[test]
-fn the_topic_list_ends_with_a_command_that_prints_a_topic() {
-    let topics = run_as_cargo_does("cargo crumbkit help").unwrap();
-    let next = topics
-        .lines()
-        .last()
-        .unwrap()
-        .strip_prefix("Next: ")
+fn help_without_a_topic_prints_the_long_help_whose_topics_line_names_a_command_that_prints_one() {
+    let help = run_as_cargo_does("cargo crumbkit help").unwrap();
+    let line = quoted(&help, "Topics:")
         .unwrap()
         .replace("<TOPIC>", "exit-codes");
 
-    assert_eq!(next, "cargo crumbkit help exit-codes");
-    assert!(
-        run_as_cargo_does(&next)
-            .unwrap()
-            .starts_with("Exit codes\n")
-    );
+    assert_eq!(Some(help), run_as_cargo_does("cargo crumbkit --help"));
+    assert_eq!(line, "cargo crumbkit help exit-codes");
 }

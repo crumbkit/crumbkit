@@ -94,15 +94,18 @@ pub trait Observer: Sync {
         let _ = (command, path, long, exit);
     }
 
-    /// clap refused the command line, and `parse` ends the run, as
-    /// [`Refused`] describes.
+    /// clap refused the command line, the refusal printed, and the run
+    /// ends, as [`Refused`] describes. A refusal that
+    /// [`try_parse`](crate::try_parse) returns reports this when
+    /// [`crate::Refused::print`] prints it, and a refusal that the tool
+    /// never prints reports nothing.
     fn refused(&self, refused: &Refused<'_>) {
         let _ = refused;
     }
 
     /// `parse` ended the run with `exit` after it printed the version, after
-    /// a picker's source failed, or after it refused a view flag that the
-    /// command does not offer.
+    /// a picker's source failed, or after the refusal of a view flag
+    /// printed.
     fn exited(&self, exit: u8) {
         let _ = exit;
     }

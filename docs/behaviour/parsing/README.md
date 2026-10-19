@@ -2,8 +2,8 @@
 
 This page covers how a tool parses its command line with crumbkit: the
 `parse` call in `main`, the `Stop` it returns when it ends the run itself,
-the command tree that it hands on to `finish`, and command lines that
-crumbkit refuses. [Aliases](aliases.md) and
+the command tree that it hands on to `finish`, command lines that crumbkit
+refuses, and `try_parse`, which returns a refusal unprinted. [Aliases](aliases.md) and
 [shell completion](completion.md) have pages of their own.
 
 ## Parsing in main
@@ -45,7 +45,9 @@ from the guide, as `parse` does. It reads no `--no-input`.
 
 A tool with personal aliases passes its arguments through
 `crumbkit_aliases::expand` before `parse_from`, as the
-[aliases page](aliases.md) describes.
+[aliases page](aliases.md) describes. A tool that reads a refused command
+line before it prints calls `try_parse`
+([a refusal that the tool prints](#a-refusal-that-the-tool-prints)).
 
 Why: ADR-0015, ADR-0076, ADR-0086, ADR-0002.
 
@@ -53,7 +55,9 @@ Why: ADR-0015, ADR-0076, ADR-0086, ADR-0002.
 
 When `parse` prints help, the version or a refusal, it ends the run and
 returns a [`Stop`](../../../crates/crumbkit/src/parse/stop.rs) in place of a
-bare `ExitCode`. A tool's `main` returns `stop.code()`. A tool that prints
+bare `ExitCode`. `try_parse` returns the `Stop` of help or the version
+inside `Unparsed::Stopped`, and `Refused::print` returns the `Stop` of a
+refusal. A tool's `main` returns `stop.code()`. A tool that prints
 more before it exits reads `Stop::output`, whose `Output::is_json` says
 whether the caller asked for JSON. `Stop::number` returns the same exit code
 as a `u8`: 0 after help or the version, the code that the guide lists for a
@@ -142,3 +146,41 @@ rejects a value, returns an ordinary `Failure`, which `finish` prints.
 crumbkit-test's checks and the golden files cover the whole command tree.
 
 Why: ADR-0015, ADR-0001, ADR-0021, ADR-0050.
+
+## A refusal that the tool prints
+
+[`try_parse`](../../../crates/crumbkit/src/parse.rs), `try_parse_from` and
+`try_parse_to` parse as `parse`, `parse_from` and `parse_to` do and take the
+same arguments. They print help, the version and a topic, and return
+`Unparsed::Stopped` with the `Stop`. They print no refusal. A refused
+command line comes back as `Unparsed::Refused` with a
+[`Refused`](../../../crates/crumbkit/src/parse/refused.rs), and `parse` is
+`try_parse` followed by printing it.
+
+A `Refused` holds what the refusal prints and what the run knew:
+
+- `message`, `code` and `recovery`, which the refusal prints, with the code
+  after the guide's renames;
+- `number`, the exit code that the run ends with once the refusal prints;
+- `output`, the output flags as far as the walk found them;
+- `typed`, the words after the program name as the caller typed them;
+- `parsed`, the words that crumbkit gave clap, after it turned the word
+  `help` into `--help`, replaced a dashed form or added a picked value;
+- `culprit`, the word that clap refused, from clap's error context: an
+  unknown subcommand, a refused value, or an unexpected word or flag, or
+  the view flag that crumbkit refused. A missing argument has none.
+
+`tool help nonsense` is refused as `tool nonsense --help`, so `typed` holds
+`help` and `nonsense`, `parsed` holds `nonsense` and `--help`, and
+`culprit` is `nonsense`. A tool that resolves aliases of its own reads
+`typed`, and a tool with its own failure document prints the refusal from
+`message`, `code` and `recovery`.
+
+`Refused::print` prints the refusal as `parse` prints it, and
+`Refused::print_to` prints it to a sink. Each takes the `Refused` by value
+and returns the `Stop`, so a run prints a refusal at most once. The run's
+observers hear of the refusal when it prints, so a refusal that the tool
+answers itself reports no `refused` event. `Unparsed` is
+`#[non_exhaustive]`, and `Unparsed::print` prints whatever variant it holds.
+
+Why: ADR-0100.
