@@ -13,7 +13,7 @@ use crate::context::Context;
 use crate::file::LIMITS;
 use crate::record::Help;
 use crate::testing::TempDir;
-use crumbkit::{Code, Document, Spelling, ToolName};
+use crumbkit::{Code, Spelling, ToolName};
 
 /// Joins the segments of a code with `.`, so a test shows that the code
 /// prints in the spelling that the tool's guide sets, where the colon
@@ -323,18 +323,4 @@ fn a_line_without_tolerated_codes_leaves_the_field_out() {
     let line = &saved(&state, parsed(), false)[0];
 
     assert!(line.get("tolerated").is_none(), "{line}");
-}
-
-#[test]
-fn the_tool_s_section_holds_its_document_id_and_its_value() {
-    const EXT: Document<Value> = Document::new("shelf", "usage-ext", 1, "The test rows.");
-    let mut recorder = parsed();
-
-    recorder.section(EXT, &json!({"requests": 2}));
-
-    let section = serde_json::to_value(recorder.run.ext.unwrap()).unwrap();
-    assert_eq!(
-        section,
-        json!({"schema": "shelf/usage-ext/v1", "data": {"requests": 2}})
-    );
 }

@@ -299,7 +299,7 @@ impl Guide {
     }
 
     /// Sets the picker that asks a person for the value of a missing
-    /// required argument, such as crumbkit-picker's `Menu` (ADR-0043).
+    /// required argument, such as [`Menu`](crate::pick::Menu) (ADR-0043).
     ///
     /// When clap refuses a command line because it leaves out a required
     /// argument of a leaf, [`parse`](crate::parse) asks the picker to pick

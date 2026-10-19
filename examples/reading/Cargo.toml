@@ -29,10 +29,6 @@ crumbkit-child = { workspace = true }
 # reading finds its lists in its directory under the XDG data directory,
 # which etcetera's base strategy gives.
 etcetera = { workspace = true }
-# reading asks a person at a terminal which list `entries list`,
-# `entries stream` and `entries export` should read, when the command line names none, with
-# crumbkit-picker's numbered menu (ADR-0043).
-crumbkit-picker = { workspace = true }
 # reading derives `Serialize` and `JsonSchema` for the entries it prints.
 serde = { workspace = true, features = ["derive"] }
 schemars = { workspace = true, features = ["derive"] }

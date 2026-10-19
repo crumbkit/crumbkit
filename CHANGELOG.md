@@ -193,8 +193,8 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   `Rule::NoInput` ([behaviour/effects/pickers]).
 - crumbkit-test: [`check_guide`] fails on leaf choices that name no
   argument of the leaf.
-- crumbkit-picker: the new crate's `Menu` picks values from a numbered list
-  that text narrows, using only the standard library ([crumbkit-picker]).
+- crumbkit: [`pick::Menu`] picks values from a numbered list that text
+  narrows, using only the standard library ([behaviour/effects/pickers]).
 - crumbkit: Windows is a tier-2 platform, which the scheduled lane builds
   and tests ([project/dependencies]).
 - crumbkit-usage: the crate builds on Windows, where the log lives
@@ -601,7 +601,7 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   ([behaviour/run-observer]).
 - crumbkit-test: [`check_twins`] needs no twin and no declaration for a
   code in the `crumbkit` component that `crumbkit::codes::ALL` does not
-  list, such as crumbkit-child's `crumbkit::child::no_json`, and
+  list, such as crumbkit-child's `crumbkit::child::not_found`, and
   [`check_recoveries`] follows the recovery of such a code
   ([behaviour/checks/end-to-end], [behaviour/checks/recovery-chains]).
 - crumbkit: `Exit::covers` is public, so crumbkit-usage can give each exit
@@ -663,8 +663,8 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   ([behaviour/output]).
 - crumbkit: `Output::budget` returns the whole output budget, because an
   `Output` prints one result ([behaviour/output/budget]).
-- crumbkit-child: [`child::hand_over`] and [`child::hand_over_json`] take
-  the `Output` by value, as `finish` does ([behaviour/output/child-processes]).
+- crumbkit-child: [`child::hand_over`] takes the `Output` by value, as
+  `finish` does ([behaviour/output/child-processes]).
 - crumbkit-aliases: `list` takes `&mut Output`, because it builds the
   tool's command tree when it runs.
 - crumbkit: [`parse`] returns a [`Stop`] after help, the version or a
@@ -900,6 +900,18 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   `Guide::codes` sets the code for every document ([behaviour/output/budget]).
 - crumbkit: `Call::word` is gone, because `Call::value` adds a runtime value
   and checks it against the tool's command tree ([`Call`]).
+- crumbkit-child: `child::hand_over_json`, `Json` and the codes
+  `crumbkit::child::no_json`, `crumbkit::child::bad_json` and
+  `crumbkit::child::failed` are gone. [`child::hand_over`] refuses `--json`
+  with `<tool>::cli::usage`, and a tool reads a child's JSON itself
+  ([behaviour/output/child-processes]).
+- crumbkit-usage: `start_with`, `Signals` and `section` are gone, with the
+  record's `ext` field. `start` writes the line when SIGINT or SIGTERM ends
+  the run, and a tool that handles either signal itself runs without the
+  log ([`usage`], [behaviour/usage-log]).
+- crumbkit-picker: the crate is gone, and its `Menu` is [`pick::Menu`] in
+  crumbkit, so a tool with a picker depends on crumbkit alone
+  ([behaviour/effects/pickers]).
 
 ### Fixed
 
@@ -1102,7 +1114,7 @@ rustdoc, or at the page in docs/ that describes the behaviour. -->
 [`child::hand_over_json`]: crates/crumbkit-child/src/hand_over.rs
 [`Picker`]: crates/crumbkit/src/pick.rs
 [`NoInput`]: crates/crumbkit/src/pick/no_input.rs
-[crumbkit-picker]: crates/crumbkit-picker/README.md
+[`pick::Menu`]: crates/crumbkit/src/pick/menu.rs
 [crumbkit-markdown]: crates/crumbkit-markdown/README.md
 [`check_command_reference`]: crates/crumbkit-test/src/reference.rs
 [`ReadFailure`]: crates/crumbkit/src/form.rs

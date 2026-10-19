@@ -372,7 +372,7 @@ impl<'a> Recoveries<'a> {
 /// does not declare and crumbkit does not own, such as a run-time code from
 /// a plugin. The check counts such codes in the report. crumbkit owns its
 /// own codes and the codes of its add-on crates, such as crumbkit-child's
-/// `<tool>::child::failed`, which print with the tool's component
+/// `<tool>::child::not_found`, which print with the tool's component
 /// (ADR-0079), and the codes that the guide prints in place of them. Any
 /// other undeclared code in the tool's component is a problem.
 ///
