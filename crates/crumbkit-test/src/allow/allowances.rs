@@ -43,6 +43,23 @@ impl<'a> Allowances<'a> {
         excused
     }
 
+    /// Reports whether an opt-out covers `rule` for the option named
+    /// `option` of the command at `below`: an opt-out for the command or one
+    /// above it, or one for that option alone. It records each opt-out that
+    /// does as used.
+    pub(crate) fn excuses_option(&mut self, rule: Rule, below: &str, option: &str) -> bool {
+        let mut excused = false;
+        for (allow, used) in self.allow.iter().zip(&mut self.used) {
+            if self.rules.contains(&rule)
+                && (allow.covers(rule, below) || allow.covers_option(rule, below, option))
+            {
+                *used = true;
+                excused = true;
+            }
+        }
+        excused
+    }
+
     /// Reports whether an example opt-out covers the example `words` of the
     /// leaf at `below`, and records each one that does as used.
     pub(crate) fn excuses_example(&mut self, below: &str, words: &[&str]) -> bool {
@@ -57,7 +74,8 @@ impl<'a> Allowances<'a> {
     }
 
     /// Adds a problem to `problems` for each opt-out of the check's rules
-    /// that names no command below `root` or excused no problem.
+    /// that names no command below `root`, names no option of its command,
+    /// or excused no problem.
     pub(crate) fn finish(self, root: &Command, problems: &mut Vec<String>) {
         for (allow, used) in self.allow.iter().zip(self.used) {
             if !self.rules.contains(&allow.rule) {
@@ -65,9 +83,19 @@ impl<'a> Allowances<'a> {
             }
             let line = allow.line(root);
             let id = allow.rule.id();
-            if tree::find(root, words(allow.path)).is_none() {
+            let Some(command) = tree::find(root, words(allow.path)) else {
                 problems.push(format!(
                     "the opt-out from `{id}` for `{line}` names no command"
+                ));
+                continue;
+            };
+            if allow.option.is_some_and(|option| {
+                !command
+                    .get_arguments()
+                    .any(|arg| tree::argument_name(arg) == option)
+            }) {
+                problems.push(format!(
+                    "the opt-out from `{id}` for `{line}` names no option of the command"
                 ));
             } else if !used && allow.words.is_some() {
                 problems.push(format!(

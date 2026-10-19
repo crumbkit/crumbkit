@@ -320,6 +320,9 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   ([behaviour/checks/end-to-end]).
 - crumbkit-test: `Allow::example` opts one example out of
   [`check_examples`] and [`check_output_budget`] by its words ([behaviour/adoption/opt-outs]).
+- crumbkit-test: `Allow::option` opts one option of a command out of a
+  filter rule of [`check_filters`], so each option keeps its own reason
+  ([behaviour/adoption/opt-outs]).
 - crumbkit: re-exports schemars as `crumbkit::schemars`, the version whose
   `Schema` crumbkit's API takes ([behaviour/schemas]).
 - crumbkit-test: `Examples::xdg` and `Failing::xdg` name a fixture that
