@@ -67,6 +67,22 @@ fn only_a_batch_returns_failures_from_rows() {
 }
 
 #[test]
+fn a_batch_counts_its_pushed_results_as_its_rows_plus_its_failures() {
+    let mut batch = Batch::new(&["show"], "names", &["Mars", "Vulcan", "Venus", "Pluto"]);
+    assert_eq!(batch.pushed(), 0);
+
+    batch.push(Ok(planet("Mars")));
+    batch.push(Err(Missing("Vulcan")));
+    batch.push(Ok(planet("Venus")));
+
+    assert_eq!(
+        batch.pushed(),
+        batch.rows().len() + batch.failures().unwrap().len()
+    );
+    assert_eq!(batch.left_out_from(2), Some(3));
+}
+
+#[test]
 fn a_batch_names_its_shape() {
     assert_eq!(<Batch<Planet, Missing> as Rows>::SHAPE, Shape::Batch);
 }
