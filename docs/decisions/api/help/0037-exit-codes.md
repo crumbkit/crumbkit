@@ -1,7 +1,7 @@
 # ADR-0037. Exit codes
 
 - Date: 2026-10-12
-- Status: accepted
+- Status: amended by ADR-0103
 
 ## Context
 

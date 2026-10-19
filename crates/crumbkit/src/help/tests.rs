@@ -8,6 +8,8 @@ use clap::{Arg, ArgAction, Command};
 use super::{Goal, Group, Guide, extend};
 use crate::{Sink, parse_to};
 
+mod compact;
+
 /// A tool with a global flag and three groups. The names have different
 /// lengths, `planets` has a hidden command, and `moons` has a command
 /// without a description.

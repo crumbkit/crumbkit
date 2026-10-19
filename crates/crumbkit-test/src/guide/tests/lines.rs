@@ -79,7 +79,7 @@ fn a_row_type_with_a_one_line_text_form_passes() {
         leaf(&["authors", "list"]),
     ]);
 
-    check_guide(&shelf(), &GUIDE);
+    check_guide(&shelf(), &GUIDE, &[]);
 }
 
 #[test]
@@ -96,7 +96,7 @@ fn check_guide_fails_on_a_text_line_form_that_spans_two_lines() {
     ]);
 
     assert_eq!(
-        panic_message(|| check_guide(&shelf(), &GUIDE)).unwrap(),
+        panic_message(|| check_guide(&shelf(), &GUIDE, &[])).unwrap(),
         "the command tree breaks crumbkit's guide rules:\n\
          shelf books list: the row type's LINE is not one non-empty line, so help cannot show the form of each row's line on one line; write the form as one line, such as `<ID> <TITLE>`"
     );
@@ -116,7 +116,7 @@ fn check_guide_fails_on_a_text_line_form_that_is_blank() {
     ]);
 
     assert!(
-        panic_message(|| check_guide(&shelf(), &GUIDE))
+        panic_message(|| check_guide(&shelf(), &GUIDE, &[]))
             .unwrap()
             .contains("the row type's LINE is not one non-empty line")
     );
@@ -134,7 +134,7 @@ fn check_guide_fails_on_a_headed_leaf_whose_row_type_declares_a_text_line() {
     ]);
 
     assert_eq!(
-        panic_message(|| check_guide(&shelf(), &GUIDE)).unwrap(),
+        panic_message(|| check_guide(&shelf(), &GUIDE, &[])).unwrap(),
         "the command tree breaks crumbkit's guide rules:\n\
          shelf books list: the row type declares LINE and the document is headed, so its text prints each row's bytes and never the line; remove LINE or the headed form"
     );

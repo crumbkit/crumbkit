@@ -93,7 +93,7 @@ check from its own `#[test]`, so a failure names the rule that broke.
 
 - `check_guide` holds the leaf rules ([leaf checks](examples.md#checks-of-leaves)).
 - [`check_exit_codes`](../../../crates/crumbkit-test/src/exits.rs) checks the
-  declared exit codes and takes opt-outs, which `check_guide` does not.
+  declared exit codes.
 - `check_path_weights` reads golden files, and `check_help_sizes` reads only
   memory.
 - `check_mounts` is separate from `check_document_ids`, because a crumbkit

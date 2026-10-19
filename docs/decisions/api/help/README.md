@@ -25,3 +25,6 @@ that each path through a tool's help costs.
 - [ADR-0037. Exit codes](0037-exit-codes.md)
 - [ADR-0044. Command reference](0044-command-reference.md)
 - [ADR-0101. tool help prints the root's help](0101-help-prints-the-root-help.md)
+- [ADR-0102. Styled sinks and compact groups](0102-styled-sinks-and-compact-groups.md)
+- [ADR-0103. Exit ranges and signal codes](0103-exit-ranges-and-signal-codes.md)
+- [ADR-0104. An opt-out for the example rule of check_guide](0104-examples-opt-out.md)

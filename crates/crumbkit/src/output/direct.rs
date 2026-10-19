@@ -125,8 +125,9 @@ impl Output {
 
     /// Returns the exit code of the guide's exit that lists `code`, or a
     /// crumbkit code that the guide prints as `code`, and `None` when no
-    /// exit lists it. A caller whose failure has a default other than
-    /// crumbkit's reads it, and uses its own default for `None`.
+    /// single code lists it, as when only a range of codes lists it. A
+    /// caller whose failure has a default other than crumbkit's reads it,
+    /// and uses its own default for `None`.
     #[must_use]
     pub fn listed_exit(&self, code: &'static Code) -> Option<u8> {
         self.printing().listed_exit(code)

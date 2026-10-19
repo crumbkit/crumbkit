@@ -78,29 +78,44 @@ fn an_opt_out_from_the_shared_exit_rule_excuses_the_exit_code_1_or_2() {
 }
 
 #[test]
-fn a_code_from_126_fails_the_check() {
+fn a_single_code_from_126_to_128_or_from_160_fails_the_check() {
     const GUIDE: Guide = Guide::new().exits(&[
         Exit::new(126, "The cache is not writable."),
-        Exit::new(255, "Gave up."),
+        Exit::new(128, "Stopped."),
+        Exit::new(160, "Gave up."),
+        Exit::new(255, "Gave up for good."),
     ]);
 
     assert_eq!(
         checked(&GUIDE, &[]).unwrap(),
         "the command tree breaks crumbkit's exit code rules:\n\
          the exit code 126 is one that a shell reports for its own reasons, so a caller cannot tell the tool's 126 from the shell's\n\
+         the exit code 128 is one that a shell reports for its own reasons, so a caller cannot tell the tool's 128 from the shell's\n\
+         the exit code 160 is one that a shell reports for its own reasons, so a caller cannot tell the tool's 160 from the shell's\n\
          the exit code 255 is one that a shell reports for its own reasons, so a caller cannot tell the tool's 255 from the shell's"
     );
 }
 
 #[test]
-fn an_opt_out_excuses_a_code_from_126_for_every_command_that_returns_it() {
+fn a_single_code_for_a_run_that_a_signal_ended_passes() {
     const GUIDE: Guide = Guide::new().exits(&[
-        Exit::new(130, "Interrupted.").commands(&[&["books", "import"]]),
-        Exit::new(137, "Killed."),
+        Exit::new(129, "The terminal closed during the run."),
+        Exit::new(130, "Ctrl-C ended the run.").commands(&[&["books", "import"]]),
+        Exit::new(159, "A signal 31 ended the run."),
+    ]);
+
+    assert_eq!(checked(&GUIDE, &[]), None);
+}
+
+#[test]
+fn an_opt_out_excuses_a_shell_code_for_every_command_that_returns_it() {
+    const GUIDE: Guide = Guide::new().exits(&[
+        Exit::new(127, "The importer was not found.").commands(&[&["books", "import"]]),
+        Exit::new(200, "Gave up."),
     ]);
     const ALLOW: &[Allow] = &[
         Allow::new(Rule::ShellExitCode, "books", "Import mirrors the shell."),
-        Allow::new(Rule::ShellExitCode, "", "Scripts read 137."),
+        Allow::new(Rule::ShellExitCode, "", "Scripts read 200."),
     ];
 
     assert_eq!(checked(&GUIDE, ALLOW), None);
@@ -108,14 +123,71 @@ fn an_opt_out_excuses_a_code_from_126_for_every_command_that_returns_it() {
 
 #[test]
 fn an_opt_out_for_one_command_does_not_excuse_a_code_that_every_command_returns() {
-    const GUIDE: Guide = Guide::new().exits(&[Exit::new(130, "Interrupted.")]);
+    const GUIDE: Guide = Guide::new().exits(&[Exit::new(127, "Not found.")]);
     const ALLOW: &[Allow] = &[Allow::new(Rule::ShellExitCode, "books", "Import only.")];
 
     assert_eq!(
         checked(&GUIDE, ALLOW).unwrap(),
         "the command tree breaks crumbkit's exit code rules:\n\
-         the exit code 130 is one that a shell reports for its own reasons, so a caller cannot tell the tool's 130 from the shell's\n\
+         the exit code 127 is one that a shell reports for its own reasons, so a caller cannot tell the tool's 127 from the shell's\n\
          the opt-out from `exit-codes/shell-code` for `shelf books` excuses no problem, so it is stale"
+    );
+}
+
+#[test]
+fn a_range_from_3_up_to_255_passes_without_an_opt_out() {
+    const GUIDE: Guide =
+        Guide::new().exits(
+            &[Exit::range(3, 255, "The importer ended with its own code.")
+                .commands(&[&["books", "import"]])],
+        );
+
+    assert_eq!(checked(&GUIDE, &[]), None);
+}
+
+#[test]
+fn a_range_that_starts_below_3_or_ends_before_it_starts_fails_the_check() {
+    const GUIDE: Guide = Guide::new().exits(&[
+        Exit::range(2, 9, "The importer ended with its own code."),
+        Exit::range(30, 20, "The suite ended with its own code."),
+    ]);
+
+    assert_eq!(
+        checked(&GUIDE, &[]).unwrap(),
+        "the command tree breaks crumbkit's exit code rules:\n\
+         the exit range 2-9 starts below 3, and 0, 1 and 2 already mean success, crumbkit's default failure and a refused command line\n\
+         the exit range 30-20 ends before it starts, so it holds no code"
+    );
+}
+
+#[test]
+fn a_range_that_overlaps_a_single_code_or_another_range_fails_the_check() {
+    const GUIDE: Guide = Guide::new().exits(&[
+        Exit::new(124, "The download ran out of time."),
+        Exit::range(100, 125, "The importer ended with its own code."),
+        Exit::range(3, 100, "The suite ended with its own code."),
+    ]);
+
+    assert_eq!(
+        checked(&GUIDE, &[]).unwrap(),
+        "the command tree breaks crumbkit's exit code rules:\n\
+         the exit range 100-125 overlaps the exit code 124, so a caller cannot tell which meaning applies\n\
+         the exit range 3-100 overlaps the exit range 100-125, so a caller cannot tell which meaning applies"
+    );
+}
+
+#[test]
+fn a_range_that_lists_failure_codes_fails_the_check() {
+    const LOCKED: Code = Code::new("shelf", "books", "locked");
+    const GUIDE: Guide =
+        Guide::new().exits(&[
+            Exit::range(64, 78, "The importer ended with its own code.").failures(&[&LOCKED])
+        ]);
+
+    assert_eq!(
+        checked(&GUIDE, &[]).unwrap(),
+        "the command tree breaks crumbkit's exit code rules:\n\
+         the exit range 64-78 lists failure codes, and a run that fails with one exits with 1, because a range names no single code to exit with"
     );
 }
 

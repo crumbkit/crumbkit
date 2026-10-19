@@ -404,3 +404,44 @@ fn a_command_whose_lined_rows_have_no_columns_prints_a_text_line_that_names_no_t
         reference.text()
     );
 }
+
+#[test]
+fn a_range_of_exit_codes_prints_its_first_and_last_code_joined_by_a_dash() {
+    let input = document(&[command(
+        "tool suite run",
+        "Run",
+        json!({"exits": [
+            {"exit": 3, "last": 125, "meaning": "The suite ended with its own code"},
+            {"exit": 130, "last": 130, "meaning": "Ctrl-C ended the run"},
+        ]}),
+    )]);
+
+    let reference = render(&input).unwrap();
+
+    assert!(
+        reference.text().ends_with(
+            "\n### Exit codes\n\n- `3-125`: The suite ended with its own code.\n- `130`: Ctrl-C ended the run.\n"
+        ),
+        "{}",
+        reference.text()
+    );
+}
+
+#[test]
+fn an_exit_code_from_before_the_last_field_existed_prints_as_one_code() {
+    let input = document(&[command(
+        "tool suite run",
+        "Run",
+        json!({"exits": [{"exit": 3, "meaning": "The suite was locked"}]}),
+    )]);
+
+    let reference = render(&input).unwrap();
+
+    assert!(
+        reference
+            .text()
+            .ends_with("\n### Exit codes\n\n- `3`: The suite was locked.\n"),
+        "{}",
+        reference.text()
+    );
+}

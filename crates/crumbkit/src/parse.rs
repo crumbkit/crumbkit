@@ -76,9 +76,11 @@ pub(crate) mod walk;
 /// ```
 ///
 /// It behaves as [`parse_to`] does with a sink over the process's standard
-/// output and standard error, except that help and the version keep clap's
-/// colours when standard output is a terminal and the guide detects terminals.
-/// clap prints those colours only when the tool enables clap's `color` feature.
+/// output and standard error that asks for styles when standard output is a
+/// terminal and the guide detects terminals ([`Sink::styled`]). Help then
+/// prints through clap's `Error::print`, which keeps clap's colours unless
+/// `NO_COLOR` or the command's `ColorChoice` turns them off. clap prints those
+/// colours only when the tool enables clap's `color` feature.
 ///
 /// `parse` is [`try_parse`] followed by printing the refusal. A tool that
 /// reads a refused command line before anything prints, such as a tool
@@ -178,9 +180,9 @@ where
     I: IntoIterator<Item = T>,
     T: Into<OsString>,
 {
-    let mut sink = Sink::standard();
-    let colour = guide.detects(|| sink.out.is_terminal());
-    run(&mut sink, command, guide, args, colour, true)
+    let sink = Sink::standard();
+    let styled = guide.detects(|| sink.out.is_terminal());
+    run(&mut sink.styled(styled), command, guide, args, true)
 }
 
 /// Parses `args` against `command` and prints help, the version or a
@@ -189,7 +191,10 @@ where
 ///
 /// Tests and golden files call it with a sink over in-memory writers, as
 /// they call [`finish_to`](crate::finish_to). Help and the version print as
-/// plain text.
+/// plain text, unless the sink asks for styles with [`Sink::styled`]. A
+/// styled sink receives help with the ANSI escape codes that clap's
+/// `Error::print` writes at a terminal, when crumbkit's `color` feature is
+/// on. A topic prints as plain text to every sink.
 ///
 /// Before parsing, crumbkit walks the typed words down the tree to the
 /// deepest command they name, and changes the help of each command on the
@@ -362,7 +367,7 @@ where
     O: Write,
     E: Write,
 {
-    run(sink, command, guide, args, false, false)
+    run(sink, command, guide, args, false)
 }
 
 /// Parses `args` against `command` as [`parse_to`] describes, without
@@ -375,8 +380,7 @@ fn run<C, I, T, O, E, R>(
     command: Command,
     guide: &Guide,
     args: I,
-    colour: bool,
-    stdin: bool,
+    standard: bool,
 ) -> Result<(C, Output), Unparsed>
 where
     C: FromArgMatches,
@@ -393,7 +397,7 @@ where
     // Codes print in the guide's spelling, and crumbkit's own codes print
     // with the tool's name in place of `crumbkit` (ADR-0079).
     let spelling = guide.get_spelling().for_tool(guide.tool_name(&command));
-    let parsed = read(sink, command, guide, spelling, args, colour, stdin);
+    let parsed = read(sink, command, guide, spelling, args, standard);
     #[cfg(feature = "tracing")]
     if let Err(Unparsed::Stopped(stop)) = &parsed {
         crate::trace::spans::exited(&span, stop.number());
@@ -402,19 +406,19 @@ where
 }
 
 /// Parses `args` against `command` as [`parse_to`] describes, and returns a
-/// refusal unprinted. With `colour`, help and the version print through
-/// clap, which writes them to standard output with the colours that the
-/// tool's clap features allow. With `stdin`, the guide's picker reads the
-/// process's standard input and writes to its standard error, and
-/// otherwise it uses the sink's input and error writer.
+/// refusal unprinted. `standard` says that `sink` is over the process's
+/// standard streams, as in [`parse_from`]: help for a styled sink then
+/// prints through clap's `Error::print`, and the guide's picker reads the
+/// process's standard input and writes to its standard error. Otherwise
+/// help goes to the sink's output writer, and the picker uses the sink's
+/// input and error writer.
 fn read<C, I, T, O, E, R>(
     sink: &mut Sink<O, E, R>,
     mut command: Command,
     guide: &Guide,
     spelling: Spelling,
     args: I,
-    colour: bool,
-    stdin: bool,
+    standard: bool,
 ) -> Result<(C, Output), Unparsed>
 where
     C: FromArgMatches,
@@ -449,10 +453,12 @@ where
         if help.at_root
             && let Some(page) = topic_page(&command, guide, &args[help.position + 1..])
         {
-            // RUST-10: a topic prints as plain text, also on a terminal,
-            // because `StyledStr`'s `Display` drops styles. A page that
-            // keeps the styles, written as clap's `Error::print` writes
-            // help, replaces this when a tool needs colour there.
+            // RUST-10: a topic prints as plain text, also on a terminal and
+            // to a styled sink, because crumbkit builds it without styles
+            // and only the pages that clap renders carry them. A topic with
+            // the root's heading and literal styles, written as `print_page`
+            // writes help to a styled sink, replaces this when a tool needs
+            // colour there.
             let code = print_text(sink, &page);
             if crate::events::observed() {
                 let root: Vec<String> = root.iter().map(|&name| name.to_owned()).collect();
@@ -489,7 +495,7 @@ where
     // A command line that leaves out a required argument can have it
     // picked, one argument at a time, and parses again after each pick.
     if let Some(picker) = pick::picker(guide) {
-        let mut picking = Picking::new(picker, stdin);
+        let mut picking = Picking::new(picker, standard);
         let mut picked = 0;
         while let Err(error) = &parsed
             && pick::wanted(error)
@@ -536,7 +542,7 @@ where
         error.kind(),
         ErrorKind::DisplayHelp | ErrorKind::DisplayVersion
     ) {
-        let code = print_page(sink, &error, colour);
+        let code = print_page(sink, &error, standard);
         if error.kind() == ErrorKind::DisplayHelp {
             crate::events::helped(&command, &path, long_help, code);
         } else {

@@ -21,6 +21,11 @@ use std::io::{self, BufRead, Empty, IsTerminal as _, Stderr, StdinLock, StdoutLo
 /// [`Output::confirm_to`](crate::Output::confirm_to) never asks a question
 /// through it. A test of a question builds the sink with
 /// [`Sink::with_input`].
+///
+/// A sink also says whether its output writer wants styles, which
+/// [`Sink::styled`] sets and [`parse_to`](crate::parse_to) reads when it
+/// prints help or the version. A sink asks for no styles until
+/// `Sink::styled` asks for them, so a test or a pipe receives plain text.
 #[derive(Debug)]
 pub struct Sink<O, E, I = Empty> {
     /// Receives the result, and the failure document with `--json`.
@@ -32,6 +37,9 @@ pub struct Sink<O, E, I = Empty> {
     /// Whether a person can answer a question: standard input and standard
     /// error are both terminals, and no coding agent runs the tool.
     pub(crate) interactive: bool,
+    /// Whether the output writer wants help with clap's styles, as a
+    /// terminal does.
+    styled: bool,
 }
 
 impl<O: Write, E: Write> Sink<O, E> {
@@ -44,6 +52,7 @@ impl<O: Write, E: Write> Sink<O, E> {
             err,
             input: io::empty(),
             interactive: false,
+            styled: false,
         }
     }
 }
@@ -66,7 +75,46 @@ impl<O: Write, E: Write, I: BufRead> Sink<O, E, I> {
             err,
             input,
             interactive,
+            styled: false,
         }
+    }
+}
+
+impl<O, E, I> Sink<O, E, I> {
+    /// Sets whether the output writer wants help with clap's styles, such
+    /// as bold headings and literals. With `styled`,
+    /// [`parse_to`](crate::parse_to) writes help to the output writer with
+    /// the ANSI escape codes that clap's `Error::print` writes at a
+    /// terminal, and otherwise it writes plain text. The version and a
+    /// topic carry no styles, so they print as plain text either way.
+    ///
+    /// A tool that owns its output streams decides it, for example from
+    /// whether its writer is a terminal, and honours `NO_COLOR` itself:
+    /// crumbkit writes the styles whenever the sink asks for them. clap
+    /// renders styles only with its `color` feature, and crumbkit writes
+    /// them only with its own `color` feature, which turns clap's on.
+    /// Without it, a styled sink receives plain text.
+    ///
+    /// [`parse`](crate::parse) and [`parse_from`](crate::parse_from) build
+    /// a sink over the process's standard streams that asks for styles when
+    /// standard output is a terminal and the guide keeps terminal detection
+    /// on.
+    ///
+    /// ```
+    /// let sink = crumbkit::Sink::new(Vec::new(), Vec::new()).styled(true);
+    /// assert!(sink.is_styled());
+    /// ```
+    #[must_use]
+    pub const fn styled(mut self, styled: bool) -> Self {
+        self.styled = styled;
+        self
+    }
+
+    /// Reports whether the output writer wants help with clap's styles,
+    /// which [`Sink::styled`] sets. A new sink asks for none.
+    #[must_use]
+    pub const fn is_styled(&self) -> bool {
+        self.styled
     }
 }
 
@@ -75,6 +123,10 @@ impl Sink<StdoutLock<'static>, Stderr> {
     /// This is the only place in crumbkit that opens the standard streams
     /// (RUST-4). A crate that prints a response without `finish`, such as
     /// crumbkit-child, prints through it, so it opens no stream itself.
+    ///
+    /// The sink asks for no styles, so the caller decides with
+    /// [`Sink::styled`], as [`parse_from`](crate::parse_from) does from
+    /// terminal detection.
     #[must_use]
     pub fn standard() -> Self {
         #[expect(

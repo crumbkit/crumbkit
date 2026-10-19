@@ -4,7 +4,7 @@
 use std::process::ExitStatus;
 
 use clap::Command;
-use crumbkit::help::{Guide, Rename};
+use crumbkit::help::{Exit, Guide, Rename};
 use crumbkit::{Code, Spelling};
 
 use crate::allow::{Allow, Allowances, Rule, command_line};
@@ -26,10 +26,19 @@ mod tests;
 /// - the code 0, which means that the run succeeded;
 /// - the code 1 or 2, which already mean crumbkit's default failure and a
 ///   refused command line;
-/// - a code from 126 to 255, which a shell also reports for its own
-///   reasons, such as 127 when it cannot find the tool and 130 when Ctrl-C
-///   ends it;
-/// - a code that the guide declares more than once;
+/// - a single code from 126 to 128 or from 160 to 255, which a shell also
+///   reports for its own reasons, such as 127 when it cannot find the tool.
+///   A code from 129 to 159 passes, because a shell reports a run that a
+///   signal ended as 128 plus the signal's number, such as 130 after
+///   Ctrl-C, and a tool that catches the signal exits with the same code;
+/// - a range from [`Exit::range`](crumbkit::help::Exit::range) that starts
+///   below 3, because 0, 1 and 2 keep their meanings, or that ends before
+///   it starts. A range may run up to 255, because its codes come from
+///   another program;
+/// - a range that lists failure codes, because a range names no single
+///   code for a run that fails with one to exit with;
+/// - a code that the guide declares more than once, and a range that
+///   holds a code that another declaration holds;
 /// - a meaning that is empty, only whitespace or more than one line;
 /// - a command path of a code that names no command below `command`;
 /// - a failure code that [`Exit::failures`](crumbkit::help::Exit::failures) lists for two codes, where one
@@ -46,14 +55,17 @@ mod tests;
 /// [`CLI_USAGE`](crumbkit::codes::CLI_USAGE), to give that failure the
 /// tool's own exit code.
 ///
-/// A tool can opt out of the rule for codes from 126 with an [`Allow`] of
-/// [`Rule::ShellExitCode`], and of the rule for 1 and 2 with an [`Allow`] of
+/// A tool can opt out of the rule for single codes from 126 with an
+/// [`Allow`] of [`Rule::ShellExitCode`], and of the rule for 1 and 2 with an [`Allow`] of
 /// [`Rule::SharedExit`], each with a stated reason, such as a tool that
 /// passes on the code of a child process ([opt-outs docs]). An opt-out covers a
 /// code when it covers every command that returns the code, so a code that
 /// every command returns needs an opt-out with an empty path. The check
 /// fails on such an opt-out that names no command or excuses no problem.
-/// The rule for 0 has no opt-out, because a caller reads 0 as success.
+/// The rule for 0 has no opt-out, because a caller reads 0 as success, and
+/// the rules for ranges and overlaps have none, because a range already
+/// spans the codes that the shell reports, and a code with two meanings
+/// cannot be read.
 ///
 /// ```
 /// use clap::Command;
@@ -77,13 +89,17 @@ pub fn check_exit_codes(command: &Command, guide: &Guide, allow: &[Allow]) {
     let exits = guide.get_exits();
     for (index, exit) in exits.iter().enumerate() {
         let code = exit.code();
-        if code == 0 {
+        let name = name(exit);
+        if !single(exit) {
+            ranged(exit, &name, &mut problems);
+        } else if code == 0 {
             problems.push(
                 "the exit code 0 means that the run succeeded, so a caller cannot tell a failure from a success"
                     .to_owned(),
             );
         }
-        if (code == 1 || code == 2)
+        if single(exit)
+            && (code == 1 || code == 2)
             && !excused(&mut allowances, Rule::SharedExit, exit.get_commands())
         {
             let meaning = if code == 1 {
@@ -95,16 +111,20 @@ pub fn check_exit_codes(command: &Command, guide: &Guide, allow: &[Allow]) {
                 "the exit code {code} already means that {meaning}, so it has two meanings"
             ));
         }
-        if code >= 126 && !excused(&mut allowances, Rule::ShellExitCode, exit.get_commands()) {
+        if single(exit)
+            && is_shell_code(code)
+            && !excused(&mut allowances, Rule::ShellExitCode, exit.get_commands())
+        {
             problems.push(format!(
                 "the exit code {code} is one that a shell reports for its own reasons, so a caller cannot tell the tool's {code} from the shell's"
             ));
         }
-        // Only the second declaration of a code reports it, so a code that
-        // three declarations share is one problem.
+        overlaps(&exits[..index], exit, &name, &mut problems);
+        // Only the second declaration of a single code reports it, so a
+        // code that three declarations share is one problem.
         let earlier = exits[..index]
             .iter()
-            .filter(|earlier| earlier.code() == code)
+            .filter(|earlier| single(exit) && single(earlier) && earlier.code() == code)
             .count();
         if earlier == 1 {
             problems.push(format!(
@@ -113,10 +133,10 @@ pub fn check_exit_codes(command: &Command, guide: &Guide, allow: &[Allow]) {
         }
         let meaning = exit.meaning();
         if meaning.trim().is_empty() {
-            problems.push(format!("the exit code {code} has no meaning"));
+            problems.push(format!("{name} has no meaning"));
         } else if meaning.contains(['\n', '\r']) {
             problems.push(format!(
-                "the meaning of the exit code {code} is more than one line, and help and `commands list` print it on one"
+                "the meaning of {name} is more than one line, and help and `commands list` print it on one"
             ));
         }
         for &failure in exit.get_failures() {
@@ -125,7 +145,7 @@ pub fn check_exit_codes(command: &Command, guide: &Guide, allow: &[Allow]) {
         for path in exit.get_commands() {
             if tree::find(command, path.iter().copied()).is_none() {
                 problems.push(format!(
-                    "the exit code {code} names `{}`, which is no command",
+                    "{name} names `{}`, which is no command",
                     command_line(command, &path.join(" "))
                 ));
             }
@@ -133,6 +153,71 @@ pub fn check_exit_codes(command: &Command, guide: &Guide, allow: &[Allow]) {
     }
     renamed(command, guide, spelling, &mut problems);
     allowances.report(command, "exit code rules", problems);
+}
+
+/// Returns whether `exit` declares one code, as [`Exit::new`] does, or is a
+/// range whose first and last codes are the same.
+fn single(exit: &Exit) -> bool {
+    exit.codes().start() == exit.codes().end()
+}
+
+/// Returns whether a shell reports the single code `code` for its own
+/// reasons: 126 to 128, and 160 and above. The codes from 129 to 159 are
+/// 128 plus a signal's number, which a tool that catches the signal also
+/// exits with.
+const fn is_shell_code(code: u8) -> bool {
+    matches!(code, 126..=128 | 160..=u8::MAX)
+}
+
+/// Returns the words that name `exit` in a problem: `the exit code 124` for
+/// a single code, and `the exit range 124-125` for a range.
+fn name(exit: &Exit) -> String {
+    let codes = exit.codes();
+    if single(exit) {
+        format!("the exit code {}", codes.start())
+    } else {
+        format!("the exit range {}-{}", codes.start(), codes.end())
+    }
+}
+
+/// Pushes a problem when `exit`, a range named `name`, starts below 3, ends
+/// before it starts, or lists failure codes.
+fn ranged(exit: &Exit, name: &str, problems: &mut Vec<String>) {
+    let codes = exit.codes();
+    if *codes.start() < 3 {
+        problems.push(format!(
+            "{name} starts below 3, and 0, 1 and 2 already mean success, crumbkit's default failure and a refused command line"
+        ));
+    }
+    if codes.start() > codes.end() {
+        problems.push(format!("{name} ends before it starts, so it holds no code"));
+    }
+    if !exit.get_failures().is_empty() {
+        problems.push(format!(
+            "{name} lists failure codes, and a run that fails with one exits with 1, because a range names no single code to exit with"
+        ));
+    }
+}
+
+/// Pushes a problem for each of `earlier` that holds a code that `exit`,
+/// named `name`, also holds, when one of the two is a range. Only the later
+/// of two declarations reports their overlap, so each pair is one problem.
+/// Two single codes that are the same are the problem of a code declared
+/// more than once, which [`check_exit_codes`] reports.
+fn overlaps(earlier: &[Exit], exit: &Exit, name: &str, problems: &mut Vec<String>) {
+    let codes = exit.codes();
+    for other in earlier {
+        if single(exit) && single(other) {
+            continue;
+        }
+        let theirs = other.codes();
+        if codes.start().max(theirs.start()) <= codes.end().min(theirs.end()) {
+            problems.push(format!(
+                "{name} overlaps {}, so a caller cannot tell which meaning applies",
+                self::name(other)
+            ));
+        }
+    }
 }
 
 /// Pushes a problem when an earlier exit of `guide` than the one at
@@ -285,8 +370,11 @@ pub(crate) fn exit_problem(
     let path: Vec<&str> = path.iter().map(String::as_str).collect();
     let is = |code: &Code| spelling.spell(guide.printed(&path, code)) == printed;
     let exits = guide.get_exits();
+    // The failures of a range never decide a run's exit, so they count as
+    // unlisted.
     let listed = exits
         .iter()
+        .filter(|exit| single(exit))
         .flat_map(|exit| exit.get_failures().iter().copied())
         .find(|&code| is(code));
     let code = status.code();
@@ -307,9 +395,9 @@ pub(crate) fn exit_problem(
         });
     }
     if let Some(code) = code
-        && exits
-            .iter()
-            .any(|exit| i32::from(exit.code()) == code && !exit.get_failures().is_empty())
+        && exits.iter().any(|exit| {
+            single(exit) && i32::from(exit.code()) == code && !exit.get_failures().is_empty()
+        })
     {
         return Some(format!(
             "fails with {printed}, which no exit code of the guide lists, and it exits with {code}, which the guide declares for the failure codes that it lists"

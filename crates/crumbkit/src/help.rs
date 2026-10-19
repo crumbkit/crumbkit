@@ -10,6 +10,7 @@ mod dashed;
 pub(crate) mod effects;
 pub(crate) mod exit;
 mod format;
+mod group;
 pub(crate) mod leaf;
 mod list;
 mod output;
@@ -21,14 +22,12 @@ pub(crate) mod topic;
 pub(crate) mod view;
 pub(crate) mod words;
 
-use std::fmt::Write as _;
-
 use clap::Command;
-use clap::builder::styling::Style;
 
 pub use self::effects::{Effects, Items};
 pub use self::exit::Exit;
 pub use self::format::FileFormat;
+pub use self::group::{Goal, Group};
 pub use self::leaf::{
     BYTES_LINE, Column, Example, HEADED_LINE, Leaf, RefusalContext, STREAM_LINE, text_line,
 };
@@ -38,7 +37,8 @@ pub use self::topic::Topic;
 pub use self::view::ViewFlag;
 pub use self::words::quote;
 
-use self::list::{list, write_line};
+pub(crate) use self::group::apply;
+use self::list::write_line;
 use crate::pick::Picker;
 use crate::{JsonLayout, Spelling, ToolName};
 
@@ -343,71 +343,6 @@ impl Default for Guide {
     }
 }
 
-/// A command whose help lists its subcommands under goal headings.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct Group {
-    /// The names of the subcommands from the root to the command.
-    path: &'static [&'static str],
-    /// The goals, in the order the help page lists them.
-    goals: &'static [Goal],
-}
-
-impl Group {
-    /// Returns the group of the command at `path`, the real names of its
-    /// subcommands from the root, as [`Call::new`](crate::Call::new) names a
-    /// command. An empty path names the root. Its help lists `goals` in
-    /// order.
-    #[must_use]
-    pub const fn new(path: &'static [&'static str], goals: &'static [Goal]) -> Self {
-        Self { path, goals }
-    }
-
-    /// Returns the names of the subcommands from the root to the command.
-    #[must_use]
-    pub const fn path(&self) -> &'static [&'static str] {
-        self.path
-    }
-
-    /// Returns the goals, in the order the help page lists them.
-    #[must_use]
-    pub const fn goals(&self) -> &'static [Goal] {
-        self.goals
-    }
-}
-
-/// A heading on a group's help page and the subcommands listed under it,
-/// such as `Read` with `list` and `show`.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct Goal {
-    /// The heading, which prints without a colon.
-    heading: &'static str,
-    /// The real names of the subcommands, in the order the heading lists
-    /// them.
-    commands: &'static [&'static str],
-}
-
-impl Goal {
-    /// Returns the goal that lists `commands` under `heading`. `commands`
-    /// holds each subcommand's real name, never an alias.
-    #[must_use]
-    pub const fn new(heading: &'static str, commands: &'static [&'static str]) -> Self {
-        Self { heading, commands }
-    }
-
-    /// Returns the heading.
-    #[must_use]
-    pub const fn heading(&self) -> &'static str {
-        self.heading
-    }
-
-    /// Returns the real names of the subcommands, in the order the heading
-    /// lists them.
-    #[must_use]
-    pub const fn commands(&self) -> &'static [&'static str] {
-        self.commands
-    }
-}
-
 /// Applies the goal headings and the leaves' examples of `guide` to the
 /// whole tree of `command`, the root of the tool's unbuilt tree, and
 /// returns the tree.
@@ -421,8 +356,9 @@ impl Goal {
 ///
 /// Each group's help page lists its visible subcommands under its goals'
 /// headings, in the guide's order, and then the visible subcommands that no
-/// goal names under a final `Commands` heading. shelf's root page,
-/// [`shelf-h.txt`][shelf-h], shows two goal headings.
+/// goal names under a final `Commands` heading. shelf's root group is
+/// compact: [`shelf-h.txt`][shelf-h] shows its `-h` and
+/// [`shelf-help.txt`][shelf-help] its `--help`.
 ///
 /// Each line holds two spaces, the subcommand's name padded to the longest
 /// name on the page plus two spaces, and its description, which is its
@@ -438,6 +374,14 @@ impl Goal {
 /// A list that holds `{` replaces them, because clap's template would expand
 /// or drop that text, so a description or a heading with a brace costs the
 /// command its own `before_help`.
+///
+/// The `-h` of a [`Group::compact`] group lists each goal on one line: the
+/// heading with a colon, padded to the longest heading plus two spaces, and
+/// then the goal's subcommand names separated by `, `. Its `--help` holds
+/// the full list above. The two lists take the command's `before_help` and
+/// `before_long_help`, because clap's template has no other place whose
+/// text differs between `-h` and `--help`, so a compact group's command
+/// loses its own `before_help` and `before_long_help`.
 ///
 /// Each leaf's help ends with its `Examples:` section after the options, in
 /// `-h` and in `--help`, as `parse` prints it, and the section replaces the
@@ -460,6 +404,7 @@ impl Goal {
 /// each example of each leaf. It never clones the tree.
 ///
 /// [shelf-h]: https://github.com/crumbkit/crumbkit/blob/main/examples/shelf/tests/golden/help/shelf-h.txt
+/// [shelf-help]: https://github.com/crumbkit/crumbkit/blob/main/examples/shelf/tests/golden/help/shelf-help.txt
 #[must_use]
 pub fn extend(mut command: Command, guide: &Guide) -> Command {
     // clap copies the root's styles to every subcommand when it builds the
@@ -468,7 +413,7 @@ pub fn extend(mut command: Command, guide: &Guide) -> Command {
     let header = *styles.get_header();
     let literal = *styles.get_literal();
     for group in guide.groups {
-        if let Some(node) = find_mut(&mut command, group.path) {
+        if let Some(node) = find_mut(&mut command, group.path()) {
             apply(node, group, header, literal);
         }
     }
@@ -494,70 +439,6 @@ pub fn extend(mut command: Command, guide: &Guide) -> Command {
         }
     }
     command
-}
-
-/// Gives `node`, the command at the path of `group`, a help template that
-/// holds the headed list of `group`'s goals, with `header` as the style of
-/// each heading and `literal` as the style of each name. It leaves `node`
-/// unchanged when the list would be empty. [`extend`] and
-/// [`parse`](crate::parse) both apply a group through it.
-///
-/// The command's own `before_help` and `before_long_help` stay as the tool
-/// set them, and the template prints them at the top of the page, as clap's
-/// default template does.
-pub(crate) fn apply(node: &mut Command, group: &Group, header: Style, literal: Style) {
-    let Some(list) = list(node, group.goals, header, literal) else {
-        return;
-    };
-    // clap expands each `{tag}` in a template and drops the text after a
-    // `{` without a closing `}`, and it expands no tags in `before_help`.
-    //
-    // RUST-10: a list that holds `{`, from a heading or a subcommand's
-    // description, goes in `before_help` instead of the template, so it
-    // prints as written and the command loses its own `before_help` and
-    // `before_long_help`. Clearing `before_long_help` keeps clap's `-h`
-    // line from saying `(see more with '--help')` on a page whose `--help`
-    // shows nothing more. A template tag that clap leaves to crumbkit
-    // replaces this fallback if clap adds one.
-    if list.contains('{') {
-        *node = std::mem::take(node)
-            .help_template(template(header, ""))
-            .before_help(list)
-            .before_long_help(None::<&str>);
-    } else {
-        *node = std::mem::take(node).help_template(template(header, &list));
-    }
-}
-
-/// Returns the help template of a guided command, with `list` after the
-/// usage line and `header` as the style of its `Options:` heading.
-///
-/// It is clap's default template with the guide's list in place of
-/// `{all-args}`. An empty `list` leaves its place to `{before-help}`, which
-/// then holds the list, as [`apply`] describes.
-//
-// RUST-10: the template copies the layout of clap's default template, and
-// shelf's golden files fail when clap changes that layout. It handles
-// options only: a guided command shows no `Arguments:` section for its
-// positional arguments, and `{options}` lists an argument that has its own
-// help heading under `Options:` (clap's help_template.rs). A template that
-// writes each of clap's sections replaces it when a guided command needs
-// positional arguments or help headings.
-fn template(header: Style, list: &str) -> String {
-    let mut template = String::with_capacity(list.len() + 160);
-    if list.is_empty() {
-        template.push_str("{about-with-newline}\n{usage-heading} {usage}\n\n{before-help}");
-    } else {
-        template.push_str("{before-help}{about-with-newline}\n{usage-heading} {usage}\n\n");
-        template.push_str(list);
-        template.push_str("\n\n");
-    }
-    // Writing to a `String` cannot fail.
-    let _ = write!(
-        template,
-        "{header}Options:{header:#}\n{{options}}{{after-help}}"
-    );
-    template
 }
 
 /// Returns the command at `path` below `command`, matching each name against

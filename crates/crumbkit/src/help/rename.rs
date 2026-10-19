@@ -40,7 +40,9 @@ impl Guide {
     /// the failure's printed code or a crumbkit code that the run prints as
     /// it, where [`Guide::printed`] decides the printed code for `path`. A
     /// failure that no exit lists exits with crumbkit's default: 2 for a
-    /// refused command line and 1 for every other failure (ADR-0002).
+    /// refused command line and 1 for every other failure (ADR-0002). The
+    /// failures that a range of codes lists count as unlisted, because a
+    /// range names no single code to exit with (ADR-0103).
     #[must_use]
     pub fn failure_exit(&self, path: &[&str], code: &'static Code) -> u8 {
         failure_exit(self.exits, Renames::at(self, path), code)
@@ -209,13 +211,15 @@ pub(crate) fn failure_exit(exits: &[Exit], renames: Renames, code: &'static Code
     1
 }
 
-/// Returns the code of the first of `exits` that lists the printed code of
-/// a failure with `code`, or one of crumbkit's codes that `renames` prints
-/// as it, and `None` when no exit lists it.
+/// Returns the code of the first single code of `exits` that lists the
+/// printed code of a failure with `code`, or one of crumbkit's codes that
+/// `renames` prints as it, and `None` when no such exit lists it. A range
+/// names no single code to exit with, so its failures count as unlisted.
 pub(crate) fn listed_exit(exits: &[Exit], renames: Renames, code: &'static Code) -> Option<u8> {
     let code = renames.printed(code);
     exits
         .iter()
+        .filter(|exit| exit.is_single())
         .find(|exit| {
             exit.get_failures()
                 .iter()

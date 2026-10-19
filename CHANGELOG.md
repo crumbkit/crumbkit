@@ -545,6 +545,27 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit: [`Prose`] and [`Batch`] take a `note`, which text prints on
   standard error where a listing's note prints, before any failures, and
   which the JSON document leaves out ([behaviour/output/listings]).
+- crumbkit: `Sink::styled` makes a [`Sink`] ask for styles, and with the
+  new `color` feature `parse_to` writes help to it with clap's styles.
+  `parse` styles its sink when standard output is a terminal
+  ([behaviour/parsing], [behaviour/output/terminal]).
+- crumbkit: [`help::Group`]`::compact` makes a group's `-h` list each goal's
+  subcommand names on one line, such as `Read:  list, show`, while `--help`
+  keeps the full list ([behaviour/help]).
+- crumbkit: `Exit::range` declares a range of exit codes with one meaning
+  for a command that passes on another program's code, and `help
+  exit-codes`, the `commands list` note and the reference print it as
+  `124-125` ([`help::Exit`], [behaviour/failures/exit-codes]).
+- crumbkit: each exit of a `commands list` row has `last`, the last code of
+  a range, which equals `exit` for a single code
+  ([behaviour/help/commands-list]).
+- crumbkit-test: [`check_exit_codes`] fails a range that starts below 3,
+  ends before it starts, lists failure codes or holds a code that another
+  declaration holds ([behaviour/failures/exit-codes]).
+- crumbkit-test: an opt-out from `Rule::GuideExamples` lets
+  [`check_guide`] pass a command without an example, and every command
+  below it, for a stated reason ([behaviour/help/examples],
+  [behaviour/adoption/opt-outs]).
 
 ### Changed
 
@@ -890,6 +911,13 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit-test: the first line of the opt-out report counts budgets apart
   from opt-outs, such as `shelf has 3 opt-outs from the conventions and sets
   1 budget.` ([behaviour/adoption/opt-outs]).
+- crumbkit-test: [`check_exit_codes`] passes a single exit code from 129
+  to 159, which a run that a signal ended returns, without an opt-out. An
+  opt-out of `exit-codes/shell-code` for such a code now fails as stale;
+  remove it ([behaviour/failures/exit-codes]).
+- crumbkit-test: [`check_guide`] takes the tool's opt-outs as a third
+  argument. A tool without opt-outs passes `&[]`
+  ([behaviour/help/examples]).
 
 ### Removed
 
@@ -1082,6 +1110,7 @@ rustdoc, or at the page in docs/ that describes the behaviour. -->
 [`help::quote`]: crates/crumbkit/src/help.rs
 [`help::ViewFlag`]: crates/crumbkit/src/help/view.rs
 [`help::RuntimeLeaf`]: crates/crumbkit/src/help/runtime.rs
+[`help::Group`]: crates/crumbkit/src/help/group.rs
 [`help::FileFormat`]: crates/crumbkit/src/help/format.rs
 [`commands`]: crates/crumbkit/src/commands.rs
 [`schemas`]: crates/crumbkit/src/schemas.rs

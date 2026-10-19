@@ -40,7 +40,7 @@ fn every_list_command_pages() {
 
 #[test]
 fn every_command_and_leaf_meets_the_guide_rules() {
-    crumbkit_test::check_guide(&Cli::command(), &GUIDE);
+    crumbkit_test::check_guide(&Cli::command(), &GUIDE, ALLOW);
 }
 
 #[test]

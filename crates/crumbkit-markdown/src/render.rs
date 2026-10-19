@@ -165,7 +165,11 @@ fn section(text: &mut String, command: &Command, commands: &[Command]) {
         text.push_str("\n### Exit codes\n\n");
         for exit in &command.exits {
             let meaning = sentence(&one_line(&exit.meaning));
-            text.push_str(&item(&code(&exit.exit.to_string()), Some(meaning)));
+            let label = match exit.last {
+                Some(last) if last != exit.first => format!("{}-{last}", exit.first),
+                _ => exit.first.to_string(),
+            };
+            text.push_str(&item(&code(&label), Some(meaning)));
         }
     }
 }

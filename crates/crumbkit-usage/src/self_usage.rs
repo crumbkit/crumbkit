@@ -392,7 +392,7 @@ impl CommandFigures {
                 meaning: guide
                     .get_exits()
                     .iter()
-                    .find(|declared| declared.code() == exit && declared.covers(&path))
+                    .find(|declared| declared.codes().contains(&exit) && declared.covers(&path))
                     .map(crumbkit::help::Exit::meaning),
                 runs,
             })

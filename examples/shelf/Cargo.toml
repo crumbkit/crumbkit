@@ -26,11 +26,15 @@ clap = { workspace = true, features = [
 # `shelf books show --from` reads point at that line (ADR-0001). The
 # `complete` feature answers a shell's completion request (ADR-0048). The
 # `derive` feature writes the `Failure` impl of `BooksError` (ADR-0001).
+# shelf enables crumbkit's `color` feature, which turns on clap's `color`
+# that shelf already chooses, so the workspace build also tests the help that
+# `parse_to` writes to a styled sink (ADR-0102).
 crumbkit = { workspace = true, features = [
     "miette",
     "tracing",
     "complete",
     "derive",
+    "color",
 ] }
 # `shelf books remove` keeps the ids of the removed books in shelf's XDG
 # state directory, which etcetera finds as crumbkit-usage finds it.
