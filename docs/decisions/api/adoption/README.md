@@ -17,4 +17,5 @@ conventions for a stated reason.
 - [ADR-0056. Declarations](0056-declarations.md)
 - [ADR-0060. Codes per command](0060-codes-per-command.md)
 - [ADR-0076. parse returns Output](0076-parse-returns-output.md)
+- [ADR-0090. Opt-outs for one option](0090-opt-outs-for-one-option.md)
 - [ADR-0094. A run's Output is read-only after parse, and finish consumes it](0094-output-read-only-after-parse.md)

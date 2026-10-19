@@ -15,12 +15,15 @@ that takes opt-outs reads only those of its own rules, so a tool keeps one
 list and passes it to every such check.
 
 An opt-out skips one rule, or with `Allow::example` one example, or with
-`Allow::untwinned` the twin of one code. The other rules of the same check
+`Allow::untwinned` the twin of one code. With `Allow::option`, an opt-out
+from a filter rule skips one option of one command, so two options of a
+command each give their own reason. The other rules of the same check
 still apply to the command. A check fails on an opt-out of its rules that
-names no command or excuses no problem, so the opt-out of a removed or fixed
-command cannot stay in a tool's list.
+names no command, names no option of its command or excuses no problem, so
+the opt-out of a removed or fixed command or option cannot stay in a tool's
+list.
 
-Why: ADR-0036.
+Why: ADR-0036, ADR-0090.
 
 ## Rules that take an opt-out
 
@@ -57,10 +60,12 @@ rule's page gives its reason.
 
 An opt-out made with `Allow::untwinned` from `Rule::NoTwin` names the failing
 line in place of a command path, `check_twins` runs that line, and
-`check_opt_outs` reports it by that line. The [recovery
+`check_opt_outs` reports it by that line. An opt-out made with
+`Allow::option` is reported by its command line and option, such as `shelf
+books list --author`. The [recovery
 chains](../checks/recovery-chains.md) page covers the `recoveries/*` rules.
 
-Why: ADR-0036, ADR-0015, ADR-0053, ADR-0005, ADR-0065, ADR-0071.
+Why: ADR-0036, ADR-0015, ADR-0053, ADR-0005, ADR-0065, ADR-0071, ADR-0090.
 
 ## Checks without opt-outs
 

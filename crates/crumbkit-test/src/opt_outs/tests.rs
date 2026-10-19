@@ -412,3 +412,25 @@ fn the_report_names_an_untwinned_opt_out_by_its_refused_command_line_and_its_cos
          \x20 Cost: No test shows which word of the command line causes the failure, so a test of the refusal can pass while the command fails for another reason.\n"
     );
 }
+
+#[test]
+fn the_report_names_an_option_opt_out_by_its_command_line_and_option() {
+    const ALLOW: &[Allow] = &[Allow::option(
+        Rule::RepeatsAndCommas,
+        "books show",
+        "--from",
+        "File names hold commas.",
+    )];
+    let dir = TempDir::new("opt-outs-option").unwrap();
+
+    run(ALLOW, &dir, Action::Overwrite);
+
+    assert_eq!(
+        read(&dir, "opt-outs.txt"),
+        "shelf has 1 opt-out from the conventions.\n\
+         \n\
+         filters/repeats-and-commas: shelf books show --from\n\
+         \x20 Reason: File names hold commas.\n\
+         \x20 Cost: An agent that writes the form the option does not accept gets a refusal or a wrong value.\n"
+    );
+}

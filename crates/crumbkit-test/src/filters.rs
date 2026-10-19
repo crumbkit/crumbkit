@@ -21,7 +21,8 @@ mod tests;
 /// option accepts both `--author a --author b` and `--author a,b`, as
 /// crumbkit's `--fields` does. An opt-out from [`Rule::RepeatsAndCommas`]
 /// in `allow` excuses such an option on the command it names and every
-/// command below it.
+/// command below it, and one made with [`Allow::option`] excuses only the
+/// option it names.
 ///
 /// The check also finds an option with `ArgAction::Append` and the value
 /// delimiter `,` when the tool set its `num_args` to a maximum above 1, such
@@ -33,8 +34,8 @@ mod tests;
 /// such as a derived `Vec<T>`, passes. An opt-out from
 /// [`Rule::OneValuePerUse`] excuses such an option.
 ///
-/// The check also finds an opt-out from either rule that names no command
-/// or excuses no problem.
+/// The check also finds an opt-out from either rule that names no command,
+/// names no option of its command or excuses no problem.
 ///
 /// Review checks that an option that takes one value refuses a second,
 /// because clap has no documented getter for the settings that let a
@@ -78,16 +79,16 @@ pub fn check_filters(command: &Command, allow: &[Allow]) {
             if arg.is_positional() || !takes_values(arg) || !accepts_many(arg) {
                 continue;
             }
+            let name = argument_name(arg);
             let appends = matches!(arg.get_action(), ArgAction::Append);
             let splits_at_commas = arg.get_value_delimiter() == Some(',');
             let lacks = match (appends, splits_at_commas) {
                 (true, true) if takes_many_in_one_use(arg) => {
-                    if allowances.excuses(Rule::OneValuePerUse, visit.below()) {
+                    if allowances.excuses_option(Rule::OneValuePerUse, visit.below(), &name) {
                         continue;
                     }
                     problems.push(format!(
-                        "{path}: the argument `{}` takes several values in one use through its `num_args`, and a filter takes one value per use",
-                        argument_name(arg)
+                        "{path}: the argument `{name}` takes several values in one use through its `num_args`, and a filter takes one value per use"
                     ));
                     continue;
                 }
@@ -98,12 +99,11 @@ pub fn check_filters(command: &Command, allow: &[Allow]) {
                     "its action is not `ArgAction::Append` and it has no value delimiter `,`"
                 }
             };
-            if allowances.excuses(Rule::RepeatsAndCommas, visit.below()) {
+            if allowances.excuses_option(Rule::RepeatsAndCommas, visit.below(), &name) {
                 continue;
             }
             problems.push(format!(
-                "{path}: the argument `{}` accepts many values but does not accept both repeats and commas, because {lacks}; such an argument uses `ArgAction::Append` and the value delimiter `,`",
-                argument_name(arg)
+                "{path}: the argument `{name}` accepts many values but does not accept both repeats and commas, because {lacks}; such an argument uses `ArgAction::Append` and the value delimiter `,`"
             ));
         }
     }

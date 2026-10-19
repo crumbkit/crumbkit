@@ -1,7 +1,7 @@
 # ADR-0036. Opt-outs
 
 - Date: 2026-10-12
-- Status: amended by ADR-0061
+- Status: amended by ADR-0061 and ADR-0090
 
 ## Context
 

@@ -106,3 +106,37 @@ fn an_example_opt_out_that_names_no_command_is_a_problem_naming_its_command_line
         ["the opt-out from `examples/run` for `shelf books find 'Jane Austen'` names no command"]
     );
 }
+
+#[test]
+fn an_option_opt_out_excuses_its_rule_only_for_its_option_on_its_command() {
+    const ALLOW: &[Allow] = &[Allow::option(
+        Rule::RepeatsAndCommas,
+        "books",
+        "--author",
+        "Authors' names hold commas.",
+    )];
+    let mut allowances = Allowances::new(ALLOW, &[Rule::RepeatsAndCommas]);
+
+    assert!(!allowances.excuses(Rule::RepeatsAndCommas, "books"));
+    assert!(!allowances.excuses_option(Rule::RepeatsAndCommas, "books", "--year"));
+    assert!(!allowances.excuses_option(Rule::RepeatsAndCommas, "books list", "--author"));
+    assert!(!allowances.excuses_option(Rule::OneValuePerUse, "books", "--author"));
+    assert!(allowances.excuses_option(Rule::RepeatsAndCommas, "books", "--author"));
+}
+
+#[test]
+fn an_option_opt_out_that_names_no_option_of_its_command_is_a_problem() {
+    const ALLOW: &[Allow] = &[Allow::option(
+        Rule::OneValuePerUse,
+        "books list",
+        "--years",
+        "A range takes its two ends in one use.",
+    )];
+
+    assert_eq!(
+        finish(Allowances::new(ALLOW, &[Rule::OneValuePerUse])),
+        [
+            "the opt-out from `filters/one-value-per-use` for `shelf books list --years` names no option of the command"
+        ]
+    );
+}

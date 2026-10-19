@@ -46,6 +46,10 @@ pub struct Allow {
     /// command's path, or `None` for an opt-out that covers every command
     /// below `path`.
     words: Option<&'static [&'static str]>,
+    /// The one option of the command at `path` that the opt-out covers, as
+    /// help names it, such as `--author`, or `None` for an opt-out that
+    /// covers every option.
+    option: Option<&'static str>,
     /// The refused command line of an opt-out from [`Rule::NoTwin`], or
     /// `None` for an opt-out that names a command.
     refused: Option<Failing<'static>>,
@@ -93,6 +97,7 @@ impl Allow {
             rule,
             path,
             words: None,
+            option: None,
             refused: None,
             reason,
         }
@@ -134,6 +139,62 @@ impl Allow {
             rule: Rule::Examples,
             path,
             words: Some(words),
+            option: None,
+            refused: None,
+            reason,
+        }
+    }
+
+    /// Returns the opt-out from `rule` for the one option `option` of the
+    /// command at `path`, for `reason`, so the other options of the command
+    /// and the commands below it still follow the rule.
+    ///
+    /// Only [`Rule::RepeatsAndCommas`] and [`Rule::OneValuePerUse`] take
+    /// it, because their problems are each one option's. `path` is as for
+    /// [`Allow::new`], and `option` names the option as help does, such as
+    /// `"--author"`, or `"-a"` without a long name. [`check_opt_outs`]
+    /// names it as `shelf books list --author`, and [`check_filters`]
+    /// fails on one whose command has no such option.
+    ///
+    /// ```
+    /// use crumbkit_test::{Allow, Rule};
+    ///
+    /// const ALLOW: &[Allow] = &[
+    ///     Allow::option(Rule::RepeatsAndCommas, "books list", "--author", "Authors' names hold commas."),
+    ///     Allow::option(Rule::RepeatsAndCommas, "books list", "--title", "Titles hold commas."),
+    /// ];
+    /// ```
+    ///
+    /// # Panics
+    ///
+    /// Panics unless `reason` is non-empty and holds no line break, as
+    /// [`Allow::new`] does, and for a rule other than the two filter rules:
+    ///
+    /// ```compile_fail
+    /// use crumbkit_test::{Allow, Rule};
+    ///
+    /// const BAD: Allow = Allow::option(Rule::OneName, "books list", "--author", "Old scripts.");
+    /// ```
+    ///
+    /// [`check_opt_outs`]: crate::check_opt_outs
+    /// [`check_filters`]: crate::check_filters
+    #[must_use]
+    pub const fn option(
+        rule: Rule,
+        path: &'static str,
+        option: &'static str,
+        reason: &'static str,
+    ) -> Self {
+        assert!(is_reason(reason), "a reason is one non-empty line");
+        assert!(
+            matches!(rule, Rule::RepeatsAndCommas | Rule::OneValuePerUse),
+            "only the filter rules take an opt-out for one option"
+        );
+        Self {
+            rule,
+            path,
+            words: None,
+            option: Some(option),
             refused: None,
             reason,
         }
@@ -176,6 +237,7 @@ impl Allow {
             rule: Rule::NoTwin,
             path: "",
             words: None,
+            option: None,
             refused: Some(refused),
             reason,
         }
@@ -198,16 +260,18 @@ impl Allow {
     }
 
     /// Returns the command line that the opt-out covers below `root`, such
-    /// as `shelf books list`, or the example's command line, such as
-    /// `shelf books list --author 'Jane Austen'`.
+    /// as `shelf books list`, the example's command line, such as
+    /// `shelf books list --author 'Jane Austen'`, or the command line and
+    /// the option, such as `shelf books list --author`.
     pub(crate) fn line(&self, root: &Command) -> String {
         if let Some(refused) = self.refused {
             return crate::guide::command_line(root.get_name(), refused.words());
         }
         let line = command_line(root, self.path);
-        match self.words {
-            Some(words) => crate::guide::command_line(&line, words),
-            None => line,
+        match (self.words, self.option) {
+            (Some(words), _) => crate::guide::command_line(&line, words),
+            (None, Some(option)) => format!("{line} {option}"),
+            (None, None) => line,
         }
     }
 
@@ -230,11 +294,18 @@ impl Allow {
     fn covers(&self, rule: Rule, below: &str) -> bool {
         self.rule == rule
             && self.words.is_none()
+            && self.option.is_none()
             && self.refused.is_none()
             && (self.path.is_empty()
                 || below
                     .strip_prefix(self.path)
                     .is_some_and(|rest| rest.is_empty() || rest.starts_with(' ')))
+    }
+
+    /// Reports whether the opt-out covers `rule` for the one option named
+    /// `option` of the command at `below`.
+    fn covers_option(&self, rule: Rule, below: &str, option: &str) -> bool {
+        self.rule == rule && self.path == below && self.option == Some(option)
     }
 
     /// Reports whether the opt-out covers the one example `words` of the

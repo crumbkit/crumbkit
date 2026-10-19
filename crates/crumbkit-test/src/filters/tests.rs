@@ -118,3 +118,22 @@ fn an_option_keeps_its_own_way_of_taking_many_values_when_opt_outs_name_its_comm
 
     check_filters(&list, ALLOW);
 }
+
+#[test]
+fn an_option_opt_out_excuses_the_option_it_names_and_leaves_the_others_of_its_command_checked() {
+    const ALLOW: &[Allow] = &[Allow::option(
+        Rule::RepeatsAndCommas,
+        "",
+        "--author",
+        "Authors' names hold commas.",
+    )];
+    let list = Command::new("list")
+        .arg(Arg::new("author").long("author").action(ArgAction::Append))
+        .arg(Arg::new("year").long("year").action(ArgAction::Append));
+
+    assert_eq!(
+        panic_message(|| check_filters(&list, ALLOW)).unwrap(),
+        "the command tree breaks crumbkit's filter rules:\n\
+         list: the argument `--year` accepts many values but does not accept both repeats and commas, because it has no value delimiter `,`; such an argument uses `ArgAction::Append` and the value delimiter `,`"
+    );
+}
