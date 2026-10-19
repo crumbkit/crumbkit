@@ -12,5 +12,5 @@ use crate::Code;
 pub const REPORT_UNCHECKED: Code = Code::new("crumbkit", "report", "unchecked");
 
 /// The reason of the `Recovery::None` of an unclassified failure that gives
-/// no advice of its own.
+/// no advice of its own, which `Recovery::no_advice` builds.
 pub(crate) const NO_ADVICE: &str = "the error gives no advice";

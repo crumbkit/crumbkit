@@ -3,7 +3,7 @@
 
 use std::fmt;
 
-use crate::codes::{NO_ADVICE, REPORT_UNCHECKED};
+use crate::codes::REPORT_UNCHECKED;
 use crate::{Code, Error, Failure, Recovery};
 
 impl Error {
@@ -104,9 +104,7 @@ impl Failure for Unclassified {
     }
 
     fn recovery(&self) -> Recovery {
-        Recovery::None {
-            reason: NO_ADVICE.to_owned(),
-        }
+        Recovery::no_advice()
     }
 }
 

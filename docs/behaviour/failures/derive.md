@@ -14,7 +14,9 @@ same name, and crumbkit's `derive` feature turns it on, so
 `crumbkit::Failure` names both. A procedural macro must live in its own
 crate. The derive writes paths under `::crumbkit` unless its `crate` key
 names `::crumbkit_core`. The feature is off by default, so a tool that
-writes its `Failure` impls by hand builds no syn.
+depends on crumbkit alone and writes its `Failure` impls by hand builds no
+syn. crumbkit-child and crumbkit-aliases turn the feature on for their own
+failures, so a tool that uses either builds crumbkit-derive.
 
 Why: ADR-0001, ADR-0032, ADR-0003.
 
