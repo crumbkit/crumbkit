@@ -6,6 +6,7 @@ use std::io::Write;
 use std::process::ExitCode;
 
 use super::{State, Streaming};
+use crate::help::view::{Kind, Printed};
 use crate::output::{Output, fields, lines, table};
 use crate::{Document, Row, Stream};
 
@@ -65,8 +66,8 @@ pub(super) fn open<R: Row, O: Write, W: Write>(
         #[cfg(feature = "tracing")]
         span: crate::trace::spans::finish(),
     };
-    let envelope = document.get_envelope().wraps();
-    if let Some(refusal) = fields::refusal::<R>(None, envelope, false, streaming.fields, typed) {
+    let printed = Printed::of::<R, _>(Kind::Stream, &document);
+    if let Some(refusal) = fields::refusal::<R>(&printed, streaming.fields, typed) {
         return Err(streaming.refuse(&refusal));
     }
     if !streaming.json && !lined {
