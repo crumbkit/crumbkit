@@ -101,16 +101,23 @@ fn a_styled_sink_receives_the_version_as_clap_renders_it() {
 }
 
 #[test]
-fn a_styled_sink_receives_the_topic_list_and_a_topic_as_plain_text() {
-    for args in [&["tool", "help"][..], &["tool", "help", "exit-codes"]] {
-        let styled = page(args, true);
+fn a_styled_sink_receives_a_topic_as_plain_text() {
+    let args = &["tool", "help", "exit-codes"];
+    let styled = page(args, true);
 
-        assert!(
-            !styled.contains('\u{1b}'),
-            "{args:?} printed escapes:\n{styled}"
-        );
-        assert_eq!(styled, page(args, false));
-    }
+    assert!(
+        !styled.contains('\u{1b}'),
+        "{args:?} printed escapes:\n{styled}"
+    );
+    assert_eq!(styled, page(args, false));
+}
+
+#[test]
+fn a_styled_sink_receives_the_help_word_as_it_receives_the_help_flag() {
+    assert_eq!(
+        page(&["tool", "help"], true),
+        page(&["tool", "--help"], true)
+    );
 }
 
 /// Returns `text` without its ANSI escape sequences, each of which starts
