@@ -551,6 +551,23 @@ fn help_exits_with_code_0_when_the_reader_closed_the_pipe() {
 }
 
 #[test]
+fn a_page_that_cannot_be_written_stops_with_exit_1() {
+    let mut err = Vec::new();
+    let result = parse_to::<(), _, _, _, _>(
+        &mut Sink::new(Failing(io::ErrorKind::Other), &mut err),
+        tool(),
+        &Guide::new(),
+        ["tool", "-h"],
+    );
+
+    assert_eq!(result.err().map(|stop| stop.number()), Some(1));
+    assert_eq!(
+        String::from_utf8(err).unwrap(),
+        "error: cannot write to standard output: other error\n"
+    );
+}
+
+#[test]
 fn a_message_joins_the_lines_of_a_paragraph_and_leaves_out_the_usage() {
     let rendered = "\
 error: the following required arguments were not provided:

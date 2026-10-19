@@ -6,7 +6,7 @@ use clap::builder::styling::Style;
 use schemars::{JsonSchema, Schema};
 use serde_json::Value;
 
-use super::view::{self, Unoffered, ViewFlag};
+use super::view::{self, Kind, Printed, Unoffered, ViewFlag};
 use super::{Effects, write_line};
 use crate::pick::Choices;
 use crate::{Call, Document, Row, Rows, Shape, Stream, row};
@@ -194,8 +194,7 @@ impl Leaf {
             line: <T::Row as Row>::LINE,
             schema: schema::<T::Row>,
             envelope: crate::schemas::envelope::<T>,
-            shape: Some(T::SHAPE),
-            stream: false,
+            kind: Kind::Document(T::SHAPE),
             whole: <T::Row as Row>::WHOLE,
         });
         self
@@ -226,8 +225,7 @@ impl Leaf {
             line: R::LINE,
             schema: schema::<R>,
             envelope: crate::schemas::envelope::<R>,
-            shape: None,
-            stream: true,
+            kind: Kind::Stream,
             whole: R::WHOLE,
         });
         self
@@ -237,10 +235,13 @@ impl Leaf {
     /// command prints a stream of rows, one line for each.
     #[must_use]
     pub const fn is_stream(&self) -> bool {
-        match self.columns {
-            Some(columns) => columns.stream,
-            None => false,
-        }
+        matches!(
+            self.columns,
+            Some(Columns {
+                kind: Kind::Stream,
+                ..
+            })
+        )
     }
 
     /// Returns the `Output:` line that the leaf's `-h` and `--help` print
@@ -250,9 +251,11 @@ impl Leaf {
     /// leaf.
     pub(crate) const fn output_line(&self) -> Option<&'static str> {
         match self.columns {
-            Some(columns) if columns.stream => Some(STREAM_LINE),
             Some(Columns {
-                shape: Some(Shape::Bytes),
+                kind: Kind::Stream, ..
+            }) => Some(STREAM_LINE),
+            Some(Columns {
+                kind: Kind::Document(Shape::Bytes),
                 ..
             }) => Some(BYTES_LINE),
             Some(columns) if columns.document.is_headed() => Some(HEADED_LINE),
@@ -291,15 +294,7 @@ impl Leaf {
     /// it offers it, as [`Leaf::offers`] describes.
     pub(crate) const fn unoffered(&self, flag: ViewFlag) -> Option<Unoffered> {
         match self.columns {
-            Some(columns) => view::unoffered(
-                columns.shape,
-                columns.compact,
-                columns.long,
-                columns.document.get_envelope().wraps(),
-                columns.document.is_headed(),
-                columns.whole,
-                flag,
-            ),
+            Some(columns) => view::unoffered(&columns.printed(), flag),
             None => None,
         }
     }
@@ -347,8 +342,14 @@ impl Leaf {
     #[must_use]
     pub const fn shape(&self) -> Option<Shape> {
         match self.columns {
-            Some(columns) => columns.shape,
-            None => None,
+            Some(Columns {
+                kind: Kind::Document(shape),
+                ..
+            }) => Some(shape),
+            Some(Columns {
+                kind: Kind::Stream, ..
+            })
+            | None => None,
         }
     }
 
@@ -484,12 +485,26 @@ struct Columns {
     /// Builds the JSON Schema of the whole document from its id and
     /// description. A stream's schema describes one line.
     envelope: fn(Document<()>) -> Schema,
-    /// The shape of the document's result, or `None` for a stream.
-    shape: Option<Shape>,
-    /// Whether [`Leaf::stream`] set the document.
-    stream: bool,
+    /// The shape of the document's result, or a stream when
+    /// [`Leaf::stream`] set the document.
+    kind: Kind,
     /// The row type's [`Row::WHOLE`].
     whole: bool,
+}
+
+impl Columns {
+    /// Returns what the leaf's command prints, as far as the view flags
+    /// depend on it.
+    const fn printed(&self) -> Printed {
+        Printed {
+            kind: self.kind,
+            columns: self.compact,
+            long: self.long,
+            envelope: self.document.get_envelope().wraps(),
+            headed: self.document.is_headed(),
+            whole: self.whole,
+        }
+    }
 }
 
 /// Returns the JSON Schema of `R`.

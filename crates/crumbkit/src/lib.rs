@@ -75,7 +75,7 @@ pub use crumbkit_core::{
 pub use crate::call::RenderCall;
 #[cfg(feature = "complete")]
 pub use crate::complete::{complete, complete_to, complete_with, complete_with_words};
-pub use crate::dashed::{dashed_form, dashed_name};
+pub use crate::dashed::{dashed_form, dashed_name, is_dashed};
 pub use crate::expect::Expect;
 pub use crate::fetch::fetch_each;
 pub use crate::output::{

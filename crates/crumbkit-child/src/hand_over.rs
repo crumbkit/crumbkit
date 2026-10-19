@@ -154,7 +154,9 @@ fn hand_over_to<O: Write, W: Write>(
     child: Command,
 ) -> ExitCode {
     if output.is_json() {
-        let failure = ChildError::NoJson(program(&child));
+        let failure = ChildError::NoJson {
+            program: program(&child),
+        };
         output.print_failure(sink, &failure);
         return crumbkit::events::ended(no_json_exit(&output), None);
     }

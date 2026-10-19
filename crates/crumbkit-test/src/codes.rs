@@ -4,6 +4,8 @@
 use crumbkit::Code;
 use crumbkit::help::Guide;
 
+use crate::tree;
+
 #[cfg(test)]
 mod tests;
 
@@ -72,11 +74,7 @@ pub fn check_codes(guide: &Guide, codes: &[&[&Code]]) {
         }
         spelled.push((text, code));
     }
-    assert!(
-        problems.is_empty(),
-        "the failure codes break crumbkit's rules:\n{}",
-        problems.join("\n")
-    );
+    tree::report("failure code rules", &problems);
 }
 
 /// The declared codes of a check's settings: the `CODES` list of each of

@@ -7,7 +7,7 @@ use std::path::Path;
 
 use clap::{Args, Command};
 use crumbkit::help::quote;
-use crumbkit::{Code, Document, Error, Failure, Listing, Output, Page, Recovery, Row};
+use crumbkit::{Document, Error, Failure, Listing, Output, Page, Row};
 use schemars::JsonSchema;
 use serde::Serialize;
 use toml::de::{DeTable, DeValue};
@@ -250,9 +250,10 @@ fn parse_reason(text: &str, error: &toml::de::Error) -> String {
 }
 
 /// A failure of `aliases list`.
-#[derive(Debug)]
+#[derive(Debug, Failure)]
 enum AliasesError {
     /// A file is at the aliases file's path but cannot be read or parsed.
+    #[failure(code = UNREADABLE, hint = "fix or remove {path}")]
     Unreadable {
         /// The path of the file.
         path: String,
@@ -274,17 +275,3 @@ impl fmt::Display for AliasesError {
 }
 
 impl std::error::Error for AliasesError {}
-
-impl Failure for AliasesError {
-    fn code(&self) -> &'static Code {
-        match self {
-            Self::Unreadable { .. } => &UNREADABLE,
-        }
-    }
-
-    fn recovery(&self) -> Recovery {
-        match self {
-            Self::Unreadable { path, .. } => Recovery::Hint(format!("fix or remove {path}")),
-        }
-    }
-}

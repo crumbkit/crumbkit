@@ -335,12 +335,12 @@ where
             let code = print_text(sink, &page);
             if crate::events::observed() {
                 let root: Vec<String> = root.iter().map(|&name| name.to_owned()).collect();
-                crate::events::helped(&command, &root, true, crate::exit::number(code));
+                crate::events::helped(&command, &root, true, code);
             }
             // Only this path ends before the walk below, so it walks the
             // words for `--json` here.
             let json = walk(&command, &args).json;
-            return Err(Stop::new(crate::exit::number(code), json, command, guide));
+            return Err(Stop::new(code, json, command, guide));
         }
         ask_for_help(&mut args, help.position);
     }
@@ -409,7 +409,7 @@ where
         error.kind(),
         ErrorKind::DisplayHelp | ErrorKind::DisplayVersion
     ) {
-        let code = crate::exit::number(print_page(sink, &error, colour));
+        let code = print_page(sink, &error, colour);
         if error.kind() == ErrorKind::DisplayHelp {
             crate::events::helped(&command, &path, long_help, code);
         } else {

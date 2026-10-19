@@ -9,7 +9,7 @@ use serde::Serialize;
 use serde::ser::{SerializeStruct, Serializer};
 
 use crate::expect::takes_expect;
-use crate::help::effects::Writes;
+use crate::help::effects::Guards;
 use crate::help::words::quote;
 use crate::help::{Effects, Guide, Leaf, effects};
 use crate::{Row, Shape};
@@ -41,7 +41,7 @@ pub struct CommandRow {
     line: Option<&'static str>,
     exits: Vec<CommandExit>,
     effects: Option<Effects>,
-    writes: Option<Writes>,
+    writes: Option<Guards>,
 }
 
 /// One argument of a command, as the command's help shows it.
@@ -164,7 +164,7 @@ impl CommandRow {
             line: leaf.and_then(Leaf::line),
             exits,
             effects: leaf.and_then(Leaf::get_effects),
-            writes: effects::writes(leaf.and_then(Leaf::get_effects), takes_expect(command)),
+            writes: effects::guards(leaf.and_then(Leaf::get_effects), takes_expect(command)),
         }
     }
 }

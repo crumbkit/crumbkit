@@ -4,11 +4,30 @@ use std::ffi::OsStr;
 
 use clap::Command;
 
-use super::{dashed_form, dashed_name, subcommand};
+use super::{dashed_form, dashed_name, is_dashed, subcommand};
 
 /// Returns a command named `name` with one subcommand, so it is a resource.
 fn resource(name: &'static str) -> Command {
     Command::new(name).subcommand(Command::new("list"))
+}
+
+#[test]
+fn a_dashed_name_is_lowercase_letters_and_digits_in_words_joined_by_single_dashes() {
+    for name in ["books", "reading-lists", "books2", "b2-go"] {
+        assert!(is_dashed(name), "{name}");
+    }
+    for name in [
+        "",
+        "Books",
+        "reading_lists",
+        "2books",
+        "-books",
+        "books-",
+        "reading--lists",
+        "bücher",
+    ] {
+        assert!(!is_dashed(name), "{name}");
+    }
 }
 
 #[test]
