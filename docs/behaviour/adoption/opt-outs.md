@@ -41,6 +41,7 @@ rule's page gives its reason.
 | `RepeatsAndCommas` | `filters/repeats-and-commas` | an option with many values does not take both repeats and commas |
 | `OneValuePerUse` | `filters/one-value-per-use` | an option takes several values per use |
 | `Examples` | `examples/run` | an example is skipped ([end-to-end checks](../checks/end-to-end.md)) |
+| `GuideExamples` | `guide/examples` | a visible command without subcommands has no example yet ([leaf checks](../help/examples.md#checks-of-leaves)) |
 | `Envelope` | `documents/envelope` | a command keeps the shape of an existing document with `Envelope::Without` ([result shapes](../output/shapes/README.md#documents-without-the-envelope)) |
 | `RowsWhole` | `documents/rows-whole` | a command's row type sets `Row::WHOLE`, so `--json` prints every field of each row ([result shapes](../output/shapes/README.md#rows-printed-whole)) |
 | `Effects` | `effects/declared` | a visible leaf declares no effects ([effects](../effects/README.md)) |
@@ -65,15 +66,17 @@ line in place of a command path, `check_twins` runs that line, and
 books list --author`. The [recovery
 chains](../checks/recovery-chains.md) page covers the `recoveries/*` rules.
 
-Why: ADR-0036, ADR-0015, ADR-0053, ADR-0005, ADR-0065, ADR-0071, ADR-0090.
+Why: ADR-0036, ADR-0015, ADR-0053, ADR-0005, ADR-0065, ADR-0071, ADR-0090, ADR-0104.
 
 ## Checks without opt-outs
 
 - The rule that reserves `help` has no opt-out, because `parse` answers
   `help` itself.
 - A tool declares its verbs to `check_grammar`.
-- A tool that wants clap's list for a command leaves the command out of its
-  guide, so `check_guide` takes no opt-outs.
+- `check_guide` takes an opt-out for its example rule alone. A tool that
+  wants clap's list for a command leaves the command out of its guide, and
+  each other problem of the guide is a name or a declaration that the tool
+  can correct.
 - The help checks take budgets in place of opt-outs
   ([help checks](../help/checks.md)).
 - `check_mounts` exists to keep crumbkit's commands at fixed paths.
@@ -81,7 +84,7 @@ Why: ADR-0036, ADR-0015, ADR-0053, ADR-0005, ADR-0065, ADR-0071, ADR-0090.
 - The name rule of a failure's fields has no opt-out, because the failure
   document's schema promises it to every reader.
 
-Why: ADR-0036, ADR-0015, ADR-0081.
+Why: ADR-0036, ADR-0015, ADR-0081, ADR-0104.
 
 ## The opt-out report
 

@@ -64,7 +64,7 @@ fn a_problem_field_that_is_a_compact_column_that_can_be_null_passes() {
         leaf(&["authors", "list"]),
     ]);
 
-    check_guide(&shelf(), &GUIDE);
+    check_guide(&shelf(), &GUIDE, &[]);
 }
 
 #[test]
@@ -81,7 +81,7 @@ fn check_guide_fails_on_a_problem_field_that_is_not_a_compact_column() {
     ]);
 
     assert_eq!(
-        panic_message(|| check_guide(&shelf(), &GUIDE)).unwrap(),
+        panic_message(|| check_guide(&shelf(), &GUIDE, &[])).unwrap(),
         "the command tree breaks crumbkit's guide rules:\n\
          shelf books list: the problem field `problem` is not one of the row type's COLUMNS, so the compact table hides the problem that decides the exit"
     );
@@ -101,7 +101,7 @@ fn check_guide_fails_on_a_problem_field_whose_type_is_a_number() {
     ]);
 
     assert_eq!(
-        panic_message(|| check_guide(&shelf(), &GUIDE)).unwrap(),
+        panic_message(|| check_guide(&shelf(), &GUIDE, &[])).unwrap(),
         "the command tree breaks crumbkit's guide rules:\n\
          shelf books list: the problem field `problems` is not a string, a boolean or a value that can be null, so no value of it means that the row has no problem"
     );

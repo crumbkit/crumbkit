@@ -541,6 +541,10 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit: [`Prose`] and [`Batch`] take a `note`, which text prints on
   standard error where a listing's note prints, before any failures, and
   which the JSON document leaves out ([behaviour/output/listings]).
+- crumbkit-test: an opt-out from `Rule::GuideExamples` lets
+  [`check_guide`] pass a command without an example, and every command
+  below it, for a stated reason ([behaviour/help/examples],
+  [behaviour/adoption/opt-outs]).
 
 ### Changed
 
@@ -881,6 +885,9 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit-test: the first line of the opt-out report counts budgets apart
   from opt-outs, such as `shelf has 3 opt-outs from the conventions and sets
   1 budget.` ([behaviour/adoption/opt-outs]).
+- crumbkit-test: [`check_guide`] takes the tool's opt-outs as a third
+  argument. A tool without opt-outs passes `&[]`
+  ([behaviour/help/examples]).
 
 ### Removed
 
