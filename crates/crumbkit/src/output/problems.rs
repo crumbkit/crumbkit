@@ -1,7 +1,7 @@
 //! The note of the rows that report a problem, as `Row::is_problem`
 //! decides, which make a run without a failure exit with
 //! [`exit::problem_rows`](crate::exit::problem_rows) (ADR-0050).
-//! crumbkit-core's `problems` module decides which rows report one.
+//! The `row::problems` module decides which rows report one.
 
 use crate::exit;
 

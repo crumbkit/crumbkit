@@ -18,7 +18,6 @@ its trace context.
 
 - [ADR-0002. Public API and semver](0002-public-api-and-semver.md)
 - [ADR-0027. Aliases](0027-aliases.md)
-- [ADR-0032. The clap-free core crate](0032-core-crate.md)
 - [ADR-0048. Shell completion](0048-completion.md)
 - [ADR-0057. Run observer](0057-run-observer.md)
 - [ADR-0075. Several run observers](0075-several-observers.md)
@@ -33,3 +32,4 @@ its trace context.
 - [ADR-0040. Schemas](schemas/README.md)
 - [ADR-0028. Usage](usage/README.md)
 - [ADR-0031. Output](output/README.md)
+- [ADR-0099. The types that need no clap](core/README.md)

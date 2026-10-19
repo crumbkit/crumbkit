@@ -68,11 +68,6 @@ impl Step {
             Recovery::Retry => Ok(Self::Retry),
             Recovery::Hint(text) => Ok(Self::Hint(text)),
             Recovery::None { reason } => Err(Self::None(reason)),
-            // `Recovery` is `#[non_exhaustive]` and lives in crumbkit-core, so
-            // the compiler requires this arm. crumbkit-core releases with
-            // crumbkit (ADR-0012), so a new variant gets its own arm in the
-            // release that adds it, and this arm matches nothing until then.
-            _ => Err(Self::None(UNAVAILABLE.to_owned())),
         }
     }
 

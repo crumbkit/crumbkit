@@ -59,9 +59,8 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit-test: [`check_guide`] fails on two groups with one path.
 - crumbkit-aliases: the new crate expands a person's command aliases and
   lists them ([crumbkit-aliases], [behaviour/parsing/aliases]).
-- crumbkit-core: the new crate holds the types that need no clap, and
-  crumbkit re-exports each at its old path. `Call::render` comes from
-  crumbkit's [`RenderCall`] trait ([crumbkit-core], [behaviour/adoption]).
+- crumbkit: `Call::render` comes from the [`RenderCall`] trait, and
+  `Call` holds its data without reading clap ([behaviour/adoption]).
 - cargo-crumbkit: the new crate's `cargo crumbkit weigh --bin <NAME>`
   prints the bytes of each command's help pages and example output, and
   each path's total ([cargo-crumbkit], [behaviour/help/weight]). crumbkit-test's
@@ -153,7 +152,7 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit-test: [`check_effects`] requires effects on every visible leaf,
   `--yes` on destructive leaves, and crumbkit's `--dry-run` in place of a
   tool's own ([behaviour/effects]).
-- crumbkit-core: [`Stream`] is the result type of a document whose command
+- crumbkit: [`Stream`] is the result type of a document whose command
   prints rows as they arrive ([behaviour/output/streams]).
 - crumbkit: `stream` opens a [`Streaming`], which prints each row as it
   arrives as a table line or a JSON Lines document, and `Leaf::stream`
@@ -194,8 +193,8 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   `Rule::NoInput` ([behaviour/effects/pickers]).
 - crumbkit-test: [`check_guide`] fails on leaf choices that name no
   argument of the leaf.
-- crumbkit-picker: the new crate's `Menu` picks values from a numbered list
-  that text narrows, using only the standard library ([crumbkit-picker]).
+- crumbkit: [`pick::Menu`] picks values from a numbered list that text
+  narrows, using only the standard library ([behaviour/effects/pickers]).
 - crumbkit: Windows is a tier-2 platform, which the scheduled lane builds
   and tests ([project/dependencies]).
 - crumbkit-usage: the crate builds on Windows, where the log lives
@@ -278,7 +277,7 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit: a listing or list past the output budget prints the rows that
   fit and is marked with `cut`. Other results past it fail with
   `crumbkit::output::over_budget` ([behaviour/output/budget]).
-- crumbkit-core: [`Document`] gains `always_print_first`, which prints the
+- crumbkit: [`Document`] gains `always_print_first`, which prints the
   first answer even past the output budget ([behaviour/output/budget]).
 - crumbkit-test: [`check_output_budget`] runs each `--json` example with
   half the bytes it prints and checks that the tool cuts or refuses the
@@ -291,7 +290,7 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   ([behaviour/output/listings]).
 - crumbkit-usage: the line of a run whose listing or stream had no rows
   holds `"empty": true` ([behaviour/usage-log]).
-- crumbkit-core: [`Bytes`] is a result that `finish` prints unchanged as
+- crumbkit: [`Bytes`] is a result that `finish` prints unchanged as
   text, and with `--json` as `text` when it is UTF-8 or `base64` otherwise.
   A `Bytes` row field serializes the same way. `Shape::Bytes` and
   `Rows::bytes` describe it ([behaviour/output], [behaviour/schemas]).
@@ -383,14 +382,14 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit: a failure field can hold null, a list or an object, built
   with `FieldValue::list`, `FieldValue::object` or an `Option`, and the
   failure document holds it as a JSON value ([behaviour/schemas]).
-- crumbkit-core: [`Row`] gains `PROBLEM`, which names the field that marks
+- crumbkit: [`Row`] gains `PROBLEM`, which names the field that marks
   a row as reporting a problem ([behaviour/output/listings]).
 - crumbkit: a leaf whose row type names a problem field prints a
   `Problems:` line in `-h` and `--help` ([behaviour/output/listings]).
 - crumbkit-test: [`check_guide`] fails when a row type's problem field is
   not one of its `COLUMNS`, or when its type has no value that means no
   problem ([behaviour/output/listings]).
-- crumbkit-core: [`Row`] gains `is_problem`, which a row type with a
+- crumbkit: [`Row`] gains `is_problem`, which a row type with a
   computed status overrides in place of a duplicate problem column. Its
   default reads the field that `PROBLEM` names ([behaviour/output/listings]).
 - crumbkit: [`help::ViewFlag`] names `--fields`, `--long` and `--full`,
@@ -440,7 +439,7 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   batch's rows in the format the run prints and returns true until the
   batch holds a row, so a handler stops fetching keys whose rows would not
   print ([behaviour/output/budget]).
-- crumbkit-core: `Call::all` adds an argument that takes every value of a
+- crumbkit: `Call::all` adds an argument that takes every value of a
   list field of the failure in one run, which the `run` step names in
   `all`. Rendering refuses an argument that takes one value or a placeholder
   beside it ([behaviour/schemas]).
@@ -455,9 +454,9 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   crumbkit dependency can run `check_names` and `check_grammar` ([behaviour/adoption]).
 - crumbkit-derive: the new crate's `#[derive(Failure)]` writes a
   [`Failure`] impl and a `CODES` list from `#[failure(...)]` attributes.
-  The `derive` feature of crumbkit and crumbkit-core re-exports it
-  ([crumbkit-derive], [behaviour/failures]).
-- crumbkit-core: [`Error::unclassified`] holds an error that the tool did
+  The `derive` feature of crumbkit re-exports it ([crumbkit-derive],
+  [behaviour/failures/derive]).
+- crumbkit: [`Error::unclassified`] holds an error that the tool did
   not classify, such as one from an error library, with the code
   `crumbkit::report::unchecked` and no next step ([behaviour/failures]).
 - crumbkit: [`codes`] gains `REPORT_UNCHECKED`, the code of an unclassified
@@ -471,7 +470,7 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit: [`events::observe`] installs one run observer for the process,
   which `parse`, `finish`, streams and child processes tell what the run
   did, and the usage log is such an observer ([`events`], [behaviour/run-observer]).
-- crumbkit-core: `FieldValue::from_json` reads a failure field back from a
+- crumbkit: `FieldValue::from_json` reads a failure field back from a
   `serde_json::Value`, and returns `None` for a number that `FieldValue`
   cannot hold, such as a fraction ([behaviour/adoption]).
 - crumbkit: `Leaf::codes` renames crumbkit's codes for the runs of one
@@ -483,7 +482,7 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   code ([behaviour/adoption/declarations]).
 - crumbkit-test: [`check_opt_outs`] lists each leaf's code renames as
   customisations of the leaf's command ([behaviour/adoption/declarations]).
-- crumbkit-core: `Headed` and `Document::headed` mark a batch whose rows
+- crumbkit: `Headed` and `Document::headed` mark a batch whose rows
   hold bytes, and `finish` prints each row's bytes as `head` prints files,
   under a `==> KEY <==` header when there are several keys
   ([behaviour/output]).
@@ -509,7 +508,7 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit: `Output::new` and the builders `json`, `fields`, `long` and
   `full` build the output flags for a tool that defines them in its own
   parser, and `finish` checks them as parsed flags ([behaviour/output]).
-- crumbkit-core: a row type that sets [`Row`]`::WHOLE` prints every field
+- crumbkit: a row type that sets [`Row`]`::WHOLE` prints every field
   of each row with `--json`, without `--full`. `--full` is refused for it,
   and `--fields` prints `null` for a field that a row leaves out
   ([behaviour/output]).
@@ -546,6 +545,10 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit: [`Output::new`] and `Output::new_to` take the command's
   [`DryRun`] after the view flags, so an `Output` knows its dry run from
   the start ([behaviour/effects]).
+- crumbkit: the `derive` feature re-exports `#[derive(Failure)]` from
+  crumbkit-derive itself, and the `miette` feature holds `Failure::diagnostic`
+  and the conversion of a `miette::Report`, which the removed crumbkit-core
+  held behind features of its own ([behaviour/failures/derive]).
 - crumbkit: a tool sets its code spelling once with `Guide::spelling`,
   which defaults to `Spelling::COLONS`. [`parse`], [`finish`], [`stream`],
   `hand_over` and crumbkit-test's checks no longer take a `Spelling`, and
@@ -558,7 +561,7 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   named `shelf` prints `shelf/failure/v1` and `shelf::cli::usage`, and reads
   `SHELF_OUTPUT_BUDGET` in place of `CRUMBKIT_OUTPUT_BUDGET`
   ([behaviour/failures]).
-- crumbkit-core: `ToolName` spells crumbkit's codes, document ids and
+- crumbkit: `ToolName` spells crumbkit's codes, document ids and
   variables with a tool's name, and `Spelling::for_tool` prints codes with
   it. A hyphen stays in an id and becomes `_` in a code. A variable
   starts with `_` before a leading digit.
@@ -601,7 +604,7 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   ([behaviour/run-observer]).
 - crumbkit-test: [`check_twins`] needs no twin and no declaration for a
   code in the `crumbkit` component that `crumbkit::codes::ALL` does not
-  list, such as crumbkit-child's `crumbkit::child::no_json`, and
+  list, such as crumbkit-child's `crumbkit::child::not_found`, and
   [`check_recoveries`] follows the recovery of such a code
   ([behaviour/checks/end-to-end], [behaviour/checks/recovery-chains]).
 - crumbkit: `Exit::covers` is public, so crumbkit-usage can give each exit
@@ -663,8 +666,8 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   ([behaviour/output]).
 - crumbkit: `Output::budget` returns the whole output budget, because an
   `Output` prints one result ([behaviour/output/budget]).
-- crumbkit-child: [`child::hand_over`] and [`child::hand_over_json`] take
-  the `Output` by value, as `finish` does ([behaviour/output/child-processes]).
+- crumbkit-child: [`child::hand_over`] takes the `Output` by value, as
+  `finish` does ([behaviour/output/child-processes]).
 - crumbkit-aliases: `list` takes `&mut Output`, because it builds the
   tool's command tree when it runs.
 - crumbkit: [`parse`] returns a [`Stop`] after help, the version or a
@@ -807,7 +810,7 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   document without the envelope ([behaviour/output]).
 - crumbkit: `complete_to` takes the name of the completion variable, which
   the registration script sets ([behaviour/parsing/completion]).
-- crumbkit-core: `Batch::new` takes the command, the argument and the keys
+- crumbkit: `Batch::new` takes the command, the argument and the keys
   that the caller gave, and the handler pushes one result for each key, so
   each failed key has its own failure ([behaviour/output]).
 - crumbkit: a batch past the output budget ends with a failure whose
@@ -840,7 +843,7 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit: `Guide::printed` and `Guide::failure_exit` take the command
   path of the run, because a leaf's renames apply to its own command
   ([behaviour/adoption/declarations]).
-- crumbkit-core: the schema of [`Bytes`] is one object with `text` and
+- crumbkit: the schema of [`Bytes`] is one object with `text` and
   `base64` and a `oneOf` that requires one of them, so a flattened `Bytes`
   field lists both among the row's properties ([behaviour/schemas]).
 - crumbkit-test: [`check_output_budget`] accepts a run that prints past
@@ -875,6 +878,9 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Removed
 
+- crumbkit-core: the crate is gone. crumbkit holds every type it held, each
+  at the path at which crumbkit re-exported it, so a tool built on crumbkit
+  changes nothing ([behaviour/adoption]).
 - crumbkit: `Output::set_command`, `Parsed` and `Parsed::guided` are gone,
   and [`Output`] no longer derives `clap::Args` or `Default`, because every
   `Output` that a tool gets already holds the command ([behaviour/parsing]).
@@ -892,11 +898,23 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit: `help::split` is gone. [`check_recoveries`] reads a recovery's
   words with its own private reading, which also reads double-quoted words
   and refuses a `$` or a backtick between double quotes ([behaviour/checks/recovery-chains]).
-- crumbkit-core: `Document::over_budget` and `Document::over_budget_code`
+- crumbkit: `Document::over_budget` and `Document::over_budget_code`
   are gone, because a rename of `crumbkit::output::over_budget` in
   `Guide::codes` sets the code for every document ([behaviour/output/budget]).
 - crumbkit: `Call::word` is gone, because `Call::value` adds a runtime value
   and checks it against the tool's command tree ([`Call`]).
+- crumbkit-child: `child::hand_over_json`, `Json` and the codes
+  `crumbkit::child::no_json`, `crumbkit::child::bad_json` and
+  `crumbkit::child::failed` are gone. [`child::hand_over`] refuses `--json`
+  with `<tool>::cli::usage`, and a tool reads a child's JSON itself
+  ([behaviour/output/child-processes]).
+- crumbkit-usage: `start_with`, `Signals` and `section` are gone, with the
+  record's `ext` field. `start` writes the line when SIGINT or SIGTERM ends
+  the run, and a tool that handles either signal itself runs without the
+  log ([`usage`], [behaviour/usage-log]).
+- crumbkit-picker: the crate is gone, and its `Menu` is [`pick::Menu`] in
+  crumbkit, so a tool with a picker depends on crumbkit alone
+  ([behaviour/effects/pickers]).
 
 ### Fixed
 
@@ -1005,31 +1023,31 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 <!-- Each label below points at the source file that holds the item's
 rustdoc, or at the page in docs/ that describes the behaviour. -->
 
-[`Row`]: crates/crumbkit-core/src/row.rs
-[`Document`]: crates/crumbkit-core/src/document.rs
+[`Row`]: crates/crumbkit/src/row.rs
+[`Document`]: crates/crumbkit/src/document.rs
 [`Output`]: crates/crumbkit/src/output.rs
 [`Output::new`]: crates/crumbkit/src/output/build.rs
 [`finish`]: crates/crumbkit/src/output.rs
 [`finish_to`]: crates/crumbkit/src/output.rs
 [`stream`]: crates/crumbkit/src/output/stream.rs
-[`Stream`]: crates/crumbkit-core/src/stream.rs
+[`Stream`]: crates/crumbkit/src/stream.rs
 [`Streaming`]: crates/crumbkit/src/output/stream.rs
 [`Page`]: crates/crumbkit/src/page.rs
-[`Listing::uncounted`]: crates/crumbkit-core/src/listing.rs
+[`Listing::uncounted`]: crates/crumbkit/src/listing.rs
 [`Page::uncounted`]: crates/crumbkit/src/page.rs
-[`Listing`]: crates/crumbkit-core/src/listing.rs
-[`Call`]: crates/crumbkit-core/src/call.rs
-[`Failure`]: crates/crumbkit-core/src/failure.rs
-[`Recovery`]: crates/crumbkit-core/src/failure.rs
-[`Code`]: crates/crumbkit-core/src/code.rs
-[`Spelling`]: crates/crumbkit-core/src/code.rs
-[`Code::runtime`]: crates/crumbkit-core/src/code/runtime.rs
-[`Error`]: crates/crumbkit-core/src/failure.rs
-[`Batch`]: crates/crumbkit-core/src/batch.rs
-[`Prose`]: crates/crumbkit-core/src/prose.rs
-[`Bytes`]: crates/crumbkit-core/src/bytes.rs
+[`Listing`]: crates/crumbkit/src/listing.rs
+[`Call`]: crates/crumbkit/src/call.rs
+[`Failure`]: crates/crumbkit/src/failure.rs
+[`Recovery`]: crates/crumbkit/src/failure.rs
+[`Code`]: crates/crumbkit/src/code.rs
+[`Spelling`]: crates/crumbkit/src/code.rs
+[`Code::runtime`]: crates/crumbkit/src/code/runtime.rs
+[`Error`]: crates/crumbkit/src/failure.rs
+[`Batch`]: crates/crumbkit/src/batch.rs
+[`Prose`]: crates/crumbkit/src/prose.rs
+[`Bytes`]: crates/crumbkit/src/bytes.rs
 [`fetch_each`]: crates/crumbkit/src/fetch.rs
-[`report`]: crates/crumbkit-core/src/report.rs
+[`report`]: crates/crumbkit/src/report.rs
 [`parse`]: crates/crumbkit/src/parse.rs
 [`command_path`]: crates/crumbkit/src/parse/walk.rs
 [`dashed_form`]: crates/crumbkit/src/dashed.rs
@@ -1068,9 +1086,8 @@ rustdoc, or at the page in docs/ that describes the behaviour. -->
 [crumbkit-aliases]: crates/crumbkit-aliases/README.md
 [crumbkit-usage]: crates/crumbkit-usage/README.md
 [crumbkit-child]: crates/crumbkit-child/README.md
-[crumbkit-core]: crates/crumbkit-core/README.md
 [crumbkit-derive]: crates/crumbkit-derive/README.md
-[`Error::unclassified`]: crates/crumbkit-core/src/unclassified.rs
+[`Error::unclassified`]: crates/crumbkit/src/unclassified.rs
 [`RenderCall`]: crates/crumbkit/src/call.rs
 [cargo-crumbkit]: crates/cargo-crumbkit/README.md
 [`example_golden_name`]: crates/crumbkit-test/src/examples.rs
@@ -1100,7 +1117,7 @@ rustdoc, or at the page in docs/ that describes the behaviour. -->
 [`child::hand_over_json`]: crates/crumbkit-child/src/hand_over.rs
 [`Picker`]: crates/crumbkit/src/pick.rs
 [`NoInput`]: crates/crumbkit/src/pick/no_input.rs
-[crumbkit-picker]: crates/crumbkit-picker/README.md
+[`pick::Menu`]: crates/crumbkit/src/pick/menu.rs
 [crumbkit-markdown]: crates/crumbkit-markdown/README.md
 [`check_command_reference`]: crates/crumbkit-test/src/reference.rs
 [`ReadFailure`]: crates/crumbkit/src/form.rs
@@ -1123,6 +1140,7 @@ rustdoc, or at the page in docs/ that describes the behaviour. -->
 [behaviour/effects/pickers]: docs/behaviour/effects/pickers.md
 [behaviour/effects/write-guards]: docs/behaviour/effects/write-guards.md
 [behaviour/failures]: docs/behaviour/failures/README.md
+[behaviour/failures/derive]: docs/behaviour/failures/derive.md
 [behaviour/failures/exit-codes]: docs/behaviour/failures/exit-codes.md
 [behaviour/failures/excerpts-and-readers]: docs/behaviour/failures/excerpts-and-readers.md
 [behaviour/help]: docs/behaviour/help/README.md

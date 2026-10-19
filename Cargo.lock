@@ -159,7 +159,7 @@ version = "0.0.0"
 dependencies = [
  "clap",
  "clap_complete",
- "crumbkit-core",
+ "crumbkit-derive",
  "is-ai-agent",
  "miette",
  "proptest",
@@ -199,29 +199,15 @@ version = "0.0.0"
 dependencies = [
  "clap",
  "crumbkit",
- "schemars",
- "serde",
  "serde_json",
  "signal-hook",
-]
-
-[[package]]
-name = "crumbkit-core"
-version = "0.0.0"
-dependencies = [
- "crumbkit-derive",
- "miette",
- "proptest",
- "schemars",
- "serde",
- "serde_json",
 ]
 
 [[package]]
 name = "crumbkit-derive"
 version = "0.0.0"
 dependencies = [
- "crumbkit-core",
+ "crumbkit",
  "proc-macro2",
  "quote",
  "syn 3.0.6",
@@ -234,14 +220,6 @@ dependencies = [
  "crumbkit",
  "serde",
  "serde_json",
-]
-
-[[package]]
-name = "crumbkit-picker"
-version = "0.0.0"
-dependencies = [
- "clap",
- "crumbkit",
 ]
 
 [[package]]
@@ -647,7 +625,6 @@ dependencies = [
  "clap",
  "crumbkit",
  "crumbkit-child",
- "crumbkit-picker",
  "crumbkit-test",
  "etcetera",
  "schemars",
@@ -811,7 +788,6 @@ dependencies = [
  "clap",
  "crumbkit",
  "crumbkit-aliases",
- "crumbkit-picker",
  "crumbkit-test",
  "crumbkit-usage",
  "etcetera",

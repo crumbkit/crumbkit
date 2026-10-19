@@ -21,15 +21,13 @@ crumbkit is a virtual workspace.
 
 | Path | Holds |
 | --- | --- |
-| `crates/crumbkit-derive` | The published procedural macro crate of `#[derive(Failure)]`, which crumbkit-core re-exports behind its `derive` feature. |
-| `crates/crumbkit-core` | The published crate of the types that need no clap. crumbkit depends on it and re-exports its items. |
-| `crates/crumbkit` | The published runtime crate. |
+| `crates/crumbkit-derive` | The published procedural macro crate of `#[derive(Failure)]`, which crumbkit re-exports behind its `derive` feature. |
+| `crates/crumbkit` | The published runtime crate, which also holds the failure, document, call and row types that need no clap. |
 | `crates/crumbkit-test` | The published crate of convention checks. |
 | `crates/cargo-crumbkit` | The published crate of the `cargo crumbkit` subcommand, which measures a tool's help and writes its command reference. |
 | `crates/crumbkit-aliases` | The published crate that expands a person's aliases. |
 | `crates/crumbkit-child` | The published crate that hands the terminal to a child program. |
 | `crates/crumbkit-usage` | The published crate of the usage log and the `self usage` and `self figures list` commands that read it. |
-| `crates/crumbkit-picker` | The published crate of the `Menu` picker. |
 | `crates/crumbkit-markdown` | The published crate that writes a tool's command reference. |
 | `examples/shelf` | An unpublished example package with a `shelf` binary. |
 | `examples/reading` | An unpublished example package with a `reading` binary that adds a command for each reading list at run time. |
@@ -42,4 +40,4 @@ crumbkit is a virtual workspace.
 RUST-7, so each file name says which module it holds, and code and tests
 read separately.
 
-Why: ADR-0014, ADR-0032, ADR-0001.
+Why: ADR-0014, ADR-0097, ADR-0001.

@@ -4,19 +4,22 @@
 use std::fmt;
 use std::io;
 
-use crumbkit::{Failure, Recovery};
+use crumbkit::Failure;
 
 use crate::codes;
 
 /// A failure of a child process. Each variant holds the name of the program.
 #[derive(Debug, Failure)]
 pub(crate) enum ChildError {
-    /// The caller passed `--json`, and the child has no JSON form.
+    /// The caller passed `--json`, and the child's output is text that the
+    /// terminal shows. It refuses the command line with crumbkit's usage
+    /// code, as `--fields` is refused.
     #[failure(
-        code = codes::NO_JSON,
+        code = crumbkit::codes::CLI_USAGE,
         hint = "run the command without --json to read the output of `{program}`",
+        field(argument = "--json"),
     )]
-    NoJson {
+    JsonRefused {
         /// The program's name.
         program: String,
     },
@@ -37,35 +40,6 @@ pub(crate) enum ChildError {
         /// Why the program did not start.
         error: io::Error,
     },
-    /// The child's standard output is not the declared document.
-    #[failure(
-        code = codes::BAD_JSON,
-        recovery = Recovery::None {
-            reason: "the program's output does not match the document that the tool declares"
-                .to_owned(),
-        },
-    )]
-    BadJson {
-        /// The program's name.
-        program: String,
-        /// The id of the declared document, such as `vault/log-list/v1`.
-        document: String,
-        /// Why the output does not parse as the document.
-        error: serde_json::Error,
-    },
-    /// The child exited with a code other than 0 under `--json`.
-    #[failure(
-        code = codes::FAILED,
-        recovery = Recovery::None {
-            reason: "the program reported its failure on standard error".to_owned(),
-        },
-    )]
-    Failed {
-        /// The program's name.
-        program: String,
-        /// The child's exit number.
-        exit: u8,
-    },
 }
 
 impl ChildError {
@@ -83,19 +57,12 @@ impl ChildError {
 impl fmt::Display for ChildError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::NoJson { program } => write!(
+            Self::JsonRefused { program } => write!(
                 f,
                 "--json is not available, because this command hands the terminal to `{program}`"
             ),
             Self::NotFound { program } => write!(f, "cannot run `{program}`: no such program"),
             Self::NotStarted { program, .. } => write!(f, "cannot run `{program}`"),
-            Self::BadJson {
-                program, document, ..
-            } => write!(
-                f,
-                "`{program}` printed output that is not a {document} document"
-            ),
-            Self::Failed { program, exit } => write!(f, "`{program}` exited with code {exit}"),
         }
     }
 }
@@ -104,8 +71,7 @@ impl std::error::Error for ChildError {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         match self {
             Self::NotStarted { error, .. } => Some(error),
-            Self::BadJson { error, .. } => Some(error),
-            Self::NoJson { .. } | Self::NotFound { .. } | Self::Failed { .. } => None,
+            Self::JsonRefused { .. } | Self::NotFound { .. } => None,
         }
     }
 }

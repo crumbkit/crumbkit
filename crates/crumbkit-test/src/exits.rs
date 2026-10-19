@@ -255,11 +255,6 @@ fn renamed(command: &Command, guide: &Guide, spelling: Spelling, problems: &mut 
     }
 }
 
-/// crumbkit-child's code of a `--json` that a command whose child has no JSON
-/// form refuses. crumbkit-child declares it, and crumbkit-test does not
-/// depend on crumbkit-child, so the check names it here.
-const CHILD_NO_JSON: Code = Code::new("crumbkit", "child", "no_json");
-
 /// Returns the problem when a failed run of the command at `path`, whose
 /// first failure the tool spells `printed` with `spelling`, ends with
 /// `status`. The problem starts with a verb, and the caller puts the run's
@@ -271,8 +266,7 @@ const CHILD_NO_JSON: Code = Code::new("crumbkit", "child", "no_json");
 /// - with the code of the exit of `guide` that lists the failure's code,
 ///   or one of crumbkit's codes that such a run prints as it;
 /// - with the code that the guide gives a refused command line, 2 unless an
-///   exit lists `<tool>::cli::usage`, for `<tool>::cli::usage` and
-///   `<tool>::child::no_json`;
+///   exit lists `<tool>::cli::usage`, for `<tool>::cli::usage`;
 /// - with 1 for any other failure, unless the guide's leaf at `path`
 ///   declares with [`Leaf::passes_on_exit`](crumbkit::help::Leaf::passes_on_exit)
 ///   that the command passes on a program's exit code, which may be any
@@ -304,7 +298,7 @@ pub(crate) fn exit_problem(
             )
         });
     }
-    if is(&crumbkit::codes::CLI_USAGE) || is(&CHILD_NO_JSON) {
+    if is(&crumbkit::codes::CLI_USAGE) {
         let expected = guide.failure_exit(&path, &crumbkit::codes::CLI_USAGE);
         return (code != Some(i32::from(expected))).then(|| {
             format!(

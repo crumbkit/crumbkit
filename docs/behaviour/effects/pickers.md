@@ -107,14 +107,17 @@ cannot turn questions off ([opt-outs](../adoption/opt-outs.md)).
 
 Why: ADR-0043, ADR-0036.
 
-## crumbkit-picker
+## `Menu`
 
-[crumbkit-picker](../../../crates/crumbkit-picker/README.md) is a separate
-published crate that holds `Menu`, a picker built on the standard library
-alone. It prints a numbered list, reads one line, narrows the list when the
-line is text, and cancels on an empty line or the end of input. It shows 20
-choices at a time by default and says how many more match. A tool that wants
-arrow keys or fuzzy search wraps another prompt library in its own `Picker`,
-and crumbkit-picker's README shows how.
+[`Menu`](../../../crates/crumbkit/src/pick/menu.rs) is crumbkit's own
+picker, `crumbkit::pick::Menu`, built on the standard library alone. It
+prints a numbered list, reads one line, narrows the list when the line is
+text, and cancels on an empty line or the end of input. It shows 20 choices
+at a time by default and says how many more match. A tool keeps one `Menu`
+in a `static` and sets it with `Guide::picker`, so a tool with a picker
+depends on crumbkit alone. A tool that wants arrow keys or fuzzy search
+wraps another prompt library in its own `Picker`, and that picker lives in
+the tool or in a crate of its own, so crumbkit depends on no terminal
+library.
 
-Why: ADR-0043.
+Why: ADR-0043, ADR-0095, ADR-0003.

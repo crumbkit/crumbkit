@@ -58,5 +58,10 @@ proptest = { workspace = true, features = ["std"] }
 # schema, which names any tool's `<tool>/usage/v1` (ADR-0079).
 regex-lite = { workspace = true }
 
+# `src/removed.rs` holds only compile_fail doctests and no item, which
+# cargo-shear reports as an empty file.
+[package.metadata.cargo-shear]
+ignored-paths = ["src/removed.rs"]
+
 [lints]
 workspace = true

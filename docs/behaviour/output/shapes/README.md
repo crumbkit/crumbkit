@@ -10,7 +10,7 @@ flags and which stream each line goes to.
 ## Batches
 
 A command that takes many ids returns a
-[`Batch`](../../../../crates/crumbkit-core/src/batch.rs), whose rustdoc
+[`Batch`](../../../../crates/crumbkit/src/batch.rs), whose rustdoc
 describes how a handler builds it. The rows print on standard output and the
 failures on standard error, and with `--json` both go into one document.
 Every answer has a key, and a key that fails gets its own failure. The batch
@@ -40,7 +40,7 @@ Why: ADR-0016, ADR-0077, ADR-0081.
 ## Prose
 
 A command whose answer is a few sentences returns a
-[`Prose`](../../../../crates/crumbkit-core/src/prose.rs), whose rustdoc
+[`Prose`](../../../../crates/crumbkit/src/prose.rs), whose rustdoc
 describes its text, its JSON document and its failures. A prose result with
 failures exits as a batch with failures does, with the code of its first
 failure. `--fields`, `--long`
@@ -59,7 +59,7 @@ Why: ADR-0016, ADR-0077.
 ## Bytes
 
 A command whose answer is bytes, such as a file's contents, returns
-[`Bytes`](../../../../crates/crumbkit-core/src/bytes.rs), whose rustdoc
+[`Bytes`](../../../../crates/crumbkit/src/bytes.rs), whose rustdoc
 describes its text, its JSON form and its use as a row field. `--fields`, `--long`
 and `--full` are refused for it as a refused command line, and each refusal
 names `--json` or says that `--json` already prints the whole result. A dry
@@ -72,8 +72,8 @@ Why: ADR-0016.
 
 A command that returns the bytes of several answers, such as `show
 <NAME>...`, returns a batch whose row type implements
-[`Headed`](../../../../crates/crumbkit-core/src/row.rs) and whose document
-calls [`Document::headed`](../../../../crates/crumbkit-core/src/document.rs).
+[`Headed`](../../../../crates/crumbkit/src/row.rs) and whose document
+calls [`Document::headed`](../../../../crates/crumbkit/src/document.rs).
 The row usually holds its bytes in a `Bytes` field marked
 `#[serde(flatten)]`, so its JSON and its schema hold `text` or `base64` at
 the top level of the row.
@@ -114,7 +114,7 @@ Why: ADR-0062.
 ## Rows printed whole
 
 A row type whose JSON readers expect every field of each row sets
-`Row::WHOLE` ([`Row`](../../../../crates/crumbkit-core/src/row.rs)). With
+`Row::WHOLE` ([`Row`](../../../../crates/crumbkit/src/row.rs)). With
 `--json`, each row then prints as the type serializes it, without `--full`,
 so a field that the type leaves out when it holds nothing stays out. This
 holds for a single row, a list, a listing, a batch and each line of a
@@ -163,7 +163,7 @@ Why: ADR-0064.
 ## Documents without the envelope
 
 A tool chooses a document's envelope with
-[`Document::envelope`](../../../../crates/crumbkit-core/src/document/envelope.rs),
+[`Document::envelope`](../../../../crates/crumbkit/src/document/envelope.rs),
 which takes one `Envelope` variant. A new document has `Envelope::Crumbkit`.
 A command that keeps the shape of an existing document chooses
 `Envelope::Without`. With `--json` it prints the result alone with every
