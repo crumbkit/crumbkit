@@ -64,12 +64,6 @@ pub struct Effects {
     /// Whether the command reaches systems outside the tool, such as a web
     /// service.
     open_world: bool,
-    /// Whether the command replaces existing data, which
-    /// [`Effects::replacing`] sets.
-    replaces: bool,
-    /// How a write of many items ends, or `None` when the tool declares
-    /// nothing.
-    items: Option<Items>,
 }
 
 /// How a command that writes many items ends when one of them fails, which
@@ -95,15 +89,37 @@ impl Items {
     }
 }
 
-/// What a command changes.
+/// What a command changes, with the write guards of a command that changes
+/// something.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum Change {
     /// Nothing.
     Nothing,
     /// Something, and it deletes or overwrites nothing.
-    Additive,
+    Additive(Writes),
     /// Something, and it may delete or overwrite data.
-    Destructive,
+    Destructive(Writes),
+}
+
+/// How a command that writes guards what it writes (ADR-0047). Only a
+/// command that changes something has them, so a read-only command never
+/// declares a guard.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) struct Writes {
+    /// Whether the command replaces existing data, which
+    /// [`Effects::replacing`] sets.
+    replaces: bool,
+    /// How a write of many items ends, or `None` when the tool declares
+    /// nothing.
+    items: Option<Items>,
+}
+
+impl Writes {
+    /// The guards of a write that declares none.
+    const NONE: Self = Self {
+        replaces: false,
+        items: None,
+    };
 }
 
 impl Effects {
@@ -115,8 +131,6 @@ impl Effects {
             change: Change::Nothing,
             idempotent: true,
             open_world: false,
-            replaces: false,
-            items: None,
         }
     }
 
@@ -125,11 +139,9 @@ impl Effects {
     #[must_use]
     pub const fn additive() -> Self {
         Self {
-            change: Change::Additive,
+            change: Change::Additive(Writes::NONE),
             idempotent: false,
             open_world: false,
-            replaces: false,
-            items: None,
         }
     }
 
@@ -138,11 +150,9 @@ impl Effects {
     #[must_use]
     pub const fn destructive() -> Self {
         Self {
-            change: Change::Destructive,
+            change: Change::Destructive(Writes::NONE),
             idempotent: false,
             open_world: false,
-            replaces: false,
-            items: None,
         }
     }
 
@@ -155,11 +165,12 @@ impl Effects {
     #[must_use]
     pub const fn replacing() -> Self {
         Self {
-            change: Change::Destructive,
+            change: Change::Destructive(Writes {
+                replaces: true,
+                items: None,
+            }),
             idempotent: false,
             open_world: false,
-            replaces: true,
-            items: None,
         }
     }
 
@@ -168,10 +179,15 @@ impl Effects {
     /// nothing changed. crumbkit-test's `check_effects` requires this or
     /// [`Effects::per_item`] on a write that takes many values in a
     /// positional argument.
+    ///
+    /// # Panics
+    ///
+    /// Panics on [`Effects::read_only`], because a read-only command writes
+    /// nothing and so has no write guard. A `const` that calls it on
+    /// read-only effects fails to compile, as [`Effects::per_item`] shows.
     #[must_use]
-    pub const fn all_or_none(mut self) -> Self {
-        self.items = Some(Items::AllOrNone);
-        self
+    pub const fn all_or_none(self) -> Self {
+        self.with_items(Items::AllOrNone)
     }
 
     /// Declares that the command, which writes many items, writes each item
@@ -179,10 +195,45 @@ impl Effects {
     /// when any item fails. Such a command prints a
     /// [`Batch`](crate::Batch) or a [`Prose`](crate::Prose), whose
     /// `failures` name the items that failed.
+    ///
+    /// # Panics
+    ///
+    /// Panics on [`Effects::read_only`], because a read-only command writes
+    /// nothing and so has no write guard. A `const` that calls it on
+    /// read-only effects fails to compile:
+    ///
+    /// ```compile_fail
+    /// use crumbkit::help::Effects;
+    ///
+    /// const LIST: Effects = Effects::read_only().per_item();
+    /// ```
     #[must_use]
-    pub const fn per_item(mut self) -> Self {
-        self.items = Some(Items::PerItem);
+    pub const fn per_item(self) -> Self {
+        self.with_items(Items::PerItem)
+    }
+
+    /// Returns the effects with `items` as how a write of many items ends.
+    /// The assert is RUST-5's exception for a `const fn` that checks the
+    /// arguments of a constant: a leaf's effects are a constant, so a
+    /// read-only command that declares a guard fails to compile.
+    const fn with_items(mut self, items: Items) -> Self {
+        assert!(
+            !matches!(self.change, Change::Nothing),
+            "a read-only command writes nothing, so it declares no write guard"
+        );
+        if let Change::Additive(writes) | Change::Destructive(writes) = &mut self.change {
+            writes.items = Some(items);
+        }
         self
+    }
+
+    /// Returns how the command guards what it writes, or `None` when the
+    /// command changes nothing.
+    pub(crate) const fn writes(self) -> Option<Writes> {
+        match self.change {
+            Change::Nothing => None,
+            Change::Additive(writes) | Change::Destructive(writes) => Some(writes),
+        }
     }
 
     /// Marks the command as idempotent: a second run with the same
@@ -212,21 +263,27 @@ impl Effects {
     /// Reports whether the command may delete or overwrite data.
     #[must_use]
     pub const fn is_destructive(&self) -> bool {
-        matches!(self.change, Change::Destructive)
+        matches!(self.change, Change::Destructive(_))
     }
 
     /// Reports whether the command replaces existing data, as
     /// [`Effects::replacing`] declares.
     #[must_use]
     pub const fn is_replacing(&self) -> bool {
-        self.replaces
+        match self.writes() {
+            Some(writes) => writes.replaces,
+            None => false,
+        }
     }
 
     /// Returns how the command ends when one of many items fails, or `None`
-    /// when the tool declares nothing.
+    /// when the tool declares nothing or the command changes nothing.
     #[must_use]
     pub const fn items(&self) -> Option<Items> {
-        self.items
+        match self.writes() {
+            Some(writes) => writes.items,
+            None => None,
+        }
     }
 
     /// Reports whether a second run with the same arguments changes nothing
@@ -264,18 +321,22 @@ impl Effects {
         match (self.change, self.idempotent, self.open_world) {
             (Change::Nothing, _, false) => "Effects: read-only, closed-world.",
             (Change::Nothing, _, true) => "Effects: read-only, open-world.",
-            (Change::Additive, false, false) => "Effects: additive, not idempotent, closed-world.",
-            (Change::Additive, false, true) => "Effects: additive, not idempotent, open-world.",
-            (Change::Additive, true, false) => "Effects: additive, idempotent, closed-world.",
-            (Change::Additive, true, true) => "Effects: additive, idempotent, open-world.",
-            (Change::Destructive, false, false) => {
+            (Change::Additive(_), false, false) => {
+                "Effects: additive, not idempotent, closed-world."
+            }
+            (Change::Additive(_), false, true) => "Effects: additive, not idempotent, open-world.",
+            (Change::Additive(_), true, false) => "Effects: additive, idempotent, closed-world.",
+            (Change::Additive(_), true, true) => "Effects: additive, idempotent, open-world.",
+            (Change::Destructive(_), false, false) => {
                 "Effects: destructive, not idempotent, closed-world."
             }
-            (Change::Destructive, false, true) => {
+            (Change::Destructive(_), false, true) => {
                 "Effects: destructive, not idempotent, open-world."
             }
-            (Change::Destructive, true, false) => "Effects: destructive, idempotent, closed-world.",
-            (Change::Destructive, true, true) => "Effects: destructive, idempotent, open-world.",
+            (Change::Destructive(_), true, false) => {
+                "Effects: destructive, idempotent, closed-world."
+            }
+            (Change::Destructive(_), true, true) => "Effects: destructive, idempotent, open-world.",
         }
     }
 }
@@ -299,11 +360,9 @@ impl Effects {
     /// ```
     #[must_use]
     pub fn writes_line(self, expect: bool) -> Option<String> {
-        if self.is_read_only() {
-            return None;
-        }
+        let writes = self.writes()?;
         let mut clauses = Vec::new();
-        match (self.replaces, expect) {
+        match (writes.replaces, expect) {
             (true, false) => clauses.push("replaces existing data, without a version check"),
             (true, true) => clauses.push("replaces existing data"),
             (false, _) => {}
@@ -311,7 +370,7 @@ impl Effects {
         if expect {
             clauses.push("--expect <VERSION> fails with a conflict when the data changed");
         }
-        match self.items {
+        match writes.items {
             Some(Items::AllOrNone) => clauses.push("applies all items or none"),
             Some(Items::PerItem) => {
                 clauses.push("reports each item and exits 1 when any item fails");
@@ -326,40 +385,34 @@ impl Effects {
 }
 
 /// How a command guards what it writes, as `commands list` writes it under
-/// `writes`: whether it replaces data, whether it takes crumbkit's
-/// `--expect`, and how a write of many items ends.
+/// `writes`: the guards that its effects declare, and whether it takes
+/// crumbkit's `--expect`, which the command tree holds.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub(crate) struct Writes {
-    /// Whether the command replaces existing data.
-    replaces: bool,
+pub(crate) struct Guards {
+    /// The guards that the command's effects declare.
+    writes: Writes,
     /// Whether the command takes crumbkit's `--expect`.
     expect: bool,
-    /// How a write of many items ends.
-    items: Option<Items>,
 }
 
 /// Returns the guards of a command with `effects` that takes crumbkit's
 /// `--expect` when `expect` is set, or `None` when the command declares no
 /// effects or is read-only.
-pub(crate) fn writes(effects: Option<Effects>, expect: bool) -> Option<Writes> {
-    let effects = effects.filter(|effects| !effects.is_read_only())?;
-    Some(Writes {
-        replaces: effects.replaces,
-        expect,
-        items: effects.items,
-    })
+pub(crate) fn guards(effects: Option<Effects>, expect: bool) -> Option<Guards> {
+    let writes = effects?.writes()?;
+    Some(Guards { writes, expect })
 }
 
 /// Serializes the guards as an object, such as
 /// `{"replaces":true,"expect":true,"items":null}`.
 ///
 /// This impl is written by hand so crumbkit needs no `serde_derive`.
-impl Serialize for Writes {
+impl Serialize for Guards {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         let mut writes = serializer.serialize_struct("Writes", 3)?;
-        writes.serialize_field("replaces", &self.replaces)?;
+        writes.serialize_field("replaces", &self.writes.replaces)?;
         writes.serialize_field("expect", &self.expect)?;
-        writes.serialize_field("items", &self.items.map(Items::name))?;
+        writes.serialize_field("items", &self.writes.items.map(Items::name))?;
         writes.end()
     }
 }
