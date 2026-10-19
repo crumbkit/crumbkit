@@ -258,7 +258,8 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   may change it ([behaviour/parsing/completion]).
 - crumbkit: `Effects::replacing`, `Effects::all_or_none` and
   `Effects::per_item` declare a command's write guards, which help prints
-  on a `Writes:` line and `commands list` writes under `writes`
+  on a `Writes:` line and `commands list` writes under `writes`; a `const`
+  that declares a guard on `Effects::read_only` fails to compile
   ([behaviour/effects/write-guards]).
 - crumbkit: [`Expect`] adds `--expect <VERSION>`, and a target at another
   version fails with `crumbkit::version::conflict`, whose recovery runs the
