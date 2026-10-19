@@ -180,25 +180,14 @@ pub(crate) fn report(rules: &str, problems: &[String]) {
     );
 }
 
-/// The rule that [`is_dashed_name`] checks, as a problem states it.
+/// The rule that `crumbkit::is_dashed` checks, as a problem states it. The
+/// grammar check applies the rule to resources and verbs, and the guide
+/// check to topic names.
+///
+/// The rule reads only the name's form. It cannot tell a plural noun from a
+/// singular one, so the grammar check accepts a resource named `book` as
+/// readily as `books`, and review checks that each resource is plural. A
+/// check for plurals would need an English word list and still miss
+/// irregular nouns.
 pub(crate) const DASHED_NAME: &str =
     "lowercase letters and digits in words joined by single dashes, starting with a letter";
-
-/// Reports whether `name` is lowercase ASCII letters and digits in words
-/// joined by single dashes, starting with a letter, such as `reading-lists`.
-/// The grammar check applies it to resources and verbs, and the guide check
-/// to topic names.
-///
-/// The check reads only the name's form. It cannot tell a plural noun from a
-/// singular one, so it accepts a resource named `book` as readily as `books`,
-/// and review checks that each resource is plural. A check for plurals would
-/// need an English word list and still miss irregular nouns.
-pub(crate) fn is_dashed_name(name: &str) -> bool {
-    name.starts_with(|c: char| c.is_ascii_lowercase())
-        && name.split('-').all(|word| {
-            !word.is_empty()
-                && word
-                    .chars()
-                    .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit())
-        })
-}

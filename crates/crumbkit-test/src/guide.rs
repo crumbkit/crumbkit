@@ -451,7 +451,7 @@ fn check_topics(command: &Command, guide: &Guide, problems: &mut Vec<String>) {
     let topics = guide.get_topics();
     for (index, topic) in topics.iter().enumerate() {
         let name = topic.name();
-        if !tree::is_dashed_name(name) {
+        if !crumbkit::is_dashed(name) {
             problems.push(format!("the topic name `{name}` is not {DASHED_NAME}"));
         }
         // `find_subcommand` resolves aliases, as `parse` does.
