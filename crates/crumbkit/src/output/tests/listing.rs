@@ -330,11 +330,11 @@ fn a_next_step_into_a_branch_the_run_did_not_parse_names_a_global_flag_of_the_ro
         .num_args(1..)
         .value_name("NAME");
     let moons = Command::new("moons").subcommand(Command::new("show").arg(names));
-    let mut output = parse_against(Tool::command().subcommand(moons), &[]);
+    let output = parse_against(Tool::command().subcommand(moons), &[]);
     let call = Call::new(&["moons", "show"]).arg("names").arg("json");
     let listing = two_of(2).next(call, "shows moons as JSON.");
 
-    let finished = finish_output(&mut output, PLANET_LISTING, listing);
+    let finished = finish_output(output, PLANET_LISTING, listing);
 
     assert_eq!(
         finished.err,

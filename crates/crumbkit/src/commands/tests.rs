@@ -167,10 +167,10 @@ struct Finished {
 
 /// Lists the branch that `words` name with `output`, and finishes the
 /// result into memory as a tool's handler does.
-fn finish(output: &mut Output, words: &[&str]) -> Finished {
+fn finish(mut output: Output, words: &[&str]) -> Finished {
     let mut out = Vec::new();
     let mut err = Vec::new();
-    let result: Result<Listing<CommandRow>, Error> = list(output, &GUIDE, &args(words));
+    let result: Result<Listing<CommandRow>, Error> = list(&mut output, &GUIDE, &args(words));
     let code = finish_to(
         &mut Sink::new(&mut out, &mut err),
         output,
@@ -428,7 +428,7 @@ fn the_rows_are_the_same_from_the_command_that_parse_returns_after_it_added_help
 
 #[test]
 fn the_limit_keeps_the_first_rows_and_the_total_counts_the_whole_branch() {
-    let finished = finish(&mut output(), &["--limit", "2"]);
+    let finished = finish(output(), &["--limit", "2"]);
 
     let expected = "\
 PATH         ABOUT
@@ -446,7 +446,7 @@ shelf books  Work with the books
 
 #[test]
 fn a_path_that_names_no_command_fails_and_its_recovery_lists_the_longest_visible_prefix() {
-    let finished = finish(&mut output(), &["books", "shw", "all"]);
+    let finished = finish(output(), &["books", "shw", "all"]);
 
     let expected = "\
 error: `shelf books shw` names no visible command
@@ -459,7 +459,7 @@ error: `shelf books shw` names no visible command
 
 #[test]
 fn a_path_that_names_a_hidden_command_fails_as_one_that_names_no_command() {
-    let finished = finish(&mut output(), &["books", "purge", "all"]);
+    let finished = finish(output(), &["books", "purge", "all"]);
 
     let expected = "\
 error: `shelf books purge` names no visible command
@@ -471,16 +471,16 @@ error: `shelf books purge` names no visible command
 
 #[test]
 fn a_path_whose_first_word_names_no_command_recovers_with_the_whole_tree() {
-    let finished = finish(&mut output(), &["comets"]);
+    let finished = finish(output(), &["comets"]);
 
     assert!(finished.err.contains("help:  run `shelf commands list`\n"));
 }
 
 #[test]
 fn the_recovery_has_no_next_step_when_the_runtime_tree_hides_commands_list() {
-    let mut output = Output::of(tool().mut_subcommand("commands", |commands| commands.hide(true)));
+    let output = Output::of(tool().mut_subcommand("commands", |commands| commands.hide(true)));
 
-    let finished = finish(&mut output, &["comets"]);
+    let finished = finish(output, &["comets"]);
 
     assert!(
         finished

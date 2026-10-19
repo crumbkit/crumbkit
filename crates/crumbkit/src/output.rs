@@ -7,7 +7,7 @@ mod columns;
 mod confirm;
 mod counted;
 mod direct;
-mod dry_run;
+pub(crate) mod dry_run;
 mod envelope;
 pub(crate) mod failure;
 pub(crate) mod fields;
@@ -51,9 +51,10 @@ mod tests;
 /// what the tool's guide decides about printing.
 ///
 /// [`parse`](crate::parse()) returns it beside the tool's parsed type, and
-/// a tool that parses with clap alone builds it with [`Output::new`]. A
-/// tool's `main` passes it to [`finish`] or [`stream`] with the handler's
-/// result.
+/// a tool that parses with clap alone builds it with [`Output::new`]. Both
+/// record `--dry-run`, which [`Output::is_dry_run`] reports. A tool's
+/// `main` passes it by value to [`finish`] or [`stream`] with the handler's
+/// result, as the last call of the run (ADR-0094).
 ///
 /// [`ViewFlags`] describes the view flags. A leaf whose document cannot use
 /// `--fields`, `--long` or `--full` leaves that flag out of its help, and
@@ -91,7 +92,8 @@ pub struct Output {
     /// `confirm` repeats with `--yes`.
     words: Vec<OsString>,
 
-    /// Whether the run is a dry run, which [`Output::dry_run`] records.
+    /// Whether the run is a dry run: `parse` read `--dry-run` on the
+    /// deepest command, or the tool passed the flag to [`Output::new`].
     dry_run: bool,
 
     /// Whether the caller passed `--no-input`.
@@ -106,9 +108,6 @@ pub struct Output {
     /// The most bytes that the run prints on standard output: the guide's
     /// budget or crumbkit's default, lowered by the environment (ADR-0046).
     budget: usize,
-
-    /// The bytes that the run has printed on standard output so far.
-    spent: usize,
 
     /// The exit codes that the tool's guide declares. A failure whose code
     /// one of them lists ends the run with that exit code (ADR-0037).
@@ -129,8 +128,8 @@ impl Output {
     /// bytes that one run prints on standard output (ADR-0046).
     pub const DEFAULT_BUDGET: usize = budget::DEFAULT;
 
-    /// Returns the bytes that the run can still print on standard output:
-    /// the output budget less what `finish` or a stream has printed.
+    /// Returns the output budget: the most bytes that the run prints on
+    /// standard output.
     ///
     /// The budget is the one that the tool's
     /// [`Guide::output_budget`](crate::help::Guide::output_budget) sets, or
@@ -138,10 +137,11 @@ impl Output {
     /// `<TOOL>_OUTPUT_BUDGET` when it holds a smaller whole number of
     /// bytes. A handler reads it before `finish` to fetch no more rows than
     /// can print. `finish` prints a result within it, as [`finish_to`]
-    /// describes (ADR-0046).
+    /// describes, and a stream prints within it from the first line, as
+    /// [`Streaming::budget`] reports (ADR-0046).
     #[must_use]
-    pub fn budget(&self) -> usize {
-        self.budget.saturating_sub(self.spent)
+    pub const fn budget(&self) -> usize {
+        self.budget
     }
 
     /// Builds the whole command tree that the run parsed against and
@@ -226,8 +226,34 @@ fn several_keys<T: Rows>(value: &T) -> bool {
 /// A tool's `main` calls it last with the handler's `result` and returns its
 /// exit code. It behaves as [`finish_to`] does with a sink over the process's
 /// standard output and standard error.
+///
+/// It takes `output` by value, because a run prints one result, so `main`
+/// cannot call it twice with one `Output` (ADR-0094):
+///
+/// ```compile_fail
+/// # #[derive(serde::Serialize, schemars::JsonSchema)]
+/// # struct Entry { position: u32 }
+/// # impl crumbkit::Row for Entry { const COLUMNS: &'static [&'static str] = &["position"]; }
+/// use crumbkit::{Document, Error, Output};
+///
+/// const ENTRIES: Document<Vec<Entry>> =
+///     Document::new("reading", "entries", 1, "The entries of a reading list.");
+///
+/// let output = Output::new(
+///     crumbkit::ViewFlags::new(),
+///     crumbkit::DryRun::default(),
+///     clap::Command::new("reading"),
+///     &crumbkit::help::Guide::new(),
+///     ["reading"],
+/// )
+/// .unwrap();
+/// let first: Result<Vec<Entry>, Error> = Ok(Vec::new());
+/// let second: Result<Vec<Entry>, Error> = Ok(Vec::new());
+/// crumbkit::finish(output, ENTRIES, first);
+/// crumbkit::finish(output, ENTRIES, second);
+/// ```
 pub fn finish<T: Rows, E: AsFailure>(
-    output: &mut Output,
+    output: Output,
     document: Document<T>,
     result: Result<T, E>,
 ) -> ExitCode {
@@ -273,11 +299,12 @@ pub fn finish<T: Rows, E: AsFailure>(
 /// is left out when the step's [`Call`](crate::Call) does not resolve in
 /// the command tree that `output` holds, and the exit code stays 0.
 ///
-/// `finish` takes `output` by `&mut` because it builds, in place, the branch
-/// of the command tree that a next step's call or a failure's `Run` call
-/// names, and nothing else (ADR-0015). A handler that reads `output` with
-/// `&mut`, such as [`commands::list`](crate::commands::list), runs before
-/// `finish`, and `main` passes its result in.
+/// `finish` takes `output` by value, because it is the last call of a run:
+/// it builds the branch of the command tree that a next step's call or a
+/// failure's `Run` call names, and nothing reads the `Output` after it
+/// (ADR-0015, ADR-0094). A handler that reads `output` with `&mut`, such as
+/// [`commands::list`](crate::commands::list), runs before `finish`, and
+/// `main` passes its result in.
 ///
 /// A [`Batch`](crate::Batch)'s rows print as a `Vec`'s do, and its JSON
 /// document also holds its failures under `failures`, which is present even
@@ -386,7 +413,7 @@ pub fn finish<T: Rows, E: AsFailure>(
 /// [books-show-7]: https://github.com/crumbkit/crumbkit/blob/main/examples/shelf/tests/golden/books-show-7.stderr
 pub fn finish_to<T: Rows, E: AsFailure, O: Write, W: Write>(
     sink: &mut Sink<O, W>,
-    output: &mut Output,
+    mut output: Output,
     document: Document<T>,
     result: Result<T, E>,
 ) -> u8 {
@@ -405,7 +432,7 @@ pub fn finish_to<T: Rows, E: AsFailure, O: Write, W: Write>(
     let span = crate::trace::spans::finish();
     #[cfg(feature = "tracing")]
     let _entered = span.enter();
-    let (exit, cut) = respond::respond(sink, output, spelling, document, result);
+    let (exit, cut) = respond::respond(sink, &mut output, spelling, document, result);
     #[cfg(feature = "tracing")]
     crate::trace::spans::exited(&span, exit);
     crate::events::finished(exit, sink.out.bytes(), truncated || cut, empty);

@@ -15,7 +15,7 @@
 //!
 //! use crumbkit::Output;
 //!
-//! fn edit(output: &mut Output, path: &str) -> ExitCode {
+//! fn edit(output: Output, path: &str) -> ExitCode {
 //!     let mut editor = Command::new("vi");
 //!     editor.arg(path);
 //!     crumbkit_child::hand_over(output, editor)
@@ -138,7 +138,11 @@ impl<T> Copy for Json<T> {}
 /// passed `--fields`. Both exit with the code of a refused command line,
 /// which is 2 unless the guide lists another. The module
 /// documentation lists the failures of a child that cannot start.
-pub fn hand_over(output: &mut Output, child: Command) -> ExitCode {
+///
+/// It takes `output` by value, as [`finish`](crumbkit::finish) does,
+/// because the child's run is the last thing the tool prints (ADR-0094).
+#[must_use]
+pub fn hand_over(output: Output, child: Command) -> ExitCode {
     hand_over_to(&mut Sink::standard(), output, child)
 }
 
@@ -146,7 +150,7 @@ pub fn hand_over(output: &mut Output, child: Command) -> ExitCode {
 /// `sink`.
 fn hand_over_to<O: Write, W: Write>(
     sink: &mut Sink<O, W>,
-    output: &mut Output,
+    mut output: Output,
     child: Command,
 ) -> ExitCode {
     if output.is_json() {
@@ -154,7 +158,7 @@ fn hand_over_to<O: Write, W: Write>(
             program: program(&child),
         };
         output.print_failure(sink, &failure);
-        return crumbkit::events::ended(no_json_exit(output), None);
+        return crumbkit::events::ended(no_json_exit(&output), None);
     }
     terminal(sink, output, child)
 }
@@ -175,8 +179,9 @@ fn hand_over_to<O: Write, W: Write>(
 /// `<tool>::child::failed` and returns the child's code, and its standard
 /// output is not read as the document. A child whose standard output is not
 /// a `T` fails with `<tool>::child::bad_json` and exit code 1.
+#[must_use]
 pub fn hand_over_json<T: Rows + DeserializeOwned>(
-    output: &mut Output,
+    output: Output,
     child: Command,
     json: Json<T>,
 ) -> ExitCode {
@@ -187,7 +192,7 @@ pub fn hand_over_json<T: Rows + DeserializeOwned>(
 /// failures printed to `sink`.
 fn hand_over_json_to<T: Rows + DeserializeOwned, O: Write, W: Write>(
     sink: &mut Sink<O, W>,
-    output: &mut Output,
+    mut output: Output,
     mut child: Command,
     json: Json<T>,
 ) -> ExitCode {
@@ -216,7 +221,7 @@ const TEXT_ONLY: &str = "this command hands the terminal to another program";
 /// `--fields`.
 fn terminal<O: Write, W: Write>(
     sink: &mut Sink<O, W>,
-    output: &mut Output,
+    mut output: Output,
     mut child: Command,
 ) -> ExitCode {
     if let Some(code) = output.refuse_fields_for_text(sink, TEXT_ONLY) {
@@ -229,7 +234,7 @@ fn terminal<O: Write, W: Write>(
         .stderr(Stdio::inherit());
     let program = program(&child);
     let status = signals::while_running(|| child.status());
-    respond_text(sink, output, program, status)
+    respond_text(sink, &mut output, program, status)
 }
 
 /// Returns the exit code of a child that held the terminal and ended with
@@ -256,7 +261,7 @@ fn respond_text<O: Write, W: Write>(
 /// returns the exit code.
 fn respond_json<T: Rows + DeserializeOwned, O: Write, W: Write>(
     sink: &mut Sink<O, W>,
-    output: &mut Output,
+    mut output: Output,
     document: Document<T>,
     program: String,
     captured: io::Result<process::Output>,
@@ -264,7 +269,7 @@ fn respond_json<T: Rows + DeserializeOwned, O: Write, W: Write>(
     let captured = match captured {
         Ok(captured) => captured,
         Err(error) => {
-            return fail(sink, output, &ChildError::start(program, error));
+            return fail(sink, &mut output, &ChildError::start(program, error));
         }
     };
     if !captured.status.success() {
@@ -286,7 +291,7 @@ fn respond_json<T: Rows + DeserializeOwned, O: Write, W: Write>(
                 document: document.to_string(),
                 error,
             };
-            fail(sink, output, &failure)
+            fail(sink, &mut output, &failure)
         }
     }
 }

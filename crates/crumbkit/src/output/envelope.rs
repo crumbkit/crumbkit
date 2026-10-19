@@ -155,15 +155,16 @@ impl<T, D: Serialize, M: Serialize> Serialize for Wrapped<'_, T, D, M> {
 }
 
 /// One serialized row, limited to `columns` and written in their order.
-pub(super) struct Selected<'a> {
+pub(super) struct Selected<'a, C = &'a str> {
     pub(super) row: &'a Value,
-    pub(super) columns: &'a [&'a str],
+    pub(super) columns: &'a [C],
 }
 
-impl Serialize for Selected<'_> {
+impl<C: AsRef<str>> Serialize for Selected<'_, C> {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         let mut map = serializer.serialize_map(Some(self.columns.len()))?;
-        for &name in self.columns {
+        for name in self.columns {
+            let name = name.as_ref();
             // A name that is not a field of the row writes `null`, as the
             // table writes `-`.
             map.serialize_entry(name, self.row.get(name).unwrap_or(&Value::Null))?;

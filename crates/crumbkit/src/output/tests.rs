@@ -103,7 +103,14 @@ enum Command {
 fn parse(flags: &[&str]) -> Result<Output, clap::Error> {
     let args: Vec<&str> = ["tool", "list"].iter().chain(flags).copied().collect();
     let tool = Tool::try_parse_from(&args)?;
-    Ok(Output::new(tool.view, Tool::command(), &Guide::new(), args).unwrap())
+    Ok(Output::new(
+        tool.view,
+        crate::DryRun::default(),
+        Tool::command(),
+        &Guide::new(),
+        args,
+    )
+    .unwrap())
 }
 
 /// What `finish_to` returned and wrote.
@@ -135,7 +142,15 @@ fn build_output(view: ViewFlags, args: &[&str]) -> Built {
     let mut out = Vec::new();
     let mut err = Vec::new();
     let mut sink = Sink::new(&mut out, &mut err);
-    let result = Output::new_to(&mut sink, view, Tool::command(), &Guide::new(), args);
+    let dry_run = crate::DryRun::default();
+    let result = Output::new_to(
+        &mut sink,
+        view,
+        dry_run,
+        Tool::command(),
+        &Guide::new(),
+        args,
+    );
     Built {
         result,
         out: String::from_utf8(out).unwrap(),
@@ -157,19 +172,19 @@ fn parse_against(command: clap::Command, flags: &[&str]) -> Output {
 fn built_with(mut command: clap::Command, guide: &Guide, args: &[&str]) -> Output {
     let matches = command.try_get_matches_from_mut(args).unwrap();
     let view = ViewFlags::from_arg_matches(&matches).unwrap();
-    Output::new(view, command, guide, args).unwrap()
+    Output::new(view, crate::DryRun::default(), command, guide, args).unwrap()
 }
 
 /// Parses `flags`, builds the output as a tool that parses with clap alone
 /// builds it, and finishes `value` into memory.
 fn finish_with<T: Rows>(flags: &[&str], document: Document<T>, value: T) -> Finished {
-    let mut output = parse_against(Tool::command(), flags);
-    finish_output(&mut output, document, value)
+    let output = parse_against(Tool::command(), flags);
+    finish_output(output, document, value)
 }
 
 /// Finishes `value` into memory as an `Ok` result with the flags and command
 /// in `output`.
-fn finish_output<T: Rows>(output: &mut Output, document: Document<T>, value: T) -> Finished {
+fn finish_output<T: Rows>(output: Output, document: Document<T>, value: T) -> Finished {
     let mut out = Vec::new();
     let mut err = Vec::new();
     let mut sink = Sink::new(&mut out, &mut err);
@@ -441,7 +456,14 @@ fn the_valid_fields_of_a_row_type_with_variants_are_each_variants_fields_once_in
 fn the_flags_parse_before_and_after_the_subcommand() {
     let words = ["tool", "--json", "list", "--long"];
     let view = Tool::try_parse_from(words).unwrap().view;
-    let before = Output::new(view, Tool::command(), &Guide::new(), words).unwrap();
+    let before = Output::new(
+        view,
+        crate::DryRun::default(),
+        Tool::command(),
+        &Guide::new(),
+        words,
+    )
+    .unwrap();
 
     assert_eq!(before.view(), &View::Json(Selection::Long));
 }
@@ -467,7 +489,7 @@ fn a_failed_write_exits_with_code_1_and_reports_the_cause() {
 
     let code = finish_to(
         &mut sink,
-        &mut parse_against(Tool::command(), &[]),
+        parse_against(Tool::command(), &[]),
         PLANETS,
         result,
     );
@@ -487,7 +509,7 @@ fn a_reader_that_closes_the_pipe_early_still_exits_with_code_0_and_no_error() {
 
     let code = finish_to(
         &mut sink,
-        &mut parse_against(Tool::command(), &[]),
+        parse_against(Tool::command(), &[]),
         PLANETS,
         result,
     );

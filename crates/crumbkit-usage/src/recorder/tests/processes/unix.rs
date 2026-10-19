@@ -125,7 +125,7 @@ fn the_hand_over_test_s_child_hands_the_terminal_to_a_child_that_ctrl_c_ends() {
     )]
     let mut shell = std::process::Command::new("sh");
     shell.args(["-c", "kill -INT 0; sleep 5"]);
-    let code = crumbkit_child::hand_over(&mut super::bare_output(), shell);
+    let code = crumbkit_child::hand_over(super::bare_output(), shell);
     let number = if code == ExitCode::from(130) { 130 } else { 1 };
     #[expect(
         clippy::disallowed_methods,
@@ -167,7 +167,7 @@ fn the_owned_hand_over_test_s_child_raises_sigint_after_its_child_exits() {
     )]
     let mut shell = std::process::Command::new("sh");
     shell.args(["-c", "exit 0"]);
-    let _ = crumbkit_child::hand_over(&mut super::bare_output(), shell);
+    let _ = crumbkit_child::hand_over(super::bare_output(), shell);
     signal_hook::low_level::raise(signal_hook::consts::SIGINT).unwrap();
     std::thread::sleep(Duration::from_millis(200));
     #[expect(
@@ -210,7 +210,7 @@ fn the_late_hand_over_test_s_child_raises_sigint_after_its_child_exits() {
     )]
     let mut shell = std::process::Command::new("sh");
     shell.args(["-c", "exit 0"]);
-    let _ = crumbkit_child::hand_over(&mut super::bare_output(), shell);
+    let _ = crumbkit_child::hand_over(super::bare_output(), shell);
     signal_hook::low_level::raise(signal_hook::consts::SIGINT).unwrap();
     std::thread::sleep(Duration::from_millis(200));
     #[expect(

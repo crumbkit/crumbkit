@@ -11,14 +11,21 @@ use crate::{Output, ViewFlags};
 /// tool's `main` builds it after it parsed with clap alone or built the
 /// flags itself.
 fn built(view: ViewFlags) -> Output {
-    Output::new(view, Tool::command(), &Guide::new(), ["tool", "list"]).unwrap()
+    Output::new(
+        view,
+        crate::DryRun::default(),
+        Tool::command(),
+        &Guide::new(),
+        ["tool", "list"],
+    )
+    .unwrap()
 }
 
 #[test]
 fn an_output_built_with_json_and_fields_prints_what_the_same_parsed_flags_print() {
-    let mut built = built(ViewFlags::new().json(true).fields(vec!["name".to_owned()]));
+    let built = built(ViewFlags::new().json(true).fields(vec!["name".to_owned()]));
 
-    let finished = finish_output(&mut built, PLANETS, vec![mercury(), saturn()]);
+    let finished = finish_output(built, PLANETS, vec![mercury(), saturn()]);
     let parsed = finish_with(
         &["--json", "--fields", "name"],
         PLANETS,
@@ -32,9 +39,9 @@ fn an_output_built_with_json_and_fields_prints_what_the_same_parsed_flags_print(
 
 #[test]
 fn an_output_built_with_long_prints_the_long_columns_as_the_parsed_flag_does() {
-    let mut built = built(ViewFlags::new().long(true));
+    let built = built(ViewFlags::new().long(true));
 
-    let finished = finish_output(&mut built, PLANETS, vec![mercury()]);
+    let finished = finish_output(built, PLANETS, vec![mercury()]);
     let parsed = finish_with(&["--long"], PLANETS, vec![mercury()]);
 
     assert_eq!(finished.out, parsed.out);
@@ -57,8 +64,8 @@ fn an_output_built_with_full_and_without_json_is_refused_as_the_parsed_flags_are
             .err
             .contains("--full prints every field of every row in JSON")
     );
-    let mut admitted = admitted.result.unwrap();
-    let twin = finish_output(&mut admitted, PLANETS, vec![mercury()]);
+    let admitted = admitted.result.unwrap();
+    let twin = finish_output(admitted, PLANETS, vec![mercury()]);
     assert_eq!(twin.code, std::process::ExitCode::SUCCESS);
 }
 
@@ -66,6 +73,7 @@ fn an_output_built_with_full_and_without_json_is_refused_as_the_parsed_flags_are
 fn output_new_keeps_the_words_after_the_program_name() {
     let output = Output::new(
         ViewFlags::new(),
+        crate::DryRun::default(),
         Tool::command(),
         &Guide::new(),
         ["tool", "show", "Mars"],

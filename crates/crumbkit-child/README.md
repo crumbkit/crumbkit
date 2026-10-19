@@ -28,7 +28,7 @@ use std::process::{Command, ExitCode};
 
 use crumbkit::Output;
 
-fn edit(output: &mut Output, path: &str) -> ExitCode {
+fn edit(output: Output, path: &str) -> ExitCode {
     let mut editor = Command::new("vi");
     editor.arg(path);
     crumbkit_child::hand_over(output, editor)

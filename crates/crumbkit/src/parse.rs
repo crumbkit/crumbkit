@@ -39,8 +39,10 @@ pub(crate) mod walk;
 /// returned `Output` to [`finish`](crate::finish()) with the handler's
 /// result. `parse` reads the view flags that the tool's type flattens as
 /// [`ViewFlags`](crate::ViewFlags) by their ids, before the tool's type
-/// takes them. A tool without goal headings or topics passes
-/// `&Guide::new()`:
+/// takes them, and reads [`DryRun`](crate::DryRun)'s `--dry-run` from the
+/// deepest command in the same way, which
+/// [`Output::is_dry_run`](crate::Output::is_dry_run) reports. A tool
+/// without goal headings or topics passes `&Guide::new()`:
 ///
 /// ```no_run
 /// use std::process::ExitCode;
@@ -63,7 +65,7 @@ pub(crate) mod walk;
 ///         Ok(parsed) => parsed,
 ///         Err(stop) => return stop.code(),
 ///     };
-///     // Run the command, then return `crumbkit::finish(&mut output, ...)`.
+///     // Run the command, then return `crumbkit::finish(output, ...)`.
 ///     ExitCode::SUCCESS
 /// }
 /// ```
@@ -388,10 +390,11 @@ where
             parsed,
             view: Ok(view),
             no_input,
+            dry_run,
         }) => {
             return Ok((
                 parsed,
-                Output::parsed(view, command, words, no_input, guide, &path),
+                Output::parsed(view, command, words, dry_run, no_input, guide, &path),
             ));
         }
         Ok(Attempt {

@@ -86,8 +86,7 @@ enum Command {
 /// output, and returns the exit code and the standard output.
 fn finish(args: &[&str], failure: PluginFailure) -> (u8, String) {
     let mut sink = Sink::new(Vec::new(), Vec::new());
-    let Ok((_, mut output)) =
-        parse_to::<Tool, _, _, _, _>(&mut sink, Tool::command(), &GUIDE, args)
+    let Ok((_, output)) = parse_to::<Tool, _, _, _, _>(&mut sink, Tool::command(), &GUIDE, args)
     else {
         panic!("parse refused {args:?}");
     };
@@ -95,7 +94,7 @@ fn finish(args: &[&str], failure: PluginFailure) -> (u8, String) {
     let result: Result<Vec<Planet>, PluginFailure> = Err(failure);
     let code = finish_to(
         &mut Sink::new(&mut out, Vec::new()),
-        &mut output,
+        output,
         PLANETS,
         result,
     );

@@ -99,16 +99,11 @@ fn finish_line(
     batch: Batch<Page, Error>,
 ) -> Finished {
     let guide = Guide::new().output_budget(budget, "the tests print little");
-    let mut output = super::built_with(Tool::command(), &guide, args);
+    let output = super::built_with(Tool::command(), &guide, args);
     let mut out = Vec::new();
     let mut err = Vec::new();
     let result: Result<_, Error> = Ok(batch);
-    let code = finish_to(
-        &mut Sink::new(&mut out, &mut err),
-        &mut output,
-        document,
-        result,
-    );
+    let code = finish_to(&mut Sink::new(&mut out, &mut err), output, document, result);
     Finished {
         code: ExitCode::from(code),
         out,

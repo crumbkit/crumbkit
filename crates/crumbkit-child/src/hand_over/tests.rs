@@ -51,7 +51,14 @@ struct Tool {
 fn output(flags: &[&str]) -> Output {
     let words: Vec<&str> = ["vault"].iter().chain(flags).copied().collect();
     let view = Tool::try_parse_from(&words).unwrap().view;
-    Output::new(view, Tool::command(), &Guide::new(), words).unwrap()
+    Output::new(
+        view,
+        crumbkit::DryRun::default(),
+        Tool::command(),
+        &Guide::new(),
+        words,
+    )
+    .unwrap()
 }
 
 /// What a response returned and wrote.
@@ -109,21 +116,13 @@ fn text(status: io::Result<ExitStatus>) -> Responded {
 /// Returns what `respond_json` does under `--json` and `flags` for a child
 /// that printed `stdout` and ended with `status`.
 fn json(flags: &[&str], status: ExitStatus, stdout: &str) -> Responded {
-    let mut output = output(&[&["--json"], flags].concat());
+    let output = output(&[&["--json"], flags].concat());
     let captured = process::Output {
         status,
         stdout: stdout.as_bytes().to_vec(),
         stderr: Vec::new(),
     };
-    respond(|sink| {
-        respond_json(
-            sink,
-            &mut output,
-            BOOKS,
-            "vault-log".to_owned(),
-            Ok(captured),
-        )
-    })
+    respond(|sink| respond_json(sink, output, BOOKS, "vault-log".to_owned(), Ok(captured)))
 }
 
 #[test]
@@ -267,13 +266,13 @@ const MISSING: &str = "crumbkit-test-no-such-program";
 #[track_caller]
 fn admits(refused: &[&str], flags: &[&str], json: bool) {
     assert_one_word_apart(refused, flags);
-    let mut output = output(flags);
+    let output = output(flags);
     let responded = respond(|sink| {
         let child = command(MISSING);
         if json {
-            hand_over_json_to(sink, &mut output, child, BOOKS_JSON)
+            hand_over_json_to(sink, output, child, BOOKS_JSON)
         } else {
-            hand_over_to(sink, &mut output, child)
+            hand_over_to(sink, output, child)
         }
     });
     let printed = format!("{}{}", responded.out, responded.err);
@@ -286,10 +285,10 @@ const BOOKS_JSON: Json<Vec<Book>> = Json::new(&["--json"], BOOKS);
 #[test]
 fn json_for_a_child_without_a_json_form_is_refused_with_no_json_before_it_runs() {
     admits(&["--json"], &[], false);
-    let mut output = output(&["--json"]);
+    let output = output(&["--json"]);
     let responded = respond(|sink| {
         let child = command(MISSING);
-        hand_over_to(sink, &mut output, child)
+        hand_over_to(sink, output, child)
     });
 
     assert_eq!(responded.code, ExitCode::from(2));
@@ -308,10 +307,10 @@ fn fields_without_json_are_refused_with_exit_code_2_before_the_child_runs() {
         &["--json", "--fields", "title"],
         true,
     );
-    let mut output = output(&["--fields", "title"]);
+    let output = output(&["--fields", "title"]);
     let responded = respond(|sink| {
         let child = command(MISSING);
-        hand_over_json_to(sink, &mut output, child, BOOKS_JSON)
+        hand_over_json_to(sink, output, child, BOOKS_JSON)
     });
 
     assert_eq!(responded.code, ExitCode::from(2));
@@ -330,10 +329,10 @@ fn an_unknown_field_under_json_is_refused_before_the_child_runs() {
         &["--json", "--fields", "title"],
         true,
     );
-    let mut output = output(&["--json", "--fields", "author"]);
+    let output = output(&["--json", "--fields", "author"]);
     let responded = respond(|sink| {
         let child = command(MISSING);
-        hand_over_json_to(sink, &mut output, child, BOOKS_JSON)
+        hand_over_json_to(sink, output, child, BOOKS_JSON)
     });
 
     assert_eq!(responded.code, ExitCode::from(2));
@@ -357,8 +356,15 @@ const NO_JSON_3: Guide = Guide::new().exits(&[
 fn no_json_exit(guide: &'static Guide) -> ExitCode {
     let words = ["vault", "--json"];
     let view = Tool::try_parse_from(words).unwrap().view;
-    let mut output = Output::new(view, Tool::command(), guide, words).unwrap();
-    respond(|sink| hand_over_to(sink, &mut output, command(MISSING))).code
+    let output = Output::new(
+        view,
+        crumbkit::DryRun::default(),
+        Tool::command(),
+        guide,
+        words,
+    )
+    .unwrap();
+    respond(|sink| hand_over_to(sink, output, command(MISSING))).code
 }
 
 #[test]
@@ -379,14 +385,21 @@ fn dotted(flags: &[&str]) -> Output {
     const GUIDE: Guide = Guide::new().spelling(DOTS);
     let words: Vec<&str> = ["vault"].iter().chain(flags).copied().collect();
     let view = Tool::try_parse_from(&words).unwrap().view;
-    Output::new(view, Tool::command(), &GUIDE, words).unwrap()
+    Output::new(
+        view,
+        crumbkit::DryRun::default(),
+        Tool::command(),
+        &GUIDE,
+        words,
+    )
+    .unwrap()
 }
 
 #[test]
 fn a_guide_with_a_custom_spelling_prints_it_through_hand_over_without_a_further_argument() {
-    let mut output = dotted(&["--json"]);
+    let output = dotted(&["--json"]);
 
-    let responded = respond(|sink| hand_over_to(sink, &mut output, command("vi")));
+    let responded = respond(|sink| hand_over_to(sink, output, command("vi")));
 
     assert!(
         responded.out.contains(r#""code":"vault.child.no_json""#),
@@ -397,11 +410,10 @@ fn a_guide_with_a_custom_spelling_prints_it_through_hand_over_without_a_further_
 
 #[test]
 fn a_guide_with_a_custom_spelling_prints_it_through_hand_over_json_without_a_further_argument() {
-    let mut output = dotted(&["--json", "--fields", "author"]);
+    let output = dotted(&["--json", "--fields", "author"]);
     let json = Json::new(&["--json"], BOOKS);
 
-    let responded =
-        respond(|sink| hand_over_json_to(sink, &mut output, command("vault-log"), json));
+    let responded = respond(|sink| hand_over_json_to(sink, output, command("vault-log"), json));
 
     assert!(
         responded.out.contains(r#""code":"vault.cli.usage""#),

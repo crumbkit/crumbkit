@@ -8,7 +8,7 @@ use std::io::Write;
 use clap::{ArgMatches, Args, Command};
 
 use super::failure::Printing;
-use super::{Output, budget};
+use super::{DryRun, Output, budget};
 use crate::Sink;
 use crate::help::Guide;
 use crate::help::rename::Renames;
@@ -156,8 +156,9 @@ impl ViewFlags {
 impl Output {
     /// Returns the output of a run that parsed `args`, the command line
     /// with the program name first, against `command` with clap alone,
-    /// with the view flags `view` and the tool's `guide`, or the [`Stop`]
-    /// of a run whose view flags cannot work together.
+    /// with the view flags `view`, the dry-run flag `dry_run` and the
+    /// tool's `guide`, or the [`Stop`] of a run whose view flags cannot
+    /// work together.
     ///
     /// [`parse`](crate::parse()) returns the `Output` of a tool that parses
     /// with crumbkit. A tool that parses with clap alone, or that parses
@@ -166,7 +167,7 @@ impl Output {
     /// ```
     /// use clap::{CommandFactory, Parser};
     /// use crumbkit::help::Guide;
-    /// use crumbkit::{Output, ViewFlags};
+    /// use crumbkit::{DryRun, Output, ViewFlags};
     ///
     /// /// List the books in a small catalogue.
     /// #[derive(Parser)]
@@ -177,9 +178,14 @@ impl Output {
     ///
     /// let args = ["shelf", "--json"];
     /// let cli = Cli::try_parse_from(args).unwrap();
-    /// let output = Output::new(cli.view, Cli::command(), &Guide::new(), args).unwrap();
-    /// assert!(output.is_json());
+    /// let output = Output::new(cli.view, DryRun::default(), Cli::command(), &Guide::new(), args);
+    /// assert!(output.unwrap().is_json());
     /// ```
+    ///
+    /// `dry_run` is the [`DryRun`] that the command parsed, which
+    /// [`Output::is_dry_run`] reports and `finish` marks the result with.
+    /// A tool without the flag passes `DryRun::default()`, and the run is
+    /// no dry run.
     ///
     /// The `Output` keeps `command`, which `finish` renders a listing's next
     /// step and a failure's [`Recovery::Run`](crate::Recovery::Run) call
@@ -218,6 +224,7 @@ impl Output {
     /// prints the refusal elsewhere calls [`Output::new_to`].
     pub fn new<I, T>(
         view: ViewFlags,
+        dry_run: DryRun,
         command: Command,
         guide: &Guide,
         args: I,
@@ -226,7 +233,7 @@ impl Output {
         I: IntoIterator<Item = T>,
         T: Into<OsString>,
     {
-        Self::new_to(&mut Sink::standard(), view, command, guide, args)
+        Self::new_to(&mut Sink::standard(), view, dry_run, command, guide, args)
     }
 
     /// Returns the output of a run as [`Output::new`] does, and prints the
@@ -240,6 +247,7 @@ impl Output {
     pub fn new_to<I, T, O, E, R>(
         sink: &mut Sink<O, E, R>,
         view: ViewFlags,
+        dry_run: DryRun,
         command: Command,
         guide: &Guide,
         args: I,
@@ -255,7 +263,10 @@ impl Output {
         match View::try_from(view) {
             Ok(view) => {
                 let path = crate::command_path(&command, guide, &words);
-                Ok(Self::parsed(view, command, words, false, guide, &path))
+                let dry_run = dry_run.is_on();
+                Ok(Self::parsed(
+                    view, command, words, dry_run, false, guide, &path,
+                ))
             }
             Err(refusal) => {
                 let mut command = command;
@@ -270,14 +281,16 @@ impl Output {
 
     /// Returns the output of a run that parsed `words`, the words after the
     /// program name, against `command`, with the view flags `view`, whether
-    /// the caller passed `--no-input`, and the terminal detection, output
-    /// budget, JSON layout, exit codes and renames of `guide`. The renames of
-    /// the guide's leaf at `path`, the real names of the parsed command's
-    /// subcommands from the root, come before the guide's (ADR-0060).
+    /// the caller passed `--dry-run` and `--no-input`, and the terminal
+    /// detection, output budget, JSON layout, exit codes and renames of
+    /// `guide`. The renames of the guide's leaf at `path`, the real names of
+    /// the parsed command's subcommands from the root, come before the
+    /// guide's (ADR-0060).
     pub(crate) fn parsed(
         view: View,
         command: Command,
         words: Vec<OsString>,
+        dry_run: bool,
         no_input: bool,
         guide: &Guide,
         path: &[String],
@@ -288,6 +301,7 @@ impl Output {
             .find(|leaf| leaf.path().iter().eq(path.iter()));
         Self {
             words,
+            dry_run,
             no_input,
             renames: Renames::with_leaf(guide, leaf),
             ..Self::stopped(view, command, guide)
@@ -313,7 +327,6 @@ impl Output {
             json_layout: guide.get_json_layout(),
             budget: budget::from_environment(budget, tool),
             spelling: guide.get_spelling().for_tool(tool),
-            spent: 0,
             exits: guide.get_exits(),
             renames: Renames::of(guide),
         }

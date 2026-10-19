@@ -8,7 +8,7 @@ use crate::Row;
 use crate::output::envelope::{Extras, Selected, write_document};
 use crate::output::{JsonLayout, lines, table, unwrapped};
 
-impl<R: Row, O: Write, W: Write> Streaming<'_, R, O, W> {
+impl<R: Row, O: Write, W: Write> Streaming<R, O, W> {
     /// Writes `item` to the line, in the format that the flags choose.
     pub(super) fn render(&mut self, item: &R) -> io::Result<()> {
         let line = &mut self.line;
@@ -27,7 +27,7 @@ impl<R: Row, O: Write, W: Write> Streaming<'_, R, O, W> {
                 &Extras::none(),
             );
         }
-        if lines::chosen::<R>(self.view) {
+        if lines::chosen::<R>(&self.view) {
             line.extend_from_slice(lines::line(item)?.as_bytes());
             return Ok(());
         }
@@ -49,7 +49,7 @@ impl<R: Row, O: Write, W: Write> Streaming<'_, R, O, W> {
             let cells: Vec<Cow<'_, str>> = self
                 .columns
                 .iter()
-                .map(|name| table::cell(row.get(name)))
+                .map(|name| table::cell(row.get(name.as_ref())))
                 .collect();
             table::write_line(line, &cells, &self.widths)
         }

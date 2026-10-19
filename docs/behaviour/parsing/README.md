@@ -20,9 +20,9 @@ On success, `parse` returns the tool's parsed type and an
 view flags, the command tree, the guide's settings with the spelling of its
 codes, the words the caller
 typed with any values that a [picker](../effects/pickers.md) added, whether
-the caller passed `--no-input`, and the code renames of the leaf that the
-words name. `Output::confirm` repeats those words with `--yes` in its
-recovery.
+the caller passed `--no-input` or `--dry-run`, and the code renames of the
+leaf that the words name. `Output::confirm` repeats those words with `--yes`
+in its recovery.
 
 A tool flattens [`ViewFlags`](../../../crates/crumbkit/src/output/build.rs)
 into its clap types to accept `--json`, `--fields`, `--long` and `--full`.
@@ -31,9 +31,11 @@ reads them through the `Output`. A tool that does not flatten `ViewFlags`
 parses with every view flag off.
 
 A tool that parses with clap alone builds its `Output` with
-`Output::new(view, command, &GUIDE, args)`, where `args` is the argv with
-the program name first. `Output::new` returns `Err` with the `Stop` of a
-refused command line when `--full` comes without `--json` or `--fields`
+`Output::new(view, dry_run, command, &GUIDE, args)`, where `dry_run` is the
+`DryRun` that the command parsed, or `DryRun::default()` in a tool without
+the flag, and `args` is the argv with the program name first. `Output::new`
+returns `Err` with the `Stop` of a refused command line when `--full` comes
+without `--json` or `--fields`
 comes with `--long` or `--full`, after it printed the refusal on standard
 error, so a tool's `main` returns the stop's code as it does after `parse`.
 `Output::new_to` prints the refusal to a sink instead. `Output::new` finds
@@ -79,15 +81,16 @@ tree.
   [schema commands](../schemas/commands.md), build it through
   `Output::command`.
 
-`finish` and those commands therefore take `&mut Output`, a handler that
-reads the tree runs before `finish`, and the work of a run grows with the
-command typed. A `Call` that does not resolve against the tree is left out,
+Those commands therefore take `&mut Output`, `finish` takes the `Output`
+by value because nothing reads it after, a handler that reads the tree runs
+before `finish`, and the work of a run grows with the command typed. A
+`Call` that does not resolve against the tree is left out,
 or prints as `Recovery::None`. crumbkit prints a hidden command or flag only
 where the caller typed it. The rustdoc of
 [`Output::command`](../../../crates/crumbkit/src/output.rs) states what it
 builds.
 
-Why: ADR-0015, ADR-0076.
+Why: ADR-0015, ADR-0076, ADR-0094.
 
 ## Dashed forms of command names
 

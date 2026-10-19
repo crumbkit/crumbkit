@@ -24,7 +24,7 @@ fn room_counts_a_pretty_document_s_rows_as_the_document_prints_them() {
         .json_layout(JsonLayout::Pretty {
             reason: "the readers expect it",
         });
-    let mut output = guided(&guide, &["--json", "--fields", "story"]);
+    let output = guided(&guide, &["--json", "--fields", "story"]);
     let mut room = output.room(STAR_BATCH);
     let mut batch = answered(Vec::new());
     assert!(room.has_room(&batch));
@@ -32,15 +32,11 @@ fn room_counts_a_pretty_document_s_rows_as_the_document_prints_them() {
     batch = answered((1..=3).map(star).collect());
     assert!(room.has_room(&batch));
 
-    let finished = finish_output(&mut output, STAR_BATCH, batch);
+    let finished = finish_output(output, STAR_BATCH, batch);
 
     assert_eq!(room.printed(), finished.out.len(), "{}", finished.out);
     let flags = ["--json", "--fields", "story"];
-    let nothing = finish_output(
-        &mut guided(&guide, &flags),
-        STAR_BATCH,
-        answered(Vec::new()),
-    );
+    let nothing = finish_output(guided(&guide, &flags), STAR_BATCH, answered(Vec::new()));
     assert_eq!(empty, nothing.out.len());
 }
 
@@ -58,7 +54,7 @@ fn a_table_batch_fetched_through_room_prints_its_rows_that_fit_and_names_the_res
 {
     let keys: Vec<String> = (1..=20).map(|number| star(number).name).collect();
     for flags in [&[][..], &["--json"]] {
-        let mut output = budgeted(1024, flags);
+        let output = budgeted(1024, flags);
         let mut room = output.room(STAR_BATCH);
         let mut batch = Batch::new(&["show"], "names", &keys);
         for number in 1..=20 {
@@ -69,7 +65,7 @@ fn a_table_batch_fetched_through_room_prints_its_rows_that_fit_and_names_the_res
         }
         let fetched = batch.rows().len();
 
-        let finished = finish_output(&mut output, STAR_BATCH, batch);
+        let finished = finish_output(output, STAR_BATCH, batch);
 
         assert!(fetched > 1 && fetched < 20, "{flags:?}: {fetched}");
         assert!(finished.out.len() <= 1024, "{flags:?}: {}", finished.out);
@@ -101,7 +97,7 @@ fn a_table_batch_fetched_through_room_prints_its_rows_that_fit_and_names_the_res
 
 #[test]
 fn room_counts_a_text_table_with_its_widest_cells() {
-    let mut output = budgeted(1 << 20, &[]);
+    let output = budgeted(1 << 20, &[]);
     let mut room = output.room(STAR_BATCH);
     let rows = |count: usize| -> Vec<Star> {
         (1..=count)
@@ -119,7 +115,7 @@ fn room_counts_a_text_table_with_its_widest_cells() {
     let batch = answered(rows(4));
     assert!(room.has_room(&batch));
 
-    let finished = finish_output(&mut output, STAR_BATCH, batch);
+    let finished = finish_output(output, STAR_BATCH, batch);
 
     assert_eq!(room.printed(), finished.out.len(), "{}", finished.out);
     let mut small = budgeted(1024, &[]).room(STAR_BATCH);
@@ -150,11 +146,11 @@ fn room_counts_each_row_of_a_row_type_with_its_own_line_as_the_line_it_prints() 
     let mut batch = Batch::new(&["show"], "names", &keys);
     batch.push(Ok(Answer("Io".to_owned(), Some(1610))));
     batch.push(Ok(Answer("Titan".to_owned(), None)));
-    let mut output = budgeted(1 << 20, &[]);
+    let output = budgeted(1 << 20, &[]);
     let mut room = output.room(ANSWERS);
     assert!(room.has_room(&batch));
 
-    let finished = finish_output(&mut output, ANSWERS, batch);
+    let finished = finish_output(output, ANSWERS, batch);
 
     assert_eq!(finished.out, "Io 1610\n[\"Titan\",null]\n");
     assert_eq!(room.printed(), finished.out.len());

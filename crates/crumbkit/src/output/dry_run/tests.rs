@@ -9,7 +9,7 @@ use serde::Serialize;
 use super::DryRun;
 use crate::Envelope;
 use crate::help::Guide;
-use crate::{Document, Error, Output, Prose, Row, Sink, finish_to};
+use crate::{Document, Error, Output, Prose, Row, Sink, ViewFlags, finish_to};
 
 /// A removed planet.
 #[derive(Serialize, JsonSchema)]
@@ -31,7 +31,7 @@ struct Tool {
     #[command(subcommand)]
     command: Commands,
     #[command(flatten)]
-    view: crate::ViewFlags,
+    view: ViewFlags,
 }
 
 #[derive(Subcommand)]
@@ -50,8 +50,8 @@ struct Finished {
     err: String,
 }
 
-/// Parses `tool remove` followed by `flags`, records the dry run, and
-/// finishes `result` into memory with `document`.
+/// Parses `tool remove` followed by `flags`, builds the output with the
+/// parsed dry-run flag, and finishes `result` into memory with `document`.
 fn finish_with<T: crate::Rows>(
     flags: &[&str],
     document: Document<T>,
@@ -59,17 +59,12 @@ fn finish_with<T: crate::Rows>(
 ) -> Finished {
     let args = ["tool", "remove"].iter().chain(flags);
     let tool = Tool::try_parse_from(args.clone()).unwrap();
-    let mut output = Output::new(tool.view, Tool::command(), &Guide::new(), args).unwrap();
     let Commands::Remove { dry_run } = tool.command;
-    let dry_run = output.dry_run(dry_run);
+    let output = Output::new(tool.view, dry_run, Tool::command(), &Guide::new(), args).unwrap();
+    let dry_run = output.is_dry_run();
     let mut out = Vec::new();
     let mut err = Vec::new();
-    let code = finish_to(
-        &mut Sink::new(&mut out, &mut err),
-        &mut output,
-        document,
-        result,
-    );
+    let code = finish_to(&mut Sink::new(&mut out, &mut err), output, document, result);
     Finished {
         dry_run,
         code: ExitCode::from(code),
@@ -83,9 +78,19 @@ fn pluto() -> Vec<Removed> {
 }
 
 #[test]
-fn dry_run_returns_whether_the_caller_passed_dry_run() {
+fn output_new_records_the_dry_run_flag_it_is_given() {
     assert!(finish_with(&["--dry-run"], REMOVED, Ok(pluto())).dry_run);
     assert!(!finish_with(&[], REMOVED, Ok(pluto())).dry_run);
+
+    let args = ["tool", "remove"];
+    let output = Output::new(
+        ViewFlags::new(),
+        DryRun::default(),
+        Tool::command(),
+        &Guide::new(),
+        args,
+    );
+    assert!(!output.unwrap().is_dry_run());
 }
 
 #[test]
@@ -150,15 +155,14 @@ fn a_dry_run_of_a_document_without_the_envelope_prints_it_unchanged_and_says_so_
 {
     let args = ["tool", "remove", "--dry-run", "--json"];
     let tool = Tool::try_parse_from(args).unwrap();
-    let mut output = Output::new(tool.view, Tool::command(), &Guide::new(), args).unwrap();
     let Commands::Remove { dry_run } = tool.command;
-    output.dry_run(dry_run);
+    let output = Output::new(tool.view, dry_run, Tool::command(), &Guide::new(), args).unwrap();
     let mut out = Vec::new();
     let mut err = Vec::new();
     let result: Result<_, Error> = Ok(pluto());
     finish_to(
         &mut Sink::new(&mut out, &mut err),
-        &mut output,
+        output,
         REMOVED.envelope(Envelope::Without),
         result,
     );

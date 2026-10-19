@@ -283,9 +283,9 @@ fn run<T: crate::Rows, E: crate::AsFailure>(
     document: Document<T>,
     result: Result<T, E>,
 ) {
-    if let Ok(mut output) = parse(args) {
+    if let Ok(output) = parse(args) {
         let sink = &mut Sink::new(Vec::new(), Vec::new());
-        finish_to(sink, &mut output, document, result);
+        finish_to(sink, output, document, result);
     }
 }
 
@@ -414,9 +414,9 @@ fn a_stream_records_its_first_failure_s_code_and_its_exit_code_on_the_finish_spa
         Document::new("solar", "planets-watch", 1, "The test rows.");
 
     let seen = watch(|| {
-        if let Ok(mut output) = parse(&["solar", "planets", "show", "Saturn"]) {
+        if let Ok(output) = parse(&["solar", "planets", "show", "Saturn"]) {
             let sink = &mut Sink::new(Vec::new(), Vec::new());
-            if let Ok(mut streaming) = crate::stream_to(sink, &mut output, document) {
+            if let Ok(mut streaming) = crate::stream_to(sink, output, document) {
                 let _ = streaming.item(&Planet { name: "Saturn" });
                 let _ = streaming.failure(&Missing);
                 let _ = streaming.failure(&Error::from(Missing));
@@ -508,9 +508,9 @@ fn a_failure_that_the_guide_maps_records_its_declared_exit_code_on_the_finish_sp
     let document: Document<crate::Stream<Planet>> =
         Document::new("solar", "planets-watch", 1, "The test rows.");
     let streamed = watch(|| {
-        if let Ok(mut output) = parse(&["solar", "planets", "show", "Saturn"]) {
+        if let Ok(output) = parse(&["solar", "planets", "show", "Saturn"]) {
             let sink = &mut Sink::new(Vec::new(), Vec::new());
-            if let Ok(streaming) = crate::stream_to(sink, &mut output, document) {
+            if let Ok(streaming) = crate::stream_to(sink, output, document) {
                 let _ = streaming.end(Err(TimedOut));
             }
         }

@@ -155,8 +155,7 @@ fn the_hand_over_test_s_child_raises_sigint_during_and_after_its_child() {
         std::thread::sleep(Duration::from_millis(500));
         signal_hook::low_level::raise(signal_hook::consts::SIGINT).unwrap();
     });
-    let code =
-        crumbkit_child::hand_over(&mut super::bare_output(), cmd("ping -n 3 127.0.0.1 >NUL"));
+    let code = crumbkit_child::hand_over(super::bare_output(), cmd("ping -n 3 127.0.0.1 >NUL"));
     raiser.join().unwrap();
     if code != ExitCode::SUCCESS {
         exit(1);

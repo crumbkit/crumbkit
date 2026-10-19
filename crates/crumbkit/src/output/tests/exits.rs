@@ -58,16 +58,19 @@ enum Command {
 /// parses with clap alone builds it.
 fn guided() -> Output {
     let view = Tool::try_parse_from(["tool", "list"]).unwrap().view;
-    Output::new(view, Tool::command(), &GUIDE, ["tool", "list"]).unwrap()
+    Output::new(
+        view,
+        crate::DryRun::default(),
+        Tool::command(),
+        &GUIDE,
+        ["tool", "list"],
+    )
+    .unwrap()
 }
 
 /// Finishes `result` into memory with `output`, and returns the exit code
 /// as a number.
-fn finish<T: crate::Rows>(
-    output: &mut Output,
-    document: Document<T>,
-    result: Result<T, Failed>,
-) -> u8 {
+fn finish<T: crate::Rows>(output: Output, document: Document<T>, result: Result<T, Failed>) -> u8 {
     let mut out = Vec::new();
     let mut err = Vec::new();
     finish_to(&mut Sink::new(&mut out, &mut err), output, document, result)
@@ -103,21 +106,28 @@ fn a_refusal_that_an_exit_lists_gives_its_stop_that_exit_as_a_number() {
 
 #[test]
 fn a_failure_whose_code_an_exit_lists_ends_finish_with_that_exit() {
-    let code = finish(&mut guided(), PLANETS, Err(Failed(&TIMED_OUT)));
+    let code = finish(guided(), PLANETS, Err(Failed(&TIMED_OUT)));
     assert_eq!(code, 124);
 }
 
 #[test]
 fn a_failure_whose_code_no_exit_lists_ends_finish_with_code_1() {
-    let code = finish(&mut guided(), PLANETS, Err(Failed(&NOT_FOUND)));
+    let code = finish(guided(), PLANETS, Err(Failed(&NOT_FOUND)));
     assert_eq!(code, 1);
 }
 
 #[test]
 fn an_output_set_from_a_bare_command_maps_no_failure_and_exits_with_code_1() {
     let view = Tool::try_parse_from(["tool", "list"]).unwrap().view;
-    let mut output = Output::new(view, Tool::command(), &Guide::new(), ["tool", "list"]).unwrap();
-    let code = finish(&mut output, PLANETS, Err(Failed(&TIMED_OUT)));
+    let output = Output::new(
+        view,
+        crate::DryRun::default(),
+        Tool::command(),
+        &Guide::new(),
+        ["tool", "list"],
+    )
+    .unwrap();
+    let code = finish(output, PLANETS, Err(Failed(&TIMED_OUT)));
     assert_eq!(code, 1);
 }
 
@@ -127,7 +137,7 @@ fn a_batch_whose_first_failure_is_mapped_exits_with_its_declared_code() {
         vec![mercury()],
         vec![Failed(&TIMED_OUT), Failed(&NOT_FOUND)],
     );
-    let code = finish(&mut guided(), PLANETS_SHOW, Ok(batch));
+    let code = finish(guided(), PLANETS_SHOW, Ok(batch));
     assert_eq!(code, 124);
 }
 
@@ -137,7 +147,7 @@ fn a_batch_whose_first_failure_is_unmapped_exits_with_code_1_though_a_later_one_
         vec![mercury()],
         vec![Failed(&NOT_FOUND), Failed(&TIMED_OUT)],
     );
-    let code = finish(&mut guided(), PLANETS_SHOW, Ok(batch));
+    let code = finish(guided(), PLANETS_SHOW, Ok(batch));
     assert_eq!(code, 1);
 }
 
@@ -150,8 +160,14 @@ fn a_renamed_crumbkit_failure_in_a_batch_prints_the_tool_s_code_and_exits_with_i
     let view = Tool::try_parse_from(["tool", "list", "--json"])
         .unwrap()
         .view;
-    let mut output =
-        Output::new(view, Tool::command(), &RENAMED, ["tool", "list", "--json"]).unwrap();
+    let output = Output::new(
+        view,
+        crate::DryRun::default(),
+        Tool::command(),
+        &RENAMED,
+        ["tool", "list", "--json"],
+    )
+    .unwrap();
     let batch = answered(
         vec![mercury()],
         vec![Failed(&crate::codes::VERSION_CONFLICT)],
@@ -160,7 +176,7 @@ fn a_renamed_crumbkit_failure_in_a_batch_prints_the_tool_s_code_and_exits_with_i
     let mut err = Vec::new();
     let code = finish_to(
         &mut Sink::new(&mut out, &mut err),
-        &mut output,
+        output,
         PLANETS_SHOW,
         Ok::<_, Failed>(batch),
     );
@@ -184,7 +200,7 @@ fn a_failure_of_a_leaf_that_renames_its_code_prints_the_leaf_s_code_and_exits_wi
     let mut out = Vec::new();
     let mut err = Vec::new();
     let mut sink = Sink::new(&mut out, &mut err);
-    let (_tool, mut output) = crate::parse_to::<Tool, _, _, _, _>(
+    let (_tool, output) = crate::parse_to::<Tool, _, _, _, _>(
         &mut sink,
         Tool::command(),
         &RENAMED,
@@ -193,7 +209,7 @@ fn a_failure_of_a_leaf_that_renames_its_code_prints_the_leaf_s_code_and_exits_wi
     .unwrap();
     let code = finish_to(
         &mut sink,
-        &mut output,
+        output,
         PLANETS,
         Err(Failed(&crate::codes::VERSION_CONFLICT)),
     );
@@ -213,12 +229,19 @@ fn a_tool_that_parses_with_clap_alone_gets_the_renames_of_the_leaf_that_its_word
         ]);
     let words = ["tool", "list", "--json"];
     let tool = Tool::try_parse_from(words).unwrap();
-    let mut output = Output::new(tool.view, Tool::command(), &RENAMED, words).unwrap();
+    let output = Output::new(
+        tool.view,
+        crate::DryRun::default(),
+        Tool::command(),
+        &RENAMED,
+        words,
+    )
+    .unwrap();
     let mut out = Vec::new();
     let mut err = Vec::new();
     let code = finish_to(
         &mut Sink::new(&mut out, &mut err),
-        &mut output,
+        output,
         PLANETS,
         Err(Failed(&crate::codes::VERSION_CONFLICT)),
     );
@@ -236,6 +259,6 @@ fn a_prose_result_whose_first_failure_is_mapped_exits_with_its_declared_code() {
         String::from("Mercury is the closest planet."),
         vec![Failed(&TIMED_OUT), Failed(&NOT_FOUND)],
     );
-    let code = finish(&mut guided(), SUMMARY, Ok(prose));
+    let code = finish(guided(), SUMMARY, Ok(prose));
     assert_eq!(code, 124);
 }
