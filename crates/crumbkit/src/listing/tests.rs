@@ -236,3 +236,27 @@ fn a_summary_keeps_the_problem_count_of_the_rows_that_the_limit_cut() {
 
     assert_eq!(listing.problems(), 1);
 }
+
+/// A row whose type decides its problems from a count with
+/// `Row::is_problem`, and names no problem field.
+#[derive(Serialize, JsonSchema)]
+struct Run {
+    errors: u32,
+}
+
+impl Row for Run {
+    const COLUMNS: &'static [&'static str] = &["errors"];
+
+    fn is_problem(&self) -> bool {
+        self.errors > 0
+    }
+}
+
+#[test]
+fn from_all_counts_the_rows_that_is_problem_marks_among_the_rows_its_limit_cuts() {
+    let runs = [0, 3, 1].map(|errors| Run { errors }).into();
+
+    let listing = Listing::from_all(runs, Some(1));
+
+    assert_eq!(listing.problems(), 2);
+}

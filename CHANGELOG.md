@@ -395,6 +395,9 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit-test: [`check_guide`] fails when a row type's problem field is
   not one of its `COLUMNS`, or when its type has no value that means no
   problem ([behaviour/output/listings]).
+- crumbkit: [`Row`] gains `is_problem`, which a row type with a
+  computed status overrides in place of a duplicate problem column. Its
+  default reads the field that `PROBLEM` names ([behaviour/output/listings]).
 - crumbkit: [`help::ViewFlag`] names `--fields`, `--long` and `--full`,
   and `Leaf::offers` reports whether a leaf's document can use one
   ([behaviour/output]).

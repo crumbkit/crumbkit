@@ -1,5 +1,5 @@
-//! The note of the rows that report a problem through the field that
-//! `Row::PROBLEM` names, which make a run without a failure exit with
+//! The note of the rows that report a problem, as `Row::is_problem`
+//! decides, which make a run without a failure exit with
 //! [`exit::problem_rows`](crate::exit::problem_rows) (ADR-0050).
 //! The `row::problems` module decides which rows report one.
 

@@ -81,3 +81,40 @@ fn a_stream_failure_decides_the_exit_before_an_item_that_reports_a_problem() {
     assert_eq!(code, ExitCode::FAILURE);
     assert!(!err.contains("reports a problem"), "{err}");
 }
+
+/// An egg whose type decides its problems with `Row::is_problem`, and names
+/// no problem field.
+#[derive(Serialize, JsonSchema)]
+struct Egg {
+    /// Whether the egg cracked.
+    cracked: bool,
+}
+
+impl Row for Egg {
+    const COLUMNS: &'static [&'static str] = &["cracked"];
+
+    fn is_problem(&self) -> bool {
+        self.cracked
+    }
+}
+
+#[test]
+fn a_stream_whose_row_type_decides_its_problems_itself_ends_with_exit_code_1() {
+    let eggs: Document<Stream<Egg>> = Document::new("birds", "eggs", 1, "Each egg.");
+    let output = parse(&[]);
+    let mut out = Vec::new();
+    let mut err = Vec::new();
+    let mut sink = Sink::new(&mut out, &mut err);
+    let mut streaming = stream_to(&mut sink, output, eggs).unwrap();
+    for cracked in [false, true] {
+        assert_eq!(streaming.item(&Egg { cracked }), ControlFlow::Continue(()));
+    }
+
+    let code = streaming.end(Ok::<(), Unreadable>(()));
+
+    assert_eq!(code, ExitCode::FAILURE);
+    assert_eq!(
+        String::from_utf8(err).unwrap(),
+        "note: 1 of the rows reports a problem, so the command exits with 1.\n"
+    );
+}
