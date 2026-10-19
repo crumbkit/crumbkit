@@ -66,6 +66,17 @@ fn entries_list_with_a_limit_reads_only_the_page_so_its_footer_gives_no_count() 
 }
 
 #[test]
+fn entries_list_with_a_limit_of_1_names_the_one_entry_in_the_singular() -> io::Result<()> {
+    reading(
+        LISTS,
+        &["entries", "list", "--list", "to-read", "--limit", "1"],
+    )?
+    .success()
+    .stderr_eq("Showing 1 entry, and more match. --all shows every one.\n");
+    Ok(())
+}
+
+#[test]
 fn entries_list_with_json_and_a_limit_leaves_out_the_total_and_marks_the_page_truncated()
 -> io::Result<()> {
     let output = reading(

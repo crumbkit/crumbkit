@@ -86,6 +86,11 @@ with `Listing::uncounted` or `Page::uncounted`. The reading example's
   description.
 - The output budget's cut line of such a listing also gives no count, as in
   `Showing 812 books, because output stops at 1048576 bytes.`
+- When the footer or the cut line of such a listing shows one row, it names
+  the row with the phrase that `Listing::singular` sets, as in `Showing 1
+  book, and more match.` A listing without one names the row with its
+  description, or as `row` when it has no description. A counted listing's
+  footer reads `Showing 1 of 6 books.` and needs no singular.
 - A page with no rows and more rows after it prints the footer and no empty
   note, as a counted page with no rows from a total above 0 does. A page
   with no rows and none after it prints the empty note, and its JSON

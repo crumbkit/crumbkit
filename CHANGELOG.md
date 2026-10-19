@@ -310,6 +310,9 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   from a source that the tool does not count. While more rows exist, its
   JSON document leaves out `total` and its footer reads `Showing 4 books,
   and more match.` ([behaviour/output/listings]).
+- crumbkit: `Listing::singular` names one row, so an uncounted listing
+  that shows one row reads `Showing 1 book, and more match.` Without a
+  description, it reads `Showing 1 row` ([behaviour/output/listings]).
 - crumbkit-test: `Examples::current_dir` sets the directory that each
   example run starts in, for [`check_examples`], [`check_output_budget`],
   [`check_twin`] and [`check_recoveries`] ([behaviour/checks/end-to-end]).

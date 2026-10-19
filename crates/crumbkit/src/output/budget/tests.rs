@@ -68,8 +68,8 @@ fn the_cut_line_of_a_listing_names_limit_and_of_a_list_only_fields() {
     let mut listing = Vec::new();
     let mut list = Vec::new();
 
-    write_cut_line(&mut listing, 3, Some(50), Some("books"), 400, true).unwrap();
-    write_cut_line(&mut list, 3, Some(7), None, 400, false).unwrap();
+    write_cut_line(&mut listing, 3, Some(50), Some("books"), None, 400, true).unwrap();
+    write_cut_line(&mut list, 3, Some(7), None, None, 400, false).unwrap();
 
     assert_eq!(
         String::from_utf8(listing).unwrap(),
@@ -82,9 +82,21 @@ fn the_cut_line_of_a_listing_names_limit_and_of_a_list_only_fields() {
 }
 
 #[test]
+fn the_cut_line_of_a_listing_without_a_total_names_one_row_with_the_singular() {
+    let mut line = Vec::new();
+
+    write_cut_line(&mut line, 1, None, Some("books"), Some("book"), 400, true).unwrap();
+
+    assert_eq!(
+        String::from_utf8(line).unwrap(),
+        "Showing 1 book, because output stops at 400 bytes. Ask for less with --limit or --fields.\n"
+    );
+}
+
+#[test]
 fn a_budget_of_1_is_named_as_1_byte_in_the_cut_line_and_in_each_over_budget_message() {
     let mut line = Vec::new();
-    write_cut_line(&mut line, 0, Some(5), Some("books"), 1, true).unwrap();
+    write_cut_line(&mut line, 0, Some(5), Some("books"), None, 1, true).unwrap();
     let message = |over: Over| {
         let code = &crate::codes::OUTPUT_OVER_BUDGET;
         OverBudget {

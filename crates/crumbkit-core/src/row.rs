@@ -226,6 +226,14 @@ pub trait Rows: Serialize + sealed::Sealed {
         None
     }
 
+    /// Returns the phrase that names one row in the text footer and cut
+    /// line of a listing without a total, such as `book`. Only a `Listing`
+    /// returns one.
+    #[doc(hidden)]
+    fn singular(&self) -> Option<&str> {
+        None
+    }
+
     /// Returns the summary that the text output prints above the table and
     /// the JSON document holds under `summary`. Only a `Listing` returns one.
     #[doc(hidden)]
