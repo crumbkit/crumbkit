@@ -123,7 +123,7 @@ fn the_view_reports_json_long_full_and_the_names() {
     assert!(text.is_long());
     assert!(!text.is_full());
     assert_eq!(text.names(), None);
-    assert!(text.fields().is_empty());
+    assert_eq!(text.fields(), Vec::<String>::new());
 
     let full = View::Json(Selection::Full);
     assert!(full.is_json());
