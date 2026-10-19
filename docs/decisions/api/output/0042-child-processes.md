@@ -1,7 +1,7 @@
 # ADR-0042. Child processes
 
 - Date: 2026-10-12
-- Status: amended by ADR-0058
+- Status: amended by ADR-0058, ADR-0095
 
 ## Context
 

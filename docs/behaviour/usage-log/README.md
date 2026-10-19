@@ -99,15 +99,10 @@ lists every field and what it holds, and its `schema` field accepts any
 tool's `<tool>/usage/v1`, such as `shelf/usage/v1`. A field that does not apply to the run
 is left out. `trace`, `run` and `parent` place the run in a W3C trace, as
 [trace context](trace-context.md) describes. The `empty` field is optional,
-and a record with it keeps the `v1` id.
+and a record with it keeps the `v1` id. The record holds no section of the
+tool's own, so every field is one that crumbkit writes and checks.
 
-A tool adds its own fields with
-[`section`](../../../crates/crumbkit-usage/src/recorder.rs), which
-sets `ext` to `{"schema": <document id>, "data": <value>}`. The tool owns the
-section and keeps values out of it, because crumbkit cannot check it, and the
-section counts towards the 1 KiB limit of a line.
-
-Why: ADR-0029, ADR-0007.
+Why: ADR-0029, ADR-0007, ADR-0095.
 
 ## What the record never holds
 
@@ -121,7 +116,7 @@ hex that crumbkit generated or validated, and the command line appears only
 as a keyed hash.
 
 The types do not check the text that the tool itself gives its commands,
-arguments, version and codes, or the tool's `ext` section.
+arguments, version and codes.
 
 shelf's end-to-end test in
 [`tests/usage.rs`](../../../examples/shelf/tests/usage.rs) plants
@@ -250,19 +245,17 @@ Why: ADR-0029.
 
 ## A tool that handles its own signals
 
-A tool with its own handler for SIGINT or SIGTERM starts the log with
-`start_with(Signals::Tool)` and reports its exit through `ended`. `start`
-is `start_with(Signals::Crumbkit)`. With `Tool`, the signal thread only notes
-each signal, so the line records `"interrupted": true`, and leaves the
-process running. crumbkit's listener replaces the default action of both
-signals, so a tool that chooses `Tool` without a handler of its own keeps
-running on Ctrl-C and SIGTERM, and only SIGKILL ends it. A handler that
-replaces the action directly, as the ctrlc crate does, removes crumbkit's
-listener, and the line then records the exit without `interrupted`. The
-rustdoc of [`Signals`](../../../crates/crumbkit-usage/src/recorder.rs) says
+The log's thread always handles SIGINT and SIGTERM: it writes the line with
+`"interrupted": true` and lets the signal end the process. A handler that
+the tool installs through signal-hook runs beside the thread, which still
+ends the process. A handler that replaces the signal's action directly, as
+the ctrlc crate does, removes crumbkit's listener, and the line then
+records the exit without `interrupted`. A tool that must keep running
+after Ctrl-C or SIGTERM keeps its own handler and runs without the log. The
+rustdoc of [`start`](../../../crates/crumbkit-usage/src/recorder.rs) says
 so.
 
-Why: ADR-0029.
+Why: ADR-0029, ADR-0095.
 
 ## Child processes
 

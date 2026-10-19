@@ -273,7 +273,7 @@ describe opt-outs, and [ADR-0025] records why the checks exist.
 - [shelf](../examples/shelf/src/cli.rs) is a fuller tool that uses most of
   crumbkit.
 
-[`Batch`]: ../crates/crumbkit-core/src/batch.rs
+[`Batch`]: ../crates/crumbkit/src/batch.rs
 [`fetch_each`]: ../crates/crumbkit/src/fetch.rs
 [`DryRun`]: ../crates/crumbkit/src/output/dry_run.rs
 [`Yes`]: ../crates/crumbkit/src/output/confirm.rs

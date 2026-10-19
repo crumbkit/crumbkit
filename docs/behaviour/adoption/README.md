@@ -1,8 +1,8 @@
 # Adoption
 
 This page covers how a tool adopts crumbkit: the parts it can take one at a
-time, the wiring of its `main`, the clap-free core crate, and the promises of
-crumbkit's public API. The other pages in this directory cover
+time, the wiring of its `main`, the types that need no clap, and the
+promises of crumbkit's public API. The other pages in this directory cover
 [opt-outs](opt-outs.md), with which a tool departs from a convention for a
 stated reason, and [declarations](declarations.md), with which a tool keeps
 its own names.
@@ -86,47 +86,38 @@ loop.
 
 Why: ADR-0015.
 
-## The clap-free core crate
+## The types that need no clap
 
-[crumbkit-core](../../../crates/crumbkit-core/README.md) holds the types that
-need no clap, so a crate that is not a command-line tool, such as a web
-server that maps a `Failure` to an RFC 9457 problem-details response, builds
-without clap. crumbkit depends on crumbkit-core and re-exports each of its
-items at the path the item had in crumbkit, so crumbkit-core's public API is
-part of crumbkit's.
-
-An item belongs in crumbkit-core when it compiles without clap and a caller
-that is not a command-line tool would use it. By that rule crumbkit-core
-holds `Code` and `Spelling`, `Failure`, `Recovery`, `Error` and `AsFailure`,
-`Document`, `Call` and `CallError`, `Row`, `Rows`, `Shape` and `NoRow`,
-`Listing`, `Batch` and `Prose`. crumbkit keeps parsing, help, `Output`,
-`Page`, `finish`, the failure document, refusals, `commands list`,
-`fetch_each`, the exit-code helper, the run observer, the usage log and the
-trace context.
+crumbkit holds the types that compile without clap beside the parsing, help
+and output that read a `clap::Command`: `Code` and `Spelling`, `Failure`,
+`Recovery`, `Error` and `AsFailure`, `Document`, `Call` and `CallError`,
+`Row`, `Rows`, `Shape` and `NoRow`, `Listing`, `Batch`, `Prose`, `Bytes` and
+`Stream`. Every crate that uses them builds clap through crumbkit. A crate
+that is not a command-line tool, such as a web server that maps a `Failure`
+to an RFC 9457 problem-details response, can ask for these types in a crate
+of their own when such a crate exists, and this list says what that crate
+would hold.
 
 - `Rows::SHAPE` names a result's kind, so `schemas::document_schema` builds
   the fields of a document from its result type, and `Document::untyped`
   returns the same id as a `Document<()>`, so a `Leaf` keeps a document
   without its type.
-- crumbkit's sealed `RenderCall` trait gives `Call` the `render` method that
-  reads a `clap::Command`. `Call::help` and `Call::target` are public and
-  documented, because crumbkit builds and renders calls from outside
-  crumbkit-core.
-- crumbkit-core depends on serde_json, because `FieldValue::from_json` reads
-  a failure field back from a `serde_json::Value`, so a test or a tool that
-  reads failure fields from JSON does not copy the conversion. It puts
-  serde_json's major version into crumbkit-core's API.
-- crumbkit-core's `derive` feature re-exports
-  [`#[derive(Failure)]`](../failures/derive.md), and crumbkit-core holds
+- `Call` holds its data without reading clap, and crumbkit's sealed
+  `RenderCall` trait gives it the `render` method that reads a
+  `clap::Command`. `Call::help` and `Call::target` are public and
+  documented.
+- `FieldValue::from_json` reads a failure field back from a
+  `serde_json::Value`, so a test or a tool that reads failure fields from
+  JSON does not copy the conversion. It puts serde_json's major version into
+  crumbkit's API.
+- The `derive` feature re-exports
+  [`#[derive(Failure)]`](../failures/derive.md) from crumbkit-derive beside
+  the trait of the same name, and crumbkit holds
   [`Error::unclassified`](../failures/README.md#unclassified-errors).
-- crumbkit-core's `miette` feature adds `Failure::diagnostic` and the
-  conversion of a `miette::Report` into `Error`, and crumbkit's `miette`
-  feature turns it on.
-- `deny.toml` bans clap and clap_builder for every crate except the ones it
-  lists as direct users, so `cargo deny check bans` fails when clap enters
-  crumbkit-core's dependency tree.
+- The `miette` feature adds `Failure::diagnostic` and the conversion of a
+  `miette::Report` into `Error`.
 
-Why: ADR-0032, ADR-0002, ADR-0001.
+Why: ADR-0097, ADR-0002, ADR-0001.
 
 ## API promises
 

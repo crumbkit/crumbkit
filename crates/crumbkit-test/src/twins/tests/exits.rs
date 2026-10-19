@@ -16,8 +16,8 @@ const TIMED_OUT: Code = Code::new("tool", "books", "timed_out");
 /// The code of a book that does not exist.
 const NOT_FOUND: Code = Code::new("tool", "books", "not_found");
 
-/// crumbkit-child's code of a child process that failed under `--json`.
-const CHILD_FAILED: Code = Code::new("crumbkit", "child", "failed");
+/// The tool's code of a downloader that it ran and that failed.
+const DOWNLOAD_FAILED: Code = Code::new("tool", "books", "download_failed");
 
 /// The exit code 124, which `TIMED_OUT` ends a run with.
 const EXITS: &[Exit] = &[Exit::new(124, "The download ran out of time.").failures(&[&TIMED_OUT])];
@@ -38,7 +38,7 @@ const PASSING: Guide = Guide::new()
 /// 5, `books get 9` fails with `tool::cli::usage` and code 64,
 /// `books get --limit x` fails with crumbkit's usage code and code 1,
 /// `books get --limit y` fails with it and code 2, `books get 4` fails with
-/// `CHILD_FAILED` and code 7, `books get 5` fails with `NOT_FOUND` and code
+/// `DOWNLOAD_FAILED` and code 7, `books get 5` fails with `NOT_FOUND` and code
 /// 124, and `books get 3`, `books get --limit 3` and `books show 2` exit
 /// with code 0, with or without `--json` at the end.
 const SCRIPT: &str = r#"#!/bin/sh
@@ -52,7 +52,7 @@ case "${line% --json}" in
   'books get 9') printf 'error: refused\n  code:  tool::cli::usage\n' >&2; exit 64;;
   'books get --limit x') printf 'error: x is no limit\n  code:  tool::cli::usage\n' >&2; exit 1;;
   'books get --limit y') printf 'error: y is no limit\n  code:  tool::cli::usage\n' >&2; exit 2;;
-  'books get 4') printf 'error: the downloader failed\n  code:  tool::child::failed\n' >&2; exit 7;;
+  'books get 4') printf 'error: the downloader failed\n  code:  tool::books::download_failed\n' >&2; exit 7;;
   'books get 5') printf 'error: no book 5\n  code:  tool::books::not_found\n' >&2; exit 124;;
   'books get 3'|'books get --limit 3'|'books show 2') echo shown; exit 0;;
   *) echo "unexpected: $*" >&2; exit 3;;
@@ -146,7 +146,7 @@ fn a_usage_refusal_that_exits_with_another_code_than_2_fails_the_check_on_a_comm
 #[test]
 fn a_failure_of_a_command_that_passes_on_a_program_s_exit_code_may_end_with_that_code() {
     assert_eq!(
-        checked_with(&PASSING, &CHILD_FAILED, &["books", "get", "4"]),
+        checked_with(&PASSING, &DOWNLOAD_FAILED, &["books", "get", "4"]),
         None
     );
 }
@@ -154,8 +154,8 @@ fn a_failure_of_a_command_that_passes_on_a_program_s_exit_code_may_end_with_that
 #[test]
 fn a_failed_child_fails_the_check_when_its_command_does_not_declare_that_it_passes_on_exit_codes() {
     assert_eq!(
-        checked(&CHILD_FAILED, &["books", "get", "4"]).unwrap(),
-        "the refused line `tool books get 4` fails with tool::child::failed, which no exit code of the guide lists, and it ends with exit status: 7, where such a failure exits with code 1. A command that passes on the exit code of a program it runs declares it with `Leaf::passes_on_exit`"
+        checked(&DOWNLOAD_FAILED, &["books", "get", "4"]).unwrap(),
+        "the refused line `tool books get 4` fails with tool::books::download_failed, which no exit code of the guide lists, and it ends with exit status: 7, where such a failure exits with code 1. A command that passes on the exit code of a program it runs declares it with `Leaf::passes_on_exit`"
     );
 }
 

@@ -28,7 +28,7 @@ mod tests;
 /// | `diagnostic` | variant or struct | `diagnostic()` returns the failure itself, which must implement `miette::Diagnostic`. |
 /// | `forward` | variant or struct with one field | Every method calls the same method on that field, which must implement `Failure`. |
 /// | `forward = FIELD` | variant or struct with named fields | Every method calls the same method on the named field. |
-/// | `crate = PATH` | type | The path of the crate that holds `Failure`. It is `::crumbkit` unless given, and a crate that uses crumbkit-core alone gives `::crumbkit_core`. |
+/// | `crate = PATH` | type | The path of the crate that holds `Failure`. It is `::crumbkit` unless given, and a crate that reaches crumbkit through a re-export gives that path. |
 ///
 /// Each variant that does not forward needs `code` and exactly one of
 /// `recovery` and `hint`. A forwarding variant takes no other key except

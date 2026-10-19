@@ -1,398 +1,431 @@
-//! `RenderCall`, which renders a [`Call`] against the command tree a tool
-//! builds at runtime.
+//! A command line that names a command and its arguments, which crumbkit
+//! checks against the command tree a tool builds at runtime.
 
-use std::fmt::Write as _;
+use std::error::Error;
+use std::fmt;
 
-use clap::{Arg, Command};
-
-use crate::help::words::quote;
-use crate::{Call, CallArg, CallError, CallTarget};
-
+mod render;
 #[cfg(test)]
 mod tests;
 
-/// Renders a [`Call`] as text against a `clap::Command`.
+pub use render::RenderCall;
+pub(crate) use render::{render, words};
+
+/// A command line that a tool's output tells the caller to run next, such as
+/// `shelf books show <ID>...`.
 ///
-/// `Call` lives in crumbkit-core, which has no clap, so its `render` method
-/// comes from this trait. A caller imports the trait with
-/// `use crumbkit::RenderCall as _;`. crumbkit implements it for `Call`, and
-/// a tool cannot implement it.
+/// A call names a command by its path from the root and names the arguments
+/// to show by their clap ids, each as a placeholder such as `<ID>...` or with
+/// a concrete value. crumbkit's `crumbkit::RenderCall::render` turns them
+/// into text against the `clap::Command` that the tool built at runtime, so
+/// a call that names a hidden or removed command never prints.
 ///
 /// ```
-/// use clap::{CommandFactory, Parser, Subcommand};
-/// use crumbkit::{Call, RenderCall as _};
+/// use crumbkit::{Call, CallArg, CallTarget};
 ///
-/// #[derive(Parser)]
-/// #[command(name = "shelf")]
-/// struct Cli {
-///     #[command(subcommand)]
-///     command: Books,
-/// }
+/// let call = Call::new(&["books", "list"]).value("author", "Le Guin");
 ///
-/// #[derive(Subcommand)]
-/// enum Books {
-///     /// Show the books with these ids.
-///     Show {
-///         #[arg(required = true, value_name = "ID")]
-///         ids: Vec<u32>,
-///     },
-/// }
-///
-/// let call = Call::new(&["show"]).arg("ids");
-/// assert_eq!(call.render(&mut Cli::command()).unwrap(), "shelf show <ID>...");
+/// let CallTarget::Command { path, args } = call.target() else {
+///     unreachable!("Call::new names a command");
+/// };
+/// assert_eq!(*path, ["books", "list"]);
+/// assert_eq!(
+///     *args,
+///     [CallArg::Value { id: "author", value: "Le Guin".to_owned() }]
+/// );
 /// ```
-pub trait RenderCall: sealed::Sealed {
-    /// Returns the call as text: the name of `command`, then the name of each
-    /// subcommand on the path, then each argument in the form clap's usage
-    /// line gives it, such as `<ID>...` for a positional that takes many
-    /// values or `--author <AUTHOR>` for an option, or with its value, such
-    /// as `--author 'Le Guin'`.
-    ///
-    /// `command` is the root of the tool's tree. `render` first calls
-    /// `Command::build`, which clap requires before a command's arguments are
-    /// read and which does nothing to a command already built. Each path
-    /// segment is looked up with `Command::find_subcommand`, so an alias
-    /// resolves and prints as the subcommand's name. Each argument is looked
-    /// up on the final command, which after the build also holds the global
-    /// arguments of the commands above it. A value that a POSIX shell would
-    /// split or expand prints between single quotes.
-    ///
-    /// # Errors
-    ///
-    /// Returns a [`CallError`] naming the first path segment or argument that
-    /// is missing or hidden, or the first value that the argument would
-    /// refuse: a value for a flag, a value outside the argument's possible
-    /// values, or a positional value that clap would read as a flag. A hidden
-    /// command or argument counts as unresolved, because crumbkit never
-    /// prints what the tool hid.
-    fn render(&self, command: &mut Command) -> Result<String, CallError>;
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Call {
+    /// The command line the call names.
+    target: CallTarget,
+    /// Where a typed call from [`Call::typed_all`] takes every value of a
+    /// failure's list field, or `None` for every other call.
+    slot: Option<Slot>,
 }
 
-impl RenderCall for Call {
-    fn render(&self, command: &mut Command) -> Result<String, CallError> {
-        command.build();
-        render_built(self, command)
+/// The place in the words of a typed call where every value of a failure's
+/// list field goes, which [`Call::typed_all`] sets.
+#[derive(Clone, Debug, PartialEq, Eq)]
+struct Slot {
+    /// The number of words before the place.
+    at: usize,
+    /// The argument as clap's usage line shows it, such as `<ID>...`.
+    placeholder: String,
+    /// The name of the failure's field whose values the call takes.
+    field: &'static str,
+}
+
+/// The three forms of a [`Call`]: a command with arguments that a tool
+/// names, the `-h` of a command that the caller typed, and a command line as
+/// the caller typed it.
+///
+/// [`Call::target`] returns it, so crumbkit can render the call. The enum
+/// has no `#[non_exhaustive]`, because crumbkit renders every form, and a
+/// new form needs a new rendering in the same release.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum CallTarget {
+    /// A command that [`Call::new`] names, with the arguments that
+    /// [`Call::arg`] and [`Call::value`] add.
+    Command {
+        /// The names of the subcommands from the root to the command, in
+        /// order.
+        path: &'static [&'static str],
+        /// The arguments to show, in the order they were added.
+        args: Vec<CallArg>,
+    },
+    /// The `-h` of a command, which [`Call::help`] names. It holds the names
+    /// of the subcommands from the root to the command, as the caller typed
+    /// them and the tree resolved them.
+    Help(Vec<String>),
+    /// A command line as the caller typed it, which [`Call::typed`] names. It
+    /// holds the words after the program name, in order.
+    Typed(Vec<String>),
+}
+
+/// One argument of a [`CallTarget::Command`], named by its clap id.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum CallArg {
+    /// The argument as clap's usage line shows it, such as `<ID>...` or
+    /// `--author <AUTHOR>`, which [`Call::arg`] adds.
+    Placeholder(&'static str),
+    /// The argument with a concrete value, such as `--author 'Le Guin'`,
+    /// which [`Call::value`] adds.
+    Value {
+        /// The clap id of the argument.
+        id: &'static str,
+        /// The value, as the caller types it before a shell quotes it.
+        value: String,
+    },
+    /// The argument with every value of a list field of the failure that
+    /// offers the call, which [`Call::all`] adds. It renders as its
+    /// placeholder, such as `<ID>...`.
+    All {
+        /// The clap id of the argument.
+        id: &'static str,
+        /// The name of the failure's field whose values the argument takes.
+        field: &'static str,
+    },
+}
+
+impl Call {
+    /// Returns a call of the command at `path`, the names of its subcommands
+    /// from the root, with no arguments. An empty path names the root.
+    #[must_use]
+    pub const fn new(path: &'static [&'static str]) -> Self {
+        Self {
+            target: CallTarget::Command {
+                path,
+                args: Vec::new(),
+            },
+            slot: None,
+        }
     }
-}
 
-/// Builds the part of `command` that `call` needs and returns `call` as
-/// text, as [`RenderCall::render`] describes. `finish` renders the `Next:`
-/// line and each `Recovery::Run` call through it, so a run builds only the
-/// branch that a call names and the tree's other branches stay unbuilt.
-///
-/// A global argument of the root resolves only when the root is already
-/// built, as parsing leaves it. In a tree that never went through parsing,
-/// a call into a branch below the root that names one does not resolve.
-pub(crate) fn render(call: &Call, command: &mut Command) -> Result<String, CallError> {
-    build_branch(call, command);
-    render_built(call, command)
-}
-
-/// Builds the branch below the root of `command` that the first path
-/// segment of `call` names, or the whole tree for a call to the root.
-///
-/// clap has no public way to build one command alone, and
-/// `Command::build` builds the command it is called on and everything below
-/// it. Parsing has already built the root, which copied the root's global
-/// arguments into each command one level below it, so a build of that
-/// command copies them down to every command of the branch. A call from
-/// `Call::help` or `Call::typed` is rendered without a lookup and needs no
-/// build.
-fn build_branch(call: &Call, command: &mut Command) {
-    let CallTarget::Command { path, .. } = call.target() else {
-        return;
-    };
-    match path.first() {
-        Some(name) => {
-            if let Some(branch) = command.find_subcommand_mut(name) {
-                branch.build();
-            }
+    /// Returns a call that runs `-h` on the command at `path`, such as
+    /// `shelf books show -h`.
+    ///
+    /// crumbkit's refusal of a command line uses it as its recovery, because
+    /// the path comes from the words the caller typed at runtime, and a
+    /// `Call` built with [`Call::new`] holds only a `&'static` path. The
+    /// call renders its path without looking it up, so it can point the
+    /// caller back at a hidden command that the caller named. A help call
+    /// takes no arguments, so [`Call::arg`] and [`Call::value`] leave it
+    /// unchanged.
+    ///
+    /// ```
+    /// use crumbkit::{Call, CallTarget};
+    ///
+    /// let call = Call::help(vec!["books".to_owned(), "show".to_owned()]);
+    ///
+    /// assert_eq!(
+    ///     call.target(),
+    ///     &CallTarget::Help(vec!["books".to_owned(), "show".to_owned()])
+    /// );
+    /// ```
+    #[must_use]
+    pub const fn help(path: Vec<String>) -> Self {
+        Self {
+            target: CallTarget::Help(path),
+            slot: None,
         }
-        None => command.build(),
     }
-}
 
-/// Returns `call` as text, as [`RenderCall::render`] does, against a command
-/// whose branch for `call` is already built.
-///
-/// `Arg`'s `Display` panics on an option of a command that was never built,
-/// because clap sets an option's number of values during the build.
-///
-/// A call from `Call::help` renders its path without looking it up, because
-/// the path holds the real names of commands that the caller typed, and
-/// crumbkit points the caller back at a hidden command that the caller
-/// named.
-/// A call from `Call::typed` renders the caller's words in the same way,
-/// each quoted when a POSIX shell would split or expand it. A call from
-/// `Call::typed_all` also prints its placeholder, unquoted, at its place
-/// among the words.
-pub(crate) fn render_built(call: &Call, command: &Command) -> Result<String, CallError> {
-    let mut text = command.get_name().to_owned();
-    let (path, args) = match call.target() {
-        CallTarget::Help(path) => {
-            for name in path {
-                text.push(' ');
-                text.push_str(name);
-            }
-            text.push_str(" -h");
-            return Ok(text);
+    /// Returns a call of the command line whose words after the program
+    /// name are `words`, such as `books remove 2 --yes`.
+    ///
+    /// `crumbkit::Output::confirm` uses it as the recovery of a run that
+    /// needs `--yes`, because the caller's own words, with `--yes` added,
+    /// are the command to run next. The call renders each word without
+    /// looking it up, and quotes a word that a POSIX shell would split or
+    /// expand. A typed call takes no arguments, so [`Call::arg`] and
+    /// [`Call::value`] leave it unchanged.
+    ///
+    /// ```
+    /// use crumbkit::{Call, CallTarget};
+    ///
+    /// let words = vec!["books".to_owned(), "remove".to_owned(), "--yes".to_owned()];
+    /// let call = Call::typed(words.clone());
+    ///
+    /// assert_eq!(call.target(), &CallTarget::Typed(words));
+    /// ```
+    #[must_use]
+    pub const fn typed(words: Vec<String>) -> Self {
+        Self {
+            target: CallTarget::Typed(words),
+            slot: None,
         }
-        CallTarget::Typed(words) => {
-            let slot = call.typed_slot();
-            for (index, word) in words.iter().enumerate() {
-                if let Some((at, placeholder, _)) = slot
-                    && at == index
-                {
-                    text.push(' ');
-                    text.push_str(placeholder);
-                }
-                text.push(' ');
-                text.push_str(&quote(word));
-            }
-            if let Some((at, placeholder, _)) = slot
-                && at >= words.len()
-            {
-                text.push(' ');
-                text.push_str(placeholder);
-            }
-            return Ok(text);
+    }
+
+    /// Returns a typed call whose words after the program name are `words`,
+    /// with the argument `placeholder`, such as `<ID>...` or `--id <ID>...`,
+    /// after the first `at` of them, which takes every value of the list
+    /// field `field` of the failure that offers the call.
+    ///
+    /// crumbkit uses it for the recovery of a batch over the output budget,
+    /// which reruns the caller's own words with the keys left out in place
+    /// of the keys the caller typed. The call renders as [`Call::typed`]
+    /// does, with `placeholder` unquoted at its place, and its target is
+    /// [`CallTarget::Typed`] with `words` alone. Only crumbkit builds it,
+    /// from the words it parsed, and a tool names its own calls with
+    /// [`Call::new`].
+    #[must_use]
+    pub(crate) fn typed_all(
+        words: Vec<String>,
+        at: usize,
+        placeholder: String,
+        field: &'static str,
+    ) -> Self {
+        Self {
+            target: CallTarget::Typed(words),
+            slot: Some(Slot {
+                at,
+                placeholder,
+                field,
+            }),
         }
-        CallTarget::Command { path, args } => (*path, args),
-    };
-    let mut current = command;
-    for &name in path {
-        let Some(subcommand) = current.find_subcommand(name) else {
-            return Err(CallError::MissingCommand {
-                command: text,
-                name: name.to_owned(),
+    }
+
+    /// Returns the place of a typed call from [`Call::typed_all`]: the
+    /// number of words before it, the argument's placeholder and the name of
+    /// the field whose values it takes, or `None` for every other call.
+    #[must_use]
+    pub(crate) fn typed_slot(&self) -> Option<(usize, &str, &'static str)> {
+        self.slot
+            .as_ref()
+            .map(|slot| (slot.at, slot.placeholder.as_str(), slot.field))
+    }
+
+    /// Adds the argument whose clap id is `id`, such as `ids` for a field
+    /// named `ids`, after the arguments already added. It renders as clap's
+    /// usage line shows it, such as `<ID>...`.
+    #[must_use]
+    pub fn arg(mut self, id: &'static str) -> Self {
+        if let CallTarget::Command { args, .. } = &mut self.target {
+            args.push(CallArg::Placeholder(id));
+        }
+        self
+    }
+
+    /// Adds the argument whose clap id is `id` with the concrete value
+    /// `value`, after the arguments already added, so the caller can run the
+    /// command as it prints.
+    ///
+    /// An option renders as `--author 'Le Guin'`, with its short name when
+    /// it has no long name, and a positional renders as the value alone. A
+    /// value that a POSIX shell would split or expand renders between single
+    /// quotes, as a leaf's examples do. Each call adds one occurrence, so two
+    /// values of one positional render as two words, and two values of one
+    /// option repeat the option. crumbkit's `RenderCall::render` says which
+    /// values it refuses.
+    ///
+    /// ```
+    /// use crumbkit::{Call, CallArg, CallTarget};
+    ///
+    /// let call = Call::new(&["books", "show"]).value("ids", "7");
+    ///
+    /// let CallTarget::Command { args, .. } = call.target() else {
+    ///     unreachable!("Call::new names a command");
+    /// };
+    /// assert_eq!(*args, [CallArg::Value { id: "ids", value: "7".to_owned() }]);
+    /// ```
+    #[must_use]
+    pub fn value(mut self, id: &'static str, value: impl Into<String>) -> Self {
+        if let CallTarget::Command { args, .. } = &mut self.target {
+            args.push(CallArg::Value {
+                id,
+                value: value.into(),
             });
-        };
-        if subcommand.is_hide_set() {
-            return Err(CallError::HiddenCommand {
-                command: text,
-                name: name.to_owned(),
-            });
         }
-        text.push(' ');
-        text.push_str(subcommand.get_name());
-        current = subcommand;
+        self
     }
 
-    // Each error names the command without the arguments before it, so the
-    // loop reads the text up to `command_end`.
-    let command_end = text.len();
-    refuse_placeholder_beside_all(args, &text[..command_end])?;
-    for call_arg in args {
-        match call_arg {
-            // `Arg`'s `Display` writes the argument as clap's usage line
-            // does, without styling. Writing to a `String` cannot fail.
-            CallArg::Placeholder(id) => {
-                let arg = find_arg(current, &text[..command_end], id)?;
-                let _ = write!(text, " {arg}");
-            }
-            CallArg::Value { id, value } => {
-                let arg = find_arg(current, &text[..command_end], id)?;
-                let rendered = render_value(arg, &text[..command_end], value)?;
-                text.push(' ');
-                text.push_str(&rendered);
-            }
-            CallArg::All { id, .. } => {
-                let arg = find_arg(current, &text[..command_end], id)?;
-                refuse_one_value(arg, &text[..command_end])?;
-                let _ = write!(text, " {arg}");
-            }
+    /// Adds the argument whose clap id is `id`, to be given every value of
+    /// the list field `field` of the failure that offers the call, after the
+    /// arguments already added.
+    ///
+    /// The argument must take many values, and it renders as its
+    /// placeholder, such as `<ID>...` for a positional or `--id <ID>...` for
+    /// an option. A call that holds it holds no placeholder from
+    /// [`Call::arg`], so the field's values alone fill the call. A failure
+    /// whose recovery holds such a call names the field beside the call in
+    /// its JSON, and its text prints the call with the values in place of the
+    /// placeholder. A batch's over-budget failure uses it to name the command
+    /// that fetches every key it left out in one run.
+    ///
+    /// ```
+    /// use crumbkit::{Call, CallArg, CallTarget};
+    ///
+    /// let call = Call::new(&["books", "show"]).all("ids", "left_out");
+    ///
+    /// let CallTarget::Command { args, .. } = call.target() else {
+    ///     unreachable!("Call::new names a command");
+    /// };
+    /// assert_eq!(*args, [CallArg::All { id: "ids", field: "left_out" }]);
+    /// ```
+    #[must_use]
+    pub fn all(mut self, id: &'static str, field: &'static str) -> Self {
+        if let CallTarget::Command { args, .. } = &mut self.target {
+            args.push(CallArg::All { id, field });
         }
+        self
     }
-    Ok(text)
-}
 
-/// Returns an error when `args` holds an argument from `Call::all` beside
-/// a placeholder from `Call::arg` or a second one from `Call::all`, because
-/// the values of one field must fill the whole call. The error names the
-/// first placeholder, or the second argument from `Call::all` when there is
-/// no placeholder. `text` is the call's text up to the command.
-fn refuse_placeholder_beside_all(args: &[CallArg], text: &str) -> Result<(), CallError> {
-    let mut all = args.iter().filter_map(|arg| match arg {
-        CallArg::All { id, .. } => Some(*id),
-        CallArg::Placeholder(_) | CallArg::Value { .. } => None,
-    });
-    if all.next().is_none() {
-        return Ok(());
-    }
-    let placeholder = args.iter().find_map(|arg| match arg {
-        CallArg::Placeholder(id) => Some(*id),
-        CallArg::All { .. } | CallArg::Value { .. } => None,
-    });
-    match placeholder.or_else(|| all.next()) {
-        Some(id) => Err(CallError::PlaceholderBesideAll {
-            command: text.to_owned(),
-            id: id.to_owned(),
-        }),
-        None => Ok(()),
+    /// Returns the command line the call names, which crumbkit reads to
+    /// render the call.
+    #[must_use]
+    pub const fn target(&self) -> &CallTarget {
+        &self.target
     }
 }
 
-/// Returns an error when `arg` cannot take every value of a field in one
-/// occurrence: a flag, which takes no value, or an argument that takes one
-/// value. `text` is the call's text up to the command, which the error
-/// names.
-fn refuse_one_value(arg: &Arg, text: &str) -> Result<(), CallError> {
-    let id = arg.get_id().as_str();
-    if !arg.get_action().takes_values() {
-        return Err(CallError::TakesNoValue {
-            command: text.to_owned(),
-            id: id.to_owned(),
-        });
-    }
-    let many = arg
-        .get_num_args()
-        .is_some_and(|range| range.max_values() > 1);
-    if !many {
-        return Err(CallError::TakesOneValue {
-            command: text.to_owned(),
-            id: id.to_owned(),
-        });
-    }
-    Ok(())
-}
-
-/// Returns the words of the command line that `call` names, from the
-/// program name on, as a shell passes the line that
-/// [`RenderCall::render`] prints, or `None` when `call` holds a placeholder
-/// from `Call::arg`, `Call::all` or `Call::typed_all`, which names no value
-/// to parse.
-/// `command` is the root of a tree that `call` already rendered against, so
-/// each lookup finds what the rendering found, and `None` also covers a
-/// lookup that would fail.
-pub(crate) fn words(call: &Call, command: &Command) -> Option<Vec<String>> {
-    let mut words = vec![command.get_name().to_owned()];
-    let (path, args) = match call.target() {
-        CallTarget::Help(path) => {
-            words.extend(path.iter().cloned());
-            words.push("-h".to_owned());
-            return Some(words);
-        }
-        CallTarget::Typed(_) if call.typed_slot().is_some() => return None,
-        CallTarget::Typed(typed) => {
-            words.extend(typed.iter().cloned());
-            return Some(words);
-        }
-        CallTarget::Command { path, args } => (*path, args),
-    };
-    let mut current = command;
-    for &name in path {
-        current = current.find_subcommand(name)?;
-        words.push(current.get_name().to_owned());
-    }
-    for call_arg in args {
-        let CallArg::Value { id, value } = call_arg else {
-            return None;
-        };
-        let arg = current.get_arguments().find(|arg| arg.get_id() == id)?;
-        let hyphen = value.len() > 1 && value.starts_with('-');
-        let flag = match (arg.get_long(), arg.get_short()) {
-            (Some(long), _) => format!("--{long}"),
-            (None, Some(short)) => format!("-{short}"),
-            (None, None) => {
-                words.push(value.clone());
-                continue;
-            }
-        };
-        if hyphen {
-            words.push(format!("{flag}={value}"));
-        } else {
-            words.push(flag);
-            words.push(value.clone());
-        }
-    }
-    Some(words)
-}
-
-/// Returns the visible argument of `command` whose id is `id`. `text` is the
-/// call's text up to the command, which each error names.
-fn find_arg<'a>(command: &'a Command, text: &str, id: &str) -> Result<&'a Arg, CallError> {
-    let Some(arg) = command.get_arguments().find(|arg| arg.get_id() == id) else {
-        return Err(CallError::MissingArgument {
-            command: text.to_owned(),
-            id: id.to_owned(),
-        });
-    };
-    if arg.is_hide_set() {
-        return Err(CallError::HiddenArgument {
-            command: text.to_owned(),
-            id: id.to_owned(),
-        });
-    }
-    Ok(arg)
-}
-
-/// Returns `arg` with `value` as the caller types it: `--author 'Le Guin'`
-/// for an option, with its short name when it has no long name, and the
-/// value alone for a positional. `text` is the call's text up to the
-/// command, which each error names.
+/// The reason a [`Call`] does not resolve in a command tree.
 ///
-/// An option value that starts with `-` follows an `=`, such as
-/// `--author=-x`, because clap reads a separate word that starts with `-` as
-/// a flag. A positional value that starts with `-` is refused unless the
-/// argument allows hyphen values, or allows negative numbers and the value is
-/// one. A lone `-` is a value to clap.
-///
-/// RUST-10: rendering checks a value against the argument's possible values
-/// only. clap keeps the argument's value parser private, so a value that the
-/// parser would refuse, such as `x` for a number, still renders. Each value
-/// renders as one occurrence, so two values of an option that takes several
-/// values in one occurrence, such as `--ids 2 9`, render as `--ids 2 --ids
-/// 9`, which clap refuses for an option that may not repeat. A call that
-/// needs these reads the argument's value range and parses the value once
-/// clap exposes its parser.
-fn render_value(arg: &Arg, text: &str, value: &str) -> Result<String, CallError> {
-    let id = arg.get_id().as_str();
-    if !arg.get_action().takes_values() {
-        return Err(CallError::TakesNoValue {
-            command: text.to_owned(),
-            id: id.to_owned(),
-        });
-    }
-    let possible = arg.get_possible_values();
-    if !possible.is_empty()
-        && !possible
-            .iter()
-            .any(|known| known.matches(value, arg.is_ignore_case_set()))
-    {
-        return Err(CallError::UnknownValue {
-            command: text.to_owned(),
-            id: id.to_owned(),
-            value: value.to_owned(),
-        });
-    }
-    let quoted = quote(value);
-    let hyphen = value.len() > 1 && value.starts_with('-');
-    let flag = match (arg.get_long(), arg.get_short()) {
-        (Some(long), _) => format!("--{long}"),
-        (None, Some(short)) => format!("-{short}"),
-        (None, None) => {
-            let allowed = arg.is_allow_hyphen_values_set()
-                || (arg.is_allow_negative_numbers_set() && value.parse::<f64>().is_ok());
-            if hyphen && !allowed {
-                return Err(CallError::HyphenValue {
-                    command: text.to_owned(),
-                    id: id.to_owned(),
-                    value: value.to_owned(),
-                });
+/// Each variant names the command that was searched, as the text of the call
+/// up to that point, such as `shelf books`, and the name or id that it lacks.
+/// The variants say what kind of thing is missing, so a tool's test that
+/// asserts its calls resolve reports which part to fix.
+#[derive(Clone, Debug, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum CallError {
+    /// `command` has no subcommand called `name`.
+    MissingCommand {
+        /// The command that was searched, such as `shelf books`.
+        command: String,
+        /// The path segment that names no subcommand.
+        name: String,
+    },
+    /// `command` has a subcommand called `name`, and the tool hid it.
+    HiddenCommand {
+        /// The command that was searched, such as `shelf books`.
+        command: String,
+        /// The path segment that names a hidden subcommand.
+        name: String,
+    },
+    /// `command`, the final command of the call, has no argument with the id
+    /// `id`.
+    MissingArgument {
+        /// The final command of the call, such as `shelf books show`.
+        command: String,
+        /// The argument id that the command lacks.
+        id: String,
+    },
+    /// `command`, the final command of the call, has an argument with the id
+    /// `id`, and the tool hid it.
+    HiddenArgument {
+        /// The final command of the call, such as `shelf books show`.
+        command: String,
+        /// The id of the hidden argument.
+        id: String,
+    },
+    /// The call gives a value to the argument `id` of `command`, and the
+    /// argument is a flag that takes no value.
+    TakesNoValue {
+        /// The final command of the call, such as `shelf books list`.
+        command: String,
+        /// The id of the flag.
+        id: String,
+    },
+    /// The call gives the argument `id` of `command` every value of a field,
+    /// and the argument takes one value.
+    TakesOneValue {
+        /// The final command of the call, such as `shelf books list`.
+        command: String,
+        /// The id of the argument.
+        id: String,
+    },
+    /// The call holds the argument `id` of `command` as a placeholder beside
+    /// an argument that takes every value of a field, or holds two arguments
+    /// that take every value of a field. Only the values of one field fill
+    /// such a call.
+    PlaceholderBesideAll {
+        /// The final command of the call, such as `shelf books list`.
+        command: String,
+        /// The id of the argument that is a placeholder.
+        id: String,
+    },
+    /// The call gives the argument `id` of `command` a value that is not one
+    /// of the argument's possible values.
+    UnknownValue {
+        /// The final command of the call, such as `shelf books list`.
+        command: String,
+        /// The id of the argument.
+        id: String,
+        /// The value that the argument does not accept.
+        value: String,
+    },
+    /// The call gives the positional argument `id` of `command` a value that
+    /// starts with `-`, which clap reads as a flag, and the argument does not
+    /// allow such values.
+    HyphenValue {
+        /// The final command of the call, such as `shelf books show`.
+        command: String,
+        /// The id of the positional argument.
+        id: String,
+        /// The value that starts with `-`.
+        value: String,
+    },
+}
+
+/// Prints the reason on one line, such as `'shelf books' has no subcommand
+/// 'shw'`.
+impl fmt::Display for CallError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::MissingCommand { command, name } => {
+                write!(f, "'{command}' has no subcommand '{name}'")
             }
-            return Ok(quoted);
+            Self::HiddenCommand { command, name } => {
+                write!(f, "'{command}' hides its subcommand '{name}'")
+            }
+            Self::MissingArgument { command, id } => {
+                write!(f, "'{command}' has no argument '{id}'")
+            }
+            Self::HiddenArgument { command, id } => {
+                write!(f, "'{command}' hides its argument '{id}'")
+            }
+            Self::TakesNoValue { command, id } => {
+                write!(f, "'{command}' takes no value for its argument '{id}'")
+            }
+            Self::TakesOneValue { command, id } => write!(
+                f,
+                "'{command}' takes one value for its argument '{id}', so a call cannot give it every value of a field"
+            ),
+            Self::PlaceholderBesideAll { command, id } => write!(
+                f,
+                "'{command}' has its argument '{id}' as a placeholder in a call that takes every value of a field, which only those values fill"
+            ),
+            Self::UnknownValue { command, id, value } => {
+                write!(
+                    f,
+                    "'{command}' does not accept '{value}' for its argument '{id}'"
+                )
+            }
+            Self::HyphenValue { command, id, value } => write!(
+                f,
+                "'{command}' would read the value '{value}' of its argument '{id}' as a flag"
+            ),
         }
-    };
-    let separator = if hyphen { '=' } else { ' ' };
-    Ok(format!("{flag}{separator}{quoted}"))
+    }
 }
 
-/// Holds the supertrait that keeps tools from implementing [`RenderCall`].
-mod sealed {
-    /// A type that crumbkit implements [`RenderCall`](super::RenderCall)
-    /// for. The trait is public so it can bound `RenderCall`, and it sits in
-    /// a private module so no tool can name it.
-    pub trait Sealed {}
-
-    impl Sealed for crate::Call {}
-}
+impl Error for CallError {}

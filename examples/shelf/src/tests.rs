@@ -22,7 +22,7 @@ fn books_show_without_ids_asks_the_menu_and_shows_the_picked_books() {
     use crumbkit::help::{Guide, Leaf};
     use crumbkit::pick::Choices;
 
-    static MENU: crumbkit_picker::Menu = crumbkit_picker::Menu::new();
+    static MENU: crumbkit::pick::Menu = crumbkit::pick::Menu::new();
     const GUIDE: Guide = Guide::new()
         .picker(&MENU)
         .leaves(&[Leaf::new(&["books", "show"]).choices(&[Choices::new("ids", catalogue)])]);

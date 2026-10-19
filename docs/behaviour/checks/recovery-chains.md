@@ -37,7 +37,7 @@ does not render is not reported again as a dead end. A code that the tool
 does not declare and crumbkit does not own ends its chain, and the report
 counts such codes. crumbkit owns its own codes, the codes that the guide
 prints in place of them, and the codes of its add-on crates, such as crumbkit-child's
-`<tool>::child::failed` and crumbkit-aliases's
+`<tool>::child::not_found` and crumbkit-aliases's
 `<tool>::aliases::unreadable`. The tool's output names the tool in each of
 these codes, so the check follows a code in the tool's component that the
 tool does not declare only when it is one of these codes spelled with the

@@ -2,13 +2,13 @@
 //! and a child that crumbkit hands the terminal to runs through `cmd`.
 
 use std::process::ExitCode;
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
 use clap::Command;
 
 use super::typed;
 use super::{is_child, log_lines, run_child};
-use crate::recorder::{RECORDER, Signals, State, ended, start, start_with};
+use crate::recorder::start;
 use crate::testing::TempDir;
 use crumbkit::Spelling;
 
@@ -76,44 +76,6 @@ fn the_ctrl_c_test_s_child_starts_the_log_and_raises_sigint() {
     // The signal ends the process, so the test never gets past the wait.
     std::thread::sleep(Duration::from_secs(10));
     panic!("SIGINT did not end the process");
-}
-
-#[test]
-fn a_tool_that_owns_its_signals_keeps_running_after_ctrl_c_and_reports_its_own_exit() {
-    let state = TempDir::new("owned");
-
-    let status = run_child(
-        "recorder::tests::processes::windows::the_owned_ctrl_c_test_s_child_raises_sigint_and_ends_with_124",
-        &state,
-    );
-
-    assert!(status.success(), "the tool ended with {status:?}");
-    let lines = log_lines(&state, "owner");
-    assert_eq!(lines.len(), 1);
-    assert_eq!(lines[0]["interrupted"], true);
-    assert_eq!(lines[0]["exit"], 124);
-}
-
-/// Runs only as the child of the owned Ctrl-C test. It starts the log for
-/// a tool that owns its signals, raises SIGINT, waits until the log's
-/// thread has recorded it, and reports exit 124.
-#[test]
-fn the_owned_ctrl_c_test_s_child_raises_sigint_and_ends_with_124() {
-    if !is_child() {
-        return;
-    }
-    let _log = start_with(Signals::Tool);
-    typed(&Command::new("owner"), &["owner".into()], Spelling::COLONS);
-    signal_hook::low_level::raise(signal_hook::consts::SIGINT).unwrap();
-    let waited = Instant::now();
-    while !matches!(&*RECORDER.lock().unwrap(), State::Recording(recorder) if recorder.signalled) {
-        assert!(
-            waited.elapsed() < Duration::from_secs(10),
-            "the signal was not recorded"
-        );
-        std::thread::sleep(Duration::from_millis(5));
-    }
-    ended(124, Some(5));
 }
 
 #[test]
@@ -195,9 +157,7 @@ fn the_interrupted_child_test_s_child_hands_over_to_a_child_that_ctrl_c_ended() 
         &["editing".into()],
         Spelling::COLONS,
     );
-    let code = crumbkit_child::hand_over(
-        &mut super::bare_output(),
-        cmd(&format!("exit {CONTROL_C_EXIT}")),
-    );
+    let code =
+        crumbkit_child::hand_over(super::bare_output(), cmd(&format!("exit {CONTROL_C_EXIT}")));
     exit(if code == ExitCode::from(130) { 130 } else { 1 });
 }

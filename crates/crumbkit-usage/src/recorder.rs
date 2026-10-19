@@ -9,7 +9,6 @@ use std::thread;
 use std::time::{Duration, Instant, SystemTime};
 
 use clap::Command;
-use serde::Serialize;
 use signal_hook::consts::SIGINT;
 
 use super::caller::{self, Caller};
@@ -18,10 +17,10 @@ use super::file::{self, LIMITS, Limits};
 use super::key;
 use super::observer::{self, UsageLog};
 use super::platform::{self, Interrupts};
-use super::record::{self, Hash, Help, Name, Record, Run, Section};
+use super::record::{self, Hash, Help, Name, Record, Run};
 use super::shape;
 use crumbkit::events::TraceIds;
-use crumbkit::{Code, Document, Spelling, ToolName};
+use crumbkit::{Code, Spelling, ToolName};
 
 #[cfg(test)]
 mod tests;
@@ -34,8 +33,7 @@ static RECORDER: Mutex<State> = Mutex::new(State::Idle);
 /// recorder hears each report once.
 static OBSERVING: AtomicBool = AtomicBool::new(false);
 
-/// Whether the signal thread has taken SIGINT, which it does with either
-/// [`Signals`] value.
+/// Whether the signal thread has taken SIGINT.
 static LISTENS: AtomicBool = AtomicBool::new(false);
 
 /// The most tolerated codes that one line holds. A run that reports more
@@ -89,38 +87,9 @@ pub(super) struct Recorder {
     tolerated: Vec<&'static Code>,
     /// What the run reported.
     pub(super) run: Run,
-    /// Whether SIGINT or SIGTERM arrived in a run whose tool owns its
-    /// signals. The line then says that the run was interrupted.
+    /// Whether a signal ended a child that held the terminal, which the
+    /// observer reports. The line then says that the run was interrupted.
     pub(super) signalled: bool,
-}
-
-/// Who handles SIGINT and SIGTERM while the usage log runs, which
-/// [`start_with`] takes. On Windows the log takes only SIGINT, which Ctrl-C
-/// raises, so these values apply to SIGINT alone there.
-#[non_exhaustive]
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
-pub enum Signals {
-    /// crumbkit handles both signals. On either one, it writes the run's
-    /// line with `"interrupted": true` and then lets the signal end the
-    /// process as it would have without the log. [`start`] chooses this.
-    #[default]
-    Crumbkit,
-    /// The tool handles both signals with its own handler. On either one,
-    /// crumbkit only notes that the run was interrupted and leaves the
-    /// process running. The tool ends the run itself and reports its exit
-    /// with [`ended`](crumbkit::events::ended), which writes the line with
-    /// `"interrupted": true`. A tool that returns from `main` without
-    /// calling `ended` gets its line from the guard.
-    ///
-    /// crumbkit's listener replaces the default action of both signals for
-    /// the whole process. A tool that chooses `Tool` and installs no handler
-    /// of its own therefore keeps running on Ctrl-C and on SIGTERM, and only
-    /// SIGKILL ends it. A handler that the tool installs later through
-    /// signal-hook runs beside crumbkit's listener. A handler that replaces
-    /// the signal's action directly, as the ctrlc crate does, removes
-    /// crumbkit's listener, and the line then records the tool's exit
-    /// without `interrupted`.
-    Tool,
 }
 
 /// The guard that [`start`] returns. It writes the run's line when it
@@ -158,13 +127,22 @@ impl Drop for Log {
 ///
 /// `start` notes the time, reads the caller's trace context from
 /// TRACEPARENT and TRACESTATE, and installs the process's recorder, which
-/// `parse`, `finish`, [`crumbkit::events::aliased`] and [`section`] report to.
-/// `parse` gives the recorder the tool's name and version from the command
-/// it parses against, so a run that ends before it reaches `parse` writes no
-/// line. `start` also starts the thread that writes the line when the run
-/// ends on SIGINT or SIGTERM, and then lets the signal end the process as it
-/// would have. On Windows the thread takes only SIGINT, and the process
-/// then ends with the exit code that Ctrl-C gives, `STATUS_CONTROL_C_EXIT`.
+/// `parse`, `finish` and [`crumbkit::events::aliased`] report to. `parse`
+/// gives the recorder the tool's name and version from the command it
+/// parses against, so a run that ends before it reaches `parse` writes no
+/// line. `start` also starts the thread that writes the line with
+/// `"interrupted": true` when the run ends on SIGINT or SIGTERM, and then
+/// lets the signal end the process as it would have. On Windows the thread
+/// takes only SIGINT, and the process then ends with the exit code that
+/// Ctrl-C gives, `STATUS_CONTROL_C_EXIT`.
+///
+/// The thread replaces the default action of both signals for the whole
+/// process. A handler that the tool installs later through signal-hook runs
+/// beside the thread, which still ends the process. A handler that replaces
+/// the signal's action directly, as the ctrlc crate does, removes the
+/// thread's listener, and the line then records the tool's exit without
+/// `interrupted`. A tool that handles either signal itself keeps its own
+/// handler and runs without the log.
 ///
 /// The run joins the caller's trace when TRACEPARENT is valid, and starts a
 /// new trace otherwise, as [`crumbkit::trace`] describes. The random ids come
@@ -188,17 +166,6 @@ impl Drop for Log {
 /// drops the line without a word, and recording never changes the tool's
 /// output or exit code (ADR-0029).
 pub fn start() -> Log {
-    start_with(Signals::Crumbkit)
-}
-
-/// Starts the usage log of this run as [`start`] does, with `signals`
-/// saying who handles SIGINT and SIGTERM.
-///
-/// A tool with its own handler for either signal calls
-/// `start_with(Signals::Tool)`, so the log never ends the process, and
-/// reports its exit with [`ended`](crumbkit::events::ended), as
-/// [`Signals::Tool`] describes.
-pub fn start_with(signals: Signals) -> Log {
     let started = Instant::now();
     let first = !OBSERVING.swap(true, Ordering::SeqCst);
     let active = first
@@ -206,22 +173,9 @@ pub fn start_with(signals: Signals) -> Log {
         && context::read()
             .is_some_and(|context| install(&RECORDER, Recorder::new(started, context)));
     if active {
-        watch_signals(signals);
+        watch_signals();
     }
     Log { active }
-}
-
-/// Sets the tool's own section of this run's line to `value`, under the id
-/// of `document`, such as `{"schema":"shelf/usage-ext/v1","data":{...}}`.
-/// A later call replaces the section, and without a started log it does
-/// nothing.
-///
-/// The tool owns the section, and crumbkit cannot check it, so the tool
-/// keeps argument values, URLs, ids, paths and messages out of it, as
-/// crumbkit keeps them out of its own fields. The section counts towards the
-/// line's limit of 1 KiB, and a longer line is dropped.
-pub fn section<T: Serialize>(document: Document<T>, value: &T) {
-    update(&RECORDER, |recorder| recorder.section(document, value));
 }
 
 /// Applies `change` to the process's recorder, and does nothing without
@@ -318,16 +272,6 @@ impl Recorder {
     pub(super) fn failed(&mut self, spelling: Spelling, code: &Code) {
         if self.run.code.is_none() {
             self.run.code = Some(Name::code(spelling, code));
-        }
-    }
-
-    /// Sets the tool's section, as [`section`] describes.
-    fn section<T: Serialize>(&mut self, document: Document<T>, value: &T) {
-        if let Ok(data) = serde_json::to_value(value) {
-            self.run.ext = Some(Section {
-                schema: document.to_string(),
-                data,
-            });
         }
     }
 
@@ -485,25 +429,23 @@ fn save(
 /// Starts the thread that listens for SIGINT and SIGTERM, or for SIGINT
 /// alone on Windows, and returns once the thread listens.
 ///
-/// With [`Signals::Crumbkit`], the thread writes the line on the first
-/// signal. When the main thread is already writing the line, the signal
-/// thread waits for it, for at most [`LINE_WAIT`], as [`write`] describes.
-/// After the line, the thread ends the process as the signal would have
-/// without the log. With
-/// [`Signals::Tool`], the thread notes each signal in the recorder and
-/// leaves the process running. The thread also leaves the process running
-/// on a SIGINT that arrives once crumbkit reported that a child took the
-/// terminal, and on Windows before it reported that the child gave the
-/// terminal back, because Ctrl-C then belongs to the child (ADR-0042).
+/// The thread writes the line on the first signal. When the main thread is
+/// already writing the line, the signal thread waits for it, for at most
+/// [`LINE_WAIT`], as [`write`] describes. After the line, the thread ends
+/// the process as the signal would have without the log. The thread leaves
+/// the process running on a SIGINT that arrives once crumbkit reported that
+/// a child took the terminal, and on Windows before it reported that the
+/// child gave the terminal back, because Ctrl-C then belongs to the child
+/// (ADR-0042).
 //
 // RUST-10: the thread takes both signals from the start of the run. A
 // process that started with one of them ignored now ends on it, such as a
 // background job of a non-interactive shell, which starts with SIGINT
-// ignored. A tool that handles one of them itself and starts the log with
-// `start` ends on it too, and `Signals::Tool` exists for it. Reading
-// each signal's disposition before taking it replaces this, which needs the
-// `sigaction` call that crumbkit's ban on unsafe code rules out today.
-fn watch_signals(owner: Signals) {
+// ignored. A tool that handles one of them itself ends on it too, so such a
+// tool runs without the log (ADR-0095). Reading each signal's disposition
+// before taking it replaces this, which needs the `sigaction` call that
+// crumbkit's ban on unsafe code rules out today.
+fn watch_signals() {
     let (listening, listens) = mpsc::channel();
     let spawned = thread::Builder::new()
         .name("crumbkit-usage".to_owned())
@@ -519,10 +461,6 @@ fn watch_signals(owner: Signals) {
                 return;
             };
             while let Some(signal) = interrupts.wait() {
-                if owner == Signals::Tool {
-                    update(&RECORDER, |recorder| recorder.signalled = true);
-                    continue;
-                }
                 if signal == SIGINT && observer::held_terminal() {
                     continue;
                 }

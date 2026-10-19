@@ -27,8 +27,7 @@
 //! [golden files]: https://github.com/crumbkit/crumbkit/tree/main/examples/shelf/tests/golden
 //! [schemas]: https://github.com/crumbkit/crumbkit/tree/main/crates/crumbkit/schemas
 //! [crumbkit-test]: https://github.com/crumbkit/crumbkit/blob/main/crates/crumbkit-test/README.md
-//! [crumbkit-core]: https://github.com/crumbkit/crumbkit/blob/main/crates/crumbkit-core/README.md
-//! [ADR-0032]: https://github.com/crumbkit/crumbkit/blob/main/docs/decisions/api/0032-core-crate.md
+//! [crumbkit-derive]: https://github.com/crumbkit/crumbkit/blob/main/crates/crumbkit-derive/README.md
 //! [behaviour docs]: https://github.com/crumbkit/crumbkit/blob/main/docs/behaviour/README.md
 #![doc = include_str!("../README.md")]
 // docs.rs builds the docs on nightly with `--cfg docsrs`, and rustdoc's
@@ -38,46 +37,59 @@
 mod agent;
 #[cfg(test)]
 mod answered;
+mod batch;
+mod bytes;
 mod call;
+mod code;
 pub mod codes;
 pub mod commands;
 mod complete;
 mod dashed;
+mod document;
 pub mod events;
 mod exit;
 mod expect;
+mod failure;
 mod fetch;
+mod field;
 pub mod form;
 pub mod help;
+mod listing;
 mod output;
 mod page;
 mod parse;
 pub mod pick;
+mod prose;
 mod refusal;
 #[cfg(doctest)]
 mod removed;
+#[cfg(feature = "miette")]
+mod report;
 mod row;
 pub mod schemas;
+mod segment;
 mod sink;
+mod stream;
+mod tool_name;
 pub mod trace;
 #[cfg(test)]
 mod twins;
+mod unclassified;
 mod view;
 
-// crumbkit re-exports every item of crumbkit-core at the path it had in
-// crumbkit, so a tool depends on crumbkit alone (ADR-0032).
-pub use crumbkit_core::{
-    AsFailure, Batch, Bytes, Call, CallArg, CallError, CallTarget, Code, Document, Envelope, Error,
-    Failure, Field, FieldValue, Headed, Listing, NoRow, NoSummary, Prose, Recovery, Row, Rows,
-    RuntimeCodeError, Shape, Spelling, Stream, ToolName,
-};
-
-pub use crate::call::RenderCall;
+pub use crate::batch::Batch;
+pub use crate::bytes::Bytes;
+pub use crate::call::{Call, CallArg, CallError, CallTarget, RenderCall};
+pub use crate::code::{Code, RuntimeCodeError, Spelling};
 #[cfg(feature = "complete")]
 pub use crate::complete::{complete, complete_to, complete_with, complete_with_words};
 pub use crate::dashed::{dashed_form, dashed_name, is_dashed};
+pub use crate::document::{Document, Envelope};
 pub use crate::expect::Expect;
+pub use crate::failure::{AsFailure, Error, Failure, Recovery};
 pub use crate::fetch::fetch_each;
+pub use crate::field::{Field, FieldValue};
+pub use crate::listing::{Listing, NoSummary};
 pub use crate::output::{
     DryRun, JsonLayout, Output, Room, Streaming, ViewFlags, Yes, finish, finish_to, stream,
     stream_to,
@@ -86,7 +98,16 @@ pub use crate::page::Page;
 pub use crate::parse::walk::command_path;
 pub use crate::parse::{Stop, parse, parse_from, parse_to};
 pub use crate::pick::NoInput;
+pub use crate::prose::Prose;
+pub use crate::row::{Headed, NoRow, Row, Rows, Shape};
 pub use crate::sink::Sink;
+pub use crate::stream::Stream;
+pub use crate::tool_name::ToolName;
+/// Writes the [`Failure`] impl and the `CODES` list of an enum or a struct
+/// from `#[failure(...)]` attributes. The `derive` feature adds it, and
+/// crumbkit-derive documents its attributes.
+#[cfg(feature = "derive")]
+pub use crumbkit_derive::Failure;
 
 /// The schemars crate that crumbkit builds against, so a tool can name
 /// `crumbkit::schemars::{Schema, json_schema}` without a schemars

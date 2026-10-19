@@ -8,17 +8,17 @@ type. shelf derives the impl of its books failures.
 
 ## Turning it on
 
-The derive sits behind the `derive` feature. crumbkit-core's `derive`
-feature re-exports the macro from crumbkit-derive beside the trait of the
-same name, and crumbkit's `derive` feature turns it on, so
-`crumbkit::Failure` names both. A procedural macro must live in its own
-crate. The derive writes paths under `::crumbkit` unless its `crate` key
-names `::crumbkit_core`. The feature is off by default, so a tool that
-depends on crumbkit alone and writes its `Failure` impls by hand builds no
-syn. crumbkit-child and crumbkit-aliases turn the feature on for their own
-failures, so a tool that uses either builds crumbkit-derive.
+The derive sits behind the `derive` feature. crumbkit's `derive` feature
+re-exports the macro from crumbkit-derive beside the trait of the same
+name, so `crumbkit::Failure` names both. A procedural macro must live in
+its own crate. The derive writes paths under `::crumbkit` unless its
+`crate` key names another path to crumbkit, such as a re-export. The
+feature is off by default, so a tool that depends on crumbkit alone and
+writes its `Failure` impls by hand builds no syn. crumbkit-child and
+crumbkit-aliases turn the feature on for their own failures, so a tool that
+uses either builds crumbkit-derive.
 
-Why: ADR-0001, ADR-0032, ADR-0003.
+Why: ADR-0001, ADR-0097, ADR-0003.
 
 ## What it writes
 

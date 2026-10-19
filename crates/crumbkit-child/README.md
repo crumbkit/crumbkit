@@ -35,27 +35,25 @@ fn edit(output: Output, path: &str) -> ExitCode {
 }
 ```
 
-A child that prints a typed JSON document when asked goes through
-[`hand_over_json`] with a [`Json`] constant, so `--json` prints the child's
-document inside crumbkit's envelope.
+The child's output is text that the terminal shows, so `hand_over` refuses
+`--json` and `--fields` before the child starts. A tool that wants a
+child's JSON runs the child itself and reads its output.
 
 ## Where to read more
 
-- [`hand_over`], [`hand_over_json`] and [`Json`] describe the hand-over, its
-  signals and its failures.
+- [`hand_over`] describes the hand-over, its signals and its failures.
 - [`codes`] lists the failure codes, which a tool's tests can name.
 - The [child processes docs] describe what a hand-over does for a tool,
-  and the [run observer docs] what it reports. [ADR-0042] and [ADR-0058]
-  record why.
+  and the [run observer docs] what it reports. [ADR-0042], [ADR-0058] and
+  [ADR-0095] record why.
 
 Licensed under either of Apache License, Version 2.0 or MIT license at your
 option.
 
 [`hand_over`]: src/hand_over.rs
-[`hand_over_json`]: src/hand_over.rs
-[`Json`]: src/hand_over.rs
 [`codes`]: src/codes.rs
 [ADR-0042]: ../../docs/decisions/api/output/0042-child-processes.md
 [ADR-0058]: ../../docs/decisions/api/output/0058-child-crate.md
+[ADR-0095]: ../../docs/decisions/api/usage/0095-text-hand-over-own-signals-and-menu.md
 [child processes docs]: ../../docs/behaviour/output/child-processes.md
 [run observer docs]: ../../docs/behaviour/run-observer/README.md

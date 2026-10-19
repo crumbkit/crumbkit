@@ -10,11 +10,8 @@ use super::{Chain, Walk};
 /// The codes of crumbkit's add-on crates: crumbkit-child's `codes::ALL` and
 /// crumbkit-aliases's `codes::ALL`. A test compares this list with theirs.
 pub(crate) const ADD_ON_CODES: &[&Code] = &[
-    &Code::new("crumbkit", "child", "no_json"),
     &Code::new("crumbkit", "child", "not_found"),
     &Code::new("crumbkit", "child", "not_started"),
-    &Code::new("crumbkit", "child", "bad_json"),
-    &Code::new("crumbkit", "child", "failed"),
     &Code::new("crumbkit", "aliases", "unreadable"),
 ];
 
@@ -22,7 +19,7 @@ impl Walk<'_> {
     /// Returns whether the check follows the recovery of the spelled
     /// `code`: a code in `known`, or one of crumbkit's own codes or of its
     /// add-on crates' codes, which print with the tool's component
-    /// (ADR-0079), such as crumbkit-child's `shelf::child::failed`. Any
+    /// (ADR-0079), such as crumbkit-child's `shelf::child::not_found`. Any
     /// other code in the tool's component, such as `shelf::cache::stale`,
     /// is unknown.
     pub(super) fn is_known(&self, code: &str) -> bool {

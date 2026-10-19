@@ -26,7 +26,7 @@ fn failing_with(label: &str, code: &str) -> Setup {
 #[test]
 fn an_add_on_crates_code_spelled_with_the_tools_name_has_its_recovery_followed() {
     for (label, code) in [
-        ("recoveries-add-on-child", "tool::child::failed"),
+        ("recoveries-add-on-child", "tool::child::not_found"),
         ("recoveries-add-on-aliases", "tool::aliases::unreadable"),
     ] {
         let setup = failing_with(label, code);
