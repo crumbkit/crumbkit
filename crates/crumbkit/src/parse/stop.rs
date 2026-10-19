@@ -4,8 +4,9 @@ use std::process::ExitCode;
 
 use clap::Command;
 
+use crate::Output;
 use crate::help::Guide;
-use crate::{Output, ViewFlags};
+use crate::view::{Selection, Table, View};
 
 /// What [`parse`](crate::parse) returns after it printed help, the version
 /// or a refusal, so the run ends without a parsed command.
@@ -31,9 +32,14 @@ impl Stop {
     /// found `--json` when `json` is true, after parsing against `command`
     /// with `guide`.
     pub(crate) fn new(code: u8, json: bool, command: Command, guide: &Guide) -> Self {
+        let view = if json {
+            View::Json(Selection::Columns)
+        } else {
+            View::Text(Table::Compact)
+        };
         Self {
             code,
-            output: Box::new(Output::stopped(ViewFlags::new().json(json), command, guide)),
+            output: Box::new(Output::stopped(view, command, guide)),
         }
     }
 

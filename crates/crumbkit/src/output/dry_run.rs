@@ -43,7 +43,7 @@ pub(super) const DRY_RUN_LINE: &str = "This was a dry run, so nothing changed.";
 ///
 /// let words = ["books-remove", "--dry-run"];
 /// let args = BooksRemove::parse_from(words);
-/// let mut output = Output::new(args.view, BooksRemove::command(), &Guide::new(), words);
+/// let mut output = Output::new(args.view, BooksRemove::command(), &Guide::new(), words).unwrap();
 /// assert!(output.dry_run(args.dry_run));
 /// ```
 ///

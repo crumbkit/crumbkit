@@ -73,7 +73,7 @@ fn output(args: &[String]) -> Output {
     let mut command = Sky::command();
     let matches = command.try_get_matches_from_mut(args).unwrap();
     let view = ViewFlags::from_arg_matches(&matches).unwrap();
-    Output::new(view, command, &guide(), args)
+    Output::new(view, command, &guide(), args).unwrap()
 }
 
 /// Returns a guide with the budget of [`BUDGET`].
@@ -173,7 +173,7 @@ fn a_batch_s_recovery_without_the_caller_s_words_runs_the_batch_s_command_alone(
     let mut command = Sky::command();
     let matches = command.try_get_matches_from_mut(&args).unwrap();
     let view = ViewFlags::from_arg_matches(&matches).unwrap();
-    let mut output = Output::new(view, command, &guide(), ["tool"]);
+    let mut output = Output::new(view, command, &guide(), ["tool"]).unwrap();
 
     let finished = finish_output(&mut output, STAR_BATCH, batch(&["show"]));
 

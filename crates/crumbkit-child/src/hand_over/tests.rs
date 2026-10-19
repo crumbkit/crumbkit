@@ -51,7 +51,7 @@ struct Tool {
 fn output(flags: &[&str]) -> Output {
     let words: Vec<&str> = ["vault"].iter().chain(flags).copied().collect();
     let view = Tool::try_parse_from(&words).unwrap().view;
-    Output::new(view, Tool::command(), &Guide::new(), words)
+    Output::new(view, Tool::command(), &Guide::new(), words).unwrap()
 }
 
 /// What a response returned and wrote.
@@ -357,7 +357,7 @@ const NO_JSON_3: Guide = Guide::new().exits(&[
 fn no_json_exit(guide: &'static Guide) -> ExitCode {
     let words = ["vault", "--json"];
     let view = Tool::try_parse_from(words).unwrap().view;
-    let mut output = Output::new(view, Tool::command(), guide, words);
+    let mut output = Output::new(view, Tool::command(), guide, words).unwrap();
     respond(|sink| hand_over_to(sink, &mut output, command(MISSING))).code
 }
 
@@ -379,7 +379,7 @@ fn dotted(flags: &[&str]) -> Output {
     const GUIDE: Guide = Guide::new().spelling(DOTS);
     let words: Vec<&str> = ["vault"].iter().chain(flags).copied().collect();
     let view = Tool::try_parse_from(&words).unwrap().view;
-    Output::new(view, Tool::command(), &GUIDE, words)
+    Output::new(view, Tool::command(), &GUIDE, words).unwrap()
 }
 
 #[test]

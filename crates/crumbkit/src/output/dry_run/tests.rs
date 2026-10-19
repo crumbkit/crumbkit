@@ -59,7 +59,7 @@ fn finish_with<T: crate::Rows>(
 ) -> Finished {
     let args = ["tool", "remove"].iter().chain(flags);
     let tool = Tool::try_parse_from(args.clone()).unwrap();
-    let mut output = Output::new(tool.view, Tool::command(), &Guide::new(), args);
+    let mut output = Output::new(tool.view, Tool::command(), &Guide::new(), args).unwrap();
     let Commands::Remove { dry_run } = tool.command;
     let dry_run = output.dry_run(dry_run);
     let mut out = Vec::new();
@@ -150,7 +150,7 @@ fn a_dry_run_of_a_document_without_the_envelope_prints_it_unchanged_and_says_so_
 {
     let args = ["tool", "remove", "--dry-run", "--json"];
     let tool = Tool::try_parse_from(args).unwrap();
-    let mut output = Output::new(tool.view, Tool::command(), &Guide::new(), args);
+    let mut output = Output::new(tool.view, Tool::command(), &Guide::new(), args).unwrap();
     let Commands::Remove { dry_run } = tool.command;
     output.dry_run(dry_run);
     let mut out = Vec::new();

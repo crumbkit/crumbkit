@@ -531,6 +531,10 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- crumbkit: [`Output::new`] returns `Result<Output, Stop>` and refuses
+  `--full` without `--json` and `--fields` with `--long` or `--full`
+  before the handler runs; [`finish`] and [`stream`] no longer refuse
+  them ([behaviour/output]).
 - crumbkit: a tool sets its code spelling once with `Guide::spelling`,
   which defaults to `Spelling::COLONS`. [`parse`], [`finish`], [`stream`],
   `hand_over` and crumbkit-test's checks no longer take a `Spelling`, and
@@ -985,6 +989,7 @@ rustdoc, or at the page in docs/ that describes the behaviour. -->
 [`Row`]: crates/crumbkit-core/src/row.rs
 [`Document`]: crates/crumbkit-core/src/document.rs
 [`Output`]: crates/crumbkit/src/output.rs
+[`Output::new`]: crates/crumbkit/src/output/build.rs
 [`finish`]: crates/crumbkit/src/output.rs
 [`finish_to`]: crates/crumbkit/src/output.rs
 [`stream`]: crates/crumbkit/src/output/stream.rs

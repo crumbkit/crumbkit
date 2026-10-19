@@ -386,9 +386,8 @@ where
     let error = match parsed {
         Ok(Attempt {
             parsed,
-            view,
+            view: Ok(view),
             no_input,
-            refusal: None,
         }) => {
             return Ok((
                 parsed,
@@ -396,8 +395,7 @@ where
             ));
         }
         Ok(Attempt {
-            refusal: Some(refusal),
-            ..
+            view: Err(refusal), ..
         }) => {
             crate::events::exited(Printing::of(guide).exit(&crate::codes::CLI_USAGE));
             return Err(refuse(sink, &refusal, json, spelling, guide, command));

@@ -115,7 +115,7 @@ fn parse(flags: &[&str]) -> Output {
     let args = ["birds", "watch"].iter().chain(flags);
     let matches = command.try_get_matches_from_mut(args.clone()).unwrap();
     let tool = Tool::from_arg_matches(&matches).unwrap();
-    let mut output = Output::new(tool.view, command, &crate::help::Guide::new(), args);
+    let mut output = Output::new(tool.view, command, &crate::help::Guide::new(), args).unwrap();
     let Command::Watch { dry_run } = tool.command;
     let _ = output.dry_run(dry_run);
     output
@@ -476,7 +476,7 @@ fn run_budgeted(flags: &[&str], count: usize) -> (Streamed, usize) {
     let matches = command.try_get_matches_from_mut(args.clone()).unwrap();
     let view = Tool::from_arg_matches(&matches).unwrap().view;
     let guide = crate::help::Guide::new().output_budget(1024, "a short watch");
-    let mut output = Output::new(view, command, &guide, args);
+    let mut output = Output::new(view, command, &guide, args).unwrap();
     let mut out = Vec::new();
     let mut err = Vec::new();
     let mut sink = Sink::new(&mut out, &mut err);
@@ -548,7 +548,7 @@ fn a_stream_always_prints_its_first_item_even_past_the_budget() {
         .unwrap();
     let view = Tool::from_arg_matches(&matches).unwrap().view;
     let guide = crate::help::Guide::new().output_budget(1024, "a short watch");
-    let mut output = Output::new(view, command, &guide, ["birds", "watch"]);
+    let mut output = Output::new(view, command, &guide, ["birds", "watch"]).unwrap();
     let long: &'static str = Box::leak("w".repeat(2000).into_boxed_str());
     let wren = Sighting {
         bird: long,

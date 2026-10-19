@@ -62,6 +62,7 @@ mod sink;
 pub mod trace;
 #[cfg(test)]
 mod twins;
+mod view;
 
 // crumbkit re-exports every item of crumbkit-core at the path it had in
 // crumbkit, so a tool depends on crumbkit alone (ADR-0032).

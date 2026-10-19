@@ -24,6 +24,7 @@ document.
 - [ADR-0069. Output budget floor](0069-output-budget-floor.md)
 - [ADR-0070. Every answer left out keeps its failure](0070-left-out-keys-always-answered.md)
 - [ADR-0077. Notes on prose and batch results](0077-notes-on-prose-and-batches.md)
+- [ADR-0093. The view flags are parsed once into a View](0093-the-view-flags-are-parsed-once-into-a-view.md)
 - [ADR-0050. Listings](listings/README.md)
 - [ADR-0087. Uncounted listings omit totals](uncounted/README.md)
 - [ADR-0098. JSON documents](json/README.md)

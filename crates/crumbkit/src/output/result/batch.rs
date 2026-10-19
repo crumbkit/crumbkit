@@ -55,7 +55,7 @@ impl<T: Rows> Prepared<'_, T> {
         mut left_out: LeftOut<'_>,
     ) -> io::Result<(Answer, usize)> {
         let rows = self.value.rows().len();
-        let in_document = self.json && self.document.get_envelope().wraps();
+        let in_document = self.view.is_json() && self.document.get_envelope().wraps();
         let alone = Failures::of(&[]);
         if rows > 0
             && !self.document.always_prints_first()
@@ -136,7 +136,7 @@ impl<T: Rows> Prepared<'_, T> {
         };
         let key = self.value.key(position).map(|key| (position, key));
         let any_left_out = !self.value.left_out(1).is_empty();
-        let in_document = self.json && self.document.get_envelope().wraps();
+        let in_document = self.view.is_json() && self.document.get_envelope().wraps();
         let (bytes, over) = if in_document {
             // `code` is already the code that the run prints, so no rename
             // applies to it.

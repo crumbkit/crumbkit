@@ -20,6 +20,7 @@ fn output() -> Output {
         &crumbkit::help::Guide::new(),
         ["shelf"],
     )
+    .unwrap()
 }
 
 /// Parses `words` after `shelf aliases list` into the command's arguments.

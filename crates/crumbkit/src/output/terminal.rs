@@ -22,7 +22,7 @@ impl Output {
     #[must_use]
     pub fn progress_allowed(&self) -> bool {
         allowed(
-            self.json,
+            self.is_json(),
             !self.no_terminal,
             crate::sink::stderr_is_terminal,
         )

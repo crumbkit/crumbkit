@@ -317,7 +317,8 @@ fn an_output_from_a_guide_without_a_budget_has_crumbkit_s_default_of_one_mebibyt
         Tool::command(),
         &Guide::new(),
         ["tool"],
-    );
+    )
+    .unwrap();
 
     assert_eq!(output.budget(), Output::DEFAULT_BUDGET);
     assert_eq!(Output::DEFAULT_BUDGET, 1_048_576);

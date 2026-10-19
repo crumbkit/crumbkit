@@ -8,6 +8,7 @@ use super::{Flags, tool};
 use crate::Sink;
 use crate::help::Guide;
 use crate::parse::parse_to;
+use crate::view::{Table, View};
 
 #[test]
 fn a_command_line_that_parses_returns_the_parsed_type_and_an_output_that_holds_the_command() {
@@ -82,8 +83,7 @@ fn a_tool_without_view_flags_parses_with_every_view_flag_off() {
         panic!("the command line did not parse");
     };
     assert!(!output.is_json());
-    let typed = output.typed();
-    assert!(!typed.json && !typed.fields && !typed.long && !typed.full);
+    assert_eq!(output.view(), &View::Text(Table::Compact));
 }
 
 #[test]

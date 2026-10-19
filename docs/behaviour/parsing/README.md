@@ -32,10 +32,14 @@ parses with every view flag off.
 
 A tool that parses with clap alone builds its `Output` with
 `Output::new(view, command, &GUIDE, args)`, where `args` is the argv with
-the program name first. `Output::new` finds the leaf that the words name,
-so the run gets that leaf's code renames, and it keeps the words for the
-`--yes` recovery. It takes the spelling of codes from the guide, as `parse`
-does. It reads no `--no-input`.
+the program name first. `Output::new` returns `Err` with the `Stop` of a
+refused command line when `--full` comes without `--json` or `--fields`
+comes with `--long` or `--full`, after it printed the refusal on standard
+error, so a tool's `main` returns the stop's code as it does after `parse`.
+`Output::new_to` prints the refusal to a sink instead. `Output::new` finds
+the leaf that the words name, so the run gets that leaf's code renames, and
+it keeps the words for the `--yes` recovery. It takes the spelling of codes
+from the guide, as `parse` does. It reads no `--no-input`.
 
 A tool with personal aliases passes its arguments through
 `crumbkit_aliases::expand` before `parse_from`, as the

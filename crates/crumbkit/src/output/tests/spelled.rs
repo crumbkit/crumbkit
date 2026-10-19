@@ -142,12 +142,22 @@ fn a_guide_with_a_custom_spelling_prints_it_through_stream_without_a_further_arg
 fn a_clap_only_tools_output_new_carries_the_guides_spelling() {
     let args = ["tool", "list", "--full"];
     let view = Tool::try_parse_from(args).unwrap().view;
-    let mut output = Output::new(view, Tool::command(), &DOTTED, args);
+    let mut out = Vec::new();
+    let mut err = Vec::new();
 
     // `--full` without `--json` is refused with crumbkit's usage code, which
     // prints with the tool's name.
-    let refused = fail(&mut output);
+    let stop = Output::new_to(
+        &mut Sink::new(&mut out, &mut err),
+        view,
+        Tool::command(),
+        &DOTTED,
+        args,
+    )
+    .unwrap_err();
 
+    assert_eq!(stop.number(), 2);
+    let refused = String::from_utf8(err).unwrap();
     assert!(refused.ends_with("  code:  tool.cli.usage\n"), "{refused}");
 }
 
@@ -155,7 +165,7 @@ fn a_clap_only_tools_output_new_carries_the_guides_spelling() {
 fn a_clap_only_tools_output_new_prints_the_handlers_code_in_the_guides_spelling() {
     let args = ["tool", "list"];
     let view = Tool::try_parse_from(args).unwrap().view;
-    let mut output = Output::new(view, Tool::command(), &DOTTED, args);
+    let mut output = Output::new(view, Tool::command(), &DOTTED, args).unwrap();
 
     let failed = fail(&mut output);
 
