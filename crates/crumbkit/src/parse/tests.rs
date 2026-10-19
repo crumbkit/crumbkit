@@ -6,7 +6,8 @@ use std::process::ExitCode;
 
 use clap::{Arg, ArgAction, Command};
 
-use super::{Stop, message, parse_to};
+use super::message::message;
+use super::{Stop, Unparsed, parse_to, try_parse_to};
 use crate::Sink;
 use crate::help::Guide;
 use crate::twins::assert_one_word_apart;
@@ -93,18 +94,26 @@ fn parse(args: &[&str]) -> Parsed {
     parse_tree(tool(), args)
 }
 
-/// Runs `parse_to` over `command` with `args` into memory, for a command
-/// line that does not parse.
+/// Runs `try_parse_to` over `command` with `args` into memory, for a
+/// command line that does not parse, and prints a refusal with
+/// `Refused::print_to`, so it prints what `parse_to` prints. It checks that
+/// nothing printed before the refusal printed.
 fn parse_tree(command: Command, args: &[&str]) -> Parsed {
     let mut out = Vec::new();
     let mut err = Vec::new();
-    let result = parse_to::<(), _, _, _, _>(
+    let result = try_parse_to::<(), _, _, _, _>(
         &mut Sink::new(&mut out, &mut err),
         command,
         &Guide::new(),
         args,
     );
-    let stop = result.err();
+    let stop = result.err().map(|unparsed| match unparsed {
+        Unparsed::Refused(refused) => {
+            assert_eq!((&out, &err), (&Vec::new(), &Vec::new()));
+            refused.print_to(&mut Sink::new(&mut out, &mut err))
+        }
+        Unparsed::Stopped(stop) => stop,
+    });
     Parsed {
         code: stop.as_ref().map(Stop::code),
         json: stop.as_ref().map(|stop| stop.output().is_json()),
@@ -439,16 +448,21 @@ fn help_with_a_command_path_prints_that_command_s_long_help() {
 }
 
 #[test]
-fn help_without_words_lists_the_topics_when_the_tool_declares_none() {
+fn help_without_words_prints_the_root_s_long_help() {
     let parsed = parse(&["tool", "help"]);
 
     assert_eq!(parsed.code, Some(ExitCode::SUCCESS));
-    assert!(
-        parsed.out.starts_with("Topics\n  exit-codes"),
-        "{}",
-        parsed.out
-    );
+    assert_eq!(parsed.out, parse(&["tool", "--help"]).out);
     assert_eq!(parsed.err, "");
+}
+
+#[test]
+fn help_with_a_topic_still_prints_the_topic() {
+    let parsed = parse(&["tool", "help", "exit-codes"]);
+
+    assert_eq!(parsed.code, Some(ExitCode::SUCCESS));
+    assert!(parsed.out.contains("  2  "), "{}", parsed.out);
+    assert_ne!(parsed.out, parse(&["tool", "--help"]).out);
 }
 
 #[test]

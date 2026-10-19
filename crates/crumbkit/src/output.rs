@@ -203,6 +203,12 @@ impl Output {
         (self.spelling, self.spelling.tool().document(document))
     }
 
+    /// Returns the command tree that the tool parsed against, as far as it
+    /// is built.
+    pub(crate) const fn command_tree(&self) -> &Command {
+        &self.command
+    }
+
     /// Returns what the tool's guide decides about the run's failures: the
     /// JSON layout, the exit codes and the renames.
     pub(crate) const fn printing(&self) -> Printing {

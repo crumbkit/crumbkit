@@ -14,9 +14,6 @@ mod tests;
 /// that answers `help` at its root has.
 pub(crate) const TOPIC: &str = "exit-codes";
 
-/// The summary that `<tool> help` prints beside [`TOPIC`].
-pub(crate) const ABOUT: &str = "What each exit code means";
-
 /// crumbkit's own exit codes and their meanings, which `<tool> help
 /// exit-codes` lists before the tool's codes (ADR-0002). It leaves out 2
 /// when the guide gives a refused command line another code. The meaning

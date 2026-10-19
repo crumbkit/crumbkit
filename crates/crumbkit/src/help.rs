@@ -98,7 +98,8 @@ pub struct Guide {
     groups: &'static [Group],
     /// The commands whose help shows examples and describes their columns.
     leaves: &'static [Leaf],
-    /// The topics that `<tool> help` lists, in order.
+    /// The topics that `<tool> help <TOPIC>` prints and that the root's
+    /// help names, in order.
     topics: &'static [Topic],
     /// The file formats that the schema commands serve, in order.
     documents: &'static [FileFormat],
@@ -187,7 +188,8 @@ impl Guide {
         self.leaves
     }
 
-    /// Sets the topics that `<tool> help` lists, in the order it lists them.
+    /// Sets the topics that `<tool> help <TOPIC>` prints. The root's help
+    /// names them on its `Topics:` line in this order.
     #[must_use]
     pub const fn topics(mut self, topics: &'static [Topic]) -> Self {
         self.topics = topics;

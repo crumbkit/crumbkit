@@ -87,16 +87,14 @@ fn a_topic_s_text_ends_with_one_line_break_when_the_tool_leaves_it_out() {
 }
 
 #[test]
-fn help_without_words_lists_each_topic_with_its_summary_and_the_next_line() {
-    let expected = "\
-Topics
-  orbits      How the tool counts orbits
-  units
-  exit-codes  What each exit code means
+fn help_without_words_prints_what_the_root_s_long_help_prints() {
+    let long = page(&GUIDE, &["tool", "--help"]);
 
-Next: tool help <TOPIC>
-";
-    assert_eq!(page(&GUIDE, &["tool", "help"]), expected);
+    assert_eq!(page(&GUIDE, &["tool", "help"]), long);
+    assert!(
+        long.contains("\nTopics: orbits, units, exit-codes. `tool help <TOPIC>` prints one.\n"),
+        "{long}"
+    );
 }
 
 #[test]
@@ -153,20 +151,18 @@ fn help_ignores_flags_after_a_topic_s_name() {
 }
 
 #[test]
-fn a_repeated_topic_name_is_left_out_and_the_first_topic_prints() {
+fn a_repeated_topic_name_is_named_once_and_the_first_topic_prints() {
     const GUIDE: Guide = Guide::new().topics(&[
         ORBITS,
         Topic::new("orbits", "A second summary", "A second text.\n"),
     ]);
 
-    let expected = "\
-Topics
-  orbits      How the tool counts orbits
-  exit-codes  What each exit code means
+    let short = page(&GUIDE, &["tool", "-h"]);
 
-Next: tool help <TOPIC>
-";
-    assert_eq!(page(&GUIDE, &["tool", "help"]), expected);
+    assert!(
+        short.contains("\nTopics: orbits, exit-codes. `tool help <TOPIC>` prints one.\n"),
+        "{short}"
+    );
     assert_eq!(page(&GUIDE, &["tool", "help", "orbits"]), ORBITS.text());
 }
 
@@ -216,6 +212,16 @@ Topics: orbits, units, exit-codes. `tool help <TOPIC>` prints one.
 }
 
 #[test]
+fn help_without_words_prints_the_long_help_of_a_root_without_subcommands() {
+    let tool = Command::new("tool").about("Weigh a planet");
+
+    assert_eq!(
+        run(tool.clone(), &GUIDE, &["tool", "help"]).out,
+        run(tool, &GUIDE, &["tool", "--help"]).out
+    );
+}
+
+#[test]
 fn help_exit_codes_prints_crumbkit_s_codes_and_the_tool_s_codes() {
     const GUIDE: Guide = Guide::new().exits(&[Exit::new(124, "The telescope ran out of time.")]);
 
@@ -227,16 +233,13 @@ fn help_exit_codes_prints_crumbkit_s_codes_and_the_tool_s_codes() {
 }
 
 #[test]
-fn a_tool_without_topics_lists_the_exit_codes_topic_for_help_and_names_it_in_its_help() {
-    let expected = "\
-Topics
-  exit-codes  What each exit code means
-
-Next: tool help <TOPIC>
-";
+fn a_tool_without_topics_names_the_exit_codes_topic_in_its_help() {
     let short = page(&Guide::new(), &["tool", "-h"]);
 
-    assert_eq!(page(&Guide::new(), &["tool", "help"]), expected);
+    assert_eq!(
+        page(&Guide::new(), &["tool", "help", "exit-codes"]),
+        exit::text("tool", &Guide::new())
+    );
     assert!(
         short.contains("\nTopics: exit-codes. `tool help <TOPIC>` prints one.\n"),
         "{short}"
@@ -247,13 +250,12 @@ Next: tool help <TOPIC>
 fn crumbkit_s_exit_codes_topic_prints_in_place_of_a_tool_topic_with_its_name() {
     const GUIDE: Guide = Guide::new().topics(&[Topic::new("exit-codes", "Mine", "Mine.\n")]);
 
-    let expected = "\
-Topics
-  exit-codes  What each exit code means
+    let short = page(&GUIDE, &["tool", "-h"]);
 
-Next: tool help <TOPIC>
-";
-    assert_eq!(page(&GUIDE, &["tool", "help"]), expected);
+    assert!(
+        short.contains("\nTopics: exit-codes. `tool help <TOPIC>` prints one.\n"),
+        "{short}"
+    );
     assert_eq!(
         page(&GUIDE, &["tool", "help", "exit-codes"]),
         exit::text("tool", &GUIDE)

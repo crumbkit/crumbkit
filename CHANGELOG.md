@@ -215,6 +215,10 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   segments ([behaviour/failures]).
 - crumbkit: `Stop::number` returns a stopped run's exit code as a number
   ([behaviour/parsing]).
+- crumbkit: [`try_parse`], `try_parse_from` and `try_parse_to` return a
+  refused command line unprinted as a [`Refused`], which holds the typed
+  words, the parsed words and the refused word, and prints once
+  ([behaviour/parsing]).
 - crumbkit-test: `Recoveries::from_codes`, `Twins::from_codes` and
   `Unprovoked::from_code` take codes held by value, such as run-time codes
   ([behaviour/failures]).
@@ -699,6 +703,11 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   tool's command tree when it runs.
 - crumbkit: [`parse`] returns a [`Stop`] after help, the version or a
   refusal, which holds the exit code and an `Output` ([behaviour/adoption]).
+- crumbkit: `<tool> help` prints what `<tool> --help` prints, whose
+  `Topics:` line names each topic ([behaviour/help]).
+- crumbkit: run observers hear of a refusal when it prints, so a refusal
+  that the tool answers itself reports no `refused` event
+  ([behaviour/run-observer]).
 - crumbkit-test: [`check_grammar`], [`check_names`], [`check_listings`],
   [`check_filters`] and [`Examples`] take opt-outs, each an [`Allow`] that
   names one rule, a command and a reason, in place of exempt command paths
@@ -949,6 +958,9 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit-picker: the crate is gone, and its `Menu` is [`pick::Menu`] in
   crumbkit, so a tool with a picker depends on crumbkit alone
   ([behaviour/effects/pickers]).
+- crumbkit: the topic list that `<tool> help` printed is gone, with its
+  `Next: <tool> help <TOPIC>` line. crumbkit prints a topic's summary
+  nowhere ([behaviour/help]).
 
 ### Fixed
 
@@ -1088,6 +1100,8 @@ rustdoc, or at the page in docs/ that describes the behaviour. -->
 [`is_dashed`]: crates/crumbkit/src/dashed.rs
 [`RuntimeFailing`]: crates/crumbkit-test/src/recoveries/runtime.rs
 [`Stop`]: crates/crumbkit/src/parse/stop.rs
+[`try_parse`]: crates/crumbkit/src/parse.rs
+[`Refused`]: crates/crumbkit/src/parse/refused.rs
 [`events::ended`]: crates/crumbkit/src/events.rs
 [`events::tolerated`]: crates/crumbkit/src/events.rs
 [`events`]: crates/crumbkit/src/events.rs

@@ -76,6 +76,24 @@ impl Output {
         Some(self.print_refusal(sink, &refusal))
     }
 
+    /// Prints `refusal`, a command line or a view flag that `parse`
+    /// refused, to `sink` as `parse` prints it, in the view's format and
+    /// with what the guide decides about failures, and returns the exit
+    /// code that the guide gives a refused command line.
+    pub(crate) fn print_parse_refusal<O: Write, E: Write, R>(
+        &mut self,
+        sink: &mut Sink<O, E, R>,
+        refusal: &Refusal,
+    ) -> u8 {
+        refusal.print(
+            sink,
+            self.is_json(),
+            self.spelling,
+            self.printing(),
+            &mut self.command,
+        )
+    }
+
     /// Prints `refusal`, reports its exit code to the observer, and
     /// returns it. The exit code is 2 unless the guide lists another for
     /// the usage code.

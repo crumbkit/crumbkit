@@ -38,7 +38,8 @@ pub struct Cli {
 /// `cargo crumbkit docs` and `cargo crumbkit commands list` lists their
 /// examples, and their `--help` describes the columns of the rows they print.
 /// Its root is `crumbkit`, because cargo always passes that word, so
-/// `cargo crumbkit help` lists the topics.
+/// `cargo crumbkit help` prints the long help of `cargo crumbkit`, and
+/// `cargo crumbkit help exit-codes` prints a topic.
 pub const GUIDE: Guide = Guide::new()
     .root(&["crumbkit"])
     .groups(&[Group::new(

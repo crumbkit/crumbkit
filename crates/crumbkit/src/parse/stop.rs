@@ -10,6 +10,10 @@ use crate::view::{Selection, Table, View};
 
 /// What [`parse`](crate::parse) returns after it printed help, the version
 /// or a refusal, so the run ends without a parsed command.
+/// [`try_parse`](crate::try_parse) returns it inside
+/// [`Unparsed::Stopped`](crate::Unparsed::Stopped) after help or the
+/// version, and [`Refused::print`](crate::Refused::print) returns it after
+/// the refusal prints.
 ///
 /// A tool's `main` returns its exit code, as in `Err(stop) => return
 /// stop.code()`. A tool that does more before it exits reads
@@ -32,14 +36,15 @@ impl Stop {
     /// found `--json` when `json` is true, after parsing against `command`
     /// with `guide`.
     pub(crate) fn new(code: u8, json: bool, command: Command, guide: &Guide) -> Self {
-        let view = if json {
-            View::Json(Selection::Columns)
-        } else {
-            View::Text(Table::Compact)
-        };
+        Self::with_output(code, stopped(json, command, guide))
+    }
+
+    /// Returns the stop of a run that ends with `code` and whose output
+    /// flags are `output`.
+    pub(crate) fn with_output(code: u8, output: Output) -> Self {
         Self {
             code,
-            output: Box::new(Output::stopped(view, command, guide)),
+            output: Box::new(output),
         }
     }
 
@@ -68,6 +73,18 @@ impl Stop {
     pub fn output(&self) -> &Output {
         &self.output
     }
+}
+
+/// Returns the output of a run that `parse` ended after parsing against
+/// `command` with `guide`, in which the walk found `--json` when `json` is
+/// true. Its `--long`, `--full` and `--fields` are off.
+pub(crate) fn stopped(json: bool, command: Command, guide: &Guide) -> Output {
+    let view = if json {
+        View::Json(Selection::Columns)
+    } else {
+        View::Text(Table::Compact)
+    };
+    Output::stopped(view, command, guide)
 }
 
 impl From<Stop> for ExitCode {

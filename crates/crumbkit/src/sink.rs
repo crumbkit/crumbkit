@@ -85,9 +85,8 @@ impl<O, E, I> Sink<O, E, I> {
     /// as bold headings and literals. With `styled`,
     /// [`parse_to`](crate::parse_to) writes help to the output writer with
     /// the ANSI escape codes that clap's `Error::print` writes at a
-    /// terminal, and otherwise it writes plain text. The version, a topic
-    /// and the topic list carry no styles, so they print as plain text
-    /// either way.
+    /// terminal, and otherwise it writes plain text. The version and a
+    /// topic carry no styles, so they print as plain text either way.
     ///
     /// A tool that owns its output streams decides it, for example from
     /// whether its writer is a terminal, and honours `NO_COLOR` itself:

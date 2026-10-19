@@ -108,6 +108,21 @@ impl Refusal {
         }
     }
 
+    /// Returns what the caller got wrong, on one line.
+    pub(crate) fn message(&self) -> &str {
+        &self.message
+    }
+
+    /// Returns the value of the field called `name`, one of `argument`,
+    /// `value` and `subcommand`, or `None` when the refusal has no such
+    /// field.
+    pub(crate) fn field(&self, name: &str) -> Option<&str> {
+        self.fields
+            .iter()
+            .find(|(field, _)| *field == name)
+            .map(|(_, value)| value.as_str())
+    }
+
     /// Prints the refusal to `sink` as `finish` prints a failure, as text or
     /// with `json` as one JSON document, as `printing` decides, and returns
     /// the exit code that `printing` gives the usage code: 2 unless the

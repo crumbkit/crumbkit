@@ -39,12 +39,15 @@ fn help_after_the_guide_s_root_prints_a_topic() {
 }
 
 #[test]
-fn help_after_the_guide_s_root_lists_the_topics_with_the_root_s_command_line() {
+fn help_after_the_guide_s_root_prints_the_root_s_long_help() {
     let parsed = parse(&["tool", "planets", "help"]);
 
     assert_eq!(parsed.code, Some(ExitCode::SUCCESS));
+    assert_eq!(parsed.out, parse(&["tool", "planets", "--help"]).out);
     assert!(
-        parsed.out.ends_with("\nNext: tool planets help <TOPIC>\n"),
+        parsed
+            .out
+            .contains("\nTopics: exit-codes. `tool planets help <TOPIC>` prints one.\n"),
         "{}",
         parsed.out
     );

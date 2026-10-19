@@ -40,7 +40,9 @@ Why: ADR-0057, ADR-0075, ADR-0048.
 
 - `parse` reports the typed words, the parsed command line, a help page
   with its command path and exit, a refusal, a picker's count and any other
-  exit.
+  exit. A refusal reports `refused`, or `exited` for a refused view flag,
+  when it prints. A refusal that `try_parse` returns and the tool never
+  prints reports neither, and the tool reports its exit through `ended`.
 - `finish`, `finish_to` and a stream report the code of a failure in the
   tool's spelling, then the exit code, the bytes written to standard output
   and whether a listing left rows out or had none.
@@ -62,7 +64,7 @@ Each observer answers three questions, and crumbkit combines the answers:
 - the trace id and run id for the `tracing` spans. The spans record the ids
   of the first observer that gives them.
 
-Why: ADR-0057, ADR-0075, ADR-0030, ADR-0042.
+Why: ADR-0057, ADR-0075, ADR-0030, ADR-0042, ADR-0100.
 
 ## Compatibility and cost
 

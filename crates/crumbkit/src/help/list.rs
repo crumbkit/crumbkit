@@ -1,6 +1,6 @@
 //! The headed list of a guided group's subcommands, its compact form of
-//! names only, and the line of a list that the goal list, the topic list
-//! and the column list share.
+//! names only, and the line of a list that the goal list and the column
+//! list share.
 
 use std::borrow::Cow;
 use std::fmt::Write as _;
