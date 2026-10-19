@@ -14,8 +14,9 @@ include = ["src/**/*.rs", "schemas/*.json", "README.md", "LICENSE-APACHE", "LICE
 [dependencies]
 # `list` returns crumbkit's `Listing` of rows, takes `Output` and `Page`, and
 # fails with crumbkit's `Failure`, and the rows quote words with
-# `crumbkit::help::quote`.
-crumbkit = { workspace = true }
+# `crumbkit::help::quote`. `derive` writes the `Failure` impl of `list`'s
+# error from its `#[failure(...)]` attributes.
+crumbkit = { workspace = true, features = ["derive"] }
 # `AliasesList` derives `clap::Args`, and `expand` and `list` read the tool's
 # `clap::Command`.
 clap = { workspace = true, features = ["derive"] }
