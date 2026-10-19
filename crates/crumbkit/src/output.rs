@@ -400,8 +400,8 @@ pub fn finish<T: Rows, E: AsFailure>(
 /// without long columns cannot use `--long`, and a document without the
 /// envelope cannot use `--full` (ADR-0016).
 ///
-/// A run without a failure whose rows report a problem through the field
-/// that [`Row::PROBLEM`](crate::Row::PROBLEM) names exits with 1, also
+/// A run without a failure whose rows report a problem, as
+/// [`Row::is_problem`](crate::Row::is_problem) decides, exits with 1, also
 /// after the reader closed the pipe early. The exit reads every row that
 /// the result holds, including rows that the budget left unprinted, and a
 /// listing from `Listing::from_all` also counts the rows that its limit

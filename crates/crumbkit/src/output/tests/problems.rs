@@ -320,3 +320,59 @@ fn guided(guide: &Guide, flags: &[&str]) -> Output {
     let args: Vec<&str> = ["tool", "list"].iter().chain(flags).copied().collect();
     super::built_with(Tool::command(), guide, &args)
 }
+
+/// The state of a job, which decides whether the job reports a problem.
+#[derive(Clone, Copy, Serialize, JsonSchema)]
+#[serde(rename_all = "lowercase")]
+enum State {
+    /// The job finished.
+    Done,
+    /// The job stopped with an error.
+    Failed,
+}
+
+/// A row whose type decides its problems from its state with
+/// `Row::is_problem`, and names no problem field.
+#[derive(Serialize, JsonSchema)]
+struct Job {
+    /// The name of the job.
+    name: &'static str,
+    /// Whether the job finished or failed.
+    state: State,
+}
+
+impl Row for Job {
+    const COLUMNS: &'static [&'static str] = &["name", "state"];
+
+    fn is_problem(&self) -> bool {
+        matches!(self.state, State::Failed)
+    }
+}
+
+const JOBS: Document<Listing<Job>> = Document::new("lint", "jobs", 1, "The test rows.");
+
+#[test]
+fn a_listing_whose_row_type_decides_its_problems_itself_exits_with_1_and_counts_them() {
+    let jobs = vec![
+        Job {
+            name: "build",
+            state: State::Done,
+        },
+        Job {
+            name: "test",
+            state: State::Failed,
+        },
+        Job {
+            name: "lint",
+            state: State::Failed,
+        },
+    ];
+
+    let finished = finish_with(&[], JOBS, Listing::new(jobs, 3).described("jobs"));
+
+    assert_eq!(finished.code, ExitCode::FAILURE);
+    assert_eq!(
+        finished.err,
+        "note: 2 of the jobs report a problem, so the command exits with 1.\n"
+    );
+}

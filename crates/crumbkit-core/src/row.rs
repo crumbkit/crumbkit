@@ -62,19 +62,62 @@ pub trait Row: Serialize + JsonSchema {
     const LONG_COLUMNS: &'static [&'static str] = &[];
 
     /// The field whose value marks the row as reporting a problem, or `None`
-    /// when the row type never reports one.
+    /// when no field does.
     ///
-    /// A row reports a problem when this field serializes to a value other
-    /// than `null`, `false` or an empty string, and a missing field reports
-    /// none. A run whose rows report a problem, and that has no failure,
-    /// exits with 1, and its text ends with a note that counts those rows.
-    /// The exit reads every row that the result holds. A listing from
-    /// `Listing::from_all` also counts the rows that its limit cut. A
-    /// listing of one page that the tool fetched counts only that page, so
-    /// it puts the rows that report a problem first (OUTPUT-3). crumbkit-test's
+    /// With the default [`Row::is_problem`], a row reports a problem when
+    /// this field serializes to a value other than `null`, `false` or an
+    /// empty string, and a missing field reports none. The leaf's help
+    /// prints a `Problems:` line that names the field. crumbkit-test's
     /// `check_guide` fails when the field is not one of `COLUMNS`, or when
     /// its type is not a string, a boolean or a value that can be null.
     const PROBLEM: Option<&'static str> = None;
+
+    /// Reports whether the row reports a problem.
+    ///
+    /// A run whose rows report a problem, and that has no failure, exits
+    /// with 1, and its text ends with a note that counts those rows. The
+    /// exit reads every row that the result holds. A listing from
+    /// `Listing::from_all` also counts the rows that its limit cut. A
+    /// listing of one page that the tool fetched counts only that page, so
+    /// it puts the rows that report a problem first (OUTPUT-3).
+    ///
+    /// The default reads the field that [`Row::PROBLEM`] names, and reports
+    /// no problem when the type names none. A type whose problem follows
+    /// from other fields, such as a state enum, overrides it in place of a
+    /// second column that repeats the state as a flag, and leaves `PROBLEM`
+    /// as `None` (ADR-0096). Its help then prints no `Problems:` line, and
+    /// `check_guide` checks no problem field, so the type shows the state in
+    /// one of `COLUMNS` itself.
+    ///
+    /// ```
+    /// use crumbkit_core::Row;
+    /// use schemars::JsonSchema;
+    /// use serde::Serialize;
+    ///
+    /// #[derive(Serialize, JsonSchema)]
+    /// #[serde(rename_all = "lowercase")]
+    /// enum State {
+    ///     Done,
+    ///     Failed,
+    /// }
+    ///
+    /// #[derive(Serialize, JsonSchema)]
+    /// struct Job {
+    ///     name: String,
+    ///     state: State,
+    /// }
+    ///
+    /// impl Row for Job {
+    ///     const COLUMNS: &'static [&'static str] = &["name", "state"];
+    ///
+    ///     fn is_problem(&self) -> bool {
+    ///         matches!(self.state, State::Failed)
+    ///     }
+    /// }
+    /// ```
+    fn is_problem(&self) -> bool {
+        crate::problems::field_reports(self)
+    }
 
     /// The form of the row's own text line as help shows it, such as
     /// `<POINTER> -> <TARGET>`, or `None` when the row prints as a table
@@ -256,8 +299,8 @@ pub trait Rows: Serialize + sealed::Sealed {
         None
     }
 
-    /// Returns the number of rows that report a problem through the field
-    /// that [`Row::PROBLEM`] names, which `crumbkit::finish` reads for the
+    /// Returns the number of rows that report a problem
+    /// ([`Row::is_problem`]), which `crumbkit::finish` reads for the
     /// exit code and the note. Every result counts the rows it holds, and a
     /// listing that [`Listing::from_all`](crate::Listing::from_all) cut to
     /// its limit also counts the rows it cut.

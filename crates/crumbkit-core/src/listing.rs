@@ -133,8 +133,8 @@ impl<R: Row> Listing<R> {
     /// `rows` in place, so it allocates nothing. A tool with a database or a
     /// remote backend fetches one page and calls [`Listing::new`] instead.
     ///
-    /// When the limit cuts rows and the row type names a problem field
-    /// ([`Row::PROBLEM`]), it counts the rows that report a problem among
+    /// When the limit cuts rows, it counts the rows that report a problem
+    /// ([`Row::is_problem`]) among
     /// every row before it cuts them, so `crumbkit::finish` exits with the
     /// problem exit and its note counts every such row although the page
     /// holds fewer. A listing from [`Listing::new`] or
@@ -144,9 +144,10 @@ impl<R: Row> Listing<R> {
     pub fn from_all(mut rows: Vec<R>, limit: Option<usize>) -> Self {
         let total = rows.len();
         let problems = match limit {
-            Some(limit) if limit < total && R::PROBLEM.is_some() => {
-                Some(crate::problems::count(&rows))
-            }
+            // A count of 0 over every row is also the count of the rows the
+            // listing keeps, so it is stored as `None`, as for a listing that
+            // its limit did not cut.
+            Some(limit) if limit < total => Some(crate::problems::count(&rows)).filter(|&n| n > 0),
             _ => None,
         };
         if let Some(limit) = limit {

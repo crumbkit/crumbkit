@@ -144,7 +144,10 @@ A row type names the field that marks a problem with
 [`Row::PROBLEM`](../../../../crates/crumbkit-core/src/row.rs), whose rustdoc
 says which values report a problem. crumbkit-aliases' `AliasRow` names its
 `problem` column, so `aliases list` exits with 1 while an entry of the
-aliases file does not work.
+aliases file does not work. A row type whose problem status is computed,
+such as a status enum, overrides `Row::is_problem` instead and leaves
+`PROBLEM` unset. crumbkit counts the rows that `is_problem` marks, and its
+default reads the field that `PROBLEM` names.
 
 - A run whose rows report a problem and that has no failure exits with 1, in
   `finish` for every result with rows and in a stream for the items it
