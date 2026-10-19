@@ -1,6 +1,6 @@
 use serde_json::{Value, json};
 
-use super::{Hash, Help, Name, Record, Run, Section, SpanId, TraceId, TraceIds, line};
+use super::{Hash, Help, Name, Record, Run, SpanId, TraceId, TraceIds, line};
 
 const KEY: [u8; 16] = *b"0123456789abcdef";
 
@@ -74,10 +74,6 @@ fn a_record_writes_every_field_of_the_run_beside_its_own() {
         out_bytes: Some(1840),
         truncated: true,
         empty: true,
-        ext: Some(Section {
-            schema: "shelf/usage-ext/v1".to_owned(),
-            data: json!({"requests": 2}),
-        }),
     };
 
     let record = parsed(&record);
@@ -100,10 +96,6 @@ fn a_record_writes_every_field_of_the_run_beside_its_own() {
     assert_eq!(record["truncated"], true);
     assert_eq!(record["empty"], true);
     assert_eq!(record["interrupted"], true);
-    assert_eq!(
-        record["ext"],
-        json!({"schema": "shelf/usage-ext/v1", "data": {"requests": 2}})
-    );
 }
 
 #[test]
@@ -140,19 +132,13 @@ fn a_line_ends_with_a_newline_and_a_line_over_1_kib_is_dropped() {
     let mut record = bare();
     let fits = line(&record).unwrap();
     assert_eq!(fits.last(), Some(&b'\n'));
-    // The section's text fills the line to exactly 1 KiB, and one more byte
+    // A command path fills the line to exactly 1 KiB, and one more byte
     // makes it too long.
-    let room = super::MAX_LINE - fits.len() - r#","ext":{"schema":"a/b/v1","data":""}"#.len() + 1;
-    record.run.ext = Some(Section {
-        schema: "a/b/v1".to_owned(),
-        data: Value::String("x".repeat(room)),
-    });
+    let room = super::MAX_LINE - fits.len() - r#","command":"""#.len() + 1;
+    record.run.command = Some(name(&"x".repeat(room)));
     assert_eq!(line(&record).unwrap().len(), super::MAX_LINE + 1);
 
-    record.run.ext = Some(Section {
-        schema: "a/b/v1".to_owned(),
-        data: Value::String("x".repeat(room + 1)),
-    });
+    record.run.command = Some(name(&"x".repeat(room + 1)));
     assert_eq!(line(&record), None);
 }
 

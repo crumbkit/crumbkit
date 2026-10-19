@@ -2,7 +2,7 @@
 
 use std::io::{self, BufRead, Write};
 
-use crumbkit::pick::{Answer, Choice, Picker, Question};
+use super::{Answer, Choice, Picker, Question};
 
 #[cfg(test)]
 mod tests;
@@ -26,6 +26,17 @@ const ROWS: usize = 20;
 /// another number, and then a line that says how many more match. Each
 /// control character in a label shows as its escape, such as `\n`, so every
 /// choice stays on one line and a label cannot move the cursor.
+///
+/// A tool keeps one menu in a `static` and sets it on its guide:
+///
+/// ```
+/// use crumbkit::help::Guide;
+/// use crumbkit::pick::Menu;
+///
+/// static MENU: Menu = Menu::new().rows(10);
+/// const GUIDE: Guide = Guide::new().picker(&MENU);
+/// assert!(GUIDE.get_picker().is_some());
+/// ```
 #[derive(Clone, Copy, Debug)]
 pub struct Menu {
     /// The most choices that the menu shows at once.

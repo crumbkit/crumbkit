@@ -2,8 +2,7 @@
 //!
 //! Every field is a name from the tool's own vocabulary, a count, a flag, a
 //! time, a keyed hash or a hex trace id, so no field can hold an argument's
-//! value. The app's section is the one exception that crumbkit cannot check
-//! (ADR-0029).
+//! value (ADR-0029).
 
 use std::fmt::Write as _;
 use std::hash::Hasher as _;
@@ -140,10 +139,6 @@ pub(super) struct Run {
     /// empty note (ADR-0050). It is present only when one had none.
     #[serde(default, skip_serializing_if = "is_false")]
     pub(super) empty: bool,
-    /// The tool's own section, when the tool sets one.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[schemars(with = "Section")]
-    pub(super) ext: Option<Section>,
 }
 
 /// A name from the tool's own vocabulary: a command path, a flag, a version
@@ -290,17 +285,6 @@ pub(super) enum Help {
     Short,
     /// `--help`, or the help command.
     Long,
-}
-
-/// The tool's own section of the record, which it sets with
-/// `crumbkit_usage::section`.
-#[derive(Debug, Serialize, JsonSchema)]
-pub(super) struct Section {
-    /// The id of the section's document, such as shelf/usage-ext/v1.
-    pub(super) schema: String,
-    /// The section's fields. The tool owns them and keeps argument values out
-    /// of them, because crumbkit cannot check them.
-    pub(super) data: serde_json::Value,
 }
 
 /// Returns `record` as one line of JSON that ends with a newline, or `None`

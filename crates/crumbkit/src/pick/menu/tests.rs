@@ -1,6 +1,6 @@
 //! Tests for the menu: what it shows and how it reads each answer.
 
-use crumbkit::pick::{Answer, Choice, Picker, Question};
+use crate::pick::{Answer, Choice, Picker, Question};
 
 use super::Menu;
 

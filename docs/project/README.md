@@ -29,7 +29,6 @@ crumbkit is a virtual workspace.
 | `crates/crumbkit-aliases` | The published crate that expands a person's aliases. |
 | `crates/crumbkit-child` | The published crate that hands the terminal to a child program. |
 | `crates/crumbkit-usage` | The published crate of the usage log and the `self usage` and `self figures list` commands that read it. |
-| `crates/crumbkit-picker` | The published crate of the `Menu` picker. |
 | `crates/crumbkit-markdown` | The published crate that writes a tool's command reference. |
 | `examples/shelf` | An unpublished example package with a `shelf` binary. |
 | `examples/reading` | An unpublished example package with a `reading` binary that adds a command for each reading list at run time. |

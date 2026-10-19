@@ -65,7 +65,6 @@ deny = [
         "crumbkit",
         "crumbkit-aliases",
         "crumbkit-child",
-        "crumbkit-picker",
         "crumbkit-test",
         "crumbkit-usage",
         "reading",

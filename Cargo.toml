@@ -7,7 +7,6 @@ members = [
     "crates/crumbkit-aliases",
     "crates/crumbkit-usage",
     "crates/crumbkit-child",
-    "crates/crumbkit-picker",
     "crates/crumbkit-markdown",
     "crates/crumbkit-test",
     "crates/cargo-crumbkit",
@@ -50,9 +49,6 @@ crumbkit-usage = { version = "0.0.0", path = "crates/crumbkit-usage" }
 # reading hands the terminal to an editor with crumbkit-child, which takes a
 # version beside the path for the same reason.
 crumbkit-child = { version = "0.0.0", path = "crates/crumbkit-child" }
-# shelf and reading ask a person for a missing argument with crumbkit-picker's
-# menu, which takes a version beside the path for the same reason.
-crumbkit-picker = { version = "0.0.0", path = "crates/crumbkit-picker" }
 # crumbkit-test and cargo-crumbkit write a tool's command reference with
 # crumbkit-markdown, which takes a version beside the path for the same reason.
 crumbkit-markdown = { version = "0.0.0", path = "crates/crumbkit-markdown" }
