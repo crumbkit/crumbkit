@@ -120,8 +120,14 @@ pub(crate) struct Column {
 /// One exit code of a command.
 #[derive(Debug, Deserialize)]
 pub(crate) struct Exit {
-    /// The exit code.
-    pub(crate) exit: u8,
+    /// The exit code, or the first code of a range, which the document holds
+    /// under `exit`.
+    #[serde(rename = "exit")]
+    pub(crate) first: u8,
+    /// The last code of a range, which equals `first` for a single code. A
+    /// document from a crumbkit version before the field existed has none,
+    /// and its exit is a single code.
+    pub(crate) last: Option<u8>,
     /// What the code means.
     pub(crate) meaning: String,
 }

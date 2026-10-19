@@ -1,7 +1,7 @@
 # ADR-0024. Leaf examples and columns
 
 - Date: 2026-10-09
-- Status: accepted
+- Status: amended by ADR-0104
 
 ## Context
 

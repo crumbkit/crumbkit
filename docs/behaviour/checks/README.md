@@ -31,7 +31,7 @@ no arguments on a command that the tool gives to `Command::defer`.
 | [`check_listings`](../../../crates/crumbkit-test/src/listings.rs) | Every `list` command has `--limit` and `--all`, and every `show` command takes 1 to 100 ids. |
 | [`check_filters`](../../../crates/crumbkit-test/src/filters.rs) | An option that takes many values accepts them both repeated and separated by commas, with one value per use. |
 | [`check_guide`](../../../crates/crumbkit-test/src/guide.rs) | The guide's goal headings, leaves, columns and topics match the command tree, and each visible leaf has an example that clap accepts. |
-| [`check_exit_codes`](../../../crates/crumbkit-test/src/exits.rs) | The guide's declared exit codes avoid 0, 1, 2 and 126 to 255, and each code and rename is declared once. |
+| [`check_exit_codes`](../../../crates/crumbkit-test/src/exits.rs) | The guide's declared exit codes avoid 0, 1 and 2, keep single codes to 3 to 125 or 129 to 159, never overlap, and declare each code and rename once. |
 | [`check_codes`](../../../crates/crumbkit-test/src/codes.rs) | No two failure codes spell the same text, and each code is printable ASCII without spaces. |
 | [`check_document_ids`](../../../crates/crumbkit-test/src/documents.rs) | Every leaf's document has crumbkit's envelope. |
 | [`check_mounts`](../../../crates/crumbkit-test/src/documents.rs) | Each of crumbkit's own commands that a tool mounts sits at its fixed path. |
@@ -47,12 +47,14 @@ its `--help` and `--version` flags. Every function that takes a
 `clap::Command` works on any node of the tree, so a crate or a team can
 apply the checks to its own subtree.
 
-`check_guide` takes no opt-outs, because a tool that wants clap's list for a
-command leaves that command out of its guide. The help checks take no
+`check_guide` takes an opt-out for its example rule alone, so a tool can
+adopt goal headings and leaves before every command has an example. A tool
+that wants clap's list for a command leaves that command out of its guide,
+so the other rules of `check_guide` take no opt-out. The help checks take no
 opt-outs either, because they take budgets. Each other tree check takes the
 tool's opt-outs.
 
-Why: ADR-0015, ADR-0021, ADR-0025, ADR-0036.
+Why: ADR-0015, ADR-0021, ADR-0025, ADR-0036, ADR-0104.
 
 ## Reasons behind the tree rules
 

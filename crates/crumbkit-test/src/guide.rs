@@ -6,6 +6,7 @@ use clap::{ArgMatches, Command};
 use crumbkit::Shape;
 use crumbkit::help::{Column, Guide, Leaf, ViewFlag, quote};
 
+use crate::allow::{Allow, Allowances, Rule};
 use crate::tree::{self, DASHED_NAME};
 
 #[cfg(test)]
@@ -48,7 +49,8 @@ mod tests;
 ///   the run;
 /// - a visible command without subcommands, the root included when it has
 ///   none, that no leaf with at least one example names, because its help
-///   then shows no example;
+///   then shows no example, unless an opt-out from [`Rule::GuideExamples`]
+///   in `allow` covers it;
 /// - a leaf whose [`Effects`](crumbkit::help::Effects) change something
 ///   and that declares no document with `Leaf::document` or
 ///   `Leaf::stream`, because the leaf then offers every view flag, and
@@ -103,10 +105,22 @@ mod tests;
 /// and is not checked. The column rules read
 /// [`Leaf::column_descriptions`](crumbkit::help::Leaf::column_descriptions),
 /// the data that the leaf's `--help` lists. A topic with
-/// an empty summary passes. The check takes no opt-outs, because a tool
-/// that wants clap's list for a command leaves that command out of the
-/// guide, and a leaf that changes something can always name the document
-/// that its handler passes to `finish` or `stream`.
+/// an empty summary passes.
+///
+/// Only the example rule takes an opt-out, an [`Allow`] of
+/// [`Rule::GuideExamples`] with a stated reason, which covers the command
+/// it names and every command below it ([opt-outs docs]). A tool that
+/// adopts goal headings and leaves before it has written an example for
+/// every command passes the check with it, and the reason says when the
+/// examples come. The check fails on such an opt-out that names no command
+/// or excuses no problem, so the opt-out goes once the command has an
+/// example. The other rules take no opt-out, because a tool that wants
+/// clap's list for a command leaves that command out of the guide, a leaf
+/// that changes something can always name the document that its handler
+/// passes to `finish` or `stream`, and each other problem is a name or a
+/// declaration that the tool can correct. The check reads only the
+/// opt-outs of its own rule, so a tool passes the one list that it passes
+/// to every check.
 ///
 /// ```
 /// use clap::Command;
@@ -133,15 +147,19 @@ mod tests;
 ///         .subcommand(Command::new("show")),
 /// );
 ///
-/// crumbkit_test::check_guide(&shelf, &GUIDE);
+/// crumbkit_test::check_guide(&shelf, &GUIDE, &[]);
 /// ```
 ///
 /// # Panics
 ///
-/// Panics when the guide breaks a rule above. The message lists each
-/// problem on its own line and names each command by its path from
-/// `command`, such as `shelf books`.
-pub fn check_guide(command: &Command, guide: &Guide) {
+/// Panics when the guide breaks a rule above, or when an opt-out from
+/// [`Rule::GuideExamples`] names no command or excuses no problem. The
+/// message lists each problem on its own line and names each command by its
+/// path from `command`, such as `shelf books`.
+///
+/// [opt-outs docs]: https://github.com/crumbkit/crumbkit/blob/main/docs/behaviour/adoption/opt-outs.md
+pub fn check_guide(command: &Command, guide: &Guide, allow: &[Allow]) {
+    let mut allowances = Allowances::new(allow, &[Rule::GuideExamples]);
     let mut problems = Vec::new();
     let root = guide.get_root();
     if tree::find(command, root.iter().copied()).is_none() {
@@ -216,15 +234,21 @@ pub fn check_guide(command: &Command, guide: &Guide) {
             }
         }
     }
-    check_leaves(command, guide, &mut problems);
+    check_leaves(command, guide, &mut allowances, &mut problems);
     check_topics(command, guide, &mut problems);
-    tree::report("guide rules", &problems);
+    allowances.report(command, "guide rules", problems);
 }
 
 /// Adds a problem to `problems` for each leaf of `guide` that breaks a leaf
 /// rule of [`check_guide`], and for each visible command without
-/// subcommands that no leaf with an example names.
-fn check_leaves(command: &Command, guide: &Guide, problems: &mut Vec<String>) {
+/// subcommands that no leaf with an example names and no opt-out in
+/// `allowances` covers.
+fn check_leaves(
+    command: &Command,
+    guide: &Guide,
+    allowances: &mut Allowances<'_>,
+    problems: &mut Vec<String>,
+) {
     let tool = command.get_name();
     let leaves = guide.get_leaves();
     // clap builds the tree that it parses, so the examples parse against a
@@ -304,7 +328,10 @@ fn check_leaves(command: &Command, guide: &Guide, problems: &mut Vec<String>) {
         let named = leaves
             .iter()
             .any(|leaf| !leaf.get_examples().is_empty() && leaf.path().join(" ") == visit.below());
-        if !visit.command().has_subcommands() && !named {
+        if !visit.command().has_subcommands()
+            && !named
+            && !allowances.excuses(Rule::GuideExamples, visit.below())
+        {
             problems.push(format!(
                 "{}: no leaf with an example names the command, so its help shows no example",
                 visit.path()

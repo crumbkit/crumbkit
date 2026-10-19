@@ -84,4 +84,10 @@ schema has no fields
 ([rows printed whole](../output/shapes/README.md#rows-printed-whole)). Its rustdoc
 lists every rule.
 
-Why: ADR-0024, ADR-0016, ADR-0063, ADR-0064, ADR-0065, ADR-0072.
+The example rule takes an opt-out of `guide/examples`, which covers the
+command it names and every command below it, so a tool can adopt goal
+headings and leaves before every command has an example. The check fails on
+such an opt-out once it excuses no problem
+([opt-outs](../adoption/opt-outs.md)). The other leaf rules take no opt-out.
+
+Why: ADR-0024, ADR-0016, ADR-0063, ADR-0064, ADR-0065, ADR-0072, ADR-0104.

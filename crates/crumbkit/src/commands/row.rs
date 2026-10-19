@@ -84,6 +84,7 @@ struct CommandColumn {
 struct CommandExit {
     // `CommandRow`'s `JsonSchema` impl describes each field.
     exit: u8,
+    last: u8,
     meaning: &'static str,
 }
 
@@ -141,7 +142,8 @@ impl CommandRow {
             .iter()
             .filter(|exit| exit.covers(path))
             .map(|exit| CommandExit {
-                exit: exit.code(),
+                exit: *exit.codes().start(),
+                last: *exit.codes().end(),
                 meaning: exit.meaning(),
             })
             .collect();
@@ -398,8 +400,9 @@ impl Serialize for CommandExample {
 
 impl Serialize for CommandExit {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        let mut exit = serializer.serialize_struct("CommandExit", 2)?;
+        let mut exit = serializer.serialize_struct("CommandExit", 3)?;
         exit.serialize_field("exit", &self.exit)?;
+        exit.serialize_field("last", &self.last)?;
         exit.serialize_field("meaning", &self.meaning)?;
         exit.end()
     }
@@ -508,7 +511,13 @@ impl JsonSchema for CommandRow {
                         "type": "object",
                         "properties": {
                             "exit": {
-                                "description": "The exit code.",
+                                "description": "The exit code, or the first code of a range of codes that the command passes on from another program.",
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 255,
+                            },
+                            "last": {
+                                "description": "The last code of the range, which equals exit for a single code.",
                                 "type": "integer",
                                 "minimum": 0,
                                 "maximum": 255,
@@ -518,7 +527,7 @@ impl JsonSchema for CommandRow {
                                 "type": "string",
                             },
                         },
-                        "required": ["exit", "meaning"],
+                        "required": ["exit", "last", "meaning"],
                     },
                 },
                 "effects": effects::schema(),

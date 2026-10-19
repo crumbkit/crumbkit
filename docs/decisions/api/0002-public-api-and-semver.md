@@ -1,7 +1,7 @@
 # ADR-0002. Public API and semver
 
 - Date: 2026-10-07
-- Status: accepted
+- Status: amended by ADR-0103
 
 ## Context
 

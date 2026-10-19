@@ -55,6 +55,16 @@ fn an_exit_that_lists_a_crumbkit_code_also_covers_the_tool_s_rename_of_it() {
 }
 
 #[test]
+fn a_range_that_lists_a_failure_code_does_not_decide_the_exit_of_that_failure() {
+    const RANGE: Guide =
+        Guide::new().exits(&[
+            Exit::range(64, 78, "The importer ended with its own code.").failures(&[&LOCKED])
+        ]);
+
+    assert_eq!(RANGE.failure_exit(&[], &LOCKED), 1);
+}
+
+#[test]
 fn a_failure_that_no_exit_lists_exits_with_1_and_a_refusal_with_2() {
     assert_eq!(GUIDE.failure_exit(&[], &VERSION_CONFLICT), 1);
     assert_eq!(Guide::new().failure_exit(&[], &LOCKED), 1);

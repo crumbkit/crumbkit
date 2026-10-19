@@ -59,7 +59,8 @@ lacks, so a program reads every row the same way.
 - `columns` lists a headed leaf's JSON fields that `--fields` selects,
   ending with `text` and `base64`, because its text has no columns.
 - `exits` lists the exit codes that the tool declares for the command, each
-  with its code and meaning. crumbkit's own 0, 1 and 2 are the same for every
+  with its first code in `exit`, its last code in `last` and its meaning.
+  `last` equals `exit` for a single code and is greater for a range. crumbkit's own 0, 1 and 2 are the same for every
   command, so the rows leave them out ([exit codes](../failures/exit-codes.md)).
 
 The text table shows only each command's path and about text, because the
@@ -72,4 +73,4 @@ formats, and crumbkit-markdown writes a Markdown [reference](reference.md)
 from its JSON document.
 
 Why: ADR-0026, ADR-0016, ADR-0037, ADR-0039, ADR-0041, ADR-0047, ADR-0064,
-ADR-0065.
+ADR-0065, ADR-0103.

@@ -150,10 +150,12 @@ published version ([releases](../../project/releases.md)).
   ([completion](../parsing/completion.md#stability-and-tests)).
 
 A run exits with 0 when it succeeds, 1 by default on a failure and 2 on a
-refused command line. A tool may give any failure its own code from 3 to 125
+refused command line. A tool may give any failure its own code from 3 to 125.
+It may also declare a code from 129 to 159 for a run that a signal ended, and
+a range of codes that a command passes on from another program
 ([exit codes](../failures/exit-codes.md)). A shell reports 126 and above for
 its own reasons, such as 130 when SIGINT ends the process and 143 when
 SIGTERM does, and the usage log's signal handling leaves those codes in
 place.
 
-Why: ADR-0002, ADR-0012, ADR-0001, ADR-0057.
+Why: ADR-0002, ADR-0012, ADR-0001, ADR-0057, ADR-0103.
