@@ -48,7 +48,6 @@ Why: ADR-0003, ADR-0001, ADR-0032, ADR-0043.
 | crumbkit-aliases | toml. The crate is separate, so only a tool with personal aliases builds toml. |
 | crumbkit-child | signal-hook with no features, which crumbkit-usage also uses, so a tool can hand the terminal to a child while it ignores Ctrl-C. The crate is separate, so only a tool that hands the terminal over builds it. |
 | crumbkit-usage | The usage log's dependencies: siphasher, etcetera, humantime and signal-hook, and getrandom on Windows, which proptest already brings into the lock file, because Windows has no `/dev/urandom`. The crate is separate, so only a tool that keeps the log builds them. |
-| crumbkit-picker | Nothing beyond the standard library, so a tool that wants a picker with a terminal library chooses and builds that library itself. |
 | cargo-crumbkit | etcetera, which crumbkit-usage already uses, so `weigh --usage` finds a tool's log with the same calls that wrote it. |
 
 Why: ADR-0003, ADR-0001, ADR-0016, ADR-0027, ADR-0029, ADR-0030, ADR-0033,

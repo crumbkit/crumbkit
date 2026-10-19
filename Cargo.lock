@@ -235,14 +235,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "crumbkit-picker"
-version = "0.0.0"
-dependencies = [
- "clap",
- "crumbkit",
-]
-
-[[package]]
 name = "crumbkit-test"
 version = "0.0.0"
 dependencies = [
@@ -645,7 +637,6 @@ dependencies = [
  "clap",
  "crumbkit",
  "crumbkit-child",
- "crumbkit-picker",
  "crumbkit-test",
  "etcetera",
  "schemars",
@@ -809,7 +800,6 @@ dependencies = [
  "clap",
  "crumbkit",
  "crumbkit-aliases",
- "crumbkit-picker",
  "crumbkit-test",
  "crumbkit-usage",
  "etcetera",

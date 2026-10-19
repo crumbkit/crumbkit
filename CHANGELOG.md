@@ -193,8 +193,8 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   `Rule::NoInput` ([behaviour/effects/pickers]).
 - crumbkit-test: [`check_guide`] fails on leaf choices that name no
   argument of the leaf.
-- crumbkit-picker: the new crate's `Menu` picks values from a numbered list
-  that text narrows, using only the standard library ([crumbkit-picker]).
+- crumbkit: [`pick::Menu`] picks values from a numbered list that text
+  narrows, using only the standard library ([behaviour/effects/pickers]).
 - crumbkit: Windows is a tier-2 platform, which the scheduled lane builds
   and tests ([project/dependencies]).
 - crumbkit-usage: the crate builds on Windows, where the log lives
@@ -886,6 +886,9 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   record's `ext` field. `start` writes the line when SIGINT or SIGTERM ends
   the run, and a tool that handles either signal itself runs without the
   log ([`usage`], [behaviour/usage-log]).
+- crumbkit-picker: the crate is gone, and its `Menu` is [`pick::Menu`] in
+  crumbkit, so a tool with a picker depends on crumbkit alone
+  ([behaviour/effects/pickers]).
 
 ### Fixed
 
@@ -1088,7 +1091,7 @@ rustdoc, or at the page in docs/ that describes the behaviour. -->
 [`child::hand_over_json`]: crates/crumbkit-child/src/hand_over.rs
 [`Picker`]: crates/crumbkit/src/pick.rs
 [`NoInput`]: crates/crumbkit/src/pick/no_input.rs
-[crumbkit-picker]: crates/crumbkit-picker/README.md
+[`pick::Menu`]: crates/crumbkit/src/pick/menu.rs
 [crumbkit-markdown]: crates/crumbkit-markdown/README.md
 [`check_command_reference`]: crates/crumbkit-test/src/reference.rs
 [`ReadFailure`]: crates/crumbkit/src/form.rs

@@ -54,6 +54,6 @@ option.
 [`codes`]: src/codes.rs
 [ADR-0042]: ../../docs/decisions/api/output/0042-child-processes.md
 [ADR-0058]: ../../docs/decisions/api/output/0058-child-crate.md
-[ADR-0095]: ../../docs/decisions/api/usage/0095-text-hand-over-and-own-signals.md
+[ADR-0095]: ../../docs/decisions/api/usage/0095-text-hand-over-own-signals-and-menu.md
 [child processes docs]: ../../docs/behaviour/output/child-processes.md
 [run observer docs]: ../../docs/behaviour/run-observer/README.md

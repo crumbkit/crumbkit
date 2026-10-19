@@ -1,7 +1,7 @@
 # ADR-0043. Pickers and interactive input
 
 - Date: 2026-10-12
-- Status: accepted
+- Status: amended by ADR-0095
 
 ## Context
 

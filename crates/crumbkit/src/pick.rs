@@ -16,19 +16,21 @@ use std::io::{self, BufRead, Write};
 use serde::Serialize;
 use serde_json::Value;
 
+pub use self::menu::Menu;
 pub use self::no_input::NoInput;
 use crate::output::table::{cell, escape_controls};
 use crate::{Error, Row};
 
+mod menu;
 pub(crate) mod no_input;
 #[cfg(test)]
 mod tests;
 
 /// A way to ask a person to pick one or more values from a list.
 ///
-/// crumbkit-picker's `Menu` is a picker that needs only the standard
-/// library. A tool can wrap any other prompt library in its own type that
-/// implements this trait.
+/// [`Menu`] is a picker that needs only the standard library. A tool can
+/// wrap any other prompt library in its own type that implements this
+/// trait.
 pub trait Picker {
     /// Asks the person to pick between `question.least()` and
     /// `question.most()` of `question.choices()`, reading the person's
