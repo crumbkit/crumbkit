@@ -81,7 +81,7 @@ fn run(args: &[&str], file: Option<&Path>) -> ExitCode {
             // `list` builds the command tree in `output`, so it runs
             // before `finish`.
             let result = crumbkit_aliases::list(&mut output, file, &args);
-            crumbkit::finish(&mut output, crumbkit_aliases::ALIASES_LIST, result)
+            crumbkit::finish(output, crumbkit_aliases::ALIASES_LIST, result)
         }
     }
 }

@@ -41,10 +41,11 @@ Why: ADR-0039, ADR-0024.
 ## Dry runs
 
 A command that changes something may flatten `DryRun`, which adds
-`--dry-run`, and pass it to `Output::dry_run`. That call records the dry run
-in `Output` and returns it, so the handler skips its changes and `finish`
-marks the result. The command still validates its arguments and returns the
-result that a real run would return.
+`--dry-run`. `parse` reads the flag from the deepest command's matches and
+records it in `Output`, and a tool that parses with clap alone passes its
+`DryRun` to `Output::new`. The handler reads `Output::is_dry_run` and skips
+its changes, and `finish` marks the result. The command still validates its
+arguments and returns the result that a real run would return.
 
 - A dry run's JSON document holds `"dry_run": true` after `schema`, and a
   real run's document holds no `dry_run` field, so the field keeps every `v1`

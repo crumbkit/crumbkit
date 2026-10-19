@@ -132,10 +132,10 @@ fn a_batch_failure_decides_the_exit_before_a_row_that_reports_a_problem() {
     const MAPPED: Guide =
         Guide::new()
             .exits(&[crate::help::Exit::new(3, "A check is unreadable.").failures(&[&UNREADABLE])]);
-    let mut output = guided(&MAPPED, &[]);
+    let output = guided(&MAPPED, &[]);
     let batch = answered(vec![broken("one")], vec![Unreadable]);
 
-    let finished = finish_output(&mut output, CHECK_BATCH, batch);
+    let finished = finish_output(output, CHECK_BATCH, batch);
 
     assert_eq!(finished.code, ExitCode::from(3));
     assert!(!finished.err.contains("report"), "{}", finished.err);
@@ -145,12 +145,12 @@ fn a_batch_failure_decides_the_exit_before_a_row_that_reports_a_problem() {
 fn a_row_that_the_output_budget_left_unprinted_still_decides_the_exit() {
     let mut rows: Vec<Check> = (0..40).map(|n| passing(&"a".repeat(n + 60))).collect();
     rows.push(broken("last"));
-    let mut output = guided(
+    let output = guided(
         &Guide::new().output_budget(1024, "the tests print little"),
         &[],
     );
 
-    let finished = finish_output(&mut output, CHECKS, Listing::new(rows, 41));
+    let finished = finish_output(output, CHECKS, Listing::new(rows, 41));
 
     assert!(!finished.out.contains("last"), "{}", finished.out);
     assert_eq!(finished.code, ExitCode::FAILURE);
@@ -164,7 +164,7 @@ fn a_listing_with_problem_rows_exits_with_1_after_the_reader_closed_the_pipe() {
 
     let code = finish_to(
         &mut sink,
-        &mut Output::of(clap::Command::new("tool")),
+        Output::of(clap::Command::new("tool")),
         CHECKS,
         result,
     );

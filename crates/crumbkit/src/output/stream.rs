@@ -1,6 +1,7 @@
 //! `stream`, which prints the rows of a stream command one line at a time
 //! as each arrives (ADR-0041).
 
+use std::borrow::Cow;
 use std::io::{self, Stderr, StdoutLock, Write};
 use std::ops::ControlFlow;
 use std::process::ExitCode;
@@ -40,9 +41,9 @@ use self::open::open;
 /// `--full`, were refused when the `Output` was built (ADR-0093). `main`
 /// returns that code.
 pub fn stream<R: Row>(
-    output: &mut Output,
+    output: Output,
     document: Document<Stream<R>>,
-) -> Result<Streaming<'_, R, StdoutLock<'static>, Stderr>, ExitCode> {
+) -> Result<Streaming<R, StdoutLock<'static>, Stderr>, ExitCode> {
     let Sink { out, err, .. } = Sink::standard();
     open(out, err, output, document)
 }
@@ -79,14 +80,18 @@ pub fn stream<R: Row>(
 /// The stream flushes the output writer after each line, so a reader sees
 /// each item as soon as it is printed.
 ///
-/// The stream prints within the bytes that [`Output::budget`] has left when
-/// it opens. Its first item always prints. A later item whose line would
+/// The stream prints within [`Output::budget`] bytes on the output writer.
+/// Its first item always prints. A later item whose line would
 /// pass the budget does not print: the stream prints the failure
 /// `<tool>::output::over_budget`, or the guide's rename of it, in its
 /// place, stops, and ends with exit code 1 unless the guide lists another
 /// for the code (ADR-0046). A tool whose
 /// stream runs for a long time sets a larger budget with
 /// [`Guide::output_budget`](crate::help::Guide::output_budget).
+///
+/// `stream` and `stream_to` take `output` by value, because a stream is
+/// the last thing a run prints, and the [`Streaming`] holds the view and
+/// the command tree until it ends (ADR-0094).
 ///
 /// A tool cannot pass a stream document to [`finish`](crate::finish), and
 /// cannot pass a document of one result here:
@@ -101,14 +106,15 @@ pub fn stream<R: Row>(
 ///     Document::new("reading", "entries-stream", 1, "Each entry of a reading list.");
 ///
 /// let result: Result<Vec<Entry>, Error> = Ok(Vec::new());
-/// let mut output = Output::new(
+/// let output = Output::new(
 ///     crumbkit::ViewFlags::new(),
+///     crumbkit::DryRun::default(),
 ///     clap::Command::new("reading"),
 ///     &crumbkit::help::Guide::new(),
 ///     ["reading"],
 /// )
 /// .unwrap();
-/// crumbkit::finish(&mut output, ENTRIES_STREAM, result);
+/// crumbkit::finish(output, ENTRIES_STREAM, result);
 /// ```
 ///
 /// A tool that streams entries opens the stream, prints each item until the
@@ -125,8 +131,9 @@ pub fn stream<R: Row>(
 /// const ENTRIES_STREAM: Document<Stream<Entry>> =
 ///     Document::new("reading", "entries-stream", 1, "Each entry of a reading list.");
 ///
-/// let mut output = Output::new(
+/// let output = Output::new(
 ///     crumbkit::ViewFlags::new(),
+///     crumbkit::DryRun::default(),
 ///     clap::Command::new("reading"),
 ///     &crumbkit::help::Guide::new(),
 ///     ["reading"],
@@ -135,7 +142,7 @@ pub fn stream<R: Row>(
 /// let mut out = Vec::new();
 /// let mut err = Vec::new();
 /// let mut sink = Sink::new(&mut out, &mut err);
-/// let code = match crumbkit::stream_to(&mut sink, &mut output, ENTRIES_STREAM) {
+/// let code = match crumbkit::stream_to(&mut sink, output, ENTRIES_STREAM) {
 ///     Ok(mut streaming) => {
 ///         for position in 1..=3 {
 ///             if streaming.item(&Entry { position }).is_break() {
@@ -155,42 +162,45 @@ pub fn stream<R: Row>(
 /// the guide lists another, for a view flag that [`stream`] refuses. The
 /// refusal prints as [`finish_to`](crate::finish_to) prints it, and nothing
 /// of the stream prints.
-pub fn stream_to<'a, R: Row, O: Write, W: Write>(
-    sink: &'a mut Sink<O, W>,
-    output: &'a mut Output,
+pub fn stream_to<R: Row, O: Write, W: Write>(
+    sink: &mut Sink<O, W>,
+    output: Output,
     document: Document<Stream<R>>,
-) -> Result<Streaming<'a, R, &'a mut O, &'a mut W>, ExitCode> {
+) -> Result<Streaming<R, &mut O, &mut W>, ExitCode> {
     open(&mut sink.out, &mut sink.err, output, document)
 }
 
 /// An open stream, which prints each item that the tool passes to
 /// [`Streaming::item`] and ends with [`Streaming::end`].
 ///
-/// [`stream`] and [`stream_to`] open it. A stream that is dropped without
-/// `end` has printed every line that it was given, and records no exit code.
+/// [`stream`] and [`stream_to`] open it, and it owns the view and the
+/// command tree of the `Output` that they took. A stream that is dropped
+/// without `end` has printed every line that it was given, and records no
+/// exit code.
 ///
 /// A stream ends with exit code 0, 1, or the code that the tool's guide
 /// declares for its first failure, as [`Streaming::end`] describes.
 #[derive(Debug)]
-pub struct Streaming<'a, R, O, W> {
+pub struct Streaming<R, O, W> {
     /// Receives the header, the items and, with `--json`, the failures.
     out: O,
     /// Receives the text form of the failures and the report of a failed
     /// write.
     err: W,
     /// The view that the view flags selected.
-    view: &'a View,
+    view: View,
     /// Whether every field of each item prints: `--full` asked for it, or
     /// the row type prints whole and `--fields` names no field.
     full: bool,
     /// Whether the run is a dry run.
     dry_run: bool,
-    /// The columns of each item, in order.
-    columns: Vec<&'a str>,
+    /// The columns of each item, in order: the row type's own names, or
+    /// the names that `--fields` gave.
+    columns: Vec<Cow<'static, str>>,
     /// The width of each column, which is the width of its header.
     widths: Vec<usize>,
     /// The command tree that a failure's `Run` recovery renders against.
-    command: &'a mut Command,
+    command: Command,
     /// The spelling of the failures' codes.
     spelling: Spelling,
     /// The stream's document.
@@ -236,7 +246,7 @@ enum State {
     Spent,
 }
 
-impl<R: Row, O: Write, W: Write> Streaming<'_, R, O, W> {
+impl<R: Row, O: Write, W: Write> Streaming<R, O, W> {
     /// Prints `item` on its own line and flushes the output writer.
     ///
     /// It returns `ControlFlow::Break` when the stream can print nothing
@@ -276,9 +286,8 @@ impl<R: Row, O: Write, W: Write> Streaming<'_, R, O, W> {
     }
 
     /// Returns the bytes that the stream can still print on the output
-    /// writer: the budget that [`Output::budget`] had left when the stream
-    /// opened, less the bytes printed since. A tool reads it to stop
-    /// producing items that cannot print.
+    /// writer: [`Output::budget`], less the bytes printed since the stream
+    /// opened. A tool reads it to stop producing items that cannot print.
     #[must_use]
     pub const fn budget(&self) -> usize {
         self.budget.saturating_sub(self.sent)
@@ -398,7 +407,7 @@ impl<R: Row, O: Write, W: Write> Streaming<'_, R, O, W> {
             failure,
             self.spelling,
             self.printing,
-            self.command,
+            &mut self.command,
             &mut self.err,
         );
         // The stream's first failure chooses the exit code, and the span
@@ -443,7 +452,7 @@ impl<R: Row, O: Write, W: Write> Streaming<'_, R, O, W> {
             self.view.is_json(),
             self.spelling,
             printing,
-            self.command,
+            &mut self.command,
         );
         let _ = self.send();
         self.record(code, false);

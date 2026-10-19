@@ -88,10 +88,7 @@ pub(super) fn respond<T: Rows, E: AsFailure, O: Write, W: Write, R>(
         problems,
     );
     let (code, answer) = match written {
-        Ok((answer, bytes)) => {
-            output.spent = output.spent.saturating_add(bytes);
-            (0, answer)
-        }
+        Ok((answer, _bytes)) => (0, answer),
         // A reader that stops early, as `shelf books list | head -1` does,
         // closes the pipe after it has read every line it wanted, so the
         // command did its job.

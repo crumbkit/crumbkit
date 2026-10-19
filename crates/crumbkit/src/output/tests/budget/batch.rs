@@ -154,8 +154,8 @@ fn large_first() -> Batch<Star, Error> {
 #[test]
 fn a_batch_without_the_mark_refuses_a_first_answer_alone_past_the_budget_and_names_every_later_key()
 {
-    let json = finish_output(&mut budgeted(1024, &["--json"]), STAR_BATCH, large_first());
-    let text = finish_output(&mut budgeted(1024, &[]), STAR_BATCH, large_first());
+    let json = finish_output(budgeted(1024, &["--json"]), STAR_BATCH, large_first());
+    let text = finish_output(budgeted(1024, &[]), STAR_BATCH, large_first());
 
     assert_eq!(json.code, ExitCode::FAILURE);
     let document = parsed(&json.out);
@@ -196,12 +196,12 @@ error: 2 more answers did not fit in the output budget of 1024 bytes
 #[test]
 fn a_table_batch_whose_first_answer_is_refused_prints_every_row_when_asked_for_fewer_fields() {
     let json = finish_output(
-        &mut budgeted(1024, &["--json", "--fields", "name"]),
+        budgeted(1024, &["--json", "--fields", "name"]),
         STAR_BATCH,
         large_first(),
     );
     let text = finish_output(
-        &mut budgeted(1024, &["--fields", "name"]),
+        budgeted(1024, &["--fields", "name"]),
         STAR_BATCH,
         large_first(),
     );
@@ -223,8 +223,8 @@ fn a_table_batch_whose_first_answer_is_refused_prints_every_row_when_asked_for_f
 fn a_batch_that_always_prints_its_first_answer_prints_it_past_the_budget_and_names_every_later_key()
 {
     let marked = STAR_BATCH.always_print_first();
-    let json = finish_output(&mut budgeted(1024, &["--json"]), marked, large_first());
-    let text = finish_output(&mut budgeted(1024, &[]), marked, large_first());
+    let json = finish_output(budgeted(1024, &["--json"]), marked, large_first());
+    let text = finish_output(budgeted(1024, &[]), marked, large_first());
 
     assert_eq!(json.code, ExitCode::FAILURE);
     let document = parsed(&json.out);

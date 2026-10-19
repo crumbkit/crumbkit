@@ -14,9 +14,9 @@ use crate::{Document, Row, Stream};
 pub(super) fn open<R: Row, O: Write, W: Write>(
     out: O,
     err: W,
-    output: &mut Output,
+    output: Output,
     document: Document<Stream<R>>,
-) -> Result<Streaming<'_, R, O, W>, ExitCode> {
+) -> Result<Streaming<R, O, W>, ExitCode> {
     crate::output::columns::require_for_stream::<R>();
     let (spelling, document) = output.named(document);
     let budget = output.budget();
@@ -27,20 +27,24 @@ pub(super) fn open<R: Row, O: Write, W: Write>(
         dry_run,
         ..
     } = output;
-    let columns: Vec<&str> = if let Some(names) = view.names() {
-        names.iter().map(String::as_str).collect()
+    let columns: Vec<Cow<'static, str>> = if let Some(names) = view.names() {
+        names.iter().cloned().map(Cow::Owned).collect()
     } else {
         let long = if view.is_long() { R::LONG_COLUMNS } else { &[] };
-        R::COLUMNS.iter().chain(long).copied().collect()
+        R::COLUMNS
+            .iter()
+            .chain(long)
+            .map(|&name| Cow::Borrowed(name))
+            .collect()
     };
     let mut streaming = Streaming {
         out,
         err,
-        view,
         // A row type that prints whole holds every field in JSON unless
         // `--fields` names some.
         full: view.is_full() || (R::WHOLE && view.names().is_none()),
-        dry_run: *dry_run,
+        view,
+        dry_run,
         widths: columns.iter().map(|name| name.chars().count()).collect(),
         columns,
         command,
@@ -59,10 +63,10 @@ pub(super) fn open<R: Row, O: Write, W: Write>(
         span: crate::trace::spans::finish(),
     };
     let envelope = document.get_envelope().wraps();
-    if let Some(refusal) = fields::refusal::<R>(None, envelope, false, streaming.view) {
+    if let Some(refusal) = fields::refusal::<R>(None, envelope, false, &streaming.view) {
         return Err(streaming.refuse(&refusal));
     }
-    if !streaming.view.is_json() && !lines::chosen::<R>(streaming.view) {
+    if !streaming.view.is_json() && !lines::chosen::<R>(&streaming.view) {
         let header: Vec<Cow<'_, str>> = streaming
             .columns
             .iter()

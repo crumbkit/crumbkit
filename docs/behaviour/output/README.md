@@ -165,7 +165,13 @@ returns the exit code as a `u8`, which a test can compare and a tool can
 record, and `finish` returns the same code as an `ExitCode`. A pipe that the
 reader closed early keeps the exit code of the result.
 
-Why: ADR-0050, ADR-0016, ADR-0077.
+`finish`, `finish_to`, `stream` and `stream_to` take the `Output` by value,
+because a run prints one result and nothing reads the `Output` after. A
+handler that reads the `Output` with `&mut`, such as `commands::list` or a
+command that confirms, runs before `finish`. A second `finish` with the same
+`Output` does not compile.
+
+Why: ADR-0050, ADR-0016, ADR-0077, ADR-0094.
 
 ## Result shapes
 

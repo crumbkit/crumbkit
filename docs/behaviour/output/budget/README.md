@@ -33,8 +33,8 @@ variable never raises the budget, so no one can read more than the tool's
 budget in one run. A reader who needs more asks for less with `--limit`,
 `--fields` or a filter and runs the command more than once.
 
-`Output::budget` returns the bytes that the run can still print, so a handler
-can fetch no more rows than fit.
+`Output::budget` returns the budget, so a handler can fetch no more rows than
+fit before it passes the `Output` to `finish`.
 
 Why: ADR-0046, ADR-0081, ADR-0084.
 

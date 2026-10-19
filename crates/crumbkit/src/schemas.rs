@@ -70,11 +70,11 @@
 //!             // so each runs before `finish`.
 //!             SchemasCommand::List(args) => {
 //!                 let result = schemas::list(&mut output, &GUIDE, &args);
-//!                 crumbkit::finish(&mut output, SCHEMAS_LIST, result)
+//!                 crumbkit::finish(output, SCHEMAS_LIST, result)
 //!             }
 //!             SchemasCommand::Show(args) => {
 //!                 let result = schemas::show(&mut output, &GUIDE, &args);
-//!                 crumbkit::finish(&mut output, SCHEMAS_SHOW, result)
+//!                 crumbkit::finish(output, SCHEMAS_SHOW, result)
 //!             }
 //!         },
 //!     }

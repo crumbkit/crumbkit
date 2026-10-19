@@ -30,11 +30,11 @@ const NESTS: Document<Stream<Nest>> = Document::new("birds", "nests", 1, "Each n
 /// Streams `nests`, reports `failure` after them when it is `Some`, ends the
 /// stream without a failure, and returns the exit code and standard error.
 fn stream(nests: &[Nest], failure: Option<&Unreadable>) -> (ExitCode, String) {
-    let mut output = parse(&[]);
+    let output = parse(&[]);
     let mut out = Vec::new();
     let mut err = Vec::new();
     let mut sink = Sink::new(&mut out, &mut err);
-    let mut streaming = stream_to(&mut sink, &mut output, NESTS).unwrap();
+    let mut streaming = stream_to(&mut sink, output, NESTS).unwrap();
     for nest in nests {
         assert_eq!(streaming.item(nest), ControlFlow::Continue(()));
     }

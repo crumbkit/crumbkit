@@ -179,14 +179,14 @@ fn json_prints_the_value_of_an_unwrapped_prose_result_and_its_failures_on_standa
 
 #[test]
 fn a_failed_unwrapped_command_prints_the_failure_document_with_json() {
-    let mut output = parse_against(Tool::command(), &["--json"]);
+    let output = parse_against(Tool::command(), &["--json"]);
     let mut out = Vec::new();
     let mut err = Vec::new();
     let result: Result<Vec<Planet>, Error> = Err(Missing("Vulcan").into());
 
     let code = finish_to(
         &mut Sink::new(&mut out, &mut err),
-        &mut output,
+        output,
         PLANETS.envelope(Envelope::Without),
         result,
     );

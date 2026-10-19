@@ -63,14 +63,14 @@ where
             command: ListCommand::List(args),
         } => {
             let result = lists::entries(dir.as_deref(), &name, &args.page);
-            crumbkit::finish(&mut output, lists::ENTRIES_LIST, result)
+            crumbkit::finish(output, lists::ENTRIES_LIST, result)
         }
         Parsed::Grafted {
             name,
             command: ListCommand::Edit,
         } => {
             let editor = lists::editor(dir.as_deref(), &name);
-            crumbkit_child::hand_over(&mut output, editor)
+            crumbkit_child::hand_over(output, editor)
         }
         Parsed::Static(cli) => {
             match cli.resource {
@@ -78,16 +78,16 @@ where
                     command: EntriesCommand::List(args),
                 } => {
                     let result = lists::entries(dir.as_deref(), &args.list, &args.page);
-                    crumbkit::finish(&mut output, lists::ENTRIES_LIST, result)
+                    crumbkit::finish(output, lists::ENTRIES_LIST, result)
                 }
                 Resource::Entries {
                     command: EntriesCommand::Stream(args),
-                } => lists::stream_entries(&mut output, dir.as_deref(), &args.list),
+                } => lists::stream_entries(output, dir.as_deref(), &args.list),
                 Resource::Entries {
                     command: EntriesCommand::Export(args),
                 } => {
                     let result = lists::export(dir.as_deref(), &args.list);
-                    crumbkit::finish(&mut output, lists::ENTRIES_EXPORT, result)
+                    crumbkit::finish(output, lists::ENTRIES_EXPORT, result)
                 }
                 // `set` reads `--dry-run` and asks for confirmation through
                 // `output`, so it runs before `finish` takes it.
@@ -95,21 +95,21 @@ where
                     command: EntriesCommand::Set(args),
                 } => {
                     let result = lists::set(&mut output, dir.as_deref(), &args);
-                    crumbkit::finish(&mut output, lists::ENTRIES_SET, result)
+                    crumbkit::finish(output, lists::ENTRIES_SET, result)
                 }
                 Resource::Lists {
                     command: ListsCommand::List(args),
                 } => {
                     let result =
                         Ok::<_, lists::EntriesError>(lists::summaries(dir.as_deref(), &args.page));
-                    crumbkit::finish(&mut output, lists::LISTS_LIST, result)
+                    crumbkit::finish(output, lists::LISTS_LIST, result)
                 }
                 Resource::Lists {
                     command: ListsCommand::Show(args),
                 } => {
                     let result =
                         Ok::<_, lists::EntriesError>(lists::show(dir.as_deref(), &args.names));
-                    crumbkit::finish(&mut output, lists::LISTS_SHOW, result)
+                    crumbkit::finish(output, lists::LISTS_SHOW, result)
                 }
                 // `commands list` and `schemas` read the command tree
                 // through `&mut output`, so each runs before `finish`
@@ -119,18 +119,18 @@ where
                 } => {
                     let result = crumbkit::commands::list(&mut output, &guide, &args);
                     let document = crumbkit::commands::COMMANDS_LIST;
-                    crumbkit::finish(&mut output, document, result)
+                    crumbkit::finish(output, document, result)
                 }
                 Resource::Schemas { command } => match command {
                     SchemasCommand::List(args) => {
                         let result = crumbkit::schemas::list(&mut output, &guide, &args);
                         let document = crumbkit::schemas::SCHEMAS_LIST;
-                        crumbkit::finish(&mut output, document, result)
+                        crumbkit::finish(output, document, result)
                     }
                     SchemasCommand::Show(args) => {
                         let result = crumbkit::schemas::show(&mut output, &guide, &args);
                         let document = crumbkit::schemas::SCHEMAS_SHOW;
-                        crumbkit::finish(&mut output, document, result)
+                        crumbkit::finish(output, document, result)
                     }
                 },
             }

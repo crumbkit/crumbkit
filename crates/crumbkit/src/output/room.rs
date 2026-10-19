@@ -50,6 +50,7 @@ use crate::{AsFailure, Batch, Document, Row, Rows};
 /// }
 /// # let output = Output::new(
 /// #     crumbkit::ViewFlags::new(),
+/// #     crumbkit::DryRun::default(),
 /// #     clap::Command::new("shelf"),
 /// #     &crumbkit::help::Guide::new(),
 /// #     ["shelf"],
@@ -117,7 +118,7 @@ enum Form {
 impl Output {
     /// Returns the [`Room`] of a batch that prints as `document`, which
     /// counts the bytes that `finish` prints for the batch's rows within the
-    /// bytes that [`Output::budget`] has left now (ADR-0068).
+    /// bytes of [`Output::budget`] (ADR-0068).
     pub fn room<R: Row, E: AsFailure>(&self, document: Document<Batch<R, E>>) -> Room<Batch<R, E>> {
         let columns: Vec<String> = columns::columns(&self.view, document, false)
             .into_iter()

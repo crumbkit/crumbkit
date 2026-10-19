@@ -51,7 +51,7 @@ fn fetched(
 ) -> Finished {
     let guide = Guide::new().output_budget(budget, "the tests print little");
     let args: Vec<&str> = ["tool", "list"].iter().chain(flags).copied().collect();
-    let mut output = built_with(Tool::command(), &guide, &args);
+    let output = built_with(Tool::command(), &guide, &args);
     let mut room = output.room(document);
     let mut answers = Batch::new(&["show"], "names", &KEYS);
     for key in KEYS {
@@ -63,12 +63,7 @@ fn fetched(
     let mut out = Vec::new();
     let mut err = Vec::new();
     let result: Result<_, Error> = Ok(answers);
-    let code = finish_to(
-        &mut Sink::new(&mut out, &mut err),
-        &mut output,
-        document,
-        result,
-    );
+    let code = finish_to(&mut Sink::new(&mut out, &mut err), output, document, result);
     Finished {
         code: ExitCode::from(code),
         out,

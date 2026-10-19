@@ -141,8 +141,9 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit: [`Effects`] declares a leaf's effects in the terms of MCP's
   tool annotations with `Leaf::effects`, and help and `commands list` show
   them ([behaviour/effects]).
-- crumbkit: [`DryRun`] adds `--dry-run`. After `Output::dry_run`, the JSON
-  document holds `dry_run: true` and the text ends with a dry-run line
+- crumbkit: [`DryRun`] adds `--dry-run`. `parse` records the flag in
+  `Output`, `Output::is_dry_run` reports it, the JSON document holds
+  `dry_run: true` and the text ends with a dry-run line
   ([behaviour/effects]).
 - crumbkit: [`Yes`] adds `--yes`. `Output::confirm` asks at a terminal,
   proceeds with `--yes`, and otherwise fails with the typed command plus
@@ -535,6 +536,9 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   `--full` without `--json` and `--fields` with `--long` or `--full`
   before the handler runs; [`finish`] and [`stream`] no longer refuse
   them ([behaviour/output]).
+- crumbkit: [`Output::new`] and `Output::new_to` take the command's
+  [`DryRun`] after the view flags, so an `Output` knows its dry run from
+  the start ([behaviour/effects]).
 - crumbkit: a tool sets its code spelling once with `Guide::spelling`,
   which defaults to `Spelling::COLONS`. [`parse`], [`finish`], [`stream`],
   `hand_over` and crumbkit-test's checks no longer take a `Spelling`, and
@@ -574,8 +578,8 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   sentence that states the range, such as `--limit takes a whole number
   from 1 to 100` ([behaviour/output/listings]).
 - crumbkit: a tool that parses with clap alone builds its [`Output`] with
-  `Output::new(view, command, guide, args)`, which finds the leaf that the
-  argv names, so the run prints that leaf's code renames
+  `Output::new(view, dry_run, command, guide, args)`, which finds the leaf
+  that the argv names, so the run prints that leaf's code renames
   ([behaviour/adoption/declarations]).
 - crumbkit: `Output::print_failure`, `Output::failure_exit`,
   `Output::listed_exit`, `Output::refuse_view` and
@@ -642,10 +646,18 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   in a required argument group.
 - cargo-crumbkit: `weigh` prints `long_help` only with `--long`
   ([behaviour/help/weight]).
-- crumbkit: [`finish`], `finish_to`, `Output::command`, `commands::list`,
-  `schemas::list` and `schemas::show` take `&mut Output`, and
-  `Output::set_command` no longer builds the command tree, so a run builds
-  only the commands it reads ([behaviour/adoption]).
+- crumbkit: `Output::command`, `commands::list`, `schemas::list` and
+  `schemas::show` take `&mut Output`, and `Output::set_command` no longer
+  builds the command tree, so a run builds only the commands it reads
+  ([behaviour/adoption]).
+- crumbkit: [`finish`], `finish_to`, [`stream`] and `stream_to` take the
+  [`Output`] by value, so a second `finish` with one `Output` does not
+  compile, and a `Streaming` owns its view and command tree
+  ([behaviour/output]).
+- crumbkit: `Output::budget` returns the whole output budget, because an
+  `Output` prints one result ([behaviour/output/budget]).
+- crumbkit-child: [`child::hand_over`] and [`child::hand_over_json`] take
+  the `Output` by value, as `finish` does ([behaviour/output/child-processes]).
 - crumbkit-aliases: `list` takes `&mut Output`, because it builds the
   tool's command tree when it runs.
 - crumbkit: [`parse`] returns a [`Stop`] after help, the version or a

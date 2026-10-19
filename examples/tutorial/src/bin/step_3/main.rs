@@ -150,13 +150,13 @@ fn list(args: &JarsList) -> Result<Listing<Jar>, ShelfNotFound> {
 
 fn main() -> ExitCode {
     let parsed = crumbkit::parse::<Cli>(Cli::command(), &GUIDE);
-    let (cli, mut output) = match parsed {
+    let (cli, output) = match parsed {
         Ok(parsed) => parsed,
         Err(stop) => return stop.code(),
     };
     match cli.resource {
         Resource::Jars {
             command: JarsCommand::List(args),
-        } => crumbkit::finish(&mut output, JARS_LIST, list(&args)),
+        } => crumbkit::finish(output, JARS_LIST, list(&args)),
     }
 }

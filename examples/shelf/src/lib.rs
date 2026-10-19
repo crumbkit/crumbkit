@@ -79,15 +79,15 @@ where
             let removed = removed.as_deref();
             match command {
                 BooksCommand::List(args) => {
-                    crumbkit::finish(&mut output, books::BOOKS_LIST, books::list(&args, removed))
+                    crumbkit::finish(output, books::BOOKS_LIST, books::list(&args, removed))
                 }
                 BooksCommand::Show(args) => {
                     let room = output.room(books::BOOKS_SHOW);
                     let result = books::show(&args, removed, room);
-                    crumbkit::finish(&mut output, books::BOOKS_SHOW, result)
+                    crumbkit::finish(output, books::BOOKS_SHOW, result)
                 }
                 BooksCommand::Summarize(args) => crumbkit::finish(
-                    &mut output,
+                    output,
                     books::BOOKS_SUMMARIZE,
                     books::summarize(&args, removed),
                 ),
@@ -95,7 +95,7 @@ where
                 // through `&mut output`, so it runs before `finish`.
                 BooksCommand::Remove(args) => {
                     let result = books::remove(&mut output, &args, removed);
-                    crumbkit::finish(&mut output, books::BOOKS_REMOVE, result)
+                    crumbkit::finish(output, books::BOOKS_REMOVE, result)
                 }
             }
         }
@@ -106,19 +106,19 @@ where
             CommandsCommand::List(args) => {
                 let result = crumbkit::commands::list(&mut output, &GUIDE, &args);
                 let document = crumbkit::commands::COMMANDS_LIST;
-                crumbkit::finish(&mut output, document, result)
+                crumbkit::finish(output, document, result)
             }
         },
         Resource::Schemas { command } => match command {
             SchemasCommand::List(args) => {
                 let result = crumbkit::schemas::list(&mut output, &GUIDE, &args);
                 let document = crumbkit::schemas::SCHEMAS_LIST;
-                crumbkit::finish(&mut output, document, result)
+                crumbkit::finish(output, document, result)
             }
             SchemasCommand::Show(args) => {
                 let result = crumbkit::schemas::show(&mut output, &GUIDE, &args);
                 let document = crumbkit::schemas::SCHEMAS_SHOW;
-                crumbkit::finish(&mut output, document, result)
+                crumbkit::finish(output, document, result)
             }
         },
         Resource::SelfCommand { command } => match command {
@@ -126,7 +126,7 @@ where
                 let result =
                     Ok::<_, crumbkit::Error>(crumbkit_usage::findings(&mut output, &GUIDE, &args));
                 let document = crumbkit_usage::SELF_USAGE;
-                crumbkit::finish(&mut output, document, result)
+                crumbkit::finish(output, document, result)
             }
             SelfCommand::Figures {
                 command: FiguresCommand::List(args),
@@ -134,14 +134,14 @@ where
                 let result =
                     Ok::<_, crumbkit::Error>(crumbkit_usage::figures(&mut output, &GUIDE, &args));
                 let document = crumbkit_usage::SELF_FIGURES_LIST;
-                crumbkit::finish(&mut output, document, result)
+                crumbkit::finish(output, document, result)
             }
         },
         Resource::Aliases { command } => match command {
             AliasesCommand::List(args) => {
                 let result = crumbkit_aliases::list(&mut output, file.as_deref(), &args);
                 let document = crumbkit_aliases::ALIASES_LIST;
-                crumbkit::finish(&mut output, document, result)
+                crumbkit::finish(output, document, result)
             }
         },
     }

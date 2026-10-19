@@ -27,7 +27,7 @@ fn pretty(flags: &[&str]) -> Output {
 
 /// Finishes `value` with `flags` and the guide [`PRETTY`].
 fn finish_pretty<T: Rows>(flags: &[&str], document: Document<T>, value: T) -> Finished {
-    finish_output(&mut pretty(flags), document, value)
+    finish_output(pretty(flags), document, value)
 }
 
 const NOT_FOUND: Code = Code::new("solar", "planets", "not_found");
@@ -95,13 +95,13 @@ fn a_pretty_layout_leaves_the_text_table_unchanged() {
 
 #[test]
 fn a_pretty_layout_indents_the_failure_document() {
-    let mut output = pretty(&["--json"]);
+    let output = pretty(&["--json"]);
     let mut out = Vec::new();
     let mut err = Vec::new();
     let mut sink = Sink::new(&mut out, &mut err);
     let result: Result<Vec<super::Planet>, Error> = Err(Error::from(Missing));
 
-    let code = finish_to(&mut sink, &mut output, PLANETS, result);
+    let code = finish_to(&mut sink, output, PLANETS, result);
 
     assert_eq!(code, 1);
     let out = String::from_utf8(out).unwrap();
