@@ -48,7 +48,7 @@ mod tests;
 /// failure of its own when that byte arrives.
 ///
 /// ```
-/// use crumbkit_core::Bytes;
+/// use crumbkit::Bytes;
 ///
 /// let bytes = Bytes::from("North and South\n".to_owned());
 ///
@@ -116,7 +116,7 @@ impl JsonSchema for Bytes {
     }
 
     fn schema_id() -> Cow<'static, str> {
-        "crumbkit_core::Bytes".into()
+        "crumbkit::Bytes".into()
     }
 
     fn json_schema(_: &mut SchemaGenerator) -> Schema {

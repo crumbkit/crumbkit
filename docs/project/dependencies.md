@@ -18,8 +18,9 @@ Why: ADR-0003.
 ## The default build
 
 The default build of crumbkit depends on clap, serde, serde_json, schemars
-and is-ai-agent. crumbkit-core depends only on serde, serde_json and
-schemars, so a crate that uses crumbkit-core alone builds no clap.
+and is-ai-agent. The failure, document, call and row types need only serde,
+serde_json and schemars, and crumbkit holds them beside the parsing and
+output that need clap (ADR-0097).
 
 crumbkit enables two clap features:
 
@@ -35,7 +36,7 @@ is-ai-agent has no dependencies of its own. crumbkit reads it only when a
 question is about to be asked, so a tool does not ask an agent a question
 it cannot answer.
 
-Why: ADR-0003, ADR-0001, ADR-0032, ADR-0043.
+Why: ADR-0003, ADR-0001, ADR-0097, ADR-0043.
 
 ## Features and separate crates
 

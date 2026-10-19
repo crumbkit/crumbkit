@@ -23,7 +23,7 @@ mod tests;
 /// letters, digits and underscores, such as `book_id`.
 ///
 /// ```
-/// use crumbkit_core::{Field, FieldValue};
+/// use crumbkit::{Field, FieldValue};
 ///
 /// let field = Field::new("book", 7_u32);
 ///
@@ -88,7 +88,7 @@ impl<'a> Field<'a> {
 /// chooses the shape of its own fields, so no shape needs an opt-out.
 ///
 /// ```
-/// use crumbkit_core::{Field, FieldValue};
+/// use crumbkit::{Field, FieldValue};
 ///
 /// let refusals = [(3_u32, "not a number"), (9, "empty")];
 /// let field = Field::new(
@@ -164,7 +164,7 @@ impl<'a> FieldValue<'a> {
     /// `preserve_order` feature.
     ///
     /// ```
-    /// use crumbkit_core::FieldValue;
+    /// use crumbkit::FieldValue;
     ///
     /// let json = serde_json::json!({"book": 7, "found": null});
     /// let fraction = serde_json::json!(1.5);

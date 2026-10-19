@@ -4,8 +4,8 @@ crumbkit-derive holds `#[derive(Failure)]`, which writes the `Failure` impl
 of [crumbkit] for an enum or a struct from `#[failure(...)]` attributes. It
 also writes a `CODES` constant that lists the type's codes for the codes
 check. A tool does not add this crate itself. It turns on the `derive`
-feature of crumbkit or crumbkit-core, which re-exports the derive beside the
-trait of the same name. crumbkit is in design and is not published yet.
+feature of crumbkit, which re-exports the derive beside the trait of the
+same name. crumbkit is in design and is not published yet.
 
 ## Adding it
 
@@ -22,7 +22,6 @@ default. A tool that writes its impls by hand builds none of them.
 Each variant names its code and its next step:
 
 ```rust
-# extern crate crumbkit_core as crumbkit;
 use std::fmt;
 
 use crumbkit::{Call, Code, Failure, Recovery};

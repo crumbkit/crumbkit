@@ -26,7 +26,7 @@ Why: ADR-0056.
   command reads the leaf's renames first and the guide's for every other
   code ([codes per command](#codes-per-command)).
 - `Guide::spelling` sets the
-  [`Spelling`](../../../crates/crumbkit-core/src/code.rs) that every code
+  [`Spelling`](../../../crates/crumbkit/src/code.rs) that every code
   prints in, such as segments joined with `.`. A guide that sets none
   prints codes with `Spelling::COLONS`, so a tool with colon codes declares
   nothing

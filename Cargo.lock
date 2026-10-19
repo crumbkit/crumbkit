@@ -159,7 +159,7 @@ version = "0.0.0"
 dependencies = [
  "clap",
  "clap_complete",
- "crumbkit-core",
+ "crumbkit-derive",
  "is-ai-agent",
  "miette",
  "proptest",
@@ -204,22 +204,10 @@ dependencies = [
 ]
 
 [[package]]
-name = "crumbkit-core"
-version = "0.0.0"
-dependencies = [
- "crumbkit-derive",
- "miette",
- "proptest",
- "schemars",
- "serde",
- "serde_json",
-]
-
-[[package]]
 name = "crumbkit-derive"
 version = "0.0.0"
 dependencies = [
- "crumbkit-core",
+ "crumbkit",
  "proc-macro2",
  "quote",
  "syn 3.0.6",

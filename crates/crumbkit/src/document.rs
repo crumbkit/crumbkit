@@ -42,8 +42,8 @@ pub use envelope::Envelope;
 /// ```
 /// # #[derive(serde::Serialize, schemars::JsonSchema)]
 /// # struct Book { id: u32 }
-/// # impl crumbkit_core::Row for Book { const COLUMNS: &'static [&'static str] = &["id"]; }
-/// use crumbkit_core::Document;
+/// # impl crumbkit::Row for Book { const COLUMNS: &'static [&'static str] = &["id"]; }
+/// use crumbkit::Document;
 ///
 /// const BOOKS_LIST: Document<Vec<Book>> =
 ///     Document::new("shelf", "books-list", 1, "The books in the catalogue.");
@@ -99,8 +99,8 @@ impl<T> Document<T> {
     /// fails to compile:
     ///
     /// ```compile_fail
-    /// const BAD: crumbkit_core::Document<()> =
-    ///     crumbkit_core::Document::new("Shelf", "books-list", 1, "The books.");
+    /// const BAD: crumbkit::Document<()> =
+    ///     crumbkit::Document::new("Shelf", "books-list", 1, "The books.");
     /// ```
     #[must_use]
     pub const fn new(
@@ -150,7 +150,8 @@ impl<T> Document<T> {
         self
     }
 
-    /// Reports whether [`Document::always_print_first`] was called.
+    /// Reports whether [`Document::always_print_first`] was called. It is
+    /// hidden because only crumbkit and crumbkit-test read it.
     #[doc(hidden)]
     #[must_use]
     pub const fn always_prints_first(&self) -> bool {
@@ -177,9 +178,8 @@ impl<T> Document<T> {
 
     /// Returns the wording that [`Document::when_empty`] set, or `None` when
     /// the document uses crumbkit's default wording.
-    #[doc(hidden)]
     #[must_use]
-    pub const fn empty_note(&self) -> Option<&'static str> {
+    pub(crate) const fn empty_note(&self) -> Option<&'static str> {
         self.empty
     }
 
@@ -215,7 +215,8 @@ impl<T> Document<T> {
     }
 
     /// Reports whether [`Document::headed`] was called, so a batch prints
-    /// each row's bytes in text under a `head`-style header.
+    /// each row's bytes in text under a `head`-style header. It is hidden
+    /// because only crumbkit and crumbkit-test read it.
     #[doc(hidden)]
     #[must_use]
     pub const fn is_headed(&self) -> bool {
@@ -228,9 +229,8 @@ impl<T> Document<T> {
     /// past the last row. It is `None` for a document that is not headed,
     /// and for every untyped document. `crumbkit::finish` calls it to print
     /// a headed batch.
-    #[doc(hidden)]
     #[must_use]
-    pub const fn headed_bytes(&self) -> Option<RowBytes<T>> {
+    pub(crate) const fn headed_bytes(&self) -> Option<RowBytes<T>> {
         self.bytes_of
     }
 

@@ -1,5 +1,5 @@
 //! The behaviour of `#[derive(Failure)]` on enums and structs, through
-//! crumbkit-core's `Failure` trait.
+//! crumbkit's `Failure` trait.
 //!
 //! The tests name the derive by its full path, `crumbkit_derive::Failure`,
 //! because a workspace build that turns on the `derive` feature also brings
@@ -7,7 +7,7 @@
 
 use std::fmt;
 
-use crumbkit_core::{Call, Code, Failure, Field, FieldValue, Recovery};
+use crumbkit::{Call, Code, Failure, Field, FieldValue, Recovery};
 
 const NOT_FOUND: Code = Code::new("shelf", "books", "not_found");
 const REMOVED_FILE: Code = Code::new("shelf", "books", "removed_file");
@@ -21,7 +21,7 @@ const MOST_IDS: usize = 100;
 /// A failure that the enums below wrap.
 #[derive(Debug, crumbkit_derive::Failure)]
 #[failure(
-    crate = ::crumbkit_core,
+    crate = ::crumbkit,
     code = NOT_FOUND,
     recovery = Recovery::Run(Call::new(&["books", "list"])),
     alternative = Recovery::Retry,
@@ -41,7 +41,7 @@ impl fmt::Display for NoSuchBook {
 impl std::error::Error for NoSuchBook {}
 
 #[derive(Debug, crumbkit_derive::Failure)]
-#[failure(crate = ::crumbkit_core)]
+#[failure(crate = ::crumbkit)]
 enum BooksError {
     #[failure(
         code = NOT_FOUND,
@@ -86,7 +86,7 @@ impl std::error::Error for BooksError {}
 
 /// A struct that wraps a failure in a named field beside other context.
 #[derive(Debug, crumbkit_derive::Failure)]
-#[failure(crate = ::crumbkit_core, forward = book)]
+#[failure(crate = ::crumbkit, forward = book)]
 struct ReadingList {
     name: String,
     book: NoSuchBook,
@@ -106,7 +106,7 @@ impl std::error::Error for ReadingList {
 
 /// A struct with no field.
 #[derive(Debug, crumbkit_derive::Failure)]
-#[failure(crate = ::crumbkit_core, code = TIMED_OUT, recovery = Recovery::Retry)]
+#[failure(crate = ::crumbkit, code = TIMED_OUT, recovery = Recovery::Retry)]
 struct Timeout;
 
 impl fmt::Display for Timeout {
@@ -242,7 +242,7 @@ fn the_codes_list_leaves_out_forwarding_variants() {
 mod diagnostic {
     use std::fmt;
 
-    use crumbkit_core::{Code, Failure};
+    use crumbkit::{Code, Failure};
     use miette::{Diagnostic, LabeledSpan, SourceCode};
 
     const UNKNOWN_KEY: Code = Code::new("shelf", "config", "unknown_key");
@@ -250,7 +250,7 @@ mod diagnostic {
 
     /// A key that the settings file does not know, with a label on it.
     #[derive(Debug, crumbkit_derive::Failure)]
-    #[failure(crate = ::crumbkit_core, code = UNKNOWN_KEY, hint = "use `color`", diagnostic)]
+    #[failure(crate = ::crumbkit, code = UNKNOWN_KEY, hint = "use `color`", diagnostic)]
     struct UnknownKey {
         source: String,
     }
@@ -275,7 +275,7 @@ mod diagnostic {
     }
 
     #[derive(Debug, crumbkit_derive::Failure)]
-    #[failure(crate = ::crumbkit_core)]
+    #[failure(crate = ::crumbkit)]
     enum ConfigError {
         #[failure(forward, diagnostic)]
         Key(UnknownKey),

@@ -6,8 +6,8 @@ codes learned at run time, unclassified errors and the `miette` feature. The
 other pages in this directory cover [deriving `Failure`](derive.md),
 [source excerpts and failure readers](excerpts-and-readers.md) and
 [exit codes](exit-codes.md).
-[`Failure`](../../../crates/crumbkit-core/src/failure.rs),
-[`Code`](../../../crates/crumbkit-core/src/code.rs) and
+[`Failure`](../../../crates/crumbkit/src/failure.rs),
+[`Code`](../../../crates/crumbkit/src/code.rs) and
 [`crumbkit::codes`](../../../crates/crumbkit/src/codes.rs) describe the items
 themselves.
 
@@ -18,7 +18,7 @@ adds a stable code, a recovery and an optional url. The failure's `Display`
 and its `source()` chain give the message and the causes, and Debug
 formatting never reaches the output.
 
-[`Error`](../../../crates/crumbkit-core/src/failure.rs) holds any failure, so
+[`Error`](../../../crates/crumbkit/src/failure.rs) holds any failure, so
 `?` works across a tool's error types. It has no context methods. `finish`
 accepts a `Failure` or an `Error` through the sealed `AsFailure` trait,
 because `Error` cannot implement `Failure`. A tool writes each `impl Failure`
@@ -31,7 +31,7 @@ Why: ADR-0001.
 
 ## Recoveries and alternatives
 
-Every failure states a [`Recovery`](../../../crates/crumbkit-core/src/failure.rs).
+Every failure states a [`Recovery`](../../../crates/crumbkit/src/failure.rs).
 A `Run` call that the tool's command tree cannot render prints as `None` with
 crumbkit's reason, so crumbkit never advertises a command the tool hid. A
 `Run` call can carry concrete values with `Call::value`, so a failure can
@@ -88,7 +88,7 @@ tool's domain, such as `books`, so moving code does not change a code
 crumbkit-test's `check_codes`.
 
 Each tool chooses how its codes are spelled with one
-[`Spelling`](../../../crates/crumbkit-core/src/code.rs), which it sets with
+[`Spelling`](../../../crates/crumbkit/src/code.rs), which it sets with
 `Guide::spelling`. A guide that sets none spells codes with
 `Spelling::COLONS`. `parse` and `Output::new` carry the guide's spelling in
 the `Output`, so `finish`, `stream` and `hand_over` print in it, and
@@ -122,7 +122,7 @@ The name is the clap name of the root command, or the last word of the
 guide's `root` when the tool runs below another program, so
 `cargo crumbkit` keeps the name `crumbkit`.
 [`Guide::tool_name`](../../../crates/crumbkit/src/help.rs) derives it, and
-[`ToolName`](../../../crates/crumbkit-core/src/tool_name.rs) spells it:
+[`ToolName`](../../../crates/crumbkit/src/tool_name.rs) spells it:
 
 - A document id lowercases the name and has `-` in place of each character
   that a document component does not allow, so `my-tool` prints
@@ -151,7 +151,7 @@ Why: ADR-0079.
 ## Codes learned at run time
 
 A tool that learns a code only at run time, such as from a plugin's answer,
-gets it from [`Code::runtime`](../../../crates/crumbkit-core/src/code/runtime.rs),
+gets it from [`Code::runtime`](../../../crates/crumbkit/src/code/runtime.rs),
 which checks the segments by the same rule and keeps each distinct code until
 the process exits. A process holds at most 256 run-time codes. A new code
 past that limit is refused, and the tool reports the failure under a code of
@@ -223,7 +223,7 @@ code, the recovery and the url still come from `Failure`.
 
 With the feature, a `miette::Report` converts into `Error` with the code
 `<tool>::report::unchecked`
-([`report`](../../../crates/crumbkit-core/src/report.rs)), so `?` works on a
+([`report`](../../../crates/crumbkit/src/report.rs)), so `?` works on a
 `miette::Result`. The code tells the caller only that the failure was not
 classified, so a tool that wants its own failure back calls
 `report.downcast` before converting.
@@ -240,15 +240,13 @@ Why: ADR-0001, ADR-0016.
 
 ## Unclassified errors
 
-[`Error::unclassified`](../../../crates/crumbkit-core/src/unclassified.rs)
+[`Error::unclassified`](../../../crates/crumbkit/src/unclassified.rs)
 holds any `std::error::Error` or message with the code
 `<tool>::report::unchecked` and a `Recovery::None`. A tool that uses an
 error library such as anyhow therefore reaches `finish` without a
 dependency of crumbkit on that library. The tool downcasts to its own
 failure types first, because boxing the library's error hides the type
 inside. The code is `codes::REPORT_UNCHECKED` in `codes::ALL`, so
-`check_recoveries` follows a chain through it. crumbkit-core holds the
-method and the code, because neither needs clap, and crumbkit re-exports the
-code in its own `codes` module.
+`check_recoveries` follows a chain through it.
 
-Why: ADR-0001, ADR-0032.
+Why: ADR-0001.

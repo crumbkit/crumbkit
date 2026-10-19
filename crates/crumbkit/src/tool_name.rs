@@ -41,7 +41,7 @@ const CRUMBKIT: &str = "crumbkit";
 /// component that the tool gave them.
 ///
 /// ```
-/// use crumbkit_core::{Code, Spelling, ToolName};
+/// use crumbkit::{Code, Spelling, ToolName};
 ///
 /// const USAGE: Code = Code::new("crumbkit", "cli", "usage");
 ///

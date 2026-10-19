@@ -4,7 +4,7 @@ This page covers the shape of the JSON documents that a tool prints: the
 envelope, the fields that each result shape adds, the failure document,
 document ids and their versions. The [schema commands](commands.md) page
 covers `schemas list`, `schemas show` and the checks that pin each schema.
-[`Document`](../../../crates/crumbkit-core/src/document.rs) describes the id
+[`Document`](../../../crates/crumbkit/src/document.rs) describes the id
 type.
 
 ## The envelope

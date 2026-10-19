@@ -43,38 +43,18 @@ multiple-versions-include-dev = true
 wildcards = "deny"
 # A path dependency with no version passes in a dev-dependency or in a crate
 # that is not published, because `cargo publish` leaves out such a
-# dev-dependency. crumbkit-derive's README example builds on crumbkit-core
+# dev-dependency. crumbkit-derive's README example builds on crumbkit
 # through one, so the two crates publish without a cycle (ADR-0012).
 allow-wildcard-paths = true
-# ADR-0003 rules out an async runtime and a C build, and ADR-0032 rules out
-# clap in crumbkit-core.
+# ADR-0003 rules out an async runtime and a C build. No ban keeps clap out
+# of a crate: every published crate except the crumbkit-derive macro reaches
+# clap through crumbkit (ADR-0097).
 deny = [
     { crate = "tokio", reason = "ADR-0003 rules out an async runtime" },
     { crate = "async-std", reason = "ADR-0003 rules out an async runtime" },
     { crate = "smol", reason = "ADR-0003 rules out an async runtime" },
     { crate = "cc", reason = "ADR-0003 rules out a C build" },
     { crate = "cmake", reason = "ADR-0003 rules out a C build" },
-    # Only the crates in `wrappers` may depend on clap directly, so the check
-    # fails when clap enters crumbkit-core's dependency tree (ADR-0032).
-    # clap_builder holds clap's parser, and a crate could depend on it without
-    # clap, so only clap itself may depend on it. A new crate that parses a
-    # command line joins the clap list.
-    { crate = "clap", wrappers = [
-        "cargo-crumbkit",
-        "clap_complete",
-        "crumbkit",
-        "crumbkit-aliases",
-        "crumbkit-child",
-        "crumbkit-test",
-        "crumbkit-usage",
-        "reading",
-        "shelf",
-        "tutorial",
-        "xtask",
-    ], reason = "ADR-0032 keeps clap out of crumbkit-core" },
-    { crate = "clap_builder", wrappers = [
-        "clap",
-    ], reason = "ADR-0032 keeps clap out of crumbkit-core" },
 ]
 # gungraun, which only the benchmarks use (ADR-0008), reaches syn 2 through
 # derive_more, while the rest of the graph uses syn 3. The skip lasts until

@@ -34,7 +34,7 @@ mod tests;
 /// ```
 /// use std::fmt;
 ///
-/// use crumbkit_core::Prose;
+/// use crumbkit::Prose;
 ///
 /// /// What the catalogue holds.
 /// #[derive(serde::Serialize, schemars::JsonSchema)]

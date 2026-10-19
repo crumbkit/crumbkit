@@ -22,7 +22,7 @@ pub use runtime::RuntimeCodeError;
 /// [`Spelling`], so every printed code goes through that spelling.
 ///
 /// ```
-/// use crumbkit_core::{Code, Spelling};
+/// use crumbkit::{Code, Spelling};
 ///
 /// const NOT_FOUND: Code = Code::new("shelf", "books", "not_found");
 ///
@@ -48,7 +48,7 @@ impl Code {
     /// fails to compile:
     ///
     /// ```compile_fail
-    /// const BAD: crumbkit_core::Code = crumbkit_core::Code::new("shelf", "books", "not-found");
+    /// const BAD: crumbkit::Code = crumbkit::Code::new("shelf", "books", "not-found");
     /// ```
     #[must_use]
     pub const fn new(component: &'static str, area: &'static str, reason: &'static str) -> Self {
@@ -143,7 +143,7 @@ impl Spelling {
     /// ```
     /// use std::fmt;
     ///
-    /// use crumbkit_core::{Code, Spelling};
+    /// use crumbkit::{Code, Spelling};
     ///
     /// fn upper(code: &Code, f: &mut fmt::Formatter<'_>) -> fmt::Result {
     ///     write!(f, "{}_{}", code.component().to_uppercase(), code.reason().to_uppercase())
@@ -171,7 +171,7 @@ impl Spelling {
     /// not `crumbkit` keeps it.
     ///
     /// ```
-    /// use crumbkit_core::{Code, Spelling, ToolName};
+    /// use crumbkit::{Code, Spelling, ToolName};
     ///
     /// const USAGE: Code = Code::new("crumbkit", "cli", "usage");
     ///
@@ -215,7 +215,7 @@ impl Spelling {
     /// [`Code::runtime`], because this method returns `None` for every code.
     ///
     /// ```
-    /// use crumbkit_core::Spelling;
+    /// use crumbkit::Spelling;
     ///
     /// assert_eq!(
     ///     Spelling::COLONS.split("lending::loans::overdue"),
