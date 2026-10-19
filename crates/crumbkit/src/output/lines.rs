@@ -3,16 +3,16 @@
 
 use std::io;
 
-use super::Output;
 use super::layout;
 use super::table::escape_controls;
 use crate::Row;
+use crate::view::{Table, View};
 
 /// Reports whether the text of rows of type `R` prints each row's own
-/// line: the row type sets [`Row::LINE`], the caller did not pass `--json`,
-/// and neither `--long` nor `--fields` names columns.
-pub(super) fn chosen<R: Row>(output: &Output) -> bool {
-    R::LINE.is_some() && !output.json && !output.long && output.fields.is_empty()
+/// line: the row type sets [`Row::LINE`], and `view` is the compact text
+/// table, so the caller passed no `--json`, `--long` or `--fields`.
+pub(super) fn chosen<R: Row>(view: &View) -> bool {
+    R::LINE.is_some() && *view == View::Text(Table::Compact)
 }
 
 /// Returns the line of `row` with its line feed: the row's own text line

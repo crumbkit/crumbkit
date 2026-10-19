@@ -257,7 +257,8 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   may change it ([behaviour/parsing/completion]).
 - crumbkit: `Effects::replacing`, `Effects::all_or_none` and
   `Effects::per_item` declare a command's write guards, which help prints
-  on a `Writes:` line and `commands list` writes under `writes`
+  on a `Writes:` line and `commands list` writes under `writes`; a `const`
+  that declares a guard on `Effects::read_only` fails to compile
   ([behaviour/effects/write-guards]).
 - crumbkit: [`Expect`] adds `--expect <VERSION>`, and a target at another
   version fails with `crumbkit::version::conflict`, whose recovery runs the
@@ -407,6 +408,9 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   such as `reading_lists`, also answers to its dashed form, such as
   `reading-lists`, in [`parse`], completion and [`command_path`], and
   [`dashed_form`] returns that form ([behaviour/adoption]).
+- crumbkit: [`is_dashed`] reports whether a name is lowercase letters and
+  digits in words joined by single dashes, the form of a command's name in
+  crumbkit's grammar, and crumbkit-test's checks call it.
 - crumbkit: `RuntimeLeaf::refusal_alternatives` gives a command that a
   tool adds at run time the alternatives that a refusal of its line offers
   ([behaviour/help]).
@@ -530,6 +534,10 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- crumbkit: [`Output::new`] returns `Result<Output, Stop>` and refuses
+  `--full` without `--json` and `--fields` with `--long` or `--full`
+  before the handler runs; [`finish`] and [`stream`] no longer refuse
+  them ([behaviour/output]).
 - crumbkit: the `derive` feature re-exports `#[derive(Failure)]` from
   crumbkit-derive itself, and the `miette` feature holds `Failure::diagnostic`
   and the conversion of a `miette::Report`, which the removed crumbkit-core
@@ -991,6 +999,7 @@ rustdoc, or at the page in docs/ that describes the behaviour. -->
 [`Row`]: crates/crumbkit/src/row.rs
 [`Document`]: crates/crumbkit/src/document.rs
 [`Output`]: crates/crumbkit/src/output.rs
+[`Output::new`]: crates/crumbkit/src/output/build.rs
 [`finish`]: crates/crumbkit/src/output.rs
 [`finish_to`]: crates/crumbkit/src/output.rs
 [`stream`]: crates/crumbkit/src/output/stream.rs
@@ -1015,6 +1024,7 @@ rustdoc, or at the page in docs/ that describes the behaviour. -->
 [`parse`]: crates/crumbkit/src/parse.rs
 [`command_path`]: crates/crumbkit/src/parse/walk.rs
 [`dashed_form`]: crates/crumbkit/src/dashed.rs
+[`is_dashed`]: crates/crumbkit/src/dashed.rs
 [`RuntimeFailing`]: crates/crumbkit-test/src/recoveries/runtime.rs
 [`Stop`]: crates/crumbkit/src/parse/stop.rs
 [`events::ended`]: crates/crumbkit/src/events.rs

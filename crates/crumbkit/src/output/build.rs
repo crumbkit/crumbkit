@@ -3,12 +3,17 @@
 //! them.
 
 use std::ffi::OsString;
+use std::io::Write;
 
 use clap::{ArgMatches, Args, Command};
 
+use super::failure::Printing;
 use super::{Output, budget};
+use crate::Sink;
 use crate::help::Guide;
 use crate::help::rename::Renames;
+use crate::parse::Stop;
+use crate::view::View;
 
 /// The flags that choose how a command prints its result: `--json`,
 /// `--fields`, `--long` and `--full`.
@@ -35,8 +40,9 @@ use crate::help::rename::Renames;
 /// parses with every view flag off.
 ///
 /// A tool that parses with clap alone passes the `ViewFlags` that clap
-/// parsed to [`Output::new`]. A tool that parses the flags its own way
-/// builds them with [`ViewFlags::new`] and the builders:
+/// parsed to [`Output::new`], which refuses `--full` without `--json` and
+/// `--fields` with `--long` or `--full` (ADR-0093). A tool that parses the
+/// flags its own way builds them with [`ViewFlags::new`] and the builders:
 ///
 /// ```
 /// use crumbkit::ViewFlags;
@@ -52,19 +58,19 @@ use crate::help::rename::Renames;
 pub struct ViewFlags {
     /// Print the result as a JSON document
     #[arg(long, global = true)]
-    json: bool,
+    pub(crate) json: bool,
 
     /// Print only these comma-separated fields, in this order
     #[arg(long, global = true, value_name = "FIELD", value_delimiter = ',')]
-    fields: Vec<String>,
+    pub(crate) fields: Vec<String>,
 
     /// Add the long columns after the compact ones
     #[arg(long, global = true)]
-    long: bool,
+    pub(crate) long: bool,
 
     /// With --json, print every field of every row
     #[arg(long, global = true)]
-    full: bool,
+    pub(crate) full: bool,
 }
 
 impl ViewFlags {
@@ -145,18 +151,13 @@ impl ViewFlags {
             full: flag("full"),
         }
     }
-
-    /// Returns the names that `--fields` holds, in the order given, or no
-    /// names when the caller passed no `--fields`.
-    pub(crate) fn field_names(&self) -> &[String] {
-        &self.fields
-    }
 }
 
 impl Output {
     /// Returns the output of a run that parsed `args`, the command line
     /// with the program name first, against `command` with clap alone,
-    /// with the view flags `view` and the tool's `guide`.
+    /// with the view flags `view` and the tool's `guide`, or the [`Stop`]
+    /// of a run whose view flags cannot work together.
     ///
     /// [`parse`](crate::parse()) returns the `Output` of a tool that parses
     /// with crumbkit. A tool that parses with clap alone, or that parses
@@ -176,7 +177,7 @@ impl Output {
     ///
     /// let args = ["shelf", "--json"];
     /// let cli = Cli::try_parse_from(args).unwrap();
-    /// let output = Output::new(cli.view, Cli::command(), &Guide::new(), args);
+    /// let output = Output::new(cli.view, Cli::command(), &Guide::new(), args).unwrap();
     /// assert!(output.is_json());
     /// ```
     ///
@@ -203,19 +204,68 @@ impl Output {
     /// `Cli::command()` beside clap's `Cli::parse`, leaves out a `Next:`
     /// line or a recovery whose call names one.
     ///
-    /// `finish` and `stream` check the view flags as `parse` does: they
-    /// refuse `--full` without `--json`, `--fields` with `--long` or
-    /// `--full`, a view flag that the result cannot use and an unknown
-    /// `--fields` name, after the handler has run.
-    #[must_use]
-    pub fn new<I, T>(view: ViewFlags, command: Command, guide: &Guide, args: I) -> Self
+    /// `finish` and `stream` check the view flags against the result as
+    /// `parse` does: they refuse a view flag that the result cannot use and
+    /// an unknown `--fields` name, after the handler has run.
+    ///
+    /// # Errors
+    ///
+    /// It returns the `Stop` of a refused command line, as [`parse`](crate::parse())
+    /// does, when `--full` comes without `--json` or `--fields` comes with
+    /// `--long` or `--full` (ADR-0093). The refusal prints on standard
+    /// error, as text or with `--json` as one JSON document, before the
+    /// tool's handler runs, and `main` returns the stop's code. A tool that
+    /// prints the refusal elsewhere calls [`Output::new_to`].
+    pub fn new<I, T>(
+        view: ViewFlags,
+        command: Command,
+        guide: &Guide,
+        args: I,
+    ) -> Result<Self, Stop>
     where
         I: IntoIterator<Item = T>,
         T: Into<OsString>,
     {
+        Self::new_to(&mut Sink::standard(), view, command, guide, args)
+    }
+
+    /// Returns the output of a run as [`Output::new`] does, and prints the
+    /// refusal of view flags that cannot work together to `sink` in place
+    /// of standard error.
+    ///
+    /// # Errors
+    ///
+    /// It returns the `Stop` that [`Output::new`] returns, after it printed
+    /// the refusal to `sink`.
+    pub fn new_to<I, T, O, E, R>(
+        sink: &mut Sink<O, E, R>,
+        view: ViewFlags,
+        command: Command,
+        guide: &Guide,
+        args: I,
+    ) -> Result<Self, Stop>
+    where
+        I: IntoIterator<Item = T>,
+        T: Into<OsString>,
+        O: Write,
+        E: Write,
+    {
+        let json = view.json;
         let words: Vec<OsString> = args.into_iter().skip(1).map(Into::into).collect();
-        let path = crate::command_path(&command, guide, &words);
-        Self::parsed(view, command, words, false, guide, &path)
+        match View::try_from(view) {
+            Ok(view) => {
+                let path = crate::command_path(&command, guide, &words);
+                Ok(Self::parsed(view, command, words, false, guide, &path))
+            }
+            Err(refusal) => {
+                let mut command = command;
+                let spelling = guide.get_spelling().for_tool(guide.tool_name(&command));
+                let printing = Printing::of(guide);
+                crate::events::exited(printing.exit(&crate::codes::CLI_USAGE));
+                let code = refusal.print(sink, json, spelling, printing, &mut command);
+                Err(Stop::new(code, json, command, guide))
+            }
+        }
     }
 
     /// Returns the output of a run that parsed `words`, the words after the
@@ -225,7 +275,7 @@ impl Output {
     /// the guide's leaf at `path`, the real names of the parsed command's
     /// subcommands from the root, come before the guide's (ADR-0060).
     pub(crate) fn parsed(
-        view: ViewFlags,
+        view: View,
         command: Command,
         words: Vec<OsString>,
         no_input: bool,
@@ -244,26 +294,17 @@ impl Output {
         }
     }
 
-    /// Returns the output of a run with the view flags `view` that parsed
-    /// against `command` with `guide`, without words. `parse` uses it after
-    /// it printed help, the version or a refusal.
-    pub(crate) fn stopped(view: ViewFlags, command: Command, guide: &Guide) -> Self {
-        let ViewFlags {
-            json,
-            fields,
-            long,
-            full,
-        } = view;
+    /// Returns the output of a run with the view `view` that parsed against
+    /// `command` with `guide`, without words. `parse` uses it after it
+    /// printed help, the version or a refusal.
+    pub(crate) fn stopped(view: View, command: Command, guide: &Guide) -> Self {
         let tool = guide.tool_name(&command);
         let budget = match guide.get_output_budget() {
             Some((bytes, _)) => bytes,
             None => budget::DEFAULT,
         };
         Self {
-            json,
-            fields,
-            long,
-            full,
+            view,
             command,
             words: Vec::new(),
             dry_run: false,
@@ -282,6 +323,10 @@ impl Output {
     /// or a guide, for a test that needs any output.
     #[cfg(test)]
     pub(crate) fn of(command: Command) -> Self {
-        Self::stopped(ViewFlags::new(), command, &Guide::new())
+        Self::stopped(
+            View::Text(crate::view::Table::Compact),
+            command,
+            &Guide::new(),
+        )
     }
 }

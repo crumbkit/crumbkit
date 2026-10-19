@@ -13,8 +13,10 @@ include = ["src/**/*.rs", "schemas/*.json", "README.md", "LICENSE-APACHE", "LICE
 
 [dependencies]
 # cargo-crumbkit is a crumbkit tool: it parses with `crumbkit::parse`,
-# prints through `finish`, and mounts crumbkit's `commands list`.
-crumbkit = { workspace = true }
+# prints through `finish`, and mounts crumbkit's `commands list`. `derive`
+# writes the `Failure` impls of its errors from their `#[failure(...)]`
+# attributes.
+crumbkit = { workspace = true, features = ["derive"] }
 # cargo-crumbkit is a binary, so it chooses clap's user-facing features, as
 # shelf does: help, usage lines, error context, suggestions for mistyped
 # commands, and colour when the output goes to a terminal.

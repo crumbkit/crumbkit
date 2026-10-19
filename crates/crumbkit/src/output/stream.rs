@@ -11,6 +11,7 @@ use super::budget::{Over, OverBudget};
 use super::dry_run::DRY_RUN_LINE;
 use super::failure::{self, PreparedFailure, Printing};
 use super::{JsonLayout, Output, problems};
+use crate::view::View;
 use crate::{AsFailure, Document, Failure, Row, Sink, Spelling, Stream, codes, exit};
 
 mod open;
@@ -33,9 +34,11 @@ use self::open::open;
 /// It returns `Err` with the exit code of a refused command line, 2 unless
 /// the guide lists another, after it prints the refusal of a view flag that
 /// the stream cannot use. `--fields` names only fields of `R`, `--long`
-/// needs long columns in `R`, `--full` needs `--json`, an envelope and a
-/// row type that does not set `Row::WHOLE`, and
-/// `--fields` rules out `--long` and `--full`. `main` returns that code.
+/// needs long columns in `R`, and `--full` needs an envelope and a row
+/// type that does not set `Row::WHOLE`. The pairs that cannot work
+/// together, `--full` without `--json` and `--fields` with `--long` or
+/// `--full`, were refused when the `Output` was built (ADR-0093). `main`
+/// returns that code.
 pub fn stream<R: Row>(
     output: &mut Output,
     document: Document<Stream<R>>,
@@ -103,7 +106,8 @@ pub fn stream<R: Row>(
 ///     clap::Command::new("reading"),
 ///     &crumbkit::help::Guide::new(),
 ///     ["reading"],
-/// );
+/// )
+/// .unwrap();
 /// crumbkit::finish(&mut output, ENTRIES_STREAM, result);
 /// ```
 ///
@@ -126,7 +130,8 @@ pub fn stream<R: Row>(
 ///     clap::Command::new("reading"),
 ///     &crumbkit::help::Guide::new(),
 ///     ["reading"],
-/// );
+/// )
+/// .unwrap();
 /// let mut out = Vec::new();
 /// let mut err = Vec::new();
 /// let mut sink = Sink::new(&mut out, &mut err);
@@ -167,27 +172,19 @@ pub fn stream_to<'a, R: Row, O: Write, W: Write>(
 /// A stream ends with exit code 0, 1, or the code that the tool's guide
 /// declares for its first failure, as [`Streaming::end`] describes.
 #[derive(Debug)]
-#[expect(
-    clippy::struct_excessive_bools,
-    reason = "each bool is one independent flag of the run or mark of the stream, and the writer's state is already an enum"
-)]
 pub struct Streaming<'a, R, O, W> {
     /// Receives the header, the items and, with `--json`, the failures.
     out: O,
     /// Receives the text form of the failures and the report of a failed
     /// write.
     err: W,
-    /// Whether the caller asked for JSON with `--json`.
-    json: bool,
-    /// Whether `--full` asked for every field of each item.
+    /// The view that the view flags selected.
+    view: &'a View,
+    /// Whether every field of each item prints: `--full` asked for it, or
+    /// the row type prints whole and `--fields` names no field.
     full: bool,
     /// Whether the run is a dry run.
     dry_run: bool,
-    /// Whether each item prints its own text line in place of a table row
-    /// (ADR-0064).
-    lined: bool,
-    /// The names that `--fields` gave, which an unwrapped document selects.
-    fields: &'a [String],
     /// The columns of each item, in order.
     columns: Vec<&'a str>,
     /// The width of each column, which is the width of its header.
@@ -344,12 +341,12 @@ impl<R: Row, O: Write, W: Write> Streaming<'_, R, O, W> {
         if empty {
             self.note_empty();
         }
-        if !self.json && !self.failed && self.state == State::Open && self.problems > 0 {
+        if !self.view.is_json() && !self.failed && self.state == State::Open && self.problems > 0 {
             self.note(&problems::note(self.problems, None));
         }
         if self.dry_run
             && self.state == State::Open
-            && (!self.json || !self.document.get_envelope().wraps())
+            && (!self.view.is_json() || !self.document.get_envelope().wraps())
         {
             self.note(DRY_RUN_LINE);
         }
@@ -412,7 +409,7 @@ impl<R: Row, O: Write, W: Write> Streaming<'_, R, O, W> {
             self.exit = self.printing.exit(failure.code());
         }
         self.failed = true;
-        if self.json && self.document.get_envelope().wraps() {
+        if self.view.is_json() && self.document.get_envelope().wraps() {
             // A failure document written to a `Vec` never fails, and a closed
             // stream prints nothing more.
             if self.state == State::Open
@@ -443,7 +440,7 @@ impl<R: Row, O: Write, W: Write> Streaming<'_, R, O, W> {
         };
         let code = refusal.print(
             &mut Sink::new(&mut self.line, &mut self.err),
-            self.json,
+            self.view.is_json(),
             self.spelling,
             printing,
             self.command,

@@ -49,7 +49,7 @@ fn guided() -> Output {
         .try_get_matches_from_mut(["birds", "watch"])
         .unwrap();
     let view = Tool::from_arg_matches(&matches).unwrap().view;
-    Output::new(view, command, &GUIDE, ["birds", "watch"])
+    Output::new(view, command, &GUIDE, ["birds", "watch"]).unwrap()
 }
 
 /// Streams one item, prints each of `failures` after it, and ends the

@@ -75,6 +75,7 @@ pub mod trace;
 #[cfg(test)]
 mod twins;
 mod unclassified;
+mod view;
 
 pub use crate::batch::Batch;
 pub use crate::bytes::Bytes;
@@ -82,7 +83,7 @@ pub use crate::call::{Call, CallArg, CallError, CallTarget, RenderCall};
 pub use crate::code::{Code, RuntimeCodeError, Spelling};
 #[cfg(feature = "complete")]
 pub use crate::complete::{complete, complete_to, complete_with, complete_with_words};
-pub use crate::dashed::{dashed_form, dashed_name};
+pub use crate::dashed::{dashed_form, dashed_name, is_dashed};
 pub use crate::document::{Document, Envelope};
 pub use crate::expect::Expect;
 pub use crate::failure::{AsFailure, Error, Failure, Recovery};

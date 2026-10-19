@@ -108,9 +108,9 @@ pub fn check_grammar(command: &Command, pages: Pages<'_>, verbs: &[&str], allow:
             problems.push(format!(
                 "the tool passes the verb `{verb}`, which is built in, and a tool passes only its other verbs"
             ));
-        } else if !tree::is_dashed_name(verb) && !dashed_forms {
+        } else if !crumbkit::is_dashed(verb) && !dashed_forms {
             problems.push(format!("the verb `{verb}` is not {DASHED_NAME}"));
-        } else if !tree::is_dashed_name(verb) && crumbkit::dashed_name(verb).is_none() {
+        } else if !crumbkit::is_dashed(verb) && crumbkit::dashed_name(verb).is_none() {
             problems.push(format!(
                 "the verb `{verb}` is not {DASHED_NAME}, and maps to no such name"
             ));
@@ -183,7 +183,7 @@ fn name_problem(
     name: &str,
     kind: &str,
 ) -> Option<String> {
-    if tree::is_dashed_name(name) {
+    if crumbkit::is_dashed(name) {
         return None;
     }
     if !dashed_forms {

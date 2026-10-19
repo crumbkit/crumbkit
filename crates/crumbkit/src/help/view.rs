@@ -2,8 +2,11 @@
 //! decides from a command's document which of them the command offers
 //! (ADR-0016).
 
-use crate::Shape;
 use crate::refusal::Refusal;
+use crate::{Document, Row, Shape};
+
+#[cfg(test)]
+mod tests;
 
 /// One of the output flags that shape a table: `--fields`, `--long` and
 /// `--full`.
@@ -76,12 +79,53 @@ pub(crate) enum Unoffered {
     NoColumns,
 }
 
-/// Returns why a command does not offer `flag`, or `None` when it offers
-/// it. The command prints a result of `shape`, or a stream of rows when
-/// `shape` is `None`. Its row type's `Row::COLUMNS` are `columns` and its
-/// `Row::LONG_COLUMNS` are `long`. Its document has crumbkit's envelope
-/// when `envelope` is set and is headed when `headed` is set, and its row
-/// type sets `Row::WHOLE` when `whole` is set.
+/// Whether a command prints one document or a stream.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum Kind {
+    /// One document whose result has the shape, which
+    /// [`Leaf::document`](super::Leaf::document) sets.
+    Document(Shape),
+    /// A stream of rows, one line for each, which
+    /// [`Leaf::stream`](super::Leaf::stream) sets.
+    Stream,
+}
+
+/// What a command prints, as far as the view flags depend on it. A leaf
+/// builds it from its declared document, and `finish` and `stream` build it
+/// from the row type and the document they print.
+#[derive(Clone, Copy, Debug)]
+pub(crate) struct Printed {
+    /// The shape of the document's result, or a stream.
+    pub(crate) kind: Kind,
+    /// The row type's `Row::COLUMNS`.
+    pub(crate) columns: &'static [&'static str],
+    /// The row type's `Row::LONG_COLUMNS`.
+    pub(crate) long: &'static [&'static str],
+    /// Whether the document has crumbkit's envelope.
+    pub(crate) envelope: bool,
+    /// Whether the document is headed.
+    pub(crate) headed: bool,
+    /// Whether the row type sets `Row::WHOLE`.
+    pub(crate) whole: bool,
+}
+
+impl Printed {
+    /// Returns what a command prints when its rows are `R`, printed as
+    /// `document` with `kind`.
+    pub(crate) fn of<R: Row, T>(kind: Kind, document: &Document<T>) -> Self {
+        Self {
+            kind,
+            columns: R::COLUMNS,
+            long: R::LONG_COLUMNS,
+            envelope: document.get_envelope().wraps(),
+            headed: document.is_headed(),
+            whole: R::WHOLE,
+        }
+    }
+}
+
+/// Returns why a command that prints `printed` does not offer `flag`, or
+/// `None` when it offers it.
 ///
 /// A prose or bytes result offers no view flag. Rows offer `--fields`,
 /// offer `--long` when the row type has long columns and the document is
@@ -89,26 +133,20 @@ pub(crate) enum Unoffered {
 /// not headed and its rows do not print whole (ADR-0062). Rows that print
 /// whole and have no columns offer neither `--fields` nor `--long`
 /// (ADR-0065).
-pub(crate) const fn unoffered(
-    shape: Option<Shape>,
-    columns: &[&str],
-    long: &[&str],
-    envelope: bool,
-    headed: bool,
-    whole: bool,
-    flag: ViewFlag,
-) -> Option<Unoffered> {
-    match shape {
-        Some(Shape::Prose) => return Some(Unoffered::Prose),
-        Some(Shape::Bytes) => return Some(Unoffered::Bytes),
-        _ => {}
+pub(crate) const fn unoffered(printed: &Printed, flag: ViewFlag) -> Option<Unoffered> {
+    match printed.kind {
+        Kind::Document(Shape::Prose) => return Some(Unoffered::Prose),
+        Kind::Document(Shape::Bytes) => return Some(Unoffered::Bytes),
+        Kind::Document(_) | Kind::Stream => {}
     }
-    let no_columns = whole && columns.is_empty() && long.is_empty();
+    let no_columns = printed.whole && printed.columns.is_empty() && printed.long.is_empty();
     match flag {
         ViewFlag::Fields | ViewFlag::Long if no_columns => Some(Unoffered::NoColumns),
-        ViewFlag::Long if headed => Some(Unoffered::Headed),
-        ViewFlag::Long if long.is_empty() => Some(Unoffered::NoLongColumns),
-        ViewFlag::Full if !envelope || headed || whole => Some(Unoffered::Unwrapped),
+        ViewFlag::Long if printed.headed => Some(Unoffered::Headed),
+        ViewFlag::Long if printed.long.is_empty() => Some(Unoffered::NoLongColumns),
+        ViewFlag::Full if !printed.envelope || printed.headed || printed.whole => {
+            Some(Unoffered::Unwrapped)
+        }
         _ => None,
     }
 }
@@ -154,30 +192,17 @@ const fn because(reason: Unoffered) -> &'static str {
     }
 }
 
-/// The view flags that the caller typed, each set when the flag is on the
-/// command line, and `fields` set when `--fields` names at least one field.
-#[derive(Clone, Copy)]
-#[expect(
-    clippy::struct_excessive_bools,
-    reason = "each bool is one independent view flag, and no two of them form a state machine"
-)]
-pub(crate) struct Typed {
-    pub(crate) json: bool,
-    pub(crate) fields: bool,
-    pub(crate) long: bool,
-    pub(crate) full: bool,
-}
-
 /// Returns the refusal of `--fields` without `--json` on a command whose
-/// document is headed, or `None` when `typed` holds `--json` or no
-/// `--fields` (ADR-0062).
+/// document is headed, or `None` when `json` is on or `fields` is off
+/// (ADR-0062). `fields` says whether `--fields` names at least one field,
+/// and `json` whether the caller passed `--json`.
 ///
 /// The text of a headed document prints each answer's bytes, which have no
 /// columns, so `--fields` selects only the fields of its JSON. The refusal
 /// names `--fields` under `argument`, and it prints as a refused command
 /// line does.
-pub(crate) fn headed(typed: Typed) -> Option<Refusal> {
-    (typed.fields && !typed.json).then(|| {
+pub(crate) fn headed(fields: bool, json: bool) -> Option<Refusal> {
+    (fields && !json).then(|| {
         Refusal::flag_value(
             "--fields selects the fields of JSON rows, and this command's text prints each answer's bytes".to_owned(),
             "add --json, or drop --fields".to_owned(),
@@ -185,47 +210,4 @@ pub(crate) fn headed(typed: Typed) -> Option<Refusal> {
             None,
         )
     })
-}
-
-/// Returns the refusal of the view flags in `typed` when two of them cannot
-/// work together, or `None` when they can.
-///
-/// `--fields` prints only the fields it names, so it cannot be used with
-/// `--long` or `--full`, and `--full` prints every field in JSON, so it needs
-/// `--json`. The refusal names the flag to drop or the one that needs
-/// `--json` under `argument`, and it prints as a refused command line does.
-pub(crate) fn pairing(typed: Typed) -> Option<Refusal> {
-    let Typed {
-        json,
-        fields,
-        long,
-        full,
-    } = typed;
-    let (message, hint, flag) = if fields && long {
-        (
-            "--fields prints only the fields it names, so it cannot be used with --long",
-            "drop --long, and name the long columns in --fields",
-            ViewFlag::Long,
-        )
-    } else if fields && full {
-        (
-            "--fields prints only the fields it names, so it cannot be used with --full",
-            "drop --full to print only the named fields, or drop --fields to print every field",
-            ViewFlag::Full,
-        )
-    } else if full && !json {
-        (
-            "--full prints every field of every row in JSON, so it needs --json",
-            "add --json, or drop --full",
-            ViewFlag::Full,
-        )
-    } else {
-        return None;
-    };
-    Some(Refusal::flag_value(
-        message.to_owned(),
-        hint.to_owned(),
-        flag.name(),
-        None,
-    ))
 }

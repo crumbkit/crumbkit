@@ -22,7 +22,8 @@ both on its `Effects`, beside the MCP properties
   item or none.
 - `Effects::per_item` declares that a write of many items changes each item
   it can, reports a result for each, and exits with code 1 when any item
-  fails.
+  fails. A read-only command writes nothing, so a `const` that calls either
+  builder on `Effects::read_only` fails to compile.
 
 Help prints a `Writes:` line after the `Effects:` line when a command
 declares a guard or takes crumbkit's `--expect`, such as
@@ -74,11 +75,12 @@ enforces these rules:
   `Rule::Items` (`effects/items`) covers it. The check reads a positional
   argument as the items, because options with many values more often filter
   or describe the change.
-- A read-only leaf that takes crumbkit's `--expect` or declares how its items
-  end fails, and so does a `per_item` leaf whose document is not a `Batch`, a
-  `Prose` or a stream, because those are the documents that report a failure
-  for each item. `Leaf::shape` returns the document's `Shape` for this rule.
-  These rules have no opt-out.
+- A read-only leaf that takes crumbkit's `--expect` fails, and so does a
+  `per_item` leaf whose document is not a `Batch`, a `Prose` or a stream,
+  because those are the documents that report a failure for each item.
+  `Leaf::shape` returns the document's `Shape` for this rule. These rules
+  have no opt-out. A read-only leaf cannot declare how its items end,
+  because that `const` fails to compile.
 
 shelf's `books remove` declares `all_or_none`. reading's `entries set` takes
 `--expect` with the entry's current title as its version, and each list's

@@ -3,6 +3,7 @@
 
 use std::fmt;
 
+use crate::codes::NO_ADVICE;
 use crate::{Call, Code, Field};
 
 #[cfg(test)]
@@ -301,6 +302,17 @@ pub enum Recovery {
         /// Why the caller has no next step.
         reason: String,
     },
+}
+
+impl Recovery {
+    /// Returns the `None` recovery of a failure that the tool did not
+    /// classify and that gives no advice of its own, with the reason
+    /// `the error gives no advice`.
+    pub(crate) fn no_advice() -> Self {
+        Self::None {
+            reason: NO_ADVICE.to_owned(),
+        }
+    }
 }
 
 /// Any [`Failure`], so a handler that calls code with different error types

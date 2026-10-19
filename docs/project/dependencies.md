@@ -42,7 +42,7 @@ Why: ADR-0003, ADR-0001, ADR-0097, ADR-0043.
 
 | Feature or crate | Adds |
 | --- | --- |
-| `derive` | crumbkit-derive, a procedural macro built on syn 3, quote and proc-macro2, which clap_derive already brings into the lock file with the same syn features. The feature is off by default, so a tool that writes its `Failure` impls by hand builds no syn. |
+| `derive` | crumbkit-derive, a procedural macro built on syn 3, quote and proc-macro2, which clap_derive already brings into the lock file with the same syn features. The feature is off by default, so a tool that depends on crumbkit alone and writes its `Failure` impls by hand builds no syn. crumbkit-child and crumbkit-aliases turn the feature on for their own failures, so a tool that uses either builds crumbkit-derive. |
 | `miette` | miette with no features, because crumbkit draws the source line and its underline itself, and unicode-width, which miette already depends on, so carets line up after wide characters. The width tables added 16,976 bytes to shelf's stripped release binary on aarch64 macOS. |
 | `tracing` | The tracing crate with no features. It has no build script, compiles in about 0.3 s and added about 18 KB to shelf's stripped release binary. |
 | `complete` | clap_complete with its `unstable-dynamic` feature, which brings shlex and is_executable and turns on clap's `unstable-ext`. It added 102,192 bytes to shelf's stripped release binary on aarch64 macOS. |

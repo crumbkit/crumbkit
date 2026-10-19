@@ -3,7 +3,7 @@
 
 use std::fmt;
 
-use crate::codes::{NO_ADVICE, REPORT_UNCHECKED};
+use crate::codes::REPORT_UNCHECKED;
 use crate::{Code, Error, Failure, Recovery};
 
 /// Converts a `miette::Report` into an `Error`, so `?` works on a
@@ -104,9 +104,7 @@ impl Failure for ReportFailure {
     fn recovery(&self) -> Recovery {
         match self.report.help() {
             Some(help) => Recovery::Hint(help.to_string()),
-            None => Recovery::None {
-                reason: NO_ADVICE.to_owned(),
-            },
+            None => Recovery::no_advice(),
         }
     }
 

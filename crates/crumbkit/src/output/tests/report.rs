@@ -42,7 +42,8 @@ fn printed(parse: impl FnOnce() -> miette::Result<Vec<Setting>>) -> String {
         clap::Command::new("shelf"),
         &guide,
         ["shelf"],
-    );
+    )
+    .unwrap();
     finish_to(
         &mut Sink::new(&mut out, &mut err),
         &mut output,

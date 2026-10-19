@@ -62,7 +62,7 @@ pub const OUTPUT_OVER_BUDGET: Code = Code::new("crumbkit", "output", "over_budge
 pub const REPORT_UNCHECKED: Code = Code::new("crumbkit", "report", "unchecked");
 
 /// The reason of the `Recovery::None` of an unclassified failure that gives
-/// no advice of its own.
+/// no advice of its own, which `Recovery::no_advice` builds.
 pub(crate) const NO_ADVICE: &str = "the error gives no advice";
 
 /// Every code above, in the order this module declares them.

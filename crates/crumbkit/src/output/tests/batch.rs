@@ -139,7 +139,7 @@ struct Finished {
 fn output(flags: &[&str]) -> Output {
     let args = ["tool", "show", "Saturn"].iter().chain(flags);
     let view = Tool::try_parse_from(args.clone()).unwrap().view;
-    Output::new(view, Tool::command(), &crate::help::Guide::new(), args)
+    Output::new(view, Tool::command(), &crate::help::Guide::new(), args).unwrap()
 }
 
 /// Finishes `batch` into memory with `flags`.

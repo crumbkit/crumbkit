@@ -234,7 +234,7 @@ struct Write {
 fn the_dry_run_line_of_bytes_goes_to_standard_error_so_the_bytes_stay_unchanged() {
     let words = ["tool", "--dry-run"];
     let write = Write::parse_from(words);
-    let mut output = Output::new(write.view, Write::command(), &Guide::new(), words);
+    let mut output = Output::new(write.view, Write::command(), &Guide::new(), words).unwrap();
     assert!(output.dry_run(write.dry_run));
     let finished = finish_output(&mut output, FILE, Bytes::from("Emma".to_owned()));
 

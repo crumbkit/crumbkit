@@ -55,7 +55,7 @@ fn guided(flags: &[&str]) -> Output {
     let view = Tool::try_parse_from(["tool"].iter().chain(flags))
         .unwrap()
         .view;
-    Output::new(view, Tool::command(), &GUIDE, ["tool"].iter().chain(flags))
+    Output::new(view, Tool::command(), &GUIDE, ["tool"].iter().chain(flags)).unwrap()
 }
 
 /// What a method returned and wrote.

@@ -148,7 +148,7 @@ fn a_stream_item_without_a_text_line_prints_its_json_line_in_the_order_its_field
         .unwrap();
     let view = super::Tool::from_arg_matches(&matches).unwrap().view;
     let guide = crate::help::Guide::new();
-    let mut output = crate::Output::new(view, command, &guide, ["birds", "watch"]);
+    let mut output = crate::Output::new(view, command, &guide, ["birds", "watch"]).unwrap();
     let mut out = Vec::new();
     let mut err = Vec::new();
     let mut sink = Sink::new(&mut out, &mut err);

@@ -96,7 +96,7 @@ fn output_with(flags: &[&str]) -> Output {
         .try_get_matches_from(std::iter::once(&"shelf").chain(flags))
         .unwrap();
     let view = <crate::ViewFlags as clap::FromArgMatches>::from_arg_matches(&matches).unwrap();
-    Output::new(view, tool(), &Guide::new(), ["shelf"])
+    Output::new(view, tool(), &Guide::new(), ["shelf"]).unwrap()
 }
 
 /// Returns the output of a run of the tool with every view flag off.

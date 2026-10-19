@@ -64,34 +64,42 @@ A leaf without a document offers all three, because crumbkit cannot tell
 what its command prints. `--fields` cannot be used with `--long` or
 `--full`, and `--full` needs `--json`, on every command. crumbkit refuses
 each of these as a refused command line, in its own words, with a hint
-that names the flag to add or drop or the valid fields. Three checks apply
-the rules:
+that names the flag to add or drop or the valid fields. The four flags are
+parsed once into one view, a text table or JSON rows with a selection of
+fields, and the `Output` holds that view, so it never holds two flags that
+cannot work together. Three checks apply the rules:
 
 - `parse` refuses, before the handler runs, a view flag that the leaf's
-  document does not offer, a `--fields` name that the row type of the
-  leaf's document lacks, and two flags that cannot work together. It also
-  leaves an unoffered view flag out of the leaf's help. On a leaf without a
-  document, `parse` refuses only the pairs.
+  document does not offer, two flags that cannot work together, and a
+  `--fields` name that the row type of the leaf's document lacks, in that
+  order. It also leaves an unoffered view flag out of the leaf's help. On
+  a leaf without a document, `parse` refuses only the pairs.
+- `Output::new` refuses the pairs for a tool that parses with clap alone
+  or builds its own `ViewFlags`, before the handler runs. It prints the
+  refusal and returns the `Stop` of a refused command line, as `parse`
+  does.
 - When the handler returns a result, `finish` refuses by the document it
-  was given: an unoffered view flag, an unknown `--fields` name and the
-  pairs. `stream` refuses by its document in the same way when it opens.
-- When the handler returns a failure, `finish` refuses only the pairs, and
-  otherwise prints the failure with its own code, as text or as a failure
-  document with `--json`. A tool may finish an early failure, such as a
-  missing config file, in another document than the one its leaf declares,
-  so the document that `finish` was given says nothing about the flags.
+  was given: an unoffered view flag and an unknown `--fields` name.
+  `stream` refuses by its document in the same way when it opens. When
+  the handler returns a failure, `finish` checks nothing and prints the
+  failure with its own code, as text or as a failure document with
+  `--json`. A tool may finish an early failure, such as a missing config
+  file, in another document than the one its leaf declares, so the
+  document that `finish` was given says nothing about the flags.
 
 A tool that parses with clap alone, a tool that builds its own
-`ViewFlags`, and a leaf without a document get no check from `parse`. For
-them, `finish` or `stream` refuses after the handler has run, and a failed
-run prints its failure even when a view flag or a `--fields` name would
-not suit the command's result.
+`ViewFlags`, and a leaf without a document get no check of the document
+from `parse`. For them, `finish` or `stream` refuses an unoffered view
+flag and an unknown `--fields` name after the handler has run, and a
+failed run prints its failure even when a view flag or a `--fields` name
+would not suit the command's result.
 
 A tool that defines the view flags in its own parser cannot also flatten
 `ViewFlags`, because clap refuses two arguments with one name. It builds
 `ViewFlags` with `ViewFlags::new().json(..).fields(..)`, `.long(..)` and
-`.full(..)`, passes them to `Output::new`, and `finish` and `stream`
-check the built flags as they check parsed ones. `parse` reads a view flag
+`.full(..)`, passes them to `Output::new`, which refuses the pairs, and
+`finish` and `stream` check the built flags against the result as they
+check parsed ones. `parse` reads a view flag
 by its argument id, so the tool's own arguments get the refusals before
 the handler runs, and an unoffered flag leaves the leaf's help, only when
 their ids are `json`, `fields`, `long` and `full` and they are global.
@@ -106,7 +114,7 @@ code needs no document, because crumbkit-child's `hand_over` refuses
 `--json` and `--fields` before the program starts
 ([child processes](child-processes.md)).
 
-Why: ADR-0016, ADR-0024, ADR-0065, ADR-0082.
+Why: ADR-0016, ADR-0024, ADR-0065, ADR-0082, ADR-0093.
 
 ## Following the caller's format
 

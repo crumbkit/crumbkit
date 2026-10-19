@@ -91,7 +91,8 @@ fn finish_with(flags: &[&str], prose: Prose<Count, Missing>) -> Finished {
         Document::new("solar", "count", 1, "The number of planets.");
     let args = ["tool", "count"].iter().chain(flags);
     let view = Tool::try_parse_from(args.clone()).unwrap().view;
-    let mut output = crate::Output::new(view, Tool::command(), &crate::help::Guide::new(), args);
+    let mut output =
+        crate::Output::new(view, Tool::command(), &crate::help::Guide::new(), args).unwrap();
     let mut out = Vec::new();
     let mut err = Vec::new();
     let result: Result<_, Error> = Ok(prose);

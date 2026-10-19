@@ -85,19 +85,17 @@ fn fields_selects_named_fields_of_a_whole_row_and_prints_null_for_a_field_the_ro
 
 #[test]
 fn finish_refuses_full_for_a_whole_row_type_because_json_already_holds_every_field() {
-    assert_one_word_apart(&["--full"], &[]);
-    let twin = finish_with(&[], MOONS, moons());
+    assert_one_word_apart(&["--json", "--full"], &["--json"]);
+    let twin = finish_with(&["--json"], MOONS, moons());
     assert_eq!(twin.code, ExitCode::SUCCESS, "{}", twin.err);
 
-    let finished = finish_with(&["--full"], MOONS, moons());
+    let finished = finish_with(&["--json", "--full"], MOONS, moons());
 
     assert_eq!(finished.code, ExitCode::from(2));
-    assert!(
-        finished.err.starts_with(
-            "error: --full prints every field of every row, and this command's JSON already holds every field\n"
-        ),
-        "{}",
-        finished.err
+    let document: Value = serde_json::from_str(&finished.out).unwrap();
+    assert_eq!(
+        document["message"],
+        "--full prints every field of every row, and this command's JSON already holds every field"
     );
 }
 
