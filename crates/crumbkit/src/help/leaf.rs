@@ -87,6 +87,9 @@ pub struct Leaf {
     /// The function that builds the calls that a refusal of a command line
     /// that names the command offers as its recovery and alternatives.
     refusal_alternatives: Option<fn(&RefusalContext<'_>) -> Vec<Call>>,
+    /// The function that returns the hint that a refusal of a command line
+    /// that names the command offers as its recovery.
+    refusal_hint: Option<fn(&RefusalContext<'_>) -> Option<String>>,
     /// The tool's own codes for crumbkit's failures in the command's runs
     /// (ADR-0060).
     codes: &'static [super::Rename],
@@ -106,6 +109,7 @@ impl Leaf {
             choices: &[],
             passes_on_exit: None,
             refusal_alternatives: None,
+            refusal_hint: None,
             codes: &[],
         }
     }

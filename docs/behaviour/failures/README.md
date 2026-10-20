@@ -189,8 +189,8 @@ that the command or another typed view flag rules out fail with the one
 fixed code `<tool>::cli::usage`. Their fields name the refused `argument`,
 its `value` or the unknown `subcommand`, as clap reports them. A refused
 command line's recovery runs the `-h` of the deepest typed command, even a
-hidden one, unless the tool's function below returns a call that it keeps or
-the line sets a `--limit` above its
+hidden one, unless the tool's functions below return a hint or a call that
+it keeps, or the line sets a `--limit` above its
 [bound](../output/listings/README.md#an-upper-bound-on---limit). A refused
 command line exits with 2 unless the guide lists another code
 ([exit codes](exit-codes.md)).
@@ -237,9 +237,22 @@ alternatives. The refusal leaves out the calls that it does not keep with no
 warning and no trace event, so a function may return a correction that it
 has not checked, and a trace never holds the caller's values.
 
+A leaf may also declare a function with `Leaf::refusal_hint` that returns a
+sentence for a refusal of a command line that reaches the leaf, and a guide
+may declare one with `Guide::refusal_hint` for every command whose leaf sets
+none. The function reads the leaf's command, the kind of clap's error and the
+words from its `RefusalContext`, so it can tell the caller of a command whose
+last positional takes the words after `--` to put an unknown flag there.
+When it returns a sentence, the sentence becomes the recovery as a hint: the
+first `help:` line in text, and a `hint` in the failure document. The `-h`
+call becomes the first alternative, followed by the kept calls in their
+order. When it returns `None`, the refusal recovers as the paragraph above
+says. A `--limit` above its bound keeps its `--all` recovery and offers the
+sentence after crumbkit's own alternatives and before the kept calls.
+
 [Parsing](../parsing/README.md) covers when `parse` refuses a command line.
 
-Why: ADR-0001, ADR-0056, ADR-0030, ADR-0078, ADR-0106, ADR-0118.
+Why: ADR-0001, ADR-0056, ADR-0030, ADR-0078, ADR-0106, ADR-0118, ADR-0123.
 
 ## The `miette` feature
 

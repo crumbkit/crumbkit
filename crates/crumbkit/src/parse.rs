@@ -315,7 +315,12 @@ where
 /// returns a call that renders and whose line parses, the first such call is
 /// the recovery and the `-h` call is the first alternative, as shelf's
 /// golden file
-/// [`books-show-2-comma-5.stderr`][books-show-2-comma-5] shows.
+/// [`books-show-2-comma-5.stderr`][books-show-2-comma-5] shows. When the
+/// tool's hint function from [`Leaf::refusal_hint`](crate::help::Leaf::refusal_hint)
+/// or [`Guide::refusal_hint`] returns a sentence, the sentence is the
+/// recovery as a hint, and the `-h` call and then the kept calls are the
+/// alternatives. A `--limit` above its bound keeps its `--all` recovery
+/// and offers the hint and the calls after crumbkit's own alternatives.
 ///
 /// clap suggests from every name that a flag or a subcommand accepts. When
 /// it suggests a hidden alias, such as `--max` of `--limit`, the message

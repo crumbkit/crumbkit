@@ -18,6 +18,7 @@ mod dashed;
 mod fields;
 mod help_word;
 mod hidden;
+mod hint;
 mod json;
 mod limit;
 mod missing;

@@ -51,20 +51,26 @@ impl Refusal {
     /// `most` names the bound (ADR-0050).
     ///
     /// `declared` holds the calls that the function of the leaf at `path`
-    /// returned and that render and parse, in the function's order. For a
-    /// `--limit` above its bound they follow crumbkit's own alternatives
-    /// (ADR-0056). Otherwise the first of them becomes the recovery, and the
-    /// `-h` call becomes the first alternative, followed by the rest of
-    /// them (ADR-0078). With no such call, the `-h` call stays the recovery.
+    /// returned and that render and parse, in the function's order, and
+    /// `hint` the sentence that the leaf's hint function returned. For a
+    /// `--limit` above its bound the hint and then the calls follow
+    /// crumbkit's own alternatives (ADR-0056, ADR-0123). Otherwise a hint
+    /// becomes the recovery, and the `-h` call becomes the first
+    /// alternative, followed by the calls (ADR-0123). Without a hint, the
+    /// first call becomes the recovery, and the `-h` call becomes the first
+    /// alternative, followed by the rest of them (ADR-0078). With neither,
+    /// the `-h` call stays the recovery.
     pub(crate) fn command_line(
         message: String,
         path: Vec<String>,
         error: &clap::Error,
         words: &[OsString],
         declared: Vec<Call>,
+        hint: Option<String>,
     ) -> Self {
         let fields = clap_fields(error);
         let mut declared = declared.into_iter().map(Recovery::Run);
+        let hint = hint.map(Recovery::Hint);
         let above =
             std::error::Error::source(error).and_then(|source| source.downcast_ref::<LimitAbove>());
         if let Some(above) = above
@@ -74,6 +80,7 @@ impl Refusal {
                 message,
                 recovery: Recovery::Run(Call::typed(all)),
                 alternatives: std::iter::once(Recovery::Run(Call::typed(most)))
+                    .chain(hint)
                     .chain(declared)
                     .collect(),
                 fields,
@@ -83,7 +90,7 @@ impl Refusal {
             };
         }
         let help = Recovery::Run(Call::help(path));
-        let (recovery, alternatives) = match declared.next() {
+        let (recovery, alternatives) = match hint.or_else(|| declared.next()) {
             Some(first) => (first, std::iter::once(help).chain(declared).collect()),
             None => (help, Vec::new()),
         };
