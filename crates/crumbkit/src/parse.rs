@@ -285,17 +285,23 @@ where
 /// - `shelf help catalogue` prints the text of the topic `catalogue`. A root
 ///   command or alias with that name wins over the topic. Topics belong to
 ///   the root, so `shelf books help catalogue` names no command. A root with
-///   its own command named or aliased `help` has no topics.
+///   its own command named or aliased `help` has no topics. crumbkit reads
+///   the words after `help` with the root's options and the global options,
+///   as it reads the words before parsing, so a flag or an option with its
+///   value after the topic's name, as in `shelf help catalogue --fields
+///   title`, still prints the topic, and the value of an option names no
+///   topic.
 /// - `shelf help exit-codes` lists crumbkit's exit codes 0, 1 and 2 and
 ///   then the [`Exit`](crate::help::Exit) codes of the guide, each with its
 ///   meaning. It leaves out 2 when the guide lists another exit for a
 ///   refused command line. A topic of the tool's own named `exit-codes` never prints,
 ///   because crumbkit's topic has the name.
 /// - Any other `help` command line drops the word `help` and asks for
-///   `--help`. crumbkit puts `--help` directly after the last word that
-///   follows `help`, comes before any `--` and does not start with `-`, or
-///   in the place of `help` when no word qualifies. clap then meets
-///   `--help` before the flags that follow the command's words. `shelf help
+///   `--help`. crumbkit puts `--help` directly after the last word after
+///   `help` that names something, which is a word before any `--` that does
+///   not start with `-` and is no option's value, or in the place of `help`
+///   when no word qualifies. clap then meets `--help` before the flags and
+///   options that follow the command's words. `shelf help
 ///   books show` and `shelf books help show` print what `shelf books show
 ///   --help` prints, `shelf books help` prints what `shelf books --help`
 ///   prints, `shelf help --json` prints what `shelf --help --json` prints,
@@ -482,13 +488,13 @@ where
     let has_topics = has_topics(&command, root, guide);
     if let Some(help) = help_word(&command, root, has_topics, &args) {
         if help.at_root
-            && let Some(page) = topic_page(&command, guide, &args[help.position + 1..])
+            && let Some(page) = topic_page(&command, guide, &args, help.position)
         {
             let stop = print_topic(sink, command, guide, &args, &page);
             return Err(Unparsed::Stopped(stop));
         }
         typed.get_or_insert_with(|| args.get(1..).unwrap_or_default().to_vec());
-        ask_for_help(&mut args, help.position);
+        ask_for_help(&command, &mut args, help.position);
     }
     // A leaf's `--help` describes its columns from the row type's JSON
     // Schema, so crumbkit builds the schema only when the walk reads

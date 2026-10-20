@@ -1037,6 +1037,10 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   `<tool> help --json`, prints the help of the command it names, as
   `<tool> --help --json` does. A root or group without the flag refused
   the line before ([behaviour/help]).
+- crumbkit: `<tool> help <TOPIC> --name value` prints the topic, because
+  crumbkit reads the words after `help` with the root's options, so an
+  option's separate value names no topic. The line was refused before
+  ([behaviour/help]).
 - crumbkit: a [`Listing`] from `Listing::uncounted` or [`Page::uncounted`]
   never states a total in JSON or text, even when it holds every row or the
   output budget cut it ([behaviour/output/listings]).
