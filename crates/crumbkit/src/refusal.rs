@@ -4,14 +4,15 @@
 
 use std::ffi::OsString;
 use std::fmt;
-use std::io::Write;
 
+use clap::builder::StyledStr;
 use clap::error::{ContextKind, ContextValue, ErrorKind};
 use clap::{Arg, ArgAction, Command};
 
 use crate::output::failure::{self, PreparedFailure, Printing};
 use crate::page::LimitAbove;
-use crate::{Call, Code, Failure, Field, Recovery, Sink, Spelling, codes};
+use crate::sink::role::{Deliver, Message};
+use crate::{Call, Code, Failure, Field, Recovery, Spelling, codes};
 
 /// A refused command line or flag value, as a [`Failure`] with the code
 /// `<tool>::cli::usage`.
@@ -34,7 +35,7 @@ pub(crate) struct Refusal {
     usage: Vec<String>,
     /// The help page of the group that the refused command line stopped
     /// at, which the text form prints in place of its lines, or `None`.
-    page: Option<String>,
+    page: Option<StyledStr>,
 }
 
 impl Refusal {
@@ -115,7 +116,7 @@ impl Refusal {
     /// form prints under the message, and the help page `page` of the group
     /// that the command line stopped at, which its text form prints in
     /// place of its lines. The failure document prints neither.
-    pub(crate) fn shown_with(mut self, usage: Vec<String>, page: Option<String>) -> Self {
+    pub(crate) fn shown_with(mut self, usage: Vec<String>, page: Option<StyledStr>) -> Self {
         self.usage = usage;
         self.page = page;
         self
@@ -169,17 +170,24 @@ impl Refusal {
     /// with a group's help page prints that page as its text form in place
     /// of the lines, and reports its code to the observer as every refusal
     /// does (ADR-0118).
-    pub(crate) fn print<O: Write, E: Write, R>(
+    pub(crate) fn print(
         &self,
-        sink: &mut Sink<O, E, R>,
+        sink: &mut dyn Deliver,
         json: bool,
         spelling: Spelling,
         printing: Printing,
         command: &mut Command,
     ) -> u8 {
-        let document = PreparedFailure::new(self, spelling, printing, command, &mut sink.err)
-            .with_usage(&self.usage);
-        failure::print_prepared(sink, json, printing.layout, &document, self.page.as_deref());
+        let document =
+            PreparedFailure::new(self, spelling, printing, command, sink).with_usage(&self.usage);
+        failure::print_prepared(
+            sink,
+            json,
+            printing.layout,
+            &document,
+            Message::Refusal,
+            self.page.as_ref(),
+        );
         printing.exit(&codes::CLI_USAGE)
     }
 }

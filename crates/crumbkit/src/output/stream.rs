@@ -1,5 +1,6 @@
 //! `stream`, which prints the rows of a stream command one line at a time
-//! as each arrives (ADR-0041).
+//! as each arrives (ADR-0041). Each line and each message is delivered to
+//! the stream's sink with its role (ADR-0128).
 
 use std::borrow::Cow;
 use std::io::{self, Stderr, StdoutLock, Write};
@@ -12,6 +13,7 @@ use super::budget::{Over, OverBudget};
 use super::dry_run::DRY_RUN_LINE;
 use super::failure::{self, PreparedFailure, Printing};
 use super::{JsonLayout, Output, problems};
+use crate::sink::role::{Deliver, Message, Role};
 use crate::view::View;
 use crate::{AsFailure, Document, Failure, Row, Sink, Spelling, Stream, codes, exit};
 
@@ -44,8 +46,7 @@ pub fn stream<R: Row>(
     output: Output,
     document: Document<Stream<R>>,
 ) -> Result<Streaming<R, StdoutLock<'static>, Stderr>, ExitCode> {
-    let Sink { out, err, .. } = Sink::standard();
-    open(out, err, output, document)
+    open(Sink::standard(), output, document)
 }
 
 /// Opens the stream of `document` on `sink`, in the format that `output`
@@ -167,7 +168,7 @@ pub fn stream_to<R: Row, O: Write, W: Write>(
     output: Output,
     document: Document<Stream<R>>,
 ) -> Result<Streaming<R, &mut O, &mut W>, ExitCode> {
-    open(&mut sink.out, &mut sink.err, output, document)
+    open(sink.by_ref(), output, document)
 }
 
 /// An open stream, which prints each item that the tool passes to
@@ -182,11 +183,11 @@ pub fn stream_to<R: Row, O: Write, W: Write>(
 /// declares for its first failure, as [`Streaming::end`] describes.
 #[derive(Debug)]
 pub struct Streaming<R, O, W> {
-    /// Receives the header, the items and, with `--json`, the failures.
-    out: O,
-    /// Receives the text form of the failures and the report of a failed
-    /// write.
-    err: W,
+    /// Takes each piece that the stream prints with its role: the header,
+    /// the items and, with `--json`, the failures as the result, and the
+    /// text form of the failures, the notes and the report of a failed
+    /// write as messages.
+    sink: Sink<O, W>,
     /// The view that the view flags selected.
     view: View,
     /// Whether every field of each item prints: `--full` asked for it, or
@@ -351,13 +352,13 @@ impl<R: Row, O: Write, W: Write> Streaming<R, O, W> {
             self.note_empty();
         }
         if !self.view.is_json() && !self.failed && self.state == State::Open && self.problems > 0 {
-            self.note(&problems::note(self.problems, None));
+            self.note(Message::Note, &problems::note(self.problems, None));
         }
         if self.dry_run
             && self.state == State::Open
             && (!self.view.is_json() || !self.document.get_envelope().wraps())
         {
-            self.note(DRY_RUN_LINE);
+            self.note(Message::DryRun, DRY_RUN_LINE);
         }
         let exit = if self.failed {
             self.exit
@@ -377,22 +378,18 @@ impl<R: Row, O: Write, W: Write> Streaming<R, O, W> {
     /// error writer (ADR-0050).
     fn note_empty(&mut self) {
         let wording = self.document.empty_note().unwrap_or("no rows");
-        self.note(&format!("note: {wording}"));
+        self.note(Message::Note, &format!("note: {wording}"));
     }
 
-    /// Prints `text` and a line feed on the error writer in one write, and
-    /// flushes it. The output writer was flushed after the last line, so a
-    /// reader that merges the two streams sees the note after the rows. A
-    /// failed write to standard error goes unreported, because it is the
-    /// last place to report anything.
-    fn note(&mut self, text: &str) {
+    /// Delivers `text` and a line feed as one message of the kind `kind`.
+    /// The last line was delivered before it, so a reader that merges the
+    /// two streams sees the note after the rows. A message is the last thing
+    /// to report, so a failure to deliver it goes unreported.
+    fn note(&mut self, kind: Message, text: &str) {
         self.line.clear();
         self.line.extend_from_slice(text.as_bytes());
         self.line.push(b'\n');
-        let _ = self
-            .err
-            .write_all(&self.line)
-            .and_then(|()| self.err.flush());
+        let _ = self.sink.deliver(Role::Message(kind), &self.line);
         self.line.clear();
     }
 
@@ -408,7 +405,7 @@ impl<R: Row, O: Write, W: Write> Streaming<R, O, W> {
             self.spelling,
             self.printing,
             &mut self.command,
-            &mut self.err,
+            &mut self.sink,
         );
         // The stream's first failure chooses the exit code, and the span
         // records only that failure, as the usage log does.
@@ -428,9 +425,7 @@ impl<R: Row, O: Write, W: Write> Streaming<R, O, W> {
             }
             self.line.clear();
         } else {
-            // Standard error is the last place to report anything, so a
-            // failure to write there goes unreported.
-            let _ = failure::write_crumbkit_text(&mut self.err, &document);
+            failure::deliver_text(&mut self.sink, &document);
         }
     }
 
@@ -447,8 +442,10 @@ impl<R: Row, O: Write, W: Write> Streaming<R, O, W> {
             layout: JsonLayout::OneLine,
             ..self.printing
         };
+        // The refusal's document is the stream's last line, and its text
+        // form is a message.
         let code = refusal.print(
-            &mut Sink::new(&mut self.line, &mut self.err),
+            &mut self.sink.buffering_result(&mut self.line),
             self.view.is_json(),
             self.spelling,
             printing,
@@ -459,14 +456,11 @@ impl<R: Row, O: Write, W: Write> Streaming<R, O, W> {
         ExitCode::from(code)
     }
 
-    /// Writes the line to the output writer, flushes it and clears the line.
-    /// It returns `ControlFlow::Break` when the write fails, as
+    /// Delivers the line as part of the result and clears the line. It
+    /// returns `ControlFlow::Break` when the write fails, as
     /// [`Streaming::item`] describes.
     fn send(&mut self) -> ControlFlow<()> {
-        let written = self
-            .out
-            .write_all(&self.line)
-            .and_then(|()| self.out.flush());
+        let written = self.sink.deliver(Role::Result, &self.line);
         if written.is_ok() {
             self.sent = self.sent.saturating_add(self.line.len());
         }
@@ -483,9 +477,7 @@ impl<R: Row, O: Write, W: Write> Streaming<R, O, W> {
         if error.kind() == io::ErrorKind::BrokenPipe {
             self.state = State::Closed;
         } else {
-            // The process is already failing, and a failed report has nowhere
-            // else to go.
-            let _ = writeln!(self.err, "error: cannot write to standard output: {error}");
+            self.sink.report_failed_write(error);
             self.state = State::Broken;
         }
         ControlFlow::Break(())

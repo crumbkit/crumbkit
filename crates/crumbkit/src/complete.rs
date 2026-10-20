@@ -334,7 +334,7 @@ where
     {
         return ExitCode::FAILURE;
     }
-    match sink.out.write_all(&answer).and_then(|()| sink.out.flush()) {
+    match sink.deliver_result(&answer) {
         Ok(()) => ExitCode::SUCCESS,
         Err(error) if error.kind() == io::ErrorKind::BrokenPipe => ExitCode::SUCCESS,
         Err(_) => ExitCode::FAILURE,
