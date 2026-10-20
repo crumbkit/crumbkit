@@ -124,9 +124,11 @@ fn watch(flags: &[&str]) -> Option<String> {
 
 #[test]
 fn the_text_table_shows_an_age_column_as_a_compact_age() {
+    // The file was never read, so `read` is null in the only row and the
+    // table leaves its column out.
     let expected = "\
-NAME       CHANGED  READ
-notes.txt  3h       -
+NAME       CHANGED
+notes.txt  3h
 ";
     assert_eq!(list(&[]).unwrap(), expected);
 }
@@ -174,7 +176,8 @@ CHANGED
 #[test]
 fn a_streams_text_line_shows_an_age_column_as_a_compact_age() {
     // A stream's column widths come from its header, so the name pushes
-    // the rest of its line right.
+    // the rest of its line right. A stream prints its header before any
+    // row, so it keeps the `read` column that is null in every row.
     let expected = "\
 NAME  CHANGED  READ
 notes.txt  3h       -
@@ -218,7 +221,12 @@ fn room_counts_an_age_column_of_a_text_table_as_its_compact_age() {
     let output = parse(&["list"]).unwrap();
     let mut room = output.room(FILES_SHOW);
     let mut batch = Batch::new(&["show"], "names", &["notes.txt"]);
-    batch.push(Ok(file()));
+    // The file has been read, so the table keeps the `read` column that the
+    // room counts.
+    batch.push(Ok(File {
+        read: Some(Age::since(changed(), now())),
+        ..file()
+    }));
     assert!(room.has_room(&batch));
     let mut out = Vec::new();
     let mut err = Vec::new();

@@ -502,8 +502,8 @@ fn a_leaf_column_that_is_not_a_field_of_the_row_type_fails_the_check() {
     assert_eq!(
         panic_message(|| check_guide(&shelf(), &GUIDE, &[])).unwrap(),
         "the command tree breaks crumbkit's guide rules:\n\
-         shelf books list: the column `titel` is not a field of the row type, so the table prints `-` in every row of it\n\
-         shelf books list: the column `page` is not a field of the row type, so the table prints `-` in every row of it"
+         shelf books list: the column `titel` is not a field of the row type, so no row has a value for it and the table leaves it out\n\
+         shelf books list: the column `page` is not a field of the row type, so no row has a value for it and the table leaves it out"
     );
 }
 
