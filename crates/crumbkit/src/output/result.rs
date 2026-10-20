@@ -23,6 +23,7 @@ use crate::{Code, Document, Row, Rows, Shape, Spelling, codes};
 
 mod batch;
 mod cut;
+mod fitted;
 pub(super) mod headed;
 mod rerun;
 
@@ -154,6 +155,9 @@ struct Settings<'a> {
     budget: usize,
     /// The tool's own codes for crumbkit's failures.
     renames: Renames,
+    /// The number of columns of the terminal that standard output is, which
+    /// a text table fits, or `None` when the table prints unfitted.
+    width: Option<usize>,
 }
 
 impl<'a> Settings<'a> {
@@ -167,6 +171,7 @@ impl<'a> Settings<'a> {
             layout: output.json_layout,
             budget: output.budget,
             renames: output.renames,
+            width: output.terminal_width,
         };
         (settings, &mut output.command)
     }
@@ -222,8 +227,7 @@ fn write_rows<T: Rows>(
         None
     };
     if let Some(mut bytes) = whole {
-        out.write_all(&bytes)?;
-        out.flush()?;
+        prepared.write_measured(out, &bytes, rows, listed)?;
         let written = bytes.len();
         // The buffer of the result is free again, so the notes reuse it.
         prepared.send_notes(err, &mut bytes, rows, None);
@@ -288,6 +292,12 @@ struct Prepared<'a, T> {
     values: &'a [Value],
     /// The text table, when the result prints one.
     table: Option<Table<'a>>,
+    /// The number of columns of the terminal that standard output is, or
+    /// `None` when the table prints unfitted.
+    width: Option<usize>,
+    /// Whether the table is fitted to `width`, which is only while
+    /// [`Prepared::write_fitted`] writes the result.
+    fitting: bool,
     /// The text line of each row with its line feed, when the rows print
     /// their own lines in place of the table (ADR-0064).
     lines: Option<Vec<String>>,
@@ -324,7 +334,9 @@ impl<'a, T: Rows> Prepared<'a, T> {
         };
         let table = (text && value.prose().is_none() && lines.is_none()).then(|| {
             let children = children::blocks(settings.view, value.rows());
-            Table::new(columns, values, settings.view.names().is_none()).with_children(children)
+            Table::new(columns, values, settings.view.names().is_none())
+                .keeping_whole(columns, T::Row::UNCUT_COLUMNS)
+                .with_children(children)
         });
         Ok(Self {
             document,
@@ -339,6 +351,8 @@ impl<'a, T: Rows> Prepared<'a, T> {
             columns,
             values,
             table,
+            width: settings.width,
+            fitting: false,
             lines,
             prose,
             next,
@@ -428,20 +442,6 @@ impl<'a, T: Rows> Prepared<'a, T> {
         Ok(())
     }
 
-    /// Measures the result as [`Prepared::write`] writes it, then writes
-    /// it, and returns the number of bytes.
-    fn measured_write(
-        &mut self,
-        out: &mut impl Write,
-        shown: usize,
-        cut: Option<&Cut>,
-        failures: Option<Failures<'_>>,
-    ) -> io::Result<usize> {
-        let bytes = budget::measure(|counter| self.write(counter, shown, cut, failures))?;
-        self.write(out, shown, cut, failures)?;
-        Ok(bytes)
-    }
-
     /// Writes `data` with `extras` in the document's envelope, with the
     /// run's dry-run mark and the guide's JSON layout.
     fn envelope<D: Serialize, M: Serialize>(
@@ -526,7 +526,7 @@ impl<'a, T: Rows> Prepared<'a, T> {
             writeln!(out, "{summary}")?;
         }
         if let Some(table) = &mut self.table {
-            table.write(out, shown)?;
+            table.write(out, shown, self.width.filter(|_| self.fitting))?;
         }
         for line in self.lines.iter().flatten().take(shown) {
             out.write_all(line.as_bytes())?;

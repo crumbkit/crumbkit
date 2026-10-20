@@ -971,6 +971,9 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   field is null or missing in every shown row. A column that `--fields`
   names still prints, and `--json` and a stream's text are unchanged
   ([behaviour/output]).
+- crumbkit: a text table at a terminal narrows its widest columns to fit
+  the terminal's width and ends each cut cell with `…`. `Row::UNCUT_COLUMNS`
+  names the columns that it never cuts ([behaviour/output/terminal]).
 
 ### Removed
 

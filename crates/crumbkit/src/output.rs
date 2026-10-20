@@ -103,6 +103,11 @@ pub struct Output {
     /// Whether the tool's guide turned terminal detection off (ADR-0049).
     no_terminal: bool,
 
+    /// The number of columns of the terminal that standard output is, which
+    /// a text table fits, or `None` when the table prints unfitted. Only
+    /// [`finish`] reads it, and only with terminal detection on (ADR-0121).
+    terminal_width: Option<usize>,
+
     /// The layout of a whole JSON document (ADR-0052).
     json_layout: JsonLayout,
 
@@ -234,7 +239,11 @@ fn several_keys<T: Rows>(value: &T) -> bool {
 ///
 /// A tool's `main` calls it last with the handler's `result` and returns its
 /// exit code. It behaves as [`finish_to`] does with a sink over the process's
-/// standard output and standard error.
+/// standard output and standard error, with one difference: when standard
+/// output is a terminal and the guide keeps terminal detection on, a text
+/// table wider than the terminal narrows its columns to fit, and the output
+/// budget still counts the unfitted table (ADR-0121). `finish_to` never
+/// fits a table, because its sink can be any writer.
 ///
 /// It takes `output` by value, because a run prints one result, so `main`
 /// cannot call it twice with one `Output` (ADR-0094):
@@ -262,10 +271,11 @@ fn several_keys<T: Rows>(value: &T) -> bool {
 /// crumbkit::finish(output, ENTRIES, second);
 /// ```
 pub fn finish<T: Rows, E: AsFailure>(
-    output: Output,
+    mut output: Output,
     document: Document<T>,
     result: Result<T, E>,
 ) -> ExitCode {
+    output.terminal_width = output.read_terminal_width();
     ExitCode::from(finish_to(&mut Sink::standard(), output, document, result))
 }
 

@@ -234,6 +234,7 @@ const JSON_LAYOUT_COST: &str = "Every JSON document that is not a stream line is
 const TERMINAL_DETECTION_COSTS: &[&str] = &[
     "A picker never asks for a missing argument and `Output::confirm` never asks, even at a terminal, so a person must type every argument and `--yes` as a script does.",
     "Progress never prints, and help prints without clap's colours at a terminal.",
+    "A text table never fits the terminal's width, so the terminal wraps each line of a table that is wider than the terminal.",
 ];
 
 /// Returns the output budget that `guide` sets as the report lists it, or

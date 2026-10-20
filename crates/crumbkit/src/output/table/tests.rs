@@ -24,7 +24,7 @@ fn named_table(columns: &[&str], rows: &[Value]) -> String {
 /// Returns what `table` writes with its first `rows` rows.
 fn written(mut table: Table<'_>, rows: usize) -> String {
     let mut out = Vec::new();
-    table.write(&mut out, rows).unwrap();
+    table.write(&mut out, rows, None).unwrap();
     String::from_utf8(out).unwrap()
 }
 
@@ -38,8 +38,8 @@ fn a_table_written_with_its_first_rows_is_as_wide_as_those_rows_alone() {
     let mut first = Vec::new();
     let mut both = Vec::new();
 
-    table.write(&mut first, 1).unwrap();
-    table.write(&mut both, 2).unwrap();
+    table.write(&mut first, 1, None).unwrap();
+    table.write(&mut both, 2, None).unwrap();
 
     assert_eq!(String::from_utf8(first).unwrap(), "ID  TITLE\n1   Emma\n");
     assert_eq!(
@@ -212,8 +212,8 @@ fn a_table_written_with_more_rows_again_brings_back_a_column_that_they_fill() {
     let mut first = Vec::new();
     let mut both = Vec::new();
 
-    table.write(&mut first, 1).unwrap();
-    table.write(&mut both, 2).unwrap();
+    table.write(&mut first, 1, None).unwrap();
+    table.write(&mut both, 2, None).unwrap();
 
     assert_eq!(String::from_utf8(first).unwrap(), "ID\n1\n");
     assert_eq!(

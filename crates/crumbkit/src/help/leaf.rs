@@ -191,6 +191,7 @@ impl Leaf {
             document: document.untyped(),
             compact: <T::Row as Row>::COLUMNS,
             long: <T::Row as Row>::LONG_COLUMNS,
+            uncut: <T::Row as Row>::UNCUT_COLUMNS,
             problem: <T::Row as Row>::PROBLEM,
             line: <T::Row as Row>::LINE,
             children: <T::Row as Row>::CHILDREN,
@@ -223,6 +224,7 @@ impl Leaf {
             document: document.untyped(),
             compact: R::COLUMNS,
             long: R::LONG_COLUMNS,
+            uncut: R::UNCUT_COLUMNS,
             problem: R::PROBLEM,
             line: R::LINE,
             children: R::CHILDREN,
@@ -321,6 +323,18 @@ impl Leaf {
         match self.columns {
             Some(columns) => columns.problem,
             None => None,
+        }
+    }
+
+    /// Returns the columns whose cells a text table at a terminal never
+    /// cuts, the row type's [`Row::UNCUT_COLUMNS`], or no column when the
+    /// leaf has no document. crumbkit-test's `check_guide` reads it to fail
+    /// a name that is not one of the row type's columns.
+    #[must_use]
+    pub const fn uncut_columns(&self) -> &'static [&'static str] {
+        match self.columns {
+            Some(columns) => columns.uncut,
+            None => &[],
         }
     }
 
@@ -462,6 +476,8 @@ struct Columns {
     compact: &'static [&'static str],
     /// The row type's [`Row::LONG_COLUMNS`].
     long: &'static [&'static str],
+    /// The row type's [`Row::UNCUT_COLUMNS`].
+    uncut: &'static [&'static str],
     /// The row type's [`Row::PROBLEM`].
     problem: Option<&'static str>,
     /// The row type's [`Row::LINE`].

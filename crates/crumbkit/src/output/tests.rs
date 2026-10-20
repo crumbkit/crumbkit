@@ -25,6 +25,7 @@ mod empty;
 mod empty_columns;
 mod exits;
 mod failed;
+mod fitted;
 mod headed;
 mod layout;
 mod lines;

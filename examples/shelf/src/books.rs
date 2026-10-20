@@ -68,6 +68,9 @@ pub(crate) struct Book {
 impl Row for Book {
     const COLUMNS: &'static [&'static str] = &["id", "title", "author", "year"];
     const LONG_COLUMNS: &'static [&'static str] = &["form"];
+    // A person copies a book's id into `shelf books show`, so a table at a
+    // narrow terminal never cuts it.
+    const UNCUT_COLUMNS: &'static [&'static str] = &["id"];
 }
 
 /// The literary form of a book, which serializes in lower case.

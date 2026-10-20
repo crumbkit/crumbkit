@@ -103,8 +103,8 @@ impl JsonSchema for SchemaRow {
 
 /// The JSON Schema of one document, as `schemas show` prints it.
 ///
-/// The text table prints the schema as one line of compact JSON, and
-/// `--json` prints it as an object, which `jq '.data[0].schema'` extracts.
+/// The text table prints the schema as one line of compact JSON, which a
+/// table at a terminal never cuts, and `--json` prints it as an object, which `jq '.data[0].schema'` extracts.
 #[derive(Clone, Debug, PartialEq)]
 pub struct SchemaShowRow {
     // The `JsonSchema` impl below describes each field.
@@ -124,6 +124,9 @@ impl SchemaShowRow {
 
 impl Row for SchemaShowRow {
     const COLUMNS: &'static [&'static str] = &["id", "schema"];
+    // A schema cut short is not JSON, so a table at a narrow terminal
+    // never cuts it and prints unfitted (ADR-0121).
+    const UNCUT_COLUMNS: &'static [&'static str] = &["schema"];
 }
 
 impl Serialize for SchemaShowRow {

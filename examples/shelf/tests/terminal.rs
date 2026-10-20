@@ -3,7 +3,8 @@
 //! bytes with the example's golden files, which a piped run wrote: the
 //! `.txt` file for standard output and the `.stderr` file, when the example
 //! has one, for standard error. A result prints the same bytes at a
-//! terminal as through a pipe (ADR-0049, OUTPUT-1).
+//! terminal as through a pipe (ADR-0049, OUTPUT-1), except that a text
+//! table fits the width of a narrow terminal (ADR-0121).
 //!
 //! The test opens the pseudo-terminals with rustix's safe functions and runs
 //! on macOS and Linux only. Each terminal is in raw mode, so the terminal
@@ -22,7 +23,7 @@ use std::time::{Duration, Instant};
 use rustix::fs::{Mode, OFlags};
 use rustix::io::{Errno, FdFlags, fcntl_setfd};
 use rustix::pty::{OpenptFlags, grantpt, openpt, ptsname, unlockpt};
-use rustix::termios::{OptionalActions, tcgetattr, tcsetattr};
+use rustix::termios::{OptionalActions, Winsize, tcgetattr, tcsetattr, tcsetwinsize};
 use shelf::GUIDE;
 use tempfile::TempDir;
 
@@ -38,6 +39,11 @@ const TERM: &str = "xterm-256color";
 /// The directory that holds shelf's example golden files.
 const GOLDEN: &str = "tests/golden/examples";
 
+/// The width in columns of a terminal wider than any table of shelf's
+/// examples, so no table is fitted at it and each run prints the bytes of
+/// its piped golden file.
+const WIDE: u16 = 500;
+
 /// One pseudo-terminal: the side the test reads and the side the run
 /// writes to.
 struct Pty {
@@ -47,9 +53,9 @@ struct Pty {
     terminal: OwnedFd,
 }
 
-/// Opens a pseudo-terminal in raw mode, with both sides closed in any
-/// program that the test starts.
-fn pty() -> io::Result<Pty> {
+/// Opens a pseudo-terminal in raw mode, `columns` wide, with both sides
+/// closed in any program that the test starts.
+fn pty(columns: u16) -> io::Result<Pty> {
     let main = openpt(OpenptFlags::RDWR | OpenptFlags::NOCTTY)?;
     fcntl_setfd(&main, FdFlags::CLOEXEC)?;
     grantpt(&main)?;
@@ -63,6 +69,13 @@ fn pty() -> io::Result<Pty> {
     let mut termios = tcgetattr(&terminal)?;
     termios.make_raw();
     tcsetattr(&terminal, OptionalActions::Now, &termios)?;
+    let size = Winsize {
+        ws_row: 24,
+        ws_col: columns,
+        ws_xpixel: 0,
+        ws_ypixel: 0,
+    };
+    tcsetwinsize(&terminal, size)?;
     Ok(Pty { main, terminal })
 }
 
@@ -108,14 +121,14 @@ struct Run {
 }
 
 /// Runs the built `shelf` binary with `args`, standard input and standard
-/// output on one pseudo-terminal, standard error on another, a cleared
+/// output on one pseudo-terminal `columns` wide, standard error on another, a cleared
 /// environment with `TERM` and XDG directories in a fresh temporary
 /// directory, and returns what it printed. A run that does not end within
 /// [`TIMEOUT`] is killed and returns a `TimedOut` error.
-fn shelf(args: &[&str]) -> io::Result<Run> {
+fn shelf(args: &[&str], columns: u16) -> io::Result<Run> {
     let home = TempDir::new()?;
-    let out = pty()?;
-    let err = pty()?;
+    let out = pty(columns)?;
+    let err = pty(columns)?;
     let input = out.terminal.try_clone()?;
     #[expect(
         clippy::disallowed_methods,
@@ -170,7 +183,7 @@ fn wait(child: &mut Child) -> io::Result<ExitStatus> {
 
 #[test]
 fn help_at_a_terminal_has_colour_so_the_test_reaches_a_real_terminal() {
-    let run = shelf(&["--help"]).unwrap();
+    let run = shelf(&["--help"], WIDE).unwrap();
     assert!(
         run.status.success(),
         "shelf --help ends with {}",
@@ -205,7 +218,10 @@ fn every_example_prints_the_same_bytes_at_a_terminal_as_through_a_pipe() {
                 continue;
             };
             let args: Vec<&str> = path.iter().chain(example.words()).copied().collect();
-            let run = shelf(&args).unwrap_or_else(|error| panic!("{line}: {error}"));
+            // A table narrower than the terminal prints unchanged, so at a
+            // terminal wider than every table each run prints the bytes of
+            // its piped golden file (ADR-0121).
+            let run = shelf(&args, WIDE).unwrap_or_else(|error| panic!("{line}: {error}"));
             assert!(
                 run.status.success(),
                 "{line} ends with {} at a terminal: {}",
@@ -231,4 +247,29 @@ fn every_example_prints_the_same_bytes_at_a_terminal_as_through_a_pipe() {
         }
     }
     assert!(compared > 0, "the test compares no example");
+}
+
+#[test]
+fn a_table_at_a_narrow_terminal_cuts_its_widest_column_and_keeps_each_id_whole() {
+    let run = shelf(&["books", "list", "--all"], 40).unwrap();
+
+    assert!(
+        run.status.success(),
+        "shelf books list --all ends with {} at a terminal: {}",
+        run.status,
+        String::from_utf8_lossy(&run.stderr)
+    );
+    // The piped table is 63 characters wide. The title is its widest
+    // column, so it narrows by the excess of 23 to 10 characters, and each
+    // longer title ends with `…`.
+    let expected = "\
+ID  TITLE       AUTHOR              YEAR
+1   Pride and…  Jane Austen         1813
+2   Frankenst…  Mary Shelley        1818
+3   Moby-Dick   Herman Melville     1851
+4   Great Exp…  Charles Dickens     1861
+5   Middlemar…  George Eliot        1871
+6   The Adven…  Arthur Conan Doyle  1892
+";
+    assert_eq!(String::from_utf8_lossy(&run.stdout), expected);
 }

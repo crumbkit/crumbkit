@@ -6,6 +6,7 @@ use std::io::{self, Write};
 
 use serde_json::Value;
 
+mod fit;
 #[cfg(test)]
 mod tests;
 
@@ -29,6 +30,9 @@ pub(super) struct Table<'a> {
     /// The width of each column over the lines last written, kept so that
     /// writing the table again allocates nothing.
     widths: Vec<usize>,
+    /// Whether each column keeps its cells whole when the table fits a
+    /// terminal's width, or no entry when every column may be cut.
+    uncut: Vec<bool>,
     /// The child lines that print under each row, already indented and
     /// escaped, or an empty list when the rows print none (ADR-0120).
     children: Vec<String>,
@@ -62,6 +66,7 @@ impl<'a> Table<'a> {
             omits_empty,
             shown: vec![true; columns.len()],
             widths: vec![0; columns.len()],
+            uncut: Vec::new(),
             children: Vec::new(),
         }
     }
@@ -90,7 +95,17 @@ impl<'a> Table<'a> {
     /// field.
     ///
     /// Each row's child lines follow the row.
-    pub(super) fn write(&mut self, out: &mut impl Write, rows: usize) -> io::Result<()> {
+    ///
+    /// `width` is the number of columns of the terminal that standard
+    /// output is, or `None` when the table prints unfitted. A table wider
+    /// than `width` narrows its columns and cuts their cells, as
+    /// [`fit::fit`] describes.
+    pub(super) fn write(
+        &mut self,
+        out: &mut impl Write,
+        rows: usize,
+        width: Option<usize>,
+    ) -> io::Result<()> {
         let lines = self.lines.get(..=rows).unwrap_or(&self.lines);
         let columns = self.shown.len();
         let written = self
@@ -118,13 +133,38 @@ impl<'a> Table<'a> {
                 *width = (*width).max(cell.chars().count());
             }
         }
+        // The fit sees only the columns that print, so a column left out
+        // takes no width and no separator.
+        let header = lines.first().map_or(&[][..], Vec::as_slice);
+        let printed: Vec<usize> = (0..columns).filter(|&column| self.shown[column]).collect();
+        let fitted = width.is_some_and(|width| {
+            let mut widths: Vec<usize> =
+                printed.iter().map(|&column| self.widths[column]).collect();
+            let header: Vec<Cow<'_, str>> = printed
+                .iter()
+                .map(|&column| Cow::Borrowed(header[column].as_ref()))
+                .collect();
+            let uncut: Vec<bool> = printed
+                .iter()
+                .map(|&column| self.uncut.get(column).copied().unwrap_or(false))
+                .collect();
+            let fitted = fit::fit(&mut widths, &header, &uncut, width);
+            for (&column, width) in printed.iter().zip(widths) {
+                self.widths[column] = width;
+            }
+            fitted
+        });
         for (index, line) in lines.iter().enumerate() {
-            let cells = line.iter().zip(&self.widths).zip(&self.shown);
-            write_cells(
-                out,
-                cells
-                    .filter_map(|((cell, &width), &shown)| shown.then_some((cell.as_ref(), width))),
-            )?;
+            let cells = line
+                .iter()
+                .zip(&self.widths)
+                .zip(&self.shown)
+                .filter_map(|((cell, &width), &shown)| shown.then_some((cell.as_ref(), width)));
+            if fitted {
+                fit::write_cut_cells(out, cells)?;
+            } else {
+                write_cells(out, cells)?;
+            }
             // The first line is the header, which has no child lines.
             if let Some(children) = index.checked_sub(1).and_then(|row| self.children.get(row)) {
                 out.write_all(children.as_bytes())?;

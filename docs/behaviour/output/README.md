@@ -72,7 +72,11 @@ escaped. Child lines do not change the column widths. Compact JSON holds
 the field after the columns, as [rows with children](shapes/README.md#rows-with-children)
 describes.
 
-Why: ADR-0016, ADR-0063, ADR-0065, ADR-0108, ADR-0114, ADR-0119, ADR-0120.
+At a terminal, a table wider than the terminal narrows its widest columns
+to fit and ends each cut cell with `…`, except in the columns that
+`Row::UNCUT_COLUMNS` names ([the table's width](terminal.md#the-tables-width)).
+
+Why: ADR-0016, ADR-0063, ADR-0065, ADR-0108, ADR-0114, ADR-0119, ADR-0120, ADR-0121.
 
 ## View flags
 
