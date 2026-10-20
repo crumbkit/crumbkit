@@ -126,6 +126,7 @@
       },
       "required": [
         "exit",
+        "meaning",
         "runs"
       ]
     },
@@ -216,12 +217,8 @@
         "runs",
         "help_pages",
         "help_before",
-        "refused",
         "failed",
-        "typed_full",
-        "typed_all",
-        "typed_long",
-        "exits"
+        "p95_out_bytes"
       ]
     },
     "UsageSummary": {

@@ -16,6 +16,7 @@ use crate::help::{Guide, Leaf};
 use crate::{Batch, Document, Error, Listing, NoSummary, Output, Prose, Row, Sink, finish_to};
 
 mod bytes;
+mod columns;
 mod formats;
 mod streams;
 
@@ -194,6 +195,56 @@ fn a_listing_without_a_summary_holds_data_truncated_an_optional_total_and_an_opt
     );
     assert_eq!(schema["properties"]["total"]["type"], "integer");
     assert_eq!(schema["properties"]["truncated"]["type"], "boolean");
+}
+
+/// A row type with one field that serde leaves out when it is empty and one
+/// field with a serde default that serde always prints.
+#[derive(Serialize, JsonSchema)]
+struct Shelf {
+    /// The shelf's id.
+    id: u32,
+    /// The shelf's notes, which the row leaves out when the shelf has none.
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    notes: Vec<String>,
+    /// The shelf's labels, which the row always holds.
+    #[serde(default)]
+    labels: Vec<String>,
+}
+
+impl Row for Shelf {
+    const COLUMNS: &'static [&'static str] = &["id", "notes", "labels"];
+}
+
+const SHELVES_LIST: Document<Listing<Shelf>> =
+    Document::new("shelf", "shelves-list", 1, "One page of the shelves.");
+
+/// Returns the `required` list of the row type `Shelf` in the schema of
+/// [`SHELVES_LIST`].
+fn shelf_required() -> Value {
+    document_schema(SHELVES_LIST).to_value()["$defs"]["Shelf"]["required"].clone()
+}
+
+#[test]
+fn a_row_field_that_is_skipped_when_empty_and_has_no_default_is_optional_in_the_document_schema() {
+    let required = shelf_required();
+
+    assert!(!required.as_array().unwrap().contains(&json!("notes")));
+}
+
+#[test]
+fn a_row_field_with_a_default_that_is_never_skipped_is_required_in_the_document_schema() {
+    let required = shelf_required();
+
+    assert_eq!(required, json!(["id", "labels"]));
+}
+
+#[test]
+fn a_listing_leaves_total_optional_because_an_uncounted_source_omits_it_and_requires_truncated() {
+    let schema = document_schema(SHELVES_LIST).to_value();
+    let required = schema["required"].as_array().unwrap();
+
+    assert!(!required.contains(&json!("total")));
+    assert!(required.contains(&json!("truncated")));
 }
 
 #[test]

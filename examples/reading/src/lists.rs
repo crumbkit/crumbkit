@@ -10,6 +10,7 @@ use std::fs;
 use std::io::{self, BufRead as _, BufReader};
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use std::time::SystemTime;
 
 use clap::Subcommand as _;
 use crumbkit::pick::Choice;
@@ -62,13 +63,29 @@ pub struct List {
     name: String,
     /// The list's about text, which its command's help prints.
     about: String,
+    /// The time that the list's file was last modified, or `None` when the
+    /// file system does not say.
+    modified: Option<SystemTime>,
 }
 
 impl List {
-    /// Returns a list named `name` with the about text `about`.
+    /// Returns a list named `name` with the about text `about`, whose file's
+    /// modification time is unknown.
     #[must_use]
     pub const fn new(name: String, about: String) -> Self {
-        Self { name, about }
+        Self {
+            name,
+            about,
+            modified: None,
+        }
+    }
+
+    /// Returns the list with the modification time of its file set to
+    /// `modified`.
+    #[must_use]
+    pub const fn modified_at(mut self, modified: Option<SystemTime>) -> Self {
+        self.modified = modified;
+        self
     }
 
     /// Returns the list's name.
@@ -81,6 +98,13 @@ impl List {
     #[must_use]
     pub fn about(&self) -> &str {
         &self.about
+    }
+
+    /// Returns the time that the list's file was last modified, or `None`
+    /// when the file system does not say.
+    #[must_use]
+    pub const fn modified(&self) -> Option<SystemTime> {
+        self.modified
     }
 }
 
@@ -152,7 +176,7 @@ pub(crate) fn editor(dir: Option<&Path>, name: &str) -> Command {
 }
 
 /// Returns the lists in `dir`, in name order, reading only the first line of
-/// each file.
+/// each file and the time that each file was last modified.
 ///
 /// A list is a file named `<name>.txt` whose name is lowercase ASCII letters
 /// and digits in words joined by single dashes, starting with a letter. The
@@ -178,7 +202,8 @@ pub fn lists_in(dir: &Path) -> Vec<List> {
             }
             let about = about(&path).ok()?;
             let about = about.unwrap_or_else(|| format!("Work with the {name} reading list"));
-            Some(List::new(name, about))
+            let modified = fs::metadata(&path).and_then(|meta| meta.modified()).ok();
+            Some(List::new(name, about).modified_at(modified))
         })
         .collect();
     lists.sort_by(|a, b| a.name.cmp(&b.name));

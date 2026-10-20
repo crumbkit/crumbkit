@@ -448,6 +448,8 @@
       "required": [
         "books",
         "authors",
+        "earliest",
+        "latest",
         "novels",
         "short_story_collections"
       ]

@@ -46,6 +46,9 @@ unicode-width = { workspace = true, optional = true }
 # picker nor `Output::confirm` asks it a question (ADR-0043). It has no
 # dependencies.
 is-ai-agent = { workspace = true }
+# humantime writes an `Age` field's time in JSON as RFC 3339 with
+# milliseconds, the form of the usage log's record. It has no dependencies.
+humantime = { workspace = true }
 # The `tracing` feature puts `parse` and `finish` in spans of the tracing
 # crate (ADR-0030). crumbkit needs no tracing feature.
 tracing = { workspace = true, optional = true }

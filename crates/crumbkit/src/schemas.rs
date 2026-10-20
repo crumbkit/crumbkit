@@ -87,6 +87,7 @@
 //! );
 //! ```
 
+mod columns;
 mod envelope;
 mod row;
 mod served;
@@ -94,6 +95,7 @@ mod served;
 use std::fmt;
 
 use clap::Args;
+use schemars::generate::SchemaSettings;
 
 pub use self::envelope::document_schema;
 #[cfg(test)]
@@ -106,6 +108,20 @@ use crate::{Batch, Call, Code, Document, Error, Failure, Listing, Output, Page, 
 
 #[cfg(test)]
 mod tests;
+
+/// Returns the settings of every JSON Schema that describes a document the
+/// tool prints: draft 2020-12, with the contract of what serde serialises
+/// (ADR-0110).
+///
+/// A schema built with these settings describes the fields that the
+/// document holds. A field with `skip_serializing_if` is optional, because
+/// the document leaves it out when it is empty, and a field without it is
+/// required, whether or not it has a serde default. schemars describes what
+/// deserialises unless its settings say otherwise, so a schema of a file
+/// that the tool reads keeps schemars' default settings.
+pub(crate) fn settings() -> SchemaSettings {
+    SchemaSettings::draft2020_12().for_serialize()
+}
 
 /// The document that `schemas list` prints: one page of the documents that
 /// the tool prints, and the number of them. Its schema is

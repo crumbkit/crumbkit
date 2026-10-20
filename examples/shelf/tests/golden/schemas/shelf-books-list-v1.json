@@ -89,8 +89,7 @@
         "id",
         "title",
         "author",
-        "year",
-        "form"
+        "year"
       ]
     },
     "Form": {

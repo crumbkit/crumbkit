@@ -81,7 +81,9 @@ impl JsonSchema for PreparedFailure<'_> {
 /// document's id as its `title`, as `schemas show` serves it and
 /// `crates/crumbkit/schemas/failure-v1.json` holds it.
 pub(crate) fn document_schema() -> Schema {
-    let mut schema = schemars::schema_for!(PreparedFailure<'static>);
+    let mut schema = crate::schemas::settings()
+        .into_generator()
+        .into_root_schema_for::<PreparedFailure<'static>>();
     schema.insert("title".to_owned(), FAILURE.to_string().into());
     schema
 }
@@ -89,7 +91,7 @@ pub(crate) fn document_schema() -> Schema {
 /// Returns the JSON Schema of the `crumbkit/failure/v1` document without
 /// its `title` and `$schema`, which [`entry_schema`] builds on.
 pub(super) fn failure_schema() -> Schema {
-    <PreparedFailure<'static>>::json_schema(&mut SchemaGenerator::default())
+    <PreparedFailure<'static>>::json_schema(&mut crate::schemas::settings().into_generator())
 }
 
 /// Returns the JSON Schema of one entry of a batch's `failures` array: the

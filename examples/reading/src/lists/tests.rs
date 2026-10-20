@@ -60,3 +60,18 @@ fn an_export_that_cannot_open_the_file_names_its_path_in_the_hint() {
         )
     );
 }
+
+#[test]
+fn a_list_carries_the_time_its_file_was_last_modified() {
+    let lists = lists_in(Path::new("tests/fixtures/lists"));
+    let file = std::fs::metadata("tests/fixtures/lists/to-read.txt").unwrap();
+
+    assert_eq!(lists[1].modified(), Some(file.modified().unwrap()));
+}
+
+#[test]
+fn a_list_built_from_its_name_and_about_has_no_modification_time() {
+    let list = List::new("kept".to_owned(), "Kept".to_owned());
+
+    assert_eq!(list.modified(), None);
+}

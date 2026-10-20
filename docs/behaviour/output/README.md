@@ -42,9 +42,12 @@ declares `Row::LINE` may also name no column, as [rows printed whole](shapes/REA
 The table pads columns by characters and escapes control characters, so each
 row stays on one line and no line ends in padding. Cell widths count
 characters, so a wide character misaligns a column. A cell shows `null` or a
-missing field as `-`, and an array or an object as compact JSON.
+missing field as `-`, and an array or an object as compact JSON. A field of
+type [`Age`](../../../crates/crumbkit/src/age.rs) shows how long ago its time
+was, such as `3h`, in the table and in a stream's text lines, and holds the
+time in RFC 3339 in every JSON form, as its rustdoc describes.
 
-Why: ADR-0016, ADR-0063, ADR-0065.
+Why: ADR-0016, ADR-0063, ADR-0065, ADR-0108.
 
 ## View flags
 
@@ -59,6 +62,10 @@ leaf with a document offers only the view flags that its document can use:
 - rows whose type sets `Row::WHOLE` offer no `--full`, and offer neither
   `--fields` nor `--long` when the row type has no columns;
 - prose and bytes offer none of the three.
+
+The document's schema matches the JSON of `--json`, `--json --long` and
+`--json --full`, and matches a `--fields` selection only when the selection
+names every column in `Row::COLUMNS` ([schemas](../schemas/README.md#versions)).
 
 A leaf without a document offers all three, because crumbkit cannot tell
 what its command prints. `--fields` cannot be used with `--long` or
@@ -116,7 +123,7 @@ on a program's exit code needs no document, because crumbkit-child's
 `hand_over` refuses `--json` and `--fields` before the program starts
 ([child processes](child-processes.md)).
 
-Why: ADR-0016, ADR-0024, ADR-0065, ADR-0082, ADR-0093, ADR-0105.
+Why: ADR-0016, ADR-0024, ADR-0065, ADR-0082, ADR-0093, ADR-0105, ADR-0110.
 
 ## Following the caller's format
 

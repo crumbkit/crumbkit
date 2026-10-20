@@ -6,7 +6,7 @@ use schemars::{JsonSchema, Schema, SchemaGenerator, json_schema};
 use serde_json::{Value, json};
 
 use crate::output::failure;
-use crate::{Bytes, Document, Rows, Shape};
+use crate::{Bytes, Document, Row, Rows, Shape};
 
 /// Returns the 2020-12 JSON Schema of the document that
 /// [`finish`](crate::finish) prints for `document` with `--json`.
@@ -36,6 +36,14 @@ use crate::{Bytes, Document, Rows, Shape};
 ///
 /// The schemas of the row type, the summary type and a prose result's value
 /// sit under `$defs`.
+///
+/// The schema describes what serde serialises: a field that the type skips
+/// when it is empty is optional, and every other field is required. When
+/// `--json` prints the row's columns, the row requires only the fields in
+/// [`Row::COLUMNS`], so the documents of `--json`, `--json --long` and
+/// `--json --full` all match. A row type that sets [`Row::WHOLE`], a headed
+/// batch and a document without the envelope print every field, and their
+/// rows require every field that the type always serialises (ADR-0110).
 /// `schemas show` serves this schema, and crumbkit's checked-in schema
 /// files hold it, so the two cannot differ (ADR-0007).
 ///
@@ -68,7 +76,7 @@ pub fn document_schema<T: Rows>(document: Document<T>) -> Schema {
 /// this function.
 #[cfg(test)]
 #[must_use]
-pub(crate) fn stream_schema<R: crate::Row>(document: Document<crate::Stream<R>>) -> Schema {
+pub(crate) fn stream_schema<R: Row>(document: Document<crate::Stream<R>>) -> Schema {
     envelope::<R>(document.untyped())
 }
 
@@ -80,7 +88,7 @@ pub(crate) fn stream_schema<R: crate::Row>(document: Document<crate::Stream<R>>)
 /// the top, with the document's `title` and `description`, because
 /// `finish` prints the result alone (ADR-0007).
 pub(crate) fn envelope<T: Rows>(document: Document<()>) -> Schema {
-    let settings = SchemaSettings::draft2020_12();
+    let settings = super::settings();
     let meta_schema = settings.meta_schema.clone();
     let mut generator = settings.into_generator();
     let data = match T::prose_schema(&mut generator) {
@@ -159,7 +167,16 @@ pub(crate) fn envelope<T: Rows>(document: Document<()>) -> Schema {
         "properties": properties,
         "required": required,
     });
-    top(document, body, meta_schema.as_deref(), &mut generator)
+    let mut schema = top(document, body, meta_schema.as_deref(), &mut generator);
+    // Without `--full`, the JSON of a document with the envelope holds only
+    // the row's columns, unless it is a headed batch, a prose result or
+    // bytes, or its row type prints whole (ADR-0110).
+    let by_columns =
+        !document.is_headed() && !T::Row::WHOLE && !matches!(T::SHAPE, Shape::Prose | Shape::Bytes);
+    if by_columns {
+        super::columns::require_columns(&mut schema, T::SHAPE != Shape::Row, T::Row::COLUMNS);
+    }
+    schema
 }
 
 /// Returns the schema of `cut`, which a listing's or a list's document holds
@@ -187,6 +204,10 @@ fn cut_schema() -> Value {
 /// Returns the JSON Schema of the file format `document` whose files hold a
 /// `T`: the schema of `T` with the format's `title` and `description`, as
 /// [`FileFormat`](crate::help::FileFormat) describes.
+///
+/// The schema describes what deserialises into `T`, because users write
+/// the file and the tool reads it. A field with a serde default is
+/// therefore optional, since the tool accepts a file without it.
 pub(crate) fn file_format<T: JsonSchema>(document: Document<()>) -> Schema {
     let settings = SchemaSettings::draft2020_12();
     let meta_schema = settings.meta_schema.clone();

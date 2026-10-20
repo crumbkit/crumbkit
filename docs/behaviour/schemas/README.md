@@ -39,8 +39,11 @@ without `data` ([usage log](../usage-log/README.md)).
   is an object with both properties, a `oneOf` that requires one of them,
   and no other properties. A row that flattens a `Bytes` field therefore
   lists `text` and `base64` among its own properties.
+- A row field of type `Age` holds a time in RFC 3339 in UTC with
+  milliseconds, and its schema is a string in the `date-time` format,
+  inline in the row's properties.
 
-Why: ADR-0007, ADR-0016, ADR-0036, ADR-0039, ADR-0046, ADR-0050, ADR-0062, ADR-0071.
+Why: ADR-0007, ADR-0016, ADR-0036, ADR-0039, ADR-0046, ADR-0050, ADR-0062, ADR-0071, ADR-0108.
 
 ## The failure document
 
@@ -114,4 +117,14 @@ Every JSON document type has a 2020-12 `JsonSchema`, and
 and its result type. A test compares each of crumbkit's schemas with its
 checked-in file in a `schemas` directory.
 
-Why: ADR-0007.
+A document's schema describes what the tool prints, so a field that is left
+out when empty is optional and a field that is always printed is required,
+whether or not it has a serde default. A file format's schema describes what
+the tool reads, so a field with a serde default is optional there. In a
+document with the envelope whose `--json` prints the row's columns, a row
+requires only the fields in `Row::COLUMNS`, so the documents of `--json`,
+`--json --long` and `--json --full` all match the schema. A column that the
+row type skips when it is empty prints `null` in the compact document, which
+the schema admits only when the field's type accepts null.
+
+Why: ADR-0007, ADR-0110.

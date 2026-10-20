@@ -13,6 +13,7 @@ mod lists;
 
 use std::ffi::OsString;
 use std::process::ExitCode;
+use std::time::SystemTime;
 
 pub use crate::cli::{Cli, GUIDE};
 use crate::cli::{CommandsCommand, EntriesCommand, ListsCommand, Resource, SchemasCommand};
@@ -100,8 +101,11 @@ where
                 Resource::Lists {
                     command: ListsCommand::List(args),
                 } => {
-                    let result =
-                        Ok::<_, lists::EntriesError>(lists::summaries(dir.as_deref(), &args.page));
+                    // The age of each list counts to the time the command
+                    // runs.
+                    let now = SystemTime::now();
+                    let summaries = lists::summaries(dir.as_deref(), &args.page, now);
+                    let result = Ok::<_, lists::EntriesError>(summaries);
                     crumbkit::finish(output, lists::LISTS_LIST, result)
                 }
                 Resource::Lists {
