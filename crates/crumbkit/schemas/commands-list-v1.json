@@ -325,16 +325,7 @@
       },
       "required": [
         "path",
-        "about",
-        "long_about",
-        "arguments",
-        "examples",
-        "columns",
-        "form",
-        "line",
-        "exits",
-        "effects",
-        "writes"
+        "about"
       ]
     }
   }

@@ -183,6 +183,8 @@
         "help_before",
         "refused",
         "failed",
+        "p95_ms",
+        "p95_out_bytes",
         "typed_full",
         "typed_all",
         "typed_long",
@@ -216,6 +218,7 @@
       },
       "required": [
         "exit",
+        "meaning",
         "runs"
       ]
     },
@@ -257,8 +260,7 @@
         "finding",
         "runs",
         "command",
-        "suggestion",
-        "figures"
+        "suggestion"
       ]
     },
     "Kind": {

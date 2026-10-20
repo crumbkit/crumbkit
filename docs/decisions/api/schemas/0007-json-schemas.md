@@ -1,7 +1,7 @@
 # ADR-0007. JSON schemas
 
 - Date: 2026-10-07
-- Status: amended by ADR-0079
+- Status: amended by ADR-0079 and ADR-0110
 
 ## Context
 
