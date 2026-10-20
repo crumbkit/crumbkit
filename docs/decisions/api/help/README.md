@@ -27,3 +27,5 @@ that each path through a tool's help costs.
 - [ADR-0102. Styled sinks and compact groups](0102-styled-sinks-and-compact-groups.md)
 - [ADR-0103. Exit ranges and signal codes](0103-exit-ranges-and-signal-codes.md)
 - [ADR-0117. Help checks](checks/README.md)
+- [ADR-0118. Refusals show the usage line and a group prints its help](0118-refusals-show-the-usage-line-and-a-group-prints-its-help.md)
+- [ADR-0124. A refusal's help call names a command with a help page](0124-the-help-call-names-a-command-with-a-help-page.md)
