@@ -111,6 +111,21 @@ fn of_two_columns_equally_wide_the_leftmost_narrows_first() {
 }
 
 #[test]
+fn a_column_left_out_for_being_empty_takes_no_width_from_the_terminal() {
+    let rows = books().map(|mut book| {
+        book["isbn"] = Value::Null;
+        book
+    });
+
+    let fitted = table(&["id", "title", "isbn", "author"], &[], &rows, Some(41));
+
+    assert_eq!(
+        fitted,
+        table(&["id", "title", "author"], &[], &books(), Some(41))
+    );
+}
+
+#[test]
 fn a_table_whose_headers_alone_are_wider_than_the_terminal_prints_unchanged() {
     let rows = books();
     let unfitted = table(&["id", "title", "author"], &[], &rows, None);
