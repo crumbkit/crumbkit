@@ -8,8 +8,9 @@ use crate::Output;
 use crate::help::Guide;
 use crate::view::{Selection, Table, View};
 
-/// What [`parse`](crate::parse) returns after it printed help, the version
-/// or a refusal, so the run ends without a parsed command.
+/// What [`parse`](crate::parse) returns after it printed help, the version,
+/// a topic, a refusal or a picker's failure, so the run ends without a
+/// parsed command.
 /// [`try_parse`](crate::try_parse) returns it inside
 /// [`Unparsed::Stopped`](crate::Unparsed::Stopped) after help or the
 /// version, and [`Refused::print`](crate::Refused::print) returns it after
@@ -26,24 +27,56 @@ use crate::view::{Selection, Table, View};
 pub struct Stop {
     /// The exit code for `main` to return, as a number.
     code: u8,
+    /// What printed before the run ended.
+    printed: Printed,
     /// The output flags as far as the walk of the typed words found them,
     /// with the command tree that `parse` built.
     output: Box<Output>,
 }
 
+/// What printed before [`parse`](crate::parse) ended a run, which
+/// [`Stop::printed`] returns.
+#[non_exhaustive]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Printed {
+    /// A help page printed on standard output, for `-h`, `--help` or the
+    /// word `help`. The run observer's
+    /// [`helped`](crate::events::Observer::helped) event carries whether it
+    /// was the long page.
+    Help,
+    /// The version printed on standard output, for `--version`.
+    Version,
+    /// A help topic printed on standard output, for the word `help` at the
+    /// guide's root followed by the topic's name.
+    Topic,
+    /// A refused command line printed on standard error, or on standard
+    /// output as a JSON document when the caller asked for JSON.
+    Refusal,
+    /// The failure of a picker's source printed on standard error, or on
+    /// standard output as a JSON document when the caller asked for JSON.
+    Failure,
+}
+
 impl Stop {
-    /// Returns the stop of a run that ends with `code`, in which the walk
-    /// found `--json` when `json` is true, after parsing against `command`
-    /// with `guide`.
-    pub(crate) fn new(code: u8, json: bool, command: Command, guide: &Guide) -> Self {
-        Self::with_output(code, stopped(json, command, guide))
+    /// Returns the stop of a run that ends with `code` after `printed`
+    /// printed, in which the walk found `--json` when `json` is true, after
+    /// parsing against `command` with `guide`.
+    pub(crate) fn new(
+        printed: Printed,
+        code: u8,
+        json: bool,
+        command: Command,
+        guide: &Guide,
+    ) -> Self {
+        Self::with_output(printed, code, stopped(json, command, guide))
     }
 
-    /// Returns the stop of a run that ends with `code` and whose output
-    /// flags are `output`.
-    pub(crate) fn with_output(code: u8, output: Output) -> Self {
+    /// Returns the stop of a run that ends with `code` after `printed`
+    /// printed, and whose output flags are `output`.
+    pub(crate) fn with_output(printed: Printed, code: u8, output: Output) -> Self {
         Self {
             code,
+            printed,
             output: Box::new(output),
         }
     }
@@ -63,6 +96,16 @@ impl Stop {
     #[must_use]
     pub const fn number(&self) -> u8 {
         self.code
+    }
+
+    /// Returns what printed before the run ended. A tool that records the
+    /// outcome of a stopped run in a history of its own reads it here,
+    /// because [`Stop::number`] is 0 after help, the version and a topic
+    /// alike. A page that could not be written still reports what `parse`
+    /// tried to print, with the number 1.
+    #[must_use]
+    pub const fn printed(&self) -> Printed {
+        self.printed
     }
 
     /// Returns the output flags of the run that `parse` ended. Its

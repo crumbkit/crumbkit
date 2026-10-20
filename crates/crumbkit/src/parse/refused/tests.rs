@@ -4,6 +4,7 @@
 
 use std::ffi::OsString;
 
+use clap::error::{ContextKind, ContextValue, ErrorKind};
 use clap::{Arg, ArgAction, Command};
 
 use super::{Refused, Unparsed};
@@ -150,6 +151,89 @@ fn a_refused_view_flag_names_its_flag_as_the_culprit() {
 
     assert_eq!(refused.typed(), words(&["--full"]));
     assert_eq!(refused.culprit(), Some("--full"));
+}
+
+/// Checks that `admitted`, the twin of the refused `refused`, differs from
+/// it by one word and that `try_parse_to` over `command` parses it
+/// (TEST-1).
+#[track_caller]
+fn admits(command: Command, refused: &[&str], admitted: &[&str]) {
+    assert_one_word_apart(refused, admitted);
+    let mut sink = Sink::new(Vec::new(), Vec::new());
+    let parsed = try_parse_to::<(), _, _, _, _>(&mut sink, command, &Guide::new(), admitted);
+    assert!(
+        parsed.is_ok(),
+        "the admitted words {admitted:?} are refused"
+    );
+}
+
+/// Returns the argument that `refused`'s clap error names as invalid.
+fn invalid_arg(refused: &Refused) -> Option<String> {
+    match refused.error()?.get(ContextKind::InvalidArg)? {
+        ContextValue::String(argument) => Some(argument.clone()),
+        _ => None,
+    }
+}
+
+#[test]
+fn a_repeated_argument_s_refusal_exposes_clap_s_error_naming_the_argument() {
+    let args = [
+        "tool", "planets", "show", "Mars", "--sort", "a", "--sort", "b",
+    ];
+    admits(
+        tool(),
+        &args,
+        &[
+            "tool", "planets", "show", "Mars", "--sort", "a", "Venus", "b",
+        ],
+    );
+
+    let refused = refused(&args);
+
+    let kind = refused.error().map(clap::Error::kind);
+    assert_eq!(kind, Some(ErrorKind::ArgumentConflict));
+    assert_eq!(invalid_arg(&refused).as_deref(), Some("--sort <sort>"));
+}
+
+#[test]
+fn a_conflicting_argument_s_refusal_exposes_clap_s_error_naming_the_argument() {
+    let command = Command::new("tool")
+        .arg(
+            Arg::new("all")
+                .long("all")
+                .action(ArgAction::SetTrue)
+                .conflicts_with("only"),
+        )
+        .arg(Arg::new("only").long("only"));
+    let args = ["tool", "--all", "--only", "Mars"];
+    admits(command.clone(), &args, &["tool", "--only", "Mars"]);
+
+    let refused = refused_by(command, &Guide::new(), &args);
+
+    let kind = refused.error().map(clap::Error::kind);
+    assert_eq!(kind, Some(ErrorKind::ArgumentConflict));
+    assert_eq!(invalid_arg(&refused).as_deref(), Some("--all"));
+}
+
+#[test]
+fn a_refused_view_flag_exposes_no_clap_error() {
+    /// A tool whose root flattens the view flags.
+    #[derive(clap::Parser)]
+    #[command(name = "tool")]
+    struct Viewed {
+        #[command(flatten)]
+        view: ViewFlags,
+    }
+    let command = <Viewed as clap::CommandFactory>::command();
+    admits(
+        command.clone(),
+        &["tool", "--full"],
+        &["tool", "--full", "--json"],
+    );
+
+    let refused = refused_by(command, &Guide::new(), &["tool", "--full"]);
+
+    assert_eq!(refused.error().map(clap::Error::kind), None);
 }
 
 #[test]

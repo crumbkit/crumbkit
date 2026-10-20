@@ -70,6 +70,17 @@ fn an_output_built_with_full_and_without_json_is_refused_as_the_parsed_flags_are
 }
 
 #[test]
+fn output_new_reports_its_refusal_of_full_without_json_as_a_printed_refusal() {
+    let refused = build_output(ViewFlags::new().full(true), &["tool", "list"]);
+    let admitted = build_output(ViewFlags::new().full(true).json(true), &["tool", "list"]);
+
+    let printed = refused.result.as_ref().err().map(crate::Stop::printed);
+
+    assert_eq!(printed, Some(crate::Printed::Refusal));
+    assert!(admitted.result.is_ok(), "{}", admitted.err);
+}
+
+#[test]
 fn output_new_keeps_the_words_after_the_program_name() {
     let output = Output::new(
         ViewFlags::new(),

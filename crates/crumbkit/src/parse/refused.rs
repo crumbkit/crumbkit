@@ -6,7 +6,7 @@ use std::io::Write;
 
 use clap::error::ErrorKind;
 
-use super::Stop;
+use super::{Printed, Stop};
 use crate::codes::CLI_USAGE;
 use crate::refusal::Refusal;
 use crate::{Code, Failure as _, Output, Recovery, Sink};
@@ -24,7 +24,8 @@ mod tests;
 #[non_exhaustive]
 pub enum Unparsed {
     /// crumbkit printed help, the version, a topic or the output of a
-    /// picker that ended the run, and the run ends with this `Stop`.
+    /// picker that ended the run, and the run ends with this `Stop`, whose
+    /// [`Stop::printed`] says which.
     Stopped(Stop),
     /// clap or crumbkit refused the command line, and nothing was printed.
     Refused(Refused),
@@ -213,6 +214,18 @@ impl Refused {
         }
     }
 
+    /// Returns clap's error for the refused command line, or `None` for a
+    /// refused view flag, which crumbkit refuses itself after clap accepted
+    /// the line. A tool that builds its own sentence from the error's kind
+    /// and context, such as the argument that conflicted or was repeated,
+    /// reads `kind()` and `get(ContextKind)` here instead of parsing the
+    /// line again. clap fills that context through its `error-context`
+    /// feature, which crumbkit enables (ADR-0003).
+    #[must_use]
+    pub fn error(&self) -> Option<&clap::Error> {
+        self.inner.error.as_ref()
+    }
+
     /// Prints the refusal to the process's standard error, or to its
     /// standard output when the caller asked for JSON, as
     /// [`parse`](crate::parse) prints it, and returns the `Stop` that ends
@@ -249,6 +262,6 @@ impl Refused {
         let code = output.print_parse_refusal(sink, &refusal);
         #[cfg(feature = "tracing")]
         crate::trace::spans::exited(&span, code);
-        Stop::with_output(code, output)
+        Stop::with_output(Printed::Refusal, code, output)
     }
 }
