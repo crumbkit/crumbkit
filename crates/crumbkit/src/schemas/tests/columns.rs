@@ -252,3 +252,225 @@ fn a_row_whose_definition_serves_another_field_is_cut_in_an_inline_copy() {
     assert_eq!(items["properties"]["isbn"]["type"], "string");
     assert_eq!(required_of(&schema, "Book"), json!(["id", "title", "isbn"]));
 }
+
+/// A series that a novel belongs to, which the schema names as a definition.
+#[derive(Serialize, JsonSchema)]
+struct Series {
+    /// The series' name.
+    name: String,
+}
+
+impl Series {
+    /// Returns whether the series has no name, so the novel skips it.
+    fn is_unnamed(&self) -> bool {
+        self.name.is_empty()
+    }
+}
+
+/// A row with columns that the row type skips when they are empty.
+#[derive(Serialize, JsonSchema)]
+struct Novel {
+    /// The novel's id.
+    id: u32,
+    /// The novel's subtitle, which the row skips when it is empty.
+    #[serde(skip_serializing_if = "String::is_empty")]
+    subtitle: String,
+    /// The novel's series, which the row skips when it has no name.
+    #[serde(skip_serializing_if = "Series::is_unnamed")]
+    series: Series,
+    /// The novel's translator, which the row skips when it has none.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    translator: Option<String>,
+    /// The novel's sequel, which the row skips when it has none.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    sequel: Option<Series>,
+    /// The novel's notes, which the row skips when it has none and which
+    /// is in neither column list.
+    #[serde(skip_serializing_if = "String::is_empty")]
+    notes: String,
+}
+
+impl Row for Novel {
+    const COLUMNS: &'static [&'static str] = &["id", "subtitle", "series", "translator", "sequel"];
+}
+
+const NOVELS_LIST: Document<Listing<Novel>> =
+    Document::new("shelf", "novels-list", 1, "One page of the novels.");
+
+/// Returns whether the property schema `property` names `"null"` in its
+/// `type`, or in the `type` of one of its `anyOf` members.
+fn admits_null(property: &Value) -> bool {
+    let named = |schema: &Value| match &schema["type"] {
+        Value::String(name) => name == "null",
+        Value::Array(names) => names.contains(&json!("null")),
+        _ => false,
+    };
+    named(property)
+        || property["anyOf"]
+            .as_array()
+            .is_some_and(|members| members.iter().any(named))
+}
+
+#[test]
+fn a_column_that_the_row_skips_when_it_is_empty_admits_null_and_stays_optional() {
+    let schema = document_schema(NOVELS_LIST).to_value();
+    let novel = &schema["$defs"]["Novel"];
+
+    assert_eq!(novel["required"], json!(["id"]));
+    assert_eq!(
+        novel["properties"]["subtitle"]["type"],
+        json!(["string", "null"])
+    );
+    assert_eq!(
+        novel["properties"]["subtitle"]["description"],
+        "The novel's subtitle, which the row skips when it is empty."
+    );
+}
+
+#[test]
+fn a_stream_schema_lets_a_column_that_the_row_skips_when_it_is_empty_admit_null() {
+    const NOVELS_WATCH: Document<Stream<Novel>> =
+        Document::new("shelf", "novels-watch", 1, "Each novel as it is shelved.");
+
+    let schema = stream_schema(NOVELS_WATCH).to_value();
+    let novel = &schema["$defs"]["Novel"];
+
+    assert_eq!(novel["required"], json!(["id"]));
+    assert_eq!(
+        novel["properties"]["subtitle"]["type"],
+        json!(["string", "null"])
+    );
+}
+
+#[test]
+fn a_skipped_column_whose_property_names_a_definition_admits_null_through_any_of() {
+    let schema = document_schema(NOVELS_LIST).to_value();
+    let series = &schema["$defs"]["Novel"]["properties"]["series"];
+
+    assert_eq!(
+        series,
+        &json!({
+            "anyOf": [{ "$ref": "#/$defs/Series" }, { "type": "null" }],
+            "description": "The novel's series, which the row skips when it has no name.",
+        })
+    );
+}
+
+#[test]
+fn a_skipped_column_that_already_admits_null_keeps_its_property() {
+    let schema = document_schema(NOVELS_LIST).to_value();
+    let whole = document_schema(NOVELS_LIST.envelope(Envelope::Without)).to_value();
+    let properties = &schema["$defs"]["Novel"]["properties"];
+    let whole_properties = &whole["$defs"]["Novel"]["properties"];
+
+    assert_eq!(properties["translator"], whole_properties["translator"]);
+    assert_eq!(properties["sequel"], whole_properties["sequel"]);
+    assert_eq!(properties["translator"]["type"], json!(["string", "null"]));
+}
+
+#[test]
+fn a_required_column_and_a_skipped_field_outside_the_columns_keep_their_types() {
+    let schema = document_schema(NOVELS_LIST).to_value();
+    let properties = &schema["$defs"]["Novel"]["properties"];
+
+    assert_eq!(properties["id"]["type"], "integer");
+    assert_eq!(properties["notes"]["type"], "string");
+}
+
+#[test]
+fn a_compact_row_with_null_for_a_column_that_the_row_skipped_matches_the_property_type() {
+    let novel = Novel {
+        id: 3,
+        subtitle: String::new(),
+        series: Series {
+            name: String::new(),
+        },
+        translator: None,
+        sequel: None,
+        notes: String::new(),
+    };
+
+    let schema = document_schema(NOVELS_LIST).to_value();
+    let definition = &schema["$defs"]["Novel"];
+    // The compact row holds each column, and null for a column that the
+    // row skipped, as `--json` prints it.
+    let whole = serde_json::to_value(&novel).unwrap();
+    let compact: serde_json::Map<String, Value> = Novel::COLUMNS
+        .iter()
+        .map(|&name| {
+            (
+                name.to_owned(),
+                whole.get(name).cloned().unwrap_or(Value::Null),
+            )
+        })
+        .collect();
+
+    assert_eq!(whole.get("subtitle"), None);
+    for (name, value) in &compact {
+        if value.is_null() {
+            assert!(
+                admits_null(&definition["properties"][name]),
+                "{name} does not admit null"
+            );
+        }
+    }
+    for name in definition["required"].as_array().unwrap() {
+        assert!(compact.contains_key(name.as_str().unwrap()), "{name}");
+    }
+}
+
+/// A row that is an article or a note, with a skipped column in one variant.
+#[derive(Serialize, JsonSchema)]
+#[serde(tag = "kind", rename_all = "lowercase")]
+enum Entry {
+    /// An article.
+    Article {
+        /// The entry's id.
+        id: u32,
+        /// The article's byline, which the row skips when it is empty.
+        #[serde(skip_serializing_if = "String::is_empty")]
+        byline: String,
+    },
+    /// A note.
+    Note {
+        /// The entry's id.
+        id: u32,
+    },
+}
+
+impl Row for Entry {
+    const COLUMNS: &'static [&'static str] = &["kind", "id", "byline"];
+}
+
+#[test]
+fn a_skipped_column_in_an_enum_variant_admits_null_in_that_variant() {
+    const ENTRIES: Document<Listing<Entry>> =
+        Document::new("shelf", "entries-list", 1, "One page of the entries.");
+
+    let entries = [
+        Entry::Article {
+            id: 1,
+            byline: String::new(),
+        },
+        Entry::Note { id: 2 },
+    ];
+
+    let schema = document_schema(ENTRIES).to_value();
+    let variants = schema["$defs"]["Entry"]["oneOf"].as_array().unwrap();
+
+    assert_eq!(variants[0]["required"], json!(["kind", "id"]));
+    assert_eq!(
+        variants[0]["properties"]["byline"]["type"],
+        json!(["string", "null"])
+    );
+    assert_eq!(variants[1]["properties"].get("byline"), None);
+    for (entry, variant) in entries.iter().zip(variants) {
+        let whole = serde_json::to_value(entry).unwrap();
+        assert_eq!(whole.get("byline"), None);
+        // A variant without the column has no property to check, and its
+        // schema allows the extra null field.
+        if let Some(property) = variant["properties"].get("byline") {
+            assert!(admits_null(property));
+        }
+    }
+}

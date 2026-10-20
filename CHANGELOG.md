@@ -589,6 +589,9 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   skipped when empty is optional, a field always printed is required even
   with a serde default, and a row requires only its columns
   ([behaviour/schemas]).
+- crumbkit: the schema of a document that prints only the row's columns
+  admits null for a column that the row type skips when it is empty, and
+  that column stays optional ([behaviour/schemas]).
 - crumbkit: [`Output::new`] returns `Result<Output, Stop>` and refuses
   `--full` without `--json` and `--fields` with `--long` or `--full`
   before the handler runs; [`finish`] and [`stream`] no longer refuse

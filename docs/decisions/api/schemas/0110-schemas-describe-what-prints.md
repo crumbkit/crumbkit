@@ -1,7 +1,7 @@
 # ADR-0110. Schemas describe what the tool prints
 
 - Date: 2026-10-20
-- Status: accepted
+- Status: accepted, amended by ADR-0113
 - Supersedes: ADR-0007, which it amends
 
 ## Context
