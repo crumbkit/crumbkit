@@ -79,7 +79,17 @@ pub(super) fn print_topic<O: Write, E: Write, R>(
     // Only this path ends before the walk of the words in `parse`, so it
     // walks the words for `--json` here.
     let json = walk(&command, args).json;
-    Stop::new(Printed::Topic, code, json, command, guide)
+    // A topic prints only at the guide's root, so the path is empty.
+    let words = args.get(1..).unwrap_or_default().to_vec();
+    Stop::new(
+        Printed::Topic,
+        code,
+        json,
+        command,
+        guide,
+        Vec::new(),
+        words,
+    )
 }
 
 /// Turns `help` at `position` into a request for clap's long help: it

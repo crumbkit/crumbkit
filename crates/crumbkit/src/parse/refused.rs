@@ -6,7 +6,7 @@ use std::io::Write;
 
 use clap::error::ErrorKind;
 
-use super::walk::given;
+use super::walked;
 use super::{Printed, Stop};
 use crate::codes::CLI_USAGE;
 use crate::refusal::Refusal;
@@ -215,7 +215,7 @@ impl Refused {
     /// option is never read as a flag.
     #[must_use]
     pub fn flags(&self) -> Vec<String> {
-        given(self.inner.output.command_tree(), &self.inner.parsed, false).ids
+        walked::flags(self.inner.output.command_tree(), &self.inner.parsed)
     }
 
     /// Returns the last value that the words give the option whose clap id
@@ -233,13 +233,7 @@ impl Refused {
     /// choose how to print it.
     #[must_use]
     pub fn value(&self, id: &str) -> Option<&OsStr> {
-        let given = given(self.inner.output.command_tree(), &self.inner.parsed, false);
-        given
-            .values
-            .iter()
-            .rev()
-            .find(|(arg, _)| arg.get_id().as_str() == id)
-            .map(|&(_, value)| value)
+        walked::value(self.inner.output.command_tree(), &self.inner.parsed, id)
     }
 
     /// Returns the word that the refusal names as wrong, or `None` when it
@@ -299,6 +293,7 @@ impl Refused {
             error,
             path,
             mut output,
+            parsed,
             #[cfg(feature = "tracing")]
             span,
             ..
@@ -313,6 +308,6 @@ impl Refused {
         let code = output.print_parse_refusal(sink, &refusal);
         #[cfg(feature = "tracing")]
         crate::trace::spans::exited(&span, code);
-        Stop::with_output(Printed::Refusal, code, output)
+        Stop::with_output(Printed::Refusal, code, output, path, parsed)
     }
 }

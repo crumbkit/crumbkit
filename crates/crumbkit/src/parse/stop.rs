@@ -1,12 +1,17 @@
 //! `Stop`, which `parse` returns when it ended the run itself.
 
+use std::ffi::{OsStr, OsString};
 use std::process::ExitCode;
 
 use clap::Command;
 
+use super::walked;
 use crate::Output;
 use crate::help::Guide;
 use crate::view::{Selection, Table, View};
+
+#[cfg(test)]
+mod tests;
 
 /// What [`parse`](crate::parse) returns after it printed help, the version,
 /// a topic, a refusal or a picker's failure, so the run ends without a
@@ -19,19 +24,34 @@ use crate::view::{Selection, Table, View};
 /// A tool's `main` returns its exit code, as in `Err(stop) => return
 /// stop.code()`. A tool that does more before it exits reads
 /// [`Stop::output`], whose [`Output::is_json`] says whether the caller asked
-/// for JSON, so the tool knows the format of what it prints next.
+/// for JSON, so the tool knows the format of what it prints next. It reads
+/// [`Stop::path`], [`Stop::flags`] and [`Stop::value`] as it reads them on a
+/// [`Refused`](crate::Refused), such as a global option that chooses the
+/// format of a note it prints after a help page.
 ///
-/// The output sits in a `Box`, so a `Result` that holds a `Stop` stays small
-/// on the path that parses.
+/// The output and the words sit in a `Box`, so a `Result` that holds a
+/// `Stop` stays small on the path that parses.
 #[derive(Debug)]
 pub struct Stop {
     /// The exit code for `main` to return, as a number.
     code: u8,
     /// What printed before the run ended.
     printed: Printed,
+    /// The output flags and the words of the run.
+    inner: Box<Inner>,
+}
+
+/// What a [`Stop`] holds besides its code and what printed.
+#[derive(Debug)]
+struct Inner {
     /// The output flags as far as the walk of the typed words found them,
     /// with the command tree that `parse` built.
-    output: Box<Output>,
+    output: Output,
+    /// The names of the subcommands from the root to the deepest command
+    /// that the walk of the words reached.
+    path: Vec<String>,
+    /// The words after the program name that crumbkit gave clap.
+    words: Vec<OsString>,
 }
 
 /// What printed before [`parse`](crate::parse) ended a run, which
@@ -60,24 +80,40 @@ pub enum Printed {
 impl Stop {
     /// Returns the stop of a run that ends with `code` after `printed`
     /// printed, in which the walk found `--json` when `json` is true, after
-    /// parsing against `command` with `guide`.
+    /// parsing against `command` with `guide`. `path` names the subcommands
+    /// that the walk reached, and `words` are the words after the program
+    /// name that crumbkit gave clap.
     pub(crate) fn new(
         printed: Printed,
         code: u8,
         json: bool,
         command: Command,
         guide: &Guide,
+        path: Vec<String>,
+        words: Vec<OsString>,
     ) -> Self {
-        Self::with_output(printed, code, stopped(json, command, guide))
+        let output = stopped(json, command, guide);
+        Self::with_output(printed, code, output, path, words)
     }
 
     /// Returns the stop of a run that ends with `code` after `printed`
-    /// printed, and whose output flags are `output`.
-    pub(crate) fn with_output(printed: Printed, code: u8, output: Output) -> Self {
+    /// printed, whose output flags are `output`, as [`Stop::new`] describes
+    /// `path` and `words`.
+    pub(crate) fn with_output(
+        printed: Printed,
+        code: u8,
+        output: Output,
+        path: Vec<String>,
+        words: Vec<OsString>,
+    ) -> Self {
         Self {
             code,
             printed,
-            output: Box::new(output),
+            inner: Box::new(Inner {
+                output,
+                path,
+                words,
+            }),
         }
     }
 
@@ -114,7 +150,51 @@ impl Stop {
     /// off, because they shape a result that a stopped run does not have.
     #[must_use]
     pub fn output(&self) -> &Output {
-        &self.output
+        &self.inner.output
+    }
+
+    /// Returns the real names of the subcommands from the root to the
+    /// deepest command that the walk of the words reached, such as
+    /// `planets` for `tool planets --help`. The path is empty when the walk
+    /// reached no subcommand, as for the version and for a topic, which
+    /// prints only at the guide's root. A tool that prints a note after a
+    /// help page names the command of the page from it.
+    #[must_use]
+    pub fn path(&self) -> &[String] {
+        &self.inner.path
+    }
+
+    /// Returns the clap ids of the arguments that the words pass as flags,
+    /// in the order typed, including the options that take values. A group
+    /// of short flags such as `-qv` gives the id of each flag in it, and a
+    /// name that no argument has gives nothing.
+    ///
+    /// The words are the ones after the program name that crumbkit gave
+    /// clap, so `--help` gives clap's help id, `help`, also when crumbkit
+    /// turned the word `help` into `--help`. They are read as
+    /// [`command_path`](crate::command_path) reads them, so the value of an
+    /// option is never read as a flag. After [`Output::new`] refused its
+    /// view flags, the words are the ones passed to it.
+    #[must_use]
+    pub fn flags(&self) -> Vec<String> {
+        walked::flags(self.inner.output.command_tree(), &self.inner.words)
+    }
+
+    /// Returns the last value that the words give the option whose clap id
+    /// is `id`, or `None` when the words give it no value or `id` names no
+    /// option. The option is the current command's own argument or a
+    /// global argument of a command above it.
+    ///
+    /// The value is the word after the option's flag, or the text after
+    /// the name in the flag's own word, as in `--format=json`, `-fjson` and
+    /// `-f=json`. It comes back as one word, so a value that the option
+    /// splits at its value delimiter comes back unsplit. The words are read
+    /// as [`Stop::flags`] reads them. A tool that prints a note after a help
+    /// page reads a global option such as `--format` here to choose how to
+    /// print it.
+    #[must_use]
+    pub fn value(&self, id: &str) -> Option<&OsStr> {
+        walked::value(self.inner.output.command_tree(), &self.inner.words, id)
     }
 }
 

@@ -274,7 +274,16 @@ impl Output {
                 let printing = Printing::of(guide);
                 crate::events::exited(printing.exit(&crate::codes::CLI_USAGE));
                 let code = refusal.print(sink, json, spelling, printing, &mut command);
-                Err(Stop::new(Printed::Refusal, code, json, command, guide))
+                let path = crate::command_path(&command, guide, &words);
+                Err(Stop::new(
+                    Printed::Refusal,
+                    code,
+                    json,
+                    command,
+                    guide,
+                    path,
+                    words,
+                ))
             }
         }
     }

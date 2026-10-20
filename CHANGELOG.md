@@ -582,6 +582,9 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit: an [`Age`] row field prints a compact age such as `3h` in the
   text table and a stream's text lines, and an RFC 3339 time in JSON
   ([behaviour/output]).
+- crumbkit: `Stop::path`, `Stop::flags` and `Stop::value` return the path,
+  the flags typed and an option's value of a run that `parse` ended, such
+  as after a help page, as `Refused` does ([behaviour/parsing]).
 
 ### Changed
 

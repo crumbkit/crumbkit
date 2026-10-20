@@ -34,6 +34,7 @@ pub(crate) mod suggestion;
 #[cfg(test)]
 mod tests;
 pub(crate) mod walk;
+mod walked;
 
 /// Parses the process's command line against `command` with the tool's
 /// `guide`, and returns the tool's parsed type and an [`Output`], which
@@ -505,7 +506,7 @@ where
                 Step::Picked => picked += 1,
                 Step::Refuse => break,
                 Step::Stop(code) => {
-                    let stop = Stop::new(Printed::Failure, code, json, command, guide);
+                    let stop = Stop::new(Printed::Failure, code, json, command, guide, path, words);
                     return Err(Unparsed::Stopped(stop));
                 }
             }
@@ -551,7 +552,7 @@ where
             crate::events::exited(code);
             Printed::Version
         };
-        let stop = Stop::new(printed, code, json, command, guide);
+        let stop = Stop::new(printed, code, json, command, guide, path, words);
         return Err(Unparsed::Stopped(stop));
     }
     let message = refusal_message(&command, &path, &error);

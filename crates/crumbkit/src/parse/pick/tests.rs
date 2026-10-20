@@ -343,6 +343,19 @@ fn a_failed_source_reports_that_a_failure_printed() {
 }
 
 #[test]
+fn a_failed_source_s_stop_reports_the_path_to_the_command_that_it_picked_for() {
+    const GUIDE: Guide = Guide::new()
+        .picker(&SCRIPTED)
+        .leaves(&[Leaf::new(&["find"]).choices(&[Choices::new("pattern", offline)])]);
+    let run = run(&GUIDE, &["find", "--json"], "0\n", true);
+
+    let stop = run.result.as_ref().err();
+
+    assert_eq!(stop.map(Stop::path), Some(&["find".to_owned()][..]));
+    assert_eq!(stop.map(Stop::flags), Some(vec!["json".to_owned()]));
+}
+
+#[test]
 fn a_parsed_command_line_with_no_input_records_it() {
     let run = run(&GUIDE, &["show", "--list", "a", "--no-input"], "", true);
     let (_, parsed) = run.result.as_ref().unwrap();
