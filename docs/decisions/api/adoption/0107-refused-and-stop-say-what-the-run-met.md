@@ -1,7 +1,7 @@
 # ADR-0107. Refused exposes clap's error and Stop says what printed
 
 - Date: 2026-10-20
-- Status: accepted
+- Status: amended by ADR-0109
 - Supersedes: ADR-0100, which it amends
 - Missed: ADR-0100 gave `Refused` getters for the words and the culprit and missed one for clap's error, which a tool needs to word the refusal of a conflicting or repeated argument itself, and it left a `Stop` unable to say whether help, the version or a topic printed.
 

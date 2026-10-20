@@ -5,7 +5,7 @@ use std::ffi::OsString;
 
 use clap::{Arg, ArgAction, Command};
 
-use super::{command_path, help_word, program_stem, walk};
+use super::{command_path, given, help_word, program_stem, walk};
 use crate::help::Guide;
 
 /// A tool whose root has a global option, an option with two values, an
@@ -138,6 +138,75 @@ fn command_path_follows_a_dashed_form_only_when_the_guide_declares_dashed_forms(
     assert_eq!(
         command_path(&tool, &Guide::new(), &words),
         Vec::<String>::new()
+    );
+}
+
+/// Returns each value that `given` reads in `words` over `tool()`, as the
+/// option's id and the value.
+fn values(words: &[&str]) -> Vec<(String, String)> {
+    let tool = tool();
+    given(&tool, words, false)
+        .values
+        .iter()
+        .map(|(arg, value)| {
+            (
+                arg.get_id().to_string(),
+                value.to_string_lossy().into_owned(),
+            )
+        })
+        .collect()
+}
+
+/// Returns `pairs` as option ids and values.
+fn pairs(pairs: &[(&str, &str)]) -> Vec<(String, String)> {
+    pairs
+        .iter()
+        .map(|(id, value)| ((*id).to_owned(), (*value).to_owned()))
+        .collect()
+}
+
+#[test]
+fn given_gives_each_value_its_option_in_the_following_word_and_the_option_s_own_word() {
+    assert_eq!(
+        values(&[
+            "--fields",
+            "id",
+            "--fields=name",
+            "-ftitle",
+            "-f=year",
+            "-vfgenre"
+        ]),
+        pairs(&[
+            ("fields", "id"),
+            ("fields", "name"),
+            ("fields", "title"),
+            ("fields", "year"),
+            ("fields", "genre"),
+        ])
+    );
+}
+
+#[test]
+fn given_gives_an_option_each_of_the_values_that_it_takes_and_not_its_terminator() {
+    assert_eq!(
+        values(&["--pair", "a", "b", "--until", "c", ";", "planets"]),
+        pairs(&[("pair", "a"), ("pair", "b"), ("until", "c")])
+    );
+}
+
+#[test]
+fn given_gives_a_global_option_its_value_below_the_command_that_declares_it() {
+    assert_eq!(
+        values(&["planets", "--fields", "id", "--sort=name"]),
+        pairs(&[("fields", "id"), ("sort", "name")])
+    );
+}
+
+#[test]
+fn given_gives_no_value_to_a_flag_a_positional_value_or_an_unknown_name() {
+    assert_eq!(
+        values(&["-v", "planets", "7", "--nonsense=id", "--", "--fields=id"]),
+        pairs(&[])
     );
 }
 

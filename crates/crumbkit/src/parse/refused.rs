@@ -1,11 +1,12 @@
 //! `Unparsed` and `Refused`, which `try_parse` returns when it does not
 //! return a parsed command, so a tool can print a refusal itself.
 
-use std::ffi::OsString;
+use std::ffi::{OsStr, OsString};
 use std::io::Write;
 
 use clap::error::ErrorKind;
 
+use super::walk::given;
 use super::{Printed, Stop};
 use crate::codes::CLI_USAGE;
 use crate::refusal::Refusal;
@@ -189,6 +190,56 @@ impl Refused {
     #[must_use]
     pub fn parsed(&self) -> &[OsString] {
         &self.inner.parsed
+    }
+
+    /// Returns the real names of the subcommands from the root to the
+    /// deepest command that the walk of the words reached, such as `books`
+    /// and `show` for `tool books show --srot name`. The path is empty when
+    /// the walk reached no subcommand. A tool that prints its own refusal
+    /// names the deepest command's help from it, such as `tool books show
+    /// --help`.
+    #[must_use]
+    pub fn path(&self) -> &[String] {
+        &self.inner.path
+    }
+
+    /// Returns the clap ids of the arguments that the words pass as flags,
+    /// in the order typed, including the options that take values. A group
+    /// of short flags such as `-qv` gives the id of each flag in it, and a
+    /// name that no argument has gives nothing.
+    ///
+    /// The words are the ones that crumbkit gave clap, which
+    /// [`Refused::parsed`] returns, so the word `help` that crumbkit turned
+    /// into `--help` gives clap's help id, `help`. They are read as
+    /// [`command_path`](crate::command_path) reads them, so the value of an
+    /// option is never read as a flag.
+    #[must_use]
+    pub fn flags(&self) -> Vec<String> {
+        given(self.inner.output.command_tree(), &self.inner.parsed, false).ids
+    }
+
+    /// Returns the last value that the words give the option whose clap id
+    /// is `id`, or `None` when the words give it no value or `id` names no
+    /// option. The option is the current command's own argument or a
+    /// global argument of a command above it.
+    ///
+    /// The value is the word after the option's flag, or the text after
+    /// the name in the flag's own word, as in `--format=json`, `-fjson` and
+    /// `-f=json`. It comes back as one word, so a value that the option
+    /// splits at its value delimiter comes back unsplit. The words are the
+    /// ones that crumbkit gave clap, which [`Refused::parsed`] returns, and
+    /// they are read as [`Refused::flags`] reads them. A tool that prints
+    /// its own refusal reads a global option such as `--format` here to
+    /// choose how to print it.
+    #[must_use]
+    pub fn value(&self, id: &str) -> Option<&OsStr> {
+        let given = given(self.inner.output.command_tree(), &self.inner.parsed, false);
+        given
+            .values
+            .iter()
+            .rev()
+            .find(|(arg, _)| arg.get_id().as_str() == id)
+            .map(|&(_, value)| value)
     }
 
     /// Returns the word that the refusal names as wrong, or `None` when it
