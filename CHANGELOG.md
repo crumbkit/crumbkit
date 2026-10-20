@@ -589,6 +589,9 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   as indented lines under it in text, while compact JSON keeps the field,
   and help, `commands list` and crumbkit-test describe and check it
   ([behaviour/output]).
+- crumbkit: `Refused::as_json` fixes whether a refusal that the tool prints
+  is the JSON failure document on standard output or text on standard
+  error, whatever the words said ([behaviour/parsing]).
 
 ### Changed
 
