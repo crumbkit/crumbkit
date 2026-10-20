@@ -42,11 +42,11 @@ const YEAR_10000: u64 = 253_402_300_800;
 /// own `text_line`.
 ///
 /// In JSON the field is the time in UTC with milliseconds, such as
-/// `2026-10-07T12:01:07.120Z`. `--json`, `--json --fields`, `--json
-/// --full` and the JSON of a stream all hold this form. The field's JSON Schema is a string with the
-/// format `date-time`, so the row's schema lists it as a column that
-/// `--fields` can name, and an `Option<Age>` that is `None` shows as `-` in
-/// the table.
+/// `2026-10-07T12:01:07.120Z`. `--json`, `--json --fields`, `--json --full`
+/// and the JSON of a stream all hold this form. The field's JSON Schema is
+/// a string with the format `date-time`, so the row's schema lists it as a
+/// column that `--fields` can name, and an `Option<Age>` that is `None`
+/// shows as `-` in the table.
 ///
 /// `Age`'s `Serialize` writes the compact age while crumbkit builds the
 /// cells of a text table or of a stream's text line, and the RFC 3339 time

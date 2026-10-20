@@ -30,7 +30,7 @@ pub(crate) struct ListSummary {
     name: String,
     /// The list's about text, from the first line of its file.
     about: String,
-    /// The time since the list's file was last modified, or null when the
+    /// The time that the list's file was last modified, or null when the
     /// file system does not say.
     updated: Option<Age>,
 }

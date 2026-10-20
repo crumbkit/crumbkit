@@ -68,7 +68,7 @@
           "type": "string"
         },
         "updated": {
-          "description": "The time since the list's file was last modified, or null when the\nfile system does not say.",
+          "description": "The time that the list's file was last modified, or null when the\nfile system does not say.",
           "type": [
             "string",
             "null"
