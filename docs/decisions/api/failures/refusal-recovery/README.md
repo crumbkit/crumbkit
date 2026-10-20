@@ -5,6 +5,10 @@
 - Supersedes: ADR-0001 and ADR-0056, which it amends
 - Missed: ADR-0001 and ADR-0056 let a leaf or the guide declare a function that builds calls from a refusal, but always offered those calls after the `-h` recovery, so an agent that follows only the recovery reran help when the tool had returned the corrected line.
 
+## Children
+
+- [ADR-0123. A refusal recovers with the tool's hint](0123-a-refusal-recovers-with-the-tools-hint.md)
+
 ## Context
 
 A refused command line recovered with the `-h` of the deepest typed
@@ -51,7 +55,3 @@ replaces the `-h` recovery, a separate function for the recovery beside the
 function for alternatives, promoting the tool's call also over the `--all`
 recovery of a `--limit` above its bound, keeping the order and documenting
 that an agent reads the alternatives.
-
-## Children
-
-- [ADR-0123. A refusal recovers with the tool's hint](0123-a-refusal-recovers-with-the-tools-hint.md)
