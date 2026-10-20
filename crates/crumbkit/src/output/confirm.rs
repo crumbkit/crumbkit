@@ -12,6 +12,7 @@ use serde::Serialize;
 use serde::ser::{SerializeMap, Serializer};
 
 use super::Output;
+use crate::sink::role::{Message, Role};
 use crate::{Call, Code, Error, Failure, Recovery, Sink, codes};
 
 #[cfg(test)]
@@ -94,15 +95,16 @@ impl Output {
         if yes.yes || self.dry_run {
             return Ok(());
         }
-        if self.no_input || self.no_terminal || !sink.interactive {
+        if self.no_input || self.no_terminal || !sink.is_interactive() {
             return Err(ConfirmError::NeedsYes(self.words.clone()).into());
         }
         // A prompt that cannot be written or an answer that cannot be read
         // leaves no answer, which declines.
-        let _ = write!(sink.err, "{question} [y/N] ");
-        let _ = sink.err.flush();
+        let (input, prompt) = sink.dialogue(Role::Message(Message::Prompt));
+        let _ = write!(prompt, "{question} [y/N] ");
+        let _ = prompt.flush();
         let mut answer = String::new();
-        let _ = sink.input.read_line(&mut answer);
+        let _ = input.read_line(&mut answer);
         let answer = answer.trim();
         if answer.eq_ignore_ascii_case("y") || answer.eq_ignore_ascii_case("yes") {
             Ok(())

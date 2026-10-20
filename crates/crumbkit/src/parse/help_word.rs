@@ -2,15 +2,14 @@
 //! or by asking clap for the long help of the command it names.
 
 use std::ffi::OsString;
-use std::io::Write;
 
 use clap::Command;
 
 use super::page::print_text;
 use super::stop::{Printed, Stop};
 use super::walk::{Kind, Words, walk};
-use crate::Sink;
 use crate::help::{Guide, topic};
+use crate::sink::role::Deliver;
 
 #[cfg(test)]
 mod tests;
@@ -101,14 +100,14 @@ fn naming_words(command: &Command, args: &[OsString], position: usize) -> Vec<us
 // pages that clap renders carry them. A topic with the root's heading and
 // literal styles, written as `print_page` writes help to a styled sink,
 // replaces this when a tool needs colour there.
-pub(super) fn print_topic<O: Write, E: Write, R>(
-    sink: &mut Sink<O, E, R>,
+pub(super) fn print_topic(
+    sink: &mut dyn Deliver,
     command: Command,
     guide: &Guide,
     args: &[OsString],
     page: &str,
 ) -> Stop {
-    let code = print_text(sink, &page);
+    let code = print_text(sink, page);
     if crate::events::observed() {
         let root = guide.root_in(&command).iter().map(|&name| name.to_owned());
         crate::events::helped(&command, &root.collect::<Vec<_>>(), true, code);

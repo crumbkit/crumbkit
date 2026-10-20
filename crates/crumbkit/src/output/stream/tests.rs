@@ -19,6 +19,7 @@ mod empty;
 mod exits;
 mod lines;
 mod problems;
+mod roles;
 mod views;
 mod whole;
 

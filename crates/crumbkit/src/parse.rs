@@ -2,7 +2,7 @@
 //! and prints help, the version or a refusal in crumbkit's formats.
 
 use std::ffi::OsString;
-use std::io::{BufRead, IsTerminal as _, Write};
+use std::io::{BufRead, Write};
 
 use clap::error::ErrorKind;
 use clap::{Command, FromArgMatches};
@@ -25,7 +25,7 @@ mod declared;
 mod help_word;
 mod lines;
 mod message;
-mod page;
+pub(crate) mod page;
 mod pick;
 mod refused;
 mod stop;
@@ -188,9 +188,14 @@ where
     I: IntoIterator<Item = T>,
     T: Into<OsString>,
 {
-    let sink = Sink::standard();
-    let styled = guide.detects(|| sink.out.is_terminal());
-    run(&mut sink.styled(styled), command, guide, args, true)
+    let styled = guide.detects(crate::sink::stdout_is_terminal);
+    run(
+        &mut Sink::standard().styled(styled),
+        command,
+        guide,
+        args,
+        true,
+    )
 }
 
 /// Parses `args` against `command` and prints help, the version or a

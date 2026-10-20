@@ -25,6 +25,7 @@ mod limit;
 mod missing;
 mod names;
 mod returned;
+mod roles;
 mod root;
 mod styled;
 mod usage;

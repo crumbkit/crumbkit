@@ -1,11 +1,13 @@
-//! How `finish` and a refusal print a failure: as text on standard error, or
-//! as the `<tool>/failure/v1` JSON document on standard output, whose id
-//! takes the tool's name (ADR-0079).
+//! How `finish` and a refusal print a failure: as a message in text, or as
+//! the `<tool>/failure/v1` JSON document that is the run's result, whose id
+//! takes the tool's name (ADR-0079, ADR-0128). The sink writes a message to
+//! standard error and the result to standard output.
 
 use std::borrow::Cow;
 use std::io::{self, Write};
 
 use clap::Command;
+use clap::builder::StyledStr;
 use serde::Serialize;
 use serde::ser::{SerializeMap, Serializer};
 
@@ -14,7 +16,9 @@ use super::layout::JsonLayout;
 use super::table::escape_controls;
 use crate::help::rename::{self, Renames};
 use crate::help::{Exit, Guide, Leaf};
-use crate::{Code, Document, Failure, FieldValue, Sink, Spelling, ToolName};
+use crate::parse::page;
+use crate::sink::role::{Deliver, Message, Role};
+use crate::{Code, Document, Failure, FieldValue, Spelling, ToolName};
 
 #[cfg(feature = "miette")]
 pub(crate) mod label;
@@ -90,8 +94,8 @@ impl Printing {
     }
 }
 
-/// Prints `failure` to `sink`: as text on the error writer, or with `json`
-/// as one document on the output writer, in the layout that `printing`
+/// Prints `failure` to `sink`: as a failure message in text, or with `json`
+/// as one document that is the run's result, in the layout that `printing`
 /// names, with the code that `printing` prints for it. A
 /// `Recovery::Run` call renders against `command`, which builds the branch
 /// that the call names.
@@ -99,51 +103,81 @@ impl Printing {
 /// The caller returns the exit code, which `printing` gives for the
 /// failure's code (ADR-0002). The flags `--long`, `--full` and `--fields`
 /// do not change a failure.
-pub(crate) fn print<O: Write, W: Write, R>(
-    sink: &mut Sink<O, W, R>,
+pub(crate) fn print(
+    sink: &mut dyn Deliver,
     json: bool,
     spelling: Spelling,
     printing: Printing,
     failure: &dyn Failure,
     command: &mut Command,
 ) {
-    let document = PreparedFailure::new(failure, spelling, printing, command, &mut sink.err);
-    print_prepared(sink, json, printing.layout, &document, None);
+    let document = PreparedFailure::new(failure, spelling, printing, command, sink);
+    print_prepared(
+        sink,
+        json,
+        printing.layout,
+        &document,
+        Message::Failure,
+        None,
+    );
 }
 
-/// Prints `document` to `sink`: as text on the error writer, or with `json`
-/// as one document on the output writer in `layout`. When `page` is set,
-/// the text form is `page` in place of crumbkit's lines, as a refused
-/// command line that stops at a group prints that group's help page. The
-/// failure document does not change.
-pub(crate) fn print_prepared<O: Write, W: Write, R>(
-    sink: &mut Sink<O, W, R>,
+/// Prints `document` to `sink`: in text as the message `text`, or with
+/// `json` as one document in `layout` that is the run's result
+/// (ADR-0128). When `page` is set, the text form is `page` in place of
+/// crumbkit's lines, delivered as refusal help, as a refused command line
+/// that stops at a group prints that group's help page. The failure
+/// document does not change.
+///
+/// Each form is composed whole before it is delivered, so the sink takes
+/// it as one piece.
+pub(crate) fn print_prepared(
+    sink: &mut dyn Deliver,
     json: bool,
     layout: JsonLayout,
     document: &PreparedFailure<'_>,
-    page: Option<&str>,
+    text: Message,
+    page: Option<&StyledStr>,
 ) {
     #[cfg(feature = "tracing")]
     crate::trace::spans::failed(document.code());
-    if json {
-        if let Err(error) = write_json(&mut sink.out, layout, document) {
-            // A reader that closed the pipe early has stopped reading, so
-            // only another write error is reported. The process is already
-            // failing, and a failed report has nowhere else to go.
-            if error.kind() != io::ErrorKind::BrokenPipe {
-                let _ = writeln!(sink.err, "error: cannot write to standard output: {error}");
-            }
-        }
-    } else if let Some(page) = page {
-        // Standard error is the last place to report anything, so a failure
-        // to write there goes unreported.
-        let _ = write!(sink.err, "{page}").and_then(|()| sink.err.flush());
+    if let (false, Some(page)) = (json, page) {
+        let role = Role::Message(Message::RefusalHelp);
+        let page = page::rendered(page, sink.styles(role));
+        // A message is the last thing to report, so a failure to deliver
+        // it goes unreported.
+        let _ = sink.deliver(role, page.as_bytes());
+        return;
+    }
+    let mut bytes = Vec::with_capacity(COMPOSED);
+    let composed = if json {
+        layout::write(&mut bytes, document, layout)
     } else {
-        // Standard error is the last place to report anything, so a failure
-        // to write there goes unreported.
-        let _ = write_crumbkit_text(&mut sink.err, document);
+        write_crumbkit_text(&mut bytes, document)
+    };
+    let delivered = composed.and_then(|()| sink.deliver(Role::of_failure(json, text), &bytes));
+    if let Err(error) = delivered {
+        // A reader that closed the pipe early has stopped reading, so only
+        // another failure to write the result is reported. A message is the
+        // last thing to report, so a failure to deliver it goes unreported.
+        if json && error.kind() != io::ErrorKind::BrokenPipe {
+            sink.report_failed_write(&error);
+        }
     }
 }
+
+/// Delivers the text form of `document` to `sink` as a failure message in
+/// one piece, as a batch's failures print. A message is the last thing to
+/// report, so a failure to deliver it goes unreported.
+pub(crate) fn deliver_text(sink: &mut dyn Deliver, document: &PreparedFailure<'_>) {
+    let mut bytes = Vec::with_capacity(COMPOSED);
+    let _ = write_crumbkit_text(&mut bytes, document)
+        .and_then(|()| sink.deliver(Role::Message(Message::Failure), &bytes));
+}
+
+/// The capacity that a failure's text or document is composed in, which
+/// holds a failure of a few lines without growing.
+const COMPOSED: usize = 512;
 
 /// A failure ready to print: its code spelled in the tool's spelling, its
 /// message and causes, its recovery and alternatives rendered against the
@@ -198,20 +232,20 @@ impl<'a> PreparedFailure<'a> {
     /// which builds the branch that the call names.
     ///
     /// It leaves out each field of the failure whose name breaks the rule,
-    /// and each field that
-    /// repeats an earlier name, and a debug build, such as the one a tool's
-    /// tests run, writes a warning that names the field to `err`, so a test
-    /// that compares standard error shows it. A debug build also writes a
-    /// warning to `err` for each `Run` call of the recovery or an
-    /// alternative that does not render, with the reason, so a test sees a
-    /// recovery that names a command the tool lacks. A release build writes
-    /// neither.
+    /// and each field that repeats an earlier name, and a debug build, such
+    /// as the one a tool's tests run, delivers a warning that names the
+    /// field to `sink`, so a test that compares standard error shows it. A
+    /// debug build also delivers a warning to `sink` for each `Run` call of
+    /// the recovery or an alternative that does not render, with the
+    /// reason, so a test sees a recovery that names a command the tool
+    /// lacks. A release build delivers neither. Each warning is delivered
+    /// before the failure prints.
     pub(crate) fn new(
         failure: &'a dyn Failure,
         spelling: Spelling,
         printing: Printing,
         command: &mut Command,
-        err: &mut impl Write,
+        sink: &mut dyn Deliver,
     ) -> Self {
         let printed = printing.renames.printed(failure.code());
         // Every code that crumbkit prints is spelled here, so crumbkit
@@ -239,17 +273,17 @@ impl<'a> PreparedFailure<'a> {
         let code = spelling.spell(printed);
         if cfg!(debug_assertions) {
             for reason in &unrendered {
-                // Standard error is the last place to report anything, so a
-                // failure to write there goes unreported.
-                let _ = writeln!(
-                    err,
-                    "warning: {} left out a recovery of the failure {}, because {reason}",
-                    spelling.tool().name(),
-                    escape_controls(&code)
+                warn(
+                    sink,
+                    &format!(
+                        "warning: {} left out a recovery of the failure {}, because {reason}\n",
+                        spelling.tool().name(),
+                        escape_controls(&code)
+                    ),
                 );
             }
         }
-        let fields = read_fields(failure, &code, spelling.tool(), err);
+        let fields = read_fields(failure, &code, spelling.tool(), sink);
         Self {
             failure,
             tool: spelling.tool(),
@@ -308,8 +342,8 @@ pub(super) fn before(listed: &[PreparedFailure<'_>], position: usize) -> usize {
 
 /// Returns the fields of `failure` whose names follow the rule and come
 /// first, each without the entries of its objects whose keys repeat an
-/// earlier key of their object. In a debug build it writes a warning to
-/// `err` for each field and each key that it leaves out, which names
+/// earlier key of their object. In a debug build it delivers a warning to
+/// `sink` for each field and each key that it leaves out, which names
 /// `code` and `tool`.
 ///
 /// A failure without fields returns an empty `Vec`, which does not allocate.
@@ -317,7 +351,7 @@ fn read_fields(
     failure: &dyn Failure,
     code: &str,
     tool: ToolName,
-    err: &mut impl Write,
+    sink: &mut dyn Deliver,
 ) -> Vec<(String, FieldValue<'static>)> {
     let mut fields: Vec<(String, FieldValue<'static>)> = Vec::new();
     for field in failure.fields() {
@@ -331,14 +365,14 @@ fn read_fields(
             drop_repeated_keys(&mut value, &mut repeated);
             if cfg!(debug_assertions) {
                 for key in repeated {
-                    // Standard error is the last place to report anything, so
-                    // a failure to write there goes unreported.
-                    let _ = writeln!(
-                        err,
-                        "warning: {} left out the key {key:?} of an object in the field {:?} of the failure {}, because an earlier key of that object has that name",
-                        tool.name(),
-                        field.name(),
-                        escape_controls(code)
+                    warn(
+                        sink,
+                        &format!(
+                            "warning: {} left out the key {key:?} of an object in the field {:?} of the failure {}, because an earlier key of that object has that name\n",
+                            tool.name(),
+                            field.name(),
+                            escape_controls(code)
+                        ),
                     );
                 }
             }
@@ -346,18 +380,25 @@ fn read_fields(
             continue;
         };
         if cfg!(debug_assertions) {
-            // Standard error is the last place to report anything, so a
-            // failure to write there goes unreported.
-            let _ = writeln!(
-                err,
-                "warning: {} left out the field {:?} of the failure {}, because {reason}",
-                tool.name(),
-                field.name(),
-                escape_controls(code)
+            warn(
+                sink,
+                &format!(
+                    "warning: {} left out the field {:?} of the failure {}, because {reason}\n",
+                    tool.name(),
+                    field.name(),
+                    escape_controls(code)
+                ),
             );
         }
     }
     fields
+}
+
+/// Delivers `line` to `sink` as a warning that only a debug build prints.
+/// A message is the last thing to report, so a failure to deliver it goes
+/// unreported.
+fn warn(sink: &mut dyn Deliver, line: &str) {
+    let _ = sink.deliver(Role::Message(Message::DebugWarning), line.as_bytes());
 }
 
 /// Removes from each object inside `value` every entry whose key an

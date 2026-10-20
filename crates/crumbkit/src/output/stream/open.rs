@@ -8,13 +8,12 @@ use std::process::ExitCode;
 use super::{State, Streaming};
 use crate::help::view::{Kind, Printed};
 use crate::output::{Output, children, fields, lines, table};
-use crate::{Document, Row, Stream};
+use crate::{Document, Row, Sink, Stream};
 
-/// Opens the stream on `out` and `err`, as [`stream_to`](super::stream_to)
+/// Opens the stream on `sink`, as [`stream_to`](super::stream_to)
 /// describes.
 pub(super) fn open<R: Row, O: Write, W: Write>(
-    out: O,
-    err: W,
+    sink: Sink<O, W>,
     output: Output,
     document: Document<Stream<R>>,
 ) -> Result<Streaming<R, O, W>, ExitCode> {
@@ -40,8 +39,7 @@ pub(super) fn open<R: Row, O: Write, W: Write>(
         names.into_iter().map(Cow::Borrowed).collect()
     };
     let mut streaming = Streaming {
-        out,
-        err,
+        sink,
         // A row type that prints whole holds every field in JSON unless
         // `--fields` names some.
         full: view.is_full() || (R::WHOLE && view.names().is_none()),

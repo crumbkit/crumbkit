@@ -35,7 +35,8 @@ Why: ADR-0049, ADR-0102, ADR-0121.
 
 When standard output is a terminal and the guide keeps detection on,
 `finish` reads the terminal's number of columns once, with rustix's
-`tcgetwinsize`. A compact, `--long` or `--fields` table that is wider than
+`tcgetwinsize`, and gives it to its sink as the width of the result. A
+message, such as a note or a failure, has no width. A compact, `--long` or `--fields` table that is wider than
 the terminal then narrows its columns until it fits:
 
 - A line of the table is as wide as the sum of its column widths plus two
@@ -67,7 +68,7 @@ header, because it prints each row as it arrives
 table, because its sink can be any writer. On a platform other than Unix,
 crumbkit reads no width and a table prints unfitted.
 
-Why: ADR-0121.
+Why: ADR-0121, ADR-0128.
 
 ## Turning detection off
 
