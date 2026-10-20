@@ -20,7 +20,9 @@ mod tests;
 ///
 /// A tool that prints every refusal as crumbkit does calls
 /// [`Unparsed::print`], which returns the [`Stop`] that
-/// [`parse`](crate::parse) would have returned.
+/// [`parse`](crate::parse) would have returned. A tool that chooses the
+/// form of a refusal by a flag of its own matches `Unparsed::Refused` and
+/// calls [`Refused::as_json`] before it prints.
 #[derive(Debug)]
 #[non_exhaustive]
 pub enum Unparsed {
@@ -36,6 +38,8 @@ impl Unparsed {
     /// Prints a refusal to the process's standard error, or to its
     /// standard output when the caller asked for JSON, as
     /// [`Refused::print`] does, and returns the `Stop` that ends the run.
+    /// It prints in the form that the words chose, because it has no
+    /// [`Refused::as_json`] call.
     /// A `Stopped` run already printed, so it returns its `Stop` and
     /// prints nothing.
     #[must_use]
@@ -67,6 +71,13 @@ impl Unparsed {
 /// that resolves its own aliases after a refusal reads the words, and a
 /// tool with its own failure document prints the refusal itself from the
 /// message, the code and the recovery.
+///
+/// A refusal prints as crumbkit's failure document on the output writer
+/// when the walk found `--json`, and as text on the error writer
+/// otherwise. A tool with a flag of its own that chooses the form of a
+/// failure, such as `--error-format`, reads the flag with
+/// [`Refused::value`] and passes the form it resolved to
+/// [`Refused::as_json`] before it prints.
 ///
 /// Printing consumes the refusal, so a run prints it at most once:
 ///
@@ -103,6 +114,10 @@ struct Inner {
     typed: Vec<OsString>,
     /// The words after the program name that crumbkit gave clap.
     parsed: Vec<OsString>,
+    /// The form that the tool chose with `as_json`: `Some(true)` for the
+    /// JSON document, `Some(false)` for text, and `None` for the form that
+    /// the words chose.
+    json: Option<bool>,
     /// The `crumbkit.parse` span, in which the refusal prints, so the span
     /// records its code and exit code (ADR-0030).
     #[cfg(feature = "tracing")]
@@ -131,6 +146,7 @@ impl Refused {
                 output,
                 typed,
                 parsed,
+                json: None,
                 #[cfg(feature = "tracing")]
                 span: tracing::Span::current(),
             }),
@@ -271,17 +287,41 @@ impl Refused {
         self.inner.error.as_ref()
     }
 
+    /// Returns the refusal fixed to print in the form that `json` names,
+    /// whatever the words said. With `true`, it prints one
+    /// `<tool>/failure/v1` document on the output writer. With `false`, it
+    /// prints text on the error writer. Without this call, it prints in the
+    /// form that the walk of the words chose, which
+    /// [`Output::is_json`] of [`Refused::output`] reports.
+    ///
+    /// A tool whose own flag chooses the form of a failure, such as
+    /// `--error-format text`, reads the flag with [`Refused::value`] and
+    /// passes the form it resolved here, so `tool --error-format text list
+    /// --nosuch --json` prints text on standard error. The call changes
+    /// neither [`Refused::output`], which still reports the words, nor the
+    /// exit code and the observers' events. The [`Stop`] that printing
+    /// returns holds an [`Output`] whose `is_json` reports the form that
+    /// printed.
+    #[must_use]
+    pub fn as_json(mut self, json: bool) -> Self {
+        self.inner.json = Some(json);
+        self
+    }
+
     /// Prints the refusal to the process's standard error, or to its
     /// standard output when the caller asked for JSON, as
     /// [`parse`](crate::parse) prints it, and returns the `Stop` that ends
-    /// the run.
+    /// the run. After [`Refused::as_json`], it prints in the form that the
+    /// tool chose.
     #[must_use]
     pub fn print(self) -> Stop {
         self.print_to(&mut Sink::standard())
     }
 
     /// Prints the refusal to `sink` as [`parse_to`](crate::parse_to)
-    /// prints it, and returns the `Stop` that ends the run.
+    /// prints it, and returns the `Stop` that ends the run. After
+    /// [`Refused::as_json`], it prints in the form that the tool chose, and
+    /// the `Stop`'s [`Output::is_json`] reports that form.
     ///
     /// The run's observers hear of the refusal when it prints, and not
     /// when `try_parse` returns it, so a run that prints no refusal reports
@@ -294,12 +334,16 @@ impl Refused {
             path,
             mut output,
             parsed,
+            json,
             #[cfg(feature = "tracing")]
             span,
             ..
         } = *self.inner;
         #[cfg(feature = "tracing")]
         let _entered = span.enter();
+        if let Some(json) = json {
+            output.set_view(super::stop::view(json));
+        }
         let number = output.printing().exit(&CLI_USAGE);
         match &error {
             Some(error) => crate::events::refused(output.command_tree(), &path, error, number),

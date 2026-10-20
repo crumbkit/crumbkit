@@ -67,7 +67,8 @@ bare `ExitCode`. `try_parse` returns the `Stop` of help or the version
 inside `Unparsed::Stopped`, and `Refused::print` returns the `Stop` of a
 refusal. A tool's `main` returns `stop.code()`. A tool that prints
 more before it exits reads `Stop::output`, whose `Output::is_json` says
-whether the caller asked for JSON. `Stop::number` returns the same exit code
+whether the caller asked for JSON, or, after `Refused::as_json`, which form
+the refusal printed in. `Stop::number` returns the same exit code
 as a `u8`: 0 after help or the version, the code that the guide lists for a
 refused command line, which is 2 unless an exit lists the refusal, and 1
 when the page could not be written. A tool that records the exit of a
@@ -222,7 +223,22 @@ observers hear of the refusal when it prints, so a refusal that the tool
 answers itself reports no `refused` event. `Unparsed` is
 `#[non_exhaustive]`, and `Unparsed::print` prints whatever variant it holds.
 
-Why: ADR-0100, ADR-0107, ADR-0109.
+A refusal prints as the `<tool>/failure/v1` document on standard output
+when the walk found `--json`, and as text on standard error otherwise. A
+tool whose own flag chooses the form of a failure, such as `--error-format
+text`, reads that flag with `Refused::value` and calls
+`Refused::as_json(json)` with the form it resolved before it prints. With
+`true` the refusal prints the document on the output writer, and with
+`false` it prints text on the error writer, whatever the words said. So
+`tool --error-format text list --nosuch --json` prints text on standard
+error. The call leaves `Refused::output` reporting the words, and it
+changes neither the exit code nor the observers' events. The `Stop` that
+printing returns reports the printed form through `Output::is_json`. A tool
+holding an `Unparsed` matches `Unparsed::Refused(refused)` and calls
+`refused.as_json(..)`, because `Unparsed::print` prints in the form that
+the words chose.
+
+Why: ADR-0100, ADR-0107, ADR-0109, ADR-0125.
 
 ## Reading clap's matches after parsing
 

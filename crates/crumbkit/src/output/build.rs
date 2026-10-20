@@ -317,6 +317,12 @@ impl Output {
         }
     }
 
+    /// Replaces the view with `view`. A refusal that the tool printed in a
+    /// form it chose uses it, so the `Stop` reports the printed form.
+    pub(crate) fn set_view(&mut self, view: View) {
+        self.view = view;
+    }
+
     /// Returns the output of a run with the view `view` that parsed against
     /// `command` with `guide`, without words. `parse` uses it after it
     /// printed help, the version or a refusal.
