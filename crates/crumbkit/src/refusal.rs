@@ -9,7 +9,7 @@ use std::io::Write;
 use clap::Command;
 use clap::error::{ContextKind, ContextValue, ErrorKind};
 
-use crate::output::failure::{self, Printing};
+use crate::output::failure::{self, PreparedFailure, Printing};
 use crate::page::LimitAbove;
 use crate::{Call, Code, Failure, Field, Recovery, Sink, Spelling, codes};
 
@@ -28,6 +28,13 @@ pub(crate) struct Refusal {
     fields: Vec<(&'static str, String)>,
     /// The bound of a `--limit` that the refused value passed.
     most: Option<usize>,
+    /// clap's usage lines, each without clap's `Usage:` label, which the
+    /// text form prints under the message. A refusal that crumbkit words
+    /// itself has none.
+    usage: Vec<String>,
+    /// The help page of the group that the refused command line stopped
+    /// at, which the text form prints in place of its lines, or `None`.
+    page: Option<String>,
 }
 
 impl Refusal {
@@ -71,6 +78,8 @@ impl Refusal {
                     .collect(),
                 fields,
                 most: Some(above.most),
+                usage: Vec::new(),
+                page: None,
             };
         }
         let help = Recovery::Run(Call::help(path));
@@ -84,7 +93,19 @@ impl Refusal {
             alternatives,
             fields,
             most: None,
+            usage: Vec::new(),
+            page: None,
         }
+    }
+
+    /// Returns the refusal with clap's usage lines `usage`, which its text
+    /// form prints under the message, and the help page `page` of the group
+    /// that the command line stopped at, which its text form prints in
+    /// place of its lines. The failure document prints neither.
+    pub(crate) fn shown_with(mut self, usage: Vec<String>, page: Option<String>) -> Self {
+        self.usage = usage;
+        self.page = page;
+        self
     }
 
     /// Returns the refusal of the value of the flag `flag` that says
@@ -105,6 +126,8 @@ impl Refusal {
             alternatives: Vec::new(),
             fields,
             most: None,
+            usage: Vec::new(),
+            page: None,
         }
     }
 
@@ -128,6 +151,11 @@ impl Refusal {
     /// the exit code that `printing` gives the usage code: 2 unless the
     /// guide lists another (ADR-0002). The recovery renders against
     /// `command`.
+    ///
+    /// The text form prints clap's usage lines under the message. A refusal
+    /// with a group's help page prints that page as its text form in place
+    /// of the lines, and reports its code to the observer as every refusal
+    /// does (ADR-0118).
     pub(crate) fn print<O: Write, E: Write, R>(
         &self,
         sink: &mut Sink<O, E, R>,
@@ -136,7 +164,9 @@ impl Refusal {
         printing: Printing,
         command: &mut Command,
     ) -> u8 {
-        failure::print(sink, json, spelling, printing, self, command);
+        let document = PreparedFailure::new(self, spelling, printing, command, &mut sink.err)
+            .with_usage(&self.usage);
+        failure::print_prepared(sink, json, printing.layout, &document, self.page.as_deref());
         printing.exit(&codes::CLI_USAGE)
     }
 }

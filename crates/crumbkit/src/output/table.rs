@@ -15,6 +15,17 @@ mod tests;
 pub(super) struct Table<'a> {
     /// The header line and then one line of cells for each row.
     lines: Vec<Vec<Cow<'a, str>>>,
+    /// For each row in order, one entry per column that reports whether the
+    /// row's field holds a value other than `null`. A missing field and
+    /// `null` both print `-`, and only this flag tells them apart from a
+    /// string that holds `-`.
+    filled: Vec<bool>,
+    /// Whether a column that every written row lacks is left out, which
+    /// holds when crumbkit chose the columns and not when `--fields` named
+    /// them.
+    omits_empty: bool,
+    /// Whether each column prints in the lines last written.
+    shown: Vec<bool>,
     /// The width of each column over the lines last written, kept so that
     /// writing the table again allocates nothing.
     widths: Vec<usize>,
@@ -26,7 +37,9 @@ pub(super) struct Table<'a> {
 impl<'a> Table<'a> {
     /// Returns the table of `rows` with `columns`. Each row is a serialized
     /// row, and a cell is the row's field with the column's name.
-    pub(super) fn new(columns: &[&str], rows: &'a [Value]) -> Self {
+    /// `omits_empty` is true when crumbkit chose the columns, for the
+    /// compact table and `--long`, and false when `--fields` named them.
+    pub(super) fn new(columns: &[&str], rows: &'a [Value], omits_empty: bool) -> Self {
         let mut lines: Vec<Vec<Cow<'a, str>>> = Vec::with_capacity(rows.len() + 1);
         lines.push(
             columns
@@ -34,11 +47,20 @@ impl<'a> Table<'a> {
                 .map(|name| Cow::Owned(name.to_uppercase()))
                 .collect(),
         );
+        let mut filled = Vec::with_capacity(rows.len() * columns.len());
         for row in rows {
             lines.push(columns.iter().map(|name| cell(row.get(name))).collect());
+            filled.extend(
+                columns
+                    .iter()
+                    .map(|name| !matches!(row.get(name), None | Some(Value::Null))),
+            );
         }
         Self {
             lines,
+            filled,
+            omits_empty,
+            shown: vec![true; columns.len()],
             widths: vec![0; columns.len()],
             children: Vec::new(),
         }
@@ -58,10 +80,31 @@ impl<'a> Table<'a> {
     /// its widest cell among the lines written, and two spaces separate the
     /// columns. A line ends with the text of its last non-empty cell, so no
     /// line ends in padding or separator spaces. A cell's own text prints
-    /// unchanged, including any spaces at its end. Each row's child lines
-    /// follow the row.
+    /// unchanged, including any spaces at its end.
+    ///
+    /// When the table was built with `omits_empty` and writes at least one
+    /// row, a column whose field is `null` or missing in every written row
+    /// is left out, header included. A column that names no field of the
+    /// row type is missing in every row, so it is left out too.
+    /// crumbkit-test's `check_guide` fails a leaf whose columns name such a
+    /// field.
+    ///
+    /// Each row's child lines follow the row.
     pub(super) fn write(&mut self, out: &mut impl Write, rows: usize) -> io::Result<()> {
         let lines = self.lines.get(..=rows).unwrap_or(&self.lines);
+        let columns = self.shown.len();
+        let written = self
+            .filled
+            .get(..(lines.len() - 1) * columns)
+            .unwrap_or(&self.filled);
+        self.shown.fill(!self.omits_empty || written.is_empty());
+        // `max(1)` keeps `chunks` from panicking on a table without columns,
+        // whose `written` is empty.
+        for row in written.chunks(columns.max(1)) {
+            for (shown, &filled) in self.shown.iter_mut().zip(row) {
+                *shown |= filled;
+            }
+        }
         // RUST-10: the width of a cell is its number of characters, and the
         // padding that `write!` adds counts characters too. This aligns text
         // whose characters each take one terminal column. CJK text and most
@@ -76,7 +119,12 @@ impl<'a> Table<'a> {
             }
         }
         for (index, line) in lines.iter().enumerate() {
-            write_line(out, line, &self.widths)?;
+            let cells = line.iter().zip(&self.widths).zip(&self.shown);
+            write_cells(
+                out,
+                cells
+                    .filter_map(|((cell, &width), &shown)| shown.then_some((cell.as_ref(), width))),
+            )?;
             // The first line is the header, which has no child lines.
             if let Some(children) = index.checked_sub(1).and_then(|row| self.children.get(row)) {
                 out.write_all(children.as_bytes())?;
@@ -86,19 +134,32 @@ impl<'a> Table<'a> {
     }
 }
 
-/// Writes one line of the table. Each cell starts at its column's offset,
-/// which is the end of the cell before it plus that cell's padding to its
-/// column's width plus two separator spaces. Those spaces are held back and
-/// written only before a non-empty cell, so a line never ends in them. A cell
-/// wider than its column gets no padding and moves the rest of its line
-/// right, which happens only in a stream, whose widths come from the header.
+/// Writes one line of the table, as [`write_cells`] does with each cell of
+/// `cells` and the width at the same position in `widths`.
 pub(super) fn write_line(
     out: &mut impl Write,
     cells: &[Cow<'_, str>],
     widths: &[usize],
 ) -> io::Result<()> {
+    write_cells(
+        out,
+        cells.iter().map(AsRef::as_ref).zip(widths.iter().copied()),
+    )
+}
+
+/// Writes one line of the table from each cell's text and its column's
+/// width. Each cell starts at its column's offset, which is the end of the
+/// cell before it plus that cell's padding to its column's width plus two
+/// separator spaces. Those spaces are held back and written only before a
+/// non-empty cell, so a line never ends in them. A cell wider than its
+/// column gets no padding and moves the rest of its line right, which
+/// happens only in a stream, whose widths come from the header.
+fn write_cells<'c>(
+    out: &mut impl Write,
+    cells: impl Iterator<Item = (&'c str, usize)>,
+) -> io::Result<()> {
     let mut spaces = 0;
-    for (cell, &width) in cells.iter().zip(widths) {
+    for (cell, width) in cells {
         if !cell.is_empty() {
             // An empty string padded to `spaces` characters writes that many
             // spaces.

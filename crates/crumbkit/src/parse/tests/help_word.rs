@@ -74,6 +74,7 @@ fn help_with_an_unknown_word_is_refused_with_the_root_s_short_help_as_the_recove
     assert_eq!(parsed.out, "");
     let expected = "\
 error: unrecognized subcommand 'plants'; a similar subcommand exists: 'planets'
+  usage: tool [OPTIONS] <COMMAND>
   help:  run `tool -h`
   code:  tool::cli::usage
 ";

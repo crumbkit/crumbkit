@@ -1,0 +1,1 @@
+{"schema":"shelf/failure/v1","code":"shelf::cli::usage","message":"the command `shelf books` needs a subcommand: list, show, summarize, remove","recovery":{"kind":"run","call":"shelf books -h"}}

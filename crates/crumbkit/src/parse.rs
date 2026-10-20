@@ -13,12 +13,11 @@ pub use self::stop::{Printed, Stop};
 use self::attempt::{Attempt, attempt};
 use self::help_word::{ask_for_help, has_topics, print_topic, topic_page};
 use self::lines::add_help_lines;
-use self::message::refusal_message;
+use self::message::command_line_refusal;
 use self::page::print_page;
 use self::pick::{Picking, Step};
 use self::walk::{help_word, own_names, program_stem, walk};
 use crate::help::Guide;
-use crate::refusal::Refusal;
 use crate::{Output, Sink, Spelling};
 
 mod attempt;
@@ -311,9 +310,11 @@ where
 /// A command line that clap refuses prints as a failure with the code
 /// `<tool>::cli::usage` in the guide's spelling, and the exit code is 2.
 /// The message is clap's error on one line, and the recovery runs the `-h`
-/// of the deepest command. When the tool's refusal function returns a call
-/// that renders and whose line parses, the first such call is the recovery
-/// and the `-h` call is the first alternative, as shelf's golden file
+/// of the deepest command. In text, clap's usage prints under the message
+/// as one `usage:` line for each form. When the tool's refusal function
+/// returns a call that renders and whose line parses, the first such call is
+/// the recovery and the `-h` call is the first alternative, as shelf's
+/// golden file
 /// [`books-show-2-comma-5.stderr`][books-show-2-comma-5] shows.
 ///
 /// clap suggests from every name that a flag or a subcommand accepts. When
@@ -322,10 +323,11 @@ where
 /// suggested flag or subcommand that the tool hid, and leaves out clap's tip
 /// when it suggests nothing else.
 ///
-/// A command line that stops at a command with subcommands, such as `shelf
-/// books`, prints the message ``the command `shelf books` needs a
-/// subcommand``. With `--json`, the refusal prints to the output writer as
-/// one `<tool>/failure/v1` document, as a failure does with `finish`. The
+/// A command line that stops at a command with visible subcommands, such
+/// as `shelf books`, prints that command's `-h` page to the error writer.
+/// With `--json`, the refusal prints to the output writer as one
+/// `<tool>/failure/v1` document, as a failure does with `finish`, with the
+/// message ``the command `shelf books` needs a subcommand``. The
 /// walk finds `--json` in the words before any `--` where clap reads it as a
 /// flag, so a value of an option that allows hyphen values, as in
 /// `--pattern --json`, is no request for JSON.
@@ -555,9 +557,7 @@ where
         let stop = Stop::new(printed, code, json, command, guide, path, words);
         return Err(Unparsed::Stopped(stop));
     }
-    let message = refusal_message(&command, &path, &error);
-    let declared = declared::alternatives::<C>(&mut command, guide, &path, &error, &words);
-    let refusal = Refusal::command_line(message, path.clone(), &error, &words, declared);
+    let refusal = command_line_refusal::<C>(&mut command, guide, &path, &error, &words);
     let output = stop::stopped(json, command, guide);
     let typed = typed.unwrap_or_else(|| words.clone());
     let refused = Refused::new(refusal, Some(error), path, output, typed, words);

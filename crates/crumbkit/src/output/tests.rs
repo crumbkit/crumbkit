@@ -22,6 +22,7 @@ mod bytes;
 mod children;
 mod direct;
 mod empty;
+mod empty_columns;
 mod exits;
 mod failed;
 mod headed;

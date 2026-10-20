@@ -51,6 +51,19 @@ object as compact JSON. A field of type
 was, such as `3h`, in the table and in a stream's text lines, and holds the
 time in RFC 3339 in every JSON form, as its rustdoc describes.
 
+The table that `finish` prints leaves out a column whose field is `null` or
+missing in every row that the table shows, header included. The shown rows
+are the rows the table writes, which can be fewer than the result holds when
+the output budget cuts the table. crumbkit reads each field's value, so a
+string cell that holds `-` keeps its column. The problem field that
+`Row::PROBLEM` names is a column like any other, so the table leaves it out
+when no shown row reports a problem and the field is null in each. The rule
+applies to the compact columns and to the columns of `--long`. With
+`--fields`, every named column prints, because the caller named it, and
+`--json` holds every selected field in every view. A table that shows no
+rows keeps every column in its header. A [stream](streams.md#text-and-json-lines)
+prints every column, because its header prints before any row arrives.
+
 A row type may print its children under each row, such as a service's
 components, by naming the field that holds them in `Row::CHILDREN` and
 building their lines in `Row::child_lines`. The table prints each child
@@ -59,7 +72,7 @@ escaped. Child lines do not change the column widths. Compact JSON holds
 the field after the columns, as [rows with children](shapes/README.md#rows-with-children)
 describes.
 
-Why: ADR-0016, ADR-0063, ADR-0065, ADR-0108, ADR-0114, ADR-0120.
+Why: ADR-0016, ADR-0063, ADR-0065, ADR-0108, ADR-0114, ADR-0119, ADR-0120.
 
 ## View flags
 

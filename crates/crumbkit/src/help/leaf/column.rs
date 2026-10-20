@@ -64,8 +64,8 @@ impl Column {
     }
 
     /// Reports whether the name is a property of the row type's JSON
-    /// Schema. A name that is not a property prints `-` in every row of the
-    /// table.
+    /// Schema. A name that is not a property is missing in every row, so the
+    /// table leaves its column out.
     #[must_use]
     pub const fn is_property(&self) -> bool {
         self.property

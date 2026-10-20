@@ -124,6 +124,9 @@ refused one by one word added, removed or replaced, and that the tool accepts
 
 - [`check_twin`](../../../crates/crumbkit-test/src/twins.rs) runs one twin as
   written and returns the refused line's output for the test to compare.
+  When the refused line runs no command and prints no code, as a line that
+  stops at a group and prints the group's help page does, the check reads
+  the code from the same line run with `--json`.
 - [`check_twins`](../../../crates/crumbkit-test/src/twins/coverage.rs) runs
   every twin of a tool with `--json` added to both lines when neither holds
   it, and fails on a declared code that no twin refuses.
@@ -160,4 +163,4 @@ the command of each line with `crumbkit::command_path`, the walk that `parse`
 makes. A test passes the tree that the binary builds for the twin's run, such
 as the tree of an empty directory for a tool that adds commands at run time.
 
-Why: ADR-0005, ADR-0060.
+Why: ADR-0005, ADR-0060, ADR-0118.

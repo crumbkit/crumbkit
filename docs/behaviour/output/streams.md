@@ -40,7 +40,9 @@ In text, the stream prints the table's header when it opens and flushes it.
 Each column is as wide as its header, because the stream cannot know the
 widths of rows still to come. Two spaces separate the cells, the last cell
 is not padded, and a cell wider than its header pushes the rest of its line
-to the right. `stream` fails to compile for a row type with an empty
+to the right. A stream prints every column, including a column whose field
+is null in every row, because its header prints before any row arrives.
+`stream` fails to compile for a row type with an empty
 `Row::COLUMNS`, because each line would print nothing of its row. A stream of
 rows with [their own text line](shapes/README.md#rows-with-their-own-text-line)
 prints those lines and no header. A row whose type names

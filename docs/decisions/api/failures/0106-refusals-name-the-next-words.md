@@ -1,7 +1,7 @@
 # ADR-0106. Refusals name the next words
 
 - Date: 2026-10-20
-- Status: accepted
+- Status: amended by ADR-0118
 - Supersedes: ADR-0001, which it amends
 
 ## Context

@@ -324,7 +324,7 @@ impl<'a, T: Rows> Prepared<'a, T> {
         };
         let table = (text && value.prose().is_none() && lines.is_none()).then(|| {
             let children = children::blocks(settings.view, value.rows());
-            Table::new(columns, values).with_children(children)
+            Table::new(columns, values, settings.view.names().is_none()).with_children(children)
         });
         Ok(Self {
             document,

@@ -108,10 +108,25 @@ pub(crate) fn print<O: Write, W: Write, R>(
     command: &mut Command,
 ) {
     let document = PreparedFailure::new(failure, spelling, printing, command, &mut sink.err);
+    print_prepared(sink, json, printing.layout, &document, None);
+}
+
+/// Prints `document` to `sink`: as text on the error writer, or with `json`
+/// as one document on the output writer in `layout`. When `page` is set,
+/// the text form is `page` in place of crumbkit's lines, as a refused
+/// command line that stops at a group prints that group's help page. The
+/// failure document does not change.
+pub(crate) fn print_prepared<O: Write, W: Write, R>(
+    sink: &mut Sink<O, W, R>,
+    json: bool,
+    layout: JsonLayout,
+    document: &PreparedFailure<'_>,
+    page: Option<&str>,
+) {
     #[cfg(feature = "tracing")]
     crate::trace::spans::failed(document.code());
     if json {
-        if let Err(error) = write_json(&mut sink.out, printing.layout, &document) {
+        if let Err(error) = write_json(&mut sink.out, layout, document) {
             // A reader that closed the pipe early has stopped reading, so
             // only another write error is reported. The process is already
             // failing, and a failed report has nowhere else to go.
@@ -119,10 +134,14 @@ pub(crate) fn print<O: Write, W: Write, R>(
                 let _ = writeln!(sink.err, "error: cannot write to standard output: {error}");
             }
         }
+    } else if let Some(page) = page {
+        // Standard error is the last place to report anything, so a failure
+        // to write there goes unreported.
+        let _ = write!(sink.err, "{page}").and_then(|()| sink.err.flush());
     } else {
         // Standard error is the last place to report anything, so a failure
         // to write there goes unreported.
-        let _ = write_crumbkit_text(&mut sink.err, &document);
+        let _ = write_crumbkit_text(&mut sink.err, document);
     }
 }
 
@@ -163,6 +182,10 @@ pub(crate) struct PreparedFailure<'a> {
     fields: Vec<(String, FieldValue<'static>)>,
     /// The page that explains the failure, when there is one.
     url: Option<String>,
+    /// clap's usage lines of a refused command line, each without clap's
+    /// `Usage:` label, which the text form prints under the `error:` line.
+    /// It is empty for every other failure.
+    usage: &'a [String],
     /// The position of the failure's key among a batch's keys, counted from
     /// 0, and the key, or `None` for a failure that has no key.
     key: Option<(usize, &'a str)>,
@@ -183,7 +206,7 @@ impl<'a> PreparedFailure<'a> {
     /// alternative that does not render, with the reason, so a test sees a
     /// recovery that names a command the tool lacks. A release build writes
     /// neither.
-    pub(super) fn new(
+    pub(crate) fn new(
         failure: &'a dyn Failure,
         spelling: Spelling,
         printing: Printing,
@@ -247,8 +270,16 @@ impl<'a> PreparedFailure<'a> {
             alternatives,
             fields,
             url: failure.url().map(str::to_owned),
+            usage: &[],
             key: None,
         }
+    }
+
+    /// Returns the failure with clap's usage lines `usage`, which its text
+    /// form prints under the `error:` line and its document leaves out.
+    pub(crate) const fn with_usage(mut self, usage: &'a [String]) -> Self {
+        self.usage = usage;
+        self
     }
 
     /// Returns the failure with the position of its key among a batch's
@@ -363,7 +394,10 @@ fn drop_repeated_keys(value: &mut FieldValue<'static>, repeated: &mut Vec<String
 /// Writes crumbkit's text form of `document` to `err`, then flushes it, as shelf's
 /// golden file [`books-show-7.stderr`][books-show-7] shows.
 ///
-/// A `key:` line follows the `error:` line when the failure belongs to a
+/// A `usage:` line for each of clap's usage lines of a refused command line
+/// follows the `error:` line, as shelf's golden file
+/// [`books-show-no-ids.stderr`][books-show-no-ids] shows. A `key:` line
+/// follows when the failure belongs to a
 /// key of a batch, and gives the key and its index. A `cause:` line for
 /// each cause follows, a `help:` line
 /// for each alternative follows the recovery's `help:` line, and a `url:`
@@ -378,11 +412,15 @@ fn drop_repeated_keys(value: &mut FieldValue<'static>, repeated: &mut Vec<String
 /// and shows its text in the order it was written.
 ///
 /// [books-show-7]: https://github.com/crumbkit/crumbkit/blob/main/examples/shelf/tests/golden/books-show-7.stderr
+/// [books-show-no-ids]: https://github.com/crumbkit/crumbkit/blob/main/examples/shelf/tests/golden/books-show-no-ids.stderr
 pub(crate) fn write_crumbkit_text(
     err: &mut impl Write,
     document: &PreparedFailure<'_>,
 ) -> io::Result<()> {
     writeln!(err, "error: {}", escape_controls(&document.message))?;
+    for usage in document.usage {
+        write_labelled(err, "usage:", usage)?;
+    }
     if let Some((index, key)) = document.key {
         write_labelled(err, "key:", &format!("{key} (index {index})"))?;
     }

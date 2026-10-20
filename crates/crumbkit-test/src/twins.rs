@@ -62,7 +62,10 @@ mod tests;
 /// failure, it reads the
 /// code from a `<tool>/failure/v1` document on standard output, or from
 /// the first entry of a batch's `failures`, and then from the last `code:`
-/// line on standard error.
+/// line on standard error. A refused line that runs no command and prints
+/// no code, such as a line that stops at a group and prints the group's
+/// help page, runs again with `--json` added, and the check reads the code
+/// from that run. The rule of the exits below applies to the first run.
 ///
 /// The refused line must exit with the code that
 /// [`Guide::failure_exit`](crumbkit::help::Guide::failure_exit) gives its
@@ -295,9 +298,27 @@ pub(super) fn refuse(
         ));
     }
     // The first failure is the one the refused line fails with.
-    let printed = failures::read_failures(tool, reader, &output.stdout, &output.stderr)
-        .first()
-        .map(|failure| failure.code().to_owned());
+    let first = |output: &Output| {
+        failures::read_failures(tool, reader, &output.stdout, &output.stderr)
+            .first()
+            .map(|failure| failure.code().to_owned())
+    };
+    let mut printed = first(&output);
+    // A line that stops at a group prints the group's help page in text,
+    // which holds no code, so the check reads the code from the same line
+    // run with `--json` (ADR-0118).
+    if printed.is_none() && !words::named(command, guide, refused.words()).runs {
+        let json = runs::with_json(&owned(refused.words()));
+        let json: Vec<&str> = json.iter().map(String::as_str).collect();
+        let json_line = named(&tool_name(examples), &json, refused.own_env());
+        printed = first(&run(
+            examples,
+            refused,
+            &json,
+            refused.own_env(),
+            &json_line,
+        )?);
+    }
     match printed {
         Some(printed) if printed == code => {
             match exits::exit_problem(guide, spelling, &path, &printed, output.status) {
@@ -313,6 +334,11 @@ pub(super) fn refuse(
             output.status
         )),
     }
+}
+
+/// Returns `words` as owned strings.
+fn owned(words: &[&str]) -> Vec<String> {
+    words.iter().map(|&word| word.to_owned()).collect()
 }
 
 /// Runs `words` with the variables of `env`, in the working directory,

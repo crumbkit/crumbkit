@@ -20,8 +20,9 @@ pub(crate) use fields::{can_be_empty, properties};
 /// are the properties of its JSON Schema. When the type is an enum whose
 /// schema lists its variants under `oneOf` or `anyOf`, they also include the
 /// properties of each variant, so `--fields` and a leaf's columns can name a
-/// field that only some variants have. A name that is not a field
-/// prints `-` in every row of its column, and `null` in JSON. crumbkit-test's
+/// field that only some variants have. A name that is not a field is
+/// missing in every row, so the text table leaves its column out, and JSON
+/// holds `null` for it. crumbkit-test's
 /// `check_guide` fails on such a name in the row type of each leaf that the
 /// tool's guide gives a document, and on a column whose field has no doc
 /// comment, because a leaf's `--help` describes each column with it.

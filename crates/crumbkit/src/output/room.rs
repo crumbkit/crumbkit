@@ -28,7 +28,8 @@ use crate::{AsFailure, Batch, Document, Row, Rows};
 /// `finish` prints for those rows when the batch has no failure, because
 /// each failure only adds bytes. A handler that stops when `has_room`
 /// returns false therefore never stops before the row at which `finish`
-/// would cut the batch.
+/// would cut the batch, except when the text table leaves out a column
+/// that every printed row lacks, which the count still includes.
 ///
 /// ```
 /// # #[derive(serde::Serialize, schemars::JsonSchema)]
@@ -264,6 +265,16 @@ impl<T: Rows> Room<T> {
             Form::Lines(bytes) => *bytes,
             // A batch without rows prints no table.
             Form::Table { .. } if self.measured == 0 => 0,
+            // RUST-10: the count includes every column, and `finish` leaves
+            // out a column whose field is null or missing in every printed
+            // row. Leaving a column out only removes bytes, so the count is
+            // at least what the table prints. When a column is left out, a
+            // handler can therefore stop fetching keys before the row at
+            // which `finish` would cut, and the keys it never fetched go
+            // into the failure of the keys left out. Track whether each
+            // column has a value in the rows measured and leave those
+            // columns out of the count when a tool needs every key that
+            // fits.
             Form::Table {
                 widths,
                 padded,
