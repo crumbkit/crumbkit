@@ -133,11 +133,19 @@ pub fn parse<C: FromArgMatches>(command: Command, guide: &Guide) -> Result<(C, O
 /// }
 /// ```
 ///
+/// Each parse function hands clap's matches to `C::from_arg_matches_mut`,
+/// and a derived type takes each value out of them, so the matches no
+/// longer report each value's source. A tool that reads the sources wraps
+/// its type in one that clones the matches first, as the [parsing
+/// docs][keep-matches] show.
+///
 /// # Errors
 ///
 /// Returns [`Unparsed::Stopped`] after crumbkit has printed help, the
 /// version or a topic, and [`Unparsed::Refused`] for a refused command line,
 /// which nothing has printed.
+///
+/// [keep-matches]: https://github.com/crumbkit/crumbkit/blob/main/docs/behaviour/parsing/README.md#reading-claps-matches-after-parsing
 pub fn try_parse<C: FromArgMatches>(
     command: Command,
     guide: &Guide,

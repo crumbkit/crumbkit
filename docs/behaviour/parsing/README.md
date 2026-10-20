@@ -3,7 +3,8 @@
 This page covers how a tool parses its command line with crumbkit: the
 `parse` call in `main`, the `Stop` it returns when it ends the run itself,
 the command tree that it hands on to `finish`, command lines that crumbkit
-refuses, and `try_parse`, which returns a refusal unprinted. [Aliases](aliases.md) and
+refuses, `try_parse`, which returns a refusal unprinted, and how a tool
+keeps clap's matches after parsing. [Aliases](aliases.md) and
 [shell completion](completion.md) have pages of their own.
 
 ## Parsing in main
@@ -191,3 +192,58 @@ answers itself reports no `refused` event. `Unparsed` is
 `#[non_exhaustive]`, and `Unparsed::print` prints whatever variant it holds.
 
 Why: ADR-0100.
+
+## Reading clap's matches after parsing
+
+`parse` and the other parse functions accept any tool type that implements
+`clap::FromArgMatches`, and hand clap's `ArgMatches` to the type's
+`from_arg_matches_mut`. A type that clap derives takes each value out of
+the matches there. clap removes the whole entry of each argument that the
+type takes, so `ArgMatches::value_source` answers `None` for that argument
+afterwards.
+
+A tool that needs each value's source, such as whether a value came from
+the command line, an environment variable or a default, can keep the
+matches without parsing the command line a second time. It wraps its
+derived type in a type whose `FromArgMatches` implementation clones the
+matches before the derived type takes the values:
+
+```rust
+struct WithMatches {
+    cli: Cli,
+    matches: ArgMatches,
+}
+
+impl FromArgMatches for WithMatches {
+    fn from_arg_matches(matches: &ArgMatches) -> Result<Self, clap::Error> {
+        Self::from_arg_matches_mut(&mut matches.clone())
+    }
+
+    fn from_arg_matches_mut(matches: &mut ArgMatches) -> Result<Self, clap::Error> {
+        let kept = matches.clone();
+        Cli::from_arg_matches_mut(matches).map(|cli| Self { cli, matches: kept })
+    }
+
+    fn update_from_arg_matches(&mut self, matches: &ArgMatches) -> Result<(), clap::Error> {
+        self.update_from_arg_matches_mut(&mut matches.clone())
+    }
+
+    fn update_from_arg_matches_mut(&mut self, matches: &mut ArgMatches) -> Result<(), clap::Error> {
+        let kept = matches.clone();
+        self.cli.update_from_arg_matches_mut(matches)?;
+        self.matches = kept;
+        Ok(())
+    }
+}
+```
+
+The tool calls `crumbkit::parse::<WithMatches>(Cli::command(), &GUIDE)` and
+reads a subcommand's sources through `ArgMatches::subcommand_matches`.
+crumbkit reads `--json`, `--dry-run`, `--no-input` and the view flags from
+the matches before the tool's type runs, so the wrapper changes nothing
+that crumbkit reads or prints. Each parse clones the matches once. A
+[picker](../effects/pickers.md) parses again after each value that it
+adds. When crumbkit refuses a command line, it parses the line of each
+call that the tool's refusal function returns. Those parses clone the
+matches too.
+[`matches.rs`](../../../crates/crumbkit/tests/matches.rs) runs the wrapper.
