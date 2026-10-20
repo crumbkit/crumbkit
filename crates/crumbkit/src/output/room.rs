@@ -11,7 +11,7 @@ use serde_json::Value;
 use super::budget::{self, Counter};
 use super::envelope::{Extras, Failures, Selected, write_document};
 use super::table::cell;
-use super::{JsonLayout, Output, columns, layout, lines, result};
+use super::{JsonLayout, Output, children, columns, layout, lines, result};
 use crate::age::TextCells;
 use crate::{AsFailure, Batch, Document, Row, Rows};
 
@@ -22,7 +22,8 @@ use crate::{AsFailure, Batch, Document, Row, Rows};
 /// last call once, in the format that the run prints: the JSON document in
 /// the guide's layout with the columns that the view flags choose, the text
 /// table with each column as wide as its widest cell, each row's own line
-/// for a row type that declares `Row::LINE`, or the bytes and the
+/// for a row type that declares `Row::LINE`, each row's child lines for a
+/// row type that declares `Row::CHILDREN`, or the bytes and the
 /// `==> KEY <==` headers of a headed batch. The count is the bytes that
 /// `finish` prints for those rows when the batch has no failure, because
 /// each failure only adds bytes. A handler that stops when `has_room`
@@ -71,6 +72,8 @@ pub struct Room<T> {
     columns: Vec<String>,
     /// How the rows print, with the counts of the rows measured so far.
     form: Form,
+    /// Whether the text table prints each row's child lines (ADR-0120).
+    children: bool,
     /// The number of rows measured so far.
     measured: usize,
 }
@@ -168,6 +171,7 @@ impl Output {
             budget: self.budget(),
             columns,
             form,
+            children: children::chosen::<R>(&self.view),
             measured: 0,
         }
     }
@@ -214,6 +218,9 @@ impl<T: Rows> Room<T> {
                     let cells: Vec<Cow<'_, str>> =
                         columns.iter().map(|name| cell(fields.get(name))).collect();
                     self.form.add_line(&cells);
+                    if let (true, Form::Table { text, .. }) = (self.children, &mut self.form) {
+                        *text = text.saturating_add(children::block(row).len());
+                    }
                 }
                 Form::Headed {
                     headers,

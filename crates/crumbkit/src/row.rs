@@ -151,6 +151,74 @@ pub trait Row: Serialize + JsonSchema {
         None
     }
 
+    /// The field that holds the row's children, as the type serializes it,
+    /// after any `#[serde(rename)]`, or `None` when the row has none
+    /// (ADR-0120).
+    ///
+    /// When it is set, the text prints each row's [`Row::child_lines`]
+    /// under the row's table line, or under its own text line when the type
+    /// sets [`Row::LINE`], each indented by two spaces. `--long` keeps the
+    /// child lines, and `--fields` prints none: a `--fields` that names the
+    /// field prints it as a cell of compact JSON like any other field. The
+    /// JSON without `--full` holds the field after the columns, so `--json`
+    /// carries the children with each row. The leaf's help prints the field
+    /// on a `Children:` line. crumbkit-test's `check_guide` fails a field
+    /// that is not a field of the row type or has no doc comment, a field
+    /// that is also a column, and a headed leaf whose row type sets it,
+    /// because a headed batch's text prints each row's bytes.
+    const CHILDREN: Option<&'static str> = None;
+
+    /// Returns one text line for each of the row's children, without
+    /// indentation or a line feed. crumbkit reads it only when
+    /// [`Row::CHILDREN`] is set.
+    ///
+    /// crumbkit prints each line under the row, indented by two spaces and
+    /// followed by a line feed. It escapes each control character and each
+    /// Unicode format character of the line as a table cell escapes them,
+    /// so each child stays on one line. A row that returns no lines prints
+    /// nothing under it. The child lines do not change the widths of the
+    /// table's columns, and the output budget counts them.
+    ///
+    /// ```
+    /// use crumbkit::Row;
+    /// use schemars::JsonSchema;
+    /// use serde::Serialize;
+    ///
+    /// /// One part of a service.
+    /// #[derive(Serialize, JsonSchema)]
+    /// struct Component {
+    ///     /// The part's name.
+    ///     name: String,
+    ///     /// Whether the part answers.
+    ///     up: bool,
+    /// }
+    ///
+    /// /// A service and the parts it runs on.
+    /// #[derive(Serialize, JsonSchema)]
+    /// struct Service {
+    ///     /// The service's name.
+    ///     name: String,
+    ///     /// The parts that the service runs on.
+    ///     components: Vec<Component>,
+    /// }
+    ///
+    /// impl Row for Service {
+    ///     const COLUMNS: &'static [&'static str] = &["name"];
+    ///     const CHILDREN: Option<&'static str> = Some("components");
+    ///
+    ///     fn child_lines(&self) -> Vec<String> {
+    ///         let mark = |up: bool| if up { '+' } else { '-' };
+    ///         self.components
+    ///             .iter()
+    ///             .map(|part| format!("{} {}", mark(part.up), part.name))
+    ///             .collect()
+    ///     }
+    /// }
+    /// ```
+    fn child_lines(&self) -> Vec<String> {
+        Vec::new()
+    }
+
     /// Whether `--json` prints every field of each row as the type
     /// serializes it, without `--full`. The default is `false`, which
     /// prints only the columns without `--full` (ADR-0065).

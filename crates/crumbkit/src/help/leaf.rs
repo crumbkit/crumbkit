@@ -4,13 +4,13 @@
 use clap::builder::StyledStr;
 use clap::builder::styling::Style;
 use schemars::{JsonSchema, Schema};
-use serde_json::Value;
 
 use super::view::{self, Kind, Printed, Unoffered, ViewFlag};
 use super::{Effects, write_line};
 use crate::pick::Choices;
 use crate::{Call, Document, Row, Rows, Shape, Stream, row};
 
+mod children;
 mod codes;
 mod column;
 mod example;
@@ -20,6 +20,7 @@ mod refusal;
 mod tests;
 mod text;
 
+pub use children::children_line;
 pub use column::Column;
 pub use example::Example;
 pub(crate) use example::examples;
@@ -192,6 +193,7 @@ impl Leaf {
             long: <T::Row as Row>::LONG_COLUMNS,
             problem: <T::Row as Row>::PROBLEM,
             line: <T::Row as Row>::LINE,
+            children: <T::Row as Row>::CHILDREN,
             schema: schema::<T::Row>,
             envelope: crate::schemas::envelope::<T>,
             kind: Kind::Document(T::SHAPE),
@@ -223,6 +225,7 @@ impl Leaf {
             long: R::LONG_COLUMNS,
             problem: R::PROBLEM,
             line: R::LINE,
+            children: R::CHILDREN,
             schema: schema::<R>,
             envelope: crate::schemas::envelope::<R>,
             kind: Kind::Stream,
@@ -444,23 +447,7 @@ impl Leaf {
         compact
             .chain(long)
             .chain(bytes.map(|name| (name, false)))
-            .map(|(&name, long)| {
-                let property = properties
-                    .iter()
-                    .find(|(field, _)| *field == name)
-                    .map(|(_, property)| *property);
-                let description = property
-                    .and_then(|property| property.get("description"))
-                    .and_then(Value::as_str)
-                    .map(first_paragraph);
-                Column {
-                    name,
-                    long,
-                    property: property.is_some(),
-                    empty: property.is_some_and(row::can_be_empty),
-                    description,
-                }
-            })
+            .map(|(&name, long)| Column::read(&properties, name, long))
             .collect()
     }
 }
@@ -479,6 +466,8 @@ struct Columns {
     problem: Option<&'static str>,
     /// The row type's [`Row::LINE`].
     line: Option<&'static str>,
+    /// The row type's [`Row::CHILDREN`].
+    children: Option<&'static str>,
     /// Builds the row type's JSON Schema, whose properties hold the
     /// columns' descriptions.
     schema: fn() -> Schema,
@@ -553,15 +542,4 @@ pub(crate) fn columns(leaf: &Leaf, header: Style, literal: Style) -> Vec<String>
         sections.push(section);
     }
     sections
-}
-
-/// Returns the first paragraph of `description`, the text before its first
-/// blank line, with its lines joined by spaces.
-fn first_paragraph(description: &str) -> String {
-    description
-        .lines()
-        .map(str::trim)
-        .take_while(|line| !line.is_empty())
-        .collect::<Vec<_>>()
-        .join(" ")
 }

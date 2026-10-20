@@ -137,7 +137,9 @@ codes or a rename of one, each document whose name is not its command's path
 gives), each leaf that passes on an exit code, each leaf that declares
 refusal alternatives, the guide's refusal function once for every run, and
 each leaf whose row type declares `Row::LINE` (as a `text-line`
-customisation that names the form of the line). A leaf's code rename, and an
+customisation that names the form of the line), and each leaf whose row
+type declares `Row::CHILDREN` (as a `children` customisation that names the
+field). A leaf's code rename, and an
 exit that lists a code that only a leaf renames, apply to that leaf's
 command line. The dashed-forms declaration is listed once, followed by each
 command named in another style as a `resource-name` or a `verb-name` with
@@ -148,4 +150,5 @@ as a `customisations` array beside `data`. The report does not list the
 completion variable, because `complete_with` sets it for the process and the
 guide does not hold it.
 
-Why: ADR-0056, ADR-0060, ADR-0036, ADR-0035, ADR-0064, ADR-0081, ADR-0086.
+Why: ADR-0056, ADR-0060, ADR-0036, ADR-0035, ADR-0064, ADR-0081, ADR-0086,
+ADR-0120.

@@ -7,7 +7,7 @@ use super::Streaming;
 use crate::Row;
 use crate::age::TextCells;
 use crate::output::envelope::{Extras, Selected, write_document};
-use crate::output::{JsonLayout, lines, table, unwrapped};
+use crate::output::{JsonLayout, children, lines, table, unwrapped};
 
 impl<R: Row, O: Write, W: Write> Streaming<R, O, W> {
     /// Writes `item` to the line, in the format that the flags choose.
@@ -58,7 +58,11 @@ impl<R: Row, O: Write, W: Write> Streaming<R, O, W> {
                 .iter()
                 .map(|name| table::cell(row.get(name.as_ref())))
                 .collect();
-            table::write_line(line, &cells, &self.widths)
+            table::write_line(line, &cells, &self.widths)?;
+            if children::chosen::<R>(&self.view) {
+                line.extend_from_slice(children::block(item).as_bytes());
+            }
+            Ok(())
         }
     }
 }

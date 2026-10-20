@@ -18,7 +18,7 @@ mod schema;
 #[cfg(test)]
 mod tests;
 
-use self::schema::argument_schema;
+use self::schema::{argument_schema, exit_schema};
 
 /// One visible command of a branch, as `commands list` prints it: what the
 /// command's `-h` and `--help` show, apart from layout.
@@ -39,6 +39,7 @@ pub struct CommandRow {
     columns: Vec<CommandColumn>,
     form: Option<&'static str>,
     line: Option<&'static str>,
+    children: Option<&'static str>,
     exits: Vec<CommandExit>,
     effects: Option<Effects>,
     writes: Option<Guards>,
@@ -164,6 +165,7 @@ impl CommandRow {
             columns,
             form: leaf.and_then(form),
             line: leaf.and_then(Leaf::line),
+            children: leaf.and_then(Leaf::children),
             exits,
             effects: leaf.and_then(Leaf::get_effects),
             writes: effects::guards(leaf.and_then(Leaf::get_effects), takes_expect(command)),
@@ -355,7 +357,7 @@ impl Row for CommandRow {
 /// needs no `serde_derive`.
 impl Serialize for CommandRow {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        let mut row = serializer.serialize_struct("CommandRow", 11)?;
+        let mut row = serializer.serialize_struct("CommandRow", 12)?;
         row.serialize_field("path", &self.path)?;
         row.serialize_field("about", &self.about)?;
         row.serialize_field("long_about", &self.long_about)?;
@@ -364,6 +366,7 @@ impl Serialize for CommandRow {
         row.serialize_field("columns", &self.columns)?;
         row.serialize_field("form", &self.form)?;
         row.serialize_field("line", &self.line)?;
+        row.serialize_field("children", &self.children)?;
         row.serialize_field("exits", &self.exits)?;
         row.serialize_field("effects", &self.effects)?;
         row.serialize_field("writes", &self.writes)?;
@@ -504,36 +507,19 @@ impl JsonSchema for CommandRow {
                     "description": "The form of the text line that each row prints in place of a table row, such as `<POINTER> -> <TARGET>`, or null when the rows print a table or the command declares no document.",
                     "type": ["string", "null"],
                 },
+                "children": {
+                    "description": "The field whose items each row prints in text as indented lines under it, such as `components`, or null when the rows print no such lines or the command declares no document.",
+                    "type": ["string", "null"],
+                },
                 "exits": {
                     "description": "The exit codes that the tool declares for the command besides 0, 1 and 2, which apply to every command, in guide order. `<tool> help exit-codes` describes every code.",
                     "type": "array",
-                    "items": {
-                        "type": "object",
-                        "properties": {
-                            "exit": {
-                                "description": "The exit code, or the first code of a range of codes that the command passes on from another program.",
-                                "type": "integer",
-                                "minimum": 0,
-                                "maximum": 255,
-                            },
-                            "last": {
-                                "description": "The last code of the range, which equals exit for a single code.",
-                                "type": "integer",
-                                "minimum": 0,
-                                "maximum": 255,
-                            },
-                            "meaning": {
-                                "description": "What the code means, as one sentence.",
-                                "type": "string",
-                            },
-                        },
-                        "required": ["exit", "last", "meaning"],
-                    },
+                    "items": exit_schema(),
                 },
                 "effects": effects::schema(),
                 "writes": effects::writes_schema(),
             },
-            "required": ["path", "about", "long_about", "arguments", "examples", "columns", "form", "line", "exits", "effects", "writes"],
+            "required": ["path", "about", "long_about", "arguments", "examples", "columns", "form", "line", "children", "exits", "effects", "writes"],
         })
     }
 }

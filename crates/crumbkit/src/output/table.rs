@@ -29,6 +29,9 @@ pub(super) struct Table<'a> {
     /// The width of each column over the lines last written, kept so that
     /// writing the table again allocates nothing.
     widths: Vec<usize>,
+    /// The child lines that print under each row, already indented and
+    /// escaped, or an empty list when the rows print none (ADR-0120).
+    children: Vec<String>,
 }
 
 impl<'a> Table<'a> {
@@ -59,7 +62,15 @@ impl<'a> Table<'a> {
             omits_empty,
             shown: vec![true; columns.len()],
             widths: vec![0; columns.len()],
+            children: Vec::new(),
         }
+    }
+
+    /// Returns the table with `children`, the child lines that print under
+    /// each row in order. They do not count toward the column widths.
+    pub(super) fn with_children(mut self, children: Vec<String>) -> Self {
+        self.children = children;
+        self
     }
 
     /// Writes the header and the first `rows` rows to `out`.
@@ -77,6 +88,8 @@ impl<'a> Table<'a> {
     /// row type is missing in every row, so it is left out too.
     /// crumbkit-test's `check_guide` fails a leaf whose columns name such a
     /// field.
+    ///
+    /// Each row's child lines follow the row.
     pub(super) fn write(&mut self, out: &mut impl Write, rows: usize) -> io::Result<()> {
         let lines = self.lines.get(..=rows).unwrap_or(&self.lines);
         let columns = self.shown.len();
@@ -105,13 +118,17 @@ impl<'a> Table<'a> {
                 *width = (*width).max(cell.chars().count());
             }
         }
-        for line in lines {
+        for (index, line) in lines.iter().enumerate() {
             let cells = line.iter().zip(&self.widths).zip(&self.shown);
             write_cells(
                 out,
                 cells
                     .filter_map(|((cell, &width), &shown)| shown.then_some((cell.as_ref(), width))),
             )?;
+            // The first line is the header, which has no child lines.
+            if let Some(children) = index.checked_sub(1).and_then(|row| self.children.get(row)) {
+                out.write_all(children.as_bytes())?;
+            }
         }
         Ok(())
     }

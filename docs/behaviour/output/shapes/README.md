@@ -163,6 +163,28 @@ so its `Text:` line names no table. crumbkit-test's `check_guide` fails a
 
 Why: ADR-0064, ADR-0114.
 
+## Rows with children
+
+A row type may print the items of one field as indented lines under each
+row. `Row::CHILDREN` names the field, such as `Some("components")`, and
+`Row::child_lines` builds one line for each item, such as `+ database`.
+Without `--json` and `--fields`, the text prints each child line under the
+row's table line, or under its own text line, indented by two spaces and
+with control characters and format characters escaped. A row without child
+lines prints nothing more. `--long` keeps the child lines, and a stream
+prints them after each item's line. The [output budget](../budget/README.md)
+counts them.
+
+Compact JSON, with or without `--long`, holds the field after the columns,
+and the compact schema requires it. `--fields` holds the field only when it
+names it, and the text then prints it as a cell of compact JSON and prints
+no child lines. Help prints a `Children:` line ([help](../../help/README.md)).
+crumbkit-test's `check_guide` fails a field that is not a documented field
+of the row type, a field that is also one of the columns, and a
+[headed](#headed-bytes) leaf whose row type sets `CHILDREN`.
+
+Why: ADR-0120.
+
 ## Documents without the envelope
 
 A tool chooses a document's envelope with

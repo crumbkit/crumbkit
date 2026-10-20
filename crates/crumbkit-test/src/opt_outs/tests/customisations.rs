@@ -230,6 +230,40 @@ fn rows_that_print_their_own_text_line_are_a_text_line_customisation() {
     );
 }
 
+/// A removed shelf whose books print under it.
+#[derive(serde::Serialize, schemars::JsonSchema)]
+struct RemovedShelf {
+    /// The shelf's id.
+    id: u32,
+    /// The titles of the books on the shelf.
+    books: Vec<String>,
+}
+
+impl crumbkit::Row for RemovedShelf {
+    const COLUMNS: &'static [&'static str] = &["id"];
+    const CHILDREN: Option<&'static str> = Some("books");
+}
+
+#[test]
+fn rows_that_print_their_children_under_them_are_a_children_customisation() {
+    const SHELVES_REMOVE: Document<Vec<RemovedShelf>> =
+        Document::new("shelf", "shelves-remove", 1, "The removed shelves.");
+    const GUIDE: Guide =
+        Guide::new().leaves(&[Leaf::new(&["shelves", "remove"]).document(SHELVES_REMOVE)]);
+
+    let list = customisations(&Command::new("shelf"), &GUIDE);
+
+    let list = serde_json::to_value(&list).unwrap();
+    assert_eq!(
+        list,
+        json!([{
+            "declaration": "children",
+            "applies_to": "shelf shelves remove",
+            "declares": "The text prints one indented line under each row for each of its books.",
+        }])
+    );
+}
+
 /// A book that prints whole in JSON and as its own line in text.
 #[derive(serde::Serialize, schemars::JsonSchema)]
 struct WholeLined {

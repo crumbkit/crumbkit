@@ -217,3 +217,33 @@ fn a_row_holds_the_form_document_and_the_line_when_whole_rows_without_columns_de
     assert_eq!(row["form"], json!("document"));
     assert_eq!(row["line"], json!("<KEY> = <VALUE>"));
 }
+
+/// A removed shelf whose books print under it.
+#[derive(serde::Serialize, schemars::JsonSchema)]
+struct Shelf {
+    /// The shelf's id.
+    id: u32,
+    /// The titles of the books on the shelf.
+    books: Vec<String>,
+}
+
+impl crate::Row for Shelf {
+    const COLUMNS: &'static [&'static str] = &["id"];
+    const CHILDREN: Option<&'static str> = Some("books");
+}
+
+#[test]
+fn a_row_holds_the_children_field_of_its_leaf_s_rows_and_null_without_one() {
+    const SHELVES: crate::Document<Vec<Shelf>> =
+        crate::Document::new("shelf", "books-remove", 1, "The removed shelves.");
+    const GUIDE: Guide = Guide::new().leaves(&[Leaf::new(&["books", "remove"]).document(SHELVES)]);
+
+    assert_eq!(row(&GUIDE)["children"], json!("books"));
+    assert_eq!(row(&Guide::new())["children"], Value::Null);
+    assert!(
+        row(&Guide::new())
+            .as_object()
+            .unwrap()
+            .contains_key("children")
+    );
+}
