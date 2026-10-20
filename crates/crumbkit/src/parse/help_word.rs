@@ -7,6 +7,9 @@ use clap::Command;
 
 use crate::help::{Guide, topic};
 
+#[cfg(test)]
+mod tests;
+
 /// Reports whether the guide's root `root` in `command` answers the word
 /// `help` with topics: it has no command named or aliased `help`, and it has
 /// subcommands or the tool declares topics.
@@ -47,19 +50,36 @@ pub(super) fn topic_page(command: &Command, guide: &Guide, rest: &[OsString]) ->
 }
 
 /// Turns `help` at `position` into a request for clap's long help: it
-/// removes the word and adds `--help` before the first `--`, or at the end
-/// when there is none. `shelf help books show` and `shelf books help show`
-/// then print what `shelf books show --help` prints, and clap refuses a
-/// word that names no command, as in `shelf help comets`.
+/// removes the word and adds `--help` directly after the last word that
+/// followed `help`, comes before any `--` and does not start with `-`. When
+/// no word qualifies, `--help` takes the place of `help`. clap answers
+/// `--help` as soon as it meets it, so it prints the help before it reads
+/// the flags after the command's words, as it does when the caller types
+/// `--help` there. `shelf help books show` and `shelf books help show`
+/// print what `shelf books show --help` prints, `shelf help --json` prints
+/// what `shelf --help --json` prints, and clap refuses a word that names no
+/// command, as in `shelf help comets`. The words after `--` stay as typed.
 //
-// RUST-10: the request needs the tool's `--help` flag. A tool that disables
-// it gets clap's refusal of `--help`. crumbkit's own help flag replaces the
-// request if a tool needs that.
+// RUST-10: the search counts the value of an option as a word that names
+// something, so `shelf help --from ids.txt` gives clap `--from ids.txt
+// --help`, which the root refuses because only `books show` takes
+// `--from`. A search that reads each word as `walk` does, with each
+// command's options, replaces this when a tool needs it. The request also
+// needs the tool's `--help` flag. A tool that disables it gets clap's
+// refusal of `--help`. crumbkit's own help flag replaces the request if a
+// tool needs that.
 pub(super) fn ask_for_help(args: &mut Vec<OsString>, position: usize) {
     args.remove(position);
-    let end = args
+    let following = args.get(position..).unwrap_or_default();
+    let end = following
         .iter()
         .position(|word| word == "--")
-        .unwrap_or(args.len());
-    args.insert(end, OsString::from("--help"));
+        .unwrap_or(following.len());
+    let place = following
+        .get(..end)
+        .unwrap_or_default()
+        .iter()
+        .rposition(|word| !word.as_encoded_bytes().starts_with(b"-"))
+        .map_or(position, |last| position + last + 1);
+    args.insert(place, OsString::from("--help"));
 }

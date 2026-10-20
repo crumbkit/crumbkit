@@ -279,10 +279,15 @@ where
 ///   refused command line. A topic of the tool's own named `exit-codes` never prints,
 ///   because crumbkit's topic has the name.
 /// - Any other `help` command line drops the word `help` and asks for
-///   `--help`. `shelf help books show` and `shelf books help show` print
-///   what `shelf books show --help` prints, `shelf books help` prints what
-///   `shelf books --help` prints, and clap refuses a word that names no
-///   command, as in `shelf help comets` or `shelf books help shwo`.
+///   `--help`. crumbkit puts `--help` directly after the last word that
+///   follows `help`, comes before any `--` and does not start with `-`, or
+///   in the place of `help` when no word qualifies. clap then meets
+///   `--help` before the flags that follow the command's words. `shelf help
+///   books show` and `shelf books help show` print what `shelf books show
+///   --help` prints, `shelf books help` prints what `shelf books --help`
+///   prints, `shelf help --json` prints what `shelf --help --json` prints,
+///   and clap refuses a word that names no command, as in `shelf help
+///   comets` or `shelf books help shwo`.
 ///
 /// A command without subcommands reads `help` as an ordinary word, such as
 /// the value of a positional argument. A command with its own subcommand
