@@ -162,7 +162,9 @@ impl Refused {
     }
 
     /// Returns what the caller does next, which the refusal prints after
-    /// the message, such as running the `-h` of the deepest command.
+    /// the message, such as running the `-h` of the deepest typed command
+    /// that has a help flag. When no command on the typed path has a help
+    /// flag, it is [`Recovery::None`] with a reason that says so.
     #[must_use]
     pub fn recovery(&self) -> Recovery {
         self.inner.refusal.recovery()

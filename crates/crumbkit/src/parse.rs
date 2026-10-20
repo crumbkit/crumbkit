@@ -310,11 +310,15 @@ where
 /// A command line that clap refuses prints as a failure with the code
 /// `<tool>::cli::usage` in the guide's spelling, and the exit code is 2.
 /// The message is clap's error on one line, and the recovery runs the `-h`
-/// of the deepest command. In text, clap's usage prints under the message
-/// as one `usage:` line for each form. When the tool's refusal function
-/// returns a call that renders and whose line parses, the first such call is
-/// the recovery and the `-h` call is the first alternative, as shelf's
-/// golden file
+/// of the deepest typed command that has a help flag, so a refusal at a
+/// command that turned its help flag off names the help of the nearest
+/// command above it that has one. When no command on the typed path has a
+/// help flag, the recovery offers no step and gives that as its reason. In
+/// text, clap's usage prints under the message as one `usage:` line for
+/// each form. When the tool's refusal function returns a call that renders
+/// and whose line parses, the first such call is the recovery and the `-h`
+/// call, when there is one, is the first alternative, as shelf's golden
+/// file
 /// [`books-show-2-comma-5.stderr`][books-show-2-comma-5] shows.
 ///
 /// clap suggests from every name that a flag or a subcommand accepts. When

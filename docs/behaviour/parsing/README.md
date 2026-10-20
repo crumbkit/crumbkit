@@ -140,9 +140,11 @@ rustdoc of `parse_to` states the message and the recovery.
   argument; `value`, its refused value; and `subcommand`, an unknown
   subcommand, in that order. A refused `--limit` above its bound adds
   `most` ([listings](../output/listings/README.md#an-upper-bound-on---limit)).
-- The recovery runs the `-h` of the deepest typed command, even a hidden
-  one, unless the tool's refusal function returns a call that renders and
-  parses ([refused command lines](../failures/README.md#refused-command-lines)).
+- The recovery runs the `-h` of the deepest typed command that has a help
+  flag, even a hidden one, unless the tool's refusal function returns a
+  call that renders and parses. When no command on the typed path has a
+  help flag, the recovery offers no step and says why
+  ([refused command lines](../failures/README.md#refused-command-lines)).
 - In text, a refusal from clap prints clap's usage as `usage:` lines under
   the message. A command line that stops at a group with visible
   subcommands prints the group's `-h` page in place of the refusal lines.
@@ -167,7 +169,7 @@ A command that refuses the caller after parsing, such as a handler that
 rejects a value, returns an ordinary `Failure`, which `finish` prints.
 crumbkit-test's checks and the golden files cover the whole command tree.
 
-Why: ADR-0015, ADR-0001, ADR-0021, ADR-0050, ADR-0118.
+Why: ADR-0015, ADR-0001, ADR-0021, ADR-0050, ADR-0118, ADR-0124.
 
 ## A refusal that the tool prints
 

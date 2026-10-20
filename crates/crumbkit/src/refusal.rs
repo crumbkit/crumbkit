@@ -6,8 +6,8 @@ use std::ffi::OsString;
 use std::fmt;
 use std::io::Write;
 
-use clap::Command;
 use clap::error::{ContextKind, ContextValue, ErrorKind};
+use clap::{Arg, ArgAction, Command};
 
 use crate::output::failure::{self, PreparedFailure, Printing};
 use crate::page::LimitAbove;
@@ -39,10 +39,11 @@ pub(crate) struct Refusal {
 
 impl Refusal {
     /// Returns the refusal of a command line that clap refused with
-    /// `error`, which says `message` and whose recovery runs the `-h` of the
-    /// command at `path`, the names of the subcommands from the root, unless
-    /// `declared` below holds a call. Its
-    /// fields name what `error` names, as [`clap_fields`] reads them.
+    /// `error`, which says `message`. Its recovery is what
+    /// [`help_recovery`] returns for the command at `path` of `command`, the
+    /// names of the subcommands from the root, unless `declared` below
+    /// holds a call. Its fields name what `error` names, as
+    /// [`clap_fields`] reads them.
     ///
     /// When `error` refuses a `--limit` above the bound of a page, and
     /// `words`, the caller's words after the program name, hold that
@@ -55,10 +56,13 @@ impl Refusal {
     /// `--limit` above its bound they follow crumbkit's own alternatives
     /// (ADR-0056). Otherwise the first of them becomes the recovery, and the
     /// `-h` call becomes the first alternative, followed by the rest of
-    /// them (ADR-0078). With no such call, the `-h` call stays the recovery.
+    /// them (ADR-0078). With no such call, the help recovery stays the
+    /// recovery. A path without a help page has no `-h` call to offer as an
+    /// alternative (ADR-0124).
     pub(crate) fn command_line(
         message: String,
-        path: Vec<String>,
+        command: &Command,
+        path: &[String],
         error: &clap::Error,
         words: &[OsString],
         declared: Vec<Call>,
@@ -82,9 +86,12 @@ impl Refusal {
                 page: None,
             };
         }
-        let help = Recovery::Run(Call::help(path));
+        let help = help_recovery(command, path);
         let (recovery, alternatives) = match declared.next() {
-            Some(first) => (first, std::iter::once(help).chain(declared).collect()),
+            Some(first) => {
+                let help = Some(help).filter(|help| matches!(help, Recovery::Run(_)));
+                (first, help.into_iter().chain(declared).collect())
+            }
             None => (help, Vec::new()),
         };
         Self {
@@ -179,6 +186,60 @@ impl fmt::Display for Refusal {
 }
 
 impl std::error::Error for Refusal {}
+
+/// The reason of the recovery of a refusal whose typed path holds no
+/// command with a help page.
+const NO_HELP: &str = "no command that the command line names has a -h help page";
+
+/// Returns the help recovery of a refusal of a command line whose deepest
+/// typed command is at `path` of `command`, the names of the subcommands
+/// from the root.
+///
+/// The recovery runs the `-h` of the deepest command on the path that has a
+/// help flag, from the deepest typed command up to the root. A hidden
+/// command counts. A command has a help flag when neither it nor a command
+/// above it turned clap's flag off with `disable_help_flag`, which clap
+/// applies to every command below the one that sets it. A command also has
+/// one when it declares its own `-h` argument that prints help, or a command
+/// above it declares one as a global argument. When no command on the path
+/// has a help flag, the recovery is `Recovery::None` with [`NO_HELP`], so a
+/// refusal never names a call that clap refuses (ADR-0124). A name that
+/// `command` does not hold ends the path there.
+fn help_recovery(command: &Command, path: &[String]) -> Recovery {
+    let mut disabled = false;
+    let mut global = false;
+    let mut deepest = None;
+    let mut node = Some(command);
+    for depth in 0..=path.len() {
+        let Some(current) = node else {
+            break;
+        };
+        disabled |= current.is_disable_help_flag_set();
+        let own = current.get_arguments().find(|arg| prints_help(arg));
+        global |= own.is_some_and(Arg::is_global_set);
+        if !disabled || global || own.is_some() {
+            deepest = Some(depth);
+        }
+        node = path
+            .get(depth)
+            .and_then(|name| current.find_subcommand(name));
+    }
+    match deepest.and_then(|depth| path.get(..depth)) {
+        Some(path) => Recovery::Run(Call::help(path.to_vec())),
+        None => Recovery::None {
+            reason: NO_HELP.to_owned(),
+        },
+    }
+}
+
+/// Reports whether `arg` is a `-h` flag that prints help.
+fn prints_help(arg: &Arg) -> bool {
+    arg.get_short() == Some('h')
+        && matches!(
+            arg.get_action(),
+            ArgAction::Help | ArgAction::HelpShort | ArgAction::HelpLong
+        )
+}
 
 /// Returns the fields of a command line that clap refused with `error`:
 ///

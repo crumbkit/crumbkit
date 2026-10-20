@@ -28,7 +28,7 @@ pub(super) fn command_line_refusal<C: FromArgMatches>(
     let page = group_page(command, path, error);
     let usage = usage(&error.render().to_string());
     let declared = declared::alternatives::<C>(command, guide, path, error, words);
-    Refusal::command_line(message, path.to_vec(), error, words, declared).shown_with(usage, page)
+    Refusal::command_line(message, command, path, error, words, declared).shown_with(usage, page)
 }
 
 /// Returns the message of a refusal of a command line that ends at the
