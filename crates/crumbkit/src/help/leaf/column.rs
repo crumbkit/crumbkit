@@ -1,5 +1,7 @@
 //! `Column`, one column of a leaf's row type as its `--help` describes it.
 
+use serde_json::Value;
+
 #[cfg(doc)]
 use super::Leaf;
 #[cfg(doc)]
@@ -27,6 +29,27 @@ pub struct Column {
 }
 
 impl Column {
+    /// Returns the column `name` as `properties`, the fields of a row type's
+    /// JSON Schema, describe it. `long` says whether the name comes from
+    /// [`Row::LONG_COLUMNS`].
+    pub(super) fn read(properties: &[(&str, &Value)], name: &'static str, long: bool) -> Self {
+        let property = properties
+            .iter()
+            .find(|(field, _)| *field == name)
+            .map(|(_, property)| *property);
+        let description = property
+            .and_then(|property| property.get("description"))
+            .and_then(Value::as_str)
+            .map(first_paragraph);
+        Self {
+            name,
+            long,
+            property: property.is_some(),
+            empty: property.is_some_and(crate::row::can_be_empty),
+            description,
+        }
+    }
+
     /// Returns the column's name.
     #[must_use]
     pub const fn name(&self) -> &'static str {
@@ -69,4 +92,15 @@ impl Column {
     pub fn description(&self) -> Option<&str> {
         self.description.as_deref()
     }
+}
+
+/// Returns the first paragraph of `description`, the text before its first
+/// blank line, with its lines joined by spaces.
+fn first_paragraph(description: &str) -> String {
+    description
+        .lines()
+        .map(str::trim)
+        .take_while(|line| !line.is_empty())
+        .collect::<Vec<_>>()
+        .join(" ")
 }

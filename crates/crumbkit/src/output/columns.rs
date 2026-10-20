@@ -118,7 +118,9 @@ pub(super) const fn require_for_stream<R: Row>() {
 /// every field, is a prose result, which `prose` marks, or prints each
 /// row's own text line. Unwrapped or headed JSON, and the JSON of a row type
 /// that prints whole, hold every field unless `--fields` names some
-/// (ADR-0062, ADR-0065).
+/// (ADR-0062, ADR-0065). The JSON without `--fields` holds the field that
+/// [`Row::CHILDREN`] names after the columns, and the text table does not
+/// (ADR-0120).
 pub(super) fn columns<T: Rows>(view: &View, document: Document<T>, prose: bool) -> Vec<&str> {
     if super::lines::chosen::<T::Row>(view) {
         return Vec::new();
@@ -140,7 +142,11 @@ pub(super) fn columns<T: Rows>(view: &View, document: Document<T>, prose: bool) 
         } else {
             &[]
         };
-        T::Row::COLUMNS.iter().chain(long).copied().collect()
+        let mut names: Vec<&str> = T::Row::COLUMNS.iter().chain(long).copied().collect();
+        if view.is_json() {
+            names.extend(super::children::json_field::<T::Row>(&names));
+        }
+        names
     }
 }
 

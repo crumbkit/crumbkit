@@ -406,6 +406,81 @@ fn a_command_whose_lined_rows_have_no_columns_prints_a_text_line_that_names_no_t
 }
 
 #[test]
+fn a_command_whose_rows_print_children_prints_the_children_line_as_help_does() {
+    let input = document(&[command(
+        "tool services list",
+        "List",
+        json!({
+            "form": "document",
+            "columns": [{"name": "name", "long": false, "description": "The name."}],
+            "children": "components",
+        }),
+    )]);
+
+    let reference = render(&input).unwrap();
+
+    let expected = format!("\n{}\n", crumbkit::help::children_line("`components`"));
+    assert!(
+        reference.text().ends_with(&expected),
+        "{}",
+        reference.text()
+    );
+}
+
+#[test]
+fn the_children_line_follows_the_text_line() {
+    let input = document(&[command(
+        "tool services list",
+        "List",
+        json!({"form": "document", "line": "<NAME>", "columns": [], "children": "components"}),
+    )]);
+
+    let reference = render(&input).unwrap();
+
+    assert!(
+        reference.text().ends_with(
+            "\nText: one line per row, `<NAME>`.\n\nChildren: one indented line under each row for each of its `components`.\n"
+        ),
+        "{}",
+        reference.text()
+    );
+}
+
+#[test]
+fn a_document_from_before_the_children_field_existed_prints_no_children_line() {
+    let input = document(&[command(
+        "tool services list",
+        "List",
+        json!({"form": "document"}),
+    )]);
+
+    let reference = render(&input).unwrap();
+
+    assert!(
+        !reference.text().contains("Children:"),
+        "{}",
+        reference.text()
+    );
+}
+
+#[test]
+fn a_headed_command_prints_no_children_line() {
+    let input = document(&[command(
+        "tool logs show",
+        "Show",
+        json!({"form": "headed", "children": "components"}),
+    )]);
+
+    let reference = render(&input).unwrap();
+
+    assert!(
+        !reference.text().contains("Children:"),
+        "{}",
+        reference.text()
+    );
+}
+
+#[test]
 fn a_range_of_exit_codes_prints_its_first_and_last_code_joined_by_a_dash() {
     let input = document(&[command(
         "tool suite run",

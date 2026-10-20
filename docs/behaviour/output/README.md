@@ -51,7 +51,15 @@ object as compact JSON. A field of type
 was, such as `3h`, in the table and in a stream's text lines, and holds the
 time in RFC 3339 in every JSON form, as its rustdoc describes.
 
-Why: ADR-0016, ADR-0063, ADR-0065, ADR-0108, ADR-0114.
+A row type may print its children under each row, such as a service's
+components, by naming the field that holds them in `Row::CHILDREN` and
+building their lines in `Row::child_lines`. The table prints each child
+line under its row, indented by two spaces and escaped as a cell is
+escaped. Child lines do not change the column widths. Compact JSON holds
+the field after the columns, as [rows with children](shapes/README.md#rows-with-children)
+describes.
+
+Why: ADR-0016, ADR-0063, ADR-0065, ADR-0108, ADR-0114, ADR-0120.
 
 ## View flags
 

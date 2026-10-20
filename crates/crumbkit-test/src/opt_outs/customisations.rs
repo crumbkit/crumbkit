@@ -159,6 +159,15 @@ fn leaf_customisations(command: &Command, spelling: Spelling, leaf: &Leaf) -> Ve
             ),
         });
     }
+    if let Some(field) = leaf.children() {
+        list.push(Customisation {
+            declaration: "children",
+            applies_to: command_line(command, &leaf.path().join(" ")),
+            declares: format!(
+                "The text prints one indented line under each row for each of its {field}."
+            ),
+        });
+    }
     for rename in leaf.get_codes() {
         list.push(Customisation {
             declaration: "code-rename",

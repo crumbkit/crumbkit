@@ -474,3 +474,33 @@ fn a_skipped_column_in_an_enum_variant_admits_null_in_that_variant() {
         }
     }
 }
+
+/// A service whose components print under it in text and sit after the
+/// columns in compact JSON.
+#[derive(Serialize, JsonSchema)]
+struct Service {
+    /// The service's name.
+    name: String,
+    /// Where the service runs.
+    region: String,
+    /// The parts that the service runs on.
+    components: Vec<String>,
+}
+
+impl Row for Service {
+    const COLUMNS: &'static [&'static str] = &["name"];
+    const CHILDREN: Option<&'static str> = Some("components");
+}
+
+#[test]
+fn a_schema_requires_the_children_field_beside_the_columns_because_compact_json_holds_it() {
+    const SERVICES: Document<Listing<Service>> =
+        Document::new("ops", "services-list", 1, "One page of the services.");
+
+    let schema = document_schema(SERVICES).to_value();
+
+    assert_eq!(
+        required_of(&schema, "Service"),
+        json!(["name", "components"])
+    );
+}

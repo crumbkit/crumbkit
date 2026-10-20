@@ -9,6 +9,7 @@ use crumbkit::help::{Column, Guide, Leaf, ViewFlag, quote};
 use crate::allow::{Allow, Allowances, Rule};
 use crate::tree::{self, DASHED_NAME};
 
+mod children;
 #[cfg(test)]
 mod tests;
 
@@ -88,6 +89,11 @@ mod tests;
 ///   because help shows the form on one line, and a headed leaf whose row
 ///   type sets `Row::LINE`, because a headed batch's text prints each row's
 ///   bytes and never the line (ADR-0064);
+/// - a leaf whose row type's `Row::CHILDREN` names a field that is not a
+///   field of the row type, has no doc comment, or is also one of its
+///   `Row::COLUMNS` or `Row::LONG_COLUMNS`, and a headed leaf whose row
+///   type sets `Row::CHILDREN`, because a headed batch's text never prints
+///   the child lines (ADR-0120);
 /// - a leaf column without a description, naming the field whose doc
 ///   comment is missing, because `--help` lists the column without one;
 /// - a leaf whose row type's `Row::PROBLEM` names a field that is not one
@@ -341,6 +347,7 @@ fn check_leaves(
         }
         check_columns(&text, leaf, problems);
         check_line(&text, leaf, problems);
+        children::check_children(&text, leaf, problems);
     }
     for visit in tree::walk_visible(command) {
         let named = leaves

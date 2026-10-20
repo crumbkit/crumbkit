@@ -13,8 +13,9 @@ CommonMark file ([commands list](commands-list.md)). The reference therefore
 needs no access to the tool's code and says what the tool's help says.
 crumbkit-markdown depends on crumbkit only for `Effects::line`,
 `Effects::writes_line`, `help::STREAM_LINE`, `help::BYTES_LINE`,
-`help::HEADED_LINE` and `help::text_line`, so the effects, writes, `Output:`
-and `Text:` lines use help's own wording.
+`help::HEADED_LINE`, `help::text_line` and `help::children_line`, so the
+effects, writes, `Output:`, `Text:` and `Children:` lines use help's own
+wording.
 
 The file opens with the title `Commands of <root>` and a line saying that
 the reference is generated from the tool's help. Each command then has a
@@ -33,7 +34,9 @@ in a code span. The section holds these parts:
 - the effects line, the writes line, and the `Output:` line that help
   prints for a command whose `form` is `stream`, `bytes` or `headed`, and
   the `Text:` line for a command whose `line` is not `null`, with the form
-  in a code span;
+  in a code span, and the `Children:` line for a command whose `children`
+  is not `null` and whose `form` is not `headed`, with the field in a code
+  span;
 - an `Exit codes` list.
 
 The reference escapes the inline markup characters of help text and the

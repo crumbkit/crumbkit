@@ -18,6 +18,9 @@ pub(super) struct Table<'a> {
     /// The width of each column over the lines last written, kept so that
     /// writing the table again allocates nothing.
     widths: Vec<usize>,
+    /// The child lines that print under each row, already indented and
+    /// escaped, or an empty list when the rows print none (ADR-0120).
+    children: Vec<String>,
 }
 
 impl<'a> Table<'a> {
@@ -37,7 +40,15 @@ impl<'a> Table<'a> {
         Self {
             lines,
             widths: vec![0; columns.len()],
+            children: Vec::new(),
         }
+    }
+
+    /// Returns the table with `children`, the child lines that print under
+    /// each row in order. They do not count toward the column widths.
+    pub(super) fn with_children(mut self, children: Vec<String>) -> Self {
+        self.children = children;
+        self
     }
 
     /// Writes the header and the first `rows` rows to `out`.
@@ -47,7 +58,8 @@ impl<'a> Table<'a> {
     /// its widest cell among the lines written, and two spaces separate the
     /// columns. A line ends with the text of its last non-empty cell, so no
     /// line ends in padding or separator spaces. A cell's own text prints
-    /// unchanged, including any spaces at its end.
+    /// unchanged, including any spaces at its end. Each row's child lines
+    /// follow the row.
     pub(super) fn write(&mut self, out: &mut impl Write, rows: usize) -> io::Result<()> {
         let lines = self.lines.get(..=rows).unwrap_or(&self.lines);
         // RUST-10: the width of a cell is its number of characters, and the
@@ -63,8 +75,12 @@ impl<'a> Table<'a> {
                 *width = (*width).max(cell.chars().count());
             }
         }
-        for line in lines {
+        for (index, line) in lines.iter().enumerate() {
             write_line(out, line, &self.widths)?;
+            // The first line is the header, which has no child lines.
+            if let Some(children) = index.checked_sub(1).and_then(|row| self.children.get(row)) {
+                out.write_all(children.as_bytes())?;
+            }
         }
         Ok(())
     }

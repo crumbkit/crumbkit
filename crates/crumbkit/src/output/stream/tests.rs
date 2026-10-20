@@ -14,6 +14,7 @@ use crate::Envelope;
 use crate::twins::assert_one_word_apart;
 use crate::{Call, Code, Document, DryRun, Error, Failure, Output, Recovery, Row, Sink, Stream};
 
+mod children;
 mod empty;
 mod exits;
 mod lines;

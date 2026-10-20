@@ -7,7 +7,7 @@ use std::process::ExitCode;
 
 use super::{State, Streaming};
 use crate::help::view::{Kind, Printed};
-use crate::output::{Output, fields, lines, table};
+use crate::output::{Output, children, fields, lines, table};
 use crate::{Document, Row, Stream};
 
 /// Opens the stream on `out` and `err`, as [`stream_to`](super::stream_to)
@@ -32,11 +32,12 @@ pub(super) fn open<R: Row, O: Write, W: Write>(
         names.iter().cloned().map(Cow::Owned).collect()
     } else {
         let long = if view.is_long() { R::LONG_COLUMNS } else { &[] };
-        R::COLUMNS
-            .iter()
-            .chain(long)
-            .map(|&name| Cow::Borrowed(name))
-            .collect()
+        let mut names: Vec<&'static str> = R::COLUMNS.iter().chain(long).copied().collect();
+        // A JSON line holds the children field after the columns (ADR-0120).
+        if view.is_json() {
+            names.extend(children::json_field::<R>(&names));
+        }
+        names.into_iter().map(Cow::Borrowed).collect()
     };
     let mut streaming = Streaming {
         out,

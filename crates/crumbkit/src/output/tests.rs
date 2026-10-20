@@ -19,6 +19,7 @@ mod batch;
 mod budget;
 mod built;
 mod bytes;
+mod children;
 mod direct;
 mod empty;
 mod exits;
