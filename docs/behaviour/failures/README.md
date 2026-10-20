@@ -202,6 +202,12 @@ tool declares them, as in
 A hidden subcommand is left out. A command line that stops at a leaf that
 needs arguments says that the command needs arguments.
 
+A command line that leaves out a required argument with possible values
+names the argument's visible possible values right after the argument, in
+the form that clap uses for an invalid value, as in
+`the following required arguments were not provided: <SHELL> [possible values: bash, fish, zsh]`.
+A missing argument without possible values is named alone.
+
 A leaf may declare a function with `Leaf::refusal_alternatives` that builds
 calls from a refusal of a command line that reaches the leaf, such as the
 refused line with the refused value corrected. A guide may declare one such

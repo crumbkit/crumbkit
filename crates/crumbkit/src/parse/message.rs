@@ -1,7 +1,9 @@
 //! The one-line message of a command line that clap refused.
 
-use clap::Command;
-use clap::error::ErrorKind;
+use std::fmt::Write as _;
+
+use clap::error::{ContextKind, ContextValue, ErrorKind};
+use clap::{Arg, Command};
 
 use super::lines::visible_subcommands;
 use super::suggestion;
@@ -13,10 +15,13 @@ use super::suggestion;
 /// answers with that command's help page or a list of its subcommands, says
 /// what the command needs. A group's message names its visible
 /// subcommands in the order that the tool declares them, as in
-/// ``the command `tool planets` needs a subcommand: show, weigh``. Every other refusal is clap's own message, from
-/// [`message`], with the real name in place of each name that clap
-/// suggests and without the names of hidden items, from
-/// [`suggestion::real_names`].
+/// ``the command `tool planets` needs a subcommand: show, weigh``.
+///
+/// Every other refusal is clap's own message, from [`message`], with the
+/// real name in place of each name that clap suggests and without the names
+/// of hidden items, from [`suggestion::real_names`]. A refusal of missing
+/// required arguments also lists the visible possible values of each
+/// missing argument after its name, from [`with_possible_values`].
 pub(super) fn refusal_message(command: &Command, path: &[String], error: &clap::Error) -> String {
     let mut text = command.get_name().to_owned();
     let mut commands = vec![command];
@@ -27,20 +32,24 @@ pub(super) fn refusal_message(command: &Command, path: &[String], error: &clap::
             commands.push(subcommand);
         }
     }
+    let node = commands.last().copied().unwrap_or(command);
     if !matches!(
         error.kind(),
         ErrorKind::DisplayHelpOnMissingArgumentOrSubcommand | ErrorKind::MissingSubcommand
     ) {
+        let mut rendered = error.render().to_string();
+        if error.kind() == ErrorKind::MissingRequiredArgument {
+            rendered = with_possible_values(&rendered, node, error);
+        }
         // `message` joins the parts with `; `, and `real_names` changes or
         // drops only a part that starts with clap's suggestion, so splitting
         // on `; ` and joining again keeps every other part as it was.
-        return message(&error.render().to_string())
+        return message(&rendered)
             .split("; ")
             .filter_map(|part| suggestion::real_names(part, &commands))
             .collect::<Vec<_>>()
             .join("; ");
     }
-    let node = commands.last().copied().unwrap_or(command);
     let names: Vec<&str> = visible_subcommands(node).map(Command::get_name).collect();
     if names.is_empty() {
         format!("the command `{text}` needs arguments")
@@ -50,6 +59,75 @@ pub(super) fn refusal_message(command: &Command, path: &[String], error: &clap::
             names.join(", ")
         )
     }
+}
+
+/// Returns clap's rendered refusal of missing required arguments with the
+/// visible possible values of each missing argument of `node` that has them,
+/// in clap's own form, after that argument's line, as in
+/// `<SHELL> [possible values: bash, fish, zsh]`.
+///
+/// clap renders each missing argument on its own line as the argument's
+/// `Display`, and lists the same text in the error's `InvalidArg` context, so
+/// a line that equals one of those names after trimming names that
+/// argument. A missing argument that `node` does not hold, such as a
+/// required group, keeps its line as clap rendered it.
+//
+// RUST-10: this reads clap's layout of the refusal, one argument to a line,
+// which clap does not promise to keep. shelf's golden files and the tests of
+// `parse` fail when the layout changes. A message built from the error's
+// context alone replaces it once the layout changes.
+fn with_possible_values(rendered: &str, node: &Command, error: &clap::Error) -> String {
+    let Some(ContextValue::Strings(missing)) = error.get(ContextKind::InvalidArg) else {
+        return rendered.to_owned();
+    };
+    let mut text = String::with_capacity(rendered.len());
+    for line in rendered.split_inclusive('\n') {
+        let body = line.trim_end_matches('\n');
+        let name = body.trim();
+        let arg = if missing.iter().any(|missing| missing == name) {
+            node.get_arguments().find(|arg| arg.to_string() == name)
+        } else {
+            None
+        };
+        let values = arg.and_then(possible_values);
+        text.push_str(body);
+        if let Some(values) = values {
+            text.push(' ');
+            text.push_str(&values);
+        }
+        text.push_str(&line[body.len()..]);
+    }
+    text
+}
+
+/// Returns the visible possible values of `arg` as clap lists them in the
+/// refusal of an invalid value, as in `[possible values: bash, fish, zsh]`,
+/// or `None` when it has none. A value that is empty or holds whitespace is
+/// quoted, as clap quotes it.
+fn possible_values(arg: &Arg) -> Option<String> {
+    let mut text = String::new();
+    for value in arg.get_possible_values() {
+        if value.is_hide_set() {
+            continue;
+        }
+        text.push_str(if text.is_empty() {
+            "[possible values: "
+        } else {
+            ", "
+        });
+        let name = value.get_name();
+        if name.is_empty() || name.contains(char::is_whitespace) {
+            // Writing to a `String` cannot fail.
+            let _ = write!(text, "{name:?}");
+        } else {
+            text.push_str(name);
+        }
+    }
+    if text.is_empty() {
+        return None;
+    }
+    text.push(']');
+    Some(text)
 }
 
 /// Returns clap's rendered error text on one line.
