@@ -2,9 +2,14 @@
 //! or by asking clap for the long help of the command it names.
 
 use std::ffi::OsString;
+use std::io::Write;
 
 use clap::Command;
 
+use super::page::print_text;
+use super::stop::{Printed, Stop};
+use super::walk::walk;
+use crate::Sink;
 use crate::help::{Guide, topic};
 
 #[cfg(test)]
@@ -47,6 +52,34 @@ pub(super) fn topic_page(command: &Command, guide: &Guide, rest: &[OsString]) ->
         }
         _ => None,
     }
+}
+
+/// Prints `page`, the topic that the word `help` at the guide's root asked
+/// for, to `sink`, and returns the `Stop` of the run, after parsing `args`,
+/// the command line with the program name first, against `command` with
+/// `guide`.
+//
+// RUST-10: a topic prints as plain text, also on a terminal and to a
+// styled sink, because crumbkit builds it without styles and only the
+// pages that clap renders carry them. A topic with the root's heading and
+// literal styles, written as `print_page` writes help to a styled sink,
+// replaces this when a tool needs colour there.
+pub(super) fn print_topic<O: Write, E: Write, R>(
+    sink: &mut Sink<O, E, R>,
+    command: Command,
+    guide: &Guide,
+    args: &[OsString],
+    page: &str,
+) -> Stop {
+    let code = print_text(sink, &page);
+    if crate::events::observed() {
+        let root = guide.root_in(&command).iter().map(|&name| name.to_owned());
+        crate::events::helped(&command, &root.collect::<Vec<_>>(), true, code);
+    }
+    // Only this path ends before the walk of the words in `parse`, so it
+    // walks the words for `--json` here.
+    let json = walk(&command, args).json;
+    Stop::new(Printed::Topic, code, json, command, guide)
 }
 
 /// Turns `help` at `position` into a request for clap's long help: it

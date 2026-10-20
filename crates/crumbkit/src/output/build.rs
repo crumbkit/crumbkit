@@ -12,7 +12,7 @@ use super::{DryRun, Output, budget};
 use crate::Sink;
 use crate::help::Guide;
 use crate::help::rename::Renames;
-use crate::parse::Stop;
+use crate::parse::{Printed, Stop};
 use crate::view::View;
 
 /// The flags that choose how a command prints its result: `--json`,
@@ -274,7 +274,7 @@ impl Output {
                 let printing = Printing::of(guide);
                 crate::events::exited(printing.exit(&crate::codes::CLI_USAGE));
                 let code = refusal.print(sink, json, spelling, printing, &mut command);
-                Err(Stop::new(code, json, command, guide))
+                Err(Stop::new(Printed::Refusal, code, json, command, guide))
             }
         }
     }

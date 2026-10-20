@@ -573,6 +573,9 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit: `Refused::error` returns clap's error for a refused command
   line, so a tool reads its kind and context, such as the argument that
   conflicted or was repeated ([behaviour/parsing]).
+- crumbkit: `Stop::printed` returns a [`Printed`] that says whether help,
+  the version, a topic, a refusal or a picker's failure printed before
+  `parse` ended the run ([behaviour/parsing]).
 
 ### Changed
 
@@ -1124,6 +1127,7 @@ rustdoc, or at the page in docs/ that describes the behaviour. -->
 [`Stop`]: crates/crumbkit/src/parse/stop.rs
 [`try_parse`]: crates/crumbkit/src/parse.rs
 [`Refused`]: crates/crumbkit/src/parse/refused.rs
+[`Printed`]: crates/crumbkit/src/parse/stop.rs
 [`events::ended`]: crates/crumbkit/src/events.rs
 [`events::tolerated`]: crates/crumbkit/src/events.rs
 [`events`]: crates/crumbkit/src/events.rs

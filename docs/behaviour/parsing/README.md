@@ -72,11 +72,18 @@ as a `u8`: 0 after help or the version, the code that the guide lists for a
 refused command line, which is 2 unless an exit lists the refusal, and 1
 when the page could not be written. A tool that records the exit of a
 stopped run, such as in a log of its own, or passes it on reads that
-number, because an `ExitCode` cannot be read back. The `Output` inside a
+number, because an `ExitCode` cannot be read back. `Stop::printed` returns
+a `Printed` that says what printed before the run ended: `Help` for `-h`,
+`--help` or the word `help`, `Version`, `Topic` for a topic that `help`
+at the root prints, `Refusal` for a refused command line or for view flags
+that cannot work together, and `Failure` for the failure of a picker's
+source. A tool that records the outcome of a stopped run in a history of
+its own reads it, because the number is 0 after help, the version and a
+topic alike. `Printed` is `#[non_exhaustive]`. The `Output` inside a
 `Stop` sits in a `Box`, which costs one allocation only on a run that
 `parse` ends.
 
-Why: ADR-0002, ADR-0089.
+Why: ADR-0002, ADR-0089, ADR-0107.
 
 ## The command tree after parsing
 

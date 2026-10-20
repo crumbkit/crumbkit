@@ -8,13 +8,13 @@ use clap::error::ErrorKind;
 use clap::{Command, FromArgMatches};
 
 pub use self::refused::{Refused, Unparsed};
-pub use self::stop::Stop;
+pub use self::stop::{Printed, Stop};
 
 use self::attempt::{Attempt, attempt};
-use self::help_word::{ask_for_help, has_topics, topic_page};
+use self::help_word::{ask_for_help, has_topics, print_topic, topic_page};
 use self::lines::add_help_lines;
 use self::message::refusal_message;
-use self::page::{print_page, print_text};
+use self::page::print_page;
 use self::pick::{Picking, Step};
 use self::walk::{help_word, own_names, program_stem, walk};
 use crate::help::Guide;
@@ -466,21 +466,8 @@ where
         if help.at_root
             && let Some(page) = topic_page(&command, guide, &args[help.position + 1..])
         {
-            // RUST-10: a topic prints as plain text, also on a terminal and
-            // to a styled sink, because crumbkit builds it without styles
-            // and only the pages that clap renders carry them. A topic with
-            // the root's heading and literal styles, written as `print_page`
-            // writes help to a styled sink, replaces this when a tool needs
-            // colour there.
-            let code = print_text(sink, &page);
-            if crate::events::observed() {
-                let root: Vec<String> = root.iter().map(|&name| name.to_owned()).collect();
-                crate::events::helped(&command, &root, true, code);
-            }
-            // Only this path ends before the walk below, so it walks the
-            // words for `--json` here.
-            let json = walk(&command, &args).json;
-            return Err(Unparsed::Stopped(Stop::new(code, json, command, guide)));
+            let stop = print_topic(sink, command, guide, &args, &page);
+            return Err(Unparsed::Stopped(stop));
         }
         typed.get_or_insert_with(|| args.get(1..).unwrap_or_default().to_vec());
         ask_for_help(&mut args, help.position);
@@ -518,7 +505,8 @@ where
                 Step::Picked => picked += 1,
                 Step::Refuse => break,
                 Step::Stop(code) => {
-                    return Err(Unparsed::Stopped(Stop::new(code, json, command, guide)));
+                    let stop = Stop::new(Printed::Failure, code, json, command, guide);
+                    return Err(Unparsed::Stopped(stop));
                 }
             }
             let args = pick::args(&command, &words);
@@ -556,12 +544,15 @@ where
         ErrorKind::DisplayHelp | ErrorKind::DisplayVersion
     ) {
         let code = print_page(sink, &error, standard);
-        if error.kind() == ErrorKind::DisplayHelp {
+        let printed = if error.kind() == ErrorKind::DisplayHelp {
             crate::events::helped(&command, &path, long_help, code);
+            Printed::Help
         } else {
             crate::events::exited(code);
-        }
-        return Err(Unparsed::Stopped(Stop::new(code, json, command, guide)));
+            Printed::Version
+        };
+        let stop = Stop::new(printed, code, json, command, guide);
+        return Err(Unparsed::Stopped(stop));
     }
     let message = refusal_message(&command, &path, &error);
     let declared = declared::alternatives::<C>(&mut command, guide, &path, &error, &words);

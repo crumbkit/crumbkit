@@ -6,7 +6,7 @@ use std::io::Write;
 
 use clap::error::ErrorKind;
 
-use super::Stop;
+use super::{Printed, Stop};
 use crate::codes::CLI_USAGE;
 use crate::refusal::Refusal;
 use crate::{Code, Failure as _, Output, Recovery, Sink};
@@ -24,7 +24,8 @@ mod tests;
 #[non_exhaustive]
 pub enum Unparsed {
     /// crumbkit printed help, the version, a topic or the output of a
-    /// picker that ended the run, and the run ends with this `Stop`.
+    /// picker that ended the run, and the run ends with this `Stop`, whose
+    /// [`Stop::printed`] says which.
     Stopped(Stop),
     /// clap or crumbkit refused the command line, and nothing was printed.
     Refused(Refused),
@@ -261,6 +262,6 @@ impl Refused {
         let code = output.print_parse_refusal(sink, &refusal);
         #[cfg(feature = "tracing")]
         crate::trace::spans::exited(&span, code);
-        Stop::with_output(code, output)
+        Stop::with_output(Printed::Refusal, code, output)
     }
 }

@@ -331,6 +331,18 @@ fn a_failed_source_prints_its_failure_and_exits_with_1() {
 }
 
 #[test]
+fn a_failed_source_reports_that_a_failure_printed() {
+    const GUIDE: Guide = Guide::new()
+        .picker(&SCRIPTED)
+        .leaves(&[Leaf::new(&["find"]).choices(&[Choices::new("pattern", offline)])]);
+    let run = run(&GUIDE, &["find"], "0\n", true);
+
+    let printed = run.result.as_ref().err().map(Stop::printed);
+
+    assert_eq!(printed, Some(crate::Printed::Failure));
+}
+
+#[test]
 fn a_parsed_command_line_with_no_input_records_it() {
     let run = run(&GUIDE, &["show", "--list", "a", "--no-input"], "", true);
     let (_, parsed) = run.result.as_ref().unwrap();
