@@ -29,6 +29,10 @@ The lines print in this order, each only on the pages named:
    `Text:` on a leaf whose rows print their own text line, such as `Text:
    one line per row, <NAME>: <ABOUT>; --fields prints a table.`
    ([rows with their own text line](../output/shapes/README.md#rows-with-their-own-text-line)),
+   then `Children:` on a leaf that is not headed and whose rows print
+   their children under them, such as `Children: one indented line under
+   each row for each of its components.`
+   ([rows with children](../output/shapes/README.md#rows-with-children)),
    then `Problems:` on a leaf whose row type names a problem field.
 3. In `-h`, one line that names the visible global flags of the root and of
    each command on the way. `--help` lists those flags in full.
@@ -55,7 +59,7 @@ the version without styles, and crumbkit builds topics without styles, so
 those print as plain text to every sink.
 
 Why: ADR-0021, ADR-0024, ADR-0039, ADR-0041, ADR-0047, ADR-0049, ADR-0064,
-ADR-0065, ADR-0102.
+ADR-0065, ADR-0102, ADR-0120.
 
 ## The walk before parsing
 

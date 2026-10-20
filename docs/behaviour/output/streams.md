@@ -45,7 +45,9 @@ is null in every row, because its header prints before any row arrives.
 `stream` fails to compile for a row type with an empty
 `Row::COLUMNS`, because each line would print nothing of its row. A stream of
 rows with [their own text line](shapes/README.md#rows-with-their-own-text-line)
-prints those lines and no header.
+prints those lines and no header. A row whose type names
+[children](shapes/README.md#rows-with-children) prints its child lines after
+its own line.
 
 With `--json`, each row prints as a whole envelope document on its own line,
 with `schema` and the row under `data`, so the output is JSON Lines and a
@@ -61,7 +63,7 @@ The stream flushes standard output after every line, so a reader sees each
 row as soon as it prints. Standard output stays locked while the stream is
 open.
 
-Why: ADR-0041, ADR-0052, ADR-0063, ADR-0064.
+Why: ADR-0041, ADR-0052, ADR-0063, ADR-0064, ADR-0120.
 
 ## Failures and the exit code
 

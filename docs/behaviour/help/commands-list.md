@@ -56,6 +56,10 @@ lacks, so a program reads every row the same way.
   `<NAME>: <ABOUT>`, or `null` when the leaf's rows print a table or the
   leaf has no document
   ([rows with their own text line](../output/shapes/README.md#rows-with-their-own-text-line)).
+- `children` holds the field whose items each row prints as indented lines
+  under it, such as `components`, or `null` when the rows print no such
+  lines or the leaf has no document
+  ([rows with children](../output/shapes/README.md#rows-with-children)).
 - `columns` lists a headed leaf's JSON fields that `--fields` selects,
   ending with `text` and `base64`, because its text has no columns.
 - `exits` lists the exit codes that the tool declares for the command, each
@@ -73,4 +77,4 @@ formats, and crumbkit-markdown writes a Markdown [reference](reference.md)
 from its JSON document.
 
 Why: ADR-0026, ADR-0016, ADR-0037, ADR-0039, ADR-0041, ADR-0047, ADR-0064,
-ADR-0065, ADR-0103.
+ADR-0065, ADR-0103, ADR-0120.

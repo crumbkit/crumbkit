@@ -15,7 +15,7 @@ use super::envelope::{Extras, Failures, Selected, SelectedRows, write_document};
 use super::failure::PreparedFailure;
 use super::layout::JsonLayout;
 use super::table::Table;
-use super::{Output, layout, lines, listing, problems, prose};
+use super::{Output, children, layout, lines, listing, problems, prose};
 use crate::age::TextCells;
 use crate::help::rename::Renames;
 use crate::view::View;
@@ -322,8 +322,10 @@ impl<'a, T: Rows> Prepared<'a, T> {
         } else {
             None
         };
-        let table = (text && value.prose().is_none() && lines.is_none())
-            .then(|| Table::new(columns, values, settings.view.names().is_none()));
+        let table = (text && value.prose().is_none() && lines.is_none()).then(|| {
+            let children = children::blocks(settings.view, value.rows());
+            Table::new(columns, values, settings.view.names().is_none()).with_children(children)
+        });
         Ok(Self {
             document,
             value,
