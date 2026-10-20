@@ -593,6 +593,9 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   command line recover with the tool's own sentence, before `-h` and the
   tool's calls, and `RefusalContext::command` returns the leaf's command
   ([behaviour/failures]).
+- crumbkit: `Refused::as_json` fixes whether a refusal that the tool prints
+  is the JSON failure document on standard output or text on standard
+  error, whatever the words said ([behaviour/parsing]).
 
 ### Changed
 
