@@ -206,7 +206,9 @@ A command line that leaves out a required argument with possible values
 names the argument's visible possible values right after the argument, in
 the form that clap uses for an invalid value, as in
 `the following required arguments were not provided: <SHELL> [possible values: bash, fish, zsh]`.
-A missing argument without possible values is named alone.
+A missing argument without possible values is named alone. A refusal that
+names several missing arguments separates them with commas, as in
+`the following required arguments were not provided: <SHELL> [possible values: bash, fish, zsh], <DIR>`.
 
 A leaf may declare a function with `Leaf::refusal_alternatives` that builds
 calls from a refusal of a command line that reaches the leaf, such as the

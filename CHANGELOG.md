@@ -1084,6 +1084,9 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   binary create each run's XDG directories below the canonical temporary
   directory, so their paths hold no symbolic link
   ([behaviour/checks/end-to-end]).
+- crumbkit: a refusal from [`parse`] separates several missing required
+  arguments with commas, as in `--edit <APP>, <NAME>`, so they no longer
+  read as one option that takes two values ([behaviour/failures]).
 
 <!-- Each label below points at the source file that holds the item's
 rustdoc, or at the page in docs/ that describes the behaviour. -->
