@@ -484,11 +484,19 @@ fn short_help_prints_the_root_page_that_the_help_golden_check_pins() {
 }
 
 #[test]
-fn books_without_a_command_is_refused_with_code_2() {
+fn books_without_a_command_prints_the_books_help_page_on_standard_error_with_code_2() {
     refused_beside(None, &["books"], &["books", "list"])
         .code(2)
         .stdout_eq("")
-        .stderr_eq(file!["golden/books.stderr"].raw());
+        .stderr_eq(file!["golden/help/shelf-books-h.txt"].raw());
+}
+
+#[test]
+fn books_without_a_command_with_json_prints_the_failure_document_with_code_2() {
+    refused_beside(None, &["books", "--json"], &["books", "list", "--json"])
+        .code(2)
+        .stdout_eq(file!["golden/books-json.json"].raw())
+        .stderr_eq("");
 }
 
 #[test]
