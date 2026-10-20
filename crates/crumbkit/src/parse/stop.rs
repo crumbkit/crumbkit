@@ -70,7 +70,8 @@ pub enum Printed {
     /// guide's root followed by the topic's name.
     Topic,
     /// A refused command line printed on standard error, or on standard
-    /// output as a JSON document when the caller asked for JSON.
+    /// output as a JSON document when the caller asked for JSON or the tool
+    /// chose JSON with [`Refused::as_json`](crate::Refused::as_json).
     Refusal,
     /// The failure of a picker's source printed on standard error, or on
     /// standard output as a JSON document when the caller asked for JSON.
@@ -148,6 +149,9 @@ impl Stop {
     /// [`Output::is_json`] and [`Output::progress_allowed`] answer as they
     /// do after parsing. Its `--long`, `--full` and `--fields` are always
     /// off, because they shape a result that a stopped run does not have.
+    /// After a refusal whose form the tool chose with
+    /// [`Refused::as_json`](crate::Refused::as_json), its `is_json` reports
+    /// the form that printed.
     #[must_use]
     pub fn output(&self) -> &Output {
         &self.inner.output
@@ -202,12 +206,17 @@ impl Stop {
 /// `command` with `guide`, in which the walk found `--json` when `json` is
 /// true. Its `--long`, `--full` and `--fields` are off.
 pub(crate) fn stopped(json: bool, command: Command, guide: &Guide) -> Output {
-    let view = if json {
+    Output::stopped(view(json), command, guide)
+}
+
+/// Returns the view of a run that `parse` ended: JSON when `json` is true
+/// and text otherwise, with `--long`, `--full` and `--fields` off.
+pub(crate) const fn view(json: bool) -> View {
+    if json {
         View::Json(Selection::Columns)
     } else {
         View::Text(Table::Compact)
-    };
-    Output::stopped(view, command, guide)
+    }
 }
 
 impl From<Stop> for ExitCode {

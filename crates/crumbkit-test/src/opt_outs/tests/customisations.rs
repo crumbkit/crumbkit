@@ -18,19 +18,31 @@ fn version_call(_: &RefusalContext<'_>) -> Vec<Call> {
     vec![Call::new(&["version"])]
 }
 
+/// Returns the hint that a refused command line offers as its recovery.
+#[expect(
+    clippy::unnecessary_wraps,
+    reason = "a refusal hint function returns an `Option`"
+)]
+fn id_hint(_: &RefusalContext<'_>) -> Option<String> {
+    Some("name a book by its id".to_owned())
+}
+
 /// The tool's code for crumbkit's usage code.
 const USAGE: Code = Code::new("shelf", "cli", "usage");
 
-/// A guide that declares a rename, an exit for the renamed
-/// usage code, refusal alternatives for every command line and a leaf that passes on its program's exit code and offers
-/// its own alternatives when its command line is refused.
+/// A guide that declares a rename, an exit for the renamed usage code,
+/// refusal alternatives and a refusal hint for every command line, and a
+/// leaf that passes on its program's exit code and offers its own
+/// alternatives and hint when its command line is refused.
 const DECLARING: Guide = Guide::new()
     .codes(&[Rename::new(&CLI_USAGE, &USAGE)])
     .exits(&[Exit::new(64, "The command line was refused.").failures(&[&USAGE])])
     .refusal_alternatives(version_call)
+    .refusal_hint(id_hint)
     .leaves(&[Leaf::new(&["books", "show"])
         .passes_on_exit("the pager")
-        .refusal_alternatives(version_call)]);
+        .refusal_alternatives(version_call)
+        .refusal_hint(id_hint)]);
 
 #[test]
 fn the_report_lists_declarations_under_customisations_without_a_reason_or_a_cost() {
@@ -42,7 +54,7 @@ fn the_report_lists_declarations_under_customisations_without_a_reason_or_a_cost
         read(&dir, "opt-outs.txt"),
         "shelf has no opt-outs from the conventions.\n\
          \n\
-         shelf declares 5 customisations, which need no reason.\n\
+         shelf declares 7 customisations, which need no reason.\n\
          \n\
          code-rename: every run of shelf\n\
          \x20 Declares: Runs print shelf::cli::usage in place of shelf::cli::usage.\n\
@@ -53,23 +65,29 @@ fn the_report_lists_declarations_under_customisations_without_a_reason_or_a_cost
          refusal-alternatives: every run of shelf\n\
          \x20 Declares: A refused command line for a command without its own function also offers the tool's own alternatives.\n\
          \n\
+         refusal-hint: every run of shelf\n\
+         \x20 Declares: A refused command line for a command without its own function may recover with the tool's own hint.\n\
+         \n\
          passes-on-exit: shelf books show\n\
          \x20 Declares: The command exits with the exit code of the pager.\n\
          \n\
          refusal-alternatives: shelf books show\n\
-         \x20 Declares: A refused command line for this command also offers the tool's own alternatives.\n"
+         \x20 Declares: A refused command line for this command also offers the tool's own alternatives.\n\
+         \n\
+         refusal-hint: shelf books show\n\
+         \x20 Declares: A refused command line for this command may recover with the tool's own hint.\n"
     );
     let report: Value = serde_json::from_str(&read(&dir, "opt-outs.json")).unwrap();
     assert_eq!(report["data"], json!([]));
     assert_eq!(
-        report["customisations"][3],
+        report["customisations"][4],
         json!({
             "declaration": "passes-on-exit",
             "applies_to": "shelf books show",
             "declares": "The command exits with the exit code of the pager.",
         })
     );
-    assert_eq!(report["customisations"].as_array().unwrap().len(), 5);
+    assert_eq!(report["customisations"].as_array().unwrap().len(), 7);
 }
 
 #[test]

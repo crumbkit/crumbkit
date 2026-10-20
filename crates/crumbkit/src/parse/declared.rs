@@ -1,6 +1,7 @@
-//! The alternatives that a leaf's function, or else the guide's, returns
-//! for a refusal of a command line that names the leaf, kept when they
-//! render and their line parses (ADR-0056).
+//! The alternatives and the hint that a leaf's functions, or else the
+//! guide's, return for a refusal of a command line that names the leaf. The
+//! alternatives are kept when they render and their line parses (ADR-0056,
+//! ADR-0123).
 
 use std::ffi::OsString;
 
@@ -11,25 +12,37 @@ use super::attempt;
 use crate::Call;
 use crate::help::{Guide, RefusalContext};
 
-/// Returns the calls that the function of the leaf of `guide` at `path`,
-/// or else the guide's function, returns for `error`, with which clap
-/// refused `words`, the caller's words after the program name. It keeps
-/// each call that renders against `command` and whose line [`parses`], and
-/// returns no calls when neither function is set.
+/// What the tool's functions returned for one refused command line.
+#[derive(Debug, Default)]
+pub(super) struct Declared {
+    /// The calls that render and whose line parses, in the function's
+    /// order.
+    pub(super) calls: Vec<Call>,
+    /// The hint, or `None` when no function is set or it returned none.
+    pub(super) hint: Option<String>,
+}
+
+/// Returns the calls and the hint that the functions of the leaf of `guide`
+/// at `path`, or else the guide's functions, return for `error`, with which
+/// clap refused `words`, the caller's words after the program name. It
+/// keeps each call that renders against `command` and whose line
+/// [`parses`], and returns no calls and no hint when no function is set.
 ///
 /// Only a refused line with a function builds the branch of the tree on
 /// `path` and parses again, so for a guide without a function of its own
-/// other refusals cost one lookup in the guide's leaves.
-pub(super) fn alternatives<C: FromArgMatches>(
+/// other refusals cost two lookups in the guide's leaves.
+pub(super) fn declared<C: FromArgMatches>(
     command: &mut Command,
     guide: &Guide,
     path: &[String],
     error: &clap::Error,
     words: &[OsString],
-) -> Vec<Call> {
-    let Some(function) = guide.refusal_function(path) else {
-        return Vec::new();
-    };
+) -> Declared {
+    let alternatives = guide.refusal_function(path);
+    let hint = guide.refusal_hint_function(path);
+    if alternatives.is_none() && hint.is_none() {
+        return Declared::default();
+    }
     // `RefusalContext::new` displays the leaf's arguments, which clap
     // allows only after a build, and a build of the first command on the
     // path builds the leaf with the global arguments of the root.
@@ -41,17 +54,20 @@ pub(super) fn alternatives<C: FromArgMatches>(
     let mut leaf: &Command = command;
     for name in path {
         let Some(next) = leaf.find_subcommand(name) else {
-            return Vec::new();
+            return Declared::default();
         };
         leaf = next;
     }
-    let calls = function(&RefusalContext::new(leaf, error, words));
-    calls
+    let context = RefusalContext::new(leaf, error, words);
+    let calls = alternatives.map_or_else(Vec::new, |function| function(&context));
+    let hint = hint.and_then(|function| function(&context));
+    let calls = calls
         .into_iter()
         .filter(|call| {
             crate::call::render(call, command).is_ok() && parses::<C>(command, call, guide)
         })
-        .collect()
+        .collect();
+    Declared { calls, hint }
 }
 
 /// Reports whether the line of `call`, which already rendered against

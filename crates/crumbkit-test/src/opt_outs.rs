@@ -58,7 +58,8 @@ const SCHEMA: &str = "crumbkit/opt-outs/v1";
 /// code rename, each exit that lists one of
 /// crumbkit's codes or its rename, each document whose name is not its
 /// command's path, each leaf that passes on a program's exit code, each
-/// leaf that declares refusal alternatives, the guide's
+/// leaf that declares refusal alternatives or a refusal hint, the guide's
+/// refusal alternatives and refusal hint, the guide's
 /// `Guide::dashed_forms` declaration, and with it each command named in
 /// another style that also answers to its dashed form, such as
 /// `reading_lists` for `reading-lists`. The report spells codes with

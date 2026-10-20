@@ -15,7 +15,7 @@ use crate::refusal::Refusal;
 
 /// Returns the refusal of `words`, a command line that clap refused with
 /// `error` at the command at `path` of `command`, with its message, the
-/// calls that `guide` declares for it, clap's usage lines, and the page of a
+/// calls and the hint that `guide` declares for it, clap's usage lines, and the page of a
 /// group that the line stops at (ADR-0118).
 pub(super) fn command_line_refusal<C: FromArgMatches>(
     command: &mut Command,
@@ -27,8 +27,17 @@ pub(super) fn command_line_refusal<C: FromArgMatches>(
     let message = refusal_message(command, path, error);
     let page = group_page(command, path, error);
     let usage = usage(&error.render().to_string());
-    let declared = declared::alternatives::<C>(command, guide, path, error, words);
-    Refusal::command_line(message, path.to_vec(), error, words, declared).shown_with(usage, page)
+    let declared = declared::declared::<C>(command, guide, path, error, words);
+    Refusal::command_line(
+        message,
+        command,
+        path,
+        error,
+        words,
+        declared.calls,
+        declared.hint,
+    )
+    .shown_with(usage, page)
 }
 
 /// Returns the message of a refusal of a command line that ends at the
