@@ -596,6 +596,9 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit: `Refused::as_json` fixes whether a refusal that the tool prints
   is the JSON failure document on standard output or text on standard
   error, whatever the words said ([behaviour/parsing]).
+- crumbkit: `Listing::capped` marks a listing whose tool read only part of
+  its source, so its footer gives the rows read as a lower bound and its
+  JSON document leaves out `total` ([behaviour/output/listings]).
 
 ### Changed
 

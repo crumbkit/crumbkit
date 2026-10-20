@@ -9,8 +9,8 @@ use clap::Command;
 use crate::{Rows, Shape};
 
 /// Returns whether `value` is a listing whose source holds rows that it
-/// leaves out: fewer rows than its total, or more rows that the tool did not
-/// count. Its JSON document then holds `"truncated": true`, as does a
+/// leaves out: fewer rows than its total, more rows that the tool did not
+/// count, or rows beyond those the tool read from a capped source. Its JSON document then holds `"truncated": true`, as does a
 /// document that the output budget cut short.
 pub(super) fn leaves_out<T: Rows>(value: &T) -> bool {
     T::SHAPE == Shape::Listing && value.more()
@@ -30,11 +30,15 @@ pub(super) fn matches_none<T: Rows>(value: &T) -> bool {
 /// listing names one shown row with its singular, as in `Showing 1 book,
 /// and more match.`, or as `row` when it has no description. A listing
 /// whose `--limit` has a bound names it, as in `Showing 4 of 6 books.
-/// --limit takes up to 100, and --all shows every one.` Otherwise it writes
+/// --limit takes up to 100, and --all shows every one.` A listing from a
+/// capped source writes [`write_capped_footer`]'s line. Otherwise it writes
 /// nothing.
 pub(super) fn write_footer<T: Rows>(out: &mut impl Write, value: &T) -> io::Result<()> {
     if !leaves_out(value) {
         return Ok(());
+    }
+    if let Some(read) = value.at_least() {
+        return write_capped_footer(out, value, read);
     }
     let total = value.total();
     write_shown(
@@ -53,6 +57,33 @@ pub(super) fn write_footer<T: Rows>(out: &mut impl Write, value: &T) -> io::Resu
             ". --limit takes up to {most}, and --all shows every one."
         ),
         None => writeln!(out, ". --all shows every one."),
+    }
+}
+
+/// Writes the footer of a listing from a capped source, whose tool read
+/// `read` rows and whose source holds more (ADR-0130). While the page
+/// shows fewer than `read` rows, it gives `read` as a lower bound and says
+/// how many rows `--all` shows, as in `Showing 20 of at least 100 records.
+/// --all shows 100 of them.`, and names the bound of `--limit` when it has
+/// one. When the page shows every row that the tool read, `--all` shows
+/// nothing more, so the footer reads `Showing 100 records, and more
+/// match.`, with the singular or `rows` as a listing without a total uses.
+fn write_capped_footer<T: Rows>(out: &mut impl Write, value: &T, read: usize) -> io::Result<()> {
+    let shown = value.rows().len();
+    if shown >= read {
+        write_shown(out, shown, None, value.description(), value.singular())?;
+        return writeln!(out, ", and more match.");
+    }
+    match value.description() {
+        Some(description) => write!(out, "Showing {shown} of at least {read} {description}")?,
+        None => write!(out, "Showing {shown} of at least {read}")?,
+    }
+    match value.limit_bound() {
+        Some(most) => writeln!(
+            out,
+            ". --limit takes up to {most}, and --all shows {read} of them."
+        ),
+        None => writeln!(out, ". --all shows {read} of them."),
     }
 }
 

@@ -1,15 +1,17 @@
 //! The traits that let a result print as a table.
 
-use std::borrow::Cow;
 use std::fmt;
 
 use schemars::{JsonSchema, Schema, SchemaGenerator};
-use serde::{Serialize, Serializer};
+use serde::Serialize;
 
 use crate::{Call, Failure};
 
 mod fields;
+mod no_row;
 pub(crate) mod problems;
+
+pub use no_row::NoRow;
 
 pub(crate) use fields::{can_be_empty, properties};
 
@@ -337,16 +339,26 @@ pub trait Rows: Serialize + sealed::Sealed {
 
     /// Returns the number of rows that matched when the result is one page
     /// of them, and `None` otherwise. Only a `Listing` returns a total, and
-    /// a listing whose source the tool did not count returns `None`
-    /// (`Listing::uncounted`).
+    /// a listing whose source the tool did not count (`Listing::uncounted`)
+    /// or read only in part (`Listing::capped`) returns `None`.
     #[doc(hidden)]
     fn total(&self) -> Option<usize> {
         None
     }
 
+    /// Returns the number of rows that the tool read when the result is a
+    /// listing from a capped source, whose source holds more rows beyond
+    /// them, and `None` otherwise (`Listing::capped`). The footer gives it
+    /// as a lower bound on the rows that matched.
+    #[doc(hidden)]
+    fn at_least(&self) -> Option<usize> {
+        None
+    }
+
     /// Returns whether the source holds rows that the result leaves out:
-    /// fewer rows than the total, or more rows that the tool did not count.
-    /// Only a `Listing` returns true.
+    /// fewer rows than the total, more rows that the tool did not count, or
+    /// rows beyond those the tool read from a capped source. Only a
+    /// `Listing` returns true.
     #[doc(hidden)]
     fn more(&self) -> bool {
         false
@@ -506,7 +518,7 @@ pub enum Shape {
     /// A `Vec` of rows, whose `data` is an array.
     List,
     /// A [`Listing`](crate::Listing), whose `data` is an array beside
-    /// `total` when the tool counted the rows, `truncated` and, when it has
+    /// `total` when the tool counted every matching row, `truncated` and, when it has
     /// one, `summary`.
     Listing,
     /// A [`Batch`](crate::Batch), whose `data` is an array beside
@@ -518,39 +530,6 @@ pub enum Shape {
     /// [`Bytes`](crate::Bytes), whose `data` is an object that holds the
     /// bytes as `text` or `base64`.
     Bytes,
-}
-
-/// The row type of a result without rows, which is a
-/// [`Prose`](crate::Prose). It has no values and no columns, so a result of
-/// this row type never holds a row.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum NoRow {}
-
-impl Row for NoRow {
-    const COLUMNS: &'static [&'static str] = &[];
-}
-
-impl Serialize for NoRow {
-    fn serialize<S: Serializer>(&self, _: S) -> Result<S::Ok, S::Error> {
-        match *self {}
-    }
-}
-
-/// Describes `NoRow` as the schema `false`, which no value matches, because
-/// a result of this row type never holds a row. The schema is inline, so a
-/// generator returns `false` itself and adds no definition.
-impl JsonSchema for NoRow {
-    fn inline_schema() -> bool {
-        true
-    }
-
-    fn schema_name() -> Cow<'static, str> {
-        "NoRow".into()
-    }
-
-    fn json_schema(_: &mut SchemaGenerator) -> Schema {
-        Schema::from(false)
-    }
 }
 
 impl<R: Row> Rows for R {
