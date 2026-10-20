@@ -25,6 +25,7 @@ mod names;
 mod returned;
 mod root;
 mod styled;
+mod usage;
 mod views;
 
 /// A tool with two global flags, a version, and a group that holds a visible
@@ -153,6 +154,7 @@ fn a_refused_command_line_prints_the_usage_failure_on_standard_error_and_exits_w
     assert_eq!(parsed.out, "");
     let expected = "\
 error: unexpected argument '--srot' found; a similar argument exists: '--sort'
+  usage: tool planets show --sort <KEY> <NAME>...
   help:  run `tool planets show -h`
   code:  tool::cli::usage
 ";

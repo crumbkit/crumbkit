@@ -182,6 +182,7 @@ fn a_function_that_returns_no_call_leaves_help_as_the_recovery() {
 
     let expected = "\
 error: unexpected argument '--srot' found; a similar argument exists: '--sort'
+  usage: tool planets show --sort <KEY> <NAME>...
   help:  run `tool planets show -h`
   code:  tool::cli::usage
 ";
@@ -216,6 +217,7 @@ fn a_refusal_of_a_line_that_names_another_command_offers_none_of_the_leafs_alter
 
     let expected = "\
 error: unexpected argument '--srot' found; a similar argument exists: '--sort'
+  usage: tool planets show --sort <KEY> <NAME>...
   help:  run `tool planets show -h`
   code:  tool::cli::usage
 ";

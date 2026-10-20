@@ -195,12 +195,25 @@ the line sets a `--limit` above its
 command line exits with 2 unless the guide lists another code
 ([exit codes](exit-codes.md)).
 
-A command line that stops at a group says that the group needs a
-subcommand and names the group's visible subcommands in the order that the
-tool declares them, as in
+A command line that stops at a group with visible subcommands prints the
+group's `-h` page on standard error in text, with no `error:`, `help:` or
+`code:` line, and exits with the code of a refused command line. Its failure
+document says that the group needs a subcommand and names the group's
+visible subcommands in the order that the tool declares them, as in
 ``the command `shelf books` needs a subcommand: list, show, summarize, remove``.
 A hidden subcommand is left out. A command line that stops at a leaf that
 needs arguments says that the command needs arguments.
+
+In text, a refusal from clap prints clap's usage under the `error:` line,
+one `usage:` line for each form that clap prints, as in
+`usage: shelf books show <ID>...`. The usage names the tool as help does.
+clap leaves out of it the options that the line does not need, so it can
+differ from the usage line of help. clap prints a usage only with its
+`usage` feature, which clap's default features enable, and never for an
+empty value, a value outside the possible values, or a value that an
+argument's parser rejects. A refusal that crumbkit words
+itself, for a view flag, an unknown `--fields` name or a `--limit` above
+its bound, prints no usage line. The failure document holds no usage.
 
 A command line that leaves out a required argument with possible values
 names the argument's visible possible values right after the argument, in
@@ -226,7 +239,7 @@ has not checked, and a trace never holds the caller's values.
 
 [Parsing](../parsing/README.md) covers when `parse` refuses a command line.
 
-Why: ADR-0001, ADR-0056, ADR-0030, ADR-0078, ADR-0106.
+Why: ADR-0001, ADR-0056, ADR-0030, ADR-0078, ADR-0106, ADR-0118.
 
 ## The `miette` feature
 

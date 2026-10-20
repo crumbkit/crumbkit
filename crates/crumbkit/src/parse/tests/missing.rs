@@ -3,7 +3,7 @@
 
 use std::process::ExitCode;
 
-use clap::{Arg, Command};
+use clap::{Arg, ArgAction, Command};
 
 use super::{admits, parse, parse_tree, tool};
 
@@ -20,39 +20,80 @@ fn tool_with_three_leaves() -> Command {
 }
 
 #[test]
-fn a_command_line_that_stops_at_a_group_says_that_the_group_needs_a_subcommand() {
+fn a_command_line_that_stops_at_a_group_prints_the_group_s_help_page_on_standard_error_with_code_2()
+{
     admits(tool(), &["tool", "planets"], &["tool", "planets", "weigh"]);
     let parsed = parse(&["tool", "planets"]);
+    let page = parse(&["tool", "planets", "-h"]).out;
 
     assert_eq!(parsed.code, Some(ExitCode::from(2)));
     assert_eq!(parsed.out, "");
-    let expected = "\
-error: the command `tool planets` needs a subcommand: show
-  help:  run `tool planets -h`
-  code:  tool::cli::usage
-";
-    assert_eq!(parsed.err, expected);
+    assert!(page.starts_with("Work with planets\n"), "{page}");
+    assert_eq!(parsed.err, page);
 }
 
 #[test]
-fn a_group_s_refusal_names_its_visible_subcommands_in_declaration_order() {
+fn a_group_that_clap_refuses_without_its_page_prints_its_help_page_too() {
     admits(
         tool_with_three_leaves(),
         &["tool", "planets"],
         &["tool", "planets", "weigh"],
     );
     let parsed = parse_tree(tool_with_three_leaves(), &["tool", "planets"]);
+    let page = parse_tree(tool_with_three_leaves(), &["tool", "planets", "-h"]).out;
 
-    let expected = "\
-error: the command `tool planets` needs a subcommand: show, weigh
-  help:  run `tool planets -h`
-  code:  tool::cli::usage
-";
-    assert_eq!(parsed.err, expected);
+    assert_eq!(parsed.code, Some(ExitCode::from(2)));
+    assert_eq!(parsed.out, "");
+    assert!(
+        page.starts_with("Usage: tool planets <COMMAND>\n"),
+        "{page}"
+    );
+    assert_eq!(parsed.err, page);
 }
 
 #[test]
-fn a_leaf_that_needs_arguments_names_no_subcommands() {
+fn a_command_line_that_stops_at_a_group_with_json_prints_the_failure_document_that_names_its_subcommands()
+ {
+    let refused = ["tool", "planets", "--json"];
+    admits(tool(), &refused, &["tool", "planets", "weigh", "--json"]);
+    let parsed = parse(&refused);
+
+    assert_eq!(parsed.code, Some(ExitCode::from(2)));
+    let expected = concat!(
+        r#"{"schema":"tool/failure/v1","code":"tool::cli::usage","#,
+        r#""message":"the command `tool planets` needs a subcommand: show","#,
+        r#""recovery":{"kind":"run","call":"tool planets -h"}}"#,
+        "\n",
+    );
+    assert_eq!(parsed.out, expected);
+    assert_eq!(parsed.err, "");
+}
+
+#[test]
+fn a_group_s_failure_document_names_its_visible_subcommands_in_declaration_order() {
+    let tool = || {
+        tool_with_three_leaves().arg(
+            Arg::new("json")
+                .long("json")
+                .global(true)
+                .action(ArgAction::SetTrue),
+        )
+    };
+    let refused = ["tool", "planets", "--json"];
+    admits(tool(), &refused, &["tool", "planets", "weigh", "--json"]);
+    let parsed = parse_tree(tool(), &refused);
+
+    assert!(
+        parsed
+            .out
+            .contains(r#""message":"the command `tool planets` needs a subcommand: show, weigh""#),
+        "{}",
+        parsed.out
+    );
+}
+
+#[test]
+fn a_leaf_that_needs_arguments_keeps_the_refusal_lines_with_its_usage_line() {
     let tool = || {
         Command::new("tool").subcommand(
             Command::new("show")
@@ -63,13 +104,14 @@ fn a_leaf_that_needs_arguments_names_no_subcommands() {
     admits(tool(), &["tool", "show"], &["tool", "show", "Mars"]);
     let parsed = parse_tree(tool(), &["tool", "show"]);
 
-    assert!(
-        parsed
-            .err
-            .starts_with("error: the command `tool show` needs arguments\n"),
-        "{}",
-        parsed.err
-    );
+    assert_eq!(parsed.code, Some(ExitCode::from(2)));
+    let expected = "\
+error: the command `tool show` needs arguments
+  usage: tool show [name]
+  help:  run `tool show -h`
+  code:  tool::cli::usage
+";
+    assert_eq!(parsed.err, expected);
 }
 
 /// A tool whose `copy` leaf takes the required positionals `APP` and `NAME`,
@@ -104,6 +146,7 @@ fn a_refusal_separates_two_missing_positionals_with_a_comma() {
     assert_eq!(parsed.code, Some(ExitCode::from(2)));
     let expected = "\
 error: the following required arguments were not provided: <APP>, <NAME>
+  usage: tool copy <APP> <NAME>
   help:  run `tool copy -h`
   code:  tool::cli::usage
 ";
@@ -178,6 +221,7 @@ fn a_missing_argument_with_possible_values_names_its_visible_values_after_its_na
     assert_eq!(parsed.code, Some(ExitCode::from(2)));
     let expected = "\
 error: the following required arguments were not provided: <SHELL> [possible values: bash, fish, zsh], <DIR>
+  usage: tool completions <SHELL> <DIR>
   help:  run `tool completions -h`
   code:  tool::cli::usage
 ";
