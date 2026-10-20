@@ -8,7 +8,7 @@ use clap::Command;
 
 use super::page::print_text;
 use super::stop::{Printed, Stop};
-use super::walk::walk;
+use super::walk::{Kind, Words, walk};
 use crate::Sink;
 use crate::help::{Guide, topic};
 
@@ -27,22 +27,28 @@ pub(super) fn has_topics(command: &Command, root: &[&str], guide: &Guide) -> boo
 }
 
 /// Returns the topic that `help` at the guide's root prints without clap,
-/// for `rest`, the words after `help`: a topic's text when the one word in
-/// `rest` that names something names a topic of `guide` or `exit-codes`,
-/// and no command or alias directly below the root has that name. It
-/// returns `None` otherwise, and the caller asks clap for help instead, so
-/// `help` alone prints the root's long help (ADR-0101).
+/// for `args`, the command line with the program name first, whose word
+/// `help` is at `position`: a topic's text when the one word after `help`
+/// that names something names a topic of `guide` or `exit-codes`, and no
+/// command or alias directly below the root has that name. It returns
+/// `None` otherwise, and the caller asks clap for help instead, so `help`
+/// alone prints the root's long help (ADR-0101).
 ///
-/// The words that name something are the words before any `--` that do not
-/// start with `-`.
+/// [`naming_words`] finds the words that name something, so the separate
+/// value of an option, as in `shelf help catalogue --fields title`, names
+/// nothing (ADR-0129).
 //
 // RUST-10: the page ignores flags, so `shelf help catalogue --json` prints
 // the topic as text. A topic in JSON replaces this when a caller needs it.
-pub(super) fn topic_page(command: &Command, guide: &Guide, rest: &[OsString]) -> Option<String> {
-    let mut words = rest
-        .iter()
-        .take_while(|word| *word != "--")
-        .filter(|word| !word.as_encoded_bytes().starts_with(b"-"));
+pub(super) fn topic_page(
+    command: &Command,
+    guide: &Guide,
+    args: &[OsString],
+    position: usize,
+) -> Option<String> {
+    let mut words = naming_words(command, args, position)
+        .into_iter()
+        .filter_map(|index| args.get(index));
     let root = guide.root_in(command).iter().fold(command, |node, name| {
         node.find_subcommand(name).unwrap_or(node)
     });
@@ -52,6 +58,37 @@ pub(super) fn topic_page(command: &Command, guide: &Guide, rest: &[OsString]) ->
         }
         _ => None,
     }
+}
+
+/// Returns the positions in `args`, the command line with the program name
+/// first, of the words after the word `help` at `position` that name
+/// something: a command, a topic, or a word that clap refuses.
+///
+/// It reads every word as the walk does, with the options of the command
+/// that the words reach and the global options of the commands above it,
+/// and enters each word that names a subcommand. A word that starts with
+/// `-` names nothing, and neither does an option's value, also in the
+/// separate-word form `--name value`. Reading stops at `--`, so the words
+/// after it stay as typed.
+fn naming_words(command: &Command, args: &[OsString], position: usize) -> Vec<usize> {
+    let mut reader = Words::new(command);
+    let mut naming = Vec::new();
+    for (index, word) in args.iter().enumerate().skip(1) {
+        match reader.read(word) {
+            Kind::End => break,
+            Kind::Flag | Kind::Value(_) => continue,
+            Kind::Name => {}
+        }
+        if index > position {
+            naming.push(index);
+        }
+        // `help_word` found `help` where no subcommand has that name, so
+        // the word `help` itself enters no subcommand.
+        if let Some(subcommand) = reader.current.find_subcommand(word) {
+            reader.enter(subcommand);
+        }
+    }
+    naming
 }
 
 /// Prints `page`, the topic that the word `help` at the guide's root asked
@@ -93,36 +130,24 @@ pub(super) fn print_topic<O: Write, E: Write, R>(
 }
 
 /// Turns `help` at `position` into a request for clap's long help: it
-/// removes the word and adds `--help` directly after the last word that
-/// followed `help`, comes before any `--` and does not start with `-`. When
-/// no word qualifies, `--help` takes the place of `help`. clap answers
-/// `--help` as soon as it meets it, so it prints the help before it reads
-/// the flags after the command's words, as it does when the caller types
-/// `--help` there. `shelf help books show` and `shelf books help show`
-/// print what `shelf books show --help` prints, `shelf help --json` prints
-/// what `shelf --help --json` prints, and clap refuses a word that names no
-/// command, as in `shelf help comets`. The words after `--` stay as typed.
+/// removes the word and adds `--help` directly after the last word after
+/// `help` that [`naming_words`] reads as naming something, reading the
+/// words with `command`. When no word qualifies, `--help` takes the place
+/// of `help`. clap answers `--help` as soon as it meets it, so it prints
+/// the help before it reads the flags and option values after the
+/// command's words, as it does when the caller types `--help` there.
+/// `shelf help books show` and `shelf books help show` print what `shelf
+/// books show --help` prints, `shelf help --json` prints what `shelf
+/// --help --json` prints, and clap refuses a word that names no command,
+/// as in `shelf help comets`. The words after `--` stay as typed.
 //
-// RUST-10: the search counts the value of an option as a word that names
-// something, so `shelf help --from ids.txt` gives clap `--from ids.txt
-// --help`, which the root refuses because only `books show` takes
-// `--from`. A search that reads each word as `walk` does, with each
-// command's options, replaces this when a tool needs it. The request also
-// needs the tool's `--help` flag. A tool that disables it gets clap's
-// refusal of `--help`. crumbkit's own help flag replaces the request if a
-// tool needs that.
-pub(super) fn ask_for_help(args: &mut Vec<OsString>, position: usize) {
+// RUST-10: the request needs the tool's `--help` flag. A tool that
+// disables it gets clap's refusal of `--help`. crumbkit's own help flag
+// replaces the request if a tool needs that.
+pub(super) fn ask_for_help(command: &Command, args: &mut Vec<OsString>, position: usize) {
+    let place = naming_words(command, args, position)
+        .last()
+        .map_or(position, |&last| last);
+    args.insert(place + 1, OsString::from("--help"));
     args.remove(position);
-    let following = args.get(position..).unwrap_or_default();
-    let end = following
-        .iter()
-        .position(|word| word == "--")
-        .unwrap_or(following.len());
-    let place = following
-        .get(..end)
-        .unwrap_or_default()
-        .iter()
-        .rposition(|word| !word.as_encoded_bytes().starts_with(b"-"))
-        .map_or(position, |last| position + last + 1);
-    args.insert(place, OsString::from("--help"));
 }

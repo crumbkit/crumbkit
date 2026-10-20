@@ -1,7 +1,7 @@
 # ADR-0101. tool help prints the root's help
 
 - Date: 2026-10-20
-- Status: accepted
+- Status: amended by ADR-0129
 - Supersedes: ADR-0023, which it amends
 
 ## Context
