@@ -945,6 +945,10 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit-test: [`check_guide`] takes the tool's opt-outs as a third
   argument. A tool without opt-outs passes `&[]`
   ([behaviour/help/examples]).
+- crumbkit-test: [`check_guide`]'s document rule applies only to a leaf
+  whose command takes a global `--json`, `--fields`, `--long` or `--full`.
+  A `guide/document` opt-out for any other leaf now fails as stale; remove
+  it ([behaviour/output]).
 - crumbkit: the refusal of a command line that stops at a group names the
   group's visible subcommands, so `shelf books` prints `needs a subcommand:
   list, show, summarize, remove` ([behaviour/failures]).
