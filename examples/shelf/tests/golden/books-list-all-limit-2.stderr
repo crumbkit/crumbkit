@@ -1,3 +1,4 @@
 error: the argument '--all' cannot be used with '--limit <N>'
+  usage: shelf books list --all
   help:  run `shelf books list -h`
   code:  shelf::cli::usage

@@ -14,6 +14,7 @@ use crate::{
 
 mod alternatives;
 mod fields;
+mod usage;
 
 const NOT_FOUND: Code = Code::new("solar", "planets", "not_found");
 

@@ -143,6 +143,9 @@ rustdoc of `parse_to` states the message and the recovery.
 - The recovery runs the `-h` of the deepest typed command, even a hidden
   one, unless the tool's refusal function returns a call that renders and
   parses ([refused command lines](../failures/README.md#refused-command-lines)).
+- In text, a refusal from clap prints clap's usage as `usage:` lines under
+  the message. A command line that stops at a group with visible
+  subcommands prints the group's `-h` page in place of the refusal lines.
 
 The walk that finds the deepest command also finds `--json`, which makes a
 refusal print as a JSON document. It counts the word only where it reads it
@@ -164,7 +167,7 @@ A command that refuses the caller after parsing, such as a handler that
 rejects a value, returns an ordinary `Failure`, which `finish` prints.
 crumbkit-test's checks and the golden files cover the whole command tree.
 
-Why: ADR-0015, ADR-0001, ADR-0021, ADR-0050.
+Why: ADR-0015, ADR-0001, ADR-0021, ADR-0050, ADR-0118.
 
 ## A refusal that the tool prints
 
@@ -208,7 +211,9 @@ A `Refused` holds what the refusal prints and what the run knew:
 sentence reads the kind and context of `error`. A tool that names the
 deepest command's help, or records the refused run in a history of its
 own, reads `path`, `flags` and a global option's `value`, such as the value
-of `--format`, instead of reading the words again.
+of `--format`, instead of reading the words again. A `Refused` has no
+getter for the usage or the group page. `Refused::print` prints them, and
+a tool that prints the refusal itself reads clap's usage from `error`.
 
 `Refused::print` prints the refusal as `parse` prints it, and
 `Refused::print_to` prints it to a sink. Each takes the `Refused` by value

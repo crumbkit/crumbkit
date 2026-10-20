@@ -1,3 +1,0 @@
-error: the command `shelf books` needs a subcommand: list, show, summarize, remove
-  help:  run `shelf books -h`
-  code:  shelf::cli::usage
