@@ -3,6 +3,7 @@
 
 mod budget;
 mod build;
+mod children;
 mod columns;
 mod confirm;
 mod counted;

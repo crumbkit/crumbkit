@@ -64,11 +64,19 @@ applies to the compact columns and to the columns of `--long`. With
 rows keeps every column in its header. A [stream](streams.md#text-and-json-lines)
 prints every column, because its header prints before any row arrives.
 
+A row type may print its children under each row, such as a service's
+components, by naming the field that holds them in `Row::CHILDREN` and
+building their lines in `Row::child_lines`. The table prints each child
+line under its row, indented by two spaces and escaped as a cell is
+escaped. Child lines do not change the column widths. Compact JSON holds
+the field after the columns, as [rows with children](shapes/README.md#rows-with-children)
+describes.
+
 At a terminal, a table wider than the terminal narrows its widest columns
 to fit and ends each cut cell with `…`, except in the columns that
 `Row::UNCUT_COLUMNS` names ([the table's width](terminal.md#the-tables-width)).
 
-Why: ADR-0016, ADR-0063, ADR-0065, ADR-0108, ADR-0114, ADR-0119, ADR-0121.
+Why: ADR-0016, ADR-0063, ADR-0065, ADR-0108, ADR-0114, ADR-0119, ADR-0120, ADR-0121.
 
 ## View flags
 

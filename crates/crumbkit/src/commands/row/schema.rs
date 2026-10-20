@@ -1,5 +1,5 @@
-//! The JSON Schema of one argument of a command, which `CommandRow`'s
-//! schema lists under `arguments`.
+//! The JSON Schemas of one argument and of one exit code of a command,
+//! which `CommandRow`'s schema lists under `arguments` and `exits`.
 
 use schemars::{Schema, json_schema};
 
@@ -71,5 +71,32 @@ pub(super) fn argument_schema() -> Schema {
             "global",
             "one_of",
         ],
+    })
+}
+
+/// Returns the schema of one exit code, which `CommandRow`'s schema lists
+/// under `exits`.
+pub(super) fn exit_schema() -> Schema {
+    json_schema!({
+        "type": "object",
+        "properties": {
+            "exit": {
+                "description": "The exit code, or the first code of a range of codes that the command passes on from another program.",
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 255,
+            },
+            "last": {
+                "description": "The last code of the range, which equals exit for a single code.",
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 255,
+            },
+            "meaning": {
+                "description": "What the code means, as one sentence.",
+                "type": "string",
+            },
+        },
+        "required": ["exit", "last", "meaning"],
     })
 }

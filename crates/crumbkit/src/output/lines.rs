@@ -3,8 +3,8 @@
 
 use std::io;
 
-use super::layout;
 use super::table::escape_controls;
+use super::{children, layout};
 use crate::Row;
 use crate::view::{Table, View};
 
@@ -19,7 +19,8 @@ pub(super) fn chosen<R: Row>(view: &View) -> bool {
 /// with each control character and each Unicode format character escaped,
 /// as a table cell escapes them, or one line of compact JSON with
 /// every field when the row has no text line. A JSON line holds no control
-/// character, because JSON escapes them inside strings.
+/// character, because JSON escapes them inside strings. The row's child
+/// lines follow the line when its type sets `Row::CHILDREN` (ADR-0120).
 pub(super) fn line<R: Row>(row: &R) -> io::Result<String> {
     let mut line = if let Some(text) = row.text_line() {
         escape_controls(&text).into_owned()
@@ -29,5 +30,6 @@ pub(super) fn line<R: Row>(row: &R) -> io::Result<String> {
         String::from_utf8(json).map_err(io::Error::other)?
     };
     line.push('\n');
+    line.push_str(&children::block(row));
     Ok(line)
 }

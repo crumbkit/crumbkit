@@ -60,6 +60,11 @@ pub(crate) struct Command {
     /// from a crumbkit release before the field existed.
     #[serde(default)]
     pub(crate) line: Option<String>,
+    /// The field whose items each row prints in text as indented lines
+    /// under it, or `None` when the rows print no such lines or the
+    /// document comes from a crumbkit release before the field existed.
+    #[serde(default)]
+    pub(crate) children: Option<String>,
     /// The tool's own exit codes for the command.
     pub(crate) exits: Vec<Exit>,
     /// The effects, or `None` when the tool declares none.

@@ -585,6 +585,10 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit: `Stop::path`, `Stop::flags` and `Stop::value` return the path,
   the flags typed and an option's value of a run that `parse` ended, such
   as after a help page, as `Refused` does ([behaviour/parsing]).
+- crumbkit: `Row::CHILDREN` and `Row::child_lines` print a row's children
+  as indented lines under it in text, while compact JSON keeps the field,
+  and help, `commands list` and crumbkit-test describe and check it
+  ([behaviour/output]).
 
 ### Changed
 

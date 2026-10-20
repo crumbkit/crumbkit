@@ -169,12 +169,15 @@ pub(crate) fn envelope<T: Rows>(document: Document<()>) -> Schema {
     });
     let mut schema = top(document, body, meta_schema.as_deref(), &mut generator);
     // Without `--full`, the JSON of a document with the envelope holds only
-    // the row's columns, unless it is a headed batch, a prose result or
-    // bytes, or its row type prints whole (ADR-0110).
+    // the row's columns and its children field, unless it is a headed
+    // batch, a prose result or bytes, or its row type prints whole
+    // (ADR-0110, ADR-0120).
     let by_columns =
         !document.is_headed() && !T::Row::WHOLE && !matches!(T::SHAPE, Shape::Prose | Shape::Bytes);
     if by_columns {
-        super::columns::require_columns(&mut schema, T::SHAPE != Shape::Row, T::Row::COLUMNS);
+        let mut columns = T::Row::COLUMNS.to_vec();
+        columns.extend(T::Row::CHILDREN);
+        super::columns::require_columns(&mut schema, T::SHAPE != Shape::Row, &columns);
     }
     schema
 }

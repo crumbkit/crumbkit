@@ -33,6 +33,9 @@ pub(super) struct Table<'a> {
     /// Whether each column keeps its cells whole when the table fits a
     /// terminal's width, or no entry when every column may be cut.
     uncut: Vec<bool>,
+    /// The child lines that print under each row, already indented and
+    /// escaped, or an empty list when the rows print none (ADR-0120).
+    children: Vec<String>,
 }
 
 impl<'a> Table<'a> {
@@ -64,7 +67,15 @@ impl<'a> Table<'a> {
             shown: vec![true; columns.len()],
             widths: vec![0; columns.len()],
             uncut: Vec::new(),
+            children: Vec::new(),
         }
+    }
+
+    /// Returns the table with `children`, the child lines that print under
+    /// each row in order. They do not count toward the column widths.
+    pub(super) fn with_children(mut self, children: Vec<String>) -> Self {
+        self.children = children;
+        self
     }
 
     /// Writes the header and the first `rows` rows to `out`.
@@ -82,6 +93,8 @@ impl<'a> Table<'a> {
     /// row type is missing in every row, so it is left out too.
     /// crumbkit-test's `check_guide` fails a leaf whose columns name such a
     /// field.
+    ///
+    /// Each row's child lines follow the row.
     ///
     /// `width` is the number of columns of the terminal that standard
     /// output is, or `None` when the table prints unfitted. A table wider
@@ -141,7 +154,7 @@ impl<'a> Table<'a> {
             }
             fitted
         });
-        for line in lines {
+        for (index, line) in lines.iter().enumerate() {
             let cells = line
                 .iter()
                 .zip(&self.widths)
@@ -151,6 +164,10 @@ impl<'a> Table<'a> {
                 fit::write_cut_cells(out, cells)?;
             } else {
                 write_cells(out, cells)?;
+            }
+            // The first line is the header, which has no child lines.
+            if let Some(children) = index.checked_sub(1).and_then(|row| self.children.get(row)) {
+                out.write_all(children.as_bytes())?;
             }
         }
         Ok(())
