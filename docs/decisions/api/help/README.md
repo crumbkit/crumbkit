@@ -28,3 +28,4 @@ that each path through a tool's help costs.
 - [ADR-0102. Styled sinks and compact groups](0102-styled-sinks-and-compact-groups.md)
 - [ADR-0103. Exit ranges and signal codes](0103-exit-ranges-and-signal-codes.md)
 - [ADR-0104. An opt-out for the example rule of check_guide](0104-examples-opt-out.md)
+- [ADR-0105. An opt-out for the document rule of check_guide](0105-document-opt-out.md)

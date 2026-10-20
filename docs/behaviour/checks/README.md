@@ -47,14 +47,15 @@ its `--help` and `--version` flags. Every function that takes a
 `clap::Command` works on any node of the tree, so a crate or a team can
 apply the checks to its own subtree.
 
-`check_guide` takes an opt-out for its example rule alone, so a tool can
-adopt goal headings and leaves before every command has an example. A tool
-that wants clap's list for a command leaves that command out of its guide,
-so the other rules of `check_guide` take no opt-out. The help checks take no
-opt-outs either, because they take budgets. Each other tree check takes the
-tool's opt-outs.
+`check_guide` takes opt-outs for its example rule and its document rule
+alone, so a tool can adopt goal headings and leaves before every command
+has an example, and before every leaf that changes something prints one of
+crumbkit's documents. A tool that wants clap's list for a command leaves
+that command out of its guide, so the other rules of `check_guide` take no
+opt-out. The help checks take no opt-outs either, because they take
+budgets. Each other tree check takes the tool's opt-outs.
 
-Why: ADR-0015, ADR-0021, ADR-0025, ADR-0036, ADR-0104.
+Why: ADR-0015, ADR-0021, ADR-0025, ADR-0036, ADR-0104, ADR-0105.
 
 ## Reasons behind the tree rules
 

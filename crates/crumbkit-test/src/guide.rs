@@ -55,7 +55,8 @@ mod tests;
 ///   and that declares no document with `Leaf::document` or
 ///   `Leaf::stream`, because the leaf then offers every view flag, and
 ///   only `finish` or `stream` refuses a flag that the output cannot use,
-///   after the handler has made its change (ADR-0016). A read-only leaf,
+///   after the handler has made its change (ADR-0016), unless an opt-out
+///   from [`Rule::GuideDocument`] in `allow` covers it. A read-only leaf,
 ///   a leaf without effects and a leaf that passes on a program's exit
 ///   code (`Leaf::passes_on_exit`) pass without a document, because
 ///   `crumbkit_child::hand_over` refuses `--json` and `--fields` before
@@ -107,20 +108,28 @@ mod tests;
 /// the data that the leaf's `--help` lists. A topic with
 /// an empty summary passes.
 ///
-/// Only the example rule takes an opt-out, an [`Allow`] of
-/// [`Rule::GuideExamples`] with a stated reason, which covers the command
-/// it names and every command below it ([opt-outs docs]). A tool that
-/// adopts goal headings and leaves before it has written an example for
-/// every command passes the check with it, and the reason says when the
-/// examples come. The check fails on such an opt-out that names no command
-/// or excuses no problem, so the opt-out goes once the command has an
-/// example. The other rules take no opt-out, because a tool that wants
-/// clap's list for a command leaves that command out of the guide, a leaf
-/// that changes something can always name the document that its handler
-/// passes to `finish` or `stream`, and each other problem is a name or a
-/// declaration that the tool can correct. The check reads only the
-/// opt-outs of its own rule, so a tool passes the one list that it passes
-/// to every check.
+/// Two rules take an opt-out, an [`Allow`] with a stated reason, which
+/// covers the command it names and every command below it
+/// ([opt-outs docs]):
+///
+/// - [`Rule::GuideExamples`] excuses the example rule, so a tool that
+///   adopts goal headings and leaves before it has written an example for
+///   every command passes the check, and the reason says when the examples
+///   come;
+/// - [`Rule::GuideDocument`] excuses the document rule, so a tool that
+///   prints its own output and uses crumbkit for help can declare the
+///   effects of a leaf that changes something before its output moves
+///   onto crumbkit's documents. crumbkit then cannot refuse a view flag
+///   that the output cannot use before the change happens, so the tool's
+///   own output decides what the flag does.
+///
+/// The check fails on such an opt-out that names no command or excuses no
+/// problem, so the opt-out goes once the command has an example or a
+/// document. The other rules take no opt-out, because a tool that wants
+/// clap's list for a command leaves that command out of the guide, and
+/// each other problem is a name or a declaration that the tool can
+/// correct. The check reads only the opt-outs of its own rules, so a tool
+/// passes the one list that it passes to every check.
 ///
 /// ```
 /// use clap::Command;
@@ -153,13 +162,14 @@ mod tests;
 /// # Panics
 ///
 /// Panics when the guide breaks a rule above, or when an opt-out from
-/// [`Rule::GuideExamples`] names no command or excuses no problem. The
+/// [`Rule::GuideExamples`] or [`Rule::GuideDocument`] names no command or
+/// excuses no problem. The
 /// message lists each problem on its own line and names each command by its
 /// path from `command`, such as `shelf books`.
 ///
 /// [opt-outs docs]: https://github.com/crumbkit/crumbkit/blob/main/docs/behaviour/adoption/opt-outs.md
 pub fn check_guide(command: &Command, guide: &Guide, allow: &[Allow]) {
-    let mut allowances = Allowances::new(allow, &[Rule::GuideExamples]);
+    let mut allowances = Allowances::new(allow, &[Rule::GuideExamples, Rule::GuideDocument]);
     let mut problems = Vec::new();
     let root = guide.get_root();
     if tree::find(command, root.iter().copied()).is_none() {
@@ -308,7 +318,11 @@ fn check_leaves(
             .get_effects()
             .is_some_and(|effects| !effects.is_read_only());
         let hands_over = leaf.get_passes_on_exit().is_some();
-        if changes && !hands_over && leaf.get_document().is_none() {
+        if changes
+            && !hands_over
+            && leaf.get_document().is_none()
+            && !allowances.excuses(Rule::GuideDocument, &path.join(" "))
+        {
             problems.push(format!(
                 "{text}: the leaf declares effects that change something and no document, so crumbkit refuses a view flag that the output cannot use only after the change; declare the document with `Leaf::document`, or with `Leaf::stream` for a stream"
             ));

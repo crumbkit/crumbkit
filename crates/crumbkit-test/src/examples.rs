@@ -55,7 +55,13 @@ mod tests;
 /// variable of [`Examples::env`], and points `XDG_CONFIG_HOME`,
 /// `XDG_DATA_HOME`, `XDG_STATE_HOME` and `XDG_CACHE_HOME` at fresh
 /// directories that it creates for that run and deletes afterwards, so a
-/// run never reads or writes the caller's own configuration. The fresh
+/// run never reads or writes the caller's own configuration. The check
+/// creates them below the canonical path of the system's temporary
+/// directory, so their paths hold no symbolic link, such as the link from
+/// `/var` to `/private/var` on macOS, and a tool that opens a path one
+/// component at a time without following links can open them. When the
+/// temporary directory's path cannot be canonicalised, the check uses it
+/// as it is. The fresh
 /// directories start as copies of the fixture of [`Examples::xdg`] when
 /// the tool sets one. The cleared
 /// environment has no `PATH` and no `HOME`, so a tool whose binary needs

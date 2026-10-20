@@ -24,7 +24,13 @@ Why: ADR-0005.
 ## Isolation of each run
 
 Each run has no shell, a cleared environment and fresh XDG directories, so it
-depends only on what the example and the check give it. The table shows how
+depends only on what the example and the check give it. The checks create
+the fresh directories, and each fresh copy of a fixture, below the
+canonical path of the system's temporary directory, so their paths hold no
+symbolic link. On macOS, where `/var` links to `/private/var`, a tool that
+opens a path one component at a time without following links can therefore
+open its XDG directories. When the temporary directory's path cannot be
+canonicalised, the checks use it as it is. The table shows how
 often each check makes a fresh copy of the directories that the settings name.
 
 | Setting | `check_examples`, `check_output_budget`, `Pages::binary` | `check_twin` | `check_recoveries` |

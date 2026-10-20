@@ -1,7 +1,7 @@
 # ADR-0104. An opt-out for the example rule of check_guide
 
 - Date: 2026-10-20
-- Status: accepted
+- Status: amended by ADR-0105
 - Supersedes: ADR-0024, which it amends
 
 ## Context

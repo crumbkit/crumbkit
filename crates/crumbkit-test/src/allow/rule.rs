@@ -77,8 +77,14 @@ pub enum Rule {
     /// [`check_guide`](crate::check_guide): a visible command without
     /// subcommands has no leaf with an example. Its id is `guide/examples`,
     /// and its opt-out covers the command it names and every command below
-    /// it. The other rules of `check_guide` take no opt-out.
+    /// it.
     GuideExamples,
+    /// [`check_guide`](crate::check_guide): a leaf whose effects change
+    /// something declares no document with `Leaf::document` or
+    /// `Leaf::stream`. Its id is `guide/document`, and its opt-out covers
+    /// the command it names and every command below it. The other rules of
+    /// `check_guide` take no opt-out.
+    GuideDocument,
     /// [`check_document_ids`](crate::check_document_ids): a command prints
     /// its document without crumbkit's envelope, because its document has
     /// `Envelope::Without`. Its id is `documents/envelope`.
@@ -150,6 +156,7 @@ impl Rule {
             Self::OneValuePerUse => "filters/one-value-per-use",
             Self::Examples => "examples/run",
             Self::GuideExamples => "guide/examples",
+            Self::GuideDocument => "guide/document",
             Self::Envelope => "documents/envelope",
             Self::RowsWhole => "documents/rows-whole",
             Self::ShellExitCode => "exit-codes/shell-code",
@@ -226,6 +233,10 @@ impl Rule {
             Self::GuideExamples => &[
                 "The command's help shows no example, so an agent builds its first command line from the argument list alone.",
                 "check_examples runs nothing for the command, so its output weight counts 0 bytes and its path weight is too low.",
+            ],
+            Self::GuideDocument => &[
+                "Help offers every view flag on the command, and crumbkit cannot refuse a flag that the output cannot use before the change happens, so the tool's own output decides what the flag does.",
+                "An agent that gets a refusal or an output it did not ask for after the change may run the command again and repeat the change.",
             ],
             Self::Envelope => &[
                 "An agent cannot predict the document's shape from the conventions and must read its schema with `schemas show`.",

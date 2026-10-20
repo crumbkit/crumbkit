@@ -9,6 +9,7 @@ use serde::Serialize;
 use super::check_guide;
 use crate::testing::panic_message;
 
+mod documents;
 mod examples;
 mod lines;
 mod problems;

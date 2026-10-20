@@ -6,6 +6,13 @@ use std::io;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicUsize, Ordering};
 
+// The tests make symbolic links, which only Unix makes without special
+// rights. The two attributes stay apart, because clippy reads only a plain
+// `cfg(test)` as test code.
+#[cfg(unix)]
+#[cfg(test)]
+mod tests;
+
 /// The number of temporary directories that this process has created, which
 /// gives each new directory a number of its own.
 static CREATED: AtomicUsize = AtomicUsize::new(0);
@@ -16,6 +23,12 @@ static CREATED: AtomicUsize = AtomicUsize::new(0);
 /// Its name holds the process id, a number that no other directory of the
 /// process has, and a label, so runs and tests at the same time in one
 /// process or in several never share a directory.
+///
+/// Its path holds no symbolic link, because the directory is created below
+/// the canonical path of the temporary directory. On macOS, for example,
+/// `/var` links to `/private/var`, and a tool that opens a path one
+/// component at a time without following links can still open the
+/// directory's files.
 pub(crate) struct TempDir {
     /// The directory's path.
     path: PathBuf,
@@ -25,8 +38,18 @@ impl TempDir {
     /// Creates an empty directory whose name ends with `label`, such as the
     /// name of the test that owns it.
     pub(crate) fn new(label: &str) -> io::Result<Self> {
+        Self::new_in(&std::env::temp_dir(), label)
+    }
+
+    /// Creates an empty directory whose name ends with `label` below the
+    /// canonical path of `root`, as [`TempDir::new`] does below the
+    /// system's temporary directory. When `root` cannot be canonicalised,
+    /// such as when it does not exist yet, the directory goes below `root`
+    /// as given.
+    fn new_in(root: &Path, label: &str) -> io::Result<Self> {
+        let root = fs::canonicalize(root).unwrap_or_else(|_| root.to_path_buf());
         let number = CREATED.fetch_add(1, Ordering::Relaxed);
-        let path = std::env::temp_dir().join(format!(
+        let path = root.join(format!(
             "crumbkit-test-{}-{number}-{label}",
             std::process::id()
         ));
