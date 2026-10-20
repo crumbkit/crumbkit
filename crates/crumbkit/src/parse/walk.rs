@@ -237,7 +237,10 @@ pub(super) fn help_word(
 /// The walk runs before parsing, because help needs its lines before clap
 /// prints it. A word counts as `--help` or `--json` only where the reader
 /// reads it as a flag, so the value of an option that allows hyphen values
-/// counts as neither.
+/// counts as neither. The word `--json` counts only where the current
+/// command, or a command above it through a global argument, declares an
+/// argument with the long name `json`, because clap refuses an undeclared
+/// `--json` as an unexpected argument.
 pub(super) fn walk(command: &Command, args: &[OsString]) -> Walked {
     let mut words = Words::new(command);
     let mut walked = Walked {
@@ -258,7 +261,7 @@ pub(super) fn walk(command: &Command, args: &[OsString]) -> Walked {
                 // The only cost is that the root's help then has no line
                 // that names a person's aliases.
                 walked.help |= word == "-h" || word == "--help";
-                walked.json |= word == "--json";
+                walked.json |= word == "--json" && words.declares_json();
             }
             Kind::Name => {
                 if let Some(subcommand) = words.current.find_subcommand(word) {
@@ -387,6 +390,12 @@ impl<'a> Words<'a> {
                     .get_all_short_aliases()
                     .is_some_and(|aliases| aliases.contains(&letter))
         })
+    }
+
+    /// Reports whether the current command declares an argument with the
+    /// long name `json`, or a command above it declares one as global.
+    fn declares_json(&self) -> bool {
+        self.find(|arg| arg.get_long() == Some("json")).is_some()
     }
 
     /// Returns the clap ids of the arguments that the flag word `word`

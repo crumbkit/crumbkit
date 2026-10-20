@@ -166,7 +166,9 @@ impl Output {
     /// version or a refusal, the [`Stop`](crate::Stop) that it returned holds
     /// an `Output` whose answer comes from the walk of the typed words, which
     /// counts `--json` only where clap reads it as a flag, and never where it
-    /// is the value of an option. A refusal prints as a JSON document exactly
+    /// is the value of an option. The walk also leaves out a `--json` that no
+    /// command on the typed path declares, because clap refuses such a word
+    /// as an unexpected argument. A refusal prints as a JSON document exactly
     /// when this is true.
     #[must_use]
     pub const fn is_json(&self) -> bool {

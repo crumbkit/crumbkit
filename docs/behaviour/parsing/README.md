@@ -138,7 +138,9 @@ rustdoc of `parse_to` states the message and the recovery.
 The walk that finds the deepest command also finds `--json`, which makes a
 refusal print as a JSON document. It counts the word only where it reads it
 as a flag, so a value of an option that allows hyphen values is no request
-for JSON. A tool cannot name its own output flags for the walk to treat as
+for JSON. It also counts the word only where the typed command declares
+`--json` or a command above it declares a global `--json`, so a refusal on a
+command without the flag prints as text. A tool cannot name its own output flags for the walk to treat as
 `--json`, because on the parsed path crumbkit cannot set the `Output` that
 the tool's own type builds, and `Output::is_json` would answer differently
 on the two paths ([help](../help/README.md#the-walk-before-parsing)).
