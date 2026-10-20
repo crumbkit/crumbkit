@@ -117,7 +117,10 @@ and bytes of a headed batch. `has_room` returns false once the rows take the
 bytes that the run can print, and returns true until the batch holds a row,
 because `finish` decides on the first row by that row's own bytes. The count leaves out the batch's failures,
 which only add bytes, so a handler that stops when `has_room` returns false
-never stops before the row at which `finish` cuts the batch. The keys that
+never stops before the row at which `finish` cuts the batch. The exception
+is a text table that leaves out a column because every printed row lacks
+it. The count still includes that column, so the handler can stop before
+that row. The keys that
 the handler never fetched follow the keys of the cut rows in `left_out`, and
 a batch with such keys ends with the failure even when its rows fit, so
 every key is either answered or listed.

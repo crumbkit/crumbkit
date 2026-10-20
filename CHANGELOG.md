@@ -959,6 +959,10 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   argument with possible values lists them after the argument, as in
   `<SHELL> [possible values: bash, fish, zsh]`, as an invalid value does
   ([behaviour/failures]).
+- crumbkit: the text table that `finish` prints leaves out a column whose
+  field is null or missing in every shown row. A column that `--fields`
+  names still prints, and `--json` and a stream's text are unchanged
+  ([behaviour/output]).
 
 ### Removed
 

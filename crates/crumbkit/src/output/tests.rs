@@ -21,6 +21,7 @@ mod built;
 mod bytes;
 mod direct;
 mod empty;
+mod empty_columns;
 mod exits;
 mod failed;
 mod headed;
