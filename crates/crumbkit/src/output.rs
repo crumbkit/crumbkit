@@ -175,7 +175,8 @@ impl Output {
     /// is the value of an option. The walk also leaves out a `--json` that no
     /// command on the typed path declares, because clap refuses such a word
     /// as an unexpected argument. A refusal prints as a JSON document exactly
-    /// when this is true.
+    /// when this is true, unless the tool chose its form with
+    /// [`Refused::as_json`](crate::Refused::as_json).
     #[must_use]
     pub const fn is_json(&self) -> bool {
         self.view.is_json()
