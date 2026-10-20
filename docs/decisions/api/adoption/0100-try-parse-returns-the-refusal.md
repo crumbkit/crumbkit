@@ -1,7 +1,7 @@
 # ADR-0100. try_parse returns a refusal unprinted
 
 - Date: 2026-10-20
-- Status: accepted
+- Status: amended by ADR-0107
 - Supersedes: ADR-0002, which it amends
 
 ## Context

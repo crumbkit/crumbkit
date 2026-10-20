@@ -177,12 +177,17 @@ A `Refused` holds what the refusal prints and what the run knew:
 - `culprit`, the word that clap refused, from clap's error context: an
   unknown subcommand, a refused value, or an unexpected word or flag, or
   the view flag that crumbkit refused. A missing argument has none.
+- `error`, clap's error, whose `kind()` and `get(ContextKind)` name what
+  clap refused, such as the argument that conflicted or was repeated. A
+  refused view flag has none, because crumbkit refuses it after clap
+  accepted the command line.
 
 `tool help nonsense` is refused as `tool nonsense --help`, so `typed` holds
 `help` and `nonsense`, `parsed` holds `nonsense` and `--help`, and
 `culprit` is `nonsense`. A tool that resolves aliases of its own reads
 `typed`, and a tool with its own failure document prints the refusal from
-`message`, `code` and `recovery`.
+`message`, `code` and `recovery`. A tool that words a refusal in its own
+sentence reads the kind and context of `error`.
 
 `Refused::print` prints the refusal as `parse` prints it, and
 `Refused::print_to` prints it to a sink. Each takes the `Refused` by value
@@ -191,7 +196,7 @@ observers hear of the refusal when it prints, so a refusal that the tool
 answers itself reports no `refused` event. `Unparsed` is
 `#[non_exhaustive]`, and `Unparsed::print` prints whatever variant it holds.
 
-Why: ADR-0100.
+Why: ADR-0100, ADR-0107.
 
 ## Reading clap's matches after parsing
 

@@ -570,6 +570,9 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   [`check_guide`] pass a leaf that changes something and declares no
   document, and every leaf below it, for a stated reason
   ([behaviour/help/examples], [behaviour/adoption/opt-outs]).
+- crumbkit: `Refused::error` returns clap's error for a refused command
+  line, so a tool reads its kind and context, such as the argument that
+  conflicted or was repeated ([behaviour/parsing]).
 
 ### Changed
 

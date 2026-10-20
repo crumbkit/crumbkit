@@ -213,6 +213,18 @@ impl Refused {
         }
     }
 
+    /// Returns clap's error for the refused command line, or `None` for a
+    /// refused view flag, which crumbkit refuses itself after clap accepted
+    /// the line. A tool that builds its own sentence from the error's kind
+    /// and context, such as the argument that conflicted or was repeated,
+    /// reads `kind()` and `get(ContextKind)` here instead of parsing the
+    /// line again. clap fills that context through its `error-context`
+    /// feature, which crumbkit enables (ADR-0003).
+    #[must_use]
+    pub fn error(&self) -> Option<&clap::Error> {
+        self.inner.error.as_ref()
+    }
+
     /// Prints the refusal to the process's standard error, or to its
     /// standard output when the caller asked for JSON, as
     /// [`parse`](crate::parse) prints it, and returns the `Stop` that ends
