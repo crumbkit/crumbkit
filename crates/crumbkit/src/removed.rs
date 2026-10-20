@@ -1,7 +1,9 @@
 //! Doctests that fail to compile while an item that ADR-0081 or ADR-0085
 //! removed is absent. Each option that ADR-0081 removed reproduced the
-//! output shape of one adopting tool, and API-1 asks for a second use before
-//! such an option returns. ADR-0085 removed items that no tool or sibling
+//! output shape of one adopting tool. API-1 keeps an option that encodes one
+//! tool's particular output in that tool as glue, so such an option returns
+//! only with a second adopter or an independent use in `examples/`
+//! (ADR-0122). ADR-0085 removed items that no tool or sibling
 //! crate called, and ADR-0088 and ADR-0089 restored the ones that a tool
 //! outside this repository calls. rustdoc compiles each block below and
 //! passes only when the block fails to compile.
