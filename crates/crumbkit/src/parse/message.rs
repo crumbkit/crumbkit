@@ -3,7 +3,7 @@
 use clap::Command;
 use clap::error::ErrorKind;
 
-use super::lines::has_visible_subcommands;
+use super::lines::visible_subcommands;
 use super::suggestion;
 
 /// Returns the message of a refusal of a command line that ends at the
@@ -11,7 +11,9 @@ use super::suggestion;
 ///
 /// A command line that stops at a command that needs more, which clap
 /// answers with that command's help page or a list of its subcommands, says
-/// what the command needs. Every other refusal is clap's own message, from
+/// what the command needs. A group's message names its visible
+/// subcommands in the order that the tool declares them, as in
+/// ``the command `tool planets` needs a subcommand: show, weigh``. Every other refusal is clap's own message, from
 /// [`message`], with the real name in place of each name that clap
 /// suggests and without the names of hidden items, from
 /// [`suggestion::real_names`].
@@ -39,10 +41,14 @@ pub(super) fn refusal_message(command: &Command, path: &[String], error: &clap::
             .join("; ");
     }
     let node = commands.last().copied().unwrap_or(command);
-    if has_visible_subcommands(node) {
-        format!("the command `{text}` needs a subcommand")
-    } else {
+    let names: Vec<&str> = visible_subcommands(node).map(Command::get_name).collect();
+    if names.is_empty() {
         format!("the command `{text}` needs arguments")
+    } else {
+        format!(
+            "the command `{text}` needs a subcommand: {}",
+            names.join(", ")
+        )
     }
 }
 

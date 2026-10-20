@@ -1,7 +1,7 @@
 # ADR-0001. Errors
 
 - Date: 2026-10-13
-- Status: amended by ADR-0061, ADR-0078, ADR-0079, ADR-0085 and ADR-0086
+- Status: amended by ADR-0061, ADR-0078, ADR-0079, ADR-0085, ADR-0086 and ADR-0106
 
 ## Context
 

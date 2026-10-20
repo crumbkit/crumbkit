@@ -386,6 +386,14 @@ fn join(mut sections: Vec<String>, lines: &[String]) -> String {
 /// subcommand does not count. clap's own `has_visible_subcommands` is
 /// private to clap.
 pub(super) fn has_visible_subcommands(node: &Command) -> bool {
+    visible_subcommands(node).next().is_some()
+}
+
+/// Returns the subcommands of `node` that its help lists, in the order that
+/// the tool declares them, without the hidden ones. clap's own `help`
+/// subcommand never appears, because `parse` disables it before clap builds
+/// the tree.
+pub(super) fn visible_subcommands(node: &Command) -> impl Iterator<Item = &Command> {
     node.get_subcommands()
-        .any(|subcommand| !subcommand.is_hide_set())
+        .filter(|subcommand| !subcommand.is_hide_set())
 }

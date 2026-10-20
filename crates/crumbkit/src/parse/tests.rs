@@ -18,6 +18,7 @@ mod dashed;
 mod fields;
 mod hidden;
 mod limit;
+mod missing;
 mod names;
 mod returned;
 mod root;
@@ -240,21 +241,6 @@ fn the_walk_stops_at_a_double_dash() {
     let parsed = parse(&refused);
 
     assert!(parsed.err.contains("  help:  run `tool planets -h`\n"));
-}
-
-#[test]
-fn a_command_line_that_stops_at_a_group_says_that_the_group_needs_a_subcommand() {
-    admits(tool(), &["tool", "planets"], &["tool", "planets", "weigh"]);
-    let parsed = parse(&["tool", "planets"]);
-
-    assert_eq!(parsed.code, Some(ExitCode::from(2)));
-    assert_eq!(parsed.out, "");
-    let expected = "\
-error: the command `tool planets` needs a subcommand
-  help:  run `tool planets -h`
-  code:  tool::cli::usage
-";
-    assert_eq!(parsed.err, expected);
 }
 
 #[test]
