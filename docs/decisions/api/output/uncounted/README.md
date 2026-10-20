@@ -5,6 +5,10 @@
 - Supersedes: ADR-0050, which it amends
 - Missed: ADR-0050 gave the last page of an uncounted listing the number of rows it held as its total, and did not check that total against the output budget, which cuts rows after the tool has handed them over.
 
+## Children
+
+- [ADR-0130. A capped source gives a lower bound](0130-a-capped-source-gives-a-lower-bound.md)
+
 ## Context
 
 `Listing::uncounted(rows, more)` declared that the tool did not count the

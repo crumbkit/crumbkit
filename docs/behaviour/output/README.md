@@ -223,4 +223,5 @@ Why: ADR-0050, ADR-0016, ADR-0077, ADR-0094.
 The [result shapes](shapes/README.md) page covers batches, prose, bytes,
 headed bytes, rows printed whole, rows with their own text line and
 documents without the envelope. The listings page covers
-[a listing without a total](listings/README.md#a-listing-without-a-total).
+[a listing without a total](listings/README.md#a-listing-without-a-total)
+and [a listing from a capped source](listings/README.md#a-listing-from-a-capped-source).

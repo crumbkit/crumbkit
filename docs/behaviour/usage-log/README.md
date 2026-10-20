@@ -61,8 +61,9 @@ Why: ADR-0029, ADR-0057.
 - `finish` and `finish_to` report the exit code as the number they return,
   including a tool's code that the guide declares for the run's first
   failure, the code of a failure or refusal in the tool's spelling, the bytes
-  written to standard output, and whether a listing showed fewer rows than
-  its total. A batch reports the code of its first failure.
+  written to standard output, and whether a listing left out rows of its
+  source, as one that shows fewer rows than its total or comes from a
+  capped source does. A batch reports the code of its first failure.
 - A [stream](../output/streams.md) reports its run as `finish` does.
 - A run that never reaches `finish` or a stream's end, such as a child
   process or the tool's own exit path, reports its exit with
