@@ -1,7 +1,7 @@
 # ADR-0109. Refused reports the path, the flags and an option's value
 
 - Date: 2026-10-20
-- Status: accepted
+- Status: amended by ADR-0111
 - Supersedes: ADR-0100 and ADR-0107, which it amends
 - Missed: ADR-0107 gave `Refused` clap's error and missed that a tool which prints its own refusal or records the refused run also needs the deepest command's path, the flags typed and a global option's value.
 

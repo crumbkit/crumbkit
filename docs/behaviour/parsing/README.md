@@ -79,11 +79,13 @@ at the root prints, `Refusal` for a refused command line or for view flags
 that cannot work together, and `Failure` for the failure of a picker's
 source. A tool that records the outcome of a stopped run in a history of
 its own reads it, because the number is 0 after help, the version and a
-topic alike. `Printed` is `#[non_exhaustive]`. The `Output` inside a
-`Stop` sits in a `Box`, which costs one allocation only on a run that
-`parse` ends.
+topic alike. `Printed` is `#[non_exhaustive]`. A `Stop` offers `path`,
+`flags` and `value` as a `Refused` does, so a tool that prints a note
+after a help page reads a global option such as `--format` from it. The
+`Output`, the path and the words inside a `Stop` sit in a `Box`, which
+costs one allocation only on a run that `parse` ends.
 
-Why: ADR-0002, ADR-0089, ADR-0107.
+Why: ADR-0002, ADR-0089, ADR-0107, ADR-0111.
 
 ## The command tree after parsing
 

@@ -579,6 +579,9 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit: `Refused::path`, `Refused::flags` and `Refused::value` return
   the path to the deepest command, the ids of the flags typed and the last
   value of an option, such as a global `--format` ([behaviour/parsing]).
+- crumbkit: `Stop::path`, `Stop::flags` and `Stop::value` return the path,
+  the flags typed and an option's value of a run that `parse` ended, such
+  as after a help page, as `Refused` does ([behaviour/parsing]).
 
 ### Changed
 
