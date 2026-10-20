@@ -155,3 +155,37 @@ fn room_counts_each_row_of_a_row_type_with_its_own_line_as_the_line_it_prints() 
     assert_eq!(finished.out, "Io 1610\n[\"Titan\",null]\n");
     assert_eq!(room.printed(), finished.out.len());
 }
+
+/// A comet whose `tail` the tests leave null, so the text table leaves its
+/// column out.
+#[derive(Serialize, JsonSchema)]
+struct Comet {
+    /// The comet's name.
+    name: String,
+    /// The comet's tail, when it has one.
+    tail: Option<String>,
+}
+
+impl Row for Comet {
+    const COLUMNS: &'static [&'static str] = &["name", "tail"];
+}
+
+const COMET_BATCH: Document<Batch<Comet, Error>> =
+    Document::new("sky", "comet-batch", 1, "The test rows.");
+
+#[test]
+fn room_counts_a_column_that_the_text_table_leaves_out_so_its_count_is_above_the_bytes_printed() {
+    let output = budgeted(1 << 20, &[]);
+    let mut room = output.room(COMET_BATCH);
+    let mut batch = Batch::new(&["show"], "names", &["halley"]);
+    batch.push(Ok(Comet {
+        name: "halley".to_owned(),
+        tail: None,
+    }));
+    assert!(room.has_room(&batch));
+
+    let finished = finish_output(output, COMET_BATCH, batch);
+
+    assert_eq!(finished.out, "NAME\nhalley\n");
+    assert_eq!(room.printed(), "NAME    TAIL\nhalley  -\n".len());
+}

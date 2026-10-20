@@ -17,7 +17,7 @@ fn header(names: &[&'static str]) -> Vec<Cow<'static, str>> {
 /// `uncut` kept whole.
 fn table(columns: &[&str], uncut: &[&str], rows: &[Value], width: Option<usize>) -> String {
     let mut out = Vec::new();
-    Table::new(columns, rows)
+    Table::new(columns, rows, true)
         .keeping_whole(columns, uncut)
         .write(&mut out, rows.len(), width)
         .unwrap();

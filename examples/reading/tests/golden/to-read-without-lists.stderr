@@ -1,3 +1,4 @@
 error: unrecognized subcommand 'to-read'
+  usage: reading [OPTIONS] <COMMAND>
   help:  run `reading -h`
   code:  reading::cli::usage

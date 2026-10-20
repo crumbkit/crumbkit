@@ -4,7 +4,7 @@
 use std::borrow::Cow;
 use std::io::{self, Write};
 
-use super::{Table, write_line};
+use super::{Table, write_cells};
 
 #[cfg(test)]
 mod tests;
@@ -82,19 +82,17 @@ pub(super) fn fit(
     true
 }
 
-/// Writes one line of a fitted table, as [`write_line`] writes a line, with
-/// each cell wider than its column cut to fit by [`cut`].
-pub(super) fn write_cut_line(
+/// Writes one line of a fitted table, as [`write_cells`] writes a line from
+/// each cell's text and its column's width, with each cell wider than its
+/// column cut to fit by [`cut`].
+pub(super) fn write_cut_cells<'c>(
     out: &mut impl Write,
-    cells: &[Cow<'_, str>],
-    widths: &[usize],
+    cells: impl Iterator<Item = (&'c str, usize)>,
 ) -> io::Result<()> {
-    let cut: Vec<Cow<'_, str>> = cells
-        .iter()
-        .zip(widths)
-        .map(|(cell, &width)| cut(cell, width))
+    let cut: Vec<(Cow<'c, str>, usize)> = cells
+        .map(|(cell, width)| (cut(cell, width), width))
         .collect();
-    write_line(out, &cut, widths)
+    write_cells(out, cut.iter().map(|(cell, width)| (cell.as_ref(), *width)))
 }
 
 /// Returns `cell` when it is at most `width` characters, and otherwise its

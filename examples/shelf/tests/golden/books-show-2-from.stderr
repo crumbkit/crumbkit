@@ -1,3 +1,4 @@
 error: the argument '<ID>...' cannot be used with '--from <FILE>'
+  usage: shelf books show <ID>...
   help:  run `shelf books show -h`
   code:  shelf::cli::usage

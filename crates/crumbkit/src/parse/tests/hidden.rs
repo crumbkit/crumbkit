@@ -25,6 +25,7 @@ fn a_refusal_suggests_the_real_name_of_a_flag_whose_hidden_alias_clap_suggested(
 
     let expected = "\
 error: unexpected argument '--maxx' found; a similar argument exists: '--limit'
+  usage: shelf books list --limit <N>
   help:  run `shelf books list -h`
   code:  shelf::cli::usage
 ";
@@ -42,6 +43,7 @@ fn a_refusal_suggests_the_real_name_of_a_command_whose_hidden_alias_clap_suggest
 
     let expected = "\
 error: unrecognized subcommand 'bok'; a similar subcommand exists: 'books'
+  usage: shelf [COMMAND]
   help:  run `shelf -h`
   code:  shelf::cli::usage
 ";

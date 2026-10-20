@@ -332,8 +332,10 @@ impl<'a, T: Rows> Prepared<'a, T> {
         } else {
             None
         };
-        let table = (text && value.prose().is_none() && lines.is_none())
-            .then(|| Table::new(columns, values).keeping_whole(columns, T::Row::UNCUT_COLUMNS));
+        let table = (text && value.prose().is_none() && lines.is_none()).then(|| {
+            Table::new(columns, values, settings.view.names().is_none())
+                .keeping_whole(columns, T::Row::UNCUT_COLUMNS)
+        });
         Ok(Self {
             document,
             value,

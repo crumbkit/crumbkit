@@ -69,7 +69,7 @@ mod tests;
 ///   them;
 /// - a leaf column whose name is not a field of the leaf's row type, such
 ///   as a misspelt name in `Row::COLUMNS` or `Row::LONG_COLUMNS`, because
-///   the table prints `-` in every row of it;
+///   no row has a value for it and the table leaves it out;
 /// - a headed leaf (`Document::headed`) whose row type has no top-level
 ///   `text` or `base64` field, because its JSON then holds the bytes
 ///   under another field; the row marks its `Bytes` field
@@ -405,7 +405,7 @@ fn check_columns(text: &str, leaf: &Leaf, problems: &mut Vec<String>) {
             ));
         } else if !column.is_property() {
             problems.push(format!(
-                "{text}: the column `{name}` is not a field of the row type, so the table prints `-` in every row of it"
+                "{text}: the column `{name}` is not a field of the row type, so no row has a value for it and the table leaves it out"
             ));
         } else if column.description().is_none() {
             problems.push(format!(
