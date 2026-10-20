@@ -80,8 +80,8 @@ pub enum Rule {
     /// it.
     GuideExamples,
     /// [`check_guide`](crate::check_guide): a leaf whose effects change
-    /// something declares no document with `Leaf::document` or
-    /// `Leaf::stream`. Its id is `guide/document`, and its opt-out covers
+    /// something and whose command takes a view flag declares no document
+    /// with `Leaf::document` or `Leaf::stream`. Its id is `guide/document`, and its opt-out covers
     /// the command it names and every command below it. The other rules of
     /// `check_guide` take no opt-out.
     GuideDocument,

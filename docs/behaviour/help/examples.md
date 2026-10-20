@@ -78,7 +78,8 @@ that asks for `--help` or `--version`. It requires an example for every
 visible command without subcommands, a description for every column, a
 compact column on a leaf whose rows are not a headed batch, a `Row::LINE`
 that is one non-empty line and belongs to a leaf that is not headed, and a
-document on a leaf whose effects change something. A row type that sets
+document on a leaf whose effects change something and whose command takes
+a global `--json`, `--fields`, `--long` or `--full`. A row type that sets
 `Row::WHOLE` may name no column only when it declares a `Row::LINE` and its
 schema has no fields
 ([rows printed whole](../output/shapes/README.md#rows-printed-whole)). Its rustdoc
@@ -95,4 +96,4 @@ so the tool's own output decides what the flag does. The check fails on
 either opt-out once it excuses no problem
 ([opt-outs](../adoption/opt-outs.md)). The other leaf rules take no opt-out.
 
-Why: ADR-0024, ADR-0016, ADR-0063, ADR-0064, ADR-0065, ADR-0072, ADR-0104, ADR-0105.
+Why: ADR-0024, ADR-0016, ADR-0063, ADR-0064, ADR-0065, ADR-0072, ADR-0104, ADR-0105, ADR-0115.

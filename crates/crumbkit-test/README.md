@@ -116,7 +116,7 @@ option.
 [`check_schema_goldens`]: src/schemas.rs
 [`check_document_ids`]: src/documents.rs
 [`check_mounts`]: src/documents.rs
-[ADR-0025]: ../../docs/decisions/api/help/0025-help-checks.md
+[ADR-0025]: ../../docs/decisions/api/help/checks/0025-help-checks.md
 [output budget docs]: ../../docs/behaviour/output/budget/README.md
 [command reference docs]: ../../docs/behaviour/help/reference.md
 [checks docs]: ../../docs/behaviour/checks/README.md
