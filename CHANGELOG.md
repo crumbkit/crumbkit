@@ -1065,6 +1065,10 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   the tool reads it as a flag and not as a positional value ([behaviour/checks/recovery-chains]).
 - crumbkit-test: a check kills a run whose exit it cannot learn before it
   reports the error, so the run does not outlive the check ([behaviour/checks/end-to-end]).
+- crumbkit-test: [`check_examples`] and the other checks that run a tool's
+  binary create each run's XDG directories below the canonical temporary
+  directory, so their paths hold no symbolic link
+  ([behaviour/checks/end-to-end]).
 
 <!-- Each label below points at the source file that holds the item's
 rustdoc, or at the page in docs/ that describes the behaviour. -->

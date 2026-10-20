@@ -190,9 +190,10 @@ impl WorkDir {
     }
 
     /// Returns the paths that the example check replaces with `[ROOT]`: the
-    /// path of a new copy and its canonical path, which differs where a
-    /// symbolic link leads to the temporary directory, as `/var` does on
-    /// macOS. A fixed directory and the test's directory have none.
+    /// path of a new copy and its canonical path. The two differ only when
+    /// [`TempDir`] could not canonicalise the temporary directory, because
+    /// it otherwise creates the copy below the canonical path. A fixed
+    /// directory and the test's directory have none.
     pub(crate) fn fresh_paths(&self) -> Vec<PathBuf> {
         let Some(temp) = &self.fresh else {
             return Vec::new();
