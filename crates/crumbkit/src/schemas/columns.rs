@@ -1,5 +1,14 @@
 //! The `required` list of a row in a document whose JSON prints only the
 //! row's columns without `--full` (ADR-0110).
+//!
+//! RUST-10: the cut changes `required` lists only. A column that the row
+//! type skips when it is empty prints `null` in the compact document, and
+//! the property's type admits that only when it accepts null. A compact
+//! row of an untagged enum can match more than one `oneOf` variant after
+//! the cut and then fails `oneOf`. No row type in this repository has
+//! either, so the cut leaves both alone; adding `null` to such a
+//! property's type, or turning `oneOf` into `anyOf` for an untagged enum,
+//! replaces it when a row type needs it.
 
 use std::collections::HashMap;
 
