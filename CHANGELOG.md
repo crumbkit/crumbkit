@@ -963,6 +963,10 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   group's `-h` page, and a refusal from clap prints clap's usage as
   `usage:` lines under `error:`. The failure document is unchanged
   ([behaviour/failures]).
+- crumbkit: the text table that `finish` prints leaves out a column whose
+  field is null or missing in every shown row. A column that `--fields`
+  names still prints, and `--json` and a stream's text are unchanged
+  ([behaviour/output]).
 
 ### Removed
 

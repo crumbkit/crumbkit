@@ -8,12 +8,23 @@ use serde_json::{Value, json};
 use super::{FORMAT, Table, cell, escape_controls, is_format};
 
 /// Returns the table that `Table::write` prints for `columns` and every
-/// row of `rows`.
+/// row of `rows`, with columns that crumbkit chose, so a column that every
+/// row lacks is left out.
 fn table(columns: &[&str], rows: &[Value]) -> String {
+    written(Table::new(columns, rows, true), rows.len())
+}
+
+/// Returns the table that `Table::write` prints for `columns` and every
+/// row of `rows`, with columns that `--fields` named, so every column
+/// prints.
+fn named_table(columns: &[&str], rows: &[Value]) -> String {
+    written(Table::new(columns, rows, false), rows.len())
+}
+
+/// Returns what `table` writes with its first `rows` rows.
+fn written(mut table: Table<'_>, rows: usize) -> String {
     let mut out = Vec::new();
-    Table::new(columns, rows)
-        .write(&mut out, rows.len())
-        .unwrap();
+    table.write(&mut out, rows).unwrap();
     String::from_utf8(out).unwrap()
 }
 
@@ -23,7 +34,7 @@ fn a_table_written_with_its_first_rows_is_as_wide_as_those_rows_alone() {
         json!({"id": 1, "title": "Emma"}),
         json!({"id": 2, "title": "Northanger Abbey"}),
     ];
-    let mut table = Table::new(&["id", "title"], &rows);
+    let mut table = Table::new(&["id", "title"], &rows, true);
     let mut first = Vec::new();
     let mut both = Vec::new();
 
@@ -91,14 +102,129 @@ COUNT  RATIO  DONE
 }
 
 #[test]
-fn null_and_a_missing_field_print_a_dash() {
-    let rows = [json!({"id": 1, "year": null})];
+fn null_and_a_missing_field_print_a_dash_in_a_column_that_another_row_fills() {
+    let rows = [
+        json!({"id": 1, "year": null}),
+        json!({"id": 2, "year": 1818, "pages": 280}),
+    ];
 
     let expected = "\
 ID  YEAR  PAGES
 1   -     -
+2   1818  280
 ";
     assert_eq!(table(&["id", "year", "pages"], &rows), expected);
+}
+
+#[test]
+fn a_column_that_is_null_in_every_row_is_left_out_of_the_header_and_the_rows() {
+    let rows = [
+        json!({"id": 1, "state": null, "title": "Emma"}),
+        json!({"id": 2, "state": null, "title": "Persuasion"}),
+    ];
+
+    let expected = "\
+ID  TITLE
+1   Emma
+2   Persuasion
+";
+    assert_eq!(table(&["id", "state", "title"], &rows), expected);
+}
+
+#[test]
+fn a_column_that_every_row_is_missing_is_left_out() {
+    let rows = [
+        json!({"id": 1, "title": "Emma"}),
+        json!({"id": 2, "title": "Persuasion"}),
+    ];
+
+    assert_eq!(
+        table(&["id", "title", "state"], &rows),
+        "ID  TITLE\n1   Emma\n2   Persuasion\n"
+    );
+}
+
+#[test]
+fn a_last_column_left_out_leaves_no_padding_at_the_end_of_a_line() {
+    let rows = [json!({"title": "Emma", "id": 1, "state": null})];
+
+    assert_eq!(
+        table(&["title", "id", "state"], &rows),
+        "TITLE  ID\nEmma   1\n"
+    );
+}
+
+#[test]
+fn a_column_that_is_null_in_only_some_rows_keeps_its_column() {
+    let rows = [
+        json!({"id": 1, "state": null}),
+        json!({"id": 2, "state": "lent"}),
+    ];
+
+    let expected = "\
+ID  STATE
+1   -
+2   lent
+";
+    assert_eq!(table(&["id", "state"], &rows), expected);
+}
+
+#[test]
+fn a_string_cell_that_holds_a_dash_keeps_its_column() {
+    let rows = [
+        json!({"id": 1, "state": "-"}),
+        json!({"id": 2, "state": null}),
+    ];
+
+    let expected = "\
+ID  STATE
+1   -
+2   -
+";
+    assert_eq!(table(&["id", "state"], &rows), expected);
+}
+
+#[test]
+fn a_named_column_that_is_null_in_every_row_still_prints() {
+    let rows = [json!({"id": 1, "state": null})];
+
+    assert_eq!(named_table(&["id", "state"], &rows), "ID  STATE\n1   -\n");
+}
+
+#[test]
+fn a_column_filled_only_in_a_row_left_unwritten_is_left_out() {
+    let rows = [
+        json!({"id": 1, "state": null}),
+        json!({"id": 2, "state": "lent"}),
+    ];
+    let table = Table::new(&["id", "state"], &rows, true);
+
+    assert_eq!(written(table, 1), "ID\n1\n");
+}
+
+#[test]
+fn a_table_written_with_more_rows_again_brings_back_a_column_that_they_fill() {
+    let rows = [
+        json!({"id": 1, "state": null}),
+        json!({"id": 2, "state": "lent"}),
+    ];
+    let mut table = Table::new(&["id", "state"], &rows, true);
+    let mut first = Vec::new();
+    let mut both = Vec::new();
+
+    table.write(&mut first, 1).unwrap();
+    table.write(&mut both, 2).unwrap();
+
+    assert_eq!(String::from_utf8(first).unwrap(), "ID\n1\n");
+    assert_eq!(
+        String::from_utf8(both).unwrap(),
+        "ID  STATE\n1   -\n2   lent\n"
+    );
+}
+
+#[test]
+fn a_table_without_rows_prints_every_column_in_its_header() {
+    assert_eq!(table(&["id", "state"], &[]), "ID  STATE\n");
 }
 
 #[test]
