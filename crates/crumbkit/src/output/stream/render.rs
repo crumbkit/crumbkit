@@ -5,6 +5,7 @@ use std::io::{self, Write};
 
 use super::Streaming;
 use crate::Row;
+use crate::age::TextCells;
 use crate::output::envelope::{Extras, Selected, write_document};
 use crate::output::{JsonLayout, lines, table, unwrapped};
 
@@ -31,7 +32,13 @@ impl<R: Row, O: Write, W: Write> Streaming<R, O, W> {
             line.extend_from_slice(lines::line(item)?.as_bytes());
             return Ok(());
         }
-        let row = serde_json::to_value(item)?;
+        // The serialized row becomes the selected fields of the JSON line
+        // with `--json` and the cells of the text line without it, so an
+        // `Age` writes its compact age only in text.
+        let row = {
+            let _cells = (!self.view.is_json()).then(TextCells::enter);
+            serde_json::to_value(item)?
+        };
         if self.view.is_json() {
             let selected = Selected {
                 row: &row,

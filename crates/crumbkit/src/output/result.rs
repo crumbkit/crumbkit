@@ -16,6 +16,7 @@ use super::failure::PreparedFailure;
 use super::layout::JsonLayout;
 use super::table::Table;
 use super::{Output, layout, lines, listing, problems, prose};
+use crate::age::TextCells;
 use crate::help::rename::Renames;
 use crate::view::View;
 use crate::{Code, Document, Row, Rows, Shape, Spelling, codes};
@@ -202,7 +203,14 @@ fn write_rows<T: Rows>(
         listing::next_line(&mut *command, value)
     };
     let columns = columns(settings.view, document, value.prose().is_some());
-    let values = values(&columns, value)?;
+    // The serialized rows become the cells of the text table without
+    // `--json` and the selected fields of the JSON document with it, and a
+    // run prints only one of the two. The rows are serialized once, so an
+    // `Age` writes its compact age when the run prints text.
+    let values = {
+        let _cells = (!settings.is_json()).then(TextCells::enter);
+        values(&columns, value)?
+    };
     let mut prepared = Prepared::new(settings, document, value, &columns, &values, next, problems)?;
     let listed = failures.map(Failures::of);
     let rows = value.rows().len();

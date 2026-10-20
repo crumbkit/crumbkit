@@ -579,6 +579,9 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit: `Refused::path`, `Refused::flags` and `Refused::value` return
   the path to the deepest command, the ids of the flags typed and the last
   value of an option, such as a global `--format` ([behaviour/parsing]).
+- crumbkit: an [`Age`] row field prints a compact age such as `3h` in the
+  text table and a stream's text lines, and an RFC 3339 time in JSON
+  ([behaviour/output]).
 
 ### Changed
 
@@ -1126,6 +1129,7 @@ rustdoc, or at the page in docs/ that describes the behaviour. -->
 [`Batch`]: crates/crumbkit/src/batch.rs
 [`Prose`]: crates/crumbkit/src/prose.rs
 [`Bytes`]: crates/crumbkit/src/bytes.rs
+[`Age`]: crates/crumbkit/src/age.rs
 [`fetch_each`]: crates/crumbkit/src/fetch.rs
 [`report`]: crates/crumbkit/src/report.rs
 [`parse`]: crates/crumbkit/src/parse.rs

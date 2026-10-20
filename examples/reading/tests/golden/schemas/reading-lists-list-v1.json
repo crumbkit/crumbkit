@@ -66,6 +66,14 @@
         "name": {
           "description": "The list's name, which is also the name of its command.",
           "type": "string"
+        },
+        "updated": {
+          "description": "The time that the list's file was last modified, or null when the\nfile system does not say.",
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date-time"
         }
       },
       "required": [

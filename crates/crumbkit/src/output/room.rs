@@ -12,6 +12,7 @@ use super::budget::{self, Counter};
 use super::envelope::{Extras, Failures, Selected, write_document};
 use super::table::cell;
 use super::{JsonLayout, Output, columns, layout, lines, result};
+use crate::age::TextCells;
 use crate::{AsFailure, Batch, Document, Row, Rows};
 
 /// The bytes that `finish` prints for the rows of a batch, which
@@ -203,7 +204,12 @@ impl<T: Rows> Room<T> {
                     *bytes = bytes.saturating_add(line);
                 }
                 Form::Table { .. } => {
-                    let fields = serde_json::to_value(row).unwrap_or(Value::Null);
+                    // The table measures the cells that text prints, so an
+                    // `Age` counts its compact age.
+                    let fields = {
+                        let _cells = TextCells::enter();
+                        serde_json::to_value(row).unwrap_or(Value::Null)
+                    };
                     let cells: Vec<Cow<'_, str>> =
                         columns.iter().map(|name| cell(fields.get(name))).collect();
                     self.form.add_line(&cells);

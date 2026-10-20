@@ -160,6 +160,7 @@ dependencies = [
  "clap",
  "clap_complete",
  "crumbkit-derive",
+ "humantime",
  "is-ai-agent",
  "miette",
  "proptest",

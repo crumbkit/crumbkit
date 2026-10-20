@@ -91,8 +91,8 @@ Why: ADR-0015.
 crumbkit holds the types that compile without clap beside the parsing, help
 and output that read a `clap::Command`: `Code` and `Spelling`, `Failure`,
 `Recovery`, `Error` and `AsFailure`, `Document`, `Call` and `CallError`,
-`Row`, `Rows`, `Shape` and `NoRow`, `Listing`, `Batch`, `Prose`, `Bytes` and
-`Stream`. Every crate that uses them builds clap through crumbkit. A crate
+`Row`, `Rows`, `Shape` and `NoRow`, `Listing`, `Batch`, `Prose`, `Bytes`,
+`Age` and `Stream`. Every crate that uses them builds clap through crumbkit. A crate
 that is not a command-line tool, such as a web server that maps a `Failure`
 to an RFC 9457 problem-details response, can ask for these types in a crate
 of their own when such a crate exists, and this list says what that crate
