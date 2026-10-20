@@ -1,9 +1,13 @@
 # ADR-0078. A refusal recovers with the tool's call
 
 - Date: 2026-10-17
-- Status: amended by ADR-0124
+- Status: amended by ADR-0123 and ADR-0124
 - Supersedes: ADR-0001 and ADR-0056, which it amends
 - Missed: ADR-0001 and ADR-0056 let a leaf or the guide declare a function that builds calls from a refusal, but always offered those calls after the `-h` recovery, so an agent that follows only the recovery reran help when the tool had returned the corrected line.
+
+## Children
+
+- [ADR-0123. A refusal recovers with the tool's hint](0123-a-refusal-recovers-with-the-tools-hint.md)
 
 ## Context
 

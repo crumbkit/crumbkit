@@ -19,6 +19,7 @@ mod fields;
 mod help_flag;
 mod help_word;
 mod hidden;
+mod hint;
 mod json;
 mod limit;
 mod missing;
