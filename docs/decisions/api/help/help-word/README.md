@@ -4,6 +4,10 @@
 - Status: amended by ADR-0129
 - Supersedes: ADR-0023, which it amends
 
+## Children
+
+- [ADR-0129. help reads the words after it with the command's options](0129-help-reads-option-values.md)
+
 ## Context
 
 ADR-0023 made `<tool> help` list the root's topics and `exit-codes`, each
