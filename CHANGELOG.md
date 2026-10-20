@@ -975,6 +975,9 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- crumbkit: a refusal prints as a JSON document, and `Output::is_json` of
+  its [`Stop`] is true, only when a command on the typed path declares
+  `--json`. An undeclared `--json` counted before ([behaviour/parsing]).
 - crumbkit: a `help` command line that ends with flags, such as
   `<tool> help --json`, prints the help of the command it names, as
   `<tool> --help --json` does. A root or group without the flag refused

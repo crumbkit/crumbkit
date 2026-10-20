@@ -147,6 +147,50 @@ fn the_walk_reports_help_typed_as_a_flag_and_not_as_a_value() {
     assert!(!walk(&tool(), &args(&["planets", "--", "--help"])).long_help);
 }
 
+/// Returns whether the walk over `command` reads `words` as a request for
+/// JSON.
+fn json(command: &Command, words: &[&str]) -> bool {
+    walk(command, &args(words)).json
+}
+
+/// Returns the `--json` flag, global when `global` is true.
+fn json_flag(global: bool) -> Arg {
+    Arg::new("json")
+        .long("json")
+        .global(global)
+        .action(ArgAction::SetTrue)
+}
+
+#[test]
+fn a_json_word_that_no_command_on_the_path_declares_is_no_request_for_json() {
+    assert!(!json(&tool(), &["--json", "planets"]));
+    assert!(!json(&tool(), &["planets", "show", "--json"]));
+}
+
+#[test]
+fn a_global_json_flag_on_the_root_counts_on_every_command_below_it() {
+    let tool = tool().arg(json_flag(true));
+
+    assert!(json(&tool, &["planets", "show", "--json"]));
+    assert!(json(&tool, &["--json", "planets"]));
+}
+
+#[test]
+fn a_json_flag_that_only_the_root_declares_counts_only_before_the_subcommand() {
+    let tool = tool().arg(json_flag(false));
+
+    assert!(json(&tool, &["--json", "planets"]));
+    assert!(!json(&tool, &["planets", "--json"]));
+}
+
+#[test]
+fn a_json_flag_that_a_subcommand_declares_counts_after_its_name() {
+    let tool = tool().mut_subcommand("planets", |planets| planets.arg(json_flag(false)));
+
+    assert!(json(&tool, &["planets", "--json"]));
+    assert!(!json(&tool, &["--json", "planets"]));
+}
+
 #[test]
 fn the_search_for_help_skips_the_value_of_an_option() {
     let found = help_word(
