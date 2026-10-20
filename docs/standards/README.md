@@ -21,7 +21,7 @@ rule that cites none states its reason itself.
 
 ## API
 
-- **API-1.** A new `Document` option, `Row` constant, `Guide` setting or `Leaf` setting has a second adopter, or a use in `examples/` whose shape is not a copy of the first adopter's (ADR-0074). An option that only one tool needs stays in that tool as glue until a second use appears. Gate: review, because no tool can tell a copied shape from an independent one.
+- **API-1.** A new `Document` option, `Row` constant, `Guide` setting or `Leaf` setting has a second adopter, a use in `examples/` whose shape is not a copy of the first adopter's, or one adopter's request for an ordinary need that other tools are likely to share (ADR-0122). An option that encodes one tool's particular output stays in that tool as glue. The PR that adds the option names which of these three grounds it meets. Gate: review, because no tool can tell a copied shape from an independent one or an ordinary need from a particular one.
 
 ## Tests
 

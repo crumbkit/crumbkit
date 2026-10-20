@@ -1,7 +1,7 @@
 # ADR-0074. Options with a second use
 
 - Date: 2026-10-17
-- Status: accepted
+- Status: amended by ADR-0122
 - Supersedes: ADR-0017, which it amends
 - Missed: ADR-0017 did not say what a record owes its reader when it amends a record from the same week, so a quick amendment could leave the reader to guess why the earlier decision fell short.
 
