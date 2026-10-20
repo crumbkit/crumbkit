@@ -34,6 +34,7 @@
 // `doc_cfg` feature labels each item behind a cargo feature with its name.
 #![cfg_attr(docsrs, feature(doc_cfg))]
 
+mod age;
 mod agent;
 #[cfg(test)]
 mod answered;
@@ -77,6 +78,7 @@ mod twins;
 mod unclassified;
 mod view;
 
+pub use crate::age::Age;
 pub use crate::batch::Batch;
 pub use crate::bytes::Bytes;
 pub use crate::call::{Call, CallArg, CallError, CallTarget, RenderCall};

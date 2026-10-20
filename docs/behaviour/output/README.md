@@ -42,9 +42,12 @@ declares `Row::LINE` may also name no column, as [rows printed whole](shapes/REA
 The table pads columns by characters and escapes control characters, so each
 row stays on one line and no line ends in padding. Cell widths count
 characters, so a wide character misaligns a column. A cell shows `null` or a
-missing field as `-`, and an array or an object as compact JSON.
+missing field as `-`, and an array or an object as compact JSON. A field of
+type [`Age`](../../../crates/crumbkit/src/age.rs) shows how long ago its time
+was, such as `3h`, in the table and in a stream's text lines, and holds the
+time in RFC 3339 in every JSON form, as its rustdoc describes.
 
-Why: ADR-0016, ADR-0063, ADR-0065.
+Why: ADR-0016, ADR-0063, ADR-0065, ADR-0108.
 
 ## View flags
 

@@ -39,8 +39,11 @@ without `data` ([usage log](../usage-log/README.md)).
   is an object with both properties, a `oneOf` that requires one of them,
   and no other properties. A row that flattens a `Bytes` field therefore
   lists `text` and `base64` among its own properties.
+- A row field of type `Age` holds a time in RFC 3339 in UTC with
+  milliseconds, and its schema is a string in the `date-time` format,
+  inline in the row's properties.
 
-Why: ADR-0007, ADR-0016, ADR-0036, ADR-0039, ADR-0046, ADR-0050, ADR-0062, ADR-0071.
+Why: ADR-0007, ADR-0016, ADR-0036, ADR-0039, ADR-0046, ADR-0050, ADR-0062, ADR-0071, ADR-0108.
 
 ## The failure document
 

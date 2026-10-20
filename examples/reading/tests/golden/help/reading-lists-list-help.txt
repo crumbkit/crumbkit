@@ -34,8 +34,9 @@ Examples:
           Print the name of each reading list as a table
 
 Columns:
-  name   The list's name, which is also the name of its command.
-  about  The list's about text, from the first line of its file.
+  name     The list's name, which is also the name of its command.
+  about    The list's about text, from the first line of its file.
+  updated  The time since the list's file was last modified, or null when the file system does not say.
 
 Effects: read-only, closed-world.
 Text: one line per row, <NAME>: <ABOUT>; --fields prints a table.
