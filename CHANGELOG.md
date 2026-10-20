@@ -1027,6 +1027,9 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- crumbkit: a refusal's `-h` recovery names the deepest typed command that
+  has a help flag, and offers no step when no command on the path has one.
+  Before, it could name a `-h` call that clap refuses ([behaviour/failures]).
 - crumbkit: a refusal prints as a JSON document, and `Output::is_json` of
   its [`Stop`] is true, only when a command on the typed path declares
   `--json`. An undeclared `--json` counted before ([behaviour/parsing]).

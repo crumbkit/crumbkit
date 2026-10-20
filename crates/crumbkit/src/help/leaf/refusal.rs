@@ -147,8 +147,10 @@ impl Leaf {
     /// The first call that crumbkit keeps becomes the refusal's recovery in
     /// place of the command's `-h`, and the `-h` call becomes the first
     /// alternative, followed by the other kept calls in the order that the
-    /// function returned them. When crumbkit keeps no call, the `-h` call
-    /// stays the recovery. A hint from [`Leaf::refusal_hint`] or
+    /// function returned them. The `-h` call names the deepest command on
+    /// the typed path that has a help flag, and a path without one offers
+    /// no `-h` call. When crumbkit keeps no call, the `-h` call stays the
+    /// recovery. A hint from [`Leaf::refusal_hint`] or
     /// [`Guide::refusal_hint`] takes the recovery before any call, and the
     /// kept calls then all follow the `-h` call. A `--limit` above its bound
     /// keeps its recovery, which replaces `--limit` with `--all`, and offers

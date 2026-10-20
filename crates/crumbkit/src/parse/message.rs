@@ -30,7 +30,8 @@ pub(super) fn command_line_refusal<C: FromArgMatches>(
     let declared = declared::declared::<C>(command, guide, path, error, words);
     Refusal::command_line(
         message,
-        path.to_vec(),
+        command,
+        path,
         error,
         words,
         declared.calls,

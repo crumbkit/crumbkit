@@ -188,10 +188,15 @@ A command line that clap refuses, an unknown `--fields` name, and a view flag
 that the command or another typed view flag rules out fail with the one
 fixed code `<tool>::cli::usage`. Their fields name the refused `argument`,
 its `value` or the unknown `subcommand`, as clap reports them. A refused
-command line's recovery runs the `-h` of the deepest typed command, even a
-hidden one, unless the tool's functions below return a hint or a call that
-it keeps, or the line sets a `--limit` above its
-[bound](../output/listings/README.md#an-upper-bound-on---limit). A refused
+command line's recovery runs the `-h` of the deepest typed command that has
+a help flag, even a hidden one, unless the tool's functions below return a
+hint or a call that it keeps, or the line sets a `--limit` above its
+[bound](../output/listings/README.md#an-upper-bound-on---limit). A command
+that turned its help flag off, such as a hidden leaf that answers a shell's
+completion requests, has no `-h` page, so the recovery names the nearest
+command above it with a help flag. When no command on the typed path has a
+help flag, the recovery offers no step, and its reason says that no command
+on the line has a `-h` help page. A refused
 command line exits with 2 unless the guide lists another code
 ([exit codes](exit-codes.md)).
 
@@ -230,10 +235,11 @@ function with `Guide::refusal_alternatives` for every command whose leaf sets
 none, and a leaf's own function replaces it. The refusal keeps each call
 that renders and whose line parses, in the order that the function returned
 them. The first kept call becomes the recovery, and the `-h` call becomes
-the first alternative, followed by the other kept calls. With no kept call,
-the `-h` call stays the recovery. A `--limit` above its bound keeps its
-`--all` recovery and offers the kept calls after crumbkit's own
-alternatives. The refusal leaves out the calls that it does not keep with no
+the first alternative, followed by the other kept calls. A path without a
+help flag has no `-h` call, so the other kept calls follow the recovery
+alone. With no kept call, the `-h` call, or the recovery without a step,
+stays the recovery. A `--limit` above its bound keeps its `--all` recovery
+and offers the kept calls after crumbkit's own alternatives. The refusal leaves out the calls that it does not keep with no
 warning and no trace event, so a function may return a correction that it
 has not checked, and a trace never holds the caller's values.
 
@@ -252,7 +258,8 @@ sentence after crumbkit's own alternatives and before the kept calls.
 
 [Parsing](../parsing/README.md) covers when `parse` refuses a command line.
 
-Why: ADR-0001, ADR-0056, ADR-0030, ADR-0078, ADR-0106, ADR-0118, ADR-0123.
+Why: ADR-0001, ADR-0056, ADR-0030, ADR-0078, ADR-0106, ADR-0118, ADR-0123,
+ADR-0124.
 
 ## The `miette` feature
 

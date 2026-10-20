@@ -20,4 +20,3 @@ in place of crumbkit's failure document.
 - [ADR-0088. Public items that a tool calls restored](0088-public-items-that-a-tool-calls-restored.md)
 - [ADR-0089. Exit numbers and owned codes restored](0089-exit-numbers-and-owned-codes-restored.md)
 - [ADR-0106. Refusals name the next words](0106-refusals-name-the-next-words.md)
-- [ADR-0118. Refusals show the usage line and a group prints its help](0118-refusals-show-the-usage-line-and-a-group-prints-its-help.md)
