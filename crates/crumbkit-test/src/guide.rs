@@ -88,6 +88,9 @@ mod tests;
 ///   because help shows the form on one line, and a headed leaf whose row
 ///   type sets `Row::LINE`, because a headed batch's text prints each row's
 ///   bytes and never the line (ADR-0064);
+/// - a name in a leaf's `Row::UNCUT_COLUMNS` that is in neither
+///   `Row::COLUMNS` nor `Row::LONG_COLUMNS`, because it then keeps no
+///   column of the table whole when the table fits a terminal (ADR-0121);
 /// - a leaf column without a description, naming the field whose doc
 ///   comment is missing, because `--help` lists the column without one;
 /// - a leaf whose row type's `Row::PROBLEM` names a field that is not one
@@ -341,6 +344,7 @@ fn check_leaves(
         }
         check_columns(&text, leaf, problems);
         check_line(&text, leaf, problems);
+        check_uncut(&text, leaf, problems);
     }
     for visit in tree::walk_visible(command) {
         let named = leaves
@@ -430,6 +434,21 @@ fn check_line(text: &str, leaf: &Leaf, problems: &mut Vec<String>) {
         problems.push(format!(
             "{text}: the row type declares LINE and the document is headed, so its text prints each row's bytes and never the line; remove LINE or the headed form"
         ));
+    }
+}
+
+/// Adds a problem to `problems` for each name in the row type's
+/// `Row::UNCUT_COLUMNS` of the leaf at `text` that is in neither
+/// `Row::COLUMNS` nor `Row::LONG_COLUMNS`, because such a name keeps no
+/// column of the table whole (ADR-0121).
+fn check_uncut(text: &str, leaf: &Leaf, problems: &mut Vec<String>) {
+    let columns = leaf.column_descriptions();
+    for name in leaf.uncut_columns() {
+        if !columns.iter().any(|column| column.name() == *name) {
+            problems.push(format!(
+                "{text}: the row type's UNCUT_COLUMNS names `{name}`, which is in neither COLUMNS nor LONG_COLUMNS, so the name keeps no column of the table whole; name a column from COLUMNS or LONG_COLUMNS, or remove the name"
+            ));
+        }
     }
 }
 

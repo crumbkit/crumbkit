@@ -165,8 +165,9 @@ snapbox = { version = "1.2.2", default-features = false }
 tempfile = { version = "3.27.0", default-features = false }
 
 # rustix opens the pseudo-terminals of shelf's terminal test through safe
-# functions, so the test needs no `unsafe` (ADR-0049). tempfile already
-# brings it into the lock file, and the test adds only its `pty` and
+# functions, so the test needs no `unsafe` (ADR-0049), and crumbkit reads the
+# width of the terminal that standard output is with it (ADR-0121). tempfile
+# already brings it into the lock file, and the two add only its `pty` and
 # `termios` features.
 rustix = { version = "1.1.5", default-features = false }
 

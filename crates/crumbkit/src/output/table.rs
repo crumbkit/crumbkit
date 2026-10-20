@@ -6,6 +6,7 @@ use std::io::{self, Write};
 
 use serde_json::Value;
 
+mod fit;
 #[cfg(test)]
 mod tests;
 
@@ -18,6 +19,9 @@ pub(super) struct Table<'a> {
     /// The width of each column over the lines last written, kept so that
     /// writing the table again allocates nothing.
     widths: Vec<usize>,
+    /// Whether each column keeps its cells whole when the table fits a
+    /// terminal's width, or no entry when every column may be cut.
+    uncut: Vec<bool>,
 }
 
 impl<'a> Table<'a> {
@@ -37,6 +41,7 @@ impl<'a> Table<'a> {
         Self {
             lines,
             widths: vec![0; columns.len()],
+            uncut: Vec::new(),
         }
     }
 
@@ -48,7 +53,17 @@ impl<'a> Table<'a> {
     /// columns. A line ends with the text of its last non-empty cell, so no
     /// line ends in padding or separator spaces. A cell's own text prints
     /// unchanged, including any spaces at its end.
-    pub(super) fn write(&mut self, out: &mut impl Write, rows: usize) -> io::Result<()> {
+    ///
+    /// `width` is the number of columns of the terminal that standard
+    /// output is, or `None` when the table prints unfitted. A table wider
+    /// than `width` narrows its columns and cuts their cells, as
+    /// [`fit::fit`] describes.
+    pub(super) fn write(
+        &mut self,
+        out: &mut impl Write,
+        rows: usize,
+        width: Option<usize>,
+    ) -> io::Result<()> {
         let lines = self.lines.get(..=rows).unwrap_or(&self.lines);
         // RUST-10: the width of a cell is its number of characters, and the
         // padding that `write!` adds counts characters too. This aligns text
@@ -63,8 +78,15 @@ impl<'a> Table<'a> {
                 *width = (*width).max(cell.chars().count());
             }
         }
+        let header = lines.first().map_or(&[][..], Vec::as_slice);
+        let fitted =
+            width.is_some_and(|width| fit::fit(&mut self.widths, header, &self.uncut, width));
         for line in lines {
-            write_line(out, line, &self.widths)?;
+            if fitted {
+                fit::write_cut_line(out, line, &self.widths)?;
+            } else {
+                write_line(out, line, &self.widths)?;
+            }
         }
         Ok(())
     }

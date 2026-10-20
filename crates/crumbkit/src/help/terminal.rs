@@ -13,8 +13,9 @@ impl Guide {
     /// report shows it under the rule `terminal-detection/off` with its
     /// costs (ADR-0036).
     ///
-    /// Terminal detection changes only help colour, progress and questions,
-    /// and never a result, a failure or a note (ADR-0049). With it off:
+    /// Terminal detection changes only help colour, progress, questions and
+    /// the width of a text table, and never another part of a result, a
+    /// failure or a note (ADR-0049, ADR-0121). With it off:
     ///
     /// - [`parse`](crate::parse) prints help and the version as plain text,
     ///   also when another crate in the build turns on clap's `color`
@@ -28,6 +29,9 @@ impl Guide {
     ///   [`Output::confirm_to`](crate::Output::confirm_to) never ask, and
     ///   fail with `<tool>::confirmation::needs_yes` as they do with
     ///   `--no-input`.
+    /// - [`finish`](crate::finish) never fits a text table to the
+    ///   terminal's width, so a table prints the bytes that it prints
+    ///   through a pipe.
     ///
     /// The [`Output`](crate::Output) that `parse` returns copies the setting
     /// from the guide, and so does the one that

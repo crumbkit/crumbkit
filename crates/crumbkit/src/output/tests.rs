@@ -23,6 +23,7 @@ mod direct;
 mod empty;
 mod exits;
 mod failed;
+mod fitted;
 mod headed;
 mod layout;
 mod lines;

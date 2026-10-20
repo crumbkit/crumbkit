@@ -19,6 +19,7 @@ document.
 - [ADR-0042. Child processes](0042-child-processes.md)
 - [ADR-0092. Output budget](budget/README.md)
 - [ADR-0049. Terminal detection](0049-terminal-detection.md)
+- [ADR-0121. A text table fits the terminal's width](0121-a-text-table-fits-the-terminal-width.md)
 - [ADR-0058. The child crate](0058-child-crate.md)
 - [ADR-0077. Notes on prose and batch results](0077-notes-on-prose-and-batches.md)
 - [ADR-0093. The view flags are parsed once into a View](0093-the-view-flags-are-parsed-once-into-a-view.md)

@@ -51,7 +51,11 @@ object as compact JSON. A field of type
 was, such as `3h`, in the table and in a stream's text lines, and holds the
 time in RFC 3339 in every JSON form, as its rustdoc describes.
 
-Why: ADR-0016, ADR-0063, ADR-0065, ADR-0108, ADR-0114.
+At a terminal, a table wider than the terminal narrows its widest columns
+to fit and ends each cut cell with `…`, except in the columns that
+`Row::UNCUT_COLUMNS` names ([the table's width](terminal.md#the-tables-width)).
+
+Why: ADR-0016, ADR-0063, ADR-0065, ADR-0108, ADR-0114, ADR-0121.
 
 ## View flags
 

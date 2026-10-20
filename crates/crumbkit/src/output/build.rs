@@ -333,6 +333,7 @@ impl Output {
             dry_run: false,
             no_input: false,
             no_terminal: !guide.terminal_detection(),
+            terminal_width: None,
             json_layout: guide.get_json_layout(),
             budget: budget::from_environment(budget, tool),
             spelling: guide.get_spelling().for_tool(tool),

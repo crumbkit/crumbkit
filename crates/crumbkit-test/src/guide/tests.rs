@@ -13,6 +13,7 @@ mod documents;
 mod examples;
 mod lines;
 mod problems;
+mod uncut;
 mod views;
 
 /// A tool with two resources, one of which has a hidden verb and one an

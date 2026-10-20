@@ -66,6 +66,20 @@ pub trait Row: Serialize + JsonSchema {
     /// field in neither list appears only with `--json --full`.
     const LONG_COLUMNS: &'static [&'static str] = &[];
 
+    /// The columns whose cells a text table at a terminal never cuts, such
+    /// as an identifier that a person copies into the next command. The
+    /// default names none (ADR-0121).
+    ///
+    /// When a text table is wider than the terminal that standard output
+    /// is, crumbkit narrows its widest columns and cuts their long cells.
+    /// It skips the columns named here, also in a `--fields` table, and
+    /// narrows the other columns instead. When these columns and the
+    /// headers of the others are wider than the terminal on their own, the
+    /// table prints unfitted, so every cell is whole and a line is wider
+    /// than the terminal. crumbkit-test's `check_guide` fails a name here
+    /// that is in neither `COLUMNS` nor `LONG_COLUMNS`.
+    const UNCUT_COLUMNS: &'static [&'static str] = &[];
+
     /// The field whose value marks the row as reporting a problem, or `None`
     /// when no field does.
     ///

@@ -40,8 +40,12 @@ In text, the stream prints the table's header when it opens and flushes it.
 Each column is as wide as its header, because the stream cannot know the
 widths of rows still to come. Two spaces separate the cells, the last cell
 is not padded, and a cell wider than its header pushes the rest of its line
-to the right. `stream` fails to compile for a row type with an empty
-`Row::COLUMNS`, because each line would print nothing of its row. A stream of
+to the right. A table that `finish` prints fits the terminal's width
+([the table's width](terminal.md#the-tables-width)), and a stream's table
+does not. Its columns keep the widths of its headers, so at a terminal a
+line wider than the terminal wraps. `stream` fails to compile for a row type
+with an empty `Row::COLUMNS`, because each line would print nothing of its
+row. A stream of
 rows with [their own text line](shapes/README.md#rows-with-their-own-text-line)
 prints those lines and no header.
 

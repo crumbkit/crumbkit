@@ -959,6 +959,9 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   argument with possible values lists them after the argument, as in
   `<SHELL> [possible values: bash, fish, zsh]`, as an invalid value does
   ([behaviour/failures]).
+- crumbkit: a text table at a terminal narrows its widest columns to fit
+  the terminal's width and ends each cut cell with `…`. `Row::UNCUT_COLUMNS`
+  names the columns that it never cuts ([behaviour/output/terminal]).
 
 ### Removed
 

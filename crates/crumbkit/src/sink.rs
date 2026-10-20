@@ -174,3 +174,38 @@ pub(crate) fn stderr_is_terminal() -> bool {
     let err = io::stderr();
     err.is_terminal()
 }
+
+/// Returns the number of columns of the terminal that the process's standard
+/// output is, which `finish` fits a text table to (ADR-0121), or `None` when
+/// standard output is not a terminal or the terminal reports a width of 0.
+pub(crate) fn stdout_width() -> Option<usize> {
+    #[expect(
+        clippy::disallowed_methods,
+        reason = "the sink owns standard output, and a text table needs the width of its terminal"
+    )]
+    let out = io::stdout();
+    if !out.is_terminal() {
+        return None;
+    }
+    terminal_width(&out)
+}
+
+/// Returns the number of columns that the terminal `out` reports, or `None`
+/// when it reports 0, as a pseudo-terminal whose size was never set does.
+#[cfg(unix)]
+fn terminal_width(out: &io::Stdout) -> Option<usize> {
+    let size = rustix::termios::tcgetwinsize(out).ok()?;
+    (size.ws_col > 0).then(|| usize::from(size.ws_col))
+}
+
+/// Returns `None`, because crumbkit reads no terminal width outside Unix.
+///
+/// RUST-10: Windows reports a console's width only through the console
+/// API, which needs `unsafe` code or a new crate such as windows-sys
+/// (ADR-0003), so a text table on Windows prints unfitted. A call to
+/// `GetConsoleScreenBufferInfo` replaces this when a tool needs fitted
+/// tables there.
+#[cfg(not(unix))]
+const fn terminal_width(_out: &io::Stdout) -> Option<usize> {
+    None
+}

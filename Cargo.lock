@@ -164,6 +164,7 @@ dependencies = [
  "is-ai-agent",
  "miette",
  "proptest",
+ "rustix",
  "schemars",
  "serde",
  "serde_json",

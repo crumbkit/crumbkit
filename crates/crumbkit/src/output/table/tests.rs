@@ -12,7 +12,7 @@ use super::{FORMAT, Table, cell, escape_controls, is_format};
 fn table(columns: &[&str], rows: &[Value]) -> String {
     let mut out = Vec::new();
     Table::new(columns, rows)
-        .write(&mut out, rows.len())
+        .write(&mut out, rows.len(), None)
         .unwrap();
     String::from_utf8(out).unwrap()
 }
@@ -27,8 +27,8 @@ fn a_table_written_with_its_first_rows_is_as_wide_as_those_rows_alone() {
     let mut first = Vec::new();
     let mut both = Vec::new();
 
-    table.write(&mut first, 1).unwrap();
-    table.write(&mut both, 2).unwrap();
+    table.write(&mut first, 1, None).unwrap();
+    table.write(&mut both, 2, None).unwrap();
 
     assert_eq!(String::from_utf8(first).unwrap(), "ID  TITLE\n1   Emma\n");
     assert_eq!(

@@ -58,6 +58,15 @@ tracing = { workspace = true, optional = true }
 # feature (ADR-0048).
 clap_complete = { workspace = true, optional = true, features = ["unstable-dynamic"] }
 
+# `finish` reads the number of columns of the terminal that standard output
+# is with rustix's safe `tcgetwinsize`, so a text table fits the terminal
+# without `unsafe` (ADR-0121). tempfile already brings rustix into the lock
+# file, so it adds no crate. `std` makes rustix take the standard library's
+# `AsFd`, which `Stdout` implements. Windows has no such call without
+# `unsafe` or a new crate, so a table there prints unfitted.
+[target.'cfg(unix)'.dependencies]
+rustix = { workspace = true, features = ["std", "termios"] }
+
 [features]
 # `miette` is off by default, so the default build has no miette code and no
 # miette dependency (ADR-0003). It adds `Failure::diagnostic` and the
