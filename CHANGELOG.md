@@ -566,6 +566,10 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   [`check_guide`] pass a command without an example, and every command
   below it, for a stated reason ([behaviour/help/examples],
   [behaviour/adoption/opt-outs]).
+- crumbkit-test: an opt-out from `Rule::GuideDocument` lets
+  [`check_guide`] pass a leaf that changes something and declares no
+  document, and every leaf below it, for a stated reason
+  ([behaviour/help/examples], [behaviour/adoption/opt-outs]).
 
 ### Changed
 

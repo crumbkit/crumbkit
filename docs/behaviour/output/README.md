@@ -108,13 +108,15 @@ On a command that changes something and whose leaf declares no document,
 an agent may repeat a write that already happened, because the refusal
 comes after the handler has run. crumbkit-test's `check_guide` therefore
 fails a leaf whose effects change something and that declares no
-document, and it takes no opt-out from that rule
-([help checks](../help/checks.md)). A leaf that passes on a program's exit
-code needs no document, because crumbkit-child's `hand_over` refuses
-`--json` and `--fields` before the program starts
+document ([help checks](../help/checks.md)). A tool that prints its own
+output for such a leaf opts out of `guide/document` until the output moves
+onto crumbkit's documents, and the tool's own output then decides what a
+view flag does ([opt-outs](../adoption/opt-outs.md)). A leaf that passes
+on a program's exit code needs no document, because crumbkit-child's
+`hand_over` refuses `--json` and `--fields` before the program starts
 ([child processes](child-processes.md)).
 
-Why: ADR-0016, ADR-0024, ADR-0065, ADR-0082, ADR-0093.
+Why: ADR-0016, ADR-0024, ADR-0065, ADR-0082, ADR-0093, ADR-0105.
 
 ## Following the caller's format
 
