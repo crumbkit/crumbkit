@@ -144,7 +144,12 @@ fn a_line_ends_with_a_newline_and_a_line_over_1_kib_is_dropped() {
 
 #[test]
 fn the_checked_in_schema_matches_the_usage_record_schema() {
-    let generated = schemars::schema_for!(Record);
+    // The schema describes the lines that the log writes, as a document's
+    // schema describes what the tool prints (ADR-0110).
+    let generated = schemars::generate::SchemaSettings::draft2020_12()
+        .for_serialize()
+        .into_generator()
+        .into_root_schema_for::<Record>();
     let generated = serde_json::to_string_pretty(&generated).unwrap() + "\n";
     let checked_in = include_str!(concat!(
         env!("CARGO_MANIFEST_DIR"),

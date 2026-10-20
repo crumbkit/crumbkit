@@ -60,6 +60,10 @@ leaf with a document offers only the view flags that its document can use:
   `--fields` nor `--long` when the row type has no columns;
 - prose and bytes offer none of the three.
 
+The document's schema matches the JSON of `--json`, `--json --long` and
+`--json --full`, and matches a `--fields` selection only when the selection
+names every column in `Row::COLUMNS` ([schemas](../schemas/README.md#versions)).
+
 A leaf without a document offers all three, because crumbkit cannot tell
 what its command prints. `--fields` cannot be used with `--long` or
 `--full`, and `--full` needs `--json`, on every command. crumbkit refuses
@@ -116,7 +120,7 @@ on a program's exit code needs no document, because crumbkit-child's
 `hand_over` refuses `--json` and `--fields` before the program starts
 ([child processes](child-processes.md)).
 
-Why: ADR-0016, ADR-0024, ADR-0065, ADR-0082, ADR-0093, ADR-0105.
+Why: ADR-0016, ADR-0024, ADR-0065, ADR-0082, ADR-0093, ADR-0105, ADR-0110.
 
 ## Following the caller's format
 

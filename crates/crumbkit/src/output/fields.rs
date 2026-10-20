@@ -58,7 +58,10 @@ pub(super) fn refusal<R: Row>(printed: &Printed, view: &View) -> Option<Refusal>
 /// its JSON Schema, so a mistyped name fails even when the result has no
 /// rows.
 fn unknown_field<R: Row>(fields: &[String]) -> Option<Refusal> {
-    unknown_field_in(&schemars::schema_for!(R), fields)
+    let schema = crate::schemas::settings()
+        .into_generator()
+        .into_root_schema_for::<R>();
+    unknown_field_in(&schema, fields)
 }
 
 /// Returns the refusal of the first name in `fields` that is not a

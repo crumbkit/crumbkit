@@ -507,9 +507,11 @@ impl Columns {
     }
 }
 
-/// Returns the JSON Schema of `R`.
+/// Returns the JSON Schema of `R`, as the document's schema describes it.
 fn schema<R: JsonSchema>() -> Schema {
-    schemars::schema_for!(R)
+    crate::schemas::settings()
+        .into_generator()
+        .into_root_schema_for::<R>()
 }
 
 /// Returns the sections of the `--help` of `leaf` that describe its

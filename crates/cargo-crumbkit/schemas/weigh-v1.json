@@ -111,8 +111,11 @@
       "required": [
         "path",
         "short_help",
-        "long_help",
-        "path_total"
+        "output",
+        "path_total",
+        "runs",
+        "help_before",
+        "p95_output"
       ]
     }
   }

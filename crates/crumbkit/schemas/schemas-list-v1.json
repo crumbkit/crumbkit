@@ -94,8 +94,7 @@
         "id",
         "kind",
         "form",
-        "description",
-        "commands"
+        "description"
       ]
     }
   }

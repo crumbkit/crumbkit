@@ -582,6 +582,10 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- crumbkit: a document's JSON Schema describes what the tool prints. A field
+  skipped when empty is optional, a field always printed is required even
+  with a serde default, and a row requires only its columns
+  ([behaviour/schemas]).
 - crumbkit: [`Output::new`] returns `Result<Output, Stop>` and refuses
   `--full` without `--json` and `--fields` with `--long` or `--full`
   before the handler runs; [`finish`] and [`stream`] no longer refuse
