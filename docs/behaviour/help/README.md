@@ -143,7 +143,12 @@ ordinary word.
 - `<tool> help <TOPIC>` prints one topic.
 - Every other `help` command line becomes the same command line with
   `--help`, so `shelf help books show` prints what `shelf books show --help`
-  prints. An unknown word gets clap's usual refusal with its suggestions.
+  prints. `--help` goes directly after the last word that follows `help`,
+  comes before any `--` and does not start with `-`, or in the place of
+  `help` when no word qualifies. clap then meets `--help` before the flags
+  after the command's words, so `<tool> help --json` prints the root's
+  help, as `<tool> --help --json` does, also on a tool whose root takes no
+  `--json`. An unknown word gets clap's usual refusal with its suggestions.
   A tool that calls `try_parse` gets the refusal unprinted, with the words
   as typed, the words with `--help`, and the unknown word
   ([parsing](../parsing/README.md#refused-command-lines)).
