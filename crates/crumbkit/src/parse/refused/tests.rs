@@ -2,7 +2,7 @@
 //! with the words that the caller typed and parsed, and prints what
 //! `parse_to` prints when the tool prints it.
 
-use std::ffi::OsString;
+use std::ffi::{OsStr, OsString};
 
 use clap::error::{ContextKind, ContextValue, ErrorKind};
 use clap::{Arg, ArgAction, Command};
@@ -335,4 +335,128 @@ fn a_stop_comes_back_after_help_printed() {
         "{unparsed:?}"
     );
     assert_ne!(out, Vec::<u8>::new());
+}
+
+/// A tool with a global `--format` option and a global `-q` flag, and a
+/// `planets` group whose `show` takes names, a `--sort` key and the flags
+/// `-v` and `-l`.
+fn walked_tool() -> Command {
+    /// Returns the flag `-letter` with the id `id`.
+    fn flag(id: &'static str, letter: char) -> Arg {
+        Arg::new(id).short(letter).action(ArgAction::SetTrue)
+    }
+    Command::new("tool")
+        .arg(Arg::new("format").long("format").global(true))
+        .arg(flag("quiet", 'q').global(true))
+        .subcommand(
+            Command::new("planets").subcommand(
+                Command::new("show")
+                    .arg(Arg::new("names").required(true).num_args(1..))
+                    .arg(Arg::new("sort").long("sort"))
+                    .arg(flag("verbose", 'v'))
+                    .arg(flag("long", 'l')),
+            ),
+        )
+}
+
+/// Checks that `try_parse_to` over `walked_tool()` parses `admitted`, the
+/// twin of `refused`, and returns the refusal of `refused` (TEST-1).
+#[track_caller]
+fn walked(refused: &[&str], admitted: &[&str]) -> Refused {
+    admits(walked_tool(), refused, admitted);
+    refused_by(walked_tool(), &Guide::new(), refused)
+}
+
+#[test]
+fn a_refusal_below_a_group_reports_the_path_to_its_deepest_command() {
+    let refused = walked(
+        &["tool", "planets", "show"],
+        &["tool", "planets", "show", "Mars"],
+    );
+
+    assert_eq!(refused.path(), ["planets", "show"]);
+}
+
+#[test]
+fn a_refusal_at_the_root_reports_an_empty_path() {
+    let refused = walked(&["tool", "comets"], &["tool", "planets"]);
+
+    assert_eq!(refused.path(), Vec::<String>::new());
+}
+
+#[test]
+fn a_refusal_reports_its_flags_in_the_order_typed_with_each_flag_of_a_group() {
+    let refused = walked(
+        &["tool", "-q", "planets", "show", "--sort", "name", "-vl"],
+        &[
+            "tool", "-q", "planets", "show", "--sort", "name", "-vl", "Mars",
+        ],
+    );
+
+    assert_eq!(refused.flags(), ["quiet", "sort", "verbose", "long"]);
+}
+
+#[test]
+fn a_refusal_whose_help_word_crumbkit_turned_into_a_flag_reports_clap_s_help_id() {
+    let refused = walked(
+        &["tool", "planets", "help", "nonsense"],
+        &["tool", "planets", "show", "nonsense"],
+    );
+
+    assert_eq!(refused.parsed(), words(&["planets", "nonsense", "--help"]));
+    assert_eq!(refused.flags(), ["help"]);
+}
+
+#[test]
+fn a_refusal_reports_a_global_option_s_value_typed_before_the_subcommand() {
+    let following = walked(
+        &["tool", "--format", "json", "planets", "show"],
+        &["tool", "--format", "json", "planets", "show", "Mars"],
+    );
+    let inline = walked(
+        &["tool", "--format=json", "planets", "show"],
+        &["tool", "--format=json", "planets", "show", "Mars"],
+    );
+
+    assert_eq!(following.value("format"), Some(OsStr::new("json")));
+    assert_eq!(inline.value("format"), Some(OsStr::new("json")));
+}
+
+#[test]
+fn a_refusal_reports_a_global_option_s_value_typed_after_the_subcommand() {
+    let following = walked(
+        &["tool", "planets", "show", "--format", "yaml"],
+        &["tool", "planets", "show", "--format", "yaml", "Mars"],
+    );
+    let inline = walked(
+        &["tool", "planets", "show", "--format=yaml"],
+        &["tool", "planets", "show", "--format=yaml", "Mars"],
+    );
+
+    assert_eq!(following.value("format"), Some(OsStr::new("yaml")));
+    assert_eq!(inline.value("format"), Some(OsStr::new("yaml")));
+}
+
+#[test]
+fn a_refusal_reports_the_last_value_that_the_words_give_an_option() {
+    let refused = walked(
+        &[
+            "tool", "planets", "show", "--sort", "name", "--sort", "mass",
+        ],
+        &["tool", "planets", "show", "Mars", "name", "--sort", "mass"],
+    );
+
+    assert_eq!(refused.value("sort"), Some(OsStr::new("mass")));
+}
+
+#[test]
+fn a_refusal_reports_no_value_for_an_option_left_out_a_flag_or_an_unknown_id() {
+    let refused = walked(
+        &["tool", "-q", "planets", "show"],
+        &["tool", "-q", "planets", "show", "Mars"],
+    );
+
+    assert_eq!(refused.value("format"), None);
+    assert_eq!(refused.value("quiet"), None);
+    assert_eq!(refused.value("nonsense"), None);
 }

@@ -183,6 +183,13 @@ A `Refused` holds what the refusal prints and what the run knew:
 - `typed`, the words after the program name as the caller typed them;
 - `parsed`, the words that crumbkit gave clap, after it turned the word
   `help` into `--help`, replaced a dashed form or added a picked value;
+- `path`, the real names of the subcommands from the root to the deepest
+  command that the walk reached, which is empty at the root;
+- `flags`, the clap ids of the arguments that `parsed` passes as flags, in
+  the order typed, with each flag of a group such as `-qv`;
+- `value`, the last value that `parsed` gives an option by its clap id,
+  whether the option is the deepest command's own or a global option of a
+  command above it, typed as the next word or after `=`;
 - `culprit`, the word that clap refused, from clap's error context: an
   unknown subcommand, a refused value, or an unexpected word or flag, or
   the view flag that crumbkit refused. A missing argument has none.
@@ -196,7 +203,10 @@ A `Refused` holds what the refusal prints and what the run knew:
 `culprit` is `nonsense`. A tool that resolves aliases of its own reads
 `typed`, and a tool with its own failure document prints the refusal from
 `message`, `code` and `recovery`. A tool that words a refusal in its own
-sentence reads the kind and context of `error`.
+sentence reads the kind and context of `error`. A tool that names the
+deepest command's help, or records the refused run in a history of its
+own, reads `path`, `flags` and a global option's `value`, such as the value
+of `--format`, instead of reading the words again.
 
 `Refused::print` prints the refusal as `parse` prints it, and
 `Refused::print_to` prints it to a sink. Each takes the `Refused` by value
@@ -205,7 +215,7 @@ observers hear of the refusal when it prints, so a refusal that the tool
 answers itself reports no `refused` event. `Unparsed` is
 `#[non_exhaustive]`, and `Unparsed::print` prints whatever variant it holds.
 
-Why: ADR-0100, ADR-0107.
+Why: ADR-0100, ADR-0107, ADR-0109.
 
 ## Reading clap's matches after parsing
 

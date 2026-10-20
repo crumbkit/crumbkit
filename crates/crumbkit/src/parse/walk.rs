@@ -37,13 +37,19 @@ pub(super) struct Walked {
     pub(super) json: bool,
 }
 
-/// What [`given`] read from the words of a command line.
-pub(super) struct Given {
+/// What [`given`] read from the words of a command line, borrowing the
+/// arguments from the command for `'c` and the values from the words for
+/// `'w`.
+pub(super) struct Given<'c, 'w> {
     /// The real names of the subcommands from the root to the deepest
     /// command that the words name.
     pub(super) path: Vec<String>,
     /// The clap ids of the arguments that the words pass as flags.
     pub(super) ids: Vec<String>,
+    /// Each value that the words give an option, with that option, in the
+    /// order typed. A value in the option's own word, as in `--name=value`,
+    /// `-nvalue` or `-n=value`, is the text after the name and its `=`.
+    pub(super) values: Vec<(&'c Arg, &'w OsStr)>,
     /// The number of words that are positional values of the deepest
     /// command.
     pub(super) positionals: usize,
@@ -51,18 +57,24 @@ pub(super) struct Given {
 
 /// Returns what `words`, the words after the program name, give the
 /// deepest command that they name in `command`: the path to it, the ids of
-/// the flags typed, and the number of positional values.
+/// the flags typed, the values of the options typed, and the number of
+/// positional values.
 ///
 /// It reads the words as [`walk`] does. With `dashed_forms`, a word that is
 /// a subcommand's dashed form, such as `reading-lists` for `reading_lists`,
 /// names that subcommand (ADR-0015). A word that names no subcommand, and each word
 /// after `--`, is a positional value, and the walk descends into no
 /// subcommand after the first positional value.
-pub(super) fn given<T: AsRef<OsStr>>(command: &Command, words: &[T], dashed_forms: bool) -> Given {
+pub(super) fn given<'c, 'w, T: AsRef<OsStr>>(
+    command: &'c Command,
+    words: &'w [T],
+    dashed_forms: bool,
+) -> Given<'c, 'w> {
     let mut reader = Words::new(command);
     let mut given = Given {
         path: Vec::new(),
         ids: Vec::new(),
+        values: Vec::new(),
         positionals: 0,
     };
     let mut ended = false;
@@ -74,8 +86,11 @@ pub(super) fn given<T: AsRef<OsStr>>(command: &Command, words: &[T], dashed_form
         }
         match reader.read(word) {
             Kind::End => ended = true,
-            Kind::Value => {}
-            Kind::Flag => given.ids.extend(reader.ids(word)),
+            Kind::Value(arg) => given.values.extend(arg.map(|arg| (arg, word))),
+            Kind::Flag => {
+                given.ids.extend(reader.ids(word));
+                given.values.extend(reader.inline(word));
+            }
             Kind::Name => {
                 let subcommand = match (given.positionals, dashed_forms) {
                     (0, true) => dashed::subcommand(reader.current, word),
@@ -163,7 +178,7 @@ pub(crate) fn own_names(
     for (position, word) in args.iter_mut().enumerate().skip(1) {
         match reader.read(word) {
             Kind::End => break,
-            Kind::Flag | Kind::Value => continue,
+            Kind::Flag | Kind::Value(_) => continue,
             Kind::Name => {}
         }
         let current = reader.current;
@@ -205,7 +220,7 @@ pub(super) fn help_word(
     for (position, word) in args.iter().enumerate().skip(1) {
         match words.read(word) {
             Kind::End => return None,
-            Kind::Flag | Kind::Value => continue,
+            Kind::Flag | Kind::Value(_) => continue,
             Kind::Name => {}
         }
         let current = words.current;
@@ -252,7 +267,7 @@ pub(super) fn walk(command: &Command, args: &[OsString]) -> Walked {
     for word in args.iter().skip(1) {
         match words.read(word) {
             Kind::End => break,
-            Kind::Value => {}
+            Kind::Value(_) => {}
             Kind::Flag => {
                 walked.long_help |= word == "--help";
                 // RUST-10: only the words `-h` and `--help` count, so `-h`
@@ -274,20 +289,23 @@ pub(super) fn walk(command: &Command, args: &[OsString]) -> Walked {
     walked
 }
 
-/// How [`Words::read`] reads one word.
-enum Kind {
+/// How [`Words::read`] reads one word, borrowing an option from the
+/// command for `'a`.
+enum Kind<'a> {
     /// The word `--`, after which every word is a positional value.
     End,
     /// A word that starts with `-` and is no option's value.
     Flag,
-    /// A value of the option before it.
-    Value,
+    /// A value of the option before it, which the variant holds, or the
+    /// option's value terminator, which ends its values and holds `None`.
+    Value(Option<&'a Arg>),
     /// Any other word, which can name a subcommand or be a positional value.
     Name,
 }
 
 /// Reads the typed words one at a time as clap's parser does, so a value of
-/// an option is never read as a subcommand.
+/// an option is never read as a subcommand, and names the option of each
+/// value.
 ///
 /// An option's values are the rest of its own word in `--name=value`,
 /// `-nvalue` and `-n=value`, and otherwise the next words, up to the most
@@ -302,8 +320,9 @@ enum Kind {
 // the build: the arguments of `Command::defer`, and the hyphen values that a
 // command's own `allow_hyphen_values` allows. It also misses the prefixes
 // that `infer_long_args` accepts. It reads each word it misses as a flag
-// without values. A walk over the commands that clap builds along the path
-// replaces it if a tool needs those settings.
+// without values. It gives each value as one word and never splits it at
+// the option's value delimiter. A walk over the commands that clap builds
+// along the path replaces it if a tool needs those settings.
 struct Words<'a> {
     /// The current command, the deepest that the reader entered.
     current: &'a Command,
@@ -332,17 +351,17 @@ impl<'a> Words<'a> {
     }
 
     /// Reads `word`, the next word after the program name.
-    fn read(&mut self, word: &OsStr) -> Kind {
+    fn read(&mut self, word: &OsStr) -> Kind<'a> {
         if let Some((arg, left)) = self.pending.take() {
             if arg
                 .get_value_terminator()
                 .is_some_and(|terminator| word == terminator.as_str())
             {
-                return Kind::Value;
+                return Kind::Value(None);
             }
             if !starts_with_hyphen(word) || arg.is_allow_hyphen_values_set() {
                 self.pending = (left > 1).then_some((arg, left - 1));
-                return Kind::Value;
+                return Kind::Value(Some(arg));
             }
         }
         if word == "--" {
@@ -434,18 +453,46 @@ impl<'a> Words<'a> {
     /// The first letter in the group that names an option ends the flags,
     /// and the rest of the word, when there is any, is its value.
     fn read_short(&self, shorts: &str) -> Option<(&'a Arg, usize)> {
+        let (arg, rest) = self.short_option(shorts)?;
+        if rest.is_empty() {
+            takes_next(arg)
+        } else {
+            None
+        }
+    }
+
+    /// Returns the option in the group of short flags `shorts`, written
+    /// without its `-`, and the rest of the word after the option's letter,
+    /// or `None` when the group holds no option before its first letter
+    /// that names no argument.
+    fn short_option<'w>(&self, shorts: &'w str) -> Option<(&'a Arg, &'w str)> {
         for (index, letter) in shorts.char_indices() {
             let arg = self.find_short(letter)?;
             if most_values(arg) > 0 {
-                let rest = &shorts[index + letter.len_utf8()..];
-                return if rest.is_empty() {
-                    takes_next(arg)
-                } else {
-                    None
-                };
+                return Some((arg, &shorts[index + letter.len_utf8()..]));
             }
         }
         None
+    }
+
+    /// Returns the option that the flag word `word` gives a value in its
+    /// own word, and that value: the text after the first `=` of
+    /// `--name=value`, or the rest of a group of short flags after the
+    /// option's letter, without a leading `=`, as in `-nvalue` and
+    /// `-n=value`. A word that gives no option a value returns `None`.
+    fn inline<'w>(&self, word: &'w OsStr) -> Option<(&'a Arg, &'w OsStr)> {
+        let text = word.to_str()?;
+        let (arg, value) = if let Some(long) = text.strip_prefix("--") {
+            let (name, value) = long.split_once('=')?;
+            (self.find_long(name)?, value)
+        } else {
+            let (arg, rest) = self.short_option(text.trim_start_matches('-'))?;
+            if rest.is_empty() {
+                return None;
+            }
+            (arg, rest.strip_prefix('=').unwrap_or(rest))
+        };
+        (most_values(arg) > 0).then_some((arg, OsStr::new(value)))
     }
 
     /// Returns the first argument that `matches` accepts among the current
