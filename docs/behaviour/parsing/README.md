@@ -141,8 +141,9 @@ rustdoc of `parse_to` states the message and the recovery.
   subcommand, in that order. A refused `--limit` above its bound adds
   `most` ([listings](../output/listings/README.md#an-upper-bound-on---limit)).
 - The recovery runs the `-h` of the deepest typed command, even a hidden
-  one, unless the tool's refusal function returns a call that renders and
-  parses ([refused command lines](../failures/README.md#refused-command-lines)).
+  one, unless the tool's hint function returns a sentence or its refusal
+  function returns a call that renders and parses
+  ([refused command lines](../failures/README.md#refused-command-lines)).
 - In text, a refusal from clap prints clap's usage as `usage:` lines under
   the message. A command line that stops at a group with visible
   subcommands prints the group's `-h` page in place of the refusal lines.
@@ -160,14 +161,14 @@ on the two paths ([help](../help/README.md#the-walk-before-parsing)).
 The refusal names real names only. When clap suggests a hidden alias of a
 flag or subcommand, the refusal names the real flag or subcommand that the
 alias belongs to, and it leaves the suggestion out when that real item is
-hidden. A tool can add its own alternatives to a refusal through a
-[declaration](../adoption/declarations.md).
+hidden. A tool can add its own alternatives or a hint to a refusal through
+a [declaration](../adoption/declarations.md).
 
 A command that refuses the caller after parsing, such as a handler that
 rejects a value, returns an ordinary `Failure`, which `finish` prints.
 crumbkit-test's checks and the golden files cover the whole command tree.
 
-Why: ADR-0015, ADR-0001, ADR-0021, ADR-0050, ADR-0118.
+Why: ADR-0015, ADR-0001, ADR-0021, ADR-0050, ADR-0118, ADR-0123.
 
 ## A refusal that the tool prints
 
@@ -182,7 +183,8 @@ command line comes back as `Unparsed::Refused` with a
 A `Refused` holds what the refusal prints and what the run knew:
 
 - `message`, `code` and `recovery`, which the refusal prints, with the code
-  after the guide's renames;
+  after the guide's renames and the recovery after the tool's declared hint
+  or calls, so a tool that prints its own document prints its hint;
 - `number`, the exit code that the run ends with once the refusal prints;
 - `output`, the output flags as far as the walk found them;
 - `typed`, the words after the program name as the caller typed them;
@@ -222,7 +224,7 @@ observers hear of the refusal when it prints, so a refusal that the tool
 answers itself reports no `refused` event. `Unparsed` is
 `#[non_exhaustive]`, and `Unparsed::print` prints whatever variant it holds.
 
-Why: ADR-0100, ADR-0107, ADR-0109.
+Why: ADR-0100, ADR-0107, ADR-0109, ADR-0123.
 
 ## Reading clap's matches after parsing
 

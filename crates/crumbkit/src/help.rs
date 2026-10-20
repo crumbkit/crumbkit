@@ -114,6 +114,9 @@ pub struct Guide {
     /// The function that builds refusal alternatives for a command whose
     /// leaf sets none, or `None` for crumbkit's alternatives alone.
     refusal_alternatives: Option<fn(&RefusalContext<'_>) -> Vec<crate::Call>>,
+    /// The function that returns the refusal hint for a command whose leaf
+    /// sets none, or `None` for no hint.
+    refusal_hint: Option<fn(&RefusalContext<'_>) -> Option<String>>,
     /// The function that returns the names of a person's aliases, which
     /// the root's help names, or `None` when help names no aliases.
     personal_aliases: Option<fn(&Command) -> Vec<String>>,
@@ -150,6 +153,7 @@ impl Guide {
             spelling: Spelling::COLONS,
             codes: &[],
             refusal_alternatives: None,
+            refusal_hint: None,
             personal_aliases: None,
             picker: None,
             without_terminal_detection: None,
