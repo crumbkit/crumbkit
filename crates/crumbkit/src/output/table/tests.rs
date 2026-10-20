@@ -5,7 +5,7 @@ use std::borrow::Cow;
 use proptest::prelude::*;
 use serde_json::{Value, json};
 
-use super::{Table, cell, escape_controls};
+use super::{FORMAT, Table, cell, escape_controls, is_format};
 
 /// Returns the table that `Table::write` prints for `columns` and every
 /// row of `rows`.
@@ -189,6 +189,57 @@ fn another_control_character_prints_as_its_unicode_escape() {
 }
 
 #[test]
+fn a_bidirectional_override_in_a_cell_prints_as_its_unicode_escape() {
+    let rows = [json!({"note": "abc\u{202e}def"})];
+
+    assert_eq!(table(&["note"], &rows), "NOTE\nabc\\u{202e}def\n");
+}
+
+#[test]
+fn a_soft_hyphen_prints_as_its_unicode_escape() {
+    assert_eq!(escape_controls("co\u{ad}operate"), "co\\u{ad}operate");
+}
+
+#[test]
+fn ordinary_text_with_letters_outside_ascii_is_borrowed_unchanged() {
+    let text = "Brontë é 日本 \u{301}";
+
+    let escaped = escape_controls(text);
+
+    assert!(
+        matches!(escaped, Cow::Borrowed(borrowed) if borrowed == text),
+        "{escaped:?}"
+    );
+}
+
+#[test]
+fn the_format_character_table_is_sorted_and_its_ranges_do_not_overlap() {
+    for (&(first, last), &(next, _)) in FORMAT.iter().zip(FORMAT.iter().skip(1)) {
+        assert!(first <= last && last < next, "{first:x} {last:x} {next:x}");
+    }
+}
+
+#[test]
+fn the_first_and_last_code_point_of_each_format_range_is_a_format_character() {
+    for &(first, last) in FORMAT {
+        for point in [first, last] {
+            let character = char::from_u32(point).unwrap();
+            assert!(is_format(character), "{point:x}");
+        }
+    }
+}
+
+#[test]
+fn a_code_point_next_to_a_format_range_is_not_a_format_character() {
+    for &(first, last) in FORMAT {
+        for point in [first - 1, last + 1] {
+            let character = char::from_u32(point).unwrap();
+            assert!(!is_format(character), "{point:x}");
+        }
+    }
+}
+
+#[test]
 fn a_string_without_a_control_character_is_borrowed_unchanged() {
     let value = json!("Brontë \"quoted\" \\ text");
 
@@ -207,9 +258,10 @@ const COLUMNS: [&str; 3] = ["id", "title", "note"];
 /// Generates the text of one cell: up to six characters drawn from lowercase
 /// letters, a space, every C0 and C1 control character and DEL, `é` (two bytes
 /// in UTF-8), `界` (a CJK character that a terminal shows two columns wide),
-/// `🦀` (four bytes in UTF-8) and U+0301, a combining accent. The empty string
-/// is one of the texts.
-const CELL_TEXT: &str = r"[a-z \x00-\x1f\x7f-\x9fé界🦀\u{301}]{0,6}";
+/// `🦀` (four bytes in UTF-8), U+0301, a combining accent, and the format
+/// characters U+200B, a zero-width space, and U+202E, a right-to-left
+/// override. The empty string is one of the texts.
+const CELL_TEXT: &str = r"[a-z \x00-\x1f\x7f-\x9fé界🦀\u{301}\u{200b}\u{202e}]{0,6}";
 
 /// Generates up to five rows of three cells.
 fn rows() -> impl Strategy<Value = Vec<[String; 3]>> {
@@ -236,13 +288,14 @@ proptest! {
     /// and `🦀` two columns wide and U+0301 zero wide, so a table holding them
     /// misaligns on screen, which `write` documents.
     #[test]
-    fn a_table_has_one_line_per_row_without_raw_control_characters_and_aligned_columns(
+    fn a_table_has_one_line_per_row_without_raw_control_or_format_characters_and_aligned_columns(
         rows in rows(),
     ) {
         let printed = table(&COLUMNS, &values(&rows));
 
         // The cells as the table shows them, header first: the column names
-        // in upper case, and each string with its control characters escaped.
+        // in upper case, and each string with its control and format
+        // characters escaped.
         let mut lines = vec![COLUMNS.map(str::to_uppercase)];
         for row in &rows {
             lines.push(row.clone().map(|text| escape_controls(&text).into_owned()));
@@ -261,7 +314,9 @@ proptest! {
         prop_assert_eq!(printed_lines.len(), rows.len() + 1);
         for (printed_line, cells) in printed_lines.iter().zip(&lines) {
             prop_assert!(
-                !printed_line.chars().any(char::is_control),
+                !printed_line
+                    .chars()
+                    .any(|character| character.is_control() || is_format(character)),
                 "{printed_line:?}"
             );
 

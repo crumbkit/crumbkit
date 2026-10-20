@@ -279,7 +279,7 @@ describe opt-outs, and [ADR-0025] records why the checks exist.
 [`Yes`]: ../crates/crumbkit/src/output/confirm.rs
 [ADR-0001]: decisions/api/failures/0001-error-model.md
 [ADR-0015]: decisions/api/adoption/0015-lightweight-adoption.md
-[ADR-0025]: decisions/api/help/0025-help-checks.md
+[ADR-0025]: decisions/api/help/checks/0025-help-checks.md
 [output docs]: behaviour/output/README.md
 [examples docs]: behaviour/help/examples.md
 [effects docs]: behaviour/effects/README.md

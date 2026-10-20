@@ -31,12 +31,15 @@ choices from the source that its leaf names with `Leaf::choices` and
 `Choices::new`, a function that returns the choices or fails with a crumbkit
 `Error`. Possible values win when an argument has both. `pick::from_rows`
 turns a command's rows into choices: the value is the named column, and the
-label is the row's other default columns, with each control character
-escaped. A tool usually reads the same rows as its `list` command.
+label is the row's other default columns, with each control character and
+each format character escaped. A format character is a Unicode character of
+general category Cf, such as a bidirectional override or a zero-width space.
+The menu escapes both in every label it shows. A tool usually reads the same
+rows as its `list` command.
 crumbkit-test's `check_guide` fails choices that name no argument of their
 leaf.
 
-Why: ADR-0043.
+Why: ADR-0043, ADR-0114.
 
 ## When crumbkit asks
 

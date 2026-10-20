@@ -37,7 +37,7 @@ fn check_guide_fails_on_a_leaf_that_declares_a_change_and_no_document() {
     ]);
 
     assert_eq!(
-        panic_message(|| check_guide(&shelf(), &GUIDE, &[])).unwrap(),
+        panic_message(|| check_guide(&ViewFlags::augment_args(shelf()), &GUIDE, &[])).unwrap(),
         "the command tree breaks crumbkit's guide rules:\n\
          shelf books show: the leaf declares effects that change something and no document, so crumbkit refuses a view flag that the output cannot use only after the change; declare the document with `Leaf::document`, or with `Leaf::stream` for a stream"
     );

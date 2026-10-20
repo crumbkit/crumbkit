@@ -42,7 +42,7 @@ rule's page gives its reason.
 | `OneValuePerUse` | `filters/one-value-per-use` | an option takes several values per use |
 | `Examples` | `examples/run` | an example is skipped ([end-to-end checks](../checks/end-to-end.md)) |
 | `GuideExamples` | `guide/examples` | a visible command without subcommands has no example yet ([leaf checks](../help/examples.md#checks-of-leaves)) |
-| `GuideDocument` | `guide/document` | a leaf that changes something prints the tool's own output and declares no document yet |
+| `GuideDocument` | `guide/document` | a leaf that changes something and takes a view flag prints the tool's own output and declares no document yet |
 | `Envelope` | `documents/envelope` | a command keeps the shape of an existing document with `Envelope::Without` ([result shapes](../output/shapes/README.md#documents-without-the-envelope)) |
 | `RowsWhole` | `documents/rows-whole` | a command's row type sets `Row::WHOLE`, so `--json` prints every field of each row ([result shapes](../output/shapes/README.md#rows-printed-whole)) |
 | `Effects` | `effects/declared` | a visible leaf declares no effects ([effects](../effects/README.md)) |

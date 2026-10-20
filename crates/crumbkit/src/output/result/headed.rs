@@ -20,7 +20,8 @@ use crate::{Code, Rows, codes};
 /// Each row prints whole or not at all. A row prints its bytes unchanged,
 /// or one line of compact JSON with every field when it holds no bytes.
 /// When the batch has more than one key, a header line `==> KEY <==`
-/// precedes each row, with the key's control characters escaped, and a
+/// precedes each row, with the key's control and format characters escaped,
+/// as a table cell escapes them, and a
 /// line feed precedes each header after the first, as `head` prints many
 /// files. A key's failure prints no header.
 ///
@@ -124,7 +125,7 @@ pub(super) fn write<T: Rows>(
 }
 
 /// Returns the header line of the row at `position`, whose key is `key`:
-/// `==> KEY <==` with the key's control characters escaped, or the
+/// `==> KEY <==` with the key's control and format characters escaped, or the
 /// position in parentheses for a row pushed after the last key.
 pub(in crate::output) fn header(key: Option<&str>, position: usize) -> String {
     match key {

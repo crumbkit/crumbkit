@@ -588,10 +588,17 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- crumbkit: text output escapes each Unicode format character, such as a
+  bidirectional override or a zero-width space, as it escapes control
+  characters, in table cells, rows' text lines, failures, headed keys and
+  picker labels ([behaviour/output]).
 - crumbkit: a document's JSON Schema describes what the tool prints. A field
   skipped when empty is optional, a field always printed is required even
   with a serde default, and a row requires only its columns
   ([behaviour/schemas]).
+- crumbkit: the schema of a document that prints only the row's columns
+  admits null for a column that the row type skips when it is empty, and
+  that column stays optional ([behaviour/schemas]).
 - crumbkit: [`Output::new`] returns `Result<Output, Stop>` and refuses
   `--full` without `--json` and `--fields` with `--long` or `--full`
   before the handler runs; [`finish`] and [`stream`] no longer refuse
@@ -941,6 +948,10 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit-test: [`check_guide`] takes the tool's opt-outs as a third
   argument. A tool without opt-outs passes `&[]`
   ([behaviour/help/examples]).
+- crumbkit-test: [`check_guide`]'s document rule applies only to a leaf
+  whose command takes a global `--json`, `--fields`, `--long` or `--full`.
+  A `guide/document` opt-out for any other leaf now fails as stale; remove
+  it ([behaviour/output]).
 - crumbkit: the refusal of a command line that stops at a group names the
   group's visible subcommands, so `shelf books` prints `needs a subcommand:
   list, show, summarize, remove` ([behaviour/failures]).

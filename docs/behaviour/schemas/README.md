@@ -124,7 +124,8 @@ the tool reads, so a field with a serde default is optional there. In a
 document with the envelope whose `--json` prints the row's columns, a row
 requires only the fields in `Row::COLUMNS`, so the documents of `--json`,
 `--json --long` and `--json --full` all match the schema. A column that the
-row type skips when it is empty prints `null` in the compact document, which
-the schema admits only when the field's type accepts null.
+row type skips when it is empty prints `null` in the compact document, so its
+property's type admits null. The column stays optional, because
+`--json --full` leaves it out.
 
-Why: ADR-0007, ADR-0110.
+Why: ADR-0007, ADR-0110, ADR-0113.
