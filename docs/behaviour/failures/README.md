@@ -195,6 +195,19 @@ the line sets a `--limit` above its
 command line exits with 2 unless the guide lists another code
 ([exit codes](exit-codes.md)).
 
+A command line that stops at a group says that the group needs a
+subcommand and names the group's visible subcommands in the order that the
+tool declares them, as in
+``the command `shelf books` needs a subcommand: list, show, summarize, remove``.
+A hidden subcommand is left out. A command line that stops at a leaf that
+needs arguments says that the command needs arguments.
+
+A command line that leaves out a required argument with possible values
+names the argument's visible possible values right after the argument, in
+the form that clap uses for an invalid value, as in
+`the following required arguments were not provided: <SHELL> [possible values: bash, fish, zsh]`.
+A missing argument without possible values is named alone.
+
 A leaf may declare a function with `Leaf::refusal_alternatives` that builds
 calls from a refusal of a command line that reaches the leaf, such as the
 refused line with the refused value corrected. A guide may declare one such
@@ -211,7 +224,7 @@ has not checked, and a trace never holds the caller's values.
 
 [Parsing](../parsing/README.md) covers when `parse` refuses a command line.
 
-Why: ADR-0001, ADR-0056, ADR-0030, ADR-0078.
+Why: ADR-0001, ADR-0056, ADR-0030, ADR-0078, ADR-0106.
 
 ## The `miette` feature
 

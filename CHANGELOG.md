@@ -922,6 +922,13 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit-test: [`check_guide`] takes the tool's opt-outs as a third
   argument. A tool without opt-outs passes `&[]`
   ([behaviour/help/examples]).
+- crumbkit: the refusal of a command line that stops at a group names the
+  group's visible subcommands, so `shelf books` prints `needs a subcommand:
+  list, show, summarize, remove` ([behaviour/failures]).
+- crumbkit: the refusal of a command line that leaves out a required
+  argument with possible values lists them after the argument, as in
+  `<SHELL> [possible values: bash, fish, zsh]`, as an invalid value does
+  ([behaviour/failures]).
 
 ### Removed
 
