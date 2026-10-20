@@ -576,6 +576,9 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit: `Stop::printed` returns a [`Printed`] that says whether help,
   the version, a topic, a refusal or a picker's failure printed before
   `parse` ended the run ([behaviour/parsing]).
+- crumbkit: `Refused::path`, `Refused::flags` and `Refused::value` return
+  the path to the deepest command, the ids of the flags typed and the last
+  value of an option, such as a global `--format` ([behaviour/parsing]).
 
 ### Changed
 

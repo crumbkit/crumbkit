@@ -21,3 +21,4 @@ conventions for a stated reason.
 - [ADR-0094. A run's Output is read-only after parse, and finish consumes it](0094-output-read-only-after-parse.md)
 - [ADR-0100. try_parse returns a refusal unprinted](0100-try-parse-returns-the-refusal.md)
 - [ADR-0107. Refused exposes clap's error and Stop says what printed](0107-refused-and-stop-say-what-the-run-met.md)
+- [ADR-0109. Refused reports the path, the flags and an option's value](0109-refused-reports-its-walk.md)
