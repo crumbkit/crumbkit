@@ -202,10 +202,14 @@ A failure prints as text on standard error with nothing on standard output,
 or with `--json` as one failure document on standard output. In text, each
 alternative repair prints on its own `help:` line after the recovery's, and
 each control character and format character in a failure's text prints as
-its escape, as the table prints it.
+its escape, as the table prints it. Each failure's text reaches standard
+error in one write.
 
 `finish` writes through a [`Sink`](../../../crates/crumbkit/src/sink.rs), and
-`finish_to` writes into a given sink, so tests run in memory. `finish_to`
+`finish_to` writes into a given sink, so tests run in memory. crumbkit names
+each piece of output as the result or as a kind of message, and the sink
+alone maps that role to a stream: the result to standard output and every
+message to standard error. `finish_to`
 returns the exit code as a `u8`, which a test can compare and a tool can
 record, and `finish` returns the same code as an `ExitCode`. A pipe that the
 reader closed early keeps the exit code of the result.
@@ -216,7 +220,7 @@ handler that reads the `Output` with `&mut`, such as `commands::list` or a
 command that confirms, runs before `finish`. A second `finish` with the same
 `Output` does not compile.
 
-Why: ADR-0050, ADR-0016, ADR-0077, ADR-0094.
+Why: ADR-0050, ADR-0016, ADR-0077, ADR-0094, ADR-0128.
 
 ## Result shapes
 

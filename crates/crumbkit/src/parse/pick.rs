@@ -13,6 +13,7 @@ use crate::help::{Guide, Leaf, quote};
 use crate::output::failure::{self, Printing};
 use crate::pick::no_input::NO_INPUT_ID;
 use crate::pick::{Answer, Choice, Choices, Picker, Question};
+use crate::sink::role::{Deliver, Message, Role};
 use crate::{Sink, Spelling};
 
 #[cfg(test)]
@@ -202,35 +203,34 @@ pub(super) fn args(command: &Command, words: &[OsString]) -> Vec<OsString> {
         .collect()
 }
 
-/// Prints the whole command line of a run whose missing arguments were
-/// picked on the sink's error writer, such as `Running: shelf books show
-/// 3`, so the person sees what runs and can type it next time.
-pub(super) fn echo<O: Write, E: Write, R>(
-    sink: &mut Sink<O, E, R>,
-    command: &Command,
-    words: &[OsString],
-) {
+/// Delivers the whole command line of a run whose missing arguments were
+/// picked as an echo message, such as `Running: shelf books show 3`, so the
+/// person sees what runs and can type it next time.
+pub(super) fn echo(sink: &mut dyn Deliver, command: &Command, words: &[OsString]) {
     let mut line = format!("Running: {}", quote(command.get_name()));
     for word in words {
         line.push(' ');
         line.push_str(&quote(&word.to_string_lossy()));
     }
+    line.push('\n');
     // A run whose echo cannot be written still runs.
-    let _ = writeln!(sink.err, "{line}");
+    let _ = sink.deliver(Role::Message(Message::Echo), line.as_bytes());
 }
 
-/// Asks `picker` about `question` through the input and the error writer
-/// of `sink`, and returns the picked positions, or `None` when no person
-/// can answer, the person cancelled, or reading or writing failed.
-fn ask<O, E: Write, R: BufRead>(
+/// Asks `picker` about `question` through the input of `sink` and the
+/// writer that the sink gives a prompt, and returns the picked positions,
+/// or `None` when no person can answer, the person cancelled, or reading or
+/// writing failed.
+fn ask<O: Write, E: Write, R: BufRead>(
     picker: &dyn Picker,
     sink: &mut Sink<O, E, R>,
     question: &Question<'_>,
 ) -> Option<Vec<usize>> {
-    if !sink.interactive {
+    if !sink.is_interactive() {
         return None;
     }
-    match picker.pick(question, &mut sink.input, &mut sink.err) {
+    let (input, prompt) = sink.dialogue(Role::Message(Message::Prompt));
+    match picker.pick(question, input, prompt) {
         Ok(Answer::Picked(positions)) => Some(positions),
         Ok(_) | Err(_) => None,
     }

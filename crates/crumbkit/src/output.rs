@@ -6,7 +6,6 @@ mod build;
 mod children;
 mod columns;
 mod confirm;
-mod counted;
 mod direct;
 pub(crate) mod dry_run;
 mod envelope;
@@ -33,7 +32,6 @@ use clap::Command;
 
 pub use self::build::ViewFlags;
 pub use self::confirm::Yes;
-use self::counted::Counted;
 pub use self::dry_run::DryRun;
 use self::failure::Printing;
 pub use self::layout::JsonLayout;
@@ -102,11 +100,6 @@ pub struct Output {
 
     /// Whether the tool's guide turned terminal detection off (ADR-0049).
     no_terminal: bool,
-
-    /// The number of columns of the terminal that standard output is, which
-    /// a text table fits, or `None` when the table prints unfitted. Only
-    /// [`finish`] reads it, and only with terminal detection on (ADR-0121).
-    terminal_width: Option<usize>,
 
     /// The layout of a whole JSON document (ADR-0052).
     json_layout: JsonLayout,
@@ -272,12 +265,14 @@ fn several_keys<T: Rows>(value: &T) -> bool {
 /// crumbkit::finish(output, ENTRIES, second);
 /// ```
 pub fn finish<T: Rows, E: AsFailure>(
-    mut output: Output,
+    output: Output,
     document: Document<T>,
     result: Result<T, E>,
 ) -> ExitCode {
-    output.terminal_width = output.read_terminal_width();
-    ExitCode::from(finish_to(&mut Sink::standard(), output, document, result))
+    // The sink gives the result the width of the terminal that standard
+    // output is, which a text table fits (ADR-0121, ADR-0128).
+    let sink = &mut Sink::standard().fitted(output.read_terminal_width());
+    ExitCode::from(finish_to(sink, output, document, result))
 }
 
 /// Prints a command's result to `sink` in the format that `output` chooses,
@@ -441,11 +436,11 @@ pub fn finish_to<T: Rows, E: AsFailure, O: Write, W: Write>(
     // crumbkit's own codes and documents print with the tool's name in
     // place of `crumbkit` (ADR-0079).
     let (spelling, document) = output.named(document);
-    // The sink counts the bytes of standard output, which `finish` reports
-    // to the observer with the exit code (ADR-0057).
+    // The sink counts the bytes of the result, which `finish` reports to the
+    // observer with the exit code (ADR-0057).
     let truncated = result.as_ref().is_ok_and(listing::leaves_out);
     let empty = result.as_ref().is_ok_and(listing::matches_none);
-    let sink = &mut Sink::new(Counted::new(&mut sink.out), &mut sink.err);
+    let before = sink.result_bytes();
     // With the `tracing` feature, the response runs inside the
     // `crumbkit.finish` span, which records the exit code (ADR-0030).
     #[cfg(feature = "tracing")]
@@ -455,6 +450,7 @@ pub fn finish_to<T: Rows, E: AsFailure, O: Write, W: Write>(
     let (exit, cut) = respond::respond(sink, &mut output, spelling, document, result);
     #[cfg(feature = "tracing")]
     crate::trace::spans::exited(&span, exit);
-    crate::events::finished(exit, sink.out.bytes(), truncated || cut, empty);
+    let bytes = sink.result_bytes() - before;
+    crate::events::finished(exit, bytes, truncated || cut, empty);
     exit
 }

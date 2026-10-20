@@ -71,8 +71,8 @@ Why: ADR-0041, ADR-0052, ADR-0063, ADR-0064, ADR-0120.
 
 ## Failures and the exit code
 
-A failure in the middle prints on standard error in text, and as one
-`<tool>/failure/v1` line between the rows with `--json`. A stream that printed a failure or ended with an `Err`
+A failure in the middle prints on standard error in text, in one write, and
+as one `<tool>/failure/v1` line between the rows with `--json`. A stream that printed a failure or ended with an `Err`
 exits with the code of its first failure, as `finish` does
 ([exit codes](../failures/exit-codes.md)). A closed pipe keeps the code. Any
 other failed write prints once on standard error and exits with code 1 unless
@@ -82,7 +82,7 @@ them ([rows that report a problem](listings/README.md#rows-that-report-a-problem
 
 A stream prints at most the [output budget](budget/README.md#streams).
 
-Why: ADR-0041.
+Why: ADR-0041, ADR-0128.
 
 ## Notes
 

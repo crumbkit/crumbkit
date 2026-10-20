@@ -77,7 +77,7 @@ fn json_holds_each_label_with_its_place_when_the_span_could_be_read() {
         Spelling::COLONS,
         Printing::default(),
         &mut clap::Command::new("tool"),
-        &mut std::io::sink(),
+        &mut crate::sink::role::Recorded::default(),
     );
 
     let json = serde_json::to_string(&document).unwrap();
@@ -103,7 +103,7 @@ fn a_batch_entry_holds_the_labels_as_the_failure_document_does() {
         Spelling::COLONS,
         Printing::default(),
         &mut clap::Command::new("tool"),
-        &mut std::io::sink(),
+        &mut crate::sink::role::Recorded::default(),
     );
 
     let json = serde_json::to_string(&Entry(&document)).unwrap();
@@ -126,7 +126,7 @@ fn json_leaves_out_labels_when_the_diagnostic_has_none() {
         Spelling::COLONS,
         Printing::default(),
         &mut clap::Command::new("tool"),
-        &mut std::io::sink(),
+        &mut crate::sink::role::Recorded::default(),
     );
 
     let json = serde_json::to_string(&document).unwrap();
@@ -143,7 +143,7 @@ fn a_label_excerpt_holds_every_line_of_its_span_and_one_line_before_and_after() 
         Spelling::COLONS,
         Printing::default(),
         &mut clap::Command::new("tool"),
-        &mut std::io::sink(),
+        &mut crate::sink::role::Recorded::default(),
     );
 
     let json = serde_json::to_value(&document).unwrap();

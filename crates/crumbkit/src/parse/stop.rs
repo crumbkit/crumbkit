@@ -59,22 +59,25 @@ struct Inner {
 #[non_exhaustive]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Printed {
-    /// A help page printed on standard output, for `-h`, `--help` or the
-    /// word `help`. The run observer's
+    /// A help page printed as the result on standard output, for `-h`,
+    /// `--help` or the word `help`. The run observer's
     /// [`helped`](crate::events::Observer::helped) event carries whether it
     /// was the long page.
     Help,
-    /// The version printed on standard output, for `--version`.
+    /// The version printed as the result on standard output, for
+    /// `--version`.
     Version,
-    /// A help topic printed on standard output, for the word `help` at the
-    /// guide's root followed by the topic's name.
+    /// A help topic printed as the result on standard output, for the word
+    /// `help` at the guide's root followed by the topic's name.
     Topic,
-    /// A refused command line printed on standard error, or on standard
-    /// output as a JSON document when the caller asked for JSON or the tool
-    /// chose JSON with [`Refused::as_json`](crate::Refused::as_json).
+    /// A refused command line printed as a message on standard error, or as
+    /// the result on standard output in a JSON document when the caller
+    /// asked for JSON or the tool chose JSON with
+    /// [`Refused::as_json`](crate::Refused::as_json).
     Refusal,
-    /// The failure of a picker's source printed on standard error, or on
-    /// standard output as a JSON document when the caller asked for JSON.
+    /// The failure of a picker's source printed as a message on standard
+    /// error, or as the result on standard output in a JSON document when
+    /// the caller asked for JSON.
     Failure,
 }
 

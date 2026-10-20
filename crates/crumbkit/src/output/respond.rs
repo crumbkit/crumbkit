@@ -1,15 +1,17 @@
 //! The steps of [`finish_to`](super::finish_to) after a tool's handler
 //! returns: the refusal of bad flags, the handler's failure or the result,
-//! the result's failures, and the dry-run line.
+//! the result's failures, and the dry-run line. Each piece is delivered
+//! with its role, and the sink maps the role to a stream (ADR-0128).
 
-use std::io::{self, Write};
+use std::io;
 
 use super::budget::OverBudget;
 use super::dry_run::DRY_RUN_LINE;
 use super::failure::{self, PreparedFailure, Printing};
 use super::result::{Answer, write_result};
 use super::{Output, fields};
-use crate::{AsFailure, Document, Rows, Sink, Spelling, exit};
+use crate::sink::role::{Deliver, Message, Role};
+use crate::{AsFailure, Document, Rows, Spelling, exit};
 
 /// Prints the result to `sink` and returns the exit code as a number, as
 /// [`finish_to`] describes, and whether the output budget cut a listing or a
@@ -18,8 +20,8 @@ use crate::{AsFailure, Document, Rows, Sink, Spelling, exit};
     clippy::needless_pass_by_value,
     reason = "finish_to takes the result by value, as finish does, so a tool passes the result it built in the same way to either"
 )]
-pub(super) fn respond<T: Rows, E: AsFailure, O: Write, W: Write, R>(
-    sink: &mut Sink<O, W, R>,
+pub(super) fn respond<T: Rows, E: AsFailure>(
+    sink: &mut dyn Deliver,
     output: &mut Output,
     spelling: Spelling,
     document: Document<T>,
@@ -62,14 +64,8 @@ pub(super) fn respond<T: Rows, E: AsFailure, O: Write, W: Write, R>(
                 let key = indexes
                     .next()
                     .and_then(|&index| Some((index, value.key(index)?)));
-                PreparedFailure::new(
-                    failure,
-                    spelling,
-                    printing,
-                    &mut output.command,
-                    &mut sink.err,
-                )
-                .keyed(key)
+                PreparedFailure::new(failure, spelling, printing, &mut output.command, sink)
+                    .keyed(key)
             })
             .collect()
     });
@@ -78,8 +74,7 @@ pub(super) fn respond<T: Rows, E: AsFailure, O: Write, W: Write, R>(
     // `Listing::from_all` cut to its limit also counts the rows it cut.
     let problems = value.problems();
     let written = write_result(
-        &mut sink.out,
-        &mut sink.err,
+        sink,
         output,
         spelling,
         document,
@@ -94,14 +89,12 @@ pub(super) fn respond<T: Rows, E: AsFailure, O: Write, W: Write, R>(
         // command did its job.
         Err(error) if error.kind() == io::ErrorKind::BrokenPipe => (0, Answer::Whole),
         Err(error) => {
-            // The process is already failing, and a failed report has nowhere
-            // else to go.
-            let _ = writeln!(sink.err, "error: cannot write to standard output: {error}");
+            sink.report_failed_write(&error);
             (1, Answer::Whole)
         }
     };
     // The text and a document without the envelope have no `dry_run` field,
-    // so a line on standard error marks a dry run, after any failures. A
+    // so a dry-run message marks a dry run, after any failures. A
     // result that was refused or failed to print gets no line.
     let dry_run_line = output.dry_run
         && (!output.is_json() || !document.get_envelope().wraps())
@@ -117,7 +110,7 @@ pub(super) fn respond<T: Rows, E: AsFailure, O: Write, W: Write, R>(
             let key = value.key(*position).map(|key| (*position, key));
             let command = &mut output.command;
             let printing = Printing::default();
-            let refused = PreparedFailure::new(first, spelling, printing, command, &mut sink.err);
+            let refused = PreparedFailure::new(first, spelling, printing, command, sink);
             listed.insert(failure::before(&listed, *position), refused.keyed(key));
             listed
         }),
@@ -132,9 +125,10 @@ pub(super) fn respond<T: Rows, E: AsFailure, O: Write, W: Write, R>(
         code
     };
     if dry_run_line {
-        // Standard error is the last place to report anything, so a failed
-        // write there goes unreported.
-        let _ = writeln!(sink.err, "{DRY_RUN_LINE}");
+        // A message is the last thing to report, so a failure to deliver it
+        // goes unreported.
+        let line = format!("{DRY_RUN_LINE}\n");
+        let _ = sink.deliver(Role::Message(Message::DryRun), line.as_bytes());
     }
     (code, cut)
 }
@@ -145,8 +139,8 @@ pub(super) fn respond<T: Rows, E: AsFailure, O: Write, W: Write, R>(
 /// the exit code of the first failure when there is any, which is 1 unless
 /// the guide declares another for its code (ADR-0037), and `code`
 /// otherwise.
-fn print_failures<T: Rows, O: Write, W: Write, R>(
-    sink: &mut Sink<O, W, R>,
+fn print_failures<T: Rows>(
+    sink: &mut dyn Deliver,
     output: &mut Output,
     spelling: Spelling,
     document: Document<T>,
@@ -168,15 +162,13 @@ fn print_failures<T: Rows, O: Write, W: Write, R>(
     // failures print as text even with `--json`.
     if !output.is_json() || !document.get_envelope().wraps() {
         for failure in &failures {
-            // Standard error is the last place to report anything, so a
-            // failure to write there goes unreported.
-            let _ = failure::write_crumbkit_text(&mut sink.err, failure);
+            failure::deliver_text(sink, failure);
         }
         if let Some(over) = left_out {
             let printing = output.printing();
             let command = &mut output.command;
-            let over = PreparedFailure::new(over, spelling, printing, command, &mut sink.err);
-            let _ = failure::write_crumbkit_text(&mut sink.err, &over);
+            let over = PreparedFailure::new(over, spelling, printing, command, sink);
+            failure::deliver_text(sink, &over);
         }
     }
     match (failures.first(), left_out) {
@@ -189,8 +181,8 @@ fn print_failures<T: Rows, O: Write, W: Write, R>(
 /// Prints the failure of a result that `write_result` refused, and returns
 /// the exit code after `answer`, whether the budget cut a listing or a list
 /// short, and the failure that ends a batch whose later rows were left out.
-fn answered<'a, O: Write, W: Write, R>(
-    sink: &mut Sink<O, W, R>,
+fn answered<'a>(
+    sink: &mut dyn Deliver,
     output: &mut Output,
     spelling: Spelling,
     answer: &'a Answer,

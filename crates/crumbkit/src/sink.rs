@@ -1,10 +1,25 @@
-//! The writers that a tool's result, its failure and its error lines go to.
+//! The writers that a tool's output goes to, and the one place that maps
+//! what each piece of output is to a stream (ADR-0128).
 
 use std::io::{self, BufRead, Empty, IsTerminal as _, Stderr, StdinLock, StdoutLock, Write};
+
+use self::role::{Deliver, Role};
+
+pub(crate) mod role;
+#[cfg(test)]
+mod tests;
 
 /// The destination of a tool's output, and the source of a caller's answer
 /// to a question: a writer for standard output, a writer for standard
 /// error and a reader for standard input.
+///
+/// crumbkit names what each piece of output is, and the sink chooses the
+/// stream, the styling and the width from that. The run's result goes to
+/// the output writer: the rows or the document of a command, help, the
+/// version, a topic, a completion answer, and a failure document in JSON
+/// form. Every message about the run goes to the error writer: a refusal,
+/// the text form of a failure, a note, the dry-run line, a question, a
+/// picker's echo, a debug build's warning and the report of a failed write.
 ///
 /// [`finish`](crate::finish) writes to the process's standard streams. Tests
 /// build a sink over in-memory writers and pass it to
@@ -28,18 +43,23 @@ use std::io::{self, BufRead, Empty, IsTerminal as _, Stderr, StdinLock, StdoutLo
 /// `Sink::styled` asks for them, so a test or a pipe receives plain text.
 #[derive(Debug)]
 pub struct Sink<O, E, I = Empty> {
-    /// Receives the result, and the failure document with `--json`.
-    pub(crate) out: O,
-    /// Receives the text form of a failure and other error lines.
-    pub(crate) err: E,
+    /// Receives each piece of output whose role is the result.
+    out: O,
+    /// Receives each piece of output whose role is a message.
+    err: E,
     /// Holds the caller's answers to questions.
-    pub(crate) input: I,
+    input: I,
     /// Whether a person can answer a question: standard input and standard
     /// error are both terminals, and no coding agent runs the tool.
-    pub(crate) interactive: bool,
-    /// Whether the output writer wants help with clap's styles, as a
-    /// terminal does.
+    interactive: bool,
+    /// Whether the result is written with clap's styles, as a terminal
+    /// shows them.
     styled: bool,
+    /// The number of columns that a text table in the result fits, or
+    /// `None` when it prints unfitted (ADR-0121).
+    width: Option<usize>,
+    /// The bytes of the result that the output writer took.
+    result_bytes: u64,
 }
 
 impl<O: Write, E: Write> Sink<O, E> {
@@ -53,6 +73,8 @@ impl<O: Write, E: Write> Sink<O, E> {
             input: io::empty(),
             interactive: false,
             styled: false,
+            width: None,
+            result_bytes: 0,
         }
     }
 }
@@ -76,13 +98,15 @@ impl<O: Write, E: Write, I: BufRead> Sink<O, E, I> {
             input,
             interactive,
             styled: false,
+            width: None,
+            result_bytes: 0,
         }
     }
 }
 
 impl<O, E, I> Sink<O, E, I> {
-    /// Sets whether the output writer wants help with clap's styles, such
-    /// as bold headings and literals. With `styled`,
+    /// Sets whether the result wants clap's styles, such as bold headings
+    /// and literals, in help. With `styled`,
     /// [`parse_to`](crate::parse_to) writes help to the output writer with
     /// the ANSI escape codes that clap's `Error::print` writes at a
     /// terminal, and otherwise it writes plain text. The version and a
@@ -93,7 +117,8 @@ impl<O, E, I> Sink<O, E, I> {
     /// crumbkit writes the styles whenever the sink asks for them. clap
     /// renders styles only with its `color` feature, and crumbkit writes
     /// them only with its own `color` feature, which turns clap's on.
-    /// Without it, a styled sink receives plain text.
+    /// Without it, a styled sink receives plain text. Every message prints
+    /// as plain text on the error writer whatever this says.
     ///
     /// [`parse`](crate::parse) and [`parse_from`](crate::parse_from) build
     /// a sink over the process's standard streams that asks for styles when
@@ -110,11 +135,154 @@ impl<O, E, I> Sink<O, E, I> {
         self
     }
 
-    /// Reports whether the output writer wants help with clap's styles,
-    /// which [`Sink::styled`] sets. A new sink asks for none.
+    /// Reports whether the result wants clap's styles in help, which
+    /// [`Sink::styled`] sets. A new sink asks for none.
     #[must_use]
     pub const fn is_styled(&self) -> bool {
         self.styled
+    }
+
+    /// Returns the sink with `width`, the number of columns that a text
+    /// table in the result fits, as `finish` reads it from the terminal
+    /// that standard output is (ADR-0121).
+    pub(crate) const fn fitted(mut self, width: Option<usize>) -> Self {
+        self.width = width;
+        self
+    }
+
+    /// Returns the number of bytes of the result that the output writer
+    /// took, which `finish` reports to the observer (ADR-0057).
+    pub(crate) const fn result_bytes(&self) -> u64 {
+        self.result_bytes
+    }
+
+    /// Reports whether a person can answer a question through the sink.
+    pub(crate) const fn is_interactive(&self) -> bool {
+        self.interactive
+    }
+
+    /// Returns a sink over the writers of this one, which asks for the same
+    /// styles and width and reads no input.
+    pub(crate) const fn by_ref(&mut self) -> Sink<&mut O, &mut E> {
+        Sink {
+            out: &mut self.out,
+            err: &mut self.err,
+            input: io::empty(),
+            interactive: false,
+            styled: self.styled,
+            width: self.width,
+            result_bytes: 0,
+        }
+    }
+
+    /// Returns a sink that writes the result to `buffer` and every message
+    /// to this sink's error writer, as a stream collects a refusal's
+    /// document into its line before it sends the line.
+    pub(crate) const fn buffering_result<'a>(
+        &'a mut self,
+        buffer: &'a mut Vec<u8>,
+    ) -> Sink<&'a mut Vec<u8>, &'a mut E> {
+        Sink {
+            out: buffer,
+            err: &mut self.err,
+            input: io::empty(),
+            interactive: false,
+            styled: self.styled,
+            width: self.width,
+            result_bytes: 0,
+        }
+    }
+}
+
+/// The stream that a piece of output goes to.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum Writer {
+    /// The output writer, which is standard output in `Sink::standard`.
+    Output,
+    /// The error writer, which is standard error in `Sink::standard`.
+    Error,
+}
+
+/// Returns the stream that output with `role` goes to: the result to the
+/// output writer, and every message to the error writer (ADR-0049,
+/// OUTPUT-1). This is the one place that maps a role to a stream.
+const fn writer_of(role: Role) -> Writer {
+    match role {
+        Role::Result => Writer::Output,
+        Role::Message(_) => Writer::Error,
+    }
+}
+
+impl<O: Write, E, I> Sink<O, E, I> {
+    /// Writes `bytes` as a piece of the result to the output writer,
+    /// counts the bytes that the writer took, and flushes it. A sink whose
+    /// error writer cannot be written, as the sink of a completion answer
+    /// may be, delivers its result here.
+    pub(crate) fn deliver_result(&mut self, bytes: &[u8]) -> io::Result<()> {
+        let mut counting = Counting {
+            inner: &mut self.out,
+            bytes: &mut self.result_bytes,
+        };
+        counting.write_all(bytes)?;
+        self.out.flush()
+    }
+}
+
+impl<O: Write, E: Write, I> Sink<O, E, I> {
+    /// Returns the sink's input and the writer of `role`, which a question
+    /// that a picker asks writes to while it reads the answer.
+    pub(crate) fn dialogue(&mut self, role: Role) -> (&mut I, &mut dyn Write) {
+        let writer: &mut dyn Write = match writer_of(role) {
+            Writer::Output => &mut self.out,
+            Writer::Error => &mut self.err,
+        };
+        (&mut self.input, writer)
+    }
+}
+
+impl<O: Write, E: Write, I> Deliver for Sink<O, E, I> {
+    fn deliver(&mut self, role: Role, bytes: &[u8]) -> io::Result<()> {
+        match writer_of(role) {
+            Writer::Output => self.deliver_result(bytes),
+            Writer::Error => self.err.write_all(bytes).and_then(|()| self.err.flush()),
+        }
+    }
+
+    fn styles(&self, role: Role) -> bool {
+        match role {
+            Role::Result => self.styled,
+            // A message prints plain text. A record that colours a kind of
+            // message changes this arm and no printing site.
+            Role::Message(_) => false,
+        }
+    }
+
+    fn width(&self, role: Role) -> Option<usize> {
+        match role {
+            Role::Result => self.width,
+            Role::Message(_) => None,
+        }
+    }
+}
+
+/// A writer that passes every write to `inner` and adds the bytes that
+/// `inner` took to `bytes`.
+struct Counting<'a, W> {
+    /// The writer that receives the bytes.
+    inner: &'a mut W,
+    /// The count that the bytes are added to.
+    bytes: &'a mut u64,
+}
+
+impl<W: Write> Write for Counting<'_, W> {
+    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+        let written = self.inner.write(buf)?;
+        *self.bytes += written as u64;
+        Ok(written)
+    }
+
+    fn flush(&mut self) -> io::Result<()> {
+        self.inner.flush()
     }
 }
 
@@ -162,6 +330,18 @@ impl Sink<StdoutLock<'static>, Stderr, StdinLock<'static>> {
             crate::agent::person_can_answer(terminals, || crate::agent::detect().is_some());
         Self::with_input(out, err, input, interactive)
     }
+}
+
+/// Reports whether the process's standard output is a terminal, which
+/// [`try_parse_from`](crate::try_parse_from) reads to decide whether help
+/// and the version are styled.
+pub(crate) fn stdout_is_terminal() -> bool {
+    #[expect(
+        clippy::disallowed_methods,
+        reason = "the sink owns standard output, and help needs to know whether it is a terminal"
+    )]
+    let out = io::stdout();
+    out.is_terminal()
 }
 
 /// Reports whether the process's standard error is a terminal, which
