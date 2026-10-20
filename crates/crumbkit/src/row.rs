@@ -141,8 +141,10 @@ pub trait Row: Serialize + JsonSchema {
     /// the row has none. crumbkit reads it only when [`Row::LINE`] is set.
     ///
     /// crumbkit escapes each control character of the line, such as a line
-    /// feed as `\n`, and ends the line with a line feed, so each row stays
-    /// one line. A row that returns `None` prints as one line of compact
+    /// feed as `\n`, and each Unicode format character, such as a
+    /// bidirectional override as `\u{202e}`. It ends the line with a line
+    /// feed, so each row stays one line and shows its text in the order it
+    /// was written. A row that returns `None` prints as one line of compact
     /// JSON with every field.
     fn text_line(&self) -> Option<String> {
         None

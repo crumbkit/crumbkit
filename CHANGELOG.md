@@ -585,6 +585,10 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- crumbkit: text output escapes each Unicode format character, such as a
+  bidirectional override or a zero-width space, as it escapes control
+  characters, in table cells, rows' text lines, failures, headed keys and
+  picker labels ([behaviour/output]).
 - crumbkit: a document's JSON Schema describes what the tool prints. A field
   skipped when empty is optional, a field always printed is required even
   with a serde default, and a row requires only its columns

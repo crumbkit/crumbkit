@@ -1,6 +1,7 @@
 //! The text table that a result prints by default.
 
 use std::borrow::Cow;
+use std::cmp::Ordering;
 use std::io::{self, Write};
 
 use serde_json::Value;
@@ -94,9 +95,10 @@ pub(super) fn write_line(
 }
 
 /// Returns the text of one cell. A string shows as it is, except that each
-/// control character shows as its escape, such as `\n`, so every row stays on
-/// one line. A number or a boolean shows in its JSON form, `null` or a missing
-/// field as `-`, and an array or an object as compact JSON.
+/// control character and each Unicode format character shows as its escape,
+/// such as `\n` or `\u{202e}`, so every row stays on one line in the order it
+/// was written. A number or a boolean shows in its JSON form, `null` or a
+/// missing field as `-`, and an array or an object as compact JSON.
 pub(crate) fn cell(value: Option<&Value>) -> Cow<'_, str> {
     match value {
         None | Some(Value::Null) => Cow::Borrowed("-"),
@@ -106,21 +108,78 @@ pub(crate) fn cell(value: Option<&Value>) -> Cow<'_, str> {
     }
 }
 
-/// Returns `text` with each control character replaced by its
-/// `char::escape_default` form, such as `\n`, `\t` or `\u{1b}`. A string
-/// without a control character is borrowed unchanged, so it costs no
-/// allocation.
+/// Returns `text` with each control character and each Unicode format
+/// character replaced by its `char::escape_default` form, such as `\n`, `\t`,
+/// `\u{1b}` or `\u{202e}`. A control character is one of general category Cc,
+/// which `char::is_control` reports. A format character is one of general
+/// category Cf, such as a bidirectional override or a zero-width space, which
+/// can reorder or hide text at a terminal. A string without either is
+/// borrowed unchanged, so it costs no allocation.
 pub(crate) fn escape_controls(text: &str) -> Cow<'_, str> {
-    if !text.chars().any(char::is_control) {
+    if !text.chars().any(escaped) {
         return Cow::Borrowed(text);
     }
-    let mut escaped = String::with_capacity(text.len() + 1);
+    let mut escaped_text = String::with_capacity(text.len() + 1);
     for character in text.chars() {
-        if character.is_control() {
-            escaped.extend(character.escape_default());
+        if escaped(character) {
+            escaped_text.extend(character.escape_default());
         } else {
-            escaped.push(character);
+            escaped_text.push(character);
         }
     }
-    Cow::Owned(escaped)
+    Cow::Owned(escaped_text)
 }
+
+/// Reports whether `escape_controls` replaces `character` with its escape.
+fn escaped(character: char) -> bool {
+    character.is_control() || is_format(character)
+}
+
+/// Reports whether `character` is in Unicode general category Cf, a format
+/// character.
+fn is_format(character: char) -> bool {
+    let point = u32::from(character);
+    FORMAT
+        .binary_search_by(|&(first, last)| {
+            if last < point {
+                Ordering::Less
+            } else if first > point {
+                Ordering::Greater
+            } else {
+                Ordering::Equal
+            }
+        })
+        .is_ok()
+}
+
+/// The code-point ranges of general category Cf in Unicode 16.0, sorted, with
+/// the first and last code point of each range.
+///
+/// RUST-10: the standard library has no test for general category Cf, and a
+/// crate of Unicode tables would be a dependency for 21 ranges (ADR-0003).
+/// This table is updated by hand from `UnicodeData.txt` when a new Unicode
+/// version adds a format character. Until then, a format character added
+/// after Unicode 16.0 prints unescaped.
+const FORMAT: &[(u32, u32)] = &[
+    (0x00AD, 0x00AD),
+    (0x0600, 0x0605),
+    (0x061C, 0x061C),
+    (0x06DD, 0x06DD),
+    (0x070F, 0x070F),
+    (0x0890, 0x0891),
+    (0x08E2, 0x08E2),
+    (0x180E, 0x180E),
+    (0x200B, 0x200F),
+    (0x202A, 0x202E),
+    (0x2060, 0x2064),
+    (0x2066, 0x206F),
+    (0xFEFF, 0xFEFF),
+    (0xFFF9, 0xFFFB),
+    (0x110BD, 0x110BD),
+    (0x110CD, 0x110CD),
+    (0x13430, 0x1343F),
+    (0x1BCA0, 0x1BCA3),
+    (0x1D173, 0x1D17A),
+    (0xE0001, 0xE0001),
+    (0xE0020, 0xE007F),
+];

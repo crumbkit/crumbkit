@@ -63,6 +63,13 @@ fn a_text_line_with_a_control_character_prints_it_escaped_on_one_line() {
 }
 
 #[test]
+fn a_text_line_with_a_zero_width_space_prints_it_escaped() {
+    let finished = finish_with(&[], LINKS, vec![link("a\u{200b}b", "c")]);
+
+    assert_eq!(finished.out, "a\\u{200b}b -> c\n");
+}
+
+#[test]
 fn a_row_without_a_text_line_prints_as_one_line_of_compact_json_with_every_field() {
     let unlinked = Link {
         pointer: "e".to_owned(),
