@@ -127,3 +127,16 @@ fn a_control_character_in_a_label_shows_as_its_escape() {
         asked.shown
     );
 }
+
+#[test]
+fn a_bidirectional_override_in_a_label_shows_as_its_escape() {
+    let choices = [Choice::new("1".to_owned(), "abc\u{202e}def".to_owned())];
+    let question = Question::new("shelf books show", "ID", &choices);
+    let asked = ask(Menu::new(), &question, "\n");
+
+    assert!(
+        asked.shown.contains("  1. abc\\u{202e}def\n"),
+        "{}",
+        asked.shown
+    );
+}

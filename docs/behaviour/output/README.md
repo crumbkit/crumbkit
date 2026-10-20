@@ -39,15 +39,19 @@ crumbkit-test's `check_guide` fails a leaf whose batch is not headed and
 whose row type has no compact column. A row type that sets `Row::WHOLE` and
 declares `Row::LINE` may also name no column, as [rows printed whole](shapes/README.md#rows-printed-whole) describes.
 
-The table pads columns by characters and escapes control characters, so each
-row stays on one line and no line ends in padding. Cell widths count
-characters, so a wide character misaligns a column. A cell shows `null` or a
-missing field as `-`, and an array or an object as compact JSON. A field of
-type [`Age`](../../../crates/crumbkit/src/age.rs) shows how long ago its time
+The table pads columns by characters and escapes control characters and
+format characters, so each row stays on one line and no line ends in
+padding. A format character is a Unicode character of general category Cf,
+such as a bidirectional override or a zero-width space. The table prints it
+as its escape, such as `\u{202e}`, so a cell cannot reorder or hide the text
+around it. Cell widths count characters, so a wide character misaligns a
+column. A cell shows `null` or a missing field as `-`, and an array or an
+object as compact JSON. A field of type
+[`Age`](../../../crates/crumbkit/src/age.rs) shows how long ago its time
 was, such as `3h`, in the table and in a stream's text lines, and holds the
 time in RFC 3339 in every JSON form, as its rustdoc describes.
 
-Why: ADR-0016, ADR-0063, ADR-0065, ADR-0108.
+Why: ADR-0016, ADR-0063, ADR-0065, ADR-0108, ADR-0114.
 
 ## View flags
 
@@ -166,7 +170,9 @@ error.
 
 A failure prints as text on standard error with nothing on standard output,
 or with `--json` as one failure document on standard output. In text, each
-alternative repair prints on its own `help:` line after the recovery's.
+alternative repair prints on its own `help:` line after the recovery's, and
+each control character and format character in a failure's text prints as
+its escape, as the table prints it.
 
 `finish` writes through a [`Sink`](../../../crates/crumbkit/src/sink.rs), and
 `finish_to` writes into a given sink, so tests run in memory. `finish_to`

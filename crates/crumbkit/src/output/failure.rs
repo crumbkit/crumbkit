@@ -372,8 +372,10 @@ fn drop_repeated_keys(value: &mut FieldValue<'static>, repeated: &mut Vec<String
 /// diagnostic follows the causes. When the span could be read, the lines
 /// that it covers follow with one line before and after and a caret
 /// underline, and labels on nearby lines share their lines, as
-/// `label::write_text` describes. Each control character in a value prints
-/// as its escape, so each line stays one line.
+/// `label::write_text` describes. Each control character and each Unicode
+/// format character in a value, such as a bidirectional override or a
+/// zero-width space, prints as its escape. Each line therefore stays one line
+/// and shows its text in the order it was written.
 ///
 /// [books-show-7]: https://github.com/crumbkit/crumbkit/blob/main/examples/shelf/tests/golden/books-show-7.stderr
 pub(crate) fn write_crumbkit_text(

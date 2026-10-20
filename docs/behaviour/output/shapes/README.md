@@ -91,8 +91,10 @@ Emma
 ```
 
 - A header line `==> KEY <==` precedes each row when the caller gave more
-  than one key, with the key's control characters escaped. With one key the
-  bytes print alone.
+  than one key, with the key's control characters and format characters
+  escaped. A format character is a Unicode character of general category
+  Cf, such as a bidirectional override or a zero-width space. With one key
+  the bytes print alone.
 - A line feed precedes every header but the first, and crumbkit adds no
   line feed after a row's bytes.
 - A row pushed after the last key has the header `==> (index N) <==`.
@@ -109,7 +111,7 @@ each row, unless `--fields` names some. `--fields` needs `--json`, because
 the text has no columns, and `--long` and `--full` are not offered. The help
 of the leaf ends with an `Output:` line that describes this text.
 
-Why: ADR-0062.
+Why: ADR-0062, ADR-0114.
 
 ## Rows printed whole
 
@@ -148,8 +150,9 @@ Why: ADR-0065, ADR-0064, ADR-0072.
 A row type may print each row in its own form. `Row::LINE` names the form
 for help, such as `Some("<NAME>: <ABOUT>")`, and `Row::text_line` builds
 each row's line. Without `--json`, `--long` and `--fields`, the text then
-prints each row's line with control characters escaped and no header, and
-a row whose `text_line` returns `None` prints as one line of compact JSON.
+prints each row's line with control characters and format characters
+escaped and no header, and a row whose `text_line` returns `None` prints as
+one line of compact JSON.
 `--long` and `--fields` print the table, and JSON is unchanged. Streams,
 the [output budget](../budget/README.md) and the listing footer work as for a
 table, and help prints a `Text:` line ([help](../../help/README.md)). A row
@@ -158,7 +161,7 @@ so its `Text:` line names no table. crumbkit-test's `check_guide` fails a
 `LINE` that is not one non-empty line, and a
 [headed](#headed-bytes) leaf whose row type declares one.
 
-Why: ADR-0064.
+Why: ADR-0064, ADR-0114.
 
 ## Documents without the envelope
 

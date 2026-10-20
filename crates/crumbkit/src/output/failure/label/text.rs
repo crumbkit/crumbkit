@@ -165,12 +165,14 @@ fn write_line(err: &mut impl Write, labels: &[Label], number: usize) -> io::Resu
 ///
 /// unicode-width gives each character its width under Unicode's East Asian
 /// Width rules, so a wide character such as most CJK text and emoji counts
-/// two columns and a combining mark counts none. A control character prints
-/// as its escape, such as `\t`, before it is measured.
+/// two columns and a combining mark counts none. A control character or a
+/// Unicode format character prints as its escape, such as `\t` or `\u{200d}`,
+/// before it is measured. An emoji sequence joined by zero-width joiners,
+/// such as a family emoji, therefore prints and measures as its separate
+/// emoji with an escape between each two.
 ///
 /// RUST-10: unicode-width measures by Unicode's rules, which give an emoji
-/// sequence joined by zero-width joiners, such as a family emoji, two
-/// columns. A terminal whose font has no glyph for the sequence draws each
+/// modifier sequence, such as a waving hand with a skin tone, two columns. A terminal whose font has no glyph for the sequence draws each
 /// emoji of it on its own, so the sequence shows wider than it measures and
 /// the carets after it sit to the left of the labelled text. crumbkit cannot
 /// see the terminal's font, so no measure fixes this for every terminal.

@@ -298,6 +298,24 @@ error: no planet\\nVulcan
 }
 
 #[test]
+fn a_format_character_in_a_failure_message_prints_as_its_escape() {
+    let failure = Missing {
+        message: "no planet \u{202e}nacluV",
+        ..missing(Recovery::Retry)
+    };
+
+    let finished = fail_with(&[], failure);
+
+    assert!(
+        finished
+            .err
+            .starts_with("error: no planet \\u{202e}nacluV\n"),
+        "{}",
+        finished.err
+    );
+}
+
+#[test]
 fn a_run_whose_call_does_not_resolve_prints_as_no_next_step() {
     let failure = missing(Recovery::Run(Call::new(&["remove"])));
 

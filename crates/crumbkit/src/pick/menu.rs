@@ -3,6 +3,7 @@
 use std::io::{self, BufRead, Write};
 
 use super::{Answer, Choice, Picker, Question};
+use crate::output::table::escape_controls;
 
 #[cfg(test)]
 mod tests;
@@ -24,8 +25,10 @@ const ROWS: usize = 20;
 ///
 /// The menu shows at most [`Menu::rows`] choices, 20 unless the tool sets
 /// another number, and then a line that says how many more match. Each
-/// control character in a label shows as its escape, such as `\n`, so every
-/// choice stays on one line and a label cannot move the cursor.
+/// control character and each Unicode format character in a label, such as a
+/// bidirectional override or a zero-width space, shows as its escape, such as
+/// `\n` or `\u{202e}`. Every choice therefore stays on one line, and a label
+/// cannot move the cursor or reorder or hide text.
 ///
 /// A tool keeps one menu in a `static` and sets it on its guide:
 ///
@@ -78,7 +81,7 @@ impl Picker for Menu {
         loop {
             let mut matches = matching(choices, &filter);
             if matches.is_empty() {
-                writeln!(output, "No choice matches `{}`.", escape(&filter))?;
+                writeln!(output, "No choice matches `{}`.", escape_controls(&filter))?;
                 filter.clear();
                 matches = matching(choices, &filter);
             }
@@ -144,13 +147,13 @@ fn show(
 ) -> io::Result<()> {
     write!(output, "{} needs {}", question.command(), question.name())?;
     match question.get_help() {
-        Some(help) => writeln!(output, ": {}", escape(help))?,
+        Some(help) => writeln!(output, ": {}", escape_controls(help))?,
         None => writeln!(output)?,
     }
     let width = shown.len().to_string().len().max(3);
     for (number, &position) in (1..).zip(shown) {
         let label = question.choices().get(position).map_or("", Choice::label);
-        writeln!(output, "{number:>width$}. {}", escape(label))?;
+        writeln!(output, "{number:>width$}. {}", escape_controls(label))?;
     }
     if hidden > 0 {
         writeln!(output, "{hidden} more match. Type text to narrow the list.")?;
@@ -176,18 +179,4 @@ fn count(least: usize, most: usize) -> String {
     } else {
         format!("Pick from {least} to {most}.")
     }
-}
-
-/// Returns `text` with each control character replaced by its
-/// `char::escape_default` form, such as `\n` or `\u{1b}`.
-fn escape(text: &str) -> String {
-    let mut escaped = String::with_capacity(text.len());
-    for character in text.chars() {
-        if character.is_control() {
-            escaped.extend(character.escape_default());
-        } else {
-            escaped.push(character);
-        }
-    }
-    escaped
 }
