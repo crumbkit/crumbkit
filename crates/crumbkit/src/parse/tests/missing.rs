@@ -72,6 +72,64 @@ fn a_leaf_that_needs_arguments_names_no_subcommands() {
     );
 }
 
+/// A tool whose `copy` leaf takes the required positionals `APP` and `NAME`,
+/// and whose `rename` leaf takes a required `--edit <APP>` option and the
+/// positional `NAME`. `NAME` is required when `name_required` is true.
+fn tool_with_apps(name_required: bool) -> Command {
+    let name = || Arg::new("name").value_name("NAME").required(name_required);
+    Command::new("tool")
+        .subcommand(
+            Command::new("copy")
+                .arg(Arg::new("app").value_name("APP").required(true))
+                .arg(name()),
+        )
+        .subcommand(
+            Command::new("rename")
+                .arg(
+                    Arg::new("edit")
+                        .long("edit")
+                        .value_name("APP")
+                        .required(true),
+                )
+                .arg(name()),
+        )
+}
+
+#[test]
+fn a_refusal_separates_two_missing_positionals_with_a_comma() {
+    let refused = ["tool", "copy"];
+    admits(tool_with_apps(false), &refused, &["tool", "copy", "notes"]);
+    let parsed = parse_tree(tool_with_apps(true), &refused);
+
+    assert_eq!(parsed.code, Some(ExitCode::from(2)));
+    let expected = "\
+error: the following required arguments were not provided: <APP>, <NAME>
+  help:  run `tool copy -h`
+  code:  tool::cli::usage
+";
+    assert_eq!(parsed.err, expected);
+}
+
+#[test]
+fn a_refusal_separates_a_missing_option_from_a_missing_positional_with_a_comma() {
+    let refused = ["tool", "rename"];
+    admits(
+        tool_with_apps(false),
+        &refused,
+        &["tool", "rename", "--edit=notes"],
+    );
+    let parsed = parse_tree(tool_with_apps(true), &refused);
+
+    assert!(
+        parsed.err.starts_with(
+            "error: the following required arguments were not provided: \
+             --edit <APP>, <NAME>\n"
+        ),
+        "{}",
+        parsed.err
+    );
+}
+
 /// The shells that `tool completions` writes a script for. `elvish` is a
 /// hidden possible value.
 #[derive(Clone, clap::ValueEnum)]
@@ -119,7 +177,7 @@ fn a_missing_argument_with_possible_values_names_its_visible_values_after_its_na
 
     assert_eq!(parsed.code, Some(ExitCode::from(2)));
     let expected = "\
-error: the following required arguments were not provided: <SHELL> [possible values: bash, fish, zsh] <DIR>
+error: the following required arguments were not provided: <SHELL> [possible values: bash, fish, zsh], <DIR>
   help:  run `tool completions -h`
   code:  tool::cli::usage
 ";

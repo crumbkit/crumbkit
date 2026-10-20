@@ -20,8 +20,9 @@ use super::suggestion;
 /// Every other refusal is clap's own message, from [`message`], with the
 /// real name in place of each name that clap suggests and without the names
 /// of hidden items, from [`suggestion::real_names`]. A refusal of missing
-/// required arguments also lists the visible possible values of each
-/// missing argument after its name, from [`with_possible_values`].
+/// required arguments separates the missing arguments with commas and lists
+/// the visible possible values of each missing argument after its name,
+/// from [`list_missing`].
 pub(super) fn refusal_message(command: &Command, path: &[String], error: &clap::Error) -> String {
     let mut text = command.get_name().to_owned();
     let mut commands = vec![command];
@@ -39,7 +40,7 @@ pub(super) fn refusal_message(command: &Command, path: &[String], error: &clap::
     ) {
         let mut rendered = error.render().to_string();
         if error.kind() == ErrorKind::MissingRequiredArgument {
-            rendered = with_possible_values(&rendered, node, error);
+            rendered = list_missing(&rendered, node, error);
         }
         // `message` joins the parts with `; `, and `real_names` changes or
         // drops only a part that starts with clap's suggestion, so splitting
@@ -61,39 +62,49 @@ pub(super) fn refusal_message(command: &Command, path: &[String], error: &clap::
     }
 }
 
-/// Returns clap's rendered refusal of missing required arguments with the
-/// visible possible values of each missing argument of `node` that has them,
-/// in clap's own form, after that argument's line, as in
-/// `<SHELL> [possible values: bash, fish, zsh]`.
+/// Returns clap's rendered refusal of missing required arguments with a
+/// comma after each missing argument but the last, and with the visible
+/// possible values of each missing argument of `node` that has them, in
+/// clap's own form, after that argument's name, as in
+/// `<SHELL> [possible values: bash, fish, zsh], <DIR>`.
 ///
 /// clap renders each missing argument on its own line as the argument's
 /// `Display`, and lists the same text in the error's `InvalidArg` context, so
 /// a line that equals one of those names after trimming names that
-/// argument. A missing argument that `node` does not hold, such as a
-/// required group, keeps its line as clap rendered it.
+/// argument. [`message`] joins the lines with spaces, and the commas keep
+/// two missing arguments, such as `--edit <APP>` and `<NAME>`, from reading
+/// as one option that takes two values. A missing argument that `node` does
+/// not hold, such as a required group, gets its comma and no possible
+/// values.
 //
 // RUST-10: this reads clap's layout of the refusal, one argument to a line,
 // which clap does not promise to keep. shelf's golden files and the tests of
 // `parse` fail when the layout changes. A message built from the error's
 // context alone replaces it once the layout changes.
-fn with_possible_values(rendered: &str, node: &Command, error: &clap::Error) -> String {
+fn list_missing(rendered: &str, node: &Command, error: &clap::Error) -> String {
     let Some(ContextValue::Strings(missing)) = error.get(ContextKind::InvalidArg) else {
         return rendered.to_owned();
     };
+    let names = |line: &str| missing.iter().any(|missing| missing == line.trim());
+    let lines: Vec<&str> = rendered.split_inclusive('\n').collect();
+    let last = lines.iter().rposition(|line| names(line));
     let mut text = String::with_capacity(rendered.len());
-    for line in rendered.split_inclusive('\n') {
+    for (index, line) in lines.iter().enumerate() {
         let body = line.trim_end_matches('\n');
-        let name = body.trim();
-        let arg = if missing.iter().any(|missing| missing == name) {
-            node.get_arguments().find(|arg| arg.to_string() == name)
-        } else {
-            None
-        };
-        let values = arg.and_then(possible_values);
         text.push_str(body);
-        if let Some(values) = values {
-            text.push(' ');
-            text.push_str(&values);
+        if names(body) {
+            let name = body.trim();
+            let values = node
+                .get_arguments()
+                .find(|arg| arg.to_string() == name)
+                .and_then(possible_values);
+            if let Some(values) = values {
+                text.push(' ');
+                text.push_str(&values);
+            }
+            if Some(index) != last {
+                text.push(',');
+            }
         }
         text.push_str(&line[body.len()..]);
     }
