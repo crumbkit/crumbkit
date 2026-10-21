@@ -32,6 +32,7 @@ mod layout;
 mod lines;
 mod listing;
 mod notes;
+mod only_problems;
 mod plugin;
 mod problems;
 mod prose;

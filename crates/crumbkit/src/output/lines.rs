@@ -30,6 +30,6 @@ pub(super) fn line<R: Row>(row: &R) -> io::Result<String> {
         String::from_utf8(json).map_err(io::Error::other)?
     };
     line.push('\n');
-    line.push_str(&children::block(row));
+    line.push_str(&children::block(row, false));
     Ok(line)
 }

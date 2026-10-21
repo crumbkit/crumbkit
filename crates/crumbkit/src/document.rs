@@ -4,7 +4,7 @@ use std::fmt;
 use std::marker::PhantomData;
 
 use crate::segment::{is_component, is_segment};
-use crate::{AsFailure, Batch, Headed, Rows};
+use crate::{AsFailure, Batch, Headed, Listing, Row, Rows};
 
 mod envelope;
 #[cfg(test)]
@@ -76,6 +76,9 @@ pub struct Document<T> {
     /// The function that returns the bytes of the row at a position of a
     /// headed batch, which `headed` sets. An untyped document has none.
     bytes_of: Option<RowBytes<T>>,
+    /// Whether the default text of a listing lists only the rows that
+    /// report a problem, which the tool chose with `only_problems`.
+    only_problems: bool,
     /// `PhantomData<fn() -> T>` ties the document to `T` without holding a
     /// `T`. A function pointer is `Send` and `Sync` whatever it returns, so
     /// `Document<T>` is `Send` and `Sync` for every `T`; `PhantomData<T>`
@@ -132,6 +135,7 @@ impl<T> Document<T> {
             empty: None,
             headed: false,
             bytes_of: None,
+            only_problems: false,
             result: PhantomData,
         }
     }
@@ -234,8 +238,17 @@ impl<T> Document<T> {
         self.bytes_of
     }
 
+    /// Reports whether [`Document::only_problems`] was called, so the
+    /// default text of the listing lists only the rows that report a
+    /// problem.
+    #[must_use]
+    pub(crate) const fn lists_only_problems(&self) -> bool {
+        self.only_problems
+    }
+
     /// Returns the same id, description, choice of envelope, budget
-    /// settings, empty note and text form as a `Document<()>`, which no
+    /// settings, empty note, text form and choice of rows as a
+    /// `Document<()>`, which no
     /// longer names the result type, so one list can hold the documents of
     /// results of different types. crumbkit's
     /// help leaves keep their documents in this form.
@@ -251,6 +264,7 @@ impl<T> Document<T> {
             empty: self.empty,
             headed: self.headed,
             bytes_of: None,
+            only_problems: self.only_problems,
             result: PhantomData,
         }
     }
@@ -285,6 +299,45 @@ impl<R: Headed, E: AsFailure> Document<Batch<R, E>> {
     pub const fn headed(mut self) -> Self {
         self.headed = true;
         self.bytes_of = Some(row_bytes::<R, E>);
+        self
+    }
+}
+
+impl<R: Row, S> Document<Listing<R, S>> {
+    /// Returns the same listing document with a default text that lists
+    /// only the rows that report a problem, as [`Row::is_problem`] decides,
+    /// such as the failed checks of a check command (ADR-0138).
+    ///
+    /// Without `--json`, `--long` or `--fields`, `crumbkit::finish` prints
+    /// the summary line, and then the table of the rows that report a
+    /// problem, each with its child lines. When no row reports one, the text
+    /// is the summary line alone, with no header. The footer, the empty note
+    /// of a listing without rows, the note that counts the rows that report
+    /// a problem and the exit do not change, and no line counts the rows
+    /// that the text leaves out. `--long` and `--fields` print every row,
+    /// and `--json` holds every row unchanged.
+    ///
+    /// The leaf offers `--long` even when the row type has no long columns,
+    /// because `--long` lists every row, and its help prints a `Rows:` line
+    /// that says so. A row type that sets [`Row::WHOLE`] and names no
+    /// columns offers no `--long`, so its text lists every row only through
+    /// `--json`.
+    ///
+    /// ```
+    /// # #[derive(serde::Serialize, schemars::JsonSchema)]
+    /// # struct Check { package: String, passed: bool }
+    /// # impl crumbkit::Row for Check {
+    /// #     const COLUMNS: &'static [&'static str] = &["package", "passed"];
+    /// #     fn is_problem(&self) -> bool { !self.passed }
+    /// # }
+    /// use crumbkit::{Document, Listing};
+    ///
+    /// const CHECKS: Document<Listing<Check>> =
+    ///     Document::new("lint", "checks", 1, "The checks of each package.").only_problems();
+    /// ```
+    #[must_use]
+    pub const fn only_problems(mut self) -> Self {
+        self.only_problems = true;
         self
     }
 }

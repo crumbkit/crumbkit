@@ -292,7 +292,8 @@ impl Leaf {
     /// Reports whether the leaf's command offers the view flag `flag`, as
     /// its declared document decides (ADR-0016). A prose or bytes document
     /// offers no view flag. Rows offer `--fields`, offer `--long` when the
-    /// row type has long columns, and offer `--full` when the document has
+    /// row type has long columns or the document lists only the rows that
+    /// report a problem (ADR-0138), and offer `--full` when the document has
     /// crumbkit's envelope. A headed document offers neither `--long` nor
     /// `--full` (ADR-0062). Rows that print whole offer no `--full`, and
     /// offer neither `--fields` nor `--long` when they have no columns
@@ -355,6 +356,26 @@ impl Leaf {
         let exit = crate::exit::problem_rows();
         Some(format!(
             "Problems: a value in the {field} column marks a row with a problem, and the command then exits with {exit}."
+        ))
+    }
+
+    /// Returns the `Rows:` line that the leaf's `-h` and `--help` print
+    /// after the `Problems:` line when its document lists only the rows
+    /// that report a problem, such as `Rows: the text lists only the rows
+    /// that report a problem, and --long or --json lists every row.`, or
+    /// `None` otherwise (ADR-0138). The line names `--long` only when the
+    /// command offers it.
+    pub(crate) fn rows_line(&self) -> Option<String> {
+        if !self.get_document()?.lists_only_problems() {
+            return None;
+        }
+        let flags = if self.offers(ViewFlag::Long) {
+            "--long or --json lists"
+        } else {
+            "--json lists"
+        };
+        Some(format!(
+            "Rows: the text lists only the rows that report a problem, and {flags} every row."
         ))
     }
 
@@ -520,6 +541,7 @@ impl Columns {
             envelope: self.document.get_envelope().wraps(),
             headed: self.document.is_headed(),
             whole: self.whole,
+            listed: view::Listed::by(&self.document),
         }
     }
 }

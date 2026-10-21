@@ -207,13 +207,16 @@ fn write_rows<T: Rows>(
     // `--json` and the selected fields of the JSON document with it, and a
     // run prints only one of the two. The rows are serialized once, so an
     // `Age` writes its compact age when the run prints text.
+    // The text of a document that lists only the rows that report a
+    // problem serializes only those rows (ADR-0138).
+    let only = problems::only(&document, settings.view);
     let values = {
         let _cells = (!settings.is_json()).then(TextCells::enter);
-        values(&columns, value)?
+        values(&columns, problems::shown(value.rows(), only))?
     };
     let mut prepared = Prepared::new(settings, document, value, &columns, &values, next, problems)?;
     let listed = failures.map(Failures::of);
-    let rows = value.rows().len();
+    let rows = prepared.rows;
     // A batch that never fetched some of its keys ends with their failure
     // even when its rows fit.
     let whole = if value.left_out(rows).is_empty() {
@@ -303,6 +306,10 @@ struct Prepared<'a, T> {
     /// The number of rows that report a problem, which the text's note
     /// counts, or 0 when the run has a failure.
     problems: usize,
+    /// The number of rows that the result prints when it fits: in the text
+    /// of a document that lists only the rows that report a problem, those
+    /// rows, and otherwise every row (ADR-0138).
+    rows: usize,
 }
 
 impl<'a, T: Rows> Prepared<'a, T> {
@@ -321,14 +328,23 @@ impl<'a, T: Rows> Prepared<'a, T> {
             Some(prose) if text => Some(prose::text(prose)?),
             _ => None,
         };
+        let only = problems::only(&document, settings.view);
+        let rows = if only {
+            problems::shown(value.rows(), true).count()
+        } else {
+            value.rows().len()
+        };
         let lines = if lines::chosen::<T::Row>(settings.view) {
-            let rows = value.rows().iter().map(lines::line);
-            Some(rows.collect::<io::Result<Vec<String>>>()?)
+            let shown = problems::shown(value.rows(), only).map(lines::line);
+            Some(shown.collect::<io::Result<Vec<String>>>()?)
         } else {
             None
         };
-        let table = (text && value.prose().is_none() && lines.is_none()).then(|| {
-            let children = children::blocks(settings.view, value.rows());
+        // A document that lists only the rows that report a problem prints
+        // no header when no row reports one.
+        let headed = !only || rows > 0;
+        let table = (text && value.prose().is_none() && lines.is_none() && headed).then(|| {
+            let children = children::blocks(settings.view, problems::shown(value.rows(), only));
             Table::new(columns, values, settings.view.names().is_none())
                 .keeping_whole(columns, T::Row::UNCUT_COLUMNS)
                 .with_children(children)
@@ -352,6 +368,7 @@ impl<'a, T: Rows> Prepared<'a, T> {
             prose,
             next,
             problems,
+            rows,
         })
     }
 

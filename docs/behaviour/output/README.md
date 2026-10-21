@@ -64,13 +64,11 @@ applies to the compact columns and to the columns of `--long`. With
 rows keeps every column in its header. A [stream](streams.md#text-and-json-lines)
 prints every column, because its header prints before any row arrives.
 
-A row type may print its children under each row, such as a service's
-components, by naming the field that holds them in `Row::CHILDREN` and
-building their lines in `Row::child_lines`. The table prints each child
-line under its row, indented by `Row::CHILD_INDENT` spaces and escaped as a cell is
-escaped. Child lines do not change the column widths. Compact JSON holds
-the field after the columns, as [rows with children](shapes/README.md#rows-with-children)
-describes.
+A row type may print its children, such as a service's components, as
+indented and escaped lines under each row, through `Row::CHILDREN` and
+`Row::child_lines`. Child lines do not change the column widths.
+[Rows with children](shapes/README.md#rows-with-children) describes their
+indent, their `--long` form and their JSON.
 
 A table wider than its sink's width narrows its widest columns to fit and
 ends each cut cell with `…`, except in the columns that
@@ -84,7 +82,8 @@ The view flags are `--fields`, `--long` and `--full`, and like every
 [`Output`](../../../crates/crumbkit/src/output.rs) flag they are global. A
 leaf with a document offers only the view flags that its document can use:
 
-- rows offer `--fields`, offer `--long` when the row type has long columns,
+- rows offer `--fields`, offer `--long` when the row type has long columns
+  or the document [lists only problem rows](listings/README.md#a-listing-that-lists-only-its-problem-rows),
   and offer `--full` when the document has the envelope;
 - a headed batch offers `--fields`, which `parse` refuses without `--json`,
   and offers neither `--long` nor `--full`;
@@ -106,7 +105,8 @@ fields, and the `Output` holds that view, so it never holds two flags that
 cannot work together. Three checks apply the rules:
 
 - `parse` refuses, before the handler runs, a view flag that the leaf's
-  document does not offer, two flags that cannot work together, and a
+  document does not offer, `--json --long` for whole rows, two flags that
+  cannot work together, and a
   `--fields` name that the row type of the leaf's document lacks, in that
   order. It also leaves an unoffered view flag out of the leaf's help. On
   a leaf without a document, `parse` refuses only the pairs.
@@ -115,7 +115,8 @@ cannot work together. Three checks apply the rules:
   refusal and returns the `Stop` of a refused command line, as `parse`
   does.
 - When the handler returns a result, `finish` refuses by the document it
-  was given: an unoffered view flag and an unknown `--fields` name.
+  was given: an unoffered view flag, `--json --long` for whole rows, and
+  an unknown `--fields` name.
   `stream` refuses by its document in the same way when it opens. When
   the handler returns a failure, `finish` checks nothing and prints the
   failure with its own code, as text or as a failure document with
