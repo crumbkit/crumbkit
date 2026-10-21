@@ -1030,6 +1030,10 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- crumbkit: the compact schema of an enum row gives a variant without a
+  column or the children field a property that admits null, so the
+  compact document matches even when the variant refuses unknown fields
+  ([behaviour/schemas]).
 - crumbkit: a refusal's `-h` recovery names the deepest typed command that
   has a help flag, and offers no step when no command on the path has one.
   Before, it could name a `-h` call that clap refuses ([behaviour/failures]).

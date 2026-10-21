@@ -1,6 +1,7 @@
 //! The `required` list of a row in a document whose JSON prints only the
 //! row's columns without `--full` (ADR-0110), and the null that a column
-//! the row type skips prints there (ADR-0113).
+//! the row type skips prints there (ADR-0113), or that a column or the
+//! children field prints for a variant without the field (ADR-0132).
 //!
 //! RUST-10: a compact row of an untagged enum can match more than one
 //! `oneOf` variant after the cut and then fails `oneOf`. No row type in
@@ -24,7 +25,9 @@ use serde_json::{Map, Value, json};
 /// `anyOf` variants cut one by one. A name in `columns` that the row does
 /// not require stays optional, because `--json --full` leaves out a field
 /// that the row type skips, and its property admits null as [`cut`]
-/// describes.
+/// describes. `columns` holds `Row::CHILDREN` beside the columns, and a
+/// name in `columns` that a row or variant has no property for gains a
+/// property that admits only null, as [`cut`] describes.
 pub(super) fn require_columns(schema: &mut Schema, items: bool, columns: &[&str]) {
     let mut references = HashMap::new();
     count_references(schema.as_value(), &mut references);
@@ -44,7 +47,7 @@ pub(super) fn require_columns(schema: &mut Schema, items: bool, columns: &[&str]
         data
     };
     if let Some(row) = row {
-        cut(row, &mut definitions, &references, columns);
+        cut(row, &mut definitions, &references, columns, &[]);
     }
     if !definitions.is_empty() {
         object.insert("$defs".to_owned(), Value::Object(definitions));
@@ -59,18 +62,25 @@ pub(super) fn require_columns(schema: &mut Schema, items: bool, columns: &[&str]
 /// and that the row's `properties` holds names a field that the row type
 /// skips when it is empty. The compact document prints `null` for that
 /// field, so its property admits null as [`admit_null`] describes. A
-/// property for a column that the row requires keeps its schema.
+/// property for a column that the row requires keeps its schema. A name in
+/// `columns` that the row's `properties` lacks names a field that the row,
+/// or one of its variants, does not have, and the compact document prints
+/// `null` for it too, so the row gains a property that admits only null as
+/// [`add_null_properties`] describes. `around` holds the property names
+/// that the schemas around `row` declare beside it, such as the fields of a
+/// struct whose flattened enum gives `row` as one variant.
 fn cut(
     row: &mut Value,
     definitions: &mut Map<String, Value>,
     references: &HashMap<String, usize>,
     columns: &[&str],
+    around: &[String],
 ) {
     if let Some(name) = definition_name(row) {
         let Some(mut definition) = definitions.get(&name).cloned() else {
             return;
         };
-        cut(&mut definition, definitions, references, columns);
+        cut(&mut definition, definitions, references, columns, around);
         if references.get(&name) == Some(&1) {
             definitions.insert(name, definition);
         } else if let (Some(copy), Some(keywords)) = (definition.as_object_mut(), row.as_object()) {
@@ -103,11 +113,98 @@ fn cut(
             }
         }
     }
+    let mut inside = around.to_vec();
+    if let Some(Value::Object(properties)) = object.get("properties") {
+        inside.extend(properties.keys().cloned());
+    }
+    declared(
+        object,
+        definitions,
+        &["allOf"],
+        &mut Vec::new(),
+        &mut inside,
+    );
+    let mut present = inside.clone();
+    declared(
+        object,
+        definitions,
+        &["oneOf", "anyOf"],
+        &mut Vec::new(),
+        &mut present,
+    );
+    add_null_properties(object, columns, &present);
     for keyword in ["oneOf", "anyOf"] {
         if let Some(Value::Array(variants)) = object.get_mut(keyword) {
             for variant in variants {
-                cut(variant, definitions, references, columns);
+                cut(variant, definitions, references, columns, &inside);
             }
+        }
+    }
+}
+
+/// Gives the object schema `object` the property `{"type": "null"}` for
+/// each name in `columns` that neither its `properties` nor `present`
+/// holds, so a row whose type has no such field matches the null that the
+/// compact document prints.
+///
+/// Only a schema with a `properties` map, or with `additionalProperties:
+/// false`, gains the property. A schema with neither, such as an enum's
+/// own schema whose variants sit under `oneOf`, already admits a field
+/// that it does not describe, and each of its variants gains the property
+/// when [`cut`] reaches it. `present` holds the names that a schema around
+/// `object` or one of its `oneOf`, `anyOf` or `allOf` members declares,
+/// because a null property beside that schema would refuse its value.
+fn add_null_properties(object: &mut Map<String, Value>, columns: &[&str], present: &[String]) {
+    let closed = object.get("additionalProperties") == Some(&Value::Bool(false));
+    if !closed && !matches!(object.get("properties"), Some(Value::Object(_))) {
+        return;
+    }
+    let Value::Object(properties) = object
+        .entry("properties")
+        .or_insert_with(|| Value::Object(Map::new()))
+    else {
+        return;
+    };
+    for &column in columns {
+        if !properties.contains_key(column) && !present.iter().any(|name| name == column) {
+            properties.insert(column.to_owned(), json!({"type": "null"}));
+        }
+    }
+}
+
+/// Adds to `names` each property name that the members of the schema
+/// `object` under `keywords` declare, and the names that their own members
+/// under `keywords` declare, following `$ref` into `definitions`. `visited`
+/// holds the definitions already followed, so a definition that names
+/// itself is read once.
+fn declared(
+    object: &Map<String, Value>,
+    definitions: &Map<String, Value>,
+    keywords: &[&str],
+    visited: &mut Vec<String>,
+    names: &mut Vec<String>,
+) {
+    for keyword in keywords {
+        let Some(Value::Array(members)) = object.get(*keyword) else {
+            continue;
+        };
+        for member in members {
+            let member = match definition_name(member) {
+                Some(name) if visited.contains(&name) => continue,
+                Some(name) => {
+                    let definition = definitions.get(&name);
+                    visited.push(name);
+                    definition
+                }
+                None => Some(member),
+            };
+            let Some(member) = member.and_then(Value::as_object) else {
+                continue;
+            };
+            if let Some(Value::Object(properties)) = member.get("properties") {
+                names.extend(properties.keys().cloned());
+            }
+            declared(member, definitions, keywords, visited, names);
         }
     }
 }

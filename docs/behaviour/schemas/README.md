@@ -126,6 +126,12 @@ requires only the fields in `Row::COLUMNS`, so the documents of `--json`,
 `--json --long` and `--json --full` all match the schema. A column that the
 row type skips when it is empty prints `null` in the compact document, so its
 property's type admits null. The column stays optional, because
-`--json --full` leaves it out.
+`--json --full` leaves it out. The compact document also prints `null` for
+a column or the children field that the row type, or one variant of an enum
+row, has no field for. Such a row schema or variant gains the property
+`{"type": "null"}` for that name when it has a `properties` map or
+`additionalProperties: false`, so a variant that refuses unknown fields
+still matches. A name that a schema around the variant declares, such as a
+field of a struct that flattens the enum, gains no such property.
 
-Why: ADR-0007, ADR-0110, ADR-0113.
+Why: ADR-0007, ADR-0110, ADR-0113, ADR-0132.
