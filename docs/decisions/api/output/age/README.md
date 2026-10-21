@@ -1,7 +1,11 @@
 # ADR-0108. An age cell
 
 - Date: 2026-10-20
-- Status: accepted
+- Status: amended by ADR-0138
+
+## Children
+
+- [ADR-0138. An age of a week or more shows weeks](0138-an-age-of-a-week-or-more-shows-weeks.md)
 
 ## Context
 

@@ -48,7 +48,7 @@ around it. Cell widths count characters, so a wide character misaligns a
 column. A cell shows `null` or a missing field as `-`, and an array or an
 object as compact JSON. A field of type
 [`Age`](../../../crates/crumbkit/src/age.rs) shows how long ago its time
-was, such as `3h`, in the table and in a stream's text lines, and holds the
+was, such as `3h` or `2w`, in the table and in a stream's text lines, and holds the
 time in RFC 3339 in every JSON form, as its rustdoc describes.
 
 The table that `finish` prints leaves out a column whose field is `null` or
@@ -76,7 +76,7 @@ A table wider than its sink's width narrows its widest columns to fit and
 ends each cut cell with `…`, except in the columns that
 `Row::UNCUT_COLUMNS` names ([the table's width](terminal.md#the-tables-width)).
 
-Why: ADR-0016, ADR-0063, ADR-0065, ADR-0108, ADR-0114, ADR-0119, ADR-0120, ADR-0121, ADR-0134, ADR-0135.
+Why: ADR-0016, ADR-0063, ADR-0065, ADR-0108, ADR-0114, ADR-0119, ADR-0120, ADR-0121, ADR-0134, ADR-0135, ADR-0138.
 
 ## View flags
 
