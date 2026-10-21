@@ -1,5 +1,5 @@
 //! Tests for the guide check of the field that `Row::CHILDREN` names
-//! (ADR-0120).
+//! and the text that `Row::CHILDREN_HELP` sets (ADR-0120, ADR-0137).
 
 use crumbkit::help::Guide;
 use crumbkit::{Batch, Bytes, Document, Error, Headed, Row};
@@ -105,6 +105,44 @@ impl Headed for ChapteredFile {
     }
 }
 
+/// A book whose chapters print under it, which its help describes with
+/// `HELP`.
+#[derive(Serialize, JsonSchema)]
+struct DescribedBook<const HELP: u8> {
+    /// The book's id.
+    id: u32,
+    /// The titles of the book's chapters.
+    chapters: Vec<String>,
+}
+
+/// The texts that `DescribedBook` sets, by the value of its parameter.
+const TEXTS: [&str; 5] = [
+    "one line for each chapter, or one folded line for more than ten chapters.",
+    "",
+    "one line for each chapter,\nor one folded line.",
+    "one line for each \u{1b}[1mchapter\u{1b}[0m.",
+    "one line for each chapter",
+];
+
+impl<const HELP: u8> Row for DescribedBook<HELP> {
+    const COLUMNS: &'static [&'static str] = &["id"];
+    const CHILDREN: Option<&'static str> = Some("chapters");
+    const CHILDREN_HELP: Option<&'static str> = Some(TEXTS[HELP as usize]);
+}
+
+/// A book that describes child lines it does not print, because it names
+/// no children field.
+#[derive(Serialize, JsonSchema)]
+struct ChildlessBook {
+    /// The book's id.
+    id: u32,
+}
+
+impl Row for ChildlessBook {
+    const COLUMNS: &'static [&'static str] = &["id"];
+    const CHILDREN_HELP: Option<&'static str> = Some("one line for each chapter.");
+}
+
 /// Returns the problem that `check_guide` reports for a guide whose
 /// `books list` leaf has `document`, without the heading line.
 fn problem<T: crumbkit::Rows>(document: Document<T>) -> String {
@@ -186,5 +224,75 @@ fn check_guide_fails_on_a_headed_leaf_whose_row_type_names_a_children_field() {
     assert_eq!(
         problem(document),
         "shelf books list: the row type declares CHILDREN and the document is headed, so its text prints each row's bytes and never the child lines; remove CHILDREN or the headed form"
+    );
+}
+
+#[test]
+fn a_row_type_whose_children_help_is_one_sentence_on_one_line_passes() {
+    const GUIDE: Guide = Guide::new().leaves(&[
+        leaf(&["books", "list"]).document(Document::<Vec<DescribedBook<0>>>::new(
+            "shelf",
+            "books-list",
+            1,
+            "The test rows.",
+        )),
+        leaf(&["books", "show"]),
+        leaf(&["authors", "list"]),
+    ]);
+
+    check_guide(&shelf(), &GUIDE, &[]);
+}
+
+/// The problem that `check_guide` reports for a children text that help
+/// cannot print as one line.
+const NOT_ONE_LINE: &str = "shelf books list: the row type's CHILDREN_HELP is empty or holds a control character, such as a line feed, so help cannot print it on the one Children: line; write the text as one line";
+
+#[test]
+fn check_guide_fails_on_an_empty_children_help() {
+    let document =
+        Document::<Vec<DescribedBook<1>>>::new("shelf", "books-list", 1, "The test rows.");
+
+    assert_eq!(
+        problem(document),
+        format!(
+            "{NOT_ONE_LINE}\nshelf books list: the row type's CHILDREN_HELP does not end with a full stop, as every other line of help does; end the text with `.`"
+        )
+    );
+}
+
+#[test]
+fn check_guide_fails_on_a_children_help_that_holds_a_line_feed() {
+    let document =
+        Document::<Vec<DescribedBook<2>>>::new("shelf", "books-list", 1, "The test rows.");
+
+    assert_eq!(problem(document), NOT_ONE_LINE);
+}
+
+#[test]
+fn check_guide_fails_on_a_children_help_that_holds_an_escape_code() {
+    let document =
+        Document::<Vec<DescribedBook<3>>>::new("shelf", "books-list", 1, "The test rows.");
+
+    assert_eq!(problem(document), NOT_ONE_LINE);
+}
+
+#[test]
+fn check_guide_fails_on_a_children_help_without_a_full_stop() {
+    let document =
+        Document::<Vec<DescribedBook<4>>>::new("shelf", "books-list", 1, "The test rows.");
+
+    assert_eq!(
+        problem(document),
+        "shelf books list: the row type's CHILDREN_HELP does not end with a full stop, as every other line of help does; end the text with `.`"
+    );
+}
+
+#[test]
+fn check_guide_fails_on_a_children_help_without_a_children_field() {
+    let document = Document::<Vec<ChildlessBook>>::new("shelf", "books-list", 1, "The test rows.");
+
+    assert_eq!(
+        problem(document),
+        "shelf books list: the row type sets CHILDREN_HELP and no CHILDREN, so its rows print no child lines and help never prints the text; name the children field in `Row::CHILDREN` or remove CHILDREN_HELP"
     );
 }

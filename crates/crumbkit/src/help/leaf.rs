@@ -199,6 +199,8 @@ impl Leaf {
             problem: <T::Row as Row>::PROBLEM,
             line: <T::Row as Row>::LINE,
             children: <T::Row as Row>::CHILDREN,
+            child_indent: <T::Row as Row>::CHILD_INDENT,
+            children_help: <T::Row as Row>::CHILDREN_HELP,
             schema: schema::<T::Row>,
             envelope: crate::schemas::envelope::<T>,
             kind: Kind::Document(T::SHAPE),
@@ -232,6 +234,8 @@ impl Leaf {
             problem: R::PROBLEM,
             line: R::LINE,
             children: R::CHILDREN,
+            child_indent: R::CHILD_INDENT,
+            children_help: R::CHILDREN_HELP,
             schema: schema::<R>,
             envelope: crate::schemas::envelope::<R>,
             kind: Kind::Stream,
@@ -488,6 +492,10 @@ struct Columns {
     line: Option<&'static str>,
     /// The row type's [`Row::CHILDREN`].
     children: Option<&'static str>,
+    /// The row type's [`Row::CHILD_INDENT`].
+    child_indent: u8,
+    /// The row type's [`Row::CHILDREN_HELP`].
+    children_help: Option<&'static str>,
     /// Builds the row type's JSON Schema, whose properties hold the
     /// columns' descriptions.
     schema: fn() -> Schema,

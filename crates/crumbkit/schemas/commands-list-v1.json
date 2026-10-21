@@ -154,7 +154,14 @@
           }
         },
         "children": {
-          "description": "The field whose items each row prints in text as indented lines under it, such as `components`, or null when the rows print no such lines or the command declares no document.",
+          "description": "The field whose items each row prints in text as lines under it, such as `components`, or null when the rows print no such lines or the command declares no document.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "children_help": {
+          "description": "The description of the child lines that help prints after `Children: `, which is the row type's own text or crumbkit's sentence that names the children field, or null when `children` is null.",
           "type": [
             "string",
             "null"

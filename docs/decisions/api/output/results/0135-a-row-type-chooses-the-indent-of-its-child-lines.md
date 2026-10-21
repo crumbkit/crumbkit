@@ -1,7 +1,7 @@
 # ADR-0135. A row type chooses the indent of its child lines
 
 - Date: 2026-10-21
-- Status: accepted
+- Status: amended by ADR-0137
 - Supersedes: ADR-0120, which it amends
 - Missed: ADR-0120 fixed the indent of child lines at two spaces, so a tool whose child line holds an identifier as wide as the terminal could not keep that line from wrapping.
 

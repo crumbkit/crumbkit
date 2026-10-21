@@ -94,6 +94,10 @@ mod tests;
 ///   `Row::COLUMNS` or `Row::LONG_COLUMNS`, and a headed leaf whose row
 ///   type sets `Row::CHILDREN`, because a headed batch's text never prints
 ///   the child lines (ADR-0120);
+/// - a leaf whose row type's `Row::CHILDREN_HELP` is empty, holds a control
+///   character or does not end with a full stop, because help prints it as
+///   one sentence on one line, or is set without `Row::CHILDREN`, because
+///   help then never prints it (ADR-0137);
 /// - a name in a leaf's `Row::UNCUT_COLUMNS` that is in neither
 ///   `Row::COLUMNS` nor `Row::LONG_COLUMNS`, because it then keeps no
 ///   column of the table whole when the table fits a terminal (ADR-0121);

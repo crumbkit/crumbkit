@@ -1,5 +1,5 @@
 //! Tests for the `Children:` line of a leaf whose rows print their children
-//! as indented lines under them (ADR-0120).
+//! as lines under them (ADR-0120, ADR-0137).
 
 use std::process::ExitCode;
 
@@ -52,6 +52,39 @@ impl Row for Service {
     const CHILDREN: Option<&'static str> = Some("components");
 }
 
+/// A workspace whose applications print under it, folded into one line
+/// when every application is stopped, which its help says.
+#[derive(Serialize, JsonSchema)]
+struct Workspace {
+    /// The workspace's name.
+    name: String,
+    /// The applications that the workspace runs.
+    applications: Vec<String>,
+}
+
+impl Row for Workspace {
+    const COLUMNS: &'static [&'static str] = &["name"];
+    const CHILDREN: Option<&'static str> = Some("applications");
+    const CHILDREN_HELP: Option<&'static str> = Some(
+        "one line for each application, or one folded line when every application is stopped.",
+    );
+}
+
+/// A service whose components print at column 1 under it.
+#[derive(Serialize, JsonSchema)]
+struct Flush {
+    /// The service's name.
+    name: String,
+    /// The parts that the service runs on.
+    components: Vec<String>,
+}
+
+impl Row for Flush {
+    const COLUMNS: &'static [&'static str] = &["name"];
+    const CHILDREN: Option<&'static str> = Some("components");
+    const CHILD_INDENT: u8 = 0;
+}
+
 /// A service that prints its own text line, with its components under it.
 #[derive(Serialize, JsonSchema)]
 struct Lined {
@@ -96,6 +129,18 @@ const LINED: Document<Vec<Lined>> = Document::new("tool", "services-list", 1, "T
 const LOGS: Document<Batch<Log, Error>> =
     Document::new("tool", "services-list", 1, "The services' logs.").headed();
 
+const WORKSPACES: Document<Vec<Workspace>> =
+    Document::new("tool", "services-list", 1, "The workspaces.");
+const FLUSH: Document<Vec<Flush>> = Document::new("tool", "services-list", 1, "The services.");
+
+const WORKSPACES_LEAF: &[Leaf] = &[Leaf::new(&["services", "list"])
+    .examples(&[Example::new(&[], "List every workspace")])
+    .effects(Effects::read_only())
+    .document(WORKSPACES)];
+const FLUSH_LEAF: &[Leaf] = &[Leaf::new(&["services", "list"])
+    .examples(&[Example::new(&[], "List every service")])
+    .effects(Effects::read_only())
+    .document(FLUSH)];
 const SERVICES_LEAF: &[Leaf] = &[Leaf::new(&["services", "list"])
     .examples(&[Example::new(&[], "List every service")])
     .effects(Effects::read_only())
@@ -134,8 +179,64 @@ fn the_children_field_reads_as_a_column_with_its_property_and_description() {
 }
 
 #[test]
-fn the_children_line_names_the_field() {
-    assert_eq!(format!("{}\n", children_line("components")), CHILDREN);
+fn the_children_line_prints_its_text_after_the_label() {
+    assert_eq!(
+        format!(
+            "{}\n",
+            children_line("one indented line under each row for each of its components.")
+        ),
+        CHILDREN
+    );
+}
+
+#[test]
+fn a_row_type_that_sets_no_text_and_the_default_indent_prints_the_existing_sentence() {
+    let short = help(SERVICES_LEAF, &["tool", "services", "list", "-h"]);
+    let long = help(SERVICES_LEAF, &["tool", "services", "list", "--help"]);
+
+    assert!(short.contains(CHILDREN), "{short}");
+    assert!(long.contains(CHILDREN), "{long}");
+}
+
+#[test]
+fn a_row_type_that_sets_the_help_text_prints_it_on_the_children_line_of_short_and_long_help() {
+    let short = help(WORKSPACES_LEAF, &["tool", "services", "list", "-h"]);
+    let long = help(WORKSPACES_LEAF, &["tool", "services", "list", "--help"]);
+
+    let expected = "Children: one line for each application, or one folded line when every application is stopped.\n";
+    assert!(short.contains(expected), "{short}");
+    assert!(long.contains(expected), "{long}");
+}
+
+#[test]
+fn a_row_type_with_an_indent_of_0_and_no_text_prints_a_sentence_that_does_not_say_indented() {
+    let page = help(FLUSH_LEAF, &["tool", "services", "list", "--help"]);
+
+    assert!(
+        page.contains("Children: one line under each row for each of its components.\n"),
+        "{page}"
+    );
+    assert!(!page.contains("indented"), "{page}");
+}
+
+#[test]
+fn a_leaf_holds_the_help_text_of_its_row_type_and_the_text_that_help_prints() {
+    assert_eq!(
+        WORKSPACES_LEAF[0].children_help(),
+        Some(
+            "one line for each application, or one folded line when every application is stopped."
+        )
+    );
+    assert_eq!(
+        WORKSPACES_LEAF[0].children_text().as_deref(),
+        WORKSPACES_LEAF[0].children_help()
+    );
+    assert_eq!(SERVICES_LEAF[0].children_help(), None);
+    assert_eq!(
+        SERVICES_LEAF[0].children_text().as_deref(),
+        Some("one indented line under each row for each of its components.")
+    );
+    assert_eq!(Leaf::new(&["services", "list"]).children_text(), None);
 }
 
 #[test]

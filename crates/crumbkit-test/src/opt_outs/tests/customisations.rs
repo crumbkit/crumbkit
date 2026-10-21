@@ -282,6 +282,70 @@ fn rows_that_print_their_children_under_them_are_a_children_customisation() {
     );
 }
 
+/// A removed shelf whose books print at column 1 under it.
+#[derive(serde::Serialize, schemars::JsonSchema)]
+struct FlushShelf {
+    /// The shelf's id.
+    id: u32,
+    /// The titles of the books on the shelf.
+    books: Vec<String>,
+}
+
+impl crumbkit::Row for FlushShelf {
+    const COLUMNS: &'static [&'static str] = &["id"];
+    const CHILDREN: Option<&'static str> = Some("books");
+    const CHILD_INDENT: u8 = 0;
+}
+
+/// A removed shelf whose books print under it, folded into one line when
+/// the shelf held more than ten, which its help says.
+#[derive(serde::Serialize, schemars::JsonSchema)]
+struct FoldedShelf {
+    /// The shelf's id.
+    id: u32,
+    /// The titles of the books on the shelf.
+    books: Vec<String>,
+}
+
+impl crumbkit::Row for FoldedShelf {
+    const COLUMNS: &'static [&'static str] = &["id"];
+    const CHILDREN: Option<&'static str> = Some("books");
+    const CHILDREN_HELP: Option<&'static str> =
+        Some("one line for each book, or one folded line for more than ten books.");
+}
+
+#[test]
+fn the_children_customisation_of_rows_at_column_1_does_not_call_them_indented() {
+    const SHELVES_REMOVE: Document<Vec<FlushShelf>> =
+        Document::new("shelf", "shelves-remove", 1, "The removed shelves.");
+    const GUIDE: Guide =
+        Guide::new().leaves(&[Leaf::new(&["shelves", "remove"]).document(SHELVES_REMOVE)]);
+
+    let list = serde_json::to_value(customisations(&Command::new("shelf"), &GUIDE)).unwrap();
+
+    assert_eq!(
+        list[0]["declares"],
+        json!("The text prints one line under each row for each of its books.")
+    );
+}
+
+#[test]
+fn the_children_customisation_quotes_the_row_type_s_own_help_text() {
+    const SHELVES_REMOVE: Document<Vec<FoldedShelf>> =
+        Document::new("shelf", "shelves-remove", 1, "The removed shelves.");
+    const GUIDE: Guide =
+        Guide::new().leaves(&[Leaf::new(&["shelves", "remove"]).document(SHELVES_REMOVE)]);
+
+    let list = serde_json::to_value(customisations(&Command::new("shelf"), &GUIDE)).unwrap();
+
+    assert_eq!(
+        list[0]["declares"],
+        json!(
+            "The text prints lines under each row for its books, and help describes them as: one line for each book, or one folded line for more than ten books."
+        )
+    );
+}
+
 /// A book that prints whole in JSON and as its own line in text.
 #[derive(serde::Serialize, schemars::JsonSchema)]
 struct WholeLined {
