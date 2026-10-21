@@ -255,7 +255,7 @@ from the document which view flags a leaf offers before the handler runs.
   offers `--long` without the declaration, and its long note prints all
   the same.
 - Its `-h` and `--help` print a line after the `Rows:` line:
-  `Long note: --long also prints a note on standard error.`
+  `Long note: --long prints a note on standard error.`
 - A row type that sets `Row::WHOLE` and names no columns offers no
   `--long`. `--json --long` is refused for a row type that sets
   `Row::WHOLE`, and otherwise prints the same document as `--json`.

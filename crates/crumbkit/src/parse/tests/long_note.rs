@@ -65,7 +65,7 @@ fn parse(args: &[&str]) -> Parsed {
     }
 }
 
-const LONG_NOTE_LINE: &str = "Long note: --long also prints a note on standard error.";
+const LONG_NOTE_LINE: &str = "Long note: --long prints a note on standard error.";
 
 #[test]
 fn a_leaf_whose_document_declares_a_long_note_offers_long_although_its_rows_have_no_long_columns() {

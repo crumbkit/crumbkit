@@ -135,7 +135,8 @@ would not suit the command's result.
 
 A tool that defines the view flags in its own parser cannot also flatten
 `ViewFlags`, because clap refuses two arguments with one name. It builds
-`ViewFlags` with `ViewFlags::new()` and its builders, passes them to `Output::new`, which refuses the pairs, and
+`ViewFlags` with `ViewFlags::new().json(..).fields(..)`, `.long(..)` and
+`.full(..)`, passes them to `Output::new`, which refuses the pairs, and
 `finish` and `stream` check the built flags against the result as they
 check parsed ones. `parse` reads a view flag
 by its argument id, so the tool's own arguments get the refusals before
@@ -182,9 +183,10 @@ Why: ADR-0016, ADR-0049.
 In text, the lines that describe a result print on standard error, and
 standard output holds the result alone. These lines are a listing's footer,
 its empty note, the note of the rows that report a problem, the tool's note
-of a listing, a batch or a prose result, the `Next:` line, the output budget's [cut line](budget/README.md#listings-and-lists),
+of a listing, a batch or a prose result, a listing's long note under
+`--long`, the `Next:` line, the output budget's [cut line](budget/README.md#listings-and-lists),
 the [dry-run line](../effects/README.md) and a [stream's notes](streams.md#notes).
-A pipe such as `| wc -l`, `| grep` or `| jq` therefore sees only data. A
+A pipe such as `| jq` therefore sees only data. A
 listing's summary line stays on standard output above the table, because it
 is part of the result.
 

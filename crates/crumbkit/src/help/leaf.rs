@@ -511,8 +511,7 @@ impl Columns {
             envelope: self.document.get_envelope().wraps(),
             headed: self.document.is_headed(),
             whole: self.whole,
-            listed: view::Listed::by(&self.document),
-            long_note: self.document.has_long_note(),
+            listing: self.document.listing_text(),
         }
     }
 }

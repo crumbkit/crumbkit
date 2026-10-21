@@ -39,10 +39,10 @@ impl Leaf {
 
     /// Returns the `Long note:` line that the leaf's `-h` and `--help`
     /// print after the `Rows:` line when its document declares a long note,
-    /// `Long note: --long also prints a note on standard error.`, or `None`
+    /// `Long note: --long prints a note on standard error.`, or `None`
     /// otherwise (ADR-0139). A leaf that does not offer `--long` has none.
     pub(crate) fn long_note_line(&self) -> Option<&'static str> {
         (self.get_document()?.has_long_note() && self.offers(ViewFlag::Long))
-            .then_some("Long note: --long also prints a note on standard error.")
+            .then_some("Long note: --long prints a note on standard error.")
     }
 }

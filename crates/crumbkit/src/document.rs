@@ -76,12 +76,9 @@ pub struct Document<T> {
     /// The function that returns the bytes of the row at a position of a
     /// headed batch, which `headed` sets. An untyped document has none.
     bytes_of: Option<RowBytes<T>>,
-    /// Whether the default text of a listing lists only the rows that
-    /// report a problem, which the tool chose with `only_problems`.
-    only_problems: bool,
-    /// Whether the text of a listing prints a note under `--long`, which
-    /// the tool declared with `long_noted`.
-    long_note: bool,
+    /// What the text of a listing does beyond its columns, which the tool
+    /// chose with `only_problems` and `long_noted`.
+    listing: ListingText,
     /// `PhantomData<fn() -> T>` ties the document to `T` without holding a
     /// `T`. A function pointer is `Send` and `Sync` whatever it returns, so
     /// `Document<T>` is `Send` and `Sync` for every `T`; `PhantomData<T>`
@@ -138,8 +135,10 @@ impl<T> Document<T> {
             empty: None,
             headed: false,
             bytes_of: None,
-            only_problems: false,
-            long_note: false,
+            listing: ListingText {
+                only_problems: false,
+                long_note: false,
+            },
             result: PhantomData,
         }
     }
@@ -247,14 +246,20 @@ impl<T> Document<T> {
     /// problem.
     #[must_use]
     pub(crate) const fn lists_only_problems(&self) -> bool {
-        self.only_problems
+        self.listing.only_problems
     }
 
     /// Reports whether [`Document::long_noted`] was called, so the
     /// listing's text prints a note under `--long`.
     #[must_use]
     pub(crate) const fn has_long_note(&self) -> bool {
-        self.long_note
+        self.listing.long_note
+    }
+
+    /// Returns what the text of a listing does beyond its columns, which
+    /// decides whether the command offers `--long` without long columns.
+    pub(crate) const fn listing_text(&self) -> ListingText {
+        self.listing
     }
 
     /// Returns the same id, description, choice of envelope, budget
@@ -275,8 +280,7 @@ impl<T> Document<T> {
             empty: self.empty,
             headed: self.headed,
             bytes_of: None,
-            only_problems: self.only_problems,
-            long_note: self.long_note,
+            listing: self.listing,
             result: PhantomData,
         }
     }
@@ -349,7 +353,7 @@ impl<R: Row, S> Document<Listing<R, S>> {
     /// ```
     #[must_use]
     pub const fn only_problems(mut self) -> Self {
-        self.only_problems = true;
+        self.listing.only_problems = true;
         self
     }
 
@@ -359,7 +363,7 @@ impl<R: Row, S> Document<Listing<R, S>> {
     ///
     /// The leaf then offers `--long` even when the row type has no long
     /// columns, so `--long` prints the note, and its `-h` and `--help`
-    /// print the line `Long note: --long also prints a note on standard
+    /// print the line `Long note: --long prints a note on standard
     /// error.` A row type that has long columns offers `--long` without
     /// this declaration, and its long note prints all the same. A row type
     /// that sets [`Row::WHOLE`] and names no columns offers no `--long`, as
@@ -381,8 +385,27 @@ impl<R: Row, S> Document<Listing<R, S>> {
     /// ```
     #[must_use]
     pub const fn long_noted(mut self) -> Self {
-        self.long_note = true;
+        self.listing.long_note = true;
         self
+    }
+}
+
+/// What the text of a listing does beyond its columns. Each setting makes
+/// the command offer `--long` although the row type has no long columns.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) struct ListingText {
+    /// Whether the default text lists only the rows that report a problem,
+    /// so `--long` lists every row (ADR-0138).
+    pub(crate) only_problems: bool,
+    /// Whether the text prints a long note under `--long` (ADR-0139).
+    pub(crate) long_note: bool,
+}
+
+impl ListingText {
+    /// Reports whether `--long` changes the text although the row type has
+    /// no long columns.
+    pub(crate) const fn changed_by_long(self) -> bool {
+        self.only_problems || self.long_note
     }
 }
 

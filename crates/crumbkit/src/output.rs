@@ -417,12 +417,12 @@ pub fn finish<T: Rows, E: AsFailure>(
 /// `result` is a failure, `finish_to` checks no view flag and prints the
 /// failure, because a tool may print an early failure in another document
 /// than the one its leaf declares, and the `Output` already holds only a
-/// view that every printer accepts (ADR-0093). A prose
-/// or bytes result cannot use `--fields`, `--long` or `--full`, rows
-/// without long columns cannot use `--long` unless the document lists only
-/// the rows that report a problem or declares a long note (ADR-0139), rows of a type that sets `Row::WHOLE`
-/// cannot use `--long` with `--json` (ADR-0138), and a document without the
-/// envelope cannot use `--full` (ADR-0016).
+/// view that every printer accepts (ADR-0093). A prose or bytes result
+/// cannot use `--fields`, `--long` or `--full`, rows without long columns
+/// cannot use `--long` unless the document lists only the rows that report
+/// a problem or declares a long note (ADR-0139), rows of a type that sets
+/// `Row::WHOLE` cannot use `--long` with `--json` (ADR-0138), and a
+/// document without the envelope cannot use `--full` (ADR-0016).
 ///
 /// A run without a failure whose rows report a problem, as
 /// [`Row::is_problem`](crate::Row::is_problem) decides, exits with 1, also

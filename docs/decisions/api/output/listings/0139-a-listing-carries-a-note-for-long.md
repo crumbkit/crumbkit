@@ -29,7 +29,7 @@ exit 2, and the tool could not offer the flag at all.
   listing, so the declaration has to sit on the document. A leaf whose
   document declares a long note offers `--long` even when its row type
   has no long columns, and `finish` accepts `--long` by the same rule.
-  Its `-h` and `--help` print `Long note: --long also prints a note on
+  Its `-h` and `--help` print `Long note: --long prints a note on
   standard error.` after the `Rows:` line, because the help of `--long`
   names only the long columns.
 - A row type that has long columns offers `--long` without the

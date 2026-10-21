@@ -25,8 +25,8 @@ mod tests;
 /// and more match. --all shows every one.` for a listing without a total,
 /// or `Showing 4 of at least 100 books. --all shows 100 of them.` for a
 /// listing from a capped source ([`Listing::capped`]), then the note, under
-/// `--long` the long note, and then the next step, such as `Next: shelf books show <ID>... takes up to
-/// 100 ids in one call.`
+/// `--long` the long note, and then the next step, such as `Next: shelf
+/// books show <ID>... takes up to 100 ids in one call.`
 ///
 /// ```
 /// # #[derive(serde::Serialize, schemars::JsonSchema)]
@@ -248,7 +248,8 @@ impl<R: Row, S> Listing<R, S> {
     ///
     /// When the row type has no long columns, the command offers `--long`
     /// only when the listing's document declares the note with
-    /// `Document::long_noted` (ADR-0139).
+    /// `Document::long_noted` (ADR-0139). Help then promises the note, so
+    /// such a command sets it on every listing it returns.
     #[must_use]
     pub fn long_note(mut self, text: impl Into<String>) -> Self {
         self.long_note = Some(text.into());
