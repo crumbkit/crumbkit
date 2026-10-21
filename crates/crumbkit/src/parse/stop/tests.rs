@@ -68,6 +68,23 @@ fn a_help_page_reports_the_help_id_and_the_options_typed_as_its_flags() {
 }
 
 #[test]
+fn the_word_help_reports_no_flags() {
+    let stop = stopped(&["tool", "help", "planets"]);
+
+    assert_eq!(stop.printed(), crate::Printed::Help);
+    assert_eq!(stop.flags(), Vec::<String>::new());
+}
+
+#[test]
+fn the_word_help_reports_the_option_typed_after_it_and_its_value_without_the_help_id() {
+    let stop = stopped(&["tool", "help", "planets", "show", "--format", "json"]);
+
+    assert_eq!(stop.path(), ["planets", "show"]);
+    assert_eq!(stop.flags(), ["format"]);
+    assert_eq!(stop.value("format"), Some(OsStr::new("json")));
+}
+
+#[test]
 fn a_help_page_reports_a_global_option_s_value_typed_before_the_subcommand() {
     let stop = stopped(&["tool", "--format", "json", "planets", "show", "--help"]);
 
@@ -164,7 +181,7 @@ fn built(view: ViewFlags, args: &[&str]) -> Result<Output, Stop> {
 }
 
 #[test]
-fn the_stop_of_output_new_s_refused_view_flags_reports_the_path_and_an_option_s_value() {
+fn the_stop_of_output_new_s_refused_view_flags_reports_the_path_the_flags_and_an_option_s_value() {
     let args = ["tool", "--format", "json", "list", "--full"];
     assert!(built(ViewFlags::new().full(true).json(true), &args).is_ok());
 
@@ -173,5 +190,6 @@ fn the_stop_of_output_new_s_refused_view_flags_reports_the_path_and_an_option_s_
     };
 
     assert_eq!(stop.path(), ["list"]);
+    assert_eq!(stop.flags(), ["format", "full"]);
     assert_eq!(stop.value("format"), Some(OsStr::new("json")));
 }

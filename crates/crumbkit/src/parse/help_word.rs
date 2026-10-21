@@ -90,10 +90,10 @@ fn naming_words(command: &Command, args: &[OsString], position: usize) -> Vec<us
     naming
 }
 
-/// Prints `page`, the topic that the word `help` at the guide's root asked
-/// for, to `sink`, and returns the `Stop` of the run, after parsing `args`,
-/// the command line with the program name first, against `command` with
-/// `guide`.
+/// Prints `page`, the topic that the word `help` at `position` asked for at
+/// the guide's root, to `sink`, and returns the `Stop` of the run, after
+/// parsing `args`, the command line with the program name first, against
+/// `command` with `guide`.
 //
 // RUST-10: a topic prints as plain text, also on a terminal and to a
 // styled sink, because crumbkit builds it without styles and only the
@@ -105,6 +105,7 @@ pub(super) fn print_topic(
     command: Command,
     guide: &Guide,
     args: &[OsString],
+    position: usize,
     page: &str,
 ) -> Stop {
     let code = print_text(sink, page);
@@ -116,7 +117,7 @@ pub(super) fn print_topic(
     // walks the words for `--json` here.
     let json = walk(&command, args).json;
     // A topic prints only at the guide's root, so the path is empty.
-    let words = args.get(1..).unwrap_or_default().to_vec();
+    let words = without_help(args, position);
     Stop::new(
         Printed::Topic,
         code,
@@ -149,4 +150,17 @@ pub(super) fn ask_for_help(command: &Command, args: &mut Vec<OsString>, position
         .map_or(position, |&last| last);
     args.insert(place + 1, OsString::from("--help"));
     args.remove(position);
+}
+
+/// Returns the words after the program name in `args` without the word
+/// `help` at `position`, which crumbkit answers, so the getters of a
+/// `Refused` and a `Stop` read the words around it as the caller typed
+/// them (ADR-0136).
+pub(super) fn without_help(args: &[OsString], position: usize) -> Vec<OsString> {
+    args.iter()
+        .enumerate()
+        .skip(1)
+        .filter(|&(index, _)| index != position)
+        .map(|(_, word)| word.clone())
+        .collect()
 }

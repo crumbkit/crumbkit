@@ -11,12 +11,12 @@ pub use self::refused::{Refused, Unparsed};
 pub use self::stop::{Printed, Stop};
 
 use self::attempt::{Attempt, attempt};
-use self::help_word::{ask_for_help, has_topics, print_topic, topic_page};
+use self::help_word::{ask_for_help, has_topics, print_topic, topic_page, without_help};
 use self::lines::add_help_lines;
 use self::message::command_line_refusal;
 use self::page::print_page;
 use self::pick::{Picking, Step};
-use self::walk::{help_word, own_names, program_stem, walk};
+use self::walk::{help_word, own_names, program_stem, typed_words, walk};
 use crate::help::Guide;
 use crate::{Output, Sink, Spelling};
 
@@ -474,6 +474,9 @@ where
     // that changes a word keeps a copy, so a run that types the tool's own
     // names and no `help` allocates no copy.
     let mut typed = (!replaced.is_empty()).then(|| typed_words(&args, replaced));
+    // The words that the getters read, which only a run that answers `help`
+    // or picks copies (ADR-0136).
+    let mut caller: Option<Vec<OsString>> = None;
     crate::events::typed(&command, &args, spelling);
     // crumbkit answers `help` itself. clap propagates the setting to every
     // subcommand, so no `Commands:` list shows clap's `help` line, and
@@ -490,10 +493,11 @@ where
         if help.at_root
             && let Some(page) = topic_page(&command, guide, &args, help.position)
         {
-            let stop = print_topic(sink, command, guide, &args, &page);
+            let stop = print_topic(sink, command, guide, &args, help.position, &page);
             return Err(Unparsed::Stopped(stop));
         }
         typed.get_or_insert_with(|| args.get(1..).unwrap_or_default().to_vec());
+        caller = Some(without_help(&args, help.position));
         ask_for_help(&command, &mut args, help.position);
     }
     // A leaf's `--help` describes its columns from the row type's JSON
@@ -525,10 +529,12 @@ where
             && pick::wanted(error)
         {
             typed.get_or_insert_with(|| words.clone());
+            caller.get_or_insert_with(|| words.clone());
             match picking.pick(sink, &mut command, guide, &mut words, json, spelling) {
                 Step::Picked => picked += 1,
                 Step::Refuse => break,
                 Step::Stop(code) => {
+                    let words = caller.unwrap_or(words);
                     let stop = Stop::new(Printed::Failure, code, json, command, guide, path, words);
                     return Err(Unparsed::Stopped(stop));
                 }
@@ -557,8 +563,7 @@ where
             view: Err(refusal), ..
         }) => {
             let output = stop::stopped(json, command, guide);
-            let typed = typed.unwrap_or_else(|| words.clone());
-            let refused = Refused::new(*refusal, None, path, output, typed, words);
+            let refused = Refused::new(*refusal, None, path, output, words, typed, caller);
             return Err(Unparsed::Refused(refused));
         }
         Err(error) => error,
@@ -575,26 +580,12 @@ where
             crate::events::exited(code);
             Printed::Version
         };
+        let words = caller.unwrap_or(words);
         let stop = Stop::new(printed, code, json, command, guide, path, words);
         return Err(Unparsed::Stopped(stop));
     }
     let refusal = command_line_refusal::<C>(&mut command, guide, &path, &error, &words);
     let output = stop::stopped(json, command, guide);
-    let typed = typed.unwrap_or_else(|| words.clone());
-    let refused = Refused::new(refusal, Some(error), path, output, typed, words);
+    let refused = Refused::new(refusal, Some(error), path, output, words, typed, caller);
     Err(Unparsed::Refused(refused))
-}
-
-/// Returns the words after the program name in `args` as the caller typed
-/// them, with each word of `replaced`, the positions in `args` and the
-/// typed text that [`own_names`] replaced, put back.
-fn typed_words(args: &[OsString], replaced: Vec<(usize, OsString)>) -> Vec<OsString> {
-    let mut typed = args.to_vec();
-    for (position, word) in replaced {
-        if let Some(slot) = typed.get_mut(position) {
-            *slot = word;
-        }
-    }
-    typed.remove(0);
-    typed
 }

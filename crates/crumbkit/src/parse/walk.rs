@@ -195,6 +195,20 @@ pub(crate) fn own_names(
     replaced
 }
 
+/// Returns the words after the program name in `args` as the caller typed
+/// them, with each word of `replaced`, the positions in `args` and the
+/// typed text that [`own_names`] replaced, put back.
+pub(super) fn typed_words(args: &[OsString], replaced: Vec<(usize, OsString)>) -> Vec<OsString> {
+    let mut typed = args.to_vec();
+    for (position, word) in replaced {
+        if let Some(slot) = typed.get_mut(position) {
+            *slot = word;
+        }
+    }
+    typed.remove(0);
+    typed
+}
+
 /// Returns the word `help` that crumbkit answers in `args`, or `None` when
 /// clap reads every word.
 ///
