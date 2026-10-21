@@ -600,6 +600,9 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   error at a terminal or with `CLICOLOR_FORCE`, never under `NO_COLOR`, and
   `Sink::styled_errors` asks for them on a tool's own sink
   ([behaviour/parsing]).
+- crumbkit: `Listing::capped` marks a listing whose tool read only part of
+  its source, so its footer gives the rows read as a lower bound and its
+  JSON document leaves out `total` ([behaviour/output/listings]).
 
 ### Changed
 

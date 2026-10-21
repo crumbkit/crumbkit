@@ -2,8 +2,8 @@
 
 This page covers a command that may show fewer rows than matched: its paging
 flags, the lines that describe its result, a listing with no rows, a listing
-without a total, the upper bound on `--limit`, and the exit of a result whose
-rows report a problem.
+without a total, a listing from a capped source, the upper bound on
+`--limit`, and the exit of a result whose rows report a problem.
 
 ## Paging flags and the listing
 
@@ -97,7 +97,7 @@ with `Listing::uncounted` or `Page::uncounted`. The reading example's
   document leaves out `total`.
 
 Every listing's document holds `truncated`, which is true when `--limit`, the
-output budget or an uncounted source left rows out, and false when `data`
+output budget, an uncounted source or a capped source left rows out, and false when `data`
 holds every row. `cut` says that the budget was the cause and names the
 budget, so a listing with `cut` also holds `"truncated": true`. A list has no
 `truncated`, because only the budget shortens a list, and `cut` marks that.
@@ -105,6 +105,38 @@ The [usage log](../../usage-log/README.md) marks a run whose listing left rows
 out.
 
 Why: ADR-0050, ADR-0087.
+
+## A listing from a capped source
+
+A tool that reads only part of its source, such as the newest 100 records
+of a store that holds more, builds its listing with `Listing::new`,
+`Listing::from_all`, `Page::listing` or `Page::first_of` from the rows it
+read, and calls `Listing::capped(true)` when its read left older rows
+unread. The listing's total then counts the rows that the tool read, and
+the source holds more beyond them. `Listing::capped(false)` changes
+nothing, and so does `Listing::capped` on a listing from
+`Listing::uncounted`, which has no total.
+
+- The JSON document leaves out `total` and holds `"truncated": true`,
+  because the tool has no exact total. No other field marks the cap.
+- While the page shows fewer rows than the tool read, the footer gives the
+  rows read as a lower bound and says how many rows `--all` shows:
+  `Showing 20 of at least 100 records. --all shows 100 of them.` With a
+  bound on `--limit` it reads `Showing 20 of at least 100 records. --limit
+  takes up to 100, and --all shows 100 of them.`, and without a description
+  `Showing 20 of at least 100. --all shows 100 of them.`
+- When the page shows every row that the tool read, as with `--all`, the
+  footer reads `Showing 100 records, and more match.` and names no `--all`,
+  because `--all` shows nothing more. One row takes the singular, as in
+  `Showing 1 record, and more match.`, and a listing without a description
+  says `rows` or `row`.
+- The tool's note, summary and `Next:` line print as for any listing.
+- The output budget's cut line gives no count, as for a listing without a
+  total: `Showing 812 records, because output stops at 1048576 bytes.`
+- The [usage log](../../usage-log/README.md) marks the run as one whose
+  listing left rows out.
+
+Why: ADR-0087, ADR-0130.
 
 ## An upper bound on `--limit`
 
