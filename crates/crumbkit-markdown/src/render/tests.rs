@@ -407,6 +407,7 @@ fn a_command_whose_lined_rows_have_no_columns_prints_a_text_line_that_names_no_t
 
 #[test]
 fn a_command_whose_rows_print_children_prints_the_children_line_as_help_does() {
+    let text = "one indented line under each row for each of its components.";
     let input = document(&[command(
         "tool services list",
         "List",
@@ -414,14 +415,39 @@ fn a_command_whose_rows_print_children_prints_the_children_line_as_help_does() {
             "form": "document",
             "columns": [{"name": "name", "long": false, "description": "The name."}],
             "children": "components",
+            "children_help": text,
         }),
     )]);
 
     let reference = render(&input).unwrap();
 
-    let expected = format!("\n{}\n", crumbkit::help::children_line("`components`"));
+    let expected = format!("\n{}\n", crumbkit::help::children_line(text));
     assert!(
         reference.text().ends_with(&expected),
+        "{}",
+        reference.text()
+    );
+}
+
+#[test]
+fn a_row_type_s_own_help_text_prints_on_the_children_line_with_its_markup_escaped() {
+    let input = document(&[command(
+        "tool workspaces list",
+        "List",
+        json!({
+            "form": "document",
+            "columns": [{"name": "name", "long": false, "description": "The name."}],
+            "children": "applications",
+            "children_help": "one line for each application, or one folded line when every application is stopped, such as `api, worker · all stopped` <folded>.",
+        }),
+    )]);
+
+    let reference = render(&input).unwrap();
+
+    assert!(
+        reference.text().ends_with(
+            "\nChildren: one line for each application, or one folded line when every application is stopped, such as `api, worker · all stopped` \\<folded\\>.\n"
+        ),
         "{}",
         reference.text()
     );
@@ -432,15 +458,38 @@ fn the_children_line_follows_the_text_line() {
     let input = document(&[command(
         "tool services list",
         "List",
-        json!({"form": "document", "line": "<NAME>", "columns": [], "children": "components"}),
+        json!({
+            "form": "document",
+            "line": "<NAME>",
+            "columns": [],
+            "children": "components",
+            "children_help": "one indented line under each row for each of its components.",
+        }),
     )]);
 
     let reference = render(&input).unwrap();
 
     assert!(
         reference.text().ends_with(
-            "\nText: one line per row, `<NAME>`.\n\nChildren: one indented line under each row for each of its `components`.\n"
+            "\nText: one line per row, `<NAME>`.\n\nChildren: one indented line under each row for each of its components.\n"
         ),
+        "{}",
+        reference.text()
+    );
+}
+
+#[test]
+fn a_document_from_before_the_children_help_field_existed_prints_no_children_line() {
+    let input = document(&[command(
+        "tool services list",
+        "List",
+        json!({"form": "document", "columns": [], "children": "components"}),
+    )]);
+
+    let reference = render(&input).unwrap();
+
+    assert!(
+        !reference.text().contains("Children:"),
         "{}",
         reference.text()
     );
@@ -468,7 +517,11 @@ fn a_headed_command_prints_no_children_line() {
     let input = document(&[command(
         "tool logs show",
         "Show",
-        json!({"form": "headed", "children": "components"}),
+        json!({
+            "form": "headed",
+            "children": "components",
+            "children_help": "one indented line under each row for each of its components.",
+        }),
     )]);
 
     let reference = render(&input).unwrap();

@@ -247,3 +247,69 @@ fn a_row_holds_the_children_field_of_its_leaf_s_rows_and_null_without_one() {
             .contains_key("children")
     );
 }
+
+/// A removed shelf whose books print under it, folded into one line when
+/// the shelf held more than ten, which its help says.
+#[derive(serde::Serialize, schemars::JsonSchema)]
+struct FoldedShelf {
+    /// The shelf's id.
+    id: u32,
+    /// The titles of the books on the shelf.
+    books: Vec<String>,
+}
+
+impl crate::Row for FoldedShelf {
+    const COLUMNS: &'static [&'static str] = &["id"];
+    const CHILDREN: Option<&'static str> = Some("books");
+    const CHILDREN_HELP: Option<&'static str> =
+        Some("one line for each book, or one folded line for more than ten books.");
+}
+
+#[test]
+fn a_row_holds_the_text_that_help_prints_on_the_children_line_and_null_without_children() {
+    const SHELVES: crate::Document<Vec<Shelf>> =
+        crate::Document::new("shelf", "books-remove", 1, "The removed shelves.");
+    const FOLDED: crate::Document<Vec<FoldedShelf>> =
+        crate::Document::new("shelf", "books-remove", 1, "The removed shelves.");
+    const GUIDE: Guide = Guide::new().leaves(&[Leaf::new(&["books", "remove"]).document(SHELVES)]);
+    const FOLDED_GUIDE: Guide =
+        Guide::new().leaves(&[Leaf::new(&["books", "remove"]).document(FOLDED)]);
+
+    assert_eq!(
+        row(&GUIDE)["children_help"],
+        json!("one indented line under each row for each of its books.")
+    );
+    assert_eq!(
+        row(&FOLDED_GUIDE)["children_help"],
+        json!("one line for each book, or one folded line for more than ten books.")
+    );
+    assert_eq!(row(&Guide::new())["children_help"], Value::Null);
+    assert!(
+        row(&Guide::new())
+            .as_object()
+            .unwrap()
+            .contains_key("children_help")
+    );
+}
+
+#[test]
+fn help_prints_the_children_text_of_the_row_on_its_children_line() {
+    const FOLDED: crate::Document<Vec<FoldedShelf>> =
+        crate::Document::new("shelf", "books-remove", 1, "The removed shelves.");
+    const GUIDE: Guide = Guide::new().leaves(&[Leaf::new(&["books", "remove"])
+        .examples(&[crate::help::Example::new(&[], "Remove the books")])
+        .document(FOLDED)]);
+    let tool = Command::new("shelf")
+        .subcommand(Command::new("books").subcommand(Command::new("remove").about("Remove books")));
+    let mut out = Vec::new();
+    let mut err = Vec::new();
+    let mut sink = crate::Sink::new(&mut out, &mut err);
+    let args = ["shelf", "books", "remove", "-h"];
+    let _ = crate::parse_to::<(), _, _, _, _>(&mut sink, tool, &GUIDE, args);
+
+    let page = String::from_utf8(out).unwrap();
+    let row = row(&GUIDE);
+    let text = row["children_help"].as_str().unwrap();
+    let line = crate::help::children_line(text);
+    assert!(page.contains(&format!("\n{line}\n")), "{page}");
+}

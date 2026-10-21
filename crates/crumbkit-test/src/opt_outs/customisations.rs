@@ -178,13 +178,20 @@ fn leaf_customisations(command: &Command, spelling: Spelling, leaf: &Leaf) -> Ve
             ),
         });
     }
-    if let Some(field) = leaf.children() {
+    if let (Some(field), Some(children)) = (leaf.children(), leaf.children_text()) {
+        // crumbkit's own sentence reads as what the text prints, and a row
+        // type's own text is quoted after the field it describes.
+        let declares = match leaf.children_help() {
+            Some(_) => format!(
+                "The text prints lines under each row for its {field}, and help describes them \
+                 as: {children}"
+            ),
+            None => format!("The text prints {children}"),
+        };
         list.push(Customisation {
             declaration: "children",
             applies_to: command_line(command, &leaf.path().join(" ")),
-            declares: format!(
-                "The text prints one indented line under each row for each of its {field}."
-            ),
+            declares,
         });
     }
     for rename in leaf.get_codes() {

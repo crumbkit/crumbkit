@@ -160,12 +160,12 @@ fn section(text: &mut String, command: &Command, commands: &[Command]) {
         let long = command.columns.iter().any(|column| column.long);
         let _ = write!(text, "\n{}\n", help::text_line(&code(line), fields, long));
     }
-    if let Some(field) = command
-        .children
+    if let Some(children) = command
+        .children_help
         .as_deref()
         .filter(|_| command.form.as_deref() != Some("headed"))
     {
-        let _ = write!(text, "\n{}\n", help::children_line(&code(field)));
+        let _ = write!(text, "\n{}\n", help::children_line(&one_line(children)));
     }
     if !command.exits.is_empty() {
         text.push_str("\n### Exit codes\n\n");
