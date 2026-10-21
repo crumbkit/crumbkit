@@ -105,8 +105,8 @@ fields, and the `Output` holds that view, so it never holds two flags that
 cannot work together. Three checks apply the rules:
 
 - `parse` refuses, before the handler runs, a view flag that the leaf's
-  document does not offer, two flags that cannot work together,
-  `--json --long` for whole rows, and a
+  document does not offer, `--json --long` for whole rows, two flags that
+  cannot work together, and a
   `--fields` name that the row type of the leaf's document lacks, in that
   order. It also leaves an unoffered view flag out of the leaf's help. On
   a leaf without a document, `parse` refuses only the pairs.

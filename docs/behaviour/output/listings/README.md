@@ -220,14 +220,15 @@ listing's document makes the default text list only the rows whose
 
 - Without `--json`, `--long` or `--fields`, the text prints the summary
   line, the header and the rows that report a problem with their child
-  lines. When no row reports a problem, it prints the summary line alone,
-  with no header and no note.
+  lines. When no row reports a problem, standard output holds the summary
+  line alone, with no header.
 - `--long` and `--fields` print every row, and `--json` holds every row
   unchanged.
-- The exit, the problem note, the footer and the empty note of a listing
-  without rows do not change. No line counts the rows that the text left
-  out, and the footer and the output budget's cut line count the rows of
-  the listing or of the printed table.
+- The exit, the problem note, the footer, the tool's note, the `Next:`
+  line and the empty note of a listing without rows do not change. No line
+  counts the rows that the text left out. The footer counts every row of
+  the listing, and the output budget's cut line counts the printed rows
+  against the listing's total.
 - The leaf offers `--long` even when its row type has no long columns.
   Its `-h` and `--help` print a line after the `Problems:` line:
   `Rows: the text lists only the rows that report a problem, and --long or

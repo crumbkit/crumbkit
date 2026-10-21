@@ -46,7 +46,12 @@ reports whether the caller gave `--json` and not whether the caller gave
   document, as a refused command line with the code `<tool>::cli::usage`,
   exit 2 and the hint to drop `--long`. Before this record, the same
   command line printed the same document as `--json` alone, so the
-  refusal removes a spelling and changes no output.
+  refusal removes a spelling that added nothing.
+- A listing that lists only its problem rows and whose row type neither
+  sets `Row::WHOLE` nor has long columns accepts `--json --long`, which
+  prints the same document as `--json`. crumbkit accepts it, because the
+  refusal is a property of the row type, and this case depends on the
+  document as well.
 - The API-1 ground is one adopter's request for an ordinary need, because
   any tool that checks many items needs its default text to show the
   failures without the passing items around them (ADR-0122).

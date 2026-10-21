@@ -169,10 +169,20 @@ fn long_with_json_on_a_whole_row_leaf_is_refused_before_the_handler_runs() {
 
 #[test]
 fn long_typed_before_the_command_path_with_json_on_a_problem_only_leaf_is_refused() {
-    let parsed = parse(&["tool", "--long", "checks", "--json"]);
+    let refused = ["tool", "--long", "checks", "--json"];
+    let admitted = ["tool", "checks", "--json"];
+    assert_one_word_apart(&refused, &admitted);
+    assert_eq!(parse(&admitted).code, None);
+
+    let parsed = parse(&refused);
 
     assert_eq!(parsed.code, Some(ExitCode::from(2)));
-    assert!(parsed.out.starts_with('{'), "{}", parsed.out);
+    let document: serde_json::Value = serde_json::from_str(&parsed.out).unwrap();
+    assert_eq!(document["fields"]["argument"], "--long");
+    assert_eq!(
+        document["recovery"]["text"],
+        "drop --long, because --json already prints every field of each row"
+    );
 }
 
 #[test]

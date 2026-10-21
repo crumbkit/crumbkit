@@ -9,7 +9,10 @@ use schemars::JsonSchema;
 use serde::Serialize;
 use serde_json::Value;
 
-use super::finish_with;
+use clap::CommandFactory as _;
+
+use super::{Tool, built_with, finish_output, finish_with};
+use crate::help::Guide;
 use crate::twins::assert_one_word_apart;
 use crate::{Document, Listing, Row};
 
@@ -230,5 +233,121 @@ fn finish_refuses_long_with_json_for_a_whole_row_type_because_json_already_holds
     assert_eq!(
         document["recovery"]["text"],
         "drop --long, because --json already prints every field of each row"
+    );
+}
+
+/// A link from a pointer to its target, which prints its own text line,
+/// has a long column and does not set `Row::WHOLE`.
+#[derive(Serialize, JsonSchema)]
+struct Link {
+    /// The name that points.
+    pointer: &'static str,
+    /// Whether the target exists.
+    found: bool,
+    /// What the pointer points at.
+    target: &'static str,
+}
+
+impl Row for Link {
+    const COLUMNS: &'static [&'static str] = &["pointer", "found"];
+    const LONG_COLUMNS: &'static [&'static str] = &["target"];
+    const LINE: Option<&'static str> = Some("<POINTER> -> <TARGET>");
+
+    fn is_problem(&self) -> bool {
+        !self.found
+    }
+
+    fn text_line(&self) -> Option<String> {
+        Some(format!("{} -> {}", self.pointer, self.target))
+    }
+}
+
+const LINKS: Document<Listing<Link>> =
+    Document::new("links", "links", 1, "The test links.").only_problems();
+
+/// Returns two links, the broken one first (OUTPUT-3).
+fn links() -> Listing<Link> {
+    let broken = Link {
+        pointer: "docs",
+        found: false,
+        target: "gone",
+    };
+    let working = Link {
+        pointer: "home",
+        found: true,
+        target: "index",
+    };
+    Listing::from_all(vec![broken, working], None)
+}
+
+#[test]
+fn rows_with_their_own_text_line_print_only_the_lines_of_rows_that_report_a_problem() {
+    let finished = finish_with(&[], LINKS, links());
+
+    assert_eq!(finished.out, "docs -> gone\n");
+}
+
+#[test]
+fn finish_accepts_long_with_json_for_a_row_type_that_does_not_print_whole() {
+    let finished = finish_with(&["--json", "--long"], LINKS, links());
+
+    assert_eq!(finished.code, ExitCode::from(1), "{}", finished.err);
+    let document: Value = serde_json::from_str(&finished.out).unwrap();
+    assert_eq!(document["data"][1]["target"], "index");
+}
+
+#[test]
+fn the_footer_of_a_page_counts_every_row_of_the_listing_under_the_filter() {
+    let page = Listing::new(
+        vec![
+            check("web", &[(true, "missing licence")]),
+            check("cli", &[]),
+        ],
+        5,
+    )
+    .described("checks");
+
+    let finished = finish_with(
+        &[],
+        CHECKS,
+        page.summary(Tally {
+            passed: 4,
+            checks: 5,
+        }),
+    );
+
+    assert_eq!(
+        finished.out,
+        "4 of 5 checks passed.\nPACKAGE  PASSED\nweb      false\n  error: missing licence\n"
+    );
+    assert!(
+        finished
+            .err
+            .starts_with("Showing 2 of 5 checks. --all shows every one.\n"),
+        "{}",
+        finished.err
+    );
+}
+
+#[test]
+fn the_budget_cut_line_counts_the_printed_problem_rows_against_the_listing_total() {
+    let failing = (0..10).map(|_| check("web", &[(true, "missing licence")]));
+    let passing = (0..10).map(|_| check("cli", &[]));
+    let listing = tallied(failing.chain(passing).collect());
+    let guide = Guide::new().output_budget(160, "the tests print little");
+    let output = built_with(Tool::command(), &guide, &["tool", "list"]);
+
+    let finished = finish_output(output, CHECKS, listing);
+
+    let rows = "web      false\n  error: missing licence\n".repeat(3);
+    assert_eq!(
+        finished.out,
+        format!("10 of 20 checks passed.\nPACKAGE  PASSED\n{rows}")
+    );
+    assert_eq!(
+        finished.err,
+        "Showing 3 of 20 checks, because output stops at 160 bytes. \
+         Ask for less with --limit or --fields.\n\
+         note: 10 of the checks report a problem, so the command exits with 1.\n"
     );
 }
