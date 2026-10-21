@@ -1,4 +1,5 @@
-//! The child lines that a row prints under itself in text (ADR-0120).
+//! The child lines that a row prints under itself in text (ADR-0120,
+//! ADR-0135).
 
 use super::table::escape_controls;
 use crate::Row;
@@ -13,9 +14,9 @@ pub(super) fn chosen<R: Row>(view: &View) -> bool {
 }
 
 /// Returns the child lines of `row` as the text prints them under the row:
-/// each line indented by two spaces, with each control character and each
-/// Unicode format character escaped as a table cell escapes them, and
-/// followed by a line feed. It returns an empty string, which does not
+/// each line after [`Row::CHILD_INDENT`] spaces, with each control
+/// character and each Unicode format character escaped as a table cell
+/// escapes them, and followed by a line feed. It returns an empty string, which does not
 /// allocate, when the row type sets no [`Row::CHILDREN`] or the row has no
 /// child lines.
 pub(super) fn block<R: Row>(row: &R) -> String {
@@ -24,7 +25,7 @@ pub(super) fn block<R: Row>(row: &R) -> String {
     }
     let mut block = String::new();
     for line in row.child_lines() {
-        block.push_str("  ");
+        block.extend(std::iter::repeat_n(' ', usize::from(R::CHILD_INDENT)));
         block.push_str(&escape_controls(&line));
         block.push('\n');
     }
