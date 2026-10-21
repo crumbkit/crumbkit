@@ -186,7 +186,7 @@ its empty note, the note of the rows that report a problem, the tool's note
 of a listing, a batch or a prose result, a listing's long note under
 `--long`, the `Next:` line, the output budget's [cut line](budget/README.md#listings-and-lists),
 the [dry-run line](../effects/README.md) and a [stream's notes](streams.md#notes).
-A pipe such as `| jq` therefore sees only data. A
+A pipe such as `| grep` therefore sees only data. A
 listing's summary line stays on standard output above the table, because it
 is part of the result.
 
