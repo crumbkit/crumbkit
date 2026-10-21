@@ -1,5 +1,6 @@
-//! The reading of the words that crumbkit gave clap, which `Refused` and
-//! `Stop` share for their `flags` and `value` getters.
+//! The reading of the words that the caller typed, without the word `help`
+//! that crumbkit answered, which `Refused` and `Stop` share for their
+//! `flags` and `value` getters (ADR-0136).
 
 use std::ffi::{OsStr, OsString};
 

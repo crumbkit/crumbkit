@@ -50,7 +50,10 @@ struct Inner {
     /// The names of the subcommands from the root to the deepest command
     /// that the walk of the words reached.
     path: Vec<String>,
-    /// The words after the program name that crumbkit gave clap.
+    /// The words that `flags` and `value` read: the words after the program
+    /// name that the caller typed, with the tool's own name for each dashed
+    /// form, and without the word `help` that crumbkit answered
+    /// (ADR-0136).
     words: Vec<OsString>,
 }
 
@@ -85,8 +88,8 @@ impl Stop {
     /// Returns the stop of a run that ends with `code` after `printed`
     /// printed, in which the walk found `--json` when `json` is true, after
     /// parsing against `command` with `guide`. `path` names the subcommands
-    /// that the walk reached, and `words` are the words after the program
-    /// name that crumbkit gave clap.
+    /// that the walk reached, and `words` are the words that
+    /// [`Stop::flags`] and [`Stop::value`] read.
     pub(crate) fn new(
         printed: Printed,
         code: u8,
@@ -171,17 +174,21 @@ impl Stop {
         &self.inner.path
     }
 
-    /// Returns the clap ids of the arguments that the words pass as flags,
-    /// in the order typed, including the options that take values. A group
-    /// of short flags such as `-qv` gives the id of each flag in it, and a
-    /// name that no argument has gives nothing.
+    /// Returns the clap ids of the arguments that the caller's words pass
+    /// as flags, in the order typed, including the options that take
+    /// values. A group of short flags such as `-qv` gives the id of each
+    /// flag in it, and a name that no argument has gives nothing.
     ///
-    /// The words are the ones after the program name that crumbkit gave
-    /// clap, so `--help` gives clap's help id, `help`, also when crumbkit
-    /// turned the word `help` into `--help`. They are read as
-    /// [`command_path`](crate::command_path) reads them, so the value of an
-    /// option is never read as a flag. After [`Output::new`] refused its
-    /// view flags, the words are the ones passed to it.
+    /// The words are the ones after the program name that the caller
+    /// typed, without the word `help` that crumbkit answered. So `tool help
+    /// planets --format json` gives `format`, and the word `help`, which
+    /// crumbkit gave clap as `--help`, gives no flag. A `--help` or `-h`
+    /// that the caller typed gives clap's help id, `help`. A value that a
+    /// picker added before its source failed gives no flag either. The
+    /// words are read as [`command_path`](crate::command_path) reads them,
+    /// so the value of an option is never read as a flag. After
+    /// [`Output::new`] refused its view flags, the words are the ones
+    /// passed to it (ADR-0136).
     #[must_use]
     pub fn flags(&self) -> Vec<String> {
         walked::flags(self.inner.output.command_tree(), &self.inner.words)
@@ -195,8 +202,8 @@ impl Stop {
     /// The value is the word after the option's flag, or the text after
     /// the name in the flag's own word, as in `--format=json`, `-fjson` and
     /// `-f=json`. It comes back as one word, so a value that the option
-    /// splits at its value delimiter comes back unsplit. The words are read
-    /// as [`Stop::flags`] reads them. A tool that prints a note after a help
+    /// splits at its value delimiter comes back unsplit. The words are the
+    /// ones that [`Stop::flags`] reads, read in the same way. A tool that prints a note after a help
     /// page reads a global option such as `--format` here to choose how to
     /// print it.
     #[must_use]
