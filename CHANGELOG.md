@@ -596,6 +596,10 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit: `Refused::as_json` fixes whether a refusal that the tool prints
   is the JSON failure document on standard output or text on standard
   error, whatever the words said ([behaviour/parsing]).
+- crumbkit: a refusal and its group page carry clap's styles on standard
+  error at a terminal or with `CLICOLOR_FORCE`, never under `NO_COLOR`, and
+  `Sink::styled_errors` asks for them on a tool's own sink
+  ([behaviour/parsing]).
 
 ### Changed
 

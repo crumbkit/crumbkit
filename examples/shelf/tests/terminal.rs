@@ -4,7 +4,9 @@
 //! `.txt` file for standard output and the `.stderr` file, when the example
 //! has one, for standard error. A result prints the same bytes at a
 //! terminal as through a pipe (ADR-0049, OUTPUT-1), except that a text
-//! table fits the width of a narrow terminal (ADR-0121).
+//! table fits the width of a narrow terminal (ADR-0121), and a refusal on
+//! standard error carries clap's styles, whose removal gives the piped
+//! bytes (ADR-0131).
 //!
 //! The test opens the pseudo-terminals with rustix's safe functions and runs
 //! on macOS and Linux only. Each terminal is in raw mode, so the terminal
@@ -126,6 +128,12 @@ struct Run {
 /// directory, and returns what it printed. A run that does not end within
 /// [`TIMEOUT`] is killed and returns a `TimedOut` error.
 fn shelf(args: &[&str], columns: u16) -> io::Result<Run> {
+    shelf_with(args, columns, &[])
+}
+
+/// Runs the built `shelf` binary as [`shelf`] does, with the environment
+/// variables `env` added.
+fn shelf_with(args: &[&str], columns: u16, env: &[(&str, &str)]) -> io::Result<Run> {
     let home = TempDir::new()?;
     let out = pty(columns)?;
     let err = pty(columns)?;
@@ -139,6 +147,7 @@ fn shelf(args: &[&str], columns: u16) -> io::Result<Run> {
         .args(args)
         .env_clear()
         .env("TERM", TERM)
+        .envs(env.iter().copied())
         .stdin(Stdio::from(input))
         .stdout(Stdio::from(out.terminal))
         .stderr(Stdio::from(err.terminal));
@@ -272,4 +281,60 @@ ID  TITLE       AUTHOR              YEAR
 6   The Adven…  Arthur Conan Doyle  1892
 ";
     assert_eq!(String::from_utf8_lossy(&run.stdout), expected);
+}
+
+/// The refused command line whose piped standard error
+/// `golden/books-list-limit-101.stderr` holds.
+const REFUSED: [&str; 4] = ["books", "list", "--limit", "101"];
+
+/// Returns `text` without its ANSI escape sequences, each of which starts
+/// with `ESC [` and ends with the letter `m` in clap's styles.
+fn strip(text: &[u8]) -> String {
+    let text = String::from_utf8_lossy(text);
+    let mut plain = String::with_capacity(text.len());
+    let mut rest = &*text;
+    while let Some(start) = rest.find("\u{1b}[") {
+        plain.push_str(&rest[..start]);
+        let end = rest[start..]
+            .find('m')
+            .map_or(rest.len(), |end| start + end + 1);
+        rest = &rest[end..];
+    }
+    plain.push_str(rest);
+    plain
+}
+
+#[test]
+fn a_refusal_at_a_terminal_carries_clap_s_styles_and_otherwise_its_piped_bytes() {
+    let expected = std::fs::read_to_string("tests/golden/books-list-limit-101.stderr").unwrap();
+
+    let run = shelf(&REFUSED, WIDE).unwrap();
+
+    assert_eq!(run.status.code(), Some(2));
+    assert_eq!(run.stdout, b"");
+    assert!(
+        run.stderr.starts_with(b"\x1b["),
+        "a refusal at a terminal has no styles: {:?}",
+        String::from_utf8_lossy(&run.stderr)
+    );
+    assert_eq!(strip(&run.stderr), expected);
+}
+
+#[test]
+fn a_refusal_at_a_terminal_under_no_color_prints_its_piped_bytes() {
+    let expected = std::fs::read("tests/golden/books-list-limit-101.stderr").unwrap();
+
+    let run = shelf_with(
+        &REFUSED,
+        WIDE,
+        &[("NO_COLOR", "1"), ("CLICOLOR_FORCE", "1")],
+    )
+    .unwrap();
+
+    assert_eq!(run.status.code(), Some(2));
+    assert!(
+        run.stderr == expected,
+        "{:?}",
+        String::from_utf8_lossy(&run.stderr)
+    );
 }

@@ -151,6 +151,35 @@ rustdoc of `parse_to` states the message and the recovery.
   the message. A command line that stops at a group with visible
   subcommands prints the group's `-h` page in place of the refusal lines.
 
+In text, a refusal and the group page printed in its place carry clap's
+styles on standard error when crumbkit's `color` feature is on. `parse`,
+`parse_from` and `Refused::print` decide once, from the environment and
+standard error:
+
+- A non-empty `NO_COLOR` keeps the refusal plain, even with
+  `CLICOLOR_FORCE` set.
+- Otherwise a `CLICOLOR_FORCE` that is neither empty nor `0` styles it,
+  whatever standard error is.
+- Otherwise the refusal is styled only when standard error is a terminal.
+- The command's `ColorChoice::Never`, and a guide that turns terminal
+  detection off, keep the refusal plain.
+
+The `error:` label takes clap's error style, and a refused value, a flag, a
+suggestion and the usage take the styles that clap's own error gives them.
+Removing the escape codes gives the plain bytes, so the golden file of a
+piped run also pins the text at a terminal. A refusal in JSON carries no
+styles, and every other message on standard error, such as a failure or a
+note, stays plain. Help decides from standard output and clap's own
+reading of the environment, so the two can differ: help ignores
+`CLICOLOR_FORCE` at a pipe and reads `CLICOLOR` and `TERM`, which a
+refusal ignores.
+
+A sink from `Sink::new` or `Sink::with_input` wants no error styles, so
+`parse_to` and `Refused::print_to` print a refusal plain to it. A tool that
+prints the refusal into its own sink and decides colour itself builds the
+sink with `Sink::styled_errors(true)`, which checks no terminal.
+`Sink::styled` covers the result alone.
+
 The walk that finds the deepest command also finds `--json`, which makes a
 refusal print as a JSON document. It counts the word only where it reads it
 as a flag, so a value of an option that allows hyphen values is no request
@@ -171,7 +200,8 @@ A command that refuses the caller after parsing, such as a handler that
 rejects a value, returns an ordinary `Failure`, which `finish` prints.
 crumbkit-test's checks and the golden files cover the whole command tree.
 
-Why: ADR-0015, ADR-0001, ADR-0021, ADR-0050, ADR-0118, ADR-0123, ADR-0124.
+Why: ADR-0015, ADR-0001, ADR-0021, ADR-0050, ADR-0118, ADR-0123, ADR-0124,
+ADR-0131.
 
 ## A refusal that the tool prints
 

@@ -7,7 +7,7 @@ use super::super::{Printing, print};
 use super::{Missing, missing};
 use crate::refusal::Refusal;
 use crate::sink::role::{Message, Recorded, Role};
-use crate::{FieldValue, Recovery, Spelling};
+use crate::{FieldValue, Recovery, Sink, Spelling};
 
 /// Prints `failure` into a recording sink in the form that `json` chooses.
 fn printed(failure: &Missing, json: bool) -> Recorded {
@@ -146,6 +146,50 @@ fn a_refusals_group_page_prints_plain_although_the_result_is_styled() {
     );
 
     assert_eq!(recorded.texts()[0].1, "Usage:");
+}
+
+#[test]
+fn a_failure_stays_plain_on_a_sink_whose_error_writer_wants_styles() {
+    let (mut out, mut err) = (Vec::new(), Vec::new());
+    let mut sink = Sink::new(&mut out, &mut err).styled_errors(true);
+    let command = &mut clap::Command::new("tool");
+
+    print(
+        &mut sink,
+        false,
+        Spelling::COLONS,
+        Printing::default(),
+        &missing(Recovery::Retry),
+        command,
+    );
+
+    let err = String::from_utf8(err).unwrap();
+    assert!(err.starts_with("error: "), "{err:?}");
+    assert!(!err.contains('\u{1b}'), "{err:?}");
+    assert_eq!(out, Vec::<u8>::new());
+}
+
+/// clap writes styles only with its `color` feature, which crumbkit's
+/// `color` feature turns on.
+#[cfg(feature = "color")]
+#[test]
+fn a_refusal_is_styled_on_a_sink_whose_error_writer_wants_styles() {
+    let (mut out, mut err) = (Vec::new(), Vec::new());
+    let mut sink = Sink::new(&mut out, &mut err).styled_errors(true);
+    let command = &mut clap::Command::new("tool");
+    let error = command.get_styles().get_error();
+    let expected = format!("{error}error:{error:#} --fields names an unknown field 'radius'\n");
+
+    bad_fields().print(
+        &mut sink,
+        false,
+        Spelling::COLONS,
+        Printing::default(),
+        command,
+    );
+
+    let err = String::from_utf8(err).unwrap();
+    assert!(err.starts_with(&expected), "{err:?}");
 }
 
 /// Appends `text` to `page` in bold, as clap writes a heading.
