@@ -29,3 +29,4 @@ that each path through a tool's help costs.
 - [ADR-0117. Help checks](checks/README.md)
 - [ADR-0118. Refusals show the usage line and a group prints its help](0118-refusals-show-the-usage-line-and-a-group-prints-its-help.md)
 - [ADR-0124. A refusal's help call names a command with a help page](0124-the-help-call-names-a-command-with-a-help-page.md)
+- [ADR-0137. A row type describes its child lines in help](0137-a-row-type-describes-its-child-lines-in-help.md)

@@ -34,9 +34,9 @@ in a code span. The section holds these parts:
 - the effects line, the writes line, and the `Output:` line that help
   prints for a command whose `form` is `stream`, `bytes` or `headed`, and
   the `Text:` line for a command whose `line` is not `null`, with the form
-  in a code span, and the `Children:` line for a command whose `children`
-  is not `null` and whose `form` is not `headed`, with the field in a code
-  span;
+  in a code span, and the `Children:` line for a command whose
+  `children_help` is not `null` and whose `form` is not `headed`, with the
+  text escaped as other help text is;
 - an `Exit codes` list.
 
 The reference escapes the inline markup characters of help text and the

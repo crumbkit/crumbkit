@@ -31,7 +31,8 @@ The lines print in this order, each only on the pages named:
    ([rows with their own text line](../output/shapes/README.md#rows-with-their-own-text-line)),
    then `Children:` on a leaf that is not headed and whose rows print
    their children under them, such as `Children: one indented line under
-   each row for each of its components.`
+   each row for each of its components.` or the row type's
+   `Row::CHILDREN_HELP`
    ([rows with children](../output/shapes/README.md#rows-with-children)),
    then `Problems:` on a leaf whose row type names a problem field, then
    `Rows:` on a leaf whose document lists only its problem rows

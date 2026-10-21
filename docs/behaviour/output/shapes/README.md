@@ -187,12 +187,16 @@ line. The
 Compact JSON, with or without `--long`, holds the field after the columns,
 and the compact schema requires it. `--fields` holds the field only when it
 names it, and the text then prints it as a cell of compact JSON and prints
-no child lines. Help prints a `Children:` line ([help](../../help/README.md)).
-crumbkit-test's `check_guide` fails a field that is not a documented field
-of the row type, a field that is also one of the columns, and a
-[headed](#headed-bytes) leaf whose row type sets `CHILDREN`.
+no child lines. Help prints a `Children:` line ([help](../../help/README.md))
+with `Row::CHILDREN_HELP`, the row type's own description of its child
+lines, or with crumbkit's sentence, which calls the lines indented only
+when the indent is above 0. crumbkit-test's `check_guide` fails a field
+that is not a documented field of the row type, a field that is also one of
+the columns, a [headed](#headed-bytes) leaf whose row type sets `CHILDREN`,
+and a `CHILDREN_HELP` that is not one line ending with a full stop or that
+comes without `CHILDREN`.
 
-Why: ADR-0120, ADR-0135, ADR-0138.
+Why: ADR-0120, ADR-0135, ADR-0137, ADR-0138.
 
 ## Documents without the envelope
 

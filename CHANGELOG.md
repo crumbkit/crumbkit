@@ -609,6 +609,10 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit: `Row::CHILD_INDENT` sets the number of spaces before each child
   line, 2 by default, so a type that sets 0 prints an identifier that a
   reader copies whole at column 1 ([behaviour/output/shapes]).
+- crumbkit: `Row::CHILDREN_HELP` sets the description of child lines that
+  help, `commands list` and the Markdown reference print after
+  `Children: `, and the default sentence no longer says "indented" at an
+  indent of 0 ([behaviour/output/shapes]).
 - crumbkit: `Document::only_problems` makes a listing's default text list
   only the rows that report a problem, while `--long`, `--fields` and
   `--json` list every row, and help prints a `Rows:` line
