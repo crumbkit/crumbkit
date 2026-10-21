@@ -79,7 +79,8 @@ mod walked;
 /// streams. Help keeps clap's colours when standard output is a terminal and
 /// the guide detects terminals ([`Sink::styled`]), unless `NO_COLOR` or the
 /// command's `ColorChoice` turns them off. A refusal and its group page keep
-/// them on standard error by the rule of [`Sink::styled_errors`] (ADR-0131).
+/// them on standard error by the rule of [`Sink::styled_errors`] (ADR-0131,
+/// ADR-0133).
 /// Both need crumbkit's `color` feature, which turns on clap's.
 ///
 /// `parse` is [`try_parse`] followed by printing the refusal. A tool that
