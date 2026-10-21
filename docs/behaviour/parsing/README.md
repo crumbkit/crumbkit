@@ -81,12 +81,14 @@ that cannot work together, and `Failure` for the failure of a picker's
 source. A tool that records the outcome of a stopped run in a history of
 its own reads it, because the number is 0 after help, the version and a
 topic alike. `Printed` is `#[non_exhaustive]`. A `Stop` offers `path`,
-`flags` and `value` as a `Refused` does, so a tool that prints a note
-after a help page reads a global option such as `--format` from it. The
+`flags` and `value` as a `Refused` does, and they read the caller's words
+in the same way, so a tool that prints a note after a help page reads a
+global option such as `--format` from it, and `tool help planets` reports
+no flags. The
 `Output`, the path and the words inside a `Stop` sit in a `Box`, which
 costs one allocation only on a run that `parse` ends.
 
-Why: ADR-0002, ADR-0089, ADR-0107, ADR-0111.
+Why: ADR-0002, ADR-0089, ADR-0107, ADR-0111, ADR-0136.
 
 ## The command tree after parsing
 
@@ -231,11 +233,14 @@ A `Refused` holds what the refusal prints and what the run knew:
   `help` into `--help`, replaced a dashed form or added a picked value;
 - `path`, the real names of the subcommands from the root to the deepest
   command that the walk reached, which is empty at the root;
-- `flags`, the clap ids of the arguments that `parsed` passes as flags, in
-  the order typed, with each flag of a group such as `-qv`;
-- `value`, the last value that `parsed` gives an option by its clap id,
-  whether the option is the deepest command's own or a global option of a
-  command above it, typed as the next word or after `=`;
+- `flags`, the clap ids of the arguments that the caller's words pass as
+  flags, in the order typed, with each flag of a group such as `-qv`. The
+  caller's words are `typed` without the word `help` that crumbkit
+  answered, so that word gives no flag, a `--help` that the caller typed
+  gives clap's help id, and a value that a picker added gives nothing;
+- `value`, the last value that the caller's words give an option by its
+  clap id, whether the option is the deepest command's own or a global
+  option of a command above it, typed as the next word or after `=`;
 - `culprit`, the word that clap refused, from clap's error context: an
   unknown subcommand, a refused value, or an unexpected word or flag, or
   the view flag that crumbkit refused. A missing argument has none.
@@ -245,8 +250,8 @@ A `Refused` holds what the refusal prints and what the run knew:
   accepted the command line.
 
 `tool help nonsense` is refused as `tool nonsense --help`, so `typed` holds
-`help` and `nonsense`, `parsed` holds `nonsense` and `--help`, and
-`culprit` is `nonsense`. A tool that resolves aliases of its own reads
+`help` and `nonsense`, `parsed` holds `nonsense` and `--help`, `flags` is
+empty, and `culprit` is `nonsense`. A tool that resolves aliases of its own reads
 `typed`, and a tool with its own failure document prints the refusal from
 `message`, `code` and `recovery`. A tool that words a refusal in its own
 sentence reads the kind and context of `error`. A tool that names the
@@ -278,7 +283,7 @@ holding an `Unparsed` matches `Unparsed::Refused(refused)` and calls
 `refused.as_json(..)`, because `Unparsed::print` prints in the form that
 the words chose.
 
-Why: ADR-0100, ADR-0107, ADR-0109, ADR-0123, ADR-0125.
+Why: ADR-0100, ADR-0107, ADR-0109, ADR-0123, ADR-0125, ADR-0136.
 
 ## Reading clap's matches after parsing
 

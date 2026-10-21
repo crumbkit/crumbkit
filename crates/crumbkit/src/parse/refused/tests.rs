@@ -16,6 +16,7 @@ use crate::twins::assert_one_word_apart;
 use crate::{Sink, ViewFlags};
 
 mod styled;
+mod typed;
 
 /// A tool with a global `--json` flag and a `planets` group whose `show`
 /// takes names and a `--sort` key, and a `moon_phases` command.
@@ -396,17 +397,6 @@ fn a_refusal_reports_its_flags_in_the_order_typed_with_each_flag_of_a_group() {
     );
 
     assert_eq!(refused.flags(), ["quiet", "sort", "verbose", "long"]);
-}
-
-#[test]
-fn a_refusal_whose_help_word_crumbkit_turned_into_a_flag_reports_clap_s_help_id() {
-    let refused = walked(
-        &["tool", "planets", "help", "nonsense"],
-        &["tool", "planets", "show", "nonsense"],
-    );
-
-    assert_eq!(refused.parsed(), words(&["planets", "nonsense", "--help"]));
-    assert_eq!(refused.flags(), ["help"]);
 }
 
 #[test]

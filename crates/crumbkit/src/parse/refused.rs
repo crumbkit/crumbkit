@@ -114,6 +114,10 @@ struct Inner {
     typed: Vec<OsString>,
     /// The words after the program name that crumbkit gave clap.
     parsed: Vec<OsString>,
+    /// The words that `flags` and `value` read: the words that the caller
+    /// typed, with the tool's own name for each dashed form, and without
+    /// the word `help` that crumbkit answered (ADR-0136).
+    caller: Vec<OsString>,
     /// The form that the tool chose with `as_json`: `Some(true)` for the
     /// JSON document, `Some(false)` for text, and `None` for the form that
     /// the words chose.
@@ -127,17 +131,22 @@ struct Inner {
 impl Refused {
     /// Returns the refusal `refusal` of a run whose output is `output`.
     /// `error` is clap's error, or `None` for a refused view flag, and
-    /// `path` names the subcommands that the walk reached. `typed` and
-    /// `parsed` are the words after the program name as the caller typed
-    /// them and as crumbkit gave them to clap.
+    /// `path` names the subcommands that the walk reached. `parsed` are
+    /// the words after the program name as crumbkit gave them to clap,
+    /// `typed` are the words as the caller typed them, and `caller` are
+    /// the words that [`Refused::flags`] and [`Refused::value`] read. Each
+    /// of `typed` and `caller` is `None` when it equals `parsed`.
     pub(crate) fn new(
         refusal: Refusal,
         error: Option<clap::Error>,
         path: Vec<String>,
         output: Output,
-        typed: Vec<OsString>,
         parsed: Vec<OsString>,
+        typed: Option<Vec<OsString>>,
+        caller: Option<Vec<OsString>>,
     ) -> Self {
+        let typed = typed.unwrap_or_else(|| parsed.clone());
+        let caller = caller.unwrap_or_else(|| parsed.clone());
         Self {
             inner: Box::new(Inner {
                 refusal,
@@ -146,6 +155,7 @@ impl Refused {
                 output,
                 typed,
                 parsed,
+                caller,
                 json: None,
                 #[cfg(feature = "tracing")]
                 span: tracing::Span::current(),
@@ -221,19 +231,22 @@ impl Refused {
         &self.inner.path
     }
 
-    /// Returns the clap ids of the arguments that the words pass as flags,
-    /// in the order typed, including the options that take values. A group
-    /// of short flags such as `-qv` gives the id of each flag in it, and a
-    /// name that no argument has gives nothing.
+    /// Returns the clap ids of the arguments that the caller's words pass
+    /// as flags, in the order typed, including the options that take
+    /// values. A group of short flags such as `-qv` gives the id of each
+    /// flag in it, and a name that no argument has gives nothing.
     ///
-    /// The words are the ones that crumbkit gave clap, which
-    /// [`Refused::parsed`] returns, so the word `help` that crumbkit turned
-    /// into `--help` gives clap's help id, `help`. They are read as
-    /// [`command_path`](crate::command_path) reads them, so the value of an
-    /// option is never read as a flag.
+    /// The words are the ones that the caller typed, which
+    /// [`Refused::typed`] returns, without the word `help` that crumbkit
+    /// answered. So `tool help nonsense --format json` gives `format`, and
+    /// the word `help`, which crumbkit gave clap as `--help`, gives no
+    /// flag. A `--help` or `-h` that the caller typed gives clap's help id,
+    /// `help`. A value that a picker added gives no flag either. The words
+    /// are read as [`command_path`](crate::command_path) reads them, so
+    /// the value of an option is never read as a flag (ADR-0136).
     #[must_use]
     pub fn flags(&self) -> Vec<String> {
-        walked::flags(self.inner.output.command_tree(), &self.inner.parsed)
+        walked::flags(self.inner.output.command_tree(), &self.inner.caller)
     }
 
     /// Returns the last value that the words give the option whose clap id
@@ -245,13 +258,13 @@ impl Refused {
     /// the name in the flag's own word, as in `--format=json`, `-fjson` and
     /// `-f=json`. It comes back as one word, so a value that the option
     /// splits at its value delimiter comes back unsplit. The words are the
-    /// ones that crumbkit gave clap, which [`Refused::parsed`] returns, and
-    /// they are read as [`Refused::flags`] reads them. A tool that prints
-    /// its own refusal reads a global option such as `--format` here to
-    /// choose how to print it.
+    /// ones that [`Refused::flags`] reads, read in the same way, so a value
+    /// that a picker added comes back as `None` (ADR-0136). A tool that
+    /// prints its own refusal reads a global option such as `--format`
+    /// here to choose how to print it.
     #[must_use]
     pub fn value(&self, id: &str) -> Option<&OsStr> {
-        walked::value(self.inner.output.command_tree(), &self.inner.parsed, id)
+        walked::value(self.inner.output.command_tree(), &self.inner.caller, id)
     }
 
     /// Returns the word that the refusal names as wrong, or `None` when it
@@ -346,7 +359,7 @@ impl Refused {
             error,
             path,
             mut output,
-            parsed,
+            caller,
             json,
             #[cfg(feature = "tracing")]
             span,
@@ -365,6 +378,6 @@ impl Refused {
         let code = output.print_parse_refusal(sink, &refusal);
         #[cfg(feature = "tracing")]
         crate::trace::spans::exited(&span, code);
-        Stop::with_output(Printed::Refusal, code, output, path, parsed)
+        Stop::with_output(Printed::Refusal, code, output, path, caller)
     }
 }

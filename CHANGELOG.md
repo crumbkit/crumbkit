@@ -1166,6 +1166,10 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit: a refusal from [`parse`] separates several missing required
   arguments with commas, as in `--edit <APP>, <NAME>`, so they no longer
   read as one option that takes two values ([behaviour/failures]).
+- crumbkit: `Refused::flags`, `Stop::flags` and their `value` getters read
+  the words that the caller typed, so `<tool> help nosuch` reports no
+  flags. The word `help` reported a `help` flag before
+  ([behaviour/parsing]).
 
 <!-- Each label below points at the source file that holds the item's
 rustdoc, or at the page in docs/ that describes the behaviour. -->
