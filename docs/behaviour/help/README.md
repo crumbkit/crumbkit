@@ -33,7 +33,9 @@ The lines print in this order, each only on the pages named:
    their children under them, such as `Children: one indented line under
    each row for each of its components.`
    ([rows with children](../output/shapes/README.md#rows-with-children)),
-   then `Problems:` on a leaf whose row type names a problem field.
+   then `Problems:` on a leaf whose row type names a problem field, then
+   `Rows:` on a leaf whose document lists only its problem rows
+   ([listings](../output/listings/README.md#a-listing-that-lists-only-its-problem-rows)).
 3. In `-h`, one line that names the visible global flags of the root and of
    each command on the way. `--help` lists those flags in full.
 4. On the root, a `Topics:` line that names the tool's topics and

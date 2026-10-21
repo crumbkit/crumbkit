@@ -107,6 +107,30 @@ pub(crate) struct Printed {
     pub(crate) headed: bool,
     /// Whether the row type sets `Row::WHOLE`.
     pub(crate) whole: bool,
+    /// The rows that the document's default text lists.
+    pub(crate) listed: Listed,
+}
+
+/// The rows that a document's default text lists. A document that lists
+/// only the rows that report a problem offers `--long`, which lists every
+/// row (ADR-0138).
+#[derive(Clone, Copy, Debug)]
+pub(crate) enum Listed {
+    /// Every row.
+    Every,
+    /// Only the rows whose `Row::is_problem` is true.
+    Problems,
+}
+
+impl Listed {
+    /// Returns the rows that `document`'s default text lists.
+    pub(crate) const fn by<T>(document: &Document<T>) -> Self {
+        if document.lists_only_problems() {
+            Self::Problems
+        } else {
+            Self::Every
+        }
+    }
 }
 
 impl Printed {
@@ -120,6 +144,7 @@ impl Printed {
             envelope: document.get_envelope().wraps(),
             headed: document.is_headed(),
             whole: R::WHOLE,
+            listed: Listed::by(document),
         }
     }
 }
@@ -128,11 +153,11 @@ impl Printed {
 /// `None` when it offers it.
 ///
 /// A prose or bytes result offers no view flag. Rows offer `--fields`,
-/// offer `--long` when the row type has long columns and the document is
-/// not headed, and offer `--full` when the document has the envelope, is
-/// not headed and its rows do not print whole (ADR-0062). Rows that print
-/// whole and have no columns offer neither `--fields` nor `--long`
-/// (ADR-0065).
+/// offer `--long` when the row type has long columns or the document lists
+/// only the rows that report a problem (ADR-0138) and the document is not
+/// headed, and offer `--full` when the document has the envelope, is not
+/// headed and its rows do not print whole (ADR-0062). Rows that print whole
+/// and have no columns offer neither `--fields` nor `--long` (ADR-0065).
 pub(crate) const fn unoffered(printed: &Printed, flag: ViewFlag) -> Option<Unoffered> {
     match printed.kind {
         Kind::Document(Shape::Prose) => return Some(Unoffered::Prose),
@@ -143,7 +168,9 @@ pub(crate) const fn unoffered(printed: &Printed, flag: ViewFlag) -> Option<Unoff
     match flag {
         ViewFlag::Fields | ViewFlag::Long if no_columns => Some(Unoffered::NoColumns),
         ViewFlag::Long if printed.headed => Some(Unoffered::Headed),
-        ViewFlag::Long if printed.long.is_empty() => Some(Unoffered::NoLongColumns),
+        ViewFlag::Long if printed.long.is_empty() && matches!(printed.listed, Listed::Every) => {
+            Some(Unoffered::NoLongColumns)
+        }
         ViewFlag::Full if !printed.envelope || printed.headed || printed.whole => {
             Some(Unoffered::Unwrapped)
         }
@@ -190,6 +217,25 @@ const fn because(reason: Unoffered) -> &'static str {
         Unoffered::Headed => "this command's text prints each answer's bytes",
         Unoffered::NoColumns => "this command's rows have no columns",
     }
+}
+
+/// Returns the refusal of `--long` with `--json` on a command whose row
+/// type sets `Row::WHOLE`, or `None` when `whole`, `long` or `json` is off
+/// (ADR-0138). `long` says whether the caller passed `--long`, and `json`
+/// whether the caller passed `--json`.
+///
+/// The JSON of such rows already holds every field, so `--long` adds
+/// nothing to it, as `--full` adds nothing. The refusal names `--long`
+/// under `argument`, and it prints as a refused command line does.
+pub(crate) fn whole_long(whole: bool, long: bool, json: bool) -> Option<Refusal> {
+    (whole && long && json).then(|| {
+        Refusal::flag_value(
+            "--long adds the long columns of a table, and this command's JSON already holds every field".to_owned(),
+            "drop --long, because --json already prints every field of each row".to_owned(),
+            ViewFlag::Long.name(),
+            None,
+        )
+    })
 }
 
 /// Returns the refusal of `--fields` without `--json` on a command whose

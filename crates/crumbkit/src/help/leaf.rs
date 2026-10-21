@@ -354,6 +354,26 @@ impl Leaf {
         ))
     }
 
+    /// Returns the `Rows:` line that the leaf's `-h` and `--help` print
+    /// after the `Problems:` line when its document lists only the rows
+    /// that report a problem, such as `Rows: the text lists only the rows
+    /// that report a problem, and --long or --json lists every row.`, or
+    /// `None` otherwise (ADR-0138). The line names `--long` only when the
+    /// command offers it.
+    pub(crate) fn rows_line(&self) -> Option<String> {
+        if !self.get_document()?.lists_only_problems() {
+            return None;
+        }
+        let flags = if self.offers(ViewFlag::Long) {
+            "--long or --json lists"
+        } else {
+            "--json lists"
+        };
+        Some(format!(
+            "Rows: the text lists only the rows that report a problem, and {flags} every row."
+        ))
+    }
+
     /// Returns the [`Shape`] of the result that [`Leaf::document`] set, such
     /// as [`Shape::Batch`], or `None` when the leaf has no document or
     /// [`Leaf::stream`] set it. crumbkit-test's `check_effects` reads it to
@@ -512,6 +532,7 @@ impl Columns {
             envelope: self.document.get_envelope().wraps(),
             headed: self.document.is_headed(),
             whole: self.whole,
+            listed: view::Listed::by(&self.document),
         }
     }
 }

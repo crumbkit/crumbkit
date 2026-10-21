@@ -81,7 +81,9 @@ pub(super) fn deepest<'a>(
 /// `path` names `node`, the deepest command that the caller typed, and
 /// `level` holds its matches. On a leaf whose document is headed, it then
 /// refuses `--fields` without `--json`, as [`view::headed`] describes
-/// (ADR-0062). It then refuses two typed flags that cannot work together,
+/// (ADR-0062). On a leaf whose row type sets `Row::WHOLE`, it then refuses
+/// `--long` with `--json`, as [`view::whole_long`] describes (ADR-0138).
+/// It then refuses two typed flags that cannot work together,
 /// on every command, as [`View::try_from`] describes (ADR-0093). On a leaf
 /// with a document, it last refuses a `--fields` name that the row type of
 /// the document lacks, as [`unknown_field`] describes.
@@ -121,6 +123,10 @@ pub(super) fn refusal(
         .and_then(Leaf::get_document)
         .is_some_and(|document| document.is_headed());
     if headed && let Some(refusal) = view::headed(typed(ViewFlag::Fields.id()), typed("json")) {
+        return Err(Box::new(refusal));
+    }
+    let whole = leaf.is_some_and(Leaf::rows_whole);
+    if let Some(refusal) = view::whole_long(whole, typed(ViewFlag::Long.id()), typed("json")) {
         return Err(Box::new(refusal));
     }
     let view = View::try_from(ViewFlags::read(node, level)).map_err(Box::new)?;

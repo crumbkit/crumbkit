@@ -609,6 +609,13 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit: `Row::CHILD_INDENT` sets the number of spaces before each child
   line, 2 by default, so a type that sets 0 prints an identifier that a
   reader copies whole at column 1 ([behaviour/output/shapes]).
+- crumbkit: `Document::only_problems` makes a listing's default text list
+  only the rows that report a problem, while `--long`, `--fields` and
+  `--json` list every row, and help prints a `Rows:` line
+  ([behaviour/output/listings]).
+- crumbkit: `Row::long_child_lines` gives the child lines that the text
+  prints under `--long`, and defaults to `Row::child_lines`
+  ([behaviour/output/shapes]).
 
 ### Changed
 
@@ -997,6 +1004,9 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit: a refusal on standard error stays plain at a terminal whose
   `TERM` is `dumb` and under `CLICOLOR=0`, as help does, unless
   `CLICOLOR_FORCE` forces colour ([behaviour/parsing]).
+- crumbkit: `--long` with `--json` is refused, with exit 2 and a hint to
+  drop `--long`, for a row type that sets `Row::WHOLE`, because its JSON
+  already holds every field ([behaviour/output/shapes]).
 
 ### Removed
 

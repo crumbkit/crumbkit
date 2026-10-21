@@ -40,6 +40,10 @@ for empty results, sources that cannot be counted, an upper bound on
   the exit reads every loaded row, including rows the budget left
   unprinted.
 
+## Children
+
+- [ADR-0138. A listing can list only its problem rows](0138-a-listing-lists-only-its-problem-rows.md)
+
 ## Consequences
 
 `docs/behaviour/output/listings/README.md` describes the current

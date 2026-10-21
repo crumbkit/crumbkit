@@ -3,7 +3,8 @@
 This page covers a command that may show fewer rows than matched: its paging
 flags, the lines that describe its result, a listing with no rows, a listing
 without a total, a listing from a capped source, the upper bound on
-`--limit`, and the exit of a result whose rows report a problem.
+`--limit`, the exit of a result whose rows report a problem, and a listing
+that lists only those rows.
 
 ## Paging flags and the listing
 
@@ -210,3 +211,26 @@ The [help pages](../../help/README.md) describe the `Problems:` line and what
 `help exit-codes` says about this exit.
 
 Why: ADR-0050.
+
+## A listing that lists only its problem rows
+
+[`Document::only_problems`](../../../../crates/crumbkit/src/document.rs) on a
+listing's document makes the default text list only the rows whose
+`Row::is_problem` is true, under the summary line.
+
+- Without `--json`, `--long` or `--fields`, the text prints the summary
+  line, the header and the rows that report a problem with their child
+  lines. When no row reports a problem, it prints the summary line alone,
+  with no header and no note.
+- `--long` and `--fields` print every row, and `--json` holds every row
+  unchanged.
+- The exit, the problem note, the footer and the empty note of a listing
+  without rows do not change. No line counts the rows that the text left
+  out, and the footer and the output budget's cut line count the rows of
+  the listing or of the printed table.
+- The leaf offers `--long` even when its row type has no long columns.
+  Its `-h` and `--help` print a line after the `Problems:` line:
+  `Rows: the text lists only the rows that report a problem, and --long or
+  --json lists every row.`
+
+Why: ADR-0138.
