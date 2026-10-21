@@ -463,15 +463,11 @@ fn a_skipped_column_in_an_enum_variant_admits_null_in_that_variant() {
         variants[0]["properties"]["byline"]["type"],
         json!(["string", "null"])
     );
-    assert_eq!(variants[1]["properties"].get("byline"), None);
+    assert_eq!(variants[1]["properties"]["byline"], json!({"type": "null"}));
     for (entry, variant) in entries.iter().zip(variants) {
         let whole = serde_json::to_value(entry).unwrap();
         assert_eq!(whole.get("byline"), None);
-        // A variant without the column has no property to check, and its
-        // schema allows the extra null field.
-        if let Some(property) = variant["properties"].get("byline") {
-            assert!(admits_null(property));
-        }
+        assert!(admits_null(&variant["properties"]["byline"]));
     }
 }
 
