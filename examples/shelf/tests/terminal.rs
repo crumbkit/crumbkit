@@ -338,3 +338,31 @@ fn a_refusal_at_a_terminal_under_no_color_prints_its_piped_bytes() {
         String::from_utf8_lossy(&run.stderr)
     );
 }
+
+#[test]
+fn a_refusal_at_a_terminal_whose_term_is_dumb_prints_its_piped_bytes() {
+    let expected = std::fs::read("tests/golden/books-list-limit-101.stderr").unwrap();
+
+    let run = shelf_with(&REFUSED, WIDE, &[("TERM", "dumb")]).unwrap();
+
+    assert_eq!(run.status.code(), Some(2));
+    assert!(
+        run.stderr == expected,
+        "{:?}",
+        String::from_utf8_lossy(&run.stderr)
+    );
+}
+
+#[test]
+fn a_refusal_at_a_terminal_under_clicolor_0_prints_its_piped_bytes() {
+    let expected = std::fs::read("tests/golden/books-list-limit-101.stderr").unwrap();
+
+    let run = shelf_with(&REFUSED, WIDE, &[("CLICOLOR", "0")]).unwrap();
+
+    assert_eq!(run.status.code(), Some(2));
+    assert!(
+        run.stderr == expected,
+        "{:?}",
+        String::from_utf8_lossy(&run.stderr)
+    );
+}

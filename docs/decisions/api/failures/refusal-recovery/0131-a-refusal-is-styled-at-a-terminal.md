@@ -1,7 +1,7 @@
 # ADR-0131. A refusal is styled at a terminal
 
 - Date: 2026-10-21
-- Status: accepted
+- Status: amended by ADR-0133
 - Supersedes: ADR-0049, which it amends
 
 ## Context

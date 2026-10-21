@@ -991,6 +991,9 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit: a text table at a terminal narrows its widest columns to fit
   the terminal's width and ends each cut cell with `…`. `Row::UNCUT_COLUMNS`
   names the columns that it never cuts ([behaviour/output/terminal]).
+- crumbkit: a refusal on standard error stays plain at a terminal whose
+  `TERM` is `dumb` and under `CLICOLOR=0`, as help does, unless
+  `CLICOLOR_FORCE` forces colour ([behaviour/parsing]).
 
 ### Removed
 

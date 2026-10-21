@@ -9,6 +9,7 @@
 
 - [ADR-0123. A refusal recovers with the tool's hint](0123-a-refusal-recovers-with-the-tools-hint.md)
 - [ADR-0131. A refusal is styled at a terminal](0131-a-refusal-is-styled-at-a-terminal.md)
+- [ADR-0133. A refusal is plain at a dumb terminal and under CLICOLOR=0](0133-a-refusal-is-plain-at-a-dumb-terminal-and-under-clicolor-0.md)
 
 ## Context
 

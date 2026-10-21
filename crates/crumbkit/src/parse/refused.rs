@@ -317,10 +317,11 @@ impl Refused {
     /// tool chose.
     ///
     /// The text form carries clap's styles on standard error as `parse`
-    /// prints it: when standard error is a terminal or `CLICOLOR_FORCE` is
-    /// set, and never under `NO_COLOR`, with the command's `ColorChoice` set
+    /// prints it: when `CLICOLOR_FORCE` is set, or when standard error is a
+    /// terminal whose `TERM` is not `dumb` and `CLICOLOR` is not `0`. It is
+    /// never styled under `NO_COLOR`, with the command's `ColorChoice` set
     /// to `Never`, with terminal detection off or without crumbkit's
-    /// `color` feature (ADR-0131).
+    /// `color` feature (ADR-0131, ADR-0133).
     #[must_use]
     pub fn print(self) -> Stop {
         let (choice, detection) = self.inner.output.refusal_colour();
