@@ -109,6 +109,9 @@ pub(crate) struct Printed {
     pub(crate) whole: bool,
     /// The rows that the document's default text lists.
     pub(crate) listed: Listed,
+    /// Whether the document declares a long note, which `--long` prints
+    /// (ADR-0139).
+    pub(crate) long_note: bool,
 }
 
 /// The rows that a document's default text lists. A document that lists
@@ -145,6 +148,7 @@ impl Printed {
             headed: document.is_headed(),
             whole: R::WHOLE,
             listed: Listed::by(document),
+            long_note: document.has_long_note(),
         }
     }
 }
@@ -153,9 +157,9 @@ impl Printed {
 /// `None` when it offers it.
 ///
 /// A prose or bytes result offers no view flag. Rows offer `--fields`,
-/// offer `--long` when the row type has long columns or the document lists
-/// only the rows that report a problem (ADR-0138) and the document is not
-/// headed, and offer `--full` when the document has the envelope, is not
+/// offer `--long` when the row type has long columns, the document lists
+/// only the rows that report a problem (ADR-0138) or the document declares
+/// a long note (ADR-0139), and the document is not headed, and offer `--full` when the document has the envelope, is not
 /// headed and its rows do not print whole (ADR-0062). Rows that print whole
 /// and have no columns offer neither `--fields` nor `--long` (ADR-0065).
 pub(crate) const fn unoffered(printed: &Printed, flag: ViewFlag) -> Option<Unoffered> {
@@ -168,7 +172,11 @@ pub(crate) const fn unoffered(printed: &Printed, flag: ViewFlag) -> Option<Unoff
     match flag {
         ViewFlag::Fields | ViewFlag::Long if no_columns => Some(Unoffered::NoColumns),
         ViewFlag::Long if printed.headed => Some(Unoffered::Headed),
-        ViewFlag::Long if printed.long.is_empty() && matches!(printed.listed, Listed::Every) => {
+        ViewFlag::Long
+            if printed.long.is_empty()
+                && matches!(printed.listed, Listed::Every)
+                && !printed.long_note =>
+        {
             Some(Unoffered::NoLongColumns)
         }
         ViewFlag::Full if !printed.envelope || printed.headed || printed.whole => {

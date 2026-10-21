@@ -14,6 +14,7 @@ mod children;
 mod codes;
 mod column;
 mod example;
+mod lines;
 mod passes;
 mod refusal;
 #[cfg(test)]
@@ -292,8 +293,9 @@ impl Leaf {
     /// Reports whether the leaf's command offers the view flag `flag`, as
     /// its declared document decides (ADR-0016). A prose or bytes document
     /// offers no view flag. Rows offer `--fields`, offer `--long` when the
-    /// row type has long columns or the document lists only the rows that
-    /// report a problem (ADR-0138), and offer `--full` when the document has
+    /// row type has long columns, the document lists only the rows that
+    /// report a problem (ADR-0138) or it declares a long note (ADR-0139),
+    /// and offer `--full` when the document has
     /// crumbkit's envelope. A headed document offers neither `--long` nor
     /// `--full` (ADR-0062). Rows that print whole offer no `--full`, and
     /// offer neither `--fields` nor `--long` when they have no columns
@@ -345,38 +347,6 @@ impl Leaf {
             Some(columns) => columns.uncut,
             None => &[],
         }
-    }
-
-    /// Returns the `Problems:` line that the leaf's `-h` and `--help` print
-    /// after the `Output:` line when its row type names a problem field,
-    /// such as `Problems: a value in the problem column marks a row with a
-    /// problem, and the command then exits with 1.`, or `None` otherwise.
-    pub(crate) fn problems_line(&self) -> Option<String> {
-        let field = self.problem()?;
-        let exit = crate::exit::problem_rows();
-        Some(format!(
-            "Problems: a value in the {field} column marks a row with a problem, and the command then exits with {exit}."
-        ))
-    }
-
-    /// Returns the `Rows:` line that the leaf's `-h` and `--help` print
-    /// after the `Problems:` line when its document lists only the rows
-    /// that report a problem, such as `Rows: the text lists only the rows
-    /// that report a problem, and --long or --json lists every row.`, or
-    /// `None` otherwise (ADR-0138). The line names `--long` only when the
-    /// command offers it.
-    pub(crate) fn rows_line(&self) -> Option<String> {
-        if !self.get_document()?.lists_only_problems() {
-            return None;
-        }
-        let flags = if self.offers(ViewFlag::Long) {
-            "--long or --json lists"
-        } else {
-            "--json lists"
-        };
-        Some(format!(
-            "Rows: the text lists only the rows that report a problem, and {flags} every row."
-        ))
     }
 
     /// Returns the [`Shape`] of the result that [`Leaf::document`] set, such
@@ -542,6 +512,7 @@ impl Columns {
             headed: self.document.is_headed(),
             whole: self.whole,
             listed: view::Listed::by(&self.document),
+            long_note: self.document.has_long_note(),
         }
     }
 }

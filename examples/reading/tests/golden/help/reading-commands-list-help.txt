@@ -16,13 +16,13 @@ Options:
           Print every row
 
       --json
-          Print the result as a JSON document
+          Print the result as a JSON document. The default prints text.
 
       --fields <FIELD>
-          Print only these comma-separated fields, in this order
+          Print only these comma-separated fields, in this order. The default prints the compact columns.
 
       --full
-          With --json, print every field of every row
+          With --json, print every field of every row. The default prints only the fields of the columns.
 
       --no-input
           Fail instead of asking a question

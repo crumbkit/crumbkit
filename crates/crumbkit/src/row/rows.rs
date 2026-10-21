@@ -99,6 +99,14 @@ pub trait Rows: Serialize + sealed::Sealed {
         None
     }
 
+    /// Returns the line that the text output prints on standard error after
+    /// the note under `--long` only. Only a `Listing` returns one, when the
+    /// tool set it (ADR-0139).
+    #[doc(hidden)]
+    fn long_note(&self) -> Option<&str> {
+        None
+    }
+
     /// Returns the command that the text output names as the next step, and
     /// the phrase that follows it. Only a `Listing` returns one.
     #[doc(hidden)]

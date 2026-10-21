@@ -230,3 +230,13 @@ fn a_headed_document_reads_the_bytes_of_each_row_by_its_position() {
     assert_eq!(bytes_of(&batch, 1), None);
     assert_eq!(bytes_of(&batch, 2), None);
 }
+
+#[test]
+fn a_listing_document_declares_no_long_note_until_the_tool_sets_long_noted_and_untyped_keeps_it() {
+    let plain: Document<crate::Listing<Page>> = Document::new("shelf", "books-list", 1, "Books.");
+    let noted = plain.long_noted();
+
+    assert!(!plain.has_long_note());
+    assert!(noted.has_long_note());
+    assert!(noted.untyped().has_long_note());
+}

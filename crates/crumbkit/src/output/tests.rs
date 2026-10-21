@@ -31,6 +31,7 @@ mod headed;
 mod layout;
 mod lines;
 mod listing;
+mod long_note;
 mod notes;
 mod only_problems;
 mod plugin;

@@ -43,6 +43,7 @@ for empty results, sources that cannot be counted, an upper bound on
 ## Children
 
 - [ADR-0138. A listing can list only its problem rows](0138-a-listing-lists-only-its-problem-rows.md)
+- [ADR-0139. A listing can carry a note that prints under `--long`](0139-a-listing-carries-a-note-for-long.md)
 
 ## Consequences
 

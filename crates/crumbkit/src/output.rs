@@ -420,7 +420,7 @@ pub fn finish<T: Rows, E: AsFailure>(
 /// view that every printer accepts (ADR-0093). A prose
 /// or bytes result cannot use `--fields`, `--long` or `--full`, rows
 /// without long columns cannot use `--long` unless the document lists only
-/// the rows that report a problem, rows of a type that sets `Row::WHOLE`
+/// the rows that report a problem or declares a long note (ADR-0139), rows of a type that sets `Row::WHOLE`
 /// cannot use `--long` with `--json` (ADR-0138), and a document without the
 /// envelope cannot use `--full` (ADR-0016).
 ///

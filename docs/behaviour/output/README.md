@@ -79,11 +79,13 @@ Why: ADR-0016, ADR-0063, ADR-0065, ADR-0108, ADR-0114, ADR-0119, ADR-0120, ADR-0
 ## View flags
 
 The view flags are `--fields`, `--long` and `--full`, and like every
-[`Output`](../../../crates/crumbkit/src/output.rs) flag they are global. A
+[`Output`](../../../crates/crumbkit/src/output.rs) flag they are global.
+Each flag's help, and that of `--json`, names what prints without it. A
 leaf with a document offers only the view flags that its document can use:
 
-- rows offer `--fields`, offer `--long` when the row type has long columns
-  or the document [lists only problem rows](listings/README.md#a-listing-that-lists-only-its-problem-rows),
+- rows offer `--fields`, offer `--long` when the row type has long columns,
+  the document [lists only problem rows](listings/README.md#a-listing-that-lists-only-its-problem-rows)
+  or it declares a [long note](listings/README.md#a-note-for---long),
   and offer `--full` when the document has the envelope;
 - a headed batch offers `--fields`, which `parse` refuses without `--json`,
   and offers neither `--long` nor `--full`;
@@ -98,8 +100,8 @@ names every column in `Row::COLUMNS` ([schemas](../schemas/README.md#versions)).
 A leaf without a document offers all three, because crumbkit cannot tell
 what its command prints. `--fields` cannot be used with `--long` or
 `--full`, and `--full` needs `--json`, on every command. crumbkit refuses
-each of these as a refused command line, in its own words, with a hint
-that names the flag to add or drop or the valid fields. The four flags are
+each of these as a refused command line with a hint that names the flag
+to add or drop or the valid fields. The four flags are
 parsed once into one view, a text table or JSON rows with a selection of
 fields, and the `Output` holds that view, so it never holds two flags that
 cannot work together. Three checks apply the rules:
@@ -120,8 +122,8 @@ cannot work together. Three checks apply the rules:
   `stream` refuses by its document in the same way when it opens. When
   the handler returns a failure, `finish` checks nothing and prints the
   failure with its own code, as text or as a failure document with
-  `--json`. A tool may finish an early failure, such as a missing config
-  file, in another document than the one its leaf declares, so the
+  `--json`. A tool may finish an early failure in another document than
+  the one its leaf declares, so the
   document that `finish` was given says nothing about the flags.
 
 A tool that parses with clap alone, a tool that builds its own
@@ -133,8 +135,7 @@ would not suit the command's result.
 
 A tool that defines the view flags in its own parser cannot also flatten
 `ViewFlags`, because clap refuses two arguments with one name. It builds
-`ViewFlags` with `ViewFlags::new().json(..).fields(..)`, `.long(..)` and
-`.full(..)`, passes them to `Output::new`, which refuses the pairs, and
+`ViewFlags` with `ViewFlags::new()` and its builders, passes them to `Output::new`, which refuses the pairs, and
 `finish` and `stream` check the built flags against the result as they
 check parsed ones. `parse` reads a view flag
 by its argument id, so the tool's own arguments get the refusals before

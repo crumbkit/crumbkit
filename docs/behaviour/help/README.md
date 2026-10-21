@@ -34,7 +34,8 @@ The lines print in this order, each only on the pages named:
    `Row::CHILDREN_HELP`
    ([rows with children](../output/shapes/README.md#rows-with-children)),
    then `Problems:` on a leaf whose row type names a problem field, then
-   `Rows:` when the document [lists only problem rows](../output/listings/README.md#a-listing-that-lists-only-its-problem-rows).
+   `Rows:` when the document [lists only problem rows](../output/listings/README.md#a-listing-that-lists-only-its-problem-rows),
+   then `Long note:` for a declared [long note](../output/listings/README.md#a-note-for---long).
 3. In `-h`, one line that names the visible global flags of the root and of
    each command on the way. `--help` lists those flags in full.
 4. On the root, a `Topics:` line that names the tool's topics and
@@ -73,8 +74,8 @@ where clap would read them as flags or names.
 [`command_path`](../../../crates/crumbkit/src/parse/walk.rs) makes the walk
 public. It returns the path of the command that a tool's words name,
 including on a line that clap refuses, without building or cloning the tree.
-crumbkit-test's twin check reads each line's command with it, and
-crumbkit-test keeps its own `split` for the words of a recovery.
+crumbkit-test's twin check reads each line's command with it, and uses its
+own `split` for the words of a recovery.
 
 How `parse` refuses a command line, including the one-line message and the
 JSON refusal, is on the [parsing](../parsing/README.md) page.
