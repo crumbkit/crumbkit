@@ -606,6 +606,9 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit: `Sink::fitted` gives a tool's own sink a width, and
   `finish_to` fits a text table to it as `finish` fits one to the terminal.
   `Sink::fitted_width` reads it ([behaviour/output/terminal]).
+- crumbkit: `Row::CHILD_INDENT` sets the number of spaces before each child
+  line, 2 by default, so a type that sets 0 prints an identifier that a
+  reader copies whole at column 1 ([behaviour/output/shapes]).
 
 ### Changed
 
@@ -1310,6 +1313,7 @@ rustdoc, or at the page in docs/ that describes the behaviour. -->
 [behaviour/output/child-processes]: docs/behaviour/output/child-processes.md
 [behaviour/output/json-layout]: docs/behaviour/output/json-layout.md
 [behaviour/output/listings]: docs/behaviour/output/listings/README.md
+[behaviour/output/shapes]: docs/behaviour/output/shapes/README.md
 [behaviour/output/streams]: docs/behaviour/output/streams.md
 [behaviour/output/terminal]: docs/behaviour/output/terminal.md
 [behaviour/parsing]: docs/behaviour/parsing/README.md

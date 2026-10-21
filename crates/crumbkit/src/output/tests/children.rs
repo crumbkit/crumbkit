@@ -324,3 +324,163 @@ fn a_row_type_without_children_has_no_child_lines_by_default() {
     assert_eq!(row.child_lines(), Vec::<String>::new());
     assert_eq!(<super::Planet as Row>::CHILDREN, None);
 }
+
+/// A record whose reference, an identifier that a reader copies whole,
+/// prints as its one child line at column 1 (ADR-0135).
+#[derive(Serialize, JsonSchema)]
+struct Record {
+    /// The record's name.
+    name: &'static str,
+    /// The record's kind.
+    kind: &'static str,
+    /// The identifier that another command takes.
+    reference: &'static str,
+}
+
+impl Row for Record {
+    const COLUMNS: &'static [&'static str] = &["name"];
+    const LONG_COLUMNS: &'static [&'static str] = &["kind"];
+    const CHILDREN: Option<&'static str> = Some("reference");
+    const CHILD_INDENT: u8 = 0;
+
+    fn child_lines(&self) -> Vec<String> {
+        vec![self.reference.to_owned()]
+    }
+}
+
+/// A record whose reference prints indented by four spaces.
+#[derive(Serialize, JsonSchema)]
+#[serde(transparent)]
+struct Deep(Record);
+
+impl Row for Deep {
+    const COLUMNS: &'static [&'static str] = Record::COLUMNS;
+    const LONG_COLUMNS: &'static [&'static str] = Record::LONG_COLUMNS;
+    const CHILDREN: Option<&'static str> = Record::CHILDREN;
+    const CHILD_INDENT: u8 = 4;
+
+    fn child_lines(&self) -> Vec<String> {
+        self.0.child_lines()
+    }
+}
+
+/// A record whose text prints as its own line, with its reference at
+/// column 1 under that line.
+#[derive(Serialize, JsonSchema)]
+#[serde(transparent)]
+struct FlushLined(Record);
+
+impl Row for FlushLined {
+    const COLUMNS: &'static [&'static str] = Record::COLUMNS;
+    const LINE: Option<&'static str> = Some("record <NAME>");
+    const CHILDREN: Option<&'static str> = Record::CHILDREN;
+    const CHILD_INDENT: u8 = 0;
+
+    fn text_line(&self) -> Option<String> {
+        Some(format!("record {}", self.0.name))
+    }
+
+    fn child_lines(&self) -> Vec<String> {
+        self.0.child_lines()
+    }
+}
+
+const RECORDS: Document<Vec<Record>> = Document::new("ops", "records", 1, "The test records.");
+const RECORD_BATCH: Document<Batch<Record, Error>> =
+    Document::new("ops", "record-batch", 1, "The test records.");
+
+fn records() -> Vec<Record> {
+    vec![
+        Record {
+            name: "api",
+            kind: "service",
+            reference: "ref:api/1",
+        },
+        Record {
+            name: "web",
+            kind: "site",
+            reference: "ref:web/2",
+        },
+    ]
+}
+
+#[test]
+fn a_row_type_with_a_child_indent_of_zero_prints_its_child_lines_at_column_1_in_a_table() {
+    let finished = finish_with(&[], RECORDS, records());
+
+    assert_eq!(finished.code, ExitCode::SUCCESS, "{}", finished.err);
+    assert_eq!(finished.out, "NAME\napi\nref:api/1\nweb\nref:web/2\n");
+}
+
+#[test]
+fn a_row_type_with_a_child_indent_of_zero_prints_its_child_lines_at_column_1_with_long() {
+    let finished = finish_with(&["--long"], RECORDS, records());
+
+    assert_eq!(
+        finished.out,
+        "NAME  KIND\napi   service\nref:api/1\nweb   site\nref:web/2\n"
+    );
+}
+
+#[test]
+fn a_row_type_with_a_child_indent_of_zero_prints_its_child_lines_at_column_1_under_its_own_text_line()
+ {
+    const LINED_RECORDS: Document<Vec<FlushLined>> =
+        Document::new("ops", "lined-records", 1, "The test records.");
+    let rows = records().into_iter().map(FlushLined).collect();
+    let finished = finish_with(&[], LINED_RECORDS, rows);
+
+    assert_eq!(
+        finished.out,
+        "record api\nref:api/1\nrecord web\nref:web/2\n"
+    );
+}
+
+#[test]
+fn a_row_type_with_a_child_indent_of_four_prints_four_spaces_before_each_child_line() {
+    const DEEP: Document<Vec<Deep>> = Document::new("ops", "deep", 1, "The test records.");
+    let rows = records().into_iter().map(Deep).collect();
+    let finished = finish_with(&[], DEEP, rows);
+
+    assert_eq!(
+        finished.out,
+        "NAME\napi\n    ref:api/1\nweb\n    ref:web/2\n"
+    );
+}
+
+#[test]
+fn a_row_type_that_sets_no_child_indent_indents_its_child_lines_by_two_spaces() {
+    assert_eq!(<Service as Row>::CHILD_INDENT, 2);
+    assert_eq!(<super::Planet as Row>::CHILD_INDENT, 2);
+}
+
+#[test]
+fn room_counts_child_lines_with_the_indent_that_the_row_type_chooses() {
+    const DEEP_BATCH: Document<Batch<Deep, Error>> =
+        Document::new("ops", "deep-batch", 1, "The test records.");
+    let guide = Guide::new().output_budget(1 << 20, "the tests print little");
+    let parse = || {
+        built_with(
+            <Tool as clap::CommandFactory>::command(),
+            &guide,
+            &["tool", "list"],
+        )
+    };
+
+    let output = parse();
+    let batch = answered(records(), &["api", "web"]);
+    let mut room = output.room(RECORD_BATCH);
+    assert!(room.has_room(&batch));
+    let flush = finish_output(output, RECORD_BATCH, batch);
+    assert!(flush.out.contains("\nref:api/1\n"), "{}", flush.out);
+    assert_eq!(room.printed(), flush.out.len(), "{}", flush.out);
+
+    let output = parse();
+    let deep: Vec<Deep> = records().into_iter().map(Deep).collect();
+    let batch = answered(deep, &["api", "web"]);
+    let mut room = output.room(DEEP_BATCH);
+    assert!(room.has_room(&batch));
+    let deep = finish_output(output, DEEP_BATCH, batch);
+    assert!(deep.out.contains("\n    ref:api/1\n"), "{}", deep.out);
+    assert_eq!(room.printed(), deep.out.len(), "{}", deep.out);
+}

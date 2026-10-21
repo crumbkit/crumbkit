@@ -67,7 +67,7 @@ prints every column, because its header prints before any row arrives.
 A row type may print its children under each row, such as a service's
 components, by naming the field that holds them in `Row::CHILDREN` and
 building their lines in `Row::child_lines`. The table prints each child
-line under its row, indented by two spaces and escaped as a cell is
+line under its row, indented by `Row::CHILD_INDENT` spaces and escaped as a cell is
 escaped. Child lines do not change the column widths. Compact JSON holds
 the field after the columns, as [rows with children](shapes/README.md#rows-with-children)
 describes.
@@ -76,7 +76,7 @@ A table wider than its sink's width narrows its widest columns to fit and
 ends each cut cell with `…`, except in the columns that
 `Row::UNCUT_COLUMNS` names ([the table's width](terminal.md#the-tables-width)).
 
-Why: ADR-0016, ADR-0063, ADR-0065, ADR-0108, ADR-0114, ADR-0119, ADR-0120, ADR-0121, ADR-0134.
+Why: ADR-0016, ADR-0063, ADR-0065, ADR-0108, ADR-0114, ADR-0119, ADR-0120, ADR-0121, ADR-0134, ADR-0135.
 
 ## View flags
 

@@ -158,3 +158,99 @@ fn a_stream_of_rows_with_their_own_text_line_prints_each_item_s_child_lines_afte
         "a flock led by a goose\n  swan\n  duck\n"
     );
 }
+
+/// A ring whose code, which a reader copies whole, prints as its one child
+/// line, indented by `INDENT` spaces (ADR-0135).
+#[derive(Serialize, JsonSchema)]
+struct Ring<const INDENT: u8> {
+    /// The bird that wears the ring.
+    bird: &'static str,
+    /// The ring's code.
+    code: &'static str,
+}
+
+impl<const INDENT: u8> Row for Ring<INDENT> {
+    const COLUMNS: &'static [&'static str] = &["bird"];
+    const CHILDREN: Option<&'static str> = Some("code");
+    const CHILD_INDENT: u8 = INDENT;
+
+    fn child_lines(&self) -> Vec<String> {
+        vec![self.code.to_owned()]
+    }
+}
+
+/// A ring whose text prints as its own line, with its code at column 1
+/// under that line.
+#[derive(Serialize, JsonSchema)]
+#[serde(transparent)]
+struct LinedRing(Ring<0>);
+
+impl Row for LinedRing {
+    const COLUMNS: &'static [&'static str] = &["bird"];
+    const LINE: Option<&'static str> = Some("a ringed <BIRD>");
+    const CHILDREN: Option<&'static str> = Some("code");
+    const CHILD_INDENT: u8 = 0;
+
+    fn text_line(&self) -> Option<String> {
+        Some(format!("a ringed {}", self.0.bird))
+    }
+
+    fn child_lines(&self) -> Vec<String> {
+        self.0.child_lines()
+    }
+}
+
+/// Streams each of `rows` as `document` with no flags, ends without a
+/// failure, and returns what the stream printed.
+fn stream<R: Row>(document: Document<Stream<R>>, rows: &[R]) -> String {
+    let output = parse(&[]);
+    let mut out = Vec::new();
+    let mut err = Vec::new();
+    let mut sink = Sink::new(&mut out, &mut err);
+    let code = match stream_to(&mut sink, output, document) {
+        Ok(mut streaming) => {
+            for row in rows {
+                assert_eq!(streaming.item(row), ControlFlow::Continue(()));
+            }
+            streaming.end(Ok::<(), Error>(()))
+        }
+        Err(code) => code,
+    };
+    assert_eq!(code, ExitCode::SUCCESS, "{}", String::from_utf8_lossy(&err));
+    String::from_utf8(out).unwrap()
+}
+
+fn ring<const INDENT: u8>(bird: &'static str, code: &'static str) -> Ring<INDENT> {
+    Ring { bird, code }
+}
+
+#[test]
+fn a_stream_of_a_row_type_with_a_child_indent_of_zero_prints_its_child_lines_at_column_1() {
+    const RINGS: Document<Stream<Ring<0>>> =
+        Document::new("birds", "rings-watch", 1, "Each ring as it is read.");
+
+    let out = stream(RINGS, &[ring("robin", "GB-1"), ring("wren", "GB-2")]);
+
+    assert_eq!(out, "BIRD\nrobin\nGB-1\nwren\nGB-2\n");
+}
+
+#[test]
+fn a_stream_of_a_row_type_with_a_child_indent_of_four_prints_four_spaces_before_each_child_line() {
+    const RINGS: Document<Stream<Ring<4>>> =
+        Document::new("birds", "rings-watch", 1, "Each ring as it is read.");
+
+    let out = stream(RINGS, &[ring("robin", "GB-1")]);
+
+    assert_eq!(out, "BIRD\nrobin\n    GB-1\n");
+}
+
+#[test]
+fn a_stream_of_rows_with_their_own_text_line_and_a_child_indent_of_zero_prints_child_lines_at_column_1()
+ {
+    const LINED_RINGS: Document<Stream<LinedRing>> =
+        Document::new("birds", "lined-rings-watch", 1, "Each ring as it is read.");
+
+    let out = stream(LINED_RINGS, &[LinedRing(ring("robin", "GB-1"))]);
+
+    assert_eq!(out, "a ringed robin\nGB-1\n");
+}

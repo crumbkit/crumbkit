@@ -176,7 +176,8 @@ pub trait Row: Serialize + JsonSchema {
     ///
     /// When it is set, the text prints each row's [`Row::child_lines`]
     /// under the row's table line, or under its own text line when the type
-    /// sets [`Row::LINE`], each indented by two spaces. `--long` keeps the
+    /// sets [`Row::LINE`], each indented by [`Row::CHILD_INDENT`] spaces
+    /// (ADR-0135). `--long` keeps the
     /// child lines, and `--fields` prints none: a `--fields` that names the
     /// field prints it as a cell of compact JSON like any other field. The
     /// JSON without `--full` holds the field after the columns, so `--json`
@@ -187,12 +188,22 @@ pub trait Row: Serialize + JsonSchema {
     /// because a headed batch's text prints each row's bytes.
     const CHILDREN: Option<&'static str> = None;
 
+    /// The number of spaces before each of the row's
+    /// [`Row::child_lines`] in text, 2 by default (ADR-0135).
+    ///
+    /// A type that sets 0 prints each child line at column 1, as a table
+    /// line starts, so a reader tells the two apart only by the line's
+    /// content, which the doc comment of the [`Row::CHILDREN`] field should
+    /// describe. The type is `u8`, so the compiler rejects an indent above
+    /// 255. The output budget counts the spaces.
+    const CHILD_INDENT: u8 = 2;
+
     /// Returns one text line for each of the row's children, without
     /// indentation or a line feed. crumbkit reads it only when
     /// [`Row::CHILDREN`] is set.
     ///
-    /// crumbkit prints each line under the row, indented by two spaces and
-    /// followed by a line feed. It escapes each control character and each
+    /// crumbkit prints each line under the row, after
+    /// [`Row::CHILD_INDENT`] spaces and followed by a line feed. It escapes each control character and each
     /// Unicode format character of the line as a table cell escapes them,
     /// so each child stays on one line. A row that returns no lines prints
     /// nothing under it. The child lines do not change the widths of the
