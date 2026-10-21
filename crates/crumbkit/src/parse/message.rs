@@ -27,7 +27,8 @@ pub(super) fn command_line_refusal<C: FromArgMatches>(
 ) -> Refusal {
     let message = refusal_message(command, path, error);
     let page = group_page(command, path, error);
-    let usage = usage(&error.render().to_string());
+    let rendered = error.render();
+    let usage = usage(&rendered.to_string());
     let declared = declared::declared::<C>(command, guide, path, error, words);
     Refusal::command_line(
         message,
@@ -39,6 +40,7 @@ pub(super) fn command_line_refusal<C: FromArgMatches>(
         declared.hint,
     )
     .shown_with(usage, page)
+    .styled_as(rendered)
 }
 
 /// Returns the message of a refusal of a command line that ends at the
@@ -103,8 +105,7 @@ fn refusal_message(command: &Command, path: &[String], error: &clap::Error) -> S
 /// after the commands above it, so the page that `Command::render_help`
 /// renders is the page that `-h` on the group prints, with crumbkit's help
 /// lines. The page keeps clap's styles, and the sink decides at print time
-/// whether refusal help is styled (ADR-0128). No sink styles it now, so it
-/// prints as plain text.
+/// whether refusal help is styled (ADR-0128, ADR-0131).
 fn group_page(command: &mut Command, path: &[String], error: &clap::Error) -> Option<StyledStr> {
     if !needs_more(error) {
         return None;

@@ -15,6 +15,8 @@ use crate::parse::{parse_to, try_parse_to};
 use crate::twins::assert_one_word_apart;
 use crate::{Sink, ViewFlags};
 
+mod styled;
+
 /// A tool with a global `--json` flag and a `planets` group whose `show`
 /// takes names and a `--sort` key, and a `moon_phases` command.
 fn tool() -> Command {

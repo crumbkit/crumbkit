@@ -315,15 +315,25 @@ impl Refused {
     /// [`parse`](crate::parse) prints it, and returns the `Stop` that ends
     /// the run. After [`Refused::as_json`], it prints in the form that the
     /// tool chose.
+    ///
+    /// The text form carries clap's styles on standard error as `parse`
+    /// prints it: when standard error is a terminal or `CLICOLOR_FORCE` is
+    /// set, and never under `NO_COLOR`, with the command's `ColorChoice` set
+    /// to `Never`, with terminal detection off or without crumbkit's
+    /// `color` feature (ADR-0131).
     #[must_use]
     pub fn print(self) -> Stop {
-        self.print_to(&mut Sink::standard())
+        let (choice, detection) = self.inner.output.refusal_colour();
+        self.print_to(&mut Sink::standard_for_refusal(choice, detection))
     }
 
     /// Prints the refusal to `sink` as [`parse_to`](crate::parse_to)
     /// prints it, and returns the `Stop` that ends the run. After
     /// [`Refused::as_json`], it prints in the form that the tool chose, and
-    /// the `Stop`'s [`Output::is_json`] reports that form.
+    /// the `Stop`'s [`Output::is_json`] reports that form. The text form
+    /// carries clap's styles when the sink's error writer wants them
+    /// ([`Sink::styled_errors`]) and crumbkit's `color` feature is on, and
+    /// is plain otherwise (ADR-0131).
     ///
     /// The run's observers hear of the refusal when it prints, and not
     /// when `try_parse` returns it, so a run that prints no refusal reports

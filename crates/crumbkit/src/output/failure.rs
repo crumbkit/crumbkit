@@ -119,6 +119,7 @@ pub(crate) fn print(
         &document,
         Message::Failure,
         None,
+        None,
     );
 }
 
@@ -127,7 +128,8 @@ pub(crate) fn print(
 /// (ADR-0128). When `page` is set, the text form is `page` in place of
 /// crumbkit's lines, delivered as refusal help, as a refused command line
 /// that stops at a group prints that group's help page. The failure
-/// document does not change.
+/// document does not change. When the sink styles the message `text`,
+/// `restyle` turns the composed text into its styled form (ADR-0131).
 ///
 /// Each form is composed whole before it is delivered, so the sink takes
 /// it as one piece.
@@ -138,6 +140,7 @@ pub(crate) fn print_prepared(
     document: &PreparedFailure<'_>,
     text: Message,
     page: Option<&StyledStr>,
+    restyle: Option<&dyn Fn(&str) -> String>,
 ) {
     #[cfg(feature = "tracing")]
     crate::trace::spans::failed(document.code());
@@ -155,7 +158,11 @@ pub(crate) fn print_prepared(
     } else {
         write_crumbkit_text(&mut bytes, document)
     };
-    let delivered = composed.and_then(|()| sink.deliver(Role::of_failure(json, text), &bytes));
+    let role = Role::of_failure(json, text);
+    if let Some(restyle) = restyle.filter(|_| !json && sink.styles(role)) {
+        bytes = restyle(&String::from_utf8_lossy(&bytes)).into_bytes();
+    }
+    let delivered = composed.and_then(|()| sink.deliver(role, &bytes));
     if let Err(error) = delivered {
         // A reader that closed the pipe early has stopped reading, so only
         // another failure to write the result is reported. A message is the

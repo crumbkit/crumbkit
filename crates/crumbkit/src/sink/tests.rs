@@ -1,7 +1,10 @@
+use std::ffi::OsStr;
 use std::io;
 
-use super::Sink;
+use clap::ColorChoice;
+
 use super::role::{Deliver as _, Message, Role};
+use super::{Sink, color_forced, color_off, error_styles};
 
 /// Every kind of message, so a test covers each one.
 const KINDS: [Message; 9] = [
@@ -89,6 +92,135 @@ fn only_the_result_wants_styles_on_a_styled_sink() {
     for kind in KINDS {
         assert!(!styled.styles(Role::Message(kind)), "{kind:?}");
     }
+}
+
+#[test]
+fn a_sink_whose_error_writer_wants_styles_styles_a_refusal_and_its_group_page_and_no_other_message()
+{
+    let sink = Sink::new(Vec::new(), Vec::new()).styled_errors(true);
+
+    assert!(!sink.styles(Role::Result));
+    for kind in KINDS {
+        let refusal = matches!(kind, Message::Refusal | Message::RefusalHelp);
+        assert_eq!(sink.styles(Role::Message(kind)), refusal, "{kind:?}");
+    }
+}
+
+#[test]
+fn a_sink_asks_for_no_error_styles_until_its_builder_asks_for_them() {
+    let sink = Sink::new(Vec::new(), Vec::new());
+    assert!(!sink.is_styled_errors());
+
+    let sink = sink.styled_errors(true);
+    assert!(sink.is_styled_errors());
+    assert!(!sink.is_styled(), "error styles leave the result plain");
+
+    let sink = sink.styled_errors(false);
+    assert!(!sink.is_styled_errors());
+}
+
+#[test]
+fn a_sink_whose_result_is_styled_asks_for_no_error_styles() {
+    let sink = Sink::new(Vec::new(), Vec::new()).styled(true);
+
+    assert!(!sink.is_styled_errors());
+    assert!(!sink.styles(Role::Message(Message::Refusal)));
+}
+
+#[test]
+fn a_sink_from_new_or_with_input_styles_no_message() {
+    let new = Sink::new(Vec::new(), Vec::new()).styled(true);
+    let with_input = Sink::with_input(Vec::new(), Vec::new(), &b""[..], true);
+
+    for kind in KINDS {
+        assert!(!new.styles(Role::Message(kind)), "{kind:?}");
+        assert!(!with_input.styles(Role::Message(kind)), "{kind:?}");
+    }
+}
+
+#[test]
+fn a_borrowed_or_buffering_sink_keeps_the_error_styles_of_the_sink_it_borrows() {
+    let mut buffer = Vec::new();
+    let mut sink = Sink::new(Vec::new(), Vec::new()).styled_errors(true);
+    let refusal = Role::Message(Message::Refusal);
+
+    assert!(sink.by_ref().styles(refusal));
+    assert!(sink.buffering_result(&mut buffer).styles(refusal));
+}
+
+#[test]
+fn the_standard_sink_wants_no_error_styles_under_no_color_even_with_clicolor_force() {
+    for terminal in [true, false] {
+        assert!(!error_styles(true, true, terminal, ColorChoice::Auto, true));
+        assert!(!error_styles(
+            true,
+            false,
+            terminal,
+            ColorChoice::Auto,
+            true
+        ));
+    }
+}
+
+#[test]
+fn the_standard_sink_wants_error_styles_with_clicolor_force_when_standard_error_is_not_a_terminal()
+{
+    assert!(error_styles(false, true, false, ColorChoice::Auto, true));
+}
+
+#[test]
+fn the_standard_sink_wants_no_error_styles_when_standard_error_is_not_a_terminal_and_clicolor_force_is_unset()
+ {
+    assert!(!error_styles(false, false, false, ColorChoice::Auto, true));
+}
+
+#[test]
+fn the_standard_sink_wants_error_styles_when_standard_error_is_a_terminal() {
+    assert!(error_styles(false, false, true, ColorChoice::Auto, true));
+    assert!(error_styles(false, false, true, ColorChoice::Always, true));
+}
+
+#[test]
+fn the_standard_sink_wants_no_error_styles_when_the_command_never_colours() {
+    for (force, terminal) in [(false, true), (true, false), (true, true)] {
+        assert!(!error_styles(
+            false,
+            force,
+            terminal,
+            ColorChoice::Never,
+            true
+        ));
+    }
+}
+
+#[test]
+fn the_standard_sink_wants_no_error_styles_when_the_guide_turns_terminal_detection_off() {
+    for (force, terminal) in [(false, true), (true, false), (true, true)] {
+        assert!(!error_styles(
+            false,
+            force,
+            terminal,
+            ColorChoice::Auto,
+            false
+        ));
+    }
+}
+
+#[test]
+fn no_color_turns_styles_off_only_with_a_value_that_is_not_empty() {
+    assert!(color_off(Some(OsStr::new("1"))));
+    assert!(color_off(Some(OsStr::new("0"))));
+    assert!(!color_off(Some(OsStr::new(""))));
+    assert!(!color_off(None));
+}
+
+#[test]
+fn clicolor_force_forces_styles_only_with_a_value_that_is_neither_empty_nor_0() {
+    assert!(color_forced(Some(OsStr::new("1"))));
+    assert!(color_forced(Some(OsStr::new("yes"))));
+    assert!(!color_forced(Some(OsStr::new("0"))));
+    assert!(!color_forced(Some(OsStr::new(""))));
+    assert!(!color_forced(None));
 }
 
 #[test]

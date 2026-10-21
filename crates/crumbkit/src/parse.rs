@@ -76,11 +76,11 @@ mod walked;
 /// ```
 ///
 /// It behaves as [`parse_to`] does with a sink over the process's standard
-/// output and standard error that asks for styles when standard output is a
-/// terminal and the guide detects terminals ([`Sink::styled`]). Help then
-/// prints through clap's `Error::print`, which keeps clap's colours unless
-/// `NO_COLOR` or the command's `ColorChoice` turns them off. clap prints those
-/// colours only when the tool enables clap's `color` feature.
+/// streams. Help keeps clap's colours when standard output is a terminal and
+/// the guide detects terminals ([`Sink::styled`]), unless `NO_COLOR` or the
+/// command's `ColorChoice` turns them off. A refusal and its group page keep
+/// them on standard error by the rule of [`Sink::styled_errors`] (ADR-0131).
+/// Both need crumbkit's `color` feature, which turns on clap's.
 ///
 /// `parse` is [`try_parse`] followed by printing the refusal. A tool that
 /// reads a refused command line before anything prints, such as a tool
@@ -204,10 +204,9 @@ where
 ///
 /// Tests and golden files call it with a sink over in-memory writers, as
 /// they call [`finish_to`](crate::finish_to). Help and the version print as
-/// plain text, unless the sink asks for styles with [`Sink::styled`]. A
-/// styled sink receives help with the ANSI escape codes that clap's
-/// `Error::print` writes at a terminal, when crumbkit's `color` feature is
-/// on. A topic prints as plain text to every sink.
+/// plain text, unless the sink asks for styles with [`Sink::styled`], and
+/// a refusal unless it asks with [`Sink::styled_errors`]. The styles need
+/// crumbkit's `color` feature. A topic prints as plain text to every sink.
 ///
 /// Before parsing, crumbkit walks the typed words down the tree to the
 /// deepest command they name, and changes the help of each command on the
