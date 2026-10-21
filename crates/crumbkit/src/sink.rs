@@ -1,7 +1,7 @@
 //! The writers that a tool's output goes to, and the one place that maps
 //! what each piece of output is to a stream (ADR-0128).
 
-use std::ffi::OsStr;
+use std::ffi::{OsStr, OsString};
 use std::io::{self, BufRead, Empty, IsTerminal as _, Stderr, StdinLock, StdoutLock, Write};
 
 use clap::ColorChoice;
@@ -178,10 +178,11 @@ impl<O, E, I> Sink<O, E, I> {
     ///
     /// [`parse`](crate::parse), [`parse_from`](crate::parse_from) and
     /// [`Refused::print`](crate::Refused::print) build a sink over the
-    /// process's standard streams that asks for error styles when standard
-    /// error is a terminal or `CLICOLOR_FORCE` is set, and never under
-    /// `NO_COLOR`, with the command's `ColorChoice` set to `Never` or with
-    /// the guide's terminal detection off.
+    /// process's standard streams that asks for error styles when
+    /// `CLICOLOR_FORCE` is set, or when standard error is a terminal whose
+    /// `TERM` is not `dumb` and `CLICOLOR` is not `0`. It never asks for
+    /// them under `NO_COLOR`, with the command's `ColorChoice` set to
+    /// `Never` or with the guide's terminal detection off (ADR-0133).
     ///
     /// ```
     /// let sink = crumbkit::Sink::new(Vec::new(), Vec::new()).styled_errors(true);
@@ -379,68 +380,88 @@ impl Sink<StdoutLock<'static>, Stderr> {
     /// Returns the standard sink that [`parse`](crate::parse) and
     /// [`parse_from`](crate::parse_from) print a refusal to. Its error
     /// writer wants clap's styles as [`error_styles`] decides from
-    /// `NO_COLOR`, `CLICOLOR_FORCE`, whether standard error is a terminal,
-    /// the command's `choice` and the guide's terminal `detection`
-    /// (ADR-0131). Without crumbkit's `color` feature it wants none.
+    /// `NO_COLOR`, `CLICOLOR_FORCE`, `CLICOLOR`, `TERM`, whether standard
+    /// error is a terminal, the command's `choice` and the guide's terminal
+    /// `detection` (ADR-0131, ADR-0133). Without crumbkit's `color` feature
+    /// it wants none.
     pub(crate) fn standard_for_refusal(choice: ColorChoice, detection: bool) -> Self {
-        let styled = cfg!(feature = "color")
-            && {
-                #[expect(
-                    clippy::disallowed_methods,
-                    reason = "the sink owns standard error, and NO_COLOR decides whether a refusal on it is styled"
-                )]
-                let no_color = std::env::var_os("NO_COLOR");
-                #[expect(
-                    clippy::disallowed_methods,
-                    reason = "the sink owns standard error, and CLICOLOR_FORCE decides whether a refusal on it is styled"
-                )]
-                let force = std::env::var_os("CLICOLOR_FORCE");
-                error_styles(
-                    color_off(no_color.as_deref()),
-                    color_forced(force.as_deref()),
-                    stderr_is_terminal(),
-                    choice,
-                    detection,
-                )
+        let styled = cfg!(feature = "color") && {
+            let variables = ColorVariables {
+                no_color: color_off(colour_variable("NO_COLOR").as_deref()),
+                clicolor_force: color_forced(colour_variable("CLICOLOR_FORCE").as_deref()),
+                clicolor_off: clicolor_off(colour_variable("CLICOLOR").as_deref()),
+                term_dumb: term_dumb(colour_variable("TERM").as_deref()),
             };
+            error_styles(variables, stderr_is_terminal(), choice, detection)
+        };
         Self::standard().styled_errors(styled)
     }
+}
+
+/// Returns the value of the environment variable `name`, one of the
+/// variables that decide whether a refusal on standard error is styled.
+fn colour_variable(name: &str) -> Option<OsString> {
+    #[expect(
+        clippy::disallowed_methods,
+        reason = "the sink owns standard error, and the colour variables decide whether a refusal on it is styled"
+    )]
+    std::env::var_os(name)
+}
+
+/// What the colour variables of the environment say about a refusal on
+/// standard error, each as its reader reports it.
+#[derive(Clone, Copy, Debug)]
+#[expect(
+    clippy::struct_excessive_bools,
+    reason = "each flag is one independent environment variable, which tests set directly"
+)]
+pub(crate) struct ColorVariables {
+    /// `NO_COLOR` turns colour off, as [`color_off`] reports.
+    pub(crate) no_color: bool,
+    /// `CLICOLOR_FORCE` forces colour, as [`color_forced`] reports.
+    pub(crate) clicolor_force: bool,
+    /// `CLICOLOR` turns colour off, as [`clicolor_off`] reports.
+    pub(crate) clicolor_off: bool,
+    /// `TERM` names a terminal without colour, as [`term_dumb`] reports.
+    pub(crate) term_dumb: bool,
 }
 
 /// Reports whether a refusal on standard error carries clap's styles:
 ///
 /// - never when terminal `detection` is off or the command's `choice` is
 ///   `ColorChoice::Never`, as help is never styled then (ADR-0102);
-/// - never when `NO_COLOR` is set, which `no_color` reports, even with
-///   `CLICOLOR_FORCE`;
-/// - always when `CLICOLOR_FORCE` forces colour, which `clicolor_force`
-///   reports, whatever standard error is;
+/// - never when `NO_COLOR` turns colour off, even with `CLICOLOR_FORCE`;
+/// - always when `CLICOLOR_FORCE` forces colour, whatever standard error,
+///   `TERM` and `CLICOLOR` are, because anstream checks `CLICOLOR_FORCE`
+///   before `TERM` and `CLICOLOR` when it colours help;
+/// - never when `TERM` is `dumb` or `CLICOLOR` is `0`;
 /// - otherwise only when standard error is a terminal, which
 ///   `stderr_is_terminal` reports, so a pipe or a file receives plain
 ///   text.
 ///
 /// `ColorChoice::Always` follows the same rule as `ColorChoice::Auto`.
 //
-// RUST-10: this reads `NO_COLOR` and `CLICOLOR_FORCE` alone. clap's colour
-// rule, which anstream applies, also turns colour off when `CLICOLOR` is 0
-// or `TERM` is unset or `dumb`, so a refusal at such a terminal is styled
-// where help is not. Reading those variables here, or anstream's choice for
-// standard error, replaces this when a tool needs them.
-#[expect(
-    clippy::fn_params_excessive_bools,
-    reason = "each flag is one independent input of the decision, which tests pass directly"
-)]
+// RUST-10: this reads the four variables itself and does not call
+// anstream's choice for standard error, which clap applies to help. The
+// rule keeps anstream's order but differs from it on purpose: an unset
+// `TERM`, a `CLICOLOR` other than `0` and the `CI` variable change nothing,
+// `CLICOLOR_FORCE=0` forces no colour, `NO_COLOR` beats
+// `ColorChoice::Always`, and `CLICOLOR_FORCE` styles a refusal at a pipe
+// (ADR-0131, ADR-0133). A call to anstream's choice replaces this code if
+// a refusal is ever meant to follow every part of help's rule.
 pub(crate) const fn error_styles(
-    no_color: bool,
-    clicolor_force: bool,
+    variables: ColorVariables,
     stderr_is_terminal: bool,
     choice: ColorChoice,
     detection: bool,
 ) -> bool {
-    if !detection || matches!(choice, ColorChoice::Never) || no_color {
+    if !detection || matches!(choice, ColorChoice::Never) || variables.no_color {
         return false;
     }
-    clicolor_force || stderr_is_terminal
+    if variables.clicolor_force {
+        return true;
+    }
+    !variables.term_dumb && !variables.clicolor_off && stderr_is_terminal
 }
 
 /// Reports whether `NO_COLOR` with `value` turns colour off, which any
@@ -453,6 +474,18 @@ pub(crate) fn color_off(value: Option<&OsStr>) -> bool {
 /// value that is neither empty nor `0` does.
 pub(crate) fn color_forced(value: Option<&OsStr>) -> bool {
     value.is_some_and(|value| !value.is_empty() && value != "0")
+}
+
+/// Reports whether `CLICOLOR` with `value` turns colour off, which only the
+/// value `0` does, as anstream reads it.
+pub(crate) fn clicolor_off(value: Option<&OsStr>) -> bool {
+    value.is_some_and(|value| value == "0")
+}
+
+/// Reports whether `TERM` with `value` names a terminal without colour,
+/// which only the value `dumb` does. An unset `TERM` names none.
+pub(crate) fn term_dumb(value: Option<&OsStr>) -> bool {
+    value.is_some_and(|value| value == "dumb")
 }
 
 impl Sink<StdoutLock<'static>, Stderr, StdinLock<'static>> {

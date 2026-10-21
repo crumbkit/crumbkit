@@ -156,13 +156,16 @@ styles on standard error when crumbkit's `color` feature is on. `parse`,
 `parse_from` and `Refused::print` decide once, from the environment and
 standard error:
 
+- The command's `ColorChoice::Never`, and a guide that turns terminal
+  detection off, keep the refusal plain.
 - A non-empty `NO_COLOR` keeps the refusal plain, even with
   `CLICOLOR_FORCE` set.
 - Otherwise a `CLICOLOR_FORCE` that is neither empty nor `0` styles it,
-  whatever standard error is.
+  whatever standard error is, also when `TERM` is `dumb` or `CLICOLOR` is
+  `0`. anstream, which colours clap's help, checks the variables in the
+  same order.
+- Otherwise `TERM=dumb` or `CLICOLOR=0` keeps the refusal plain.
 - Otherwise the refusal is styled only when standard error is a terminal.
-- The command's `ColorChoice::Never`, and a guide that turns terminal
-  detection off, keep the refusal plain.
 
 The `error:` label takes clap's error style, and a refused value, a flag, a
 suggestion and the usage take the styles that clap's own error gives them.
@@ -170,9 +173,12 @@ Removing the escape codes gives the plain bytes, so the golden file of a
 piped run also pins the text at a terminal. A refusal in JSON carries no
 styles, and every other message on standard error, such as a failure or a
 note, stays plain. Help decides from standard output and clap's own
-reading of the environment, so the two can differ: help ignores
-`CLICOLOR_FORCE` at a pipe and reads `CLICOLOR` and `TERM`, which a
-refusal ignores.
+reading of the environment, so the two can differ. Help ignores
+`CLICOLOR_FORCE` at a pipe and `NO_COLOR` under `ColorChoice::Always`, and
+treats `CLICOLOR_FORCE=0` as a request for colour. Help also stays plain
+when `TERM` is unset, and a `CLICOLOR` other than `0` or the `CI` variable
+colours it at a terminal whose `TERM` is unset or `dumb`. None of these
+change a refusal.
 
 A sink from `Sink::new` or `Sink::with_input` wants no error styles, so
 `parse_to` and `Refused::print_to` print a refusal plain to it. A tool that
@@ -201,7 +207,7 @@ rejects a value, returns an ordinary `Failure`, which `finish` prints.
 crumbkit-test's checks and the golden files cover the whole command tree.
 
 Why: ADR-0015, ADR-0001, ADR-0021, ADR-0050, ADR-0118, ADR-0123, ADR-0124,
-ADR-0131.
+ADR-0131, ADR-0133.
 
 ## A refusal that the tool prints
 
