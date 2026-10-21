@@ -41,6 +41,7 @@ mod roles;
 mod spelled;
 mod summary;
 mod unwrapped;
+mod variants;
 mod views;
 mod whole;
 

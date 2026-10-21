@@ -1,7 +1,7 @@
 # ADR-0113. A skipped column admits null
 
 - Date: 2026-10-20
-- Status: accepted
+- Status: accepted, amended by ADR-0132
 - Supersedes: ADR-0110, which it amends
 - Missed: ADR-0110 cut the required list and left the type of a skipped column unable to admit the null that the compact document prints.
 
