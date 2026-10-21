@@ -1,7 +1,11 @@
 # ADR-0050. Listings
 
 - Date: 2026-10-12
-- Status: amended by ADR-0077, ADR-0087 and ADR-0096
+- Status: amended by ADR-0077, ADR-0087, ADR-0096 and ADR-0139
+
+## Children
+
+- [ADR-0139. A summary that writes no text prints no line](0139-a-summary-that-writes-no-text-prints-no-line.md)
 
 ## Context
 

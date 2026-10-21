@@ -23,8 +23,11 @@ tool did not count, a footer says so and names `--all`. crumbkit owns the
 wording, and the tool supplies only the description.
 
 A listing may carry a summary, a note and one next step. The summary prints
-as one line above the table on standard output, and the JSON document holds
-it under `summary`. The note and the next step print in text only.
+its `Display` as one line above the table on standard output, and the JSON
+document holds it under `summary`. A summary whose `Display` writes no text
+prints no line, so the header is the first line, and the JSON document still
+holds it. A summary that writes only spaces still prints its line. The note
+and the next step print in text only.
 
 On standard output, the text order is the summary, the header and the rows.
 On standard error, it is the footer or the empty note, the note of the rows

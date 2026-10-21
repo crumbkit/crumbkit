@@ -1,7 +1,7 @@
 # ADR-0016. Result formats
 
 - Date: 2026-10-08
-- Status: amended by ADR-0059, ADR-0071, ADR-0082, ADR-0105 and ADR-0114
+- Status: amended by ADR-0059, ADR-0071, ADR-0082, ADR-0105, ADR-0114 and ADR-0139
 
 ## Context
 

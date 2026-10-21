@@ -1001,6 +1001,9 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit: a refusal on standard error stays plain at a terminal whose
   `TERM` is `dumb` and under `CLICOLOR=0`, as help does, unless
   `CLICOLOR_FORCE` forces colour ([behaviour/parsing]).
+- crumbkit: a listing whose summary's `Display` writes no text prints no
+  summary line in text, so the header is the first line. The JSON document
+  still holds the summary ([behaviour/output/listings]).
 
 ### Removed
 
