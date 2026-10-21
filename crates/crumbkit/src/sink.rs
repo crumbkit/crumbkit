@@ -202,12 +202,40 @@ impl<O, E, I> Sink<O, E, I> {
         self.styled_errors
     }
 
-    /// Returns the sink with `width`, the number of columns that a text
-    /// table in the result fits, as `finish` reads it from the terminal
-    /// that standard output is (ADR-0121).
-    pub(crate) const fn fitted(mut self, width: Option<usize>) -> Self {
+    /// Sets `width`, the number of columns that a text table in the result
+    /// fits. With `Some(width)`, [`finish_to`](crate::finish_to) narrows a
+    /// text table wider than `width` and cuts its cells, except in the
+    /// columns that [`Row::UNCUT_COLUMNS`](crate::Row::UNCUT_COLUMNS)
+    /// names, and the output budget still counts the unfitted table. With
+    /// `None`, the table prints unfitted. A width narrower than the headers
+    /// and the uncut columns together, such as `Some(0)`, leaves the table
+    /// unfitted, as a terminal that narrow does. JSON, prose, bytes, a
+    /// row's own text line, a stream, help and every message print the
+    /// same bytes whatever the width (ADR-0121, ADR-0134).
+    ///
+    /// The setter checks no terminal, as [`Sink::styled`] checks none. A
+    /// tool that owns its output stream decides it, for example from the
+    /// width of the terminal that standard output is. [`finish`](crate::finish)
+    /// gives its sink that width when the guide keeps terminal detection
+    /// on. A sink from [`Sink::new`] or [`Sink::with_input`] has no width.
+    ///
+    /// ```
+    /// let sink = crumbkit::Sink::new(Vec::new(), Vec::new()).fitted(Some(80));
+    /// assert_eq!(sink.fitted_width(), Some(80));
+    /// assert!(!sink.is_styled());
+    /// ```
+    #[must_use]
+    pub const fn fitted(mut self, width: Option<usize>) -> Self {
         self.width = width;
         self
+    }
+
+    /// Returns the number of columns that a text table in the result fits,
+    /// which [`Sink::fitted`] sets, or `None` when the table prints
+    /// unfitted. A new sink has no width.
+    #[must_use]
+    pub const fn fitted_width(&self) -> Option<usize> {
+        self.width
     }
 
     /// Returns the number of bytes of the result that the output writer

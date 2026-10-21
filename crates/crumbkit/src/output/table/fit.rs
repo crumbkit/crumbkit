@@ -1,5 +1,6 @@
-//! Fitting the text table to the width of the terminal that standard
-//! output is (ADR-0121).
+//! Fitting the text table to the width that the sink gives the result,
+//! such as the width of the terminal that standard output is (ADR-0121,
+//! ADR-0134).
 
 use std::borrow::Cow;
 use std::io::{self, Write};

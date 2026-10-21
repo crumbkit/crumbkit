@@ -39,12 +39,15 @@ Why: ADR-0049, ADR-0102, ADR-0121, ADR-0131.
 When standard output is a terminal and the guide keeps detection on,
 `finish` reads the terminal's number of columns once, with rustix's
 `tcgetwinsize`, and gives it to its sink as the width of the result. A
-message, such as a note or a failure, has no width. A compact, `--long` or `--fields` table that is wider than
-the terminal then narrows its columns until it fits:
+tool that prints through its own sink sets the width with `Sink::fitted`,
+which checks no terminal, and `finish_to` fits the table to it.
+`Sink::new` gives no width. A message, such as a note or a failure, has no width. A compact,
+`--long` or `--fields` table that is wider than the width then narrows its
+columns until it fits:
 
 - A line of the table is as wide as the sum of its column widths plus two
   characters for each separator between columns.
-- While a line is wider than the terminal, the widest column that is wider
+- While a line is wider than the width, the widest column that is wider
   than its header narrows by the excess, but never below the width of its
   header. Of two columns equally wide, the leftmost narrows first. The next
   such column narrows when the table still does not fit.
@@ -56,9 +59,9 @@ the terminal then narrows its columns until it fits:
   table. crumbkit-test's `check_guide` fails a name there that is in
   neither `COLUMNS` nor `LONG_COLUMNS`.
 - When the uncut columns and the headers of the other columns are wider
-  than the terminal on their own, the table prints unfitted and each line
-  is wider than the terminal. A table without uncut columns prints
-  unfitted when its headers alone are wider than the terminal.
+  than the width on their own, the table prints unfitted and each line
+  is wider than the width. A table without uncut columns prints
+  unfitted when its headers alone are wider than the width.
 
 The output budget counts the bytes of the unfitted table, so a run at a
 terminal shows the same rows as a piped run and the cut line counts the
@@ -67,11 +70,10 @@ same rows ([output budget](budget/README.md)).
 `--json`, prose, bytes, a row's own text line, help, notes and failures
 never change with the width. A stream's table keeps the widths of its
 header, because it prints each row as it arrives
-([streams](streams.md#text-and-json-lines)). `finish_to` never fits a
-table, because its sink can be any writer. On a platform other than Unix,
-crumbkit reads no width and a table prints unfitted.
+([streams](streams.md#text-and-json-lines)). On a platform other than Unix, `finish` reads no width and a table
+prints unfitted.
 
-Why: ADR-0121, ADR-0128.
+Why: ADR-0121, ADR-0128, ADR-0134.
 
 ## Turning detection off
 

@@ -603,6 +603,9 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit: `Listing::capped` marks a listing whose tool read only part of
   its source, so its footer gives the rows read as a lower bound and its
   JSON document leaves out `total` ([behaviour/output/listings]).
+- crumbkit: `Sink::fitted` gives a tool's own sink a width, and
+  `finish_to` fits a text table to it as `finish` fits one to the terminal.
+  `Sink::fitted_width` reads it ([behaviour/output/terminal]).
 
 ### Changed
 

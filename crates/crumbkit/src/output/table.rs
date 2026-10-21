@@ -96,8 +96,8 @@ impl<'a> Table<'a> {
     ///
     /// Each row's child lines follow the row.
     ///
-    /// `width` is the number of columns of the terminal that standard
-    /// output is, or `None` when the table prints unfitted. A table wider
+    /// `width` is the number of columns that the sink gives the result,
+    /// or `None` when the table prints unfitted. A table wider
     /// than `width` narrows its columns and cuts their cells, as
     /// [`fit::fit`] describes.
     pub(super) fn write(

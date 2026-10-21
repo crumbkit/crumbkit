@@ -1,7 +1,8 @@
 //! How a result's final write fits its text table to the width that the
-//! sink gives the result, which is the width of the terminal that standard
-//! output is, after the output budget measured the unfitted table
-//! (ADR-0121, ADR-0128).
+//! sink gives the result, after the output budget measured the unfitted
+//! table. `finish` gives its sink the width of the terminal that standard
+//! output is, and a tool gives its own sink a width with `Sink::fitted`
+//! (ADR-0121, ADR-0128, ADR-0134).
 
 use std::io;
 

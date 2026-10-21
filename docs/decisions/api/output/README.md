@@ -20,6 +20,7 @@ document.
 - [ADR-0092. Output budget](budget/README.md)
 - [ADR-0049. Terminal detection](0049-terminal-detection.md)
 - [ADR-0121. A text table fits the terminal's width](0121-a-text-table-fits-the-terminal-width.md)
+- [ADR-0134. A tool gives its own sink the width that a text table fits](0134-a-tool-gives-its-own-sink-a-width.md)
 - [ADR-0128. Output carries its role to the sink](0128-output-carries-its-role-to-the-sink.md)
 - [ADR-0058. The child crate](0058-child-crate.md)
 - [ADR-0077. Notes on prose and batch results](0077-notes-on-prose-and-batches.md)
