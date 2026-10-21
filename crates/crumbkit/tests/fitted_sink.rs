@@ -228,3 +228,48 @@ fn a_stream_through_a_fitted_sink_prints_its_table_unfitted() {
         "{fitted}"
     );
 }
+
+/// A book whose catalogue reference, an identifier that a reader copies
+/// whole, prints as its one child line at column 1 (ADR-0135).
+#[derive(Serialize, JsonSchema)]
+struct Catalogued {
+    /// The book's title.
+    title: String,
+    /// The book's shelf.
+    shelf: &'static str,
+    /// The identifier that another command takes.
+    reference: String,
+}
+
+impl Row for Catalogued {
+    const COLUMNS: &'static [&'static str] = &["title", "shelf"];
+    const CHILDREN: Option<&'static str> = Some("reference");
+    const CHILD_INDENT: u8 = 0;
+
+    fn child_lines(&self) -> Vec<String> {
+        vec![self.reference.clone()]
+    }
+}
+
+#[test]
+fn a_fitted_table_fits_the_width_while_a_child_line_wider_than_the_width_prints_whole() {
+    const CATALOGUE: Document<Vec<Catalogued>> =
+        Document::new("library", "catalogue", 1, "The catalogue.");
+    let reference = format!("cat:{}", "0123456789".repeat(4));
+    let rows = vec![Catalogued {
+        title: "The Adventures of Sherlock Holmes".to_owned(),
+        shelf: "crime",
+        reference: reference.clone(),
+    }];
+
+    let printed = list(&Guide::new(), &[], CATALOGUE, rows, Some(30)).unwrap();
+
+    let expected =
+        format!("TITLE                    SHELF\nThe Adventures of Sher…  crime\n{reference}\n");
+    assert_eq!(printed.out, expected);
+    let lines: Vec<&str> = printed.out.lines().collect();
+    for line in &lines[..2] {
+        assert!(line.chars().count() <= 30, "{line}");
+    }
+    assert_eq!(lines[2].len(), 44);
+}
