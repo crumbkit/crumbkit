@@ -233,11 +233,12 @@ fn several_keys<T: Rows>(value: &T) -> bool {
 ///
 /// A tool's `main` calls it last with the handler's `result` and returns its
 /// exit code. It behaves as [`finish_to`] does with a sink over the process's
-/// standard output and standard error, with one difference: when standard
-/// output is a terminal and the guide keeps terminal detection on, a text
-/// table wider than the terminal narrows its columns to fit, and the output
-/// budget still counts the unfitted table (ADR-0121). `finish_to` never
-/// fits a table, because its sink can be any writer.
+/// standard output and standard error that has a width: when standard
+/// output is a terminal and the guide keeps terminal detection on, `finish`
+/// gives its sink the terminal's number of columns, so a text table wider
+/// than the terminal narrows its columns to fit, and the output budget
+/// still counts the unfitted table (ADR-0121). `finish_to` fits a table to
+/// the width that its sink has, which [`Sink::fitted`] sets (ADR-0134).
 ///
 /// It takes `output` by value, because a run prints one result, so `main`
 /// cannot call it twice with one `Output` (ADR-0094):
@@ -291,6 +292,12 @@ pub fn finish<T: Rows, E: AsFailure>(
 /// spaces when the guide sets [`JsonLayout::Pretty`] (ADR-0052),
 /// with the `schema` id of `document` and the result under `data`; a single
 /// row's `data` is an object, and a `Vec`'s is an array.
+///
+/// When the sink has a width, which [`Sink::fitted`] sets, a text table
+/// wider than that width narrows its columns to fit, as `finish` fits it
+/// to a terminal, and the output budget still counts the unfitted table. A
+/// sink from [`Sink::new`] has no width, so its table prints unfitted
+/// (ADR-0121, ADR-0134).
 /// A document with [`Envelope::Without`](crate::Envelope::Without) prints
 /// the result alone, and its failures print as text on the error writer
 /// even with `--json`.

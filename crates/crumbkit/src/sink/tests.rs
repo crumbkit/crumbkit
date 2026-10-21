@@ -312,6 +312,37 @@ fn only_the_result_has_a_width_on_a_fitted_sink() {
 }
 
 #[test]
+fn a_sink_from_new_or_with_input_has_no_width() {
+    let new = Sink::new(Vec::new(), Vec::new()).styled(true);
+    let with_input = Sink::with_input(Vec::new(), Vec::new(), &b""[..], true);
+
+    assert_eq!(new.fitted_width(), None);
+    assert_eq!(with_input.fitted_width(), None);
+}
+
+#[test]
+fn the_width_that_fitted_sets_is_the_width_that_fitted_width_returns() {
+    let sink = Sink::new(Vec::new(), Vec::new()).fitted(Some(40));
+    assert_eq!(sink.fitted_width(), Some(40));
+    assert_eq!(sink.width(Role::Result), Some(40));
+
+    let sink = sink.fitted(Some(0));
+    assert_eq!(sink.fitted_width(), Some(0));
+
+    let sink = sink.fitted(None);
+    assert_eq!(sink.fitted_width(), None);
+}
+
+#[test]
+fn a_borrowed_or_buffering_sink_keeps_the_width_of_the_sink_it_borrows() {
+    let mut buffer = Vec::new();
+    let mut sink = Sink::new(Vec::new(), Vec::new()).fitted(Some(40));
+
+    assert_eq!(sink.by_ref().fitted_width(), Some(40));
+    assert_eq!(sink.buffering_result(&mut buffer).fitted_width(), Some(40));
+}
+
+#[test]
 fn a_sink_over_a_buffer_sends_the_result_to_the_buffer_and_messages_to_the_error_writer() {
     let (mut out, mut err, mut buffer) = (Vec::new(), Vec::new(), Vec::new());
     let mut sink = Sink::new(&mut out, &mut err);

@@ -1,7 +1,7 @@
 # ADR-0121. A text table fits the terminal's width
 
 - Date: 2026-10-20
-- Status: accepted
+- Status: amended by ADR-0134
 - Supersedes: ADR-0049, which it amends
 
 ## Context
