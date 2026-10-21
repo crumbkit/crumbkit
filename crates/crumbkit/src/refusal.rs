@@ -14,6 +14,8 @@ use crate::page::LimitAbove;
 use crate::sink::role::{Deliver, Message};
 use crate::{Call, Code, Failure, Field, Recovery, Spelling, codes};
 
+mod styled;
+
 /// A refused command line or flag value, as a [`Failure`] with the code
 /// `<tool>::cli::usage`.
 #[derive(Debug)]
@@ -36,6 +38,10 @@ pub(crate) struct Refusal {
     /// The help page of the group that the refused command line stopped
     /// at, which the text form prints in place of its lines, or `None`.
     page: Option<StyledStr>,
+    /// clap's rendered error, whose styles the text form takes at a sink
+    /// whose error writer wants styles (ADR-0131), or `None` for a refusal
+    /// that crumbkit words itself.
+    clap: Option<StyledStr>,
 }
 
 impl Refusal {
@@ -91,6 +97,7 @@ impl Refusal {
                 most: Some(above.most),
                 usage: Vec::new(),
                 page: None,
+                clap: None,
             };
         }
         let help = help_recovery(command, path);
@@ -109,6 +116,7 @@ impl Refusal {
             most: None,
             usage: Vec::new(),
             page: None,
+            clap: None,
         }
     }
 
@@ -119,6 +127,14 @@ impl Refusal {
     pub(crate) fn shown_with(mut self, usage: Vec<String>, page: Option<StyledStr>) -> Self {
         self.usage = usage;
         self.page = page;
+        self
+    }
+
+    /// Returns the refusal with `rendered`, clap's rendered error for the
+    /// refused command line, whose styles its text form takes at a sink
+    /// whose error writer wants styles (ADR-0131).
+    pub(crate) fn styled_as(mut self, rendered: StyledStr) -> Self {
+        self.clap = Some(rendered);
         self
     }
 
@@ -142,6 +158,7 @@ impl Refusal {
             most: None,
             usage: Vec::new(),
             page: None,
+            clap: None,
         }
     }
 
@@ -170,6 +187,10 @@ impl Refusal {
     /// with a group's help page prints that page as its text form in place
     /// of the lines, and reports its code to the observer as every refusal
     /// does (ADR-0118).
+    ///
+    /// At a sink whose error writer wants styles, the text form carries
+    /// clap's styles, as [`styled::text`] adds them with the command's
+    /// error style, and the group's page keeps clap's styles (ADR-0131).
     pub(crate) fn print(
         &self,
         sink: &mut dyn Deliver,
@@ -178,6 +199,8 @@ impl Refusal {
         printing: Printing,
         command: &mut Command,
     ) -> u8 {
+        let error = *command.get_styles().get_error();
+        let restyle = |plain: &str| styled::text(plain, &error, self.clap.as_ref());
         let document =
             PreparedFailure::new(self, spelling, printing, command, sink).with_usage(&self.usage);
         failure::print_prepared(
@@ -187,6 +210,7 @@ impl Refusal {
             &document,
             Message::Refusal,
             self.page.as_ref(),
+            Some(&restyle),
         );
         printing.exit(&codes::CLI_USAGE)
     }

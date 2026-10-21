@@ -1,7 +1,10 @@
 //! `Output::progress_allowed`, which decides whether a tool may draw
 //! progress from `--json`, the guide's terminal detection and standard
 //! error (ADR-0049), and the width of the terminal that a text table fits
-//! (ADR-0121).
+//! (ADR-0121), and what decides whether a refusal on standard error is
+//! styled (ADR-0131).
+
+use clap::ColorChoice;
 
 use super::Output;
 
@@ -35,6 +38,14 @@ impl Output {
     /// the terminal does not report its width.
     pub(super) fn read_terminal_width(&self) -> Option<usize> {
         width(!self.no_terminal, crate::sink::stdout_width)
+    }
+
+    /// Returns the command's `ColorChoice` and whether the guide keeps
+    /// terminal detection on, which decide with the environment and
+    /// standard error whether a refusal on standard error is styled
+    /// (ADR-0131).
+    pub(crate) fn refusal_colour(&self) -> (ColorChoice, bool) {
+        (self.command.get_color(), !self.no_terminal)
     }
 }
 

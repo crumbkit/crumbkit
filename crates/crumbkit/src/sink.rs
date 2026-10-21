@@ -1,9 +1,12 @@
 //! The writers that a tool's output goes to, and the one place that maps
 //! what each piece of output is to a stream (ADR-0128).
 
+use std::ffi::OsStr;
 use std::io::{self, BufRead, Empty, IsTerminal as _, Stderr, StdinLock, StdoutLock, Write};
 
-use self::role::{Deliver, Role};
+use clap::ColorChoice;
+
+use self::role::{Deliver, Message, Role};
 
 pub(crate) mod role;
 #[cfg(test)]
@@ -41,6 +44,12 @@ mod tests;
 /// [`Sink::styled`] sets and [`parse_to`](crate::parse_to) reads when it
 /// prints help or the version. A sink asks for no styles until
 /// `Sink::styled` asks for them, so a test or a pipe receives plain text.
+///
+/// A sink says separately whether its error writer wants styles, which
+/// [`Sink::styled_errors`] sets. A refusal and the group page printed for
+/// it carry clap's styles on the error writer only then, and every other
+/// message prints as plain text. A sink from [`Sink::new`] or
+/// [`Sink::with_input`] wants no error styles (ADR-0131).
 #[derive(Debug)]
 pub struct Sink<O, E, I = Empty> {
     /// Receives each piece of output whose role is the result.
@@ -55,6 +64,9 @@ pub struct Sink<O, E, I = Empty> {
     /// Whether the result is written with clap's styles, as a terminal
     /// shows them.
     styled: bool,
+    /// Whether a refusal and its group page are written to the error
+    /// writer with clap's styles (ADR-0131).
+    styled_errors: bool,
     /// The number of columns that a text table in the result fits, or
     /// `None` when it prints unfitted (ADR-0121).
     width: Option<usize>,
@@ -73,6 +85,7 @@ impl<O: Write, E: Write> Sink<O, E> {
             input: io::empty(),
             interactive: false,
             styled: false,
+            styled_errors: false,
             width: None,
             result_bytes: 0,
         }
@@ -98,6 +111,7 @@ impl<O: Write, E: Write, I: BufRead> Sink<O, E, I> {
             input,
             interactive,
             styled: false,
+            styled_errors: false,
             width: None,
             result_bytes: 0,
         }
@@ -117,8 +131,10 @@ impl<O, E, I> Sink<O, E, I> {
     /// crumbkit writes the styles whenever the sink asks for them. clap
     /// renders styles only with its `color` feature, and crumbkit writes
     /// them only with its own `color` feature, which turns clap's on.
-    /// Without it, a styled sink receives plain text. Every message prints
-    /// as plain text on the error writer whatever this says.
+    /// Without it, a styled sink receives plain text. This setting covers
+    /// the result alone. [`Sink::styled_errors`] decides the styles of a
+    /// refusal on the error writer, and every other message prints as
+    /// plain text (ADR-0131).
     ///
     /// [`parse`](crate::parse) and [`parse_from`](crate::parse_from) build
     /// a sink over the process's standard streams that asks for styles when
@@ -140,6 +156,50 @@ impl<O, E, I> Sink<O, E, I> {
     #[must_use]
     pub const fn is_styled(&self) -> bool {
         self.styled
+    }
+
+    /// Sets whether the error writer wants clap's styles for a refusal and
+    /// for the group page printed in its place. With `styled`, a refusal's
+    /// text carries clap's styles: the `error:` label, and the values and
+    /// literals that clap styles in its own error, such as a refused value
+    /// and the flag it was given to. A refused command line that stops at
+    /// a group prints the group's page with clap's styles. Stripping the
+    /// escape codes leaves the plain bytes. Every other message, such as
+    /// the text form of a failure or a note, prints as plain text whatever
+    /// this says (ADR-0131).
+    ///
+    /// The setter checks no terminal, as [`Sink::styled`] checks none. A
+    /// tool that owns its error stream decides it, for example from whether
+    /// standard error is a terminal, and honours `NO_COLOR` itself:
+    /// crumbkit writes the styles whenever the sink asks for them. clap
+    /// renders styles only with its `color` feature, and crumbkit writes
+    /// them only with its own `color` feature, which turns clap's on.
+    /// Without it, a refusal prints as plain text.
+    ///
+    /// [`parse`](crate::parse), [`parse_from`](crate::parse_from) and
+    /// [`Refused::print`](crate::Refused::print) build a sink over the
+    /// process's standard streams that asks for error styles when standard
+    /// error is a terminal or `CLICOLOR_FORCE` is set, and never under
+    /// `NO_COLOR`, with the command's `ColorChoice` set to `Never` or with
+    /// the guide's terminal detection off.
+    ///
+    /// ```
+    /// let sink = crumbkit::Sink::new(Vec::new(), Vec::new()).styled_errors(true);
+    /// assert!(sink.is_styled_errors());
+    /// assert!(!sink.is_styled());
+    /// ```
+    #[must_use]
+    pub const fn styled_errors(mut self, styled: bool) -> Self {
+        self.styled_errors = styled;
+        self
+    }
+
+    /// Reports whether the error writer wants clap's styles for a refusal
+    /// and its group page, which [`Sink::styled_errors`] sets. A new sink
+    /// asks for none.
+    #[must_use]
+    pub const fn is_styled_errors(&self) -> bool {
+        self.styled_errors
     }
 
     /// Returns the sink with `width`, the number of columns that a text
@@ -170,6 +230,7 @@ impl<O, E, I> Sink<O, E, I> {
             input: io::empty(),
             interactive: false,
             styled: self.styled,
+            styled_errors: self.styled_errors,
             width: self.width,
             result_bytes: 0,
         }
@@ -188,6 +249,7 @@ impl<O, E, I> Sink<O, E, I> {
             input: io::empty(),
             interactive: false,
             styled: self.styled,
+            styled_errors: self.styled_errors,
             width: self.width,
             result_bytes: 0,
         }
@@ -251,8 +313,10 @@ impl<O: Write, E: Write, I> Deliver for Sink<O, E, I> {
     fn styles(&self, role: Role) -> bool {
         match role {
             Role::Result => self.styled,
-            // A message prints plain text. A record that colours a kind of
-            // message changes this arm and no printing site.
+            // A refusal and its group page carry clap's styles when the
+            // error writer wants them (ADR-0131). Every other message prints
+            // plain text.
+            Role::Message(Message::Refusal | Message::RefusalHelp) => self.styled_errors,
             Role::Message(_) => false,
         }
     }
@@ -309,6 +373,86 @@ impl Sink<StdoutLock<'static>, Stderr> {
         let err = io::stderr();
         Self::new(out, err)
     }
+}
+
+impl Sink<StdoutLock<'static>, Stderr> {
+    /// Returns the standard sink that [`parse`](crate::parse) and
+    /// [`parse_from`](crate::parse_from) print a refusal to. Its error
+    /// writer wants clap's styles as [`error_styles`] decides from
+    /// `NO_COLOR`, `CLICOLOR_FORCE`, whether standard error is a terminal,
+    /// the command's `choice` and the guide's terminal `detection`
+    /// (ADR-0131). Without crumbkit's `color` feature it wants none.
+    pub(crate) fn standard_for_refusal(choice: ColorChoice, detection: bool) -> Self {
+        let styled = cfg!(feature = "color")
+            && {
+                #[expect(
+                    clippy::disallowed_methods,
+                    reason = "the sink owns standard error, and NO_COLOR decides whether a refusal on it is styled"
+                )]
+                let no_color = std::env::var_os("NO_COLOR");
+                #[expect(
+                    clippy::disallowed_methods,
+                    reason = "the sink owns standard error, and CLICOLOR_FORCE decides whether a refusal on it is styled"
+                )]
+                let force = std::env::var_os("CLICOLOR_FORCE");
+                error_styles(
+                    color_off(no_color.as_deref()),
+                    color_forced(force.as_deref()),
+                    stderr_is_terminal(),
+                    choice,
+                    detection,
+                )
+            };
+        Self::standard().styled_errors(styled)
+    }
+}
+
+/// Reports whether a refusal on standard error carries clap's styles:
+///
+/// - never when terminal `detection` is off or the command's `choice` is
+///   `ColorChoice::Never`, as help is never styled then (ADR-0102);
+/// - never when `NO_COLOR` is set, which `no_color` reports, even with
+///   `CLICOLOR_FORCE`;
+/// - always when `CLICOLOR_FORCE` forces colour, which `clicolor_force`
+///   reports, whatever standard error is;
+/// - otherwise only when standard error is a terminal, which
+///   `stderr_is_terminal` reports, so a pipe or a file receives plain
+///   text.
+///
+/// `ColorChoice::Always` follows the same rule as `ColorChoice::Auto`.
+//
+// RUST-10: this reads `NO_COLOR` and `CLICOLOR_FORCE` alone. clap's colour
+// rule, which anstream applies, also turns colour off when `CLICOLOR` is 0
+// or `TERM` is unset or `dumb`, so a refusal at such a terminal is styled
+// where help is not. Reading those variables here, or anstream's choice for
+// standard error, replaces this when a tool needs them.
+#[expect(
+    clippy::fn_params_excessive_bools,
+    reason = "each flag is one independent input of the decision, which tests pass directly"
+)]
+pub(crate) const fn error_styles(
+    no_color: bool,
+    clicolor_force: bool,
+    stderr_is_terminal: bool,
+    choice: ColorChoice,
+    detection: bool,
+) -> bool {
+    if !detection || matches!(choice, ColorChoice::Never) || no_color {
+        return false;
+    }
+    clicolor_force || stderr_is_terminal
+}
+
+/// Reports whether `NO_COLOR` with `value` turns colour off, which any
+/// value that is not empty does.
+pub(crate) fn color_off(value: Option<&OsStr>) -> bool {
+    value.is_some_and(|value| !value.is_empty())
+}
+
+/// Reports whether `CLICOLOR_FORCE` with `value` forces colour, which any
+/// value that is neither empty nor `0` does.
+pub(crate) fn color_forced(value: Option<&OsStr>) -> bool {
+    value.is_some_and(|value| !value.is_empty() && value != "0")
 }
 
 impl Sink<StdoutLock<'static>, Stderr, StdinLock<'static>> {

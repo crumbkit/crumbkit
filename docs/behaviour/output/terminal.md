@@ -19,6 +19,9 @@ Detection changes only these:
 - Help keeps clap's colours when standard output is a terminal. `parse`
   marks its `Sink` as styled then, and a tool that passes its own sink to
   `parse_to` marks it with `Sink::styled` ([help](../help/README.md)).
+- A refusal and the group page printed for it keep clap's styles when
+  standard error is a terminal or `CLICOLOR_FORCE` is set, and never under
+  `NO_COLOR` ([parsing](../parsing/README.md#refused-command-lines)).
 - `Output::progress_allowed` is true only when `--json` is off and standard
   error is a terminal ([output](README.md#following-the-callers-format)).
 - A picker and `Output::confirm` ask only when standard input and standard
@@ -29,7 +32,7 @@ Detection changes only these:
 - The usage log's `caller` field reads detection. The usage log is not
   output that a caller reads ([usage log](../usage-log/README.md)).
 
-Why: ADR-0049, ADR-0102, ADR-0121.
+Why: ADR-0049, ADR-0102, ADR-0121, ADR-0131.
 
 ## The table's width
 
@@ -75,15 +78,16 @@ Why: ADR-0121, ADR-0128.
 A tool turns detection off with `Guide::without_terminal_detection`, which
 takes the tool's reason. crumbkit-test's `check_opt_outs` lists the setting
 as `terminal-detection/off` with that reason and its costs: a person at a
-terminal is never asked and must type every argument and `--yes`, progress
-and help colour never show, and a text table never fits the terminal's width
+terminal is never asked and must type every argument and `--yes`, progress,
+help colour and refusal colour never show, and a text table never fits the terminal's width
 ([opt-outs](../adoption/opt-outs.md)).
 The `Output` that `parse` returns, the `Output` inside a `Stop` and the
 `Output` that `Output::new` builds copy the setting from the guide, as they
 copy the guide's JSON layout and code renames.
 
 The setting belongs to the tool and has no environment variable. A caller
-already turns colour off with `NO_COLOR` or `TERM=dumb`, which clap reads,
+already turns colour off with `NO_COLOR`, and help's colour with
+`TERM=dumb`, which clap reads,
 questions off with `--no-input`, and progress off with `--json`.
 
 Why: ADR-0049.
@@ -101,6 +105,11 @@ pseudo-terminal has clap's colours, so the test fails when the run does not
 reach a terminal. A third test runs `shelf books list --all` at a
 pseudo-terminal 40 columns wide and checks that the titles are cut and each
 id is whole.
+
+Two tests run the refused `shelf books list --limit 101` at a
+pseudo-terminal. Its standard error carries clap's styles, and without the
+escape codes it equals the `.stderr` golden file. Under `NO_COLOR` it
+equals the golden file as printed (ADR-0131).
 
 The test uses rustix's safe `pty` and `termios` functions, which need no
 `unsafe` code (RUST-2) and add no crate to the lock file. It runs on macOS

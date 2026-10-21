@@ -8,6 +8,7 @@
 ## Children
 
 - [ADR-0123. A refusal recovers with the tool's hint](0123-a-refusal-recovers-with-the-tools-hint.md)
+- [ADR-0131. A refusal is styled at a terminal](0131-a-refusal-is-styled-at-a-terminal.md)
 
 ## Context
 
