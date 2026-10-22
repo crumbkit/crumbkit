@@ -153,6 +153,11 @@ pub(super) enum Kind {
     /// It counts the runs that took that long.
     #[serde(rename = "slow command")]
     SlowCommand,
+    /// A command is a slow command, and some of its runs that took at least
+    /// 1 second spent at least half that time waiting on another system, as
+    /// the tool reported through its facts. It counts those runs.
+    #[serde(rename = "mostly waiting")]
+    MostlyWaiting,
 }
 
 /// A name and the number of runs that it counts.

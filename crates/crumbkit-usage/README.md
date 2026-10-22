@@ -48,26 +48,32 @@ handles either signal itself runs without the log. The line goes to
 `usage.jsonl` in the tool's directory under the XDG state directory, such
 as `~/.local/state/shelf/usage.jsonl`.
 
+A tool records value-free facts of its own, such as the requests it sent
+to a server and the time it waited for them, with an [`Extension`] type and
+[`extend`].
+
 A tool adds `self usage` with [`SelfUsage`] and [`findings`], and
 `self figures list` with [`SelfFigures`] and [`figures`]. shelf's
 [`cli.rs`] and [`lib.rs`] show both.
 
 ## Where to read more
 
-- [`start`] describes the log.
+- [`start`] describes the log, and [`Extension`] the tool's own facts.
 - [`SelfUsage`] and [`SelfFigures`] describe the two commands.
 - The [schemas] describe the `<tool>/usage/v1`, `<tool>/self-usage/v1`
   and `<tool>/self-figures-list/v1` documents.
 - The [usage log docs], [trace context docs] and [usage report docs]
   describe the log, its trace context and the two commands, and the
   [run observer docs] describe how crumbkit reports each run to the log.
-  [ADR-0029], [ADR-0030], [ADR-0034] and [ADR-0095] record why they work
-  this way.
+  [ADR-0029], [ADR-0030], [ADR-0034], [ADR-0095], [ADR-0144] and
+  [ADR-0145] record why they work this way.
 
 Licensed under either of Apache License, Version 2.0 or MIT license at your
 option.
 
 [`start`]: src/recorder.rs
+[`Extension`]: src/facts.rs
+[`extend`]: src/facts.rs
 [`SelfUsage`]: src/self_usage.rs
 [`findings`]: src/self_usage.rs
 [`SelfFigures`]: src/self_figures.rs
@@ -79,6 +85,8 @@ option.
 [ADR-0030]: ../../docs/decisions/api/usage/0030-trace-context.md
 [ADR-0034]: ../../docs/decisions/api/usage/0034-usage-report.md
 [ADR-0095]: ../../docs/decisions/api/usage/0095-text-hand-over-own-signals-and-menu.md
+[ADR-0144]: ../../docs/decisions/api/usage/0144-a-tool-adds-value-free-facts-to-the-usage-record.md
+[ADR-0145]: ../../docs/decisions/api/usage/0145-self-usage-finds-slow-commands-that-mostly-wait.md
 [usage log docs]: ../../docs/behaviour/usage-log/README.md
 [trace context docs]: ../../docs/behaviour/usage-log/trace-context.md
 [usage report docs]: ../../docs/behaviour/usage-log/report.md

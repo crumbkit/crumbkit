@@ -99,11 +99,42 @@ The line is the `<tool>/usage/v1` record, whose schema is checked in as
 lists every field and what it holds, and its `schema` field accepts any
 tool's `<tool>/usage/v1`, such as `shelf/usage/v1`. A field that does not apply to the run
 is left out. `trace`, `run` and `parent` place the run in a W3C trace, as
-[trace context](trace-context.md) describes. The `empty` field is optional,
-and a record with it keeps the `v1` id. The record holds no section of the
-tool's own, so every field is one that crumbkit writes and checks.
+[trace context](trace-context.md) describes. The `empty` and `facts` fields
+are optional, and a record with them keeps the `v1` id. Every field other
+than `facts` is one that crumbkit writes and checks.
 
 Why: ADR-0029, ADR-0007, ADR-0095.
+
+## The tool's own facts
+
+A tool records facts that crumbkit cannot see, such as the requests it sent
+to a server and the time it waited for them, under the record's `facts`
+field. The tool keeps them in a type of its own that implements
+[`Extension`](../../../crates/crumbkit-usage/src/facts.rs), and changes that
+value during the run with `crumbkit_usage::extend`. Without a started log,
+`extend` does nothing. When the line is written, each extension writes its
+facts through `Facts`, which takes three kinds:
+
+- a count under a `Key`, such as `"counts": {"requests": 3}`;
+- a `Label` under a `Key`, such as `"labels": {"route": ["/books/{id}"]}`;
+- the time spent waiting on another system, such as `"waited_ms": 1520`.
+
+A `Key` is 1 to 32 bytes of lowercase letters, digits and `_`, starting
+with a letter. A `Label` is 1 to 64 bytes of ASCII letters, digits, braces
+and `_-./:`, so it holds a route template, a status class or a kind of
+target, and no space, query string or `@`. Both hold a `&'static str` and
+are built by a `const fn`, so a tool declares them as constants and a bad
+one fails to compile. A run may keep several extensions, such as the
+tool's own and one of a library it uses: counts under one key add, labels
+under one key are kept once each in the order written, and waiting times
+add. A count of 0 is left out, and a section with nothing in it is left
+out.
+
+The facts count towards the line's limit of 1 KiB. A line that would pass
+it with its facts is written without them. shelf's `books show` records
+how many books it looked up and how many were missing.
+
+Why: ADR-0144.
 
 ## What the record never holds
 
@@ -117,7 +148,10 @@ hex that crumbkit generated or validated, and the command line appears only
 as a keyed hash.
 
 The types do not check the text that the tool itself gives its commands,
-arguments, version and codes.
+arguments, version and codes. In the tool's facts, the types keep text to
+the keys and labels that the tool declares as `&'static str` constants,
+and they cannot stop a tool from writing a value, such as an id, as a
+count.
 
 shelf's end-to-end test in
 [`tests/usage.rs`](../../../examples/shelf/tests/usage.rs) plants

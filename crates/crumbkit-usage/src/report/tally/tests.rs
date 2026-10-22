@@ -365,3 +365,44 @@ fn a_session_finding_reaches_the_report_with_the_findings_of_its_figures() {
         }]
     );
 }
+
+#[test]
+fn a_slow_command_whose_slow_runs_waited_for_half_their_time_is_mostly_waiting() {
+    let timed = |at, ms, waited_ms| {
+        let mut entry = Entry::run("a", at, "books show");
+        entry.ms = ms;
+        entry.facts.waited_ms = waited_ms;
+        entry
+    };
+
+    let waiting = report(&[
+        timed(1, SLOW, SLOW / 2),
+        timed(2, 2 * SLOW, 2 * SLOW),
+        timed(3, 2 * SLOW, SLOW - 1),
+        timed(4, 10, 10),
+    ]);
+
+    assert_eq!(
+        kinds(&waiting),
+        [
+            (Kind::SlowCommand, "books show", 3),
+            (Kind::MostlyWaiting, "books show", 2),
+        ]
+    );
+}
+
+#[test]
+fn a_command_that_is_not_slow_is_never_mostly_waiting() {
+    let mut quick = Entry::run("a", 1, "books show");
+    quick.ms = SLOW - 1;
+    quick.facts.waited_ms = SLOW - 1;
+    let mut once = Entry::run("a", 2, "books show");
+    once.ms = 10;
+    let mut slow_and_busy = Entry::run("b", 3, "books list");
+    slow_and_busy.ms = SLOW;
+    slow_and_busy.facts.waited_ms = SLOW / 2 - 1;
+
+    let report = report(&[quick, once, slow_and_busy]);
+
+    assert_eq!(kinds(&report), [(Kind::SlowCommand, "books list", 1)]);
+}

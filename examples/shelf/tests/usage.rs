@@ -274,3 +274,19 @@ fn a_listing_with_no_rows_records_empty_and_a_listing_with_rows_leaves_it_out() 
     assert_eq!(lines[2]["command"], "books list");
     assert_eq!(lines[2]["empty"], true);
 }
+
+#[test]
+fn books_show_records_how_many_books_it_looked_up_and_how_many_were_missing() {
+    let dir = tempfile::tempdir().unwrap();
+    let home = dir.path();
+
+    shelf(home, &["books", "show", "1", "2", "99"]).code(1);
+    shelf(home, &["books", "list"]).success();
+
+    let lines = lines(home).unwrap();
+    assert_eq!(
+        lines[0]["facts"],
+        json!({"counts": {"lookups": 3, "missing": 1}})
+    );
+    assert_eq!(lines[1].get("facts"), None);
+}

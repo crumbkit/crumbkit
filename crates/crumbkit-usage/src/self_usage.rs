@@ -372,6 +372,9 @@ fn suggestion(finding: &Finding, figures: Option<&Figures>) -> String {
             "the 95th percentile of its wall time is {} ms",
             grouped(figures.and_then(|figures| figures.p95_ms).unwrap_or(0))
         ),
+        Kind::MostlyWaiting => {
+            "slow runs spent half their time or more waiting on another system".to_owned()
+        }
     }
 }
 

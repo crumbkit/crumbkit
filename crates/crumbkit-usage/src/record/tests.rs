@@ -1,6 +1,8 @@
 use serde_json::{Value, json};
 
 use super::{Hash, Help, Name, Record, Run, SpanId, TraceId, TraceIds, line};
+use crate::facts::{Extensions, Written};
+use crate::{Extension, Facts, Key, Label};
 
 const KEY: [u8; 16] = *b"0123456789abcdef";
 
@@ -29,17 +31,18 @@ fn bare() -> Record {
         },
         interrupted: false,
         run: Run::default(),
+        facts: None,
     }
 }
 
 /// Returns the record as the JSON object of its line.
-fn parsed(record: &Record) -> Value {
-    serde_json::from_slice(&line(record).unwrap()).unwrap()
+fn parsed(mut record: Record) -> Value {
+    serde_json::from_slice(&line(&mut record).unwrap()).unwrap()
 }
 
 #[test]
 fn a_record_leaves_out_every_field_that_does_not_apply() {
-    let record = parsed(&bare());
+    let record = parsed(bare());
 
     let mut fields: Vec<&String> = record.as_object().unwrap().keys().collect();
     fields.sort();
@@ -76,7 +79,7 @@ fn a_record_writes_every_field_of_the_run_beside_its_own() {
         empty: true,
     };
 
-    let record = parsed(&record);
+    let record = parsed(record);
 
     assert_eq!(record["trace"], "4b4b4b4b4b4b4b4b4b4b4b4b4b4b4b4b");
     assert_eq!(record["run"], "2222222222222222");
@@ -130,16 +133,62 @@ fn a_hash_tells_where_one_word_ends_and_the_next_begins() {
 #[test]
 fn a_line_ends_with_a_newline_and_a_line_over_1_kib_is_dropped() {
     let mut record = bare();
-    let fits = line(&record).unwrap();
+    let fits = line(&mut record).unwrap();
     assert_eq!(fits.last(), Some(&b'\n'));
     // A command path fills the line to exactly 1 KiB, and one more byte
     // makes it too long.
     let room = super::MAX_LINE - fits.len() - r#","command":"""#.len() + 1;
     record.run.command = Some(name(&"x".repeat(room)));
-    assert_eq!(line(&record).unwrap().len(), super::MAX_LINE + 1);
+    assert_eq!(line(&mut record).unwrap().len(), super::MAX_LINE + 1);
 
     record.run.command = Some(name(&"x".repeat(room + 1)));
-    assert_eq!(line(&record), None);
+    assert_eq!(line(&mut record), None);
+}
+
+/// Returns facts that write `labels` labels of 64 bytes each, which fill
+/// about 66 bytes of the line apiece.
+fn long_labels(labels: usize) -> Written {
+    #[derive(Default)]
+    struct Routes(usize);
+    impl Extension for Routes {
+        fn write(&self, facts: &mut Facts) {
+            const ROUTE: Key = Key::new("route");
+            const ROUTES: [&str; 16] = [
+                "/a/{id}", "/b/{id}", "/c/{id}", "/d/{id}", "/e/{id}", "/f/{id}", "/g/{id}",
+                "/h/{id}", "/i/{id}", "/j/{id}", "/k/{id}", "/l/{id}", "/m/{id}", "/n/{id}",
+                "/o/{id}", "/p/{id}",
+            ];
+            for route in ROUTES.iter().take(self.0) {
+                facts.label(ROUTE, Label::new(route));
+            }
+        }
+    }
+    let mut extensions = Extensions::default();
+    extensions.change(|routes: &mut Routes| routes.0 = labels);
+    extensions.written().unwrap()
+}
+
+#[test]
+fn a_record_writes_the_tools_facts_under_their_own_field() {
+    let mut record = bare();
+    record.facts = Some(long_labels(2));
+
+    assert_eq!(
+        parsed(record)["facts"],
+        json!({"labels": {"route": ["/a/{id}", "/b/{id}"]}})
+    );
+}
+
+#[test]
+fn a_line_that_its_facts_would_take_over_1_kib_is_written_without_them() {
+    let mut record = bare();
+    record.run.command = Some(name(&"x".repeat(600)));
+    record.facts = Some(long_labels(16));
+
+    let line = parsed(record);
+
+    assert_eq!(line.get("facts"), None);
+    assert_eq!(line["command"].as_str().map(str::len), Some(600));
 }
 
 #[test]
@@ -193,7 +242,7 @@ fn a_record_with_a_tools_own_schema_id_is_valid_under_the_checked_in_schema() {
         let mut record = bare();
         record.schema = id.to_owned();
 
-        assert_eq!(schema_field_problem(&parsed(&record)["schema"]), None);
+        assert_eq!(schema_field_problem(&parsed(record)["schema"]), None);
     }
 }
 
@@ -209,7 +258,7 @@ fn a_record_with_another_documents_id_is_invalid_under_the_checked_in_schema() {
         record.schema = id.to_owned();
 
         assert!(
-            schema_field_problem(&parsed(&record)["schema"]).is_some(),
+            schema_field_problem(&parsed(record)["schema"]).is_some(),
             "{id}"
         );
     }

@@ -2,6 +2,8 @@
 // links to files in the repository, which work on GitHub. The definitions below
 // come first, so rustdoc uses them for the same labels (ADR-0013).
 //! [`start`]: crate::start()
+//! [`Extension`]: crate::Extension
+//! [`extend`]: crate::extend()
 //! [`SelfUsage`]: crate::SelfUsage
 //! [`findings`]: crate::findings()
 //! [`SelfFigures`]: crate::SelfFigures
@@ -13,6 +15,8 @@
 //! [ADR-0030]: https://github.com/crumbkit/crumbkit/blob/main/docs/decisions/api/usage/0030-trace-context.md
 //! [ADR-0034]: https://github.com/crumbkit/crumbkit/blob/main/docs/decisions/api/usage/0034-usage-report.md
 //! [ADR-0095]: https://github.com/crumbkit/crumbkit/blob/main/docs/decisions/api/usage/0095-text-hand-over-own-signals-and-menu.md
+//! [ADR-0144]: https://github.com/crumbkit/crumbkit/blob/main/docs/decisions/api/usage/0144-a-tool-adds-value-free-facts-to-the-usage-record.md
+//! [ADR-0145]: https://github.com/crumbkit/crumbkit/blob/main/docs/decisions/api/usage/0145-self-usage-finds-slow-commands-that-mostly-wait.md
 //! [usage log docs]: https://github.com/crumbkit/crumbkit/blob/main/docs/behaviour/usage-log/README.md
 //! [trace context docs]: https://github.com/crumbkit/crumbkit/blob/main/docs/behaviour/usage-log/trace-context.md
 //! [usage report docs]: https://github.com/crumbkit/crumbkit/blob/main/docs/behaviour/usage-log/report.md
@@ -21,6 +25,7 @@
 
 mod caller;
 mod context;
+mod facts;
 mod file;
 mod key;
 mod observer;
@@ -36,6 +41,7 @@ mod shape;
 #[cfg(test)]
 mod testing;
 
+pub use self::facts::{Extension, Facts, Key, Label, extend};
 pub use self::recorder::{Log, start};
 pub use self::self_figures::{FiguresRow, SELF_FIGURES_LIST, SelfFigures, figures};
 pub use self::self_usage::{FindingRow, SELF_USAGE, SelfUsage, UsageSummary, findings};

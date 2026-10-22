@@ -436,3 +436,43 @@ fn a_subcommand_that_takes_a_usage_report_without_a_doc_comment_has_no_descripti
         assert_eq!(leaf.get_long_about(), None, "{}", leaf.get_name());
     }
 }
+
+#[test]
+fn a_slow_command_that_mostly_waited_has_a_row_that_names_no_fact_of_the_tool() {
+    let facts = json!({
+        "ms": 2_000,
+        "facts": {
+            "counts": {"s3cr3t_count": 4},
+            "labels": {"route": ["/s3cr3t/{id}"]},
+            "waited_ms": 1_500,
+        },
+    });
+    let log = [line(1, "books show", &facts), line(2, "books show", &facts)].concat();
+    let listing = report_from(
+        &tool(),
+        &Guide::new(),
+        Some(Cursor::new(log.clone())),
+        Duration::from_secs(60),
+        now(),
+    );
+
+    assert_eq!(
+        rows(&log),
+        [
+            (
+                "slow command".to_owned(),
+                2,
+                "books show".to_owned(),
+                "the 95th percentile of its wall time is 2,000 ms".to_owned()
+            ),
+            (
+                "mostly waiting".to_owned(),
+                2,
+                "books show".to_owned(),
+                "slow runs spent half their time or more waiting on another system".to_owned()
+            ),
+        ]
+    );
+    let printed = serde_json::to_string(listing.rows()).unwrap();
+    assert!(!printed.contains("s3cr3t"), "{printed}");
+}

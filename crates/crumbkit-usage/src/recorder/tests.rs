@@ -13,6 +13,7 @@ use crate::context::Context;
 use crate::file::LIMITS;
 use crate::record::Help;
 use crate::testing::TempDir;
+use crate::{Extension, Facts, Key};
 use crumbkit::{Code, Spelling, ToolName};
 
 /// Joins the segments of a code with `.`, so a test shows that the code
@@ -323,4 +324,30 @@ fn a_line_without_tolerated_codes_leaves_the_field_out() {
     let line = &saved(&state, parsed(), false)[0];
 
     assert!(line.get("tolerated").is_none(), "{line}");
+}
+
+#[test]
+fn a_saved_line_holds_the_facts_that_the_tool_s_extension_wrote() {
+    const REQUESTS: Key = Key::new("requests");
+    #[derive(Default)]
+    struct Requests(u64);
+    impl Extension for Requests {
+        fn write(&self, facts: &mut Facts) {
+            facts
+                .count(REQUESTS, self.0)
+                .waited(Duration::from_millis(5 * self.0));
+        }
+    }
+    let state = TempDir::new("facts");
+    let mut recorder = parsed();
+
+    recorder
+        .extensions
+        .change(|requests: &mut Requests| requests.0 += 2);
+
+    let lines = saved(&state, recorder, false);
+    assert_eq!(
+        lines[0]["facts"],
+        json!({"counts": {"requests": 2}, "waited_ms": 10})
+    );
 }

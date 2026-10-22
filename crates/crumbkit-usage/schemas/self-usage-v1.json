@@ -305,6 +305,11 @@
           "description": "The 95th percentile of a command's wall time is at least 1 second.\nIt counts the runs that took that long.",
           "type": "string",
           "const": "slow command"
+        },
+        {
+          "description": "A command is a slow command, and some of its runs that took at least\n1 second spent at least half that time waiting on another system, as\nthe tool reported through its facts. It counts those runs.",
+          "type": "string",
+          "const": "mostly waiting"
         }
       ]
     },

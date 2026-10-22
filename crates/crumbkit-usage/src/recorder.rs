@@ -13,6 +13,7 @@ use signal_hook::consts::SIGINT;
 
 use super::caller::{self, Caller};
 use super::context::{self, Context};
+use super::facts::Extensions;
 use super::file::{self, LIMITS, Limits};
 use super::key;
 use super::observer::{self, UsageLog};
@@ -90,6 +91,9 @@ pub(super) struct Recorder {
     /// Whether a signal ended a child that held the terminal, which the
     /// observer reports. The line then says that the run was interrupted.
     pub(super) signalled: bool,
+    /// The tool's own extensions of the record, which [`crate::extend`]
+    /// changes.
+    pub(super) extensions: Extensions,
 }
 
 /// The guard that [`start`] returns. It writes the run's line when it
@@ -233,6 +237,7 @@ impl Recorder {
             tolerated: Vec::new(),
             run: Run::default(),
             signalled: false,
+            extensions: Extensions::default(),
         }
     }
 
@@ -307,6 +312,7 @@ impl Recorder {
             trace: self.context.ids,
             interrupted: interrupted || self.signalled,
             run,
+            facts: self.extensions.written(),
         })
     }
 }
@@ -422,7 +428,7 @@ fn save(
     let dir = state.join(recorder.tool.as_ref()?.as_str());
     file::create_dir(&dir).ok()?;
     let key = key::key(&dir)?;
-    let line = record::line(&recorder.finish(&key, now, interrupted, caller)?)?;
+    let line = record::line(&mut recorder.finish(&key, now, interrupted, caller)?)?;
     file::append(&dir, &line, limits).ok()
 }
 

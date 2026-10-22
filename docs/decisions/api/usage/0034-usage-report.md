@@ -1,7 +1,7 @@
 # ADR-0034. Usage report
 
 - Date: 2026-10-11
-- Status: accepted
+- Status: amended by ADR-0145
 
 ## Context
 
