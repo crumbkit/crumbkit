@@ -4,7 +4,7 @@ use std::fmt;
 use std::marker::PhantomData;
 
 use crate::segment::{is_component, is_segment};
-use crate::{AsFailure, Batch, Headed, Rows};
+use crate::{AsFailure, Batch, Headed, Listing, Row, Rows};
 
 mod envelope;
 #[cfg(test)]
@@ -76,6 +76,9 @@ pub struct Document<T> {
     /// The function that returns the bytes of the row at a position of a
     /// headed batch, which `headed` sets. An untyped document has none.
     bytes_of: Option<RowBytes<T>>,
+    /// What the text of a listing does beyond its columns, which the tool
+    /// chose with `only_problems` and `long_noted`.
+    listing: ListingText,
     /// `PhantomData<fn() -> T>` ties the document to `T` without holding a
     /// `T`. A function pointer is `Send` and `Sync` whatever it returns, so
     /// `Document<T>` is `Send` and `Sync` for every `T`; `PhantomData<T>`
@@ -132,6 +135,10 @@ impl<T> Document<T> {
             empty: None,
             headed: false,
             bytes_of: None,
+            listing: ListingText {
+                only_problems: false,
+                long_note: false,
+            },
             result: PhantomData,
         }
     }
@@ -234,8 +241,30 @@ impl<T> Document<T> {
         self.bytes_of
     }
 
+    /// Reports whether [`Document::only_problems`] was called, so the
+    /// default text of the listing lists only the rows that report a
+    /// problem.
+    #[must_use]
+    pub(crate) const fn lists_only_problems(&self) -> bool {
+        self.listing.only_problems
+    }
+
+    /// Reports whether [`Document::long_noted`] was called, so the
+    /// listing's text prints a note under `--long`.
+    #[must_use]
+    pub(crate) const fn has_long_note(&self) -> bool {
+        self.listing.long_note
+    }
+
+    /// Returns what the text of a listing does beyond its columns, which
+    /// decides whether the command offers `--long` without long columns.
+    pub(crate) const fn listing_text(&self) -> ListingText {
+        self.listing
+    }
+
     /// Returns the same id, description, choice of envelope, budget
-    /// settings, empty note and text form as a `Document<()>`, which no
+    /// settings, empty note, text form, choice of rows and long note as a
+    /// `Document<()>`, which no
     /// longer names the result type, so one list can hold the documents of
     /// results of different types. crumbkit's
     /// help leaves keep their documents in this form.
@@ -251,6 +280,7 @@ impl<T> Document<T> {
             empty: self.empty,
             headed: self.headed,
             bytes_of: None,
+            listing: self.listing,
             result: PhantomData,
         }
     }
@@ -286,6 +316,96 @@ impl<R: Headed, E: AsFailure> Document<Batch<R, E>> {
         self.headed = true;
         self.bytes_of = Some(row_bytes::<R, E>);
         self
+    }
+}
+
+impl<R: Row, S> Document<Listing<R, S>> {
+    /// Returns the same listing document with a default text that lists
+    /// only the rows that report a problem, as [`Row::is_problem`] decides,
+    /// such as the failed checks of a check command (ADR-0138).
+    ///
+    /// Without `--json`, `--long` or `--fields`, `crumbkit::finish` prints
+    /// the summary line, and then the table of the rows that report a
+    /// problem, each with its child lines. When no row reports one, the text
+    /// is the summary line alone, with no header. The footer, the empty note
+    /// of a listing without rows, the note that counts the rows that report
+    /// a problem and the exit do not change, and no line counts the rows
+    /// that the text leaves out. `--long` and `--fields` print every row,
+    /// and `--json` holds every row unchanged.
+    ///
+    /// The leaf offers `--long` even when the row type has no long columns,
+    /// because `--long` lists every row, and its help prints a `Rows:` line
+    /// that names each view that lists every row. A row type that sets
+    /// [`Row::WHOLE`] and names no columns offers no `--long`, so its text
+    /// lists every row only through `--json`.
+    ///
+    /// ```
+    /// # #[derive(serde::Serialize, schemars::JsonSchema)]
+    /// # struct Check { package: String, passed: bool }
+    /// # impl crumbkit::Row for Check {
+    /// #     const COLUMNS: &'static [&'static str] = &["package", "passed"];
+    /// #     fn is_problem(&self) -> bool { !self.passed }
+    /// # }
+    /// use crumbkit::{Document, Listing};
+    ///
+    /// const CHECKS: Document<Listing<Check>> =
+    ///     Document::new("lint", "checks", 1, "The checks of each package.").only_problems();
+    /// ```
+    #[must_use]
+    pub const fn only_problems(mut self) -> Self {
+        self.listing.only_problems = true;
+        self
+    }
+
+    /// Returns the same listing document, declaring that its listing
+    /// carries a long note, which [`Listing::long_note`] sets and the text
+    /// prints on standard error under `--long` only (ADR-0139).
+    ///
+    /// The leaf then offers `--long` even when the row type has no long
+    /// columns, so `--long` prints the note, and its `-h` and `--help`
+    /// print the line `Long note: --long prints a note on standard
+    /// error.` A row type that has long columns offers `--long` without
+    /// this declaration, and its long note prints all the same. A row type
+    /// that sets [`Row::WHOLE`] and names no columns offers no `--long`, as
+    /// for [`Document::only_problems`].
+    ///
+    /// ```
+    /// # #[derive(serde::Serialize, schemars::JsonSchema)]
+    /// # struct Usage { path: String, bytes: u64 }
+    /// # impl crumbkit::Row for Usage {
+    /// #     const COLUMNS: &'static [&'static str] = &["path", "bytes"];
+    /// # }
+    /// use crumbkit::{Document, Listing};
+    ///
+    /// const USAGE: Document<Listing<Usage>> =
+    ///     Document::new("du", "usage", 1, "The space of each directory.").long_noted();
+    ///
+    /// let usage = Listing::from_all(Vec::<Usage>::new(), None)
+    ///     .long_note("Sizes are blocks on disk, and a hard-linked file counts once.");
+    /// ```
+    #[must_use]
+    pub const fn long_noted(mut self) -> Self {
+        self.listing.long_note = true;
+        self
+    }
+}
+
+/// What the text of a listing does beyond its columns. Each setting makes
+/// the command offer `--long` although the row type has no long columns.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) struct ListingText {
+    /// Whether the default text lists only the rows that report a problem,
+    /// so `--long` lists every row (ADR-0138).
+    pub(crate) only_problems: bool,
+    /// Whether the text prints a long note under `--long` (ADR-0139).
+    pub(crate) long_note: bool,
+}
+
+impl ListingText {
+    /// Reports whether `--long` changes the text although the row type has
+    /// no long columns.
+    pub(crate) const fn changed_by_long(self) -> bool {
+        self.only_problems || self.long_note
     }
 }
 

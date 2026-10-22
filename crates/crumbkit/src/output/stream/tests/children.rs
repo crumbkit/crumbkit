@@ -29,6 +29,14 @@ impl Row for Nest {
     fn child_lines(&self) -> Vec<String> {
         self.eggs.iter().map(|egg| format!("egg {egg}")).collect()
     }
+
+    fn long_child_lines(&self) -> Vec<String> {
+        let place = self.place;
+        self.eggs
+            .iter()
+            .map(|egg| format!("egg {egg} in the {place}"))
+            .collect()
+    }
 }
 
 const NESTS: Document<Stream<Nest>> =
@@ -81,12 +89,12 @@ fn a_stream_prints_each_item_s_child_lines_after_the_item_s_line() {
 }
 
 #[test]
-fn a_stream_with_long_prints_the_long_columns_and_the_child_lines() {
+fn a_stream_with_long_prints_the_long_columns_and_the_long_child_lines() {
     let streamed = run(&["--long"]);
 
     assert_eq!(
         streamed.out,
-        "BIRD  PLACE\nrobin  hedge\n  egg blue\n  egg blue\\u{200b}\nheron  reeds\n"
+        "BIRD  PLACE\nrobin  hedge\n  egg blue in the hedge\n  egg blue\\u{200b} in the hedge\nheron  reeds\n"
     );
 }
 

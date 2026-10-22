@@ -1,4 +1,4 @@
-# ADR-0139. A summary that writes no text prints no line
+# ADR-0142. A summary that writes no text prints no line
 
 - Date: 2026-10-22
 - Status: accepted

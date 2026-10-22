@@ -20,7 +20,7 @@ impl<T: Rows> Prepared<'_, T> {
         code: &'static Code,
         budget: usize,
     ) -> io::Result<(Answer, usize)> {
-        let rows = self.value.rows().len();
+        let rows = self.rows;
         let cut = Cut {
             code: spelled,
             budget,

@@ -125,7 +125,9 @@ stream.
 - `--full` is refused, because the JSON already holds every field.
 - `--fields` selects fields in text and in JSON, and prints `null` for a
   field that a row leaves out.
-- `--long` adds the long columns to the text table.
+- `--long` adds the long columns to the text table, and `--long` with
+  `--json` is refused as a refused command line whose hint drops `--long`,
+  because the JSON already holds every field.
 
 A row type that sets `Row::WHOLE` may leave `Row::COLUMNS` empty, as a row
 that serializes as an array must, only when it also declares `Row::LINE`.
@@ -143,7 +145,7 @@ the columns of a table. Its `check_document_ids` requires an
 command whose row type sets `Row::WHOLE`, because the document costs more
 tokens than the compact columns.
 
-Why: ADR-0065, ADR-0064, ADR-0072.
+Why: ADR-0065, ADR-0064, ADR-0072, ADR-0138.
 
 ## Rows with their own text line
 
@@ -176,8 +178,10 @@ type that sets 0 prints child lines at column 1, as table lines start, so a
 reader tells them apart only by their content, which the doc comment of the
 children field should describe. A fitted table
 ([the table's width](../terminal.md#the-tables-width)) never cuts a child
-line. A row without child lines prints nothing more. `--long` keeps the
-child lines, and a stream prints them after each item's line. The
+line. A row without child lines prints nothing more. `--long` prints the
+lines of `Row::long_child_lines` in their place, which are the child lines
+unless the type overrides it, and a stream prints them after each item's
+line. The
 [output budget](../budget/README.md) counts them with their indent.
 
 Compact JSON, with or without `--long`, holds the field after the columns,
@@ -192,7 +196,7 @@ the columns, a [headed](#headed-bytes) leaf whose row type sets `CHILDREN`,
 and a `CHILDREN_HELP` that is not one line ending with a full stop or that
 comes without `CHILDREN`.
 
-Why: ADR-0120, ADR-0135, ADR-0137.
+Why: ADR-0120, ADR-0135, ADR-0137, ADR-0138.
 
 ## Documents without the envelope
 

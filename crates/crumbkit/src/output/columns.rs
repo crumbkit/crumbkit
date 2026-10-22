@@ -150,16 +150,17 @@ pub(super) fn columns<T: Rows>(view: &View, document: Document<T>, prose: bool) 
     }
 }
 
-/// Returns each row of `value` serialized once, so its fields can be looked
-/// up by their serialized names, or an empty list when there are no
-/// `columns` to look up.
-pub(super) fn values<T: Rows>(columns: &[&str], value: &T) -> io::Result<Vec<Value>> {
+/// Returns each of `rows` serialized once, so its fields can be looked up
+/// by their serialized names, or an empty list when there are no `columns`
+/// to look up.
+pub(super) fn values<'a, R: Row + 'a>(
+    columns: &[&str],
+    rows: impl Iterator<Item = &'a R>,
+) -> io::Result<Vec<Value>> {
     if columns.is_empty() {
         return Ok(Vec::new());
     }
-    let values = value
-        .rows()
-        .iter()
+    let values = rows
         .map(serde_json::to_value)
         .collect::<Result<Vec<Value>, _>>()?;
     Ok(values)

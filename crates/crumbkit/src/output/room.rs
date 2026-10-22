@@ -74,6 +74,9 @@ pub struct Room<T> {
     form: Form,
     /// Whether the text table prints each row's child lines (ADR-0120).
     children: bool,
+    /// Whether the child lines are the long ones, which `--long` chooses
+    /// (ADR-0138).
+    long: bool,
     /// The number of rows measured so far.
     measured: usize,
 }
@@ -172,6 +175,7 @@ impl Output {
             columns,
             form,
             children: children::chosen::<R>(&self.view),
+            long: self.view.is_long(),
             measured: 0,
         }
     }
@@ -219,7 +223,7 @@ impl<T: Rows> Room<T> {
                         columns.iter().map(|name| cell(fields.get(name))).collect();
                     self.form.add_line(&cells);
                     if let (true, Form::Table { text, .. }) = (self.children, &mut self.form) {
-                        *text = text.saturating_add(children::block(row).len());
+                        *text = text.saturating_add(children::block(row, self.long).len());
                     }
                 }
                 Form::Headed {

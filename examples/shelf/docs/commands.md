@@ -15,10 +15,10 @@ Browse a small catalogue of public-domain books
 
 ### Arguments
 
-- `--json`: Print the result as a JSON document. Works after every subcommand.
-- `--fields <FIELD>`: Print only these comma-separated fields, in this order. Takes more than one value. Works after every subcommand.
-- `--long`: Add the long columns after the compact ones. Works after every subcommand.
-- `--full`: With --json, print every field of every row. Works after every subcommand.
+- `--json`: Print the result as a JSON document. The default prints text. Works after every subcommand.
+- `--fields <FIELD>`: Print only these comma-separated fields, in this order. The default prints the compact columns. Takes more than one value. Works after every subcommand.
+- `--long`: Add the long columns after the compact ones. The default prints only the compact columns. Works after every subcommand.
+- `--full`: With --json, print every field of every row. The default prints only the fields of the columns. Works after every subcommand.
 - `--no-input`: Fail instead of asking a question. Works after every subcommand.
 
 ## `shelf books`

@@ -3,7 +3,8 @@
 This page covers a command that may show fewer rows than matched: its paging
 flags, the lines that describe its result, a listing with no rows, a listing
 without a total, a listing from a capped source, the upper bound on
-`--limit`, and the exit of a result whose rows report a problem.
+`--limit`, the exit of a result whose rows report a problem, and a listing
+that lists only those rows.
 
 ## Paging flags and the listing
 
@@ -22,16 +23,18 @@ When a listing shows fewer rows than its total, or leaves out rows that the
 tool did not count, a footer says so and names `--all`. crumbkit owns the
 wording, and the tool supplies only the description.
 
-A listing may carry a summary, a note and one next step. The summary prints
-its `Display` as one line above the table on standard output, and the JSON
-document holds it under `summary`. A summary whose `Display` writes no text
-prints no line, so the header is the first line, and the JSON document still
-holds it. A summary that writes only spaces still prints its line. The note
-and the next step print in text only.
+A listing may carry a summary, a note, a [long note](#a-note-for---long)
+and one next step. The summary prints its `Display` as one line above the
+table on standard output, and the JSON document holds it under `summary`.
+A summary whose `Display` writes no text prints no line, so the header is
+the first line, and the JSON document still holds it. A summary that writes
+only spaces still prints its line. The notes and the next step print in
+text only.
 
 On standard output, the text order is the summary, the header and the rows.
 On standard error, it is the footer or the empty note, the note of the rows
-that report a problem, the tool's note, the `Next:` line and the dry-run line.
+that report a problem, the tool's note, the long note under `--long`, the
+`Next:` line and the dry-run line.
 [Output](../README.md#standard-output-and-standard-error) describes how these
 lines reach standard error.
 
@@ -39,7 +42,7 @@ A [batch and a prose result](../shapes/README.md) carry the tool's note in
 the same way, through `Batch::note` and `Prose::note`, and it prints in the
 same place in this order. A list of rows, such as a `Vec`, has no note.
 
-Why: ADR-0016, ADR-0050, ADR-0077.
+Why: ADR-0016, ADR-0050, ADR-0077, ADR-0142.
 
 ## A listing with no rows
 
@@ -213,3 +216,52 @@ The [help pages](../../help/README.md) describe the `Problems:` line and what
 `help exit-codes` says about this exit.
 
 Why: ADR-0050.
+
+## A listing that lists only its problem rows
+
+[`Document::only_problems`](../../../../crates/crumbkit/src/document.rs) on a
+listing's document makes the default text list only the rows whose
+`Row::is_problem` is true, under the summary line.
+
+- Without `--json`, `--long` or `--fields`, the text prints the summary
+  line, the header and the rows that report a problem with their child
+  lines. When no row reports a problem, standard output holds the summary
+  line alone, with no header.
+- `--long` and `--fields` print every row, and `--json` holds every row
+  unchanged.
+- The exit, the problem note, the footer, the tool's note, the `Next:`
+  line and the empty note of a listing without rows do not change. No line
+  counts the rows that the text left out. The footer counts every row of
+  the listing, and the output budget's cut line counts the printed rows
+  against the listing's total.
+- The leaf offers `--long` even when its row type has no long columns.
+  Its `-h` and `--help` print a line after the `Problems:` line:
+  `Rows: the default text lists only the rows that report a problem, and
+  --long, --fields or --json lists every row.` The line leaves out a flag
+  that the leaf does not offer.
+
+Why: ADR-0138, ADR-0140.
+
+## A note for `--long`
+
+[`Listing::long_note`](../../../../crates/crumbkit/src/listing.rs) sets a
+line that the text prints on standard error after the tool's note and
+before the `Next:` line, under `--long` only, such as how the figures of
+the rows were measured. The default text, `--fields` and the JSON document
+leave it out.
+
+[`Document::long_noted`](../../../../crates/crumbkit/src/document.rs)
+declares the long note on the listing's document, because `parse` decides
+from the document which view flags a leaf offers before the handler runs.
+
+- The leaf offers `--long` even when its row type has no long columns, and
+  `finish` accepts it by the same rule. A row type with long columns
+  offers `--long` without the declaration, and its long note prints all
+  the same.
+- Its `-h` and `--help` print a line after the `Rows:` line:
+  `Long note: --long prints a note on standard error.`
+- A row type that sets `Row::WHOLE` and names no columns offers no
+  `--long`. `--json --long` is refused for a row type that sets
+  `Row::WHOLE`, and otherwise prints the same document as `--json`.
+
+Why: ADR-0139.
