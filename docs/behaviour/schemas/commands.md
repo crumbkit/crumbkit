@@ -38,6 +38,8 @@ when it fails with `--json`.
   holds adds nothing, so the commands list only what help
   shows.
 - Two leaves that declare one id give one row that names both command lines.
+- A leaf that declares `Leaf::prints_no_result` has no document and adds
+  nothing.
 - A tool declares the files that users write for it, such as a settings
   file, as `FileFormat`s with `Guide::documents`. `schemas list` lists them
   after the leaves' documents with no commands.
@@ -45,7 +47,7 @@ when it fails with `--json`.
   which documents a command prints. Each row's compact `form` column is
   `document` or `stream` ([streams](../output/streams.md)).
 
-Why: ADR-0035, ADR-0041, ADR-0081.
+Why: ADR-0035, ADR-0041, ADR-0081, ADR-0143.
 
 ## `schemas show`
 

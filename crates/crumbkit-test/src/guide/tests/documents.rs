@@ -1,10 +1,11 @@
 //! Tests for the rule that a leaf whose effects change something and whose
-//! command takes a view flag declares a document, and for its opt-out,
-//! `guide/document`.
+//! command takes a view flag declares a document or that it prints no
+//! result, for its opt-out, `guide/document`, and for the rule that a leaf
+//! declares only one of the two.
 
 use clap::{Arg, ArgAction, Args as _, Command};
-use crumbkit::ViewFlags;
 use crumbkit::help::{Effects, Guide};
+use crumbkit::{Document, Prose, ViewFlags};
 
 use super::{LEAVES, check_guide, leaf, panic_message, shelf};
 use crate::{Allow, Rule};
@@ -22,6 +23,9 @@ const ADDING_SHOW: Guide = Guide::new().leaves(&[
     leaf(&["books", "show"]).effects(Effects::additive()),
     leaf(&["authors", "list"]),
 ]);
+
+/// A prose document for `shelf books show`.
+const SHOW: Document<Prose<String>> = Document::new("shelf", "books-show", 1, "One book.");
 
 /// The problem that the document rule reports for `shelf books show`.
 const SHOW_PROBLEM: &str = "the command tree breaks crumbkit's guide rules:\n\
@@ -148,5 +152,33 @@ fn an_opt_out_from_guide_document_does_not_excuse_the_example_rule() {
         panic_message(|| check_guide(&viewed_shelf(), &GUIDE, ALLOW)).unwrap(),
         "the command tree breaks crumbkit's guide rules:\n\
          shelf authors list: no leaf with an example names the command, so its help shows no example"
+    );
+}
+
+#[test]
+fn a_changing_leaf_that_prints_no_result_passes_without_an_opt_out_from_guide_document() {
+    const GUIDE: Guide = Guide::new().leaves(&[
+        leaf(&["books", "list"]),
+        leaf(&["books", "show"])
+            .effects(Effects::additive())
+            .prints_no_result(),
+        leaf(&["authors", "list"]),
+    ]);
+
+    check_guide(&viewed_shelf(), &GUIDE, &[]);
+}
+
+#[test]
+fn a_leaf_that_declares_a_document_and_prints_no_result_fails_the_check() {
+    const GUIDE: Guide = Guide::new().leaves(&[
+        leaf(&["books", "list"]),
+        leaf(&["books", "show"]).document(SHOW).prints_no_result(),
+        leaf(&["authors", "list"]),
+    ]);
+
+    assert_eq!(
+        panic_message(|| check_guide(&viewed_shelf(), &GUIDE, &[])).unwrap(),
+        "the command tree breaks crumbkit's guide rules:\n\
+         shelf books show: the leaf declares a document and also that its command prints no result, so help and parse follow the document and ignore the declaration; keep only `Leaf::document` or `Leaf::stream` when the command prints a result, or only `Leaf::prints_no_result` when it prints none"
     );
 }

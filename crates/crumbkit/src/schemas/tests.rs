@@ -18,6 +18,7 @@ use crate::{Batch, Document, Error, Listing, NoSummary, Output, Prose, Row, Sink
 mod bytes;
 mod columns;
 mod formats;
+mod no_result;
 mod streams;
 mod variants;
 

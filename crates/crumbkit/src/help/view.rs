@@ -78,6 +78,10 @@ pub(crate) enum Unoffered {
     /// text prints each row's own line and has no table to shape
     /// (ADR-0065, ADR-0072).
     NoColumns,
+    /// The command prints no result on standard output, as
+    /// [`Leaf::prints_no_result`](super::Leaf::prints_no_result) declares
+    /// (ADR-0143).
+    NoResult,
 }
 
 /// Whether a command prints one document or a stream.
@@ -169,6 +173,9 @@ pub(crate) fn refusal(flag: ViewFlag, reason: Unoffered) -> Refusal {
         ViewFlag::Full => "--full prints every field of every row",
     };
     let hint = match (reason, flag) {
+        (Unoffered::NoResult, ViewFlag::Fields) => "drop --fields",
+        (Unoffered::NoResult, ViewFlag::Long) => "drop --long",
+        (Unoffered::NoResult, ViewFlag::Full) => "drop --full",
         (Unoffered::Prose | Unoffered::Bytes, ViewFlag::Full) | (Unoffered::Unwrapped, _) => {
             "drop --full, because --json already prints the whole result"
         }
@@ -196,6 +203,7 @@ const fn because(reason: Unoffered) -> &'static str {
         Unoffered::Unwrapped => "this command's JSON already holds every field",
         Unoffered::Headed => "this command's text prints each answer's bytes",
         Unoffered::NoColumns => "this command's rows have no columns",
+        Unoffered::NoResult => "this command prints no result",
     }
 }
 

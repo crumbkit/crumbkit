@@ -10,6 +10,7 @@ use crate::allow::{Allow, Allowances, Rule};
 use crate::tree::{self, DASHED_NAME};
 
 mod children;
+mod document;
 #[cfg(test)]
 mod tests;
 
@@ -64,7 +65,12 @@ mod tests;
 ///   effects and a leaf whose command takes no view flag pass without a
 ///   document. So does a leaf that passes on a program's exit code
 ///   (`Leaf::passes_on_exit`), because `crumbkit_child::hand_over` refuses
-///   `--json` and `--fields` before the program starts;
+///   `--json` and `--fields` before the program starts, and a leaf that
+///   prints no result (`Leaf::prints_no_result`), because it offers no
+///   view flag (ADR-0143);
+/// - a leaf that declares a document and also that its command prints no
+///   result, because help and `parse` then follow the document and ignore
+///   the declaration;
 /// - a leaf's [`Choices`](crumbkit::pick::Choices) whose argument id names
 ///   no argument of the leaf's command, because a picker then never offers
 ///   them;
@@ -327,23 +333,7 @@ fn check_leaves(
                 )),
             }
         }
-        // A leaf that passes on a program's exit code hands the terminal
-        // to it, and `crumbkit_child::hand_over` refuses `--json` and
-        // `--fields` before the program starts.
-        let changes = leaf
-            .get_effects()
-            .is_some_and(|effects| !effects.is_read_only());
-        let hands_over = leaf.get_passes_on_exit().is_some();
-        if changes
-            && !hands_over
-            && leaf.get_document().is_none()
-            && takes_view_flag(command, path)
-            && !allowances.excuses(Rule::GuideDocument, &path.join(" "))
-        {
-            problems.push(format!(
-                "{text}: the leaf declares effects that change something and no document, so crumbkit refuses a view flag that the output cannot use only after the change; declare the document with `Leaf::document`, or with `Leaf::stream` for a stream"
-            ));
-        }
+        document::check_document(&text, leaf, command, allowances, problems);
         for choices in leaf.get_choices() {
             let id = choices.arg();
             if !node.get_arguments().any(|arg| arg.get_id() == id) {
@@ -504,31 +494,6 @@ fn unoffered_flags(leaf: &Leaf, node: &Command, matches: &ArgMatches) -> Vec<Vie
         .into_iter()
         .filter(|flag| !leaf.offers(*flag) && typed(flag.name().trim_start_matches('-')))
         .collect()
-}
-
-/// Reports whether the command at `path` below `command` takes a view
-/// flag: an argument with the id `json`, `fields`, `long` or `full` that
-/// is global, which `parse` reads as a view flag. The tree is unbuilt, so
-/// the check walks from the leaf's command up to `command` and asks, for
-/// each id, the nearest command that declares an argument with it. clap's
-/// build copies a global argument down only to a command that has no
-/// argument with its id, so that nearest argument is the one the leaf's
-/// command parses, and it is a view flag only when it is global.
-fn takes_view_flag(command: &Command, path: &[&str]) -> bool {
-    let mut chain = vec![command];
-    for &name in path {
-        let Some(child) = tree::find(chain[chain.len() - 1], [name]) else {
-            return false;
-        };
-        chain.push(child);
-    }
-    ["json", "fields", "long", "full"].into_iter().any(|id| {
-        chain
-            .iter()
-            .rev()
-            .find_map(|node| node.get_arguments().find(|arg| arg.get_id() == id))
-            .is_some_and(clap::Arg::is_global_set)
-    })
 }
 
 /// Returns the command line of an example as help prints it: `text`, the

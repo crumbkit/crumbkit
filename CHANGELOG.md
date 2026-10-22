@@ -623,6 +623,10 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit: `Listing::long_note` sets a note that the text prints on
   standard error only under `--long`, and `Document::long_noted` lets the
   command offer `--long` without long columns ([behaviour/output/listings]).
+- crumbkit: `Leaf::prints_no_result` declares a command that prints no
+  result, such as a server that runs until interrupted. Help and `parse`
+  offer it no view flag, `--json` still prints its failure, and help prints
+  an `Output:` line ([behaviour/output/shapes]).
 
 ### Changed
 

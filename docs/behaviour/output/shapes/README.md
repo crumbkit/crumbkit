@@ -226,3 +226,26 @@ crumbkit-test's `check_document_ids` requires an
 without the envelope.
 
 Why: ADR-0016, ADR-0071, ADR-0081.
+
+## A command that prints no result
+
+A command that prints no result on standard output, such as a server that
+runs until the caller interrupts it, declares
+[`Leaf::prints_no_result`](../../../../crates/crumbkit/src/help/leaf/no_result.rs)
+in place of a document. Its rustdoc shows how the command ends. The leaf
+offers none of `--fields`, `--long` and `--full`. `parse` refuses each of
+them before the handler runs, with a message that says the command prints
+no result and a hint that tells the caller to drop the flag, and the
+leaf's help leaves them out. `--json` stays, so a failure prints as the
+failure document. The leaf's `-h` and `--help` print the line `Output: no
+result on standard output, and --json prints a failure as JSON.`
+
+The command never succeeds. It prints its failure, such as the interrupt,
+with `Output::print_failure`, takes its exit code from
+`Output::failure_exit` and returns the code through `events::ended`. The
+leaf has no document, so it publishes no schema and `commands list` gives
+it `form: null`. crumbkit-test's `check_guide` accepts the leaf without an
+opt-out from `guide/document`, and fails a leaf that declares both a
+document and `Leaf::prints_no_result` ([help checks](../../help/checks.md)).
+
+Why: ADR-0143.

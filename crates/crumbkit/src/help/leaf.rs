@@ -15,6 +15,7 @@ mod codes;
 mod column;
 mod example;
 mod lines;
+mod no_result;
 mod passes;
 mod refusal;
 #[cfg(test)]
@@ -82,6 +83,9 @@ pub struct Leaf {
     /// The sources of the values of the command's arguments, which a picker
     /// offers when an argument is missing.
     choices: &'static [Choices],
+    /// Whether [`Leaf::prints_no_result`] declared that the command prints
+    /// no result.
+    no_result: bool,
     /// The program whose exit code the command passes on, or `None` when
     /// the command exits as the guide's exits declare.
     passes_on_exit: Option<&'static str>,
@@ -108,6 +112,7 @@ impl Leaf {
             columns: None,
             effects: None,
             choices: &[],
+            no_result: false,
             passes_on_exit: None,
             refusal_alternatives: None,
             refusal_hint: None,
@@ -144,7 +149,8 @@ impl Leaf {
     /// data. crumbkit-test's `check_effects` fails on a visible leaf without
     /// effects unless the tool opts out with a reason, and its `check_guide`
     /// fails on a leaf whose effects change something and that has no
-    /// document, unless the leaf passes on a program's exit code.
+    /// document, unless the leaf passes on a program's exit code or prints
+    /// no result.
     #[must_use]
     pub const fn effects(mut self, effects: Effects) -> Self {
         self.effects = Some(effects);
@@ -261,10 +267,12 @@ impl Leaf {
     /// Returns the `Output:` line that the leaf's `-h` and `--help` print
     /// after the effects line: [`STREAM_LINE`] for a stream,
     /// [`BYTES_LINE`] for a document that holds [`Bytes`](crate::Bytes),
-    /// [`HEADED_LINE`] for a headed document, and `None` for any other
-    /// leaf.
+    /// [`HEADED_LINE`] for a headed document, a line that says the command
+    /// prints no result for a leaf that [`Leaf::prints_no_result`] declared,
+    /// and `None` for any other leaf.
     pub(crate) const fn output_line(&self) -> Option<&'static str> {
         match self.columns {
+            None if self.no_result => Some(no_result::NO_RESULT_LINE),
             Some(Columns {
                 kind: Kind::Stream, ..
             }) => Some(STREAM_LINE),
@@ -299,7 +307,8 @@ impl Leaf {
     /// crumbkit's envelope. A headed document offers neither `--long` nor
     /// `--full` (ADR-0062). Rows that print whole offer no `--full`, and
     /// offer neither `--fields` nor `--long` when they have no columns
-    /// (ADR-0065). A leaf without a document offers every view
+    /// (ADR-0065). A leaf that [`Leaf::prints_no_result`] declared offers
+    /// none (ADR-0143). Any other leaf without a document offers every view
     /// flag, because crumbkit cannot tell what its command prints.
     #[must_use]
     pub const fn offers(&self, flag: ViewFlag) -> bool {
@@ -311,6 +320,7 @@ impl Leaf {
     pub(crate) const fn unoffered(&self, flag: ViewFlag) -> Option<Unoffered> {
         match self.columns {
             Some(columns) => view::unoffered(&columns.printed(), flag),
+            None if self.no_result => Some(Unoffered::NoResult),
             None => None,
         }
     }

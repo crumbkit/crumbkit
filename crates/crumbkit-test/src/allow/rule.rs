@@ -81,9 +81,11 @@ pub enum Rule {
     GuideExamples,
     /// [`check_guide`](crate::check_guide): a leaf whose effects change
     /// something and whose command takes a view flag declares no document
-    /// with `Leaf::document` or `Leaf::stream`. Its id is `guide/document`, and its opt-out covers
-    /// the command it names and every command below it. The other rules of
-    /// `check_guide` take no opt-out.
+    /// with `Leaf::document` or `Leaf::stream`, and does not declare that it
+    /// prints no result with `Leaf::prints_no_result`. Its id is
+    /// `guide/document`, and its opt-out covers the command it names and
+    /// every command below it. The other rules of `check_guide` take no
+    /// opt-out.
     GuideDocument,
     /// [`check_document_ids`](crate::check_document_ids): a command prints
     /// its document without crumbkit's envelope, because its document has
