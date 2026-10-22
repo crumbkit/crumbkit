@@ -16,8 +16,9 @@ at a terminal and through a pipe ([terminal detection](terminal.md)). An
 agent reads the fewest tokens, and a program reads each document with one
 line read.
 
-The `--json` help text says `Print the result as a JSON document` and names
-no layout, because the layout belongs to the tool.
+The `--json` help text says `Print the result as a JSON document. The
+default prints text.` and names no layout, because the layout belongs to
+the tool.
 
 Why: ADR-0052, ADR-0081.
 

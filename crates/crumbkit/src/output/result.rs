@@ -421,7 +421,8 @@ impl<'a, T: Rows> Prepared<'a, T> {
 
     /// Writes the lines that describe the result to `out`: in text, the cut
     /// line, or else the footer and the empty note, then the note of the
-    /// rows that report a problem, the tool's note and the `Next:` line; with `--json`, only the cut line of a document
+    /// rows that report a problem, the tool's note, under `--long` its long
+    /// note, and the `Next:` line; with `--json`, only the cut line of a document
     /// without the envelope, which has no `cut` field.
     fn write_notes(&self, out: &mut impl Write, shown: usize, cut: Option<&Cut>) -> io::Result<()> {
         let value = self.value;
@@ -445,6 +446,9 @@ impl<'a, T: Rows> Prepared<'a, T> {
             )?;
         }
         if let Some(note) = value.note() {
+            writeln!(out, "{note}")?;
+        }
+        if let Some(note) = value.long_note().filter(|_| self.view.is_long()) {
             writeln!(out, "{note}")?;
         }
         if let Some((call, phrase)) = &self.next {

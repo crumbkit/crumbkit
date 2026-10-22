@@ -22,6 +22,7 @@ mod hidden;
 mod hint;
 mod json;
 mod limit;
+mod long_note;
 mod missing;
 mod names;
 mod only_problems;

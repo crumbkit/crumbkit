@@ -8,10 +8,10 @@ Arguments:
 
 Options:
       --json
-          Print the result as a JSON document
+          Print the result as a JSON document. The default prints text.
 
       --fields <FIELD>
-          Print only these comma-separated fields, in this order
+          Print only these comma-separated fields, in this order. The default prints the compact columns.
 
       --no-input
           Fail instead of asking a question

@@ -56,20 +56,38 @@ use crate::view::View;
 // command without a description of its own.
 #[command(about = None, long_about = None)]
 pub struct ViewFlags {
-    /// Print the result as a JSON document
-    #[arg(long, global = true)]
+    /// `--json`, which prints the result as a JSON document.
+    #[arg(
+        long,
+        global = true,
+        help = "Print the result as a JSON document. The default prints text."
+    )]
     pub(crate) json: bool,
 
-    /// Print only these comma-separated fields, in this order
-    #[arg(long, global = true, value_name = "FIELD", value_delimiter = ',')]
+    /// `--fields`, the names of the fields to print, in order.
+    #[arg(
+        long,
+        global = true,
+        value_name = "FIELD",
+        value_delimiter = ',',
+        help = "Print only these comma-separated fields, in this order. The default prints the compact columns."
+    )]
     pub(crate) fields: Vec<String>,
 
-    /// Add the long columns after the compact ones
-    #[arg(long, global = true)]
+    /// `--long`, which adds the row type's long columns.
+    #[arg(
+        long,
+        global = true,
+        help = "Add the long columns after the compact ones. The default prints only the compact columns."
+    )]
     pub(crate) long: bool,
 
-    /// With --json, print every field of every row
-    #[arg(long, global = true)]
+    /// `--full`, which prints every field of every row with `--json`.
+    #[arg(
+        long,
+        global = true,
+        help = "With --json, print every field of every row. The default prints only the fields of the columns."
+    )]
     pub(crate) full: bool,
 }
 

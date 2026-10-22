@@ -620,6 +620,9 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit: `Row::long_child_lines` gives the child lines that the text
   prints under `--long`, and defaults to `Row::child_lines`
   ([behaviour/output/shapes]).
+- crumbkit: `Listing::long_note` sets a note that the text prints on
+  standard error only under `--long`, and `Document::long_noted` lets the
+  command offer `--long` without long columns ([behaviour/output/listings]).
 
 ### Changed
 
@@ -1011,6 +1014,9 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit: `--long` with `--json` is refused, with exit 2 and a hint to
   drop `--long`, for a row type that sets `Row::WHOLE`, because its JSON
   already holds every field ([behaviour/output/shapes]).
+- crumbkit: the help of `--json`, `--fields`, `--long` and `--full` says
+  what prints without the flag, such as `The default prints text.`
+  ([behaviour/output]).
 
 ### Removed
 

@@ -23,13 +23,15 @@ When a listing shows fewer rows than its total, or leaves out rows that the
 tool did not count, a footer says so and names `--all`. crumbkit owns the
 wording, and the tool supplies only the description.
 
-A listing may carry a summary, a note and one next step. The summary prints
-as one line above the table on standard output, and the JSON document holds
-it under `summary`. The note and the next step print in text only.
+A listing may carry a summary, a note, a [long note](#a-note-for---long)
+and one next step. The summary prints as one line above the table on
+standard output, and the JSON document holds it under `summary`. The notes
+and the next step print in text only.
 
 On standard output, the text order is the summary, the header and the rows.
 On standard error, it is the footer or the empty note, the note of the rows
-that report a problem, the tool's note, the `Next:` line and the dry-run line.
+that report a problem, the tool's note, the long note under `--long`, the
+`Next:` line and the dry-run line.
 [Output](../README.md#standard-output-and-standard-error) describes how these
 lines reach standard error.
 
@@ -235,3 +237,27 @@ listing's document makes the default text list only the rows whose
   --json lists every row.`
 
 Why: ADR-0138.
+
+## A note for `--long`
+
+[`Listing::long_note`](../../../../crates/crumbkit/src/listing.rs) sets a
+line that the text prints on standard error after the tool's note and
+before the `Next:` line, under `--long` only, such as how the figures of
+the rows were measured. The default text, `--fields` and the JSON document
+leave it out.
+
+[`Document::long_noted`](../../../../crates/crumbkit/src/document.rs)
+declares the long note on the listing's document, because `parse` decides
+from the document which view flags a leaf offers before the handler runs.
+
+- The leaf offers `--long` even when its row type has no long columns, and
+  `finish` accepts it by the same rule. A row type with long columns
+  offers `--long` without the declaration, and its long note prints all
+  the same.
+- Its `-h` and `--help` print a line after the `Rows:` line:
+  `Long note: --long prints a note on standard error.`
+- A row type that sets `Row::WHOLE` and names no columns offers no
+  `--long`. `--json --long` is refused for a row type that sets
+  `Row::WHOLE`, and otherwise prints the same document as `--json`.
+
+Why: ADR-0139.
