@@ -1,7 +1,7 @@
 # ADR-0050. Listings
 
 - Date: 2026-10-12
-- Status: amended by ADR-0077, ADR-0087 and ADR-0096
+- Status: amended by ADR-0077, ADR-0087, ADR-0096 and ADR-0142
 
 ## Context
 
@@ -45,6 +45,7 @@ for empty results, sources that cannot be counted, an upper bound on
 - [ADR-0138. A listing can list only its problem rows](0138-a-listing-lists-only-its-problem-rows.md)
 - [ADR-0139. A listing can carry a note that prints under `--long`](0139-a-listing-carries-a-note-for-long.md)
 - [ADR-0140. The `Rows:` line names every view that lists every row](0140-the-rows-line-names-every-view-that-lists-every-row.md)
+- [ADR-0142. A summary that writes no text prints no line](0142-a-summary-that-writes-no-text-prints-no-line.md)
 
 ## Consequences
 
