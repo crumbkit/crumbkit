@@ -52,7 +52,7 @@ jobs:
       - run: rustup toolchain install 1.89.0 --profile minimal
       # install-action runs before rust-cache, so the cache leaves out the
       # tool binaries that install-action downloads on every run.
-      - uses: taiki-e/install-action@f7e5d7c961414b23f5b25b2da9294395d08513ad # v2.87.26
+      - uses: taiki-e/install-action@1168f6810a3cb30a3514bf5756a3b7f0422c6df8 # v2.87.28
         with:
           tool: zizmor,cargo-deny,cargo-shear
           fallback: none
@@ -111,7 +111,7 @@ jobs:
       - run: rustup toolchain install
       # install-action runs before rust-cache, so the cache leaves out the
       # tool binaries that install-action downloads on every run.
-      - uses: taiki-e/install-action@f7e5d7c961414b23f5b25b2da9294395d08513ad # v2.87.26
+      - uses: taiki-e/install-action@1168f6810a3cb30a3514bf5756a3b7f0422c6df8 # v2.87.28
         with:
           tool: cargo-nextest
           fallback: none
@@ -169,7 +169,7 @@ jobs:
       # The image includes rustup, which installs the toolchain that
       # rust-toolchain.toml pins.
       - run: rustup toolchain install
-      - uses: taiki-e/install-action@f7e5d7c961414b23f5b25b2da9294395d08513ad # v2.87.26
+      - uses: taiki-e/install-action@1168f6810a3cb30a3514bf5756a3b7f0422c6df8 # v2.87.28
         with:
           tool: cargo-nextest
           fallback: none
