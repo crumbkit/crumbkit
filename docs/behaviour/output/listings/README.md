@@ -233,10 +233,11 @@ listing's document makes the default text list only the rows whose
   against the listing's total.
 - The leaf offers `--long` even when its row type has no long columns.
   Its `-h` and `--help` print a line after the `Problems:` line:
-  `Rows: the text lists only the rows that report a problem, and --long or
-  --json lists every row.`
+  `Rows: the default text lists only the rows that report a problem, and
+  --long, --fields or --json lists every row.` The line leaves out a flag
+  that the leaf does not offer.
 
-Why: ADR-0138.
+Why: ADR-0138, ADR-0140.
 
 ## A note for `--long`
 

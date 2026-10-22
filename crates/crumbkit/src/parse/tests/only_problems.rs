@@ -1,6 +1,7 @@
 //! Tests for a leaf whose document lists only the rows that report a
 //! problem in its default text, and for the refusal of `--long` with
-//! `--json` on a leaf whose row type sets `Row::WHOLE` (ADR-0138).
+//! `--json` on a leaf whose row type sets `Row::WHOLE` (ADR-0138,
+//! ADR-0140).
 
 use std::process::ExitCode;
 
@@ -60,9 +61,23 @@ impl Row for Book {
     const LONG_COLUMNS: &'static [&'static str] = &["pages"];
 }
 
+/// A check whose readers expect it whole, with no columns for a table.
+#[derive(Serialize, JsonSchema)]
+struct Audit {
+    /// The package that was audited.
+    package: &'static str,
+}
+
+impl Row for Audit {
+    const COLUMNS: &'static [&'static str] = &[];
+    const WHOLE: bool = true;
+}
+
 const CHECKS: Document<Listing<Check>> =
     Document::new("tool", "checks", 1, "The checks.").only_problems();
 const ALL_CHECKS: Document<Listing<Check>> = Document::new("tool", "all", 1, "The checks.");
+const AUDITS: Document<Listing<Audit>> =
+    Document::new("tool", "audits", 1, "The audits.").only_problems();
 const SHELVES: Document<Listing<Shelf>> = Document::new("tool", "shelves", 1, "The shelves.");
 const BOOKS: Document<Listing<Book>> = Document::new("tool", "books", 1, "The books.");
 
@@ -71,12 +86,13 @@ const GUIDE: Guide = Guide::new().leaves(&[
     Leaf::new(&["all"]).document(ALL_CHECKS),
     Leaf::new(&["shelves"]).document(SHELVES),
     Leaf::new(&["books"]).document(BOOKS),
+    Leaf::new(&["audits"]).document(AUDITS),
 ]);
 
 /// A tool with crumbkit's output flags on its root and the guide's leaves.
 fn tool() -> Command {
-    let leaves =
-        ["checks", "all", "shelves", "books"].map(|name| Command::new(name).about("A leaf"));
+    let leaves = ["checks", "all", "shelves", "books", "audits"]
+        .map(|name| Command::new(name).about("A leaf"));
     crate::ViewFlags::augment_args(Command::new("tool"))
         .subcommand_required(true)
         .subcommands(leaves)
@@ -103,7 +119,7 @@ fn parse(args: &[&str]) -> Parsed {
     }
 }
 
-const ROWS_LINE: &str = "Rows: the text lists only the rows that report a problem, and --long or --json lists every row.";
+const ROWS_LINE: &str = "Rows: the default text lists only the rows that report a problem, and --long, --fields or --json lists every row.";
 
 #[test]
 fn a_leaf_that_lists_only_problems_offers_long_although_its_rows_have_no_long_columns() {
@@ -116,7 +132,7 @@ fn a_leaf_that_lists_only_problems_offers_long_although_its_rows_have_no_long_co
 }
 
 #[test]
-fn the_help_of_a_leaf_that_lists_only_problems_says_that_long_lists_every_row() {
+fn the_help_of_a_leaf_that_lists_only_problems_says_that_long_fields_and_json_list_every_row() {
     let short = parse(&["tool", "checks", "-h"]);
     let long = parse(&["tool", "checks", "--help"]);
 
@@ -131,6 +147,19 @@ fn the_help_of_a_leaf_that_lists_only_problems_says_that_long_lists_every_row() 
         long.out
     );
     assert!(long.out.contains("  --long\n"), "{}", long.out);
+}
+
+#[test]
+fn the_rows_line_of_a_leaf_that_offers_neither_long_nor_fields_names_only_json() {
+    let audits = &GUIDE.get_leaves()[4];
+    assert!(!audits.offers(crate::help::ViewFlag::Long));
+    assert!(!audits.offers(crate::help::ViewFlag::Fields));
+    let short = parse(&["tool", "audits", "-h"]);
+    let long = parse(&["tool", "audits", "--help"]);
+
+    let line = "\nRows: the default text lists only the rows that report a problem, and --json lists every row.\n";
+    assert!(short.out.contains(line), "{}", short.out);
+    assert!(long.out.contains(line), "{}", long.out);
 }
 
 #[test]

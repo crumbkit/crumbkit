@@ -1,7 +1,7 @@
 # ADR-0138. A listing can list only its problem rows
 
 - Date: 2026-10-21
-- Status: amended by ADR-0139
+- Status: amended by ADR-0139 and ADR-0140
 - Supersedes: ADR-0065 and ADR-0120, which it amends
 - Missed: ADR-0065 refused `--full` for a row type that sets `Row::WHOLE` because its JSON already holds every field, and it left `--long` with `--json` accepted although `--long` adds nothing to that JSON either. ADR-0120 gave a row one set of child lines, so a tool could not keep its warnings for `--long`.
 
