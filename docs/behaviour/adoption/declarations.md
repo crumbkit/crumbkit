@@ -36,6 +36,10 @@ Why: ADR-0056.
   exits with the tool's own code ([exit codes](../failures/exit-codes.md)).
 - `Leaf::passes_on_exit` declares a leaf that passes on a program's exit
   code, which help prints ([child processes](../output/child-processes.md)).
+- `Leaf::prints_no_result` declares a leaf whose command prints no result
+  on standard output, such as a server that runs until it is interrupted.
+  The leaf offers no view flag and help prints its `Output:` line
+  ([result shapes](../output/shapes/README.md#a-command-that-prints-no-result)).
 - `crumbkit::complete_with` declares the name of the completion variable,
   which the registration script and the usage log then use
   ([completion](../parsing/completion.md)).
@@ -71,7 +75,7 @@ run prints. A path that no leaf with renames names, such as `&[]`, gives the
 guide's renames alone.
 
 Why: ADR-0056, ADR-0060, ADR-0001, ADR-0086, ADR-0016, ADR-0035, ADR-0081,
-ADR-0123.
+ADR-0123, ADR-0143.
 
 ## Codes per command
 

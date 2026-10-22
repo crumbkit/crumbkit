@@ -157,3 +157,10 @@ fn a_document_whose_rows_print_whole_that_an_opt_out_names_passes() {
 
     check_document_ids(&shelf(), &GUIDE, ALLOW);
 }
+
+#[test]
+fn a_leaf_that_prints_no_result_passes_the_document_id_check_without_an_opt_out() {
+    const GUIDE: Guide = Guide::new().leaves(&[Leaf::new(&["serve"]).prints_no_result()]);
+
+    check_document_ids(&Command::new("shelf"), &GUIDE, &[]);
+}

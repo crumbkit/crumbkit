@@ -101,6 +101,19 @@ fn a_report_without_declarations_leaves_out_customisations() {
 }
 
 #[test]
+fn a_leaf_that_prints_no_result_adds_nothing_to_the_report() {
+    const GUIDE: Guide = Guide::new().leaves(&[Leaf::new(&["books", "show"]).prints_no_result()]);
+    let dir = TempDir::new("opt-outs-no-result").unwrap();
+
+    run_guided(&GUIDE, &dir, Action::Overwrite);
+
+    assert_eq!(
+        read(&dir, "opt-outs.txt"),
+        "shelf has no opt-outs from the conventions.\n"
+    );
+}
+
+#[test]
 fn an_exit_that_lists_the_tool_s_own_code_is_no_customisation() {
     const MINE: Code = Code::new("shelf", "books", "not_found");
     const GUIDE: Guide = Guide::new().exits(&[Exit::new(3, "No such book.").failures(&[&MINE])]);

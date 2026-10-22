@@ -1,7 +1,7 @@
 # ADR-0105. An opt-out for the document rule of check_guide
 
 - Date: 2026-10-20
-- Status: amended by ADR-0115
+- Status: amended by ADR-0115 and ADR-0143
 - Supersedes: ADR-0016 and ADR-0104, which it amends
 - Missed: ADR-0104 added an opt-out for the example rule and missed one for the document rule, which also stops a tool that uses crumbkit's help before it uses crumbkit's documents.
 

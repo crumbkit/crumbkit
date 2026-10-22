@@ -22,7 +22,8 @@ The lines print in this order, each only on the pages named:
    [Leaf examples and columns](examples.md) describes.
 2. `Effects:` on a leaf that declares its effects, then `Writes:` on a leaf
    that declares write guards ([write guards](../effects/write-guards.md)),
-   then `Output:` on a leaf that prints a stream, bytes or a headed batch
+   then `Output:` on a leaf that prints a stream, bytes, a headed batch or
+   [no result](../output/shapes/README.md#a-command-that-prints-no-result)
    ([streams](../output/streams.md),
    [headed bytes](../output/shapes/README.md#headed-bytes)), then
    `Text:` on a leaf whose rows print their own text line, such as `Text:
@@ -61,7 +62,7 @@ the version without styles, and crumbkit builds topics without styles, so
 those print as plain text to every sink.
 
 Why: ADR-0021, ADR-0024, ADR-0039, ADR-0041, ADR-0047, ADR-0049, ADR-0064,
-ADR-0065, ADR-0102, ADR-0120.
+ADR-0065, ADR-0102, ADR-0120, ADR-0143.
 
 ## The walk before parsing
 

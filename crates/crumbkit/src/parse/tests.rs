@@ -25,6 +25,7 @@ mod limit;
 mod long_note;
 mod missing;
 mod names;
+mod no_result;
 mod only_problems;
 mod returned;
 mod roles;
