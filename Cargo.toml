@@ -98,7 +98,7 @@ proc-macro2 = { version = "1.0.107", default-features = false }
 # gives the agent's session id when the agent sets one. crumbkit's default
 # build uses it, so no picker or confirmation asks an agent a question. It
 # has no features.
-is-ai-agent = { version = "0.6.0", default-features = false }
+is-ai-agent = { version = "0.7.0", default-features = false }
 
 # The next four crates build only with crumbkit-usage, which appends one
 # line per run to a local file (ADR-0029).
@@ -129,7 +129,7 @@ signal-hook = { version = "0.4.5", default-features = false }
 # Windows, which has no `/dev/urandom` (ADR-0029). It needs no feature for
 # `fill`. proptest already depends on it, so it adds no crate to the lock
 # file.
-getrandom = { version = "0.3.4", default-features = false }
+getrandom = { version = "0.4.3", default-features = false }
 
 # clap_complete answers a shell's completion request for crumbkit's
 # optional `complete` feature (ADR-0048). Its dynamic completion needs
