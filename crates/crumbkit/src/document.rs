@@ -335,9 +335,9 @@ impl<R: Row, S> Document<Listing<R, S>> {
     ///
     /// The leaf offers `--long` even when the row type has no long columns,
     /// because `--long` lists every row, and its help prints a `Rows:` line
-    /// that says so. A row type that sets [`Row::WHOLE`] and names no
-    /// columns offers no `--long`, so its text lists every row only through
-    /// `--json`.
+    /// that names each view that lists every row. A row type that sets
+    /// [`Row::WHOLE`] and names no columns offers no `--long`, so its text
+    /// lists every row only through `--json`.
     ///
     /// ```
     /// # #[derive(serde::Serialize, schemars::JsonSchema)]

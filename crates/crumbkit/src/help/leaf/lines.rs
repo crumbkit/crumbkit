@@ -19,21 +19,26 @@ impl Leaf {
 
     /// Returns the `Rows:` line that the leaf's `-h` and `--help` print
     /// after the `Problems:` line when its document lists only the rows
-    /// that report a problem, such as `Rows: the text lists only the rows
-    /// that report a problem, and --long or --json lists every row.`, or
-    /// `None` otherwise (ADR-0138). The line names `--long` only when the
-    /// command offers it.
+    /// that report a problem, such as `Rows: the default text lists only
+    /// the rows that report a problem, and --long, --fields or --json lists
+    /// every row.`, or `None` otherwise (ADR-0138, ADR-0140). The line
+    /// names `--long` and `--fields` only when the command offers them.
     pub(crate) fn rows_line(&self) -> Option<String> {
         if !self.get_document()?.lists_only_problems() {
             return None;
         }
-        let flags = if self.offers(ViewFlag::Long) {
-            "--long or --json lists"
+        let offered: Vec<&str> = [ViewFlag::Long, ViewFlag::Fields]
+            .into_iter()
+            .filter(|flag| self.offers(*flag))
+            .map(ViewFlag::name)
+            .collect();
+        let flags = if offered.is_empty() {
+            "--json".to_owned()
         } else {
-            "--json lists"
+            format!("{} or --json", offered.join(", "))
         };
         Some(format!(
-            "Rows: the text lists only the rows that report a problem, and {flags} every row."
+            "Rows: the default text lists only the rows that report a problem, and {flags} lists every row."
         ))
     }
 
