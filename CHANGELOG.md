@@ -1011,6 +1011,9 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit: a refusal on standard error stays plain at a terminal whose
   `TERM` is `dumb` and under `CLICOLOR=0`, as help does, unless
   `CLICOLOR_FORCE` forces colour ([behaviour/parsing]).
+- crumbkit: an [`Age`] of seven days or more prints in whole weeks, such
+  as `1w` for 13 days and `2w` for 14 days, in text and in its `Display`.
+  JSON keeps the RFC 3339 time ([behaviour/output]).
 - crumbkit: `--long` with `--json` is refused, with exit 2 and a hint to
   drop `--long`, for a row type that sets `Row::WHOLE`, because its JSON
   already holds every field ([behaviour/output/shapes]).
