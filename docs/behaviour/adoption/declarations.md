@@ -48,6 +48,12 @@ Why: ADR-0056.
   check reaches these calls before a run, because the function needs a
   refusal, so a tool provokes the refusal in a `check_recoveries` start to
   see them.
+- `Leaf::refusal_hint` and `Guide::refusal_hint` declare a function that
+  returns a sentence for a refusal of a command line, such as telling the
+  caller to put an unknown flag after `--`. The sentence becomes the
+  refusal's recovery as a hint before any call, and `-h` and the calls
+  follow it among the alternatives, except for a `--limit` above its bound
+  ([refused command lines](../failures/README.md#refused-command-lines)).
 - A document whose name is not its command's path keeps a name that scripts
   already read ([schemas](../schemas/README.md#document-ids)).
 - `Guide::dashed_forms` lets a command keep a name in another style
@@ -64,7 +70,8 @@ the exit code a failure ends the run with, so `check_exit_codes`,
 run prints. A path that no leaf with renames names, such as `&[]`, gives the
 guide's renames alone.
 
-Why: ADR-0056, ADR-0060, ADR-0001, ADR-0086, ADR-0016, ADR-0035, ADR-0081.
+Why: ADR-0056, ADR-0060, ADR-0001, ADR-0086, ADR-0016, ADR-0035, ADR-0081,
+ADR-0123.
 
 ## Codes per command
 
@@ -135,11 +142,13 @@ rename of the guide and of each leaf, each exit that lists one of crumbkit's
 codes or a rename of one, each document whose name is not its command's path
 (as a `document-name` customisation beside the name that its command's path
 gives), each leaf that passes on an exit code, each leaf that declares
-refusal alternatives, the guide's refusal function once for every run, and
+refusal alternatives (as `refusal-alternatives`) or a refusal hint (as
+`refusal-hint`), the guide's refusal function and hint function once each
+for every run, and
 each leaf whose row type declares `Row::LINE` (as a `text-line`
 customisation that names the form of the line), and each leaf whose row
 type declares `Row::CHILDREN` (as a `children` customisation that names the
-field). A leaf's code rename, and an
+field and quotes any `Row::CHILDREN_HELP`). A leaf's code rename, and an
 exit that lists a code that only a leaf renames, apply to that leaf's
 command line. The dashed-forms declaration is listed once, followed by each
 command named in another style as a `resource-name` or a `verb-name` with
@@ -151,4 +160,4 @@ completion variable, because `complete_with` sets it for the process and the
 guide does not hold it.
 
 Why: ADR-0056, ADR-0060, ADR-0036, ADR-0035, ADR-0064, ADR-0081, ADR-0086,
-ADR-0120.
+ADR-0120, ADR-0123.

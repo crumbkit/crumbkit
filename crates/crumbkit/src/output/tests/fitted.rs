@@ -5,9 +5,11 @@ use clap::CommandFactory as _;
 use schemars::JsonSchema;
 use serde::Serialize;
 
-use super::{Finished, Tool, built_with, finish_output};
+use std::process::ExitCode;
+
+use super::{Finished, Tool, built_with};
 use crate::help::Guide;
-use crate::{Document, Listing, Output, Row};
+use crate::{Document, Error, Listing, Output, Row, Rows, Sink, finish_to};
 
 /// A book whose `isbn` is an identifier that a person copies, so the fit
 /// never cuts it.
@@ -47,18 +49,35 @@ fn books() -> Vec<Book> {
     ]
 }
 
-/// Returns the output of `tool list` with `flags` and `guide`, at a
-/// terminal `width` columns wide when `width` is set.
-fn at_terminal(guide: &Guide, flags: &[&str], width: Option<usize>) -> Output {
+/// Returns the output of `tool list` with `flags` and `guide`.
+fn built(guide: &Guide, flags: &[&str]) -> Output {
     let args: Vec<&str> = ["tool", "list"].iter().chain(flags).copied().collect();
-    let mut output = built_with(Tool::command(), guide, &args);
-    output.terminal_width = width;
-    output
+    built_with(Tool::command(), guide, &args)
+}
+
+/// Finishes `value` with `output` into a sink that gives the result
+/// `width` columns, as `finish` gives it the width of a terminal.
+fn finish_at<T: Rows>(
+    output: Output,
+    document: Document<T>,
+    value: T,
+    width: Option<usize>,
+) -> Finished {
+    let mut out = Vec::new();
+    let mut err = Vec::new();
+    let mut sink = Sink::new(&mut out, &mut err).fitted(width);
+    let result: Result<T, Error> = Ok(value);
+    let code = finish_to(&mut sink, output, document, result);
+    Finished {
+        code: ExitCode::from(code),
+        out: String::from_utf8(out).unwrap(),
+        err: String::from_utf8(err).unwrap(),
+    }
 }
 
 /// Finishes the two books with `flags` at a terminal `width` columns wide.
 fn finish_books(flags: &[&str], width: Option<usize>) -> Finished {
-    finish_output(at_terminal(&Guide::new(), flags, width), BOOKS, books())
+    finish_at(built(&Guide::new(), flags), BOOKS, books(), width)
 }
 
 #[test]
@@ -125,8 +144,8 @@ fn the_output_budget_shows_the_same_rows_with_and_without_a_terminal_width() {
         Listing::new(rows, 30).described("books")
     };
 
-    let narrow = finish_output(at_terminal(&guide, &[], Some(40)), BOOK_LISTING, listing());
-    let piped = finish_output(at_terminal(&guide, &[], None), BOOK_LISTING, listing());
+    let narrow = finish_at(built(&guide, &[]), BOOK_LISTING, listing(), Some(40));
+    let piped = finish_at(built(&guide, &[]), BOOK_LISTING, listing(), None);
 
     assert_ne!(narrow.out, piped.out, "the narrow table was not fitted");
     assert_eq!(narrow.out.lines().count(), piped.out.lines().count());

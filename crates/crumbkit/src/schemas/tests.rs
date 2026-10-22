@@ -19,6 +19,7 @@ mod bytes;
 mod columns;
 mod formats;
 mod streams;
+mod variants;
 
 /// A row type for the test tool's leaves.
 #[derive(Serialize, JsonSchema)]

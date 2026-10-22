@@ -29,17 +29,18 @@ pub(super) struct Customisation {
 /// usage code other than [`Spelling::COLONS`] does, each code rename, each
 /// exit that lists one of
 /// crumbkit's codes or the tool's rename of it, whether the guide declares
-/// refusal alternatives for every command, the [`Guide::dashed_forms`]
+/// refusal alternatives for every command, whether it declares a refusal
+/// hint for every command, the [`Guide::dashed_forms`]
 /// declaration followed by each command that answers to its dashed form, as
 /// [`dashed_names`] lists them, and then for each leaf in guide order its
 /// document's name when the leaf's path gives another, the program whose
-/// exit code it passes on, whether it declares refusal alternatives, the
-/// form of its rows' own text line (`Row::LINE`, ADR-0064), and each code
+/// exit code it passes on, whether it declares refusal alternatives,
+/// whether it declares a refusal hint, the form of its rows' own text line (`Row::LINE`, ADR-0064), and each code
 /// rename of [`Leaf::codes`](crumbkit::help::Leaf::codes). An exit that
 /// lists a code that only a leaf renames applies to that leaf's command. A
 /// declaration that a later change adds joins this list beside the
 /// declarations of the same scope: a guide setting before the leaves, and a
-/// leaf's declaration after its refusal-alternatives entry. The completion
+/// leaf's declaration after its refusal-hint entry. The completion
 /// variable is not listed, because `complete_with` sets it for the process
 /// and the guide does not hold it.
 pub(super) fn customisations(command: &Command, guide: &Guide) -> Vec<Customisation> {
@@ -98,6 +99,15 @@ pub(super) fn customisations(command: &Command, guide: &Guide) -> Vec<Customisat
                 .to_owned(),
         });
     }
+    if guide.get_refusal_hint().is_some() {
+        list.push(Customisation {
+            declaration: "refusal-hint",
+            applies_to: every_run.clone(),
+            declares: "A refused command line for a command without its own function may recover \
+                       with the tool's own hint."
+                .to_owned(),
+        });
+    }
     if guide.get_dashed_forms() {
         list.push(Customisation {
             declaration: "dashed-forms",
@@ -138,15 +148,24 @@ fn leaf_customisations(command: &Command, spelling: Spelling, leaf: &Leaf) -> Ve
             declares: format!("The command exits with the exit code of {program}."),
         });
     }
-    // The report states that the leaf declares refusal alternatives and
-    // leaves out the calls, so this getter and the guide's are the only
-    // lines that read them.
+    // The report states that the leaf declares refusal alternatives or a
+    // refusal hint and leaves out what the functions return, so these
+    // getters and the guide's are the only lines that read them.
     if leaf.get_refusal_alternatives().is_some() {
         list.push(Customisation {
             declaration: "refusal-alternatives",
             applies_to: command_line(command, &leaf.path().join(" ")),
             declares: "A refused command line for this command also offers the tool's own \
                        alternatives."
+                .to_owned(),
+        });
+    }
+    if leaf.get_refusal_hint().is_some() {
+        list.push(Customisation {
+            declaration: "refusal-hint",
+            applies_to: command_line(command, &leaf.path().join(" ")),
+            declares: "A refused command line for this command may recover with the tool's own \
+                       hint."
                 .to_owned(),
         });
     }
@@ -159,13 +178,20 @@ fn leaf_customisations(command: &Command, spelling: Spelling, leaf: &Leaf) -> Ve
             ),
         });
     }
-    if let Some(field) = leaf.children() {
+    if let (Some(field), Some(children)) = (leaf.children(), leaf.children_text()) {
+        // crumbkit's own sentence reads as what the text prints, and a row
+        // type's own text is quoted after the field it describes.
+        let declares = match leaf.children_help() {
+            Some(_) => format!(
+                "The text prints lines under each row for its {field}, and help describes them \
+                 as: {children}"
+            ),
+            None => format!("The text prints {children}"),
+        };
         list.push(Customisation {
             declaration: "children",
             applies_to: command_line(command, &leaf.path().join(" ")),
-            declares: format!(
-                "The text prints one indented line under each row for each of its {field}."
-            ),
+            declares,
         });
     }
     for rename in leaf.get_codes() {

@@ -26,7 +26,7 @@ fn text(failure: &dyn Failure) -> String {
         Spelling::COLONS,
         Printing::default(),
         &mut clap::Command::new("tool"),
-        &mut std::io::sink(),
+        &mut crate::sink::role::Recorded::default(),
     );
     let mut err = Vec::new();
     write_crumbkit_text(&mut err, &document).unwrap();

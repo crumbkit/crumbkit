@@ -12,8 +12,8 @@ use crate::{Call, Row, Rows, Shape};
 mod tests;
 
 /// One page of rows, the total number of rows that matched when the tool
-/// counted them, an optional phrase that names them, an optional summary, an optional note and an
-/// optional next step.
+/// counted them, an optional phrase that names them, an optional summary, an optional note, an
+/// optional long note and an optional next step.
 ///
 /// A command returns a listing when it may show fewer rows than matched,
 /// and flattens `crumbkit::Page` into its arguments so the caller can
@@ -23,9 +23,10 @@ mod tests;
 /// standard error, a footer when fewer rows are shown than the total, such
 /// as `Showing 4 of 6 books. --all shows every one.`, or `Showing 4 books,
 /// and more match. --all shows every one.` for a listing without a total,
-/// then the note, and
-/// then the next step, such as `Next: shelf books show <ID>... takes up to
-/// 100 ids in one call.`
+/// or `Showing 4 of at least 100 books. --all shows 100 of them.` for a
+/// listing from a capped source ([`Listing::capped`]), then the note, under
+/// `--long` the long note, and then the next step, such as `Next: shelf
+/// books show <ID>... takes up to 100 ids in one call.`
 ///
 /// ```
 /// # #[derive(serde::Serialize, schemars::JsonSchema)]
@@ -46,12 +47,17 @@ mod tests;
 pub struct Listing<R: Row, S = NoSummary> {
     /// The rows to print, in order.
     rows: Vec<R>,
-    /// The number of rows that matched, which `new` keeps at least
-    /// `rows.len()`, or `None` when the tool did not count them.
+    /// The number of rows that matched, or that the tool read when the
+    /// listing is capped, which `new` keeps at least `rows.len()`, or
+    /// `None` when the tool did not count them.
     total: Option<usize>,
     /// Whether the source of a listing without a total holds rows after
     /// these. A listing with a total reads this from the total instead.
     more: bool,
+    /// Whether the tool read only part of its source, so `total` counts
+    /// the rows it read and the source holds more. Only a listing with a
+    /// total is capped.
+    capped: bool,
     /// The phrase that names the rows in the footer, such as `books`.
     description: Option<String>,
     /// The phrase that names one row in the footer and the cut line of a
@@ -63,6 +69,9 @@ pub struct Listing<R: Row, S = NoSummary> {
     /// The line that the text output prints after the table and any
     /// footer, such as the path of the file that the rows come from.
     note: Option<String>,
+    /// The line that the text output prints after the note under `--long`
+    /// only, such as how the figures of the rows were measured.
+    long_note: Option<String>,
     /// The command that the text output names as the next step, and the
     /// phrase that follows it on the `Next:` line.
     next: Option<(Call, String)>,
@@ -98,10 +107,12 @@ impl<R: Row> Listing<R> {
             rows,
             total: Some(total),
             more: false,
+            capped: false,
             description: None,
             singular: None,
             summary: None,
             note: None,
+            long_note: None,
             next: None,
             bound: None,
             problems: None,
@@ -204,10 +215,12 @@ impl<R: Row, S> Listing<R, S> {
             rows: self.rows,
             total: self.total,
             more: self.more,
+            capped: self.capped,
             description: self.description,
             singular: self.singular,
             summary: Some(summary),
             note: self.note,
+            long_note: self.long_note,
             next: self.next,
             bound: self.bound,
             problems: self.problems,
@@ -223,6 +236,23 @@ impl<R: Row, S> Listing<R, S> {
     #[must_use]
     pub fn note(mut self, text: impl Into<String>) -> Self {
         self.note = Some(text.into());
+        self
+    }
+
+    /// Sets the long note: a line that the text output prints on standard
+    /// error after the note and before any next step, under `--long` only,
+    /// such as `Sizes are blocks on disk, and a hard-linked file counts
+    /// once.` The default text, `--fields` and the JSON document leave it
+    /// out, so a long note holds detail that a person asks for with
+    /// `--long`, such as how the figures of the rows were measured.
+    ///
+    /// When the row type has no long columns, the command offers `--long`
+    /// only when the listing's document declares the note with
+    /// `Document::long_noted` (ADR-0139). Help then promises the note, so
+    /// such a command sets it on every listing it returns.
+    #[must_use]
+    pub fn long_note(mut self, text: impl Into<String>) -> Self {
+        self.long_note = Some(text.into());
         self
     }
 
@@ -254,6 +284,43 @@ impl<R: Row, S> Listing<R, S> {
         self.bound = Some(most);
         self
     }
+
+    /// Says whether the tool read only part of its source, such as the
+    /// newest 100 records of a store that holds more. With `capped` true,
+    /// the listing's total counts the rows that the tool read, and the
+    /// source holds more rows beyond them. With `false` it changes nothing,
+    /// so a tool passes the answer of its own read.
+    ///
+    /// A capped listing has no exact total, so its JSON document leaves out
+    /// `total` and holds `"truncated": true` (ADR-0087). Its text footer
+    /// gives the total as a lower bound, such as `Showing 20 of at least 100
+    /// records. --all shows 100 of them.` When the listing shows every row
+    /// that the tool read, as with `--all`, its footer reads `Showing 100
+    /// records, and more match.`, because `--all` shows nothing more.
+    ///
+    /// It applies to a listing from [`Listing::new`], [`Listing::from_all`],
+    /// `crumbkit::Page::listing` and `crumbkit::Page::first_of`. A listing
+    /// from [`Listing::uncounted`] has no total to give as a lower bound,
+    /// so on such a listing it changes nothing.
+    ///
+    /// ```
+    /// # #[derive(serde::Serialize, schemars::JsonSchema)]
+    /// # struct Record { id: u32 }
+    /// # impl crumbkit::Row for Record { const COLUMNS: &'static [&'static str] = &["id"]; }
+    /// use crumbkit::Listing;
+    ///
+    /// // The tool read the newest 100 records, and its store holds older ones.
+    /// let read: Vec<Record> = (1..=100).map(|id| Record { id }).collect();
+    /// let history_was_cut = true;
+    /// let listing = Listing::from_all(read, Some(20))
+    ///     .capped(history_was_cut)
+    ///     .described("records");
+    /// ```
+    #[must_use]
+    pub const fn capped(mut self, capped: bool) -> Self {
+        self.capped = capped && self.total.is_some();
+        self
+    }
 }
 
 /// Serializes the listing as the array of its rows. `crumbkit::finish`
@@ -274,12 +341,18 @@ impl<R: Row, S: Serialize + fmt::Display + JsonSchema> Rows for Listing<R, S> {
     }
 
     fn total(&self) -> Option<usize> {
-        self.total
+        self.total.filter(|_| !self.capped)
+    }
+
+    fn at_least(&self) -> Option<usize> {
+        self.total.filter(|_| self.capped)
     }
 
     fn more(&self) -> bool {
-        self.total
-            .map_or(self.more, |total| self.rows.len() < total)
+        self.capped
+            || self
+                .total
+                .map_or(self.more, |total| self.rows.len() < total)
     }
 
     fn description(&self) -> Option<&str> {
@@ -296,6 +369,10 @@ impl<R: Row, S: Serialize + fmt::Display + JsonSchema> Rows for Listing<R, S> {
 
     fn note(&self) -> Option<&str> {
         self.note.as_deref()
+    }
+
+    fn long_note(&self) -> Option<&str> {
+        self.long_note.as_deref()
     }
 
     fn next_step(&self) -> Option<(&Call, &str)> {

@@ -27,8 +27,8 @@ effects/expect: reading to-read edit
   Cost: Two concurrent writers can lose each other's changes, because the command replaces data without checking that it is the version the caller read.
 
 path-budget/path: every path through reading
-  Budget: 3900 bytes, where the default is 8000 bytes.
-  Reason: reading's longest path, commands list, reads about 3,600 bytes, so 3,900 bytes leaves room for small changes and catches a page or an output that grows by much.
+  Budget: 4300 bytes, where the default is 8000 bytes.
+  Reason: reading's longest path, commands list, reads about 4,050 bytes, so 4,300 bytes leaves room for small changes and catches a page or an output that grows by much.
   Cost: None, because the budget is at or below the default.
 
 reading declares 5 customisations, which need no reason.

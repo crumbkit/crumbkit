@@ -15,6 +15,9 @@ use crate::parse::{parse_to, try_parse_to};
 use crate::twins::assert_one_word_apart;
 use crate::{Sink, ViewFlags};
 
+mod styled;
+mod typed;
+
 /// A tool with a global `--json` flag and a `planets` group whose `show`
 /// takes names and a `--sort` key, and a `moon_phases` command.
 fn tool() -> Command {
@@ -397,17 +400,6 @@ fn a_refusal_reports_its_flags_in_the_order_typed_with_each_flag_of_a_group() {
 }
 
 #[test]
-fn a_refusal_whose_help_word_crumbkit_turned_into_a_flag_reports_clap_s_help_id() {
-    let refused = walked(
-        &["tool", "planets", "help", "nonsense"],
-        &["tool", "planets", "show", "nonsense"],
-    );
-
-    assert_eq!(refused.parsed(), words(&["planets", "nonsense", "--help"]));
-    assert_eq!(refused.flags(), ["help"]);
-}
-
-#[test]
 fn a_refusal_reports_a_global_option_s_value_typed_before_the_subcommand() {
     let following = walked(
         &["tool", "--format", "json", "planets", "show"],
@@ -459,4 +451,90 @@ fn a_refusal_reports_no_value_for_an_option_left_out_a_flag_or_an_unknown_id() {
     assert_eq!(refused.value("format"), None);
     assert_eq!(refused.value("quiet"), None);
     assert_eq!(refused.value("nonsense"), None);
+}
+
+#[test]
+fn a_refusal_whose_words_typed_json_prints_text_on_standard_error_after_as_json_false() {
+    assert_one_word_apart(&["tool", "comets", "--json"], &["tool", "comets"]);
+
+    let (out, err) = printed(refused(&["tool", "comets", "--json"]).as_json(false));
+
+    assert_eq!(
+        (out, err),
+        parse_printed(tool(), &Guide::new(), &["tool", "comets"])
+    );
+}
+
+#[test]
+fn a_refusal_without_json_prints_the_failure_document_on_standard_output_after_as_json_true() {
+    assert_one_word_apart(&["tool", "comets"], &["tool", "comets", "--json"]);
+
+    let (out, err) = printed(refused(&["tool", "comets"]).as_json(true));
+
+    assert_eq!(
+        (out, err),
+        parse_printed(tool(), &Guide::new(), &["tool", "comets", "--json"])
+    );
+}
+
+#[test]
+fn a_refusal_without_as_json_prints_in_the_form_that_the_words_chose() {
+    let (json_out, json_err) = printed(refused(&["tool", "comets", "--json"]));
+    let (text_out, text_err) = printed(refused(&["tool", "comets"]));
+
+    assert!(json_out.contains("tool/failure/v1"), "{json_out}");
+    assert_eq!((json_err, text_out), (String::new(), String::new()));
+    assert!(text_err.contains("comets"), "{text_err}");
+}
+
+#[test]
+fn as_json_leaves_the_output_that_the_refusal_reports_unchanged() {
+    let refused = refused(&["tool", "comets", "--json"]).as_json(false);
+
+    assert!(refused.output().is_json(), "{:?}", refused.output());
+}
+
+#[test]
+fn the_stop_after_as_json_reports_the_form_that_printed() {
+    let sink = &mut Sink::new(Vec::new(), Vec::new());
+    let text = refused(&["tool", "comets", "--json"])
+        .as_json(false)
+        .print_to(sink);
+    let json = refused(&["tool", "comets"]).as_json(true).print_to(sink);
+
+    assert_eq!(
+        (text.output().is_json(), json.output().is_json()),
+        (false, true)
+    );
+}
+
+#[test]
+fn as_json_changes_neither_the_exit_code_nor_the_observer_events() {
+    const GUIDE: Guide = Guide::new()
+        .exits(&[Exit::new(64, "The command line was refused.").failures(&[&CLI_USAGE])]);
+    let args = ["tool", "comets", "--json"];
+    let run = |form: Option<bool>| {
+        let mut number = 0;
+        let events = watch(|| {
+            let refused = refused_by(tool(), &GUIDE, &args);
+            let refused = match form {
+                Some(json) => refused.as_json(json),
+                None => refused,
+            };
+            number = refused
+                .print_to(&mut Sink::new(Vec::new(), Vec::new()))
+                .number();
+        });
+        (number, events)
+    };
+
+    let (number, events) = run(None);
+
+    assert_eq!(number, 64);
+    assert!(
+        events.iter().any(|event| event.starts_with("refused")),
+        "{events:?}"
+    );
+    assert_eq!(run(Some(false)), (number, events.clone()));
+    assert_eq!(run(Some(true)), (number, events));
 }

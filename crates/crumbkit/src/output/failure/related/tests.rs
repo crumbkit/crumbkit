@@ -148,7 +148,7 @@ fn json(related: Vec<Note>) -> serde_json::Value {
         Spelling::COLONS,
         Printing::default(),
         &mut clap::Command::new("tool"),
-        &mut std::io::sink(),
+        &mut crate::sink::role::Recorded::default(),
     ))
     .unwrap()
 }
@@ -175,7 +175,7 @@ fn json_holds_each_related_diagnostic_with_every_part_it_has_after_the_labels() 
         Spelling::COLONS,
         Printing::default(),
         &mut clap::Command::new("tool"),
-        &mut std::io::sink(),
+        &mut crate::sink::role::Recorded::default(),
     );
 
     assert_eq!(
@@ -278,7 +278,7 @@ fn related_diagnostics_nest_at_most_eight_levels_deep() {
         Spelling::COLONS,
         Printing::default(),
         &mut clap::Command::new("tool"),
-        &mut std::io::sink(),
+        &mut crate::sink::role::Recorded::default(),
     );
 
     let json = serde_json::to_string(&document).unwrap();

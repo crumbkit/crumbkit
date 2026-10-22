@@ -195,6 +195,20 @@ pub(crate) fn own_names(
     replaced
 }
 
+/// Returns the words after the program name in `args` as the caller typed
+/// them, with each word of `replaced`, the positions in `args` and the
+/// typed text that [`own_names`] replaced, put back.
+pub(super) fn typed_words(args: &[OsString], replaced: Vec<(usize, OsString)>) -> Vec<OsString> {
+    let mut typed = args.to_vec();
+    for (position, word) in replaced {
+        if let Some(slot) = typed.get_mut(position) {
+            *slot = word;
+        }
+    }
+    typed.remove(0);
+    typed
+}
+
 /// Returns the word `help` that crumbkit answers in `args`, or `None` when
 /// clap reads every word.
 ///
@@ -291,7 +305,7 @@ pub(super) fn walk(command: &Command, args: &[OsString]) -> Walked {
 
 /// How [`Words::read`] reads one word, borrowing an option from the
 /// command for `'a`.
-enum Kind<'a> {
+pub(super) enum Kind<'a> {
     /// The word `--`, after which every word is a positional value.
     End,
     /// A word that starts with `-` and is no option's value.
@@ -312,7 +326,8 @@ enum Kind<'a> {
 /// values that the option takes. A word that starts with `-` ends the values
 /// unless the option allows hyphen values, and the option's value terminator
 /// ends them too. An option that requires `=` takes no value from the next
-/// word.
+/// word. The `help_word` module reads the words after `help` with this
+/// reader too, so a value of an option names no topic.
 //
 // RUST-10: the reader reads the arguments that a command holds before clap
 // builds it, and the global arguments of the commands above it, which clap
@@ -323,9 +338,9 @@ enum Kind<'a> {
 // without values. It gives each value as one word and never splits it at
 // the option's value delimiter. A walk over the commands that clap builds
 // along the path replaces it if a tool needs those settings.
-struct Words<'a> {
+pub(super) struct Words<'a> {
     /// The current command, the deepest that the reader entered.
-    current: &'a Command,
+    pub(super) current: &'a Command,
     /// The commands from the root down to the one above `current`.
     above: Vec<&'a Command>,
     /// The option whose values the next words are, and how many more values
@@ -335,7 +350,7 @@ struct Words<'a> {
 
 impl<'a> Words<'a> {
     /// Returns a reader that starts at the root `command`.
-    const fn new(command: &'a Command) -> Self {
+    pub(super) const fn new(command: &'a Command) -> Self {
         Self {
             current: command,
             above: Vec::new(),
@@ -344,14 +359,14 @@ impl<'a> Words<'a> {
     }
 
     /// Makes `subcommand` of the current command the current command.
-    fn enter(&mut self, subcommand: &'a Command) {
+    pub(super) fn enter(&mut self, subcommand: &'a Command) {
         self.above.push(self.current);
         self.current = subcommand;
         self.pending = None;
     }
 
     /// Reads `word`, the next word after the program name.
-    fn read(&mut self, word: &OsStr) -> Kind<'a> {
+    pub(super) fn read(&mut self, word: &OsStr) -> Kind<'a> {
         if let Some((arg, left)) = self.pending.take() {
             if arg
                 .get_value_terminator()

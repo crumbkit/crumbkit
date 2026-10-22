@@ -45,6 +45,8 @@ mod code;
 pub mod codes;
 pub mod commands;
 mod complete;
+#[cfg(test)]
+mod conforms;
 mod dashed;
 mod document;
 pub mod events;

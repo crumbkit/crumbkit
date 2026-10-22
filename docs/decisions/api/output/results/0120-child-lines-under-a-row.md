@@ -1,7 +1,7 @@
 # ADR-0120. Child lines under a row
 
 - Date: 2026-10-20
-- Status: accepted
+- Status: amended by ADR-0135, ADR-0137 and ADR-0138
 
 ## Context
 

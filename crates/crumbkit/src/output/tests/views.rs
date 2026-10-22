@@ -124,3 +124,37 @@ error: --full prints every field of every row in JSON, so it needs --json
 "
     );
 }
+
+#[test]
+fn the_help_of_each_view_flag_states_what_the_command_prints_without_it() {
+    use clap::Args as _;
+
+    let command = crate::ViewFlags::augment_args(clap::Command::new("tool"));
+    let help = |id: &str| {
+        let arg = command.get_arguments().find(|arg| arg.get_id() == id);
+        arg.and_then(clap::Arg::get_help).map(ToString::to_string)
+    };
+
+    assert_eq!(
+        help("json").as_deref(),
+        Some("Print the result as a JSON document. The default prints text.")
+    );
+    assert_eq!(
+        help("fields").as_deref(),
+        Some(
+            "Print only these comma-separated fields, in this order. The default prints the compact columns."
+        )
+    );
+    assert_eq!(
+        help("long").as_deref(),
+        Some(
+            "Add the long columns after the compact ones. The default prints only the compact columns."
+        )
+    );
+    assert_eq!(
+        help("full").as_deref(),
+        Some(
+            "With --json, print every field of every row. The default prints only the fields of the columns."
+        )
+    );
+}

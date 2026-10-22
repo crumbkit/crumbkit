@@ -50,7 +50,10 @@ struct Inner {
     /// The names of the subcommands from the root to the deepest command
     /// that the walk of the words reached.
     path: Vec<String>,
-    /// The words after the program name that crumbkit gave clap.
+    /// The words that `flags` and `value` read: the words after the program
+    /// name that the caller typed, with the tool's own name for each dashed
+    /// form, and without the word `help` that crumbkit answered
+    /// (ADR-0136).
     words: Vec<OsString>,
 }
 
@@ -59,21 +62,25 @@ struct Inner {
 #[non_exhaustive]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Printed {
-    /// A help page printed on standard output, for `-h`, `--help` or the
-    /// word `help`. The run observer's
+    /// A help page printed as the result on standard output, for `-h`,
+    /// `--help` or the word `help`. The run observer's
     /// [`helped`](crate::events::Observer::helped) event carries whether it
     /// was the long page.
     Help,
-    /// The version printed on standard output, for `--version`.
+    /// The version printed as the result on standard output, for
+    /// `--version`.
     Version,
-    /// A help topic printed on standard output, for the word `help` at the
-    /// guide's root followed by the topic's name.
+    /// A help topic printed as the result on standard output, for the word
+    /// `help` at the guide's root followed by the topic's name.
     Topic,
-    /// A refused command line printed on standard error, or on standard
-    /// output as a JSON document when the caller asked for JSON.
+    /// A refused command line printed as a message on standard error, or as
+    /// the result on standard output in a JSON document when the caller
+    /// asked for JSON or the tool chose JSON with
+    /// [`Refused::as_json`](crate::Refused::as_json).
     Refusal,
-    /// The failure of a picker's source printed on standard error, or on
-    /// standard output as a JSON document when the caller asked for JSON.
+    /// The failure of a picker's source printed as a message on standard
+    /// error, or as the result on standard output in a JSON document when
+    /// the caller asked for JSON.
     Failure,
 }
 
@@ -81,8 +88,8 @@ impl Stop {
     /// Returns the stop of a run that ends with `code` after `printed`
     /// printed, in which the walk found `--json` when `json` is true, after
     /// parsing against `command` with `guide`. `path` names the subcommands
-    /// that the walk reached, and `words` are the words after the program
-    /// name that crumbkit gave clap.
+    /// that the walk reached, and `words` are the words that
+    /// [`Stop::flags`] and [`Stop::value`] read.
     pub(crate) fn new(
         printed: Printed,
         code: u8,
@@ -148,6 +155,9 @@ impl Stop {
     /// [`Output::is_json`] and [`Output::progress_allowed`] answer as they
     /// do after parsing. Its `--long`, `--full` and `--fields` are always
     /// off, because they shape a result that a stopped run does not have.
+    /// After a refusal whose form the tool chose with
+    /// [`Refused::as_json`](crate::Refused::as_json), its `is_json` reports
+    /// the form that printed.
     #[must_use]
     pub fn output(&self) -> &Output {
         &self.inner.output
@@ -164,17 +174,21 @@ impl Stop {
         &self.inner.path
     }
 
-    /// Returns the clap ids of the arguments that the words pass as flags,
-    /// in the order typed, including the options that take values. A group
-    /// of short flags such as `-qv` gives the id of each flag in it, and a
-    /// name that no argument has gives nothing.
+    /// Returns the clap ids of the arguments that the caller's words pass
+    /// as flags, in the order typed, including the options that take
+    /// values. A group of short flags such as `-qv` gives the id of each
+    /// flag in it, and a name that no argument has gives nothing.
     ///
-    /// The words are the ones after the program name that crumbkit gave
-    /// clap, so `--help` gives clap's help id, `help`, also when crumbkit
-    /// turned the word `help` into `--help`. They are read as
-    /// [`command_path`](crate::command_path) reads them, so the value of an
-    /// option is never read as a flag. After [`Output::new`] refused its
-    /// view flags, the words are the ones passed to it.
+    /// The words are the ones after the program name that the caller
+    /// typed, without the word `help` that crumbkit answered. So `tool help
+    /// planets --format json` gives `format`, and the word `help`, which
+    /// crumbkit gave clap as `--help`, gives no flag. A `--help` or `-h`
+    /// that the caller typed gives clap's help id, `help`. A value that a
+    /// picker added before its source failed gives no flag either. The
+    /// words are read as [`command_path`](crate::command_path) reads them,
+    /// so the value of an option is never read as a flag. After
+    /// [`Output::new`] refused its view flags, the words are the ones
+    /// passed to it (ADR-0136).
     #[must_use]
     pub fn flags(&self) -> Vec<String> {
         walked::flags(self.inner.output.command_tree(), &self.inner.words)
@@ -188,8 +202,8 @@ impl Stop {
     /// The value is the word after the option's flag, or the text after
     /// the name in the flag's own word, as in `--format=json`, `-fjson` and
     /// `-f=json`. It comes back as one word, so a value that the option
-    /// splits at its value delimiter comes back unsplit. The words are read
-    /// as [`Stop::flags`] reads them. A tool that prints a note after a help
+    /// splits at its value delimiter comes back unsplit. The words are the
+    /// ones that [`Stop::flags`] reads, read in the same way. A tool that prints a note after a help
     /// page reads a global option such as `--format` here to choose how to
     /// print it.
     #[must_use]
@@ -202,12 +216,17 @@ impl Stop {
 /// `command` with `guide`, in which the walk found `--json` when `json` is
 /// true. Its `--long`, `--full` and `--fields` are off.
 pub(crate) fn stopped(json: bool, command: Command, guide: &Guide) -> Output {
-    let view = if json {
+    Output::stopped(view(json), command, guide)
+}
+
+/// Returns the view of a run that `parse` ended: JSON when `json` is true
+/// and text otherwise, with `--long`, `--full` and `--fields` off.
+pub(crate) const fn view(json: bool) -> View {
+    if json {
         View::Json(Selection::Columns)
     } else {
         View::Text(Table::Compact)
-    };
-    Output::stopped(view, command, guide)
+    }
 }
 
 impl From<Stop> for ExitCode {

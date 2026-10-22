@@ -60,12 +60,12 @@
     {
       "rule": "path-budget/path",
       "applies_to": "every path through reading",
-      "reason": "reading's longest path, commands list, reads about 3,600 bytes, so 3,900 bytes leaves room for small changes and catches a page or an output that grows by much.",
+      "reason": "reading's longest path, commands list, reads about 4,050 bytes, so 4,300 bytes leaves room for small changes and catches a page or an output that grows by much.",
       "costs": [
         "None, because the budget is at or below the default."
       ],
       "budget": {
-        "bytes": 3900,
+        "bytes": 4300,
         "default": 8000,
         "extra_bytes": 0,
         "extra_tokens": 0

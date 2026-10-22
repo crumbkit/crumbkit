@@ -20,7 +20,9 @@ mod tests;
 ///
 /// A tool that prints every refusal as crumbkit does calls
 /// [`Unparsed::print`], which returns the [`Stop`] that
-/// [`parse`](crate::parse) would have returned.
+/// [`parse`](crate::parse) would have returned. A tool that chooses the
+/// form of a refusal by a flag of its own matches `Unparsed::Refused` and
+/// calls [`Refused::as_json`] before it prints.
 #[derive(Debug)]
 #[non_exhaustive]
 pub enum Unparsed {
@@ -36,6 +38,8 @@ impl Unparsed {
     /// Prints a refusal to the process's standard error, or to its
     /// standard output when the caller asked for JSON, as
     /// [`Refused::print`] does, and returns the `Stop` that ends the run.
+    /// It prints in the form that the words chose, because it has no
+    /// [`Refused::as_json`] call.
     /// A `Stopped` run already printed, so it returns its `Stop` and
     /// prints nothing.
     #[must_use]
@@ -67,6 +71,13 @@ impl Unparsed {
 /// that resolves its own aliases after a refusal reads the words, and a
 /// tool with its own failure document prints the refusal itself from the
 /// message, the code and the recovery.
+///
+/// A refusal prints as crumbkit's failure document on the output writer
+/// when the walk found `--json`, and as text on the error writer
+/// otherwise. A tool with a flag of its own that chooses the form of a
+/// failure, such as `--error-format`, reads the flag with
+/// [`Refused::value`] and passes the form it resolved to
+/// [`Refused::as_json`] before it prints.
 ///
 /// Printing consumes the refusal, so a run prints it at most once:
 ///
@@ -103,6 +114,14 @@ struct Inner {
     typed: Vec<OsString>,
     /// The words after the program name that crumbkit gave clap.
     parsed: Vec<OsString>,
+    /// The words that `flags` and `value` read: the words that the caller
+    /// typed, with the tool's own name for each dashed form, and without
+    /// the word `help` that crumbkit answered (ADR-0136).
+    caller: Vec<OsString>,
+    /// The form that the tool chose with `as_json`: `Some(true)` for the
+    /// JSON document, `Some(false)` for text, and `None` for the form that
+    /// the words chose.
+    json: Option<bool>,
     /// The `crumbkit.parse` span, in which the refusal prints, so the span
     /// records its code and exit code (ADR-0030).
     #[cfg(feature = "tracing")]
@@ -112,17 +131,22 @@ struct Inner {
 impl Refused {
     /// Returns the refusal `refusal` of a run whose output is `output`.
     /// `error` is clap's error, or `None` for a refused view flag, and
-    /// `path` names the subcommands that the walk reached. `typed` and
-    /// `parsed` are the words after the program name as the caller typed
-    /// them and as crumbkit gave them to clap.
+    /// `path` names the subcommands that the walk reached. `parsed` are
+    /// the words after the program name as crumbkit gave them to clap,
+    /// `typed` are the words as the caller typed them, and `caller` are
+    /// the words that [`Refused::flags`] and [`Refused::value`] read. Each
+    /// of `typed` and `caller` is `None` when it equals `parsed`.
     pub(crate) fn new(
         refusal: Refusal,
         error: Option<clap::Error>,
         path: Vec<String>,
         output: Output,
-        typed: Vec<OsString>,
         parsed: Vec<OsString>,
+        typed: Option<Vec<OsString>>,
+        caller: Option<Vec<OsString>>,
     ) -> Self {
+        let typed = typed.unwrap_or_else(|| parsed.clone());
+        let caller = caller.unwrap_or_else(|| parsed.clone());
         Self {
             inner: Box::new(Inner {
                 refusal,
@@ -131,6 +155,8 @@ impl Refused {
                 output,
                 typed,
                 parsed,
+                caller,
+                json: None,
                 #[cfg(feature = "tracing")]
                 span: tracing::Span::current(),
             }),
@@ -162,7 +188,9 @@ impl Refused {
     }
 
     /// Returns what the caller does next, which the refusal prints after
-    /// the message, such as running the `-h` of the deepest command.
+    /// the message, such as running the `-h` of the deepest typed command
+    /// that has a help flag. When no command on the typed path has a help
+    /// flag, it is [`Recovery::None`] with a reason that says so.
     #[must_use]
     pub fn recovery(&self) -> Recovery {
         self.inner.refusal.recovery()
@@ -203,19 +231,22 @@ impl Refused {
         &self.inner.path
     }
 
-    /// Returns the clap ids of the arguments that the words pass as flags,
-    /// in the order typed, including the options that take values. A group
-    /// of short flags such as `-qv` gives the id of each flag in it, and a
-    /// name that no argument has gives nothing.
+    /// Returns the clap ids of the arguments that the caller's words pass
+    /// as flags, in the order typed, including the options that take
+    /// values. A group of short flags such as `-qv` gives the id of each
+    /// flag in it, and a name that no argument has gives nothing.
     ///
-    /// The words are the ones that crumbkit gave clap, which
-    /// [`Refused::parsed`] returns, so the word `help` that crumbkit turned
-    /// into `--help` gives clap's help id, `help`. They are read as
-    /// [`command_path`](crate::command_path) reads them, so the value of an
-    /// option is never read as a flag.
+    /// The words are the ones that the caller typed, which
+    /// [`Refused::typed`] returns, without the word `help` that crumbkit
+    /// answered. So `tool help nonsense --format json` gives `format`, and
+    /// the word `help`, which crumbkit gave clap as `--help`, gives no
+    /// flag. A `--help` or `-h` that the caller typed gives clap's help id,
+    /// `help`. A value that a picker added gives no flag either. The words
+    /// are read as [`command_path`](crate::command_path) reads them, so
+    /// the value of an option is never read as a flag (ADR-0136).
     #[must_use]
     pub fn flags(&self) -> Vec<String> {
-        walked::flags(self.inner.output.command_tree(), &self.inner.parsed)
+        walked::flags(self.inner.output.command_tree(), &self.inner.caller)
     }
 
     /// Returns the last value that the words give the option whose clap id
@@ -227,13 +258,13 @@ impl Refused {
     /// the name in the flag's own word, as in `--format=json`, `-fjson` and
     /// `-f=json`. It comes back as one word, so a value that the option
     /// splits at its value delimiter comes back unsplit. The words are the
-    /// ones that crumbkit gave clap, which [`Refused::parsed`] returns, and
-    /// they are read as [`Refused::flags`] reads them. A tool that prints
-    /// its own refusal reads a global option such as `--format` here to
-    /// choose how to print it.
+    /// ones that [`Refused::flags`] reads, read in the same way, so a value
+    /// that a picker added comes back as `None` (ADR-0136). A tool that
+    /// prints its own refusal reads a global option such as `--format`
+    /// here to choose how to print it.
     #[must_use]
     pub fn value(&self, id: &str) -> Option<&OsStr> {
-        walked::value(self.inner.output.command_tree(), &self.inner.parsed, id)
+        walked::value(self.inner.output.command_tree(), &self.inner.caller, id)
     }
 
     /// Returns the word that the refusal names as wrong, or `None` when it
@@ -271,17 +302,52 @@ impl Refused {
         self.inner.error.as_ref()
     }
 
+    /// Returns the refusal fixed to print in the form that `json` names,
+    /// whatever the words said. With `true`, it prints one
+    /// `<tool>/failure/v1` document on the output writer. With `false`, it
+    /// prints text on the error writer. Without this call, it prints in the
+    /// form that the walk of the words chose, which
+    /// [`Output::is_json`] of [`Refused::output`] reports.
+    ///
+    /// A tool whose own flag chooses the form of a failure, such as
+    /// `--error-format text`, reads the flag with [`Refused::value`] and
+    /// passes the form it resolved here, so `tool --error-format text list
+    /// --nosuch --json` prints text on standard error. The call changes
+    /// neither [`Refused::output`], which still reports the words, nor the
+    /// exit code and the observers' events. The [`Stop`] that printing
+    /// returns holds an [`Output`] whose `is_json` reports the form that
+    /// printed.
+    #[must_use]
+    pub fn as_json(mut self, json: bool) -> Self {
+        self.inner.json = Some(json);
+        self
+    }
+
     /// Prints the refusal to the process's standard error, or to its
     /// standard output when the caller asked for JSON, as
     /// [`parse`](crate::parse) prints it, and returns the `Stop` that ends
-    /// the run.
+    /// the run. After [`Refused::as_json`], it prints in the form that the
+    /// tool chose.
+    ///
+    /// The text form carries clap's styles on standard error as `parse`
+    /// prints it: when `CLICOLOR_FORCE` is set, or when standard error is a
+    /// terminal whose `TERM` is not `dumb` and `CLICOLOR` is not `0`. It is
+    /// never styled under `NO_COLOR`, with the command's `ColorChoice` set
+    /// to `Never`, with terminal detection off or without crumbkit's
+    /// `color` feature (ADR-0131, ADR-0133).
     #[must_use]
     pub fn print(self) -> Stop {
-        self.print_to(&mut Sink::standard())
+        let (choice, detection) = self.inner.output.refusal_colour();
+        self.print_to(&mut Sink::standard_for_refusal(choice, detection))
     }
 
     /// Prints the refusal to `sink` as [`parse_to`](crate::parse_to)
-    /// prints it, and returns the `Stop` that ends the run.
+    /// prints it, and returns the `Stop` that ends the run. After
+    /// [`Refused::as_json`], it prints in the form that the tool chose, and
+    /// the `Stop`'s [`Output::is_json`] reports that form. The text form
+    /// carries clap's styles when the sink's error writer wants them
+    /// ([`Sink::styled_errors`]) and crumbkit's `color` feature is on, and
+    /// is plain otherwise (ADR-0131).
     ///
     /// The run's observers hear of the refusal when it prints, and not
     /// when `try_parse` returns it, so a run that prints no refusal reports
@@ -293,13 +359,17 @@ impl Refused {
             error,
             path,
             mut output,
-            parsed,
+            caller,
+            json,
             #[cfg(feature = "tracing")]
             span,
             ..
         } = *self.inner;
         #[cfg(feature = "tracing")]
         let _entered = span.enter();
+        if let Some(json) = json {
+            output.set_view(super::stop::view(json));
+        }
         let number = output.printing().exit(&CLI_USAGE);
         match &error {
             Some(error) => crate::events::refused(output.command_tree(), &path, error, number),
@@ -308,6 +378,6 @@ impl Refused {
         let code = output.print_parse_refusal(sink, &refusal);
         #[cfg(feature = "tracing")]
         crate::trace::spans::exited(&span, code);
-        Stop::with_output(Printed::Refusal, code, output, path, parsed)
+        Stop::with_output(Printed::Refusal, code, output, path, caller)
     }
 }

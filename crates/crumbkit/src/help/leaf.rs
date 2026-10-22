@@ -14,6 +14,7 @@ mod children;
 mod codes;
 mod column;
 mod example;
+mod lines;
 mod passes;
 mod refusal;
 #[cfg(test)]
@@ -87,6 +88,9 @@ pub struct Leaf {
     /// The function that builds the calls that a refusal of a command line
     /// that names the command offers as its recovery and alternatives.
     refusal_alternatives: Option<fn(&RefusalContext<'_>) -> Vec<Call>>,
+    /// The function that returns the hint that a refusal of a command line
+    /// that names the command offers as its recovery.
+    refusal_hint: Option<fn(&RefusalContext<'_>) -> Option<String>>,
     /// The tool's own codes for crumbkit's failures in the command's runs
     /// (ADR-0060).
     codes: &'static [super::Rename],
@@ -106,6 +110,7 @@ impl Leaf {
             choices: &[],
             passes_on_exit: None,
             refusal_alternatives: None,
+            refusal_hint: None,
             codes: &[],
         }
     }
@@ -195,6 +200,8 @@ impl Leaf {
             problem: <T::Row as Row>::PROBLEM,
             line: <T::Row as Row>::LINE,
             children: <T::Row as Row>::CHILDREN,
+            child_indent: <T::Row as Row>::CHILD_INDENT,
+            children_help: <T::Row as Row>::CHILDREN_HELP,
             schema: schema::<T::Row>,
             envelope: crate::schemas::envelope::<T>,
             kind: Kind::Document(T::SHAPE),
@@ -228,6 +235,8 @@ impl Leaf {
             problem: R::PROBLEM,
             line: R::LINE,
             children: R::CHILDREN,
+            child_indent: R::CHILD_INDENT,
+            children_help: R::CHILDREN_HELP,
             schema: schema::<R>,
             envelope: crate::schemas::envelope::<R>,
             kind: Kind::Stream,
@@ -284,7 +293,9 @@ impl Leaf {
     /// Reports whether the leaf's command offers the view flag `flag`, as
     /// its declared document decides (ADR-0016). A prose or bytes document
     /// offers no view flag. Rows offer `--fields`, offer `--long` when the
-    /// row type has long columns, and offer `--full` when the document has
+    /// row type has long columns, the document lists only the rows that
+    /// report a problem (ADR-0138) or it declares a long note (ADR-0139),
+    /// and offer `--full` when the document has
     /// crumbkit's envelope. A headed document offers neither `--long` nor
     /// `--full` (ADR-0062). Rows that print whole offer no `--full`, and
     /// offer neither `--fields` nor `--long` when they have no columns
@@ -336,18 +347,6 @@ impl Leaf {
             Some(columns) => columns.uncut,
             None => &[],
         }
-    }
-
-    /// Returns the `Problems:` line that the leaf's `-h` and `--help` print
-    /// after the `Output:` line when its row type names a problem field,
-    /// such as `Problems: a value in the problem column marks a row with a
-    /// problem, and the command then exits with 1.`, or `None` otherwise.
-    pub(crate) fn problems_line(&self) -> Option<String> {
-        let field = self.problem()?;
-        let exit = crate::exit::problem_rows();
-        Some(format!(
-            "Problems: a value in the {field} column marks a row with a problem, and the command then exits with {exit}."
-        ))
     }
 
     /// Returns the [`Shape`] of the result that [`Leaf::document`] set, such
@@ -484,6 +483,10 @@ struct Columns {
     line: Option<&'static str>,
     /// The row type's [`Row::CHILDREN`].
     children: Option<&'static str>,
+    /// The row type's [`Row::CHILD_INDENT`].
+    child_indent: u8,
+    /// The row type's [`Row::CHILDREN_HELP`].
+    children_help: Option<&'static str>,
     /// Builds the row type's JSON Schema, whose properties hold the
     /// columns' descriptions.
     schema: fn() -> Schema,
@@ -508,6 +511,7 @@ impl Columns {
             envelope: self.document.get_envelope().wraps(),
             headed: self.document.is_headed(),
             whole: self.whole,
+            listing: self.document.listing_text(),
         }
     }
 }

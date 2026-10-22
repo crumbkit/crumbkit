@@ -41,10 +41,34 @@ fn an_age_from_an_hour_to_under_a_day_prints_in_hours() {
 }
 
 #[test]
-fn an_age_of_a_day_or_more_prints_in_days() {
+fn an_age_from_a_day_to_under_a_week_prints_in_days() {
     assert_eq!(text(86_400), "1d");
     assert_eq!(text(2 * 86_400 + 86_399), "2d");
-    assert_eq!(text(400 * 86_400), "400d");
+}
+
+#[test]
+fn an_age_of_six_days_and_23_hours_prints_six_days() {
+    assert_eq!(text(6 * 86_400 + 23 * 3_600), "6d");
+}
+
+#[test]
+fn an_age_of_exactly_seven_days_prints_one_week() {
+    assert_eq!(text(7 * 86_400), "1w");
+}
+
+#[test]
+fn an_age_of_13_days_prints_one_week() {
+    assert_eq!(text(13 * 86_400), "1w");
+}
+
+#[test]
+fn an_age_of_14_days_prints_two_weeks() {
+    assert_eq!(text(14 * 86_400), "2w");
+}
+
+#[test]
+fn an_age_of_400_days_prints_57_weeks() {
+    assert_eq!(text(400 * 86_400), "57w");
 }
 
 #[test]

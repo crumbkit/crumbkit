@@ -13,7 +13,7 @@ fn prepared<'a>(failure: &'a Missing, usage: &'a [String]) -> PreparedFailure<'a
         Spelling::COLONS,
         Printing::default(),
         &mut clap::Command::new("tool").subcommand(clap::Command::new("list")),
-        &mut std::io::sink(),
+        &mut crate::sink::role::Recorded::default(),
     )
     .with_usage(usage)
 }

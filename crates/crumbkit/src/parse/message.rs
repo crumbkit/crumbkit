@@ -4,6 +4,7 @@
 use std::ffi::OsString;
 use std::fmt::Write as _;
 
+use clap::builder::StyledStr;
 use clap::error::{ContextKind, ContextValue, ErrorKind};
 use clap::{Arg, Command, FromArgMatches};
 
@@ -15,7 +16,7 @@ use crate::refusal::Refusal;
 
 /// Returns the refusal of `words`, a command line that clap refused with
 /// `error` at the command at `path` of `command`, with its message, the
-/// calls that `guide` declares for it, clap's usage lines, and the page of a
+/// calls and the hint that `guide` declares for it, clap's usage lines, and the page of a
 /// group that the line stops at (ADR-0118).
 pub(super) fn command_line_refusal<C: FromArgMatches>(
     command: &mut Command,
@@ -26,9 +27,20 @@ pub(super) fn command_line_refusal<C: FromArgMatches>(
 ) -> Refusal {
     let message = refusal_message(command, path, error);
     let page = group_page(command, path, error);
-    let usage = usage(&error.render().to_string());
-    let declared = declared::alternatives::<C>(command, guide, path, error, words);
-    Refusal::command_line(message, path.to_vec(), error, words, declared).shown_with(usage, page)
+    let rendered = error.render();
+    let usage = usage(&rendered.to_string());
+    let declared = declared::declared::<C>(command, guide, path, error, words);
+    Refusal::command_line(
+        message,
+        command,
+        path,
+        error,
+        words,
+        declared.calls,
+        declared.hint,
+    )
+    .shown_with(usage, page)
+    .styled_as(rendered)
 }
 
 /// Returns the message of a refusal of a command line that ends at the
@@ -92,9 +104,9 @@ fn refusal_message(command: &Command, path: &[String], error: &clap::Error) -> S
 /// clap's parse built the commands on the path in place and named each
 /// after the commands above it, so the page that `Command::render_help`
 /// renders is the page that `-h` on the group prints, with crumbkit's help
-/// lines. The page is plain text, because the sink's styles describe its
-/// output writer and the page prints on its error writer.
-fn group_page(command: &mut Command, path: &[String], error: &clap::Error) -> Option<String> {
+/// lines. The page keeps clap's styles, and the sink decides at print time
+/// whether refusal help is styled (ADR-0128, ADR-0131).
+fn group_page(command: &mut Command, path: &[String], error: &clap::Error) -> Option<StyledStr> {
     if !needs_more(error) {
         return None;
     }
@@ -106,7 +118,7 @@ fn group_page(command: &mut Command, path: &[String], error: &clap::Error) -> Op
         node = node.find_subcommand_mut(name)?;
     }
     visible_subcommands(node).next()?;
-    Some(node.render_help().to_string())
+    Some(node.render_help())
 }
 
 /// Reports whether clap refused the command line with `error` because it

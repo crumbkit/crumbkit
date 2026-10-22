@@ -18,19 +18,31 @@ fn version_call(_: &RefusalContext<'_>) -> Vec<Call> {
     vec![Call::new(&["version"])]
 }
 
+/// Returns the hint that a refused command line offers as its recovery.
+#[expect(
+    clippy::unnecessary_wraps,
+    reason = "a refusal hint function returns an `Option`"
+)]
+fn id_hint(_: &RefusalContext<'_>) -> Option<String> {
+    Some("name a book by its id".to_owned())
+}
+
 /// The tool's code for crumbkit's usage code.
 const USAGE: Code = Code::new("shelf", "cli", "usage");
 
-/// A guide that declares a rename, an exit for the renamed
-/// usage code, refusal alternatives for every command line and a leaf that passes on its program's exit code and offers
-/// its own alternatives when its command line is refused.
+/// A guide that declares a rename, an exit for the renamed usage code,
+/// refusal alternatives and a refusal hint for every command line, and a
+/// leaf that passes on its program's exit code and offers its own
+/// alternatives and hint when its command line is refused.
 const DECLARING: Guide = Guide::new()
     .codes(&[Rename::new(&CLI_USAGE, &USAGE)])
     .exits(&[Exit::new(64, "The command line was refused.").failures(&[&USAGE])])
     .refusal_alternatives(version_call)
+    .refusal_hint(id_hint)
     .leaves(&[Leaf::new(&["books", "show"])
         .passes_on_exit("the pager")
-        .refusal_alternatives(version_call)]);
+        .refusal_alternatives(version_call)
+        .refusal_hint(id_hint)]);
 
 #[test]
 fn the_report_lists_declarations_under_customisations_without_a_reason_or_a_cost() {
@@ -42,7 +54,7 @@ fn the_report_lists_declarations_under_customisations_without_a_reason_or_a_cost
         read(&dir, "opt-outs.txt"),
         "shelf has no opt-outs from the conventions.\n\
          \n\
-         shelf declares 5 customisations, which need no reason.\n\
+         shelf declares 7 customisations, which need no reason.\n\
          \n\
          code-rename: every run of shelf\n\
          \x20 Declares: Runs print shelf::cli::usage in place of shelf::cli::usage.\n\
@@ -53,23 +65,29 @@ fn the_report_lists_declarations_under_customisations_without_a_reason_or_a_cost
          refusal-alternatives: every run of shelf\n\
          \x20 Declares: A refused command line for a command without its own function also offers the tool's own alternatives.\n\
          \n\
+         refusal-hint: every run of shelf\n\
+         \x20 Declares: A refused command line for a command without its own function may recover with the tool's own hint.\n\
+         \n\
          passes-on-exit: shelf books show\n\
          \x20 Declares: The command exits with the exit code of the pager.\n\
          \n\
          refusal-alternatives: shelf books show\n\
-         \x20 Declares: A refused command line for this command also offers the tool's own alternatives.\n"
+         \x20 Declares: A refused command line for this command also offers the tool's own alternatives.\n\
+         \n\
+         refusal-hint: shelf books show\n\
+         \x20 Declares: A refused command line for this command may recover with the tool's own hint.\n"
     );
     let report: Value = serde_json::from_str(&read(&dir, "opt-outs.json")).unwrap();
     assert_eq!(report["data"], json!([]));
     assert_eq!(
-        report["customisations"][3],
+        report["customisations"][4],
         json!({
             "declaration": "passes-on-exit",
             "applies_to": "shelf books show",
             "declares": "The command exits with the exit code of the pager.",
         })
     );
-    assert_eq!(report["customisations"].as_array().unwrap().len(), 5);
+    assert_eq!(report["customisations"].as_array().unwrap().len(), 7);
 }
 
 #[test]
@@ -261,6 +279,70 @@ fn rows_that_print_their_children_under_them_are_a_children_customisation() {
             "applies_to": "shelf shelves remove",
             "declares": "The text prints one indented line under each row for each of its books.",
         }])
+    );
+}
+
+/// A removed shelf whose books print at column 1 under it.
+#[derive(serde::Serialize, schemars::JsonSchema)]
+struct FlushShelf {
+    /// The shelf's id.
+    id: u32,
+    /// The titles of the books on the shelf.
+    books: Vec<String>,
+}
+
+impl crumbkit::Row for FlushShelf {
+    const COLUMNS: &'static [&'static str] = &["id"];
+    const CHILDREN: Option<&'static str> = Some("books");
+    const CHILD_INDENT: u8 = 0;
+}
+
+/// A removed shelf whose books print under it, folded into one line when
+/// the shelf held more than ten, which its help says.
+#[derive(serde::Serialize, schemars::JsonSchema)]
+struct FoldedShelf {
+    /// The shelf's id.
+    id: u32,
+    /// The titles of the books on the shelf.
+    books: Vec<String>,
+}
+
+impl crumbkit::Row for FoldedShelf {
+    const COLUMNS: &'static [&'static str] = &["id"];
+    const CHILDREN: Option<&'static str> = Some("books");
+    const CHILDREN_HELP: Option<&'static str> =
+        Some("one line for each book, or one folded line for more than ten books.");
+}
+
+#[test]
+fn the_children_customisation_of_rows_at_column_1_does_not_call_them_indented() {
+    const SHELVES_REMOVE: Document<Vec<FlushShelf>> =
+        Document::new("shelf", "shelves-remove", 1, "The removed shelves.");
+    const GUIDE: Guide =
+        Guide::new().leaves(&[Leaf::new(&["shelves", "remove"]).document(SHELVES_REMOVE)]);
+
+    let list = serde_json::to_value(customisations(&Command::new("shelf"), &GUIDE)).unwrap();
+
+    assert_eq!(
+        list[0]["declares"],
+        json!("The text prints one line under each row for each of its books.")
+    );
+}
+
+#[test]
+fn the_children_customisation_quotes_the_row_type_s_own_help_text() {
+    const SHELVES_REMOVE: Document<Vec<FoldedShelf>> =
+        Document::new("shelf", "shelves-remove", 1, "The removed shelves.");
+    const GUIDE: Guide =
+        Guide::new().leaves(&[Leaf::new(&["shelves", "remove"]).document(SHELVES_REMOVE)]);
+
+    let list = serde_json::to_value(customisations(&Command::new("shelf"), &GUIDE)).unwrap();
+
+    assert_eq!(
+        list[0]["declares"],
+        json!(
+            "The text prints lines under each row for its books, and help describes them as: one line for each book, or one folded line for more than ten books."
+        )
     );
 }
 

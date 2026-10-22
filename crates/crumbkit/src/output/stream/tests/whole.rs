@@ -1,11 +1,14 @@
-//! Tests for a stream of a row type that sets `Row::WHOLE` (ADR-0065).
+//! Tests for a stream of a row type that sets `Row::WHOLE` (ADR-0065,
+//! ADR-0138).
 
 use std::ops::ControlFlow;
+use std::process::ExitCode;
 
 use schemars::JsonSchema;
 use serde::Serialize;
 
 use super::{Unreadable, parse, stream_to};
+use crate::twins::assert_one_word_apart;
 use crate::{Document, Row, Sink, Stream};
 
 /// A sighting whose JSON holds every field.
@@ -52,5 +55,45 @@ fn each_json_line_of_a_whole_row_type_holds_every_field_without_full() {
     assert_eq!(
         out,
         "{\"schema\":\"birds/sightings-watch/v1\",\"data\":{\"bird\":\"robin\",\"place\":\"garden\"}}\n"
+    );
+}
+
+/// A sighting with a long column, whose JSON holds every field.
+#[derive(Serialize, JsonSchema)]
+struct Visit {
+    /// The bird that visited.
+    bird: &'static str,
+    /// Where the bird visited.
+    place: &'static str,
+}
+
+impl Row for Visit {
+    const COLUMNS: &'static [&'static str] = &["bird"];
+    const LONG_COLUMNS: &'static [&'static str] = &["place"];
+    const WHOLE: bool = true;
+}
+
+#[test]
+fn a_stream_of_a_whole_row_type_refuses_long_with_json_before_anything_prints() {
+    const VISITS: Document<Stream<Visit>> =
+        Document::new("birds", "visits-watch", 1, "Each visit.");
+    assert_one_word_apart(&["--json", "--long"], &["--json"]);
+    let robin = Visit {
+        bird: "robin",
+        place: "garden",
+    };
+    assert!(streamed(&["--json"], VISITS, &[robin]).starts_with('{'));
+    let mut out = Vec::new();
+    let mut err = Vec::new();
+    let mut sink = Sink::new(&mut out, &mut err);
+
+    let refused = stream_to(&mut sink, parse(&["--json", "--long"]), VISITS);
+
+    assert_eq!(refused.err(), Some(ExitCode::from(2)));
+    let document: serde_json::Value = serde_json::from_slice(&out).unwrap();
+    assert_eq!(document["code"], "birds::cli::usage");
+    assert_eq!(
+        document["recovery"]["text"],
+        "drop --long, because --json already prints every field of each row"
     );
 }

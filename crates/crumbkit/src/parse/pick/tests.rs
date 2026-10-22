@@ -13,8 +13,9 @@ use crate::{Error, Sink, Stop, parse_to};
 
 /// A tool whose `show` takes a required `--list` and an optional `--sort`,
 /// whose `get` takes a required positional `NAME` with possible values,
-/// whose `take` takes one or more positional `ID`s, and whose `find` takes
-/// a required `--pattern` without any choices.
+/// whose `take` takes one or more positional `ID`s, whose `find` takes
+/// a required `--pattern` without any choices, and whose `shelve` takes a
+/// required `--list` and a required `--shelf`.
 fn tool() -> Command {
     Command::new("tool")
         .subcommand_required(true)
@@ -58,6 +59,11 @@ fn tool() -> Command {
             ),
         )
         .subcommand(Command::new("find").arg(Arg::new("pattern").long("pattern").required(true)))
+        .subcommand(
+            Command::new("shelve")
+                .arg(Arg::new("list").long("list").required(true))
+                .arg(Arg::new("shelf").long("shelf").required(true)),
+        )
 }
 
 /// A picker that writes the question on one line and reads the answer
@@ -353,6 +359,22 @@ fn a_failed_source_s_stop_reports_the_path_to_the_command_that_it_picked_for() {
 
     assert_eq!(stop.map(Stop::path), Some(&["find".to_owned()][..]));
     assert_eq!(stop.map(Stop::flags), Some(vec!["json".to_owned()]));
+}
+
+#[test]
+fn a_failed_source_after_a_pick_reports_only_the_flags_that_the_caller_typed() {
+    const GUIDE: Guide = Guide::new()
+        .picker(&SCRIPTED)
+        .leaves(&[Leaf::new(&["shelve"])
+            .choices(&[Choices::new("list", lists), Choices::new("shelf", offline)])]);
+    let run = run(&GUIDE, &["shelve", "--json"], "0\n", true);
+
+    let stop = run.result.as_ref().err();
+
+    assert!(run.err.contains("pick LIST"), "{}", run.err);
+    assert_eq!(stop.map(Stop::printed), Some(crate::Printed::Failure));
+    assert_eq!(stop.map(Stop::flags), Some(vec!["json".to_owned()]));
+    assert_eq!(stop.and_then(|stop| stop.value("list")), None);
 }
 
 #[test]

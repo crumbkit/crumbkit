@@ -125,7 +125,9 @@ stream.
 - `--full` is refused, because the JSON already holds every field.
 - `--fields` selects fields in text and in JSON, and prints `null` for a
   field that a row leaves out.
-- `--long` adds the long columns to the text table.
+- `--long` adds the long columns to the text table, and `--long` with
+  `--json` is refused as a refused command line whose hint drops `--long`,
+  because the JSON already holds every field.
 
 A row type that sets `Row::WHOLE` may leave `Row::COLUMNS` empty, as a row
 that serializes as an array must, only when it also declares `Row::LINE`.
@@ -143,7 +145,7 @@ the columns of a table. Its `check_document_ids` requires an
 command whose row type sets `Row::WHOLE`, because the document costs more
 tokens than the compact columns.
 
-Why: ADR-0065, ADR-0064, ADR-0072.
+Why: ADR-0065, ADR-0064, ADR-0072, ADR-0138.
 
 ## Rows with their own text line
 
@@ -169,21 +171,32 @@ A row type may print the items of one field as indented lines under each
 row. `Row::CHILDREN` names the field, such as `Some("components")`, and
 `Row::child_lines` builds one line for each item, such as `+ database`.
 Without `--json` and `--fields`, the text prints each child line under the
-row's table line, or under its own text line, indented by two spaces and
-with control characters and format characters escaped. A row without child
-lines prints nothing more. `--long` keeps the child lines, and a stream
-prints them after each item's line. The [output budget](../budget/README.md)
-counts them.
+row's table line, or under its own text line, with control characters and
+format characters escaped. `Row::CHILD_INDENT` sets the number of spaces
+before each child line, 2 by default and at most 255, the largest `u8`. A
+type that sets 0 prints child lines at column 1, as table lines start, so a
+reader tells them apart only by their content, which the doc comment of the
+children field should describe. A fitted table
+([the table's width](../terminal.md#the-tables-width)) never cuts a child
+line. A row without child lines prints nothing more. `--long` prints the
+lines of `Row::long_child_lines` in their place, which are the child lines
+unless the type overrides it, and a stream prints them after each item's
+line. The
+[output budget](../budget/README.md) counts them with their indent.
 
 Compact JSON, with or without `--long`, holds the field after the columns,
 and the compact schema requires it. `--fields` holds the field only when it
 names it, and the text then prints it as a cell of compact JSON and prints
-no child lines. Help prints a `Children:` line ([help](../../help/README.md)).
-crumbkit-test's `check_guide` fails a field that is not a documented field
-of the row type, a field that is also one of the columns, and a
-[headed](#headed-bytes) leaf whose row type sets `CHILDREN`.
+no child lines. Help prints a `Children:` line ([help](../../help/README.md))
+with `Row::CHILDREN_HELP`, the row type's own description of its child
+lines, or with crumbkit's sentence, which calls the lines indented only
+when the indent is above 0. crumbkit-test's `check_guide` fails a field
+that is not a documented field of the row type, a field that is also one of
+the columns, a [headed](#headed-bytes) leaf whose row type sets `CHILDREN`,
+and a `CHILDREN_HELP` that is not one line ending with a full stop or that
+comes without `CHILDREN`.
 
-Why: ADR-0120.
+Why: ADR-0120, ADR-0135, ADR-0137, ADR-0138.
 
 ## Documents without the envelope
 

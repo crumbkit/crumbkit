@@ -40,6 +40,7 @@ pub struct CommandRow {
     form: Option<&'static str>,
     line: Option<&'static str>,
     children: Option<&'static str>,
+    children_help: Option<String>,
     exits: Vec<CommandExit>,
     effects: Option<Effects>,
     writes: Option<Guards>,
@@ -166,6 +167,7 @@ impl CommandRow {
             form: leaf.and_then(form),
             line: leaf.and_then(Leaf::line),
             children: leaf.and_then(Leaf::children),
+            children_help: leaf.and_then(Leaf::children_text),
             exits,
             effects: leaf.and_then(Leaf::get_effects),
             writes: effects::guards(leaf.and_then(Leaf::get_effects), takes_expect(command)),
@@ -357,7 +359,7 @@ impl Row for CommandRow {
 /// needs no `serde_derive`.
 impl Serialize for CommandRow {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        let mut row = serializer.serialize_struct("CommandRow", 12)?;
+        let mut row = serializer.serialize_struct("CommandRow", 13)?;
         row.serialize_field("path", &self.path)?;
         row.serialize_field("about", &self.about)?;
         row.serialize_field("long_about", &self.long_about)?;
@@ -367,6 +369,7 @@ impl Serialize for CommandRow {
         row.serialize_field("form", &self.form)?;
         row.serialize_field("line", &self.line)?;
         row.serialize_field("children", &self.children)?;
+        row.serialize_field("children_help", &self.children_help)?;
         row.serialize_field("exits", &self.exits)?;
         row.serialize_field("effects", &self.effects)?;
         row.serialize_field("writes", &self.writes)?;
@@ -508,7 +511,11 @@ impl JsonSchema for CommandRow {
                     "type": ["string", "null"],
                 },
                 "children": {
-                    "description": "The field whose items each row prints in text as indented lines under it, such as `components`, or null when the rows print no such lines or the command declares no document.",
+                    "description": "The field whose items each row prints in text as lines under it, such as `components`, or null when the rows print no such lines or the command declares no document.",
+                    "type": ["string", "null"],
+                },
+                "children_help": {
+                    "description": "The description of the child lines that help prints after `Children: `, which is the row type's own text or crumbkit's sentence that names the children field, or null when `children` is null.",
                     "type": ["string", "null"],
                 },
                 "exits": {
@@ -519,7 +526,7 @@ impl JsonSchema for CommandRow {
                 "effects": effects::schema(),
                 "writes": effects::writes_schema(),
             },
-            "required": ["path", "about", "long_about", "arguments", "examples", "columns", "form", "line", "children", "exits", "effects", "writes"],
+            "required": ["path", "about", "long_about", "arguments", "examples", "columns", "form", "line", "children", "children_help", "exits", "effects", "writes"],
         })
     }
 }

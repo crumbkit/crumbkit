@@ -445,6 +445,17 @@ fn finish_reports_an_uncounted_listing_that_holds_every_row_as_not_truncated() {
 }
 
 #[test]
+fn finish_reports_a_capped_listing_that_shows_every_row_it_read_as_truncated() {
+    let (seen, _) = finished(
+        &["shelf", "books", "list"],
+        BOOKS,
+        Ok::<_, Error>(books(3, 3).capped(true)),
+    );
+
+    assert!(seen[0].ends_with("truncated true empty false"), "{seen:?}");
+}
+
+#[test]
 fn finish_reports_the_failure_s_code_in_the_tool_s_spelling_and_the_guide_s_exit_code() {
     let (seen, _) = finished(&["shelf", "books", "list"], BOOKS, Err(TimedOut));
 

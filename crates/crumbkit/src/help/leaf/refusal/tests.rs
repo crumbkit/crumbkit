@@ -51,3 +51,18 @@ fn the_context_of_an_unknown_flag_names_no_argument_and_no_value() {
     assert_eq!(context.value(), None);
     assert_eq!(context.kind(), ErrorKind::UnknownArgument);
 }
+
+#[test]
+fn the_context_holds_the_leafs_command_so_a_function_can_read_its_arguments() {
+    let mut command = get().arg(Arg::new("args").value_name("ARGS").num_args(0..).last(true));
+    let Err(error) = command.try_get_matches_from_mut(["get", "7", "--verbose"]) else {
+        panic!("the line parsed");
+    };
+    let words = [OsString::from("7"), OsString::from("--verbose")];
+
+    let context = RefusalContext::new(&command, &error, &words);
+
+    assert_eq!(context.command().get_name(), "get");
+    assert!(context.command().get_positionals().any(Arg::is_last_set));
+    assert_eq!(context.kind(), ErrorKind::UnknownArgument);
+}

@@ -589,6 +589,40 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   as indented lines under it in text, while compact JSON keeps the field,
   and help, `commands list` and crumbkit-test describe and check it
   ([behaviour/output]).
+- crumbkit: `Leaf::refusal_hint` and `Guide::refusal_hint` let a refused
+  command line recover with the tool's own sentence, before `-h` and the
+  tool's calls, and `RefusalContext::command` returns the leaf's command
+  ([behaviour/failures]).
+- crumbkit: `Refused::as_json` fixes whether a refusal that the tool prints
+  is the JSON failure document on standard output or text on standard
+  error, whatever the words said ([behaviour/parsing]).
+- crumbkit: a refusal and its group page carry clap's styles on standard
+  error at a terminal or with `CLICOLOR_FORCE`, never under `NO_COLOR`, and
+  `Sink::styled_errors` asks for them on a tool's own sink
+  ([behaviour/parsing]).
+- crumbkit: `Listing::capped` marks a listing whose tool read only part of
+  its source, so its footer gives the rows read as a lower bound and its
+  JSON document leaves out `total` ([behaviour/output/listings]).
+- crumbkit: `Sink::fitted` gives a tool's own sink a width, and
+  `finish_to` fits a text table to it as `finish` fits one to the terminal.
+  `Sink::fitted_width` reads it ([behaviour/output/terminal]).
+- crumbkit: `Row::CHILD_INDENT` sets the number of spaces before each child
+  line, 2 by default, so a type that sets 0 prints an identifier that a
+  reader copies whole at column 1 ([behaviour/output/shapes]).
+- crumbkit: `Row::CHILDREN_HELP` sets the description of child lines that
+  help, `commands list` and the Markdown reference print after
+  `Children: `, and the default sentence no longer says "indented" at an
+  indent of 0 ([behaviour/output/shapes]).
+- crumbkit: `Document::only_problems` makes a listing's default text list
+  only the rows that report a problem, while `--long`, `--fields` and
+  `--json` list every row, and help prints a `Rows:` line
+  ([behaviour/output/listings]).
+- crumbkit: `Row::long_child_lines` gives the child lines that the text
+  prints under `--long`, and defaults to `Row::child_lines`
+  ([behaviour/output/shapes]).
+- crumbkit: `Listing::long_note` sets a note that the text prints on
+  standard error only under `--long`, and `Document::long_noted` lets the
+  command offer `--long` without long columns ([behaviour/output/listings]).
 
 ### Changed
 
@@ -974,6 +1008,18 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit: a text table at a terminal narrows its widest columns to fit
   the terminal's width and ends each cut cell with `…`. `Row::UNCUT_COLUMNS`
   names the columns that it never cuts ([behaviour/output/terminal]).
+- crumbkit: a refusal on standard error stays plain at a terminal whose
+  `TERM` is `dumb` and under `CLICOLOR=0`, as help does, unless
+  `CLICOLOR_FORCE` forces colour ([behaviour/parsing]).
+- crumbkit: an [`Age`] of seven days or more prints in whole weeks, such
+  as `1w` for 13 days and `2w` for 14 days, in text and in its `Display`.
+  JSON keeps the RFC 3339 time ([behaviour/output]).
+- crumbkit: `--long` with `--json` is refused, with exit 2 and a hint to
+  drop `--long`, for a row type that sets `Row::WHOLE`, because its JSON
+  already holds every field ([behaviour/output/shapes]).
+- crumbkit: the help of `--json`, `--fields`, `--long` and `--full` says
+  what prints without the flag, such as `The default prints text.`
+  ([behaviour/output]).
 
 ### Removed
 
@@ -1020,6 +1066,13 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- crumbkit: the compact schema of an enum row gives a variant without a
+  column or the children field a property that admits null, so the
+  compact document matches even when the variant refuses unknown fields
+  ([behaviour/schemas]).
+- crumbkit: a refusal's `-h` recovery names the deepest typed command that
+  has a help flag, and offers no step when no command on the path has one.
+  Before, it could name a `-h` call that clap refuses ([behaviour/failures]).
 - crumbkit: a refusal prints as a JSON document, and `Output::is_json` of
   its [`Stop`] is true, only when a command on the typed path declares
   `--json`. An undeclared `--json` counted before ([behaviour/parsing]).
@@ -1027,6 +1080,10 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   `<tool> help --json`, prints the help of the command it names, as
   `<tool> --help --json` does. A root or group without the flag refused
   the line before ([behaviour/help]).
+- crumbkit: `<tool> help <TOPIC> --name value` prints the topic, because
+  crumbkit reads the words after `help` with the root's options, so an
+  option's separate value names no topic. The line was refused before
+  ([behaviour/help]).
 - crumbkit: a [`Listing`] from `Listing::uncounted` or [`Page::uncounted`]
   never states a total in JSON or text, even when it holds every row or the
   output budget cut it ([behaviour/output/listings]).
@@ -1135,6 +1192,10 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit: a refusal from [`parse`] separates several missing required
   arguments with commas, as in `--edit <APP>, <NAME>`, so they no longer
   read as one option that takes two values ([behaviour/failures]).
+- crumbkit: `Refused::flags`, `Stop::flags` and their `value` getters read
+  the words that the caller typed, so `<tool> help nosuch` reports no
+  flags. The word `help` reported a `help` flag before
+  ([behaviour/parsing]).
 
 <!-- Each label below points at the source file that holds the item's
 rustdoc, or at the page in docs/ that describes the behaviour. -->
@@ -1275,6 +1336,7 @@ rustdoc, or at the page in docs/ that describes the behaviour. -->
 [behaviour/output/child-processes]: docs/behaviour/output/child-processes.md
 [behaviour/output/json-layout]: docs/behaviour/output/json-layout.md
 [behaviour/output/listings]: docs/behaviour/output/listings/README.md
+[behaviour/output/shapes]: docs/behaviour/output/shapes/README.md
 [behaviour/output/streams]: docs/behaviour/output/streams.md
 [behaviour/output/terminal]: docs/behaviour/output/terminal.md
 [behaviour/parsing]: docs/behaviour/parsing/README.md

@@ -19,6 +19,7 @@ mod batch;
 mod budget;
 mod built;
 mod bytes;
+mod capped;
 mod children;
 mod direct;
 mod empty;
@@ -30,15 +31,19 @@ mod headed;
 mod layout;
 mod lines;
 mod listing;
+mod long_note;
 mod notes;
+mod only_problems;
 mod plugin;
 mod problems;
 mod prose;
 #[cfg(feature = "miette")]
 mod report;
+mod roles;
 mod spelled;
 mod summary;
 mod unwrapped;
+mod variants;
 mod views;
 mod whole;
 

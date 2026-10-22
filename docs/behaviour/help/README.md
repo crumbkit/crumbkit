@@ -10,9 +10,8 @@ pages in this directory cover [leaf examples and columns](examples.md),
 
 ## Lines crumbkit adds to a help page
 
-`parse` keeps clap's help template for each command and adds crumbkit's
-lines after the command's own `after_help` and `after_long_help`, so a page
-keeps clap's layout and the tool's own text. crumbkit changes only the
+`parse` keeps clap's help template and adds crumbkit's lines after the
+command's own `after_help` and `after_long_help`. crumbkit changes only the
 commands that the typed words pass through, and it never clones the command
 tree. The rustdoc of [`parse_to`](../../../crates/crumbkit/src/parse.rs)
 gives an example of each line.
@@ -31,9 +30,12 @@ The lines print in this order, each only on the pages named:
    ([rows with their own text line](../output/shapes/README.md#rows-with-their-own-text-line)),
    then `Children:` on a leaf that is not headed and whose rows print
    their children under them, such as `Children: one indented line under
-   each row for each of its components.`
+   each row for each of its components.` or the row type's
+   `Row::CHILDREN_HELP`
    ([rows with children](../output/shapes/README.md#rows-with-children)),
-   then `Problems:` on a leaf whose row type names a problem field.
+   then `Problems:` on a leaf whose row type names a problem field, then
+   `Rows:` when the document [lists only problem rows](../output/listings/README.md#a-listing-that-lists-only-its-problem-rows),
+   then `Long note:` for a declared [long note](../output/listings/README.md#a-note-for---long).
 3. In `-h`, one line that names the visible global flags of the root and of
    each command on the way. `--help` lists those flags in full.
 4. On the root, a `Topics:` line that names the tool's topics and
@@ -72,8 +74,8 @@ where clap would read them as flags or names.
 [`command_path`](../../../crates/crumbkit/src/parse/walk.rs) makes the walk
 public. It returns the path of the command that a tool's words name,
 including on a line that clap refuses, without building or cloning the tree.
-crumbkit-test's twin check reads each line's command with it, and
-crumbkit-test keeps its own `split` for the words of a recovery.
+crumbkit-test's twin check reads each line's command with it, and uses its
+own `split` for the words of a recovery.
 
 How `parse` refuses a command line, including the one-line message and the
 JSON refusal, is on the [parsing](../parsing/README.md) page.
@@ -142,16 +144,27 @@ tool's own type never sees the word. A tool's own command named `help`
 still takes the word, and a command without subcommands reads `help` as an
 ordinary word.
 
+crumbkit reads the words after `help` as the walk before parsing reads
+them, with the options of the command they reach and the global options
+above it. A word names something when it comes before any `--`, does not
+start with `-` and is no option's value, also in the separate form
+`--name value`.
+
 - `<tool> help` prints what `<tool> --help` prints. Its `Topics:` line
   names each topic.
-- `<tool> help <TOPIC>` prints one topic.
+- `<tool> help <TOPIC>` prints one topic when the topic's name is the only
+  word after `help` that names something. Flags and options with their
+  values may come before or after it, so `<tool> help <TOPIC> --name value`
+  and `<tool> help <TOPIC> --name=value` print the topic. In
+  `<tool> help --name <TOPIC>`, the topic's name is the option's value, so
+  the line prints the root's help.
 - Every other `help` command line becomes the same command line with
   `--help`, so `shelf help books show` prints what `shelf books show --help`
-  prints. `--help` goes directly after the last word that follows `help`,
-  comes before any `--` and does not start with `-`, or in the place of
-  `help` when no word qualifies. clap then meets `--help` before the flags
-  after the command's words, so `<tool> help --json` prints the root's
-  help, as `<tool> --help --json` does, also on a tool whose root takes no
+  prints. `--help` goes directly after the last word after `help` that
+  names something, or in the place of `help` when no word names something.
+  clap then meets `--help` before the flags and options after the
+  command's words, so `<tool> help --json` prints the root's help, as
+  `<tool> --help --json` does, also on a tool whose root takes no
   `--json`. An unknown word gets clap's usual refusal with its suggestions.
   A tool that calls `try_parse` gets the refusal unprinted, with the words
   as typed, the words with `--help`, and the unknown word
@@ -160,7 +173,7 @@ ordinary word.
 crumbkit-test's [`check_grammar`](../../../crates/crumbkit-test/src/grammar.rs)
 reserves the word `help` for asking for help.
 
-Why: ADR-0023, ADR-0100, ADR-0101.
+Why: ADR-0023, ADR-0100, ADR-0101, ADR-0129.
 
 ## Topics
 
@@ -180,9 +193,10 @@ when it has subcommands or the tool declares topics, so a root without
 either reads `help` as an ordinary word. A tool's topic named `exit-codes`
 never prints, and `check_guide` rejects one.
 
-A topic's text prints as plain text, also on a terminal. The root's help
+A topic's text prints as plain text, also on a terminal and when `--json`
+follows its name. The root's help
 names the topics on one line and gives no summaries, so crumbkit prints a
 topic's summary nowhere. `Topic::about` returns it to a tool that lists its
 topics itself.
 
-Why: ADR-0023, ADR-0037, ADR-0101.
+Why: ADR-0023, ADR-0037, ADR-0101, ADR-0129.

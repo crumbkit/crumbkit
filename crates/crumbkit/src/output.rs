@@ -6,7 +6,6 @@ mod build;
 mod children;
 mod columns;
 mod confirm;
-mod counted;
 mod direct;
 pub(crate) mod dry_run;
 mod envelope;
@@ -33,7 +32,6 @@ use clap::Command;
 
 pub use self::build::ViewFlags;
 pub use self::confirm::Yes;
-use self::counted::Counted;
 pub use self::dry_run::DryRun;
 use self::failure::Printing;
 pub use self::layout::JsonLayout;
@@ -103,11 +101,6 @@ pub struct Output {
     /// Whether the tool's guide turned terminal detection off (ADR-0049).
     no_terminal: bool,
 
-    /// The number of columns of the terminal that standard output is, which
-    /// a text table fits, or `None` when the table prints unfitted. Only
-    /// [`finish`] reads it, and only with terminal detection on (ADR-0121).
-    terminal_width: Option<usize>,
-
     /// The layout of a whole JSON document (ADR-0052).
     json_layout: JsonLayout,
 
@@ -175,7 +168,8 @@ impl Output {
     /// is the value of an option. The walk also leaves out a `--json` that no
     /// command on the typed path declares, because clap refuses such a word
     /// as an unexpected argument. A refusal prints as a JSON document exactly
-    /// when this is true.
+    /// when this is true, unless the tool chose its form with
+    /// [`Refused::as_json`](crate::Refused::as_json).
     #[must_use]
     pub const fn is_json(&self) -> bool {
         self.view.is_json()
@@ -239,11 +233,12 @@ fn several_keys<T: Rows>(value: &T) -> bool {
 ///
 /// A tool's `main` calls it last with the handler's `result` and returns its
 /// exit code. It behaves as [`finish_to`] does with a sink over the process's
-/// standard output and standard error, with one difference: when standard
-/// output is a terminal and the guide keeps terminal detection on, a text
-/// table wider than the terminal narrows its columns to fit, and the output
-/// budget still counts the unfitted table (ADR-0121). `finish_to` never
-/// fits a table, because its sink can be any writer.
+/// standard output and standard error that has a width: when standard
+/// output is a terminal and the guide keeps terminal detection on, `finish`
+/// gives its sink the terminal's number of columns, so a text table wider
+/// than the terminal narrows its columns to fit, and the output budget
+/// still counts the unfitted table (ADR-0121). `finish_to` fits a table to
+/// the width that its sink has, which [`Sink::fitted`] sets (ADR-0134).
 ///
 /// It takes `output` by value, because a run prints one result, so `main`
 /// cannot call it twice with one `Output` (ADR-0094):
@@ -271,12 +266,14 @@ fn several_keys<T: Rows>(value: &T) -> bool {
 /// crumbkit::finish(output, ENTRIES, second);
 /// ```
 pub fn finish<T: Rows, E: AsFailure>(
-    mut output: Output,
+    output: Output,
     document: Document<T>,
     result: Result<T, E>,
 ) -> ExitCode {
-    output.terminal_width = output.read_terminal_width();
-    ExitCode::from(finish_to(&mut Sink::standard(), output, document, result))
+    // The sink gives the result the width of the terminal that standard
+    // output is, which a text table fits (ADR-0121, ADR-0128).
+    let sink = &mut Sink::standard().fitted(output.read_terminal_width());
+    ExitCode::from(finish_to(sink, output, document, result))
 }
 
 /// Prints a command's result to `sink` in the format that `output` chooses,
@@ -295,6 +292,12 @@ pub fn finish<T: Rows, E: AsFailure>(
 /// spaces when the guide sets [`JsonLayout::Pretty`] (ADR-0052),
 /// with the `schema` id of `document` and the result under `data`; a single
 /// row's `data` is an object, and a `Vec`'s is an array.
+///
+/// When the sink has a width, which [`Sink::fitted`] sets, a text table
+/// wider than that width narrows its columns to fit, as `finish` fits it
+/// to a terminal, and the output budget still counts the unfitted table. A
+/// sink from [`Sink::new`] has no width, so its table prints unfitted
+/// (ADR-0121, ADR-0134).
 /// A document with [`Envelope::Without`](crate::Envelope::Without) prints
 /// the result alone, and its failures print as text on the error writer
 /// even with `--json`.
@@ -414,10 +417,12 @@ pub fn finish<T: Rows, E: AsFailure>(
 /// `result` is a failure, `finish_to` checks no view flag and prints the
 /// failure, because a tool may print an early failure in another document
 /// than the one its leaf declares, and the `Output` already holds only a
-/// view that every printer accepts (ADR-0093). A prose
-/// or bytes result cannot use `--fields`, `--long` or `--full`, rows
-/// without long columns cannot use `--long`, and a document without the
-/// envelope cannot use `--full` (ADR-0016).
+/// view that every printer accepts (ADR-0093). A prose or bytes result
+/// cannot use `--fields`, `--long` or `--full`, rows without long columns
+/// cannot use `--long` unless the document lists only the rows that report
+/// a problem or declares a long note (ADR-0139), rows of a type that sets
+/// `Row::WHOLE` cannot use `--long` with `--json` (ADR-0138), and a
+/// document without the envelope cannot use `--full` (ADR-0016).
 ///
 /// A run without a failure whose rows report a problem, as
 /// [`Row::is_problem`](crate::Row::is_problem) decides, exits with 1, also
@@ -440,11 +445,11 @@ pub fn finish_to<T: Rows, E: AsFailure, O: Write, W: Write>(
     // crumbkit's own codes and documents print with the tool's name in
     // place of `crumbkit` (ADR-0079).
     let (spelling, document) = output.named(document);
-    // The sink counts the bytes of standard output, which `finish` reports
-    // to the observer with the exit code (ADR-0057).
+    // The sink counts the bytes of the result, which `finish` reports to the
+    // observer with the exit code (ADR-0057).
     let truncated = result.as_ref().is_ok_and(listing::leaves_out);
     let empty = result.as_ref().is_ok_and(listing::matches_none);
-    let sink = &mut Sink::new(Counted::new(&mut sink.out), &mut sink.err);
+    let before = sink.result_bytes();
     // With the `tracing` feature, the response runs inside the
     // `crumbkit.finish` span, which records the exit code (ADR-0030).
     #[cfg(feature = "tracing")]
@@ -454,6 +459,7 @@ pub fn finish_to<T: Rows, E: AsFailure, O: Write, W: Write>(
     let (exit, cut) = respond::respond(sink, &mut output, spelling, document, result);
     #[cfg(feature = "tracing")]
     crate::trace::spans::exited(&span, exit);
-    crate::events::finished(exit, sink.out.bytes(), truncated || cut, empty);
+    let bytes = sink.result_bytes() - before;
+    crate::events::finished(exit, bytes, truncated || cut, empty);
     exit
 }

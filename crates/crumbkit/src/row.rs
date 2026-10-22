@@ -1,15 +1,15 @@
 //! The traits that let a result print as a table.
 
-use std::borrow::Cow;
-use std::fmt;
-
-use schemars::{JsonSchema, Schema, SchemaGenerator};
-use serde::{Serialize, Serializer};
-
-use crate::{Call, Failure};
+use schemars::JsonSchema;
+use serde::Serialize;
 
 mod fields;
+mod no_row;
 pub(crate) mod problems;
+mod rows;
+
+pub use no_row::NoRow;
+pub use rows::{Rows, Shape};
 
 pub(crate) use fields::{can_be_empty, properties};
 
@@ -67,18 +67,21 @@ pub trait Row: Serialize + JsonSchema {
     /// field in neither list appears only with `--json --full`.
     const LONG_COLUMNS: &'static [&'static str] = &[];
 
-    /// The columns whose cells a text table at a terminal never cuts, such
-    /// as an identifier that a person copies into the next command. The
-    /// default names none (ADR-0121).
+    /// The columns whose cells a fitted text table never cuts, such as an
+    /// identifier that a person copies into the next command. The default
+    /// names none (ADR-0121).
     ///
-    /// When a text table is wider than the terminal that standard output
-    /// is, crumbkit narrows its widest columns and cuts their long cells.
-    /// It skips the columns named here, also in a `--fields` table, and
-    /// narrows the other columns instead. When these columns and the
-    /// headers of the others are wider than the terminal on their own, the
-    /// table prints unfitted, so every cell is whole and a line is wider
-    /// than the terminal. crumbkit-test's `check_guide` fails a name here
-    /// that is in neither `COLUMNS` nor `LONG_COLUMNS`.
+    /// When a text table is wider than the width that the sink gives it,
+    /// crumbkit narrows its widest columns and cuts their long cells.
+    /// `finish` gives its sink the width of the terminal that standard
+    /// output is, and a tool gives its own sink a width with
+    /// [`Sink::fitted`](crate::Sink::fitted) (ADR-0134). crumbkit skips the
+    /// columns named here, also in a `--fields` table, and narrows the
+    /// other columns instead. When these columns and the headers of the
+    /// others are wider than that width on their own, the table prints
+    /// unfitted, so every cell is whole and a line is wider than the width.
+    /// crumbkit-test's `check_guide` fails a name here that is in neither
+    /// `COLUMNS` nor `LONG_COLUMNS`.
     const UNCUT_COLUMNS: &'static [&'static str] = &[];
 
     /// The field whose value marks the row as reporting a problem, or `None`
@@ -171,23 +174,53 @@ pub trait Row: Serialize + JsonSchema {
     ///
     /// When it is set, the text prints each row's [`Row::child_lines`]
     /// under the row's table line, or under its own text line when the type
-    /// sets [`Row::LINE`], each indented by two spaces. `--long` keeps the
-    /// child lines, and `--fields` prints none: a `--fields` that names the
+    /// sets [`Row::LINE`], each indented by [`Row::CHILD_INDENT`] spaces
+    /// (ADR-0135). `--long` prints [`Row::long_child_lines`] in their
+    /// place, and `--fields` prints none: a `--fields` that names the
     /// field prints it as a cell of compact JSON like any other field. The
     /// JSON without `--full` holds the field after the columns, so `--json`
-    /// carries the children with each row. The leaf's help prints the field
-    /// on a `Children:` line. crumbkit-test's `check_guide` fails a field
-    /// that is not a field of the row type or has no doc comment, a field
-    /// that is also a column, and a headed leaf whose row type sets it,
-    /// because a headed batch's text prints each row's bytes.
+    /// carries the children with each row. The leaf's help describes the
+    /// child lines on a `Children:` line, with [`Row::CHILDREN_HELP`] or a
+    /// sentence that names the field. crumbkit-test's `check_guide` fails a
+    /// field that is not a field of the row type or has no doc comment, a
+    /// field that is also a column, and a headed leaf whose row type sets
+    /// it, because a headed batch's text prints each row's bytes.
     const CHILDREN: Option<&'static str> = None;
+
+    /// The number of spaces before each of the row's
+    /// [`Row::child_lines`] in text, 2 by default (ADR-0135).
+    ///
+    /// A type that sets 0 prints each child line at column 1, as a table
+    /// line starts, so a reader tells the two apart only by the line's
+    /// content, which the doc comment of the [`Row::CHILDREN`] field should
+    /// describe. The type is `u8`, so the compiler rejects an indent above
+    /// 255. The output budget counts the spaces. Help's own `Children:`
+    /// sentence calls the lines indented only when the indent is above 0
+    /// (ADR-0137).
+    const CHILD_INDENT: u8 = 2;
+
+    /// The description of the child lines that help prints after
+    /// `Children: `, ending with a full stop, or `None` for crumbkit's
+    /// sentence (ADR-0137).
+    ///
+    /// crumbkit's sentence is `one indented line under each row for each of
+    /// its <FIELD>.`, without `indented` when [`Row::CHILD_INDENT`] is 0. A
+    /// type whose [`Row::child_lines`] are not one line per item sets its
+    /// own text, such as `one line for each application, or one folded
+    /// line when every application is stopped.`. `-h`, `--help`, the
+    /// `children_help` field of `commands list` and crumbkit-markdown's
+    /// reference print the same text. crumbkit-test's `check_guide` fails
+    /// a text that is empty, holds a control character or does not end
+    /// with a full stop, and a text on a row type without
+    /// [`Row::CHILDREN`], whose help prints no `Children:` line.
+    const CHILDREN_HELP: Option<&'static str> = None;
 
     /// Returns one text line for each of the row's children, without
     /// indentation or a line feed. crumbkit reads it only when
     /// [`Row::CHILDREN`] is set.
     ///
-    /// crumbkit prints each line under the row, indented by two spaces and
-    /// followed by a line feed. It escapes each control character and each
+    /// crumbkit prints each line under the row, after
+    /// [`Row::CHILD_INDENT`] spaces and followed by a line feed. It escapes each control character and each
     /// Unicode format character of the line as a table cell escapes them,
     /// so each child stays on one line. A row that returns no lines prints
     /// nothing under it. The child lines do not change the widths of the
@@ -231,6 +264,14 @@ pub trait Row: Serialize + JsonSchema {
     /// ```
     fn child_lines(&self) -> Vec<String> {
         Vec::new()
+    }
+
+    /// Returns the child lines that the text prints under the row with
+    /// `--long`, in place of [`Row::child_lines`], which the default
+    /// returns. crumbkit reads it only when [`Row::CHILDREN`] is set, and
+    /// prints each line as it prints a child line (ADR-0138).
+    fn long_child_lines(&self) -> Vec<String> {
+        self.child_lines()
     }
 
     /// Whether `--json` prints every field of each row as the type
@@ -300,295 +341,4 @@ pub trait Headed: Row {
     /// record in their place. A row without bytes prints under its header
     /// as one line of compact JSON with every field.
     fn bytes(&self) -> Option<&crate::Bytes>;
-}
-
-/// A result that `crumbkit::finish` prints: one [`Row`], a `Vec` of rows, a
-/// [`Listing`](crate::Listing) or a [`Batch`](crate::Batch), which print as
-/// a table, a [`Prose`](crate::Prose), which prints as text, or
-/// [`Bytes`](crate::Bytes), which print unchanged.
-///
-/// crumbkit implements this trait, and a tool cannot implement it, so crumbkit
-/// can add result shapes later without breaking a tool. A tool names the
-/// trait only in a bound, such as `T: Rows`, and only crumbkit calls its
-/// members, so they are hidden from the documentation.
-pub trait Rows: Serialize + sealed::Sealed {
-    /// The type of each row. A `Prose` and `Bytes` have no rows, and their
-    /// row type is [`NoRow`].
-    #[doc(hidden)]
-    type Row: Row;
-
-    /// The kind of result, which decides the fields of its JSON document. A
-    /// single row's `data` is an object, a prose result's is its value, a
-    /// bytes result's is its text or base64 object, and every other
-    /// result's is an array.
-    #[doc(hidden)]
-    const SHAPE: Shape;
-
-    /// The type of the summary that prints above the table. Only a
-    /// `Listing` can have a summary, and every other result has
-    /// [`NoSummary`](crate::NoSummary). The summary's JSON Schema is the
-    /// schema of the document's `summary` field.
-    #[doc(hidden)]
-    type Summary: Serialize + fmt::Display + JsonSchema;
-
-    /// Returns the rows in order. A single row is a slice of one.
-    #[doc(hidden)]
-    fn rows(&self) -> &[Self::Row];
-
-    /// Returns the number of rows that matched when the result is one page
-    /// of them, and `None` otherwise. Only a `Listing` returns a total, and
-    /// a listing whose source the tool did not count returns `None`
-    /// (`Listing::uncounted`).
-    #[doc(hidden)]
-    fn total(&self) -> Option<usize> {
-        None
-    }
-
-    /// Returns whether the source holds rows that the result leaves out:
-    /// fewer rows than the total, or more rows that the tool did not count.
-    /// Only a `Listing` returns true.
-    #[doc(hidden)]
-    fn more(&self) -> bool {
-        false
-    }
-
-    /// Returns the phrase that names the rows in the text footer, such as
-    /// `books`. Only a `Listing` returns one.
-    #[doc(hidden)]
-    fn description(&self) -> Option<&str> {
-        None
-    }
-
-    /// Returns the phrase that names one row in the text footer and cut
-    /// line of a listing without a total, such as `book`. Only a `Listing`
-    /// returns one.
-    #[doc(hidden)]
-    fn singular(&self) -> Option<&str> {
-        None
-    }
-
-    /// Returns the summary that the text output prints above the table and
-    /// the JSON document holds under `summary`. Only a `Listing` returns one.
-    #[doc(hidden)]
-    fn summary(&self) -> Option<&Self::Summary> {
-        None
-    }
-
-    /// Returns the line that the text output prints on standard error after
-    /// the result and any footer, and before any failure. A `Listing`, a
-    /// `Batch` and a `Prose` return one when the tool set it.
-    #[doc(hidden)]
-    fn note(&self) -> Option<&str> {
-        None
-    }
-
-    /// Returns the command that the text output names as the next step, and
-    /// the phrase that follows it. Only a `Listing` returns one.
-    #[doc(hidden)]
-    fn next_step(&self) -> Option<(&Call, &str)> {
-        None
-    }
-
-    /// Returns the most rows that the command's `--limit` takes, which the
-    /// text footer names, or `None` when it has no bound. Only a `Listing`
-    /// returns one.
-    #[doc(hidden)]
-    fn limit_bound(&self) -> Option<usize> {
-        None
-    }
-
-    /// Returns the number of rows that report a problem
-    /// ([`Row::is_problem`]), which `crumbkit::finish` reads for the
-    /// exit code and the note. Every result counts the rows it holds, and a
-    /// listing that [`Listing::from_all`](crate::Listing::from_all) cut to
-    /// its limit also counts the rows it cut.
-    #[doc(hidden)]
-    fn problems(&self) -> usize {
-        problems::count(self.rows())
-    }
-
-    /// Returns the failures of the ids that did not work when the result is
-    /// a batch, and `None` otherwise. Only a `Batch` returns them, and its
-    /// list is empty when every id worked.
-    ///
-    /// A `Batch` builds the list on each call, because the trait cannot name
-    /// the batch's failure type. `finish` calls it once.
-    #[doc(hidden)]
-    fn failures(&self) -> Option<Vec<&dyn Failure>> {
-        None
-    }
-
-    /// Returns the keys that a batch leaves out when it shows only its first
-    /// `shown` rows, in the order the caller gave them: the keys of the rows
-    /// after the first `shown`, then the keys the handler never fetched. A
-    /// row whose result was pushed after the last key has no key and is
-    /// `None`. Every other result leaves out nothing.
-    #[doc(hidden)]
-    fn left_out(&self, _shown: usize) -> Vec<Option<&str>> {
-        Vec::new()
-    }
-
-    /// Returns the position of each failure that [`Rows::failures`]
-    /// returns among a batch's pushed results, counted from 0, which for a
-    /// failure with a key is the position of its key. Every result that is
-    /// not a batch returns no position.
-    #[doc(hidden)]
-    fn failure_indexes(&self) -> &[usize] {
-        &[]
-    }
-
-    /// Returns the key at `index` among a batch's keys, or `None` past the
-    /// last key and for every result that is not a batch.
-    #[doc(hidden)]
-    fn key(&self, _index: usize) -> Option<&str> {
-        None
-    }
-
-    /// Returns the position of each row's result among a batch's pushed
-    /// results, which for a row with a key is the position of its key.
-    /// Every result that is not a batch returns no position.
-    #[doc(hidden)]
-    fn row_indexes(&self) -> &[usize] {
-        &[]
-    }
-
-    /// Returns the position of the first answer that a batch leaves out
-    /// when it shows only its first `shown` rows, or `None` when it leaves
-    /// out nothing. Every answer from that position on that is not a
-    /// failure is left out. Every other result returns `None`.
-    #[doc(hidden)]
-    fn left_out_from(&self, _shown: usize) -> Option<usize> {
-        None
-    }
-
-    /// Returns the call that fetches the keys a batch leaves out, with every
-    /// value of the over-budget failure's `left_out` field in one run, and
-    /// `None` when the result is not a batch. The recovery uses this call
-    /// only when it cannot find the keys among the caller's words, and
-    /// otherwise reruns those words with the keys left out.
-    #[doc(hidden)]
-    fn fetch(&self) -> Option<Call> {
-        None
-    }
-
-    /// Returns the text that the text output prints in place of a table
-    /// when the result is a `Prose`, and `None` otherwise. Only a `Prose`
-    /// returns one.
-    #[doc(hidden)]
-    fn prose(&self) -> Option<&dyn fmt::Display> {
-        None
-    }
-
-    /// Returns the JSON Schema of the document's `data` when the result is a
-    /// `Prose`, which is the schema of its value, and `None` otherwise. The
-    /// schema comes from `generator`, so a definition it names sits under the
-    /// document's `$defs`. Only a `Prose` returns one.
-    #[doc(hidden)]
-    fn prose_schema(_generator: &mut SchemaGenerator) -> Option<Schema> {
-        None
-    }
-
-    /// Returns the bytes that the text output prints unchanged when the
-    /// result is [`Bytes`](crate::Bytes), and `None` otherwise.
-    #[doc(hidden)]
-    fn bytes(&self) -> Option<&[u8]> {
-        None
-    }
-}
-
-/// The kind of a [`Rows`] result, which decides the fields of its JSON
-/// document beside `schema`.
-#[non_exhaustive]
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Shape {
-    /// One row, whose `data` is an object.
-    Row,
-    /// A `Vec` of rows, whose `data` is an array.
-    List,
-    /// A [`Listing`](crate::Listing), whose `data` is an array beside
-    /// `total` when the tool counted the rows, `truncated` and, when it has
-    /// one, `summary`.
-    Listing,
-    /// A [`Batch`](crate::Batch), whose `data` is an array beside
-    /// `failures`.
-    Batch,
-    /// A [`Prose`](crate::Prose), whose `data` is its value beside
-    /// `failures`.
-    Prose,
-    /// [`Bytes`](crate::Bytes), whose `data` is an object that holds the
-    /// bytes as `text` or `base64`.
-    Bytes,
-}
-
-/// The row type of a result without rows, which is a
-/// [`Prose`](crate::Prose). It has no values and no columns, so a result of
-/// this row type never holds a row.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum NoRow {}
-
-impl Row for NoRow {
-    const COLUMNS: &'static [&'static str] = &[];
-}
-
-impl Serialize for NoRow {
-    fn serialize<S: Serializer>(&self, _: S) -> Result<S::Ok, S::Error> {
-        match *self {}
-    }
-}
-
-/// Describes `NoRow` as the schema `false`, which no value matches, because
-/// a result of this row type never holds a row. The schema is inline, so a
-/// generator returns `false` itself and adds no definition.
-impl JsonSchema for NoRow {
-    fn inline_schema() -> bool {
-        true
-    }
-
-    fn schema_name() -> Cow<'static, str> {
-        "NoRow".into()
-    }
-
-    fn json_schema(_: &mut SchemaGenerator) -> Schema {
-        Schema::from(false)
-    }
-}
-
-impl<R: Row> Rows for R {
-    type Row = R;
-    const SHAPE: Shape = Shape::Row;
-    type Summary = crate::NoSummary;
-
-    fn rows(&self) -> &[R] {
-        std::slice::from_ref(self)
-    }
-}
-
-impl<R: Row> Rows for Vec<R> {
-    type Row = R;
-    const SHAPE: Shape = Shape::List;
-    type Summary = crate::NoSummary;
-
-    fn rows(&self) -> &[R] {
-        self
-    }
-}
-
-/// Holds the supertrait that keeps tools from implementing [`Rows`].
-mod sealed {
-    /// A type that crumbkit implements [`Rows`](super::Rows) for. The trait is
-    /// public so it can bound `Rows`, and it sits in a private module so no
-    /// tool can name it.
-    pub trait Sealed {}
-
-    impl<R: super::Row> Sealed for R {}
-
-    impl<R: super::Row> Sealed for Vec<R> {}
-
-    impl<R: super::Row, S> Sealed for crate::Listing<R, S> {}
-
-    impl<R: super::Row, E: crate::AsFailure> Sealed for crate::Batch<R, E> {}
-
-    impl<T, E: crate::AsFailure> Sealed for crate::Prose<T, E> {}
-
-    impl Sealed for crate::Bytes {}
 }

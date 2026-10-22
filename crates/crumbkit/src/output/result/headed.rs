@@ -2,17 +2,18 @@
 //! bytes under a `==> KEY <==` header, within the output budget (ADR-0062).
 
 use std::borrow::Cow;
-use std::io::{self, Write};
+use std::io;
 
 use super::Answer;
 use super::rerun::{self, Rerun};
 use crate::output::budget::{Over, OverBudget};
 use crate::output::table::escape_controls;
 use crate::output::{Output, layout, problems};
+use crate::sink::role::{Deliver, Message, Role};
 use crate::{Code, Rows, codes};
 
-/// Writes the rows of `value` to `out` in the text of a headed document,
-/// within the bytes that [`Output::budget`] has left, then flushes `out`.
+/// Delivers the rows of `value` to `sink` as the result in the text of a
+/// headed document, within the bytes that [`Output::budget`] has left.
 /// `bytes_of` returns the bytes of the row at a position, or `None` for a
 /// row that holds none. It returns what it printed and the number of bytes
 /// it wrote.
@@ -33,12 +34,11 @@ use crate::{Code, Rows, codes};
 /// fit. From the first later row that does not fit, alone or beside the
 /// rows before it, that row, every later row and every key the batch never
 /// fetched are left out. One failure names the keys left out, and the
-/// JSON form follows the same rule (ADR-0084). After `out` is flushed, the
-/// note of the rows that report a problem, when every answer printed, and
-/// the tool's note go to `err`, as they do for a table.
+/// JSON form follows the same rule (ADR-0084). After the result, the note
+/// of the rows that report a problem, when every answer printed, and the
+/// tool's note are delivered as a note, as they are for a table.
 pub(super) fn write<T: Rows>(
-    out: &mut impl Write,
-    err: &mut impl Write,
+    sink: &mut dyn Deliver,
     output: &Output,
     value: &T,
     bytes_of: fn(&T, usize) -> Option<&[u8]>,
@@ -85,14 +85,17 @@ pub(super) fn write<T: Rows>(
         spent = spent.saturating_add(cost);
         printed.push((header, content));
     }
+    // The result is delivered in one piece, and as an empty piece when no
+    // row prints.
+    let mut piece = Vec::with_capacity(spent);
     for (number, (header, content)) in printed.iter().enumerate() {
         if number > 0 {
-            out.write_all(b"\n")?;
+            piece.push(b'\n');
         }
-        out.write_all(header.as_bytes())?;
-        out.write_all(content)?;
+        piece.extend_from_slice(header.as_bytes());
+        piece.extend_from_slice(content);
     }
-    out.flush()?;
+    sink.deliver(Role::Result, &piece)?;
     // The caller's words are parsed again only when an answer is left out.
     let rerun = if value.left_out(stop).is_empty() {
         None
@@ -108,7 +111,7 @@ pub(super) fn write<T: Rows>(
     } else {
         0
     };
-    write_notes(err, value, problems);
+    write_notes(sink, value, problems);
     let answer = match refused {
         Some(position) => Answer::RefusedFirst {
             position,
@@ -163,10 +166,9 @@ fn left_out<T: Rows>(
 }
 
 /// Writes the note of the rows that report a problem, when `problems` is
-/// more than 0, and the tool's note to `err` in one write. A failed write
-/// to `err` goes unreported, because standard error is the last place to
-/// report anything.
-fn write_notes<T: Rows>(err: &mut impl Write, value: &T, problems: usize) {
+/// more than 0, and the tool's note to `sink` as one note. A note is the
+/// last thing to report, so a failure to deliver it goes unreported.
+fn write_notes<T: Rows>(sink: &mut dyn Deliver, value: &T, problems: usize) {
     let mut notes = Vec::new();
     if problems > 0 {
         notes.extend(problems::note(problems, value.description()).as_bytes());
@@ -177,6 +179,6 @@ fn write_notes<T: Rows>(err: &mut impl Write, value: &T, problems: usize) {
         notes.push(b'\n');
     }
     if !notes.is_empty() {
-        let _ = err.write_all(&notes).and_then(|()| err.flush());
+        let _ = sink.deliver(Role::Message(Message::Note), &notes);
     }
 }

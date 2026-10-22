@@ -260,3 +260,45 @@ fn from_all_counts_the_rows_that_is_problem_marks_among_the_rows_its_limit_cuts(
 
     assert_eq!(listing.problems(), 2);
 }
+
+#[test]
+fn a_capped_listing_has_no_total_and_leaves_rows_out_beyond_the_rows_it_read() {
+    let listing = Listing::new(books(2), 100).capped(true);
+
+    assert_eq!(listing.total(), None);
+    assert!(listing.more(), "a capped listing leaves rows out");
+    assert_eq!(listing.at_least(), Some(100));
+}
+
+#[test]
+fn a_capped_listing_that_holds_every_row_it_read_still_leaves_rows_out() {
+    let listing = Listing::from_all(books(3), None).capped(true);
+
+    assert!(listing.more(), "a capped listing leaves rows out");
+    assert_eq!(listing.at_least(), Some(3));
+}
+
+#[test]
+fn a_listing_that_is_not_capped_is_unchanged() {
+    let listing = Listing::new(books(2), 100);
+
+    assert_eq!(listing.clone().capped(false), listing);
+    assert_eq!(listing.at_least(), None);
+}
+
+#[test]
+fn capping_an_uncounted_listing_changes_nothing() {
+    for more in [false, true] {
+        let listing = Listing::uncounted(books(2), more);
+
+        assert_eq!(listing.clone().capped(true), listing, "more: {more}");
+    }
+}
+
+#[test]
+fn a_summary_keeps_the_listings_cap() {
+    let listing = Listing::new(books(2), 100).capped(true).summary(1);
+
+    assert_eq!(listing.total(), None);
+    assert_eq!(listing.at_least(), Some(100));
+}

@@ -1,7 +1,7 @@
 //! How a batch that does not fit in the output budget prints: its first
 //! rows, then one failure that names the keys left out (ADR-0046).
 
-use std::io::{self, Write};
+use std::io;
 
 use clap::Command;
 
@@ -10,6 +10,7 @@ use super::{Answer, Prepared};
 use crate::output::budget::{self, Over, OverBudget};
 use crate::output::envelope::Failures;
 use crate::output::failure::{PreparedFailure, Printing};
+use crate::sink::role::Deliver;
 use crate::{Code, Rows, Spelling};
 
 /// What the failure of a batch's left-out keys needs beside the batch.
@@ -45,12 +46,11 @@ impl<T: Rows> Prepared<'_, T> {
     /// `unlisted`. When the first row and a failure that names no key pass
     /// the budget, the failure names every key, because the document passes
     /// the budget whichever keys it names (ADR-0070). In text, and in a
-    /// document without the envelope, the failure goes to standard error,
-    /// which the budget does not count, so it names every key.
+    /// document without the envelope, the failure is a message, which the
+    /// budget does not count, so it names every key.
     pub(super) fn partial(
         &mut self,
-        out: &mut impl Write,
-        err: &mut impl Write,
+        sink: &mut dyn Deliver,
         listed: &[PreparedFailure<'_>],
         mut left_out: LeftOut<'_>,
     ) -> io::Result<(Answer, usize)> {
@@ -61,10 +61,10 @@ impl<T: Rows> Prepared<'_, T> {
             && !self.document.always_prints_first()
             && !self.fits(1, alone, left_out.budget)?
         {
-            return self.refuse_first(out, err, listed, left_out);
+            return self.refuse_first(sink, listed, left_out);
         }
         let (shown, over) = if in_document {
-            self.fit_failure(err, listed, &mut left_out)?
+            self.fit_failure(sink, listed, &mut left_out)?
         } else {
             let low = rows.min(1);
             let shown = budget::largest(low, rows, |shown| {
@@ -84,8 +84,8 @@ impl<T: Rows> Prepared<'_, T> {
         } = &over.over
             && keys.is_empty()
         {
-            let bytes = self.measured_write(out, rows, None, Some(failures(None)))?;
-            self.send_notes(err, &mut Vec::new(), rows, None);
+            let bytes = self.measured_write(sink, rows, None, Some(failures(None)))?;
+            self.send_notes(sink, &mut Vec::new(), rows, None);
             return Ok((Answer::Whole, bytes));
         }
         let bytes = {
@@ -97,12 +97,12 @@ impl<T: Rows> Prepared<'_, T> {
                     left_out.spelling,
                     Printing::default(),
                     left_out.command,
-                    err,
+                    sink,
                 )
             });
-            self.measured_write(out, shown, None, Some(failures(prepared.as_ref())))?
+            self.measured_write(sink, shown, None, Some(failures(prepared.as_ref())))?
         };
-        self.send_notes_before_left_out(err, shown);
+        self.send_notes_before_left_out(sink, shown);
         Ok((Answer::Partial(over), bytes))
     }
 
@@ -116,8 +116,7 @@ impl<T: Rows> Prepared<'_, T> {
     /// describes.
     fn refuse_first(
         &mut self,
-        out: &mut impl Write,
-        err: &mut impl Write,
+        sink: &mut dyn Deliver,
         listed: &[PreparedFailure<'_>],
         mut left_out: LeftOut<'_>,
     ) -> io::Result<(Answer, usize)> {
@@ -143,24 +142,24 @@ impl<T: Rows> Prepared<'_, T> {
             let printing = Printing::default();
             let command = &mut *left_out.command;
             let refused =
-                PreparedFailure::new(&first, left_out.spelling, printing, command, err).keyed(key);
-            let over = self.name_keys(err, listed, Some(&refused), &mut left_out, 0, 1)?;
+                PreparedFailure::new(&first, left_out.spelling, printing, command, sink).keyed(key);
+            let over = self.name_keys(sink, listed, Some(&refused), &mut left_out, 0, 1)?;
             let prepared = any_left_out.then(|| {
                 let command = &mut *left_out.command;
-                PreparedFailure::new(&over, left_out.spelling, printing, command, err)
+                PreparedFailure::new(&over, left_out.spelling, printing, command, sink)
             });
             let failures = Failures {
                 listed,
                 first: Some(&refused),
                 over: prepared.as_ref(),
             };
-            let bytes = self.measured_write(out, 0, None, Some(failures))?;
+            let bytes = self.measured_write(sink, 0, None, Some(failures))?;
             (bytes, over)
         } else {
-            let bytes = self.measured_write(out, 0, None, Some(Failures::of(listed)))?;
+            let bytes = self.measured_write(sink, 0, None, Some(Failures::of(listed)))?;
             (bytes, self.left_out_failure(&left_out, 1, usize::MAX))
         };
-        self.send_notes_before_left_out(err, 0);
+        self.send_notes_before_left_out(sink, 0);
         let left_out = any_left_out.then_some(over);
         let answer = Answer::RefusedFirst {
             position,
@@ -182,7 +181,7 @@ impl<T: Rows> Prepared<'_, T> {
     /// the keys that [`Prepared::name_keys`] finds.
     fn fit_failure(
         &mut self,
-        err: &mut impl Write,
+        sink: &mut dyn Deliver,
         listed: &[PreparedFailure<'_>],
         left_out: &mut LeftOut<'_>,
     ) -> io::Result<(usize, OverBudget)> {
@@ -195,7 +194,7 @@ impl<T: Rows> Prepared<'_, T> {
             left_out.spelling,
             Printing::default(),
             &mut *left_out.command,
-            err,
+            sink,
         );
         let failures = Failures {
             listed,
@@ -206,7 +205,7 @@ impl<T: Rows> Prepared<'_, T> {
             let shown = budget::largest(low, rows, |shown| self.fits(shown, failures, budget))?;
             return Ok((shown, self.left_out_failure(left_out, shown, usize::MAX)));
         }
-        let over = self.name_keys(err, listed, None, left_out, low, low)?;
+        let over = self.name_keys(sink, listed, None, left_out, low, low)?;
         Ok((low, over))
     }
 
@@ -226,7 +225,7 @@ impl<T: Rows> Prepared<'_, T> {
     /// 0 and the message never drops its sentence about the rest.
     fn name_keys(
         &mut self,
-        err: &mut impl Write,
+        sink: &mut dyn Deliver,
         listed: &[PreparedFailure<'_>],
         first: Option<&PreparedFailure<'_>>,
         left_out: &mut LeftOut<'_>,
@@ -246,7 +245,7 @@ impl<T: Rows> Prepared<'_, T> {
                 left_out.spelling,
                 Printing::default(),
                 &mut *left_out.command,
-                err,
+                sink,
             );
             let failures = Failures {
                 listed,

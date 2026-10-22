@@ -18,6 +18,7 @@ use super::table::Table;
 use super::{Output, children, layout, lines, listing, problems, prose};
 use crate::age::TextCells;
 use crate::help::rename::Renames;
+use crate::sink::role::{Deliver, Message, Role};
 use crate::view::View;
 use crate::{Code, Document, Row, Rows, Shape, Spelling, codes};
 
@@ -55,8 +56,8 @@ pub(super) enum Answer {
     },
 }
 
-/// Writes `value` to `out` in the format that `output` chooses, within the
-/// bytes that [`Output::budget`] has left, then flushes `out`. It returns
+/// Delivers `value` to `sink` as the result in the format that `output`
+/// chooses, within the bytes that [`Output::budget`] has left. It returns
 /// what it printed and the number of bytes it wrote.
 ///
 /// `failures` holds the failures of a batch or a prose result, which the
@@ -72,12 +73,13 @@ pub(super) enum Answer {
 /// the budget alone otherwise. A batch that has keys it never
 /// fetched prints those failures even when its rows fit. A single row or a prose
 /// result prints nothing, unless its document always prints its first
-/// answer, in which case it prints whole. After `out` is flushed, the lines
-/// that describe the result go to `err`: in text, a listing's footer or
+/// answer, in which case it prints whole. After the result, the lines that
+/// describe it are delivered as a note: in text, a listing's footer or
 /// empty note, the cut line, the note of the rows that report a problem,
-/// the tool's note and the `Next:` line, and with
-/// `--json`, the cut line of a document without the envelope (ADR-0050). A
-/// debug build's warning about a failure also goes to `err`.
+/// the tool's note and the `Next:` line, and with `--json`, the cut line
+/// of a document without the envelope (ADR-0050). A debug build's warning
+/// about a failure is delivered as a debug warning. A text table fits the
+/// width that `sink` gives the result (ADR-0121, ADR-0128).
 ///
 /// The text of a bytes result is the bytes unchanged. They print when they
 /// fit, or when the document always prints its first answer, and are
@@ -85,15 +87,10 @@ pub(super) enum Answer {
 /// batch's text prints as [`headed::write`] describes.
 ///
 /// A serialization error becomes an `io::Error` of kind `InvalidData`, so it
-/// is reported as a failed write. `finish` writes the line of a dry run to
-/// standard error itself, after a batch's failures.
-#[expect(
-    clippy::too_many_arguments,
-    reason = "respond reads the failures and counts the problem rows once, and passes both with the result it prints"
-)]
+/// is reported as a failed write. `finish` delivers the line of a dry run
+/// itself, after a batch's failures.
 pub(super) fn write_result<T: Rows>(
-    out: &mut impl Write,
-    err: &mut impl Write,
+    sink: &mut dyn Deliver,
     output: &mut Output,
     spelling: Spelling,
     document: Document<T>,
@@ -116,8 +113,7 @@ pub(super) fn write_result<T: Rows>(
             };
             return Ok((Answer::Refused(over), 0));
         }
-        out.write_all(bytes)?;
-        out.flush()?;
+        sink.deliver(Role::Result, bytes)?;
         return Ok((Answer::Whole, bytes.len()));
     }
     // The problem note names the exit, so it prints only without a failure.
@@ -128,14 +124,14 @@ pub(super) fn write_result<T: Rows>(
     };
     if let Some(bytes_of) = document.headed_bytes().filter(|_| !output.is_json()) {
         let first_always = document.always_prints_first();
-        return headed::write(out, err, output, value, bytes_of, problems, first_always);
+        return headed::write(sink, output, value, bytes_of, problems, first_always);
     }
     // `Prepared` borrows the settings for the whole write, and the `Next:`
     // line and the failure of a batch's left-out keys render their calls
     // against the command, so the write borrows the two apart.
-    let (settings, command) = Settings::split(output);
+    let (settings, command) = Settings::split(output, sink.width(Role::Result));
     write_rows(
-        out, err, &settings, command, spelling, document, value, failures, problems,
+        sink, &settings, command, spelling, document, value, failures, problems,
     )
 }
 
@@ -155,15 +151,15 @@ struct Settings<'a> {
     budget: usize,
     /// The tool's own codes for crumbkit's failures.
     renames: Renames,
-    /// The number of columns of the terminal that standard output is, which
-    /// a text table fits, or `None` when the table prints unfitted.
+    /// The number of columns that the sink gives the result, which a text
+    /// table fits, or `None` when the table prints unfitted.
     width: Option<usize>,
 }
 
 impl<'a> Settings<'a> {
     /// Borrows the settings of `output` and, apart from them, its command
-    /// tree.
-    fn split(output: &'a mut Output) -> (Self, &'a mut Command) {
+    /// tree, with the `width` that the sink gives the result.
+    fn split(output: &'a mut Output, width: Option<usize>) -> (Self, &'a mut Command) {
         let settings = Self {
             view: &output.view,
             words: &output.words,
@@ -171,7 +167,7 @@ impl<'a> Settings<'a> {
             layout: output.json_layout,
             budget: output.budget,
             renames: output.renames,
-            width: output.terminal_width,
+            width,
         };
         (settings, &mut output.command)
     }
@@ -190,8 +186,7 @@ impl<'a> Settings<'a> {
     reason = "write_result passes its own arguments on, with the command borrowed apart from the settings"
 )]
 fn write_rows<T: Rows>(
-    out: &mut impl Write,
-    err: &mut impl Write,
+    sink: &mut dyn Deliver,
     settings: &Settings<'_>,
     command: &mut Command,
     spelling: Spelling,
@@ -212,13 +207,16 @@ fn write_rows<T: Rows>(
     // `--json` and the selected fields of the JSON document with it, and a
     // run prints only one of the two. The rows are serialized once, so an
     // `Age` writes its compact age when the run prints text.
+    // The text of a document that lists only the rows that report a
+    // problem serializes only those rows (ADR-0138).
+    let only = problems::only(&document, settings.view);
     let values = {
         let _cells = (!settings.is_json()).then(TextCells::enter);
-        values(&columns, value)?
+        values(&columns, problems::shown(value.rows(), only))?
     };
     let mut prepared = Prepared::new(settings, document, value, &columns, &values, next, problems)?;
     let listed = failures.map(Failures::of);
-    let rows = value.rows().len();
+    let rows = prepared.rows;
     // A batch that never fetched some of its keys ends with their failure
     // even when its rows fit.
     let whole = if value.left_out(rows).is_empty() {
@@ -227,15 +225,15 @@ fn write_rows<T: Rows>(
         None
     };
     if let Some(mut bytes) = whole {
-        prepared.write_measured(out, &bytes, rows, listed)?;
+        prepared.write_measured(sink, &bytes, rows, listed)?;
         let written = bytes.len();
         // The buffer of the result is free again, so the notes reuse it.
-        prepared.send_notes(err, &mut bytes, rows, None);
+        prepared.send_notes(sink, &mut bytes, rows, None);
         return Ok((Answer::Whole, written));
     }
     match T::SHAPE {
         Shape::Listing | Shape::List if rows > 0 => {
-            prepared.cut(out, err, spelling.spell(code), code, budget)
+            prepared.cut(sink, spelling.spell(code), code, budget)
         }
         Shape::Batch => {
             let listed = failures.unwrap_or_default();
@@ -247,16 +245,16 @@ fn write_rows<T: Rows>(
                 budget,
                 rerun,
             };
-            prepared.partial(out, err, listed, left_out)
+            prepared.partial(sink, listed, left_out)
         }
         Shape::Listing | Shape::List => {
-            let bytes = prepared.measured_write(out, rows, None, listed)?;
-            prepared.send_notes(err, &mut Vec::new(), rows, None);
+            let bytes = prepared.measured_write(sink, rows, None, listed)?;
+            prepared.send_notes(sink, &mut Vec::new(), rows, None);
             Ok((Answer::Whole, bytes))
         }
         _ if document.always_prints_first() => {
-            let bytes = prepared.measured_write(out, rows, None, listed)?;
-            prepared.send_notes(err, &mut Vec::new(), rows, None);
+            let bytes = prepared.measured_write(sink, rows, None, listed)?;
+            prepared.send_notes(sink, &mut Vec::new(), rows, None);
             Ok((Answer::Whole, bytes))
         }
         shape => {
@@ -292,8 +290,8 @@ struct Prepared<'a, T> {
     values: &'a [Value],
     /// The text table, when the result prints one.
     table: Option<Table<'a>>,
-    /// The number of columns of the terminal that standard output is, or
-    /// `None` when the table prints unfitted.
+    /// The number of columns that the sink gives the result, or `None`
+    /// when the table prints unfitted.
     width: Option<usize>,
     /// Whether the table is fitted to `width`, which is only while
     /// [`Prepared::write_fitted`] writes the result.
@@ -308,6 +306,10 @@ struct Prepared<'a, T> {
     /// The number of rows that report a problem, which the text's note
     /// counts, or 0 when the run has a failure.
     problems: usize,
+    /// The number of rows that the result prints when it fits: in the text
+    /// of a document that lists only the rows that report a problem, those
+    /// rows, and otherwise every row (ADR-0138).
+    rows: usize,
 }
 
 impl<'a, T: Rows> Prepared<'a, T> {
@@ -326,14 +328,23 @@ impl<'a, T: Rows> Prepared<'a, T> {
             Some(prose) if text => Some(prose::text(prose)?),
             _ => None,
         };
+        let only = problems::only(&document, settings.view);
+        let rows = if only {
+            problems::shown(value.rows(), true).count()
+        } else {
+            value.rows().len()
+        };
         let lines = if lines::chosen::<T::Row>(settings.view) {
-            let rows = value.rows().iter().map(lines::line);
-            Some(rows.collect::<io::Result<Vec<String>>>()?)
+            let shown = problems::shown(value.rows(), only).map(lines::line);
+            Some(shown.collect::<io::Result<Vec<String>>>()?)
         } else {
             None
         };
-        let table = (text && value.prose().is_none() && lines.is_none()).then(|| {
-            let children = children::blocks(settings.view, value.rows());
+        // A document that lists only the rows that report a problem prints
+        // no header when no row reports one.
+        let headed = !only || rows > 0;
+        let table = (text && value.prose().is_none() && lines.is_none() && headed).then(|| {
+            let children = children::blocks(settings.view, problems::shown(value.rows(), only));
             Table::new(columns, values, settings.view.names().is_none())
                 .keeping_whole(columns, T::Row::UNCUT_COLUMNS)
                 .with_children(children)
@@ -357,12 +368,13 @@ impl<'a, T: Rows> Prepared<'a, T> {
             prose,
             next,
             problems,
+            rows,
         })
     }
 
     /// Writes the result with its first `shown` rows to `out`, marked with
     /// `cut` when the budget cut it short, and flushes `out`. The lines that
-    /// describe the result go to standard error through
+    /// describe the result are delivered as a note through
     /// [`Prepared::send_notes`].
     fn write(
         &mut self,
@@ -375,17 +387,16 @@ impl<'a, T: Rows> Prepared<'a, T> {
         out.flush()
     }
 
-    /// Writes the lines that describe the result with its first `shown`
-    /// rows to `err`, after the result is written and flushed (ADR-0050).
+    /// Delivers the lines that describe the result with its first `shown`
+    /// rows to `sink` as a note, after the result (ADR-0050).
     ///
     /// The lines are rendered into `buffer`, which is cleared first, and
-    /// reach `err` in one write, so a reader that merges the two streams
-    /// never sees a note split by other output. A failed write to `err`
-    /// goes unreported, because standard error is the last place to report
-    /// anything.
+    /// are delivered as one piece, so a reader that merges the two streams
+    /// never sees a note split by other output. A note is the last thing to
+    /// report, so a failure to deliver it goes unreported.
     fn send_notes(
         &self,
-        err: &mut impl Write,
+        sink: &mut dyn Deliver,
         buffer: &mut Vec<u8>,
         shown: usize,
         cut: Option<&Cut>,
@@ -394,7 +405,7 @@ impl<'a, T: Rows> Prepared<'a, T> {
         // A `Vec` takes every byte, so writing the notes cannot fail.
         let _ = self.write_notes(buffer, shown, cut);
         if !buffer.is_empty() {
-            let _ = err.write_all(buffer).and_then(|()| err.flush());
+            let _ = sink.deliver(Role::Message(Message::Note), buffer);
         }
     }
 
@@ -403,14 +414,15 @@ impl<'a, T: Rows> Prepared<'a, T> {
     /// [`Prepared::send_notes`] does. The failure of the answers left out
     /// decides the exit, so the note of the rows that report a problem,
     /// which names the exit, does not print, and the tool's note does.
-    fn send_notes_before_left_out(&mut self, err: &mut impl Write, shown: usize) {
+    fn send_notes_before_left_out(&mut self, sink: &mut dyn Deliver, shown: usize) {
         self.problems = 0;
-        self.send_notes(err, &mut Vec::new(), shown, None);
+        self.send_notes(sink, &mut Vec::new(), shown, None);
     }
 
     /// Writes the lines that describe the result to `out`: in text, the cut
     /// line, or else the footer and the empty note, then the note of the
-    /// rows that report a problem, the tool's note and the `Next:` line; with `--json`, only the cut line of a document
+    /// rows that report a problem, the tool's note, under `--long` its long
+    /// note, and the `Next:` line; with `--json`, only the cut line of a document
     /// without the envelope, which has no `cut` field.
     fn write_notes(&self, out: &mut impl Write, shown: usize, cut: Option<&Cut>) -> io::Result<()> {
         let value = self.value;
@@ -434,6 +446,9 @@ impl<'a, T: Rows> Prepared<'a, T> {
             )?;
         }
         if let Some(note) = value.note() {
+            writeln!(out, "{note}")?;
+        }
+        if let Some(note) = value.long_note().filter(|_| self.view.is_long()) {
             writeln!(out, "{note}")?;
         }
         if let Some((call, phrase)) = &self.next {
@@ -519,7 +534,7 @@ impl<'a, T: Rows> Prepared<'a, T> {
         }
         if failures.is_some() && shown.min(rows.len()) == 0 {
             // A batch in which no id worked prints no table, so the caller
-            // sees only its failures on standard error.
+            // sees only its failure messages.
             return Ok(());
         }
         if let Some(summary) = value.summary() {

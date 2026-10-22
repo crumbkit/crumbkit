@@ -21,6 +21,9 @@ const HOUR: u64 = 60 * MINUTE;
 /// The seconds in a day.
 const DAY: u64 = 24 * HOUR;
 
+/// The seconds in a week.
+const WEEK: u64 = 7 * DAY;
+
 /// The seconds from 1970 to the start of the year 10000. RFC 3339 writes a
 /// year in four digits, so a time from this second on has no RFC 3339 form.
 const YEAR_10000: u64 = 253_402_300_800;
@@ -34,12 +37,13 @@ const YEAR_10000: u64 = 253_402_300_800;
 /// current time prints the same age on every run.
 ///
 /// The compact age is the largest whole unit only: `{n}s` under a minute,
-/// `{n}m` under an hour, `{n}h` under a day, and `{n}d` for a day or more,
-/// so it reads `0s`, `59s`, `1m`, `3h`, `2d` or `400d`. Each unit rounds
-/// down. The largest unit is the day, because the length of a month or a
-/// year depends on a calendar. `Age`'s `Display` writes the compact age, so
-/// a row type that sets [`Row::LINE`](crate::Row::LINE) can put it in its
-/// own `text_line`.
+/// `{n}m` under an hour, `{n}h` under a day, `{n}d` under a week, and
+/// `{n}w` for a week or more, so it reads `0s`, `59s`, `1m`, `3h`, `2d`,
+/// `1w` or `57w`. Each unit rounds down, so 13 days is `1w`. The largest
+/// unit is the week, which is always seven days, because the length of a
+/// month or a year depends on a calendar. `Age`'s `Display` writes the
+/// compact age, so a row type that sets [`Row::LINE`](crate::Row::LINE)
+/// can put it in its own `text_line`.
 ///
 /// In JSON the field is the time in UTC with milliseconds, such as
 /// `2026-10-07T12:01:07.120Z`. `--json`, `--json --fields`, `--json --full`
@@ -119,8 +123,10 @@ impl fmt::Display for Age {
             (seconds / MINUTE, 'm')
         } else if seconds < DAY {
             (seconds / HOUR, 'h')
-        } else {
+        } else if seconds < WEEK {
             (seconds / DAY, 'd')
+        } else {
+            (seconds / WEEK, 'w')
         };
         write!(f, "{count}{unit}")
     }

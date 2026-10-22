@@ -67,7 +67,8 @@ bare `ExitCode`. `try_parse` returns the `Stop` of help or the version
 inside `Unparsed::Stopped`, and `Refused::print` returns the `Stop` of a
 refusal. A tool's `main` returns `stop.code()`. A tool that prints
 more before it exits reads `Stop::output`, whose `Output::is_json` says
-whether the caller asked for JSON. `Stop::number` returns the same exit code
+whether the caller asked for JSON, or, after `Refused::as_json`, which form
+the refusal printed in. `Stop::number` returns the same exit code
 as a `u8`: 0 after help or the version, the code that the guide lists for a
 refused command line, which is 2 unless an exit lists the refusal, and 1
 when the page could not be written. A tool that records the exit of a
@@ -80,12 +81,14 @@ that cannot work together, and `Failure` for the failure of a picker's
 source. A tool that records the outcome of a stopped run in a history of
 its own reads it, because the number is 0 after help, the version and a
 topic alike. `Printed` is `#[non_exhaustive]`. A `Stop` offers `path`,
-`flags` and `value` as a `Refused` does, so a tool that prints a note
-after a help page reads a global option such as `--format` from it. The
+`flags` and `value` as a `Refused` does, and they read the caller's words
+in the same way, so a tool that prints a note after a help page reads a
+global option such as `--format` from it, and `tool help planets` reports
+no flags. The
 `Output`, the path and the words inside a `Stop` sit in a `Box`, which
 costs one allocation only on a run that `parse` ends.
 
-Why: ADR-0002, ADR-0089, ADR-0107, ADR-0111.
+Why: ADR-0002, ADR-0089, ADR-0107, ADR-0111, ADR-0136.
 
 ## The command tree after parsing
 
@@ -140,12 +143,50 @@ rustdoc of `parse_to` states the message and the recovery.
   argument; `value`, its refused value; and `subcommand`, an unknown
   subcommand, in that order. A refused `--limit` above its bound adds
   `most` ([listings](../output/listings/README.md#an-upper-bound-on---limit)).
-- The recovery runs the `-h` of the deepest typed command, even a hidden
-  one, unless the tool's refusal function returns a call that renders and
-  parses ([refused command lines](../failures/README.md#refused-command-lines)).
+- The recovery runs the `-h` of the deepest typed command that has a help
+  flag, even a hidden one, unless the tool's hint function returns a
+  sentence or its refusal function returns a call that renders and parses.
+  When no command on the typed path has a help flag, the recovery offers no
+  step and says why
+  ([refused command lines](../failures/README.md#refused-command-lines)).
 - In text, a refusal from clap prints clap's usage as `usage:` lines under
   the message. A command line that stops at a group with visible
   subcommands prints the group's `-h` page in place of the refusal lines.
+
+In text, a refusal and the group page printed in its place carry clap's
+styles on standard error when crumbkit's `color` feature is on. `parse`,
+`parse_from` and `Refused::print` decide once, from the environment and
+standard error:
+
+- The command's `ColorChoice::Never`, and a guide that turns terminal
+  detection off, keep the refusal plain.
+- A non-empty `NO_COLOR` keeps the refusal plain, even with
+  `CLICOLOR_FORCE` set.
+- Otherwise a `CLICOLOR_FORCE` that is neither empty nor `0` styles it,
+  whatever standard error is, also when `TERM` is `dumb` or `CLICOLOR` is
+  `0`. anstream, which colours clap's help, checks the variables in the
+  same order.
+- Otherwise `TERM=dumb` or `CLICOLOR=0` keeps the refusal plain.
+- Otherwise the refusal is styled only when standard error is a terminal.
+
+The `error:` label takes clap's error style, and a refused value, a flag, a
+suggestion and the usage take the styles that clap's own error gives them.
+Removing the escape codes gives the plain bytes, so the golden file of a
+piped run also pins the text at a terminal. A refusal in JSON carries no
+styles, and every other message on standard error, such as a failure or a
+note, stays plain. Help decides from standard output and clap's own
+reading of the environment, so the two can differ. Help ignores
+`CLICOLOR_FORCE` at a pipe and `NO_COLOR` under `ColorChoice::Always`, and
+treats `CLICOLOR_FORCE=0` as a request for colour. Help also stays plain
+when `TERM` is unset, and a `CLICOLOR` other than `0` or the `CI` variable
+colours it at a terminal whose `TERM` is unset or `dumb`. None of these
+change a refusal.
+
+A sink from `Sink::new` or `Sink::with_input` wants no error styles, so
+`parse_to` and `Refused::print_to` print a refusal plain to it. A tool that
+prints the refusal into its own sink and decides colour itself builds the
+sink with `Sink::styled_errors(true)`, which checks no terminal.
+`Sink::styled` covers the result alone.
 
 The walk that finds the deepest command also finds `--json`, which makes a
 refusal print as a JSON document. It counts the word only where it reads it
@@ -160,14 +201,15 @@ on the two paths ([help](../help/README.md#the-walk-before-parsing)).
 The refusal names real names only. When clap suggests a hidden alias of a
 flag or subcommand, the refusal names the real flag or subcommand that the
 alias belongs to, and it leaves the suggestion out when that real item is
-hidden. A tool can add its own alternatives to a refusal through a
-[declaration](../adoption/declarations.md).
+hidden. A tool can add its own alternatives or a hint to a refusal through
+a [declaration](../adoption/declarations.md).
 
 A command that refuses the caller after parsing, such as a handler that
 rejects a value, returns an ordinary `Failure`, which `finish` prints.
 crumbkit-test's checks and the golden files cover the whole command tree.
 
-Why: ADR-0015, ADR-0001, ADR-0021, ADR-0050, ADR-0118.
+Why: ADR-0015, ADR-0001, ADR-0021, ADR-0050, ADR-0118, ADR-0123, ADR-0124,
+ADR-0131, ADR-0133.
 
 ## A refusal that the tool prints
 
@@ -182,7 +224,8 @@ command line comes back as `Unparsed::Refused` with a
 A `Refused` holds what the refusal prints and what the run knew:
 
 - `message`, `code` and `recovery`, which the refusal prints, with the code
-  after the guide's renames;
+  after the guide's renames and the recovery after the tool's declared hint
+  or calls, so a tool that prints its own document prints its hint;
 - `number`, the exit code that the run ends with once the refusal prints;
 - `output`, the output flags as far as the walk found them;
 - `typed`, the words after the program name as the caller typed them;
@@ -190,11 +233,14 @@ A `Refused` holds what the refusal prints and what the run knew:
   `help` into `--help`, replaced a dashed form or added a picked value;
 - `path`, the real names of the subcommands from the root to the deepest
   command that the walk reached, which is empty at the root;
-- `flags`, the clap ids of the arguments that `parsed` passes as flags, in
-  the order typed, with each flag of a group such as `-qv`;
-- `value`, the last value that `parsed` gives an option by its clap id,
-  whether the option is the deepest command's own or a global option of a
-  command above it, typed as the next word or after `=`;
+- `flags`, the clap ids of the arguments that the caller's words pass as
+  flags, in the order typed, with each flag of a group such as `-qv`. The
+  caller's words are `typed` without the word `help` that crumbkit
+  answered, so that word gives no flag, a `--help` that the caller typed
+  gives clap's help id, and a value that a picker added gives nothing;
+- `value`, the last value that the caller's words give an option by its
+  clap id, whether the option is the deepest command's own or a global
+  option of a command above it, typed as the next word or after `=`;
 - `culprit`, the word that clap refused, from clap's error context: an
   unknown subcommand, a refused value, or an unexpected word or flag, or
   the view flag that crumbkit refused. A missing argument has none.
@@ -204,8 +250,8 @@ A `Refused` holds what the refusal prints and what the run knew:
   accepted the command line.
 
 `tool help nonsense` is refused as `tool nonsense --help`, so `typed` holds
-`help` and `nonsense`, `parsed` holds `nonsense` and `--help`, and
-`culprit` is `nonsense`. A tool that resolves aliases of its own reads
+`help` and `nonsense`, `parsed` holds `nonsense` and `--help`, `flags` is
+empty, and `culprit` is `nonsense`. A tool that resolves aliases of its own reads
 `typed`, and a tool with its own failure document prints the refusal from
 `message`, `code` and `recovery`. A tool that words a refusal in its own
 sentence reads the kind and context of `error`. A tool that names the
@@ -222,7 +268,22 @@ observers hear of the refusal when it prints, so a refusal that the tool
 answers itself reports no `refused` event. `Unparsed` is
 `#[non_exhaustive]`, and `Unparsed::print` prints whatever variant it holds.
 
-Why: ADR-0100, ADR-0107, ADR-0109.
+A refusal prints as the `<tool>/failure/v1` document on standard output
+when the walk found `--json`, and as text on standard error otherwise. A
+tool whose own flag chooses the form of a failure, such as `--error-format
+text`, reads that flag with `Refused::value` and calls
+`Refused::as_json(json)` with the form it resolved before it prints. With
+`true` the refusal prints the document on the output writer, and with
+`false` it prints text on the error writer, whatever the words said. So
+`tool --error-format text list --nosuch --json` prints text on standard
+error. The call leaves `Refused::output` reporting the words, and it
+changes neither the exit code nor the observers' events. The `Stop` that
+printing returns reports the printed form through `Output::is_json`. A tool
+holding an `Unparsed` matches `Unparsed::Refused(refused)` and calls
+`refused.as_json(..)`, because `Unparsed::print` prints in the form that
+the words chose.
+
+Why: ADR-0100, ADR-0107, ADR-0109, ADR-0123, ADR-0125, ADR-0136.
 
 ## Reading clap's matches after parsing
 

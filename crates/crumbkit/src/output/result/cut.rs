@@ -5,6 +5,7 @@ use std::io::{self, Write};
 
 use super::{Answer, Prepared};
 use crate::output::budget::{self, Cut, Over, OverBudget};
+use crate::sink::role::Deliver;
 use crate::{Code, Rows, Shape};
 
 impl<T: Rows> Prepared<'_, T> {
@@ -14,13 +15,12 @@ impl<T: Rows> Prepared<'_, T> {
     /// row.
     pub(super) fn cut(
         &mut self,
-        out: &mut impl Write,
-        err: &mut impl Write,
+        sink: &mut dyn Deliver,
         spelled: String,
         code: &'static Code,
         budget: usize,
     ) -> io::Result<(Answer, usize)> {
-        let rows = self.value.rows().len();
+        let rows = self.rows;
         let cut = Cut {
             code: spelled,
             budget,
@@ -41,8 +41,8 @@ impl<T: Rows> Prepared<'_, T> {
             };
             return Ok((Answer::Refused(over), 0));
         }
-        let bytes = self.measured_write(out, shown, Some(&cut), None)?;
-        self.send_notes(err, &mut Vec::new(), shown, Some(&cut));
+        let bytes = self.measured_write(sink, shown, Some(&cut), None)?;
+        self.send_notes(sink, &mut Vec::new(), shown, Some(&cut));
         Ok((Answer::Cut(code), bytes))
     }
 

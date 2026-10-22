@@ -1,7 +1,7 @@
 # ADR-0111. Stop reports the path, the flags and an option's value
 
 - Date: 2026-10-20
-- Status: accepted
+- Status: amended by ADR-0136
 - Supersedes: ADR-0109, which it amends
 - Missed: ADR-0109 gave the getters to `Refused` and missed that a tool which writes a note after a help page needs the same getters on a `Stop`.
 

@@ -56,10 +56,12 @@ lacks, so a program reads every row the same way.
   `<NAME>: <ABOUT>`, or `null` when the leaf's rows print a table or the
   leaf has no document
   ([rows with their own text line](../output/shapes/README.md#rows-with-their-own-text-line)).
-- `children` holds the field whose items each row prints as indented lines
-  under it, such as `components`, or `null` when the rows print no such
-  lines or the leaf has no document
+- `children` holds the field whose items each row prints as lines under
+  it, such as `components`, or `null` when the rows print no such lines or
+  the leaf has no document
   ([rows with children](../output/shapes/README.md#rows-with-children)).
+- `children_help` holds the text that help prints after `Children: `, or
+  `null` when `children` is `null`.
 - `columns` lists a headed leaf's JSON fields that `--fields` selects,
   ending with `text` and `base64`, because its text has no columns.
 - `exits` lists the exit codes that the tool declares for the command, each

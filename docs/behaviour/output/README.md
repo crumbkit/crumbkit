@@ -48,8 +48,8 @@ around it. Cell widths count characters, so a wide character misaligns a
 column. A cell shows `null` or a missing field as `-`, and an array or an
 object as compact JSON. A field of type
 [`Age`](../../../crates/crumbkit/src/age.rs) shows how long ago its time
-was, such as `3h`, in the table and in a stream's text lines, and holds the
-time in RFC 3339 in every JSON form, as its rustdoc describes.
+was, such as `3h` or `2w`, in a table and a stream's text lines, and holds
+the time in RFC 3339 in every JSON form, as its rustdoc describes.
 
 The table that `finish` prints leaves out a column whose field is `null` or
 missing in every row that the table shows, header included. The shown rows
@@ -64,27 +64,28 @@ applies to the compact columns and to the columns of `--long`. With
 rows keeps every column in its header. A [stream](streams.md#text-and-json-lines)
 prints every column, because its header prints before any row arrives.
 
-A row type may print its children under each row, such as a service's
-components, by naming the field that holds them in `Row::CHILDREN` and
-building their lines in `Row::child_lines`. The table prints each child
-line under its row, indented by two spaces and escaped as a cell is
-escaped. Child lines do not change the column widths. Compact JSON holds
-the field after the columns, as [rows with children](shapes/README.md#rows-with-children)
-describes.
+A row type may print its children, such as a service's components, as
+indented and escaped lines under each row, through `Row::CHILDREN` and
+`Row::child_lines`. Child lines do not change the column widths.
+[Rows with children](shapes/README.md#rows-with-children) describes their
+indent, their `--long` form and their JSON.
 
-At a terminal, a table wider than the terminal narrows its widest columns
-to fit and ends each cut cell with `…`, except in the columns that
+A table wider than its sink's width narrows its widest columns to fit and
+ends each cut cell with `…`, except in the columns that
 `Row::UNCUT_COLUMNS` names ([the table's width](terminal.md#the-tables-width)).
 
-Why: ADR-0016, ADR-0063, ADR-0065, ADR-0108, ADR-0114, ADR-0119, ADR-0120, ADR-0121.
+Why: ADR-0016, ADR-0063, ADR-0065, ADR-0108, ADR-0114, ADR-0119, ADR-0120, ADR-0121, ADR-0134, ADR-0135, ADR-0141.
 
 ## View flags
 
 The view flags are `--fields`, `--long` and `--full`, and like every
-[`Output`](../../../crates/crumbkit/src/output.rs) flag they are global. A
+[`Output`](../../../crates/crumbkit/src/output.rs) flag they are global.
+Each flag's help, and that of `--json`, names what prints without it. A
 leaf with a document offers only the view flags that its document can use:
 
 - rows offer `--fields`, offer `--long` when the row type has long columns,
+  the document [lists only problem rows](listings/README.md#a-listing-that-lists-only-its-problem-rows)
+  or it declares a [long note](listings/README.md#a-note-for---long),
   and offer `--full` when the document has the envelope;
 - a headed batch offers `--fields`, which `parse` refuses without `--json`,
   and offers neither `--long` nor `--full`;
@@ -99,14 +100,15 @@ names every column in `Row::COLUMNS` ([schemas](../schemas/README.md#versions)).
 A leaf without a document offers all three, because crumbkit cannot tell
 what its command prints. `--fields` cannot be used with `--long` or
 `--full`, and `--full` needs `--json`, on every command. crumbkit refuses
-each of these as a refused command line, in its own words, with a hint
-that names the flag to add or drop or the valid fields. The four flags are
+each of these as a refused command line with a hint that names the flag
+to add or drop or the valid fields. The four flags are
 parsed once into one view, a text table or JSON rows with a selection of
 fields, and the `Output` holds that view, so it never holds two flags that
 cannot work together. Three checks apply the rules:
 
 - `parse` refuses, before the handler runs, a view flag that the leaf's
-  document does not offer, two flags that cannot work together, and a
+  document does not offer, `--json --long` for whole rows, two flags that
+  cannot work together, and a
   `--fields` name that the row type of the leaf's document lacks, in that
   order. It also leaves an unoffered view flag out of the leaf's help. On
   a leaf without a document, `parse` refuses only the pairs.
@@ -115,12 +117,13 @@ cannot work together. Three checks apply the rules:
   refusal and returns the `Stop` of a refused command line, as `parse`
   does.
 - When the handler returns a result, `finish` refuses by the document it
-  was given: an unoffered view flag and an unknown `--fields` name.
+  was given: an unoffered view flag, `--json --long` for whole rows, and
+  an unknown `--fields` name.
   `stream` refuses by its document in the same way when it opens. When
   the handler returns a failure, `finish` checks nothing and prints the
   failure with its own code, as text or as a failure document with
-  `--json`. A tool may finish an early failure, such as a missing config
-  file, in another document than the one its leaf declares, so the
+  `--json`. A tool may finish an early failure in another document than
+  the one its leaf declares, so the
   document that `finish` was given says nothing about the flags.
 
 A tool that parses with clap alone, a tool that builds its own
@@ -180,9 +183,10 @@ Why: ADR-0016, ADR-0049.
 In text, the lines that describe a result print on standard error, and
 standard output holds the result alone. These lines are a listing's footer,
 its empty note, the note of the rows that report a problem, the tool's note
-of a listing, a batch or a prose result, the `Next:` line, the output budget's [cut line](budget/README.md#listings-and-lists),
+of a listing, a batch or a prose result, a listing's long note under
+`--long`, the `Next:` line, the output budget's [cut line](budget/README.md#listings-and-lists),
 the [dry-run line](../effects/README.md) and a [stream's notes](streams.md#notes).
-A pipe such as `| wc -l`, `| grep` or `| jq` therefore sees only data. A
+A pipe such as `| grep` therefore sees only data. A
 listing's summary line stays on standard output above the table, because it
 is part of the result.
 
@@ -202,10 +206,14 @@ A failure prints as text on standard error with nothing on standard output,
 or with `--json` as one failure document on standard output. In text, each
 alternative repair prints on its own `help:` line after the recovery's, and
 each control character and format character in a failure's text prints as
-its escape, as the table prints it.
+its escape, as the table prints it. Each failure's text reaches standard
+error in one write.
 
 `finish` writes through a [`Sink`](../../../crates/crumbkit/src/sink.rs), and
-`finish_to` writes into a given sink, so tests run in memory. `finish_to`
+`finish_to` writes into a given sink, so tests run in memory. crumbkit names
+each piece of output as the result or as a kind of message, and the sink
+alone maps that role to a stream: the result to standard output and every
+message to standard error. `finish_to`
 returns the exit code as a `u8`, which a test can compare and a tool can
 record, and `finish` returns the same code as an `ExitCode`. A pipe that the
 reader closed early keeps the exit code of the result.
@@ -216,11 +224,12 @@ handler that reads the `Output` with `&mut`, such as `commands::list` or a
 command that confirms, runs before `finish`. A second `finish` with the same
 `Output` does not compile.
 
-Why: ADR-0050, ADR-0016, ADR-0077, ADR-0094.
+Why: ADR-0050, ADR-0016, ADR-0077, ADR-0094, ADR-0128.
 
 ## Result shapes
 
 The [result shapes](shapes/README.md) page covers batches, prose, bytes,
 headed bytes, rows printed whole, rows with their own text line and
 documents without the envelope. The listings page covers
-[a listing without a total](listings/README.md#a-listing-without-a-total).
+[a listing without a total](listings/README.md#a-listing-without-a-total)
+and [a listing from a capped source](listings/README.md#a-listing-from-a-capped-source).
