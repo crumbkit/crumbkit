@@ -41,8 +41,9 @@ mod tests;
 /// ```
 ///
 /// The summary `S` is a value that prints as one line above the table in
-/// text and as an object under `summary` in JSON. A listing without one
-/// has the summary type [`NoSummary`].
+/// text and as an object under `summary` in JSON. A summary whose `Display`
+/// writes no text prints no line. A listing without one has the summary
+/// type [`NoSummary`].
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Listing<R: Row, S = NoSummary> {
     /// The rows to print, in order.
@@ -209,6 +210,13 @@ impl<R: Row, S> Listing<R, S> {
     /// holds what describes the whole result, such as the figures the rows
     /// were counted from, so a program reads it as fields and a person reads
     /// it as a sentence.
+    ///
+    /// When the summary's `Display` writes no text, the text output prints
+    /// no summary line, so the header is the first line, and the JSON
+    /// document still holds the summary. A tool can therefore set a summary
+    /// on every run so that its JSON always holds the figures, and write
+    /// text only on the runs that have something to say. A `Display` that
+    /// writes only spaces still prints its line.
     #[must_use]
     pub fn summary<T: Serialize + fmt::Display + JsonSchema>(self, summary: T) -> Listing<R, T> {
         Listing {

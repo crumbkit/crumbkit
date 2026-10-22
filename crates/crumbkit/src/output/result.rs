@@ -538,7 +538,12 @@ impl<'a, T: Rows> Prepared<'a, T> {
             return Ok(());
         }
         if let Some(summary) = value.summary() {
-            writeln!(out, "{summary}")?;
+            // A summary whose `Display` writes no text prints no line, so
+            // the header stays the first line (ADR-0142).
+            let line = summary.to_string();
+            if !line.is_empty() {
+                writeln!(out, "{line}")?;
+            }
         }
         if let Some(table) = &mut self.table {
             table.write(out, shown, self.width.filter(|_| self.fitting))?;
