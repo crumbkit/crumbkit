@@ -48,8 +48,8 @@ around it. Cell widths count characters, so a wide character misaligns a
 column. A cell shows `null` or a missing field as `-`, and an array or an
 object as compact JSON. A field of type
 [`Age`](../../../crates/crumbkit/src/age.rs) shows how long ago its time
-was, such as `3h` or `2w`, in the table and in a stream's text lines, and holds the
-time in RFC 3339 in every JSON form, as its rustdoc describes.
+was, such as `3h` or `2w`, in a table and a stream's text lines, and holds
+the time in RFC 3339 in every JSON form, as its rustdoc describes.
 
 The table that `finish` prints leaves out a column whose field is `null` or
 missing in every row that the table shows, header included. The shown rows
