@@ -12,8 +12,8 @@ use crate::{Call, Row, Rows, Shape};
 mod tests;
 
 /// One page of rows, the total number of rows that matched when the tool
-/// counted them, an optional phrase that names them, an optional summary, an optional note and an
-/// optional next step.
+/// counted them, an optional phrase that names them, an optional summary, an optional note, an
+/// optional long note and an optional next step.
 ///
 /// A command returns a listing when it may show fewer rows than matched,
 /// and flattens `crumbkit::Page` into its arguments so the caller can
@@ -24,9 +24,9 @@ mod tests;
 /// as `Showing 4 of 6 books. --all shows every one.`, or `Showing 4 books,
 /// and more match. --all shows every one.` for a listing without a total,
 /// or `Showing 4 of at least 100 books. --all shows 100 of them.` for a
-/// listing from a capped source ([`Listing::capped`]), then the note, and
-/// then the next step, such as `Next: shelf books show <ID>... takes up to
-/// 100 ids in one call.`
+/// listing from a capped source ([`Listing::capped`]), then the note, under
+/// `--long` the long note, and then the next step, such as `Next: shelf
+/// books show <ID>... takes up to 100 ids in one call.`
 ///
 /// ```
 /// # #[derive(serde::Serialize, schemars::JsonSchema)]
@@ -69,6 +69,9 @@ pub struct Listing<R: Row, S = NoSummary> {
     /// The line that the text output prints after the table and any
     /// footer, such as the path of the file that the rows come from.
     note: Option<String>,
+    /// The line that the text output prints after the note under `--long`
+    /// only, such as how the figures of the rows were measured.
+    long_note: Option<String>,
     /// The command that the text output names as the next step, and the
     /// phrase that follows it on the `Next:` line.
     next: Option<(Call, String)>,
@@ -109,6 +112,7 @@ impl<R: Row> Listing<R> {
             singular: None,
             summary: None,
             note: None,
+            long_note: None,
             next: None,
             bound: None,
             problems: None,
@@ -216,6 +220,7 @@ impl<R: Row, S> Listing<R, S> {
             singular: self.singular,
             summary: Some(summary),
             note: self.note,
+            long_note: self.long_note,
             next: self.next,
             bound: self.bound,
             problems: self.problems,
@@ -231,6 +236,23 @@ impl<R: Row, S> Listing<R, S> {
     #[must_use]
     pub fn note(mut self, text: impl Into<String>) -> Self {
         self.note = Some(text.into());
+        self
+    }
+
+    /// Sets the long note: a line that the text output prints on standard
+    /// error after the note and before any next step, under `--long` only,
+    /// such as `Sizes are blocks on disk, and a hard-linked file counts
+    /// once.` The default text, `--fields` and the JSON document leave it
+    /// out, so a long note holds detail that a person asks for with
+    /// `--long`, such as how the figures of the rows were measured.
+    ///
+    /// When the row type has no long columns, the command offers `--long`
+    /// only when the listing's document declares the note with
+    /// `Document::long_noted` (ADR-0139). Help then promises the note, so
+    /// such a command sets it on every listing it returns.
+    #[must_use]
+    pub fn long_note(mut self, text: impl Into<String>) -> Self {
+        self.long_note = Some(text.into());
         self
     }
 
@@ -347,6 +369,10 @@ impl<R: Row, S: Serialize + fmt::Display + JsonSchema> Rows for Listing<R, S> {
 
     fn note(&self) -> Option<&str> {
         self.note.as_deref()
+    }
+
+    fn long_note(&self) -> Option<&str> {
+        self.long_note.as_deref()
     }
 
     fn next_step(&self) -> Option<(&Call, &str)> {

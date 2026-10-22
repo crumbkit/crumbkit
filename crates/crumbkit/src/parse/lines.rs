@@ -203,6 +203,14 @@ struct Sections {
     /// `Output:` line, which [`Leaf::problems_line`] returns, or `None`
     /// when the leaf's rows name no problem field.
     problems: Option<String>,
+    /// The `Rows:` line that `-h` and `--help` print after the `Problems:`
+    /// line, which [`Leaf::rows_line`] returns, or `None` when the leaf's
+    /// text lists every row (ADR-0138).
+    rows: Option<String>,
+    /// The `Long note:` line that `-h` and `--help` print after the
+    /// `Rows:` line, which [`Leaf::long_note_line`] returns, or `None` when
+    /// the leaf's document declares no long note (ADR-0139).
+    long_note: Option<&'static str>,
 }
 
 /// Returns the sections of `leaf`, whose command is `node` and whose
@@ -245,6 +253,8 @@ fn leaf_sections(
             .get_passes_on_exit()
             .map(|program| format!("Exit code: the command passes on the exit code of {program}.")),
         problems: leaf.problems_line(),
+        rows: leaf.rows_line(),
+        long_note: leaf.long_note_line(),
     }
 }
 
@@ -270,7 +280,9 @@ struct Lines<'a> {
 /// line in `-h` and `--help` when its rows print their children under them,
 /// the `Exit code:` line in `-h` and `--help` when the leaf passes on a program's exit code,
 /// the `Problems:` line in `-h` and `--help` when its rows name a problem
-/// field, the global flags
+/// field, the `Rows:` line in `-h` and `--help` when its text lists only the
+/// rows that report a problem, the `Long note:` line in `-h` and `--help`
+/// when its document declares a long note, the global flags
 /// line in `-h`, the topics line and the aliases line in `-h` and `--help`, and a
 /// `Next:` line, each when it has text. The `Next:` line opens a
 /// subcommand in `-h` and `--help` when `node` has a visible subcommand, and
@@ -311,6 +323,14 @@ fn set_help_lines(node: &mut Command, text: &str, lines: &Lines<'_>, sections: S
     if let Some(problems) = sections.problems {
         short.push(problems.clone());
         long.push(problems);
+    }
+    if let Some(rows) = sections.rows {
+        short.push(rows.clone());
+        long.push(rows);
+    }
+    if let Some(line) = sections.long_note {
+        short.push(line.to_owned());
+        long.push(line.to_owned());
     }
     if !flags.is_empty() {
         short.push(format!(

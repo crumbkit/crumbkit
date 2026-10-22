@@ -8,7 +8,7 @@ Arguments:
 
 Options:
       --json
-          Print the result as a JSON document
+          Print the result as a JSON document. The default prints text.
 
       --no-input
           Fail instead of asking a question

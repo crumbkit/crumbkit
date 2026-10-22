@@ -175,8 +175,8 @@ pub trait Row: Serialize + JsonSchema {
     /// When it is set, the text prints each row's [`Row::child_lines`]
     /// under the row's table line, or under its own text line when the type
     /// sets [`Row::LINE`], each indented by [`Row::CHILD_INDENT`] spaces
-    /// (ADR-0135). `--long` keeps the
-    /// child lines, and `--fields` prints none: a `--fields` that names the
+    /// (ADR-0135). `--long` prints [`Row::long_child_lines`] in their
+    /// place, and `--fields` prints none: a `--fields` that names the
     /// field prints it as a cell of compact JSON like any other field. The
     /// JSON without `--full` holds the field after the columns, so `--json`
     /// carries the children with each row. The leaf's help describes the
@@ -264,6 +264,14 @@ pub trait Row: Serialize + JsonSchema {
     /// ```
     fn child_lines(&self) -> Vec<String> {
         Vec::new()
+    }
+
+    /// Returns the child lines that the text prints under the row with
+    /// `--long`, in place of [`Row::child_lines`], which the default
+    /// returns. crumbkit reads it only when [`Row::CHILDREN`] is set, and
+    /// prints each line as it prints a child line (ADR-0138).
+    fn long_child_lines(&self) -> Vec<String> {
+        self.child_lines()
     }
 
     /// Whether `--json` prints every field of each row as the type

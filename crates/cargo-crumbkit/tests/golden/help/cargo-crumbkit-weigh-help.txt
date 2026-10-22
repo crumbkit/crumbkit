@@ -10,10 +10,10 @@ Options:
           Read the examples' golden files from this directory [default: tests/golden/examples in the binary's package]
 
       --json
-          Print the result as a JSON document
+          Print the result as a JSON document. The default prints text.
 
       --fields <FIELD>
-          Print only these comma-separated fields, in this order
+          Print only these comma-separated fields, in this order. The default prints the compact columns.
 
       --usage
           Add the runs, help pages and output of each command from the tool's usage log
@@ -22,10 +22,10 @@ Options:
           Read the usage figures from this log instead of the tool's own; implies --usage
 
       --long
-          Add the long columns after the compact ones
+          Add the long columns after the compact ones. The default prints only the compact columns.
 
       --full
-          With --json, print every field of every row
+          With --json, print every field of every row. The default prints only the fields of the columns.
 
       --since <DURATION>
           How far back to read the usage log, such as 12h, 7d or 2w [default: 7d]

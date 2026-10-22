@@ -60,7 +60,7 @@ impl<R: Row, O: Write, W: Write> Streaming<R, O, W> {
                 .collect();
             table::write_line(line, &cells, &self.widths)?;
             if children::chosen::<R>(&self.view) {
-                line.extend_from_slice(children::block(item).as_bytes());
+                line.extend_from_slice(children::block(item, self.view.is_long()).as_bytes());
             }
             Ok(())
         }

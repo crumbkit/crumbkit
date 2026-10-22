@@ -14,6 +14,7 @@ mod children;
 mod codes;
 mod column;
 mod example;
+mod lines;
 mod passes;
 mod refusal;
 #[cfg(test)]
@@ -292,7 +293,9 @@ impl Leaf {
     /// Reports whether the leaf's command offers the view flag `flag`, as
     /// its declared document decides (ADR-0016). A prose or bytes document
     /// offers no view flag. Rows offer `--fields`, offer `--long` when the
-    /// row type has long columns, and offer `--full` when the document has
+    /// row type has long columns, the document lists only the rows that
+    /// report a problem (ADR-0138) or it declares a long note (ADR-0139),
+    /// and offer `--full` when the document has
     /// crumbkit's envelope. A headed document offers neither `--long` nor
     /// `--full` (ADR-0062). Rows that print whole offer no `--full`, and
     /// offer neither `--fields` nor `--long` when they have no columns
@@ -344,18 +347,6 @@ impl Leaf {
             Some(columns) => columns.uncut,
             None => &[],
         }
-    }
-
-    /// Returns the `Problems:` line that the leaf's `-h` and `--help` print
-    /// after the `Output:` line when its row type names a problem field,
-    /// such as `Problems: a value in the problem column marks a row with a
-    /// problem, and the command then exits with 1.`, or `None` otherwise.
-    pub(crate) fn problems_line(&self) -> Option<String> {
-        let field = self.problem()?;
-        let exit = crate::exit::problem_rows();
-        Some(format!(
-            "Problems: a value in the {field} column marks a row with a problem, and the command then exits with {exit}."
-        ))
     }
 
     /// Returns the [`Shape`] of the result that [`Leaf::document`] set, such
@@ -520,6 +511,7 @@ impl Columns {
             envelope: self.document.get_envelope().wraps(),
             headed: self.document.is_headed(),
             whole: self.whole,
+            listing: self.document.listing_text(),
         }
     }
 }

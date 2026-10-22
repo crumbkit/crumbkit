@@ -37,7 +37,8 @@ use self::open::open;
 /// It returns `Err` with the exit code of a refused command line, 2 unless
 /// the guide lists another, after it prints the refusal of a view flag that
 /// the stream cannot use. `--fields` names only fields of `R`, `--long`
-/// needs long columns in `R`, and `--full` needs an envelope and a row
+/// needs long columns in `R` and is refused with `--json` when `R` sets
+/// `Row::WHOLE` (ADR-0138), and `--full` needs an envelope and a row
 /// type that does not set `Row::WHOLE`. The pairs that cannot work
 /// together, `--full` without `--json` and `--fields` with `--long` or
 /// `--full`, were refused when the `Output` was built (ADR-0093). `main`
