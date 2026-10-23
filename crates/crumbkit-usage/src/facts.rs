@@ -105,6 +105,14 @@ impl Label {
 /// turns it into facts when the line is written. [`extend`] creates the
 /// value with `Default` on its first use in a run.
 ///
+/// `write` runs as the run ends, from the guard's drop or from the thread
+/// that answers SIGINT and SIGTERM, which nothing bounds, so it must be
+/// short and must not wait on other threads. A `write` that panics costs
+/// the line its facts. The panic message is still printed to standard
+/// error, and the line is still written with the run's exit code only when
+/// panics unwind: under `panic = "abort"`, or with a panic hook that ends
+/// the process, the panic ends the run.
+///
 /// ```
 /// use std::time::Duration;
 /// use crumbkit_usage::{Extension, Facts, Key, Label};
@@ -164,9 +172,10 @@ pub trait Extension: Default + Send + 'static {
 /// the run's line. A call to `extend`, or to any of crumbkit's reports, that
 /// `change` makes on the same thread is skipped without a word, as every
 /// other usage-log failure is, and `change` itself still applies. A
-/// [`Extension::write`] that panics as the line is written costs the line
-/// its facts, and the run keeps its exit code. The section counts towards the line's limit of 1 KiB, and
-/// a line that would be longer is written without its `facts` field.
+/// `change` that panics leaves the run's line without facts, and the panic
+/// goes on to the caller. The section counts towards the line's limit of
+/// 1 KiB, and a line that would be longer is written without its `facts`
+/// field.
 pub fn extend<E: Extension>(change: impl FnOnce(&mut E)) {
     recorder::report(|recorder| recorder.extensions.change(change));
 }
@@ -286,13 +295,19 @@ impl<E: Extension> Stored for E {
 
 /// The extensions of a run, in the order of their first use.
 #[derive(Default)]
-pub(super) struct Extensions(Vec<Box<dyn Stored>>);
+pub(super) struct Extensions {
+    /// The extensions, each stored without its type.
+    stored: Vec<Box<dyn Stored>>,
+    /// Whether a change panicked, which may have left an extension half
+    /// changed, so the run writes no facts.
+    broken: bool,
+}
 
 impl Extensions {
     /// Applies `change` to this run's `E`, creating it first when the run
     /// has none.
     pub(super) fn change<E: Extension>(&mut self, change: impl FnOnce(&mut E)) {
-        for stored in &mut self.0 {
+        for stored in &mut self.stored {
             if let Some(extension) = stored.as_any().downcast_mut::<E>() {
                 change(extension);
                 return;
@@ -300,20 +315,29 @@ impl Extensions {
         }
         let mut extension = E::default();
         change(&mut extension);
-        self.0.push(Box::new(extension));
+        self.stored.push(Box::new(extension));
+    }
+
+    /// Marks the extensions broken after a change panicked, so the run
+    /// writes no facts.
+    pub(super) fn broke(&mut self) {
+        self.broken = true;
     }
 
     /// Returns the facts that every extension writes, or `None` when they
-    /// hold nothing or an extension's `write` panics.
+    /// hold nothing, a change panicked, or an extension's `write` panics.
     ///
     /// The line is written as the run ends, from the guard's drop or the
-    /// signal thread, where a panic would change the exit code or leave a
-    /// signal ignored, so a panicking `write` costs the run only its facts
-    /// (ADR-0029).
+    /// signal thread, where a panic that went on would change the exit code
+    /// or leave a signal ignored, so a panicking `write` costs the run only
+    /// its facts (ADR-0029).
     pub(super) fn written(&self) -> Option<Written> {
+        if self.broken {
+            return None;
+        }
         let mut facts = Facts::default();
         catch_unwind(AssertUnwindSafe(|| {
-            for stored in &self.0 {
+            for stored in &self.stored {
                 stored.write_to(&mut facts);
             }
         }))

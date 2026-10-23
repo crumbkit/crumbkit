@@ -6,7 +6,8 @@ use clap::Command;
 use serde_json::{Value, json};
 
 use super::{
-    Recorder, State, child_env_in, install, lock, save, take, update, wait_for_line, write, written,
+    Ending, Recorder, State, child_env_in, install, lock, save, take, update, wait_for_line, write,
+    written,
 };
 use crate::caller::Caller;
 use crate::context::Context;
@@ -439,4 +440,59 @@ fn the_flag_of_a_change_that_panics_is_cleared_so_the_thread_can_lock_again() {
 
     assert!(panicked.is_err());
     assert!(install(&other, parsed()));
+}
+
+#[test]
+fn a_change_that_panics_and_is_caught_leaves_a_line_without_facts_and_later_reports_work() {
+    const SENT: Key = Key::new("sent");
+    #[derive(Default)]
+    struct Sent(u64);
+    impl Extension for Sent {
+        fn write(&self, facts: &mut Facts) {
+            facts.count(SENT, self.0);
+        }
+    }
+    let state = TempDir::new("caught-change");
+    let slot = Mutex::new(State::Recording(parsed()));
+
+    let panicked = std::panic::catch_unwind(|| {
+        update(&slot, |recorder| {
+            recorder.extensions.change(|sent: &mut Sent| {
+                sent.0 += 1;
+                panic!("the tool's change failed");
+            });
+        });
+    });
+    update(&slot, |recorder| {
+        recorder.run.exit = Some(4);
+        recorder.extensions.change(|sent: &mut Sent| sent.0 += 1);
+    });
+
+    assert!(panicked.is_err());
+    let recorder = lock(&slot).and_then(take).unwrap();
+    let lines = saved(&state, recorder, false);
+    assert_eq!(lines[0]["exit"], 4);
+    assert!(lines[0].get("facts").is_none(), "{}", lines[0]);
+}
+
+/// The signal that [`ended_with`] last received.
+static ENDED_WITH: std::sync::atomic::AtomicI32 = std::sync::atomic::AtomicI32::new(0);
+
+/// Stands in for ending the process, and notes `signal`.
+fn ended_with(signal: i32) {
+    ENDED_WITH.store(signal, std::sync::atomic::Ordering::SeqCst);
+}
+
+#[test]
+fn the_signal_thread_s_guard_ends_the_process_when_writing_the_line_panics() {
+    let panicked = std::panic::catch_unwind(|| {
+        let _ending = Ending {
+            signal: 15,
+            end: ended_with,
+        };
+        panic!("writing the line failed");
+    });
+
+    assert!(panicked.is_err());
+    assert_eq!(ENDED_WITH.load(std::sync::atomic::Ordering::SeqCst), 15);
 }

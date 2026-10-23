@@ -3,6 +3,7 @@
 
 use std::cell::Cell;
 use std::ffi::OsString;
+use std::panic::{AssertUnwindSafe, catch_unwind, resume_unwind};
 use std::path::Path;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Mutex, MutexGuard, TryLockError, mpsc};
@@ -363,8 +364,18 @@ fn update(slot: &Mutex<State>, change: impl FnOnce(&mut Recorder)) {
     if let Some(mut state) = lock(slot)
         && let State::Recording(recorder) = &mut *state
     {
-        let _changing = Changing::enter();
-        change(recorder);
+        let changing = Changing::enter();
+        let changed = catch_unwind(AssertUnwindSafe(|| change(&mut *recorder)));
+        drop(changing);
+        if let Err(panic) = changed {
+            // The extension that panicked may be half changed, so the run
+            // keeps its line without facts. Releasing the lock before the
+            // panic goes on keeps it from poisoning the lock, which would
+            // cost the run its whole line.
+            recorder.extensions.broke();
+            drop(state);
+            resume_unwind(panic);
+        }
     }
 }
 
@@ -550,7 +561,10 @@ fn watch_signals() {
                 // The guard ends the process even when writing the line
                 // panics, which would otherwise drop the listener and leave
                 // the signal ignored.
-                let _ending = Ending(signal);
+                let _ending = Ending {
+                    signal,
+                    end: Interrupts::end_process,
+                };
                 write(&RECORDER, true);
                 return;
             }
@@ -564,10 +578,16 @@ fn watch_signals() {
 
 /// The guard that ends the process with its signal when it drops, as the
 /// signal would have without the log.
-struct Ending(i32);
+struct Ending {
+    /// The signal that ends the process.
+    signal: i32,
+    /// What ends the process, which is [`Interrupts::end_process`] outside
+    /// the tests.
+    end: fn(i32),
+}
 
 impl Drop for Ending {
     fn drop(&mut self) {
-        Interrupts::end_process(self.0);
+        (self.end)(self.signal);
     }
 }
