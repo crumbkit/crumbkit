@@ -137,3 +137,71 @@ fn the_late_hand_over_test_s_child_raises_sigint_after_its_child_exits() {
     )]
     std::process::exit(0);
 }
+
+#[test]
+fn a_signal_ends_the_process_when_the_extension_panics_while_the_line_is_written() {
+    let state = TempDir::new("broken-signal");
+
+    let status = run_child(
+        "recorder::tests::processes::unix::the_broken_signal_test_s_child_records_a_panicking_extension_and_raises_sigterm",
+        &state,
+    );
+
+    assert_eq!(status.signal(), Some(signal_hook::consts::SIGTERM));
+    let lines = log_lines(&state, "broken");
+    assert_eq!(lines.len(), 1);
+    assert_eq!(lines[0]["interrupted"], true);
+    assert!(lines[0].get("facts").is_none(), "{}", lines[0]);
+}
+
+/// Runs only as the child of the broken-signal test, which sets [`CHILD`].
+/// It starts the log, records an extension whose `write` panics, and raises
+/// SIGTERM, which the log's thread answers.
+#[test]
+fn the_broken_signal_test_s_child_records_a_panicking_extension_and_raises_sigterm() {
+    if !is_child() {
+        return;
+    }
+    let _log = start();
+    typed(
+        &Command::new("broken"),
+        &["broken".into()],
+        Spelling::COLONS,
+    );
+    crate::extend(|_: &mut super::super::Broken| {});
+    signal_hook::low_level::raise(signal_hook::consts::SIGTERM).unwrap();
+    std::thread::sleep(Duration::from_secs(10));
+    panic!("SIGTERM did not end the process");
+}
+
+#[test]
+fn a_signal_ends_the_process_while_a_slow_change_holds_the_log() {
+    let state = TempDir::new("slow-change");
+    let waited = std::time::Instant::now();
+
+    let status = run_child(
+        "recorder::tests::processes::unix::the_slow_change_test_s_child_raises_sigterm_inside_a_change_that_sleeps",
+        &state,
+    );
+
+    assert_eq!(status.signal(), Some(signal_hook::consts::SIGTERM));
+    assert!(waited.elapsed() < Duration::from_secs(5));
+    assert!(!state.path().join("slow").join("usage.jsonl").exists());
+}
+
+/// Runs only as the child of the slow-change test, which sets [`CHILD`]. It
+/// starts the log and raises SIGTERM from inside a change to an extension,
+/// which then sleeps while it holds the log's lock.
+#[test]
+fn the_slow_change_test_s_child_raises_sigterm_inside_a_change_that_sleeps() {
+    if !is_child() {
+        return;
+    }
+    let _log = start();
+    typed(&Command::new("slow"), &["slow".into()], Spelling::COLONS);
+    crate::extend(|_: &mut super::super::Broken| {
+        signal_hook::low_level::raise(signal_hook::consts::SIGTERM).unwrap();
+        std::thread::sleep(Duration::from_secs(10));
+    });
+    panic!("SIGTERM did not end the process");
+}

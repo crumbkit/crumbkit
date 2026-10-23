@@ -135,10 +135,14 @@ add. A count of 0 is left out, and a section with nothing in it is left
 out.
 
 The facts count towards the line's limit of 1 KiB. A line that would pass
-it with its facts is written without them. The closure passed to `extend`
-runs while the log holds its lock, so a call to `extend` or a crumbkit
-report that it makes on the same thread is skipped without a word. shelf's `books show` records
-how many books it looked up and how many were missing.
+it with its facts is written without them, and so is a line whose
+extension panics in `write`. The closure passed to `extend` runs while the
+log holds its lock, so a call to `extend` or a crumbkit report that it
+makes on the same thread is skipped without a word. The closure must be
+short and must not wait on other threads: on SIGINT or SIGTERM the log
+waits at most 500 ms for its lock, and then lets the signal end the
+process without a line. shelf's `books show` records how many books it
+looked up and how many were missing.
 
 Why: ADR-0144.
 

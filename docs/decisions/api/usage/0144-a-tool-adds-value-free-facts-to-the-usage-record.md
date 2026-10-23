@@ -44,7 +44,18 @@ not keep a value out of it.
   thread-local flag marks that time, and a report or `extend` that the
   closure makes on the same thread is skipped without a word, as other
   usage-log failures are (ADR-0029), so a nested call cannot deadlock the
-  run or stop SIGINT from ending it.
+  thread. The flag is cleared even when the closure panics.
+- The closure must be short and must not wait on other threads. The
+  signal thread waits at most 500 ms for the lock, the bound it already
+  keeps for a line in progress, and then ends the process without a line,
+  so a slow closure costs the run its line on SIGINT or SIGTERM and never
+  keeps the signal from ending the process.
+- An extension's `write` runs as the line is written, from the guard's
+  drop or the signal thread. A `write` that panics is caught, and the line
+  is written without facts, so the run keeps its exit code and the signal
+  still ends the process. The signal thread ends the process from a drop
+  guard, so a panic anywhere in its write cannot leave the signal
+  ignored.
 - The API-1 ground is one adopter's request for an ordinary need, because
   any tool that calls another system wants its usage log to record those
   calls (ADR-0122). shelf's `books show` records its lookups as a use in

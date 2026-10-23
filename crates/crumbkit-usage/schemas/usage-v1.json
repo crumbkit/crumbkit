@@ -179,7 +179,7 @@
           "description": "The wall-clock milliseconds that the run spent blocked, waiting on\nanother system such as a server, with overlapping waits counted\nonce. It is present only when it is more than 0.",
           "type": "integer",
           "format": "uint64",
-          "minimum": 0
+          "minimum": 1
         }
       }
     },

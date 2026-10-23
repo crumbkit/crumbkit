@@ -159,3 +159,20 @@ fn extend_does_not_run_its_change_when_no_log_was_started() {
 
     assert!(!ran);
 }
+
+#[test]
+fn an_extension_that_panics_while_it_writes_drops_every_fact_of_the_run() {
+    #[derive(Default)]
+    struct Broken;
+    impl Extension for Broken {
+        fn write(&self, _facts: &mut Facts) {
+            panic!("the extension's write failed");
+        }
+    }
+    let mut extensions = Extensions::default();
+
+    extensions.change(|requests: &mut Requests| requests.sent = 3);
+    extensions.change(|_: &mut Broken| {});
+
+    assert!(extensions.written().is_none());
+}

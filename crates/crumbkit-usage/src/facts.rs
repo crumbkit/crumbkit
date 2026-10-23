@@ -10,6 +10,7 @@
 
 use std::any::Any;
 use std::collections::BTreeMap;
+use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::time::Duration;
 
 use schemars::JsonSchema;
@@ -157,10 +158,14 @@ pub trait Extension: Default + Send + 'static {
 /// as the tool's own and one of a library that it uses, and their facts
 /// share the one section.
 ///
-/// `change` runs while the log holds its lock. A call to `extend`, or to any
-/// of crumbkit's reports, that `change` makes on the same thread is skipped
-/// without a word, as every other usage-log failure is, and `change` itself
-/// still applies. The section counts towards the line's limit of 1 KiB, and
+/// `change` runs while the log holds its lock, so it must be short and must
+/// not wait on other threads. On SIGINT or SIGTERM the log waits at most
+/// 500 ms for its lock, and then lets the signal end the process without
+/// the run's line. A call to `extend`, or to any of crumbkit's reports, that
+/// `change` makes on the same thread is skipped without a word, as every
+/// other usage-log failure is, and `change` itself still applies. A
+/// [`Extension::write`] that panics as the line is written costs the line
+/// its facts, and the run keeps its exit code. The section counts towards the line's limit of 1 KiB, and
 /// a line that would be longer is written without its `facts` field.
 pub fn extend<E: Extension>(change: impl FnOnce(&mut E)) {
     recorder::report(|recorder| recorder.extensions.change(change));
@@ -237,6 +242,7 @@ pub(super) struct Written {
     /// another system such as a server, with overlapping waits counted
     /// once. It is present only when it is more than 0.
     #[serde(default, skip_serializing_if = "is_zero")]
+    #[schemars(extend("minimum" = 1))]
     waited_ms: u64,
 }
 
@@ -298,12 +304,20 @@ impl Extensions {
     }
 
     /// Returns the facts that every extension writes, or `None` when they
-    /// hold nothing.
+    /// hold nothing or an extension's `write` panics.
+    ///
+    /// The line is written as the run ends, from the guard's drop or the
+    /// signal thread, where a panic would change the exit code or leave a
+    /// signal ignored, so a panicking `write` costs the run only its facts
+    /// (ADR-0029).
     pub(super) fn written(&self) -> Option<Written> {
         let mut facts = Facts::default();
-        for stored in &self.0 {
-            stored.write_to(&mut facts);
-        }
+        catch_unwind(AssertUnwindSafe(|| {
+            for stored in &self.0 {
+                stored.write_to(&mut facts);
+            }
+        }))
+        .ok()?;
         facts.0.counts.retain(|_, count| *count > 0);
         (!facts.0.is_empty()).then_some(facts.0)
     }
