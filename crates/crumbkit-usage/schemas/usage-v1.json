@@ -150,12 +150,12 @@
       "type": "object",
       "properties": {
         "counts": {
-          "description": "Counts by name, such as requests or retries.",
+          "description": "Counts by name, such as requests or retries. A count of 0 is left\nout.",
           "type": "object",
           "additionalProperties": {
             "type": "integer",
             "format": "uint64",
-            "minimum": 0
+            "minimum": 1
           },
           "propertyNames": {
             "pattern": "^[a-z][a-z0-9_]{0,31}$"
@@ -168,14 +168,15 @@
             "type": "array",
             "items": {
               "$ref": "#/$defs/Label"
-            }
+            },
+            "uniqueItems": true
           },
           "propertyNames": {
             "pattern": "^[a-z][a-z0-9_]{0,31}$"
           }
         },
         "waited_ms": {
-          "description": "The milliseconds that the run spent waiting on another system, such\nas a server. It is present only when it is more than 0.",
+          "description": "The wall-clock milliseconds that the run spent blocked, waiting on\nanother system such as a server, with overlapping waits counted\nonce. It is present only when it is more than 0.",
           "type": "integer",
           "format": "uint64",
           "minimum": 0

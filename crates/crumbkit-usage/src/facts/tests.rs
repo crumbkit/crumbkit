@@ -149,3 +149,13 @@ fn a_key_built_at_run_time_from_a_bad_name_panics() {
     let name: &'static str = Box::leak("Bad Name".to_owned().into_boxed_str());
     let _ = Key::new(name);
 }
+
+#[test]
+fn extend_does_not_run_its_change_when_no_log_was_started() {
+    // No unit test starts the process's log, so its recorder stays idle.
+    let mut ran = false;
+
+    super::extend(|_: &mut Requests| ran = true);
+
+    assert!(!ran);
+}

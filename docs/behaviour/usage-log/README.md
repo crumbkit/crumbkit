@@ -117,7 +117,11 @@ facts through `Facts`, which takes three kinds:
 
 - a count under a `Key`, such as `"counts": {"requests": 3}`;
 - a `Label` under a `Key`, such as `"labels": {"route": ["/books/{id}"]}`;
-- the time spent waiting on another system, such as `"waited_ms": 1520`.
+- the wall-clock time that the run spent blocked waiting on another
+  system, such as `"waited_ms": 1520`. Overlapping waits count once: a tool
+  that sends several requests at once records the time from the first
+  request's start to the last one's end, so the figure never passes the
+  run's wall time. Several calls to `Facts::waited` add.
 
 A `Key` is 1 to 32 bytes of lowercase letters, digits and `_`, starting
 with a letter. A `Label` is 1 to 64 bytes of ASCII letters, digits, braces
@@ -131,7 +135,9 @@ add. A count of 0 is left out, and a section with nothing in it is left
 out.
 
 The facts count towards the line's limit of 1 KiB. A line that would pass
-it with its facts is written without them. shelf's `books show` records
+it with its facts is written without them. The closure passed to `extend`
+runs while the log holds its lock, so a call to `extend` or a crumbkit
+report that it makes on the same thread is skipped without a word. shelf's `books show` records
 how many books it looked up and how many were missing.
 
 Why: ADR-0144.

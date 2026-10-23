@@ -145,8 +145,9 @@ fn a_line_ends_with_a_newline_and_a_line_over_1_kib_is_dropped() {
     assert_eq!(line(&mut record), None);
 }
 
-/// Returns facts that write `labels` labels of 64 bytes each, which fill
-/// about 66 bytes of the line apiece.
+/// Returns facts that write `labels` route labels of 7 bytes each, such as
+/// `/a/{id}`, which fill 10 bytes of the line apiece with their quotes and
+/// comma.
 fn long_labels(labels: usize) -> Written {
     #[derive(Default)]
     struct Routes(usize);

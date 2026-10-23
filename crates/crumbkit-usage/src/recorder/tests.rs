@@ -351,3 +351,44 @@ fn a_saved_line_holds_the_facts_that_the_tool_s_extension_wrote() {
         json!({"counts": {"requests": 2}, "waited_ms": 10})
     );
 }
+
+#[test]
+fn a_nested_extend_is_skipped_and_the_outer_change_still_applies() {
+    const OUTER: Key = Key::new("outer");
+    const INNER: Key = Key::new("inner");
+    #[derive(Default)]
+    struct Counts {
+        outer: u64,
+        inner: u64,
+    }
+    impl Extension for Counts {
+        fn write(&self, facts: &mut Facts) {
+            facts.count(OUTER, self.outer).count(INNER, self.inner);
+        }
+    }
+    let slot = Mutex::new(State::Recording(parsed()));
+
+    // Without the guard, the inner change would wait for ever for the lock
+    // that the outer change holds.
+    update(&slot, |recorder| {
+        recorder.extensions.change(|counts: &mut Counts| {
+            counts.outer += 1;
+            update(&slot, |inner| {
+                inner
+                    .extensions
+                    .change(|counts: &mut Counts| counts.inner += 1);
+            });
+            assert!(take(&slot).is_none());
+            assert_eq!(child_env_in(&slot), Vec::new());
+        });
+    });
+
+    let recorder = take(&slot).unwrap();
+    assert_eq!(
+        serde_json::to_value(recorder.extensions.written()).unwrap(),
+        json!({"counts": {"outer": 1}})
+    );
+    update(&slot, |_| {});
+    written(&slot);
+    assert!(matches!(*slot.lock().unwrap(), State::Written));
+}

@@ -1,10 +1,11 @@
 //! The process's one recorder, which collects what `parse`, `finish`, an
 //! alias and the tool report during a run, and writes the run's line once.
 
+use std::cell::Cell;
 use std::ffi::OsString;
 use std::path::Path;
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::{Mutex, mpsc};
+use std::sync::{Mutex, MutexGuard, mpsc};
 use std::thread;
 use std::time::{Duration, Instant, SystemTime};
 
@@ -33,6 +34,12 @@ static RECORDER: Mutex<State> = Mutex::new(State::Idle);
 /// log's observer, so a later `start` installs it no second time and the
 /// recorder hears each report once.
 static OBSERVING: AtomicBool = AtomicBool::new(false);
+
+thread_local! {
+    /// Whether this thread is running the change that [`update`] applies,
+    /// and so holds a recorder's lock.
+    static CHANGING: Cell<bool> = const { Cell::new(false) };
+}
 
 /// Whether the signal thread has taken SIGINT.
 static LISTENS: AtomicBool = AtomicBool::new(false);
@@ -207,7 +214,7 @@ pub(super) fn child_env() -> Vec<(&'static str, String)> {
 
 /// Returns the trace id and the run's id, or `None` without a recorder.
 pub(super) fn ids() -> Option<TraceIds> {
-    let state = RECORDER.lock().ok()?;
+    let state = lock(&RECORDER)?;
     let State::Recording(recorder) = &*state else {
         return None;
     };
@@ -320,7 +327,7 @@ impl Recorder {
 /// Installs `recorder` in `slot`, and returns whether it did. It installs
 /// none when `slot` already had one, or its lock is poisoned.
 fn install(slot: &Mutex<State>, recorder: Recorder) -> bool {
-    let Ok(mut state) = slot.lock() else {
+    let Some(mut state) = lock(slot) else {
         return false;
     };
     if !matches!(*state, State::Idle) {
@@ -335,27 +342,45 @@ fn install(slot: &Mutex<State>, recorder: Recorder) -> bool {
 /// not reached `parse`, because such a run writes no line, and a child must
 /// never name a parent that nothing records.
 fn child_env_in(slot: &Mutex<State>) -> Vec<(&'static str, String)> {
-    match slot.lock().as_deref() {
-        Ok(State::Recording(recorder)) if recorder.tool.is_some() => recorder.context.child_env(),
+    match lock(slot).as_deref() {
+        Some(State::Recording(recorder)) if recorder.tool.is_some() => recorder.context.child_env(),
         _ => Vec::new(),
     }
 }
 
 /// Applies `change` to the recorder in `slot`, and does nothing when there
 /// is none.
+///
+/// `change` can run the tool's own code, such as the closure that
+/// [`crate::extend`] passes, while this thread holds the lock. A report that
+/// `change` makes in turn would wait for that lock for ever, so while
+/// `change` runs, every other use of a recorder's lock on this thread is
+/// skipped without a word, as every other usage-log failure is (ADR-0029,
+/// ADR-0144). The outer change still applies.
 fn update(slot: &Mutex<State>, change: impl FnOnce(&mut Recorder)) {
-    if let Ok(mut state) = slot.lock()
+    if let Some(mut state) = lock(slot)
         && let State::Recording(recorder) = &mut *state
     {
+        CHANGING.set(true);
         change(recorder);
+        CHANGING.set(false);
     }
+}
+
+/// Locks `slot`, or returns `None` when its lock is poisoned or this thread
+/// is inside [`update`]'s change, which already holds a recorder's lock.
+fn lock(slot: &Mutex<State>) -> Option<MutexGuard<'_, State>> {
+    if CHANGING.get() {
+        return None;
+    }
+    slot.lock().ok()
 }
 
 /// Takes the recorder out of `slot`, so no other line is written for the
 /// run, or returns `None` when there is none. The slot then says that the
 /// line is being written, until [`written`] marks it written.
 fn take(slot: &Mutex<State>) -> Option<Recorder> {
-    let mut state = slot.lock().ok()?;
+    let mut state = lock(slot)?;
     match std::mem::replace(&mut *state, State::Writing) {
         State::Recording(recorder) => Some(recorder),
         other => {
@@ -368,7 +393,7 @@ fn take(slot: &Mutex<State>) -> Option<Recorder> {
 /// Marks the line of the run in `slot` written, after the thread that took
 /// the recorder wrote the line or dropped it.
 fn written(slot: &Mutex<State>) {
-    if let Ok(mut state) = slot.lock() {
+    if let Some(mut state) = lock(slot) {
         *state = State::Written;
     }
 }
@@ -379,8 +404,8 @@ fn written(slot: &Mutex<State>) {
 fn wait_for_line(slot: &Mutex<State>, bound: Duration) -> bool {
     let started = Instant::now();
     loop {
-        match slot.lock().as_deref() {
-            Ok(State::Writing) => {}
+        match lock(slot).as_deref() {
+            Some(State::Writing) => {}
             _ => return true,
         }
         if started.elapsed() >= bound {

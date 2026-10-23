@@ -25,7 +25,10 @@ not keep a value out of it.
   each extension writes its facts through `Facts`, which a tool cannot
   build.
 - `Facts` takes three kinds of fact: a count under a `Key`, a `Label` under
-  a `Key`, and a time spent waiting on another system. A `Key` and a
+  a `Key`, and the wall-clock time that the run spent blocked waiting on
+  another system. Overlapping waits count once, so concurrent requests add
+  the time from the first start to the last end, and the time waited can
+  be compared with the run's wall time. A `Key` and a
   `Label` hold a `&'static str` that a `const fn` checks against a small
   alphabet, so a tool declares them as constants, a bad one fails to
   compile, and a value read at run time can become a label only by leaking
@@ -37,6 +40,11 @@ not keep a value out of it.
   and labels under one key are kept once each.
 - A line that would pass 1 KiB with its facts is written without them, so
   the facts never cost a run its line.
+- The closure that `extend` passes runs while the log holds its lock. A
+  thread-local flag marks that time, and a report or `extend` that the
+  closure makes on the same thread is skipped without a word, as other
+  usage-log failures are (ADR-0029), so a nested call cannot deadlock the
+  run or stop SIGINT from ending it.
 - The API-1 ground is one adopter's request for an ordinary need, because
   any tool that calls another system wants its usage log to record those
   calls (ADR-0122). shelf's `books show` records its lookups as a use in
@@ -57,4 +65,7 @@ could not read; a derive macro that checks each field of the tool's type,
 which costs a proc-macro for three kinds of fact; label text as `&str`
 checked at run time, which a typed value passes; one extension per run;
 dropping a line that its facts make too long; durations under any key,
-which no finding reads yet.
+which no finding reads yet; the sum of each request's wait, which can pass
+the run's wall time when requests overlap; a re-entrant lock, which would
+let a nested change see the recorder mid-change; documenting a nested call
+as forbidden, which leaves the deadlock in place.

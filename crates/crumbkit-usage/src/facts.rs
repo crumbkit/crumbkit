@@ -4,7 +4,7 @@
 //! A tool keeps its facts in a type of its own that implements
 //! [`Extension`], and changes them during the run with [`extend`]. When the
 //! line is written, each extension writes its facts through [`Facts`], which
-//! takes only counts, a time spent waiting, and [`Label`]s that the tool
+//! takes only counts, the time spent blocked waiting, and [`Label`]s that the tool
 //! declares as constants, so the section holds no value that the caller
 //! typed or that a server returned.
 
@@ -115,12 +115,14 @@ impl Label {
 /// struct Requests {
 ///     sent: u64,
 ///     routes: Vec<Label>,
-///     waited: Duration,
+///     /// The wall-clock time the run spent blocked on the server. The tool
+///     /// sends one request at a time, so it adds each request's time.
+///     blocked: Duration,
 /// }
 ///
 /// impl Extension for Requests {
 ///     fn write(&self, facts: &mut Facts) {
-///         facts.count(REQUESTS, self.sent).waited(self.waited);
+///         facts.count(REQUESTS, self.sent).waited(self.blocked);
 ///         for route in &self.routes {
 ///             facts.label(ROUTE, *route);
 ///         }
@@ -155,10 +157,11 @@ pub trait Extension: Default + Send + 'static {
 /// as the tool's own and one of a library that it uses, and their facts
 /// share the one section.
 ///
-/// `change` runs while the log holds its lock, so it must not call
-/// `extend` or any of crumbkit's reports. The section counts towards the
-/// line's limit of 1 KiB, and a line that would be longer is written
-/// without its `facts` field.
+/// `change` runs while the log holds its lock. A call to `extend`, or to any
+/// of crumbkit's reports, that `change` makes on the same thread is skipped
+/// without a word, as every other usage-log failure is, and `change` itself
+/// still applies. The section counts towards the line's limit of 1 KiB, and
+/// a line that would be longer is written without its `facts` field.
 pub fn extend<E: Extension>(change: impl FnOnce(&mut E)) {
     recorder::report(|recorder| recorder.extensions.change(change));
 }
@@ -188,9 +191,15 @@ impl Facts {
         self
     }
 
-    /// Adds `time` to the time the run spent waiting on another system, such
-    /// as a server, a database or a child process. `self usage` reads it
-    /// (ADR-0145).
+    /// Adds `time` to the wall-clock time that the run spent blocked,
+    /// waiting on another system such as a server, a database or a child
+    /// process. `self usage` compares it with the run's wall time (ADR-0145).
+    ///
+    /// Overlapping waits count once. A tool that sends requests one at a
+    /// time adds the time of each, and a tool that sends several at once
+    /// adds the time from the first one's start to the last one's end, not
+    /// the sum of their times. Several calls add, so each call passes a
+    /// stretch of time that no other call covers.
     pub fn waited(&mut self, time: Duration) -> &mut Self {
         let ms = u64::try_from(time.as_millis()).unwrap_or(u64::MAX);
         self.0.waited_ms = self.0.waited_ms.saturating_add(ms);
@@ -203,18 +212,30 @@ impl Facts {
 #[derive(Debug, Default, Serialize, JsonSchema)]
 #[schemars(rename = "Facts")]
 pub(super) struct Written {
-    /// Counts by name, such as requests or retries.
+    /// Counts by name, such as requests or retries. A count of 0 is left
+    /// out.
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
-    #[schemars(extend("propertyNames" = { "pattern": "^[a-z][a-z0-9_]{0,31}$" }))]
+    #[schemars(extend(
+        "propertyNames" = { "pattern": "^[a-z][a-z0-9_]{0,31}$" },
+        "additionalProperties" = { "type": "integer", "format": "uint64", "minimum": 1 }
+    ))]
     counts: BTreeMap<&'static str, u64>,
     /// Labels by name, such as the route templates that the run requested,
     /// each once, in the order the tool wrote them.
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
-    #[schemars(extend("propertyNames" = { "pattern": "^[a-z][a-z0-9_]{0,31}$" }))]
     #[schemars(with = "BTreeMap<String, Vec<LabelText>>")]
+    #[schemars(extend(
+        "propertyNames" = { "pattern": "^[a-z][a-z0-9_]{0,31}$" },
+        "additionalProperties" = {
+            "type": "array",
+            "items": { "$ref": "#/$defs/Label" },
+            "uniqueItems": true
+        }
+    ))]
     labels: BTreeMap<&'static str, Vec<&'static str>>,
-    /// The milliseconds that the run spent waiting on another system, such
-    /// as a server. It is present only when it is more than 0.
+    /// The wall-clock milliseconds that the run spent blocked, waiting on
+    /// another system such as a server, with overlapping waits counted
+    /// once. It is present only when it is more than 0.
     #[serde(default, skip_serializing_if = "is_zero")]
     waited_ms: u64,
 }

@@ -12,8 +12,9 @@ const MISSING: Key = Key::new("missing");
 
 /// What the lookups of `shelf books show` did, which shelf's usage log
 /// records as facts: how many ids it looked up and how many the catalogue
-/// lacked. A tool that calls a network API would also record the time it
-/// waited for the server with `Facts::waited` (ADR-0144).
+/// lacked. A tool that calls a network API would also record, with
+/// `Facts::waited`, the wall-clock time it spent blocked on the server,
+/// counting overlapping requests once (ADR-0144).
 #[derive(Default)]
 pub(super) struct Lookups {
     /// The ids looked up.
