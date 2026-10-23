@@ -43,7 +43,8 @@ const YEAR_10000: u64 = 253_402_300_800;
 /// unit is the week, which is always seven days, because the length of a
 /// month or a year depends on a calendar. `Age`'s `Display` writes the
 /// compact age, so a row type that sets [`Row::LINE`](crate::Row::LINE)
-/// can put it in its own `text_line`.
+/// can put it in its own `text_line`. [`Age::compact`] writes the same
+/// compact age for a duration that the tool measured.
 ///
 /// In JSON the field is the time in UTC with milliseconds, such as
 /// `2026-10-07T12:01:07.120Z`. `--json`, `--json --fields`, `--json --full`
@@ -111,12 +112,47 @@ impl Age {
     pub const fn elapsed(&self) -> Duration {
         self.elapsed
     }
+
+    /// Returns a value whose `Display` writes `elapsed` as a compact age, in
+    /// the same units and with the same boundaries as `Age`'s `Display`.
+    ///
+    /// It is for a duration that the tool measured, such as with
+    /// [`Instant::elapsed`](std::time::Instant::elapsed), when the tool has
+    /// no time that the duration counts from. The value has no JSON form,
+    /// so a row field that JSON should hold as a time is an `Age`.
+    ///
+    /// ```
+    /// use std::time::Duration;
+    ///
+    /// use crumbkit::Age;
+    ///
+    /// let waited = Duration::from_millis(3_400);
+    /// assert_eq!(Age::compact(waited).to_string(), "3s");
+    ///
+    /// let idle = Duration::from_secs(15 * 24 * 60 * 60);
+    /// assert_eq!(Age::compact(idle).to_string(), "2w");
+    /// ```
+    #[must_use]
+    pub const fn compact(elapsed: Duration) -> impl fmt::Display {
+        Compact(elapsed)
+    }
 }
 
 /// Writes the compact age, such as `3h`, in the largest whole unit.
 impl fmt::Display for Age {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let seconds = self.elapsed.as_secs();
+        Compact(self.elapsed).fmt(f)
+    }
+}
+
+/// A duration that prints as a compact age, which [`Age::compact`] returns
+/// and `Age`'s `Display` writes through.
+struct Compact(Duration);
+
+/// Writes the duration in the largest whole unit, such as `3h`.
+impl fmt::Display for Compact {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let seconds = self.0.as_secs();
         let (count, unit) = if seconds < MINUTE {
             (seconds, 's')
         } else if seconds < HOUR {

@@ -630,6 +630,9 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit-usage: `extend` lets a tool add value-free facts of its own to
   the run's line under `facts`: counts, declared `Label`s and the time
   waited on another system ([behaviour/usage-log]).
+- crumbkit: `Age::compact` prints a duration that the tool measured, such
+  as with `Instant::elapsed`, in the compact age form of an [`Age`] column,
+  such as `3s` or `2w`.
 - crumbkit-usage: `self usage` reports `mostly waiting` for a slow command
   whose slow runs spent half their time or more waiting
   ([behaviour/usage-log/report]).
