@@ -75,6 +75,9 @@ struct Command {
     all: u64,
     /// The runs that typed `--long`.
     long: u64,
+    /// The runs that took at least [`SLOW`] and spent at least half their
+    /// wall time waiting on another system.
+    waiting: u64,
 }
 
 impl Tally {
@@ -122,6 +125,9 @@ impl Tally {
         command.runs += 1;
         command.help_before += help_before;
         command.ms.push(entry.ms);
+        if entry.ms >= SLOW && entry.facts.waited_ms.saturating_mul(2) >= entry.ms {
+            command.waiting += 1;
+        }
         if let Some(bytes) = entry.out_bytes {
             command.out_bytes.push(bytes);
         }
@@ -183,6 +189,9 @@ impl Tally {
             }
             if p95_ms.is_some_and(|ms| ms >= SLOW) {
                 finding(Kind::SlowCommand, at_least(&command.ms, SLOW));
+                if command.waiting > 0 {
+                    finding(Kind::MostlyWaiting, command.waiting);
+                }
             }
             commands.push(Figures {
                 command: path,

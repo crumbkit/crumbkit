@@ -627,6 +627,12 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   result, such as a server that runs until interrupted. Help and `parse`
   offer it no view flag, `--json` still prints its failure, and help prints
   an `Output:` line ([behaviour/output/shapes]).
+- crumbkit-usage: `extend` lets a tool add value-free facts of its own to
+  the run's line under `facts`: counts, declared `Label`s and the time
+  waited on another system ([behaviour/usage-log]).
+- crumbkit-usage: `self usage` reports `mostly waiting` for a slow command
+  whose slow runs spent half their time or more waiting
+  ([behaviour/usage-log/report]).
 
 ### Changed
 

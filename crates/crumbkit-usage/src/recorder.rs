@@ -1,10 +1,12 @@
 //! The process's one recorder, which collects what `parse`, `finish`, an
 //! alias and the tool report during a run, and writes the run's line once.
 
+use std::cell::Cell;
 use std::ffi::OsString;
+use std::panic::{AssertUnwindSafe, catch_unwind, resume_unwind};
 use std::path::Path;
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::{Mutex, mpsc};
+use std::sync::{Mutex, MutexGuard, TryLockError, mpsc};
 use std::thread;
 use std::time::{Duration, Instant, SystemTime};
 
@@ -13,6 +15,7 @@ use signal_hook::consts::SIGINT;
 
 use super::caller::{self, Caller};
 use super::context::{self, Context};
+use super::facts::Extensions;
 use super::file::{self, LIMITS, Limits};
 use super::key;
 use super::observer::{self, UsageLog};
@@ -33,6 +36,12 @@ static RECORDER: Mutex<State> = Mutex::new(State::Idle);
 /// recorder hears each report once.
 static OBSERVING: AtomicBool = AtomicBool::new(false);
 
+thread_local! {
+    /// Whether this thread is running the change that [`update`] applies,
+    /// and so holds a recorder's lock.
+    static CHANGING: Cell<bool> = const { Cell::new(false) };
+}
+
 /// Whether the signal thread has taken SIGINT.
 static LISTENS: AtomicBool = AtomicBool::new(false);
 
@@ -43,7 +52,9 @@ const MAX_TOLERATED: usize = 8;
 
 /// How long the main thread or the signal thread waits for a line that the
 /// other thread is writing, before `main` returns or the signal takes
-/// effect. A write waits at most 100 ms for the lock, and a trim reads at
+/// effect, and how long the signal thread waits for the recorder's lock
+/// while the tool's change holds it. A write waits at most 100 ms for the
+/// file's lock, and a trim reads at
 /// most about 10 MB and writes 5 MB, which takes a few milliseconds from the
 /// page cache, so 500 ms covers the lock wait and a trim on a disk that
 /// reads and writes about 40 MB a second. A person who presses Ctrl-C waits
@@ -90,6 +101,9 @@ pub(super) struct Recorder {
     /// Whether a signal ended a child that held the terminal, which the
     /// observer reports. The line then says that the run was interrupted.
     pub(super) signalled: bool,
+    /// The tool's own extensions of the record, which [`crate::extend`]
+    /// changes.
+    pub(super) extensions: Extensions,
 }
 
 /// The guard that [`start`] returns. It writes the run's line when it
@@ -203,7 +217,7 @@ pub(super) fn child_env() -> Vec<(&'static str, String)> {
 
 /// Returns the trace id and the run's id, or `None` without a recorder.
 pub(super) fn ids() -> Option<TraceIds> {
-    let state = RECORDER.lock().ok()?;
+    let state = lock(&RECORDER)?;
     let State::Recording(recorder) = &*state else {
         return None;
     };
@@ -233,6 +247,7 @@ impl Recorder {
             tolerated: Vec::new(),
             run: Run::default(),
             signalled: false,
+            extensions: Extensions::default(),
         }
     }
 
@@ -307,6 +322,7 @@ impl Recorder {
             trace: self.context.ids,
             interrupted: interrupted || self.signalled,
             run,
+            facts: self.extensions.written(),
         })
     }
 }
@@ -314,7 +330,7 @@ impl Recorder {
 /// Installs `recorder` in `slot`, and returns whether it did. It installs
 /// none when `slot` already had one, or its lock is poisoned.
 fn install(slot: &Mutex<State>, recorder: Recorder) -> bool {
-    let Ok(mut state) = slot.lock() else {
+    let Some(mut state) = lock(slot) else {
         return false;
     };
     if !matches!(*state, State::Idle) {
@@ -329,27 +345,92 @@ fn install(slot: &Mutex<State>, recorder: Recorder) -> bool {
 /// not reached `parse`, because such a run writes no line, and a child must
 /// never name a parent that nothing records.
 fn child_env_in(slot: &Mutex<State>) -> Vec<(&'static str, String)> {
-    match slot.lock().as_deref() {
-        Ok(State::Recording(recorder)) if recorder.tool.is_some() => recorder.context.child_env(),
+    match lock(slot).as_deref() {
+        Some(State::Recording(recorder)) if recorder.tool.is_some() => recorder.context.child_env(),
         _ => Vec::new(),
     }
 }
 
 /// Applies `change` to the recorder in `slot`, and does nothing when there
 /// is none.
+///
+/// `change` can run the tool's own code, such as the closure that
+/// [`crate::extend`] passes, while this thread holds the lock. A report that
+/// `change` makes in turn would wait for that lock for ever, so while
+/// `change` runs, every other use of a recorder's lock on this thread is
+/// skipped without a word, as every other usage-log failure is (ADR-0029,
+/// ADR-0144). The outer change still applies.
 fn update(slot: &Mutex<State>, change: impl FnOnce(&mut Recorder)) {
-    if let Ok(mut state) = slot.lock()
+    if let Some(mut state) = lock(slot)
         && let State::Recording(recorder) = &mut *state
     {
-        change(recorder);
+        let changing = Changing::enter();
+        let changed = catch_unwind(AssertUnwindSafe(|| change(&mut *recorder)));
+        drop(changing);
+        if let Err(panic) = changed {
+            // The extension that panicked may be half changed, so the run
+            // keeps its line without facts. Releasing the lock before the
+            // panic goes on keeps it from poisoning the lock, which would
+            // cost the run its whole line.
+            recorder.extensions.broke();
+            drop(state);
+            resume_unwind(panic);
+        }
     }
 }
 
-/// Takes the recorder out of `slot`, so no other line is written for the
-/// run, or returns `None` when there is none. The slot then says that the
-/// line is being written, until [`written`] marks it written.
-fn take(slot: &Mutex<State>) -> Option<Recorder> {
-    let mut state = slot.lock().ok()?;
+/// The guard that marks this thread as inside [`update`]'s change, and
+/// clears the mark when it drops, even when the change panics.
+struct Changing;
+
+impl Changing {
+    /// Marks this thread as inside [`update`]'s change.
+    fn enter() -> Self {
+        CHANGING.set(true);
+        Self
+    }
+}
+
+impl Drop for Changing {
+    fn drop(&mut self) {
+        CHANGING.set(false);
+    }
+}
+
+/// Locks `slot`, or returns `None` when its lock is poisoned or this thread
+/// is inside [`update`]'s change, which already holds a recorder's lock.
+fn lock(slot: &Mutex<State>) -> Option<MutexGuard<'_, State>> {
+    if CHANGING.get() {
+        return None;
+    }
+    slot.lock().ok()
+}
+
+/// Locks `slot` as [`lock`] does, but waits at most `bound` for another
+/// thread to let it go, checking every millisecond. The signal thread locks
+/// this way, because the tool's change can hold the lock for as long as it
+/// runs.
+fn lock_within(slot: &Mutex<State>, bound: Duration) -> Option<MutexGuard<'_, State>> {
+    if CHANGING.get() {
+        return None;
+    }
+    let started = Instant::now();
+    loop {
+        match slot.try_lock() {
+            Ok(state) => return Some(state),
+            Err(TryLockError::WouldBlock) if started.elapsed() < bound => {
+                thread::sleep(Duration::from_millis(1));
+            }
+            Err(_) => return None,
+        }
+    }
+}
+
+/// Takes the recorder out of the locked `state`, so no other line is
+/// written for the run, or returns `None` when there is none. The state
+/// then says that the line is being written, until [`written`] marks it
+/// written.
+fn take(mut state: MutexGuard<'_, State>) -> Option<Recorder> {
     match std::mem::replace(&mut *state, State::Writing) {
         State::Recording(recorder) => Some(recorder),
         other => {
@@ -362,7 +443,7 @@ fn take(slot: &Mutex<State>) -> Option<Recorder> {
 /// Marks the line of the run in `slot` written, after the thread that took
 /// the recorder wrote the line or dropped it.
 fn written(slot: &Mutex<State>) {
-    if let Ok(mut state) = slot.lock() {
+    if let Some(mut state) = lock(slot) {
         *state = State::Written;
     }
 }
@@ -373,8 +454,8 @@ fn written(slot: &Mutex<State>) {
 fn wait_for_line(slot: &Mutex<State>, bound: Duration) -> bool {
     let started = Instant::now();
     loop {
-        match slot.lock().as_deref() {
-            Ok(State::Writing) => {}
+        match lock(slot).as_deref() {
+            Some(State::Writing) => {}
             _ => return true,
         }
         if started.elapsed() >= bound {
@@ -388,8 +469,21 @@ fn wait_for_line(slot: &Mutex<State>, bound: Duration) -> bool {
 /// that a signal ended the run. When another thread is already writing the
 /// line, it waits for that write, for at most [`LINE_WAIT`], so neither the
 /// end of `main` nor a signal ends the process in the middle of the line.
+///
+/// The signal thread, which passes `interrupted`, waits at most
+/// [`LINE_WAIT`] for the recorder's lock too, and writes no line when the
+/// tool's change holds the lock that long, so a slow change never keeps a
+/// signal from ending the process.
 fn write(slot: &Mutex<State>, interrupted: bool) {
-    let Some(recorder) = take(slot) else {
+    let state = if interrupted {
+        lock_within(slot, LINE_WAIT)
+    } else {
+        lock(slot)
+    };
+    let Some(state) = state else {
+        return;
+    };
+    let Some(recorder) = take(state) else {
         let _ = wait_for_line(slot, LINE_WAIT);
         return;
     };
@@ -422,7 +516,7 @@ fn save(
     let dir = state.join(recorder.tool.as_ref()?.as_str());
     file::create_dir(&dir).ok()?;
     let key = key::key(&dir)?;
-    let line = record::line(&recorder.finish(&key, now, interrupted, caller)?)?;
+    let line = record::line(&mut recorder.finish(&key, now, interrupted, caller)?)?;
     file::append(&dir, &line, limits).ok()
 }
 
@@ -464,8 +558,14 @@ fn watch_signals() {
                 if signal == SIGINT && observer::held_terminal() {
                     continue;
                 }
+                // The guard ends the process even when writing the line
+                // panics, which would otherwise drop the listener and leave
+                // the signal ignored.
+                let _ending = Ending {
+                    signal,
+                    end: Interrupts::end_process,
+                };
                 write(&RECORDER, true);
-                Interrupts::end_process(signal);
                 return;
             }
         });
@@ -473,5 +573,21 @@ fn watch_signals() {
         // The thread sends once it listens, and a thread that ended early
         // drops the sender, which ends the wait too.
         let _ = listens.recv();
+    }
+}
+
+/// The guard that ends the process with its signal when it drops, as the
+/// signal would have without the log.
+struct Ending {
+    /// The signal that ends the process.
+    signal: i32,
+    /// What ends the process, which is [`Interrupts::end_process`] outside
+    /// the tests.
+    end: fn(i32),
+}
+
+impl Drop for Ending {
+    fn drop(&mut self) {
+        (self.end)(self.signal);
     }
 }

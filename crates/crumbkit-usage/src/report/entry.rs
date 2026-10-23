@@ -13,8 +13,9 @@ mod tests;
 ///
 /// The reader ignores the fields that it does not name here, as every
 /// reader of a crumbkit document ignores fields it does not know (ADR-0007).
-/// The trace ids, the tool's name and version and the tool's own section
-/// are never read, so the report cannot print them.
+/// The trace ids and the tool's name and version are never read, and of
+/// the tool's own facts only the time spent waiting is read, so the report
+/// cannot print them.
 #[derive(Clone, Debug, Deserialize)]
 pub(super) struct Entry {
     /// The record's schema id, which must be `<tool>/usage/v1`.
@@ -65,6 +66,20 @@ pub(super) struct Entry {
     /// Whether the run ended on SIGINT or SIGTERM.
     #[serde(default)]
     pub(super) interrupted: bool,
+    /// The one part of the tool's own facts that the report reads.
+    #[serde(default)]
+    pub(super) facts: Facts,
+}
+
+/// The part of a record's `facts` that the report reads: the time that the
+/// run spent waiting on another system (ADR-0145). The report never reads
+/// the tool's counts or labels, so it cannot print their names or text.
+#[derive(Clone, Debug, Default, Deserialize)]
+pub(super) struct Facts {
+    /// The milliseconds that the run spent waiting, or 0 when the tool
+    /// reported none.
+    #[serde(default)]
+    pub(super) waited_ms: u64,
 }
 
 impl Entry {
@@ -141,6 +156,7 @@ impl Entry {
             out_bytes: Some(100),
             truncated: false,
             interrupted: false,
+            facts: Facts::default(),
         }
     }
 }

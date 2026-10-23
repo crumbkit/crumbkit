@@ -39,6 +39,10 @@
       "maximum": 255,
       "minimum": 0
     },
+    "facts": {
+      "description": "The tool's own facts about the run, which its extensions wrote. It is\npresent only when they hold a fact, and it is left out when the line\nwould otherwise pass 1 KiB.",
+      "$ref": "#/$defs/Facts"
+    },
     "flags": {
       "description": "The flags typed on the command line, each by its long name, or by its\nshort name when it has no long one, sorted.",
       "type": "array",
@@ -141,6 +145,44 @@
     "run"
   ],
   "$defs": {
+    "Facts": {
+      "description": "The tool's own facts about a run: counts, labels from the tool's fixed\nvocabulary, and the time the run spent waiting on another system.",
+      "type": "object",
+      "properties": {
+        "counts": {
+          "description": "Counts by name, such as requests or retries. A count of 0 is left\nout.",
+          "type": "object",
+          "additionalProperties": {
+            "type": "integer",
+            "format": "uint64",
+            "minimum": 1
+          },
+          "propertyNames": {
+            "pattern": "^[a-z][a-z0-9_]{0,31}$"
+          }
+        },
+        "labels": {
+          "description": "Labels by name, such as the route templates that the run requested,\neach once, in the order the tool wrote them.",
+          "type": "object",
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/Label"
+            },
+            "uniqueItems": true
+          },
+          "propertyNames": {
+            "pattern": "^[a-z][a-z0-9_]{0,31}$"
+          }
+        },
+        "waited_ms": {
+          "description": "The wall-clock milliseconds that the run spent blocked, waiting on\nanother system such as a server, with overlapping waits counted\nonce. It is present only when it is more than 0.",
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 1
+        }
+      }
+    },
     "Hash": {
       "description": "The keyed SipHash-2-4 hash of a list of byte strings, as 16 lowercase hex\ndigits.",
       "type": "string",
@@ -160,6 +202,11 @@
           "const": "long"
         }
       ]
+    },
+    "Label": {
+      "description": "One label from the tool's fixed vocabulary, such as a route template.",
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_./:{}-]{1,64}$"
     },
     "Name": {
       "description": "A name from the tool's own vocabulary: a command path, a flag, a version\nor a failure code.\n\ncrumbkit reads every name from the tool's clap command tree or its codes,\nand never from a word that the caller typed: each constructor takes a\n`clap::Command`, a `clap::Arg` or a crumbkit `Code`.",

@@ -6,13 +6,15 @@ use clap::Command;
 use serde_json::{Value, json};
 
 use super::{
-    Recorder, State, child_env_in, install, save, take, update, wait_for_line, write, written,
+    Ending, Recorder, State, child_env_in, install, lock, save, take, update, wait_for_line, write,
+    written,
 };
 use crate::caller::Caller;
 use crate::context::Context;
 use crate::file::LIMITS;
 use crate::record::Help;
 use crate::testing::TempDir;
+use crate::{Extension, Facts, Key};
 use crumbkit::{Code, Spelling, ToolName};
 
 /// Joins the segments of a code with `.`, so a test shows that the code
@@ -73,7 +75,7 @@ fn a_second_start_in_one_process_installs_no_second_recorder() {
 
     assert!(install(&slot, started(None)));
     assert!(!install(&slot, started(None)));
-    take(&slot).unwrap();
+    lock(&slot).and_then(take).unwrap();
     assert!(!install(&slot, started(None)));
 }
 
@@ -85,7 +87,7 @@ fn without_a_recorder_a_report_does_nothing_and_there_is_no_line_to_write() {
         panic!("a report reached a recorder that was never installed")
     });
 
-    assert!(take(&slot).is_none());
+    assert!(lock(&slot).and_then(take).is_none());
 }
 
 #[test]
@@ -93,8 +95,8 @@ fn a_run_gives_up_its_recorder_once_so_it_writes_one_line() {
     let slot = Mutex::new(State::Idle);
     install(&slot, started(None));
 
-    assert!(take(&slot).is_some());
-    assert!(take(&slot).is_none());
+    assert!(lock(&slot).and_then(take).is_some());
+    assert!(lock(&slot).and_then(take).is_none());
 }
 
 #[test]
@@ -102,7 +104,7 @@ fn a_taken_recorder_counts_as_writing_until_its_line_is_written() {
     let slot = Mutex::new(State::Idle);
     install(&slot, started(None));
 
-    take(&slot).unwrap();
+    lock(&slot).and_then(take).unwrap();
     assert!(matches!(*slot.lock().unwrap(), State::Writing));
     written(&slot);
 
@@ -113,7 +115,7 @@ fn a_taken_recorder_counts_as_writing_until_its_line_is_written() {
 fn a_thread_that_ends_the_run_while_another_writes_the_line_waits_until_it_is_written() {
     let slot = Mutex::new(State::Idle);
     install(&slot, started(None));
-    take(&slot).unwrap();
+    lock(&slot).and_then(take).unwrap();
     let waited = Instant::now();
 
     std::thread::scope(|scope| {
@@ -132,7 +134,7 @@ fn a_thread_that_ends_the_run_while_another_writes_the_line_waits_until_it_is_wr
 fn the_signal_thread_stops_waiting_for_a_line_in_progress_after_its_bound() {
     let slot = Mutex::new(State::Idle);
     install(&slot, started(None));
-    take(&slot).unwrap();
+    lock(&slot).and_then(take).unwrap();
     let waited = Instant::now();
 
     let finished = wait_for_line(&slot, Duration::from_millis(30));
@@ -199,7 +201,7 @@ fn a_child_gets_trace_variables_only_from_a_run_that_reached_parse() {
         )]
     );
 
-    take(&slot).unwrap();
+    lock(&slot).and_then(take).unwrap();
     assert_eq!(child_env_in(&slot), Vec::new());
 }
 
@@ -323,4 +325,174 @@ fn a_line_without_tolerated_codes_leaves_the_field_out() {
     let line = &saved(&state, parsed(), false)[0];
 
     assert!(line.get("tolerated").is_none(), "{line}");
+}
+
+#[test]
+fn a_saved_line_holds_the_facts_that_the_tool_s_extension_wrote() {
+    const REQUESTS: Key = Key::new("requests");
+    #[derive(Default)]
+    struct Requests(u64);
+    impl Extension for Requests {
+        fn write(&self, facts: &mut Facts) {
+            facts
+                .count(REQUESTS, self.0)
+                .waited(Duration::from_millis(5 * self.0));
+        }
+    }
+    let state = TempDir::new("facts");
+    let mut recorder = parsed();
+
+    recorder
+        .extensions
+        .change(|requests: &mut Requests| requests.0 += 2);
+
+    let lines = saved(&state, recorder, false);
+    assert_eq!(
+        lines[0]["facts"],
+        json!({"counts": {"requests": 2}, "waited_ms": 10})
+    );
+}
+
+#[test]
+fn a_nested_extend_is_skipped_and_the_outer_change_still_applies() {
+    const OUTER: Key = Key::new("outer");
+    const INNER: Key = Key::new("inner");
+    #[derive(Default)]
+    struct Counts {
+        outer: u64,
+        inner: u64,
+    }
+    impl Extension for Counts {
+        fn write(&self, facts: &mut Facts) {
+            facts.count(OUTER, self.outer).count(INNER, self.inner);
+        }
+    }
+    let slot = Mutex::new(State::Recording(parsed()));
+
+    // Without the guard, the inner change would wait for ever for the lock
+    // that the outer change holds.
+    update(&slot, |recorder| {
+        recorder.extensions.change(|counts: &mut Counts| {
+            counts.outer += 1;
+            update(&slot, |inner| {
+                inner
+                    .extensions
+                    .change(|counts: &mut Counts| counts.inner += 1);
+            });
+            assert!(lock(&slot).and_then(take).is_none());
+            assert_eq!(child_env_in(&slot), Vec::new());
+        });
+    });
+
+    let recorder = lock(&slot).and_then(take).unwrap();
+    assert_eq!(
+        serde_json::to_value(recorder.extensions.written()).unwrap(),
+        json!({"counts": {"outer": 1}})
+    );
+    update(&slot, |_| {});
+    written(&slot);
+    assert!(matches!(*slot.lock().unwrap(), State::Written));
+}
+
+/// An extension whose `write` panics, as a bug in a tool's extension can.
+#[derive(Default)]
+struct Broken;
+
+impl Extension for Broken {
+    fn write(&self, _facts: &mut Facts) {
+        panic!("the extension's write failed");
+    }
+}
+
+#[test]
+fn a_line_whose_extension_panics_while_it_writes_is_saved_without_facts() {
+    let state = TempDir::new("broken-facts");
+    let mut recorder = parsed();
+    recorder.extensions.change(|_: &mut Broken| {});
+
+    let lines = saved(&state, recorder, false);
+
+    assert_eq!(lines.len(), 1);
+    assert_eq!(lines[0]["tool"], "shelf");
+    assert!(lines[0].get("facts").is_none(), "{}", lines[0]);
+}
+
+#[test]
+fn the_signal_thread_gives_up_on_a_lock_that_a_slow_change_holds_after_its_bound() {
+    let slot = Mutex::new(State::Recording(parsed()));
+    let held = slot.lock().unwrap();
+    let waited = Instant::now();
+
+    std::thread::scope(|scope| {
+        scope.spawn(|| write(&slot, true)).join().unwrap();
+    });
+
+    assert!(waited.elapsed() < Duration::from_secs(2));
+    assert!(matches!(*held, State::Recording(_)));
+}
+
+#[test]
+fn the_flag_of_a_change_that_panics_is_cleared_so_the_thread_can_lock_again() {
+    let slot = Mutex::new(State::Recording(parsed()));
+    let other = Mutex::new(State::Idle);
+
+    let panicked = std::panic::catch_unwind(|| update(&slot, |_| panic!("the change failed")));
+
+    assert!(panicked.is_err());
+    assert!(install(&other, parsed()));
+}
+
+#[test]
+fn a_change_that_panics_and_is_caught_leaves_a_line_without_facts_and_later_reports_work() {
+    const SENT: Key = Key::new("sent");
+    #[derive(Default)]
+    struct Sent(u64);
+    impl Extension for Sent {
+        fn write(&self, facts: &mut Facts) {
+            facts.count(SENT, self.0);
+        }
+    }
+    let state = TempDir::new("caught-change");
+    let slot = Mutex::new(State::Recording(parsed()));
+
+    let panicked = std::panic::catch_unwind(|| {
+        update(&slot, |recorder| {
+            recorder.extensions.change(|sent: &mut Sent| {
+                sent.0 += 1;
+                panic!("the tool's change failed");
+            });
+        });
+    });
+    update(&slot, |recorder| {
+        recorder.run.exit = Some(4);
+        recorder.extensions.change(|sent: &mut Sent| sent.0 += 1);
+    });
+
+    assert!(panicked.is_err());
+    let recorder = lock(&slot).and_then(take).unwrap();
+    let lines = saved(&state, recorder, false);
+    assert_eq!(lines[0]["exit"], 4);
+    assert!(lines[0].get("facts").is_none(), "{}", lines[0]);
+}
+
+/// The signal that [`ended_with`] last received.
+static ENDED_WITH: std::sync::atomic::AtomicI32 = std::sync::atomic::AtomicI32::new(0);
+
+/// Stands in for ending the process, and notes `signal`.
+fn ended_with(signal: i32) {
+    ENDED_WITH.store(signal, std::sync::atomic::Ordering::SeqCst);
+}
+
+#[test]
+fn the_signal_thread_s_guard_ends_the_process_when_writing_the_line_panics() {
+    let panicked = std::panic::catch_unwind(|| {
+        let _ending = Ending {
+            signal: 15,
+            end: ended_with,
+        };
+        panic!("writing the line failed");
+    });
+
+    assert!(panicked.is_err());
+    assert_eq!(ENDED_WITH.load(std::sync::atomic::Ordering::SeqCst), 15);
 }

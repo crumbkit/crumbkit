@@ -14,11 +14,13 @@ use serde::Serialize;
 
 use crate::cli::{BooksList, BooksShow};
 
+mod lookups;
 mod remove;
 mod summary;
 #[cfg(test)]
 mod tests;
 
+use lookups::Lookups;
 use remove::read_removed;
 pub(crate) use remove::{BOOKS_REMOVE, remove, removed_file};
 pub(crate) use summary::{BOOKS_SUMMARIZE, summarize};
@@ -218,14 +220,18 @@ pub(crate) fn show(
     };
     let removed = read_removed(removed)?;
     let mut batch = Batch::new(&["books", "show"], "ids", &ids);
+    let mut lookups = Lookups::default();
     for chunk in ids.chunks(WORKERS.get()) {
         if !room.has_room(&batch) {
             break;
         }
-        batch.extend(crumbkit::fetch_each(chunk, WORKERS, |&id| {
+        let found = crumbkit::fetch_each(chunk, WORKERS, |&id| {
             find(id, &removed).map_err(|id| BooksError::NotFound { ids: vec![id] })
-        }));
+        });
+        lookups.add(&found);
+        batch.extend(found);
     }
+    crumbkit_usage::extend(|run: &mut Lookups| *run = lookups);
     let mut asked_removed: Vec<u32> = Vec::new();
     for &id in &ids {
         if removed.contains(&id) && in_catalogue(id) && !asked_removed.contains(&id) {

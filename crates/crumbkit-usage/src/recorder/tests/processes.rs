@@ -259,3 +259,41 @@ fn the_starts_test_s_child_starts_the_log_four_times_and_installs_three_observer
     }
     drop(logs);
 }
+
+#[test]
+fn a_run_whose_extension_panics_while_the_line_is_written_keeps_its_exit_code() {
+    let state = TempDir::new("broken-exit");
+
+    let status = run_child(
+        "recorder::tests::processes::the_broken_exit_test_s_child_records_a_panicking_extension_and_exits_with_3",
+        &state,
+    );
+
+    assert_eq!(status.code(), Some(3), "the tool ended with {status:?}");
+    let lines = log_lines(&state, "broken");
+    assert_eq!(lines.len(), 1);
+    assert!(lines[0].get("facts").is_none(), "{}", lines[0]);
+}
+
+/// Runs only as the child of the broken-exit test, which sets [`CHILD`]. It
+/// starts the log, records an extension whose `write` panics, writes the
+/// line by dropping the guard, and exits with 3.
+#[test]
+fn the_broken_exit_test_s_child_records_a_panicking_extension_and_exits_with_3() {
+    if !is_child() {
+        return;
+    }
+    let log = start();
+    typed(
+        &Command::new("broken"),
+        &["broken".into()],
+        Spelling::COLONS,
+    );
+    crate::extend(|_: &mut super::Broken| {});
+    drop(log);
+    #[expect(
+        clippy::disallowed_methods,
+        reason = "the child of the broken-exit test shows that it outlived the line through its exit code"
+    )]
+    std::process::exit(3);
+}

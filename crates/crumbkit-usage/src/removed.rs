@@ -12,7 +12,8 @@
 //! let _ = crumbkit_usage::Signals::Tool;
 //! ```
 //!
-//! The line holds no section of the tool's own:
+//! `section`, which took any serializable value, stays removed, and a tool
+//! records its own facts with `extend` (ADR-0144):
 //!
 //! ```compile_fail
 //! let _ = crumbkit_usage::section::<()>;

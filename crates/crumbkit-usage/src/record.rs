@@ -12,6 +12,7 @@ use schemars::JsonSchema;
 use serde::Serialize;
 use siphasher::sip::SipHasher24;
 
+use super::facts::Written;
 use crumbkit::{Code, Spelling};
 
 #[cfg(test)]
@@ -70,6 +71,12 @@ pub(super) struct Record {
     /// run.
     #[serde(flatten)]
     pub(super) run: Run,
+    /// The tool's own facts about the run, which its extensions wrote. It is
+    /// present only when they hold a fact, and it is left out when the line
+    /// would otherwise pass 1 KiB.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[schemars(with = "Written")]
+    pub(super) facts: Option<Written>,
 }
 
 /// What `parse`, `finish`, an alias and the tool report during a run. A
@@ -289,8 +296,23 @@ pub(super) enum Help {
 
 /// Returns `record` as one line of JSON that ends with a newline, or `None`
 /// when the line would be longer than 1 KiB without its newline or cannot
+/// be serialized. A line that is too long with the tool's facts is written
+/// without them, so the facts never cost the run its line.
+pub(super) fn line(record: &mut Record) -> Option<Vec<u8>> {
+    match fitted(record) {
+        Some(line) => Some(line),
+        None if record.facts.is_some() => {
+            record.facts = None;
+            fitted(record)
+        }
+        None => None,
+    }
+}
+
+/// Returns `record` as one line of JSON that ends with a newline, or `None`
+/// when the line would be longer than 1 KiB without its newline or cannot
 /// be serialized.
-pub(super) fn line(record: &Record) -> Option<Vec<u8>> {
+fn fitted(record: &Record) -> Option<Vec<u8>> {
     let mut line = serde_json::to_vec(record).ok()?;
     if line.len() > MAX_LINE {
         return None;

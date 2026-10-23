@@ -17,3 +17,5 @@ children, and the report that `self usage` reads from the log.
 - [ADR-0030. Trace context](0030-trace-context.md)
 - [ADR-0034. Usage report](0034-usage-report.md)
 - [ADR-0095. crumbkit-child hands over text, the usage log records its own signals, and `Menu` lives in crumbkit](0095-text-hand-over-own-signals-and-menu.md)
+- [ADR-0144. A tool adds value-free facts of its own to the usage record](0144-a-tool-adds-value-free-facts-to-the-usage-record.md)
+- [ADR-0145. `self usage` finds slow commands that mostly wait](0145-self-usage-finds-slow-commands-that-mostly-wait.md)

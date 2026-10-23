@@ -57,7 +57,7 @@ Why: ADR-0034, ADR-0002, ADR-0056.
 
 ## Findings
 
-The report has eight findings. Each counts runs under one command path.
+The report has nine findings. Each counts runs under one command path.
 
 | Finding | What it counts |
 | --- | --- |
@@ -69,8 +69,13 @@ The report has eight findings. Each counts runs under one command path.
 | `short page` | A session followed a cut-short listing within 60 s with the same command and `--all` or `--limit`. The record holds no limit value, so any `--limit` counts, also one that asks for fewer rows than the default page. |
 | `heavy output` | The 95th percentile of a command's output is at least 20,000 bytes, which is about 5,000 tokens of a coding agent's context. |
 | `slow command` | The 95th percentile of a command's wall time is at least 1,000 ms. |
+| `mostly waiting` | A `slow command` whose runs of at least 1,000 ms spent at least half that time waiting on another system, as the tool's [facts](README.md#the-tools-own-facts) record. It counts those runs. |
 
-Why: ADR-0034.
+The report reads only `waited_ms` from a record's facts, and never the
+tool's counts or labels, so no name or label from the facts reaches the
+report.
+
+Why: ADR-0034, ADR-0145.
 
 ## Checking records
 
