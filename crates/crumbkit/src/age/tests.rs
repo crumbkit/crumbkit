@@ -71,6 +71,62 @@ fn an_age_of_400_days_prints_57_weeks() {
     assert_eq!(text(400 * 86_400), "57w");
 }
 
+/// Returns the compact text of a measured duration of `seconds`.
+fn compact(seconds: u64) -> String {
+    Age::compact(Duration::from_secs(seconds)).to_string()
+}
+
+#[test]
+fn a_measured_duration_under_a_minute_prints_in_seconds() {
+    assert_eq!(compact(0), "0s");
+    assert_eq!(compact(3), "3s");
+    assert_eq!(
+        Age::compact(Duration::from_millis(59_999)).to_string(),
+        "59s"
+    );
+}
+
+#[test]
+fn a_measured_duration_of_59_minutes_and_59_seconds_prints_59_minutes() {
+    assert_eq!(compact(59 * 60 + 59), "59m");
+}
+
+#[test]
+fn a_measured_duration_of_exactly_a_day_prints_one_day() {
+    assert_eq!(compact(86_400), "1d");
+}
+
+#[test]
+fn a_measured_duration_of_13_days_prints_one_week() {
+    assert_eq!(compact(13 * 86_400), "1w");
+}
+
+#[test]
+fn compact_and_since_print_the_same_text_for_the_same_span() {
+    let spans = [
+        0,
+        1,
+        59,
+        60,
+        61,
+        3_599,
+        3_600,
+        3_601,
+        86_399,
+        86_400,
+        86_401,
+        7 * 86_400 - 1,
+        7 * 86_400,
+        13 * 86_400,
+        14 * 86_400,
+        400 * 86_400,
+    ];
+
+    for seconds in spans {
+        assert_eq!(compact(seconds), text(seconds), "{seconds} seconds");
+    }
+}
+
 #[test]
 fn an_age_ignores_the_fraction_of_a_second() {
     let age = Age::since(at(), at() + Duration::from_millis(59_999));

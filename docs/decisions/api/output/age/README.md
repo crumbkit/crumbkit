@@ -1,11 +1,12 @@
 # ADR-0108. An age cell
 
 - Date: 2026-10-20
-- Status: amended by ADR-0141
+- Status: amended by ADR-0141 and ADR-0146
 
 ## Children
 
 - [ADR-0141. An age of a week or more shows weeks](0141-an-age-of-a-week-or-more-shows-weeks.md)
+- [ADR-0146. A measured duration prints as a compact age](0146-a-measured-duration-prints-as-a-compact-age.md)
 
 ## Context
 

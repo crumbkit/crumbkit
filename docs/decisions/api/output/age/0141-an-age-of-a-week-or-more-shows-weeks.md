@@ -1,7 +1,7 @@
 # ADR-0141. An age of a week or more shows weeks
 
 - Date: 2026-10-22
-- Status: accepted
+- Status: amended by ADR-0146
 - Supersedes: ADR-0108, which it amends
 - Missed: ADR-0108 stopped at days although a week is a fixed seven days, so a column of older ages grew to three or four characters and disagreed with tools that count weeks.
 
