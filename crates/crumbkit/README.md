@@ -152,7 +152,7 @@ Licensed under Apache-2.0 or MIT, at your option.
 [`Page`]: src/page.rs
 [`Batch`]: src/batch.rs
 [`Prose`]: src/prose.rs
-[`Shown`]: ../../docs/behaviour/output/values/README.md#writing-your-own-value-type
+[`Shown`]: src/shown.rs
 [`Duration`]: src/duration.rs
 [`Failure`]: src/failure.rs
 [`Recovery`]: src/failure.rs

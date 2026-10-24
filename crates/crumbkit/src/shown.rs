@@ -105,9 +105,16 @@ pub trait Shown: fmt::Display {
 ///
 /// crumbkit sets the text mode on the current thread only, for the duration
 /// of the serialization whose value becomes the cells of a text table, of a
-/// stream's text line, of the table that [`Room`](crate::Room) measures, or
-/// the default child lines. A tool that serializes a value itself, with
+/// stream's text line, of the table that [`Room`](crate::Room) measures, of
+/// the labels of [`pick::from_rows`](crate::pick::from_rows), or of the
+/// default child lines. A tool that serializes a value itself, with
 /// `serde_json` or another serializer, always gets the JSON form.
+///
+/// The tool's own code that runs inside such a serialization sees the text
+/// form of every shown value: a `serialize_with` function, a hand-written
+/// `Serialize`, a `Display`, or a [`Row::is_problem`](crate::Row::is_problem)
+/// override that serializes the row. crumbkit decides `is_problem` before
+/// it sets the mode, so the default judges the JSON form.
 ///
 /// # Errors
 ///
@@ -131,12 +138,22 @@ pub fn serialize<T: Shown + ?Sized, S: Serializer>(
 /// in JSON. `JsonSchema` returns [`Shown::schema`](crate::Shown::schema),
 /// inline when [`Shown::schema_name`](crate::Shown::schema_name) is `None`
 /// and under that name otherwise. The schema's id is the type's module path
-/// and name, so two crates' types of one name do not share a definition.
+/// and the type as written, so two crates' types of one name do not share a
+/// definition. A type with no schema name is inline, so the type as written,
+/// which `JsonSchema::schema_name` returns for it, never appears in a
+/// schema, and a path such as `units::Pages` is as good as `Pages`.
 ///
-/// The macro names serde and schemars through crumbkit, so the calling
-/// crate needs neither dependency for it. It takes a type without generic
-/// parameters. A generic type writes the two impls by hand, as the macro's
-/// source shows.
+/// The macro call names serde and schemars through crumbkit, so a crate
+/// needs neither dependency for the call itself. A type that overrides
+/// [`Shown::json`](crate::Shown::json) names serde's `Serializer` in that
+/// method, so its crate depends on serde, and an override of
+/// [`Shown::schema`](crate::Shown::schema) names its types through
+/// `crumbkit::schemars`.
+///
+/// The macro takes one concrete type, which may be a generic type with its
+/// parameters filled in, such as `shown!(Count<u32>)`. A generic impl for
+/// every parameter, `impl<T> Serialize for Count<T>`, is written by hand, as
+/// the macro's source shows.
 ///
 /// A value that a row flattens with `#[serde(flatten)]` must serialize as a
 /// map in both forms, because serde flattens only maps and structs, so its

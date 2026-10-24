@@ -210,3 +210,65 @@ fn the_text_mode_of_one_thread_leaves_another_thread_in_the_json_form() {
 
     assert_eq!(other, json!(3));
 }
+
+/// A count of things of type `T`, which reads `3 items` in text and `3` in
+/// JSON.
+struct Count<T>(u32, std::marker::PhantomData<T>);
+
+impl<T> fmt::Display for Count<T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{} items", self.0)
+    }
+}
+
+impl<T> Shown for Count<T> {
+    fn json<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.serialize_u32(self.0)
+    }
+
+    fn schema(generator: &mut SchemaGenerator) -> Schema {
+        u32::json_schema(generator)
+    }
+}
+
+crate::shown!(Count<u8>);
+
+#[test]
+fn the_macro_takes_a_generic_type_with_its_parameters_filled_in() {
+    let count = Count::<u8>(3, std::marker::PhantomData);
+
+    assert_eq!(serde_json::to_value(&count).unwrap(), json!(3));
+    let text = {
+        let _cells = TextCells::enter();
+        serde_json::to_value(&count).unwrap()
+    };
+    assert_eq!(text, json!("3 items"));
+    assert_eq!(
+        schema_for!(Count<u8>).to_value().get("type"),
+        Some(&json!("integer"))
+    );
+}
+
+/// A value whose `Display` panics.
+struct Broken;
+
+impl fmt::Display for Broken {
+    fn fmt(&self, _: &mut fmt::Formatter<'_>) -> fmt::Result {
+        panic!("the display of a broken value panics")
+    }
+}
+
+impl Shown for Broken {}
+
+crate::shown!(Broken);
+
+#[test]
+fn a_panic_during_a_text_serialization_leaves_the_text_mode_unset() {
+    let caught = std::panic::catch_unwind(|| {
+        let _cells = TextCells::enter();
+        serde_json::to_value(Broken)
+    });
+
+    assert!(caught.is_err());
+    assert!(!TextCells::active());
+}

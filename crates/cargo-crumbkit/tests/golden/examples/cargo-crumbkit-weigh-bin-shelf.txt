@@ -9,7 +9,7 @@ shelf commands           367         -       843
 shelf commands list      702         2697    4242
 shelf schemas            424         -       900
 shelf schemas list       502         1376    2778
-shelf schemas show       484         2454    3838
+shelf schemas show       484         2705    4089
 shelf self               417         -       893
 shelf self usage         594         -       1487
 shelf self figures       390         -       1283

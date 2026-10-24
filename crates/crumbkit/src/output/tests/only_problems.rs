@@ -351,3 +351,64 @@ fn the_budget_cut_line_counts_the_printed_problem_rows_against_the_listing_total
          note: 10 of the checks report a problem, so the command exits with 1.\n"
     );
 }
+
+/// Whether a service is down, which reads `ok` or `down` in text and is a
+/// boolean in JSON, so the problem field is `false` for a healthy service.
+#[derive(Clone, Copy)]
+struct Fault(bool);
+
+impl fmt::Display for Fault {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(if self.0 { "down" } else { "ok" })
+    }
+}
+
+impl crate::Shown for Fault {
+    fn json<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.serialize_bool(self.0)
+    }
+
+    fn schema(generator: &mut schemars::SchemaGenerator) -> schemars::Schema {
+        bool::json_schema(generator)
+    }
+}
+
+crate::shown!(Fault);
+
+/// A service whose problem field is a shown value.
+#[derive(Serialize, JsonSchema)]
+struct Service {
+    /// The service's name.
+    name: &'static str,
+    /// Whether the service is down.
+    fault: Fault,
+}
+
+impl Row for Service {
+    const COLUMNS: &'static [&'static str] = &["name", "fault"];
+    const PROBLEM: Option<&'static str> = Some("fault");
+}
+
+const SERVICES: Document<Listing<Service>> =
+    Document::new("lint", "services", 1, "The test services.").only_problems();
+
+#[test]
+fn a_shown_problem_field_is_judged_by_its_json_form_and_printed_as_its_text() {
+    // The healthy service comes first, against the usual order, so a filter
+    // that judged the text form `ok` as a problem would print it.
+    let services = vec![
+        Service {
+            name: "web",
+            fault: Fault(false),
+        },
+        Service {
+            name: "db",
+            fault: Fault(true),
+        },
+    ];
+
+    let finished = finish_with(&[], SERVICES, Listing::from_all(services, None));
+
+    assert_eq!(finished.code, ExitCode::from(1));
+    assert_eq!(finished.out, "NAME  FAULT\ndb    down\n");
+}

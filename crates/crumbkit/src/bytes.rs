@@ -110,9 +110,9 @@ impl fmt::Display for Bytes {
 
 /// Writes the JSON form as `{"text": "..."}` when the bytes are valid
 /// UTF-8, and as `{"base64": "..."}` otherwise, and describes it as an
-/// object with the properties `text` and `base64`, of which it holds exactly
-/// one. The two properties sit at the top level of the schema, so a row that flattens the bytes lists them among
-/// its own properties.
+/// object with the properties `text` and `base64`, of which it holds
+/// exactly one. The two properties sit at the top level of the schema, so
+/// a row that flattens the bytes lists them among its own properties.
 impl Shown for Bytes {
     fn json<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         let mut map = serializer.serialize_map(Some(1))?;

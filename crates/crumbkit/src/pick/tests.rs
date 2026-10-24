@@ -127,3 +127,51 @@ fn a_picker_debugs_as_its_trait_name() {
     let picker: &dyn Picker = &Last;
     assert_eq!(format!("{picker:?}"), "Picker");
 }
+
+/// A ticket number, which reads `#7` in text and is the number `7` in JSON.
+struct Ticket(u32);
+
+impl std::fmt::Display for Ticket {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "#{}", self.0)
+    }
+}
+
+impl crate::Shown for Ticket {
+    fn json<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.serialize_u32(self.0)
+    }
+
+    fn schema(generator: &mut schemars::SchemaGenerator) -> schemars::Schema {
+        u32::json_schema(generator)
+    }
+}
+
+crate::shown!(Ticket);
+
+/// A run of a job, whose id and length are shown values.
+#[derive(Serialize, JsonSchema)]
+struct Run {
+    id: Ticket,
+    took: crate::Duration,
+}
+
+impl Row for Run {
+    const COLUMNS: &'static [&'static str] = &["id", "took"];
+}
+
+#[test]
+fn from_rows_labels_a_choice_with_the_text_form_and_keeps_the_json_form_as_its_value() {
+    let runs = [Run {
+        id: Ticket(7),
+        took: crate::Duration(std::time::Duration::from_secs(250)),
+    }];
+
+    let choices = from_rows(&runs, "id");
+
+    let pairs: Vec<(&str, &str)> = choices
+        .iter()
+        .map(|choice| (choice.value(), choice.label()))
+        .collect();
+    assert_eq!(pairs, [("7", "4m 10s")]);
+}

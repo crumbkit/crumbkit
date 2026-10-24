@@ -211,9 +211,10 @@ fn the_row_schema_describes_each_shown_value_in_its_json_form() {
         Some(&json!("integer"))
     );
     assert_eq!(
-        schema.pointer("/properties/kept/format"),
-        Some(&json!("duration"))
+        schema.pointer("/properties/kept/type"),
+        Some(&json!("string"))
     );
+    assert!(schema.pointer("/properties/kept/pattern").is_some());
     assert_eq!(
         schema.pointer("/properties/reminders/items"),
         Some(&json!({"type": "string"}))

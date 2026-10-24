@@ -25,8 +25,10 @@ crate-private thread-local that `finish` set while it built text cells
 serde gives a `Serializer` no way to call any method of a value other than
 `Serialize::serialize`. A crumbkit serializer for text cells could
 recognise a marker type by its name, but it could not reach the value's
-`Display` through it. serde also gives `Serialize` no way to ask the
-serializer which mode it is in.
+`Display` through it. The one signal that serde passes from a serializer
+to a value is `Serializer::is_human_readable`, which is `true` for
+`serde_json` and which many crates read to choose between two encodings
+of their own.
 
 ## Decision
 
@@ -77,8 +79,15 @@ mode, so a value type cannot observe a mode that crumbkit did not set.
 
 A row whose `CHILDREN` field holds strings and that kept the old default
 now prints those strings as child lines. A row that overrides
-`child_lines` prints as before. The default serializes the whole row once
-more for each row that prints child lines.
+`child_lines` prints as before. The default serializes the whole row again
+for each row that prints child lines, so a row of such a type serializes
+twice in the text table, and up to four times when `Room` measures it
+first. The code marks this cost and what would remove it.
+
+Code of the tool that runs inside a serialization in the text mode sees
+the text form of every shown value: a `serialize_with` function, a hand
+`Serialize`, a `Display` and an `is_problem` override that serializes the
+row. crumbkit decides `Row::is_problem` before it sets the mode.
 
 Considered: a `Row::cells` method that every row writes by hand, which
 costs each row type a second description of its fields; a derive that
@@ -86,5 +95,8 @@ writes `Row::cells`, which makes every tool build syn; text derived from
 the JSON form through the schema's `format`, which needs a formatter for
 each format in crumbkit and gives a tool's own type no text of its own; a
 serializer that recognises a marker type by name, which cannot reach the
-value's `Display`; and `Shown` without the `Display` bound, which lets one
-value print two different texts.
+value's `Display`; a text cell serializer whose `is_human_readable` is
+`false` for the JSON form, or the reverse, which changes how chrono, uuid,
+IP addresses and similar types serialize in every row, not only the
+values that opt in; and `Shown` without the `Display` bound, which lets
+one value print two different texts.

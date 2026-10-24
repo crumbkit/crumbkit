@@ -52,13 +52,13 @@ fn a_duration_of_minutes_and_seconds_writes_both() {
 fn a_part_that_is_zero_is_left_out() {
     assert_eq!(iso(Std::from_secs(60)), "PT1M");
     assert_eq!(iso(Std::from_secs(3_600)), "PT1H");
-    assert_eq!(iso(Std::from_secs(3_605)), "PT1H5S");
     assert_eq!(iso(Std::from_secs(3_660)), "PT1H1M");
 }
 
 #[test]
-fn a_fraction_after_hours_writes_zero_seconds_with_the_fraction() {
-    assert_eq!(iso(Std::new(3_600, 500_000_000)), "PT1H0.5S");
+fn seconds_after_hours_write_zero_minutes_between_them() {
+    assert_eq!(iso(Std::from_secs(3_605)), "PT1H0M5S");
+    assert_eq!(iso(Std::new(3_600, 500_000_000)), "PT1H0M0.5S");
 }
 
 #[test]
@@ -69,7 +69,7 @@ fn days_write_as_hours() {
 
 #[test]
 fn the_largest_duration_writes_every_hour_and_nanosecond() {
-    assert_eq!(iso(Std::MAX), "PT5124095576030431H15.999999999S");
+    assert_eq!(iso(Std::MAX), "PT5124095576030431H0M15.999999999S");
 }
 
 /// Returns the text form of `duration`.
@@ -91,10 +91,24 @@ fn a_duration_under_a_second_reads_in_its_largest_whole_sub_second_unit() {
 }
 
 #[test]
-fn a_duration_of_a_second_or_more_drops_its_fraction() {
+fn a_duration_under_a_minute_reads_in_seconds_with_one_decimal_place() {
     assert_eq!(text(Std::from_secs(1)), "1s");
     assert_eq!(text(Std::from_millis(1_050)), "1s");
+    assert_eq!(text(Std::from_millis(1_900)), "1.9s");
     assert_eq!(text(Std::from_secs(45)), "45s");
+    assert_eq!(text(Std::from_millis(59_900)), "59.9s");
+}
+
+#[test]
+fn a_duration_just_under_a_minute_rounds_down_to_59_9s() {
+    assert_eq!(text(Std::from_millis(59_990)), "59.9s");
+    assert_eq!(text(Std::from_nanos(59_999_999_999)), "59.9s");
+}
+
+#[test]
+fn a_duration_of_a_minute_or_more_drops_its_fraction_of_a_second() {
+    assert_eq!(text(Std::from_millis(60_900)), "1m");
+    assert_eq!(text(Std::from_millis(70_900)), "1m 10s");
 }
 
 #[test]
@@ -136,11 +150,71 @@ fn durations_order_by_their_length() {
 }
 
 #[test]
-fn the_schema_of_a_duration_is_a_string_in_the_duration_format() {
+fn the_schema_of_a_duration_is_a_string_with_a_pattern_and_no_format() {
     let schema = schema_for!(Duration).to_value();
 
     assert_eq!(schema.get("type"), Some(&json!("string")));
-    assert_eq!(schema.get("format"), Some(&json!("duration")));
+    assert_eq!(schema.get("pattern"), Some(&json!(super::PATTERN)));
+    assert_eq!(schema.get("format"), None);
+}
+
+/// Returns the pattern of the schema as a regular expression.
+fn pattern() -> Option<regex_lite::Regex> {
+    regex_lite::Regex::new(super::PATTERN).ok()
+}
+
+#[test]
+fn the_pattern_accepts_every_form_that_a_duration_writes() {
+    let pattern = pattern().unwrap();
+    let durations = [
+        Std::ZERO,
+        Std::from_nanos(1),
+        Std::from_millis(300),
+        Std::from_millis(250),
+        Std::from_secs(1),
+        Std::new(1, 1),
+        Std::from_millis(1_050),
+        Std::from_secs(59),
+        Std::new(59, 999_999_999),
+        Std::from_secs(60),
+        Std::new(60, 500_000_000),
+        Std::from_secs(4 * 60 + 10),
+        Std::from_secs(59 * 60 + 59),
+        Std::from_secs(3_600),
+        Std::from_secs(3_605),
+        Std::new(3_600, 500_000_000),
+        Std::from_secs(3_660),
+        Std::from_secs(3_661),
+        Std::from_secs(29 * 3_600 + 20 * 60),
+        Std::from_secs(3 * 24 * 3_600),
+        Std::MAX,
+    ];
+    for duration in durations {
+        let written = iso(duration);
+        assert!(pattern.is_match(&written), "{written}");
+    }
+}
+
+#[test]
+fn the_pattern_refuses_forms_that_a_duration_never_writes() {
+    let pattern = pattern().unwrap();
+    for refused in [
+        "PT",
+        "P3D",
+        "PT1H5S",
+        "PT1H0M",
+        "PT1M0S",
+        "PT60S",
+        "PT60M",
+        "PT01M",
+        "PT0H5M",
+        "PT1.50S",
+        "PT1.0S",
+        "PT0.0000000001S",
+        "PT4M10S ",
+    ] {
+        assert!(!pattern.is_match(refused), "{refused}");
+    }
 }
 
 /// A row with a length of time.
@@ -157,8 +231,8 @@ fn a_rows_schema_holds_a_duration_field_inline() {
     let schema = schema_for!(Call).to_value();
 
     assert_eq!(
-        schema.pointer("/properties/took/format"),
-        Some(&json!("duration"))
+        schema.pointer("/properties/took/pattern"),
+        Some(&json!(super::PATTERN))
     );
     assert_eq!(
         schema.pointer("/properties/took/description"),

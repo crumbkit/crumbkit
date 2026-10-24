@@ -208,11 +208,14 @@ fn write_rows<T: Rows>(
     // run prints only one of the two. The rows are serialized once, so a
     // shown value writes its `Display` when the run prints text.
     // The text of a document that lists only the rows that report a
-    // problem serializes only those rows (ADR-0138).
+    // problem serializes only those rows (ADR-0138). `Row::is_problem`
+    // decides which before the text mode starts, so a problem field of a
+    // shown value is judged by its JSON form.
     let only = problems::only(&document, settings.view);
+    let shown: Vec<&T::Row> = problems::shown(value.rows(), only).collect();
     let values = {
         let _cells = (!settings.is_json()).then(TextCells::enter);
-        values(&columns, problems::shown(value.rows(), only))?
+        values(&columns, shown.into_iter())?
     };
     let mut prepared = Prepared::new(settings, document, value, &columns, &values, next, problems)?;
     let listed = failures.map(Failures::of);

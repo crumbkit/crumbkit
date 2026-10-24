@@ -37,33 +37,59 @@ const UNITS: [(u64, char); 5] = [
 /// first, each with the nanoseconds it holds and its spelling.
 const SUB_SECOND_UNITS: [(u32, &str); 3] = [(1_000_000, "ms"), (1_000, "\u{b5}s"), (1, "ns")];
 
+/// The pattern of the JSON form of a [`Duration`], which matches every
+/// string that [`Iso8601`] writes and no other: whole hours without leading
+/// zeros, minutes and seconds from 0 to 59 without leading zeros, and a
+/// fraction of a second of one to nine digits without trailing zeros.
+const PATTERN: &str = concat!(
+    r"^PT(?:",
+    // Hours, then minutes and seconds that are not zero, or minutes alone.
+    r"[1-9][0-9]*H(?:[1-5]?[0-9]M",
+    r"(?:(?:[1-5][0-9]|[1-9])(?:\.[0-9]{0,8}[1-9])?|0\.[0-9]{0,8}[1-9])S",
+    r"|(?:[1-5][0-9]|[1-9])M)?",
+    // Minutes that are not zero, then seconds that are not zero.
+    r"|(?:[1-5][0-9]|[1-9])M",
+    r"(?:(?:(?:[1-5][0-9]|[1-9])(?:\.[0-9]{0,8}[1-9])?|0\.[0-9]{0,8}[1-9])S)?",
+    // Seconds alone, which may be zero.
+    r"|[1-5]?[0-9](?:\.[0-9]{0,8}[1-9])?S",
+    r")$",
+);
+
 /// The type of a row field or a failure field that holds a length of time,
-/// such as how long a request took. Text shows it in its two largest units,
-/// such as `4m 10s`, and JSON holds it as an ISO 8601 duration, such as
+/// such as how long a request took. Text shows it in a short form, such as
+/// `4m 10s` or `1.9s`, and JSON holds it as an ISO 8601 duration, such as
 /// `PT4M10S`.
 ///
 /// The text form uses the unit spellings of an [`Age`](crate::Age) column,
-/// `s`, `m`, `h`, `d` and `w`. From one second up it is the largest unit
-/// with a whole count, then the next smaller unit when its count is not
-/// zero, so it reads `45s`, `2m`, `4m 10s`, `1h`, `1h 5m`, `3d 2h` or
-/// `1w 1d`. A unit two places down never prints, so 1 hour and 5 seconds
-/// reads `1h`, and each count rounds down, so 1.05 seconds reads `1s`.
-/// Under one second it is the largest of milliseconds, microseconds and
-/// nanoseconds with a whole count, so it reads `300ms`, `999µs` or `500ns`.
-/// A zero duration reads `0s`.
+/// `s`, `m`, `h`, `d` and `w`, and depends on the length:
+///
+/// - Under one second it is the largest of milliseconds, microseconds and
+///   nanoseconds with a whole count, such as `300ms`, `999µs` or `500ns`. A
+///   zero duration reads `0s`.
+/// - From one second to under a minute it is seconds with one decimal
+///   place, without a trailing `.0`, such as `1s`, `1.9s` or `59.9s`. The
+///   tenths round down, so 59.99 seconds reads `59.9s` and never `60s`.
+/// - From one minute up it is the largest unit with a whole count, then the
+///   next smaller unit when its count is not zero, such as `2m`, `4m 10s`,
+///   `1h`, `1h 5m`, `3d 2h` or `1w 1d`. A unit two places down never
+///   prints, so 1 hour and 5 seconds reads `1h`, and each count rounds down.
 ///
 /// The JSON form is exact to the nanosecond. It is `PT`, then the whole
-/// hours with `H`, the minutes from 1 to 59 with `M` and the seconds with
-/// `S`, leaving out each part that is zero, such as `PT4M10S` or `PT1H5S`.
+/// hours with `H`, the minutes with `M` and the seconds with `S`, such as
+/// `PT4M10S`. It leaves out a part that is zero, except that minutes always
+/// come between hours and seconds, so 1 hour and 5 seconds is `PT1H0M5S`.
 /// The seconds carry a fraction when the duration has one, with no
 /// trailing zeros, such as `PT0.3S` or `PT1.000000001S`. A zero duration is
 /// `PT0S`. Hours are the largest unit, so three days are `PT72H`, because
 /// ISO 8601 reads a day as a calendar day, which a change of daylight
-/// saving time can make 23 or 25 hours long. The field's JSON Schema is an
-/// inline string in the format `duration`. RFC 3339's grammar for that
-/// format, in its appendix A, has no fraction of a second, so a validator
-/// that follows it strictly refuses a duration with a fraction, which ISO
-/// 8601 itself allows.
+/// saving time can make 23 or 25 hours long.
+///
+/// The field's JSON Schema is an inline string with a `pattern` that
+/// matches exactly the strings that `Duration` writes. It declares no
+/// `format`, because the JSON Schema format `duration` follows the grammar
+/// in appendix A of RFC 3339, which has no fraction of a second, so a
+/// validator that checks formats would refuse every duration under a
+/// second.
 ///
 /// `Duration` implements [`Shown`], so the text table, `--fields` text and
 /// a stream's text line print the text form, and every JSON form, including
@@ -105,6 +131,16 @@ impl fmt::Display for Duration {
                 None => f.write_str("0s"),
             };
         }
+        if seconds < MINUTE {
+            // Tenths of a second, rounded down, so 59.99 seconds reads
+            // `59.9s` and never `60s`.
+            let tenths = self.0.subsec_nanos() / 100_000_000;
+            return if tenths == 0 {
+                write!(f, "{seconds}s")
+            } else {
+                write!(f, "{seconds}.{tenths}s")
+            };
+        }
         let mut units = UNITS.iter().skip_while(|(size, _)| seconds < *size);
         if let Some((size, unit)) = units.next() {
             write!(f, "{}{unit}", seconds / size)?;
@@ -144,9 +180,9 @@ impl Shown for Duration {
 
     fn schema(_: &mut SchemaGenerator) -> Schema {
         json_schema!({
-            "description": "A length of time as an ISO 8601 duration in hours, minutes and seconds, which the text table shows in its two largest units.",
+            "description": "A length of time as an ISO 8601 duration with hours as its largest unit and an optional decimal fraction of a second, such as PT4M10S, PT0.3S or PT72H.",
             "type": "string",
-            "format": "duration",
+            "pattern": PATTERN,
         })
     }
 }
@@ -161,14 +197,17 @@ impl fmt::Display for Iso8601 {
         let seconds = self.0.as_secs();
         let nanos = self.0.subsec_nanos();
         let (hours, minutes, rest) = (seconds / HOUR, seconds % HOUR / MINUTE, seconds % MINUTE);
+        let seconds_part = rest > 0 || nanos > 0 || (hours == 0 && minutes == 0);
         f.write_str("PT")?;
         if hours > 0 {
             write!(f, "{hours}H")?;
         }
-        if minutes > 0 {
+        // Minutes always come between hours and seconds, even when they are
+        // zero, so `PT1H0M5S` reads in the order RFC 3339's grammar expects.
+        if minutes > 0 || (hours > 0 && seconds_part) {
             write!(f, "{minutes}M")?;
         }
-        if rest == 0 && nanos == 0 && (hours > 0 || minutes > 0) {
+        if !seconds_part {
             return Ok(());
         }
         write!(f, "{rest}")?;

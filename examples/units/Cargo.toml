@@ -1,0 +1,17 @@
+[package]
+name = "units"
+description = "crumbkit's check that a value type builds in a crate whose only dependency is crumbkit"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+
+[dependencies]
+# units calls `crumbkit::shown!` with no dependency on serde or schemars of
+# its own, which the macro reaches through crumbkit.
+crumbkit = { workspace = true }
+
+[lints]
+workspace = true
