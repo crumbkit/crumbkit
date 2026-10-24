@@ -337,6 +337,26 @@ fn full_with_json_on_an_unwrapped_leaf_is_accepted() {
 }
 
 #[test]
+fn long_and_full_with_json_on_a_prose_leaf_are_accepted() {
+    for flag in ["--long", "--full"] {
+        let parsed = parse(&["tool", "books", "count", "--json", flag]);
+
+        assert_eq!(parsed.code, None, "{flag}: {}", parsed.out);
+        assert_eq!(parsed.err, "", "{flag}");
+    }
+}
+
+#[test]
+fn long_and_full_with_json_on_a_headed_leaf_are_accepted() {
+    for flag in ["--long", "--full"] {
+        let parsed = parse(&["tool", "books", "read", "--json", flag]);
+
+        assert_eq!(parsed.code, None, "{flag}: {}", parsed.out);
+        assert_eq!(parsed.err, "", "{flag}");
+    }
+}
+
+#[test]
 fn fields_on_a_bytes_leaf_is_refused_with_the_bytes_wording() {
     let parsed = parse(&["tool", "books", "export", "--fields", "id"]);
 

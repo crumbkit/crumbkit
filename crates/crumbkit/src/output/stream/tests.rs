@@ -478,6 +478,16 @@ fn another_write_error_is_reported_once_and_the_stream_exits_with_1() {
 /// 1024 bytes, until the stream breaks, and returns what it wrote and the
 /// number of items it accepted.
 fn run_budgeted(flags: &[&str], count: usize) -> (Streamed, usize) {
+    run_budgeted_as(flags, count, SIGHTINGS)
+}
+
+/// Streams `count` robins as `document` with `flags` and a guide whose
+/// output budget is 1024 bytes, as [`run_budgeted`] does.
+fn run_budgeted_as(
+    flags: &[&str],
+    count: usize,
+    document: Document<Stream<Sighting>>,
+) -> (Streamed, usize) {
     let mut command = Tool::command();
     let args = ["birds", "watch"].iter().chain(flags);
     let matches = command.try_get_matches_from_mut(args.clone()).unwrap();
@@ -488,7 +498,7 @@ fn run_budgeted(flags: &[&str], count: usize) -> (Streamed, usize) {
     let mut err = Vec::new();
     let mut sink = Sink::new(&mut out, &mut err);
     let mut accepted = 0;
-    let code = match stream_to(&mut sink, output, SIGHTINGS) {
+    let code = match stream_to(&mut sink, output, document) {
         Ok(mut streaming) => {
             for _ in 0..count {
                 if streaming.item(&robin()).is_break() {

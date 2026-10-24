@@ -341,8 +341,11 @@ impl<R: Row, O: Write, W: Write> Streaming<R, O, W> {
     /// text, while the pipe is open, it prints a note such as `note: 2 of
     /// the rows report a problem, so the command exits with 1.` on the error
     /// writer (ADR-0050). With `--json`, while the pipe is open, it prints a
-    /// note when `--long` or `--full` adds nothing to the JSON, as for
-    /// [`finish_to`](crate::finish_to) (ADR-0149).
+    /// note when `--long` or `--full` adds nothing to the JSON (ADR-0149),
+    /// also when the output budget stopped the stream and when `result` is
+    /// an `Err`, because the stream has printed result lines by then.
+    /// `finish` prints no such note for an `Err`, which prints only the
+    /// failure.
     #[must_use]
     #[expect(
         clippy::needless_pass_by_value,
@@ -359,8 +362,11 @@ impl<R: Row, O: Write, W: Write> Streaming<R, O, W> {
         if !self.view.is_json() && !self.failed && self.state == State::Open && self.problems > 0 {
             self.note(Message::Note, &problems::note(self.problems, None));
         }
+        // The note follows the lines that the stream printed, so a stream
+        // that the output budget stopped prints it too, as a cut `finish`
+        // result does.
         let printed = Printed::of::<R, _>(Kind::Stream, &self.document);
-        if self.state == State::Open
+        if matches!(self.state, State::Open | State::Spent)
             && let Some(note) = fields::adds_nothing_note(&printed, &self.view)
         {
             self.note(Message::Note, &note);

@@ -133,7 +133,12 @@ stream.
   standard error: `note: --long adds nothing to --json here; the JSON
   already holds the whole result.`, or the same note for `--full`. With
   both flags, the note names `--full` once, because `--full` already takes
-  in `--long`. A stream writes the note after its last line. Help still
+  in `--long`. The note follows the result and its cut line, and comes
+  before a batch's or prose result's failures and before the dry-run
+  line. A stream writes it after its last line, so after any failure it
+  printed, also when the output budget stopped it or it ended in a
+  failure. `finish` prints no note for a command that fails as a whole.
+  Help still
   leaves `--full` out, because it adds nothing. The same holds for prose,
   bytes, headed bytes and a document without the envelope, whose JSON
   also holds the whole result.

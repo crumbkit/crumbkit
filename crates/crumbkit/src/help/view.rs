@@ -18,8 +18,9 @@ mod tests;
 /// types them, and `finish` and `stream` refuse them by the same rule.
 /// `--long` and `--full` with `--json` on a command whose JSON already holds
 /// the whole result add nothing to it, and are accepted with a note in place
-/// of the refusal, as [`Leaf::adds_nothing`](super::Leaf::adds_nothing)
-/// describes (ADR-0149).
+/// of the refusal: for prose and bytes, a document or stream without the
+/// envelope, a headed document and rows whose type sets `Row::WHOLE`
+/// (ADR-0149).
 #[non_exhaustive]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ViewFlag {

@@ -174,6 +174,10 @@ fn long_with_json_on_bytes_prints_the_json_document_and_a_note() {
 #[test]
 fn long_without_json_on_bytes_is_still_refused() {
     assert_one_word_apart(&["--long"], &["--json", "--long"]);
+    assert_eq!(
+        finish_with(&["--json", "--long"], raw()).code,
+        ExitCode::SUCCESS
+    );
 
     let finished = finish_with(&["--long"], raw());
 

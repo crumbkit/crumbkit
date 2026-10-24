@@ -83,8 +83,9 @@ pub(super) fn deepest<'a>(
 /// the note for such a flag. `path` names `node`, the deepest command that
 /// the caller typed, and `level` holds its matches. On a leaf whose
 /// document is headed, it then refuses `--fields` without `--json`, as
-/// [`view::headed`] describes (ADR-0062). It then refuses two typed flags that cannot work together,
-/// on every command, as [`View::try_from`] describes (ADR-0093). On a leaf
+/// [`view::headed`] describes (ADR-0062). It then refuses two typed flags
+/// that cannot work together, on every command, as [`View::try_from`]
+/// describes (ADR-0093). On a leaf
 /// with a document, it last refuses a `--fields` name that the row type of
 /// the document lacks, as [`unknown_field`] describes.
 ///

@@ -15,6 +15,7 @@ use crate::view::{Selection, View};
 use crate::{Document, Error, Listing, Row, Rows, Sink, Stop, ViewFlags};
 
 mod about;
+mod adds_nothing;
 mod batch;
 mod budget;
 mod built;

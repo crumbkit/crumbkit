@@ -27,8 +27,9 @@ pub(super) fn flags_refusal<T: Rows>(output: &Output, document: Document<T>) -> 
 /// rule of [`view::unoffered`], in the order `--fields`, `--long`,
 /// `--full`, and accepts a flag that adds nothing to the JSON, as
 /// [`view::adds_nothing`] decides. For a headed document it then refuses
-/// `--fields` without `--json`, as [`view::headed`] describes. It then refuses the first name
-/// in `view` that is not a field of `R`, as [`unknown_field`] describes.
+/// `--fields` without `--json`, as [`view::headed`] describes. It then
+/// refuses the first name in `view` that is not a field of `R`, as
+/// [`unknown_field`] describes.
 /// The pairs that cannot work together were refused when `view` was built
 /// (ADR-0093).
 pub(super) fn refusal<R: Row>(printed: &Printed, view: &View) -> Option<Refusal> {

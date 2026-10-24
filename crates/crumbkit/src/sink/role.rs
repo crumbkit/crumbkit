@@ -43,7 +43,8 @@ pub(crate) enum Message {
     Failure,
     /// A line that describes a result or a stream: a listing's footer or
     /// empty note, the cut line, the note of the rows that report a
-    /// problem, the tool's note and the `Next:` line (ADR-0050).
+    /// problem, the tool's note, the `Next:` line (ADR-0050) and the note
+    /// that `--long` or `--full` adds nothing to the JSON (ADR-0149).
     Note,
     /// A `warning:` line that only a debug build prints, about a failure
     /// field or a recovery that crumbkit left out.

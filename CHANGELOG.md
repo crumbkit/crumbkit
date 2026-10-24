@@ -648,10 +648,10 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
-- crumbkit: `--long` and `--full` with `--json` print the `--json` document
-  with a note in place of a refusal when the JSON already holds the whole
-  result: prose, bytes, headed documents, documents without the envelope
-  and whole rows ([behaviour/output/shapes]).
+- crumbkit: `--json --long` and `--json --full` print the `--json` output
+  and a note where JSON holds the whole result: prose, bytes, headed,
+  unenveloped and whole-row documents and streams. Before, crumbkit refused
+  them, or stayed silent for unenveloped long columns ([behaviour/output/shapes]).
 - crumbkit: a row whose `CHILDREN` field holds plain strings now prints
   those strings as child lines by default. Before, the default
   `Row::child_lines` printed no lines. A field of value types prints each
@@ -940,8 +940,8 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   cannot use, and [`parse`] refuses such a flag as a refused command line
   before the handler runs ([behaviour/output]).
 - crumbkit: [`finish`] and [`stream`] refuse `--long` without `--json`
-  for prose, and `--long` for rows without long columns
-  ([behaviour/output]).
+  for prose, and `--long` for enveloped rows without long columns that do
+  not print whole ([behaviour/output]).
 - crumbkit: `complete_to` takes the name of the completion variable, which
   the registration script sets ([behaviour/parsing/completion]).
 - crumbkit: `Batch::new` takes the command, the argument and the keys

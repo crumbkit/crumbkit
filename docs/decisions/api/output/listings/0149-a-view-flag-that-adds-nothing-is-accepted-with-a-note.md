@@ -42,6 +42,12 @@ not cost a second call.
   alone, because `--full` already takes in `--long`, so the note names
   `--full` once. The note does not start with `warning: <tool> left out`,
   the prefix that crumbkit-test's example checks fail on.
+- `finish` writes the note after the result and its cut line, before the
+  failures of a batch or prose result and before the dry-run line. It
+  writes no note for a command that fails as a whole, because that run
+  prints only the failure. A stream writes the note after its last line,
+  also when the output budget stopped it or `end` received an `Err`,
+  because the stream has printed result lines by then.
 - The refusals that guard a real conflict stay: `--fields` where the
   document has no columns, `--full` without `--json`, `--long` without
   `--json` where there is no table or no long column, `--long` with
@@ -50,8 +56,8 @@ not cost a second call.
   on a leaf that prints no result (ADR-0143).
 - Help still leaves out a flag that the leaf does not offer, so it does
   not suggest a flag that adds nothing. crumbkit-test's `check_guide`
-  still fails an example that types such a flag, and its message says
-  that crumbkit prints a note.
+  fails an example that types a flag that adds nothing, offered or not,
+  and its message says that crumbkit prints a note.
 
 ## Consequences
 

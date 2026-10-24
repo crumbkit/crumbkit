@@ -205,6 +205,7 @@ fn long_without_json_on_a_whole_row_leaf_without_columns_is_refused() {
     let refused = ["tool", "audits", "--long"];
     let admitted = ["tool", "audits", "--json", "--long"];
     assert_one_word_apart(&refused, &admitted);
+    assert_eq!(parse(&admitted).code, None, "{}", parse(&admitted).err);
 
     let parsed = parse(&refused);
 

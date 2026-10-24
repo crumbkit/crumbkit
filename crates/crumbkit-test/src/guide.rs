@@ -48,8 +48,8 @@ mod tests;
 ///   example shows a real run;
 /// - an example that types `--fields`, `--long` or `--full` when the leaf
 ///   does not offer that flag (`Leaf::offers`), because crumbkit refuses
-///   the run, or, for a flag that adds nothing to the JSON
-///   (`Leaf::adds_nothing`), prints a note that says so;
+///   the run, or when the flag adds nothing to the JSON, offered or not,
+///   because crumbkit prints a note that says so;
 /// - a visible command without subcommands, the root included when it has
 ///   none, that no leaf with at least one example names, because its help
 ///   then shows no example, unless an opt-out from [`Rule::GuideExamples`]
@@ -321,7 +321,7 @@ fn check_leaves(
             let line = command_line(&text, example.words());
             match parser.try_get_matches_from_mut(args) {
                 Ok(matches) => {
-                    for (flag, adds_nothing) in unoffered_flags(leaf, node, &matches) {
+                    for (flag, adds_nothing) in flagged_view_flags(leaf, node, &matches) {
                         let flag = flag.name();
                         let outcome = if adds_nothing {
                             "adds nothing to the command's JSON, so crumbkit prints a note that says so"
@@ -478,33 +478,38 @@ fn check_problem(text: &str, field: &str, columns: &[Column], problems: &mut Vec
 }
 
 /// Returns each view flag that the caller typed in `matches`, the matches
-/// of one example of `leaf`, and that the leaf does not offer, with whether
-/// crumbkit accepts it because it adds nothing to the leaf's JSON, as
-/// `Leaf::adds_nothing` decides (ADR-0149).
-/// The flag's
-/// value sits in the matches of the leaf's command, at the end of the path
-/// of subcommands, also when the example types it before that path. A flag
-/// whose name `node`, the leaf's command, declares as its own argument that
-/// is not global does not count, because it is the tool's own flag.
-fn unoffered_flags(leaf: &Leaf, node: &Command, matches: &ArgMatches) -> Vec<(ViewFlag, bool)> {
+/// of one example of `leaf`, and that the leaf does not offer or that adds
+/// nothing to the leaf's JSON, as `Leaf::adds_nothing` decides (ADR-0149),
+/// with whether it adds nothing. crumbkit refuses the first kind and
+/// prints a note for the second, so an example should type neither.
+///
+/// The flag's value sits in the matches of the leaf's command, at the end
+/// of the path of subcommands, also when the example types it before that
+/// path. A flag whose name `node`, the leaf's command, declares as its own
+/// argument that is not global does not count, because it is the tool's
+/// own flag.
+fn flagged_view_flags(leaf: &Leaf, node: &Command, matches: &ArgMatches) -> Vec<(ViewFlag, bool)> {
     let mut level = matches;
     while let Some((_, next)) = level.subcommand() {
         level = next;
     }
     // crumbkit's `ViewFlags` gives each view flag the id of its long name.
+    // A command above the leaf that declares its own `--json` that is not
+    // global can leave the id in `ids()` while `value_source` panics on it,
+    // so `try_contains_id` checks first that the leaf's matches accept it.
     let typed = |id: &str| {
-        level.ids().any(|known| known == id)
+        matches!(level.try_contains_id(id), Ok(true))
             && level.value_source(id) == Some(ValueSource::CommandLine)
             && !node
                 .get_arguments()
                 .any(|arg| arg.get_id() == id && !arg.is_global_set())
     };
+    let json = typed("json");
     [ViewFlag::Fields, ViewFlag::Long, ViewFlag::Full]
         .into_iter()
-        .filter(|flag| !leaf.offers(*flag) && typed(flag.name().trim_start_matches('-')))
-        // `--json` is looked up only once a view flag is typed, because a
-        // command that declares its own `--json` keeps it out of the matches.
-        .map(|flag| (flag, leaf.adds_nothing(flag, typed("json"))))
+        .filter(|flag| typed(flag.name().trim_start_matches('-')))
+        .map(|flag| (flag, leaf.adds_nothing(flag, json)))
+        .filter(|(flag, adds_nothing)| *adds_nothing || !leaf.offers(*flag))
         .collect()
 }
 

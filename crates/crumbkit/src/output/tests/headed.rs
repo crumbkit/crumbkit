@@ -10,6 +10,7 @@ use serde::Serialize;
 
 use super::Tool;
 use crate::help::Guide;
+use crate::twins::assert_one_word_apart;
 use crate::{Batch, Bytes, Document, Error, Headed, Row, Sink, finish_to};
 
 mod budget;
@@ -348,6 +349,10 @@ fn long_and_full_with_json_on_a_headed_document_print_the_json_document_and_a_no
 
 #[test]
 fn long_without_json_is_still_refused_on_a_headed_document() {
+    assert_one_word_apart(&["--long"], &["--json", "--long"]);
+    let admitted = finish_pages(&["--json", "--long"], batch(&[("a", Some(b"one\n"))]));
+    assert_eq!(admitted.code, ExitCode::SUCCESS, "{}", admitted.err);
+
     let long = finish_pages(&["--long"], batch(&[("a", Some(b"one\n"))]));
 
     assert_eq!(long.code, ExitCode::from(2));

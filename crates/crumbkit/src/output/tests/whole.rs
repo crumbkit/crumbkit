@@ -193,6 +193,10 @@ fn long_with_json_for_a_whole_row_type_without_columns_prints_the_json_document_
 #[test]
 fn long_without_json_for_a_whole_row_type_without_columns_is_still_refused() {
     assert_one_word_apart(&["--long"], &["--json", "--long"]);
+    assert_eq!(
+        finish_with(&["--json", "--long"], ANSWERS, answers()).code,
+        ExitCode::SUCCESS
+    );
 
     let finished = finish_with(&["--long"], ANSWERS, answers());
 

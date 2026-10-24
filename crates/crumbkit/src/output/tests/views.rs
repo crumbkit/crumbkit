@@ -49,6 +49,10 @@ error: --long adds the long columns of a table, and this command's rows have non
 fn finish_refuses_long_without_json_for_a_prose_result() {
     let eight = || Prose::new("Eight planets.".to_owned());
     assert_one_word_apart(&["--long"], &["--json", "--long"]);
+    assert_eq!(
+        finish_with(&["--json", "--long"], COUNT, eight()).code,
+        ExitCode::SUCCESS
+    );
 
     let long = finish_with(&["--long"], COUNT, eight());
 
