@@ -110,6 +110,9 @@ proptest = { workspace = true, features = ["std"] }
 # feature. The span tests install their test subscriber with
 # `tracing::subscriber::set_global_default`, which needs no tracing feature.
 tracing = { workspace = true }
+# The duration tests check that the pattern of a duration's schema accepts
+# every form that `Duration` writes.
+regex-lite = { workspace = true }
 # The test subscriber names the entered span with `tracing_core::span::Current`.
 tracing-core = { workspace = true }
 # `tests/derive.rs` checks what `#[derive(Failure)]` generates against the

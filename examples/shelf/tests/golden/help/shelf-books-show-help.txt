@@ -39,6 +39,8 @@ Columns:
   year    The year the book was first published.
 
 Columns that --long adds:
-  form  The book's literary form.
+  form     The book's literary form.
+  pages    The number of pages in a common edition.
+  reading  The time it takes to read the book at two minutes a page.
 
 Effects: read-only, closed-world.

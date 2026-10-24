@@ -7,6 +7,7 @@ use serde::Serialize;
 use serde_json::json;
 
 use super::{Base64, Bytes};
+use crate::shown::TextCells;
 use crate::{NoRow, Row, Rows, Shape};
 
 /// Returns the base64 text of `bytes`.
@@ -214,4 +215,25 @@ fn a_flattened_optional_bytes_field_adds_text_and_base64_to_the_properties_and_m
         serde_json::to_value(&row).unwrap(),
         json!({"name": "a.json"})
     );
+}
+
+#[test]
+fn a_flattened_bytes_field_stays_an_object_while_the_text_mode_is_set() {
+    let row = Flat {
+        name: "a.txt",
+        content: Bytes::from("one\n".to_owned()),
+    };
+
+    let value = {
+        let _cells = TextCells::enter();
+        serde_json::to_value(&row).unwrap()
+    };
+
+    assert_eq!(value, json!({"name": "a.txt", "text": "one\n"}));
+}
+
+#[test]
+fn bytes_display_as_text_when_they_are_utf8_and_as_a_count_otherwise() {
+    assert_eq!(Bytes::from("North\n".to_owned()).to_string(), "North\n");
+    assert_eq!(Bytes::new(vec![0x89, 0x50, 0xff]).to_string(), "<3 bytes>");
 }

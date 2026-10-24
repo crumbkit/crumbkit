@@ -1,28 +1,16 @@
 //! The age of a time in a row, which prints as a compact age in the text
 //! table and as an RFC 3339 time in JSON.
 
-use std::borrow::Cow;
-use std::cell::Cell;
 use std::fmt;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
-use schemars::{JsonSchema, Schema, SchemaGenerator, json_schema};
-use serde::ser::{Error as _, Serialize, Serializer};
+use schemars::{Schema, SchemaGenerator, json_schema};
+use serde::ser::{Error as _, Serializer};
+
+use crate::Shown;
 
 #[cfg(test)]
 mod tests;
-
-/// The seconds in a minute.
-const MINUTE: u64 = 60;
-
-/// The seconds in an hour.
-const HOUR: u64 = 60 * MINUTE;
-
-/// The seconds in a day.
-const DAY: u64 = 24 * HOUR;
-
-/// The seconds in a week.
-const WEEK: u64 = 7 * DAY;
 
 /// The seconds from 1970 to the start of the year 10000. RFC 3339 writes a
 /// year in four digits, so a time from this second on has no RFC 3339 form.
@@ -53,13 +41,9 @@ const YEAR_10000: u64 = 253_402_300_800;
 /// column that `--fields` can name, and an `Option<Age>` that is `None`
 /// shows as `-` in the table.
 ///
-/// `Age`'s `Serialize` writes the compact age while crumbkit builds the
-/// cells of a text table or of a stream's text line, and the RFC 3339 time
-/// otherwise. crumbkit sets that mode on the current thread only, for the
-/// duration of that serialization. It serializes a result's rows on the
-/// thread that calls [`finish`](crate::finish) or
-/// [`finish_to`](crate::finish_to), and a stream's rows on the thread that
-/// calls [`Streaming::item`](crate::Streaming::item). A tool that
+/// `Age` implements [`Shown`], so crumbkit prints the compact age where it
+/// builds text cells and the RFC 3339 time in every JSON form, as
+/// [`shown::serialize`](crate::shown::serialize) describes. A tool that
 /// serializes a row itself, with `serde_json` or another serializer, always
 /// gets the RFC 3339 time.
 ///
@@ -118,8 +102,9 @@ impl Age {
     ///
     /// It is for a duration that the tool measured, such as with
     /// [`Instant::elapsed`](std::time::Instant::elapsed), when the tool has
-    /// no time that the duration counts from. The value has no JSON form,
-    /// so a row field that JSON should hold as a time is an `Age`.
+    /// no time that the duration counts from. A row field that JSON should
+    /// hold as a length of time is a [`Duration`](crate::Duration), whose
+    /// text form shows two units, such as `4m 10s`.
     ///
     /// ```
     /// use std::time::Duration;
@@ -134,47 +119,21 @@ impl Age {
     /// ```
     #[must_use]
     pub const fn compact(elapsed: Duration) -> impl fmt::Display {
-        Compact(elapsed)
+        crate::duration::Largest(elapsed)
     }
 }
 
 /// Writes the compact age, such as `3h`, in the largest whole unit.
 impl fmt::Display for Age {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        Compact(self.elapsed).fmt(f)
+        crate::duration::Largest(self.elapsed).fmt(f)
     }
 }
 
-/// A duration that prints as a compact age, which [`Age::compact`] returns
-/// and `Age`'s `Display` writes through.
-struct Compact(Duration);
-
-/// Writes the duration in the largest whole unit, such as `3h`.
-impl fmt::Display for Compact {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let seconds = self.0.as_secs();
-        let (count, unit) = if seconds < MINUTE {
-            (seconds, 's')
-        } else if seconds < HOUR {
-            (seconds / MINUTE, 'm')
-        } else if seconds < DAY {
-            (seconds / HOUR, 'h')
-        } else if seconds < WEEK {
-            (seconds / DAY, 'd')
-        } else {
-            (seconds / WEEK, 'w')
-        };
-        write!(f, "{count}{unit}")
-    }
-}
-
-/// Serializes the compact age while crumbkit builds text cells on this
-/// thread, and the time in RFC 3339 with milliseconds otherwise.
-impl Serialize for Age {
-    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        if text_cells() {
-            return serializer.collect_str(self);
-        }
+/// Writes the JSON form as the time in RFC 3339 with milliseconds, and
+/// describes it as an inline string in the `date-time` format.
+impl Shown for Age {
+    fn json<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         // humantime panics on a time before 1970 and returns `fmt::Error`
         // from the year 10000 on, and serde_json panics on a `Display` that
         // fails, so both are refused here first.
@@ -189,25 +148,8 @@ impl Serialize for Age {
         }
         serializer.collect_str(&humantime::format_rfc3339_millis(self.at))
     }
-}
 
-/// Describes the age as a string in the `date-time` format. The schema is
-/// inline, so a row's property holds it with the field's own description,
-/// and an `Option<Age>` is a string or null.
-impl JsonSchema for Age {
-    fn inline_schema() -> bool {
-        true
-    }
-
-    fn schema_name() -> Cow<'static, str> {
-        "Age".into()
-    }
-
-    fn schema_id() -> Cow<'static, str> {
-        "crumbkit::Age".into()
-    }
-
-    fn json_schema(_: &mut SchemaGenerator) -> Schema {
+    fn schema(_: &mut SchemaGenerator) -> Schema {
         json_schema!({
             "description": "A time in RFC 3339 in UTC with milliseconds, which the text table shows as its age.",
             "type": "string",
@@ -216,45 +158,4 @@ impl JsonSchema for Age {
     }
 }
 
-thread_local! {
-    /// Whether an [`Age`] on this thread serializes as its compact age,
-    /// which [`TextCells`] sets while crumbkit builds text cells.
-    static TEXT_CELLS: Cell<bool> = const { Cell::new(false) };
-}
-
-/// Reports whether this thread is building text cells.
-fn text_cells() -> bool {
-    TEXT_CELLS.try_with(Cell::get).unwrap_or(false)
-}
-
-/// The text mode of this thread, which makes an [`Age`] serialize as its
-/// compact age until the guard is dropped. Dropping it restores the mode
-/// that [`TextCells::enter`] found, so a guard inside another leaves the
-/// outer one in effect, and a panic during the serialization ends the mode
-/// too.
-///
-/// crumbkit holds one only around the serialization of rows whose value
-/// becomes the cells of a text table or of a stream's text line.
-#[must_use = "the text mode ends when the guard is dropped"]
-pub(crate) struct TextCells {
-    /// The mode that the thread had before this guard.
-    previous: bool,
-}
-
-impl TextCells {
-    /// Sets the text mode on this thread until the guard is dropped.
-    pub(crate) fn enter() -> Self {
-        let previous = TEXT_CELLS
-            .try_with(|text| text.replace(true))
-            .unwrap_or(false);
-        Self { previous }
-    }
-}
-
-impl Drop for TextCells {
-    fn drop(&mut self) {
-        // The thread-local holds a `bool`, so it has no destructor and the
-        // access fails only while the thread itself is being torn down.
-        let _ = TEXT_CELLS.try_with(|text| text.set(self.previous));
-    }
-}
+crate::shown!(Age);

@@ -19,6 +19,7 @@ use serde_json::Value;
 pub use self::menu::Menu;
 pub use self::no_input::NoInput;
 use crate::output::table::{cell, escape_controls};
+use crate::shown::TextCells;
 use crate::{Error, Row};
 
 mod menu;
@@ -233,14 +234,19 @@ impl Choices {
 /// Returns one choice for each of `rows`, for a source that offers the rows
 /// that a list command prints.
 ///
-/// The value of each choice is the row's field `id`, where a string stays
-/// as it is and any other value is its JSON form. The label is the row's
-/// other [`Row::COLUMNS`], each as a table cell shows it, joined with two
+/// The value of each choice is the row's field `id` in its JSON form, where
+/// a string stays as it is and any other value is its JSON text. The label
+/// is the row's other [`Row::COLUMNS`], each as a text table cell shows it,
+/// with a [shown value](crate::Shown) as its `Display`, joined with two
 /// spaces, or the value when the row has no other column. A row that does
 /// not serialize, or whose field `id` is missing or `null`, has no choice.
 pub fn from_rows<T: Row + Serialize>(rows: &[T], id: &str) -> Vec<Choice> {
     rows.iter()
         .filter_map(|row| {
+            let text = {
+                let _cells = TextCells::enter();
+                serde_json::to_value(row).ok()?
+            };
             let row = serde_json::to_value(row).ok()?;
             let value = match row.get(id)? {
                 Value::Null => return None,
@@ -250,7 +256,7 @@ pub fn from_rows<T: Row + Serialize>(rows: &[T], id: &str) -> Vec<Choice> {
             let label = T::COLUMNS
                 .iter()
                 .filter(|&&name| name != id)
-                .map(|name| cell(row.get(name)))
+                .map(|name| cell(text.get(name)))
                 .collect::<Vec<_>>()
                 .join("  ");
             let label = if label.is_empty() {

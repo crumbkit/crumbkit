@@ -32,6 +32,7 @@ crumbkit is a virtual workspace.
 | `examples/shelf` | An unpublished example package with a `shelf` binary. |
 | `examples/reading` | An unpublished example package with a `reading` binary that adds a command for each reading list at run time. |
 | `examples/tutorial` | An unpublished package with one `pantry` binary for each step of the [tutorial](../tutorial.md). |
+| `examples/units` | An unpublished library whose only dependency is crumbkit, which checks that `crumbkit::shown!` needs no serde or schemars in the calling crate. |
 | `benches` | The unpublished benchmark package. |
 | `xtask` | The unpublished crate of repository checks. |
 

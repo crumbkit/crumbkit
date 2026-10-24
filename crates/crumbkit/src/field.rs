@@ -5,7 +5,9 @@ use std::borrow::Cow;
 use serde::ser::{SerializeMap, SerializeSeq};
 use serde::{Serialize, Serializer};
 
+use crate::Shown;
 use crate::segment::is_segment;
+use crate::shown::JsonForm;
 
 #[cfg(test)]
 mod tests;
@@ -52,6 +54,43 @@ impl<'a> Field<'a> {
             name,
             value: value.into(),
         }
+    }
+
+    /// Returns the field named `name` that holds the JSON form of a
+    /// [`Shown`] value, such as a [`Duration`](crate::Duration).
+    ///
+    /// The failure's message holds the value's text form, which the tool
+    /// writes with the value's `Display`, and the JSON failure document holds
+    /// [`Shown::json`] under `fields`. A JSON form that `FieldValue` cannot
+    /// hold, such as a number with a fraction, gives the text form as
+    /// [`FieldValue::Text`].
+    ///
+    /// ```
+    /// use std::time::Duration as Std;
+    ///
+    /// use crumbkit::{Duration, Field, FieldValue};
+    ///
+    /// let waited = Duration(Std::from_secs(90));
+    /// let message = format!("the shelf stayed locked for {waited}");
+    /// let field = Field::shown("waited", &waited);
+    ///
+    /// assert_eq!(message, "the shelf stayed locked for 1m 30s");
+    /// assert_eq!(field.value(), &FieldValue::from("PT1M30S"));
+    /// ```
+    //
+    // RUST-10: the JSON form passes through a `serde_json::Value`, which
+    // sorts an object's keys unless a crate in the build turns on
+    // `serde_json`'s `preserve_order` feature, so an object keeps its key
+    // order only then. A serializer that writes a `FieldValue` directly
+    // replaces it once a tool needs the order kept.
+    #[must_use]
+    pub fn shown<T: Shown + ?Sized>(name: &'a str, value: &T) -> Self {
+        let json = serde_json::to_value(JsonForm(value)).ok();
+        let value = json.as_ref().and_then(FieldValue::from_json).map_or_else(
+            || FieldValue::from(value.to_string()),
+            FieldValue::into_owned,
+        );
+        Self { name, value }
     }
 
     /// Returns the field's name.

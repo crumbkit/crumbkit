@@ -65,6 +65,8 @@ shelf books list --all
 ### Columns that `--long` adds
 
 - `form`: The book's literary form.
+- `pages`: The number of pages in a common edition.
+- `reading`: The time it takes to read the book at two minutes a page.
 
 Effects: read-only, closed-world.
 
@@ -95,6 +97,8 @@ shelf books show 2 5
 ### Columns that `--long` adds
 
 - `form`: The book's literary form.
+- `pages`: The number of pages in a common edition.
+- `reading`: The time it takes to read the book at two minutes a page.
 
 Effects: read-only, closed-world.
 
@@ -156,6 +160,8 @@ shelf books remove 2 --yes
 ### Columns that `--long` adds
 
 - `form`: The book's literary form.
+- `pages`: The number of pages in a common edition.
+- `reading`: The time it takes to read the book at two minutes a page.
 
 Effects: destructive, idempotent, closed-world.
 

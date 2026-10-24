@@ -11,7 +11,8 @@ its reasons.
   [shell completion](parsing/completion.md).
 - [Output](output/README.md): the result formats, the
   [result shapes](output/shapes/README.md),
-  [listings](output/listings/README.md), [streams](output/streams.md), the
+  [listings](output/listings/README.md),
+  [value types](output/values/README.md), [streams](output/streams.md), the
   [output budget](output/budget/README.md),
   [child processes](output/child-processes.md),
   [terminal detection](output/terminal.md) and the

@@ -42,8 +42,13 @@ without `data` ([usage log](../usage-log/README.md)).
 - A row field of type `Age` holds a time in RFC 3339 in UTC with
   milliseconds, and its schema is a string in the `date-time` format,
   inline in the row's properties.
+- A row field of type `Duration` holds an ISO 8601 duration with hours as
+  its largest unit, such as `PT4M10S` or `PT0.3S`, and its schema is a
+  string with a `pattern` of that form and no `format`, inline in the
+  row's properties. A tool's own value type has the schema of its JSON
+  form.
 
-Why: ADR-0007, ADR-0016, ADR-0036, ADR-0039, ADR-0046, ADR-0050, ADR-0062, ADR-0071, ADR-0108.
+Why: ADR-0007, ADR-0016, ADR-0036, ADR-0039, ADR-0046, ADR-0050, ADR-0062, ADR-0071, ADR-0108, ADR-0147, ADR-0148.
 
 ## The failure document
 

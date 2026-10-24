@@ -484,3 +484,43 @@ fn room_counts_child_lines_with_the_indent_that_the_row_type_chooses() {
     assert!(deep.out.contains("\n    ref:api/1\n"), "{}", deep.out);
     assert_eq!(room.printed(), deep.out.len(), "{}", deep.out);
 }
+
+/// A job with the length of each of its steps, which keeps the default
+/// child lines.
+#[derive(Serialize, JsonSchema)]
+struct Job {
+    /// The job's name.
+    name: &'static str,
+    /// How long each step took.
+    steps: Vec<crate::Duration>,
+}
+
+impl Row for Job {
+    const COLUMNS: &'static [&'static str] = &["name"];
+    const CHILDREN: Option<&'static str> = Some("steps");
+}
+
+#[test]
+fn room_counts_the_default_child_lines_of_shown_values() {
+    const JOB_BATCH: Document<Batch<Job, Error>> =
+        Document::new("ops", "job-batch", 1, "The test jobs.");
+    let guide = Guide::new().output_budget(1 << 20, "the tests print little");
+    let output = built_with(
+        <Tool as clap::CommandFactory>::command(),
+        &guide,
+        &["tool", "list"],
+    );
+    let seconds = |count| crate::Duration(std::time::Duration::from_secs(count));
+    let rows = vec![Job {
+        name: "nightly",
+        steps: vec![seconds(3), seconds(250)],
+    }];
+    let batch = answered(rows, &["nightly"]);
+    let mut room = output.room(JOB_BATCH);
+    assert!(room.has_room(&batch));
+
+    let finished = finish_output(output, JOB_BATCH, batch);
+
+    assert_eq!(finished.out, "NAME\nnightly\n  3s\n  4m 10s\n");
+    assert_eq!(room.printed(), finished.out.len());
+}

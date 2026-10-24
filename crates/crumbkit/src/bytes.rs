@@ -8,7 +8,7 @@ use schemars::{JsonSchema, Schema, SchemaGenerator, json_schema};
 use serde::Serialize;
 use serde::ser::{SerializeMap, Serializer};
 
-use crate::{NoRow, Rows, Shape};
+use crate::{NoRow, Rows, Shape, Shown};
 
 #[cfg(test)]
 mod tests;
@@ -25,9 +25,12 @@ mod tests;
 /// `--json`, the document holds `{"text": "..."}` under `data` when the
 /// bytes are valid UTF-8, and `{"base64": "..."}` in standard base64 with
 /// padding (RFC 4648) otherwise. A row field of this type serializes in the
-/// same form. A table shows such a field as compact JSON, so a row type
-/// usually keeps it out of its columns, and a caller reads it with `--json
-/// --full` or `--fields`.
+/// same form, also in a text table, which shows it as compact JSON, so a
+/// row type usually keeps it out of its columns, and a caller reads it with
+/// `--json --full` or `--fields`. `Bytes` implements [`Shown`], and its
+/// `Display` writes the bytes as text, or `<N bytes>` when they are not
+/// valid UTF-8, for a failure's message or
+/// [`Field::shown`](crate::Field::shown).
 ///
 /// A row field marked `#[serde(flatten)]` puts `text` or `base64` at the top
 /// level of the row, and the row's JSON Schema then lists both as
@@ -92,10 +95,26 @@ impl From<String> for Bytes {
     }
 }
 
-/// Serializes the bytes as `{"text": "..."}` when they are valid UTF-8, and
-/// as `{"base64": "..."}` otherwise.
-impl Serialize for Bytes {
-    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+/// Writes the bytes as text when they are valid UTF-8, and as
+/// `<N bytes>` otherwise, such as `<3 bytes>`, which a failure's message or
+/// a sentence can hold. The text is unescaped, so a caller that prints it to
+/// a terminal escapes it first.
+impl fmt::Display for Bytes {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match std::str::from_utf8(&self.bytes) {
+            Ok(text) => f.write_str(text),
+            Err(_) => write!(f, "<{} bytes>", self.bytes.len()),
+        }
+    }
+}
+
+/// Writes the JSON form as `{"text": "..."}` when the bytes are valid
+/// UTF-8, and as `{"base64": "..."}` otherwise, and describes it as an
+/// object with the properties `text` and `base64`, of which it holds
+/// exactly one. The two properties sit at the top level of the schema, so
+/// a row that flattens the bytes lists them among its own properties.
+impl Shown for Bytes {
+    fn json<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         let mut map = serializer.serialize_map(Some(1))?;
         match std::str::from_utf8(&self.bytes) {
             Ok(text) => map.serialize_entry("text", text)?,
@@ -104,22 +123,8 @@ impl Serialize for Bytes {
         }
         map.end()
     }
-}
 
-/// Describes the bytes as an object with the properties `text` and
-/// `base64`, of which it holds exactly one, under the definition name
-/// `Bytes`. The two properties sit at the top level of the schema, so a row
-/// that flattens the bytes lists them among its own properties.
-impl JsonSchema for Bytes {
-    fn schema_name() -> Cow<'static, str> {
-        "Bytes".into()
-    }
-
-    fn schema_id() -> Cow<'static, str> {
-        "crumbkit::Bytes".into()
-    }
-
-    fn json_schema(_: &mut SchemaGenerator) -> Schema {
+    fn schema(_: &mut SchemaGenerator) -> Schema {
         json_schema!({
             "description": "Bytes, such as a file's contents: text when they are valid UTF-8, and base64 otherwise.",
             "type": "object",
@@ -140,6 +145,31 @@ impl JsonSchema for Bytes {
             ],
             "additionalProperties": false,
         })
+    }
+}
+
+/// Serializes the JSON form in text cells too. A row flattens its bytes with
+/// `#[serde(flatten)]`, and serde flattens only a map, so the bytes stay an
+/// object in every mode and a table shows them as compact JSON (ADR-0147).
+impl Serialize for Bytes {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        self.json(serializer)
+    }
+}
+
+/// Describes the bytes with [`Shown::schema`] under the definition name
+/// `Bytes`.
+impl JsonSchema for Bytes {
+    fn schema_name() -> Cow<'static, str> {
+        "Bytes".into()
+    }
+
+    fn schema_id() -> Cow<'static, str> {
+        "crumbkit::Bytes".into()
+    }
+
+    fn json_schema(generator: &mut SchemaGenerator) -> Schema {
+        <Self as Shown>::schema(generator)
     }
 }
 

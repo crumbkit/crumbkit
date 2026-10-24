@@ -7,19 +7,23 @@ use std::num::NonZeroUsize;
 use std::path::Path;
 
 use crumbkit::pick::Choice;
-use crumbkit::{Batch, Call, Code, Document, Failure, FieldValue, Listing, Recovery, Room, Row};
+use crumbkit::{
+    Batch, Call, Code, Document, Duration, Failure, FieldValue, Listing, Recovery, Room, Row,
+};
 use miette::{Diagnostic, LabeledSpan, NamedSource, SourceCode, SourceSpan};
 use schemars::JsonSchema;
 use serde::Serialize;
 
 use crate::cli::{BooksList, BooksShow};
 
+mod catalogue;
 mod lookups;
 mod remove;
 mod summary;
 #[cfg(test)]
 mod tests;
 
+use catalogue::{CATALOGUE, Pages};
 use lookups::Lookups;
 use remove::read_removed;
 pub(crate) use remove::{BOOKS_REMOVE, remove, removed_file};
@@ -65,11 +69,15 @@ pub(crate) struct Book {
     pub(crate) year: u16,
     /// The book's literary form.
     pub(crate) form: Form,
+    /// The number of pages in a common edition.
+    pub(crate) pages: Pages,
+    /// The time it takes to read the book at two minutes a page.
+    pub(crate) reading: Duration,
 }
 
 impl Row for Book {
     const COLUMNS: &'static [&'static str] = &["id", "title", "author", "year"];
-    const LONG_COLUMNS: &'static [&'static str] = &["form"];
+    const LONG_COLUMNS: &'static [&'static str] = &["form", "pages", "reading"];
     // A person copies a book's id into `shelf books show`, so a table at a
     // narrow terminal never cuts it.
     const UNCUT_COLUMNS: &'static [&'static str] = &["id"];
@@ -85,52 +93,6 @@ pub(crate) enum Form {
     #[serde(rename = "short stories")]
     ShortStories,
 }
-
-/// The catalogue that shelf serves. Every book in it is in the public domain.
-const CATALOGUE: [Book; 6] = [
-    Book {
-        id: 1,
-        title: "Pride and Prejudice",
-        author: "Jane Austen",
-        year: 1813,
-        form: Form::Novel,
-    },
-    Book {
-        id: 2,
-        title: "Frankenstein",
-        author: "Mary Shelley",
-        year: 1818,
-        form: Form::Novel,
-    },
-    Book {
-        id: 3,
-        title: "Moby-Dick",
-        author: "Herman Melville",
-        year: 1851,
-        form: Form::Novel,
-    },
-    Book {
-        id: 4,
-        title: "Great Expectations",
-        author: "Charles Dickens",
-        year: 1861,
-        form: Form::Novel,
-    },
-    Book {
-        id: 5,
-        title: "Middlemarch",
-        author: "George Eliot",
-        year: 1871,
-        form: Form::Novel,
-    },
-    Book {
-        id: 6,
-        title: "The Adventures of Sherlock Holmes",
-        author: "Arthur Conan Doyle",
-        year: 1892,
-        form: Form::ShortStories,
-    },
-];
 
 /// Returns the books that `args` asks for, in id order, with the number of
 /// books on the shelf as the total. The shelf is the catalogue without the

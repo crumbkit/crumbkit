@@ -103,7 +103,8 @@ fn refused_beside(dir: Option<&str>, refused: &[&str], admitted: &[&str]) -> Out
 }
 
 #[test]
-fn books_list_long_adds_the_form_column_and_keeps_the_footer_on_standard_error() {
+fn books_list_long_adds_the_form_pages_and_reading_columns_and_keeps_the_footer_on_standard_error()
+{
     shelf(&["books", "list", "--long"])
         .unwrap()
         .success()
@@ -151,7 +152,7 @@ fn books_list_json_fields_prints_only_the_named_fields_in_order_and_the_total() 
 fn books_list_with_an_unknown_field_exits_with_code_2_and_hints_at_the_valid_fields() {
     refused_beside(
         None,
-        &["books", "list", "--fields", "title,pages"],
+        &["books", "list", "--fields", "title,isbn"],
         &["books", "list", "--fields", "title,year"],
     )
     .code(2)

@@ -12,6 +12,7 @@ members = [
     "examples/shelf",
     "examples/reading",
     "examples/tutorial",
+    "examples/units",
     "benches",
     "xtask",
 ]
@@ -183,7 +184,8 @@ gungraun = "=0.20.0"
 # rendering against generated inputs (ADR-0006). Only crumbkit's tests use it.
 proptest = { version = "1.11.0", default-features = false }
 # regex-lite matches the pattern of a checked-in schema in crumbkit-usage's
-# tests, such as the pattern of a usage record's id (ADR-0079). It has no
+# tests, such as the pattern of a usage record's id (ADR-0079), and the
+# pattern of a duration's schema in crumbkit's tests. It has no
 # dependencies, and the tests need no Unicode classes or speed.
 regex-lite = { version = "0.1.9", default-features = false, features = ["std", "string"] }
 

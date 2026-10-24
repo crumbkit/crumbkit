@@ -46,10 +46,9 @@ such as a bidirectional override or a zero-width space. The table prints it
 as its escape, such as `\u{202e}`, so a cell cannot reorder or hide the text
 around it. Cell widths count characters, so a wide character misaligns a
 column. A cell shows `null` or a missing field as `-`, and an array or an
-object as compact JSON. A field of type
-[`Age`](../../../crates/crumbkit/src/age.rs) shows how long ago its time
-was, such as `3h` or `2w`, in a table and a stream's text lines, and holds
-the time in RFC 3339 in every JSON form, as its rustdoc describes.
+object as compact JSON. A field of a
+[value type](values/README.md), such as `Age` or `Duration`, shows its
+text form, such as `3h`, and every JSON form holds its JSON form.
 
 The table that `finish` prints leaves out a column whose field is `null` or
 missing in every row that the table shows, header included. The shown rows

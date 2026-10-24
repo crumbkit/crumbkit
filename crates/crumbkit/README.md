@@ -121,6 +121,7 @@ The [behaviour docs] describe each part in full.
 
 - Output: [`Output`], [`finish`], [`Row`], [`Document`], [`Listing`],
   [`Page`], [`Batch`] and [`Prose`].
+- Value types of your own: [`Shown`] and [`Duration`].
 - Failures: [`Failure`], [`Recovery`], [`Code`], [`Spelling`] and
   [`Error`].
 - Parsing and help: [`parse`], [`help`] and [`Call`].
@@ -151,6 +152,8 @@ Licensed under Apache-2.0 or MIT, at your option.
 [`Page`]: src/page.rs
 [`Batch`]: src/batch.rs
 [`Prose`]: src/prose.rs
+[`Shown`]: src/shown.rs
+[`Duration`]: src/duration.rs
 [`Failure`]: src/failure.rs
 [`Recovery`]: src/failure.rs
 [`Code`]: src/code.rs
