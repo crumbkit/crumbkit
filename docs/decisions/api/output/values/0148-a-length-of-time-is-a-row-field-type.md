@@ -22,9 +22,17 @@ methods and one macro call, so a duration type costs crumbkit little.
 - `crumbkit::Duration` wraps a `std::time::Duration` and implements
   `Shown` through `shown!`. It derives the comparison, hashing and copy
   traits, and converts from a `std::time::Duration`.
-- The text form is the compact form of ADR-0108, ADR-0141 and ADR-0146.
-  `Duration`'s `Display` holds that formatter, and `Age`'s `Display` and
-  `Age::compact` write through it, so one function chooses the unit.
+- The text form uses the unit spellings of the compact age of ADR-0108,
+  ADR-0141 and ADR-0146, from one table that `Age` and `Duration` share.
+  From one second up it is the largest unit with a whole count, then the
+  next smaller unit when its count is not zero: `45s`, `2m`, `4m 10s`,
+  `1h`, `1h 5m`, `3d 2h`. A unit two places down never prints, so 1 hour
+  and 5 seconds reads `1h`, and each count rounds down. Under one second it
+  is the largest of milliseconds, microseconds and nanoseconds with a whole
+  count, such as `300ms`, `999µs` or `500ns`, and zero reads `0s`. A
+  length of time, such as a request's latency, is read for its size, so a
+  300 millisecond request that read `0s` would lose the value. An age is
+  read for its recency, so `Age` keeps its single unit.
 - The JSON form is an ISO 8601 duration exact to the nanosecond: `PT`,
   whole hours with `H`, minutes from 1 to 59 with `M`, and seconds with
   `S`, leaving out each part that is zero. The seconds carry a fraction
@@ -40,16 +48,20 @@ methods and one macro call, so a duration type costs crumbkit little.
 
 A tool puts a length of time in a row or a failure field without a type of
 its own, and every tool's JSON holds it in one form that a reader parses
-with an ISO 8601 library. `Age::compact` returns a `Duration` behind
-`impl Display`, so it prints as before, and a later decision may remove
-it in favour of `Duration`. RFC 3339's grammar for the `duration` format,
+with an ISO 8601 library. `Age::compact` keeps the single-unit form of an
+age, so it prints as before, and a later decision may remove it in favour
+of `Duration`. RFC 3339's grammar for the `duration` format,
 in its appendix A, has no fraction of a second, so a validator that
 follows it strictly refuses a duration with a fraction, which ISO 8601
 allows.
 
-Considered: whole days with `D` above a day, such as `P3D`, which reads a
-fixed 24 hours into a calendar unit; a number of seconds or milliseconds in
-JSON, which needs the unit in the field's name or its description; RFC
-3339's grammar without fractions, which loses the part of a duration under
-a second; a `Deserialize` of the ISO 8601 form, which needs a parser for
-weeks, days and fractions on any part.
+Considered: the single-unit form of an age as the text form, which reads a
+300 millisecond request as `0s`; the two largest units that are not zero,
+which reads 1 day and 30 seconds as `1d 30s`, so the precision of a cell no
+longer follows its size; `0ms` under one millisecond, which loses a
+microsecond latency the same way; whole days with `D` above a day, such as
+`P3D`, which reads a fixed 24 hours into a calendar unit; a number of
+seconds or milliseconds in JSON, which needs the unit in the field's name
+or its description; RFC 3339's grammar without fractions, which loses the
+part of a duration under a second; a `Deserialize` of the ISO 8601 form,
+which needs a parser for weeks, days and fractions on any part.

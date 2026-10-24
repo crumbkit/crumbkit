@@ -169,7 +169,7 @@ fn list(flags: &[&str]) -> Option<String> {
 fn the_text_table_shows_each_shown_value_as_its_display_and_its_children_under_it() {
     let expected = "\
 TITLE                PAGES      KEPT
-Pride and Prejudice  432 pages  2w
+Pride and Prejudice  432 pages  2w 1d
   reminded after 2w
 ";
     assert_eq!(list(&[]).unwrap(), expected);

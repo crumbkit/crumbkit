@@ -74,7 +74,7 @@ impl<'a> Field<'a> {
     /// let message = format!("the shelf stayed locked for {waited}");
     /// let field = Field::shown("waited", &waited);
     ///
-    /// assert_eq!(message, "the shelf stayed locked for 1m");
+    /// assert_eq!(message, "the shelf stayed locked for 1m 30s");
     /// assert_eq!(field.value(), &FieldValue::from("PT1M30S"));
     /// ```
     //

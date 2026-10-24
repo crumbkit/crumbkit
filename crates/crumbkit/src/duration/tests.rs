@@ -72,16 +72,45 @@ fn the_largest_duration_writes_every_hour_and_nanosecond() {
     assert_eq!(iso(Std::MAX), "PT5124095576030431H15.999999999S");
 }
 
-#[test]
-fn the_text_form_is_the_compact_form_of_an_age() {
-    let text = |duration: Std| Duration(duration).to_string();
+/// Returns the text form of `duration`.
+fn text(duration: Std) -> String {
+    Duration(duration).to_string()
+}
 
-    assert_eq!(text(Std::from_millis(300)), "0s");
-    assert_eq!(text(Std::from_secs(59)), "59s");
-    assert_eq!(text(Std::from_secs(4 * 60 + 10)), "4m");
-    assert_eq!(text(Std::from_secs(3 * 3_600)), "3h");
-    assert_eq!(text(Std::from_secs(3 * 24 * 3_600)), "3d");
-    assert_eq!(text(Std::from_secs(13 * 24 * 3_600)), "1w");
+#[test]
+fn a_zero_duration_reads_0s() {
+    assert_eq!(text(Std::ZERO), "0s");
+}
+
+#[test]
+fn a_duration_under_a_second_reads_in_its_largest_whole_sub_second_unit() {
+    assert_eq!(text(Std::from_millis(300)), "300ms");
+    assert_eq!(text(Std::from_micros(999)), "999\u{b5}s");
+    assert_eq!(text(Std::from_nanos(999_999_999)), "999ms");
+    assert_eq!(text(Std::from_nanos(500)), "500ns");
+}
+
+#[test]
+fn a_duration_of_a_second_or_more_drops_its_fraction() {
+    assert_eq!(text(Std::from_secs(1)), "1s");
+    assert_eq!(text(Std::from_millis(1_050)), "1s");
+    assert_eq!(text(Std::from_secs(45)), "45s");
+}
+
+#[test]
+fn a_duration_reads_its_largest_unit_and_the_next_one_when_that_is_not_zero() {
+    assert_eq!(text(Std::from_secs(4 * 60 + 10)), "4m 10s");
+    assert_eq!(text(Std::from_secs(2 * 60)), "2m");
+    assert_eq!(text(Std::from_secs(3_600)), "1h");
+    assert_eq!(text(Std::from_secs(3_600 + 5 * 60)), "1h 5m");
+    assert_eq!(text(Std::from_secs(3 * 86_400 + 2 * 3_600)), "3d 2h");
+    assert_eq!(text(Std::from_secs(8 * 86_400)), "1w 1d");
+}
+
+#[test]
+fn a_smaller_unit_after_a_zero_next_unit_is_left_out() {
+    assert_eq!(text(Std::from_secs(3_600 + 5)), "1h");
+    assert_eq!(text(Std::from_secs(86_400 + 59 * 60)), "1d");
 }
 
 #[test]
@@ -91,7 +120,7 @@ fn a_duration_serializes_as_its_compact_form_while_the_text_mode_is_set() {
         serde_json::to_value(Duration(Std::from_secs(4 * 60 + 10))).unwrap()
     };
 
-    assert_eq!(value, json!("4m"));
+    assert_eq!(value, json!("4m 10s"));
 }
 
 #[test]

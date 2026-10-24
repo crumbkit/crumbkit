@@ -636,8 +636,9 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit: [`Shown`] marks a value type that prints its `Display` in text
   and a form of its own in JSON, and `crumbkit::shown!` writes its
   `Serialize` and `JsonSchema` ([behaviour/output/values]).
-- crumbkit: a [`Duration`] row field prints a compact duration such as
-  `4m` in text and an ISO 8601 duration such as `PT4M10S` in JSON.
+- crumbkit: a [`Duration`] row field prints its two largest units such as
+  `4m 10s`, or `300ms` under a second, in text and an ISO 8601 duration
+  such as `PT4M10S` in JSON.
 - crumbkit: `Field::shown` puts a value type's JSON form in a failure's
   `fields`.
 - crumbkit-usage: `self usage` reports `mostly waiting` for a slow command
@@ -646,8 +647,10 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
-- crumbkit: the default `Row::child_lines` prints each item of the
-  `CHILDREN` field as a line when the field holds strings or value types.
+- crumbkit: a row whose `CHILDREN` field holds plain strings now prints
+  those strings as child lines by default. Before, the default
+  `Row::child_lines` printed no lines. A field of value types prints each
+  value's text the same way.
 - crumbkit: [`Bytes`] implements `Display`, which writes UTF-8 bytes as
   text and other bytes as `<N bytes>`.
 - crumbkit: text output escapes each Unicode format character, such as a

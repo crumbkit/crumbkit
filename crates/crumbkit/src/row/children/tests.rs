@@ -57,19 +57,19 @@ fn job() -> Job {
 
 #[test]
 fn a_children_field_of_shown_values_gives_one_line_for_each_value() {
-    assert_eq!(job().child_lines(), ["fetch: 3s", "build: 4m"]);
+    assert_eq!(job().child_lines(), ["fetch: 3s", "build: 4m 10s"]);
 }
 
 #[test]
 fn the_default_long_child_lines_are_the_child_lines() {
-    assert_eq!(job().long_child_lines(), ["fetch: 3s", "build: 4m"]);
+    assert_eq!(job().long_child_lines(), ["fetch: 3s", "build: 4m 10s"]);
 }
 
 #[test]
 fn the_rows_json_still_holds_the_json_form_of_its_children() {
     assert_eq!(
         serde_json::to_value(job()).unwrap(),
-        serde_json::json!({"name": "nightly", "steps": ["fetch: 3s", "build: 4m"]})
+        serde_json::json!({"name": "nightly", "steps": ["fetch: 3s", "build: 4m 10s"]})
     );
 }
 

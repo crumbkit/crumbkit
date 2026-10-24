@@ -23,16 +23,34 @@ const DAY: u64 = 24 * HOUR;
 /// The seconds in a week.
 const WEEK: u64 = 7 * DAY;
 
+/// The units of the compact forms of [`Age`](crate::Age) and [`Duration`],
+/// largest first, each with the seconds it holds and its spelling.
+const UNITS: [(u64, char); 5] = [
+    (WEEK, 'w'),
+    (DAY, 'd'),
+    (HOUR, 'h'),
+    (MINUTE, 'm'),
+    (1, 's'),
+];
+
+/// The units under a second of the text form of a [`Duration`], largest
+/// first, each with the nanoseconds it holds and its spelling.
+const SUB_SECOND_UNITS: [(u32, &str); 3] = [(1_000_000, "ms"), (1_000, "\u{b5}s"), (1, "ns")];
+
 /// The type of a row field or a failure field that holds a length of time,
-/// such as how long a request took. Text shows it as a compact duration,
-/// such as `3h`, and JSON holds it as an ISO 8601 duration, such as
-/// `PT3H25M`.
+/// such as how long a request took. Text shows it in its two largest units,
+/// such as `4m 10s`, and JSON holds it as an ISO 8601 duration, such as
+/// `PT4M10S`.
 ///
-/// The compact duration is the largest whole unit only, the form that an
-/// [`Age`](crate::Age) column prints: `{n}s` under a minute, `{n}m` under
-/// an hour, `{n}h` under a day, `{n}d` under a week, and `{n}w` for a week
-/// or more, so it reads `0s`, `59s`, `1m`, `3h`, `2d`, `1w` or `57w`. Each
-/// unit rounds down, so 300 milliseconds is `0s` and 13 days is `1w`.
+/// The text form uses the unit spellings of an [`Age`](crate::Age) column,
+/// `s`, `m`, `h`, `d` and `w`. From one second up it is the largest unit
+/// with a whole count, then the next smaller unit when its count is not
+/// zero, so it reads `45s`, `2m`, `4m 10s`, `1h`, `1h 5m`, `3d 2h` or
+/// `1w 1d`. A unit two places down never prints, so 1 hour and 5 seconds
+/// reads `1h`, and each count rounds down, so 1.05 seconds reads `1s`.
+/// Under one second it is the largest of milliseconds, microseconds and
+/// nanoseconds with a whole count, so it reads `300ms`, `999µs` or `500ns`.
+/// A zero duration reads `0s`.
 ///
 /// The JSON form is exact to the nanosecond. It is `PT`, then the whole
 /// hours with `H`, the minutes from 1 to 59 with `M` and the seconds with
@@ -47,16 +65,17 @@ const WEEK: u64 = 7 * DAY;
 /// that follows it strictly refuses a duration with a fraction, which ISO
 /// 8601 itself allows.
 ///
-/// `Duration` implements [`Shown`], so the text table, `--fields` text, a
-/// stream's text line and [`Field::shown`](crate::Field::shown) print the
-/// compact duration, and every JSON form holds the ISO 8601 duration.
+/// `Duration` implements [`Shown`], so the text table, `--fields` text and
+/// a stream's text line print the text form, and every JSON form, including
+/// a failure field from [`Field::shown`](crate::Field::shown), holds the
+/// ISO 8601 duration.
 ///
 /// ```
 /// use crumbkit::Duration;
 ///
 /// let took = Duration::from(std::time::Duration::from_secs(4 * 60 + 10));
 ///
-/// assert_eq!(took.to_string(), "4m");
+/// assert_eq!(took.to_string(), "4m 10s");
 /// assert_eq!(serde_json::to_string(&took).unwrap(), r#""PT4M10S""#);
 /// ```
 //
@@ -74,22 +93,45 @@ impl From<std::time::Duration> for Duration {
     }
 }
 
-/// Writes the duration in the largest whole unit, such as `3h`.
+/// Writes the duration in its largest unit and the next one, such as
+/// `4m 10s`, or in its largest unit under a second, such as `300ms`.
 impl fmt::Display for Duration {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let seconds = self.0.as_secs();
-        let (count, unit) = if seconds < MINUTE {
-            (seconds, 's')
-        } else if seconds < HOUR {
-            (seconds / MINUTE, 'm')
-        } else if seconds < DAY {
-            (seconds / HOUR, 'h')
-        } else if seconds < WEEK {
-            (seconds / DAY, 'd')
-        } else {
-            (seconds / WEEK, 'w')
-        };
-        write!(f, "{count}{unit}")
+        if seconds == 0 {
+            let nanos = self.0.subsec_nanos();
+            return match SUB_SECOND_UNITS.iter().find(|(size, _)| nanos >= *size) {
+                Some((size, unit)) => write!(f, "{}{unit}", nanos / size),
+                None => f.write_str("0s"),
+            };
+        }
+        let mut units = UNITS.iter().skip_while(|(size, _)| seconds < *size);
+        if let Some((size, unit)) = units.next() {
+            write!(f, "{}{unit}", seconds / size)?;
+            if let Some((next, next_unit)) = units.next() {
+                let count = seconds % size / next;
+                if count > 0 {
+                    write!(f, " {count}{next_unit}")?;
+                }
+            }
+        }
+        Ok(())
+    }
+}
+
+/// A length of time whose `Display` writes its largest whole unit only,
+/// such as `3h`, the text form of an [`Age`](crate::Age).
+pub(crate) struct Largest(pub(crate) std::time::Duration);
+
+impl fmt::Display for Largest {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let seconds = self.0.as_secs();
+        let (size, unit) = UNITS
+            .iter()
+            .find(|(size, _)| seconds >= *size)
+            .copied()
+            .unwrap_or((1, 's'));
+        write!(f, "{}{unit}", seconds / size)
     }
 }
 
@@ -102,7 +144,7 @@ impl Shown for Duration {
 
     fn schema(_: &mut SchemaGenerator) -> Schema {
         json_schema!({
-            "description": "A length of time as an ISO 8601 duration in hours, minutes and seconds, which the text table shows in its largest whole unit.",
+            "description": "A length of time as an ISO 8601 duration in hours, minutes and seconds, which the text table shows in its two largest units.",
             "type": "string",
             "format": "duration",
         })

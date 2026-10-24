@@ -28,8 +28,9 @@ Why: ADR-0147.
   how long ago it was, such as `3h` or `2w`, and JSON holds the time in RFC
   3339 in UTC with milliseconds.
 - [`Duration`](../../../../crates/crumbkit/src/duration.rs) holds a length
-  of time. Text shows it in the same compact form as `Age`, such as `4m`,
-  and JSON holds an ISO 8601 duration in hours, minutes and seconds, such
+  of time. Text shows its two largest units in the spellings of `Age`,
+  such as `4m 10s` or `3d 2h`, and a duration under a second in
+  milliseconds, microseconds or nanoseconds, such as `300ms`. JSON holds an ISO 8601 duration in hours, minutes and seconds, such
   as `PT4M10S`, `PT0.3S`, `PT72H` or `PT0S`.
 - [`Bytes`](../../../../crates/crumbkit/src/bytes.rs) holds a file's bytes.
   Its JSON form is `{"text": ...}` or `{"base64": ...}`, and it keeps that
