@@ -46,11 +46,15 @@ error: --long adds the long columns of a table, and this command's rows have non
 }
 
 #[test]
-fn finish_refuses_long_and_full_for_a_prose_result() {
+fn finish_refuses_long_without_json_for_a_prose_result() {
     let eight = || Prose::new("Eight planets.".to_owned());
+    assert_one_word_apart(&["--long"], &["--json", "--long"]);
+    assert_eq!(
+        finish_with(&["--json", "--long"], COUNT, eight()).code,
+        ExitCode::SUCCESS
+    );
 
     let long = finish_with(&["--long"], COUNT, eight());
-    let full = finish_with(&["--json", "--full"], COUNT, eight());
 
     assert_eq!(long.code, ExitCode::from(2));
     assert!(
@@ -60,13 +64,28 @@ fn finish_refuses_long_and_full_for_a_prose_result() {
         "{}",
         long.err
     );
-    assert_eq!(full.code, ExitCode::from(2));
-    assert!(
-        full.out.contains(
-            r#""message":"--full prints every field of every row, and this command prints prose""#
-        ),
-        "{}",
-        full.out
+}
+
+#[test]
+fn long_and_full_with_json_for_a_prose_result_print_the_json_document_and_a_note() {
+    let eight = || Prose::new("Eight planets.".to_owned());
+    let json = finish_with(&["--json"], COUNT, eight());
+
+    let long = finish_with(&["--json", "--long"], COUNT, eight());
+    let full = finish_with(&["--json", "--full"], COUNT, eight());
+
+    assert_eq!(json.err, "");
+    assert_eq!(long.code, ExitCode::SUCCESS, "{}", long.err);
+    assert_eq!(long.out, json.out);
+    assert_eq!(
+        long.err,
+        "note: --long adds nothing to --json here; the JSON already holds the whole result.\n"
+    );
+    assert_eq!(full.code, ExitCode::SUCCESS, "{}", full.err);
+    assert_eq!(full.out, json.out);
+    assert_eq!(
+        full.err,
+        "note: --full adds nothing to --json here; the JSON already holds the whole result.\n"
     );
 }
 

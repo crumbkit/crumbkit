@@ -43,10 +43,10 @@ A command whose answer is a few sentences returns a
 [`Prose`](../../../../crates/crumbkit/src/prose.rs), whose rustdoc
 describes its text, its JSON document and its failures. A prose result with
 failures exits as a batch with failures does, with the code of its first
-failure. `--fields`, `--long`
-and `--full` are refused for a prose result as a refused command line. The
-hint of `--fields` and `--long` names `--json`, and the hint of `--full` says
-that `--json` already prints the whole result.
+failure. `--fields`, and `--long` without `--json`, are refused for a prose
+result as a refused command line with a hint that names `--json`. `--long`
+or `--full` with `--json` adds nothing and [prints a
+note](#rows-printed-whole).
 
 `Prose::note` sets a line that the text prints on standard error after the
 text and before the failures, as a batch's note prints, and the JSON
@@ -54,19 +54,20 @@ document leaves it out. A prose result that the output budget refuses
 prints no note. shelf's `books summarize` notes the removed books that a
 summary of the whole shelf leaves out.
 
-Why: ADR-0016, ADR-0077.
+Why: ADR-0016, ADR-0077, ADR-0149.
 
 ## Bytes
 
 A command whose answer is bytes, such as a file's contents, returns
 [`Bytes`](../../../../crates/crumbkit/src/bytes.rs), whose rustdoc
-describes its text, its JSON form and its use as a row field. `--fields`, `--long`
-and `--full` are refused for it as a refused command line, and each refusal
-names `--json` or says that `--json` already prints the whole result. A dry
+describes its text, its JSON form and its use as a row field. `--fields`,
+and `--long` without `--json`, are refused for it as a refused command line
+that names `--json`. `--long` or `--full` with `--json` adds nothing and
+[prints a note](#rows-printed-whole). A dry
 run's line follows a bytes result's text on standard error, so standard
 output holds the bytes alone.
 
-Why: ADR-0016.
+Why: ADR-0016, ADR-0149.
 
 ## Headed bytes
 
@@ -108,10 +109,12 @@ Each row prints whole or not at all within the output budget
 
 With `--json` the batch prints as its ordinary document with every field of
 each row, unless `--fields` names some. `--fields` needs `--json`, because
-the text has no columns, and `--long` and `--full` are not offered. The help
+the text has no columns. `--long` is refused without `--json`, and `--long`
+or `--full` with `--json` adds nothing and [prints a
+note](#rows-printed-whole). The help
 of the leaf ends with an `Output:` line that describes this text.
 
-Why: ADR-0062, ADR-0114.
+Why: ADR-0062, ADR-0114, ADR-0149.
 
 ## Rows printed whole
 
@@ -122,18 +125,30 @@ so a field that the type leaves out when it holds nothing stays out. This
 holds for a single row, a list, a listing, a batch and each line of a
 stream.
 
-- `--full` is refused, because the JSON already holds every field.
 - `--fields` selects fields in text and in JSON, and prints `null` for a
   field that a row leaves out.
-- `--long` adds the long columns to the text table, and `--long` with
-  `--json` is refused as a refused command line whose hint drops `--long`,
-  because the JSON already holds every field.
+- `--long` adds the long columns to the text table.
+- `--long` or `--full` with `--json` prints the document that `--json`
+  alone prints, exits as `--json` alone does, and writes one note to
+  standard error: `note: --long adds nothing to --json here; the JSON
+  already holds the whole result.`, or the same note for `--full`. With
+  both flags, the note names `--full` once, because `--full` already takes
+  in `--long`. The note follows the result and its cut line, and comes
+  before a batch's or prose result's failures and before the dry-run
+  line. A stream writes it after its last line, so after any failure it
+  printed, also when the output budget stopped it or it ended in a
+  failure. `finish` prints no note for a command that fails as a whole.
+  Help still
+  leaves `--full` out, because it adds nothing. The same holds for prose,
+  bytes, headed bytes and a document without the envelope, whose JSON
+  also holds the whole result.
 
 A row type that sets `Row::WHOLE` may leave `Row::COLUMNS` empty, as a row
 that serializes as an array must, only when it also declares `Row::LINE`.
 Its text then prints each row's own line
 ([rows with their own text line](#rows-with-their-own-text-line)), and
-`--fields` and `--long` are refused, because there is no table to shape.
+`--fields`, and `--long` without `--json`, are refused, because there is
+no table to shape.
 `finish` and `stream` fail to compile for a whole row type without columns
 and without a `LINE`, and crumbkit-test's `check_guide` fails a batch of
 such a row type, which the compiler cannot check.
@@ -145,7 +160,7 @@ the columns of a table. Its `check_document_ids` requires an
 command whose row type sets `Row::WHOLE`, because the document costs more
 tokens than the compact columns.
 
-Why: ADR-0065, ADR-0064, ADR-0072, ADR-0138.
+Why: ADR-0065, ADR-0064, ADR-0072, ADR-0138, ADR-0149.
 
 ## Rows with their own text line
 
@@ -214,8 +229,9 @@ field:
 - a prose result's value;
 - a bytes result's `text` or `base64` object.
 
-`--fields` selects fields as it does for any other document, `--long` changes
-nothing in its JSON, and `--full` is refused. A listing prints one page
+`--fields` selects fields as it does for any other document, and `--long`
+or `--full` with `--json` adds nothing and [prints a
+note](#rows-printed-whole). A listing prints one page
 without `total`, and its text output keeps the footer and the next step.
 
 The failures of a batch or prose result print as text on standard error even
@@ -227,7 +243,7 @@ crumbkit-test's `check_document_ids` requires an
 [opt-out](../../adoption/opt-outs.md) for each command that prints a document
 without the envelope.
 
-Why: ADR-0016, ADR-0071, ADR-0081.
+Why: ADR-0016, ADR-0071, ADR-0081, ADR-0149.
 
 ## A command that prints no result
 

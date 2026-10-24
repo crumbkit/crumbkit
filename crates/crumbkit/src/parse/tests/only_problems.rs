@@ -1,7 +1,7 @@
 //! Tests for a leaf whose document lists only the rows that report a
-//! problem in its default text, and for the refusal of `--long` with
+//! problem in its default text, and for `--long` and `--full` with
 //! `--json` on a leaf whose row type sets `Row::WHOLE` (ADR-0138,
-//! ADR-0140).
+//! ADR-0140, ADR-0149).
 
 use std::process::ExitCode;
 
@@ -170,47 +170,52 @@ fn the_help_of_a_leaf_that_lists_every_row_has_no_rows_line() {
 }
 
 #[test]
-fn long_with_json_on_a_whole_row_leaf_is_refused_before_the_handler_runs() {
-    let refused = ["tool", "shelves", "--json", "--long"];
-    let admitted = ["tool", "shelves", "--json"];
-    assert_one_word_apart(&refused, &admitted);
-    assert_eq!(parse(&admitted).code, None);
+fn long_with_json_on_a_whole_row_leaf_is_accepted() {
+    let parsed = parse(&["tool", "shelves", "--json", "--long"]);
 
-    let parsed = parse(&refused);
-
-    assert_eq!(parsed.code, Some(ExitCode::from(2)));
+    assert_eq!(parsed.code, None, "{}", parsed.out);
     assert_eq!(parsed.err, "");
-    let document: serde_json::Value = serde_json::from_str(&parsed.out).unwrap();
-    assert_eq!(document["code"], "tool::cli::usage");
-    assert_eq!(
-        document["message"],
-        "--long adds the long columns of a table, and this command's JSON already holds every field"
-    );
-    assert_eq!(
-        document["recovery"]["text"],
-        "drop --long, because --json already prints every field of each row"
-    );
-    assert_eq!(
-        document["fields"],
-        serde_json::json!({"argument": "--long"})
-    );
 }
 
 #[test]
-fn long_typed_before_the_command_path_with_json_on_a_problem_only_leaf_is_refused() {
-    let refused = ["tool", "--long", "checks", "--json"];
-    let admitted = ["tool", "checks", "--json"];
+fn long_typed_before_the_command_path_with_json_on_a_whole_row_leaf_is_accepted() {
+    let parsed = parse(&["tool", "--long", "checks", "--json"]);
+
+    assert_eq!(parsed.code, None, "{}", parsed.out);
+}
+
+#[test]
+fn full_with_json_on_a_whole_row_leaf_is_accepted() {
+    assert!(!GUIDE.get_leaves()[2].offers(crate::help::ViewFlag::Full));
+
+    let parsed = parse(&["tool", "shelves", "--json", "--full"]);
+
+    assert_eq!(parsed.code, None, "{}", parsed.out);
+}
+
+#[test]
+fn long_with_json_on_a_whole_row_leaf_without_columns_is_accepted() {
+    let parsed = parse(&["tool", "audits", "--json", "--long"]);
+
+    assert_eq!(parsed.code, None, "{}", parsed.out);
+}
+
+#[test]
+fn long_without_json_on_a_whole_row_leaf_without_columns_is_refused() {
+    let refused = ["tool", "audits", "--long"];
+    let admitted = ["tool", "audits", "--json", "--long"];
     assert_one_word_apart(&refused, &admitted);
-    assert_eq!(parse(&admitted).code, None);
+    assert_eq!(parse(&admitted).code, None, "{}", parse(&admitted).err);
 
     let parsed = parse(&refused);
 
     assert_eq!(parsed.code, Some(ExitCode::from(2)));
-    let document: serde_json::Value = serde_json::from_str(&parsed.out).unwrap();
-    assert_eq!(document["fields"]["argument"], "--long");
-    assert_eq!(
-        document["recovery"]["text"],
-        "drop --long, because --json already prints every field of each row"
+    assert!(
+        parsed
+            .err
+            .starts_with("error: --long adds the long columns of a table, and this command's rows have no columns\n"),
+        "{}",
+        parsed.err
     );
 }
 

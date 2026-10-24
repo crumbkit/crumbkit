@@ -77,14 +77,15 @@ pub(super) fn deepest<'a>(
 /// the view flags that the caller typed.
 ///
 /// It first refuses the first view flag, in the order `--fields`, `--long`,
-/// `--full`, that the leaf of `guide` at `path` does not offer (ADR-0016).
-/// `path` names `node`, the deepest command that the caller typed, and
-/// `level` holds its matches. On a leaf whose document is headed, it then
-/// refuses `--fields` without `--json`, as [`view::headed`] describes
-/// (ADR-0062). On a leaf whose row type sets `Row::WHOLE`, it then refuses
-/// `--long` with `--json`, as [`view::whole_long`] describes (ADR-0138).
-/// It then refuses two typed flags that cannot work together,
-/// on every command, as [`View::try_from`] describes (ADR-0093). On a leaf
+/// `--full`, that the leaf of `guide` at `path` does not offer (ADR-0016),
+/// unless the flag adds nothing to the leaf's JSON, as
+/// [`Leaf::adds_nothing`] decides (ADR-0149). `finish` and `stream` print
+/// the note for such a flag. `path` names `node`, the deepest command that
+/// the caller typed, and `level` holds its matches. On a leaf whose
+/// document is headed, it then refuses `--fields` without `--json`, as
+/// [`view::headed`] describes (ADR-0062). It then refuses two typed flags
+/// that cannot work together, on every command, as [`View::try_from`]
+/// describes (ADR-0093). On a leaf
 /// with a document, it last refuses a `--fields` name that the row type of
 /// the document lacks, as [`unknown_field`] describes.
 ///
@@ -110,10 +111,12 @@ pub(super) fn refusal(
             && level.value_source(id) == Some(ValueSource::CommandLine)
     };
     let leaf = guide.get_leaves().iter().find(|leaf| leaf.path() == path);
+    let json = typed("json");
     let unoffered = leaf.and_then(|leaf| {
         ViewFlag::ALL.into_iter().find_map(|flag| {
             let reason = leaf.unoffered(flag)?;
-            typed(flag.id()).then(|| view::refusal(flag, reason))
+            (typed(flag.id()) && !leaf.adds_nothing(flag, json))
+                .then(|| view::refusal(flag, reason))
         })
     });
     if let Some(refusal) = unoffered {
@@ -122,11 +125,7 @@ pub(super) fn refusal(
     let headed = leaf
         .and_then(Leaf::get_document)
         .is_some_and(|document| document.is_headed());
-    if headed && let Some(refusal) = view::headed(typed(ViewFlag::Fields.id()), typed("json")) {
-        return Err(Box::new(refusal));
-    }
-    let whole = leaf.is_some_and(Leaf::rows_whole);
-    if let Some(refusal) = view::whole_long(whole, typed(ViewFlag::Long.id()), typed("json")) {
+    if headed && let Some(refusal) = view::headed(typed(ViewFlag::Fields.id()), json) {
         return Err(Box::new(refusal));
     }
     let view = View::try_from(ViewFlags::read(node, level)).map_err(Box::new)?;

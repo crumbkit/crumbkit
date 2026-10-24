@@ -309,8 +309,10 @@ impl<R: Headed, E: AsFailure> Document<Batch<R, E>> {
     ///
     /// With `--json` the batch prints as its ordinary document, with every
     /// field of each row unless `--fields` names some. The leaf offers
-    /// neither `--long` nor `--full`, and `parse` refuses `--fields` without
-    /// `--json`, because the text has no columns (ADR-0062).
+    /// neither `--long` nor `--full`, and `parse` refuses `--fields` and
+    /// `--long` without `--json`, because the text has no columns
+    /// (ADR-0062). `--long` or `--full` with `--json` prints what `--json`
+    /// alone prints, with a note that the flag adds nothing (ADR-0149).
     #[must_use]
     pub const fn headed(mut self) -> Self {
         self.headed = true;

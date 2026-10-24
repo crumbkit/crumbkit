@@ -41,8 +41,10 @@ mod tests;
 /// bytes can print them in text as `head` prints files
 /// ([`Headed`](crate::Headed)).
 ///
-/// `--fields`, `--long` and `--full` are refused for a bytes result, with
-/// the exit code of a refused command line, because it has no columns. The result is never cut short:
+/// `--fields`, and `--long` without `--json`, are refused for a bytes
+/// result, with the exit code of a refused command line, because it has no
+/// columns. `--long` or `--full` with `--json` prints what `--json` alone
+/// prints, with a note that the flag adds nothing (ADR-0149). The result is never cut short:
 /// when it does not fit in the output budget, it is refused, unless its
 /// document always prints its first answer.
 ///

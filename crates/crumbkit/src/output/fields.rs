@@ -25,11 +25,11 @@ pub(super) fn flags_refusal<T: Rows>(output: &Output, document: Document<T>) -> 
 ///
 /// It first refuses a view flag that the result does not offer, by the
 /// rule of [`view::unoffered`], in the order `--fields`, `--long`,
-/// `--full`. For a headed document it then refuses `--fields` without
-/// `--json`, as [`view::headed`] describes. For a row type that sets
-/// `Row::WHOLE` it then refuses `--long` with `--json`, as
-/// [`view::whole_long`] describes. It then refuses the first name
-/// in `view` that is not a field of `R`, as [`unknown_field`] describes.
+/// `--full`, and accepts a flag that adds nothing to the JSON, as
+/// [`view::adds_nothing`] decides. For a headed document it then refuses
+/// `--fields` without `--json`, as [`view::headed`] describes. It then
+/// refuses the first name in `view` that is not a field of `R`, as
+/// [`unknown_field`] describes.
 /// The pairs that cannot work together were refused when `view` was built
 /// (ADR-0093).
 pub(super) fn refusal<R: Row>(printed: &Printed, view: &View) -> Option<Refusal> {
@@ -40,7 +40,10 @@ pub(super) fn refusal<R: Row>(printed: &Printed, view: &View) -> Option<Refusal>
             ViewFlag::Long => view.is_long(),
             ViewFlag::Full => view.is_full(),
         };
-        if typed && let Some(reason) = view::unoffered(printed, flag) {
+        if typed
+            && !view::adds_nothing(printed, flag, view.is_json())
+            && let Some(reason) = view::unoffered(printed, flag)
+        {
             return Some(view::refusal(flag, reason));
         }
     }
@@ -49,10 +52,25 @@ pub(super) fn refusal<R: Row>(printed: &Printed, view: &View) -> Option<Refusal>
     {
         return Some(refusal);
     }
-    if let Some(refusal) = view::whole_long(printed.whole, view.is_long(), view.is_json()) {
-        return Some(refusal);
-    }
     unknown_field::<R>(names?)
+}
+
+/// Returns the note that the view flag in `view` adds nothing to the JSON
+/// of a command that prints `printed`, as [`view::adds_nothing`] decides,
+/// or `None` when it changes the result (ADR-0149). `finish` and `stream`
+/// deliver it as a note after the result.
+///
+/// `--full` with `--long` selects every field, as `--full` alone does, so
+/// the view holds `--full` alone and the note names `--full` once.
+pub(super) fn adds_nothing_note(printed: &Printed, view: &View) -> Option<String> {
+    let flag = if view.is_full() {
+        ViewFlag::Full
+    } else if view.is_long() {
+        ViewFlag::Long
+    } else {
+        return None;
+    };
+    view::adds_nothing(printed, flag, view.is_json()).then(|| view::adds_nothing_note(flag))
 }
 
 /// Returns the refusal of the first name in `fields` that is not a field of

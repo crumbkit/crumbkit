@@ -83,20 +83,52 @@ fn fields_selects_named_fields_of_a_whole_row_and_prints_null_for_a_field_the_ro
     );
 }
 
+/// The note that `--long` with `--json` prints for a whole row type.
+const LONG_NOTE: &str =
+    "note: --long adds nothing to --json here; the JSON already holds the whole result.\n";
+
+/// The note that `--full` with `--json` prints for a whole row type.
+const FULL_NOTE: &str =
+    "note: --full adds nothing to --json here; the JSON already holds the whole result.\n";
+
 #[test]
-fn finish_refuses_full_for_a_whole_row_type_because_json_already_holds_every_field() {
-    assert_one_word_apart(&["--json", "--full"], &["--json"]);
-    let twin = finish_with(&["--json"], MOONS, moons());
-    assert_eq!(twin.code, ExitCode::SUCCESS, "{}", twin.err);
+fn json_alone_for_a_whole_row_type_prints_no_note() {
+    let finished = finish_with(&["--json"], MOONS, moons());
+
+    assert_eq!(finished.err, "");
+}
+
+#[test]
+fn full_with_json_for_a_whole_row_type_prints_the_json_document_and_a_note() {
+    let json = finish_with(&["--json"], MOONS, moons());
 
     let finished = finish_with(&["--json", "--full"], MOONS, moons());
 
-    assert_eq!(finished.code, ExitCode::from(2));
-    let document: Value = serde_json::from_str(&finished.out).unwrap();
-    assert_eq!(
-        document["message"],
-        "--full prints every field of every row, and this command's JSON already holds every field"
-    );
+    assert_eq!(finished.code, ExitCode::SUCCESS, "{}", finished.err);
+    assert_eq!(finished.out, json.out);
+    assert_eq!(finished.err, FULL_NOTE);
+}
+
+#[test]
+fn long_with_json_for_a_whole_row_type_without_long_columns_prints_the_json_document_and_a_note() {
+    let json = finish_with(&["--json"], MOONS, moons());
+
+    let finished = finish_with(&["--json", "--long"], MOONS, moons());
+
+    assert_eq!(finished.code, ExitCode::SUCCESS, "{}", finished.err);
+    assert_eq!(finished.out, json.out);
+    assert_eq!(finished.err, LONG_NOTE);
+}
+
+#[test]
+fn long_and_full_with_json_for_a_whole_row_type_print_one_note_that_names_full() {
+    let json = finish_with(&["--json"], MOONS, moons());
+
+    let finished = finish_with(&["--json", "--long", "--full"], MOONS, moons());
+
+    assert_eq!(finished.code, ExitCode::SUCCESS, "{}", finished.err);
+    assert_eq!(finished.out, json.out);
+    assert_eq!(finished.err, FULL_NOTE);
 }
 
 /// A query result row, which serializes as an array of its values and so
@@ -142,6 +174,37 @@ fn finish_refuses_fields_for_a_whole_row_type_without_columns() {
         finished.err.starts_with(
             "error: --fields selects the columns of a table, and this command's rows have no columns\n  help:  use --json to read every field of each row\n"
         ),
+        "{}",
+        finished.err
+    );
+}
+
+#[test]
+fn long_with_json_for_a_whole_row_type_without_columns_prints_the_json_document_and_a_note() {
+    let json = finish_with(&["--json"], ANSWERS, answers());
+
+    let finished = finish_with(&["--json", "--long"], ANSWERS, answers());
+
+    assert_eq!(finished.code, ExitCode::SUCCESS, "{}", finished.err);
+    assert_eq!(finished.out, json.out);
+    assert_eq!(finished.err, LONG_NOTE);
+}
+
+#[test]
+fn long_without_json_for_a_whole_row_type_without_columns_is_still_refused() {
+    assert_one_word_apart(&["--long"], &["--json", "--long"]);
+    assert_eq!(
+        finish_with(&["--json", "--long"], ANSWERS, answers()).code,
+        ExitCode::SUCCESS
+    );
+
+    let finished = finish_with(&["--long"], ANSWERS, answers());
+
+    assert_eq!(finished.code, ExitCode::from(2));
+    assert!(
+        finished
+            .err
+            .starts_with("error: --long adds the long columns of a table, and this command's rows have no columns\n"),
         "{}",
         finished.err
     );

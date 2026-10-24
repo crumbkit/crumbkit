@@ -28,8 +28,10 @@ mod tests;
 /// text prints on standard error before the failures, as a listing's note
 /// prints.
 ///
-/// `--fields`, `--long` and `--full` are refused for a prose result,
-/// because it has no columns.
+/// `--fields`, and `--long` without `--json`, are refused for a prose
+/// result, because it has no columns. `--long` or `--full` with `--json`
+/// prints what `--json` alone prints, with a note that the flag adds
+/// nothing (ADR-0149).
 ///
 /// ```
 /// use std::fmt;

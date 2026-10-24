@@ -2,7 +2,7 @@
 //! flags that an example types, and the document that a leaf with effects
 //! declares so that `parse` can refuse a flag before the handler runs.
 
-use clap::Args as _;
+use clap::{Arg, ArgAction, Args as _};
 use crumbkit::help::{Effects, Example, Guide};
 use crumbkit::{Batch, Document, Prose, ViewFlags};
 
@@ -26,6 +26,112 @@ fn check_guide_fails_on_an_example_that_types_a_view_flag_its_leaf_does_not_offe
         "the command tree breaks crumbkit's guide rules:\n\
          shelf books list: the example `shelf books list --long` types --long, which the command does not offer, so crumbkit refuses it"
     );
+}
+
+/// A book whose JSON readers expect every field.
+#[derive(serde::Serialize, schemars::JsonSchema)]
+struct TitledBook {
+    /// The book's title.
+    title: String,
+}
+
+impl crumbkit::Row for TitledBook {
+    const COLUMNS: &'static [&'static str] = &["title"];
+    const WHOLE: bool = true;
+}
+
+#[test]
+fn check_guide_fails_on_an_example_that_types_a_view_flag_which_adds_nothing_to_its_json() {
+    const WHOLE_BOOKS: Document<Vec<TitledBook>> =
+        Document::new("shelf", "whole-books", 1, "The books.");
+    const GUIDE: Guide = Guide::new().leaves(&[
+        leaf(&["books", "list"])
+            .examples(&[Example::new(&["--json", "--full"], "Print every book")])
+            .document(WHOLE_BOOKS),
+        leaf(&["books", "show"]),
+        leaf(&["authors", "list"]),
+    ]);
+
+    assert_eq!(
+        panic_message(|| check_guide(&ViewFlags::augment_args(shelf()), &GUIDE, &[])).unwrap(),
+        "the command tree breaks crumbkit's guide rules:\n\
+         shelf books list: the example `shelf books list --json --full` types --full, which adds nothing to the command's JSON, so crumbkit prints a note that says so"
+    );
+}
+
+#[test]
+fn check_guide_reports_an_unoffered_flag_below_a_command_that_declares_its_own_json() {
+    const GUIDE: Guide = Guide::new().leaves(&[
+        leaf(&["books", "list"])
+            .examples(&[Example::new(&["--full"], "Count every book")])
+            .document(COUNT),
+        leaf(&["books", "show"]),
+        leaf(&["authors", "list"]),
+    ]);
+    let tool = ViewFlags::augment_args(shelf()).mut_subcommand("books", |books| {
+        books.arg(
+            Arg::new("json")
+                .long("json")
+                .global(false)
+                .action(ArgAction::SetTrue),
+        )
+    });
+
+    assert_eq!(
+        panic_message(|| check_guide(&tool, &GUIDE, &[])).unwrap(),
+        "the command tree breaks crumbkit's guide rules:\n\
+         shelf books list: the example `shelf books list --full` types --full, which the command does not offer, so crumbkit refuses it"
+    );
+}
+
+/// A book whose JSON readers expect every field, with a long column.
+#[derive(serde::Serialize, schemars::JsonSchema)]
+struct LongBook {
+    /// The book's title.
+    title: String,
+    /// The book's author.
+    author: String,
+}
+
+impl crumbkit::Row for LongBook {
+    const COLUMNS: &'static [&'static str] = &["title"];
+    const LONG_COLUMNS: &'static [&'static str] = &["author"];
+    const WHOLE: bool = true;
+}
+
+#[test]
+fn check_guide_fails_on_an_example_that_types_an_offered_view_flag_which_adds_nothing_to_its_json()
+{
+    const LONG_BOOKS: Document<Vec<LongBook>> =
+        Document::new("shelf", "long-books", 1, "The books.");
+    const GUIDE: Guide = Guide::new().leaves(&[
+        leaf(&["books", "list"])
+            .examples(&[Example::new(&["--json", "--long"], "Print every book")])
+            .document(LONG_BOOKS),
+        leaf(&["books", "show"]),
+        leaf(&["authors", "list"]),
+    ]);
+
+    assert_eq!(
+        panic_message(|| check_guide(&ViewFlags::augment_args(shelf()), &GUIDE, &[])).unwrap(),
+        "the command tree breaks crumbkit's guide rules:\n\
+         shelf books list: the example `shelf books list --json --long` types --long, which adds nothing to the command's JSON, so crumbkit prints a note that says so"
+    );
+}
+
+#[test]
+fn an_example_that_types_long_without_json_on_whole_rows_with_long_columns_passes() {
+    const LONG_BOOKS: Document<Vec<LongBook>> =
+        Document::new("shelf", "long-books", 1, "The books.");
+    const GUIDE: Guide = Guide::new().leaves(&[
+        leaf(&["books", "list"])
+            .examples(&[Example::new(&["--long"], "List every book with its author")])
+            .document(LONG_BOOKS),
+        leaf(&["books", "show"]),
+        leaf(&["authors", "list"]),
+    ]);
+
+    check_guide(&ViewFlags::augment_args(shelf()), &GUIDE, &[]);
 }
 
 #[test]

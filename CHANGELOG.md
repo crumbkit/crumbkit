@@ -298,8 +298,9 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   text, and with `--json` as `text` when it is UTF-8 or `base64` otherwise.
   A `Bytes` row field serializes the same way. `Shape::Bytes` and
   `Rows::bytes` describe it ([behaviour/output], [behaviour/schemas]).
-- crumbkit: `--fields`, `--long` and `--full` are refused with exit code 2
-  for a [`Bytes`] result, which has no columns ([behaviour/output]).
+- crumbkit: `--fields`, and `--long` without `--json`, are refused with
+  exit code 2 for a [`Bytes`] result, which has no columns
+  ([behaviour/output]).
 - crumbkit: a [`Bytes`] result past the output budget is refused and never
   cut, and `--json` measures it with its base64 text ([behaviour/output/budget]).
 - crumbkit: the help of a leaf that prints [`Bytes`] says how its output
@@ -519,9 +520,8 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   `full` build the output flags for a tool that defines them in its own
   parser, and `finish` checks them as parsed flags ([behaviour/output]).
 - crumbkit: a row type that sets [`Row`]`::WHOLE` prints every field
-  of each row with `--json`, without `--full`. `--full` is refused for it,
-  and `--fields` prints `null` for a field that a row leaves out
-  ([behaviour/output]).
+  of each row with `--json`, without `--full`, and `--fields` prints
+  `null` for a field that a row leaves out ([behaviour/output]).
 - crumbkit-test: [`check_guide`] fails a row type that sets `Row::WHOLE`,
   names no columns and has fields, and [`check_document_ids`] requires an
   opt-out from `documents/rows-whole` for a leaf whose row type sets
@@ -533,8 +533,8 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   crumbkit-markdown's reference prints the `Text:` line as help does
   ([behaviour/help/commands-list]).
 - crumbkit: a row type that sets `Row::WHOLE` and declares `Row::LINE` may
-  name no columns. Its text prints each row's own line, and `--fields` and
-  `--long` are refused for it ([behaviour/output]).
+  name no columns. Its text prints each row's own line, and `--fields`, and
+  `--long` without `--json`, are refused for it ([behaviour/output]).
 - crumbkit: `finish` and `stream` fail to compile for a whole row type
   without columns and without a `LINE`, and [`check_guide`] fails a batch
   of it ([behaviour/output]).
@@ -648,6 +648,10 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- crumbkit: `--json --long` and `--json --full` print the `--json` output
+  and a note where JSON holds the whole result: prose, bytes, headed,
+  unenveloped and whole-row documents and streams. Before, crumbkit refused
+  them, or stayed silent for unenveloped long columns ([behaviour/output/shapes]).
 - crumbkit: a row whose `CHILDREN` field holds plain strings now prints
   those strings as child lines by default. Before, the default
   `Row::child_lines` printed no lines. A field of value types prints each
@@ -935,9 +939,9 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit: a leaf's help leaves out each view flag that its document
   cannot use, and [`parse`] refuses such a flag as a refused command line
   before the handler runs ([behaviour/output]).
-- crumbkit: [`finish`] and [`stream`] refuse `--long` and `--full` for
-  prose, `--long` for rows without long columns, and `--full` for a
-  document without the envelope ([behaviour/output]).
+- crumbkit: [`finish`] and [`stream`] refuse `--long` without `--json`
+  for prose, and `--long` for enveloped rows without long columns that do
+  not print whole ([behaviour/output]).
 - crumbkit: `complete_to` takes the name of the completion variable, which
   the registration script sets ([behaviour/parsing/completion]).
 - crumbkit: `Batch::new` takes the command, the argument and the keys
@@ -1043,9 +1047,6 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit: a listing whose summary's `Display` writes no text prints no
   summary line in text, so the header is the first line. The JSON document
   still holds the summary ([behaviour/output/listings]).
-- crumbkit: `--long` with `--json` is refused, with exit 2 and a hint to
-  drop `--long`, for a row type that sets `Row::WHOLE`, because its JSON
-  already holds every field ([behaviour/output/shapes]).
 - crumbkit: the help of `--json`, `--fields`, `--long` and `--full` says
   what prints without the flag, such as `The default prints text.`
   ([behaviour/output]).

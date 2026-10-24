@@ -143,20 +143,52 @@ error: --long adds the long columns of a table, and this command prints raw byte
 }
 
 #[test]
-fn full_on_bytes_is_a_refusal_that_names_the_flag_under_fields() {
-    assert_one_word_apart(&["--json", "--full"], &["--json"]);
-    let twin = finish_with(&["--json"], raw());
-    assert_eq!(twin.code, ExitCode::SUCCESS, "{}", twin.err);
+fn full_with_json_on_bytes_prints_the_json_document_and_a_note() {
+    let json = finish_with(&["--json"], raw());
+
     let finished = finish_with(&["--json", "--full"], raw());
 
-    let out = String::from_utf8(finished.out).unwrap();
+    assert_eq!(finished.code, ExitCode::SUCCESS, "{}", finished.err);
+    assert_eq!(finished.out, json.out);
+    assert_eq!(json.err, "");
+    assert_eq!(
+        finished.err,
+        "note: --full adds nothing to --json here; the JSON already holds the whole result.\n"
+    );
+}
+
+#[test]
+fn long_with_json_on_bytes_prints_the_json_document_and_a_note() {
+    let json = finish_with(&["--json"], raw());
+
+    let finished = finish_with(&["--json", "--long"], raw());
+
+    assert_eq!(finished.code, ExitCode::SUCCESS, "{}", finished.err);
+    assert_eq!(finished.out, json.out);
+    assert_eq!(
+        finished.err,
+        "note: --long adds nothing to --json here; the JSON already holds the whole result.\n"
+    );
+}
+
+#[test]
+fn long_without_json_on_bytes_is_still_refused() {
+    assert_one_word_apart(&["--long"], &["--json", "--long"]);
+    assert_eq!(
+        finish_with(&["--json", "--long"], raw()).code,
+        ExitCode::SUCCESS
+    );
+
+    let finished = finish_with(&["--long"], raw());
+
     assert_eq!(finished.code, ExitCode::from(2));
     assert!(
-        out.contains("--full prints every field of every row, and this command prints raw bytes"),
-        "{out}"
+        finished.err.starts_with(
+            "error: --long adds the long columns of a table, and this command prints raw bytes\n"
+        ),
+        "{}",
+        finished.err
     );
-    assert!(out.contains("drop --full, because --json already prints the whole result"));
-    assert!(out.contains(r#""fields":{"argument":"--full"}"#), "{out}");
 }
 
 #[test]

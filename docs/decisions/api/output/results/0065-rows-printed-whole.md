@@ -1,7 +1,7 @@
 # ADR-0065. Rows printed whole
 
 - Date: 2026-10-17
-- Status: amended by ADR-0072 and ADR-0138
+- Status: amended by ADR-0072, ADR-0138 and ADR-0149
 - Supersedes: ADR-0063, which it amends
 
 ## Context

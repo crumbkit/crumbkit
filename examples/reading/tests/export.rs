@@ -167,24 +167,25 @@ fn entries_export_refuses_long_and_admits_its_twin_without_it() {
 }
 
 #[test]
-fn entries_export_refuses_full_and_admits_its_twin_with_json_alone() {
-    // The twin keeps `--json` and leaves out `--full`, so `--full` is the
-    // reason for the refusal (TEST-1).
-    let refused = check_twin(
-        &reading::command(&reading::lists_in(Path::new(LISTS))),
-        &reading::GUIDE,
-        &examples(),
-        &Failing::new(
-            &codes::CLI_USAGE,
-            &["entries", "export", "--list", "to-read", "--json", "--full"],
-        ),
-        &["entries", "export", "--list", "to-read", "--json"],
-    );
-    OutputAssert::new(refused).code(2).stderr_eq("").stdout_eq(concat!(
-        r#"{"schema":"reading/failure/v1","code":"reading::cli::usage","#,
-        r#""message":"--full prints every field of every row, and this command prints raw bytes","#,
-        r#""fields":{"argument":"--full"},"recovery":{"kind":"hint","#,
-        r#""text":"drop --full, because --json already prints the whole result"}}"#,
-        "\n",
-    ));
+fn entries_export_with_json_and_full_prints_the_json_document_and_a_note() -> io::Result<()> {
+    let json = reading(LISTS, &["entries", "export", "--list", "to-read", "--json"])?
+        .success()
+        .get_output()
+        .stdout
+        .clone();
+
+    let full = reading(
+        LISTS,
+        &["entries", "export", "--list", "to-read", "--json", "--full"],
+    )?
+    .success()
+    .stderr_eq(
+        "note: --full adds nothing to --json here; the JSON already holds the whole result.\n",
+    )
+    .get_output()
+    .stdout
+    .clone();
+
+    assert_eq!(full, json);
+    Ok(())
 }

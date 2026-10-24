@@ -15,8 +15,9 @@ use super::envelope::{Extras, Failures, Selected, SelectedRows, write_document};
 use super::failure::PreparedFailure;
 use super::layout::JsonLayout;
 use super::table::Table;
-use super::{Output, children, layout, lines, listing, problems, prose};
+use super::{Output, children, fields, layout, lines, listing, problems, prose};
 use crate::help::rename::Renames;
+use crate::help::view::{Kind, Printed};
 use crate::shown::TextCells;
 use crate::sink::role::{Deliver, Message, Role};
 use crate::view::View;
@@ -426,12 +427,17 @@ impl<'a, T: Rows> Prepared<'a, T> {
     /// line, or else the footer and the empty note, then the note of the
     /// rows that report a problem, the tool's note, under `--long` its long
     /// note, and the `Next:` line; with `--json`, only the cut line of a document
-    /// without the envelope, which has no `cut` field.
+    /// without the envelope, which has no `cut` field, and the note of a
+    /// view flag that adds nothing to the JSON (ADR-0149).
     fn write_notes(&self, out: &mut impl Write, shown: usize, cut: Option<&Cut>) -> io::Result<()> {
         let value = self.value;
         if self.view.is_json() {
             if let Some(cut) = cut.filter(|_| !self.document.get_envelope().wraps()) {
                 self.write_cut_line(out, shown, cut)?;
+            }
+            let printed = Printed::of::<T::Row, T>(Kind::Document(T::SHAPE), &self.document);
+            if let Some(note) = fields::adds_nothing_note(&printed, self.view) {
+                writeln!(out, "{note}")?;
             }
             return Ok(());
         }

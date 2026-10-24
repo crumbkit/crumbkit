@@ -12,7 +12,8 @@ use clap::Command;
 use super::budget::{Over, OverBudget};
 use super::dry_run::DRY_RUN_LINE;
 use super::failure::{self, PreparedFailure, Printing};
-use super::{JsonLayout, Output, problems};
+use super::{JsonLayout, Output, fields, problems};
+use crate::help::view::{Kind, Printed};
 use crate::sink::role::{Deliver, Message, Role};
 use crate::view::View;
 use crate::{AsFailure, Document, Failure, Row, Sink, Spelling, Stream, codes, exit};
@@ -37,9 +38,10 @@ use self::open::open;
 /// It returns `Err` with the exit code of a refused command line, 2 unless
 /// the guide lists another, after it prints the refusal of a view flag that
 /// the stream cannot use. `--fields` names only fields of `R`, `--long`
-/// needs long columns in `R` and is refused with `--json` when `R` sets
-/// `Row::WHOLE` (ADR-0138), and `--full` needs an envelope and a row
-/// type that does not set `Row::WHOLE`. The pairs that cannot work
+/// needs long columns in `R`. When the stream has no envelope or `R` sets
+/// `Row::WHOLE`, `--long` and `--full` with `--json` are accepted, print the
+/// lines that `--json` alone prints, and end with a note that the flag adds
+/// nothing (ADR-0149). The pairs that cannot work
 /// together, `--full` without `--json` and `--fields` with `--long` or
 /// `--full`, were refused when the `Output` was built (ADR-0093). `main`
 /// returns that code.
@@ -75,7 +77,7 @@ pub fn stream<R: Row>(
 /// A row type with an empty [`Row::COLUMNS`] fails to compile here, because
 /// each line would print nothing of its item (ADR-0063). A row type that
 /// sets [`Row::WHOLE`] compiles: each JSON line holds every field of its
-/// item and `--full` is refused (ADR-0065). Such a row type may name no
+/// item, and `--full` adds nothing (ADR-0065, ADR-0149). Such a row type may name no
 /// columns only when it declares [`Row::LINE`], and its text then prints
 /// each item's own line with no header (ADR-0072).
 ///
@@ -338,7 +340,12 @@ impl<R: Row, O: Write, W: Write> Streaming<R, O, W> {
     /// [`Row::is_problem`] decides, exits with 1, and in
     /// text, while the pipe is open, it prints a note such as `note: 2 of
     /// the rows report a problem, so the command exits with 1.` on the error
-    /// writer (ADR-0050).
+    /// writer (ADR-0050). With `--json`, while the pipe is open, it prints a
+    /// note when `--long` or `--full` adds nothing to the JSON (ADR-0149),
+    /// also when the output budget stopped the stream and when `result` is
+    /// an `Err`, because the stream has printed result lines by then.
+    /// `finish` prints no such note for an `Err`, which prints only the
+    /// failure.
     #[must_use]
     #[expect(
         clippy::needless_pass_by_value,
@@ -354,6 +361,15 @@ impl<R: Row, O: Write, W: Write> Streaming<R, O, W> {
         }
         if !self.view.is_json() && !self.failed && self.state == State::Open && self.problems > 0 {
             self.note(Message::Note, &problems::note(self.problems, None));
+        }
+        // The note follows the lines that the stream printed, so a stream
+        // that the output budget stopped prints it too, as a cut `finish`
+        // result does.
+        let printed = Printed::of::<R, _>(Kind::Stream, &self.document);
+        if matches!(self.state, State::Open | State::Spent)
+            && let Some(note) = fields::adds_nothing_note(&printed, &self.view)
+        {
+            self.note(Message::Note, &note);
         }
         if self.dry_run
             && self.state == State::Open
