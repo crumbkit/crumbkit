@@ -128,7 +128,7 @@ fn a_children_field_of_objects_gives_no_lines() {
         parts: vec![Part { name: "belt" }],
     };
 
-    assert!(row.child_lines().is_empty());
+    assert_eq!(row.child_lines(), Vec::<String>::new());
 }
 
 /// A row whose children field holds strings and numbers.
@@ -152,7 +152,7 @@ fn a_children_field_with_an_item_that_is_not_a_string_gives_no_lines() {
         items: vec![serde_json::json!("one"), serde_json::json!(2)],
     };
 
-    assert!(row.child_lines().is_empty());
+    assert_eq!(row.child_lines(), Vec::<String>::new());
 }
 
 /// A row without children.
@@ -170,7 +170,7 @@ impl Row for Plain {
 fn a_row_without_a_children_field_gives_no_lines() {
     let row = Plain { tags: vec!["red"] };
 
-    assert!(row.child_lines().is_empty());
+    assert_eq!(row.child_lines(), Vec::<String>::new());
 }
 
 /// A row whose children field names a field it does not have.
@@ -189,7 +189,7 @@ impl Row for Misnamed {
 fn a_children_field_that_the_row_lacks_gives_no_lines() {
     let row = Misnamed { tags: vec!["red"] };
 
-    assert!(row.child_lines().is_empty());
+    assert_eq!(row.child_lines(), Vec::<String>::new());
 }
 
 /// A row that writes its own child lines.
