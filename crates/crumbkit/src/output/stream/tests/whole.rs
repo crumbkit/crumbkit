@@ -1,5 +1,5 @@
 //! Tests for a stream of a row type that sets `Row::WHOLE` (ADR-0065,
-//! ADR-0138).
+//! ADR-0138, ADR-0149).
 
 use std::ops::ControlFlow;
 use std::process::ExitCode;
@@ -8,7 +8,6 @@ use schemars::JsonSchema;
 use serde::Serialize;
 
 use super::{Unreadable, parse, stream_to};
-use crate::twins::assert_one_word_apart;
 use crate::{Document, Row, Sink, Stream};
 
 /// A sighting whose JSON holds every field.
@@ -73,27 +72,73 @@ impl Row for Visit {
     const WHOLE: bool = true;
 }
 
-#[test]
-fn a_stream_of_a_whole_row_type_refuses_long_with_json_before_anything_prints() {
-    const VISITS: Document<Stream<Visit>> =
-        Document::new("birds", "visits-watch", 1, "Each visit.");
-    assert_one_word_apart(&["--json", "--long"], &["--json"]);
-    let robin = Visit {
-        bird: "robin",
-        place: "garden",
-    };
-    assert!(streamed(&["--json"], VISITS, &[robin]).starts_with('{'));
+/// Streams `items` as `document` with `flags`, and returns standard output,
+/// standard error and the exit code.
+fn streamed_all<R: Row>(
+    flags: &[&str],
+    document: Document<Stream<R>>,
+    items: &[R],
+) -> (String, String, ExitCode) {
+    let output = parse(flags);
     let mut out = Vec::new();
     let mut err = Vec::new();
     let mut sink = Sink::new(&mut out, &mut err);
+    let Ok(mut streaming) = stream_to(&mut sink, output, document) else {
+        panic!("the stream was refused");
+    };
+    for item in items {
+        assert_eq!(streaming.item(item), ControlFlow::Continue(()));
+    }
+    let code = streaming.end(Ok::<(), Unreadable>(()));
+    (
+        String::from_utf8(out).unwrap(),
+        String::from_utf8(err).unwrap(),
+        code,
+    )
+}
 
-    let refused = stream_to(&mut sink, parse(&["--json", "--long"]), VISITS);
+const VISITS: Document<Stream<Visit>> = Document::new("birds", "visits-watch", 1, "Each visit.");
 
-    assert_eq!(refused.err(), Some(ExitCode::from(2)));
-    let document: serde_json::Value = serde_json::from_slice(&out).unwrap();
-    assert_eq!(document["code"], "birds::cli::usage");
+/// Returns one visit of a robin.
+const fn robin() -> Visit {
+    Visit {
+        bird: "robin",
+        place: "garden",
+    }
+}
+
+#[test]
+fn a_stream_of_a_whole_row_type_prints_no_note_for_json_alone() {
+    let (_, err, code) = streamed_all(&["--json"], VISITS, &[robin()]);
+
+    assert_eq!(code, ExitCode::SUCCESS);
+    assert_eq!(err, "");
+}
+
+#[test]
+fn a_stream_of_a_whole_row_type_prints_the_json_lines_and_a_note_for_long_with_json() {
+    let (json, _, _) = streamed_all(&["--json"], VISITS, &[robin()]);
+
+    let (out, err, code) = streamed_all(&["--json", "--long"], VISITS, &[robin()]);
+
+    assert_eq!(code, ExitCode::SUCCESS, "{err}");
+    assert_eq!(out, json);
     assert_eq!(
-        document["recovery"]["text"],
-        "drop --long, because --json already prints every field of each row"
+        err,
+        "note: --long adds nothing to --json here; the JSON already holds the whole result.\n"
+    );
+}
+
+#[test]
+fn a_stream_of_a_whole_row_type_prints_the_json_lines_and_a_note_for_full_with_json() {
+    let (json, _, _) = streamed_all(&["--json"], VISITS, &[robin()]);
+
+    let (out, err, code) = streamed_all(&["--json", "--full"], VISITS, &[robin()]);
+
+    assert_eq!(code, ExitCode::SUCCESS, "{err}");
+    assert_eq!(out, json);
+    assert_eq!(
+        err,
+        "note: --full adds nothing to --json here; the JSON already holds the whole result.\n"
     );
 }

@@ -329,23 +329,11 @@ error: --long adds the long columns of a table, and this command's rows have non
 }
 
 #[test]
-fn full_on_an_unwrapped_leaf_is_refused_with_a_hint_that_json_prints_every_field() {
+fn full_with_json_on_an_unwrapped_leaf_is_accepted() {
     let parsed = parse(&["tool", "books", "dump", "--json", "--full"]);
 
-    assert_eq!(parsed.code, Some(ExitCode::from(2)));
-    let document: serde_json::Value = serde_json::from_str(&parsed.out).unwrap();
-    assert_eq!(
-        document["message"],
-        "--full prints every field of every row, and this command's JSON already holds every field"
-    );
-    assert_eq!(
-        document["recovery"]["text"],
-        "drop --full, because --json already prints the whole result"
-    );
-    assert_eq!(
-        document["fields"],
-        serde_json::json!({"argument": "--full"})
-    );
+    assert_eq!(parsed.code, None, "{}", parsed.out);
+    assert_eq!(parsed.err, "");
 }
 
 #[test]

@@ -46,6 +46,7 @@ for empty results, sources that cannot be counted, an upper bound on
 - [ADR-0139. A listing can carry a note that prints under `--long`](0139-a-listing-carries-a-note-for-long.md)
 - [ADR-0140. The `Rows:` line names every view that lists every row](0140-the-rows-line-names-every-view-that-lists-every-row.md)
 - [ADR-0142. A summary that writes no text prints no line](0142-a-summary-that-writes-no-text-prints-no-line.md)
+- [ADR-0149. A view flag that adds nothing to the JSON is accepted with a note](0149-a-view-flag-that-adds-nothing-is-accepted-with-a-note.md)
 
 ## Consequences
 

@@ -307,7 +307,9 @@ impl Leaf {
     /// crumbkit's envelope. A headed document offers neither `--long` nor
     /// `--full` (ADR-0062). Rows that print whole offer no `--full`, and
     /// offer neither `--fields` nor `--long` when they have no columns
-    /// (ADR-0065). A leaf that [`Leaf::prints_no_result`] declared offers
+    /// (ADR-0065). `parse` still accepts `--long` and `--full` with `--json`
+    /// where they add nothing, as [`Leaf::adds_nothing`] describes
+    /// (ADR-0149). A leaf that [`Leaf::prints_no_result`] declared offers
     /// none (ADR-0143). Any other leaf without a document offers every view
     /// flag, because crumbkit cannot tell what its command prints.
     #[must_use]
@@ -322,6 +324,25 @@ impl Leaf {
             Some(columns) => view::unoffered(&columns.printed(), flag),
             None if self.no_result => Some(Unoffered::NoResult),
             None => None,
+        }
+    }
+
+    /// Reports whether `flag`, passed with `--json` when `json` is true, adds
+    /// nothing to the JSON of the leaf's command, or `false` when the leaf
+    /// has no document (ADR-0149).
+    ///
+    /// `--long` and `--full` add nothing when the JSON already holds the
+    /// whole result: for prose and bytes, for a document or stream without
+    /// crumbkit's envelope, for a headed document and for rows whose type
+    /// sets [`Row::WHOLE`]. `parse`, `finish` and `stream` then accept the
+    /// flag with `--json`, print what `--json` alone prints and write a note
+    /// that the flag adds nothing, although [`Leaf::offers`] reports that the
+    /// leaf does not offer it. `--fields` never adds nothing.
+    #[must_use]
+    pub const fn adds_nothing(&self, flag: ViewFlag, json: bool) -> bool {
+        match self.columns {
+            Some(columns) => view::adds_nothing(&columns.printed(), flag, json),
+            None => false,
         }
     }
 

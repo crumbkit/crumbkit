@@ -335,14 +335,17 @@ pub trait Row: Serialize + JsonSchema {
     /// such as a field that the type leaves out when it holds nothing. The
     /// text still prints the table of `COLUMNS`, `--long` still adds
     /// `LONG_COLUMNS` to the table, and `--fields` still selects fields,
-    /// printing `null` for a field that a row leaves out. crumbkit refuses
-    /// `--full`, because the JSON already holds every field.
+    /// printing `null` for a field that a row leaves out. `--long` and
+    /// `--full` with `--json` print the document that `--json` alone
+    /// prints, with a note on standard error that the flag adds nothing,
+    /// because the JSON already holds every field (ADR-0149).
     ///
     /// A row type that sets it may name no columns, as for a row that
     /// serializes as an array, only when it also declares [`Row::LINE`]
     /// (ADR-0072). Its text then prints each row's own line with no header,
     /// or one line of compact JSON for a row whose [`Row::text_line`]
-    /// returns `None`, and crumbkit refuses `--fields` and `--long`.
+    /// returns `None`, and crumbkit refuses `--fields`, and `--long`
+    /// without `--json`.
     /// `crumbkit::finish` and `crumbkit::stream` fail to compile for such a
     /// row type without a `LINE`, and crumbkit-test's `check_guide` fails a
     /// batch of it. `check_guide` also fails a row type without columns

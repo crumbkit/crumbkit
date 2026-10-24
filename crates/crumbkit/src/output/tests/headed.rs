@@ -325,21 +325,38 @@ fn fields_without_json_is_refused_on_a_headed_document() {
 }
 
 #[test]
-fn long_and_full_are_refused_on_a_headed_document() {
+fn long_and_full_with_json_on_a_headed_document_print_the_json_document_and_a_note() {
+    let json = finish_pages(&["--json"], batch(&[("a", Some(b"one\n"))]));
+
     let long = finish_pages(&["--json", "--long"], batch(&[("a", Some(b"one\n"))]));
     let full = finish_pages(&["--json", "--full"], batch(&[("a", Some(b"one\n"))]));
 
+    assert_eq!(json.err, "");
+    assert_eq!(long.code, ExitCode::SUCCESS, "{}", long.err);
+    assert_eq!(long.out, json.out);
+    assert_eq!(
+        long.err,
+        "note: --long adds nothing to --json here; the JSON already holds the whole result.\n"
+    );
+    assert_eq!(full.code, ExitCode::SUCCESS, "{}", full.err);
+    assert_eq!(full.out, json.out);
+    assert_eq!(
+        full.err,
+        "note: --full adds nothing to --json here; the JSON already holds the whole result.\n"
+    );
+}
+
+#[test]
+fn long_without_json_is_still_refused_on_a_headed_document() {
+    let long = finish_pages(&["--long"], batch(&[("a", Some(b"one\n"))]));
+
     assert_eq!(long.code, ExitCode::from(2));
     assert!(
-        long.text().contains(r#""message":"--long adds the long columns of a table, and this command's text prints each answer's bytes""#),
+        long.err.starts_with(
+            "error: --long adds the long columns of a table, and this command's text prints each answer's bytes\n"
+        ),
         "{}",
-        long.text()
-    );
-    assert_eq!(full.code, ExitCode::from(2));
-    assert!(
-        full.text().contains(r#""message":"--full prints every field of every row, and this command's JSON already holds every field""#),
-        "{}",
-        full.text()
+        long.err
     );
 }
 

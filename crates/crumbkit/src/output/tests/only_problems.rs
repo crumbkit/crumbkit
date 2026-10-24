@@ -13,7 +13,6 @@ use clap::CommandFactory as _;
 
 use super::{Tool, built_with, finish_output, finish_with};
 use crate::help::Guide;
-use crate::twins::assert_one_word_apart;
 use crate::{Document, Listing, Row};
 
 /// A check of one package, with the errors and warnings that it found.
@@ -216,23 +215,17 @@ cli      true
 }
 
 #[test]
-fn finish_refuses_long_with_json_for_a_whole_row_type_because_json_already_holds_every_field() {
-    assert_one_word_apart(&["--json", "--long"], &["--json"]);
-    let twin = finish_with(&["--json"], CHECKS, three());
-    assert_eq!(twin.code, ExitCode::from(1), "{}", twin.err);
+fn long_with_json_for_a_whole_row_type_prints_the_json_document_and_a_note() {
+    let json = finish_with(&["--json"], CHECKS, three());
 
     let finished = finish_with(&["--json", "--long"], CHECKS, three());
 
-    assert_eq!(finished.code, ExitCode::from(2));
-    let document: Value = serde_json::from_str(&finished.out).unwrap();
+    assert_eq!(finished.code, ExitCode::from(1), "{}", finished.err);
+    assert_eq!(finished.out, json.out);
+    assert_eq!(json.err, "");
     assert_eq!(
-        document["message"],
-        "--long adds the long columns of a table, and this command's JSON already holds every field"
-    );
-    assert_eq!(document["code"], "tool::cli::usage");
-    assert_eq!(
-        document["recovery"]["text"],
-        "drop --long, because --json already prints every field of each row"
+        finished.err,
+        "note: --long adds nothing to --json here; the JSON already holds the whole result.\n"
     );
 }
 

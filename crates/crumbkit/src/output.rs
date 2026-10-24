@@ -341,14 +341,16 @@ pub fn finish<T: Rows, E: AsFailure>(
 /// A [`Prose`](crate::Prose) prints its text, with each control character
 /// other than a line feed or a tab escaped and a line feed added when the
 /// text lacks one, and its JSON document holds its value under `data`.
-/// Its failures print as a batch's do. `--fields`, `--long` and `--full`
-/// are refused, because it has no columns.
+/// Its failures print as a batch's do. `--fields`, and `--long` without
+/// `--json`, are refused, because it has no columns.
 ///
 /// A [`Bytes`](crate::Bytes) prints its bytes unchanged, with no escaping
 /// and no added line feed, and its JSON document holds `{"text": "..."}`
 /// under `data` when the bytes are valid UTF-8 and `{"base64": "..."}`
-/// otherwise. `--fields`, `--long` and `--full` are refused with exit code
-/// 2, because it has no columns.
+/// otherwise. `--fields`, and `--long` without `--json`, are refused with
+/// exit code 2, because it has no columns. For prose and bytes, `--long`
+/// or `--full` with `--json` prints what `--json` alone prints, with a note
+/// that the flag adds nothing (ADR-0149).
 ///
 /// On a dry run, the line `This was a dry run, so nothing changed.` prints
 /// last on the error writer, after a batch's failures, in text and with
@@ -420,9 +422,12 @@ pub fn finish<T: Rows, E: AsFailure>(
 /// view that every printer accepts (ADR-0093). A prose or bytes result
 /// cannot use `--fields`, `--long` or `--full`, rows without long columns
 /// cannot use `--long` unless the document lists only the rows that report
-/// a problem or declares a long note (ADR-0139), rows of a type that sets
-/// `Row::WHOLE` cannot use `--long` with `--json` (ADR-0138), and a
-/// document without the envelope cannot use `--full` (ADR-0016).
+/// a problem or declares a long note (ADR-0139), and a document without
+/// the envelope cannot use `--full` (ADR-0016). When the JSON already holds
+/// the whole result, as for a document without the envelope, a headed
+/// document or rows of a type that sets `Row::WHOLE`, `--long` and `--full`
+/// with `--json` are accepted, print the document that `--json` alone
+/// prints, and deliver a note that the flag adds nothing (ADR-0149).
 ///
 /// A run without a failure whose rows report a problem, as
 /// [`Row::is_problem`](crate::Row::is_problem) decides, exits with 1, also

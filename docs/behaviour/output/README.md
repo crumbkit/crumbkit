@@ -92,6 +92,9 @@ leaf with a document offers only the view flags that its document can use:
   `--fields` nor `--long` when the row type has no columns;
 - prose and bytes offer none of the three.
 
+crumbkit accepts `--long` or `--full` with `--json` when the JSON already
+holds the whole result, and [prints a note](shapes/README.md#rows-printed-whole).
+
 The document's schema matches the JSON of `--json`, `--json --long` and
 `--json --full`, and matches a `--fields` selection only when the selection
 names every column in `Row::COLUMNS` ([schemas](../schemas/README.md#versions)).
@@ -107,8 +110,7 @@ parsed once into one view, a text table or JSON rows with a selection of
 fields, which never holds two flags that cannot work together. Three checks apply the rules:
 
 - `parse` refuses, before the handler runs, a view flag that the leaf does
-  not offer, `--json --long` for whole rows, two flags that
-  cannot work together, and a
+  not offer, two flags that cannot work together, and a
   `--fields` name that the row type of the leaf's document lacks, in that
   order. It also leaves an unoffered view flag out of the leaf's help. On
   a leaf without a document that prints a result, `parse` refuses only the pairs.
@@ -117,8 +119,7 @@ fields, which never holds two flags that cannot work together. Three checks appl
   refusal and returns the `Stop` of a refused command line, as `parse`
   does.
 - When the handler returns a result, `finish` refuses by the document it
-  was given: an unoffered view flag, `--json --long` for whole rows, and
-  an unknown `--fields` name.
+  was given: an unoffered view flag and an unknown `--fields` name.
   `stream` refuses by its document in the same way when it opens. When
   the handler returns a failure, `finish` checks nothing and prints the
   failure with its own code, as text or as a failure document with
@@ -161,7 +162,7 @@ on a program's exit code needs no document, because crumbkit-child's
 `hand_over` refuses `--json` and `--fields` before the program starts
 ([child processes](child-processes.md)).
 
-Why: ADR-0016, ADR-0024, ADR-0065, ADR-0082, ADR-0093, ADR-0105, ADR-0110, ADR-0115, ADR-0143.
+Why: ADR-0016, ADR-0024, ADR-0065, ADR-0082, ADR-0093, ADR-0105, ADR-0110, ADR-0115, ADR-0143, ADR-0149.
 
 ## Following the caller's format
 

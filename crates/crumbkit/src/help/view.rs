@@ -16,6 +16,10 @@ mod tests;
 /// as [`Leaf::offers`](super::Leaf::offers) reports. `parse` leaves the
 /// other view flags out of the leaf's help and refuses them when the caller
 /// types them, and `finish` and `stream` refuse them by the same rule.
+/// `--long` and `--full` with `--json` on a command whose JSON already holds
+/// the whole result add nothing to it, and are accepted with a note in place
+/// of the refusal, as [`Leaf::adds_nothing`](super::Leaf::adds_nothing)
+/// describes (ADR-0149).
 #[non_exhaustive]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ViewFlag {
@@ -207,23 +211,33 @@ const fn because(reason: Unoffered) -> &'static str {
     }
 }
 
-/// Returns the refusal of `--long` with `--json` on a command whose row
-/// type sets `Row::WHOLE`, or `None` when `whole`, `long` or `json` is off
-/// (ADR-0138). `long` says whether the caller passed `--long`, and `json`
-/// whether the caller passed `--json`.
+/// Reports whether `flag`, passed with `--json` when `json` is true, adds
+/// nothing to the JSON of a command that prints `printed` (ADR-0149).
 ///
-/// The JSON of such rows already holds every field, so `--long` adds
-/// nothing to it, as `--full` adds nothing. The refusal names `--long`
-/// under `argument`, and it prints as a refused command line does.
-pub(crate) fn whole_long(whole: bool, long: bool, json: bool) -> Option<Refusal> {
-    (whole && long && json).then(|| {
-        Refusal::flag_value(
-            "--long adds the long columns of a table, and this command's JSON already holds every field".to_owned(),
-            "drop --long, because --json already prints every field of each row".to_owned(),
-            ViewFlag::Long.name(),
-            None,
-        )
-    })
+/// `--long` and `--full` add fields to the JSON, so they add nothing when
+/// the JSON already holds the whole result: for prose and bytes, for a
+/// document or stream without the envelope, for a headed document and for
+/// rows whose type sets `Row::WHOLE`. crumbkit accepts such a flag, prints
+/// what `--json` alone prints and prints the note of [`adds_nothing_note`],
+/// where it would otherwise refuse the flag as unoffered. `--fields`
+/// selects fields, so it never adds nothing, and without `--json` the text
+/// still uses `--long` or refuses it.
+pub(crate) const fn adds_nothing(printed: &Printed, flag: ViewFlag, json: bool) -> bool {
+    let whole_result = matches!(printed.kind, Kind::Document(Shape::Prose | Shape::Bytes))
+        || !printed.envelope
+        || printed.headed
+        || printed.whole;
+    json && whole_result && matches!(flag, ViewFlag::Long | ViewFlag::Full)
+}
+
+/// Returns the note that says `flag` adds nothing to the JSON, such as
+/// `note: --long adds nothing to --json here; the JSON already holds the
+/// whole result.`, for a flag that [`adds_nothing`] accepts.
+pub(crate) fn adds_nothing_note(flag: ViewFlag) -> String {
+    format!(
+        "note: {} adds nothing to --json here; the JSON already holds the whole result.",
+        flag.name()
+    )
 }
 
 /// Returns the refusal of `--fields` without `--json` on a command whose

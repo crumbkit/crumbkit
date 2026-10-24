@@ -1,7 +1,7 @@
 # ADR-0062. Headed bytes
 
 - Date: 2026-10-15
-- Status: amended by ADR-0084
+- Status: amended by ADR-0084 and ADR-0149
 
 ## Context
 

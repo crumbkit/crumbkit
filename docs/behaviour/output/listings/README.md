@@ -261,7 +261,9 @@ from the document which view flags a leaf offers before the handler runs.
 - Its `-h` and `--help` print a line after the `Rows:` line:
   `Long note: --long prints a note on standard error.`
 - A row type that sets `Row::WHOLE` and names no columns offers no
-  `--long`. `--json --long` is refused for a row type that sets
-  `Row::WHOLE`, and otherwise prints the same document as `--json`.
+  `--long`. `--json --long` prints the same document as `--json`, and
+  for a row type that sets `Row::WHOLE` it also writes a note that
+  `--long` adds nothing
+  ([rows printed whole](../shapes/README.md#rows-printed-whole)).
 
 Why: ADR-0139.
