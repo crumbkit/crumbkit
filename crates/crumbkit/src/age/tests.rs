@@ -8,7 +8,8 @@ use schemars::{JsonSchema, schema_for};
 use serde::Serialize;
 use serde_json::{Value, json};
 
-use super::{Age, TextCells};
+use super::Age;
+use crate::shown::TextCells;
 
 /// The time 2026-10-07T12:01:07.120Z.
 fn at() -> SystemTime {
@@ -175,42 +176,6 @@ fn an_age_serializes_as_its_compact_age_while_the_text_mode_is_set() {
     };
 
     assert_eq!(value, json!("3h"));
-}
-
-#[test]
-fn the_text_mode_ends_when_its_guard_is_dropped() {
-    let age = Age::since(at(), at() + Duration::from_secs(3 * 3_600));
-
-    drop(TextCells::enter());
-
-    assert_eq!(
-        serde_json::to_value(age).unwrap(),
-        json!("2026-10-07T12:01:07.120Z")
-    );
-}
-
-#[test]
-fn an_inner_guard_restores_the_text_mode_that_it_found() {
-    let age = Age::since(at(), at() + Duration::from_secs(60));
-    let outer = TextCells::enter();
-
-    drop(TextCells::enter());
-    let value = serde_json::to_value(age).unwrap();
-    drop(outer);
-
-    assert_eq!(value, json!("1m"));
-}
-
-#[test]
-fn the_text_mode_of_one_thread_leaves_another_thread_in_rfc_3339() {
-    let age = Age::since(at(), at() + Duration::from_secs(60));
-    let _cells = TextCells::enter();
-
-    let other = std::thread::spawn(move || serde_json::to_value(age).unwrap())
-        .join()
-        .unwrap();
-
-    assert_eq!(other, json!("2026-10-07T12:01:07.120Z"));
 }
 
 #[test]

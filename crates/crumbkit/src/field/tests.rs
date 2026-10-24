@@ -1,8 +1,13 @@
 //! Tests for the named values of a failure.
 
 use std::borrow::Cow;
+use std::fmt;
+
+use serde::Serializer;
 
 use super::{Field, FieldValue};
+use crate::shown::TextCells;
+use crate::{Duration, Shown};
 
 #[test]
 fn a_field_keeps_its_name_and_value() {
@@ -152,4 +157,102 @@ fn from_json_returns_none_for_a_fraction_or_an_integer_beyond_u64_at_any_depth()
 
         assert_eq!(FieldValue::from_json(&value), None, "{json}");
     }
+}
+
+/// A weight in grams, which reads `1.5 kg` in text and `1500` in JSON.
+struct Grams(u64);
+
+impl fmt::Display for Grams {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}.{} kg", self.0 / 1_000, self.0 % 1_000 / 100)
+    }
+}
+
+impl Shown for Grams {
+    fn json<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.serialize_u64(self.0)
+    }
+}
+
+/// A ratio, whose JSON form is a fraction that a field value cannot hold.
+struct Ratio(f64);
+
+impl fmt::Display for Ratio {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}%", self.0 * 100.0)
+    }
+}
+
+impl Shown for Ratio {
+    fn json<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.serialize_f64(self.0)
+    }
+}
+
+/// A place on a shelf, whose JSON form is an object.
+struct Spot;
+
+impl fmt::Display for Spot {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str("shelf 2, slot 7")
+    }
+}
+
+impl Shown for Spot {
+    fn json<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        use serde::ser::SerializeMap as _;
+
+        let mut map = serializer.serialize_map(Some(2))?;
+        map.serialize_entry("shelf", &2)?;
+        map.serialize_entry("slot", &7)?;
+        map.end()
+    }
+}
+
+#[test]
+fn a_shown_field_holds_the_json_form_of_the_value() {
+    let field = Field::shown("weight", &Grams(1_500));
+
+    assert_eq!(field.name(), "weight");
+    assert_eq!(field.value(), &FieldValue::Unsigned(1_500));
+    assert_eq!(Grams(1_500).to_string(), "1.5 kg");
+}
+
+#[test]
+fn a_shown_field_holds_the_text_of_a_value_with_the_default_json_form() {
+    let waited = Duration(std::time::Duration::from_secs(90));
+
+    assert_eq!(
+        Field::shown("waited", &waited).value(),
+        &FieldValue::from("PT1M30S")
+    );
+}
+
+#[test]
+fn a_shown_field_holds_an_object_json_form_as_an_object() {
+    assert_eq!(
+        Field::shown("spot", &Spot).value(),
+        &FieldValue::object([
+            ("shelf", FieldValue::from(2_u32)),
+            ("slot", FieldValue::from(7_u32)),
+        ])
+    );
+}
+
+#[test]
+fn a_shown_field_whose_json_form_has_a_fraction_holds_the_text_form() {
+    assert_eq!(
+        Field::shown("ratio", &Ratio(0.5)).value(),
+        &FieldValue::from("50%")
+    );
+}
+
+#[test]
+fn a_shown_field_holds_the_json_form_while_the_text_mode_is_set() {
+    let field = {
+        let _cells = TextCells::enter();
+        Field::shown("weight", &Grams(1_500))
+    };
+
+    assert_eq!(field.value(), &FieldValue::Unsigned(1_500));
 }

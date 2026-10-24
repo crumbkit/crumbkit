@@ -3,6 +3,7 @@
 use schemars::JsonSchema;
 use serde::Serialize;
 
+mod children;
 mod fields;
 mod no_row;
 pub(crate) mod problems;
@@ -226,6 +227,58 @@ pub trait Row: Serialize + JsonSchema {
     /// nothing under it. The child lines do not change the widths of the
     /// table's columns, and the output budget counts them.
     ///
+    /// The default serializes the row as its text cells are built and
+    /// returns the items of the [`Row::CHILDREN`] field when it is an array
+    /// of strings, and no lines otherwise. A field whose items are
+    /// [`Shown`](crate::Shown) values, or strings, therefore prints one child
+    /// line for each item, its `Display`, with no override:
+    ///
+    /// ```
+    /// use std::fmt;
+    ///
+    /// use crumbkit::{Row, Shown};
+    /// use schemars::JsonSchema;
+    /// use serde::Serialize;
+    ///
+    /// /// One part of a service, which prints as `+ database` when it answers.
+    /// struct Part {
+    ///     name: &'static str,
+    ///     up: bool,
+    /// }
+    ///
+    /// impl fmt::Display for Part {
+    ///     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    ///         let mark = if self.up { '+' } else { '-' };
+    ///         write!(f, "{mark} {}", self.name)
+    ///     }
+    /// }
+    ///
+    /// impl Shown for Part {}
+    /// crumbkit::shown!(Part);
+    ///
+    /// /// A service and the parts it runs on.
+    /// #[derive(Serialize, JsonSchema)]
+    /// struct Service {
+    ///     /// The service's name.
+    ///     name: String,
+    ///     /// The parts that the service runs on.
+    ///     parts: Vec<Part>,
+    /// }
+    ///
+    /// impl Row for Service {
+    ///     const COLUMNS: &'static [&'static str] = &["name"];
+    ///     const CHILDREN: Option<&'static str> = Some("parts");
+    /// }
+    ///
+    /// let service = Service {
+    ///     name: "catalogue".to_owned(),
+    ///     parts: vec![Part { name: "database", up: true }],
+    /// };
+    /// assert_eq!(service.child_lines(), ["+ database"]);
+    /// ```
+    ///
+    /// A type whose children print otherwise overrides it:
+    ///
     /// ```
     /// use crumbkit::Row;
     /// use schemars::JsonSchema;
@@ -263,7 +316,7 @@ pub trait Row: Serialize + JsonSchema {
     /// }
     /// ```
     fn child_lines(&self) -> Vec<String> {
-        Vec::new()
+        children::shown_lines(self, Self::CHILDREN)
     }
 
     /// Returns the child lines that the text prints under the row with

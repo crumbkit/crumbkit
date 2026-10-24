@@ -170,6 +170,8 @@ Why: ADR-0064, ADR-0114.
 A row type may print the items of one field as indented lines under each
 row. `Row::CHILDREN` names the field, such as `Some("components")`, and
 `Row::child_lines` builds one line for each item, such as `+ database`.
+Its default prints each item's text when the field holds strings or
+[value types](../values/README.md), and prints nothing otherwise.
 Without `--json` and `--fields`, the text prints each child line under the
 row's table line, or under its own text line, with control characters and
 format characters escaped. `Row::CHILD_INDENT` sets the number of spaces

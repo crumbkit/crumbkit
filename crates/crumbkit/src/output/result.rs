@@ -16,8 +16,8 @@ use super::failure::PreparedFailure;
 use super::layout::JsonLayout;
 use super::table::Table;
 use super::{Output, children, layout, lines, listing, problems, prose};
-use crate::age::TextCells;
 use crate::help::rename::Renames;
+use crate::shown::TextCells;
 use crate::sink::role::{Deliver, Message, Role};
 use crate::view::View;
 use crate::{Code, Document, Row, Rows, Shape, Spelling, codes};
@@ -205,8 +205,8 @@ fn write_rows<T: Rows>(
     let columns = columns(settings.view, document, value.prose().is_some());
     // The serialized rows become the cells of the text table without
     // `--json` and the selected fields of the JSON document with it, and a
-    // run prints only one of the two. The rows are serialized once, so an
-    // `Age` writes its compact age when the run prints text.
+    // run prints only one of the two. The rows are serialized once, so a
+    // shown value writes its `Display` when the run prints text.
     // The text of a document that lists only the rows that report a
     // problem serializes only those rows (ADR-0138).
     let only = problems::only(&document, settings.view);

@@ -26,6 +26,7 @@ document.
 - [ADR-0077. Notes on prose and batch results](0077-notes-on-prose-and-batches.md)
 - [ADR-0093. The view flags are parsed once into a View](0093-the-view-flags-are-parsed-once-into-a-view.md)
 - [ADR-0108. An age cell](age/README.md)
+- [ADR-0147. A value type prints its Display in text and its own form in JSON](values/README.md)
 - [ADR-0050. Listings](listings/README.md)
 - [ADR-0087. Uncounted listings omit totals](uncounted/README.md)
 - [ADR-0098. JSON documents](json/README.md)

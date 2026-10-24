@@ -1,5 +1,5 @@
-ID  TITLE                AUTHOR           YEAR  FORM
-1   Pride and Prejudice  Jane Austen      1813  novel
-2   Frankenstein         Mary Shelley     1818  novel
-3   Moby-Dick            Herman Melville  1851  novel
-4   Great Expectations   Charles Dickens  1861  novel
+ID  TITLE                AUTHOR           YEAR  FORM   PAGES      READING
+1   Pride and Prejudice  Jane Austen      1813  novel  432 pages  14h
+2   Frankenstein         Mary Shelley     1818  novel  280 pages  9h
+3   Moby-Dick            Herman Melville  1851  novel  635 pages  21h
+4   Great Expectations   Charles Dickens  1861  novel  544 pages  18h

@@ -1,7 +1,7 @@
 # ADR-0146. A measured duration prints as a compact age
 
 - Date: 2026-10-23
-- Status: accepted
+- Status: amended by ADR-0148
 - Supersedes: ADR-0108 and ADR-0141, which it amends
 - Missed: ADR-0141 and ADR-0108 gave the compact form only to a time the tool knows, so a tool that measured a duration had to invent a time to print it.
 
