@@ -1,7 +1,7 @@
 # ADR-0153. A listing with a summary and no rows prints the summary alone
 
 - Date: 2026-10-25
-- Status: accepted
+- Status: amended by ADR-0157
 - Supersedes: ADR-0050 and ADR-0138, which it amends
 - Missed: ADR-0138 printed the summary line alone only for a listing that lists only its problem rows, although any listing with a summary and no rows to print has the same header with nothing under it.
 

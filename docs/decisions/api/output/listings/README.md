@@ -42,11 +42,10 @@ for empty results, sources that cannot be counted, an upper bound on
 
 ## Children
 
-- [ADR-0138. A listing can list only its problem rows](0138-a-listing-lists-only-its-problem-rows.md)
 - [ADR-0139. A listing can carry a note that prints under `--long`](0139-a-listing-carries-a-note-for-long.md)
-- [ADR-0140. The `Rows:` line names every view that lists every row](0140-the-rows-line-names-every-view-that-lists-every-row.md)
 - [ADR-0149. A view flag that adds nothing to the JSON is accepted with a note](0149-a-view-flag-that-adds-nothing-is-accepted-with-a-note.md)
 - [ADR-0155. A listing can name several next steps, with commands of other programs](0155-a-listing-names-several-steps.md)
+- [ADR-0157. A row type chooses which rows the default text lists](default-text/README.md)
 - [ADR-0159. Listing summaries](summary/README.md)
 
 ## Consequences

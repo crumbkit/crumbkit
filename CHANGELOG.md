@@ -654,6 +654,10 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   by commands indented by two spaces. A step names the tool's commands as
   a [`Call`] and another program's through a declared [`Program`]
   ([behaviour/output/listings]).
+- crumbkit: `Row::in_default_text` chooses which rows the default text of
+  a listing lists, while `--long`, `--fields` and `--json` list every row.
+  It returns true by default, and a row that reports a problem is always
+  listed ([behaviour/output/listings]).
 
 ### Changed
 

@@ -163,6 +163,63 @@ pub trait Row: Serialize + JsonSchema {
         problems::field_reports(self)
     }
 
+    /// Reports whether the default text of a listing lists the row, which
+    /// is true for every row by default (ADR-0157).
+    ///
+    /// The default text is the text table, or the rows' own text lines,
+    /// without `--json`, `--long` or `--fields`. It lists a row that
+    /// reports a problem, as [`Row::is_problem`] decides, whatever this
+    /// returns, so the note that counts those rows never counts a row that
+    /// the text leaves out. It lists each other row for which this returns
+    /// true, and none of them when the listing's document is marked with
+    /// [`Document::only_problems`](crate::Document::only_problems).
+    /// `--long` and `--fields` print every row, and `--json` holds every
+    /// row unchanged. A list, a batch, a single row and a stream print
+    /// every row.
+    ///
+    /// A tool whose row type leaves rows out puts the rows that the default
+    /// text lists first, as it puts the rows that report a problem first
+    /// (OUTPUT-3). A limit and the output budget's cut keep the first rows
+    /// of the listing, so with this order neither hides a listed row behind
+    /// rows that the text leaves out.
+    ///
+    /// When the default text leaves out every row, a listing with a summary
+    /// line prints the summary line alone, and one without prints nothing
+    /// on standard output. The footer counts every row of the page, the
+    /// empty note prints only for a listing that holds no rows, and no line
+    /// counts the rows that the text left out. The help says nothing about
+    /// these rows, because it cannot know which rows the method leaves out,
+    /// so the about text of a command whose rows it leaves out says which
+    /// views list every row.
+    ///
+    /// ```
+    /// use crumbkit::Row;
+    /// use schemars::JsonSchema;
+    /// use serde::Serialize;
+    ///
+    /// /// An item that a cleanup run removed, or kept with a step for the
+    /// /// caller.
+    /// #[derive(Serialize, JsonSchema)]
+    /// struct Item {
+    ///     path: String,
+    ///     removed: bool,
+    ///     step: Option<String>,
+    /// }
+    ///
+    /// impl Row for Item {
+    ///     const COLUMNS: &'static [&'static str] = &["path", "removed", "step"];
+    ///
+    ///     // A dry run removes nothing, so its text lists every item, and a
+    ///     // real run's text lists the items that need the caller's step.
+    ///     fn in_default_text(&self) -> bool {
+    ///         !self.removed || self.step.is_some()
+    ///     }
+    /// }
+    /// ```
+    fn in_default_text(&self) -> bool {
+        true
+    }
+
     /// The form of the row's own text line as help shows it, such as
     /// `<POINTER> -> <TARGET>`, or `None` when the row prints as a table
     /// row (ADR-0064).

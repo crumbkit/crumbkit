@@ -333,7 +333,10 @@ impl<R: Row, S> Document<Listing<R, S>> {
     /// of a listing without rows, the note that counts the rows that report
     /// a problem and the exit do not change, and no line counts the rows
     /// that the text leaves out. `--long` and `--fields` print every row,
-    /// and `--json` holds every row unchanged.
+    /// and `--json` holds every row unchanged. The option is the strictest
+    /// case of [`Row::in_default_text`]: the default text leaves out each
+    /// row that reports no problem, whatever that method returns
+    /// (ADR-0157).
     ///
     /// The leaf offers `--long` even when the row type has no long columns,
     /// because `--long` lists every row, and its help prints a `Rows:` line
