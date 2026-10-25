@@ -146,7 +146,7 @@ fn a_styled_sink_wraps_each_styled_cell_in_its_escape_codes_and_pads_after_the_r
     let expected = "\
 NAME          STATE
 \u{1b}[1mweb\u{1b}[0m           \u{1b}[32mrunning\u{1b}[0m
-\u{1b}[1mqueue-worker\u{1b}[0m  \u{1b}[31mfailed\u{1b}[0m
+\u{1b}[1mqueue-worker\u{1b}[0m  \u{1b}[1m\u{1b}[31mfailed\u{1b}[0m
 \u{1b}[1mcache\u{1b}[0m         \u{1b}[2mstopped\u{1b}[0m
 ";
     assert_eq!(finished.out, expected);
@@ -292,7 +292,7 @@ fn a_document_that_lists_only_problems_styles_each_shown_row_with_its_own_styles
 
     let expected = "\
 NAME   ERROR   STATE
-\u{1b}[1mqueue\u{1b}[0m  \u{1b}[31mexit 1\u{1b}[0m  \u{1b}[31mfailed\u{1b}[0m
+\u{1b}[1mqueue\u{1b}[0m  \u{1b}[1m\u{1b}[31mexit 1\u{1b}[0m  \u{1b}[1m\u{1b}[31mfailed\u{1b}[0m
 ";
     assert_eq!(finished.out, expected);
     assert_eq!(finished.code, ExitCode::from(1));
@@ -339,7 +339,7 @@ fn the_placeholder_of_a_missing_value_takes_the_style_of_its_cell() {
     assert!(
         finished
             .out
-            .contains("\u{1b}[1mweb\u{1b}[0m    \u{1b}[31m-\u{1b}[0m"),
+            .contains("\u{1b}[1mweb\u{1b}[0m    \u{1b}[1m\u{1b}[31m-\u{1b}[0m"),
         "{}",
         finished.out
     );

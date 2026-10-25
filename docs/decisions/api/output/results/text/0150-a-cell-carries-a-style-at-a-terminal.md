@@ -1,7 +1,7 @@
 # ADR-0150. A table cell carries a style at a terminal
 
 - Date: 2026-10-25
-- Status: accepted
+- Status: amended by ADR-0154
 - Supersedes: ADR-0049, which it amends
 
 ## Context

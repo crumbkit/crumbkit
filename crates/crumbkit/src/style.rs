@@ -57,7 +57,8 @@ pub enum Style {
     /// `running`. A terminal shows it in green.
     Success,
     /// A cell that reports a failure or a problem, such as `failed`. A
-    /// terminal shows it in red.
+    /// terminal shows it in bold red, the style of the `error:` label that
+    /// starts a refusal (ADR-0154).
     Error,
 }
 
@@ -68,7 +69,7 @@ impl Style {
             Self::Emphasis => Ansi::new().bold(),
             Self::Dim => Ansi::new().dimmed(),
             Self::Success => AnsiColor::Green.on_default(),
-            Self::Error => AnsiColor::Red.on_default(),
+            Self::Error => AnsiColor::Red.on_default().bold(),
         }
     }
 }

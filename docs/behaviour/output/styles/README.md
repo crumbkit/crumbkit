@@ -17,7 +17,10 @@ plain.
 | `Emphasis` | The cell a person should notice first, such as a name | bold |
 | `Dim` | A cell of less interest, such as `stopped` | dim |
 | `Success` | Something works or finished, such as `running` | green |
-| `Error` | A failure or a problem, such as `failed` | red |
+| `Error` | A failure or a problem, such as `failed` | bold red |
+
+A problem cell takes the bold red of the `error:` label that starts a
+refusal, so a failure in a table looks like a failure on standard error.
 
 shelf's book table shows each title in bold
 ([`books.rs`](../../../../examples/shelf/src/books.rs)).
@@ -52,4 +55,4 @@ marks the sink with `Sink::styled`, the same flag that keeps help's colours.
 - The header, `--json`, a row's text line, a stream and a child process's
   lines never carry styles.
 
-Why: ADR-0128, ADR-0131, ADR-0133, ADR-0150.
+Why: ADR-0128, ADR-0131, ADR-0133, ADR-0150, ADR-0154.
