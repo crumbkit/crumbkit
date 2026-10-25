@@ -21,8 +21,8 @@ mod tests;
 /// extra line, because the message already describes the value for a
 /// person.
 ///
-/// A name follows the rule of a code segment: one or more lowercase ASCII
-/// letters, digits and underscores, such as `book_id`.
+/// A name is one or more lowercase ASCII letters, digits and underscores,
+/// such as `book_id`.
 ///
 /// ```
 /// use crumbkit::{Field, FieldValue};
@@ -106,7 +106,7 @@ impl<'a> Field<'a> {
     }
 
     /// Returns whether the name is one or more lowercase ASCII letters,
-    /// digits and underscores, the rule that a code segment also follows.
+    /// digits and underscores.
     ///
     /// The failure document's JSON Schema promises every reader this rule
     /// for the names under `fields`.

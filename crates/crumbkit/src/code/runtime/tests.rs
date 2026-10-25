@@ -6,7 +6,7 @@ use proptest::prelude::*;
 
 use super::{RuntimeCodeError, Table};
 use crate::Code;
-use crate::segment::is_segment;
+use crate::segment::is_code_segment;
 
 #[test]
 fn runtime_returns_a_code_with_the_segments_it_was_given() {
@@ -15,6 +15,29 @@ fn runtime_returns_a_code_with_the_segments_it_was_given() {
     assert_eq!(code.component(), "plugin");
     assert_eq!(code.area(), "sync");
     assert_eq!(code.reason(), "timed_out");
+}
+
+#[test]
+fn a_runtime_code_whose_component_names_a_hyphenated_plugin_spells_as_itself() {
+    let code = Code::runtime("book-club", "gate", "unmet").unwrap();
+
+    assert_eq!(
+        crate::Spelling::COLONS.spell(code),
+        "book-club::gate::unmet"
+    );
+}
+
+#[test]
+fn runtime_refuses_a_segment_that_starts_with_a_hyphen() {
+    let error = Code::runtime("-book-club", "gate", "unmet").unwrap_err();
+
+    assert_eq!(
+        error,
+        RuntimeCodeError::Segment {
+            segment: "component",
+            text: "-book-club".to_owned(),
+        }
+    );
 }
 
 #[test]
@@ -54,7 +77,7 @@ fn the_error_of_a_bad_segment_names_the_segment_and_its_text() {
 
     assert_eq!(
         error.to_string(),
-        "the code area \"Sync\" is not one or more lowercase ASCII letters, digits and underscores"
+        "the code area \"Sync\" is not words of lowercase ASCII letters, digits and underscores joined by single hyphens"
     );
 }
 
@@ -79,7 +102,7 @@ proptest! {
         segments in prop::array::uniform3(r"[a-z0-9_A\-/.: é]{0,6}"),
     ) {
         let [component, area, reason] = &segments;
-        let first_bad = segments.iter().position(|text| !is_segment(text, b'_'));
+        let first_bad = segments.iter().position(|text| !is_code_segment(text));
 
         let outcome = Table::new().code(component, area, reason, 1);
 

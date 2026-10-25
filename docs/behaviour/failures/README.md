@@ -58,12 +58,12 @@ Why: ADR-0001.
 
 A failure names the values at fault through `Failure::fields`, such as the id
 of a missing book, so a program reads the value without parsing the message.
-A field name follows the rule of a code segment. `finish` leaves out a field
-whose name breaks the rule or repeats an earlier name, so a wrong name never
-fails a run that has already failed. A field's value can be a list, an object
-or null as well as a scalar ([schemas](../schemas/README.md)). A tool's own
-field shapes are a [declaration](../adoption/declarations.md) that needs no
-opt-out.
+A field name is one or more lowercase ASCII letters, digits and underscores.
+`finish` leaves out a field whose name breaks the rule or repeats an earlier
+name, so a wrong name never fails a run that has already failed. A field's
+value can be a list, an object or null as well as a scalar
+([schemas](../schemas/README.md)). A tool's own field shapes are a
+[declaration](../adoption/declarations.md) that needs no opt-out.
 
 Why: ADR-0001, ADR-0007, ADR-0081.
 
@@ -81,11 +81,14 @@ Why: ADR-0001.
 ## Codes and their spelling
 
 A `Code` has three segments: the owning component, the area and the reason.
-Each segment is one or more lowercase ASCII letters, digits and underscores,
-and `Code::new` checks them at compile time. The area is a noun from the
-tool's domain, such as `books`, so moving code does not change a code
-(OUTPUT-2). Each error type lists its codes in a `CODES` list for
-crumbkit-test's `check_codes`.
+Each segment is one or more words joined by single hyphens, where each word
+is lowercase ASCII letters, digits and underscores, such as `not_found` or
+`book-club`. A hyphen never leads, trails or follows another hyphen, so a
+code never starts like a flag. `Code::new` checks the segments at compile
+time, and `Code::runtime` applies the same rule to a code learnt at run
+time, such as a plugin's. The area is a noun from the tool's domain, such as
+`books`, so moving code does not change a code (OUTPUT-2). Each error type
+lists its codes in a `CODES` list for crumbkit-test's `check_codes`.
 
 Each tool chooses how its codes are spelled with one
 [`Spelling`](../../../crates/crumbkit/src/code.rs), which it sets with
@@ -106,7 +109,7 @@ print its own code for one of crumbkit's failures with a `Rename` in
 decides when the failure happens, its message and its recovery
 ([declarations](../adoption/declarations.md#codes-per-command)).
 
-Why: ADR-0001, ADR-0086, ADR-0056, ADR-0060.
+Why: ADR-0001, ADR-0086, ADR-0056, ADR-0060, ADR-0156.
 
 ## The tool's name
 
@@ -127,9 +130,11 @@ guide's `root` when the tool runs below another program, so
 - A document id lowercases the name and has `-` in place of each character
   that a document component does not allow, so `my-tool` prints
   `my-tool/failure/v1`.
-- A code component lowercases the name and has `_` in place of `-` and of
-  each other character that a code segment does not allow, so `my-tool`
-  prints `my_tool::cli::usage`.
+- A code component lowercases the name and has `_` in place of each
+  character other than a lowercase ASCII letter, a digit and `_`, including
+  each `-`, so `my-tool` prints `my_tool::cli::usage`. The component is
+  also the start of the tool's environment variables, which cannot hold a
+  `-`.
 - A variable starts with the code component in capitals, such as
   `MY_TOOL_OUTPUT_BUDGET`. When the component starts with a digit, the
   variable starts with `_`, because a POSIX shell cannot set a variable

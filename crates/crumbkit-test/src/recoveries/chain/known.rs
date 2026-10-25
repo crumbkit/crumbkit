@@ -67,9 +67,9 @@ const PROBE_REASON: &str = "reason_probe";
 /// It returns `None` when the check cannot tell from that text which
 /// component a code belongs to: the spelling writes the area first, writes
 /// the reason before the area, changes the area's letters, leaves out the
-/// component's name, or ends the text with a letter, a digit or `_`. A
-/// segment may hold those characters, so `shelf_` would also begin a code
-/// of the component `shelf_cache`.
+/// component's name, or ends the text with a letter, a digit, `_` or `-`.
+/// A segment may hold those characters, so `shelf_` would also begin a code
+/// of the component `shelf_cache`, and `shelf-` a code of `shelf-cache`.
 pub(in crate::recoveries) fn spelled_prefix(
     spelling: Spelling,
     component: &'static str,
@@ -81,7 +81,7 @@ pub(in crate::recoveries) fn spelled_prefix(
     let ends_in_segment = prefix
         .chars()
         .next_back()
-        .is_none_or(|last| matches!(last, 'a'..='z' | '0'..='9' | '_'));
+        .is_none_or(|last| matches!(last, 'a'..='z' | '0'..='9' | '_' | '-'));
     (!ends_in_segment && prefix.contains(name) && !prefix.contains(PROBE_REASON))
         .then(|| prefix.to_owned())
 }

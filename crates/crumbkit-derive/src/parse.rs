@@ -268,7 +268,7 @@ impl Keys {
     }
 
     /// Reads one `NAME = EXPR` of a `field(...)`, and refuses a name that
-    /// breaks the rule of a code segment or repeats an earlier name.
+    /// breaks the field name rule or repeats an earlier name.
     fn read_field(&mut self, field: &ParseNestedMeta<'_>, owner: &str) -> syn::Result<()> {
         let name = field.path.to_token_stream().to_string();
         let follows_rule = !name.is_empty()
@@ -279,7 +279,7 @@ impl Keys {
             return Err(syn::Error::new_spanned(
                 &field.path,
                 format!(
-                    "the field name `{name}` breaks the rule of a code segment: it must be one or more lowercase ASCII letters, digits and underscores"
+                    "the field name `{name}` breaks the field name rule: it must be one or more lowercase ASCII letters, digits and underscores"
                 ),
             ));
         }

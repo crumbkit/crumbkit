@@ -177,10 +177,9 @@ pub trait Failure: std::error::Error {
     /// describes each value for a person. A value can be a list, an object or
     /// null as well as text, an integer or a boolean
     /// ([`FieldValue`](crate::FieldValue)). A name is one or more lowercase
-    /// ASCII letters, digits and underscores, as a code segment is. `finish`
-    /// leaves out a field whose name breaks that rule or repeats an earlier
-    /// name, and an object's entry whose key repeats an earlier key of that
-    /// object. In a debug build, such as a test's, it also writes a
+    /// ASCII letters, digits and underscores. `finish` leaves out a field
+    /// whose name breaks that rule or repeats an earlier name, and an
+    /// object's entry whose key repeats an earlier key of that object. In a debug build, such as a test's, it also writes a
     /// `warning:` line that names the field on standard error.
     ///
     /// ```

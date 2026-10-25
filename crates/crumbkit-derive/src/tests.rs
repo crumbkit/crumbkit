@@ -275,7 +275,7 @@ fn a_field_name_with_an_uppercase_letter_is_refused_at_compile_time() {
     });
     assert_eq!(
         message,
-        "the field name `Books` breaks the rule of a code segment: it must be one or more lowercase ASCII letters, digits and underscores"
+        "the field name `Books` breaks the field name rule: it must be one or more lowercase ASCII letters, digits and underscores"
     );
 }
 

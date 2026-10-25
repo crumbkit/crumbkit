@@ -3,7 +3,7 @@
 use std::fmt;
 
 use crate::ToolName;
-use crate::segment::is_segment;
+use crate::segment::is_code_segment;
 
 mod runtime;
 #[cfg(test)]
@@ -43,26 +43,28 @@ impl Code {
     ///
     /// # Panics
     ///
-    /// Panics unless each segment is non-empty lowercase ASCII letters,
-    /// digits and underscores. A `const` that calls it with such a segment
-    /// fails to compile:
+    /// Panics unless each segment is one or more words joined by single
+    /// hyphens, where each word is lowercase ASCII letters, digits and
+    /// underscores, such as `not_found` or `book-club`. A hyphen never leads,
+    /// trails or follows another hyphen. A `const` that calls it with any
+    /// other segment fails to compile:
     ///
     /// ```compile_fail
-    /// const BAD: crumbkit::Code = crumbkit::Code::new("shelf", "books", "not-found");
+    /// const BAD: crumbkit::Code = crumbkit::Code::new("shelf", "books", "-not-found");
     /// ```
     #[must_use]
     pub const fn new(component: &'static str, area: &'static str, reason: &'static str) -> Self {
         assert!(
-            is_segment(component, b'_'),
-            "a code component is non-empty lowercase ASCII letters, digits and underscores"
+            is_code_segment(component),
+            "a code component is words of lowercase ASCII letters, digits and underscores joined by single hyphens"
         );
         assert!(
-            is_segment(area, b'_'),
-            "a code area is non-empty lowercase ASCII letters, digits and underscores"
+            is_code_segment(area),
+            "a code area is words of lowercase ASCII letters, digits and underscores joined by single hyphens"
         );
         assert!(
-            is_segment(reason, b'_'),
-            "a code reason is non-empty lowercase ASCII letters, digits and underscores"
+            is_code_segment(reason),
+            "a code reason is words of lowercase ASCII letters, digits and underscores joined by single hyphens"
         );
         Self {
             component,

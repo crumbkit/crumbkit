@@ -63,6 +63,15 @@ fn a_spelling_that_joins_with_underscores_or_nothing_gives_no_prefix() {
 }
 
 #[test]
+fn a_spelling_that_joins_with_hyphens_gives_no_prefix() {
+    const HYPHENS: Spelling = Spelling::custom(|code, f| {
+        write!(f, "{}-{}-{}", code.component(), code.area(), code.reason())
+    });
+
+    assert_eq!(spelled_prefix(HYPHENS, "shelf"), None);
+}
+
+#[test]
 fn a_spelling_that_leaves_out_the_component_gives_no_prefix() {
     const NO_COMPONENT: Spelling =
         Spelling::custom(|code, f| write!(f, "E:{}:{}", code.area(), code.reason()));
