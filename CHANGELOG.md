@@ -653,6 +653,9 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- crumbkit: a [`Listing`] with a summary and no rows prints the summary
+  without a header in text. Before, it printed the header under the
+  summary ([behaviour/output/listings]).
 - crumbkit: `--json --long` and `--json --full` print the `--json` output
   and a note where JSON holds the whole result: prose, bytes, headed,
   unenveloped and whole-row documents and streams. Before, crumbkit refused

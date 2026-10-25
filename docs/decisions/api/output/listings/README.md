@@ -1,7 +1,7 @@
 # ADR-0050. Listings
 
 - Date: 2026-10-12
-- Status: amended by ADR-0077, ADR-0087, ADR-0096 and ADR-0142
+- Status: amended by ADR-0077, ADR-0087, ADR-0096, ADR-0142 and ADR-0153
 
 ## Context
 
@@ -47,6 +47,7 @@ for empty results, sources that cannot be counted, an upper bound on
 - [ADR-0140. The `Rows:` line names every view that lists every row](0140-the-rows-line-names-every-view-that-lists-every-row.md)
 - [ADR-0142. A summary that writes no text prints no line](0142-a-summary-that-writes-no-text-prints-no-line.md)
 - [ADR-0149. A view flag that adds nothing to the JSON is accepted with a note](0149-a-view-flag-that-adds-nothing-is-accepted-with-a-note.md)
+- [ADR-0153. A listing with a summary and no rows prints the summary alone](0153-a-summary-stands-in-for-an-empty-table.md)
 
 ## Consequences
 

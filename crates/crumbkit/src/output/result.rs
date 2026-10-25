@@ -357,9 +357,11 @@ impl<'a, T: Rows> Prepared<'a, T> {
         } else {
             None
         };
-        // A document that lists only the rows that report a problem prints
-        // no header when no row reports one.
-        let headed = !only || rows > 0;
+        // A listing that prints no rows prints no header when a summary
+        // stands in its place, and a document that lists only the rows that
+        // report a problem prints none when no row reports one (ADR-0138,
+        // ADR-0153).
+        let headed = rows > 0 || !(only || value.summary().is_some());
         let table = (text && value.prose().is_none() && lines.is_none() && headed).then(|| {
             let children = children::blocks(settings.view, shown.iter().copied());
             // A pipe never prints styles, so it never asks the rows for them.
