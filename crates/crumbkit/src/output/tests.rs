@@ -43,6 +43,7 @@ mod report;
 mod roles;
 mod spaced;
 mod spelled;
+mod steps;
 mod styled;
 mod summary;
 mod unwrapped;

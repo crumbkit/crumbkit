@@ -210,9 +210,9 @@ fn write_rows<T: Rows>(
     let budget = settings.budget;
     let code = settings.renames.printed(&codes::OUTPUT_OVER_BUDGET);
     let next = if settings.is_json() {
-        None
+        String::new()
     } else {
-        listing::next_line(&mut *command, value)
+        listing::next_lines(&mut *command, value)
     };
     let columns = columns(settings.view, document, value.prose().is_some());
     // The serialized rows become the cells of the text table without
@@ -323,8 +323,9 @@ struct Prepared<'a, T> {
     /// when the result has no summary or its `Display` writes no text
     /// (ADR-0142).
     summary: Option<String>,
-    /// The rendered call and the phrase of the `Next:` line.
-    next: Option<(String, &'a str)>,
+    /// The `Next:` lines with their line feeds, or nothing when the result
+    /// names no next step.
+    next: String,
     /// The number of rows that report a problem, which the text's note
     /// counts, or 0 when the run has a failure.
     problems: usize,
@@ -342,7 +343,7 @@ impl<'a, T: Rows> Prepared<'a, T> {
         value: &'a T,
         columns: &'a [&'a str],
         values: &'a [Value],
-        next: Option<(String, &'a str)>,
+        next: String,
         problems: usize,
     ) -> io::Result<Self> {
         let text = !settings.is_json();
@@ -492,9 +493,7 @@ impl<'a, T: Rows> Prepared<'a, T> {
         if let Some(note) = value.long_note().filter(|_| self.view.is_long()) {
             writeln!(out, "{note}")?;
         }
-        if let Some((call, phrase)) = &self.next {
-            writeln!(out, "Next: {call} {phrase}")?;
-        }
+        out.write_all(self.next.as_bytes())?;
         Ok(())
     }
 

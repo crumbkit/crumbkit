@@ -134,18 +134,25 @@ pub(super) fn write_empty_note<T: Rows>(
     }
 }
 
-/// Returns the rendered call and the phrase of the line `Next: {call}
-/// {phrase}` when `value` is a listing with a next step whose call resolves in `command`.
-/// Otherwise it returns `None`: when the call names a
-/// missing or hidden command or argument, the tool still prints its result
-/// and crumbkit advertises nothing the tool hid. `finish` renders the line
-/// once, before it writes the result, so each note it writes later uses the
-/// same text.
-pub(super) fn next_line<'a, T: Rows>(
-    command: &mut Command,
-    value: &'a T,
-) -> Option<(String, &'a str)> {
-    let (call, phrase) = value.next_step()?;
-    let rendered = crate::call::render(call, command).ok()?;
-    Some((rendered, phrase))
+/// Returns the lines that name the next steps of `value`, each with its line
+/// feed: the line `Next: {call} {phrase}` of a listing's next step, then the
+/// lines of each of its further steps ([`crate::Step`]). A next step whose
+/// call does not resolve in `command`, and a step with such a call, is left
+/// out: when a call names a missing or hidden command or argument, the tool
+/// still prints its result and crumbkit advertises nothing the tool hid.
+/// `finish` renders the lines once, before it writes the result, so each
+/// note it writes later uses the same text.
+pub(super) fn next_lines<T: Rows>(command: &mut Command, value: &T) -> String {
+    let mut lines = String::new();
+    if let Some((call, phrase)) = value.next_step()
+        && let Ok(rendered) = crate::call::render(call, command)
+    {
+        lines = format!("Next: {rendered} {phrase}\n");
+    }
+    for step in value.steps() {
+        if let Some(step_lines) = step.lines(command) {
+            lines.push_str(&step_lines);
+        }
+    }
+    lines
 }

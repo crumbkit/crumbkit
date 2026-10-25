@@ -8,7 +8,8 @@ use std::path::Path;
 
 use crumbkit::pick::Choice;
 use crumbkit::{
-    Batch, Call, Code, Document, Duration, Failure, FieldValue, Listing, Recovery, Room, Row, Style,
+    Batch, Call, Code, Document, Duration, Failure, FieldValue, Listing, Program, Recovery, Room,
+    Row, Step, Style,
 };
 use miette::{Diagnostic, LabeledSpan, NamedSource, SourceCode, SourceSpan};
 use schemars::JsonSchema;
@@ -106,23 +107,41 @@ pub(crate) enum Form {
 ///
 /// The catalogue is a constant in memory, so this builds every book and
 /// keeps the first page with `Page::first_of`, which also gives the listing
-/// the bound of `--limit` for its footer.
+/// the bound of `--limit` for its footer. When every book was removed, the
+/// listing ends with a step that deletes the file of removed books with `rm`
+/// and lists the books again.
 ///
 /// # Errors
 ///
 /// Returns `BooksError::RemovedFile` when the file of removed books cannot
 /// be read.
 pub(crate) fn list(args: &BooksList, removed: Option<&Path>) -> Result<Listing<Book>, BooksError> {
-    let removed = read_removed(removed)?;
-    let books = CATALOGUE
+    let removed_ids = read_removed(removed)?;
+    let books: Vec<Book> = CATALOGUE
         .into_iter()
-        .filter(|book| !removed.contains(&book.id))
+        .filter(|book| !removed_ids.contains(&book.id))
         .collect();
-    Ok(args
+    let emptied = books.is_empty();
+    let listing = args
         .page
         .first_of(books)
         .described("books")
-        .next(show_call(), "takes up to 100 ids in one call."))
+        .next(show_call(), "takes up to 100 ids in one call.");
+    Ok(match removed.filter(|_| emptied) {
+        Some(path) => listing.step(restore_step(path)),
+        None => listing,
+    })
+}
+
+/// The program that deletes a file, which the step of an emptied shelf runs.
+const RM: Program = Program::new("rm");
+
+/// Returns the step that puts every removed book back by deleting the file
+/// of removed books at `path`, and then lists the books.
+fn restore_step(path: &Path) -> Step {
+    Step::new("Delete the file of removed books to put every book back, then list them.")
+        .run(RM, [path.display().to_string()])
+        .call(Call::new(&["books", "list"]))
 }
 
 /// Returns the books on the shelf as the choices that a picker offers for

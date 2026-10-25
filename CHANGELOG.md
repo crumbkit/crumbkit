@@ -650,6 +650,10 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit-usage: `self usage` reports `mostly waiting` for a slow command
   whose slow runs spent half their time or more waiting
   ([behaviour/usage-log/report]).
+- crumbkit: `Listing::step` adds a [`Step`], a `Next:` sentence followed
+  by commands indented by two spaces. A step names the tool's commands as
+  a [`Call`] and another program's through a declared [`Program`]
+  ([behaviour/output/listings]).
 
 ### Changed
 
@@ -1255,6 +1259,8 @@ rustdoc, or at the page in docs/ that describes the behaviour. -->
 [`Listing::uncounted`]: crates/crumbkit/src/listing.rs
 [`Page::uncounted`]: crates/crumbkit/src/page.rs
 [`Listing`]: crates/crumbkit/src/listing.rs
+[`Step`]: crates/crumbkit/src/step.rs
+[`Program`]: crates/crumbkit/src/step.rs
 [`Call`]: crates/crumbkit/src/call.rs
 [`Failure`]: crates/crumbkit/src/failure.rs
 [`Recovery`]: crates/crumbkit/src/failure.rs
