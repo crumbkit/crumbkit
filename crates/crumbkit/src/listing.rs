@@ -6,14 +6,14 @@ use std::fmt;
 use schemars::{JsonSchema, Schema, SchemaGenerator};
 use serde::{Serialize, Serializer};
 
-use crate::{Call, Row, Rows, Shape};
+use crate::{Call, Row, Rows, Shape, Step};
 
 #[cfg(test)]
 mod tests;
 
 /// One page of rows, the total number of rows that matched when the tool
 /// counted them, an optional phrase that names them, an optional summary, an optional note, an
-/// optional long note and an optional next step.
+/// optional long note, an optional next step and any further steps.
 ///
 /// A command returns a listing when it may show fewer rows than matched,
 /// and flattens `crumbkit::Page` into its arguments so the caller can
@@ -25,8 +25,9 @@ mod tests;
 /// and more match. --all shows every one.` for a listing without a total,
 /// or `Showing 4 of at least 100 books. --all shows 100 of them.` for a
 /// listing from a capped source ([`Listing::capped`]), then the note, under
-/// `--long` the long note, and then the next step, such as `Next: shelf
-/// books show <ID>... takes up to 100 ids in one call.`
+/// `--long` the long note, then the next step, such as `Next: shelf
+/// books show <ID>... takes up to 100 ids in one call.`, and then each
+/// further step ([`Listing::step`]).
 ///
 /// ```
 /// # #[derive(serde::Serialize, schemars::JsonSchema)]
@@ -76,6 +77,8 @@ pub struct Listing<R: Row, S = NoSummary> {
     /// The command that the text output names as the next step, and the
     /// phrase that follows it on the `Next:` line.
     next: Option<(Call, String)>,
+    /// The steps that the text output names after the next step, in order.
+    steps: Vec<Step>,
     /// The most rows that the command's `--limit` takes, which the footer
     /// names, or `None` when `--limit` has no upper bound.
     bound: Option<usize>,
@@ -115,6 +118,7 @@ impl<R: Row> Listing<R> {
             note: None,
             long_note: None,
             next: None,
+            steps: Vec::new(),
             bound: None,
             problems: None,
         }
@@ -233,6 +237,7 @@ impl<R: Row, S> Listing<R, S> {
             note: self.note,
             long_note: self.long_note,
             next: self.next,
+            steps: self.steps,
             bound: self.bound,
             problems: self.problems,
         }
@@ -278,6 +283,32 @@ impl<R: Row, S> Listing<R, S> {
     #[must_use]
     pub fn next(mut self, call: Call, phrase: impl Into<String>) -> Self {
         self.next = Some((call, phrase.into()));
+        self
+    }
+
+    /// Adds `step` after the steps already added. The text output prints each
+    /// step on standard error after the `Next:` line of [`Listing::next`]: the
+    /// line `Next: {sentence}`, then each of its commands indented by two
+    /// spaces. The JSON document leaves the steps out (ADR-0155).
+    ///
+    /// ```
+    /// # #[derive(serde::Serialize, schemars::JsonSchema)]
+    /// # struct Book { id: u32 }
+    /// # impl crumbkit::Row for Book { const COLUMNS: &'static [&'static str] = &["id"]; }
+    /// use crumbkit::{Call, Listing, Program, Step};
+    ///
+    /// const GIT: Program = Program::new("git");
+    ///
+    /// let books: Vec<Book> = (1..=6).map(|id| Book { id }).collect();
+    /// let listing = Listing::from_all(books, None).step(
+    ///     Step::new("Commit the shelf, then list the books.")
+    ///         .run(GIT, ["commit", "-m", "Add books"])
+    ///         .call(Call::new(&["books", "list"])),
+    /// );
+    /// ```
+    #[must_use]
+    pub fn step(mut self, step: Step) -> Self {
+        self.steps.push(step);
         self
     }
 }
@@ -390,6 +421,10 @@ impl<R: Row, S: Serialize + fmt::Display + JsonSchema> Rows for Listing<R, S> {
         self.next
             .as_ref()
             .map(|(call, phrase)| (call, phrase.as_str()))
+    }
+
+    fn steps(&self) -> &[Step] {
+        &self.steps
     }
 
     fn limit_bound(&self) -> Option<usize> {

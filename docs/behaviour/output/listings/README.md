@@ -23,9 +23,10 @@ When a listing shows fewer rows than its total, or leaves out rows that the
 tool did not count, a footer says so and names `--all`. crumbkit owns the
 wording, and the tool supplies only the description.
 
-A listing may carry a summary, a note, a [long note](#a-note-for---long)
-and one next step. The summary prints its `Display` as one line above the
-table on standard output, and the JSON document holds it under `summary`.
+A listing may carry a summary, a note, a [long note](#a-note-for---long),
+one next step and any number of [further steps](#several-next-steps). The
+summary prints its `Display` as one line above the table on standard
+output, and the JSON document holds it under `summary`.
 A summary whose `Display` writes no text prints no line, so the header is
 the first line, and the JSON document still holds it. A summary that writes
 only spaces still prints its line. The notes and the next step print in
@@ -34,7 +35,7 @@ text only.
 On standard output, the text order is the summary, the header and the rows.
 On standard error, it is the footer or the empty note, the note of the rows
 that report a problem, the tool's note, the long note under `--long`, the
-`Next:` line and the dry-run line.
+`Next:` line, the lines of each further step and the dry-run line.
 [Output](../README.md#standard-output-and-standard-error) describes how these
 lines reach standard error.
 
@@ -274,3 +275,33 @@ from the document which view flags a leaf offers before the handler runs.
   ([rows printed whole](../shapes/README.md#rows-printed-whole)).
 
 Why: ADR-0139.
+
+## Several next steps
+
+[`Listing::step`](../../../../crates/crumbkit/src/listing.rs) adds a
+[`Step`](../../../../crates/crumbkit/src/step.rs): a sentence and the
+commands that carry it out. The text prints each step on standard error
+after the `Next:` line of `Listing::next`, in the order added, as
+`Next: {sentence}` followed by each command indented by two spaces:
+
+```text
+Next: Commit the shelf, then list the books.
+  git commit -m 'Add books'
+  shelf books list
+```
+
+- `Step::call` adds a command of the tool as a `Call`, which renders
+  against the tool's command tree. A step with a call that does not
+  resolve is left out whole, and the exit does not change.
+- `Step::run` adds a command of another program, named through a
+  `Program` that the tool declares once as a constant, such as
+  `const GIT: Program = Program::new("git");`. `Program::new` panics, and
+  stops the build in a constant, unless the name is one word of ASCII
+  letters, digits, `-`, `_`, `.` and `+` starting with a letter or a
+  digit. Each argument prints as a literal word, quoted for a POSIX shell
+  when it would be split or expanded. A step with an argument that holds
+  a control character or a Unicode format character is left out whole.
+- A step without commands prints its `Next:` line alone.
+- The JSON document leaves the steps out.
+
+Why: ADR-0155.

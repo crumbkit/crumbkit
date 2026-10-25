@@ -116,7 +116,7 @@ fn books_remove_yes_a_second_time_succeeds_and_prints_the_same_book() {
 }
 
 #[test]
-fn books_list_after_every_book_is_removed_prints_the_header_and_the_empty_note_on_standard_error() {
+fn books_list_after_every_book_is_removed_ends_with_a_step_that_puts_the_books_back() {
     let dir = tempfile::tempdir().unwrap();
     run(
         dir.path(),
@@ -124,10 +124,21 @@ fn books_list_after_every_book_is_removed_prints_the_header_and_the_empty_note_o
     )
     .success();
 
+    // The step names the file of removed books, whose path holds the
+    // temporary directory, so its expected text is built here.
+    let removed = dir.path().join("state/shelf/removed.txt");
+    let expected = format!(
+        "note: no books match\n\
+         Next: shelf books show <ID>... takes up to 100 ids in one call.\n\
+         Next: Delete the file of removed books to put every book back, then list them.\n  \
+         rm {}\n  \
+         shelf books list\n",
+        crumbkit::help::quote(&removed.display().to_string())
+    );
     run(dir.path(), &["books", "list"])
         .success()
         .stdout_eq(file!["golden/books-list-after-remove-all.txt"].raw())
-        .stderr_eq(file!["golden/books-list-after-remove-all.stderr"].raw());
+        .stderr_eq(expected);
     run(dir.path(), &["books", "list", "--json"])
         .success()
         .stdout_eq(file!["golden/books-list-json-after-remove-all.json"].raw())

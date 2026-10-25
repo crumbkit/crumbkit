@@ -7,7 +7,7 @@ use schemars::{JsonSchema, Schema, SchemaGenerator};
 use serde::Serialize;
 
 use super::{Row, problems};
-use crate::{Call, Failure};
+use crate::{Call, Failure, Step};
 
 /// A result that `crumbkit::finish` prints: one [`Row`], a `Vec` of rows, a
 /// [`Listing`](crate::Listing) or a [`Batch`](crate::Batch), which print as
@@ -112,6 +112,13 @@ pub trait Rows: Serialize + sealed::Sealed {
     #[doc(hidden)]
     fn next_step(&self) -> Option<(&Call, &str)> {
         None
+    }
+
+    /// Returns the steps that the text output names after the next step, in
+    /// order. Only a `Listing` returns any.
+    #[doc(hidden)]
+    fn steps(&self) -> &[Step] {
+        &[]
     }
 
     /// Returns the most rows that the command's `--limit` takes, which the
