@@ -4,8 +4,9 @@
 //! `.txt` file for standard output and the `.stderr` file, when the example
 //! has one, for standard error. A result prints the same bytes at a
 //! terminal as through a pipe (ADR-0049, OUTPUT-1), except that a text
-//! table fits the width of a narrow terminal (ADR-0121), and a refusal on
-//! standard error carries clap's styles, whose removal gives the piped
+//! table fits the width of a narrow terminal (ADR-0121), a table's cells
+//! carry their row type's styles (ADR-0150), and a refusal on standard error
+//! carries clap's styles. Removing the escape codes of either gives the piped
 //! bytes (ADR-0131).
 //!
 //! The test opens the pseudo-terminals with rustix's safe functions and runs
@@ -237,9 +238,12 @@ fn every_example_prints_the_same_bytes_at_a_terminal_as_through_a_pipe() {
                 run.status,
                 String::from_utf8_lossy(&run.stderr)
             );
+            // A table's cells carry their row type's styles at a terminal,
+            // and without the escape codes the run prints the bytes of its
+            // piped golden file (ADR-0150).
             assert!(
-                run.stdout == expected,
-                "{line} prints different bytes at a terminal than its golden file {golden} holds:\n{}",
+                strip(&run.stdout) == String::from_utf8_lossy(&expected),
+                "{line} prints different text at a terminal than its golden file {golden} holds:\n{}",
                 String::from_utf8_lossy(&run.stdout)
             );
             // An example that writes to standard error has a `.stderr`
@@ -280,7 +284,7 @@ ID  TITLE       AUTHOR              YEAR
 5   Middlemar…  George Eliot        1871
 6   The Adven…  Arthur Conan Doyle  1892
 ";
-    assert_eq!(String::from_utf8_lossy(&run.stdout), expected);
+    assert_eq!(strip(&run.stdout), expected);
 }
 
 /// The refused command line whose piped standard error
@@ -288,7 +292,8 @@ ID  TITLE       AUTHOR              YEAR
 const REFUSED: [&str; 4] = ["books", "list", "--limit", "101"];
 
 /// Returns `text` without its ANSI escape sequences, each of which starts
-/// with `ESC [` and ends with the letter `m` in clap's styles.
+/// with `ESC [` and ends with the letter `m` in clap's styles and in the
+/// styles of a table's cells.
 fn strip(text: &[u8]) -> String {
     let text = String::from_utf8_lossy(text);
     let mut plain = String::with_capacity(text.len());
@@ -364,5 +369,64 @@ fn a_refusal_at_a_terminal_under_clicolor_0_prints_its_piped_bytes() {
         run.stderr == expected,
         "{:?}",
         String::from_utf8_lossy(&run.stderr)
+    );
+}
+
+/// The piped table of `shelf books list --all`, which
+/// `golden/examples/shelf-books-list-all.txt` holds.
+const LIST_ALL: &str = "tests/golden/examples/shelf-books-list-all.txt";
+
+#[test]
+fn a_table_at_a_terminal_shows_each_title_in_bold_and_otherwise_its_piped_bytes() {
+    let expected = std::fs::read_to_string(LIST_ALL).unwrap();
+
+    let run = shelf(&["books", "list", "--all"], WIDE).unwrap();
+
+    assert!(
+        run.status.success(),
+        "{}",
+        String::from_utf8_lossy(&run.stderr)
+    );
+    let printed = String::from_utf8_lossy(&run.stdout);
+    assert!(
+        printed.contains("\u{1b}[1mPride and Prejudice\u{1b}[0m"),
+        "a title at a terminal is not bold: {printed:?}"
+    );
+    assert_eq!(strip(&run.stdout), expected);
+}
+
+#[test]
+fn a_table_at_a_terminal_under_no_color_prints_its_piped_bytes() {
+    let expected = std::fs::read(LIST_ALL).unwrap();
+
+    let run = shelf_with(&["books", "list", "--all"], WIDE, &[("NO_COLOR", "1")]).unwrap();
+
+    assert!(
+        run.status.success(),
+        "{}",
+        String::from_utf8_lossy(&run.stderr)
+    );
+    assert!(
+        run.stdout == expected,
+        "{:?}",
+        String::from_utf8_lossy(&run.stdout)
+    );
+}
+
+#[test]
+fn a_table_at_a_terminal_whose_term_is_dumb_prints_its_piped_bytes() {
+    let expected = std::fs::read(LIST_ALL).unwrap();
+
+    let run = shelf_with(&["books", "list", "--all"], WIDE, &[("TERM", "dumb")]).unwrap();
+
+    assert!(
+        run.status.success(),
+        "{}",
+        String::from_utf8_lossy(&run.stderr)
+    );
+    assert!(
+        run.stdout == expected,
+        "{:?}",
+        String::from_utf8_lossy(&run.stdout)
     );
 }

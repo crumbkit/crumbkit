@@ -42,6 +42,7 @@ mod prose;
 mod report;
 mod roles;
 mod spelled;
+mod styled;
 mod summary;
 mod unwrapped;
 mod variants;

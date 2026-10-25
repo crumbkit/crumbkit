@@ -271,8 +271,12 @@ pub fn finish<T: Rows, E: AsFailure>(
     result: Result<T, E>,
 ) -> ExitCode {
     // The sink gives the result the width of the terminal that standard
-    // output is, which a text table fits (ADR-0121, ADR-0128).
-    let sink = &mut Sink::standard().fitted(output.read_terminal_width());
+    // output is, which a text table fits, and asks for the styles of the
+    // table's cells when that terminal allows colour (ADR-0121, ADR-0128,
+    // ADR-0150).
+    let sink = &mut Sink::standard()
+        .fitted(output.read_terminal_width())
+        .styled(output.read_result_styles());
     ExitCode::from(finish_to(sink, output, document, result))
 }
 

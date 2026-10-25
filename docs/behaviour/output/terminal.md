@@ -1,18 +1,18 @@
 # Terminal detection
 
 This page covers what changes when a stream is a terminal, how a text table
-fits the terminal's width, how a tool turns terminal detection off, and how
-crumbkit tests that a run at a terminal prints what a piped run prints.
+fits the terminal's width, how a tool turns detection off, and how crumbkit
+tests runs at a terminal.
 [`Guide::without_terminal_detection`](../../../crates/crumbkit/src/help/terminal.rs)
 describes the setting itself.
 
 ## What detection changes
 
-A tool's result, failure or note prints the same bytes whether a stream is a
+A tool's result, failure or note prints the same text whether a stream is a
 terminal or a pipe, and whether or not a coding agent runs the tool
-(OUTPUT-1). The one exception in a result is the width of a text table. An
-agent, a script and a person then read the same output, and a golden file of
-a piped run also pins what a person sees at a terminal wider than the table.
+(OUTPUT-1). In a result, only a text table's width changes the text, and
+its cells' styles add escape codes around it. A golden file of a piped run
+therefore pins what a person reads at a terminal wider than the table.
 
 Detection changes only these:
 
@@ -30,10 +30,12 @@ Detection changes only these:
   ([effects](../effects/README.md), [pickers](../effects/pickers.md)).
 - A text table that `finish` prints fits the width of the terminal that
   standard output is, as [the table's width](#the-tables-width) describes.
+- A text table that `finish` prints shows its cells' styles when standard
+  output is a terminal that allows colour ([cell styles](styles/README.md)).
 - The usage log's `caller` field reads detection. The usage log is not
   output that a caller reads ([usage log](../usage-log/README.md)).
 
-Why: ADR-0049, ADR-0102, ADR-0121, ADR-0131, ADR-0133.
+Why: ADR-0049, ADR-0102, ADR-0121, ADR-0131, ADR-0133, ADR-0150.
 
 ## The table's width
 
@@ -81,15 +83,15 @@ A tool turns detection off with `Guide::without_terminal_detection`, which
 takes the tool's reason. crumbkit-test's `check_opt_outs` lists the setting
 as `terminal-detection/off` with that reason and its costs: a person at a
 terminal is never asked and must type every argument and `--yes`, progress,
-help colour and refusal colour never show, and a text table never fits the terminal's width
+help, refusal and cell colours never show, and a text table never fits the terminal's width
 ([opt-outs](../adoption/opt-outs.md)).
 The `Output` that `parse` returns, the `Output` inside a `Stop` and the
 `Output` that `Output::new` builds copy the setting from the guide, as they
 copy the guide's JSON layout and code renames.
 
 The setting belongs to the tool and has no environment variable. A caller
-already turns colour off with `NO_COLOR`, and the colour of help and of a
-refusal with `TERM=dumb` or `CLICOLOR=0`,
+already turns colour off with `NO_COLOR`, and the colours of help, a refusal
+and cells with `TERM=dumb` or `CLICOLOR=0`,
 questions off with `--no-input`, and progress off with `--json`.
 
 Why: ADR-0049.
@@ -98,21 +100,20 @@ Why: ADR-0049.
 
 shelf's `tests/terminal.rs` runs each of shelf's examples with standard input
 and standard output on one pseudo-terminal and standard error on another,
-each 500 columns wide, so no table narrows. It compares the bytes of each
-stream with the golden files of the piped runs:
-standard output with the `.txt` file, and standard error with the `.stderr`
-file, or with nothing when the example has none
-([golden files](../checks/golden-files.md)). It first checks that help at the
-pseudo-terminal has clap's colours, so the test fails when the run does not
-reach a terminal. A third test runs `shelf books list --all` at a
-pseudo-terminal 40 columns wide and checks that the titles are cut and each
-id is whole.
+each 500 columns wide. Standard output without its
+escape codes must equal the example's `.txt` golden file, and standard error
+its `.stderr` file, or nothing when the example has none
+([golden files](../checks/golden-files.md)). A first test checks that help
+there has clap's colours, so the suite fails when the run does not reach a
+terminal. Another runs `shelf books list --all` 40 columns wide and checks
+that the titles are cut and each id is whole.
 
-Four tests run the refused `shelf books list --limit 101` at a
-pseudo-terminal. Its standard error carries clap's styles, and without the
-escape codes it equals the `.stderr` golden file. Under `NO_COLOR`, under
-`TERM=dumb` and under `CLICOLOR=0` it equals the golden file as printed
-(ADR-0131, ADR-0133).
+Three tests run `shelf books list --all`. Its titles are bold, and under
+`NO_COLOR` or `TERM=dumb` it prints its golden file exactly (ADR-0150).
+Four tests run the refused `shelf books list --limit 101`. Its standard
+error carries clap's styles, and without them it equals the `.stderr`
+golden file. Under `NO_COLOR`, `TERM=dumb` and `CLICOLOR=0` it equals the
+golden file as printed (ADR-0131, ADR-0133).
 
 The test uses rustix's safe `pty` and `termios` functions, which need no
 `unsafe` code (RUST-2) and add no crate to the lock file. It runs on macOS

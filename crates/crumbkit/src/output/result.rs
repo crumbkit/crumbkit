@@ -14,8 +14,8 @@ use super::columns::{columns, values};
 use super::envelope::{Extras, Failures, Selected, SelectedRows, write_document};
 use super::failure::PreparedFailure;
 use super::layout::JsonLayout;
-use super::table::Table;
-use super::{Output, children, fields, layout, lines, listing, problems, prose};
+use super::table::{self, Table};
+use super::{Output, children, fields, lines, listing, problems, prose};
 use crate::help::rename::Renames;
 use crate::help::view::{Kind, Printed};
 use crate::shown::TextCells;
@@ -28,6 +28,7 @@ mod cut;
 mod fitted;
 pub(super) mod headed;
 mod rerun;
+mod unwrapped;
 
 /// What [`write_result`] printed of a result.
 #[derive(Debug)]
@@ -130,7 +131,8 @@ pub(super) fn write_result<T: Rows>(
     // `Prepared` borrows the settings for the whole write, and the `Next:`
     // line and the failure of a batch's left-out keys render their calls
     // against the command, so the write borrows the two apart.
-    let (settings, command) = Settings::split(output, sink.width(Role::Result));
+    let (settings, command) =
+        Settings::split(output, sink.width(Role::Result), sink.styles(Role::Result));
     write_rows(
         sink, &settings, command, spelling, document, value, failures, problems,
     )
@@ -155,12 +157,20 @@ struct Settings<'a> {
     /// The number of columns that the sink gives the result, which a text
     /// table fits, or `None` when the table prints unfitted.
     width: Option<usize>,
+    /// Whether the sink wants styles for the result, which a text table's
+    /// cells then carry (ADR-0150).
+    styled: bool,
 }
 
 impl<'a> Settings<'a> {
     /// Borrows the settings of `output` and, apart from them, its command
-    /// tree, with the `width` that the sink gives the result.
-    fn split(output: &'a mut Output, width: Option<usize>) -> (Self, &'a mut Command) {
+    /// tree, with the `width` that the sink gives the result and whether
+    /// the sink wants the result `styled`.
+    fn split(
+        output: &'a mut Output,
+        width: Option<usize>,
+        styled: bool,
+    ) -> (Self, &'a mut Command) {
         let settings = Self {
             view: &output.view,
             words: &output.words,
@@ -169,6 +179,7 @@ impl<'a> Settings<'a> {
             budget: output.budget,
             renames: output.renames,
             width,
+            styled,
         };
         (settings, &mut output.command)
     }
@@ -297,8 +308,10 @@ struct Prepared<'a, T> {
     /// The number of columns that the sink gives the result, or `None`
     /// when the table prints unfitted.
     width: Option<usize>,
-    /// Whether the table is fitted to `width`, which is only while
-    /// [`Prepared::write_fitted`] writes the result.
+    /// Whether the table is fitted to `width` and carries its cells'
+    /// styles, which is only while [`Prepared::deliver_fitted`] composes the
+    /// result for the sink. The output budget measures the result without
+    /// either (ADR-0121, ADR-0150).
     fitting: bool,
     /// The text line of each row with its line feed, when the rows print
     /// their own lines in place of the table (ADR-0064).
@@ -349,9 +362,14 @@ impl<'a, T: Rows> Prepared<'a, T> {
         let headed = !only || rows > 0;
         let table = (text && value.prose().is_none() && lines.is_none() && headed).then(|| {
             let children = children::blocks(settings.view, problems::shown(value.rows(), only));
+            // A pipe never prints styles, so it never asks the rows for them.
+            let styles = settings
+                .styled
+                .then(|| table::styles(columns, problems::shown(value.rows(), only)));
             Table::new(columns, values, settings.view.names().is_none())
                 .keeping_whole(columns, T::Row::UNCUT_COLUMNS)
                 .with_children(children)
+                .with_styles(styles.unwrap_or_default())
         });
         Ok(Self {
             document,
@@ -555,45 +573,12 @@ impl<'a, T: Rows> Prepared<'a, T> {
             }
         }
         if let Some(table) = &mut self.table {
-            table.write(out, shown, self.width.filter(|_| self.fitting))?;
+            let width = self.width.filter(|_| self.fitting);
+            table.write(out, shown, width, self.fitting)?;
         }
         for line in self.lines.iter().flatten().take(shown) {
             out.write_all(line.as_bytes())?;
         }
         Ok(())
-    }
-
-    /// Writes the JSON of a document without the envelope with its first
-    /// `shown` rows, or the whole result when `all` is set (ADR-0016).
-    ///
-    /// Without `--fields`, the whole result prints as its type serializes it,
-    /// so a command prints an existing document unchanged, and its first
-    /// rows print as an array. With `--fields`, only those fields of each row
-    /// print, in that order, as an object for a single row and as an array
-    /// otherwise.
-    fn write_unwrapped(&self, out: &mut impl Write, shown: usize, all: bool) -> io::Result<()> {
-        let rows = self.value.rows();
-        if self.view.names().is_none() {
-            return match rows.get(..shown) {
-                Some(first) if !all => layout::write(out, first, self.layout),
-                _ => layout::write(out, self.value, self.layout),
-            };
-        }
-        match self.values {
-            [single] if T::SHAPE == Shape::Row => {
-                let selected = Selected {
-                    row: single,
-                    columns: self.columns,
-                };
-                layout::write(out, &selected, self.layout)
-            }
-            list => {
-                let selected = SelectedRows {
-                    rows: list.get(..shown).unwrap_or(list),
-                    columns: self.columns,
-                };
-                layout::write(out, &selected, self.layout)
-            }
-        }
     }
 }

@@ -15,7 +15,8 @@ its reasons.
   [value types](output/values/README.md), [streams](output/streams.md), the
   [output budget](output/budget/README.md),
   [child processes](output/child-processes.md),
-  [terminal detection](output/terminal.md) and the
+  [terminal detection](output/terminal.md), the
+  [cell styles](output/styles/README.md) and the
   [JSON layout](output/json-layout.md).
 - [Failures](failures/README.md): the failure model, codes and recoveries,
   [deriving `Failure`](failures/derive.md),

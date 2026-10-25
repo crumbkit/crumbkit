@@ -75,6 +75,7 @@ mod segment;
 pub mod shown;
 mod sink;
 mod stream;
+mod style;
 mod tool_name;
 pub mod trace;
 #[cfg(test)]
@@ -113,6 +114,7 @@ pub use crate::row::{Headed, NoRow, Row, Rows, Shape};
 pub use crate::shown::Shown;
 pub use crate::sink::Sink;
 pub use crate::stream::Stream;
+pub use crate::style::Style;
 pub use crate::tool_name::ToolName;
 /// Writes the [`Failure`] impl and the `CODES` list of an enum or a struct
 /// from `#[failure(...)]` attributes. The `derive` feature adds it, and
