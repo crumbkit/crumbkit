@@ -653,6 +653,9 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- crumbkit: a text table cell with `Style::Error` shows in bold red at a
+  terminal, the style of a refusal's `error:` label. Before, it showed in
+  plain red ([behaviour/output/styles]).
 - crumbkit: a [`Listing`] with a summary and no rows prints the summary
   without a header in text. Before, it printed the header under the
   summary ([behaviour/output/listings]).

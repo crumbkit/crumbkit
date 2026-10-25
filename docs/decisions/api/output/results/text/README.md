@@ -14,3 +14,4 @@ These records decided how a row's text line and a table cell print.
 - [ADR-0114. Format characters are escaped](0114-format-characters-are-escaped.md)
 - [ADR-0119. Empty columns are left out of the text table](0119-empty-columns-are-left-out.md)
 - [ADR-0150. A table cell carries a style at a terminal](0150-a-cell-carries-a-style-at-a-terminal.md)
+- [ADR-0154. An error cell is bold red](0154-an-error-cell-is-bold-red.md)

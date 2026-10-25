@@ -487,7 +487,7 @@ queue-worker  failed
     let expected_styled = "\
 NAME          STATE
 web           \u{1b}[32mrunning\u{1b}[0m
-\u{1b}[1mqueue-worker\u{1b}[0m  \u{1b}[31mfailed\u{1b}[0m
+\u{1b}[1mqueue-worker\u{1b}[0m  \u{1b}[1m\u{1b}[31mfailed\u{1b}[0m
 ";
     assert_eq!(String::from_utf8(plain).unwrap(), expected_plain);
     assert_eq!(String::from_utf8(styled).unwrap(), expected_styled);
