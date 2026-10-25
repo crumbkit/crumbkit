@@ -48,10 +48,13 @@ Why: ADR-0016, ADR-0050, ADR-0077, ADR-0142.
 
 A listing with no rows and no more rows prints its header on standard output
 and a note on standard error in text, such as `note: no books match`. A
-listing that has a summary prints the summary line in place of the header,
-so standard output holds the summary alone, as it does for a
+listing that has a summary line and holds no rows to print prints the
+summary line in place of the header, so standard output holds the summary
+alone, as it does for a
 [listing that lists only its problem rows](#a-listing-that-lists-only-its-problem-rows)
-when no row reports one. This holds with `--long` and `--fields` too. This
+when no row reports one. This holds with `--long` and `--fields` too. A
+summary whose `Display` writes no text prints no line, so that listing
+prints its header. This
 holds for a counted listing whose total is 0 and for an uncounted listing,
 which has no total. The default wording is `no {description} match`, from
 `Listing::described`, or `no rows match` for a listing without a

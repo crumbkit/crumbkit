@@ -177,10 +177,23 @@ fn a_listing_with_a_summary_and_no_rows_still_prints_its_empty_note_and_next_ste
 
     let finished = finish_with(&[], CENSUS, listing);
 
+    assert_eq!(finished.out, "0 planets around the Sun.\n");
     assert_eq!(
         finished.err,
         "note: no planets match\nNext: tool show <NAME>... shows planets by name.\n"
     );
+}
+
+#[test]
+fn a_listing_with_no_rows_whose_summary_writes_no_text_still_prints_its_header() {
+    let listing = Listing::new(Vec::new(), 0).summary(Quiet {
+        planets: 0,
+        text: "",
+    });
+
+    let finished = finish_with(&[], QUIET, listing);
+
+    assert_eq!(finished.out, "NAME  MOONS\n");
 }
 
 #[test]

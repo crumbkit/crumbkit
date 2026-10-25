@@ -19,16 +19,20 @@ renderer printed the summary line alone.
 
 ## Decision
 
-- A listing that has a summary and prints no rows prints the summary line
-  and no header. The rule of ADR-0138 becomes one case of this rule: the
-  text prints a header only when it prints a row, or when nothing stands
-  in its place.
+- A listing that has a summary line and holds no rows to print prints the
+  summary line and no header. The rule of ADR-0138 becomes one case of
+  this rule: the text prints a header only when the listing holds a row to
+  print, or when no summary line stands in its place. A budget cut that
+  leaves no row printed does not drop the header, because the listing
+  still holds rows.
 - The rule holds for every text view of the listing, the default table,
   `--long` and `--fields`, because none of them has a row to print under
   the header.
 - A listing without a summary still prints its header, as ADR-0050
   decided. A summary whose `Display` writes no text prints no line
-  (ADR-0142), so such a listing prints nothing on standard output.
+  (ADR-0142), so nothing stands in place of the header, and the listing
+  prints its header as a listing without a summary does. Standard output
+  of an empty listing therefore always holds a line.
 - The footer, the empty note, the problem note, the tool's note, the
   `Next:` line and the exit do not change. `--json` does not change, and a
   stream and a batch have no summary.
