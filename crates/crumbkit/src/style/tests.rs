@@ -15,6 +15,7 @@ fn each_style_starts_with_its_own_escape_code_and_ends_with_the_reset() {
     assert_eq!(rendered(Style::Error), "\u{1b}[1m\u{1b}[31m\u{1b}[0m");
 }
 
+// `Styles::styled()` is plain without clap's `color` feature, so the test needs it.
 #[test]
 #[cfg(feature = "color")]
 fn an_error_cell_takes_the_style_of_the_error_label_of_a_refusal() {

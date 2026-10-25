@@ -9,10 +9,10 @@
 
 ADR-0150 gave a text table's cells four styles and showed `Style::Error`
 in red. A refusal on standard error starts with an `error:` label in bold
-red, which is clap's default error style, and most terminal tools show an
-error in bold red as well. A person who has learned that bold red marks a
-failure scans a table for the same mark. A plain red cell beside bold
-names and green states drew less of the eye than the problem it reports.
+red, which is clap's default error style. A person who has learned from
+that label that bold red marks a failure scans a table for the same mark.
+A plain red cell beside bold names and green states drew less of the eye
+than the problem it reports.
 
 ## Decision
 
