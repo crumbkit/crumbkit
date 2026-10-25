@@ -3,8 +3,9 @@
 This page covers a command that may show fewer rows than matched: its paging
 flags, the lines that describe its result, a listing with no rows, a listing
 without a total, a listing from a capped source, the upper bound on
-`--limit`, the exit of a result whose rows report a problem, and a listing
-that lists only those rows.
+`--limit`, the exit of a result whose rows report a problem, a listing
+that lists only those rows, and a row type that chooses which of its rows
+the default text lists.
 
 ## Paging flags and the listing
 
@@ -253,6 +254,39 @@ listing's document makes the default text list only the rows whose
   that the leaf does not offer.
 
 Why: ADR-0138, ADR-0140.
+
+## Rows that the default text lists
+
+[`Row::in_default_text`](../../../../crates/crumbkit/src/row.rs) lets a row
+type choose which of its rows the default text of a listing lists. It
+returns true for every row by default, so a row type that does not override
+it prints every row. An adopter's cleanup command uses it so that a dry run
+lists every item, and a real run lists only the items that need the
+caller's own step.
+
+- Without `--json`, `--long` or `--fields`, the text lists each row that
+  reports a problem and each other row whose `in_default_text` is true.
+  A row that reports a problem is always listed, so the problem note never
+  counts a row that the text leaves out (OUTPUT-3). On a
+  [listing that lists only its problem rows](#a-listing-that-lists-only-its-problem-rows),
+  the text leaves out every other row, whatever the method returns.
+- `--long` and `--fields` print every row, and `--json` holds every row
+  unchanged. A list, a batch, a single row and a stream print every row.
+- When the text lists no row, a listing with a summary line prints the
+  summary line alone, and one without prints nothing on standard output.
+  A listing that holds no rows keeps the rule of
+  [a listing with no rows](#a-listing-with-no-rows).
+- The footer counts every row of the page, as in `Showing 3 of 5 items.
+  --all shows every one.`, although the text listed one of them. The empty
+  note prints only for a listing that holds no rows. No line counts the
+  rows that the text left out. The output budget's cut line counts the
+  printed rows against the listing's total.
+- The help prints no `Rows:` line and offers `--long` only when the row type
+  has long columns, because `parse` cannot know which rows the method will
+  leave out before the handler runs. The command's about text says which
+  views list every row.
+
+Why: ADR-0157.
 
 ## A note for `--long`
 

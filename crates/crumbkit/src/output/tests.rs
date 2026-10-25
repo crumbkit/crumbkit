@@ -22,6 +22,7 @@ mod built;
 mod bytes;
 mod capped;
 mod children;
+mod default_text;
 mod direct;
 mod empty;
 mod empty_columns;

@@ -219,12 +219,12 @@ fn write_rows<T: Rows>(
     // `--json` and the selected fields of the JSON document with it, and a
     // run prints only one of the two. The rows are serialized once, so a
     // shown value writes its `Display` when the run prints text.
-    // The text of a document that lists only the rows that report a
-    // problem serializes only those rows (ADR-0138). `Row::is_problem`
-    // decides which before the text mode starts, so a problem field of a
-    // shown value is judged by its JSON form.
-    let only = problems::only(&document, settings.view);
-    let shown: Vec<&T::Row> = problems::shown(value.rows(), only).collect();
+    // The default text of a listing serializes only the rows that it lists
+    // (ADR-0138, ADR-0157). `Row::is_problem` decides which before the
+    // text mode starts, so a problem field of a shown value is judged by
+    // its JSON form.
+    let rule = problems::DefaultText::of(&document, settings.view);
+    let shown: Vec<&T::Row> = problems::shown(value.rows(), rule).collect();
     let values = {
         let _cells = (!settings.is_json()).then(TextCells::enter);
         values(&columns, shown.into_iter())?
@@ -329,9 +329,9 @@ struct Prepared<'a, T> {
     /// The number of rows that report a problem, which the text's note
     /// counts, or 0 when the run has a failure.
     problems: usize,
-    /// The number of rows that the result prints when it fits: in the text
-    /// of a document that lists only the rows that report a problem, those
-    /// rows, and otherwise every row (ADR-0138).
+    /// The number of rows that the result prints when it fits: in the
+    /// default text of a listing, the rows that it lists, and otherwise
+    /// every row (ADR-0138, ADR-0157).
     rows: usize,
 }
 
@@ -351,10 +351,10 @@ impl<'a, T: Rows> Prepared<'a, T> {
             Some(prose) if text => Some(prose::text(prose)?),
             _ => None,
         };
-        let only = problems::only(&document, settings.view);
+        let rule = problems::DefaultText::of(&document, settings.view);
         // The rows that print, filtered once for the lines, the children,
         // the styles and the count.
-        let shown: Vec<&T::Row> = problems::shown(value.rows(), only).collect();
+        let shown: Vec<&T::Row> = problems::shown(value.rows(), rule).collect();
         let rows = shown.len();
         let spaced = children::spaced::<T::Row>(settings.view);
         let lines = if lines::chosen::<T::Row>(settings.view) {
@@ -371,10 +371,11 @@ impl<'a, T: Rows> Prepared<'a, T> {
             .filter(|summary| !summary.is_empty())
             .map(listing::summary_lines);
         // A listing that holds no rows to print prints no header when its
-        // summary lines stand in its place, and a document that lists only
-        // the rows that report a problem prints none when no row reports
-        // one (ADR-0138, ADR-0153, ADR-0158).
-        let headed = rows > 0 || (!only && summary.is_none());
+        // summary lines stand in its place, and a default text that leaves
+        // rows out prints none when it lists no row (ADR-0138, ADR-0153,
+        // ADR-0157, ADR-0158).
+        let left_out = problems::leaves_out(rule, rows, value.rows().len());
+        let headed = rows > 0 || (!left_out && summary.is_none());
         let table = (text && value.prose().is_none() && lines.is_none() && headed).then(|| {
             let children = children::blocks(settings.view, shown.iter().copied());
             // A pipe never prints styles, so it never asks the rows for them.
