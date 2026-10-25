@@ -217,6 +217,9 @@ impl<R: Row, S> Listing<R, S> {
     /// on every run so that its JSON always holds the figures, and write
     /// text only on the runs that have something to say. A `Display` that
     /// writes only spaces still prints its line.
+    ///
+    /// A listing with a summary line and no rows to print prints the summary line
+    /// alone, with no header, in every text view (ADR-0153).
     #[must_use]
     pub fn summary<T: Serialize + fmt::Display + JsonSchema>(self, summary: T) -> Listing<R, T> {
         Listing {

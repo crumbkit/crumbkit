@@ -9,7 +9,7 @@ use serde::Serialize;
 
 use super::{Planet, Tool, built_with, finish_output, finish_with, mercury, saturn};
 use crate::help::Guide;
-use crate::{Document, Listing};
+use crate::{Call, Document, Listing};
 
 /// The summary of a listing of planets.
 #[derive(Serialize, JsonSchema)]
@@ -152,4 +152,93 @@ fn a_summary_that_writes_no_text_spends_none_of_the_output_budget() {
 
     assert_eq!(finished.out, table);
     assert_eq!(finished.err, "");
+}
+
+/// Returns a listing of no planets out of none, with a summary.
+fn empty_census() -> Listing<Planet, Census> {
+    Listing::new(Vec::new(), 0)
+        .described("planets")
+        .summary(Census {
+            planets: 0,
+            star: "Sun",
+        })
+}
+
+#[test]
+fn a_listing_with_a_summary_and_no_rows_prints_the_summary_alone_without_a_header() {
+    let finished = finish_with(&[], CENSUS, empty_census());
+
+    assert_eq!(finished.out, "0 planets around the Sun.\n");
+}
+
+#[test]
+fn a_listing_with_a_summary_and_no_rows_still_prints_its_empty_note_and_next_step() {
+    let listing = empty_census().next(Call::new(&["show"]).arg("names"), "shows planets by name.");
+
+    let finished = finish_with(&[], CENSUS, listing);
+
+    assert_eq!(finished.out, "0 planets around the Sun.\n");
+    assert_eq!(
+        finished.err,
+        "note: no planets match\nNext: tool show <NAME>... shows planets by name.\n"
+    );
+}
+
+#[test]
+fn a_listing_with_no_rows_whose_summary_writes_no_text_still_prints_its_header() {
+    let listing = Listing::new(Vec::new(), 0).summary(Quiet {
+        planets: 0,
+        text: "",
+    });
+
+    let finished = finish_with(&[], QUIET, listing);
+
+    assert_eq!(finished.out, "NAME  MOONS\n");
+}
+
+#[test]
+fn a_listing_with_a_summary_and_no_rows_prints_no_header_with_long_or_fields() {
+    let long = finish_with(&["--long"], CENSUS, empty_census());
+    let fields = finish_with(&["--fields", "name"], CENSUS, empty_census());
+
+    assert_eq!(long.out, "0 planets around the Sun.\n");
+    assert_eq!(fields.out, "0 planets around the Sun.\n");
+}
+
+#[test]
+fn a_listing_without_a_summary_and_without_rows_still_prints_its_header() {
+    let listing: Listing<Planet> = Listing::new(Vec::new(), 0);
+
+    let finished = finish_with(&[], super::PLANET_LISTING, listing);
+
+    assert_eq!(finished.out, "NAME  MOONS\n");
+}
+
+#[test]
+fn a_page_with_a_summary_and_no_rows_from_a_larger_total_prints_the_summary_and_the_footer() {
+    let listing = Listing::new(Vec::new(), 3)
+        .described("planets")
+        .summary(Census {
+            planets: 3,
+            star: "Sun",
+        });
+
+    let finished = finish_with(&[], CENSUS, listing);
+
+    assert_eq!(finished.out, "3 planets around the Sun.\n");
+    assert_eq!(
+        finished.err,
+        "Showing 0 of 3 planets. --all shows every one.\n"
+    );
+}
+
+#[test]
+fn the_json_of_a_listing_with_a_summary_and_no_rows_is_unchanged() {
+    let finished = finish_with(&["--json"], CENSUS, empty_census());
+
+    assert_eq!(
+        finished.out,
+        "{\"schema\":\"solar/census/v1\",\"data\":[],\"total\":0,\"truncated\":false,\
+         \"summary\":{\"planets\":0,\"star\":\"Sun\"}}\n"
+    );
 }

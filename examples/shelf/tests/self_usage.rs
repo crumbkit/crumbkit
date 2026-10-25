@@ -204,17 +204,16 @@ fn records_edited_to_hold_other_text_are_left_out_and_counted() {
 }
 
 #[test]
-fn self_usage_without_findings_prints_the_note_that_the_log_holds_none_on_standard_error() {
+fn self_usage_without_findings_prints_its_summary_alone_and_the_note_that_the_log_holds_none() {
     let dir = tempfile::tempdir().unwrap();
 
     let run = shelf(dir.path(), &["self", "usage"]).success();
 
     let stdout = String::from_utf8_lossy(&run.get_output().stdout).into_owned();
     let stderr = String::from_utf8_lossy(&run.get_output().stderr).into_owned();
-    assert!(
-        stdout.ends_with("\nFINDING  RUNS  COMMAND  SUGGESTION\n"),
-        "{stdout}"
-    );
+    // The summary stands in for the empty table, so no header prints.
+    assert_eq!(stdout.lines().count(), 1, "{stdout}");
+    assert!(stdout.starts_with("0 runs since "), "{stdout}");
     assert!(
         stderr.starts_with("note: the usage log holds no findings\n"),
         "{stderr}"

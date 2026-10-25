@@ -47,7 +47,14 @@ Why: ADR-0016, ADR-0050, ADR-0077, ADR-0142.
 ## A listing with no rows
 
 A listing with no rows and no more rows prints its header on standard output
-and a note on standard error in text, such as `note: no books match`. This
+and a note on standard error in text, such as `note: no books match`. A
+listing that has a summary line and holds no rows to print prints the
+summary line in place of the header, so standard output holds the summary
+alone, as it does for a
+[listing that lists only its problem rows](#a-listing-that-lists-only-its-problem-rows)
+when no row reports one. This holds with `--long` and `--fields` too. A
+summary whose `Display` writes no text prints no line, so that listing
+prints its header. This
 holds for a counted listing whose total is 0 and for an uncounted listing,
 which has no total. The default wording is `no {description} match`, from
 `Listing::described`, or `no rows match` for a listing without a
@@ -57,7 +64,7 @@ the document's own wording in one line. `self usage` prints
 `note: the usage log holds no findings`.
 
 - A page that holds no rows from a total above 0 prints the footer in place
-  of the note.
+  of the note, and its summary in place of the header when it has one.
 - A listing that the output budget cut to no rows prints the cut line and no
   note ([budget](../budget/README.md#listings-and-lists)).
 - With `--json`, the listing's document is unchanged: `data` is `[]`,
@@ -70,7 +77,7 @@ the document's own wording in one line. `self usage` prints
 The [usage log](../../usage-log/README.md) marks a run whose listing or stream
 printed the note.
 
-Why: ADR-0050, ADR-0087.
+Why: ADR-0050, ADR-0087, ADR-0153.
 
 ## A listing without a total
 
