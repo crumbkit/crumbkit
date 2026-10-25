@@ -196,6 +196,48 @@ fn only_problems_lists_no_row_that_reports_no_problem_whatever_the_row_type_says
     let finished = finish_with(&[], ONLY_PROBLEMS, Listing::from_all(real_run(), None));
 
     assert_eq!(finished.out, "");
+    assert_eq!(finished.err, "");
+}
+
+/// A file that a cleanup run handled, which prints its own text line.
+#[derive(Serialize, JsonSchema)]
+struct File {
+    /// The path of the file.
+    path: &'static str,
+    /// Whether the run removed the file.
+    removed: bool,
+}
+
+impl Row for File {
+    const COLUMNS: &'static [&'static str] = &["path", "removed"];
+    const LINE: Option<&'static str> = Some("<PATH> (kept)");
+
+    fn in_default_text(&self) -> bool {
+        !self.removed
+    }
+
+    fn text_line(&self) -> Option<String> {
+        Some(format!("{} (kept)", self.path))
+    }
+}
+
+#[test]
+fn rows_with_their_own_text_line_print_only_the_lines_of_the_rows_listed_by_default() {
+    const FILES: Document<Listing<File>> = Document::new("tidy", "files", 1, "The test files.");
+    let files = vec![
+        File {
+            path: "cache/lock",
+            removed: false,
+        },
+        File {
+            path: "cache/a",
+            removed: true,
+        },
+    ];
+
+    let finished = finish_with(&[], FILES, Listing::from_all(files, None));
+
+    assert_eq!(finished.out, "cache/lock (kept)\n");
 }
 
 #[test]

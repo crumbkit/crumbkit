@@ -270,6 +270,10 @@ caller's own step.
   counts a row that the text leaves out (OUTPUT-3). On a
   [listing that lists only its problem rows](#a-listing-that-lists-only-its-problem-rows),
   the text leaves out every other row, whatever the method returns.
+- A tool puts the rows that the default text lists first, as it puts the
+  rows that report a problem first (OUTPUT-3). A limit and the output
+  budget's cut keep the first rows of the listing, so with this order
+  neither hides a listed row behind rows that the text leaves out.
 - `--long` and `--fields` print every row, and `--json` holds every row
   unchanged. A list, a batch, a single row and a stream print every row.
 - When the text lists no row, a listing with a summary line prints the

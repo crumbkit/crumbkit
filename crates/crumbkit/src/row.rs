@@ -177,6 +177,12 @@ pub trait Row: Serialize + JsonSchema {
     /// row unchanged. A list, a batch, a single row and a stream print
     /// every row.
     ///
+    /// A tool whose row type leaves rows out puts the rows that the default
+    /// text lists first, as it puts the rows that report a problem first
+    /// (OUTPUT-3). A limit and the output budget's cut keep the first rows
+    /// of the listing, so with this order neither hides a listed row behind
+    /// rows that the text leaves out.
+    ///
     /// When the default text leaves out every row, a listing with a summary
     /// line prints the summary line alone, and one without prints nothing
     /// on standard output. The footer counts every row of the page, the

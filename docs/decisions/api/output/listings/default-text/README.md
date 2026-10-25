@@ -73,7 +73,11 @@ every existing row type prints the same bytes. A row type that leaves out
 rows and has no long columns lists every row only through `--fields` and
 `--json`, and its help does not say so unless the tool's about text does. A
 footer such as `Showing 3 of 5 items.` can count rows that the text did not
-list. `docs/behaviour/output/listings/README.md` describes the current
+list. The cut line advises `--fields`, which lists every row, so on a
+listing whose default text leaves rows out that advice can print more
+rows, as it can under `only_problems`. A tool puts the rows that the
+default text lists first, so a limit or the budget's cut does not hide them
+behind rows that the text leaves out. `docs/behaviour/output/listings/README.md` describes the current
 behaviour.
 
 Considered: a `Document` option that names the row method, which a row type
