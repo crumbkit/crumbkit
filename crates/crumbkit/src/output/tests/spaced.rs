@@ -231,3 +231,99 @@ fn room_counts_the_blank_line_between_spaced_rows_with_their_own_text_line() {
     assert_eq!(finished.out, "service api\n  server\n\nservice web\n");
     assert_eq!(room.printed(), finished.out.len());
 }
+
+const LINED_LISTING: Document<Listing<Lined>> =
+    Document::new("ops", "spaced-lined-listing", 1, "The test services.");
+
+#[test]
+fn a_spaced_listing_with_its_own_text_line_that_the_budget_cuts_prints_no_blank_line_after_its_last_printed_row()
+ {
+    let guide = Guide::new().output_budget(1024, "the tests print little");
+    let output = built_with(
+        <Tool as clap::CommandFactory>::command(),
+        &guide,
+        &["tool", "list"],
+    );
+    // Each row's child line takes about 600 bytes, so only the first row
+    // fits in 1,024 bytes with its child line.
+    let long = "x".repeat(600);
+    let rows = vec![lined("api", &[&long]), lined("web", &[&long])];
+    let finished = finish_output(output, LINED_LISTING, Listing::new(rows, 2));
+
+    assert_eq!(finished.code, ExitCode::SUCCESS, "{}", finished.err);
+    assert_eq!(finished.out, format!("service api\n  {long}\n"));
+    assert!(finished.err.contains("1 of 2"), "{}", finished.err);
+}
+
+/// A service whose processes print under it only with `--long`, with a
+/// blank line between services.
+#[derive(Serialize, JsonSchema)]
+struct Detailed {
+    /// The service's name.
+    name: String,
+    /// Where the service runs.
+    region: &'static str,
+    /// The processes that the service runs.
+    processes: Vec<String>,
+}
+
+impl Row for Detailed {
+    const COLUMNS: &'static [&'static str] = &["name"];
+    const LONG_COLUMNS: &'static [&'static str] = &["region"];
+    const CHILDREN: Option<&'static str> = Some("processes");
+    const SPACED: bool = true;
+
+    fn child_lines(&self) -> Vec<String> {
+        Vec::new()
+    }
+
+    fn long_child_lines(&self) -> Vec<String> {
+        self.processes.clone()
+    }
+}
+
+const DETAILED: Document<Vec<Detailed>> =
+    Document::new("ops", "spaced-detailed", 1, "The test services.");
+const DETAILED_BATCH: Document<Batch<Detailed, Error>> =
+    Document::new("ops", "spaced-detailed-batch", 1, "The test services.");
+
+fn detailed() -> Vec<Detailed> {
+    ["api", "web"]
+        .into_iter()
+        .map(|name| Detailed {
+            name: name.to_owned(),
+            region: "eu",
+            processes: vec![format!("{name}-server")],
+        })
+        .collect()
+}
+
+#[test]
+fn a_spaced_row_type_whose_child_lines_print_only_with_long_spaces_its_rows_only_with_long() {
+    let compact = finish_with(&[], DETAILED, detailed());
+    let long = finish_with(&["--long"], DETAILED, detailed());
+
+    assert_eq!(compact.out, "NAME\napi\nweb\n");
+    assert_eq!(
+        long.out,
+        "NAME  REGION\napi   eu\n  api-server\n\nweb   eu\n  web-server\n"
+    );
+}
+
+#[test]
+fn room_counts_the_blank_line_between_spaced_rows_with_long() {
+    let guide = Guide::new().output_budget(1 << 20, "the tests print little");
+    let output = built_with(
+        <Tool as clap::CommandFactory>::command(),
+        &guide,
+        &["tool", "list", "--long"],
+    );
+    let batch = answered(detailed(), &["api", "web"]);
+    let mut room = output.room(DETAILED_BATCH);
+    assert!(room.has_room(&batch));
+
+    let finished = finish_output(output, DETAILED_BATCH, batch);
+
+    assert!(finished.out.contains("\n\nweb"), "{}", finished.out);
+    assert_eq!(room.printed(), finished.out.len(), "{}", finished.out);
+}

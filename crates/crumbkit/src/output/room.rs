@@ -77,10 +77,9 @@ pub struct Room<T> {
     /// Whether the child lines are the long ones, which `--long` chooses
     /// (ADR-0138).
     long: bool,
-    /// Whether the last row measured printed child lines, which a row type
-    /// that sets `Row::SPACED` follows with a blank line when another row
-    /// follows (ADR-0151).
-    after_children: bool,
+    /// Whether the text prints a blank line between a row with child lines
+    /// and the next row (ADR-0151).
+    spaced: bool,
     /// The number of rows measured so far.
     measured: usize,
 }
@@ -110,10 +109,16 @@ enum Form {
         /// The bytes of the lines measured beside the padding of each
         /// column: the text of their cells and their line feeds.
         text: usize,
+        /// Whether the last row measured printed child lines (ADR-0151).
+        after_children: bool,
     },
-    /// The text of a row type that prints each row's own line (ADR-0064),
-    /// with the bytes of the lines measured.
-    Lines(usize),
+    /// The text of a row type that prints each row's own line (ADR-0064).
+    Lines {
+        /// The bytes of the lines measured.
+        bytes: usize,
+        /// Whether the last row measured printed child lines (ADR-0151).
+        after_children: bool,
+    },
     /// The text of a headed batch.
     Headed {
         /// Whether each row prints under a header.
@@ -159,7 +164,10 @@ impl Output {
                 printed: 0,
             }
         } else if lines::chosen::<R>(&self.view) {
-            Form::Lines(0)
+            Form::Lines {
+                bytes: 0,
+                after_children: false,
+            }
         } else {
             let header: Vec<Cow<'_, str>> = columns
                 .iter()
@@ -169,6 +177,7 @@ impl Output {
                 widths: vec![0; columns.len()],
                 padded: vec![0; columns.len()],
                 text: 0,
+                after_children: false,
             };
             table.add_line(&header);
             table
@@ -180,7 +189,7 @@ impl Output {
             form,
             children: children::chosen::<R>(&self.view),
             long: self.view.is_long(),
-            after_children: false,
+            spaced: children::spaced::<R>(&self.view),
             measured: 0,
         }
     }
@@ -201,9 +210,6 @@ impl<T: Rows> Room<T> {
         let rows = value.rows();
         let columns: Vec<&str> = self.columns.iter().map(String::as_str).collect();
         let bytes_of = self.document.headed_bytes();
-        // The text prints child lines whenever it prints rows with their
-        // own lines, so `children` decides for both forms.
-        let spaced = T::Row::SPACED && self.children;
         for (index, row) in rows.iter().enumerate().skip(self.measured) {
             match &mut self.form {
                 Form::Json {
@@ -215,14 +221,17 @@ impl<T: Rows> Room<T> {
                     let bytes = element(row, &columns, *layout, *depth);
                     *rows = rows.saturating_add(bytes.unwrap_or(0));
                 }
-                Form::Lines(bytes) => {
+                Form::Lines {
+                    bytes,
+                    after_children,
+                } => {
                     // A row's line counts the bytes that text prints for it,
                     // and the blank line before it after a row with child
                     // lines.
-                    let line = lines::line(row).unwrap_or_default();
-                    let blank = usize::from(spaced && self.after_children);
-                    self.after_children = lines::holds_child_lines(&line);
-                    *bytes = bytes.saturating_add(line.len() + blank);
+                    let (line, block) = lines::line(row).unwrap_or_default();
+                    let blank = usize::from(self.spaced && *after_children);
+                    *after_children = !block.is_empty();
+                    *bytes = bytes.saturating_add(line.len() + block.len() + blank);
                 }
                 Form::Table { .. } => {
                     // The table measures the cells that text prints, so a
@@ -234,10 +243,18 @@ impl<T: Rows> Room<T> {
                     let cells: Vec<Cow<'_, str>> =
                         columns.iter().map(|name| cell(fields.get(name))).collect();
                     self.form.add_line(&cells);
-                    if let (true, Form::Table { text, .. }) = (self.children, &mut self.form) {
+                    if let (
+                        true,
+                        Form::Table {
+                            text,
+                            after_children,
+                            ..
+                        },
+                    ) = (self.children, &mut self.form)
+                    {
                         let block = children::block(row, self.long);
-                        let blank = usize::from(spaced && self.after_children);
-                        self.after_children = !block.is_empty();
+                        let blank = usize::from(self.spaced && *after_children);
+                        *after_children = !block.is_empty();
                         *text = text.saturating_add(block.len() + blank);
                     }
                 }
@@ -281,7 +298,7 @@ impl<T: Rows> Room<T> {
                 empty,
                 rows,
             } => empty.saturating_add(layout::array_len(self.measured, *rows, *layout, *depth)),
-            Form::Lines(bytes) => *bytes,
+            Form::Lines { bytes, .. } => *bytes,
             // A batch without rows prints no table.
             Form::Table { .. } if self.measured == 0 => 0,
             // RUST-10: the count includes every column, and `finish` leaves
@@ -298,6 +315,7 @@ impl<T: Rows> Room<T> {
                 widths,
                 padded,
                 text,
+                ..
             } => widths
                 .iter()
                 .zip(padded)
@@ -326,6 +344,7 @@ impl Form {
             widths,
             padded,
             text,
+            ..
         } = self
         else {
             return;
