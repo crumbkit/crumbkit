@@ -4,7 +4,7 @@ use std::io;
 use clap::ColorChoice;
 
 use super::role::{Deliver as _, Message, Role};
-use super::{ColorVariables, Sink, clicolor_off, color_forced, color_off, error_styles, term_dumb};
+use super::{ColorVariables, Sink, clicolor_off, color_forced, color_off, term_dumb, wants_styles};
 
 /// Every kind of message, so a test covers each one.
 const KINDS: [Message; 9] = [
@@ -163,7 +163,7 @@ const FORCED: ColorVariables = ColorVariables {
 };
 
 #[test]
-fn the_standard_sink_wants_no_error_styles_under_no_color_even_with_clicolor_force() {
+fn the_colour_rule_wants_no_styles_under_no_color_even_with_clicolor_force() {
     for terminal in [true, false] {
         for variables in [
             ColorVariables {
@@ -175,47 +175,45 @@ fn the_standard_sink_wants_no_error_styles_under_no_color_even_with_clicolor_for
                 ..UNSET
             },
         ] {
-            assert!(!error_styles(variables, terminal, ColorChoice::Auto, true));
+            assert!(!wants_styles(variables, terminal, ColorChoice::Auto, true));
         }
     }
 }
 
 #[test]
-fn the_standard_sink_wants_error_styles_with_clicolor_force_when_standard_error_is_not_a_terminal()
-{
-    assert!(error_styles(FORCED, false, ColorChoice::Auto, true));
+fn the_colour_rule_wants_styles_with_clicolor_force_when_the_stream_is_not_a_terminal() {
+    assert!(wants_styles(FORCED, false, ColorChoice::Auto, true));
 }
 
 #[test]
-fn the_standard_sink_wants_no_error_styles_when_standard_error_is_not_a_terminal_and_clicolor_force_is_unset()
- {
-    assert!(!error_styles(UNSET, false, ColorChoice::Auto, true));
+fn the_colour_rule_wants_no_styles_when_the_stream_is_not_a_terminal_and_clicolor_force_is_unset() {
+    assert!(!wants_styles(UNSET, false, ColorChoice::Auto, true));
 }
 
 #[test]
-fn the_standard_sink_wants_error_styles_when_standard_error_is_a_terminal() {
-    assert!(error_styles(UNSET, true, ColorChoice::Auto, true));
-    assert!(error_styles(UNSET, true, ColorChoice::Always, true));
+fn the_colour_rule_wants_styles_when_the_stream_is_a_terminal() {
+    assert!(wants_styles(UNSET, true, ColorChoice::Auto, true));
+    assert!(wants_styles(UNSET, true, ColorChoice::Always, true));
 }
 
 #[test]
-fn the_standard_sink_wants_no_error_styles_at_a_terminal_whose_term_is_dumb() {
+fn the_colour_rule_wants_no_styles_at_a_terminal_whose_term_is_dumb() {
     let dumb = ColorVariables {
         term_dumb: true,
         ..UNSET
     };
-    assert!(!error_styles(dumb, true, ColorChoice::Auto, true));
-    assert!(!error_styles(dumb, true, ColorChoice::Always, true));
+    assert!(!wants_styles(dumb, true, ColorChoice::Auto, true));
+    assert!(!wants_styles(dumb, true, ColorChoice::Always, true));
 }
 
 #[test]
-fn the_standard_sink_wants_no_error_styles_at_a_terminal_under_clicolor_0() {
+fn the_colour_rule_wants_no_styles_at_a_terminal_under_clicolor_0() {
     let off = ColorVariables {
         clicolor_off: true,
         ..UNSET
     };
-    assert!(!error_styles(off, true, ColorChoice::Auto, true));
-    assert!(!error_styles(off, true, ColorChoice::Always, true));
+    assert!(!wants_styles(off, true, ColorChoice::Auto, true));
+    assert!(!wants_styles(off, true, ColorChoice::Always, true));
 }
 
 #[test]
@@ -225,7 +223,7 @@ fn clicolor_force_styles_a_refusal_whose_term_is_dumb_as_anstream_colours_help()
         ..FORCED
     };
     for terminal in [true, false] {
-        assert!(error_styles(forced, terminal, ColorChoice::Auto, true));
+        assert!(wants_styles(forced, terminal, ColorChoice::Auto, true));
     }
 }
 
@@ -236,7 +234,7 @@ fn clicolor_force_styles_a_refusal_under_clicolor_0_as_anstream_colours_help() {
         ..FORCED
     };
     for terminal in [true, false] {
-        assert!(error_styles(forced, terminal, ColorChoice::Auto, true));
+        assert!(wants_styles(forced, terminal, ColorChoice::Auto, true));
     }
 }
 
@@ -248,20 +246,20 @@ fn no_color_keeps_a_refusal_plain_under_clicolor_force_whatever_term_and_clicolo
         term_dumb: true,
         ..FORCED
     };
-    assert!(!error_styles(variables, true, ColorChoice::Auto, true));
+    assert!(!wants_styles(variables, true, ColorChoice::Auto, true));
 }
 
 #[test]
-fn the_standard_sink_wants_no_error_styles_when_the_command_never_colours() {
+fn the_colour_rule_wants_no_styles_when_the_command_never_colours() {
     for (variables, terminal) in [(UNSET, true), (FORCED, false), (FORCED, true)] {
-        assert!(!error_styles(variables, terminal, ColorChoice::Never, true));
+        assert!(!wants_styles(variables, terminal, ColorChoice::Never, true));
     }
 }
 
 #[test]
-fn the_standard_sink_wants_no_error_styles_when_the_guide_turns_terminal_detection_off() {
+fn the_colour_rule_wants_no_styles_when_the_guide_turns_terminal_detection_off() {
     for (variables, terminal) in [(UNSET, true), (FORCED, false), (FORCED, true)] {
-        assert!(!error_styles(variables, terminal, ColorChoice::Auto, false));
+        assert!(!wants_styles(variables, terminal, ColorChoice::Auto, false));
     }
 }
 

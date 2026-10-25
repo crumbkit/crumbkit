@@ -361,7 +361,7 @@ fn the_report_lists_a_guide_without_terminal_detection_with_its_reason_and_costs
          terminal-detection/off: every run of shelf\n\
          \x20 Reason: Our CI runs in a pseudo-terminal.\n\
          \x20 Cost: A picker never asks for a missing argument and `Output::confirm` never asks, even at a terminal, so a person must type every argument and `--yes` as a script does.\n\
-         \x20 Cost: Progress never prints, and help prints without clap's colours at a terminal.\n\
+         \x20 Cost: Progress never prints, help prints without clap's colours at a terminal, and a table's cells print without their styles.\n\
          \x20 Cost: A text table never fits the terminal's width, so the terminal wraps each line of a table that is wider than the terminal.\n"
     );
     let json = read(&dir, "opt-outs.json");

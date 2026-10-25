@@ -6,6 +6,7 @@ use std::borrow::Cow;
 use std::io::{self, Write};
 
 use super::{Table, write_cells};
+use crate::Style;
 
 #[cfg(test)]
 mod tests;
@@ -88,12 +89,16 @@ pub(super) fn fit(
 /// column cut to fit by [`cut`].
 pub(super) fn write_cut_cells<'c>(
     out: &mut impl Write,
-    cells: impl Iterator<Item = (&'c str, usize)>,
+    cells: impl Iterator<Item = (&'c str, usize, Option<Style>)>,
 ) -> io::Result<()> {
-    let cut: Vec<(Cow<'c, str>, usize)> = cells
-        .map(|(cell, width)| (cut(cell, width), width))
+    let cut: Vec<(Cow<'c, str>, usize, Option<Style>)> = cells
+        .map(|(cell, width, style)| (cut(cell, width), width, style))
         .collect();
-    write_cells(out, cut.iter().map(|(cell, width)| (cell.as_ref(), *width)))
+    write_cells(
+        out,
+        cut.iter()
+            .map(|(cell, width, style)| (cell.as_ref(), *width, *style)),
+    )
 }
 
 /// Returns `cell` when it is at most `width` characters, and otherwise its

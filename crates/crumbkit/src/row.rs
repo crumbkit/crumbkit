@@ -85,6 +85,26 @@ pub trait Row: Serialize + JsonSchema {
     /// `COLUMNS` nor `LONG_COLUMNS`.
     const UNCUT_COLUMNS: &'static [&'static str] = &[];
 
+    /// Returns the style of the row's cell in `column`, or `None` for a
+    /// plain cell. `column` is a field name as the type serializes it, as
+    /// in `COLUMNS`. The default styles no cell (ADR-0150).
+    ///
+    /// A text table writes a cell with its style only when the sink wants
+    /// styles for the result: [`finish`](crate::finish) asks for them when
+    /// standard output is a terminal that allows colour, and a tool asks
+    /// for them on its own sink with [`Sink::styled`](crate::Sink::styled).
+    /// The column widths, the fit to a terminal's width and the output
+    /// budget count the cell's text alone, so the styled table lines up as
+    /// the plain one does, and without its escape codes it is the plain
+    /// table. JSON, a row's own text line, child lines, a stream's table and
+    /// the header never carry a style. crumbkit calls this only for a table
+    /// that a styled sink prints, so a pipe pays nothing for it.
+    ///
+    /// [`Style`](crate::Style) shows an example.
+    fn cell_style(&self, _column: &str) -> Option<crate::Style> {
+        None
+    }
+
     /// The field whose value marks the row as reporting a problem, or `None`
     /// when no field does.
     ///

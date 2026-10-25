@@ -6,6 +6,7 @@ use proptest::prelude::*;
 use serde_json::{Value, json};
 
 use super::{FORMAT, Table, cell, escape_controls, is_format};
+use crate::Style;
 
 /// Returns the table that `Table::write` prints for `columns` and every
 /// row of `rows`, with columns that crumbkit chose, so a column that every
@@ -24,7 +25,7 @@ fn named_table(columns: &[&str], rows: &[Value]) -> String {
 /// Returns what `table` writes with its first `rows` rows.
 fn written(mut table: Table<'_>, rows: usize) -> String {
     let mut out = Vec::new();
-    table.write(&mut out, rows, None).unwrap();
+    table.write(&mut out, rows, None, false).unwrap();
     String::from_utf8(out).unwrap()
 }
 
@@ -38,8 +39,8 @@ fn a_table_written_with_its_first_rows_is_as_wide_as_those_rows_alone() {
     let mut first = Vec::new();
     let mut both = Vec::new();
 
-    table.write(&mut first, 1, None).unwrap();
-    table.write(&mut both, 2, None).unwrap();
+    table.write(&mut first, 1, None, false).unwrap();
+    table.write(&mut both, 2, None, false).unwrap();
 
     assert_eq!(String::from_utf8(first).unwrap(), "ID  TITLE\n1   Emma\n");
     assert_eq!(
@@ -212,8 +213,8 @@ fn a_table_written_with_more_rows_again_brings_back_a_column_that_they_fill() {
     let mut first = Vec::new();
     let mut both = Vec::new();
 
-    table.write(&mut first, 1, None).unwrap();
-    table.write(&mut both, 2, None).unwrap();
+    table.write(&mut first, 1, None, false).unwrap();
+    table.write(&mut both, 2, None, false).unwrap();
 
     assert_eq!(String::from_utf8(first).unwrap(), "ID\n1\n");
     assert_eq!(
@@ -458,4 +459,36 @@ proptest! {
             prop_assert_eq!(*printed_line, expected);
         }
     }
+}
+
+#[test]
+fn a_table_with_styles_writes_them_only_when_asked_and_pads_after_each_reset() {
+    let rows = [
+        json!({"name": "web", "state": "running"}),
+        json!({"name": "queue-worker", "state": "failed"}),
+    ];
+    let cell_styles = vec![
+        None,
+        Some(Style::Success),
+        Some(Style::Emphasis),
+        Some(Style::Error),
+    ];
+    let mut table = Table::new(&["name", "state"], &rows, true).with_styles(cell_styles);
+    let mut plain = Vec::new();
+    let mut styled = Vec::new();
+    table.write(&mut plain, 2, None, false).unwrap();
+    table.write(&mut styled, 2, None, true).unwrap();
+
+    let expected_plain = "\
+NAME          STATE
+web           running
+queue-worker  failed
+";
+    let expected_styled = "\
+NAME          STATE
+web           \u{1b}[32mrunning\u{1b}[0m
+\u{1b}[1mqueue-worker\u{1b}[0m  \u{1b}[31mfailed\u{1b}[0m
+";
+    assert_eq!(String::from_utf8(plain).unwrap(), expected_plain);
+    assert_eq!(String::from_utf8(styled).unwrap(), expected_styled);
 }

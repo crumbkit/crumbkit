@@ -8,7 +8,7 @@ use std::path::Path;
 
 use crumbkit::pick::Choice;
 use crumbkit::{
-    Batch, Call, Code, Document, Duration, Failure, FieldValue, Listing, Recovery, Room, Row,
+    Batch, Call, Code, Document, Duration, Failure, FieldValue, Listing, Recovery, Room, Row, Style,
 };
 use miette::{Diagnostic, LabeledSpan, NamedSource, SourceCode, SourceSpan};
 use schemars::JsonSchema;
@@ -81,6 +81,12 @@ impl Row for Book {
     // A person copies a book's id into `shelf books show`, so a table at a
     // narrow terminal never cuts it.
     const UNCUT_COLUMNS: &'static [&'static str] = &["id"];
+
+    // A person scans the table for a title, so a terminal that allows
+    // colour shows each title in bold. A pipe and JSON print it plain.
+    fn cell_style(&self, column: &str) -> Option<Style> {
+        (column == "title").then_some(Style::Emphasis)
+    }
 }
 
 /// The literary form of a book, which serializes in lower case.

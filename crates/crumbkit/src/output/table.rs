@@ -6,6 +6,8 @@ use std::io::{self, Write};
 
 use serde_json::Value;
 
+use crate::{Row, Style};
+
 mod fit;
 #[cfg(test)]
 mod tests;
@@ -36,6 +38,9 @@ pub(super) struct Table<'a> {
     /// The child lines that print under each row, already indented and
     /// escaped, or an empty list when the rows print none (ADR-0120).
     children: Vec<String>,
+    /// For each row in order, one entry per column with the cell's style,
+    /// or an empty list when no cell has one (ADR-0150).
+    styles: Vec<Option<Style>>,
 }
 
 impl<'a> Table<'a> {
@@ -68,7 +73,20 @@ impl<'a> Table<'a> {
             widths: vec![0; columns.len()],
             uncut: Vec::new(),
             children: Vec::new(),
+            styles: Vec::new(),
         }
+    }
+
+    /// Returns the table with `styles`, one entry per column for each row
+    /// in order, as [`styles`] returns them.
+    pub(super) fn with_styles(mut self, styles: Vec<Option<Style>>) -> Self {
+        self.styles = styles;
+        self
+    }
+
+    /// Reports whether any cell of the table has a style.
+    pub(super) const fn is_styled(&self) -> bool {
+        !self.styles.is_empty()
     }
 
     /// Returns the table with `children`, the child lines that print under
@@ -100,11 +118,18 @@ impl<'a> Table<'a> {
     /// or `None` when the table prints unfitted. A table wider
     /// than `width` narrows its columns and cuts their cells, as
     /// [`fit::fit`] describes.
+    ///
+    /// With `styled`, each cell that has a style is written between the
+    /// style's escape code and the reset, and the padding after it stays
+    /// outside them. The widths count the cell's text alone, so removing
+    /// the escape codes gives the table that `styled` off writes
+    /// (ADR-0150).
     pub(super) fn write(
         &mut self,
         out: &mut impl Write,
         rows: usize,
         width: Option<usize>,
+        styled: bool,
     ) -> io::Result<()> {
         let lines = self.lines.get(..=rows).unwrap_or(&self.lines);
         let columns = self.shown.len();
@@ -155,11 +180,21 @@ impl<'a> Table<'a> {
             fitted
         });
         for (index, line) in lines.iter().enumerate() {
+            // The header has no styles, and neither has a row without them.
+            let line_styles = index
+                .checked_sub(1)
+                .filter(|_| styled)
+                .and_then(|row| self.styles.get(row * columns..(row + 1) * columns))
+                .unwrap_or(&[]);
             let cells = line
                 .iter()
+                .enumerate()
                 .zip(&self.widths)
                 .zip(&self.shown)
-                .filter_map(|((cell, &width), &shown)| shown.then_some((cell.as_ref(), width)));
+                .filter_map(|(((column, cell), &width), &shown)| {
+                    let style = line_styles.get(column).copied().flatten();
+                    shown.then_some((cell.as_ref(), width, style))
+                });
             if fitted {
                 fit::write_cut_cells(out, cells)?;
             } else {
@@ -183,32 +218,56 @@ pub(super) fn write_line(
 ) -> io::Result<()> {
     write_cells(
         out,
-        cells.iter().map(AsRef::as_ref).zip(widths.iter().copied()),
+        cells
+            .iter()
+            .zip(widths)
+            .map(|(cell, &width)| (cell.as_ref(), width, None)),
     )
 }
 
-/// Writes one line of the table from each cell's text and its column's
-/// width. Each cell starts at its column's offset, which is the end of the
-/// cell before it plus that cell's padding to its column's width plus two
-/// separator spaces. Those spaces are held back and written only before a
+/// Writes one line of the table from each cell's text, its column's width
+/// and its style, which wraps the text alone. Each cell starts at its
+/// column's offset, which is the end of the cell before it plus that cell's
+/// padding to its column's width plus two separator spaces. Those spaces are held back and written only before a
 /// non-empty cell, so a line never ends in them. A cell wider than its
 /// column gets no padding and moves the rest of its line right, which
 /// happens only in a stream, whose widths come from the header.
 fn write_cells<'c>(
     out: &mut impl Write,
-    cells: impl Iterator<Item = (&'c str, usize)>,
+    cells: impl Iterator<Item = (&'c str, usize, Option<Style>)>,
 ) -> io::Result<()> {
     let mut spaces = 0;
-    for (cell, width) in cells {
+    for (cell, width, style) in cells {
         if !cell.is_empty() {
             // An empty string padded to `spaces` characters writes that many
             // spaces.
-            write!(out, "{:spaces$}{cell}", "")?;
+            write!(out, "{:spaces$}", "")?;
+            match style.map(Style::ansi) {
+                Some(ansi) => write!(out, "{}{cell}{}", ansi.render(), ansi.render_reset())?,
+                None => out.write_all(cell.as_bytes())?,
+            }
             spaces = 0;
         }
         spaces += width.saturating_sub(cell.chars().count()) + 2;
     }
     writeln!(out)
+}
+
+/// Returns the style of each cell of `rows` in `columns`, one entry per
+/// column for each row in order, as [`Row::cell_style`] gives them, or an
+/// empty list when no cell has a style, so a table without styles keeps no
+/// entries.
+pub(super) fn styles<'r, R: Row + 'r>(
+    columns: &[&str],
+    rows: impl Iterator<Item = &'r R>,
+) -> Vec<Option<Style>> {
+    let styles: Vec<Option<Style>> = rows
+        .flat_map(|row| columns.iter().map(move |column| row.cell_style(column)))
+        .collect();
+    if styles.iter().all(Option::is_none) {
+        return Vec::new();
+    }
+    styles
 }
 
 /// Returns the text of one cell. A string shows as it is, except that each

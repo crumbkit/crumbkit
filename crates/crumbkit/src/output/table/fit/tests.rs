@@ -19,7 +19,7 @@ fn table(columns: &[&str], uncut: &[&str], rows: &[Value], width: Option<usize>)
     let mut out = Vec::new();
     Table::new(columns, rows, true)
         .keeping_whole(columns, uncut)
-        .write(&mut out, rows.len(), width)
+        .write(&mut out, rows.len(), width, false)
         .unwrap();
     String::from_utf8(out).unwrap()
 }

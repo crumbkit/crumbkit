@@ -1,7 +1,7 @@
 # ADR-0049. Terminal detection
 
 - Date: 2026-10-12
-- Status: amended by ADR-0121 and ADR-0131
+- Status: amended by ADR-0121, ADR-0131 and ADR-0150
 
 ## Context
 

@@ -28,6 +28,9 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   diagnostic's related diagnostics and a source excerpt for each label.
 - crumbkit: [`parse`] parses the command line, prints help and refusals,
   and never exits the process.
+- crumbkit: `Row::cell_style` gives a text table's cell a [`Style`], which
+  shows only when standard output is a terminal that allows colour
+  ([behaviour/output/styles]).
 - crumbkit: [`help`] adds goal headings, help topics, and leaf examples and
   columns to help pages ([behaviour/help], [behaviour/help/examples]).
 - crumbkit: [`commands`] gives a tool the `commands list` command
@@ -1231,6 +1234,7 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 rustdoc, or at the page in docs/ that describes the behaviour. -->
 
 [`Row`]: crates/crumbkit/src/row.rs
+[`Style`]: crates/crumbkit/src/style.rs
 [`Document`]: crates/crumbkit/src/document.rs
 [`Output`]: crates/crumbkit/src/output.rs
 [`Output::new`]: crates/crumbkit/src/output/build.rs
@@ -1354,6 +1358,7 @@ rustdoc, or at the page in docs/ that describes the behaviour. -->
 [behaviour/effects/pickers]: docs/behaviour/effects/pickers.md
 [behaviour/effects/write-guards]: docs/behaviour/effects/write-guards.md
 [behaviour/failures]: docs/behaviour/failures/README.md
+[behaviour/output/styles]: docs/behaviour/output/styles/README.md
 [behaviour/failures/derive]: docs/behaviour/failures/derive.md
 [behaviour/failures/exit-codes]: docs/behaviour/failures/exit-codes.md
 [behaviour/failures/excerpts-and-readers]: docs/behaviour/failures/excerpts-and-readers.md
