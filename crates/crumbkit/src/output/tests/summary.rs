@@ -1,4 +1,4 @@
-//! Tests for how `finish_to` prints a listing's summary: a line above the
+//! Tests for how `finish_to` prints a listing's summary: lines above the
 //! table in text, and an object under `summary` in JSON.
 
 use std::fmt;
@@ -241,4 +241,105 @@ fn the_json_of_a_listing_with_a_summary_and_no_rows_is_unchanged() {
         "{\"schema\":\"solar/census/v1\",\"data\":[],\"total\":0,\"truncated\":false,\
          \"summary\":{\"planets\":0,\"star\":\"Sun\"}}\n"
     );
+}
+
+#[test]
+fn a_summary_that_writes_several_lines_prints_each_above_the_table() {
+    let finished = finish_with(&[], QUIET, quiet("2 planets.\n1 ringed.\n0 dwarfs."));
+
+    assert_eq!(
+        finished.out,
+        "2 planets.\n1 ringed.\n0 dwarfs.\nNAME     MOONS\nMercury  0\nSaturn   274\n"
+    );
+}
+
+#[test]
+fn a_summary_that_ends_with_a_line_feed_prints_no_empty_line_above_the_header() {
+    let finished = finish_with(&[], QUIET, quiet("2 planets.\n1 ringed.\n"));
+
+    assert_eq!(
+        finished.out,
+        "2 planets.\n1 ringed.\nNAME     MOONS\nMercury  0\nSaturn   274\n"
+    );
+}
+
+#[test]
+fn an_empty_line_inside_a_summary_still_prints() {
+    let finished = finish_with(&[], QUIET, quiet("2 planets.\n\n1 ringed."));
+
+    assert_eq!(
+        finished.out,
+        "2 planets.\n\n1 ringed.\nNAME     MOONS\nMercury  0\nSaturn   274\n"
+    );
+}
+
+#[test]
+fn each_summary_line_escapes_its_other_control_characters() {
+    let finished = finish_with(
+        &[],
+        QUIET,
+        quiet("2\tplanets.\u{1b}[2J\n1 \u{202e}ringed.\r"),
+    );
+
+    assert_eq!(
+        finished.out,
+        "2\\tplanets.\\u{1b}[2J\n1 \\u{202e}ringed.\\r\nNAME     MOONS\nMercury  0\nSaturn   274\n"
+    );
+}
+
+#[test]
+fn a_listing_with_a_summary_of_several_lines_and_no_rows_prints_the_lines_alone() {
+    let listing = Listing::new(Vec::new(), 0).summary(Quiet {
+        planets: 0,
+        text: "0 planets.\n0 ringed.",
+    });
+
+    let finished = finish_with(&[], QUIET, listing);
+
+    assert_eq!(finished.out, "0 planets.\n0 ringed.\n");
+}
+
+#[test]
+fn the_json_of_a_summary_that_writes_several_lines_is_unchanged() {
+    let finished = finish_with(&["--json"], QUIET, quiet("2 planets.\n1 ringed."));
+
+    assert_eq!(
+        finished.out,
+        concat!(
+            r#"{"schema":"solar/quiet/v1","data":[{"name":"Mercury","moons":0},{"name":"Saturn","moons":274}],"#,
+            r#""total":2,"truncated":false,"summary":{"planets":2}}"#,
+            "\n"
+        )
+    );
+}
+
+#[test]
+fn the_output_budget_counts_every_summary_line() {
+    let whole = "2 planets.\n1 ringed.\nNAME     MOONS\nMercury  0\nSaturn   274\n";
+    let fits = Guide::new().output_budget(whole.len(), "the tests print little");
+    let short = Guide::new().output_budget(whole.len() - 1, "the tests print little");
+
+    let fitted = finish_output(
+        built_with(Tool::command(), &fits, &["tool", "list"]),
+        QUIET,
+        quiet("2 planets.\n1 ringed."),
+    );
+    let cut = finish_output(
+        built_with(Tool::command(), &short, &["tool", "list"]),
+        QUIET,
+        quiet("2 planets.\n1 ringed."),
+    );
+
+    assert_eq!(fitted.out, whole);
+    assert_eq!(
+        cut.out,
+        "2 planets.\n1 ringed.\nNAME     MOONS\nMercury  0\n"
+    );
+}
+
+#[test]
+fn a_summary_that_writes_only_a_line_feed_prints_one_empty_line() {
+    let finished = finish_with(&[], QUIET, quiet("\n"));
+
+    assert_eq!(finished.out, "\nNAME     MOONS\nMercury  0\nSaturn   274\n");
 }

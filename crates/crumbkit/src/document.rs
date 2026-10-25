@@ -327,9 +327,9 @@ impl<R: Row, S> Document<Listing<R, S>> {
     /// such as the failed checks of a check command (ADR-0138).
     ///
     /// Without `--json`, `--long` or `--fields`, `crumbkit::finish` prints
-    /// the summary line, and then the table of the rows that report a
+    /// the summary lines, and then the table of the rows that report a
     /// problem, each with its child lines. When no row reports one, the text
-    /// is the summary line alone, with no header. The footer, the empty note
+    /// is the summary lines alone, with no header. The footer, the empty note
     /// of a listing without rows, the note that counts the rows that report
     /// a problem and the exit do not change, and no line counts the rows
     /// that the text leaves out. `--long` and `--fields` print every row,

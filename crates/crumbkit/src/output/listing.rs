@@ -1,11 +1,13 @@
-//! The lines that describe a listing in text, which print on standard error
-//! after the table: the footer of a listing cut short, the note of a listing
-//! with no matching rows and the next step.
+//! The lines that describe a listing in text: the summary lines, which print
+//! on standard output above the table, and the lines that print on standard
+//! error after the table, which are the footer of a listing cut short, the
+//! note of a listing with no matching rows and the next step.
 
 use std::io::{self, Write};
 
 use clap::Command;
 
+use super::table::{escape_controls, escaped};
 use crate::{Rows, Shape};
 
 /// Returns whether `value` is a listing whose source holds rows that it
@@ -153,6 +155,32 @@ pub(super) fn next_lines<T: Rows>(command: &mut Command, value: &T) -> String {
         if let Some(step_lines) = step.lines(command) {
             lines.push_str(&step_lines);
         }
+    }
+    lines
+}
+
+/// Returns the lines of `summary`, the text of a summary's `Display`, as the
+/// text prints them above the table (ADR-0158). Each line feed ends a line,
+/// and a final line feed ends the last line without adding an empty one.
+/// Each other control character and each Unicode format character is
+/// escaped as a table cell escapes it, and each line ends with a line feed.
+/// A summary with nothing to escape is returned with at most a line feed
+/// added, so it allocates no second string.
+pub(super) fn summary_lines(mut summary: String) -> String {
+    if !summary
+        .chars()
+        .any(|character| character != '\n' && escaped(character))
+    {
+        if !summary.ends_with('\n') {
+            summary.push('\n');
+        }
+        return summary;
+    }
+    let body = summary.strip_suffix('\n').unwrap_or(&summary);
+    let mut lines = String::with_capacity(body.len() + 1);
+    for line in body.split('\n') {
+        lines.push_str(&escape_controls(line));
+        lines.push('\n');
     }
     lines
 }

@@ -41,9 +41,9 @@ mod tests;
 ///     .next(Call::new(&["books", "show"]).arg("ids"), "takes up to 100 ids in one call.");
 /// ```
 ///
-/// The summary `S` is a value that prints as one line above the table in
-/// text and as an object under `summary` in JSON. A summary whose `Display`
-/// writes no text prints no line. A listing without one has the summary
+/// The summary `S` is a value that prints as one or more lines above the
+/// table in text and as an object under `summary` in JSON. A summary whose
+/// `Display` writes no text prints no line. A listing without one has the summary
 /// type [`NoSummary`].
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Listing<R: Row, S = NoSummary> {
@@ -208,12 +208,19 @@ impl<R: Row, S> Listing<R, S> {
     }
 
     /// Sets the summary: a value that the text output prints with its
-    /// `Display` as one line above the table, and that the JSON document
+    /// `Display` above the table, and that the JSON document
     /// holds under `summary`, serialized with its `Serialize` and described
     /// by its `JsonSchema`. A summary
     /// holds what describes the whole result, such as the figures the rows
     /// were counted from, so a program reads it as fields and a person reads
     /// it as a sentence.
+    ///
+    /// Each line feed that the `Display` writes ends a line, so a summary
+    /// can print several lines above the table, such as a few counts. A
+    /// final line feed adds no empty line. Each line escapes its other
+    /// control characters, such as a tab or an escape, and its Unicode
+    /// format characters, as a table cell escapes them (ADR-0158). The
+    /// output budget counts every summary line.
     ///
     /// When the summary's `Display` writes no text, the text output prints
     /// no summary line, so the header is the first line, and the JSON
@@ -222,8 +229,8 @@ impl<R: Row, S> Listing<R, S> {
     /// text only on the runs that have something to say. A `Display` that
     /// writes only spaces still prints its line.
     ///
-    /// A listing with a summary line and no rows to print prints the summary line
-    /// alone, with no header, in every text view (ADR-0153).
+    /// A listing with a summary and no rows to print prints the summary
+    /// lines alone, with no header, in every text view (ADR-0153).
     #[must_use]
     pub fn summary<T: Serialize + fmt::Display + JsonSchema>(self, summary: T) -> Listing<R, T> {
         Listing {

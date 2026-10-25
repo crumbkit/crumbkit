@@ -661,6 +661,10 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   in a segment, such as `book-club::gate::unmet`. A hyphen may not lead,
   trail or follow another hyphen. Before, a segment allowed only lowercase
   ASCII letters, digits and underscores ([behaviour/failures]).
+- crumbkit: a [`Listing`] summary prints each line of its `Display`
+  above the table, escaped as a table cell is, and a final line feed adds
+  no empty line. Before, the text printed unescaped
+  ([behaviour/output/listings]).
 - crumbkit: a text table cell with `Style::Error` shows in bold red at a
   terminal, the style of a refusal's `error:` label. Before, it showed in
   plain red ([behaviour/output/styles]).

@@ -1,7 +1,7 @@
 # ADR-0142. A summary that writes no text prints no line
 
 - Date: 2026-10-22
-- Status: accepted
+- Status: amended by ADR-0158
 - Supersedes: ADR-0016 and ADR-0050, which it amends
 
 ## Context

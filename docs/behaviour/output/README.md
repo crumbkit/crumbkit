@@ -189,8 +189,8 @@ of a listing, a batch or a prose result, a listing's long note under
 `--long`, the `Next:` line, the output budget's [cut line](budget/README.md#listings-and-lists),
 the [dry-run line](../effects/README.md) and a [stream's notes](streams.md#notes).
 A pipe such as `| grep` therefore sees only data. A
-listing's summary line stays on standard output above the table, because it
-is part of the result.
+listing's summary lines stay on standard output above the table, because
+they are part of the result.
 
 crumbkit flushes standard output before it writes the notes, and it writes
 all of a result's notes to standard error in one write

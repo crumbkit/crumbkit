@@ -1,7 +1,7 @@
 # ADR-0050. Listings
 
 - Date: 2026-10-12
-- Status: amended by ADR-0077, ADR-0087, ADR-0096, ADR-0142, ADR-0153 and ADR-0155
+- Status: amended by ADR-0077, ADR-0087, ADR-0096, ADR-0142, ADR-0153, ADR-0155 and ADR-0158
 
 ## Context
 
@@ -45,10 +45,9 @@ for empty results, sources that cannot be counted, an upper bound on
 - [ADR-0138. A listing can list only its problem rows](0138-a-listing-lists-only-its-problem-rows.md)
 - [ADR-0139. A listing can carry a note that prints under `--long`](0139-a-listing-carries-a-note-for-long.md)
 - [ADR-0140. The `Rows:` line names every view that lists every row](0140-the-rows-line-names-every-view-that-lists-every-row.md)
-- [ADR-0142. A summary that writes no text prints no line](0142-a-summary-that-writes-no-text-prints-no-line.md)
 - [ADR-0149. A view flag that adds nothing to the JSON is accepted with a note](0149-a-view-flag-that-adds-nothing-is-accepted-with-a-note.md)
-- [ADR-0153. A listing with a summary and no rows prints the summary alone](0153-a-summary-stands-in-for-an-empty-table.md)
 - [ADR-0155. A listing can name several next steps, with commands of other programs](0155-a-listing-names-several-steps.md)
+- [ADR-0159. Listing summaries](summary/README.md)
 
 ## Consequences
 

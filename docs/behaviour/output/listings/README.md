@@ -25,12 +25,16 @@ wording, and the tool supplies only the description.
 
 A listing may carry a summary, a note, a [long note](#a-note-for---long),
 one next step and any number of [further steps](#several-next-steps). The
-summary prints its `Display` as one line above the table on standard
-output, and the JSON document holds it under `summary`.
-A summary whose `Display` writes no text prints no line, so the header is
-the first line, and the JSON document still holds it. A summary that writes
-only spaces still prints its line. The notes and the next step print in
-text only.
+summary prints its `Display` above the table on standard output, and the
+JSON document holds it under `summary`. Each line feed in the text ends a
+line, so a summary can print several lines, such as a few counts, and a
+final line feed adds no empty line. Each line escapes its other control
+characters and its Unicode format characters as a table cell does, so `\t`
+and `\u{1b}` print as those escapes. A summary whose `Display` writes no
+text prints no line, so the header is the first line, and the JSON
+document still holds it. A summary that writes only spaces still prints
+its line. The output budget counts every summary line. The notes and the
+next step print in text only.
 
 On standard output, the text order is the summary, the header and the rows.
 On standard error, it is the footer or the empty note, the note of the rows
@@ -43,15 +47,15 @@ A [batch and a prose result](../shapes/README.md) carry the tool's note in
 the same way, through `Batch::note` and `Prose::note`, and it prints in the
 same place in this order. A list of rows, such as a `Vec`, has no note.
 
-Why: ADR-0016, ADR-0050, ADR-0077, ADR-0142.
+Why: ADR-0016, ADR-0050, ADR-0077, ADR-0142, ADR-0158.
 
 ## A listing with no rows
 
 A listing with no rows and no more rows prints its header on standard output
 and a note on standard error in text, such as `note: no books match`. A
-listing that has a summary line and holds no rows to print prints the
-summary line in place of the header, so standard output holds the summary
-alone, as it does for a
+listing that has a summary and holds no rows to print prints the summary
+lines in place of the header, so standard output holds the summary alone,
+as it does for a
 [listing that lists only its problem rows](#a-listing-that-lists-only-its-problem-rows)
 when no row reports one. This holds with `--long` and `--fields` too. A
 summary whose `Display` writes no text prints no line, so that listing
@@ -229,12 +233,12 @@ Why: ADR-0050.
 
 [`Document::only_problems`](../../../../crates/crumbkit/src/document.rs) on a
 listing's document makes the default text list only the rows whose
-`Row::is_problem` is true, under the summary line.
+`Row::is_problem` is true, under the summary lines.
 
 - Without `--json`, `--long` or `--fields`, the text prints the summary
-  line, the header and the rows that report a problem with their child
+  lines, the header and the rows that report a problem with their child
   lines. When no row reports a problem, standard output holds the summary
-  line alone, with no header.
+  lines alone, with no header.
 - `--long` and `--fields` print every row, and `--json` holds every row
   unchanged.
 - The exit, the problem note, the footer, the tool's note, the `Next:`
