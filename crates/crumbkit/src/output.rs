@@ -309,8 +309,9 @@ pub fn finish<T: Rows, E: AsFailure>(
 /// A [`Listing`](crate::Listing)'s `data` is an array, and its JSON document
 /// also holds the number of matching rows under `total` when the tool
 /// counted them, `truncated`, which is true when the document leaves out
-/// rows, and its summary, when it has one, under `summary`. The summary also prints as one line
-/// above the table in text, unless its `Display` writes no text.
+/// rows, and its summary, when it has one, under `summary`. The summary also prints above the
+/// table in text, one line for each line its `Display` writes, unless its
+/// `Display` writes no text.
 ///
 /// In text, the lines that describe a listing print on the error writer
 /// after the output writer is flushed, so the output writer holds the
