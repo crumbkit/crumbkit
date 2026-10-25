@@ -31,6 +31,8 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit: `Row::cell_style` gives a text table's cell a [`Style`], which
   shows only when standard output is a terminal that allows colour
   ([behaviour/output/styles]).
+- crumbkit: `Row::SPACED` prints a blank line in text after a row that
+  printed child lines, when another row follows ([behaviour/output/shapes]).
 - crumbkit: [`help`] adds goal headings, help topics, and leaf examples and
   columns to help pages ([behaviour/help], [behaviour/help/examples]).
 - crumbkit: [`commands`] gives a tool the `commands list` command

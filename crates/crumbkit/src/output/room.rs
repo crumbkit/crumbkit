@@ -77,6 +77,10 @@ pub struct Room<T> {
     /// Whether the child lines are the long ones, which `--long` chooses
     /// (ADR-0138).
     long: bool,
+    /// Whether the last row measured printed child lines, which a row type
+    /// that sets `Row::SPACED` follows with a blank line when another row
+    /// follows (ADR-0151).
+    after_children: bool,
     /// The number of rows measured so far.
     measured: usize,
 }
@@ -176,6 +180,7 @@ impl Output {
             form,
             children: children::chosen::<R>(&self.view),
             long: self.view.is_long(),
+            after_children: false,
             measured: 0,
         }
     }
@@ -196,6 +201,9 @@ impl<T: Rows> Room<T> {
         let rows = value.rows();
         let columns: Vec<&str> = self.columns.iter().map(String::as_str).collect();
         let bytes_of = self.document.headed_bytes();
+        // The text prints child lines whenever it prints rows with their
+        // own lines, so `children` decides for both forms.
+        let spaced = T::Row::SPACED && self.children;
         for (index, row) in rows.iter().enumerate().skip(self.measured) {
             match &mut self.form {
                 Form::Json {
@@ -208,9 +216,13 @@ impl<T: Rows> Room<T> {
                     *rows = rows.saturating_add(bytes.unwrap_or(0));
                 }
                 Form::Lines(bytes) => {
-                    // A row's line counts the bytes that text prints for it.
-                    let line = lines::line(row).map_or(0, |line| line.len());
-                    *bytes = bytes.saturating_add(line);
+                    // A row's line counts the bytes that text prints for it,
+                    // and the blank line before it after a row with child
+                    // lines.
+                    let line = lines::line(row).unwrap_or_default();
+                    let blank = usize::from(spaced && self.after_children);
+                    self.after_children = lines::holds_child_lines(&line);
+                    *bytes = bytes.saturating_add(line.len() + blank);
                 }
                 Form::Table { .. } => {
                     // The table measures the cells that text prints, so a
@@ -223,7 +235,10 @@ impl<T: Rows> Room<T> {
                         columns.iter().map(|name| cell(fields.get(name))).collect();
                     self.form.add_line(&cells);
                     if let (true, Form::Table { text, .. }) = (self.children, &mut self.form) {
-                        *text = text.saturating_add(children::block(row, self.long).len());
+                        let block = children::block(row, self.long);
+                        let blank = usize::from(spaced && self.after_children);
+                        self.after_children = !block.is_empty();
+                        *text = text.saturating_add(block.len() + blank);
                     }
                 }
                 Form::Headed {

@@ -351,9 +351,9 @@ impl<'a, T: Rows> Prepared<'a, T> {
         // the styles and the count.
         let shown: Vec<&T::Row> = problems::shown(value.rows(), only).collect();
         let rows = shown.len();
+        let spaced = children::spaced::<T::Row>(settings.view);
         let lines = if lines::chosen::<T::Row>(settings.view) {
-            let lines = shown.iter().copied().map(lines::line);
-            Some(lines.collect::<io::Result<Vec<String>>>()?)
+            Some(lines::spaced(shown.iter().copied(), spaced)?)
         } else {
             None
         };
@@ -368,7 +368,7 @@ impl<'a, T: Rows> Prepared<'a, T> {
                 .then(|| table::styles(columns, shown.iter().copied()));
             Table::new(columns, values, settings.view.names().is_none())
                 .keeping_whole(columns, T::Row::UNCUT_COLUMNS)
-                .with_children(children)
+                .with_children(children, spaced)
                 .with_styles(styles.unwrap_or_default())
         });
         Ok(Self {

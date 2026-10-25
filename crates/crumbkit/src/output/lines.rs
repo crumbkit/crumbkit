@@ -33,3 +33,32 @@ pub(super) fn line<R: Row>(row: &R) -> io::Result<String> {
     line.push_str(&children::block(row, false));
     Ok(line)
 }
+
+/// Returns the line of each of `rows`, as [`line`] builds it. With
+/// `spaced`, a line whose row follows a row that printed child lines starts
+/// with a blank line, so the blank line prints only when another row
+/// follows (ADR-0151).
+pub(super) fn spaced<'a, R: Row + 'a>(
+    rows: impl Iterator<Item = &'a R>,
+    spaced: bool,
+) -> io::Result<Vec<String>> {
+    let mut after_children = false;
+    rows.map(|row| {
+        let mut line = line(row)?;
+        if spaced && after_children {
+            line.insert(0, '\n');
+        }
+        after_children = holds_child_lines(&line);
+        Ok(line)
+    })
+    .collect()
+}
+
+/// Reports whether `line`, as [`line`] builds it, holds child lines after
+/// the row's own line. The row's own line holds no line feed of its own,
+/// because its text is escaped and JSON escapes line feeds inside strings,
+/// so a line feed before the last one starts a child line.
+pub(super) fn holds_child_lines(line: &str) -> bool {
+    let line = line.strip_prefix('\n').unwrap_or(line);
+    line.strip_suffix('\n').unwrap_or(line).contains('\n')
+}
