@@ -201,6 +201,14 @@ unless the type overrides it, and a stream prints them after each item's
 line. The
 [output budget](../budget/README.md) counts them with their indent.
 
+A row type that sets `Row::SPACED` prints a blank line after a row that
+printed child lines, when another row follows. The blank line prints under
+the table, with `--long` and under rows with their own text line. A row
+without child lines and the last row that prints are followed by none, so
+the output never ends in a blank line. `--fields` and a stream print no
+blank line, `--json` does not change, and the output budget counts each
+blank line.
+
 Compact JSON, with or without `--long`, holds the field after the columns,
 and the compact schema requires it. `--fields` holds the field only when it
 names it, and the text then prints it as a cell of compact JSON and prints
@@ -213,7 +221,7 @@ the columns, a [headed](#headed-bytes) leaf whose row type sets `CHILDREN`,
 and a `CHILDREN_HELP` that is not one line ending with a full stop or that
 comes without `CHILDREN`.
 
-Why: ADR-0120, ADR-0135, ADR-0137, ADR-0138.
+Why: ADR-0120, ADR-0135, ADR-0137, ADR-0138, ADR-0151.
 
 ## Documents without the envelope
 

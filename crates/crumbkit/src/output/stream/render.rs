@@ -29,7 +29,9 @@ impl<R: Row, O: Write, W: Write> Streaming<R, O, W> {
             );
         }
         if lines::chosen::<R>(&self.view) {
-            line.extend_from_slice(lines::line(item)?.as_bytes());
+            let (own, block) = lines::line(item)?;
+            line.extend_from_slice(own.as_bytes());
+            line.extend_from_slice(block.as_bytes());
             return Ok(());
         }
         // The serialized row becomes the selected fields of the JSON line

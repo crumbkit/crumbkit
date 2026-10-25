@@ -220,6 +220,18 @@ pub trait Row: Serialize + JsonSchema {
     /// (ADR-0137).
     const CHILD_INDENT: u8 = 2;
 
+    /// Whether the text prints a blank line after a row that printed child
+    /// lines, when another row follows, so that each row reads as one block
+    /// with its children. The default is `false` (ADR-0151).
+    ///
+    /// The blank line prints wherever the text prints child lines: under a
+    /// table row, with `--long`, and under a row's own text line when the
+    /// type sets [`Row::LINE`]. A row without child lines, and the last row
+    /// that prints, are followed by no blank line. `--fields`, `--json` and
+    /// a stream do not change, and a type without [`Row::CHILDREN`] prints
+    /// no blank line. The output budget counts each blank line.
+    const SPACED: bool = false;
+
     /// The description of the child lines that help prints after
     /// `Children: `, ending with a full stop, or `None` for crumbkit's
     /// sentence (ADR-0137).

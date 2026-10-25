@@ -38,6 +38,9 @@ pub(super) struct Table<'a> {
     /// The child lines that print under each row, already indented and
     /// escaped, or an empty list when the rows print none (ADR-0120).
     children: Vec<String>,
+    /// Whether a blank line separates a row that has child lines from the
+    /// row after it (ADR-0151).
+    spaced: bool,
     /// For each row in order, one entry per column with the cell's style,
     /// or an empty list when no cell has one (ADR-0150).
     styles: Vec<Option<Style>>,
@@ -73,6 +76,7 @@ impl<'a> Table<'a> {
             widths: vec![0; columns.len()],
             uncut: Vec::new(),
             children: Vec::new(),
+            spaced: false,
             styles: Vec::new(),
         }
     }
@@ -90,9 +94,12 @@ impl<'a> Table<'a> {
     }
 
     /// Returns the table with `children`, the child lines that print under
-    /// each row in order. They do not count toward the column widths.
-    pub(super) fn with_children(mut self, children: Vec<String>) -> Self {
+    /// each row in order. They do not count toward the column widths. With
+    /// `spaced`, a blank line follows a row's child lines when another row
+    /// follows (ADR-0151).
+    pub(super) fn with_children(mut self, children: Vec<String>, spaced: bool) -> Self {
         self.children = children;
+        self.spaced = spaced;
         self
     }
 
@@ -112,7 +119,9 @@ impl<'a> Table<'a> {
     /// crumbkit-test's `check_guide` fails a leaf whose columns name such a
     /// field.
     ///
-    /// Each row's child lines follow the row.
+    /// Each row's child lines follow the row. When the table is spaced, a
+    /// blank line separates a row's child lines from the next row written,
+    /// so the last row written is followed by none.
     ///
     /// `width` is the number of columns that the sink gives the result,
     /// or `None` when the table prints unfitted. A table wider
@@ -180,6 +189,14 @@ impl<'a> Table<'a> {
             fitted
         });
         for (index, line) in lines.iter().enumerate() {
+            // The header is line 0, so the row before line 2 is row 0.
+            let after_children = index
+                .checked_sub(2)
+                .and_then(|row| self.children.get(row))
+                .is_some_and(|children| !children.is_empty());
+            if self.spaced && after_children {
+                out.write_all(b"\n")?;
+            }
             // The header has no styles, and neither has a row without them.
             let line_styles = index
                 .checked_sub(1)

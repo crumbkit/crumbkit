@@ -13,6 +13,14 @@ pub(super) fn chosen<R: Row>(view: &View) -> bool {
     R::CHILDREN.is_some() && matches!(view, View::Text(Table::Compact | Table::Long))
 }
 
+/// Reports whether the text of rows of type `R` prints a blank line after a
+/// row that printed child lines, when another row follows: the row type
+/// sets [`Row::SPACED`], and the text prints child lines, as [`chosen`]
+/// decides (ADR-0151).
+pub(super) fn spaced<R: Row>(view: &View) -> bool {
+    R::SPACED && chosen::<R>(view)
+}
+
 /// Returns the child lines of `row` as the text prints them under the row:
 /// [`Row::long_child_lines`] when `long` is set, which `--long` sets, and
 /// [`Row::child_lines`] otherwise, each line after [`Row::CHILD_INDENT`]

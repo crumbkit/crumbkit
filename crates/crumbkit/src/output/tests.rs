@@ -41,6 +41,7 @@ mod prose;
 #[cfg(feature = "miette")]
 mod report;
 mod roles;
+mod spaced;
 mod spelled;
 mod styled;
 mod summary;

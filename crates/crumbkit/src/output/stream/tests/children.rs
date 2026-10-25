@@ -262,3 +262,33 @@ fn a_stream_of_rows_with_their_own_text_line_and_a_child_indent_of_zero_prints_c
 
     assert_eq!(out, "a ringed robin\nGB-1\n");
 }
+
+/// A ring whose code prints under it, of a row type that sets
+/// `Row::SPACED`, which a stream does not read (ADR-0151).
+#[derive(Serialize, JsonSchema)]
+#[serde(transparent)]
+struct SpacedRing(Ring<2>);
+
+impl Row for SpacedRing {
+    const COLUMNS: &'static [&'static str] = &["bird"];
+    const CHILDREN: Option<&'static str> = Some("code");
+    const SPACED: bool = true;
+
+    fn child_lines(&self) -> Vec<String> {
+        self.0.child_lines()
+    }
+}
+
+#[test]
+fn a_stream_of_a_spaced_row_type_prints_no_blank_line_between_its_items() {
+    const SPACED_RINGS: Document<Stream<SpacedRing>> =
+        Document::new("birds", "spaced-rings-watch", 1, "Each ring as it is read.");
+
+    let rings = [
+        SpacedRing(ring("robin", "GB-1")),
+        SpacedRing(ring("wren", "GB-2")),
+    ];
+    let out = stream(SPACED_RINGS, &rings);
+
+    assert_eq!(out, "BIRD\nrobin\n  GB-1\nwren\n  GB-2\n");
+}
