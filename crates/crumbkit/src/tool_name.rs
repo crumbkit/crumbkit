@@ -22,9 +22,10 @@ const CRUMBKIT: &str = "crumbkit";
 /// describes, and spells it as each place needs:
 ///
 /// - a document id keeps the name as it is, such as `my-tool/failure/v1`;
-/// - a failure code's component has `_` in place of each `-` and of each
-///   other character that a code segment does not allow, such as
-///   `my_tool::cli::usage`;
+/// - a failure code's component has `_` in place of each character other
+///   than a lowercase ASCII letter, a digit and `_`, including each `-`,
+///   such as `my_tool::cli::usage`, because the component is also the
+///   start of the tool's environment variables, which cannot hold a `-`;
 /// - an environment variable starts with the code's component in capitals,
 ///   such as `MY_TOOL_OUTPUT_BUDGET`, and with `_` before a leading digit,
 ///   such as `_2FA_OUTPUT_BUDGET`, because a shell variable cannot start

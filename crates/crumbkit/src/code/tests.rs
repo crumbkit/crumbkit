@@ -6,7 +6,7 @@ use std::panic;
 use proptest::prelude::*;
 
 use super::{Code, Form, Spelling};
-use crate::segment::is_segment;
+use crate::segment::is_code_segment;
 
 const NOT_FOUND: Code = Code::new("shelf", "books", "not_found");
 
@@ -46,9 +46,31 @@ fn an_empty_area_is_rejected() {
 }
 
 #[test]
+fn a_segment_may_hold_hyphens_between_words() {
+    let code = Code::new("book-club", "reading-list", "not-found");
+
+    assert_eq!(
+        Spelling::COLONS.spell(&code),
+        "book-club::reading-list::not-found"
+    );
+}
+
+#[test]
+#[should_panic(expected = "component")]
+fn a_component_with_a_leading_hyphen_is_rejected() {
+    let _ = Code::new("-shelf", "books", "not_found");
+}
+
+#[test]
 #[should_panic(expected = "area")]
-fn an_area_with_a_dash_is_rejected() {
-    let _ = Code::new("shelf", "book-list", "not_found");
+fn an_area_with_a_trailing_hyphen_is_rejected() {
+    let _ = Code::new("shelf", "books-", "not_found");
+}
+
+#[test]
+#[should_panic(expected = "reason")]
+fn a_reason_with_two_hyphens_in_a_row_is_rejected() {
+    let _ = Code::new("shelf", "books", "not--found");
 }
 
 #[test]
@@ -95,12 +117,13 @@ fn a_custom_spelling_spells_a_code_with_the_function_it_was_given() {
 }
 
 /// Generates a segment that `Code::new` accepts.
-const SEGMENT: &str = "[a-z0-9_]+";
+const SEGMENT: &str = "[a-z0-9_]{1,4}(-[a-z0-9_]{1,4}){0,2}";
 
 /// Generates strings of up to six characters drawn from the characters that a
 /// code segment allows and characters that it does not: an upper-case letter,
-/// a dash, a slash, a dot, a colon, a space and `é`. The test keeps only the
-/// strings that are not segments.
+/// a hyphen, which a segment allows only between two other characters, a
+/// slash, a dot, a colon, a space and `é`. The test keeps only the strings
+/// that are not segments.
 const NEAR_SEGMENTS: &str = r"[a-z0-9_A\-/.: é]{0,6}";
 
 /// The name of each segment of a code, in the order `Code::new` takes them.
@@ -118,7 +141,7 @@ proptest! {
         mut segments in prop::array::uniform3(SEGMENT),
         position in 0..3_usize,
         invalid in NEAR_SEGMENTS.prop_filter("the string is a segment", |text| {
-            !is_segment(text, b'_')
+            !is_code_segment(text)
         }),
     ) {
         segments[position] = invalid;

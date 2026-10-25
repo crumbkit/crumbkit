@@ -23,7 +23,7 @@ mod tests;
 /// | `recovery = EXPR` | variant or struct | The `Recovery` that `recovery()` returns. |
 /// | `hint = "..."` | variant or struct | A `Recovery::Hint` with this text, in place of `recovery`. Text that holds `{` goes through `format!`, so `{name}` reads the field `name` or any constant in scope. |
 /// | `alternative = EXPR` | variant or struct | One `Recovery` that `alternatives()` returns. The key can repeat, and the list keeps the written order. |
-/// | `field(NAME = EXPR, ...)` | variant or struct | One `Field` for each name, in the written order. Each name must follow the rule of a code segment: one or more lowercase ASCII letters, digits and underscores. |
+/// | `field(NAME = EXPR, ...)` | variant or struct | One `Field` for each name, in the written order. Each name must be one or more lowercase ASCII letters, digits and underscores. |
 /// | `url = EXPR` | variant or struct | The `&str` that `url()` returns. |
 /// | `diagnostic` | variant or struct | `diagnostic()` returns the failure itself, which must implement `miette::Diagnostic`. |
 /// | `forward` | variant or struct with one field | Every method calls the same method on that field, which must implement `Failure`. |

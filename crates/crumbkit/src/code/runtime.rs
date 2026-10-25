@@ -5,7 +5,7 @@ use std::fmt;
 use std::sync::{Mutex, PoisonError};
 
 use super::Code;
-use crate::segment::is_segment;
+use crate::segment::is_code_segment;
 
 #[cfg(test)]
 mod tests;
@@ -57,8 +57,8 @@ impl Code {
     ///
     /// # Errors
     ///
-    /// Returns [`RuntimeCodeError::Segment`] when a segment is not one or
-    /// more lowercase ASCII letters, digits and underscores, and
+    /// Returns [`RuntimeCodeError::Segment`] when a segment breaks the rule
+    /// of [`Code::new`], and
     /// [`RuntimeCodeError::Full`] when the process already holds 256 other
     /// run-time codes.
     pub fn runtime(
@@ -97,7 +97,7 @@ impl Table {
         most: usize,
     ) -> Result<&'static Code, RuntimeCodeError> {
         for (segment, text) in [("component", component), ("area", area), ("reason", reason)] {
-            if !is_segment(text, b'_') {
+            if !is_code_segment(text) {
                 return Err(RuntimeCodeError::Segment {
                     segment,
                     text: text.to_owned(),
@@ -135,8 +135,9 @@ fn leak(text: &str) -> &'static str {
 #[derive(Clone, Debug, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum RuntimeCodeError {
-    /// A segment is not one or more lowercase ASCII letters, digits and
-    /// underscores.
+    /// A segment breaks the rule of [`Code::new`]: it is not words of
+    /// lowercase ASCII letters, digits and underscores joined by single
+    /// hyphens.
     Segment {
         /// Which segment broke the rule: `component`, `area` or `reason`.
         segment: &'static str,
@@ -153,7 +154,7 @@ impl fmt::Display for RuntimeCodeError {
         match self {
             Self::Segment { segment, text } => write!(
                 f,
-                "the code {segment} {text:?} is not one or more lowercase ASCII letters, digits and underscores"
+                "the code {segment} {text:?} is not words of lowercase ASCII letters, digits and underscores joined by single hyphens"
             ),
             Self::Full => write!(
                 f,

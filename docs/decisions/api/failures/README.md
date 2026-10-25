@@ -20,3 +20,4 @@ in place of crumbkit's failure document.
 - [ADR-0088. Public items that a tool calls restored](0088-public-items-that-a-tool-calls-restored.md)
 - [ADR-0089. Exit numbers and owned codes restored](0089-exit-numbers-and-owned-codes-restored.md)
 - [ADR-0106. Refusals name the next words](0106-refusals-name-the-next-words.md)
+- [ADR-0156. Hyphens in code segments](0156-hyphens-in-code-segments.md)
