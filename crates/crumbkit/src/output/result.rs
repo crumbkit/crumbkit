@@ -323,8 +323,8 @@ struct Prepared<'a, T> {
     /// when the result has no summary or its `Display` writes no text
     /// (ADR-0142).
     summary: Option<String>,
-    /// The `Next:` lines with their line feeds, or nothing when the result
-    /// names no next step.
+    /// The `Next:` lines with their line feeds, or an empty string when the
+    /// result names no next step.
     next: String,
     /// The number of rows that report a problem, which the text's note
     /// counts, or 0 when the run has a failure.

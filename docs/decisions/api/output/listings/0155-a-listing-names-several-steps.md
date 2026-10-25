@@ -42,7 +42,10 @@ and on purpose.
   are. crumbkit cannot read the other program's usage, so it offers no
   placeholders for it.
 - A step whose `Call` does not resolve is left out whole, so a step never
-  prints with one of its commands missing. The run's exit does not change.
+  prints with one of its commands missing. A step is also left out whole
+  when an argument of another program holds a control character or a
+  Unicode format character, which would reach the terminal unescaped. The
+  run's exit does not change.
 - The JSON document leaves the steps out, as it leaves out the note and
   the `Next:` line (ADR-0016). `Listing::next`, its text and every JSON
   document are unchanged.
@@ -64,8 +67,9 @@ shelf with a step.
 Considered: a free string for each command, which lets a tool name any
 program without deciding to; programs registered on the run's `Output`
 before parsing, whose handles exist only at run time, so a handler would
-need the run's `Output` to build a step; a `Call` variant for other programs, which would
-let a recovery name another program too; steps in the JSON document under
-a new field, which would change every listing schema for text that no
-program has asked to read; placeholders in another program's arguments;
-and making `Listing::next` a step, which would change its text.
+need the run's `Output` to build a step; a `Call` variant for other
+programs, which would let a recovery name another program too; steps in
+the JSON document under a new field, which would change every listing
+schema for text that no program has asked to read; placeholders in
+another program's arguments; and making `Listing::next` a step, which
+would change its text.

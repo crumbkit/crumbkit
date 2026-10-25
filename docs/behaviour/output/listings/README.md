@@ -24,8 +24,9 @@ tool did not count, a footer says so and names `--all`. crumbkit owns the
 wording, and the tool supplies only the description.
 
 A listing may carry a summary, a note, a [long note](#a-note-for---long),
-one next step and any number of [further steps](#several-next-steps). The summary prints its `Display` as one line above the
-table on standard output, and the JSON document holds it under `summary`.
+one next step and any number of [further steps](#several-next-steps). The
+summary prints its `Display` as one line above the table on standard
+output, and the JSON document holds it under `summary`.
 A summary whose `Display` writes no text prints no line, so the header is
 the first line, and the JSON document still holds it. A summary that writes
 only spaces still prints its line. The notes and the next step print in
@@ -298,7 +299,8 @@ Next: Commit the shelf, then list the books.
   stops the build in a constant, unless the name is one word of ASCII
   letters, digits, `-`, `_`, `.` and `+` starting with a letter or a
   digit. Each argument prints as a literal word, quoted for a POSIX shell
-  when it would be split or expanded.
+  when it would be split or expanded. A step with an argument that holds
+  a control character or a Unicode format character is left out whole.
 - A step without commands prints its `Next:` line alone.
 - The JSON document leaves the steps out.
 

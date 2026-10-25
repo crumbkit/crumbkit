@@ -25,11 +25,25 @@ fn a_step_holds_its_sentence_and_its_commands_in_the_order_they_were_added() {
 
 #[test]
 fn a_program_command_renders_its_name_and_quotes_each_argument_for_a_shell() {
-    let args = ["use".to_owned(), "ruby@3.4".to_owned(), "it's".to_owned()];
+    let args = [
+        "use".to_owned(),
+        "ruby@3.4".to_owned(),
+        "it's".to_owned(),
+        String::new(),
+    ];
 
     let line = super::program_line(Program::new("mise"), &args);
 
-    assert_eq!(line, r"mise use ruby@3.4 'it'\''s'");
+    assert_eq!(line.as_deref(), Some(r"mise use ruby@3.4 'it'\''s' ''"));
+}
+
+#[test]
+fn a_program_command_with_a_control_or_format_character_in_an_argument_renders_nothing() {
+    for arg in ["a\nb", "\u{1b}[31m", "\u{202e}txt"] {
+        let line = super::program_line(GIT, &["commit".to_owned(), arg.to_owned()]);
+
+        assert_eq!(line, None, "{arg:?}");
+    }
 }
 
 #[test]

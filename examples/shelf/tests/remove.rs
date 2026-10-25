@@ -116,8 +116,7 @@ fn books_remove_yes_a_second_time_succeeds_and_prints_the_same_book() {
 }
 
 #[test]
-fn books_list_after_every_book_is_removed_prints_the_header_and_on_standard_error_the_empty_note_and_a_step_that_puts_the_books_back()
- {
+fn books_list_after_every_book_is_removed_ends_with_a_step_that_puts_the_books_back() {
     let dir = tempfile::tempdir().unwrap();
     run(
         dir.path(),

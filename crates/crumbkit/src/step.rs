@@ -2,19 +2,22 @@
 //! commands that carry it out, and the other programs whose commands such a
 //! step may name.
 
+use std::borrow::Cow;
+
 use clap::Command;
 
 use crate::Call;
 use crate::help::words::quote;
+use crate::output::table::escape_controls;
 
 #[cfg(test)]
 mod tests;
 
 /// Another program whose commands a [`Step`] names, such as `git`.
 ///
-/// A tool declares each such program once as a constant, and a step names a
-/// command of it only through that constant, so a step never holds a free
-/// command line. The declaration makes the tool's author decide that the
+/// A step names a command of another program only through a `Program`,
+/// which a tool declares as a constant so the check runs at build time, and
+/// a step never holds a free command line. The declaration makes the tool's author decide that the
 /// tool's guidance depends on that program, and it gives every step that
 /// names the program the same spelling.
 ///
@@ -144,7 +147,11 @@ impl Step {
     ///
     /// Each argument prints as a literal word. A placeholder such as
     /// `<VERSION>` prints quoted, because crumbkit cannot know the other
-    /// program's usage.
+    /// program's usage. When an argument holds a control character or a
+    /// Unicode format character, such as a line feed, an escape or a
+    /// bidirectional override, the whole step is left out, as for a call
+    /// that does not resolve, because such a character would reach the
+    /// terminal unescaped.
     #[must_use]
     pub fn run<I, A>(mut self, program: Program, args: I) -> Self
     where
@@ -161,13 +168,14 @@ impl Step {
     /// Returns the lines of the step with their line feeds: the `Next:` line
     /// and each command indented by two spaces, with the tool's own calls
     /// rendered against `command`. It returns `None` when one of those calls
-    /// does not resolve.
+    /// does not resolve, or when an argument of another program holds a
+    /// character that the text output escapes.
     pub(crate) fn lines(&self, command: &mut Command) -> Option<String> {
         let mut lines = format!("Next: {}\n", self.sentence);
         for step_command in &self.commands {
             let line = match step_command {
                 StepCommand::Call(call) => crate::call::render(call, command).ok()?,
-                StepCommand::Program { program, args } => program_line(*program, args),
+                StepCommand::Program { program, args } => program_line(*program, args)?,
             };
             lines.push_str("  ");
             lines.push_str(&line);
@@ -177,12 +185,16 @@ impl Step {
     }
 }
 
-/// Returns the command line that runs `program` with `args`.
-fn program_line(program: Program, args: &[String]) -> String {
+/// Returns the command line that runs `program` with `args`, or `None` when
+/// an argument holds a character that `escape_controls` replaces.
+fn program_line(program: Program, args: &[String]) -> Option<String> {
     let mut line = program.name.to_owned();
     for arg in args {
+        if matches!(escape_controls(arg), Cow::Owned(_)) {
+            return None;
+        }
         line.push(' ');
         line.push_str(&quote(arg));
     }
-    line
+    Some(line)
 }

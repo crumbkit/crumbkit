@@ -4,7 +4,11 @@
 
 use std::process::ExitCode;
 
-use super::{PLANET_LISTING, Planet, finish_with, mercury, saturn};
+use clap::CommandFactory as _;
+
+use super::{
+    PLANET_LISTING, Planet, Tool, finish_output, finish_with, mercury, parse_against, saturn,
+};
 use crate::{Call, Listing, Program, Step};
 
 /// The program that the tests' steps run beside the tool's own commands.
@@ -100,4 +104,32 @@ fn json_output_has_no_steps_and_its_document_is_unchanged() {
 
     assert_eq!(stepped.out, plain.out);
     assert_eq!(stepped.err, "");
+}
+
+#[test]
+fn a_step_whose_argument_holds_a_control_character_is_left_out_whole() {
+    let unsafe_step = Step::new("Commit the planets.").run(GIT, ["commit", "-m", "a\u{1b}[2Jb"]);
+    let listing = two_of_eight().step(unsafe_step);
+
+    let finished = finish_with(&[], PLANET_LISTING, listing);
+
+    assert_eq!(finished.code, ExitCode::SUCCESS);
+    assert_eq!(finished.err, "Showing 2 of 8. --all shows every one.\n");
+}
+
+#[test]
+fn steps_print_before_the_dry_run_line() {
+    let mut output = parse_against(Tool::command(), &[]);
+    output.dry_run = true;
+    let listing = two_of_eight().step(Step::new("Push the commit.").run(GIT, ["push"]));
+
+    let finished = finish_output(output, PLANET_LISTING, listing);
+
+    let expected = "\
+Showing 2 of 8. --all shows every one.
+Next: Push the commit.
+  git push
+This was a dry run, so nothing changed.
+";
+    assert_eq!(finished.err, expected);
 }
