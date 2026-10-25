@@ -275,11 +275,15 @@ fn an_empty_line_inside_a_summary_still_prints() {
 
 #[test]
 fn each_summary_line_escapes_its_other_control_characters() {
-    let finished = finish_with(&[], QUIET, quiet("2\tplanets.\u{1b}[2J\n1 ringed.\r"));
+    let finished = finish_with(
+        &[],
+        QUIET,
+        quiet("2\tplanets.\u{1b}[2J\n1 \u{202e}ringed.\r"),
+    );
 
     assert_eq!(
         finished.out,
-        "2\\tplanets.\\u{1b}[2J\n1 ringed.\\r\nNAME     MOONS\nMercury  0\nSaturn   274\n"
+        "2\\tplanets.\\u{1b}[2J\n1 \\u{202e}ringed.\\r\nNAME     MOONS\nMercury  0\nSaturn   274\n"
     );
 }
 

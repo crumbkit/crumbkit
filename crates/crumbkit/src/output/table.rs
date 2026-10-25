@@ -324,7 +324,7 @@ pub(crate) fn escape_controls(text: &str) -> Cow<'_, str> {
 }
 
 /// Reports whether `escape_controls` replaces `character` with its escape.
-fn escaped(character: char) -> bool {
+pub(crate) fn escaped(character: char) -> bool {
     character.is_control() || is_format(character)
 }
 

@@ -362,18 +362,18 @@ impl<'a, T: Rows> Prepared<'a, T> {
         } else {
             None
         };
-        // A summary whose `Display` writes no text prints no line, so the
-        // header stays the first line (ADR-0142).
+        // A summary whose `Display` writes no text prints no summary lines,
+        // so the header stays the first line (ADR-0142, ADR-0158).
         let summary = value
             .summary()
             .filter(|_| text)
             .map(ToString::to_string)
             .filter(|summary| !summary.is_empty())
-            .map(|summary| listing::summary_lines(&summary));
-        // A listing that holds no rows to print prints no header when a
-        // summary line stands in its place, and a document that lists only
+            .map(listing::summary_lines);
+        // A listing that holds no rows to print prints no header when its
+        // summary lines stand in its place, and a document that lists only
         // the rows that report a problem prints none when no row reports
-        // one (ADR-0138, ADR-0153).
+        // one (ADR-0138, ADR-0153, ADR-0158).
         let headed = rows > 0 || (!only && summary.is_none());
         let table = (text && value.prose().is_none() && lines.is_none() && headed).then(|| {
             let children = children::blocks(settings.view, shown.iter().copied());

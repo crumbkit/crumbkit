@@ -55,8 +55,9 @@ behaviour.
 
 Considered: a `Listing` method that takes a list of lines, which would add
 public API for what line feeds in `Display` already say; keeping tabs
-unescaped as a prose result does, which would let a tab in the summary
-shift text above a table whose columns are aligned with spaces; treating a
+unescaped as a prose result does, which would make the summary escape less
+than the table cells and child lines printed under it, although a summary
+often holds values from outside the tool; treating a
 carriage return before a line feed as part of the line ending, which would
 hide a character that a table cell shows; and dropping empty lines inside
 the summary, which would remove a separator the tool wrote on purpose.
