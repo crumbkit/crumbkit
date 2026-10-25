@@ -226,9 +226,9 @@ pub(super) fn write_line(
 }
 
 /// Writes one line of the table from each cell's text, its column's width
-/// and its style, which wraps the text alone. Each cell starts at its column's offset, which is the end of the
-/// cell before it plus that cell's padding to its column's width plus two
-/// separator spaces. Those spaces are held back and written only before a
+/// and its style, which wraps the text alone. Each cell starts at its
+/// column's offset, which is the end of the cell before it plus that cell's
+/// padding to its column's width plus two separator spaces. Those spaces are held back and written only before a
 /// non-empty cell, so a line never ends in them. A cell wider than its
 /// column gets no padding and moves the rest of its line right, which
 /// happens only in a stream, whose widths come from the header.

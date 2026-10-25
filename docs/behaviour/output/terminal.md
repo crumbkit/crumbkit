@@ -8,10 +8,10 @@ describes the setting itself.
 
 ## What detection changes
 
-A tool's result, failure or note prints the same text whether a stream is a
+A tool's result, failure or note prints the same bytes whether a stream is a
 terminal or a pipe, and whether or not a coding agent runs the tool
-(OUTPUT-1). In a result, only a text table's width changes the text, and
-its cells' styles add escape codes around it. A golden file of a piped run
+(OUTPUT-1). The exceptions in a result are a text table's width and its
+cells' styles, which wrap the same text. A golden file of a piped run
 therefore pins what a person reads at a terminal wider than the table.
 
 Detection changes only these:
@@ -100,20 +100,20 @@ Why: ADR-0049.
 
 shelf's `tests/terminal.rs` runs each of shelf's examples with standard input
 and standard output on one pseudo-terminal and standard error on another,
-each 500 columns wide. Standard output without its
-escape codes must equal the example's `.txt` golden file, and standard error
-its `.stderr` file, or nothing when the example has none
+each 500 columns wide. Standard output without its escape codes, and under
+`NO_COLOR` exactly, must equal the example's `.txt` golden file, and
+standard error its `.stderr` file, or nothing when the example has none
 ([golden files](../checks/golden-files.md)). A first test checks that help
-there has clap's colours, so the suite fails when the run does not reach a
-terminal. Another runs `shelf books list --all` 40 columns wide and checks
-that the titles are cut and each id is whole.
+there has clap's colours, which proves the run reaches a terminal. Another
+runs `shelf books list --all` 40 columns wide and checks that the titles
+are cut and each id is whole.
 
-Three tests run `shelf books list --all`. Its titles are bold, and under
-`NO_COLOR` or `TERM=dumb` it prints its golden file exactly (ADR-0150).
-Four tests run the refused `shelf books list --limit 101`. Its standard
-error carries clap's styles, and without them it equals the `.stderr`
-golden file. Under `NO_COLOR`, `TERM=dumb` and `CLICOLOR=0` it equals the
-golden file as printed (ADR-0131, ADR-0133).
+Five tests run `shelf books list --all`. Its titles are bold, also at a
+pipe under `CLICOLOR_FORCE`, and under `NO_COLOR`, `TERM=dumb` or
+`CLICOLOR=0` it prints its golden file exactly (ADR-0150). Four tests run
+the refused `shelf books list --limit 101`, whose standard error carries
+clap's styles and otherwise equals its `.stderr` golden file, exactly
+under those three variables (ADR-0131, ADR-0133).
 
 The test uses rustix's safe `pty` and `termios` functions, which need no
 `unsafe` code (RUST-2) and add no crate to the lock file. It runs on macOS

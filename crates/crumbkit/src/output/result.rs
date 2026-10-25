@@ -308,11 +308,12 @@ struct Prepared<'a, T> {
     /// The number of columns that the sink gives the result, or `None`
     /// when the table prints unfitted.
     width: Option<usize>,
-    /// Whether the table is fitted to `width` and carries its cells'
-    /// styles, which is only while [`Prepared::deliver_fitted`] composes the
-    /// result for the sink. The output budget measures the result without
-    /// either (ADR-0121, ADR-0150).
-    fitting: bool,
+    /// Whether this write is the final one, which
+    /// [`Prepared::deliver_fitted`] makes for the sink. Only the final write
+    /// fits the table to `width` and gives its cells their styles, because
+    /// the output budget measures the result without either (ADR-0121,
+    /// ADR-0150).
+    final_write: bool,
     /// The text line of each row with its line feed, when the rows print
     /// their own lines in place of the table (ADR-0064).
     lines: Option<Vec<String>>,
@@ -346,14 +347,13 @@ impl<'a, T: Rows> Prepared<'a, T> {
             _ => None,
         };
         let only = problems::only(&document, settings.view);
-        let rows = if only {
-            problems::shown(value.rows(), true).count()
-        } else {
-            value.rows().len()
-        };
+        // The rows that print, filtered once for the lines, the children,
+        // the styles and the count.
+        let shown: Vec<&T::Row> = problems::shown(value.rows(), only).collect();
+        let rows = shown.len();
         let lines = if lines::chosen::<T::Row>(settings.view) {
-            let shown = problems::shown(value.rows(), only).map(lines::line);
-            Some(shown.collect::<io::Result<Vec<String>>>()?)
+            let lines = shown.iter().copied().map(lines::line);
+            Some(lines.collect::<io::Result<Vec<String>>>()?)
         } else {
             None
         };
@@ -361,11 +361,11 @@ impl<'a, T: Rows> Prepared<'a, T> {
         // no header when no row reports one.
         let headed = !only || rows > 0;
         let table = (text && value.prose().is_none() && lines.is_none() && headed).then(|| {
-            let children = children::blocks(settings.view, problems::shown(value.rows(), only));
+            let children = children::blocks(settings.view, shown.iter().copied());
             // A pipe never prints styles, so it never asks the rows for them.
             let styles = settings
                 .styled
-                .then(|| table::styles(columns, problems::shown(value.rows(), only)));
+                .then(|| table::styles(columns, shown.iter().copied()));
             Table::new(columns, values, settings.view.names().is_none())
                 .keeping_whole(columns, T::Row::UNCUT_COLUMNS)
                 .with_children(children)
@@ -385,7 +385,7 @@ impl<'a, T: Rows> Prepared<'a, T> {
             values,
             table,
             width: settings.width,
-            fitting: false,
+            final_write: false,
             lines,
             prose,
             next,
@@ -573,8 +573,8 @@ impl<'a, T: Rows> Prepared<'a, T> {
             }
         }
         if let Some(table) = &mut self.table {
-            let width = self.width.filter(|_| self.fitting);
-            table.write(out, shown, width, self.fitting)?;
+            let width = self.width.filter(|_| self.final_write);
+            table.write(out, shown, width, self.final_write)?;
         }
         for line in self.lines.iter().flatten().take(shown) {
             out.write_all(line.as_bytes())?;

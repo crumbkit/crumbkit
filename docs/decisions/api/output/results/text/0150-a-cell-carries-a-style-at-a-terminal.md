@@ -27,22 +27,27 @@ write its own table and lose the fields, fitting and budget of `finish`.
   sets (ADR-0128). The header, JSON, a text line, a stream and a child's
   lines are never styled.
 - `finish` sets the flag with the rule that styles a refusal (ADR-0131,
-  ADR-0133), applied to standard output: off without detection or under
-  `NO_COLOR`, on under `CLICOLOR_FORCE`, off under `TERM=dumb` or
-  `CLICOLOR=0`, and otherwise on when standard output is a terminal.
+  ADR-0133), applied to standard output: off without detection, with the
+  command's `ColorChoice::Never` or under `NO_COLOR`, on under
+  `CLICOLOR_FORCE`, even at a pipe, off under `TERM=dumb` or `CLICOLOR=0`,
+  and otherwise on when standard output is a terminal.
 - Each styled cell is its text between the style's escape code and the
   reset. Padding stays outside, and widths, the cut of a fitted table and
   the output budget count the text alone, so the styled table without its
   escape codes is the piped table.
-- crumbkit writes the ANSI codes itself on every platform, as it does for
-  a refusal.
+- The `-` that a missing value prints takes the style of its cell.
+- crumbkit writes the ANSI codes itself on every platform. Cell styles need
+  neither the `color` feature nor clap's rendering, while a refusal's
+  styles need both.
 
 The API-1 ground is an ordinary need that most listing tools have, and
 shelf's book table, which shows each title in bold.
 
-OUTPUT-1 now says that no result's text depends on the terminal. A cell's
-style decorates that text and never changes it, so a golden file of a
-piped run still pins what a person reads.
+OUTPUT-1 keeps its rule that no result depends on the terminal, and lists
+the styles of a text table's cells among its exceptions, as ADR-0131 listed
+a refusal's styles. A cell's style decorates the text and never changes it,
+so a golden file of a piped run still pins what a person reads, and a run
+under `NO_COLOR` prints the golden file's bytes exactly.
 
 ## Consequences
 

@@ -3,7 +3,8 @@
 //! bytes with the example's golden files, which a piped run wrote: the
 //! `.txt` file for standard output and the `.stderr` file, when the example
 //! has one, for standard error. A result prints the same bytes at a
-//! terminal as through a pipe (ADR-0049, OUTPUT-1), except that a text
+//! terminal as through a pipe (ADR-0049, OUTPUT-1), and exactly those bytes
+//! under `NO_COLOR`, except that a text
 //! table fits the width of a narrow terminal (ADR-0121), a table's cells
 //! carry their row type's styles (ADR-0150), and a refusal on standard error
 //! carries clap's styles. Removing the escape codes of either gives the piped
@@ -207,7 +208,7 @@ fn help_at_a_terminal_has_colour_so_the_test_reaches_a_real_terminal() {
 }
 
 #[test]
-fn every_example_prints_the_same_bytes_at_a_terminal_as_through_a_pipe() {
+fn every_example_prints_its_piped_text_at_a_terminal_and_its_piped_bytes_under_no_color() {
     let mut compared = 0;
     for leaf in GUIDE.get_leaves() {
         let path = leaf.path();
@@ -245,6 +246,15 @@ fn every_example_prints_the_same_bytes_at_a_terminal_as_through_a_pipe() {
                 strip(&run.stdout) == String::from_utf8_lossy(&expected),
                 "{line} prints different text at a terminal than its golden file {golden} holds:\n{}",
                 String::from_utf8_lossy(&run.stdout)
+            );
+            // Under `NO_COLOR` nothing decorates the text, so the run
+            // prints the golden file's bytes exactly.
+            let plain = shelf_with(&args, WIDE, &[("NO_COLOR", "1")])
+                .unwrap_or_else(|error| panic!("{line} under NO_COLOR: {error}"));
+            assert!(
+                plain.stdout == expected,
+                "{line} under NO_COLOR prints different bytes at a terminal than its golden file {golden} holds:\n{}",
+                String::from_utf8_lossy(&plain.stdout)
             );
             // An example that writes to standard error has a `.stderr`
             // golden file beside its `.txt` one, and an example without one
@@ -429,4 +439,63 @@ fn a_table_at_a_terminal_whose_term_is_dumb_prints_its_piped_bytes() {
         "{:?}",
         String::from_utf8_lossy(&run.stdout)
     );
+}
+
+#[test]
+fn a_table_at_a_terminal_under_clicolor_0_prints_its_piped_bytes() {
+    let expected = std::fs::read(LIST_ALL).unwrap();
+
+    let run = shelf_with(&["books", "list", "--all"], WIDE, &[("CLICOLOR", "0")]).unwrap();
+
+    assert!(
+        run.status.success(),
+        "{}",
+        String::from_utf8_lossy(&run.stderr)
+    );
+    assert!(
+        run.stdout == expected,
+        "{:?}",
+        String::from_utf8_lossy(&run.stdout)
+    );
+}
+
+#[test]
+fn a_piped_table_under_clicolor_force_shows_each_title_in_bold() {
+    let expected = std::fs::read_to_string(LIST_ALL).unwrap();
+    let home = TempDir::new().unwrap();
+    #[expect(
+        clippy::disallowed_methods,
+        reason = "the terminal test runs the built binary with a cleared environment, as the pseudo-terminal runs do"
+    )]
+    let mut command = Command::new(env!("CARGO_BIN_EXE_shelf"));
+    command
+        .args(["books", "list", "--all"])
+        .env_clear()
+        .env("TERM", TERM)
+        .env("CLICOLOR_FORCE", "1")
+        .stdin(Stdio::null());
+    for (variable, dir) in [
+        ("XDG_CONFIG_HOME", "config"),
+        ("XDG_DATA_HOME", "data"),
+        ("XDG_STATE_HOME", "state"),
+        ("XDG_CACHE_HOME", "cache"),
+    ] {
+        command.env(variable, home.path().join(dir));
+    }
+
+    let run = command.output().unwrap();
+
+    assert!(
+        run.status.success(),
+        "{}",
+        String::from_utf8_lossy(&run.stderr)
+    );
+    // CLICOLOR_FORCE styles a table at a pipe, as it styles a refusal
+    // there (ADR-0133, ADR-0150).
+    let printed = String::from_utf8_lossy(&run.stdout);
+    assert!(
+        printed.contains("\u{1b}[1mPride and Prejudice\u{1b}[0m"),
+        "a piped title under CLICOLOR_FORCE is not bold: {printed:?}"
+    );
+    assert_eq!(strip(&run.stdout), expected);
 }

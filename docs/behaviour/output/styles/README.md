@@ -29,10 +29,12 @@ these hold, checked in this order:
 
 1. The guide keeps terminal detection on
    ([terminal detection](../terminal.md#turning-detection-off)).
-2. `NO_COLOR` is unset or empty.
-3. `CLICOLOR_FORCE` is set to a value other than empty or `0`, which shows
-   the styles even at a pipe. Otherwise `TERM` is not `dumb`, `CLICOLOR`
-   is not `0`, and standard output is a terminal.
+2. The command's `ColorChoice` is not `Never`.
+3. `NO_COLOR` is unset or empty.
+4. `CLICOLOR_FORCE` is set to a value other than empty or `0`, which shows
+   the styles even when standard output is a pipe, as it shows a refusal's
+   styles (ADR-0133). Otherwise `TERM` is not `dumb`, `CLICOLOR` is not
+   `0`, and standard output is a terminal.
 
 This is the rule that styles a refusal on standard error, applied to
 standard output ([parsing](../../parsing/README.md#refused-command-lines)).
@@ -43,6 +45,7 @@ marks the sink with `Sink::styled`, the same flag that keeps help's colours.
 
 - A styled cell is its text between the style's escape code and the reset
   code `ESC[0m`. The padding that aligns the next column follows the reset.
+- The `-` that a missing value prints takes the style of its cell.
 - Column widths, the cut of a table that fits the terminal's width and the
   [output budget](../budget/README.md) count the text alone. The styled
   table without its escape codes is the table that a pipe receives.

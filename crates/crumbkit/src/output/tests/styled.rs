@@ -237,3 +237,110 @@ fn the_output_budget_shows_the_same_rows_with_and_without_styles() {
         plain.err
     );
 }
+
+/// A check of a service, whose error field reports its problem.
+#[derive(Serialize, JsonSchema)]
+struct Check {
+    /// The service's name.
+    name: &'static str,
+    /// The error that the check found, if any.
+    error: Option<&'static str>,
+    /// The service's state.
+    state: &'static str,
+}
+
+impl Row for Check {
+    const COLUMNS: &'static [&'static str] = &["name", "error", "state"];
+    const PROBLEM: Option<&'static str> = Some("error");
+
+    fn cell_style(&self, column: &str) -> Option<Style> {
+        match (column, self.state) {
+            ("name", _) => Some(Style::Emphasis),
+            ("error", _) | ("state", "failed") => Some(Style::Error),
+            ("state", "running") => Some(Style::Success),
+            ("state", _) => Some(Style::Dim),
+            _ => None,
+        }
+    }
+}
+
+const CHECKS: Document<Listing<Check>> = Document::new("checks", "checks", 1, "The test checks.");
+const PROBLEM_CHECKS: Document<Listing<Check>> =
+    Document::new("checks", "problem-checks", 1, "The test checks.").only_problems();
+
+/// Returns a check of `name` in `state` that found `error`.
+const fn check(name: &'static str, error: Option<&'static str>, state: &'static str) -> Check {
+    Check { name, error, state }
+}
+
+#[test]
+fn a_document_that_lists_only_problems_styles_each_shown_row_with_its_own_styles() {
+    // The healthy row comes first, so styles taken from the unfiltered rows
+    // would give the failed row the healthy row's green state.
+    let checks = vec![
+        check("web", None, "running"),
+        check("queue", Some("exit 1"), "failed"),
+    ];
+
+    let finished = finish_into(
+        built(&Guide::new(), &[]),
+        PROBLEM_CHECKS,
+        Listing::from_all(checks, None),
+        true,
+        None,
+    );
+
+    let expected = "\
+NAME   ERROR   STATE
+\u{1b}[1mqueue\u{1b}[0m  \u{1b}[31mexit 1\u{1b}[0m  \u{1b}[31mfailed\u{1b}[0m
+";
+    assert_eq!(finished.out, expected);
+    assert_eq!(finished.code, ExitCode::from(1));
+}
+
+#[test]
+fn a_column_left_out_for_being_empty_takes_no_style_from_the_columns_beside_it() {
+    let checks = vec![
+        check("web", None, "running"),
+        check("cache", None, "stopped"),
+    ];
+
+    let finished = finish_into(
+        built(&Guide::new(), &[]),
+        CHECKS,
+        Listing::from_all(checks, None),
+        true,
+        None,
+    );
+
+    let expected = "\
+NAME   STATE
+\u{1b}[1mweb\u{1b}[0m    \u{1b}[32mrunning\u{1b}[0m
+\u{1b}[1mcache\u{1b}[0m  \u{1b}[2mstopped\u{1b}[0m
+";
+    assert_eq!(finished.out, expected);
+}
+
+#[test]
+fn the_placeholder_of_a_missing_value_takes_the_style_of_its_cell() {
+    let checks = vec![
+        check("queue", Some("exit 1"), "failed"),
+        check("web", None, "running"),
+    ];
+
+    let finished = finish_into(
+        built(&Guide::new(), &[]),
+        CHECKS,
+        Listing::from_all(checks, None),
+        true,
+        None,
+    );
+
+    assert!(
+        finished
+            .out
+            .contains("\u{1b}[1mweb\u{1b}[0m    \u{1b}[31m-\u{1b}[0m"),
+        "{}",
+        finished.out
+    );
+}

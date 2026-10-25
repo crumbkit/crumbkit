@@ -122,8 +122,9 @@ impl<O: Write, E: Write, I: BufRead> Sink<O, E, I> {
 }
 
 impl<O, E, I> Sink<O, E, I> {
-    /// Sets whether the result wants clap's styles, such as bold headings
-    /// and literals, in help. With `styled`,
+    /// Sets whether the result wants styles: clap's styles in help, such as
+    /// bold headings and literals, and the styles of a text table's cells.
+    /// With `styled`,
     /// [`parse_to`](crate::parse_to) writes help to the output writer with
     /// the ANSI escape codes that clap's `Error::print` writes at a
     /// terminal, and otherwise it writes plain text. The version and a
@@ -161,8 +162,8 @@ impl<O, E, I> Sink<O, E, I> {
         self
     }
 
-    /// Reports whether the result wants clap's styles in help, which
-    /// [`Sink::styled`] sets. A new sink asks for none.
+    /// Reports whether the result wants styles in help and in a text
+    /// table's cells, which [`Sink::styled`] sets. A new sink asks for none.
     #[must_use]
     pub const fn is_styled(&self) -> bool {
         self.styled

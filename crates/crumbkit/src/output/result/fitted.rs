@@ -45,9 +45,9 @@ impl<T: Rows> Prepared<'_, T> {
         failures: Option<Failures<'_>>,
     ) -> io::Result<()> {
         let mut piece = Vec::with_capacity(measured);
-        self.fitting = true;
+        self.final_write = true;
         let written = self.write(&mut piece, shown, cut, failures);
-        self.fitting = false;
+        self.final_write = false;
         written?;
         sink.deliver(Role::Result, &piece)
     }
