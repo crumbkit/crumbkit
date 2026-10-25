@@ -32,7 +32,8 @@ renderer printed the summary line alone.
   decided. A summary whose `Display` writes no text prints no line
   (ADR-0142), so nothing stands in place of the header, and the listing
   prints its header as a listing without a summary does. Standard output
-  of an empty listing therefore always holds a line.
+  of an empty listing that does not list only its problem rows always
+  holds a line.
 - The footer, the empty note, the problem note, the tool's note, the
   `Next:` line and the exit do not change. `--json` does not change, and a
   stream and a batch have no summary.
