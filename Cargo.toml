@@ -85,7 +85,7 @@ miette = { version = "7.6.0", default-features = false }
 # (ADR-0016). Only crumbkit's `miette` feature uses it. miette already
 # depends on this version, so it adds no crate to the build. The entry
 # leaves out the `cjk` feature, which only `width_cjk` needs.
-unicode-width = { version = "0.1.14", default-features = false }
+unicode-width = { version = "0.2.2", default-features = false }
 
 # syn, quote and proc-macro2 build crumbkit-derive, the `Failure` derive
 # behind the `derive` feature (ADR-0001, ADR-0003). clap_derive already
