@@ -8,7 +8,7 @@ use std::time::Duration;
 
 use clap::Command;
 use crumbkit::ToolName;
-use crumbkit::help::Guide;
+use crumbkit::help::{Example, Guide};
 use snapbox::assert::{Action, DEFAULT_ACTION_ENV};
 use snapbox::{Assert, Redactions};
 
@@ -50,6 +50,18 @@ mod tests;
 /// [`Allow::example`](crate::Allow::example) names. It runs
 /// the examples of a hidden command, because that command's own help lists
 /// them as runs that work.
+///
+/// The check also skips each example that needs a precondition, named with
+/// [`Example::needs`](crumbkit::help::Example::needs), that
+/// [`Examples::provides`] does not list, and writes one line for each such
+/// example to the test's captured standard error, such as
+/// ``shelf containers restart --all: the check skipped the example, because
+/// the run does not provide `docker` ``. cargo shows that line with
+/// `--nocapture` or when the test fails. A skipped example keeps its golden
+/// files, which no run of the check without the precondition reads,
+/// rewrites or counts as stale, so the run that provides the precondition
+/// owns them. Its golden file name still counts towards the names that two
+/// examples share.
 ///
 /// Each run starts with a cleared environment. The check then sets each
 /// variable of [`Examples::env`], and points `XDG_CONFIG_HOME`,
@@ -139,7 +151,8 @@ mod tests;
 /// - an output or a standard error that differs from its golden file, with
 ///   snapbox's report of both texts;
 /// - a stale golden file: a `.txt` file in the directory that no checked
-///   example produces, such as the file of a removed or skipped example, or
+///   or skipped-for-a-precondition example produces, such as the file of a
+///   removed example or of one that an opt-out skips, or
 ///   a `.stderr` file that no checked example's standard error produces.
 ///
 /// ```no_run
@@ -176,23 +189,34 @@ mod tests;
 /// `shelf books list --author 'Jane Austen'`.
 pub fn check_examples(command: &Command, guide: &Guide, examples: &Examples<'_>) {
     let assert = Assert::new().action_env(DEFAULT_ACTION_ENV);
-    check(command, guide, examples, &assert, TIMEOUT);
+    let skipped = check(command, guide, examples, &assert, TIMEOUT);
+    for note in skipped {
+        // The test harness captures what `eprintln!` writes, and shows it
+        // with `--nocapture` or when the test fails.
+        #[expect(
+            clippy::print_stderr,
+            reason = "a test check reports its skipped examples through the test harness's captured output"
+        )]
+        {
+            eprintln!("{note}");
+        }
+    }
 }
 
 /// Runs [`check_examples`] with `assert`, whose action decides whether the
 /// check compares or overwrites, and with `timeout` for each run, so a test
 /// chooses the action without setting `SNAPSHOTS` and stops a slow run
-/// early.
+/// early. Returns one note for each example that it skipped because the
+/// run does not provide one of its preconditions.
 fn check(
     command: &Command,
     guide: &Guide,
     examples: &Examples<'_>,
     assert: &Assert,
     timeout: Duration,
-) {
+) -> Vec<String> {
     let overwrite = assert.selected_action() == Action::Overwrite;
     let dir = Path::new(examples.goldens());
-    let tool = command.get_name();
     let layout = guide.get_json_layout();
     let tool_name = guide.tool_name(command);
     let mut problems = Vec::new();
@@ -206,7 +230,7 @@ fn check(
         Ok(reader) => reader,
         Err(problem) => {
             report(&[problem], &[]);
-            return;
+            return Vec::new();
         }
     };
     // Each golden file name with the command line of the example that has
@@ -214,6 +238,7 @@ fn check(
     let mut names: Vec<(String, String)> = Vec::new();
     // The name of each golden file of standard error.
     let mut stderr_names: Vec<String> = Vec::new();
+    let mut skipped = Vec::new();
     for leaf in guide.get_leaves() {
         let path = leaf.path();
         let below = path.join(" ");
@@ -223,12 +248,9 @@ fn check(
         if !leaf.get_examples().is_empty() && allowances.excuses(Rule::Examples, &below) {
             continue;
         }
+        let text = crate::allow::command_line(command, &below);
         for example in leaf.get_examples() {
             let args: Vec<&str> = path.iter().chain(example.words()).copied().collect();
-            let text = std::iter::once(tool)
-                .chain(path.iter().copied())
-                .collect::<Vec<_>>()
-                .join(" ");
             let line = command_line(&text, example.words());
             if allowances.excuses_example(&below, example.words()) {
                 continue;
@@ -241,6 +263,9 @@ fn check(
                 continue;
             }
             names.push((name.clone(), line.clone()));
+            if skip(examples, example, &line, &mut stderr_names, &mut skipped) {
+                continue;
+            }
             let stdin = match read_stdin(dir, &name) {
                 Ok(stdin) => stdin,
                 Err(problem) => {
@@ -281,7 +306,7 @@ fn check(
         }
     }
     let names: Vec<String> = names.into_iter().map(|(name, _)| name).collect();
-    inputs::stale_stdin(tool, guide, dir, &mut problems);
+    inputs::stale_stdin(command.get_name(), guide, dir, &mut problems);
     remove_stale(
         dir,
         &names,
@@ -300,6 +325,36 @@ fn check(
     );
     allowances.finish(command, &mut problems);
     report(&problems, &failures);
+    skipped
+}
+
+/// Reports whether the run skips `example`, whose command line is `line`,
+/// because `examples` does not provide every precondition that it needs.
+/// For a skipped example, it adds a note that names the missing
+/// preconditions to `skipped`, and adds the name of the example's `.stderr`
+/// golden file to `stderr_names` when the file exists, because the run that
+/// provides the preconditions owns the golden files and this run keeps them
+/// as they are.
+fn skip(
+    examples: &Examples<'_>,
+    example: &Example,
+    line: &str,
+    stderr_names: &mut Vec<String>,
+    skipped: &mut Vec<String>,
+) -> bool {
+    let missing = examples.missing(example.get_needs());
+    if missing.is_empty() {
+        return false;
+    }
+    let stderr_name = stderr_golden_name(&example_golden_name(line));
+    if Path::new(examples.goldens()).join(&stderr_name).is_file() {
+        stderr_names.push(stderr_name);
+    }
+    skipped.push(format!(
+        "{line}: the check skipped the example, because the run does not provide `{}`",
+        missing.join("`, `")
+    ));
+    true
 }
 
 /// Compares the redacted standard output and standard error in `outputs`

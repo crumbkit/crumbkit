@@ -223,6 +223,26 @@ fn an_example_without_a_description_prints_its_command_line_alone_in_long_help()
     );
 }
 
+#[test]
+fn an_example_holds_the_preconditions_that_it_needs_and_help_does_not_show_them() {
+    const EXAMPLE: Example = Example::new(&["--all"], "Restart every container").needs(&["docker"]);
+    const GUIDE: Guide =
+        Guide::new().leaves(&[Leaf::new(&["planets", "show"]).examples(&[EXAMPLE])]);
+
+    let long = help(&GUIDE, &["tool", "planets", "show", "--help"]);
+
+    assert_eq!(EXAMPLE.get_needs(), ["docker"]);
+    assert!(
+        long.ends_with("Examples:\n  tool planets show --all\n          Restart every container\n"),
+        "{long}"
+    );
+}
+
+#[test]
+fn an_example_needs_no_precondition_until_it_names_one() {
+    assert_eq!(Example::new(&[], "").get_needs(), [""; 0]);
+}
+
 /// A row with a column without a description and a column whose
 /// description has two paragraphs.
 #[derive(Serialize, JsonSchema)]

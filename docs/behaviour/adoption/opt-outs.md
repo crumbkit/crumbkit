@@ -23,7 +23,13 @@ names no command, names no option of its command or excuses no problem, so
 the opt-out of a removed or fixed command or option cannot stay in a tool's
 list.
 
-Why: ADR-0036, ADR-0090.
+An example that runs only where something is present, such as a container
+daemon, needs no opt-out. It names that precondition with `Example::needs`,
+a run that lacks it skips the example
+([example runs](../checks/end-to-end.md#example-runs)), and the report lists
+it among the customisations.
+
+Why: ADR-0036, ADR-0090, ADR-0163.
 
 ## Rules that take an opt-out
 

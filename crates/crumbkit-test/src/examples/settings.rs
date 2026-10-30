@@ -54,6 +54,8 @@ pub struct Examples<'a> {
     /// The directory that each run starts in, or the fixture that each run
     /// starts in a new copy of, or `None` for the test's directory.
     dir_of_runs: Option<Dir<'a>>,
+    /// The names of the preconditions that this test run provides.
+    provides: &'a [&'a str],
     /// The tool's opt-outs, of which the check reads those from
     /// [`Rule::Examples`](crate::Rule::Examples).
     allow: &'a [Allow],
@@ -65,7 +67,8 @@ pub struct Examples<'a> {
 impl<'a> Examples<'a> {
     /// Returns the settings that run the binary at `binary` and keep the
     /// golden files in `dir`, with no environment variables of the tool's
-    /// own, no working directory, no opt-out and no failure reader.
+    /// own, no working directory, no precondition, no opt-out and no
+    /// failure reader.
     ///
     /// `dir` holds only example golden files and `.stdin` files, because
     /// the check counts every `.txt` and `.stderr` file in it that no
@@ -79,6 +82,7 @@ impl<'a> Examples<'a> {
             env: &[],
             xdg: None,
             dir_of_runs: None,
+            provides: &[],
             allow: &[],
             reader: None,
         }
@@ -177,6 +181,27 @@ impl<'a> Examples<'a> {
         self
     }
 
+    /// Sets the names of the preconditions that this test run provides,
+    /// such as `&["docker"]`, which an example names with
+    /// [`Example::needs`](crumbkit::help::Example::needs).
+    /// [`check_examples`](crate::check_examples) and
+    /// [`check_output_budget`](crate::check_output_budget) run an example
+    /// only when this list holds every name that the example needs, and
+    /// skip it otherwise.
+    ///
+    /// The tool's test decides what the run provides, such as from a
+    /// variable that a CI job with a container daemon sets. crumbkit-test
+    /// reads no environment variable for this.
+    ///
+    /// The check compares names exactly and does not report a name that no
+    /// example needs. A name misspelt in `Example::needs` or here therefore
+    /// skips its example in every run, and no check fails.
+    #[must_use]
+    pub const fn provides(mut self, provides: &'a [&'a str]) -> Self {
+        self.provides = provides;
+        self
+    }
+
     /// Sets the tool's opt-outs. The check skips the examples of each
     /// command that an opt-out from [`Rule::Examples`](crate::Rule::Examples) names and of every
     /// command below it, and each example that an
@@ -221,6 +246,16 @@ impl<'a> Examples<'a> {
     /// `None`.
     pub(crate) const fn working_dir(&self) -> Option<Dir<'a>> {
         self.dir_of_runs
+    }
+
+    /// Returns the names of `needs` that this run does not provide, in
+    /// their order, which are empty when the run provides them all.
+    pub(crate) fn missing(&self, needs: &[&'static str]) -> Vec<&'static str> {
+        needs
+            .iter()
+            .copied()
+            .filter(|name| !self.provides.contains(name))
+            .collect()
     }
 
     /// Returns the tool's opt-outs.
