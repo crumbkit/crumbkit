@@ -52,13 +52,13 @@ jobs:
       - run: rustup toolchain install 1.89.0 --profile minimal
       # install-action runs before rust-cache, so the cache leaves out the
       # tool binaries that install-action downloads on every run.
-      - uses: taiki-e/install-action@f7e5d7c961414b23f5b25b2da9294395d08513ad # v2.87.26
+      - uses: taiki-e/install-action@a4d3f3f761dcd95cce1b72cb61cb6d1963438177 # v2.87.30
         with:
           tool: zizmor,cargo-deny,cargo-shear
           fallback: none
       # Only a run on main saves the cache. A pull request restores the cache
       # that main saved and saves none of its own.
-      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
         with:
           save-if: ${{ github.ref == 'refs/heads/main' }}
       - run: cargo fmt --check
@@ -111,13 +111,13 @@ jobs:
       - run: rustup toolchain install
       # install-action runs before rust-cache, so the cache leaves out the
       # tool binaries that install-action downloads on every run.
-      - uses: taiki-e/install-action@f7e5d7c961414b23f5b25b2da9294395d08513ad # v2.87.26
+      - uses: taiki-e/install-action@a4d3f3f761dcd95cce1b72cb61cb6d1963438177 # v2.87.30
         with:
           tool: cargo-nextest
           fallback: none
       # Only a run on main saves the cache. A pull request restores the cache
       # that main saved and saves none of its own.
-      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
         with:
           save-if: ${{ github.ref == 'refs/heads/main' }}
       - run: cargo nextest run --workspace --profile ci
@@ -169,13 +169,13 @@ jobs:
       # The image includes rustup, which installs the toolchain that
       # rust-toolchain.toml pins.
       - run: rustup toolchain install
-      - uses: taiki-e/install-action@f7e5d7c961414b23f5b25b2da9294395d08513ad # v2.87.26
+      - uses: taiki-e/install-action@a4d3f3f761dcd95cce1b72cb61cb6d1963438177 # v2.87.30
         with:
           tool: cargo-nextest
           fallback: none
       # Only a run on main saves the cache, and the next push to main
       # restores it.
-      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
         with:
           save-if: ${{ github.ref == 'refs/heads/main' }}
       - run: cargo nextest run --workspace --profile ci
