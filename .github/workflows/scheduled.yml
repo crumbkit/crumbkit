@@ -48,11 +48,11 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
       # docs.rs builds each published crate's docs on nightly with every
-      # feature and `--cfg docsrs`, as each crate's
-      # `[package.metadata.docs.rs]` asks, so this build shows a docs.rs
-      # failure before a release does. It runs even when an earlier check
-      # failed, and it writes to a target directory of its own, apart from
-      # the stable builds.
+      # feature, and crumbkit's `[package.metadata.docs.rs]` adds
+      # `--cfg docsrs`, so this build shows a docs.rs failure before a
+      # release does. It runs even when an earlier check failed, and it
+      # writes to a target directory of its own, apart from the stable
+      # builds.
       - if: ${{ !cancelled() }}
         run: rustup toolchain install nightly --profile minimal
       - if: ${{ !cancelled() }}

@@ -660,11 +660,9 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
-- crumbkit-test: `path_totals`, `output_weight`, `UnreadableGolden` and the
-  re-export of crumbkit's `Guide` are hidden from the documentation.
-  cargo-crumbkit's library items are hidden too, because only its binary
-  and tests call them. A tool that names one still builds
-  ([behaviour/help/checks]).
+- crumbkit-test: `UnreadableGolden` and the re-export of crumbkit's `Guide`
+  are hidden from the documentation, and so are cargo-crumbkit's library
+  items. A tool names `Guide` from crumbkit.
 - crumbkit: `Code::new` and `Code::runtime` accept hyphens between words
   in a segment, such as `book-club::gate::unmet`. A hyphen may not lead,
   trail or follow another hyphen. Before, a segment allowed only lowercase

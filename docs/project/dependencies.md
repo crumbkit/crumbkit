@@ -50,7 +50,7 @@ Why: ADR-0003, ADR-0001, ADR-0097, ADR-0043.
 | crumbkit-aliases | toml. The crate is separate, so only a tool with personal aliases builds toml. |
 | crumbkit-child | signal-hook with no features, which crumbkit-usage also uses, so a tool can hand the terminal to a child while it ignores Ctrl-C. The crate is separate, so only a tool that hands the terminal over builds it. |
 | crumbkit-usage | The usage log's dependencies: siphasher, etcetera, humantime and signal-hook, and getrandom on Windows, which proptest already brings into the lock file, because Windows has no `/dev/urandom`. The crate is separate, so only a tool that keeps the log builds them. |
-| cargo-crumbkit | crumbkit-usage, so `weigh --usage` reads a tool's log at the path that crumbkit-usage writes it to, and adds no crate that crumbkit-usage does not already build. |
+| cargo-crumbkit | crumbkit-usage, so `weigh --usage` reads a tool's log at the path that crumbkit-usage writes it to. It brings siphasher and signal-hook with signal-hook-registry and errno, and getrandom on Windows. cargo-crumbkit is a development tool that a tool's binary never links, so the extra build time falls only on the person who installs it. |
 
 Why: ADR-0003, ADR-0001, ADR-0016, ADR-0027, ADR-0029, ADR-0030, ADR-0033,
 ADR-0042, ADR-0043, ADR-0048, ADR-0102.

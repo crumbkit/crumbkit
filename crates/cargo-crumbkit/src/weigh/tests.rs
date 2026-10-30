@@ -111,15 +111,30 @@ fn the_checked_in_schema_matches_the_weigh_document_schema() {
     );
 }
 
-#[test]
-fn without_log_weigh_reads_the_usage_log_at_the_path_that_crumbkit_usage_writes() {
-    let commands = [Listed {
-        path: "shelf".to_owned(),
+/// Returns the listed command at `path`, without examples.
+fn listed(path: &str) -> Listed {
+    Listed {
+        path: path.to_owned(),
         examples: Vec::new(),
-    }];
+    }
+}
+
+#[test]
+fn without_log_weigh_reads_the_usage_log_of_the_tool_that_the_root_command_names() {
+    let commands = [listed("shelf"), listed("shelf books")];
 
     assert_eq!(
         usage_log(None, &commands).ok(),
         crumbkit_usage::log_path("shelf")
+    );
+}
+
+#[test]
+fn with_log_weigh_reads_the_usage_log_that_log_names() {
+    let commands = [listed("shelf")];
+
+    assert_eq!(
+        usage_log(Some(Path::new("copy.jsonl")), &commands).unwrap(),
+        Path::new("copy.jsonl")
     );
 }
