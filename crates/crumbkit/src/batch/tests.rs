@@ -6,6 +6,7 @@ use schemars::JsonSchema;
 use serde::Serialize;
 
 use super::Batch;
+use crate::Rows;
 use crate::row::Sealed;
 use crate::{Call, Code, Failure, Listing, Recovery, Row, Shape};
 
@@ -58,13 +59,15 @@ fn only_a_batch_returns_failures_from_rows() {
     assert!(saturn().failures().is_none());
     assert!(vec.failures().is_none());
     assert!(listing.failures().is_none());
-    let failures = Sealed::failures(&batch).unwrap();
+    // The inherent `failures` returns the tool's own failure type, so the
+    // trait's list of `dyn Failure`, which `finish` reads, is named in full.
+    let failures = Rows::failures(&batch).unwrap();
     assert_eq!(failures.len(), 1);
     assert_eq!(
         failures[0].to_string(),
         "the solar system has no planet Vulcan"
     );
-    assert_eq!(Sealed::failures(&empty).map(|list| list.len()), Some(0));
+    assert_eq!(Rows::failures(&empty).map(|list| list.len()), Some(0));
 }
 
 #[test]
@@ -76,10 +79,7 @@ fn a_batch_counts_its_pushed_results_as_its_rows_plus_its_failures() {
     batch.push(Err(Missing("Vulcan")));
     batch.push(Ok(planet("Venus")));
 
-    assert_eq!(
-        batch.pushed(),
-        batch.rows().len() + Sealed::failures(&batch).unwrap().len()
-    );
+    assert_eq!(batch.pushed(), batch.rows().len() + batch.failures().len());
     assert_eq!(batch.left_out_from(2), Some(3));
 }
 
@@ -101,7 +101,7 @@ fn a_batch_holds_its_rows_and_failures_in_the_order_of_their_keys() {
 
     let names: Vec<_> = batch.rows().iter().map(|row| row.name).collect();
     assert_eq!(names, ["Mars", "Venus"]);
-    assert_eq!(Sealed::failures(&batch).map(|list| list.len()), Some(1));
+    assert_eq!(Rows::failures(&batch).map(|list| list.len()), Some(1));
     assert_eq!(batch.left_out(2), Vec::<Option<&str>>::new());
 }
 

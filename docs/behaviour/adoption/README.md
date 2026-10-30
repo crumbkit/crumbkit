@@ -142,9 +142,11 @@ published version ([releases](../../project/releases.md)).
 - The run observer's `Observer` trait gains only methods with defaults, and
   its `RefusalEvent` and `Finished` events have private fields and getters
   ([run observer](../run-observer/README.md)).
-- A result's own methods, such as `Listing::rows`, `Batch::failures` and
-  `Prose::value`, are what a tool reads from a result. What `finish` reads
-  sits on the sealed supertrait of `Rows`, which a tool cannot name.
+- A tool reads a concrete result through its own methods, such as
+  `Listing::rows`, `Batch::failures` and `Prose::value`, and generic code
+  over `T: Rows` reads `Rows::rows`, `Rows::total` and `Rows::failures`.
+  Everything else that `finish` reads sits on the sealed supertrait of
+  `Rows`, which a tool cannot name.
 - `parse` returns a [`Stop`](../../../crates/crumbkit/src/parse/stop.rs) in
   place of a bare `ExitCode` when it ends the run
   ([parsing](../parsing/README.md#the-stop-of-a-run-that-parse-ended)).

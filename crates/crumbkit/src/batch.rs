@@ -217,11 +217,7 @@ impl<R: Row, E: AsFailure> Serialize for Batch<R, E> {
     }
 }
 
-impl<R: Row, E: AsFailure> crate::row::Sealed for Batch<R, E> {
-    type Row = R;
-    const SHAPE: Shape = Shape::Batch;
-    type Summary = crate::NoSummary;
-
+impl<R: Row, E: AsFailure> crate::Rows for Batch<R, E> {
     fn rows(&self) -> &[R] {
         &self.rows
     }
@@ -229,6 +225,12 @@ impl<R: Row, E: AsFailure> crate::row::Sealed for Batch<R, E> {
     fn failures(&self) -> Option<Vec<&dyn Failure>> {
         Some(self.failures.iter().map(AsFailure::as_failure).collect())
     }
+}
+
+impl<R: Row, E: AsFailure> crate::row::Sealed for Batch<R, E> {
+    type Row = R;
+    const SHAPE: Shape = Shape::Batch;
+    type Summary = crate::NoSummary;
 
     fn left_out(&self, shown: usize) -> Vec<Option<&str>> {
         Batch::left_out(self, shown)

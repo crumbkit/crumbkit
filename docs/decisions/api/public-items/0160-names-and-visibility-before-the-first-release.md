@@ -23,8 +23,9 @@ Each was cheap to change before 0.1.0 and a breaking release after it.
 - `Duration` had a public field, so its representation was API.
 - `Rows` carried about 26 `#[doc(hidden)]` members that any tool could
   call on a result it held. The example tool's tests called them to read a
-  handler's rows, failures, notes and prose, so a tool does need to read a
-  result, but through typed methods of the result.
+  handler's rows, failures, notes and prose, and an outside tool reads the
+  rows, the total and the failures of any result in generic code, so a
+  tool does need to read a result.
 - The hidden getter `Document::always_prints_first` was one letter from
   the builder `always_print_first`.
 - `RuntimeCodeError::Segment` had public fields without
@@ -47,14 +48,18 @@ Each was cheap to change before 0.1.0 and a breaking release after it.
   a field without `#[non_exhaustive]`.
 - `Duration`'s field is private. `Duration::new` and `Duration::get` are
   `const fn`, and `From<std::time::Duration>` stays.
-- The members that `finish` reads move from `Rows` to its supertrait
+- `Rows` keeps three documented members, `rows`, `total` and `failures`,
+  because an outside tool reads them in generic code over `T: Rows`, such
+  as a function that counts a result's rows or reads its first failure's
+  code. The other members that `finish` reads move to the supertrait
   `Sealed`, which sits in a private module, so no tool can name it or call
-  its members on a concrete result. `Rows` has no members of its own.
-  A tool reads a result through public methods of that result:
-  `Listing::rows` and `Listing::total`, `Batch::rows`, `Batch::failures`,
-  `Batch::left_out` and `Batch::get_note`, and `Prose::value`,
-  `Prose::failures` and `Prose::get_note`. `failures` returns the tool's
-  own failure type.
+  its members on a concrete result.
+- A tool reads a concrete result through public methods of that result:
+  `Listing::rows`, `Listing::total`, `Listing::get_summary` and
+  `Listing::get_note`, `Batch::rows`, `Batch::failures`, `Batch::left_out`
+  and `Batch::get_note`, and `Prose::value`, `Prose::failures` and
+  `Prose::get_note`. The inherent `failures` returns the tool's own failure
+  type.
 - A getter whose plain name a builder already takes has the `get_`
   prefix, as the getters of `Guide`, `Leaf` and `Exit` do and as
   `std::process::Command::get_args` does. `Document::always_prints_first`
@@ -72,9 +77,11 @@ Each was cheap to change before 0.1.0 and a breaking release after it.
 
 A tool that called an old name fails to compile, and the compiler names
 the item. A compile_fail doctest in crumbkit's and crumbkit-usage's
-`removed.rs` keeps each old name out. A tool's own function with a
-`T: Rows` bound can still call `Sealed`'s members on `T`, because Rust
-lets a generic call the members of every supertrait of its bounds. The
+`removed.rs` keeps each old name out. In a tool's own function with a
+`T: Rows` bound, `Rows::rows`, `Rows::total` and `Rows::failures` are the
+supported reads. Such a function can still call `Sealed`'s members on `T`,
+because Rust lets a generic call the members of every supertrait of its
+bounds, but those calls are unsupported and may break in any release. The
 members are absent from the documentation and from every concrete result,
 and a comment at `Sealed` says so.
 

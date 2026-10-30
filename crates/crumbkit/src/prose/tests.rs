@@ -8,6 +8,7 @@ use serde::Serialize;
 use serde_json::json;
 
 use super::Prose;
+use crate::Rows;
 use crate::row::Sealed;
 use crate::{Batch, Call, Code, Failure, Listing, NoRow, Recovery, Row, Shape};
 
@@ -84,8 +85,10 @@ fn new_holds_no_failures_and_with_failures_holds_the_failures_in_order() {
         vec![Missing("Vulcan"), Missing("Nibiru")],
     );
 
-    assert_eq!(Sealed::failures(&alone).map(|list| list.len()), Some(0));
-    let failures: Vec<String> = Sealed::failures(&failed)
+    // The inherent `failures` returns the tool's own failure type, so the
+    // trait's list of `dyn Failure`, which `finish` reads, is named in full.
+    assert_eq!(Rows::failures(&alone).map(|list| list.len()), Some(0));
+    let failures: Vec<String> = Rows::failures(&failed)
         .unwrap()
         .iter()
         .map(ToString::to_string)

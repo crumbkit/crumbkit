@@ -54,6 +54,24 @@ fn a_tool_reads_the_rows_and_the_total_of_a_listing() {
 }
 
 #[test]
+fn a_tool_reads_the_summary_and_the_note_of_a_listing() {
+    let listing = Listing::new(books(&[1]), 1)
+        .note("note: one book is on loan.")
+        .summary("1 book");
+
+    assert_eq!(listing.get_summary(), Some(&"1 book"));
+    assert_eq!(listing.get_note(), Some("note: one book is on loan."));
+}
+
+#[test]
+fn a_listing_without_a_summary_or_a_note_has_neither() {
+    let listing = Listing::new(books(&[1]), 1);
+
+    assert!(listing.get_summary().is_none());
+    assert_eq!(listing.get_note(), None);
+}
+
+#[test]
 fn an_uncounted_listing_has_no_total() {
     let listing = Listing::uncounted(books(&[1]), true);
 

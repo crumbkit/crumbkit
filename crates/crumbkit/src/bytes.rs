@@ -175,14 +175,16 @@ impl JsonSchema for Bytes {
     }
 }
 
+impl crate::Rows for Bytes {
+    fn rows(&self) -> &[NoRow] {
+        &[]
+    }
+}
+
 impl crate::row::Sealed for Bytes {
     type Row = NoRow;
     const SHAPE: Shape = Shape::Bytes;
     type Summary = crate::NoSummary;
-
-    fn rows(&self) -> &[NoRow] {
-        &[]
-    }
 
     fn bytes(&self) -> Option<&[u8]> {
         Some(&self.bytes)

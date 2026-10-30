@@ -16,27 +16,51 @@ use crate::{Call, Failure, Step};
 ///
 /// crumbkit implements this trait, and a tool cannot implement it, so crumbkit
 /// can add result shapes later without breaking a tool. A tool names the
-/// trait only in a bound, such as `T: Rows`. The trait has no members of
-/// its own. Its supertrait `Sealed` holds what `crumbkit::finish` reads
-/// from a result, and sits in a private module, so a tool cannot call those
-/// members on a result it holds. A test that reads a result's rows calls
+/// trait in a bound, such as `T: Rows`, and an outside tool's generic code
+/// reads a result through its three members: [`Rows::rows`],
+/// [`Rows::total`] and [`Rows::failures`]. Everything else that
+/// `crumbkit::finish` reads sits on the supertrait `Sealed`, in a private
+/// module, so a tool cannot call it on a result it holds. A test that reads
+/// a concrete result calls the result's own methods, such as
 /// [`Listing::rows`](crate::Listing::rows) or
-/// [`Batch::rows`](crate::Batch::rows).
-pub trait Rows: Serialize + Sealed {}
+/// [`Batch::failures`](crate::Batch::failures).
+pub trait Rows: Serialize + Sealed {
+    /// Returns the rows in order. A single row is a slice of one, and a
+    /// `Prose` and `Bytes` return none.
+    fn rows(&self) -> &[Self::Row];
 
-impl<T: Serialize + Sealed> Rows for T {}
+    /// Returns the number of rows that matched when the result is one page
+    /// of them, and `None` otherwise. Only a `Listing` returns a total, and
+    /// a listing whose source the tool did not count (`Listing::uncounted`)
+    /// or read only in part (`Listing::capped`) returns `None`.
+    fn total(&self) -> Option<usize> {
+        None
+    }
+
+    /// Returns the failures of the ids that did not work when the result is
+    /// a batch or the failures that a prose result holds, and `None`
+    /// otherwise. Only a `Batch` and a `Prose` return them, and the list is
+    /// empty when every id worked.
+    ///
+    /// The result builds the list on each call, because the trait cannot
+    /// name the tool's failure type. `finish` calls it once.
+    fn failures(&self) -> Option<Vec<&dyn Failure>> {
+        None
+    }
+}
 
 /// What `crumbkit::finish` reads from a [`Rows`] result. crumbkit implements
 /// it for each result shape, and a tool can neither implement nor name it,
 /// because it is public only within crumbkit.
 //
-// RUST-10: a tool's own function with a `T: Rows` bound can still call these
-// members on `T`, because Rust lets a generic call the members of every
-// supertrait of its bounds. Rust has no way to keep a supertrait's members
-// from a bound short of a private token argument on each member, which would
-// add an argument to every call in crumbkit. The members are absent from the
-// documentation and from every concrete result, so a tool meets them only in
-// a generic function of its own.
+// RUST-10: an outside tool's own function with a `T: Rows` bound can still
+// call these members on `T`, because Rust lets a generic call the members of
+// every supertrait of its bounds. Only `Rows::rows`, `Rows::total` and
+// `Rows::failures` are supported reads in such a function. These members are
+// unsupported there and may change in any release. Rust has no way to keep
+// a supertrait's members from a bound short of a private token argument on
+// each member, which would add an argument to every call in crumbkit. The
+// members are absent from the documentation and from every concrete result.
 pub trait Sealed {
     /// The type of each row. A `Prose` and `Bytes` have no rows, and their
     /// row type is [`NoRow`](crate::NoRow).
@@ -53,17 +77,6 @@ pub trait Sealed {
     /// [`NoSummary`](crate::NoSummary). The summary's JSON Schema is the
     /// schema of the document's `summary` field.
     type Summary: Serialize + fmt::Display + JsonSchema;
-
-    /// Returns the rows in order. A single row is a slice of one.
-    fn rows(&self) -> &[Self::Row];
-
-    /// Returns the number of rows that matched when the result is one page
-    /// of them, and `None` otherwise. Only a `Listing` returns a total, and
-    /// a listing whose source the tool did not count (`Listing::uncounted`)
-    /// or read only in part (`Listing::capped`) returns `None`.
-    fn total(&self) -> Option<usize> {
-        None
-    }
 
     /// Returns the number of rows that the tool read when the result is a
     /// listing from a capped source, whose source holds more rows beyond
@@ -138,18 +151,11 @@ pub trait Sealed {
     /// exit code and the note. Every result counts the rows it holds, and a
     /// listing that [`Listing::from_all`](crate::Listing::from_all) cut to
     /// its limit also counts the rows it cut.
-    fn problems(&self) -> usize {
+    fn problems(&self) -> usize
+    where
+        Self: Rows,
+    {
         problems::count(self.rows())
-    }
-
-    /// Returns the failures of the ids that did not work when the result is
-    /// a batch, and `None` otherwise. Only a `Batch` returns them, and its
-    /// list is empty when every id worked.
-    ///
-    /// A `Batch` builds the list on each call, because the trait cannot name
-    /// the batch's failure type. `finish` calls it once.
-    fn failures(&self) -> Option<Vec<&dyn Failure>> {
-        None
     }
 
     /// Returns the keys that a batch leaves out when it shows only its first
@@ -161,7 +167,7 @@ pub trait Sealed {
         Vec::new()
     }
 
-    /// Returns the position of each failure that [`Sealed::failures`]
+    /// Returns the position of each failure that [`Rows::failures`]
     /// returns among a batch's pushed results, counted from 0, which for a
     /// failure with a key is the position of its key. Every result that is
     /// not a batch returns no position.
@@ -245,13 +251,21 @@ pub enum Shape {
     Bytes,
 }
 
+impl<R: Row> Rows for R {
+    fn rows(&self) -> &[R] {
+        std::slice::from_ref(self)
+    }
+}
+
 impl<R: Row> Sealed for R {
     type Row = R;
     const SHAPE: Shape = Shape::Row;
     type Summary = crate::NoSummary;
+}
 
+impl<R: Row> Rows for Vec<R> {
     fn rows(&self) -> &[R] {
-        std::slice::from_ref(self)
+        self
     }
 }
 
@@ -259,8 +273,4 @@ impl<R: Row> Sealed for Vec<R> {
     type Row = R;
     const SHAPE: Shape = Shape::List;
     type Summary = crate::NoSummary;
-
-    fn rows(&self) -> &[R] {
-        self
-    }
 }

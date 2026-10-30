@@ -5,6 +5,7 @@ use serde::Serialize;
 use serde_json::json;
 
 use super::{Listing, NoSummary};
+use crate::Rows;
 use crate::row::Sealed;
 use crate::{Call, Row, Shape};
 

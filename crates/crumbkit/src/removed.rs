@@ -202,7 +202,8 @@
 //! ```
 //!
 //! A tool cannot call what `finish` reads from a result on a result it
-//! holds. It reads a result through the result's own methods, such as
+//! holds, beyond `Rows::rows`, `Rows::total` and `Rows::failures`. It reads
+//! a concrete result through the result's own methods, such as
 //! `Listing::rows`:
 //!
 //! ```compile_fail
@@ -211,13 +212,6 @@
 //! # impl crumbkit::Row for Book { const COLUMNS: &'static [&'static str] = &["id"]; }
 //! let listing = crumbkit::Listing::new(vec![Book { id: 1 }], 1);
 //! let _ = listing.more();
-//! ```
-//!
-//! ```compile_fail
-//! # #[derive(serde::Serialize, schemars::JsonSchema)]
-//! # struct Book { id: u32 }
-//! # impl crumbkit::Row for Book { const COLUMNS: &'static [&'static str] = &["id"]; }
-//! let _ = crumbkit::Rows::rows(&vec![Book { id: 1 }]);
 //! ```
 //!
 //! A tool reads whether a document always prints its first answer with

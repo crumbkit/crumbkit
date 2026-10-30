@@ -134,11 +134,7 @@ impl<T: Serialize, E> Serialize for Prose<T, E> {
     }
 }
 
-impl<T: Serialize + JsonSchema + fmt::Display, E: AsFailure> crate::row::Sealed for Prose<T, E> {
-    type Row = NoRow;
-    const SHAPE: Shape = Shape::Prose;
-    type Summary = crate::NoSummary;
-
+impl<T: Serialize + JsonSchema + fmt::Display, E: AsFailure> crate::Rows for Prose<T, E> {
     fn rows(&self) -> &[NoRow] {
         &[]
     }
@@ -146,6 +142,12 @@ impl<T: Serialize + JsonSchema + fmt::Display, E: AsFailure> crate::row::Sealed 
     fn failures(&self) -> Option<Vec<&dyn Failure>> {
         Some(self.failures.iter().map(AsFailure::as_failure).collect())
     }
+}
+
+impl<T: Serialize + JsonSchema + fmt::Display, E: AsFailure> crate::row::Sealed for Prose<T, E> {
+    type Row = NoRow;
+    const SHAPE: Shape = Shape::Prose;
+    type Summary = crate::NoSummary;
 
     fn note(&self) -> Option<&str> {
         self.get_note()

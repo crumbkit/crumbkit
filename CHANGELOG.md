@@ -341,10 +341,10 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit: re-exports serde as `crumbkit::serde`, so a `Shown::json`
   override names `Serializer` without a serde dependency
   ([behaviour/output/values]).
-- crumbkit: `Listing::rows`, `Listing::total`, `Batch::rows`,
-  `Batch::failures`, `Batch::left_out`, `Batch::get_note`, `Prose::value`,
-  `Prose::failures` and `Prose::get_note` let a tool's tests read the
-  result a handler returned ([behaviour/adoption]).
+- crumbkit: public getters let a tool's tests read a handler's result:
+  `rows`, `total`, `get_summary` and `get_note` on [`Listing`], `rows`,
+  `failures`, `left_out` and `get_note` on [`Batch`], and `value`,
+  `failures` and `get_note` on [`Prose`] ([behaviour/adoption]).
 - crumbkit-test: `Examples::xdg` and `Failing::xdg` name a fixture that
   the checks copy into each run's fresh XDG directories, so a failing
   command can find a plugin or cache there ([behaviour/checks/end-to-end]).
@@ -679,9 +679,9 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit: breaking: [`Duration`] keeps its field private. A tool builds
   one with `Duration::new` or `From` and reads it with `Duration::get`
   ([behaviour/output/values]).
-- crumbkit: breaking: the hidden members of `Rows` move to a sealed
-  supertrait, so a tool can no longer call them on a result it holds. A
-  test reads a result through its own public methods ([behaviour/adoption]).
+- crumbkit: breaking: `Rows::rows`, `Rows::total` and `Rows::failures` are
+  documented, and the other hidden members of `Rows` move to a sealed
+  supertrait, so a tool can no longer call them ([behaviour/adoption]).
 - crumbkit: breaking: the hidden getter `Document::always_prints_first` is
   now `Document::get_always_print_first`, after the builder
   `always_print_first` and the `get_` getters of `Guide` and `Leaf`.

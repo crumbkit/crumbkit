@@ -386,6 +386,21 @@ impl<R: Row, S> Listing<R, S> {
     pub const fn total(&self) -> Option<usize> {
         if self.capped { None } else { self.total }
     }
+
+    /// Returns the summary that [`Listing::summary`] set, or `None` when
+    /// the tool set none. The getter has the `get_` prefix because the
+    /// builder takes the plain name, as `Guide` and `Leaf` getters do.
+    #[must_use]
+    pub const fn get_summary(&self) -> Option<&S> {
+        self.summary.as_ref()
+    }
+
+    /// Returns the note that [`Listing::note`] set, or `None` when the tool
+    /// set none, as [`Batch::get_note`](crate::Batch::get_note) does.
+    #[must_use]
+    pub fn get_note(&self) -> Option<&str> {
+        self.note.as_deref()
+    }
 }
 
 /// Serializes the listing as the array of its rows. `crumbkit::finish`
@@ -396,11 +411,7 @@ impl<R: Row, M> Serialize for Listing<R, M> {
     }
 }
 
-impl<R: Row, S: Serialize + fmt::Display + JsonSchema> crate::row::Sealed for Listing<R, S> {
-    type Row = R;
-    type Summary = S;
-    const SHAPE: Shape = Shape::Listing;
-
+impl<R: Row, S: Serialize + fmt::Display + JsonSchema> crate::Rows for Listing<R, S> {
     fn rows(&self) -> &[R] {
         &self.rows
     }
@@ -408,6 +419,12 @@ impl<R: Row, S: Serialize + fmt::Display + JsonSchema> crate::row::Sealed for Li
     fn total(&self) -> Option<usize> {
         Listing::total(self)
     }
+}
+
+impl<R: Row, S: Serialize + fmt::Display + JsonSchema> crate::row::Sealed for Listing<R, S> {
+    type Row = R;
+    type Summary = S;
+    const SHAPE: Shape = Shape::Listing;
 
     fn at_least(&self) -> Option<usize> {
         self.total.filter(|_| self.capped)
@@ -429,11 +446,11 @@ impl<R: Row, S: Serialize + fmt::Display + JsonSchema> crate::row::Sealed for Li
     }
 
     fn summary(&self) -> Option<&S> {
-        self.summary.as_ref()
+        self.get_summary()
     }
 
     fn note(&self) -> Option<&str> {
-        self.note.as_deref()
+        self.get_note()
     }
 
     fn long_note(&self) -> Option<&str> {

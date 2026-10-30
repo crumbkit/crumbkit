@@ -7,6 +7,7 @@ use serde::Serialize;
 use serde_json::json;
 
 use super::{Base64, Bytes};
+use crate::Rows;
 use crate::row::Sealed;
 use crate::shown::TextCells;
 use crate::{NoRow, Row, Shape};

@@ -45,7 +45,7 @@ Why: ADR-0147.
   `#[serde(flatten)]` and serde flattens only an object. A table shows such
   a field as compact JSON.
 
-Why: ADR-0108, ADR-0141, ADR-0147, ADR-0148.
+Why: ADR-0108, ADR-0141, ADR-0147, ADR-0148, ADR-0160.
 
 ## Writing your own value type
 
@@ -110,4 +110,4 @@ returns `Shown::schema`. A type that a row flattens writes its own
 another crate needs a newtype of the tool's own, as for any trait from a
 third crate.
 
-Why: ADR-0147.
+Why: ADR-0147, ADR-0160.
