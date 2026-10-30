@@ -125,7 +125,7 @@ fn parse_tree(command: Command, args: &[&str]) -> Parsed {
         Unparsed::Stopped(stop) => stop,
     });
     Parsed {
-        code: stop.as_ref().map(Stop::code),
+        code: stop.as_ref().map(Stop::exit_code),
         json: stop.as_ref().map(|stop| stop.output().is_json()),
         out: String::from_utf8(out).unwrap(),
         err: String::from_utf8(err).unwrap(),
@@ -477,7 +477,7 @@ fn a_page_that_cannot_be_written_stops_with_exit_1() {
         ["tool", "-h"],
     );
 
-    assert_eq!(result.err().map(|stop| stop.number()), Some(1));
+    assert_eq!(result.err().map(|stop| stop.exit()), Some(1));
     assert_eq!(
         String::from_utf8(err).unwrap(),
         "error: cannot write to standard output: other error\n"

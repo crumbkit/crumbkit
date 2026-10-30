@@ -118,11 +118,11 @@ fn real_flag_of_subcommand(
 
 /// Returns the visible argument that clap suggested in `error` for a flag
 /// it refused, such as the argument of `--all` for `--al`, or `None` when
-/// clap suggested none, as [`Refused::nearest_flag`] describes. `command`
+/// clap suggested none, as [`RefusalEvent::nearest_flag`] describes. `command`
 /// is the tool's root, and `path` the command path that `parse` walked. A
 /// word of `path` that names no subcommand is left out.
 ///
-/// [`Refused::nearest_flag`]: crate::events::Refused::nearest_flag
+/// [`RefusalEvent::nearest_flag`]: crate::events::RefusalEvent::nearest_flag
 //
 // RUST-10: this reads the suggestion from clap's rendered text, as
 // `real_names` does. It misses a suggestion when clap changes the wording,

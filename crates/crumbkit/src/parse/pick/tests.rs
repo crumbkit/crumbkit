@@ -216,7 +216,7 @@ fn words(run: &Run) -> Vec<String> {
 
 /// Returns the exit code of a stopped run.
 fn code(run: &Run) -> ExitCode {
-    run.result.as_ref().err().unwrap().code()
+    run.result.as_ref().err().unwrap().exit_code()
 }
 
 #[test]

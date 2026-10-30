@@ -99,9 +99,10 @@ const PATTERN: &str = concat!(
 /// ```
 /// use crumbkit::Duration;
 ///
-/// let took = Duration::from(std::time::Duration::from_secs(4 * 60 + 10));
+/// let took = Duration::new(std::time::Duration::from_secs(4 * 60 + 10));
 ///
 /// assert_eq!(took.to_string(), "4m 10s");
+/// assert_eq!(took.get(), std::time::Duration::from_secs(250));
 /// assert_eq!(serde_json::to_string(&took).unwrap(), r#""PT4M10S""#);
 /// ```
 //
@@ -111,7 +112,22 @@ const PATTERN: &str = concat!(
 // any part, and the iso8601 crate or a parser of that size replaces this
 // once a tool reads such documents.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct Duration(pub std::time::Duration);
+pub struct Duration(std::time::Duration);
+
+impl Duration {
+    /// Wraps a standard duration, so a row field prints it in the compact
+    /// text form and as an ISO 8601 duration in JSON.
+    #[must_use]
+    pub const fn new(duration: std::time::Duration) -> Self {
+        Self(duration)
+    }
+
+    /// Returns the standard duration that this value wraps.
+    #[must_use]
+    pub const fn get(self) -> std::time::Duration {
+        self.0
+    }
+}
 
 impl From<std::time::Duration> for Duration {
     fn from(duration: std::time::Duration) -> Self {
@@ -172,7 +188,8 @@ impl fmt::Display for Largest {
 }
 
 /// Writes the JSON form as an ISO 8601 duration in hours, minutes and
-/// seconds, and describes it as an inline string in the `duration` format.
+/// seconds, and describes it as an inline string with a `pattern` and no
+/// `format`.
 impl Shown for Duration {
     fn json<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         serializer.collect_str(&Iso8601(self.0))

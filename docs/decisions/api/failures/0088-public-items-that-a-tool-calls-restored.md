@@ -1,7 +1,7 @@
 # ADR-0088. Public items that a tool calls restored
 
 - Date: 2026-10-18
-- Status: amended by ADR-0089 and ADR-0162
+- Status: amended by ADR-0089, ADR-0160 and ADR-0162
 - Supersedes: ADR-0085, which it amends
 - Missed: ADR-0085's review counted only the callers inside this repository. A tool outside it calls `Code::runtime`, `Spelling::split`, `FailureReader`, `Examples::failure_reader`, `crumbkit::form` and `Examples::fresh_dir`, so removing them broke that tool.
 

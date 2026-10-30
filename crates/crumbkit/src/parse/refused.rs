@@ -182,8 +182,29 @@ impl Refused {
     /// Returns the exit code that the run ends with once the refusal
     /// prints: 2, unless the guide lists another exit for a refused command
     /// line.
+    ///
+    /// ```
+    /// use clap::{CommandFactory as _, Parser};
+    /// use crumbkit::help::Guide;
+    /// use crumbkit::{Unparsed, ViewFlags};
+    ///
+    /// #[derive(Parser)]
+    /// #[command(name = "tool")]
+    /// struct Tool {
+    ///     #[command(flatten)]
+    ///     view: ViewFlags,
+    /// }
+    ///
+    /// let parsed =
+    ///     crumbkit::try_parse_from::<Tool, _, _>(Tool::command(), &Guide::new(), ["tool", "--srot"]);
+    /// let Err(Unparsed::Refused(refused)) = parsed else {
+    ///     panic!("the command line parsed");
+    /// };
+    ///
+    /// assert_eq!(refused.exit(), 2);
+    /// ```
     #[must_use]
-    pub fn number(&self) -> u8 {
+    pub fn exit(&self) -> u8 {
         self.inner.output.printing().exit(&CLI_USAGE)
     }
 

@@ -7,7 +7,7 @@ use std::ffi::OsString;
 
 use clap::{ArgMatches, Command};
 
-use super::{Finished, OBSERVERS, Observer, Refused, TraceIds};
+use super::{Finished, OBSERVERS, Observer, RefusalEvent, TraceIds};
 use crate::{Code, Spelling};
 
 /// Joins the segments of a code with `.`, so a test shows that the code
@@ -114,7 +114,7 @@ impl Observer for Recording {
         ));
     }
 
-    fn refused(&self, refused: &Refused<'_>) {
+    fn refused(&self, refused: &RefusalEvent<'_>) {
         let nearest = refused
             .nearest_flag()
             .map_or_else(|| "none".to_owned(), |arg| arg.get_id().to_string());

@@ -4,7 +4,7 @@ use std::fmt;
 use std::marker::PhantomData;
 
 use crate::segment::{is_component, is_segment};
-use crate::{AsFailure, Batch, Headed, Listing, Row, Rows};
+use crate::{AsFailure, Batch, Headed, Listing, Row};
 
 mod envelope;
 #[cfg(test)]
@@ -161,7 +161,7 @@ impl<T> Document<T> {
     /// hidden because only crumbkit and crumbkit-test read it.
     #[doc(hidden)]
     #[must_use]
-    pub const fn always_prints_first(&self) -> bool {
+    pub const fn get_always_print_first(&self) -> bool {
         self.first_always
     }
 

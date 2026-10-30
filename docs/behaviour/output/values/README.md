@@ -45,7 +45,7 @@ Why: ADR-0147.
   `#[serde(flatten)]` and serde flattens only an object. A table shows such
   a field as compact JSON.
 
-Why: ADR-0108, ADR-0141, ADR-0147, ADR-0148.
+Why: ADR-0108, ADR-0141, ADR-0147, ADR-0148, ADR-0160.
 
 ## Writing your own value type
 
@@ -61,7 +61,7 @@ use std::fmt;
 
 use crumbkit::Shown;
 use crumbkit::schemars::{JsonSchema, Schema, SchemaGenerator};
-use serde::Serializer;
+use crumbkit::serde::Serializer;
 
 /// A number of pages, which reads `432 pages` in text and `432` in JSON.
 #[derive(Clone, Copy)]
@@ -102,7 +102,7 @@ failure passes a value to `Field::shown`, and writes the same value with
 
 `shown!` names serde and schemars through crumbkit, so the call needs no
 dependency on either. A type that overrides `json`, as `Pages` does, names
-serde's `Serializer` and depends on serde. `shown!` takes one concrete
+serde's `Serializer` through `crumbkit::serde`. `shown!` takes one concrete
 type, such as `Count<u32>`. A generic impl for every parameter is written
 by hand: `Serialize` calls `crumbkit::shown::serialize`, and `JsonSchema`
 returns `Shown::schema`. A type that a row flattens writes its own
@@ -110,4 +110,4 @@ returns `Shown::schema`. A type that a row flattens writes its own
 another crate needs a newtype of the tool's own, as for any trait from a
 third crate.
 
-Why: ADR-0147.
+Why: ADR-0147, ADR-0160.

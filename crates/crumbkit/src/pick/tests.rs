@@ -164,7 +164,7 @@ impl Row for Run {
 fn from_rows_labels_a_choice_with_the_text_form_and_keeps_the_json_form_as_its_value() {
     let runs = [Run {
         id: Ticket(7),
-        took: crate::Duration(std::time::Duration::from_secs(250)),
+        took: crate::Duration::new(std::time::Duration::from_secs(250)),
     }];
 
     let choices = from_rows(&runs, "id");

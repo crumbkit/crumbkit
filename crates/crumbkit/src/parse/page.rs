@@ -11,7 +11,7 @@ use crate::sink::role::{Deliver, Role};
 
 /// Prints the help page or the version in `error` as the result and returns
 /// the exit code as a number: 0 when it is written or the reader closed the
-/// pipe early, and 1 when the write fails for another reason. `Stop::code`
+/// pipe early, and 1 when the write fails for another reason. `Stop::exit_code`
 /// turns the number into an `ExitCode`.
 ///
 /// A sink that asks for no styles for the result receives the page as plain

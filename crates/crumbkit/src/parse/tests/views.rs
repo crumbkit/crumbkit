@@ -398,7 +398,7 @@ fn an_unoffered_view_flag_prints_the_tool_s_usage_code_and_exits_with_the_code_i
     .err()
     .unwrap();
 
-    assert_eq!(stop.code(), ExitCode::from(64));
+    assert_eq!(stop.exit_code(), ExitCode::from(64));
     let err = String::from_utf8(err).unwrap();
     assert!(err.ends_with("  code:  tool::cli::usage\n"), "{err}");
 }

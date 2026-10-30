@@ -74,7 +74,7 @@ fn run(args: &[&str], file: Option<&Path>) -> ExitCode {
     let args = crumbkit_aliases::expand(&command, args, file);
     let (cli, mut output) = match crumbkit::parse_from::<Cli, _, _>(command, &GUIDE, args) {
         Ok(parsed) => parsed,
-        Err(stop) => return stop.code(),
+        Err(stop) => return stop.exit_code(),
     };
     match cli.resource {
         Resource::Aliases { command: AliasesCommand::List(args) } => {

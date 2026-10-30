@@ -25,7 +25,7 @@ impl<T: Rows> Prepared<'_, T> {
             code: spelled,
             budget,
         };
-        let low = usize::from(self.document.always_prints_first());
+        let low = usize::from(self.document.get_always_print_first());
         let mut fits = |shown| {
             let bytes = budget::measure(|counter| self.write(counter, shown, Some(&cut), None))?;
             Ok(bytes <= budget)

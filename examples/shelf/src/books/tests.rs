@@ -2,9 +2,7 @@
 
 use clap::CommandFactory as _;
 use crumbkit::help::Guide;
-use crumbkit::{
-    Batch, Failure as _, Output, Recovery, RenderCall as _, Room, Rows as _, ViewFlags,
-};
+use crumbkit::{Batch, Failure as _, Output, Recovery, RenderCall as _, Room, ViewFlags};
 
 use super::{
     BOOKS_SHOW, Book, BooksError, IdsFileProblem, MOST_IDS, parse_ids, show, show_call, summarize,
@@ -49,7 +47,7 @@ fn show_returns_the_books_in_the_order_given_and_repeats_a_repeated_id() {
 
     let titles: Vec<&str> = batch.rows().iter().map(|book| book.title).collect();
     assert_eq!(titles, ["Middlemarch", "Frankenstein", "Middlemarch"]);
-    assert_eq!(batch.failures().unwrap().len(), 0);
+    assert_eq!(batch.failures().len(), 0);
 }
 
 #[test]
@@ -61,12 +59,7 @@ fn show_returns_one_failure_naming_one_missing_id_as_a_book_and_no_books() {
 
     let batch = show(&args, None, roomy()).unwrap();
 
-    let failures: Vec<String> = batch
-        .failures()
-        .unwrap()
-        .iter()
-        .map(ToString::to_string)
-        .collect();
+    let failures: Vec<String> = batch.failures().iter().map(ToString::to_string).collect();
     assert!(batch.rows().is_empty());
     assert_eq!(failures, ["the catalogue has no book 7"]);
 }
@@ -81,12 +74,7 @@ fn show_returns_the_books_found_and_one_failure_for_each_missing_id_in_the_order
     let batch = show(&args, None, roomy()).unwrap();
 
     let titles: Vec<&str> = batch.rows().iter().map(|book| book.title).collect();
-    let failures: Vec<String> = batch
-        .failures()
-        .unwrap()
-        .iter()
-        .map(ToString::to_string)
-        .collect();
+    let failures: Vec<String> = batch.failures().iter().map(ToString::to_string).collect();
     assert_eq!(titles, ["Frankenstein"]);
     assert_eq!(
         failures,
@@ -146,13 +134,8 @@ fn parse_ids_stops_reading_at_the_line_after_id_101() {
 fn summarize_ids(ids: &[u32]) -> (String, Vec<String>) {
     let args = BooksSummarize { ids: ids.to_vec() };
     let prose = summarize(&args, None).unwrap();
-    let text = prose.prose().unwrap().to_string();
-    let failures = prose
-        .failures()
-        .unwrap()
-        .iter()
-        .map(ToString::to_string)
-        .collect();
+    let text = prose.value().to_string();
+    let failures = prose.failures().iter().map(ToString::to_string).collect();
     (text, failures)
 }
 
@@ -239,7 +222,7 @@ fn show_notes_which_of_the_missing_ids_name_books_removed_from_the_shelf() {
     let batch = show(&args, Some(&removed), roomy()).unwrap();
 
     assert_eq!(
-        crumbkit::Rows::note(&batch),
+        batch.get_note(),
         Some("note: books 2, 5 are in the catalogue but were removed from the shelf.")
     );
 }
@@ -254,7 +237,7 @@ fn show_has_no_note_when_no_id_names_a_removed_book() {
 
     let batch = show(&args, Some(&removed), roomy()).unwrap();
 
-    assert_eq!(crumbkit::Rows::note(&batch), None);
+    assert_eq!(batch.get_note(), None);
 }
 
 #[test]
@@ -265,11 +248,11 @@ fn summarize_without_ids_notes_the_removed_books_it_leaves_out() {
     let prose = summarize(&args, Some(&removed)).unwrap();
 
     assert_eq!(
-        prose.prose().unwrap().to_string(),
+        prose.value().to_string(),
         "5 books by 5 authors, first published from 1813 to 1892: 4 novels and 1 collection of short stories."
     );
     assert_eq!(
-        crumbkit::Rows::note(&prose),
+        prose.get_note(),
         Some("note: the summary leaves out book 2, which was removed from the shelf.")
     );
 }
@@ -280,5 +263,5 @@ fn summarize_has_no_note_when_no_book_was_removed() {
 
     let prose = summarize(&args, None).unwrap();
 
-    assert_eq!(crumbkit::Rows::note(&prose), None);
+    assert_eq!(prose.get_note(), None);
 }

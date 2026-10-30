@@ -7,7 +7,8 @@ use serde::Serialize;
 use serde_json::json;
 
 use super::{LimitAbove, Page};
-use crate::{Listing, Row, Rows as _};
+use crate::row::Sealed as _;
+use crate::{Listing, Row};
 
 /// A shelf, the row type of the listings that a page builds.
 #[derive(Debug, PartialEq, Eq, Serialize, JsonSchema)]

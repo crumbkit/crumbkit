@@ -57,7 +57,7 @@ fn an_output_built_with_full_and_without_json_is_refused_as_the_parsed_flags_are
     let admitted = build_output(ViewFlags::new().full(true).json(true), &["tool", "list"]);
 
     let stop = refused.result.unwrap_err();
-    assert_eq!(stop.number(), 2);
+    assert_eq!(stop.exit(), 2);
     assert_eq!(refused.out, "");
     assert!(
         refused

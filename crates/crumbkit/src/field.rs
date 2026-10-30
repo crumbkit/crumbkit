@@ -70,7 +70,7 @@ impl<'a> Field<'a> {
     ///
     /// use crumbkit::{Duration, Field, FieldValue};
     ///
-    /// let waited = Duration(Std::from_secs(90));
+    /// let waited = Duration::new(Std::from_secs(90));
     /// let message = format!("the shelf stayed locked for {waited}");
     /// let field = Field::shown("waited", &waited);
     ///

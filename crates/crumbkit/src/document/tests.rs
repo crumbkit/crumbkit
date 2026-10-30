@@ -141,7 +141,7 @@ fn an_untyped_document_keeps_the_id_and_the_description() {
 fn a_new_document_may_refuse_its_first_answer() {
     let document: Document<()> = Document::new("shelf", "books-list", 1, "Books.");
 
-    assert!(!document.always_prints_first());
+    assert!(!document.get_always_print_first());
 }
 
 #[test]
@@ -151,7 +151,7 @@ fn an_untyped_document_keeps_its_first_answer_setting() {
 
     let untyped = document.untyped();
 
-    assert!(untyped.always_prints_first());
+    assert!(untyped.get_always_print_first());
 }
 
 #[test]

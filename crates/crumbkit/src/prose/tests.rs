@@ -8,7 +8,9 @@ use serde::Serialize;
 use serde_json::json;
 
 use super::Prose;
-use crate::{Batch, Call, Code, Failure, Listing, NoRow, Recovery, Row, Rows, Shape};
+use crate::Rows;
+use crate::row::Sealed;
+use crate::{Batch, Call, Code, Failure, Listing, NoRow, Recovery, Row, Shape};
 
 const NOT_FOUND: Code = Code::new("solar", "planets", "not_found");
 
@@ -72,7 +74,7 @@ fn a_prose_result_has_no_rows_and_returns_its_text() {
         prose.prose().map(ToString::to_string).as_deref(),
         Some("The solar system has 8 planets.")
     );
-    assert_eq!(<Prose<Count> as Rows>::SHAPE, Shape::Prose);
+    assert_eq!(<Prose<Count> as Sealed>::SHAPE, Shape::Prose);
 }
 
 #[test]
@@ -83,9 +85,10 @@ fn new_holds_no_failures_and_with_failures_holds_the_failures_in_order() {
         vec![Missing("Vulcan"), Missing("Nibiru")],
     );
 
-    assert_eq!(alone.failures().map(|list| list.len()), Some(0));
-    let failures: Vec<String> = failed
-        .failures()
+    // The inherent `failures` returns the tool's own failure type, so the
+    // trait's list of `dyn Failure`, which `finish` reads, is named in full.
+    assert_eq!(Rows::failures(&alone).map(|list| list.len()), Some(0));
+    let failures: Vec<String> = Rows::failures(&failed)
         .unwrap()
         .iter()
         .map(ToString::to_string)
@@ -108,9 +111,9 @@ fn only_a_prose_result_returns_a_text_and_the_schema_of_its_value() {
     assert!(Planet { name: "Saturn" }.prose().is_none());
     assert!(listing.prose().is_none());
     assert!(batch.prose().is_none());
-    assert!(<Vec<Planet> as Rows>::prose_schema(&mut generator).is_none());
+    assert!(<Vec<Planet> as Sealed>::prose_schema(&mut generator).is_none());
     assert_eq!(
-        <Prose<Count> as Rows>::prose_schema(&mut generator),
+        <Prose<Count> as Sealed>::prose_schema(&mut generator),
         Some(generator.subschema_for::<Count>())
     );
 }

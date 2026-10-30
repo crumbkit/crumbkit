@@ -1,7 +1,7 @@
 # ADR-0089. Exit numbers and owned codes restored
 
 - Date: 2026-10-18
-- Status: amended by ADR-0162
+- Status: amended by ADR-0160 and ADR-0162
 - Supersedes: ADR-0085 and ADR-0088, which it amends
 - Missed: ADR-0085's review counted only the callers inside this repository. A tool outside it calls `Stop::number`, `Recoveries::from_codes`, `Twins::from_codes` and `Unprovoked::from_code`, so removing them broke that tool. ADR-0088 kept the three crumbkit-test constructors removed, because it missed that the tool builds its codes at run time and holds them by value.
 

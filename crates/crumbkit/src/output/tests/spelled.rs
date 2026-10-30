@@ -157,7 +157,7 @@ fn a_clap_only_tools_output_new_carries_the_guides_spelling() {
     )
     .unwrap_err();
 
-    assert_eq!(stop.number(), 2);
+    assert_eq!(stop.exit(), 2);
     let refused = String::from_utf8(err).unwrap();
     assert!(refused.ends_with("  code:  tool.cli.usage\n"), "{refused}");
 }

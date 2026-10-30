@@ -1,7 +1,7 @@
 # ADR-0071. One envelope choice
 
 - Date: 2026-10-17
-- Status: amended by ADR-0081
+- Status: amended by ADR-0081 and ADR-0160
 - Supersedes: ADR-0066, and ADR-0059 and ADR-0016, which it amends
 - Missed: ADR-0059 and ADR-0066 added options that only one tool's output needed, without asking whether a second tool would use them, and ADR-0059 spread one choice of envelope over three builders whose combinations needed panics to rule out.
 
