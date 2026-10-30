@@ -32,7 +32,8 @@ mod tests;
 /// with rendered and binary pages.
 ///
 /// ```
-/// use crumbkit_test::{Examples, Guide, Pages};
+/// use crumbkit::help::Guide;
+/// use crumbkit_test::{Examples, Pages};
 ///
 /// const GUIDE: Guide = Guide::new();
 /// // In an integration test, the binary is `env!("CARGO_BIN_EXE_shelf")`.

@@ -37,12 +37,11 @@ crumbkit-test = { workspace = true }
 # which crumbkit-test's `check_command_reference` also calls, so the file that
 # `docs` writes is the file that the check expects (ADR-0044).
 crumbkit-markdown = { workspace = true }
-# `weigh --usage` finds the tool's own usage log in the person's XDG state
-# directory, or in `%LOCALAPPDATA%` on Windows, with the calls that
-# crumbkit-usage uses to write it (ADR-0029), so the two
-# find the same file. etcetera is already in the
-# workspace's lockfile.
-etcetera = { workspace = true }
+# `weigh --usage` finds the tool's own usage log through crumbkit-usage's
+# `log_path`, which names the file that crumbkit-usage writes (ADR-0029), so
+# the two find the same file. `weigh` also recognises the
+# `self-figures-list/v1` document by crumbkit-usage's `SELF_FIGURES_LIST`.
+crumbkit-usage = { workspace = true }
 # The weight row derives `Serialize` and `JsonSchema`, as a tool's results do.
 serde = { workspace = true, features = ["derive"] }
 schemars = { workspace = true, features = ["derive"] }
@@ -53,12 +52,6 @@ serde_json = { workspace = true, features = ["std"] }
 # directory, which tempfile removes when the run ends, so a run never reads
 # or writes the person's own configuration or usage log.
 tempfile = { workspace = true }
-
-# docs.rs documents the crate with every feature on. `--cfg docsrs` turns on
-# the `doc_cfg` attribute in `lib.rs`, which labels each item behind a feature.
-[package.metadata.docs.rs]
-all-features = true
-rustdoc-args = ["--cfg", "docsrs"]
 
 [lints]
 workspace = true

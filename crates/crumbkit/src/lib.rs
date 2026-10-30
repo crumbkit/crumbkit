@@ -65,8 +65,6 @@ mod parse;
 pub mod pick;
 mod prose;
 mod refusal;
-#[cfg(doctest)]
-mod removed;
 #[cfg(feature = "miette")]
 mod report;
 mod row;

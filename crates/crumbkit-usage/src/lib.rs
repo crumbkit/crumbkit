@@ -2,6 +2,15 @@
 // links to files in the repository, which work on GitHub. The definitions below
 // come first, so rustdoc uses them for the same labels (ADR-0013).
 //! [`start`]: crate::start()
+//! [`Log`]: crate::Log
+//! [`Facts`]: crate::Facts
+//! [`Key`]: crate::Key
+//! [`Label`]: crate::Label
+//! [`SELF_USAGE`]: crate::SELF_USAGE
+//! [`SELF_FIGURES_LIST`]: crate::SELF_FIGURES_LIST
+//! [`FindingRow`]: crate::FindingRow
+//! [`FiguresRow`]: crate::FiguresRow
+//! [`UsageSummary`]: crate::UsageSummary
 //! [`Extension`]: crate::Extension
 //! [`extend`]: crate::extend()
 //! [`SelfUsage`]: crate::SelfUsage
@@ -32,8 +41,6 @@ mod observer;
 mod platform;
 mod record;
 mod recorder;
-#[cfg(doctest)]
-mod removed;
 mod report;
 mod self_figures;
 mod self_usage;
@@ -42,6 +49,11 @@ mod shape;
 mod testing;
 
 pub use self::facts::{Extension, Facts, Key, Label, extend};
+// `log_path` exists for cargo-crumbkit's `weigh --usage`, which reads the
+// log where this crate writes it. No tool calls it, so it stays out of the
+// documentation.
+#[doc(hidden)]
+pub use self::file::log_path;
 pub use self::recorder::{Log, start};
 pub use self::self_figures::{FiguresRow, SELF_FIGURES_LIST, SelfFigures, figures};
 pub use self::self_usage::{FindingRow, SELF_USAGE, SelfUsage, UsageSummary, findings};
