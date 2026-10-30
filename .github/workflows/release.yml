@@ -39,7 +39,7 @@ jobs:
       # The image includes rustup, which installs the toolchain that
       # rust-toolchain.toml pins. cargo publish builds each crate with it.
       - run: rustup toolchain install
-      - uses: release-plz/action@8b5bf233ecb5779f63508db7cd050e948ee77cc2 # v0.5.144
+      - uses: release-plz/action@7ef5e4d4b0420630cfcaeb182c01e13651d4c577 # v0.5.145
         with:
           command: release
         env:
@@ -82,7 +82,7 @@ jobs:
           private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
           permission-contents: write
           permission-pull-requests: write
-      - uses: release-plz/action@8b5bf233ecb5779f63508db7cd050e948ee77cc2 # v0.5.144
+      - uses: release-plz/action@7ef5e4d4b0420630cfcaeb182c01e13651d4c577 # v0.5.145
         with:
           command: release-pr
         env:
