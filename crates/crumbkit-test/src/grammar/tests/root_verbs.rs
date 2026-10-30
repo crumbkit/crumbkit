@@ -117,3 +117,14 @@ fn an_opt_out_from_the_root_leaf_rule_for_a_declared_root_verb_is_stale() {
          the opt-out from `grammar/root-leaf` for `server start` excuses no problem, so it is stale"
     );
 }
+
+#[test]
+fn a_root_verb_that_one_declaration_names_twice_fails_the_check() {
+    const TWICE: Guide = Guide::new().root_verbs(&["start", "stop", "start"], REASON);
+
+    assert_eq!(
+        panic_message(|| check_grammar(&server(), Pages::rendered(&TWICE), &[], &[])).unwrap(),
+        "the command tree breaks crumbkit's grammar:\n\
+         the root verb `start` is declared more than once, so root help would list it twice"
+    );
+}

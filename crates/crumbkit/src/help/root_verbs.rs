@@ -29,12 +29,27 @@ impl Guide {
     /// );
     /// assert_eq!(GUIDE.get_root_verbs().map(|(verbs, _)| verbs.len()), Some(2));
     /// ```
+    ///
+    /// # Panics
+    ///
+    /// Panics unless `reason` is non-empty and holds no line break. A
+    /// `const` that calls it with such a reason fails to compile:
+    ///
+    /// ```compile_fail
+    /// use crumbkit::help::Guide;
+    ///
+    /// const BAD: Guide = Guide::new().root_verbs(&["start"], "");
+    /// ```
     #[must_use]
     pub const fn root_verbs(
         mut self,
         verbs: &'static [&'static str],
         reason: &'static str,
     ) -> Self {
+        assert!(
+            crate::document::is_one_line(reason),
+            "a root verbs reason is one non-empty line"
+        );
         self.root_verbs = Some((verbs, reason));
         self
     }

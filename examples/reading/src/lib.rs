@@ -127,7 +127,9 @@ where
                 }
                 Resource::Where => {
                     let location = lists::Location::of(dir.as_deref());
-                    let result = Ok::<_, lists::EntriesError>(crumbkit::Prose::new(location));
+                    // Finding the directory cannot fail, so the error
+                    // type is crumbkit's own and never occurs.
+                    let result = Ok::<_, crumbkit::Error>(crumbkit::Prose::new(location));
                     crumbkit::finish(output, lists::WHERE, result)
                 }
                 Resource::Schemas { command } => match command {

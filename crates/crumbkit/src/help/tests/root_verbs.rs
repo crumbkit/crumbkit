@@ -59,14 +59,26 @@ Options:
 
 #[test]
 fn root_help_without_root_verbs_keeps_clap_s_commands_list() {
-    let page = root_help(&Guide::new());
+    let expected = "\
+Explore a small solar system
 
-    assert!(page.contains("Commands:\n  planets "), "{page}");
-    assert!(
-        page.contains("\n  start           Start the telescope\n"),
-        "{page}"
-    );
-    assert!(!page.contains("Verbs"), "{page}");
+Usage: tool [OPTIONS] <COMMAND>
+
+Commands:
+  planets         Work with planets
+  moons           Work with moons
+  constellations  Work with constellations
+  start           Start the telescope
+  stop            Stop the telescope
+
+Options:
+  -h, --help  Print help (see more with '--help')
+
+Global flags: --json. `tool --help` describes them.
+Topics: exit-codes. `tool help <TOPIC>` prints one.
+Next: tool <COMMAND> -h
+";
+    assert_eq!(root_help(&Guide::new()), expected);
 }
 
 #[test]

@@ -43,8 +43,9 @@ const BUILT_IN_VERBS: [&str; 2] = ["list", "show"];
 ///   of a declared root verb, so a resource that the tool adds later cannot
 ///   take a root verb's word. This rule has no opt-out;
 /// - a declared root verb that names no visible command without
-///   subcommands directly under `command`, a declaration without a verb, and
-///   root verbs declared more than once, on the guide and with
+///   subcommands directly under `command`, a declaration without a verb, a
+///   verb that one declaration names twice, and root verbs
+///   declared more than once, on the guide and with
 ///   `Allow::root_verbs` or with `Allow::root_verbs` twice, because a tool
 ///   declares its root verbs once with one reason;
 /// - a command with subcommands, which is a resource, whose name is not
@@ -199,7 +200,8 @@ pub fn check_grammar(command: &Command, pages: Pages<'_>, verbs: &[&str], allow:
 
 /// Returns the root verbs that the tool declares on `guide` and with
 /// `Allow::root_verbs` in `allow`, and adds a problem to `problems` when it
-/// declares them more than once or declares a list without a verb.
+/// declares them more than once, declares a list without a verb, or names
+/// one verb twice in one declaration.
 ///
 /// A tool declares its root verbs in one place, because root help lists
 /// only the guide's under their heading, and one reason then covers the
@@ -227,6 +229,15 @@ fn declared_root_verbs(
             "the tool declares root verbs without naming one, so the declaration is stale"
                 .to_owned(),
         );
+    }
+    for verbs in &declarations {
+        for (index, verb) in verbs.iter().enumerate() {
+            if verbs[..index].contains(verb) && !verbs[index + 1..].contains(verb) {
+                problems.push(format!(
+                    "the root verb `{verb}` is declared more than once, so root help would list it twice"
+                ));
+            }
+        }
     }
     declarations.into_iter().flatten().copied().collect()
 }

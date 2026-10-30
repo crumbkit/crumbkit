@@ -160,6 +160,8 @@ declarations it takes a reason, because a root verb departs from the
 - a declared verb that names no visible command without subcommands
   directly under the root fails as a stale opt-out does, and so does a
   declaration without a verb;
+- a declaration that names one verb twice fails, because root help would
+  list it twice;
 - a tool that declares root verbs more than once, on the guide and with
   `Allow::root_verbs` or with `Allow::root_verbs` twice, fails, because root
   help lists only the guide's verbs and one reason covers the choice.
@@ -190,9 +192,9 @@ field and quotes any `Row::CHILDREN_HELP`). A leaf's code rename, and an
 exit that lists a code that only a leaf renames, apply to that leaf's
 command line. The dashed-forms declaration is listed once, followed by each
 command named in another style as a `resource-name` or a `verb-name` with
-the dashed form it also answers to. The root verbs follow as one `root-verbs` customisation for each
-declaration, which names each verb's command line and gives the tool's
-reason on a `Reason:` line. When a tool declares root verbs, the line that
+the dashed form it also answers to. The root verbs follow as one
+`root-verbs` customisation for each declaration, which names each verb's
+command line and gives the tool's reason on a `Reason:` line. When a tool declares root verbs, the line that
 counts the customisations no longer says that they need no reason.
 
 The section is left out when the tool declares nothing, and the JSON holds it

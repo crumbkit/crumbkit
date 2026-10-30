@@ -49,7 +49,8 @@ is an ordinary shape for a command-line tool.
   alias is the name or an alias of a declared root verb, so a resource that
   the tool adds later cannot take the verb's word. A declared verb that
   names no visible root leaf fails as a stale opt-out does, and so does a
-  declaration without a verb.
+  declaration without a verb. A declaration that names one verb twice
+  fails, because root help would list it twice.
 - `check_opt_outs` lists the declaration as a `root-verbs` customisation
   with its reason. ADR-0056 gave declarations no reason, because they keep
   crumbkit's behaviour. A root verb departs from the grammar, so the

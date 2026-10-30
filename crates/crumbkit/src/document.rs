@@ -426,7 +426,7 @@ fn row_bytes<R: Headed, E: AsFailure>(batch: &Batch<R, E>, index: usize) -> Opti
 }
 
 /// Returns whether `text` is non-empty and holds no `\n` or `\r`.
-const fn is_one_line(text: &str) -> bool {
+pub(crate) const fn is_one_line(text: &str) -> bool {
     let bytes = text.as_bytes();
     if bytes.is_empty() {
         return false;
