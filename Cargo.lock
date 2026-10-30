@@ -82,7 +82,7 @@ dependencies = [
  "crumbkit",
  "crumbkit-markdown",
  "crumbkit-test",
- "etcetera",
+ "crumbkit-usage",
  "schemars",
  "serde",
  "serde_json",

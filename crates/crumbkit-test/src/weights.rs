@@ -150,10 +150,11 @@ impl<'a> PathBudgets<'a> {
 ///
 /// A path's weight is the sum of the sizes in bytes of the `-h` pages from
 /// the root down to the command, as [`check_help_sizes`](crate::check_help_sizes)
-/// reads them, and the command's output weight, which [`output_weight`]
-/// reads from the golden files of the examples that the guide of `pages`
-/// gives the command. A command without an example golden file has an output weight
-/// of 0, and so does every command with [`Pages::clap`], which has no
+/// reads them, and the command's output weight. The output weight is the
+/// largest size of one example's golden files, standard output and
+/// standard error together, among the examples that the guide of `pages`
+/// gives the command. A command without an example golden file has an
+/// output weight of 0, and so does every command with [`Pages::clap`], which has no
 /// guide, or with [`PathBudgets::help_only`]. `cargo crumbkit weigh` prints the same sums as `path_total`. The
 /// check skips each hidden command and everything below it. It finds:
 ///

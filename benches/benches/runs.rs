@@ -57,15 +57,17 @@ struct Limits {
 
 // Each limit's comment gives the count that it comes from. The counts come
 // from runs of `scheduled.yml` on `ubuntu-24.04`. Run 38191991177 gave the
-// instruction counts of `books list` with and without the usage log, of
-// `commands list` and of the refusal. Run 38163868931 gave the instruction
-// counts of `shelf -h` and `books list -h`. Run 38215644933 gave every
-// block count, with DHAT recording 500 stack frames.
+// instruction counts of `commands list` and of the refusal. Run 38163868931
+// gave the instruction counts of `shelf -h` and `books list -h`. Run
+// 38215644933 gave every block count, with DHAT recording 500 stack frames.
+// Run 40855949287 gave the instruction counts of `books list` with and
+// without the usage log, after the listing's next steps, summary text and
+// default rows had added to them.
 
 /// The limits of `shelf books list`.
 const BOOKS_LIST: Limits = Limits {
-    // The count was 650642 instructions.
-    instructions: 715_707,
+    // The count was 716207 instructions.
+    instructions: 787_828,
     // The count was 1142 blocks.
     allocations: 1257,
 };
@@ -104,8 +106,8 @@ const REFUSAL: Limits = Limits {
 
 /// The limits of `shelf books list` with the usage log started.
 const BOOKS_LIST_LOGGED: Limits = Limits {
-    // The count was 793688 instructions.
-    instructions: 873_057,
+    // The count was 864045 instructions.
+    instructions: 950_450,
     // The count was 1203 blocks.
     allocations: 1324,
 };
