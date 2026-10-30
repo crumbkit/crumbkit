@@ -1310,6 +1310,9 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   flags. The word `help` reported a `help` flag before
   ([behaviour/parsing]).
 
+[Unreleased]: https://github.com/crumbkit/crumbkit/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/crumbkit/crumbkit/releases/tag/v0.1.0
+
 <!-- Each label below points at the source file that holds the item's
 rustdoc, or at the page in docs/ that describes the behaviour. -->
 

@@ -39,6 +39,8 @@
 //! [`check_recoveries`]: crate::check_recoveries
 //! [`Recoveries`]: crate::Recoveries
 //! [`check_twin`]: crate::check_twin
+//! [`check_twins`]: crate::check_twins
+//! [`Twins`]: crate::Twins
 //! [ADR-0025]: https://github.com/crumbkit/crumbkit/blob/main/docs/decisions/api/help/checks/0025-help-checks.md
 //! [output budget docs]: https://github.com/crumbkit/crumbkit/blob/main/docs/behaviour/output/budget/README.md
 //! [command reference docs]: https://github.com/crumbkit/crumbkit/blob/main/docs/behaviour/help/reference.md

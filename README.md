@@ -38,9 +38,9 @@ cargo add crumbkit
 
 The crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 and share one version. Before 1.0, a minor release, such as 0.2, may change
-the API, and the [changelog](CHANGELOG.md) names each such change. A patch
-release, such as 0.1.1, keeps the API, and its release pull request runs
-cargo-semver-checks against the last published version to check that.
+the API, and the [changelog](CHANGELOG.md) names each breaking change. Each
+release pull request from 0.1.1 on runs cargo-semver-checks against the last
+published version. A patch release, such as 0.1.1, makes no breaking change.
 
 ## Licence
 

@@ -13,8 +13,8 @@ A tool adds crumbkit beside clap, serde and schemars:
 crumbkit = "0.1"
 ```
 
-Before 1.0, a minor release, such as 0.2, may change the API. The
-[changelog] names each change.
+Before 1.0, a minor release may change the API. The [changelog] names
+each breaking change.
 
 ## Example
 
