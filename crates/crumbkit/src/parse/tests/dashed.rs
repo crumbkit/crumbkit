@@ -56,7 +56,7 @@ fn run(guide: &Guide, args: &[&str]) -> Run {
     let result =
         parse_to::<Matched, _, _, _, _>(&mut Sink::new(&mut out, &mut err), tool(), guide, args);
     Run {
-        code: result.err().map(|stop| stop.code()),
+        code: result.err().map(|stop| stop.exit_code()),
         out: String::from_utf8(out).unwrap(),
         err: String::from_utf8(err).unwrap(),
     }

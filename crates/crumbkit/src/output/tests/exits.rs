@@ -100,7 +100,7 @@ fn a_refusal_that_an_exit_lists_gives_its_stop_that_exit_as_a_number() {
         ["tool", "list"],
     );
 
-    assert_eq!(refused.err().map(|stop| stop.number()), Some(64));
+    assert_eq!(refused.err().map(|stop| stop.exit()), Some(64));
     assert!(admitted.is_ok());
 }
 

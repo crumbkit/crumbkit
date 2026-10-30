@@ -4,7 +4,7 @@ use std::fmt;
 
 use serde::{Serialize, Serializer};
 
-use crate::{AsFailure, Call, Failure, Row, Rows, Shape};
+use crate::{AsFailure, Call, Failure, Row, Shape};
 
 #[cfg(test)]
 mod tests;
@@ -151,6 +151,47 @@ impl<R: Row, E: AsFailure> Batch<R, E> {
         }
     }
 
+    /// Returns the rows pushed so far, in the order of their keys, without
+    /// the failures. A tool's test reads the rows of the batch that its
+    /// handler returned here.
+    #[must_use]
+    pub fn rows(&self) -> &[R] {
+        &self.rows
+    }
+
+    /// Returns the failures pushed so far, in the order of their keys. A
+    /// tool's test reads the failures of the batch that its handler
+    /// returned here.
+    #[must_use]
+    pub fn failures(&self) -> &[E] {
+        &self.failures
+    }
+
+    /// Returns the note that [`Batch::note`] set, or `None` when the tool
+    /// set none. The getter has the `get_` prefix because the builder
+    /// takes the plain name, as `Guide` and `Leaf` getters do.
+    #[must_use]
+    pub fn get_note(&self) -> Option<&str> {
+        self.note.as_deref()
+    }
+
+    /// Returns the keys that the batch leaves out when it shows only its
+    /// first `shown` rows, in the order the caller gave them: the keys of
+    /// the rows after the first `shown`, then the keys the handler never
+    /// fetched. A row whose result was pushed after the last key has no key
+    /// and is `None`. A failed key is never left out. A tool's test reads
+    /// here which keys a handler that stopped at the output budget left
+    /// unfetched.
+    #[must_use]
+    pub fn left_out(&self, shown: usize) -> Vec<Option<&str>> {
+        let cut = self.positions.get(shown..).unwrap_or_default();
+        let unfetched = self.keys.get(self.pushed()..).unwrap_or_default();
+        cut.iter()
+            .map(|&position| self.keys.get(position).map(String::as_str))
+            .chain(unfetched.iter().map(|key| Some(key.as_str())))
+            .collect()
+    }
+
     /// Returns the number of results pushed so far, which is every row and
     /// every failure.
     fn pushed(&self) -> usize {
@@ -176,11 +217,7 @@ impl<R: Row, E: AsFailure> Serialize for Batch<R, E> {
     }
 }
 
-impl<R: Row, E: AsFailure> Rows for Batch<R, E> {
-    type Row = R;
-    const SHAPE: Shape = Shape::Batch;
-    type Summary = crate::NoSummary;
-
+impl<R: Row, E: AsFailure> crate::Rows for Batch<R, E> {
     fn rows(&self) -> &[R] {
         &self.rows
     }
@@ -188,18 +225,19 @@ impl<R: Row, E: AsFailure> Rows for Batch<R, E> {
     fn failures(&self) -> Option<Vec<&dyn Failure>> {
         Some(self.failures.iter().map(AsFailure::as_failure).collect())
     }
+}
+
+impl<R: Row, E: AsFailure> crate::row::Sealed for Batch<R, E> {
+    type Row = R;
+    const SHAPE: Shape = Shape::Batch;
+    type Summary = crate::NoSummary;
 
     fn left_out(&self, shown: usize) -> Vec<Option<&str>> {
-        let cut = self.positions.get(shown..).unwrap_or_default();
-        let unfetched = self.keys.get(self.pushed()..).unwrap_or_default();
-        cut.iter()
-            .map(|&position| self.keys.get(position).map(String::as_str))
-            .chain(unfetched.iter().map(|key| Some(key.as_str())))
-            .collect()
+        Batch::left_out(self, shown)
     }
 
     fn note(&self) -> Option<&str> {
-        self.note.as_deref()
+        self.get_note()
     }
 
     fn failure_indexes(&self) -> &[usize] {

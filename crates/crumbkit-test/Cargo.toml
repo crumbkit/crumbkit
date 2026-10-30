@@ -55,16 +55,5 @@ proptest = { workspace = true, features = ["std"] }
 crumbkit-child = { workspace = true }
 crumbkit-aliases = { workspace = true }
 
-# docs.rs documents the crate with every feature on. `--cfg docsrs` turns on
-# the `doc_cfg` attribute in `lib.rs`, which labels each item behind a feature.
-[package.metadata.docs.rs]
-all-features = true
-rustdoc-args = ["--cfg", "docsrs"]
-
-# `src/removed.rs` holds only compile_fail doctests and no item, which
-# cargo-shear reports as an empty file.
-[package.metadata.cargo-shear]
-ignored-paths = ["src/removed.rs"]
-
 [lints]
 workspace = true

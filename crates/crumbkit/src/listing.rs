@@ -6,7 +6,7 @@ use std::fmt;
 use schemars::{JsonSchema, Schema, SchemaGenerator};
 use serde::{Serialize, Serializer};
 
-use crate::{Call, Row, Rows, Shape, Step};
+use crate::{Call, Row, Shape, Step};
 
 #[cfg(test)]
 mod tests;
@@ -82,10 +82,10 @@ pub struct Listing<R: Row, S = NoSummary> {
     /// The most rows that the command's `--limit` takes, which the footer
     /// names, or `None` when `--limit` has no upper bound.
     bound: Option<usize>,
-    /// The number of rows that report a problem among every row that
-    /// [`Listing::from_all`] was given, when its limit cut some of them and
-    /// the row type names a problem field, or `None` when the listing counts
-    /// the rows it holds.
+    /// The number of rows that report a problem ([`Row::is_problem`])
+    /// among every row that [`Listing::from_all`] was given, when its limit
+    /// cut some of them and at least one of them reports a problem, or
+    /// `None` when the listing counts the rows it holds.
     problems: Option<usize>,
 }
 
@@ -370,6 +370,37 @@ impl<R: Row, S> Listing<R, S> {
         self.capped = capped && self.total.is_some();
         self
     }
+
+    /// Returns the rows that the listing shows, in order. A tool's test
+    /// reads the rows of the listing that its handler returned here.
+    #[must_use]
+    pub fn rows(&self) -> &[R] {
+        &self.rows
+    }
+
+    /// Returns the number of rows that matched, which the footer and the
+    /// JSON document's `total` give, or `None` when the tool did not count
+    /// them ([`Listing::uncounted`]) or read only some of them
+    /// ([`Listing::capped`]).
+    #[must_use]
+    pub const fn total(&self) -> Option<usize> {
+        if self.capped { None } else { self.total }
+    }
+
+    /// Returns the summary that [`Listing::summary`] set, or `None` when
+    /// the tool set none. The getter has the `get_` prefix because the
+    /// builder takes the plain name, as `Guide` and `Leaf` getters do.
+    #[must_use]
+    pub const fn get_summary(&self) -> Option<&S> {
+        self.summary.as_ref()
+    }
+
+    /// Returns the note that [`Listing::note`] set, or `None` when the tool
+    /// set none, as [`Batch::get_note`](crate::Batch::get_note) does.
+    #[must_use]
+    pub fn get_note(&self) -> Option<&str> {
+        self.note.as_deref()
+    }
 }
 
 /// Serializes the listing as the array of its rows. `crumbkit::finish`
@@ -380,18 +411,20 @@ impl<R: Row, M> Serialize for Listing<R, M> {
     }
 }
 
-impl<R: Row, S: Serialize + fmt::Display + JsonSchema> Rows for Listing<R, S> {
-    type Row = R;
-    type Summary = S;
-    const SHAPE: Shape = Shape::Listing;
-
+impl<R: Row, S: Serialize + fmt::Display + JsonSchema> crate::Rows for Listing<R, S> {
     fn rows(&self) -> &[R] {
         &self.rows
     }
 
     fn total(&self) -> Option<usize> {
-        self.total.filter(|_| !self.capped)
+        Listing::total(self)
     }
+}
+
+impl<R: Row, S: Serialize + fmt::Display + JsonSchema> crate::row::Sealed for Listing<R, S> {
+    type Row = R;
+    type Summary = S;
+    const SHAPE: Shape = Shape::Listing;
 
     fn at_least(&self) -> Option<usize> {
         self.total.filter(|_| self.capped)
@@ -413,11 +446,11 @@ impl<R: Row, S: Serialize + fmt::Display + JsonSchema> Rows for Listing<R, S> {
     }
 
     fn summary(&self) -> Option<&S> {
-        self.summary.as_ref()
+        self.get_summary()
     }
 
     fn note(&self) -> Option<&str> {
-        self.note.as_deref()
+        self.get_note()
     }
 
     fn long_note(&self) -> Option<&str> {

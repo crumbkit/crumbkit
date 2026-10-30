@@ -446,3 +446,34 @@ fn a_guide_that_sets_the_colon_spelling_lists_no_spelling() {
 
     assert!(customisations(&Command::new("shelf"), &GUIDE, &[]).is_empty());
 }
+
+#[test]
+fn each_example_that_needs_a_precondition_is_an_example_precondition_customisation() {
+    use crumbkit::help::Example;
+
+    const GUIDE: Guide = Guide::new().leaves(&[Leaf::new(&["books", "list"]).examples(&[
+        Example::new(&[], "Print the first page of books"),
+        Example::new(&["--all"], "Print every book from the server").needs(&["server"]),
+        Example::new(&["--author", "Jane Austen"], "Compare two reports")
+            .needs(&["server", "reports"]),
+    ])]);
+
+    let list = customisations(&Command::new("shelf"), &GUIDE, &[]);
+
+    let list = serde_json::to_value(&list).unwrap();
+    assert_eq!(
+        list,
+        json!([
+            {
+                "declaration": "example-precondition",
+                "applies_to": "shelf books list --all",
+                "declares": "The example runs only in a test run that provides server.",
+            },
+            {
+                "declaration": "example-precondition",
+                "applies_to": "shelf books list --author 'Jane Austen'",
+                "declares": "The example runs only in a test run that provides server and reports.",
+            },
+        ])
+    );
+}

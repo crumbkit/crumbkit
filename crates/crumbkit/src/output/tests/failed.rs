@@ -95,7 +95,7 @@ fn fail_in<T: Rows>(args: &[&str], document: Document<T>) -> Finished {
             let result: Result<T, NoConfig> = Err(NoConfig);
             finish_to(&mut sink, output, document, result)
         }
-        Err(stop) => stop.number(),
+        Err(stop) => stop.exit(),
     };
     Finished {
         code: ExitCode::from(code),
@@ -163,7 +163,7 @@ fn a_view_flag_that_the_leaf_s_document_cannot_use_is_still_refused_before_the_h
         ["tool", "list", "--long"],
     );
 
-    assert_eq!(parsed.err().map(|stop| stop.number()), Some(2));
+    assert_eq!(parsed.err().map(|stop| stop.exit()), Some(2));
     assert_eq!(
         String::from_utf8(err).unwrap(),
         "\

@@ -62,10 +62,11 @@ const SCHEMA: &str = "crumbkit/opt-outs/v1";
 /// refusal alternatives and refusal hint, the guide's
 /// `Guide::dashed_forms` declaration, and with it each command named in
 /// another style that also answers to its dashed form, such as
-/// `reading_lists` for `reading-lists`, and the root verbs that the tool
-/// declares on the guide or with [`Allow::root_verbs`], with their reason.
-/// The report spells codes with colons. The section is left out when the
-/// tool declares nothing.
+/// `reading_lists` for `reading-lists`, each example that needs a
+/// precondition, which a test run may not provide (ADR-0163), and the root
+/// verbs that the tool declares on the guide or with [`Allow::root_verbs`],
+/// with their reason. The report spells codes with colons. The section is
+/// left out when the tool declares nothing.
 /// A reviewer reads a change to a tool's opt-outs as a change to these two
 /// files, and an agent reads `opt-outs.json` to learn where the tool
 /// departs from crumbkit's conventions.

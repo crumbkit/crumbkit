@@ -9,9 +9,6 @@
 //! [weigh docs]: https://github.com/crumbkit/crumbkit/blob/main/docs/behaviour/help/weight.md
 //! [command reference docs]: https://github.com/crumbkit/crumbkit/blob/main/docs/behaviour/help/reference.md
 #![doc = include_str!("../README.md")]
-// docs.rs builds the docs on nightly with `--cfg docsrs`, and rustdoc's
-// `doc_cfg` feature labels each item behind a cargo feature with its name.
-#![cfg_attr(docsrs, feature(doc_cfg))]
 
 mod cargo;
 mod cli;
@@ -24,12 +21,17 @@ use std::process::ExitCode;
 
 use clap::CommandFactory as _;
 
+// These items exist for the binary in `main.rs` and for the crate's own
+// tests, so they stay out of the documentation.
+#[doc(hidden)]
 pub use crate::cli::{ALLOW, Cli, GUIDE};
 use crate::cli::{CargoCommand, CommandsCommand, CrumbkitCommand};
 
 #[cfg(test)]
 mod tests;
 
+// `run` exists for the binary in `main.rs` and for the crate's own tests.
+#[doc(hidden)]
 /// Parses the process's command line, runs the command and returns the
 /// process's exit code.
 ///
@@ -40,7 +42,7 @@ mod tests;
 pub fn run() -> ExitCode {
     let (cli, mut output) = match crumbkit::parse::<Cli>(Cli::command(), &GUIDE) {
         Ok(parsed) => parsed,
-        Err(stop) => return stop.code(),
+        Err(stop) => return stop.exit_code(),
     };
     match cli.cargo {
         CargoCommand::Crumbkit { command } => match command {

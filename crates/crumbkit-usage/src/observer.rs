@@ -7,7 +7,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use clap::{ArgMatches, Command};
 
 use super::{recorder, shape};
-use crumbkit::events::{Finished, Observer, Refused, TraceIds};
+use crumbkit::events::{Finished, Observer, RefusalEvent, TraceIds};
 use crumbkit::{Code, Spelling};
 
 /// Whether crumbkit reported that a child took the terminal, and on
@@ -40,7 +40,7 @@ impl Observer for UsageLog {
         recorder::report(|recorder| recorder.helped(command, path, long, exit));
     }
 
-    fn refused(&self, refused: &Refused<'_>) {
+    fn refused(&self, refused: &RefusalEvent<'_>) {
         recorder::report(|recorder| {
             shape::refused(
                 &mut recorder.run,

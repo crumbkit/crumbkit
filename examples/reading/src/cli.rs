@@ -114,7 +114,10 @@ pub const GUIDE: Guide = Guide::new()
                     "Emma",
                 ],
                 "Append Emma to the to-read list without asking",
-            ),
+            )
+            // The run changes the list, so it needs a copy of the lists
+            // that it may change.
+            .needs(&["writable-lists"]),
         ])
         .effects(Effects::replacing())
         .document(ENTRIES_SET),

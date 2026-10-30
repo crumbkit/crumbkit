@@ -7,7 +7,6 @@ use serde_json::json;
 
 use super::{CallerRuns, CodeRuns, FindingRow, SelfUsage, UsageSummary, report_from};
 use crate::testing::{line, now, tool};
-use crumbkit::Rows;
 use crumbkit::help::{Exit, Guide};
 
 /// Returns the summary of `runs` runs by people, in `sessions` sessions,
@@ -109,7 +108,7 @@ fn the_summary_lists_the_ten_codes_tolerated_by_the_most_runs() {
         now(),
     );
 
-    let summary = serde_json::to_value(Rows::summary(&listing)).unwrap();
+    let summary = serde_json::to_value(listing.get_summary()).unwrap();
 
     let tolerated = summary["tolerated"].as_array().unwrap();
     assert_eq!(tolerated.len(), 10);
@@ -325,8 +324,8 @@ fn the_report_reads_the_runs_since_the_duration_before_now_and_names_that_day() 
         Duration::from_secs(86_400),
         now(),
     );
+    let summary = listing.get_summary().unwrap();
 
-    let summary = Rows::summary(&listing).unwrap();
     assert_eq!(summary.runs, 1);
     assert_eq!(summary.since, "2026-10-10");
 }
@@ -343,7 +342,7 @@ fn without_a_log_the_report_has_no_runs_and_no_findings() {
 
     assert_eq!(listing.rows().len(), 0);
     assert_eq!(
-        Rows::summary(&listing).unwrap().to_string(),
+        listing.get_summary().unwrap().to_string(),
         "0 runs since 11 Oct."
     );
 }
@@ -359,8 +358,9 @@ fn a_clock_past_the_year_9999_reports_the_last_day_that_humantime_formats() {
         Duration::from_secs(60),
         far,
     );
+    let summary = listing.get_summary().unwrap();
 
-    assert_eq!(Rows::summary(&listing).unwrap().since, "9999-12-31");
+    assert_eq!(summary.since, "9999-12-31");
 }
 
 /// A tool whose only arguments are `self usage`'s.
@@ -416,8 +416,8 @@ fn a_since_that_reaches_before_1970_reads_the_whole_log_from_1970() {
         Duration::from_secs(100 * 365 * 86_400),
         now(),
     );
+    let summary = listing.get_summary().unwrap();
 
-    let summary = Rows::summary(&listing).unwrap();
     assert_eq!(summary.runs, 1);
     assert_eq!(summary.since, "1970-01-01");
 }

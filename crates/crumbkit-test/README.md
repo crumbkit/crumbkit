@@ -45,7 +45,8 @@ crumbkit_test::check_help_sizes(&tool, Pages::clap(), &Budgets::new());
   clap's pages through [`Pages::clap`].
 
 A check that takes opt-outs accepts `&[]`, or an [`Allow`] with a reason
-for each rule the tool skips.
+for each [`Rule`] the tool skips. A [`Budget`] sets one command's budget
+with a reason.
 
 ## Checks for tools built with crumbkit
 
@@ -55,18 +56,18 @@ These checks read the tool's guide, failure codes or crumbkit's output:
 - Effects: [`check_effects`].
 - The guide: [`check_guide`], and [`check_exit_codes`].
 - Help pages: the checks above with [`Pages::rendered`] or
-  [`Pages::binary`], and [`PathBudgets`] with the example golden files, and
-  [`path_totals`] and [`output_weight`], which `cargo crumbkit weigh` also
-  calls.
+  [`Pages::binary`], and [`PathBudgets`] with the example golden files.
 - Example output: [`check_examples`] with [`Examples`], and
   [`example_golden_name`]. `Examples` sets each run's working directory or
   fresh fixture, and its XDG fixture.
 - The output budget: [`check_output_budget`] ([output budget docs]).
 - The command reference: [`check_command_reference`] ([command reference docs]).
 - Recoveries: [`check_recoveries`] with [`Recoveries`], [`check_twin`], and
-  [`check_twins`] with [`Twins`]. [`RuntimeFailing`] builds command lines
-  read at run time, and a [`FailureReader`] reads failures printed in a
-  tool's own shape.
+  [`check_twins`] with [`Twins`]. A [`Failing`] is one failing command line,
+  a [`Twin`] pairs it with an accepted line, and [`Unprovoked`] names a code
+  that no test can provoke. [`RuntimeFailing`] and [`RuntimePlace`] build
+  command lines read at run time, and a [`FailureReader`] reads failures
+  printed in a tool's own shape.
 - JSON documents: [`check_schema_goldens`], [`check_document_ids`] and
   [`check_mounts`].
 - Opt-outs: [`check_opt_outs`] pins the opt-outs and budgets that a tool
@@ -84,6 +85,12 @@ option.
 [`check_codes`]: src/codes.rs
 [`check_command_reference`]: src/reference.rs
 [`Allow`]: src/allow.rs
+[`Rule`]: src/allow/rule.rs
+[`Budget`]: src/budget.rs
+[`Failing`]: src/recoveries.rs
+[`Twin`]: src/twins/coverage.rs
+[`Unprovoked`]: src/recoveries/unprovoked.rs
+[`RuntimePlace`]: src/recoveries/runtime/place.rs
 [`check_opt_outs`]: src/opt_outs.rs
 [`check_names`]: src/names.rs
 [`check_grammar`]: src/grammar.rs
@@ -101,8 +108,6 @@ option.
 [`PathBudgets::help_only`]: src/weights.rs
 [`check_path_weights`]: src/weights.rs
 [`PathBudgets`]: src/weights.rs
-[`path_totals`]: src/weights.rs
-[`output_weight`]: src/weights.rs
 [`check_examples`]: src/examples.rs
 [`Examples`]: src/examples/settings.rs
 [`example_golden_name`]: src/examples.rs

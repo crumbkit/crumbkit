@@ -159,6 +159,36 @@ fn the_output_budget_check_uses_current_dir_and_stdin_and_skips_an_opted_out_exa
     assert_eq!(skipped, Vec::<String>::new());
 }
 
+#[cfg(unix)]
+#[test]
+fn the_output_budget_check_skips_an_example_whose_precondition_the_run_does_not_provide() {
+    use clap::Command;
+    use crumbkit::help::{Example, Guide, Leaf};
+
+    use crate::examples::Examples;
+    use crate::temp::TempDir;
+
+    // The example exits with code 4 when the check lowers its budget, so
+    // each run of it reports one problem.
+    const BREAKS: &[&str] = &[
+        r#"test -n "$SH_OUTPUT_BUDGET" && exit 4; echo printed"#,
+        "--json",
+    ];
+    const GUIDE: Guide = Guide::new().leaves(&[
+        Leaf::new(&["-c"]).examples(&[Example::new(BREAKS, "Print").needs(&["docker"])])
+    ]);
+    let sh = Command::new("sh").subcommand(Command::new("-c"));
+    let goldens = TempDir::new("output-budget-needs").unwrap();
+    let dir = goldens.path().display().to_string();
+    let examples = Examples::new("/bin/sh", &dir);
+
+    let skipped = super::check(&sh, &GUIDE, &examples, super::TIMEOUT);
+    let ran = super::check(&sh, &GUIDE, &examples.provides(&["docker"]), super::TIMEOUT);
+
+    assert_eq!(skipped, Vec::<String>::new());
+    assert_eq!(ran.len(), 1, "{ran:?}");
+}
+
 /// A `--json` example that prints a line, and that never ends when the
 /// output budget is set.
 #[cfg(unix)]

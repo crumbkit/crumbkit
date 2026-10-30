@@ -53,7 +53,7 @@ fn number_to(out: impl Write, args: &[&str]) -> Option<u8> {
         &GUIDE,
         args,
     );
-    parsed.err().map(|stop| stop.number())
+    parsed.err().map(|stop| stop.exit())
 }
 
 /// Parses `args` with `GUIDE` into memory and returns the number of the

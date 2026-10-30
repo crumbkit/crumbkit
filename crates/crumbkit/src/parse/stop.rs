@@ -22,7 +22,7 @@ mod tests;
 /// the refusal prints.
 ///
 /// A tool's `main` returns its exit code, as in `Err(stop) => return
-/// stop.code()`. A tool that does more before it exits reads
+/// stop.exit_code()`. A tool that does more before it exits reads
 /// [`Stop::output`], whose [`Output::is_json`] says whether the caller asked
 /// for JSON, so the tool knows the format of what it prints next. It reads
 /// [`Stop::path`], [`Stop::flags`] and [`Stop::value`] as it reads them on a
@@ -127,25 +127,66 @@ impl Stop {
     /// Returns the exit code for `main` to return: 0 after help or the
     /// version, 2 after a refusal unless the guide lists another code for
     /// it, and 1 when the page could not be written.
+    ///
+    /// ```
+    /// use std::process::ExitCode;
+    ///
+    /// use clap::{CommandFactory as _, Parser};
+    /// use crumbkit::help::Guide;
+    /// use crumbkit::{Sink, ViewFlags};
+    ///
+    /// #[derive(Parser)]
+    /// #[command(name = "tool")]
+    /// struct Tool {
+    ///     #[command(flatten)]
+    ///     view: ViewFlags,
+    /// }
+    ///
+    /// let mut sink = Sink::new(Vec::new(), Vec::new());
+    /// let parsed =
+    ///     crumbkit::parse_to::<Tool, _, _, _, _>(&mut sink, Tool::command(), &Guide::new(), ["tool", "--help"]);
+    /// let stop = parsed.err().unwrap();
+    ///
+    /// assert_eq!(stop.exit_code(), ExitCode::SUCCESS);
+    /// ```
     #[must_use]
-    pub fn code(&self) -> ExitCode {
+    pub fn exit_code(&self) -> ExitCode {
         ExitCode::from(self.code)
     }
 
-    /// Returns the exit code that [`Stop::code`] returns, as a number, such
-    /// as the code that the guide lists for a refused command line. A tool
-    /// that records the exit of a stopped run, or passes it on, reads it
-    /// here, because `ExitCode` cannot be read back as a number.
+    /// Returns the exit code that [`Stop::exit_code`] returns, as a number,
+    /// such as the code that the guide lists for a refused command line. A
+    /// tool that records the exit of a stopped run, or passes it on, reads
+    /// it here, because `ExitCode` cannot be read back as a number.
+    ///
+    /// ```
+    /// use clap::{CommandFactory as _, Parser};
+    /// use crumbkit::help::Guide;
+    /// use crumbkit::{Sink, ViewFlags};
+    ///
+    /// #[derive(Parser)]
+    /// #[command(name = "tool")]
+    /// struct Tool {
+    ///     #[command(flatten)]
+    ///     view: ViewFlags,
+    /// }
+    ///
+    /// let mut sink = Sink::new(Vec::new(), Vec::new());
+    /// let parsed =
+    ///     crumbkit::parse_to::<Tool, _, _, _, _>(&mut sink, Tool::command(), &Guide::new(), ["tool", "--srot"]);
+    ///
+    /// assert_eq!(parsed.err().map(|stop| stop.exit()), Some(2));
+    /// ```
     #[must_use]
-    pub const fn number(&self) -> u8 {
+    pub const fn exit(&self) -> u8 {
         self.code
     }
 
     /// Returns what printed before the run ended. A tool that records the
     /// outcome of a stopped run in a history of its own reads it here,
-    /// because [`Stop::number`] is 0 after help, the version and a topic
+    /// because [`Stop::exit`] is 0 after help, the version and a topic
     /// alike. A page that could not be written still reports what `parse`
-    /// tried to print, with the number 1.
+    /// tried to print, with the exit code 1.
     #[must_use]
     pub const fn printed(&self) -> Printed {
         self.printed

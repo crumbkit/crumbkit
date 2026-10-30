@@ -107,7 +107,7 @@ pub(super) fn write_result<T: Rows>(
     if let Some(bytes) = value.bytes().filter(|_| !output.is_json()) {
         // The text of bytes is their own length, so it is measured without
         // a buffer.
-        if bytes.len() > budget && !document.always_prints_first() {
+        if bytes.len() > budget && !document.get_always_print_first() {
             let over = OverBudget {
                 code,
                 budget,
@@ -125,7 +125,7 @@ pub(super) fn write_result<T: Rows>(
         problems
     };
     if let Some(bytes_of) = document.headed_bytes().filter(|_| !output.is_json()) {
-        let first_always = document.always_prints_first();
+        let first_always = document.get_always_print_first();
         return headed::write(sink, output, value, bytes_of, problems, first_always);
     }
     // `Prepared` borrows the settings for the whole write, and the `Next:`
@@ -267,7 +267,7 @@ fn write_rows<T: Rows>(
             prepared.send_notes(sink, &mut Vec::new(), rows, None);
             Ok((Answer::Whole, bytes))
         }
-        _ if document.always_prints_first() => {
+        _ if document.get_always_print_first() => {
             let bytes = prepared.measured_write(sink, rows, None, listed)?;
             prepared.send_notes(sink, &mut Vec::new(), rows, None);
             Ok((Answer::Whole, bytes))

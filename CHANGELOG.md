@@ -86,8 +86,7 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit-usage: `self usage` and `self figures list` take `--log <FILE>` to
   read a copy of a usage log ([behaviour/usage-log/report]).
 - crumbkit-test: [`check_path_weights`] budgets the bytes of each path
-  through a tool's help, 8,000 by default, and [`path_totals`] and
-  [`output_weight`] compute them ([behaviour/help/checks]).
+  through a tool's help, 8,000 by default ([behaviour/help/checks]).
 - cargo-crumbkit: `weigh --usage`, `--log` and `--since` add each
   command's runs, help pages read before it and 95th percentile output
   from a usage log ([cargo-crumbkit], [behaviour/help/weight]).
@@ -218,7 +217,7 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit: [`Code::runtime`] builds a code known only at run time, and
   `Spelling::split` reads a code in `Spelling::COLONS` back into its
   segments ([behaviour/failures]).
-- crumbkit: `Stop::number` returns a stopped run's exit code as a number
+- crumbkit: `Stop::exit` returns a stopped run's exit code as a number
   ([behaviour/parsing]).
 - crumbkit: [`try_parse`], `try_parse_from` and `try_parse_to` return a
   refused command line unprinted as a [`Refused`], which holds the typed
@@ -301,8 +300,8 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   holds `"empty": true` ([behaviour/usage-log]).
 - crumbkit: [`Bytes`] is a result that `finish` prints unchanged as
   text, and with `--json` as `text` when it is UTF-8 or `base64` otherwise.
-  A `Bytes` row field serializes the same way. `Shape::Bytes` and
-  `Rows::bytes` describe it ([behaviour/output], [behaviour/schemas]).
+  A `Bytes` row field serializes the same way. `Shape::Bytes`
+  describes it ([behaviour/output], [behaviour/schemas]).
 - crumbkit: `--fields`, and `--long` without `--json`, are refused with
   exit code 2 for a [`Bytes`] result, which has no columns
   ([behaviour/output]).
@@ -338,6 +337,13 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   ([behaviour/adoption/opt-outs]).
 - crumbkit: re-exports schemars as `crumbkit::schemars`, the version whose
   `Schema` crumbkit's API takes ([behaviour/schemas]).
+- crumbkit: re-exports serde as `crumbkit::serde`, so a `Shown::json`
+  override names `Serializer` without a serde dependency
+  ([behaviour/output/values]).
+- crumbkit: public getters let a tool's tests read a handler's result:
+  `rows`, `total`, `get_summary` and `get_note` on [`Listing`], `rows`,
+  `failures`, `left_out` and `get_note` on [`Batch`], and `value`,
+  `failures` and `get_note` on [`Prose`] ([behaviour/adoption]).
 - crumbkit-test: `Examples::xdg` and `Failing::xdg` name a fixture that
   the checks copy into each run's fresh XDG directories, so a failing
   command can find a plugin or cache there ([behaviour/checks/end-to-end]).
@@ -668,9 +674,47 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   ([behaviour/adoption/declarations]).
 - crumbkit-test: [`check_opt_outs`] lists a root-verbs declaration with its
   reason as a customisation ([behaviour/adoption/declarations]).
+- crumbkit: `Example::needs` names the preconditions of an example, such
+  as `docker`, which help and `commands list` do not show
+  ([behaviour/checks/end-to-end]).
+- crumbkit-test: `Examples::provides` names the preconditions that a test
+  run provides. [`check_examples`] and [`check_output_budget`] skip an
+  example whose preconditions the run lacks and keep its golden files
+  ([behaviour/checks/end-to-end]).
+- crumbkit-test: [`check_examples`] writes one line for each example that
+  it skips for a precondition, [`check_guide`] still parses the example,
+  and [`check_opt_outs`] lists it among the customisations
+  ([behaviour/checks/end-to-end]).
 
 ### Changed
 
+- crumbkit: breaking: `Stop::code` is now `Stop::exit_code`, and
+  `Stop::number` and `Refused::number` are now `Stop::exit` and
+  `Refused::exit`, the name that `Finished::exit` and `Observer::ended`
+  use ([behaviour/parsing]).
+- crumbkit: breaking: the observer event `events::Refused` is now
+  `events::RefusalEvent`, so it no longer shares a name with
+  `crumbkit::Refused`. It and `events::Finished` drop `#[non_exhaustive]`,
+  which their private fields made redundant ([behaviour/run-observer]).
+- crumbkit: breaking: [`Duration`] keeps its field private. A tool builds
+  one with `Duration::new` or `From` and reads it with `Duration::get`
+  ([behaviour/output/values]).
+- crumbkit: breaking: `Rows::rows`, `Rows::total` and `Rows::failures` are
+  documented, and the other hidden members of `Rows` move to a sealed
+  supertrait, so a tool can no longer call them ([behaviour/adoption]).
+- crumbkit: breaking: the hidden getter `Document::always_prints_first` is
+  now `Document::get_always_print_first`, after the builder
+  `always_print_first` and the `get_` getters of `Guide` and `Leaf`.
+- crumbkit: breaking: `RuntimeCodeError::Segment` is `#[non_exhaustive]`,
+  so a match on it ends with `..` ([behaviour/failures]).
+- crumbkit: breaking: the hidden `crumbkit::shown::__serde` is gone. The
+  `shown!` macro names serde through the public `crumbkit::serde`
+  ([behaviour/output/values]).
+- crumbkit-usage: breaking: `Facts` no longer implements `Default`, so a
+  tool cannot build one, as its documentation says ([behaviour/usage-log]).
+- crumbkit-test: `UnreadableGolden` and the re-export of crumbkit's `Guide`
+  are hidden from the documentation, and so are cargo-crumbkit's library
+  items. A tool names `Guide` from crumbkit.
 - crumbkit: `Code::new` and `Code::runtime` accept hyphens between words
   in a segment, such as `book-club::gate::unmet`. A hyphen may not lead,
   trail or follow another hyphen. Before, a segment allowed only lowercase
@@ -1349,8 +1393,6 @@ rustdoc, or at the page in docs/ that describes the behaviour. -->
 [`check_document_ids`]: crates/crumbkit-test/src/documents.rs
 [`check_mounts`]: crates/crumbkit-test/src/documents.rs
 [`check_path_weights`]: crates/crumbkit-test/src/weights.rs
-[`path_totals`]: crates/crumbkit-test/src/weights.rs
-[`output_weight`]: crates/crumbkit-test/src/weights.rs
 [`Allow`]: crates/crumbkit-test/src/allow.rs
 [`Allow::untwinned`]: crates/crumbkit-test/src/allow.rs
 [`Failing::env`]: crates/crumbkit-test/src/recoveries.rs

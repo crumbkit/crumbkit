@@ -53,7 +53,7 @@ fn refused_by(command: Command, guide: &Guide, args: &[&str]) -> Refused {
     assert_eq!((out, err), (Vec::new(), Vec::new()));
     match unparsed {
         Err(Unparsed::Refused(refused)) => refused,
-        Err(Unparsed::Stopped(stop)) => unreachable!("{args:?} stopped with {}", stop.number()),
+        Err(Unparsed::Stopped(stop)) => unreachable!("{args:?} stopped with {}", stop.exit()),
         Ok(_) => unreachable!("{args:?} parsed"),
     }
 }
@@ -106,7 +106,7 @@ fn a_refused_command_line_comes_back_unprinted_with_its_typed_and_parsed_words_a
         "unexpected argument '--srot' found; a similar argument exists: '--sort'"
     );
     assert_eq!(refused.code(), &CLI_USAGE);
-    assert_eq!(refused.number(), 2);
+    assert_eq!(refused.exit(), 2);
 }
 
 #[test]
@@ -261,12 +261,12 @@ fn printing_a_refusal_returns_a_stop_with_its_number_and_its_output() {
         &["tool", "planets", "--json"],
     );
 
-    let number = refused.number();
+    let number = refused.exit();
     let json = refused.output().is_json();
     let stop = refused.print_to(&mut Sink::new(Vec::new(), Vec::new()));
 
     assert_eq!((number, json), (64, true));
-    assert_eq!((stop.number(), stop.output().is_json()), (64, true));
+    assert_eq!((stop.exit(), stop.output().is_json()), (64, true));
 }
 
 #[test]
@@ -334,7 +334,7 @@ fn a_stop_comes_back_after_help_printed() {
     );
 
     assert!(
-        matches!(&unparsed, Err(Unparsed::Stopped(stop)) if stop.number() == 0),
+        matches!(&unparsed, Err(Unparsed::Stopped(stop)) if stop.exit() == 0),
         "{unparsed:?}"
     );
     assert_ne!(out, Vec::<u8>::new());
@@ -523,7 +523,7 @@ fn as_json_changes_neither_the_exit_code_nor_the_observer_events() {
             };
             number = refused
                 .print_to(&mut Sink::new(Vec::new(), Vec::new()))
-                .number();
+                .exit();
         });
         (number, events)
     };

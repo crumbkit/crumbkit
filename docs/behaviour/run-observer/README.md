@@ -70,9 +70,9 @@ Why: ADR-0057, ADR-0075, ADR-0030, ADR-0042, ADR-0100.
 
 Every method of `Observer` has a default body that does nothing or answers
 that there is nothing, so crumbkit can add an event in a minor release. A
-refusal and a finished run arrive as the `#[non_exhaustive]` structs
-`Refused` and `Finished`, whose getters let them gain a field.
-`Refused::nearest_flag` reads clap's suggestion only when the observer
+refusal and a finished run arrive as the structs `RefusalEvent` and
+`Finished`, whose fields are private, so their getters let them gain a
+field. `RefusalEvent::nearest_flag` reads clap's suggestion only when the observer
 asks, and returns no hidden flag.
 
 A report with no observer installed is one atomic load and a branch. A
@@ -81,4 +81,4 @@ observer, unless all four slots are full. Work that only an observer needs,
 such as the command path of a help topic, happens after the first check. `finish_to` always counts the bytes it writes,
 which adds one addition per write.
 
-Why: ADR-0057, ADR-0075, ADR-0002.
+Why: ADR-0057, ADR-0075, ADR-0002, ADR-0160.

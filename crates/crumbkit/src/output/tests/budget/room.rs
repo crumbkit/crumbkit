@@ -5,7 +5,7 @@ use schemars::JsonSchema;
 use serde::Serialize;
 
 use crate::help::Guide;
-use crate::{Batch, Document, Error, JsonLayout, Row, Rows as _};
+use crate::{Batch, Document, Error, JsonLayout, Row};
 
 use super::{STAR_BATCH, Star, budgeted, finish_output, guided, star};
 

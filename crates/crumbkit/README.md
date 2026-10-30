@@ -105,7 +105,7 @@ fn main() -> ExitCode {
     let parsed = crumbkit::parse::<Cli>(Cli::command(), &Guide::new());
     let (cli, output) = match parsed {
         Ok(parsed) => parsed,
-        Err(stop) => return stop.code(),
+        Err(stop) => return stop.exit_code(),
     };
     let result = list(&cli);
     crumbkit::finish(output, BOOKS_LIST, result)

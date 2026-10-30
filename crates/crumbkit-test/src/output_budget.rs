@@ -61,7 +61,9 @@ const VARIABLE: &str = "OUTPUT_BUDGET";
 /// running any example when that directory does not exist. It skips the
 /// examples that `examples` skips through
 /// [`Rule::Examples`](crate::Rule::Examples) and
-/// [`Allow::example`](crate::Allow::example).
+/// [`Allow::example`](crate::Allow::example), and each example that needs a
+/// precondition that [`Examples::provides`](crate::Examples::provides)
+/// does not list.
 ///
 /// ```no_run
 /// use clap::Command;
@@ -102,7 +104,6 @@ fn check(
     examples: &Examples<'_>,
     timeout: Duration,
 ) -> Vec<String> {
-    let tool = command.get_name();
     let names = guide.tool_name(command);
     let variable = names.variable(VARIABLE);
     let mut problems = Vec::new();
@@ -123,19 +124,18 @@ fn check(
         }
         let document = leaf.get_document();
         let headed = document.is_some_and(|document| document.is_headed());
-        let first_always = document.is_some_and(|document| document.always_prints_first());
+        let first_always = document.is_some_and(|document| document.get_always_print_first());
         for example in leaf.get_examples() {
             let text = !example.words().contains(&"--json");
             if text && !headed {
                 continue;
             }
             let args: Vec<&str> = path.iter().chain(example.words()).copied().collect();
-            let called = std::iter::once(tool)
-                .chain(path.iter().copied())
-                .collect::<Vec<_>>()
-                .join(" ");
+            let called = crate::allow::command_line(command, &below);
             let line = command_line(&called, example.words());
-            if allowances.excuses_example(&below, example.words()) {
+            if allowances.excuses_example(&below, example.words())
+                || !examples.missing(example.get_needs()).is_empty()
+            {
                 continue;
             }
             let dir = Path::new(examples.goldens());

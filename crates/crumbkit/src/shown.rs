@@ -11,11 +11,6 @@ use serde::{Serialize, Serializer};
 #[cfg(test)]
 mod tests;
 
-/// The serde crate that crumbkit builds against, which [`shown!`](crate::shown!)
-/// names so that a tool needs no path to serde of its own.
-#[doc(hidden)]
-pub use serde as __serde;
-
 /// A value that a tool prints as its `Display` where a person reads it, and
 /// in a form of its own in JSON.
 ///
@@ -41,7 +36,7 @@ pub use serde as __serde;
 ///
 /// use crumbkit::Shown;
 /// use crumbkit::schemars::{JsonSchema, Schema, SchemaGenerator};
-/// use serde::Serializer;
+/// use crumbkit::serde::Serializer;
 ///
 /// /// A number of pages, which reads `432 pages` in text and `432` in JSON.
 /// #[derive(Clone, Copy)]
@@ -145,8 +140,8 @@ pub fn serialize<T: Shown + ?Sized, S: Serializer>(
 ///
 /// The macro call names serde and schemars through crumbkit, so a crate
 /// needs neither dependency for the call itself. A type that overrides
-/// [`Shown::json`](crate::Shown::json) names serde's `Serializer` in that
-/// method, so its crate depends on serde, and an override of
+/// [`Shown::json`](crate::Shown::json) names serde's `Serializer` through
+/// `crumbkit::serde`, and an override of
 /// [`Shown::schema`](crate::Shown::schema) names its types through
 /// `crumbkit::schemars`.
 ///
@@ -162,8 +157,8 @@ pub fn serialize<T: Shown + ?Sized, S: Serializer>(
 #[macro_export]
 macro_rules! shown {
     ($type:ty) => {
-        impl $crate::shown::__serde::Serialize for $type {
-            fn serialize<S: $crate::shown::__serde::Serializer>(
+        impl $crate::serde::Serialize for $type {
+            fn serialize<S: $crate::serde::Serializer>(
                 &self,
                 serializer: S,
             ) -> ::core::result::Result<S::Ok, S::Error> {

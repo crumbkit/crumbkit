@@ -22,7 +22,7 @@ fn page(args: &[&str], styled: bool) -> String {
         args,
     );
     assert_eq!(
-        result.err().as_ref().map(Stop::code),
+        result.err().as_ref().map(Stop::exit_code),
         Some(ExitCode::SUCCESS)
     );
     assert_eq!(err, b"");
@@ -144,7 +144,7 @@ fn refusal_streams(args: &[&str], styled: bool) -> (String, String) {
         args,
     );
     assert_eq!(
-        result.err().as_ref().map(Stop::code),
+        result.err().as_ref().map(Stop::exit_code),
         Some(ExitCode::from(2)),
         "{args:?}"
     );

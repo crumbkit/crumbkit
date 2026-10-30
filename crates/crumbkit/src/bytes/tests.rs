@@ -7,8 +7,10 @@ use serde::Serialize;
 use serde_json::json;
 
 use super::{Base64, Bytes};
+use crate::Rows;
+use crate::row::Sealed;
 use crate::shown::TextCells;
-use crate::{NoRow, Row, Rows, Shape};
+use crate::{NoRow, Row, Shape};
 
 /// Returns the base64 text of `bytes`.
 fn base64(bytes: &[u8]) -> String {
@@ -94,10 +96,10 @@ fn a_bytes_result_has_no_rows_and_returns_its_bytes() {
     let bytes = Bytes::from(vec![1, 2, 3]);
 
     assert_eq!(bytes.rows().len(), 0);
-    assert_eq!(Rows::bytes(&bytes), Some(&[1_u8, 2, 3][..]));
+    assert_eq!(Sealed::bytes(&bytes), Some(&[1_u8, 2, 3][..]));
     assert_eq!(bytes.as_slice(), &[1, 2, 3]);
-    assert_eq!(<Bytes as Rows>::SHAPE, Shape::Bytes);
-    assert_eq!(<<Bytes as Rows>::Row as Row>::COLUMNS, NoRow::COLUMNS);
+    assert_eq!(<Bytes as Sealed>::SHAPE, Shape::Bytes);
+    assert_eq!(<<Bytes as Sealed>::Row as Row>::COLUMNS, NoRow::COLUMNS);
 }
 
 #[test]

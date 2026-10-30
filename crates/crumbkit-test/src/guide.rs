@@ -45,7 +45,9 @@ mod tests;
 ///   example's command line as help prints it, with each word that a POSIX
 ///   shell would split or expand between single quotes. An
 ///   example with `--help` or `--version` counts as refused, because an
-///   example shows a real run;
+///   example shows a real run. The check parses every example, including
+///   one that needs a precondition that a test run may not provide
+///   (`Example::needs`);
 /// - an example that types `--fields`, `--long` or `--full` when the leaf
 ///   does not offer that flag (`Leaf::offers`), because crumbkit refuses
 ///   the run, or when the flag adds nothing to the JSON, offered or not,

@@ -38,7 +38,6 @@ use clap::{Args, Command};
 use schemars::JsonSchema;
 use serde::Serialize;
 
-use super::file::LOG;
 use super::report::{Figures, Finding, Kind, Report, Tally, read};
 use crumbkit::help::Guide;
 use crumbkit::{Call, Document, Listing, Output};
@@ -221,9 +220,7 @@ pub(super) fn open(tool: &Command, args: &SelfUsage) -> Option<BufReader<File>> 
     }
     let path = match &args.log {
         Some(path) => path.clone(),
-        None => super::platform::state_home()?
-            .join(tool.get_name())
-            .join(LOG),
+        None => super::file::log_path(tool.get_name())?,
     };
     File::open(path).ok().map(BufReader::new)
 }
