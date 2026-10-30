@@ -56,8 +56,12 @@ example's line shows only with `--nocapture` or when the test fails,
 because a passing test's captured output is hidden.
 
 Considered: a setup step that creates the precondition, such as running an
-earlier command first, which would let the example run everywhere and was
-left for a later need; reading the provided names from an environment
-variable that crumbkit-test names; failing the check when a run provides a
-name that no example needs; showing preconditions in `--help` or in the
-`commands list` document.
+earlier command first, which would let the example run everywhere but adds
+a second way to run commands that no adopter has asked for yet; reading the
+provided names from an environment variable that crumbkit-test names,
+which would take from the tool the choice of how its CI job says what it
+provides; failing the check when a run provides a name that no example
+needs, which would fail a shared list of names in a run whose guide uses
+only some of them; showing preconditions in `--help` or in the `commands
+list` document, which would lengthen every reader's page and change a
+document's schema for a fact that only the tests use.

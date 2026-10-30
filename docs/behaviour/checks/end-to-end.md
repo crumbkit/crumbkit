@@ -95,7 +95,9 @@ problem it reports. These rules matter most to a tool's author:
   run provides every name that the example needs. `check_examples` writes
   one line to the test's captured standard error for each example that it
   skips, naming the names that the run lacks. cargo shows the lines with
-  `--nocapture` or when the test fails.
+  `--nocapture` or when the test fails. The checks compare names exactly
+  and report no name that no example needs, so a misspelt name skips its
+  example in every run and no check fails.
 - A skipped example keeps its golden files. A run without the precondition
   never reads, rewrites or deletes them, so the run that provides it owns
   them. `check_guide` still parses every example, skipped or not, and

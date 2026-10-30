@@ -4,7 +4,7 @@
 use crumbkit::help::{Example, Guide, Leaf};
 use snapbox::assert::Action;
 
-use super::{examples, run, skips};
+use super::{examples, run};
 use crate::temp::TempDir;
 use crate::testing::panic_message;
 
@@ -26,7 +26,7 @@ fn a_run_that_provides_no_preconditions_skips_each_example_that_needs_one_and_na
 {
     let dir = TempDir::new("examples-needs-none").unwrap();
 
-    let skipped = skips(&GUIDE, &examples(&dir), Action::Overwrite);
+    let skipped = run(&GUIDE, &examples(&dir), Action::Overwrite);
 
     assert_eq!(dir.names(), [BOOKS]);
     assert_eq!(
@@ -42,7 +42,7 @@ fn a_run_that_provides_no_preconditions_skips_each_example_that_needs_one_and_na
 fn a_run_runs_an_example_only_when_it_provides_every_precondition_of_the_example() {
     let dir = TempDir::new("examples-needs-some").unwrap();
 
-    let skipped = skips(
+    let skipped = run(
         &GUIDE,
         &examples(&dir).provides(&["docker"]),
         Action::Overwrite,
@@ -61,7 +61,7 @@ fn a_run_runs_an_example_only_when_it_provides_every_precondition_of_the_example
 fn a_run_that_provides_every_precondition_runs_every_example() {
     let dir = TempDir::new("examples-needs-all").unwrap();
 
-    let skipped = skips(
+    let skipped = run(
         &GUIDE,
         &examples(&dir).provides(&["reports", "docker"]),
         Action::Overwrite,

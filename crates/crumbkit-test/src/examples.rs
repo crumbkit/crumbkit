@@ -342,7 +342,7 @@ fn skip(
     stderr_names: &mut Vec<String>,
     skipped: &mut Vec<String>,
 ) -> bool {
-    let missing = examples.missing(example.preconditions());
+    let missing = examples.missing(example.get_needs());
     if missing.is_empty() {
         return false;
     }

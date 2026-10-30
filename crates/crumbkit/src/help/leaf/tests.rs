@@ -231,7 +231,7 @@ fn an_example_holds_the_preconditions_that_it_needs_and_help_does_not_show_them(
 
     let long = help(&GUIDE, &["tool", "planets", "show", "--help"]);
 
-    assert_eq!(EXAMPLE.preconditions(), ["docker"]);
+    assert_eq!(EXAMPLE.get_needs(), ["docker"]);
     assert!(
         long.ends_with("Examples:\n  tool planets show --all\n          Restart every container\n"),
         "{long}"
@@ -240,7 +240,7 @@ fn an_example_holds_the_preconditions_that_it_needs_and_help_does_not_show_them(
 
 #[test]
 fn an_example_needs_no_precondition_until_it_names_one() {
-    assert_eq!(Example::new(&[], "").preconditions(), [""; 0]);
+    assert_eq!(Example::new(&[], "").get_needs(), [""; 0]);
 }
 
 /// A row with a column without a description and a column whose

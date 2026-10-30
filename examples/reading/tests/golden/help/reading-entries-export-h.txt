@@ -9,7 +9,6 @@ Options:
 Examples:
   reading entries export --list to-read
   reading entries export --list to-read --json
-  reading entries export --list scanned --json
 
 Effects: read-only, closed-world.
 Output: the bytes unchanged, and --json prints them as text or base64.

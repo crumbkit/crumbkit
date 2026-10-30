@@ -192,6 +192,10 @@ impl<'a> Examples<'a> {
     /// The tool's test decides what the run provides, such as from a
     /// variable that a CI job with a container daemon sets. crumbkit-test
     /// reads no environment variable for this.
+    ///
+    /// The check compares names exactly and does not report a name that no
+    /// example needs. A name misspelt in `Example::needs` or here therefore
+    /// skips its example in every run, and no check fails.
     #[must_use]
     pub const fn provides(mut self, provides: &'a [&'a str]) -> Self {
         self.provides = provides;

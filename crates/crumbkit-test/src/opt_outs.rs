@@ -63,8 +63,9 @@ const SCHEMA: &str = "crumbkit/opt-outs/v1";
 /// `Guide::dashed_forms` declaration, and with it each command named in
 /// another style that also answers to its dashed form, such as
 /// `reading_lists` for `reading-lists`, and each example that needs a
-/// precondition, which a test run may not provide (ADR-0163). The report spells codes with
-/// colons. The section is left out when the tool declares nothing.
+/// precondition, which a test run may not provide (ADR-0163). The report
+/// spells codes with colons. The section is left out when the tool
+/// declares nothing.
 /// A reviewer reads a change to a tool's opt-outs as a change to these two
 /// files, and an agent reads `opt-outs.json` to learn where the tool
 /// departs from crumbkit's conventions.

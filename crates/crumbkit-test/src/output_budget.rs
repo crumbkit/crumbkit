@@ -104,7 +104,6 @@ fn check(
     examples: &Examples<'_>,
     timeout: Duration,
 ) -> Vec<String> {
-    let tool = command.get_name();
     let names = guide.tool_name(command);
     let variable = names.variable(VARIABLE);
     let mut problems = Vec::new();
@@ -132,13 +131,10 @@ fn check(
                 continue;
             }
             let args: Vec<&str> = path.iter().chain(example.words()).copied().collect();
-            let called = std::iter::once(tool)
-                .chain(path.iter().copied())
-                .collect::<Vec<_>>()
-                .join(" ");
+            let called = crate::allow::command_line(command, &below);
             let line = command_line(&called, example.words());
             if allowances.excuses_example(&below, example.words())
-                || !examples.missing(example.preconditions()).is_empty()
+                || !examples.missing(example.get_needs()).is_empty()
             {
                 continue;
             }

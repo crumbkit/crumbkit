@@ -62,7 +62,7 @@ impl Example {
     /// Returns the names of the preconditions that a run of the example
     /// needs, which are empty unless [`Example::needs`] set them.
     #[must_use]
-    pub const fn preconditions(&self) -> &'static [&'static str] {
+    pub const fn get_needs(&self) -> &'static [&'static str] {
         self.needs
     }
 }
