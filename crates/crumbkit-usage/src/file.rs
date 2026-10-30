@@ -3,7 +3,7 @@
 
 use std::fs::{self, DirBuilder, File, OpenOptions, TryLockError};
 use std::io::{self, Read as _, Seek as _, SeekFrom, Write as _};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::thread;
 use std::time::{Duration, Instant};
 
@@ -25,6 +25,15 @@ pub(super) struct Limits {
 /// The name of the log file in the tool's directory under the XDG state
 /// directory.
 pub(super) const LOG: &str = "usage.jsonl";
+
+/// Returns the usage log of the tool named `tool`: `usage.jsonl` in the
+/// tool's directory under the state directory, or `None` when there is no
+/// state directory. [`start`](crate::start) writes the log there, and
+/// `self usage` and `self figures list` read it there.
+#[must_use]
+pub fn log_path(tool: &str) -> Option<PathBuf> {
+    Some(platform::state_home()?.join(tool).join(LOG))
+}
 
 /// The limits of every tool's usage log: past 10 MB the file keeps its
 /// newest whole lines that fit in 5 MB, and a run waits at most 100 ms for

@@ -59,5 +59,8 @@ and [ADR-0044] records why it reads the document.
 Licensed under either of Apache License, Version 2.0 or MIT license at your
 option.
 
+[`render`]: src/render.rs
+[`Reference`]: src/render.rs
+[`RenderError`]: src/error.rs
 [ADR-0044]: ../../docs/decisions/api/help/0044-command-reference.md
 [command reference docs]: ../../docs/behaviour/help/reference.md

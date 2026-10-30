@@ -25,6 +25,7 @@ its trace context.
 - [ADR-0081. Seams for one adopter removed](0081-seams-for-one-adopter-removed.md)
 - [ADR-0085. Public items without a caller removed](0085-public-items-without-a-caller-removed.md)
 - [ADR-0096. Rows decide their problems](0096-rows-decide-their-problems.md)
+- [ADR-0162. Compile-fail guards for removed items deleted](0162-removed-item-guards-deleted.md)
 - [ADR-0054. Adoption](adoption/README.md)
 - [ADR-0055. Failures](failures/README.md)
 - [ADR-0022. Help](help/README.md)

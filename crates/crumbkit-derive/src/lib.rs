@@ -26,8 +26,8 @@ mod tests;
 /// | `field(NAME = EXPR, ...)` | variant or struct | One `Field` for each name, in the written order. Each name must be one or more lowercase ASCII letters, digits and underscores. |
 /// | `url = EXPR` | variant or struct | The `&str` that `url()` returns. |
 /// | `diagnostic` | variant or struct | `diagnostic()` returns the failure itself, which must implement `miette::Diagnostic`. |
-/// | `forward` | variant or struct with one field | Every method calls the same method on that field, which must implement `Failure`. |
-/// | `forward = FIELD` | variant or struct with named fields | Every method calls the same method on the named field. |
+/// | `forward` | variant or struct with one field | Every method except `diagnostic()` calls the same method on that field, which must implement `Failure`. `diagnostic()` forwards only with the `diagnostic` key. |
+/// | `forward = FIELD` | variant or struct with named fields | Every method except `diagnostic()` calls the same method on the named field, as `forward` does. |
 /// | `crate = PATH` | type | The path of the crate that holds `Failure`. It is `::crumbkit` unless given, and a crate that reaches crumbkit through a re-export gives that path. |
 ///
 /// Each variant that does not forward needs `code` and exactly one of

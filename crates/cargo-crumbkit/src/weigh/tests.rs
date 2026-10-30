@@ -5,8 +5,8 @@ use std::path::Path;
 
 use serde_json::Value;
 
-use super::{WEIGH, Weight, join};
-use crate::tool::Used;
+use super::{WEIGH, Weight, join, usage_log};
+use crate::tool::{Listed, Used};
 
 /// Returns the weight of the command at `path` with 500 bytes of `-h`,
 /// 1,000 bytes of `--help` and no output.
@@ -111,23 +111,15 @@ fn the_checked_in_schema_matches_the_weigh_document_schema() {
     );
 }
 
-#[cfg(windows)]
 #[test]
-fn on_windows_an_absolute_xdg_state_home_holds_the_log_and_otherwise_local_app_data_does() {
-    use std::ffi::OsString;
-    use std::path::PathBuf;
-
-    use super::windows_state_home;
-
-    let local = || Some(PathBuf::from(r"C:\Users\me\AppData\Local"));
+fn without_log_weigh_reads_the_usage_log_at_the_path_that_crumbkit_usage_writes() {
+    let commands = [Listed {
+        path: "shelf".to_owned(),
+        examples: Vec::new(),
+    }];
 
     assert_eq!(
-        windows_state_home(Some(OsString::from(r"C:\state")), local),
-        Some(PathBuf::from(r"C:\state"))
+        usage_log(None, &commands).ok(),
+        crumbkit_usage::log_path("shelf")
     );
-    assert_eq!(
-        windows_state_home(Some(OsString::from("state")), local),
-        local()
-    );
-    assert_eq!(windows_state_home(None, local), local());
 }

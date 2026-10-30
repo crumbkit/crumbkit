@@ -8,13 +8,11 @@
 //! [`codes`]: crate::codes
 //! [`AliasesList`]: crate::AliasesList
 //! [`ALIASES_LIST`]: crate::ALIASES_LIST
+//! [`AliasRow`]: crate::AliasRow
 //! [schema]: https://github.com/crumbkit/crumbkit/blob/main/crates/crumbkit-aliases/schemas/aliases-list-v1.json
 //! [ADR-0027]: https://github.com/crumbkit/crumbkit/blob/main/docs/decisions/api/0027-aliases.md
 //! [aliases docs]: https://github.com/crumbkit/crumbkit/blob/main/docs/behaviour/parsing/aliases.md
 #![doc = include_str!("../README.md")]
-// docs.rs builds the docs on nightly with `--cfg docsrs`, and rustdoc's
-// `doc_cfg` feature labels each item behind a cargo feature with its name.
-#![cfg_attr(docsrs, feature(doc_cfg))]
 
 pub mod codes;
 mod entry;

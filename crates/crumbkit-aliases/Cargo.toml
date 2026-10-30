@@ -38,11 +38,5 @@ etcetera = { workspace = true }
 # The tests read a listing as JSON, as `finish` writes it.
 serde_json = { workspace = true }
 
-# docs.rs documents the crate with every feature on. `--cfg docsrs` turns on
-# the `doc_cfg` attribute in `lib.rs`, which labels each item behind a feature.
-[package.metadata.docs.rs]
-all-features = true
-rustdoc-args = ["--cfg", "docsrs"]
-
 [lints]
 workspace = true
