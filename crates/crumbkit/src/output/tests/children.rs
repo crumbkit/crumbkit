@@ -510,7 +510,7 @@ fn room_counts_the_default_child_lines_of_shown_values() {
         &guide,
         &["tool", "list"],
     );
-    let seconds = |count| crate::Duration(std::time::Duration::from_secs(count));
+    let seconds = |count| crate::Duration::new(std::time::Duration::from_secs(count));
     let rows = vec![Job {
         name: "nightly",
         steps: vec![seconds(3), seconds(250)],

@@ -95,11 +95,11 @@ pub trait Observer: Sync {
     }
 
     /// clap refused the command line, the refusal printed, and the run
-    /// ends, as [`Refused`] describes. A refusal that
+    /// ends, as [`RefusalEvent`] describes. A refusal that
     /// [`try_parse`](crate::try_parse) returns reports this when
     /// [`crate::Refused::print`] prints it, and a refusal that the tool
     /// never prints reports nothing.
-    fn refused(&self, refused: &Refused<'_>) {
+    fn refused(&self, refused: &RefusalEvent<'_>) {
         let _ = refused;
     }
 
@@ -177,9 +177,8 @@ pub trait Observer: Sync {
 }
 
 /// A command line that clap refused, which [`Observer::refused`] receives.
-#[non_exhaustive]
 #[derive(Debug)]
-pub struct Refused<'a> {
+pub struct RefusalEvent<'a> {
     /// The tool's root command after clap refused the line.
     command: &'a Command,
     /// The command path that `parse` walked.
@@ -190,7 +189,7 @@ pub struct Refused<'a> {
     exit: u8,
 }
 
-impl<'a> Refused<'a> {
+impl<'a> RefusalEvent<'a> {
     /// Returns the refusal of `error` at `path` below `command`, with the
     /// exit code `exit`.
     pub(crate) fn new(
@@ -250,7 +249,6 @@ impl<'a> Refused<'a> {
 
 /// What `finish` or a stream reports when it returns, which
 /// [`Observer::finished`] receives.
-#[non_exhaustive]
 #[derive(Clone, Copy, Debug)]
 pub struct Finished {
     /// The exit code that it returned.
@@ -476,7 +474,7 @@ pub(crate) fn helped(command: &Command, path: &[String], long: bool, exit: u8) {
 /// the exit code `exit`.
 pub(crate) fn refused(command: &Command, path: &[String], error: &clap::Error, exit: u8) {
     if observed() {
-        let refused = Refused::new(command, path, error, exit);
+        let refused = RefusalEvent::new(command, path, error, exit);
         for observer in observers() {
             observer.refused(&refused);
         }

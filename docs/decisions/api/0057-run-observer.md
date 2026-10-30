@@ -1,7 +1,7 @@
 # ADR-0057. Run observer
 
 - Date: 2026-10-14
-- Status: amended by ADR-0075
+- Status: amended by ADR-0075 and ADR-0160
 
 ## Context
 

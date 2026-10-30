@@ -137,7 +137,9 @@ fn leak(text: &str) -> &'static str {
 pub enum RuntimeCodeError {
     /// A segment breaks the rule of [`Code::new`]: it is not words of
     /// lowercase ASCII letters, digits and underscores joined by single
-    /// hyphens.
+    /// hyphens. The variant may gain fields, so a match on it ends with
+    /// `..`.
+    #[non_exhaustive]
     Segment {
         /// Which segment broke the rule: `component`, `area` or `reason`.
         segment: &'static str,

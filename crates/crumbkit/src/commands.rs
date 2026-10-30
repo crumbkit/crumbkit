@@ -48,7 +48,7 @@
 //!     let parsed = crumbkit::parse_from::<Cli, _, _>(Cli::command(), &GUIDE, args);
 //!     let (cli, mut output) = match parsed {
 //!         Ok(parsed) => parsed,
-//!         Err(stop) => return stop.code(),
+//!         Err(stop) => return stop.exit_code(),
 //!     };
 //!     match cli.resource {
 //!         Resource::Commands { command: CommandsCommand::List(args) } => {

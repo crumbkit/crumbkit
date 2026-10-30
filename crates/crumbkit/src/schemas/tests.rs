@@ -442,8 +442,6 @@ fn list_prints_one_row_for_each_served_document_with_its_description() {
 
 #[test]
 fn list_prints_one_page_and_counts_every_document_in_its_total() {
-    use crate::Rows as _;
-
     let listing = list(
         &mut output(),
         &GUIDE,

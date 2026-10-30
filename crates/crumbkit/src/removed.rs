@@ -1,5 +1,5 @@
-//! Doctests that fail to compile while an item that ADR-0081 or ADR-0085
-//! removed is absent. Each option that ADR-0081 removed reproduced the
+//! Doctests that fail to compile while an item that ADR-0081, ADR-0085 or
+//! ADR-0160 removed is absent. Each option that ADR-0081 removed reproduced the
 //! output shape of one adopting tool. API-1 keeps an option that encodes one
 //! tool's particular output in that tool as glue, so such an option returns
 //! only with a second adopter or an independent use in `examples/`
@@ -160,4 +160,70 @@
 //!
 //! ```compile_fail
 //! let _: Vec<u8> = crumbkit::Bytes::new(vec![1]).into_vec();
+//! ```
+//!
+//! ADR-0160 renamed and narrowed items before the first release. A tool
+//! reads a stopped run's exit with `Stop::exit_code` and `Stop::exit`, and
+//! a refusal's exit with `Refused::exit`:
+//!
+//! ```compile_fail
+//! fn exit(stop: &crumbkit::Stop) -> std::process::ExitCode {
+//!     stop.code()
+//! }
+//! ```
+//!
+//! ```compile_fail
+//! fn exit(stop: &crumbkit::Stop) -> u8 {
+//!     stop.number()
+//! }
+//! ```
+//!
+//! ```compile_fail
+//! fn exit(refused: &crumbkit::Refused) -> u8 {
+//!     refused.number()
+//! }
+//! ```
+//!
+//! An observer receives a refused command line as `events::RefusalEvent`:
+//!
+//! ```compile_fail
+//! fn refused(_: &crumbkit::events::Refused<'_>) {}
+//! ```
+//!
+//! A tool builds a `Duration` with `Duration::new` and reads it with
+//! `Duration::get`, because its field is private:
+//!
+//! ```compile_fail
+//! let _ = crumbkit::Duration(std::time::Duration::from_secs(1));
+//! ```
+//!
+//! ```compile_fail
+//! let _ = crumbkit::Duration::new(std::time::Duration::from_secs(1)).0;
+//! ```
+//!
+//! A tool cannot call what `finish` reads from a result on a result it
+//! holds. It reads a result through the result's own methods, such as
+//! `Listing::rows`:
+//!
+//! ```compile_fail
+//! # #[derive(serde::Serialize, schemars::JsonSchema)]
+//! # struct Book { id: u32 }
+//! # impl crumbkit::Row for Book { const COLUMNS: &'static [&'static str] = &["id"]; }
+//! let listing = crumbkit::Listing::new(vec![Book { id: 1 }], 1);
+//! let _ = listing.more();
+//! ```
+//!
+//! ```compile_fail
+//! # #[derive(serde::Serialize, schemars::JsonSchema)]
+//! # struct Book { id: u32 }
+//! # impl crumbkit::Row for Book { const COLUMNS: &'static [&'static str] = &["id"]; }
+//! let _ = crumbkit::Rows::rows(&vec![Book { id: 1 }]);
+//! ```
+//!
+//! A tool reads whether a document always prints its first answer with
+//! `Document::get_always_print_first`:
+//!
+//! ```compile_fail
+//! const ROWS: crumbkit::Document<()> = crumbkit::Document::new("tool", "get", 1, "Rows.");
+//! let _ = ROWS.always_prints_first();
 //! ```

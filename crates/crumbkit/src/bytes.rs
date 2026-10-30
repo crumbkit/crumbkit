@@ -8,7 +8,7 @@ use schemars::{JsonSchema, Schema, SchemaGenerator, json_schema};
 use serde::Serialize;
 use serde::ser::{SerializeMap, Serializer};
 
-use crate::{NoRow, Rows, Shape, Shown};
+use crate::{NoRow, Shape, Shown};
 
 #[cfg(test)]
 mod tests;
@@ -175,7 +175,7 @@ impl JsonSchema for Bytes {
     }
 }
 
-impl Rows for Bytes {
+impl crate::row::Sealed for Bytes {
     type Row = NoRow;
     const SHAPE: Shape = Shape::Bytes;
     type Summary = crate::NoSummary;

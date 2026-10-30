@@ -45,11 +45,11 @@ fn job() -> Job {
         steps: vec![
             Step {
                 name: "fetch",
-                took: Duration(std::time::Duration::from_secs(3)),
+                took: Duration::new(std::time::Duration::from_secs(3)),
             },
             Step {
                 name: "build",
-                took: Duration(std::time::Duration::from_secs(250)),
+                took: Duration::new(std::time::Duration::from_secs(250)),
             },
         ],
     }

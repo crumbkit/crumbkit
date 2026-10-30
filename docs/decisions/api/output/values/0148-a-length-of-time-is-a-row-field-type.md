@@ -1,7 +1,7 @@
 # ADR-0148. A length of time is a row field type
 
 - Date: 2026-10-24
-- Status: accepted
+- Status: amended by ADR-0160
 - Supersedes: ADR-0146, which it amends
 - Missed: ADR-0146 gave a measured duration a text form only, so a row field that held a length of time had no JSON form and a tool wrote its own type for one.
 

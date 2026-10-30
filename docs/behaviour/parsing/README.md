@@ -65,10 +65,10 @@ When `parse` prints help, the version or a refusal, it ends the run and
 returns a [`Stop`](../../../crates/crumbkit/src/parse/stop.rs) in place of a
 bare `ExitCode`. `try_parse` returns the `Stop` of help or the version
 inside `Unparsed::Stopped`, and `Refused::print` returns the `Stop` of a
-refusal. A tool's `main` returns `stop.code()`. A tool that prints
+refusal. A tool's `main` returns `stop.exit_code()`. A tool that prints
 more before it exits reads `Stop::output`, whose `Output::is_json` says
 whether the caller asked for JSON, or, after `Refused::as_json`, which form
-the refusal printed in. `Stop::number` returns the same exit code
+the refusal printed in. `Stop::exit` returns the same exit code
 as a `u8`: 0 after help or the version, the code that the guide lists for a
 refused command line, which is 2 unless an exit lists the refusal, and 1
 when the page could not be written. A tool that records the exit of a
@@ -88,7 +88,7 @@ no flags. The
 `Output`, the path and the words inside a `Stop` sit in a `Box`, which
 costs one allocation only on a run that `parse` ends.
 
-Why: ADR-0002, ADR-0089, ADR-0107, ADR-0111, ADR-0136.
+Why: ADR-0002, ADR-0089, ADR-0107, ADR-0111, ADR-0136, ADR-0160.
 
 ## The command tree after parsing
 
@@ -226,7 +226,7 @@ A `Refused` holds what the refusal prints and what the run knew:
 - `message`, `code` and `recovery`, which the refusal prints, with the code
   after the guide's renames and the recovery after the tool's declared hint
   or calls, so a tool that prints its own document prints its hint;
-- `number`, the exit code that the run ends with once the refusal prints;
+- `exit`, the exit code that the run ends with once the refusal prints;
 - `output`, the output flags as far as the walk found them;
 - `typed`, the words after the program name as the caller typed them;
 - `parsed`, the words that crumbkit gave clap, after it turned the word

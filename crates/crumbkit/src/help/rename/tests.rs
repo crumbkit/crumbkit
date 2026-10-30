@@ -85,7 +85,7 @@ fn a_refused_command_line_prints_the_tool_s_usage_code_and_exits_with_the_code_i
     .err()
     .unwrap();
 
-    assert_eq!(stop.code(), std::process::ExitCode::from(64));
+    assert_eq!(stop.exit_code(), std::process::ExitCode::from(64));
     let err = String::from_utf8(err).unwrap();
     assert!(err.ends_with("  code:  ledger::cli::usage\n"), "{err}");
 }

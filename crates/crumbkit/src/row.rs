@@ -10,6 +10,7 @@ pub(crate) mod problems;
 mod rows;
 
 pub use no_row::NoRow;
+pub(crate) use rows::Sealed;
 pub use rows::{Rows, Shape};
 
 pub(crate) use fields::{can_be_empty, properties};

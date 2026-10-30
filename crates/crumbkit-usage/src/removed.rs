@@ -1,6 +1,7 @@
-//! Doctests that fail to compile while an item that ADR-0095 removed is
-//! absent. No tool in this repository called these items. rustdoc compiles
-//! each block below and passes only when the block fails to compile.
+//! Doctests that fail to compile while an item that ADR-0095 or ADR-0160
+//! removed is absent. No tool in this repository called these items.
+//! rustdoc compiles each block below and passes only when the block fails
+//! to compile.
 //!
 //! The log's thread always handles SIGINT and SIGTERM:
 //!
@@ -17,4 +18,11 @@
 //!
 //! ```compile_fail
 //! let _ = crumbkit_usage::section::<()>;
+//! ```
+//!
+//! A tool receives `Facts` from crumbkit-usage and cannot build one
+//! (ADR-0160):
+//!
+//! ```compile_fail
+//! let _ = crumbkit_usage::Facts::default();
 //! ```

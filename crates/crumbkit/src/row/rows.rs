@@ -16,37 +16,51 @@ use crate::{Call, Failure, Step};
 ///
 /// crumbkit implements this trait, and a tool cannot implement it, so crumbkit
 /// can add result shapes later without breaking a tool. A tool names the
-/// trait only in a bound, such as `T: Rows`, and only crumbkit calls its
-/// members, so they are hidden from the documentation.
-pub trait Rows: Serialize + sealed::Sealed {
+/// trait only in a bound, such as `T: Rows`. The trait has no members of
+/// its own. Its supertrait `Sealed` holds what `crumbkit::finish` reads
+/// from a result, and sits in a private module, so a tool cannot call those
+/// members on a result it holds. A test that reads a result's rows calls
+/// [`Listing::rows`](crate::Listing::rows) or
+/// [`Batch::rows`](crate::Batch::rows).
+pub trait Rows: Serialize + Sealed {}
+
+impl<T: Serialize + Sealed> Rows for T {}
+
+/// What `crumbkit::finish` reads from a [`Rows`] result. crumbkit implements
+/// it for each result shape, and a tool can neither implement nor name it,
+/// because it is public only within crumbkit.
+//
+// RUST-10: a tool's own function with a `T: Rows` bound can still call these
+// members on `T`, because Rust lets a generic call the members of every
+// supertrait of its bounds. Rust has no way to keep a supertrait's members
+// from a bound short of a private token argument on each member, which would
+// add an argument to every call in crumbkit. The members are absent from the
+// documentation and from every concrete result, so a tool meets them only in
+// a generic function of its own.
+pub trait Sealed {
     /// The type of each row. A `Prose` and `Bytes` have no rows, and their
     /// row type is [`NoRow`](crate::NoRow).
-    #[doc(hidden)]
     type Row: Row;
 
     /// The kind of result, which decides the fields of its JSON document. A
     /// single row's `data` is an object, a prose result's is its value, a
     /// bytes result's is its text or base64 object, and every other
     /// result's is an array.
-    #[doc(hidden)]
     const SHAPE: Shape;
 
     /// The type of the summary that prints above the table. Only a
     /// `Listing` can have a summary, and every other result has
     /// [`NoSummary`](crate::NoSummary). The summary's JSON Schema is the
     /// schema of the document's `summary` field.
-    #[doc(hidden)]
     type Summary: Serialize + fmt::Display + JsonSchema;
 
     /// Returns the rows in order. A single row is a slice of one.
-    #[doc(hidden)]
     fn rows(&self) -> &[Self::Row];
 
     /// Returns the number of rows that matched when the result is one page
     /// of them, and `None` otherwise. Only a `Listing` returns a total, and
     /// a listing whose source the tool did not count (`Listing::uncounted`)
     /// or read only in part (`Listing::capped`) returns `None`.
-    #[doc(hidden)]
     fn total(&self) -> Option<usize> {
         None
     }
@@ -55,7 +69,6 @@ pub trait Rows: Serialize + sealed::Sealed {
     /// listing from a capped source, whose source holds more rows beyond
     /// them, and `None` otherwise (`Listing::capped`). The footer gives it
     /// as a lower bound on the rows that matched.
-    #[doc(hidden)]
     fn at_least(&self) -> Option<usize> {
         None
     }
@@ -64,14 +77,12 @@ pub trait Rows: Serialize + sealed::Sealed {
     /// fewer rows than the total, more rows that the tool did not count, or
     /// rows beyond those the tool read from a capped source. Only a
     /// `Listing` returns true.
-    #[doc(hidden)]
     fn more(&self) -> bool {
         false
     }
 
     /// Returns the phrase that names the rows in the text footer, such as
     /// `books`. Only a `Listing` returns one.
-    #[doc(hidden)]
     fn description(&self) -> Option<&str> {
         None
     }
@@ -79,14 +90,12 @@ pub trait Rows: Serialize + sealed::Sealed {
     /// Returns the phrase that names one row in the text footer and cut
     /// line of a listing without a total, such as `book`. Only a `Listing`
     /// returns one.
-    #[doc(hidden)]
     fn singular(&self) -> Option<&str> {
         None
     }
 
     /// Returns the summary that the text output prints above the table and
     /// the JSON document holds under `summary`. Only a `Listing` returns one.
-    #[doc(hidden)]
     fn summary(&self) -> Option<&Self::Summary> {
         None
     }
@@ -94,7 +103,6 @@ pub trait Rows: Serialize + sealed::Sealed {
     /// Returns the line that the text output prints on standard error after
     /// the result and any footer, and before any failure. A `Listing`, a
     /// `Batch` and a `Prose` return one when the tool set it.
-    #[doc(hidden)]
     fn note(&self) -> Option<&str> {
         None
     }
@@ -102,21 +110,18 @@ pub trait Rows: Serialize + sealed::Sealed {
     /// Returns the line that the text output prints on standard error after
     /// the note under `--long` only. Only a `Listing` returns one, when the
     /// tool set it (ADR-0139).
-    #[doc(hidden)]
     fn long_note(&self) -> Option<&str> {
         None
     }
 
     /// Returns the command that the text output names as the next step, and
     /// the phrase that follows it. Only a `Listing` returns one.
-    #[doc(hidden)]
     fn next_step(&self) -> Option<(&Call, &str)> {
         None
     }
 
     /// Returns the steps that the text output names after the next step, in
     /// order. Only a `Listing` returns any.
-    #[doc(hidden)]
     fn steps(&self) -> &[Step] {
         &[]
     }
@@ -124,7 +129,6 @@ pub trait Rows: Serialize + sealed::Sealed {
     /// Returns the most rows that the command's `--limit` takes, which the
     /// text footer names, or `None` when it has no bound. Only a `Listing`
     /// returns one.
-    #[doc(hidden)]
     fn limit_bound(&self) -> Option<usize> {
         None
     }
@@ -134,7 +138,6 @@ pub trait Rows: Serialize + sealed::Sealed {
     /// exit code and the note. Every result counts the rows it holds, and a
     /// listing that [`Listing::from_all`](crate::Listing::from_all) cut to
     /// its limit also counts the rows it cut.
-    #[doc(hidden)]
     fn problems(&self) -> usize {
         problems::count(self.rows())
     }
@@ -145,7 +148,6 @@ pub trait Rows: Serialize + sealed::Sealed {
     ///
     /// A `Batch` builds the list on each call, because the trait cannot name
     /// the batch's failure type. `finish` calls it once.
-    #[doc(hidden)]
     fn failures(&self) -> Option<Vec<&dyn Failure>> {
         None
     }
@@ -155,23 +157,20 @@ pub trait Rows: Serialize + sealed::Sealed {
     /// after the first `shown`, then the keys the handler never fetched. A
     /// row whose result was pushed after the last key has no key and is
     /// `None`. Every other result leaves out nothing.
-    #[doc(hidden)]
     fn left_out(&self, _shown: usize) -> Vec<Option<&str>> {
         Vec::new()
     }
 
-    /// Returns the position of each failure that [`Rows::failures`]
+    /// Returns the position of each failure that [`Sealed::failures`]
     /// returns among a batch's pushed results, counted from 0, which for a
     /// failure with a key is the position of its key. Every result that is
     /// not a batch returns no position.
-    #[doc(hidden)]
     fn failure_indexes(&self) -> &[usize] {
         &[]
     }
 
     /// Returns the key at `index` among a batch's keys, or `None` past the
     /// last key and for every result that is not a batch.
-    #[doc(hidden)]
     fn key(&self, _index: usize) -> Option<&str> {
         None
     }
@@ -179,7 +178,6 @@ pub trait Rows: Serialize + sealed::Sealed {
     /// Returns the position of each row's result among a batch's pushed
     /// results, which for a row with a key is the position of its key.
     /// Every result that is not a batch returns no position.
-    #[doc(hidden)]
     fn row_indexes(&self) -> &[usize] {
         &[]
     }
@@ -188,7 +186,6 @@ pub trait Rows: Serialize + sealed::Sealed {
     /// when it shows only its first `shown` rows, or `None` when it leaves
     /// out nothing. Every answer from that position on that is not a
     /// failure is left out. Every other result returns `None`.
-    #[doc(hidden)]
     fn left_out_from(&self, _shown: usize) -> Option<usize> {
         None
     }
@@ -198,7 +195,6 @@ pub trait Rows: Serialize + sealed::Sealed {
     /// `None` when the result is not a batch. The recovery uses this call
     /// only when it cannot find the keys among the caller's words, and
     /// otherwise reruns those words with the keys left out.
-    #[doc(hidden)]
     fn fetch(&self) -> Option<Call> {
         None
     }
@@ -206,7 +202,6 @@ pub trait Rows: Serialize + sealed::Sealed {
     /// Returns the text that the text output prints in place of a table
     /// when the result is a `Prose`, and `None` otherwise. Only a `Prose`
     /// returns one.
-    #[doc(hidden)]
     fn prose(&self) -> Option<&dyn fmt::Display> {
         None
     }
@@ -215,14 +210,12 @@ pub trait Rows: Serialize + sealed::Sealed {
     /// `Prose`, which is the schema of its value, and `None` otherwise. The
     /// schema comes from `generator`, so a definition it names sits under the
     /// document's `$defs`. Only a `Prose` returns one.
-    #[doc(hidden)]
     fn prose_schema(_generator: &mut SchemaGenerator) -> Option<Schema> {
         None
     }
 
     /// Returns the bytes that the text output prints unchanged when the
     /// result is [`Bytes`](crate::Bytes), and `None` otherwise.
-    #[doc(hidden)]
     fn bytes(&self) -> Option<&[u8]> {
         None
     }
@@ -252,7 +245,7 @@ pub enum Shape {
     Bytes,
 }
 
-impl<R: Row> Rows for R {
+impl<R: Row> Sealed for R {
     type Row = R;
     const SHAPE: Shape = Shape::Row;
     type Summary = crate::NoSummary;
@@ -262,7 +255,7 @@ impl<R: Row> Rows for R {
     }
 }
 
-impl<R: Row> Rows for Vec<R> {
+impl<R: Row> Sealed for Vec<R> {
     type Row = R;
     const SHAPE: Shape = Shape::List;
     type Summary = crate::NoSummary;
@@ -270,24 +263,4 @@ impl<R: Row> Rows for Vec<R> {
     fn rows(&self) -> &[R] {
         self
     }
-}
-
-/// Holds the supertrait that keeps tools from implementing [`Rows`].
-mod sealed {
-    /// A type that crumbkit implements [`Rows`](super::Rows) for. The trait is
-    /// public so it can bound `Rows`, and it sits in a private module so no
-    /// tool can name it.
-    pub trait Sealed {}
-
-    impl<R: super::Row> Sealed for R {}
-
-    impl<R: super::Row> Sealed for Vec<R> {}
-
-    impl<R: super::Row, S> Sealed for crate::Listing<R, S> {}
-
-    impl<R: super::Row, E: crate::AsFailure> Sealed for crate::Batch<R, E> {}
-
-    impl<T, E: crate::AsFailure> Sealed for crate::Prose<T, E> {}
-
-    impl Sealed for crate::Bytes {}
 }

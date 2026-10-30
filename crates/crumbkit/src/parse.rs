@@ -68,7 +68,7 @@ mod walked;
 ///     let parsed = crumbkit::parse::<Cli>(Cli::command(), &Guide::new());
 ///     let (_cli, _output) = match parsed {
 ///         Ok(parsed) => parsed,
-///         Err(stop) => return stop.code(),
+///         Err(stop) => return stop.exit_code(),
 ///     };
 ///     // Run the command, then return `crumbkit::finish(output, ...)`.
 ///     ExitCode::SUCCESS
@@ -125,9 +125,9 @@ pub fn parse<C: FromArgMatches>(command: Command, guide: &Guide) -> Result<(C, O
 ///         Err(Unparsed::Refused(refused)) => {
 ///             // The tool reads `refused.typed()` and `refused.culprit()`
 ///             // here, and prints the refusal when it has no other answer.
-///             return refused.print().code();
+///             return refused.print().exit_code();
 ///         }
-///         Err(unparsed) => return unparsed.print().code(),
+///         Err(unparsed) => return unparsed.print().exit_code(),
 ///     };
 ///     // Run the command, then return `crumbkit::finish(output, ...)`.
 ///     ExitCode::SUCCESS
@@ -437,7 +437,7 @@ where
     let parsed = read(sink, command, guide, spelling, args, standard);
     #[cfg(feature = "tracing")]
     if let Err(Unparsed::Stopped(stop)) = &parsed {
-        crate::trace::spans::exited(&span, stop.number());
+        crate::trace::spans::exited(&span, stop.exit());
     }
     parsed
 }

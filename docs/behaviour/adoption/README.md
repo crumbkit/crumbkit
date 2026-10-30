@@ -98,7 +98,8 @@ to an RFC 9457 problem-details response, can ask for these types in a crate
 of their own when such a crate exists, and this list says what that crate
 would hold.
 
-- `Rows::SHAPE` names a result's kind, so `schemas::document_schema` builds
+- A result's `Shape` names its kind, which crumbkit reads through the
+  sealed supertrait of `Rows`, so `schemas::document_schema` builds
   the fields of a document from its result type, and `Document::untyped`
   returns the same id as a `Document<()>`, so a `Leaf` keeps a document
   without its type.
@@ -117,7 +118,7 @@ would hold.
 - The `miette` feature adds `Failure::diagnostic` and the conversion of a
   `miette::Report` into `Error`.
 
-Why: ADR-0097, ADR-0002, ADR-0001.
+Why: ADR-0097, ADR-0002, ADR-0001, ADR-0160.
 
 ## API promises
 
@@ -139,8 +140,11 @@ published version ([releases](../../project/releases.md)).
 - The keys of `#[failure(...)]` and the code the derive writes for them are
   public API, as [deriving `Failure`](../failures/derive.md) states.
 - The run observer's `Observer` trait gains only methods with defaults, and
-  its `Refused` and `Finished` events are `#[non_exhaustive]` with getters
+  its `RefusalEvent` and `Finished` events have private fields and getters
   ([run observer](../run-observer/README.md)).
+- A result's own methods, such as `Listing::rows`, `Batch::failures` and
+  `Prose::value`, are what a tool reads from a result. What `finish` reads
+  sits on the sealed supertrait of `Rows`, which a tool cannot name.
 - `parse` returns a [`Stop`](../../../crates/crumbkit/src/parse/stop.rs) in
   place of a bare `ExitCode` when it ends the run
   ([parsing](../parsing/README.md#the-stop-of-a-run-that-parse-ended)).
@@ -158,4 +162,4 @@ its own reasons, such as 130 when SIGINT ends the process and 143 when
 SIGTERM does, and the usage log's signal handling leaves those codes in
 place.
 
-Why: ADR-0002, ADR-0012, ADR-0001, ADR-0057, ADR-0103.
+Why: ADR-0002, ADR-0012, ADR-0001, ADR-0057, ADR-0103, ADR-0160.

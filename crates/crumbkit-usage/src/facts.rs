@@ -183,10 +183,16 @@ pub fn extend<E: Extension>(change: impl FnOnce(&mut E)) {
 /// The facts that a run's extensions write. A tool receives it in
 /// [`Extension::write`] and cannot build one, so every fact passes through
 /// these methods.
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct Facts(pub(super) Written);
 
 impl Facts {
+    /// Returns facts that hold nothing yet, which crumbkit-usage passes to
+    /// each extension in turn.
+    pub(crate) fn new() -> Self {
+        Self(Written::default())
+    }
+
     /// Adds `count` to the fact `key`. A count that would pass `u64::MAX`
     /// stays there.
     pub fn count(&mut self, key: Key, count: u64) -> &mut Self {
@@ -335,7 +341,7 @@ impl Extensions {
         if self.broken {
             return None;
         }
-        let mut facts = Facts::default();
+        let mut facts = Facts::new();
         catch_unwind(AssertUnwindSafe(|| {
             for stored in &self.stored {
                 stored.write_to(&mut facts);

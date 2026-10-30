@@ -22,7 +22,7 @@ fn parse(args: &[&str]) -> Parsed {
         parse_to::<(), _, _, _, _>(&mut Sink::new(&mut out, &mut err), tool(), &GUIDE, args);
     let stop = result.err();
     Parsed {
-        code: stop.as_ref().map(Stop::code),
+        code: stop.as_ref().map(Stop::exit_code),
         json: stop.as_ref().map(|stop| stop.output().is_json()),
         out: String::from_utf8(out).unwrap(),
         err: String::from_utf8(err).unwrap(),

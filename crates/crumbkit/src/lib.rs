@@ -139,3 +139,19 @@ pub use crumbkit_derive::Failure;
 /// `JsonSchema` for its results keeps its own schemars dependency with
 /// `derive`, as the README shows.
 pub use schemars;
+
+/// The serde crate that crumbkit builds against, so a tool can name
+/// `crumbkit::serde::Serializer` in an override of [`Shown::json`] without a
+/// serde dependency of its own, and so [`shown!`] names serde through
+/// crumbkit.
+///
+/// The `Serialize` bound on a result already makes serde's major version
+/// part of crumbkit's API, as the `JsonSchema` bound does for schemars.
+///
+/// crumbkit turns on no serde feature in its default build, so
+/// `#[derive(Serialize)]` through this path works only when some crate in
+/// the build turns on serde's `derive` feature, and it then needs
+/// `#[serde(crate = "crumbkit::serde")]`. A tool that derives `Serialize`
+/// for its rows keeps its own serde dependency with `derive`, as the README
+/// shows.
+pub use serde;

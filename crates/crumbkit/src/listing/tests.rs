@@ -5,7 +5,8 @@ use serde::Serialize;
 use serde_json::json;
 
 use super::{Listing, NoSummary};
-use crate::{Call, Row, Rows, Shape};
+use crate::row::Sealed;
+use crate::{Call, Row, Shape};
 
 #[derive(Serialize, JsonSchema, Debug, Clone, PartialEq, Eq)]
 struct Book {
@@ -140,18 +141,18 @@ fn a_listing_has_no_summary_until_one_is_set() {
         .described("books")
         .summary(Shelved { books: 3 });
 
-    // The builder `summary` shadows the `Rows` method of the same name.
-    assert_eq!(Rows::summary(&plain), None);
-    assert_eq!(Rows::summary(&summarised), Some(&Shelved { books: 3 }));
+    // The builder `summary` shadows the `Sealed` method of the same name.
+    assert_eq!(Sealed::summary(&plain), None);
+    assert_eq!(Sealed::summary(&summarised), Some(&Shelved { books: 3 }));
     assert_eq!(summarised.description(), Some("books"));
 }
 
 #[test]
 fn a_row_a_vec_and_a_listing_each_name_their_shape() {
-    assert_eq!(<Book as Rows>::SHAPE, Shape::Row);
-    assert_eq!(<Vec<Book> as Rows>::SHAPE, Shape::List);
-    assert_eq!(<Listing<Book> as Rows>::SHAPE, Shape::Listing);
-    assert_eq!(<Listing<Book, Shelved> as Rows>::SHAPE, Shape::Listing);
+    assert_eq!(<Book as Sealed>::SHAPE, Shape::Row);
+    assert_eq!(<Vec<Book> as Sealed>::SHAPE, Shape::List);
+    assert_eq!(<Listing<Book> as Sealed>::SHAPE, Shape::Listing);
+    assert_eq!(<Listing<Book, Shelved> as Sealed>::SHAPE, Shape::Listing);
 }
 
 #[test]

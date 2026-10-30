@@ -218,7 +218,7 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit: [`Code::runtime`] builds a code known only at run time, and
   `Spelling::split` reads a code in `Spelling::COLONS` back into its
   segments ([behaviour/failures]).
-- crumbkit: `Stop::number` returns a stopped run's exit code as a number
+- crumbkit: `Stop::exit` returns a stopped run's exit code as a number
   ([behaviour/parsing]).
 - crumbkit: [`try_parse`], `try_parse_from` and `try_parse_to` return a
   refused command line unprinted as a [`Refused`], which holds the typed
@@ -301,8 +301,8 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   holds `"empty": true` ([behaviour/usage-log]).
 - crumbkit: [`Bytes`] is a result that `finish` prints unchanged as
   text, and with `--json` as `text` when it is UTF-8 or `base64` otherwise.
-  A `Bytes` row field serializes the same way. `Shape::Bytes` and
-  `Rows::bytes` describe it ([behaviour/output], [behaviour/schemas]).
+  A `Bytes` row field serializes the same way. `Shape::Bytes`
+  describes it ([behaviour/output], [behaviour/schemas]).
 - crumbkit: `--fields`, and `--long` without `--json`, are refused with
   exit code 2 for a [`Bytes`] result, which has no columns
   ([behaviour/output]).
@@ -338,6 +338,13 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   ([behaviour/adoption/opt-outs]).
 - crumbkit: re-exports schemars as `crumbkit::schemars`, the version whose
   `Schema` crumbkit's API takes ([behaviour/schemas]).
+- crumbkit: re-exports serde as `crumbkit::serde`, so a `Shown::json`
+  override names `Serializer` without a serde dependency
+  ([behaviour/output/values]).
+- crumbkit: `Listing::rows`, `Listing::total`, `Batch::rows`,
+  `Batch::failures`, `Batch::left_out`, `Batch::get_note`, `Prose::value`,
+  `Prose::failures` and `Prose::get_note` let a tool's tests read the
+  result a handler returned ([behaviour/adoption]).
 - crumbkit-test: `Examples::xdg` and `Failing::xdg` name a fixture that
   the checks copy into each run's fresh XDG directories, so a failing
   command can find a plugin or cache there ([behaviour/checks/end-to-end]).
@@ -660,6 +667,31 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   listed ([behaviour/output/listings]).
 
 ### Changed
+
+- crumbkit: breaking: `Stop::code` is now `Stop::exit_code`, and
+  `Stop::number` and `Refused::number` are now `Stop::exit` and
+  `Refused::exit`, the name that `Finished::exit` and `Observer::ended`
+  use ([behaviour/parsing]).
+- crumbkit: breaking: the observer event `events::Refused` is now
+  `events::RefusalEvent`, so it no longer shares a name with
+  `crumbkit::Refused`. It and `events::Finished` drop `#[non_exhaustive]`,
+  which their private fields made redundant ([behaviour/run-observer]).
+- crumbkit: breaking: [`Duration`] keeps its field private. A tool builds
+  one with `Duration::new` or `From` and reads it with `Duration::get`
+  ([behaviour/output/values]).
+- crumbkit: breaking: the hidden members of `Rows` move to a sealed
+  supertrait, so a tool can no longer call them on a result it holds. A
+  test reads a result through its own public methods ([behaviour/adoption]).
+- crumbkit: breaking: the hidden getter `Document::always_prints_first` is
+  now `Document::get_always_print_first`, after the builder
+  `always_print_first` and the `get_` getters of `Guide` and `Leaf`.
+- crumbkit: breaking: `RuntimeCodeError::Segment` is `#[non_exhaustive]`,
+  so a match on it ends with `..` ([behaviour/failures]).
+- crumbkit: breaking: the hidden `crumbkit::shown::__serde` is gone. The
+  `shown!` macro names serde through the public `crumbkit::serde`
+  ([behaviour/output/values]).
+- crumbkit-usage: breaking: `Facts` no longer implements `Default`, so a
+  tool cannot build one, as its documentation says ([behaviour/usage-log]).
 
 - crumbkit: `Code::new` and `Code::runtime` accept hyphens between words
   in a segment, such as `book-club::gate::unmet`. A hyphen may not lead,

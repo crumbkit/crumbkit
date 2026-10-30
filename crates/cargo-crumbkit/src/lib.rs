@@ -40,7 +40,7 @@ mod tests;
 pub fn run() -> ExitCode {
     let (cli, mut output) = match crumbkit::parse::<Cli>(Cli::command(), &GUIDE) {
         Ok(parsed) => parsed,
-        Err(stop) => return stop.code(),
+        Err(stop) => return stop.exit_code(),
     };
     match cli.cargo {
         CargoCommand::Crumbkit { command } => match command {

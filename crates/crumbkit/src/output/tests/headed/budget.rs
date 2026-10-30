@@ -180,12 +180,12 @@ fn problems(document: Document<Batch<Page, Error>>) -> Vec<String> {
     let mut problems = Vec::new();
     for through_room in [false, true] {
         for budget in TEXT_BUDGETS {
-            let refused = !document.always_prints_first() && budget < alone(false);
+            let refused = !document.get_always_print_first() && budget < alone(false);
             let text = fetched(&[], budget, document, through_room);
             problems.extend(text_problem(&text, budget, refused));
         }
         for budget in JSON_BUDGETS {
-            let refused = !document.always_prints_first() && budget < alone(true);
+            let refused = !document.get_always_print_first() && budget < alone(true);
             let json = fetched(&["--json"], budget, document, through_room);
             problems.extend(json_problem(&json, budget, refused));
         }
@@ -222,7 +222,7 @@ fn a_later_answer_too_large_alone_is_left_out_with_the_answers_after_it_in_text_
         ("C", Some(b"three\n")),
     ];
     for document in [PAGES, PAGES.always_print_first()] {
-        let label = format!("always prints first: {}", document.always_prints_first());
+        let label = format!("always prints first: {}", document.get_always_print_first());
         let text = finish(&[], 100, document, batch(&answers));
         let json = finish(&["--json"], 100, document, batch(&answers));
 

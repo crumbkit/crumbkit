@@ -6,7 +6,6 @@ use serde_json::{Value, json};
 
 use super::{SelfFigures, figures_from};
 use crate::testing::{line, now, tool};
-use crumbkit::Rows;
 use crumbkit::help::Guide;
 
 /// A log of a help page of the root, two runs of `books list` and one of
@@ -45,7 +44,7 @@ fn rows(log: &str, limit: Option<usize>) -> (Vec<Value>, Option<usize>) {
         .iter()
         .map(|row| serde_json::to_value(row).unwrap())
         .collect();
-    (rows, Rows::total(&listing))
+    (rows, listing.total())
 }
 
 #[test]

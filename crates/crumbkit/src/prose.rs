@@ -5,7 +5,7 @@ use std::fmt;
 use schemars::{JsonSchema, Schema, SchemaGenerator};
 use serde::{Serialize, Serializer};
 
-use crate::{AsFailure, Error, Failure, NoRow, Rows, Shape};
+use crate::{AsFailure, Error, Failure, NoRow, Shape};
 
 #[cfg(test)]
 mod tests;
@@ -102,6 +102,28 @@ impl<T, E> Prose<T, E> {
         self.note = Some(text.into());
         self
     }
+
+    /// Returns the value whose `Display` the text output prints. A tool's
+    /// test reads the answer of the prose result that its handler returned
+    /// here.
+    #[must_use]
+    pub const fn value(&self) -> &T {
+        &self.value
+    }
+
+    /// Returns the failures that the result holds, in order.
+    #[must_use]
+    pub fn failures(&self) -> &[E] {
+        &self.failures
+    }
+
+    /// Returns the note that [`Prose::note`] set, or `None` when the tool
+    /// set none. The getter has the `get_` prefix because the builder
+    /// takes the plain name, as `Guide` and `Leaf` getters do.
+    #[must_use]
+    pub fn get_note(&self) -> Option<&str> {
+        self.note.as_deref()
+    }
 }
 
 /// Serializes the prose result as its value. `crumbkit::finish` writes the
@@ -112,7 +134,7 @@ impl<T: Serialize, E> Serialize for Prose<T, E> {
     }
 }
 
-impl<T: Serialize + JsonSchema + fmt::Display, E: AsFailure> Rows for Prose<T, E> {
+impl<T: Serialize + JsonSchema + fmt::Display, E: AsFailure> crate::row::Sealed for Prose<T, E> {
     type Row = NoRow;
     const SHAPE: Shape = Shape::Prose;
     type Summary = crate::NoSummary;
@@ -126,11 +148,11 @@ impl<T: Serialize + JsonSchema + fmt::Display, E: AsFailure> Rows for Prose<T, E
     }
 
     fn note(&self) -> Option<&str> {
-        self.note.as_deref()
+        self.get_note()
     }
 
     fn prose(&self) -> Option<&dyn fmt::Display> {
-        Some(&self.value)
+        Some(self.value())
     }
 
     fn prose_schema(generator: &mut SchemaGenerator) -> Option<Schema> {

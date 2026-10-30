@@ -58,7 +58,7 @@ impl<T: Rows> Prepared<'_, T> {
         let in_document = self.view.is_json() && self.document.get_envelope().wraps();
         let alone = Failures::of(&[]);
         if rows > 0
-            && !self.document.always_prints_first()
+            && !self.document.get_always_print_first()
             && !self.fits(1, alone, left_out.budget)?
         {
             return self.refuse_first(sink, listed, left_out);

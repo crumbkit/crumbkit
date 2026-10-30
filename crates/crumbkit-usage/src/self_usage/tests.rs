@@ -5,9 +5,8 @@ use std::time::{Duration, SystemTime};
 use clap::Parser;
 use serde_json::json;
 
-use super::{CallerRuns, CodeRuns, FindingRow, SelfUsage, UsageSummary, report_from};
+use super::{CallerRuns, CodeRuns, FindingRow, SelfUsage, UsageSummary, report_from, summarize};
 use crate::testing::{line, now, tool};
-use crumbkit::Rows;
 use crumbkit::help::{Exit, Guide};
 
 /// Returns the summary of `runs` runs by people, in `sessions` sessions,
@@ -101,7 +100,7 @@ fn the_summary_lists_the_ten_codes_tolerated_by_the_most_runs() {
             line(index + 1, "books list", &json!({ "tolerated": codes }))
         })
         .collect();
-    let listing = report_from(
+    let (_, summary) = summarize(
         &tool(),
         &Guide::new(),
         Some(Cursor::new(log)),
@@ -109,7 +108,7 @@ fn the_summary_lists_the_ten_codes_tolerated_by_the_most_runs() {
         now(),
     );
 
-    let summary = serde_json::to_value(Rows::summary(&listing)).unwrap();
+    let summary = serde_json::to_value(&summary).unwrap();
 
     let tolerated = summary["tolerated"].as_array().unwrap();
     assert_eq!(tolerated.len(), 10);
@@ -318,7 +317,7 @@ fn the_report_reads_the_runs_since_the_duration_before_now_and_names_that_day() 
     ]
     .concat();
 
-    let listing = report_from(
+    let (_, summary) = summarize(
         &tool(),
         &Guide::new(),
         Some(Cursor::new(log)),
@@ -326,7 +325,6 @@ fn the_report_reads_the_runs_since_the_duration_before_now_and_names_that_day() 
         now(),
     );
 
-    let summary = Rows::summary(&listing).unwrap();
     assert_eq!(summary.runs, 1);
     assert_eq!(summary.since, "2026-10-10");
 }
@@ -340,19 +338,23 @@ fn without_a_log_the_report_has_no_runs_and_no_findings() {
         Duration::from_secs(60),
         now(),
     );
+    let (_, summary) = summarize(
+        &tool(),
+        &Guide::new(),
+        None::<Cursor<&str>>,
+        Duration::from_secs(60),
+        now(),
+    );
 
     assert_eq!(listing.rows().len(), 0);
-    assert_eq!(
-        Rows::summary(&listing).unwrap().to_string(),
-        "0 runs since 11 Oct."
-    );
+    assert_eq!(summary.to_string(), "0 runs since 11 Oct.");
 }
 
 #[test]
 fn a_clock_past_the_year_9999_reports_the_last_day_that_humantime_formats() {
     let far = SystemTime::UNIX_EPOCH + Duration::from_secs(300_000_000_000);
 
-    let listing = report_from(
+    let (_, summary) = summarize(
         &tool(),
         &Guide::new(),
         None::<Cursor<&str>>,
@@ -360,7 +362,7 @@ fn a_clock_past_the_year_9999_reports_the_last_day_that_humantime_formats() {
         far,
     );
 
-    assert_eq!(Rows::summary(&listing).unwrap().since, "9999-12-31");
+    assert_eq!(summary.since, "9999-12-31");
 }
 
 /// A tool whose only arguments are `self usage`'s.
@@ -409,7 +411,7 @@ fn the_checked_in_schema_matches_the_usage_report_document_schema() {
 fn a_since_that_reaches_before_1970_reads_the_whole_log_from_1970() {
     let log = line(100, "books list", &json!({}));
 
-    let listing = report_from(
+    let (_, summary) = summarize(
         &tool(),
         &Guide::new(),
         Some(Cursor::new(log)),
@@ -417,7 +419,6 @@ fn a_since_that_reaches_before_1970_reads_the_whole_log_from_1970() {
         now(),
     );
 
-    let summary = Rows::summary(&listing).unwrap();
     assert_eq!(summary.runs, 1);
     assert_eq!(summary.since, "1970-01-01");
 }

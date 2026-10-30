@@ -98,7 +98,7 @@ fn output_new_refuses_fields_with_long_in_crumbkit_s_words() {
     let built = build_to(&["--fields", "name", "--long"]);
 
     let stop = built.result.unwrap_err();
-    assert_eq!(stop.number(), 2);
+    assert_eq!(stop.exit(), 2);
     assert!(!stop.output().is_json());
     assert_eq!(built.out, "");
     assert_eq!(
@@ -117,7 +117,7 @@ fn output_new_refuses_fields_with_full_and_full_without_json_in_crumbkit_s_words
     let without_json = build_to(&["--full"]);
 
     let stop = with_fields.result.unwrap_err();
-    assert_eq!(stop.number(), 2);
+    assert_eq!(stop.exit(), 2);
     assert!(stop.output().is_json());
     let document: serde_json::Value = serde_json::from_str(&with_fields.out).unwrap();
     assert_eq!(
@@ -132,7 +132,7 @@ fn output_new_refuses_fields_with_full_and_full_without_json_in_crumbkit_s_words
         document["fields"],
         serde_json::json!({"argument": "--full"})
     );
-    assert_eq!(without_json.result.unwrap_err().number(), 2);
+    assert_eq!(without_json.result.unwrap_err().exit(), 2);
     assert_eq!(without_json.out, "");
     assert_eq!(
         without_json.err,

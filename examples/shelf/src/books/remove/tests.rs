@@ -47,10 +47,7 @@ fn listed(file: &Path) -> Vec<&'static str> {
     };
     let args: BooksList = args;
     let listing = list(&args, Some(file)).unwrap();
-    crumbkit::Rows::rows(&listing)
-        .iter()
-        .map(|book| book.title)
-        .collect()
+    listing.rows().iter().map(|book| book.title).collect()
 }
 
 #[test]
@@ -90,11 +87,7 @@ fn remove_with_yes_returns_the_books_and_list_and_show_skip_them_afterwards() {
         .room(crate::books::BOOKS_SHOW),
     )
     .unwrap();
-    let failures: Vec<String> = crumbkit::Rows::failures(&shown)
-        .unwrap()
-        .iter()
-        .map(ToString::to_string)
-        .collect();
+    let failures: Vec<String> = shown.failures().iter().map(ToString::to_string).collect();
     assert_eq!(failures, ["the catalogue has no book 2"]);
 }
 

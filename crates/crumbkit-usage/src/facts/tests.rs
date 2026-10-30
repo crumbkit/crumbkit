@@ -94,7 +94,7 @@ fn facts_that_hold_nothing_but_zeros_write_no_section() {
 
 #[test]
 fn a_count_that_would_overflow_stays_at_the_largest_number() {
-    let mut facts = Facts::default();
+    let mut facts = Facts::new();
 
     facts.count(REQUESTS, u64::MAX).count(REQUESTS, 1);
 

@@ -152,7 +152,7 @@ fn main() -> ExitCode {
     let parsed = crumbkit::parse::<Cli>(Cli::command(), &GUIDE);
     let (cli, output) = match parsed {
         Ok(parsed) => parsed,
-        Err(stop) => return stop.code(),
+        Err(stop) => return stop.exit_code(),
     };
     match cli.resource {
         Resource::Jars {

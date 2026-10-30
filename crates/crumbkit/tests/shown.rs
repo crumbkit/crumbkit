@@ -122,8 +122,8 @@ fn loan() -> Loan {
     Loan {
         title: "Pride and Prejudice",
         pages: Pages(432),
-        kept: Duration(Std::from_secs(15 * 24 * 3_600 + 3 * 3_600)),
-        reminders: vec![Reminder(Duration(Std::from_secs(14 * 24 * 3_600)))],
+        kept: Duration::new(Std::from_secs(15 * 24 * 3_600 + 3 * 3_600)),
+        reminders: vec![Reminder(Duration::new(Std::from_secs(14 * 24 * 3_600)))],
     }
 }
 
@@ -223,7 +223,7 @@ fn the_row_schema_describes_each_shown_value_in_its_json_form() {
 
 #[test]
 fn a_failure_prints_a_shown_field_as_text_in_its_message_and_json_in_its_fields() {
-    let late = Duration(Std::from_secs(3 * 24 * 3_600));
+    let late = Duration::new(Std::from_secs(3 * 24 * 3_600));
 
     let (code, _, err) = run(&[], Err(Overdue { late })).unwrap();
     assert_eq!(code, 1);

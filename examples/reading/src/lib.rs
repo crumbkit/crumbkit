@@ -56,7 +56,7 @@ where
     let (parsed, mut output) =
         match crumbkit::parse_from::<Parsed, _, _>(command(&lists), &guide, args) {
             Ok(parsed) => parsed,
-            Err(stop) => return stop.code(),
+            Err(stop) => return stop.exit_code(),
         };
     match parsed {
         Parsed::Grafted {

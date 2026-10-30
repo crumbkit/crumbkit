@@ -6,7 +6,7 @@ use std::fmt;
 use schemars::{JsonSchema, Schema, SchemaGenerator};
 use serde::{Serialize, Serializer};
 
-use crate::{Call, Row, Rows, Shape, Step};
+use crate::{Call, Row, Shape, Step};
 
 #[cfg(test)]
 mod tests;
@@ -82,10 +82,10 @@ pub struct Listing<R: Row, S = NoSummary> {
     /// The most rows that the command's `--limit` takes, which the footer
     /// names, or `None` when `--limit` has no upper bound.
     bound: Option<usize>,
-    /// The number of rows that report a problem among every row that
-    /// [`Listing::from_all`] was given, when its limit cut some of them and
-    /// the row type names a problem field, or `None` when the listing counts
-    /// the rows it holds.
+    /// The number of rows that report a problem ([`Row::is_problem`])
+    /// among every row that [`Listing::from_all`] was given, when its limit
+    /// cut some of them and at least one of them reports a problem, or
+    /// `None` when the listing counts the rows it holds.
     problems: Option<usize>,
 }
 
@@ -370,6 +370,22 @@ impl<R: Row, S> Listing<R, S> {
         self.capped = capped && self.total.is_some();
         self
     }
+
+    /// Returns the rows that the listing shows, in order. A tool's test
+    /// reads the rows of the listing that its handler returned here.
+    #[must_use]
+    pub fn rows(&self) -> &[R] {
+        &self.rows
+    }
+
+    /// Returns the number of rows that matched, which the footer and the
+    /// JSON document's `total` give, or `None` when the tool did not count
+    /// them ([`Listing::uncounted`]) or read only some of them
+    /// ([`Listing::capped`]).
+    #[must_use]
+    pub const fn total(&self) -> Option<usize> {
+        if self.capped { None } else { self.total }
+    }
 }
 
 /// Serializes the listing as the array of its rows. `crumbkit::finish`
@@ -380,7 +396,7 @@ impl<R: Row, M> Serialize for Listing<R, M> {
     }
 }
 
-impl<R: Row, S: Serialize + fmt::Display + JsonSchema> Rows for Listing<R, S> {
+impl<R: Row, S: Serialize + fmt::Display + JsonSchema> crate::row::Sealed for Listing<R, S> {
     type Row = R;
     type Summary = S;
     const SHAPE: Shape = Shape::Listing;
@@ -390,7 +406,7 @@ impl<R: Row, S: Serialize + fmt::Display + JsonSchema> Rows for Listing<R, S> {
     }
 
     fn total(&self) -> Option<usize> {
-        self.total.filter(|_| !self.capped)
+        Listing::total(self)
     }
 
     fn at_least(&self) -> Option<usize> {

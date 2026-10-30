@@ -123,7 +123,7 @@ fn check(
         }
         let document = leaf.get_document();
         let headed = document.is_some_and(|document| document.is_headed());
-        let first_always = document.is_some_and(|document| document.always_prints_first());
+        let first_always = document.is_some_and(|document| document.get_always_print_first());
         for example in leaf.get_examples() {
             let text = !example.words().contains(&"--json");
             if text && !headed {
