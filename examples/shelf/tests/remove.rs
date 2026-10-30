@@ -10,7 +10,7 @@ use clap::CommandFactory as _;
 use crumbkit::codes;
 use crumbkit_test::{Examples, Failing, check_twin};
 use snapbox::cmd::{Command, OutputAssert};
-use snapbox::file;
+use snapbox::{IntoData as _, file};
 
 /// Runs the built `shelf` binary with `args`, a cleared environment and XDG
 /// directories under `dir`, and returns its output for assertions. Standard
@@ -125,8 +125,12 @@ fn books_list_after_every_book_is_removed_ends_with_a_step_that_puts_the_books_b
     .success();
 
     // The step names the file of removed books, whose path holds the
-    // temporary directory, so its expected text is built here.
-    let removed = dir.path().join("state/shelf/removed.txt");
+    // temporary directory, so its expected text is built here. The path is
+    // joined one name at a time, so it has the platform's separators, as
+    // the path that shelf prints has. The comparison is raw, because
+    // snapbox's default filters turn each backslash of the actual output
+    // into a slash on Windows and leave the expected text as it is.
+    let removed = dir.path().join("state").join("shelf").join("removed.txt");
     let expected = format!(
         "note: no books match\n\
          Next: shelf books show <ID>... takes up to 100 ids in one call.\n\
@@ -138,7 +142,7 @@ fn books_list_after_every_book_is_removed_ends_with_a_step_that_puts_the_books_b
     run(dir.path(), &["books", "list"])
         .success()
         .stdout_eq(file!["golden/books-list-after-remove-all.txt"].raw())
-        .stderr_eq(expected);
+        .stderr_eq(expected.raw());
     run(dir.path(), &["books", "list", "--json"])
         .success()
         .stdout_eq(file!["golden/books-list-json-after-remove-all.json"].raw())
