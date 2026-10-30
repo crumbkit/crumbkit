@@ -3,19 +3,16 @@
 crumbkit-test checks a clap tool against crumbkit's conventions from an
 ordinary `#[test]`. Each check runs on its own, collects every problem it
 finds and fails the test with all of them, so a tool turns checks on one at
-a time. crumbkit is in design and is not published yet.
+a time.
 
 ## Adding it
 
-A tool adds crumbkit-test as a dev-dependency, from this repository until
-the first release:
+A tool adds crumbkit-test as a dev-dependency:
 
 ```toml
 [dev-dependencies]
-crumbkit-test = { git = "https://github.com/crumbkit/crumbkit" }
+crumbkit-test = "0.1"
 ```
-
-The `main` branch can change without notice before the first release.
 
 ## Checks for any clap tool
 

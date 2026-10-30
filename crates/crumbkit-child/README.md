@@ -4,19 +4,15 @@ crumbkit-child lets a command of a crumbkit tool hand the terminal to
 another program, such as an editor, a pager or a wrapped tool, as the
 command's whole response. The child reads and writes the terminal directly,
 Ctrl-C reaches only the child, and the tool returns the child's exit code.
-crumbkit is in design and is not published yet.
 
 ## Adding it
 
-A tool adds crumbkit-child beside crumbkit, from this repository until the
-first release:
+A tool adds crumbkit-child beside crumbkit:
 
 ```toml
 [dependencies]
-crumbkit-child = { git = "https://github.com/crumbkit/crumbkit" }
+crumbkit-child = "0.1"
 ```
-
-The `main` branch can change without notice before the first release.
 
 ## Example
 

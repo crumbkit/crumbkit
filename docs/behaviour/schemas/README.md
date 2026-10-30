@@ -114,8 +114,8 @@ Why: ADR-0007, ADR-0035, ADR-0056.
 
 Removing, renaming or retyping a field, making it optional, or adding an enum
 value needs a new `/vN` id. Readers ignore unknown fields, so a new optional
-field keeps the `v1` id. Until crumbkit's first release, a document's schema
-changes in place, and the `/vN` rule applies from that release on.
+field keeps the `v1` id. This rule applies to every document from 0.1.0 on,
+so a breaking change to a published schema always gets a new id.
 
 Every JSON document type has a 2020-12 `JsonSchema`, and
 `schemas::document_schema` builds the schema of a whole document from its id

@@ -6,15 +6,15 @@ its own clap types and its own `main`, and adopts only the parts it wants.
 
 ## Adding it
 
-A tool adds crumbkit beside clap, serde and schemars, from this repository
-until the first release:
+A tool adds crumbkit beside clap, serde and schemars:
 
 ```toml
 [dependencies]
-crumbkit = { git = "https://github.com/crumbkit/crumbkit" }
+crumbkit = "0.1"
 ```
 
-Until then, `main` can change without notice.
+Before 1.0, a minor release may change the API. The [changelog] names
+each breaking change.
 
 ## Example
 
@@ -174,3 +174,4 @@ Licensed under Apache-2.0 or MIT, at your option.
 [crumbkit-test]: ../crumbkit-test/README.md
 [crumbkit-derive]: ../crumbkit-derive/README.md
 [behaviour docs]: ../../docs/behaviour/README.md
+[changelog]: ../../CHANGELOG.md

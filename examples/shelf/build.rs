@@ -1,7 +1,7 @@
 //! Sets `SHELF_VERSION`, the version that `shelf --version` prints.
 //!
 //! A build from a git checkout appends the commit as semver build metadata,
-//! such as `0.0.0+git-951022a3a14a`, and adds `.dirty` when tracked files have
+//! such as `0.1.0+git-951022a3a14a`, and adds `.dirty` when tracked files have
 //! uncommitted changes. A build without git, or outside a checkout, prints the
 //! plain package version.
 //!

@@ -5,18 +5,15 @@ describes a tool built with crumbkit. `cargo crumbkit weigh` counts the
 bytes that an agent reads on each path through the tool's help: each
 command's `-h` and `--help` pages, the output of its examples, and the total
 from the root down to the command. `cargo crumbkit docs` writes a Markdown
-reference of every command. crumbkit is in design and is not published yet.
+reference of every command.
 
 ## Adding it
 
-A tool's author installs cargo-crumbkit from this repository until the
-first release:
+A tool's author installs cargo-crumbkit from crates.io:
 
 ```sh
-cargo install --git https://github.com/crumbkit/crumbkit cargo-crumbkit
+cargo install cargo-crumbkit
 ```
-
-The `main` branch can change without notice before the first release.
 
 ## Example
 

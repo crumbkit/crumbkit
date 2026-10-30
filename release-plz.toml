@@ -7,7 +7,7 @@
 # The owner's one-time steps before the first automated release. The pull
 # request that follows the last step deletes this comment. release.yml runs
 # no job until step 6 sets the RELEASE_ENABLED variable, so a merge to main
-# cannot publish the workspace's 0.0.0.
+# publishes nothing before the owner publishes 0.1.0 by hand in step 4.
 #
 # 1. Create a GitHub App for release pull requests, in the crumbkit
 #    organisation's settings under Developer settings, GitHub Apps. Give it
@@ -20,11 +20,11 @@
 #    off.
 # 2. In the repository's settings, create the environment `crates-io` and
 #    limit its deployment branches to main.
-# 3. When 0.1.0 is ready, merge a pull request that sets `version = "0.1.0"`
-#    in `[workspace.package]` and in the seven crumbkit entries of
-#    `[workspace.dependencies]` in the root Cargo.toml, renames
-#    `## [Unreleased]` in CHANGELOG.md to `## [0.1.0] - YYYY-MM-DD`, and adds
-#    an empty `## [Unreleased]` heading above it.
+# 3. Done: the 0.1.0 pull request set `version = "0.1.0"` in
+#    `[workspace.package]` and in the seven crumbkit entries of
+#    `[workspace.dependencies]` in the root Cargo.toml, renamed
+#    `## [Unreleased]` in CHANGELOG.md to `## [0.1.0] - 2026-10-30`, and
+#    added an empty `## [Unreleased]` heading above it.
 # 4. Create a crates.io API token with the scope `publish-new` and a short
 #    expiry. On the merged main, run:
 #
@@ -36,10 +36,10 @@
 #        git tag v0.1.0 && git push origin v0.1.0
 #
 #    `cargo login` reads the token from standard input. `cargo publish
-#    --workspace` publishes the crates in dependency order: crumbkit-derive,
-#    crumbkit, crumbkit-child, crumbkit-markdown, crumbkit-test,
-#    crumbkit-aliases, crumbkit-usage, cargo-crumbkit. Revoke the token on
-#    crates.io afterwards.
+#    --workspace` publishes the crates in dependency order. The dry run of
+#    0.1.0 chose crumbkit-derive, crumbkit, crumbkit-aliases, crumbkit-child,
+#    crumbkit-markdown, crumbkit-test, crumbkit-usage, cargo-crumbkit.
+#    Revoke the token on crates.io afterwards.
 # 5. On crates.io, open each of the eight crates' Settings, Trusted
 #    Publishing, and add a GitHub publisher with the owner `crumbkit`, the
 #    repository `crumbkit`, the workflow `release.yml` and the environment
