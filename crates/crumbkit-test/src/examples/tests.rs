@@ -25,6 +25,7 @@ mod goldens;
 mod inputs;
 mod layout;
 mod opt_out;
+mod preconditions;
 mod stderr;
 mod xdg;
 
@@ -68,15 +69,17 @@ fn examples(dir: &TempDir) -> Examples<'_> {
     Examples::new(SH, dir.path().to_str().unwrap())
 }
 
-/// Runs the check of `guide` on `sh()` with `examples` and `action`.
-fn run(guide: &Guide, examples: &Examples<'_>, action: Action) {
+/// Runs the check of `guide` on `sh()` with `examples` and `action`, and
+/// returns the notes of the examples that it skipped for their
+/// preconditions.
+fn run(guide: &Guide, examples: &Examples<'_>, action: Action) -> Vec<String> {
     check(
         &sh(),
         guide,
         examples,
         &Assert::new().action(action),
         super::TIMEOUT,
-    );
+    )
 }
 
 #[test]

@@ -152,7 +152,9 @@ for every run, and
 each leaf whose row type declares `Row::LINE` (as a `text-line`
 customisation that names the form of the line), and each leaf whose row
 type declares `Row::CHILDREN` (as a `children` customisation that names the
-field and quotes any `Row::CHILDREN_HELP`). A leaf's code rename, and an
+field and quotes any `Row::CHILDREN_HELP`), and each example that needs a
+precondition (as an `example-precondition` customisation that names the
+example's command line and the names it needs). A leaf's code rename, and an
 exit that lists a code that only a leaf renames, apply to that leaf's
 command line. The dashed-forms declaration is listed once, followed by each
 command named in another style as a `resource-name` or a `verb-name` with
@@ -164,4 +166,4 @@ completion variable, because `complete_with` sets it for the process and the
 guide does not hold it.
 
 Why: ADR-0056, ADR-0060, ADR-0036, ADR-0035, ADR-0064, ADR-0081, ADR-0086,
-ADR-0120, ADR-0123.
+ADR-0120, ADR-0123, ADR-0163.

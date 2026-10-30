@@ -1,7 +1,7 @@
 # ADR-0005. End-to-end tests
 
 - Date: 2026-10-07
-- Status: amended by ADR-0085
+- Status: amended by ADR-0085 and ADR-0163
 
 ## Context
 

@@ -664,6 +664,17 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   a listing lists, while `--long`, `--fields` and `--json` list every row.
   It returns true by default, and a row that reports a problem is always
   listed ([behaviour/output/listings]).
+- crumbkit: `Example::needs` names the preconditions of an example, such
+  as `docker`, which help and `commands list` do not show
+  ([behaviour/checks/end-to-end]).
+- crumbkit-test: `Examples::provides` names the preconditions that a test
+  run provides. [`check_examples`] and [`check_output_budget`] skip an
+  example whose preconditions the run lacks and keep its golden files
+  ([behaviour/checks/end-to-end]).
+- crumbkit-test: [`check_examples`] writes one line for each example that
+  it skips for a precondition, [`check_guide`] still parses the example,
+  and [`check_opt_outs`] lists it among the customisations
+  ([behaviour/checks/end-to-end]).
 
 ### Changed
 
