@@ -75,6 +75,13 @@ pub const GUIDE: Guide = Guide::new().picker(&MENU).leaves(&[
                 &["--list", "to-read", "--json"],
                 "Print the file of the to-read list as JSON text, or as base64 when it is not UTF-8",
             ),
+            // The fixture lists are UTF-8 text, so a test run provides
+            // this precondition only when it adds a list that is not.
+            Example::new(
+                &["--list", "scanned", "--json"],
+                "Print the file of the scanned list, which is not UTF-8, as base64",
+            )
+            .needs(&["scanned-list"]),
         ])
         .effects(Effects::read_only())
         .document(ENTRIES_EXPORT)
@@ -106,7 +113,10 @@ pub const GUIDE: Guide = Guide::new().picker(&MENU).leaves(&[
                     "Emma",
                 ],
                 "Append Emma to the to-read list without asking",
-            ),
+            )
+            // The run changes the list, so it needs a copy of the lists
+            // that it may change.
+            .needs(&["writable-lists"]),
         ])
         .effects(Effects::replacing())
         .document(ENTRIES_SET),

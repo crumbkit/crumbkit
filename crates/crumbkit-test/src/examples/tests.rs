@@ -25,6 +25,7 @@ mod goldens;
 mod inputs;
 mod layout;
 mod opt_out;
+mod preconditions;
 mod stderr;
 mod xdg;
 
@@ -70,13 +71,20 @@ fn examples(dir: &TempDir) -> Examples<'_> {
 
 /// Runs the check of `guide` on `sh()` with `examples` and `action`.
 fn run(guide: &Guide, examples: &Examples<'_>, action: Action) {
+    skips(guide, examples, action);
+}
+
+/// Runs the check of `guide` on `sh()` with `examples` and `action`, and
+/// returns the notes of the examples that it skipped for their
+/// preconditions.
+fn skips(guide: &Guide, examples: &Examples<'_>, action: Action) -> Vec<String> {
     check(
         &sh(),
         guide,
         examples,
         &Assert::new().action(action),
         super::TIMEOUT,
-    );
+    )
 }
 
 #[test]
@@ -179,8 +187,10 @@ fn a_binary_that_cannot_start_fails_the_check_naming_its_path_and_the_error() {
         .leaves(&[Leaf::new(&["-c"]).examples(&[Example::new(&["echo books"], "Print")])]);
     const MISSING: Examples<'_> = Examples::new("/nonexistent/sh", "tests/golden/examples");
 
-    let message =
-        panic_message(|| check(&sh(), &ONE, &MISSING, &Assert::new(), super::TIMEOUT)).unwrap();
+    let message = panic_message(|| {
+        check(&sh(), &ONE, &MISSING, &Assert::new(), super::TIMEOUT);
+    })
+    .unwrap();
 
     assert!(
         message.starts_with(

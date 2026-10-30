@@ -56,11 +56,15 @@ const PATH_BUDGETS: PathBudgets<'_> = PathBudgets::new("tests/golden/examples").
 /// files, and the fixture lists that each run reads. Each run starts in a
 /// new copy of the fixture lists, and `READING_DIR` names that copy, so an
 /// example of `entries set` that writes to a list leaves the fixture as it
-/// is and the next run sees the list unchanged.
+/// is and the next run sees the list unchanged. The copy is why the run
+/// provides `writable-lists`. The fixture holds no list that is not UTF-8,
+/// so the run does not provide `scanned-list`, and the check skips the
+/// example of `entries export` that needs it.
 const EXAMPLES: Examples<'_> =
     Examples::new(env!("CARGO_BIN_EXE_reading"), "tests/golden/examples")
         .fresh_dir(LISTS)
         .env(&[("READING_DIR", ".")])
+        .provides(&["writable-lists"])
         .allow(ALLOW);
 
 /// Returns the command tree and the guide that reading builds from the lists

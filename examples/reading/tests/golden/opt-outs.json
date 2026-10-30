@@ -74,6 +74,16 @@
   ],
   "customisations": [
     {
+      "declaration": "example-precondition",
+      "applies_to": "reading entries export --list scanned --json",
+      "declares": "The example runs only in a test run that provides scanned-list."
+    },
+    {
+      "declaration": "example-precondition",
+      "applies_to": "reading entries set --list to-read --position 6 --expect none --yes Emma",
+      "declares": "The example runs only in a test run that provides writable-lists."
+    },
+    {
       "declaration": "text-line",
       "applies_to": "reading lists list",
       "declares": "The text prints each row as the line <NAME>: <ABOUT> in place of a table row."

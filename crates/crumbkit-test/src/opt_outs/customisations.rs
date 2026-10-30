@@ -35,8 +35,9 @@ pub(super) struct Customisation {
 /// [`dashed_names`] lists them, and then for each leaf in guide order its
 /// document's name when the leaf's path gives another, the program whose
 /// exit code it passes on, whether it declares refusal alternatives,
-/// whether it declares a refusal hint, the form of its rows' own text line (`Row::LINE`, ADR-0064), and each code
-/// rename of [`Leaf::codes`](crumbkit::help::Leaf::codes). An exit that
+/// whether it declares a refusal hint, the form of its rows' own text line (`Row::LINE`, ADR-0064), each code
+/// rename of [`Leaf::codes`](crumbkit::help::Leaf::codes), and each example
+/// that needs a precondition (`Example::needs`, ADR-0163). An exit that
 /// lists a code that only a leaf renames applies to that leaf's command. A
 /// declaration that a later change adds joins this list beside the
 /// declarations of the same scope: a guide setting before the leaves, and a
@@ -205,7 +206,28 @@ fn leaf_customisations(command: &Command, spelling: Spelling, leaf: &Leaf) -> Ve
             ),
         });
     }
+    let text = command_line(command, &leaf.path().join(" "));
+    for example in leaf.get_examples() {
+        let Some(names) = and_list(example.preconditions()) else {
+            continue;
+        };
+        list.push(Customisation {
+            declaration: "example-precondition",
+            applies_to: crate::guide::command_line(&text, example.words()),
+            declares: format!("The example runs only in a test run that provides {names}."),
+        });
+    }
     list
+}
+
+/// Returns `names` as one phrase, such as `server` or `server and reports`
+/// or `server, reports and docker`, or `None` when `names` is empty.
+fn and_list(names: &[&str]) -> Option<String> {
+    let (last, rest) = names.split_last()?;
+    if rest.is_empty() {
+        return Some((*last).to_owned());
+    }
+    Some(format!("{} and {last}", rest.join(", ")))
 }
 
 /// Returns a `resource-name` customisation for each command with

@@ -31,7 +31,13 @@ path-budget/path: every path through reading
   Reason: reading's longest path, commands list, reads about 4,050 bytes, so 4,300 bytes leaves room for small changes and catches a page or an output that grows by much.
   Cost: None, because the budget is at or below the default.
 
-reading declares 5 customisations, which need no reason.
+reading declares 7 customisations, which need no reason.
+
+example-precondition: reading entries export --list scanned --json
+  Declares: The example runs only in a test run that provides scanned-list.
+
+example-precondition: reading entries set --list to-read --position 6 --expect none --yes Emma
+  Declares: The example runs only in a test run that provides writable-lists.
 
 text-line: reading lists list
   Declares: The text prints each row as the line <NAME>: <ABOUT> in place of a table row.

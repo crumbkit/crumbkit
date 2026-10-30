@@ -61,7 +61,9 @@ const VARIABLE: &str = "OUTPUT_BUDGET";
 /// running any example when that directory does not exist. It skips the
 /// examples that `examples` skips through
 /// [`Rule::Examples`](crate::Rule::Examples) and
-/// [`Allow::example`](crate::Allow::example).
+/// [`Allow::example`](crate::Allow::example), and each example that needs a
+/// precondition that [`Examples::provides`](crate::Examples::provides)
+/// does not list.
 ///
 /// ```no_run
 /// use clap::Command;
@@ -135,7 +137,9 @@ fn check(
                 .collect::<Vec<_>>()
                 .join(" ");
             let line = command_line(&called, example.words());
-            if allowances.excuses_example(&below, example.words()) {
+            if allowances.excuses_example(&below, example.words())
+                || !examples.missing(example.preconditions()).is_empty()
+            {
                 continue;
             }
             let dir = Path::new(examples.goldens());

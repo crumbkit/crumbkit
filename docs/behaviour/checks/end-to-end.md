@@ -83,12 +83,31 @@ problem it reports. These rules matter most to a tool's author:
 - `Allow::example` opts out of one example by its words, for an example
   whose output no redaction can make stable. It is stale when its command
   has no example with those words.
+- An example names the preconditions that its run needs with
+  `Example::needs`, such as `&["docker"]` for an example that acts on
+  running containers. A precondition is a name alone, with no setup step.
+  The tool's test lists the names that its run provides with
+  `Examples::provides`, and decides them itself, such as from a variable
+  that a CI job with a container daemon sets. crumbkit-test reads no
+  environment variable for this. Help and `commands list` do not show
+  preconditions.
+- `check_examples` and `check_output_budget` run an example only when the
+  run provides every name that the example needs. `check_examples` writes
+  one line to the test's captured standard error for each example that it
+  skips, naming the names that the run lacks. cargo shows the lines with
+  `--nocapture` or when the test fails.
+- A skipped example keeps its golden files. A run without the precondition
+  never reads, rewrites or deletes them, so the run that provides it owns
+  them. `check_guide` still parses every example, skipped or not, and
+  `check_opt_outs` lists each example that needs a precondition among the
+  [customisations](../adoption/declarations.md#the-customisations-section),
+  because the example is correct and needs no reason.
 - The output weight read from a golden file counts the bytes of a
   placeholder in place of the value it replaced.
 
 [Golden files](golden-files.md) lists the files the check keeps.
 
-Why: ADR-0005, ADR-0036, ADR-0045, ADR-0050.
+Why: ADR-0005, ADR-0036, ADR-0045, ADR-0050, ADR-0163.
 
 ## Timeouts and pipes
 
