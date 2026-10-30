@@ -135,6 +135,42 @@ the tool declares its verbs.
 
 Why: ADR-0015, ADR-0056, ADR-0036.
 
+## Root verbs
+
+A tool whose commands sit directly under the root on purpose declares them
+once as root verbs, with one reason for the whole list. Unlike the other
+declarations it takes a reason, because a root verb departs from the
+`<tool> <resource> <verb>` grammar for good.
+
+- `Guide::root_verbs(verbs, reason)` is the recommended declaration. Root
+  help then lists the verbs under a `Verbs` heading
+  ([goal headings](../help/headings/README.md#root-verbs)).
+- [`Allow::root_verbs(verbs, reason)`](../../../crates/crumbkit-test/src/allow.rs)
+  in the opt-out list is the alternative for a tool that does not want the
+  heading. Every check except `check_grammar` and `check_opt_outs` ignores
+  it.
+
+[`check_grammar`](../../../crates/crumbkit-test/src/grammar.rs) reads both:
+
+- each declared root verb passes the root-leaf rule without an opt-out,
+  and a root leaf that is not declared still needs an opt-out from
+  `Rule::RootLeaf`;
+- a resource at any depth whose name or alias is a root verb's name or
+  alias fails, and this rule has no opt-out;
+- a declared verb that names no visible command without subcommands
+  directly under the root fails as a stale opt-out does, and so does a
+  declaration without a verb;
+- a declaration that names one verb twice fails, because root help would
+  list it twice;
+- a tool that declares root verbs more than once, on the guide and with
+  `Allow::root_verbs` or with `Allow::root_verbs` twice, fails, because root
+  help lists only the guide's verbs and one reason covers the choice.
+
+The root's `-h` budget still covers the heading and each root verb's line
+([help checks](../help/checks.md)).
+
+Why: ADR-0165.
+
 ## The customisations section
 
 crumbkit-test's `check_opt_outs` lists each declaration after the opt-outs,
@@ -158,7 +194,10 @@ example's command line and the names it needs). A leaf's code rename, and an
 exit that lists a code that only a leaf renames, apply to that leaf's
 command line. The dashed-forms declaration is listed once, followed by each
 command named in another style as a `resource-name` or a `verb-name` with
-the dashed form it also answers to.
+the dashed form it also answers to. The root verbs follow as one
+`root-verbs` customisation for each declaration, which names each verb's
+command line and gives the tool's reason on a `Reason:` line. When a tool declares root verbs, the line that
+counts the customisations no longer says that they need no reason.
 
 The section is left out when the tool declares nothing, and the JSON holds it
 as a `customisations` array beside `data`. The report does not list the
@@ -166,4 +205,4 @@ completion variable, because `complete_with` sets it for the process and the
 guide does not hold it.
 
 Why: ADR-0056, ADR-0060, ADR-0036, ADR-0035, ADR-0064, ADR-0081, ADR-0086,
-ADR-0120, ADR-0123, ADR-0163.
+ADR-0120, ADR-0123, ADR-0163, ADR-0165.

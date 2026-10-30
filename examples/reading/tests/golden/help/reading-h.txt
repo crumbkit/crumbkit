@@ -2,7 +2,10 @@ Keep reading lists, and print the entries of each
 
 Usage: reading [OPTIONS] <COMMAND>
 
-Commands:
+Verbs
+  where     Print the directory that holds reading's lists
+
+Commands
   entries   Work with the entries of any reading list
   lists     Print the files of reading's lists
   commands  Explore reading's commands

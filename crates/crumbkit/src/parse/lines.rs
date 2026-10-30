@@ -153,12 +153,21 @@ fn offers(leaf: &Leaf, id: &str) -> bool {
 }
 
 /// Applies to `node`, the command at `path`, each group of `guide` whose
-/// path is `path`, in guide order, as [`help::extend`] applies them.
+/// path is `path`, in guide order, and at the root the guide's root verbs,
+/// as [`help::extend`] applies them.
 fn apply_groups(node: &mut Command, guide: &Guide, path: &[String], header: Style, literal: Style) {
+    let verbs = if path.is_empty() {
+        guide.root_verb_names()
+    } else {
+        &[]
+    };
     for group in guide.get_groups() {
         if group.path() == path {
-            help::apply(node, group, header, literal);
+            help::apply(node, group, verbs, header, literal);
         }
+    }
+    if path.is_empty() {
+        help::apply_root_verbs(node, guide.get_groups(), verbs, header, literal);
     }
 }
 

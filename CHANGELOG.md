@@ -664,6 +664,16 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   a listing lists, while `--long`, `--fields` and `--json` list every row.
   It returns true by default, and a row that reports a problem is always
   listed ([behaviour/output/listings]).
+- crumbkit: `Guide::root_verbs` declares the verbs that sit directly under
+  a tool's root, with one reason, and root help lists them under the
+  heading `Verbs`. A guide that declares none keeps the root help it had
+  ([behaviour/help/headings]).
+- crumbkit-test: [`check_grammar`] passes each root verb that the guide or
+  `Allow::root_verbs` declares without an opt-out, and fails a resource
+  that answers to a root verb's word and a stale or repeated declaration
+  ([behaviour/adoption/declarations]).
+- crumbkit-test: [`check_opt_outs`] lists a root-verbs declaration with its
+  reason as a customisation ([behaviour/adoption/declarations]).
 - crumbkit: `Example::needs` names the preconditions of an example, such
   as `docker`, which help and `commands list` do not show
   ([behaviour/checks/end-to-end]).
@@ -1434,6 +1444,7 @@ rustdoc, or at the page in docs/ that describes the behaviour. -->
 [behaviour/help/checks]: docs/behaviour/help/checks.md
 [behaviour/help/commands-list]: docs/behaviour/help/commands-list.md
 [behaviour/help/examples]: docs/behaviour/help/examples.md
+[behaviour/help/headings]: docs/behaviour/help/headings/README.md
 [behaviour/help/reference]: docs/behaviour/help/reference.md
 [behaviour/help/weight]: docs/behaviour/help/weight.md
 [behaviour/output]: docs/behaviour/output/README.md

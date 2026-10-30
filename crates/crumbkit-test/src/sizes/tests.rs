@@ -158,3 +158,29 @@ fn a_binary_s_page_is_measured_from_what_it_prints_on_standard_output() {
          shelf books list -h: the page has 31 bytes, over its budget of 30 bytes"
     );
 }
+
+#[test]
+fn the_root_verbs_heading_counts_towards_the_root_s_budget() {
+    const GUIDE: Guide =
+        Guide::new().root_verbs(&["version"], "People type `shelf version` from habit.");
+    let shelf = shelf().subcommand(Command::new("version").about("Print the version"));
+    let root = |guide: &Guide| {
+        pages(&shelf, Pages::rendered(guide), "-h", &mut Vec::new())
+            .iter()
+            .find(|(visit, _)| visit.path() == "shelf")
+            .map(|(_, page)| page.len())
+            .unwrap()
+    };
+    let (plain, headed) = (root(&Guide::new()), root(&GUIDE));
+    let budgets = Budgets::new().root(u64::try_from(plain).unwrap(), "A test.");
+
+    assert!(headed > plain, "{headed} {plain}");
+    check_help_sizes(&shelf, Pages::rendered(&Guide::new()), &budgets);
+    assert_eq!(
+        panic_message(|| check_help_sizes(&shelf, Pages::rendered(&GUIDE), &budgets)).unwrap(),
+        format!(
+            "the command tree breaks crumbkit's help size rules:\n\
+             shelf -h: the page has {headed} bytes, over its budget of {plain} bytes"
+        )
+    );
+}

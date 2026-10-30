@@ -12,7 +12,8 @@ use crumbkit::schemas::{SCHEMAS_LIST, SCHEMAS_SHOW, SchemasList, SchemasShow};
 use crumbkit::{DryRun, Expect, NoInput, Page, ViewFlags, Yes};
 
 use crate::lists::{
-    ENTRIES_EXPORT, ENTRIES_LIST, ENTRIES_SET, ENTRIES_STREAM, LISTS_LIST, LISTS_SHOW, choices,
+    ENTRIES_EXPORT, ENTRIES_LIST, ENTRIES_SET, ENTRIES_STREAM, LISTS_LIST, LISTS_SHOW, WHERE,
+    choices,
 };
 
 /// Keep reading lists, and print the entries of each.
@@ -40,12 +41,19 @@ static MENU: Menu = Menu::new();
 /// `--list`.
 const LISTS: &[Choices] = &[Choices::new("list", choices)];
 
-/// The leaves of reading's static commands. reading guides no command, so
-/// `reading -h` keeps clap's `Commands:` list, which also lists the command
-/// of each reading list. `crate::guide` adds a leaf for each of those
-/// commands at run time. A person at a terminal who leaves out `--list`
-/// picks a list from the menu.
-pub const GUIDE: Guide = Guide::new().picker(&MENU).leaves(&[
+/// The leaves of reading's static commands and its root verb `where`.
+/// reading guides no command, so `reading -h` lists `where` under the
+/// `Verbs` heading and every other command, including the command of each
+/// reading list, under `Commands`. `crate::guide` adds a leaf for each
+/// list's commands at run time. A person at a terminal who leaves out
+/// `--list` picks a list from the menu.
+pub const GUIDE: Guide = Guide::new()
+    .picker(&MENU)
+    .root_verbs(
+        &["where"],
+        "People ask where their lists are kept, and the directory belongs to no one list.",
+    )
+    .leaves(&[
     Leaf::new(&["entries", "list"])
         .examples(&[Example::new(
             &["--list", "to-read"],
@@ -154,9 +162,13 @@ pub const GUIDE: Guide = Guide::new().picker(&MENU).leaves(&[
         )])
         .effects(Effects::read_only())
         .document(SCHEMAS_SHOW),
+    Leaf::new(&["where"])
+        .examples(&[Example::new(&[], "Print the directory that holds reading's lists")])
+        .effects(Effects::read_only())
+        .document(WHERE),
 ]);
 
-/// The resources of reading's static grammar.
+/// The resources of reading's static grammar, and its root verb `where`.
 #[derive(Debug, Subcommand)]
 pub(crate) enum Resource {
     /// Work with the entries of any reading list.
@@ -183,6 +195,8 @@ pub(crate) enum Resource {
         #[command(subcommand)]
         command: SchemasCommand,
     },
+    /// Print the directory that holds reading's lists.
+    Where,
 }
 
 /// The commands for the entries of any reading list.

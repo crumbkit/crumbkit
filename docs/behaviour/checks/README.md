@@ -67,7 +67,8 @@ Why: ADR-0015, ADR-0021, ADR-0025, ADR-0036, ADR-0104, ADR-0105, ADR-0143.
   a second spelling. A hidden alias costs neither, and lets a retired name
   keep working for a while or a common wrong guess parse.
 - `check_grammar` checks only a name's form, so review checks that each
-  resource is plural. A leaf directly under the root passes only with an
+  resource is plural. A leaf directly under the root passes only as a
+  declared [root verb](../adoption/declarations.md#root-verbs) or with an
   opt-out of `Rule::RootLeaf`, because such a leaf adds a line to the root
   help, its name can collide with a resource that the tool adds later, and
   an agent cannot guess its siblings from the noun and verb pattern.
@@ -85,7 +86,7 @@ Why: ADR-0015, ADR-0021, ADR-0025, ADR-0036, ADR-0104, ADR-0105, ADR-0143.
   has no documented getter for `Command::args_override_self` or for an
   `Arg::overrides_with` that names the argument itself.
 
-Why: ADR-0015.
+Why: ADR-0015, ADR-0165.
 
 ## Trying the checks with clap alone
 

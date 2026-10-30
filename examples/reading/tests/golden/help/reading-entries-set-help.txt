@@ -19,11 +19,11 @@ Options:
       --dry-run
           Report what the command would change, and change nothing
 
-      --json
-          Print the result as a JSON document. The default prints text.
-
       --yes
           Proceed without asking for confirmation
+
+      --json
+          Print the result as a JSON document. The default prints text.
 
       --fields <FIELD>
           Print only these comma-separated fields, in this order. The default prints the compact columns.

@@ -120,7 +120,8 @@ impl Goal {
 }
 
 /// Gives `node`, the command at the path of `group`, a help template that
-/// holds the headed list of `group`'s goals, with `header` as the style of
+/// holds the headed list of `group`'s goals and of `verbs`, the guide's root
+/// verbs when `node` is the root and otherwise none, with `header` as the style of
 /// each heading and `literal` as the style of each name. It leaves `node`
 /// unchanged when the list would be empty. [`extend`](super::extend) and
 /// [`parse`](crate::parse) both apply a group through it.
@@ -129,8 +130,14 @@ impl Goal {
 /// set them, and the template prints them at the top of the page, as clap's
 /// default template does. A compact group and a list that holds `{` are the
 /// exceptions, which the comments below describe.
-pub(crate) fn apply(node: &mut Command, group: &Group, header: Style, literal: Style) {
-    let Some(list) = list(node, group.goals, header, literal) else {
+pub(crate) fn apply(
+    node: &mut Command,
+    group: &Group,
+    verbs: &[&str],
+    header: Style,
+    literal: Style,
+) {
+    let Some(list) = list(node, group.goals, verbs, header, literal) else {
         return;
     };
     // clap's template prints `before_help` in `-h` and `before_long_help`
@@ -144,7 +151,7 @@ pub(crate) fn apply(node: &mut Command, group: &Group, header: Style, literal: S
     // the terminal's width, and a wrapped line continues at column 0. A
     // template tag for each kind of help, if clap adds one, replaces this.
     if group.compact {
-        let names = names(node, group.goals, header, literal).unwrap_or_default();
+        let names = names(node, group.goals, verbs, header, literal).unwrap_or_default();
         *node = std::mem::take(node)
             .help_template(template(header, ""))
             .before_help(names)
@@ -168,6 +175,22 @@ pub(crate) fn apply(node: &mut Command, group: &Group, header: Style, literal: S
             .before_long_help(None::<&str>);
     } else {
         *node = std::mem::take(node).help_template(template(header, &list));
+    }
+}
+
+/// Gives `root`, the tool's root, the headed list of `verbs`, the guide's
+/// root verbs, when `groups` holds no group of the root, which would list
+/// them itself. A root without root verbs keeps clap's list.
+/// [`extend`](super::extend) and [`parse`](crate::parse) both call it.
+pub(crate) fn apply_root_verbs(
+    root: &mut Command,
+    groups: &[Group],
+    verbs: &[&str],
+    header: Style,
+    literal: Style,
+) {
+    if !verbs.is_empty() && !groups.iter().any(|group| group.path().is_empty()) {
+        apply(root, &Group::new(&[], &[]), verbs, header, literal);
     }
 }
 

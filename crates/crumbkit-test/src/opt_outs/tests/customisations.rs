@@ -157,7 +157,7 @@ fn a_cargo_subcommand_names_its_documents_after_the_path_below_its_own_name() {
     const WEIGH: Document<Prose<String>> = Document::new("crumbkit", "weigh", 1, "The weights.");
     const GUIDE: Guide = Guide::new().leaves(&[Leaf::new(&["crumbkit", "weigh"]).document(WEIGH)]);
 
-    assert!(customisations(&Command::new("cargo"), &GUIDE).is_empty());
+    assert!(customisations(&Command::new("cargo"), &GUIDE, &[]).is_empty());
 }
 
 #[test]
@@ -168,7 +168,7 @@ fn the_dashed_forms_declaration_and_each_command_named_in_another_style_are_cust
             .subcommand(Command::new("list")),
     );
     let listed = |guide: &Guide| -> Vec<_> {
-        customisations(&shelf, guide)
+        customisations(&shelf, guide, &[])
             .into_iter()
             .map(|entry| (entry.declaration, entry.applies_to, entry.declares))
             .collect()
@@ -206,7 +206,7 @@ fn a_leaf_s_rename_and_an_exit_that_lists_it_are_customisations_of_that_command(
             .codes(&[Rename::new(&crumbkit::codes::VERSION_CONFLICT, &MOVED)])]);
     let shelf = Command::new("shelf");
 
-    let listed: Vec<_> = customisations(&shelf, &GUIDE)
+    let listed: Vec<_> = customisations(&shelf, &GUIDE, &[])
         .into_iter()
         .map(|entry| (entry.declaration, entry.applies_to, entry.declares))
         .collect();
@@ -248,7 +248,7 @@ fn rows_that_print_their_own_text_line_are_a_text_line_customisation() {
     const GUIDE: Guide =
         Guide::new().leaves(&[Leaf::new(&["books", "remove"]).document(BOOKS_REMOVE)]);
 
-    let list = customisations(&Command::new("shelf"), &GUIDE);
+    let list = customisations(&Command::new("shelf"), &GUIDE, &[]);
 
     let list = serde_json::to_value(&list).unwrap();
     assert_eq!(
@@ -282,7 +282,7 @@ fn rows_that_print_their_children_under_them_are_a_children_customisation() {
     const GUIDE: Guide =
         Guide::new().leaves(&[Leaf::new(&["shelves", "remove"]).document(SHELVES_REMOVE)]);
 
-    let list = customisations(&Command::new("shelf"), &GUIDE);
+    let list = customisations(&Command::new("shelf"), &GUIDE, &[]);
 
     let list = serde_json::to_value(&list).unwrap();
     assert_eq!(
@@ -334,7 +334,7 @@ fn the_children_customisation_of_rows_at_column_1_does_not_call_them_indented() 
     const GUIDE: Guide =
         Guide::new().leaves(&[Leaf::new(&["shelves", "remove"]).document(SHELVES_REMOVE)]);
 
-    let list = serde_json::to_value(customisations(&Command::new("shelf"), &GUIDE)).unwrap();
+    let list = serde_json::to_value(customisations(&Command::new("shelf"), &GUIDE, &[])).unwrap();
 
     assert_eq!(
         list[0]["declares"],
@@ -349,7 +349,7 @@ fn the_children_customisation_quotes_the_row_type_s_own_help_text() {
     const GUIDE: Guide =
         Guide::new().leaves(&[Leaf::new(&["shelves", "remove"]).document(SHELVES_REMOVE)]);
 
-    let list = serde_json::to_value(customisations(&Command::new("shelf"), &GUIDE)).unwrap();
+    let list = serde_json::to_value(customisations(&Command::new("shelf"), &GUIDE, &[])).unwrap();
 
     assert_eq!(
         list[0]["declares"],
@@ -417,7 +417,7 @@ fn a_custom_spelling_is_a_customisation_and_spells_every_listed_code() {
         .codes(&[Rename::new(&CLI_USAGE, &USAGE)]);
     let shelf = Command::new("shelf");
 
-    let listed: Vec<_> = customisations(&shelf, &GUIDE)
+    let listed: Vec<_> = customisations(&shelf, &GUIDE, &[])
         .into_iter()
         .map(|entry| (entry.declaration, entry.applies_to, entry.declares))
         .collect();
@@ -444,7 +444,7 @@ fn a_custom_spelling_is_a_customisation_and_spells_every_listed_code() {
 fn a_guide_that_sets_the_colon_spelling_lists_no_spelling() {
     const GUIDE: Guide = Guide::new().spelling(crumbkit::Spelling::COLONS);
 
-    assert!(customisations(&Command::new("shelf"), &GUIDE).is_empty());
+    assert!(customisations(&Command::new("shelf"), &GUIDE, &[]).is_empty());
 }
 
 #[test]
@@ -458,7 +458,7 @@ fn each_example_that_needs_a_precondition_is_an_example_precondition_customisati
             .needs(&["server", "reports"]),
     ])]);
 
-    let list = customisations(&Command::new("shelf"), &GUIDE);
+    let list = customisations(&Command::new("shelf"), &GUIDE, &[]);
 
     let list = serde_json::to_value(&list).unwrap();
     assert_eq!(

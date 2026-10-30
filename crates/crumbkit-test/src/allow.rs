@@ -55,6 +55,9 @@ pub struct Allow {
     /// The refused command line of an opt-out from [`Rule::NoTwin`], or
     /// `None` for an opt-out that names a command.
     refused: Option<Failing<'static>>,
+    /// The root verbs that [`Allow::root_verbs`] declares, or `None` for an
+    /// opt-out.
+    root_verbs: Option<&'static [&'static str]>,
     /// Why the tool skips the rule, in one line.
     reason: &'static str,
 }
@@ -101,6 +104,7 @@ impl Allow {
             words: None,
             option: None,
             refused: None,
+            root_verbs: None,
             reason,
         }
     }
@@ -143,6 +147,7 @@ impl Allow {
             words: Some(words),
             option: None,
             refused: None,
+            root_verbs: None,
             reason,
         }
     }
@@ -198,6 +203,7 @@ impl Allow {
             words: None,
             option: Some(option),
             refused: None,
+            root_verbs: None,
             reason,
         }
     }
@@ -241,8 +247,58 @@ impl Allow {
             words: None,
             option: None,
             refused: Some(refused),
+            root_verbs: None,
             reason,
         }
+    }
+
+    /// Returns the declaration of `verbs`, the names of the commands without
+    /// subcommands that sit directly under the root on purpose, such as
+    /// `start` and `stop`, with the tool's `reason` for the whole list.
+    ///
+    /// It is the test-time form of `Guide::root_verbs`, for a tool that does
+    /// not want root help to list its root verbs under their own heading. It
+    /// is no opt-out: [`check_grammar`] passes each of `verbs` without an
+    /// opt-out from [`Rule::RootLeaf`], fails a declared verb that names no
+    /// visible command without subcommands directly under the root, and
+    /// fails a tool that also declares root verbs on its guide.
+    /// [`check_opt_outs`] lists the declaration with its reason among the
+    /// customisations. Every other check ignores it.
+    ///
+    /// ```
+    /// use crumbkit_test::Allow;
+    ///
+    /// const ALLOW: &[Allow] = &[Allow::root_verbs(
+    ///     &["start", "stop"],
+    ///     "People and scripts type `start` and `stop` as one word every day.",
+    /// )];
+    /// ```
+    ///
+    /// # Panics
+    ///
+    /// Panics unless `reason` is non-empty and holds no line break, as
+    /// [`Allow::new`] does.
+    ///
+    /// [`check_grammar`]: crate::check_grammar
+    /// [`check_opt_outs`]: crate::check_opt_outs
+    #[must_use]
+    pub const fn root_verbs(verbs: &'static [&'static str], reason: &'static str) -> Self {
+        assert!(is_reason(reason), "a reason is one non-empty line");
+        Self {
+            rule: Rule::RootLeaf,
+            path: "",
+            words: None,
+            option: None,
+            refused: None,
+            root_verbs: Some(verbs),
+            reason,
+        }
+    }
+
+    /// Returns the root verbs that [`Allow::root_verbs`] declares, or
+    /// `None` for an opt-out.
+    pub(crate) const fn declared_root_verbs(&self) -> Option<&'static [&'static str]> {
+        self.root_verbs
     }
 
     /// Returns the refused command line of an opt-out from
@@ -298,6 +354,7 @@ impl Allow {
             && self.words.is_none()
             && self.option.is_none()
             && self.refused.is_none()
+            && self.root_verbs.is_none()
             && (self.path.is_empty()
                 || below
                     .strip_prefix(self.path)

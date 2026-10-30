@@ -14,6 +14,7 @@ use crate::testing::panic_message;
 use crate::{Allow, Budget, Budgets, Failing, PathBudgets, Rule};
 
 mod customisations;
+mod root_verbs;
 
 /// The opt-outs of the test tool.
 const ALLOW: &[Allow] = &[

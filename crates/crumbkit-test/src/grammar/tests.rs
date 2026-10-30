@@ -8,6 +8,8 @@ use crate::Pages;
 use crate::allow::{Allow, Rule};
 use crate::testing::panic_message;
 
+mod root_verbs;
+
 #[test]
 fn resources_that_nest_and_end_in_list_show_or_a_passed_verb_pass() {
     let shelf = Command::new("shelf").subcommand(

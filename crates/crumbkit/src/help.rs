@@ -15,6 +15,7 @@ pub(crate) mod leaf;
 mod list;
 mod output;
 pub(crate) mod rename;
+mod root_verbs;
 mod runtime;
 mod spelling;
 mod terminal;
@@ -38,7 +39,7 @@ pub use self::topic::Topic;
 pub use self::view::ViewFlag;
 pub use self::words::quote;
 
-pub(crate) use self::group::apply;
+pub(crate) use self::group::{apply, apply_root_verbs};
 use self::list::write_line;
 use crate::pick::Picker;
 use crate::{JsonLayout, Spelling, ToolName};
@@ -137,6 +138,10 @@ pub struct Guide {
     root: &'static [&'static str],
     /// Whether a command named in another style answers to its dashed form.
     dashed_forms: bool,
+    /// The verbs directly under the root, which root help lists under their
+    /// own heading, with the tool's reason, or `None` when the tool declares
+    /// none.
+    root_verbs: Option<(&'static [&'static str], &'static str)>,
 }
 
 impl Guide {
@@ -161,6 +166,7 @@ impl Guide {
             json_layout: JsonLayout::OneLine,
             root: &[],
             dashed_forms: false,
+            root_verbs: None,
         }
     }
 
@@ -361,7 +367,9 @@ impl Default for Guide {
 ///
 /// Each group's help page lists its visible subcommands under its goals'
 /// headings, in the guide's order, and then the visible subcommands that no
-/// goal names under a final `Commands` heading. shelf's root group is
+/// goal names under a final `Commands` heading. The root's page lists the
+/// root verbs that [`Guide::root_verbs`] declares and no goal names under
+/// `Verbs`, before `Commands`, also when the guide gives the root no group. shelf's root group is
 /// compact: [`shelf-h.txt`][shelf-h] shows its `-h` and
 /// [`shelf-help.txt`][shelf-help] its `--help`.
 ///
@@ -417,11 +425,14 @@ pub fn extend(mut command: Command, guide: &Guide) -> Command {
     let styles = command.get_styles();
     let header = *styles.get_header();
     let literal = *styles.get_literal();
+    let verbs = guide.root_verb_names();
     for group in guide.groups {
         if let Some(node) = find_mut(&mut command, group.path()) {
-            apply(node, group, header, literal);
+            let verbs = if group.path().is_empty() { verbs } else { &[] };
+            apply(node, group, verbs, header, literal);
         }
     }
+    apply_root_verbs(&mut command, guide.groups, verbs, header, literal);
     let tool = command.get_name().to_owned();
     for (index, leaf) in guide.leaves.iter().enumerate() {
         // `parse` finds the first leaf with a path, so `extend` skips the

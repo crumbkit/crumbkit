@@ -74,6 +74,12 @@
   ],
   "customisations": [
     {
+      "declaration": "root-verbs",
+      "applies_to": "reading where",
+      "declares": "Each command sits directly under the root as a verb, and root help lists it under the heading Verbs.",
+      "reason": "People ask where their lists are kept, and the directory belongs to no one list."
+    },
+    {
       "declaration": "example-precondition",
       "applies_to": "reading entries set --list to-read --position 6 --expect none --yes Emma",
       "declares": "The example runs only in a test run that provides writable-lists."

@@ -8,7 +8,7 @@ use crumbkit::help::{Guide, Leaf, Rename};
 use crumbkit::{Code, Spelling};
 use serde::Serialize;
 
-use crate::allow::command_line;
+use crate::allow::{Allow, command_line};
 use crate::documents::declared_name;
 use crate::tree;
 
@@ -22,6 +22,9 @@ pub(super) struct Customisation {
     pub(super) applies_to: String,
     /// What the declaration changes, in one sentence.
     pub(super) declares: String,
+    /// The tool's reason, which only the root verbs declaration has.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(super) reason: Option<&'static str>,
 }
 
 /// Returns the declarations of `guide` for the tool whose root command is
@@ -32,7 +35,8 @@ pub(super) struct Customisation {
 /// refusal alternatives for every command, whether it declares a refusal
 /// hint for every command, the [`Guide::dashed_forms`]
 /// declaration followed by each command that answers to its dashed form, as
-/// [`dashed_names`] lists them, and then for each leaf in guide order its
+/// [`dashed_names`] lists them, the root verbs that [`root_verbs`] lists,
+/// and then for each leaf in guide order its
 /// document's name when the leaf's path gives another, the program whose
 /// exit code it passes on, whether it declares refusal alternatives,
 /// whether it declares a refusal hint, the form of its rows' own text line
@@ -45,7 +49,11 @@ pub(super) struct Customisation {
 /// leaf's declaration after its refusal-hint entry. The completion
 /// variable is not listed, because `complete_with` sets it for the process
 /// and the guide does not hold it.
-pub(super) fn customisations(command: &Command, guide: &Guide) -> Vec<Customisation> {
+pub(super) fn customisations(
+    command: &Command,
+    guide: &Guide,
+    allow: &[Allow],
+) -> Vec<Customisation> {
     let every_run = format!("every run of {}", command.get_name());
     let tool = guide.tool_name(command);
     let spelling = guide.get_spelling().for_tool(tool);
@@ -58,6 +66,7 @@ pub(super) fn customisations(command: &Command, guide: &Guide) -> Vec<Customisat
             declaration: "code-spelling",
             applies_to: every_run.clone(),
             declares: format!("Runs print codes such as {usage} in place of {colons}."),
+            reason: None,
         });
     }
     for rename in guide.get_codes() {
@@ -69,6 +78,7 @@ pub(super) fn customisations(command: &Command, guide: &Guide) -> Vec<Customisat
                 spell(rename.tool()),
                 spell(rename.crumbkit())
             ),
+            reason: None,
         });
     }
     for exit in guide.get_exits() {
@@ -89,6 +99,7 @@ pub(super) fn customisations(command: &Command, guide: &Guide) -> Vec<Customisat
                     exit.code(),
                     Guide::new().failure_exit(&[], crumbkit)
                 ),
+                reason: None,
             });
         }
     }
@@ -99,6 +110,7 @@ pub(super) fn customisations(command: &Command, guide: &Guide) -> Vec<Customisat
             declares: "A refused command line for a command without its own function also offers \
                        the tool's own alternatives."
                 .to_owned(),
+            reason: None,
         });
     }
     if guide.get_refusal_hint().is_some() {
@@ -108,6 +120,7 @@ pub(super) fn customisations(command: &Command, guide: &Guide) -> Vec<Customisat
             declares: "A refused command line for a command without its own function may recover \
                        with the tool's own hint."
                 .to_owned(),
+            reason: None,
         });
     }
     if guide.get_dashed_forms() {
@@ -116,9 +129,11 @@ pub(super) fn customisations(command: &Command, guide: &Guide) -> Vec<Customisat
             applies_to: every_run.clone(),
             declares: "A command named in another style also answers to its dashed form."
                 .to_owned(),
+            reason: None,
         });
         list.extend(dashed_names(command));
     }
+    list.extend(root_verbs(command, guide, allow));
     for leaf in guide.get_leaves() {
         list.extend(leaf_customisations(command, spelling, leaf));
     }
@@ -141,6 +156,7 @@ fn leaf_customisations(command: &Command, spelling: Spelling, leaf: &Leaf) -> Ve
             declares: format!(
                 "The command prints {document}, where its path gives the name {name}."
             ),
+            reason: None,
         });
     }
     if let Some(program) = leaf.get_passes_on_exit() {
@@ -148,6 +164,7 @@ fn leaf_customisations(command: &Command, spelling: Spelling, leaf: &Leaf) -> Ve
             declaration: "passes-on-exit",
             applies_to: command_line(command, &leaf.path().join(" ")),
             declares: format!("The command exits with the exit code of {program}."),
+            reason: None,
         });
     }
     // The report states that the leaf declares refusal alternatives or a
@@ -160,6 +177,7 @@ fn leaf_customisations(command: &Command, spelling: Spelling, leaf: &Leaf) -> Ve
             declares: "A refused command line for this command also offers the tool's own \
                        alternatives."
                 .to_owned(),
+            reason: None,
         });
     }
     if leaf.get_refusal_hint().is_some() {
@@ -169,6 +187,7 @@ fn leaf_customisations(command: &Command, spelling: Spelling, leaf: &Leaf) -> Ve
             declares: "A refused command line for this command may recover with the tool's own \
                        hint."
                 .to_owned(),
+            reason: None,
         });
     }
     if let Some(line) = leaf.line() {
@@ -178,6 +197,7 @@ fn leaf_customisations(command: &Command, spelling: Spelling, leaf: &Leaf) -> Ve
             declares: format!(
                 "The text prints each row as the line {line} in place of a table row."
             ),
+            reason: None,
         });
     }
     if let (Some(field), Some(children)) = (leaf.children(), leaf.children_text()) {
@@ -194,6 +214,7 @@ fn leaf_customisations(command: &Command, spelling: Spelling, leaf: &Leaf) -> Ve
             declaration: "children",
             applies_to: command_line(command, &leaf.path().join(" ")),
             declares,
+            reason: None,
         });
     }
     for rename in leaf.get_codes() {
@@ -205,6 +226,7 @@ fn leaf_customisations(command: &Command, spelling: Spelling, leaf: &Leaf) -> Ve
                 spell(rename.tool()),
                 spell(rename.crumbkit())
             ),
+            reason: None,
         });
     }
     let text = command_line(command, &leaf.path().join(" "));
@@ -216,7 +238,45 @@ fn leaf_customisations(command: &Command, spelling: Spelling, leaf: &Leaf) -> Ve
             declaration: "example-precondition",
             applies_to: crate::guide::command_line(&text, example.words()),
             declares: format!("The example runs only in a test run that provides {names}."),
+            reason: None,
         });
+    }
+    list
+}
+
+/// Returns a `root-verbs` customisation, with the tool's reason, for the
+/// root verbs that `guide` declares and then for those that each
+/// [`Allow::root_verbs`] in `allow` declares, which apply to the command
+/// line of each verb below `command`.
+fn root_verbs(command: &Command, guide: &Guide, allow: &[Allow]) -> Vec<Customisation> {
+    let line = |verbs: &[&str]| {
+        verbs
+            .iter()
+            .map(|verb| command_line(command, verb))
+            .collect::<Vec<_>>()
+            .join(", ")
+    };
+    let mut list = Vec::new();
+    if let Some((verbs, reason)) = guide.get_root_verbs() {
+        list.push(Customisation {
+            declaration: "root-verbs",
+            applies_to: line(verbs),
+            declares:
+                "Each command sits directly under the root as a verb, and root help lists it \
+                       under the heading Verbs."
+                    .to_owned(),
+            reason: Some(reason),
+        });
+    }
+    for allow in allow {
+        if let Some(verbs) = allow.declared_root_verbs() {
+            list.push(Customisation {
+                declaration: "root-verbs",
+                applies_to: line(verbs),
+                declares: "Each command sits directly under the root as a verb.".to_owned(),
+                reason: Some(allow.reason()),
+            });
+        }
     }
     list
 }
@@ -252,6 +312,7 @@ fn dashed_names(command: &Command) -> Vec<Customisation> {
                 },
                 applies_to: visit.path().to_owned(),
                 declares: format!("The command also answers to {form}."),
+                reason: None,
             });
         }
     }
