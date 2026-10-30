@@ -13,6 +13,7 @@ reading commands list   List a branch of reading's commands with their arguments
 reading schemas         Explore the JSON documents that reading prints
 reading schemas list    List the JSON documents that reading prints, with a description of each
 reading schemas show    Print the JSON Schema of each document
+reading where           Print the directory that holds reading's lists
 reading finished        Books finished this year
 reading finished list   List the entries of this reading list, in file order
 reading finished edit   Open this reading list in your editor: $VISUAL, $EDITOR or vi

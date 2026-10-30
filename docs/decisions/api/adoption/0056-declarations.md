@@ -1,7 +1,7 @@
 # ADR-0056. Declarations
 
 - Date: 2026-10-13
-- Status: amended by ADR-0060 and ADR-0078
+- Status: amended by ADR-0060, ADR-0078 and ADR-0165
 
 ## Context
 

@@ -31,7 +31,11 @@ path-budget/path: every path through reading
   Reason: reading's longest path, commands list, reads about 4,050 bytes, so 4,300 bytes leaves room for small changes and catches a page or an output that grows by much.
   Cost: None, because the budget is at or below the default.
 
-reading declares 5 customisations, which need no reason.
+reading declares 6 customisations.
+
+root-verbs: reading where
+  Declares: Each command sits directly under the root as a verb, and root help lists it under the heading Verbs.
+  Reason: People ask where their lists are kept, and the directory belongs to no one list.
 
 text-line: reading lists list
   Declares: The text prints each row as the line <NAME>: <ABOUT> in place of a table row.

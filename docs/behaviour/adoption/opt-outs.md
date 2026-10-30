@@ -32,7 +32,7 @@ rule's page gives its reason.
 
 | Rule | Id | When a tool needs it |
 | --- | --- | --- |
-| `RootLeaf` | `grammar/root-leaf` | a leaf sits directly under the root ([checks](../checks/README.md)) |
+| `RootLeaf` | `grammar/root-leaf` | a leaf sits directly under the root and is no declared [root verb](declarations.md#root-verbs) ([checks](../checks/README.md)) |
 | `ResourceName` | `grammar/resource-name` | a resource name is not lowercase dashed words and answers to no [dashed form](declarations.md#dashed-forms) |
 | `OneName` | `names/one-name` | a built-in alias shows in help ([aliases](../parsing/aliases.md)) |
 | `PersonalAliases` | `names/personal-aliases` | the root's help names a person's aliases ([aliases](../parsing/aliases.md#personal-aliases-in-help)) |
@@ -73,7 +73,9 @@ Why: ADR-0036, ADR-0015, ADR-0053, ADR-0005, ADR-0065, ADR-0071, ADR-0090, ADR-0
 
 - The rule that reserves `help` has no opt-out, because `parse` answers
   `help` itself.
-- A tool declares its verbs to `check_grammar`.
+- A tool declares its verbs to `check_grammar`, and its
+  [root verbs](declarations.md#root-verbs) once. The rule that keeps a
+  resource from answering to a root verb's word has no opt-out.
 - `check_guide` takes opt-outs for its example rule and its document rule
   alone. A tool that wants clap's list for a command leaves the command
   out of its guide, and each other problem of the guide is a name or a
@@ -85,7 +87,7 @@ Why: ADR-0036, ADR-0015, ADR-0053, ADR-0005, ADR-0065, ADR-0071, ADR-0090, ADR-0
 - The name rule of a failure's fields has no opt-out, because the failure
   document's schema promises it to every reader.
 
-Why: ADR-0036, ADR-0015, ADR-0081, ADR-0104, ADR-0105.
+Why: ADR-0036, ADR-0015, ADR-0081, ADR-0104, ADR-0105, ADR-0165.
 
 ## The opt-out report
 

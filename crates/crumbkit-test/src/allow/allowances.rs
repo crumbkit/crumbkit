@@ -78,7 +78,9 @@ impl<'a> Allowances<'a> {
     /// or excused no problem.
     pub(crate) fn finish(self, root: &Command, problems: &mut Vec<String>) {
         for (allow, used) in self.allow.iter().zip(self.used) {
-            if !self.rules.contains(&allow.rule) {
+            // `check_grammar` reports a root-verbs declaration itself,
+            // because it names verbs and no command path.
+            if !self.rules.contains(&allow.rule) || allow.root_verbs.is_some() {
                 continue;
             }
             let line = allow.line(root);

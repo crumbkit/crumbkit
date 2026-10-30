@@ -62,8 +62,9 @@ const SCHEMA: &str = "crumbkit/opt-outs/v1";
 /// refusal alternatives and refusal hint, the guide's
 /// `Guide::dashed_forms` declaration, and with it each command named in
 /// another style that also answers to its dashed form, such as
-/// `reading_lists` for `reading-lists`. The report spells codes with
-/// colons. The section is left out when the tool declares nothing.
+/// `reading_lists` for `reading-lists`, and the root verbs that the tool
+/// declares on the guide or with [`Allow::root_verbs`], with their reason.
+/// The report spells codes with colons. The section is left out when the tool declares nothing.
 /// A reviewer reads a change to a tool's opt-outs as a change to these two
 /// files, and an agent reads `opt-outs.json` to learn where the tool
 /// departs from crumbkit's conventions.
@@ -86,7 +87,9 @@ const SCHEMA: &str = "crumbkit/opt-outs/v1";
 /// opt-out and holds `bytes`, `default`, `extra_bytes` and `extra_tokens`
 /// for a budget. When the tool declares a customisation, the JSON file
 /// also holds a `customisations` array, whose entries have the fields
-/// `declaration`, `applies_to` and `declares`.
+/// `declaration`, `applies_to` and `declares`, and `reason` for the root
+/// verbs. The text line that counts the customisations says that they need
+/// no reason unless the tool declares root verbs.
 ///
 /// The check compares each file with snapbox, as other golden files are
 /// compared (ADR-0004). With the environment variable `SNAPSHOTS=overwrite`,
@@ -146,6 +149,7 @@ fn check(
     let mut problems = Vec::new();
     let mut entries: Vec<Entry> = allow
         .iter()
+        .filter(|allow| allow.declared_root_verbs().is_none())
         .map(|allow| Entry {
             rule: allow.rule().id(),
             applies_to: allow.line(command),
@@ -201,7 +205,7 @@ fn check(
             budget: None,
         });
     }
-    let declared = customisations(command, guide);
+    let declared = customisations(command, guide, allow);
     let line = command.get_name();
     compare(
         assert,
@@ -350,19 +354,30 @@ fn text(tool: &str, entries: &[Entry], declared: &[Customisation]) -> String {
             let _ = writeln!(text, "  Cost: {cost}");
         }
     }
-    match declared.len() {
-        0 => {}
-        1 => {
+    // A customisation with a reason, such as root verbs, makes the line
+    // leave out that customisations need no reason.
+    let reasoned = declared
+        .iter()
+        .any(|customisation| customisation.reason.is_some());
+    match (declared.len(), reasoned) {
+        (0, _) => {}
+        (1, false) => {
             let _ = writeln!(
                 text,
                 "\n{tool} declares 1 customisation, which needs no reason."
             );
         }
-        count => {
+        (1, true) => {
+            let _ = writeln!(text, "\n{tool} declares 1 customisation.");
+        }
+        (count, false) => {
             let _ = writeln!(
                 text,
                 "\n{tool} declares {count} customisations, which need no reason."
             );
+        }
+        (count, true) => {
+            let _ = writeln!(text, "\n{tool} declares {count} customisations.");
         }
     }
     for customisation in declared {
@@ -371,6 +386,9 @@ fn text(tool: &str, entries: &[Entry], declared: &[Customisation]) -> String {
             "\n{}: {}\n  Declares: {}",
             customisation.declaration, customisation.applies_to, customisation.declares
         );
+        if let Some(reason) = customisation.reason {
+            let _ = writeln!(text, "  Reason: {reason}");
+        }
     }
     text
 }

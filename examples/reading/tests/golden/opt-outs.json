@@ -74,6 +74,12 @@
   ],
   "customisations": [
     {
+      "declaration": "root-verbs",
+      "applies_to": "reading where",
+      "declares": "Each command sits directly under the root as a verb, and root help lists it under the heading Verbs.",
+      "reason": "People ask where their lists are kept, and the directory belongs to no one list."
+    },
+    {
       "declaration": "text-line",
       "applies_to": "reading lists list",
       "declares": "The text prints each row as the line <NAME>: <ABOUT> in place of a table row."

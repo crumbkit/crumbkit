@@ -9,6 +9,7 @@ use super::{Goal, Group, Guide, extend};
 use crate::{Sink, parse_to};
 
 mod compact;
+mod root_verbs;
 
 /// A tool with a global flag and three groups. The names have different
 /// lengths, `planets` has a hidden command, and `moons` has a command

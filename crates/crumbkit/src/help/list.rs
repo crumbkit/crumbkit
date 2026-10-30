@@ -14,8 +14,12 @@ use super::Goal;
 #[cfg(test)]
 mod tests;
 
+/// The heading under which root help lists the root verbs that the guide
+/// declares and no goal names (ADR-0165).
+pub(super) const ROOT_VERBS: &str = "Verbs";
+
 /// Returns the headed list of the visible subcommands of `node` under
-/// `goals`, with `header` as the style of each heading and `literal` as the
+/// `goals` and, for the root, its root `verbs`, with `header` as the style of each heading and `literal` as the
 /// style of each name, or `None` when it lists no subcommand.
 //
 // RUST-10: each line holds the name and the description, which ends with
@@ -30,10 +34,11 @@ mod tests;
 pub(super) fn list(
     node: &Command,
     goals: &[Goal],
+    verbs: &[&str],
     header: Style,
     literal: Style,
 ) -> Option<String> {
-    let sections = sections(node, goals);
+    let sections = sections(node, goals, verbs);
     let width = sections
         .iter()
         .flat_map(|(_, commands)| commands)
@@ -61,7 +66,7 @@ pub(super) fn list(
 }
 
 /// Returns the compact list of the visible subcommands of `node` under
-/// `goals`, which a compact group's `-h` prints, or `None` when it lists no
+/// `goals` and its root `verbs`, which a compact group's `-h` prints, or `None` when it lists no
 /// subcommand. Each heading that lists a subcommand has one line: the
 /// heading and a colon in the `header` style, padding to the longest
 /// heading's colon plus two spaces, and the names in the `literal` style,
@@ -71,10 +76,11 @@ pub(super) fn list(
 pub(super) fn names(
     node: &Command,
     goals: &[Goal],
+    verbs: &[&str],
     header: Style,
     literal: Style,
 ) -> Option<String> {
-    let sections = sections(node, goals);
+    let sections = sections(node, goals, verbs);
     let width = sections
         .iter()
         .map(|(heading, _)| heading.chars().count())
@@ -98,10 +104,16 @@ pub(super) fn names(
 }
 
 /// Returns each heading of `goals` that names a visible subcommand of
-/// `node`, with those subcommands in the goal's order, and then the
-/// `Commands` heading with the visible subcommands that no goal names, when
-/// there are any.
-fn sections<'a>(node: &'a Command, goals: &[Goal]) -> Vec<(&'static str, Vec<&'a Command>)> {
+/// `node`, with those subcommands in the goal's order, then the
+/// [`ROOT_VERBS`] heading with each of `verbs` that is a visible
+/// subcommand and that no goal names, in the order of `verbs`, and then the
+/// `Commands` heading with the other visible subcommands that no goal
+/// names, when there are any.
+fn sections<'a>(
+    node: &'a Command,
+    goals: &[Goal],
+    verbs: &[&str],
+) -> Vec<(&'static str, Vec<&'a Command>)> {
     let mut sections: Vec<(&str, Vec<&Command>)> = Vec::new();
     for goal in goals {
         let commands: Vec<&Command> = goal
@@ -126,8 +138,24 @@ fn sections<'a>(node: &'a Command, goals: &[Goal]) -> Vec<(&'static str, Vec<&'a
                 .any(|goal| goal.commands.contains(&subcommand.get_name()))
         })
         .collect();
-    if !unnamed.is_empty() {
-        sections.push(("Commands", unnamed));
+    let root_verbs: Vec<&Command> = verbs
+        .iter()
+        .filter_map(|&name| {
+            unnamed
+                .iter()
+                .copied()
+                .find(|subcommand| subcommand.get_name() == name)
+        })
+        .collect();
+    if !root_verbs.is_empty() {
+        sections.push((ROOT_VERBS, root_verbs));
+    }
+    let others: Vec<&Command> = unnamed
+        .into_iter()
+        .filter(|subcommand| !verbs.contains(&subcommand.get_name()))
+        .collect();
+    if !others.is_empty() {
+        sections.push(("Commands", others));
     }
     sections
 }

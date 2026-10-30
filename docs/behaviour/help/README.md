@@ -3,7 +3,8 @@
 This page covers what a tool's help pages show when the tool parses with
 [`parse`](../../../crates/crumbkit/src/parse.rs): the lines crumbkit adds,
 goal headings, runtime leaves, the word `help` and help topics. The other
-pages in this directory cover [leaf examples and columns](examples.md),
+pages in this directory cover [goal headings](headings/README.md),
+[leaf examples and columns](examples.md),
 [`commands list`](commands-list.md), the
 [command reference](reference.md), [help weight](weight.md) and the
 [help checks](checks.md).
@@ -86,38 +87,8 @@ Why: ADR-0021.
 ## Goal headings
 
 A tool may list a group's subcommands under goal headings that it declares
-in a `const` [`Guide`](../../../crates/crumbkit/src/help.rs), in place of
-clap's single `Commands:` list. `parse` applies the headings to the groups
-that the typed words pass through. [`help::extend`](../../../crates/crumbkit/src/help.rs)
-applies them to the whole tree, for a tool that parses with plain clap and
-for tests, through the same per-group function. The rustdoc of `extend`
-states the layout of the list.
-
-- A guided command gets clap's default template with the headed list in
-  place of clap's argument sections, so a guided page has no `Arguments:`
-  section, and the tool's own `before_help` and `before_long_help` still
-  print at the top of the page.
-- A list that holds `{` goes in `before_help` instead, because clap expands
-  each `{tag}` in a template, and that command loses the tool's own
-  `before_help`.
-- A group built with `Group::compact` lists only names in `-h`: one line for
-  each goal, with the heading and a colon, then the subcommand names
-  separated by commas, such as `Read:    list, show`. The names start in one
-  column, two spaces after the longest heading. Commands that no goal names
-  follow on a final `Commands:` line. Its `--help` keeps the full list. The
-  two lists go in `before_help` and `before_long_help`, which are the only
-  parts of clap's template that differ between `-h` and `--help`, so a
-  compact group's command loses the tool's own `before_help` and
-  `before_long_help`. Its `-h` ends its help line with
-  `(see more with '--help')`.
-- A guided list ends a description with the command's visible aliases, as
-  clap's `Commands:` list does, such as `[alias: ls]`.
-- A command that the guide does not name keeps clap's `Commands:` list.
-- `parse` and `extend` never fail on a guide.
-  [`check_guide`](../../../crates/crumbkit-test/src/guide.rs) catches a guide
-  that does not match the tree.
-
-Why: ADR-0021, ADR-0027, ADR-0102.
+in its guide, and may list its root verbs under a heading of their own.
+[Goal headings](headings/README.md) covers both.
 
 ## Runtime leaves
 

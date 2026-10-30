@@ -35,9 +35,18 @@ const BUILT_IN_VERBS: [&str; 2] = ["list", "show"];
 /// - a command without subcommands, which is a verb, whose name is not
 ///   `list`, `show` or one of `verbs`;
 /// - a command without subcommands directly under `command`, because every
-///   command has the form `<tool> <resource> <verb>`, unless an opt-out from
-///   [`Rule::RootLeaf`] in `allow` names it, such as `version`. The verb
-///   rule above skips such a leaf;
+///   command has the form `<tool> <resource> <verb>`, unless the tool
+///   declares it as a root verb with `Guide::root_verbs` or
+///   [`Allow::root_verbs`], or an opt-out from [`Rule::RootLeaf`] in `allow`
+///   names it, such as `version`. The verb rule above skips such a leaf;
+/// - a resource, at any depth, whose name or alias is the name or an alias
+///   of a declared root verb, so a resource that the tool adds later cannot
+///   take a root verb's word. This rule has no opt-out;
+/// - a declared root verb that names no visible command without
+///   subcommands directly under `command`, a declaration without a verb, and
+///   root verbs declared more than once, on the guide and with
+///   `Allow::root_verbs` or with `Allow::root_verbs` twice, because a tool
+///   declares its root verbs once with one reason;
 /// - a command with subcommands, which is a resource, whose name is not
 ///   lowercase ASCII letters and digits in words joined by single dashes,
 ///   starting with a letter, such as `reading-lists`, unless an opt-out
@@ -68,8 +77,8 @@ const BUILT_IN_VERBS: [&str; 2] = ["list", "show"];
 ///
 /// `pages` gives the check the tool's guide: [`Pages::rendered`] and
 /// [`Pages::binary`] carry it, and [`Pages::clap`], for a tool that parses
-/// with clap alone, carries none, so `Guide::dashed_forms` is off. The check
-/// reads no help page.
+/// with clap alone, carries none, so `Guide::dashed_forms` is off and only
+/// [`Allow::root_verbs`] declares root verbs. The check reads no help page.
 ///
 /// [`check_effects`](crate::check_effects) checks `--dry-run`.
 ///
@@ -117,6 +126,8 @@ pub fn check_grammar(command: &Command, pages: Pages<'_>, verbs: &[&str], allow:
         }
     }
     let tool = command.get_name();
+    let root_verbs = declared_root_verbs(pages.guide(), allow, &mut problems);
+    let root_words = root_words(command, &root_verbs);
     for visit in tree::walk(command) {
         let path = visit.path();
         let below = visit.below();
@@ -135,9 +146,17 @@ pub fn check_grammar(command: &Command, pages: Pages<'_>, verbs: &[&str], allow:
                 {
                     problems.push(format!("{path}: {problem}"));
                 }
+                let words = std::iter::once(name).chain(command.get_all_aliases());
+                for word in words {
+                    if let Some((verb, _)) = root_words.iter().find(|(_, taken)| *taken == word) {
+                        problems.push(format!(
+                            "{path}: the resource answers to `{word}`, which the root verb `{verb}` also answers to"
+                        ));
+                    }
+                }
             }
             (1, false) => {
-                if !allowances.excuses(Rule::RootLeaf, below) {
+                if !root_verbs.contains(&name) && !allowances.excuses(Rule::RootLeaf, below) {
                     problems.push(format!(
                         "{path}: the command has no subcommands and sits directly under `{tool}`, and a command has the form `{tool} <resource> <verb>`"
                     ));
@@ -168,7 +187,67 @@ pub fn check_grammar(command: &Command, pages: Pages<'_>, verbs: &[&str], allow:
             ));
         }
     }
+    for verb in root_verbs {
+        if !root_words.iter().any(|&(declared, _)| declared == verb) {
+            problems.push(format!(
+                "the root verb `{verb}` names no visible command without subcommands directly under `{tool}`, so its declaration is stale"
+            ));
+        }
+    }
     allowances.report(command, "grammar", problems);
+}
+
+/// Returns the root verbs that the tool declares on `guide` and with
+/// `Allow::root_verbs` in `allow`, and adds a problem to `problems` when it
+/// declares them more than once or declares a list without a verb.
+///
+/// A tool declares its root verbs in one place, because root help lists
+/// only the guide's under their heading, and one reason then covers the
+/// whole list. The check still reads every declaration, so it reports the
+/// other problems of each.
+fn declared_root_verbs(
+    guide: Option<&Guide>,
+    allow: &[Allow],
+    problems: &mut Vec<String>,
+) -> Vec<&'static str> {
+    let declarations: Vec<&[&str]> = guide
+        .and_then(Guide::get_root_verbs)
+        .map(|(verbs, _)| verbs)
+        .into_iter()
+        .chain(allow.iter().filter_map(Allow::declared_root_verbs))
+        .collect();
+    if declarations.len() > 1 {
+        problems.push(
+            "the tool declares root verbs more than once, and a tool declares them once, on its guide or with `Allow::root_verbs`"
+                .to_owned(),
+        );
+    }
+    if declarations.iter().any(|verbs| verbs.is_empty()) {
+        problems.push(
+            "the tool declares root verbs without naming one, so the declaration is stale"
+                .to_owned(),
+        );
+    }
+    declarations.into_iter().flatten().copied().collect()
+}
+
+/// Returns each word that a root verb in `verbs` answers to, its name and
+/// each alias, beside the verb's name. A verb answers to words only when it
+/// names a visible command without subcommands directly under `command`.
+fn root_words<'a>(command: &'a Command, verbs: &[&'static str]) -> Vec<(&'static str, &'a str)> {
+    let mut words = Vec::new();
+    for &verb in verbs {
+        let leaf = command.get_subcommands().find(|subcommand| {
+            subcommand.get_name() == verb
+                && !subcommand.is_hide_set()
+                && !subcommand.has_subcommands()
+        });
+        if let Some(leaf) = leaf {
+            words.push((verb, leaf.get_name()));
+            words.extend(leaf.get_all_aliases().map(|alias| (verb, alias)));
+        }
+    }
+    words
 }
 
 /// Returns the problem with `name`, the name of a `kind` of command that

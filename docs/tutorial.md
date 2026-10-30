@@ -255,6 +255,15 @@ away when its command does. `check_opt_outs` writes each opt-out with its
 reason and its cost to an agent into a golden file. The [opt-outs docs]
 describe opt-outs, and [ADR-0025] records why the checks exist.
 
+pantry has no command directly under its root. A command without
+subcommands there, such as `pantry restock`, fails `check_grammar`,
+because every command has the form `pantry <resource> <verb>`. A tool that
+keeps such commands at its root on purpose declares them once, with one
+reason, on its guide: `Guide::new().root_verbs(&["restock"], "...")`.
+`check_grammar` then passes them, and root help lists them under a `Verbs`
+heading. A tool that wants its root help unchanged declares them in its
+opt-outs with `Allow::root_verbs` instead ([root verbs docs]).
+
 ## 5. Where to go next
 
 - A `show` command that takes many ids returns a [`Batch`], which holds a
@@ -285,6 +294,7 @@ describe opt-outs, and [ADR-0025] records why the checks exist.
 [effects docs]: behaviour/effects/README.md
 [help docs]: behaviour/help/README.md
 [opt-outs docs]: behaviour/adoption/opt-outs.md
+[root verbs docs]: behaviour/adoption/declarations.md#root-verbs
 [output budget docs]: behaviour/output/budget/README.md
 [completion docs]: behaviour/parsing/completion.md
 [usage log docs]: behaviour/usage-log/README.md
