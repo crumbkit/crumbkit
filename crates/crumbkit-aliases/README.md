@@ -2,20 +2,16 @@
 
 crumbkit-aliases lets a person define their own aliases for the commands of a
 tool built with crumbkit. The tool expands an alias before clap parses the
-command line, so help and every output print only real commands. crumbkit is
-in design and is not published yet.
+command line, so help and every output print only real commands.
 
 ## Adding it
 
-A tool adds crumbkit-aliases beside crumbkit, from this repository until the
-first release:
+A tool adds crumbkit-aliases beside crumbkit:
 
 ```toml
 [dependencies]
-crumbkit-aliases = { git = "https://github.com/crumbkit/crumbkit" }
+crumbkit-aliases = "0.1"
 ```
-
-The `main` branch can change without notice before the first release.
 
 ## Example
 

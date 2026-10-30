@@ -5,13 +5,13 @@ of [crumbkit] for an enum or a struct from `#[failure(...)]` attributes. It
 also writes a `CODES` constant that lists the type's codes for the codes
 check. A tool does not add this crate itself. It turns on the `derive`
 feature of crumbkit, which re-exports the derive beside the trait of the
-same name. crumbkit is in design and is not published yet.
+same name.
 
 ## Adding it
 
 ```toml
 [dependencies]
-crumbkit = { git = "https://github.com/crumbkit/crumbkit", features = ["derive"] }
+crumbkit = { version = "0.1", features = ["derive"] }
 ```
 
 The derive builds syn, quote and proc-macro2, so the feature is off by

@@ -4,21 +4,18 @@ crumbkit-usage keeps a local usage log for a tool built with crumbkit. The
 log is one JSON line per run in a file on the user's machine. The line
 records the shape of the run, such as the command path, the flags typed and
 the exit code, and never the values that the caller typed. The tool's
-`self usage` and `self figures list` commands read the log back. crumbkit is
-in design and is not published yet.
+`self usage` and `self figures list` commands read the log back.
 
 ## Adding it
 
-A tool adds crumbkit-usage beside crumbkit, from this repository until the
-first release:
+A tool adds crumbkit-usage beside crumbkit:
 
 ```toml
 [dependencies]
-crumbkit-usage = { git = "https://github.com/crumbkit/crumbkit" }
+crumbkit-usage = "0.1"
 ```
 
-The `main` branch can change without notice before the first release. The
-crate builds on Unix and Windows.
+The crate builds on Unix and Windows.
 
 ## Example
 

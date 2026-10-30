@@ -18,7 +18,7 @@ members = [
 ]
 
 [workspace.package]
-version = "0.0.0"
+version = "0.1.0"
 edition = "2024"
 rust-version = "1.89"
 license = "MIT OR Apache-2.0"
@@ -29,25 +29,25 @@ repository = "https://github.com/crumbkit/crumbkit"
 # `derive` feature (ADR-0001), and its tests use the derive. The entry gives a
 # version beside the path, because cargo-deny treats a path dependency without
 # a version as a wildcard (ADR-0012).
-crumbkit-derive = { version = "0.0.0", path = "crates/crumbkit-derive" }
+crumbkit-derive = { version = "0.1.0", path = "crates/crumbkit-derive" }
 # shelf depends on the crumbkit library in this workspace, which takes a
 # version beside the path for the same reason.
-crumbkit = { version = "0.0.0", path = "crates/crumbkit" }
+crumbkit = { version = "0.1.0", path = "crates/crumbkit" }
 # shelf's tests check its failure codes and its command tree with
 # crumbkit-test, which takes a version beside the path for the same reason.
-crumbkit-test = { version = "0.0.0", path = "crates/crumbkit-test" }
+crumbkit-test = { version = "0.1.0", path = "crates/crumbkit-test" }
 # shelf expands and lists personal aliases with crumbkit-aliases, which takes
 # a version beside the path for the same reason.
-crumbkit-aliases = { version = "0.0.0", path = "crates/crumbkit-aliases" }
+crumbkit-aliases = { version = "0.1.0", path = "crates/crumbkit-aliases" }
 # shelf keeps a usage log with crumbkit-usage, which takes a version beside
 # the path for the same reason.
-crumbkit-usage = { version = "0.0.0", path = "crates/crumbkit-usage" }
+crumbkit-usage = { version = "0.1.0", path = "crates/crumbkit-usage" }
 # reading hands the terminal to an editor with crumbkit-child, which takes a
 # version beside the path for the same reason.
-crumbkit-child = { version = "0.0.0", path = "crates/crumbkit-child" }
+crumbkit-child = { version = "0.1.0", path = "crates/crumbkit-child" }
 # crumbkit-test and cargo-crumbkit write a tool's command reference with
 # crumbkit-markdown, which takes a version beside the path for the same reason.
-crumbkit-markdown = { version = "0.0.0", path = "crates/crumbkit-markdown" }
+crumbkit-markdown = { version = "0.1.0", path = "crates/crumbkit-markdown" }
 
 # clap parses the command line of every tool crumbkit serves. The workspace
 # entry enables only `std`. Cargo turns on a feature for every crate in a build

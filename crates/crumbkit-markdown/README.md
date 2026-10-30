@@ -3,7 +3,7 @@
 crumbkit-markdown writes a Markdown reference of every command of a tool
 built with crumbkit. It reads the document that the tool's
 `commands list --all --json --full` prints, so the reference says what the
-tool's help says. crumbkit is in design and is not published yet.
+tool's help says.
 
 ## Adding it
 
@@ -11,15 +11,12 @@ Most tools use crumbkit-markdown through two other crates.
 `cargo crumbkit docs --bin NAME` writes the reference to
 `docs/commands.md` in the binary's package, and crumbkit-test's
 `check_command_reference` fails a test when that file differs from a fresh
-reference. A program that renders the reference itself adds the crate from
-this repository until the first release:
+reference. A program that renders the reference itself adds the crate:
 
 ```toml
 [dependencies]
-crumbkit-markdown = { git = "https://github.com/crumbkit/crumbkit" }
+crumbkit-markdown = "0.1"
 ```
-
-The `main` branch can change without notice before the first release.
 
 ## Example
 
