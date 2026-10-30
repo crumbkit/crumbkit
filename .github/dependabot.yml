@@ -20,6 +20,14 @@ updates:
     # request moves the crate, the runner and the limits together.
     ignore:
       - dependency-name: gungraun
+      # miette 7.6 depends on unicode-width 0.1, and a crumbkit dependency on
+      # 0.2 puts a second copy in the build, which clippy's
+      # multiple-crate-versions lint rejects. The rule ignores 0.2 and later,
+      # which Cargo treats as breaking updates of 0.1, and still proposes
+      # 0.1 releases. Drop it when the miette that crumbkit uses depends on
+      # unicode-width 0.2 or later.
+      - dependency-name: unicode-width
+        versions: [">= 0.2"]
   - package-ecosystem: github-actions
     directory: /
     schedule:
