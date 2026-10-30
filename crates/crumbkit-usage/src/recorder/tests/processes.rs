@@ -297,3 +297,39 @@ fn the_broken_exit_test_s_child_records_a_panicking_extension_and_exits_with_3()
     )]
     std::process::exit(3);
 }
+
+#[test]
+fn log_path_names_the_file_that_the_log_writes() {
+    let state = TempDir::new("log-path");
+
+    let status = run_child(
+        "recorder::tests::processes::the_log_path_test_s_child_writes_a_line_and_reads_it_at_log_path",
+        &state,
+    );
+
+    assert_eq!(
+        status.code(),
+        Some(0),
+        "the child found no line at log_path"
+    );
+}
+
+/// Runs only as the child of the log path test. It writes the line of a run
+/// of the tool `pathed`, and then reads it back from the path that
+/// [`crate::log_path`] returns, so it panics when the two disagree.
+#[test]
+fn the_log_path_test_s_child_writes_a_line_and_reads_it_at_log_path() {
+    if !is_child() {
+        return;
+    }
+    let log = start();
+    typed(
+        &Command::new("pathed"),
+        &["pathed".into()],
+        Spelling::COLONS,
+    );
+    drop(log);
+    let path = crate::log_path("pathed").unwrap();
+    let log = fs::read_to_string(path).unwrap();
+    assert_eq!(log.lines().count(), 1);
+}

@@ -46,15 +46,20 @@ observer keeps it, and both observers hear each report. The log's own
 thread writes the line when SIGINT or SIGTERM ends the run, so a tool that
 handles either signal itself runs without the log. The line goes to
 `usage.jsonl` in the tool's directory under the XDG state directory, such
-as `~/.local/state/shelf/usage.jsonl`.
+as `~/.local/state/shelf/usage.jsonl`. The guard's type is [`Log`].
 
 A tool records value-free facts of its own, such as the requests it sent
 to a server and the time it waited for them, with an [`Extension`] type and
-[`extend`].
+[`extend`]. The extension writes each fact into [`Facts`] under a [`Key`],
+and a [`Label`] is one value from the tool's own fixed vocabulary, such
+as the route template `/books/{id}`.
 
 A tool adds `self usage` with [`SelfUsage`] and [`findings`], and
-`self figures list` with [`SelfFigures`] and [`figures`]. shelf's
-[`cli.rs`] and [`lib.rs`] show both.
+`self figures list` with [`SelfFigures`] and [`figures`]. It passes the
+result to crumbkit's `finish` with the document [`SELF_USAGE`] or
+[`SELF_FIGURES_LIST`]. Their rows are [`FindingRow`] and [`FiguresRow`],
+and [`UsageSummary`] sums the runs read. shelf's [`cli.rs`] and
+[`lib.rs`] show both.
 
 ## Where to read more
 
@@ -72,6 +77,15 @@ Licensed under either of Apache License, Version 2.0 or MIT license at your
 option.
 
 [`start`]: src/recorder.rs
+[`Log`]: src/recorder.rs
+[`Facts`]: src/facts.rs
+[`Key`]: src/facts.rs
+[`Label`]: src/facts.rs
+[`SELF_USAGE`]: src/self_usage.rs
+[`SELF_FIGURES_LIST`]: src/self_figures.rs
+[`FindingRow`]: src/self_usage.rs
+[`FiguresRow`]: src/self_figures.rs
+[`UsageSummary`]: src/self_usage.rs
 [`Extension`]: src/facts.rs
 [`extend`]: src/facts.rs
 [`SelfUsage`]: src/self_usage.rs

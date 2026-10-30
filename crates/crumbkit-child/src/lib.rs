@@ -13,8 +13,6 @@
 pub mod codes;
 mod error;
 mod hand_over;
-#[cfg(doctest)]
-mod removed;
 mod signals;
 #[cfg(test)]
 mod testing;

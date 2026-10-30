@@ -3,6 +3,12 @@
 // come first, so rustdoc uses them for the same labels (ADR-0013).
 //! [`check_codes`]: crate::check_codes
 //! [`Allow`]: crate::Allow
+//! [`Rule`]: crate::Rule
+//! [`Failing`]: crate::Failing
+//! [`Twin`]: crate::Twin
+//! [`Unprovoked`]: crate::Unprovoked
+//! [`RuntimePlace`]: crate::RuntimePlace
+//! [`RuntimeFailing`]: crate::RuntimeFailing
 //! [`check_opt_outs`]: crate::check_opt_outs
 //! [`check_names`]: crate::check_names
 //! [`check_grammar`]: crate::check_grammar
@@ -13,7 +19,6 @@
 //! [`check_exit_codes`]: crate::check_exit_codes
 //! [`check_help_sizes`]: crate::check_help_sizes
 //! [`Budgets`]: crate::Budgets
-//! [`Guide`]: crate::Guide
 //! [`Pages::clap`]: crate::Pages::clap
 //! [`Pages::rendered`]: crate::Pages::rendered
 //! [`Pages::binary`]: crate::Pages::binary
@@ -21,8 +26,6 @@
 //! [`Budget`]: crate::Budget
 //! [`check_path_weights`]: crate::check_path_weights
 //! [`PathBudgets`]: crate::PathBudgets
-//! [`path_totals`]: crate::path_totals
-//! [`output_weight`]: crate::output_weight
 //! [`check_help_goldens`]: crate::check_help_goldens
 //! [`check_schema_goldens`]: crate::check_schema_goldens
 //! [`check_document_ids`]: crate::check_document_ids
@@ -44,9 +47,6 @@
 //! [schema commands docs]: https://github.com/crumbkit/crumbkit/blob/main/docs/behaviour/schemas/commands.md
 //! [golden files docs]: https://github.com/crumbkit/crumbkit/blob/main/docs/behaviour/checks/golden-files.md
 #![doc = include_str!("../README.md")]
-// docs.rs builds the docs on nightly with `--cfg docsrs`, and rustdoc's
-// `doc_cfg` feature labels each item behind a cargo feature with its name.
-#![cfg_attr(docsrs, feature(doc_cfg))]
 
 mod allow;
 mod budget;
@@ -67,8 +67,6 @@ mod output_budget;
 mod pages;
 mod recoveries;
 mod reference;
-#[cfg(doctest)]
-mod removed;
 mod runs;
 mod schemas;
 mod sizes;
@@ -103,9 +101,15 @@ pub use crate::reference::check_command_reference;
 pub use crate::schemas::check_schema_goldens;
 pub use crate::sizes::{Budgets, check_help_sizes};
 pub use crate::twins::{Twin, Twins, check_twin, check_twins};
-pub use crate::weights::{
-    PathBudgets, UnreadableGolden, check_path_weights, output_weight, path_totals,
-};
-/// crumbkit's guide, which several checks and `Pages::rendered` and
-/// `Pages::binary` take, so a test can name it with crumbkit-test alone.
+pub use crate::weights::{PathBudgets, check_path_weights};
+// These items exist for cargo-crumbkit's `weigh`, which sums path totals and
+// reads output weights with the code that `check_path_weights` uses. No
+// tool calls them, so they stay out of the documentation.
+#[doc(hidden)]
+pub use crate::weights::{UnreadableGolden, output_weight, path_totals};
+// crumbkit's guide, which several checks and `Pages::rendered` and
+// `Pages::binary` take. A tool names it from crumbkit, which it already
+// depends on. The re-export stays for an adopter that imports it from here,
+// out of the documentation, so the type has one documented path.
+#[doc(hidden)]
 pub use crumbkit::help::Guide;

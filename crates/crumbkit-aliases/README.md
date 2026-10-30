@@ -95,8 +95,9 @@ because the root's help then differs between machines ([ADR-0027]).
 
 ## Where to read more
 
-- [`file`], [`expand`], [`list`], [`names`], [`AliasesList`] and
-  [`ALIASES_LIST`] describe each item.
+- [`file`], [`expand`], [`list`], [`names`], [`AliasesList`],
+  [`ALIASES_LIST`] and [`AliasRow`], the row that `aliases list` prints,
+  describe each item.
 - The [schema] describes the `<tool>/aliases-list/v1` document, which a
   tool prints with its own name in place of `<tool>`. [`codes`] lists the
   failure codes.
@@ -113,6 +114,7 @@ option.
 [`codes`]: src/codes.rs
 [`AliasesList`]: src/list.rs
 [`ALIASES_LIST`]: src/list.rs
+[`AliasRow`]: src/list.rs
 [schema]: schemas/aliases-list-v1.json
 [ADR-0027]: ../../docs/decisions/api/0027-aliases.md
 [aliases docs]: ../../docs/behaviour/parsing/aliases.md

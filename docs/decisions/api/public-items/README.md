@@ -1,7 +1,7 @@
 # ADR-0085. Public items without a caller removed
 
 - Date: 2026-10-18
-- Status: amended by ADR-0088, ADR-0089 and ADR-0160
+- Status: amended by ADR-0088, ADR-0089, ADR-0160 and ADR-0162
 - Supersedes: ADR-0001, ADR-0005, ADR-0045 and ADR-0081, which it amends
 - Missed: ADR-0001 added `Code::runtime` for plugin codes, but no tool called it and `RuntimeLeaf` has no way to declare a code, so a run-time code could reach neither help nor `check_codes`. ADR-0045 and ADR-0081 kept `FailureReader` for a tool with its own failure shape, but no tool implemented it outside a doc example.
 

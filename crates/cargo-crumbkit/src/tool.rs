@@ -5,6 +5,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output, Stdio};
 
+use crumbkit::Document;
 use serde::Deserialize;
 use tempfile::TempDir;
 
@@ -22,17 +23,9 @@ const XDG: [(&str, &str); 4] = [
     ("XDG_CACHE_HOME", "cache"),
 ];
 
-/// The id of the document that `commands list --json` prints, after its
-/// component, which is the tool's name, such as `shelf/commands-list/v1`.
-const COMMANDS_LIST: &str = "commands-list/v1";
-
 /// The words after the binary that list every visible command with its
 /// examples as JSON.
 const COMMANDS_LIST_ARGS: [&str; 5] = ["commands", "list", "--all", "--json", "--full"];
-
-/// The id of the document that `self figures list --json` prints, after its
-/// component, which is the tool's name.
-const SELF_FIGURES_LIST: &str = "self-figures-list/v1";
 
 /// The words after the binary that list the figures of every command in a
 /// usage log as JSON, which `--log <FILE>` follows.
@@ -279,7 +272,7 @@ impl Tool {
 /// document.
 fn listed(stdout: &[u8]) -> Option<Vec<Listed>> {
     let document: CommandsDocument = serde_json::from_slice(stdout).ok()?;
-    if !names(&document.schema, COMMANDS_LIST) {
+    if !names(&document.schema, &crumbkit::commands::COMMANDS_LIST) {
         return None;
     }
     let commands = document
@@ -302,12 +295,14 @@ fn listed(stdout: &[u8]) -> Option<Vec<Listed>> {
 /// document.
 fn used(stdout: &[u8]) -> Option<Vec<Used>> {
     let document: FiguresDocument = serde_json::from_slice(stdout).ok()?;
-    names(&document.schema, SELF_FIGURES_LIST).then_some(document.data)
+    names(&document.schema, &crumbkit_usage::SELF_FIGURES_LIST).then_some(document.data)
 }
 
-/// Returns whether `id` is the document `name`, such as `commands-list/v1`,
-/// of any component. A tool's output gives crumbkit's documents the tool's
-/// name as their component (ADR-0079).
-fn names(id: &str, name: &str) -> bool {
+/// Returns whether `id` is the id of `document` under any component, such
+/// as `shelf/commands-list/v1` for crumbkit's `commands-list/v1`. A tool's
+/// output gives crumbkit's documents the tool's name as their component
+/// (ADR-0079).
+fn names<T>(id: &str, document: &Document<T>) -> bool {
+    let name = format!("{}/v{}", document.name(), document.version());
     id.split_once('/').is_some_and(|(_, rest)| rest == name)
 }

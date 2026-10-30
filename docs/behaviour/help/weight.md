@@ -74,9 +74,8 @@ record checks, and its run never writes to the log it reads. A tool without
 
 The log is `--log <FILE>`, which implies `--usage`, or else `usage.jsonl` in
 the tool's directory under the person's XDG state directory, which `weigh`
-finds with the etcetera call that the usage log uses. `--since <DURATION>`
-passes through to the tool and needs `--usage` or `--log`. A command that the
-log does not name has 0 runs. Without `--usage`, the three fields are `null`.
+gets from crumbkit-usage. `--since <DURATION>` passes through to the tool and
+needs `--usage` or `--log`. A command that the log does not name has 0 runs. Without `--usage`, the three fields are `null`.
 
 Why: ADR-0033, ADR-0034.
 

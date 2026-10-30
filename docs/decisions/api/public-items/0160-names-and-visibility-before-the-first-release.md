@@ -76,8 +76,9 @@ Each was cheap to change before 0.1.0 and a breaking release after it.
 ## Consequences
 
 A tool that called an old name fails to compile, and the compiler names
-the item. A compile_fail doctest in crumbkit's and crumbkit-usage's
-`removed.rs` keeps each old name out. In a tool's own function with a
+the item. No guard keeps an old name from returning, because ADR-0162
+deleted the compile_fail guards for items changed before the first
+release. In a tool's own function with a
 `T: Rows` bound, `Rows::rows`, `Rows::total` and `Rows::failures` are the
 supported reads. Such a function can still call `Sealed`'s members on `T`,
 because Rust lets a generic call the members of every supertrait of its

@@ -86,8 +86,7 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit-usage: `self usage` and `self figures list` take `--log <FILE>` to
   read a copy of a usage log ([behaviour/usage-log/report]).
 - crumbkit-test: [`check_path_weights`] budgets the bytes of each path
-  through a tool's help, 8,000 by default, and [`path_totals`] and
-  [`output_weight`] compute them ([behaviour/help/checks]).
+  through a tool's help, 8,000 by default ([behaviour/help/checks]).
 - cargo-crumbkit: `weigh --usage`, `--log` and `--since` add each
   command's runs, help pages read before it and 95th percentile output
   from a usage log ([cargo-crumbkit], [behaviour/help/weight]).
@@ -692,7 +691,9 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   ([behaviour/output/values]).
 - crumbkit-usage: breaking: `Facts` no longer implements `Default`, so a
   tool cannot build one, as its documentation says ([behaviour/usage-log]).
-
+- crumbkit-test: `UnreadableGolden` and the re-export of crumbkit's `Guide`
+  are hidden from the documentation, and so are cargo-crumbkit's library
+  items. A tool names `Guide` from crumbkit.
 - crumbkit: `Code::new` and `Code::runtime` accept hyphens between words
   in a segment, such as `book-club::gate::unmet`. A hyphen may not lead,
   trail or follow another hyphen. Before, a segment allowed only lowercase
@@ -1371,8 +1372,6 @@ rustdoc, or at the page in docs/ that describes the behaviour. -->
 [`check_document_ids`]: crates/crumbkit-test/src/documents.rs
 [`check_mounts`]: crates/crumbkit-test/src/documents.rs
 [`check_path_weights`]: crates/crumbkit-test/src/weights.rs
-[`path_totals`]: crates/crumbkit-test/src/weights.rs
-[`output_weight`]: crates/crumbkit-test/src/weights.rs
 [`Allow`]: crates/crumbkit-test/src/allow.rs
 [`Allow::untwinned`]: crates/crumbkit-test/src/allow.rs
 [`Failing::env`]: crates/crumbkit-test/src/recoveries.rs
