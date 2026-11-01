@@ -20,7 +20,7 @@ use crate::help::rename::Renames;
 use crate::help::view::{Kind, Printed};
 use crate::shown::TextCells;
 use crate::sink::role::{Deliver, Message, Role};
-use crate::step::Rendered;
+use crate::step::RenderedStep;
 use crate::view::View;
 use crate::{Code, Document, Row, Rows, Shape, Spelling, codes};
 
@@ -328,7 +328,7 @@ struct Prepared<'a, T> {
     /// The next steps with their commands rendered, which the text prints
     /// as its `Next:` lines and the JSON document holds under `next`, or
     /// none when the result names no next step.
-    next: Vec<Rendered<'a>>,
+    next: Vec<RenderedStep<'a>>,
     /// The number of rows that report a problem, which the text's note
     /// counts, or 0 when the run has a failure.
     problems: usize,
@@ -346,7 +346,7 @@ impl<'a, T: Rows> Prepared<'a, T> {
         value: &'a T,
         columns: &'a [&'a str],
         values: &'a [Value],
-        next: Vec<Rendered<'a>>,
+        next: Vec<RenderedStep<'a>>,
         problems: usize,
     ) -> io::Result<Self> {
         let text = !settings.is_json();

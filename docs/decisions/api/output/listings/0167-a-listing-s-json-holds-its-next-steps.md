@@ -51,7 +51,7 @@ A program that reads `--json` sees the same next steps that a person reads
 in the text, as data it can act on. Every checked-in listing schema grows by
 the `next` property, and the JSON of every listing that names a step grows
 by those steps. shelf's `schemas show shelf/books-list/v1` example grows by
-about 840 bytes, so shelf's path budget rises from 4,300 to 5,300 bytes.
+about 750 bytes, so shelf's path budget rises from 4,300 to 5,300 bytes.
 `docs/behaviour/output/listings/README.md` describes the current behaviour.
 
 Considered: a notes line on standard error behind an environment variable,

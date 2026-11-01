@@ -5,10 +5,13 @@
 use std::process::ExitCode;
 
 use clap::CommandFactory as _;
+use serde_json::Value;
 
 use super::{
     PLANET_LISTING, Planet, Tool, finish_output, finish_with, mercury, parse_against, saturn,
 };
+use crate::conforms::conforms;
+use crate::schemas::document_schema;
 use crate::{Call, Listing, Program, Step};
 
 /// The program that the tests' steps run beside the tool's own commands.
@@ -113,6 +116,21 @@ fn json_holds_the_next_step_and_then_each_step_under_next_with_its_text_and_comm
     );
     assert_eq!(finished.out, expected);
     assert_eq!(finished.err, "");
+}
+
+#[test]
+fn the_json_of_a_listing_with_a_next_step_and_steps_matches_the_document_schema() {
+    let listing = two_of_eight()
+        .next(Call::new(&["show"]).arg("names"), "shows planets by name.")
+        .step(commit_step())
+        .step(Step::new("Restart your shell."));
+
+    let finished = finish_with(&["--json"], PLANET_LISTING, listing);
+
+    let document: Value = serde_json::from_str(&finished.out).unwrap();
+    assert_eq!(document["next"].as_array().map(Vec::len), Some(3));
+    let schema = document_schema(PLANET_LISTING).to_value();
+    assert_eq!(conforms(&schema, &document), Ok(()));
 }
 
 #[test]

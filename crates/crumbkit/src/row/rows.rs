@@ -237,8 +237,8 @@ pub enum Shape {
     /// A `Vec` of rows, whose `data` is an array.
     List,
     /// A [`Listing`](crate::Listing), whose `data` is an array beside
-    /// `total` when the tool counted every matching row, `truncated` and, when it has
-    /// one, `summary`.
+    /// `total` when the tool counted every matching row, `truncated`, and,
+    /// when the document holds them, `summary`, `next` and `cut`.
     Listing,
     /// A [`Batch`](crate::Batch), whose `data` is an array beside
     /// `failures`.

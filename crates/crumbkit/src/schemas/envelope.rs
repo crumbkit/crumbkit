@@ -224,13 +224,13 @@ fn next_schema() -> Value {
         })
     };
     json!({
-        "description": "The next steps that the text prints on standard error, in order. It is absent when the listing names none.",
+        "description": "The next steps, in the order the text prints them. It is absent when there are none.",
         "type": "array",
         "items": {
             "type": "object",
             "properties": {
                 "text": {
-                    "description": "The sentence that says what to do, or the phrase that follows the command of the listing's next step.",
+                    "description": "The sentence or phrase that the text prints for the step.",
                     "type": "string",
                 },
                 "commands": {
@@ -239,7 +239,7 @@ fn next_schema() -> Value {
                     "items": {
                         "oneOf": [
                             command("call", "A command line of this tool."),
-                            command("run", "A command line of another program, quoted for a POSIX shell."),
+                            command("run", "A command line of another program."),
                         ],
                     },
                 },

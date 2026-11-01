@@ -175,7 +175,7 @@ impl Step {
     /// quoted command lines. It returns `None` when one of those calls does
     /// not resolve, or when an argument of another program holds a
     /// character that the text output escapes.
-    pub(crate) fn render(&self, command: &mut Command) -> Option<Rendered<'_>> {
+    pub(crate) fn render(&self, command: &mut Command) -> Option<RenderedStep<'_>> {
         let mut commands = Vec::with_capacity(self.commands.len());
         for step_command in &self.commands {
             commands.push(match step_command {
@@ -187,10 +187,9 @@ impl Step {
                 }
             });
         }
-        Some(Rendered {
-            text: &self.sentence,
+        Some(RenderedStep::Step {
+            sentence: &self.sentence,
             commands,
-            joined: false,
         })
     }
 }
@@ -198,24 +197,32 @@ impl Step {
 /// A next step whose commands are rendered, which the text prints as its
 /// `Next:` lines and the JSON document holds as one entry of `next`
 /// (ADR-0167).
-pub(crate) struct Rendered<'a> {
-    /// The step's sentence, or the phrase of a listing's next step.
-    text: &'a str,
-    /// The rendered commands, in order.
-    commands: Vec<RenderedCommand>,
-    /// Whether the step is a listing's next step, whose call prints before
-    /// its phrase on one `Next:` line, as `Next: {call} {phrase}`.
-    joined: bool,
+pub(crate) enum RenderedStep<'a> {
+    /// A listing's next step, whose call prints before its phrase on one
+    /// `Next:` line, as `Next: {call} {phrase}`.
+    Next {
+        /// The rendered call of [`Listing::next`](crate::Listing::next).
+        call: RenderedCommand,
+        /// The phrase that follows the call.
+        phrase: &'a str,
+    },
+    /// A [`Step`], which prints its sentence on a `Next:` line and each
+    /// command on its own line.
+    Step {
+        /// The sentence that says what to do.
+        sentence: &'a str,
+        /// The rendered commands, in order.
+        commands: Vec<RenderedCommand>,
+    },
 }
 
-impl<'a> Rendered<'a> {
-    /// Returns the next step of a listing: the call `rendered` and the
+impl<'a> RenderedStep<'a> {
+    /// Returns the next step of a listing: the rendered call `call` and the
     /// phrase that follows it on its `Next:` line.
-    pub(crate) fn joined(rendered: String, phrase: &'a str) -> Self {
-        Self {
-            text: phrase,
-            commands: vec![RenderedCommand::Call(rendered)],
-            joined: true,
+    pub(crate) const fn next(call: String, phrase: &'a str) -> Self {
+        Self::Next {
+            call: RenderedCommand::Call(call),
+            phrase,
         }
     }
 
@@ -223,33 +230,36 @@ impl<'a> Rendered<'a> {
     /// `Next: {call} {phrase}` for a listing's next step, and otherwise the
     /// line `Next: {sentence}` and each command indented by two spaces.
     pub(crate) fn write_lines(&self, out: &mut impl Write) -> io::Result<()> {
-        if self.joined {
-            write!(out, "Next: ")?;
-            for command in &self.commands {
-                write!(out, "{} ", command.line())?;
+        match self {
+            Self::Next { call, phrase } => writeln!(out, "Next: {} {phrase}", call.line()),
+            Self::Step { sentence, commands } => {
+                writeln!(out, "Next: {sentence}")?;
+                for command in commands {
+                    writeln!(out, "  {}", command.line())?;
+                }
+                Ok(())
             }
-            return writeln!(out, "{}", self.text);
         }
-        writeln!(out, "Next: {}", self.text)?;
-        for command in &self.commands {
-            writeln!(out, "  {}", command.line())?;
-        }
-        Ok(())
     }
 }
 
-/// Serializes the step as `{"text": ..., "commands": [...]}`.
-impl Serialize for Rendered<'_> {
+/// Serializes the step as `{"text": ..., "commands": [...]}`, with a
+/// listing's next step as its phrase and its one call.
+impl Serialize for RenderedStep<'_> {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        let (text, commands) = match self {
+            Self::Next { call, phrase } => (*phrase, std::slice::from_ref(call)),
+            Self::Step { sentence, commands } => (*sentence, commands.as_slice()),
+        };
         let mut map = serializer.serialize_map(Some(2))?;
-        map.serialize_entry("text", self.text)?;
-        map.serialize_entry("commands", &self.commands)?;
+        map.serialize_entry("text", text)?;
+        map.serialize_entry("commands", commands)?;
         map.end()
     }
 }
 
-/// One rendered command of a [`Rendered`] step.
-enum RenderedCommand {
+/// One rendered command of a [`RenderedStep`].
+pub(crate) enum RenderedCommand {
     /// The command line of the tool's own call, as the text prints it.
     Call(String),
     /// The command line of another program, quoted for a POSIX shell.

@@ -35,7 +35,7 @@
     {
       "rule": "path-budget/path",
       "applies_to": "every path through shelf",
-      "reason": "shelf's longest path, schemas show, reads about 4,950 bytes, so 5,300 bytes leaves room for small changes and catches a page or an output that grows by much.",
+      "reason": "shelf's longest path, schemas show, reads about 4,850 bytes, so 5,300 bytes leaves room for small changes and catches a page or an output that grows by much.",
       "costs": [
         "None, because the budget is at or below the default."
       ],

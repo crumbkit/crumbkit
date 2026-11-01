@@ -12,7 +12,7 @@ use super::failure::{self, Entry, PreparedFailure};
 use super::layout;
 use super::layout::JsonLayout;
 use crate::Document;
-use crate::step::Rendered;
+use crate::step::RenderedStep;
 
 /// The failures of a batch or a prose result: the tool's own and the
 /// failure of a first answer that the output budget refused, in the order
@@ -68,7 +68,7 @@ pub(super) struct Extras<'a, M> {
     /// A listing's summary.
     pub(super) summary: Option<&'a M>,
     /// A listing's next steps, when at least one rendered (ADR-0167).
-    pub(super) next: Option<&'a [Rendered<'a>]>,
+    pub(super) next: Option<&'a [RenderedStep<'a>]>,
     /// The mark of a result that the output budget cut short.
     pub(super) cut: Option<&'a Cut>,
     /// A batch's or a prose result's failures.

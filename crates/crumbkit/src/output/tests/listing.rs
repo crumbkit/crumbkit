@@ -339,12 +339,14 @@ fn json_output_has_no_note() {
 
 #[test]
 fn a_next_step_whose_call_does_not_resolve_is_left_out_and_the_exit_code_is_0() {
-    let listing = two_of(8).next(Call::new(&["remove"]), "removes a planet.");
+    let listing = || two_of(8).next(Call::new(&["remove"]), "removes a planet.");
 
-    let finished = finish_with(&[], PLANET_LISTING, listing);
+    let finished = finish_with(&[], PLANET_LISTING, listing());
+    let json = finish_with(&["--json"], PLANET_LISTING, listing());
 
     assert_eq!(finished.code, ExitCode::SUCCESS);
     assert_eq!(finished.err, "Showing 2 of 8. --all shows every one.\n");
+    assert!(!json.out.contains(r#""next""#), "{}", json.out);
 }
 
 #[test]

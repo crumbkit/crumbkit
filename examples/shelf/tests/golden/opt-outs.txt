@@ -18,7 +18,7 @@ names/personal-aliases: shelf
 
 path-budget/path: every path through shelf
   Budget: 5300 bytes, where the default is 8000 bytes.
-  Reason: shelf's longest path, schemas show, reads about 4,950 bytes, so 5,300 bytes leaves room for small changes and catches a page or an output that grows by much.
+  Reason: shelf's longest path, schemas show, reads about 4,850 bytes, so 5,300 bytes leaves room for small changes and catches a page or an output that grows by much.
   Cost: None, because the budget is at or below the default.
 
 shelf declares 1 customisation, which needs no reason.

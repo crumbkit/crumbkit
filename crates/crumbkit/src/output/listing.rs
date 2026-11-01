@@ -8,7 +8,7 @@ use std::io::{self, Write};
 use clap::Command;
 
 use super::table::{escape_controls, escaped};
-use crate::step::Rendered;
+use crate::step::RenderedStep;
 use crate::{Rows, Shape};
 
 /// Returns whether `value` is a listing whose source holds rows that it
@@ -145,12 +145,15 @@ pub(super) fn write_empty_note<T: Rows>(
 /// crumbkit advertises nothing the tool hid. `finish` renders the steps
 /// once, before it writes the result, so the text's `Next:` lines and the
 /// JSON document's `next` name the same steps (ADR-0167).
-pub(super) fn next_steps<'a, T: Rows>(command: &mut Command, value: &'a T) -> Vec<Rendered<'a>> {
+pub(super) fn next_steps<'a, T: Rows>(
+    command: &mut Command,
+    value: &'a T,
+) -> Vec<RenderedStep<'a>> {
     let mut steps = Vec::new();
     if let Some((call, phrase)) = value.next_step()
         && let Ok(rendered) = crate::call::render(call, command)
     {
-        steps.push(Rendered::joined(rendered, phrase));
+        steps.push(RenderedStep::next(rendered, phrase));
     }
     steps.extend(value.steps().iter().filter_map(|step| step.render(command)));
     steps
