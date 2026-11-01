@@ -6,6 +6,8 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-11-01
+
 ### Added
 
 - crumbkit: a [`Listing`]'s JSON document holds its next steps under
@@ -1317,7 +1319,8 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   flags. The word `help` reported a `help` flag before
   ([behaviour/parsing]).
 
-[Unreleased]: https://github.com/crumbkit/crumbkit/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/crumbkit/crumbkit/compare/v0.1.1...HEAD
+[0.1.1]: https://github.com/crumbkit/crumbkit/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/crumbkit/crumbkit/releases/tag/v0.1.0
 
 <!-- Each label below points at the source file that holds the item's
