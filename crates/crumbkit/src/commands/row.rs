@@ -28,10 +28,11 @@ use self::schema::{argument_schema, exit_schema, goal_schema};
 /// objects, which a table cell prints as compact JSON, so they appear with
 /// `--json --full` or `--fields`.
 ///
-/// The row of a command whose [`Group`](crate::help::Group) in the guide
-/// lists goal headings has a `goals` field with the headings and the
-/// subcommands that its help page lists, in the page's order. Every other
-/// row leaves the field out.
+/// The row of a command whose help page prints goal headings for its
+/// [`Group`](crate::help::Group) has a `goals` field with those headings and
+/// the subcommands listed under them, in the page's order. The page prints a
+/// heading for a goal that names at least one visible subcommand. Every
+/// other row leaves the field out.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct CommandRow {
     // The `JsonSchema` impl below describes each field of this struct and of
@@ -49,7 +50,7 @@ pub struct CommandRow {
     exits: Vec<CommandExit>,
     effects: Option<Effects>,
     writes: Option<Guards>,
-    goals: Option<Vec<CommandGoal>>,
+    goals: Vec<CommandGoal>,
 }
 
 /// One argument of a command, as the command's help shows it.
@@ -165,26 +166,24 @@ impl CommandRow {
                 meaning: exit.meaning(),
             })
             .collect();
-        // Each group with the path replaces the goal headings of the one
-        // before it, so help shows the last one's headings.
+        // `check_guide` rejects two groups with one path. `rfind` follows
+        // help's rule that the last such group's headings show.
         let group = guide
             .get_groups()
             .iter()
             .rfind(|group| group.path() == path);
-        let goals = group
-            .map(|group| {
-                goal_sections(command, group.goals())
-                    .into_iter()
-                    .map(|(heading, commands)| CommandGoal {
-                        heading,
-                        commands: commands
-                            .iter()
-                            .map(|command| command.get_name().to_owned())
-                            .collect(),
-                    })
-                    .collect::<Vec<_>>()
-            })
-            .filter(|goals| !goals.is_empty());
+        let goals = group.map_or_else(Vec::new, |group| {
+            goal_sections(command, group.goals())
+                .into_iter()
+                .map(|(heading, commands)| CommandGoal {
+                    heading,
+                    commands: commands
+                        .iter()
+                        .map(|command| command.get_name().to_owned())
+                        .collect(),
+                })
+                .collect()
+        });
         let arguments = command
             .get_arguments()
             .filter(|arg| !arg.is_hide_set() && !prints_help(arg) && !is_inherited(arg, parent))
@@ -390,14 +389,14 @@ impl Row for CommandRow {
 }
 
 /// Serializes the row as an object with every field, and `null` for a
-/// missing text. The one exception is `goals`, which a row without goal
-/// headings leaves out.
+/// missing text. The one exception is `goals`, which a row whose help page
+/// prints no goal headings leaves out.
 ///
 /// The `Serialize` impls of this module are written by hand so crumbkit
 /// needs no `serde_derive`.
 impl Serialize for CommandRow {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        let fields = 13 + usize::from(self.goals.is_some());
+        let fields = 13 + usize::from(!self.goals.is_empty());
         let mut row = serializer.serialize_struct("CommandRow", fields)?;
         row.serialize_field("path", &self.path)?;
         row.serialize_field("about", &self.about)?;
@@ -412,8 +411,8 @@ impl Serialize for CommandRow {
         row.serialize_field("exits", &self.exits)?;
         row.serialize_field("effects", &self.effects)?;
         row.serialize_field("writes", &self.writes)?;
-        if let Some(goals) = &self.goals {
-            row.serialize_field("goals", goals)?;
+        if !self.goals.is_empty() {
+            row.serialize_field("goals", &self.goals)?;
         }
         row.end()
     }
@@ -577,7 +576,7 @@ impl JsonSchema for CommandRow {
                 "effects": effects::schema(),
                 "writes": effects::writes_schema(),
                 "goals": {
-                    "description": "The goal headings that the command's help page lists its subcommands under, in the page's order. Only the row of a command whose group in the guide lists goal headings has this field.",
+                    "description": "The goal headings that the command's help page lists its subcommands under, in the page's order. Only the row of a command whose help page prints goal headings for its group, which needs at least one goal that names a visible subcommand, has this field.",
                     "type": "array",
                     "items": goal_schema(),
                 },

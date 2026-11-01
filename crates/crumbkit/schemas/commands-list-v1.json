@@ -289,7 +289,7 @@
           ]
         },
         "goals": {
-          "description": "The goal headings that the command's help page lists its subcommands under, in the page's order. Only the row of a command whose group in the guide lists goal headings has this field.",
+          "description": "The goal headings that the command's help page lists its subcommands under, in the page's order. Only the row of a command whose help page prints goal headings for its group, which needs at least one goal that names a visible subcommand, has this field.",
           "type": "array",
           "items": {
             "type": "object",

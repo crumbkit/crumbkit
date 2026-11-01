@@ -96,6 +96,8 @@ impl Group {
 /// subcommands are all hidden. [`commands list`](crate::commands) exports
 /// each goal that the page prints, with the same subcommands, in the
 /// `goals` field of the group's [`CommandRow`](crate::commands::CommandRow).
+/// The row has the field only when the page prints at least one goal
+/// heading, which needs a goal that names a visible subcommand.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Goal {
     /// The heading, which prints without a colon in the full list and with

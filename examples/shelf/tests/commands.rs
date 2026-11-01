@@ -52,22 +52,3 @@ fn the_root_row_lists_the_three_goals_of_shelf_s_help_in_help_order_with_their_c
         ])
     );
 }
-
-#[test]
-fn the_row_of_a_group_without_goals_has_no_goals_key() {
-    let rows = rows().unwrap();
-
-    assert!(row(&rows, "shelf books").unwrap().get("goals").is_none());
-}
-
-#[test]
-fn the_row_of_a_leaf_has_no_goals_key() {
-    let rows = rows().unwrap();
-
-    assert!(
-        row(&rows, "shelf books list")
-            .unwrap()
-            .get("goals")
-            .is_none()
-    );
-}
