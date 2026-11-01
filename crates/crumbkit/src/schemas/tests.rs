@@ -181,15 +181,24 @@ fn a_document_schema_names_the_id_as_its_title_and_the_const_of_schema() {
 }
 
 #[test]
-fn a_listing_without_a_summary_holds_data_truncated_an_optional_total_and_an_optional_cut_and_no_summary()
- {
+fn a_listing_without_a_summary_holds_data_truncated_an_optional_total_next_and_cut_and_no_summary()
+{
     let schema = document_schema(BOOKS_LIST).to_value();
 
     assert_eq!(
         properties(&schema),
-        ["cut", "data", "dry_run", "schema", "total", "truncated"]
+        [
+            "cut",
+            "data",
+            "dry_run",
+            "next",
+            "schema",
+            "total",
+            "truncated"
+        ]
     );
     assert_eq!(schema["required"], json!(["schema", "data", "truncated"]));
+    assert_eq!(schema["properties"]["next"]["type"], "array");
     assert_eq!(schema["properties"]["data"]["type"], "array");
     assert_eq!(
         schema["properties"]["data"]["items"]["$ref"],
@@ -262,6 +271,7 @@ fn a_listing_with_a_summary_requires_the_summary_and_holds_its_schema() {
             "cut",
             "data",
             "dry_run",
+            "next",
             "schema",
             "summary",
             "total",

@@ -8,6 +8,7 @@ use std::io::{self, Write};
 use clap::Command;
 
 use super::table::{escape_controls, escaped};
+use crate::step::RenderedStep;
 use crate::{Rows, Shape};
 
 /// Returns whether `value` is a listing whose source holds rows that it
@@ -136,27 +137,26 @@ pub(super) fn write_empty_note<T: Rows>(
     }
 }
 
-/// Returns the lines that name the next steps of `value`, each with its line
-/// feed: the line `Next: {call} {phrase}` of a listing's next step, then the
-/// lines of each of its further steps ([`crate::Step`]). A next step whose
-/// call does not resolve in `command`, and a step with such a call, is left
-/// out: when a call names a missing or hidden command or argument, the tool
-/// still prints its result and crumbkit advertises nothing the tool hid.
-/// `finish` renders the lines once, before it writes the result, so each
-/// note it writes later uses the same text.
-pub(super) fn next_lines<T: Rows>(command: &mut Command, value: &T) -> String {
-    let mut lines = String::new();
+/// Returns the next steps of `value` with their commands rendered against
+/// `command`: the next step of a listing, then each of its further steps
+/// ([`crate::Step`]). A next step whose call does not resolve in `command`,
+/// and a step with such a call, is left out: when a call names a missing or
+/// hidden command or argument, the tool still prints its result and
+/// crumbkit advertises nothing the tool hid. `finish` renders the steps
+/// once, before it writes the result, so the text's `Next:` lines and the
+/// JSON document's `next` name the same steps (ADR-0167).
+pub(super) fn next_steps<'a, T: Rows>(
+    command: &mut Command,
+    value: &'a T,
+) -> Vec<RenderedStep<'a>> {
+    let mut steps = Vec::new();
     if let Some((call, phrase)) = value.next_step()
         && let Ok(rendered) = crate::call::render(call, command)
     {
-        lines = format!("Next: {rendered} {phrase}\n");
+        steps.push(RenderedStep::next(rendered, phrase));
     }
-    for step in value.steps() {
-        if let Some(step_lines) = step.lines(command) {
-            lines.push_str(&step_lines);
-        }
-    }
-    lines
+    steps.extend(value.steps().iter().filter_map(|step| step.render(command)));
+    steps
 }
 
 /// Returns the lines of `summary`, the text of a summary's `Display`, as the

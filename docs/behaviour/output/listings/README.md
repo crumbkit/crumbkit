@@ -34,8 +34,9 @@ characters and its Unicode format characters as a table cell does, so `\t`
 and `\u{1b}` print as those escapes. A summary whose `Display` writes no
 text prints no line, so the header is the first line, and the JSON
 document still holds it. A summary that writes only spaces still prints
-its line. The output budget counts every summary line. The notes and the
-next step print in text only.
+its line. The output budget counts every summary line. The notes print in
+text only, and the next steps print in text and under `next` in the JSON
+document ([next steps in JSON](#next-steps-in-json)).
 
 On standard output, the text order is the summary, the header and the rows.
 On standard error, it is the footer or the empty note, the note of the rows
@@ -344,6 +345,32 @@ Next: Commit the shelf, then list the books.
   when it would be split or expanded. A step with an argument that holds
   a control character or a Unicode format character is left out whole.
 - A step without commands prints its `Next:` line alone.
-- The JSON document leaves the steps out.
 
 Why: ADR-0155.
+
+## Next steps in JSON
+
+A listing's JSON document holds its next steps under `next`, after
+`summary` and before `cut`, in the order the text prints them. The step of
+`Listing::next` comes first, with its phrase as `text` and its call as its
+one command, and each step of `Listing::step` follows with its sentence as
+`text`. Each command is `{"call": ...}` for the tool's own command or
+`{"run": ...}` for another program's, holding the line that the text
+prints. shelf's `books list --json` ends with:
+
+```json
+"next":[{"text":"takes up to 100 ids in one call.","commands":[{"call":"shelf books show <ID>..."}]}]
+```
+
+- A step that the text leaves out, because a call does not resolve or an
+  argument holds a control character or a Unicode format character, is left
+  out of `next` too.
+- A step without commands holds `"commands": []`.
+- A document whose listing has no step left holds no `next` key.
+- A listing that the output budget cuts keeps the same `next`, as its text
+  keeps its `Next:` lines, and the budget counts the bytes of `next`.
+- A document without the envelope has no `next`.
+- Every listing's JSON Schema has the optional `next` property, and the
+  documents keep their `v1` ids.
+
+Why: ADR-0167.

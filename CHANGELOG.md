@@ -6,6 +6,11 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- crumbkit: a [`Listing`]'s JSON document holds its next steps under
+  `next`, the same steps that the text prints ([behaviour/output/listings]).
+
 ## [0.1.0] - 2026-10-30
 
 ### Added

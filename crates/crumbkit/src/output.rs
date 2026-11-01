@@ -311,7 +311,8 @@ pub fn finish<T: Rows, E: AsFailure>(
 /// counted them, `truncated`, which is true when the document leaves out
 /// rows, and its summary, when it has one, under `summary`. The summary also prints above the
 /// table in text, one line for each line its `Display` writes, unless its
-/// `Display` writes no text.
+/// `Display` writes no text. A listing that names a next step holds its
+/// steps under `next`, as the text's `Next:` lines name them (ADR-0167).
 ///
 /// In text, the lines that describe a listing print on the error writer
 /// after the output writer is flushed, so the output writer holds the
@@ -323,8 +324,9 @@ pub fn finish<T: Rows, E: AsFailure>(
 /// books match`. A listing's note follows on its own line. When a listing
 /// has a next step, a `Next:` line follows, such as
 /// `Next: shelf books show <ID>... takes up to 100 ids in one call.` The line
-/// is left out when the step's [`Call`](crate::Call) does not resolve in
-/// the command tree that `output` holds, and the exit code stays 0.
+/// is left out of the text and of `next` when the step's
+/// [`Call`](crate::Call) does not resolve in the command tree that `output`
+/// holds, and the exit code stays 0.
 ///
 /// `finish` takes `output` by value, because it is the last call of a run:
 /// it builds the branch of the command tree that a next step's call or a

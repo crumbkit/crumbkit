@@ -127,13 +127,13 @@ pub trait Sealed {
         None
     }
 
-    /// Returns the command that the text output names as the next step, and
-    /// the phrase that follows it. Only a `Listing` returns one.
+    /// Returns the command that the output names as the next step, and the
+    /// phrase that follows it. Only a `Listing` returns one.
     fn next_step(&self) -> Option<(&Call, &str)> {
         None
     }
 
-    /// Returns the steps that the text output names after the next step, in
+    /// Returns the steps that the output names after the next step, in
     /// order. Only a `Listing` returns any.
     fn steps(&self) -> &[Step] {
         &[]
@@ -237,8 +237,8 @@ pub enum Shape {
     /// A `Vec` of rows, whose `data` is an array.
     List,
     /// A [`Listing`](crate::Listing), whose `data` is an array beside
-    /// `total` when the tool counted every matching row, `truncated` and, when it has
-    /// one, `summary`.
+    /// `total` when the tool counted every matching row, `truncated`, and,
+    /// when the document holds them, `summary`, `next` and `cut`.
     Listing,
     /// A [`Batch`](crate::Batch), whose `data` is an array beside
     /// `failures`.

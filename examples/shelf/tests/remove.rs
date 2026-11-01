@@ -116,7 +116,8 @@ fn books_remove_yes_a_second_time_succeeds_and_prints_the_same_book() {
 }
 
 #[test]
-fn books_list_after_every_book_is_removed_ends_with_a_step_that_puts_the_books_back() {
+fn books_list_after_every_book_is_removed_ends_with_a_step_that_puts_the_books_back_in_text_and_json()
+ {
     let dir = tempfile::tempdir().unwrap();
     run(
         dir.path(),
@@ -131,21 +132,35 @@ fn books_list_after_every_book_is_removed_ends_with_a_step_that_puts_the_books_b
     // snapbox's default filters turn each backslash of the actual output
     // into a slash on Windows and leave the expected text as it is.
     let removed = dir.path().join("state").join("shelf").join("removed.txt");
+    let rm = format!(
+        "rm {}",
+        crumbkit::help::quote(&removed.display().to_string())
+    );
     let expected = format!(
         "note: no books match\n\
          Next: shelf books show <ID>... takes up to 100 ids in one call.\n\
          Next: Delete the file of removed books to put every book back, then list them.\n  \
-         rm {}\n  \
-         shelf books list\n",
-        crumbkit::help::quote(&removed.display().to_string())
+         {rm}\n  \
+         shelf books list\n"
     );
     run(dir.path(), &["books", "list"])
         .success()
         .stdout_eq(file!["golden/books-list-after-remove-all.txt"].raw())
         .stderr_eq(expected.raw());
+    // The JSON holds the same steps under `next`, with the `rm` line as a
+    // JSON string, so its expected text is built here too.
+    let expected_json = format!(
+        concat!(
+            r#"{{"schema":"shelf/books-list/v1","data":[],"total":0,"truncated":false,"next":["#,
+            r#"{{"text":"takes up to 100 ids in one call.","commands":[{{"call":"shelf books show <ID>..."}}]}},"#,
+            r#"{{"text":"Delete the file of removed books to put every book back, then list them.","commands":[{{"run":{}}},{{"call":"shelf books list"}}]}}]}}"#,
+            "\n"
+        ),
+        serde_json::to_string(&rm).unwrap()
+    );
     run(dir.path(), &["books", "list", "--json"])
         .success()
-        .stdout_eq(file!["golden/books-list-json-after-remove-all.json"].raw())
+        .stdout_eq(expected_json.raw())
         .stderr_eq("");
 }
 

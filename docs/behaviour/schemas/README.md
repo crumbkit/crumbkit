@@ -23,6 +23,10 @@ without `data` ([usage log](../usage-log/README.md)).
   a program can tell whether it has every row. It holds `total` when the tool
   counted the matching rows, and leaves it out for every listing from an
   uncounted source ([listings](../output/listings/README.md)).
+- A listing's document holds `next` when the listing names at least one
+  next step: an array of objects with `text` and `commands`, each command
+  `{"call": ...}` or `{"run": ...}`
+  ([listings](../output/listings/README.md#next-steps-in-json)).
 - A listing or list document may hold `cut`, an object with the over-budget
   `code` and the `budget` in bytes, when the
   [output budget](../output/budget/README.md) cut it short.
@@ -48,7 +52,7 @@ without `data` ([usage log](../usage-log/README.md)).
   row's properties. A tool's own value type has the schema of its JSON
   form.
 
-Why: ADR-0007, ADR-0016, ADR-0036, ADR-0039, ADR-0046, ADR-0050, ADR-0062, ADR-0071, ADR-0108, ADR-0147, ADR-0148.
+Why: ADR-0007, ADR-0016, ADR-0036, ADR-0039, ADR-0046, ADR-0050, ADR-0062, ADR-0071, ADR-0108, ADR-0147, ADR-0148, ADR-0167.
 
 ## The failure document
 
