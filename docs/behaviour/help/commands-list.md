@@ -41,8 +41,8 @@ Why: ADR-0026, ADR-0001.
 
 ## Rows
 
-Every row has every field, with `null` or an empty list for what a command
-lacks, so a program reads every row the same way.
+Every row has every field except `goals`, with `null` or an empty list for
+what a command lacks, so a program reads every row the same way.
 
 - `effects` holds the leaf's effects, or `null` when it declares none
   ([effects](../effects/README.md#declaring-effects)).
@@ -68,15 +68,23 @@ lacks, so a program reads every row the same way.
   with its first code in `exit`, its last code in `last` and its meaning.
   `last` equals `exit` for a single code and is greater for a range. crumbkit's own 0, 1 and 2 are the same for every
   command, so the rows leave them out ([exit codes](../failures/exit-codes.md)).
+- `goals` lists the goal headings of a group's help page in the page's
+  order, each with its `heading` and the names of its `commands`, such as
+  `{"heading": "Read", "commands": ["list", "show"]}`. It holds what the
+  help page prints, so a hidden subcommand and a goal whose subcommands are
+  all hidden are left out, and so are the `Verbs` and `Commands` headings
+  that help adds for subcommands that no goal names. A row of a command
+  without goal headings has no `goals` key
+  ([goal headings](headings/README.md)).
 
 The text table shows only each command's path and about text, because the
 nested lists would print as compact JSON in a table cell, and it ends with a
 note that names every code and `<tool> help exit-codes`. `--json --full`
-prints the arguments, examples, columns and exit codes. The schema of the
+prints the arguments, examples, columns, exit codes and goals. The schema of the
 `<tool>/commands-list/v1` document is checked in
 ([schemas](../schemas/README.md)). `commands list` prints only crumbkit's two
 formats, and crumbkit-markdown writes a Markdown [reference](reference.md)
 from its JSON document.
 
 Why: ADR-0026, ADR-0016, ADR-0037, ADR-0039, ADR-0041, ADR-0047, ADR-0064,
-ADR-0065, ADR-0103, ADR-0120.
+ADR-0065, ADR-0103, ADR-0120, ADR-0168.

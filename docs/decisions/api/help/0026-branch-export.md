@@ -1,7 +1,7 @@
 # ADR-0026. Branch export
 
 - Date: 2026-10-10
-- Status: accepted
+- Status: amended by ADR-0168
 
 ## Context
 

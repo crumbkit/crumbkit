@@ -37,8 +37,11 @@ states the layout of the list.
 - `parse` and `extend` never fail on a guide.
   [`check_guide`](../../../../crates/crumbkit-test/src/guide.rs) catches a guide
   that does not match the tree.
+- `commands list` writes the goal headings that a group's help page prints
+  in the `goals` field of the group's row
+  ([commands list](../commands-list.md#rows)).
 
-Why: ADR-0021, ADR-0027, ADR-0102.
+Why: ADR-0021, ADR-0027, ADR-0102, ADR-0168.
 
 ## Root verbs
 

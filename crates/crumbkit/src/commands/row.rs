@@ -11,22 +11,28 @@ use serde::ser::{SerializeStruct, Serializer};
 use crate::expect::takes_expect;
 use crate::help::effects::Guards;
 use crate::help::words::quote;
-use crate::help::{Effects, Guide, Leaf, effects};
+use crate::help::{Effects, Guide, Leaf, effects, goal_sections};
 use crate::{Row, Shape};
 
 mod schema;
 #[cfg(test)]
 mod tests;
 
-use self::schema::{argument_schema, exit_schema};
+use self::schema::{argument_schema, exit_schema, goal_schema};
 
 /// One visible command of a branch, as `commands list` prints it: what the
 /// command's `-h` and `--help` show, apart from layout.
 ///
 /// The text table shows the path and the about text. The arguments,
-/// examples, columns, exit codes, effects and writes are lists or objects,
-/// which a table cell prints as compact JSON, so they appear with
+/// examples, columns, exit codes, effects, writes and goals are lists or
+/// objects, which a table cell prints as compact JSON, so they appear with
 /// `--json --full` or `--fields`.
+///
+/// The row of a command whose help page prints goal headings for its
+/// [`Group`](crate::help::Group) has a `goals` field with those headings and
+/// the subcommands listed under them, in the page's order. The page prints a
+/// heading for a goal that names at least one visible subcommand. Every
+/// other row leaves the field out.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct CommandRow {
     // The `JsonSchema` impl below describes each field of this struct and of
@@ -44,6 +50,7 @@ pub struct CommandRow {
     exits: Vec<CommandExit>,
     effects: Option<Effects>,
     writes: Option<Guards>,
+    goals: Vec<CommandGoal>,
 }
 
 /// One argument of a command, as the command's help shows it.
@@ -81,6 +88,15 @@ struct CommandColumn {
     description: Option<String>,
 }
 
+/// One goal heading of the command's help page and the subcommands that the
+/// page lists under it.
+#[derive(Clone, Debug, PartialEq, Eq)]
+struct CommandGoal {
+    // `CommandRow`'s `JsonSchema` impl describes each field.
+    heading: &'static str,
+    commands: Vec<String>,
+}
+
 /// One exit code that the guide declares for the command.
 #[derive(Clone, Debug, PartialEq, Eq)]
 struct CommandExit {
@@ -96,7 +112,8 @@ impl CommandRow {
     /// command above it, or `None` for the first command of the branch,
     /// whose row then lists every global argument it has, including those
     /// it inherits. `guide` holds the leaf whose examples and columns the
-    /// row lists and the exit codes that cover the command.
+    /// row lists, the exit codes that cover the command and the group whose
+    /// goal headings the row lists.
     ///
     /// The row reads only the command's name, about texts and arguments,
     /// and the guide. It never reads a command's help template,
@@ -149,6 +166,24 @@ impl CommandRow {
                 meaning: exit.meaning(),
             })
             .collect();
+        // `check_guide` rejects two groups with one path. `rfind` follows
+        // help's rule that the last such group's headings show.
+        let group = guide
+            .get_groups()
+            .iter()
+            .rfind(|group| group.path() == path);
+        let goals = group.map_or_else(Vec::new, |group| {
+            goal_sections(command, group.goals())
+                .into_iter()
+                .map(|(heading, commands)| CommandGoal {
+                    heading,
+                    commands: commands
+                        .iter()
+                        .map(|command| command.get_name().to_owned())
+                        .collect(),
+                })
+                .collect()
+        });
         let arguments = command
             .get_arguments()
             .filter(|arg| !arg.is_hide_set() && !prints_help(arg) && !is_inherited(arg, parent))
@@ -171,6 +206,7 @@ impl CommandRow {
             exits,
             effects: leaf.and_then(Leaf::get_effects),
             writes: effects::guards(leaf.and_then(Leaf::get_effects), takes_expect(command)),
+            goals,
         }
     }
 }
@@ -353,13 +389,15 @@ impl Row for CommandRow {
 }
 
 /// Serializes the row as an object with every field, and `null` for a
-/// missing text.
+/// missing text. The one exception is `goals`, which a row whose help page
+/// prints no goal headings leaves out.
 ///
 /// The `Serialize` impls of this module are written by hand so crumbkit
 /// needs no `serde_derive`.
 impl Serialize for CommandRow {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        let mut row = serializer.serialize_struct("CommandRow", 13)?;
+        let fields = 13 + usize::from(!self.goals.is_empty());
+        let mut row = serializer.serialize_struct("CommandRow", fields)?;
         row.serialize_field("path", &self.path)?;
         row.serialize_field("about", &self.about)?;
         row.serialize_field("long_about", &self.long_about)?;
@@ -373,6 +411,9 @@ impl Serialize for CommandRow {
         row.serialize_field("exits", &self.exits)?;
         row.serialize_field("effects", &self.effects)?;
         row.serialize_field("writes", &self.writes)?;
+        if !self.goals.is_empty() {
+            row.serialize_field("goals", &self.goals)?;
+        }
         row.end()
     }
 }
@@ -401,6 +442,15 @@ impl Serialize for CommandExample {
         example.serialize_field("command", &self.command)?;
         example.serialize_field("about", &self.about)?;
         example.end()
+    }
+}
+
+impl Serialize for CommandGoal {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        let mut goal = serializer.serialize_struct("CommandGoal", 2)?;
+        goal.serialize_field("heading", &self.heading)?;
+        goal.serialize_field("commands", &self.commands)?;
+        goal.end()
     }
 }
 
@@ -525,6 +575,11 @@ impl JsonSchema for CommandRow {
                 },
                 "effects": effects::schema(),
                 "writes": effects::writes_schema(),
+                "goals": {
+                    "description": "The goal headings that the command's help page lists its subcommands under, in the page's order. Only the row of a command whose help page prints goal headings for its group, which needs at least one goal that names a visible subcommand, has this field.",
+                    "type": "array",
+                    "items": goal_schema(),
+                },
             },
             "required": ["path", "about", "long_about", "arguments", "examples", "columns", "form", "line", "children", "children_help", "exits", "effects", "writes"],
         })

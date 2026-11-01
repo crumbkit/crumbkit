@@ -114,21 +114,7 @@ fn sections<'a>(
     goals: &[Goal],
     verbs: &[&str],
 ) -> Vec<(&'static str, Vec<&'a Command>)> {
-    let mut sections: Vec<(&str, Vec<&Command>)> = Vec::new();
-    for goal in goals {
-        let commands: Vec<&Command> = goal
-            .commands
-            .iter()
-            .filter_map(|&name| {
-                node.get_subcommands()
-                    .find(|subcommand| subcommand.get_name() == name)
-            })
-            .filter(|subcommand| !subcommand.is_hide_set())
-            .collect();
-        if !commands.is_empty() {
-            sections.push((goal.heading, commands));
-        }
-    }
+    let mut sections = goal_sections(node, goals);
     let unnamed: Vec<&Command> = node
         .get_subcommands()
         .filter(|subcommand| !subcommand.is_hide_set())
@@ -156,6 +142,32 @@ fn sections<'a>(
         .collect();
     if !others.is_empty() {
         sections.push(("Commands", others));
+    }
+    sections
+}
+
+/// Returns each heading of `goals` that names a visible subcommand of
+/// `node`, with those subcommands in the goal's order. These are the goal
+/// headings that a group's help page prints, and `commands list` writes
+/// them in the `goals` field of the group's row.
+pub(crate) fn goal_sections<'a>(
+    node: &'a Command,
+    goals: &[Goal],
+) -> Vec<(&'static str, Vec<&'a Command>)> {
+    let mut sections = Vec::new();
+    for goal in goals {
+        let commands: Vec<&Command> = goal
+            .commands
+            .iter()
+            .filter_map(|&name| {
+                node.get_subcommands()
+                    .find(|subcommand| subcommand.get_name() == name)
+            })
+            .filter(|subcommand| !subcommand.is_hide_set())
+            .collect();
+        if !commands.is_empty() {
+            sections.push((goal.heading, commands));
+        }
     }
     sections
 }

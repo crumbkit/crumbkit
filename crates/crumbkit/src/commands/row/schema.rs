@@ -1,5 +1,6 @@
-//! The JSON Schemas of one argument and of one exit code of a command,
-//! which `CommandRow`'s schema lists under `arguments` and `exits`.
+//! The JSON Schemas of one argument, one exit code and one goal heading of
+//! a command, which `CommandRow`'s schema lists under `arguments`, `exits`
+//! and `goals`.
 
 use schemars::{Schema, json_schema};
 
@@ -98,5 +99,25 @@ pub(super) fn exit_schema() -> Schema {
             },
         },
         "required": ["exit", "last", "meaning"],
+    })
+}
+
+/// Returns the schema of one goal heading, which `CommandRow`'s schema lists
+/// under `goals`.
+pub(super) fn goal_schema() -> Schema {
+    json_schema!({
+        "type": "object",
+        "properties": {
+            "heading": {
+                "description": "The heading, such as `Read`.",
+                "type": "string",
+            },
+            "commands": {
+                "description": "The names of the visible subcommands that the help page lists under the heading, in the heading's order.",
+                "type": "array",
+                "items": { "type": "string" },
+            },
+        },
+        "required": ["heading", "commands"],
     })
 }

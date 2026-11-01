@@ -15,6 +15,10 @@ use super::list::{list, names};
 /// descriptions, one line each. A group built with [`Group::compact`]
 /// lists only each goal's names in `-h`, on one line per goal, and keeps the
 /// descriptions for `--help`.
+///
+/// [`commands list`](crate::commands) exports the goal headings that the
+/// group's help page prints in the `goals` field of the group's
+/// [`CommandRow`](crate::commands::CommandRow).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Group {
     /// The names of the subcommands from the root to the command.
@@ -87,6 +91,13 @@ impl Group {
 
 /// A heading on a group's help page and the subcommands listed under it,
 /// such as `Read` with `list` and `show`.
+///
+/// The help page leaves out a subcommand that is hidden, and a goal whose
+/// subcommands are all hidden. [`commands list`](crate::commands) exports
+/// each goal that the page prints, with the same subcommands, in the
+/// `goals` field of the group's [`CommandRow`](crate::commands::CommandRow).
+/// The row has the field only when the page prints at least one goal
+/// heading, which needs a goal that names a visible subcommand.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Goal {
     /// The heading, which prints without a colon in the full list and with

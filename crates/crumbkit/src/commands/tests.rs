@@ -8,11 +8,12 @@ use serde::Serialize;
 use serde_json::{Value, json};
 
 use super::{COMMANDS_LIST, CommandRow, CommandsList, list};
-use crate::help::{Example, Guide, Leaf};
+use crate::help::{Example, Goal, Group, Guide, Leaf};
 use crate::{Document, Error, Listing, Output, Row, Sink, finish_to};
 
 mod arguments;
 mod exits;
+mod goals;
 
 /// A row type for the leaf whose columns the export lists.
 #[derive(Serialize, JsonSchema)]
@@ -34,13 +35,24 @@ impl Row for Book {
 
 const BOOKS_LIST: Document<Vec<Book>> = Document::new("shelf", "books-list", 1, "The test rows.");
 
-/// A guide with one leaf, whose example has a word that needs quoting.
-const GUIDE: Guide = Guide::new().leaves(&[Leaf::new(&["books", "list"])
-    .examples(&[
-        Example::new(&[], "Print the first page of books"),
-        Example::new(&["--form", "short stories"], "Print the collections"),
-    ])
-    .document(BOOKS_LIST)]);
+/// A guide with one leaf, whose example has a word that needs quoting, and
+/// a group for `books`, whose goals name its subcommands in an order of
+/// their own and name the hidden `purge`, once beside a visible command and
+/// once alone.
+const GUIDE: Guide = Guide::new()
+    .groups(&[Group::new(
+        &["books"],
+        &[
+            Goal::new("Read", &["show", "purge", "list"]),
+            Goal::new("Clean", &["purge"]),
+        ],
+    )])
+    .leaves(&[Leaf::new(&["books", "list"])
+        .examples(&[
+            Example::new(&[], "Print the first page of books"),
+            Example::new(&["--form", "short stories"], "Print the collections"),
+        ])
+        .document(BOOKS_LIST)]);
 
 /// A tool with a global flag, a visible branch, a hidden branch, a hidden
 /// argument and the `commands list` command, as `crumbkit::parse` returns
@@ -492,32 +504,44 @@ fn the_recovery_has_no_next_step_when_the_runtime_tree_hides_commands_list() {
 }
 
 #[test]
-fn the_row_schema_lists_and_requires_every_field_that_a_row_serializes() {
-    let rows = listed(&["books", "list"]);
+fn the_row_schema_lists_every_field_that_a_row_serializes_and_requires_all_but_goals() {
+    let rows = listed(&["books"]);
     let schema = schemars::schema_for!(CommandRow);
+    let schema = schema.as_value();
+    let group = row(&rows, "shelf books");
+    let leaf = row(&rows, "shelf books list");
 
-    assert_fields_match(&rows[0], schema.as_value());
+    assert_eq!(keys(group), keys(&schema["properties"]));
+    assert_eq!(keys(leaf), required(schema));
+    assert_fields_match(&group["goals"][0], &schema["properties"]["goals"]["items"]);
     assert_fields_match(
-        &rows[0]["arguments"][0],
-        &schema.as_value()["properties"]["arguments"]["items"],
+        &leaf["arguments"][0],
+        &schema["properties"]["arguments"]["items"],
     );
     assert_fields_match(
-        &rows[0]["examples"][0],
-        &schema.as_value()["properties"]["examples"]["items"],
+        &leaf["examples"][0],
+        &schema["properties"]["examples"]["items"],
     );
     assert_fields_match(
-        &rows[0]["columns"][0],
-        &schema.as_value()["properties"]["columns"]["items"],
+        &leaf["columns"][0],
+        &schema["properties"]["columns"]["items"],
     );
 }
 
-/// Asserts that the keys of the object `value` are exactly the properties
-/// of the object schema `schema`, and that the schema requires each.
-fn assert_fields_match(value: &Value, schema: &Value) {
-    let mut fields: Vec<&String> = value.as_object().unwrap().keys().collect();
-    fields.sort();
-    let mut properties: Vec<&String> = schema["properties"].as_object().unwrap().keys().collect();
-    properties.sort();
+/// Returns the keys of the object `value`, sorted.
+fn keys(value: &Value) -> Vec<&str> {
+    let mut keys: Vec<&str> = value
+        .as_object()
+        .unwrap()
+        .keys()
+        .map(String::as_str)
+        .collect();
+    keys.sort_unstable();
+    keys
+}
+
+/// Returns the names that the object schema `schema` requires, sorted.
+fn required(schema: &Value) -> Vec<&str> {
     let mut required: Vec<&str> = schema["required"]
         .as_array()
         .unwrap()
@@ -525,8 +549,14 @@ fn assert_fields_match(value: &Value, schema: &Value) {
         .map(|name| name.as_str().unwrap())
         .collect();
     required.sort_unstable();
-    assert_eq!(fields, properties);
-    assert_eq!(fields, required);
+    required
+}
+
+/// Asserts that the keys of the object `value` are exactly the properties
+/// of the object schema `schema`, and that the schema requires each.
+fn assert_fields_match(value: &Value, schema: &Value) {
+    assert_eq!(keys(value), keys(&schema["properties"]));
+    assert_eq!(keys(value), required(schema));
 }
 
 #[test]
