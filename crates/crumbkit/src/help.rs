@@ -40,6 +40,7 @@ pub use self::view::ViewFlag;
 pub use self::words::quote;
 
 pub(crate) use self::group::{apply, apply_root_verbs};
+pub(crate) use self::list::goal_sections;
 use self::list::write_line;
 use crate::pick::Picker;
 use crate::{JsonLayout, Spelling, ToolName};

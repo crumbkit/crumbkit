@@ -13,3 +13,4 @@ their own.
 
 - [ADR-0102. Styled sinks and compact groups](0102-styled-sinks-and-compact-groups.md)
 - [ADR-0165. A tool declares the verbs that sit directly under its root](0165-a-tool-declares-its-root-verbs.md)
+- [ADR-0168. A group's `commands list` row names its goal headings](0168-commands-list-rows-name-their-goal-headings.md)

@@ -172,8 +172,9 @@ impl JsonSchema for CommandsList {
 /// or the root when there are none, and then every visible command below it
 /// in depth-first order. A hidden command and everything below it are left
 /// out, as help leaves them out. Each row holds the command's path from the
-/// tool's name, its about texts, its arguments, and the examples and
-/// columns of the leaf in `guide` whose path names it.
+/// tool's name, its about texts, its arguments, the examples and columns of
+/// the leaf in `guide` whose path names it, and the goal headings of the
+/// group in `guide` whose path names it.
 ///
 /// A global argument is listed once: on the command that defines it, or on
 /// the branch's first row when a command above the branch defines it, so a

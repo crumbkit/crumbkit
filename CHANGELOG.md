@@ -6,6 +6,11 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- crumbkit: the `commands list` row of a group with goal headings lists
+  them in a `goals` field, in help order ([behaviour/help/commands-list]).
+
 ## [0.1.0] - 2026-10-30
 
 ### Added
