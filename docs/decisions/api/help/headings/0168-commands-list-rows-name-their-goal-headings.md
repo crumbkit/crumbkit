@@ -14,8 +14,8 @@ group them as the help does.
 
 ## Decision
 
-- The row of a command whose group in the guide lists goal headings gains
-  a `goals` array. Each item is `{"heading": ..., "commands": [...]}`, in
+- The row of a command whose help page prints goal headings gains a
+  `goals` array. Each item is `{"heading": ..., "commands": [...]}`, in
   the order the help page lists the headings, and `commands` holds the
   subcommands' real names in the goal's order.
 - `goals` holds what the help page prints. The row and the help page both
