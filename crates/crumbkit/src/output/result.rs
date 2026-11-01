@@ -20,6 +20,7 @@ use crate::help::rename::Renames;
 use crate::help::view::{Kind, Printed};
 use crate::shown::TextCells;
 use crate::sink::role::{Deliver, Message, Role};
+use crate::step::Rendered;
 use crate::view::View;
 use crate::{Code, Document, Row, Rows, Shape, Spelling, codes};
 
@@ -209,10 +210,11 @@ fn write_rows<T: Rows>(
 ) -> io::Result<(Answer, usize)> {
     let budget = settings.budget;
     let code = settings.renames.printed(&codes::OUTPUT_OVER_BUDGET);
-    let next = if settings.is_json() {
-        String::new()
+    // A document without the envelope has no `next`, so it renders no step.
+    let next = if settings.is_json() && !document.get_envelope().wraps() {
+        Vec::new()
     } else {
-        listing::next_lines(&mut *command, value)
+        listing::next_steps(&mut *command, value)
     };
     let columns = columns(settings.view, document, value.prose().is_some());
     // The serialized rows become the cells of the text table without
@@ -323,9 +325,10 @@ struct Prepared<'a, T> {
     /// escaped and ended with a line feed, or `None` when the result has no
     /// summary or its `Display` writes no text (ADR-0142, ADR-0158).
     summary: Option<String>,
-    /// The `Next:` lines with their line feeds, or an empty string when the
-    /// result names no next step.
-    next: String,
+    /// The next steps with their commands rendered, which the text prints
+    /// as its `Next:` lines and the JSON document holds under `next`, or
+    /// none when the result names no next step.
+    next: Vec<Rendered<'a>>,
     /// The number of rows that report a problem, which the text's note
     /// counts, or 0 when the run has a failure.
     problems: usize,
@@ -343,7 +346,7 @@ impl<'a, T: Rows> Prepared<'a, T> {
         value: &'a T,
         columns: &'a [&'a str],
         values: &'a [Value],
-        next: String,
+        next: Vec<Rendered<'a>>,
         problems: usize,
     ) -> io::Result<Self> {
         let text = !settings.is_json();
@@ -495,7 +498,9 @@ impl<'a, T: Rows> Prepared<'a, T> {
         if let Some(note) = value.long_note().filter(|_| self.view.is_long()) {
             writeln!(out, "{note}")?;
         }
-        out.write_all(self.next.as_bytes())?;
+        for step in &self.next {
+            step.write_lines(out)?;
+        }
         Ok(())
     }
 
@@ -530,6 +535,7 @@ impl<'a, T: Rows> Prepared<'a, T> {
             truncated: (T::SHAPE == Shape::Listing)
                 .then(|| cut.is_some() || listing::leaves_out(value)),
             summary: value.summary(),
+            next: (!self.next.is_empty()).then_some(self.next.as_slice()),
             cut,
             failures,
         };

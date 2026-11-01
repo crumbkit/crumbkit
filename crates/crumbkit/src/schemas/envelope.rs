@@ -26,6 +26,8 @@ use crate::{Bytes, Document, Row, Rows, Shape};
 /// - `summary` holds the summary, for a listing that has one. A listing
 ///   without one has [`NoSummary`](crate::NoSummary), whose schema `false`
 ///   leaves the property out.
+/// - `next` holds the next steps that the text prints, for a
+///   [`Shape::Listing`] that names at least one, and is absent otherwise.
 /// - `failures` holds the failures of the ids that did not work, for
 ///   [`Shape::Batch`], and the failures that a prose result leaves out, for
 ///   [`Shape::Prose`]. Each entry has the fields of `<tool>/failure/v1`
@@ -147,6 +149,7 @@ pub(crate) fn envelope<T: Rows>(document: Document<()>) -> Schema {
             properties.insert("summary".to_owned(), summary.to_value());
             required.push("summary");
         }
+        properties.insert("next".to_owned(), next_schema());
     }
     if T::SHAPE == Shape::Listing || T::SHAPE == Shape::List {
         properties.insert("cut".to_owned(), cut_schema());
@@ -201,6 +204,49 @@ fn cut_schema() -> Value {
         },
         "required": ["code", "budget"],
         "additionalProperties": false,
+    })
+}
+
+/// Returns the schema of `next`, which a listing's document holds when it
+/// names at least one next step (ADR-0167).
+fn next_schema() -> Value {
+    let command = |name: &str, description: &str| {
+        json!({
+            "type": "object",
+            "properties": {
+                name: {
+                    "description": description,
+                    "type": "string",
+                },
+            },
+            "required": [name],
+            "additionalProperties": false,
+        })
+    };
+    json!({
+        "description": "The next steps that the text prints on standard error, in order. It is absent when the listing names none.",
+        "type": "array",
+        "items": {
+            "type": "object",
+            "properties": {
+                "text": {
+                    "description": "The sentence that says what to do, or the phrase that follows the command of the listing's next step.",
+                    "type": "string",
+                },
+                "commands": {
+                    "description": "The commands that carry out the step, in order.",
+                    "type": "array",
+                    "items": {
+                        "oneOf": [
+                            command("call", "A command line of this tool."),
+                            command("run", "A command line of another program, quoted for a POSIX shell."),
+                        ],
+                    },
+                },
+            },
+            "required": ["text", "commands"],
+            "additionalProperties": false,
+        },
     })
 }
 

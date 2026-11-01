@@ -1,6 +1,6 @@
 //! Tests for how `finish_to` prints a listing's steps: each as a `Next:`
 //! line with its sentence, followed by its commands indented by two spaces,
-//! on standard error in text, and nowhere in JSON.
+//! on standard error in text, and under `next` in the JSON document.
 
 use std::process::ExitCode;
 
@@ -94,27 +94,66 @@ fn a_step_with_a_call_that_does_not_resolve_is_left_out_whole_and_the_exit_code_
 }
 
 #[test]
-fn json_output_has_no_steps_and_its_document_is_unchanged() {
-    let plain = finish_with(&["--json"], PLANET_LISTING, two_of_eight());
-    let stepped = finish_with(
-        &["--json"],
-        PLANET_LISTING,
-        two_of_eight().step(commit_step()),
-    );
+fn json_holds_the_next_step_and_then_each_step_under_next_with_its_text_and_commands() {
+    let listing = two_of_eight()
+        .next(Call::new(&["show"]).arg("names"), "shows planets by name.")
+        .step(commit_step())
+        .step(Step::new("Restart your shell."));
 
-    assert_eq!(stepped.out, plain.out);
-    assert_eq!(stepped.err, "");
+    let finished = finish_with(&["--json"], PLANET_LISTING, listing);
+
+    let expected = concat!(
+        r#"{"schema":"solar/planet-listing/v1","#,
+        r#""data":[{"name":"Mercury","moons":0},{"name":"Saturn","moons":274}],"#,
+        r#""total":8,"truncated":true,"next":["#,
+        r#"{"text":"shows planets by name.","commands":[{"call":"tool show <NAME>..."}]},"#,
+        r#"{"text":"Commit the planets, then show them.","commands":[{"run":"git commit -m 'Add planets'"},{"call":"tool show <NAME>..."}]},"#,
+        r#"{"text":"Restart your shell.","commands":[]}]}"#,
+        "\n"
+    );
+    assert_eq!(finished.out, expected);
+    assert_eq!(finished.err, "");
 }
 
 #[test]
-fn a_step_whose_argument_holds_a_control_character_is_left_out_whole() {
+fn a_step_that_names_a_hidden_command_is_left_out_of_the_text_and_of_next() {
+    let hidden = clap::Command::new("purge").hide(true);
+    let flags = |flags: &[&str]| parse_against(Tool::command().subcommand(hidden.clone()), flags);
+    let listing = || {
+        two_of_eight()
+            .step(Step::new("Purge the planets.").call(Call::new(&["purge"])))
+            .step(Step::new("Push the commit.").run(GIT, ["push"]))
+    };
+
+    let text = finish_output(flags(&[]), PLANET_LISTING, listing());
+    let json = finish_output(flags(&["--json"]), PLANET_LISTING, listing());
+
+    assert_eq!(
+        text.err,
+        "Showing 2 of 8. --all shows every one.\nNext: Push the commit.\n  git push\n"
+    );
+    assert!(
+        json.out.ends_with(
+            r#""next":[{"text":"Push the commit.","commands":[{"run":"git push"}]}]}
+"#
+        ),
+        "{}",
+        json.out
+    );
+}
+
+#[test]
+fn a_step_whose_argument_holds_a_control_character_is_left_out_whole_and_json_has_no_next() {
     let unsafe_step = Step::new("Commit the planets.").run(GIT, ["commit", "-m", "a\u{1b}[2Jb"]);
-    let listing = two_of_eight().step(unsafe_step);
+    let listing = || two_of_eight().step(unsafe_step.clone());
 
-    let finished = finish_with(&[], PLANET_LISTING, listing);
+    let text = finish_with(&[], PLANET_LISTING, listing());
+    let json = finish_with(&["--json"], PLANET_LISTING, listing());
+    let plain = finish_with(&["--json"], PLANET_LISTING, two_of_eight());
 
-    assert_eq!(finished.code, ExitCode::SUCCESS);
-    assert_eq!(finished.err, "Showing 2 of 8. --all shows every one.\n");
+    assert_eq!(text.code, ExitCode::SUCCESS);
+    assert_eq!(text.err, "Showing 2 of 8. --all shows every one.\n");
+    assert_eq!(json.out, plain.out);
 }
 
 #[test]

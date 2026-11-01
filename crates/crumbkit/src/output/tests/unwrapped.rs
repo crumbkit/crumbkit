@@ -106,8 +106,10 @@ fn fields_select_the_fields_of_an_unwrapped_document() {
 }
 
 #[test]
-fn json_prints_one_page_of_an_unwrapped_listing_without_its_total() {
-    let listing = Listing::from_all(vec![mercury(), saturn()], Some(1)).described("planets");
+fn json_prints_one_page_of_an_unwrapped_listing_without_its_total_or_its_next_steps() {
+    let listing = Listing::from_all(vec![mercury(), saturn()], Some(1))
+        .described("planets")
+        .next(Call::new(&["show"]).arg("names"), "shows each planet.");
 
     let finished = finish_with(
         &["--json"],
@@ -119,6 +121,7 @@ fn json_prints_one_page_of_an_unwrapped_listing_without_its_total() {
         finished.out,
         "[{\"name\":\"Mercury\",\"moons\":0,\"ringed\":false,\"au\":0.39}]\n"
     );
+    assert_eq!(finished.err, "");
 }
 
 #[test]

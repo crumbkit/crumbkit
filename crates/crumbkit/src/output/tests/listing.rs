@@ -310,20 +310,6 @@ fn the_next_line_is_the_only_note_when_there_is_no_footer() {
     );
 }
 
-#[test]
-fn json_output_has_no_next_line_and_no_next_field() {
-    let finished = finish_with(&["--json"], PLANET_LISTING, two_of_with_next(8));
-
-    assert_eq!(
-        finished.out,
-        concat!(
-            r#"{"schema":"solar/planet-listing/v1","data":[{"name":"Mercury","moons":0},{"name":"Saturn","moons":274}],"total":8,"truncated":true}"#,
-            "\n"
-        )
-    );
-    assert_eq!(finished.err, "");
-}
-
 /// Returns [`two_of_with_next`] with the note `Planets from the 2006
 /// definition.`
 fn two_of_with_note(total: usize) -> Listing<Planet> {

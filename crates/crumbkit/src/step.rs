@@ -1,10 +1,12 @@
-//! A next step that a listing's text output names with a sentence and the
+//! A next step that a listing's output names with a sentence and the
 //! commands that carry it out, and the other programs whose commands such a
 //! step may name.
 
 use std::borrow::Cow;
+use std::io::{self, Write};
 
 use clap::Command;
+use serde::ser::{Serialize, SerializeMap, Serializer};
 
 use crate::Call;
 use crate::help::words::quote;
@@ -71,7 +73,10 @@ impl Program {
 /// `crumbkit::finish` prints each step of a listing on standard error in text,
 /// after the `Next:` line of [`Listing::next`](crate::Listing::next), as the
 /// line `Next: {sentence}` followed by each command on its own line, indented
-/// by two spaces. The JSON document leaves the steps out.
+/// by two spaces. The JSON document holds each step as an entry of `next`:
+/// `{"text": {sentence}, "commands": [...]}`, where each command is
+/// `{"call": ...}` for the tool's own command or `{"run": ...}` for another
+/// program's, with the command line that the text prints.
 ///
 /// A command of the tool itself is a [`Call`], added with [`Step::call`]. A
 /// command of another program is a [`Program`] with its arguments, added with
@@ -132,8 +137,8 @@ impl Step {
     ///
     /// `crumbkit::finish` renders it against the tool's command tree. When it
     /// does not resolve, because it names a missing or hidden command or
-    /// argument, the whole step is left out, so a step never prints with one
-    /// of its commands missing.
+    /// argument, the whole step is left out of the text and the JSON, so a
+    /// step never prints with one of its commands missing.
     #[must_use]
     pub fn call(mut self, call: Call) -> Self {
         self.commands.push(StepCommand::Call(call));
@@ -165,23 +170,112 @@ impl Step {
         self
     }
 
-    /// Returns the lines of the step with their line feeds: the `Next:` line
-    /// and each command indented by two spaces, with the tool's own calls
-    /// rendered against `command`. It returns `None` when one of those calls
-    /// does not resolve, or when an argument of another program holds a
+    /// Returns the step with its commands rendered: the tool's own calls
+    /// against `command`, and the commands of other programs as their
+    /// quoted command lines. It returns `None` when one of those calls does
+    /// not resolve, or when an argument of another program holds a
     /// character that the text output escapes.
-    pub(crate) fn lines(&self, command: &mut Command) -> Option<String> {
-        let mut lines = format!("Next: {}\n", self.sentence);
+    pub(crate) fn render(&self, command: &mut Command) -> Option<Rendered<'_>> {
+        let mut commands = Vec::with_capacity(self.commands.len());
         for step_command in &self.commands {
-            let line = match step_command {
-                StepCommand::Call(call) => crate::call::render(call, command).ok()?,
-                StepCommand::Program { program, args } => program_line(*program, args)?,
-            };
-            lines.push_str("  ");
-            lines.push_str(&line);
-            lines.push('\n');
+            commands.push(match step_command {
+                StepCommand::Call(call) => {
+                    RenderedCommand::Call(crate::call::render(call, command).ok()?)
+                }
+                StepCommand::Program { program, args } => {
+                    RenderedCommand::Run(program_line(*program, args)?)
+                }
+            });
         }
-        Some(lines)
+        Some(Rendered {
+            text: &self.sentence,
+            commands,
+            joined: false,
+        })
+    }
+}
+
+/// A next step whose commands are rendered, which the text prints as its
+/// `Next:` lines and the JSON document holds as one entry of `next`
+/// (ADR-0167).
+pub(crate) struct Rendered<'a> {
+    /// The step's sentence, or the phrase of a listing's next step.
+    text: &'a str,
+    /// The rendered commands, in order.
+    commands: Vec<RenderedCommand>,
+    /// Whether the step is a listing's next step, whose call prints before
+    /// its phrase on one `Next:` line, as `Next: {call} {phrase}`.
+    joined: bool,
+}
+
+impl<'a> Rendered<'a> {
+    /// Returns the next step of a listing: the call `rendered` and the
+    /// phrase that follows it on its `Next:` line.
+    pub(crate) fn joined(rendered: String, phrase: &'a str) -> Self {
+        Self {
+            text: phrase,
+            commands: vec![RenderedCommand::Call(rendered)],
+            joined: true,
+        }
+    }
+
+    /// Writes the text lines of the step to `out`, each with its line feed:
+    /// `Next: {call} {phrase}` for a listing's next step, and otherwise the
+    /// line `Next: {sentence}` and each command indented by two spaces.
+    pub(crate) fn write_lines(&self, out: &mut impl Write) -> io::Result<()> {
+        if self.joined {
+            write!(out, "Next: ")?;
+            for command in &self.commands {
+                write!(out, "{} ", command.line())?;
+            }
+            return writeln!(out, "{}", self.text);
+        }
+        writeln!(out, "Next: {}", self.text)?;
+        for command in &self.commands {
+            writeln!(out, "  {}", command.line())?;
+        }
+        Ok(())
+    }
+}
+
+/// Serializes the step as `{"text": ..., "commands": [...]}`.
+impl Serialize for Rendered<'_> {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        let mut map = serializer.serialize_map(Some(2))?;
+        map.serialize_entry("text", self.text)?;
+        map.serialize_entry("commands", &self.commands)?;
+        map.end()
+    }
+}
+
+/// One rendered command of a [`Rendered`] step.
+enum RenderedCommand {
+    /// The command line of the tool's own call, as the text prints it.
+    Call(String),
+    /// The command line of another program, quoted for a POSIX shell.
+    Run(String),
+}
+
+impl RenderedCommand {
+    /// Returns the command line.
+    fn line(&self) -> &str {
+        match self {
+            Self::Call(line) | Self::Run(line) => line,
+        }
+    }
+}
+
+/// Serializes the command as `{"call": ...}` for a command of the tool and
+/// `{"run": ...}` for a command of another program.
+impl Serialize for RenderedCommand {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        let key = match self {
+            Self::Call(_) => "call",
+            Self::Run(_) => "run",
+        };
+        let mut map = serializer.serialize_map(Some(1))?;
+        map.serialize_entry(key, self.line())?;
+        map.end()
     }
 }
 
