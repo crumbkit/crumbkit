@@ -1,7 +1,7 @@
 # ADR-0155. A listing can name several next steps, with commands of other programs
 
 - Date: 2026-10-25
-- Status: accepted
+- Status: amended by ADR-0167
 - Supersedes: ADR-0050, which it amends
 
 ## Context

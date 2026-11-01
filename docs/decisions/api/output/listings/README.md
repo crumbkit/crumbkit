@@ -1,7 +1,7 @@
 # ADR-0050. Listings
 
 - Date: 2026-10-12
-- Status: amended by ADR-0077, ADR-0087, ADR-0096, ADR-0142, ADR-0153, ADR-0155 and ADR-0158
+- Status: amended by ADR-0077, ADR-0087, ADR-0096, ADR-0142, ADR-0153, ADR-0155, ADR-0158 and ADR-0167
 
 ## Context
 
@@ -47,6 +47,7 @@ for empty results, sources that cannot be counted, an upper bound on
 - [ADR-0155. A listing can name several next steps, with commands of other programs](0155-a-listing-names-several-steps.md)
 - [ADR-0157. A row type chooses which rows the default text lists](default-text/README.md)
 - [ADR-0159. Listing summaries](summary/README.md)
+- [ADR-0167. A listing's JSON document holds its next steps under `next`](0167-a-listing-s-json-holds-its-next-steps.md)
 
 ## Consequences
 

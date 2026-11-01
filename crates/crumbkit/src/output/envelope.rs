@@ -12,6 +12,7 @@ use super::failure::{self, Entry, PreparedFailure};
 use super::layout;
 use super::layout::JsonLayout;
 use crate::Document;
+use crate::step::RenderedStep;
 
 /// The failures of a batch or a prose result: the tool's own and the
 /// failure of a first answer that the output budget refused, in the order
@@ -66,6 +67,8 @@ pub(super) struct Extras<'a, M> {
     pub(super) truncated: Option<bool>,
     /// A listing's summary.
     pub(super) summary: Option<&'a M>,
+    /// A listing's next steps, when at least one rendered (ADR-0167).
+    pub(super) next: Option<&'a [RenderedStep<'a>]>,
     /// The mark of a result that the output budget cut short.
     pub(super) cut: Option<&'a Cut>,
     /// A batch's or a prose result's failures.
@@ -79,6 +82,7 @@ impl Extras<'_, ()> {
             total: None,
             truncated: None,
             summary: None,
+            next: None,
             cut: None,
             failures: None,
         }
@@ -89,7 +93,7 @@ impl Extras<'_, ()> {
 /// `layout`, with `"dry_run": true`
 /// after `schema` when `dry_run` is set, `"total": <total>` after `data`
 /// when the extras hold a total, then `"truncated": <bool>`,
-/// `"summary": <summary>`, `"cut": {...}`
+/// `"summary": <summary>`, `"next": [...]`, `"cut": {...}`
 /// and `"failures": [...]` when the extras hold each of them.
 pub(super) fn write_document<T, D: Serialize, M: Serialize>(
     out: &mut impl Write,
@@ -125,6 +129,7 @@ impl<T, D: Serialize, M: Serialize> Serialize for Wrapped<'_, T, D, M> {
             + usize::from(extras.total.is_some())
             + usize::from(extras.truncated.is_some())
             + usize::from(extras.summary.is_some())
+            + usize::from(extras.next.is_some())
             + usize::from(extras.cut.is_some())
             + usize::from(extras.failures.is_some());
         let document = self.document;
@@ -143,6 +148,9 @@ impl<T, D: Serialize, M: Serialize> Serialize for Wrapped<'_, T, D, M> {
         }
         if let Some(summary) = extras.summary {
             map.serialize_entry("summary", summary)?;
+        }
+        if let Some(next) = extras.next {
+            map.serialize_entry("next", next)?;
         }
         if let Some(cut) = extras.cut {
             map.serialize_entry("cut", cut)?;

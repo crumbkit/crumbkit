@@ -8,6 +8,8 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- crumbkit: a [`Listing`]'s JSON document holds its next steps under
+  `next`, the same steps that the text prints ([behaviour/output/listings]).
 - crumbkit: the `commands list` row of a group with goal headings lists
   them in a `goals` field, in help order ([behaviour/help/commands-list]).
 
