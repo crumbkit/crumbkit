@@ -14,6 +14,7 @@ use crate::{Document, Error, Listing, Output, Row, Sink, finish_to};
 mod arguments;
 mod exits;
 mod goals;
+mod no_result;
 
 /// A row type for the leaf whose columns the export lists.
 #[derive(Serialize, JsonSchema)]
@@ -504,14 +505,19 @@ fn the_recovery_has_no_next_step_when_the_runtime_tree_hides_commands_list() {
 }
 
 #[test]
-fn the_row_schema_lists_every_field_that_a_row_serializes_and_requires_all_but_goals() {
+fn the_row_schema_lists_every_field_that_a_row_serializes_and_requires_all_but_goals_and_prints_no_result()
+ {
     let rows = listed(&["books"]);
     let schema = schemars::schema_for!(CommandRow);
     let schema = schema.as_value();
     let group = row(&rows, "shelf books");
     let leaf = row(&rows, "shelf books list");
+    let mut group_keys = keys(group);
+    group_keys.push("prints_no_result");
+    group_keys.sort_unstable();
 
-    assert_eq!(keys(group), keys(&schema["properties"]));
+    // The tests in `no_result` show a row with `prints_no_result`.
+    assert_eq!(group_keys, keys(&schema["properties"]));
     assert_eq!(keys(leaf), required(schema));
     assert_fields_match(&group["goals"][0], &schema["properties"]["goals"]["items"]);
     assert_fields_match(

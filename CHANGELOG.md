@@ -6,6 +6,12 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- crumbkit: the `commands list` row of a leaf that prints no result has
+  `prints_no_result: true`, which tells it from a leaf without a document
+  ([behaviour/help/commands-list]).
+
 ## [0.1.1] - 2026-11-01
 
 ### Added

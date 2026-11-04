@@ -1,10 +1,7 @@
 //! The row that `commands list` prints for each command of a branch, and
 //! how it is read from the runtime command tree and the tool's guide.
 
-use std::borrow::Cow;
-
 use clap::{Arg, ArgAction, Command};
-use schemars::{JsonSchema, Schema, SchemaGenerator, json_schema};
 use serde::Serialize;
 use serde::ser::{SerializeStruct, Serializer};
 
@@ -17,8 +14,6 @@ use crate::{Row, Shape};
 mod schema;
 #[cfg(test)]
 mod tests;
-
-use self::schema::{argument_schema, exit_schema, goal_schema};
 
 /// One visible command of a branch, as `commands list` prints it: what the
 /// command's `-h` and `--help` show, apart from layout.
@@ -33,9 +28,15 @@ use self::schema::{argument_schema, exit_schema, goal_schema};
 /// the subcommands listed under them, in the page's order. The page prints a
 /// heading for a goal that names at least one visible subcommand. Every
 /// other row leaves the field out.
+///
+/// The row of a command whose leaf declares
+/// [`Leaf::prints_no_result`](crate::help::Leaf::prints_no_result) has a
+/// `prints_no_result` field that is `true`. Every other row leaves the field
+/// out, so a caller tells such a command from one whose leaf declares no
+/// document, although both rows have the form `null` (ADR-0169).
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct CommandRow {
-    // The `JsonSchema` impl below describes each field of this struct and of
+    // The `JsonSchema` impl in `schema.rs` describes each field of this struct and of
     // the structs it holds, and it is the one place those descriptions live.
     path: String,
     about: Option<String>,
@@ -51,12 +52,13 @@ pub struct CommandRow {
     effects: Option<Effects>,
     writes: Option<Guards>,
     goals: Vec<CommandGoal>,
+    prints_no_result: bool,
 }
 
 /// One argument of a command, as the command's help shows it.
 #[derive(Clone, Debug, PartialEq, Eq)]
 struct Argument {
-    // `CommandRow`'s `JsonSchema` impl describes each field.
+    // `CommandRow`'s `JsonSchema` impl in `schema.rs` describes each field.
     name: String,
     short: Option<String>,
     value_names: Vec<String>,
@@ -73,7 +75,7 @@ struct Argument {
 /// One example of a command, from the guide's leaf for the command.
 #[derive(Clone, Debug, PartialEq, Eq)]
 struct CommandExample {
-    // `CommandRow`'s `JsonSchema` impl describes each field.
+    // `CommandRow`'s `JsonSchema` impl in `schema.rs` describes each field.
     command: String,
     about: &'static str,
 }
@@ -82,7 +84,7 @@ struct CommandExample {
 /// the guide's leaf for the command.
 #[derive(Clone, Debug, PartialEq, Eq)]
 struct CommandColumn {
-    // `CommandRow`'s `JsonSchema` impl describes each field.
+    // `CommandRow`'s `JsonSchema` impl in `schema.rs` describes each field.
     name: &'static str,
     long: bool,
     description: Option<String>,
@@ -92,7 +94,7 @@ struct CommandColumn {
 /// page lists under it.
 #[derive(Clone, Debug, PartialEq, Eq)]
 struct CommandGoal {
-    // `CommandRow`'s `JsonSchema` impl describes each field.
+    // `CommandRow`'s `JsonSchema` impl in `schema.rs` describes each field.
     heading: &'static str,
     commands: Vec<String>,
 }
@@ -100,7 +102,7 @@ struct CommandGoal {
 /// One exit code that the guide declares for the command.
 #[derive(Clone, Debug, PartialEq, Eq)]
 struct CommandExit {
-    // `CommandRow`'s `JsonSchema` impl describes each field.
+    // `CommandRow`'s `JsonSchema` impl in `schema.rs` describes each field.
     exit: u8,
     last: u8,
     meaning: &'static str,
@@ -207,6 +209,7 @@ impl CommandRow {
             effects: leaf.and_then(Leaf::get_effects),
             writes: effects::guards(leaf.and_then(Leaf::get_effects), takes_expect(command)),
             goals,
+            prints_no_result: leaf.is_some_and(Leaf::get_prints_no_result),
         }
     }
 }
@@ -389,14 +392,15 @@ impl Row for CommandRow {
 }
 
 /// Serializes the row as an object with every field, and `null` for a
-/// missing text. The one exception is `goals`, which a row whose help page
-/// prints no goal headings leaves out.
+/// missing text. The exceptions are `goals`, which a row whose help page
+/// prints no goal headings leaves out, and `prints_no_result`, which only
+/// the row of a command that prints no result has, as `true`.
 ///
 /// The `Serialize` impls of this module are written by hand so crumbkit
 /// needs no `serde_derive`.
 impl Serialize for CommandRow {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        let fields = 13 + usize::from(!self.goals.is_empty());
+        let fields = 13 + usize::from(!self.goals.is_empty()) + usize::from(self.prints_no_result);
         let mut row = serializer.serialize_struct("CommandRow", fields)?;
         row.serialize_field("path", &self.path)?;
         row.serialize_field("about", &self.about)?;
@@ -413,6 +417,9 @@ impl Serialize for CommandRow {
         row.serialize_field("writes", &self.writes)?;
         if !self.goals.is_empty() {
             row.serialize_field("goals", &self.goals)?;
+        }
+        if self.prints_no_result {
+            row.serialize_field("prints_no_result", &true)?;
         }
         row.end()
     }
@@ -471,117 +478,5 @@ impl Serialize for CommandColumn {
         column.serialize_field("long", &self.long)?;
         column.serialize_field("description", &self.description)?;
         column.end()
-    }
-}
-
-/// Describes the object that `Serialize` writes. The descriptions are the
-/// only ones the fields have, and a leaf's `--help` describes the columns
-/// `path` and `about` from them.
-///
-/// This impl is written by hand so crumbkit needs no schemars `derive`
-/// feature. The nested objects are written inline, so the schema has no
-/// `$defs`.
-impl JsonSchema for CommandRow {
-    fn schema_name() -> Cow<'static, str> {
-        "CommandRow".into()
-    }
-
-    fn schema_id() -> Cow<'static, str> {
-        "crumbkit::commands::CommandRow".into()
-    }
-
-    fn json_schema(_: &mut SchemaGenerator) -> Schema {
-        json_schema!({
-            "description": "One visible command of a branch of the command tree.",
-            "type": "object",
-            "properties": {
-                "path": {
-                    "description": "The command line that runs the command, such as `shelf books list`.",
-                    "type": "string",
-                },
-                "about": {
-                    "description": "The command's one-line description, or its full description when it has no one-line description.",
-                    "type": ["string", "null"],
-                },
-                "long_about": {
-                    "description": "The full description that the command's `--help` shows, when the command has one.",
-                    "type": ["string", "null"],
-                },
-                "arguments": {
-                    "description": "The arguments that the command's help shows, in definition order.",
-                    "type": "array",
-                    "items": argument_schema(),
-                },
-                "examples": {
-                    "description": "The examples of the guide's leaf for the command, in guide order.",
-                    "type": "array",
-                    "items": {
-                        "type": "object",
-                        "properties": {
-                            "command": {
-                                "description": "The full command line, such as `shelf books list --all`, with each word that a POSIX shell would split or expand between single quotes.",
-                                "type": "string",
-                            },
-                            "about": {
-                                "description": "The one-line description, which is empty when the example has none.",
-                                "type": "string",
-                            },
-                        },
-                        "required": ["command", "about"],
-                    },
-                },
-                "columns": {
-                    "description": "The columns of the result that the command prints, from the document of the guide's leaf for the command. A headed command's text has no columns, so it lists the JSON fields that `--fields` selects, ending with `text` and `base64`.",
-                    "type": "array",
-                    "items": {
-                        "type": "object",
-                        "properties": {
-                            "name": {
-                                "description": "The column's name, as the row type serializes the field.",
-                                "type": "string",
-                            },
-                            "long": {
-                                "description": "Whether `--long` adds the column.",
-                                "type": "boolean",
-                            },
-                            "description": {
-                                "description": "The first paragraph of the field's doc comment, when it has one.",
-                                "type": ["string", "null"],
-                            },
-                        },
-                        "required": ["name", "long", "description"],
-                    },
-                },
-                "form": {
-                    "description": "stream when the command prints a stream, one row on each line as each arrives, bytes when it prints one document that holds bytes, which its text prints unchanged, headed when it prints one document whose text prints each answer's bytes under a header, document when it prints any other document, and null when the guide's leaf for the command declares no document.",
-                    "enum": ["bytes", "document", "headed", "stream", null],
-                },
-                "line": {
-                    "description": "The form of the text line that each row prints in place of a table row, such as `<POINTER> -> <TARGET>`, or null when the rows print a table or the command declares no document.",
-                    "type": ["string", "null"],
-                },
-                "children": {
-                    "description": "The field whose items each row prints in text as lines under it, such as `components`, or null when the rows print no such lines or the command declares no document.",
-                    "type": ["string", "null"],
-                },
-                "children_help": {
-                    "description": "The description of the child lines that help prints after `Children: `, which is the row type's own text or crumbkit's sentence that names the children field, or null when `children` is null.",
-                    "type": ["string", "null"],
-                },
-                "exits": {
-                    "description": "The exit codes that the tool declares for the command besides 0, 1 and 2, which apply to every command, in guide order. `<tool> help exit-codes` describes every code.",
-                    "type": "array",
-                    "items": exit_schema(),
-                },
-                "effects": effects::schema(),
-                "writes": effects::writes_schema(),
-                "goals": {
-                    "description": "The goal headings that the command's help page lists its subcommands under, in the page's order. Only the row of a command whose help page prints goal headings for its group, which needs at least one goal that names a visible subcommand, has this field.",
-                    "type": "array",
-                    "items": goal_schema(),
-                },
-            },
-            "required": ["path", "about", "long_about", "arguments", "examples", "columns", "form", "line", "children", "children_help", "exits", "effects", "writes"],
-        })
     }
 }
