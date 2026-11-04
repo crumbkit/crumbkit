@@ -270,8 +270,9 @@ The command never succeeds. It prints its failure, such as the interrupt,
 with `Output::print_failure`, takes its exit code from
 `Output::failure_exit` and returns the code through `events::ended`. The
 leaf has no document, so it publishes no schema and `commands list` gives
-it `form: null` and `prints_no_result: true`. crumbkit-test's `check_guide` accepts the leaf without an
-opt-out from `guide/document`, and fails a leaf that declares both a
-document and `Leaf::prints_no_result` ([help checks](../../help/checks.md)).
+it `form: null` and `prints_no_result: true`. crumbkit-test's
+`check_guide` accepts the leaf without an opt-out from `guide/document`,
+and fails a leaf that declares both a document and
+`Leaf::prints_no_result` ([help checks](../../help/checks.md)).
 
 Why: ADR-0143, ADR-0169.

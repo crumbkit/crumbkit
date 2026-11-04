@@ -3,8 +3,8 @@
 
 use serde_json::Value;
 
-use super::{args, output, row};
-use crate::commands::list;
+use super::{args, keys, output, required, row};
+use crate::commands::{CommandRow, list};
 use crate::help::{Guide, Leaf};
 
 /// A guide that declares that `books show` prints no result and gives
@@ -26,6 +26,19 @@ fn the_row_of_a_leaf_that_prints_no_result_has_prints_no_result_true_and_no_form
 
     assert_eq!(show["prints_no_result"], Value::Bool(true));
     assert_eq!(show["form"], Value::Null);
+}
+
+#[test]
+fn the_row_of_a_leaf_that_prints_no_result_has_the_schema_s_required_fields_and_prints_no_result() {
+    let rows = rows();
+    let schema = schemars::schema_for!(CommandRow);
+    let schema = schema.as_value();
+    let mut expected = required(schema);
+    expected.push("prints_no_result");
+    expected.sort_unstable();
+
+    assert_eq!(keys(row(&rows, "shelf books show")), expected);
+    assert!(schema["properties"]["prints_no_result"].is_object());
 }
 
 #[test]

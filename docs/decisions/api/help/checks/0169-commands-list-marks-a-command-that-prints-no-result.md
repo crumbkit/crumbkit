@@ -37,6 +37,7 @@ flags.
 
 Considered: a new `form` value such as `none`, which needs a new document
 id; a `prints_no_result` field on every row with `false` for most, which
-makes the field required and so changes the published schema; a field that
-names the view flags each command offers, which is more than a client needs
-to tell the two cases apart.
+ADR-0168 rejected for an empty `goals` on every row, because a reader then
+reads a key on every row that only a few rows need; a field that names the
+view flags each command offers, which is more than a client needs to tell
+the two cases apart.
