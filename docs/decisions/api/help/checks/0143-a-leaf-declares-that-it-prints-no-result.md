@@ -1,7 +1,7 @@
 # ADR-0143. A leaf declares that its command prints no result
 
 - Date: 2026-10-22
-- Status: accepted
+- Status: amended by ADR-0169
 - Supersedes: ADR-0016 and ADR-0105, which it amends
 - Missed: ADR-0105 gave a command without a result only an opt-out from the document rule, and the opt-out keeps `--fields`, `--long` and `--full` in the command's help although the command can use none of them.
 

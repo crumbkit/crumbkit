@@ -41,8 +41,9 @@ Why: ADR-0026, ADR-0001.
 
 ## Rows
 
-Every row has every field except `goals`, with `null` or an empty list for
-what a command lacks, so a program reads every row the same way.
+Every row has every field except `goals` and `prints_no_result`, with
+`null` or an empty list for what a command lacks, so a program reads every
+row the same way.
 
 - `effects` holds the leaf's effects, or `null` when it declares none
   ([effects](../effects/README.md#declaring-effects)).
@@ -76,6 +77,14 @@ what a command lacks, so a program reads every row the same way.
   that help adds for subcommands that no goal names. A row of a command
   without goal headings has no `goals` key
   ([goal headings](headings/README.md)).
+- `prints_no_result` is `true` on the row of a leaf that declares that its
+  command prints no result, and every other row has no `prints_no_result`
+  key. Such a row and the row of a leaf without a document both have
+  `form: null`, and this field tells them apart: the first command offers
+  none of `--fields`, `--long` and `--full`, and the second offers all
+  three. `--fields prints_no_result` writes `null` for a row without the
+  field, as it does for `goals`
+  ([commands that print no result](../output/shapes/README.md#a-command-that-prints-no-result)).
 
 The text table shows only each command's path and about text, because the
 nested lists would print as compact JSON in a table cell, and it ends with a
@@ -87,4 +96,4 @@ formats, and crumbkit-markdown writes a Markdown [reference](reference.md)
 from its JSON document.
 
 Why: ADR-0026, ADR-0016, ADR-0037, ADR-0039, ADR-0041, ADR-0047, ADR-0064,
-ADR-0065, ADR-0103, ADR-0120, ADR-0168.
+ADR-0065, ADR-0103, ADR-0120, ADR-0168, ADR-0169.
