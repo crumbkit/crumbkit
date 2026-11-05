@@ -1,0 +1,28 @@
+[package]
+name = "crumbkit-process"
+description = "Runs a child program in a process group of its own and reads its output within byte limits and a deadline"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+readme = "README.md"
+keywords = ["process", "child", "subprocess", "timeout", "signal"]
+categories = ["os::unix-apis", "os::windows-apis"]
+include = ["src/**/*.rs", "README.md", "LICENSE-APACHE", "LICENSE-MIT"]
+
+[target.'cfg(unix)'.dependencies]
+# rustix starts the child in a process group of its own, signals the group,
+# waits for the child without reaping it, and polls the child's pipes, all
+# through safe functions (ADR-0171). `std` gives `Pid::from_child`, `process`
+# gives the signals and `waitid`, and `event` gives `poll`.
+rustix = { workspace = true, features = ["std", "process", "event"] }
+
+[target.'cfg(windows)'.dependencies]
+# process-wrap runs the child in a job object, so ending the job ends the
+# child and every process that it starts (ADR-0171). `std` gives the wrapper of
+# `std::process::Command`, and `job-object` gives `JobObject`.
+process-wrap = { workspace = true, features = ["std", "job-object"] }
+
+[lints]
+workspace = true

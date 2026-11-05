@@ -30,6 +30,8 @@ cargo add crumbkit
   log.
 - [crumbkit-child](crates/crumbkit-child/README.md) hands the terminal to
   another program.
+- [crumbkit-process](crates/crumbkit-process/README.md) runs another
+  program and reads its output within limits and a deadline.
 - [crumbkit-markdown](crates/crumbkit-markdown/README.md) writes a Markdown
   reference of every command.
 - [cargo-crumbkit](crates/cargo-crumbkit/README.md) is the

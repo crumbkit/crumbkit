@@ -41,3 +41,5 @@ its reasons.
   [usage report](usage-log/report.md).
 - [Checks](checks/README.md): what crumbkit-test's checks enforce on a
   tool.
+- [Processes](processes.md): running another program whose output a tool
+  reads, with crumbkit-process.

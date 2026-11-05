@@ -6,6 +6,7 @@ members = [
     "crates/crumbkit-aliases",
     "crates/crumbkit-usage",
     "crates/crumbkit-child",
+    "crates/crumbkit-process",
     "crates/crumbkit-markdown",
     "crates/crumbkit-test",
     "crates/cargo-crumbkit",
@@ -169,8 +170,18 @@ tempfile = { version = "3.27.0", default-features = false }
 # functions, so the test needs no `unsafe` (ADR-0049), and crumbkit reads the
 # width of the terminal that standard output is with it (ADR-0121). tempfile
 # already brings it into the lock file, and the two add only its `pty` and
-# `termios` features.
+# `termios` features. crumbkit-process starts, signals and waits for a child
+# process group and polls its pipes with rustix on Unix (ADR-0171), and adds
+# its `process` and `event` features.
 rustix = { version = "1.1.5", default-features = false }
+
+# process-wrap runs crumbkit-process's child in a job object on Windows
+# (ADR-0171). It starts the child suspended and adds it to the job before it
+# runs, so no process that the child starts escapes the job, and it ends the
+# job with `TerminateJobObject`, all without unsafe code in crumbkit. The entry
+# enables no feature, and crumbkit-process enables only `std` and
+# `job-object`.
+process-wrap = { version = "10.0.1", default-features = false }
 
 # gungraun runs crumbkit's benchmarks under Valgrind and fails the nightly
 # lane when a benchmark goes over its limit on instructions or allocations
