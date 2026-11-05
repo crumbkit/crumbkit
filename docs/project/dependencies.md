@@ -49,11 +49,12 @@ Why: ADR-0003, ADR-0001, ADR-0097, ADR-0043.
 | `complete` | clap_complete with its `unstable-dynamic` feature, which brings shlex and is_executable and turns on clap's `unstable-ext`. It added 102,192 bytes to shelf's stripped release binary on aarch64 macOS. |
 | crumbkit-aliases | toml. The crate is separate, so only a tool with personal aliases builds toml. |
 | crumbkit-child | signal-hook with no features, which crumbkit-usage also uses, so a tool can hand the terminal to a child while it ignores Ctrl-C. The crate is separate, so only a tool that hands the terminal over builds it. |
+| crumbkit-process | rustix's `process` and `event` features on Unix, beside the `pty` and `termios` features that crumbkit and shelf's tests already use. On Windows it adds process-wrap with only its `std` and `job-object` features, which brings process-wrap, indexmap and the `windows` 0.62 crates, 19 crates in all, with syn 2 for windows-implement. A cold release build of process-wrap with those features took 5 to 9 s for `x86_64-pc-windows-gnu` on aarch64 macOS. process-wrap's Unix dependency nix appears in the lock file and never builds, because crumbkit-process depends on process-wrap on Windows alone. The crate is separate, so only a tool that runs a child and reads its output builds it. |
 | crumbkit-usage | The usage log's dependencies: siphasher, etcetera, humantime and signal-hook, and getrandom on Windows, which proptest already brings into the lock file, because Windows has no `/dev/urandom`. The crate is separate, so only a tool that keeps the log builds them. |
 | cargo-crumbkit | crumbkit-usage, so `weigh --usage` reads a tool's log at the path that crumbkit-usage writes it to. It brings siphasher and signal-hook with signal-hook-registry and errno, and getrandom on Windows. cargo-crumbkit is a development tool that a tool's binary never links, so the extra build time falls only on the person who installs it. |
 
 Why: ADR-0003, ADR-0001, ADR-0016, ADR-0027, ADR-0029, ADR-0030, ADR-0033,
-ADR-0042, ADR-0043, ADR-0048, ADR-0102.
+ADR-0042, ADR-0043, ADR-0048, ADR-0102, ADR-0171.
 
 ## MSRV and toolchain
 
@@ -85,5 +86,8 @@ Windows at tier 2 has these limits:
 - Closing the console, logging off and shutting down end a tool with no
   usage line and end a tool beside its child. Ctrl-Break ends a tool with no
   usage line.
+- crumbkit-process stops a child by ending its job at once, with no
+  graceful step, and a tool that is killed outright or crashes leaves the
+  job's processes running.
 
 Why: ADR-0003, ADR-0011, ADR-0024, ADR-0029, ADR-0042.

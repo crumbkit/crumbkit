@@ -120,7 +120,7 @@ Why: ADR-0011.
   gate of CI-4. It runs clippy on the workspace, the tests with
   cargo-nextest and the doctests. crumbkit-child's tests in the workspace
   run cover the Windows SIGINT and SIGBREAK handlers without the usage
-  log. It turns off debug info and
+  log, and crumbkit-process's Windows tests cover its job object. It turns off debug info and
   incremental builds.
 - `report` comments the run's URL on the open issue titled "Scheduled CI
   failed" when `nightly`, `bench`, `changed` or `windows` fails, or opens
