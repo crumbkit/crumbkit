@@ -59,11 +59,14 @@ and never reads the child's output (ADR-0058).
   step would send Ctrl-Break with `GenerateConsoleCtrlEvent`, which no
   maintained crate wraps without unsafe code, and crumbkit has no unsafe
   code (ADR-0003).
-- On Unix the crate uses rustix. On Windows it uses a maintained crate that
-  wraps job objects without unsafe code. The pull request that adds the
-  Windows code chooses that crate. It checks that the child cannot start a
-  process outside the job before the job holds it, and that closing the
-  job's last handle ends the job's processes.
+- On Unix the crate uses rustix. On Windows it uses the job object of
+  process-wrap, which starts the child suspended and adds it to the job
+  before it runs, so no process that the child starts escapes the job.
+- process-wrap's std API does not ask Windows to end a job's processes when
+  the job's last handle closes. The crate therefore ends the job when a run
+  is dropped, which covers a normal return and a panic that unwinds. When
+  the tool is killed outright or crashes, the job's processes keep running.
+  This gap closes when process-wrap's std API can ask for kill-on-close.
 - Windows stays tier 2 (ADR-0003). The crate's Windows tests run in the
   scheduled Windows job.
 
@@ -72,12 +75,15 @@ and never reads the child's output (ADR-0058).
 A tool runs such a child through crumbkit-process and keeps only the code
 that is its own, such as the arguments of each operation and the meaning of
 the child's output. On Windows a stopped child can leave partial work, as a
-child killed with SIGKILL can on Unix. A descendant that leaves the process
+child killed with SIGKILL can on Unix, and a tool that is killed outright
+leaves its children running until process-wrap offers kill-on-close. A descendant that leaves the process
 group on Unix is not stopped. The crate does not supervise programs that
 outlive the tool, restart them or recognise them across restarts.
 
 Considered: process-wrap, whose Unix group wrapper reaps the group's leader
-before it signals the group; subprocess, which has no job objects; a module
+before it signals the group; subprocess, which has no job objects;
+win32job, which adds the child to its job only once the child runs, so a
+process that the child starts at once can escape the job; a module
 in crumbkit-child, which would bring crumbkit's output types to a runner
 that prints nothing; unsafe code in one Windows module for Ctrl-Break;
 reader threads on Unix, which cannot be joined while a descendant holds a
