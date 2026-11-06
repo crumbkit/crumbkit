@@ -309,14 +309,7 @@ fn the_time_of_the_first_byte_of_standard_output_is_measured_from_the_start() {
 
 #[test]
 fn a_cancel_from_another_thread_stops_the_child() {
-    let cancel = Cancel::new();
-    let canceller = std::thread::spawn({
-        let cancel = cancel.clone();
-        move || {
-            std::thread::sleep(Duration::from_millis(200));
-            cancel.cancel();
-        }
-    });
+    let (cancel, canceller) = cancel_soon();
     let started = Instant::now();
 
     let finished = run_sh("sleep 30", &kept().cancel(&cancel));
@@ -340,6 +333,10 @@ fn a_run_with_a_cancel_that_is_already_cancelled_starts_no_child() {
 
 /// Returns a cancel that is cancelled 200 ms from now, and the thread that
 /// cancels it.
+///
+/// The tests that stop a child with SIGINT need the test process to have
+/// SIGINT at its default action, because a child inherits an ignored
+/// SIGINT and then neither ends on it nor traps it.
 fn cancel_soon() -> (Cancel, std::thread::JoinHandle<()>) {
     let cancel = Cancel::new();
     let canceller = std::thread::spawn({

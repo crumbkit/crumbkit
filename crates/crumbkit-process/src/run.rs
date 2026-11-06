@@ -380,7 +380,7 @@ fn follow<'scope>(
     }
     exited?;
     let status = sys::status_of(status?);
-    let exit = stopped.unwrap_or_else(|| status.into());
+    let exit = stopped.unwrap_or_else(|| status.exit());
     let unread = || Kept {
         captured: Captured::default(),
         first: None,

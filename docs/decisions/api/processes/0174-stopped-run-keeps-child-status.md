@@ -40,5 +40,6 @@ in `Exit` and in `Status`.
 
 Considered: `Exit::Stopped` and `Exit::TimedOut` carrying the status,
 which changes every match on `Exit` and repeats one field across two
-variants; a `Status` without `shell_code`, which leaves each caller to
+variants; `Exit::Ended(Status)` in place of `Code` and `Signal`, which
+removes the repeated status and also changes every match on `Exit`; a `Status` without `shell_code`, which leaves each caller to
 write the shell's rule.

@@ -60,13 +60,13 @@ impl Status {
             Self::Signal(signal) => 128 + signal,
         }
     }
-}
 
-impl From<Status> for Exit {
-    fn from(status: Status) -> Self {
-        match status {
-            Status::Code(code) => Self::Code(code),
-            Status::Signal(signal) => Self::Signal(signal),
+    /// Returns the exit of a run whose child ended on its own with this
+    /// status.
+    pub(crate) const fn exit(self) -> Exit {
+        match self {
+            Self::Code(code) => Exit::Code(code),
+            Self::Signal(signal) => Exit::Signal(signal),
         }
     }
 }
