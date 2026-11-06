@@ -28,8 +28,9 @@ Why: ADR-0171, ADR-0172, ADR-0003.
 By default the child leads a new process group on Unix, and runs in a new
 job object on Windows. Every signal goes to the group, and a stop ends the
 job. On Unix a child that moved to another process group gets each signal
-too. A descendant that left the group, such as one that called `setsid`, is
-not stopped.
+too, and the SIGCONT that follows it, even when its old group refuses the
+signal. A descendant that left the group, such as one that called
+`setsid`, is not stopped.
 
 On Windows the job object replaces the command's creation flags with its
 own, which start the child suspended, so flags that the tool set with
@@ -40,7 +41,7 @@ signal goes to the child alone, so a process that the child starts is never
 stopped by the crate. A tool that runs inside another tool's group uses it,
 so the outer tool's signals still reach its child.
 
-Why: ADR-0171, ADR-0172.
+Why: ADR-0171, ADR-0172, ADR-0173.
 
 ## Input and output
 
@@ -89,8 +90,9 @@ Why: ADR-0171.
 
 A run ends when the child exits, when its deadline passes, when its
 `Cancel` is cancelled, or when a `Whole` or `Lines` stream with
-`OverLimit::Stop` passes its limit. `Exit` tells these apart: `Code` and `Signal` for the
-child's own end, `TimedOut`, and `Stopped` with `Cancelled` or `OverLimit`.
+`OverLimit::Stop` passes its limit. `Exit` tells these apart: `Code` and
+`Signal` for the child's own end, `TimedOut`, and `Stopped` with
+`Cancelled` or `OverLimit`.
 A deadline that passes after the child exited gives the child's own exit.
 
 A stop follows the run's `Escalation`. Each step sends a signal to the
@@ -126,9 +128,16 @@ can take that id once the child is reaped. The crate therefore waits for
 the child with `waitid` and `WNOWAIT`, which leaves it unreaped, kills what
 is left of the group, and only then reaps it. It never signals the group
 after the reap. macOS refuses a signal to a group whose only process has
-exited, and the crate counts that refusal as sent. macOS also reports a
-child that job control stopped to a wait for an exit, so the wait checks
-again every 10 ms until the report is an exit.
+exited, and the crate counts that refusal as sent.
+
+macOS also gives a wait for an exit a report that the child stopped, and
+may give one that it continued, and `WNOWAIT` leaves that report in place.
+The wait treats a stop and a continue alike: it consumes the report with a
+second wait for stops and continues, which leaves an exit in place, and
+then waits again. It therefore wakes once for each stop or continue, and
+never polls while a stopped child stays stopped. When it finds no report
+to consume, it checks again after 10 ms. Another wait in the tool for the
+child's stops misses each one that the crate consumed.
 
 A run that panics or returns early still kills every process in its scope
 and reaps the child, so a normal return and a panic that unwinds leave
@@ -137,7 +146,7 @@ outright or crashes skips this: on Unix the group keeps running, and on
 Windows the job's processes keep running, because process-wrap's std job
 object does not ask Windows to end them when the job's last handle closes.
 
-Why: ADR-0171.
+Why: ADR-0171, ADR-0173.
 
 ## Forwarding the tool's signals
 
@@ -149,7 +158,8 @@ both under one lock, so the forwarder never signals a reaped id.
 
 When the tool receives SIGINT, SIGTERM or SIGHUP, the thread takes the
 lock and holds it until the tool ends, so no child starts after the
-signal. It sends the received signal to every listed group, waits up to
+signal. It sends the received signal, and then SIGCONT, to every listed
+group and to a listed child that moved to another group, waits up to
 `FORWARD_GRACE`, one second, for every listed child to exit, sends SIGKILL
 to every listed group, runs each clean-up, and then takes the signal's
 default action. A clean-up that panics does not stop the others.

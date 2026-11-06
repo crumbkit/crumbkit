@@ -20,6 +20,13 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   `prints_no_result: true`, which tells it from a leaf without a document
   ([behaviour/help/commands-list]).
 
+### Fixed
+
+- crumbkit-process: on macOS the wait for a child's exit no longer wakes
+  every 10 ms while the child is stopped by job control, and a child that
+  moved to another process group gets each signal even when its old group
+  refuses it ([behaviour/processes]).
+
 ## [0.1.1] - 2026-11-01
 
 ### Added

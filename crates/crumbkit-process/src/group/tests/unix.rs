@@ -103,6 +103,34 @@ fn a_child_that_moved_to_another_group_still_gets_each_signal() {
 }
 
 #[test]
+fn a_child_that_moved_to_another_group_gets_the_signal_when_its_old_group_refuses_it() {
+    // perl leaves a child that has exited, and that it never reaps, in its
+    // old group, so the old group holds no live process and macOS refuses a
+    // signal to it. perl then moves itself into the group of its parent,
+    // this test's process, and exits 9 on SIGTERM.
+    let mut group = start(
+        "exec perl -e 'fork() or exit 0; select(undef, undef, undef, 0.2); \
+         setpgrp(0, getpgrp(getppid())) or die; $SIG{TERM} = sub { exit 9 }; \
+         $| = 1; print qq(moved\\n); sleep 30'",
+        Scope::Group,
+    );
+    assert_eq!(first_line(&mut group), b"moved");
+
+    let _ = group.signal(Signal::Terminate);
+
+    let deadline = Instant::now() + Duration::from_secs(5);
+    while !group.has_exited().unwrap() && Instant::now() < deadline {
+        std::thread::sleep(Duration::from_millis(20));
+    }
+    let exited = group.has_exited().unwrap();
+    if !exited {
+        let _ = group.signal(Signal::Kill);
+    }
+    assert!(exited, "the moved child did not get the signal");
+    assert_eq!(group.reap().unwrap().code(), Some(9));
+}
+
+#[test]
 fn a_dropped_group_kills_its_child_and_its_group() {
     let mut group = start("sleep 30 & echo $!; sleep 30", Scope::Group);
     let sleeper = pid_in(&first_line(&mut group));
