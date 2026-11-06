@@ -21,7 +21,7 @@ use std::time::Duration;
 
 use process_wrap::std::{ChildWrapper, CommandWrap, JobObject};
 
-use crate::{Exit, Scope, Signal};
+use crate::{Scope, Signal, Status};
 
 /// The handle of a pipe.
 pub(crate) use std::os::windows::io::AsHandle as Pipe;
@@ -135,8 +135,8 @@ fn locked(child: &Mutex<Box<dyn ChildWrapper>>) -> MutexGuard<'_, Box<dyn ChildW
 
 /// Returns how a child with `status` ended. A Windows status always has a
 /// code, and a job that the crate ended gives the code 1.
-pub(crate) fn exit_of(status: ExitStatus) -> Exit {
-    Exit::Code(status.code().unwrap_or(1))
+pub(crate) fn status_of(status: ExitStatus) -> Status {
+    Status::Code(status.code().unwrap_or(1))
 }
 
 /// Returns true at once, because a Windows pipe cannot be polled.

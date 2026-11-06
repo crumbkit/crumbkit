@@ -21,7 +21,7 @@ use rustix::process::{
 
 #[cfg(feature = "forward")]
 use crate::forward::{listed, unlisted};
-use crate::{Exit, Scope, Signal};
+use crate::{Scope, Signal, Status};
 
 #[cfg(test)]
 mod tests;
@@ -276,10 +276,10 @@ fn sent(result: rustix::io::Result<()>) -> io::Result<()> {
 
 /// Returns how a child with `status` ended. A status from a wait has either
 /// a code or a signal on Unix, so the signal 0 never appears.
-pub(crate) fn exit_of(status: ExitStatus) -> Exit {
+pub(crate) fn status_of(status: ExitStatus) -> Status {
     match status.code() {
-        Some(code) => Exit::Code(code),
-        None => Exit::Signal(status.signal().unwrap_or(0)),
+        Some(code) => Status::Code(code),
+        None => Status::Signal(status.signal().unwrap_or(0)),
     }
 }
 

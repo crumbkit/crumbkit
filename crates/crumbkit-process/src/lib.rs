@@ -9,6 +9,7 @@
 //! [`Exit`]: crate::Exit
 //! [ADR-0171]: https://github.com/crumbkit/crumbkit/blob/main/docs/decisions/api/processes/0171-the-process-crate.md
 //! [ADR-0172]: https://github.com/crumbkit/crumbkit/blob/main/docs/decisions/api/processes/0172-process-crate-additions.md
+//! [ADR-0174]: https://github.com/crumbkit/crumbkit/blob/main/docs/decisions/api/processes/0174-stopped-run-keeps-child-status.md
 //! [processes docs]: https://github.com/crumbkit/crumbkit/blob/main/docs/behaviour/processes.md
 #![doc = include_str!("../README.md")]
 
@@ -27,7 +28,7 @@ mod testing;
 
 pub use self::cancel::Cancel;
 pub use self::escalation::Escalation;
-pub use self::exit::{Exit, Stop};
+pub use self::exit::{Exit, Status, Stop};
 pub(crate) use self::group::Group;
 pub use self::group::{Scope, Signal};
 pub use self::lines::{LineQueue, Lines, Silent, line_queue};

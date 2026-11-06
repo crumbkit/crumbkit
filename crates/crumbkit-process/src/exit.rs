@@ -1,7 +1,12 @@
 //! How a run ended.
 
+#[cfg(test)]
+mod tests;
+
 /// How a run's child ended. The caller can tell an exit, a signal, a
-/// timeout and a stop apart.
+/// timeout and a stop apart. [`Finished::status`](crate::Finished::status)
+/// gives the child's own status as the run reaped it, which a timeout or a
+/// stop also has.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum Exit {
@@ -28,4 +33,40 @@ pub enum Stop {
     /// passed its limit, or one of its limits when it is delivered as
     /// lines.
     OverLimit,
+}
+
+/// How the child process itself ended, as the run reaped it. A run that
+/// stopped the child gives the status that the stop caused, such as the
+/// signal of its first step or the code that the child's handler of that
+/// signal exited with.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum Status {
+    /// The child exited with this code. On Windows a child in a job that
+    /// the crate ended exits with 1.
+    Code(i32),
+    /// A signal, by its number, ended the child. Only Unix has this status.
+    Signal(i32),
+}
+
+impl Status {
+    /// Returns the code that a POSIX shell gives for this status: the exit
+    /// code, or 128 plus the signal's number, so a child that SIGINT ended
+    /// gives 130.
+    #[must_use]
+    pub const fn shell_code(self) -> i32 {
+        match self {
+            Self::Code(code) => code,
+            Self::Signal(signal) => 128 + signal,
+        }
+    }
+}
+
+impl From<Status> for Exit {
+    fn from(status: Status) -> Self {
+        match status {
+            Status::Code(code) => Self::Code(code),
+            Status::Signal(signal) => Self::Signal(signal),
+        }
+    }
 }

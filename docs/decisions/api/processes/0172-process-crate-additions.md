@@ -1,7 +1,7 @@
 # ADR-0172. What the process crate adds to its first decision
 
 - Date: 2026-11-06
-- Status: amended by ADR-0173
+- Status: amended by ADR-0173 and ADR-0174
 - Supersedes: ADR-0171, which it amends
 - Missed: ADR-0171 did not decide what its first adopters need beyond one run in a group of its own: a child that stays in the caller's process group, the time to a child's first byte, the shape of the line queue, how long the `forward` feature waits before it kills, and on which platform a run's time bound holds.
 
