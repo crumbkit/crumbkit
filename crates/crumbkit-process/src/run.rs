@@ -28,6 +28,7 @@ pub const DRAIN_GRACE: Duration = Duration::from_secs(1);
 
 /// What the child reads on its standard input.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum Input {
     /// The null device, so the child reads the end of its input at once.
     #[default]
@@ -74,14 +75,14 @@ impl Run {
 
     /// Sets what the run keeps of the child's standard output.
     #[must_use]
-    pub const fn stdout(mut self, capture: Capture) -> Self {
+    pub fn stdout(mut self, capture: Capture) -> Self {
         self.stdout = capture;
         self
     }
 
     /// Sets what the run keeps of the child's standard error.
     #[must_use]
-    pub const fn stderr(mut self, capture: Capture) -> Self {
+    pub fn stderr(mut self, capture: Capture) -> Self {
         self.stderr = capture;
         self
     }
@@ -113,6 +114,13 @@ impl Run {
     pub const fn scope(mut self, scope: Scope) -> Self {
         self.scope = scope;
         self
+    }
+
+    /// Tells the queue of each stream delivered as lines that the run began
+    /// to stop its child.
+    fn stopping(&self) {
+        self.stdout.stopping();
+        self.stderr.stopping();
     }
 }
 
@@ -161,6 +169,7 @@ impl Finished {
 
 /// A run that could not start its child or follow it to its end.
 #[derive(Debug)]
+#[non_exhaustive]
 pub enum RunError {
     /// The program does not exist or cannot be started.
     Start(io::Error),
@@ -198,11 +207,18 @@ impl std::error::Error for RunError {
 /// more. A run whose deadline passes after the child exited gives the
 /// child's own exit.
 ///
-/// A run takes at most the time to its deadline, plus the graces of its
-/// escalation, plus [`DRAIN_GRACE`]. Every thread that it starts is joined
-/// before it returns. On Windows a stop ends the job at once, and a reader
-/// waits for its pipe to close, which ending the job causes for every
-/// process in the job.
+/// On Unix, for a child that the tool may signal, a run takes at most the
+/// time to its deadline, plus the graces of its escalation, plus
+/// [`DRAIN_GRACE`], as long as the caller reads the lines of each stream
+/// delivered as lines. Every thread that it starts is joined before it
+/// returns. On Windows a stop ends the job at once, and a reader waits for
+/// its pipe to close, which ending the job causes for every process in the
+/// job, so a process outside the job that holds a pipe holds the run.
+///
+/// A stream delivered as lines waits for the caller while its queue is
+/// full, and the child then waits on its full pipe. Once the run begins to
+/// stop the child, a full queue drops each line instead. The run ends each
+/// line queue when it returns, on every path.
 ///
 /// # Errors
 ///
@@ -210,6 +226,7 @@ impl std::error::Error for RunError {
 /// [`RunError::Run`] when waiting for, reaping or reading the child fails.
 /// The child is stopped and reaped on every path.
 pub fn run(mut command: Command, run: &Run) -> Result<Finished, RunError> {
+    let _end = EndLines(run);
     if run.cancel.as_ref().is_some_and(Cancel::is_cancelled) {
         return Ok(Finished {
             exit: Exit::Stopped(Stop::Cancelled),
@@ -234,7 +251,14 @@ pub fn run(mut command: Command, run: &Run) -> Result<Finished, RunError> {
         cancel.watch(&notice);
     }
     let ends = Ends::default();
-    let followed = std::thread::scope(|threads| follow(threads, &mut group, &notice, &ends, run));
+    let followed = std::thread::scope(|threads| {
+        let unwind = Unwind {
+            group: &mut group,
+            ends: &ends,
+            run,
+        };
+        follow(threads, &mut *unwind.group, &notice, &ends, run)
+    });
     let (exit, stdout, stderr) = followed.map_err(RunError::Run)?;
     Ok(Finished {
         exit,
@@ -242,6 +266,38 @@ pub fn run(mut command: Command, run: &Run) -> Result<Finished, RunError> {
         stdout: stdout.captured,
         stderr: stderr.captured,
     })
+}
+
+/// Ends the line queues of a run when the run returns, on every path.
+struct EndLines<'run>(&'run Run);
+
+impl Drop for EndLines<'_> {
+    fn drop(&mut self) {
+        self.0.stdout.end();
+        self.0.stderr.end();
+    }
+}
+
+/// Ends the threads of a run when [`follow`] returns, which matters when it
+/// panics: it kills the child unless the group has been reaped, makes the
+/// readers and the writer stop waiting on their pipes, and makes each line
+/// queue drop instead of waiting. The scope then joins every thread, and
+/// the group's drop reaps the child. On a normal return each of these has
+/// already happened or does nothing.
+struct Unwind<'a> {
+    group: &'a mut Group,
+    ends: &'a Ends,
+    run: &'a Run,
+}
+
+impl Drop for Unwind<'_> {
+    fn drop(&mut self) {
+        // A reaped group refuses the signal, so the kill never reaches a
+        // process id that another process may have taken.
+        let _ = self.group.signal(Signal::Kill);
+        self.ends.set(Instant::now());
+        self.run.stopping();
+    }
 }
 
 /// The threads of one run: the waiter, the readers and the writer.
@@ -283,13 +339,17 @@ fn follow<'scope>(
     };
     let mut failure = start_pipes(threads, &mut started, pipes, notice, ends, run).err();
     let stopped = if failure.is_some() {
-        stop(group, notice, &Escalation::default());
+        stop(group, notice, &Escalation::default(), run);
         None
     } else {
         control(group, notice, run)
     };
     let status = group.reap();
-    ends.set(Instant::now() + DRAIN_GRACE);
+    ends.set(
+        Instant::now()
+            .checked_add(DRAIN_GRACE)
+            .unwrap_or_else(Instant::now),
+    );
     let exited = joined(started.waiter.join());
     let stdout = started.stdout.map(|reader| joined(reader.join()));
     let stderr = started.stderr.map(|reader| joined(reader.join()));
@@ -300,7 +360,10 @@ fn follow<'scope>(
         return Err(failure);
     }
     exited?;
-    let exit = stopped.unwrap_or(sys::exit_of(status?));
+    let exit = match stopped {
+        Some(exit) => exit,
+        None => sys::exit_of(status?),
+    };
     let unread = || Kept {
         captured: Captured::default(),
         first: None,
@@ -328,14 +391,14 @@ fn start_pipes<'scope>(
 ) -> io::Result<()> {
     let over = || notice.set(|flags| flags.over_limit = true);
     if let Some(stdout) = stdout {
-        let keeper = Keeper::new(run.stdout);
+        let keeper = Keeper::new(&run.stdout);
         started.stdout = Some(
             Builder::new()
                 .spawn_scoped(threads, move || pipes::read(stdout, ends, keeper, over))?,
         );
     }
     if let Some(stderr) = stderr {
-        let keeper = Keeper::new(run.stderr);
+        let keeper = Keeper::new(&run.stderr);
         started.stderr = Some(
             Builder::new()
                 .spawn_scoped(threads, move || pipes::read(stderr, ends, keeper, over))?,
@@ -369,21 +432,30 @@ fn control(group: &Group, notice: &Notice, run: &Run) -> Option<Exit> {
     } else {
         Exit::TimedOut
     };
-    stop(group, notice, &run.escalation);
+    stop(group, notice, &run.escalation, run);
     Some(exit)
 }
 
 /// Stops the child with `escalation`, and returns once the child has exited.
+/// First it tells each line queue of `run` that the run is stopping.
 ///
 /// A signal that the operating system refuses is skipped, because the next
-/// step, and in the end the kill, still applies. The crate signals only its
-/// own unreaped child, so the kill is never refused.
-fn stop(group: &Group, notice: &Notice, escalation: &Escalation) {
+/// step, and in the end the kill, still applies. A grace too long for an
+/// `Instant` waits without a limit.
+///
+/// RUST-10: the stop waits for the child's exit after the kill without a
+/// limit. That handles every child that the tool may signal, and it misses
+/// a child that the kill cannot reach, such as a setuid program that
+/// refuses the tool's signals with `EPERM`, which holds the run until it
+/// exits. A run that gives up on such a child and reports it replaces this
+/// when a caller needs one.
+fn stop(group: &Group, notice: &Notice, escalation: &Escalation, run: &Run) {
+    run.stopping();
     if sys::GRACEFUL {
         for (signal, grace) in escalation.steps() {
             let _ = group.signal(signal);
             if notice
-                .wait(Some(Instant::now() + grace), |flags| flags.exited)
+                .wait(Instant::now().checked_add(grace), |flags| flags.exited)
                 .exited
             {
                 return;

@@ -2,7 +2,7 @@
 //! the time at which they stop waiting on a pipe.
 
 use std::io::{self, Read, Write};
-use std::sync::{Mutex, PoisonError};
+use std::sync::OnceLock;
 use std::time::{Duration, Instant};
 
 use super::output::{Captured, Keeper};
@@ -23,17 +23,18 @@ const CHUNK: usize = 8 * 1024;
 /// The time at which the run's readers and writer stop waiting on their
 /// pipes, which the run sets once it has reaped the child.
 #[derive(Debug, Default)]
-pub(super) struct Ends(Mutex<Option<Instant>>);
+pub(super) struct Ends(OnceLock<Instant>);
 
 impl Ends {
-    /// Makes every wait on a pipe end at `at`.
+    /// Makes every wait on a pipe end at `at`, unless a time was set
+    /// before, which then stands.
     pub(super) fn set(&self, at: Instant) {
-        *self.0.lock().unwrap_or_else(PoisonError::into_inner) = Some(at);
+        let _ = self.0.set(at);
     }
 
     /// Returns the time at which waits end, once it is set.
     fn at(&self) -> Option<Instant> {
-        *self.0.lock().unwrap_or_else(PoisonError::into_inner)
+        self.0.get().copied()
     }
 
     /// Waits until `pipe` can be read, or written when `write` is true, and

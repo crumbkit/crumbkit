@@ -18,6 +18,8 @@ use rustix::process::{
     Pid, Signal as Raw, WaitId, WaitIdOptions, getpgid, kill_process, kill_process_group, waitid,
 };
 
+#[cfg(feature = "forward")]
+use crate::forward::{listed, unlisted};
 use crate::{Exit, Scope, Signal};
 
 /// The descriptor of a pipe, which `poll` waits on.
@@ -39,11 +41,15 @@ pub(crate) struct Child {
 impl Child {
     /// Starts `command`, leading a new process group when `scope` asks for
     /// one.
+    /// A child that leads a group of its own is listed for the `forward`
+    /// feature while the registry's lock is held around the start.
     pub(crate) fn spawn(mut command: Command, scope: Scope) -> io::Result<Self> {
-        if scope == Scope::Group {
+        let child = if scope == Scope::Group {
             command.process_group(0);
-        }
-        let child = command.spawn()?;
+            listed(|| command.spawn())?
+        } else {
+            command.spawn()?
+        };
         let pid = Pid::from_child(&child);
         Ok(Self {
             process: child,
@@ -53,6 +59,7 @@ impl Child {
     }
 
     /// Returns the child's process id.
+    #[cfg(test)]
     pub(crate) fn id(&self) -> u32 {
         self.process.id()
     }
@@ -76,45 +83,24 @@ impl Child {
     /// has moved to another group. With [`Scope::Child`] it sends `signal`
     /// to the child alone.
     ///
-    /// The kernel refuses a signal with `ESRCH` only when no process that it
-    /// names is left, and that is no failure, because the caller then waits
-    /// for an exit that has already happened.
-    ///
     /// macOS refuses a signal to a group whose only process has exited with
-    /// `EPERM`, so a refusal after the child exited counts as sent too.
+    /// `EPERM`, so a refusal after the child exited counts as sent.
     pub(crate) fn signal(&self, signal: Signal) -> io::Result<()> {
         let raw = raw(signal);
         let result = if self.scope == Scope::Child {
             sent(kill_process(self.pid, raw))
         } else {
-            sent(kill_process_group(self.pid, raw)).and_then(|()| {
-                // The child gets the signal once: through its group while it
-                // is in it, and directly once it has left it.
-                if getpgid(Some(self.pid)).ok() == Some(self.pid) {
-                    return Ok(());
-                }
-                sent(kill_process(self.pid, raw))
-            })
+            signal_group(self.pid, raw)
         };
         match result {
-            Err(error) if self.has_exited().unwrap_or(false) => {
-                let _ = error;
-                Ok(())
-            }
+            Err(_) if self.has_exited().unwrap_or(false) => Ok(()),
             result => result,
         }
     }
 
     /// Returns true when the child has exited, and leaves it unreaped.
     pub(crate) fn has_exited(&self) -> io::Result<bool> {
-        let options = WaitIdOptions::EXITED | WaitIdOptions::NOHANG | WaitIdOptions::NOWAIT;
-        loop {
-            match waitid(WaitId::Pid(self.pid), options) {
-                Ok(status) => return Ok(status.is_some()),
-                Err(Errno::INTR) => {}
-                Err(error) => return Err(error.into()),
-            }
-        }
+        has_exited(self.pid)
     }
 
     /// Returns a waiter that blocks until the child exits.
@@ -125,15 +111,21 @@ impl Child {
     /// Waits until the child exits, kills what is left of its group, and
     /// reaps the child. With [`Scope::Child`] it kills nothing, because the
     /// group is the caller's.
+    ///
+    /// A child that leads a group of its own leaves the `forward` feature's
+    /// list under the registry's lock before the reap, so the forwarder
+    /// never signals a reaped id.
     pub(crate) fn reap(&mut self) -> io::Result<ExitStatus> {
         self.waiter().wait()?;
-        if self.scope == Scope::Group {
-            // The kill finds no process, or on macOS is refused with `EPERM`,
-            // when the exited child is the group's only process, and then
-            // there is nothing left to kill.
-            let _ = kill_process_group(self.pid, Raw::KILL);
+        if self.scope == Scope::Child {
+            return self.process.wait();
         }
-        self.process.wait()
+        // The kill finds no process, or on macOS is refused with `EPERM`,
+        // when the exited child is the group's only process, and then there
+        // is nothing left to kill.
+        let _ = kill_process_group(self.pid, Raw::KILL);
+        let process = &mut self.process;
+        unlisted(self.pid, || process.wait())
     }
 }
 
@@ -156,6 +148,48 @@ impl Waiter {
             }
         }
     }
+}
+
+/// Sends `raw` to the group that `pid` leads, and to `pid` itself when it
+/// has moved to another group, so the child gets the signal once.
+///
+/// The kernel refuses a signal with `ESRCH` only when no process that it
+/// names is left, and that is no failure, because the caller then waits
+/// for an exit that has already happened.
+pub(crate) fn signal_group(pid: Pid, raw: Raw) -> io::Result<()> {
+    sent(kill_process_group(pid, raw))?;
+    if getpgid(Some(pid)).ok() == Some(pid) {
+        return Ok(());
+    }
+    sent(kill_process(pid, raw))
+}
+
+/// Returns true when the child `pid` has exited, and leaves it unreaped.
+pub(crate) fn has_exited(pid: Pid) -> io::Result<bool> {
+    let options = WaitIdOptions::EXITED | WaitIdOptions::NOHANG | WaitIdOptions::NOWAIT;
+    loop {
+        match waitid(WaitId::Pid(pid), options) {
+            Ok(status) => return Ok(status.is_some()),
+            Err(Errno::INTR) => {}
+            Err(error) => return Err(error.into()),
+        }
+    }
+}
+
+/// Starts a child with `spawn` and lists it for the forwarder of the
+/// `forward` feature, which is off, so it only starts the child.
+#[cfg(not(feature = "forward"))]
+fn listed(
+    spawn: impl FnOnce() -> io::Result<std::process::Child>,
+) -> io::Result<std::process::Child> {
+    spawn()
+}
+
+/// Reaps a child with `reap` after it leaves the forwarder's list of the
+/// `forward` feature, which is off, so it only reaps the child.
+#[cfg(not(feature = "forward"))]
+fn unlisted<T>(_pid: Pid, reap: impl FnOnce() -> T) -> T {
+    reap()
 }
 
 /// Returns the rustix signal of `signal`.

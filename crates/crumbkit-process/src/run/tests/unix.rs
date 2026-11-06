@@ -185,12 +185,26 @@ fn a_child_that_handles_terminate_exits_at_that_step_and_is_not_killed() {
     let started = Instant::now();
 
     let finished = run_sh(
-        "trap 'echo bye >&2; exit 7' TERM; sleep 30 & wait",
+        "trap 'sleep 0.3; echo bye >&2; exit 7' TERM; sleep 30 & wait",
         &kept().deadline(after(0.2)).escalation(escalation),
     );
 
     assert_eq!(finished.exit(), Exit::TimedOut);
     assert_eq!(finished.stderr().bytes(), b"bye\n");
+    assert!(started.elapsed() < Duration::from_secs(5));
+}
+
+#[test]
+fn a_grace_too_long_for_the_clock_waits_for_the_child_without_a_panic() {
+    let escalation = Escalation::default().step(Signal::Terminate, Duration::MAX);
+    let started = Instant::now();
+
+    let finished = run_sh(
+        "trap 'exit 7' TERM; sleep 30 & wait",
+        &kept().deadline(after(0.2)).escalation(escalation),
+    );
+
+    assert_eq!(finished.exit(), Exit::TimedOut);
     assert!(started.elapsed() < Duration::from_secs(5));
 }
 

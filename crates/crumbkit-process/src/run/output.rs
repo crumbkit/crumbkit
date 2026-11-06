@@ -2,6 +2,8 @@
 
 use std::process::Stdio;
 
+use crate::LineQueue;
+
 #[cfg(test)]
 mod tests;
 
@@ -10,7 +12,8 @@ mod tests;
 const SLACK: usize = 8 * 1024;
 
 /// What a run keeps of one output stream of the child.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Debug, Default)]
+#[non_exhaustive]
 pub enum Capture {
     /// The stream goes to the null device, and the run keeps nothing.
     #[default]
@@ -29,9 +32,29 @@ pub enum Capture {
         /// The most bytes that the run keeps.
         limit: usize,
     },
+    /// The run splits the stream into lines on each newline and pushes
+    /// each line, without its newline, to `queue` while the child runs. A
+    /// last line with no newline is pushed when the stream ends. The run
+    /// keeps no bytes in its [`Captured`].
+    ///
+    /// The first time one line passes `line` bytes or the stream passes
+    /// `total` bytes, the stream is over its limit, and `over` says what
+    /// the run does then. No line is pushed after that.
+    Lines {
+        /// The queue that the run pushes each line to, from
+        /// [`line_queue`](crate::line_queue).
+        queue: LineQueue,
+        /// The most bytes of one line, without its newline.
+        line: usize,
+        /// The most bytes of the whole stream, newlines included.
+        total: usize,
+        /// What the run does when the stream passes a limit.
+        over: OverLimit,
+    },
 }
 
-/// What a run does when a stream that it keeps whole passes its limit.
+/// What a run does when a stream that it keeps whole or as lines passes
+/// its limit.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum OverLimit {
     /// The run stops the child with its escalation and ends as
@@ -45,10 +68,26 @@ pub enum OverLimit {
 
 impl Capture {
     /// Returns the standard stream that the child gets for this capture.
-    pub(super) fn stdio(self) -> Stdio {
+    pub(super) fn stdio(&self) -> Stdio {
         match self {
             Self::Discard => Stdio::null(),
-            Self::Whole { .. } | Self::Tail { .. } => Stdio::piped(),
+            Self::Whole { .. } | Self::Tail { .. } | Self::Lines { .. } => Stdio::piped(),
+        }
+    }
+
+    /// Tells the queue of a stream delivered as lines that the run began
+    /// to stop its child, so a full queue drops a line instead of waiting.
+    pub(super) fn stopping(&self) {
+        if let Self::Lines { queue, .. } = self {
+            queue.stopping();
+        }
+    }
+
+    /// Ends the queue of a stream delivered as lines, so the caller's
+    /// waits end once the queue is empty.
+    pub(super) fn end(&self) {
+        if let Self::Lines { queue, .. } = self {
+            queue.end();
         }
     }
 }
@@ -58,6 +97,7 @@ impl Capture {
 pub struct Captured {
     bytes: Vec<u8>,
     over_limit: bool,
+    long_line: bool,
 }
 
 impl Captured {
@@ -75,10 +115,17 @@ impl Captured {
     }
 
     /// Returns true when the stream was longer than its limit, so the kept
-    /// bytes are not all of it.
+    /// bytes, or the lines delivered, are not all of it.
     #[must_use]
     pub const fn over_limit(&self) -> bool {
         self.over_limit
+    }
+
+    /// Returns true when a stream delivered as lines went over its limit
+    /// because one line passed the limit of one line.
+    #[must_use]
+    pub const fn long_line(&self) -> bool {
+        self.long_line
     }
 }
 
@@ -87,14 +134,24 @@ impl Captured {
 pub(super) struct Keeper {
     capture: Capture,
     kept: Captured,
+    /// The bytes of the line that a stream delivered as lines has not yet
+    /// ended.
+    line: Vec<u8>,
+    /// The bytes that a stream delivered as lines has read in all.
+    read: usize,
+    /// False once the caller has dropped its side of the line queue.
+    listening: bool,
 }
 
 impl Keeper {
     /// Returns a keeper that keeps what `capture` asks for.
-    pub(super) fn new(capture: Capture) -> Self {
+    pub(super) fn new(capture: &Capture) -> Self {
         Self {
-            capture,
+            capture: capture.clone(),
             kept: Captured::default(),
+            line: Vec::new(),
+            read: 0,
+            listening: true,
         }
     }
 
@@ -105,6 +162,9 @@ impl Keeper {
         let kept = &mut self.kept;
         match self.capture {
             Capture::Discard => false,
+            Capture::Lines {
+                line, total, over, ..
+            } => self.add_lines(bytes, line, total) && over == OverLimit::Stop,
             Capture::Whole { limit, over } => {
                 let room = limit.saturating_sub(kept.bytes.len());
                 kept.bytes
@@ -126,8 +186,59 @@ impl Keeper {
         }
     }
 
-    /// Returns what was kept once the stream has ended.
+    /// Splits `bytes` into lines and pushes each complete line, and
+    /// returns true when these bytes take the stream over the limit of
+    /// `line` bytes for one line or `total` bytes in all for the first time.
+    fn add_lines(&mut self, bytes: &[u8], line: usize, total: usize) -> bool {
+        if self.kept.over_limit {
+            return false;
+        }
+        let mut rest = bytes;
+        loop {
+            let (piece, ended) = match rest.iter().position(|byte| *byte == b'\n') {
+                Some(at) => (&rest[..at], true),
+                None => (rest, false),
+            };
+            self.read = self.read.saturating_add(piece.len() + usize::from(ended));
+            self.line.extend_from_slice(piece);
+            let long = self.line.len() > line;
+            if self.read > total || long {
+                self.kept.over_limit = true;
+                self.kept.long_line = long && self.read <= total;
+                self.line = Vec::new();
+                return true;
+            }
+            if !ended {
+                return false;
+            }
+            self.push_line();
+            rest = &rest[piece.len() + 1..];
+            if rest.is_empty() {
+                return false;
+            }
+        }
+    }
+
+    /// Pushes the line kept so far to the queue of a stream delivered as
+    /// lines, unless the caller has dropped its side.
+    fn push_line(&mut self) {
+        let line = std::mem::take(&mut self.line);
+        if let Capture::Lines { queue, .. } = &self.capture
+            && self.listening
+        {
+            self.listening = queue.push(line);
+        }
+    }
+
+    /// Returns what was kept once the stream has ended. A stream delivered
+    /// as lines pushes its last line when that line has no newline.
     pub(super) fn finish(mut self) -> Captured {
+        if matches!(self.capture, Capture::Lines { .. })
+            && !self.kept.over_limit
+            && !self.line.is_empty()
+        {
+            self.push_line();
+        }
         if let Capture::Tail { limit } = self.capture
             && self.kept.bytes.len() > limit
         {

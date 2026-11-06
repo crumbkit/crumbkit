@@ -42,27 +42,37 @@ fn version(mut tool: Command) -> Result<Option<Vec<u8>>, RunError> {
 }
 ```
 
+`Capture::Lines` delivers a stream line by line through a bounded queue
+from [`line_queue`] while the child runs, which the caller reads from
+another thread.
+
 On Unix the child leads a new process group. On Windows it runs in a job
 object, and a stop ends the job at once with no graceful step. A tool that
 is killed outright or crashes leaves the job's processes running on
 Windows, and leaves the group running on Unix.
 
+The off-by-default `forward` feature, on Unix only, stops every live child
+group when the tool receives SIGINT, SIGTERM or SIGHUP, runs the tool's
+clean-ups, and then ends the tool as the signal would have.
+
 ## Where to read more
 
 - [`run`] and [`Run`] describe the one-shot run, its limits, deadline,
   cancel and scope, and [`Exit`] how it ended.
-- [`Group`] starts, signals and reaps a child and its descendants, and
-  [`Escalation`] lists the steps that stop it.
-- The [processes docs] describe the current behaviour, and [ADR-0171]
-  records why.
+- [`Escalation`] lists the steps that stop the child, and [`forward`]
+  forwards the tool's signals.
+- The [processes docs] describe the current behaviour, and [ADR-0171] and
+  [ADR-0172] record why.
 
 Licensed under either of Apache License, Version 2.0 or MIT license at your
 option.
 
 [`run`]: src/run.rs
 [`Run`]: src/run.rs
-[`Group`]: src/group.rs
+[`line_queue`]: src/lines.rs
+[`forward`]: src/forward.rs
 [`Escalation`]: src/escalation.rs
 [`Exit`]: src/exit.rs
 [ADR-0171]: ../../docs/decisions/api/processes/0171-the-process-crate.md
+[ADR-0172]: ../../docs/decisions/api/processes/0172-process-crate-additions.md
 [processes docs]: ../../docs/behaviour/processes.md

@@ -23,7 +23,7 @@ mod tests;
 /// let polite = Escalation::default()
 ///     .step(Signal::Interrupt, Duration::from_secs(2))
 ///     .step(Signal::Terminate, Duration::from_secs(5));
-/// assert_eq!(polite.steps().count(), 2);
+/// assert_ne!(polite, Escalation::default());
 /// ```
 ///
 /// On Windows a stop skips the steps and ends the job at once (ADR-0171).
@@ -43,7 +43,7 @@ impl Escalation {
 
     /// Returns the steps in order, each as its signal and its grace. The
     /// kill that follows them is not a step.
-    pub fn steps(&self) -> impl Iterator<Item = (Signal, Duration)> + '_ {
+    pub(crate) fn steps(&self) -> impl Iterator<Item = (Signal, Duration)> + '_ {
         self.steps.iter().copied()
     }
 }

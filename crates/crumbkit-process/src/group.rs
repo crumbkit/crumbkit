@@ -9,8 +9,9 @@ use crate::sys;
 #[cfg(test)]
 mod tests;
 
-/// Which processes a [`Group`] holds and signals.
+/// Which processes a run holds and signals.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum Scope {
     /// The child and every process that it starts. On Unix the child leads
     /// a new process group, and each signal goes to the group. On Windows
@@ -24,11 +25,14 @@ pub enum Scope {
     Child,
 }
 
-/// A signal that a [`Group`] sends.
+/// A signal that a run sends to the processes in its scope.
 ///
-/// On Windows every signal ends the job at once, because Windows has no
-/// graceful step that crumbkit can send without unsafe code (ADR-0171).
+/// On Windows every signal ends the child at once: with [`Scope::Group`]
+/// it ends the job and every process in it, and with [`Scope::Child`] it
+/// ends the child alone. Windows has no graceful step that crumbkit can
+/// send without unsafe code (ADR-0171).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum Signal {
     /// SIGINT, which Ctrl-C sends.
     Interrupt,
@@ -57,7 +61,7 @@ pub enum Signal {
 /// running, because process-wrap's std job object does not ask Windows to
 /// end them when the job's last handle closes.
 #[derive(Debug)]
-pub struct Group {
+pub(crate) struct Group {
     child: sys::Child,
     status: Option<ExitStatus>,
 }
@@ -71,7 +75,7 @@ impl Group {
     /// Returns the error of [`Command::spawn`] when the program does not
     /// exist or cannot be started, and on Windows when the job object
     /// cannot be created.
-    pub fn start(command: Command, scope: Scope) -> io::Result<Self> {
+    pub(crate) fn start(command: Command, scope: Scope) -> io::Result<Self> {
         Ok(Self {
             child: sys::Child::spawn(command, scope)?,
             status: None,
@@ -79,26 +83,26 @@ impl Group {
     }
 
     /// Returns the child's process id.
-    #[must_use]
-    pub fn id(&self) -> u32 {
+    #[cfg(all(test, unix))]
+    pub(crate) fn id(&self) -> u32 {
         self.child.id()
     }
 
     /// Takes the child's standard input, when the command made it a pipe
     /// and nobody has taken it yet.
-    pub fn take_stdin(&mut self) -> Option<ChildStdin> {
+    pub(crate) fn take_stdin(&mut self) -> Option<ChildStdin> {
         self.child.take_stdin()
     }
 
     /// Takes the child's standard output, when the command made it a pipe
     /// and nobody has taken it yet.
-    pub fn take_stdout(&mut self) -> Option<ChildStdout> {
+    pub(crate) fn take_stdout(&mut self) -> Option<ChildStdout> {
         self.child.take_stdout()
     }
 
     /// Takes the child's standard error, when the command made it a pipe
     /// and nobody has taken it yet.
-    pub fn take_stderr(&mut self) -> Option<ChildStderr> {
+    pub(crate) fn take_stderr(&mut self) -> Option<ChildStderr> {
         self.child.take_stderr()
     }
 
@@ -111,7 +115,7 @@ impl Group {
     ///
     /// Returns an error when the group has been reaped, and the operating
     /// system's error when it refuses the signal.
-    pub fn signal(&self, signal: Signal) -> io::Result<()> {
+    pub(crate) fn signal(&self, signal: Signal) -> io::Result<()> {
         if self.status.is_some() {
             return Err(io::Error::other("the child has been reaped"));
         }
@@ -123,7 +127,7 @@ impl Group {
     /// # Errors
     ///
     /// Returns the operating system's error when it cannot tell.
-    pub fn has_exited(&self) -> io::Result<bool> {
+    pub(crate) fn has_exited(&self) -> io::Result<bool> {
         if self.status.is_some() {
             return Ok(true);
         }
@@ -136,7 +140,8 @@ impl Group {
     /// # Errors
     ///
     /// Returns the operating system's error when the wait fails.
-    pub fn wait_exit(&self) -> io::Result<()> {
+    #[cfg(all(test, unix))]
+    pub(crate) fn wait_exit(&self) -> io::Result<()> {
         if self.status.is_some() {
             return Ok(());
         }
@@ -157,7 +162,7 @@ impl Group {
     ///
     /// Returns the operating system's error when the wait, the kill or the
     /// reap fails.
-    pub fn reap(&mut self) -> io::Result<ExitStatus> {
+    pub(crate) fn reap(&mut self) -> io::Result<ExitStatus> {
         if let Some(status) = self.status {
             return Ok(status);
         }

@@ -263,6 +263,7 @@ version = "0.1.1"
 dependencies = [
  "process-wrap",
  "rustix",
+ "signal-hook",
 ]
 
 [[package]]

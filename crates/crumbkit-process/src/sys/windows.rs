@@ -42,7 +42,6 @@ const CHECK: Duration = Duration::from_millis(10);
 #[derive(Debug)]
 pub(crate) struct Child {
     wrapped: Arc<Mutex<Box<dyn ChildWrapper>>>,
-    id: u32,
     scope: Scope,
 }
 
@@ -54,17 +53,10 @@ impl Child {
             wrap.wrap(JobObject);
         }
         let child = wrap.spawn()?;
-        let id = child.id();
         Ok(Self {
             wrapped: Arc::new(Mutex::new(child)),
-            id,
             scope,
         })
-    }
-
-    /// Returns the child's process id.
-    pub(crate) const fn id(&self) -> u32 {
-        self.id
     }
 
     /// Takes the child's standard input, when it is a pipe.
@@ -155,7 +147,7 @@ pub(crate) fn exit_of(status: ExitStatus) -> Exit {
 /// and is outside the job, such as a child started with [`Scope::Child`]
 /// whose own child outlives it, which holds the run until it exits. A read
 /// that waits on the pipe's handle with a timeout replaces it when a safe
-/// API offers one.
+/// API offers one, and the run's time bound then holds on Windows too.
 #[expect(
     clippy::unnecessary_wraps,
     reason = "the Unix function of the same name can fail, and the run calls both alike"
@@ -165,6 +157,13 @@ pub(crate) fn ready(_pipe: impl Pipe, _write: bool, _timeout: Duration) -> io::R
 }
 
 /// Does nothing, because a write to a Windows pipe ends once the job ends.
+///
+/// RUST-10: the writer of a child's input blocks on its pipe until the
+/// child reads it or the pipe closes. Ending the job closes the pipe for a
+/// child in a group. It misses a child started with [`Scope::Child`] whose
+/// own child holds the input pipe open without reading it, and the writer
+/// then holds the run until that process exits. A write that waits on the
+/// pipe's handle with a timeout replaces it when a safe API offers one.
 #[expect(
     clippy::unnecessary_wraps,
     reason = "the Unix function of the same name can fail, and the run calls both alike"
