@@ -7,8 +7,8 @@
 //!
 //! 1. takes the registry's lock and holds it until the process ends, so no
 //!    new child starts;
-//! 2. sends the received signal to every listed group, and to a listed
-//!    child that moved to another group;
+//! 2. sends the received signal, then SIGCONT, to every listed group, and
+//!    to a listed child that moved to another group;
 //! 3. waits up to [`FORWARD_GRACE`] until every listed child has exited;
 //! 4. sends SIGKILL to every listed group;
 //! 5. runs each clean-up that [`clean_up`] registered;
@@ -20,6 +20,12 @@
 //! ([`Scope::Group`](crate::Scope::Group)). The run unlists it under the
 //! same lock before it reaps it, so the forwarder never signals a process
 //! id that another process may have taken.
+//!
+//! The forwarder must be the only handler that ends the tool on SIGINT,
+//! SIGTERM or SIGHUP. Another handler that ends the tool on one of them,
+//! such as crumbkit-usage's signal thread on SIGINT or SIGTERM, can end it
+//! before the forwarder has stopped the groups. A tool that uses both loses
+//! that guarantee until one owner ends the tool.
 //!
 //! ```no_run
 //! fn remove_lock_file() {}
@@ -86,6 +92,12 @@ pub fn install() -> io::Result<()> {
 /// Registers `clean_up` to run when the forwarder has stopped the listed
 /// groups and before the tool ends. Each function is kept once, and a
 /// clean-up that panics does not stop the others.
+///
+/// A clean-up must not start a run with
+/// [`Scope::Group`](crate::Scope::Group), or wait for a thread that runs
+/// one. The forwarder holds the list's lock while the clean-ups run, and
+/// such a run waits for that lock forever, so the tool never ends. A run
+/// with [`Scope::Child`](crate::Scope::Child) takes no lock.
 pub fn clean_up(clean_up: fn()) {
     let mut clean_ups = CLEAN_UPS.lock().unwrap_or_else(PoisonError::into_inner);
     if !clean_ups

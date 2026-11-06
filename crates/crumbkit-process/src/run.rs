@@ -45,6 +45,9 @@ pub enum Input {
 /// The settings of one [`run`]: the child's input, what it keeps of each
 /// output stream, when and how it stops the child, and the child's scope.
 ///
+/// A `Run` that delivers a stream as lines serves one run, because the run
+/// ends the line queue when it returns.
+///
 /// The default reads nothing, keeps nothing, has no deadline and no cancel,
 /// kills at once when it stops the child, and starts the child in a group
 /// of its own.

@@ -195,6 +195,25 @@ fn a_child_that_handles_terminate_exits_at_that_step_and_is_not_killed() {
 }
 
 #[test]
+fn a_child_stopped_by_job_control_still_handles_the_graceful_signal_at_its_step() {
+    let escalation = Escalation::default().step(Signal::Terminate, Duration::from_secs(10));
+    let started = Instant::now();
+
+    let finished = run_sh(
+        "trap 'echo bye >&2; exit 7' TERM; kill -STOP $$; sleep 30",
+        &kept().deadline(after(0.3)).escalation(escalation),
+    );
+
+    assert_eq!(finished.exit(), Exit::TimedOut);
+    assert_eq!(finished.stderr().bytes(), b"bye\n");
+    assert!(
+        started.elapsed() < Duration::from_secs(5),
+        "{:?}",
+        started.elapsed()
+    );
+}
+
+#[test]
 fn a_grace_too_long_for_the_clock_waits_for_the_child_without_a_panic() {
     let escalation = Escalation::default().step(Signal::Terminate, Duration::MAX);
     let started = Instant::now();

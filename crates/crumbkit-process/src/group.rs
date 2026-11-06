@@ -15,7 +15,10 @@ mod tests;
 pub enum Scope {
     /// The child and every process that it starts. On Unix the child leads
     /// a new process group, and each signal goes to the group. On Windows
-    /// the child runs in a new job object, and a stop ends the job.
+    /// the child runs in a new job object, and a stop ends the job. The job
+    /// object replaces the command's creation flags with its own, which
+    /// start the child suspended, so flags that the caller set with
+    /// `CommandExt::creation_flags` are lost.
     #[default]
     Group,
     /// The child alone. The child stays in the caller's process group, so a

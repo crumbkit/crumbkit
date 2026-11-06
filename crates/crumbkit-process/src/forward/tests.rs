@@ -68,7 +68,14 @@ fn act_as_tool() {
     clean_up(mark);
     install().unwrap();
     let pids = file(std::process::id(), "pids");
-    let script = format!("sleep 30 & echo $$ $! > '{}'; wait", pids.display());
+    let forwarded = file(std::process::id(), "forwarded");
+    // The child's trap shows that the forwarder sent it the tool's SIGTERM
+    // before the SIGKILL.
+    let script = format!(
+        "trap \"echo forwarded > '{}'; exit 0\" TERM; sleep 30 & echo $$ $! > '{}'; wait",
+        forwarded.display(),
+        pids.display()
+    );
     let _runner = std::thread::spawn(move || run(sh(&script), &Run::new()));
     assert!(pids_in(&pids).is_some(), "the child wrote no process ids");
 
@@ -102,11 +109,12 @@ fn a_signal_stops_each_live_group_runs_the_clean_ups_and_ends_the_tool_by_that_s
 
     let pids = pids_in(&file(id, "pids"));
     let marker = std::fs::read_to_string(file(id, "marker"));
+    let forwarded = std::fs::read_to_string(file(id, "forwarded"));
     #[expect(
         clippy::disallowed_methods,
         reason = "the test removes the files that its tool wrote"
     )]
-    for name in ["pids", "marker"] {
+    for name in ["pids", "marker", "forwarded"] {
         let _ = std::fs::remove_file(file(id, name));
     }
     assert_eq!(status.signal(), Some(15), "the tool ended with {status:?}");
@@ -117,4 +125,9 @@ fn a_signal_stops_each_live_group_runs_the_clean_ups_and_ends_the_tool_by_that_s
         "the grandchild {grandchild} outlived the tool"
     );
     assert_eq!(marker.unwrap(), "cleaned up\n");
+    assert_eq!(
+        forwarded.unwrap(),
+        "forwarded\n",
+        "the child never got SIGTERM"
+    );
 }

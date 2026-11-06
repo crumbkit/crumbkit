@@ -15,7 +15,8 @@ use std::time::Duration;
 use rustix::event::{PollFd, PollFlags, Timespec, poll};
 use rustix::io::Errno;
 use rustix::process::{
-    Pid, Signal as Raw, WaitId, WaitIdOptions, getpgid, kill_process, kill_process_group, waitid,
+    Pid, Signal as Raw, WaitId, WaitIdOptions, WaitIdStatus, getpgid, kill_process,
+    kill_process_group, waitid,
 };
 
 #[cfg(feature = "forward")]
@@ -24,6 +25,10 @@ use crate::{Exit, Scope, Signal};
 
 /// The descriptor of a pipe, which `poll` waits on.
 pub(crate) use std::os::fd::AsFd as Pipe;
+
+/// How long a wait sleeps before it checks again on a child that job
+/// control stopped.
+const STOPPED_CHECK: Duration = Duration::from_millis(10);
 
 /// A stop on Unix sends each signal of its escalation and waits its grace
 /// before the next one.
@@ -89,6 +94,7 @@ impl Child {
         let raw = raw(signal);
         let result = if self.scope == Scope::Child {
             sent(kill_process(self.pid, raw))
+                .and_then(|()| resume(raw, |cont| kill_process(self.pid, cont)))
         } else {
             signal_group(self.pid, raw)
         };
@@ -136,13 +142,21 @@ pub(crate) struct Waiter(Pid);
 impl Waiter {
     /// Waits until the child exits. The child stays unreaped, so its id
     /// still names it and its group.
+    ///
+    /// RUST-10: macOS reports a child that job control stopped to a wait
+    /// for an exit, and keeps reporting it while the child stays stopped,
+    /// so the wait checks again every [`STOPPED_CHECK`] until the report is
+    /// an exit. That handles every child, at the cost of waking while one
+    /// is stopped. A wait that the kernel holds until the exit replaces it
+    /// when macOS stops reporting the stop.
     pub(crate) fn wait(self) -> io::Result<()> {
         loop {
             match waitid(
                 WaitId::Pid(self.0),
                 WaitIdOptions::EXITED | WaitIdOptions::NOWAIT,
             ) {
-                Ok(_) => return Ok(()),
+                Ok(Some(status)) if ended(&status) => return Ok(()),
+                Ok(_) => std::thread::sleep(STOPPED_CHECK),
                 Err(Errno::INTR) => {}
                 Err(error) => return Err(error.into()),
             }
@@ -156,12 +170,33 @@ impl Waiter {
 /// The kernel refuses a signal with `ESRCH` only when no process that it
 /// names is left, and that is no failure, because the caller then waits
 /// for an exit that has already happened.
+///
+/// A signal other than SIGKILL is followed by SIGCONT to the same target,
+/// because a process that job control stopped, as SIGTTIN stops a child
+/// that reads the terminal, handles no other signal until it continues.
 pub(crate) fn signal_group(pid: Pid, raw: Raw) -> io::Result<()> {
     sent(kill_process_group(pid, raw))?;
+    resume(raw, |cont| kill_process_group(pid, cont))?;
     if getpgid(Some(pid)).ok() == Some(pid) {
         return Ok(());
     }
-    sent(kill_process(pid, raw))
+    sent(kill_process(pid, raw))?;
+    resume(raw, |cont| kill_process(pid, cont))
+}
+
+/// Sends SIGCONT with `send` after the signal `raw`, unless `raw` is
+/// SIGKILL, which ends a stopped process too.
+fn resume(raw: Raw, send: impl FnOnce(Raw) -> rustix::io::Result<()>) -> io::Result<()> {
+    if raw == Raw::KILL {
+        return Ok(());
+    }
+    sent(send(Raw::CONT))
+}
+
+/// Returns true when `status` reports an exit, and false when it reports
+/// a stop or a continue, which macOS also gives to a wait for an exit.
+fn ended(status: &WaitIdStatus) -> bool {
+    status.exited() || status.killed() || status.dumped()
 }
 
 /// Returns true when the child `pid` has exited, and leaves it unreaped.
@@ -169,7 +204,7 @@ pub(crate) fn has_exited(pid: Pid) -> io::Result<bool> {
     let options = WaitIdOptions::EXITED | WaitIdOptions::NOHANG | WaitIdOptions::NOWAIT;
     loop {
         match waitid(WaitId::Pid(pid), options) {
-            Ok(status) => return Ok(status.is_some()),
+            Ok(status) => return Ok(status.is_some_and(|status| ended(&status))),
             Err(Errno::INTR) => {}
             Err(error) => return Err(error.into()),
         }

@@ -31,6 +31,10 @@ job. On Unix a child that moved to another process group gets each signal
 too. A descendant that left the group, such as one that called `setsid`, is
 not stopped.
 
+On Windows the job object replaces the command's creation flags with its
+own, which start the child suspended, so flags that the tool set with
+`creation_flags` are lost.
+
 `Scope::Child` keeps the child in the caller's process group, and each
 signal goes to the child alone, so a process that the child starts is never
 stopped by the crate. A tool that runs inside another tool's group uses it,
@@ -71,7 +75,8 @@ cancel before the start. A full queue makes the run's reader wait, and the
 child then waits on its full pipe. Once the run begins to stop the child,
 a full queue drops each line, and `Lines::lost` gives the last dropped line
 after the run ends. A caller that drops its `Lines` lets the run read the
-rest of the stream and drop it, so the child runs to its end.
+rest of the stream and drop it, so the child runs to its end. Each queue
+serves one run, so a `Run` with a `Lines` capture serves one run too.
 
 On Unix each read waits on its pipe with `poll`, so every thread that the
 run starts is joined, even while a descendant outside the group holds a pipe
@@ -83,17 +88,19 @@ Why: ADR-0171.
 ## Ending a run
 
 A run ends when the child exits, when its deadline passes, when its
-`Cancel` is cancelled, or when a `Whole` stream with `OverLimit::Stop`
-passes its limit. `Exit` tells these apart: `Code` and `Signal` for the
+`Cancel` is cancelled, or when a `Whole` or `Lines` stream with
+`OverLimit::Stop` passes its limit. `Exit` tells these apart: `Code` and `Signal` for the
 child's own end, `TimedOut`, and `Stopped` with `Cancelled` or `OverLimit`.
 A deadline that passes after the child exited gives the child's own exit.
 
 A stop follows the run's `Escalation`. Each step sends a signal to the
-group and waits its grace for the child to exit, and a kill follows the last
-step. The default escalation has no steps, so it kills at once. The signals
-are interrupt, terminate, hangup and kill. On Windows a stop skips the steps
-and ends the job at once, because a graceful step would send Ctrl-Break,
-which needs unsafe code.
+group and waits its grace for the child to exit, and a kill follows the
+last step. The default escalation has no steps, so it kills at once. The
+signals are interrupt, terminate, hangup and kill. On Unix each signal
+other than kill is followed by SIGCONT, so a child that job control
+stopped, as SIGTTIN stops one that reads the terminal, handles the signal
+at its step. On Windows a stop skips the steps and ends the job at once,
+because a graceful step would send Ctrl-Break, which needs unsafe code.
 
 A grace too long for the clock waits for the child's exit without a limit.
 
@@ -119,7 +126,9 @@ can take that id once the child is reaped. The crate therefore waits for
 the child with `waitid` and `WNOWAIT`, which leaves it unreaped, kills what
 is left of the group, and only then reaps it. It never signals the group
 after the reap. macOS refuses a signal to a group whose only process has
-exited, and the crate counts that refusal as sent.
+exited, and the crate counts that refusal as sent. macOS also reports a
+child that job control stopped to a wait for an exit, so the wait checks
+again every 10 ms until the report is an exit.
 
 A run that panics or returns early still kills every process in its scope
 and reaps the child, so a normal return and a panic that unwinds leave
@@ -144,5 +153,14 @@ signal. It sends the received signal to every listed group, waits up to
 `FORWARD_GRACE`, one second, for every listed child to exit, sends SIGKILL
 to every listed group, runs each clean-up, and then takes the signal's
 default action. A clean-up that panics does not stop the others.
+
+A clean-up must not start a run in `Scope::Group`, or wait for a thread
+that runs one, because that run waits forever for the lock that the
+forwarder holds. A run in `Scope::Child` takes no lock.
+
+The forwarder must be the only handler that ends the tool on SIGINT,
+SIGTERM or SIGHUP. crumbkit-usage's signal thread ends the tool on SIGINT
+or SIGTERM, and can do so before the forwarder has stopped the groups, so
+a tool that uses both loses that guarantee until one owner ends the tool.
 
 Why: ADR-0171, ADR-0172.

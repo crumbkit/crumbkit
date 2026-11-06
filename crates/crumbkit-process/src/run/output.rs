@@ -40,6 +40,8 @@ pub enum Capture {
     /// The first time one line passes `line` bytes or the stream passes
     /// `total` bytes, the stream is over its limit, and `over` says what
     /// the run does then. No line is pushed after that.
+    ///
+    /// Each queue serves one run, which ends it when it returns.
     Lines {
         /// The queue that the run pushes each line to, from
         /// [`line_queue`](crate::line_queue).

@@ -30,13 +30,26 @@ Windows cannot keep, because a reader there blocks on its pipe.
   begins to stop the child, a full queue drops each line and keeps the last
   one, which the caller reads with `Lines::lost` once the run has ended. A
   caller that drops its side lets the child run to its end. The run ends the
-  queue on every return path.
+  queue on every return path. Each queue serves one run.
+- `Captured::long_line` tells that one line passed its limit,
+  `Lines::recv_timeout` waits for a line at most a given time, and it
+  returns `Silent` when none arrived.
 - On SIGINT, SIGTERM or SIGHUP, the `forward` feature sends the received
   signal to every listed group, waits up to `FORWARD_GRACE`, one second,
   for every listed child to exit, sends SIGKILL to every listed group, runs
   the registered clean-ups, and then takes the signal's default action. It
   holds the list's lock from the signal until the tool ends, so no child
-  starts after the signal.
+  starts after the signal. A clean-up therefore must not start a run in
+  `Scope::Group` or wait for one, and a run in `Scope::Child` takes no
+  lock. The forwarder must be the only handler that ends the tool on these
+  signals. A tool that also uses crumbkit-usage's signal thread, which ends
+  the tool on SIGINT or SIGTERM, loses that guarantee until one owner ends
+  the tool.
+- Each signal other than SIGKILL, from a stop or from the forwarder, is
+  followed by SIGCONT to the same processes, so a child that job control
+  stopped handles it at its step.
+- On Windows, `Scope::Group`'s job object replaces the command's creation
+  flags.
 - A run's time bound, the time to its deadline plus the graces of its
   escalation plus the drain grace, holds on Unix for a child that the tool
   may signal and a caller that reads its lines. A reader on Windows blocks

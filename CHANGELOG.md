@@ -11,14 +11,11 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit-process: [`run`] runs a child in a process group or job object
   of its own, reads its output within byte limits and a deadline, stops it
   with an [`Escalation`], and reaps it ([behaviour/processes]).
-
 - crumbkit-process: a stream can arrive line by line through a bounded
   queue from [`line_queue`] while the child runs ([behaviour/processes]).
-
 - crumbkit-process: the off-by-default `forward` feature stops every live
   child group when the tool receives SIGINT, SIGTERM or SIGHUP, and then
   ends the tool as the signal would have ([behaviour/processes]).
-
 - crumbkit: the `commands list` row of a leaf that prints no result has
   `prints_no_result: true`, which tells it from a leaf without a document
   ([behaviour/help/commands-list]).
@@ -1492,9 +1489,9 @@ rustdoc, or at the page in docs/ that describes the behaviour. -->
 [behaviour/output/streams]: docs/behaviour/output/streams.md
 [behaviour/output/terminal]: docs/behaviour/output/terminal.md
 [behaviour/parsing]: docs/behaviour/parsing/README.md
-[behaviour/processes]: docs/behaviour/processes.md
 [behaviour/parsing/aliases]: docs/behaviour/parsing/aliases.md
 [behaviour/parsing/completion]: docs/behaviour/parsing/completion.md
+[behaviour/processes]: docs/behaviour/processes.md
 [behaviour/run-observer]: docs/behaviour/run-observer/README.md
 [behaviour/schemas]: docs/behaviour/schemas/README.md
 [behaviour/schemas/commands]: docs/behaviour/schemas/commands.md
