@@ -8,6 +8,14 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- crumbkit-process: [`run`] runs a child in a process group or job object
+  of its own, reads its output within byte limits and a deadline, stops it
+  with an [`Escalation`], and reaps it ([behaviour/processes]).
+- crumbkit-process: a stream can arrive line by line through a bounded
+  queue from [`line_queue`] while the child runs ([behaviour/processes]).
+- crumbkit-process: the off-by-default `forward` feature stops every live
+  child group when the tool receives SIGINT, SIGTERM or SIGHUP, and then
+  ends the tool as the signal would have ([behaviour/processes]).
 - crumbkit: the `commands list` row of a leaf that prints no result has
   `prints_no_result: true`, which tells it from a leaf without a document
   ([behaviour/help/commands-list]).
@@ -1447,6 +1455,9 @@ rustdoc, or at the page in docs/ that describes the behaviour. -->
 [`complete_with_words`]: crates/crumbkit/src/complete.rs
 [`complete_to`]: crates/crumbkit/src/complete.rs
 [`Expect`]: crates/crumbkit/src/expect.rs
+[`run`]: crates/crumbkit-process/src/run.rs
+[`Escalation`]: crates/crumbkit-process/src/escalation.rs
+[`line_queue`]: crates/crumbkit-process/src/lines.rs
 [behaviour/adoption]: docs/behaviour/adoption/README.md
 [behaviour/adoption/declarations]: docs/behaviour/adoption/declarations.md
 [behaviour/adoption/opt-outs]: docs/behaviour/adoption/opt-outs.md
@@ -1480,6 +1491,7 @@ rustdoc, or at the page in docs/ that describes the behaviour. -->
 [behaviour/parsing]: docs/behaviour/parsing/README.md
 [behaviour/parsing/aliases]: docs/behaviour/parsing/aliases.md
 [behaviour/parsing/completion]: docs/behaviour/parsing/completion.md
+[behaviour/processes]: docs/behaviour/processes.md
 [behaviour/run-observer]: docs/behaviour/run-observer/README.md
 [behaviour/schemas]: docs/behaviour/schemas/README.md
 [behaviour/schemas/commands]: docs/behaviour/schemas/commands.md

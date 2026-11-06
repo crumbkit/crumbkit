@@ -14,3 +14,4 @@ decided.
 ## Children
 
 - [ADR-0171. The process crate](0171-the-process-crate.md)
+- [ADR-0172. What the process crate adds to its first decision](0172-process-crate-additions.md)
