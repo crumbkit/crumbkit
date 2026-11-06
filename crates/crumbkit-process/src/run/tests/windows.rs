@@ -1,8 +1,8 @@
 use std::time::{Duration, Instant};
 
 use super::super::{Cancel, Capture, Exit, OverLimit, Run, Stop, run};
-use crate::{Scope, Status};
 use crate::testing::{cmd, gone, pid_file, pid_in, remove, started_grandchild};
+use crate::{Scope, Status};
 
 /// Keeps up to 1 MiB of standard output whole.
 const WHOLE: Capture = Capture::Whole {

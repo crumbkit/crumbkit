@@ -23,8 +23,8 @@ mod unix;
 mod windows;
 
 #[cfg(unix)]
-pub(crate) use self::unix::{Child, GRACEFUL, Pipe, Waiter, status_of, ready, unblock};
+pub(crate) use self::unix::{Child, GRACEFUL, Pipe, Waiter, ready, status_of, unblock};
 #[cfg(all(unix, feature = "forward"))]
 pub(crate) use self::unix::{has_exited, signal_group};
 #[cfg(windows)]
-pub(crate) use self::windows::{Child, GRACEFUL, Pipe, Waiter, status_of, ready, unblock};
+pub(crate) use self::windows::{Child, GRACEFUL, Pipe, Waiter, ready, status_of, unblock};

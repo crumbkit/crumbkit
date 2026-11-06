@@ -62,7 +62,7 @@ clean-ups, and then ends the tool as the signal would have.
   the child's own status, which a stopped run has too.
 - [`Escalation`] lists the steps that stop the child, and [`forward`]
   forwards the tool's signals.
-- The [processes docs] describe the current behaviour, and [ADR-0171] and
+- The [processes docs] describe the current behaviour, and [ADR-0171],
   [ADR-0172] and [ADR-0174] record why.
 
 Licensed under either of Apache License, Version 2.0 or MIT license at your
