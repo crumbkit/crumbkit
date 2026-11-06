@@ -23,11 +23,14 @@ use rustix::process::{
 use crate::forward::{listed, unlisted};
 use crate::{Exit, Scope, Signal};
 
+#[cfg(test)]
+mod tests;
+
 /// The descriptor of a pipe, which `poll` waits on.
 pub(crate) use std::os::fd::AsFd as Pipe;
 
 /// How long a wait sleeps before it checks again on a child that job
-/// control stopped.
+/// control stopped or continued, when it found no report to consume.
 const STOPPED_CHECK: Duration = Duration::from_millis(10);
 
 /// A stop on Unix sends each signal of its escalation and waits its grace
@@ -143,12 +146,17 @@ impl Waiter {
     /// Waits until the child exits. The child stays unreaped, so its id
     /// still names it and its group.
     ///
-    /// RUST-10: macOS reports a child that job control stopped to a wait
-    /// for an exit, and keeps reporting it while the child stays stopped,
-    /// so the wait checks again every [`STOPPED_CHECK`] until the report is
-    /// an exit. That handles every child, at the cost of waking while one
-    /// is stopped. A wait that the kernel holds until the exit replaces it
-    /// when macOS stops reporting the stop.
+    /// RUST-10: macOS gives a wait for an exit a report that the child
+    /// stopped, and keeps giving it while the child stays stopped, because
+    /// `WNOWAIT` leaves the report in place. The wait treats any report
+    /// other than an exit alike, whether it says stopped or continued: it
+    /// consumes the report with a second wait for stops and continues,
+    /// which leaves an exit in place, and then waits again. When it finds
+    /// no report to consume, it checks again after [`STOPPED_CHECK`], so it
+    /// never spins. It wakes once for each stop, and another wait in this
+    /// process for the child's stops or continues misses each report that
+    /// it consumed. A kqueue `EVFILT_PROC` filter with `NOTE_EXIT`, which
+    /// wakes only on the exit, replaces it.
     pub(crate) fn wait(self) -> io::Result<()> {
         loop {
             match waitid(
@@ -156,10 +164,27 @@ impl Waiter {
                 WaitIdOptions::EXITED | WaitIdOptions::NOWAIT,
             ) {
                 Ok(Some(status)) if ended(&status) => return Ok(()),
-                Ok(_) => std::thread::sleep(STOPPED_CHECK),
+                Ok(_) => {
+                    if !consume(self.0)? {
+                        std::thread::sleep(STOPPED_CHECK);
+                    }
+                }
                 Err(Errno::INTR) => {}
                 Err(error) => return Err(error.into()),
             }
+        }
+    }
+}
+
+/// Consumes a report that the child `pid` stopped or continued, so that the
+/// next wait for its exit blocks, and returns whether it found one.
+fn consume(pid: Pid) -> io::Result<bool> {
+    let options = WaitIdOptions::STOPPED | WaitIdOptions::CONTINUED | WaitIdOptions::NOHANG;
+    loop {
+        match waitid(WaitId::Pid(pid), options) {
+            Ok(found) => return Ok(found.is_some()),
+            Err(Errno::INTR) => {}
+            Err(error) => return Err(error.into()),
         }
     }
 }
@@ -169,19 +194,22 @@ impl Waiter {
 ///
 /// The kernel refuses a signal with `ESRCH` only when no process that it
 /// names is left, and that is no failure, because the caller then waits
-/// for an exit that has already happened.
+/// for an exit that has already happened. A refusal of the group's signal
+/// still lets a child that moved get its own, and the first refusal is
+/// returned.
 ///
 /// A signal other than SIGKILL is followed by SIGCONT to the same target,
 /// because a process that job control stopped, as SIGTTIN stops a child
 /// that reads the terminal, handles no other signal until it continues.
 pub(crate) fn signal_group(pid: Pid, raw: Raw) -> io::Result<()> {
-    sent(kill_process_group(pid, raw))?;
-    resume(raw, |cont| kill_process_group(pid, cont))?;
+    let group = sent(kill_process_group(pid, raw))
+        .and_then(|()| resume(raw, |cont| kill_process_group(pid, cont)));
     if getpgid(Some(pid)).ok() == Some(pid) {
-        return Ok(());
+        return group;
     }
-    sent(kill_process(pid, raw))?;
-    resume(raw, |cont| kill_process(pid, cont))
+    let moved =
+        sent(kill_process(pid, raw)).and_then(|()| resume(raw, |cont| kill_process(pid, cont)));
+    group.and(moved)
 }
 
 /// Sends SIGCONT with `send` after the signal `raw`, unless `raw` is

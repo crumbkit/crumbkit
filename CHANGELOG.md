@@ -11,6 +11,9 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit-process: [`run`] runs a child in a process group or job object
   of its own, reads its output within byte limits and a deadline, stops it
   with an [`Escalation`], and reaps it ([behaviour/processes]).
+- crumbkit-process: a child that moved to another process group still gets
+  each signal, and on macOS the wait for a stopped child does not poll
+  ([behaviour/processes]).
 - crumbkit-process: a stream can arrive line by line through a bounded
   queue from [`line_queue`] while the child runs ([behaviour/processes]).
 - crumbkit-process: the off-by-default `forward` feature stops every live

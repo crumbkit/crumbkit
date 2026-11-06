@@ -15,3 +15,4 @@ decided.
 
 - [ADR-0171. The process crate](0171-the-process-crate.md)
 - [ADR-0172. What the process crate adds to its first decision](0172-process-crate-additions.md)
+- [ADR-0173. How the process crate waits on a stopped child and signals a moved one](0173-stopped-child-wait-and-moved-child-signal.md)
