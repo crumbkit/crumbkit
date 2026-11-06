@@ -11,6 +11,9 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit-process: [`run`] runs a child in a process group or job object
   of its own, reads its output within byte limits and a deadline, stops it
   with an [`Escalation`], and reaps it ([behaviour/processes]).
+- crumbkit-process: a child that moved to another process group still gets
+  each signal, and on macOS the wait for a stopped child does not poll
+  ([behaviour/processes]).
 - crumbkit-process: a stream can arrive line by line through a bounded
   queue from [`line_queue`] while the child runs ([behaviour/processes]).
 - crumbkit-process: the off-by-default `forward` feature stops every live
@@ -19,13 +22,6 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit: the `commands list` row of a leaf that prints no result has
   `prints_no_result: true`, which tells it from a leaf without a document
   ([behaviour/help/commands-list]).
-
-### Fixed
-
-- crumbkit-process: on macOS the wait for a child's exit no longer wakes
-  every 10 ms while the child is stopped by job control, and a child that
-  moved to another process group gets each signal even when its old group
-  refuses it ([behaviour/processes]).
 
 ## [0.1.1] - 2026-11-01
 

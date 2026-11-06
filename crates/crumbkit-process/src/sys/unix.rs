@@ -147,16 +147,16 @@ impl Waiter {
     /// still names it and its group.
     ///
     /// RUST-10: macOS gives a wait for an exit a report that the child
-    /// stopped, and may give one that it continued, and `WNOWAIT` leaves
-    /// that report in place, so every later wait would return at once. The
-    /// wait treats a stop and a continue alike: it consumes the report with
-    /// a second wait for stops and continues, which leaves an exit in
-    /// place, and then waits again. A report that it cannot consume makes
-    /// it check again after [`STOPPED_CHECK`], so it never spins. It wakes
-    /// once for each stop or continue, and another wait in this process for
-    /// the child's stops misses each one that it consumed. A kqueue
-    /// `EVFILT_PROC` filter with `NOTE_EXIT`, which wakes only on the exit,
-    /// replaces it.
+    /// stopped, and keeps giving it while the child stays stopped, because
+    /// `WNOWAIT` leaves the report in place. The wait treats any report
+    /// other than an exit alike, whether it says stopped or continued: it
+    /// consumes the report with a second wait for stops and continues,
+    /// which leaves an exit in place, and then waits again. When it finds
+    /// no report to consume, it checks again after [`STOPPED_CHECK`], so it
+    /// never spins. It wakes once for each stop, and another wait in this
+    /// process for the child's stops or continues misses each report that
+    /// it consumed. A kqueue `EVFILT_PROC` filter with `NOTE_EXIT`, which
+    /// wakes only on the exit, replaces it.
     pub(crate) fn wait(self) -> io::Result<()> {
         loop {
             match waitid(
@@ -164,7 +164,11 @@ impl Waiter {
                 WaitIdOptions::EXITED | WaitIdOptions::NOWAIT,
             ) {
                 Ok(Some(status)) if ended(&status) => return Ok(()),
-                Ok(_) => consume(self.0)?,
+                Ok(_) => {
+                    if !consume(self.0)? {
+                        std::thread::sleep(STOPPED_CHECK);
+                    }
+                }
                 Err(Errno::INTR) => {}
                 Err(error) => return Err(error.into()),
             }
@@ -173,17 +177,12 @@ impl Waiter {
 }
 
 /// Consumes a report that the child `pid` stopped or continued, so that the
-/// next wait for its exit blocks. When no such report is left, it sleeps
-/// [`STOPPED_CHECK`] before the caller waits again.
-fn consume(pid: Pid) -> io::Result<()> {
+/// next wait for its exit blocks, and returns whether it found one.
+fn consume(pid: Pid) -> io::Result<bool> {
     let options = WaitIdOptions::STOPPED | WaitIdOptions::CONTINUED | WaitIdOptions::NOHANG;
     loop {
         match waitid(WaitId::Pid(pid), options) {
-            Ok(Some(_)) => return Ok(()),
-            Ok(None) => {
-                std::thread::sleep(STOPPED_CHECK);
-                return Ok(());
-            }
+            Ok(found) => return Ok(found.is_some()),
             Err(Errno::INTR) => {}
             Err(error) => return Err(error.into()),
         }

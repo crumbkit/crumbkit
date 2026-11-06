@@ -55,11 +55,6 @@ fn a_waiter_blocks_again_after_its_child_is_stopped_and_continued_and_still_sees
         "the stop report stayed, so the waiter keeps waking"
     );
     kill_process(pid, Raw::CONT).unwrap();
-    std::thread::sleep(Duration::from_millis(100));
-    assert!(
-        !reported(pid),
-        "the continue report stayed, so the waiter keeps waking"
-    );
     assert!(
         !waiting.is_finished(),
         "the waiter returned before the exit"

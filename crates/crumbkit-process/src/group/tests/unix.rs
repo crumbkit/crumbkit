@@ -107,9 +107,12 @@ fn a_child_that_moved_to_another_group_gets_the_signal_when_its_old_group_refuse
     // perl leaves a child that has exited, and that it never reaps, in its
     // old group, so the old group holds no live process and macOS refuses a
     // signal to it. perl then moves itself into the group of its parent,
-    // this test's process, and exits 9 on SIGTERM.
+    // this test's process, and exits 9 on SIGTERM. perl reads the end of a
+    // pipe that only its child holds, so it moves once the child has exited.
+    // Linux accepts a signal to a group of exited processes, so the test
+    // shows the refusal only on macOS.
     let mut group = start(
-        "exec perl -e 'fork() or exit 0; select(undef, undef, undef, 0.2); \
+        "exec perl -e 'pipe(R, W); fork() or exit 0; close W; <R>; \
          setpgrp(0, getpgrp(getppid())) or die; $SIG{TERM} = sub { exit 9 }; \
          $| = 1; print qq(moved\\n); sleep 30'",
         Scope::Group,

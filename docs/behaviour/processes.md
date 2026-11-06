@@ -130,14 +130,15 @@ is left of the group, and only then reaps it. It never signals the group
 after the reap. macOS refuses a signal to a group whose only process has
 exited, and the crate counts that refusal as sent.
 
-macOS also gives a wait for an exit a report that the child stopped, and
-may give one that it continued, and `WNOWAIT` leaves that report in place.
-The wait treats a stop and a continue alike: it consumes the report with a
-second wait for stops and continues, which leaves an exit in place, and
-then waits again. It therefore wakes once for each stop or continue, and
-never polls while a stopped child stays stopped. When it finds no report
-to consume, it checks again after 10 ms. Another wait in the tool for the
-child's stops misses each one that the crate consumed.
+macOS also gives a wait for an exit a report that the child stopped, for
+as long as it stays stopped, because `WNOWAIT` leaves that report in place.
+The wait treats every report other than an exit alike, whether it says
+stopped or continued: it consumes the report with a second wait for stops
+and continues, which leaves an exit in place, and then waits again. It
+therefore wakes once for each stop, and never polls while a stopped child
+stays stopped. When it finds no report to consume, it checks again after
+10 ms. Another wait in the tool for the child's stops or continues misses
+each report that the crate consumed.
 
 A run that panics or returns early still kills every process in its scope
 and reaps the child, so a normal return and a panic that unwinds leave
