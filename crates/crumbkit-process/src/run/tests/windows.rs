@@ -1,8 +1,8 @@
 use std::time::{Duration, Instant};
 
-use super::super::{Capture, Exit, OverLimit, Run, run};
-use crate::Scope;
+use super::super::{Cancel, Capture, Exit, OverLimit, Run, Stop, run};
 use crate::testing::{cmd, gone, pid_file, pid_in, remove, started_grandchild};
+use crate::{Scope, Status};
 
 /// Keeps up to 1 MiB of standard output whole.
 const WHOLE: Capture = Capture::Whole {
@@ -20,7 +20,30 @@ fn a_child_gives_its_exit_code_and_its_standard_output() {
     let finished = run(cmd("echo out& exit 3"), &Run::new().stdout(WHOLE)).unwrap();
 
     assert_eq!(finished.exit(), Exit::Code(3));
+    assert_eq!(finished.status(), Some(Status::Code(3)));
     assert_eq!(finished.stdout().bytes(), b"out\r\n");
+}
+
+#[test]
+fn a_cancelled_child_whose_job_was_ended_gives_exit_code_1() {
+    let cancel = Cancel::new();
+    let canceller = std::thread::spawn({
+        let cancel = cancel.clone();
+        move || {
+            std::thread::sleep(Duration::from_millis(500));
+            cancel.cancel();
+        }
+    });
+
+    let finished = run(
+        cmd("ping -n 120 127.0.0.1 >NUL"),
+        &Run::new().stdout(WHOLE).cancel(&cancel),
+    )
+    .unwrap();
+
+    canceller.join().unwrap();
+    assert_eq!(finished.exit(), Exit::Stopped(Stop::Cancelled));
+    assert_eq!(finished.status(), Some(Status::Code(1)));
 }
 
 #[test]

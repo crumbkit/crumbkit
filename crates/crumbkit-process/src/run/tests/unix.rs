@@ -6,6 +6,7 @@ use super::super::{
     Cancel, Capture, DRAIN_GRACE, Escalation, Exit, Finished, Input, OverLimit, Run, RunError,
     Stop, control, run,
 };
+use crate::Status;
 use crate::notice::Notice;
 use crate::testing::{gone, kill, pid_in, sh};
 use crate::{Group, Scope, Signal};
@@ -36,6 +37,7 @@ fn a_child_gives_its_exit_code_and_both_streams_whole() {
     let finished = run_sh("echo out; echo err >&2; exit 3", &kept());
 
     assert_eq!(finished.exit(), Exit::Code(3));
+    assert_eq!(finished.status(), Some(Status::Code(3)));
     assert_eq!(finished.stdout().bytes(), b"out\n");
     assert_eq!(finished.stderr().bytes(), b"err\n");
     assert!(!finished.stdout().over_limit());
@@ -260,6 +262,7 @@ fn standard_output_past_its_limit_stops_the_child() {
     let finished = run_sh("head -c 4096 /dev/zero; sleep 30", &kept().stdout(limit));
 
     assert_eq!(finished.exit(), Exit::Stopped(Stop::OverLimit));
+    assert_eq!(finished.status(), Some(Status::Signal(9)));
     assert!(finished.stdout().over_limit());
     assert_eq!(finished.stdout().bytes().len(), 1024);
     assert!(started.elapsed() < Duration::from_secs(5));
@@ -306,14 +309,7 @@ fn the_time_of_the_first_byte_of_standard_output_is_measured_from_the_start() {
 
 #[test]
 fn a_cancel_from_another_thread_stops_the_child() {
-    let cancel = Cancel::new();
-    let canceller = std::thread::spawn({
-        let cancel = cancel.clone();
-        move || {
-            std::thread::sleep(Duration::from_millis(200));
-            cancel.cancel();
-        }
-    });
+    let (cancel, canceller) = cancel_soon();
     let started = Instant::now();
 
     let finished = run_sh("sleep 30", &kept().cancel(&cancel));
@@ -331,7 +327,70 @@ fn a_run_with_a_cancel_that_is_already_cancelled_starts_no_child() {
     let finished = run_sh("echo started", &kept().cancel(&cancel));
 
     assert_eq!(finished.exit(), Exit::Stopped(Stop::Cancelled));
+    assert_eq!(finished.status(), None);
     assert_eq!(finished.stdout().bytes(), b"");
+}
+
+/// Returns a cancel that is cancelled 200 ms from now, and the thread that
+/// cancels it.
+///
+/// The tests that stop a child with SIGINT need the test process to have
+/// SIGINT at its default action, because a child inherits an ignored
+/// SIGINT and then neither ends on it nor traps it.
+fn cancel_soon() -> (Cancel, std::thread::JoinHandle<()>) {
+    let cancel = Cancel::new();
+    let canceller = std::thread::spawn({
+        let cancel = cancel.clone();
+        move || {
+            std::thread::sleep(Duration::from_millis(200));
+            cancel.cancel();
+        }
+    });
+    (cancel, canceller)
+}
+
+#[test]
+fn a_cancelled_child_that_sigint_ended_gives_that_signal_and_the_shell_code_130() {
+    let (cancel, canceller) = cancel_soon();
+    let escalation = Escalation::default().step(Signal::Interrupt, Duration::from_secs(10));
+
+    let finished = run_sh(
+        "exec sleep 30",
+        &kept().cancel(&cancel).escalation(escalation),
+    );
+
+    canceller.join().unwrap();
+    assert_eq!(finished.exit(), Exit::Stopped(Stop::Cancelled));
+    assert_eq!(finished.status(), Some(Status::Signal(2)));
+    assert_eq!(finished.status().map(Status::shell_code), Some(130));
+}
+
+#[test]
+fn a_cancelled_child_that_handles_sigint_gives_its_own_exit_code() {
+    let (cancel, canceller) = cancel_soon();
+    let escalation = Escalation::default().step(Signal::Interrupt, Duration::from_secs(10));
+
+    let finished = run_sh(
+        "trap 'exit 7' INT; sleep 30 & wait",
+        &kept().cancel(&cancel).escalation(escalation),
+    );
+
+    canceller.join().unwrap();
+    assert_eq!(finished.exit(), Exit::Stopped(Stop::Cancelled));
+    assert_eq!(finished.status(), Some(Status::Code(7)));
+}
+
+#[test]
+fn a_timed_out_child_gives_the_status_that_its_stop_caused() {
+    let escalation = Escalation::default().step(Signal::Terminate, Duration::from_secs(10));
+
+    let finished = run_sh(
+        "exec sleep 30",
+        &kept().deadline(after(0.2)).escalation(escalation),
+    );
+
+    assert_eq!(finished.exit(), Exit::TimedOut);
+    assert_eq!(finished.status(), Some(Status::Signal(15)));
 }
 
 #[test]

@@ -58,11 +58,12 @@ clean-ups, and then ends the tool as the signal would have.
 ## Where to read more
 
 - [`run`] and [`Run`] describe the one-shot run, its limits, deadline,
-  cancel and scope, and [`Exit`] how it ended.
+  cancel and scope, and [`Exit`] how it ended. `Finished::status` gives
+  the child's own status, which a stopped run has too.
 - [`Escalation`] lists the steps that stop the child, and [`forward`]
   forwards the tool's signals.
-- The [processes docs] describe the current behaviour, and [ADR-0171] and
-  [ADR-0172] record why.
+- The [processes docs] describe the current behaviour, and [ADR-0171],
+  [ADR-0172] and [ADR-0174] record why.
 
 Licensed under either of Apache License, Version 2.0 or MIT license at your
 option.
@@ -75,4 +76,5 @@ option.
 [`Exit`]: src/exit.rs
 [ADR-0171]: ../../docs/decisions/api/processes/0171-the-process-crate.md
 [ADR-0172]: ../../docs/decisions/api/processes/0172-process-crate-additions.md
+[ADR-0174]: ../../docs/decisions/api/processes/0174-stopped-run-keeps-child-status.md
 [processes docs]: ../../docs/behaviour/processes.md

@@ -12,7 +12,7 @@
 //!   kills.
 //! - On Unix, `signal_group` and `has_exited` serve the `forward` feature,
 //!   which signals and checks a listed child by its id.
-//! - `exit_of` maps an exit status to an [`Exit`](crate::Exit).
+//! - `status_of` maps an exit status to a [`Status`](crate::Status).
 //! - `Pipe` is the trait of a pipe's descriptor or handle, `ready` waits
 //!   until a pipe can be read or written, and `unblock` lets a write to a
 //!   pipe return before the pipe has room for all of it.
@@ -23,8 +23,8 @@ mod unix;
 mod windows;
 
 #[cfg(unix)]
-pub(crate) use self::unix::{Child, GRACEFUL, Pipe, Waiter, exit_of, ready, unblock};
+pub(crate) use self::unix::{Child, GRACEFUL, Pipe, Waiter, ready, status_of, unblock};
 #[cfg(all(unix, feature = "forward"))]
 pub(crate) use self::unix::{has_exited, signal_group};
 #[cfg(windows)]
-pub(crate) use self::windows::{Child, GRACEFUL, Pipe, Waiter, exit_of, ready, unblock};
+pub(crate) use self::windows::{Child, GRACEFUL, Pipe, Waiter, ready, status_of, unblock};

@@ -9,7 +9,7 @@ use std::thread::{Builder, Scope as Threads, ScopedJoinHandle};
 use std::time::{Duration, Instant};
 
 use crate::notice::Notice;
-use crate::{Cancel, Escalation, Exit, Group, Scope, Signal, Stop, sys};
+use crate::{Cancel, Escalation, Exit, Group, Scope, Signal, Status, Stop, sys};
 
 mod output;
 mod pipes;
@@ -131,6 +131,7 @@ impl Run {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Finished {
     exit: Exit,
+    status: Option<Status>,
     stdout: Captured,
     stderr: Captured,
     first_stdout: Option<Duration>,
@@ -141,6 +142,19 @@ impl Finished {
     #[must_use]
     pub const fn exit(&self) -> Exit {
         self.exit
+    }
+
+    /// Returns the child's own status as the run reaped it, or `None` when
+    /// the run started no child because its cancel was already cancelled.
+    ///
+    /// The status tells how the child ended even when the run stopped it.
+    /// A run whose cancel stopped a child that SIGINT ended gives
+    /// `Exit::Stopped(Stop::Cancelled)` and the status `Status::Signal(2)`,
+    /// whose [`Status::shell_code`] is 130. A child that handles the signal
+    /// and exits with a code of its own gives that code.
+    #[must_use]
+    pub const fn status(&self) -> Option<Status> {
+        self.status
     }
 
     /// Returns what the run kept of standard output.
@@ -233,6 +247,7 @@ pub fn run(mut command: Command, run: &Run) -> Result<Finished, RunError> {
     if run.cancel.as_ref().is_some_and(Cancel::is_cancelled) {
         return Ok(Finished {
             exit: Exit::Stopped(Stop::Cancelled),
+            status: None,
             stdout: Captured::default(),
             stderr: Captured::default(),
             first_stdout: None,
@@ -262,9 +277,10 @@ pub fn run(mut command: Command, run: &Run) -> Result<Finished, RunError> {
         };
         follow(threads, &mut *unwind.group, &notice, &ends, run)
     });
-    let (exit, stdout, stderr) = followed.map_err(RunError::Run)?;
+    let (exit, status, stdout, stderr) = followed.map_err(RunError::Run)?;
     Ok(Finished {
         exit,
+        status: Some(status),
         first_stdout: stdout.first.map(|first| first - started),
         stdout: stdout.captured,
         stderr: stderr.captured,
@@ -312,14 +328,14 @@ struct Started<'scope> {
 }
 
 /// Follows the child of `group` to its end within `threads`, and returns
-/// its exit and what the readers kept.
+/// its exit, its reaped status and what the readers kept.
 fn follow<'scope>(
     threads: &'scope Threads<'scope, '_>,
     group: &mut Group,
     notice: &'scope Notice,
     ends: &'scope Ends,
     run: &'scope Run,
-) -> io::Result<(Exit, Kept, Kept)> {
+) -> io::Result<(Exit, Status, Kept, Kept)> {
     let pipes = (group.take_stdin(), group.take_stdout(), group.take_stderr());
     let exit = group.waiter();
     let waiter = match Builder::new().spawn_scoped(threads, move || {
@@ -363,16 +379,15 @@ fn follow<'scope>(
         return Err(failure);
     }
     exited?;
-    let exit = match stopped {
-        Some(exit) => exit,
-        None => sys::exit_of(status?),
-    };
+    let status = sys::status_of(status?);
+    let exit = stopped.unwrap_or_else(|| status.exit());
     let unread = || Kept {
         captured: Captured::default(),
         first: None,
     };
     Ok((
         exit,
+        status,
         stdout.transpose()?.unwrap_or_else(unread),
         stderr.transpose()?.unwrap_or_else(unread),
     ))

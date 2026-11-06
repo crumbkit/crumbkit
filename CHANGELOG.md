@@ -16,6 +16,9 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   ([behaviour/processes]).
 - crumbkit-process: a stream can arrive line by line through a bounded
   queue from [`line_queue`] while the child runs ([behaviour/processes]).
+- crumbkit-process: `Finished::status` gives the child's own status even
+  when the run stopped it, and `Status::shell_code` gives it as a shell
+  would, such as 130 for a child that SIGINT ended ([behaviour/processes]).
 - crumbkit-process: the off-by-default `forward` feature stops every live
   child group when the tool receives SIGINT, SIGTERM or SIGHUP, and then
   ends the tool as the signal would have ([behaviour/processes]).

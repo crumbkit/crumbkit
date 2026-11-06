@@ -95,6 +95,16 @@ A run ends when the child exits, when its deadline passes, when its
 `Cancelled` or `OverLimit`.
 A deadline that passes after the child exited gives the child's own exit.
 
+`Finished::status` gives the child's own status as the run reaped it,
+which a timed-out or stopped run has too: `Status::Code` with the exit
+code, or `Status::Signal` with the signal's number on Unix. It is the
+status that the stop caused, so a cancelled child that SIGINT ended gives
+`Signal(2)`, and one that handles SIGINT and exits 7 gives `Code(7)`. On
+Windows a stopped child gives `Code(1)`. `Status::shell_code` gives the
+code that a POSIX shell gives, 128 plus the signal's number for a signal,
+so the first gives 130. A run whose cancel was cancelled before it started
+a child has no status.
+
 A stop follows the run's `Escalation`. Each step sends a signal to the
 group and waits its grace for the child to exit, and a kill follows the
 last step. The default escalation has no steps, so it kills at once. The
@@ -119,7 +129,7 @@ reader blocks until its pipe closes, so a process outside the job that
 holds a pipe, as a grandchild of a child in `Scope::Child` can, holds the
 run until it exits.
 
-Why: ADR-0171, ADR-0172.
+Why: ADR-0171, ADR-0172, ADR-0174.
 
 ## Reaping
 
