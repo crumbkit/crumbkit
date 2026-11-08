@@ -60,9 +60,11 @@ struct Slot {
 /// the caller typed it.
 ///
 /// [`Call::target`] returns it, so crumbkit can render the call. The enum
-/// has no `#[non_exhaustive]`, because crumbkit renders every form, and a
-/// new form needs a new rendering in the same release.
+/// is `#[non_exhaustive]`, because crumbkit may add a form of call in a
+/// later release, so a match on it outside crumbkit ends with a wildcard
+/// arm.
 #[derive(Clone, Debug, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum CallTarget {
     /// A command that [`Call::new`] names, with the arguments that
     /// [`Call::arg`] and [`Call::value`] add.
@@ -84,6 +86,7 @@ pub enum CallTarget {
 
 /// One argument of a [`CallTarget::Command`], named by its clap id.
 #[derive(Clone, Debug, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum CallArg {
     /// The argument as clap's usage line shows it, such as `<ID>...` or
     /// `--author <AUTHOR>`, which [`Call::arg`] adds.

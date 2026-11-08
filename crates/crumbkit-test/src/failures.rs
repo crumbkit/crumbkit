@@ -4,7 +4,7 @@
 
 use std::fmt;
 
-use crumbkit::form::{ReadFailure, Step};
+use crumbkit::form::{ReadFailure, RecoveryStep};
 use crumbkit::{FieldValue, ToolName};
 use serde_json::Value;
 
@@ -36,7 +36,7 @@ use crate::runs;
 /// every command that a chain runs.
 ///
 /// ```
-/// use crumbkit::form::{ReadFailure, Step};
+/// use crumbkit::form::{ReadFailure, RecoveryStep};
 /// use crumbkit_test::{Examples, FailureReader};
 ///
 /// /// Reads a last line such as `ERR shelf::books::not_found`.
@@ -47,7 +47,7 @@ use crate::runs;
 ///         err.lines()
 ///             .last()
 ///             .and_then(|line| line.strip_prefix("ERR "))
-///             .map(|code| ReadFailure::new(code.to_owned(), vec![Step::Retry]))
+///             .map(|code| ReadFailure::new(code.to_owned(), vec![RecoveryStep::Retry]))
 ///             .into_iter()
 ///             .collect()
 ///     }
@@ -158,21 +158,21 @@ fn read_document(document: &Value) -> Option<ReadFailure> {
             .unwrap_or_default()
             .to_owned()
     };
-    let steps: Vec<Step> = std::iter::once(document.get("recovery")?)
+    let steps: Vec<RecoveryStep> = std::iter::once(document.get("recovery")?)
         .chain(alternatives)
         .map(|step| {
             let call = step.get("call").and_then(Value::as_str);
             let all = step.get("all").and_then(Value::as_str);
             match (step.get("kind").and_then(Value::as_str), call, all) {
-                (Some("run"), Some(call), Some(field)) => Step::RunAll {
+                (Some("run"), Some(call), Some(field)) => RecoveryStep::RunAll {
                     call: call.to_owned(),
                     field: field.to_owned(),
                 },
-                (Some("run"), Some(call), None) => Step::Run(call.to_owned()),
-                (Some("run"), None, _) => Step::None(String::new()),
-                (Some("retry"), ..) => Step::Retry,
-                (Some("hint"), ..) => Step::Hint(text(step, "text")),
-                _ => Step::None(text(step, "reason")),
+                (Some("run"), Some(call), None) => RecoveryStep::Run(call.to_owned()),
+                (Some("run"), None, _) => RecoveryStep::None(String::new()),
+                (Some("retry"), ..) => RecoveryStep::Retry,
+                (Some("hint"), ..) => RecoveryStep::Hint(text(step, "text")),
+                _ => RecoveryStep::None(text(step, "reason")),
             }
         })
         .collect();
@@ -219,12 +219,14 @@ pub(crate) fn describe(failure: &ReadFailure) -> String {
         .steps()
         .iter()
         .map(|step| match step {
-            Step::Run(call) => format!("run `{call}`"),
-            Step::RunAll { call, field } => format!("run `{call}` with every value of {field}"),
-            Step::Retry => "retry".to_owned(),
-            Step::Hint(text) => format!("hint: {text}"),
-            Step::None(reason) if reason.is_empty() => "no next step".to_owned(),
-            Step::None(reason) => format!("no next step: {reason}"),
+            RecoveryStep::Run(call) => format!("run `{call}`"),
+            RecoveryStep::RunAll { call, field } => {
+                format!("run `{call}` with every value of {field}")
+            }
+            RecoveryStep::Retry => "retry".to_owned(),
+            RecoveryStep::Hint(text) => format!("hint: {text}"),
+            RecoveryStep::None(reason) if reason.is_empty() => "no next step".to_owned(),
+            RecoveryStep::None(reason) => format!("no next step: {reason}"),
             _ => "a step that crumbkit-test cannot name".to_owned(),
         })
         .collect();

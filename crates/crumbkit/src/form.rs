@@ -8,7 +8,7 @@
 //! its own builds a `ReadFailure` in its crumbkit-test `FailureReader`, so
 //! the checks can follow those failures too.
 
-pub use crate::output::failure::Step;
+pub use crate::output::failure::RecoveryStep;
 
 use crate::FieldValue;
 
@@ -23,7 +23,7 @@ pub struct ReadFailure {
     /// The code in the tool's spelling, such as `shelf::books::not_found`.
     code: String,
     /// The recovery first, then each alternative.
-    steps: Vec<Step>,
+    steps: Vec<RecoveryStep>,
     /// Each field of the failure as a name and its value.
     fields: Vec<(String, FieldValue<'static>)>,
 }
@@ -32,7 +32,7 @@ impl ReadFailure {
     /// Returns the failure with `code`, in the tool's spelling, and `steps`,
     /// the recovery first and then each alternative.
     #[must_use]
-    pub const fn new(code: String, steps: Vec<Step>) -> Self {
+    pub const fn new(code: String, steps: Vec<RecoveryStep>) -> Self {
         Self {
             code,
             steps,
@@ -63,7 +63,7 @@ impl ReadFailure {
 
     /// Returns the steps, the recovery first and then each alternative.
     #[must_use]
-    pub fn steps(&self) -> &[Step] {
+    pub fn steps(&self) -> &[RecoveryStep] {
         &self.steps
     }
 

@@ -9,7 +9,7 @@ mod runtime;
 #[cfg(test)]
 mod tests;
 
-pub use runtime::RuntimeCodeError;
+pub use runtime::{RuntimeCodeError, Segment};
 
 /// The stable code of a failure, such as `shelf::books::not_found` in the
 /// colon spelling.

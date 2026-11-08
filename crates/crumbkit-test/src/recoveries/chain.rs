@@ -5,7 +5,7 @@ use std::fmt::Write as _;
 
 use clap::Command;
 use crumbkit::Spelling;
-use crumbkit::form::{ReadFailure, Step};
+use crumbkit::form::{ReadFailure, RecoveryStep};
 use crumbkit::help::Guide;
 
 use super::words::split;
@@ -212,15 +212,21 @@ impl Walk<'_> {
     /// Follows each of `steps`, which the failure `parent` offers, as the
     /// `depth`th step of `chain`, writing each to the report indented by
     /// `depth`.
-    fn follow(&mut self, chain: &mut Chain<'_>, parent: &Parent<'_>, steps: &[Step], depth: u8) {
+    fn follow(
+        &mut self,
+        chain: &mut Chain<'_>,
+        parent: &Parent<'_>,
+        steps: &[RecoveryStep],
+        depth: u8,
+    ) {
         let indent = "  ".repeat(usize::from(depth));
         for step in steps {
             if self.stopped.is_some() {
                 return;
             }
             let (call, values) = match step {
-                Step::Run(call) => (call, None),
-                Step::RunAll { call, field } => {
+                RecoveryStep::Run(call) => (call, None),
+                RecoveryStep::RunAll { call, field } => {
                     let list = parent.lists.iter().find(|(name, _)| name == field);
                     let Some((_, values)) = list.filter(|(_, values)| !values.is_empty()) else {
                         self.problems.push(format!(
@@ -231,11 +237,11 @@ impl Walk<'_> {
                     };
                     (call, Some(values.as_slice()))
                 }
-                Step::Retry => {
+                RecoveryStep::Retry => {
                     let _ = writeln!(self.report, "{indent}retry");
                     continue;
                 }
-                Step::Hint(_) => {
+                RecoveryStep::Hint(_) => {
                     let _ = writeln!(self.report, "{indent}hint");
                     continue;
                 }
@@ -375,7 +381,10 @@ impl Walk<'_> {
         let offers = failure.steps().iter().any(|step| {
             matches!(
                 step,
-                Step::Run(_) | Step::RunAll { .. } | Step::Retry | Step::Hint(_)
+                RecoveryStep::Run(_)
+                    | RecoveryStep::RunAll { .. }
+                    | RecoveryStep::Retry
+                    | RecoveryStep::Hint(_)
             )
         });
         if offers

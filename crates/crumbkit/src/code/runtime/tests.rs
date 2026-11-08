@@ -4,7 +4,7 @@ use std::ptr;
 
 use proptest::prelude::*;
 
-use super::{RuntimeCodeError, Table};
+use super::{RuntimeCodeError, Segment, Table};
 use crate::Code;
 use crate::segment::is_code_segment;
 
@@ -34,10 +34,17 @@ fn runtime_refuses_a_segment_that_starts_with_a_hyphen() {
     assert_eq!(
         error,
         RuntimeCodeError::Segment {
-            segment: "component",
+            segment: Segment::Component,
             text: "-book-club".to_owned(),
         }
     );
+}
+
+#[test]
+fn the_three_segments_display_as_component_area_and_reason() {
+    assert_eq!(Segment::Component.to_string(), "component");
+    assert_eq!(Segment::Area.to_string(), "area");
+    assert_eq!(Segment::Reason.to_string(), "reason");
 }
 
 #[test]
@@ -89,9 +96,8 @@ fn the_error_of_a_full_table_names_the_limit() {
     );
 }
 
-/// The name of each segment of a code, in the order `Code::runtime` takes
-/// them.
-const SEGMENT_NAMES: [&str; 3] = ["component", "area", "reason"];
+/// Each segment of a code, in the order `Code::runtime` takes them.
+const SEGMENTS: [Segment; 3] = [Segment::Component, Segment::Area, Segment::Reason];
 
 proptest! {
     /// `Code::runtime` applies the rule of `Code::new`: it refuses exactly
@@ -111,7 +117,7 @@ proptest! {
             Some(position) => prop_assert_eq!(
                 outcome,
                 Err(RuntimeCodeError::Segment {
-                    segment: SEGMENT_NAMES[position],
+                    segment: SEGMENTS[position],
                     text: segments[position].clone(),
                 })
             ),

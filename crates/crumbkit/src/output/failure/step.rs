@@ -15,7 +15,7 @@ use crate::{CallArg, CallTarget, FieldValue, Recovery};
 /// crumbkit's reason.
 #[derive(Clone, Debug, PartialEq, Eq)]
 #[non_exhaustive]
-pub enum Step {
+pub enum RecoveryStep {
     /// Run this command line, such as `shelf books list`.
     Run(String),
     /// Run this command line once with every value of the failure's list
@@ -37,12 +37,12 @@ pub enum Step {
     None(String),
 }
 
-impl Step {
+impl RecoveryStep {
     /// Reads `recovery` into a step, rendering a `Run` call against
-    /// `command`. It returns `Err` with a `Step::None` when the recovery
-    /// offers no step: a `Recovery::None`, or a `Run` call that cannot be
-    /// rendered because the call does not resolve. It adds the reason that a
-    /// `Run` call does not resolve to `unrendered`.
+    /// `command`. It returns `Err` with a `RecoveryStep::None` when the
+    /// recovery offers no step: a `Recovery::None`, or a `Run` call that
+    /// cannot be rendered because the call does not resolve. It adds the
+    /// reason that a `Run` call does not resolve to `unrendered`.
     pub(super) fn offered(
         recovery: Recovery,
         command: &mut Command,
@@ -191,7 +191,7 @@ fn item_text(value: &FieldValue<'_>) -> String {
 /// `{"kind":"run","call":"shelf books list"}` or `{"kind":"retry"}`. A
 /// `RunAll` step is a `run` step with `all`, the name of its field, such as
 /// `{"kind":"run","call":"shelf books show <ID>...","all":"left_out"}`.
-impl Serialize for Step {
+impl Serialize for RecoveryStep {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         let (kind, field, all) = match self {
             Self::Run(call) => ("run", Some(("call", call)), None),
