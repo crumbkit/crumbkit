@@ -305,12 +305,21 @@ The log's thread always handles SIGINT and SIGTERM: it writes the line with
 the tool installs through signal-hook runs beside the thread, which still
 ends the process. A handler that replaces the signal's action directly, as
 the ctrlc crate does, removes crumbkit's listener, and the line then
-records the exit without `interrupted`. A tool that must keep running
-after Ctrl-C or SIGTERM keeps its own handler and runs without the log. The
-rustdoc of [`start`](../../../crates/crumbkit-usage/src/recorder.rs) says
-so.
+records the exit without `interrupted`.
 
-Why: ADR-0029, ADR-0095.
+A tool whose own code ends it on a signal calls `start_under` in place of
+`start`. `start_under` starts no signal thread and takes no signal, and it
+passes a function that writes the line with `"interrupted": true` to the
+tool's code. The function waits at most 500 ms for the recorder's lock,
+does nothing once the line is written, and must not run inside a signal
+handler. A tool with crumbkit-process's `forward` feature passes
+`forward::clean_up`, so the forwarder ends the tool, writes the line as its
+first clean-up, and takes SIGHUP as well. An extension's `write` then runs
+while the forwarder holds its list's lock, so it must not start a run in
+`Scope::Group`. The rustdoc of
+[`start_under`](../../../crates/crumbkit-usage/src/recorder.rs) says so.
+
+Why: ADR-0029, ADR-0095, ADR-0179.
 
 ## Child processes
 

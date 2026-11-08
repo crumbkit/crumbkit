@@ -6,7 +6,7 @@ use std::fs;
 use clap::Command;
 use serde_json::Value;
 
-use crate::recorder::start;
+use crate::recorder::{listens, start, start_under};
 use crate::testing::TempDir;
 use crumbkit::help::{Exit, Guide};
 use crumbkit::{Code, Document, Output, Sink, Spelling, Stream, ViewFlags, stream_to};
@@ -19,6 +19,8 @@ fn typed(command: &Command, args: &[std::ffi::OsString], spelling: Spelling) {
 
 // Each platform raises its own signals and runs its children through its
 // own shell, so each has a file of tests.
+#[cfg(unix)]
+mod forward;
 #[cfg(unix)]
 mod unix;
 #[cfg(windows)]
@@ -332,4 +334,67 @@ fn the_log_path_test_s_child_writes_a_line_and_reads_it_at_log_path() {
     let path = crate::log_path("pathed").unwrap();
     let log = fs::read_to_string(path).unwrap();
     assert_eq!(log.lines().count(), 1);
+}
+
+#[test]
+fn start_under_takes_no_signal() {
+    if is_child() {
+        let _log = start_under(|_| {});
+        assert!(!listens());
+        return;
+    }
+    let state = TempDir::new("under-no-signal");
+
+    let status = run_child(
+        "recorder::tests::processes::start_under_takes_no_signal",
+        &state,
+    );
+
+    assert!(status.success(), "the tool ended with {status:?}");
+}
+
+#[test]
+fn a_second_start_under_registers_nothing() {
+    if is_child() {
+        let _log = start_under(|_| {});
+        let mut registered = false;
+        let _second = start_under(|_| registered = true);
+        assert!(!registered);
+        return;
+    }
+    let state = TempDir::new("under-second");
+
+    let status = run_child(
+        "recorder::tests::processes::a_second_start_under_registers_nothing",
+        &state,
+    );
+
+    assert!(status.success(), "the tool ended with {status:?}");
+}
+
+#[test]
+fn the_registered_function_writes_nothing_once_the_guard_has_written() {
+    if is_child() {
+        let mut write = None;
+        let log = start_under(|registered| write = Some(registered));
+        typed(
+            &Command::new("guarded"),
+            &["guarded".into()],
+            Spelling::COLONS,
+        );
+        drop(log);
+        write.unwrap()();
+        return;
+    }
+    let state = TempDir::new("under-written");
+
+    let status = run_child(
+        "recorder::tests::processes::the_registered_function_writes_nothing_once_the_guard_has_written",
+        &state,
+    );
+
+    assert!(status.success(), "the tool ended with {status:?}");
+    let lines = log_lines(&state, "guarded");
+    assert_eq!(lines.len(), 1);
+    assert_ne!(lines[0]["interrupted"], true);
 }

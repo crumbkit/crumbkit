@@ -58,5 +58,10 @@ proptest = { workspace = true, features = ["std"] }
 # schema, which names any tool's `<tool>/usage/v1` (ADR-0079).
 regex-lite = { workspace = true }
 
+# The signal tests run the log beside crumbkit-process's `forward` feature,
+# which exists on Unix only.
+[target.'cfg(unix)'.dev-dependencies]
+crumbkit-process = { workspace = true, features = ["forward"] }
+
 [lints]
 workspace = true

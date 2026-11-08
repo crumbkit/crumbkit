@@ -22,6 +22,10 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit-process: the off-by-default `forward` feature stops every live
   child group when the tool receives SIGINT, SIGTERM or SIGHUP, and then
   ends the tool as the signal would have ([behaviour/processes]).
+- crumbkit-usage: [`start_under`] starts the log with no signal thread and
+  hands the tool the function that writes the interrupted line, so a tool
+  with crumbkit-process's `forward` feature has one owner of each signal
+  ([behaviour/usage-log]).
 - crumbkit: the `commands list` row of a leaf that prints no result has
   `prints_no_result: true`, which tells it from a leaf without a document
   ([behaviour/help/commands-list]).
@@ -1482,6 +1486,7 @@ rustdoc, or at the page in docs/ that describes the behaviour. -->
 [`run`]: crates/crumbkit-process/src/run.rs
 [`Escalation`]: crates/crumbkit-process/src/escalation.rs
 [`line_queue`]: crates/crumbkit-process/src/lines.rs
+[`start_under`]: crates/crumbkit-usage/src/recorder.rs
 [behaviour/adoption]: docs/behaviour/adoption/README.md
 [behaviour/adoption/declarations]: docs/behaviour/adoption/declarations.md
 [behaviour/adoption/opt-outs]: docs/behaviour/adoption/opt-outs.md

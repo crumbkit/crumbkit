@@ -139,6 +139,10 @@ impl Label {
 /// }
 /// ```
 ///
+/// A tool that uses crumbkit-process's `forward` feature writes its line from
+/// the forwarder's clean-up, while the forwarder holds its list's lock, so
+/// `write` must not start a run with `Scope::Group` (ADR-0179).
+///
 /// [`write`]: Extension::write
 pub trait Extension: Default + Send + 'static {
     /// Writes this run's facts into `facts`.
