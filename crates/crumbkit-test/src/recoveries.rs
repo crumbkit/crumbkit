@@ -439,9 +439,9 @@ pub fn check_recoveries(command: &Command, guide: &Guide, recoveries: &Recoverie
 
 /// Returns the spelled codes whose recoveries the check follows by name:
 /// the `declared` codes, crumbkit's codes as `guide` prints them, and each
-/// code that `guide` or one of its leaves prints in place of a crumbkit
-/// code, which may be an add-on crate's code that `crumbkit::codes::ALL`
-/// does not list.
+/// code that `guide` or one of its leaves prints in place of a code on a
+/// built-in list, which may be an add-on crate's code that
+/// `crumbkit::codes::ALL` does not list.
 fn known_codes(declared: &[(String, &Code)], guide: &Guide, spelling: Spelling) -> Vec<String> {
     let mut known: Vec<String> = declared.iter().map(|(text, _)| text.clone()).collect();
     known.extend(
@@ -455,6 +455,7 @@ fn known_codes(declared: &[(String, &Code)], guide: &Guide, spelling: Spelling) 
             .get_codes()
             .iter()
             .chain(leaves)
+            .filter(|rename| library_codes().any(|listed| listed == rename.crumbkit()))
             .map(|rename| spelling.spell(rename.tool())),
     );
     known

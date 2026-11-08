@@ -67,7 +67,7 @@ Every declared code is provoked by a chain or listed in `Unprovoked` with
 the reason no test can provoke it. A tool passes the same list to
 [`check_twins`](end-to-end.md#twins).
 
-Why: ADR-0053, ADR-0001, ADR-0079.
+Why: ADR-0053, ADR-0001, ADR-0079, ADR-0177.
 
 ## Runs of a chain
 

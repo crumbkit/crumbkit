@@ -4,11 +4,13 @@
 //! their recoveries followed, and the warnings that crumbkit prints.
 
 use crumbkit::Code;
+use crumbkit::help::{Guide, Rename};
 use snapbox::assert::Action;
 
-use super::{OTHERS, SHOW_7, Setup, check_with, failure, problems, recoveries, run};
+use super::{OTHERS, SHOW_7, Setup, check_in, check_with, failure, problems, recoveries, run};
 use crate::recoveries::Failing;
 use crate::recoveries::chain::known::ADD_ON_CODES;
+use crate::testing::panic_message;
 
 /// Returns the setup of a chain whose step `tool books list` fails with
 /// `code` and recovers by running `tool books show 2`, which succeeds.
@@ -102,6 +104,59 @@ fn an_undeclared_start_in_the_crumbkit_component_on_neither_built_in_list_fails_
              tool books show 9: the start's code tool::books::gone is not a declared code"
         )
     );
+}
+
+#[test]
+fn an_undeclared_start_with_a_rename_of_a_code_on_neither_built_in_list_fails_the_check() {
+    const UNLISTED: Code = Code::new("crumbkit", "books", "unlisted");
+    const RENAMED: Code = Code::new("tool", "books", "renamed");
+    const GUIDE: Guide = Guide::new().codes(&[Rename::new(&UNLISTED, &RENAMED)]);
+    let show = failure("tool::books::not_found", r#"{"kind":"retry"}"#);
+    let renamed = failure("tool::books::renamed", r#"{"kind":"retry"}"#);
+    let setup = Setup::new(
+        "recoveries-unlisted-rename",
+        &[
+            ("books show 7 --json", 1, show.as_str(), ""),
+            ("books show 9 --json", 1, renamed.as_str(), ""),
+        ],
+    );
+    let starts = [SHOW_7[0], Failing::new(&RENAMED, &["books", "show", "9"])];
+    let settings = recoveries(&setup, &starts, OTHERS);
+
+    let message = panic_message(|| check_in(&setup, &GUIDE, &settings, Action::Overwrite));
+
+    assert_eq!(
+        message.as_deref(),
+        Some(
+            "the tool's recoveries break crumbkit's recovery rules:\n\
+             tool books show 9: the start's code tool::books::renamed is not a declared code"
+        )
+    );
+}
+
+#[test]
+fn undeclared_starts_with_the_add_on_crates_codes_run_without_a_declaration() {
+    let show = failure("tool::books::not_found", r#"{"kind":"retry"}"#);
+    let child = failure("tool::child::not_found", r#"{"kind":"retry"}"#);
+    let aliases = failure("tool::aliases::unreadable", r#"{"kind":"retry"}"#);
+    let setup = Setup::new(
+        "recoveries-add-on-starts",
+        &[
+            ("books show 7 --json", 1, show.as_str(), ""),
+            ("books show 8 --json", 1, child.as_str(), ""),
+            ("books show 9 --json", 1, aliases.as_str(), ""),
+        ],
+    );
+    let starts = [
+        SHOW_7[0],
+        Failing::new(&crumbkit_child::codes::NOT_FOUND, &["books", "show", "8"]),
+        Failing::new(
+            &crumbkit_aliases::codes::UNREADABLE,
+            &["books", "show", "9"],
+        ),
+    ];
+
+    assert_eq!(problems(&setup, &recoveries(&setup, &starts, OTHERS)), None);
 }
 
 #[test]
