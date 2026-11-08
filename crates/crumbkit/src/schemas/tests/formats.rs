@@ -36,7 +36,7 @@ const FORMATS: Guide = Guide::new()
         Leaf::new(&["books", "list"]).document(LEGACY),
         Leaf::new(&["schemas", "list"]).document(crate::schemas::SCHEMAS_LIST),
     ])
-    .documents(&[FileFormat::new(SETTINGS)]);
+    .file_formats(&[FileFormat::new(SETTINGS)]);
 
 #[test]
 fn an_unwrapped_document_schema_is_the_schema_of_data_at_the_top() {

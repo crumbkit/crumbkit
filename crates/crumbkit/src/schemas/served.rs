@@ -100,7 +100,7 @@ impl Served {
 /// Returns the documents that the tool whose built command tree is
 /// `command` serves: the failure document first, then the document of
 /// each leaf of `guide` in guide order, and then each file format of
-/// `guide` in the order that `Guide::documents` set (ADR-0035).
+/// `guide` in the order that `Guide::file_formats` set (ADR-0035).
 ///
 /// The failure document is `<tool>/failure/v1`, and it names no command,
 /// because every command prints it when it fails.
@@ -158,7 +158,7 @@ pub fn documents(command: &Command, guide: &Guide) -> Vec<Served> {
             }),
         }
     }
-    served.extend(guide.get_documents().iter().map(|format| Served {
+    served.extend(guide.get_file_formats().iter().map(|format| Served {
         document: format.document(),
         kind: Kind::File,
         commands: Vec::new(),

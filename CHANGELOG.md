@@ -16,7 +16,7 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   ([behaviour/processes]).
 - crumbkit-process: a stream can arrive line by line through a bounded
   queue from [`line_queue`] while the child runs ([behaviour/processes]).
-- crumbkit-process: `Finished::status` gives the child's own status even
+- crumbkit-process: `ChildFinished::status` gives the child's own status even
   when the run stopped it, and `Status::shell_code` gives it as a shell
   would, such as 130 for a child that SIGINT ended ([behaviour/processes]).
 - crumbkit-process: the off-by-default `forward` feature stops every live
@@ -32,8 +32,14 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- crumbkit: breaking: `Guide::documents` is now `Guide::file_formats`, a name
+  that says it registers file formats ([behaviour/schemas/commands]).
 - crumbkit-process: breaking: `OverLimit` is `#[non_exhaustive]`, so a match
   on it ends with a wildcard arm ([behaviour/processes]).
+- crumbkit-process: breaking: `Run` is now `Limits`, `Exit` is now `Outcome`
+  and `Finished` is now `ChildFinished`, whose `exit` is now `outcome`, so a
+  tool that imports crumbkit needs no alias for `events::Finished` or
+  `help::Exit` ([behaviour/processes]).
 - crumbkit: breaking: `CallArg` and `CallTarget` are `#[non_exhaustive]`, so
   a match on either ends with a wildcard arm.
 - crumbkit: breaking: `RuntimeCodeError::Segment`'s `segment` field is the
