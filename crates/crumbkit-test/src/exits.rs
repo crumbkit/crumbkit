@@ -32,9 +32,8 @@ mod tests;
 ///   signal ended as 128 plus the signal's number, such as 130 after
 ///   Ctrl-C, and a tool that catches the signal exits with the same code;
 /// - a range from [`Exit::range`](crumbkit::help::Exit::range) that starts
-///   below 3, because 0, 1 and 2 keep their meanings, or that ends before
-///   it starts. A range may run up to 255, because its codes come from
-///   another program;
+///   below 3, because 0, 1 and 2 keep their meanings. A range may run up to
+///   255, because its codes come from another program;
 /// - a range that lists failure codes, because a range names no single
 ///   code for a run that fails with one to exit with;
 /// - a code that the guide declares more than once, and a range that
@@ -180,17 +179,14 @@ fn name(exit: &Exit) -> String {
     }
 }
 
-/// Pushes a problem when `exit`, a range named `name`, starts below 3, ends
-/// before it starts, or lists failure codes.
+/// Pushes a problem when `exit`, a range named `name`, starts below 3 or
+/// lists failure codes.
 fn ranged(exit: &Exit, name: &str, problems: &mut Vec<String>) {
     let codes = exit.codes();
     if *codes.start() < 3 {
         problems.push(format!(
             "{name} starts below 3, and 0, 1 and 2 already mean success, crumbkit's default failure and a refused command line"
         ));
-    }
-    if codes.start() > codes.end() {
-        problems.push(format!("{name} ends before it starts, so it holds no code"));
     }
     if !exit.get_failures().is_empty() {
         problems.push(format!(

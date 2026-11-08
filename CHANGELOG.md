@@ -26,6 +26,19 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   `prints_no_result: true`, which tells it from a leaf without a document
   ([behaviour/help/commands-list]).
 
+### Changed
+
+- crumbkit: breaking: `CallArg` and `CallTarget` are `#[non_exhaustive]`, so
+  a match on either ends with a wildcard arm.
+- crumbkit: breaking: `Exit::range` panics when `last` is below `first`,
+  which fails the build when the exit is a constant
+  ([behaviour/failures/exit-codes]).
+- crumbkit: breaking: `RuntimeCodeError::Segment`'s `segment` field is the
+  new `Segment` enum, whose `Display` gives the same words as the old
+  string.
+- crumbkit: breaking: `form::Step` is now `form::RecoveryStep`, so it no
+  longer shares a name with the listing's `Step`.
+
 ## [0.1.1] - 2026-11-01
 
 ### Added

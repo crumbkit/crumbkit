@@ -125,11 +125,22 @@ impl Exit {
     /// can return them until [`Exit::commands`] names the ones that do.
     ///
     /// A range of one code is a single code. crumbkit-test's
-    /// `check_exit_codes` fails on a range that starts below 3, ends
-    /// before it starts, overlaps another declared code or lists failure
-    /// codes.
+    /// `check_exit_codes` fails on a range that starts below 3, overlaps
+    /// another declared code or lists failure codes.
+    ///
+    /// # Panics
+    ///
+    /// Panics when `last` is below `first`. A `const` that calls it with
+    /// such a range fails to compile:
+    ///
+    /// ```compile_fail
+    /// use crumbkit::help::Exit;
+    ///
+    /// const BAD: Exit = Exit::range(30, 20, "The suite ended with its own code.");
+    /// ```
     #[must_use]
     pub const fn range(first: u8, last: u8, meaning: &'static str) -> Self {
+        assert!(first <= last, "an exit range ends at or after its start");
         Self {
             first,
             last,
@@ -178,8 +189,7 @@ impl Exit {
 
     /// Returns the codes that the exit declares, from its first code to its
     /// last, both included. A single code returns a range of that one
-    /// code, such as `124..=124`, and a range that ends before it starts
-    /// returns an empty range.
+    /// code, such as `124..=124`.
     #[must_use]
     pub const fn codes(&self) -> RangeInclusive<u8> {
         RangeInclusive::new(self.first, self.last)

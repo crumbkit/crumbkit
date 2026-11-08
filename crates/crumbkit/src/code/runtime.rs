@@ -96,7 +96,11 @@ impl Table {
         reason: &str,
         most: usize,
     ) -> Result<&'static Code, RuntimeCodeError> {
-        for (segment, text) in [("component", component), ("area", area), ("reason", reason)] {
+        for (segment, text) in [
+            (Segment::Component, component),
+            (Segment::Area, area),
+            (Segment::Reason, reason),
+        ] {
             if !is_code_segment(text) {
                 return Err(RuntimeCodeError::Segment {
                     segment,
@@ -131,6 +135,31 @@ fn leak(text: &str) -> &'static str {
     Box::leak(text.into())
 }
 
+/// The three segments of a [`Code`], in the order that [`Code::new`] and
+/// [`Code::runtime`] take them.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum Segment {
+    /// The first segment, which names the tool or the plugin that
+    /// raises the failure.
+    Component,
+    /// The second segment, which names the part of the component that
+    /// raises the failure.
+    Area,
+    /// The third segment, which names why the failure happened.
+    Reason,
+}
+
+impl fmt::Display for Segment {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(match self {
+            Self::Component => "component",
+            Self::Area => "area",
+            Self::Reason => "reason",
+        })
+    }
+}
+
 /// Why [`Code::runtime`] returned no code.
 #[derive(Clone, Debug, PartialEq, Eq)]
 #[non_exhaustive]
@@ -141,8 +170,8 @@ pub enum RuntimeCodeError {
     /// `..`.
     #[non_exhaustive]
     Segment {
-        /// Which segment broke the rule: `component`, `area` or `reason`.
-        segment: &'static str,
+        /// Which segment broke the rule.
+        segment: Segment,
         /// The segment's text.
         text: String,
     },

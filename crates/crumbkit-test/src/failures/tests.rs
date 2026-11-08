@@ -1,4 +1,4 @@
-use crumbkit::form::{ReadFailure, Step};
+use crumbkit::form::{ReadFailure, RecoveryStep};
 use crumbkit::{FieldValue, ToolName};
 
 use super::{FailureReader, Reader, read_failures};
@@ -30,7 +30,10 @@ fn crumbkit_s_document_gives_each_failure_with_its_code_steps_and_every_field_va
         read,
         [ReadFailure::new(
             "a".to_owned(),
-            vec![Step::Run("tool books list".to_owned()), Step::Retry],
+            vec![
+                RecoveryStep::Run("tool books list".to_owned()),
+                RecoveryStep::Retry
+            ],
         )
         .with_fields(vec![
             ("found".to_owned(), FieldValue::Null),
@@ -54,7 +57,7 @@ fn a_field_of_crumbkit_s_document_that_holds_a_fraction_is_left_out() {
 
     assert_eq!(
         read,
-        [ReadFailure::new("a".to_owned(), vec![Step::Retry])
+        [ReadFailure::new("a".to_owned(), vec![RecoveryStep::Retry])
             .with_fields(vec![("id".to_owned(), FieldValue::Unsigned(7))])]
     );
 }
@@ -140,7 +143,7 @@ fn a_failure_document_with_the_tools_own_schema_id_gives_its_failure() {
         read,
         [ReadFailure::new(
             "shelf::cli::usage".to_owned(),
-            vec![Step::Retry]
+            vec![RecoveryStep::Retry]
         )]
     );
 }

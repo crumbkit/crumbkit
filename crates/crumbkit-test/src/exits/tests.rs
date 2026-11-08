@@ -146,17 +146,14 @@ fn a_range_from_3_up_to_255_passes_without_an_opt_out() {
 }
 
 #[test]
-fn a_range_that_starts_below_3_or_ends_before_it_starts_fails_the_check() {
-    const GUIDE: Guide = Guide::new().exits(&[
-        Exit::range(2, 9, "The importer ended with its own code."),
-        Exit::range(30, 20, "The suite ended with its own code."),
-    ]);
+fn a_range_that_starts_below_3_fails_the_check() {
+    const GUIDE: Guide =
+        Guide::new().exits(&[Exit::range(2, 9, "The importer ended with its own code.")]);
 
     assert_eq!(
         checked(&GUIDE, &[]).unwrap(),
         "the command tree breaks crumbkit's exit code rules:\n\
-         the exit range 2-9 starts below 3, and 0, 1 and 2 already mean success, crumbkit's default failure and a refused command line\n\
-         the exit range 30-20 ends before it starts, so it holds no code"
+         the exit range 2-9 starts below 3, and 0, 1 and 2 already mean success, crumbkit's default failure and a refused command line"
     );
 }
 

@@ -91,8 +91,7 @@ code two meanings or leave a caller unable to read it, as its rustdoc lists.
   `exit-codes/shared-exit`, that covers every command returning it
   ([opt-outs](../adoption/opt-outs.md)).
 - The code 0 has no opt-out, because a caller reads 0 as success.
-- A range fails the check when it starts below 3, ends before it starts,
-  or lists failure codes. A range and a declaration that holds one of its
+- A range fails the check when it starts below 3 or lists failure codes. A range and a declaration that holds one of its
   codes fail the check, so a caller always finds one meaning for a code.
   These rules take no opt-out.
 
