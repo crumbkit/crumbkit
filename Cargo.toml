@@ -43,6 +43,10 @@ crumbkit-aliases = { version = "0.1.1", path = "crates/crumbkit-aliases" }
 # shelf keeps a usage log with crumbkit-usage, which takes a version beside
 # the path for the same reason.
 crumbkit-usage = { version = "0.1.1", path = "crates/crumbkit-usage" }
+# crumbkit-usage tests that the log runs under crumbkit-process's `forward`
+# feature, so crumbkit-process takes a version beside the path for the same
+# reason.
+crumbkit-process = { version = "0.1.1", path = "crates/crumbkit-process" }
 # reading hands the terminal to an editor with crumbkit-child, which takes a
 # version beside the path for the same reason.
 crumbkit-child = { version = "0.1.1", path = "crates/crumbkit-child" }

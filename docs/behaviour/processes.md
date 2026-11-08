@@ -191,8 +191,12 @@ that runs one, because that run waits forever for the lock that the
 forwarder holds. A run in `Scope::Child` takes no lock.
 
 The forwarder must be the only handler that ends the tool on SIGINT,
-SIGTERM or SIGHUP. crumbkit-usage's signal thread ends the tool on SIGINT
-or SIGTERM, and can do so before the forwarder has stopped the groups, so
-a tool that uses both loses that guarantee until one owner ends the tool.
+SIGTERM or SIGHUP. A tool that keeps crumbkit-usage's log beside the
+forwarder starts it with `start_under(forward::clean_up)`. The log then
+starts no signal thread, its line is a clean-up that runs in registration
+order, and the line's duration includes the grace. A tool that calls plain `start`
+beside `forward::install` has two handlers that each end it. The tool can
+then end before its groups have stopped or with no line, and neither crate
+can detect that.
 
-Why: ADR-0171, ADR-0172.
+Why: ADR-0171, ADR-0172, ADR-0179.

@@ -8,7 +8,7 @@ use clap::Command;
 
 use super::typed;
 use super::{is_child, log_lines, run_child};
-use crate::recorder::start;
+use crate::recorder::{start, start_under};
 use crate::testing::TempDir;
 use crumbkit::Spelling;
 
@@ -160,4 +160,26 @@ fn the_interrupted_child_test_s_child_hands_over_to_a_child_that_ctrl_c_ended() 
     let code =
         crumbkit_child::hand_over(super::bare_output(), cmd(&format!("exit {CONTROL_C_EXIT}")));
     exit(if code == ExitCode::from(130) { 130 } else { 1 });
+}
+
+#[test]
+fn a_function_registered_through_start_under_writes_the_line() {
+    if is_child() {
+        let mut write = None;
+        let _log = start_under(|registered| write = Some(registered));
+        typed(&Command::new("under"), &["under".into()], Spelling::COLONS);
+        write.unwrap()();
+        return;
+    }
+    let state = TempDir::new("under-windows");
+
+    let status = run_child(
+        "recorder::tests::processes::windows::a_function_registered_through_start_under_writes_the_line",
+        &state,
+    );
+
+    assert!(status.success(), "the tool ended with {status:?}");
+    let lines = log_lines(&state, "under");
+    assert_eq!(lines.len(), 1);
+    assert_eq!(lines[0]["interrupted"], true);
 }

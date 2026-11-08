@@ -289,6 +289,7 @@ dependencies = [
  "clap",
  "crumbkit",
  "crumbkit-child",
+ "crumbkit-process",
  "etcetera",
  "getrandom",
  "humantime",

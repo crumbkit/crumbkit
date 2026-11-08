@@ -107,6 +107,16 @@ allow-globs = ["test-persistence-location/run-tests.*"]
 crate = "zerocopy"
 allow-globs = ["cargo.sh", "win-cargo.bat", "ci/*.sh"]
 
+# crumbkit-usage's signal tests bring crumbkit-process and so process-wrap into
+# the scan, through the dev-dependencies that `include-dependencies` counts.
+# process-wrap's published sources hold `tests/multiproc_helper.rs`, a helper
+# of its own tests with a `cargo -Zscript` shebang line, and no build runs it:
+# process-wrap has no build script and no procedural macro. The entry allows
+# only that path, so a script elsewhere in the crate still fails the check.
+[[bans.build.bypass]]
+crate = "process-wrap"
+allow-globs = ["tests/multiproc_helper.rs"]
+
 # crumbkit's optional `miette` feature depends on unicode-width, as miette
 # does, and its published sources hold `scripts/unicode.py`. The script
 # regenerates unicode-width's Unicode tables from Unicode's data files, and no

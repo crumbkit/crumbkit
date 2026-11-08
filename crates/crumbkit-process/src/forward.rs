@@ -22,10 +22,12 @@
 //! id that another process may have taken.
 //!
 //! The forwarder must be the only handler that ends the tool on SIGINT,
-//! SIGTERM or SIGHUP. Another handler that ends the tool on one of them,
-//! such as crumbkit-usage's signal thread on SIGINT or SIGTERM, can end it
-//! before the forwarder has stopped the groups. A tool that uses both loses
-//! that guarantee until one owner ends the tool.
+//! SIGTERM or SIGHUP. A tool that keeps crumbkit-usage's log beside the
+//! forwarder starts it with `start_under(forward::clean_up)`, so the log
+//! starts no signal thread. The line is the first clean-up only when
+//! `start_under` runs before anything else registers one. Plain
+//! `start` beside [`install`] leaves two handlers that each end the tool,
+//! and neither crate can detect that (ADR-0179).
 //!
 //! ```no_run
 //! fn remove_lock_file() {}
@@ -90,8 +92,11 @@ pub fn install() -> io::Result<()> {
 }
 
 /// Registers `clean_up` to run when the forwarder has stopped the listed
-/// groups and before the tool ends. Each function is kept once, and a
-/// clean-up that panics does not stop the others.
+/// groups and before the tool ends. The clean-ups run in the order that
+/// they were registered, each function is kept once, and a clean-up that
+/// panics does not stop the others. A clean-up that never returns stops the
+/// later ones, so a tool that must write crumbkit-usage's line calls
+/// `start_under(forward::clean_up)` before it registers anything else.
 ///
 /// A clean-up must not start a run with
 /// [`Scope::Group`](crate::Scope::Group), or wait for a thread that runs

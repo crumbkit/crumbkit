@@ -2,6 +2,7 @@
 // links to files in the repository, which work on GitHub. The definitions below
 // come first, so rustdoc uses them for the same labels (ADR-0013).
 //! [`start`]: crate::start()
+//! [`start_under`]: crate::start_under()
 //! [`Log`]: crate::Log
 //! [`Facts`]: crate::Facts
 //! [`Key`]: crate::Key
@@ -54,7 +55,7 @@ pub use self::facts::{Extension, Facts, Key, Label, extend};
 // documentation.
 #[doc(hidden)]
 pub use self::file::log_path;
-pub use self::recorder::{Log, start};
+pub use self::recorder::{Log, start, start_under};
 pub use self::self_figures::{FiguresRow, SELF_FIGURES_LIST, SelfFigures, figures};
 pub use self::self_usage::{FindingRow, SELF_USAGE, SelfUsage, UsageSummary, findings};
 
