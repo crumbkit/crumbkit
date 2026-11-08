@@ -35,7 +35,7 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 - crumbkit-process: a run whose child exits by itself while a line queue is
   full returns within `DRAIN_GRACE`, and the queue drops lines only after
-  that deadline ([behaviour/processes]).
+  half of that time has passed ([behaviour/processes]).
 
 ## [0.1.1] - 2026-11-01
 

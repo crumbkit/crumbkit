@@ -75,12 +75,17 @@ ends the queue on every return path, including a start failure and a
 cancel before the start. A full queue makes the run's reader wait, and the
 child then waits on its full pipe. Once the run begins to stop the child,
 a full queue drops each line at once. Once the child has exited by itself,
-a full queue waits for the caller until the drain deadline, `DRAIN_GRACE`
-after the reap, and then drops each line. `Lines::lost` gives the last
-dropped line after the run ends. A caller that drops its `Lines` lets the
-run read the rest of the stream and drop it, so the child runs to its end.
-Each queue serves one run, so a `Run` with a `Lines` capture serves one run
-too.
+a full queue waits for the caller until half of `DRAIN_GRACE` has passed
+since the reap, and then drops each line while the reader goes on reading
+the pipe until `DRAIN_GRACE` after the reap. `Lines::lost` gives the last
+dropped line after the run ends. It is the stream's last line when the
+reader reached the end of the pipe. A process outside the child's group
+that holds the pipe open and goes on writing, or a reader too slow to reach
+the end within the second half of the grace, leaves it as the last line
+read when the reads ended, which can be part of a line. A caller that
+drops its `Lines` lets the run read the rest of the stream and drop it, so
+the child runs to its end. Each queue serves one run, so a `Run` with a
+`Lines` capture serves one run too.
 
 On Unix each read waits on its pipe with `poll`, so every thread that the
 run starts is joined, even while a descendant outside the group holds a pipe
@@ -124,13 +129,12 @@ the child, and reads the pipes for at most `DRAIN_GRACE`, one second, more.
 A descendant outside the group that holds a pipe therefore holds the run
 for at most one second after the reap, and keeps running.
 
-On Unix, for a child that the tool may signal and a caller that reads its
-lines, a run takes at most the time to its deadline, plus the graces of its
-escalation, plus the drain grace. A child that refuses the tool's signals,
-such as a setuid program, holds the run until it exits. On Windows a
-reader blocks until its pipe closes, so a process outside the job that
-holds a pipe, as a grandchild of a child in `Scope::Child` can, holds the
-run until it exits.
+On Unix, for a child that the tool may signal, a run takes at most the
+time to its deadline, plus the graces of its escalation, plus the drain
+grace. A child that refuses the tool's signals, such as a setuid program,
+holds the run until it exits. On Windows a reader blocks until its pipe
+closes, so a process outside the job that holds a pipe, as a grandchild of
+a child in `Scope::Child` can, holds the run until it exits.
 
 Why: ADR-0171, ADR-0172, ADR-0174.
 

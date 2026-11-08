@@ -88,10 +88,11 @@ impl Capture {
     }
 
     /// Tells the queue of a stream delivered as lines that the child has
-    /// exited, so a full queue drops a line once `deadline` has passed.
-    pub(super) fn stopping_at(&self, deadline: Instant) {
+    /// been reaped, so a full queue drops a line once `deadline` has
+    /// passed.
+    pub(super) fn drain_until(&self, deadline: Instant) {
         if let Self::Lines { queue, .. } = self {
-            queue.stopping_at(deadline);
+            queue.drain_until(deadline);
         }
     }
 

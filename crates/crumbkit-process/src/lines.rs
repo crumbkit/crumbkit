@@ -5,9 +5,10 @@
 //! pipe. Once the run begins to stop the child, a line that finds the queue
 //! full is dropped and kept as the stream's last line, so a caller that
 //! stopped reading cannot hold up the stop. After the child exits by itself,
-//! a full queue keeps waiting for the caller until the drain deadline, and
-//! then drops lines in the same way. Once the caller drops its
-//! [`Lines`], the reader reads the rest of the stream and drops it.
+//! a full queue keeps waiting for the caller until half of the run's drain
+//! grace has passed since the reap, and then drops lines in the same way.
+//! Once the caller drops its [`Lines`], the reader reads the rest of the
+//! stream and drops it.
 
 use std::collections::VecDeque;
 use std::fmt;
@@ -47,11 +48,12 @@ struct Shared {
 struct State {
     lines: VecDeque<Vec<u8>>,
     /// The last line that a full queue dropped, while no line has been
-    /// queued after it. It is the stream's real last line.
+    /// queued after it. It is the stream's last line when the reader reached
+    /// the end of the pipe, and otherwise the last line the reader read.
     lost: Option<Vec<u8>>,
     stopping: bool,
-    /// When the child has exited by itself, the time after which a full
-    /// queue drops lines.
+    /// After the run has reaped the child, on every path including a stop,
+    /// the time after which a full queue drops lines.
     drain_until: Option<Instant>,
     ended: bool,
     abandoned: bool,
@@ -117,9 +119,10 @@ impl LineQueue {
         self.0.changed.notify_all();
     }
 
-    /// Marks that the child has exited by itself, so a full queue waits for
-    /// the caller only until `deadline` and then drops a line instead.
-    pub(crate) fn stopping_at(&self, deadline: Instant) {
+    /// Marks that the run has reaped the child, on every path including a
+    /// stop, so a full queue waits for the caller only until `deadline` and
+    /// then drops a line instead.
+    pub(crate) fn drain_until(&self, deadline: Instant) {
         self.0.lock().drain_until = Some(deadline);
         self.0.changed.notify_all();
     }
@@ -202,10 +205,15 @@ impl Lines {
         Ok(shared.take(&mut state))
     }
 
-    /// Returns the stream's last line when a full queue dropped it after
-    /// the run began to stop or the drain deadline passed, so
-    /// [`Lines::recv`] never returned it. It returns `None` until the run
-    /// has ended, and the line only once.
+    /// Returns the last line that a full queue dropped, after the run began
+    /// to stop or half of the run's drain grace passed since the reap, so
+    /// [`Lines::recv`] never returned it. It is the stream's last line when
+    /// the reader reached the end of the pipe, which it does in the other
+    /// half of the grace unless a process outside the child's group holds
+    /// the pipe open and goes on writing, or the reader is too slow. Then
+    /// it is the last line read when the reads ended, which can be part of
+    /// a line. It returns `None` until the run has ended, and the line only
+    /// once.
     #[must_use]
     pub fn lost(&self) -> Option<Vec<u8>> {
         let mut state = self.0.lock();
