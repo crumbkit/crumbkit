@@ -2,7 +2,9 @@
 
 use std::time::{Duration, Instant};
 
-use super::super::{Capture, DRAIN_GRACE, Exit, Finished, OverLimit, Run, RunError, Stop, run};
+use super::super::{
+    Capture, ChildFinished, DRAIN_GRACE, Limits, Outcome, OverLimit, RunError, Stop, run,
+};
 use crate::testing::sh;
 use crate::{Cancel, Lines, line_queue};
 
@@ -11,7 +13,7 @@ const WAIT: Duration = Duration::from_secs(5);
 
 /// Returns the settings that deliver standard output as lines to a queue
 /// of `most` lines within `line` and `total` bytes, and the caller's side.
-fn lines(most: usize, line: usize, total: usize) -> (Run, Lines) {
+fn lines(most: usize, line: usize, total: usize) -> (Limits, Lines) {
     let (queue, lines) = line_queue(most);
     let capture = Capture::Lines {
         queue,
@@ -19,7 +21,7 @@ fn lines(most: usize, line: usize, total: usize) -> (Run, Lines) {
         total,
         over: OverLimit::Stop,
     };
-    (Run::new().stdout(capture), lines)
+    (Limits::new().stdout(capture), lines)
 }
 
 /// Returns every line that `lines` still holds once its run has ended.
@@ -30,7 +32,7 @@ fn rest(lines: &Lines) -> Vec<String> {
 }
 
 /// Runs `script` with `settings`.
-fn run_sh(script: &str, settings: &Run) -> Finished {
+fn run_sh(script: &str, settings: &Limits) -> ChildFinished {
     run(sh(script), settings).unwrap()
 }
 
@@ -50,7 +52,7 @@ fn each_line_reaches_the_caller_while_the_child_still_runs() {
     cancel.cancel();
     let finished = running.join().unwrap();
     assert_eq!(first, Ok(Some(b"first".to_vec())));
-    assert_eq!(finished.exit(), Exit::Stopped(Stop::Cancelled));
+    assert_eq!(finished.outcome(), Outcome::Stopped(Stop::Cancelled));
     assert_eq!(rest(&lines), Vec::<String>::new());
 }
 
@@ -60,7 +62,7 @@ fn a_last_line_with_no_newline_is_delivered_when_the_stream_ends() {
 
     let finished = run_sh("printf 'one\\ntwo'", &settings);
 
-    assert_eq!(finished.exit(), Exit::Code(0));
+    assert_eq!(finished.outcome(), Outcome::Code(0));
     assert_eq!(rest(&lines), ["one", "two"]);
     assert!(!finished.stdout().over_limit());
 }
@@ -75,7 +77,7 @@ fn a_line_longer_than_its_limit_stops_the_child_and_no_later_line_arrives() {
         &settings,
     );
 
-    assert_eq!(finished.exit(), Exit::Stopped(Stop::OverLimit));
+    assert_eq!(finished.outcome(), Outcome::Stopped(Stop::OverLimit));
     assert!(finished.stdout().over_limit());
     assert!(finished.stdout().long_line());
     assert_eq!(rest(&lines), ["short"]);
@@ -88,7 +90,7 @@ fn a_stream_longer_than_its_total_limit_stops_the_child_without_a_long_line() {
 
     let finished = run_sh("printf 'aaaa\\nbbbb\\ncccc\\n'; sleep 30", &settings);
 
-    assert_eq!(finished.exit(), Exit::Stopped(Stop::OverLimit));
+    assert_eq!(finished.outcome(), Outcome::Stopped(Stop::OverLimit));
     assert!(finished.stdout().over_limit());
     assert!(!finished.stdout().long_line());
     assert_eq!(rest(&lines), ["aaaa", "bbbb"]);
@@ -102,7 +104,7 @@ fn a_full_queue_after_a_stop_drops_lines_and_keeps_the_last_one_as_lost() {
 
     let finished = run_sh("printf 'one\\ntwo\\nthree\\n'; sleep 30", &settings);
 
-    assert_eq!(finished.exit(), Exit::TimedOut);
+    assert_eq!(finished.outcome(), Outcome::TimedOut);
     assert!(started.elapsed() < WAIT);
     assert_eq!(rest(&lines), ["one"]);
     assert_eq!(lines.lost(), Some(b"three".to_vec()));
@@ -116,7 +118,7 @@ fn a_caller_that_dropped_its_lines_lets_the_child_run_to_its_end() {
 
     let finished = run_sh("seq 1 5000; echo done >&2; exit 4", &settings);
 
-    assert_eq!(finished.exit(), Exit::Code(4));
+    assert_eq!(finished.outcome(), Outcome::Code(4));
     assert_eq!(finished.stderr().bytes(), b"done\n");
 }
 
@@ -130,7 +132,7 @@ fn a_run_returns_when_its_child_exits_while_nobody_reads_a_full_queue() {
         .recv_timeout(DRAIN_GRACE * 4)
         .expect("the run waited on its full queue after the child exited");
 
-    assert_eq!(finished.exit(), Exit::Code(0));
+    assert_eq!(finished.outcome(), Outcome::Code(0));
     assert_eq!(rest(&lines), ["one"]);
     assert_eq!(lines.lost(), Some(b"three".to_vec()));
 }
@@ -145,7 +147,7 @@ fn the_last_line_a_full_queue_drops_after_the_child_exits_is_the_end_of_the_stre
         .recv_timeout(DRAIN_GRACE * 4)
         .expect("the run waited on its full queue after the child exited");
 
-    assert_eq!(finished.exit(), Exit::Code(0));
+    assert_eq!(finished.outcome(), Outcome::Code(0));
     assert_eq!(rest(&lines), ["1"]);
     assert_eq!(lines.lost(), Some(b"5000".to_vec()));
 }
@@ -159,7 +161,7 @@ fn a_caller_who_keeps_reading_receives_every_line_of_a_child_that_exits_with_mor
     let received = rest(&lines);
 
     let finished = running.join().unwrap();
-    assert_eq!(finished.exit(), Exit::Code(0));
+    assert_eq!(finished.outcome(), Outcome::Code(0));
     assert_eq!(received.len(), 2000);
     assert_eq!(received.first().map(String::as_str), Some("1"));
     assert_eq!(received.last().map(String::as_str), Some("2000"));
@@ -189,6 +191,6 @@ fn the_lines_end_when_the_cancel_was_cancelled_before_the_start() {
 
     let finished = run_sh("echo started", &settings.cancel(&cancel));
 
-    assert_eq!(finished.exit(), Exit::Stopped(Stop::Cancelled));
+    assert_eq!(finished.outcome(), Outcome::Stopped(Stop::Cancelled));
     assert_eq!(lines.recv_timeout(WAIT), Ok(None));
 }

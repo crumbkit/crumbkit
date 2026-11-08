@@ -1,6 +1,6 @@
 use std::time::{Duration, Instant};
 
-use super::super::{Cancel, Capture, Exit, OverLimit, Run, Stop, run};
+use super::super::{Cancel, Capture, Limits, Outcome, OverLimit, Stop, run};
 use crate::testing::{cmd, gone, pid_file, pid_in, remove, started_grandchild};
 use crate::{Scope, Status};
 
@@ -17,9 +17,9 @@ fn text(bytes: &[u8]) -> String {
 
 #[test]
 fn a_child_gives_its_exit_code_and_its_standard_output() {
-    let finished = run(cmd("echo out& exit 3"), &Run::new().stdout(WHOLE)).unwrap();
+    let finished = run(cmd("echo out& exit 3"), &Limits::new().stdout(WHOLE)).unwrap();
 
-    assert_eq!(finished.exit(), Exit::Code(3));
+    assert_eq!(finished.outcome(), Outcome::Code(3));
     assert_eq!(finished.status(), Some(Status::Code(3)));
     assert_eq!(finished.stdout().bytes(), b"out\r\n");
 }
@@ -37,12 +37,12 @@ fn a_cancelled_child_whose_job_was_ended_gives_exit_code_1() {
 
     let finished = run(
         cmd("ping -n 120 127.0.0.1 >NUL"),
-        &Run::new().stdout(WHOLE).cancel(&cancel),
+        &Limits::new().stdout(WHOLE).cancel(&cancel),
     )
     .unwrap();
 
     canceller.join().unwrap();
-    assert_eq!(finished.exit(), Exit::Stopped(Stop::Cancelled));
+    assert_eq!(finished.outcome(), Outcome::Stopped(Stop::Cancelled));
     assert_eq!(finished.status(), Some(Status::Code(1)));
 }
 
@@ -56,14 +56,14 @@ fn ending_the_job_when_the_child_exits_ends_a_grandchild_that_holds_standard_out
 
     let finished = run(
         cmd(&started_grandchild(&file, 120)),
-        &Run::new().stdout(WHOLE),
+        &Limits::new().stdout(WHOLE),
     )
     .unwrap();
 
     let took = started.elapsed();
     remove(&file);
     let out = text(finished.stdout().bytes());
-    assert_eq!(finished.exit(), Exit::Code(0));
+    assert_eq!(finished.outcome(), Outcome::Code(0));
     assert!(out.contains("started"), "{out:?}");
     assert!(!out.contains("woke"), "{out:?}");
     let grandchild = pid_in(finished.stdout().bytes());
@@ -83,14 +83,14 @@ fn in_the_child_scope_the_run_waits_for_a_grandchild_that_holds_standard_output(
 
     let finished = run(
         cmd(&started_grandchild(&file, 3)),
-        &Run::new().stdout(WHOLE).scope(Scope::Child),
+        &Limits::new().stdout(WHOLE).scope(Scope::Child),
     )
     .unwrap();
 
     let took = started.elapsed();
     remove(&file);
     let out = text(finished.stdout().bytes());
-    assert_eq!(finished.exit(), Exit::Code(0));
+    assert_eq!(finished.outcome(), Outcome::Code(0));
     assert!(out.contains("started"), "{out:?}");
     assert!(
         out.contains("woke"),
@@ -115,7 +115,7 @@ fn a_deadline_ends_the_job_with_the_grandchild_in_it() {
 
     let finished = run(
         cmd(&script),
-        &Run::new()
+        &Limits::new()
             .stdout(WHOLE)
             .deadline(Instant::now() + Duration::from_secs(20)),
     )
@@ -124,7 +124,7 @@ fn a_deadline_ends_the_job_with_the_grandchild_in_it() {
     let took = started.elapsed();
     remove(&file);
     let out = text(finished.stdout().bytes());
-    assert_eq!(finished.exit(), Exit::TimedOut);
+    assert_eq!(finished.outcome(), Outcome::TimedOut);
     assert!(out.contains("started"), "{out:?}");
     let grandchild = pid_in(finished.stdout().bytes());
     assert!(took < Duration::from_secs(60), "the run took {took:?}");
