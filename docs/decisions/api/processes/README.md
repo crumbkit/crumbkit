@@ -18,3 +18,4 @@ decided.
 - [ADR-0173. How the process crate waits on a stopped child and signals a moved one](0173-stopped-child-wait-and-moved-child-signal.md)
 - [ADR-0174. A run that stopped its child keeps the child's status](0174-stopped-run-keeps-child-status.md)
 - [ADR-0176. A full line queue waits half a drain grace after the reap](0176-full-queue-waits-after-the-reap.md)
+- [ADR-0178. The process crate's types have names of their own](0178-process-type-names.md)

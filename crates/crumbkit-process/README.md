@@ -25,18 +25,18 @@ long the child may run, and reads how the child ended:
 use std::process::Command;
 use std::time::{Duration, Instant};
 
-use crumbkit_process::{Capture, Escalation, Exit, OverLimit, Run, RunError, Signal};
+use crumbkit_process::{Capture, Escalation, Limits, Outcome, OverLimit, RunError, Signal};
 
 fn version(mut tool: Command) -> Result<Option<Vec<u8>>, RunError> {
     tool.arg("--version");
-    let settings = Run::new()
+    let settings = Limits::new()
         .stdout(Capture::Whole { limit: 64 * 1024, over: OverLimit::Stop })
         .stderr(Capture::Tail { limit: 4096 })
         .deadline(Instant::now() + Duration::from_secs(10))
         .escalation(Escalation::default().step(Signal::Terminate, Duration::from_secs(2)));
     let finished = crumbkit_process::run(tool, &settings)?;
     Ok(match finished.exit() {
-        Exit::Code(0) => Some(finished.into_output().0.into_bytes()),
+        Outcome::Code(0) => Some(finished.into_output().0.into_bytes()),
         _ => None,
     })
 }
@@ -60,9 +60,9 @@ stopped the child groups, and those children can then keep running.
 
 ## Where to read more
 
-- [`run`] and [`Run`] describe the one-shot run, its limits, deadline,
-  cancel and scope, and [`Exit`] how it ended. `Finished::status` gives
-  the child's own status, which a stopped run has too.
+- [`run`] and [`Limits`] describe the one-shot run, its limits, deadline,
+  cancel and scope, and [`Outcome`] how it ended. `ChildFinished::status`
+  gives the child's own status, which a stopped run has too.
 - [`Escalation`] lists the steps that stop the child, and [`forward`]
   forwards the tool's signals.
 - The [processes docs] describe the current behaviour, and [ADR-0171],
@@ -72,11 +72,11 @@ Licensed under either of Apache License, Version 2.0 or MIT license at your
 option.
 
 [`run`]: src/run.rs
-[`Run`]: src/run.rs
+[`Limits`]: src/run.rs
 [`line_queue`]: src/lines.rs
 [`forward`]: src/forward.rs
 [`Escalation`]: src/escalation.rs
-[`Exit`]: src/exit.rs
+[`Outcome`]: src/outcome.rs
 [ADR-0171]: ../../docs/decisions/api/processes/0171-the-process-crate.md
 [ADR-0172]: ../../docs/decisions/api/processes/0172-process-crate-additions.md
 [ADR-0174]: ../../docs/decisions/api/processes/0174-stopped-run-keeps-child-status.md

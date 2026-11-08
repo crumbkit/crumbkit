@@ -4,12 +4,12 @@
 mod tests;
 
 /// How a run's child ended. The caller can tell an exit, a signal, a
-/// timeout and a stop apart. [`Finished::status`](crate::Finished::status)
+/// timeout and a stop apart. [`ChildFinished::status`](crate::ChildFinished::status)
 /// gives the child's own status as the run reaped it, which a timeout or a
 /// stop also has.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[non_exhaustive]
-pub enum Exit {
+pub enum Outcome {
     /// The child exited with this code. On Windows a child in a job that
     /// the crate ended exits with 1.
     Code(i32),
@@ -63,10 +63,10 @@ impl Status {
 
     /// Returns the exit of a run whose child ended on its own with this
     /// status.
-    pub(crate) const fn exit(self) -> Exit {
+    pub(crate) const fn exit(self) -> Outcome {
         match self {
-            Self::Code(code) => Exit::Code(code),
-            Self::Signal(signal) => Exit::Signal(signal),
+            Self::Code(code) => Outcome::Code(code),
+            Self::Signal(signal) => Outcome::Signal(signal),
         }
     }
 }
