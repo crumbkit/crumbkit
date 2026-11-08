@@ -8,7 +8,7 @@ right. This page names each home.
 
 | Fact | Home |
 | --- | --- |
-| How an item behaves | The rustdoc on that item or its module. A cookbook will join it in rustdoc once it is written. The rustdoc of a derive macro holds the reference for its attributes and the code it writes for an example type. docs.rs publishes it for each crate with every feature on, and labels each item that a feature adds. |
+| How an item behaves | The rustdoc on that item or its module. The rustdoc of a derive macro holds the reference for its attributes and the code it writes for an example type. docs.rs publishes it for each crate with every feature on, and labels each item that a feature adds. |
 | How crumbkit behaves for a tool, where rustdoc has no single item to hold it | A page under [`docs/behaviour/`](../behaviour/README.md), which links to the rustdoc items instead of restating them. |
 | How the repository is built, checked, tested and released | A page under `docs/project/`. |
 | The rules that code and docs follow | [`docs/standards/`](../standards/README.md), where each rule has an ID and names its gate. |
@@ -88,9 +88,6 @@ Why: ADR-0013.
 `cargo crumbkit docs` writes a tool's command reference, one Markdown file
 built from its `commands list` document, as
 [Command reference](../behaviour/help/reference.md) describes. crumbkit has
-no documentation site for 0.1. A planned export will write an adopter's
-golden examples, failure codes, schemas and weights as Markdown pages and a
-JSON manifest with its own schema, and a built-in static site will be
-rendered from it, and shelf's site will be its showcase.
+no documentation site for 0.1.
 
 Why: ADR-0013, ADR-0044.

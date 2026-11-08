@@ -82,8 +82,10 @@ tracing = ["dep:tracing"]
 # (ADR-0002).
 complete = ["dep:clap_complete"]
 # `derive` is off by default, so a tool that writes its `Failure` impls by
-# hand builds no syn (ADR-0003). It re-exports `#[derive(Failure)]` beside
-# the trait of the same name, at `crumbkit::Failure`.
+# hand does not build crumbkit-derive. The feature adds no syn build, because
+# clap_derive, which crumbkit always enables, already builds syn (ADR-0003).
+# It re-exports `#[derive(Failure)]` beside the trait of the same name, at
+# `crumbkit::Failure`.
 derive = ["dep:crumbkit-derive"]
 # `color` is off by default, so a binary chooses clap's colour (ADR-0003).
 # It turns on clap's `color` feature, whose `StyledStr::ansi` lets `parse_to`
