@@ -167,7 +167,7 @@ fn overwrite_writes_a_golden_file_for_a_file_format() {
     );
     const FORMATS: Guide = Guide::new()
         .leaves(&[Leaf::new(&["books", "list"]).document(BOOKS_LIST)])
-        .documents(&[FileFormat::new(SETTINGS)]);
+        .file_formats(&[FileFormat::new(SETTINGS)]);
     let dir = TempDir::new("schemas-format").unwrap();
 
     run(&FORMATS, &dir, Action::Overwrite);
@@ -189,7 +189,7 @@ fn a_file_format_with_the_id_of_a_command_s_document_fails() {
     );
     const FORMATS: Guide = Guide::new()
         .leaves(&[Leaf::new(&["books", "list"]).document(BOOKS_LIST)])
-        .documents(&[FileFormat::new(CLASH)]);
+        .file_formats(&[FileFormat::new(CLASH)]);
     let dir = TempDir::new("schemas-clash").unwrap();
 
     let message = panic_message(|| run(&FORMATS, &dir, Action::Overwrite)).unwrap();

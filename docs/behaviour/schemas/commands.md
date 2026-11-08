@@ -41,7 +41,7 @@ when it fails with `--json`.
 - A leaf that declares `Leaf::prints_no_result` has no document and adds
   nothing.
 - A tool declares the files that users write for it, such as a settings
-  file, as `FileFormat`s with `Guide::documents`. `schemas list` lists them
+  file, as `FileFormat`s with `Guide::file_formats`. `schemas list` lists them
   after the leaves' documents with no commands.
 - Each row's `kind` is `output`, `unwrapped` or `file`, so an agent sees
   which documents a command prints. Each row's compact `form` column is

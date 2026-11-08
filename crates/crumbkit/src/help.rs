@@ -105,7 +105,7 @@ pub struct Guide {
     /// help names, in order.
     topics: &'static [Topic],
     /// The file formats that the schema commands serve, in order.
-    documents: &'static [FileFormat],
+    file_formats: &'static [FileFormat],
     /// The tool's own exit codes, which `<tool> help exit-codes` lists.
     exits: &'static [Exit],
     /// How the tool spells its failure codes, which [`Guide::spelling`]
@@ -154,7 +154,7 @@ impl Guide {
             groups: &[],
             leaves: &[],
             topics: &[],
-            documents: &[],
+            file_formats: &[],
             exits: &[],
             spelling: Spelling::COLONS,
             codes: &[],
@@ -219,16 +219,16 @@ impl Guide {
     /// as a configuration file, which `schemas list` and `schemas show`
     /// serve after the documents of the leaves, in this order (ADR-0035).
     #[must_use]
-    pub const fn documents(mut self, documents: &'static [FileFormat]) -> Self {
-        self.documents = documents;
+    pub const fn file_formats(mut self, file_formats: &'static [FileFormat]) -> Self {
+        self.file_formats = file_formats;
         self
     }
 
-    /// Returns the file formats that [`Guide::documents`] set, which the
+    /// Returns the file formats that [`Guide::file_formats`] set, which the
     /// schema commands serve. The name has clap's `get_` prefix, because
-    /// `documents` is the builder method.
-    pub(crate) const fn get_documents(&self) -> &'static [FileFormat] {
-        self.documents
+    /// `file_formats` is the builder method.
+    pub(crate) const fn get_file_formats(&self) -> &'static [FileFormat] {
+        self.file_formats
     }
 
     /// Sets the exit codes that the tool returns besides crumbkit's 0, 1

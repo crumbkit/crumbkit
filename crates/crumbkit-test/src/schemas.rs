@@ -21,7 +21,7 @@ mod tests;
 /// The documents are those that `crumbkit::schemas::documents` serves for
 /// `command` and `guide`, which `schemas show` prints: the document of each
 /// leaf of `guide` whose command is visible, and each file format that
-/// `Guide::documents` registers. The check skips the documents
+/// `Guide::file_formats` registers. The check skips the documents
 /// of the component `crumbkit`, such as `crumbkit/failure/v1` and
 /// `crumbkit/commands-list/v1`, because crumbkit's own tests pin their
 /// schemas. The golden file of a document is named after its id, such as
