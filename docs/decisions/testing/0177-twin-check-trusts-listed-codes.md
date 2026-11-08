@@ -1,4 +1,4 @@
-# ADR-0177. The twin check trusts only listed codes
+# ADR-0177. The twin check trusts only the codes that crumbkit's crates list
 
 - Date: 2026-11-08
 - Status: accepted
@@ -10,17 +10,18 @@
 a code that crumbkit or one of its add-on crates raises (ADR-0058). Such a
 code needed no twin and no declaration. A tool could write
 `Code::new("crumbkit", "books", "gone")`, and the check accepted the code
-although no library lists it. ADR-0058 recorded this as a consequence.
+although no crumbkit crate lists it. ADR-0058 recorded this as a consequence.
 
-The recovery check already reads explicit lists of codes. Each library
-publishes such a list as `codes::ALL`.
+The recovery check already decides which codes are crumbkit's from two
+built-in lists: `crumbkit::codes::ALL` and crumbkit-test's list of the
+add-on crates' codes, which a test compares with those crates' own
+`codes::ALL`.
 
 ## Decision
 
-- `check_twins` takes a fourth parameter, `trusted: &[&[&Code]]`, the lists
-  of library codes, such as
-  `&[crumbkit::codes::ALL, crumbkit_child::codes::ALL]`.
-- A code is a library's code only when one of the lists holds it, or when a
+- `check_twins` reads the same two lists as the recovery check, through one
+  crate-private function of crumbkit-test.
+- A code is crumbkit's only when one of the lists holds it, or when a
   `Rename` of the guide or of a leaf prints it in place of a code that one
   of the lists holds.
 - Every other code is the tool's code, whatever its component. It must be
@@ -29,15 +30,14 @@ publishes such a list as `codes::ALL`.
 
 ## Consequences
 
-Every caller of `check_twins` names the libraries it trusts, which is a
-breaking change to crumbkit-test. A tool that adds a library with its own
-codes adds that library's list to the call. A code in the `crumbkit`
-component that no list holds now needs a twin, and an `Allow::untwinned`
-opt-out for such a declared code is no longer stale.
+The signature of `check_twins` does not change. A code in the `crumbkit`
+component on neither list now needs a twin and a declaration, and an
+`Allow::untwinned` opt-out for such a declared code is no longer stale. A
+new add-on crate adds its codes to `ADD_ON_CODES`.
 `docs/behaviour/checks/end-to-end.md` describes the current behaviour.
 
-Considered: a `Twins::trusting` setter, which would add a field and a
-default that trusts nothing or everything; always trusting
-`crumbkit::codes::ALL` and passing only the add-on lists, which would leave
-the check with two sources of library codes; keeping the component test,
-which accepts a code that no library lists.
+Considered: a required `trusted` parameter of `check_twins`, which would
+make every tool repeat lists that crumbkit-test already holds; a
+`Twins::trusting` setter, which would add a field and a default for the same
+lists; keeping the component test, which accepts a code that no crumbkit
+crate lists.

@@ -4,7 +4,7 @@
 use crumbkit::Code;
 use crumbkit::help::{Exit, Guide, Leaf, Rename};
 
-use super::{TRUSTED, tree};
+use super::tree;
 use crate::examples::Examples;
 use crate::recoveries::Failing;
 use crate::temp::TempDir;
@@ -194,7 +194,7 @@ fn a_failure_code_that_an_exit_lists_and_no_codes_list_holds_fails_check_twins()
     let twins = Twins::new(Examples::new(&path, ""), CODES).pairs(PAIRS);
 
     assert_eq!(
-        panic_message(|| check_twins(&tree(), &LISTING, &twins, TRUSTED)).unwrap(),
+        panic_message(|| check_twins(&tree(), &LISTING, &twins)).unwrap(),
         "the tool's twins break crumbkit's twin rule:\n\
          tool::books::gone: the guide's exit code 3 lists the failure code, and no CODES list holds it"
     );
@@ -226,7 +226,7 @@ fn a_twin_that_refuses_a_renamed_crumbkit_code_passes_when_the_tool_prints_its_o
     let twins = Twins::new(Examples::new(&path, ""), CODES).pairs(PAIRS);
 
     assert_eq!(
-        panic_message(|| check_twins(&tree(), &RENAMING, &twins, TRUSTED)),
+        panic_message(|| check_twins(&tree(), &RENAMING, &twins)),
         None
     );
 }

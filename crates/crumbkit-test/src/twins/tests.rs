@@ -24,9 +24,6 @@ mod variable;
 /// The code of a refused command line.
 const USAGE: Code = crumbkit::codes::CLI_USAGE;
 
-/// The lists of library codes that the tests' tools trust.
-pub(super) const TRUSTED: &[&[&Code]] = &[crumbkit::codes::ALL];
-
 /// The guide of a tool that declares nothing.
 const GUIDE: Guide = Guide::new();
 

@@ -4,7 +4,7 @@
 use crumbkit::Code;
 use crumbkit::help::{Guide, Leaf, Rename};
 
-use super::{TRUSTED, tree};
+use super::tree;
 use crate::allow::Allow;
 use crate::examples::Examples;
 use crate::recoveries::{Failing, Unprovoked};
@@ -73,7 +73,7 @@ fn checked_allowing(
     let twins = Twins::new(Examples::new(&path, "").allow(allow), CODES)
         .pairs(pairs)
         .unprovoked(unprovoked);
-    panic_message(|| check_twins(&tree(), &Guide::new(), &twins, TRUSTED))
+    panic_message(|| check_twins(&tree(), &Guide::new(), &twins))
 }
 
 #[test]
@@ -135,7 +135,7 @@ fn every_broken_pair_is_reported_and_the_check_does_not_stop_at_the_first() {
              the admitted line `tool books show 8 --json` must exit with code 0, and it ends with exit status: 1 after writing this to standard error:\n\
              error: unreadable\n  code:  tool::books::unreadable\n\n\
              the refused line `tool books show 2 --json` must fail with tool::books::unreadable, and it exits with code 0\n\
-             the refused line `tool books show 9` fails with tool::stray::gone, which is not a declared code or a code that a trusted list holds"
+             the refused line `tool books show 9` fails with tool::stray::gone, which is not a declared code or a code of crumbkit or of one of its add-on crates"
         )
     );
 }
@@ -147,7 +147,7 @@ fn checked_with(script: &str, pairs: &[Twin<'_>]) -> Option<String> {
     dir.write_script("tool", script);
     let path = dir.path().join("tool").display().to_string();
     let twins = Twins::new(Examples::new(&path, ""), &[&[&NOT_FOUND]]).pairs(pairs);
-    panic_message(|| check_twins(&tree(), &Guide::new(), &twins, TRUSTED))
+    panic_message(|| check_twins(&tree(), &Guide::new(), &twins))
 }
 
 #[test]
@@ -201,7 +201,7 @@ fn a_declared_code_without_a_twin_passes_when_an_untwinned_opt_out_names_a_line_
 }
 
 #[test]
-fn an_untwinned_opt_out_whose_code_a_twin_refuses_or_twins_unprovoked_lists_or_a_trusted_list_holds_is_stale()
+fn an_untwinned_opt_out_whose_code_a_twin_refuses_or_twins_unprovoked_lists_or_crumbkit_owns_is_stale()
  {
     const ALLOW: &[Allow] = &[
         Allow::untwinned(
@@ -228,7 +228,7 @@ fn an_untwinned_opt_out_whose_code_a_twin_refuses_or_twins_unprovoked_lists_or_a
             "the tool's twins break crumbkit's twin rule:\n\
              the opt-out from `twins/no-twin` for `tool books show 7` names tool::books::not_found, which a twin refuses, so it is stale\n\
              the opt-out from `twins/no-twin` for `tool books show 8` names tool::books::removed_file, which Twins::unprovoked lists, so it is stale\n\
-             the opt-out from `twins/no-twin` for `tool books list --limit 0` names tool::cli::usage, a code that a trusted list holds or the rename of one, which needs no twin, so it is stale"
+             the opt-out from `twins/no-twin` for `tool books list --limit 0` names tool::cli::usage, a code of crumbkit or of one of its add-on crates or the rename of one, which needs no twin, so it is stale"
         )
     );
 }
@@ -267,7 +267,7 @@ fn a_declared_code_that_the_guide_prints_in_place_of_one_of_crumbkits_codes_need
     let path = dir.path().join("tool").display().to_string();
     let twins = Twins::new(Examples::new(&path, ""), CODES).pairs(&[SHOW_7]);
 
-    let problems = panic_message(|| check_twins(&tree(), &GUIDE, &twins, TRUSTED));
+    let problems = panic_message(|| check_twins(&tree(), &GUIDE, &twins));
 
     assert_eq!(problems, None);
 }
@@ -283,7 +283,7 @@ fn a_declared_code_that_a_leaf_prints_in_place_of_one_of_crumbkits_codes_needs_n
     let path = dir.path().join("tool").display().to_string();
     let twins = Twins::new(Examples::new(&path, ""), CODES).pairs(&[SHOW_7]);
 
-    let problems = panic_message(|| check_twins(&tree(), &GUIDE, &twins, TRUSTED));
+    let problems = panic_message(|| check_twins(&tree(), &GUIDE, &twins));
 
     assert_eq!(problems, None);
 }
@@ -319,7 +319,7 @@ fn check_twins_passes_a_refused_line_in_the_guides_custom_spelling_and_fails_one
     let path = dir.path().join("tool").display().to_string();
     let twins = Twins::new(Examples::new(&path, ""), CODES).pairs(&[SHOW_7, SHOW_8]);
 
-    let message = panic_message(|| check_twins(&tree(), &DOTTED, &twins, TRUSTED)).unwrap();
+    let message = panic_message(|| check_twins(&tree(), &DOTTED, &twins)).unwrap();
 
     assert!(!message.contains("books show 7"), "{message}");
     assert!(message.contains("books show 8"), "{message}");
@@ -340,7 +340,7 @@ fn a_twin_check_built_from_owned_codes_requires_a_twin_for_each_code_it_holds() 
         .pairs(&[SHOW_7])
         .unprovoked(&unprovoked);
 
-    let problems = panic_message(|| check_twins(&tree(), &Guide::new(), &twins, TRUSTED));
+    let problems = panic_message(|| check_twins(&tree(), &Guide::new(), &twins));
 
     assert_eq!(
         problems.as_deref(),

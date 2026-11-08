@@ -27,9 +27,9 @@ through the public `events` functions.
 The failure codes print with the tool's name, as crumbkit's own codes do
 ([failures](../failures/README.md#the-tools-name)), as in
 `<tool>::child::not_found`. crumbkit-child lists them in its own
-`codes::ALL`, which `crumbkit::codes::ALL` does not include. A tool passes
-that list to `check_twins`, so the codes need no twin and no declaration,
-and `check_recoveries` follows their recoveries
+`codes::ALL`, which `crumbkit::codes::ALL` does not include. crumbkit-test
+holds them in its list of the add-on crates' codes, so they need no twin and
+no declaration, and `check_recoveries` follows their recoveries
 ([end-to-end checks](../checks/end-to-end.md)).
 
 Why: ADR-0058, ADR-0042, ADR-0003, ADR-0079, ADR-0177.

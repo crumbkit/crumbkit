@@ -22,6 +22,7 @@ mod runtime;
 mod unprovoked;
 mod words;
 
+pub(crate) use chain::known::library_codes;
 pub use runtime::{RuntimeFailing, RuntimePlace};
 pub use unprovoked::Unprovoked;
 

@@ -4,7 +4,7 @@
 use crumbkit::Code;
 use crumbkit::help::Guide;
 
-use super::{TRUSTED, tree};
+use super::tree;
 use crate::examples::Examples;
 use crate::recoveries::Failing;
 use crate::temp::TempDir;
@@ -49,7 +49,7 @@ fn checked(pairs: &[Twin<'_>]) -> Option<String> {
     let path = dir.path().join("tool").display().to_string();
     let examples = Examples::new(&path, "").env(&[("BOOKS", "/b")]);
     let twins = Twins::new(examples, &[&[&TOO_DEEP, &NO_SHELF]]).pairs(pairs);
-    panic_message(|| check_twins(&tree(), &Guide::new(), &twins, TRUSTED))
+    panic_message(|| check_twins(&tree(), &Guide::new(), &twins))
 }
 
 #[test]
