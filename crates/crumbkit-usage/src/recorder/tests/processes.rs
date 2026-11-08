@@ -20,6 +20,8 @@ fn typed(command: &Command, args: &[std::ffi::OsString], spelling: Spelling) {
 // Each platform raises its own signals and runs its children through its
 // own shell, so each has a file of tests.
 #[cfg(unix)]
+mod forward_hand_over;
+#[cfg(unix)]
 mod unix;
 #[cfg(windows)]
 mod windows;

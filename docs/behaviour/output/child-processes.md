@@ -65,10 +65,12 @@ code, and `"interrupted": true` when a signal ended the child.
 
 When a [run observer](../run-observer/README.md) says that it handles
 SIGINT, as the [usage log](../usage-log/README.md)'s signal thread does,
-crumbkit installs no SIGINT handler of its own for the child. crumbkit tells
+crumbkit installs no SIGINT handler for the child. crumbkit tells
 the observers that a child took the terminal before the child starts, and on
-Windows that the child gave it back once it exits. The log's thread skips
+Windows that the child gave it back. The log's thread skips
 SIGINT once a child has held the terminal.
+
+A tool with `forward` calls `forward::handed_over` first ([processes](../processes.md)).
 
 On Windows, closing the console, logging off and shutting down still end the
 tool beside the child, because the C runtime raises no signal for them. A

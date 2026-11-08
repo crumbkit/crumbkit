@@ -27,6 +27,9 @@
 //! before the forwarder has stopped the groups. A tool that uses both loses
 //! that guarantee until one owner ends the tool.
 //!
+//! A tool that hands the terminal to a child with crumbkit-child calls
+//! [`handed_over`] just before the hand-over, so Ctrl-C ends only the child.
+//!
 //! ```no_run
 //! fn remove_lock_file() {}
 //!
@@ -37,6 +40,7 @@
 
 use std::io;
 use std::process::Child;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Mutex, MutexGuard, OnceLock, PoisonError};
 use std::thread::Builder;
 use std::time::{Duration, Instant};
@@ -62,6 +66,9 @@ static LISTED: Mutex<Vec<Pid>> = Mutex::new(Vec::new());
 
 /// The functions that the forwarder runs before the tool ends.
 static CLEAN_UPS: Mutex<Vec<fn()>> = Mutex::new(Vec::new());
+
+/// Whether a child has taken the terminal, which [`handed_over`] records.
+static HANDED_OVER: AtomicBool = AtomicBool::new(false);
 
 /// Whether the forwarder's thread started, which [`install`] decides once.
 static INSTALLED: OnceLock<Result<(), io::ErrorKind>> = OnceLock::new();
@@ -108,13 +115,32 @@ pub fn clean_up(clean_up: fn()) {
     }
 }
 
+/// Tells the forwarder that a child is about to take the terminal. From now
+/// until the tool ends, the forwarder drops SIGINT, as crumbkit-child ignores
+/// it on Unix (ADR-0042), so Ctrl-C reaches only the child. SIGTERM and
+/// SIGHUP are forwarded as before.
+///
+/// A tool that hands over the terminal beside the forwarder calls this just
+/// before `crumbkit_child::hand_over`.
+pub fn handed_over() {
+    HANDED_OVER.store(true, Ordering::SeqCst);
+}
+
 /// Installs the handlers and starts the forwarder's thread.
 fn start() -> Result<(), io::ErrorKind> {
     let mut signals = Signals::new([SIGINT, SIGTERM, SIGHUP]).map_err(|error| error.kind())?;
     Builder::new()
         .name("crumbkit-process forward".to_owned())
         .spawn(move || {
+            // RUST-10: `forward` never returns, so a second signal during
+            // the grace or the clean-ups is never read, and nothing bounds a
+            // clean-up. A `register_conditional_default` on a flag set after
+            // the SIGKILL step replaces this if a tool reports a hung
+            // clean-up.
             for raw in signals.forever() {
+                if raw == SIGINT && HANDED_OVER.load(Ordering::SeqCst) {
+                    continue;
+                }
                 forward(raw);
             }
         })

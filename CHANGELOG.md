@@ -19,6 +19,9 @@ the crates follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - crumbkit-process: `Finished::status` gives the child's own status even
   when the run stopped it, and `Status::shell_code` gives it as a shell
   would, such as 130 for a child that SIGINT ended ([behaviour/processes]).
+- crumbkit-process: `forward::handed_over` tells the forwarder that a child
+  is about to take the terminal, so Ctrl-C ends only that child
+  ([behaviour/processes]).
 - crumbkit-process: the off-by-default `forward` feature stops every live
   child group when the tool receives SIGINT, SIGTERM or SIGHUP, and then
   ends the tool as the signal would have ([behaviour/processes]).
