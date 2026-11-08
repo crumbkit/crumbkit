@@ -122,11 +122,11 @@ pub fn clean_up(clean_up: fn()) {
 
 /// Tells the forwarder that a child is about to take the terminal. From now
 /// until the tool ends, the forwarder drops SIGINT, as crumbkit-child ignores
-/// it on Unix (ADR-0042), so Ctrl-C reaches only the child. SIGTERM and
-/// SIGHUP still reach the listed groups as before. The child that takes the
-/// terminal is not on the forwarder's list, so a SIGTERM or SIGHUP sent to
-/// the tool during a hand-over ends the tool and leaves that child on the
-/// terminal.
+/// it on Unix (ADR-0042, ADR-0179), so Ctrl-C reaches only the child.
+/// SIGTERM and SIGHUP still reach the listed groups as before. The child
+/// that takes the terminal is not on the forwarder's list, so a SIGTERM or
+/// SIGHUP sent to the tool during a hand-over ends the tool and leaves that
+/// child on the terminal.
 ///
 /// A tool that hands over the terminal beside the forwarder calls this just
 /// before `crumbkit_child::hand_over`.

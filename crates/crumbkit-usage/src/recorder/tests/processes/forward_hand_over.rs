@@ -8,9 +8,11 @@ use std::path::PathBuf;
 use std::process::{Command, ExitCode};
 use std::time::Duration;
 
+use crumbkit::Spelling;
 use crumbkit_process::forward;
 
-use super::{bare_output, is_child, run_child};
+use super::{bare_output, is_child, log_lines, run_child, typed};
+use crate::recorder::start_under;
 use crate::testing::TempDir;
 
 /// Returns the state directory that the parent test gave this tool.
@@ -103,4 +105,33 @@ fn a_late_sigint_after_a_hand_over_leaves_the_tool_running() {
         !state.path().join("marker").exists(),
         "the forwarder ran the clean-up"
     );
+}
+
+#[test]
+fn ctrl_c_after_a_hand_over_beside_the_log_and_the_forwarder_ends_only_the_child_and_writes_the_line()
+ {
+    if is_child() {
+        let _log = start_under(forward::clean_up);
+        forward::install().unwrap();
+        typed(
+            &clap::Command::new("combined"),
+            &["combined".into()],
+            Spelling::COLONS,
+        );
+        forward::handed_over();
+        let code = crumbkit_child::hand_over(bare_output(), sh("kill -INT 0; sleep 5"));
+        exit(if code == ExitCode::from(130) { 130 } else { 1 });
+    }
+    let state = TempDir::new("forward-combined");
+
+    let status = run_child(
+        "recorder::tests::processes::forward_hand_over::ctrl_c_after_a_hand_over_beside_the_log_and_the_forwarder_ends_only_the_child_and_writes_the_line",
+        &state,
+    );
+
+    assert_eq!(status.code(), Some(130), "the tool ended with {status:?}");
+    let lines = log_lines(&state, "combined");
+    assert_eq!(lines.len(), 1);
+    assert_eq!(lines[0]["interrupted"], true);
+    assert_eq!(lines[0]["exit"], 130);
 }
